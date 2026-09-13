@@ -20403,3 +20403,51 @@ et le plus lent est de 0,38 s sur des courses qui en durent cinq et demie, c'est
 **CE QUE CET AUDIT INSCRIT** : le mixeur reste le plus gros poste de dessin de
 l'application (5,95 ms pour douze tranches), déjà nommé par D165, et il tient
 largement sous le seuil. Rien à corriger.
+
+### D191 (attendus) — le cinquante-cinquième audit : le gel s'annule-t-il ? (13/09/2026)
+
+**D'OÙ VIENT LA QUESTION.** La famille A21-A25 a montré, geste par geste, que
+tout ce qui touche au projet doit ouvrir un pas d'annulation, et que l'oubli ne se
+voit pas : le MASTER (A23), son bouton (A24), l'armement d'une piste (A25) et les
+réglages de machine (A21) s'étaient tous tus. Le GEL est le geste le plus lourd de
+tous — il écrit un fichier de 159 Mo et débranche un instrument — et D185 à D187
+viennent de le remuer. Il n'a jamais été éprouvé par le banc.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Une copie de
+`children-c3-plafond`, « Geler la piste » puis **Ctrl+Z**, puis Ctrl+S :
+
+1. **`frozen` a disparu** du projet enregistré, et `frozenAudio` avec lui.
+2. **Le reste de la piste est intact** — nom, volume, routage, instrument,
+   notes : annuler un gel ne doit pas coûter autre chose que le gel.
+3. Le **fichier de gel laissé sur le disque** est regardé et son sort DIT : le
+   supprimer est un choix (le dégel le fait), le garder en est un autre, mais il
+   ne doit pas rester une surprise.
+
+### Phase D191 — le gel s'annule, et son fichier reste EXPRÈS (13/09/2026)
+
+**LES TROIS POINTS, TRANCHÉS.**
+
+| | **mesuré** |
+|---|---|
+| 1. `frozen` a disparu après Ctrl+Z | ✔ `frozen` et `frozenAudio` absents du projet enregistré |
+| 2. le reste de la piste est intact | ✔ seules `clips` et `mix` diffèrent de l'original, c'est-à-dire les deux écarts que D162 a déjà nommés (les clips implicites écrits, et les nombres à huit chiffres) |
+| 3. le fichier de gel reste sur le disque | ✔ **et c'est le bon choix — vérifié plutôt que supposé** |
+
+**POURQUOI GARDER LE FICHIER EST JUSTE, et ce que la mesure a montré.** Un
+`Ctrl+Maj+Z` après l'annulation **remet la piste gelée en une fraction de seconde,
+en réutilisant le même `gel/piste-1.wav`** : le `frozenAudio` revient, chemin et
+nombre de trames identiques, sans qu'un seul échantillon soit re-rendu. Supprimer
+le fichier à l'annulation rendrait donc le rétablissement soit impossible, soit
+long d'un rendu complet — pour économiser un fichier que l'utilisateur vient
+peut-être de reprendre. Le geste qui NETTOIE est « Dégeler la piste », explicite,
+et il efface bien le fichier (mesuré en D185).
+
+**CE QUI RESTE VRAI ET QUI EST DIT** : annuler un gel puis enregistrer et fermer
+laisse un `gel/piste-1.wav` que plus rien ne désigne — 159 Mo sur un projet de
+douze pistes. **Décision écrite ici : on le laisse.** Effacer un fichier de cette
+taille au nom d'un ménage que personne n'a demandé est plus coûteux qu'un octet
+perdu ; et le seul geste qui dit « je n'en veux plus » — Dégeler — le fait déjà.
+
+**ET LE GEL OUVRE BIEN SON PAS D'ANNULATION** (`beginProjectEdit("Geler une
+piste")`), comme le dégel : la famille A21-A25, qui avait trouvé quatre gestes
+muets, n'en laisse pas un cinquième.
