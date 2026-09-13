@@ -1813,6 +1813,27 @@ six rendus parallèles, sur le moteur de `build/tools/vsm-render` figé au dépa
 - Un changement de machine au second verdict : `guitar` passe de `vsm.sitar` à
   `vsm.clavinet` (0,1688 contre 0,1691).
 
+**UN DÉFAUT DE LA CHAÎNE, TROUVÉ EN PRÉPARANT L'ÉCOUTE (13/09).** Le fichier
+`comparaison.wav` que la chaîne écrit pour l'écoute A/B est en **16 bits**, et la
+reconstruction de ce morceau **dépasse 0 dBFS de 2,7 dB** : son canal droit y est
+donc ÉCRÊTÉ — **1 176 échantillons à fond d'échelle** sur le morceau entier, et
+346 dans le seul extrait de 60 à 90 s. Un musicien qui écoute ce fichier entend
+une distorsion **qui n'est pas celle de la reconstruction**, et rien ne l'en
+avertit. `reconstruit.wav`, écrit en flottant, garde bien la crête de 1,4741 : ce
+n'est donc pas le rendu qui rabote, c'est le graveur du fichier de comparaison.
+
+**Le remède est nommé, et il n'est pas appliqué aujourd'hui** — `CLAUDE.md`
+interdit de toucher `analyse/analyzer/*.py` pendant qu'une course tourne, et le
+lot forcé de R1 tourne. Ce qu'il faudra faire : descendre les DEUX canaux du même
+facteur (le rapport original/reconstruction doit rester intact), le **dire** au
+journal et au rapport, ou écrire le fichier en flottant. Inscrit comme **B10** à
+l'INDEX.
+
+**En attendant, deux extraits propres ont été fabriqués et remis** :
+`reconstruction/travail/ecoutes/b4-AB-60s-a-90s-sans-ecretage.wav` et
+`…-150s-a-180s-…`, les deux canaux descendus de **−4,37 dB** (crête commune
+ramenée à −1 dBFS), zéro échantillon à fond d'échelle.
+
 **LE PROJET S'OUVRE DANS LE DAW, vérifié plutôt que supposé.** Ouvert par
 `VSM_PROJET`, il rend **une seule réserve** — les 2 600 notes douteuses, qui sont
 une information, pas un défaut —, ses huit tranches sont au mixeur, la façade du
