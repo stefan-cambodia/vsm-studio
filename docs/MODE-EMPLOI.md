@@ -1111,6 +1111,12 @@ juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D17
 s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
 course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
 ferait expirer tous les bancs du dépôt.
+`VSM_GESTE_PISTE` écrit désormais ce que CHAQUE geste a obtenu, et non plus un
+silence : `VSM_GESTE : volume : melange muet, volume 0.500, couleur ff6b9bff`,
+`VSM_GESTE : choisir : piste 1 (other), 1 choisie(s)` — l'index part de zéro, donc
+`choisir:1` prend la DEUXIÈME piste —, et `VSM_FACADE : CUTOFF : demandé 0.0000,
+obtenu 20.0000 (borné)` pour une commande de façade. Sans ces lignes, un geste
+refusé ou borné se lisait comme une réussite (D247, D248).
 `VSM_MENU_CONTEXTE=clip-midi:<libellé>` ouvre le menu du premier clip MIDI de la
 première piste qui en porte un, **après l'avoir choisi** — c'est ce que fait le clic
 droit, et sans ce choix la moitié des entrées ne peuvent rien faire. `clip-audio:`
