@@ -21146,3 +21146,22 @@ CLAP — `VSM_CHOIX=5` rend `rang 5 pris par le banc — Generic Synth`, puis
 autre nature : celles qui font choisir dans le CATALOGUE des plugins balayés
 (instruments et effets). Elles ne butent sur aucun audit aujourd'hui ; notées ici
 pour que le prochain qui en a besoin sache qu'elles attendent le même traitement.
+
+### Vérification — le PREMIER lancement, sur une machine qui n'a jamais vu le logiciel (13/09/2026)
+
+**CE QUE PERSONNE N'AVAIT REGARDÉ.** Tous les chiffres de la journée partent d'un
+dossier de préférences déjà rempli. Le premier contact d'un musicien, lui, part de
+rien : ni réglages, ni projets récents, ni catalogue de plugins.
+
+| | **mesuré**, dossier personnel VIDE |
+|---|---|
+| démarrage | **0,24 s** (2,24 s moins le délai de capture) — le chiffre de D161 sur une machine neuve |
+| ce qui s'ouvre | une piste de démonstration, `vsm.minimoog`, 0 note, tempo 120 |
+| boîtes d'erreur | **aucune** |
+| ce qui est écrit dans le dossier personnel | **rien** — pas même le fichier de réglages |
+
+**Le dernier point vaut d'être dit.** Une application qui écrit ses préférences
+au premier démarrage, avant toute décision de l'utilisateur, laisse une trace de
+ce qu'il n'a pas choisi. Ici le fichier n'apparaît que lorsqu'il y a quelque chose
+à retenir. C'est aussi ce qui rend les bancs de ce dépôt honnêtes : un `HOME` de
+brouillon reste vide tant qu'on ne fait rien.
