@@ -205,6 +205,24 @@ public:
     /// rencontrent jamais, et un compteur commun laisserait croire qu'un clip
     /// et une note pourraient être confondus.
     uint64_t nextClipId() { return nextClipId_++; }
+    /// AJOUTER UN CLIP EN LUI DONNANT SON IDENTIFIANT, tout de suite.
+    ///
+    /// D262 : `assignClipIds()` ne se rejoue qu'au CHARGEMENT d'un projet. Tout
+    /// clip poussé à la main pendant la séance gardait donc `id == 0`, qui est
+    /// la valeur « jamais numéroté » -- et le code qui VISE un clip lit ce 0
+    /// comme « aucun clip ». « Découper aux transitoires » trouvait ses quatre
+    /// attaques, écrivait « 4 attaque(s) », puis « 0 coupe(s) », sans que rien
+    /// ne dise pourquoi : le clip couvrant était trouvé, son identifiant valait
+    /// 0, et le test suivant le jetait.
+    ///
+    /// Prend le tableau de clips et non la piste, parce qu'une PRISE
+    /// (`Take::clips`) en porte aussi, et qu'une prise remise en place verse
+    /// ses clips dans la piste.
+    Clip& ajouterClip(std::vector<Clip>& clips, Clip clip) {
+        if (clip.id == 0) clip.id = nextClipId();
+        clips.push_back(std::move(clip));
+        return clips.back();
+    }
     /// Donne un identifiant à tout clip qui n'en a pas encore. Appelée au
     /// chargement d'un projet, dont le format n'écrit pas les identifiants.
     void assignClipIds() {

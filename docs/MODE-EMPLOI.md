@@ -1133,6 +1133,12 @@ sous… », APRÈS tous les autres verbes : `VSM_MENU` passe avant `VSM_MENU_CON
 et avant `VSM_TOUCHE`, si bien qu'une course qui enregistre par le menu écrit
 l'état d'AVANT ses gestes de clic droit — on croit alors que le geste n'a rien
 fait. Et `clip-audio:?` ou `clip-midi:?` listent le menu d'un clip au lieu d'agir.
+`VSM_CLIPS=1` écrit une ligne par clip du projet — piste, **identifiant**, nom,
+début et longueur en ticks — après tous les gestes. Un identifiant ne se
+photographie pas, et c'est lui qui décide de tout ce qui vise un clip. Le 13/09
+(D262), un clip importé portait le numéro 0, qui est la valeur « jamais
+numéroté » : « Découper aux transitoires » trouvait ses quatre attaques, lisait ce
+0 comme « aucun clip » et ne coupait rien, sans qu'aucun message ne dise pourquoi.
 `VSM_MENU_CONTEXTE=regle-pianoroll:<libellé>` exécute une entrée du menu du clic droit de la
 RÈGLE du piano roll (les repères), et `regle-pianoroll:?` ne fait rien mais LISTE ce que ce
 menu montrerait, dans la langue courante — c'était le dernier menu de

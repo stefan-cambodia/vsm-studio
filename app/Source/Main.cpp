@@ -529,6 +529,12 @@ public:
                 liste.addTokens(juce::String::fromUTF8(ctx), ";", "");
                 for (const auto& e : liste) content->runContextMenuForCapture(e.trim());
             }
+            // VSM_CLIPS=1 (D262) : chaque clip avec son IDENTIFIANT -- APRÈS les
+            // gestes, parce que c'est l'état qu'ils laissent qui se mesure. Un
+            // identifiant 0 veut dire « jamais numéroté », et c'est ce que tout
+            // clip né en séance portait avant D262.
+            if (const char* clips = std::getenv("VSM_CLIPS"); clips != nullptr && *clips && *clips != '0')
+                content->listClipsForCapture();
             // VSM_MENU_LISTE=1 (D80 ; déplacée par D83 après l'import audio, dont le clip doit y figurer) : la barre de menus entière, telle qu'elle
             // s'affiche, sur la sortie d'erreur -- APRÈS les gestes du banc, pour
             // que les libellés qui en dépendent (« Annuler : … ») soient ceux

@@ -136,6 +136,11 @@ public:
     /// D89 : VSM_RAPPORT_LISTE=1 -- ce que le volet de rapport AFFICHE, ligne par
     /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
     void listReportForCapture();
+    /// D262 : VSM_CLIPS=1 -- chaque clip du projet avec son IDENTIFIANT, écrit
+    /// sur la sortie d'erreur. Un identifiant ne se photographie pas, et c'est
+    /// lui qui a fait échouer « Découper aux transitoires » en silence : tout
+    /// clip né pendant la séance portait 0, la valeur qui veut dire « aucun ».
+    void listClipsForCapture();
     void listTextsForCapture();   ///< D94 : VSM_TEXTES_LISTE
     /// D95 : les textes des AUTRES fenêtres visibles -- boîtes, panneaux
     /// flottants --, lus au moment de la photo : une boîte n'existe qu'après

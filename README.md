@@ -341,7 +341,7 @@ son en-tête — un script d'analyse écrit pour une phase n'est ni relu, ni rej
 ni corrigé :
 
 ```bash
-tools/banc-fumee.sh                                  # les dix verbes de banc répondent-ils encore ?
+tools/banc-fumee.sh                                  # les quatorze verbes de banc répondent-ils encore ?
 analyse/.venv/bin/python tools/inventaire_langue.py            # ECRAN / NU / SANS_PAIRE : ce qui reste français
 analyse/.venv/bin/python tools/inventaire_langue.py --doublons # une clé écrite deux fois dans la même table
 tools/comparer-rendus.sh <projet>                    # l'export de l'application contre vsm-render
@@ -349,6 +349,8 @@ tools/apres-campagne.sh <lot>                        # les trois gestes qui atte
 analyse/.venv/bin/python tools/confiance-contre-verite.py <lot> # la confiance prédit-elle une note juste ?
 analyse/.venv/bin/python tools/tables-markdown.py     # les tables Markdown ont-elles toutes leurs cellules ?
 analyse/.venv/bin/python tools/gestes-promesses.py    # transposer, quantifier, legato, dupliquer : la promesse tient-elle ?
+python3 tools/clips-numerotes.py                      # tout clip ajouté porte-t-il un identifiant ? (0 veut dire « aucun »)
+python3 tools/coupe-aux-transitoires.py              # « Découper aux transitoires » coupe-t-il, et AUX BONS ENDROITS ?
 ```
 
 Chacune rend un code de sortie non nul quand elle trouve quelque chose, et

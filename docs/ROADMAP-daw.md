@@ -23815,3 +23815,127 @@ côté de la distance, et de le publier dans `rapport.json`. Le cap de l'utilisa
 est la PARITÉ (mémoire `nombre-de-pistes-reconstruites`, « un original à 15 postes
 doit donner une reconstruction à 15 pistes ») ; la parité des NOTES en est le
 prolongement naturel, et elle ne se lira jamais dans une distance spectrale.
+
+
+### Phase D262 — tout clip créé en séance porte l'identifiant 0, et 0 veut dire « aucun » (13/09/2026)
+
+« Découper aux transitoires » a trouvé ses attaques et n'a rien coupé :
+
+```
+Découper aux transitoires : « quatre-frappes » : 4 attaque(s) à 0.197, 0.697, 1.197, 1.697 s
+Découper aux transitoires : 0 coupe(s) sur 1 clip(s) audio.
+```
+
+Le diagnostic posé dans la branche « aucun clip ne la couvre » s'est contredit
+lui-même — et c'est lui qui donne la cause :
+
+```
+Découper aux transitoires : attaque à 0.197 s (tick 189) — aucun clip ne la couvre
+                            (fin du matériau 2112 ticks ; clips : 0+2112 )
+```
+
+Le tick imprimé vaut **189**, et `tick` n'est écrit que dans la branche qui
+trouve le clip couvrant : le clip A été trouvé. Ce qui a échoué, c'est le test
+qui suit — `couvrant = c.id` valait **0**, et `if (couvrant == 0)` lit 0 comme
+« aucun clip ».
+
+**LA CAUSE, plus large que ce geste.** `Project::assignClipIds()` numérote à
+partir de 1 et ne se rejoue qu'au CHARGEMENT d'un projet
+(`ArrangementComponent::setProject`). Les cinq endroits de `MainComponent.cpp`
+qui créent un clip — importer un fichier audio, reporter une piste en audio,
+finir un enregistrement, ranger une prise, matérialiser un clip implicite — ne
+posent aucun identifiant. Tout clip né pendant la séance porte donc `id == 0`,
+qui est la valeur « pas encore numéroté ».
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. Deux fichiers audio importés sur deux pistes donnent aujourd'hui **deux clips
+   d'identifiant 0** ; après correction, deux identifiants distincts et non nuls.
+2. Sur `quatre-frappes.wav` (attaques à 0,2 / 0,7 / 1,2 / 1,7 s), le geste passe
+   de **0 coupe** à **3 coupes** — trois, et non quatre : la première attaque
+   tombe à 0,197 s, à l'intérieur du clip, mais chaque coupe suivante s'applique
+   à la moitié droite de la précédente, et une attaque posée au tout début d'un
+   clip ne le coupe pas (`c.startTick < ici` est strict).
+3. Aucune régression des 1 962 tests.
+
+**CE QUE LA MESURE A DIT.**
+
+| | avant | après |
+|---|---|---|
+| clip importé, identifiant | **#0** | #2 |
+| attaques détectées | 4 | 4 |
+| **coupes posées** | **0** | **4** |
+
+L'attendu n°1 est tenu. **L'attendu n°2 était faux, et le chiffre le dit : quatre
+coupes, pas trois.** Le raisonnement écrit plus haut confondait « l'attaque tombe
+au début du clip » avec « l'attaque tombe à 0,197 s » : à 0,197 s on est au tick
+189, strictement à l'intérieur du clip, et la coupe a lieu. Les quatre attaques
+sont toutes strictement intérieures, donc quatre coupes.
+
+**LA CORRECTION.** `Project::ajouterClip(clips, clip)` numérote le clip au moment
+où on le pousse, et remplace les cinq `clips.push_back` de `MainComponent.cpp`
+(poser un échantillon, reporter une piste en audio, finir un enregistrement,
+ranger une prise, matérialiser un clip implicite). Dans le geste lui-même, le
+test « identifiant nul = aucun clip » devient un booléen : confondre les deux est
+ce qui a rendu la panne muette. La garde `tools/clips-numerotes.py` vérifie que
+tout `clips.push_back` du code de production porte, dans la même fonction, une
+affectation d'identifiant, un appel à `ajouterClip` ou un appel à
+`assignClipIds()` — **8 poussées contrôlées, 0 sans identifiant.**
+
+**L'INSTRUMENT QUI MANQUAIT.** Un identifiant ne se photographie pas. `VSM_CLIPS=1`
+écrit désormais une ligne par clip (piste, identifiant, nom, début, longueur) ;
+sans lui, il n'y avait aucun moyen de voir le `#0` autrement qu'en le déduisant
+d'une contradiction dans un message d'erreur.
+
+
+### Phase D263 — la coupe aimantée au passage par zéro comptait la fenêtre du clip deux fois (13/09/2026)
+
+D262 corrigé, le geste annonçait « 4 coupe(s) ». **Il en posait deux au mauvais
+endroit, et son propre compte rendu disait que tout allait bien** — « 3 coupe(s)
+aimantée(s) au passage par zéro (au plus 0,02 ms) », alors que la coupe avait
+bougé de 0,2 s. Le relevé posé dans la boucle donne les deux séries :
+
+| attaque | coupe attendue | **coupe posée (avant)** | coupe posée (après) |
+|---|---|---|---|
+| 0,197 s | tick 189 | 189 | 189 |
+| 0,697 s | tick 669 | **858** | 669 |
+| 1,197 s | tick 1149 | **2007** | 1149 |
+| 1,697 s | tick 1629 | 1629 | 1629 |
+
+**LA CAUSE.** Dans `snapCutToZeroCrossing`, `zero` est une trame **absolue** du
+fichier — elle vient de `trame`, qui l'était déjà
+(`c.sourceStartSeconds + …`). La ligne
+
+```cpp
+const double nouvelles = c.sourceStartSeconds + static_cast<double>(zero) / sr;
+```
+
+y rajoutait la fenêtre du clip une seconde fois, déplaçant la coupe **d'exactement
+`sourceStartSeconds`** : 858 − 669 = 189 ticks = 0,196875 s, la fenêtre du clip
+n°3 ; 2007 − 1149 = 858 ticks = 0,89375 s, celle du clip n°4. La quatrième coupe
+est juste par accident : le déplacement la portait hors du clip, et le garde-fou
+`if (!(c.startTick < aimantee && …)) return tick;` annulait l'aimantation.
+
+**POURQUOI PERSONNE NE L'AVAIT VU.** Le défaut est invisible tant qu'un clip
+commence à 0 dans son fichier — c'est-à-dire pour tout clip qui n'a jamais été
+coupé. La première coupe est donc toujours juste, et c'est la deuxième qui dérape.
+Le même code sert `Ctrl+E` (`cutSnapProvider`) : couper un clip déjà coupé posait
+la coupe ailleurs qu'à la tête de lecture, sauf quand le garde-fou l'annulait.
+
+**CE QUI EMPÊCHE LE RETOUR.** `tools/coupe-aux-transitoires.py` **engendre** son
+fichier d'essai (quatre frappes à 0,2 / 0,7 / 1,2 / 1,7 s, écrites avec le module
+`wave` de la bibliothèque standard), importe, découpe et vérifie que le rapport
+`tick / seconde` est le même pour les quatre coupes — un contrôle qui ne dépend
+pas du tempo du projet d'essai. **La garde a été vue ROUGE avant d'être vue
+verte** : remise la ligne fautive, elle rend 1 et affiche « rapport tick/s de
+959,4 à 1 676,7 » ; remise la correction, elle rend 0 et « constant à 0,54 près ».
+Un contrôle qui n'a jamais échoué ne prouve rien.
+
+**AU PASSAGE : cinq cibles qui ne se liaient plus.** `cmake --build build` échouait
+en bloc parce que `vsm-panel-preview`, `vsm-pianoroll-preview`, `vsm-edit-audit`,
+`vsm-scale-audit` et `vsm-arrangement-preview` compilent des sources de
+`Source/ui/` qui appellent `tr()` sans embarquer `Langue.cpp` (ni `UiScale.cpp`,
+dont il dépend). Aucun de leurs binaires n'existait. Une compilation complète qui
+échoue toujours est une panne que l'on attribue à sa propre modification en
+cours — c'est ce que j'ai failli faire. Les cinq cibles sont complétées et le
+build entier est vert.

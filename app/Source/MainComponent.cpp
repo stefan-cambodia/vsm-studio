@@ -1668,6 +1668,27 @@ void MainComponent::dropFileForCapture(const juce::File& fichier) {
     filesDropped(juce::StringArray(fichier.getFullPathName()), 0, 0);
 }
 
+void MainComponent::listClipsForCapture() {
+    // D262 : L'IDENTIFIANT D'ABORD. Les clips se photographient très bien ; leur
+    // identifiant, non -- et c'est lui qui décide de tout ce qui vise un clip
+    // (sélection, découpe, annulation). Une ligne par clip, la piste nommée,
+    // parce qu'un identifiant sans sa piste ne se retrouve pas.
+    int total = 0;
+    for (size_t t = 0; t < project_.tracks.size(); ++t) {
+        const auto& piste = project_.tracks[t];
+        for (const auto& c : piste.clips) {
+            ++total;
+            std::fputs((juce::String("VSM_CLIP : piste ") + juce::String(static_cast<int>(t))
+                        + " \xc2\xab " + juce::String::fromUTF8(piste.name.c_str()) + " \xc2\xbb \xe2\x80\x94 clip #"
+                        + juce::String(static_cast<int>(c.id))
+                        + " \xc2\xab " + juce::String::fromUTF8(c.name.c_str()) + " \xc2\xbb d\xc3\xa9but "
+                        + juce::String(static_cast<int>(c.startTick)) + " longueur "
+                        + juce::String(static_cast<int>(c.length)) + "\n").toRawUTF8(), stderr);
+        }
+    }
+    std::fputs((juce::String("VSM_CLIPS : ") + juce::String(total) + " clip(s)\n").toRawUTF8(), stderr);
+}
+
 void MainComponent::listReportForCapture() {
     // D89 : `VSM_OUVERTURE` écrit les lignes BRUTES, les mêmes que `vsm-render` ;
     // celle-ci écrit ce que l'utilisateur LIT dans le volet, dans sa langue.
@@ -7424,7 +7445,7 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
         project_.ticksToSeconds(clip.startTick) + duree) - clip.startTick);
     clip.sourceStartSeconds = 0.0;
     clip.name = destination.getFileNameWithoutExtension().toStdString();
-    piste.clips.push_back(clip);
+    project_.ajouterClip(piste.clips, clip);   // D262 : numéroté tout de suite
 
     trackList_.refreshTrackRow(trackIndex);
     loadAudioTracks();
@@ -9233,7 +9254,7 @@ void MainComponent::bounceSelectionToNewTracks() {
         clip.sourceLength = clip.length;
         clip.name = neuve.name;
         clip.colorRgba = neuve.colorRgba;
-        neuve.clips.push_back(std::move(clip));
+        project_.ajouterClip(neuve.clips, std::move(clip));   // D262
         neuves.push_back(std::move(neuve));
     }
 
@@ -9456,7 +9477,7 @@ bool MainComponent::applyAudioTake(size_t trackIndex, const juce::File& fichier,
     clip.length = 0;
     clip.name = juce::File(audioTakeRelativePath_).getFileNameWithoutExtension().toStdString();
     clip.colorRgba = piste.colorRgba;
-    piste.clips.push_back(clip);
+    project_.ajouterClip(piste.clips, clip);   // D262
     return true;
 }
 
@@ -9651,7 +9672,7 @@ void MainComponent::closePass(uint32_t passe, double debutSecondes, double finSe
             std::max(0.0, debutSecondes - audioTakeSessionStartSeconds_)
             + static_cast<double>(passe) * std::max(0.0, finSecondes - debutSecondes);
         clip.name = nom.toStdString();
-        prise.clips.push_back(clip);
+        project_.ajouterClip(prise.clips, clip);   // D262
         vsm::sequencer::pushTake(project_.tracks[audioTakeTrack_], std::move(prise));
     }
 }
@@ -10016,7 +10037,7 @@ bool MainComponent::materializeImplicitClips() {
         vsm::sequencer::Clip clip;
         clip.name = piste.name;
         clip.colorRgba = piste.colorRgba;
-        piste.clips.push_back(std::move(clip));
+        project_.ajouterClip(piste.clips, std::move(clip));   // D262
         cree = true;
     }
     project_.assignClipIds();
@@ -10669,7 +10690,14 @@ vsm::midi::Tick MainComponent::snapCutToZeroCrossing(size_t trackIndex, vsm::mid
             [&magasin](int64_t i, float& g, float& d) { return magasin->frameAt(i, g, d); },
             trame, static_cast<int64_t>(std::llround(0.002 * sr)));
         if (zero == trame) return tick;
-        const double nouvelles = c.sourceStartSeconds + static_cast<double>(zero) / sr;
+        // D263 : `zero` est une trame ABSOLUE du fichier -- `trame`, dont elle
+        // vient, l'était (`c.sourceStartSeconds + …`). Y rajouter
+        // `sourceStartSeconds` comptait la fenêtre du clip DEUX FOIS, et
+        // déplaçait la coupe de la largeur de cette fenêtre : sur un fichier de
+        // quatre frappes, la deuxième coupe tombait à 0,894 s au lieu de 0,697 s.
+        // Invisible tant qu'un clip commence à 0 dans son fichier — c'est-à-dire
+        // jusqu'à la première coupe, qui en crée un qui ne commence pas à 0.
+        const double nouvelles = static_cast<double>(zero) / sr;
         const vsm::midi::Tick aimantee = project_.secondsToTicks(
             project_.ticksToSeconds(c.startTick) + (nouvelles - c.sourceStartSeconds));
         if (!(c.startTick < aimantee && aimantee < c.startTick + longueur)) return tick;
@@ -10760,6 +10788,11 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
                 // -- après les coupes précédentes, c'est la moitié droite de
                 // la dernière -- dit où il tombe sur la ligne de temps.
                 const double sourceSecondes = sourceDebut + static_cast<double>(attaque) / sr;
+                // D262 : UN BOOLÉEN, ET PAS « identifiant nul = aucun ». Le test
+                // `couvrant == 0` confondait « aucun clip ne couvre l'attaque »
+                // avec « le clip qui la couvre porte le numéro 0 » -- ce que tout
+                // clip né en séance portait. Le clip était trouvé et jeté.
+                bool couvert = false;
                 uint64_t couvrant = 0;
                 vsm::midi::Tick tick = 0;
                 for (const auto& c : piste.clips) {
@@ -10767,15 +10800,43 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
                     const vsm::midi::Tick ici = vsm::sequencer::clipIsWarped(c)
                         ? c.startTick + vsm::sequencer::warpTickAtSeconds(c, sourceSecondes)
                         : project_.secondsToTicks(project_.ticksToSeconds(c.startTick) + (sourceSecondes - c.sourceStartSeconds));
-                    if (c.startTick < ici && ici < c.startTick + longueur) { couvrant = c.id; tick = ici; break; }
+                    if (c.startTick < ici && ici < c.startTick + longueur) {
+                        couvert = true; couvrant = c.id; tick = ici; break;
+                    }
                 }
-                if (couvrant == 0) continue;
+                if (!couvert) {
+                    // D262 : POURQUOI UNE ATTAQUE N'A PAS COUPÉ. Le geste annonçait
+                    // « 4 attaque(s) » puis « 0 coupe(s) » sans dire ce qui manquait :
+                    // un clip qui ne couvre pas l'attaque, et c'est tout ce qu'il y
+                    // avait à savoir. La ligne le dit, avec les deux chiffres qui
+                    // permettent de trancher (le tick visé et la fin du matériau).
+                    juce::String detail;
+                    for (const auto& c : piste.clips)
+                        detail += juce::String(static_cast<int>(c.startTick)) + "+"
+                                + juce::String(static_cast<int>(
+                                      vsm::sequencer::clipPlayedLength(c, finMateriau))) + " ";
+                    std::fputs((juce::String::fromUTF8(u8"Découper aux transitoires : attaque à ")
+                                + juce::String(sourceSecondes, 3)
+                                + juce::String::fromUTF8(u8" s (tick ") + juce::String(static_cast<int>(tick))
+                                + juce::String::fromUTF8(u8") — aucun clip ne la couvre (fin du matériau ")
+                                + juce::String(static_cast<int>(finMateriau)) + " ticks ; clips : "
+                                + detail + ")\n").toRawUTF8(), stderr);
+                    continue;
+                }
                 // D21.3 : chaque coupe s'aimante au passage par zéro.
                 double bouge = 0.0;
                 tick = snapCutToZeroCrossing(t, tick, &bouge);
                 if (bouge != 0.0) { ++aimantees; plusGrandDeplacement = std::max(plusGrandDeplacement, std::fabs(bouge)); }
-                coupes += static_cast<int>(vsm::sequencer::splitClips(piste, {couvrant}, tick, finMateriau,
-                                                                      compteur, versSecondes));
+                const int faites = static_cast<int>(vsm::sequencer::splitClips(
+                    piste, {couvrant}, tick, finMateriau, compteur, versSecondes));
+                coupes += faites;
+                // D262 : OÙ la coupe est tombée, et pour quelle attaque. « 4 coupe(s) »
+                // ne dit pas si elles sont aux bons endroits, et elles ne l'étaient pas.
+                std::fputs((juce::String::fromUTF8(u8"Découper aux transitoires : attaque à ")
+                            + juce::String(sourceSecondes, 3)
+                            + juce::String::fromUTF8(u8" s → clip #") + juce::String(static_cast<int>(couvrant))
+                            + juce::String::fromUTF8(u8", coupe au tick ") + juce::String(static_cast<int>(tick))
+                            + " (" + juce::String(faites) + ")\n").toRawUTF8(), stderr);
             }
             project_.ensureClipIdAbove(compteur - 1);
         }

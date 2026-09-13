@@ -133,6 +133,12 @@ target_sources(vsm-panel-preview PRIVATE
     Source/ui/machines/StepSequencerComponent.cpp
     Source/ui/machines/HardwareLookAndFeel.cpp
     Source/ui/machines/StepSequencerComponent.cpp
+    # D263 : les traductions. Ces cinq bancs compilent des sources de
+    # `Source/ui/` qui appellent `tr()` sans embarquer Langue.cpp : aucun
+    # d'eux ne se liait plus, et `cmake --build build` échouait en bloc --
+    # une panne que l'on attribue à sa propre modification en cours.
+    Source/ui/Langue.cpp
+    Source/ui/UiScale.cpp   # dont Langue.cpp dépend
 )
 target_compile_definitions(vsm-panel-preview PRIVATE
     JUCE_WEB_BROWSER=0
@@ -152,6 +158,12 @@ target_sources(vsm-pianoroll-preview PRIVATE
     Source/tools/PianoRollPreviewMain.cpp
     Source/ui/PianoRollComponent.cpp
     Source/ui/PianoRollRulerComponent.cpp
+    # D263 : les traductions. Ces cinq bancs compilent des sources de
+    # `Source/ui/` qui appellent `tr()` sans embarquer Langue.cpp : aucun
+    # d'eux ne se liait plus, et `cmake --build build` échouait en bloc --
+    # une panne que l'on attribue à sa propre modification en cours.
+    Source/ui/Langue.cpp
+    Source/ui/UiScale.cpp   # dont Langue.cpp dépend
 )
 target_compile_definitions(vsm-pianoroll-preview PRIVATE
     JUCE_WEB_BROWSER=0
@@ -178,6 +190,12 @@ target_sources(vsm-edit-audit PRIVATE
     Source/ui/MixerComponent.cpp
     Source/ui/TransportBarComponent.cpp
     Source/ui/machines/StepSequencerComponent.cpp
+    # D263 : les traductions. Ces cinq bancs compilent des sources de
+    # `Source/ui/` qui appellent `tr()` sans embarquer Langue.cpp : aucun
+    # d'eux ne se liait plus, et `cmake --build build` échouait en bloc --
+    # une panne que l'on attribue à sa propre modification en cours.
+    Source/ui/Langue.cpp
+    Source/ui/UiScale.cpp   # dont Langue.cpp dépend
 )
 target_include_directories(vsm-edit-audit PRIVATE Source)
 target_compile_definitions(vsm-edit-audit PRIVATE
@@ -206,6 +224,12 @@ target_sources(vsm-scale-audit PRIVATE
     Source/tools/ScaleAuditMain.cpp
     Source/ui/TrackListComponent.cpp
     Source/ui/MixerComponent.cpp
+    # D263 : les traductions. Ces cinq bancs compilent des sources de
+    # `Source/ui/` qui appellent `tr()` sans embarquer Langue.cpp : aucun
+    # d'eux ne se liait plus, et `cmake --build build` échouait en bloc --
+    # une panne que l'on attribue à sa propre modification en cours.
+    Source/ui/Langue.cpp
+    Source/ui/UiScale.cpp   # dont Langue.cpp dépend
 )
 target_include_directories(vsm-scale-audit PRIVATE Source)
 target_compile_definitions(vsm-scale-audit PRIVATE
@@ -323,6 +347,12 @@ target_sources(vsm-arrangement-preview PRIVATE
     Source/tools/ArrangementPreviewMain.cpp
     Source/ui/ArrangementComponent.cpp
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp
+    # D263 : les traductions. Ces cinq bancs compilent des sources de
+    # `Source/ui/` qui appellent `tr()` sans embarquer Langue.cpp : aucun
+    # d'eux ne se liait plus, et `cmake --build build` échouait en bloc --
+    # une panne que l'on attribue à sa propre modification en cours.
+    Source/ui/Langue.cpp
+    Source/ui/UiScale.cpp   # dont Langue.cpp dépend
 )
 target_include_directories(vsm-arrangement-preview PRIVATE Source)
 target_compile_definitions(vsm-arrangement-preview PRIVATE
