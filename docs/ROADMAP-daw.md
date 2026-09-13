@@ -23628,3 +23628,47 @@ joue — une décision qui se prend PAR PISTE, avec les autres notes pour témoi
 tomber sous le registre de sa propre piste de plus d'une octave, et la part « bonne
 hauteur » doit passer de 64,6 / 61,4 / 69,2 / 56,9 % à plus de 75 % par stem
 (D254), **sans que la part inventée (0,4 à 1,2 %) monte**.
+
+
+### Phase D257 — une alerte que j'ai écrite, mesurée, puis RETIRÉE (13/09/2026)
+
+D252 à D256 ayant montré que la chaîne pose parfois la fondamentale une octave trop
+bas, l'idée suivante semblait évidente : que l'application le DISE au musicien, dans
+le rapport d'ouverture, tant que la chaîne n'est pas corrigée. La règle proposée —
+« compter les notes à plus d'une octave sous la médiane de leur propre piste » — a
+été écrite, compilée, et elle parlait :
+
+```
+b4wuzthen            : guitar 29 note(s), other 757 note(s)
+cdl                  : melange 345
+children-c3-plafond  : guitar 420, other 964, piano 354
+```
+
+**Sept cent cinquante-sept notes sur une piste qui en compte 2 492.** Avant de
+publier une phrase pareille, une question : **parmi les notes qu'elle désigne,
+combien sont vraiment fausses ?** Le corpus le sait. Mesuré sur les 13 287 notes des
+trois lots :
+
+| seuil | notes marquées | dont vraiment fausses | fausses NON marquées |
+|---|---|---|---|
+| médiane − 12 | 1 221 (9,2 %) | **35,7 %** | 3 507 |
+| médiane − 18 | 561 (4,2 %) | 34,8 % | 3 748 |
+| médiane − 24 | 164 (1,2 %) | 53,7 % | 3 855 |
+
+**Deux notes marquées sur trois sont justes.** La règle dit à un musicien de
+regarder 757 notes dont ~490 n'ont rien à se reprocher, et elle en laisse passer
+3 507 qui sont fausses. Un avertissement qui se trompe deux fois sur trois est
+pire que pas d'avertissement : il apprend à ne plus lire les avertissements.
+
+**LA LIGNE A DONC ÉTÉ RETIRÉE**, et le code est revenu à ce qu'il était. Ce qui
+reste de cette phase est le chiffre qui l'a tuée — et il est utile : il dit que la
+largeur d'ambitus d'une piste n'est PAS un indice d'erreur d'octave, parce qu'une
+partie polyphonique (un piano, un « other » qui porte plusieurs voix) descend
+légitimement d'une octave et demie sous sa médiane. Le repli d'octave devra donc se
+décider autrement — par la cohérence harmonique avec ce qui sonne au même instant,
+et non par le registre seul.
+
+**LA LEÇON, qui vaut plus que la fonction retirée** : une affordance se mesure avant
+d'être livrée, avec la même exigence qu'un gain de distance. J'avais l'idée, le code
+et trois projets où « ça parle » ; il a suffi d'une question — *combien de ces notes
+sont vraiment fausses ?* — pour que l'idée tombe. Le corpus sert à cela aussi.
