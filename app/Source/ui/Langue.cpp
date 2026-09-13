@@ -1040,6 +1040,9 @@ const Paire kAnglais[] = {
     // D193 : les trois chaînes de la question de fermeture (D175), restées
     // françaises dans l'interface anglaise — vues sur la PHOTO, pas au relevé.
     // D195 : la boîte du projet déjà ouvert ailleurs.
+    // D205 : la phrase du menu Aide, refaite.
+    { "Séquenceur MIDI, rack de %1 machines modélisées, et la chaîne qui reconstruit un enregistrement en projet jouable.\n\nVersion 0.1.0",
+      "MIDI sequencer, rack of %1 modelled machines, and the chain that rebuilds a recording into a playable project.\n\nVersion 0.1.0" },
     { "Projet déjà ouvert",
       "Project already open" },
     { "« %1 » est déjà ouvert dans une autre fenêtre de VSM Studio. Les deux copies sont indépendantes : la dernière enregistrée écrasera l'autre.",

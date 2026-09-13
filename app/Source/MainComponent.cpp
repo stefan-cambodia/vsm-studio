@@ -4411,10 +4411,21 @@ void MainComponent::setUiScale(float factor) {
 }
 
 void MainComponent::showAboutDialog() {
+    // D205 : LA SEULE PHRASE DU MENU AIDE, ET ELLE ÉTAIT PÉRIMÉE. Elle annonçait
+    // « Phases 3 et 4 faites (instruments de référence + extension) » — un état
+    // vieux de deux cents phases, et le seul que le logiciel dise de lui-même.
+    // C'est le piège que `CLAUDE.md` nomme pour les documents, ici dans le code.
+    //
+    // LE COMPTE DES MACHINES SE DEMANDE AU REGISTRE plutôt que de s'écrire à la
+    // main : un nombre en dur vieillit à la machine suivante, et ce dépôt en
+    // ajoute régulièrement.
+    const int machines =
+        static_cast<int>(vsm::audio::plugin::PluginRegistry::instance().listAvailable().size());
     montrerBoite(
         juce::AlertWindow::InfoIcon, "Vintage Synth MIDI Studio",
-        tr(u8"Séquenceur MIDI + rack de synthétiseurs vintage virtuels.\n\n"
-           u8"Version 0.1.0 -- Phases 3 et 4 faites (instruments de référence + extension)."));
+        tr(u8"Séquenceur MIDI, rack de %1 machines modélisées, et la chaîne qui reconstruit "
+           u8"un enregistrement en projet jouable.\n\nVersion 0.1.0")
+            .replace("%1", juce::String(machines)));
 }
 
 bool MainComponent::prendreLeFichierDeBanc(const std::function<void(const juce::File&)>& suite) {

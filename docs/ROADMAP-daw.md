@@ -21183,3 +21183,25 @@ panne du 06/09 (« Automatique » qui pilotait les threads de rendu au lieu du m
 d'écoute). Déplacer l'entrée, plutôt que la dupliquer, est le geste juste ; il
 change une habitude et se fait avec sa mesure, pas à la fin d'une session.
 **Inscrit comme B13.**
+
+### Phase D205 — la seule phrase du menu Aide, et elle était périmée (13/09/2026)
+
+**CE QUE LE LOGICIEL DISAIT DE LUI-MÊME**, dans la seule entrée de son menu
+Aide : « Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Version
+0.1.0 — **Phases 3 et 4 faites (instruments de référence + extension)** ». Un
+état vieux de deux cents phases, sur la seule surface où un musicien va chercher
+ce qu'est ce programme. C'est le piège que `CLAUDE.md` nomme pour les documents
+— un encadré périmé fait mentir tout ce qui l'entoure —, ici dans le code.
+
+**CE QU'ELLE DIT MAINTENANT** : « Séquenceur MIDI, rack de **64** machines
+modélisées, et la chaîne qui reconstruit un enregistrement en projet jouable. »
+
+**LE COMPTE SE DEMANDE AU REGISTRE**, il ne s'écrit pas à la main : un nombre en
+dur vieillit à la machine suivante, et ce dépôt en ajoute régulièrement — c'est
+même une demande permanente de l'utilisateur. `PluginRegistry::listAvailable()`
+répond 64 aujourd'hui et répondra 65 demain sans que personne y pense.
+
+**Les deux langues sont posées en même temps que le code** — la leçon de D193,
+appliquée du premier coup : « MIDI sequencer, rack of 64 modelled machines, and
+the chain that rebuilds a recording into a playable project. » `ECRAN 7`,
+`SANS_PAIRE 0`, inchangés.
