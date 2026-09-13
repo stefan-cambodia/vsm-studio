@@ -47,6 +47,7 @@ cas abandon      "VSM_ABANDON : abandonner"       VSM_MENU="Ajouter une piste MI
 cas options      "VSM_OPTIONS : nom=Fumee"        VSM_MENU_CONTEXTE="regle:Poser un repère ici…" VSM_OPTIONS="nom=Fumee"
 cas modale       "fenêtre modale ouverte"         VSM_MENU_CONTEXTE="regle:Poser un repère ici…"
 cas listing      "regle-pianoroll = "             VSM_MENU_CONTEXTE="regle-pianoroll:?"
+cas pianoroll    "pianoroll = "                   VSM_MENU_CONTEXTE="pianoroll:?"
 cas clip         "clip-midi = "                   VSM_MENU_CONTEXTE="clip-midi:?"
 cas position     "VSM_POSITION : mesure 9 temps 1" VSM_POSITION=9
 cas enregistrer  "VSM_ENREGISTRER : "             VSM_ENREGISTRER="$brouillon/ecrit"

@@ -1146,6 +1146,10 @@ photographie pas, et c'est lui qui décide de tout ce qui vise un clip. Le 13/09
 (D262), un clip importé portait le numéro 0, qui est la valeur « jamais
 numéroté » : « Découper aux transitoires » trouvait ses quatre attaques, lisait ce
 0 comme « aucun clip » et ne coupait rien, sans qu'aucun message ne dise pourquoi.
+`VSM_MENU_CONTEXTE=pianoroll:?` liste les 71 entrées du menu du clic droit du
+piano roll, grisées comprises (D276). C'était le dernier menu de l'application
+qu'aucune course ne pouvait LIRE : ses libellés se devinaient dans le code, et un
+libellé qu'on devine se devine mal.
 `VSM_MENU_CONTEXTE=regle-pianoroll:<libellé>` exécute une entrée du menu du clic droit de la
 RÈGLE du piano roll (les repères), et `regle-pianoroll:?` ne fait rien mais LISTE ce que ce
 menu montrerait, dans la langue courante — c'était le dernier menu de

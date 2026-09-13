@@ -1117,7 +1117,25 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
 }
 
 bool PianoRollComponent::actionDeMenuPourCapture(const juce::String& libelle) {
-    const int choix = vsm::app::ui::entreeParLibelle(buildContextMenu(), libelle);
+    // D276 : « ? » ne fait rien et LISTE, comme les menus de clip (D222) et ceux
+    // des règles (D218). Le menu du piano roll était le dernier de l'application
+    // qu'aucune course ne pouvait LIRE : ses libellés se devinaient dans le code,
+    // et un libellé qu'on devine se devine mal — c'est ce qui avait fait chercher
+    // « Renommer… » sous trois orthographes avant D222. Le menu est construit une
+    // seule fois et gardé : le reconstruire pour l'exécuter ensuite ferait lister
+    // un menu et agir sur un autre.
+    const juce::PopupMenu menu = buildContextMenu();
+    if (libelle == "?") {
+        juce::StringArray libelles;
+        for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
+            if (it.getItem().itemID != 0)
+                libelles.add(it.getItem().text
+                             + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+        std::fputs(("VSM_MENU_CONTEXTE : pianoroll = " + libelles.joinIntoString(" | ")
+                    + "\n").toRawUTF8(), stderr);
+        return true;
+    }
+    const int choix = vsm::app::ui::entreeParLibelle(menu, libelle);
     if (choix == 0) return false;
     performContextMenuAction(choix);
     return true;
