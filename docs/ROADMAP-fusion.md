@@ -3874,3 +3874,42 @@ avec elle.
 C'est un chantier d'`analyse/analyzer/`, donc à mener **hors campagne**, et son
 témoin est le lot déjà mesuré : aucune course nouvelle n'est nécessaire pour le
 trancher, seulement une relecture des `rapport.json` existants.
+
+**ET LA RELECTURE A ÉTÉ FAITE LE JOUR MÊME.** Même règle d'appariement des deux
+côtés (hauteur + début, 50 ms), une seule variable — la vérité comparée :
+
+| | précision | rappel | **F1** |
+|---|---|---|---|
+| vérité entière, hauteur écrite (le calcul d'aujourd'hui) | 0,3938 | 0,4322 | **0,4121** |
+| hors batterie, hauteur entendue | 0,4183 | **0,5738** | **0,4839** |
+
+**+7,2 points**, dans la fourchette de 2 à 8 annoncée — l'attendu est tenu. Le
+rappel gagne à lui seul **14,2 points** (la batterie qu'on cessait de compter
+absente), la précision **2,5** (la hauteur entendue).
+
+**MAIS L'ÉCART N'EST PAS STABLE, ET C'EST LA VRAIE RÉPONSE :**
+
+| morceau | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| F1 actuel | **0,027** | 0,460 | 0,504 | 0,396 | 0,269 | 0,381 | 0,416 | 0,538 | 0,428 | 0,458 |
+| F1 sonnant | **0,567** | 0,500 | 0,557 | 0,436 | 0,373 | 0,384 | 0,455 | 0,538 | 0,498 | 0,541 |
+| écart (pt) | **+54,0** | +4,0 | +5,3 | +3,9 | +10,4 | +0,3 | +3,8 | +0,0 | +7,0 | +8,3 |
+
+Médiane **+4,7 pt**, mais **de 0,0 à +54,0**, écart-type 15,1. La condition écrite
+plus haut disait : *si l'écart n'est pas stable, la correction dépend du corpus et
+il faut le savoir avant de s'y fier.* **Il ne l'est pas, et voici ce qu'il faut
+savoir.**
+
+**`morceau-0001-g1` n'a pas un F1 bas : il a un F1 QUI NE VEUT RIEN DIRE.** Ses
+deux parties mélodiques sont rendues par `vsm.pcmhybrid` avec des désaccords
+d'oscillateur de +4,75 et −8,25 demi-tons : **aucune de ses notes ne sonne là où sa
+vérité l'écrit**. Le F1 publié pour ce morceau — 0,16 au tableau du lot, 0,027 sous
+la règle d'ici — mesure ce désaccord et rien d'autre. Sa vraie valeur est **0,567**,
+c'est-à-dire le MEILLEUR des dix.
+
+**CONSÉQUENCE, et elle dépasse le F1** : la correction ne rebaselinera pas un
+chiffre, elle **change le classement des morceaux**. Toute conclusion tirée d'une
+comparaison entre morceaux de ce corpus — « celui-ci se reconstruit mieux que
+celui-là » — doit être revérifiée. Et le premier remède n'est pas dans le banc :
+c'est **B5**, qui demande que le corpus tire ses paramètres de hauteur sur une
+grille connue au lieu de les laisser au hasard.
