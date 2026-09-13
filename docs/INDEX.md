@@ -191,7 +191,7 @@ du projet ; toute autre optimisation est en aval d'eux.
 
 | # | Travail | Chiffre |
 |---|---|---|
-| C1 | **La séparation de la basse est le premier plafond** | SDR **0,21 dB**, corrélation **0,26** — attendu ≥ 6 dB / ≥ 0,85 |
+| C1 | **La séparation de la basse est le premier plafond — et D269 dit COMMENT elle échoue.** `htdemucs` rend une basse passée au filtre : la part de l'énergie au-dessus de 300 Hz tombe de **25,5 % dans la partie jouée à 1,7 % dans le stem** (médiane sur 9 morceaux, sous 3,3 % dans 8 sur 9). Ce sont exactement les partielles qui permettent de trancher une octave. Conséquence mesurée : sur le stem VRAI le transcripteur se trompe vers le HAUT (rapport bas/haut **0,3×**) ; sur le stem SÉPARÉ il se trompe vers le BAS (**6,9×**). **La moitié « basse » de B14 est donc C1 vue par un autre instrument** — corriger l'estimateur de hauteur ne rendra pas des harmoniques que le stem ne contient plus. | SDR **0,21 dB**, corrélation **0,26** — attendu ≥ 6 dB / ≥ 0,85 ; aigu de la basse **25,5 % → 1,7 %** |
 | C2 | **La transcription est le second** | F1 **0,367** — attendu 0,50 à 0,70 ; et le rappel (0,345) est SOUS la précision (0,426), l'inverse de ce qui était prédit |
 | C3 | **La séparation hallucine des sources**, et la chaîne les reconstruit consciencieusement | 19,8 % d'énergie hallucinée — la seule attente tenue, et c'est celle qui fait mal |
 

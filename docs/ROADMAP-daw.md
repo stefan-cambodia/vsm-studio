@@ -24286,3 +24286,96 @@ publiées jusqu'ici comparaient. La hauteur entendue s'obtient par
 `VSM_SONNANTE=1`, et les deux colonnes se lisent côte à côte. Pour une machine
 hybride, la note vraie est acceptée à SES DEUX hauteurs (la couche
 échantillonnée et la couche synthétique), parce que les deux sonnent vraiment.
+
+
+### Phase D269 — l'octave de la basse : le transcripteur, ou la séparation ? (13/09/2026)
+
+D268 laisse B14 sur deux stems, et la basse est le plus obstiné : **61,6 % de
+bonne hauteur, inchangé au dixième de point** par la correction de hauteur
+sonnante, avec une part « octave » qui MONTE à 24,9 %. D252 avait chiffré le
+biais : **234 notes une octave trop bas contre 32 trop haut**, soit 5,4× dans le
+même sens, et propre à la basse (`other` 0,9×, `guitar` 1,8×, `piano` 1,4×).
+
+Une question n'a jamais été posée, et elle se tranche en quelques secondes
+maintenant qu'on sait transcrire les stems VRAIS du corpus : **le biais est-il
+dans le transcripteur, ou dans la séparation ?** Toutes les mesures publiées
+portent sur des stems SÉPARÉS — le biais pourrait n'être qu'un artefact de
+`htdemucs`, qui laisse au stem `bass` une octave qui ne lui appartient pas.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. **Si le biais vient de la séparation**, transcrire les parties de basse VRAIES
+   du corpus le fait disparaître : les erreurs d'octave y seraient symétriques
+   (rapport bas/haut entre 0,5 et 2), et le remède appartiendrait à C1.
+2. **Si le biais vient du transcripteur**, il est déjà là sur le stem vrai, avec
+   un rapport comparable à 5,4×.
+
+**ET UNE SECONDE HYPOTHÈSE, PLUS PRÉCISE, ÉCRITE EN MÊME TEMPS.** Une basse de
+synthèse porte souvent un SOUS-OSCILLATEUR — une octave en dessous, mélangé au
+signal. `verite.json` en donne le niveau : la partie de basse de `morceau-0002-g2`
+(`vsm.supersaw`) a `oscillator.sub.level = 0,39`. Si le transcripteur entend
+cette octave-là, il n'a pas tort : **elle sonne**. Donc : **le taux d'erreur
+d'octave d'une partie de basse croît avec le niveau de son sous-oscillateur**,
+mesuré par une corrélation sur l'ensemble des parties de basse du corpus.
+Réfutée si la corrélation est sous +0,3 — et alors l'octave ne vient pas du
+sous-oscillateur, quoi qu'en dise l'intuition.
+
+**LA MESURE, ET ELLE RENVERSE LE BIAIS.** Les mêmes dix morceaux, une fois par
+le stem VRAI et une fois par le stem SÉPARÉ :
+
+| notes de basse | justes | octave **trop bas** | octave **trop haut** | rapport bas/haut |
+|---|---|---|---|---|
+| parties « basse » **vraies** (transcrites directement) | 501 | 70 | **217** | **0,3×** |
+| stem « bass » **séparé** (ce que la chaîne écrit) | 253 | **104** | 15 | **6,9×** |
+
+**Le biais s'INVERSE.** Sur le matériau propre, le transcripteur se trompe vers le
+HAUT deux fois sur trois — et de façon explicable : les trois parties qui portent
+presque toutes ces erreurs sont un banjo (41), un clavinet (111) et un ensemble de
+cordes (59), c'est-à-dire des timbres brillants dont la fondamentale est faible et
+dont on entend d'abord la deuxième partielle. Après la séparation, la même
+chaîne se trompe vers le BAS, **presque sept fois plus souvent que vers le haut**.
+
+**L'attendu n°1 tranche donc en faveur de la séparation** : le biais vers le grave
+n'appartient pas au transcripteur, il apparaît entre le mélange et le stem.
+
+**ET LA CAUSE SE MESURE, elle ne se suppose pas.** Ce qui permet de trancher une
+octave, ce sont les partielles supérieures. Part de l'énergie au-dessus de
+300 Hz :
+
+| morceau | partie **vraie** | stem **séparé** |
+|---|---|---|
+| 0002 | 25,5 % | 2,7 % |
+| 0003 | 15,6 % | 1,9 % |
+| 0004 | 82,5 % | 0,1 % |
+| 0005 | 15,5 % | 1,8 % |
+| 0006 | 86,0 % | 1,7 % |
+| 0007 | 5,5 % | 0,1 % |
+| 0008 | 0,0 % | 0,1 % |
+| 0009 | 46,7 % | 0,5 % |
+| 0010 | 90,0 % | 3,2 % |
+| **médiane** | **25,5 %** | **1,7 %** |
+
+**La séparation retire quinze fois l'aigu de la basse** — 25,5 % de l'énergie
+au-dessus de 300 Hz dans la partie jouée, 1,7 % dans le stem rendu, et sous 3,3 %
+dans huit morceaux sur neuf. `htdemucs` rend une basse passée au filtre :
+la fondamentale reste, les partielles qui DÉSAMBIGUÏSENT l'octave partent. Un
+transcripteur privé des harmoniques 2 à n n'a plus de quoi choisir, et il choisit
+bas.
+
+**CE QUE CELA DÉPLACE.** La moitié « basse » de B14 n'est pas un problème
+d'estimation de hauteur : **c'est C1**, le plafond de séparation, vu par un autre
+instrument. Corriger l'estimateur ne rendra pas des harmoniques que le stem ne
+contient plus. Les remèdes éliminés par D257 et D258 — le registre, le fantôme
+sous-octave, le contexte harmonique — l'étaient d'ailleurs tous pour la même
+raison sans qu'on la voie : ils cherchaient dans la note ce qui manquait dans le
+signal.
+
+**LA SECONDE HYPOTHÈSE N'EST PAS TESTABLE SUR CE CORPUS, ET JE NE LA PUBLIE PAS.**
+Le sous-oscillateur devait expliquer les erreurs vers le bas. Le calcul rend une
+corrélation de **+1,000**, et ce chiffre ne vaut rien : **une seule des neuf
+parties de basse porte un sous-oscillateur** (`vsm.supersaw`,
+`oscillator.sub.level = 0,391`) — et c'est aussi la seule qui se trompe vers le
+bas (70 erreurs sur 70). Une corrélation sur un point unique est une coïncidence
+écrite en décimales. Le fait reste noté, il n'est pas établi : il faudrait un
+corpus où plusieurs basses portent un sous-oscillateur de niveau varié, ce qui est
+un attendu pour B5/B6.
