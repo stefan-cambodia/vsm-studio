@@ -20983,6 +20983,16 @@ son coût (l'ouverture d'un fichier de plugin) est écrit dans son en-tête avec
 l'endroit où l'appeler — au chargement d'un projet, une fois par piste, jamais
 dans un rappel d'affichage.
 
+**ET LE CLAP AUSSI, vérifié séparément.** Les deux résolveurs s'enchaînent
+(D7.2) ; il fallait donc montrer que le correctif ne servait pas que le VST3. Un
+projet dont une piste réclame
+`clap:…/vsm-instruments.clap#com.vsmstudio.juno106` s'ouvre désormais avec :
+« Machines employées : 5 », le `clap:` compris, **aucun « indisponible »**. *La
+fenêtre « Plusieurs plugins dans ce fichier » n'est pas pilotable par le banc —
+elle s'ANNONCE (`VSM_CHOIX`, D102) mais ne se répond pas —, si bien que le
+chargement par le menu n'a pas pu servir : la référence a été écrite dans le
+project.json, ce qui éprouve exactement le chemin visé, celui du CHARGEUR.*
+
 **LES 1 961 TESTS DU DÉPÔT SONT VERTS** après le changement — core 330, audio
 1 298, interchange 297, clap 25, panels 11 —, et c'est utile de le dire ici : le
 correctif touche un en-tête inclus par presque tout le moteur.
