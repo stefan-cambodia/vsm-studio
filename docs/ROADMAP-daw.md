@@ -23747,3 +23747,37 @@ en dépend autant que la distance.
 
 Les deux mesures sont rejouables : `tools/confiance-contre-verite.py <lot>` pour le
 rappel global, `--categories` pour le détail par stem.
+
+
+### Phase D260 — B15 précisée : ce que la chaîne rate, ce sont les notes COURTES (13/09/2026)
+
+D259 a chiffré l'omission : 41 % des notes jouées ne sont écrites nulle part. Reste
+à savoir LESQUELLES. Les 20 907 notes vraies, séparées en « retrouvée au début
+exact » et « absente », puis comparées :
+
+| | notes | durée médiane | 1ᵉʳ décile | vélocité moyenne | hauteur moyenne |
+|---|---|---|---|---|---|
+| retrouvées | 7 904 | **0,346 s** | 0,175 s | 87,6 | 61,9 |
+| absentes | 13 003 | **0,191 s** | 0,100 s | 91,6 | 55,6 |
+
+Et le chiffre qui tranche :
+
+| durée de la note vraie | retrouvées | absentes | **ratées** |
+|---|---|---|---|
+| **moins de 150 ms** | 161 | 4 661 | **96,7 %** |
+| plus de 500 ms | 1 446 | 887 | 38,0 % |
+
+**La chaîne rate 96,7 % des notes de moins de 150 ms.** Pas 60, pas 80 : toutes,
+ou presque. Ce n'est pas un problème de niveau — les notes absentes sont même un
+peu PLUS fortes (91,6 contre 87,6) — ni d'un registre en particulier, même si les
+absentes sont plus graves de six demi-tons en moyenne (ce que D252 explique).
+
+**CE QUE CELA DÉSIGNE.** Une fenêtre d'analyse trop longue, un seuil de durée
+minimale, ou un post-filtrage qui écarte les événements brefs : le remède est dans
+la détection d'attaques, pas dans l'estimation de hauteur. Et il vaut cher — à
+elles seules, les notes de moins de 150 ms sont **4 822 des 20 907 notes du corpus,
+soit 23 %** du morceau.
+
+**L'ATTENDU, ÉCRIT AVANT LE TRAVAIL** : que la part de notes courtes retrouvées
+passe de **3,3 % à plus de 50 %**, sans que la part inventée (0,4 à 1,2 %, D254)
+dépasse 3 %. C'est la mesure que `tools/confiance-contre-verite.py` rejouera.
