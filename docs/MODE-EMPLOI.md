@@ -1128,6 +1128,13 @@ gestes IRRÉVERSIBLES — « Aplatir l'ordre de jeu » et « Reporter la piste e
 audio » —, par le même rappel modal qu'un clic. Ces deux boîtes passaient par la
 boîte statique de JUCE : muettes au journal et infranchissables par une course,
 alors que ce sont les deux gestes que l'application déclare définitifs.
+`VSM_CONFIRMER` répond AUSSI aux fenêtres à composants, quand `VSM_OPTIONS` n'y
+a rien posé (D275) : elle presse le bouton et garde les valeurs que la fenêtre a
+mises dans ses champs — ce que fait un utilisateur qui valide sans rien taper.
+Sans cela, une fenêtre qui ne demande qu'un CHOIX restait sans réponse : « Le clip
+fait N mesures… » en ouvre une (« Tempo du clip », deux boutons, aucun champ), et
+le geste n'aboutissait donc jamais dans une course — le projet écrit était
+identique au témoin, ce qui ressemble à un geste mort.
 `VSM_ENREGISTRER=dossier` écrit le projet, par la fonction de « Enregistrer
 sous… », APRÈS tous les autres verbes : `VSM_MENU` passe avant `VSM_MENU_CONTEXTE`
 et avant `VSM_TOUCHE`, si bien qu'une course qui enregistre par le menu écrit

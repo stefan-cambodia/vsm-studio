@@ -24695,3 +24695,59 @@ distance globale de **0,152423** et **13 pistes pour 15 parties** :
 décide s'il vaut la peine d'en lancer un. D273 vient de rappeler ce que vaut une
 mesure sur un morceau — `htdemucs` y paraissait garder trois fois plus d'aigu que
 le témoin, et sur cinq morceaux il n'en gardait pas plus.
+
+
+### Phase D275 — la dernière entrée du menu du clip audio qu'aucune course ne pouvait mener à son effet (13/09/2026)
+
+D262 et D263 ont montré qu'un geste du clip audio pouvait être mort sans que rien
+ne le dise. La question suivante s'impose : **les autres le sont-ils ?** Les
+dix-neuf entrées actives du menu ont donc été balayées, chacune appliquée à un
+clip importé, et le `project.json` écrit comparé à celui d'un témoin sans geste.
+
+| entrée | projet écrit | explication |
+|---|---|---|
+| 15 entrées (muet, à l'envers, gains, répétitions, fondus, tempo…) | **changé** | elles font ce qu'elles disent |
+| « Non » (suivre le tempo) | identique | c'est le DÉFAUT du clip — le menu le montre coché |
+| « Droite (matériau corrélé) » | identique | `FadeShape::Linear = 0`, le défaut aussi |
+| « Convertir en copie indépendante » | identique | **grisée** : le clip n'est la copie de personne |
+| **« Le clip fait N mesures… »** | **identique** | **et celle-là n'avait aucune excuse** |
+
+**LE DÉFAUT.** Cette entrée ouvre deux fenêtres à la suite : « Le clip fait N
+mesures » (un champ, deux boutons), puis « Tempo du clip » — qui ne demande
+**aucune saisie**, seulement un choix entre « Garder le tempo du projet » et
+« Adopter ce tempo pour le projet ». `VSM_OPTIONS` sait remplir un champ ; il ne
+sait pas presser un bouton. La seconde fenêtre restait donc ouverte sans réponse,
+le geste n'aboutissait pas, et le projet écrit était identique au témoin — **ce
+qui ressemble exactement à un geste mort**.
+
+**LA CORRECTION.** `montrerOuRepondre` lit `VSM_CONFIRMER` quand `VSM_OPTIONS`
+n'a rien posé : elle presse alors le bouton, en gardant les valeurs que la fenêtre
+a mises dans ses champs — ce que fait un utilisateur qui valide sans rien taper.
+Le verbe existait déjà avec ce sens pour les boîtes à deux boutons (D235) ; il
+couvre maintenant les fenêtres à composants.
+
+**LA MESURE, sur le tempo écrit dans le `.mid`** (le projet n'y garde pas le
+tempo) :
+
+| course | tempo écrit |
+|---|---|
+| témoin, sans réponse | **120,00** (inchangé) |
+| `VSM_CONFIRMER=non` | 120,00 (inchangé) |
+| `VSM_CONFIRMER=oui` | **436,36** |
+
+Et les deux verbes se composent — `VSM_OPTIONS` décide du nombre de mesures,
+`VSM_CONFIRMER` presse les boutons :
+
+| `mesures=` | 1 | 2 | 4 | 8 |
+|---|---|---|---|---|
+| tempo déduit | 109,09 | 218,18 | 436,36 | 872,73 |
+
+**Exactement linéaire** : doubler le nombre de mesures double le tempo déduit,
+comme il se doit pour un matériau de durée fixe. L'arithmétique du geste est donc
+juste — elle était seulement inatteignable.
+
+**CE QUE LE BALAYAGE ÉTABLIT AUSSI, et qui vaut d'être dit** : les dix-huit autres
+entrées font ce qu'elles annoncent. Trois « identiques » sur quatre s'expliquent
+sans défaut — un défaut déjà coché, une forme de fondu qui est le défaut, une
+entrée grisée. Le menu du clip audio est sain, une fois D262, D263 et D275
+corrigés.

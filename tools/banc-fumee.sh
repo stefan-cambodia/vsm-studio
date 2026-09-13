@@ -55,6 +55,7 @@ cas geste        "VSM_GESTE : volume"             VSM_GESTE_PISTE="volume:0.5"
 cas facade       "obtenu 8000"                    VSM_GESTE_PISTE="facade:CUTOFF=8000"
 cas confirmer    "VSM_CONFIRMER : non"            VSM_MENU="Reporter la piste en audio (définitif)" VSM_CONFIRMER=non
 cas textes       "VSM_TEXTES : "                  VSM_TEXTES_LISTE=1
+cas bouton       "ses champs gardés tels quels"    VSM_MENU_CONTEXTE="regle:Poser un repère ici…" VSM_CONFIRMER=oui
 
 echo "=== $rates raté(s) ==="
 rm -rf "$brouillon"

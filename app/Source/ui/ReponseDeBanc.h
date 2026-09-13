@@ -69,6 +69,36 @@ void montrerOuRepondre(juce::AlertWindow& fenetre, Suite suite) {
         suite(1);
         return;
     }
+    // D275 : RÉPONDRE PAR LE BOUTON, EN GARDANT LES DÉFAUTS DE LA FENÊTRE.
+    //
+    // `VSM_OPTIONS` remplit des champs ; il ne sait pas presser un bouton. Or
+    // certaines fenêtres ne demandent AUCUNE saisie — « Tempo du clip » propose
+    // « Garder le tempo du projet » ou « Adopter ce tempo pour le projet », et
+    // rien d'autre. L'entrée « Le clip fait N mesures… » en ouvre justement deux
+    // à la suite, dont celle-là : elle était la seule du menu du clip audio
+    // qu'aucune course ne pouvait mener à son effet, et elle laissait donc le
+    // projet inchangé — ce qui ressemble exactement à un geste mort.
+    //
+    // Ce que fait cette branche est ce que fait un utilisateur qui presse OK
+    // sans rien taper : les champs gardent les valeurs que la fenêtre y a mises.
+    // `VSM_CONFIRMER` porte déjà ce sens pour les boîtes à deux boutons (D235) ;
+    // on le lit ici avec la même convention. Elle ne s'applique QUE si
+    // `VSM_OPTIONS` n'a rien posé — une course qui remplit des champs décide
+    // elle-même, et n'a pas à être devinée.
+    //
+    // La ligne du journal le DIT, sans quoi une course répondrait « oui » sans
+    // laisser de trace de l'avoir fait.
+    if (fenetre.getNumButtons() >= 2) {
+        if (const char* reponse = std::getenv("VSM_CONFIRMER"); reponse != nullptr && *reponse) {
+            const juce::String demande = juce::String(reponse).trim().toLowerCase();
+            const bool accepte = demande.startsWith("o") || demande.startsWith("y") || demande == "1";
+            std::fputs((juce::String::fromUTF8(u8"VSM_CONFIRMER : ") + (accepte ? "oui" : "non")
+                        + juce::String::fromUTF8(u8" — fenêtre « ") + fenetre.getName()
+                        + juce::String::fromUTF8(u8" », ses champs gardés tels quels\n")).toRawUTF8(), stderr);
+            suite(accepte ? 1 : 0);
+            return;
+        }
+    }
     // D228 : UNE FENÊTRE QUI S'OUVRE LE DIT, même quand personne ne peut y
     // répondre. C'est la règle de D95 pour les boîtes (« une boîte se lit au
     // moment où elle est demandée »), étendue aux dix-huit fenêtres à saisie :
