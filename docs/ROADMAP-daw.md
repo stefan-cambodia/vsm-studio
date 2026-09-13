@@ -22291,3 +22291,29 @@ entre deux photos, elle, ne suppose rien.
 
 **Résultat : aucun défaut trouvé.** Le critère **d** tient, et il tient désormais
 aussi à l'œil.
+
+### La journée du 13/09/2026, seconde moitié, en un coup d'œil
+
+Vingt phases de plus (D206 à D225), trois anomalies ouvertes ET fermées (A37 à
+A39), un élément neuf porté à l'INDEX (B14), cinq verbes de banc, deux gardes dans
+`tools/`. Le fil qui les relie : **ce qu'aucune course ne peut atteindre, personne
+ne le relit** — et chaque chemin rendu pilotable a rendu un défaut.
+
+| phases | ce qui a été trouvé | le chiffre |
+|---|---|---|
+| **D206-D208** | les raccourcis au menu Aide ; le filet rend le travail perdu, réglages de machine compris | 4 pistes et 9 réglages repris après un `kill -9` |
+| **D209-D210** | le volet de reconstruction taisait ce qu'**aucune piste ne porte** — et le témoin a démenti ma première règle | `vocals, piano` nommés ; témoin : **aucune ligne** là où j'en attendais une |
+| **D211-D212** | **cinq entrées jetaient un projet modifié sans demander** ; le titre gardait le nom du projet précédent | 0 boîte → la question sur 5 chemins ; `project.json` réécrit AVANT de remplacer |
+| **D213** | l'import audio **multiple** n'était mesuré par personne, et un fichier refusé restait dans le projet | « 1 piste sur 2 fichiers ; refusé : faux.wav » ; `faux.wav` effacé |
+| **D214** | les **six derniers sélecteurs** de fichier, franchis ; deux boutons du même libellé | 1 piste → 5 par import MIDI ; 96 lignes de raccourcis écrites |
+| **D215** | les **neuf réglages d'export** vérifiés jusqu'au fichier, temps réel compris | +88 200 trames pour 2 s de queue ; **identique au bit** en temps réel |
+| **D216-D217** | la garde de traduction **cachait** le défaut trouvé à la main ; trois libellés français dans l'interface anglaise | `NU 1` sur le code d'avant, **0** après |
+| **D218** | le **dernier menu hors de portée** d'une course, et un `core dump` payé dans la minute | « Add a marker here… » lu en anglais |
+| **D219-D222** | les **dix-huit fenêtres modales** ouvertes au banc, et ce qu'elles font | `Voix 1`, `mes. 17 · 3`, « Programme MIDI (42, banque 3) », clip de **15 360 ticks** |
+| **D223-D224** | **A39** : « note douteuse » désigne 53 à 91 % des notes — et la vérité du corpus tranche | 27 → 38 → 49 → **60 %** de notes justes ; seuil confirmé, **B14** ouverte |
+| **D225** | la console regardée EN MARCHE pour la première fois | `bass` **33 px** de vumètre, `other` 22, le reste 0 à 3 |
+
+**Trois leçons de méthode, payées aujourd'hui et écrites dans `CLAUDE.md`** : un
+témoin ne se COMPTE pas, il se LIT (D210) ; une comparaison dont un côté manque
+rend « différent », pas « raté » (D215) ; un export hors-ligne pendant une campagne
+la TRIPLE — 56 min pour un morceau, 2 h 50 pour le suivant (D215).
