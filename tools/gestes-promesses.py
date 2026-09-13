@@ -16,6 +16,14 @@ hauteur (transposer), un temps (quantifier), une durée (legato), un champ de cl
 geste, le fichier écrit doit être identique à l'original, sans quoi aucun écart
 n'est attribuable au geste.
 
+LES GESTES DU CLIP AUDIO Y SONT ENTRÉS LE 13/09/2026, et il a fallu un défaut pour
+y penser. D239 les avait mesurés à la main, sans les garder : « Découper aux
+transitoires » a donc pu se casser en silence — il annonçait quatre attaques et ne
+coupait rien (D262), puis coupait aux mauvais endroits (D263) — sans qu'aucune
+garde ne s'en aperçoive. Les six cas ajoutés ici lisent le `project.json` écrit, où
+un champ de clip n'apparaît QUE s'il s'écarte de son défaut : une promesse tenue
+s'y voit, une promesse morte aussi.
+
 ELLE NE REND PAS D'AUDIO : toutes les courses sont des gestes et une écriture de
 projet, donc elle peut tourner à côté d'une campagne.
 """
@@ -66,6 +74,52 @@ def notes_du_midi(dossier: Path) -> list[tuple[int, int, int]]:
                 if ouvertes.get(e.note):
                     notes.append((e.note, ouvertes[e.note].pop(0), temps))
     return sorted(notes, key=lambda n: (n[1], n[0]))
+
+
+def clip_audio_ecrit(dossier: Path) -> dict:
+    """Le premier clip de la première piste AUDIO du projet écrit.
+
+    Les champs d'un clip ne sont écrits que s'ils s'écartent de leur défaut
+    (`muted`, `reversed`, `gain`, `pitch`…) : leur PRÉSENCE est donc déjà la
+    moitié de la preuve, et leur absence l'autre moitié.
+    """
+    fichier = dossier / "project.json"
+    if not fichier.is_file():
+        return {}
+    d = json.loads(fichier.read_text(encoding="utf-8"))
+    for piste in d.get("tracks", []):
+        if piste.get("kind") == "audio" and piste.get("clips"):
+            return piste["clips"][0]
+    return {}
+
+
+def clips_audio_ecrits(dossier: Path) -> list:
+    fichier = dossier / "project.json"
+    if not fichier.is_file():
+        return []
+    d = json.loads(fichier.read_text(encoding="utf-8"))
+    for piste in d.get("tracks", []):
+        if piste.get("kind") == "audio" and piste.get("clips"):
+            return piste["clips"]
+    return []
+
+
+def ecrire_un_son(chemin: Path) -> None:
+    """Deux secondes de son ENGENDRÉES ICI : une garde qui dépendrait d'un fichier
+    posé à côté d'elle se tairait le jour où il disparaît."""
+    import math
+    import struct
+    import wave
+
+    taux, duree = 44100, 2.0
+    trames = int(taux * duree)
+    with wave.open(str(chemin), "wb") as f:
+        f.setnchannels(2)
+        f.setsampwidth(2)
+        f.setframerate(taux)
+        f.writeframes(b"".join(
+            struct.pack("<hh", v, v) for v in
+            (int(12000 * math.sin(2 * math.pi * 220.0 * i / taux)) for i in range(trames))))
 
 
 def main() -> int:
@@ -143,6 +197,62 @@ def main() -> int:
     noms = [t["name"] for t in projet["tracks"]]
     verdict("Dupliquer : une piste de plus, nommée", len(noms) == 5 and noms[1].endswith("(copie)"),
             f"{len(noms)} pistes : {noms[:2]}")
+
+    # --- LES GESTES DU CLIP AUDIO (13/09/2026) ------------------------------
+    #
+    # Un projet d'essai est fabriqué ici : un son de deux secondes importé sur une
+    # piste neuve. `cdl` n'a aucune piste audio, et emprunter un projet qui en a
+    # rendrait la garde dépendante de son contenu.
+    son = brouillon / "essai.wav"
+    ecrire_un_son(son)
+    projet_audio = brouillon / "projet-audio"
+    shutil.copytree(PROJET, projet_audio)
+
+    def geste_audio(nom: str, libelle: str = "") -> Path:
+        """Importe le son, applique (ou non) UNE entrée du menu du clip, écrit."""
+        return course(brouillon, nom, projet_audio,
+                      VSM_IMPORT_AUDIO=str(son),
+                      VSM_MENU_CONTEXTE=(f"clip-audio-tous:{libelle}" if libelle else ""))
+
+    # LE TÉMOIN D'ABORD : sans geste, le clip importé ne porte aucun des champs
+    # que les gestes suivants doivent poser. Sans lui, « muted est là » ne
+    # prouverait pas que c'est le geste qui l'a mis.
+    t = clip_audio_ecrit(geste_audio("audio-temoin"))
+    propre = bool(t) and not any(k in t for k in ("muted", "reversed", "gain", "pitch"))
+    verdict("témoin audio : un clip neuf est nu", propre,
+            f"champs : {sorted(t)}" if t else "AUCUN clip audio écrit")
+
+    c = clip_audio_ecrit(geste_audio("audio-muet", "Rendre muet"))
+    verdict("Rendre muet : le clip porte muted", c.get("muted") is True,
+            f"muted = {c.get('muted')}")
+
+    c = clip_audio_ecrit(geste_audio("audio-envers", "À l'envers"))
+    verdict("À l'envers : le clip porte reversed", c.get("reversed") is True,
+            f"reversed = {c.get('reversed')}")
+
+    # -3 dB, c'est un gain de 10^(-3/20) = 0,708. On vérifie le CHIFFRE, pas la
+    # seule présence du champ : un geste qui écrirait « gain: 1 » serait muet.
+    c = clip_audio_ecrit(geste_audio("audio-3db", "-3 dB"))
+    gain = float(c.get("gain", 1.0))
+    verdict("-3 dB : le gain vaut 0,708", abs(gain - 0.7079) < 0.005, f"gain = {gain:.4f}")
+
+    c = clip_audio_ecrit(geste_audio("audio-normaliser", "Normaliser (gain = 1 / crête)"))
+    gain = float(c.get("gain", 1.0))
+    verdict("Normaliser : le gain quitte 1", abs(gain - 1.0) > 1e-6, f"gain = {gain:.4f}")
+
+    # « 2 fois » veut dire RÉPÉTER DEUX FOIS, donc deux copies EN PLUS de
+    # l'original : trois clips, et non deux. Vérifié dans le code avant d'être
+    # écrit ici — `repeatClips(track, selection, count, …)` pose `count` copies,
+    # et `repeatsUntilLoopEnd` compte de même. Mon premier attendu disait deux et
+    # la garde criait au défaut : c'était l'attendu qui lisait mal le libellé.
+    #
+    # Et compter les clips ne suffit pas : trois clips posés au même endroit ne
+    # répètent rien. On vérifie qu'ils sont BOUT À BOUT.
+    clips = clips_audio_ecrits(geste_audio("audio-2fois", "2 fois"))
+    bout_a_bout = (len(clips) == 3 and all(
+        clips[i + 1]["start"] == clips[i]["start"] + clips[i]["length"] for i in range(2)))
+    verdict("2 fois : trois clips bout à bout", bout_a_bout,
+            f"{len(clips)} clip(s) : " + ", ".join(f"{c['start']}+{c['length']}" for c in clips[:3]))
 
     shutil.rmtree(brouillon, ignore_errors=True)
     print(f"=== {rates} promesse(s) rompue(s) ===")
