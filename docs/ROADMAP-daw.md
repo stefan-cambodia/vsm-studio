@@ -24805,7 +24805,16 @@ l'application refuse un nom vide — à juste titre, « un repère sans nom ne r
 rien ». La garde tape donc ce qu'un utilisateur taperait (`OPTIONS_PAR_ENTREE`),
 et une entrée qui resterait morte AVEC sa valeur serait, elle, un vrai défaut.
 
-**Sur les six menus balayés, un seul geste était réellement mort** — celui de
-D275 — et les quatorze autres « identiques » s'expliquent toutes : un geste de
-vue, un geste de sélection, une valeur déjà en place, une entrée grisée, un refus
-motivé, ou un champ qu'il fallait remplir.
+**Les menus Mixage et Édition ferment le balayage : 63 entrées sur HUIT menus,
+0 geste mort.** « Écoute en mono » y a été déclarée morte une fois de plus à
+tort : elle bascule bien `masterBus().setMonoListen()` et le répercute dans la
+console, mais elle ne s'ÉCRIT pas — et son libellé le dit lui-même, « jamais dans
+un export ». Un réglage d'écoute qui entrerait dans le projet changerait ce que le
+projet SONNE ailleurs, ce qui est exactement ce qu'on ne veut pas.
+
+**Sur les huit menus balayés, un seul geste était réellement mort** — celui de
+D275 — et les seize autres « identiques » s'expliquent toutes : un geste de vue,
+un geste de sélection, un réglage d'écoute, une valeur déjà en place, une entrée
+grisée, un refus motivé, ou un champ qu'il fallait remplir. **Chaque excuse est
+écrite dans la garde avec sa raison** : la prochaine fois que l'une d'elles
+cessera d'être vraie, elle sautera.

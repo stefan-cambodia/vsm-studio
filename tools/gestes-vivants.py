@@ -44,6 +44,13 @@ PROJET = RACINE / "reconstruction/travail/cdl"
 # à la fermeture, et c'est voulu.
 VUE_SEULEMENT = {
     "Zoom : tout voir": "un cadrage, pas une donnée",
+    "Replier sur les hauteurs jouées (54)": "un repli d'affichage du piano roll",
+    # ÉCOUTE, et non vue : le geste agit bel et bien — il bascule
+    # `masterBus().setMonoListen()` et le met à jour dans la console — mais il ne
+    # s'écrit PAS, et son libellé le dit lui-même (« jamais dans un export »). Un
+    # réglage d'écoute qui entrerait dans le projet changerait ce que le projet
+    # SONNE ailleurs, ce qui est exactement ce qu'on ne veut pas.
+    "Écoute en mono (jamais dans un export)": "une écoute, jamais écrite — son libellé le dit",
     "Zoom : la sélection": "un cadrage, pas une donnée",
     "Tout sélectionner": "une sélection, pas une donnée du projet",
     "Inverser la sélection": "une sélection, pas une donnée du projet",
@@ -97,6 +104,10 @@ MENUS = {
                   "Durée = pas de grille", "Durée x2", "Durée /2", "Legato",
                   "Retirer les chevauchements", "Rétrograder", "Vélocité 127",
                   "Vélocité 64", "Dupliquer", "Supprimer"],
+    # LE MENU MIXAGE : trois entrées actives, dont deux réglages de console.
+    "mixage": ["Ajouter un bus de départ", "Écoute en mono (jamais dans un export)"],
+    # LE MENU ÉDITION, ses entrées actives sans sélection préalable.
+    "edition": ["Replier sur les hauteurs jouées (54)", "Zoom : tout voir"],
     "piste": ["Ajouter une piste MIDI", "Ajouter une piste audio", "Ajouter un groupe",
               "Dupliquer la piste sélectionnée",
               "Créer un clip d'une mesure à la tête de lecture",
@@ -174,7 +185,7 @@ def main() -> int:
         if menu == "clip-audio":
             env["VSM_IMPORT_AUDIO"] = str(son)
         if libelle:
-            if menu == "piste":
+            if menu in ("piste", "mixage", "edition"):
                 env["VSM_MENU"] = libelle
             elif menu.startswith("regle"):
                 env["VSM_MENU_CONTEXTE"] = f"{menu}:{libelle}"
