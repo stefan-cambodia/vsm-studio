@@ -22712,6 +22712,13 @@ paramètre qui en a.
 La photo le confirme : l'onglet s'ouvre sur « Filter Cutoff ● 606 » et **dessine la
 courbe**, là où il montrait « Cliquez pour ajouter des points d'automation ».
 
+**LES TROIS AUTRES PANNEAUX À DONNÉES ONT ÉTÉ VÉRIFIÉS, et ils lisent bien le
+projet.** `MidiCcComponent` remplit ses points depuis les contrôleurs, le pitch
+bend et la pression de la piste (lignes 163-177) ; `TempoLaneComponent` depuis la
+carte de tempo (56-60) ; `EventListComponent` depuis les événements de la piste.
+Seul le panneau d'automation gardait une copie qu'il ne remplissait jamais. Une
+seule occurrence, donc — et c'est écrit pour qu'on ne refasse pas l'audit.
+
 **CE QUE CELA DIT DE LA MÉTHODE.** D190 avait chronométré cet onglet à 0,65 ms —
 un chiffre juste, sur un panneau qui n'affichait rien et détruisait au premier
 clic. **Mesurer le coût d'un dessin ne dit rien de ce qu'il dessine.** C'est la
