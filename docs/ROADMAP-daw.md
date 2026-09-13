@@ -22554,3 +22554,61 @@ occurrence, donc, et c'est écrit pour qu'on ne refasse pas l'audit.
 sorte, alors que les deux entrées du menu disent « MIDI » et « audio ». Le pas dit
 maintenant « Ajouter une piste MIDI » — la clé existait déjà dans la table, le pas
 se traduit donc comme le menu, et `ECRAN 7 NU 0 SANS_PAIRE 0` ne bouge pas.
+
+### Phase D232 — B14 affinée : c'est la BASSE, et ma règle était trop sévère (13/09/2026)
+
+D224 a mesuré une inversion de la confiance au-dessus de 0,65 et l'a portée à
+l'INDEX. Deux questions restaient, toutes deux réglables **sans toucher à
+`analyse/`** : d'où vient l'inversion, et la règle de correspondance n'y est-elle
+pour rien ?
+
+**PAR STEM** (deux lots, note juste = début ET hauteur exacts à 50 ms) :
+
+| stem | notes | justes | [0,55 ; 0,65) | [0,65 ; …) |
+|---|---|---|---|---|
+| `other` | 4 466 | 50,8 % | 74 % (522) | **76 %** (181) |
+| `guitar` | 2 212 | 38,2 % | 55 % (468) | **68 %** (155) |
+| `piano` | 1 632 | 40,2 % | 61 % (187) | 62 % (55) |
+| `bass` | 1 251 | 30,3 % | 41 % (305) | **19 %** (294) |
+
+Trois stems sur quatre montent ou tiennent. **L'inversion est entièrement dans la
+basse** — et sur ses notes les PLUS sûres : 294 notes à 0,65 et plus, 19 % justes.
+
+**ET CE QUE CES 81 % SONT VRAIMENT.** La règle de D224 exige un DÉBUT à 50 ms près.
+Une ligne de basse tenue, re-articulée par le transcripteur, tombe donc en faute
+alors qu'elle joue la bonne note. Reprise en distinguant les cas :
+
+| les 294 notes de basse à confiance ≥ 0,65 | part |
+|---|---|
+| début exact, hauteur exacte | 19,4 % |
+| début exact, **à l'octave** | 15,0 % |
+| **une note de cette hauteur SONNE DÉJÀ** (re-articulation) | **40,8 %** |
+| une note à l'octave sonne déjà | 8,2 % |
+| rien de cette hauteur ne sonne (note inventée) | **16,7 %** |
+
+Donc : **60 % de ces notes sont sur la bonne hauteur**, 23 % sont des erreurs
+d'octave — le défaut classique des basses —, et 17 % seulement sont inventées. La
+chaîne est bien meilleure que ne le disait ma première règle, et le vrai grief
+contre la basse est l'OCTAVE.
+
+**LA COURBE ENTIÈRE, RECOMPTÉE** (toutes pistes, « + notes tenues » = la hauteur
+sonne à cet instant) :
+
+| confiance | notes | début exact | + notes tenues |
+|---|---|---|---|
+| [0,00 ; 0,35) | 1 366 | 27,9 % | 55,4 % |
+| [0,35 ; 0,45) | 3 368 | 36,9 % | 65,2 % |
+| [0,45 ; 0,55) | 2 660 | 49,2 % | 77,0 % |
+| [0,55 ; 0,65) | 1 482 | 59,5 % | **88,8 %** |
+| [0,65 ; 1,01) | 685 | 48,6 % | 79,9 % |
+
+**L'inversion tient sous les deux règles** (88,8 → 79,9), donc B14 reste ouverte ;
+mais elle est plus petite qu'annoncée, elle vient d'un seul stem, et le remède
+probable a un nom : l'ambiguïté d'octave de la basse. C'est cela qui ira dans
+`analyse/analyzer/` quand la course sera finie.
+
+**LA LEÇON, ET ELLE VAUT POUR TOUTE MESURE DE TRANSCRIPTION** : une règle de
+correspondance qui exige un début exact compte comme fausses les notes RÉPÉTÉES
+d'une tenue. Sur des basses, cela déplace le résultat de 19 % à 60 %. La règle
+indulgente de D224 ne l'était pas assez, et c'est la mesure — pas le logiciel —
+qu'il a fallu corriger.
