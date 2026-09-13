@@ -341,7 +341,7 @@ son en-tête — un script d'analyse écrit pour une phase n'est ni relu, ni rej
 ni corrigé :
 
 ```bash
-tools/banc-fumee.sh                                  # les quatorze verbes de banc répondent-ils encore ?
+tools/banc-fumee.sh                                  # les seize verbes de banc répondent-ils encore ?
 analyse/.venv/bin/python tools/inventaire_langue.py            # ECRAN / NU / SANS_PAIRE : ce qui reste français
 analyse/.venv/bin/python tools/inventaire_langue.py --doublons # une clé écrite deux fois dans la même table
 tools/comparer-rendus.sh <projet>                    # l'export de l'application contre vsm-render
