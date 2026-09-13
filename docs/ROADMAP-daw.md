@@ -23420,3 +23420,37 @@ là, mot pour mot : elle dit « **illisible** », que mon motif ne portait pas. 
 pas cherché ce qu'il dit ». `CLAUDE.md` le nomme depuis le 06/09 (« un zéro sorti
 d'un grep se revérifie en listant ce qu'on a cherché ET où ») ; il aura fallu le
 repayer pour le relire.
+
+
+### Phase D252 — B14 précisée : la basse est écrite une octave TROP BAS, sept fois sur huit (13/09/2026)
+
+D232 a montré que 23 % des notes de basse les plus sûres sont des erreurs
+d'OCTAVE. Une erreur d'octave a deux sens possibles, et le remède n'est pas le même :
+un bruit symétrique se corrige par un meilleur estimateur, un BIAIS se corrige par
+une constante. La question se tranche en comptant, et le comptage est read-only —
+donc permis pendant la course.
+
+**1 755 notes de basse transcrites, trois lots** (`r1-sec-banc`, `r1-prod-banc`,
+`r1f-sec-banc`), chacune comparée à la vérité du corpus à 50 ms près :
+
+| ce qu'on trouve dans la vérité | notes | part |
+|---|---|---|
+| la même hauteur, au même instant | 476 | **27,1 %** |
+| la même note **une octave PLUS HAUT** (+12) | **234** | **13,3 %** |
+| la même note une octave plus bas (−12) | 32 | 1,8 % |
+| deux octaves plus haut (+24) | 15 | 0,9 % |
+| deux octaves plus bas (−24) | 14 | 0,8 % |
+| rien de cette hauteur à cet instant | 984 | 56,1 % |
+
+**L'erreur d'octave n'est pas symétrique : elle est SEPT FOIS plus souvent vers le
+bas.** Sur les 295 notes dont la vraie hauteur est à une ou deux octaves, **249
+(84 %) sont transcrites TROP BAS**. La chaîne entend la fondamentale une octave
+au-dessous de ce qui est joué — le défaut classique d'un suivi de hauteur sur un
+signal grave, où le premier harmonique et la fondamentale se disputent.
+
+**CE QUE CELA CHANGE POUR B14.** Le remède n'est plus « recalibrer un estimateur »
+mais « corriger un biais d'octave sur la basse », et il se mesure d'avance : si les
+234 notes à +12 étaient remontées, la part de hauteurs exactes passerait de **27,1 %
+à 40,4 %** sur ce stem — sans toucher à rien d'autre. C'est l'attendu à écrire
+avant d'y toucher, et le travail lui-même attend la fin de la course
+(`analyse/analyzer/` est interdit tant qu'elle tourne).
