@@ -3846,3 +3846,31 @@ machine retenue change, et le résultat empire.
 3. **Les résultats négatifs restent dans la chaîne, chiffrés** : `--residuel`
    (inerte même forcée, B7), `--modele-basse` (perdante en bout de chaîne,
    D274). Leur aide porte le chiffre, pour qu'on ne les rouvre pas sans raison.
+
+### 9.6 Le F1 du banc est à refaire, et voici à quelles conditions
+
+Le tableau du banc publie déjà le F1 à côté de la distance globale — la décision
+du § 9.5 n°2 est donc à moitié tenue. Mais **ce F1 est calculé comme l'étaient les
+trois énoncés réfutés en 9.1 et 9.2** : contre la vérité ENTIÈRE (batterie
+comprise, alors que la chaîne la compte ailleurs) et contre la hauteur ÉCRITE
+(alors que 9,9 % des notes sonnent ailleurs). Il porte donc les deux mêmes biais,
+dans le même sens : il sous-estime la chaîne.
+
+**CE QUI EMPÊCHE DE LE CORRIGER TOUT DE SUITE, et qu'il faut peser avant de le
+faire** : changer le calcul rend **tous les F1 publiés incomparables** avec les
+futurs — le corpus S1, les lots r1, r1-prod, r1f et r1f-13sep. Un chiffre qu'on
+redresse sans le dire est pire qu'un chiffre biaisé dont on connaît le biais.
+
+**LA CONDITION, écrite maintenant** : le F1 corrigé s'ajoute **à côté** de
+l'ancien, sous un autre nom (`f1_sonnant`), et les deux sont publiés ensemble
+pendant au moins un lot complet. Si l'écart entre eux est stable d'un morceau à
+l'autre, l'ancien peut être retiré et l'écart documenté une fois pour toutes ; s'il
+ne l'est pas, c'est que la correction dépend du corpus et il faut le savoir avant
+de s'y fier. **Attendu chiffré** : sur les dix morceaux de `r1f-13sep`, le F1
+sonnant hors batterie doit dépasser le F1 actuel de **2 à 8 points** — moins
+voudrait dire que la correction ne porte pas, plus qu'elle emporte autre chose
+avec elle.
+
+C'est un chantier d'`analyse/analyzer/`, donc à mener **hors campagne**, et son
+témoin est le lot déjà mesuré : aucune course nouvelle n'est nécessaire pour le
+trancher, seulement une relecture des `rapport.json` existants.
