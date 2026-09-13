@@ -21165,3 +21165,21 @@ au premier démarrage, avant toute décision de l'utilisateur, laisse une trace 
 ce qu'il n'a pas choisi. Ici le fichier n'apparaît que lorsqu'il y a quelque chose
 à retenir. C'est aussi ce qui rend les bancs de ce dépôt honnêtes : un `HOME` de
 brouillon reste vide tant qu'on ne fait rien.
+
+### Vérification — le menu Aide ne porte qu'une entrée (13/09/2026)
+
+**CE QUE LE MENU AIDE CONTIENT** : « À propos de Vintage Synth MIDI Studio », et
+rien d'autre (`MainComponent.cpp`, `case 6`). **Ce qu'un musicien y cherche
+d'abord** — la liste des raccourcis — vit sous **Affichage** (« Raccourcis
+clavier… », `case 5`), où D155 à D157 l'ont mesurée et traduite. Les trois
+logiciels de référence mettent quelque chose sous *Help* : Live y range
+« Keyboard Shortcuts », Cubase son manuel.
+
+**CE N'EST PAS CORRIGÉ AUJOURD'HUI, ET LA RAISON EST ÉCRITE.** Dupliquer
+l'entrée dans deux menus créerait un piège que `CLAUDE.md` nomme déjà :
+`VSM_MENU=libellé` prend le PREMIER libellé exact **tous menus confondus**, et
+deux entrées identiques rendraient tout banc qui l'emploie ambigu — c'est la
+panne du 06/09 (« Automatique » qui pilotait les threads de rendu au lieu du mode
+d'écoute). Déplacer l'entrée, plutôt que la dupliquer, est le geste juste ; il
+change une habitude et se fait avec sa mesure, pas à la fin d'une session.
+**Inscrit comme B13.**
