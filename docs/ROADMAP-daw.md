@@ -22317,3 +22317,27 @@ ne le relit** — et chaque chemin rendu pilotable a rendu un défaut.
 témoin ne se COMPTE pas, il se LIT (D210) ; une comparaison dont un côté manque
 rend « différent », pas « raté » (D215) ; un export hors-ligne pendant une campagne
 la TRIPLE — 56 min pour un morceau, 2 h 50 pour le suivant (D215).
+
+### Phase D226 — le transport et la tête de lecture, vus en marche (13/09/2026)
+
+Dans la foulée de D225, la même méthode sur ce qui bouge le plus et qui n'avait
+jamais été photographié en mouvement : l'horloge et la tête de lecture.
+
+Deux courses identiques sur `children-c3-plafond`, la lecture lancée au démarrage,
+la photo prise à **1,5 s** puis à **4,5 s** :
+
+| | à 1,5 s | à 4,5 s |
+|---|---|---|
+| horloge, lue sur l'image | `00:01,254` — `mes. 1 · 3` | `00:04,307` — `mes. 3 · 1` |
+| écart | | **3,053 s** pour 3,000 s de montre |
+| tête de lecture (colonnes changées de l'arrangement) | x = 529 | x = 705 |
+
+Trois choses tiennent d'un coup : **le transport avance au temps réel** (3,053 s
+mesurées pour 3 s écoulées, l'écart étant celui de la prise de vue), **l'horloge
+dit la même chose que la position** (mesure 3 temps 1 à 4,3 s de 120 BPM en 4/4 :
+la mesure 3 commence à 4,0 s), et **la tête de lecture suit** — 176 px pour 3,05 s,
+soit les 57,7 px/s du zoom courant.
+
+Ce n'est pas une découverte : c'est une vérification qui manquait. Les phases
+D163-D171 ont mesuré le COÛT du dessin pendant la lecture ; aucune n'avait regardé
+si ce qui est dessiné est JUSTE.
