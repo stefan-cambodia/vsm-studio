@@ -23008,3 +23008,26 @@ haut : c'est le modèle du projet qu'on vérifie, pas un champ de clip.
 **Les cinq attendus tiennent**, et la duplication emporte le matériau : le `.mid`
 écrit porte `bass` **798 notes** et `bass (copie)` **798 notes**, les autres pistes
 inchangées (2 407 et 2 726). Une copie qui n'aurait que le nom se verrait ici.
+
+### Phase D240 — les promesses des gestes, mises sous garde (13/09/2026)
+
+D236 à D239 ont mesuré vingt gestes sur le fichier écrit derrière — ce que voit le
+logiciel suivant. C'étaient des courses à la main : rien ne dirait demain qu'un
+remaniement a fait de « Quantifier (100 %) » un geste qui déplace les hauteurs, ou
+de « Dupliquer » une copie sans notes. `tools/gestes-promesses.py` en garde cinq,
+un par FAMILLE de conséquence :
+
+| ce qui est gardé | la promesse |
+|---|---|
+| **témoin** | sans geste, le `.mid` écrit est identique à l'original |
+| Transposer +1 demi-ton | toutes les hauteurs montent de 1, aucune autre |
+| Quantifier (100 %) | tous les débuts sur la grille, hauteurs **inchangées** |
+| Legato | aucun silence entre deux notes |
+| Dupliquer la piste | une piste de plus, nommée « (copie) » |
+
+Le témoin vient d'abord, et c'est lui qui fait tenir les quatre autres. La garde ne
+rend **aucun audio** : elle peut tourner à côté d'une campagne, et c'est la
+condition pour qu'elle serve. Première exécution : **0 promesse rompue**.
+
+C'est la cinquième garde de `tools/` posée aujourd'hui, après `--doublons` (D216),
+`apres-campagne.sh`, `banc-fumee.sh` (D229) et `tables-markdown.py`.
