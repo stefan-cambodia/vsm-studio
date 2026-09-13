@@ -22926,3 +22926,52 @@ copies** du clip, à 297 600 et 595 200 ticks, c'est-à-dire une longueur de mat
 d'écart. Les deux comportements sont légitimes ; celui-ci est celui de Cubase et de
 Live pour « répéter ». La boucle de clip existe ailleurs (étirer le bord d'un clip
 au-delà de son matériau, D5.2), et les deux ne se confondent pas.
+
+### Phase D238 — les gestes du clip AUDIO, lus dans le projet écrit (13/09/2026)
+
+Le menu d'un clip audio porte **cinquante et une** entrées, contre seize pour un
+clip MIDI : gain, phase, hauteur, sens de lecture, fondus, rognage, découpe aux
+transitoires. Chacune écrit un champ du clip — `gain`, `invertPhase`, `reversed`,
+`pitchSemitones`, `fadeInSeconds` —, donc chacune se lit dans le `project.json`
+écrit derrière, **sans rendre une seule seconde d'audio**.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (une copie de `cdl` où l'on importe
+`son-a.wav` — une sinusoïde de 1,5 s à 220 Hz, crête 0,2 —, puis un geste sur son
+clip, puis `VSM_ENREGISTRER`) :
+
+1. **TÉMOIN** : `gain` 1,0 ; `invertPhase` faux ; `reversed` faux ;
+   `pitchSemitones` 0.
+2. **« -3 dB »** : `gain` = **0,708** (10^(−3/20) à trois décimales).
+3. **« +12 demi-tons »** : `pitchSemitones` = **12**.
+4. **« À l'envers »** : `reversed` = **vrai**.
+5. **« Phase inversée »** : `invertPhase` = **vrai**.
+6. **« Normaliser (gain = 1 / crête) »** : `gain` = **5,0** — la crête du fichier
+   est 0,2, et 1 / 0,2 = 5. Si le chiffre n'est pas 5, c'est que la normalisation
+   ne lit pas le fichier mais autre chose.
+
+**CE QUE LA MESURE A DIT** (le clip de `son-a` dans le `project.json` écrit ; les
+champs à leur valeur par défaut ne sont pas écrits, c'est voulu) :
+
+| geste | champ écrit |
+|---|---|
+| **témoin** | *(aucun)* |
+| « -3 dB » | `gain` = **0,70794576** |
+| « +12 demi-tons » | `pitch` = **12** |
+| « À l'envers » | `reversed` = **vrai** |
+| « Phase inversée » | `invertPhase` = **vrai** |
+| « Normaliser (gain = 1 / crête) » | `gain` = **4,999695** |
+
+**Les six attendus tiennent, et deux chiffres valent la peine d'être lus.**
+0,70794576 est 10^(−3/20) à la septième décimale : « -3 dB » est un vrai −3 dB, pas
+un coefficient rond choisi au jugé. Et 4,999695 est 1 / 0,2000122 — la crête RÉELLE
+du fichier engendré, pas la crête théorique de 0,2 : la normalisation lit
+l'échantillon, elle ne fait pas confiance à ce qu'on lui a dit.
+
+**UNE ERREUR DE MESURE, PRISE À TEMPS, ET C'EST LA TROISIÈME DE LA JOURNÉE.** Le
+premier relevé affichait « aucun champ audio » pour « +12 demi-tons » — de quoi
+écrire qu'un geste ne laisse pas de trace, c'est-à-dire une perte de donnée. Le
+défaut était dans le relevé : il cherchait la clé `pitchSemitones`, qui est le nom
+du champ **en C++**, alors que le disque écrit `pitch`. Comme les pixels verts de
+D225 et la coupe d'image de D234, la mesure regardait son idée du logiciel. **Un
+relevé qui rend « rien » se vérifie sur un cas où l'on SAIT qu'il devrait rendre
+quelque chose** — ici, le témoin aurait suffi s'il avait porté un champ.
