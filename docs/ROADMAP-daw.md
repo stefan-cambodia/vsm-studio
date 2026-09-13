@@ -23531,6 +23531,25 @@ hauteur ; « inventée » = rien de cette hauteur ne sonne à cet instant.)
    stem. Aucun autre chantier de la chaîne ne promet un tel gain pour un défaut
    aussi bien cerné.
 
+**ET LA BOUCLE SE FERME AVEC D224 : la confiance prédit surtout l'OCTAVE.** Les
+mêmes 13 287 notes, croisées cette fois avec la confiance :
+
+| confiance | notes | bonne hauteur | à l'octave | autre hauteur |
+|---|---|---|---|---|
+| [0,00 ; 0,35) | 2 018 | 54,9 % | **26,0 %** | 19,2 % |
+| [0,35 ; 0,45) | 4 678 | 64,0 % | 21,7 % | 14,3 % |
+| [0,45 ; 0,55) | 3 613 | 75,0 % | 14,7 % | 10,2 % |
+| [0,55 ; 0,65) | 2 053 | **87,4 %** | **7,0 %** | 5,6 % |
+| [0,65 ; 1,01) | 925 | 79,7 % | 9,1 % | **11,2 %** |
+
+De 0 à 0,65, la confiance fait exactement ce qu'on lui demande : l'erreur d'octave
+tombe de **26 % à 7 %**, et la bonne hauteur monte de 55 % à 87 %. L'inversion
+du haut, elle, ne vient PAS surtout des octaves (7,0 → 9,1 %) mais des **autres
+hauteurs, qui DOUBLENT (5,6 → 11,2 %)**. Autrement dit : tout en haut de son
+échelle, la chaîne ne se trompe plus d'octave, elle se trompe de note — et elle en
+est sûre. C'est un défaut d'une autre nature que l'ambiguïté d'octave, et il ne
+concerne que 925 notes sur 13 287.
+
 **CE QUE CELA CHANGE POUR B14.** L'élément ne dit plus « la confiance s'inverse
 au-dessus de 0,65 » — c'était le symptôme. Il dit : **l'ambiguïté d'octave coûte un
 cinquième à un quart des notes de chaque stem, et c'est le premier défaut de la
