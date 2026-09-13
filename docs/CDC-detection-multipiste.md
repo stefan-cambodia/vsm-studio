@@ -1813,6 +1813,19 @@ six rendus parallèles, sur le moteur de `build/tools/vsm-render` figé au dépa
 - Un changement de machine au second verdict : `guitar` passe de `vsm.sitar` à
   `vsm.clavinet` (0,1688 contre 0,1691).
 
+**CE QUE « À LA PERFECTION » NE GAGNERA PAS, et c'est déjà mesuré.** La demande
+invite à chercher un réglage plus ambitieux ; le plus évident — la **recherche
+note à note**, que la chaîne saute par défaut — est **déjà tranché POUR CE
+MORCEAU-CI**. L'A/B du 31/08 (`ROADMAP-fusion.md`, § 5 undecies) l'a joué sur
+trois originaux, une seule variable, et *B4 Wuz Then* en faisait partie :
+**0,2521 avec la recherche, 0,2521 sans — identique à la sixième décimale,
+décision par décision**, pour **12 770 s contre 3 300 à 4 500 s**. La rallumer
+coûterait trois fois la course pour un chiffre qui ne bouge pas.
+
+**ET LE CHEMIN PARCOURU SE VOIT SUR CE MÊME MORCEAU** : **0,2521** le 31/08,
+**0,1688** aujourd'hui, mêmes source et métrique — **−33 %**. Ce n'est pas un
+réglage qui l'a fait, ce sont les deux semaines de chaîne entre les deux.
+
 **UN DÉFAUT DE LA CHAÎNE, TROUVÉ EN PRÉPARANT L'ÉCOUTE (13/09).** Le fichier
 `comparaison.wav` que la chaîne écrit pour l'écoute A/B est en **16 bits**, et la
 reconstruction de ce morceau **dépasse 0 dBFS de 2,7 dB** : son canal droit y est
