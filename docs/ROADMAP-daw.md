@@ -24132,3 +24132,48 @@ que l'instrument POUVAIT voir. La question « de quoi sont faites les notes que 
 compte ? » a été posée pour la première fois à D264, et elle a suffi : un
 histogramme par rôle, trois secondes de calcul, et les 1 092 notes brèves du
 premier échantillon se sont révélées être 1 092 frappes de batterie.
+
+
+### Phase D266 — aucune machine ne joue faux, et il a fallu sept bancs pour pouvoir le dire (13/09/2026)
+
+En mesurant tout autre chose (D264), deux parties du corpus rendues par la même
+machine se sont transcrites systématiquement à côté : **cinq demi-tons trop haut
+sur les 84 notes de l'une, huit trop bas sur 52 des 67 notes de l'autre.** Un
+écart d'OCTAVE s'attribue au transcripteur, qui en fait (B14) ; un écart de CINQ
+demi-tons, non. Et aucun test du parc ne vérifiait qu'une machine joue la hauteur
+demandée : on vérifiait qu'elle fait du son, qu'elle tient son en-tête, qu'elle ne
+sature pas sur un accord plein.
+
+**LE RÉSULTAT** : sur les 55 machines tempérées du parc, **47 sont jugées et
+aucune ne joue faux** — l'écart à la fondamentale demandée reste sous un quart de
+demi-ton aux cinq notes d'essai. Les 8 autres sont **nommées** : `vsm.reed`,
+`vsm.sh101`, `vsm.hurdygurdy`, `vsm.tonewheel`, `vsm.vector`, `vsm.jewsharp`,
+`vsm.scanned`, `vsm.carillon`. Leur spectre ne porte pas de fondamentale à
+l'endroit attendu, et le banc le DIT au lieu de les compter justes.
+
+**ET LE BANC A ÉTÉ VU ROUGE AVANT D'ÊTRE VU VERT** : rendues un demi-ton plus
+haut que ce qu'on leur demandait, **53 machines sur 55 sont signalées, à
+« +1,00 demi-ton » exactement**. Un contrôle qui n'a jamais échoué ne prouve rien.
+
+**SIX BANCS FAUX AVANT LE BON, ET C'EST LA VRAIE LEÇON.** Chacun a déclaré des
+machines fausses ; chaque fois c'était le banc :
+
+| version | ce qu'elle mesurait | ce qu'elle a déclaré | pourquoi c'était faux |
+|---|---|---|---|
+| 1 | la plus forte partielle près de la note | 8 fausses | un orgue dont la tirette du premier rang est fermée n'a pas d'énergie à sa fondamentale |
+| 2 | corrélation des spectres à une octave | 11 fausses, dont le piano | l'ENVELOPPE (caisse, filtre fixe) ne bouge pas avec la note et fige la corrélation à zéro |
+| 3 | idem, spectres blanchis | 3 fausses, dont le Mellotron | le souffle vient d'un générateur DÉTERMINISTE de même graine : deux notes portent un bruit identique, qui corrèle à zéro |
+| 4 | idem, fenêtres décalées | 3 fausses, dont le Mellotron | **une octave est le pire intervalle possible** : les partielles de l'aiguë sont les partielles PAIRES de la grave (131/262/392/523 contre 262/523/784), et un glissement nul en aligne déjà la moitié |
+| 5 | corrélation au TRITON | 4 fausses | le blanchiment à ±6 demi-tons efface la structure à l'échelle même du triton cherché |
+| 6 | triton, blanchiment ±2,5 | 8 fausses | plus fin, plus bruité — et j'allais régler le banc jusqu'à ce qu'il donne la réponse voulue |
+| **7** | **l'écart à la fondamentale, sur cinq notes, JUGÉ SEULEMENT S'IL EST CONSTANT** | **0 fausse, 8 ambiguës nommées** | une machine désaccordée l'est de la MÊME quantité partout ; un spectre ambigu donne un écart qui saute |
+
+La version 7 ne prétend pas dire « cette machine joue juste » de toutes : elle dit
+ce qu'elle sait dire, et nomme ce qu'elle ne sait pas juger. C'est la forme que
+prend une mesure honnête quand l'objet résiste.
+
+**ET L'ÉCART DU CORPUS RESTE INEXPLIQUÉ, ce qui s'écrit plutôt que se suppose.**
+La machine en cause passe le banc : elle joue juste quand on la crée avec ses
+réglages par défaut. L'écart vu sur le corpus vient donc d'ailleurs — le patch
+tiré, ou la banque d'échantillons installée pour la course. C'est la piste
+suivante, et elle n'est pas encore mesurée.

@@ -173,6 +173,7 @@ if (VSM_BUILD_TESTS)
         tests/test_reference_track.cpp
         tests/test_wavetable_synth.cpp
         tests/test_pcmhybrid_synth.cpp
+        tests/test_machines_justes.cpp
         tests/test_tonewheel_organ.cpp
         tests/test_generic_synth.cpp
         tests/test_string_synth.cpp
