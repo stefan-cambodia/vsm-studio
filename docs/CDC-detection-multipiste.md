@@ -1813,6 +1813,28 @@ six rendus parallèles, sur le moteur de `build/tools/vsm-render` figé au dépa
 - Un changement de machine au second verdict : `guitar` passe de `vsm.sitar` à
   `vsm.clavinet` (0,1688 contre 0,1691).
 
+**UNE LIMITE DU TÉMOIN DE COUPURE, VUE SUR CE MORCEAU (13/09) — inscrite comme
+B11.** Les deux témoins publiés disent « meilleur sans cette piste » en comparant
+**0,1679** et **0,1691** à **0,1889**. Or 0,1889 est la distance **au verdict du
+mélange**, pas celle du projet livré : la suite de la course (réglage au mélange
+et second verdict) l'a ramenée à **0,1688**. Les deux témoins sont donc mesurés
+contre un état que la course a ensuite dépassé, et **0,1679 contre 0,1688 n'est
+plus le même écart que 0,1679 contre 0,1889** — l'avis « couper améliore » peut
+avoir cessé d'être vrai sans que rien ne le reprenne.
+
+Deux manques, nommés ensemble parce qu'ils se corrigent au même endroit :
+
+1. **le témoin est pris trop tôt** — il faudrait le REJOUER sur le projet final,
+   une fois toutes les décisions prises ;
+2. **les combinaisons ne sont jamais essayées** — couper hihat **et** percussion
+   n'est pas la somme des deux coupes, et personne ne l'a mesuré.
+
+Ni l'un ni l'autre n'est corrigé aujourd'hui : `CLAUDE.md` interdit de toucher
+`analyse/analyzer/*.py` pendant qu'une course tourne, et le lot forcé de R1
+tourne. **Ce qui reste vrai sans réserve** : la chaîne MESURE et PUBLIE, elle ne
+coupe pas — couper reste une décision humaine, et c'est bien ce que ces lignes
+disent au musicien.
+
 **CE QUE « À LA PERFECTION » NE GAGNERA PAS, et c'est déjà mesuré.** La demande
 invite à chercher un réglage plus ambitieux ; le plus évident — la **recherche
 note à note**, que la chaîne saute par défaut — est **déjà tranché POUR CE
