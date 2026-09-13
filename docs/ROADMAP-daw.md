@@ -23395,3 +23395,28 @@ C'est la règle de D6.4 et de D178 tenue jusqu'au bout : **ce qui manque est DIT
 rien n'est effacé**. Reposer le fichier à sa place suffit à retrouver le son — le
 projet n'a pas oublié ce qu'il jouait, et un réenregistrement fait sans le média ne
 transforme pas une absence temporaire en perte définitive.
+
+
+### Phase D251 — le MIDI absent : dit deux fois, et un grep qui m'a menti (13/09/2026)
+
+Dans la foulée de D250, deux cas voisins : un projet dont le PRESET manque, et un
+projet dont le fichier MIDI manque (le disque débranché, le fichier déplacé).
+
+| ce qui manque | ce que l'application dit |
+|---|---|
+| un preset (`instruments/track_00.synth.json`) | au rapport d'ouverture : « **Piste 1 : preset introuvable** (instruments/track_00.synth.json) » — le projet s'ouvre, la machine part à son réglage d'usine |
+| le MIDI (`midi/arrangement.mid`), par le MENU | une boîte : « **Projet illisible** : fichier MIDI introuvable : midi/arrangement.mid **— le reste du projet est intact (1 piste(s), 1 machine(s)) : remettez ce fichier en place** » |
+| le MIDI, par le BANC (`VSM_PROJET`) | « **VSM_PROJET : projet illisible dans … — la capture montrera le projet par défaut** » |
+
+Les trois chemins parlent, et celui du menu va jusqu'à dire **ce qui reste** et
+**quoi faire**. Rien à corriger.
+
+**MAIS LA PREMIÈRE MESURE DISAIT L'INVERSE, ET C'EST LA QUATRIÈME FOIS
+AUJOURD'HUI.** Mon relevé cherchait `VSM_BOITE|VSM_OUVERTURE|introuvable|manquant`
+et n'a rien trouvé : de quoi écrire qu'un projet sans MIDI s'ouvre **vide et en
+silence** — une panne muette, la faute que ce projet s'interdit. La ligne était
+là, mot pour mot : elle dit « **illisible** », que mon motif ne portait pas. Le
+`grep` a rendu zéro, et zéro ne voulait pas dire « rien n'est dit » mais « je n'ai
+pas cherché ce qu'il dit ». `CLAUDE.md` le nomme depuis le 06/09 (« un zéro sorti
+d'un grep se revérifie en listant ce qu'on a cherché ET où ») ; il aura fallu le
+repayer pour le relire.
