@@ -22064,3 +22064,31 @@ D149, encore). Les deux images ont été comparées par différence de pixels �
 boîte des écarts, (364, 40) à (869, 275), tombe pile sur la barre de transport et
 sur la règle —, puis recadrées et lues. Un relevé qui dirait la position au
 journal vaudrait mieux ; il est **nommé et non fait**.
+
+### Phase D221 — la position obtenue, dite au journal (13/09/2026)
+
+D220 a dû comparer **deux images pixel par pixel** pour prouver qu'un « 17.3 »
+saisi menait bien à la mesure 17 temps 3 : la barre de transport PEINT ses
+chiffres, et ni l'autoportrait ni `VSM_TEXTES_LISTE` ne les rendent lisibles à une
+course (la leçon de D149). Une ligne coûte moins qu'une photo. `goToBarText()` —
+le cœur commun de la fenêtre « Aller à la mesure » et du verbe `VSM_POSITION` —
+écrit maintenant la position **obtenue**, et non celle demandée, qui est déjà dans
+la commande.
+
+**CE QUE LA MESURE A DIT** (projet `cdl`, 120 BPM) :
+
+```
+par la fenêtre (VSM_OPTIONS=position=17.3) : VSM_POSITION : mesure 17 temps 3 (33.000 s, tick 31680)
+par le verbe   (VSM_POSITION=17.3)         : VSM_POSITION : mesure 17 temps 3 (33.000 s, tick 31680)
+refus          (VSM_POSITION=abc)          : « abc » n'est pas une position (attendu « 17 » ou « 17.3 »)
+```
+
+Les deux chemins donnent la même ligne, au tick près — ce qui est la preuve que le
+verbe et la fenêtre partagent bien leur cœur —, et 33,000 s est la valeur exacte de
+la mesure 17 temps 3 à 120 BPM, la même que D220 avait lue sur la photo.
+
+**UN DÉFAUT DANS LA LIGNE ELLE-MÊME, CORRIGÉ AVANT DE LA PUBLIER.** Son premier jet
+écrivait « mesure 16 temps 2 » pour un « 17.3 » saisi : `parseBarBeat` rend des
+indices à partir de ZÉRO, là où toute l'interface compte à partir de 1. Une ligne
+de journal qui ne parle pas la langue de l'écran fait accuser le logiciel — et
+c'est l'inverse du service qu'on lui demande.

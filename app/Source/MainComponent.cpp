@@ -11042,7 +11042,23 @@ bool MainComponent::goToBarText(const juce::String& texte) {
                     + " \u00bb n'est pas une position (attendu \u00ab 17 \u00bb ou \u00ab 17.3 \u00bb)\n").c_str(), stderr);
         return false;
     }
-    seekAllViews(project_.timeSignatureMap.tickAtBarBeat(mesure, temps, project_.ticksPerQuarterNote));
+    const vsm::midi::Tick tick =
+        project_.timeSignatureMap.tickAtBarBeat(mesure, temps, project_.ticksPerQuarterNote);
+    seekAllViews(tick);
+    // D221 : LA POSITION OBTENUE, DITE AU JOURNAL. La barre de transport PEINT ses
+    // chiffres : ni l'autoportrait ni `VSM_TEXTES_LISTE` ne les rendent lisibles à
+    // une course (la leçon de D149), et D220 a dû comparer deux images pixel par
+    // pixel pour prouver qu'un « 17.3 » saisi menait bien à la mesure 17 temps 3.
+    // Une ligne coûte moins qu'une photo, et elle dit la position OBTENUE -- pas
+    // celle demandée, qui est déjà dans la commande.
+    // ET LES NUMÉROS COMME L'INTERFACE LES ÉCRIT : `parseBarBeat` rend des indices
+    // à partir de ZÉRO, la barre de transport affiche « mes. 17 · 3 ». Le premier
+    // jet de cette ligne disait « mesure 16 temps 2 » pour un « 17.3 » saisi --
+    // une ligne qui ne parle pas la langue de l'écran fait accuser le logiciel.
+    std::fputs((juce::String::fromUTF8(u8"VSM_POSITION : mesure ") + juce::String(mesure + 1)
+                + juce::String::fromUTF8(u8" temps ") + juce::String(temps + 1) + " ("
+                + juce::String(project_.ticksToSeconds(tick), 3) + " s, tick "
+                + juce::String(static_cast<int>(tick)) + ")\n").toRawUTF8(), stderr);
     return true;
 }
 
