@@ -22010,3 +22010,57 @@ le même jour. La parade est dans le code, à l'endroit du défaut :
 
 Le fichier de preset écrit pendant la mesure a été retiré du projet de banc
 (`reconstruction/travail/cdl` est revenu à ses cinq entrées).
+
+### Phase D220 — ce que ces fenêtres FONT, maintenant qu'on peut le leur demander (13/09/2026)
+
+Ouvrir une fenêtre au banc (D219) ne prouve rien de ce qu'elle fait : c'est le pas
+suivant qui compte. Quatre fenêtres, choisies parce qu'elles TOUCHENT au projet et
+que leur effet se lit dans le `project.json` écrit derrière (« Enregistrer sous… »,
+ouvert par D214) ou au journal.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (projet `cdl`, une piste nommée
+`melange`) :
+
+1. **« Renommer les pistes en série… »** avec `motif=Voix #` : la piste s'appelle
+   `Voix 1` dans le `project.json` écrit. Le « # » est remplacé par le numéro
+   d'ordre — c'est ce que la fenêtre promet.
+2. **« Programme MIDI… »** avec `programme=42;banque=3` : le `project.json` porte
+   `midiProgram` **41** (la fenêtre compte à partir de 1, le format à partir de 0 —
+   si elle écrivait 42, ce serait le défaut) et `midiBank` 3.
+3. **« Aller à la mesure »** avec `position=17.3` : la tête de lecture se pose là, et
+   le journal le dit par le même relevé que `VSM_POSITION` (D22.2).
+4. **TÉMOIN de la règle de sûreté** : la même course sans `VSM_OPTIONS` ne change
+   rien — ni nom, ni programme, ni position.
+
+Si le 2 écrit 42, le projet enregistré désigne un autre instrument que celui que
+l'utilisateur a choisi, et c'est exactement la panne muette que ce projet traque.
+
+**CE QUE LA MESURE A DIT.**
+
+| Fenêtre | ce qu'on a posé | ce qu'on a lu | attendu |
+|---|---|---|---|
+| « Renommer les pistes en série… » | `motif=Voix #` | `project.json` écrit : piste 1 = **`Voix 1`** | tenu (témoin sans option : `melange`) |
+| « Aller à la mesure » | `position=17.3` | la barre de transport, LUE SUR LA PHOTO : **`00:33,000 | mes. 17 · 3`** (témoin : `00:00,000 | mes. 1 · 1`) | tenu — et 33,000 s est la valeur exacte de la mesure 17 temps 3 à 120 BPM |
+| « Programme MIDI… » | `programme=42;banque=3` | l'entrée de menu relue : **« Programme MIDI (42, banque 3)... »** (témoin : « (aucun) ») | tenu, et le 1 ↔ 0 est juste : l'entrée affiche `prog + 1` |
+
+**DEUX CHOSES QUE LA MESURE A COÛTÉES, ET QUI SONT DES LEÇONS DE BANC.**
+
+1. **« Programme MIDI… » est grisée tant que la piste ne sort pas sur un port MIDI
+   matériel** (`midi && !actuel.empty()`), ce qui est juste — un changement de
+   programme s'envoie à un appareil. La course doit donc router la piste d'abord :
+   `VSM_MENU="Midi Through Port-0;Programme MIDI (aucun)..."`. Sans ce premier
+   geste, on lit « est grisée, rien n'a été fait » et l'on croit à un défaut de la
+   fenêtre.
+2. **`VSM_GESTE_PISTE=choisir:1` choisit la DEUXIÈME piste** (l'index part de zéro),
+   et les gestes passent APRÈS les menus (l'ordre des variables d'un banc fait
+   partie du banc, D77). La première course a donc réglé le programme sur la piste
+   1 puis listé le menu de la piste 2 : « (aucun), grisée ». Le défaut était dans
+   la course, pas dans le logiciel — et il ressemblait trait pour trait à un
+   défaut du logiciel.
+
+**LA POSITION SE LIT SUR LA PHOTO, faute de mieux, et c'est dit.** La barre de
+transport PEINT ses chiffres : `VSM_TEXTES_LISTE` ne les voit pas (la leçon de
+D149, encore). Les deux images ont été comparées par différence de pixels — la
+boîte des écarts, (364, 40) à (869, 275), tombe pile sur la barre de transport et
+sur la règle —, puis recadrées et lues. Un relevé qui dirait la position au
+journal vaudrait mieux ; il est **nommé et non fait**.
