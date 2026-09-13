@@ -757,3 +757,57 @@ notes ; elle le DIT maintenant, ce qui suffit à ne plus fausser une mesure, mai
 un corpus où `morceau-0001-g1` reste inutilisable pour les statistiques de hauteur
 n'est pas un bon corpus. Borner le tirage change ce que le corpus éprouve — c'est
 une décision à prendre en le réengendrant, pas un correctif à glisser.
+
+## 7 bis. Le corpus suivant : ce qu'il doit porter, et pourquoi tout d'un coup
+
+Cinq manques sont nommés au § 7, et ils ont été trouvés à cinq dates différentes.
+La tentation est de les corriger un par un ; **il faut résister, et la raison est
+mesurable** : réengendrer le corpus rend tous les chiffres publiés incomparables
+avec les suivants — S1, `r1`, `r1-prod`, `r1f`, `r1f-13sep`, et les vingt morceaux
+de la campagne S1. On ne paie ce prix qu'une fois. Ce paragraphe dit donc **ce que
+le corpus suivant doit porter en entier**, et les attendus qui diront s'il le
+porte.
+
+### 7 bis.1 Les cinq exigences, avec leur critère d'acceptation
+
+| # | exigence | d'où elle vient | critère, vérifiable sans écouter |
+|---|---|---|---|
+| 1 | **Des morceaux LONGS (3 à 5 min) dont les parties entrent et sortent** | § 7 — le banc mesure 30 s d'une texture stable, la chaîne travaille sur des disques de quatre minutes | au moins la moitié des morceaux durent plus de 180 s, et chacun porte au moins deux parties qui ne sonnent pas d'un bout à l'autre |
+| 2 | **Des notes mélodiques BRÈVES** | D264-D265 — les 1 865 notes sous 150 ms du corpus sont **1 865 frappes de batterie**, et « la chaîne rate 96,7 % des notes courtes » a tenu trois phases avant qu'on s'en aperçoive | au moins **un cinquième des parties mélodiques** portent des notes sous 120 ms, et le corpus en compte au moins 500 au total |
+| 3 | **Des parties à ÉCHANTILLONS et de la VOIX** | § 7 — deux branches de la chaîne ne sont mesurées par rien | au moins un morceau sur trois porte une partie `vsm.sampler` ou `vsm.multisample`, et au moins un sur quatre un rôle chanté |
+| 4 | **Les paramètres qui déplacent la hauteur, TIRÉS SUR UNE GRILLE CONNUE** | D267-D277 — 9,9 % des notes sonnent à côté de ce qu'elles écrivent, et `morceau-0001-g1` en entier : son F1 vaut 0,027 ou 0,567 selon la hauteur qu'on compare | `tools/corpus-hauteurs.py` rend **`MORCEAUX_INUTILISABLES 0`**, et aucune partie ne dépasse **deux demi-tons** de désaccord |
+| 5 | **Des SOUS-OSCILLATEURS de niveau varié sur les basses** | D269 — « le sous-oscillateur explique l'octave de la basse » a rendu un Pearson de +1,000 sur **un seul point**, la seule basse du corpus qui en porte un | au moins **six parties de basse** portent un `oscillator.sub.level` non nul, étalé sur au moins trois niveaux distincts |
+
+### 7 bis.2 Ce que l'exigence 4 décide, et qui n'est pas évident
+
+Borner le désaccord à deux demi-tons **change ce que le corpus éprouve** : un
+musicien désaccorde ses oscillateurs, parfois beaucoup, et un corpus qui
+l'interdirait mesurerait une chaîne plus facile que la vraie. **La décision prise
+ici est donc de BORNER, et de le dire** — avec deux raisons :
+
+1. le corpus sert d'ÉTALON, pas d'épreuve : sa vérité doit être fiable avant
+   d'être difficile. Un morceau dont le F1 dépend de la convention de lecture ne
+   mesure rien, si réaliste soit-il ;
+2. l'épreuve des patchs extrêmes se fait ailleurs et se mesure autrement — le
+   banc de machines (`banc_batterie.py`, les empreintes) éprouve déjà ce que les
+   machines font de leurs réglages, sans passer par une reconstruction.
+
+**Et le désaccord résiduel reste ÉCRIT** (D277, `desaccords_demi_tons`) : borné ne
+veut pas dire nul, et ce qui subsiste doit rester lisible par les outils.
+
+### 7 bis.3 Ce que le corpus suivant doit rejouer pour être cru
+
+Trois mesures se rejouent sur le corpus neuf AVANT qu'on s'y fie, et elles
+coûtent moins de dix minutes à elles trois :
+
+* `tools/corpus-hauteurs.py` → **`PARTIES n CONTREDITES 0`** et
+  **`MORCEAUX_INUTILISABLES 0`** ;
+* `tools/notes-courtes.py 127.7 30` → l'A/B sur `minimum_note_length` redevient
+  MESURABLE, ce qu'il n'est pas aujourd'hui faute de notes brèves mélodiques ;
+* `tools/f1-sonnant.py` → **« ÉCART STABLE »**, c'est-à-dire moins de dix points
+  entre le F1 écrit et le F1 sonnant sur tous les morceaux. Tant qu'il dit
+  « INSTABLE », le corpus n'est pas réparé.
+
+**Aucune campagne de reconstruction ne se lance sur le corpus neuf avant que ces
+trois-là soient verts.** Une campagne de treize heures sur un corpus dont la
+vérité ment coûte treize heures et un mois de conclusions à refaire.
