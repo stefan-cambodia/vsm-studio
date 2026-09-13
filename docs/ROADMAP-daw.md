@@ -23347,3 +23347,30 @@ enchaînés se lisent alors comme un récit :
 Chaque ligne porte ce que la suivante doit trouver, et le volume de départ (1,220)
 n'est pas 1,0 : c'est celui que la chaîne a écrit dans ce projet. Un banc qui
 supposerait 1,0 se tromperait, et il le verrait maintenant du premier coup d'œil.
+
+
+### Phase D249 — l'écoute A/B, conduite par une course pour la première fois (13/09/2026)
+
+L'écoute A/B (la piste de référence, § 5 de `ROADMAP-fusion.md` 11.2) est le geste
+par lequel un musicien juge une reconstruction : il compare son morceau à
+l'original. Le chemin complet — charger l'original, puis basculer l'écoute — n'avait
+jamais été pris sans souris.
+
+    VSM_MENU="Charger l'original (référence A/B)...;Écoute : les deux"
+    VSM_FICHIER=son-a.wav
+
+| ce que dit le bouton du transport | quand |
+|---|---|
+| `Écoute A/B : pas d'original` | avant, et c'est juste : aucun original chargé |
+| **`Écoute : les deux`** | après le chargement et la bascule |
+
+Le sélecteur est sauté par `VSM_FICHIER` (D108), les deux entrées de menu
+s'exécutent, et le bouton — qui PORTE l'état — le dit. Rien à corriger : le chemin
+marche, et il est désormais mesurable.
+
+**UNE MINUTE PERDUE SUR UN LIBELLÉ, ET LA LEÇON EST TOUJOURS LA MÊME.** Le premier
+essai employait « Charger l'enregistrement d'origine… », qui est le titre du
+SÉLECTEUR, pas l'entrée de menu (« Charger l'original (référence A/B)… »). Le banc
+a dit « aucune entrée de menu ne commence par… », et c'est le relevé
+`VSM_MENU_LISTE` qui a donné le bon libellé. Un libellé se lit dans la barre, jamais
+de mémoire.
