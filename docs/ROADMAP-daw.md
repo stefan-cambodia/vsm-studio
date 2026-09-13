@@ -24660,3 +24660,38 @@ gardait 8,9 % d'aigu contre 2,6 % au témoin, et j'ai failli l'écrire comme le
 résultat. Sur cinq morceaux, il rend 3,0 % — et sa corrélation s'effondre à 0,009,
 parce qu'il réussit deux morceaux et manque complètement les trois autres. **Une
 mesure sur un morceau mesure le morceau.**
+
+
+### Phase D274 — la basse d'un second modèle, mesurée sur un morceau entier (13/09/2026)
+
+`--modele-basse` existe (D273) et son branchement est vérifié : la chaîne écrit
+« [2/5] Basse reprise d'un second modèle (htdemucs_ft) ». Reste à mesurer ce
+qu'elle change **en bout de chaîne**, et non sur le seul stem.
+
+**LE TÉMOIN EST DÉJÀ ÉCRIT, et c'est ce qui rend cette mesure abordable.**
+`r1f-13sep/morceau-0002-g2` a couru le 13/09 avec `--residuel 1
+--residuel-correlation 0`, sur un `analyse/` identique à celui d'aujourd'hui —
+l'option ajoutée depuis est vide par défaut et ne touche rien. L'essai reprend
+donc **exactement** ces options, et n'ajoute que `--modele-basse htdemucs_ft` :
+une variable, un témoin du même code.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.** Sur ce morceau, dont le témoin donne une
+distance globale de **0,152423** et **13 pistes pour 15 parties** :
+
+1. **La parité ne recule pas** : le nombre de pistes reste **13 ou 14**. Réfuté
+   en dessous — la parité prime sur le SDR d'un stem, et une basse plus propre
+   qui coûterait une piste serait un mauvais échange.
+2. **La distance globale ne monte pas** : elle reste **sous 0,1530**. Ce n'est
+   pas un attendu de gain — D261 a montré que la distance ne récompense presque
+   pas ce genre de progrès — c'est un attendu de NON-RÉGRESSION.
+3. **La basse est mieux transcrite** : le témoin donne, pour son stem `bass`,
+   une distance de **0,3021** sur **166 notes** (machine retenue :
+   `vsm.scanned`). L'essai doit faire **baisser cette distance**. C'est là que le
+   gain doit se voir, s'il se voit quelque part.
+4. **Le surcoût est celui d'une séparation de plus** : la course reste **sous 1,3
+   fois** les 3 658 s du témoin.
+
+**UN SEUL MORCEAU, ET C'EST DIT.** Cette mesure ne décide pas d'un lot : elle
+décide s'il vaut la peine d'en lancer un. D273 vient de rappeler ce que vaut une
+mesure sur un morceau — `htdemucs` y paraissait garder trois fois plus d'aigu que
+le témoin, et sur cinq morceaux il n'en gardait pas plus.
