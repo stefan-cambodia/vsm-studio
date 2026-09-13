@@ -21626,3 +21626,82 @@ ne cherchait pas** :
 
 `tools/inventaire_langue.py` : `ECRAN 7 SANS_PAIRE 0`, inchangé (TERMINAL passe de
 137 à 138 : la nouvelle jointure).
+
+### Phase D214 — les six derniers sélecteurs qu'aucune course ne franchissait (13/09/2026)
+
+**L'INVENTAIRE, REFAIT À LA MAIN.** `MainComponent.cpp` ouvre dix-huit sélecteurs
+de fichier. Douze se sautent déjà (`prendreLeFichierDeBanc`, D102 → D213). Les six
+qui restent portent chacun un geste d'usage courant, et aucun banc ne pouvait les
+franchir :
+
+| Chemin | ce qu'il fait | pourquoi cela compte |
+|---|---|---|
+| « Enregistrer sous… » | écrit un dossier de projet COMPLET ailleurs | c'est le chemin de A34 (le profil de multi-échantillons effacé par un Ctrl+S) |
+| « Importer un MIDI dans le projet… » | fusionne des pistes MIDI dans le projet ouvert | son titre de sélecteur n'était même pas traduit (`u8"…"` nu, pas `tr()`) |
+| « Charger un groove » | remplace le groove courant | dit ce qu'un fichier n'est pas, et personne ne l'a lu |
+| « Importer un projet d'un autre DAW… » | `.als`, `.flp`, `.xml`, et le `.cpr` pour EXPLIQUER | `VSM_IMPORT` ouvre par `applyDawImport`, pas par ce chemin |
+| Préférences ▸ dossier de la bibliothèque | écrit une préférence qui déplace presets, profils et échantillons | une préférence écrite à l'aveugle |
+| Aide ▸ exporter la table des raccourcis | écrit un `.txt` | le seul moyen d'emporter ses raccourcis |
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Chaque chemin, pris par son geste
+d'utilisateur (`VSM_MENU` ou le panneau), avec `VSM_FICHIER` à la place du
+sélecteur :
+
+1. « Enregistrer sous… » écrit un dossier qui ROUVRE : `project.json` présent, et
+   le titre de la fenêtre passe au nom du dossier choisi, sans astérisque.
+2. « Importer un MIDI dans le projet… » ajoute des pistes au projet OUVERT sans
+   remplacer les siennes (le compte monte, il ne retombe pas).
+3. « Charger un groove » accepte un groove et REFUSE en le disant un fichier qui
+   n'en est pas.
+4. « Importer un projet d'un autre DAW… » rend son rapport d'import sur un `.als`.
+5. Le dossier de bibliothèque s'écrit dans les préférences et s'y relit.
+6. La table des raccourcis s'écrit, et le fichier porte au moins une ligne par
+   raccourci réglé.
+
+Les deux sélecteurs d'export restants (stems et audio) ne sont PAS de ce lot, et
+c'est une décision : leur chemin de menu passe d'abord par une fenêtre d'options
+modale qu'aucun verbe ne sait remplir, et leur cœur est déjà mesuré par
+`VSM_EXPORT_STEMS` et `VSM_EXPORT` (audité en D213 : même fonction que le menu).
+Leur sauter le sélecteur sans savoir répondre à la fenêtre d'options ne mesurerait
+rien de plus.
+
+**CE QUE LA MESURE A DIT.** Les six attendus tiennent, et deux des six courses ont
+demandé une correction avant de pouvoir être faites (elles sont dans le même lot).
+
+| Chemin | course | ce que le journal a dit |
+|---|---|---|
+| MIDI dans le projet **puis** Enregistrer sous… | `VSM_FICHIER="<mid>;<dossier>"` | « sélecteur sauté, fichier …mid (reste 1) », puis « …, fichier …/d214-sortie » ; `project.json` écrit, titre « -- d214-sortie », **1 piste → 5** |
+| Charger un groove (valide) | `essai.groove.json`, 16 pas | « Charger un groove : « essai-d214 », 16 pas » |
+| Charger un groove (un wav) | `faux.wav` | « VSM_BOITE : Charger un groove : nombre attendu » |
+| Importer un projet Ableton | le `.als` du test `test_daw_import.cpp` | 2 pistes reprises, 5 notes, 3 clips ; « Piste AUDIO « Voix enregistree » NON importée », tempo 129 BPM |
+| Table des raccourcis | clic sur « Enregistrer la table… » | « Table des raccourcis : 96 ligne(s) dans … » |
+| Dossier de la bibliothèque | clic sur le bouton nommé | « Dossier de la bibliothèque : … », relu dans `*.settings` |
+
+**UN SÉLECTEUR PAR COURSE NE SUFFISAIT PAS.** Pour que « importer un MIDI » donne un
+résultat LISIBLE, il faut enregistrer derrière : c'est le `project.json` écrit qui
+dit combien de pistes le projet porte. Deux sélecteurs, donc, dans une même
+course : `VSM_FICHIER` accepte désormais une liste, et `prendreLeFichierDeBanc` la
+vide dans l'ordre — le premier sélecteur reçoit le premier fichier, le deuxième le
+deuxième. La ligne du journal dit ce qui reste (« (reste 1) »).
+
+**DEUX DÉFAUTS D'OUTILLAGE TROUVÉS EN ROUTE, TOUS DEUX DÉJÀ NOMMÉS AILLEURS.**
+
+1. **Deux boutons du même libellé dans les Préférences.** « Choisir le dossier… »
+   désigne le dossier de la chaîne ET celui de la bibliothèque ;
+   `cliquerPourCapture` prend le PREMIER, et la course pressait la chaîne en
+   croyant presser la bibliothèque. C'est le piège que `CLAUDE.md` nomme pour les
+   libellés de MENU, retrouvé sur des boutons. Les deux portent maintenant un nom
+   de composant distinct (`preferences.dossierChaine`,
+   `preferences.dossierBibliotheque`) ; le texte visible ne change pas, sa section
+   disant déjà de quel dossier il s'agit.
+2. **« geste inconnu » couvrait un geste CONNU qui avait échoué.**
+   `cliquer:Exporter...` a rendu faux parce qu'aucun bouton ne portait ce texte, et
+   la ligne du banc disait « VSM_GESTE_PISTE : geste inconnu » — on allait
+   soupçonner le verbe au lieu du libellé. C'est la leçon de D147 à l'envers : là,
+   le banc jetait un avertissement de l'application ; ici, il en fabriquait un faux.
+   La ligne nomme maintenant le geste et renvoie à celle du dessus.
+
+Les dix-huit sélecteurs de `MainComponent.cpp` sont désormais franchissables par
+un banc, sauf les deux qui vivent derrière une fenêtre d'options modale (stems et
+audio), décidé plus haut. Suites : 330 + 1298 + 297 + 25 + 11, zéro échec ;
+`inventaire_langue` `ECRAN 7 SANS_PAIRE 0`.

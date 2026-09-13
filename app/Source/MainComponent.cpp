@@ -1031,20 +1031,26 @@ MainComponent::MainComponent()
     };
     preferencesPanel_.onChooseChainFolder = [this] { chooseChainFolder(); };
     preferencesPanel_.onChooseLibraryFolder = [this] {
-        auto chooser = std::make_shared<juce::FileChooser>(
-            tr(u8"Dossier de la bibliothèque (presets, profils, échantillons)"),
-            juce::File(), "");
-        chooser->launchAsync(juce::FileBrowserComponent::openMode
-                                  | juce::FileBrowserComponent::canSelectDirectories,
-                              [this, chooser](const juce::FileChooser& fc) {
-            const juce::File dossier = fc.getResult();
+        // D214 : le sélecteur sauté par le banc — une préférence qui déplace
+        // presets, profils et échantillons s'écrivait sans qu'aucune course
+        // puisse la poser ni la relire.
+        auto suite = [this](const juce::File& dossier) {
             if (dossier == juce::File()) return;
             vsm::app::ui::UiScale::properties().setValue("dossierBibliotheque",
                                                           dossier.getFullPathName());
             vsm::app::ui::UiScale::properties().saveIfNeeded();
             refreshPreferences();
             refreshBrowser();
-        });
+            std::fputs((juce::String(u8"Dossier de la bibliothèque : ")
+                         + dossier.getFullPathName() + "\n").toRawUTF8(), stderr);
+        };
+        if (prendreLeFichierDeBanc(suite)) return;
+        auto chooser = std::make_shared<juce::FileChooser>(
+            tr(u8"Dossier de la bibliothèque (presets, profils, échantillons)"),
+            juce::File(), "");
+        chooser->launchAsync(juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectDirectories,
+                              [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
     };
     preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
     retourAuDepart_ = vsm::app::ui::UiScale::properties().getBoolValue("retourAuDepartALArret", false);
@@ -1152,6 +1158,20 @@ MainComponent::MainComponent()
         return true;
     };
     shortcutsPanel_.onExport = [this] {
+        // D214 : le sélecteur sauté par le banc, et le fichier écrit DIT sa taille
+        // — c'est le seul moyen d'emporter ses raccourcis, et rien ne l'éprouvait.
+        auto suite = [this](const juce::File& fichier) {
+            if (fichier == juce::File()) return;
+            const juce::String texte = juce::String::fromUTF8(
+                vsm::interchange::shortcutTableToPrintableText(shortcuts_).c_str());
+            const bool ecrit = fichier.replaceWithText(texte);
+            std::fputs((juce::String(u8"Table des raccourcis : ")
+                         + (ecrit ? juce::String(juce::StringArray::fromLines(texte).size())
+                                        + juce::String(u8" ligne(s) dans ") + fichier.getFullPathName()
+                                  : juce::String(u8"écriture impossible dans ") + fichier.getFullPathName())
+                         + "\n").toRawUTF8(), stderr);
+        };
+        if (prendreLeFichierDeBanc(suite)) return;
         auto chooser = std::make_shared<juce::FileChooser>(
             tr(u8"Enregistrer la table des raccourcis..."),
             juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
@@ -1159,12 +1179,7 @@ MainComponent::MainComponent()
             "*.txt");
         chooser->launchAsync(juce::FileBrowserComponent::saveMode
                                   | juce::FileBrowserComponent::canSelectFiles,
-                              [this, chooser](const juce::FileChooser& fc) {
-            const juce::File fichier = fc.getResult();
-            if (fichier == juce::File()) return;
-            fichier.replaceWithText(juce::String::fromUTF8(
-                vsm::interchange::shortcutTableToPrintableText(shortcuts_).c_str()));
-        });
+                              [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
     };
 
     // D10.4 : ON CHERCHE UNE SESSION INTERROMPUE AVANT D'OUVRIR LA NÔTRE. Une
@@ -4447,11 +4462,22 @@ bool MainComponent::prendreLeFichierDeBanc(const std::function<void(const juce::
     // D102 : LE SÉLECTEUR, ET LUI SEUL, SAUTÉ PAR LE BANC. Un sélecteur de fichier
     // ne se pilote pas sans souris ; ce qu'il rend, si. Le reste du chemin -- le
     // menu qui l'ouvre, ce qu'on fait du fichier -- est celui de l'utilisateur.
-    if (fichierDeBanc_ == juce::File()) return false;
-    const juce::File fichier = fichierDeBanc_;
-    fichierDeBanc_ = juce::File();
-    std::fputs((juce::String(u8"VSM_PLUGIN : sélecteur sauté, fichier ") + fichier.getFullPathName() + "\n")
-                   .toRawUTF8(), stderr);
+    //
+    // D214 : PLUSIEURS SÉLECTEURS DANS UNE MÊME COURSE. `VSM_FICHIER=a;b` se vide
+    // dans l'ordre : le premier sélecteur reçoit `a`, le deuxième `b`. Sans cela,
+    // une course ne pouvait franchir qu'UN sélecteur, et un enchaînement comme
+    // « importer un MIDI, puis enregistrer sous » — celui qui rend le résultat
+    // LISIBLE, puisque le projet écrit dit combien de pistes il porte — restait
+    // hors de portée.
+    juce::File fichier = fichiersDeBanc_.isEmpty() ? fichierDeBanc_
+                                                   : fichiersDeBanc_.removeAndReturn(0);
+    if (fichier == juce::File()) return false;
+    if (fichiersDeBanc_.isEmpty()) fichierDeBanc_ = juce::File();
+    std::fputs((juce::String(u8"VSM_FICHIER : sélecteur sauté, fichier ") + fichier.getFullPathName()
+                + (fichiersDeBanc_.isEmpty()
+                       ? juce::String()
+                       : juce::String(u8" (reste ") + juce::String(fichiersDeBanc_.size()) + ")")
+                + "\n").toRawUTF8(), stderr);
     suite(fichier);
     return true;
 }
@@ -5644,16 +5670,20 @@ void MainComponent::openProjectBundle() {
 /// l'application ne l'a pas vu, alors que le message a quelque chose d'utile à
 /// lui dire (l'archive de pistes, l'export MIDI).
 void MainComponent::importDawProject() {
+    // D214 : le sélecteur sauté par le banc. `VSM_IMPORT` appelle `applyDawImport`
+    // directement : le geste du menu — donc le sélecteur, ses quatre extensions et
+    // ce qu'il refuse — n'était franchi par aucune course.
+    auto suite = [this](const juce::File& fichier) {
+        if (fichier == juce::File()) return;
+        applyDawImport(fichier);
+    };
+    if (prendreLeFichierDeBanc(suite)) return;
     auto chooser = std::make_shared<juce::FileChooser>(
         tr(u8"Importer un projet d'un autre DAW..."), juce::File(),
         "*.als;*.flp;*.xml;*.cpr");
     chooser->launchAsync(juce::FileBrowserComponent::openMode
                              | juce::FileBrowserComponent::canSelectFiles,
-                         [this, chooser](const juce::FileChooser& fc) {
-        const juce::File fichier = fc.getResult();
-        if (fichier == juce::File()) return;
-        applyDawImport(fichier);
-    });
+                         [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 /// APPLIQUE UN IMPORT, ET MONTRE SON RAPPORT DANS TOUS LES CAS.
@@ -8077,26 +8107,34 @@ void MainComponent::saveProject() {
 }
 
 void MainComponent::saveProjectAs() {
+    // D214 : LE SÉLECTEUR SAUTÉ PAR LE BANC. C'est le chemin de A34 — le profil de
+    // multi-échantillons effacé par un enregistrement —, et il n'était pilotable
+    // par personne : ce que « Enregistrer sous… » ÉCRIT ne se vérifiait que par
+    // `VSM_PROJET` sur le dossier d'après, jamais par le geste lui-même.
+    auto suite = [this](const juce::File& folder) {
+        if (folder == juce::File()) return;
+        folder.createDirectory();
+        writeProjectTo(folder);
+    };
+    if (prendreLeFichierDeBanc(suite)) return;
     auto chooser = std::make_shared<juce::FileChooser>(
         tr("Enregistrer le projet VSM (dossier)..."), currentProjectFolder_);
     chooser->launchAsync(juce::FileBrowserComponent::saveMode
                              | juce::FileBrowserComponent::canSelectDirectories,
-                          [this, chooser](const juce::FileChooser& fc) {
-        const juce::File folder = fc.getResult();
-        if (folder == juce::File()) return;
-        folder.createDirectory();
-        writeProjectTo(folder);
-    });
+                          [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 void MainComponent::chooseMidiToImport() {
+    // D214 : le sélecteur sauté par le banc, ET SON TITRE TRADUIT — il était écrit
+    // en littéral nu, seul sélecteur de ce fichier à ne pas passer par `tr()`.
+    auto suite = [this](const juce::File& file) {
+        if (file != juce::File()) importMidiIntoProject(file);
+    };
+    if (prendreLeFichierDeBanc(suite)) return;
     auto chooser = std::make_shared<juce::FileChooser>(
-        u8"Importer un MIDI dans le projet...", juce::File(), "*.mid;*.midi");
+        tr(u8"Importer un MIDI dans le projet..."), juce::File(), "*.mid;*.midi");
     chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-                         [this, chooser](const juce::FileChooser& fc) {
-                             const juce::File file = fc.getResult();
-                             if (file != juce::File()) importMidiIntoProject(file);
-                         });
+                         [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 void MainComponent::importMidiIntoProject(const juce::File& file) {
@@ -10944,12 +10982,7 @@ void MainComponent::saveCurrentGroove() {
 }
 
 void MainComponent::loadGrooveFromLibrary() {
-    auto chooser = std::make_shared<juce::FileChooser>(
-        tr(u8"Charger un groove"), juce::File(), "*.groove.json");
-    chooser->launchAsync(juce::FileBrowserComponent::openMode
-                              | juce::FileBrowserComponent::canSelectFiles,
-                          [this, chooser](const juce::FileChooser& fc) {
-        const juce::File fichier = fc.getResult();
+    auto suite = [this](const juce::File& fichier) {
         if (fichier == juce::File()) return;
         const auto lu = vsm::interchange::parseGroove(fichier.loadFileAsString().toStdString());
         if (!lu.success) {
@@ -10961,7 +10994,20 @@ void MainComponent::loadGrooveFromLibrary() {
             return;
         }
         grooveCourant_ = lu.groove;
-    });
+        // D214 : CE QU'ON VIENT DE CHARGER EST DIT. Le groove n'a aucune trace à
+        // l'écran tant qu'on ne l'applique pas : une course ne pouvait ni voir
+        // qu'il était entré, ni lequel.
+        std::fputs((juce::String(u8"Charger un groove : « ")
+                     + juce::String(grooveCourant_.name.c_str()) + juce::String(u8" », ")
+                     + juce::String(static_cast<int>(grooveCourant_.steps.size()))
+                     + " pas\n").toRawUTF8(), stderr);
+    };
+    if (prendreLeFichierDeBanc(suite)) return;   // D214
+    auto chooser = std::make_shared<juce::FileChooser>(
+        tr(u8"Charger un groove"), juce::File(), "*.groove.json");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                              | juce::FileBrowserComponent::canSelectFiles,
+                          [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 // --- D22.2 : aller à une mesure ---------------------------------------------

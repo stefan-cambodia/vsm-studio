@@ -135,6 +135,13 @@ void PreferencesWindow::retraduire() {
     retourAuDepart_.setButtonText(tr(u8"Revenir au point de départ"));
     choisirChaine_.setButtonText(tr(u8"Choisir le dossier..."));
     choisirBibliotheque_.setButtonText(tr(u8"Choisir le dossier..."));
+    // D214 : DEUX BOUTONS DU MÊME TEXTE, DONC DEUX NOMS. Le texte visible reste
+    // court (sa section dit de quel dossier il s'agit), mais un banc qui désigne
+    // un bouton par son libellé prenait le PREMIER des deux -- celui de la chaîne
+    // -- en croyant presser celui de la bibliothèque. C'est le piège que
+    // `CLAUDE.md` nomme pour les libellés de menu, ici sur des boutons.
+    choisirChaine_.setName("preferences.dossierChaine");
+    choisirBibliotheque_.setName("preferences.dossierBibliotheque");
     // Les entrées « Mono-cœur » / « N thread(s) » : la sélection se lit AVANT de
     // renommer (JUCE rend 0 pour une entrée choisie renommée, D78).
     const int choisie = threads_.getSelectedId();

@@ -388,7 +388,14 @@ public:
                 suite.addTokens(juce::String::fromUTF8(gestes), ";", "");
                 for (const auto& g : suite)
                     if (g.trim().isNotEmpty() && !content->runTrackGestureForCapture(g.trim()))
-                        std::fputs("VSM_GESTE_PISTE : geste inconnu\n", stderr);
+                        // D214 : LE GESTE EST NOMMÉ, et « inconnu » ne couvre plus un
+                        // geste CONNU qui a échoué. « cliquer:Exporter... » a rendu faux
+                        // parce qu'aucun bouton ne portait ce texte -- la ligne disait
+                        // « geste inconnu », et c'est le verbe qu'on allait soupçonner
+                        // au lieu du libellé. La leçon de D147, à l'envers.
+                        std::fputs((juce::String("VSM_GESTE_PISTE : ") + g.trim()
+                                    + juce::String::fromUTF8(u8" \u2014 refusé (geste inconnu, ou sans effet : "
+                                                             u8"voir la ligne au-dessus)\n")).toRawUTF8(), stderr);
             }
             // VSM_TOUCHE=« shift + M »[;…] : enfoncer des touches (D39.1).
             // Distinct de VSM_GESTE_PISTE, et c'est tout l'intérêt : elle
