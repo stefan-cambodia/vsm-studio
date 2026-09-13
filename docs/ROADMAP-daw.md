@@ -20876,3 +20876,61 @@ mot**, là où `vsm-render` écrit « piste audio sans fichier, elle restera
 silencieuse ». C'est défendable — une piste audio vide est visiblement vide,
 elle ne montre aucune forme d'onde, et avertir à chaque piste neuve serait du
 bruit. Dit ici pour que personne ne le retrouve comme une surprise.
+
+### D199 (attendus) — le soixante-deuxième audit : un projet qui tient un plugin TIERS (13/09/2026)
+
+**CE QUE LA MACHINE DE L'UTILISATEUR CONTIENT, et qu'aucun audit n'a touché.**
+`~/.vst3/Juno 106.vst3` — un instrument VST3 qui n'est pas de ce dépôt. Tout ce
+qui a été mesuré aujourd'hui portait sur les 63 machines internes, dont l'état
+tient dans une table de paramètres. Un plugin tiers, lui, garde son son dans un
+**état opaque** (`saveNativeState`) : c'est exactement la forme des trois défauts
+de la journée — une information que le chemin TEMPS RÉEL connaît et que le chemin
+FICHIER ne demande pas (D186, D187, D189).
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Un projet d'une piste portant ce
+VST3, enregistré, rouvert, exporté :
+
+1. **Le plugin se charge** et la piste le déclare dans `project.json`.
+2. **L'enregistrement garde son état natif** : le preset écrit porte un
+   `nativeState` non vide, ou l'application DIT pourquoi il n'y en a pas.
+3. **Les deux chemins de rendu rendent le même son** — `tools/comparer-rendus.sh`,
+   verdict par code de sortie. **Réfuté sinon**, et ce serait le quatrième de la
+   même famille.
+
+### Phase D199 — UN PROJET QUI UTILISE UN PLUGIN TIERS NE ROUVRE JAMAIS AVEC LUI (13/09/2026)
+
+**LES DEUX PREMIERS ATTENDUS SONT TENUS.** Le VST3 installé sur cette machine —
+`Juno 106.vst3`, qui n'est pas de ce dépôt — se charge sur une piste
+(« Juno 106 joue maintenant sur la piste 1 »), le projet le déclare
+(`preferredPlugin: "vst3:/…/Juno 106.vst3#14159037"`), et l'enregistrement
+**garde son état natif** : le preset écrit porte **1 384 octets** de
+`nativeState`. `capturePreset` fait donc pour un plugin tiers ce que D189 vient
+de lui apprendre à faire pour un profil.
+
+**LE TROISIÈME EST RÉFUTÉ, ET AUTREMENT QUE PRÉVU.** À la RÉOUVERTURE, la piste
+dit : `Piste 1 : instrument "vst3:/…/Juno 106.vst3#14159037" indisponible`. Et ce
+n'est **pas** une histoire de chemin : le plugin est installé, **balayé**
+(« Balayage terminé : 25 instrument(s) »), inscrit au catalogue **au même chemin
+et avec le même identifiant** (`{"format":"vst3","id":"14159037","path":"…/Juno
+106.vst3"}`), et le projet a été enregistré depuis cette même session. Il est
+quand même déclaré indisponible.
+
+**LA CAUSE, EN UNE LIGNE.** `ProjectDocument.cpp` décide par
+`pluginIsInstalled()`, qui appelle `PluginRegistry::isRegistered()` :
+
+```cpp
+bool isRegistered(const std::string& id) const { return entries_.count(id) > 0; }
+```
+
+`entries_` ne contient que les machines ENREGISTRÉES — les 63 internes. Les
+identifiants `clap:` et `vst3:` ne vivent pas là : ils sont servis par le
+**résolveur externe** que D7.1 et D7.2 installent, et `isRegistered` **ne le
+consulte pas**. Le chargeur de projet conclut donc « absente », vide
+l'instrument de la piste, et garde la demande (D76) — tout le mécanisme d'une
+machine manquante se déclenche pour une machine qui est là.
+
+**CE QUE CELA COÛTE AU MUSICIEN.** Il charge son VST3, joue, enregistre, ferme.
+Il rouvre : la piste est muette et l'application lui dit que son instrument est
+indisponible. Rien n'est détruit — la demande est gardée, les notes aussi (D76,
+D178) — mais **le projet ne rejoue pas**, et la seule issue est de recharger le
+plugin à la main. **Ouvert comme A36.**
