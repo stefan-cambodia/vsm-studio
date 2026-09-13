@@ -66,7 +66,31 @@ def releve(x: np.ndarray, sr: float, gain_db: float) -> np.ndarray:
     return y / crete * 0.99 if crete > 0.99 else y
 
 
-def mesurer(gain_db: float, passe_haut_hz: float = 0.0) -> dict[str, int]:
+def coupure_adaptee(evenements, facteur: float = 0.75, centile: float = 20.0) -> float:
+    """Où couper le grave de CE morceau, d'après ce que la transcription y trouve.
+
+    D281 : une coupure FIXE a été réfutée (D280) — réglée à 60 Hz sur la moitié A,
+    elle fait perdre 2,3 points sur la moitié B, dont les basses jouent plus haut.
+    La bonne coupure dépend du REGISTRE du morceau, et le morceau sait le dire :
+    on transcrit une première fois sans filtre, et l'on coupe SOUS ce qu'on a
+    trouvé.
+
+    LE CENTILE PLUTÔT QUE LE MINIMUM, et le facteur 0,75 plutôt que 0,5 :
+      * la note la plus grave écrite est justement celle qu'on soupçonne d'être
+        une octave trop bas — s'en servir pour placer la coupure la protégerait ;
+        le 20ᵉ centile résiste à quelques fausses notes sans monter trop haut ;
+      * 0,75 × f0 tombe entre la fondamentale (1,0) et son octave inférieure
+        (0,5), donc retire l'une sans toucher l'autre. C'est le seul point qui
+        sépare les deux, et il n'a pas été choisi par balayage.
+    """
+    hauteurs = sorted(int(e[2]) for e in evenements)
+    if not hauteurs:
+        return 0.0
+    note = hauteurs[min(len(hauteurs) - 1, int(len(hauteurs) * centile / 100.0))]
+    return facteur * 440.0 * 2.0 ** ((note - 69) / 12.0)
+
+
+def mesurer(gain_db: float, passe_haut_hz: float = 0.0, adaptee: bool = False) -> dict[str, int]:
     from basic_pitch import ICASSP_2022_MODEL_PATH
     from basic_pitch.inference import predict
 
@@ -91,7 +115,16 @@ def mesurer(gain_db: float, passe_haut_hz: float = 0.0) -> dict[str, int]:
         vraies = sorted((float(n[2]), int(n[0])) for p in v.get("parties", [])
                         if p.get("role") != "batterie" for n in p.get("notes", []))
         x, sr = sf.read(str(stem), always_2d=True)
-        y = passe_haut(releve(x.mean(axis=1), float(sr), gain_db), float(sr), passe_haut_hz)
+        brut = releve(x.mean(axis=1), float(sr), gain_db)
+        coupure = passe_haut_hz
+        if adaptee:
+            # UNE PREMIÈRE TRANSCRIPTION SANS FILTRE dit où est la basse de ce
+            # morceau ; la coupure s'en déduit, puis on transcrit pour de bon.
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as f0:
+                sf.write(f0.name, brut, int(sr))
+                _, _, sonde = predict(f0.name, model_or_model_path=ICASSP_2022_MODEL_PATH)
+            coupure = coupure_adaptee(sonde)
+        y = passe_haut(brut, float(sr), coupure)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as f:
             sf.write(f.name, y, int(sr))
             _, _, evts = predict(f.name, model_or_model_path=ICASSP_2022_MODEL_PATH)
@@ -116,13 +149,23 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("gains", nargs="+", type=float,
                    help="les relevés en dB ; le PREMIER est le témoin (0 = la chaîne d'aujourd'hui)")
+    p.add_argument("--adaptee", action="store_true",
+                   help="D281 : coupure ADAPTÉE au morceau — une première transcription sans "
+                        "filtre dit où joue sa basse, et l'on coupe sous le 20e centile de ce "
+                        "qu'elle trouve, à 0,75 fois sa fréquence. Une coupure FIXE a été réfutée : "
+                        "réglée sur la moitié A du corpus, elle fait perdre sur la moitié B")
     p.add_argument("--passe-haut", nargs="+", type=float, default=None, metavar="HZ",
                    help="D280 : au lieu de relever l'aigu, RETIRER le grave sous ces coupures "
                         "(0 = le témoin). La séparation empile de l'énergie sous la fondamentale "
                         "— 49,8 %% contre 5,2 %% dans la partie jouée — et D278 a montré qu'une "
                         "composante grave forte fait descendre le transcripteur d'une octave")
     a = p.parse_args()
-    reglages = [(0.0, hz) for hz in a.passe_haut] if a.passe_haut else [(g, 0.0) for g in a.gains]
+    if a.adaptee:
+        reglages = [(0.0, 0.0), (0.0, -1.0)]   # témoin, puis coupure adaptée
+    elif a.passe_haut:
+        reglages = [(0.0, hz) for hz in a.passe_haut]
+    else:
+        reglages = [(g, 0.0) for g in a.gains]
     entete = "passe-haut" if a.passe_haut else "gain"
     print("stem « bass » séparé, "
           + ("GRAVE RETIRÉ sous la coupure" if a.passe_haut
@@ -131,13 +174,14 @@ def main() -> int:
     print(f"{entete:>10} {'écrites':>8} {'justes':>8} {'8ve bas':>8} {'8ve haut':>9} "
           f"{'bas/haut':>9} {'bonne h.':>9} {'inventées':>10}")
     for i, (g, hz) in enumerate(reglages):
-        c = mesurer(g, hz)
+        c = mesurer(g, max(0.0, hz), adaptee=(hz < 0.0))
         apparie = c["juste"] + c["bas"] + c["haut"] + c["autre"]
         rapport = f"{c['bas'] / c['haut']:.1f}x" if c["haut"] else "—"
         bonne = f"{100 * c['juste'] / apparie:.1f}%" if apparie else "—"
         inv = f"{100 * c['inventee'] / c['total']:.1f}%" if c["total"] else "—"
         marque = "  (témoin)" if i == 0 else ""
-        valeur = f"{hz:8.0f}Hz" if a.passe_haut else f"{g:6.0f}dB"
+        valeur = ("adaptée" if hz < 0.0 else
+                  f"{hz:8.0f}Hz" if (a.passe_haut or a.adaptee) else f"{g:6.0f}dB")
         print(f"{valeur:>10} {c['total']:8d} {c['juste']:8d} {c['bas']:8d} {c['haut']:9d} "
               f"{rapport:>9} {bonne:>9} {inv:>10}{marque}")
     return 0

@@ -25130,3 +25130,48 @@ sous la note la plus grave que la transcription trouve, plutôt qu'à un nombre 
 Attendu : elle doit gagner sur A **sans rien perdre sur B** (bonne hauteur au moins
 égale au témoin, à un point près). Sans cette seconde condition, on retomberait
 dans le même piège.
+
+
+### Phase D281 — une coupure ADAPTÉE au morceau, et elle valide (13/09/2026)
+
+La règle, écrite d'un coup et **sans aucun balayage** — c'est la condition pour que
+la validation veuille dire quelque chose : on transcrit le stem une première fois
+sans filtre, on prend le **20ᵉ centile** des hauteurs écrites, et l'on coupe à
+**0,75 fois** sa fréquence.
+
+**Pourquoi ces deux nombres, et pourquoi ils ne sont pas réglés** :
+
+* **le 20ᵉ centile plutôt que le minimum** — la note la plus grave écrite est
+  justement celle qu'on soupçonne d'être une octave trop bas ; s'en servir pour
+  placer la coupure la protégerait. Un centile bas résiste à quelques fausses
+  notes sans monter trop haut ;
+* **0,75 × f0** — c'est le seul point qui sépare la fondamentale (1,0) de son
+  octave inférieure (0,5). Il ne se choisit pas, il se déduit.
+
+| moitié **A** | écrites | justes | 8ve bas | bas/haut | **bonne hauteur** | inventées |
+|---|---|---|---|---|---|---|
+| témoin | 397 | 89 | 69 | 4,9× | **37,6 %** | 40,3 % |
+| **coupure adaptée** | 362 | **97** | **60** | 4,3× | **41,6 %** | 35,6 % |
+
+| moitié **B** — VALIDATION | écrites | justes | 8ve bas | bas/haut | **bonne hauteur** | inventées |
+|---|---|---|---|---|---|---|
+| témoin | 326 | 151 | 26 | 5,2× | **72,2 %** | 35,9 % |
+| **coupure adaptée** | 265 | 137 | **9** | **2,2×** | **75,7 %** | 31,7 % |
+
+**L'attendu est tenu des deux côtés** : +4,0 points sur A, et **+3,5 points sur B**
+là où la coupure fixe en perdait 2,3. Les octaves trop bas de B tombent de **26 à
+9** (−65 %) et le rapport bas/haut de 5,2× à 2,2×. Les inventions baissent partout.
+
+**LE REVERS, DIT AUSSI CLAIREMENT QUE LE GAIN.** Sur B, les notes JUSTES passent de
+**151 à 137** — on en perd quatorze. La « bonne hauteur » monte parce que les
+fausses tombent plus vite que les justes (326 notes écrites contre 265), pas parce
+qu'on en trouve davantage. **C'est un gain de PRÉCISION payé en RAPPEL**, et
+laquelle des deux vaut mieux n'est pas une question que cette mesure tranche —
+D261 et D274 ont montré que l'objectif de la chaîne lui-même est contesté.
+
+**CE QUE C'EST, EXACTEMENT** : le premier remède de la journée qui **survit à une
+validation sur des données qui ne l'ont pas réglé**, après cinq qui ne l'ont pas
+fait (D257, D258, D270, D272, et la coupure fixe de D280). Ce n'est pas encore une
+option de la chaîne : il lui manque de savoir si perdre 9 % des notes justes pour
+gagner 3,5 points de justesse est un bon échange **pour la reconstruction**, et
+cela se mesure en bout de chaîne, pas sur un stem.
