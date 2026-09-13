@@ -23672,3 +23672,29 @@ et non par le registre seul.
 d'être livrée, avec la même exigence qu'un gain de distance. J'avais l'idée, le code
 et trois projets où « ça parle » ; il a suffi d'une question — *combien de ces notes
 sont vraiment fausses ?* — pour que l'idée tombe. Le corpus sert à cela aussi.
+
+
+### Phase D258 — le « fantôme à l'octave » n'explique qu'une erreur d'octave sur six (13/09/2026)
+
+D257 a écarté le registre comme indice. Reste l'idée suivante, la plus simple qui
+soit : quand la chaîne écrit une note une octave trop bas, **écrit-elle aussi la
+bonne** ? Si oui, le remède tient en une ligne — supprimer la plus basse des deux
+quand elles sonnent ensemble. Les 2 300 erreurs d'octave des trois lots, rangées par
+ce qui les accompagne à ±20 ms :
+
+| ce qui sonne à côté de la note fautive | erreurs | part |
+|---|---|---|
+| **rien à l'octave : elle est seule** | 1 720 | **74,8 %** |
+| la note **+12 est déjà écrite** (fantôme sous-octave) | 387 | 16,8 % |
+| la note −12 est déjà écrite | 193 | 8,4 % |
+
+**Une erreur d'octave sur six seulement** vient avec sa jumelle juste. Le filtre
+« supprimer le fantôme sous-octave » traiterait donc 387 notes sur 2 300 — et
+prendrait le risque d'effacer des doublures d'octave légitimes, qui sont un procédé
+d'écriture courant.
+
+**CE QUE CELA LAISSE.** Les trois quarts des erreurs sont des notes SEULES posées à
+la mauvaise octave : ni le registre (D257), ni la présence d'une jumelle (celle-ci)
+ne les désignent. Il faudra donc l'accord — ce que les AUTRES pistes jouent au même
+instant — ou un meilleur suivi de fondamentale. Deux pistes simples éliminées en
+deux mesures, et c'est du temps que la prochaine session ne perdra pas.
