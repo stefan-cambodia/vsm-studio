@@ -3913,3 +3913,21 @@ comparaison entre morceaux de ce corpus — « celui-ci se reconstruit mieux que
 celui-là » — doit être revérifiée. Et le premier remède n'est pas dans le banc :
 c'est **B5**, qui demande que le corpus tire ses paramètres de hauteur sur une
 grille connue au lieu de les laisser au hasard.
+
+**L'ÉTENDUE, mesurée et gardée.** `tools/corpus-hauteurs.py` rend désormais un
+second verdict, qui nomme les morceaux concernés :
+
+| morceau | parties désaccordées | notes touchées |
+|---|---|---|
+| **0001-g1** | **2 sur 2** | **161 sur 161 — INUTILISABLE** |
+| 0005-g5 | 2 sur 6 | 200 sur 544 |
+| 0003-g3 | 1 sur 9 | 102 sur 886 |
+| 0010-g10 | 1 sur 10 | 128 sur 872 |
+| 0008-g8 | 1 sur 5 | 96 sur 488 |
+| 0004-g4 | 1 sur 11 | 80 sur 920 |
+| 0006-g6 | 1 sur 6 | 70 sur 483 |
+
+**Sept morceaux sur dix portent au moins une partie qui ne sonne pas là où sa
+vérité l'écrit**, et un seul les porte toutes. La garde imprime
+`MORCEAUX_INUTILISABLES 1` : le jour où le corpus sera réengendré (B5), ce compte
+devra tomber à zéro, et c'est ce chiffre-là qui le dira.

@@ -192,6 +192,39 @@ def main() -> int:
     print(f"\nPARTIES {parties}  CONTREDITES {len(suspectes)}")
     for s in suspectes:
         print(f"  {s}")
+
+    # LE SECOND VERDICT, et c'est le plus important (13/09/2026). Qu'un écart
+    # soit EXPLIQUÉ par le patch ne le rend pas inoffensif : une partie dont la
+    # hauteur sonnante s'écarte de sa hauteur écrite fausse toute statistique de
+    # hauteur qui la compte. Et un morceau dont TOUTES les parties mélodiques
+    # sont dans ce cas n'a pas un mauvais score : il a un score qui ne veut rien
+    # dire. `morceau-0001-g1` en est l'exemple — ses deux parties mélodiques sont
+    # désaccordées de +4,75 et −8,25 demi-tons, et son F1 passe de 0,027 à 0,567
+    # selon la hauteur qu'on compare : de dernier des dix à premier.
+    print()
+    print("MORCEAUX dont des parties mélodiques ne sonnent PAS à leur hauteur écrite :")
+    inutilisables = 0
+    for dossier in sorted(CORPUS.glob("morceau-*"))[: a.morceaux]:
+        fichier = dossier / "verite.json"
+        if not fichier.is_file():
+            continue
+        verite = json.loads(fichier.read_text(encoding="utf-8"))
+        melodiques = [x for x in verite.get("parties", []) if x.get("role") != "batterie"]
+        if not melodiques:
+            continue
+        decalees = [x for x in melodiques
+                    if any(abs(v) >= 1.0 for _, v in desaccords_du_patch(x))]
+        if not decalees:
+            continue
+        notes_decalees = sum(len(x.get("notes", [])) for x in decalees)
+        notes_totales = sum(len(x.get("notes", [])) for x in melodiques)
+        toutes = len(decalees) == len(melodiques)
+        if toutes:
+            inutilisables += 1
+        print(f"  {dossier.name:18s} {len(decalees)}/{len(melodiques)} partie(s), "
+              f"{notes_decalees}/{notes_totales} notes"
+              + ("   <<< TOUTES : statistiques de hauteur INUTILISABLES" if toutes else ""))
+    print(f"\nMORCEAUX_INUTILISABLES {inutilisables}")
     return 1 if suspectes else 0
 
 
