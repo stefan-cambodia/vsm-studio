@@ -21373,3 +21373,94 @@ qu'aucun geste ne soit fait** — l'autosauvegarde part dès l'ouverture, avant 
 modification. Ce n'est pas un défaut (une copie de plus ne coûte que 196 Ko, et
 elle est effacée dès qu'elle a servi), mais cela explique pourquoi une copie
 existe toujours après un `kill -9`, même sur une séance où l'on n'a rien touché.
+
+### D209 (attendus) — ce que le rapport de reconstruction MONTRE, sur le projet de l'utilisateur (13/09/2026)
+
+**POURQUOI SUR CELUI-LÀ.** La chaîne a mesuré, pour « B4 Wuz Then », trois choses
+qu'un musicien ne peut pas deviner : deux pistes que le morceau mesuré préfère
+SANS elles, une réverbération cherchée puis REFUSÉE, et deux stems écartés sous
+le seuil d'énergie. Tout cela est dans `rapport.json`. **La question est ce que
+l'écran en montre** — un chiffre qui ne quitte pas le fichier ne sert à personne.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Le volet « Voir le rapport de
+reconstruction », lu par `VSM_RAPPORT_LISTE` :
+
+1. **Les deux témoins de coupure y sont**, nommant la piste et les deux chiffres
+   (D53 les a mis là ; il faut vérifier qu'ils y arrivent pour CE rapport).
+2. **Le refus de la réverbération y est**, avec son écart — la chaîne a dépensé
+   une grille entière, et un refus chiffré vaut autant qu'un choix.
+3. **Les deux stems non reconstruits y sont** (piano 0,0 %, vocals 0,1 %), ou
+   leur absence sera dite.
+
+### D210 — « aucune piste ne porte ce stem » : la première version disait faux sur le témoin (13/09/2026)
+
+**CE QUE D209 A TROUVÉ.** Les attendus 1 et 2 tiennent : le volet montre les deux
+témoins de coupure avec leurs chiffres, et le refus de la réverbération avec le
+sien (« Réverbération au mélange : aucune — aucun point de la grille ne rapproche
+de l'original (témoin sec 0.1688) »). L'attendu 3 est **réfuté** : le volet
+affichait « vocals : 0,1 % de l'énergie » et « piano : 0,0 % », et se taisait sur
+leur sort. Un musicien pouvait chercher longtemps une piste « vocals » qui
+n'existe pas dans le projet.
+
+**LA PREMIÈRE RUSTINE, ET POURQUOI ELLE ÉTAIT FAUSSE.** J'ai d'abord comparé deux
+listes du rapport : `partage` (tous les stems) moins `stems` (ceux qui ont reçu
+une machine), plus `drums` à la main. Sur « B4 Wuz Then » la phrase sortait juste
+— « vocals, piano : NON reconstruit(s) ». **Le témoin l'a démentie** :
+`children-c3-plafond`, choisi parce qu'il reconstruit plus de stems, affichait
+LUI AUSSI une ligne « NON reconstruit ». Lue au lieu d'être comptée, elle nommait
+`vocals` — alors que ce projet porte deux pistes **audio** « Voix · tête » et
+« Voix · chœurs ». La voix n'est pas resynthétisée : elle voyage en audio, et
+n'apparaît donc jamais dans `stems`. La rustine prenait « absent de `stems` »
+pour « absent du projet ».
+
+Le même défaut frappait dans l'autre sens : `usandthem-parite` découpe le stem
+`other` en quatre pistes polyphoniques « other · voix 1…4 ». Comparés par nom
+exact, `other` n'est « pas reconstruit » — alors qu'il l'est quatre fois.
+
+**LA RÈGLE JUSTE EXISTAIT DÉJÀ, EN PYTHON.** `analyse/analyzer/vsm_banc.py`
+(`stem_de_la_piste`) sait depuis longtemps quel stem une piste porte : préfixe
+« Batterie » → `drums`, préfixe « Voix » → `vocals`, sinon le nom jusqu'au
+séparateur « · ». C'est la règle par laquelle le banc juge une piste contre son
+stem. Le volet la reprend : il ne lit plus `stems`, il lit **les pistes du projet
+ouvert** (`project_.tracks`) et dit ce que le projet ne porte pas — la question
+que le musicien se pose vraiment.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (`VSM_RAPPORT_LISTE`, trois
+projets) :
+
+1. **`b4wuzthen` nomme toujours « vocals, piano »** : aucune de ses huit pistes
+   ne porte ces deux stems (ni « Voix · … », ni « piano »).
+2. **`children-c3-plafond` ne nomme plus rien** : ses six stems sont tous portés,
+   la voix par deux pistes audio.
+3. **`usandthem-parite` ne nomme plus `other`** : « other · voix 1…4 » le portent.
+
+Si le 2 ou le 3 sortait encore une ligne, c'est la règle de correspondance qui
+serait fausse, pas le rapport.
+
+**CE QUE LA MESURE A DIT** (volet lu par `VSM_RAPPORT_LISTE`, trois projets, binaire
+du 13/09 17 h) :
+
+| Projet | pistes | ligne « aucune piste ne porte » | attendu |
+|---|---|---|---|
+| `b4wuzthen` | 7 + 1 bus | `vocals, piano` | tenu |
+| `children-c3-plafond` | 11 + 1 bus | *(aucune)* | tenu |
+| `usandthem-parite` | 9 | *(aucune)* | tenu |
+
+Et les deux attendus de D209 qui tenaient déjà, cités à la lettre :
+
+```
+Batterie · hihat : le morceau mesuré est MEILLEUR sans cette piste (0.1679 contre 0.1889) — conservée : couper est une décision humaine
+Batterie · percussion : le morceau mesuré est MEILLEUR sans cette piste (0.1691 contre 0.1889) — conservée : couper est une décision humaine
+Réverbération au mélange : aucune — aucun point de la grille ne rapproche de l'original (témoin sec 0.1688)
+```
+
+L'anglais suit (`VSM_LANGUE=en`) : « vocals, piano: no track carries this stem —
+dropped by the chain, which reads it as separation residue rather than a part » ;
+`tools/inventaire_langue.py` rend `ECRAN 7 SANS_PAIRE 0`, inchangé.
+
+**D209 ET D210 SONT CLOSES.** Le volet dit maintenant les trois choses que la
+chaîne avait mesurées sans les montrer. **La leçon, qui vaut au-delà de ce
+volet** : un témoin ne se compte pas, il se LIT. `grep -c` rendait `1` pour
+`children-c3-plafond` et j'ai d'abord cru à un raté du témoin ; la ligne, lue,
+nommait `vocals` et désignait le défaut de ma propre règle. Un témoin qui
+« échoue » est une information sur le code, pas sur le témoin.

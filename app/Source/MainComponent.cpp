@@ -5764,6 +5764,43 @@ void MainComponent::showReconstructionReport(bool montrerLeVolet) {
                     .replace("%1", juce::String::fromUTF8(part["stem"].asString("?").c_str()));
             lignes.add({texte, pourcent >= 50.0 ? Ton::attention : Ton::info});
         }
+        // D210 : ET CEUX QU'AUCUNE PISTE NE PORTE, DITS COMME TELS.
+        //
+        // Le partage liste TOUS les stems du morceau ; le projet, lui, n'en porte
+        // qu'une partie. Un stem écarté n'est nulle part : le volet affichait sa
+        // part d'énergie et se taisait sur son sort, si bien qu'un musicien
+        // pouvait chercher longtemps une piste « vocals » qui n'existe pas.
+        //
+        // La correspondance piste → stem est celle de la chaîne elle-même
+        // (`stem_de_la_piste`, analyse/analyzer/vsm_banc.py) : préfixe
+        // « Batterie » → drums, préfixe « Voix » → vocals, sinon le nom jusqu'au
+        // séparateur. Une première version comparait `partage` à `stems` du
+        // rapport ; elle disait faux deux fois — la voix, qui voyage en AUDIO,
+        // n'est jamais dans `stems` (et le témoin children-c3-plafond l'a
+        // démentie), et un stem découpé en « other · voix 1…4 » n'y figure pas
+        // sous son nom nu. Ce qui fait foi est donc ce que le projet PORTE.
+        const auto stemDeLaPiste = [](const std::string& brut) {
+            juce::String nom = juce::String::fromUTF8(brut.c_str())
+                                   .replace(juce::String::fromUTF8(" · "), " - ")
+                                   .trim();
+            if (nom.startsWith("Batterie")) return juce::String("drums");
+            if (nom.startsWith("Voix")) return juce::String("vocals");
+            return nom.upToFirstOccurrenceOf(" - ", false, false).trim();
+        };
+        std::set<std::string> portes;
+        for (const auto& piste : project_.tracks)
+            portes.insert(stemDeLaPiste(piste.name).toStdString());
+        juce::StringArray ecartes;
+        for (const auto& part : partage.elements()) {
+            const std::string nom = part["stem"].asString("");
+            if (!nom.empty() && portes.count(nom) == 0)
+                ecartes.add(juce::String::fromUTF8(nom.c_str()));
+        }
+        if (!ecartes.isEmpty())
+            lignes.add({tr(u8"%1 : aucune piste ne porte ce stem — écarté par la chaîne, "
+                           u8"qui y voit un résidu de séparation plutôt qu'une partie")
+                            .replace("%1", ecartes.joinIntoString(", ")),
+                        Ton::attention});
     }
 
     // --- Les pistes mélodiques : machine et densité -----------------------

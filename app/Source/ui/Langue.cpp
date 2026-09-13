@@ -1040,6 +1040,9 @@ const Paire kAnglais[] = {
     // D193 : les trois chaînes de la question de fermeture (D175), restées
     // françaises dans l'interface anglaise — vues sur la PHOTO, pas au relevé.
     // D195 : la boîte du projet déjà ouvert ailleurs.
+    // D210 : les stems que la chaîne a écartés, dits dans le volet.
+    { "%1 : aucune piste ne porte ce stem — écarté par la chaîne, qui y voit un résidu de séparation plutôt qu'une partie",
+      "%1: no track carries this stem — dropped by the chain, which reads it as separation residue rather than a part" },
     // D205 : la phrase du menu Aide, refaite.
     { "Séquenceur MIDI, rack de %1 machines modélisées, et la chaîne qui reconstruit un enregistrement en projet jouable.\n\nVersion 0.1.0",
       "MIDI sequencer, rack of %1 modelled machines, and the chain that rebuilds a recording into a playable project.\n\nVersion 0.1.0" },
