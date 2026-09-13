@@ -22410,6 +22410,12 @@ Restent ensuite, nommés :
    (D224) : elle demande de toucher à `analyse/analyzer/`, interdit pendant une
    course.
 4. **B10, B11, B12** — même interdiction, même attente.
+5. **Rejouer la mesure de peinture de D164-D166 dans SES conditions.** Un relevé
+   fait ce soir sur `children-c3-plafond` rend **53,18 ms** de médiane sur huit
+   passes pour un socle de 2 117 × 1 317 — un chiffre qui ne se compare PAS aux
+   21,95 ms de D166 : ni la taille du socle ni la charge de la machine ne sont les
+   mêmes (six rendus tournaient). Deux mesures ne se comparent que si leurs
+   conditions sont identiques ; celle-ci est donc notée, pas publiée.
 
 ### Phase D227 — deux repères au même endroit, et ce que cela cachait (13/09/2026)
 
