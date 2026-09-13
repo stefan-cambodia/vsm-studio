@@ -20451,3 +20451,43 @@ perdu ; et le seul geste qui dit « je n'en veux plus » — Dégeler — le fai
 **ET LE GEL OUVRE BIEN SON PAS D'ANNULATION** (`beginProjectEdit("Geler une
 piste")`), comme le dégel : la famille A21-A25, qui avait trouvé quatre gestes
 muets, n'en laisse pas un cinquième.
+
+### La garde qui manquait : `tools/comparer-rendus.sh` (13/09/2026)
+
+**TROIS DÉFAUTS DE LA MÊME FAMILLE EN UNE JOURNÉE** — une piste gelée muette au
+rendu hors ligne (D185), sa queue coupée (D187), le profil d'une machine
+multi-échantillons jamais capturé (D188) — et **aucun ne se voyait à l'écran ni
+ne levait d'erreur**. Chacun s'est mesuré de la même façon : exporter le projet
+depuis l'application, le rendre par `vsm-render`, comparer.
+
+`CLAUDE.md` dit ce qu'il faut faire d'une mesure qui doit empêcher une
+régression : « **un script d'analyse écrit pour une phase n'est pas une garde :
+il n'est ni relu, ni rejoué, ni corrigé. Ce qui doit empêcher une régression va
+dans `tools/`, avec sa règle écrite dans son en-tête** » (D150). La mesure est
+donc devenue un outil :
+
+```
+tools/comparer-rendus.sh <dossier-projet> [--frequence 44100] [--garder]
+```
+
+**Ce qu'il fait, et les trois précautions qu'il embarque** : les deux rendus sont
+en **int24**, le format que l'application exporte — comparer un 24 bits à un
+flottant ajouterait le plancher de quantification et, sur un morceau qui dépasse
+0 dBFS comme celui de l'utilisateur, un écrêtage d'un seul côté ; l'application
+tourne sous un **HOME de brouillon** avec un lien vers la bibliothèque de profils
+(règle de D77, et sans le lien une machine à profil serait muette pour une raison
+étrangère à la mesure) ; et **les dates des deux binaires sont imprimées**, parce
+qu'un `vsm-render` plus vieux que le correctif qu'on vérifie fait échouer la
+comparaison pour une raison qui n'est pas celle du projet — c'est arrivé le 13/09,
+une campagne interdisant de le relier.
+
+**Le verdict est un CODE DE SORTIE** : 0 si les deux chemins rendent le même son
+(corrélation ≥ 0,999999, écart ≤ −100 dB, décalage nul), 1 s'ils divergent, 2 si
+la mesure n'a pas pu se faire. Sur le projet de l'utilisateur, aujourd'hui :
+
+```
+  corrélation  : 1.000000000
+  écart        : -5986.72 dB sous le signal   (max |d| 0.000e+00)
+  décalage     : 0 échantillon(s)
+VERDICT : les deux chemins rendent le MÊME son
+```
