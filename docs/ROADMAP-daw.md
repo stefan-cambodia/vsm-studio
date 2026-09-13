@@ -23714,3 +23714,36 @@ transcription ne peut donc pas dépasser **46 %** des erreurs d'octave, même pa
 gros du remède est donc dans l'estimation de hauteur elle-même, pas dans un
 post-traitement**, et c'est ce que la prochaine session doit savoir avant de choisir
 où passer sa journée.
+
+
+### Phase D259 — l'autre moitié du diagnostic : 41 % des notes vraies ne sont écrites NULLE PART (13/09/2026)
+
+D253 et D254 ont rangé ce que la chaîne ÉCRIT. Reste ce qu'elle N'ÉCRIT PAS. Les
+**20 907 notes vraies** des trois lots, rangées par ce que la transcription en a
+fait :
+
+| ce que la transcription contient pour cette note vraie | notes | part |
+|---|---|---|
+| la même hauteur, au même instant (±50 ms) | 7 904 | **37,8 %** |
+| la même hauteur transcrite juste avant (elle sonne encore) | 2 574 | 12,3 % |
+| la hauteur à l'octave | 1 927 | 9,2 % |
+| **rien : ni la note, ni son octave** | **8 502** | **40,7 %** |
+
+**LA MOITIÉ DU DIAGNOSTIC QUI MANQUAIT.** La chaîne écrit **13 287 notes** là où le
+morceau en joue **20 907** : elle en écrit **64 %**, et **41 % des notes vraies
+n'apparaissent nulle part**. Mis à côté de ce que D254 disait du côté écriture —
+64 à 69 % de bonnes hauteurs, 20 à 27 % d'octaves, moins de 1,2 % d'inventions —,
+cela donne le portrait complet d'une transcription **prudente** : elle écrit peu,
+ce qu'elle écrit est le plus souvent juste, et son erreur la plus fréquente est
+l'octave.
+
+**CE QUE CELA CHANGE POUR L'ORDRE DU TRAVAIL.** L'octave coûte 20 à 27 % des notes
+ÉCRITES (D254) ; l'omission en coûte **41 % des notes JOUÉES**. Les deux chantiers
+ne se valent pas : corriger toutes les octaves porterait la bonne hauteur de 64 % à
+90 % environ *de ce qui est écrit*, mais le morceau resterait amputé de 40 % de ses
+notes. **C'est l'omission qui plafonne la reconstruction**, et c'est elle qu'il faut
+attaquer d'abord — la parité des pistes (mémoire `nombre-de-pistes-reconstruites`)
+en dépend autant que la distance.
+
+Les deux mesures sont rejouables : `tools/confiance-contre-verite.py <lot>` pour le
+rappel global, `--categories` pour le détail par stem.
