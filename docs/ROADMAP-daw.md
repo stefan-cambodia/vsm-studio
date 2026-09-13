@@ -20082,3 +20082,139 @@ piste mélodique gelée puis le projet rendu, contre le même projet non gelé :
    était pour cette piste (plus de `frozen`, plus de `frozenAudio`).
 3. **Le gel se voit** : un musicien doit pouvoir dire d'un coup d'œil quelle
    piste est gelée, et le banc doit pouvoir le lire.
+
+### Phase D185 — GELER UNE PISTE LA FAIT DISPARAÎTRE DE L'EXPORT (13/09/2026)
+
+**L'ATTENDU N° 1 EST RÉFUTÉ, ET CE N'EST PAS UNE QUESTION D'ARRONDI.**
+`children-c3-plafond`, la piste `bass` gelée par le menu Piste puis le projet
+enregistré ; les deux projets rendus par `vsm-render` à 44,1 kHz en flottant :
+
+| | attendu | **mesuré** |
+|---|---|---|
+| le mixage ne bouge pas | ≤ −100 dB | **−6,55 dB** sous le signal, corrélation **0,882** ✘ |
+| dégeler rend le projet d'origine | oui | ✔ `frozen` et `frozenAudio` disparus, et le dossier `gel/` VIDÉ — aucun audio orphelin |
+| le gel se voit | oui | ✔ l'en-tête de la piste, dans l'arrangement, affiche « **midi · gelé** » (lu sur la photo, ce texte étant peint et invisible au relevé) |
+
+**CE QUE LA PISTE GELÉE DEVIENT, mesuré et non déduit** : rendue en stems, elle
+sort **`01 - bass.wav : silencieux`**. La piste n'est pas décalée ni atténuée :
+elle n'est plus là.
+
+**ET CE N'EST PAS UN DÉSACCORD ENTRE LES DEUX MOTEURS — C'EST LE MÊME DÉFAUT DANS
+LES DEUX.** L'export de l'application sur le projet gelé est identique au rendu de
+`vsm-render` sur le même projet (**−126,36 dB**, corrélation **1,000000** : le
+plancher du 24 bits, exactement comme D177). Les deux se taisent ensemble, parce
+que l'export « passe par le même code que `vsm-render` » — son commentaire le dit.
+
+**LA CAUSE, TROUVÉE EN SUIVANT LE SILENCE.** `OfflineReconstruction.cpp`, la
+boucle qui branche l'audio :
+
+```cpp
+if (track.kind != vsm::sequencer::Track::Kind::Audio) continue;
+if (track.audio.empty()) { …avertissement… continue; }
+```
+
+Une piste MIDI **gelée** garde `kind == Midi` ; son audio est dans
+`frozenAudio`, pas dans `audio`. Elle est donc sautée par cette boucle — et son
+instrument est sauté lui aussi, à bon droit (`ProcessGraph.cpp:1642`, `if
+(instrument && !track.frozen)`). Personne ne la joue, et **aucun avertissement**
+n'est émis : le `continue` qui en émet un est réservé aux pistes de type Audio.
+
+**L'APPLICATION, EN TEMPS RÉEL, FAIT L'INVERSE** —
+`MainComponent::loadAudioTracks` a exactement la ligne qui manque : `const bool
+gelee = track.frozen && !track.frozenAudio.empty(); const auto& source = gelee ?
+track.frozenAudio : track.audio;`. **Ce qu'on entend n'est donc pas ce qu'on
+exporte**, et c'est l'invariant n° 3 du § 6 (temps réel et hors ligne identiques)
+qui tombe, pour le seul cas des pistes gelées.
+
+**LA GRAVITÉ, DITE SANS L'ENFLER.** Geler est un geste de confort qu'on fait par
+poignées sur un gros projet, précisément quand le processeur sature. Le musicien
+exporte ensuite, et les pistes gelées **manquent, en silence**. **Ouvert comme
+A32**, et le remède est une ligne — la même que celle de l'application.
+
+### D186 (attendus) — A32 : le rendu hors ligne joue les pistes gelées (13/09/2026)
+
+**LE REMÈDE.** La boucle de `OfflineReconstruction.cpp` prend la règle de
+`MainComponent::loadAudioTracks` : une piste est sonorisée par un fichier si elle
+est de type Audio **ou** si elle est GELÉE et porte un `frozenAudio` ; la source
+est alors `frozenAudio`. Et une piste gelée SANS audio utilisable reçoit
+l'avertissement que les pistes audio reçoivent déjà — le silence ne doit jamais
+être muet.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **Le mixage du projet gelé retrouve celui du projet non gelé** : écart
+   **≤ −100 dB** sous le signal (il est à −6,55 dB). Réfuté sinon.
+2. **La piste gelée n'est plus silencieuse en stems** : son pic redevient celui
+   de la piste non gelée, à la précision du rendu.
+3. **Rien d'autre ne bouge** : le projet NON gelé rendu avant et après le
+   correctif doit être **identique au bit** — le chemin des pistes ordinaires
+   n'est pas touché. C'est le témoin obligatoire.
+4. **Une piste gelée sans fichier le DIT**, au lieu de se taire.
+
+**LA PRÉCAUTION D'EXPLOITATION, écrite parce qu'elle décide du COMMENT.** Une
+campagne tourne (le lot forcé de R1), et elle appelle `build/tools/vsm-render` :
+**remplacer ce binaire la tuerait**. Le correctif est donc compilé dans la CIBLE
+DE L'APPLICATION seule, et mesuré par l'export de l'application — qui passe par
+le même code, son commentaire le dit et D185 l'a vérifié au bit près.
+`vsm-render` sera relié quand la campagne aura fini.
+
+### Phase D186 — A32 : le rendu hors ligne joue les pistes gelées (13/09/2026)
+
+**LES QUATRE LIGNES QUI MANQUAIENT** sont celles que le chemin TEMPS RÉEL écrit
+depuis toujours (`MainComponent::loadAudioTracks`) : la source est `frozenAudio`
+quand la piste est gelée ; la piste se présente à `spansFromTrack` comme une piste
+audio (`kind = Audio`, sans quoi elle est refusée d'entrée) ; et **les clips de la
+piste sont vidés**, parce qu'un gel n'est pas découpé — les lui appliquer les
+appliquerait deux fois. Plus l'avertissement qui manquait, pour qu'une piste gelée
+sans audio ne se taise pas en silence.
+
+| | avant | **après D186** | attendu |
+|---|---|---|---|
+| gelé contre non gelé | **−6,55 dB**, corr. 0,882 | **−52,79 dB**, corr. 0,999997 | ≤ −100 dB ✘ |
+| témoin : projet NON gelé, avant/après le correctif | — | **−127,43 dB** (le plancher du 24 bits, exactement le chiffre de D177) | identique ✔ |
+
+**L'ATTENDU N° 1 EST ENCORE RÉFUTÉ, ET LE PROFIL DE L'ÉCART DIT POURQUOI.** Tranche
+de 30 s par tranche de 30 s, l'écart vaut **−5 980 dB — c'est-à-dire ZÉRO, au
+flottant près — de 0 à 450 s**, et **−19,79 dB sur les quatre dernières
+secondes**. Décalage : **0 échantillon**. Ce n'est donc pas le remède qui est
+approximatif : il est exact partout sauf à la fin.
+
+**CE QUE LA FIN CACHAIT.** Le fichier de gel fait **19 921 532 trames = 451,735 s**
+là où le projet exporté en fait **20 028 612 = 454,164 s** : **2,43 s manquantes**.
+Et sa dernière demi-seconde n'est pas une extinction — crête **0,306**, RMS 0,069,
+**dernier échantillon −0,17** : une coupure NETTE, au milieu du son. **Ouvert
+comme A33.**
+
+### Phase D187 — A33 : un gel dure ce que dure le PROJET, et le gel devient exact au bit (13/09/2026)
+
+**LA CAUSE.** `renderTrackForFreeze` isole la piste dans un projet d'une seule
+piste — c'est juste, c'est ce qu'on gèle — puis laisse le rendu déduire sa durée
+de ce projet-là : la dernière chose que joue CETTE piste, plus la queue. Or une
+machine qui TIENT — une vielle à roue, un pad, un bourdon — sonne encore quand
+sa dernière note est passée depuis longtemps, et rien ne l'arrête avant la fin du
+morceau. Le gel la coupait net.
+
+**LE REMÈDE** : la durée du gel est celle du PROJET (`lastSoundingTick` du projet
+entier, plus la queue), et non celle de la piste isolée. C'est la seule longueur
+pour laquelle « la piste gelée sonne comme la piste vivante » veuille dire quelque
+chose.
+
+**LE RÉSULTAT, ET IL EST EXACT.** La même piste regelée, le projet réexporté,
+contre le projet non gelé :
+
+| | **mesuré** |
+|---|---|
+| durée du fichier de gel | **20 028 612 trames = 454,164 s** (451,735 avant) |
+| corrélation | **1,000000000** |
+| écart maximal sur un échantillon | **0,000 × 10⁰** |
+| écart par tranche de 60 s | **−5 980 dB partout**, fin comprise |
+
+**Geler une piste ne change plus RIEN au son exporté, au bit près.** L'invariant
+n° 3 du § 6 est rétabli pour le cas qui l'avait perdu.
+
+**A32 ET A33 SE FERMENT.** Et une dette d'exploitation, dite : le correctif vit
+dans `interchange/`, donc dans `vsm-render` aussi — mais **`build/tools/vsm-render`
+n'a pas été relié**, une campagne l'utilisant en ce moment (remplacer ce binaire
+la tuerait). Tout a été mesuré par l'export de l'APPLICATION, qui passe par le
+même code — son commentaire le dit, D185 l'a vérifié au bit près, et D177 avant
+lui. Le binaire se reliera à la fin de la campagne.

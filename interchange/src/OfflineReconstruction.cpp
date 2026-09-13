@@ -123,16 +123,31 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
     // genre de panne que le § 5 bis interdit.
     for (size_t i = 0; i < bundle.project.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
         const auto& track = bundle.project.tracks[i];
-        if (track.kind != vsm::sequencer::Track::Kind::Audio) continue;
-        if (track.audio.empty()) {
-            result.warnings.push_back(libellePiste(i) + " (" + track.name +
-                                       ") : piste audio sans fichier, elle restera silencieuse");
+        // D186 (A32) : UNE PISTE GELÉE EST SONORISÉE PAR SON FICHIER, ELLE AUSSI.
+        //
+        // CE QUI SE PASSAIT : une piste MIDI gelée garde `kind == Midi` et met son
+        // audio dans `frozenAudio`, pas dans `audio`. Cette boucle la sautait donc,
+        // et `ProcessGraph` saute son instrument à bon droit (`if (instrument &&
+        // !track.frozen)`) : personne ne la jouait, et aucun avertissement n'était
+        // émis parce que le `continue` qui en émet un est réservé aux pistes Audio.
+        // Mesuré par D185 : geler `bass` fait bouger le mixage de 6,55 dB et sort
+        // « 01 - bass.wav : silencieux » en stems. L'application, en temps réel,
+        // fait l'inverse (`MainComponent::loadAudioTracks`) — ce qu'on entendait
+        // n'était pas ce qu'on exportait, et c'est l'invariant n° 3 du § 6.
+        const bool gelee = track.frozen && !track.frozenAudio.empty();
+        const auto& sourceAudio = gelee ? track.frozenAudio : track.audio;
+        if (track.kind != vsm::sequencer::Track::Kind::Audio && !track.frozen) continue;
+        if (sourceAudio.empty()) {
+            result.warnings.push_back(libellePiste(i) + " (" + track.name + ") : "
+                                       + (track.frozen ? "piste GELÉE sans audio de gel"
+                                                       : "piste audio sans fichier")
+                                       + ", elle restera silencieuse");
             continue;
         }
         // Chemin RELATIF au dossier de projet, comme les échantillons et les
         // presets : c'est ce qui permet au dossier d'être ouvert ailleurs.
         const std::string chemin =
-            (std::filesystem::path(bundle.folderPath) / track.audio.path).string();
+            (std::filesystem::path(bundle.folderPath) / sourceAudio.path).string();
         // LE RENDU HORS LIGNE DIFFUSE COMME LA LECTURE, mais en ATTENDANT le
         // disque au lieu de se taire (D8.2). C'est ce qui permet d'exporter un
         // projet dont l'audio ne tiendrait pas en mémoire -- exactement celui
@@ -155,8 +170,18 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         // à la déclaration tronquait le son sans rien dire. Mesuré : une voix
         // de 532 s déclarée à 266 s se coupait au milieu du morceau.
         vsm::sequencer::Track pourLesClips = track;
+        // D186 : la piste GELÉE se présente aux fenêtres de lecture comme une
+        // piste audio ordinaire — c'est `frozenAudio` qui décrit son matériau, et
+        // `spansFromTrack` ne connaît que `audio`.
+        pourLesClips.audio = sourceAudio;
+        pourLesClips.kind = vsm::sequencer::Track::Kind::Audio;   // pour spansFromTrack
         pourLesClips.audio.sampleRate = options.sampleRate;
         pourLesClips.audio.frames = charge.source->frames();
+        // UN GEL N'EST PAS DÉCOUPÉ : il rend la piste entière, clips compris.
+        // Lui appliquer les clips de la piste les appliquerait DEUX fois. C'est
+        // mot pour mot la règle du chemin temps réel (`MainComponent`), et les
+        // deux doivent la suivre ensemble, sans quoi l'invariant n° 3 retombe.
+        if (gelee) pourLesClips.clips.clear();
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, options.sampleRate,
             [&](int64_t tick) { return bundle.project.ticksToSeconds(tick); },
@@ -426,12 +451,32 @@ RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
     // DEUX RENDUS, AUX DEUX EXTRÊMES DU PANORAMIQUE. À -1 la loi vaut
     // exactement (1, 0), à +1 exactement (0, 1) : chaque rendu livre donc UN
     // canal inaltéré, sans division ni arrondi. Voir l'en-tête pour le pourquoi.
+    // D187 (A33) : LA LONGUEUR DU PROJET, PAS CELLE DE LA PISTE ISOLÉE.
+    //
+    // Sans cela, le rendu s'arrête à la dernière chose que joue CETTE piste,
+    // plus la queue -- et une machine qui tient (une vielle à roue, un pad, un
+    // bourdon) sonne encore quand on la coupe. Mesuré par D186 : le gel de
+    // `bass` s'arrêtait à 451,735 s pour un projet de 454,164 s, le dernier
+    // échantillon du fichier valant −0,17 : une coupure NETTE, 2,43 s manquantes
+    // et un clic. Une fois remis dans le mixage, l'écart tenait tout entier dans
+    // les quatre dernières secondes (−19,8 dB là, ZÉRO ailleurs).
+    //
+    // Le gel doit donc durer ce que dure le PROJET : c'est la seule longueur
+    // pour laquelle « la piste gelée sonne comme la piste vivante » a un sens.
+    RenderOptions optionsGel = options;
+    if (optionsGel.durationSeconds <= 0.0) {
+        const double finProjet =
+            bundle.project.ticksToSeconds(bundle.project.lastSoundingTick());
+        optionsGel.durationSeconds = finProjet + std::max(0.0, optionsGel.tailSeconds)
+                                   - std::max(0.0, optionsGel.startSeconds);
+    }
+
     vsm::audio::engine::RenderedAudio gauche, droite;
     isolee.project.tracks[0].pan = -1.0f;
-    result = renderBundleToBuffer(isolee, gauche, options);
+    result = renderBundleToBuffer(isolee, gauche, optionsGel);
     if (!result.success) return result;
     isolee.project.tracks[0].pan = 1.0f;
-    RenderResult second = renderBundleToBuffer(isolee, droite, options);
+    RenderResult second = renderBundleToBuffer(isolee, droite, optionsGel);
     if (!second.success) return second;
 
     out.left = std::move(gauche.left);
