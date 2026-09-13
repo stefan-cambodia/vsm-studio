@@ -22515,3 +22515,35 @@ et **l'ascenseur est là, visible sur la photo**, son curseur occupant les deux
 tiers de sa glissière : un tiers de la barre attend sous le bord. Une rangée
 à moitié visible est même ce qui l'annonce. La décision de D61 tient ; ce qui
 manquait était le regard qui la confirme.
+
+### Phase D231 (A40) — la fenêtre d'historique s'ouvrait VIDE (13/09/2026)
+
+**TROUVÉE EN REGARDANT AUTRE CHOSE.** La fenêtre d'historique (D149) n'avait jamais
+été photographiée après une simple ouverture. Une course l'a montrée avec ses trois
+pas ; la même course sans son dernier geste l'a montrée **vide**. Deux photos, une
+seule différence : un geste APRÈS l'ouverture.
+
+La cause tient en deux lignes :
+
+```cpp
+const bool visible = historyWindow_->isVisible();
+if (!visible) refreshHistoryList();     // ne fait RIEN : la fenêtre n'est pas encore visible
+historyWindow_->setVisible(!visible);
+```
+
+`refreshHistoryList()` sort tout de suite quand la fenêtre est invisible — c'est ce
+qui lui évite de travailler pour rien quand elle est fermée —, et elle était appelée
+**avant** `setVisible(true)`. L'historique s'ouvrait donc vide et ne se remplissait
+qu'à la modification suivante. Montrer d'abord, remplir ensuite.
+
+| course | pas affichés |
+|---|---|
+| deux pistes ajoutées, puis la fenêtre ouverte (avant) | **0** |
+| les mêmes, plus un « Muet » après l'ouverture (avant) | 3 |
+| deux pistes ajoutées, puis la fenêtre ouverte (après) | **2** |
+
+**ET UN PAS QUI SE NOMMAIT MAL.** Dans la même photo, « Ajouter une piste » voisinait
+« Ajouter une piste audio » : le pas générique se lisait comme une piste d'une autre
+sorte, alors que les deux entrées du menu disent « MIDI » et « audio ». Le pas dit
+maintenant « Ajouter une piste MIDI » — la clé existait déjà dans la table, le pas
+se traduit donc comme le menu, et `ECRAN 7 NU 0 SANS_PAIRE 0` ne bouge pas.

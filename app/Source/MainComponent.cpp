@@ -4084,8 +4084,15 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                 historyWindow_->setDefaultSize(420, 520);
             }
             const bool visible = historyWindow_->isVisible();
-            if (!visible) refreshHistoryList();
+            // D231 (A40) : MONTRER D'ABORD, REMPLIR ENSUITE. `refreshHistoryList()`
+            // sort tout de suite quand la fenêtre est invisible -- c'est ce qui lui
+            // évite de travailler pour rien quand elle est fermée --, et elle était
+            // appelée AVANT `setVisible(true)` : l'historique s'ouvrait donc VIDE, et
+            // ne se remplissait qu'à la modification suivante. Mesuré : deux pistes
+            // ajoutées puis la fenêtre ouverte, zéro pas ; le même geste suivi d'un
+            // « Muet », trois pas.
             historyWindow_->setVisible(!visible);
+            if (!visible) refreshHistoryList();
             break;
         }
         case kMenuViewProjectNotes: showProjectNotes(); break;
@@ -8774,9 +8781,14 @@ void MainComponent::newProject() {
 void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {
     const bool audio = kind == Track::Kind::Audio;
     const bool groupe = kind == Track::Kind::Group;
+    // D231 : « Ajouter une piste MIDI », et non « Ajouter une piste ». Dans la
+    // fenêtre d'historique, le pas générique voisinait « Ajouter une piste audio »
+    // et se lisait comme une piste d'une autre sorte -- alors que les deux entrées
+    // du menu, elles, disent « MIDI » et « audio ». La clé existe déjà dans la
+    // table : le pas se traduit comme le menu.
     beginProjectEdit(groupe ? juce::String(u8"Ajouter un groupe")
                     : audio  ? juce::String(u8"Ajouter une piste audio")
-                              : juce::String(u8"Ajouter une piste"));
+                              : juce::String(u8"Ajouter une piste MIDI"));
     // D33.5 : LA PALETTE VIENT DE `core/`, comme partout ailleurs. Il y en
     // avait QUATRE : celle-ci, celle de `DawImport`, celle de la chaîne Python
     // et le défaut bleu de `Track`. Quatre palettes veulent dire que la même
