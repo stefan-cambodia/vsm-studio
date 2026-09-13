@@ -53,6 +53,7 @@
 #include "vsm/audio/io/WavFileReader.h"
 #include "ui/UiScale.h"
 #include "ui/Langue.h"
+#include "ui/ReponseDeBanc.h"   // D219
 #include "vsm/interchange/Json.h"
 #include "ui/Shortcuts.h"
 
@@ -723,7 +724,7 @@ MainComponent::MainComponent()
         fenetre->addTextEditor("nom", juce::String(clip->name), tr(u8"Nom :"));
         fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        vsm::app::ui::montrerOuRepondre(*fenetre, 
             [this, piste, clipId, fenetre](int resultat) {
                 if (resultat != 1) return;
                 if (auto* c = findClip(piste, clipId)) {
@@ -731,7 +732,7 @@ MainComponent::MainComponent()
                     c->name = fenetre->getTextEditorContents("nom").toStdString();
                     arrangement_.repaint();
                 }
-            }), true);
+            });
     };
     // « LE CLIP FAIT N MESURES » (D12.6, § 6 du CDC d'étirement). C'est la
     // première commande du suivi de tempo, et la plus utile : un musicien sait
@@ -751,7 +752,7 @@ MainComponent::MainComponent()
         fenetre->addTextEditor("mesures", "4", tr(u8"Mesures :"));
         fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        vsm::app::ui::montrerOuRepondre(*fenetre, 
             [this, piste, clipId, fenetre](int resultat) {
                 if (resultat != 1 || piste >= project_.tracks.size()) return;
                 const int mesures = fenetre->getTextEditorContents("mesures").getIntValue();
@@ -793,7 +794,7 @@ MainComponent::MainComponent()
                     juce::MessageBoxIconType::InfoIcon);
                 choix->addButton(tr(u8"Garder le tempo du projet"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
                 choix->addButton(tr(u8"Adopter ce tempo pour le projet"), 1, juce::KeyPress(juce::KeyPress::returnKey));
-                choix->enterModalState(true, juce::ModalCallbackFunction::create(
+                vsm::app::ui::montrerOuRepondre(*choix, 
                     [this, bpm](int resultat) {
                         if (resultat != 1 || bpm <= 0.0) return;
                         beginProjectEdit(u8"Adopter le tempo du clip");
@@ -803,8 +804,8 @@ MainComponent::MainComponent()
                         loadAudioTracks();
                         arrangement_.repaint();
                         tempoLane_.repaint();
-                    }), true);
-            }), true);
+                    });
+            });
     };
     arrangement_.onClipColourRequested = [this](size_t piste, uint64_t clipId) {
         auto* clip = findClip(piste, clipId);
@@ -4469,48 +4470,6 @@ void MainComponent::showAboutDialog() {
             .replace("%1", juce::String(machines)));
 }
 
-// D215 : LA FENÊTRE D'OPTIONS, REMPLIE PAR LE BANC.
-//
-// Deux gestes d'export passent par une fenêtre modale avant leur sélecteur :
-// « Exporter en audio » (plage, fréquence, profondeur, queue, vitesse, niveau) et
-// « Exporter les stems » (découpage, profondeur, queue). Aucun banc ne savait la
-// remplir : `VSM_EXPORT` et `VSM_EXPORT_STEMS` appellent le cœur du rendu avec des
-// valeurs écrites en dur, et le CÂBLAGE de ces neuf réglages -- ce que la fenêtre
-// dit et ce que le fichier reçoit -- n'était éprouvé par personne. D214 avait
-// décidé de les laisser de côté faute de savoir répondre ; c'est cela qui change.
-//
-// VSM_OPTIONS="clef=valeur;…" : une liste déroulante prend un NUMÉRO de choix (le
-// même que l'identifiant JUCE, 1 pour le premier), un champ texte prend son texte.
-// Une clef inconnue est DITE, et le banc ne croit pas avoir réglé ce qu'il n'a pas
-// réglé.
-bool MainComponent::repondreAuxOptionsDeBanc(juce::AlertWindow& fenetre) {
-    const char* brut = std::getenv("VSM_OPTIONS");
-    if (brut == nullptr || *brut == '\0') return false;
-    juce::StringArray couples;
-    couples.addTokens(juce::String::fromUTF8(brut), ";", "");
-    juce::StringArray posees, refusees;
-    for (const auto& couple : couples) {
-        const juce::String clef = couple.upToFirstOccurrenceOf("=", false, false).trim();
-        const juce::String valeur = couple.fromFirstOccurrenceOf("=", false, false).trim();
-        if (clef.isEmpty()) continue;
-        if (auto* liste = fenetre.getComboBoxComponent(clef)) {
-            liste->setSelectedId(valeur.getIntValue(), juce::dontSendNotification);
-            posees.add(clef + "=" + valeur + " (" + liste->getText() + ")");
-        } else if (auto* champ = fenetre.getTextEditor(clef)) {
-            champ->setText(valeur, false);
-            posees.add(clef + "=" + valeur);
-        } else {
-            refusees.add(clef);
-        }
-    }
-    std::fputs(("VSM_OPTIONS : " + posees.joinIntoString(", ")
-                + (refusees.isEmpty() ? juce::String()
-                                      : juce::String(u8" \u2014 clef(s) inconnue(s) de cette fen\u00eatre : ")
-                                            + refusees.joinIntoString(", "))
-                + "\n").toRawUTF8(), stderr);
-    return true;
-}
-
 bool MainComponent::prendreLeFichierDeBanc(const std::function<void(const juce::File&)>& suite) {
     // D102 : LE SÉLECTEUR, ET LUI SEUL, SAUTÉ PAR LE BANC. Un sélecteur de fichier
     // ne se pilote pas sans souris ; ce qu'il rend, si. Le reste du chemin -- le
@@ -4636,7 +4595,7 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
             }
             return;
         }
-        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        vsm::app::ui::montrerOuRepondre(*fenetre, 
             [fenetre, trouves, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
                 fenetre->exitModalState(resultat);
@@ -4645,7 +4604,7 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
                     || static_cast<size_t>(choix) > trouves.size()) return;
                 poser(trouves[static_cast<size_t>(choix) - 1].id,
                        trouves[static_cast<size_t>(choix) - 1].name);
-            }), false);
+            });
     };
     if (prendreLeFichierDeBanc(suite)) return;   // D102 : le banc
     auto chooser = std::make_shared<juce::FileChooser>(
@@ -4732,7 +4691,7 @@ void MainComponent::chooseInstrumentFromCatalogue() {
     fenetre->addButton(tr(u8"Charger"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     annoncerFenetre(*fenetre);   // D102
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, fenetre, instruments, piste](int resultat) {
             const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
             fenetre->exitModalState(resultat);
@@ -4747,7 +4706,7 @@ void MainComponent::chooseInstrumentFromCatalogue() {
             cible.requestedInstrumentId.clear();   // D76
             cible.instrumentId = instruments[static_cast<size_t>(choix) - 1].instrumentId();
             rebuildFromProject();
-        }), false);
+        });
 #endif
 }
 
@@ -4847,7 +4806,7 @@ void MainComponent::chooseThirdPartyEffect(std::function<void(std::string)> quan
         fenetre->addButton(tr(u8"Insérer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         annoncerFenetre(*fenetre);   // D102
-        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        vsm::app::ui::montrerOuRepondre(*fenetre, 
             [this, fenetre, effetsConnus, quandChoisi](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("effet")->getSelectedId();
                 fenetre->exitModalState(resultat);
@@ -4858,7 +4817,7 @@ void MainComponent::chooseThirdPartyEffect(std::function<void(std::string)> quan
                     return;
                 }
                 browseForThirdPartyEffect(quandChoisi);
-            }), false);
+            });
         return;
     }
     browseForThirdPartyEffect(std::move(quandChoisi));
@@ -5029,7 +4988,7 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
             }
             return;
         }
-        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        vsm::app::ui::montrerOuRepondre(*fenetre, 
             [fenetre, instruments, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
                 fenetre->exitModalState(resultat);
@@ -5038,7 +4997,7 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
                     || static_cast<size_t>(choix) > instruments.size()) return;
                 poser(instruments[static_cast<size_t>(choix) - 1].id,
                        instruments[static_cast<size_t>(choix) - 1].name);
-            }), false);
+            });
     };
     if (prendreLeFichierDeBanc(suite)) return;   // D102 : le banc
     auto chooser = std::make_shared<juce::FileChooser>(
@@ -5175,8 +5134,8 @@ void MainComponent::exportAudioFile() {
                                         : niveau == 3 ? ExportLevel::Lufs14
                                         : niveau == 4 ? ExportLevel::Lufs23 : ExportLevel::AsIs);
     };
-    if (repondreAuxOptionsDeBanc(*fenetre)) { repondre(1); return; }   // D215
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(repondre), false);
+    if (vsm::app::ui::repondreAuxChampsDeBanc(*fenetre)) { repondre(1); return; }   // D215/D219
+    vsm::app::ui::montrerOuRepondre(*fenetre, repondre);
 }
 
 vsm::interchange::LoadedBundle MainComponent::bundleFromSession() {
@@ -5269,8 +5228,8 @@ void MainComponent::exportStems() {
                                  | juce::FileBrowserComponent::canSelectDirectories,
                               [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
     };
-    if (repondreAuxOptionsDeBanc(*fenetre)) { repondre(1); return; }   // D215
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(repondre), false);
+    if (vsm::app::ui::repondreAuxChampsDeBanc(*fenetre)) { repondre(1); return; }   // D215/D219
+    vsm::app::ui::montrerOuRepondre(*fenetre, repondre);
 }
 
 bool MainComponent::exportStemsToFolder(const juce::File& dossier,
@@ -6601,11 +6560,11 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
                            juce::KeyPress(juce::KeyPress::escapeKey));
         std::fputs(("VSM_BOITE : " + fenetre->getName() + " : " + detail.replace("\n", " / ")
                     + "\n").toRawUTF8(), stderr);
-        fenetre->enterModalState(true, juce::ModalCallbackFunction::create([this](int resultat) {
+        vsm::app::ui::montrerOuRepondre(*fenetre, [this](int resultat) {
             if (resultat == 1) placeDroppedAudioOnTracks();
             pendingDroppedAudio_ = juce::File();
             pendingDroppedAudios_.clear();
-        }), true);
+        });
         return;
     }
     // TROIS BOUTONS quand les deux chemins sont ouverts : « Poser » en premier
@@ -6619,13 +6578,13 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
                        juce::KeyPress(juce::KeyPress::escapeKey));
     std::fputs(("VSM_BOITE : " + fenetre->getName() + " : " + detail.replace("\n", " / ")
                 + "\n").toRawUTF8(), stderr);
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create([this](int resultat) {
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this](int resultat) {
         if (resultat == 1) placeDroppedAudioOnTracks();
         else if (resultat == 2 && pendingDroppedAudio_ != juce::File())
             startReconstruction(pendingDroppedAudio_);
         pendingDroppedAudio_ = juce::File();
         pendingDroppedAudios_.clear();
-    }), true);
+    });
 }
 
 // --- D10.2 : le MIDI learn se voit, se défait, et se souvient --------------
@@ -10436,12 +10395,12 @@ void MainComponent::promptRenameTracksInSeries() {
     fenetre->addTextEditor("motif", tr(u8"Piste #"), tr(u8"Motif"));
     fenetre->addButton(tr(u8"Renommer"), 1);
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0);
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, fenetre](int choix) {
             if (choix == 1) renameTracksInSeries(fenetre->getTextEditorContents("motif"));
             fenetre->exitModalState(0);
             fenetre->setVisible(false);
-        }), false);
+        });
 }
 
 juce::String MainComponent::projectStatisticsText() const {
@@ -11099,7 +11058,7 @@ void MainComponent::promptGoToBar() {
                             tr(u8"Position :"));
     fenetre->addButton(tr(u8"Aller"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, fenetre](int resultat) {
             if (resultat != 1) return;
             const juce::String texte = fenetre->getTextEditorContents("position");
@@ -11108,7 +11067,7 @@ void MainComponent::promptGoToBar() {
                     juce::AlertWindow::WarningIcon, tr(u8"Aller à la mesure"),
                     tr(u8"« %1 » n'est pas une position : attendu « 17 » ou « 17.3 » (mesure.temps).")
                         .replace("%1", texte));
-        }), true);
+        });
 }
 
 void MainComponent::startPlaybackForCapture() { transport_.play(); }
@@ -11279,13 +11238,13 @@ void MainComponent::promptMidiProgram() {
     fenetre->addTextEditor("banque", track.midiBank >= 0 ? juce::String(track.midiBank) : juce::String(), tr(u8"Banque :"));
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, fenetre](int resultat) {
             if (resultat != 1) return;
             const juce::String p = fenetre->getTextEditorContents("programme").trim();
             const juce::String b = fenetre->getTextEditorContents("banque").trim();
             setSelectedTrackMidiProgram(p.isEmpty() ? -1 : p.getIntValue() - 1, b.isEmpty() ? -1 : b.getIntValue());
-        }), true);
+        });
 }
 
 void MainComponent::setSelectedTrackInputChannel(int canal) {
@@ -11473,7 +11432,7 @@ void MainComponent::promptSaveTrackPreset() {
                                                      : juce::String(track.name), tr(u8"Nom :"));
     fenetre->addButton(tr(u8"Enregistrer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, fenetre](int resultat) {
             if (resultat != 1) return;
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();
@@ -11484,7 +11443,7 @@ void MainComponent::promptSaveTrackPreset() {
                     tr(u8"Écrit : %1").replace("%1", trackPresetFolder().getChildFile(
                         juce::File::createLegalFileName(nom)
                         + juce::String(vsm::interchange::kTrackPresetExtension)).getFullPathName()));
-        }), true);
+        });
 }
 
 void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
@@ -11679,7 +11638,7 @@ void MainComponent::requestMarker(vsm::midi::Tick tick) {
     // piste, « Place ». Un mot français, deux verbes anglais : trSelon.
     fenetre->addButton(vsm::app::ui::trSelon("repere", u8"Poser"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, tick, fenetre](int resultat) {
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();
             fenetre->exitModalState(resultat);
@@ -11692,7 +11651,7 @@ void MainComponent::requestMarker(vsm::midi::Tick tick) {
                            return a.tick < b.tick;
                        });
             refreshMarkerViews();
-        }), false);
+        });
 }
 
 void MainComponent::renameMarker(size_t index) {
@@ -11702,7 +11661,7 @@ void MainComponent::renameMarker(size_t index) {
     fenetre->addTextEditor("nom", juce::String(project_.markers[index].name), "");
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, index, fenetre](int resultat) {
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();
             fenetre->exitModalState(resultat);
@@ -11711,7 +11670,7 @@ void MainComponent::renameMarker(size_t index) {
             beginProjectEdit(u8"Renommer un repère");
             project_.markers[index].name = nom.toStdString();
             refreshMarkerViews();
-        }), false);
+        });
 }
 
 void MainComponent::removeMarker(size_t index) {

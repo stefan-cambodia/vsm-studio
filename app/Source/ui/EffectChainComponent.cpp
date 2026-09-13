@@ -1,5 +1,6 @@
 #include "EffectChainComponent.h"
 #include "Langue.h"
+#include "ReponseDeBanc.h"   // D219
 #include "vsm/sequencer/MidiEffects.h"
 #include "vsm/audio/effect/BypassableEffect.h"
 #include "vsm/interchange/EffectPreset.h"
@@ -816,7 +817,7 @@ void EffectChainComponent::savePresetOf(size_t index) {
     fenetre->addTextEditor("nom", "", "");
     fenetre->addButton(vsm::app::ui::tr(u8"Enregistrer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+    vsm::app::ui::montrerOuRepondre(*fenetre, 
         [this, description, fenetre](int resultat) {
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();
             fenetre->exitModalState(resultat);
@@ -835,7 +836,7 @@ void EffectChainComponent::savePresetOf(size_t index) {
                 return;
             }
             if (onPresetsChanged) onPresetsChanged();
-        }), false);
+        });
 }
 
 void EffectChainComponent::loadPresetInto(size_t index, const juce::File& fichier) {

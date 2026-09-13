@@ -21951,3 +21951,62 @@ l'on serait tenté de refaire la même chose.
 aucune ligne `VSM_BOITE` — « Poser un repère ici… » s'exécute, et la course s'arrête
 au seuil de cette fenêtre. C'est la même famille que les fenêtres d'options de D215,
 qui viennent d'être ouvertes au banc ; celle-ci attend son tour.
+
+### Phase D219 — les dix-huit fenêtres modales qui demandaient quelque chose à personne (13/09/2026)
+
+**L'INVENTAIRE.** L'application pose **dix-huit** fenêtres modales qui attendent une
+saisie : le nom d'un repère et son renommage, le nom d'une piste, un motif de
+renommage en série, un nombre de mesures à répéter, une position où aller, un
+programme et une banque MIDI, le nom d'un preset d'effet, les neuf réglages des
+deux exports (ouverts par D215), et six autres. Le geste qui les OUVRE est
+pilotable depuis longtemps ; ce qu'elles FONT ne l'était pas. C'est, trait pour
+trait, l'angle mort des sélecteurs de fichier avant D102-D214 — et il coûte la même
+chose : des chemins d'usage courant que personne ne relit.
+
+**CE QUI EST POSÉ.** `repondreAuxChampsDeBanc()` et `montrerOuRepondre()` sortent de
+`MainComponent` dans `app/Source/ui/ReponseDeBanc.h`, et les dix-huit fenêtres
+passent par la seconde : elle montre la fenêtre, ou la remplit et joue **le même
+rappel modal** qu'un clic sur « Valider ». Une règle de sûreté est écrite dedans :
+**elle ne répond que si elle a posé quelque chose.** Sans cela, une course réglée
+pour une fenêtre validerait toutes les autres au passage, et l'on mesurerait une
+cascade que personne n'a demandée ; le refus est dit au journal, avec le nom de la
+fenêtre et les clefs qu'elle ne connaît pas.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Trois fenêtres, choisies parce que
+leur effet se LIT sans souris :
+
+1. **Le nom d'un repère.** `VSM_MENU_CONTEXTE=regle:Poser un repère ici…` avec
+   `VSM_OPTIONS=nom=Refrain` pose un repère à la tête de lecture ; la preuve est le
+   menu lui-même, relu ensuite : « Retirer ce repère » n'est **plus grisée**, et
+   « Renommer ce repère » non plus.
+2. **Le nom d'un preset de piste.** L'attendu écrit d'abord visait « le renommage
+   d'une piste » ; en ouvrant le code pour le mesurer, ce renommage n'a PAS de
+   fenêtre modale — il se fait dans la ligne de piste (`VSM_GESTE_PISTE=renommer:`
+   depuis D36.1). La fenêtre de la même famille est « Enregistrer la piste comme
+   preset », et son effet se lit aussi bien : avec `VSM_OPTIONS=nom=Basson`, un
+   fichier `Basson` apparaît dans le dossier des presets de piste.
+
+Et un témoin de la règle de sûreté : une course qui pose `VSM_OPTIONS=queue=0.0`
+devant la fenêtre de renommage doit **refuser** de répondre et le dire, sans rien
+renommer.
+
+**CE QUE LA MESURE A DIT** (projet `cdl`) :
+
+| Course | journal | effet lu |
+|---|---|---|
+| `regle:Poser un repère ici…` + `nom=Refrain`, puis `regle:?` | « VSM_OPTIONS : nom=Refrain », « exécutée (regle) » | le menu relu rend **« Renommer ce repère… \| Retirer ce repère » sans `[grisee]`** : le repère est là |
+| « Enregistrer la piste comme preset… » + `nom=Basson` | « VSM_BOITE : … Écrit : …/cdl/pistes/Basson.track.json » | le fichier existe |
+| TÉMOIN : la même fenêtre avec `queue=0.0` | « VSM_OPTIONS : aucune clef de cette fenêtre (« Enregistrer la piste comme preset ») parmi queue » | **aucun fichier** |
+
+Les trois attendus tiennent, et le témoin montre que la règle de sûreté fait son
+travail : une clef étrangère ne valide rien, et le refus se lit.
+
+**LE PIÈGE DES ACCENTS, PAYÉ UNE FOIS DE PLUS.** La ligne de refus est sortie
+« aucune clef de cette fenÃªtre » à sa première course : un littéral étroit
+contenant de l'UTF-8, donné à `juce::String`, est relu en Latin-1. C'est écrit dans
+`CLAUDE.md` depuis la « socle » de D167, et cela s'est reproduit dans du code neuf
+le même jour. La parade est dans le code, à l'endroit du défaut :
+`juce::String::fromUTF8(u8"…")` pour toute phrase accentuée d'un journal.
+
+Le fichier de preset écrit pendant la mesure a été retiré du projet de banc
+(`reconstruction/travail/cdl` est revenu à ses cinq entrées).

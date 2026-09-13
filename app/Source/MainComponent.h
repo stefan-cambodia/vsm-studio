@@ -1334,10 +1334,6 @@ private:
     /// D213 : comme `prendreLeFichierDeBanc`, pour un sélecteur qui accepte
     /// PLUSIEURS fichiers (`VSM_FICHIER=a.wav;b.wav`).
     bool prendreLesFichiersDeBanc(const std::function<void(const juce::Array<juce::File>&)>& suite);
-    /// D215 : VSM_OPTIONS="clef=valeur;…" remplit les champs d'une fenêtre d'options
-    /// (listes par NUMÉRO de choix, champs texte par leur texte) et rend `true` :
-    /// l'appelant joue alors sa réponse « valider » sans ouvrir la modale.
-    bool repondreAuxOptionsDeBanc(juce::AlertWindow& fenetre);
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon
