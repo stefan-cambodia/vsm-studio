@@ -1111,6 +1111,11 @@ juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D17
 s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
 course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
 ferait expirer tous les bancs du dépôt.
+`VSM_CONFIRMER=oui|non` répond aux deux questions à deux boutons qui gardent les
+gestes IRRÉVERSIBLES — « Aplatir l'ordre de jeu » et « Reporter la piste en
+audio » —, par le même rappel modal qu'un clic. Ces deux boîtes passaient par la
+boîte statique de JUCE : muettes au journal et infranchissables par une course,
+alors que ce sont les deux gestes que l'application déclare définitifs.
 `VSM_ENREGISTRER=dossier` écrit le projet, par la fonction de « Enregistrer
 sous… », APRÈS tous les autres verbes : `VSM_MENU` passe avant `VSM_MENU_CONTEXTE`
 et avant `VSM_TOUCHE`, si bien qu'une course qui enregistre par le menu écrit

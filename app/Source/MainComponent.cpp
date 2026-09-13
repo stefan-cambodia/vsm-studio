@@ -88,6 +88,21 @@ void demanderOuiNon(juce::MessageBoxIconType icone, const juce::String& titre, c
                     juce::ModalComponentManager::Callback* suite) {
     std::fputs(("VSM_BOITE : " + titre + " : " + message.replace("\n", " / ") + " : [" + oui + " | " + non
                 + "]\n").toRawUTF8(), stderr);
+    // D235 : VSM_CONFIRMER=oui|non -- la réponse, sans souris, par le MÊME rappel
+    // modal qu'un clic. Les deux gestes que l'application déclare DÉFINITIFS
+    // (aplatir l'ordre de jeu, reporter une piste en audio) passaient par la boîte
+    // statique de JUCE : muets au journal, infranchissables par une course. Plus un
+    // geste est destructeur, plus sa question doit être lisible.
+    if (const char* reponse = std::getenv("VSM_CONFIRMER"); reponse != nullptr && *reponse) {
+        const juce::String demande = juce::String(reponse).trim().toLowerCase();
+        const bool accepte = demande.startsWith("o") || demande.startsWith("y") || demande == "1";
+        std::fputs((juce::String("VSM_CONFIRMER : ") + (accepte ? "oui" : "non") + "\n").toRawUTF8(), stderr);
+        if (suite != nullptr) {
+            suite->modalStateFinished(accepte ? 1 : 0);
+            delete suite;   // la boîte l'aurait possédé ; sans boîte, c'est à nous
+        }
+        return;
+    }
     juce::AlertWindow::showOkCancelBox(icone, titre, message, oui, non, parent, suite);
 }
 /// D121 : UNE BOÎTE DONT LE TEXTE NE DÉCIDE PLUS LA LARGEUR. `AlertWindow` met
@@ -6989,7 +7004,7 @@ void MainComponent::showPlayOrder() {
             // APLATIR EST LE SEUL MOMENT OÙ L'ORDRE TOUCHE AU MATÉRIAU, et
             // c'est irréversible autrement que par l'annulation : on le dit
             // avant, comme le report de piste (D5.5).
-            juce::AlertWindow::showOkCancelBox(
+            demanderOuiNon(                     // D235 : dite au journal, et répondable
                 juce::AlertWindow::QuestionIcon, tr(u8"Aplatir l'ordre de jeu"),
                 tr(u8"Les notes, les clips, les courbes et les repères seront réécrits pour "
                    u8"jouer l'ordre demandé (%1 sections). C'est annulable tant que la session "
@@ -8997,7 +9012,7 @@ void MainComponent::bounceSelectedTrack() {
     // matériau, et on le demande avant de le faire. L'annulation le rattrape
     // dans la session, mais pas après une fermeture -- c'est exactement ce que
     // veut dire « définitif », et le dire vaut mieux que de le découvrir.
-    juce::AlertWindow::showOkCancelBox(
+    demanderOuiNon(                             // D235 : dite au journal, et répondable
         juce::AlertWindow::QuestionIcon, tr(u8"Reporter la piste en audio"),
         tr(u8"Les notes, l'instrument et les inserts de « %1 » seront remplacés par leur rendu. "
            u8"C'est annulable tant que la session est ouverte, et définitif ensuite.\n\nPour un "

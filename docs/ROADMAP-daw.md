@@ -22739,3 +22739,57 @@ un chiffre juste, sur un panneau qui n'affichait rien et détruisait au premier
 clic. **Mesurer le coût d'un dessin ne dit rien de ce qu'il dessine.** C'est la
 troisième fois aujourd'hui qu'un simple regard sur un écran en marche trouve ce
 qu'aucune suite ne voyait (D225 la console, D231 l'historique, D234 l'automation).
+
+### Phase D235 — les deux gestes IRRÉVERSIBLES sont les seuls que personne ne pouvait vérifier (13/09/2026)
+
+En cherchant à éprouver « Ordre de jeu ▸ Aplatir » — le seul moment où l'ordre
+touche au matériau —, sa boîte de confirmation s'est révélée **muette et
+infranchissable** : elle passe par `juce::AlertWindow::showOkCancelBox` directement,
+et non par `demanderOuiNon` (D104), qui écrit la ligne `VSM_BOITE`. Le dépôt en
+compte **deux** dans ce cas, et ce sont exactement les deux gestes que
+l'application elle-même déclare **définitifs** :
+
+| geste | ce qu'il réécrit | sa phrase |
+|---|---|---|
+| « Aplatir l'ordre de jeu » | les notes, les clips, les courbes et les repères | « annulable tant que la session est ouverte, et définitif ensuite » |
+| « Reporter la piste en audio » | les notes, l'instrument et les inserts d'une piste | la même |
+
+**C'est l'inverse de ce qu'on voudrait** : plus un geste est destructeur, plus sa
+question doit être lisible par une course. La règle de D95 le dit depuis longtemps
+(« une boîte se lit au moment où elle est DEMANDÉE ») ; ces deux-là y échappaient.
+
+**CE QUI EST POSÉ.** Les deux passent par `demanderOuiNon`, qui écrit déjà la ligne,
+et cette fonction apprend à répondre : `VSM_CONFIRMER=oui|non` joue le MÊME rappel
+modal qu'un clic, sans souris.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (le projet à deux repères de D227,
+`Intro` au tick 0 et `Couplet` à 15 360, donc deux sections) :
+
+1. La boîte **s'écrit** : `VSM_BOITE : Aplatir l'ordre de jeu : … : [Aplatir | Annuler]`.
+2. `VSM_CONFIRMER=non` : le projet enregistré est **identique** à celui d'avant —
+   mêmes repères, même matériau.
+3. `VSM_CONFIRMER=oui`, l'ordre étant « Intro, Intro » : le projet change, et ses
+   **repères changent** (ce sont ceux du projet aplati).
+
+**CE QUE LA MESURE A DIT.**
+
+```
+VSM_BOITE : Aplatir l'ordre de jeu : Les notes, les clips, les courbes et les repères seront réécrits
+            pour jouer l'ordre demandé (2 sections)… : [Aplatir | Annuler]
+```
+
+| course | repères du projet enregistré | clips de `melange` |
+|---|---|---|
+| `VSM_CONFIRMER=non` | `Intro` @0, `Couplet` @15 360 | un seul, (0, 0) |
+| `VSM_CONFIRMER=oui`, ordre « Intro, Intro » | `Intro` @0, **`Intro` @15 360** | **deux**, (0, 15 360) et (15 360, 15 360) |
+
+Les trois attendus tiennent, et le troisième mieux qu'annoncé : l'ordre « Intro,
+Intro » ne se contente pas de changer les repères, il écrit **deux clips de 15 360
+ticks** — la section jouée deux fois, chacune de la longueur exacte de la section.
+C'est la première fois que « Aplatir » est exécuté par autre chose qu'une main.
+
+Et la seconde boîte, celle du report, écrit maintenant sa ligne elle aussi —
+mesurée sur un refus, qui ne rend rien : « Les notes, l'instrument et les inserts
+de « melange » seront remplacés par leur rendu… », puis la piste intacte
+(`vsm.supersaw`, un clip). Le report lui-même n'est pas mesuré ici : il RENDRAIT
+de l'audio, et la règle du jour l'interdit tant que la campagne tourne.
