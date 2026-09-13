@@ -19655,3 +19655,68 @@ séance dont la clé USB est partie avec.
 seulement LU — une constante et un nom de classe. Le citer comme une preuve était
 un raccourci ; il est maintenant éprouvé, et il tient mieux que je ne l'avais
 écrit.
+
+### D177 (attendus) — le quarante-sixième audit : l'export du DAW et `vsm-render`, sur le cas que D46 n'a pas couvert (13/09/2026)
+
+**CE QUI EXISTE, ET CE QU'IL NE COUVRE PAS.** L'invariant n° 3 du § 6 — rendu
+temps réel et rendu hors ligne identiques à l'échantillon près — a été éprouvé sur
+un vrai morceau par la **vérification D46** : `children-dream-v7`, **six pistes,
+six machines, 232,53 s**, corrélation **1,000000**, écart **−129,96 dB** (le
+plancher de quantification entre un fichier 24 bits et un flottant 32 bits). C'est
+une bonne mesure, et elle laisse dehors exactement ce qui peut casser :
+
+- **aucune piste AUDIO** — donc ni lecture disque, ni préchargement, ni
+  rééchantillonnage dans le chemin comparé ;
+- **aucun bus de GROUPE** — donc pas de sommation intermédiaire ;
+- et neuf mois de phases depuis (D47 à D176) sans que personne ne le rejoue.
+
+**LE CAS D'AUJOURD'HUI.** `children-c3-plafond` : **12 pistes, 9 machines, 2
+pistes audio de 40 Mo, 1 bus de groupe, 452,16 s**. C'est le projet le plus dur
+dont le dépôt dispose, et c'est celui que la chaîne produit vraiment.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Même protocole que D46, pour que
+les deux chiffres se comparent : export de l'application (`VSM_EXPORT`) contre
+`vsm-render` **à la même fréquence**, corrélation et écart RMS calculés sur les
+deux fichiers alignés.
+
+1. **Corrélation ≥ 0,999999** et **écart ≤ −100 dB**. Réfuté sinon, et l'on
+   cherchera alors lequel des trois nouveaux venus — piste audio, bus de groupe,
+   durée — le casse.
+2. **Aucun décalage temporel** : le maximum de corrélation croisée est à
+   **0 échantillon**. C'est la première chose que D46 a dû vérifier, et un
+   décalage d'un seul bloc suffirait à tout expliquer de travers.
+3. Les deux fichiers ont la **même durée** et la **même fréquence** — sinon les
+   deux premiers chiffres ne veulent rien dire.
+
+### Phase D177 — l'invariant tient sur le cas dur : douze pistes, deux pistes audio, un bus de groupe (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.** `children-c3-plafond` (12 pistes, 9 machines,
+2 pistes audio de 40 Mo, 1 bus de groupe, 452,16 s), exporté par l'application
+puis rendu par `vsm-render` à la même fréquence :
+
+| | attendu | **mesuré** |
+|---|---|---|
+| durée et fréquence | identiques | **20 028 612 échantillons, 2 canaux, 44 100 Hz, 454,164 s** des deux côtés |
+| décalage temporel | 0 échantillon | **0** |
+| corrélation | ≥ 0,999999 | **1,000000000** |
+| écart | ≤ −100 dB | **−144,35 dBFS**, soit **−127,43 dB sous le signal** |
+
+**CE QUE L'ÉCART CONTIENT, ET IL NE CONTIENT QUE CELA.** L'application écrit en
+**24 bits avec bruit de dither**, `vsm-render` en **flottant 32 bits** : l'écart
+maximal sur un échantillon est **2,384 × 10⁻⁷**, c'est-à-dire exactement **deux
+LSB de 24 bits** (2⁻²³ = 1,19 × 10⁻⁷) — la signature d'un TPDF de ±1 LSB plus
+l'arrondi, et rien d'autre. Il n'y a pas de différence de SON entre les deux
+chemins ; il y a la différence entre deux formats de fichier.
+
+**POURQUOI CETTE MESURE VALAIT LA PEINE ALORS QUE D46 AVAIT DÉJÀ CONCLU.** D46
+tenait sur `children-dream-v7` : **six pistes, six machines, 232,53 s, aucune
+piste audio, aucun bus de groupe**. Trois choses entraient donc aujourd'hui dans
+le chemin comparé pour la première fois — la **lecture disque** des pistes audio
+avec son préchargement, la **sommation d'un bus de groupe**, et le **double de la
+durée**. Aucune des trois ne déplace un échantillon. Et `vsm-render` le dit de son
+côté : « 11/12 piste(s) sonorisée(s) », la douzième étant le bus.
+
+**CE QUE CELA GARANTIT, ET C'EST LE FONDEMENT DE TOUT LE RESTE.** La chaîne
+d'analyse optimise contre `vsm-render` ; le musicien écoute l'application. Si les
+deux divergeaient, chaque distance publiée par ce dépôt mesurerait un son que
+personne n'entend. **Les deux rendent le même.**
