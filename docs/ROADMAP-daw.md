@@ -23311,3 +23311,24 @@ valait déjà pour la taille des fenêtres :
 Les trois bornes du curseur se lisent maintenant dans le journal : 20 Hz, la valeur
 demandée, 18 000 Hz. Et le moteur suit dans les trois cas, ce qui n'était vrai que
 dans un seul avant la correction.
+
+
+### Phase D248 — les six gestes de piste disent enfin ce qu'ils ont obtenu (13/09/2026)
+
+D247 a montré qu'un crochet peut se dire réussi sans rien faire. La même faute
+dormait dans toute la famille : `muet`, `armer`, `renommer:`, `choisir:`,
+`couleur:` et `volume:` rendaient `true` **sans un mot**. Un « volume:0.5 » sur une
+piste hors bornes, un « muet » sur un projet vide se lisaient comme des réussites.
+
+Chacun écrit maintenant l'état de la piste APRÈS son passage — nom, muet, armée,
+volume, couleur —, et « aucune piste choisie » quand il n'y en a pas. Quatre gestes
+enchaînés se lisent alors comme un récit :
+
+    VSM_GESTE : muet : melange muet, volume 1.220, couleur ff6b9bff
+    VSM_GESTE : volume : melange muet, volume 0.500, couleur ff6b9bff
+    VSM_GESTE : renommer : Essai muet, volume 0.500, couleur ff6b9bff
+    VSM_GESTE : couleur : Essai muet, volume 0.500, couleur ffff0000
+
+Chaque ligne porte ce que la suivante doit trouver, et le volume de départ (1,220)
+n'est pas 1,0 : c'est celui que la chaîne a écrit dans ce projet. Un banc qui
+supposerait 1,0 se tromperait, et il le verrait maintenant du premier coup d'œil.

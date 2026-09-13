@@ -173,11 +173,29 @@ public:
     /// de ne rien faire en silence.
     bool runTrackGestureForCapture(const juce::String& geste) {
         const size_t piste = trackList_.selectedTrackIndex();
-        if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); return true; }
+        // D248 : CHAQUE GESTE DIT CE QU'IL A OBTENU. Ils rendaient tous `true` sans
+        // un mot : un « volume:0.5 » sur une piste hors bornes, un « muet » sur un
+        // projet vide, se lisaient comme des réussites. C'est la faute que D247
+        // vient de payer sur la façade, et elle vaut pour toute la famille.
+        const auto dire = [this, piste](const juce::String& quoi) {
+            if (piste >= project_.tracks.size()) {
+                std::fputs(("VSM_GESTE : " + quoi + juce::String::fromUTF8(u8" — aucune piste choisie\n"))
+                               .toRawUTF8(), stderr);
+                return;
+            }
+            const auto& t = project_.tracks[piste];
+            std::fputs(("VSM_GESTE : " + quoi + " : " + juce::String::fromUTF8(t.name.c_str())
+                        + (t.muted ? " muet" : "") + (t.armed ? " armée" : "")
+                        + juce::String::fromUTF8(u8", volume ") + juce::String(t.volume, 3)
+                        + juce::String::fromUTF8(u8", couleur ")
+                        + juce::String::toHexString(static_cast<int>(t.colorRgba)) + "\n").toRawUTF8(), stderr);
+        };
+        if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); dire("muet"); return true; }
         // D110 : armer, comme le bouton R -- pour les boîtes du départ d'une prise.
-        if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); return true; }
+        if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); dire("armer"); return true; }
         if (geste.startsWithIgnoreCase("renommer:")) {
             trackList_.renommer(piste, geste.fromFirstOccurrenceOf(":", false, false));
+            dire("renommer");
             return true;
         }
         // D38 : CHOISIR PLUSIEURS PISTES SANS SOURIS. « choisir:0,2,3 » pose la
@@ -200,10 +218,12 @@ public:
         if (geste.startsWithIgnoreCase("couleur:")) {
             appliquerCouleurDePiste(
                 piste, juce::Colour::fromString("ff" + geste.fromFirstOccurrenceOf(":", false, false)));
+            dire("couleur");
             return true;
         }
         if (geste.startsWithIgnoreCase("volume:")) {
             trackList_.reglerVolume(piste, geste.fromFirstOccurrenceOf(":", false, false).getFloatValue());
+            dire("volume");
             return true;
         }
         // D132 : facade:<légende>=<valeur> -- une commande de la façade affichée,
