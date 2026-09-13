@@ -22793,3 +22793,53 @@ mesurée sur un refus, qui ne rend rien : « Les notes, l'instrument et les inse
 de « melange » seront remplacés par leur rendu… », puis la piste intacte
 (`vsm.supersaw`, un clip). Le report lui-même n'est pas mesuré ici : il RENDRAIT
 de l'audio, et la règle du jour l'interdit tant que la campagne tourne.
+
+### Phase D236 — les gestes d'édition du piano roll, mesurés sur le FICHIER écrit (13/09/2026)
+
+Le menu *Édition* porte cent huit entrées, dont une vingtaine réécrivent les notes.
+Les phases D21 et D22 les ont posées et vérifiées à l'époque, une par une, sur des
+cas construits. Personne ne les a jamais reprises **sur un vrai morceau**, ni
+vérifiées **dans le MIDI écrit derrière** — ce que voit le logiciel suivant.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (`cdl`, une piste, 2 219 notes,
+480 ticks par noire, tout sélectionné puis un geste, puis `VSM_ENREGISTRER` et
+relecture du `.mid` par `mido`) :
+
+1. **Transposer +1 demi-ton** : les 2 219 hauteurs montent de 1, aucune note perdue.
+2. **Octave +** : elles montent de 12.
+3. **Quantifier (100 %)** : tous les débuts tombent sur un multiple de la grille
+   (1/16 = 120 ticks) ; le compte ne change pas.
+4. **Legato** : plus aucun silence entre deux notes consécutives de même hauteur —
+   chaque note finit où la suivante commence.
+5. **TÉMOIN** : la même course sans geste rend un `.mid` identique à l'original,
+   note pour note — sans quoi les quatre mesures ci-dessus ne prouveraient rien de
+   ce que le geste a fait.
+
+**CE QUE LA MESURE A DIT** (`cdl`, 2 219 notes, 480 ticks par noire, MIDI relu par
+`mido`) :
+
+| geste | notes | hauteurs | débuts sur la grille 1/16 | silences entre notes |
+|---|---|---|---|---|
+| **témoin** (aucun geste) | 2 219 | — | 15 / 2 219 | 193 |
+| Transposer +1 demi-ton | 2 219 | **+1 partout** (min = max = 1) | 15 / 2 219 | 193 |
+| Octave + | 2 219 | **+12 partout** | 15 / 2 219 | 193 |
+| Quantifier (100 %) | 2 219 | **inchangées** | **2 219 / 2 219** | 234 |
+| Legato | 2 219 | inchangées | 15 / 2 219 | **0** |
+
+**Les cinq attendus tiennent.** Le témoin d'abord, et c'est lui qui fait tenir le
+reste : sans geste, le `.mid` écrit est **identique à l'original, note pour note** —
+donc chaque écart des quatre lignes suivantes est bien l'œuvre du geste, et de rien
+d'autre (ni de la relecture, ni de l'écriture).
+
+**UNE PRÉCAUTION QUI A SERVI.** Le premier relevé comparait les notes **deux à
+deux, dans l'ordre** : après quantification, l'ordre change (des notes déplacées se
+croisent) et la colonne « Δ hauteur » affichait −40/+40, ce qui donnait à lire que
+« Quantifier » transposait. C'est le piège payé le 13/09 au matin sur les listes
+d'événements MIDI. Repris en comparant les **multiensembles** (`collections.Counter`)
+: hauteurs identiques, et durées identiques aussi (439 durées distinctes de part et
+d'autre) — « Quantifier (100 %) » déplace les débuts sur la grille et **ne touche à
+rien d'autre**, ce qui est exactement sa promesse.
+
+Le nombre de silences monte de 193 à 234 après quantification : c'est attendu — des
+notes qui se chevauchaient légèrement, remises sur la grille, cessent de se
+chevaucher. Legato les supprime tous (0), et c'est sa définition.
