@@ -19865,3 +19865,56 @@ volet de la même ligne répétée.
 question à poser d'un avertissement n'est pas « est-il affiché ? » mais « **où
 vit-il une fois qu'on a cliqué OK ?** ». Les trois autres familles d'avertissement
 de l'ouverture avaient déjà répondu ; celle-ci était restée en arrière.
+
+### D181 (attendus) — le quarante-neuvième audit : un `project.json` abîmé (13/09/2026)
+
+**POURQUOI CE CAS.** Un disque plein pendant un enregistrement, une copie
+interrompue, un `scp` coupé : un `project.json` tronqué est une panne banale, et
+c'est le seul fichier dont dépend tout le reste. Trois comportements sont
+possibles et deux détruisent le travail restant.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Une copie de
+`children-c3-plafond` dont `project.json` est coupé au milieu :
+
+1. **L'application le DIT** : une phrase, au terminal comme à l'écran, qui nomme
+   le dossier et la raison. Réfuté si elle s'ouvre en silence.
+2. **Elle n'ouvre pas la MOITIÉ du projet** : pas de pistes à demi lues, pas de
+   notes orphelines. Soit tout, soit rien.
+3. **LE FICHIER ABÎMÉ N'EST PAS ÉCRASÉ.** C'est l'attendu qui compte : si
+   l'ouverture ratée laisse malgré tout le dossier comme « projet courant », le
+   premier Ctrl+S y écrira un projet vide, et ce qui restait à sauver
+   — les instruments, le `.mid`, les échantillons — perdra ce qui les relie.
+   **Réfuté si `project.json` change d'un octet** après un Ctrl+S qui suit une
+   ouverture ratée.
+
+### Phase D181 — un `project.json` abîmé : dit avec sa position, rien de chargé, rien d'écrasé (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS**, et il a fallu d'abord rendre le chemin
+mesurable.
+
+| attendu | **mesuré** |
+|---|---|
+| 1. l'application le dit | ✔ `VSM_BOITE : Projet illisible : project.json : JSON invalide : chaîne non terminée (position 1200)` — le fichier, la raison ET la position de la coupure |
+| 2. pas de demi-projet | ✔ rien n'est chargé ; le titre reste « Vintage Synth MIDI Studio », sans nom de projet |
+| 3. le fichier abîmé n'est pas écrasé | ✔ `md5sum -c` après un Ctrl+S qui suit l'ouverture ratée : **inchangé** — parce qu'aucun dossier de projet n'a été adopté, et que Ctrl+S ouvre donc un sélecteur au lieu d'écrire |
+
+**LE CHEMIN DE L'UTILISATEUR N'ÉTAIT PILOTABLE PAR PERSONNE, et c'est ce que
+l'audit a trouvé d'abord.** `VSM_PROJET` ouvre par `openProjectFolderForCapture`
+— un chemin de banc — et ne prouve donc RIEN de « Fichier ▸ Ouvrir un projet
+VSM… », qui est celui par lequel un musicien ouvre réellement un projet. Son
+sélecteur de dossier ne passait pas par `prendreLeFichierDeBanc`, à la différence
+des trois autres depuis D102 : ce que l'application dit d'un projet abîmé était
+**invérifiable**, et je m'apprêtais à le conclure d'une lecture du code. Le
+crochet est posé (une ligne, la même que les trois autres), et le chemin se mesure
+maintenant.
+
+**LE TÉMOIN QUI PROTÈGE LE CORRECTIF** : le même chemin, le même verbe, sur le
+projet SAIN — `VSM_TITRE : Vintage Synth MIDI Studio -- chaine`, les 5 140 notes
+douteuses signalées, aucune boîte d'erreur. Ouvrir un projet par le menu marche
+toujours.
+
+**CE QUE LA POSITION APPORTE, et personne ne l'avait demandée.** « position
+1200 » est exactement l'octet où j'avais coupé le fichier. Un musicien qui a perdu
+son projet dans une copie interrompue sait ainsi **combien** il a perdu, et un
+`project.json` tronqué se répare parfois à la main ; une erreur qui dit seulement
+« illisible » ne le permettrait pas.

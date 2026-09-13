@@ -5506,10 +5506,19 @@ void MainComponent::openProjectBundle() {
     const auto chooserFlags = juce::FileBrowserComponent::openMode
                             | juce::FileBrowserComponent::canSelectDirectories;
 
-    chooser->launchAsync(chooserFlags, [this, chooser](const juce::FileChooser& fc) {
-        const juce::File folder = fc.getResult();
+    // D181 : LE SÉLECTEUR SAUTÉ PAR LE BANC, comme pour les trois autres depuis
+    // D102. Sans lui, « Ouvrir un projet VSM… » — le chemin par lequel un
+    // musicien ouvre RÉELLEMENT un projet — n'était pilotable par personne, et
+    // ce qu'il dit d'un projet abîmé était invérifiable. `VSM_PROJET` ouvre par
+    // un autre chemin (`openProjectFolderForCapture`) et ne prouve donc rien de
+    // celui-ci.
+    auto suite = [this](const juce::File& folder) {
         if (folder == juce::File()) return;
         loadProjectBundleFromFolder(folder);
+    };
+    if (prendreLeFichierDeBanc(suite)) return;
+    chooser->launchAsync(chooserFlags, [suite, chooser](const juce::FileChooser& fc) {
+        suite(fc.getResult());
     });
 }
 
