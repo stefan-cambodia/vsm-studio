@@ -22294,9 +22294,9 @@ aussi à l'œil.
 
 ### La journée du 13/09/2026, seconde moitié, en un coup d'œil
 
-Vingt phases de plus (D206 à D225), trois anomalies ouvertes ET fermées (A37 à
-A39), un élément neuf porté à l'INDEX (B14), cinq verbes de banc, deux gardes dans
-`tools/`. Le fil qui les relie : **ce qu'aucune course ne peut atteindre, personne
+Vingt-huit phases de plus (D206 à D233), quatre anomalies ouvertes ET fermées
+(A37 à A40), un élément neuf porté à l'INDEX (B14), six verbes de banc, quatre
+gardes dans `tools/`. Le fil qui les relie : **ce qu'aucune course ne peut atteindre, personne
 ne le relit** — et chaque chemin rendu pilotable a rendu un défaut.
 
 | phases | ce qui a été trouvé | le chiffre |
@@ -22312,6 +22312,13 @@ ne le relit** — et chaque chemin rendu pilotable a rendu un défaut.
 | **D219-D222** | les **dix-huit fenêtres modales** ouvertes au banc, et ce qu'elles font | `Voix 1`, `mes. 17 · 3`, « Programme MIDI (42, banque 3) », clip de **15 360 ticks** |
 | **D223-D224** | **A39** : « note douteuse » désigne 53 à 91 % des notes — et la vérité du corpus tranche | 27 → 38 → 49 → **60 %** de notes justes ; seuil confirmé, **B14** ouverte |
 | **D225** | la console regardée EN MARCHE pour la première fois | `bass` **33 px** de vumètre, `other` 22, le reste 0 à 3 |
+| **D226** | le transport et la tête de lecture, vus en marche | `00:01,254` → `00:04,307` pour 3 s de montre ; la tête, 176 px |
+| **D227** | deux repères tombaient au même tick : `seekAllViews` ne déplaçait pas les vues | `Couplet` à **15 360** ticks (mesure 9 exacte), « (2 sections) » |
+| **D228-D229** | les fenêtres modales s'annoncent ; un banc de fumée pour onze verbes | **11 sur 11** |
+| **D230** | le premier lancement d'un nouveau venu, et une suspicion levée | fenêtre **1 280 × 742**, bornée par l'écran ÷ 150 % |
+| **D231 (A40)** | **la fenêtre d'historique s'ouvrait vide** — remplie avant d'être montrée | **0 pas → 2** sur la même course |
+| **D232** | B14 affinée : l'inversion vient de la BASSE, et ma règle comptait les tenues comme fausses | bass **19 % → 60 %** de bonnes hauteurs ; la courbe, 55 → 65 → 77 → **89** → 80 % |
+| **D233** | les treize gestes de sélection disent leur compte | 738 / 74 / 418 sur une piste de 738 notes |
 
 **Trois leçons de méthode, payées aujourd'hui et écrites dans `CLAUDE.md`** : un
 témoin ne se COMPTE pas, il se LIT (D210) ; une comparaison dont un côté manque
