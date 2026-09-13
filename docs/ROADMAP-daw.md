@@ -23470,3 +23470,35 @@ mais « corriger un biais d'octave sur la basse », et il se mesure d'avance : s
 à 40,4 %** sur ce stem — sans toucher à rien d'autre. C'est l'attendu à écrire
 avant d'y toucher, et le travail lui-même attend la fin de la course
 (`analyse/analyzer/` est interdit tant qu'elle tourne).
+
+
+### Phase D253 — ce que la basse transcrite est VRAIMENT, note par note (13/09/2026)
+
+« 27 % de hauteurs exactes » est un chiffre qui décourage sans instruire : il met
+dans le même sac une note inventée, une note à l'octave et une note juste que le
+transcripteur a re-attaquée. Les 1 755 notes de basse des trois lots, rangées par
+CE QU'ELLES SONT :
+
+| ce que la vérité dit de la note transcrite | notes | part |
+|---|---|---|
+| attaque exacte, hauteur exacte | 476 | **27,1 %** |
+| **re-attaque d'une note tenue de la même hauteur** | 523 | **29,8 %** |
+| attaque à l'octave (le biais de D252) | 295 | 16,8 % |
+| note tenue à l'octave | 176 | 10,0 % |
+| une AUTRE hauteur sonne à cet instant | 275 | 15,7 % |
+| **rien ne sonne : note inventée** | **10** | **0,6 %** |
+
+**Trois choses que ce tableau dit et que « 27 % » cachait :**
+
+1. **La bonne hauteur est jouée dans 56,9 % des cas** (27,1 + 29,8) — la moitié de
+   ce que la règle stricte comptait comme faux est une note JUSTE, re-attaquée.
+2. **Les erreurs d'octave pèsent 26,8 %** (16,8 + 10,0), et D252 a montré qu'elles
+   sont à 84 % dans le même sens. C'est le premier chantier, et il est cerné.
+3. **La chaîne n'invente presque jamais : 10 notes sur 1 755, soit 0,6 %.** C'est
+   le chiffre le plus important du tableau, et le plus inattendu : le reproche
+   qu'on adresse d'ordinaire à une transcription automatique — « elle met des notes
+   partout » — ne tient pas ici. Elle se trompe d'octave, elle se trompe de
+   hauteur, elle redécoupe les tenues ; elle n'invente pas.
+
+Ce qui reste vraiment faux est donc **15,7 % de hauteurs étrangères** — et c'est là
+qu'ira le travail après les octaves.
