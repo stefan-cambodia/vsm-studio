@@ -22357,3 +22357,22 @@ ces mêmes lots. Deux mesures indépendantes qui tombent au même endroit valent
 qu'une mesure sûre d'elle. La chaîne, sur ce corpus, **oublie un peu plus qu'elle
 n'invente** (8 298 notes à retrouver, 5 020 proposées) — c'est le chiffre qui
 manquait pour savoir de quel côté chercher.
+
+**ET LA MÊME MESURE SUR DEUX AUTRES LOTS (D224 ter) — l'inversion tient.** Un
+chiffre vu une fois est une anecdote ; trois lots indépendants en font un fait :
+
+| Confiance | `r1-sec-banc` (10 m.) | `r1-prod-banc` (10 m.) | `r1f-sec-banc` (6 m.) |
+|---|---|---|---|
+| [0,00 ; 0,35) | 27,1 % | 28,7 % | 25,5 % |
+| [0,35 ; 0,45) | 37,9 % | 35,8 % | 31,1 % |
+| [0,45 ; 0,55) | 48,6 % | 49,8 % | 40,1 % |
+| [0,55 ; 0,65) | **60,0 %** | **59,0 %** | **51,1 %** |
+| [0,65 ; 0,80) | 50,0 % | 47,8 % | 35,7 % |
+| précision globale | 43,8 % | 42,9 % | 35,7 % |
+| rappel | 38,7 % | 34,7 % | 42,1 % |
+
+**Trois fois la même forme** : la montée jusqu'à [0,55 ; 0,65), puis la chute — de
+10, 11 et 15 points. Le maximum est toujours dans la tranche qui suit
+immédiatement le seuil, ce qui confirme que 0,55 est à sa place, et l'inversion
+au-dessus n'est pas un accident d'échantillon. B14 est donc un fait mesuré, pas
+une impression.
