@@ -24751,3 +24751,16 @@ entrées font ce qu'elles annoncent. Trois « identiques » sur quatre s'expliqu
 sans défaut — un défaut déjà coché, une forme de fondu qui est le défaut, une
 entrée grisée. Le menu du clip audio est sain, une fois D262, D263 et D275
 corrigés.
+
+**ET LE MENU DU CLIP MIDI, balayé de la même façon, est sain sans correction.**
+Huit entrées, cinq changent le projet (muet, les répétitions, renommer), trois ne
+le changent pas et chacune a sa raison : « Zoom : tout voir » et « Zoom : la
+sélection » sont des gestes de VUE, qui ne doivent rien écrire ; « Couleur de la
+piste » s'applique à un clip IMPLICITE, qui tient déjà sa couleur de sa piste
+(`materializeImplicitClips` la lui donne au chargement). Aucun geste mort.
+
+**LA MÉTHODE, qui resservira.** Appliquer chaque entrée d'un menu à un projet
+d'essai, écrire le projet, et comparer au témoin sans geste. Une entrée dont le
+projet est IDENTIQUE est suspecte, et trois issues seulement l'innocentent : elle
+pose une valeur qui est déjà là, elle est grisée, ou elle ne touche que la vue.
+Toute autre « identique » est un geste mort — c'est ainsi que D275 s'est trouvée.
