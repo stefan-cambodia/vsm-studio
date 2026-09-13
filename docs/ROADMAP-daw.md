@@ -22462,3 +22462,32 @@ avec VSM_OPTIONS : VSM_OPTIONS : nom=Refrain          (la fenêtre est remplie e
 Le titre suffit à reconnaître la fenêtre, le nombre de boutons dit ce qu'on aurait
 pu répondre, et la mention de `VSM_OPTIONS` dit comment. Une seule ligne, au même
 endroit pour les dix-huit.
+
+### Phase D229 — un banc de fumée, pour que ces verbes ne meurent pas en silence (13/09/2026)
+
+La journée a ajouté six verbes de banc et fait passer dix-huit fenêtres modales par
+un chemin commun. Rien ne dirait, demain, qu'un de ces chemins est mort : les cinq
+suites C++ ne traversent pas l'interface, et **un banc qui ne répond plus ressemble
+à un banc mal écrit** — on soupçonne la course avant de soupçonner le logiciel,
+comme D220 l'a payé deux fois dans la même heure.
+
+`tools/banc-fumee.sh` prend dix verbes, cherche **une ligne précise** dans le
+journal de chacun, et rend un code non nul si elle manque. Les courses sont
+courtes (aucun rendu audio) : il peut tourner **à côté d'une campagne**, ce qui est
+la condition pour qu'il serve. Chacune tourne sous un `HOME` de brouillon et sur
+une COPIE du projet de banc (D77).
+
+**PREMIÈRE EXÉCUTION, 10 sur 10** :
+
+```
+OK   rapport      VSM_RAPPORT :            OK   listing      regle-pianoroll =
+OK   menu         exécutée (menu Fichier)  OK   clip         clip-midi =
+OK   abandon      VSM_ABANDON : abandonner OK   position     VSM_POSITION : mesure 9 temps 1
+OK   options      VSM_OPTIONS : nom=Fumee  OK   enregistrer  VSM_ENREGISTRER :
+OK   modale       fenêtre modale ouverte   OK   textes       VSM_TEXTES :
+=== 0 raté(s) ===
+```
+
+C'est la troisième garde de `tools/` posée aujourd'hui, avec `--doublons` (D216) et
+`apres-campagne.sh`. Toutes trois suivent la règle de D150 : ce qui doit empêcher
+une régression vit dans `tools/`, avec sa raison écrite dans son en-tête.
