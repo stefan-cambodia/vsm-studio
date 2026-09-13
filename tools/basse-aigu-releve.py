@@ -35,6 +35,22 @@ TOLERANCE = 0.06
 COUPURE = 300.0
 
 
+def passe_haut(x: np.ndarray, sr: float, coupure: float) -> np.ndarray:
+    """D280 : retire au stem ce que la séparation y a AJOUTÉ sous la fondamentale.
+
+    Mesuré le 13/09 sur neuf morceaux : la partie de basse jouée met 5,2 % de son
+    énergie sous 80 Hz (médiane), le stem séparé en met **49,8 %** — et jusqu'à
+    99 % sur un morceau dont la partie vraie n'en portait que 0,2 %. Un filtre ne
+    peut pas faire cela ; le modèle reconstruit sa sortie en y plaçant du grave
+    que la source n'a pas.
+    """
+    if coupure <= 0.0:
+        return x
+    X = np.fft.rfft(x)
+    f = np.fft.rfftfreq(len(x), 1.0 / sr)
+    return np.fft.irfft(np.where(f >= coupure, X, 0.0), n=len(x))
+
+
 def releve(x: np.ndarray, sr: float, gain_db: float) -> np.ndarray:
     """Relève la bande au-dessus de COUPURE de `gain_db`, laisse le grave intact."""
     if gain_db == 0.0:
@@ -49,7 +65,7 @@ def releve(x: np.ndarray, sr: float, gain_db: float) -> np.ndarray:
     return y / crete * 0.99 if crete > 0.99 else y
 
 
-def mesurer(gain_db: float) -> dict[str, int]:
+def mesurer(gain_db: float, passe_haut_hz: float = 0.0) -> dict[str, int]:
     from basic_pitch import ICASSP_2022_MODEL_PATH
     from basic_pitch.inference import predict
 
@@ -63,7 +79,7 @@ def mesurer(gain_db: float) -> dict[str, int]:
         vraies = sorted((float(n[2]), int(n[0])) for p in v.get("parties", [])
                         if p.get("role") != "batterie" for n in p.get("notes", []))
         x, sr = sf.read(str(stem), always_2d=True)
-        y = releve(x.mean(axis=1), float(sr), gain_db)
+        y = passe_haut(releve(x.mean(axis=1), float(sr), gain_db), float(sr), passe_haut_hz)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as f:
             sf.write(f.name, y, int(sr))
             _, _, evts = predict(f.name, model_or_model_path=ICASSP_2022_MODEL_PATH)
@@ -88,19 +104,29 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("gains", nargs="+", type=float,
                    help="les relevés en dB ; le PREMIER est le témoin (0 = la chaîne d'aujourd'hui)")
+    p.add_argument("--passe-haut", nargs="+", type=float, default=None, metavar="HZ",
+                   help="D280 : au lieu de relever l'aigu, RETIRER le grave sous ces coupures "
+                        "(0 = le témoin). La séparation empile de l'énergie sous la fondamentale "
+                        "— 49,8 %% contre 5,2 %% dans la partie jouée — et D278 a montré qu'une "
+                        "composante grave forte fait descendre le transcripteur d'une octave")
     a = p.parse_args()
-    print(f"stem « bass » séparé, relevé au-dessus de {COUPURE:.0f} Hz, "
-          f"tolérance {TOLERANCE * 1000:.0f} ms")
-    print(f"{'gain':>7} {'écrites':>8} {'justes':>8} {'8ve bas':>8} {'8ve haut':>9} "
+    reglages = [(0.0, hz) for hz in a.passe_haut] if a.passe_haut else [(g, 0.0) for g in a.gains]
+    entete = "passe-haut" if a.passe_haut else "gain"
+    print("stem « bass » séparé, "
+          + ("GRAVE RETIRÉ sous la coupure" if a.passe_haut
+             else f"relevé au-dessus de {COUPURE:.0f} Hz")
+          + f", tolérance {TOLERANCE * 1000:.0f} ms")
+    print(f"{entete:>10} {'écrites':>8} {'justes':>8} {'8ve bas':>8} {'8ve haut':>9} "
           f"{'bas/haut':>9} {'bonne h.':>9} {'inventées':>10}")
-    for i, g in enumerate(a.gains):
-        c = mesurer(g)
+    for i, (g, hz) in enumerate(reglages):
+        c = mesurer(g, hz)
         apparie = c["juste"] + c["bas"] + c["haut"] + c["autre"]
         rapport = f"{c['bas'] / c['haut']:.1f}x" if c["haut"] else "—"
         bonne = f"{100 * c['juste'] / apparie:.1f}%" if apparie else "—"
         inv = f"{100 * c['inventee'] / c['total']:.1f}%" if c["total"] else "—"
         marque = "  (témoin)" if i == 0 else ""
-        print(f"{g:6.0f}dB {c['total']:8d} {c['juste']:8d} {c['bas']:8d} {c['haut']:9d} "
+        valeur = f"{hz:8.0f}Hz" if a.passe_haut else f"{g:6.0f}dB"
+        print(f"{valeur:>10} {c['total']:8d} {c['juste']:8d} {c['bas']:8d} {c['haut']:9d} "
               f"{rapport:>9} {bonne:>9} {inv:>10}{marque}")
     return 0
 

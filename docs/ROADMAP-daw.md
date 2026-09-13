@@ -25002,3 +25002,82 @@ réseau de séparation peut en ajouter. **Attendu pour la prochaine mesure, écr
 ici** : la part d'énergie sous la fondamentale de la ligne (sous 80 Hz pour une
 basse en mi1-mi2) est **plus grande dans le stem séparé que dans la partie
 vraie** — sans quoi il faudra chercher ailleurs encore.
+
+
+### Phase D280 — la séparation EMPILE du grave sous la fondamentale (13/09/2026)
+
+L'attendu de D279 est tenu, et largement. Part de l'énergie **sous 80 Hz**, en
+dessous de la fondamentale d'une basse en mi1-mi2 :
+
+| morceau | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | **médiane** |
+|---|---|---|---|---|---|---|---|---|---|---|
+| partie **vraie** | 35,5 | 5,2 | 0,1 | 15,2 | 2,7 | 22,0 | 23,9 | 0,2 | 1,4 | **5,2 %** |
+| stem **séparé** | 49,8 | 44,0 | 72,0 | 32,8 | 51,0 | 35,8 | 24,5 | **99,0** | 82,1 | **49,8 %** |
+
+**Dix fois plus, et dans les NEUF morceaux sans exception.** Là où la partie jouée
+met 5 % de son énergie sous sa propre fondamentale, le stem rendu par la
+séparation en met la moitié — et jusqu'à **99 %** sur `morceau-0009-g9`, dont la
+partie vraie n'en portait que 0,2 %. Un filtre ne peut pas faire cela : il ne
+retire que ce qui est là. **Le modèle AJOUTE du grave**, ou plus exactement il
+reconstruit sa sortie en y plaçant de l'énergie que la source n'a pas.
+
+**CE QUE CELA EXPLIQUE, ET CE QUI RESTE À PROUVER.** D278 a montré qu'une
+composante grave forte — un sous-oscillateur — fait descendre le transcripteur
+d'une octave, jusqu'à 75 % de ses notes. Le stem séparé en porte une, énorme. La
+chaîne d'explication est donc complète **sauf un maillon** : le grave d'un
+sous-oscillateur est TONAL, à l'octave exacte en dessous, alors que celui d'un
+réseau de séparation pourrait n'être qu'un grondement large. **Un grondement ne
+donne pas de hauteur** ; il ne ferait pas écrire une note.
+
+**L'ATTENDU DE LA MESURE QUI TRANCHE, ÉCRIT AVANT DE LA FAIRE.** On retire au stem
+séparé ce qu'il a en trop — un passe-haut à 80 Hz — et on le transcrit :
+
+1. **Si le grave ajouté est la cause**, la part de notes une octave trop bas
+   **chute d'au moins la moitié** (de 104 sur 372, soit 28 %, à moins de 14 %).
+2. **Contrôle** : les notes JUSTES ne baissent pas de plus de 10 % — un
+   passe-haut qui détruirait la fondamentale d'une basse grave guérirait le
+   symptôme en tuant le malade.
+3. **Contrôle de sanité** : le compte de notes écrites ne s'effondre pas.
+
+Si 1 et 2 tiennent, ce n'est plus seulement une explication : **c'est un remède**,
+et le premier que quatre tentatives n'auront pas réfuté.
+
+**LA MESURE, BALAYAGE ENTIER** — le stem séparé, son grave retiré sous la coupure,
+puis transcrit :
+
+| passe-haut | écrites | **justes** | **8ve bas** | 8ve haut | bas/haut | **bonne hauteur** | inventées |
+|---|---|---|---|---|---|---|---|
+| **0 Hz (témoin)** | 723 | 240 | **95** | 19 | 5,0× | **53,8 %** | 38,3 % |
+| 40 Hz | 691 | 251 | 78 | 18 | 4,3× | 55,2 % | 34,2 % |
+| **60 Hz** | 588 | **248** | **53** | 16 | **3,3×** | **60,3 %** | **30,1 %** |
+| 80 Hz | 527 | 178 | 43 | 37 | 1,2× | 48,5 % | 30,4 % |
+| 120 Hz | 429 | 67 | 58 | 50 | 1,2× | 22,0 % | 28,9 % |
+
+**À 60 Hz, tout s'améliore à la fois, et le contrôle tient** : la bonne hauteur
+passe de **53,8 % à 60,3 %** (+6,5 points), les octaves trop bas de **95 à 53**
+(−44 %), le rapport bas/haut de 5,0× à 3,3×, les inventions de 38,3 % à 30,1 % —
+**et les notes justes MONTENT** (240 → 248), ce qui est le contraire d'un
+correcteur qui échange une erreur contre une autre.
+
+**MAIS L'ATTENDU N°1 N'EST PAS TENU, ET JE NE L'ARRONDIRAI PAS.** Il demandait que
+les octaves trop bas tombent **de moitié**. À 60 Hz elles tombent de **44 %** —
+près, pas assez. Elles tombent bien de plus de moitié à 80 Hz (95 → 43), mais là
+**le contrôle n°2 casse** : les notes justes s'effondrent de 240 à 178 (−26 %,
+quand le contrôle en permettait 10). Un passe-haut à 80 Hz détruit la fondamentale
+des basses les plus graves — il guérit le symptôme en tuant le malade, exactement
+ce que le contrôle avait été écrit pour attraper.
+
+**CE QUE CELA VAUT, DIT SANS L'ENJOLIVER.** C'est **le premier remède de la
+journée qui améliore quelque chose** — quatre l'ont précédé sans rien donner
+(D257, D258, D270, D272). Mais **60 Hz a été choisi DANS le balayage**, ce qui
+n'est pas une validation : c'est le meilleur point d'une courbe qu'on vient de
+tracer. Avant d'en faire une option de la chaîne, il doit tenir sur un lot qu'il
+n'a pas servi à régler — `r1-sec-banc` ou `r1-prod-banc` existent et n'ont pas
+servi ici.
+
+**ET L'EXPLICATION TIENT MAINTENANT DE BOUT EN BOUT** : la séparation empile du
+grave sous la fondamentale (D280, 5,2 % → 49,8 %) ; une composante grave forte
+fait descendre le transcripteur d'une octave (D278, jusqu'à 75 % de ses notes) ;
+retirer ce grave fait remonter la justesse (ici). Le maillon qui manquait à
+D279 — *le grave ajouté est-il tonal ou un simple grondement ?* — est tranché par
+l'effet : **un grondement ne se laisserait pas retirer avec ce résultat-là.**
