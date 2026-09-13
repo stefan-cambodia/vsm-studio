@@ -21330,3 +21330,46 @@ avait montré que la copie existe et porte le travail ; D207 montre que la rendr
 au musicien marche, que la copie ne traîne pas, et qu'ignorer marche aussi. Les
 deux phases qui s'appuient dessus — D173 (un enregistrement refusé) et D175
 (fermer sans enregistrer) — peuvent le citer sans réserve.
+
+### D208 (attendus) — le filet emporte-t-il les RÉGLAGES DE MACHINE ? (13/09/2026)
+
+**LA QUESTION QUE D207 LAISSE OUVERTE.** La copie de secours porte les notes, les
+volumes, les clips — mesuré. Mais les **réglages de machine** vivent ailleurs :
+dans les instances vivantes, capturés par `capturePreset` (D76), et c'est
+seulement depuis D154 que le modèle les photographie à chaque pas d'annulation.
+Une coupure de courant après une heure passée à régler un filtre doit les rendre,
+sinon le filet ne rattrape que la moitié du travail.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** La coupure de `filter.1.cutoff` du
+TB-303 de la piste 3 est à **800 Hz** dans le projet. Portée à **1200 Hz** par la
+façade, puis la séance tuée par `kill -9` après l'autosauvegarde :
+
+1. **La copie de secours porte 1200**, pas 800.
+2. **La récupération le rend** : après `VSM_RECUPERER=1` puis Ctrl+S, le preset du
+   projet d'origine porte **1200**.
+3. **Témoin** : sans le geste, la même séance tuée rend **800** — sans quoi on ne
+   saurait pas si 1200 vient du geste ou d'ailleurs.
+
+### Phase D208 — le filet emporte les réglages de machine, mesuré sur une coupure brutale (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.** La coupure du TB-303 de la piste 3, portée de
+**800** à **1200 Hz** par la façade, la séance tuée par `kill -9` :
+
+| attendu | **mesuré** |
+|---|---|
+| 1. la copie de secours porte le réglage | ✔ `filter.1.cutoff` = **1200** dans `recuperation/<uuid>/instruments/track_03.synth.json` |
+| 2. la récupération le rend | ✔ le projet d'origine passe de **800,0** à **1200** après `VSM_RECUPERER=1` puis Ctrl+S |
+| 3. témoin sans le geste | ✔ la même séance, sans toucher à la façade, sauvegarde **800** |
+
+**CE QUE CELA BOUCLE.** D76 avait fait capturer les échantillons d'un sampler
+depuis une machine vivante ; D154 avait fait porter les réglages par chaque pas
+d'annulation ; D189 y a ajouté le profil d'une machine multi-échantillons. D208
+montre que **tout ce mécanisme traverse une coupure de courant** : l'heure passée
+à régler un filtre n'est pas perdue, et elle revient dans le projet d'origine, pas
+dans un dossier technique.
+
+**UNE OBSERVATION EN PASSANT** : le témoin a produit une copie de secours **sans
+qu'aucun geste ne soit fait** — l'autosauvegarde part dès l'ouverture, avant toute
+modification. Ce n'est pas un défaut (une copie de plus ne coûte que 196 Ko, et
+elle est effacée dès qu'elle a servi), mais cela explique pourquoi une copie
+existe toujours après un `kill -9`, même sur une séance où l'on n'a rien touché.
