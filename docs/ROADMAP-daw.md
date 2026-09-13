@@ -20608,3 +20608,17 @@ dans le rappel de la photo : la fenêtre modale n'était pas encore posée, et
 fois de plus. Le verbe est passé **avec les autres**, avant le délai de capture :
 la boîte a le temps d'exister, et la photo la montre. Sans ce déplacement, D193
 n'aurait rien pu regarder — et l'anglais mi-français serait passé.
+
+**LA GARDE DE LA LANGUE, PASSÉE SUR MA PROPRE JOURNÉE (D193, suite).**
+`tools/inventaire_langue.py` — la garde posée par D150 — rendait **ECRAN 9** là
+où D150 l'avait laissée à **7**. Les deux venues sont à moi : l'étiquette
+« fenêtre » du chronomètre de dessins, construite par `fromUTF8` parce qu'elle
+porte un accent, et que la garde compte donc comme du texte d'écran. Elle ne
+s'affiche nulle part — c'est un mot de journal. Renommée **« socle »**, le mot du
+dépôt pour cette fenêtre et sans accent : la garde retrouve **ECRAN 7,
+SANS_PAIRE 0**, ses chiffres de D150.
+
+*La leçon n'est pas le renommage : c'est qu'une garde ne sert QUE si on la passe
+après son propre travail. Les trois chaînes non traduites de D175 et ces deux
+étiquettes ont été écrites le même jour, et aucune n'aurait été vue sans, d'un
+côté la photo, de l'autre l'inventaire.*

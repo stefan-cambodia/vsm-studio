@@ -117,11 +117,17 @@ void chronometrerEnfants(juce::Component* parent, const juce::String& prefixe, i
 /// `VSM_CAPTURE_PANNEAUX` (D55.2), pour que ce qui est chronométré soit ce que
 /// la photo montre.
 void chronometrerToutesLesPeintures(juce::Component* socle, int passes) {
-    // `juce::String(const char*)` lit ses octets en LATIN-1 (voir ui/Langue.h) :
-    // le premier essai a écrit « fenÃªtre » au journal. Le nom passe donc par
-    // `fromUTF8`, comme tout texte accentué de ce dépôt.
-    chronometrerPeinture(socle, juce::String::fromUTF8("fen\u00eatre"), passes);
-    chronometrerEnfants(socle, juce::String::fromUTF8("fen\u00eatre"), passes, profondeurDesEnfants());
+    // LE NOM EST « socle », SANS ACCENT, ET C'EST UNE DÉCISION (D193). Le premier
+    // essai écrivait « fenêtre » par `fromUTF8` — un accent impose ce détour,
+    // `juce::String(const char*)` lisant ses octets en Latin-1 (ui/Langue.h), et
+    // le tout premier jet avait d'ailleurs produit « fenÃªtre » au journal. Mais
+    // `tools/inventaire_langue.py`, la garde de la langue (D150), compte tout
+    // littéral ainsi construit comme du TEXTE D'ÉCRAN : ces deux lignes ont fait
+    // passer son compte de 7 à 9 alors qu'elles ne s'affichent nulle part. « socle »
+    // est le mot du dépôt pour cette fenêtre, il n'a pas d'accent, et la garde
+    // retrouve son chiffre.
+    chronometrerPeinture(socle, "socle", passes);
+    chronometrerEnfants(socle, "socle", passes, profondeurDesEnfants());
     for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i) {
         auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i);
         if (fenetre == nullptr || !fenetre->isVisible()) continue;
