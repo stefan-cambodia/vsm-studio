@@ -23448,6 +23448,22 @@ bas.** Sur les 295 notes dont la vraie hauteur est à une ou deux octaves, **249
 au-dessous de ce qui est joué — le défaut classique d'un suivi de hauteur sur un
 signal grave, où le premier harmonique et la fondamentale se disputent.
 
+**ET LE BIAIS EST PROPRE À LA BASSE, ce qui désigne sa cause.** La même mesure sur
+les quatre stems, 13 287 notes en tout :
+
+| stem | notes | hauteur exacte | écrites trop BAS | écrites trop HAUT | rapport |
+|---|---|---|---|---|---|
+| `other` | 5 731 | 48,8 % | 7,6 % | 8,4 % | **0,9×** — symétrique |
+| `guitar` | 3 074 | 37,9 % | 9,3 % | 5,1 % | 1,8× |
+| `piano` | 2 727 | 38,3 % | 11,5 % | 8,5 % | 1,4× |
+| `bass` | 1 755 | 27,1 % | **14,2 %** | 2,6 % | **5,4×** |
+
+`other` n'a AUCUN biais (0,9×, c'est-à-dire du bruit) ; `guitar` et `piano` penchent
+un peu ; la basse penche cinq fois plus que tout le reste. Un défaut qui ne frappe
+que le registre grave n'est pas un défaut d'estimateur en général — c'est le suivi
+de hauteur qui confond la fondamentale et son premier harmonique là où l'énergie
+est basse. Cela se corrige là, et nulle part ailleurs.
+
 **CE QUE CELA CHANGE POUR B14.** Le remède n'est plus « recalibrer un estimateur »
 mais « corriger un biais d'octave sur la basse », et il se mesure d'avance : si les
 234 notes à +12 étaient remontées, la part de hauteurs exactes passerait de **27,1 %
