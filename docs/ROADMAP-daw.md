@@ -23557,3 +23557,35 @@ transcription.** Le travail attend la fin de la course (`analyse/analyzer/` est
 interdit tant qu'elle tourne), et son attendu s'écrit dès maintenant : *sur les
 mêmes trois lots, la part « bonne hauteur » doit passer de 64,6 / 61,4 / 69,2 /
 56,9 % à plus de 75 % sur chaque stem, sans que la part « inventée » monte.*
+
+
+### Phase D255 — la campagne finie, et la garde des deux chemins repassée avec le binaire neuf (13/09/2026)
+
+Le lot forcé `r1f-13sep` s'est terminé à **20:50:51**, après **47 250 s** — treize
+heures, deux mises en veille comprises, sans rien perdre. Neuf morceaux mesurés sur
+dix (le premier est mort le matin même sur le `tmpfs` plein, et il est relancé
+depuis).
+
+`tools/apres-campagne.sh` a fait les trois gestes qui attendaient, dans l'ordre :
+
+1. **`vsm-render` relié** — il datait du 13/09 à **02:08**, c'est-à-dire d'avant
+   D186, D187, D189, D200 et D202 ; il date maintenant de **20:52**. On ne le
+   remplace jamais pendant une course : c'est pour cela qu'il attendait.
+2. **La garde des deux chemins repassée** (`tools/comparer-rendus.sh` sur
+   `children-c3-plafond`, 11 pistes, 454 s) :
+
+```
+vsm-render  : 13/09 20:52        application : 13/09 19:39
+échantillons : 20 028 612   fréquence : 44 100 Hz   durée : 454,164 s
+corrélation  : 1,000000000
+écart        : −5 983,08 dB sous le signal   (max |d| 0,000e+00)
+décalage     : 0 échantillon(s)
+VERDICT : les deux chemins rendent le MÊME son
+```
+
+**Max |d| = 0,000e+00 : pas « très proche », IDENTIQUE.** L'invariant n° 3 du § 6
+tient donc avec le binaire d'aujourd'hui, après une journée qui a touché
+`MainComponent`, l'automation, les clips, les gestes et l'export.
+
+3. **Le tableau du lot relu** : 9 morceaux, `morceau-0001-g1` nommé comme non
+   mesuré. Le § 7.4 se lira sur dix — la reprise du premier tourne.
