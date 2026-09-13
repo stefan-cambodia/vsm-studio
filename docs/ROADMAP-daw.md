@@ -22341,3 +22341,19 @@ soit les 57,7 px/s du zoom courant.
 Ce n'est pas une découverte : c'est une vérification qui manquait. Les phases
 D163-D171 ont mesuré le COÛT du dessin pendant la lecture ; aucune n'avait regardé
 si ce qui est dessiné est JUSTE.
+
+**LE REVERS, AJOUTÉ AU MÊME OUTIL (D224 bis).** « 43,8 % des notes transcrites sont
+justes » ne dit pas si la chaîne **invente** ou si elle **oublie** — deux défauts
+opposés, deux remèdes opposés. Le rappel se compte avec la même règle, à l'envers :
+
+```
+toutes   5 020 notes transcrites   2 198 justes   43,8 %   (précision)
+vraies   8 298 notes du morceau    3 208 trouvées 38,7 %   (rappel)
+```
+
+Soit un F1 de **0,41** — et c'est la vérification qui compte : le banc de la chaîne,
+qui calcule son F1 par un tout autre chemin, publie **0,31 à 0,45** par morceau sur
+ces mêmes lots. Deux mesures indépendantes qui tombent au même endroit valent mieux
+qu'une mesure sûre d'elle. La chaîne, sur ce corpus, **oublie un peu plus qu'elle
+n'invente** (8 298 notes à retrouver, 5 020 proposées) — c'est le chiffre qui
+manquait pour savoir de quel côté chercher.

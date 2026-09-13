@@ -103,6 +103,31 @@ def main(argv: list[str]) -> int:
         print(f"  [{t[0]:.2f} ; {t[1]:.2f})  {notes:8d}  {justes:8d}  {part}")
     part = f"{100 * total[1] / total[0]:5.1f}%" if total[0] else "    --"
     print(f"{'toutes':>14}  {total[0]:8d}  {total[1]:8d}  {part}")
+    # LE REVERS : combien de notes VRAIES n'ont aucune note transcrite en face.
+    # Sans lui, « 44 % des notes transcrites sont justes » ne dit pas si la chaîne
+    # INVENTE ou si elle OUBLIE -- deux défauts opposés, deux remèdes opposés.
+    vraies = retrouvees = 0
+    for dossier in sorted(lot.glob("morceau-*")):
+        rapport = dossier / "course" / "rapport.json"
+        if not rapport.is_file():
+            continue
+        debuts = verite_du_morceau(source / dossier.name)
+        if not debuts:
+            continue
+        transcrites: dict[int, list[float]] = {}
+        r = json.loads(rapport.read_text(encoding="utf-8"))
+        for stem in r.get("stems", []):
+            for n in stem.get("noteConfidence", []) or []:
+                transcrites.setdefault(int(n["note"]), []).append(float(n["start"]))
+        for liste in transcrites.values():
+            liste.sort()
+        for hauteur, liste in debuts.items():
+            for debut in liste:
+                vraies += 1
+                retrouvees += 1 if juste(transcrites, hauteur, debut) else 0
+    if vraies:
+        print(f"{'vraies':>14}  {vraies:8d}  {retrouvees:8d}  "
+              f"{100 * retrouvees / vraies:5.1f}%   (rappel : les notes du morceau retrouvées)")
     return 0
 
 
