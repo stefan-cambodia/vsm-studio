@@ -56,6 +56,10 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   cinq dernières du journal, et a annoncé la fin dans la seconde. Attendre par
   PID (`while kill -0 $PID`), toujours — c'est la même règle que pour `pgrep -f`,
   et elle vaut aussi pour les motifs d'un journal qu'on vient de rouvrir.
+  **Et le PID se prend sur le BON processus** : cinq secondes après le lancement,
+  `pgrep … | head -1` a rendu un PID transitoire (un maillon du tube, déjà mort),
+  et la surveillance a de nouveau annoncé la fin dans la seconde. Lister d'abord
+  (`pgrep -af`), reconnaître la ligne de commande attendue, prendre CE PID.
 - Une campagne lancée depuis le shell de l'outil MEURT avec la session, même
   sous nohup (S1, 04/09 : 1 h 44 de course perdues à la reprise). Lancer par
   `setsid nohup script.sh > x.log 2>&1 < /dev/null & disown`, et à chaque
