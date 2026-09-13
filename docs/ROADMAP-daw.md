@@ -20934,3 +20934,60 @@ Il rouvre : la piste est muette et l'application lui dit que son instrument est
 indisponible. Rien n'est détruit — la demande est gardée, les notes aussi (D76,
 D178) — mais **le projet ne rejoue pas**, et la seule issue est de recharger le
 plugin à la main. **Ouvert comme A36.**
+
+### D200 (attendus) — A36 : la question que le chargeur de projet posait à la mauvaise fonction (13/09/2026)
+
+**LE REMÈDE, ET IL RESPECTE LE CONTRAT DÉJÀ ÉCRIT.** L'en-tête de
+`PluginRegistry` dit, au-dessus de `isRegistered` : « *UN PLUGIN TIERS RÉPOND
+FAUX ICI, et c'est délibéré : savoir s'il est là demande d'ouvrir un fichier, ce
+que cette question — posée partout, y compris dans des boucles d'interface — ne
+doit pas faire. **Ce qui décide reste `create()`** .* » Le chargeur de projet
+s'en servait pourtant pour DÉCIDER. On ne change donc pas `isRegistered` : on
+ajoute **`canCreate(id)`**, qui demande l'instance au résolveur externe et la
+jette, avec son coût écrit dans son en-tête — à n'appeler qu'au chargement d'un
+projet, une fois par piste, jamais dans un rappel d'affichage.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **Le projet rouvre AVEC son plugin** : plus de « instrument indisponible »
+   pour le `Juno 106.vst3` installé et balayé.
+2. **TÉMOIN OBLIGATOIRE — un plugin ABSENT reste dit** : un projet qui réclame
+   `vst3:/nulle/part/Inexistant.vst3#999999` doit continuer de dire
+   « indisponible ». Sans ce témoin, on aurait pu « corriger » en acceptant tout,
+   et une machine vraiment manquante serait devenue silencieuse.
+3. **Les 1 961 tests restent verts.**
+4. **`vsm-render` ne change pas de comportement** : aucun résolveur n'y est
+   installé, `canCreate` y rend exactement ce que rendait `isRegistered`. Un
+   rendu hors ligne ne sait pas héberger un plugin tiers, et il continue de le
+   dire — **c'est une divergence réelle entre les deux chemins, et elle est
+   nommée ici plutôt que découverte plus tard** : un projet qui utilise un plugin
+   tiers ne se rend pas par `vsm-render`. La chaîne d'analyse n'en fabrique
+   jamais (elle ne choisit que parmi les 63 machines internes), donc aucune
+   distance publiée n'en dépend.
+
+### Phase D200 — A36 : `canCreate`, la question que le chargeur posait à la mauvaise fonction (13/09/2026)
+
+**LES ATTENDUS 1 ET 2 SONT TENUS.**
+
+| attendu | **mesuré** |
+|---|---|
+| 1. le projet rouvre AVEC son plugin | ✔ « Machines employées : **5** », dont `vst3:…/Juno 106.vst3#14159037 : 1 piste(s)` — **plus aucun « indisponible »** |
+| 2. témoin : un plugin ABSENT reste dit | ✔ `Piste 1 : instrument "vst3:/nulle/part/Inexistant.vst3#999999" indisponible` |
+
+**LE TÉMOIN N° 2 EST LA MOITIÉ DU CORRECTIF.** Sans lui, « accepter tout
+identifiant externe » aurait fait passer l'attendu n° 1 et rendu **muette** une
+machine vraiment manquante — exactement la panne que D178 avait éprouvée et que
+D76 avait payée avant elle. `canCreate` demande l'instance au résolveur et la
+jette : elle répond vrai pour ce qui existe, faux pour ce qui n'existe pas, et
+son coût (l'ouverture d'un fichier de plugin) est écrit dans son en-tête avec
+l'endroit où l'appeler — au chargement d'un projet, une fois par piste, jamais
+dans un rappel d'affichage.
+
+**ET LA DIVERGENCE QUE CE CORRECTIF REND VISIBLE, nommée plutôt que découverte
+plus tard.** L'application héberge les plugins tiers ; **`vsm-render` non**, et
+il le dit (« instrument indisponible »). Un projet qui en utilise un se rend donc
+DIFFÉREMMENT par les deux chemins — `tools/comparer-rendus.sh` rendra « ils
+divergent », et ce sera exact. Son en-tête le dit maintenant, pour que personne
+n'aille chercher un bogue là où il y a une limite. **La chaîne d'analyse ne
+fabrique jamais de projet pareil** : elle ne choisit que parmi les 63 machines
+internes, et aucune distance publiée n'en dépend.

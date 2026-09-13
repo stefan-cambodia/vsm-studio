@@ -21,6 +21,15 @@
 # phase, parce qu'un script de phase n'est ni relu, ni rejoué, ni corrigé
 # (leçon de D150).
 #
+# UN CAS OÙ « ILS DIVERGENT » EST LA BONNE RÉPONSE, et il faut le savoir avant
+# de chercher un bogue : un projet qui utilise un PLUGIN TIERS (`clap:` ou
+# `vst3:`). L'application héberge ces plugins — elle installe leurs résolveurs au
+# démarrage (D7.1, D7.2) — ; `vsm-render` non, et il le DIT (« instrument
+# indisponible »). Le verdict sera donc « divergent », et c'est exact : le rendu
+# hors ligne ne sait pas jouer ce projet. La chaîne d'analyse n'en fabrique
+# jamais (elle ne choisit que parmi les 63 machines internes), donc aucune
+# distance publiée n'en dépend.
+#
 # USAGE
 #   tools/comparer-rendus.sh <dossier-projet> [--frequence 44100] [--garder]
 #

@@ -60,7 +60,12 @@ uint32_t colourFromHex(const std::string& text, uint32_t fallback) {
 bool pluginIsInstalled(const std::string& pluginId) {
     static std::once_flag registration;
     std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
-    return vsm::audio::plugin::PluginRegistry::instance().isRegistered(pluginId);
+    // D200 (A36) : `canCreate` ET NON `isRegistered`. La seconde répond faux
+    // pour tout identifiant `clap:` ou `vst3:` — c'est son contrat, écrit dans
+    // son en-tête : « ce qui décide reste create() ». Ce chargeur s'en servait
+    // pourtant pour décider, et vidait l'instrument de toute piste portant un
+    // plugin tiers, installé ou non (D199).
+    return vsm::audio::plugin::PluginRegistry::instance().canCreate(pluginId);
 }
 
 JsonValue makeBpmNumber(double bpm) {

@@ -68,6 +68,31 @@ public:
     /// déjà signalé et jamais substitué.
     bool isRegistered(const std::string& id) const { return entries_.count(id) > 0; }
 
+    /// D200 (A36) : PEUT-ON FABRIQUER CETTE MACHINE ? — la question que
+    /// `isRegistered` ne pose pas, et qu'un CHARGEUR DE PROJET doit poser.
+    ///
+    /// POURQUOI ELLE EXISTE À PART. `isRegistered` répond faux pour un plugin
+    /// tiers, à bon droit : elle est appelée partout, boucles d'interface
+    /// comprises, et ne doit pas ouvrir de fichier. Mais `ProjectDocument` s'en
+    /// servait pour décider si une piste garde son instrument — et vidait donc
+    /// l'instrument de toute piste portant un `clap:` ou un `vst3:`, **même
+    /// installé, balayé et catalogué** (mesuré par D199 : un projet qui utilise
+    /// un plugin tiers ne rouvrait jamais avec lui).
+    ///
+    /// ELLE COÛTE CHER, ET C'EST POURQUOI ELLE A UN AUTRE NOM : pour un
+    /// identifiant externe, elle DEMANDE l'instance au résolveur et la jette.
+    /// Cela ouvre le fichier du plugin. À n'appeler qu'au chargement d'un
+    /// projet — une fois par piste —, jamais dans un rappel d'affichage.
+    ///
+    /// Sans résolveur installé (`vsm-render`, les tests), elle rend exactement
+    /// ce que rend `isRegistered` : un rendu hors ligne ne sait pas héberger un
+    /// plugin tiers, et il continue de le dire.
+    bool canCreate(const std::string& id) const {
+        if (entries_.count(id) > 0) return true;
+        if (!externalResolver_) return false;
+        return externalResolver_(id) != nullptr;
+    }
+
     std::vector<std::pair<std::string, std::string>> listAvailable() const {
         std::vector<std::pair<std::string, std::string>> result;
         result.reserve(entries_.size());
