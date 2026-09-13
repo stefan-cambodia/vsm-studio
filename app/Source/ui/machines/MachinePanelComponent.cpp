@@ -234,8 +234,31 @@ bool MachinePanelComponent::toucherPourCapture(const juce::String& legende, doub
     for (auto& control : controls_) {
         auto* curseur = dynamic_cast<juce::Slider*>(control.widget.get());
         if (curseur == nullptr || curseur->getTooltip() != legende) continue;
-        curseur->setValue(curseur->getMinimum(), juce::dontSendNotification);
-        curseur->setValue(valeur, juce::sendNotificationSync);
+        // D247 : LE DÉTOUR PART DE L'AUTRE BOUT QUAND LA CIBLE EST LE MINIMUM.
+        //
+        // Ce crochet pose d'abord le curseur au MINIMUM pour que la valeur visée
+        // constitue un changement — sans quoi JUCE ne notifie pas, et le paramètre
+        // ne part jamais à la machine. Mais quand la valeur VISÉE est justement le
+        // minimum (ou tombe dessous et s'y borne), le détour l'y amène déjà : le
+        // second `setValue` ne change rien, ne notifie rien, et le crochet rendait
+        // quand même `true`. Mesuré : `facade:CUTOFF=0` sur `vsm.supersaw` laissait
+        // « Filter Cutoff » à 2812,6785 tout en se disant réussi, alors que
+        // `facade:CUTOFF=8000` le posait bien à 8000,0000. Un banc qui ment sur un
+        // succès est pire qu'un banc qui échoue.
+        const double vise = juce::jlimit(curseur->getMinimum(), curseur->getMaximum(), valeur);
+        const double detour = (std::abs(vise - curseur->getMinimum()) < 1e-9)
+                                  ? curseur->getMaximum() : curseur->getMinimum();
+        curseur->setValue(detour, juce::dontSendNotification);
+        curseur->setValue(vise, juce::sendNotificationSync);
+        // D58 : CE QU'ON A DEMANDÉ ET CE QU'ON A OBTENU, tous deux dits -- une
+        // valeur hors bornes se borne, et se borner en silence ferait écrire
+        // « réglé à 0 » sous un curseur resté à 20.
+        std::fputs(("VSM_FACADE : " + legende + juce::String::fromUTF8(u8" : demandé ")
+                    + juce::String(valeur, 4) + juce::String::fromUTF8(u8", obtenu ")
+                    + juce::String(curseur->getValue(), 4)
+                    + (std::abs(valeur - curseur->getValue()) > 1e-6
+                           ? juce::String::fromUTF8(u8" (borné)") : juce::String())
+                    + "\n").toRawUTF8(), stderr);
         return true;
     }
     return false;

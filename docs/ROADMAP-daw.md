@@ -23274,3 +23274,40 @@ dire, et c'est la raison la plus fréquente :
 La raison réelle reste affichée quand il y en a une : la valeur de repli ne sert
 que sur une machine où la chaîne fonctionne, c'est-à-dire là où la boîte ne
 s'ouvrirait jamais d'elle-même.
+
+
+### Phase D247 — un crochet de banc qui se disait réussi sans rien faire (13/09/2026)
+
+En vérifiant qu'une commande de façade atteint bien la machine, `VSM_GESTE_PISTE=
+facade:CUTOFF=0` a rendu **un succès silencieux** : aucune ligne de refus, et le
+moteur inchangé. Le relevé `VSM_MACHINE_MOTEUR` (D154), qui dit les paramètres
+**tels que le moteur les tient**, l'a prouvé en deux courses :
+
+| course | « Filter Cutoff » au moteur |
+|---|---|
+| témoin, sans geste | 2 812,6785 |
+| `facade:CUTOFF=0` | **2 812,6785** — rien n'a bougé |
+| `facade:CUTOFF=8000` | **8 000,0000** — la façade fonctionne |
+
+**LA CAUSE EST DANS LE CROCHET, PAS DANS LE LOGICIEL.** Pour que JUCE notifie le
+changement, le crochet pose d'abord le curseur à son MINIMUM, puis à la valeur
+visée. Quand la valeur visée EST le minimum — ou tombe dessous et s'y borne, ce qui
+est le cas de `0` sur un curseur en hertz qui commence à 20 —, le détour l'y a déjà
+amenée : le second `setValue` ne change rien, ne notifie rien, et le crochet rendait
+quand même `true`. **Un banc qui ment sur un succès est pire qu'un banc qui
+échoue** : il fait accuser le logiciel.
+
+**CE QUI EST POSÉ.** Le détour part de l'autre bout quand la cible est le minimum,
+et le crochet DIT ce qu'il a demandé et ce qu'il a obtenu — la règle de D58, qui
+valait déjà pour la taille des fenêtres :
+
+    facade:CUTOFF=0       VSM_FACADE : CUTOFF : demandé 0.0000, obtenu 20.0000 (borné)
+                          moteur : Filter Cutoff : 20.0000
+    facade:CUTOFF=8000    VSM_FACADE : CUTOFF : demandé 8000.0000, obtenu 8000.0000
+                          moteur : Filter Cutoff : 8000.0000
+    facade:CUTOFF=99999   VSM_FACADE : CUTOFF : demandé 99999.0000, obtenu 18000.0000 (borné)
+                          moteur : Filter Cutoff : 18000.0000
+
+Les trois bornes du curseur se lisent maintenant dans le journal : 20 Hz, la valeur
+demandée, 18 000 Hz. Et le moteur suit dans les trois cas, ce qui n'était vrai que
+dans un seul avant la correction.

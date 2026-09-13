@@ -51,6 +51,7 @@ cas clip         "clip-midi = "                   VSM_MENU_CONTEXTE="clip-midi:?
 cas position     "VSM_POSITION : mesure 9 temps 1" VSM_POSITION=9
 cas enregistrer  "VSM_ENREGISTRER : "             VSM_ENREGISTRER="$brouillon/ecrit"
 cas selection    "VSM_SELECTION : "               VSM_MENU_CONTEXTE="pianoroll:Tout sélectionner"
+cas facade       "obtenu 8000"                    VSM_GESTE_PISTE="facade:CUTOFF=8000"
 cas confirmer    "VSM_CONFIRMER : non"            VSM_MENU="Reporter la piste en audio (définitif)" VSM_CONFIRMER=non
 cas textes       "VSM_TEXTES : "                  VSM_TEXTES_LISTE=1
 
