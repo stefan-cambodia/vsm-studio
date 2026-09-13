@@ -21076,3 +21076,23 @@ hors d'atteinte — et parmi eux **« Reconstruire un morceau (wav, mp3, flac…
 c'est-à-dire l'entrée du sixième critère du § 2, la seule case où ce logiciel
 peut être DEVANT les trois autres. À reprendre, avec la même vigilance : un verbe
 qui recopie le code qu'il prétend mesurer ne mesure rien.
+
+### Phase D203 — le dernier sélecteur hors de portée : « Reconstruire un morceau » (13/09/2026)
+
+**CELUI-CI COMPTE PLUS QUE LES AUTRES.** Il ouvre le **sixième critère** du § 2 —
+prendre un enregistrement et rendre les notes ET les patchs qui le rejouent —,
+« la seule case où il peut espérer être **devant** » Cubase, Live et FL. Et c'était
+le dernier chemin d'usage courant que le banc ne pouvait pas franchir : son
+sélecteur ne passait pas par `prendreLeFichierDeBanc`.
+
+**Mesuré** : `VSM_FICHIER=… VSM_MENU="Reconstruire un morceau"` rend
+`VSM_PLUGIN : sélecteur sauté, fichier …` puis `VSM_MENU : « Reconstruire un
+morceau... » exécutée (menu Fichier)`. Le chemin est atteint ; ce qu'il fait
+ensuite — lancer la chaîne, la suivre, publier son rapport — se mesurera quand
+aucune campagne ne tournera, une reconstruction durant des heures.
+
+**QUATRE CROCHETS EN UNE JOURNÉE** (D181 l'ouverture de projet, D197 l'export
+MIDI, D201 le choix d'un plugin dans un fichier CLAP, D203 la reconstruction), et
+chacun a été posé parce qu'un audit butait dessus. Le compte est maintenant de
+**huit** sélecteurs pilotables sur 23 ; les quinze autres sont soit couverts par
+un autre verbe, soit encore à faire.

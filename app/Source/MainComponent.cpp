@@ -3989,14 +3989,23 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileExportStems: exportStems(); break;
         case kMenuFileAudioSettings: showAudioSettings(); break;
         case kMenuFileReconstruct: {
+            // D203 : LE SÉLECTEUR SAUTÉ PAR LE BANC, comme ceux de D102, D181,
+            // D197 et D201. Celui-ci compte plus que les autres : il ouvre le
+            // SIXIÈME critère du § 2 — prendre un enregistrement et rendre les
+            // notes ET les patchs qui le rejouent —, la seule case où ce
+            // logiciel peut être DEVANT Cubase, Live et FL. Il était le dernier
+            // chemin d'usage courant que le banc ne pouvait pas franchir.
+            auto suite = [this](const juce::File& f) {
+                if (f != juce::File()) startReconstruction(f);
+            };
+            if (prendreLeFichierDeBanc(suite)) break;
             auto chooser = std::make_shared<juce::FileChooser>(
                 tr(u8"Reconstruire un morceau (wav, mp3, flac...)"),
                 juce::File(), "*.wav;*.mp3;*.flac;*.ogg;*.m4a;*.aiff;*.aif");
             chooser->launchAsync(juce::FileBrowserComponent::openMode
                                       | juce::FileBrowserComponent::canSelectFiles,
-                                  [this, chooser](const juce::FileChooser& fc) {
-                                      const juce::File f = fc.getResult();
-                                      if (f != juce::File()) startReconstruction(f);
+                                  [suite, chooser](const juce::FileChooser& fc) {
+                                      suite(fc.getResult());
                                   });
             break;
         }
