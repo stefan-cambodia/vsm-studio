@@ -3966,9 +3966,12 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
 
     switch (menuItemID) {
-        case kMenuFileNewProject: newProject(); break;
-        case kMenuFileOpen:      openMidiFile(); break;
-        case kMenuFileOpenBundle: openProjectBundle(); break;
+        // D211 : LES CINQ ENTRÉES QUI REMPLACENT LE PROJET DEMANDENT D'ABORD.
+        // L'ordre est celui de Cubase : la question, puis le sélecteur — et non
+        // l'inverse, qui ferait choisir un fichier pour rien.
+        case kMenuFileNewProject: apresAvoirDemande([this] { newProject(); }); break;
+        case kMenuFileOpen:      apresAvoirDemande([this] { openMidiFile(); }); break;
+        case kMenuFileOpenBundle: apresAvoirDemande([this] { openProjectBundle(); }); break;
         case kMenuFileImportDaw: importDawProject(); break;
         case kMenuFileImportReport: showLastImportReport(); break;
         case kMenuFileReconstructionReport: showReconstructionReport(); break;
@@ -4002,18 +4005,23 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             // notes ET les patchs qui le rejouent —, la seule case où ce
             // logiciel peut être DEVANT Cubase, Live et FL. Il était le dernier
             // chemin d'usage courant que le banc ne pouvait pas franchir.
-            auto suite = [this](const juce::File& f) {
-                if (f != juce::File()) startReconstruction(f);
-            };
-            if (prendreLeFichierDeBanc(suite)) break;
-            auto chooser = std::make_shared<juce::FileChooser>(
-                tr(u8"Reconstruire un morceau (wav, mp3, flac...)"),
-                juce::File(), "*.wav;*.mp3;*.flac;*.ogg;*.m4a;*.aiff;*.aif");
-            chooser->launchAsync(juce::FileBrowserComponent::openMode
-                                      | juce::FileBrowserComponent::canSelectFiles,
-                                  [suite, chooser](const juce::FileChooser& fc) {
-                                      suite(fc.getResult());
-                                  });
+            // D211 : une reconstruction remplace le projet à son terme ; la
+            // question vient donc AVANT le sélecteur, et non après plusieurs
+            // minutes de course — on ne choisit pas un morceau pour rien.
+            apresAvoirDemande([this] {
+                auto suite = [this](const juce::File& f) {
+                    if (f != juce::File()) startReconstruction(f);
+                };
+                if (prendreLeFichierDeBanc(suite)) return;
+                auto chooser = std::make_shared<juce::FileChooser>(
+                    tr(u8"Reconstruire un morceau (wav, mp3, flac...)"),
+                    juce::File(), "*.wav;*.mp3;*.flac;*.ogg;*.m4a;*.aiff;*.aif");
+                chooser->launchAsync(juce::FileBrowserComponent::openMode
+                                          | juce::FileBrowserComponent::canSelectFiles,
+                                      [suite, chooser](const juce::FileChooser& fc) {
+                                          suite(fc.getResult());
+                                      });
+            });
             break;
         }
         case kMenuFileChainFolder: chooseChainFolder(); break;
@@ -4140,7 +4148,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         }
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
         case kMenuFileSaveTemplate:    saveAsTemplate(); break;
-        case kMenuFileNewFromTemplate: newFromTemplate(); break;
+        case kMenuFileNewFromTemplate: apresAvoirDemande([this] { newFromTemplate(); }); break;   // D211
         case kMenuViewFullScreen:      toggleFullScreen(); break;
         case kMenuViewComputerKeyboard:
             computerKeyboard_ = !computerKeyboard_;
@@ -5519,35 +5527,38 @@ void MainComponent::saveAudioDeviceState() {
 
 // --- Fichier / projet --------------------------------------------------
 
+// D212 : « OUVRIR MIDI… » — UN SEUL CHEMIN, ET LE BANC PEUT LE PRENDRE.
+//
+// Deux fonctions faisaient le même travail : celle du menu, derrière un sélecteur
+// qu'aucun banc ne franchissait (le seul des cinq sans `prendreLeFichierDeBanc`),
+// et `openMidiFileDirect`, une COPIE de son cœur appelée par
+// « VSM_VUE=ouvrir-midi: ». C'est le piège de D202, mot pour mot : deux chemins
+// pour un geste, dont un seul est mesuré, et c'est celui que personne n'utilise.
+// Le cœur est maintenant ici, et le verbe du banc appelle le chemin du menu.
 void MainComponent::openMidiFile() {
+    auto suite = [this](const juce::File& file) {
+        if (file == juce::File()) return;
+        ouvrirLeMidi(file);
+    };
+    if (prendreLeFichierDeBanc(suite)) return;   // D212 : le banc (VSM_FICHIER)
     auto chooser = std::make_shared<juce::FileChooser>(
         tr("Importer un fichier MIDI..."), juce::File(), "*.mid;*.midi");
-    auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
-
-    chooser->launchAsync(chooserFlags, [this, chooser](const juce::FileChooser& fc) {
-        juce::File file = fc.getResult();
-        if (file == juce::File()) return;
-
-        try {
-            ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
-            clearHistory();
-            project_ = Project::fromParsedFile(parsed);
-            oublierLesMachines();   // D76
-            project_.title = file.getFileNameWithoutExtension().toStdString();
-            rebuildFromProject();
-            pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
-        } catch (const std::exception& e) {
-            montrerBoite(juce::AlertWindow::WarningIcon,
-                                                     tr("Erreur d'import MIDI"), e.what());
-        }
+    const auto chooserFlags = juce::FileBrowserComponent::openMode
+                            | juce::FileBrowserComponent::canSelectFiles;
+    chooser->launchAsync(chooserFlags, [suite, chooser](const juce::FileChooser& fc) {
+        suite(fc.getResult());
     });
 }
 
-void MainComponent::openMidiFileDirect(const juce::File& fichier) {
+/// Le cœur, commun au menu et au banc. Rend `false` si le fichier n'a pas pu être
+/// lu — la boîte d'erreur reste au chemin du menu, le banc lit la ligne.
+bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
     if (!fichier.existsAsFile()) {
         std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : fichier introuvable — ")
                      + fichier.getFullPathName() + "\n").toRawUTF8(), stderr);
-        return;
+        montrerBoite(juce::AlertWindow::WarningIcon, tr("Erreur d'import MIDI"),
+                     tr(u8"Fichier introuvable : %1").replace("%1", fichier.getFullPathName()));
+        return false;
     }
     try {
         ParsedFile parsed = MidiFileParser::parseFile(fichier.getFullPathName().toStdString());
@@ -5556,15 +5567,29 @@ void MainComponent::openMidiFileDirect(const juce::File& fichier) {
         oublierLesMachines();   // D76
         project_.title = fichier.getFileNameWithoutExtension().toStdString();
         rebuildFromProject();
-        pianoRoll_.cadrerSurLesNotes();
+        pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
+        // D212 : LE TITRE SUIT LE PROJET, et la marque « non enregistré » repart
+        // de zéro. Sans ces deux lignes, la fenêtre gardait le nom du projet
+        // PRÉCÉDENT au-dessus d'un morceau qui n'était plus le sien.
+        currentProjectFolder_ = juce::File();
+        poserTitreDeBase("Vintage Synth MIDI Studio -- " + fichier.getFileNameWithoutExtension());
+        profondeurAuDernierEnregistrement_ = history_.undoDepth();
+        rafraichirTitre();
         std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ")
                      + juce::String(static_cast<int>(project_.tracks.size()))
                      + juce::String::fromUTF8(u8" piste(s) — ") + fichier.getFileName()
                      + "\n").toRawUTF8(), stderr);
+        return true;
     } catch (const std::exception& e) {
         std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ") + juce::String(e.what())
                      + "\n").toRawUTF8(), stderr);
+        montrerBoite(juce::AlertWindow::WarningIcon, tr("Erreur d'import MIDI"), e.what());
+        return false;
     }
+}
+
+void MainComponent::openMidiFileDirect(const juce::File& fichier) {
+    ouvrirLeMidi(fichier);   // D212 : le verbe du banc ne recopie plus le cœur
 }
 
 void MainComponent::openProjectBundle() {
@@ -7893,30 +7918,69 @@ void MainComponent::rafraichirTitre() {
 // le seul comportement qui ne perde rien. Même chose quand le projet n'a pas
 // encore de dossier -- `saveProjectAs()` ouvre un sélecteur, la réponse viendra
 // plus tard, et l'on ne quitte pas dans son dos.
-bool MainComponent::demanderAvantDeQuitter(std::function<void()> quandOnPeutQuitter) {
+// D211 : LA MÊME QUESTION DEVANT TOUT GESTE QUI JETTE LE TRAVAIL.
+//
+// `demanderAvantDeQuitter` n'avait qu'UN appelant — `systemRequestedQuit()` —, et
+// fermer n'est pas le seul geste qui abandonne un projet modifié : cinq entrées
+// du menu Fichier appellent `clearHistory()` puis réaffectent `project_`. Mesuré
+// avant (D211) : une piste ajoutée, puis « Nouveau projet », et le travail
+// disparaissait sans une ligne `VSM_BOITE` au journal ; « Ouvrir un projet VSM… »
+// de même, le titre passant d'un projet à l'autre. Cubase et Live demandent tous
+// deux. Le corps de la question est donc ici, et seuls son titre et le libellé du
+// bouton du milieu changent d'un geste à l'autre.
+//
+// VSM_ABANDON=abandonner|annuler|enregistrer (banc) : la réponse, sans souris.
+// Sans elle, aucune course ne pouvait franchir la question — et un banc qui ne
+// peut pas répondre à une boîte ne mesure plus le chemin qu'il croit mesurer.
+bool MainComponent::demanderAvantDeJeter(const juce::String& titre, const juce::String& jeter,
+                                         std::function<void()> quandOnPeutJeter) {
     if (!projetNonEnregistre()) return false;
-    const juce::String titre = tr(u8"Quitter sans enregistrer ?");
     const juce::String message =
         tr(u8"Ce projet porte des modifications qui ne sont pas enregistrées.");
     const juce::String oui = tr("Enregistrer");
-    const juce::String non = tr(u8"Quitter sans enregistrer");
     const juce::String annuler = vsm::app::ui::trSelon("bouton", u8"Annuler");
     // D95 : la boîte se lit au moment où elle est DEMANDÉE, pas sur une photo.
-    std::fputs(("VSM_BOITE : " + titre + " : " + message + " : [" + oui + " | " + non + " | "
+    std::fputs(("VSM_BOITE : " + titre + " : " + message + " : [" + oui + " | " + jeter + " | "
                 + annuler + "]\n").toRawUTF8(), stderr);
+    // La réponse suit le MÊME chemin que celle d'un clic : les trois branches
+    // ci-dessous sont celles du rappel modal, appelées depuis un seul endroit.
+    auto repondre = [this, quandOnPeutJeter](int reponse) {
+        if (reponse == 1) {
+            saveProject();
+            if (projetNonEnregistre()) return;   // refusé ou différé : on ne jette rien
+            quandOnPeutJeter();
+        } else if (reponse == 2) {
+            quandOnPeutJeter();
+        }
+        // reponse == 0 : Annuler. Le projet reste, et l'on ne dit rien de plus.
+    };
+    if (const char* choix = std::getenv("VSM_ABANDON"); choix != nullptr && *choix) {
+        const juce::String demande = juce::String(choix).trim().toLowerCase();
+        const int reponse = demande.startsWith("enregistrer") ? 1
+                          : (demande.startsWith("annuler") || demande == "0") ? 0
+                                                                             : 2;
+        std::fputs(("VSM_ABANDON : " + juce::String(reponse == 1 ? "enregistrer"
+                                                    : reponse == 2 ? "abandonner"
+                                                                   : "annuler")
+                    + "\n").toRawUTF8(), stderr);
+        repondre(reponse);
+        return true;
+    }
     juce::AlertWindow::showYesNoCancelBox(
-        juce::AlertWindow::WarningIcon, titre, message, oui, non, annuler, this,
-        juce::ModalCallbackFunction::create([this, quandOnPeutQuitter](int reponse) {
-            if (reponse == 1) {
-                saveProject();
-                if (projetNonEnregistre()) return;   // refusé ou différé : on reste
-                quandOnPeutQuitter();
-            } else if (reponse == 2) {
-                quandOnPeutQuitter();
-            }
-            // reponse == 0 : Annuler. On ne quitte pas, et l'on ne dit rien de plus.
-        }));
+        juce::AlertWindow::WarningIcon, titre, message, oui, jeter, annuler, this,
+        juce::ModalCallbackFunction::create([repondre](int reponse) { repondre(reponse); }));
     return true;
+}
+
+bool MainComponent::demanderAvantDeQuitter(std::function<void()> quandOnPeutQuitter) {
+    return demanderAvantDeJeter(tr(u8"Quitter sans enregistrer ?"),
+                                tr(u8"Quitter sans enregistrer"), std::move(quandOnPeutQuitter));
+}
+
+void MainComponent::apresAvoirDemande(std::function<void()> geste) {
+    if (!demanderAvantDeJeter(tr(u8"Abandonner les modifications ?"),
+                              tr(u8"Continuer sans enregistrer"), geste))
+        geste();
 }
 
 bool MainComponent::writeProjectTo(const juce::File& folder) {
@@ -8556,6 +8620,17 @@ void MainComponent::newProject() {
     project_.title = "Nouveau projet";
     project_.sends = defaultSendBuses();
     rebuildFromProject();
+    // D212 : LE TITRE DE LA FENÊTRE MENTAIT. Mesuré : un projet ouvert, puis
+    // « Nouveau projet », et la barre de titre annonçait encore
+    // « children-c3-plafond » au-dessus d'un projet vide — `project_.title` est
+    // le nom DANS le fichier, `titreDeBase_` celui de la FENÊTRE, et seul le
+    // second se voit. La marque « non enregistré » repart de zéro avec lui :
+    // comparée à la profondeur du dernier enregistrement de l'ANCIEN projet,
+    // elle aurait marqué un projet neuf comme modifié.
+    currentProjectFolder_ = juce::File();
+    poserTitreDeBase(tr(u8"Vintage Synth MIDI Studio -- nouveau projet"));
+    profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    rafraichirTitre();
 }
 
 void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {

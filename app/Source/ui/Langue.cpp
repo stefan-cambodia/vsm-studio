@@ -1040,6 +1040,12 @@ const Paire kAnglais[] = {
     // D193 : les trois chaînes de la question de fermeture (D175), restées
     // françaises dans l'interface anglaise — vues sur la PHOTO, pas au relevé.
     // D195 : la boîte du projet déjà ouvert ailleurs.
+    // D211 : la question devant tout geste qui jette le projet, et D212 le
+    // titre d'un projet neuf et la phrase du MIDI introuvable.
+    { "Abandonner les modifications ?", "Discard changes?" },
+    { "Continuer sans enregistrer", "Continue without saving" },
+    { "Vintage Synth MIDI Studio -- nouveau projet", "Vintage Synth MIDI Studio -- new project" },
+    { "Fichier introuvable : %1", "File not found: %1" },
     // D210 : les stems que la chaîne a écartés, dits dans le volet.
     { "%1 : aucune piste ne porte ce stem — écarté par la chaîne, qui y voit un résidu de séparation plutôt qu'une partie",
       "%1: no track carries this stem — dropped by the chain, which reads it as separation residue rather than a part" },

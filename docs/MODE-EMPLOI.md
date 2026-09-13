@@ -1111,6 +1111,14 @@ juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D17
 s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
 course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
 ferait expirer tous les bancs du dépôt.
+`VSM_ABANDON=abandonner|annuler|enregistrer` répond, sans souris, à la question
+« Abandonner les modifications ? » que D211 a mise devant les cinq entrées du
+menu Fichier qui remplacent le projet en mémoire (« Nouveau projet », « Ouvrir
+MIDI… », « Ouvrir un projet VSM… », « Nouveau depuis le modèle », « Reconstruire
+un morceau… ») et devant la fermeture. Sans elle, un banc qui modifie un projet
+puis ouvre un autre reste bloqué sur la boîte, et le chemin qu'il croit mesurer
+n'est plus franchi : `annuler` vérifie que rien n'est perdu, `enregistrer` que
+l'écriture précède le remplacement.
 `VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2), `VSM_LECTURE=1`
 lance la lecture avant la capture (`VSM_LECTURE=4000` : après 4 s ; les voyants IN et OUT de la barre de
 transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`

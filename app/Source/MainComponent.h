@@ -664,6 +664,15 @@ public:
     /// quelque chose à perdre. Rend `true` si la question est posée -- l'appelant
     /// ne quitte alors PAS, c'est la réponse qui décide.
     bool demanderAvantDeQuitter(std::function<void()> quandOnPeutQuitter);
+    /// D211 : la MÊME question devant tout geste qui jette le projet en mémoire
+    /// -- « Nouveau projet », « Ouvrir MIDI… », « Ouvrir un projet VSM… »,
+    /// « Nouveau depuis le modèle », « Reconstruire un morceau ». Seuls le titre
+    /// et le libellé du bouton du milieu changent. Rend `true` si la question est
+    /// posée : le geste attend alors la réponse.
+    bool demanderAvantDeJeter(const juce::String& titre, const juce::String& jeter,
+                              std::function<void()> quandOnPeutJeter);
+    /// D211 : joue le geste, après la question s'il y a quelque chose à perdre.
+    void apresAvoirDemande(std::function<void()> geste);
 
 private:
     /// L'heure de la dernière photo. La cadence est de trente secondes : le
@@ -1312,6 +1321,8 @@ private:
     /// que « Ouvrir MIDI... ». Un écran qu'on ne peut atteindre qu'à la souris
     /// est un écran qu'on ne peut pas déclarer vérifié.
     void openMidiFileDirect(const juce::File& fichier);
+    /// D212 : le cœur de « Ouvrir MIDI… », commun au menu et au banc.
+    bool ouvrirLeMidi(const juce::File& fichier);
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon

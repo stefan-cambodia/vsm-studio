@@ -21464,3 +21464,100 @@ volet** : un témoin ne se compte pas, il se LIT. `grep -c` rendait `1` pour
 `children-c3-plafond` et j'ai d'abord cru à un raté du témoin ; la ligne, lue,
 nommait `vocals` et désignait le défaut de ma propre règle. Un témoin qui
 « échoue » est une information sur le code, pas sur le témoin.
+
+### Phase D211 — les chemins qui JETTENT le travail non enregistré : demandent-ils ? (13/09/2026)
+
+**D'OÙ VIENT LA QUESTION.** D175 (A30) a mis une question devant la fermeture :
+« Quitter sans enregistrer ? », trois boutons, et rien n'est perdu. Elle est
+posée par `demanderAvantDeQuitter()`, et cette fonction n'a **qu'un seul
+appelant** : `systemRequestedQuit()`. Or fermer n'est pas le seul geste qui jette
+un projet modifié. Cinq entrées du menu Fichier remplacent le projet en mémoire
+— « Nouveau projet », « Nouveau depuis le modèle », « Ouvrir MIDI… », « Ouvrir un
+projet VSM… », « Reconstruire un morceau » — et toutes appellent `clearHistory()`
+puis réaffectent `project_`. Dans Cubase comme dans Live, chacune demande.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Un projet ouvert, UNE modification
+(« Ajouter une piste MIDI », qui pose l'astérisque du titre), puis l'entrée qui
+remplace :
+
+1. **Aucune ligne `VSM_BOITE` au journal** : rien n'est demandé. C'est le défaut
+   cherché, et je m'attends à le trouver sur les trois entrées pilotables.
+2. **Le titre perd son astérisque et change de nom** : le projet modifié n'est
+   plus là, et rien ne l'a signalé.
+3. **« Ouvrir MIDI… » n'est pilotable par personne** : pas de
+   `prendreLeFichierDeBanc` (le seul des cinq), donc le sélecteur s'ouvre et la
+   course ne se termine pas. Le banc le dira par un délai dépassé, pas par une
+   absence de boîte — ce sont deux choses différentes.
+4. **TÉMOIN, sans modification** : les mêmes entrées ne doivent rien demander non
+   plus, et cette fois c'est juste. Sans ce témoin, « aucune boîte » ne
+   distinguerait pas « ne demande jamais » de « ne demande pas quand il faut ».
+
+**CE QUE LA MESURE A DIT, AVANT** (projet `children-c3-plafond`, une piste ajoutée) :
+
+| Entrée | `VSM_BOITE` | titre après | verdict |
+|---|---|---|---|
+| « Nouveau projet » | *(aucune)* | `children-c3-plafond` **sans** astérisque | le travail est jeté en silence |
+| « Ouvrir un projet VSM… » | *(aucune)* | `usandthem-voix` | idem |
+| « Ouvrir MIDI… » | *(aucune)* | `children-c3-plafond *` | le sélecteur s'ouvre, rien ne se passe |
+| « Nouveau depuis le modèle » | — | — | grisée (aucun modèle dans ce `HOME`) |
+| témoin, sans modification | *(aucune)* | — | juste : rien à demander |
+
+Les attendus 1 et 2 tiennent. **L'attendu 3 est réfuté dans sa forme** : « Ouvrir
+MIDI… » ne fait pas expirer la course — le minuteur de `VSM_CAPTURE` ferme
+l'application sans attendre la modale. C'est une bonne nouvelle pour les bancs, et
+cela confirme la leçon de D175 : une fin de course de banc n'est pas un geste
+d'utilisateur. Le défaut, lui, reste entier : le chemin n'est pas pilotable.
+
+**ET UN SECOND DÉFAUT, QUE LE TÉMOIN A DÉCOUVERT.** Dans la ligne du témoin, le
+titre annonce encore `children-c3-plafond` APRÈS « Nouveau projet ». Ce n'est pas
+l'astérisque qui manque : c'est le NOM. `newProject()` pose `project_.title` — le
+nom écrit dans le fichier — et jamais `titreDeBase_`, le nom de la FENÊTRE. Un
+projet vide portait donc le nom du précédent, et c'est le témoin « sans
+modification », là pour distinguer deux absences de boîte, qui l'a montré.
+
+### Phase D212 — « Ouvrir MIDI… » : un seul chemin, et le titre qui suit le projet (13/09/2026)
+
+Trois choses, dans le même fichier :
+
+1. **Le sélecteur de « Ouvrir MIDI… » se saute** (`prendreLeFichierDeBanc`) —
+   c'était le dernier des cinq sans hameçon de banc.
+2. **Le verbe du banc ne recopie plus le cœur.** `openMidiFileDirect`, appelé par
+   « VSM_VUE=ouvrir-midi: », était une COPIE du corps du menu : deux chemins pour
+   un geste, dont un seul mesuré, et c'est celui que personne n'utilise. C'est le
+   piège de D202 mot pour mot. Le cœur est maintenant `ouvrirLeMidi()`, appelé par
+   les deux.
+3. **Le titre suit le projet**, dans `ouvrirLeMidi()` comme dans `newProject()`, et
+   la marque « non enregistré » repart de zéro (comparée à la profondeur du
+   dernier enregistrement de l'ANCIEN projet, elle aurait marqué un projet neuf
+   comme modifié). Un fichier introuvable dit maintenant aussi sa boîte, et pas
+   seulement une ligne de journal.
+
+**CE QUE LA MESURE A DIT, APRÈS** (huit courses, réponses posées par `VSM_ABANDON`) :
+
+| Geste | réponse | `VSM_BOITE` | titre après | ce qui a été écrit |
+|---|---|---|---|---|
+| « Nouveau projet » | *(sans modification)* | aucune | `-- nouveau projet` | — |
+| « Nouveau projet » | *(laissée pendante)* | la question | `children-c3-plafond *` | rien |
+| « Nouveau projet » | Continuer sans enregistrer | la question | `-- nouveau projet` | rien |
+| « Nouveau projet » | Annuler | la question | `children-c3-plafond *` | rien |
+| « Nouveau projet » | Enregistrer | la question | `-- nouveau projet` | `project.json` réécrit, « Piste 2 » dedans |
+| « Ouvrir un projet VSM… » | Continuer / Annuler | la question | `usandthem-voix` / `children-c3-plafond *` | rien |
+| « Ouvrir MIDI… » | Continuer | la question | `-- arrangement` | 4 piste(s) lues |
+| « Ouvrir MIDI… » | Annuler | la question | `children-c3-plafond *` | rien |
+| « Reconstruire un morceau… » | Annuler | la question | `children-c3-plafond *` | aucune course partie |
+
+La branche **Enregistrer** est la seule qui écrive, et elle écrit AVANT de
+remplacer : sur une copie de `cdl`, l'empreinte de `project.json` change
+(`a7052f26…` → `37ef71bc…`) et le fichier porte la piste ajoutée — puis le projet
+neuf s'ouvre. Rien n'est perdu dans aucune des trois branches.
+
+Anglais vérifié : « Discard changes? : This project has changes that are not
+saved. : [Save | Continue without saving | Cancel] », titre « -- new project ».
+La question de fermeture de D175 est inchangée (« Quitter sans enregistrer ? »,
+mêmes trois boutons) : elle passe désormais par le même corps.
+`tools/inventaire_langue.py` : `ECRAN 7 SANS_PAIRE 0`, inchangé.
+
+**LA LEÇON, ÉCRITE POUR LA PROCHAINE FOIS.** Un témoin posé pour distinguer deux
+absences a trouvé un défaut que la mesure ne cherchait pas. D145 disait déjà
+qu'une valeur revenue à son point de départ ne prouve rien sans témoin ; ici, le
+témoin a servi une seconde fois, comme CAS et non comme repère.
