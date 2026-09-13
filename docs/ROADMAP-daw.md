@@ -20814,3 +20814,65 @@ avant D181, « Exporter MIDI… » ouvrait un sélecteur que le banc ne pouvait 
 franchir : le chemin par lequel un musicien envoie son morceau à un autre DAW
 n'était pilotable par personne. Une ligne, la même que pour les trois sélecteurs
 de D102.
+
+### D198 (attendus) — le soixante et unième audit : jusqu'où le logiciel tient-il quand le projet grossit ? (13/09/2026)
+
+**POURQUOI CETTE MESURE.** Tout ce qui a été chiffré aujourd'hui l'a été sur
+**douze pistes**. Un morceau de studio en compte quarante, et c'est le nombre qui
+décide si l'on peut travailler dedans : le mixeur dessine une tranche par piste
+(5,95 ms à douze, D190), la liste des pistes une ligne par piste, l'arrangement
+une rangée par piste. Si ces trois grandissent linéairement, **quarante-huit
+pistes coûtent quatre fois douze** — et l'on sort des 33 ms de D163.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Une copie de
+`children-c3-plafond` dont les pistes sont **quadruplées — 48 pistes**, mêmes
+machines, mêmes réglages :
+
+1. **La fenêtre entière reste sous 33 ms** au zoom d'ouverture. Réfutée
+   au-dessus, et le remède sera nommé (ne peindre que les tranches visibles).
+2. **L'ouverture reste sous 10 s** (2,44 s à douze pistes, D161).
+3. **La mémoire reste sous 800 Mo** (223 Mo à douze, D172 — dont 160 de son, qui
+   ne quadruple pas ici puisque les pistes audio ne sont pas dupliquées).
+4. Et l'on dira **de quoi le surcoût est fait**, composant par composant.
+
+### Phase D198 — quarante-huit pistes et trente-sept mille notes coûtent le même dessin que douze (13/09/2026)
+
+**LES QUATRE ATTENDUS SONT TENUS, ET LE RÉSULTAT EST MEILLEUR QUE L'ATTENDU.**
+`children-c3-plafond` quadruplé — **48 pistes, 36 896 notes**, mêmes machines
+(4 clavichordes, 4 vielles, 4 sitars, 4 TB-303, 20 TR-909) :
+
+| | 12 pistes / 9 224 notes | **48 pistes / 36 896 notes** | attendu |
+|---|---|---|---|
+| fenêtre entière, zoom d'ouverture | 17,9 ms | **18,76 ms** | < 33 ms ✔ |
+| bandeau d'onglets (le mixeur) | 5,77 ms | **5,59 ms** | — |
+| liste des pistes | 0,72 ms | **0,79 ms** | — |
+| panneau du piano roll | 2,59 ms | **2,61 ms** | — |
+| ouverture | 2,44 s (D161) | **2,78 s** | < 10 s ✔ |
+| mémoire | 221 Mo | **240 Mo** | < 800 Mo ✔ |
+
+**QUADRUPLER LE PROJET NE QUADRUPLE RIEN.** L'attendu supposait une croissance
+linéaire — « le mixeur dessine une tranche par piste, donc quarante-huit pistes
+coûtent quatre fois douze ». **C'est faux, et pour une bonne raison** : le mixeur
+et la liste des pistes vivent chacun dans un `Viewport` qui DÉCOUPE. Ce qui est
+hors de la fenêtre n'est pas peint, et le nombre de tranches visibles ne dépend
+que de la largeur de l'écran. Le piano roll, lui, ne montre qu'une piste par
+construction. **Aucune des trois surfaces ne grandit avec le projet.**
+
+**LE SEUL POSTE QUI GRANDIT EST LA MÉMOIRE, et de peu** : +19 Mo pour
+**27 672 notes de plus**, soit **0,7 Ko par note** — le modèle, ses clips et la
+pile d'annulation comprise. À ce prix, un projet de deux cents pistes tiendrait
+dans la même machine.
+
+**CE QUE LA MESURE A EXIGÉ, et qui a failli la fausser.** Le premier essai
+dupliquait les PISTES sans dupliquer les NOTES : le `.mid` du projet en compte
+douze, si bien que trente-six pistes s'ouvraient vides et que le chiffre publié
+aurait décrit un projet que personne n'a. Le `.mid` a donc été quadruplé aussi,
+et les statistiques de l'application le confirment avant toute conclusion —
+**48 pistes, 36 896 notes, 38 clips**.
+
+**UNE ASYMÉTRIE VUE EN PASSANT, dite sans en faire une anomalie** : les copies
+des deux pistes audio n'ont pas de fichier, et l'application les ouvre **sans un
+mot**, là où `vsm-render` écrit « piste audio sans fichier, elle restera
+silencieuse ». C'est défendable — une piste audio vide est visiblement vide,
+elle ne montre aucune forme d'onde, et avertir à chaque piste neuve serait du
+bruit. Dit ici pour que personne ne le retrouve comme une surprise.
