@@ -40,6 +40,9 @@ import sys
 from bisect import bisect_left
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hauteur_sonnante import hauteurs_sonnantes as _hauteurs_sonnantes  # noqa: E402
+
 # La tolérance se règle (VSM_TOLERANCE=0.025) : le RANG des tranches doit tenir
 # à 25 comme à 100 ms, sans quoi la conclusion tiendrait à un réglage.
 TOLERANCE = float(os.environ.get("VSM_TOLERANCE", "0.05"))   # secondes
@@ -56,22 +59,17 @@ SONNANTE = os.environ.get("VSM_SONNANTE", "") not in ("", "0")
 
 
 def hauteurs_sonnantes(partie: dict, hauteur: int) -> list[int]:
-    """Les hauteurs auxquelles cette note SONNE, d'après le patch de la partie.
+    """Les hauteurs auxquelles cette note SONNE — règle partagée, jamais recopiée.
 
-    Plusieurs, et non une : une machine hybride a deux couches à deux hauteurs
-    (`sample.1.tune` et `oscillator.1.detune` sur `vsm.pcmhybrid`), et le
-    transcripteur en suit l'une ou l'autre. On rend donc la hauteur écrite ET
-    chaque hauteur décalée, et une note transcrite est juste si elle tombe sur
-    l'une d'elles.
+    L'implémentation vit dans `tools/hauteur_sonnante.py`, et pour une raison
+    payée : ce fichier-ci en portait sa PROPRE copie, qui supposait que tout
+    paramètre nommé `…detune` était en demi-tons. C'est faux pour `vsm.psg` (des
+    cents) et pour les réglages normalisés de 0 à 1, si bien que les deux outils
+    du dépôt ne donnaient pas la même vérité. Une règle, un endroit.
     """
     if not SONNANTE:
         return [hauteur]
-    sonnantes = [hauteur]
-    for clef, valeur in (partie.get("patch") or {}).items():
-        c = clef.lower()
-        if ("detune" in c or c.endswith(".tune")) and abs(valeur) > 0.25:
-            sonnantes.append(hauteur + int(round(float(valeur))))
-    return sorted(set(sonnantes))
+    return _hauteurs_sonnantes(partie, hauteur)
 
 
 def verite_du_morceau(dossier: Path) -> dict[int, list[float]]:

@@ -353,6 +353,7 @@ python3 tools/clips-numerotes.py                      # tout clip ET toute note 
 python3 tools/coupe-aux-transitoires.py              # « Découper aux transitoires » coupe-t-il, et AUX BONS ENDROITS ?
 analyse/.venv/bin/python tools/notes-courtes.py 127.7 30  # le transcripteur jette-t-il les notes brèves ? (A/B sur les stems vrais)
 analyse/.venv/bin/python tools/corpus-hauteurs.py     # le corpus sonne-t-il à la hauteur que sa vérité annonce ?
+#   (tools/hauteur_sonnante.py : la règle « à quelle hauteur une note SONNE », partagée)
 analyse/.venv/bin/python tools/octave-basse.py <lot>  # relire l'octave de la basse dans le mélange : témoin, correction, casse
 analyse/.venv/bin/python tools/basse-aigu-releve.py 0 12  # relever l'aigu du stem de basse rend-il l'octave ?
 analyse/.venv/bin/python tools/modeles-separation.py <dossier> --transcrire  # quel modèle garde la basse ?

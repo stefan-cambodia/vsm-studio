@@ -3795,7 +3795,7 @@ Le corpus tire ses patchs au hasard, et plusieurs machines exposent un désaccor
 d'oscillateur en demi-tons entiers. **9,9 % des notes mélodiques sonnent à deux
 demi-tons ou plus de ce que leur liste annonce** — et toute statistique de
 hauteur les comptait fausses. Recomptée contre la hauteur entendue, la bonne
-hauteur passe de 72,6 à **83,6 %** sur `other` et de 78,3 à **79,2 %** sur
+hauteur passe de 72,6 à **83,4 %** sur `other` et de 78,3 à **79,2 %** sur
 `piano` : **l'attendu de B14 était déjà tenu par deux stems sur quatre**, sans
 qu'une ligne de chaîne ait changé.
 

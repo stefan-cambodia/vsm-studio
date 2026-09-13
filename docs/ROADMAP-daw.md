@@ -24272,10 +24272,17 @@ lot `r1f-13sep` :
 
 | stem | notes | bonne hauteur (écrite) | **bonne hauteur (entendue)** | écart |
 |---|---|---|---|---|
-| `other` | 2 493 | 72,6 % | **83,6 %** | **+11,0** |
-| `guitar` | 1 662 | 64,1 % | **67,6 %** | +3,5 |
+| `other` | 2 493 | 72,6 % | **83,4 %** | **+10,8** |
+| `guitar` | 1 662 | 64,1 % | **67,4 %** | +3,3 |
 | `piano` | 1 325 | 78,3 % | **79,2 %** | +0,9 |
 | `bass` | 850 | 61,6 % | **61,6 %** | **0,0** |
+
+*(Ces chiffres sont eux-mêmes une correction : publiés d'abord à 83,6 et 67,6 %,
+ils portaient les mêmes unités supposées que le § D267 — `vsm.psg` en cents, les
+réglages normalisés comptés pour des demi-tons. Ces faux candidats rendaient la
+vérité plus permissive et gonflaient le résultat de deux dixièmes de point sur
+`other` et `guitar`. La règle vit désormais dans `tools/hauteur_sonnante.py`, un
+seul endroit pour les deux outils qui la lisent.)*
 
 Et la catégorie « autre hauteur » — celle qui n'est ni juste ni une octave —
 s'effondre là où la correction porte : `other` passe de **13,3 % à 4,3 %**,

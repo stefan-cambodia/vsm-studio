@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -69,80 +70,20 @@ def ecart_modal(vraies: list[tuple[float, int]], transcrites: list[tuple[float, 
     return ecart, compte, appariees
 
 
-DESCRIPTEURS = RACINE / "interchange/src/ParameterDescriptor.cpp"
-PLUGINS = RACINE / "audio/plugins"
-_unites: dict[tuple[str, str], str] = {}
-
-
-def unite_du_parametre(machine: str, clef: str) -> str:
-    """L'UNITÉ déclarée par la machine pour ce paramètre — « st », « cents », ou rien.
-
-    POURQUOI ELLE SE LIT AU LIEU DE SE SUPPOSER (13/09/2026). Ce banc a d'abord
-    tenu tout `…detune` pour des demi-tons. C'est faux pour au moins trois
-    formes : `vsm.psg` déclare son « Detune » en CENTS (une valeur de 37,15 vaut
-    0,37 demi-ton, pas 37), et `voice.unisonDetune` comme
-    `oscillator.supersaw.detune` sont des réglages NORMALISÉS de 0 à 1, qui ne
-    déplacent pas la hauteur d'un nombre de demi-tons. La confusion a fait
-    publier « 12,7 % des notes dans une partie désaccordée » là où il faut lire
-    **9,9 %**.
-
-    Le chemin de lecture joint deux fichiers : `ParameterDescriptor.cpp` donne
-    le nom d'affichage pour un identifiant sémantique, et la table de la machine
-    (`audio/plugins/<machine>/*.cpp`) donne l'unité de ce nom.
-    """
-    if (machine, clef) in _unites:
-        return _unites[(machine, clef)]
-    import re
-    texte = DESCRIPTEURS.read_text(encoding="utf-8", errors="replace")
-    noms = {n for n, sid in re.findall(r'\{"([^"]+)",\s*"([^"]+)"\}', texte) if sid == clef}
-    unite = ""
-    court = machine.split(".")[-1]
-    for fichier in sorted(PLUGINS.glob(f"{court}/*.cpp")):
-        contenu = fichier.read_text(encoding="utf-8", errors="replace")
-        for nom in noms:
-            m = re.search(r'\{\s*k\w+,\s*"' + re.escape(nom) + r'"\s*,[^}]*?"([^"]*)"\s*\}', contenu)
-            if m:
-                unite = m.group(1)
-                break
-        if unite:
-            break
-    _unites[(machine, clef)] = unite
-    return unite
-
-
-def en_demi_tons(machine: str, clef: str, valeur: float) -> float | None:
-    """La valeur convertie en DEMI-TONS, ou None si ce paramètre n'en déplace pas."""
-    unite = unite_du_parametre(machine, clef)
-    if unite == "st":
-        return float(valeur)
-    if unite == "cents":
-        return float(valeur) / 100.0
-    return None
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hauteur_sonnante import desaccords as _desaccords  # noqa: E402
 
 
 def desaccords_du_patch(partie: dict) -> list[tuple[str, float]]:
-    """TOUS les désaccords en demi-tons que le patch impose, et non « le plus grand ».
+    """(paramètre, désaccord en demi-tons) — règle partagée, jamais recopiée.
 
-    Prendre le plus grand était une erreur, et le corpus l'a dite : sur une
-    partie `vsm.pcmhybrid`, `sample.1.tune` vaut −11,63 et
-    `oscillator.1.detune` +4,75 — deux COUCHES de la même machine, à deux
-    hauteurs. Le transcripteur en suit une, ici l'oscillateur, et l'écart mesuré
-    valait −5. Une machine hybride n'a pas « un » désaccord ; on les rend tous,
-    et l'on regarde si l'un d'eux explique ce qu'on entend.
-
-    Les modulations en profondeur (`lfo.1.toPitch`) sont exclues : elles font
-    vibrer autour de la note sans la déplacer.
+    L'implémentation vit dans `tools/hauteur_sonnante.py`. Elle y a été portée le
+    13/09/2026 parce que ce fichier-ci et `confiance-contre-verite.py` en avaient
+    chacun une version, et qu'elles ne disaient PAS la même chose : l'une lisait
+    l'unité déclarée par la machine, l'autre supposait des demi-tons partout.
+    Deux outils du dépôt donnaient donc deux vérités. Une règle, un endroit.
     """
-    trouves = []
-    machine = str(partie.get("machine", ""))
-    for clef, valeur in (partie.get("patch") or {}).items():
-        c = clef.lower()
-        if "detune" not in c and not c.endswith(".tune"):
-            continue
-        demi = en_demi_tons(machine, clef, float(valeur))
-        if demi is not None and abs(demi) > 0.25:
-            trouves.append((clef, demi))
-    return sorted(trouves, key=lambda kv: -abs(kv[1]))
+    return _desaccords(partie)
 
 
 def main() -> int:
