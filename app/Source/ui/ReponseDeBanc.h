@@ -69,6 +69,17 @@ void montrerOuRepondre(juce::AlertWindow& fenetre, Suite suite) {
         suite(1);
         return;
     }
+    // D228 : UNE FENÊTRE QUI S'OUVRE LE DIT, même quand personne ne peut y
+    // répondre. C'est la règle de D95 pour les boîtes (« une boîte se lit au
+    // moment où elle est demandée »), étendue aux dix-huit fenêtres à saisie :
+    // sans cette ligne, une course qui bute sur une modale ne laisse aucune trace,
+    // et l'on cherche le défaut dans le geste qui précède. Le titre suffit à la
+    // reconnaître ; le nombre de boutons dit ce qu'on aurait pu répondre.
+    std::fputs((juce::String::fromUTF8(u8"VSM_BOITE : ") + fenetre.getName()
+                + juce::String::fromUTF8(u8" — fenêtre modale ouverte (")
+                + juce::String(fenetre.getNumButtons())
+                + juce::String::fromUTF8(u8" bouton(s)), sans réponse de banc (VSM_OPTIONS)\n"))
+                   .toRawUTF8(), stderr);
     fenetre.enterModalState(true, juce::ModalCallbackFunction::create(suite), false);
 }
 

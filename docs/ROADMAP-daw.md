@@ -22440,3 +22440,25 @@ sections là où il n'en comptait qu'une. Le volet, ouvert et photographié, por
 « Sections (déduites des repères) » avec « Intro » dans sa liste, « Ajouter ▸ »,
 l'ordre de jeu, et « Aplatir (écrit le matériau) » : **la fonction marche de bout
 en bout**, ce que personne n'avait vu.
+
+### Phase D228 — une fenêtre qui s'ouvre le dit, même si personne ne peut y répondre (13/09/2026)
+
+D95 a posé la règle pour les boîtes : « une boîte se lit au moment où elle est
+DEMANDÉE, pas sur une photo », parce qu'une modale ne se photographie pas
+toujours et pas du tout sous un écran verrouillé. Les dix-huit fenêtres à saisie
+de D219 n'avaient pas cette ligne : une course qui butait sur l'une d'elles ne
+laissait **aucune trace**, et l'on cherchait le défaut dans le geste d'avant —
+c'est exactement ce qui a coûté un quart d'heure à D222 (« Tempo du clip »
+s'ouvrait derrière « Le clip fait N mesures… », et rien ne le disait avant que la
+règle de sûreté de D219 ne le nomme).
+
+`montrerOuRepondre` écrit donc, quand elle MONTRE au lieu de répondre :
+
+```
+sans VSM_OPTIONS : VSM_BOITE : Poser un repère — fenêtre modale ouverte (2 bouton(s)), sans réponse de banc (VSM_OPTIONS)
+avec VSM_OPTIONS : VSM_OPTIONS : nom=Refrain          (la fenêtre est remplie et validée, rien ne s'ouvre)
+```
+
+Le titre suffit à reconnaître la fenêtre, le nombre de boutons dit ce qu'on aurait
+pu répondre, et la mention de `VSM_OPTIONS` dit comment. Une seule ligne, au même
+endroit pour les dix-huit.
