@@ -20491,3 +20491,55 @@ la mesure n'a pas pu se faire. Sur le projet de l'utilisateur, aujourd'hui :
   décalage     : 0 échantillon(s)
 VERDICT : les deux chemins rendent le MÊME son
 ```
+
+### D192 (attendus) — le cinquante-sixième audit : la distance publiée décrit-elle le projet qu'on livre ? (13/09/2026)
+
+**LA QUESTION, ET POURQUOI ELLE N'EST PAS RHÉTORIQUE.** La chaîne publie une
+distance — **0,1688** pour « B4 Wuz Then » — et livre deux choses : un
+`reconstruit.wav` et un `project.json`. La distance est mesurée sur le premier.
+Ce que l'utilisateur ouvre, joue et modifie est le second. **Rien n'a jamais
+vérifié que les deux sonnent pareil.** Si la chaîne rendait son fichier depuis un
+état qu'elle ne SÉRIALISE pas entièrement — un réglage tenu en mémoire, un volume
+appliqué après coup —, la distance décrirait un son que le projet livré ne
+reproduit pas, et tout le dépôt mesurerait à côté.
+
+D46 a appris la forme de cette erreur : « **un fichier rangé dans un dossier
+n'est pas un témoin ; c'est un souvenir** » — mais il parlait d'un fichier
+VIEUX. Ici, le fichier et le projet sont écrits par la même course, à la même
+minute.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. `reconstruit.wav` et un rendu NEUF de `project.json` par `vsm-render`
+   (flottant, même fréquence) sont identiques à **−140 dB** ou mieux.
+2. **Même durée, aucun décalage.**
+3. **Réfuté sinon**, et l'écart sera attribué — piste par piste s'il le faut —
+   avant toute conclusion sur la chaîne.
+
+### Phase D192 — la distance publiée décrit EXACTEMENT le projet livré (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS, SUR DEUX PROJETS.** Le `reconstruit.wav` écrit
+par la chaîne, contre un rendu NEUF de son seul `project.json` par `vsm-render` :
+
+| projet | durée | corrélation | écart maximal sur un échantillon |
+|---|---|---|---|
+| **`b4wuzthen`** (le morceau de l'utilisateur, 8 pistes, 3 machines, un patch multi-échantillons hors du projet) | 15 579 519 éch. des deux côtés | **1,000000000** | **0,000 × 10⁰** |
+| **`children-c3-plafond`** (12 pistes, 9 machines, **2 pistes audio**, un bus de groupe) | 20 028 612 éch. des deux côtés | **1,000000000** | **0,000 × 10⁰** |
+
+**Aucun décalage, même durée, et pas un bit d'écart.**
+
+**CE QUE CELA ÉTABLIT, ET C'EST LE SOL DE TOUT LE RESTE.** La chaîne mesure sa
+distance sur `reconstruit.wav` ; l'utilisateur ouvre `project.json`. Les deux
+sonnent **le même son, au bit**. Le **0,1688** publié pour « B4 Wuz Then » décrit
+donc exactement ce qui est livré : rien de ce que la chaîne a rendu ne vit hors
+du fichier de projet — ni réglage tenu en mémoire, ni volume appliqué après coup,
+ni échantillon résolu autrement.
+
+**POURQUOI IL FALLAIT LE MESURER PLUTÔT QUE LE SUPPOSER.** D46 avait appris la
+forme de l'erreur inverse — « un fichier rangé dans un dossier n'est pas un
+témoin ; c'est un souvenir » — en comparant un export d'aujourd'hui à un rendu
+d'août, et en croyant d'abord à un défaut. Ici le fichier et le projet sortent de
+la même course, à la même minute, et c'est précisément pour cela que personne
+n'aurait pensé à les comparer. Les deux cas ci-dessus ferment la question, et
+`tools/comparer-rendus.sh` couvre désormais l'autre moitié (application contre
+`vsm-render`).
