@@ -33,6 +33,14 @@ class SearchParameter:
     low: float
     high: float
     logarithmic: bool = False  # fréquences : chercher en log, l'oreille aussi
+    # L'UNITÉ DÉCLARÉE PAR LA MACHINE (« st », « cents », « Hz », ou rien).
+    #
+    # Elle venait du moteur dans `SearchDimension` et se perdait ici, où le patch
+    # est pourtant TIRÉ. Sans elle, impossible de savoir qu'un paramètre déplace
+    # la hauteur — et c'est ce qui manquait pour borner le désaccord d'un corpus
+    # (B5, § 7 bis) : le code allait la chercher dans `SearchDimension`, qui n'est
+    # pas ce que le tirage voit.
+    unit: str = ""
 
 
 # ESPACE DE SECOURS, employé seulement si le moteur ne sait pas déclarer de
@@ -140,6 +148,7 @@ def search_space_for_machine(
             low=dimension.low,
             high=dimension.high,
             logarithmic=dimension.logarithmic,
+            unit=dimension.unit,
         )
         for dimension in dimensions[:max_dimensions]
     ]

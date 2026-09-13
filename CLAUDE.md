@@ -255,6 +255,16 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   prendre un triton), et **un souffle tiré d'un générateur déterministe de même
   graine est IDENTIQUE d'une note à l'autre** et corrèle à zéro (décaler les
   fenêtres d'analyse). Quand un banc accuse, vérifier le banc avant la cible.
+- Un test qui n'emploie pas l'OBJET DU CHEMIN RÉEL garde autre chose. Le
+  13/09, deux tests neufs bâtis sur `SearchDimension` passaient au vert pendant
+  que six tests de génération du corpus tombaient : le code testé reçoit des
+  `SearchParameter`, un type voisin qui ne portait PAS le champ `unit` dont il
+  dépendait. Les deux classes ont les mêmes champs à un près, et c'est
+  exactement celui qui comptait. Avant d'écrire un objet d'essai à la main,
+  vérifier de quel TYPE est ce que la fonction reçoit vraiment — et lancer la
+  suite ENTIÈRE avant de commiter, pas seulement le filtre du test qu'on vient
+  d'écrire (le commit du jour annonçait « tests verts » sur un `run.py corpus`
+  qui n'en voyait que vingt).
 - Une garde se vérifie EN LA FAISANT ÉCHOUER, et l'essai en rouge sert d'abord à
   vérifier la GARDE. Le 13/09, `tools/gestes-vivants.py` — écrite pour attraper un
   geste de menu qui ne fait rien — est restée VERTE quand on lui a remis le défaut

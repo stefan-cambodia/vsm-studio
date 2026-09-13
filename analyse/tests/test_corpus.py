@@ -292,14 +292,19 @@ def le_desaccord_de_hauteur_est_ecrit_dans_la_verite():
     """
     import types
 
-    from analyzer.vsm_engine import SearchDimension
     from analyzer.vsm_morceaux import Generateur
+    from analyzer.vsm_patch_optimizer import SearchParameter
 
+    # LE TYPE QUI CIRCULE VRAIMENT. Ces tests ont d'abord été écrits avec
+    # `SearchDimension`, qui porte aussi un `unit` — ils passaient, et les six
+    # tests de génération du corpus tombaient : `self.espace()` rend des
+    # `SearchParameter`, et ce type-là ne portait PAS l'unité. Une garde qui
+    # n'emploie pas l'objet du chemin réel garde autre chose.
     espace = [
-        SearchDimension(semantic_id="oscillator.2.detune", low=-12.0, high=12.0, unit="st"),
-        SearchDimension(semantic_id="oscillator.autre.detune", low=0.0, high=50.0, unit="cents"),
-        SearchDimension(semantic_id="voice.unisonDetune", low=0.0, high=1.0, unit=""),
-        SearchDimension(semantic_id="filter.1.cutoff", low=20.0, high=20000.0, unit="Hz"),
+        SearchParameter(semantic_id="oscillator.2.detune", low=-12.0, high=12.0, unit="st"),
+        SearchParameter(semantic_id="oscillator.autre.detune", low=0.0, high=50.0, unit="cents"),
+        SearchParameter(semantic_id="voice.unisonDetune", low=0.0, high=1.0, unit=""),
+        SearchParameter(semantic_id="filter.1.cutoff", low=20.0, high=20000.0, unit="Hz"),
     ]
     faux = types.SimpleNamespace(_espaces={"vsm.essai": espace})
     faux.espace = lambda machine: faux._espaces[machine]
@@ -341,15 +346,14 @@ def borner_la_hauteur_ramene_les_desaccords_sous_la_borne():
 
     import numpy as np
 
-    from analyzer.vsm_engine import SearchDimension
     from analyzer.vsm_morceaux import Generateur
-    from analyzer.vsm_patch_optimizer import _vector_to_parameters
+    from analyzer.vsm_patch_optimizer import SearchParameter, _vector_to_parameters
 
     espace = [
-        SearchDimension(semantic_id="oscillator.2.detune", low=-12.0, high=12.0, unit="st"),
-        SearchDimension(semantic_id="sample.1.tune", low=-24.0, high=24.0, unit="st"),
-        SearchDimension(semantic_id="osc.cents", low=0.0, high=50.0, unit="cents"),
-        SearchDimension(semantic_id="filter.1.cutoff", low=20.0, high=20000.0,
+        SearchParameter(semantic_id="oscillator.2.detune", low=-12.0, high=12.0, unit="st"),
+        SearchParameter(semantic_id="sample.1.tune", low=-24.0, high=24.0, unit="st"),
+        SearchParameter(semantic_id="osc.cents", low=0.0, high=50.0, unit="cents"),
+        SearchParameter(semantic_id="filter.1.cutoff", low=20.0, high=20000.0,
                         logarithmic=True, unit="Hz"),
     ]
     faux = types.SimpleNamespace(_espaces={"vsm.essai": espace}, borne_hauteur=2.0)
