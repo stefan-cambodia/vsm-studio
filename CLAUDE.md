@@ -184,6 +184,16 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   cette machine, et l'erreur est passée dans un tube filtré par `grep`. Tout
   verdict par comparaison vérifie d'abord que ses DEUX fichiers existent et ne
   sont pas vides, et une mesure n'emprunte pas un outil sans l'avoir vu répondre.
+- Comparer deux listes TRIÉES de la même façon suppose que le geste préserve
+  l'ordre — et trois gestes sur quatre ne le préservent pas. Payé TROIS FOIS le
+  13/09 : la comparaison d'événements MIDI du matin (qui a failli publier une
+  « transposition » inexistante), la quantification (l'ordre des notes déplacées
+  se croise, et la colonne « Δ hauteur » affichait −40/+40 sur un geste qui ne
+  touche pas aux hauteurs), et le miroir des hauteurs (qui INVERSE l'ordre d'un
+  accord : « 61 sommes distinctes » là où il n'y en a qu'une, 124). Une mesure
+  d'édition musicale se fait sur des MULTIENSEMBLES (`collections.Counter`), ou
+  sur un appariement que le geste justifie — jamais sur deux listes triées à
+  l'aveugle.
 - Un script d'analyse écrit pour une phase n'est pas une garde : il n'est ni
   relu, ni rejoué, ni corrigé. Ce qui doit empêcher une régression va dans
   `tools/`, avec sa règle écrite dans son en-tête (12/09, D150).
