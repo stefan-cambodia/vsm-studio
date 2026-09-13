@@ -105,6 +105,14 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 
 ### A. Ce qui est nommé, mesuré, et pas encore corrigé
 
+> **ÉTAT AU 13/09/2026 : trente-cinq anomalies sur trente-six sont CLOSES.** La
+> seule qui reste, **A6**, est un compromis assumé et chiffré (la barre de
+> transport prend deux rangées faute de 1 400 px de large) — pas un défaut qui
+> attend un correctif. Dix ont été ouvertes ET fermées le 13/09 : A27 à A36,
+> dont trois qui abîmaient un fichier ou faisaient disparaître un son sans un
+> mot (A32 la piste gelée muette à l'export, A34 le profil effacé par un
+> Ctrl+S, A36 le plugin tiers qu'un projet ne retrouvait jamais).
+
 | # | Travail | Source | Chiffre en main |
 |---|---|---|---|
 | ~~A1~~ | ~~Deux cellules de façade n'ont aucune hauteur~~ — **CLOS par D63** : la façade réclame la hauteur de sa grille et défile en dessous | `ROADMAP-daw.md` D63 | 2 boutons à 0 px → **0** |
