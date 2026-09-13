@@ -22542,6 +22542,13 @@ qu'à la modification suivante. Montrer d'abord, remplir ensuite.
 | les mêmes, plus un « Muet » après l'ouverture (avant) | 3 |
 | deux pistes ajoutées, puis la fenêtre ouverte (après) | **2** |
 
+**LES TROIS AUTRES FENÊTRES DE CE TYPE ONT ÉTÉ VÉRIFIÉES, et elles vont bien.** Le
+navigateur, la table des raccourcis et les associations MIDI se remplissent aussi
+avant d'être montrés — mais aucune de leurs trois fonctions de remplissage ne porte
+la garde « sors si la fenêtre est invisible ». C'est cette garde, et elle seule, qui
+rendait l'ordre fatal ; là où elle n'est pas, l'ordre ne change rien. Une seule
+occurrence, donc, et c'est écrit pour qu'on ne refasse pas l'audit.
+
 **ET UN PAS QUI SE NOMMAIT MAL.** Dans la même photo, « Ajouter une piste » voisinait
 « Ajouter une piste audio » : le pas générique se lisait comme une piste d'une autre
 sorte, alors que les deux entrées du menu disent « MIDI » et « audio ». Le pas dit
