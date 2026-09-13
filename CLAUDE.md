@@ -227,6 +227,39 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   au centre de l'écran. Quand `VSM_TEXTES_LISTE` ne trouve rien, REGARDER LA
   PHOTO avant de conclure — ou ajouter un relevé qui lise la même source que la
   peinture.
+- Un TAUX ne se publie pas sans savoir DE QUOI son dénominateur est fait. Le
+  13/09 (D265), « la chaîne rate 96,7 % des notes de moins de 150 ms » a tenu
+  trois phases — D259 mesure, D260 précise, D261 explique — avant qu'on demande
+  ce que ces notes ÉTAIENT : **1 865 sur 1 865 des frappes de batterie**, et
+  `stems[].noteConfidence` ne porte AUCUNE percussion. L'instrument ne pouvait pas
+  les voir et les comptait absentes, en silence. Un histogramme par catégorie —
+  trois secondes de calcul — l'aurait dit au premier jour. Avant d'expliquer un
+  chiffre, décomposer sa population ; et une mesure qui ne peut pas voir une
+  chose doit le DIRE, jamais compter zéro.
+- Un correcteur se juge sur ce qu'il CASSE autant que sur ce qu'il répare. Le
+  13/09 (D270), une relecture d'octave faisait passer les notes fautives de 104 à
+  74 : publiable, et faux — elle en réparait 50 et en cassait 42, à tous les
+  seuils, un rapport qui ne quittait jamais 1,2×. Tout attendu de correction porte
+  donc son contrôle (« pas plus de N % des notes déjà justes cassées »), et un
+  balayage de seuil se publie ENTIER, jamais à son meilleur point.
+- Une CORRÉLATION dont un seul point est non nul est une coïncidence écrite en
+  décimales. Le 13/09 (D269), « le sous-oscillateur explique l'octave de la
+  basse » sortait à Pearson **+1,000** — sur neuf parties dont **une** portait un
+  sous-oscillateur. Compter les points DISTINCTS avant de lire un coefficient.
+- Un banc qui désigne des coupables DIFFÉRENTS à chaque version est le coupable.
+  Le 13/09 (D266), six bancs successifs ont déclaré fausses des machines justes —
+  dont le piano et le Mellotron — et j'allais régler le septième jusqu'à ce qu'il
+  donne la réponse voulue. Deux pièges précis en sont sortis : **une OCTAVE est le
+  pire intervalle pour comparer deux spectres** (les partielles de l'aiguë sont
+  les partielles paires de la grave, un glissement nul en aligne déjà la moitié —
+  prendre un triton), et **un souffle tiré d'un générateur déterministe de même
+  graine est IDENTIQUE d'une note à l'autre** et corrèle à zéro (décaler les
+  fenêtres d'analyse). Quand un banc accuse, vérifier le banc avant la cible.
+- En zsh, `${PIPESTATUS[0]}` est VIDE : le tableau s'appelle `$pipestatus` et
+  s'indexe à partir de 1 (`$pipestatus[1]`). Un `rc=${PIPESTATUS[0]}` rend une
+  chaîne vide, et le `echo "rc=$rc"` qui suit affiche `rc=` — ce qui ressemble à
+  un succès. Mieux : ne pas filtrer par un tube, écrire le journal dans un fichier
+  et garder `rc=$?`.
 - Un encadré qui annonce du travail RESTANT se lit jusqu'au bout de son bloc
   avant d'être cru : sa clôture est souvent trente lignes plus bas, dans le même
   encadré. Payé DEUX FOIS le 12/09 — la table « Nommé, chiffré, non fait » des

@@ -5,8 +5,8 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 d'avancement détaillé par phase.
 
 **État actuel** : le moteur MIDI (`core/`, 331 tests) et le moteur audio
-temps réel (`audio/`, 1 298 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 962
+temps réel (`audio/`, 1 299 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 963
 tests moteur** (avec `interchange/` 297, `clap/` 25, `panels/` 11), tous verts,
 zéro warning ; plus **168 tests** côté chaîne d'analyse Python.
 Les 64 machines (Minimoog, TB-303, Juno-106,

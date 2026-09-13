@@ -24564,3 +24564,33 @@ sur quatre.
 
 `tools/basse-aigu-releve.py` reste dans le dépôt avec son témoin à 0 dB : une
 prochaine idée sur l'aigu de la basse s'y mesure en une minute.
+
+
+### Phase D273 — le filtre sur la basse est-il celui de `htdemucs_6s`, ou de toute la famille ? (13/09/2026)
+
+Quatre remèdes en aval ont échoué (D257, D258, D270, D272), tous parce que
+l'information qui tranche l'octave n'est plus dans le stem. Reste à savoir si
+c'est **ce modèle-là** qui la retire, ou la famille entière. Trois modèles sont
+déjà présents sur la machine : `htdemucs_6s` (le défaut de la chaîne, six stems),
+`htdemucs` (quatre stems) et `htdemucs_ft` (quatre stems, affiné).
+
+**LA MESURE, une variable : le modèle.** Sur les mêmes morceaux, avec la même
+chaîne d'appel, on compare pour le stem de basse :
+
+1. **la part de l'énergie au-dessus de 300 Hz** — 25,5 % dans la partie jouée,
+   **1,7 % avec `htdemucs_6s`** (D269) ;
+2. **la corrélation au signal vrai**, bande aiguë et bande grave ;
+3. **le rapport octave bas / octave haut** après transcription — **6,9× avec
+   `htdemucs_6s`**, 0,3× sur le stem vrai.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+* **Si un autre modèle garde l'aigu** (part au-dessus de 300 Hz supérieure à 8 %,
+  soit cinq fois mieux), C1 a une réponse immédiate et bon marché : changer de
+  modèle, et le mesurer sur un lot complet.
+* **Si les trois modèles filtrent pareil** (tous sous 3 %), le filtre est une
+  propriété de la famille `htdemucs`, et C1 demande autre chose qu'un réglage —
+  ce qui vaut la peine d'être écrit, parce que cela ferme la dernière voie facile.
+
+Le témoin est le stem déjà produit par le lot `r1f-13sep`, c'est-à-dire exactement
+ce que la chaîne écrit aujourd'hui.
