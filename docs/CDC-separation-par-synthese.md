@@ -803,6 +803,15 @@ coût.)*
 > le MODULE du spectre) est DÉSIGNÉE par la mesure et non par le goût. Si l'une
 > des deux tombe, c'est le garde-fou qu'il faut rouvrir, pas la méthode.
 
+> **ET LA CAMPAGNE A TRAVERSÉ UNE VEILLE, vérifié plutôt que supposé (13/09).**
+> À 11:37 la garde a constaté 10 % de batterie, relâché son inhibiteur et appelé
+> `systemctl suspend` (code 0) ; le poste s'est rechargé en dormant — il ne
+> charge qu'ainsi — et s'est réveillé à 13:00 avec **100 %**. La course, gelée
+> puis reprise, était toujours sur le morceau 5, au même endroit : une
+> suspension **fige** les processus, elle ne les tue pas. Une campagne de dix
+> heures peut donc traverser plusieurs nuits sans rien perdre, à condition que la
+> garde soit lancée comme il faut — `setsid nohup`, et le PID de la course.
+
 > **INCIDENT D'EXPLOITATION DU 13/09, ET CE QU'IL LAISSE À REPRENDRE.** Le
 > morceau 1 du lot refait est mort à 985 s sur `OSError: [Errno 28] No space left
 > on device` : le brouillon de session est un `tmpfs` de 7,7 Go, et neuf copies
