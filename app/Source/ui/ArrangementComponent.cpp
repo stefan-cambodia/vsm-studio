@@ -602,11 +602,31 @@ using vsm::app::ui::entreeParLibelle;
 bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, const juce::String& libelle) {
     if (project_ == nullptr) return false;
     if (quel == "regle") {
+        // D227 : LE REPÈRE SE POSE À LA TÊTE DE LECTURE, et non au tick 0.
+        //
+        // Ce chemin passait `0` : deux courses qui posaient chacune un repère, la
+        // tête déplacée entre les deux (« VSM_POSITION : mesure 9 temps 1 (16,000 s,
+        // tick 15360) »), écrivaient DEUX repères au tick 0 — et l'on croyait à un
+        // défaut des repères, alors que c'est le chemin du banc qui ne reproduisait
+        // pas celui de la souris. Le clic droit, lui, passe le tick visé. Sans tick
+        // juste, aucune SECTION ne peut naître (elles se déduisent des repères), et
+        // « Ordre de jeu » restait grisé pour une raison fausse.
+        //
+        // « ? » ne fait rien et LISTE, comme pour les menus de clip (D222).
         const int survole = project_->markers.empty() ? -1 : 0;
         const juce::PopupMenu menu = menuDeLaRegle(survole);
+        if (libelle == "?") {
+            juce::StringArray libelles;
+            for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
+                if (it.getItem().itemID != 0)
+                    libelles.add(it.getItem().text + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+            std::fputs(("VSM_MENU_CONTEXTE : regle = " + libelles.joinIntoString(" | ")
+                        + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         const int choix = entreeParLibelle(menu, libelle);
         if (choix == 0) return false;
-        regleMenuAction(0, survole, choix);
+        regleMenuAction(playhead_, survole, choix);
         return true;
     }
     const bool audio = quel == "clip-audio";

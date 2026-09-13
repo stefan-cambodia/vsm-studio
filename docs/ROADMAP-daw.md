@@ -22403,3 +22403,40 @@ Restent ensuite, nommés :
    (D224) : elle demande de toucher à `analyse/analyzer/`, interdit pendant une
    course.
 4. **B10, B11, B12** — même interdiction, même attente.
+
+### Phase D227 — deux repères au même endroit, et ce que cela cachait (13/09/2026)
+
+**LE DÉFAUT, TROUVÉ EN VOULANT VÉRIFIER AUTRE CHOSE.** Le menu *Affichage* porte
+« Ordre de jeu… (aucune section) », grisé : les SECTIONS se déduisent des repères,
+et aucun projet de banc n'en avait. Deux courses, donc, pour en poser deux — la
+tête de lecture déplacée entre les deux (`VSM_POSITION : mesure 9 temps 1 (16,000 s,
+tick 15360)`). Résultat : **deux repères au tick 0**, et une seule section.
+
+Deux causes, l'une derrière l'autre :
+
+1. `ArrangementComponent::actionDeMenuPourCapture` passait **`0`** comme tick à
+   `regleMenuAction`, là où le clic droit passe le tick visé. Le chemin du banc ne
+   reproduisait pas celui de la souris — le piège de D202, une fois de plus.
+2. Corrigé en lisant `playhead_`, les deux repères tombaient **encore** au tick 0.
+   Parce que `seekAllViews()` — dont le nom promet le contraire — ne déplaçait que
+   le transport et le moteur : les vues rattrapaient au tour de minuterie suivant,
+   vingt millisecondes plus tard. À l'œil, cela ne se voit pas ; pour un geste qui
+   suit immédiatement, le playhead de la vue était encore à zéro.
+
+**CE QUI EST POSÉ** : le tick du banc est celui de la tête de lecture, et
+`seekAllViews` pousse la position aux deux vues tout de suite (deux appels qui ne
+coûtent rien : depuis D165 ils sortent aussitôt si le tick n'a pas changé). Et
+`regle:?` liste le menu de la règle d'arrangement, comme `clip-audio:?` (D222).
+
+**CE QUE LA MESURE A DIT, APRÈS** :
+
+```
+repères : [{'name': 'Intro', 'tick': 0}, {'name': 'Couplet', 'tick': 15360}]
+Affichage > Ordre de jeu... (2 sections)
+```
+
+15 360 ticks est exactement la mesure 9 (8 × 4 × 480), et le menu compte **deux**
+sections là où il n'en comptait qu'une. Le volet, ouvert et photographié, porte
+« Sections (déduites des repères) » avec « Intro » dans sa liste, « Ajouter ▸ »,
+l'ordre de jeu, et « Aplatir (écrit le matériau) » : **la fonction marche de bout
+en bout**, ce que personne n'avait vu.

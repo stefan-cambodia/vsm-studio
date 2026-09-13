@@ -7641,6 +7641,18 @@ void MainComponent::refreshHistoryList() {
 void MainComponent::seekAllViews(vsm::midi::Tick tick) {
     transport_.seekToTick(tick);
     audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
+    // D227 : LES VUES SUIVENT TOUT DE SUITE, et non au prochain tour de minuterie.
+    //
+    // Le nom de cette fonction le promettait déjà (« seekAllViews ») ; elle ne
+    // déplaçait que le transport et le moteur, et les vues rattrapaient vingt
+    // millisecondes plus tard. À l'œil, cela ne se voit pas. Pour un banc, si :
+    // deux courses posant un repère à la tête de lecture, la tête déplacée entre
+    // les deux, écrivaient DEUX repères au tick 0 — le geste lisait un playhead
+    // encore à zéro dans la vue. Un geste qui suit un déplacement doit voir le
+    // déplacement, et ces deux appels ne coûtent rien (D165 : ils sortent tout de
+    // suite si le tick n'a pas changé).
+    arrangement_.setPlayheadTick(tick);
+    pianoRoll_.setPlayheadTick(tick);
 }
 
 // D11.7 — LE CLAVIER D'ORDINATEUR. La disposition de Live et de tout le
