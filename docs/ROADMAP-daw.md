@@ -19964,3 +19964,76 @@ petit et qu'on l'oublie en copiant un dossier.
    main, et un Ctrl+S qui écrit 0 note par-dessus les détruirait. **Réfuté si le
    fichier abîmé est remplacé** — ou, si l'application choisit délibérément de le
    réécrire, il faudra qu'elle l'ait DIT avant.
+
+### Phase D183 — le `.mid` perdu : dit précisément, rien d'écrasé, et le projet ENTIER refusé (13/09/2026)
+
+**DEUX CAS, ET UN ATTENDU RÉFUTÉ.** Sur une copie de `children-c3-plafond`,
+pilotés par le chemin de l'utilisateur (« Fichier ▸ Ouvrir un projet VSM… »,
+rendu mesurable par D181) :
+
+| cas | ce que l'application dit |
+|---|---|
+| `.mid` **retiré** | `VSM_BOITE : Projet illisible : fichier MIDI introuvable : midi/arrangement.mid` |
+| `.mid` **tronqué à 400 octets** | `VSM_BOITE : Projet illisible : MIDI illisible (midi/arrangement.mid) : MIDI: chunk 'MTrk' plus long que le fichier` |
+
+| attendu | **mesuré** |
+|---|---|
+| 1. l'application le dit, en nommant le fichier | ✔ dans les deux cas, avec la raison exacte |
+| 2. le reste du projet survit | ✘ **RÉFUTÉ** — rien n'est chargé : ni les 12 pistes, ni les 9 machines, ni le mixage |
+| 3. rien n'est écrasé | ✔ le `.mid` tronqué est intact au `md5sum` après un Ctrl+S qui suit l'ouverture ratée |
+
+**LE REFUS EN BLOC EST DÉLIBÉRÉ, et le code le dit avant moi.**
+`ProjectBundle.cpp`, deux lignes au-dessus de l'erreur : « *Le MIDI — les notes.
+Sans lui, il n'y a pas de morceau : c'est la seule erreur vraiment bloquante après
+le `project.json` lui-même.* » Mon attendu n° 2 supposait le contraire sans avoir
+lu ce commentaire.
+
+**LA DÉCISION, ÉCRITE PLUTÔT QUE LAISSÉE OUVERTE.** Le refus en bloc **est
+gardé**, et pour une raison qui n'est pas l'inertie : charger les douze pistes
+sans leurs notes donnerait un projet qui RESSEMBLE au bon, et le premier Ctrl+S
+écrirait par-dessus le `.mid` abîmé un fichier de zéro note — détruisant ce qui
+s'y trouvait encore. Un `.mid` tronqué à 400 octets garde son en-tête et le début
+de sa première piste ; c'est peu, mais ce n'est pas rien, et l'application n'a pas
+à décider de l'effacer.
+
+**CE QUI MANQUE QUAND MÊME AU MESSAGE.** Le musicien apprend ce qui est cassé, pas
+ce qui reste. Or `loadProjectBundle` a DÉJÀ lu `project.json` quand il échoue sur
+le MIDI : il sait combien de pistes et de machines sont intactes, et il ne le dit
+pas. Un message qui ajouterait « le reste du projet est intact (12 pistes,
+9 machines) » transformerait une impasse en une réparation évidente — remettre un
+fichier à sa place. **C'est D184.**
+
+### Phase D184 — ce qui reste intact, dit avec ce qui manque (13/09/2026)
+
+**LE MESSAGE, AVANT ET APRÈS.**
+
+| | |
+|---|---|
+| avant | `Projet illisible : fichier MIDI introuvable : midi/arrangement.mid` |
+| **après** | `Projet illisible : fichier MIDI introuvable : midi/arrangement.mid` **` — le reste du projet est intact (12 piste(s), 5 machine(s)) : remettez ce fichier en place`** |
+| avant | `Projet illisible : MIDI illisible (midi/arrangement.mid) : MIDI: chunk 'MTrk' plus long que le fichier` |
+| **après** | idem **`+ — le reste du projet est intact (12 piste(s), 5 machine(s)) : remettez ce fichier en place`** |
+
+**LE COMPTE NE COÛTE RIEN, ET C'EST POURQUOI IL AURAIT DÛ Y ÊTRE.** À l'endroit où
+`loadProjectBundle` abandonne sur le MIDI, `project.json` est **déjà lu et
+validé** : les pistes et les machines distinctes se comptent sur le document en
+mémoire, sans une lecture de plus. L'information était là, à trois lignes de
+l'erreur, et n'était pas dite.
+
+**ET ELLE SE LIT EN ANGLAIS, ce qui a demandé trois modèles et une faute
+corrigée.** Ces deux refus n'avaient AUCUN modèle de phrase (A9) : ils
+ressortaient en français dans l'interface anglaise, avant comme après. Trois
+modèles sont posés — les deux messages, plus la raison du lecteur MIDI lui-même
+(`MIDI: chunk '%1' plus long que le fichier`), française elle aussi depuis
+toujours. *Le premier essai écrivait `%2` là où le côté anglais d'une phrase
+IMBRIQUÉE veut `%P2` : le message anglais affichait « `%2` » en toutes lettres. Vu
+en le lançant, pas en le relisant.*
+
+| | **relevé** |
+|---|---|
+| anglais | `Unreadable project : unreadable MIDI (midi/arrangement.mid): MIDI: chunk 'MTrk' longer than the file — the rest of the project is intact (12 track(s), 5 machine(s)): put this file back` |
+| français (témoin) | `Projet illisible : MIDI illisible (midi/arrangement.mid) : MIDI: chunk 'MTrk' plus long que le fichier — le reste du projet est intact (12 piste(s), 5 machine(s)) : remettez ce fichier en place` |
+
+**297 tests d'`interchange` verts** après le changement, et le témoin d'ouverture
+d'un projet SAIN par le même chemin reste propre (`VSM_TITRE : Vintage Synth MIDI
+Studio -- children-c3-plafond`, aucune boîte).

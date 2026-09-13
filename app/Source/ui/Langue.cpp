@@ -3318,6 +3318,14 @@ const ModeleDePhrase kModeles[] = {
       u8"Total: %1 track(s), %2 note(s)" },
     { u8"fichier introuvable : %1",
       u8"file not found: %1" },
+    // D184 : la raison que le lecteur MIDI donne, restée française jusqu'ici.
+    { u8"MIDI: chunk '%1' plus long que le fichier",
+      u8"MIDI: chunk '%1' longer than the file" },
+    // D184 : les deux refus d'ouverture qui nomment AUSSI ce qui reste intact.
+    { u8"fichier MIDI introuvable : %1 \u2014 le reste du projet est intact (%#2 piste(s), %#3 machine(s)) : remettez ce fichier en place",
+      u8"MIDI file not found: %1 \u2014 the rest of the project is intact (%2 track(s), %3 machine(s)): put this file back" },
+    { u8"MIDI illisible (%1) : %P2 \u2014 le reste du projet est intact (%#3 piste(s), %#4 machine(s)) : remettez ce fichier en place",
+      u8"unreadable MIDI (%1): %P2 \u2014 the rest of the project is intact (%3 track(s), %4 machine(s)): put this file back" },
     { u8"ce fichier n'est pas un projet Ableton lisible : %P1",
       u8"this file is not a readable Ableton project: %P1" },
     { u8"archive de pistes illisible : %P1",

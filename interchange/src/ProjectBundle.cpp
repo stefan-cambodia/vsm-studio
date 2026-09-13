@@ -3,6 +3,7 @@
 #include "vsm/midi/MidiFileWriter.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
+#include <set>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -106,15 +107,35 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
     // seule erreur vraiment bloquante après le project.json lui-même.
     const fs::path midiFile = resolve(folderPath, document.document.midiPath);
     std::error_code code;
+    // D184 : CE QUI RESTE INTACT, DIT AVEC CE QUI MANQUE.
+    //
+    // Le refus est en bloc, et c'est délibéré (ci-dessus) : charger les pistes
+    // sans leurs notes donnerait un projet qui RESSEMBLE au bon, et le premier
+    // enregistrement écrirait par-dessus le `.mid` abîmé un fichier de zéro
+    // note. Mais le musicien n'apprenait que ce qui est CASSÉ. Or, à cet
+    // endroit, `project.json` est déjà lu : le compte des pistes et des machines
+    // est là, gratuit, et il transforme une impasse en réparation évidente —
+    // remettre un fichier à sa place (D183, D184).
+    const auto resteIntact = [&document]() -> std::string {
+        size_t pistes = 0;
+        std::set<std::string> machines;
+        for (const auto& piste : document.document.tracks) {
+            ++pistes;
+            if (!piste.preferredPlugin.empty()) machines.insert(piste.preferredPlugin);
+        }
+        return " — le reste du projet est intact (" + std::to_string(pistes) + " piste(s), "
+             + std::to_string(machines.size()) + " machine(s)) : remettez ce fichier en place";
+    };
     if (!fs::exists(midiFile, code)) {
-        result.error = "fichier MIDI introuvable : " + document.document.midiPath;
+        result.error = "fichier MIDI introuvable : " + document.document.midiPath + resteIntact();
         return result;
     }
     try {
         const auto parsed = vsm::midi::MidiFileParser::parseFile(midiFile.string());
         result.bundle.project = Project::fromParsedFile(parsed);
     } catch (const std::exception& e) {
-        result.error = "MIDI illisible (" + document.document.midiPath + ") : " + e.what();
+        result.error = "MIDI illisible (" + document.document.midiPath + ") : " + e.what()
+                     + resteIntact();
         return result;
     }
 
