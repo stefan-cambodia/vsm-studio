@@ -1080,6 +1080,11 @@ piste et la capture montrait un résultat vraisemblable et faux.
 piste, une fois par seconde : une capture qui ne montre pas la piste la plus
 chère en ambre laisse deux explications ouvertes — la règle est fausse, ou la
 capture n'a rien attrapé — et c'est le seul moyen de les départager sans écran.
+`VSM_RECUPERER=1|0` répond à la boîte « Session interrompue » (D104) : `1`
+récupère la séance autosauvegardée, `0` l'ignore et l'efface. C'était la dernière
+boîte du dépôt qui s'annonçait sans pouvoir être répondue — et celle dont
+dépendent les deux phases qui promettent qu'une fermeture ou un enregistrement
+raté ne coûte rien.
 `VSM_CHOIX=n` répond aux deux fenêtres « Plusieurs plugins / instruments dans ce
 fichier », celle du CLAP et celle du VST3 : elles s'annonçaient depuis D102 sans
 pouvoir être répondues, si bien qu'un fichier à plusieurs plugins — celui du

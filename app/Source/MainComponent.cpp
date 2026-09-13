@@ -6636,6 +6636,29 @@ void MainComponent::offerCrashRecovery() {
         ? juce::File()
         : juce::File(juce::String::fromUTF8(reprise.record.originalFolder.c_str()));
 
+    // D207 : `VSM_RECUPERER=1|0` RÉPOND À LA BOÎTE, sans souris. C'était la
+    // dernière du dépôt qui s'annonçait (D104) sans pouvoir être répondue — et
+    // c'est celle dont dépendent D173 et D175, qui s'appuient sur ce filet pour
+    // dire que fermer ou rater un enregistrement ne coûte rien. La réponse passe
+    // par le MÊME rappel que le clic : ce n'est pas un chemin parallèle.
+    auto reponse = [this, dossier, origine](int resultat) {
+            if (resultat != 1) {
+                vsm::app::AutosaveService::discard(dossier);
+                return;
+            }
+            loadProjectBundleFromFolder(dossier, origine);
+            vsm::app::AutosaveService::discard(dossier);
+        };
+    if (const char* choix = std::getenv("VSM_RECUPERER"); choix != nullptr && *choix) {
+        const bool recuperer = *choix != '0';
+        std::fputs((std::string("VSM_RECUPERER : ")
+                    + (recuperer ? "r\u00e9cup\u00e9ration demand\u00e9e par le banc"
+                                 : "session ignor\u00e9e et effac\u00e9e par le banc") + "\n").c_str(),
+                   stderr);
+        reponse(recuperer ? 1 : 0);
+        return;
+    }
+
     demanderOuiNon(
         juce::AlertWindow::QuestionIcon,
         tr(u8"Session interrompue"),

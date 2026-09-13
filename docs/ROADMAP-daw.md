@@ -21283,3 +21283,50 @@ quelque deux cents entrées listées. C'était la condition de la méthode : dé
 plutôt que dupliquer, parce que `VSM_MENU` prend le premier libellé exact tous
 menus confondus. Aucun banc existant ne casse, et le menu Aide cesse d'être une
 impasse. **B13 se ferme.**
+
+### D207 (attendus) — la moitié du filet que personne n'avait mesurée (13/09/2026)
+
+**CE QUE D176 A DÛ LAISSER DEHORS.** Le filet d'autosauvegarde a été éprouvé par
+`kill -9` : la copie existe, elle porte le travail de la séance, et le lancement
+suivant la propose. Mais **personne n'est là pour cliquer « Récupérer »**, et
+c'est justement le geste dont dépend tout le reste — D173 et D175 s'appuient sur
+ce filet pour dire que fermer ou rater un enregistrement ne coûte rien.
+
+**LE VERBE MANQUANT**, sur le modèle de `VSM_CHOIX` (D201) : `VSM_RECUPERER=1`
+répond « Récupérer » à la boîte, `VSM_RECUPERER=0` répond « Ignorer et effacer ».
+Sans lui, cette boîte est la dernière du dépôt qui s'annonce sans pouvoir être
+répondue.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.** Une séance tuée par `kill -9` après un
+geste (volume de la piste 0 porté à 0,42), puis relancée :
+
+1. **`VSM_RECUPERER=1` rouvre le projet récupéré** et la piste 0 y vaut **0,42**
+   — la valeur de la séance perdue, pas celle du disque (0,3128…).
+2. **La copie de secours est effacée** après usage : elle a servi, la reproposer
+   indéfiniment serait un piège.
+3. **`VSM_RECUPERER=0` efface la copie sans rien ouvrir**, et le lancement
+   suivant ne propose plus rien — le témoin, sans lequel « récupérer marche » ne
+   dirait pas si « ignorer » marche aussi.
+
+### Phase D207 — le filet éprouvé jusqu'au bout : « Récupérer » rend le travail perdu (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS**, séance tuée par `kill -9` après un geste,
+relancée avec le verbe neuf `VSM_RECUPERER` :
+
+| attendu | **mesuré** |
+|---|---|
+| 1. la récupération rend le travail de la séance | ✔ la copie de secours porte **0,37** là où le disque portait 0,3128… ; après `VSM_RECUPERER=1` puis Ctrl+S, **le projet d'origine porte 0,37** |
+| 2. la copie est effacée après usage | ✔ 1 copie → **0**, et le lancement suivant ne propose plus rien |
+| 3. témoin : `VSM_RECUPERER=0` efface sans rien ouvrir | ✔ titre nu, **0** copie, et le projet sur le disque **inchangé** — le geste de la séance abandonnée n'y est pas |
+
+**CE QUE LE PREMIER POINT APPREND, et qui n'était écrit nulle part.** Après une
+récupération, le titre affiche `… -- projet` : le projet récupéré pointe sur le
+dossier d'ORIGINE, pas sur la copie de secours. Un `Ctrl+S` écrit donc là où
+l'utilisateur l'attend, et non dans un dossier technique qui sera effacé. C'est
+ce qui fait que la récupération TERMINE quelque chose au lieu de le déplacer.
+
+**LE FILET EST DONC COMPLET, et il ne repose plus sur une supposition.** D176
+avait montré que la copie existe et porte le travail ; D207 montre que la rendre
+au musicien marche, que la copie ne traîne pas, et qu'ignorer marche aussi. Les
+deux phases qui s'appuient dessus — D173 (un enregistrement refusé) et D175
+(fermer sans enregistrer) — peuvent le citer sans réserve.
