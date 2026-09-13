@@ -1813,6 +1813,25 @@ six rendus parallèles, sur le moteur de `build/tools/vsm-render` figé au dépa
 - Un changement de machine au second verdict : `guitar` passe de `vsm.sitar` à
   `vsm.clavinet` (0,1688 contre 0,1691).
 
+**CE QUE COÛTE LE REMÈDE À L'ÉCRÊTAGE, MESURÉ (13/09).** Le mixage dépasse
+0 dBFS de 2,7 dB, et l'application comme `vsm-render` le disent. Le remède le
+plus simple est **d'allumer la tranche MASTER** du projet : son limiteur est déjà
+réglé à **−0,3 dBFS**, et le reste de la tranche est neutre (égaliseur à 0,
+compresseur à seuil 0 et ratio 2, saturation 0, largeur 1). Rendu avec :
+
+| | sans MASTER | **avec le limiteur** |
+|---|---|---|
+| crête | **1,4741** (+2,36 dBFS) | **0,9661** (−0,30 dBFS) |
+| RMS | 0,2169 | 0,2162 (**−0,03 dB**) |
+| corrélation avec le rendu d'origine | — | **0,999804** |
+| écart | — | **−33,97 dB** sous le signal |
+
+**Ce que cela change tient sur 0,0075 % des échantillons** — 2 334 sur
+31 159 038 dépassent 0 dBFS. Le limiteur ne « remonte » rien : le RMS ne bouge
+que de trois centièmes de décibel. **C'est le geste à conseiller au musicien**
+avant d'exporter ce morceau en 24 bits ou en 16 : allumer MASTER, ou demander
+« Niveau : crête à −1 dBFS » à l'export, ou exporter en 32 bits flottants.
+
 **UNE LIMITE DU TÉMOIN DE COUPURE, VUE SUR CE MORCEAU (13/09) — inscrite comme
 B11.** Les deux témoins publiés disent « meilleur sans cette piste » en comparant
 **0,1679** et **0,1691** à **0,1889**. Or 0,1889 est la distance **au verdict du
