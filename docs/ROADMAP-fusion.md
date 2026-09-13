@@ -3767,3 +3767,82 @@ cmake -S . -B build -DVSM_BUILD_APP=ON \
 Le dernier invariant est celui qui a rendu tout le reste possible : c'est parce
 qu'une machine ne coûte que son propre dossier qu'on peut envisager d'en ajouter
 trois de plus sans crainte.
+
+---
+
+## 9. Ce que le 13/09/2026 a établi sur l'objectif lui-même
+
+Six mesures de cette journée se répondent, et elles disent toutes la même chose
+par des chemins différents : **l'objectif que la chaîne optimise n'est pas la
+fidélité.** Ce n'est pas un défaut de réglage, c'est la forme de la fonction de
+coût, et cela décide de ce qu'il sert à améliorer.
+
+### 9.1 Trois énoncés de la veille étaient des artefacts de mesure
+
+| énoncé | ce qu'il mesurait vraiment |
+|---|---|
+| « la chaîne rate 96,7 % des notes de moins de 150 ms » (D260) | `stems[].noteConfidence` ne porte **aucune percussion**, et les 1 865 notes brèves du corpus sont **1 865 frappes de batterie** |
+| « ces notes sont 7,3 % de l'énergie » (D261) | la part de la **batterie** dans le corpus |
+| « 40,7 % des notes vraies ne sont écrites nulle part » (D259) | la batterie comptée au dénominateur, jamais au numérateur — le vrai manque mélodique est **45,2 %** |
+
+La chaîne écrit **1 426 frappes pour 1 865 vraies (76,5 %)** : elle ne les rate
+pas, c'est l'instrument qui ne les voyait pas. `tools/confiance-contre-verite.py`
+sépare désormais les deux comptes et NOMME ce qu'il ne peut pas apparier.
+
+### 9.2 Le corpus dit les notes ÉCRITES, le transcripteur entend la hauteur SONNANTE
+
+Le corpus tire ses patchs au hasard, et plusieurs machines exposent un désaccord
+d'oscillateur en demi-tons entiers. **9,9 % des notes mélodiques sonnent à deux
+demi-tons ou plus de ce que leur liste annonce** — et toute statistique de
+hauteur les comptait fausses. Recomptée contre la hauteur entendue, la bonne
+hauteur passe de 72,6 à **83,6 %** sur `other` et de 78,3 à **79,2 %** sur
+`piano` : **l'attendu de B14 était déjà tenu par deux stems sur quatre**, sans
+qu'une ligne de chaîne ait changé.
+
+`tools/corpus-hauteurs.py` garde l'invariant, en lisant l'UNITÉ déclarée par la
+machine (`st` ou `cents`) au lieu de la supposer — la supposer avait fait publier
+12,7 % là où il faut lire 9,9 %.
+
+### 9.3 L'octave de la basse appartient à la séparation, pas à la transcription
+
+| | justes | octave trop bas | octave trop haut | rapport |
+|---|---|---|---|---|
+| parties de basse **vraies** | 501 | 70 | 217 | **0,3×** |
+| stem `bass` **séparé** | 253 | 104 | 15 | **6,9×** |
+
+Le biais s'inverse, et la cause se mesure : la séparation fait tomber la part de
+l'énergie au-dessus de 300 Hz de **25,5 % à 1,7 %** — exactement les partielles
+qui tranchent une octave. **Quatre remèdes en aval ont échoué pour cette seule
+raison** (D257 le registre, D258 le fantôme sous-octave, D270 les harmoniques
+impairs du mélange, D272 le relevé de l'aigu), et les trois modèles `htdemucs`
+filtrent pareil (2,2 / 3,0 / 2,8 %). **C1 n'est pas le premier plafond parmi
+d'autres : c'est le seul endroit où ce défaut peut être corrigé.**
+
+### 9.4 Et améliorer la séparation peut EMPIRER le chiffre publié
+
+C'est le résultat le plus utile de la journée, parce qu'il gouverne les
+suivants. `htdemucs_ft` rend une basse meilleure sur tous les critères de
+fidélité — corrélation 0,626 contre 0,380, SDR 1,95 dB contre 0,31, **139 notes
+justes contre 96**. Passée dans la chaîne entière (D274), elle donne :
+
+| | témoin | basse de `htdemucs_ft` |
+|---|---|---|
+| distance du stem `bass` | 0,3021 | **0,3407** (+12,8 %) |
+| distance globale | 0,152423 | **0,155650** (+2,12 %) |
+| machine retenue | `vsm.scanned` | `vsm.stochastic` |
+
+**Un stem plus fidèle est un stem plus riche, donc plus difficile à IMITER avec
+soixante-quatre machines.** La distance d'un stem mesure son imitabilité ; la
+machine retenue change, et le résultat empire.
+
+### 9.5 Ce que cela décide pour la suite
+
+1. **Aucune amélioration de séparation ne se jugera plus sur la distance seule.**
+   Elle se juge sur la fidélité du stem (SDR, corrélation au vrai) ET sur ce que
+   la chaîne en fait — les deux peuvent diverger, et D274 montre de combien.
+2. **Le compte de notes retrouvées doit être publié à côté de la distance**, ce
+   que D261 demandait déjà pour une autre raison et que D274 confirme pour
+   celle-ci : deux chiffres qui divergent valent mieux qu'un seul qui ment.
+3. **Les résultats négatifs restent dans la chaîne, chiffrés** : `--residuel`
+   (inerte même forcée, B7), `--modele-basse` (perdante en bout de chaîne,
+   D274). Leur aide porte le chiffre, pour qu'on ne les rouvre pas sans raison.
