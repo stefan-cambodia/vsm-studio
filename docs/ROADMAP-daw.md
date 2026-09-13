@@ -19774,3 +19774,94 @@ un autre qu'il ne visait pas ; c'est assez rare pour être inscrit.
 chaîne y avait écrite (D162) : l'application ne la rafraîchit que lorsqu'une
 machine vivante peut la donner. C'est cohérent, et c'est la preuve que rien n'a
 été inventé à la place.
+
+### D179 (attendus) — le quarante-huitième audit : un projet déplacé sans ses échantillons (13/09/2026)
+
+**POURQUOI CE CAS, ET POURQUOI MAINTENANT.** D176 a montré que la session de
+secours ne copie pas les pistes audio : elle garde le CHEMIN du dossier d'origine.
+Et un projet reconstruit se copie, se déplace, s'envoie — parfois sans son dossier
+`samples/`, qui pèse cent fois le reste. Le jour où l'application ouvre un projet
+dont les fichiers audio ont disparu, elle peut le dire, ou faire comme si la piste
+avait toujours été vide.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Une copie de
+`children-c3-plafond` dont on retire le fichier d'une des deux pistes audio :
+
+1. **L'application NOMME le fichier manquant**, et la piste. Réfuté si elle
+   s'ouvre sans un mot — une piste muette sans explication est exactement la
+   panne que ce dépôt s'interdit.
+2. **La piste survit** : elle reste dans le projet, avec son nom, son volume et
+   son routage ; le compte de pistes ne bouge pas.
+3. **L'enregistrement ne casse pas la référence** : après Ctrl+S, le chemin
+   manquant est TOUJOURS dans `project.json`. Sinon, ouvrir puis enregistrer sur
+   un poste où les fichiers manquent effacerait l'information qui permet de les
+   retrouver — la même famille qu'A10 et que D178.
+
+### Phase D179 — le fichier manquant est DIT, mais il ne survit pas à la fermeture de sa boîte (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.** Une copie de `children-c3-plafond` privée de
+`samples/voix-tete.wav` :
+
+| attendu | **mesuré** |
+|---|---|
+| 1. le fichier manquant est nommé | ✔ `VSM_BOITE : Audio non chargé : Ces pistes audio n'ont pas pu être lues : Voix · tête : audio illisible (…/samples/voix-tete.wav) : impossible d'ouvrir …` |
+| 2. la piste survit | ✔ « Pistes : 12 (9 MIDI, **2 audio**, 1 groupe) », les 9 224 notes, les 5 machines |
+| 3. l'enregistrement ne casse pas la référence | ✔ `audio.file = "samples/voix-tete.wav"` toujours là après Ctrl+S — et l'enregistrement AJOUTE sa propre boîte : « Projet incomplet : Le projet est enregistré, mais ces fichiers qu'il désigne sont introuvables : samples/voix-tete.wav » |
+
+**ET J'AI FAILLI PUBLIER « RÉFUTÉ » SUR UNE FAUTE DE BANC.** Le premier relevé
+filtrait `VSM_OUVERTURE` et `VSM_RAPPORT` — **pas `VSM_BOITE`** —, et il montrait
+donc une ouverture muette. J'allais écrire « l'application ouvre sans un mot »
+alors qu'elle disait tout, dans la ligne que mon filtre jetait. C'est la règle
+écrite dans `CLAUDE.md` depuis D147, payée une fois de plus : *un banc qui ne
+relaie pas ce que l'application avertit jette la preuve qu'elle lui tend.*
+
+**CE QUE L'AUDIT TROUVE QUAND MÊME, et c'est une asymétrie.** L'avertissement vit
+dans une **boîte** — une fois, au moment du chargement (D51 : « elle se dit donc,
+une fois, au lieu de laisser chercher ») — et **il n'entre pas dans le rapport
+d'ouverture**, où le volet compte « 1 réserve » : celle des notes douteuses. Or
+c'est le volet qui est la MÉMOIRE de l'ouverture : les réserves d'effets (D71),
+les presets abîmés, les avertissements du lecteur y vont tous, et il se rouvre.
+Une fois la boîte fermée, plus rien ne dit que cette piste est muette parce que
+son fichier manque — et une piste muette ne se distingue pas, à l'oreille, d'une
+piste dont on aurait baissé le volume, ce que le code lui-même écrit deux lignes
+plus haut. **Ouvert comme A31.**
+
+### D180 (attendus) — A31 : le fichier manquant entre dans le rapport d'ouverture (13/09/2026)
+
+**LE REMÈDE, ET IL EXISTE DÉJÀ DANS LE MÊME FICHIER.** Les réserves d'effets
+suivent exactement ce chemin depuis D71 : un membre rempli pendant la
+reconstruction du projet, vidé au début de l'ouverture, recopié dans le rapport
+juste avant qu'il ne se publie. Les pistes audio illisibles prennent le même.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. Le volet d'ouverture compte **2 réserves** au lieu d'une, et la nouvelle
+   **nomme la piste et son fichier**, mot pour mot comme la boîte.
+2. **La boîte reste** : elle est le signal immédiat, le volet est la mémoire. Les
+   deux disent la même chose.
+3. **Un projet dont tous les fichiers sont là n'a pas de réserve de plus** —
+   témoin obligatoire : `children-c3-plafond` intact rend **1 réserve**, celle des
+   notes douteuses, et rien d'autre.
+
+### Phase D180 — A31 se ferme : le fichier manquant a maintenant sa ligne dans le rapport (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.**
+
+| attendu | **mesuré** |
+|---|---|
+| 1. le volet compte 2 réserves, la nouvelle nommant la piste et son fichier | ✔ « **2 réserves à l'ouverture** », puis `Voix · tête : audio illisible (…/samples/voix-tete.wav) : impossible d'ouvrir …` |
+| 2. la boîte reste, et dit la même chose | ✔ `VSM_BOITE : Audio non chargé : …` — **mot pour mot** la même phrase, les deux venant de la même liste |
+| 3. témoin : un projet intact n'a pas de réserve de plus | ✔ `children-c3-plafond` entier : **1 réserve**, celle des notes douteuses |
+
+**LE REMÈDE EST LE CHEMIN DE D71, RÉUTILISÉ TEL QUEL** : un membre rempli pendant
+la reconstruction du projet, recopié dans le rapport juste avant qu'il ne se
+publie. Un détail qui n'en est pas un : la liste est **assignée, pas empilée** —
+`loadAudioTracks()` est rappelée à chaque reconstruction du projet, donc à chaque
+pas d'annulation, et empiler l'aurait fait croître sans fin jusqu'à remplir le
+volet de la même ligne répétée.
+
+**CE QUE LA PAIRE D179/D180 APPREND, au-delà du correctif.** Une information peut
+être DITE et pourtant perdue : la boîte disait tout, et ne laissait rien. La
+question à poser d'un avertissement n'est pas « est-il affiché ? » mais « **où
+vit-il une fois qu'on a cliqué OK ?** ». Les trois autres familles d'avertissement
+de l'ouverture avaient déjà répondu ; celle-ci était restée en arrière.

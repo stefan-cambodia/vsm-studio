@@ -638,6 +638,11 @@ private:
     void placeDroppedAudioOnTracks();
 
     std::unique_ptr<vsm::app::AutosaveService> autosave_;
+    /// D180 (A31) : les pistes audio que le lecteur n'a pas pu ouvrir, pour que
+    /// le rapport d'ouverture les porte comme il porte déjà les réserves
+    /// d'effets. Remplie par `loadAudioTracks()`, lue quand le rapport se
+    /// compose.
+    std::vector<juce::String> reservesAudio_;
     bool projectDirty_ = false;
     /// D174 (A29) : la profondeur d'annulation au dernier enregistrement réussi.
     /// La marque « non enregistré » du titre se déduit de l'écart avec la

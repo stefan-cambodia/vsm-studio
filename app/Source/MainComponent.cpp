@@ -6013,6 +6013,8 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // D71 : et ce que les EFFETS n'ont pas pu poser. Le rendu hors ligne du
     // même dossier le disait déjà ; l'ouverture le taisait.
     for (const auto& reserve : reservesEffets_) rapport.add(reserve);
+    // D180 : et les pistes audio que le lecteur n'a pas pu ouvrir (A31).
+    for (const auto& reserve : reservesAudio_) rapport.add(reserve);
 
     // --- rapport de reconstruction, s'il y en a un ------------------------
     //
@@ -8124,6 +8126,21 @@ void MainComponent::loadAudioTracks() {
     // UNE PISTE AUDIO QUI NE CHARGE PAS NE SE DISTINGUE PAS, À L'OREILLE, D'UNE
     // PISTE DONT ON AURAIT BAISSÉ LE VOLUME. Elle se dit donc, une fois, au
     // lieu de laisser chercher.
+    // D180 (A31) : ET DANS LE RAPPORT D'OUVERTURE, PAS SEULEMENT DANS UNE BOÎTE.
+    //
+    // La boîte est le signal immédiat ; le volet « Projet ouvert, avec des
+    // réserves » est la MÉMOIRE de l'ouverture — il se rouvre, et c'est là que
+    // vont déjà les réserves d'effets (D71), les presets abîmés et les
+    // avertissements du lecteur. Une boîte fermée ne laisse rien : le musicien
+    // retrouvait une piste muette sans plus rien pour lui dire pourquoi, alors
+    // que le commentaire deux lignes plus haut écrit lui-même qu'une piste qui ne
+    // charge pas ne se distingue pas, à l'oreille, d'une piste baissée.
+    //
+    // ASSIGNÉ ET NON AJOUTÉ : `loadAudioTracks()` est rappelée à chaque
+    // reconstruction du projet (donc à chaque pas d'annulation), et elle
+    // recalcule la liste entière ; l'empiler la ferait croître sans fin.
+    reservesAudio_.clear();
+    for (const auto& manquant : manquants) reservesAudio_.push_back(manquant);
     if (!manquants.isEmpty())
         montrerBoite(
             juce::AlertWindow::WarningIcon, tr(u8"Audio non chargé"),
