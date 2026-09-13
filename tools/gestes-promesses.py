@@ -89,7 +89,10 @@ def main() -> int:
 
     n = notes_du_midi(course(brouillon, "demiton", PROJET,
                              VSM_MENU="Tout sélectionner;Transposer +1 demi-ton"))
-    ecarts = {b[0] - a[0] for a, b in zip(temoin, n, strict=False)} if len(n) == len(temoin) else {None}
+    # Un ensemble VIDE quand les comptes diffèrent : le verdict échoue alors, ce
+    # qui est juste — une transposition qui perd des notes n'est pas une
+    # transposition. (Et `None` dans l'ensemble ferait tomber `sorted`.)
+    ecarts = {b[0] - a[0] for a, b in zip(temoin, n, strict=False)} if len(n) == len(temoin) else set()
     verdict("Transposer +1 : toutes les hauteurs +1", ecarts == {1}, f"écarts observés {sorted(ecarts)}")
 
     n = notes_du_midi(course(brouillon, "quantifier", PROJET,
