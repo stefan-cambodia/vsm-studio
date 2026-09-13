@@ -1080,11 +1080,13 @@ piste et la capture montrait un résultat vraisemblable et faux.
 piste, une fois par seconde : une capture qui ne montre pas la piste la plus
 chère en ambre laisse deux explications ouvertes — la règle est fausse, ou la
 capture n'a rien attrapé — et c'est le seul moyen de les départager sans écran.
-`VSM_CHOIX=n` répond à la fenêtre « Plusieurs plugins dans ce fichier » : elle
-s'annonçait depuis D102 sans pouvoir être répondue, si bien qu'un fichier CLAP à
-plusieurs plugins — celui du dépôt en contient vingt-quatre — arrêtait tout banc.
-`n` est le rang affiché, à partir de 1 ; un rang hors liste ne charge rien et le
-dit, plutôt que de prendre le premier venu.
+`VSM_CHOIX=n` répond aux deux fenêtres « Plusieurs plugins / instruments dans ce
+fichier », celle du CLAP et celle du VST3 : elles s'annonçaient depuis D102 sans
+pouvoir être répondues, si bien qu'un fichier à plusieurs plugins — celui du
+dépôt en contient vingt-quatre — arrêtait tout banc. `n` est le rang affiché, à
+partir de 1 ; un rang hors liste ne charge rien **et le dit**, plutôt que de
+prendre le premier venu — un banc qui prend le premier mesure une machine que
+personne n'a demandée, et sa capture est vraisemblable et fausse.
 `VSM_PEINTURE=N` chronomètre les DESSINS : N passes de `paintEntireComponent`
 dans une image allouée une seule fois, médiane publiée avec son minimum, son
 maximum et la première passe — le même code que celui que le système appelle,
