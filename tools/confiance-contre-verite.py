@@ -87,12 +87,64 @@ def juste(debuts: dict[int, list[float]], hauteur: int, debut: float) -> bool:
     return False
 
 
+def categories_par_stem(lot: Path, source: Path) -> dict[str, dict[str, int]]:
+    """D254 : ce que CHAQUE note transcrite est, rangée par stem.
+
+    Quatre cas, et ils ne se confondent pas : la bonne hauteur (attaque exacte ou
+    re-attaque d'une note tenue), l'octave (à ±12 ou ±24), une autre hauteur qui
+    sonne, et la note INVENTÉE — rien de cette hauteur ne sonne à cet instant.
+    « 27 % de hauteurs exactes » mettait ces quatre cas dans le même sac ; séparés,
+    ils disent que la chaîne n'invente presque rien (0,4 à 1,2 %) et que l'octave
+    coûte un cinquième à un quart des notes de chaque stem.
+    """
+    par: dict[str, dict[str, int]] = {}
+    for dossier in sorted(lot.glob("morceau-*")):
+        rapport = dossier / "course" / "rapport.json"
+        if not rapport.is_file():
+            continue
+        debuts = verite_du_morceau(source / dossier.name)
+        tenues = tenues_du_morceau(source / dossier.name)
+        if not debuts:
+            continue
+        r = json.loads(rapport.read_text(encoding="utf-8"))
+        for stem in r.get("stems", []):
+            nom = stem.get("name", "?").split(" · ")[0].split(" - ")[0]
+            c = par.setdefault(nom, {"total": 0, "bonne": 0, "octave": 0, "autre": 0, "inventee": 0})
+            for n in stem.get("noteConfidence", []) or []:
+                hauteur, instant = int(n["note"]), float(n["start"])
+                c["total"] += 1
+                if juste(debuts, hauteur, instant) or sonne(tenues, hauteur, instant):
+                    c["bonne"] += 1
+                elif (any(juste(debuts, hauteur + o, instant) for o in (12, -12, 24, -24))
+                      or any(d <= instant <= f and (h - hauteur) % 12 == 0 for d, f, h in tenues)):
+                    c["octave"] += 1
+                elif any(d <= instant <= f for d, f, _ in tenues):
+                    c["autre"] += 1
+                else:
+                    c["inventee"] += 1
+    return par
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(__doc__.splitlines()[2].strip(), file=sys.stderr)
         return 2
+    categories = "--categories" in argv
+    argv = [a for a in argv if a != "--categories"]
     lot = Path(argv[1])
     source = Path(argv[2]) if len(argv) > 2 else Path("reconstruction/travail/s1-sec")
+    if categories:
+        par = categories_par_stem(lot, source)
+        if not par:
+            print("aucun morceau mesurable")
+            return 1
+        print(f"{'stem':10s} {'notes':>7} {'bonne hauteur':>14} {'octave':>8} {'autre':>8} {'inventée':>10}")
+        for nom, stat in sorted(par.items(), key=lambda kv: -kv[1]["total"]):
+            n_total = stat["total"]
+            print(f"{nom:10s} {n_total:7d} {100 * stat['bonne'] / n_total:13.1f}%"
+                  f" {100 * stat['octave'] / n_total:7.1f}% {100 * stat['autre'] / n_total:7.1f}%"
+                  f" {100 * stat['inventee'] / n_total:9.1f}%")
+        return 0
     tranches = [(0.0, 0.35), (0.35, 0.45), (0.45, 0.55), (0.55, 0.65), (0.65, 0.80), (0.80, 1.01)]
     comptes = {t: [0, 0, 0] for t in tranches}   # [notes, justes au début, + notes tenues]
     morceaux = 0
