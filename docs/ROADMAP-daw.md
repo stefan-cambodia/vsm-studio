@@ -22719,6 +22719,21 @@ carte de tempo (56-60) ; `EventListComponent` depuis les événements de la pist
 Seul le panneau d'automation gardait une copie qu'il ne remplissait jamais. Une
 seule occurrence, donc — et c'est écrit pour qu'on ne refasse pas l'audit.
 
+**LE RESTE DE LA TOURNÉE, ET IL VA BIEN.** *Tempo* montre sa ligne à 120,0 BPM avec
+son point et sa phrase (« Un seul tempo pour tout le morceau — cliquez pour poser
+un changement ») ; *Liste* montre « 1672 événement(s) » avec ses colonnes
+Position / Nature / Canal / N° / Valeur / Durée ; *Effets* accepte un insert et le
+projet enregistré le porte (« Compressor » posé par `VSM_MENU_CONTEXTE`,
+`compressor` dans `track.effects`) ; *Mixer* a été regardé en D225. Un seul des six
+onglets était malade.
+
+**ET DEUX FAUSSES ALERTES, toutes deux de la même famille.** Le vumètre « qui ne
+s'allume pas » de D225 (je cherchais des pixels VERTS sur un vumètre qui suit la
+palette) et, ici, un arrangement « vide » sur `cdl` : le clip était là, ma coupe
+d'image passait dix pixels sous lui. Dans les deux cas, la mesure regardait mon
+idée de l'écran au lieu de l'écran. Une photo mal cadrée ne prouve rien — et la
+parade tient en un geste : élargir le cadre avant de conclure à une absence.
+
 **CE QUE CELA DIT DE LA MÉTHODE.** D190 avait chronométré cet onglet à 0,65 ms —
 un chiffre juste, sur un panneau qui n'affichait rien et détruisait au premier
 clic. **Mesurer le coût d'un dessin ne dit rien de ce qu'il dessine.** C'est la
