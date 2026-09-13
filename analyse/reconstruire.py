@@ -1068,6 +1068,14 @@ def remplacer_la_basse(args: argparse.Namespace, entree: Path, travail: Path,
     jouée), donc l'ambiguïté d'octave reste entière. C'est une propriété de la
     famille `htdemucs`, pas du modèle choisi.
 
+    CE QU'ELLE COÛTE EN PLACE, et ce n'est pas rien : la seconde séparation écrit
+    ses stems dans le dossier de travail de la chaîne, qui est un dossier
+    temporaire — donc un `tmpfs`, c'est-à-dire de la RAM. Sur un disque de quatre
+    minutes, cela fait un second jeu de stems d'environ 250 Mo à garder en
+    mémoire le temps de la course. Le 13/09/2026, neuf copies d'un projet ont
+    rempli ce `tmpfs` et tué une campagne ; deux jeux de stems n'en approchent
+    pas, mais la règle vaut d'être rappelée là où la place se consomme.
+
     Par défaut l'option est VIDE et rien ne change, au bit près.
     """
     modele = getattr(args, "modele_basse", "") or ""
