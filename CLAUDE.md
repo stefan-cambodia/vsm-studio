@@ -3,9 +3,9 @@
 Tu travailles sur ~/videcode/muz/vsm-studio : un DAW C++/JUCE (moteur temps
 réel, 64 machines au registre — 65 dossiers dans `audio/plugins/`, dont deux
 résultats négatifs gardés hors build) et sa chaîne d'analyse Python qui
-reconstruit un morceau enregistré en projet jouable. Les feuilles de route et cahiers des
-charges (docs/ROADMAP-*.md, docs/CDC-*.md) sont les critères d'acceptation et
-l'ordre de marche — pas de la documentation d'accompagnement.
+reconstruit un morceau enregistré en projet jouable. Les feuilles de route et
+cahiers des charges (docs/ROADMAP-*.md, docs/CDC-*.md) sont les critères
+d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
 
 ## Conduite
 - « continue » = relire les feuilles de route, prendre l'élément suivant, le
