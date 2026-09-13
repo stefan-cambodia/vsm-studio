@@ -1111,6 +1111,11 @@ juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D17
 s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
 course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
 ferait expirer tous les bancs du dépôt.
+`VSM_MENU_CONTEXTE=regle:<libellé>` exécute une entrée du menu du clic droit de la
+RÈGLE du piano roll (les repères), et `regle:?` ne fait rien mais LISTE ce que ce
+menu montrerait, dans la langue courante — c'était le dernier menu de
+l'application qu'aucune course ne pouvait lire, et D217 y a trouvé trois libellés
+restés français dans l'interface anglaise.
 `VSM_OPTIONS="clef=valeur;…"` remplit la fenêtre d'options d'un export et la
 valide, sans souris : une liste déroulante prend le NUMÉRO de son choix
 (`frequence=4` pour 96 000 Hz), un champ texte prend son texte (`queue=0.0`). La

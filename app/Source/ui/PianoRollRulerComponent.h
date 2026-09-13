@@ -26,6 +26,12 @@ public:
     void mouseUp(const juce::MouseEvent&) override;   ///< D33.3 : fin du scrub
     void mouseDoubleClick(const juce::MouseEvent&) override;
 
+    /// D218 : le menu du clic droit (les repères), pour le banc -- le MÊME menu
+    /// que la souris, construit par `construireMenuDeRepere`.
+    bool actionDeMenuPourCapture(const juce::String& libelle);
+    /// D218 : ses libellés tels qu'ils s'afficheraient, la langue courante comprise.
+    juce::StringArray libellesDuMenuPourCapture() const;
+
     void setLoopRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active);
     /// RÉGION DE PUNCH (D3.5) : là où l'enregistrement capte, et nulle part
     /// ailleurs. Dessinée en rouge, distincte de la boucle, parce qu'on les
@@ -72,6 +78,12 @@ public:
         vitesseDeReference_ = pixelsParSeconde > 1.0 ? pixelsParSeconde : 1.0;
     }
 private:
+    /// D218 : la construction et l'exécution du menu des repères, partagées entre
+    /// la souris et le banc.
+    juce::PopupMenu construireMenuDeRepere(int survole) const;
+    void actionDeMenuDeRepere(int choix, vsm::midi::Tick tick, int survole);
+    int repereSousLaTete() const;
+
     PianoRollComponent& pianoRoll_;
     vsm::midi::Tick loopStart_ = 0, loopEnd_ = 0;
     bool loopActive_ = false;

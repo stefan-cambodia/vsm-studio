@@ -21783,6 +21783,13 @@ mesure n'emprunte pas un outil sans l'avoir vu répondre.
 Attendu 6 tenu : 11 − 5 + 1 = 7, strictement moins. Le réglage voyage donc lui
 aussi jusqu'aux fichiers.
 
+**ET L'ATTENDU 5, LE PLUS LONG À MESURER : « identique au bit près ».** La fenêtre
+promet qu'un rendu au pas du temps réel donne les mêmes échantillons qu'un rendu
+aussi vite que possible. Mesuré sur `cdl` : la course a pris **312 s pour un morceau
+de 309 s** — elle s'est donc bien mise au pas du temps réel — et le fichier est
+**identique octet pour octet** (`cmp`) à celui de `vitesse=1`. La promesse tient, et
+c'est la première fois qu'elle est vérifiée depuis l'interface.
+
 ### Phase D216 — la garde de traduction cachait le défaut que D214 avait trouvé à la main (13/09/2026)
 
 **CE QUI A DÉCLENCHÉ CETTE PHASE.** D214 a trouvé, en lisant le code, un titre de
@@ -21900,3 +21907,47 @@ clés ont leur paire anglaise (`SANS_PAIRE 0` le dit), et la garde qui les a tro
 rend 0 avec un témoin positif. Un hameçon de banc pour ce menu est **nommé et non
 fait** : il demanderait de sortir la construction du menu dans une fonction
 partagée, comme D115 l'a fait pour le piano roll, et cela vaut une phase à elle.
+
+### Phase D218 — le dernier menu hors de portée d'une course (13/09/2026)
+
+D217 s'est arrêtée sur un aveu : les trois libellés corrigés n'étaient vérifiables
+que par la garde du code, parce que le menu de la règle du piano roll est construit
+dans `mouseDown` et montré par `showMenuAsync` — hors de portée de `VSM_MENU_LISTE`
+comme de `VSM_MENU_CONTEXTE`. **C'est pour cela que le défaut a vécu.** Cette phase
+le met à portée, par le même découpage que D115 pour le piano roll : une fonction
+construit le menu, une autre exécute un choix, et la souris comme le banc passent
+par les deux.
+
+`VSM_MENU_CONTEXTE=regle:<libellé>` exécute une entrée ; `regle:?` ne fait rien et
+LISTE ce que le menu montrerait, dans la langue courante.
+
+**CE QUE LA MESURE A DIT** (projet `cdl`, sans repère posé) :
+
+```
+fr : regle = Poser un repère ici… | Renommer ce repère… [grisee] | Retirer ce repère [grisee]
+en : regle = Add a marker here… | Rename this marker… [grisee] | Remove this marker [grisee]
+```
+
+Les trois libellés de D217 sont donc **vus en anglais par une course**, et non
+seulement déduits de la table. L'exécution suit : « Poser un repère ici… » rend
+« exécutée (regle) », et « Retirer ce repère », grisée faute de repère sous la tête
+de lecture, est REFUSÉE — « le banc ne doit pas pouvoir plus que la souris » (D91),
+et l'aide de `entreeParLibelle` tient cette promesse sans qu'on ait rien à écrire.
+
+**UN DÉFAUT PAYÉ DANS LA MINUTE, ET QUI VAUT D'ÊTRE ÉCRIT.** Le premier jet relevait
+les libellés ainsi :
+
+```cpp
+for (juce::PopupMenu::MenuItemIterator it(construireMenuDeRepere(...), true); it.next();)
+```
+
+L'application est tombée sur un `core dump` à la première course. Un temporaire créé
+dans l'instruction d'initialisation d'un `for` meurt à la fin de CETTE instruction :
+l'itérateur survivait au menu qu'il parcourait. Le menu se tient donc dans une
+variable. La leçon générale est dans le commentaire du code, à l'endroit exact où
+l'on serait tenté de refaire la même chose.
+
+**CE QUI RESTE, NOMMÉ ET NON FAIT** : la fenêtre qui demande le NOM du repère n'écrit
+aucune ligne `VSM_BOITE` — « Poser un repère ici… » s'exécute, et la course s'arrête
+au seuil de cette fenêtre. C'est la même famille que les fenêtres d'options de D215,
+qui viennent d'être ouvertes au banc ; celle-ci attend son tour.

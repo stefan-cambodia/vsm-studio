@@ -211,6 +211,12 @@ public:
     /// au changement de zoom, sans quoi la vitesse du geste voudrait dire deux
     /// choses à deux zooms.
     void setScrubReference(double pixelsParSeconde) { ruler_.setScrubReference(pixelsParSeconde); }
+    /// D218 : le menu des repères de la règle, pour le banc -- le panneau possède
+    /// la règle, c'est donc lui qui la donne.
+    bool actionDuMenuDeRegle(const juce::String& libelle) {
+        return ruler_.actionDeMenuPourCapture(libelle);
+    }
+    juce::StringArray libellesDuMenuDeRegle() const { return ruler_.libellesDuMenuPourCapture(); }
 
     void paint(juce::Graphics& g) override { g.fillAll(vsm::ui::Palette::background); }
 

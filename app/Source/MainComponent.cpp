@@ -1615,9 +1615,20 @@ bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     // « effets » : le premier effet de la chaîne affichée, celle de la piste choisie.
     // D102 : « ajout-effet » : une entrée de la liste « ajouter un effet », choisie.
     // D115 : « pianoroll » : le menu du clic droit du piano roll, sur la piste montrée.
+    // D218 : « regle » : le menu du clic droit de la RÈGLE du piano roll (les
+    // repères), le dernier menu de l'application qu'aucune course ne pouvait lire
+    // -- et c'est là que D217 a trouvé trois libellés restés français en anglais.
+    // « regle:? » ne fait rien et LISTE ce que le menu montrerait.
+    if (quel == "regle" && libelle == "?") {
+        std::fputs(("VSM_MENU_CONTEXTE : regle = "
+                    + pianoRollPanel_.libellesDuMenuDeRegle().joinIntoString(" | ")
+                    + "\n").toRawUTF8(), stderr);
+        return true;
+    }
     const bool fait = quel == "effets"        ? effectChain_.presetMenuPourCapture(0, libelle)
                     : quel == "ajout-effet"   ? effectChain_.ajouterPourCapture(libelle)
                     : quel == "pianoroll"     ? pianoRoll_.actionDeMenuPourCapture(libelle)
+                    : quel == "regle"         ? pianoRollPanel_.actionDuMenuDeRegle(libelle)
                                               : arrangement_.actionDeMenuPourCapture(quel, libelle);
     std::fputs((juce::String("VSM_MENU_CONTEXTE : ")
                 + (fait ? juce::String(u8"« ") + libelle + juce::String(u8" » exécutée (") + quel + ")"

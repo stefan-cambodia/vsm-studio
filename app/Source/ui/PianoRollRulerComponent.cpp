@@ -1,4 +1,5 @@
 #include "PianoRollRulerComponent.h"
+#include "EntreeDeMenu.h"   // D218 : entreeParLibelle, partagée depuis D115
 #include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 
@@ -177,20 +178,12 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
                 if (std::abs(pianoRoll_.tickToX(project->markers[i].tick) - event.position.x) < 10.0f)
                     survole = static_cast<int>(i);
 
-        using vsm::app::ui::tr;   // D217, comme D83 pour l'arrangement
-        juce::PopupMenu menu;
-        // D217 : PAR `tr()`. Ces trois libellés avaient déjà leur traduction dans
-        // la table et sortaient pourtant en français : le compteur les rangeait en
-        // TABLE (« traduite ailleurs »), et aucun relevé ne les avait regardés.
-        menu.addItem(1, tr(u8"Poser un repère ici…"));
-        menu.addItem(3, tr(u8"Renommer ce repère…"), survole >= 0);
-        menu.addItem(2, tr(u8"Retirer ce repère"), survole >= 0);
-        menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
-            if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
-            if (choix == 3 && survole >= 0 && onMarkerRenameRequested)
-                onMarkerRenameRequested(static_cast<size_t>(survole));
-            if (choix == 2 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
-        });
+        // D218 : LE MENU EST CONSTRUIT ET EXÉCUTÉ AILLEURS, pour que le banc passe
+        // par le MÊME code que la souris (la leçon de D115 pour le piano roll).
+        construireMenuDeRepere(survole).showMenuAsync(
+            juce::PopupMenu::Options(), [this, tick, survole](int choix) {
+                actionDeMenuDeRepere(choix, tick, survole);
+            });
         return;
     }
 
@@ -281,4 +274,57 @@ void PianoRollRulerComponent::mouseDoubleClick(const juce::MouseEvent&) {
     loopActive_ = false;
     if (onLoopRegionChanged) onLoopRegionChanged(loopStart_, loopEnd_, false);
     repaint();
+}
+
+// D218 : LE MENU DE LA RÈGLE, CONSTRUIT À PART -- et le banc le prend par le même
+// chemin que la souris. Ce menu est né hors de portée de tout banc : ni
+// `VSM_MENU_LISTE` (qui lit la barre) ni `VSM_MENU_CONTEXTE` (qui connaissait
+// l'arrangement, le piano roll et les effets) ne le voyaient, et c'est ainsi que
+// ses trois libellés ont pu sortir en français dans l'interface anglaise jusqu'à
+// D217. Un menu qu'aucune course ne peut lire est un menu que personne ne relit.
+juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole) const {
+    using vsm::app::ui::tr;
+    juce::PopupMenu menu;
+    menu.addItem(1, tr(u8"Poser un repère ici…"));
+    menu.addItem(3, tr(u8"Renommer ce repère…"), survole >= 0);
+    menu.addItem(2, tr(u8"Retirer ce repère"), survole >= 0);
+    return menu;
+}
+
+void PianoRollRulerComponent::actionDeMenuDeRepere(int choix, vsm::midi::Tick tick, int survole) {
+    if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
+    if (choix == 3 && survole >= 0 && onMarkerRenameRequested)
+        onMarkerRenameRequested(static_cast<size_t>(survole));
+    if (choix == 2 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
+}
+
+/// D218 : le repère le plus proche de la tête de lecture, ou -1 -- ce que la souris
+/// trouverait sous elle, sans souris.
+int PianoRollRulerComponent::repereSousLaTete() const {
+    if (const auto* project = pianoRoll_.project())
+        for (size_t i = 0; i < project->markers.size(); ++i)
+            if (project->markers[i].tick == pianoRoll_.playheadTick())
+                return static_cast<int>(i);
+    return -1;
+}
+
+bool PianoRollRulerComponent::actionDeMenuPourCapture(const juce::String& libelle) {
+    const int survole = repereSousLaTete();
+    const int choix = vsm::app::ui::entreeParLibelle(construireMenuDeRepere(survole), libelle);
+    if (choix == 0) return false;
+    actionDeMenuDeRepere(choix, pianoRoll_.playheadTick(), survole);
+    return true;
+}
+
+juce::StringArray PianoRollRulerComponent::libellesDuMenuPourCapture() const {
+    juce::StringArray libelles;
+    // LE MENU TENU DANS UNE VARIABLE, et non construit dans l'en-tête de la boucle :
+    // un temporaire créé là meurt à la fin de l'instruction d'initialisation, et
+    // l'itérateur lui survivait -- l'application tombait sur un `core dump` au
+    // premier relevé (trouvé à la première course, 13/09).
+    const juce::PopupMenu menu = construireMenuDeRepere(repereSousLaTete());
+    for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
+        if (it.getItem().itemID != 0)
+            libelles.add(it.getItem().text + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+    return libelles;
 }
