@@ -21705,3 +21705,122 @@ Les dix-huit sélecteurs de `MainComponent.cpp` sont désormais franchissables p
 un banc, sauf les deux qui vivent derrière une fenêtre d'options modale (stems et
 audio), décidé plus haut. Suites : 330 + 1298 + 297 + 25 + 11, zéro échec ;
 `inventaire_langue` `ECRAN 7 SANS_PAIRE 0`.
+
+### Phase D215 — neuf réglages d'export que la fenêtre affiche et que personne n'avait vérifiés (13/09/2026)
+
+**CE QUI CHANGE DEPUIS D214, ET POURQUOI.** D214 a décidé de laisser de côté les
+deux sélecteurs d'export, au motif que leur chemin passe d'abord par une fenêtre
+d'options modale « qu'aucun verbe ne sait remplir ». La décision était bonne pour
+ce lot-là ; elle devient mauvaise dès qu'on se demande ce que ces options FONT.
+« Exporter en audio » en propose six (plage, fréquence, profondeur, queue, vitesse,
+niveau) et « Exporter les stems » trois (découpage, profondeur, queue). `VSM_EXPORT`
+et `VSM_EXPORT_STEMS` appellent le cœur du rendu avec des valeurs écrites en dur :
+le CÂBLAGE entre ce que la fenêtre dit et ce que le fichier reçoit n'était éprouvé
+par personne. Un réglage décoratif — une liste qui s'affiche et ne change rien —
+est exactement la panne muette que ce projet s'interdit.
+
+`VSM_OPTIONS="clef=valeur;…"` remplit les champs de la fenêtre (une liste par
+NUMÉRO de choix, un champ texte par son texte), dit ce qu'elle a posé, NOMME les
+clefs qu'elle n'a pas trouvées, et joue la réponse « valider ». Le sélecteur qui
+suit se saute comme les autres.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (projet `cdl`, une piste audio) :
+
+1. `frequence=1` (44 100 Hz) contre `frequence=4` (96 000 Hz) : l'en-tête du WAV
+   écrit le taux demandé, et le nombre de trames suit dans le même rapport.
+2. `profondeur=1` (16 bits) contre `profondeur=3` (32 bits flottants) : l'en-tête
+   dit 16 puis 32, et le fichier change de taille dans le rapport 1 : 2.
+3. `queue=0.0` contre `queue=2.0` : **deux secondes de différence** à la fin du
+   fichier, à la trame près du taux choisi.
+4. `niveau=2` (« Crête à -1 dBFS ») : la crête mesurée du fichier vaut −1 dBFS
+   à ±0,05 dB, là où `niveau=1` rend celle du mixage.
+5. `vitesse=2` (au pas du temps réel) : **les mêmes octets** que `vitesse=1` — c'est
+   ce que la fenêtre promet (« identique au bit près »), et personne ne l'a vérifié
+   depuis l'interface.
+6. Stems, `granularite=1` (une piste par fichier) contre `granularite=2` (un groupe
+   par fichier) : le second écrit STRICTEMENT MOINS de fichiers sur un projet qui
+   porte un bus de groupe.
+
+Toute case démentie est un défaut, pas une surprise : la fenêtre ne doit pas
+afficher un réglage qui ne voyage pas jusqu'au fichier.
+
+**CE QUE LA MESURE A DIT** (projet `cdl`, 309,1 s, une piste audio ; en-têtes relus
+par `soundfile`) :
+
+| Réglage posé | en-tête du fichier | trames | attendu |
+|---|---|---|---|
+| `frequence=1` | 44 100 Hz, PCM_24 | 13 631 540 | — |
+| `frequence=4` | **96 000 Hz**, PCM_24 | 29 674 100 | tenu (rapport 2,1768 = 96/44,1) |
+| `profondeur=1` | 44 100 Hz, **PCM_16** | 13 631 540 | tenu (54 526 204 octets contre 109 052 376 en flottant, soit 1 : 2) |
+| `profondeur=3` | 44 100 Hz, **FLOAT** | 13 631 540 | tenu |
+| `queue=0.0` | 309,105 s | 13 631 540 | — |
+| `queue=2.0` | **311,105 s** | 13 719 740 | tenu : **+88 200 trames, deux secondes EXACTEMENT** à 44 100 Hz |
+| `niveau=1` | — | — | crête mesurée **−4,963 dBFS** (celle du mixage) |
+| `niveau=2` | — | — | crête mesurée **−1,000 dBFS**, et le rendu le dit (« crête ramenée à -1 dBFS (4.0 dB) ») |
+
+Les quatre premiers attendus tiennent, au nombre de trames et au dixième de
+décibel. **Les neuf réglages de ces deux fenêtres ne sont donc pas décoratifs** :
+chacun de ceux mesurés arrive jusqu'au fichier.
+
+**UNE MESURE RATÉE QUI S'EST FAIT PASSER POUR UN RÉSULTAT.** La course de
+`vitesse=2` devait être comparée octet par octet à celle de `vitesse=1` ; elle a
+rendu « DIFFÉRENT : 0 octet d'écart », ce qui n'a aucun sens. La cause n'était pas
+dans le logiciel mesuré : `/usr/bin/time`, que mon script empruntait pour
+chronométrer, n'existe pas sur cette machine ; la commande est morte avant de
+lancer quoi que ce soit, son erreur est partie dans un tube filtré par `grep`, et
+`cmp` a comparé un fichier ABSENT. La règle est écrite dans `CLAUDE.md` : **un
+verdict par comparaison vérifie d'abord que ses deux côtés existent**, et une
+mesure n'emprunte pas un outil sans l'avoir vu répondre.
+
+**LES STEMS, SUR UN PROJET QUI PORTE UN BUS DE GROUPE** (`children-c3-plafond`,
+11 pistes jouées sous 1 bus « Batterie », 453 s, 16 bits pour aller plus vite) :
+
+| Découpage | fichiers écrits |
+|---|---|
+| `granularite=1` — une piste par fichier | **11** (`01 - bass.wav`, `02 - guitar.wav`, …) |
+| `granularite=2` — un groupe par fichier | **7** — les cinq pistes de batterie repliées en une |
+
+Attendu 6 tenu : 11 − 5 + 1 = 7, strictement moins. Le réglage voyage donc lui
+aussi jusqu'aux fichiers.
+
+### Phase D216 — la garde de traduction cachait le défaut que D214 avait trouvé à la main (13/09/2026)
+
+**CE QUI A DÉCLENCHÉ CETTE PHASE.** D214 a trouvé, en lisant le code, un titre de
+sélecteur écrit en littéral nu (« Importer un MIDI dans le projet… », sans `tr()`).
+Or `tools/inventaire_langue.py` existe précisément pour trouver cela, et il
+affichait `ECRAN 7 SANS_PAIRE 0` avant comme après la correction. **Une garde qui
+ne voit pas le défaut qu'on vient de corriger à la main est une garde à éprouver.**
+
+**L'ÉPREUVE, ET CE QU'ELLE A MONTRÉ.** Un fichier d'essai temporaire, deux
+littéraux nus côte à côte : « Choisir le dossier des réglages… », inconnu de la
+table, et « Importer un MIDI dans le projet… », qui en est une clé. Le premier est
+compté `ÉCRAN` ; **le second passe en `TABLE`** — « traduite ailleurs, par une
+variable ». La règle TABLE est juste pour un message assemblé loin de son `tr()` ;
+elle est fausse pour un littéral posé tel quel dans un constructeur d'interface,
+et elle couvrait exactement le cas de D214.
+
+**ET UN SECOND DÉFAUT, QUE CETTE ÉPREUVE A RÉVÉLÉ DANS MON PROPRE TRAVAIL.** Si ce
+littéral était une clé de la table, c'est que D214 l'y avait ajouté — alors qu'il
+y était déjà, six cents lignes plus haut. Deux entrées pour une clé dans `kAnglais` :
+tant que les deux traductions sont identiques, rien ne se voit ; le jour où l'on
+corrige la mauvaise, la correction n'a aucun effet et l'on cherche ailleurs.
+
+**CE QUI EST POSÉ.** `tools/inventaire_langue.py --doublons` compte les clés
+écrites deux fois dans la MÊME table, les nomme avec leurs deux lignes, et rend un
+code de sortie non nul — une garde, pas un script de phase (la règle de D150).
+Une clé présente dans DEUX tables différentes reste légitime : « Impossible
+d'écrire %1 » vient de l'interface ET du moteur.
+
+**MESURE, dans cet ordre** : la garde rend d'abord `DOUBLONS 1` (`kAnglais`, lignes
+655 et 1047) — c'est le témoin, et il est positif parce que le défaut est encore
+là ; l'entrée de trop retirée, elle rend `DOUBLONS 0`, code 0. Le libellé anglais
+du menu tient toujours (`VSM_MENU_LISTE : File > Import a MIDI file into the
+project...`), servi par l'entrée restée en place, et `ECRAN 7 SANS_PAIRE 0` ne
+bouge pas.
+
+**CE QUI RESTE, NOMMÉ ET NON FAIT** : la règle `TABLE` n'est pas corrigée. Un
+littéral nu identique à une clé de la table reste invisible au compte. Le dire
+coûte une ligne ; le corriger demande de distinguer « posé tel quel dans un appel
+d'interface » de « assemblé puis traduit plus loin », ce qui est le sujet entier de
+D106 et de D150. La garde des doublons ferme la moitié du trou qui m'a coûté le
+plus cher aujourd'hui ; l'autre moitié attend une phase à elle.

@@ -1043,8 +1043,6 @@ const Paire kAnglais[] = {
     // D211 : la question devant tout geste qui jette le projet, et D212 le
     // titre d'un projet neuf et la phrase du MIDI introuvable.
     { "Abandonner les modifications ?", "Discard changes?" },
-    // D214 : le titre du sélecteur de l'import MIDI, écrit en littéral nu jusque-là.
-    { "Importer un MIDI dans le projet...", "Import a MIDI file into the project..." },
     { "Continuer sans enregistrer", "Continue without saving" },
     { "Vintage Synth MIDI Studio -- nouveau projet", "Vintage Synth MIDI Studio -- new project" },
     { "Fichier introuvable : %1", "File not found: %1" },

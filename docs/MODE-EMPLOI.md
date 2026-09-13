@@ -1111,6 +1111,16 @@ juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D17
 s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
 course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
 ferait expirer tous les bancs du dépôt.
+`VSM_OPTIONS="clef=valeur;…"` remplit la fenêtre d'options d'un export et la
+valide, sans souris : une liste déroulante prend le NUMÉRO de son choix
+(`frequence=4` pour 96 000 Hz), un champ texte prend son texte (`queue=0.0`). La
+ligne `VSM_OPTIONS :` du journal dit ce qui a été posé, avec le libellé obtenu, et
+NOMME les clefs que la fenêtre ne connaît pas. Les clefs de « Exporter audio
+(WAV)… » sont `plage`, `frequence`, `profondeur`, `queue`, `vitesse`, `niveau` ;
+celles de « Exporter les stems… » sont `granularite`, `profondeur`, `queue`. Le
+sélecteur qui suit prend son fichier de `VSM_FICHIER`, qui accepte une LISTE
+séparée par « ; » quand une course traverse plusieurs sélecteurs (le premier
+sélecteur reçoit le premier fichier ; la ligne du journal dit ce qui reste).
 `VSM_ABANDON=abandonner|annuler|enregistrer` répond, sans souris, à la question
 « Abandonner les modifications ? » que D211 a mise devant les cinq entrées du
 menu Fichier qui remplacent le projet en mémoire (« Nouveau projet », « Ouvrir

@@ -57,6 +57,13 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
 - Python bufferise stdout vers un fichier : lancer les longues chaînes avec
   `python -u`, et surveiller par Monitor (fins ET échecs, jamais le succès
   seul).
+- Un EXPORT hors-ligne de l'application pendant une campagne ne la tue pas : il
+  la TRIPLE. Le 13/09, les mesures de D215 (sept rendus d'un projet de 309 s, puis
+  onze stems d'un projet de 453 s) ont porté le morceau en cours de 56 min
+  (morceau 4) à 2 h 50 (morceau 5) — la course a survécu, mais cinq morceaux
+  restants à ce régime ne tenaient plus dans la batterie. Les mesures qui RENDENT
+  de l'audio se groupent donc pour après la course, ou se font sur un projet
+  court ; les bancs d'interface (une capture, un relevé, un menu) ne coûtent rien.
 - Pas plus de deux étapes batterie simultanées (la charge à 49/22 cœurs met
   tout au surplace) ; geler/reprendre par SIGSTOP/SIGCONT ne perd rien.
 - Après toute édition de document par script : vérifier par grep que le texte
@@ -166,6 +173,12 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   une seule sans traduction », là où l'outil du dépôt en trouvait deux et
   dix-huit invisibles. Toute regex qui trie du code se valide sur un cas de
   CHAQUE forme avant de servir de mesure.
+- Une COMPARAISON dont un côté MANQUE rend « différent », pas « raté » : le
+  13/09 (D215), `cmp -s a b` a conclu « DIFFÉRENT » parce que la course qui
+  devait écrire `b` n'avait jamais démarré — `/usr/bin/time` n'existe pas sur
+  cette machine, et l'erreur est passée dans un tube filtré par `grep`. Tout
+  verdict par comparaison vérifie d'abord que ses DEUX fichiers existent et ne
+  sont pas vides, et une mesure n'emprunte pas un outil sans l'avoir vu répondre.
 - Un script d'analyse écrit pour une phase n'est pas une garde : il n'est ni
   relu, ni rejoué, ni corrigé. Ce qui doit empêcher une régression va dans
   `tools/`, avec sa règle écrite dans son en-tête (12/09, D150).

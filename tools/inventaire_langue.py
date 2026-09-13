@@ -7,6 +7,7 @@
     analyse/.venv/bin/python tools/inventaire_langue.py --regle=large  # D101
     analyse/.venv/bin/python tools/inventaire_langue.py --machines [MACHINES]  # D103
     analyse/.venv/bin/python tools/inventaire_langue.py --sans-suivi # D106 : l'ancienne règle
+    analyse/.venv/bin/python tools/inventaire_langue.py --doublons   # D216 : une clé écrite deux fois
 
 LES EN-TÊTES À PART (D94). Le compte d'A9 ne lit que les `.cpp`, et c'est ce
 compte-là que les phases comparent. Mais un `.h` écrit aussi à l'écran (une
@@ -126,6 +127,33 @@ def cles_de_la_table(langue: str) -> Set[str]:
     for m in re.finditer(r'\{\s*((?:(?:u8)?"(?:[^"\\]|\\.)*"\s*)+),', langue):
         cles.add(decode("".join(LITTERAL.findall(m.group(1)))))
     return cles
+
+
+def doublons_de_la_table(langue: str) -> List[Tuple[str, str, List[int]]]:
+    """Les clés écrites DEUX FOIS dans la MÊME table de Langue.cpp.
+
+    Pourquoi cette garde (D216). Le 13/09, D214 a ajouté « Importer un MIDI dans
+    le projet... » à `kAnglais` alors que la clé y était déjà six cents lignes plus
+    haut : deux entrées pour une clé, dont une seule est lue. Tant que les deux
+    traductions sont identiques, rien ne se voit ; le jour où l'on corrige la
+    MAUVAISE, la correction n'a aucun effet et l'on cherche ailleurs. Une clé
+    présente dans DEUX tables différentes (l'interface et les phrases du moteur),
+    en revanche, est légitime : `Impossible d'écrire %1` vient des deux, et ce
+    n'est pas un doublon.
+    """
+    doubles: List[Tuple[str, str, List[int]]] = []
+    for table in re.finditer(r"const\s+\w+\s+(k\w+)\s*\[\s*\]\s*=\s*\{(.*?)\n\};", langue, re.S):
+        nom, corps = table.group(1), table.group(2)
+        debut = table.start(2)
+        vues: Dict[str, List[int]] = {}
+        for m in re.finditer(r'\{\s*((?:(?:u8)?"(?:[^"\\]|\\.)*"\s*)+),', corps):
+            cle = decode("".join(LITTERAL.findall(m.group(1))))
+            ligne = langue[:debut + m.start()].count("\n") + 1
+            vues.setdefault(cle, []).append(ligne)
+        for cle, lignes in vues.items():
+            if len(lignes) > 1:
+                doubles.append((nom, cle, lignes))
+    return doubles
 
 
 def chaines(texte: str) -> List[Tuple[int, int, str]]:
@@ -275,6 +303,13 @@ def main() -> int:
             for dossier, nom in sans:
                 print(f"  M {dossier}: {nom}")
         return 0
+    if "--doublons" in options:
+        langue = (RACINE / "ui" / "Langue.cpp").read_text(encoding="utf-8")
+        doubles = doublons_de_la_table(langue)
+        print(f"DOUBLONS {len(doubles)}")
+        for nom, cle, lignes in doubles:
+            print(f"  D {nom} lignes {', '.join(str(l) for l in lignes)} : {cle[:90]}")
+        return 1 if doubles else 0
     regle = next((o.split("=", 1)[1] for o in options if o.startswith("--regle=")), "stricte")
     if regle not in REGLES:
         print(f"règle inconnue : {regle} (attendu : {', '.join(REGLES)})", file=sys.stderr)

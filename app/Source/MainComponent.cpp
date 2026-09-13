@@ -4458,6 +4458,48 @@ void MainComponent::showAboutDialog() {
             .replace("%1", juce::String(machines)));
 }
 
+// D215 : LA FENÊTRE D'OPTIONS, REMPLIE PAR LE BANC.
+//
+// Deux gestes d'export passent par une fenêtre modale avant leur sélecteur :
+// « Exporter en audio » (plage, fréquence, profondeur, queue, vitesse, niveau) et
+// « Exporter les stems » (découpage, profondeur, queue). Aucun banc ne savait la
+// remplir : `VSM_EXPORT` et `VSM_EXPORT_STEMS` appellent le cœur du rendu avec des
+// valeurs écrites en dur, et le CÂBLAGE de ces neuf réglages -- ce que la fenêtre
+// dit et ce que le fichier reçoit -- n'était éprouvé par personne. D214 avait
+// décidé de les laisser de côté faute de savoir répondre ; c'est cela qui change.
+//
+// VSM_OPTIONS="clef=valeur;…" : une liste déroulante prend un NUMÉRO de choix (le
+// même que l'identifiant JUCE, 1 pour le premier), un champ texte prend son texte.
+// Une clef inconnue est DITE, et le banc ne croit pas avoir réglé ce qu'il n'a pas
+// réglé.
+bool MainComponent::repondreAuxOptionsDeBanc(juce::AlertWindow& fenetre) {
+    const char* brut = std::getenv("VSM_OPTIONS");
+    if (brut == nullptr || *brut == '\0') return false;
+    juce::StringArray couples;
+    couples.addTokens(juce::String::fromUTF8(brut), ";", "");
+    juce::StringArray posees, refusees;
+    for (const auto& couple : couples) {
+        const juce::String clef = couple.upToFirstOccurrenceOf("=", false, false).trim();
+        const juce::String valeur = couple.fromFirstOccurrenceOf("=", false, false).trim();
+        if (clef.isEmpty()) continue;
+        if (auto* liste = fenetre.getComboBoxComponent(clef)) {
+            liste->setSelectedId(valeur.getIntValue(), juce::dontSendNotification);
+            posees.add(clef + "=" + valeur + " (" + liste->getText() + ")");
+        } else if (auto* champ = fenetre.getTextEditor(clef)) {
+            champ->setText(valeur, false);
+            posees.add(clef + "=" + valeur);
+        } else {
+            refusees.add(clef);
+        }
+    }
+    std::fputs(("VSM_OPTIONS : " + posees.joinIntoString(", ")
+                + (refusees.isEmpty() ? juce::String()
+                                      : juce::String(u8" \u2014 clef(s) inconnue(s) de cette fen\u00eatre : ")
+                                            + refusees.joinIntoString(", "))
+                + "\n").toRawUTF8(), stderr);
+    return true;
+}
+
 bool MainComponent::prendreLeFichierDeBanc(const std::function<void(const juce::File&)>& suite) {
     // D102 : LE SÉLECTEUR, ET LUI SEUL, SAUTÉ PAR LE BANC. Un sélecteur de fichier
     // ne se pilote pas sans souris ; ce qu'il rend, si. Le reste du chemin -- le
@@ -5085,8 +5127,7 @@ void MainComponent::exportAudioFile() {
 
     fenetre->addButton(tr(u8"Exporter..."), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
-        [this, fenetre, aBoucle, aSelection, selDebut, selFin](int resultat) {
+    auto repondre = [this, fenetre, aBoucle, aSelection, selDebut, selFin](int resultat) {
         const int plage = fenetre->getComboBoxComponent("plage")->getSelectedId();
         const int frequence = fenetre->getComboBoxComponent("frequence")->getSelectedId();
         const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
@@ -5122,7 +5163,9 @@ void MainComponent::exportAudioFile() {
         exportAudioWithOptions(options, niveau == 2 ? ExportLevel::PeakMinus1
                                         : niveau == 3 ? ExportLevel::Lufs14
                                         : niveau == 4 ? ExportLevel::Lufs23 : ExportLevel::AsIs);
-    }), false);
+    };
+    if (repondreAuxOptionsDeBanc(*fenetre)) { repondre(1); return; }   // D215
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(repondre), false);
 }
 
 vsm::interchange::LoadedBundle MainComponent::bundleFromSession() {
@@ -5175,8 +5218,7 @@ void MainComponent::exportStems() {
     fenetre->addTextEditor("queue", "2.0", tr(u8"Queue (secondes)"));
     fenetre->addButton(tr(u8"Choisir le dossier..."), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
-        [this, fenetre](int resultat) {
+    auto repondre = [this, fenetre](int resultat) {
         const int decoupage = fenetre->getComboBoxComponent("granularite")->getSelectedId();
         const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
         const double queue = std::max(0.0, fenetre->getTextEditorContents("queue").getDoubleValue());
@@ -5195,23 +5237,29 @@ void MainComponent::exportStems() {
         const auto granularite = decoupage == 2 ? vsm::interchange::StemGranularity::Groups
                                                  : vsm::interchange::StemGranularity::Tracks;
 
-        auto chooser = std::make_shared<juce::FileChooser>(
-            tr(u8"Dossier des stems..."), juce::File(), "");
-        chooser->launchAsync(juce::FileBrowserComponent::saveMode
-                                 | juce::FileBrowserComponent::canSelectDirectories,
-                              [this, chooser, options, granularite](const juce::FileChooser& fc) {
-            const juce::File dossier = fc.getResult();
+        auto suite = [this, options, granularite](const juce::File& dossier) {
             if (dossier == juce::File()) return;
 
             juce::String message;
             const bool fait = exportStemsToFolder(dossier, options, granularite, message);
+            // D215 : le compte rendu au journal AUSSI -- la boîte ne se lit pas sans souris.
+            std::fputs((juce::String(fait ? u8"VSM_EXPORT_STEMS : " : u8"VSM_EXPORT_STEMS : ÉCHEC — ")
+                        + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
             juce::AlertWindow::showMessageBoxAsync(fait ? juce::AlertWindow::InfoIcon
                                                         : juce::AlertWindow::WarningIcon,
                                                      fait ? tr(u8"Export des stems terminé")
                                                           : tr(u8"Erreur d'export des stems"),
                                                      message);
-        });
-    }), false);
+        };
+        if (prendreLeFichierDeBanc(suite)) return;   // D215 : le dossier, sans souris
+        auto chooser = std::make_shared<juce::FileChooser>(
+            tr(u8"Dossier des stems..."), juce::File(), "");
+        chooser->launchAsync(juce::FileBrowserComponent::saveMode
+                                 | juce::FileBrowserComponent::canSelectDirectories,
+                              [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
+    };
+    if (repondreAuxOptionsDeBanc(*fenetre)) { repondre(1); return; }   // D215
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(repondre), false);
 }
 
 bool MainComponent::exportStemsToFolder(const juce::File& dossier,
@@ -5289,20 +5337,25 @@ void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions
     // Ogg Vorbis par transcodage du même rendu. MP3 n'y est pas : l'encodeur
     // n'est pas dans JUCE, et la règle n° 2 du § 0 interdit une dépendance à
     // télécharger.
-    auto chooser = std::make_shared<juce::FileChooser>(
-        tr(u8"Exporter en audio (WAV, FLAC ou OGG)..."), juce::File(), "*.wav;*.flac;*.ogg");
-
-    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
-                          [this, chooser, options, niveau](const juce::FileChooser& fc) {
-        juce::File file = fc.getResult();
+    // D215 : le sélecteur sauté par le banc, et le compte rendu au JOURNAL en plus
+    // de la boîte -- sans quoi ce que l'export dit ne se lit pas sans souris.
+    auto suite = [this, options, niveau](const juce::File& choisi) {
+        juce::File file = choisi;
         if (file == juce::File()) return;
         if (file.getFileExtension().isEmpty()) file = file.withFileExtension("wav");
         juce::String message;
         const bool fait = exportProjectToFile(file, options, message, niveau);
+        std::fputs((juce::String(fait ? u8"VSM_EXPORT : " : u8"VSM_EXPORT : ÉCHEC — ")
+                    + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
         juce::AlertWindow::showMessageBoxAsync(fait ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon,
                                                  fait ? tr(u8"Export audio terminé") : tr(u8"Erreur d'export audio"),
                                                  message);
-    });
+    };
+    if (prendreLeFichierDeBanc(suite)) return;
+    auto chooser = std::make_shared<juce::FileChooser>(
+        tr(u8"Exporter en audio (WAV, FLAC ou OGG)..."), juce::File(), "*.wav;*.flac;*.ogg");
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+                          [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::interchange::RenderOptions& options,
