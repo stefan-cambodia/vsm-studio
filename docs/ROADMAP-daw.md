@@ -23071,3 +23071,44 @@ propre faute avant qu'elle n'atteigne un commit. Et l'anglais employait DEUX ver
 pour le même geste — « Bounce » dans le menu, « Bake » dans la boîte : les deux
 disent maintenant **Bake**, y compris l'avertissement de l'export MIDI qui renvoie
 à cette entrée.
+
+### Phase D242 — la vélocité, huit gestes et un seul chiffre à vérifier (13/09/2026)
+
+Le sous-menu *Vélocité* porte huit gestes : deux valeurs fixes, deux pourcentages,
+deux rampes et un aléatoire. Comme en D236, ils se lisent dans le `.mid` écrit —
+une vélocité est un octet, et un octet se compte.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (`cdl`, 2 219 notes, vélocité moyenne
+du témoin à relever d'abord) :
+
+1. **Vélocité 127** : toutes les notes à **127**, une seule valeur distincte.
+2. **Vélocité +10 %** : la moyenne monte d'environ 10 %, **bornée à 127** — et le
+   nombre de notes ne bouge pas.
+3. **Crescendo** : la vélocité monte AVEC le temps — la moyenne du premier quart du
+   morceau doit être nettement plus basse que celle du dernier quart.
+4. **Aléatoire (±20)** : la moyenne bouge peu, mais le nombre de valeurs distinctes
+   augmente — un aléatoire qui donnerait la même valeur partout n'en serait pas un.
+
+**CE QUE LA MESURE A DIT** (vélocités relues dans le `.mid` écrit) :
+
+| geste | notes | moyenne | valeurs distinctes | 1ᵉʳ quart | dernier quart |
+|---|---|---|---|---|---|
+| **témoin** | 2 219 | 86,4 | 55 | 86,0 | 85,6 |
+| Vélocité 127 | 2 219 | **127,0** | **1** | 127,0 | 127,0 |
+| Vélocité +10 % | 2 219 | **95,1** | 54 | 94,7 | 94,2 |
+| Crescendo | 2 219 | 74,1 | 91 | **46,1** | **103,5** |
+| Aléatoire (±20) | 2 219 | 86,0 | **82** | 85,6 | 85,0 |
+
+**Les quatre attendus tiennent**, et trois chiffres disent plus que le verdict :
+
+- **95,1 contre 86,4** fait +10,07 % : le pourcentage est un vrai pourcentage.
+- **54 valeurs distinctes après « +10 % », contre 55 avant** : une valeur a disparu,
+  écrasée contre le plafond de 127. Le geste borne, et le compte le montre sans
+  qu'on ait eu à le chercher.
+- **46,1 puis 103,5** pour le crescendo, là où le témoin est plat (86,0 / 85,6) :
+  la rampe part bien en dessous et finit bien au-dessus, ce qu'aucune moyenne
+  globale n'aurait montré — la moyenne, elle, tombe à 74,1.
+
+L'aléatoire, enfin, ne déplace pas la moyenne (86,0 contre 86,4) mais fait passer
+les valeurs distinctes de 55 à **82** : c'est la définition d'un bruit, et c'est le
+seul chiffre qui la vérifie.
