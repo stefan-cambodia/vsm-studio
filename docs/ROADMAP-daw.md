@@ -22194,3 +22194,55 @@ la campagne en cours écrit encore dedans. La question à lui poser est écrite 
 pour ne pas être tordue après : **parmi les notes sous 0,55, quelle part est
 réellement fausse, et cette part décroît-elle quand la confiance monte ?** Si la
 confiance ne prédit rien, le seuil n'est pas à régler mais la mesure à refaire.
+
+### Phase D224 (A39, suite) — la confiance VEUT dire quelque chose, et elle s'inverse en haut (13/09/2026)
+
+D223 avait écrit la question et refusé d'y répondre au jugé : **parmi les notes
+sous 0,55, quelle part est réellement fausse, et cette part décroît-elle quand la
+confiance monte ?** Le corpus synthétique le sait — chaque morceau porte sa
+`verite.json` —, et un lot TERMINÉ (`r1-sec-banc`, 10 morceaux) permet d'y répondre
+sans toucher à `analyse/` ni déranger la campagne en cours. C'est ce que fait
+`tools/confiance-contre-verite.py`, avec sa règle écrite dans son en-tête.
+
+**LA RÈGLE DE CORRESPONDANCE, ÉCRITE AVANT DE COMPTER** : une note transcrite
+(hauteur h, début t) est *juste* s'il existe dans la vérité une note de hauteur h
+commençant à moins de la tolérance de t. Indulgente — durée, vélocité et partie
+d'origine ignorées — et **la même pour toutes les tranches** : on ne mesure pas la
+qualité de la transcription, on mesure si la confiance SÉPARE.
+
+**CE QUE LA MESURE A DIT** (5 020 notes de 10 morceaux) :
+
+| Confiance | notes | justes à 25 ms | à 50 ms | à 100 ms |
+|---|---|---|---|---|
+| [0,00 ; 0,35) | 712 | 23,9 % | 27,1 % | 32,0 % |
+| [0,35 ; 0,45) | 1 721 | 32,9 % | 37,9 % | 43,9 % |
+| [0,45 ; 0,55) | 1 395 | 42,7 % | 48,6 % | 57,2 % |
+| [0,55 ; 0,65) | 807 | **48,1 %** | **60,0 %** | **70,4 %** |
+| [0,65 ; 0,80) | 378 | 42,3 % | 50,0 % | 59,0 % |
+| [0,80 ; 1,01) | 7 | 0,0 % | 14,3 % | 14,3 % |
+| toutes | 5 020 | 37,5 % | 43,8 % | 51,3 % |
+
+**LA CONFIANCE SÉPARE, ET LE SEUIL EST À SA PLACE.** De 0,00 à 0,65, la part de
+notes justes MONTE sans exception, à chacune des trois tolérances : 27 → 38 → 49 →
+60 % à 50 ms. Le seuil de 0,55 tombe là où la courbe croise la moitié : en dessous,
+une note transcrite est plus souvent fausse que juste ; au-dessus, l'inverse.
+**`kDoubtfulNoteThreshold` ne bouge donc pas** — et cette fois la décision est
+mesurée, non reconduite. Si 73 % des notes de `b4wuzthen` sont marquées, ce n'est
+pas que la marque est mal réglée : c'est que **73 % des notes sont réellement
+douteuses**, ce que le chiffre global (43,8 % de notes justes) confirme.
+
+**ET UN FAIT QUE PERSONNE NE CHERCHAIT : LA COURBE S'INVERSE EN HAUT.** La tranche
+[0,65 ; 0,80) est MOINS juste que [0,55 ; 0,65) — 50,0 % contre 60,0 % à 50 ms, et
+l'écart tient aux trois tolérances, sur 378 notes (ce n'est pas un accident
+d'échantillon). L'estimateur de confiance est donc mal calibré dans son haut : il
+est sûr de lui là où il devrait l'être moins. C'est une piste pour la chaîne, pas
+pour le DAW ; elle est portée à l'INDEX (**B14**) plutôt que traitée ici, parce
+qu'elle demande de toucher à `analyse/analyzer/` — interdit pendant une course.
+
+**CE QUE VÉRIFIE LA MESURE ELLE-MÊME.** Avant de croire la règle, on a cherché un
+DÉCALAGE systématique entre les débuts transcrits et ceux de la vérité : médiane
+−7,6 ms sur 4 111 notes dont la hauteur existe dans la vérité. Il n'y en a pas, et
+la fenêtre de 50 ms est donc bien centrée. À 250 ms, 79,7 % des notes trouvent une
+correspondance — mais une noire dure 500 ms à 120 BPM, et « juste à un quart de
+noire près » ne veut plus rien dire : la tolérance large est mentionnée, pas
+retenue.
