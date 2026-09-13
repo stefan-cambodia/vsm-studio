@@ -23374,3 +23374,24 @@ SÉLECTEUR, pas l'entrée de menu (« Charger l'original (référence A/B)… »
 a dit « aucune entrée de menu ne commence par… », et c'est le relevé
 `VSM_MENU_LISTE` qui a donné le bon libellé. Un libellé se lit dans la barre, jamais
 de mémoire.
+
+
+### Phase D250 — un fichier audio perdu ne détruit pas la piste (13/09/2026)
+
+D178 à D184 ont éprouvé les projets ABÎMÉS (machine absente, `project.json` ou
+`.mid` tronqué). Le cas voisin manquait : un projet SAIN dont un média a disparu —
+le disque externe débranché, le fichier déplacé, la corbeille vidée.
+
+Éprouvé de bout en bout : un `son-a.wav` importé dans une copie de `cdl`, le projet
+enregistré, **le fichier effacé du dossier du projet**, puis réouverture.
+
+| ce qui arrive | ce que l'application fait |
+|---|---|
+| à l'ouverture | une boîte : « **Audio non chargé** : Ces pistes audio n'ont pas pu être lues : son-a : audio illisible (…) », et la même ligne au rapport d'ouverture |
+| la piste | **conservée**, avec son nom, son clip et **son chemin** (`audio/son-a.wav`, 66 150 trames, 44 100 Hz) |
+| après réouverture ET réenregistrement | **identique au bit près** — mêmes pistes, mêmes clips, même `audio.file` |
+
+C'est la règle de D6.4 et de D178 tenue jusqu'au bout : **ce qui manque est DIT, et
+rien n'est effacé**. Reposer le fichier à sa place suffit à retrouver le son — le
+projet n'a pas oublié ce qu'il jouait, et un réenregistrement fait sans le média ne
+transforme pas une absence temporaire en perte définitive.
