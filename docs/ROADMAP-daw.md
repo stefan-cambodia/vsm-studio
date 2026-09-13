@@ -21057,6 +21057,16 @@ appelle la **vraie** fonction. Mesuré : `VSM_PLUGIN : sélecteur sauté` puis
 multiset identique au projet. Le verbe dit désormais aussi quand **rien n'a été
 écrit**, ce que sa copie ne pouvait pas savoir.
 
+**LES AUTRES VERBES ONT ÉTÉ RELUS, ET ILS SONT SAINS.** Un défaut de cette forme
+ne se répare pas à l'unité : il se cherche partout. Les cinq autres verbes qui
+« font » quelque chose appellent bien la fonction de l'utilisateur —
+`exportForCapture` → `exportProjectToFile` (celle du menu), `exportStemsForCapture`
+→ `exportStemsToFolder` (son commentaire l'écrit déjà : « le chemin est le MÊME que
+celui du menu »), `openProjectFolderForCapture` → `loadProjectBundleFromFolder`,
+`goToPositionForCapture` → `goToBarText`, `saveTrackPresetForCapture` →
+`saveSelectedTrackAsPreset`. **L'export MIDI était l'exception**, et il ne l'est
+plus.
+
 **L'INVENTAIRE QUI RESTE, dit plutôt que supposé.** `MainComponent` ouvre **23**
 sélecteurs ; **7** passent par `prendreLeFichierDeBanc` (dont trois posés
 aujourd'hui : D181, D197, et celui des plugins par D201). Les seize autres sont
