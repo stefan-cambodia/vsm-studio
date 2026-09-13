@@ -4,12 +4,12 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 [`ARCHITECTURE.md`](ARCHITECTURE.md) pour la conception complète et l'état
 d'avancement détaillé par phase.
 
-**État actuel** : le moteur MIDI (`core/`, 327 tests) et le moteur audio
-temps réel (`audio/`, 1 291 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 946
-tests moteur** (avec `interchange/` 292, `clap/` 25, `panels/` 11), tous verts,
+**État actuel** : le moteur MIDI (`core/`, 330 tests) et le moteur audio
+temps réel (`audio/`, 1 298 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 961
+tests moteur** (avec `interchange/` 297, `clap/` 25, `panels/` 11), tous verts,
 zéro warning ; plus **168 tests** côté chaîne d'analyse Python.
-Les 63 machines (Minimoog, TB-303, Juno-106,
+Les 64 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide
