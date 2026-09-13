@@ -23781,3 +23781,37 @@ soit 23 %** du morceau.
 **L'ATTENDU, ÉCRIT AVANT LE TRAVAIL** : que la part de notes courtes retrouvées
 passe de **3,3 % à plus de 50 %**, sans que la part inventée (0,4 à 1,2 %, D254)
 dépasse 3 %. C'est la mesure que `tools/confiance-contre-verite.py` rejouera.
+
+
+### Phase D261 — pourquoi la chaîne est sourde aux notes brèves : la distance ne les compte presque pas (13/09/2026)
+
+D260 a montré que 96,7 % des notes de moins de 150 ms ne sont jamais écrites. Reste
+la question qui décide de la suite : **est-ce que cela se voit dans la distance ?**
+Les 8 298 notes de la vérité du corpus, pesées par un proxy d'énergie
+(amplitude² × durée) :
+
+| notes vraies | compte | part des notes | **part de l'énergie** |
+|---|---|---|---|
+| moins de 150 ms | 1 865 | **22,5 %** | **7,3 %** |
+| 150 ms et plus | 6 433 | 77,5 % | 92,7 % |
+
+**Une note sur cinq, un quatorzième de l'énergie.** Rater toutes les notes brèves
+coûte donc environ **7 % du signal** — c'est-à-dire presque rien pour une distance
+qui compare des spectres, et tout pour un musicien qui entend disparaître ses
+ornements, ses doubles croches et ses articulations.
+
+**CE QUE CELA EXPLIQUE.** La chaîne n'est pas sourde par accident : **son objectif
+la récompense de l'être**. Chercher les notes brèves coûte des faux positifs (qui,
+eux, s'entendent dans la distance) pour un gain d'énergie dérisoire ; la prudence
+mesurée en D254 — 0,4 à 1,2 % d'inventions seulement — est la réponse RATIONNELLE
+à ce que le score demande. Aucun réglage ne fera trouver ces notes tant que la
+fonction de coût pèsera les notes à leur énergie.
+
+**CE QUE CELA CHANGE POUR B15, ET C'EST ÉCRIT AVANT LE TRAVAIL.** Corriger la
+détection d'attaques ne fera **pas** baisser la distance publiée de façon visible —
+au mieux quelques millièmes, peut-être rien. Ce n'est pas une raison de ne pas le
+faire : c'est la raison d'ajouter à la mesure **un compte de notes retrouvées**, à
+côté de la distance, et de le publier dans `rapport.json`. Le cap de l'utilisateur
+est la PARITÉ (mémoire `nombre-de-pistes-reconstruites`, « un original à 15 postes
+doit donner une reconstruction à 15 pistes ») ; la parité des NOTES en est le
+prolongement naturel, et elle ne se lira jamais dans une distance spectrale.
