@@ -8951,9 +8951,11 @@ void MainComponent::exportMidiFile() {
     auto chooser = std::make_shared<juce::FileChooser>(
         tr("Exporter en MIDI..."), juce::File(), "*.mid");
 
-    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
-                          [this, chooser](const juce::FileChooser& fc) {
-        juce::File file = fc.getResult();
+    // D197 : LE SÉLECTEUR SAUTÉ PAR LE BANC, comme pour les trois de D102 et
+    // l'ouverture de projet de D181. Le chemin par lequel un musicien envoie son
+    // morceau à un autre DAW n'était pilotable par personne, donc jamais mesuré.
+    auto suite = [this](const juce::File& choisi) {
+        juce::File file = choisi;
         if (file == juce::File()) return;
 
         try {
@@ -8998,7 +9000,10 @@ void MainComponent::exportMidiFile() {
             montrerBoite(juce::AlertWindow::WarningIcon,
                                                      tr("Erreur d'export MIDI"), e.what());
         }
-    });
+    };
+    if (prendreLeFichierDeBanc(suite)) return;
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+                          [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 // ---------------------------------------------------------------------------

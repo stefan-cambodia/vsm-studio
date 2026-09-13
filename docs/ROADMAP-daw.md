@@ -20764,3 +20764,53 @@ change ce qu'on peut affirmer.
 à **15,97 ms** ajustée, dont le bandeau d'onglets 5,77 ms, le volet d'ouverture
 3,97 ms (il disparaît dès qu'on le ferme), le rack 1,31 ms et la liste des pistes
 0,37 ms à 180 px de large. Tout tient largement sous les 33 ms de D163.
+
+### D197 (attendus) — le soixantième audit : l'export MIDI, que le banc n'atteignait pas (13/09/2026)
+
+**LE MÊME TROU QUE D181, AILLEURS.** « Fichier ▸ Exporter MIDI… » ouvre un
+sélecteur de fichier qui **ne passe pas par `prendreLeFichierDeBanc`** : le
+chemin par lequel un musicien envoie son morceau à un autre DAW n'est pilotable
+par personne, et n'a donc jamais été mesuré. Le crochet est posé, comme pour
+« Ouvrir un projet VSM… » (D181) et les trois sélecteurs de D102.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** `children-c3-plafond` exporté en
+`.mid`, relu :
+
+1. **Les notes y sont toutes** : le multiset (tick, canal, hauteur, vélocité)
+   du fichier exporté est celui du projet — **9 224** notes.
+2. **Le tempo et la signature** y sont.
+3. **Les noms de pistes** y sont : douze, dans l'ordre.
+4. **L'avertissement de D31.5 se déclenche ou non, et on le dit** — l'export
+   écrit les NOTES, pas ce que la lecture en fait (ni effets MIDI, ni
+   transposition de piste) ; ce projet n'en a pas, l'avertissement ne doit donc
+   pas paraître.
+
+### Phase D197 — l'export MIDI est fidèle, et il l'est PLUS que le `.mid` du projet (13/09/2026)
+
+**LES QUATRE ATTENDUS SONT TENUS**, `children-c3-plafond` exporté puis relu :
+
+| attendu | **mesuré** |
+|---|---|
+| 1. toutes les notes | **9 224 contre 9 224**, multiset (tick, canal, hauteur, vélocité) **identique** |
+| 2. tempo et signature | ✔ `set_tempo` **et** `time_signature` (le `.mid` du projet n'a pas la seconde) |
+| 3. les noms de pistes | ✔ **12, dans l'ordre** |
+| 4. l'avertissement de D31.5 ne paraît pas | ✔ aucune boîte — ce projet n'a ni effet MIDI ni transposition de piste |
+
+**ET UNE DIFFÉRENCE D'ENCODAGE, TROUVÉE EN LISANT LES NOMS.** Le `.mid` que la
+CHAÎNE écrit dégrade les noms : « Batterie **-** kick+kick2 » (le point médian
+perdu), « Voix - tête » dont le « ê » est un octet **Latin-1**, « Voix -
+cho**e**urs » (l'« œ » défait). L'export de l'application, lui, écrit de l'**UTF-8
+exact** : « Batterie · kick+kick2 », « Voix · tête », « Voix · chœurs » — les noms
+que le musicien voit à l'écran.
+
+**LA DÉCISION, ÉCRITE.** On garde l'UTF-8. Le format MIDI ne déclare aucun
+encodage pour ses méta-textes : un autre logiciel qui suppose du Latin-1 lira
+« Batterie Â· hihat ». Mais l'alternative — translittérer — **perd de
+l'information** et ne sait pas écrire « œ » ; et c'est le nom du projet qui fait
+foi. Un nom faux est pire qu'un nom mal décodé, qui se répare à la lecture.
+
+**LE CROCHET DE BANC QUI A PERMIS TOUT CELA.** Comme « Ouvrir un projet VSM… »
+avant D181, « Exporter MIDI… » ouvrait un sélecteur que le banc ne pouvait pas
+franchir : le chemin par lequel un musicien envoie son morceau à un autre DAW
+n'était pilotable par personne. Une ligne, la même que pour les trois sélecteurs
+de D102.
