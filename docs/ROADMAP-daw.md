@@ -21126,3 +21126,23 @@ logiciel sans accroc.
 trois mécanismes nés dans la journée — l'astérisque du titre (D174), la question
 de fermeture (D175), l'égalité des deux rendus (D177, D186, D189, D200) — jouent
 ensemble sur le même projet.
+
+### Phase D204 — `VSM_CHOIX` vaut aussi pour les fichiers VST3 (13/09/2026)
+
+**POURQUOI NE PAS LAISSER D201 SEUL.** La fenêtre « Plusieurs instruments dans ce
+fichier » — la jumelle VST3 de celle du CLAP — n'était pas couverte. La laisser
+dehors aurait fait une règle à retenir : « le banc répond aux fichiers CLAP, pas
+aux VST3 », c'est-à-dire exactement le genre de chose que personne ne se rappelle
+et que rien ne signale. Un fichier VST3 à plusieurs instruments existe (une
+banque, une suite) ; **celui de cette machine n'en porte qu'un**, et c'est
+pourquoi D199 n'avait pas buté ici.
+
+**Mesuré** : le VST3 à un seul instrument se charge comme avant
+(« Juno 106 joue maintenant sur la piste 1 »), et le verbe continue de servir le
+CLAP — `VSM_CHOIX=5` rend `rang 5 pris par le banc — Generic Synth`, puis
+« Generic Synth joue maintenant sur la piste 1 ».
+
+**IL RESTE DEUX FENÊTRES DE CHOIX** dans `MainComponent`, et elles sont d'une
+autre nature : celles qui font choisir dans le CATALOGUE des plugins balayés
+(instruments et effets). Elles ne butent sur aucun audit aujourd'hui ; notées ici
+pour que le prochain qui en a besoin sache qu'elles attendent le même traitement.

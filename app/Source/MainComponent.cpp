@@ -4884,6 +4884,27 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
         fenetre->addButton(tr(u8"Charger"), 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         annoncerFenetre(*fenetre);   // D102
+        // D204 : `VSM_CHOIX=n` ICI AUSSI. D201 l'avait posé sur la fenêtre jumelle
+        // du CLAP, et la laisser seule aurait fait une règle à retenir — « le banc
+        // répond aux fichiers CLAP, pas aux VST3 » —, c'est-à-dire exactement le
+        // genre de chose que personne ne se rappelle. Un fichier VST3 à plusieurs
+        // instruments existe (une banque, une suite) ; celui de cette machine n'en
+        // porte qu'un, et c'est pour cela que D199 n'avait pas buté ici.
+        if (const char* choixDeBanc = std::getenv("VSM_CHOIX");
+            choixDeBanc != nullptr && *choixDeBanc) {
+            const int rang = juce::String(choixDeBanc).getIntValue();
+            if (rang >= 1 && static_cast<size_t>(rang) <= instruments.size()) {
+                std::fputs(("VSM_CHOIX : rang " + std::to_string(rang) + " pris par le banc \u2014 "
+                            + instruments[static_cast<size_t>(rang) - 1].name + "\n").c_str(), stderr);
+                poser(instruments[static_cast<size_t>(rang) - 1].id,
+                       instruments[static_cast<size_t>(rang) - 1].name);
+            } else {
+                std::fputs(("VSM_CHOIX : rang " + std::to_string(rang) + " hors de la liste ("
+                            + std::to_string(instruments.size()) + " instruments), rien n'a \u00e9t\u00e9 charg\u00e9\n").c_str(),
+                           stderr);
+            }
+            return;
+        }
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [fenetre, instruments, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
