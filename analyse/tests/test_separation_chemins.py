@@ -64,3 +64,63 @@ def le_chemin_relatif_est_resolu_avant_de_partir_au_sous_processus():
                 f"le dossier de SORTIE part en absolu (reçu {sortie!r})")
     assert_true(cwd is not None and Path(cwd).name == "analyse",
                 "et le sous-processus tourne bien dans analyse/, ce qui est la cause")
+
+
+@test
+def sans_modele_basse_les_stems_ne_bougent_pas():
+    """D274 : l'option vide ne touche RIEN, et c'est ce que son aide promet.
+
+    « Vide (le défaut) : la chaîne d'aujourd'hui, au bit près. » Une option qui
+    changerait quoi que ce soit à vide invaliderait d'un coup tous les lots
+    mesurés avant elle, sans que personne ne s'en aperçoive — c'est la forme de
+    régression la plus chère du projet.
+    """
+    import types
+
+    stems = {"bass": Path("/x/bass.wav"), "other": Path("/x/other.wav")}
+
+    def separer_interdit(*_a, **_k):
+        raise AssertionError("aucune seconde séparation ne doit être lancée")
+
+    vrai = reconstruire.separer
+    reconstruire.separer = separer_interdit
+    try:
+        for valeur in ("", None):
+            args = types.SimpleNamespace(modele="htdemucs_6s", modele_basse=valeur)
+            rendu = reconstruire.remplacer_la_basse(args, Path("/x/e.wav"), Path("/x"), stems)
+            assert_true(rendu is stems, "l'option vide rend le MÊME dictionnaire, pas une copie")
+
+        # ET LE MÊME MODÈLE que le premier ne relance rien non plus : demander la
+        # basse à htdemucs_6s quand tout vient déjà de htdemucs_6s coûterait une
+        # séparation entière pour le même fichier.
+        args = types.SimpleNamespace(modele="htdemucs_6s", modele_basse="htdemucs_6s")
+        rendu = reconstruire.remplacer_la_basse(args, Path("/x/e.wav"), Path("/x"), stems)
+        assert_true(rendu is stems, "le même modèle des deux côtés ne relance pas de séparation")
+    finally:
+        reconstruire.separer = vrai
+
+
+@test
+def une_seconde_separation_qui_echoue_garde_la_basse_du_premier_modele():
+    """Panne muette interdite : l'échec se DIT et la chaîne continue.
+
+    Si la seconde séparation meurt, la basse du premier modèle reste en place —
+    et la ligne du journal le dit. Rendre un dictionnaire sans `bass`, ou lever,
+    ferait perdre une course entière pour une option accessoire.
+    """
+    import types
+
+    stems = {"bass": Path("/x/bass.wav"), "other": Path("/x/other.wav")}
+
+    def separer_qui_meurt(*_a, **_k):
+        raise RuntimeError("séparation en sous-processus : code 1")
+
+    vrai = reconstruire.separer
+    reconstruire.separer = separer_qui_meurt
+    try:
+        args = types.SimpleNamespace(modele="htdemucs_6s", modele_basse="htdemucs_ft")
+        rendu = reconstruire.remplacer_la_basse(args, Path("/x/e.wav"), Path("/x"), stems)
+        assert_true(rendu["bass"] == stems["bass"], "la basse reste celle du premier modèle")
+        assert_true(set(rendu) == set(stems), "aucun stem n'est perdu en route")
+    finally:
+        reconstruire.separer = vrai
