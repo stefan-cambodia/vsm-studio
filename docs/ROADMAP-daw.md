@@ -23196,3 +23196,28 @@ Le `.mid` du projet, relu par `mido` en D239, porte **798 + 2 407 + 2 726 + 0 =
 5 931 notes**. Le compte du volet est donc exact **à la note près**, et les trois
 machines nommées sont celles des trois pistes MIDI. Rien à corriger — mais on le
 sait maintenant, au lieu de le supposer.
+
+### Phase D245 — combien de temps un musicien attend pour ouvrir son morceau (13/09/2026)
+
+D163 à D171 ont mesuré le DESSIN (la fenêtre à 21,95 ms, le repos à 5,45 % d'un
+cœur) ; personne n'avait mesuré l'ATTENTE — le temps entre le double-clic et le
+projet à l'écran. Trois lancements par cas, délai de capture de 500 ms compris,
+**machine chargée par la campagne en cours** (donc des bornes hautes, et c'est dit) :
+
+| ce qu'on ouvre | trois mesures | médiane |
+|---|---|---|
+| rien (projet neuf) | 1 366 / 1 446 / 1 523 ms | **1 446 ms** |
+| `cdl` — 1 piste, 2 219 notes | 1 643 / 1 371 / 1 931 ms | **1 643 ms** |
+| `children-c3-plafond` — 11 pistes, 7 414 notes, 308 Mo de médias | 4 401 / 3 983 / 4 263 ms | **4 263 ms** |
+
+Soit, une fois le demi-seconde de la photo retirée : **moins d'une seconde** pour
+démarrer à vide, **1,1 s** pour un petit projet, **3,8 s** pour une reconstruction
+de onze pistes avec ses voix en audio. Rien à corriger aujourd'hui — mais le
+chiffre existe, et la prochaine phase qui touchera au chargement saura contre quoi
+se comparer.
+
+**ET LE PIÈGE DE D215, REPAYÉ — MAIS À VOIX HAUTE.** Le premier relevé appelait
+`/usr/bin/time`, qui n'existe pas sur cette machine ; il a rendu neuf fois
+« env: « time »: Aucun fichier ou dossier de ce nom » au lieu de neuf durées. La
+différence avec D215 tient à une seule chose : **la sortie d'erreur n'était pas
+filtrée**. Le même défaut, muet la première fois, criard la seconde.
