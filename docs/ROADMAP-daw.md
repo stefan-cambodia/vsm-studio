@@ -24943,3 +24943,62 @@ composante vienne d'un sous-oscillateur (D278) ou du filtrage de la séparation
 causes. **Pour le trancher il faudrait une troisième mesure** : rendre la même
 ligne sans sous-oscillateur, puis lui retirer son aigu au filtre, et voir si
 l'octave tombe pareil. `tools/sous-oscillateur.py` est le banc où elle s'écrira.
+
+
+### Phase D279 — un seul mécanisme, deux causes ? (13/09/2026)
+
+D269 et D278 se ressemblent trop pour être sans rapport : dans les deux cas le
+transcripteur descend d'une octave, et dans les deux cas une composante GRAVE
+domine ce qui reste de l'aigu de la fondamentale — un sous-oscillateur d'un côté,
+une séparation qui retire 94 % de l'énergie au-dessus de 300 Hz de l'autre.
+**Mais rien ne le prouve**, et D278 a été écrite en le disant.
+
+La mesure qui tranche se fait sur le même banc, sans sous-oscillateur : la même
+ligne de basse rendue à `sub.level = 0` — celle qui ne se trompe JAMAIS vers le
+bas —, puis privée de son aigu par un filtre passe-bas, à plusieurs coupures.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. **Si c'est un seul mécanisme**, retirer l'aigu suffit à faire descendre
+   l'octave : la part de notes une octave trop bas passe de **0,0 %** (le témoin
+   non filtré) à **plus de 30 %** à la coupure qui laisse la même proportion
+   d'aigu que la séparation (1,7 % de l'énergie au-dessus de 300 Hz, D269).
+2. **Si ce sont deux mécanismes distincts**, le filtrage ne produit **pas** cet
+   effet — la part reste sous 10 % — et il faut alors chercher séparément ce que
+   la séparation fait à la basse.
+3. **Contrôle** : le compte de notes écrites ne s'effondre pas. Un filtre assez
+   brutal pour rendre la ligne inaudible mesurerait une disparition.
+
+**LA MESURE, ET CE SONT BIEN DEUX MÉCANISMES** — même ligne, `sub.level = 0`,
+l'aigu retiré au filtre :
+
+| coupure | notes écrites | justes | **8ve trop bas** | 8ve trop haut | autre | **part 8ve bas** | aigu > 300 Hz |
+|---|---|---|---|---|---|---|---|
+| **aucune (témoin)** | 22 | 16 | **0** | 2 | 1 | **0,0 %** | 21,3 % |
+| 800 Hz | 28 | 16 | **0** | 4 | 4 | 0,0 % | 14,3 % |
+| 400 Hz | 36 | 14 | **0** | 5 | 7 | 0,0 % | 6,0 % |
+| 200 Hz | 24 | 9 | **0** | 7 | 0 | **0,0 %** | **0,0 %** |
+| 120 Hz | 12 | 3 | 0 | 0 | 0 | 0,0 % | 0,0 % |
+
+**ZÉRO note une octave trop bas, à toutes les coupures** — y compris à 200 Hz, où
+il ne reste **plus rien** au-dessus de 300 Hz, c'est-à-dire moins encore que les
+1,7 % que la séparation laisse. L'attendu n°2 tient : **retirer l'aigu ne fait PAS
+descendre l'octave.** L'hypothèse du mécanisme unique est **réfutée**.
+
+**ET LES ERREURS VONT DANS L'AUTRE SENS** : les octaves trop HAUT montent de 2 à 7
+à mesure qu'on filtre. Ce qui est cohérent avec D269, où le transcripteur se
+trompait vers le haut (0,3×) sur les stems VRAIS — c'est ce qu'il fait quand il
+manque d'information, et ce n'est pas ce que fait la séparation.
+
+*(La ligne à 120 Hz est hors domaine : 12 notes écrites pour 16 jouées, on y
+mesure une disparition. Le contrôle n°3 la disqualifie, et elle est publiée pour
+qu'on voie où il cesse de tenir.)*
+
+**CE QUE CELA DÉPLACE, ET LA MESURE SUIVANTE.** Le stem séparé contient donc
+quelque chose que la basse filtrée n'a pas — et ce quelque chose fait descendre
+l'octave. L'explication la plus simple est une énergie **SOUS la fondamentale**,
+que le modèle SYNTHÉTISE en reconstruisant sa sortie : un filtre en retire, un
+réseau de séparation peut en ajouter. **Attendu pour la prochaine mesure, écrit
+ici** : la part d'énergie sous la fondamentale de la ligne (sous 80 Hz pour une
+basse en mi1-mi2) est **plus grande dans le stem séparé que dans la partie
+vraie** — sans quoi il faudra chercher ailleurs encore.
