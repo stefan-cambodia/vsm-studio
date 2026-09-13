@@ -832,6 +832,23 @@ coût.)*
 > ses profils passent par le fichier de preset, pas par une capture — mais le
 > binaire doit rejoindre les sources.
 
+> **LECTURE INTERMÉDIAIRE, SUR TROIS MORCEAUX SUR DIX (13/09, 11:07) — CE N'EST
+> PAS LE VERDICT.** Le banc écrit son agrégat au fur et à mesure ; il vaut la
+> peine de le lire, à condition de dire qu'il est partiel. Sur les trois morceaux
+> mesurés (le premier est mort d'un disque plein et se rejouera) :
+>
+> | | attendu écrit avant | **lu sur 3 morceaux** |
+> |---|---|---|
+> | `morceaux_avec_soustraction` | 10 sur 10 (contrôle) | **3 sur 3** |
+> | `montee_sdr_residu_vrai_mediane_r1` | dans ±0,5 dB de zéro | **−0,0011 dB** |
+> | `bass_sdr_au_residu_mediane_r1` | sous +0,21 dB | **−0,175 dB** |
+> | corrélation médiane du stem | — | 0,0126 |
+>
+> **Les trois attendus tiennent pour l'instant**, et dans le sens qui désigne
+> l'hypothèse de repli : la soustraction forcée a bien lieu partout, et **elle ne
+> rend rien** — ni au résidu vrai, ni à la basse. Il reste sept morceaux ; c'est
+> sur dix que le § 7.4 se lira, et sur dix que le § 7.5 se signera.
+
 ### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
 
 Ce que `r1` établit suffit à la moitié de la décision : **la boucle
