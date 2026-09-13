@@ -24805,7 +24805,7 @@ l'application refuse un nom vide — à juste titre, « un repère sans nom ne r
 rien ». La garde tape donc ce qu'un utilisateur taperait (`OPTIONS_PAR_ENTREE`),
 et une entrée qui resterait morte AVEC sa valeur serait, elle, un vrai défaut.
 
-**Les menus Mixage et Édition ferment le balayage : 63 entrées sur HUIT menus,
+**Les menus Mixage et Édition ferment le balayage : 69 entrées sur HUIT menus,
 0 geste mort.** « Écoute en mono » y a été déclarée morte une fois de plus à
 tort : elle bascule bien `masterBus().setMonoListen()` et le répercute dans la
 console, mais elle ne s'ÉCRIT pas — et son libellé le dit lui-même, « jamais dans

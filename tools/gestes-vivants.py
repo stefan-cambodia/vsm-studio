@@ -4,7 +4,7 @@
     analyse/.venv/bin/python tools/gestes-vivants.py
     analyse/.venv/bin/python tools/gestes-vivants.py --menu piste --menu pianoroll
 
-HUIT MENUS, 63 entrées : clip audio, clip MIDI, piste, piano roll, les deux
+HUIT MENUS, 69 entrées : clip audio, clip MIDI, piste, piano roll, les deux
 règles (arrangement et piano roll), mixage, édition.
 
 POURQUOI (13/09/2026, D275). « Découper aux transitoires » a trouvé ses quatre
@@ -82,6 +82,7 @@ DEJA_EN_PLACE = {
 # resterait morte AVEC sa valeur serait, elle, un vrai défaut.
 OPTIONS_PAR_ENTREE = {
     "Poser un repère ici…": "nom=Essai",
+    "Renommer…": "nom=Essai",
 }
 
 MENUS = {
@@ -89,8 +90,11 @@ MENUS = {
                    "-3 dB", "-1 dB", "+1 dB", "2 fois", "3 fois", "Couleur de la piste",
                    "Hauteur conservée", "Rééchantillonné", "Non",
                    "Droite (matériau corrélé)", "Égale puissance (matériau décorrélé)",
-                   "Lente au départ", "Rapide au départ", "Le clip fait N mesures…"],
+                   "Lente au départ", "Rapide au départ", "Le clip fait N mesures…",
+                   "Renommer…", "4 fois", "8 fois", "16 fois",
+                   "Découper aux transitoires (clips audio choisis)"],
     "clip-midi": ["Rendre muet", "Couleur de la piste", "2 fois", "3 fois", "16 fois",
+                  "Renommer…",
                   "Zoom : tout voir", "Zoom : la sélection"],
     # LES DEUX RÈGLES (arrangement et piano roll) : trois entrées chacune, dont
     # deux grisées tant qu'aucun repère n'est survolé. Poser un repère demande un
