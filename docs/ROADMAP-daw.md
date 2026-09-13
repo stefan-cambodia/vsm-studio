@@ -22246,3 +22246,48 @@ la fenêtre de 50 ms est donc bien centrée. À 250 ms, 79,7 % des notes trouven
 correspondance — mais une noire dure 500 ms à 120 BPM, et « juste à un quart de
 noire près » ne veut plus rien dire : la tolérance large est mentionnée, pas
 retenue.
+
+### Phase D225 — le mixeur, regardé pour la première fois EN MARCHE (13/09/2026)
+
+Le critère **d** du § 2 (« on peut mixer ») est marqué « oui » depuis D4.4, D15 et
+D30, et ses chiffres viennent du MOTEUR (la somme des stems à −147 dB, D182).
+Personne n'avait regardé la console pendant qu'elle joue. Le menu *Mixage* ne
+porte que neuf entrées, dont une qui dit « (aucun — les tranches n'ont pas de
+bouton de départ) » : de quoi croire à une console vide.
+
+**CE QUE LA PHOTO A MONTRÉ** (`children-c3-plafond`, 12 tranches + master) :
+
+- une tranche porte **trim, panoramique, retard (ms), décalage (dt), fader, gain en
+  dB, W (écriture d'automation), Ø (phase), M et S**, plus un **vumètre** de 10 px ;
+- le master porte **LOW / MID / HIGH / COMP / RATIO / SAT / CEIL**, la corrélation
+  de phase et la sonie en LUFS ;
+- la ligne « aucun bus de départ » du menu est **conditionnelle et juste** :
+  « Ajouter un bus de départ » posé, un **bouton de départ apparaît sur chaque
+  tranche** — photo à l'appui. La console n'est pas privée de départs, le projet
+  n'en avait pas.
+
+**ET LES VUMÈTRES BOUGENT, ce qui n'avait jamais été vérifié.** Quatre secondes de
+lecture, la même photo prise à l'arrêt et en marche, différence pixel par pixel,
+colonne par colonne :
+
+| tranche | hauteur du vumètre |
+|---|---|
+| `bass` | **33 px** |
+| `other` | **22 px** |
+| `Batterie · percussion` | 3 px |
+| `guitar`, `piano`, `Batterie · kick`, `Batterie` (bus) | 2 px |
+| `Batterie · hihat`, `tom`, `snare`, les deux voix | 0 px |
+
+Des hauteurs DIFFÉRENTES par tranche, dans l'ordre des énergies du morceau
+(`drums` mis à part, qui n'a pas encore frappé à la quatrième seconde) : le
+vumètre mesure, il ne décore pas.
+
+**UNE MESURE FAUSSE AVANT LA BONNE, ET C'EST LA LEÇON.** Le premier relevé
+cherchait des pixels VERTS et n'en trouvait aucun — ni à l'arrêt, ni en marche. La
+conclusion tentante (« les vumètres ne s'allument pas ») était fausse : le vumètre
+de cette console n'est pas vert, il suit la palette. Compter une couleur qu'on n'a
+pas regardée, c'est mesurer son idée du logiciel au lieu du logiciel. La différence
+entre deux photos, elle, ne suppose rien.
+
+**Résultat : aucun défaut trouvé.** Le critère **d** tient, et il tient désormais
+aussi à l'œil.
