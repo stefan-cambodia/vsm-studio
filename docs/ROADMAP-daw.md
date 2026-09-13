@@ -21245,3 +21245,41 @@ une mesure sans relire quatre mille lignes :
 | **D190-D192** | les six onglets, le gel qui s'annule, la distance publiée = le projet livré | liste virtualisée ; **0,000** d'écart |
 | **D193-D196** | mes propres boîtes, le projet ouvert deux fois, la règle en temps de l'utilisateur | ECRAN 9 → 7 ; verrou posé |
 | **D197-D205** | l'export MIDI, les plugins tiers, quatre sélecteurs rendus pilotables, le menu Aide | « indisponible » → **64 machines** au registre |
+
+### D206 (attendus) — B13 : les raccourcis passent au menu Aide (13/09/2026)
+
+**LA DÉCISION, ÉCRITE AVANT LE GESTE.** La liste des raccourcis est de la
+**documentation**, pas une vue : elle n'affiche rien du projet, elle explique le
+logiciel. Sa place est donc sous *Aide*, où les trois logiciels de référence
+rangent la leur, et où un musicien la cherche d'abord — le menu *Aide* ne portait
+qu'« À propos » (B13).
+
+**ELLE EST DÉPLACÉE, PAS DUPLIQUÉE**, et c'est la précaution qui décide de la
+méthode : `VSM_MENU=libellé` prend le PREMIER libellé exact **tous menus
+confondus** ; deux entrées « Raccourcis clavier… » rendraient ambigu tout banc qui
+l'emploie — la panne du 06/09, où « Automatique » a piloté les threads de rendu
+au lieu du mode d'écoute.
+
+**LES ATTENDUS.**
+
+1. Le menu **Aide** porte **deux** entrées, et « Raccourcis clavier… » en fait
+   partie.
+2. Le menu **Affichage** ne la porte plus.
+3. **`VSM_MENU="Raccourcis clavier"` ouvre toujours la fenêtre** : le libellé ne
+   change pas, donc aucun banc existant ne casse — c'est le témoin.
+
+### Phase D206 — B13 : les raccourcis passent au menu Aide (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.**
+
+| attendu | **mesuré** (`VSM_MENU_LISTE`) |
+|---|---|
+| 1. le menu Aide porte deux entrées, dont les raccourcis | ✔ `Aide > Raccourcis clavier...` puis `Aide > À propos de Vintage Synth MIDI Studio` |
+| 2. Affichage ne la porte plus | ✔ **0** entrée `Affichage > …Raccourcis…` |
+| 3. le verbe de banc marche toujours | ✔ `VSM_MENU : « Raccourcis clavier... » exécutée (**menu Aide**)` |
+
+**ET LE LIBELLÉ RESTE UNIQUE DANS TOUTE LA BARRE** — **1** occurrence sur les
+quelque deux cents entrées listées. C'était la condition de la méthode : déplacer
+plutôt que dupliquer, parce que `VSM_MENU` prend le premier libellé exact tous
+menus confondus. Aucun banc existant ne casse, et le menu Aide cesse d'être une
+impasse. **B13 se ferme.**

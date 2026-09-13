@@ -3753,9 +3753,6 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                           singleWindow_ ? arrangement_.isVisible() : arrangementWindow_.isVisible());
             menu.addItem(kMenuViewBrowser, tr(u8"Navigateur"),
                           true, browserWindow_ && browserWindow_->isVisible());
-            menu.addItem(kMenuViewShortcuts,
-                          tr(u8"Raccourcis clavier..."),
-                          true, shortcutsWindow_ && shortcutsWindow_->isVisible());
             menu.addItem(kMenuViewHistory,
                           tr(u8"Historique des modifications..."),
                           true, historyWindow_ && historyWindow_->isVisible());
@@ -3850,6 +3847,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             break;
         case 6:
+            // D206 (B13) : LA LISTE DES RACCOURCIS EST DE LA DOCUMENTATION, pas
+            // une vue — elle n'affiche rien du projet, elle explique le logiciel.
+            // Elle vivait sous *Affichage* ; le menu *Aide* ne portait qu'« À
+            // propos », et c'est pourtant là qu'un musicien la cherche, comme
+            // dans les trois logiciels de référence. DÉPLACÉE et non dupliquée :
+            // `VSM_MENU` prend le premier libellé exact tous menus confondus, et
+            // deux entrées du même nom rendraient ambigu tout banc qui l'emploie.
+            menu.addItem(kMenuViewShortcuts,
+                          tr(u8"Raccourcis clavier..."),
+                          true, shortcutsWindow_ && shortcutsWindow_->isVisible());
             menu.addItem(kMenuHelpAbout, tr(u8"À propos de Vintage Synth MIDI Studio"));
             break;
         default:
