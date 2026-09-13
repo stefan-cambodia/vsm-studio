@@ -23718,6 +23718,11 @@ où passer sa journée.
 
 ### Phase D259 — l'autre moitié du diagnostic : 41 % des notes vraies ne sont écrites NULLE PART (13/09/2026)
 
+> ⚠ **CORRIGÉ PAR D265 (13/09/2026)** : cette phase compte la BATTERIE dans la
+> vérité alors que `stems[].noteConfidence` ne la porte pas. Les notes brèves du
+> corpus sont à 100 % des frappes. Lire D265 avant d'agir sur ce qui suit.
+
+
 D253 et D254 ont rangé ce que la chaîne ÉCRIT. Reste ce qu'elle N'ÉCRIT PAS. Les
 **20 907 notes vraies** des trois lots, rangées par ce que la transcription en a
 fait :
@@ -23750,6 +23755,11 @@ rappel global, `--categories` pour le détail par stem.
 
 
 ### Phase D260 — B15 précisée : ce que la chaîne rate, ce sont les notes COURTES (13/09/2026)
+
+> ⚠ **CORRIGÉ PAR D265 (13/09/2026)** : cette phase compte la BATTERIE dans la
+> vérité alors que `stems[].noteConfidence` ne la porte pas. Les notes brèves du
+> corpus sont à 100 % des frappes. Lire D265 avant d'agir sur ce qui suit.
+
 
 D259 a chiffré l'omission : 41 % des notes jouées ne sont écrites nulle part. Reste
 à savoir LESQUELLES. Les 20 907 notes vraies, séparées en « retrouvée au début
@@ -23784,6 +23794,11 @@ dépasse 3 %. C'est la mesure que `tools/confiance-contre-verite.py` rejouera.
 
 
 ### Phase D261 — pourquoi la chaîne est sourde aux notes brèves : la distance ne les compte presque pas (13/09/2026)
+
+> ⚠ **CORRIGÉ PAR D265 (13/09/2026)** : cette phase compte la BATTERIE dans la
+> vérité alors que `stems[].noteConfidence` ne la porte pas. Les notes brèves du
+> corpus sont à 100 % des frappes. Lire D265 avant d'agir sur ce qui suit.
+
 
 D260 a montré que 96,7 % des notes de moins de 150 ms ne sont jamais écrites. Reste
 la question qui décide de la suite : **est-ce que cela se voit dans la distance ?**
@@ -23939,3 +23954,181 @@ dont il dépend). Aucun de leurs binaires n'existait. Une compilation complète 
 échoue toujours est une panne que l'on attribue à sa propre modification en
 cours — c'est ce que j'ai failli faire. Les cinq cibles sont complétées et le
 build entier est vert.
+
+
+### Phase D264 — la chaîne efface les notes brèves parce qu'on le lui demande (13/09/2026)
+
+D260 a mesuré que **96,7 % des notes de moins de 150 ms ne sont jamais écrites**,
+et D261 a montré que la distance ne les compte presque pas (22,5 % des notes,
+7,3 % de l'énergie). Restait à trouver OÙ elles disparaissent. Elles ne
+disparaissent pas : **elles sont supprimées, par un réglage par défaut que la
+chaîne n'a jamais touché.**
+
+La transcription est Basic Pitch, appelée par `analyzer/note_extraction.py` :
+
+```python
+_, _, note_events = predict(str(audio_path), model_or_model_path=ICASSP_2022_MODEL_PATH)
+```
+
+Aucun autre argument. Or `basic_pitch.inference.predict` en porte huit, et le
+troisième est :
+
+```
+minimum_note_length = 127.7      # millisecondes
+```
+
+**127,7 ms.** Toute note plus courte est jetée par le transcripteur avant même
+que la chaîne la voie. Le seuil de 150 ms de D260 n'était pas un choix heureux :
+c'est le premier palier rond au-dessus de celui-ci, et c'est pour cela que la
+courbe y tombe à 3,3 %.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.** Le banc tourne sur les **stems VRAIS** du
+corpus (`stems-vrais/NN-role.wav`), pas sur des stems séparés : une seule
+variable, et la séparation hors du chemin. Pour chaque partie, ses notes vraies
+sont connues au millième de seconde.
+
+1. **Le témoin reproduit le défaut** : à `minimum_note_length = 127,7` (le défaut
+   d'aujourd'hui), le rappel des notes vraies de moins de 150 ms est **sous
+   10 %**. Si le témoin trouve déjà ces notes sur un stem vrai, alors le coupable
+   est la séparation et non ce réglage, et cette phase se referme sur-le-champ.
+2. **Le remède les retrouve** : à `minimum_note_length = 30`, ce rappel passe
+   **au-dessus de 50 %**.
+3. **Sans inventer** : la part de notes écrites qu'aucune note vraie ne justifie
+   (hauteur + instant, tolérance 50 ms) reste **sous 3 %** — c'est l'attendu déjà
+   écrit à l'INDEX pour B15, et il ne bouge pas.
+4. **Le rappel global ne baisse pas** : les notes longues restent trouvées au
+   moins aussi souvent qu'au témoin.
+
+Si 1 et 2 tiennent, le réglage devient une option de `reconstruire.py` — jamais
+une constante éditée entre deux passes — avec son défaut d'aujourd'hui, et elle
+entre dans la provenance de `rapport.json`.
+
+
+**LA MESURE, ET ELLE RÉFUTE L'ATTENDU** (5 morceaux, stems vrais, 4 236 à 6 836
+notes écrites selon la valeur) :
+
+| `minimum_note_length` | vraies < 150 ms | **rappel < 150 ms** | rappel ≥ 150 ms | écrites | inventées |
+|---|---|---|---|---|---|
+| **127,7 ms** (témoin) | 1 092 | **0,0 %** | 57,0 % | 4 236 | 56,7 % |
+| 58 ms | 1 092 | 0,5 % | 59,6 % | 5 471 | 64,8 % |
+| 30 ms | 1 092 | **0,7 %** | 60,1 % | 6 059 | 67,6 % |
+| 11 ms | 1 092 | 0,8 % | 60,4 % | 6 836 | 66,3 % |
+
+**L'attendu n°2 est réfuté sans appel** : abaisser le seuil de 127,7 à 11 ms —
+douze fois — fait passer le rappel des notes brèves de 0,0 % à **0,8 %**, pas
+au-dessus de 50 %. Et l'attendu n°3 tombe aussi : la part inventée monte de
+56,7 % à 67,6 %, très au-dessus des 3 % permis. **Le réglage n'est pas le
+coupable**, et une heure de chaîne a été économisée en le mesurant sur les stems
+vrais plutôt que sur une course complète.
+
+**ET LE ZÉRO A ÉTÉ REVÉRIFIÉ, comme la règle l'exige.** Un rappel de 0,0 % sur
+1 092 notes ne se publie pas sans regarder ce que ces notes SONT :
+
+| rôle de la partie | notes < 150 ms | part |
+|---|---|---|
+| **batterie** | **1 865** | **100,0 %** |
+| toutes les autres | **0** | 0 % |
+
+**Sur les 8 298 notes du corpus `s1-sec`, les 1 865 notes de moins de 150 ms sont
+TOUTES des frappes de batterie, et il n'existe pas une seule note mélodique
+brève.** Les six rôles mélodiques — accompagnement, basse, mélodie, nappe,
+piano-deux-mains — n'écrivent aucune note sous 150 ms ; les frappes, elles, durent
+toutes 0,100 s.
+
+**CE QUE CELA CHANGE POUR D260, D261 ET B15, et il faut le dire net.** « La chaîne
+rate 96,7 % des notes de moins de 150 ms » ne parlait pas de doubles croches ni
+d'ornements : **elle parlait de la batterie**, et de rien d'autre. Le remède
+annoncé — « c'est dans la détection d'attaques, pas dans l'estimation de
+hauteur » — visait un transcripteur mélodique qui n'a jamais eu à trouver ces
+notes. De même, les 7,3 % d'énergie de D261 sont l'énergie de la batterie du
+corpus, pas celle d'ornements perdus.
+
+**LA DÉCISION SUR LE RÉGLAGE, ÉCRITE PLUTÔT QUE LAISSÉE OUVERTE.**
+`minimum_note_length` **reste à son défaut de 127,7 ms**, et `note_extraction.py`
+continue de ne pas le passer. Ce n'est plus par ignorance mais par mesure : à
+30 ms il rend 0,7 point de rappel sur des notes qui n'existent pas dans ce corpus,
+et coûte **1 823 notes écrites de plus dont l'immense majorité est inventée**
+(56,7 % → 67,6 %). Le jour où un corpus portera de vraies notes brèves
+mélodiques, cette mesure se rejouera par `tools/notes-courtes.py` — qui existe
+pour cela — et la décision se rouvrira avec ses chiffres.
+
+**L'ATTENDU SUIVANT, ÉCRIT AVANT LA MESURE.** La batterie ne passe pas par Basic
+Pitch : elle a son propre chemin (`analyzer/drums.py`, `vsm_drumkit.py`), et
+l'agrégat du lot publie `frappes_f1 = 0,58` — donc les frappes SONT trouvées. Si
+elles sont trouvées et comptées manquantes, c'est que la RÈGLE DE CORRESPONDANCE
+les rate : une frappe écrite sur un numéro de kit différent de celui de la vérité
+compte comme absente, hauteur d'abord. Donc : **apparié sur le TEMPS seul, sans
+regarder le numéro de note, le rappel des frappes dépasse 50 %** — et la
+« découverte » de D260 serait un artefact de mesure, pas un défaut de la chaîne.
+Réfuté si le rappel au temps seul reste sous 20 % : alors les frappes manquent
+vraiment, et B15 garde son objet en le renommant.
+
+
+### Phase D265 — l'instrument ne voyait pas la batterie, et comptait ses frappes comme des notes perdues (13/09/2026)
+
+L'attendu de D264 disait : *apparié sur le TEMPS seul, le rappel des frappes
+dépasse 50 %*. Il « tient » — 92,2 % — **et il ne prouve rien**, parce que le
+témoin le dit :
+
+| appariement des 1 865 frappes vraies | retrouvées | part |
+|---|---|---|
+| hauteur + temps (la règle de D259/D260) | 63 | **3,4 %** |
+| temps seul | 1 719 | 92,2 % |
+| **TÉMOIN : les mêmes, décalées de +0,25 s** | 1 688 | **90,5 %** |
+| TÉMOIN : décalées de +0,123 s | 1 209 | 64,8 % |
+
+Des frappes déplacées d'un quart de seconde « se retrouvent » à 90,5 % : les
+débuts de notes sont si denses qu'une correspondance au temps seul ne veut rien
+dire. **Sans ce témoin, j'écrivais « les frappes sont bien trouvées, c'est la
+règle qui les rate » — vrai par accident, prouvé par rien.**
+
+**LA VRAIE CAUSE, structurelle, et elle se lit en une ligne.** Les stems de
+`rapport.json` sont `bass`, `guitar`, `other`, `piano` (et leurs variantes
+`· r1`). **Il n'y a pas de stem « Batterie ».** La batterie a son propre chemin et
+son propre compte — `drums.hits`, `drums.pieces`, `drums.trackDistance` — et
+aucune liste `noteConfidence`. L'ensemble des numéros de note écrits par un stem
+de percussion est **vide**.
+
+`tools/confiance-contre-verite.py` compare la vérité ENTIÈRE à
+`stems[].noteConfidence`. Les 1 865 frappes du corpus y étaient donc comptées
+absentes, toutes, en silence.
+
+**CE QUE CELA CORRIGE, chiffres à l'appui** (lot `r1f-13sep`, 10 morceaux) :
+
+| notes vraies | compte | retrouvées | rappel |
+|---|---|---|---|
+| toutes | 8 298 | 3 586 | 43,2 % |
+| **mélodiques** | 6 433 | 3 523 | **54,8 %** |
+| batterie | 1 865 | 63 | 3,4 % (fantôme : des notes mélodiques au même instant) |
+
+Et la chaîne écrit **1 426 frappes** pour 1 865 vraies, soit **76,5 %** — quand la
+mesure disait qu'elle n'en écrivait aucune.
+
+**LES TROIS ÉNONCÉS À CORRIGER, et ils sont à moi :**
+
+1. **D260 — « la chaîne rate 96,7 % des notes de moins de 150 ms ».** Faux comme
+   énoncé sur la chaîne. Les notes de moins de 150 ms du corpus sont **1 865 sur
+   1 865 des frappes de batterie** ; aucune partie mélodique n'écrit une note
+   sous 150 ms. La phrase ne mesurait que l'aveuglement de l'instrument.
+2. **D261 — « ces notes sont 22,5 % des notes et 7,3 % de l'énergie ».** Le calcul
+   est juste, son objet ne l'est pas : c'est la part de la BATTERIE dans le
+   corpus, pas celle d'ornements perdus. La conclusion « la distance récompense
+   la chaîne d'être sourde aux notes brèves » ne s'appuie donc sur rien.
+3. **D259 — « 40,7 % des notes vraies ne sont écrites nulle part ».** Le chiffre
+   comptait la batterie dans le dénominateur et jamais dans le numérateur. Sur ce
+   lot, le vrai manque mélodique est de **45,2 %** (1 − 54,8 %), et il reste le
+   plus gros levier de la reconstruction — mais pour une autre raison que celle
+   qui avait été écrite.
+
+**CE QUI EMPÊCHE LE RETOUR.** `tools/confiance-contre-verite.py` sépare désormais
+les deux comptes et NOMME ce qu'il ne peut pas apparier : la ligne
+« mélodiques » porte le rappel, la ligne « frappes » compare `drums.hits` aux
+frappes vraies en disant qu'elle COMPTE sans apparier. Son en-tête porte la règle.
+Une mesure qui ne peut pas voir une chose le dit, au lieu de compter zéro.
+
+**LA LEÇON, qui vaut au-delà de ce cas.** Trois phases se sont appuyées l'une sur
+l'autre — D259 mesure, D260 précise, D261 explique — sans qu'aucune ne vérifie ce
+que l'instrument POUVAIT voir. La question « de quoi sont faites les notes que je
+compte ? » a été posée pour la première fois à D264, et elle a suffi : un
+histogramme par rôle, trois secondes de calcul, et les 1 092 notes brèves du
+premier échantillon se sont révélées être 1 092 frappes de batterie.

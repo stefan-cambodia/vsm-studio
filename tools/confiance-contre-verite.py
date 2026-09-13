@@ -20,6 +20,17 @@ sépare prouve autant qu'une règle sévère, et se discute moins.
 CE QUI EST DIT : la part de notes justes par tranche de confiance, le compte de
 chaque tranche, et la part globale. Si la part juste ne monte pas avec la
 confiance, le seuil n'est pas à régler : la mesure est à refaire.
+
+CE QUE CET OUTIL NE PEUT PAS VOIR, ET QUI A FAIT ÉCRIRE TROIS FAUSSETÉS (D265,
+13/09/2026). Il lit `stems[].noteConfidence` de `rapport.json`. **La BATTERIE n'y
+figure pas** : elle a son propre chemin et son propre compte (`drums.hits`), et
+aucun stem de percussion ne porte de liste de confiance. Les frappes vraies
+étaient donc comptées ABSENTES, toutes, en silence — et comme elles sont les
+SEULES notes brèves du corpus (1 865 sur 1 865 sous 150 ms), cela a produit
+« 96,7 % des notes de moins de 150 ms sont ratées », qui ne mesurait que
+l'aveuglement de l'instrument. Le rappel porte donc désormais sur les notes
+MÉLODIQUES, et les frappes sont comptées à part, avec ce que `drums.hits`
+annonce. Une mesure qui ne peut pas voir une chose le DIT au lieu de compter zéro.
 """
 from __future__ import annotations
 
@@ -192,13 +203,15 @@ def main(argv: list[str]) -> int:
     # Sans lui, « 44 % des notes transcrites sont justes » ne dit pas si la chaîne
     # INVENTE ou si elle OUBLIE -- deux défauts opposés, deux remèdes opposés.
     vraies = retrouvees = 0
+    frappes_vraies = frappes_ecrites = 0
     for dossier in sorted(lot.glob("morceau-*")):
         rapport = dossier / "course" / "rapport.json"
         if not rapport.is_file():
             continue
-        debuts = verite_du_morceau(source / dossier.name)
-        if not debuts:
+        fichier = source / dossier.name / "verite.json"
+        if not fichier.is_file():
             continue
+        v = json.loads(fichier.read_text(encoding="utf-8"))
         transcrites: dict[int, list[float]] = {}
         r = json.loads(rapport.read_text(encoding="utf-8"))
         for stem in r.get("stems", []):
@@ -206,13 +219,24 @@ def main(argv: list[str]) -> int:
                 transcrites.setdefault(int(n["note"]), []).append(float(n["start"]))
         for liste in transcrites.values():
             liste.sort()
-        for hauteur, liste in debuts.items():
-            for debut in liste:
+        frappes_ecrites += int((r.get("drums") or {}).get("hits", 0))
+        # LES FRAPPES SE COMPTENT À PART : `noteConfidence` ne les porte pas, et
+        # les mêler au rappel revient à mesurer l'instrument, pas la chaîne.
+        for partie in v.get("parties", []):
+            percussive = partie.get("role") == "batterie"
+            for note in partie.get("notes", []):
+                if percussive:
+                    frappes_vraies += 1
+                    continue
                 vraies += 1
-                retrouvees += 1 if juste(transcrites, hauteur, debut) else 0
+                retrouvees += 1 if juste(transcrites, int(note[0]), float(note[2])) else 0
     if vraies:
-        print(f"{'vraies':>14}  {vraies:8d}  {retrouvees:8d}  "
-              f"{100 * retrouvees / vraies:5.1f}%   (rappel : les notes du morceau retrouvées)")
+        print(f"{'mélodiques':>14}  {vraies:8d}  {retrouvees:8d}  "
+              f"{100 * retrouvees / vraies:5.1f}%   (rappel des notes vraies NON percussives)")
+    if frappes_vraies:
+        print(f"{'frappes':>14}  {frappes_vraies:8d}  {frappes_ecrites:8d}  "
+              f"{100 * frappes_ecrites / frappes_vraies:5.1f}%   "
+              f"(comptées, pas appariées : drums.hits contre les frappes vraies)")
     return 0
 
 
