@@ -67,7 +67,12 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
 - Pas plus de deux étapes batterie simultanées (la charge à 49/22 cœurs met
   tout au surplace) ; geler/reprendre par SIGSTOP/SIGCONT ne perd rien.
 - Après toute édition de document par script : vérifier par grep que le texte
-  est bien là. Une ancre ratée fait mentir le commit qui l'annonce. Et un grep
+  est bien là. Une ancre ratée fait mentir le commit qui l'annonce.
+- Une TABLE Markdown se relit en COMPTANT ses barres, pas à l'œil : une valeur
+  qui en contient une (« 00:33,000 | mes. 17 · 3 ») coupe la ligne en deux
+  cellules de plus et déplace toute la fin du tableau. Payé le 13/09 sur deux
+  lignes ; la garde tient en cinq lignes de Python (compter `|` par ligne d'une
+  même table, les `\|` échappées exclues) et se rejoue après chaque édition. Et un grep
   qui TROUVE ne prouve pas que la FORME est bonne : le 13/09, une ligne insérée
   au lieu d'être remplacée a mis deux rangées de tableau bout à bout sur une
   seule (onze champs au lieu de six), et le texte cherché s'y trouvait bien.

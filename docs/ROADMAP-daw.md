@@ -22040,7 +22040,7 @@ l'utilisateur a choisi, et c'est exactement la panne muette que ce projet traque
 | Fenêtre | ce qu'on a posé | ce qu'on a lu | attendu |
 |---|---|---|---|
 | « Renommer les pistes en série… » | `motif=Voix #` | `project.json` écrit : piste 1 = **`Voix 1`** | tenu (témoin sans option : `melange`) |
-| « Aller à la mesure » | `position=17.3` | la barre de transport, LUE SUR LA PHOTO : **`00:33,000 | mes. 17 · 3`** (témoin : `00:00,000 | mes. 1 · 1`) | tenu — et 33,000 s est la valeur exacte de la mesure 17 temps 3 à 120 BPM |
+| « Aller à la mesure » | `position=17.3` | la barre de transport, LUE SUR LA PHOTO : **`00:33,000`, `mes. 17 · 3`** (témoin : `00:00,000`, `mes. 1 · 1`) | tenu — et 33,000 s est la valeur exacte de la mesure 17 temps 3 à 120 BPM |
 | « Programme MIDI… » | `programme=42;banque=3` | l'entrée de menu relue : **« Programme MIDI (42, banque 3)... »** (témoin : « (aucun) ») | tenu, et le 1 ↔ 0 est juste : l'entrée affiche `prog + 1` |
 
 **DEUX CHOSES QUE LA MESURE A COÛTÉES, ET QUI SONT DES LEÇONS DE BANC.**
