@@ -22843,3 +22843,39 @@ rien d'autre**, ce qui est exactement sa promesse.
 Le nombre de silences monte de 193 à 234 après quantification : c'est attendu — des
 notes qui se chevauchaient légèrement, remises sur la grille, cessent de se
 chevaucher. Legato les supprime tous (0), et c'est sa définition.
+
+**QUATRE AUTRES GESTES, MÊME MÉTHODE, ATTENDUS ÉCRITS AVANT** :
+
+6. **Quantifier (50 %)** : les débuts se rapprochent de la grille **de moitié** —
+   l'écart moyen à la grille doit tomber à peu près à la moitié de celui du témoin,
+   sans que tous les débuts y arrivent.
+7. **Quantifier début ET fin** : les débuts ET les fins tombent sur la grille.
+8. **Humaniser** : le compte et les hauteurs ne bougent pas, les débuts si — et
+   pas tous du même écart (sinon ce serait un décalage, pas une humanisation).
+9. **Arpéger (vers le haut)** : les notes qui commençaient ENSEMBLE ne le font
+   plus — le nombre de débuts simultanés doit chuter.
+
+**ET LES QUATRE AUTRES** (même projet, même méthode ; « écart moyen à la grille » =
+distance moyenne d'un début au multiple de 120 ticks le plus proche) :
+
+| geste | notes | écart moyen | débuts sur la grille | fins sur la grille | notes à début partagé |
+|---|---|---|---|---|---|
+| **témoin** | 2 219 | 31,4 tk | 15 | 15 | 1 042 |
+| Quantifier (50 %) | 2 219 | **15,7 tk** | 33 | 24 | 1 042 |
+| Quantifier début ET fin | 2 219 | **0,0 tk** | **2 219** | **2 219** | 1 707 |
+| Humaniser | 2 219 | 30,9 tk | 17 | 14 | **100** |
+| Arpéger : montant | 2 219 | 31,4 tk | 15 | 15 | **0** |
+
+Les quatre attendus tiennent, et deux chiffres méritent d'être lus deux fois :
+
+- **15,7 contre 31,4** : « Quantifier (50 %) » rapproche de la grille d'exactement
+  la moitié. Ce n'est pas une façon de parler, c'est la moitié à 0,05 tick près, et
+  seuls 33 débuts atteignent la grille — un pourcentage qui déplacerait tout le
+  monde jusqu'au bout ne serait pas un pourcentage.
+- **1 042 → 0** : l'arpège supprime tout début partagé, ce qui EST sa définition ;
+  « Humaniser » en laisse 100, parce qu'il déplace au hasard et que deux notes
+  peuvent retomber ensemble. Les hauteurs, elles, ne bougent ni pour l'un ni pour
+  l'autre.
+
+Neuf gestes d'édition, neuf attendus, neuf tenus — chacun avec son témoin, et le
+témoin lui-même vérifié identique à l'original note pour note.
