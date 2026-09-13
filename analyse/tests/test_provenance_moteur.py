@@ -170,6 +170,11 @@ def _args(**surcharges):
         tours_verdict=3, second_verdict=0, garder_pieces_non_isolees=False, rendus_paralleles=8,
         sans_cache_rendus=False, budget_piste=120, axes_piste=21, finalistes=None,
         preselection_apprise=0, machines="", machines_exclues="",
+        # `porte_paliers` manquait, et le test échouait donc AVANT d'atteindre ce
+        # qu'il mesure (13/09/2026) : la provenance lit cette option, ajoutée
+        # depuis, et un `SimpleNamespace` ne pardonne pas un attribut absent.
+        # `modele_basse` l'accompagne (D273) pour la même raison.
+        porte_paliers=False, modele_basse="",
         modele="htdemucs", stems="", voix_par_stem=0, batterie_par_piece=False, voix_tete_choeurs=False, voix_par_vides=False, reverb_melange=False,
         seuil_stem=0.5, parite=False,
         residuel=0, residuel_correlation=0.5, residuel_energie=5.0, residuel_notes_min=8,
@@ -202,6 +207,33 @@ def le_modele_de_separation_va_dans_la_provenance():
                 "aucun modèle ne doit être nommé quand la séparation n'a pas eu lieu")
     assert_equal(p["options"]["stemsRepris"], "/un/dossier/de/stems",
                  "le dossier de stems repris est inscrit")
+
+
+@test
+def le_modele_de_basse_va_dans_la_provenance():
+    """D273 : le SECOND modèle, celui dont on ne prend que la basse.
+
+    Mesuré le 13/09/2026 sur cinq morceaux du corpus, contre la partie de basse
+    VRAIE : `htdemucs_ft` rend un SDR de 1,95 dB contre 0,31 et 139 notes justes
+    contre 96. Il ne rend que quatre stems, d'où l'option : on garde la structure
+    à six stems et l'on ne va chercher que la basse. Deux rapports dont l'un a
+    pris sa basse ailleurs ne se comparent pas — le champ est donc obligatoire,
+    et il vaut `null` quand l'option n'a pas servi, ce qui est l'état de toutes
+    les courses antérieures.
+    """
+    p = provenance(_args(), None, None)
+    assert_true(p["options"]["modeleBasse"] is None,
+                "sans l'option, le champ vaut null — la chaîne d'avant, au bit près")
+
+    p = provenance(_args(modele_basse="htdemucs_ft"), None, None)
+    assert_equal(p["options"]["modeleBasse"], "htdemucs_ft",
+                 "le second modèle est inscrit")
+
+    # SANS SÉPARATION, aucun modèle n'a tourné : nommer le second serait le même
+    # mensonge que nommer le premier.
+    p = provenance(_args(modele_basse="htdemucs_ft", sans_separation=True), None, None)
+    assert_true(p["options"]["modeleBasse"] is None,
+                "aucun second modèle quand la séparation n'a pas eu lieu")
 
 
 @test

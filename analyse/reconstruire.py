@@ -442,6 +442,13 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # information et non une absence : la séparation n'a pas eu lieu.
             "modeleSeparation": (None if (args.stems or args.sans_separation)
                                  else args.modele),
+            # D273 : le SECOND modèle, celui dont on ne prend que la basse. Il
+            # conditionne le résultat comme le premier — deux rapports dont
+            # l'un a pris sa basse ailleurs ne se comparent pas — et il vaut
+            # `null` quand il n'a pas servi, ce qui est l'état de toutes les
+            # courses antérieures au 13/09/2026.
+            "modeleBasse": (getattr(args, "modele_basse", "") or None
+                            if not (args.stems or args.sans_separation) else None),
             "stemsRepris": args.stems or None,
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
@@ -780,6 +787,15 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--garder-stems", default=None,
                          help="dossier où conserver les stems séparés, pour rejouer une "
                               "mesure sans repayer la séparation")
+    parseur.add_argument("--modele-basse", default="", metavar="MODELE",
+                         help="D273 : prendre la seule BASSE d'un second modèle de séparation, "
+                              "en gardant la structure du premier. Mesuré sur cinq morceaux du "
+                              "corpus contre la partie de basse vraie, htdemucs_ft rend un SDR de "
+                              "1,95 dB contre 0,31 et 139 notes justes contre 96 -- mais il ne "
+                              "rend que quatre stems, et la parité des pistes prime. Coûte une "
+                              "passe de séparation de plus. N'AMÉLIORE PAS l'octave : l'aigu de la "
+                              "basse reste filtré quel que soit le modèle htdemucs (D273). "
+                              "Vide (le défaut) : la chaîne d'aujourd'hui, au bit près")
     parseur.add_argument("--residuel", type=int, default=0, metavar="N",
                          help="LA BOUCLE RÉSIDUELLE (docs/CDC-separation-par-synthese.md), N "
                               "itérations au plus : la piste la plus sûre est rendue seule, "
@@ -1026,13 +1042,54 @@ def obtenir_stems(args: argparse.Namespace, entree: Path, travail: Path) -> Dict
         return {"melange": entree}
     print(f"[2/5] Séparation en stems ({args.modele})")
     try:
-        return separer(entree, travail / "stems", args.modele)
+        stems = separer(entree, travail / "stems", args.modele)
     except Exception as erreur:
         # La séparation est lourde et peut manquer. On le DIT et on continue
         # sur le mélange, plutôt que d'abandonner : une reconstruction
         # imparfaite reste plus utile qu'aucune.
         print(f"      échec ({erreur}) — repli sur le mélange entier")
         return {"melange": entree}
+    return remplacer_la_basse(args, entree, travail, stems)
+
+
+def remplacer_la_basse(args: argparse.Namespace, entree: Path, travail: Path,
+                       stems: Dict[str, Path]) -> Dict[str, Path]:
+    """D273 : la basse d'un SECOND modèle, le reste du premier.
+
+    POURQUOI DEUX MODÈLES. Mesuré le 13/09/2026 sur cinq morceaux du corpus,
+    contre la partie de basse VRAIE : `htdemucs_ft` rend une basse corrélée à
+    0,626 (contre 0,380), un SDR de 1,95 dB (contre 0,31) et **139 notes justes
+    contre 96**. Mais il ne rend que QUATRE stems — pas de `guitar` ni de
+    `piano` —, et la parité des pistes prime sur le SDR d'un stem. On garde donc
+    la structure à six stems et l'on ne va chercher que la basse.
+
+    CE QUE CELA NE CORRIGE PAS, et qui est mesuré : l'aigu de la basse reste
+    filtré (2,8 % de l'énergie au-dessus de 300 Hz contre 25,5 % dans la partie
+    jouée), donc l'ambiguïté d'octave reste entière. C'est une propriété de la
+    famille `htdemucs`, pas du modèle choisi.
+
+    Par défaut l'option est VIDE et rien ne change, au bit près.
+    """
+    modele = getattr(args, "modele_basse", "") or ""
+    if not modele or modele == args.modele:
+        return stems
+    if "bass" not in stems:
+        print("      --modele-basse ignoré : la séparation n'a pas rendu de stem « bass »")
+        return stems
+    print(f"[2/5] Basse reprise d'un second modèle ({modele})")
+    try:
+        autres = separer(entree, travail / "stems-basse", modele)
+    except Exception as erreur:
+        # PANNE MUETTE INTERDITE : on garde la basse du premier modèle et on le
+        # DIT, plutôt que de laisser croire que le second a servi.
+        print(f"      échec ({erreur}) — la basse reste celle de {args.modele}")
+        return stems
+    if "bass" not in autres:
+        print(f"      {modele} n'a pas rendu de stem « bass » — la basse reste celle de {args.modele}")
+        return stems
+    stems = dict(stems)
+    stems["bass"] = autres["bass"]
+    return stems
 
 
 # ---------------------------------------------------------------------------
