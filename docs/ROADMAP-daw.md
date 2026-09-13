@@ -24459,3 +24459,108 @@ trois tentatives l'ont maintenant montré (D257, D258, D270).
 
 `tools/octave-basse.py` reste dans le dépôt : c'est le banc qui jugera la
 prochaine tentative, témoin et contrôle compris, en six secondes et sans course.
+
+
+### Phase D271 — où passe l'aigu de la basse ? (13/09/2026)
+
+D269 a mesuré que le stem `bass` perd 94 % de l'énergie que la partie jouée porte
+au-dessus de 300 Hz. Cette énergie ne s'évapore pas : la séparation partage le
+mélange entre six stems, et l'aigu de la basse est allé **quelque part**. Savoir
+où décide du remède : s'il est dans `other`, on peut aller le chercher ; s'il est
+détruit (annulé entre stems), il n'y a rien à récupérer et C1 demande un autre
+modèle.
+
+**LA MESURE.** Pour chaque morceau, la partie de basse VRAIE est filtrée au-dessus
+de 300 Hz, et corrélée à chacun des six stems séparés, filtrés de même. Les stems
+et la partie vraie viennent du MÊME mélange : ils sont alignés à l'échantillon, et
+une corrélation de forme d'onde a donc un sens ici — ce qui ne serait pas vrai
+entre deux rendus indépendants.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. **Si l'aigu de la basse est allé dans un autre stem**, la corrélation la plus
+   forte n'est PAS avec `bass` — `other` ou `guitar` la dépassent, et le remède
+   consiste à rendre à la basse ce qui lui appartient.
+2. **Si l'aigu a été détruit**, aucune corrélation ne dépasse 0,2 : le modèle a
+   soustrait ce qu'il ne savait pas classer, et seul un autre modèle aidera.
+3. **Contrôle** : la même corrélation calculée sur la bande BASSE (sous 300 Hz)
+   doit, elle, désigner `bass` nettement — sans quoi la mesure ne mesure rien.
+
+**LA MESURE** — corrélation de forme d'onde entre la partie de basse VRAIE et
+chaque stem séparé, bande par bande (médiane sur 9 morceaux) :
+
+| bande | `bass` | `drums` | `guitar` | `other` | `piano` | `vocals` |
+|---|---|---|---|---|---|---|
+| **aigu (> 300 Hz)** | **0,310** | 0,024 | 0,142 | **0,267** | 0,098 | 0,011 |
+| grave (< 300 Hz) — *le contrôle* | **0,523** | 0,036 | 0,072 | 0,332 | 0,108 | 0,025 |
+
+**AUCUN DES DEUX ATTENDUS NE TRANCHE, et le troisième chiffre l'explique.**
+L'aigu n'est pas parti dans un autre stem — `bass` reste en tête (0,310 contre
+0,267 pour `other`), même si `other` le dépasse dans trois morceaux sur neuf. Et
+il n'est pas détruit non plus : 0,310 n'est pas 0.
+
+**CE QUE CELA VEUT DIRE, et c'est une piste que je n'attendais pas.** La
+corrélation mesure la FORME, pas le NIVEAU. Le stem `bass` garde donc la forme de
+l'aigu de la basse — à 0,31, faiblement mais réellement — tout en n'en portant que
+**1,7 % de l'énergie contre 25,5 %** (D269). Autrement dit : **l'aigu n'est pas
+retiré, il est ATTÉNUÉ d'environ quinze fois.** Ce qui est atténué se remonte.
+
+**L'ATTENDU SUIVANT, ÉCRIT AVANT LA MESURE** : relever la bande au-dessus de
+300 Hz du stem `bass` avant de le transcrire doit rendre au transcripteur de quoi
+trancher l'octave. Donc, en une seule variable (le gain appliqué, le témoin étant
+0 dB, le même code) :
+
+1. le rapport « octave trop bas / octave trop haut » descend de **6,9× vers 1×**
+   (il vaut 0,3× sur le stem VRAI) ;
+2. la bonne hauteur du stem `bass` **monte d'au moins 5 points** ;
+3. **contrôle** : les notes inventées ne dépassent pas 3 % — relever l'aigu relève
+   aussi les fuites des autres instruments, et ce serait la façon de gagner des
+   octaves en perdant tout le reste.
+
+
+### Phase D272 — relever l'aigu atténué : réfuté, et cela ferme la voie aval (13/09/2026)
+
+D271 avait trouvé la piste : l'aigu de la basse n'est pas retiré du stem, il est
+atténué de quinze fois tout en gardant sa forme (corrélation 0,31). Ce qui est
+atténué se remonte — voilà l'essai, en une seule variable, le gain :
+
+| relevé > 300 Hz | écrites | justes | 8ve bas | 8ve haut | **bas/haut** | bonne hauteur | inventées |
+|---|---|---|---|---|---|---|---|
+| **0 dB (témoin)** | 723 | 240 | 95 | 19 | **5,0×** | **53,8 %** | 38,3 % |
+| 6 dB | 691 | 236 | 88 | 10 | 8,8× | 56,1 % | 39,1 % |
+| 12 dB | 695 | 238 | 85 | 8 | **10,6×** | 55,5 % | 38,3 % |
+| 18 dB | 701 | 232 | 84 | 8 | 10,5× | 53,1 % | 37,7 % |
+| 24 dB | 670 | 230 | 71 | 10 | 7,1× | 52,6 % | 34,8 % |
+
+**Les trois attendus tombent, et le premier tombe à l'envers.** Le rapport
+bas/haut devait descendre vers 1× ; il MONTE, de 5,0× à 10,6×. La bonne hauteur
+gagne 2,3 points à 6 dB (l'attendu en demandait 5) puis redescend. Et le relevé ne
+retire pas les erreurs qu'il visait : il retire les erreurs vers le HAUT (19 → 8)
+plus vite que celles vers le bas (95 → 84).
+
+**POURQUOI.** Une corrélation de 0,31 veut dire que **deux tiers de ce qui reste
+dans cette bande ne sont pas la basse** — ce sont des fuites des autres
+instruments et du bruit de reconstruction du modèle. Relever la bande relève tout
+cela d'autant. On n'ajoute pas de l'information en amplifiant un rapport
+signal/bruit ; on rend seulement le bruit plus fort.
+
+**CE QUE QUATRE RÉFUTATIONS ÉTABLISSENT ENSEMBLE.** L'octave de la basse a
+maintenant été attaquée par quatre chemins en aval de la séparation :
+
+| tentative | idée | résultat |
+|---|---|---|
+| D257 | le registre de la piste désigne l'octave | juste 35,7 % du temps — **révertie** |
+| D258 | le fantôme sous-octave explique l'erreur | une erreur sur six seulement |
+| D270 | relire l'octave dans le mélange, par les harmoniques impairs | casse autant de notes qu'elle en répare, à tous les seuils |
+| **D272** | **relever l'aigu atténué du stem** | **le rapport bas/haut EMPIRE (5,0 → 10,6×)** |
+
+**Aucune n'a marché, et elles échouent toutes pour la même raison : l'information
+qui tranche l'octave n'est plus dans le signal qu'on leur donne.** Elle est dans
+la partie jouée (où le transcripteur se trompe vers le HAUT, 0,3×), elle n'est
+plus dans le stem. **C1 n'est donc pas « le premier plafond » parmi d'autres :
+c'est le seul endroit où ce défaut peut être corrigé**, et tout travail d'octave
+en aval est désormais une dépense dont on connaît le rendement — nul, quatre fois
+sur quatre.
+
+`tools/basse-aigu-releve.py` reste dans le dépôt avec son témoin à 0 dB : une
+prochaine idée sur l'aigu de la basse s'y mesure en une minute.
