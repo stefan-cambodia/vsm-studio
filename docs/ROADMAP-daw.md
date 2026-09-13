@@ -24209,16 +24209,34 @@ SONNANTE. Les deux ne coïncident que si le patch n'a pas désaccordé d'oscilla
 
 | pire désaccord du patch | parties | notes vraies portées |
 |---|---|---|
-| moins d'un quart de ton | 61 (82,4 %) | — |
-| 0,5 à 2 demi-tons | 4 (5,4 %) | — |
-| 2 à 6 demi-tons | 4 (5,4 %) | **815 notes, 12,7 % du corpus mélodique** (seuil ≥ 2) |
-| 6 à 11 demi-tons | 3 (4,1 %) | dont **441, soit 6,9 %** (seuil ≥ 6) |
-| 11 demi-tons et plus | 2 (2,7 %) | |
+| moins d'un demi-quart de ton | 64 (86,5 %) | — |
+| 0,5 à 2 demi-tons | 3 (4,1 %) | — |
+| 2 à 6 demi-tons | 3 (4,1 %) | **639 notes, 9,9 % du corpus mélodique** (seuil ≥ 2) |
+| 6 à 11 demi-tons | 3 (4,1 %) | dont **361, soit 5,6 %** (seuil ≥ 6) |
+| 11 demi-tons et plus | 1 (1,4 %) | |
 
-**12,7 % des notes mélodiques du corpus sont portées par une partie dont la
+**9,9 % des notes mélodiques du corpus sont portées par une partie dont la
 hauteur sonnante s'écarte de deux demi-tons ou plus de la hauteur écrite.** Tout
 chiffre de « hauteur exacte » publié par ce projet compte ces notes comme fausses
 alors que le transcripteur les entend au bon endroit.
+
+**CES CHIFFRES SONT UNE CORRECTION, et la première version était fausse** — elle
+disait 12,7 % et 6,9 %, pour 815 et 441 notes. L'erreur : le banc tenait tout
+paramètre nommé `…detune` pour des DEMI-TONS. Trois formes le démentent, et
+l'unité est déclarée par la machine elle-même :
+
+| machine · paramètre | valeur vue | unité déclarée | en demi-tons |
+|---|---|---|---|
+| `vsm.psg` · `oscillator.2.detune` | 37,15 | **cents** | **0,37** |
+| `vsm.obx` · `voice.unisonDetune` | 0,84 | *(normalisé 0–1)* | **aucun** |
+| `vsm.supersaw` · `oscillator.supersaw.detune` | 0,64 | *(normalisé 0–1)* | **aucun** |
+
+Une partie de 80 notes comptait ainsi pour « désaccordée de 37 demi-tons » alors
+qu'elle l'est d'un tiers de demi-ton. `tools/corpus-hauteurs.py` lit désormais
+l'unité en joignant `ParameterDescriptor.cpp` (nom d'affichage ↔ identifiant
+sémantique) et la table de la machine (nom ↔ unité), au lieu de la supposer. La
+conclusion ne change pas de sens — l'effet est réel et il faut en tenir compte —
+mais un dixième du corpus, et non un huitième.
 
 **CE QUI N'EST PAS ÉTABLI, ET QUE JE N'ÉCRIRAI PAS.** La tentation était forte de
 relier ce désaccord à D256 (« 816 notes écrites dans des registres où la vérité ne
@@ -24246,7 +24264,7 @@ regarde tous et dit lequel répond.
 
 ### Phase D268 — B14 recomptée contre la hauteur ENTENDUE : deux stems sur quatre passent déjà l'attendu (13/09/2026)
 
-D267 a établi que 12,7 % des notes mélodiques du corpus sonnent à côté de ce que
+D267 a établi que 9,9 % des notes mélodiques du corpus sonnent à côté de ce que
 leur liste annonce, par le seul fait du patch tiré. Les catégories de D254 —
 bonne hauteur, octave, autre hauteur, inventée — comparaient la transcription à
 la hauteur ÉCRITE. Recomptées contre la hauteur ENTENDUE, sur les dix morceaux du
