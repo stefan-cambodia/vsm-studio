@@ -9968,16 +9968,27 @@ void MainComponent::removeTakeFromSelectedTrack(int index) {
 }
 
 bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier) {
-    captureSessionIntoProject();
-    try {
-        MidiFileWriter::writeFile(project_.toParsedFileArranged(),
-                                   fichier.getFullPathName().toStdString());
-    } catch (const std::exception& e) {
-        std::fputs(("VSM_EXPORT_MIDI : " + std::string(e.what()) + "\n").c_str(), stderr);
-        return false;
-    }
-    std::fputs(("VSM_EXPORT_MIDI : " + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
-    return true;
+    // D202 : CE VERBE PASSE PAR LE CHEMIN DE L'UTILISATEUR, et ne le recopie
+    // plus.
+    //
+    // CE QU'IL FAISAIT : `MidiFileWriter::writeFile(toParsedFileArranged())`,
+    // c'est-à-dire une COPIE du cœur de `exportMidiFile()`. Deux chemins pour un
+    // même geste, dont un seul mesuré — et c'est le mauvais : celui du banc.
+    // Tout ce que le menu fait AUTOUR de l'écriture (l'avertissement de D31.5
+    // sur ce que le `.mid` ne porte pas, celui des rampes d'automation, la boîte
+    // d'erreur) n'était éprouvé par personne, et une divergence entre les deux
+    // n'aurait rien allumé. C'est le piège que `CLAUDE.md` nomme à D38 : deux
+    // instruments braqués au même endroit ne valent pas mieux qu'un seul.
+    //
+    // Depuis D197, le sélecteur de « Exporter MIDI… » se saute par
+    // `prendreLeFichierDeBanc` : le verbe pose donc le fichier et appelle la
+    // VRAIE fonction. Le fichier écrit est la preuve, comme avant.
+    setPluginFileForCapture(fichier);
+    exportMidiFile();
+    const bool ecrit = fichier.existsAsFile();
+    std::fputs(("VSM_EXPORT_MIDI : " + fichier.getFullPathName().toStdString()
+                + (ecrit ? "" : " \u2014 RIEN N'A \u00c9T\u00c9 \u00c9CRIT") + "\n").c_str(), stderr);
+    return ecrit;
 }
 
 juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {

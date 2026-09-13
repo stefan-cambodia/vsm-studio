@@ -21030,3 +21030,39 @@ la fenêtre affiche. Mesuré :
 quand le rang est faux mesurerait une machine que personne n'a demandée, et la
 capture montrerait un résultat vraisemblable et faux — c'est le piège de D38,
 écrit dans `CLAUDE.md`. Le rang hors liste ne charge rien **et le dit**.
+
+### Phase D202 — RECTIFICATION de D197, et le défaut que la rectification a trouvé (13/09/2026)
+
+**CE QUE D197 A ÉCRIT DE FAUX.** « Le chemin par lequel un musicien envoie son
+morceau à un autre DAW n'est pilotable par personne. » **C'est inexact** : un
+verbe existait, `VSM_EXPORT_MIDI`, que je n'avais pas cherché avant de conclure —
+la faute même que `CLAUDE.md` reproche à un « zéro sorti d'un grep ». Les mesures
+de D197 restent justes (9 224 notes identiques, tempo, signature, noms) ; c'est
+la phrase sur l'outillage qui était fausse, et elle est corrigée ici.
+
+**ET EN LA CORRIGEANT, ON TROUVE PIRE.** `VSM_EXPORT_MIDI` n'appelait pas
+« Exporter MIDI… » : il **recopiait son cœur** —
+`MidiFileWriter::writeFile(project_.toParsedFileArranged(), …)` — et rien d'autre.
+Deux chemins pour un même geste, dont **un seul mesuré, et c'est le mauvais** :
+tout ce que le menu fait AUTOUR de l'écriture — l'avertissement de D31.5 sur ce
+que le `.mid` ne porte pas, celui des rampes d'automation, la boîte d'erreur —
+n'était éprouvé par personne. Une divergence entre la copie et l'original
+n'aurait rien allumé. C'est le piège que `CLAUDE.md` nomme à D38 : **deux
+instruments braqués au même endroit ne valent pas mieux qu'un seul** — et ici le
+second visait une copie.
+
+**LE REMÈDE**, permis par le crochet de D197 : le verbe pose son fichier et
+appelle la **vraie** fonction. Mesuré : `VSM_PLUGIN : sélecteur sauté` puis
+`VSM_EXPORT_MIDI : …/export.mid`, et le fichier porte les **9 224 notes**,
+multiset identique au projet. Le verbe dit désormais aussi quand **rien n'a été
+écrit**, ce que sa copie ne pouvait pas savoir.
+
+**L'INVENTAIRE QUI RESTE, dit plutôt que supposé.** `MainComponent` ouvre **23**
+sélecteurs ; **7** passent par `prendreLeFichierDeBanc` (dont trois posés
+aujourd'hui : D181, D197, et celui des plugins par D201). Les seize autres sont
+soit atteints par un AUTRE verbe (`VSM_EXPORT`, `VSM_EXPORT_STEMS`,
+`VSM_IMPORT_AUDIO`, `VSM_EXPORT_MIDI_PISTE`, `VSM_IMPORT`, `VSM_DEPOSER`), soit
+hors d'atteinte — et parmi eux **« Reconstruire un morceau (wav, mp3, flac…) »**,
+c'est-à-dire l'entrée du sixième critère du § 2, la seule case où ce logiciel
+peut être DEVANT les trois autres. À reprendre, avec la même vigilance : un verbe
+qui recopie le code qu'il prétend mesurer ne mesure rien.
