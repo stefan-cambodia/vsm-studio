@@ -629,12 +629,32 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
         regleMenuAction(playhead_, survole, choix);
         return true;
     }
-    const bool audio = quel == "clip-audio";
-    if (!audio && quel != "clip-midi") return false;
+    // D237 : « clip-midi-tous » choisit TOUS les clips de la piste avant d'ouvrir
+    // le menu — ce qu'une souris fait par un rectangle de sélection. Sans lui, les
+    // entrées qui exigent PLUSIEURS clips (« Joindre les clips choisis ») restent
+    // grisées, donc introuvables, et l'on croit le geste absent.
+    const bool tous = quel.endsWith("-tous");
+    const juce::String base = tous ? quel.dropLastCharacters(5) : quel;
+    const bool audio = base == "clip-audio";
+    if (!audio && base != "clip-midi") return false;
     for (size_t p = 0; p < project_->tracks.size(); ++p) {
         const auto& piste = project_->tracks[p];
         if (piste.clips.empty() || (piste.kind == Track::Kind::Audio) != audio) continue;
         const uint64_t id = piste.clips.front().id;
+        // D237 : LE CLIC DROIT CHOISIT D'ABORD LE CLIP, et le banc doit faire de
+        // même. Sans cela, la moitié des entrées du menu ne pouvaient RIEN faire :
+        // « 2 fois » s'exécutait sur une sélection vide et rendait la main en
+        // silence (`repeatSelection` sort si `selectionSpan` échoue), et « Couper à
+        // la tête de lecture » restait grisée, donc introuvable. Le banc ouvrait un
+        // menu que la souris n'ouvre jamais dans cet état.
+        if (libelle != "?") {
+            selection_.clear();
+            if (tous)
+                for (const auto& c : piste.clips) selection_.insert(c.id);
+            else
+                selection_.insert(id);
+            clicTick_ = playhead_;
+        }
         const juce::PopupMenu menu = menuDuClip(p, piste.clips.front(), -1);
         // D222 : « ? » ne fait rien et LISTE. Deux libellés cherchés à la main
         // (« Renommer… », « Le clip fait N mesures… ») n'ont pas été trouvés, et

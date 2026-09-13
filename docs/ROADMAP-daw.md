@@ -22879,3 +22879,50 @@ Les quatre attendus tiennent, et deux chiffres méritent d'être lus deux fois :
 
 Neuf gestes d'édition, neuf attendus, neuf tenus — chacun avec son témoin, et le
 témoin lui-même vérifié identique à l'original note pour note.
+
+### Phase D237 — les gestes de CLIP, mesurés sur le projet écrit (13/09/2026)
+
+Même méthode que D236, d'un cran plus haut : le menu du clic droit d'un clip
+(cinquante et une entrées pour un clip audio, seize pour un clip MIDI) porte des
+gestes qui découpent, joignent et répètent le matériau. Ils se lisent dans les
+clips du `project.json` écrit derrière.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (`cdl`, un clip implicite qui couvre
+tout le matériau — `(début 0, longueur 0)`, zéro voulant dire « jusqu'au bout ») :
+
+1. **TÉMOIN** : sans geste, un clip, `(0, 0)`.
+2. **« 2 fois »** : le clip joue son matériau DEUX fois — sa longueur jouée double,
+   sans qu'aucune note ne soit copiée (c'est la boucle de clip de D5.2).
+3. **Tête de lecture à la mesure 9, « Couper à la tête de lecture »** : **deux**
+   clips, coupés à 15 360 ticks.
+4. **Puis « Joindre les clips choisis »** : retour à **un** clip.
+
+**CE QUE LA MESURE A TROUVÉ — ET D'ABORD UN DÉFAUT DU BANC LUI-MÊME.** Premier
+essai : « 2 fois » s'exécute et **rien ne change** ; « Couper à la tête de lecture »
+est **introuvable**. Ni l'un ni l'autre n'est un défaut du logiciel — c'est le
+crochet de D222 qui ouvrait un menu que la souris n'ouvre jamais dans cet état :
+**le clic droit CHOISIT le clip avant d'ouvrir son menu**, et le banc ne le
+choisissait pas. Résultat, `repeatSelection` sortait sur une sélection vide sans un
+mot (`selectionSpan` échoue, retour silencieux) et les entrées qui exigent une
+sélection restaient grisées, donc invisibles à `entreeParLibelle`. Le crochet
+choisit maintenant le clip visé, comme la souris — et `clip-midi-tous:` les choisit
+TOUS, ce qu'une souris fait par un rectangle.
+
+| course | clips du `project.json` écrit |
+|---|---|
+| **témoin** | `(0, 0)` — un clip, longueur zéro = tout le matériau |
+| « 2 fois » | **trois** clips : `(0, 0)`, `(297 600, 0)`, `(595 200, 0)` |
+| tête à la mesure 9, « Couper à la tête de lecture » | **deux** : `(0, 15 360)` et `(15 360, 281 381)` |
+| puis « Joindre les clips choisis » (`clip-midi-tous`) | **un** : `(0, 296 741)` |
+
+Les attendus 1, 3 et 4 tiennent au tick près : la coupure tombe exactement sur la
+tête de lecture (15 360 = mesure 9), et la jointure rend un clip qui couvre tout le
+matériau (296 741 ticks, la fin de la dernière note).
+
+**L'ATTENDU 2 EST RÉFUTÉ DANS SON MÉCANISME, et c'est moi qui me trompais.**
+J'attendais que « 2 fois » ALLONGE le clip pour qu'il répète sa fenêtre — la boucle
+de clip de D5.2, qui ne copie rien. Le geste fait autre chose : il pose **deux
+copies** du clip, à 297 600 et 595 200 ticks, c'est-à-dire une longueur de matériau
+d'écart. Les deux comportements sont légitimes ; celui-ci est celui de Cubase et de
+Live pour « répéter ». La boucle de clip existe ailleurs (étirer le bord d'un clip
+au-delà de son matériau, D5.2), et les deux ne se confondent pas.

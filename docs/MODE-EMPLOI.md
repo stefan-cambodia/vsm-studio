@@ -1111,6 +1111,12 @@ juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D17
 s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
 course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
 ferait expirer tous les bancs du dépôt.
+`VSM_MENU_CONTEXTE=clip-midi:<libellé>` ouvre le menu du premier clip MIDI de la
+première piste qui en porte un, **après l'avoir choisi** — c'est ce que fait le clic
+droit, et sans ce choix la moitié des entrées ne peuvent rien faire. `clip-audio:`
+pour un clip audio, `clip-midi-tous:` / `clip-audio-tous:` pour choisir TOUS les
+clips de la piste (ce qu'une souris fait par un rectangle), et `:?` pour lister le
+menu au lieu d'agir.
 `VSM_CONFIRMER=oui|non` répond aux deux questions à deux boutons qui gardent les
 gestes IRRÉVERSIBLES — « Aplatir l'ordre de jeu » et « Reporter la piste en
 audio » —, par le même rappel modal qu'un clic. Ces deux boîtes passaient par la
