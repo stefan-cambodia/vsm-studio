@@ -8,7 +8,7 @@ d'avancement détaillé par phase.
 temps réel (`audio/`, 1 299 tests, dont un test de concurrence réel vérifié
 sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 963
 tests moteur** (avec `interchange/` 297, `clap/` 25, `panels/` 11), tous verts,
-zéro warning ; plus **168 tests** côté chaîne d'analyse Python.
+zéro warning ; plus **191 tests** côté chaîne d'analyse Python.
 Les 64 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
