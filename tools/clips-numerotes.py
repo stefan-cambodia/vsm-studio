@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""D262 : tout clip ajouté à une piste doit porter un IDENTIFIANT.
+"""D262 : tout CLIP et toute NOTE ajoutés à une piste doivent porter un IDENTIFIANT.
 
     python3 tools/clips-numerotes.py
 
@@ -12,8 +12,8 @@ fichier importé, écrit « 4 attaque(s) », puis « 0 coupe(s) », sans que rie
 dise pourquoi : le clip couvrant ÉTAIT trouvé, son identifiant valait 0, et
 `if (couvrant == 0)` le jetait.
 
-CE QUI EST VÉRIFIÉ : tout `clips.push_back` / `clips.emplace_back` du code de
-production porte, DANS LA MÊME FONCTION, l'une de ces trois choses : une
+CE QUI EST VÉRIFIÉ : tout `clips.push_back` / `notes.push_back` (et leurs
+`emplace_back`) du code de production porte, DANS LA MÊME FONCTION, l'une de ces trois choses : une
 affectation d'identifiant (`clip.id = ...`, `.id = idCounter++`), un appel à
 `Project::ajouterClip` qui numérote, ou un appel à `assignClipIds()` qui repasse
 derrière. Un clip qui GARDE l'identifiant qu'il avait déjà (déplacé d'une piste à
@@ -40,8 +40,17 @@ DOSSIERS = ["core/src", "app/Source", "audio/src"]
 #    `assignClipIds()` eux-mêmes (ArrangementPreviewMain) ou ne persistent rien.
 EXCLUS = re.compile(r"(^|/)(tests|interchange)/|app/Source/tools/")
 
-POUSSE = re.compile(r"\bclips\.(push_back|emplace_back)\b")
-NUMEROTE = re.compile(r"\.id\s*=|ajouterClip|assignClipIds")
+# LES NOTES AUTANT QUE LES CLIPS : `Note::id` est un compteur à part
+# (`nextNoteId`), il part aussi de 1, et zéro y veut dire la même chose. Le
+# défaut D262 n'a frappé que les clips, mais rien n'empêchait qu'il frappe les
+# notes — la sélection, l'annulation et l'édition les visent par identifiant
+# exactement de la même façon.
+POUSSE = re.compile(r"\b(clips|notes)\.(push_back|emplace_back)\b")
+# `nextNoteId()` / `nextClipId()` comptent aussi : une note peut recevoir son
+# identifiant par INITIALISATION D'AGRÉGAT — `Note{début, fin, …, id}` — sans
+# qu'un `.id =` apparaisse nulle part. Trois sites de `Project.cpp` sont dans ce
+# cas, et les chercher par `.id =` seul les déclarait fautifs à tort.
+NUMEROTE = re.compile(r"\.id\s*=|ajouterClip|assignClipIds|next(Note|Clip)Id")
 CONSERVE = "identifiant conserv"   # sans l'accent final : « conservé » / « conservés »
 
 
@@ -69,15 +78,19 @@ def main() -> int:
                 if not POUSSE.search(ligne):
                     continue
                 controles += 1
-                if CONSERVE in ligne:
+                # L'EXCEPTION SE LIT SUR LA LIGNE OU JUSTE AU-DESSUS : un commentaire
+                # d'explication tient rarement en fin de ligne, et l'obliger à s'y
+                # tenir pousse à écrire une exception illisible plutôt qu'aucune.
+                voisinage = "\n".join(lignes[max(0, i - 3):i + 1])
+                if CONSERVE in voisinage:
                     continue
                 avant = max([d for d in debuts if d <= i], default=0)
                 apres = min([d for d in debuts if d > i], default=len(lignes))
                 if not NUMEROTE.search("\n".join(lignes[avant:apres])):
                     fautes.append(f"{fichier.relative_to(RACINE)}:{i + 1} : {ligne.strip()}")
     for f in fautes:
-        print(f"CLIP SANS IDENTIFIANT  {f}")
-    print(f"CLIPS_POUSSES {controles} SANS_IDENTIFIANT {len(fautes)}")
+        print(f"SANS IDENTIFIANT  {f}")
+    print(f"POUSSES {controles} SANS_IDENTIFIANT {len(fautes)}")
     return 1 if fautes else 0
 
 

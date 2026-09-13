@@ -349,7 +349,7 @@ tools/apres-campagne.sh <lot>                        # les trois gestes qui atte
 analyse/.venv/bin/python tools/confiance-contre-verite.py <lot> # la confiance prédit-elle une note juste ?
 analyse/.venv/bin/python tools/tables-markdown.py     # les tables Markdown ont-elles toutes leurs cellules ?
 analyse/.venv/bin/python tools/gestes-promesses.py    # transposer, quantifier, legato, dupliquer : la promesse tient-elle ?
-python3 tools/clips-numerotes.py                      # tout clip ajouté porte-t-il un identifiant ? (0 veut dire « aucun »)
+python3 tools/clips-numerotes.py                      # tout clip ET toute note ajoutés portent-ils un identifiant ?
 python3 tools/coupe-aux-transitoires.py              # « Découper aux transitoires » coupe-t-il, et AUX BONS ENDROITS ?
 analyse/.venv/bin/python tools/notes-courtes.py 127.7 30  # le transcripteur jette-t-il les notes brèves ? (A/B sur les stems vrais)
 analyse/.venv/bin/python tools/corpus-hauteurs.py     # le corpus sonne-t-il à la hauteur que sa vérité annonce ?

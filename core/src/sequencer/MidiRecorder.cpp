@@ -223,6 +223,8 @@ void applyRecording(Track& track, const std::vector<Note>& take, RecordMode mode
     }
     for (Note note : take) {
         note.channel = track.channel;
+        // Notes déjà numérotées par `MidiRecorder` : identifiant conservé, car les
+        // renuméroter ici casserait la sélection de la prise qu'on vient de jouer.
         track.notes.push_back(note);
     }
     track.sortEvents();
