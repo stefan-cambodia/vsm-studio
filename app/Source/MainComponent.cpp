@@ -4456,6 +4456,25 @@ bool MainComponent::prendreLeFichierDeBanc(const std::function<void(const juce::
     return true;
 }
 
+// D213 : LE MÊME SAUT, POUR UN SÉLECTEUR À PLUSIEURS FICHIERS. Le sélecteur de
+// l'import audio accepte une sélection multiple depuis D33.1 (`getResults()`), et
+// `prendreLeFichierDeBanc` ne rend qu'un fichier : le chemin du menu était donc
+// infranchissable pour une course dès qu'on voulait éprouver ce que D33.1 a
+// ajouté -- le compte, et la liste des refusés.
+bool MainComponent::prendreLesFichiersDeBanc(
+    const std::function<void(const juce::Array<juce::File>&)>& suite) {
+    if (fichiersDeBanc_.isEmpty()) return false;
+    const juce::Array<juce::File> fichiers = fichiersDeBanc_;
+    fichiersDeBanc_.clear();
+    juce::StringArray noms;
+    for (const auto& f : fichiers) noms.add(f.getFullPathName());
+    std::fputs((juce::String(u8"VSM_FICHIER : sélecteur sauté, ")
+                + juce::String(fichiers.size()) + juce::String(u8" fichier(s) — ")
+                + noms.joinIntoString(", ") + "\n").toRawUTF8(), stderr);
+    suite(fichiers);
+    return true;
+}
+
 void MainComponent::loadClapPluginOnSelectedTrack() {
 #if VSM_WITH_CLAP
     const size_t piste = trackList_.selectedTrackIndex();
@@ -7229,12 +7248,25 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
                                                      + fichier.getFileExtension());
         } while (destination.existsAsFile());
     }
-    if (!destination.existsAsFile() && !fichier.copyFileTo(destination)) {
-        montrerBoite(
-            juce::AlertWindow::WarningIcon, tr("Copie impossible"),
-            tr("Impossible de copier %1 dans le dossier du projet.").replace("%1", fichier.getFileName()));
-        return false;
+    // D213 : ON SE SOUVIENT D'AVOIR COPIÉ. Si l'une des étapes suivantes refuse
+    // le fichier, la copie reste sinon dans `audio/` du projet sans que rien ne
+    // la désigne -- mesuré : un `faux.wav` illisible, refusé et dit au journal,
+    // laissait quand même son octet dans le dossier de l'utilisateur. Seule une
+    // copie faite À L'INSTANT est effacée : un fichier déjà là appartient au
+    // projet, et un clip peut le jouer.
+    bool copieNeuve = false;
+    if (!destination.existsAsFile()) {
+        if (!fichier.copyFileTo(destination)) {
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr("Copie impossible"),
+                tr("Impossible de copier %1 dans le dossier du projet.").replace("%1", fichier.getFileName()));
+            return false;
+        }
+        copieNeuve = true;
     }
+    const auto defaire = [&copieNeuve, &destination] {
+        if (copieNeuve) destination.deleteFile();
+    };
 
     // 4. ON LIT LE FICHIER POUR SAVOIR CE QU'IL DURE. Le déclarer d'après ce
     // qu'on croit produirait un clip de la mauvaise longueur, et c'est
@@ -7246,6 +7278,7 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
         montrerBoite(
             juce::AlertWindow::WarningIcon, tr(u8"Échantillon illisible"),
             vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
+        defaire();   // D213
         return false;
     }
     const double duree = static_cast<double>(lu.source->frames()) / sr;
@@ -7265,6 +7298,7 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
                u8"posez celui-ci sur une autre piste.")
                 .replace("%2", juce::String(piste.audio.path.c_str()))
                 .replace("%1", juce::String(piste.name)));
+        defaire();   // D213
         return false;
     }
 
@@ -11190,6 +11224,9 @@ bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
 }
 
 void MainComponent::importAudioFilePrompt() {
+    // D213 : le sélecteur sauté par le banc, AVEC sa sélection multiple.
+    auto suite = [this](const juce::Array<juce::File>& fichiers) { importAudioFiles(fichiers); };
+    if (prendreLesFichiersDeBanc(suite)) return;
     auto chooser = std::make_shared<juce::FileChooser>(
         tr(u8"Importer des fichiers audio, un par piste neuve"), juce::File(),
         "*.wav;*.flac;*.ogg;*.mp3;*.aif;*.aiff");
@@ -11199,8 +11236,8 @@ void MainComponent::importAudioFilePrompt() {
     chooser->launchAsync(juce::FileBrowserComponent::openMode
                              | juce::FileBrowserComponent::canSelectFiles
                              | juce::FileBrowserComponent::canSelectMultipleItems,
-                         [this, chooser](const juce::FileChooser& fc) {
-        importAudioFiles(fc.getResults());
+                         [suite, chooser](const juce::FileChooser& fc) {
+        suite(fc.getResults());
     });
 }
 
@@ -11216,15 +11253,20 @@ void MainComponent::importAudioFiles(const juce::Array<juce::File>& fichiers) {
         if (importAudioFileOnNewTrack(fichier)) ++entres;
         else refuses.add(fichier.getFileName());
     }
-    juce::String message = tr(u8"Import audio : %1 piste(s) créée(s) sur %2 fichier(s)")
-                               .replace("%1", juce::String(static_cast<int>(entres)))
-                               .replace("%2", juce::String(fichiers.size()));
+    // D213 : LE TITRE NE SE RÉPÈTE PLUS DANS LE MESSAGE. La boîte affichait
+    // « Import audio » en titre et « Import audio : 1 piste(s)… » en texte ; le
+    // journal, lui, a besoin du préfixe pour être lisible parmi les autres lignes.
+    juce::String resume = tr(u8"%1 piste(s) créée(s) sur %2 fichier(s)")
+                              .replace("%1", juce::String(static_cast<int>(entres)))
+                              .replace("%2", juce::String(fichiers.size()));
     if (!refuses.isEmpty())
-        message += " ; " + tr(u8"refusé(s) : %1").replace("%1", refuses.joinIntoString(", "));
-    std::fputs((message + ".\n").toRawUTF8(), stderr);
+        resume = tr("%1 ; %2").replace("%2", tr(u8"refusé(s) : %1")
+                                                 .replace("%1", refuses.joinIntoString(", ")))
+                     .replace("%1", resume);
+    std::fputs((tr(u8"Import audio") + " : " + resume + ".\n").toRawUTF8(), stderr);
     if (!refuses.isEmpty())
         montrerBoite(
-            juce::AlertWindow::WarningIcon, tr(u8"Import audio"), message);
+            juce::AlertWindow::WarningIcon, tr(u8"Import audio"), resume);
 }
 
 void MainComponent::exportSelectedTrackMidi() {

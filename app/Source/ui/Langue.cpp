@@ -2678,10 +2678,15 @@ const Paire kAnglais[] = {
       "%1 comp segment(s) pointed to it: removed." },
     { "%1 tronçon(s) ont reculé d'un rang.",
       "%1 comp segment(s) moved back one rank." },
-    { "Import audio : %1 piste(s) créée(s) sur %2 fichier(s)",
-      "Audio import: %1 track(s) created from %2 file(s)" },
+    // D213 : le préfixe « Import audio : » est posé par l'appelant (le journal
+    // en a besoin, la boîte qui porte déjà ce titre non).
+    { "%1 piste(s) créée(s) sur %2 fichier(s)",
+      "%1 track(s) created from %2 file(s)" },
     { "refusé(s) : %1",
       "refused: %1" },
+    // D213 : la jointure des deux moitiés du résumé d'import -- le français met
+    // une espace avant le point-virgule, l'anglais non.
+    { "%1 ; %2", "%1; %2" },
     { "Import audio",
       "Audio import" },
     { "Choisissez une piste MIDI : ce qui a été joué au clavier est fait de notes, et une piste audio n'en porte pas.",
@@ -3296,6 +3301,12 @@ const ModeleDePhrase kModeles[] = {
       u8"unreadable audio (%1): %P2" },
     { u8"audio vide : %1",
       u8"empty audio: %1" },
+    // D213 : la raison que `WavFileReader` rend quand le fichier n'en est pas un
+    // -- vue en anglais au bout d'un « unreadable audio (…) : », encore française.
+    { u8"fichier trop court pour un WAV",
+      u8"file too short to be a WAV" },
+    { u8"fichier trop court pour un WAV : %1",
+      u8"file too short to be a WAV: %1" },
     // D92 : les avertissements de la batterie, écrits par la chaîne d'analyse (vsm_drumkit.py)
     { u8"%1 : ÉCARTÉE — aucune frappe isolée, son échantillon contient les autres pièces (%#2 frappe(s) non jouées)",
       u8"%1: DISCARDED — no isolated hit, its sample contains the other pieces (%2 hit(s) not played)" },

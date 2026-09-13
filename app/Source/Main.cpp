@@ -335,9 +335,22 @@ public:
             // VSM_FICHIER=chemin (D108) : le même crochet, sous un nom qui ne dit plus
             // « plugin » -- tout sélecteur qui passe par `prendreLeFichierDeBanc`
             // (l'original de l'écoute A/B, par exemple).
-            if (const char* fichier = std::getenv("VSM_FICHIER"); fichier != nullptr && *fichier)
-                content->setPluginFileForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
-                    juce::String::fromUTF8(fichier)));
+            // D213 : PLUSIEURS FICHIERS, séparés par « ; », pour les sélecteurs
+            // qui acceptent une sélection multiple (l'import audio). Le premier
+            // sert aussi aux sélecteurs à un seul fichier : un banc qui n'en
+            // nomme qu'un se comporte comme avant.
+            if (const char* fichier = std::getenv("VSM_FICHIER"); fichier != nullptr && *fichier) {
+                juce::StringArray noms;
+                noms.addTokens(juce::String::fromUTF8(fichier), ";", "");
+                juce::Array<juce::File> fichiers;
+                for (const auto& nom : noms)
+                    if (nom.trim().isNotEmpty())
+                        fichiers.add(juce::File::getCurrentWorkingDirectory().getChildFile(nom.trim()));
+                if (!fichiers.isEmpty()) {
+                    content->setPluginFileForCapture(fichiers.getFirst());
+                    content->poserLesFichiersDeBanc(fichiers);
+                }
+            }
             // VSM_MENU=libellé[;libellé…] : exécuter des entrées de menu par
             // leur LIBELLÉ avant la capture (D20). Trois gestes de cet audit
             // ne vivent que dans le menu contextuel d'un clip ; leurs jumeaux
@@ -479,8 +492,15 @@ public:
             // VSM_IMPORT_AUDIO=fichier.wav : sur une piste neuve (D24.5), par la
             // même fonction que le menu ; refusé et dit si le projet n'a pas de
             // dossier.
-            if (const char* audio = std::getenv("VSM_IMPORT_AUDIO"); audio != nullptr && *audio)
-                content->importAudioForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(audio));
+            if (const char* audio = std::getenv("VSM_IMPORT_AUDIO"); audio != nullptr && *audio) {
+                juce::StringArray noms;
+                noms.addTokens(juce::String::fromUTF8(audio), ";", "");
+                juce::Array<juce::File> fichiers;
+                for (const auto& nom : noms)
+                    if (nom.trim().isNotEmpty())
+                        fichiers.add(juce::File::getCurrentWorkingDirectory().getChildFile(nom.trim()));
+                content->importAudioForCapture(fichiers);   // D213 : par la fonction du menu
+            }
             // VSM_DEPOSER=fichier (D91) : un dépôt de fichier, par `filesDropped` --
             // la boîte « Que faire de ce fichier ? » n'avait aucun autre chemin.
             if (const char* depot = std::getenv("VSM_DEPOSER"); depot != nullptr && *depot)

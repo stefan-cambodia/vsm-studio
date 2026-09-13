@@ -21561,3 +21561,68 @@ mêmes trois boutons) : elle passe désormais par le même corps.
 absences a trouvé un défaut que la mesure ne cherchait pas. D145 disait déjà
 qu'une valeur revenue à son point de départ ne prouve rien sans témoin ; ici, le
 témoin a servi une seconde fois, comme CAS et non comme repère.
+
+### Phase D213 — l'import audio MULTIPLE : le verbe du banc prenait un fichier là où le menu en prend douze (13/09/2026)
+
+**LE DÉFAUT, TROUVÉ EN CONTINUANT L'AUDIT DE D202.** Trois verbes de banc
+restaient à vérifier contre le chemin qu'ils prétendent mesurer :
+
+| Verbe | ce qu'il appelle | ce que le menu appelle | verdict |
+|---|---|---|---|
+| `VSM_EXPORT_MIDI_PISTE` | `writeSelectedTrackMidi` | `writeSelectedTrackMidi` | même cœur, rien autour |
+| `VSM_EXPORT_STEMS` | `exportStemsToFolder` | `exportStemsToFolder` + une boîte | même cœur, message relayé |
+| `VSM_IMPORT_AUDIO` | `importAudioFileOnNewTrack` | **`importAudioFiles`** | **deux chemins** |
+
+`importAudioFiles` est tout ce que D33.1 a ajouté : la boucle sur PLUSIEURS
+fichiers, le compte « %1 piste(s) créée(s) sur %2 fichier(s) », la liste des
+refusés et la boîte qui la porte — « ce qui échoue n'arrête pas le reste, et est
+NOMMÉ ». Le verbe du banc appelait le cœur par fichier : la sélection multiple,
+son compte et son refus n'étaient éprouvés par personne, et le sélecteur
+multi-fichiers du menu n'était franchissable par aucune course
+(`prendreLeFichierDeBanc` ne rend QU'UN fichier).
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** `VSM_IMPORT_AUDIO` et `VSM_FICHIER`
+acceptent une liste séparée par « ; » ; le verbe appelle la fonction du menu ; le
+sélecteur se saute par `prendreLesFichiersDeBanc` :
+
+1. **Deux fichiers lisibles** : deux pistes audio de plus, et la ligne « Import
+   audio : 2 piste(s) créée(s) sur 2 fichier(s) ».
+2. **Un lisible, un illisible** : « 1 piste(s) créée(s) sur 2 fichier(s) ;
+   refusé(s) : … », PLUS une ligne `VSM_BOITE` — aujourd'hui ni l'une ni l'autre
+   n'existe, quel que soit le banc.
+3. **Par le menu** (« Importer un fichier audio sur une piste neuve… » +
+   `VSM_FICHIER` à deux valeurs) : le même résultat que par le verbe, puisque
+   c'est le même chemin.
+4. **TÉMOIN, un seul fichier** : « 1 piste(s) créée(s) sur 1 fichier(s) » — le
+   comportement d'avant, qui ne doit pas changer.
+
+**CE QUE LA MESURE A DIT** (projet `cdl` recopié à chaque course, `son-a.wav` et
+`son-b.wav` engendrés, `faux.wav` long de 22 octets) :
+
+| Course | journal | boîte | `audio/` du projet |
+|---|---|---|---|
+| deux fichiers lisibles | « Import audio : 2 piste(s) créée(s) sur 2 fichier(s) » | aucune | `son-a.wav son-b.wav` |
+| un lisible, un faux | « 1 piste(s) créée(s) sur 2 fichier(s) ; refusé(s) : faux.wav » | deux (l'échantillon illisible, puis le compte) | `son-a.wav` |
+| par le menu, `VSM_FICHIER` à deux valeurs | « sélecteur sauté, 2 fichier(s) » puis le même compte | aucune | `son-a.wav son-b.wav` |
+| témoin, un seul fichier | « 1 piste(s) créée(s) sur 1 fichier(s) » | aucune | `son-a.wav` |
+
+Les quatre attendus tiennent. **Et la mesure a trouvé deux choses que l'attendu
+ne cherchait pas** :
+
+1. **Un fichier refusé restait DANS le dossier du projet.** `placeSampleOnTrack`
+   copie avant de lire (il faut bien lire le fichier copié) ; quand la lecture
+   refuse, la copie restait dans `audio/` sans que rien ne la désigne — un octet
+   de l'utilisateur gardé pour rien, et un nom qui réapparaîtrait au prochain
+   import du même fichier. Seule une copie faite À L'INSTANT est maintenant
+   effacée : un fichier déjà là appartient au projet, et un clip peut le jouer.
+   Mesuré : `faux.wav` présent avant, absent après, `son-a.wav` intact.
+2. **Deux fautes d'anglais, vues sur la course anglaise.** La boîte répétait son
+   propre titre (« Import audio » en titre, « Import audio : 1 track(s)… » en
+   texte) ; et la raison rendue par `WavFileReader` — « fichier trop court pour un
+   WAV » — sortait en français au bout d'une phrase anglaise, faute de modèle.
+   Les deux sont corrigées, avec la ponctuation de la jointure (`%1 ; %2` en
+   français, `%1; %2` en anglais) : « 1 track(s) created from 2 file(s); refused:
+   faux.wav » et « file too short to be a WAV ».
+
+`tools/inventaire_langue.py` : `ECRAN 7 SANS_PAIRE 0`, inchangé (TERMINAL passe de
+137 à 138 : la nouvelle jointure).

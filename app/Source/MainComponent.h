@@ -157,6 +157,9 @@ public:
     /// (CLAP, VST3, effet tiers) rendra, sans ouvrir sa fenêtre. Le geste qui
     /// l'ouvre reste celui de l'utilisateur (VSM_MENU, VSM_MENU_CONTEXTE).
     void setPluginFileForCapture(const juce::File& fichier) { fichierDeBanc_ = fichier; }
+    /// D213 : VSM_FICHIER=a.wav;b.wav -- la sélection MULTIPLE que le prochain
+    /// sélecteur qui en accepte plusieurs (l'import audio) rendra.
+    void poserLesFichiersDeBanc(const juce::Array<juce::File>& fichiers) { fichiersDeBanc_ = fichiers; }
     bool runKeyForCapture(const juce::String& description) {
         const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
         if (!touche.isValid()) return false;
@@ -250,8 +253,11 @@ public:
     bool cliquerPourCapture(const juce::String& nomOuLegende);
     /// D57 : republier le panneau d'assemblage depuis la piste choisie.
     void refreshTakeCompPanel();
-    /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.
-    bool importAudioForCapture(const juce::File& fichier) { return importAudioFileOnNewTrack(fichier); }
+    /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav[;fichier2.wav…] -- sur des pistes
+    /// neuves, sans sélecteur. D213 : par `importAudioFiles`, la fonction du
+    /// MENU, et non par le cœur d'un seul fichier -- c'est elle qui porte la
+    /// sélection multiple de D33.1, le compte et la liste des refusés.
+    void importAudioForCapture(const juce::Array<juce::File>& fichiers) { importAudioFiles(fichiers); }
 
     /// Ouvre un dossier de projet au démarrage (VSM_PROJET=dossier), pour la
     /// même raison que `applyViewCommand` : ce qu'on a besoin de regarder est
@@ -740,6 +746,8 @@ private:
     /// D102 : le fichier du prochain sélecteur de plugin, posé par le banc, et
     /// la fonction qui le consomme à la place du sélecteur (et le dit).
     juce::File fichierDeBanc_;
+    /// D213 : la sélection MULTIPLE que le prochain sélecteur rendra.
+    juce::Array<juce::File> fichiersDeBanc_;
     bool prendreLeFichierDeBanc(const std::function<void(const juce::File&)>& suite);
     /// La commande dont on attend la nouvelle touche, s'il y en a une.
     bool rebindPending_ = false;
@@ -1323,6 +1331,9 @@ private:
     void openMidiFileDirect(const juce::File& fichier);
     /// D212 : le cœur de « Ouvrir MIDI… », commun au menu et au banc.
     bool ouvrirLeMidi(const juce::File& fichier);
+    /// D213 : comme `prendreLeFichierDeBanc`, pour un sélecteur qui accepte
+    /// PLUSIEURS fichiers (`VSM_FICHIER=a.wav;b.wav`).
+    bool prendreLesFichiersDeBanc(const std::function<void(const juce::Array<juce::File>&)>& suite);
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon
