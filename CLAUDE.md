@@ -59,7 +59,12 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 - Pas plus de deux étapes batterie simultanées (la charge à 49/22 cœurs met
   tout au surplace) ; geler/reprendre par SIGSTOP/SIGCONT ne perd rien.
 - Après toute édition de document par script : vérifier par grep que le texte
-  est bien là. Une ancre ratée fait mentir le commit qui l'annonce.
+  est bien là. Une ancre ratée fait mentir le commit qui l'annonce. Et un grep
+  qui TROUVE ne prouve pas que la FORME est bonne : le 13/09, une ligne insérée
+  au lieu d'être remplacée a mis deux rangées de tableau bout à bout sur une
+  seule (onze champs au lieu de six), et le texte cherché s'y trouvait bien.
+  Pour un tableau, compter les champs (`awk -F'|' '{print NF}'`) ; pour une
+  liste, compter les lignes.
 - Les nombres qui traversent une frontière (fichier, CLI, tube) se lisent et
   s'écrivent en locale C (interchange/NumberText.h) — la locale du processus
   est celle de JUCE, pas la tienne.
