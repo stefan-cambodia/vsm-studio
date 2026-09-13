@@ -23029,6 +23029,14 @@ Le témoin vient d'abord, et c'est lui qui fait tenir les quatre autres. La gard
 rend **aucun audio** : elle peut tourner à côté d'une campagne, et c'est la
 condition pour qu'elle serve. Première exécution : **0 promesse rompue**.
 
+**DEUX PROMESSES DE PLUS, AJOUTÉES APRÈS D242 ET D243** : « Vélocité 127 » (une
+seule valeur dans tout le fichier) et surtout **le miroir par son invariant** — la
+somme hauteur + image est constante et vaut min + max du morceau (124 sur `cdl`).
+C'est le seul contrôle qui distingue un miroir d'une transposition, et il porte
+dans son code l'appariement que le geste exige (la k-ième plus BASSE d'avant contre
+la k-ième plus HAUTE d'après), pour qu'on ne le repaie pas une quatrième fois.
+Sept promesses gardées, **0 rompue**.
+
 C'est la cinquième garde de `tools/` posée aujourd'hui, après `--doublons` (D216),
 `apres-campagne.sh`, `banc-fumee.sh` (D229) et `tables-markdown.py`.
 

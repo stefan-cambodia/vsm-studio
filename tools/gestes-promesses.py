@@ -108,6 +108,35 @@ def main() -> int:
     verdict("Legato : aucun silence entre notes", trous == 0 and len(n) == len(temoin),
             f"{trous} silence(s), {len(n)} notes")
 
+    # D243 : LE MIROIR, par son invariant — la somme hauteur + image est CONSTANTE,
+    # et vaut min + max du morceau. C'est le seul contrôle qui distingue un miroir
+    # d'une transposition, et il exige d'apparier la k-ième plus BASSE d'avant avec
+    # la k-ième plus HAUTE d'après : un miroir inverse l'ordre d'un accord.
+    n = notes_du_midi(course(brouillon, "miroir", PROJET,
+                             VSM_MENU="Tout sélectionner;Miroir des hauteurs"))
+    avant_par_temps: dict[int, list[int]] = {}
+    apres_par_temps: dict[int, list[int]] = {}
+    for note in temoin:
+        avant_par_temps.setdefault(note[1], []).append(note[0])
+    for note in n:
+        apres_par_temps.setdefault(note[1], []).append(note[0])
+    sommes = {a + b
+              for t, av in avant_par_temps.items()
+              if len(apres_par_temps.get(t, [])) == len(av)
+              for a, b in zip(sorted(av), sorted(apres_par_temps[t], reverse=True), strict=False)}
+    hauteurs = [x[0] for x in temoin]
+    axe = (min(hauteurs) + max(hauteurs)) if hauteurs else 0
+    verdict("Miroir : une seule somme, l'axe", sommes == {axe} and len(n) == len(temoin),
+            f"sommes {sorted(sommes)[:3]}, axe attendu {axe}")
+
+    # D242 : LA VÉLOCITÉ FIXE — une seule valeur, et c'est 127.
+    import mido
+    fichiers = sorted(course(brouillon, "vel127", PROJET,
+                             VSM_MENU="Tout sélectionner;Vélocité 127").glob("midi/*.mid"))
+    velocites = {e.velocity for f in fichiers for t in mido.MidiFile(str(f)).tracks for e in t
+                 if e.type == "note_on" and e.velocity > 0}
+    verdict("Vélocité 127 : une seule valeur", velocites == {127}, f"valeurs {sorted(velocites)[:4]}")
+
     projet = json.loads((course(brouillon, "dupliquer", PROJET_PISTES,
                                 VSM_MENU="Dupliquer la piste sélectionnée") / "project.json")
                         .read_text(encoding="utf-8"))
