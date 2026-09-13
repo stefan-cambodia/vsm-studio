@@ -272,3 +272,56 @@ def corpus_sec_et_augmente_contiennent_les_MEMES_patchs():
     assert_true(any(nom for nom in augmente.augmentations), "l'autre est bien augmenté")
     assert_true(not np.array_equal(sec.X, augmente.X),
                 "et les descripteurs, eux, DOIVENT différer")
+
+
+@test
+def le_desaccord_de_hauteur_est_ecrit_dans_la_verite():
+    """D277 : le corpus DIT de combien ses parties sonnent à côté de leurs notes.
+
+    Le patch est tiré au hasard dans l'espace déclaré par la machine, où
+    plusieurs exposent un désaccord d'oscillateur en demi-tons (`vsm.pcmhybrid`
+    ±24, `vsm.obx` ±12). Une partie ainsi tirée SONNE ailleurs que ce que sa
+    liste de notes annonce, et toute mesure de hauteur qui compare l'une à
+    l'autre compte ces notes fausses à tort — 9,9 % des notes de `s1-sec`, et
+    100 % de celles de `morceau-0001-g1`.
+
+    LE POINT DÉLICAT EST L'UNITÉ, et c'est lui que ce test garde : « st » compte
+    tel quel, « cents » se divise par cent, et tout le reste ne déplace RIEN.
+    Avoir pris les réglages normalisés de 0 à 1 pour des demi-tons a fait publier
+    « 12,7 % des notes » là où il faut lire 9,9 %.
+    """
+    import types
+
+    from analyzer.vsm_engine import SearchDimension
+    from analyzer.vsm_morceaux import Generateur
+
+    espace = [
+        SearchDimension(semantic_id="oscillator.2.detune", low=-12.0, high=12.0, unit="st"),
+        SearchDimension(semantic_id="oscillator.autre.detune", low=0.0, high=50.0, unit="cents"),
+        SearchDimension(semantic_id="voice.unisonDetune", low=0.0, high=1.0, unit=""),
+        SearchDimension(semantic_id="filter.1.cutoff", low=20.0, high=20000.0, unit="Hz"),
+    ]
+    faux = types.SimpleNamespace(_espaces={"vsm.essai": espace})
+    faux.espace = lambda machine: faux._espaces[machine]
+
+    patch = {
+        "oscillator.2.detune": -8.25,        # demi-tons : compte tel quel
+        "oscillator.autre.detune": 10.0,     # cents : 0,10 demi-ton, sous le seuil
+        "voice.unisonDetune": 0.84,          # normalisé : ne déplace RIEN
+        "filter.1.cutoff": 8000.0,           # pas une hauteur du tout
+    }
+    trouves = Generateur.desaccords_de_hauteur(faux, "vsm.essai", patch)
+
+    assert_equal(sorted(trouves), ["oscillator.2.detune"],
+                 "ni le réglage normalisé, ni la fréquence, ni dix cents ne sont retenus")
+    assert_near(trouves["oscillator.2.detune"], -8.25, 1e-9, "la valeur en demi-tons est gardée telle quelle")
+
+    # LES CENTS COMPTENT DÈS QU'ILS DÉPASSENT LE SEUIL, et le cas réel n'est pas
+    # loin : `vsm.psg` tire jusqu'à 50 cents, et le corpus en a produit 37,15 —
+    # soit 0,37 demi-ton, au-dessus du quart de ton. Ce n'est pas assez pour
+    # changer la note la plus proche (0,37 s'arrondit à 0), mais c'est assez pour
+    # s'entendre, et le corpus doit le DIRE plutôt que de le taire.
+    patch["oscillator.autre.detune"] = 37.15
+    trouves = Generateur.desaccords_de_hauteur(faux, "vsm.essai", patch)
+    assert_near(trouves["oscillator.autre.detune"], 0.3715, 1e-9,
+                "37,15 cents valent 0,3715 demi-ton, et sont retenus")

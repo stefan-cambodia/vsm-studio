@@ -121,6 +121,21 @@ class Partie:
     empreinte: str = ""
     cout_rendu_s: float = 0.0
     fichier: str = ""
+    # D277 : DE COMBIEN CETTE PARTIE SONNE-T-ELLE À CÔTÉ DE SES NOTES ÉCRITES ?
+    #
+    # Le patch est tiré au hasard dans l'espace déclaré par la machine, et
+    # plusieurs machines y exposent un désaccord d'oscillateur EN DEMI-TONS :
+    # `vsm.pcmhybrid` ±24, `vsm.obx` et `vsm.arpodyssey` ±12. Une partie ainsi
+    # tirée SONNE ailleurs que ce que sa liste de notes annonce — et toute mesure
+    # de hauteur qui compare l'une à l'autre compte ces notes fausses à tort.
+    #
+    # Mesuré le 13/09/2026 sur `s1-sec` : 9,9 % des notes mélodiques du corpus
+    # sont dans ce cas, et `morceau-0001-g1` l'est ENTIÈREMENT — son F1 passe de
+    # 0,027 à 0,567 selon la hauteur qu'on compare, de dernier des dix à premier.
+    # Le chiffre se DÉDUISAIT alors du patch et des unités déclarées par le C++
+    # (`tools/hauteur_sonnante.py`) ; il s'écrit désormais ici, à la source, où
+    # l'unité est connue sans devinette.
+    desaccords_demi_tons: Dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -459,6 +474,31 @@ class Generateur:
             self._espaces[machine] = search_space_for_machine(machine, self.engine, max_dimensions=10 ** 6)
         return self._espaces[machine]
 
+    def desaccords_de_hauteur(self, machine: str, patch: Dict[str, float]) -> Dict[str, float]:
+        """Les paramètres du patch qui DÉPLACENT la hauteur, en demi-tons.
+
+        L'unité vient de la dimension de recherche, que le moteur déclare : « st »
+        compte tel quel, « cents » se divise par cent, et tout le reste ne déplace
+        rien — `voice.unisonDetune` ou `oscillator.supersaw.detune` sont des
+        réglages normalisés de 0 à 1, qu'on a d'abord pris pour des demi-tons et
+        qui ont fait publier « 12,7 % des notes » là où il faut lire 9,9 %.
+        """
+        trouves: Dict[str, float] = {}
+        for dimension in self.espace(machine):
+            clef = dimension.semantic_id
+            if clef not in patch:
+                continue
+            valeur = float(patch[clef])
+            if dimension.unit == "st":
+                demi = valeur
+            elif dimension.unit == "cents":
+                demi = valeur / 100.0
+            else:
+                continue
+            if abs(demi) > 0.25:
+                trouves[clef] = demi
+        return trouves
+
     def tirer_patch(self, rng: np.random.Generator, machine: str, note_sonde: int) -> Tuple[Dict[str, float], List[float], int, str]:
         """Un patch audible, ou le patch d'usine après TIRAGES_DE_PATCH rejets."""
         espace = self.espace(machine)
@@ -555,7 +595,8 @@ class Generateur:
             parties.append(Partie(role=role, machine=machine, patch=patch, vecteur=vecteur, notes=notes,
                                   registre=registres, niveau_rms=10 ** (niveau_db / 20), niveau_db=niveau_db,
                                   gain=1.0, pan=_panoramique(rng, role), gate=gate, pieces=pieces,
-                                  cas=description.get("cas"), patchs_rejetes=rejets, origine_patch=origine))
+                                  cas=description.get("cas"), patchs_rejetes=rejets, origine_patch=origine,
+                                  desaccords_demi_tons=self.desaccords_de_hauteur(machine, patch)))
 
         # Les tirages de PRODUCTION se font avant les rendus : un patch rejeté
         # de plus ou de moins ne doit pas déplacer la réverbération.

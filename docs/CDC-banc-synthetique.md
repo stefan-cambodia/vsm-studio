@@ -739,3 +739,21 @@ la question : tant que `registres_par_vides` ne coupe `other` que 12 fois sur
 question utile n'est pas « comment mieux répondre » mais « pourquoi la chaîne
 ne demande presque jamais » — et celle-là appartient à la séparation de stems,
 pas à H25.
+
+**PREMIER PAS FAIT LE 13/09/2026 (D277) : le corpus ÉCRIT désormais son propre
+désaccord.** `Partie` porte un champ `desaccords_demi_tons` — le nom de chaque
+paramètre du patch qui déplace la hauteur, et de combien, **en demi-tons**. Il est
+calculé à la source, où l'unité déclarée par le moteur est connue (`st`, `cents`,
+ou rien pour les réglages normalisés) : aucune devinette, là où la déduire depuis
+le C++ avait fait publier « 12,7 % des notes » pour 9,9 %.
+
+`tools/hauteur_sonnante.py` lit ce champ **en priorité** et ne redéduit que pour
+les corpus engendrés avant — `s1-sec` en est un. Le jour où tous les corpus le
+portent, la déduction pourra partir.
+
+**CE QUE CELA NE FAIT PAS ENCORE**, et qui reste l'objet de B5 : le tirage lui-même
+n'est pas borné. Une partie peut toujours sonner huit demi-tons à côté de ses
+notes ; elle le DIT maintenant, ce qui suffit à ne plus fausser une mesure, mais
+un corpus où `morceau-0001-g1` reste inutilisable pour les statistiques de hauteur
+n'est pas un bon corpus. Borner le tirage change ce que le corpus éprouve — c'est
+une décision à prendre en le réengendrant, pas un correctif à glisser.

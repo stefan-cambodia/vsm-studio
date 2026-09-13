@@ -81,7 +81,17 @@ def desaccords(partie: dict, seuil: float = 0.25) -> list[tuple[str, float]]:
     Tous, et non « le plus grand » : une machine HYBRIDE a deux couches à deux
     hauteurs (`sample.1.tune` et `oscillator.1.detune` sur `vsm.pcmhybrid`), et le
     transcripteur en suit l'une ou l'autre.
+
+    LE CORPUS LE DIT LUI-MÊME DEPUIS D277, et sa parole passe avant la nôtre :
+    `verite.json` porte désormais `desaccords_demi_tons` par partie, écrit à la
+    source où l'unité est connue du moteur sans devinette. On ne redéduit que
+    pour les corpus ENGENDRÉS AVANT — `s1-sec` en est un —, où le champ manque.
+    Le jour où tous les corpus le portent, la déduction ci-dessous pourra partir.
     """
+    ecrits = partie.get("desaccords_demi_tons")
+    if isinstance(ecrits, dict):
+        return sorted(((k, float(v)) for k, v in ecrits.items() if abs(float(v)) > seuil),
+                      key=lambda kv: -abs(kv[1]))
     machine = str(partie.get("machine", ""))
     trouves = []
     for clef, valeur in (partie.get("patch") or {}).items():
