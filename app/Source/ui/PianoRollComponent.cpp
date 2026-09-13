@@ -559,10 +559,6 @@ void PianoRollComponent::selectDoubtfulNotes() {
 void PianoRollComponent::selectLeastConfidentNotes() {
     if (Track* track = activeTrack())
         selectedNoteIds_ = vsm::sequencer::selectLeastConfident(track->notes, 0.10);
-    // LE COMPTE, AU JOURNAL : la sélection ne se lit pas sans souris, et c'est par
-    // ce chiffre qu'une course prouve que le geste désigne une minorité (D223).
-    std::fputs(("VSM_SELECTION : " + juce::String(static_cast<int>(selectedNoteIds_.size()))
-                + juce::String::fromUTF8(u8" note(s) parmi les moins sûres\n")).toRawUTF8(), stderr);
     notifyEditState();
     repaint();
 }
@@ -1194,6 +1190,22 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxZoomFit:          zoomToFit(); break;
         case kCtxZoomSelection:    zoomToSelection(); break;
         case kCtxFold:             setFoldEnabled(!fold_); break;
+        default: break;
+    }
+    // D233 : TOUTE SÉLECTION DIT SON COMPTE. Une sélection ne se lit pas sans
+    // souris : elle ne change ni le titre, ni un texte, et le piano roll la PEINT
+    // (la leçon de D149). D223 avait posé cette ligne pour un seul geste ; les
+    // onze autres restaient muets, si bien qu'un banc pouvait exécuter
+    // « Sélectionner les notes faibles » et n'avoir RIEN à lire.
+    switch (menuItemId) {
+        case kCtxSelectAll: case kCtxSelectNone: case kCtxSelectInvert:
+        case kCtxSelectSamePitch: case kCtxSelectDoubtful: case kCtxSelectLeastConfident:
+        case kCtxSelectNextDoubtful: case kCtxSelectPrevDoubtful:
+        case kCtxSelectWeak64: case kCtxSelectWeak32: case kCtxSelectWeak16:
+        case kCtxSelectShortGrid: case kCtxSelectShortHalfGrid:
+            std::fputs(("VSM_SELECTION : " + juce::String(static_cast<int>(selectedNoteIds_.size()))
+                        + juce::String::fromUTF8(u8" note(s) choisie(s)\n")).toRawUTF8(), stderr);
+            break;
         default: break;
     }
 }

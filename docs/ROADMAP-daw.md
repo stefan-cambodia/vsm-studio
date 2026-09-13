@@ -22612,3 +22612,26 @@ correspondance qui exige un début exact compte comme fausses les notes RÉPÉT�
 d'une tenue. Sur des basses, cela déplace le résultat de 19 % à 60 %. La règle
 indulgente de D224 ne l'était pas assez, et c'est la mesure — pas le logiciel —
 qu'il a fallu corriger.
+
+### Phase D233 — toute sélection dit son compte (13/09/2026)
+
+Une sélection ne se lit pas sans souris : elle ne change ni le titre, ni un texte,
+et le piano roll la PEINT — la leçon de D149, qui a fait croire deux fois qu'un
+panneau n'affichait rien. D223 avait posé une ligne de journal pour UN geste ; les
+douze autres restaient muets, si bien qu'une course pouvait exécuter
+« Sélectionner les notes faibles » et n'avoir **rien à lire**. Le compte est
+maintenant dit par le dispatch commun, une fois, pour les treize gestes de
+sélection.
+
+**CE QUE LA MESURE A DIT** (`b4wuzthen`, piste `bass`, 738 notes au MIDI) :
+
+```
+« Tout sélectionner »           VSM_SELECTION : 738 note(s) choisie(s)
+« Les 10 % les moins sûres »    VSM_SELECTION :  74 note(s) choisie(s)
+« Toutes les notes douteuses »  VSM_SELECTION : 418 note(s) choisie(s)
+```
+
+Trois nombres qui se tiennent : 738 est exactement ce que le fichier MIDI porte
+sur cette piste, 74 en est le dixième, et 418 — 57 % — est la part de notes
+douteuses de CETTE piste, là où le projet entier est à 73 % (D223). Le compte du
+journal et celui du fichier disent la même chose.
