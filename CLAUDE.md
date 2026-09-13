@@ -255,6 +255,14 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   prendre un triton), et **un souffle tiré d'un générateur déterministe de même
   graine est IDENTIQUE d'une note à l'autre** et corrèle à zéro (décaler les
   fenêtres d'analyse). Quand un banc accuse, vérifier le banc avant la cible.
+- Une garde se vérifie EN LA FAISANT ÉCHOUER, et l'essai en rouge sert d'abord à
+  vérifier la GARDE. Le 13/09, `tools/gestes-vivants.py` — écrite pour attraper un
+  geste de menu qui ne fait rien — est restée VERTE quand on lui a remis le défaut
+  qu'elle devait attraper : elle comptait toute ligne `VSM_BOITE` comme « le geste
+  a dit pourquoi », alors qu'une fenêtre restée OUVERTE en imprime une aussi. Les
+  deux formes se distinguent d'un mot au journal (« sans réponse de banc »). Trois
+  gardes du même jour (D263, D266, D275) n'ont valu que parce qu'on les a vues
+  rouges ; celle-ci a d'abord échoué à échouer.
 - En zsh, `${PIPESTATUS[0]}` est VIDE : le tableau s'appelle `$pipestatus` et
   s'indexe à partir de 1 (`$pipestatus[1]`). Un `rc=${PIPESTATUS[0]}` rend une
   chaîne vide, et le `echo "rc=$rc"` qui suit affiche `rc=` — ce qui ressemble à
