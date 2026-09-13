@@ -279,6 +279,28 @@ l'espace cherché, alors que la résonance pèse bien davantage sur le timbre.
 
 ## 3. Phase 9 — Reconstruire un morceau, pas une note
 
+> **CE QUE LA TRANSCRIPTION FAIT ET NE FAIT PAS, MESURÉ LE 13/09/2026** (D252 à
+> D260 de `ROADMAP-daw.md`, sur **13 287 notes écrites** et **20 907 notes vraies**
+> de trois lots du corpus synthétique ; rejouable par
+> `tools/confiance-contre-verite.py <lot> [--categories]`) :
+>
+> | ce qu'on mesure | chiffre |
+> |---|---|
+> | notes écrites dont la hauteur est juste | 57 à 69 % selon le stem |
+> | notes écrites à l'OCTAVE de la vraie | **20 à 27 %** — le premier défaut d'écriture |
+> | notes **inventées** (rien ne sonne à cet instant) | **0,4 à 1,2 %** |
+> | notes vraies **jamais écrites** | **40,7 %** |
+> | notes vraies de **moins de 150 ms** jamais écrites | **96,7 %** |
+>
+> **La chaîne est prudente et sourde aux notes brèves.** Elle invente presque rien,
+> se trompe surtout d'octave (et, sur la basse, d'octave VERS LE BAS sept fois sur
+> huit), et laisse de côté 41 % de ce qui est joué — dont la quasi-totalité de ce
+> qui dure moins d'un sixième de seconde. Trois remèdes simples ont déjà été
+> éliminés par la mesure (D257, D258) : le registre trompe deux fois sur trois, le
+> « fantôme sous-octave » n'explique qu'une erreur sur six, et le contexte
+> harmonique plafonne à 46 %. **Le travail utile est donc (1) la détection
+> d'attaques brèves — B15 — puis (2) l'estimation de fondamentale — B14.**
+
 Aujourd'hui la chaîne s'arrête à la note. Il manque l'assemblage.
 
 | Étape | Contenu | Terminé quand |
