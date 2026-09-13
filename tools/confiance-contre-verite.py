@@ -50,6 +50,32 @@ def verite_du_morceau(dossier: Path) -> dict[int, list[float]]:
     return debuts
 
 
+def tenues_du_morceau(dossier: Path) -> list[tuple[float, float, int]]:
+    """(début, fin, hauteur) de chaque note vraie — pour savoir ce qui SONNE.
+
+    D232 : une règle qui exige un début exact compte comme fausses les notes
+    RÉPÉTÉES d'une tenue. Une ligne de basse tenue, re-articulée par le
+    transcripteur, joue la bonne note et tombait en faute : sur les basses les plus
+    sûres, cela déplace le résultat de 19 % à 60 %. La colonne « tenues » compte
+    juste toute note dont la hauteur SONNE à cet instant.
+    """
+    fichier = dossier / "verite.json"
+    if not fichier.is_file():
+        return []
+    v = json.loads(fichier.read_text(encoding="utf-8"))
+    tenues: list[tuple[float, float, int]] = []
+    for partie in v.get("parties", []):
+        for note in partie.get("notes", []):
+            hauteur, debut, duree = int(note[0]), float(note[2]), float(note[3])
+            tenues.append((debut, debut + duree, hauteur))
+    tenues.sort()
+    return tenues
+
+
+def sonne(tenues: list[tuple[float, float, int]], hauteur: int, instant: float) -> bool:
+    return any(d <= instant <= f and h == hauteur for d, f, h in tenues)
+
+
 def juste(debuts: dict[int, list[float]], hauteur: int, debut: float) -> bool:
     liste = debuts.get(hauteur)
     if not liste:
@@ -68,7 +94,7 @@ def main(argv: list[str]) -> int:
     lot = Path(argv[1])
     source = Path(argv[2]) if len(argv) > 2 else Path("reconstruction/travail/s1-sec")
     tranches = [(0.0, 0.35), (0.35, 0.45), (0.45, 0.55), (0.55, 0.65), (0.65, 0.80), (0.80, 1.01)]
-    comptes = {t: [0, 0] for t in tranches}   # [notes, justes]
+    comptes = {t: [0, 0, 0] for t in tranches}   # [notes, justes au début, + notes tenues]
     morceaux = 0
     for dossier in sorted(lot.glob("morceau-*")):
         rapport = dossier / "course" / "rapport.json"
@@ -78,31 +104,38 @@ def main(argv: list[str]) -> int:
         if not debuts:
             print(f"  {dossier.name} : aucune vérité, ignoré")
             continue
+        tenues = tenues_du_morceau(source / dossier.name)
         morceaux += 1
         r = json.loads(rapport.read_text(encoding="utf-8"))
         for stem in r.get("stems", []):
             for n in stem.get("noteConfidence", []) or []:
                 c = float(n["confidence"])
+                hauteur, instant = int(n["note"]), float(n["start"])
                 for t in tranches:
                     if t[0] <= c < t[1]:
                         comptes[t][0] += 1
-                        comptes[t][1] += 1 if juste(debuts, int(n["note"]), float(n["start"])) else 0
+                        au_debut = juste(debuts, hauteur, instant)
+                        comptes[t][1] += 1 if au_debut else 0
+                        comptes[t][2] += 1 if (au_debut or sonne(tenues, hauteur, instant)) else 0
                         break
     if morceaux == 0:
         print("aucun morceau mesurable")
         return 1
     print(f"{morceaux} morceau(x), tolérance {TOLERANCE * 1000:.0f} ms, règle indulgente "
           f"(hauteur + début, durée et partie ignorées)")
-    print(f"{'confiance':>14}  {'notes':>8}  {'justes':>8}  {'part':>6}")
-    total = [0, 0]
+    print(f"{'confiance':>14}  {'notes':>8}  {'justes':>8}  {'part':>6}  {'+ tenues':>8}")
+    total = [0, 0, 0]
     for t in tranches:
-        notes, justes = comptes[t]
+        notes, justes, tenues_aussi = comptes[t]
         total[0] += notes
         total[1] += justes
+        total[2] += tenues_aussi
         part = f"{100 * justes / notes:5.1f}%" if notes else "    --"
-        print(f"  [{t[0]:.2f} ; {t[1]:.2f})  {notes:8d}  {justes:8d}  {part}")
+        avec = f"{100 * tenues_aussi / notes:7.1f}%" if notes else "      --"
+        print(f"  [{t[0]:.2f} ; {t[1]:.2f})  {notes:8d}  {justes:8d}  {part}  {avec}")
     part = f"{100 * total[1] / total[0]:5.1f}%" if total[0] else "    --"
-    print(f"{'toutes':>14}  {total[0]:8d}  {total[1]:8d}  {part}")
+    avec = f"{100 * total[2] / total[0]:7.1f}%" if total[0] else "      --"
+    print(f"{'toutes':>14}  {total[0]:8d}  {total[1]:8d}  {part}  {avec}")
     # LE REVERS : combien de notes VRAIES n'ont aucune note transcrite en face.
     # Sans lui, « 44 % des notes transcrites sont justes » ne dit pas si la chaîne
     # INVENTE ou si elle OUBLIE -- deux défauts opposés, deux remèdes opposés.
