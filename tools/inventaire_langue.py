@@ -101,7 +101,7 @@ TRADUCTION = re.compile(r"\b(tr|trSelon|trPhrase|trGeste|translate|TRANS)\s*\(\s
 # peinture de la fenêtre d'historique (`trGeste`), donc jamais accolé à `tr(`.
 LIBELLE_DE_PAS = re.compile(r"\b(debutEdition|onEditStarted|beginProjectEdit)\s*\(\s*(u8)?\s*$")
 SORTIE = re.compile(r"fputs|stderr|stdout|std::cout|std::cerr|DBG\s*\(|printf")
-CATEGORIES = ("ECRAN", "SANS_PAIRE", "TERMINAL", "TABLE", "COMMANDE")
+CATEGORIES = ("ECRAN", "NU", "SANS_PAIRE", "TERMINAL", "TABLE", "COMMANDE")   # NU : D217
 
 
 def sans_commentaires(texte: str) -> str:
@@ -119,6 +119,38 @@ def decode(litteral: str) -> str:
         octets = re.sub(r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), litteral)
         return octets.encode("latin-1", "ignore").decode("utf-8", "ignore")
     return litteral
+
+
+# D217 : LES APPELS QUI POSENT UN TEXTE À L'ÉCRAN TEL QUEL. Un littéral donné
+# comme argument de l'un d'eux n'a aucune variable derrière lui : rien ne le
+# traduira plus tard, et la règle TABLE -- « traduite ailleurs » -- est fausse
+# pour lui. C'est le cas que D214 a trouvé à la main (le titre d'un FileChooser).
+PUITS = re.compile(
+    # `setName` N'EST PAS un puits : c'est l'identifiant d'un composant, que les
+    # bancs désignent (D150) -- le nom d'un ColourSelector montré dans une
+    # CallOutBox ne s'affiche nulle part. Première version de cette liste, il
+    # faisait crier la garde sur « Couleur de la piste ».
+    r"\b(FileChooser|AlertWindow|BoiteLisible|setButtonText|setTooltip|setTitle"
+    r"|addComboBox|addTextEditor|addTextBlock|addButton|addItem|addSubMenu|addSectionHeader"
+    r"|montrerBoite|montrerBoiteLisible|demanderOuiNon|showMessageBoxAsync|showYesNoCancelBox"
+    r"|showOkCancelBox|setText|dialogTitle)\b")
+
+
+def dans_un_appel_de_traduction(avant: str) -> bool:
+    """La chaîne qui suit `avant` est-elle DANS un `tr(...)`, même loin de lui ?
+
+    D217 : la règle de proximité (24 caractères) ne voit pas
+    `tr(n > 1 ? u8"…" : u8"…")`, où le `tr(` est à quarante caractères et où la
+    chaîne est pourtant traduite. On remonte donc au dernier appel de traduction et
+    l'on compte les parenthèses : si elles sont encore ouvertes à l'endroit de la
+    chaîne, elle est dedans. Sans cela, six ternaires honnêtes passaient pour des
+    littéraux nus — et une garde qui crie faux six fois sur treize ne sert plus.
+    """
+    for m in reversed(list(re.finditer(r"\btr(?:Selon|Phrase|Geste)?\(", avant))):
+        reste = avant[m.end():]
+        if reste.count("(") - reste.count(")") >= 0:
+            return True
+    return False
 
 
 def cles_de_la_table(langue: str) -> Set[str]:
@@ -261,7 +293,10 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
             elif SORTIE.search(instruction):
                 categorie = "TERMINAL"
             elif chaine in cles:
-                categorie = "TABLE"
+                # D217 : posé tel quel dans un appel qui AFFICHE -> personne ne le
+                # traduira. Compté à part pour ne pas déplacer le chiffre d'A9.
+                categorie = ("NU" if PUITS.search(avant) and not dans_un_appel_de_traduction(avant)
+                             else "TABLE")
             elif suivi and va_seulement_au_terminal(texte, debut, masque):
                 categorie = "TERMINAL"   # D106 : assemblée, puis écrite au terminal
             else:

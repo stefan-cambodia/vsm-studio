@@ -1,4 +1,5 @@
 #include "PianoRollRulerComponent.h"
+#include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 using namespace vsm::midi;
@@ -176,10 +177,14 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
                 if (std::abs(pianoRoll_.tickToX(project->markers[i].tick) - event.position.x) < 10.0f)
                     survole = static_cast<int>(i);
 
+        using vsm::app::ui::tr;   // D217, comme D83 pour l'arrangement
         juce::PopupMenu menu;
-        menu.addItem(1, u8"Poser un repère ici…");
-        menu.addItem(3, u8"Renommer ce repère…", survole >= 0);
-        menu.addItem(2, u8"Retirer ce repère", survole >= 0);
+        // D217 : PAR `tr()`. Ces trois libellés avaient déjà leur traduction dans
+        // la table et sortaient pourtant en français : le compteur les rangeait en
+        // TABLE (« traduite ailleurs »), et aucun relevé ne les avait regardés.
+        menu.addItem(1, tr(u8"Poser un repère ici…"));
+        menu.addItem(3, tr(u8"Renommer ce repère…"), survole >= 0);
+        menu.addItem(2, tr(u8"Retirer ce repère"), survole >= 0);
         menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
             if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
             if (choix == 3 && survole >= 0 && onMarkerRenameRequested)

@@ -21824,3 +21824,79 @@ coûte une ligne ; le corriger demande de distinguer « posé tel quel dans un a
 d'interface » de « assemblé puis traduit plus loin », ce qui est le sujet entier de
 D106 et de D150. La garde des doublons ferme la moitié du trou qui m'a coûté le
 plus cher aujourd'hui ; l'autre moitié attend une phase à elle.
+
+### Phase D217 — fermer l'autre moitié du trou : un littéral nu DANS un appel d'interface (13/09/2026)
+
+**CE QUE D216 A LAISSÉ.** La règle `TABLE` range un littéral nu dont le texte est
+une clé de la table, au motif qu'il est « traduit ailleurs, par une variable ».
+Vérifié dans le code du compteur : une chaîne n'atteint cette branche que si elle
+n'est PAS voisine d'un `tr(`. **`TABLE` est donc exactement la liste des littéraux
+nus qui ressemblent à une clé** — 251 entrées, dont la plupart sont légitimes (un
+message assemblé puis traduit plus loin, un nom de pas d'annulation) et dont
+certaines sont le défaut de D214.
+
+**LA DISTINCTION QUI TRANCHE, et elle est syntaxique** : un littéral posé
+directement comme ARGUMENT d'un appel d'interface — le titre d'un `FileChooser`,
+celui d'une `AlertWindow`, un `setButtonText`, un `addItem`, un `addComboBox`, un
+`addTextEditor`, un `addButton`, un `addTextBlock`, un `montrerBoite` — atteint
+l'écran tel quel. Aucune variable ne le traduira : il n'y a pas de variable.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Une catégorie de plus, `NU`, qui ne
+touche pas au chiffre d'A9 (`ECRAN` reste comparable à toutes les phases d'avant) :
+
+1. Le compte `NU` vaut **0** maintenant que D214 a corrigé le seul cas connu — si
+   la règle est juste et si ce cas était bien le seul.
+2. Remis à l'état d'avant D214 (le littéral nu de « Importer un MIDI dans le
+   projet… », repris de `git show`), le compte vaut **1** et nomme ce cas. C'est le
+   témoin : sans lui, un `0` ne prouverait que le silence de la règle.
+3. `ECRAN`, `SANS_PAIRE`, `TERMINAL` et `COMMANDE` ne bougent pas.
+
+Si le compte de l'attendu 1 n'est pas nul, ce qu'il nomme est à lire un par un :
+chaque entrée est soit un défaut du même ordre, soit une limite de la règle à
+écrire.
+
+**CE QUE LA MESURE A DIT, ET CE QU'ELLE A COÛTÉ POUR LE DIRE.**
+
+Premier jet de la règle : `NU 13`. **Six des treize étaient faux** — des ternaires
+honnêtes, `tr(n > 1 ? u8"…" : u8"…")`, où le `tr(` est à quarante caractères de la
+chaîne et où la règle de proximité (vingt-quatre caractères) ne le voit pas. Une
+garde qui crie faux six fois sur treize ne sert plus : on ne remonte donc plus par
+la distance mais par les PARENTHÈSES — le dernier appel de traduction, et si elles
+sont encore ouvertes à l'endroit de la chaîne, elle est dedans. Un septième était
+faux pour une autre raison : `setName("Couleur de la piste")` sur un
+`ColourSelector` montré dans une `CallOutBox` — un nom de composant, que les bancs
+désignent, et qui ne s'affiche nulle part (la leçon de D150, reprise dans le
+commentaire de la liste).
+
+Restent **trois défauts, tous les trois réels**, et tous dans le même menu :
+
+```
+ui/PianoRollRulerComponent.cpp:180: Poser un repère ici…
+ui/PianoRollRulerComponent.cpp:181: Renommer ce repère…
+ui/PianoRollRulerComponent.cpp:182: Retirer ce repère
+```
+
+Le menu du clic droit de la règle du piano roll sortait **en français dans
+l'interface anglaise**, alors que ses trois libellés ont leur traduction dans la
+table depuis toujours. Corrigés par `tr()` : `NU` passe de 3 à **0**.
+
+| Mesure | `ECRAN` | `NU` | `SANS_PAIRE` |
+|---|---|---|---|
+| avant D214 (témoin, `git show HEAD~2`) | 7 | **1** — « Importer un MIDI dans le projet... », `MainComponent.cpp:8094` | 0 |
+| avant D217 | 7 | 3 (les trois de la règle) | 0 |
+| après D217 | 7 | **0** | 0 |
+
+Le témoin est le cœur de la mesure : sur le code d'avant D214, la garde neuve
+nomme **exactement** le littéral que j'avais trouvé à la main, à la ligne près.
+Sans ce témoin, `NU 0` ne prouverait que le silence de la règle.
+
+**CE QUI EST DÉCIDÉ, ET POURQUOI.** Le menu de la règle n'est atteignable par aucun
+banc : il est construit sur place dans `mouseDown` et montré par `showMenuAsync`,
+hors de portée de `VSM_MENU_LISTE` (qui lit la barre) comme de `VSM_MENU_CONTEXTE`
+(qui connaît l'arrangement, le piano roll et les effets). **C'est précisément pour
+cela que le défaut a vécu si longtemps.** La vérification retenue n'est donc pas
+une course mais la chaîne suivante : les trois libellés passent par `tr()`, leurs
+clés ont leur paire anglaise (`SANS_PAIRE 0` le dit), et la garde qui les a trouvés
+rend 0 avec un témoin positif. Un hameçon de banc pour ce menu est **nommé et non
+fait** : il demanderait de sortir la construction du menu dans une fonction
+partagée, comme D115 l'a fait pour le piano roll, et cela vaut une phase à elle.
