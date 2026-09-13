@@ -39,7 +39,7 @@ enum ContextMenuId {
     kCtxUndo = 100000, kCtxRedo,
     kCtxCut = 100010, kCtxCopy, kCtxPaste, kCtxDelete, kCtxDuplicate,
     kCtxSelectAll = 100020, kCtxSelectNone, kCtxSelectInvert, kCtxSelectSamePitch,
-    kCtxSelectNextDoubtful, kCtxSelectPrevDoubtful, kCtxSelectDoubtful,
+    kCtxSelectNextDoubtful, kCtxSelectPrevDoubtful, kCtxSelectDoubtful, kCtxSelectLeastConfident,
     kCtxSelectWeak64 = 100420, kCtxSelectWeak32, kCtxSelectWeak16, kCtxSelectShortGrid, kCtxSelectShortHalfGrid,
     kCtxTransposeUp = 100030, kCtxTransposeDown, kCtxOctaveUp, kCtxOctaveDown,
     kCtxQuantizeFull = 100040, kCtxQuantizeHalf, kCtxQuantizeEnds, kCtxHumanize,
@@ -556,6 +556,17 @@ void PianoRollComponent::selectDoubtfulNotes() {
     repaint();
 }
 
+void PianoRollComponent::selectLeastConfidentNotes() {
+    if (Track* track = activeTrack())
+        selectedNoteIds_ = vsm::sequencer::selectLeastConfident(track->notes, 0.10);
+    // LE COMPTE, AU JOURNAL : la sélection ne se lit pas sans souris, et c'est par
+    // ce chiffre qu'une course prouve que le geste désigne une minorité (D223).
+    std::fputs(("VSM_SELECTION : " + juce::String(static_cast<int>(selectedNoteIds_.size()))
+                + juce::String::fromUTF8(u8" note(s) parmi les moins sûres\n")).toRawUTF8(), stderr);
+    notifyEditState();
+    repaint();
+}
+
 void PianoRollComponent::selectNextDoubtfulNote(bool forward) {
     Track* track = activeTrack();
     if (!track) return;
@@ -991,6 +1002,19 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
                        douteuses > 0 ? tr("Toutes les notes douteuses") + " (" + juce::String(static_cast<int>(douteuses)) + ")"
                                      : tr("Toutes les notes douteuses"),
                        douteuses > 0);
+    // D223 (A39) : LES PIRES D'ABORD. Mesuré sur six reconstructions, « douteuse »
+    // couvre de 53 à 91 % des notes : l'entrée ci-dessus en choisit 2 600 sur
+    // b4wuzthen, ce qui ne dit plus par où commencer. Celle-ci en désigne toujours
+    // une minorité, par leur RANG de confiance et non par un seuil, et son libellé
+    // dit combien -- c'est le geste qu'on attend d'une marque de doute.
+    const size_t notesDeLaPiste = activeTrack() != nullptr ? activeTrack()->notes.size() : 0;
+    const size_t dixPourCent = notesDeLaPiste == 0 ? 0
+                                                   : std::max<size_t>(1, (notesDeLaPiste + 5) / 10);
+    selectMenu.addItem(kCtxSelectLeastConfident,
+                       dixPourCent > 0
+                           ? tr(u8"Les 10 % les moins sûres") + " (" + juce::String(static_cast<int>(dixPourCent)) + ")"
+                           : tr(u8"Les 10 % les moins sûres"),
+                       dixPourCent > 0);
     // D21.1 : LES NOTES FANTÔMES D'UNE TRANSCRIPTION -- faibles, ou d'un
     // soixante-quatrième -- se choisissent d'un coup, à des seuils FIXES
     // plutôt que par une boîte de dialogue, pour que le geste enchaîne avec
@@ -1126,6 +1150,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectNextDoubtful: selectNextDoubtfulNote(true); break;
         case kCtxSelectPrevDoubtful: selectNextDoubtfulNote(false); break;
         case kCtxSelectDoubtful:   selectDoubtfulNotes(); break;
+        case kCtxSelectLeastConfident: selectLeastConfidentNotes(); break;   // D223
         case kCtxSelectWeak64:     selectBelowVelocity(64); break;
         case kCtxSelectWeak32:     selectBelowVelocity(32); break;
         case kCtxSelectWeak16:     selectBelowVelocity(16); break;

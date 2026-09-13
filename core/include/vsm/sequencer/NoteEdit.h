@@ -231,6 +231,12 @@ size_t countDoubtfulNotes(const std::vector<Note>& notes, float threshold = kDou
 /// Toutes les notes douteuses de la piste (pour les écouter, les rendre
 /// muettes ou les supprimer d'un seul geste).
 NoteSelection selectDoubtfulNotes(const std::vector<Note>& notes, float threshold = kDoubtfulNoteThreshold);
+/// D223 (A39) : les `part` × N notes de PLUS BASSE confiance, quel que soit le
+/// seuil -- mesuré : « douteuse » couvre de 53 à 91 % des notes des
+/// reconstructions réelles, et ne désigne donc plus par où commencer. Au moins
+/// une note dès qu'il y en a ; à confiance égale, l'ordre des notes tranche, pour
+/// que deux appels rendent la même sélection.
+NoteSelection selectLeastConfident(const std::vector<Note>& notes, double part = 0.10);
 
 /// La note douteuse suivante (ou précédente) dans l'ordre du morceau -- tick
 /// de début, puis hauteur, puis identifiant, pour que l'ordre soit total.

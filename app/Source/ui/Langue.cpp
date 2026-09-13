@@ -1042,6 +1042,10 @@ const Paire kAnglais[] = {
     // D195 : la boîte du projet déjà ouvert ailleurs.
     // D211 : la question devant tout geste qui jette le projet, et D212 le
     // titre d'un projet neuf et la phrase du MIDI introuvable.
+    // D223 (A39) : le geste qui désigne une minorité, et la part dite au rapport.
+    { "Les 10 % les moins sûres", "The 10% least certain" },
+    { "%#1 note(s) signalée(s) comme douteuses sur %#2 transcrite(s), soit %#3 % : elles sont marquées dans le piano roll, la touche D y mène une par une, et « Les 10 % les moins sûres » donne les pires d'abord",
+      "%#1 note(s) flagged as doubtful out of %#2 transcribed, that is %#3% : they are marked in the piano roll, the D key steps through them, and “The 10% least certain” gives the worst first" },
     { "Abandonner les modifications ?", "Discard changes?" },
     { "Continuer sans enregistrer", "Continue without saving" },
     { "Vintage Synth MIDI Studio -- nouveau projet", "Vintage Synth MIDI Studio -- new project" },

@@ -606,6 +606,37 @@ NoteSelection selectDoubtfulNotes(const std::vector<Note>& notes, float threshol
     return result;
 }
 
+// D223 (A39) : LES MOINS SÛRES, EN PROPORTION -- parce que le seuil absolu ne
+// désigne plus une minorité. Mesuré sur six reconstructions : « douteuse » couvre
+// de 53 à 91 % des notes, et une marque qui porte sur trois notes sur quatre ne
+// dit plus par où commencer. Ce geste-ci ne dépend d'aucun seuil : il rend les
+// `part` × N notes de plus basse confiance, ce qu'on veut vraiment d'une telle
+// marque -- les pires d'abord.
+//
+// À ÉGALITÉ DE CONFIANCE, L'ORDRE EST CELUI DES NOTES (début, hauteur,
+// identifiant) : sans cela, deux appels sur le même morceau rendraient deux
+// sélections différentes, et la touche qui mène « à la suivante » sauterait.
+NoteSelection selectLeastConfident(const std::vector<Note>& notes, double part) {
+    NoteSelection result;
+    if (notes.empty() || part <= 0.0) return result;
+    const double borne = part >= 1.0 ? 1.0 : part;
+    // Au moins UNE note dès qu'il y en a : « les 10 % les moins sûres » d'un
+    // morceau de trois notes en rend une, et non zéro.
+    const size_t combien = std::max<size_t>(
+        1, static_cast<size_t>(std::llround(static_cast<double>(notes.size()) * borne)));
+    std::vector<const Note*> triees;
+    triees.reserve(notes.size());
+    for (const auto& n : notes) triees.push_back(&n);
+    std::stable_sort(triees.begin(), triees.end(), [](const Note* a, const Note* b) {
+        if (a->confidence != b->confidence) return a->confidence < b->confidence;
+        if (a->startTick != b->startTick) return a->startTick < b->startTick;
+        if (a->number != b->number) return a->number < b->number;
+        return a->id < b->id;
+    });
+    for (size_t i = 0; i < combien && i < triees.size(); ++i) result.insert(triees[i]->id);
+    return result;
+}
+
 namespace {
 
 /// Clé d'ordre total sur les notes : début, hauteur, identifiant.

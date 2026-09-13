@@ -6286,11 +6286,24 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
             size_t douteuses = 0;
             for (const auto& piste : project_.tracks)
                 douteuses += vsm::sequencer::countDoubtfulNotes(piste.notes);
-            if (douteuses > 0)
-                rapport.add(juce::String(u8"%#1 note(s) signalée(s) comme douteuses sur %#2 transcrite(s) : elles sont "
-                                         u8"marquées dans le piano roll, et la touche D y mène une par une")
+            // D223 (A39) : LA PART, ET PAS SEULEMENT LE COMPTE. « 2 600 notes »
+            // se lit comme un incident ; « 2 600 sur 3 568, soit 73 % » se lit pour
+            // ce que c'est -- une marque qui porte sur le morceau entier, et non
+            // vingt notes à revoir. Mesuré sur six reconstructions : de 53 à 91 %.
+            // Le geste qui désigne vraiment une minorité est dans le piano roll
+            // (« Les 10 % les moins sûres »), et la phrase y mène.
+            if (douteuses > 0) {
+                const int part = marquees > 0
+                                     ? static_cast<int>(std::llround(100.0 * static_cast<double>(douteuses)
+                                                                     / static_cast<double>(marquees)))
+                                     : 0;
+                rapport.add(juce::String(u8"%#1 note(s) signalée(s) comme douteuses sur %#2 transcrite(s), soit %#3 % : "
+                                         u8"elles sont marquées dans le piano roll, la touche D y mène une par une, et "
+                                         u8"« Les 10 % les moins sûres » donne les pires d'abord")
                                 .replace("%#1", juce::String(static_cast<int>(douteuses)))
-                                .replace("%#2", juce::String(static_cast<int>(marquees))));
+                                .replace("%#2", juce::String(static_cast<int>(marquees)))
+                                .replace("%#3", juce::String(part)));
+            }
             // D53 : LA DISTANCE N'EST PAS AJOUTÉE ICI, ET LA RAISON EST
             // ÉCRITE PLUTÔT QUE TUE. Cette liste alimente la boîte « Projet
             // ouvert, avec des reserves » : une distance n'est pas une

@@ -377,6 +377,29 @@ std::vector<Note> makeDoubtfulNotes() {
 }
 } // namespace
 
+// D223 (A39) : LES MOINS SÛRES, EN PROPORTION. Le seuil absolu désigne 53 à 91 %
+// des notes des reconstructions réelles ; ce geste-ci en désigne toujours une
+// minorité, choisie par le bas.
+VSM_TEST(least_confident_notes_are_a_share_not_a_threshold) {
+    auto notes = makeDoubtfulNotes();              // six notes : 1, 0.30, 1, 0.10, 0.50, 0.90
+    // 10 % de six notes fait 0,6 -> une note, la plus basse (id 4, confiance 0,10).
+    VSM_ASSERT(selectLeastConfident(notes, 0.10) == (NoteSelection{4}));
+    // La moitié : les trois plus basses (0,10 ; 0,30 ; 0,50) -- exactement les
+    // douteuses ici, mais par leur RANG et non par le seuil.
+    VSM_ASSERT(selectLeastConfident(notes, 0.50) == (NoteSelection{2, 4, 5}));
+    // Tout : toutes les notes, sans exception.
+    VSM_ASSERT_EQ(selectLeastConfident(notes, 1.0).size(), notes.size());
+    // Au moins une dès qu'il y en a, et rien sur une piste vide.
+    VSM_ASSERT_EQ(selectLeastConfident(notes, 0.0001).size(), size_t{1});
+    VSM_ASSERT(selectLeastConfident(std::vector<Note>{}, 0.10).empty());
+    // Une piste saisie à la main (confiance 1 partout) : le geste rend quand même
+    // une note -- « les 10 % les moins sûres » d'un ensemble sûr existe, et c'est
+    // à l'appelant de savoir qu'il n'y a rien à revoir.
+    VSM_ASSERT_EQ(selectLeastConfident(makeNotes(), 0.25).size(), size_t{1});
+    // DEUX APPELS, LA MÊME SÉLECTION : à confiance égale, l'ordre des notes tranche.
+    VSM_ASSERT(selectLeastConfident(makeNotes(), 0.50) == selectLeastConfident(makeNotes(), 0.50));
+}
+
 VSM_TEST(doubtful_notes_are_counted_and_selected_by_threshold) {
     auto notes = makeDoubtfulNotes();
     VSM_ASSERT_EQ(countDoubtfulNotes(notes), size_t{3});

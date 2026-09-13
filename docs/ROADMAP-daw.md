@@ -22131,3 +22131,66 @@ ajoutée par `VSM_IMPORT_AUDIO` quand il en fallait une) :
    n'avait pas de clef pour elle et l'a dit — « aucune clef de cette fenêtre
    (« Tempo du clip ») parmi mesures » — au lieu de la valider à l'aveugle. Sans
    cette règle, la course aurait répondu « oui » à une question qu'elle n'a pas lue.
+
+### Phase D223 (A39) — « note douteuse » désigne les trois quarts des notes (13/09/2026)
+
+**LA MESURE QUI OUVRE L'ANOMALIE.** En ouvrant `cdl` pour une autre course, le
+rapport d'ouverture a dit : « 1177 note(s) signalée(s) comme douteuses sur 2219
+transcrite(s) ». Plus d'une note sur deux. La part a été relevée sur six
+reconstructions, en lisant les confiances note à note de leurs `rapport.json` :
+
+| Projet | notes | sous 0,55 | part | déciles 10/25/50/75/90 |
+|---|---|---|---|---|
+| `cdl` | 2 219 | 1 177 | **53,0 %** | 0,37 0,44 0,54 0,63 0,71 |
+| `b4-v4` | 3 205 | 2 315 | **72,2 %** | 0,35 0,40 0,47 0,56 0,63 |
+| `children-c3-plafond` | 7 414 | 5 140 | **69,3 %** | 0,35 0,40 0,48 0,57 0,64 |
+| `b4wuzthen` | 3 568 | 2 600 | **72,9 %** | 0,35 0,40 0,47 0,56 0,64 |
+| `usandthem-parite` | 5 123 | 4 061 | **79,3 %** | 0,34 0,38 0,44 0,53 0,63 |
+| `sky-parite` | 5 434 | 4 955 | **91,2 %** | 0,32 0,36 0,41 0,47 0,54 |
+
+**CE QUE CELA VEUT DIRE.** Le seuil `kDoubtfulNoteThreshold = 0,55f` porte un
+commentaire honnête : « au-dessus, la transcription est franche dans les cas
+mesurés ; en dessous, elle a hésité ». Les cas mesurés n'étaient pas ceux-là. Une
+marque qui couvre 53 à 91 % des notes **ne désigne plus rien** : la touche D, qui
+mène « une par une » aux notes douteuses, en propose 2 600 sur un morceau, et la
+phrase du rapport d'ouverture effraie sans informer.
+
+**CE QUI EST DÉCIDÉ, ET POURQUOI.** Recalibrer le seuil demande une VÉRITÉ — savoir
+si une confiance basse annonce vraiment une note fausse —, et cette vérité existe :
+le corpus synthétique la porte. Elle sera lue quand la campagne en cours aura fini
+d'écrire (la règle du projet interdit de toucher à `analyse/analyzer/` pendant une
+course). **Le seuil ne bouge donc pas aujourd'hui** : le changer au jugé
+remplacerait un chiffre non mesuré par un autre.
+
+Ce qui change aujourd'hui est ce qui se décide sans vérité :
+
+1. **La part est DITE**, et pas seulement le compte : « 2 600 note(s) sur 3 568,
+   soit 73 % » se lit tout autrement que « 2 600 ». Un musicien qui voit 73 %
+   comprend que la marque parle du morceau entier, pas de vingt notes à revoir.
+2. **Un geste qui désigne vraiment une minorité** : « Sélectionner les 10 % les
+   moins sûres », à côté de « Sélectionner les notes douteuses ». C'est ce qu'on
+   veut de cette marque — les pires d'abord —, et cela ne dépend d'aucun seuil.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** :
+
+1. Sur `b4wuzthen`, le nouveau geste sélectionne **357 notes** (10 % de 3 568),
+   et non 2 600.
+2. Le rapport d'ouverture dit la part : « … sur 3 568 transcrite(s), soit 73 % ».
+3. Les tests de `NoteEdit` passent, le nouveau compris : sur dix notes de
+   confiances distinctes, le geste en rend **une**, la plus basse.
+
+**CE QUE LA MESURE A DIT.**
+
+| Attendu | Résultat |
+|---|---|
+| 1. le geste rend 357 notes (10 % de 3 568) | **réfuté dans son nombre, tenu dans sa règle** : 74 notes — et 74 est 10 % des 738 notes de la piste `bass`, la piste ACTIVE. Sur `guitar` (338 notes) le même geste en rend **34**. Le piano roll travaille par piste, comme tous ses autres gestes de sélection ; c'est l'attendu qui parlait du projet entier |
+| 2. le rapport dit la part | tenu : « 2600 note(s) signalée(s) comme douteuses sur 3568 transcrite(s), **soit 73 %** : … et « Les 10 % les moins sûres » donne les pires d'abord » |
+| 3. les tests de `NoteEdit`, le neuf compris | tenu : **331 réussis, 0 échoué** (330 avant) — dont, sur six notes, une seule rendue à 10 %, les trois plus basses à 50 %, toutes à 100 %, une au moins sur une piste sûre, et **deux appels rendant la même sélection** |
+
+**CE QUI RESTE, NOMMÉ, CHIFFRÉ ET NON FAIT** : recalibrer
+`kDoubtfulNoteThreshold`. La vérité qui le permettrait est dans le corpus
+synthétique — pour chaque note transcrite, le corpus sait si elle est juste — et
+la campagne en cours écrit encore dedans. La question à lui poser est écrite ici
+pour ne pas être tordue après : **parmi les notes sous 0,55, quelle part est
+réellement fausse, et cette part décroît-elle quand la confiance monte ?** Si la
+confiance ne prédit rien, le seuil n'est pas à régler mais la mesure à refaire.

@@ -182,6 +182,9 @@ public:
     /// jusqu'à la note sans changer le zoom -- ou les prendre toutes.
     void selectNextDoubtfulNote(bool forward);
     void selectDoubtfulNotes();
+    /// D223 (A39) : les 10 % de notes les moins sûres de la piste, par leur rang
+    /// de confiance -- le seuil absolu en désigne 53 à 91 %.
+    void selectLeastConfidentNotes();
     /// D21.1 : les notes fantômes d'une transcription, par vélocité ou par durée.
     void selectBelowVelocity(uint8_t velocity);
     void selectShorterThan(vsm::midi::Tick ticks);
