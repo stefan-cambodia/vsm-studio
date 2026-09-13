@@ -23221,3 +23221,31 @@ se comparer.
 « env: « time »: Aucun fichier ou dossier de ce nom » au lieu de neuf durées. La
 différence avec D215 tient à une seule chose : **la sortie d'erreur n'était pas
 filtrée**. Le même défaut, muet la première fois, criard la seconde.
+
+### La soirée du 13/09/2026, en un coup d'œil (D234 à D245)
+
+Douze phases de plus après une veille de recharge, **une anomalie qui détruisait
+des données** (A41), deux gardes neuves, et une méthode qui s'est confirmée : *un
+geste est une promesse, et la promesse se lit dans le fichier écrit derrière.*
+
+| phases | ce qui a été trouvé | le chiffre |
+|---|---|---|
+| **D234 (A41)** | **le premier point d'automation effaçait TOUTES les courbes du projet** — le panneau ne lisait jamais les courbes qu'il publiait | 606 points → **1** avant ; 606 → **607** après |
+| **D235** | les deux gestes « définitifs » étaient les seuls que personne ne pouvait vérifier | « Intro, Intro » aplati → **deux clips de 15 360 ticks** |
+| **D236** | neuf gestes du piano roll, mesurés sur le `.mid`, avec leur témoin | quantifier : **2 219 / 2 219** sur la grille ; legato : **0** silence |
+| **D237** | le crochet du banc ouvrait un menu que la souris n'ouvre jamais (clip non choisi) | coupure au tick **15 360**, jointure à **296 741** |
+| **D238** | six gestes du clip audio, lus dans le projet écrit | « -3 dB » = **0,70794576** ; normaliser = **1 / crête réelle** |
+| **D239** | cinq gestes de piste, et la copie emporte ses notes | 798 notes des deux côtés |
+| **D240** | les promesses mises sous garde | **sept** gardées, 0 rompue |
+| **D241** | le TROISIÈME geste « définitif » ne demandait rien | 2 219 notes → 2 219, chaîne vidée |
+| **D242** | la vélocité, quatre gestes | « +10 % » = **+10,07 %** ; crescendo **46,1 → 103,5** |
+| **D243** | le miroir est exact — une seule somme, **124** = min + max | et deux de mes attendus étaient mal posés |
+| **D244** | les statistiques confrontées au fichier | **5 931 notes** des deux côtés |
+| **D245** | l'attente à l'ouverture, jamais mesurée | **3,8 s** pour onze pistes et 308 Mo |
+
+**Trois erreurs de mesure prises à temps**, toutes de la même famille — la mesure
+regardait mon idée du logiciel au lieu du logiciel : des pixels VERTS sur un
+vumètre qui suit la palette (D225), une coupe d'image dix pixels sous le clip
+(D234), et la clé `pitchSemitones` cherchée là où le disque écrit `pitch` (D238).
+Et **trois fois** la comparaison de deux listes triées, désormais écrite dans
+`CLAUDE.md`.
