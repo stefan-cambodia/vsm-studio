@@ -21005,3 +21005,28 @@ divergent », et ce sera exact. Son en-tête le dit maintenant, pour que personn
 n'aille chercher un bogue là où il y a une limite. **La chaîne d'analyse ne
 fabrique jamais de projet pareil** : elle ne choisit que parmi les 63 machines
 internes, et aucune distance publiée n'en dépend.
+
+### Phase D201 — `VSM_CHOIX=n` : la fenêtre qui s'annonçait sans pouvoir être répondue (13/09/2026)
+
+**LE TROU, TROUVÉ EN VOULANT VÉRIFIER D200.** Un fichier CLAP peut contenir
+plusieurs plugins — **celui que ce dépôt exporte en contient vingt-quatre** — et
+l'application demande alors lequel charger. Cette fenêtre **s'annonçait** depuis
+D102 (`VSM_CHOIX`, ses textes sur la sortie d'erreur) mais **ne se répondait
+pas** : tout banc qui voulait charger un plugin CLAP s'arrêtait là, et le chemin
+par lequel un musicien choisit son instrument restait invérifiable. C'est la
+troisième fois aujourd'hui — après « Ouvrir un projet VSM… » (D181) et
+« Exporter MIDI… » (D197) — qu'un chemin d'usage courant se révèle hors de portée
+du banc.
+
+**`VSM_CHOIX=n` prend le n-ième de la liste**, à partir de 1, celui-là même que
+la fenêtre affiche. Mesuré :
+
+| cas | **relevé** |
+|---|---|
+| `VSM_CHOIX=3` | `VSM_CHOIX : rang 3 pris par le banc — DX7-style FM Synthesis`, puis `Plugin chargé : DX7-style FM Synthesis joue maintenant sur la piste 1`, et le projet enregistré porte `clap:…#com.vsmstudio.dx7` |
+| **témoin**, `VSM_CHOIX=999` | `VSM_CHOIX : rang 999 hors de la liste (24 plugins), rien n'a été chargé` — **et rien n'est chargé** |
+
+**LE TÉMOIN COMPTE AUTANT QUE LE CAS.** Un banc qui prendrait le premier plugin
+quand le rang est faux mesurerait une machine que personne n'a demandée, et la
+capture montrerait un résultat vraisemblable et faux — c'est le piège de D38,
+écrit dans `CLAUDE.md`. Le rang hors liste ne charge rien **et le dit**.

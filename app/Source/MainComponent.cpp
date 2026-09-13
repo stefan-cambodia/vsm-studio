@@ -4481,6 +4481,28 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
         fenetre->addButton(tr(u8"Charger"), 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         annoncerFenetre(*fenetre);   // D102
+        // D201 : `VSM_CHOIX=n` RÉPOND À LA FENÊTRE, sans souris. Elle
+        // s'ANNONÇAIT depuis D102, elle ne se RÉPONDAIT pas : un fichier CLAP
+        // qui contient plusieurs plugins — celui que ce dépôt exporte en
+        // contient vingt-quatre — arrêtait donc tout banc qui voulait charger un
+        // plugin, et le chemin par lequel un musicien choisit son instrument
+        // restait invérifiable. `n` est le rang dans la liste, à partir de 1,
+        // celui-là même que la fenêtre affiche.
+        if (const char* choixDeBanc = std::getenv("VSM_CHOIX");
+            choixDeBanc != nullptr && *choixDeBanc) {
+            const int rang = juce::String(choixDeBanc).getIntValue();
+            if (rang >= 1 && static_cast<size_t>(rang) <= trouves.size()) {
+                std::fputs(("VSM_CHOIX : rang " + std::to_string(rang) + " pris par le banc \u2014 "
+                            + trouves[static_cast<size_t>(rang) - 1].name + "\n").c_str(), stderr);
+                poser(trouves[static_cast<size_t>(rang) - 1].id,
+                       trouves[static_cast<size_t>(rang) - 1].name);
+            } else {
+                std::fputs(("VSM_CHOIX : rang " + std::to_string(rang) + " hors de la liste ("
+                            + std::to_string(trouves.size()) + " plugins), rien n'a \u00e9t\u00e9 charg\u00e9\n").c_str(),
+                           stderr);
+            }
+            return;
+        }
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [fenetre, trouves, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
