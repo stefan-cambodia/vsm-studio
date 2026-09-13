@@ -20543,3 +20543,68 @@ la même course, à la même minute, et c'est précisément pour cela que person
 n'aurait pensé à les comparer. Les deux cas ci-dessus ferment la question, et
 `tools/comparer-rendus.sh` couvre désormais l'autre moitié (application contre
 `vsm-render`).
+
+### D193 (attendus) — le cinquante-septième audit : mes propres boîtes, à 150 % (13/09/2026)
+
+**POURQUOI M'AUDITER MOI-MÊME.** A13 et A15 (D117 à D127) ont montré que les
+boîtes de JUCE coupent mal dès que le texte s'allonge : « minutes. » seul sur une
+ligne, « it. » orphelin, un mot isolé sous un paragraphe. J'ai ajouté aujourd'hui
+**deux textes longs** sans les regarder :
+
+- D184 : « fichier MIDI introuvable : midi/arrangement.mid — le reste du projet
+  est intact (12 piste(s), 5 machine(s)) : remettez ce fichier en place » ;
+- D175 : la question « Quitter sans enregistrer ? », avec **trois** boutons.
+
+Les avoir mesurés au terminal (`VSM_BOITE`) ne dit rien de leur mise en page :
+c'est exactement l'erreur que D152 a nommée — une phrase peinte se lit sur la
+PHOTO, pas dans un relevé.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** À l'échelle d'interface **150 %**,
+les deux boîtes photographiées :
+
+1. **Aucun mot orphelin** — pas de dernière ligne réduite à un mot ou à une
+   fraction (« place », « ? »).
+2. **Rien n'est coupé** : le texte entier tient dans la boîte, et les trois
+   boutons de la question tiennent sur leur rang.
+3. **Réfuté sinon**, et le remède est connu : `BoiteLisible` (D121), qui impose
+   la largeur de la ligne la plus longue.
+
+### Phase D193 — mes propres boîtes, regardées : la mise en page tient, l'anglais ne tenait pas (13/09/2026)
+
+**LES DEUX ATTENDUS DE MISE EN PAGE SONT TENUS**, sur photo, à 150 % :
+
+| boîte | français | anglais |
+|---|---|---|
+| D184, « Projet illisible » | deux lignes équilibrées, **aucun mot orphelin**, rien de coupé | idem (« Unreadable project ») |
+| D175, « Quitter sans enregistrer ? » | message sur une ligne, **les trois boutons sur leur rang** | idem après correction |
+
+**MAIS LA PHOTO A TROUVÉ AUTRE CHOSE, et c'est pour cela qu'on la prend.** En
+anglais, la question de fermeture sortait **mi-française** :
+
+```
+VSM_BOITE : Quitter sans enregistrer ? : Ce projet porte des modifications
+qui ne sont pas enregistrées. : [Save | Quitter sans enregistrer | Cancel]
+```
+
+Deux boutons traduits (« Save », « Cancel », qui existaient déjà dans la table),
+le titre, le message et le troisième bouton **restés en français** : les trois
+chaînes que D175 avait écrites la veille n'avaient **aucune traduction**. C'est
+exactement la famille A9, rouverte par mon propre correctif — et ni le relevé de
+textes ni l'inventaire ne l'auraient dit, puisqu'une boîte n'est pas un composant
+de la fenêtre. **Les trois chaînes sont posées**, et la boîte anglaise se lit
+maintenant « Quit without saving? / This project has changes that are not saved. /
+[Save | Quit without saving | Cancel] ».
+
+**ET UN PIÈGE DU DÉPÔT REPAYÉ, dit pour la sixième fois** : ces trois entrées ont
+d'abord été écrites en `u8"…"`, comme les modèles de phrases voisins. La table des
+chaînes, elle, prend des `const char*` — « conversion invalide de `const char8_t*`
+vers `const char*` », cinq fois dans le journal de compilation. `CLAUDE.md` le
+nomme depuis D89 ; il faut lire le TYPE du tableau qu'on complète, pas le style de
+la ligne d'à côté.
+
+**ET L'INSTRUMENT A ÉTÉ CORRIGÉ AU PASSAGE.** `VSM_FERMER` déclenchait la question
+dans le rappel de la photo : la fenêtre modale n'était pas encore posée, et
+`VSM_CAPTURE_PANNEAUX` ne la photographiait pas — la course de D72, revue une
+fois de plus. Le verbe est passé **avec les autres**, avant le délai de capture :
+la boîte a le temps d'exister, et la photo la montre. Sans ce déplacement, D193
+n'aurait rien pu regarder — et l'anglais mi-français serait passé.

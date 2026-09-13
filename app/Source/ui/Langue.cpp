@@ -1037,6 +1037,14 @@ const Paire kAnglais[] = {
       "Quantise the last take (piano roll grid)" },
     { "Quinte (power)",
       "Fifth (power)" },
+    // D193 : les trois chaînes de la question de fermeture (D175), restées
+    // françaises dans l'interface anglaise — vues sur la PHOTO, pas au relevé.
+    { "Quitter sans enregistrer ?",
+      "Quit without saving?" },
+    { "Quitter sans enregistrer",
+      "Quit without saving" },
+    { "Ce projet porte des modifications qui ne sont pas enregistrées.",
+      "This project has changes that are not saved." },
     { "Quitter",
       "Quit" },
     { "Raccourcis clavier (%1)...",

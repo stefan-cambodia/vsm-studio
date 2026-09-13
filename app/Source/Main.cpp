@@ -384,6 +384,19 @@ public:
             // tranche muette hors de la sélection, ce qui ressemblait trait
             // pour trait au défaut cherché. **L'ordre des variables d'un banc
             // fait partie du banc.**
+            // D193 : VSM_FERMER=1 -- la VRAIE fermeture, celle de l'utilisateur,
+            // AVEC LES AUTRES VERBES et non dans le rappel de la photo.
+            //
+            // Posée dans le rappel, la boîte était demandée et l'autoportrait
+            // pris dans le MÊME message : la fenêtre modale n'était pas encore
+            // posée, et `VSM_CAPTURE_PANNEAUX` ne la photographiait pas — la
+            // course de D72, revue une fois de plus. Déclenchée ici, elle a tout
+            // le délai de la capture pour exister, et la photo la montre. La
+            // course se termine quand même : personne n'est là pour cliquer, et
+            // le quit de la capture ne passe pas par ce chemin (D175).
+            if (const char* fermer = std::getenv("VSM_FERMER");
+                fermer != nullptr && *fermer && *fermer != '0')
+                content->demanderAvantDeQuitter([] {});
             if (const char* touches = std::getenv("VSM_TOUCHE"); touches != nullptr && *touches) {
                 juce::StringArray suite;
                 suite.addTokens(juce::String::fromUTF8(touches), ";", "");
@@ -531,16 +544,6 @@ public:
                     // depuis D174, la marque « non enregistré » : sans cette
                     // ligne, cette marque serait invérifiable.
                     std::fputs(("VSM_TITRE : " + getName().toStdString() + "\n").c_str(), stderr);
-                    // D175 : VSM_FERMER=1 -- la VRAIE fermeture, celle de
-                    // l'utilisateur, déclenchée AVANT la photo pour que sa
-                    // question s'écrive (`VSM_BOITE`) et figure sur les images
-                    // des panneaux. La course se termine quand même : le banc
-                    // n'a personne pour cliquer, et une course qui n'en finit
-                    // pas ne vérifie rien.
-                    if (const char* fermer = std::getenv("VSM_FERMER");
-                        fermer != nullptr && *fermer && *fermer != '0')
-                        if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
-                            principal->demanderAvantDeQuitter([] {});
                     if (auto* c = getContentComponent()) {
                         auto image = c->createComponentSnapshot(c->getLocalBounds());
                         // D58 : CE QU'ON A DEMANDÉ ET CE QU'ON A OBTENU, tous
