@@ -39,10 +39,16 @@ RACINE = Path(__file__).resolve().parents[1]
 BINAIRE = RACINE / "build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
 PROJET = RACINE / "reconstruction/travail/cdl"
 
-# Les gestes qui ne touchent QUE la vue : ils ne doivent rien écrire.
+# Les gestes qui ne touchent QUE la vue ou l'ÉTAT DE SÉLECTION : ils ne doivent
+# rien écrire. Une sélection n'est pas une donnée du projet — elle ne survit pas
+# à la fermeture, et c'est voulu.
 VUE_SEULEMENT = {
     "Zoom : tout voir": "un cadrage, pas une donnée",
     "Zoom : la sélection": "un cadrage, pas une donnée",
+    "Tout sélectionner": "une sélection, pas une donnée du projet",
+    "Inverser la sélection": "une sélection, pas une donnée du projet",
+    "Toutes les notes douteuses (1177)": "une sélection, pas une donnée du projet",
+    "Les 10 % les moins sûres (222)": "une sélection, pas une donnée du projet",
 }
 
 # Les gestes qui posent une valeur DÉJÀ EN PLACE dans le projet d'essai.
@@ -50,6 +56,11 @@ DEJA_EN_PLACE = {
     "Non": "c'est le défaut du clip (ne pas suivre le tempo) — le menu le montre coché",
     "Droite (matériau corrélé)": "FadeShape::Linear = 0, le défaut aussi",
     "Couleur de la piste": "le clip est IMPLICITE et tient déjà la couleur de sa piste",
+    # VÉRIFIÉ, pas supposé : le projet d'essai porte 2 219 notes et ZÉRO
+    # chevauchement de même hauteur. Il n'y a donc rien à retirer, et le geste a
+    # raison de ne rien écrire. Sur un projet qui en porterait, cette ligne
+    # devrait sauter — c'est pourquoi elle dit le chiffre.
+    "Retirer les chevauchements": "le projet d'essai n'en a aucun (2 219 notes, 0 chevauchement)",
 }
 
 MENUS = {
@@ -60,6 +71,16 @@ MENUS = {
                    "Lente au départ", "Rapide au départ", "Le clip fait N mesures…"],
     "clip-midi": ["Rendre muet", "Couleur de la piste", "2 fois", "3 fois", "16 fois",
                   "Zoom : tout voir", "Zoom : la sélection"],
+    # LE PIANO ROLL exige une SÉLECTION : sans elle, quarante entrées restent
+    # grisées et le balayage ne mesure rien. Chaque geste est donc précédé de
+    # « Tout sélectionner », dans la même course.
+    "pianoroll": ["Tout sélectionner", "Inverser la sélection",
+                  "Toutes les notes douteuses (1177)", "Les 10 % les moins sûres (222)",
+                  "Transposer +1 demi-ton", "Octave +", "Miroir des hauteurs",
+                  "Quantifier (100 %)", "Quantifier début ET fin", "Humaniser",
+                  "Durée = pas de grille", "Durée x2", "Durée /2", "Legato",
+                  "Retirer les chevauchements", "Rétrograder", "Vélocité 127",
+                  "Vélocité 64", "Dupliquer", "Supprimer"],
     "piste": ["Ajouter une piste MIDI", "Ajouter une piste audio", "Ajouter un groupe",
               "Dupliquer la piste sélectionnée",
               "Créer un clip d'une mesure à la tête de lecture",
@@ -86,6 +107,26 @@ def ecrire_un_son(chemin: Path) -> None:
         f.writeframes(b"".join(struct.pack("<hh", v, v) for v in
                                (int(12000 * math.sin(2 * math.pi * 220.0 * i / taux))
                                 for i in range(trames))))
+
+
+def empreinte_du_projet(dossier: Path) -> str:
+    """L'empreinte de TOUT le projet écrit, et non du seul `project.json`.
+
+    Les gestes de NOTES n'écrivent rien dans `project.json` : les notes vivent
+    dans `midi/*.mid`. Une garde qui ne lirait que le premier déclarerait morts
+    tous les gestes du piano roll — quarante faux « RIEN » d'un coup, ce qui est
+    la façon la plus sûre de rendre une garde inutile.
+    """
+    import hashlib
+    if not dossier.is_dir():
+        return ""
+    h = hashlib.sha256()
+    for fichier in sorted(dossier.rglob("*")):
+        if not fichier.is_file():
+            continue
+        h.update(str(fichier.relative_to(dossier)).encode("utf-8"))
+        h.update(fichier.read_bytes())
+    return h.hexdigest()
 
 
 def main() -> int:
@@ -117,12 +158,15 @@ def main() -> int:
         if libelle:
             if menu == "piste":
                 env["VSM_MENU"] = libelle
+            elif menu == "pianoroll":
+                # « Tout sélectionner » d'abord, sinon tout est grisé. Le geste
+                # lui-même EST « Tout sélectionner » dans le premier cas : le
+                # répéter ne change rien et garde une seule forme de commande.
+                env["VSM_MENU_CONTEXTE"] = f"pianoroll:Tout sélectionner;pianoroll:{libelle}"
             else:
                 env["VSM_MENU_CONTEXTE"] = f"{menu}-tous:{libelle}"
         r = subprocess.run([str(BINAIRE)], env=env, capture_output=True, timeout=180, check=False)
-        fichier = sortie / "project.json"
-        return ((fichier.read_text(encoding="utf-8") if fichier.is_file() else ""),
-                r.stderr.decode("utf-8", "replace"))
+        return empreinte_du_projet(sortie), r.stderr.decode("utf-8", "replace")
 
     for menu in menus:
         print(f"=== menu {menu} ===")

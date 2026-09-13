@@ -24780,3 +24780,20 @@ modale sans réponse s'écrit « … sans réponse de banc » —, et la garde l
 désormais. Avec le correctif retiré elle rend : `MORT Le clip fait N mesures… —
 modale SANS RÉPONSE`. **Une garde qui n'a jamais échoué ne prouve rien, et
 celle-ci a d'abord échoué à échouer.**
+
+**LE PIANO ROLL Y EST ENTRÉ AUSSI (D276)**, une fois son menu lisible : vingt
+gestes de plus, soit **57 entrées balayées sur quatre menus, 0 geste mort**. Deux
+corrections ont été nécessaires pour que ce chiffre veuille dire quelque chose :
+
+* **la garde comparait le seul `project.json`** — or les notes vivent dans
+  `midi/*.mid`, et tous les gestes du piano roll y seraient apparus morts, quarante
+  faux « RIEN » d'un coup. Elle compare désormais l'empreinte de TOUT le projet
+  écrit ;
+* **quatre « morts » étaient des gestes de SÉLECTION** (« Tout sélectionner »,
+  « Inverser la sélection », les deux choix de notes douteuses). Une sélection
+  n'est pas une donnée du projet — elle ne survit pas à la fermeture, et c'est
+  voulu. Ils rejoignent les gestes de vue dans la liste des excuses écrites.
+
+Et « Retirer les chevauchements » n'écrit rien parce que **le projet d'essai n'en
+a aucun** — vérifié, pas supposé : 2 219 notes, zéro chevauchement de même
+hauteur. L'excuse porte le chiffre, pour qu'elle saute si le projet change.
