@@ -22376,3 +22376,30 @@ chiffre vu une fois est une anecdote ; trois lots indépendants en font un fait 
 immédiatement le seuil, ce qui confirme que 0,55 est à sa place, et l'inversion
 au-dessus n'est pas un accident d'échantillon. B14 est donc un fait mesuré, pas
 une impression.
+
+### Ce qui attend la fin de la campagne (état au 13/09/2026, fin d'après-midi)
+
+La campagne `r1f-13sep` (lot forcé de R1, B7) tourne depuis 07:43 et en est au
+**septième morceau sur dix**. Elle a traversé une veille le 12/09 sans rien perdre,
+et elle en traversera d'autres : ce poste ne charge qu'en veille. **Rien ne doit
+remplacer `build/tools/vsm-render` tant qu'elle tourne.**
+
+Ce qui l'attend, dans l'ordre, et le script qui le fait :
+`tools/apres-campagne.sh reconstruction/travail/r1f-13sep`. Il REFUSE de travailler
+tant qu'une chaîne tourne, nomme les PID, puis relie `vsm-render`, rejoue la garde
+`tools/comparer-rendus.sh` (l'export de l'application contre `vsm-render`) et relit
+le tableau du lot.
+
+Restent ensuite, nommés :
+
+1. **`morceau-0001-g1` est à refaire** : il est mort à 07:59 sur `OSError: [Errno
+   28] No space left on device` — le brouillon de session est un tmpfs de 7,7 Go
+   que neuf copies de projet avaient rempli le matin même. Le lot en compte donc
+   **neuf sur dix** tant qu'il n'est pas rejoué. (`/home` a 168 Go libres : c'est
+   bien le tmpfs, et la règle est dans `CLAUDE.md`.)
+2. **B7 — écrire le § 7.4 de `CDC-separation-par-synthese.md` et signer le § 7.5**,
+   une fois les dix morceaux mesurés.
+3. **B14 — l'inversion de la confiance au-dessus de 0,65**, mesurée sur trois lots
+   (D224) : elle demande de toucher à `analyse/analyzer/`, interdit pendant une
+   course.
+4. **B10, B11, B12** — même interdiction, même attente.
