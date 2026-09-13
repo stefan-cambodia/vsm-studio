@@ -20983,6 +20983,15 @@ son coût (l'ouverture d'un fichier de plugin) est écrit dans son en-tête avec
 l'endroit où l'appeler — au chargement d'un projet, une fois par piste, jamais
 dans un rappel d'affichage.
 
+**ET CE QUE `canCreate` COÛTE À L'OUVERTURE, mesuré parce que je l'ai rendue
+chère.** Elle instancie le plugin pour répondre, et le graphe l'instanciera de
+nouveau juste après : un projet à plusieurs pistes tierces paye donc deux
+chargements par piste. Mesuré sur `children-c3-plafond` dont **trois** pistes
+pointent sur un plugin CLAP : **4,48 s** d'ouverture contre **4,76 s** pour le
+même projet sans plugin tiers — c'est-à-dire **rien de mesurable**, et même moins,
+les machines internes remplacées ayant elles aussi un prix. La borne de D161
+(moins de 10 s) tient largement.
+
 **ET LE CLAP AUSSI, vérifié séparément.** Les deux résolveurs s'enchaînent
 (D7.2) ; il fallait donc montrer que le correctif ne servait pas que le VST3. Un
 projet dont une piste réclame
