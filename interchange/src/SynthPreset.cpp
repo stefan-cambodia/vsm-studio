@@ -1,6 +1,7 @@
 #include "vsm/interchange/SynthPreset.h"
 #include "vsm/interchange/MultisampleProfile.h"
 #include "vsm/audio/plugin/ISampleLoader.h"
+#include "vsm/audio/plugin/IMultisampleBank.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -48,6 +49,25 @@ SynthPreset capturePreset(const ISynthPlugin& plugin, const std::string& pluginI
     // LE CHEMIN EST RENDU RELATIF AU DOSSIER DU PROJET : la machine tient le
     // chemin complet qu'on lui a donné (dossier / chemin relatif), et la
     // relecture refuse un chemin absolu.
+    // D189 (A34) : ET LE PROFIL D'UNE MACHINE MULTI-ÉCHANTILLONS.
+    //
+    // D76 avait fait capturer les ÉCHANTILLONS d'un sampler à emplacements
+    // (`ISampleLoader`) ; les machines à PROFIL — `vsm.multisample` et son patch
+    // FR3-Accordion, ceux que la chaîne choisit — étaient restées dehors. Le
+    // champ existait (`SynthPreset::profile`), le JSON l'écrivait et le relisait,
+    // `applyPresetSamples` le reposait, et la machine savait le dire : personne
+    // ne le demandait. Tout ce qui refabrique un preset depuis une machine
+    // vivante — l'export, le gel, le report, ET L'ENREGISTREMENT — rendait donc
+    // une machine multi-échantillons VIDE.
+    //
+    // Mesuré par D188 sur le morceau de l'utilisateur : l'export de
+    // l'application n'avait pas la piste `other` (écart de 8,61 dB avec
+    // `vsm-render`, la différence corrélée à 0,9999 avec le stem de cette piste),
+    // et un simple Ctrl+S effaçait « profile: FR3-Accordion » du fichier.
+    if (const auto* banque = dynamic_cast<const vsm::audio::plugin::IMultisampleBank*>(&plugin)) {
+        const std::string nom = banque->profileName();
+        if (!nom.empty()) preset.profile = nom;
+    }
     if (const auto* loader = dynamic_cast<const vsm::audio::plugin::ISampleLoader*>(&plugin)) {
         for (int slot = 0; slot < loader->slotCount(); ++slot) {
             const std::string chemin = loader->samplePath(slot);

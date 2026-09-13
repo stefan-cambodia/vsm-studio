@@ -20240,3 +20240,114 @@ n'a pas été relié**, une campagne l'utilisant en ce moment (remplacer ce bina
 la tuerait). Tout a été mesuré par l'export de l'APPLICATION, qui passe par le
 même code — son commentaire le dit, D185 l'a vérifié au bit près, et D177 avant
 lui. Le binaire se reliera à la fin de la campagne.
+
+### D188 (attendus) — le cinquante-troisième audit : le morceau de l'utilisateur, rendu par les deux chemins (13/09/2026)
+
+**CE QUE D177 N'A PAS COUVERT.** L'invariant « l'export de l'application et
+`vsm-render` rendent le même son » a été éprouvé sur `children-c3-plafond` : ses
+neuf machines ont toutes leurs données DANS le dossier du projet. Le projet que
+l'utilisateur a demandé, `b4wuzthen`, n'est pas dans ce cas : sa piste `other`
+joue `vsm.multisample` sur le patch **FR3-Accordion**, dont les échantillons
+vivent **hors du projet**, dans le dossier de profils de l'utilisateur
+(`~/.local/share/vsm-studio/profils`). Si les deux chemins ne résolvaient pas ce
+profil de la même façon — l'un le trouvant, l'autre non —, ils rendraient deux
+sons différents, et c'est exactement le genre d'écart qu'on ne remarque pas.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** `b4wuzthen` (8 pistes, 3 machines,
+6 252 notes, 351,28 s), exporté par l'application et rendu par `vsm-render` à la
+même fréquence :
+
+1. **Corrélation ≥ 0,999999** et écart **≤ −100 dB**, comme D177 (qui a mesuré
+   −127,43 dB, le plancher du 24 bits). Réfuté sinon.
+2. **Aucun décalage** : 0 échantillon.
+3. **Le profil est trouvé des deux côtés** : ni l'un ni l'autre ne doit signaler
+   d'échantillon manquant. Un rendu silencieux d'un côté se verrait au n° 1, mais
+   l'avertissement se lit directement.
+
+### Phase D188 — LE MORCEAU DE L'UTILISATEUR REND DEUX SONS DIFFÉRENTS, et l'enregistrer le mutile (13/09/2026)
+
+**L'ATTENDU N° 1 EST RÉFUTÉ, ET DE LOIN.** `b4wuzthen` (8 pistes, 3 machines,
+351,28 s) exporté par l'application contre `vsm-render`, même fréquence, même
+format (int24, pour que l'écrêtage soit le même des deux côtés — ce morceau
+dépasse 0 dBFS, voir plus bas) :
+
+| | attendu | **mesuré** |
+|---|---|---|
+| corrélation | ≥ 0,999999 | **0,937493** ✘ |
+| écart | ≤ −100 dB | **−8,61 dB** sous le signal, max \|d\| **0,605** ✘ |
+| décalage | 0 | **0** ✔ |
+
+**CE QUI MANQUE, IDENTIFIÉ SANS AMBIGUÏTÉ.** La différence (rendu − application)
+a été corrélée aux sept stems du projet :
+
+| stem | corrélation avec la différence | facteur |
+|---|---|---|
+| **03 - other.wav** | **+0,9999** | **+0,9999** |
+| les six autres | ≤ 0,0008 | ≤ 0,002 |
+
+La différence **EST** la piste `other`, à un millième près, et son RMS coïncide
+(0,07546 contre 0,07545). **L'export de l'application ne contient pas cette
+piste.**
+
+**POURQUOI CELLE-LÀ, ET PAS UNE AUTRE.** `other` joue `vsm.multisample` sur le
+patch **FR3-Accordion**, dont les échantillons vivent **hors du projet**, dans la
+bibliothèque de profils de l'utilisateur. C'est le seul des trois machines du
+morceau dans ce cas — et c'est exactement ce que D177 n'avait pas pu couvrir, ses
+neuf machines ayant toutes leurs données dans le dossier.
+
+**LA CAUSE, ET ELLE EST PIRE QUE L'EXPORT.** `capturePreset` — la fonction qui
+fabrique un preset depuis une machine VIVANTE, et par où passent l'export, le gel,
+le report **et l'enregistrement** — capture les paramètres et, depuis D76, les
+échantillons d'un sampler à emplacements (`ISampleLoader`). Elle ne capture
+**jamais le PROFIL** d'une machine à profil, alors que `SynthPreset` a le champ,
+que le JSON l'écrit et le relit, que `applyPresetSamples` le repose, et que la
+machine sait le dire (`IMultisampleBank::profileName()`). Le preset reconstruit
+est donc une machine multi-échantillons **sans rien dedans**.
+
+**CE QUE CELA FAIT À UN Ctrl+S, mesuré sur une copie du projet de l'utilisateur :**
+
+| | `instruments/track_02.synth.json` |
+|---|---|
+| avant | `pluginId: vsm.multisample`, **`profile: FR3-Accordion`** |
+| après un simple **Enregistrer** | `pluginId: vsm.multisample`, **plus de `profile`** |
+
+**Ouvrir le projet et faire Ctrl+S efface l'information qui dit quel instrument
+jouait cette piste.** Le projet n'est pas seulement muet à l'export : il est
+**abîmé sur le disque**, et rien ne le dit. C'est la famille d'A10 (D76), dont le
+remède avait couvert les emplacements d'un sampler et laissé les profils dehors.
+**Ouvert comme A34**, et c'est l'anomalie la plus grave de cette série.
+
+**ET UN CHIFFRE POUR L'UTILISATEUR, trouvé en chemin** : le mixage de
+`b4wuzthen` **dépasse 0 dBFS de 2,7 dB** (crête 1,369 à l'application, 1,474 au
+rendu flottant). L'application le DIT et propose le remède (« Niveau : crête à
+−1 dBFS », ou un export en 32 bits flottants) ; `vsm-render` aussi. La chaîne
+optimise une distance, pas une marge : un export en 24 bits de ce morceau écrête
+tant qu'on ne choisit pas l'un des deux.
+
+### Phase D189 — A34 : le profil d'une machine multi-échantillons se capture enfin (13/09/2026)
+
+**LE REMÈDE, quatre lignes, et il complète D76.** `capturePreset` demande son
+profil à la machine quand elle en a un (`IMultisampleBank::profileName()`) et
+l'écrit dans le preset — exactement comme D76 lui avait fait capturer les
+échantillons d'un sampler à emplacements. Le champ, le JSON, la relecture et la
+repose existaient déjà : il manquait la question.
+
+**LES DEUX MESURES, AVANT ET APRÈS.**
+
+| | avant | **après D189** |
+|---|---|---|
+| `Ctrl+S` sur le projet de l'utilisateur | `profile: FR3-Accordion` **effacé** | **`profile: FR3-Accordion` conservé** |
+| export de l'application contre `vsm-render` | corrélation **0,937**, écart **−8,61 dB** (la piste `other` absente) | corrélation **1,000000000**, écart maximal **0,000 sur un échantillon** |
+| crête du mixage exporté | 1,369 (il manquait une piste) | **1,474**, celle de `vsm-render` |
+
+**Les deux chemins rendent désormais le même son au BIT, sur le morceau de
+l'utilisateur comme sur celui de D177.** **A34 se ferme.**
+
+**CE QUE CETTE SÉRIE AURA APPRIS, et c'est la même leçon trois fois.** D186 (une
+piste gelée muette au rendu hors ligne), D187 (la queue du gel coupée) et D189
+(le profil jamais capturé) ont tous la même forme : **une information que le
+chemin TEMPS RÉEL connaît et que le chemin FICHIER ne demande pas**. Aucun des
+trois ne se voyait à l'écran, aucun ne levait d'erreur, et chacun se mesurait en
+comparant les deux chemins sur un vrai projet. C'est ce que `VSM_EXPORT` contre
+`vsm-render` sait faire, et il faudra le refaire à chaque fois qu'une machine ou
+une propriété de piste s'ajoute.
