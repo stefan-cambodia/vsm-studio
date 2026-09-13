@@ -643,6 +643,12 @@ private:
     /// d'effets. Remplie par `loadAudioTracks()`, lue quand le rapport se
     /// compose.
     std::vector<juce::String> reservesAudio_;
+    /// D195 (A35) : le verrou du projet ouvert. Tenu tant que ce projet l'est,
+    /// relâché en ouvrant le suivant et à la mort du processus — c'est tout
+    /// l'intérêt d'un `InterProcessLock` sur un fichier de verrou écrit à la
+    /// main. Nul quand le projet est déjà ouvert ailleurs : on a prévenu, on
+    /// n'a pas refusé.
+    std::unique_ptr<juce::InterProcessLock> verrouProjet_;
     bool projectDirty_ = false;
     /// D174 (A29) : la profondeur d'annulation au dernier enregistrement réussi.
     /// La marque « non enregistré » du titre se déduit de l'écart avec la

@@ -20622,3 +20622,94 @@ SANS_PAIRE 0**, ses chiffres de D150.
 après son propre travail. Les trois chaînes non traduites de D175 et ces deux
 étiquettes ont été écrites le même jour, et aucune n'aurait été vue sans, d'un
 côté la photo, de l'autre l'inventaire.*
+
+### D194 (attendus) — le cinquante-huitième audit : le même projet ouvert deux fois (13/09/2026)
+
+**POURQUOI CE CAS.** `moreThanOneInstanceAllowed()` rend **vrai**
+(`Main.cpp:41`) : deux fenêtres de VSM Studio peuvent tourner côte à côte, et
+c'est voulu — comparer deux projets, garder un modèle ouvert. Rien n'empêche
+alors d'ouvrir **le même** projet dans les deux. Chacune en tient sa copie en
+mémoire ; la dernière qui enregistre écrase l'autre, **et le travail de la
+première disparaît sans un mot**. Cubase et Live posent un verrou et le disent.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. **La seconde ouverture prévient** : une boîte, une réserve, quelque chose qui
+   nomme le projet déjà ouvert ailleurs. **Réfuté si elle s'ouvre en silence.**
+2. Si elle est réfutée, le mécanisme de la perte sera **énoncé** plutôt que mis
+   en scène : deux copies indépendantes en mémoire, un seul dossier sur le
+   disque, aucun arbitrage — il n'y a rien à mesurer de plus que l'absence
+   d'avertissement, et le reste se déduit du code.
+
+### Phase D194 — le même projet s'ouvre deux fois, en silence (13/09/2026)
+
+**L'ATTENDU EST RÉFUTÉ.** Une instance A tient `children-c3-plafond` ouvert ;
+une instance B ouvre **le même dossier** huit secondes plus tard :
+
+| | **mesuré** |
+|---|---|
+| ce que B dit | **1 réserve à l'ouverture** — les 5 140 notes douteuses, **et rien d'autre** |
+| ce que A dit | **rien** : aucune ligne `VSM_BOITE` |
+
+**LE MÉCANISME DE LA PERTE, ÉNONCÉ PLUTÔT QUE MIS EN SCÈNE.** Chaque instance
+tient **sa** copie du projet en mémoire ; le dossier sur le disque est **un
+seul** ; aucun arbitrage n'existe entre les deux. La dernière qui enregistre
+écrase le travail de l'autre — et comme rien n'a prévenu à l'ouverture, rien ne
+préviendra non plus au moment de l'écrasement. Il n'y a rien de plus à mesurer
+que cette absence : le reste se lit dans le code.
+
+**CE N'EST PAS UN BOGUE DE PLUS DANS LA MÊME FAMILLE, C'EST LA DERNIÈRE PORTE
+OUVERTE DU CRITÈRE (a).** D162 à D184 ont fermé toutes celles qui viennent d'un
+SEUL musicien devant SON logiciel. Celle-ci vient de deux fenêtres, et
+`moreThanOneInstanceAllowed()` rend vrai à bon droit — on veut pouvoir comparer
+deux projets. **Ouvert comme A35.**
+
+### D195 (attendus) — A35 : un projet ouvert ailleurs se dit (13/09/2026)
+
+**LE REMÈDE, ET POURQUOI CELUI-LÀ.** `juce::InterProcessLock`, sur un nom tiré du
+chemin du projet. Trois raisons de le préférer à un fichier de verrou écrit à la
+main :
+
+1. **il se libère tout seul quand le processus meurt**, `kill -9` compris — un
+   fichier écrit à la main laisserait un verrou fantôme après le premier
+   plantage, et il faudrait alors une deuxième machinerie pour décider si le
+   PID qu'il nomme vit encore ;
+2. **il ne touche pas au dossier du projet** — un projet en lecture seule
+   s'ouvre quand même, et rien ne s'ajoute à côté des fichiers du musicien ;
+3. il est **le même sur les trois systèmes**, là où un verrou fait main serait
+   du `/proc` sous Linux et autre chose ailleurs.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **La seconde ouverture le DIT**, en nommant le projet, et l'ouvre quand même :
+   refuser serait pire que prévenir — on veut pouvoir regarder.
+2. **La première n'est pas gênée** : elle garde son projet, son titre, son
+   enregistrement.
+3. **Une instance seule n'est jamais prévenue** — témoin obligatoire : ouvrir,
+   fermer, rouvrir le même projet **ne doit rien dire**, sinon le verrou fuit.
+4. **Deux projets DIFFÉRENTS ouverts côte à côte ne se gênent pas.**
+
+### Phase D195 — A35 : un projet ouvert ailleurs se dit, dans les deux langues (13/09/2026)
+
+**LES QUATRE ATTENDUS SONT TENUS.**
+
+| attendu | **mesuré** |
+|---|---|
+| 1. la seconde ouverture prévient, en nommant le projet, et ouvre quand même | ✔ `VSM_BOITE : Projet déjà ouvert : « projet » est déjà ouvert dans une autre fenêtre de VSM Studio. Les deux copies sont indépendantes : la dernière enregistrée écrasera l'autre.` |
+| 2. la première n'est pas gênée | ✔ **aucune** ligne `VSM_BOITE` du côté de A, qui garde son projet |
+| 3. une instance seule n'est jamais prévenue | ✔ deux ouvertures successives du même projet dans **la même** instance : **0** avertissement — le verrou ne fuit pas |
+| 4. deux projets DIFFÉRENTS ne se gênent pas | ✔ **0** avertissement |
+
+**ET L'ANGLAIS EST LÀ DU PREMIER COUP, parce que D193 venait de le rater** :
+« Project already open : “projet” is already open in another VSM Studio window.
+The two copies are independent: whichever is saved last will overwrite the
+other. » Les deux chaînes ont été posées dans la table **en même temps que le
+code**, et non après une photo. `tools/inventaire_langue.py` : **ECRAN 7,
+SANS_PAIRE 0**, inchangé.
+
+**A35 SE FERME, et avec elle la dernière porte ouverte du critère (a).** Ce qu'on
+fait ne se perd pas : ni à l'aller-retour (D162), ni sur un enregistrement refusé
+(D173), ni faute de savoir que le travail n'est pas à l'abri (D174), ni en fermant
+(D175), ni sur une coupure brutale (D176), ni quand une machine, un échantillon,
+le `project.json` ou le `.mid` manquent (D178-D184), ni parce qu'une seconde
+fenêtre travaillait sur le même dossier sans le dire (D195).

@@ -5904,6 +5904,38 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         return;
     }
 
+    // D195 (A35) : CE PROJET EST-IL DÉJÀ OUVERT AILLEURS ?
+    //
+    // `moreThanOneInstanceAllowed()` rend vrai, et à bon droit : on veut pouvoir
+    // comparer deux projets côte à côte. Mais rien n'empêchait d'ouvrir LE MÊME
+    // dans les deux fenêtres, chacune en tenant sa copie en mémoire pour un seul
+    // dossier sur le disque — la dernière qui enregistre écrase l'autre, sans un
+    // mot (D194).
+    //
+    // UN `InterProcessLock` PLUTÔT QU'UN FICHIER DE VERROU ÉCRIT À LA MAIN :
+    // il se libère tout seul quand le processus meurt, `kill -9` compris (un
+    // fichier laisserait un verrou fantôme au premier plantage, et il faudrait
+    // une seconde machinerie pour décider si le PID qu'il nomme vit encore) ;
+    // il ne touche pas au dossier du projet, donc un projet en lecture seule
+    // s'ouvre quand même ; et il est le même sur les trois systèmes.
+    //
+    // ON PRÉVIENT, ON NE REFUSE PAS. Regarder un projet ouvert ailleurs est
+    // légitime — c'est même la raison d'être des deux fenêtres.
+    verrouProjet_.reset();   // on quitte le projet précédent : son verrou tombe
+    {
+        auto verrou = std::make_unique<juce::InterProcessLock>(
+            "vsm-projet-" + juce::String(folder.getFullPathName().hashCode64()));
+        if (verrou->enter(0)) {
+            verrouProjet_ = std::move(verrou);
+        } else {
+            montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Projet déjà ouvert"),
+                         tr(u8"« %1 » est déjà ouvert dans une autre fenêtre de VSM Studio. "
+                            u8"Les deux copies sont indépendantes : la dernière enregistrée "
+                            u8"écrasera l'autre.")
+                             .replace("%1", folder.getFileName()));
+        }
+    }
+
     clearHistory();
     project_ = loaded.bundle.project;
     oublierLesMachines();   // D76

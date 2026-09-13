@@ -1039,6 +1039,11 @@ const Paire kAnglais[] = {
       "Fifth (power)" },
     // D193 : les trois chaînes de la question de fermeture (D175), restées
     // françaises dans l'interface anglaise — vues sur la PHOTO, pas au relevé.
+    // D195 : la boîte du projet déjà ouvert ailleurs.
+    { "Projet déjà ouvert",
+      "Project already open" },
+    { "« %1 » est déjà ouvert dans une autre fenêtre de VSM Studio. Les deux copies sont indépendantes : la dernière enregistrée écrasera l'autre.",
+      "“%1” is already open in another VSM Studio window. The two copies are independent: whichever is saved last will overwrite the other." },
     { "Quitter sans enregistrer ?",
       "Quit without saving?" },
     { "Quitter sans enregistrer",
