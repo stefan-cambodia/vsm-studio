@@ -24379,3 +24379,83 @@ bas (70 erreurs sur 70). Une corrélation sur un point unique est une coïnciden
 écrite en décimales. Le fait reste noté, il n'est pas établi : il faudrait un
 corpus où plusieurs basses portent un sous-oscillateur de niveau varié, ce qui est
 un attendu pour B5/B6.
+
+
+### Phase D270 — rendre l'octave de la basse en la cherchant dans le MÉLANGE (13/09/2026)
+
+D269 a nommé la cause : le stem de basse n'a plus ses partielles supérieures
+(25,5 % → 1,7 % d'énergie au-dessus de 300 Hz), et le transcripteur, privé de ce
+qui tranche une octave, choisit bas — 6,9 fois plus souvent que haut. Corriger
+l'estimateur ne rendra pas ces harmoniques.
+
+**Mais le MÉLANGE, lui, les a toujours.** Il n'a jamais été filtré. Le remède
+n'est donc pas dans la transcription du stem : c'est de RELIRE l'octave de chaque
+note écrite dans le signal qui a gardé de quoi la trancher.
+
+**LE TEST, écrit avant d'être codé.** Pour une note écrite à la hauteur h, deux
+hypothèses : h, ou h + 12. Elles ne se distinguent pas par la partielle à 2·f(h)
+— elle appartient aux deux séries. Elles se distinguent par les harmoniques
+IMPAIRS de h : si la note est vraiment h, le mélange porte de l'énergie à 3·f(h)
+et 5·f(h) ; si elle est en réalité h + 12, ces rangs sont vides, parce que 3·f(h)
+n'appartient pas à la série de h + 12. Le rapport
+« énergie aux rangs impairs de h / énergie aux rangs pairs » décide donc, et il
+se lit dans le mélange sans rien réentraîner.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE**, sur les dix morceaux du lot `r1f-13sep`,
+notes du stem `bass` uniquement :
+
+1. **Témoin** — ce que la chaîne écrit aujourd'hui : 253 justes, 104 une octave
+   trop bas, 15 une octave trop haut (rapport 6,9×).
+2. **Après relecture dans le mélange** : les notes « une octave trop bas »
+   tombent **sous 40** (soit une correction de plus de 60 %), et les « une octave
+   trop haut » restent **sous 30** — autrement dit la correction ne doit pas
+   simplement retourner le biais.
+3. **La bonne hauteur du stem `bass`** passe de **61,6 % à plus de 70 %**.
+4. **Contrôle indispensable** : la même relecture appliquée aux notes DÉJÀ JUSTES
+   ne doit pas en casser plus de **5 %**. Un correcteur qui gagne cent notes et en
+   perd cent n'a rien fait, et c'est le genre de gain qu'on publie par erreur.
+
+Réfuté si l'un des quatre tombe. Et le remède ne sera porté dans
+`analyse/analyzer/` **qu'après** avoir tenu ces chiffres hors ligne, sur les
+données déjà écrites — une mesure qui ne coûte pas une heure de course.
+
+**LA MESURE, ET LE REMÈDE EST RÉFUTÉ** — sur les 372 notes du stem `bass`
+appariables à une note vraie des dix morceaux :
+
+| seuil impairs/pairs | justes | 8ve bas | 8ve haut | bonne hauteur | **corrigées** | **cassées** |
+|---|---|---|---|---|---|---|
+| **témoin (la chaîne)** | **253** | **104** | **15** | **68,0 %** | — | — |
+| 0,10 | 252 | 105 | 15 | 67,7 % | 0 | 1 |
+| 0,20 | 255 | 102 | 15 | 68,5 % | 7 | 5 |
+| 0,35 | 260 | 95 | 17 | 69,9 % | 16 | 9 |
+| 0,50 | 262 | 90 | 20 | **70,4 %** | 25 | 16 |
+| 0,75 | 262 | 85 | 25 | 70,4 % | 34 | 25 |
+| 1,00 | 260 | 81 | 30 | 69,9 % | 40 | 33 |
+| 1,50 | 261 | 74 | 36 | 70,2 % | 50 | 42 |
+
+**Les quatre attendus tombent, et le plus utile est le quatrième.** Les notes une
+octave trop bas ne descendent jamais sous 74 (l'attendu demandait 40) ; la bonne
+hauteur plafonne à **70,4 %** contre 68,0 % au témoin, soit **+9 notes sur 372** ;
+et surtout, **à chaque seuil, le correcteur casse presque autant de notes qu'il en
+répare** — 25 contre 16, puis 34 contre 25, puis 50 contre 42, un rapport qui ne
+quitte jamais 1,2×. C'est exactement le cas que le contrôle n°4 avait été écrit
+pour attraper : sans lui, « les notes une octave trop bas passent de 104 à 74 »
+était publiable, et faux.
+
+**POURQUOI CELA NE POUVAIT PAS MARCHER, et c'est la leçon.** Le test cherche les
+harmoniques impairs de la basse **dans le mélange**. Mais le mélange contient tous
+les autres instruments, et 3·f(h) ou 5·f(h) d'une basse tombent en plein dans le
+registre où jouent la guitare, le piano et les nappes. Le banc ne mesurait donc
+pas « la basse a-t-elle ses harmoniques impairs », il mesurait « quelque chose
+sonne-t-il là ». Le mélange a gardé les partielles de la basse — il ne permet pas
+de les LUI attribuer.
+
+**CE QUE CELA DÉSIGNE.** Les harmoniques qui trancheraient l'octave doivent venir
+d'un signal où la basse est SEULE et NON filtrée. Ni le stem (filtré), ni le
+mélange (encombré) ne le sont. **C1 reste donc entier, et il est le seul chemin** :
+tant que la séparation rendra une basse amputée de 94 % de son aigu, l'octave
+restera indécidable en aval. Aucune correction de hauteur ne rattrapera cela, et
+trois tentatives l'ont maintenant montré (D257, D258, D270).
+
+`tools/octave-basse.py` reste dans le dépôt : c'est le banc qui jugera la
+prochaine tentative, témoin et contrôle compris, en six secondes et sans course.

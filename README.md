@@ -353,6 +353,7 @@ python3 tools/clips-numerotes.py                      # tout clip ajouté porte-
 python3 tools/coupe-aux-transitoires.py              # « Découper aux transitoires » coupe-t-il, et AUX BONS ENDROITS ?
 analyse/.venv/bin/python tools/notes-courtes.py 127.7 30  # le transcripteur jette-t-il les notes brèves ? (A/B sur les stems vrais)
 analyse/.venv/bin/python tools/corpus-hauteurs.py     # le corpus sonne-t-il à la hauteur que sa vérité annonce ?
+analyse/.venv/bin/python tools/octave-basse.py <lot>  # relire l'octave de la basse dans le mélange : témoin, correction, casse
 ```
 
 Chacune rend un code de sortie non nul quand elle trouve quelque chose, et
