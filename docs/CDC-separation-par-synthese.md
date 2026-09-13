@@ -803,6 +803,22 @@ coût.)*
 > le MODULE du spectre) est DÉSIGNÉE par la mesure et non par le goût. Si l'une
 > des deux tombe, c'est le garde-fou qu'il faut rouvrir, pas la méthode.
 
+> **INCIDENT D'EXPLOITATION DU 13/09, ET CE QU'IL LAISSE À REPRENDRE.** Le
+> morceau 1 du lot refait est mort à 985 s sur `OSError: [Errno 28] No space left
+> on device` : le brouillon de session est un `tmpfs` de 7,7 Go, et neuf copies
+> d'un projet de 308 Mo y avaient été faites par le travail d'interface mené en
+> parallèle (`/home` avait 168 Go libres). La campagne a survécu — elle a noté
+> l'échec et est passée au morceau 2. **À la fin de la course, relancer
+> `reconstruction/travail/r1f-13sep.sh`** : le banc saute un morceau dont
+> `rapport.json` existe, il ne reprendra donc que le morceau 1. La règle qui
+> évite de le repayer est écrite dans `CLAUDE.md`.
+>
+> **ET UNE SECONDE CHOSE À FAIRE AU MÊME MOMENT** : `build/tools/vsm-render` n'a
+> pas été relié depuis les correctifs D186 et D187 (les pistes gelées, muettes au
+> rendu hors ligne, et la queue du gel coupée net) — remplacer ce binaire pendant
+> la campagne l'aurait tuée. **Le relier quand la course est finie**, puis
+> vérifier par un rendu que la piste gelée n'est plus « silencieuse » en stems.
+
 ### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
 
 Ce que `r1` établit suffit à la moitié de la décision : **la boucle
