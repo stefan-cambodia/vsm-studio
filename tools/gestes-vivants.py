@@ -63,6 +63,16 @@ DEJA_EN_PLACE = {
     "Retirer les chevauchements": "le projet d'essai n'en a aucun (2 219 notes, 0 chevauchement)",
 }
 
+# CE QU'IL FAUT TAPER pour que l'entrée aboutisse, quand elle demande une valeur.
+#
+# Presser OK sur un champ VIDE n'est pas conduire le geste : « Poser un repère
+# ici… » refuse un nom vide, et à juste titre — un repère sans nom ne repère
+# rien. La garde tape donc ce qu'un utilisateur taperait, et une entrée qui
+# resterait morte AVEC sa valeur serait, elle, un vrai défaut.
+OPTIONS_PAR_ENTREE = {
+    "Poser un repère ici…": "nom=Essai",
+}
+
 MENUS = {
     "clip-audio": ["Rendre muet", "À l'envers", "Normaliser (gain = 1 / crête)", "-6 dB",
                    "-3 dB", "-1 dB", "+1 dB", "2 fois", "3 fois", "Couleur de la piste",
@@ -71,6 +81,12 @@ MENUS = {
                    "Lente au départ", "Rapide au départ", "Le clip fait N mesures…"],
     "clip-midi": ["Rendre muet", "Couleur de la piste", "2 fois", "3 fois", "16 fois",
                   "Zoom : tout voir", "Zoom : la sélection"],
+    # LES DEUX RÈGLES (arrangement et piano roll) : trois entrées chacune, dont
+    # deux grisées tant qu'aucun repère n'est survolé. Poser un repère demande un
+    # NOM, et c'est `VSM_CONFIRMER` qui valide la fenêtre en gardant le nom
+    # proposé (D275) — sans quoi l'entrée paraîtrait morte.
+    "regle": ["Poser un repère ici…"],
+    "regle-pianoroll": ["Poser un repère ici…"],
     # LE PIANO ROLL exige une SÉLECTION : sans elle, quarante entrées restent
     # grisées et le balayage ne mesure rien. Chaque geste est donc précédé de
     # « Tout sélectionner », dans la même course.
@@ -153,11 +169,15 @@ def main() -> int:
         env.update({"HOME": str(maison), "VSM_PROJET": str(projet),
                     "VSM_ENREGISTRER": str(sortie), "VSM_CAPTURE": str(brouillon / f"{nom}.png"),
                     "VSM_DELAI": "600", "VSM_CONFIRMER": "oui"})
+        if libelle in OPTIONS_PAR_ENTREE:
+            env["VSM_OPTIONS"] = OPTIONS_PAR_ENTREE[libelle]
         if menu == "clip-audio":
             env["VSM_IMPORT_AUDIO"] = str(son)
         if libelle:
             if menu == "piste":
                 env["VSM_MENU"] = libelle
+            elif menu.startswith("regle"):
+                env["VSM_MENU_CONTEXTE"] = f"{menu}:{libelle}"
             elif menu == "pianoroll":
                 # « Tout sélectionner » d'abord, sinon tout est grisé. Le geste
                 # lui-même EST « Tout sélectionner » dans le premier cas : le

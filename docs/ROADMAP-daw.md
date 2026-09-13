@@ -24797,3 +24797,15 @@ corrections ont été nécessaires pour que ce chiffre veuille dire quelque chos
 Et « Retirer les chevauchements » n'écrit rien parce que **le projet d'essai n'en
 a aucun** — vérifié, pas supposé : 2 219 notes, zéro chevauchement de même
 hauteur. L'excuse porte le chiffre, pour qu'elle saute si le projet change.
+
+**LES DEUX RÈGLES COMPLÈTENT LE BALAYAGE : 59 entrées sur SIX menus, 0 geste
+mort.** « Poser un repère ici… » y a d'abord été déclarée morte, et c'était encore
+la garde : presser OK sur un champ VIDE n'est pas conduire le geste, et
+l'application refuse un nom vide — à juste titre, « un repère sans nom ne repère
+rien ». La garde tape donc ce qu'un utilisateur taperait (`OPTIONS_PAR_ENTREE`),
+et une entrée qui resterait morte AVEC sa valeur serait, elle, un vrai défaut.
+
+**Sur les six menus balayés, un seul geste était réellement mort** — celui de
+D275 — et les quatorze autres « identiques » s'expliquent toutes : un geste de
+vue, un geste de sélection, une valeur déjà en place, une entrée grisée, un refus
+motivé, ou un champ qu'il fallait remplir.
