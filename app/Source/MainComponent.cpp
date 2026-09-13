@@ -9555,7 +9555,28 @@ bool MainComponent::showBoxForCapture(const juce::String& nom) {
     if (nom == "rien") { boiteRienNestRevenu(3.2); return true; }
     if (nom == "latence") { boiteLatenceMesuree(590.0 / 48000.0, 590, 48000.0, 42.5); return true; }
     if (nom == "disque") { signalerDisqueTropLent(3); return true; }
-    if (nom == "indisponible") { boiteReconstructionIndisponible(); return true; }   // D114
+    // D246 : « indisponible » AVEC UNE RAISON, même quand la chaîne va bien. Cette
+    // boîte n'affiche que `reason` et `remedy`, vides quand la chaîne est là : le
+    // banc rendait une boîte au corps VIDE (« Reconstruction indisponible : / / »),
+    // de quoi croire la boîte cassée. Les autres cas d'essai portent déjà des
+    // valeurs fixes (D112 : 590 échantillons à 48 kHz) ; celui-ci en porte une
+    // aussi quand il n'y a rien à dire, et c'est la raison la plus fréquente.
+    if (nom == "indisponible") {
+        if (reconstructionChain_.reason.empty()) {
+            const auto raison = reconstructionChain_.reason;
+            const auto remede = reconstructionChain_.remedy;
+            reconstructionChain_.reason =
+                "le dossier de la cha\u00eene d'analyse n'a pas \u00e9t\u00e9 trouv\u00e9";
+            reconstructionChain_.remedy =
+                "Fichier > Dossier de la cha\u00eene d'analyse\u2026 pour le d\u00e9signer.";
+            boiteReconstructionIndisponible();
+            reconstructionChain_.reason = raison;
+            reconstructionChain_.remedy = remede;
+            return true;
+        }
+        boiteReconstructionIndisponible();
+        return true;
+    }
     return false;
 }
 

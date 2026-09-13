@@ -23249,3 +23249,28 @@ vumètre qui suit la palette (D225), une coupe d'image dix pixels sous le clip
 (D234), et la clé `pitchSemitones` cherchée là où le disque écrit `pitch` (D238).
 Et **trois fois** la comparaison de deux listes triées, désormais écrite dans
 `CLAUDE.md`.
+
+
+### Phase D246 — la sixième boîte d'essai rendait un corps VIDE (13/09/2026)
+
+`VSM_BOITE_ESSAI=perdues;impossible;rien;latence;disque;indisponible` rejoue les
+six boîtes de l'enregistrement et de la reconstruction (D112, D114) — une garde de
+régression qu'on passe en dix secondes. Cinq disent ce qu'elles doivent : la file
+de capture qui déborde, la carte sans entrée, le balayage non retrouvé (netteté
+3,2), la latence mesurée (12,29 ms, 590 échantillons à 48 kHz) et le disque qui
+perd trois blocs.
+
+La sixième rendait « Reconstruction indisponible : / / » — un corps VIDE. La cause
+n'est pas la boîte : elle n'affiche que la RAISON et le REMÈDE rendus par
+`ReconstructionChain::locate`, et sur cette machine la chaîne va bien, donc les
+deux sont vides. Mais un banc qui lit cette ligne conclut que la boîte est cassée,
+et c'est exactement ce que les cas d'essai doivent empêcher : les cinq autres
+portent des valeurs FIXES. Le sixième en porte une aussi quand il n'y a rien à
+dire, et c'est la raison la plus fréquente :
+
+    Reconstruction indisponible : le dossier de la chaîne d'analyse n'a pas été
+    trouvé / / Fichier > Dossier de la chaîne d'analyse… pour le désigner.
+
+La raison réelle reste affichée quand il y en a une : la valeur de repli ne sert
+que sur une machine où la chaîne fonctionne, c'est-à-dire là où la boîte ne
+s'ouvrirait jamais d'elle-même.
