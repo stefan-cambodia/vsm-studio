@@ -21096,3 +21096,24 @@ MIDI, D201 le choix d'un plugin dans un fichier CLAP, D203 la reconstruction), e
 chacun a été posé parce qu'un audit butait dessus. Le compte est maintenant de
 **huit** sélecteurs pilotables sur 23 ; les quinze autres sont soit couverts par
 un autre verbe, soit encore à faire.
+
+### Vérification de clôture — la journée entière, éprouvée d'un bout à l'autre (13/09/2026)
+
+**POURQUOI CETTE PASSE.** Vingt-deux phases (D162 à D203), neuf anomalies
+ouvertes et fermées (A27 à A36), quatre crochets de banc, six correctifs dans
+`interchange/` et `app/Source/` : chacun a été mesuré seul. Ce qu'aucune de ces
+mesures ne dit, c'est si **le geste ordinaire d'un musicien** traverse encore le
+logiciel sans accroc.
+
+| étape | **relevé** |
+|---|---|
+| ouvrir, choisir une piste, régler son volume, `Ctrl+S` | titre `… -- projet` **sans astérisque**, et `project.json` porte **0,55** |
+| rouvrir, faire un geste, fermer | titre `… -- projet **\***`, puis `VSM_BOITE : Quitter sans enregistrer ? … [Enregistrer \| Quitter sans enregistrer \| Annuler]` |
+| les deux chemins de rendu, sur ce projet modifié et enregistré | `corrélation 1,000000000`, **écart maximal 0,000** sur un échantillon, décalage 0 — `tools/comparer-rendus.sh`, **code de sortie 0** |
+| les préférences de l'utilisateur | `cmp` : **inchangées** |
+| les 1 961 tests du dépôt | **verts** — core 330, audio 1 298, interchange 297, clap 25, panels 11 |
+
+**Rien de ce qui a été ajouté aujourd'hui ne gêne le chemin ordinaire**, et les
+trois mécanismes nés dans la journée — l'astérisque du titre (D174), la question
+de fermeture (D175), l'égalité des deux rendus (D177, D186, D189, D200) — jouent
+ensemble sur le même projet.
