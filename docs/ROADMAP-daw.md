@@ -21223,3 +21223,25 @@ journée — la piste gelée muette, sa queue coupée, le profil jamais capturé
 laissent aucun résidu, et rien d'autre de cette famille ne dort dans les projets
 que le dépôt garde. Ce que cela ne vaut PAS : une preuve pour les projets à venir.
 C'est pour cela que la mesure est devenue un outil et non une ligne de rapport.
+
+### La journée du 13/09/2026, en un coup d'œil
+
+Vingt-quatre phases, dix anomalies ouvertes ET fermées (A27 à A36), quatre
+crochets de banc, deux instruments neufs, une garde dans `tools/`. Pour retrouver
+une mesure sans relire quatre mille lignes :
+
+| phases | ce qui a été trouvé | le chiffre |
+|---|---|---|
+| **D162** | un projet reconstruit, enregistré puis rouvert, ne perd rien — et gagne le MASTER, les clips et les confiances | 22 fichiers, 0 perte ; 6,5 × 10⁻⁸ d'erreur relative au pire |
+| **D163-D166** | le dessin : « Ajuster à la fenêtre » tombait à 21 images/s ; la règle empilait 226 numéros illisibles | fenêtre **46,86 → 21,95 ms** ; règle **× 104** |
+| **D167-D169** | au repos, un quart de cœur brûlé à redessiner ce qui n'avait pas bougé | **23,30 → 5,45 %** d'un cœur |
+| **D170-D171** | en lecture, la moitié du coût était du dessin | interface **15,40 → 10,80 %** |
+| **D172** | la mémoire, et ce que coûte un pas d'annulation | 223 Mo ; **0,23 Mo** par pas |
+| **D173-D176** | l'astérisque, la question de fermeture, le filet éprouvé par `kill -9` | 4 cas chacun, témoins compris |
+| **D177** | l'export de l'application contre `vsm-render`, sur le cas dur | corrélation **1,000000000** |
+| **D178-D184** | machine absente, échantillon manquant, `project.json` et `.mid` abîmés : dits, rien d'écrasé | 1 réserve → 2 ; positions exactes |
+| **D185-D187** | **une piste gelée disparaissait de l'export**, et le gel coupait sa queue | −6,55 dB → **écart maximal 0,000** |
+| **D188-D189** | **un Ctrl+S effaçait le profil d'une machine multi-échantillons** | 0,937 → **1,000000000** |
+| **D190-D192** | les six onglets, le gel qui s'annule, la distance publiée = le projet livré | liste virtualisée ; **0,000** d'écart |
+| **D193-D196** | mes propres boîtes, le projet ouvert deux fois, la règle en temps de l'utilisateur | ECRAN 9 → 7 ; verrou posé |
+| **D197-D205** | l'export MIDI, les plugins tiers, quatre sélecteurs rendus pilotables, le menu Aide | « indisponible » → **64 machines** au registre |
