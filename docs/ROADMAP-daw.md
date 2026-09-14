@@ -27086,3 +27086,62 @@ tranches sur 12 écrivent « Transp. 0 dt » et « 0.0 ms ». C'est la règle qu
 parle, pas un réglage à la main : le mot vaut moins que le nombre, et la
 tranche s'élargit quand la console a la place. Inventaire de langue : ECRAN 7,
 NU 0, SANS_PAIRE 0, DOUBLONS 0. Banc de fumée : 0 raté.
+
+### Phase D325 — les notes ne se voyaient pas dans les clips pleins (15/09/2026)
+
+**VU À LA TAILLE DE L'UTILISATEUR** (2117 × 1317, douze pistes de
+`children-c3-plafond`) : neuf clips MIDI d'une seule pièce, chacun de sa
+couleur, et dedans quelques tirets — la basse, la guitare, le piano se
+devinent, la batterie ne se voit pas. D283 a mis les notes dans le clip, D315
+leur vélocité ; à une hauteur de piste de 47 px, la bande utile fait 27 px, un
+ambitus de deux octaves donne **1,1 px** par rang, et un trait d'un pixel à
+0,35-0,80 d'encre sur une couleur pleine ne se lit pas. Cubase dessine ses notes
+à deux pixels au moins.
+
+**MESURÉ AVANT** (`encre-clips.py` sur la photo : part de la bande couverte par
+des pixels plus sombres que le fond, et contraste WCAG fond / encre médiane) :
+
+| clip | fond | encre (%) | contraste |
+|---|---|---|---|
+| bass | #c3557a | 6,99 | 1,88 |
+| guitar | #c3a152 | 0,25 | 1,91 |
+| other | #09a57d | 3,51 | 1,85 |
+| piano | #3e9bb9 | 0,73 | 1,69 |
+| kick+kick2 | #8c61c4 | 0,08 | 1,85 |
+| hihat / tom | — | 0,00 | — |
+| snare | #c3474c | 0,19 | 1,83 |
+
+**CE QUI EST FAIT.** Le trait fait **2 px au moins** (3 au plus, comme avant) ;
+l'encre monte de 0,35-0,80 à **0,55-0,95** — la gradation de D315 est gardée
+(0,40 d'amplitude), le plancher remonte.
+
+**ATTENDU** (même photo, même script) : sur chaque clip MIDI qui avait de l'encre,
+la part d'encre est **au moins 1,6 ×** celle d'avant (le trait passe de 1,1 à
+2 px), et le contraste médian **≥ 2,2** (1,69-1,91 avant) ; la basse se lit
+comme une ligne, la batterie comme des points ; les clips audio (forme d'onde)
+ne bougent pas plus que le bruit ; `VSM_PEINTURE` inchangé au bruit près.
+
+**MESURÉ** (même photo, `tools/encre-clips.py` — le script a d'abord coupé les
+bandes sur l'encre elle-même : un trait de 2 px casse la saturation de la
+colonne sondée, et la bande mesurée dépendait de ce qu'on mesure ; il referme
+les trous de moins de 5 px depuis, l'interligne des pistes faisant 7) :
+
+| clip | encre avant → après (×) | contraste avant → après | rang (px) |
+|---|---|---|---|
+| bass | 6,99 → 11,05 (**1,58**) | 1,88 → 2,49 | 1,1 → 2 |
+| guitar | 0,25 → 0,48 (1,92) | 1,91 → 2,90 | < 2 → 2 |
+| other | 3,51 → 5,46 (**1,56**) | 1,85 → 2,70 | < 2 → 2 |
+| piano | 0,73 → 1,43 (1,96) | 1,69 → 2,59 | < 2 → 2 |
+| kick+kick2 | 0,08 → 0,08 (1,00) | 1,85 → 2,47 | 3 → 3 |
+| snare | 0,19 → 0,21 (1,10) | 1,83 → 2,42 | 3 → 3 |
+| audio (trois) | 3,69 / 3,46 / 0 inchangés | 1,86 / 1,78 inchangés | — |
+
+Contraste : **tenu partout** (2,42 à 2,90, seuil 2,2). Part d'encre : tenue sur
+guitar et piano (1,9 ×), **manquée de peu sur bass et other (1,58 et 1,56 pour
+1,6 écrit)** — un trait qui passe de 1,1 à 2 px ne double pas l'encre quand les
+rangs voisins se recouvrent —, et **sans objet sur kick et snare**, dont
+l'ambitus de deux notes donnait déjà 3 px par rang : l'attendu aurait dû dire
+« les clips dont le rang fait moins de 2 px », et il ne le disait pas. À l'œil,
+côte à côte : la basse est une ligne, les points de batterie n'ont pas bougé.
+`VSM_PEINTURE` : 27,85 ms de médiane sur 20 passes à 2117 × 1317 (D315 en
+mesurait 27-28). Banc de fumée : 0 raté.

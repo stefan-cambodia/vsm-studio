@@ -2068,7 +2068,13 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     const float bas = r.getBottom() - 3.0f;
                     const int rangs = aigu - grave + 1;
                     const float pas = (bas - haut) / static_cast<float>(rangs);
-                    const float epaisseur = std::max(1.0f, std::min(3.0f, pas));
+                    // D325 : DEUX PIXELS AU MOINS. À un pixel d'épaisseur et une
+                    // encre à demi transparente, un trait de note ne se voyait
+                    // pas sur un clip plein (douze pistes, ambitus de deux
+                    // octaves dans 27 px : 1,1 px). Cubase dessine ses notes à
+                    // deux pixels au moins ; des rangs qui se recouvrent font une
+                    // miniature plus dense, pas une miniature fausse.
+                    const float epaisseur = std::max(2.0f, std::min(3.0f, pas));
                     for (vsm::midi::Tick tour = 0; tour < joueeClip; tour += fenetreClip) {
                         for (const auto& n : track.notes) {
                             if (n.startTick >= sourceFin || n.endTick <= clip.sourceStart) continue;
@@ -2085,8 +2091,12 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                             // sombre qu'une note faible (Cubase la met en couleur) :
                             // de 0,35 à 0,80 d'encre entre 0 et 127, une note à 100
                             // gardant à peu près l'encre d'hier (0,72).
+                            // D325 : l'encre monte de 0,35-0,80 à 0,55-0,95 -- la
+                            // gradation de D315 est gardée (0,40 d'amplitude), le
+                            // plancher remonte pour que la note la plus faible se
+                            // voie encore sur les couleurs sombres de la palette.
                             g.setColour(Palette::background.withAlpha(
-                                n.muted ? 0.3f : 0.35f + 0.45f * static_cast<float>(n.velocity) / 127.0f));
+                                n.muted ? 0.3f : 0.55f + 0.40f * static_cast<float>(n.velocity) / 127.0f));
                             g.fillRect(x0, y, std::max(1.0f, x1 - x0), epaisseur);
                         }
                     }
