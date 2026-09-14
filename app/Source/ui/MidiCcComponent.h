@@ -102,6 +102,10 @@ private:
 
     size_t selectedTrack_ = 0;
     int selectedController_ = 74;
+    /// D319 : vrai quand c'est l'UTILISATEUR qui a choisi le contrôleur (liste
+    /// déroulante) ; faux pour un défaut -- un défaut ne se garde pas d'une piste
+    /// à l'autre, le plus fourni de la piste nouvelle l'emporte.
+    bool controleurChoisiParLUtilisateur_ = false;
     int dragIndex_ = -1;
     bool dragged_ = false;
     vsm::midi::Tick maxTick_ = 1920 * 4;

@@ -47,6 +47,7 @@ MidiCcComponent::MidiCcComponent() {
         const int idx = controllerBox_.getSelectedItemIndex();
         if (idx >= 0 && idx < static_cast<int>(controllerIds_.size())) {
             selectedController_ = controllerIds_[static_cast<size_t>(idx)];
+            controleurChoisiParLUtilisateur_ = true;   // D319
             loadPoints();
             repaint();
         }
@@ -92,6 +93,7 @@ void MidiCcComponent::setActiveTrackIndex(size_t trackIndex) {
     if (project_ == nullptr || trackIndex >= project_->tracks.size()) return;
     if (trackIndex == selectedTrack_) return;
     selectedTrack_ = trackIndex;
+    controleurChoisiParLUtilisateur_ = false;   // D319 : une autre piste, son propre contrôleur le plus fourni
     trackBox_.setSelectedItemIndex(static_cast<int>(trackIndex), juce::dontSendNotification);
     rebuildControllerBox();
 }
@@ -129,6 +131,14 @@ void MidiCcComponent::rebuildControllerBox() {
         comptes[kChannelPressure] = static_cast<int>(track->channelPressure.size());
         for (int c = 0; c < 130; ++c)
             if (comptes[static_cast<size_t>(c)] > 0) presents.push_back(c);
+        // D319 : LE PLUS FOURNI D'ABORD. Le canal 14 du fichier Children porte
+        // 5 303 points de CC 74 et deux de CC 0 (la banque) : l'onglet s'ouvrait
+        // sur « CC 0 (2 point(s)) », une lane vide, et la coupure de filtre --
+        // ce qu'on vient regarder -- attendait dans la liste. Les contrôleurs
+        // présents se rangent par nombre de points, le premier est le défaut.
+        std::stable_sort(presents.begin(), presents.end(), [&](int a, int b) {
+            return comptes[static_cast<size_t>(a)] > comptes[static_cast<size_t>(b)];
+        });
     }
     int itemId = 1;
     auto ajouter = [&](int c) {
@@ -149,8 +159,13 @@ void MidiCcComponent::rebuildControllerBox() {
 
     // Garder le contrôleur choisi s'il existe ; sinon le premier présent.
     int choix = 0;
+    // D319 : un DÉFAUT ne se garde pas d'une piste à l'autre -- « CC 0 », défaut
+    // de la piste 1, restait choisi sur le canal 14 parce qu'il y était présent
+    // (deux points), devant 5 303 points de CC 74. Seul un choix de l'utilisateur
+    // survit, et seulement s'il existe sur la piste.
     if (!presents.empty()
-        && std::find(presents.begin(), presents.end(), selectedController_) == presents.end())
+        && (!controleurChoisiParLUtilisateur_
+            || std::find(presents.begin(), presents.end(), selectedController_) == presents.end()))
         selectedController_ = presents.front();
     for (size_t i = 0; i < controllerIds_.size(); ++i)
         if (controllerIds_[i] == selectedController_) { choix = static_cast<int>(i); break; }

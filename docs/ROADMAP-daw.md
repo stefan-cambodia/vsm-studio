@@ -26808,3 +26808,30 @@ tue laisse la session du lancement lui-même : la première passe comptait « 1
 restante » qui était la sienne. C'est aussi l'origine des 22 sessions du HOME
 de banc `h2`. Un lancement de banc porte donc toujours `VSM_CAPTURE` (ou un
 verbe qui quitte), et un HOME neuf.
+
+### Phase D319 — l'onglet MIDI CC s'ouvrait sur le contrôleur le plus vide (14/09/2026)
+
+**VUE SUR LE FICHIER CHILDREN**, piste « Mixdown · canal 14 » : 5 311
+contrôleurs, dont **5 303 points de CC 74** (la coupure de filtre) — et
+l'onglet *MIDI CC* s'ouvre sur **« CC 0 (2 point(s)) »**, le choix de banque,
+deux points au fond d'une lane vide ; la coupure attend dans la liste. Les
+contrôleurs présents étaient rangés par numéro, et le premier servait de
+défaut. C'est le défaut de D234 (l'onglet Automation s'ouvrait sur un paramètre
+vide), sur l'onglet d'à côté.
+
+**CE QUI EST FAIT.** Les contrôleurs présents se rangent par nombre de points,
+du plus fourni au moins fourni (tri stable : à égalité, l'ordre des numéros) ;
+le premier est le défaut. Le contrôleur choisi par l'utilisateur reste choisi.
+
+**ATTENDU** (relevé de la liste « Contrôleur », `piste:13,midi-cc`) : canal 14
+→ **« 74 · coupure (5303 point(s)) »** ; canal 11 (`piste:10`) → « 7 · volume
+(259 point(s)) » ; canal 12 → « 7 · volume (274 point(s)) » ; la photo montre la
+courbe de coupure, plus une lane vide.
+
+**MESURÉ (binaire de 23:35).** Relevé de la liste « Contrôleur » : canal 14 →
+**« 74 · coupure (5303 point(s)) »**, canal 11 → « 7 · volume (259) », canal 12 →
+« 7 · volume (274) ». Attendus tenus — au second binaire : le premier triait
+bien, mais la règle « garder le contrôleur choisi s'il existe » gardait le
+DÉFAUT de la piste 1 (CC 0, présent aussi sur le canal 14 avec ses deux points
+de banque) ; un défaut ne se garde plus d'une piste à l'autre, seul un choix de
+l'utilisateur survit, et seulement s'il existe sur la piste.
