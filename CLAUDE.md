@@ -289,6 +289,12 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   chaîne vide, et le `echo "rc=$rc"` qui suit affiche `rc=` — ce qui ressemble à
   un succès. Mieux : ne pas filtrer par un tube, écrire le journal dans un fichier
   et garder `rc=$?`.
+- Une commande qui ÉDITE puis LANCE dans le même appel exécute l'ANCIEN outil
+  quand l'édition échoue : le 14/09 au soir, un `assert` Python raté a laissé
+  `tools/balayer-facades.sh` intact, et le `--juger fichier.tsv` qui suivait dans
+  la même ligne a été pris par l'ancienne version pour un NOM DE SORTIE — 63
+  lancements de l'application pendant un build, et un fichier `--juger` dans le
+  dépôt. Éditer, VÉRIFIER (grep du texte neuf), lancer : trois appels, jamais un.
 - Un encadré qui annonce du travail RESTANT se lit jusqu'au bout de son bloc
   avant d'être cru : sa clôture est souvent trente lignes plus bas, dans le même
   encadré. Payé DEUX FOIS le 12/09 — la table « Nommé, chiffré, non fait » des
