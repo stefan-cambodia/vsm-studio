@@ -25148,19 +25148,51 @@ sans filtre, on prend le **20ᵉ centile** des hauteurs écrites, et l'on coupe 
 * **0,75 × f0** — c'est le seul point qui sépare la fondamentale (1,0) de son
   octave inférieure (0,5). Il ne se choisit pas, il se déduit.
 
-| moitié **A** | écrites | justes | 8ve bas | bas/haut | **bonne hauteur** | inventées |
-|---|---|---|---|---|---|---|
-| témoin | 397 | 89 | 69 | 4,9× | **37,6 %** | 40,3 % |
-| **coupure adaptée** | 362 | **97** | **60** | 4,3× | **41,6 %** | 35,6 % |
+**Un écart avec ce que D280 avait écrit, et il est dit.** D280 pré-enregistrait la
+règle comme « posée sous la note la plus grave que la transcription trouve » — le
+MINIMUM, sans facteur. La règle a été changée pour le 20ᵉ centile × 0,75 **avant
+toute mesure**, pour la raison du premier point ; la variante « minimum » n'a pas
+été lancée, ses chiffres n'existent pas. Une hypothèse changée avant sa mesure
+reste une hypothèse écrite avant — à condition de dire qu'elle a changé.
 
-| moitié **B** — VALIDATION | écrites | justes | 8ve bas | bas/haut | **bonne hauteur** | inventées |
-|---|---|---|---|---|---|---|
-| témoin | 326 | 151 | 26 | 5,2× | **72,2 %** | 35,9 % |
-| **coupure adaptée** | 265 | 137 | **9** | **2,2×** | **75,7 %** | 31,7 % |
+**La commande, et la coupe du corpus** (les deux options qui conditionnent le
+résultat, absentes du premier compte rendu) :
 
-**L'attendu est tenu des deux côtés** : +4,0 points sur A, et **+3,5 points sur B**
+```
+VSM_MORCEAUX=morceau-0001-g1,morceau-0002-g2,morceau-0003-g3,morceau-0004-g4,morceau-0005-g5 \
+  analyse/.venv/bin/python tools/basse-aigu-releve.py --adaptee        # moitié A
+VSM_MORCEAUX=morceau-0006-g6,morceau-0007-g7,morceau-0008-g8,morceau-0009-g9,morceau-0010-g10 \
+  analyse/.venv/bin/python tools/basse-aigu-releve.py --adaptee        # moitié B
+```
+
+(Le 13/09, l'outil exigeait encore un gain factice — `0 --adaptee` — qu'il
+ignorait ; il le refuse depuis le 14/09.)
+
+| moitié **A** | écrites | justes | 8ve bas | 8ve haut | bas/haut | **bonne hauteur** | inventées |
+|---|---|---|---|---|---|---|---|
+| témoin | 397 | 89 | 69 | 14 | 4,9× | **37,6 %** | 40,3 % |
+| **coupure adaptée** | 362 | **97** | **60** | 14 | 4,3× | **41,6 %** | 35,6 % |
+
+| moitié **B** — VALIDATION | écrites | justes | 8ve bas | 8ve haut | bas/haut | **bonne hauteur** | inventées |
+|---|---|---|---|---|---|---|---|
+| témoin | 326 | 151 | 26 | 5 | 5,2× | **72,2 %** | 35,9 % |
+| **coupure adaptée** | 265 | 137 | **9** | 4 | **2,2×** | **75,7 %** | 31,7 % |
+
+**L'attendu écrit est tenu des deux côtés** : +4,0 points sur A, et **+3,5 points sur B**
 là où la coupure fixe en perdait 2,3. Les octaves trop bas de B tombent de **26 à
-9** (−65 %) et le rapport bas/haut de 5,2× à 2,2×. Les inventions baissent partout.
+9** (−65 %) et le rapport bas/haut de 5,2× à 2,2×. Les inventions baissent partout,
+et les octaves trop HAUT ne montent pas (14 → 14, 5 → 4) : le grave ôté ne pousse
+pas le transcripteur d'un cran vers le haut.
+
+**Mais l'attendu ne portait pas son contrôle.** La règle de D270 — « tout attendu
+de correction porte son contrôle : pas plus de N % des notes déjà justes cassées »
+— n'a pas été appliquée : l'attendu de D280 ne nommait que la bonne hauteur. À
+−9 % de notes justes sur B (ci-dessous), « validé » est donc une lecture d'après
+coup, et il faut le dire ainsi. Le contrôle s'écrit maintenant, pour la mesure en
+bout de chaîne qui doit trancher : **la distance du stem de basse baisse, ET la
+piste reconstruite ne perd pas plus de 10 % de ses notes justes** — 10 % parce que
+c'est ce que la mesure sur stem a déjà montré perdre (9,3 %) ; au-delà, c'est la
+chaîne qui ajoute une perte de son cru.
 
 **LE REVERS, DIT AUSSI CLAIREMENT QUE LE GAIN.** Sur B, les notes JUSTES passent de
 **151 à 137** — on en perd quatorze. La « bonne hauteur » monte parce que les
@@ -25168,6 +25200,44 @@ fausses tombent plus vite que les justes (326 notes écrites contre 265), pas pa
 qu'on en trouve davantage. **C'est un gain de PRÉCISION payé en RAPPEL**, et
 laquelle des deux vaut mieux n'est pas une question que cette mesure tranche —
 D261 et D274 ont montré que l'objectif de la chaîne lui-même est contesté.
+
+**RELU LE 14/09 : LA COUPURE DE CHAQUE MORCEAU, ET CE QU'ELLE CASSE.** Le premier
+compte rendu ne disait pas la coupure retenue par morceau — la seule variable
+entre les deux lignes — ni si elle retirait des notes vraies. L'outil l'imprime
+depuis, et la reprise reproduit chaque chiffre publié (397/89/69 → 362/97/60 ;
+326/151/26 → 265/137/9) en dix transcriptions par moitié au lieu de quinze : la
+sonde du mode adapté EST la transcription du témoin, elle n'est plus refaite.
+
+| morceau | sonde (notes) | 20ᵉ centile | coupure | note vraie la plus grave | notes vraies sous la coupure |
+|---|---|---|---|---|---|
+| 0001-g1 (A) | 29 | sol#1 | 38,9 Hz | si2 | 0 |
+| 0002-g2 (A) | 166 | sol#1 | 38,9 Hz | do#2 | 0 |
+| 0003-g3 (A) | 32 | ré1 | 27,5 Hz | do#2 | 0 |
+| 0004-g4 (A) | 39 | sol1 | 36,7 Hz | do#2 | 0 |
+| 0005-g5 (A) | 131 | ré2 | 55,1 Hz | do#2 | 0 |
+| 0006-g6 (B) | 65 | ré2 | 55,1 Hz | do#2 | 0 |
+| 0007-g7 (B) | 56 | mi2 | 61,8 Hz | ré2 | 0 |
+| 0008-g8 (B) | 129 | ré#2 | 58,3 Hz | ré#2 | 0 |
+| 0009-g9 (B) | 39 | do#2 | 52,0 Hz | do#2 | 0 |
+| 0010-g10 (B) | 37 | fa#1 | 34,7 Hz | ré2 | 0 |
+
+Trois choses que ce tableau dit et que les agrégats cachaient :
+
+* **la coupure ne retire aucune note vraie** — zéro fondamentale vraie sous la
+  coupure, sur les dix morceaux. Les quatorze notes justes perdues sur B ne sont
+  donc pas des notes que le filtre a ôtées ; le transcripteur les écrit autrement
+  une fois le grave parti, et ce qu'il en fait n'est pas mesuré ici ;
+* **sur quatre morceaux de A sur cinq, le 20ᵉ centile tombe SOUS la note vraie la
+  plus grave** (sol#1, sol#1, ré1, sol1 pour un registre vrai qui commence à do#2
+  ou si2) : la faiblesse nommée dans le code — plus de 20 % de fausses notes
+  graves, et le centile tombe sur l'une d'elles — se produit là, et la coupure
+  (27 à 39 Hz) protège ce qu'elle devait ôter. C'est pourquoi A ne perd que 9
+  octaves basses sur 69 quand B en perd 17 sur 26 ;
+* **sur B, le centile est la note vraie la plus grave, ou son voisin** (do#2 = do#2,
+  ré#2 = ré#2, ré2 / mi2 pour do#2 / ré2) — sauf `0010-g10` (fa#1 pour ré2), et
+  c'est le morceau dont la coupure tombe à 34,7 Hz. Quatre coupures de B sur cinq
+  se placent entre 52 et 62 Hz ; quatre de A sur cinq sous 40 Hz. Le REGISTRE
+  qu'on invoquait pour expliquer l'échec de la coupure fixe est là, chiffré.
 
 **CE QUE C'EST, EXACTEMENT** : le premier remède de la journée qui **survit à une
 validation sur des données qui ne l'ont pas réglé**, après cinq qui ne l'ont pas
