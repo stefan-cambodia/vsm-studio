@@ -6710,6 +6710,10 @@ void MainComponent::startReconstruction(const juce::File& audioFile) {
     };
     reconstructionRunner_.onProgress = [this](const vsm::app::ReconstructionRunner::Progress& p) {
         reconstructionPanel_.setProgress(p);
+        reconstructionEtape_ = p.step > 0
+            ? tr(u8"étape %1 sur %2 — %3").replace("%1", juce::String(p.step))
+                  .replace("%2", juce::String(p.stepCount)).replace("%3", vsm::app::ui::trPhrase(p.stepLabel))
+            : tr(u8"démarrage");
     };
     reconstructionRunner_.onFinished = [this](bool succes, juce::File dossier, juce::String raison) {
         menuItemsChanged();
@@ -8354,6 +8358,43 @@ bool MainComponent::demanderAvantDeJeter(const juce::String& titre, const juce::
 }
 
 bool MainComponent::demanderAvantDeQuitter(std::function<void()> quandOnPeutQuitter) {
+    // D340 : UNE RECONSTRUCTION EN COURS SE DIT AVANT DE QUITTER. Depuis D339,
+    // fermer l'application arrête proprement la chaîne -- mais sans un mot : des
+    // minutes de séparation et de rendus jetées par un Ctrl+Q. Cubase demande
+    // avant de fermer sur un export en cours ; ici, la question nomme l'étape.
+    // La réponse « quitter » interrompt la chaîne, PUIS pose la question du
+    // projet modifié si elle se pose -- deux questions, deux raisons, dans l'ordre
+    // où ce qui se perd est le plus long à refaire.
+    if (reconstructionRunner_.isRunning()) {
+        const juce::String titre = tr(u8"Une reconstruction est en cours");
+        const juce::String message =
+            tr(u8"Quitter l'interrompt (%1). Le dossier de sortie restera incomplet.")
+                .replace("%1", reconstructionEtape_.isNotEmpty() ? reconstructionEtape_ : tr(u8"démarrage"));
+        const juce::String quitter = tr(u8"Quitter et interrompre");
+        const juce::String continuer = tr(u8"Continuer la reconstruction");
+        std::fputs(("VSM_BOITE : " + titre + " : " + message + " : [" + quitter + " | " + continuer + "]\n")
+                       .toRawUTF8(), stderr);
+        auto repondre = [this, quandOnPeutQuitter](bool onQuitte) {
+            if (!onQuitte) return;
+            reconstructionRunner_.cancel();
+            if (!demanderAvantDeJeter(tr(u8"Quitter sans enregistrer ?"),
+                                      tr(u8"Quitter sans enregistrer"), quandOnPeutQuitter))
+                quandOnPeutQuitter();
+        };
+        // VSM_ABANDON (banc) : « annuler » continue la reconstruction, tout le reste quitte.
+        if (const char* choix = std::getenv("VSM_ABANDON"); choix != nullptr && *choix) {
+            const juce::String demande = juce::String(choix).trim().toLowerCase();
+            const bool onQuitte = !(demande.startsWith("annuler") || demande == "0");
+            std::fputs(("VSM_ABANDON : " + juce::String(onQuitte ? "quitter et interrompre" : "continuer la reconstruction")
+                        + "\n").toRawUTF8(), stderr);
+            repondre(onQuitte);
+            return true;
+        }
+        juce::AlertWindow::showOkCancelBox(
+            juce::AlertWindow::QuestionIcon, titre, message, quitter, continuer, this,
+            juce::ModalCallbackFunction::create([repondre](int reponse) { repondre(reponse == 1); }));
+        return true;
+    }
     return demanderAvantDeJeter(tr(u8"Quitter sans enregistrer ?"),
                                 tr(u8"Quitter sans enregistrer"), std::move(quandOnPeutQuitter));
 }

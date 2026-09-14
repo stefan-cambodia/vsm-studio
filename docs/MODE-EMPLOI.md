@@ -780,6 +780,10 @@ compris, pas seulement le script qui les lance —, et fermer l'application
 pendant une reconstruction l'interrompt de la même façon, sans rien laisser
 tourner derrière. La fenêtre dit l'étape en cours et déroule le journal de la
 chaîne au fil de l'eau, lignes repliées.
+Fermer l'application pendant une reconstruction **demande d'abord** — la
+question nomme l'étape en cours (*Quitter et interrompre* / *Continuer la
+reconstruction*) —, puis, si le projet porte des modifications, pose la
+question habituelle.
 
 Ce que la chaîne ne fait pas : couper une piste. Elle mesure le morceau rendu **sans** chaque piste et le publie au rapport, mais garder ou couper reste une décision humaine.
 

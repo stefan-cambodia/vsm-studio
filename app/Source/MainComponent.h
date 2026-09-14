@@ -796,6 +796,8 @@ private:
     vsm::interchange::ShortcutId rebindTarget_{};
     /// Le morceau d'origine, retenu pour devenir la référence A/B (D9.4).
     juce::File reconstructionSource_;
+    /// D340 : l'étape en cours, telle que la fenêtre la dit -- pour la question posée à qui quitte.
+    juce::String reconstructionEtape_;
     /// Le fichier qu'un glisser-déposer vient de proposer, retenu le temps que
     /// l'utilisateur réponde à la question.
     juce::File pendingDroppedAudio_;

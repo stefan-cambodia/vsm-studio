@@ -27846,3 +27846,44 @@ question (Cubase demande) — la boîte « quitter ? » ne parle que du projet
 modifié ; et aucun banc ne presse « Annuler » lui-même (`VSM_CLIC` prend le
 premier « Annuler » de l'application, celui du piano roll), c'est le
 destructeur qui exerce le même arrêt de groupe.
+
+### Phase D340 — quitter pendant une reconstruction l'interrompait sans un mot (15/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D339.** Depuis D339, fermer
+l'application arrête proprement la chaîne ; mais rien ne le disait : un Ctrl+Q
+jetait des minutes de séparation et de rendus, et la boîte « quitter ? » ne
+parlait que du projet modifié. Témoin (binaire de 03:03, `VSM_MENU` puis
+`VSM_FERMER=1`) : **aucune ligne `VSM_BOITE`**, l'application quitte. Cubase
+demande avant de fermer sur un export en cours.
+
+**CE QUI EST FAIT.** `demanderAvantDeQuitter` pose d'abord la question de la
+reconstruction quand `reconstructionRunner_` tourne : « Une reconstruction est
+en cours — Quitter l'interrompt (étape N sur M — libellé). Le dossier de sortie
+restera incomplet. » avec deux réponses, *Quitter et interrompre* et *Continuer
+la reconstruction*. « Quitter » annule la chaîne (l'arrêt de groupe de D339),
+PUIS pose la question du projet modifié si elle se pose — deux questions, deux
+raisons, dans l'ordre où ce qui se perd est le plus long à refaire. L'étape
+nommée est celle que la fenêtre affiche (`reconstructionEtape_`, tenue par le
+rappel de progression). Au banc, `VSM_ABANDON=annuler` continue, tout le reste
+quitte, et la boîte s'écrit au journal (`VSM_BOITE`, D95). Six chaînes
+traduites (`Langue.cpp`), inventaire : 0 sans paire.
+
+**ATTENDU** (avant la mesure ; wav de 4 s, `VSM_MENU` puis `VSM_FERMER=1`, les
+deux langues) : une ligne `VSM_BOITE : Une reconstruction est en cours : …`
+(« A reconstruction is running » en anglais) ; avec `VSM_ABANDON=annuler`, la
+fenêtre continue (« Étape 2 sur 5 » au relevé qui suit) ; avec `abandonner`, la
+fenêtre dit « reconstruction interrompue » ; code 0, 0 orphelin dans les deux
+cas ; banc de fumée 0 raté.
+
+**MESURÉ** (binaire de 03:12 contre celui de 03:03) :
+
+| geste | avant | après |
+|---|---|---|
+| `VSM_FERMER` pendant la chaîne | aucune boîte, l'application quitte | **`VSM_BOITE : Une reconstruction est en cours : Quitter l'interrompt (démarrage). Le dossier de sortie restera incomplet. : [Quitter et interrompre \| Continuer la reconstruction]`** |
+| … en anglais | — | `A reconstruction is running : Quitting interrupts it (starting). The output folder will be left incomplete. : [Quit and interrupt \| Keep reconstructing]` |
+| réponse « continuer » | — | la fenêtre est à « Étape 2 sur 5 — Séparation en stems » au relevé ; la chaîne s'arrête ensuite avec l'application (D339), 0 orphelin |
+| réponse « quitter » | — | « reconstruction interrompue » au relevé, 0 orphelin, code 0 |
+
+Attendu tenu ; la question dit « démarrage » parce que le banc ferme dans la
+seconde qui suit le lancement — la première ligne d'étape n'est pas encore
+arrivée ; au clavier, elle nomme l'étape. Banc de fumée 0 raté. Manuel : § 6.
