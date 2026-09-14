@@ -102,8 +102,10 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   temps du build (`kill -STOP -- -<pgid>` sur le groupe de la course lancée par
   `setsid`), lancer le build DÉTACHÉ (`setsid nohup bash -c 'cmake … ; kill -CONT
   -- -<pgid>'`) pour que la reprise soit automatique même si l'on oublie, et
-  attendre par le journal du build. Un gel ne perd rien (SIGSTOP/SIGCONT) ; un
-  build tué à répétition perd une heure.
+  attendre par le journal du build — et attendre par un `Monitor`, pas par un
+  Bash en arrière-plan : la même garde mémoire a tué l'ATTENTE (D286), et l'on
+  a cru un instant le build mort alors qu'il compilait. Un gel ne perd rien
+  (SIGSTOP/SIGCONT) ; un build tué à répétition perd une heure.
 - Le code de sortie d'un tube est celui de son DERNIER maillon : `cmake
   --build … | grep …` rend 0 même quand la compilation échoue, et l'on
   vérifie alors un ancien binaire en croyant vérifier le nouveau (payé deux
