@@ -27507,3 +27507,51 @@ structure du morceau, lue sans ouvrir une note. Export MIDI du projet ouvert :
 **8 537 notes, multiensemble identique** (0 de différence, tpq 384 conservé) :
 borner le clip n'a déplacé aucune note. `tools/ouvrir-midi.sh` : 8 verdicts,
 0 raté. Banc de fumée : 0 raté. « dÛut » → « début » au relevé.
+
+### Phase D334 — un silence de huit mesures sépare deux clips à l'ouverture d'un MIDI (15/09/2026)
+
+**D'OÙ ELLE VIENT.** D333 borne le clip d'une piste à ses notes ; en comptant
+les silences DANS les pistes (`mido`, trous d'au moins 8 mesures entre deux
+événements de note) : `Children`, **dix canaux sur seize** en ont — le canal 12
+se tait de la mesure 67 à la 227 (160 mesures !) sous un clip qui va de la 3
+à la 259 ; le canal 11 a trois trous. `The Hacker` : trois canaux ; `The
+Extremist` : un ; `sky-and-sand` : aucun. Un clip qui couvre 160 mesures de
+silence ment sur la structure autant que le ruban de D333.
+
+**CE QUI EST FAIT.** À l'ouverture et à l'import, les notes d'une piste sont
+parcourues dans l'ordre ; un silence de **huit mesures au moins** (deux
+carrures : une partie qui s'arrête, une autre qui reprend — le seuil est écrit
+dans le code, `kMesuresDeSilence`) ferme le clip à la fin de la mesure de la
+dernière note et en ouvre un autre à la mesure de la suivante. Aucune note ne
+bouge. Un fichier sans silence donne exactement les clips de D333.
+
+**ATTENDU** (`VSM_CLIPS`, comptes calculés depuis les fichiers par `mido` :
+16 canaux + 16 trous pour `Children`, 4 pistes + 3 trous pour `The Hacker`,
+7 + 1 pour `The Extremist`, 4 + 0 pour `sky-and-sand`) : **32, 7, 8, 4 clips**
+respectivement ; `Children` canal 12 : deux clips, mes. 3-67 (début 3 072,
+longueur 98 304) et mes. 227-259 ; export MIDI de `Children` : 8 537 notes,
+multiensemble identique ; `tools/ouvrir-midi.sh` 8 verdicts verts (le fichier
+de format 0 du banc n'a pas de trou : « 3 clips » tient) ; banc de fumée 0
+raté.
+
+**MESURÉ** (`VSM_CLIPS`, binaire de 01:47) :
+
+| fichier | attendu écrit | recompté avec la règle exacte | l'application |
+|---|---|---|---|
+| `Children` | 32 | **31** | **31** |
+| `The Hacker` | 7 | 7 | **7** |
+| `The Extremist` | 8 | **6** | **6** |
+| `sky-and-sand` | 4 | 4 | **4** |
+
+**L'ATTENDU AVAIT DEUX COMPTES FAUX, ET C'EST LE COMPTE, PAS LE CODE.** Le
+premier inventaire comptait un trou entre deux ÉVÉNEMENTS consécutifs
+(note-on ou note-off), par CANAL, conducteur compris ; la règle du code
+compare le prochain note-on à la FIN la plus tardive des notes déjà vues,
+par PISTE. Recomptés ainsi, `Children` a 15 trous (le canal 1 en a un de
+33,6 mesures, le 11 en a trois) et `The Extremist` 5 pistes et un trou de
+14 mesures : 31 et 6 — exactement ce que l'application donne. Les trous de
+8,0 mesures (canaux 3, 4, 15) sont coupés : le seuil est « au moins ». Canal 12
+de `Children` : mes. 3-67 (début 3 072, longueur 98 304) et mes. 227-259
+(début 347 136, longueur 49 152) — 160 mesures de silence ne sont plus sous
+un clip. Export MIDI : 8 537 notes, multiensemble identique. `tools/ouvrir-midi.sh`
+8 verdicts verts, banc de fumée 0 raté. Manuel : § Ouvrir / Importer.

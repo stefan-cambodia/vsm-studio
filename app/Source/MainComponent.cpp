@@ -10270,17 +10270,40 @@ bool MainComponent::materializeImplicitClips() {
         if (piste.kind == vsm::sequencer::Track::Kind::Midi && !piste.notes.empty()) {
             const auto parMesure = std::max<vsm::midi::Tick>(
                 1, project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote));
-            vsm::midi::Tick premiere = piste.notes.front().startTick, derniere = 0;
-            for (const auto& n : piste.notes) {
-                premiere = std::min(premiere, n.startTick);
-                derniere = std::max(derniere, n.endTick);
+            // D334 : UN SILENCE DE HUIT MESURES SÉPARE DEUX CLIPS. Children : le
+            // canal 12 se tait de la mesure 67 à la 227 et son clip unique
+            // couvrait tout ; dix canaux sur seize ont un tel trou. Deux
+            // carrures de silence, c'est une partie qui s'arrête et une autre
+            // qui reprend -- l'arrangement doit le montrer. Bornes à la mesure,
+            // fenêtre et position confondues : le matériau ne bouge pas.
+            constexpr vsm::midi::Tick kMesuresDeSilence = 8;
+            std::vector<const vsm::sequencer::Note*> triees;
+            triees.reserve(piste.notes.size());
+            for (const auto& n : piste.notes) triees.push_back(&n);
+            std::sort(triees.begin(), triees.end(),
+                      [](const auto* a, const auto* b) { return a->startTick < b->startTick; });
+            auto poser = [&](vsm::midi::Tick premiere, vsm::midi::Tick derniere) {
+                vsm::sequencer::Clip c = clip;
+                const vsm::midi::Tick debut = (premiere / parMesure) * parMesure;
+                const vsm::midi::Tick fin = ((derniere + parMesure - 1) / parMesure) * parMesure;
+                c.startTick = debut;
+                c.sourceStart = debut;
+                c.length = std::max<vsm::midi::Tick>(parMesure, fin - debut);
+                c.sourceLength = c.length;
+                project_.ajouterClip(piste.clips, std::move(c));   // D262
+            };
+            vsm::midi::Tick premiere = triees.front()->startTick, derniere = triees.front()->endTick;
+            for (const auto* n : triees) {
+                if (n->startTick - derniere >= kMesuresDeSilence * parMesure) {
+                    poser(premiere, derniere);
+                    premiere = n->startTick;
+                    derniere = n->endTick;
+                }
+                derniere = std::max(derniere, n->endTick);
             }
-            const vsm::midi::Tick debut = (premiere / parMesure) * parMesure;
-            const vsm::midi::Tick fin = ((derniere + parMesure - 1) / parMesure) * parMesure;
-            clip.startTick = debut;
-            clip.sourceStart = debut;
-            clip.length = std::max<vsm::midi::Tick>(parMesure, fin - debut);
-            clip.sourceLength = clip.length;
+            poser(premiere, derniere);
+            cree = true;
+            continue;
         }
         project_.ajouterClip(piste.clips, std::move(clip));   // D262
         cree = true;
