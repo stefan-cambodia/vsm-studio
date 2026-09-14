@@ -36,7 +36,7 @@ choisir : **le DAW d'abord**, la chaîne d'analyse ensuite.
 
 | Document | Ce qu'il commande | État |
 |---|---|---|
-| [`ROADMAP-daw.md`](ROADMAP-daw.md) (12 780 l.) | faire du démonstrateur un logiciel de studio « digne de Cubase, Live, FL Studio » | **90 titres de phase** écrits (D0 → D93), tous clos — relevé du 11/09 ; l'index en comptait 62 depuis D62 ; le document est en régime d'**audits successifs** (D11, D13-D16, D22-D25, D29-D40, D55, D60-D62) |
+| [`ROADMAP-daw.md`](ROADMAP-daw.md) (25 564 l.) | faire du démonstrateur un logiciel de studio « digne de Cubase, Live, FL Studio » | **280 titres de phase** écrits (D0 → D287), tous clos — relevé du 14/09 (90 au relevé du 11/09) ; l'index en comptait 62 depuis D62 ; le document est en régime d'**audits successifs** (D11, D13-D16, D22-D25, D29-D40, D55, D60-D62) |
 | [`ROADMAP-fusion.md`](ROADMAP-fusion.md) (3 747 l.) | la chaîne d'analyse : d'un enregistrement à un projet jouable | phases 8 à 11 **toutes closes** ; le travail vit désormais dans les § 5 *bis* → *quaterdecies* (les pannes muettes, les hypothèses H13 à H25) |
 | [`ROADMAP-interop.md`](ROADMAP-interop.md) (276 l.) | Python ↔ CLAP ↔ formats d'échange | **P0 à P10 tous faits** — c'est la seule feuille de route entièrement terminée |
 | [`ROADMAP-apprentissage.md`](ROADMAP-apprentissage.md) (1 162 l.) | les modèles appris (classifieur de machine, gabarits de batterie, estimateur) | A0, A1, A2, A4 faites ; **A3 refusée par la mesure** ; **A5 close sauf l'écoute** ; **A6 en cours** : le corpus des 59 candidates mélodiques, repris le 11/09 |
@@ -72,7 +72,7 @@ choisir : **le DAW d'abord**, la chaîne d'analyse ensuite.
 | | |
 |---|---|
 | **Machines** | **63**, plus la tonalité d'essai — 64 identifiants au registre ; **16 effets** d'insert ; **63 façades** dessinées |
-| **Tests** | 1 954 côté moteur — 1 291 audio, 330 core, 297 interchange, 25 clap, 11 panels — et **172 côté Python** (relevé du 10/09, D76) |
+| **Tests** | 1 954 côté moteur — 1 291 audio, 330 core, 297 interchange, 25 clap, 11 panels — et **205 côté Python** (relevé du 14/09, D282 ; 172 au relevé du 10/09) |
 | **Lignes** | `analyse/` 132 k · `audio/` 69 k · `app/` **33 k** · `interchange/` 20 k · `core/` 16 k |
 | **Vérification** | `ruff check .` (lint) et `mypy analyse tools` (types, 104 fichiers) |
 
