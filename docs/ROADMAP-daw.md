@@ -26432,3 +26432,34 @@ conduite … non créée(s) », statistiques `Pistes : 4`, notes inchangées
 MIDI : 4 piste(s) … ; 2 piste(s) de conduite (tempo, signature) sans événement
 de canal, non créée(s) », `Pistes : 4`, `Notes : 9430` (inchangé) ; Children :
 16 pistes, 8 537 notes ; `children-c1-defaut` : 10 pistes. Attendus tenus.
+
+### Phase D311 — « 1 piste lue, découpée par canal » pour un fichier qui n'a rien à jouer (14/09/2026)
+
+**VUE EN OUVRANT `audio.mid`** (téléchargements) : une seule piste, de conduite
+— tempo, signature, pas une note. Le journal disait « Ouvrir MIDI : 0 piste(s)
+— audio.mid (format 1 : 1 piste(s) lue(s), **découpée(s) par canal**) » : le
+découpage n'a pas eu lieu, la piste n'a pas été créée (D310), et la phrase
+tenait à un `!=` entre pistes créées et pistes lues. Et l'application laissait
+un **projet vide sous le titre du fichier, sans un mot**.
+
+**CE QUI EST FAIT.** Le journal ne dit « découpée(s) par canal » que si des
+pistes ont été créées au-delà des pistes lues moins celles de conduite ; et
+quand rien n'est jouable, une boîte le dit — « audio.mid : aucune piste jouable.
+Le fichier porte 1 piste(s) lue(s), dont 1 de conduite (tempo, signature) et
+aucune note ni contrôleur : le projet est vide. » — traduite (inventaire de
+langue : 0 doublon).
+
+**ATTENDU** : `audio.mid` → journal sans « découpée », `VSM_BOITE : Ouvrir MIDI :
+audio.mid : aucune piste jouable…` ; *The Hacker* → journal sans « découpée »
+(6 lues, 2 de conduite, 4 créées) ; Children → toujours « découpée(s) par canal ».
+
+**MESURÉ (binaire de 20:03).** `audio.mid` : « Ouvrir MIDI : 0 piste(s) — audio.mid ;
+1 piste(s) de conduite … non créée(s) ; 0 dotée(s) » — sans « découpée » —, et
+`VSM_BOITE : Ouvrir MIDI : audio.mid : aucune piste jouable. Le fichier porte 1
+piste(s) lue(s), dont 1 de conduite (tempo, signature) et aucune note ni
+contrôleur : le projet est vide.` ; en anglais « Open MIDI : audio.mid: no
+playable track… ». *The Hacker* : « 4 piste(s) … ; 2 de conduite … non créée(s) »
+sans « découpée » ; Children : « (format 0 : 1 piste(s) lue(s), découpée(s) par
+canal) » toujours. Attendus tenus. (Le banc met 100 s par lancement quand une
+boîte modale reste ouverte : la course ne quitte qu'au `timeout` — coût de
+mesure, pas défaut.)

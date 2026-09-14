@@ -5767,22 +5767,37 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         poserTitreDeBase("Vintage Synth MIDI Studio -- " + fichier.getFileNameWithoutExtension());
         profondeurAuDernierEnregistrement_ = history_.undoDepth();
         rafraichirTitre();
+        // D311 : « découpée(s) par canal » ne se dit que si un découpage a eu
+        // lieu -- un fichier d'une piste de conduite rendait 0 piste et le
+        // journal disait « 1 piste lue, découpée par canal », ce qui est faux.
+        const size_t conduite = Project::pistesDeConduite(parsed);
+        const bool decoupe = project_.tracks.size() > pistesLues - conduite;
         std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ")
                      + juce::String(static_cast<int>(project_.tracks.size()))
                      + juce::String::fromUTF8(u8" piste(s) — ") + fichier.getFileName()
-                     + (project_.tracks.size() != pistesLues
+                     + (decoupe
                             ? juce::String::fromUTF8(u8" (format ") + juce::String(static_cast<int>(parsed.format))
                               + " : " + juce::String(static_cast<int>(pistesLues))
                               + juce::String::fromUTF8(u8" piste(s) lue(s), découpée(s) par canal)")
                             : juce::String())
-                     + (Project::pistesDeConduite(parsed) > 0
-                            ? juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(Project::pistesDeConduite(parsed)))
+                     + (conduite > 0
+                            ? juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(conduite))
                               + juce::String::fromUTF8(u8" piste(s) de conduite (tempo, signature) sans événement de canal, non créée(s)")
                             : juce::String())
                      + juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(dotees))
                      + juce::String::fromUTF8(u8" piste(s) dotée(s) d'une machine d'après General MIDI, dont ")
                      + juce::String(static_cast<int>(presets)) + juce::String::fromUTF8(u8" par la banque installée")
                      + "\n").toRawUTF8(), stderr);
+        // D311 : UN FICHIER SANS RIEN À JOUER LE DIT. Ouvrir « audio.mid » -- une
+        // piste de conduite, pas une note -- laissait un projet vide sous le
+        // titre du fichier, sans un mot : le musicien cherchait ses pistes.
+        if (project_.tracks.empty())
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Ouvrir MIDI"),
+                         tr(u8"%1 : aucune piste jouable. Le fichier porte %2 piste(s) lue(s), dont %3 de conduite "
+                            u8"(tempo, signature) et aucune note ni contrôleur : le projet est vide.")
+                             .replace("%1", fichier.getFileName())
+                             .replace("%2", juce::String(static_cast<int>(pistesLues)))
+                             .replace("%3", juce::String(static_cast<int>(conduite))));
         return true;
     } catch (const std::exception& e) {
         std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ") + juce::String(e.what())

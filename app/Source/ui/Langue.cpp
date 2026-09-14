@@ -1331,6 +1331,11 @@ const Paire kAnglais[] = {
     // le filtre de la liste d'événements veut « All », donc sa propre clé.
     { "Tous",
       "All" },
+    // D311 : le fichier MIDI qui n'a rien à jouer.
+    { "Ouvrir MIDI",
+      "Open MIDI" },
+    { "%1 : aucune piste jouable. Le fichier porte %2 piste(s) lue(s), dont %3 de conduite (tempo, signature) et aucune note ni contrôleur : le projet est vide.",
+      "%1: no playable track. The file holds %2 track(s), %3 of them conductor tracks (tempo, time signature), and no note or controller: the project is empty." },
     { "Tout désélectionner",
       "Select none" },
     { "Tout effacer",
