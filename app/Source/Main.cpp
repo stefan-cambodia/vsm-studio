@@ -546,6 +546,11 @@ public:
             // clip né en séance portait avant D262.
             if (const char* clips = std::getenv("VSM_CLIPS"); clips != nullptr && *clips && *clips != '0')
                 content->listClipsForCapture();
+            // D338 : le rang du piano roll APRÈS les gestes (un « Zoom : tout voir »
+            // de VSM_MENU_CONTEXTE le change), là où le relevé de géométrie du
+            // panneau, pris à la disposition, ne le voit pas.
+            if (const char* zones = std::getenv("VSM_PIANOROLL_ZONES"); zones != nullptr && *zones && *zones != '0')
+                content->releverRangPianoRoll();
             // VSM_MENU_LISTE=1 (D80 ; déplacée par D83 après l'import audio, dont le clip doit y figurer) : la barre de menus entière, telle qu'elle
             // s'affiche, sur la sortie d'erreur -- APRÈS les gestes du banc, pour
             // que les libellés qui en dépendent (« Annuler : … ») soient ceux

@@ -51,6 +51,29 @@ for langue in fr en; do
     [ "$verdict" = OK ] || rates=$((rates + 1))
   done
 done
+# D338 : LE CADRAGE AUTOMATIQUE NE DESCEND PAS SOUS LE RANG QUI PORTE UN NOM.
+# « Zoom : tout voir » sur une piste de six octaves donnait des rangs de 9 px et
+# des noms de touche de 6 pt ; la règle : rang ≥ 15 px après ce geste, police 12,
+# et toutes les touches nommées. Piste 1 (« guitar ») du projet d'écoute, qui est
+# celle où le défaut a été vu.
+projet_large="reconstruction/travail/b4wuzthen"
+if [ -d "$projet_large" ]; then
+  maison="$brouillon/h-d338"; mkdir -p "$maison"
+  ligne=$(timeout 90 env HOME="$maison" VSM_PROJET="$projet_large" VSM_VUE="sans-rapport,piste:1" \
+            VSM_MENU_CONTEXTE="pianoroll:Zoom : tout voir" VSM_PIANOROLL_ZONES=1 VSM_DELAI=1500 \
+            VSM_CAPTURE="$maison/c.png" "$BIN" 2>&1 | grep "VSM_PIANOROLL_RANG" | tail -1)
+  if [ -z "$ligne" ]; then
+    printf '  RATÉ D338 aucun relevé (VSM_PIANOROLL_RANG muet)\n'; rates=$((rates + 1))
+  else
+    releves=$((releves + 1))
+    rang=$(sed -E 's/.* rang=([0-9]+).*/\1/' <<<"$ligne")
+    police=$(sed -E 's/.* police=([0-9]+).*/\1/' <<<"$ligne")
+    verdict=OK
+    [ "$rang" -ge 15 ] && [ "$police" -ge 12 ] && grep -q "touches-nommees=toutes" <<<"$ligne" || verdict="RATÉ (rang < 15 px ou police < 12 après « Zoom : tout voir »)"
+    printf '  %-24s D338 « Zoom : tout voir » piste 1 : rang=%s px police=%s pt\n' "$verdict" "$rang" "$police"
+    [ "$verdict" = OK ] || rates=$((rates + 1))
+  fi
+fi
 rm -rf "$brouillon"
 echo "--- $releves relevé(s), $rates raté(s)"
 [ "$releves" -gt 0 ] || exit 2

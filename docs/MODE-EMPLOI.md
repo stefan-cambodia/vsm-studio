@@ -689,6 +689,13 @@ déplacé s'étend en gardant son décalage. Pendant qu'une note se traîne à l
 souris, le clip ne bouge qu'au relâchement. Chaque clip étendu ou créé est dit
 au journal.
 
+**Les noms de touche restent lisibles à tout zoom.** Ils sont écrits à 12 pt
+quel que soit le zoom vertical ; quand les rangs sont trop serrés pour porter un
+nom chacun, seuls les do sont nommés, et leur étiquette déborde sur la touche
+noire voisine plutôt que de rétrécir. *Zoom : tout voir* et *Zoom : sélection*
+(menu du clic droit) ne serrent jamais les rangs sous 15 px : une piste de six
+octaves se centre sur sa hauteur médiane et se fait défiler, comme dans Cubase.
+
 **Replier.** Le bouton *Replier* de la barre (ou *Replier sur les hauteurs
 jouées* dans le menu) ne garde qu'une rangée par hauteur présente sur la
 piste : une batterie tient sur ses cinq pièces au lieu de cent vingt-huit

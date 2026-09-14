@@ -87,6 +87,16 @@ public:
     double pixelsPerTick() const { return pixelsPerTick_; }
     vsm::midi::Tick visibleStartTick() const { return scrollTick_; }
     int noteHeight() const { return noteHeight_; }
+    /// D338 : LE RANG QUI PORTE UN NOM DE TOUCHE À 12 PT (le plancher de D323,
+    /// plus trois pixels d'air). Le cadrage automatique (« Zoom : tout voir »,
+    /// « Zoom : sélection ») ne descend jamais dessous : une piste qui ne tient
+    /// pas se centre sur sa médiane et se fait défiler, comme dans Cubase, au
+    /// lieu de se lire dans des rangs de neuf pixels aux noms illisibles. Le
+    /// zoom vertical à la souris reste libre jusqu'à 4 px : c'est un geste.
+    static constexpr int kRangNomme = 15;
+    /// D338 : le relevé de banc -- rang en pixels, police des noms de touche,
+    /// et si toutes les touches sont nommées (`VSM_PIANOROLL_RANG`).
+    void releverRangPourCapture() const;
     const vsm::sequencer::NoteSelection& selectedNoteIds() const { return selectedNoteIds_; }
     /// Remplace la sélection depuis l'extérieur.
     ///

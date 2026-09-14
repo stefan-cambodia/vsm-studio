@@ -5,6 +5,7 @@
 #include "Shortcuts.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <algorithm>
+#include <cstdio>
 #include <set>
 #include <array>
 #include <cmath>
@@ -420,6 +421,12 @@ void PianoRollComponent::zoomHorizontally(float factor) {
     repaint();
 }
 
+void PianoRollComponent::releverRangPourCapture() const {
+    // D338 : ce que le clavier écrit, lu à la source de la peinture -- pas sur la photo.
+    std::fprintf(stderr, "VSM_PIANOROLL_RANG : rang=%d police=12 touches-nommees=%s do-nommes=1\n",
+                 noteHeight_, (noteHeight_ >= kRangNomme || folded()) ? "toutes" : "do-seulement");
+}
+
 void PianoRollComponent::zoomVertically(float factor) {
     noteHeight_ = juce::jlimit(4, 48, static_cast<int>(std::lround(static_cast<float>(noteHeight_) * factor)));
     updateScrollBars();
@@ -465,8 +472,11 @@ void PianoRollComponent::zoomToFit() {
     scrollTick_ = std::max<Tick>(0, first - static_cast<Tick>(span * 0.02));
 
     const int noteSpan = std::max(1, highest - lowest + 2);
-    noteHeight_ = juce::jlimit(4, 48, area.getHeight() / noteSpan);
-    topNote_ = juce::jlimit(12, 127, highest + 1);
+    // D338 : jamais sous le rang qui porte un nom ; ce qui ne tient pas défile,
+    // centré sur la médiane des hauteurs (pondérée par la durée).
+    noteHeight_ = juce::jlimit(kRangNomme, 48, area.getHeight() / noteSpan);
+    if (noteSpan * noteHeight_ <= area.getHeight()) topNote_ = juce::jlimit(12, 127, highest + 1);
+    else cadrerSurLesNotes();
     updateScrollBars();
     repaint();
 }
@@ -480,8 +490,15 @@ void PianoRollComponent::zoomToSelection() {
     pixelsPerTick_ = juce::jlimit(0.001, 8.0, static_cast<double>(area.getWidth()) * 0.9 / static_cast<double>(span));
     scrollTick_ = std::max<Tick>(0, stats.startTick - static_cast<Tick>(span * 0.05));
     const int noteSpan = std::max(1, static_cast<int>(stats.highestNote) - static_cast<int>(stats.lowestNote) + 2);
-    noteHeight_ = juce::jlimit(4, 48, area.getHeight() / noteSpan);
-    topNote_ = juce::jlimit(12, 127, static_cast<int>(stats.highestNote) + 1);
+    // D338 : même plancher que « tout voir » ; une sélection trop haute se centre.
+    noteHeight_ = juce::jlimit(kRangNomme, 48, area.getHeight() / noteSpan);
+    if (noteSpan * noteHeight_ <= area.getHeight())
+        topNote_ = juce::jlimit(12, 127, static_cast<int>(stats.highestNote) + 1);
+    else {
+        const int lignesVisibles = std::max(1, area.getHeight() / noteHeight_);
+        const int milieu = (static_cast<int>(stats.highestNote) + static_cast<int>(stats.lowestNote)) / 2;
+        topNote_ = juce::jlimit(12, 127, milieu + lignesVisibles / 2);
+    }
     updateScrollBars();
     repaint();
 }
@@ -1829,17 +1846,25 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
         if (pisteDeBatterie) {
             const std::string piece = vsm::app::ui::drumVoiceName(pisteDeBatterie->instrumentId,
                                                     static_cast<uint8_t>(note));
-            if (!piece.empty() && noteHeight_ >= 9)   // D109 : dans la langue de l'interface
+            // D338 : une pièce se nomme dès que son rang porte 12 pt (ou repliée).
+            if (!piece.empty() && (noteHeight_ >= kRangNomme || folded()))   // D109 : dans la langue de l'interface
                 etiquette = vsm::app::ui::tr(juce::String::fromUTF8(piece.c_str()));
         }
         // Repliée, chaque rangée est nommée : elles ne se suivent pas.
-        if (etiquette.isNotEmpty() || note % 12 == 0 || noteHeight_ >= 14 || folded()) {
+        // D338 : LA POLICE NE DESCEND PLUS AVEC LE RANG. Un nom de touche est à
+        // 12 pt (D323) quel que soit le zoom ; sous `kRangNomme`, seuls les do
+        // sont écrits, et leur étiquette déborde sur la touche noire voisine
+        // plutôt que de rétrécir jusqu'à l'illisible (« Zoom : tout voir » sur
+        // une piste de six octaves donnait des rangs de 9 px et des noms de 6 pt).
+        if (etiquette.isNotEmpty() || note % 12 == 0 || noteHeight_ >= kRangNomme || folded()) {
             g.setColour(pressed ? juce::Colours::black
                                  : (etiquette.isNotEmpty() || note % 12 == 0 ? Palette::textPrimary
                                                                              : Palette::textSecondary));
-            g.setFont(std::min(12.0f, static_cast<float>(noteHeight_) - 3.0f));   // D323 : plancher 12 pt, borné par le rang
+            g.setFont(12.0f);   // D323 : plancher 12 pt ; D338 : jamais moins, à tout rang
+            const int hauteurTexte = std::max(noteHeight_, kRangNomme - 1);
             g.drawText(etiquette.isNotEmpty() ? etiquette : noteName(static_cast<uint8_t>(note)),
-                       4, y, keyboardWidth() - 8, noteHeight_, juce::Justification::centredLeft);
+                       4, y + (noteHeight_ - hauteurTexte) / 2, keyboardWidth() - 8, hauteurTexte,
+                       juce::Justification::centredLeft);
         }
     }
     g.setColour(Palette::border);
@@ -2047,9 +2072,9 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
 
 
     // Nom de la note dans le rectangle, dès qu'il y a la place.
-    if (noteHeight_ >= 13 && rect.getWidth() > 34.0f) {
+    if (noteHeight_ >= kRangNomme + 1 && rect.getWidth() > 34.0f) {   // D338 : 12 pt ou rien
         g.setColour(juce::Colours::black.withAlpha(0.75f));
-        g.setFont(std::min(12.0f, static_cast<float>(noteHeight_) - 4.0f));   // D323
+        g.setFont(12.0f);   // D323
         g.drawText(noteName(note.number), rect.reduced(4.0f, 0.0f), juce::Justification::centredLeft, false);
     }
 }

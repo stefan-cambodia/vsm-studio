@@ -166,6 +166,8 @@ public:
     /// D222 : VSM_ENREGISTRER=dossier -- « Enregistrer sous… » par sa fonction, à
     /// la fin de la course, pour que le fichier écrit porte TOUS les gestes.
     bool enregistrerSousPourCapture(const juce::File& dossier);
+    /// D338 : VSM_PIANOROLL_ZONES -- le rang du piano roll et la police des touches, après les gestes.
+    void releverRangPianoRoll() const { pianoRoll_.releverRangPourCapture(); }
     /// D336 : VSM_NOTES -- écrit une note « piste:tick:durée:hauteur » par le chemin du piano roll.
     bool ecrireNotesPourCapture(const juce::String& spec);
     /// D213 : VSM_FICHIER=a.wav;b.wav -- la sélection MULTIPLE que le prochain

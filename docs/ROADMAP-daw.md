@@ -27727,3 +27727,63 @@ d'origine ne rétrécit pas derrière elle — un clip vidé de ses notes reste
 dessiné, ce qui est le modèle des clips (une fenêtre ne dépend pas de ce
 qu'elle montre) ; et l'enregistrement MIDI a ses propres prises (D-takes), non
 touchées ici.
+
+### Phase D338 — « Zoom : tout voir » serrait les rangs du piano roll jusqu'à des noms de touche illisibles (15/09/2026)
+
+**D'OÙ ELLE VIENT — LE « NOMMÉ, NON FAIT » DE D323.** Le plancher de 12 pt de
+D323 s'arrêtait au clavier du piano roll : les noms de touche étaient bornés
+par la hauteur de rang (`min(12, rang − 3)`), et « les monter demande des
+rangs plus hauts ». Vu ce matin sur la piste « guitar » de l'écoute A/B :
+« Zoom : tout voir » (menu du clic droit) cadre six octaves dans 695 px, les
+rangs tombent à **9 px** et les noms de do à 6 pt — des points. L'utilisateur
+a du mal à lire les petits textes ; c'est précisément ce que D323 interdisait
+ailleurs.
+
+**CE QUI EST FAIT.** Trois règles dans `PianoRollComponent` :
+1. **Le cadrage automatique ne descend pas sous le rang qui porte un nom**
+   (`kRangNomme` = 15 px, 12 pt plus trois d'air) : « Zoom : tout voir » et
+   « Zoom : sélection » plafonnent le serrage à 15 px, et ce qui ne tient pas
+   se CENTRE — sur la médiane des hauteurs pondérée par la durée (la fonction
+   de l'ouverture, réemployée) ou sur le milieu de la sélection — et se fait
+   défiler, comme dans Cubase. Le zoom vertical à la souris reste libre
+   jusqu'à 4 px : c'est un geste, pas un cadrage.
+2. **La police des noms de touche ne descend plus avec le rang** : 12 pt à
+   tout zoom. Sous 15 px, seuls les do sont nommés (et les rangées repliées,
+   qui ne se suivent pas), et l'étiquette déborde sur la touche noire voisine
+   plutôt que de rétrécir. Une pièce de batterie se nomme dès que son rang
+   porte 12 pt (avant : dès 9 px, en 6 pt).
+3. **Le nom dans le rectangle de note** : 12 pt dès que le rang le porte
+   (16 px), rien en dessous — plus de 9 pt à 13 px.
+
+Et un relevé, `VSM_PIANOROLL_RANG` (sous `VSM_PIANOROLL_ZONES=1`, pris APRÈS
+les gestes de banc, là où la géométrie du panneau se relève à la disposition
+et ne voit pas un zoom) : rang, police, touches nommées. `tools/police-plancher.sh`
+ne voyait pas ce site (la police venait d'un `std::min`) ; il est désormais un
+`12.0f` littéral, que la garde lit.
+
+**ATTENDU** (avant la mesure ; projet `b4wuzthen`, piste 1 « guitar »,
+`VSM_MENU_CONTEXTE="pianoroll:Zoom : tout voir"`) : rang **≥ 15 px**, police
+**12**, « touches-nommees=toutes » ; photo : les noms de D#5 à F#1 lisibles, la
+vue centrée sur les notes de la piste ; à l'ouverture sans geste : rang 16
+(inchangé). Témoin : le binaire de 02:21 sur le même geste, photo aux rangs de
+9 px et sans relevé. `tools/pianoroll-zones.sh` : les six relevés de D301
+inchangés, plus le cas D338 ; banc de fumée 0 raté ; `police-plancher` 0 site.
+
+**MESURÉ** (binaire de 02:38 contre celui de 02:21) :
+
+| mesure | avant | après |
+|---|---|---|
+| « Zoom : tout voir », piste guitar : rang | **9 px** (695 / 78 rangs, photo) | **15 px** (`VSM_PIANOROLL_RANG`) |
+| police des noms de touche après ce geste | 6 pt (rang − 3) | **12** |
+| touches nommées | les do seulement, illisibles | **toutes**, D#5 → F#1 à l'écran, vue centrée sur la médiane |
+| à l'ouverture (sans geste) | rang 16 | rang 16, police 12 — inchangé |
+| `tools/pianoroll-zones.sh` | 6 relevés | **7 relevés, 0 raté** (le cas D338 ajouté) |
+
+Attendu tenu. Banc de fumée 0 raté, `police-plancher` 0 site. **La garde a
+été vue muette sur l'ancien binaire** : sans `VSM_PIANOROLL_RANG`, le cas D338
+rend « aucun relevé » et compte raté — c'est ainsi qu'elle échoue quand le
+défaut est là. Manuel : § 4 « Les noms de touche restent lisibles à tout
+zoom ». **Reste nommé, non fait** : au zoom vertical à la souris sous 15 px,
+les étiquettes des do débordent sur la touche noire au-dessus ; Cubase les
+efface au-delà d'un seuil, ce qui vaudrait pour des rangs sous 8 px — non
+mesuré, aucun banc ne zoome à la molette.
