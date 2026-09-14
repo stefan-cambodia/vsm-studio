@@ -27233,3 +27233,48 @@ courbe : ses creux à 250 Hz et ses bosses à 1 200 Hz font des vagues, là où
 tout était une ligne au ras du sol. Les enveloppes en secondes (0,001 à 8 s,
 quatre décades) auraient le même besoin — nommé, non fait, faute d'une courbe
 mesurée. Banc de fumée : 0 raté.
+
+### Phase D328 — la lane MIDI CC dessinait ses 35 460 points un par un (15/09/2026)
+
+**VU SUR UN FICHIER DE L'UTILISATEUR** (`Jeff-Mills-The-Hacker…mid`, 37 431 CC 7
+sur six pistes) : l'onglet *MIDI CC* affiche « 7 · volume (35460 point(s)) », et
+`VSM_PEINTURE` le chiffre — **20,28 ms** par dessin de `MidiCcComponent`
+(2115 × 252), 53,59 ms pour la fenêtre entière, quand la vue *Liste* du même
+fichier coûte 1,14 ms et l'arrangement 3,54. Une lane qui suit la tête de
+lecture se redessine à chaque pas de l'horloge (D285) : 20 ms par pas, c'est
+une image sur trois à 60 Hz, sur une lane où 35 000 points tombent dans
+1 700 colonnes — vingt par pixel, tous dessinés, aucun visible séparément.
+
+**CE QUI EST FAIT.** Sous une densité d'un point par pixel, la courbe se
+dessine par colonne : pour chaque colonne d'écran, le premier point, le
+minimum et le maximum de ceux qui y tombent — le trait vertical de la colonne
+couvre exactement ce que les vingt points couvraient ; les pastilles de point
+ne se dessinent que quand les points sont espacés d'au moins leur diamètre.
+Le geste (ajouter, déplacer, supprimer) ne change pas : il travaille sur les
+points, pas sur le dessin.
+
+**ATTENDU** (`VSM_PEINTURE=10 VSM_PEINTURE_ENFANTS=2`, même fichier, même
+taille) : `MidiCcComponent` ≤ **5 ms** de médiane (20,28 avant) ; la fenêtre
+entière sous 40 ms (53,59) ; sur la photo, la courbe de CC 7 est la même à
+l'œil (plateau à 100 jusqu'à la mesure 33, puis les vagues) ; sur un CC
+clairsemé (`cdl`, ou un CC de 17 points), la lane dessine encore ses pastilles
+— témoin photographié ; banc de fumée 0 raté.
+
+**MESURÉ** (`VSM_PEINTURE=10 VSM_PEINTURE_ENFANTS=2`, 2117 × 1317) :
+
+| dessin | avant | après |
+|---|---|---|
+| `MidiCcComponent`, The Hacker, CC 7 × 35 460 | 20,28 ms | **1,94 ms** |
+| fenêtre entière (`socle`), même vue | 53,59 ms | **23,08 ms** |
+| `MidiCcComponent`, témoin : 17 CC 74 (fichier écrit pour la mesure) | — | 0,64 ms |
+
+Les deux seuils tenus (≤ 5 et < 40 ms). Photo côte à côte : la courbe de
+CC 7 a la même forme — plateau jusqu'à la mesure 33, puis les vagues — mais
+elle a changé d'ASPECT : le ruban ambre épais d'avant était les 35 460
+pastilles qui se recouvraient, et il est devenu le trait turquoise de 2 px du
+palier. C'est la lecture juste (une pastille par point, ou aucune), pas un
+appauvrissement ; dit ici pour que personne ne cherche un « trait plus fin »
+dans le code. Le témoin clairsemé garde ses 17 pastilles et ses paliers.
+L'onglet *Automation* dessine ses points de la même façon ; à 606 points sur
+1 700 colonnes (`cdl`), il est sous la densité d'un point par pixel — nommé,
+non fait, faute d'une courbe qui le demande. Banc de fumée : 0 raté.

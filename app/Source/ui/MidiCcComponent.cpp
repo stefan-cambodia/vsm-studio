@@ -412,23 +412,71 @@ void MidiCcComponent::paint(juce::Graphics& g) {
     // EN PALIERS : un CC vaut jusqu'au suivant. Avant le premier point, la
     // valeur est inconnue -- on ne dessine rien, plutôt qu'un maintien inventé.
     juce::Path path;
-    for (size_t i = 0; i < points_.size(); ++i) {
-        const float x = static_cast<float>(tickToX(points_[i].tick));
-        const float y = static_cast<float>(valueToY(points_[i].value));
-        if (i == 0) path.startNewSubPath(x, y);
-        else path.lineTo(x, y);                       // le palier précédent arrive au nouveau tick
-        const float xFin = i + 1 < points_.size() ? static_cast<float>(tickToX(points_[i + 1].tick))
-                                                  : static_cast<float>(a.getRight());
-        path.lineTo(xFin, y);
+    const bool dense = points_.size() > static_cast<size_t>(std::max(1, a.getWidth()));   // D328
+    if (!dense) {
+        for (size_t i = 0; i < points_.size(); ++i) {
+            const float x = static_cast<float>(tickToX(points_[i].tick));
+            const float y = static_cast<float>(valueToY(points_[i].value));
+            if (i == 0) path.startNewSubPath(x, y);
+            else path.lineTo(x, y);                       // le palier précédent arrive au nouveau tick
+            const float xFin = i + 1 < points_.size() ? static_cast<float>(tickToX(points_[i + 1].tick))
+                                                      : static_cast<float>(a.getRight());
+            path.lineTo(xFin, y);
+        }
+    } else {
+        // D328 : PAR COLONNE, QUAND LES POINTS SONT PLUS SERRÉS QUE LES PIXELS.
+        // 35 460 CC 7 sur 1 700 colonnes (un fichier de l'utilisateur) : vingt
+        // points par pixel, tous tracés, 20 ms par dessin -- et la lane se
+        // redessine à chaque pas de la tête. Une colonne montre ce que ses
+        // points couvraient : le palier qui y arrive, son minimum, son maximum,
+        // et la valeur qu'elle laisse à la suivante. Les points hors de la
+        // fenêtre à gauche ne fixent que la valeur d'entrée ; ceux de droite
+        // ne sont pas parcourus.
+        const int gauche = a.getX(), droite = a.getRight();
+        bool aUneValeur = false;
+        float yCourant = 0.0f;               // la valeur qui court (le palier)
+        int colonne = 0;                     // la colonne en cours d'accumulation
+        float yEntree = 0.0f, yMin = 0.0f, yMax = 0.0f;
+        bool colonneOuverte = false;
+        auto fermerLaColonne = [&]() {
+            const float x = static_cast<float>(colonne);
+            if (path.isEmpty()) path.startNewSubPath(x, yEntree);
+            else path.lineTo(x, yEntree);    // le palier précédent arrive à la colonne
+            path.lineTo(x, yMin);
+            path.lineTo(x, yMax);
+            path.lineTo(x, yCourant);        // et la colonne laisse sa dernière valeur
+            colonneOuverte = false;
+        };
+        for (const auto& p : points_) {
+            const int x = tickToX(p.tick);
+            const float y = static_cast<float>(valueToY(p.value));
+            if (x < gauche) { yCourant = y; aUneValeur = true; continue; }
+            if (x > droite) break;
+            if (colonneOuverte && x != colonne) fermerLaColonne();
+            if (!colonneOuverte) {
+                if (path.isEmpty() && aUneValeur)   // le palier entre par le bord gauche
+                    path.startNewSubPath(static_cast<float>(gauche), yCourant);
+                colonne = x; yEntree = aUneValeur ? yCourant : y; yMin = yMax = y; colonneOuverte = true;
+            }
+            yMin = std::min(yMin, y); yMax = std::max(yMax, y);
+            yCourant = y; aUneValeur = true;
+        }
+        if (colonneOuverte) fermerLaColonne();
+        if (!path.isEmpty()) path.lineTo(static_cast<float>(droite), yCourant);
+        else if (aUneValeur) { path.startNewSubPath(static_cast<float>(gauche), yCourant); path.lineTo(static_cast<float>(droite), yCourant); }
     }
     g.setColour(Palette::accentTeal);
     g.strokePath(path, juce::PathStrokeType(2.0f));
 
-    for (const auto& p : points_) {
-        const float x = static_cast<float>(tickToX(p.tick));
-        const float y = static_cast<float>(valueToY(p.value));
-        g.setColour(Palette::accentAmber);
-        g.fillEllipse(x - kPointRadius, y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f);
+    // Les pastilles, seulement quand les points sont moins nombreux que les
+    // colonnes : à vingt par pixel, elles ne feraient qu'un ruban (D328).
+    if (!dense) {
+        for (const auto& p : points_) {
+            const float x = static_cast<float>(tickToX(p.tick));
+            const float y = static_cast<float>(valueToY(p.value));
+            g.setColour(Palette::accentAmber);
+            g.fillEllipse(x - kPointRadius, y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f);
+        }
     }
     dessinerTete(g);
 }
