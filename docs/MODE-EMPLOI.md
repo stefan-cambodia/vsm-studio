@@ -25,6 +25,8 @@ Pour déplacer librement les panneaux, *Affichage ▸ Fenêtre unique* se décoc
 
 C'est la vue où le morceau existe. Chaque ligne est une piste, chaque bloc un **clip** — un morceau de musique qu'on déplace, redimensionne, coupe et duplique à la souris, avec annulation. Un clip posé deux fois ne duplique pas ses notes : éditer l'un modifie l'autre.
 
+**Un clip MIDI montre ses notes** (D283) : une miniature — chaque note un trait, plus haut quand elle est plus aiguë, l'échelle pliée à l'ambitus du clip — dans la même encre que la forme d'onde d'un clip audio. Un motif de basse et une nappe tenue se distinguent d'un coup d'œil, sans ouvrir le piano roll ; un clip rogné montre ce qu'il joue, un clip qui boucle répète ses notes à chaque tour, et une note muette s'estompe.
+
 Sous le nom de chaque piste, une ligne grise dit ce qu'elle est : `midi`, `audio`, `groupe`, et `gelé` quand la piste a été reportée en audio pour ne plus coûter que le prix d'une lecture. Le triangle plie la piste ; les hauteurs se règlent, les pistes se réordonnent, les couleurs se choisissent.
 
 L'automation se dessine **sur** l'arrangement, pas dans un onglet à part : la ligne claire au-dessus des clips de basse est `mix.volume`, avec ses points. En haut à gauche, l'aimant dit à quoi les gestes se calent — ici la mesure.

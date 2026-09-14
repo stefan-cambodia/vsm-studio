@@ -2034,6 +2034,57 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                 }
             }
 
+            // LES NOTES SE VOIENT DANS LE CLIP MIDI (D283). Un clip MIDI
+            // n'était qu'un rectangle de couleur : on savait OÙ il y avait
+            // des notes, jamais LESQUELLES -- un motif de basse et une nappe
+            // tenue se ressemblaient trait pour trait, et il fallait ouvrir
+            // chaque clip pour le reconnaître. Cubase, Live et FL dessinent
+            // une miniature ; c'est ce qui permet de lire un arrangement sans
+            // l'écouter. Même encre que la forme d'onde des clips audio, pour
+            // que les deux natures de clip se lisent de la même façon.
+            //
+            // LA FENÊTRE DU CLIP DANS LE MATÉRIAU, pas la piste entière : un
+            // clip rogné montre ce qu'il joue, et un clip qui boucle répète
+            // ses notes à chaque tour, comme le moteur les répète. La hauteur
+            // se plie à l'AMBITUS des notes du clip, pas aux 128 notes MIDI :
+            // une ligne de basse sur une octave remplirait sinon deux pixels.
+            if (track.kind == Track::Kind::Midi && !track.notes.empty()
+                && r.getWidth() > 4.0f && r.getHeight() > 12.0f) {
+                const vsm::midi::Tick joueeClip = clipPlayedLength(clip, fin);
+                const vsm::midi::Tick fenetreClip = clip.sourceLength > 0 ? clip.sourceLength : joueeClip;
+                const vsm::midi::Tick sourceFin = clip.sourceStart + fenetreClip;
+                int grave = 128, aigu = -1;
+                for (const auto& n : track.notes) {
+                    if (n.startTick >= sourceFin || n.endTick <= clip.sourceStart) continue;
+                    grave = std::min<int>(grave, n.number);
+                    aigu = std::max<int>(aigu, n.number);
+                }
+                if (fenetreClip > 0 && joueeClip > 0 && aigu >= 0) {
+                    // Sous le nom quand il y a la place ; le nom garde sa ligne.
+                    const float haut = r.getY() + (r.getHeight() > 30.0f ? 16.0f : 3.0f);
+                    const float bas = r.getBottom() - 3.0f;
+                    const int rangs = aigu - grave + 1;
+                    const float pas = (bas - haut) / static_cast<float>(rangs);
+                    const float epaisseur = std::max(1.0f, std::min(3.0f, pas));
+                    for (vsm::midi::Tick tour = 0; tour < joueeClip; tour += fenetreClip) {
+                        for (const auto& n : track.notes) {
+                            if (n.startTick >= sourceFin || n.endTick <= clip.sourceStart) continue;
+                            const auto d0 = std::max(n.startTick, clip.sourceStart) - clip.sourceStart + tour;
+                            const auto d1 = std::min(n.endTick, sourceFin) - clip.sourceStart + tour;
+                            if (d0 >= joueeClip) continue;
+                            const float x0 = std::max(r.getX(), tickToX(clip.startTick + d0));
+                            const float x1 = std::min(r.getRight(),
+                                                      tickToX(clip.startTick + std::min(d1, joueeClip)));
+                            if (x1 <= r.getX() || x0 >= r.getRight()) continue;
+                            const float y = bas - static_cast<float>(n.number - grave + 1) * pas;
+                            // Une note muette s'estompe, comme dans le piano roll.
+                            g.setColour(Palette::background.withAlpha(n.muted ? 0.3f : 0.72f));
+                            g.fillRect(x0, y, std::max(1.0f, x1 - x0), epaisseur);
+                        }
+                    }
+                }
+            }
+
             // LES FONDUS SE VOIENT (D5.6) : deux triangles sombres aux coins.
             // Un fondu réglé qui ne se dessinerait pas obligerait à écouter
             // pour savoir s'il existe, et à deviner sa longueur.

@@ -25335,3 +25335,61 @@ dix comme un morceau où l'option n'a rien fait — il n'est pas retiré du comp
 
 *(La course est lancée à la suite de ce paragraphe ; ses chiffres sont ci-dessous
 quand ils existent, jamais avant.)*
+
+### Phase D283 — les notes se voient dans le clip MIDI (14/09/2026)
+
+**TROUVÉE EN REGARDANT L'ARRANGEMENT EN MARCHE**, pendant que la campagne D282
+court : le projet `children-c3-plafond` ouvert, la lecture lancée
+(`VSM_VUE=sans-rapport,jouer,arrangement`), la photo prise à la sixième
+seconde. Douze pistes, douze rectangles de couleur pleins. Les deux clips audio
+n'y montraient pas de forme d'onde non plus — **fausse piste, écartée par la
+mesure** : les voix de ce projet sont silencieuses sur les vingt-deux premières
+secondes que la vue affiche (RMS 0,0000, crête 0,0006 sur `voix-tete.wav`), et
+D5.7 dessine ce qu'il y a. Mais les clips MIDI, eux, n'avaient **rien à
+montrer** : `ArrangementComponent::paint` ne dessinait la forme d'onde que pour
+`Track::Kind::Audio`, et un clip MIDI restait un rectangle et un nom. Un motif de
+basse et une nappe tenue se ressemblaient trait pour trait, et il fallait ouvrir
+chaque clip pour le reconnaître — Cubase, Live et FL Studio dessinent tous une
+miniature des notes, c'est ce qui permet de lire un arrangement sans l'écouter.
+
+**CE QUI EST FAIT.** Dans le même passage de `paint` que la forme d'onde, avec la
+même encre (le fond à 72 %, pour que les deux natures de clip se lisent de la
+même façon), chaque note de la **fenêtre du clip** (`sourceStart` à
+`sourceStart + sourceLength`, ou jusqu'au bout du matériau) est un trait, plus
+haut quand elle est plus aiguë. Trois choix, et leur raison :
+
+* **l'échelle est l'ambitus du clip**, pas les 128 notes MIDI : une ligne de basse
+  sur une octave tiendrait sinon dans deux pixels ;
+* **un clip qui boucle répète ses notes à chaque tour**, comme le moteur les
+  répète (D5.2) — un rectangle plus long avec un seul motif à gauche mentirait ;
+  un clip rogné montre ce qu'il joue, pas le début de la piste ;
+* **la ligne du nom reste au nom** : les notes commencent seize pixels plus bas
+  quand le clip a plus de trente pixels de haut ; une note muette s'estompe à
+  30 %, comme dans le piano roll.
+
+**VÉRIFIÉ DEUX FOIS, SANS SOURIS.** Le rendu hors écran `vsm-arrangement-preview`
+(dont le projet de démonstration porte trente-deux notes par piste) montre
+l'escalier de notes dans « Couplet », « Tenue » et « Muet » ; puis l'application
+recompilée, sur le projet réel : traits sur `bass`, `guitar`, `other`, `piano`,
+points sur les quatre pièces de batterie, rien sur les groupes ni sur l'audio.
+Photo à `VSM_CAPTURE`, réglages de l'utilisateur intacts au `cmp`.
+
+**LE COÛT DE DESSIN, mesuré contre son témoin** — `VSM_PEINTURE=20` sur la
+fenêtre entière (2117 × 1317), projet ajusté à la fenêtre (Ctrl+0, 12 pistes,
+9 224 notes), **sous la charge de la campagne D282** (six rendus en parallèle),
+avant et après avec le même geste :
+
+| | médiane | min | max |
+|---|---|---|---|
+| avant (binaire de D276) | 52,31 ms | 43,76 ms | 72,02 ms |
+| après (D283) | 43,85 ms | **43,47 ms** | 46,51 ms |
+
+La médiane bouge de 8 ms dans le mauvais sens pour une mesure de coût — vers le
+bas —, ce qui dit la charge de fond, pas le dessin ; **le minimum, qui est la
+passe la moins dérangée, est le même à 0,3 ms près**. Neuf mille notes
+parcourues par clip ne se voient pas dans le budget de 21,95 ms que D166 avait
+fixé hors charge. À remesurer une fois la campagne finie si un doute vient.
+
+**Ce que ce n'est pas** : le piano roll reste l'endroit où l'on édite ; la
+miniature ne se saisit pas, et la vélocité n'y est pas dessinée (Cubase la met en
+couleur, Live non) — nommé, non fait, faute d'un besoin mesuré.
