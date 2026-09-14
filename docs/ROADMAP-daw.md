@@ -25805,3 +25805,17 @@ plancher, la plus serrée à 18 px (`vsm.wavetable`, WAVE / TABLE), la plus larg
 était sans sa condition. Un plancher se mesure À LA LARGEUR PAR DÉFAUT, et la
 garde le dit désormais dans son en-tête. Les quinze corrections sont nommées,
 chiffrées, non faites — la batterie décide de l'ordre du soir.
+
+**LE PLAN D'A42, lu dans les descriptions avant la veille (15:40).** Les cinq
+pires façades ont la même géométrie : **toutes leurs sections sur UNE rangée**,
+quatre ou cinq côte à côte dans une grille de 14 à 18 colonnes — `vsm.psg` :
+CHIP 4 + SQUARE 4 + NOISE 3 + ENVELOPE 3 ; `vsm.vocal` et `vsm.westcoast` :
+3 + 5 + 3 + 3 sur 14 ; `vsm.string` et `vsm.piano` : 5 + 3 + 4 + 3 + 3 sur 18.
+À 364 px, une section de 3 colonnes fait 78 px, et quatre curseurs n'y tiennent
+pas. Le remède n'est ni un curseur plus fin ni une grille plus dense : **empiler
+les sections sur deux rangées** (CHIP + SQUARE en haut, NOISE + ENVELOPE en bas ;
+EXCITATION + BOW + STRING en haut, BODY + OUTPUT en bas…), chaque section
+doublant de largeur. La façade grandit en hauteur — ce que D292 rend possible,
+puisqu'elle ne s'étire plus et que le rack défile sous elle (D63). C'est une
+façade à la fois, une photo et une mesure à chaque fois, et la garde
+`tools/balayer-facades.sh` dit quand c'est fini : **0 / 63**.
