@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# balayer-facades.sh — LA GARDE DU PLANCHER DE 18 PX SUR TOUTES LES FAÇADES, au
+# rack de la disposition par défaut.
+#
+# RÈGLE (D62, rappelée par D292-D293, 14/09/2026) : aucun bouton de façade sous
+# 18 px de diamètre. D64-D70 avaient publié « 0 / 63 façades sous 18 px » sans
+# nommer la largeur de rack de la mesure ; au rack de 364 px (fenêtre par défaut
+# à 150 %), le MODIFIERS du Minimoog en posait huit à 16 px. Cet outil pose
+# CHAQUE machine du registre sur la piste 0 d'un projet neuf, laisse la façade
+# écrire sa mesure (VSM_MESURE_FACADE, une ligne par commande) et publie, par
+# machine, la taille de façade et le plus petit bouton — puis la liste de celles
+# qui passent sous le plancher. Sous un HOME de brouillon : les préférences de
+# l'utilisateur ne bougent pas (D77).
+#
+#   tools/balayer-facades.sh [sortie.tsv]      → tableau, puis verdict ; code 1 si une façade est sous 18 px
+set -u
+racine="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$racine"
+sortie="${1:-/tmp/facades-$(date +%Y%m%d-%H%M).tsv}"
+bin="./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
+[ -x "$bin" ] || { echo "binaire absent : $bin" >&2; exit 2; }
+brouillon="$(mktemp -d)"
+rm -f "$sortie"
+ids=$(grep -o 'pluginId = "[^"]*"' panels/src/MachinePanels.cpp | sed 's/.*"\(.*\)"/\1/' | sort -u)
+n=0
+for id in $ids; do
+    n=$((n+1))
+    HOME="$brouillon" DISPLAY="${DISPLAY:-:0}" VSM_VUE=sans-rapport,arrangement,piste:0 \
+        VSM_GESTE_PISTE="machine:$id" VSM_MESURE_FACADE="$sortie" VSM_DELAI=1500 \
+        VSM_CAPTURE="$brouillon/capture.png" timeout 60 "$bin" > "$brouillon/$id.log" 2>&1 \
+        || echo "  $id : code $? au lancement" >&2
+done
+rm -rf "$brouillon"
+echo "$n machine(s) posée(s), mesures dans $sortie"
+# La DERNIÈRE taille rencontrée par machine est la bonne (la façade est posée plusieurs fois au montage).
+awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 {
+    taille[$1]=$2; if (!($1 in mini) || $10<mini[$1]) { mini[$1]=$10; ou[$1]=$3" / "$4 } }
+  END { for (m in mini) printf "%-22s %-10s %3d px  %s\n", m, taille[m], mini[m], ou[m] }' "$sortie" | sort -k3 -n
+sous=$(awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 { if (!($1 in mini) || $10<mini[$1]) mini[$1]=$10 }
+  END { c=0; for (m in mini) if (mini[m]<18) c++; print c }' "$sortie")
+total=$(awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 {v[$1]=1} END{print length(v)}' "$sortie")
+echo "VERDICT : $sous façade(s) sur $total sous le plancher de 18 px"
+[ "$sous" -eq 0 ]

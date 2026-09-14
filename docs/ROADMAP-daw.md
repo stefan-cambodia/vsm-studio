@@ -25764,3 +25764,40 @@ les quatre machines que le projet ouvert posait (Minimoog, vielle, sitar, TR-909
 : **un balayage des 64 façades au rack de 364 px** est nommé, non fait — c'est
 `VSM_GESTE_PISTE=machine:<id>` en boucle sur le registre, le même tableau, et
 il se lit en une commande `awk`.
+
+### Phase D294 — le balayage des 63 façades au rack par défaut : quinze sous le plancher (14/09/2026)
+
+**LE « NOMMÉ, NON FAIT » DE D293, fait dans le quart d'heure**, et il change ce
+qu'on croyait. `tools/balayer-facades.sh` pose chaque machine du registre sur la
+piste 0 d'un projet neuf, sous un `HOME` de brouillon, laisse la façade écrire sa
+mesure (`VSM_MESURE_FACADE`) et publie par machine la taille de façade et le plus
+petit bouton — puis le verdict contre le plancher de 18 px (D62). C'est une
+garde : elle rend 1 quand une façade passe dessous, et sa règle est dans son
+en-tête.
+
+**MESURÉ, 63 machines posées, rack de 364 px (fenêtre par défaut à 150 %), 5 min :**
+**15 façades sur 63 sous 18 px**, là où D64-D70 publiaient « 0 / 63 » — à une
+largeur qu'ils ne nommaient pas.
+
+| machine | façade | plus petit bouton | où |
+|---|---|---|---|
+| `vsm.psg`, `vsm.vocal`, `vsm.westcoast` | 364 × 434 / 530 | **8 px** | ENVELOPE / A |
+| `vsm.string` | 364 × 434 | 9 px | STRING / DECAY |
+| `vsm.granular` | 364 × 434 | 11 px | ENVELOPE / A |
+| `vsm.additive`, `vsm.phasedist` | 364 × 434 / 530 | 12 px | ENVELOPE / A, TIMBRE ENVELOPE / A |
+| `vsm.pcmhybrid` | 356 × 890 | 13 px | PARTIAL A – PCM ATTACK / SAMPLE |
+| `vsm.piano` | 364 × 434 | 13 px | STRINGS / DECAY |
+| `vsm.stochastic`, `vsm.wavesequence` | 364 × 434 | 14 px | ENVELOPE / A |
+| `vsm.epiano`, `vsm.fmdrums`, `vsm.ms20` | 364 × 434 / 818 | 16 px | PREAMP / BASS, TOM / BELL, MG / EG |
+| `vsm.tr808` | 364 × 818 | 17 px | BASS DRUM / LEVEL |
+
+Sept des quinze tombent sur le même bloc — **une enveloppe ADSR de quatre boutons
+en ligne dans une section étroite** — : c'est un gabarit à corriger une fois
+(deux rangées de deux), pas quinze façades. Les 48 autres façades tiennent le
+plancher, la plus serrée à 18 px (`vsm.wavetable`, WAVE / TABLE), la plus large à
+70 px. Réglages de l'utilisateur intacts au `cmp`.
+
+**Ce que ce chiffre dit de D64-D70** : leur « 0 / 63 » n'était pas faux, il
+était sans sa condition. Un plancher se mesure À LA LARGEUR PAR DÉFAUT, et la
+garde le dit désormais dans son en-tête. Les quinze corrections sont nommées,
+chiffrées, non faites — la batterie décide de l'ordre du soir.
