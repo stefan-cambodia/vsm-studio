@@ -52,4 +52,15 @@ const BanqueGM* banquesGM(std::size_t& compte);
 int programmeGMPourMachine(const char* machine);
 int kitGMPourMachine(const char* machine);
 
+/// D313 : QUAND LE FICHIER NE DIT RIEN, LE NOM DE LA PISTE PARLE. Un `.mid` sans
+/// changement de programme -- les exports de cette application avant D312, les
+/// stems d'une séparation (« bass », « drums », « other », « vocals ») -- porte
+/// souvent son instrument dans le nom de la piste. Rend le programme GM d'après
+/// un mot du nom (bass/basse → 33, piano → 0, guitar/guitare → 25, strings →
+/// 48, lead → 81, pad/nappe → 89, choir/voix/vocals → 52…), `kit` vrai pour
+/// une batterie (drums, batterie, percussion, kick, snare, hat…), -1 et faux
+/// quand le nom ne dit rien (« other », « Mixdown », « Piste 3 »).
+struct ProgrammeDuNom { int programme; bool kit; };
+ProgrammeDuNom programmeGMPourNom(const char* nomDePiste);
+
 } // namespace vsm::sequencer

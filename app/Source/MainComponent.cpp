@@ -10176,9 +10176,18 @@ size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, si
         auto& piste = projet.tracks[i];
         if (piste.kind != Track::Kind::Midi || !piste.instrumentId.empty()) continue;
         if (piste.notes.empty()) continue;   // une piste sans note n'a rien à jouer
-        const uint8_t programme = piste.programChanges.empty() ? uint8_t{0}
-                                                               : piste.programChanges.front().program;
-        const bool batterie = piste.channel == 9;
+        // D313 : sans programme dans le fichier, le NOM de la piste parle avant
+        // le défaut de la norme (« bass » → basse, « Batterie » → kit).
+        const auto duNom = piste.programChanges.empty()
+                               ? vsm::sequencer::programmeGMPourNom(piste.name.c_str())
+                               : vsm::sequencer::ProgrammeDuNom{-1, false};
+        // Sur le canal 10, le nom ne choisit pas de programme : « Voix » sur le
+        // canal 10 est une batterie, et 52 y serait un « Orchestra Kit ».
+        const bool batterie = piste.channel == 9 || duNom.kit;
+        const bool nomUtile = piste.programChanges.empty() && (batterie ? duNom.kit : duNom.programme >= 0);
+        const uint8_t programme = !piste.programChanges.empty() ? piste.programChanges.front().program
+                                : (nomUtile && !batterie) ? static_cast<uint8_t>(duNom.programme) : uint8_t{0};
+        const bool parLeNom = nomUtile;
         std::string machine = batterie ? vsm::sequencer::machinePourKitGM(programme)
                                        : vsm::sequencer::programmeGM(programme).machine;
         const std::string nomGM = batterie ? vsm::sequencer::nomDuKitGM(programme)
@@ -10212,9 +10221,13 @@ size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, si
         ++dotees;
         std::fputs((juce::String(contexte) + " : piste " + juce::String(static_cast<int>(i + 1)) + juce::String::fromUTF8(u8" « ")
                     + juce::String::fromUTF8(piste.name.c_str()) + juce::String::fromUTF8(u8" » : ")
-                    + (batterie ? juce::String::fromUTF8(u8"canal 10, kit ") : juce::String::fromUTF8(u8"programme GM "))
+                    + (batterie ? (piste.channel == 9 ? juce::String::fromUTF8(u8"canal 10, kit ")
+                                                      : juce::String::fromUTF8(u8"batterie par le nom, kit "))
+                                : juce::String::fromUTF8(u8"programme GM "))
                     + juce::String(static_cast<int>(programme)) + " (" + juce::String(nomGM.c_str()) + juce::String::fromUTF8(u8") → ") + juce::String(machine.c_str())
-                    + (piste.programChanges.empty() && !batterie
+                    + (parLeNom
+                           ? juce::String::fromUTF8(u8" [aucun programme dans le fichier : d'après le nom de la piste]")
+                           : piste.programChanges.empty() && !batterie
                            ? juce::String::fromUTF8(u8" [aucun programme dans le fichier : le défaut de la norme]")
                            : juce::String())
                     + repli + "\n").toRawUTF8(), stderr);

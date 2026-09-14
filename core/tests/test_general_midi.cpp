@@ -69,3 +69,21 @@ VSM_TEST(la_table_a_l_envers_designe_chaque_machine_par_son_premier_programme) {
     VSM_ASSERT_EQ(kitGMPourMachine("vsm.tr909"), 24);
     VSM_ASSERT_EQ(kitGMPourMachine("vsm.fmdrums"), -1);
 }
+
+// D313 : le nom de la piste désigne la famille quand le fichier ne dit rien.
+VSM_TEST(le_nom_de_la_piste_designe_un_programme_quand_le_fichier_se_tait) {
+    VSM_ASSERT_EQ(programmeGMPourNom("bass").programme, 33);
+    VSM_ASSERT_EQ(programmeGMPourNom("Basse synth\u00e9").programme, 33);
+    VSM_ASSERT_EQ(programmeGMPourNom("piano").programme, 0);
+    VSM_ASSERT_EQ(programmeGMPourNom("Rhodes").programme, 4);
+    VSM_ASSERT_EQ(programmeGMPourNom("Strings").programme, 48);
+    VSM_ASSERT_EQ(programmeGMPourNom("vocals").programme, 52);
+    VSM_ASSERT_EQ(programmeGMPourNom("Pad chaud").programme, 89);
+    VSM_ASSERT(programmeGMPourNom("Batterie").kit);
+    VSM_ASSERT(programmeGMPourNom("drums").kit);
+    VSM_ASSERT(programmeGMPourNom("Drum Bass").kit);            // la batterie avant la basse
+    VSM_ASSERT_EQ(programmeGMPourNom("other").programme, -1);
+    VSM_ASSERT_EQ(programmeGMPourNom("Mixdown").programme, -1);
+    VSM_ASSERT_EQ(programmeGMPourNom("").programme, -1);
+    VSM_ASSERT_EQ(programmeGMPourNom(nullptr).programme, -1);
+}

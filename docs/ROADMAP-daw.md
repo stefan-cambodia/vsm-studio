@@ -26512,3 +26512,44 @@ découpage, noms, machines, clips, conducteur non créé, boîte du fichier vide
 programmes exportés. Verte sur le binaire de 20:16 (7 / 7) ; **vue rouge** avec
 deux attentes faussées (4 pistes, 4 clips → 2 ratés, code 1), comme la règle le
 demande. Listée au README.
+
+### Phase D313 — quand le fichier ne dit rien, le nom de la piste parle (14/09/2026)
+
+**D'où elle vient.** `sky-and-sand-arrangement.mid` (téléchargements) est un
+export de cette application d'AVANT D312 : « bass », « other », « Batterie »,
+« Voix », **aucun programme**. D307 donne alors le défaut de la norme, le piano
+— à une piste qui s'appelle « bass ». Les stems d'une séparation (bass, drums,
+other, vocals, piano, guitar) et la plupart des exports d'autres logiciels
+portent leur instrument dans le NOM ; Cubase ne le lit pas, mais ce projet a
+ces fichiers-là sous la main tous les jours.
+
+**CE QUI EST FAIT.** `programmeGMPourNom(nom)` : un mot du nom désigne la
+famille (bass/basse → 33, piano → 0, rhodes → 4, organ/orgue → 16,
+guitar/guitare → 25, strings/cordes → 48, brass/cuivres → 61, sax → 65, flûte →
+73, choir/voix/vocals → 52, pad/nappe → 89, lead/synth → 81), une batterie
+(drums, batterie, percussion, kick, snare, hat…) devient un KIT quel que soit son
+canal, et la batterie passe avant la basse (« Drum Bass »). Ne joue que sans
+programme dans le fichier ; « other », « Mixdown », « Piste 3 » ne disent rien
+et gardent le défaut. Le journal le dit : « [aucun programme dans le fichier :
+d'après le nom de la piste] », « batterie par le nom, kit 0 ». Un test `core`.
+
+**ATTENDU** : `sky-and-sand-arrangement.mid` → bass → **33** (Electric Bass
+(finger), FR3-Finger-Bass par la banque), other → 0 (défaut de la norme),
+Batterie → kit (canal 10), Voix → kit (canal 10 l'emporte) ; journal « d'après
+le nom de la piste » sur bass seulement ; Children (26 programmes) inchangé ;
+tests `core` 338 + 1 ; garde `tools/ouvrir-midi.sh` verte (« Lead » → 81 par le
+nom, plus le piano — la garde s'ajuste et le dit).
+
+**PREMIÈRE MESURE (binaire de 20:40, tests `core` 339 verts) — et un défaut dans
+la phase elle-même.** `sky-and-sand-arrangement.mid` : bass → **33 (Electric Bass
+(finger)) → vsm.multisample (FR3-Finger-Bass) [d'après le nom de la piste]**,
+other → 0 (défaut de la norme), Batterie → kit 0 ; mais **« Voix » sur le canal
+10 → « kit 52 (Orchestra Kit) »** : le programme tiré du nom (52, chœur) est
+tombé dans le choix du kit d'une piste de batterie. Le canal 10 ne prend rien du
+nom, sinon un kit ; corrigé, remesuré ci-dessous. Children : « dont 13 par la
+banque », inchangé ; garde d'ouverture 7 / 7 avec « Lead » → 81.
+
+**REMESURÉ (binaire de 20:47).** « Voix » (canal 10) → « canal 10, kit 0
+(Standard Kit) → vsm.drums », sans mention du nom ; « Batterie » → kit 0 ; bass
+→ 33 par le nom, other → 0 par défaut ; Children « dont 13 par la banque » ;
+garde 7 / 7 ; tests `core` 339. Attendus tenus, le canal 10 corrigé.

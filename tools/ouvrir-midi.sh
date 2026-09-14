@@ -6,7 +6,8 @@
 #         piste par canal, nommée « <nom> · canal N » ;
 #   D306  chaque piste ouverte porte un clip sur son matériau ;
 #   D307  chaque piste reçoit une machine d'après son programme General MIDI
-#         (le canal 10 un kit ; sans programme, le piano) -- ici SANS banque
+#         (le canal 10 un kit ; sans programme, le NOM de la piste -- D313 --,
+#         sinon le piano) -- ici SANS banque
 #         installée (VSM_PROFILS sur un dossier vide), pour que la garde ne
 #         dépende pas du poste ;
 #   D310  une piste de conduite (tempo, signature) n'est pas créée ;
@@ -68,8 +69,8 @@ verdict "canal 1 (38) → vsm.tb303, canal 4 (89) → vsm.jupiter8, canal 10 →
 [ "$(grep -c 'programme GM 38 (Synth Bass 1) → vsm.tb303' <<<"$j")" -eq 1 ] && [ "$(grep -c 'vsm.jupiter8' <<<"$j")" -ge 1 ] && [ "$(grep -c '→ vsm.drums' <<<"$j")" -eq 1 ] || rates=$((rates + 1))
 verdict "3 clips, 0 « (Aucun) »"                            "$([ "$(grep -c 'VSM_CLIPS : 3 clip' <<<"$j")" -eq 1 ] && [ "$(grep -c 'VSM_TEXTE : liste : (Aucun)' <<<"$j")" -eq 0 ] && echo 1 || echo 0)"
 j=$(lancer conducteur.mid)
-verdict "format 1 : le conducteur n'est pas créé, « Lead » → piano (défaut de la norme)" \
-        "$([ "$(grep -c '^Ouvrir MIDI : 1 piste(s).*1 piste(s) de conduite' <<<"$j")" -eq 1 ] && [ "$(grep -c '« Lead » : programme GM 0 (Acoustic Grand Piano) → vsm.piano \[aucun programme' <<<"$j")" -eq 1 ] && [ "$(grep -c 'découpée' <<<"$j")" -eq 0 ] && echo 1 || echo 0)"
+verdict "format 1 : le conducteur n'est pas créé, « Lead » → 81 d'après son nom (D313), vsm.supersaw" \
+        "$([ "$(grep -c '^Ouvrir MIDI : 1 piste(s).*1 piste(s) de conduite' <<<"$j")" -eq 1 ] && [ "$(grep -c '« Lead » : programme GM 81 (Lead 2 (sawtooth)) → vsm.supersaw \[aucun programme dans le fichier : d.après le nom de la piste\]' <<<"$j")" -eq 1 ] && [ "$(grep -c 'découpée' <<<"$j")" -eq 0 ] && echo 1 || echo 0)"
 j=$(lancer vide.mid)
 verdict "rien à jouer : 0 piste, la boîte le dit, pas de « découpée »" \
         "$([ "$(grep -c '^Ouvrir MIDI : 0 piste(s)' <<<"$j")" -eq 1 ] && [ "$(grep -c 'VSM_BOITE : Ouvrir MIDI : vide.mid : aucune piste jouable' <<<"$j")" -eq 1 ] && [ "$(grep -c 'découpée' <<<"$j")" -eq 0 ] && echo 1 || echo 0)"

@@ -1,5 +1,7 @@
 #include "vsm/sequencer/GeneralMidi.h"
 #include <cstring>
+#include <string>
+#include <cctype>
 
 namespace vsm::sequencer {
 
@@ -160,6 +162,29 @@ int kitGMPourMachine(const char* machine) {
     if (std::strcmp(machine, "vsm.tr808") == 0) return 25;
     if (std::strcmp(machine, "vsm.tr909") == 0) return 24;
     return -1;
+}
+
+ProgrammeDuNom programmeGMPourNom(const char* nomDePiste) {
+    if (nomDePiste == nullptr) return {-1, false};
+    std::string n;
+    for (const char* c = nomDePiste; *c; ++c) n.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(*c))));
+    auto a = [&](const char* mot) { return n.find(mot) != std::string::npos; };
+    // La batterie d'abord : « drum bass » est une batterie, pas une basse.
+    if (a("drum") || a("batterie") || a("percu") || a("kick") || a("snare") || a("hat") || a("cymbal") || a("tom ") || a("clap"))
+        return {0, true};
+    if (a("bass") || a("basse"))                       return {33, false};   // Electric Bass (finger)
+    if (a("e-piano") || a("epiano") || a("rhodes") || a("wurli") || a("electric piano")) return {4, false};
+    if (a("piano"))                                    return {0, false};
+    if (a("organ") || a("orgue"))                      return {16, false};
+    if (a("guitar") || a("guitare"))                   return {25, false};
+    if (a("string") || a("corde") || a("violin") || a("violon") || a("cello")) return {48, false};
+    if (a("brass") || a("cuivre") || a("trumpet") || a("trompette")) return {61, false};
+    if (a("sax"))                                      return {65, false};
+    if (a("flute") || a("fl\u00fbte"))                return {73, false};
+    if (a("choir") || a("ch\u0153ur") || a("choeur") || a("vocal") || a("voix") || a("voice")) return {52, false};
+    if (a("pad") || a("nappe"))                        return {89, false};
+    if (a("lead") || a("synth"))                       return {81, false};
+    return {-1, false};
 }
 
 } // namespace vsm::sequencer
