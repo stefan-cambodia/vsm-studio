@@ -26564,3 +26564,25 @@ banque », inchangé ; garde d'ouverture 7 / 7 avec « Lead » → 81.
 (Standard Kit) → vsm.drums », sans mention du nom ; « Batterie » → kit 0 ; bass
 → 33 par le nom, other → 0 par défaut ; Children « dont 13 par la banque » ;
 garde 7 / 7 ; tests `core` 339. Attendus tenus, le canal 10 corrigé.
+
+### Nommé ce soir, non fait — pour la reprise (14/09/2026, 20:55, batterie à 25 %)
+
+- **L'installateur de banques écrit des relâchements que la machine ne tient
+  pas** (25 s sur FR3-Steel-Guitar, plafond 5 s de `vsm.multisample`) : la
+  réserve est dite à chaque ouverture (D309). Soit l'installateur borne à la
+  conversion (`interchange/src/SoundFont.cpp`, `releaseSeconds`), soit la
+  machine élargit son plafond ; à trancher en écoutant une corde tenue.
+- **La console à 88 px tronque encore les noms** (quarante pistes : 40 noms
+  coupés, D304) — Cubase les écrit sur deux lignes ou en plus petit ; une
+  rangée de nom sur deux lignes sous 100 px est le geste naturel.
+- **La miniature des clips ne dessine pas la vélocité** (D283, « nommé, non
+  fait ») ; les seize clips du fichier Children la rendraient lisible.
+- **La fenêtre « Reconstruire un morceau… » n'a pas été photographiée ce
+  soir** : elle passe par un sélecteur (`VSM_FICHIER`), et la course de
+  20:36 ne le lui a pas donné.
+- **Les imports Live / FL ne passent pas par D307-D313** : `applyDawImport`
+  garde sa propre règle d'instruments (le rapport d'import) ; vérifier qu'un
+  `.als` sans instrument VSM reçoit au moins la famille General MIDI de sa
+  piste, ou dire pourquoi non.
+- **Le bilan D282** (`tools/bilan-coupure-basse.py d282-temoin d282-coupure`),
+  quand les dix morceaux traités existent ; la course reprend au réveil.
