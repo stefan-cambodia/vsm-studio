@@ -27020,3 +27020,12 @@ onglets Automation et Effets et la règle du piano roll n'ont aucun texte coupé
 Banc de fumée : 0 raté. Ce que le plancher NE règle pas, et qui reste à l'œil :
 les noms de touche du piano roll (bornés par la hauteur de rang) et la
 sérigraphie des façades — nommés ci-dessus.
+
+**COMPLÉMENT — les noms de touche du piano roll.** « Bornés par la hauteur de
+rang », avais-je écrit ; à la hauteur par défaut (16 px), c'est le **plafond de
+11** qui bornait (`min(11, 16 − 3)`), pas le rang. Plafond porté à 12 aux deux
+sites (colonne des touches, nom dans le rectangle de note) : à 16 px de rang les
+noms passent à 12 pt, et un rang plus court les borne toujours. Vu sur la photo,
+colonne des touches et rectangles de notes côte à côte. Le master de la console
+(étiquettes LOW/MID/HIGH/COMP/RATIO/SAT/CEIL, 9,5 → 12 pt dans leur bande de
+12 px) se lit sans coupe sur la même photo.

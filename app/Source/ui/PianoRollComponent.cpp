@@ -1828,7 +1828,7 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
             g.setColour(pressed ? juce::Colours::black
                                  : (etiquette.isNotEmpty() || note % 12 == 0 ? Palette::textPrimary
                                                                              : Palette::textSecondary));
-            g.setFont(std::min(11.0f, static_cast<float>(noteHeight_) - 3.0f));
+            g.setFont(std::min(12.0f, static_cast<float>(noteHeight_) - 3.0f));   // D323 : plancher 12 pt, borné par le rang
             g.drawText(etiquette.isNotEmpty() ? etiquette : noteName(static_cast<uint8_t>(note)),
                        4, y, keyboardWidth() - 8, noteHeight_, juce::Justification::centredLeft);
         }
@@ -2040,7 +2040,7 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
     // Nom de la note dans le rectangle, dès qu'il y a la place.
     if (noteHeight_ >= 13 && rect.getWidth() > 34.0f) {
         g.setColour(juce::Colours::black.withAlpha(0.75f));
-        g.setFont(std::min(11.0f, static_cast<float>(noteHeight_) - 4.0f));
+        g.setFont(std::min(12.0f, static_cast<float>(noteHeight_) - 4.0f));   // D323
         g.drawText(noteName(note.number), rect.reduced(4.0f, 0.0f), juce::Justification::centredLeft, false);
     }
 }
