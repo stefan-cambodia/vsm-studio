@@ -25791,9 +25791,13 @@ largeur qu'ils ne nommaient pas.
 | `vsm.epiano`, `vsm.fmdrums`, `vsm.ms20` | 364 × 434 / 818 | 16 px | PREAMP / BASS, TOM / BELL, MG / EG |
 | `vsm.tr808` | 364 × 818 | 17 px | BASS DRUM / LEVEL |
 
-Sept des quinze tombent sur le même bloc — **une enveloppe ADSR de quatre boutons
-en ligne dans une section étroite** — : c'est un gabarit à corriger une fois
-(deux rangées de deux), pas quinze façades. Les 48 autres façades tiennent le
+Sept des quinze tombent sur le même bloc — **une enveloppe ADSR de quatre
+curseurs VERTICAUX en ligne dans une section de 3 colonnes sur 14** (lu dans la
+description du PSG : `columnSpan = 3`, quatre `VerticalSlider` côte à côte, soit
+78 px pour quatre curseurs et leurs marges). Le « diamètre » mesuré est ici la
+LARGEUR du curseur. Le remède n'est pas deux rangées de deux — un ADSR se lit
+en ligne — mais une section plus large, prise aux voisines : un rééquilibrage
+de grille par machine, à regarder une par une. Les 48 autres façades tiennent le
 plancher, la plus serrée à 18 px (`vsm.wavetable`, WAVE / TABLE), la plus large à
 70 px. Réglages de l'utilisateur intacts au `cmp`.
 
