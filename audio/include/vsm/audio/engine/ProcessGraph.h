@@ -68,6 +68,16 @@ public:
     std::string trackInstrumentId(size_t trackIndex) const;
     vsm::audio::plugin::ISynthPlugin* trackInstrument(size_t trackIndex) const;
 
+    /// D332 : UN CONTRÔLEUR GENERAL MIDI PILOTE UN PARAMÈTRE DE LA MACHINE. CC 74
+    /// (brillance) et CC 71 (résonance) sont écrits par les fichiers GM depuis
+    /// trente ans ; aucune machine du parc ne les lit. L'application, qui sait
+    /// quel paramètre est « la coupure » d'une machine (le profil sémantique),
+    /// déclare ici la cible ; le graphe applique la valeur du CC au paramètre,
+    /// en log entre `minimum` et `maximum` quand `logarithmique` (les hertz).
+    void setTrackGmController(size_t trackIndex, uint8_t controller, vsm::audio::plugin::ParamId param,
+                              float minimum, float maximum, bool logarithmique);
+    void clearTrackGmControllers(size_t trackIndex);
+
     /// Règle un paramètre de l'instrument d'une piste de façon thread-safe :
     /// capture le shared_ptr (le maintient en vie pendant l'appel), puis
     /// appelle setParameter (atomique). Sûr depuis n'importe quel thread
@@ -607,10 +617,20 @@ private:
     std::array<uint8_t, kMaxTracks> rpnMsb_{};   ///< D331 : paramètre enregistré choisi (CC 101 / CC 100), 127 = aucun
     std::array<uint8_t, kMaxTracks> rpnLsb_{};
     std::array<float, kMaxTracks> bendRange_{};  ///< D331 : plage de pli en demi-tons (RPN 0), 2 au repos
+    struct GmController {                          ///< D332 : CC -> paramètre de la machine
+        std::atomic<bool> valide{false};
+        uint8_t controller = 0;
+        vsm::audio::plugin::ParamId param = 0;
+        float minimum = 0.0f, maximum = 1.0f;
+        bool logarithmique = false;
+    };
+    static constexpr size_t kGmControllersPerTrack = 2;
+    std::array<std::array<GmController, kGmControllersPerTrack>, kMaxTracks> gmControllers_{};
     /// D329-D331 : LES TENUES DU GRAPHE, sur tous les chemins (planning, chasse) :
     /// note le CC 7, le CC 10, la sélection RPN et la plage de pli ; et convertit
     /// un pli BRUT (-1..1) en demi-tons avec la plage de la piste.
-    void appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::MidiControlEvent& e);
+    void appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::MidiControlEvent& e,
+                            vsm::audio::plugin::ISynthPlugin* instrument);
     std::array<float, kMaxTracks> autoPan_{};
     std::array<std::array<float, kMaxSends>, kMaxTracks> autoSend_{};
     /// D30.4 : le trim d'entrée piloté, EN DÉCIBELS comme le réglage qu'il

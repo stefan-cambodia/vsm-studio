@@ -1,4 +1,6 @@
 #pragma once
+#include <cstddef>
+#include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/plugin/ParameterTypes.h"
 #include <optional>
 #include <string>
@@ -83,5 +85,14 @@ std::vector<std::string> knownSemanticPluginIds();
 /// ou une chaîne vide si la table n'en déclare pas. Exposé pour les tests de
 /// complétude : aucun paramètre d'aucune machine ne doit rester sans identité.
 std::string lookupSemanticId(const std::string& pluginId, const std::string& parameterName);
+
+/// D332 : déclare au graphe les contrôleurs General MIDI qui pilotent la machine
+/// d'une piste -- CC 74 (brillance) vers `filter.1.cutoff`, CC 71 (résonance)
+/// vers `filter.1.resonance` --, par le profil sémantique ; en log pour les
+/// hertz d'au moins une décade. Appelée à CHAQUE assignation de machine, dans
+/// l'application comme dans le rendu hors-ligne : les deux chemins rendent le
+/// même son. Rend le nombre de contrôleurs déclarés (0 à 2).
+int declarerLesControleursGM(vsm::audio::engine::ProcessGraph& graphe, std::size_t trackIndex,
+                             const std::string& pluginId);
 
 } // namespace vsm::interchange

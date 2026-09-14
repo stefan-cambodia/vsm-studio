@@ -311,6 +311,7 @@ MainComponent::MainComponent()
         // demande d'une machine absente de ce build ne s'écrira plus.
         if (idx < project_.tracks.size()) project_.tracks[idx].requestedInstrumentId.clear();
         audioEngine_.processGraph().setTrackInstrument(idx, pluginId);
+        publierLesControleursGM(idx, pluginId);   // D332
         if (idx == trackList_.selectedTrackIndex()) updateSynthRackForSelection();
     };
     trackList_.onAddTrack = [this] { addTrack(); };
@@ -7369,6 +7370,7 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             project_.tracks[trackIndex].instrumentId = item.reference;
             project_.tracks[trackIndex].requestedInstrumentId.clear();   // D76
             audioEngine_.processGraph().setTrackInstrument(trackIndex, item.reference);
+            publierLesControleursGM(trackIndex, item.reference);   // D332
             trackList_.refreshTrackRow(trackIndex);
             updateSynthRackForSelection();
             refreshTransportSchedule();
@@ -7393,6 +7395,7 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
                 project_.tracks[trackIndex].instrumentId = lu.preset.pluginId;
                 project_.tracks[trackIndex].requestedInstrumentId.clear();   // D76
                 audioEngine_.processGraph().setTrackInstrument(trackIndex, lu.preset.pluginId);
+                publierLesControleursGM(trackIndex, lu.preset.pluginId);   // D332
                 trackList_.refreshTrackRow(trackIndex);
             }
             auto* machine = audioEngine_.processGraph().trackInstrument(trackIndex);
@@ -12271,6 +12274,17 @@ void MainComponent::oublierLesMachines() {
     reglagesGardes_.clear();
 }
 
+// D332 : LES CONTRÔLEURS GENERAL MIDI QUI PILOTENT LA MACHINE. Un fichier GM
+// écrit sa brillance en CC 74 et sa résonance en CC 71 (Children : 5 303 CC 74
+// sur la piste de tête), et aucune machine du parc ne les lit. Le profil
+// sémantique dit quel paramètre est « filter.1.cutoff » pour cette machine ; le
+// graphe applique le CC entre ses bornes, en log pour les hertz (D327). Une
+// machine sans coupure déclarée n'a rien -- et le CC part comme avant.
+void MainComponent::publierLesControleursGM(size_t trackIndex, const std::string& pluginId) {
+    // La règle vit dans interchange (D332), partagée avec le rendu hors-ligne.
+    vsm::interchange::declarerLesControleursGM(audioEngine_.processGraph(), trackIndex, pluginId);
+}
+
 void MainComponent::rebuildFromProject(bool stopPlayback) {
     // LE RACK LÂCHE SA PISTE AVANT TOUTE CHOSE (trouvé en D34.3).
     //
@@ -12393,6 +12407,7 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
         if (garder[i]) { ++gardees; continue; }
         const std::string id = voulue(i);
         graphe.setTrackInstrument(i, id);
+        publierLesControleursGM(i, id);   // D332
         uidParEmplacement_[i] = 0;
         auto* machine = graphe.trackInstrument(i);
         if (machine == nullptr) continue;

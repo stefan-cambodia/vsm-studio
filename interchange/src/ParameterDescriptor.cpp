@@ -1,4 +1,6 @@
 #include "vsm/interchange/ParameterDescriptor.h"
+#include <cstdint>
+#include <utility>
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
@@ -1753,6 +1755,27 @@ SemanticProfile buildSemanticProfile(const std::string& pluginId) {
         descriptors.push_back(std::move(descriptor));
     }
     return SemanticProfile(pluginId, std::move(descriptors));
+}
+
+} // namespace vsm::interchange
+
+namespace vsm::interchange {
+
+int declarerLesControleursGM(vsm::audio::engine::ProcessGraph& graphe, std::size_t trackIndex,
+                             const std::string& pluginId) {
+    graphe.clearTrackGmControllers(trackIndex);
+    if (pluginId.empty()) return 0;
+    const auto profil = buildSemanticProfile(pluginId);
+    static const std::pair<uint8_t, const char*> kCibles[] = {{74, "filter.1.cutoff"}, {71, "filter.1.resonance"}};
+    int declares = 0;
+    for (const auto& [cc, semantique] : kCibles) {
+        const auto* d = profil.findBySemanticId(semantique);
+        if (d == nullptr) continue;
+        const bool log = d->unit == "Hz" && d->minimum > 0.0f && d->maximum / d->minimum >= 10.0f;
+        graphe.setTrackGmController(trackIndex, cc, d->paramId, d->minimum, d->maximum, log);
+        ++declares;
+    }
+    return declares;
 }
 
 } // namespace vsm::interchange

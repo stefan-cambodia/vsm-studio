@@ -27413,3 +27413,46 @@ hauteur des autres tests de pli. Banc de fumée : 0 raté. Manuel § 4.
 Le test réécrit dit ses chiffres : nue 440,4 Hz, pli sans RPN 494,8 Hz
 (+2 st), pli avec RPN 0 = 12 : 872,7 Hz (× 1,98, l'octave) — **1 302 tests
 audio verts**.
+
+### Phase D332 — la brillance MIDI (CC 74) et la résonance (CC 71) d'un fichier ne pilotaient rien (15/09/2026)
+
+**VU DANS L'INVENTAIRE DES CONTRÔLEURS** : `Children` écrit **5 303 CC 74** sur
+son canal 14 — la piste de tête, « Lead 2 (sawtooth) » → Supersaw — c'est la
+montée de filtre qui fait le morceau ; et un CC 71 à côté. Aucune machine du
+parc ne lit ces contrôleurs (`grep` : zéro), le graphe les livre à la machine
+qui les refuse, et le compteur « contrôles ignorés » les avale. Cubase les
+remet à l'instrument, qui les prend (GM2 : CC 74 = brillance, CC 71 =
+résonance / timbre).
+
+**CE QUI EST FAIT.** Le graphe accepte, par piste, jusqu'à deux **contrôleurs
+GM déclarés** (numéro → paramètre, bornes, échelle) ; l'application les déclare
+à chaque assignation de machine par le profil sémantique — `filter.1.cutoff`
+pour le 74, `filter.1.resonance` pour le 71 —, en log pour les hertz d'au
+moins une décade (la règle de D327). Une machine sans coupure déclarée ne
+reçoit rien de plus. Le CC continue de partir à la machine et au port comme
+avant, et passe par la chasse comme les tenues de D329-D331.
+
+**ATTENDU** (`cc74-paliers.mid`, écrit pour la mesure : A2 répété sur le
+Supersaw, CC 74 à 127 deux mesures puis à 10 deux mesures ; `VSM_EXPORT`,
+centroïde spectral par palier) : AVANT, 397 puis 507 Hz (mesuré — la seconde
+moitié n'est pas plus sombre) ; APRÈS, le centroïde du second palier est **au
+moins deux fois plus bas** que celui du premier. Test audio ajouté
+(`a_declared_gm_controller_drives_the_machine_parameter`, brillance avec et
+sans déclaration) : 1 303 verts ; banc de fumée 0 raté.
+
+**MESURÉ** (`VSM_EXPORT`, centroïde spectral par palier, `centroide-paliers.py`) :
+
+| export | mes. 1-3 (CC 74 = 127) | mes. 3-5 (CC 74 = 10) |
+|---|---|---|
+| avant | 397 Hz | 507 Hz (pas plus sombre) |
+| après | 379 Hz | **114 Hz** (× 0,30 — attendu ≤ × 0,5) |
+
+**DEUX BINAIRES POUR LA MESURE.** Le premier passait le test du graphe
+(brillance 0,0347 → 0,0002 avec déclaration, 0,0371 → 0,0373 sans) et
+l'export ne bougeait PAS (397 / 507, à l'identique) : la déclaration vivait
+dans l'application, et l'export hors-ligne construit SON graphe dans
+`interchange` (`OfflineReconstruction.cpp`), qui ne la faisait pas. La règle a
+déménagé dans `interchange` (`declarerLesControleursGM`), appelée par les deux
+chemins — c'est le contrat de D21 (« les deux chemins rendent le même son »),
+et c'est l'export qui l'a rappelé, pas le test. Tests : audio **1 303**
+verts, interchange **300** verts, banc de fumée 0 raté. Manuel § 4.

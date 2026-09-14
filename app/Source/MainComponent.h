@@ -1153,6 +1153,9 @@ private:
     /// annuler/rétablir : l'utilisateur qui corrige une note pendant que ça
     /// joue n'a aucune raison de voir la lecture s'arrêter.
     void rebuildFromProject(bool stopPlayback = true);
+    /// D332 : déclare au graphe les contrôleurs General MIDI (CC 74 brillance, CC 71 résonance)
+    /// qui pilotent la coupure et la résonance de la machine de la piste, par le profil sémantique.
+    void publierLesControleursGM(size_t trackIndex, const std::string& pluginId);
     /// Prend l'instantané d'annulation du projet, avec le nom du geste.
     void beginProjectEdit(const juce::String& label);
     /// D154 : LES RÉGLAGES DES MACHINES DU MOTEUR DANS LE MODÈLE, à l'instant

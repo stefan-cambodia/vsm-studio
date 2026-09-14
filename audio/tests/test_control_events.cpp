@@ -382,3 +382,57 @@ VSM_TEST(the_graph_reads_the_pitch_bend_range_from_rpn_0) {
     VSM_ASSERT(douzeDemiTons > deuxDemiTons * 1.6);        // l'octave : 1,78 attendu
     VSM_ASSERT(douzeDemiTons < hauteurNue * 2.2);          // et pas plus qu'une octave
 }
+
+// D332 : UN CONTRÔLEUR GM DÉCLARÉ PILOTE UN PARAMÈTRE. Sur le Supersaw, la
+// coupure (« Filter Cutoff », 20-18 000 Hz) reçoit le CC 74 : une note tenue
+// avec CC 74 à 127 puis à 10 -- la seconde moitié doit être nettement plus
+// sombre (l'énergie du premier écart, un passe-haut grossier, rapportée à
+// l'énergie totale, au moins deux fois plus faible). Sans déclaration, rien.
+VSM_TEST(a_declared_gm_controller_drives_the_machine_parameter) {
+    vsm::audio::plugin::registerBuiltInPlugins();
+    auto brillance = [](const std::vector<float>& x, double a, double b) {
+        const size_t i0 = static_cast<size_t>(a * 48000.0), i1 = static_cast<size_t>(b * 48000.0);
+        double haut = 0.0, tout = 0.0;
+        for (size_t i = i0 + 1; i < i1 && i < x.size(); ++i) {
+            const double d = static_cast<double>(x[i]) - x[i - 1];
+            haut += d * d; tout += static_cast<double>(x[i]) * x[i];
+        }
+        return tout > 0.0 ? haut / tout : 0.0;
+    };
+    auto rendre = [&](bool declare) {
+        Project project;
+        project.ticksPerQuarterNote = 480;
+        Track track;
+        track.name = "Cutoff";
+        track.channel = 0;
+        uint64_t idCounter = 1;
+        track.addNote(0, 960, 45, 100, 0, idCounter);
+        track.controlChanges.push_back(CcPoint{0, 0, 74, 127});
+        track.controlChanges.push_back(CcPoint{480, 0, 74, 10});
+        project.tracks.push_back(track);
+        ProcessGraph graph;
+        graph.prepare(48000.0, 512);
+        graph.setTrackInstrument(0, "vsm.supersaw");
+        if (declare) {
+            auto* machine = graph.trackInstrument(0);
+            VSM_ASSERT(machine != nullptr);
+            bool trouve = false;
+            for (const auto& info : machine->parameterList())
+                if (info.name == "Filter Cutoff") {
+                    graph.setTrackGmController(0, 74, info.id, info.minValue, info.maxValue, true);
+                    trouve = true;
+                }
+            VSM_ASSERT(trouve);
+        }
+        graph.setProject(project);
+        const auto rendu = OfflineRenderer::render(graph, 48000.0, 512, 1.0);
+        return std::make_pair(brillance(rendu.left, 0.15, 0.45), brillance(rendu.left, 0.65, 0.95));
+    };
+    const auto [sansClair, sansSombre] = rendre(false);
+    const auto [avecClair, avecSombre] = rendre(true);
+    std::printf("      brillance sans déclaration %.4f -> %.4f ; avec %.4f -> %.4f\n",
+                sansClair, sansSombre, avecClair, avecSombre);
+    VSM_ASSERT(avecClair > 0.0);
+    VSM_ASSERT(avecSombre < avecClair * 0.5);           // le CC 74 à 10 assombrit
+    VSM_ASSERT(sansSombre > sansClair * 0.5);           // sans déclaration, rien ne bouge
+}

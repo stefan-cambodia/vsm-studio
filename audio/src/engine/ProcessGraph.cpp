@@ -577,7 +577,32 @@ void ProcessGraph::seekSeconds(double seconds) {
     if (perdus > 0) droppedChasedControls_.fetch_add(perdus, std::memory_order_relaxed);
 }
 
-void ProcessGraph::appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::MidiControlEvent& e) {
+void ProcessGraph::setTrackGmController(size_t trackIndex, uint8_t controller, vsm::audio::plugin::ParamId param,
+                                        float minimum, float maximum, bool logarithmique) {
+    if (trackIndex >= kMaxTracks) return;
+    // D332 : la case libre, ou celle du même contrôleur. Écrite hors du fil
+    // audio : le drapeau tombe, les champs s'écrivent, le drapeau remonte.
+    auto& cases = gmControllers_[trackIndex];
+    size_t cible = kGmControllersPerTrack;
+    for (size_t i = 0; i < kGmControllersPerTrack; ++i)
+        if (cases[i].valide.load(std::memory_order_acquire) && cases[i].controller == controller) { cible = i; break; }
+    if (cible == kGmControllersPerTrack)
+        for (size_t i = 0; i < kGmControllersPerTrack; ++i)
+            if (!cases[i].valide.load(std::memory_order_acquire)) { cible = i; break; }
+    if (cible == kGmControllersPerTrack) return;
+    auto& gm = cases[cible];
+    gm.valide.store(false, std::memory_order_release);
+    gm.controller = controller; gm.param = param; gm.minimum = minimum; gm.maximum = maximum; gm.logarithmique = logarithmique;
+    gm.valide.store(true, std::memory_order_release);
+}
+
+void ProcessGraph::clearTrackGmControllers(size_t trackIndex) {
+    if (trackIndex >= kMaxTracks) return;
+    for (auto& gm : gmControllers_[trackIndex]) gm.valide.store(false, std::memory_order_release);
+}
+
+void ProcessGraph::appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::MidiControlEvent& e,
+                                      vsm::audio::plugin::ISynthPlugin* instrument) {
     using Kind = vsm::audio::plugin::MidiControlEvent::Kind;
     if (trackIndex >= kMaxTracks) return;
     if (e.kind == Kind::PitchBend) {
@@ -600,6 +625,16 @@ void ProcessGraph::appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::Mid
             break;
         default: break;
     }
+    // D332 : un contrôleur GM déclaré par l'application pilote un paramètre.
+    if (instrument != nullptr)
+        for (auto& gm : gmControllers_[trackIndex]) {
+            if (!gm.valide.load(std::memory_order_acquire) || gm.controller != e.index) continue;
+            const float t = std::clamp(e.value, 0.0f, 1.0f);
+            const float v = (gm.logarithmique && gm.minimum > 0.0f && gm.maximum > gm.minimum)
+                                ? gm.minimum * std::pow(gm.maximum / gm.minimum, t)
+                                : gm.minimum + t * (gm.maximum - gm.minimum);
+            instrument->setParameter(gm.param, v);
+        }
 }
 
 void ProcessGraph::drainChasedControls() {
@@ -1429,7 +1464,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             // morceau lancé à la mesure 40 a son volume, son panoramique et sa
             // plage de pli (D329 les avait posées sur le seul planning : un
             // départ en cours de morceau les manquait).
-            appliquerLesTenues(trackIndex, chasse.event);
+            appliquerLesTenues(trackIndex, chasse.event, instrument.get());
             if (externe) emitControlOut(trackIndex, track.channel, chasse.event);   // D27.2
             if (interceptSustain(trackIndex, track.channel, chasse.event, events, numEvents)) {   // D25.1
                 if (instrument) instrument->handleControlEvent(chasse.event);   // les huit machines qui ont leur propre étouffoir le gardent
@@ -1621,7 +1656,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
-        } else if (issue == Issue::Control && (appliquerLesTenues(trackIndex, controlEvent), false)) {
+        } else if (issue == Issue::Control && (appliquerLesTenues(trackIndex, controlEvent, instrument.get()), false)) {
             // D329-D331 : LES TENUES DU GRAPHE -- volume de canal (CC 7),
             // panoramique (CC 10), plage de pli (RPN 0) -- notées ici, puis
             // l'événement est traité comme tout contrôleur (la virgule rend

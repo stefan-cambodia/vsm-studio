@@ -1,4 +1,5 @@
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/audio/effect/BypassableEffect.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/io/AudioTrackLoader.h"
@@ -88,6 +89,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         // qui ne l'instancie pas -- une divergence de plus entre les deux.
         if (piste.disabled) continue;
         graph.setTrackInstrument(i, pluginId);
+        declarerLesControleursGM(graph, i, pluginId);   // D332 : le rendu hors-ligne comme l'application
         auto* instrument = graph.trackInstrument(i);
         if (instrument == nullptr) {
             result.warnings.push_back(avertissementMachineIndisponible(i, pluginId));
