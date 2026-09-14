@@ -26835,3 +26835,10 @@ bien, mais la règle « garder le contrôleur choisi s'il existe » gardait le
 DÉFAUT de la piste 1 (CC 0, présent aussi sur le canal 14 avec ses deux points
 de banque) ; un défaut ne se garde plus d'une piste à l'autre, seul un choix de
 l'utilisateur survit, et seulement s'il existe sur la piste.
+
+**PARCOURS DE BOUT EN BOUT, vérifié à 23:46** : le fichier Children ouvert (16
+pistes, 13 par la banque) puis *Fichier ▸ Exporter audio* (`VSM_EXPORT`) :
+« Rendu écrit : 460,8 s, 44,1 kHz, 24 bits, crête 0,737 » en 17 s de lancement
+à sortie — un fichier GM téléchargé devient un WAV du morceau entier sans rien
+régler. Les gardes larges après la soirée : `gestes-vivants.py` (69 entrées) et
+`gestes-promesses.py` rendent 0.
