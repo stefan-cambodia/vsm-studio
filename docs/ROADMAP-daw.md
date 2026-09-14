@@ -26580,9 +26580,11 @@ garde 7 / 7 ; tests `core` 339. Attendus tenus, le canal 10 corrigé.
 - **La fenêtre « Reconstruire un morceau… » n'a pas été photographiée ce
   soir** : elle passe par un sélecteur (`VSM_FICHIER`), et la course de
   20:36 ne le lui a pas donné.
-- **Les imports Live / FL ne passent pas par D307-D313** : `applyDawImport`
-  garde sa propre règle d'instruments (le rapport d'import) ; vérifier qu'un
-  `.als` sans instrument VSM reçoit au moins la famille General MIDI de sa
-  piste, ou dire pourquoi non.
+- **Les imports Live / FL ne passent pas par D307-D313** — et c'est une
+  DÉCISION du CDC (`docs/CDC-import-daw.md` § 2, relu ce soir : « toutes sans
+  instrument, aujourd'hui », parce que convertir un patch d'Operator en
+  `vsm.dx7` mentirait). Reste la question plus modeste : une piste importée
+  qui s'appelle « Bass » ou « Drums » pourrait recevoir la famille de son NOM
+  (D313), en le disant au rapport d'import — à trancher dans le CDC, pas ici.
 - **Le bilan D282** (`tools/bilan-coupure-basse.py d282-temoin d282-coupure`),
   quand les dix morceaux traités existent ; la course reprend au réveil.
