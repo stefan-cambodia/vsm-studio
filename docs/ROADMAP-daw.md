@@ -4743,11 +4743,14 @@ sont des métiers entiers. Les nommer ici évite d'y revenir à chaque relecture
   Voir `docs/CDC-import-daw.md`. Le refus valait donc pour un format sur trois,
   et le tenir pour les trois privait le musicien de ses projets Live et FL sans
   raison mesurée.
-- **Compiler `vsm.cone` et `vsm.flute`.** Elles sont dans l'arbre avec leurs
-  tests et hors du `CMakeLists`. Ce n'est pas un oubli : ce sont deux **résultats
-  négatifs** conservés et documentés (ARCHITECTURE.md § 44 pour la flûte, qui ne
-  s'auto-oscille pas une fois le blocage de continu posé). Elles restent hors
-  build.
+- **Compiler `vsm.flute`.** Elle est dans l'arbre avec ses tests et hors du
+  `CMakeLists`. Ce n'est pas un oubli : c'est un **résultat négatif** conservé et
+  documenté (ARCHITECTURE.md § 44 : la flûte ne s'auto-oscille pas une fois le
+  blocage de continu posé). Elle reste hors build. *`vsm.cone` figurait ici avec
+  elle jusqu'au 14/09/2026 : la ligne était périmée depuis sa LIVRAISON du 01/09
+  (« le saxophone tenait au couplage, pas à la sélectivité », H30 du CDC des
+  machines manquantes) — le navigateur la liste, le banc la mesure, et cette
+  phrase disait le contraire.*
 
 ---
 
