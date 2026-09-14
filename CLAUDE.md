@@ -315,3 +315,17 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   TROIS de ses éléments étaient déjà faits — les boutons sous 18 px, D18.7b, et
   A4 dont le § 4.4 publiait trois mesures. Avant de travailler une ligne de
   l'INDEX, ouvrir le § qu'elle nomme.
+- Une règle posée dans l'APPLICATION seule ne vaut pas pour l'EXPORT : le rendu
+  hors-ligne construit SON graphe dans `interchange` (`OfflineReconstruction.cpp`),
+  et l'export de l'application passe par lui. Le 15/09 (D332), la déclaration des
+  contrôleurs GM (CC 74 → coupure) vivait dans `MainComponent` : le test du graphe
+  était vert, et l'export ne bougeait pas d'un hertz (397 / 507 avant comme
+  après). Tout ce qui conditionne le SON d'une piste se pose dans `interchange`
+  et s'appelle des deux chemins — c'est le contrat de D21 (« les deux chemins
+  rendent le même son ») — et la mesure qui le prouve est un EXPORT, pas un test
+  du graphe.
+- `grep -n motif $F` avec `$F` VIDE lit l'ENTRÉE STANDARD et ne rend jamais la
+  main : le 15/09, un `F=$(grep -rln … | head -1)` sans résultat a laissé un
+  `grep` suspendu jusqu'à ce que la garde mémoire le tue, une heure plus tard.
+  Toute variable de fichier issue d'une recherche se teste (`[ -n "$F" ]`) avant
+  de servir d'argument.
