@@ -25730,3 +25730,37 @@ publié « 0 / 63 façades sous 18 px » ; ce compte tenait à une largeur de ra
 qu'ils ne nomment pas, et ne tient pas à celle-ci. La largeur ne défile pas
 (D64, décision prise en regardant) : la question est donc celle du plancher de
 LARGEUR du rack, ou d'un MODIFIERS à deux rangées. Nommée, chiffrée, non faite.
+
+### Phase D293 — le MODIFIERS du Minimoog sur quatre colonnes : 16 → 37 px (14/09/2026)
+
+**LE « NOMMÉ, CHIFFRÉ, NON FAIT » DE D292**, fait dans l'heure. Le bloc posait
+huit colonnes de boutons dans 9/16 de la façade (deux rangées sur les quatre de
+sa grille) : au rack de 364 px, des cellules de **16 px de large** et huit
+boutons de **16 px**, sous le plancher de 18 px de D62. Le bloc est réparti sur
+**quatre colonnes et quatre rangées** — le gros CUTOFF garde ses deux cellules,
+EMPHASIS et AMOUNT OF CONTOUR à sa droite, KEY TRACK et DRIVE dessous, les
+quatre enveloppes de filtre et d'amplitude en troisième rangée, LOUDNESS DECAY et
+SUSTAIN en quatrième. C'est la ligne unique de l'original qu'on perd, pas sa
+lisibilité : la règle de la mémoire de l'utilisateur (« en cas de doute entre ça
+tient et ça se lit, c'est la lisibilité qui prime »).
+
+**MESURÉ** par `VSM_MESURE_FACADE`, même rack de 364 px, projet neuf (la piste par
+défaut est un Minimoog) :
+
+| commandes du bloc MODIFIERS | avant | après |
+|---|---|---|
+| cellule | 16 × 29 | **37 × 58** |
+| bouton (les dix ordinaires) | 16 px | **37 px** |
+| CUTOFF FREQUENCY (2 × 2) | — | 46 px |
+| plus petit bouton de la façade entière | 16 px | **20 px** (NOISE, bande MIXER de D64) |
+
+Photo de la façade : les onze boutons nommés, lisibles, le bloc plein. Les onze
+tests `panels` passent (la description reste cohérente). Réglages de
+l'utilisateur intacts au `cmp`.
+
+**Ce que D64-D70 avaient publié — « 0 / 63 façades sous 18 px » — tenait donc à
+une largeur de rack qu'ils ne nommaient pas.** Le relevé de ce soir ne couvre que
+les quatre machines que le projet ouvert posait (Minimoog, vielle, sitar, TR-909)
+: **un balayage des 64 façades au rack de 364 px** est nommé, non fait — c'est
+`VSM_GESTE_PISTE=machine:<id>` en boucle sur le registre, le même tableau, et
+il se lit en une commande `awk`.

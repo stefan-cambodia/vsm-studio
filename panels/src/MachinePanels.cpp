@@ -82,17 +82,23 @@ MachinePanel makeMinimoog() {
     modifiers.controls = {
         // Le gros potentiomètre de coupure est LE geste de cette machine :
         // il est plus grand que les autres, comme sur l'original.
+        // D293 : QUATRE COLONNES SUR QUATRE RANGÉES, et non huit sur deux. Mesuré
+        // au rack de 364 px (VSM_MESURE_FACADE, 14/09) : huit colonnes dans un
+        // bloc de 9/16 de façade donnaient des cellules de 16 px de large et des
+        // boutons de 16 px -- sous le plancher de 18 px de D62, que D64-D70
+        // croyaient tenu partout. Le bloc a déjà quatre rangées de grille ; les
+        // remplir coûte la ligne unique de l'original, pas sa lisibilité.
         control("Filter Cutoff", "CUTOFF FREQUENCY", S::LargeKnob, 0, 0, 2, 2),
         control("Filter Resonance", "EMPHASIS", S::Knob, 2, 0),
         control("Filter Env Amount", "AMOUNT OF CONTOUR", S::Knob, 3, 0),
-        control("Filter Key Track", "KEY TRACK", S::Knob, 4, 0),
-        control("Filter Drive", "DRIVE", S::Knob, 5, 0),
-        control("Filter Attack", "FILTER ATTACK", S::Knob, 3, 1),
-        control("Filter Decay", "FILTER DECAY", S::Knob, 4, 1),
-        control("Filter Sustain", "FILTER SUSTAIN", S::Knob, 5, 1),
-        control("Amp Attack", "LOUDNESS ATTACK", S::Knob, 6, 0),
-        control("Amp Decay", "LOUDNESS DECAY", S::Knob, 7, 0),
-        control("Amp Sustain", "LOUDNESS SUSTAIN", S::Knob, 6, 1),
+        control("Filter Key Track", "KEY TRACK", S::Knob, 2, 1),
+        control("Filter Drive", "DRIVE", S::Knob, 3, 1),
+        control("Filter Attack", "FILTER ATTACK", S::Knob, 0, 2),
+        control("Filter Decay", "FILTER DECAY", S::Knob, 1, 2),
+        control("Filter Sustain", "FILTER SUSTAIN", S::Knob, 2, 2),
+        control("Amp Attack", "LOUDNESS ATTACK", S::Knob, 3, 2),
+        control("Amp Decay", "LOUDNESS DECAY", S::Knob, 0, 3),
+        control("Amp Sustain", "LOUDNESS SUSTAIN", S::Knob, 1, 3),
     };
 
     PanelSection controllers;
