@@ -342,8 +342,24 @@ void MidiCcComponent::paint(juce::Graphics& g) {
         // un morceau de 226 mesures en tirerait 226 hors de l'écran à chaque dessin.
         const Tick premiere = (std::max<Tick>(0, xToTick(a.getX())) / ticksPerBar) * ticksPerBar;
         const Tick derniere = std::min<Tick>(maxTick_, xToTick(a.getRight()) + ticksPerBar);
-        for (Tick t = premiere; t <= derniere; t += ticksPerBar)
-            g.drawVerticalLine(tickToX(t), static_cast<float>(a.getY()), static_cast<float>(a.getBottom()));
+        // D287 : LA MESURE SE LIT DANS LA LANE. Le numéro au pied de chaque
+        // barre quand il y a la place (36 px entre deux mesures) -- l'arrangement
+        // a sa règle en haut de l'écran, les lanes sont en bas, et l'œil ne
+        // fait pas l'aller-retour pour savoir où il pose un point.
+        const int pixelsParMesure = tickToX(premiere + ticksPerBar) - tickToX(premiere);
+        const int pas = pixelsParMesure >= 36 ? 1 : pixelsParMesure >= 9 ? 4 : 16;
+        g.setFont(juce::Font(juce::FontOptions(12.0f)));
+        for (Tick t = premiere; t <= derniere; t += ticksPerBar) {
+            const int x = tickToX(t);
+            g.setColour(Palette::gridLine);
+            g.drawVerticalLine(x, static_cast<float>(a.getY()), static_cast<float>(a.getBottom()));
+            const auto mesure = static_cast<int>(t / ticksPerBar) + 1;
+            // pas sous les libellés de valeur du bord gauche (« 1.0 », « 127 », « 240 »)
+            if ((mesure - 1) % pas == 0 && x >= a.getX() + 40 && x + 30 <= a.getRight()) {
+                g.setColour(Palette::textSecondary.withAlpha(0.8f));
+                g.drawText(juce::String(mesure), x + 3, a.getY() + 2, 30, 14, juce::Justification::topLeft);
+            }
+        }
     }
     g.setColour(Palette::gridLineStrong);
     for (int v : {0, 64, 127})

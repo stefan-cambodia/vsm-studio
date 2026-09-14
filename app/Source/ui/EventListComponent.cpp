@@ -153,7 +153,22 @@ void EventListComponent::setPlayheadTick(vsm::midi::Tick tick, bool playing) {
     // que ne pas suivre. `isVisible()` et non `isShowing()` : sous un écran
     // verrouillé le second rend faux partout (D94), et un banc lirait un
     // suivi absent.
-    if (playing && courante_ >= 0 && isVisible()) table_.scrollToEnsureRowIsOnscreen(courante_);
+    // D287 : LA LIGNE COURANTE AU MILIEU, pas au bord. `scrollToEnsureRowIsOnscreen`
+    // la laissait courir le long du bord bas (D284, « nommé, non fait ») : on
+    // voyait ce qui venait de passer, jamais ce qui arrive. Au milieu, la moitié
+    // haute est le passé, la moitié basse l'avenir -- c'est ce qu'un musicien
+    // lit pendant que ça joue. Le défilement ne se fait que si la ligne sort
+    // du tiers central, pour que la liste n'avance pas d'un cran à chaque note.
+    if (playing && courante_ >= 0 && isVisible()) {
+        if (auto* vue = table_.getViewport()) {
+            const int hauteur = table_.getRowHeight();
+            const int visible = vue->getViewHeight();
+            const int yLigne = courante_ * hauteur - vue->getViewPositionY();
+            if (yLigne < visible / 3 || yLigne + hauteur > visible * 2 / 3)
+                vue->setViewPosition(vue->getViewPositionX(),
+                                     std::max(0, courante_ * hauteur - visible / 2));
+        }
+    }
 }
 
 juce::String EventListComponent::texteDe(const EventRow& ligne, int columnId) const {

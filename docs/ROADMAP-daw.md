@@ -25536,3 +25536,29 @@ c'est l'attente qui doit être un `Monitor`. Réglages de l'utilisateur intacts 
 numéros se lisent sur l'arrangement, juste au-dessus, à la même verticale — c'est
 justement ce que cette phase rend vrai) ; et l'onglet *Liste* (D284) n'est pas
 concerné, une liste n'a pas de fenêtre de temps.
+
+### Phase D287 — les mesures se lisent dans les lanes, et la liste tient sa ligne au milieu (14/09/2026)
+
+Deux « nommé, non fait » de D284 et D286, fermés dans le même binaire — trois
+compilations par phase pendant une campagne coûtent cher (D285), on groupe.
+
+* **Les lanes numérotent leurs mesures**, au pied de chaque barre de la grille,
+  quand il y a la place : chaque mesure au-dessus de 36 px entre deux barres,
+  une sur quatre au-dessus de 9 px, une sur seize en dessous — le projet ajusté à
+  la fenêtre (Ctrl+0, 226 mesures) lit `1, 17, 33 … 225`, la vue de travail lit
+  `1` à `15`. Les numéros s'écartent des libellés de valeur du bord gauche
+  (« 1.0 », « 127 », « 240 »), qui gardent leur coin. La règle de l'arrangement
+  est en haut de l'écran et les lanes en bas ; l'œil ne faisait pas
+  l'aller-retour pour savoir où il posait un point.
+* **La liste d'événements tient sa ligne courante au milieu** de sa fenêtre, pas
+  au bord bas où `scrollToEnsureRowIsOnscreen` la laissait courir (D284) : la
+  moitié haute est ce qui vient de passer, la moitié basse ce qui arrive. Le
+  défilement n'a lieu que si la ligne sort du tiers central, pour que la liste
+  n'avance pas d'un cran à chaque note.
+
+**VÉRIFIÉ** sur le projet réel, trois photos (`VSM_VUE=…,jouer,tempo` /
+`…,jouer,liste` / `…,midi-cc` avec `Ctrl+0`) : les numéros de la lane tempo
+tombent sous les barres de l'arrangement (1 à 15, la tête à la mesure 3), la
+ligne `3.1+309` teintée au milieu de dix lignes visibles, et la lane MIDI CC
+ajustée numérotée de seize en seize. Réglages de l'utilisateur intacts au `cmp`.
+Le manuel le dit au § 4.
