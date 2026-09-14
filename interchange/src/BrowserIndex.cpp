@@ -117,7 +117,11 @@ std::vector<BrowserItem> filterBrowserItems(const std::vector<BrowserItem>& item
 
     std::vector<BrowserItem> retenus;
     for (const auto& entree : items) {
-        const std::string foin = lowered(entree.name + " " + entree.origin + " " + entree.reference);
+        // D290 : LA NATURE EST UN MOT DE LA RECHERCHE. « 303 preset » ne trouve que
+        // des presets, « échantillon kick » que des fichiers audio : c'est le
+        // filtre par type de Cubase et de Live, sans un bouton de plus.
+        const std::string foin = lowered(entree.name + " " + entree.origin + " " + entree.reference
+                                         + " " + browserKindLabel(entree.kind));
         // TOUS LES MOTS, DANS N'IMPORTE QUEL ORDRE. « 303 acid » trouve
         // « TB-303 Acid Lead » comme « acid lead (tb303) ».
         const bool tous = std::all_of(mots.begin(), mots.end(), [&foin](const std::string& m) {

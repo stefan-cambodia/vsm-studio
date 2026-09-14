@@ -163,3 +163,25 @@ VSM_TEST(the_list_is_sorted_by_kind_then_origin_then_name) {
     const std::vector<std::string> attenduFiltre{"additive", "Terrain", "beta", "zeta", "alpha", "kick.wav"};
     VSM_ASSERT(nomsFiltres == attenduFiltre);
 }
+
+VSM_TEST(the_kind_is_a_search_word) {
+    // D290 : « preset » ne retient que les presets, « machine » que les machines
+    // -- la nature fait partie de ce qu'on cherche, sans bouton de filtre.
+    std::vector<BrowserItem> entrees;
+    auto ajouter = [&entrees](BrowserItemKind kind, const char* nom) {
+        BrowserItem e;
+        e.kind = kind; e.name = nom; e.origin = "x"; e.reference = nom;
+        entrees.push_back(e);
+    };
+    ajouter(BrowserItemKind::Machine, "TB-303-style Acid Synth");
+    ajouter(BrowserItemKind::Preset, "TB-303 Acid Lead");
+    ajouter(BrowserItemKind::Sample, "acid-kick.wav");
+    const auto presets = filterBrowserItems(entrees, "303 preset");
+    VSM_ASSERT_EQ(presets.size(), size_t{1});
+    VSM_ASSERT(presets[0].kind == BrowserItemKind::Preset);
+    const auto machines = filterBrowserItems(entrees, "machine acid");
+    VSM_ASSERT_EQ(machines.size(), size_t{1});
+    VSM_ASSERT(machines[0].kind == BrowserItemKind::Machine);
+    // Le mot de nature se cherche tel que le navigateur l'AFFICHE.
+    VSM_ASSERT_EQ(filterBrowserItems(entrees, std::string(browserKindLabel(BrowserItemKind::Sample))).size(), size_t{1});
+}

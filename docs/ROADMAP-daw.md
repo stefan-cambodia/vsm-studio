@@ -25632,3 +25632,27 @@ Réglages de l'utilisateur intacts au `cmp` ; le manuel le dit au § 5.
 **Trouvé en chemin, corrigé à part** : `vsm.cone` figurait encore « hors build »
 dans `CLAUDE.md` et au § 5 de ce document, alors qu'elle est livrée depuis le
 01/09 — la photo du navigateur la listait, et c'est ainsi qu'on l'a vu.
+
+### Phase D290 — la nature d'une entrée est un mot de la recherche du navigateur (14/09/2026)
+
+**LA SUITE DE D289**, trouvée en tapant dans le champ de recherche : `303` rend
+la machine TB-303, le preset « TB-303 Acid Lead » et un échantillon `acid-kick`
+— et rien ne permettait de ne demander que les presets, quand Cubase (MediaBay)
+et Live (le navigateur, par rubrique) filtrent par type avant toute chose. Le
+filtre cherchait tous les mots dans le nom, l'origine et la référence ; il ne
+regardait pas la NATURE, pourtant écrite en clair dans la première colonne.
+
+**CE QUI EST FAIT.** Le libellé de nature (`browserKindLabel` : « Machines »,
+« Presets », « Profils », « Échantillons », « Presets d'effet ») entre dans la
+botte de foin du filtre, en minuscules comme le reste : `303 preset` ne rend que
+des presets, `machine acid` que des machines, et le mot se cherche tel que le
+navigateur l'affiche. Pas un bouton de plus — la règle du filtre (« tous les
+mots, dans n'importe quel ordre ») porte déjà cette capacité. Un test neuf
+(`the_kind_is_a_search_word`), suite interchange à **299** ; le tri de D289
+reste vérifié par le sien.
+
+**VÉRIFIÉ** par le test, qui emprunte la fonction même que la fenêtre appelle
+(`filterBrowserItems`, `BrowserComponent.cpp:199`) ; aucune course ne tape dans
+le champ de recherche du navigateur (`VSM_FILTRE` filtre la liste des PISTES),
+et c'est dit : un verbe `chercher:` pour `VSM_NAVIGATEUR` est nommé, non fait —
+il n'aurait montré que ce que le test montre déjà. Le manuel le dit au § 5.
