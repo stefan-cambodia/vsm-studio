@@ -233,8 +233,12 @@ int MidiCcComponent::tickToX(Tick tick) const {
     // colonne d'écran --, sinon le morceau entier sur la largeur (aperçus, ou
     // arrangement caché derrière le piano roll).
     if (fenetreProvider) {
-        if (const auto f = fenetreProvider())
-            return static_cast<int>(std::lround(f->xLocal(static_cast<vsm::midi::Tick>(tick), getScreenX())));
+        if (const auto f = fenetreProvider()) {
+            const auto tk = static_cast<vsm::midi::Tick>(tick);
+            return static_cast<int>(std::lround(
+                f->recouvre(getScreenX(), a.getX(), a.getRight()) ? f->xLocal(tk, getScreenX())
+                                                                  : f->xLocalEtale(tk, a.getX(), a.getWidth())));
+        }
     }
     const double ratio = maxTick_ > 0 ? static_cast<double>(tick) / static_cast<double>(maxTick_) : 0.0;
     return a.getX() + static_cast<int>(ratio * a.getWidth());
@@ -245,9 +249,11 @@ Tick MidiCcComponent::xToTick(int x) const {
     const double ratio = a.getWidth() > 0 ? static_cast<double>(x - a.getX()) / a.getWidth() : 0.0;
     Tick tick = static_cast<Tick>(juce::jlimit(0.0, 1.0, ratio) * static_cast<double>(maxTick_));
     if (fenetreProvider) {   // D286 : l'inverse de la même règle, bornée au morceau
-        if (const auto f = fenetreProvider())
-            tick = static_cast<Tick>(juce::jlimit<vsm::midi::Tick>(0, static_cast<vsm::midi::Tick>(maxTick_),
-                                                       f->tickDe(x, getScreenX())));
+        if (const auto f = fenetreProvider()) {
+            const auto brut = f->recouvre(getScreenX(), a.getX(), a.getRight())
+                ? f->tickDe(x, getScreenX()) : f->tickDeEtale(x, a.getX(), a.getWidth());
+            tick = static_cast<Tick>(juce::jlimit<vsm::midi::Tick>(0, static_cast<vsm::midi::Tick>(maxTick_), brut));
+        }
     }
     // AIMANTÉ À LA DOUBLE-CROCHE : un CC posé à la souris se place sur la
     // grille, comme une note ; entre deux cases, il n'y a pas de musique.
@@ -357,7 +363,7 @@ void MidiCcComponent::paint(juce::Graphics& g) {
             // pas sous les libellés de valeur du bord gauche (« 1.0 », « 127 », « 240 »)
             if ((mesure - 1) % pas == 0 && x >= a.getX() + 40 && x + 30 <= a.getRight()) {
                 g.setColour(Palette::textSecondary.withAlpha(0.8f));
-                g.drawText(juce::String(mesure), x + 3, a.getY() + 2, 30, 14, juce::Justification::topLeft);
+                g.drawText(juce::String(mesure), x + 5, a.getY() + 2, 30, 14, juce::Justification::topLeft);
             }
         }
     }

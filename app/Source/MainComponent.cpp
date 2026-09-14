@@ -216,7 +216,8 @@ MainComponent::MainComponent()
                 return std::nullopt;
             return vsm::app::ui::FenetreDeTemps{
                 arrangement_.scrollTick(), arrangement_.pixelsPerTick(),
-                arrangement_.getScreenX() + std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth};
+                arrangement_.getScreenX() + std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth,
+                arrangement_.getWidth() - std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth};
         };
         automation_.fenetreProvider = fenetre;
         midiCc_.fenetreProvider = fenetre;
@@ -2795,9 +2796,9 @@ void MainComponent::timerCallback() {
     // piège de D169.
     {
         const vsm::app::ui::FenetreDeTemps vue{arrangement_.scrollTick(), arrangement_.pixelsPerTick(),
-                                               arrangement_.getScreenX()};
+                                               arrangement_.getScreenX(), arrangement_.getWidth()};
         if (vue.debut != fenetreVue_.debut || vue.pixelsParTick != fenetreVue_.pixelsParTick
-            || vue.xEcranOrigine != fenetreVue_.xEcranOrigine) {
+            || vue.xEcranOrigine != fenetreVue_.xEcranOrigine || vue.largeurPixels != fenetreVue_.largeurPixels) {
             fenetreVue_ = vue;
             automation_.repaint();
             midiCc_.repaint();

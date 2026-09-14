@@ -25562,3 +25562,37 @@ tombent sous les barres de l'arrangement (1 à 15, la tête à la mesure 3), la
 ligne `3.1+309` teintée au milieu de dix lignes visibles, et la lane MIDI CC
 ajustée numérotée de seize en seize. Réglages de l'utilisateur intacts au `cmp`.
 Le manuel le dit au § 4.
+
+### Phase D288 — les lanes en panneaux flottants : alignées si les fenêtres se recouvrent, étalées sinon (14/09/2026)
+
+**TROUVÉE EN ÉPROUVANT D286 EN MODE FLOTTANT** (`VSM_VUE=flottant`, les
+panneaux photographiés par `VSM_CAPTURE_PANNEAUX`). Dans la disposition
+flottante par défaut — pistes, arrangement et rack côte à côte, la console en
+dessous sur toute la largeur — la règle « même tick, même colonne d'écran »
+tient : la lane tempo du panneau du bas montre la mesure 1 à 480 px, sous la
+zone des clips du panneau de l'arrangement, la tête et les barres alignées. Mais
+la règle ne dit rien de ce qui arrive quand on **écarte les fenêtres à la
+souris** : une lane qui suit une colonne d'écran hors de sa propre fenêtre se
+vide. Ce cas ne se photographie pas sans souris (aucun banc ne déplace une
+fenêtre), il se raisonne.
+
+**CE QUI EST FAIT.** `FenetreDeTemps` porte aussi la LARGEUR de la zone des
+clips, et sait dire si cette zone **recouvre**, à l'écran, la zone d'édition de
+la lane. Si oui : la colonne d'écran commune (D286). Sinon : **la même fenêtre de
+temps, étalée sur la largeur de la lane** — ce que fait un éditeur séparé de
+Cubase, qui a sa largeur et non celle du projet. Les deux formes et leurs
+inverses vivent dans le même en-tête, à côté l'une de l'autre ; le choix se fait
+au dessin et au clic par le même test.
+
+**VÉRIFIÉ** pour la branche qui se photographie : dock, lecture, écart de colonne
+1 px (automation) et 0 px (tempo) — le pixel vient de l'arrondi du trait de deux
+pixels, l'outil accepte 1 ; panneaux flottants empilés, la lane tempo identique
+à celle de D286. **La branche « fenêtres écartées » est vérifiée par sa formule
+seulement** (`xLocalEtale` / `tickDeEtale` sont l'inverse l'une de l'autre à
+l'arrondi près), et c'est dit : un banc qui déplace une fenêtre flottante
+(`deplacer-fenetre:<nom>:<x>:<y>`) est nommé, non fait. Réglages de
+l'utilisateur intacts au `cmp` ; le sandbox est remis en dock après l'essai (le
+mode flottant est conservé d'un lancement à l'autre, D77).
+
+**Et deux pixels** : les numéros de mesure des lanes (D287) s'écartent de deux
+pixels de plus de leur barre — collés à elle, un « 17 » se lisait « :17 ».

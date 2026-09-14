@@ -23,6 +23,7 @@ struct FenetreDeTemps {
     vsm::midi::Tick debut = 0;      // le tick au bord gauche de la zone des clips
     double pixelsParTick = 0.06;    // la même que l'arrangement, au bit près
     int xEcranOrigine = 0;          // abscisse ÉCRAN du tick `debut`
+    int largeurPixels = 0;          // largeur de la zone des clips, en pixels
 
     /// L'abscisse, dans un composant dont le bord gauche est à `xEcranComposant`.
     double xLocal(vsm::midi::Tick tick, int xEcranComposant) const {
@@ -34,6 +35,26 @@ struct FenetreDeTemps {
         return debut + static_cast<vsm::midi::Tick>(
             (static_cast<double>(xLocal) - static_cast<double>(xEcranOrigine - xEcranComposant))
             / pixelsParTick);
+    }
+    /// La zone des clips de l'arrangement recouvre-t-elle, À L'ÉCRAN, la zone
+    /// d'édition d'une lane ? Vrai dans le dock et en panneaux flottants empilés ;
+    /// faux quand on a écarté les fenêtres à la souris -- la lane suivrait alors
+    /// une colonne d'écran qui n'est plus la sienne, et se viderait.
+    bool recouvre(int xEcranComposant, int aireX, int aireDroite) const {
+        const int origineLocale = xEcranOrigine - xEcranComposant;
+        return origineLocale < aireDroite && origineLocale + largeurPixels > aireX;
+    }
+    /// Sans recouvrement : la MÊME fenêtre de temps, étalée sur la zone de la lane
+    /// -- ce que fait un éditeur séparé de Cubase, qui a sa largeur et non celle
+    /// du projet.
+    double xLocalEtale(vsm::midi::Tick tick, int aireX, int aireLargeur) const {
+        const double echelle = largeurPixels > 0 ? static_cast<double>(aireLargeur) / largeurPixels : 0.0;
+        return static_cast<double>(aireX) + static_cast<double>(tick - debut) * pixelsParTick * echelle;
+    }
+    vsm::midi::Tick tickDeEtale(int xLocal, int aireX, int aireLargeur) const {
+        const double echelle = largeurPixels > 0 ? static_cast<double>(aireLargeur) / largeurPixels : 0.0;
+        if (pixelsParTick * echelle <= 0.0) return debut;
+        return debut + static_cast<vsm::midi::Tick>(static_cast<double>(xLocal - aireX) / (pixelsParTick * echelle));
     }
 };
 
