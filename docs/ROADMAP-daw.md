@@ -25339,6 +25339,17 @@ dix comme un morceau où l'option n'a rien fait — il n'est pas retiré du comp
 *(La course est lancée à la suite de ce paragraphe ; ses chiffres sont ci-dessous
 quand ils existent, jamais avant.)*
 
+**OÙ EN EST LA COURSE (14/09, 20:55).** Témoin `d282-temoin` : 10 / 10, 16 469 s.
+Traité `d282-coupure` : la course de 15:46 est morte avec un REDÉMARRAGE du poste
+à 16:07 (un morceau fait) ; relancée à 17:24 (`d282-reprise.sh`, le banc saute
+le morceau déjà couru), elle a **6 morceaux mesurés** et le septième en cours,
+sous une batterie qui descend vers le seuil de veille (10 %) — la course
+survivra à la veille et reprendra au réveil, comme celle de l'épreuve Children.
+Elle a été gelée quatorze fois pour des compilations (D298 à D313), ce qui a
+porté le morceau 3 à 2 277 s et le 7 au-delà de l'heure. **Le bilan se fera
+par `tools/bilan-coupure-basse.py d282-temoin d282-coupure` une fois les dix
+morceaux traités** ; aucun chiffre partiel n'est publié ici avant.
+
 ### Phase D283 — les notes se voient dans le clip MIDI (14/09/2026)
 
 **TROUVÉE EN REGARDANT L'ARRANGEMENT EN MARCHE**, pendant que la campagne D282
