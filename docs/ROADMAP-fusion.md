@@ -3845,7 +3845,11 @@ machine retenue change, et le résultat empire.
    celle-ci : deux chiffres qui divergent valent mieux qu'un seul qui ment.
 3. **Les résultats négatifs restent dans la chaîne, chiffrés** : `--residuel`
    (inerte même forcée, B7), `--modele-basse` (perdante en bout de chaîne,
-   D274). Leur aide porte le chiffre, pour qu'on ne les rouvre pas sans raison.
+   D274), **`--coupure-basse-adaptee` (perdante en bout de chaîne, D282 du
+   14/09 : 1 critère sur 4, la distance de la basse monte sur 8 morceaux sur 9,
+   +0,71 % au mélange — un stem meilleur à l'oreille du transcripteur n'est pas
+   une reconstruction meilleure, encore)**. Leur aide porte le chiffre, pour
+   qu'on ne les rouvre pas sans raison.
 
 ### 9.6 Le F1 du banc est à refaire, et voici à quelles conditions
 

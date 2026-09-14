@@ -819,7 +819,11 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "l'arbitrage et le réglage jugent contre le stem tel quel, pour que "
                               "les distances restent comparables au témoin. La coupure retenue est "
                               "dite au journal et inscrite au rapport (« coupureBasse »). Sans "
-                              "l'option : la chaîne d'aujourd'hui, au bit près")
+                              "l'option : la chaîne d'aujourd'hui, au bit près. EN BOUT DE CHAÎNE, "
+                              "PERDANTE (D282, 14/09, dix morceaux, mêmes stems) : 1 critère sur 4 — "
+                              "la distance de la basse monte sur 8 morceaux sur 9, la bonne hauteur "
+                              "ne gagne que +1,4 point, le mélange paie +0,71 %% ; refusée comme "
+                              "défaut, gardée ici avec son chiffre")
     parseur.add_argument("--residuel", type=int, default=0, metavar="N",
                          help="LA BOUCLE RÉSIDUELLE (docs/CDC-separation-par-synthese.md), N "
                               "itérations au plus : la piste la plus sûre est rendue seule, "
