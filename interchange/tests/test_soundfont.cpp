@@ -184,3 +184,23 @@ VSM_TEST(soundfont_refuses_what_it_cannot_read) {
     VSM_ASSERT(!written.success);
     VSM_ASSERT(written.error.find("attribution") != std::string::npos);
 }
+
+// D316 : une enveloppe que la machine ne tient pas est bornée À LA CONVERSION,
+// et la note le dit -- FluidR3 déclare 25 s de relâchement sur sa guitare acier.
+VSM_TEST(soundfont_bounds_the_envelope_to_what_the_machine_holds_and_says_so) {
+    TempFolder folder("borne");
+    const auto path = (folder.path / "long.sf2").string();
+    std::string erreur;
+    VSM_ASSERT(vsm::interchange::writeMinimalSoundFont(path, erreur, 5573));   // 2^(5573/1200) ≈ 25 s
+    const auto conversion = vsm::interchange::convertSoundFontPreset(path, 0, 0);
+    VSM_ASSERT(conversion.success);
+    VSM_ASSERT_NEAR(conversion.releaseSeconds, 5.0f, 1e-4f);
+    bool dit = false;
+    for (const auto& n : conversion.notes)
+        if (n.find("rel\u00e2chement de 25.") != std::string::npos && n.find("ramen\u00e9 \u00e0 5.000 s") != std::string::npos) dit = true;
+    VSM_ASSERT(dit);
+    // Et l'enveloppe ordinaire (500 ms) passe sans note.
+    const auto ordinaire = convertSoundFontPreset(minimalSoundFont(folder), 0, 0);
+    VSM_ASSERT_NEAR(ordinaire.releaseSeconds, 0.5f, 1e-4f);
+    for (const auto& n : ordinaire.notes) VSM_ASSERT(n.find("enveloppe") == std::string::npos);
+}

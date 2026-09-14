@@ -1,4 +1,6 @@
 #include "vsm/interchange/SoundFont.h"
+#include <cstdio>
+#include <algorithm>
 #include "vsm/interchange/Json.h"
 #include "vsm/interchange/MultisampleProfile.h"
 #include "vsm/interchange/SynthPreset.h"
@@ -528,6 +530,25 @@ SoundFontConversion convertSoundFontPreset(const std::string& path, int bank, in
             if (!envelopeTaken) {
                 conversion.attackSeconds = timecentsToSeconds(value(kAttackVolEnv, -12000));
                 conversion.releaseSeconds = timecentsToSeconds(value(kReleaseVolEnv, -12000));
+                // D316 : L'ENVELOPPE EST BORNÉE À CE QUE LA MACHINE TIENT, et
+                // c'est dit. FluidR3 déclare 25 s de relâchement sur sa guitare
+                // acier ; `vsm.multisample` plafonne à 5 s, et chaque ouverture
+                // d'un fichier GM signalait « 1 borné » (D309) sans dire quoi.
+                // Les bornes sont celles de MultisampleSynth.cpp (Attack 0,001-2 s,
+                // Release 0,01-5 s) : les changer là-bas, c'est les changer ici.
+                auto borner = [&](float& v, float lo, float hi, const char* quoi) {
+                    if (v < lo || v > hi) {
+                        const float avant = v;
+                        v = std::min(std::max(v, lo), hi);
+                        char texte[160];
+                        std::snprintf(texte, sizeof texte,
+                                      "enveloppe : %s de %.3f s ramen\u00e9 \u00e0 %.3f s (la borne de vsm.multisample)",
+                                      quoi, static_cast<double>(avant), static_cast<double>(v));
+                        conversion.notes.push_back(texte);
+                    }
+                };
+                borner(conversion.attackSeconds, 0.001f, 2.0f, "attaque");
+                borner(conversion.releaseSeconds, 0.01f, 5.0f, "rel\u00e2chement");
                 envelopeTaken = true;
             }
 
@@ -649,7 +670,7 @@ void pushRange(std::vector<uint8_t>& out, uint16_t oper, uint8_t low, uint8_t hi
 
 } // namespace
 
-bool writeMinimalSoundFont(const std::string& path, std::string& outError) {
+bool writeMinimalSoundFont(const std::string& path, std::string& outError, int releaseTimecents) {
     constexpr uint32_t kRate = 44100;
     constexpr uint32_t kFrames = 4410;   // 100 ms
     constexpr uint32_t kGuard = 46;      // le format impose 46 trames nulles entre échantillons
@@ -710,7 +731,7 @@ bool writeMinimalSoundFont(const std::string& path, std::string& outError) {
     // emploie, donc celle que le test doit éprouver.
     pushU16(ibag, generatorIndex); pushU16(ibag, 0u);
     pushGenerator(igen, kAttackVolEnv, -7200);   // 2^(-7200/1200) = 15,6 ms
-    pushGenerator(igen, kReleaseVolEnv, -1200);  // 500 ms
+    pushGenerator(igen, kReleaseVolEnv, static_cast<int16_t>(releaseTimecents));  // -1200 = 500 ms
     generatorIndex += 2;
 
     for (const auto& zone : declarations) {

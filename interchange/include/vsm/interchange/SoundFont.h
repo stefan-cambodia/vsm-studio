@@ -109,6 +109,8 @@ SoundFontWriteResult writeSoundFontProfile(const SoundFontConversion& conversion
 /// Écrit un SF2 MINIMAL, engendré, pour les tests : deux zones de notes, deux
 /// couches de vélocité, des sinusoïdes. Quelques kilo-octets, donc commis sans
 /// scrupule — et surtout, aucun test ne dépend d'une banque téléchargée.
-bool writeMinimalSoundFont(const std::string& path, std::string& outError);
+/// `releaseTimecents` (D316) : le relâchement de la zone globale, -1200 (500 ms)
+/// par défaut ; 5573 (≈ 25 s) sert au test de la borne.
+bool writeMinimalSoundFont(const std::string& path, std::string& outError, int releaseTimecents = -1200);
 
 } // namespace vsm::interchange

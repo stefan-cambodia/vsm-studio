@@ -26652,3 +26652,34 @@ ces lancements (réveil à 22:32) : les fenêtres de banc s'ouvrent sur son écr
 un clic ou un glissé y tombe. Non reproduit sur cinq lancements à vide. C'est
 la raison de D77 dans l'autre sens : le banc ne touche pas aux réglages de
 l'utilisateur, mais l'utilisateur peut toucher au banc.
+
+### Phase D316 — l'installateur de banques écrivait des relâchements que la machine ne tient pas (14/09/2026)
+
+**D'où elle vient.** D309 : huit réserves à chaque ouverture du fichier
+Children — « 1 borné », « 2 bornés » —, et la lecture des presets a dit quoi :
+l'attaque du SoundFont sous le plancher de 0,001 s (effet nul), et **25,0 s de
+relâchement** sur FR3-Steel-Guitar, plafond 5 s de `vsm.multisample`. La
+conversion (`interchange/src/SoundFont.cpp`) recopiait les timecents du SF2
+sans regarder ce que la machine accepte ; la réserve tombait sur le musicien, à
+chaque ouverture, sans dire quoi.
+
+**DÉCISION** : borner À LA CONVERSION, pas élargir la machine — un état de
+machine enregistré dans `project.json` porte ses valeurs par identifiant de
+paramètre, et changer la plage du relâchement changerait le son de projets déjà
+écrits. Les bornes sont celles de `MultisampleSynth.cpp` (attaque 0,001-2 s,
+relâchement 0,01-5 s), recopiées avec ce renvoi ; la note de conversion dit
+« enveloppe : relâchement de 25,0 s ramené à 5,000 s (la borne de
+vsm.multisample) ». Le SF2 minimal des tests prend un relâchement en paramètre
+(5573 timecents ≈ 25 s) ; un test `interchange`.
+
+**ATTENDU** : tests `interchange` 299 + 1 ; après réinstallation des profils
+(`tools/installer-banques-midi.py --forcer`, une fois la course finie), le
+fichier Children s'ouvre avec **0 « réserves du preset de banque »** (8 avant),
+et `FR3-Steel-Guitar.synth.json` porte `"envelope.1.release": 5`.
+
+**MESURÉ, première moitié (binaire de 22:59).** Tests `interchange` **300 verts**
+(299 + 1) : un SF2 à 5573 timecents de relâchement (≈ 25 s) sort à **5,000 s**
+avec la note « enveloppe : relâchement de 25.… s ramené à 5.000 s (la borne de
+vsm.multisample) » ; le SF2 ordinaire (500 ms) passe sans note. La seconde
+moitié — réinstaller les 135 profils et rouvrir Children sans réserve — attend
+la fin de la course D282 (le convertisseur charge des banques de 150 Mo).
