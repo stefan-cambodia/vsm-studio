@@ -52,7 +52,9 @@ int main(int argc, char** argv) {
         piste.kind = modeles[p].genre;
         // Du matériau, pour que « jusqu'au bout du matériau » ait un sens.
         for (int n = 0; n < 32; ++n)
-            piste.addNote(n * 240, n * 240 + 200, static_cast<uint8_t>(48 + n % 12), 100, 0, idNote);
+            // D315 : des vélocités qui varient, pour que l'aperçu montre l'encre graduée.
+            piste.addNote(n * 240, n * 240 + 200, static_cast<uint8_t>(48 + n % 12),
+                          static_cast<uint8_t>(32 + (n * 3) % 96), 0, idNote);
 
         if (p == 0) {
             piste.clips.push_back({0, mesure * 2, 0, mesure * 2, false, "Intro", modeles[p].couleur});

@@ -2081,7 +2081,12 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                             if (x1 <= r.getX() || x0 >= r.getRight()) continue;
                             const float y = bas - static_cast<float>(n.number - grave + 1) * pas;
                             // Une note muette s'estompe, comme dans le piano roll.
-                            g.setColour(Palette::background.withAlpha(n.muted ? 0.3f : 0.72f));
+                            // D315 : LA VÉLOCITÉ SE VOIT -- une note forte est plus
+                            // sombre qu'une note faible (Cubase la met en couleur) :
+                            // de 0,35 à 0,80 d'encre entre 0 et 127, une note à 100
+                            // gardant à peu près l'encre d'hier (0,72).
+                            g.setColour(Palette::background.withAlpha(
+                                n.muted ? 0.3f : 0.35f + 0.45f * static_cast<float>(n.velocity) / 127.0f));
                             g.fillRect(x0, y, std::max(1.0f, x1 - x0), epaisseur);
                         }
                     }

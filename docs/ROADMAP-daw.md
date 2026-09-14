@@ -26588,3 +26588,67 @@ garde 7 / 7 ; tests `core` 339. Attendus tenus, le canal 10 corrigé.
   (D313), en le disant au rapport d'import — à trancher dans le CDC, pas ici.
 - **Le bilan D282** (`tools/bilan-coupure-basse.py d282-temoin d282-coupure`),
   quand les dix morceaux traités existent ; la course reprend au réveil.
+
+### Phase D314 — la console à 88 px coupait les noms : deux lignes sur une tranche étroite (14/09/2026)
+
+**D'où elle vient.** D304 a élargi les tranches quand la console a la place ;
+à quarante pistes elle n'en a pas, et **40 noms sur 40** se coupaient en « … »
+(« Piste quarante 01 » à 88 px), ainsi que quatre noms de batterie à 101 px
+sur douze pistes à 1366 × 768. Cubase écrit le nom sur deux lignes dans sa
+tranche étroite ; un `Label` de JUCE replie son texte dès que sa hauteur le
+permet.
+
+**CE QUI EST FAIT.** Sous **120 px** de large, la case du nom prend **32 px**
+(deux lignes de 12 pt) au lieu de 18 — quatorze pixels pris au fader, là
+seulement. Le relevé `VSM_MIXER_ZONES` dit le nombre de lignes, et compte un nom
+comme tronqué quand sa largeur dépasse la case FOIS ses lignes (approximation :
+le repli réel se fait aux espaces).
+
+**ATTENDU** : 40 pistes → tranches de 88 px, « nom sur 2 ligne(s) », **0
+tronqué** (40 avant) ; 12 pistes à 1366 × 768 → 101 px, 2 lignes, **0** (4
+avant) ; 12 pistes à 2117 × 1317 → 163 px, **1 ligne**, 0 (inchangé) ; photo à
+88 px : les deux lignes lisibles et le fader encore saisissable.
+
+### Phase D315 — la vélocité se voit dans la miniature des clips (14/09/2026)
+
+**D'où elle vient.** D283 l'avait nommée, non faite, « faute d'un besoin
+mesuré » ; les seize clips du fichier Children (D305) sont ce besoin : une ligne
+de basse à 127 et une nappe à 40 se dessinaient de la même encre. Cubase colore
+la vélocité dans ses parts ; Live non.
+
+**CE QUI EST FAIT.** L'encre d'un trait de note va de **0,35 à 0,80** d'opacité
+entre les vélocités 0 et 127 (une note à 100 garde à peu près l'encre d'hier,
+0,72) ; une note muette reste à 0,3. L'aperçu hors écran
+(`vsm-arrangement-preview`) fait varier ses vélocités (32 à 127) pour que la
+gradation se voie sans écran.
+
+**ATTENDU, écrit avant la mesure** : dans l'aperçu, la bande du clip « Tenue »
+(le plus large, 32 notes) compte **au moins 6 niveaux d'encre distincts** sur ses traits de note (1 seul
+avant : toutes les notes à 100) ; le fichier Children à l'écran : la basse (vél.
+49-86) et la nappe se distinguent à l'œil sur la photo ; `VSM_PEINTURE` ne
+bouge pas plus que le bruit (une teinte par note ne coûte rien).
+
+**MESURÉ (binaire de 22:38).** D314, relevé `VSM_MIXER_ZONES` : 40 pistes →
+« 40 tranche(s) de 88 px, nom sur **2** ligne(s), **0** nom(s) tronque(s) » (40
+avant) ; 12 pistes à 1366 × 768 → 101 px, 2 lignes, **0** (4 avant) ; 12 pistes
+à 2117 × 1317 → 163 px, **1** ligne, 0 (inchangé). Photo à 88 px : « Piste /
+quarante 01 » sur deux lignes, fader et boutons en place. Trois attendus tenus.
+
+D315, aperçu hors écran, bande du clip « Tenue » (x 153-326, y 96-128) :
+niveaux d'encre distincts plus sombres que le fond, **à ≥ 20 px de support : 2
+avant, 15 après** (à ≥ 6 px : 6 → 21). *L'attendu disait « 1 seul avant » sans
+l'avoir mesuré — faux : les bords lissés et une ligne de grille en font 2 à 6
+selon le support ; le seuil « au moins 6 » était donc tenu d'avance à ≥ 6 px, et
+c'est la mesure à ≥ 20 px (2 → 15) qui tranche.* À l'œil, sur 32 px de haut, la
+gradation de 0,46 à 0,80 reste discrète : elle se lit, elle ne saute pas aux
+yeux — un contraste plus fort (ou la couleur, comme Cubase) est nommé, non fait.
+La photo Children au zoom 0,2 montre les miniatures ; à 1-2 px de trait, la
+vélocité ne s'y distingue pas.
+
+*Vu au passage, expliqué* : deux HOME de banc (h2, h3) ont reçu `dock.bas` (557,
+471) et `dock.droite` (931) ce soir, sans qu'aucun verbe les écrive — seul le
+relâcher d'une poignée écrit ces clés, et l'utilisateur était au poste pendant
+ces lancements (réveil à 22:32) : les fenêtres de banc s'ouvrent sur son écran,
+un clic ou un glissé y tombe. Non reproduit sur cinq lancements à vide. C'est
+la raison de D77 dans l'autre sens : le banc ne touche pas aux réglages de
+l'utilisateur, mais l'utilisateur peut toucher au banc.

@@ -140,6 +140,9 @@ public:
     void resized() override;
     /// D304 : vrai si le nom déborde de sa case (le relevé VSM_MIXER_ZONES le compte).
     bool nomTronque() const;
+    /// D314 : combien de lignes la case du nom offre (1, ou 2 sur une tranche étroite).
+    int lignesDuNom() const;
+    static constexpr int kDeuxLignesSous = 120;   ///< D314 : sous cette largeur, le nom a deux lignes
     void paint(juce::Graphics&) override;
     void setMeasurement(const vsm::audio::engine::TrackMeasurement& m) {
         meter_.setLevel(m.peak);

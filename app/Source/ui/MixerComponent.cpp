@@ -329,7 +329,11 @@ void ChannelStrip::paint(juce::Graphics& g) {
 void ChannelStrip::resized() {
     auto r = getLocalBounds().reduced(4);
     r.removeFromTop(4); // bandeau couleur
-    nameLabel_.setBounds(r.removeFromTop(18));
+    // D314 : SUR UNE TRANCHE ÉTROITE, LE NOM PREND DEUX LIGNES. À 88 px,
+    // « Batterie · kick+kick2 » se coupait en « Batterie · kick... » ; Cubase
+    // écrit le nom sur deux lignes dans sa tranche étroite. Deux lignes coûtent
+    // quatorze pixels au fader, seulement là où la tranche est serrée.
+    nameLabel_.setBounds(r.removeFromTop(getWidth() < kDeuxLignesSous ? 32 : 18));
     trim_.setBounds(r.removeFromTop(18).reduced(4, 1));       // D30.4, en tête de chaîne
     pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
     delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
@@ -366,9 +370,18 @@ void ChannelStrip::resized() {
 
 bool ChannelStrip::nomTronque() const {
     // D304 : le nom tient-il dans sa case ? Même police, même marge que le Label.
+    // D314 : sur autant de lignes que la case en offre (le Label replie le texte
+    // quand sa hauteur le permet) -- une approximation par la largeur totale,
+    // le repli réel se fait aux espaces.
     const auto& police = nameLabel_.getFont();
     const float texte = juce::GlyphArrangement::getStringWidth(police, nameLabel_.getText());
-    return texte > static_cast<float>(nameLabel_.getWidth() - 2 * nameLabel_.getBorderSize().getLeft());
+    const float largeur = static_cast<float>(nameLabel_.getWidth() - 2 * nameLabel_.getBorderSize().getLeft());
+    return texte > largeur * static_cast<float>(lignesDuNom());
+}
+
+int ChannelStrip::lignesDuNom() const {
+    const float h = nameLabel_.getFont().getHeight();
+    return h > 0.0f ? juce::jmax(1, static_cast<int>(static_cast<float>(nameLabel_.getHeight()) / h)) : 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -867,7 +880,10 @@ void MixerComponent::resized() {
             if (masqueeLa(strips_[i])) continue;
             if (strips_[i]->nomTronque()) ++tronques;
         }
-        std::fprintf(stderr, "VSM_MIXER_ZONES : console=%d px, %d tranche(s) de %d px, %d nom(s) tronque(s)\n",
-                     r.getWidth(), visibles, largeurTranche, tronques);
+        int lignes = 1;
+        for (int i = 0; i < strips_.size(); ++i)
+            if (!masqueeLa(strips_[i])) { lignes = strips_[i]->lignesDuNom(); break; }
+        std::fprintf(stderr, "VSM_MIXER_ZONES : console=%d px, %d tranche(s) de %d px, nom sur %d ligne(s), %d nom(s) tronque(s)\n",
+                     r.getWidth(), visibles, largeurTranche, lignes, tronques);
     }
 }
