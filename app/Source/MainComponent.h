@@ -1383,6 +1383,13 @@ private:
     /// piste neuve n'apparaissaient dans l'arrangement qu'après avoir
     /// sauvegardé et rouvert. Rend vrai si elle a créé quelque chose.
     bool materializeImplicitClips();
+    /// D307 : donne une machine, d'après la convention General MIDI, à chaque
+    /// piste MIDI de `projet` (à partir du rang `depuis`) qui n'en a pas : le
+    /// canal 10 reçoit un kit, les autres la machine de leur premier programme
+    /// (0, le piano, quand le fichier n'en porte pas). Chaque choix est écrit au
+    /// journal avec le nom GM ; une machine absente du registre retombe sur
+    /// `vsm.generic`, et c'est dit. Rend le nombre de pistes dotées.
+    size_t attribuerLesMachinesGM(vsm::sequencer::Project& projet, size_t depuis, const char* contexte);
     void requestMarker(vsm::midi::Tick tick);
     void renameMarker(size_t index);
     void removeMarker(size_t index);

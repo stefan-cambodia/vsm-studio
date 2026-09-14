@@ -1,6 +1,7 @@
 #include <filesystem>
 #include "vsm/audio/plugin/ISampleLoader.h"
 #include "MainComponent.h"
+#include "vsm/sequencer/GeneralMidi.h"
 #include <cxxabi.h>
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
@@ -5741,6 +5742,12 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         const size_t pistesLues = parsed.tracks.size();
         oublierLesMachines();   // D76
         project_.title = fichier.getFileNameWithoutExtension().toStdString();
+        // D307 : les programmes General MIDI du fichier désignent les machines --
+        // AVANT rebuildFromProject(), qui les fabrique d'après `instrumentId`.
+        const size_t dotees = attribuerLesMachinesGM(project_, 0, "Ouvrir MIDI");
+        // D306 : LES CLIPS, comme à l'ouverture d'un projet -- une piste avec du
+        // matériau et sans clip joue mais ne se voit pas dans l'arrangement.
+        materializeImplicitClips();
         rebuildFromProject();
         pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
         // D212 : LE TITRE SUIT LE PROJET, et la marque « non enregistré » repart
@@ -5758,6 +5765,8 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
                               + " : " + juce::String(static_cast<int>(pistesLues))
                               + juce::String::fromUTF8(u8" piste(s) lue(s), découpée(s) par canal)")
                             : juce::String())
+                     + juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(dotees))
+                     + juce::String::fromUTF8(u8" piste(s) dotée(s) d'une machine d'après General MIDI")
                      + "\n").toRawUTF8(), stderr);
         return true;
     } catch (const std::exception& e) {
@@ -8317,9 +8326,11 @@ void MainComponent::chooseMidiToImport() {
 void MainComponent::importMidiIntoProject(const juce::File& file) {
     try {
         ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
-        const Project source = Project::fromParsedFile(parsed, true);   // D305 : par canal
+        Project source = Project::fromParsedFile(parsed, true);   // D305 : par canal
+        attribuerLesMachinesGM(source, 0, "Importer un MIDI");      // D307
         beginProjectEdit(u8"Importer un MIDI");
         const auto bilan = vsm::sequencer::appendTracksFrom(project_, source, transport_.currentTick());
+        materializeImplicitClips();                                  // D306
         rebuildFromProject();
         if (!project_.tracks.empty()) trackList_.selectTrackIndex(project_.tracks.size() - 1);
         // CE QUI EST IGNORÉ EST DIT : le tempo et les mesures du fichier.
@@ -10097,6 +10108,40 @@ bool MainComponent::materializeImplicitClips() {
     }
     project_.assignClipIds();
     return cree;
+}
+
+size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, size_t depuis,
+                                             const char* contexte) {
+    using vsm::sequencer::Track;
+    size_t dotees = 0;
+    for (size_t i = depuis; i < projet.tracks.size(); ++i) {
+        auto& piste = projet.tracks[i];
+        if (piste.kind != Track::Kind::Midi || !piste.instrumentId.empty()) continue;
+        if (piste.notes.empty()) continue;   // une piste sans note n'a rien à jouer
+        const uint8_t programme = piste.programChanges.empty() ? uint8_t{0}
+                                                               : piste.programChanges.front().program;
+        const bool batterie = piste.channel == 9;
+        std::string machine = batterie ? vsm::sequencer::machinePourKitGM(programme)
+                                       : vsm::sequencer::programmeGM(programme).machine;
+        const std::string nomGM = batterie ? vsm::sequencer::nomDuKitGM(programme)
+                                           : vsm::sequencer::programmeGM(programme).nom;
+        juce::String repli;
+        if (!vsm::audio::plugin::PluginRegistry::instance().isRegistered(machine)) {
+            repli = juce::String::fromUTF8(u8" (« ") + machine + juce::String::fromUTF8(u8" » absente du registre)");
+            machine = "vsm.generic";
+        }
+        piste.instrumentId = machine;
+        ++dotees;
+        std::fputs((juce::String(contexte) + " : piste " + juce::String(static_cast<int>(i + 1)) + juce::String::fromUTF8(u8" « ")
+                    + juce::String::fromUTF8(piste.name.c_str()) + juce::String::fromUTF8(u8" » : ")
+                    + (batterie ? juce::String::fromUTF8(u8"canal 10, kit ") : juce::String::fromUTF8(u8"programme GM "))
+                    + juce::String(static_cast<int>(programme)) + " (" + juce::String(nomGM.c_str()) + juce::String::fromUTF8(u8") → ") + juce::String(machine.c_str())
+                    + (piste.programChanges.empty() && !batterie
+                           ? juce::String::fromUTF8(u8" [aucun programme dans le fichier : le défaut de la norme]")
+                           : juce::String())
+                    + repli + "\n").toRawUTF8(), stderr);
+    }
+    return dotees;
 }
 
 void MainComponent::setTimeSignatureAtPlayhead(int numerator, int denominator) {

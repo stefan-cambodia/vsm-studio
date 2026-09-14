@@ -26228,3 +26228,77 @@ lignes « Mixdown · canal 1 » à « canal 16 », seize couleurs, seize tranche
 ouvert donne des pistes qui portent leurs notes sans fenêtre dessus ; le piano
 roll les montre, l'arrangement non. Et les seize lignes disent « (Aucun) » : le
 fichier porte 26 changements de programme General MIDI que personne ne lit.
+
+### Phase D306 — un `.mid` ouvert n'avait pas de clip : seize pistes, 8 537 notes, arrangement VIDE (14/09/2026)
+
+**VUE SUR LA PHOTO DE D305.** Seize lignes, seize couleurs, et pas un rectangle :
+`Clips : 0`. « Une piste avec du matériau et sans clip joue mais ne se voit pas »
+— c'est la phrase de D45, qui avait matérialisé la fenêtre implicite à
+l'ouverture d'un PROJET (`materializeImplicitClips`, un clip « tout à zéro »,
+exactement le passage que le planificateur fabrique), et D16.1 l'a rappelée
+pour les notes écrites au piano roll. « Ouvrir MIDI… » et « Importer un MIDI
+dans le projet… » passaient à côté : le morceau jouait, l'arrangement ne
+montrait rien à saisir. **Fait** : les deux chemins matérialisent leurs clips,
+avant `rebuildFromProject()`. Attendu : `Clips : 16` sur le fichier Children,
+seize rectangles nommés « Mixdown · canal N » avec leurs miniatures (D283).
+
+### Phase D307 — le fichier disait ses instruments, l'application ouvrait seize « (Aucun) » (14/09/2026)
+
+**LE MÊME FICHIER, 26 changements de programme** : General MIDI 0 (piano), 38
+(Synth Bass 1), 89 (Pad 2 warm), 81 (Lead 2 sawtooth), 49 (String Ensemble 2),
+48, 33 (Electric Bass finger), 98 (FX 3 crystal), 25 (steel guitar), 17
+(Percussive Organ), 52 (Choir Aahs)… et le canal 10 pour la batterie. Aucun
+n'était lu : seize pistes « (Aucun) », le rack « aucun instrument assigné », et
+Play ne jouait rien — le musicien devait choisir seize machines à la main avant
+d'entendre une note. Cubase ouvre un `.mid` sur un instrument GM et Live sur
+rien, mais le premier est l'usage que ce projet vise, et le parc a de quoi
+rendre chaque famille.
+
+**CE QUI EST FAIT.** `core/sequencer/GeneralMidi.h` : la table des 128
+programmes, chacun avec son nom GM et **la machine du parc qui lui ressemble le
+plus** (piano → `vsm.piano`, e-piano → `vsm.epiano`, orgues → `vsm.tonewheel` /
+`vsm.pipeorgan`, guitares et cordes → `vsm.string`, basses → `vsm.minimoog`,
+synth bass → `vsm.tb303` / `vsm.sh101`, ensembles → `vsm.divider`, chœurs →
+`vsm.vocal`, cuivres → `vsm.wind`, saxophones → `vsm.cone`, leads → `vsm.supersaw`
+/ `vsm.sh101` / `vsm.ms20`, pads → `vsm.juno106` / `vsm.jupiter8` / `vsm.prophet`
+/ `vsm.cs80`…), et le canal 10 → un kit (`vsm.drums` ; 24-31, les kits
+électroniques GM2 → `vsm.tr909`, 25 → `vsm.tr808`). À l'ouverture et à l'import
+d'un `.mid`, chaque piste MIDI sans machine et avec des notes reçoit celle de
+son premier programme (0, le défaut de la norme, si le fichier n'en porte pas —
+et c'est dit) ; **chaque choix est écrit au journal** avec le nom GM ; une
+machine absente du registre retombe sur `vsm.generic`, et c'est dit. Rien ne
+touche une piste qui a déjà une machine, ni un projet VSM. Deux tests `core` :
+128 entrées numérotées, 128 noms distincts, toutes en `vsm.…`, les repères (0
+→ piano, 38 → TB-303, 89 → Jupiter-8) ; le canal 10 → drums / TR-808 / TR-909.
+
+**ATTENDU, écrit avant la mesure** (fichier Children, `VSM_TEXTES_LISTE` et journal) :
+
+| # | attendu | seuil |
+|---|---|---|
+| 1 | 16 pistes dotées : `16 piste(s) dotée(s) d'une machine d'après General MIDI` | 16, 0 « (Aucun) » au relevé des listes de machines |
+| 2 | le canal 10 reçoit `vsm.drums` (programme 0 = Standard Kit) | journal « canal 10, kit 0 (Standard Kit) → vsm.drums » |
+| 3 | le canal 2 (programme 38) reçoit `vsm.tb303`, le canal 3 (89) `vsm.jupiter8` | journal |
+| 4 | contrôle : un projet VSM ouvert ne change pas de machines (`children-c1-defaut` : Hurdy-Gurdy, Clavichord, Sitar, TB-303, TR-909 × 5) | relevé des listes identique à celui de 17:26 |
+| 5 | contrôle : `quarante.mid` (aucun programme) → 40 × `vsm.piano`, chaque ligne du journal portant « aucun programme dans le fichier » | 40 |
+| 6 | `Clips : 16` (D306) et seize rectangles sur la photo | 16 |
+| 7 | tests `core` verts : 332 + 2 | 334 |
+
+**MESURÉ (binaire de 19:04, tests `core` 334 verts).** Journal d'ouverture du
+fichier Children, seize lignes, une par piste — canal 1 « programme GM 0
+(Acoustic Grand Piano) → vsm.piano », canal 2 « 38 (Synth Bass 1) →
+vsm.tb303 », canal 3 « 89 (Pad 2 (warm)) → vsm.jupiter8 », canal 4 « 81 (Lead
+2 (sawtooth)) → vsm.supersaw », canaux 5-6 « String Ensemble → vsm.divider »,
+canal 7 « 33 (Electric Bass (finger)) → vsm.minimoog », canal 9 « 98 (FX 3
+(crystal)) → vsm.dx7 », **canal 10 « kit 0 (Standard Kit) → vsm.drums »**,
+canaux 11, 13, 16 « 25 (Acoustic Guitar (steel)) → vsm.string », canal 12 « 17
+(Percussive Organ) → vsm.tonewheel », canal 15 « 52 (Choir Aahs) → vsm.vocal »
+— puis « 16 piste(s) dotée(s) d'une machine d'après General MIDI » ; relevé :
+**0 liste « (Aucun) »**, `Pistes : 16 / Notes : 8537 / Clips : 16`. Projet VSM
+témoin : Hurdy-Gurdy, Clavichord, Sitar, TB-303, TR-909 × 5 — inchangé.
+`quarante.mid` : **38** lignes « aucun programme dans le fichier : le défaut de
+la norme » → vsm.piano et **2** « canal 10, kit 0 → vsm.drums » (mon attendu
+disait 40 pianos : deux des quarante pistes sont sur le canal 10 par
+construction, i % 16 — l'attendu avait oublié son propre fichier ; 40 dotées).
+Photo : seize rectangles nommés, miniatures là où les notes sont (canaux 3 et
+12 dans les quatorze premières mesures), la façade du piano au rack sur la
+piste 1. Sept attendus tenus, le cinquième avec son chiffre corrigé.
