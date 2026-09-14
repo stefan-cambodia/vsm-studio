@@ -25656,3 +25656,13 @@ reste vérifié par le sien.
 le champ de recherche du navigateur (`VSM_FILTRE` filtre la liste des PISTES),
 et c'est dit : un verbe `chercher:` pour `VSM_NAVIGATEUR` est nommé, non fait —
 il n'aurait montré que ce que le test montre déjà. Le manuel le dit au § 5.
+
+**RECTIFICATIF (15:20).** Le message du commit `5fd07a8` (D290) dit « réglages
+intacts » ; le `cmp` de cette course avait rendu DIFFÉRENT, et la ligne a été
+écrite avant de le lire. Lu clé par clé : une seule, `renderThreads`, passée de
+`-1` (automatique) à `10` à **12:29:19** — un choix du menu *Threads de rendu*,
+fait par l'utilisateur dans SON application pendant que les bancs tournaient
+sous un `HOME` de brouillon (dont le fichier de réglages, lui, porte toujours
+`-1`). Le piège du 10/09 à 21:13, encore : le témoin `cmp` se reprend JUSTE
+AVANT chaque série, et une différence se lit avant d'être niée ou rétablie —
+rien n'a été rétabli, c'est son réglage.
