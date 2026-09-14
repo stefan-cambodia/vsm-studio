@@ -289,6 +289,14 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   chaîne vide, et le `echo "rc=$rc"` qui suit affiche `rc=` — ce qui ressemble à
   un succès. Mieux : ne pas filtrer par un tube, écrire le journal dans un fichier
   et garder `rc=$?`.
+- Un lancement de banc SANS `VSM_CAPTURE` (ni autre verbe qui quitte) NE QUITTE
+  PAS : `VSM_DELAI` ne fait rien à lui seul, le `timeout` tue l'application, et
+  chaque mort laisse une « session interrompue » dans le HOME du banc — 22 dans
+  le même HOME de brouillon le 14/09 au soir, et une mesure qui comptait « 1
+  session restante » comptait la sienne (D318). Un lancement de banc porte
+  toujours une capture, et chaque course prend un HOME NEUF (`mktemp -d`), comme
+  `tools/ouvrir-midi.sh` ; un HOME réutilisé rouvre ses autosauvegardes AVANT le
+  geste demandé.
 - Une commande qui ÉDITE puis LANCE dans le même appel exécute l'ANCIEN outil
   quand l'édition échoue : le 14/09 au soir, un `assert` Python raté a laissé
   `tools/balayer-facades.sh` intact, et le `--juger fichier.tsv` qui suivait dans
