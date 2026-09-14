@@ -25483,3 +25483,56 @@ l'arrangement (elles montrent tout le morceau, lui une fenêtre) ; un curseur
 commun rend l'écart visible, il ne le comble pas. Aligner les trois lanes sur la
 fenêtre de l'arrangement est une phase à part, et elle se mesurerait sur le
 geste (poser un point sous une note qu'on voit là-haut).
+
+### Phase D286 — les lanes du bas suivent la fenêtre de l'arrangement (14/09/2026)
+
+**LE « NOMMÉ, NON FAIT » DE D285, fait.** Les onglets *Automation*, *MIDI CC* et
+*Tempo* étalaient le morceau ENTIER sur leur largeur, quand l'arrangement
+au-dessus n'en montre qu'une fenêtre : sur un morceau de 226 mesures, la tête
+avançait de 1,3 % de la largeur à la troisième mesure, et une note vue là-haut
+n'avait aucune verticale commune avec le point qu'on posait en bas. Dans Cubase
+les lanes SONT dans l'arrangement, et l'alignement va de soi.
+
+**CE QUI EST FAIT.** Une règle commune, `ui/FenetreDeTemps.h` : le tick au bord
+gauche de la zone des clips, les pixels par tick — ceux de l'arrangement, au bit
+près (`scrollTick()`, `pixelsPerTick()`, rendus publics) — et **l'abscisse ÉCRAN
+où cette règle commence** (`getScreenX()` de l'arrangement plus son en-tête de
+150 px). Chaque lane reçoit un fournisseur de fenêtre ; son `tickToX` et son
+`xToTick` (celui des clics, donc des points posés) passent par la même règle, et
+la même conversion écran ↔ local dans l'autre sens, ce qui tient aussi en
+panneaux flottants. Sans fournisseur, ou quand l'arrangement est caché (le piano
+roll à sa place) : l'ancienne règle, le morceau entier — les outils d'aperçu ne
+changent pas. La grille des mesures ne dessine plus que les mesures VISIBLES
+(226 traits hors de l'écran à chaque dessin, sinon), et le zoom ou le défilement
+de l'arrangement redessinent les lanes — détecté à la minuterie de la fenêtre
+en COMPARANT la fenêtre à la précédente, pas en redessinant trente fois par
+seconde (D169).
+
+**MESURÉ, PAS REGARDÉ.** `tools/alignement-lanes.py` cherche, sur l'autoportrait,
+la colonne la plus ambre de la bande de l'arrangement et celle de la bande de la
+lane, et publie l'écart — la tête est peinte, aucun relevé de texte ne la voit
+(D149). Lecture lancée, photo à cinq secondes, quatre fois :
+
+| onglet | colonne dans l'arrangement | colonne dans la lane | écart |
+|---|---|---|---|
+| Automation | 727 | 727 | **0 px** |
+| MIDI CC | 741 | 741 | **0 px** |
+| Tempo | 743 | 743 | **0 px** |
+| Tempo, projet AJUSTÉ à la fenêtre (Ctrl+0) | 470 | 470 | **0 px** |
+
+Les trois colonnes diffèrent d'une photo à l'autre parce que la lecture n'est pas
+lancée à la même milliseconde ; c'est l'écart qui est la mesure. La photo montre
+aussi les barres de mesure de la lane tempo sous celles de l'arrangement, et son
+point de départ à 120 BPM posé au tick 0, sous le premier clip.
+
+**Trois compilations pour une phase.** Deux erreurs de nom d'espace (les lanes et
+l'arrangement ne sont pas dans `vsm::app::ui`, que j'ai supposé sans lire —
+`decltype(arrangement_)` évite la question), et la garde mémoire de l'outil qui a
+tué ma SURVEILLANCE du build détaché, pas le build : la recette de D285 tient,
+c'est l'attente qui doit être un `Monitor`. Réglages de l'utilisateur intacts au
+`cmp` ; le manuel dit l'alignement au § 4.
+
+**Nommé, non fait** : les lanes n'ont pas de règle de mesures numérotée (les
+numéros se lisent sur l'arrangement, juste au-dessus, à la même verticale — c'est
+justement ce que cette phase rend vrai) ; et l'onglet *Liste* (D284) n'est pas
+concerné, une liste n'a pas de fenêtre de temps.

@@ -10,6 +10,7 @@
 #include "vsm/interchange/SynthPreset.h"
 #include "reconstruction/ClipTranscriber.h"
 #include "reconstruction/ReconstructionRunner.h"
+#include "ui/FenetreDeTemps.h"
 #include "ui/ReconstructionWindow.h"
 #include "ui/MidiLearnWindow.h"
 #include "vsm/interchange/MidiLearnStore.h"
@@ -1182,6 +1183,7 @@ private:
     /// au début de la mesure qui contient la tête de lecture.
     void setTimeSignatureAtPlayhead(int numerator, int denominator);
     int derniereSignatureNum_ = 0, derniereSignatureDen_ = 0;
+    vsm::app::ui::FenetreDeTemps fenetreVue_;   // D286 : la dernière fenêtre vue par les lanes
     void showAllTracks();
     /// D17.6 : rogne le clip à ce qui sonne, en relisant les échantillons du
     /// fichier. Annulable.

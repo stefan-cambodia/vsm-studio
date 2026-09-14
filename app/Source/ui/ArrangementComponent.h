@@ -316,6 +316,9 @@ public:
     int markerAt(float x) const;
 
     static constexpr int kHeaderWidth = 150;
+    /// D286 : la règle de temps de la vue, pour que les lanes du bas s'y alignent.
+    vsm::midi::Tick scrollTick() const { return scrollTick_; }
+    double pixelsPerTick() const { return pixelsPerTick_; }
     static constexpr int kRulerHeight = 22;
     /// Hauteur d'une piste PLIÉE. Assez pour son nom et rien d'autre : c'est
     /// tout l'intérêt de plier. Seize pistes pliées tiennent alors dans

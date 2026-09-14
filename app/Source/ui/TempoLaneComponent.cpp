@@ -86,6 +86,13 @@ juce::Rectangle<int> TempoLaneComponent::editorArea() const {
 
 int TempoLaneComponent::tickToX(Tick tick) const {
     auto a = editorArea();
+    // D286 : LA RÈGLE DE L'ARRANGEMENT quand il y en a une -- même tick, même
+    // colonne d'écran --, sinon le morceau entier sur la largeur (aperçus, ou
+    // arrangement caché derrière le piano roll).
+    if (fenetreProvider) {
+        if (const auto f = fenetreProvider())
+            return static_cast<int>(std::lround(f->xLocal(static_cast<vsm::midi::Tick>(tick), getScreenX())));
+    }
     const double ratio = maxTick_ > 0 ? static_cast<double>(tick) / static_cast<double>(maxTick_) : 0.0;
     return a.getX() + static_cast<int>(ratio * a.getWidth());
 }
@@ -94,6 +101,11 @@ Tick TempoLaneComponent::xToTick(int x) const {
     auto a = editorArea();
     const double ratio = a.getWidth() > 0 ? static_cast<double>(x - a.getX()) / a.getWidth() : 0.0;
     Tick tick = static_cast<Tick>(juce::jlimit(0.0, 1.0, ratio) * static_cast<double>(maxTick_));
+    if (fenetreProvider) {   // D286 : l'inverse de la même règle, bornée au morceau
+        if (const auto f = fenetreProvider())
+            tick = static_cast<Tick>(juce::jlimit<vsm::midi::Tick>(0, static_cast<vsm::midi::Tick>(maxTick_),
+                                                       f->tickDe(x, getScreenX())));
+    }
     // AIMANTÉ AU TEMPS : un changement de tempo se pose sur un temps, comme
     // dans une partition ; entre deux temps il n'y a rien à ralentir.
     if (project_ != nullptr && project_->ticksPerQuarterNote > 0) {
@@ -199,7 +211,11 @@ void TempoLaneComponent::paint(juce::Graphics& g) {
     if (project_ != nullptr && project_->ticksPerQuarterNote > 0) {
         const Tick ticksPerBar = static_cast<Tick>(project_->ticksPerQuarterNote) * 4;
         g.setColour(Palette::gridLine);
-        for (Tick t = 0; t <= maxTick_; t += ticksPerBar)
+        // D286 : les mesures VISIBLES seulement -- sur la fenêtre de l'arrangement,
+        // un morceau de 226 mesures en tirerait 226 hors de l'écran à chaque dessin.
+        const Tick premiere = (std::max<Tick>(0, xToTick(a.getX())) / ticksPerBar) * ticksPerBar;
+        const Tick derniere = std::min<Tick>(maxTick_, xToTick(a.getRight()) + ticksPerBar);
+        for (Tick t = premiere; t <= derniere; t += ticksPerBar)
             g.drawVerticalLine(tickToX(t), static_cast<float>(a.getY()), static_cast<float>(a.getBottom()));
     }
     g.setColour(Palette::gridLineStrong);

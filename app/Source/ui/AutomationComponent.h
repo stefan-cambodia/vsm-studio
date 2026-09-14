@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "FenetreDeTemps.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/audio/engine/AutomationLane.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
@@ -23,6 +24,9 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    /// D286 : la fenêtre de temps de l'arrangement. Fournie, la lane s'y aligne
+    /// (même tick, même colonne d'écran) ; absente, elle montre le morceau entier.
+    vsm::app::ui::FournisseurDeFenetre fenetreProvider;
     /// D285 : LA TÊTE DE LECTURE SE VOIT DANS LA LANE, comme dans l'arrangement
     /// et le piano roll -- un trait ambre, redessiné par colonne et non par lane.
     void setPlayheadTick(vsm::audio::engine::Tick tick);

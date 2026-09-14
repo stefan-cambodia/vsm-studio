@@ -204,6 +204,24 @@ MainComponent::MainComponent()
     // projet au moteur, qui suit la carte à chaque bloc, et la barre de
     // transport montre le tempo de départ.
     tempoLane_.setHistory(&history_);
+    // D286 : LES TROIS LANES DU BAS SUIVENT LA FENÊTRE DE L'ARRANGEMENT -- même
+    // tick, même colonne d'écran. L'origine est prise à l'ÉCRAN, pas dans le
+    // dock, pour que l'alignement tienne aussi en panneaux flottants. Quand
+    // l'arrangement est caché (le piano roll à sa place), aucune fenêtre : la
+    // lane retombe sur le morceau entier, comme avant.
+    {
+        auto fenetre = [this]() -> std::optional<vsm::app::ui::FenetreDeTemps> {
+            if (!arrangement_.isVisible()
+                || arrangement_.getWidth() <= std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth)
+                return std::nullopt;
+            return vsm::app::ui::FenetreDeTemps{
+                arrangement_.scrollTick(), arrangement_.pixelsPerTick(),
+                arrangement_.getScreenX() + std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth};
+        };
+        automation_.fenetreProvider = fenetre;
+        midiCc_.fenetreProvider = fenetre;
+        tempoLane_.fenetreProvider = fenetre;
+    }
     tempoLane_.onTempoEdited = [this] {
         refreshTransportSchedule();
         audioEngine_.processGraph().setProject(project_);
@@ -2770,6 +2788,22 @@ void MainComponent::timerCallback() {
     automation_.setPlayheadTick(playhead);   // D285 : les trois lanes du bas aussi
     midiCc_.setPlayheadTick(playhead);
     tempoLane_.setPlayheadTick(playhead);
+    // D286 : QUAND L'ARRANGEMENT DÉFILE OU ZOOME, les lanes qui suivent sa
+    // fenêtre se redessinent -- détecté ici, à trente fois par seconde, plutôt
+    // que dans les cinq gestes qui changent la vue. Comparé, pas redessiné à
+    // chaque tick : trois lanes repeintes trente fois par seconde seraient le
+    // piège de D169.
+    {
+        const vsm::app::ui::FenetreDeTemps vue{arrangement_.scrollTick(), arrangement_.pixelsPerTick(),
+                                               arrangement_.getScreenX()};
+        if (vue.debut != fenetreVue_.debut || vue.pixelsParTick != fenetreVue_.pixelsParTick
+            || vue.xEcranOrigine != fenetreVue_.xEcranOrigine) {
+            fenetreVue_ = vue;
+            automation_.repaint();
+            midiCc_.repaint();
+            tempoLane_.repaint();
+        }
+    }
     // D21.4 : LA SIGNATURE SOUS LA TÊTE, pas celle du tick zéro -- mise à
     // jour seulement quand elle change, la barre n'a pas à se redessiner
     // trente fois par seconde.
