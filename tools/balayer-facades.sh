@@ -13,12 +13,29 @@
 # l'utilisateur ne bougent pas (D77).
 #
 #   tools/balayer-facades.sh [sortie.tsv]      → tableau, puis verdict ; code 1 si une façade est sous 18 px
+#   tools/balayer-facades.sh --juger fichier.tsv   → rejuge un balayage déjà écrit, sans relancer
+#
+# LA DERNIÈRE DISPOSITION, PAS LA PREMIÈRE (D302, 14/09/2026). Une façade écrit
+# sa mesure à CHAQUE resized() : d'abord à la taille du rack (364 × 626), puis à
+# sa taille naturelle (434, 818, 1 030 px…) une fois D63 posée -- c'est celle-là
+# que l'utilisateur voit, l'autre est transitoire. Le verdict prenait le minimum
+# sur TOUTES les lignes, et jugeait donc l'hybride PCM à 18 px (la passe de 626)
+# quand ses boutons font 44 px sur la façade affichée. On ne garde, par machine,
+# que les lignes de la DERNIÈRE taille écrite ; si une passe transitoire était
+# plus petite, le tableau le dit.
 set -u
 racine="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$racine"
-sortie="${1:-/tmp/facades-$(date +%Y%m%d-%H%M).tsv}"
+if [ "${1:-}" = "--juger" ]; then
+    sortie="${2:?fichier.tsv}"; [ -s "$sortie" ] || { echo "REFUS : $sortie absent ou vide" >&2; exit 2; }
+    juger_seulement=1
+else
+    sortie="${1:-/tmp/facades-$(date +%Y%m%d-%H%M).tsv}"
+    juger_seulement=0
+fi
 bin="./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
 [ -x "$bin" ] || { echo "binaire absent : $bin" >&2; exit 2; }
+if [ "$juger_seulement" -eq 0 ]; then
 brouillon="$(mktemp -d)"
 rm -f "$sortie"
 ids=$(grep -o 'pluginId = "[^"]*"' panels/src/MachinePanels.cpp | sed 's/.*"\(.*\)"/\1/' | sort -u)
@@ -33,11 +50,20 @@ done
 rm -rf "$brouillon"
 echo "$n machine(s) posée(s), mesures dans $sortie"
 # La DERNIÈRE taille rencontrée par machine est la bonne (la façade est posée plusieurs fois au montage).
-awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 {
+fi
+# Deux lectures du fichier : la première retient, par machine, la DERNIÈRE
+# taille de façade écrite ; la seconde ne juge que ses lignes (D302).
+awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
+  FNR>1 && $2!="0x0" && $10>0 && $2==derniere[$1] {
     taille[$1]=$2; if (!($1 in mini) || $10<mini[$1]) { mini[$1]=$10; ou[$1]=$3" / "$4 } }
-  END { for (m in mini) printf "%-22s %-10s %3d px  %s\n", m, taille[m], mini[m], ou[m] }' "$sortie" | sort -k3 -n
-sous=$(awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 { if (!($1 in mini) || $10<mini[$1]) mini[$1]=$10 }
-  END { c=0; for (m in mini) if (mini[m]<18) c++; print c }' "$sortie")
+  FNR>1 && $2!="0x0" && $10>0 && $2!=derniere[$1] {
+    if (!($1 in transitoire) || $10<transitoire[$1]) transitoire[$1]=$10 }
+  END { for (m in mini) printf "%-22s %-10s %3d px  %s%s\n", m, taille[m], mini[m], ou[m],
+            (m in transitoire && transitoire[m]<mini[m]) ? sprintf("   (passe transitoire : %d px, ignoree)", transitoire[m]) : "" }' \
+    "$sortie" "$sortie" | sort -k3 -n
+sous=$(awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
+  FNR>1 && $2!="0x0" && $10>0 && $2==derniere[$1] { if (!($1 in mini) || $10<mini[$1]) mini[$1]=$10 }
+  END { c=0; for (m in mini) if (mini[m]<18) c++; print c }' "$sortie" "$sortie")
 total=$(awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 {v[$1]=1} END{print length(v)}' "$sortie")
 echo "VERDICT : $sous façade(s) sur $total sous le plancher de 18 px"
 [ "$sous" -eq 0 ]

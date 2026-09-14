@@ -26036,3 +26036,54 @@ relevé de textes (`VSM_TEXTES_LISTE`, VSM_LANGUE=en) : « liste : All », et le
 de la barre toujours « Fit » ; l'inventaire de langue rend les mêmes comptes
 qu'avant (ECRAN 7, DOUBLONS 0). Garde `tools/pianoroll-zones.sh` rejouée sur le
 binaire de 17:54 : 6 relevés, 0 raté.
+
+### Phase D302 — la garde des façades jugeait une disposition TRANSITOIRE, et la cordes prend sa sixième colonne (14/09/2026)
+
+**LE BANC AVANT LA CIBLE.** En reprenant le « nommé, non fait » de D299 —
+`vsm.pcmhybrid`, PARTIAL A à 18 px, « sur le plancher exactement » —, la mesure
+par commande (`VSM_MESURE_FACADE`) a montré DEUX passes pour la même façade :
+une à **364 × 626** (la taille du rack, tous les boutons à 18 px) puis une à
+**356 × 1030** (sa taille naturelle sous D63, l'ascenseur pris sur la largeur,
+les mêmes boutons à **44 px**). C'est la seconde que l'utilisateur voit ; la
+première est le `resized()` d'avant le défilement. Or `tools/balayer-facades.sh`
+prenait le minimum sur TOUTES les lignes d'une machine : elle jugeait l'hybride
+PCM sur sa passe transitoire, et D299 puis D300 ont publié « 18 px » pour une
+façade dont le plus petit bouton affiché fait 35 px (TVF / KEY). Sur les 63
+machines, **12** écrivent une passe transitoire plus petite que leur disposition
+finale ; `vsm.wavetable` (« 18 px » dans D300) est dans le même cas — 35 px
+affichés. La règle de D266 s'applique : quand un banc accuse, vérifier le banc.
+
+**CE QUI EST FAIT.** La garde ne juge plus que les lignes de la **DERNIÈRE taille
+écrite** par machine, dit entre parenthèses quand une passe transitoire était
+plus petite, et sait REJUGER un balayage déjà écrit (`--juger fichier.tsv`) sans
+relancer 63 fois l'application. Rejugé sur le balayage de 18:05 (binaire de
+17:54) : **0 façade sur 63 sous 18 px**, le plancher exact ne tient plus que
+`vsm.fmdrums` (ACCENT, 18 px — c'est réel, ses deux passes le disent), puis
+`vsm.tr909` 19 px et six façades à 20 px, dont `vsm.string` (EXCITATION /
+PLUCK-BOW), le second « nommé, non fait » de la journée (D297).
+
+**ET LA CORDES.** EXCITATION passe de 5 à **6 colonnes** sur 18 ; la colonne
+vient du BOW, qui n'a que deux boutons empilés dans une seule colonne (71 px,
+il ne perd rien).
+
+**ATTENDU, écrit avant le balayage** (binaire recompilé, `tools/balayer-facades.sh`
+complet, rack de 364 px) :
+
+| # | attendu | seuil |
+|---|---|---|
+| 1 | `vsm.string` EXCITATION monte | ≥ 24 px (cellule de 121 px pour trois boutons, contre 101) |
+| 2 | BOW ne descend pas sous le plancher | ≥ 18 px |
+| 3 | aucune autre façade ne bouge | même plus petit élément qu'au balayage de 18:05, rejugé par la même règle |
+| 4 | verdict | 0 / 63 |
+
+**MESURÉ (binaire de 18:13, balayage complet de 18:22, 63 machines).**
+`vsm.string` EXCITATION **26 px** (20 avant, les quatre boutons : PLUCK / BOW,
+POSITION, HARDNESS, TOUCH), BOW **53 px** (71 avant, deux boutons empilés — au
+large) ; les 62 autres façades rendent, rejugées par la même règle, le même
+plus petit élément qu'au balayage de 18:05 (diff vide) ; **verdict 0 / 63**.
+Tests `panels` 11 verts. Les quatre attendus sont tenus.
+
+*Ce que cette phase change au tableau de D300* : « trois façades sur le plancher
+exactement » n'était vrai que d'une, `vsm.fmdrums` ; l'hybride PCM et la table
+d'ondes y étaient par leur passe transitoire, et font 35 px à l'écran. Le chiffre
+publié était juste (0 / 63), sa décomposition ne l'était pas.

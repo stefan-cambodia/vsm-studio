@@ -1780,7 +1780,10 @@ MachinePanel makeString() {
     PanelSection excitation;
     excitation.title = "EXCITATION";
     excitation.accentColour = "#C9A567";
-    excitation.column = 0; excitation.row = 0; excitation.columnSpan = 5; excitation.rowSpan = 4;
+    // D302 : six colonnes et non cinq -- trois boutons en ligne y faisaient 20 px
+    // au rack de 364 px (D297, « nommé, non fait ») ; la colonne vient du BOW,
+    // qui n'a que deux boutons empilés.
+    excitation.column = 0; excitation.row = 0; excitation.columnSpan = 6; excitation.rowSpan = 4;
     excitation.controls = {
         control("Excitation", "PLUCK / BOW", S::LargeKnob, 0, 0),
         control("Pick Position", "POSITION", S::Knob, 1, 0),
@@ -1793,7 +1796,7 @@ MachinePanel makeString() {
     PanelSection bow;
     bow.title = "BOW";
     bow.accentColour = "#B08A4E";
-    bow.column = 5; bow.row = 0; bow.columnSpan = 5; bow.rowSpan = 4;
+    bow.column = 6; bow.row = 0; bow.columnSpan = 4; bow.rowSpan = 4;
     bow.controls = {
         control("Bow Pressure", "PRESSURE", S::Knob, 0, 0),
         control("Bow Speed", "SPEED", S::Knob, 0, 1),
