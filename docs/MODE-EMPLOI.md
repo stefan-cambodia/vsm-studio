@@ -665,7 +665,7 @@ Un soustractif neutre, aux axes bien rangés : la machine que la recherche de pa
 
 ## 4. Le piano roll
 
-Le clavier de gauche donne l'échelle ; les octaves sont marquées en clair. Une note se dessine, se déplace, s'allonge ; la vélocité se règle et passe par l'historique.
+Le clavier de gauche donne l'échelle ; les octaves sont marquées en clair. Une note se dessine, se déplace, s'allonge ; la vélocité se règle et passe par l'historique. **La lane de vélocité, sous la grille, se tire par sa poignée** et retient sa hauteur d'une session à l'autre (D301) ; elle ne prend jamais plus du tiers de l'éditeur, pour que la grille des notes — ce qu'on est venu voir — en garde au moins les deux tiers, même sur un écran de portable.
 
 À l'ouverture d'un projet et à chaque changement de piste, la fenêtre se place
 sur la hauteur **médiane** des notes de la piste (pondérée par la durée) : une
@@ -699,7 +699,7 @@ pour déplacer, clic droit pour supprimer, aimantés à la double-croche. La
 courbe est en **paliers**, parce qu'un CC vaut jusqu'au suivant. Chaque
 geste passe par l'historique (Ctrl+Z) et le séquenceur rejoue la piste
 aussitôt. Une courbe importée d'un autre DAW se voit donc, et se corrige, là
-où elle ne faisait avant que se jouer. **La tête de lecture traverse ces lanes** — automation, MIDI CC, tempo — d'un trait ambre, le même que dans l'arrangement et le piano roll (D285), **et les lanes suivent la fenêtre de l'arrangement** (D286) : même tick, même colonne d'écran, au pixel — ce qu'on voit là-haut et ce qu'on règle en bas se lisent à la même verticale, et le zoom ou le défilement de l'arrangement entraînent les lanes. Quand l'arrangement est caché (le piano roll à sa place), une lane montre le morceau entier sur sa largeur. Chaque lane numérote ses mesures au pied de sa grille (D287), une sur quatre ou sur seize quand elles se serrent.
+où elle ne faisait avant que se jouer. **La tête de lecture traverse ces lanes** — automation, MIDI CC, tempo — d'un trait ambre, le même que dans l'arrangement et le piano roll (D285), **et les lanes suivent la fenêtre de l'arrangement** (D286) : même tick, même colonne d'écran, au pixel — ce qu'on voit là-haut et ce qu'on règle en bas se lisent à la même verticale, et le zoom ou le défilement de l'arrangement entraînent les lanes. Quand l'arrangement est caché (le piano roll à sa place), une lane montre le morceau entier sur sa largeur. **Les onglets *Automation*, *MIDI CC*, *Effets* et *Liste* suivent la piste choisie** dans la liste des pistes (D303) ; choisir une autre piste dans la liste déroulante d'un onglet n'y change rien, pour pouvoir regarder l'automation d'une piste en jouant une autre au clavier. Chaque lane numérote ses mesures au pied de sa grille (D287), une sur quatre ou sur seize quand elles se serrent.
 
 **La liste d'événements** (onglet *Liste* du bas — l'éditeur de liste de Cubase) chiffre tout ce que porte la piste choisie : notes, contrôleurs, plis de hauteur, pressions, changements de programme, avec la position en mesure·temps+ticks, le canal, le numéro, la valeur et la durée. Le filtre réduit à une famille ; un double-clic sur une ligne y mène la tête de lecture ; Suppr retire l'événement (annulable). **Elle suit la lecture** (D284) : la ligne du dernier événement passé sous la tête est teintée en ambre et se tient au milieu de la fenêtre tant que le transport tourne — au-dessus ce qui vient de passer, en dessous ce qui arrive (D287) ; à l'arrêt, la liste ne bouge plus et se parcourt à la main.
 

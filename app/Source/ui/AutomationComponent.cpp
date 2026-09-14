@@ -65,6 +65,15 @@ void AutomationComponent::setProject(vsm::sequencer::Project* project) {
     rebuildTrackBox();
 }
 
+void AutomationComponent::setActiveTrackIndex(size_t trackIndex) {
+    // D303 : même contrat que `MidiCcComponent::setActiveTrackIndex`.
+    if (project_ == nullptr || trackIndex >= project_->tracks.size()) return;
+    if (trackIndex == selectedTrack_) return;
+    selectedTrack_ = trackIndex;
+    trackBox_.setSelectedItemIndex(static_cast<int>(trackIndex), juce::dontSendNotification);
+    rebuildParamBox();
+}
+
 void AutomationComponent::rebuildTrackBox() {
     trackBox_.clear(juce::dontSendNotification);
     if (project_ != nullptr) {

@@ -26087,3 +26087,44 @@ Tests `panels` 11 verts. Les quatre attendus sont tenus.
 exactement » n'était vrai que d'une, `vsm.fmdrums` ; l'hybride PCM et la table
 d'ondes y étaient par leur passe transitoire, et font 35 px à l'écran. Le chiffre
 publié était juste (0 / 63), sa décomposition ne l'était pas.
+
+### Phase D303 — l'onglet Automation ne suivait pas la piste choisie, seul des quatre (14/09/2026)
+
+**TROUVÉE EN REGARDANT L'APPLICATION EN MARCHE**, à 1366 × 768 : la piste
+`Batterie · kick+kick2` choisie dans la liste (`piste:4`), le piano roll montre
+ses pièces, le rack sa TR-909, l'onglet *Effets* son nom — et l'onglet
+*Automation* affiche **« Piste : bass », paramètre « Drones »**. Le relevé de
+textes le dit sans photo : `liste : bass`, `liste : Drones` (binaire de 18:13).
+`trackList_.onTrackSelected` propage la sélection au piano roll, au rack, aux
+onglets *Effets*, *MIDI CC* et *Liste*, et à l'entrée MIDI vivante ; **pas à
+l'automation**. Un musicien qui choisit une piste et ouvre l'onglet pour dessiner
+son volume dessine celui d'une autre — le paramètre a un nom, le nom d'une autre
+machine, et rien ne l'avertit. Cubase et Live montrent l'automation de la piste
+choisie ; ici, trois onglets sur quatre le faisaient déjà.
+
+**CE QUI EST FAIT.** `AutomationComponent::setActiveTrackIndex`, au contrat
+exact de `MidiCcComponent::setActiveTrackIndex` (même piste : rien ; sinon la
+liste déroulante suit sans notifier, et la liste des paramètres est reconstruite
+pour cette piste), appelé au même endroit que ses voisins. Le sens reste unique :
+choisir une piste DANS l'onglet ne change pas la sélection globale — comme pour
+*MIDI CC*, pour pouvoir regarder l'automation d'une piste en jouant une autre au
+clavier.
+
+**ATTENDU, écrit avant la mesure** (relevé `VSM_TEXTES_LISTE`, projet
+`children-c1-defaut`, `VSM_VUE=sans-rapport,automation,piste:4`) :
+
+| # | attendu | témoin (binaire de 18:13) |
+|---|---|---|
+| 1 | la liste « Piste » de l'onglet lit `Batterie · kick+kick2` | `bass` |
+| 2 | la liste « Paramètre » lit un paramètre de la TR-909, plus « Drones » (un paramètre de la vielle) | `Drones` |
+| 3 | contrôle : sans `piste:N`, l'onglet lit toujours `bass` (la piste 0, sélection d'ouverture) | `bass` |
+| 4 | contrôle : `VSM_VUE=automation` puis `piste:4` puis `piste:0` revient à `bass` | — |
+
+**MESURÉ (binaire de 18:24, relevé `VSM_TEXTES_LISTE`).** `piste:4` : liste
+« Piste » = **`Batterie · kick+kick2`**, « Paramètre » = **`Kick Level`** (le
+premier paramètre de la TR-909) — attendus 1 et 2 tenus ; sans `piste:N` :
+`bass` / `Drones` (3, tenu) ; `piste:4` puis `piste:0` : `bass` / `Drones`
+(4, tenu). Le manuel le dit au § du piano roll et des lanes ; réglages de
+l'utilisateur intacts (HOME de brouillon). Compilation de 1 min 26 s, la
+campagne D282 gelée le temps du lien et reprise (journal de la course,
+18:23:26 → 18:24:52).

@@ -273,6 +273,7 @@ MainComponent::MainComponent()
         updateSynthRackForSelection();
         effectChain_.setActiveTrack(static_cast<int>(idx));
         midiCc_.setActiveTrackIndex(idx);
+        automation_.setActiveTrackIndex(idx);   // D303 : le quatrième onglet suit aussi
         eventList_.setActiveTrack(static_cast<int>(idx));   // D32.2
         audioEngine_.setLiveInputTrack(idx); // un clavier MIDI joue la piste sélectionnée
     };

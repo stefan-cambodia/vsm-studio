@@ -58,6 +58,11 @@ public:
     /// toucher aux lanes. Le nom d'une piste s'affiche à sept endroits ; celui
     /// d'ici était posé une fois pour toutes et montrait l'ancien indéfiniment.
     void refreshTrackNames() { rebuildTrackBox(); }
+    /// D303 : L'ONGLET SUIT LA PISTE CHOISIE, comme ses trois voisins (Effets,
+    /// MIDI CC, Liste) et le rack. Il gardait la piste de sa liste déroulante
+    /// -- « bass » sous une piste de batterie sélectionnée -- seul des quatre.
+    /// Le sens reste unique : choisir ici ne change pas la sélection globale.
+    void setActiveTrackIndex(size_t trackIndex);
     /// D94 : les libellés, dans la langue courante.
     void retraduire();
     /// D234 : un point d'automation posé SANS SOURIS, par le même `mouseDown` que
