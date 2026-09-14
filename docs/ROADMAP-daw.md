@@ -25393,3 +25393,48 @@ fixé hors charge. À remesurer une fois la campagne finie si un doute vient.
 **Ce que ce n'est pas** : le piano roll reste l'endroit où l'on édite ; la
 miniature ne se saisit pas, et la vélocité n'y est pas dessinée (Cubase la met en
 couleur, Live non) — nommé, non fait, faute d'un besoin mesuré.
+
+### Phase D284 — la liste d'événements suit la lecture (14/09/2026)
+
+**TROUVÉE PAR LA MÊME PHOTO QUE D283**, onglet *Liste* cette fois : la lecture
+lancée, la tête à la troisième mesure (`00:04,818`, `mes. 3 · 2` à la barre de
+transport), et la liste de la piste `bass` immobile sur ses premières lignes,
+`1.1+424`, `1.2+100`… Rien ne disait où l'on en était. L'éditeur de liste de
+Cubase fait deux choses ici : il **surligne** l'événement que le curseur vient de
+passer, et il **défile** pour le garder à l'écran tant que le transport tourne.
+La liste de D32.2 ne faisait ni l'un ni l'autre — elle savait aller à la tête
+(double-clic), pas la suivre.
+
+**CE QUI EST FAIT.** `EventListComponent::setPlayheadTick(tick, playing)`, appelé
+par la minuterie de la fenêtre à côté du piano roll, du rack et de l'arrangement
+(`MainComponent::timerCallback`). Trois choix :
+
+* **la ligne courante est le dernier événement dont le tick est passé sous la
+  tête**, trouvée par borne supérieure sur la liste triée — trente fois par
+  seconde sur mille six cent soixante-douze lignes, un parcours se verrait ;
+  seules les deux lignes qui changent se redessinent ;
+* **la teinte est l'ambre de la tête de lecture**, à 25 %, distincte du teal de
+  la sélection : l'une dit où l'on EST, l'autre ce qu'on a CHOISI, et les deux
+  peuvent différer ;
+* **le défilement n'a lieu qu'en lecture** (`processGraph().isPlaying()`), et sur
+  `isVisible()` et non `isShowing()` — sous un écran verrouillé le second rend
+  faux partout (D94). À l'arrêt, la teinte reste et la liste ne bouge pas :
+  faire sauter une liste sous la souris de qui la parcourt serait pire que ne
+  pas suivre. Un `rebuild` (autre piste, autre filtre) recalcule la ligne
+  courante depuis le dernier tick reçu, sans attendre le transport.
+
+**VÉRIFIÉ SUR LE PROJET RÉEL, sans souris.** `VSM_VUE=sans-rapport,jouer,arrangement,liste`,
+photo à six secondes : la liste a défilé jusqu'à `3.1+309 (4149)`, ligne teintée en
+bas de la zone visible, les huit précédentes au-dessus. Même chose sans `jouer` :
+la liste reste sur `1.1+424`, aucune teinte (la tête est à zéro, aucun événement
+passé). Réglages de l'utilisateur intacts au `cmp`. Les cellules sont PEINTES
+(`paintCell`), donc invisibles à `VSM_TEXTES_LISTE` : la photo est la preuve, et
+c'est dit ici pour que personne ne conclue d'un relevé vide que le suivi manque.
+
+**Le manuel ne décrivait pas cet onglet** — depuis D32.2. Le § 4 le dit
+maintenant, suivi compris.
+
+**Nommé, non fait** : la ligne courante est gardée à l'écran, pas centrée
+(`scrollToEnsureRowIsOnscreen`) ; elle court donc le long du bord bas. Centrer
+demanderait de calculer la ligne visible du haut à chaque changement, et rien ne
+le réclame encore.

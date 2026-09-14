@@ -2766,6 +2766,7 @@ void MainComponent::timerCallback() {
     pianoRoll_.setPlayheadTick(playhead);
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     arrangement_.setPlayheadTick(playhead);
+    eventList_.setPlayheadTick(playhead, audioEngine_.processGraph().isPlaying());   // D284
     // D21.4 : LA SIGNATURE SOUS LA TÊTE, pas celle du tick zéro -- mise à
     // jour seulement quand elle change, la barre n'a pas à se redessiner
     // trente fois par seconde.

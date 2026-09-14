@@ -40,6 +40,13 @@ public:
     void setActiveTrack(int trackIndex);
     /// D94 : les colonnes, le filtre, le titre et le compte, dans la langue courante.
     void retraduire();
+    /// D284 : LA LISTE SUIT LA LECTURE. La ligne du dernier événement passé
+    /// sous la tête est teintée, et, quand le transport tourne, gardée à
+    /// l'écran -- l'éditeur de liste de Cubase fait les deux. À l'arrêt, la
+    /// teinte reste et la liste ne bouge pas : on la fait défiler soi-même.
+    void setPlayheadTick(vsm::midi::Tick tick, bool playing);
+    /// Ce que le suivi a décidé : la ligne courante, -1 s'il n'y en a pas.
+    int currentRow() const { return courante_; }
 
     /// Prévenu AVANT une suppression : c'est là que l'application prend son
     /// instantané d'annulation.
@@ -65,6 +72,8 @@ private:
     vsm::sequencer::Project* project_ = nullptr;
     int activeTrack_ = -1;
     std::vector<vsm::sequencer::EventRow> lignes_;
+    int courante_ = -1;            // D284 : la ligne sous la tête de lecture
+    vsm::midi::Tick tete_ = -1;    // le dernier tick reçu, pour recalculer après un rebuild
 
     juce::Label titre_;
     /// Le filtre par nature. « Tout » en tête : la liste s'ouvre PLEINE, comme

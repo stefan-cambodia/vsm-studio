@@ -701,6 +701,8 @@ geste passe par l'historique (Ctrl+Z) et le séquenceur rejoue la piste
 aussitôt. Une courbe importée d'un autre DAW se voit donc, et se corrige, là
 où elle ne faisait avant que se jouer.
 
+**La liste d'événements** (onglet *Liste* du bas — l'éditeur de liste de Cubase) chiffre tout ce que porte la piste choisie : notes, contrôleurs, plis de hauteur, pressions, changements de programme, avec la position en mesure·temps+ticks, le canal, le numéro, la valeur et la durée. Le filtre réduit à une famille ; un double-clic sur une ligne y mène la tête de lecture ; Suppr retire l'événement (annulable). **Elle suit la lecture** (D284) : la ligne du dernier événement passé sous la tête est teintée en ambre et reste à l'écran tant que le transport tourne ; à l'arrêt, la liste ne bouge plus et se parcourt à la main.
+
 ![L'onglet MIDI CC : une rampe de coupure (CC 74) en paliers sur la basse, dix-sept points.](images/manuel/midi-cc.png)
 
 **La piste de tempo s'édite dans l'onglet *Tempo*.** Le tempo n'est pas

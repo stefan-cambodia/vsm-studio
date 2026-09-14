@@ -1,6 +1,7 @@
 #include "EventListComponent.h"
 #include "Langue.h"
 #include "vsm/sequencer/NoteEdit.h"
+#include <algorithm>
 
 using namespace vsm::ui;
 using vsm::sequencer::EventKind;
@@ -84,6 +85,10 @@ void EventListComponent::rebuild() {
     compte_.setText(tr(u8"%1 événement(s)").replace("%1", juce::String(static_cast<int>(lignes_.size()))),
                     juce::dontSendNotification);
     table_.updateContent();
+    // D284 : la ligne courante se recalcule sur la liste refaite (une autre
+    // piste, un autre filtre), sans attendre le prochain tick du transport.
+    courante_ = -1;
+    if (tete_ >= 0) setPlayheadTick(tete_, false);
     table_.repaint();
 }
 
@@ -119,7 +124,36 @@ void EventListComponent::paintRowBackground(juce::Graphics& g, int row, int w, i
                                              bool selected) {
     juce::ignoreUnused(w, h);
     if (selected) g.fillAll(Palette::accentTeal.withAlpha(0.35f));
+    // D284 : LA LIGNE SOUS LA TÊTE, en ambre -- la couleur de la tête de
+    // lecture partout ailleurs --, distincte du teal de la sélection : l'une
+    // dit où l'on EST, l'autre ce qu'on a CHOISI, et les deux peuvent différer.
+    else if (row == courante_) g.fillAll(Palette::accentAmber.withAlpha(0.25f));
     else if (row % 2) g.fillAll(juce::Colour(0x10ffffff));
+}
+
+void EventListComponent::setPlayheadTick(vsm::midi::Tick tick, bool playing) {
+    tete_ = tick;
+    // LE DERNIER ÉVÉNEMENT PASSÉ SOUS LA TÊTE : les lignes sont triées par
+    // tick (`listTrackEvents`), la borne supérieure le trouve en log n --
+    // trente fois par seconde sur une liste de plusieurs milliers de lignes,
+    // un parcours linéaire se verrait.
+    int courante = -1;
+    if (tick >= 0 && !lignes_.empty()) {
+        const auto apres = std::upper_bound(lignes_.begin(), lignes_.end(), tick,
+                                            [](vsm::midi::Tick t, const EventRow& l) { return t < l.tick; });
+        courante = static_cast<int>(apres - lignes_.begin()) - 1;
+    }
+    if (courante == courante_) return;
+    const int avant = courante_;
+    courante_ = courante;
+    if (avant >= 0) table_.repaintRow(avant);
+    if (courante_ >= 0) table_.repaintRow(courante_);
+    // EN LECTURE SEULEMENT, la ligne est gardée à l'écran : à l'arrêt, faire
+    // sauter la liste sous la souris de quelqu'un qui la parcourt serait pire
+    // que ne pas suivre. `isVisible()` et non `isShowing()` : sous un écran
+    // verrouillé le second rend faux partout (D94), et un banc lirait un
+    // suivi absent.
+    if (playing && courante_ >= 0 && isVisible()) table_.scrollToEnsureRowIsOnscreen(courante_);
 }
 
 juce::String EventListComponent::texteDe(const EventRow& ligne, int columnId) const {
