@@ -882,6 +882,18 @@ size_t makeClipIndependent(Track& track, uint64_t clipId, Tick materialEnd,
 
 // --- D56.1 : les passages d'une piste, un seul calcul pour deux appelants ---
 
+Tick rattacheAuPassageSuivant(const std::vector<ClipPassage>& passages, Tick source) {
+    Tick meilleur = -1;
+    for (const auto& p : passages) {
+        if (source >= p.sourceFrom && source < p.sourceTo) return -1;   // couvert : rien à rattacher
+        if (p.sourceFrom > source) {
+            const Tick out = p.sourceFrom + p.shift;
+            if (out < p.outLimit && (meilleur < 0 || out < meilleur)) meilleur = out;
+        }
+    }
+    return meilleur;
+}
+
 std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd) {
     std::vector<ClipPassage> passages;
     if (track.clips.empty()) {

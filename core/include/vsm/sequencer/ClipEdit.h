@@ -459,6 +459,16 @@ struct ClipPassage {
 /// est la fenêtre qui ne coupe rien.
 std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd);
 
+/// D335 : UN ÉVÉNEMENT DE CONTRÔLE HORS DE TOUT PASSAGE EST RATTACHÉ AU DÉBUT DU
+/// PASSAGE SUIVANT. Un fichier General MIDI pose sa banque, son volume, sa plage
+/// de pli au tick 0, deux carrures avant la première note ; un clip borné aux
+/// notes (D333) laissait tout cela hors fenêtre, donc ni joué, ni chassé, ni
+/// exporté. Rend le tick de sortie du premier passage dont la fenêtre commence
+/// APRÈS `source` (le premier tour d'une boucle), ou -1 si `source` est couvert
+/// par un passage (le chemin ordinaire s'en charge) ou s'il n'y a plus de
+/// passage après lui (un réglage après la dernière note ne prépare rien).
+Tick rattacheAuPassageSuivant(const std::vector<ClipPassage>& passages, Tick source);
+
 /// Le tick de sortie de `source` dans ce passage, ou -1 s'il n'y sort pas.
 inline Tick passageOut(const ClipPassage& passage, Tick source) {
     if (source < passage.sourceFrom || source >= passage.sourceTo) return -1;

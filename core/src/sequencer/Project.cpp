@@ -500,6 +500,23 @@ static ParsedFile buildParsedFile(const Project& projet, bool arrange) {
                 if ((out = passageOut(passage, pc.tick)) >= 0)
                     events.push_back({out, ProgramChangeEvent{pc.channel, pc.program}});
         }
+        // D335 : hors de tout passage, un événement de contrôle est rattaché au
+        // début du passage suivant -- même règle que la lecture et la chasse.
+        if (arrange) {
+            Tick r = 0;
+            for (const auto& cc : t.controlChanges)
+                if ((r = rattacheAuPassageSuivant(passages, cc.tick)) >= 0)
+                    events.push_back({r, ControlChangeEvent{cc.channel, cc.controller, cc.value}});
+            for (const auto& pb : t.pitchBends)
+                if ((r = rattacheAuPassageSuivant(passages, pb.tick)) >= 0)
+                    events.push_back({r, PitchBendEvent{pb.channel, pb.value}});
+            for (const auto& cp : t.channelPressure)
+                if ((r = rattacheAuPassageSuivant(passages, cp.tick)) >= 0)
+                    events.push_back({r, ChannelPressureEvent{cp.channel, cp.pressure}});
+            for (const auto& pc : t.programChanges)
+                if ((r = rattacheAuPassageSuivant(passages, pc.tick)) >= 0)
+                    events.push_back({r, ProgramChangeEvent{pc.channel, pc.program}});
+        }
         // Les événements qu'on n'a pas su lire ne sont pas du matériau de clip
         // (méta inconnus, sysex) : ils passent tels quels, comme avant.
         for (const auto& misc : t.miscEvents)

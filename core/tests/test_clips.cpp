@@ -499,3 +499,55 @@ VSM_TEST(chase_emits_pitch_bend_range_as_canonical_rpn_triplet) {
     VSM_ASSERT(ccs[2].first == 6 && ccs[2].second == 12);
     VSM_ASSERT(ccs[3].first == 7 && ccs[3].second == 90);
 }
+
+// D335 : UN CONTRÔLEUR HORS DE TOUT PASSAGE EST RATTACHÉ AU DÉBUT DU CLIP
+// SUIVANT -- à la lecture, à la chasse et à l'export. Un clip de la mesure 3 à
+// la 5 (tpq 480, 1 920 ticks la mesure) ; CC 7 = 64 au tick 0, deux mesures
+// avant ; un CC 74 après le clip, qui ne prépare rien.
+VSM_TEST(control_events_outside_clips_are_attached_to_the_next_clip_start) {
+    using namespace vsm::sequencer;
+    using namespace vsm::midi;
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track track;
+    track.name = "Tardif";
+    uint64_t idCounter = 1;
+    track.addNote(3840, 5760, 57, 100, 0, idCounter);
+    track.controlChanges.push_back(CcPoint{0, 0, 7, 64});
+    track.controlChanges.push_back(CcPoint{9000, 0, 74, 10});
+    Clip clip;
+    clip.startTick = 3840; clip.length = 3840; clip.sourceStart = 3840; clip.sourceLength = 3840;
+    track.clips.push_back(clip);
+    project.tracks.push_back(track);
+    project.assignClipIds();
+
+    // Lecture depuis le début : le CC 7 sort au tick 3 840, pas au 0 ; le CC 74 ne sort pas.
+    const auto planning = PlaybackScheduler::build(project, 0, 20000);
+    int cc7 = 0, cc74 = 0; double quand = -1.0;
+    for (const auto& ev : planning)
+        if (const auto* cc = std::get_if<ControlChangeEvent>(&ev.data)) {
+            if (cc->controller == 7) { ++cc7; quand = ev.timeSeconds; }
+            if (cc->controller == 74) ++cc74;
+        }
+    VSM_ASSERT(cc7 == 1 && cc74 == 0);
+    VSM_ASSERT(std::abs(quand - project.ticksToSeconds(3840)) < 1e-6);
+
+    // Chasse à la mesure 4 (tick 5 760) : le CC 7 rattaché au tick 3 840 est avant, il est chassé.
+    const auto chasse = PlaybackScheduler::chaseAt(project, 5760);
+    bool chasseCc7 = false;
+    for (const auto& ev : chasse)
+        if (const auto* cc = std::get_if<ControlChangeEvent>(&ev.data)) chasseCc7 |= (cc->controller == 7 && cc->value == 64);
+    VSM_ASSERT(chasseCc7);
+
+    // Export arrangé : le CC 7 au tick 3 840, le CC 74 absent.
+    const auto fichier = project.toParsedFileArranged();
+    int exportes7 = 0, exportes74 = 0; Tick tick7 = -1;
+    for (const auto& piste : fichier.tracks)
+        for (const auto& ev : piste.events)
+            if (const auto* cc = std::get_if<ControlChangeEvent>(&ev.data)) {
+                if (cc->controller == 7) { ++exportes7; tick7 = ev.tick; }
+                if (cc->controller == 74) ++exportes74;
+            }
+    VSM_ASSERT(exportes7 == 1 && exportes74 == 0);
+    VSM_ASSERT(tick7 == 3840);
+}

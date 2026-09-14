@@ -27566,3 +27566,56 @@ d'un ruban plein. C'est voulu (la règle est la même pour tout matériau MIDI
 sans clip), et dit ici parce que l'apparence des projets existants change à
 leur prochaine ouverture ; un projet dont les clips sont déjà écrits ne bouge
 pas.
+
+### Phase D335 — un contrôleur hors de tout clip est rattaché au début du clip suivant (15/09/2026)
+
+**D'OÙ ELLE VIENT — UNE RÉGRESSION DE D333-D334, TROUVÉE À L'EXPORT.** L'export
+MIDI de `Children` après D334 rendait **8 537 notes, à l'identique, et 5 839
+contrôleurs sur 5 947** : la banque (CC 0/32, 47 événements), la plage de pli
+(CC 6/98/99, 6), les départs (CC 91/93/94, 32), seize CC 7 et deux CC 74 —
+tous posés AVANT la première note de leur canal, ou dans un silence entre deux
+clips. Un clip borné aux notes laisse ces réglages hors de sa fenêtre, et la
+fenêtre est ce que la lecture joue, ce que la chasse (D16.2) relit et ce que
+l'export écrit (D56.1) : à la lecture, le canal 1 de `Children` entrait à la
+mesure 19 sans son volume ; les pistes 3 et 4 de `The Hacker`, qui entrent aux
+mesures 4 et 9, perdaient leur plage de pli de D331. Le test des notes était
+vert ; c'est le compte des contrôleurs qui a parlé.
+
+**CE QUI EST FAIT.** Un événement de contrôle (CC, pli, pression, programme)
+hors de tout passage est **rattaché au début du passage suivant** — le premier
+tour d'une boucle — sur les trois chemins, par une seule règle dans `ClipEdit`
+(`rattacheAuPassageSuivant`) : le planning (`build`), la chasse (`chaseAt`,
+qui la combine au dernier passage joué) et l'export arrangé. Un réglage posé
+après la dernière note ne prépare rien : il tombe, et c'est dit.
+
+**ATTENDU** : test core ajouté (lecture, chasse, export d'un CC 7 posé deux
+mesures avant un clip : émis au tick du clip ; un CC après le clip : absent),
+341 verts ; export MIDI de `Children` : **5 947 contrôleurs, 26 changements de
+programme** (tous précèdent la dernière note de leur canal, `mido`), et les
+8 537 notes ; `VSM_EXPORT` de deux fichiers écrits pour la mesure (CC 7 = 64
+ou 127 au tick 0, notes de la mesure 3 à la 5) : le second palier à **−5,95 ±
+0,1 dB** du premier (avant : 0,00, le CC hors clip n'était pas joué) ;
+`tools/ouvrir-midi.sh` 8 verdicts verts ; tests interchange 300 ; banc de
+fumée 0 raté.
+
+**MESURÉ** (binaire de 01:59) :
+
+| mesure | avant (D334) | après |
+|---|---|---|
+| export `Children` : contrôleurs | 5 839 / 5 947 | **5 947 / 5 947** (CC 0 : 25, 6 : 2, 7 : 556, 32 : 22, 71 : 2, 74 : 5 304, 91 : 13, 93 : 7, 94 : 12, 98 : 2, 99 : 2) |
+| export `Children` : changements de programme | — | **26 / 26** |
+| export `Children` : notes | 8 537, identiques | 8 537, identiques |
+| CC 7 = 64 posé au tick 0, notes de la mesure 3 à la 5 (contre CC 7 = 127) | 0,00 dB (le CC hors clip n'était pas joué) | **−5,95 dB** |
+
+Tests core : **341** verts (le nouveau : lecture, chasse et export d'un CC
+posé deux mesures avant son clip) ; interchange 300 ; `tools/ouvrir-midi.sh` 8
+verdicts ; banc de fumée 0 raté.
+
+**DEUX BINAIRES, ET LE PREMIER A TUÉ LES TESTS CORE.** Le remplacement global
+`lastOutBefore(passages, …)` → `sortieChassee(passages, …)` a été fait APRÈS
+l'insertion de `sortieChassee`, qui contenait le motif : la fonction
+s'appelait elle-même, récursion infinie, faute de segmentation au 82e test —
+et toutes les autres mesures étaient vertes, parce que l'export ne chasse pas
+et qu'un rendu depuis le tick 0 non plus. C'est le compte des tests core qui
+l'a dit (« 0 réussis » sur une ligne vide, puis `rc=139`). Piège écrit dans
+`CLAUDE.md` ; le script de mesure publie désormais le code de retour des tests.

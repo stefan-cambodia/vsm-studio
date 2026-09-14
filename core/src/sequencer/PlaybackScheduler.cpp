@@ -64,6 +64,16 @@ Tick lastOutBefore(const std::vector<Passage>& passages, Tick source, Tick limit
     return meilleur;
 }
 
+/// D335 : le tick de sortie chassé d'un événement de contrôle -- le dernier
+/// passage joué avant `limit`, ou, hors de tout passage, le début du passage
+/// suivant s'il est avant `limit` (le réglage que le clip suivant emporte).
+Tick sortieChassee(const std::vector<Passage>& passages, Tick source, Tick limit) {
+    const Tick out = lastOutBefore(passages, source, limit);
+    if (out >= 0) return out;
+    const Tick rattache = rattacheAuPassageSuivant(passages, source);
+    return (rattache >= 0 && rattache < limit) ? rattache : -1;
+}
+
 } // namespace
 
 size_t PlaybackScheduler::transposeDroppedNotes(const Project& project) {
@@ -139,7 +149,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
         };
 
         for (const auto& pc : track.programChanges) {
-            const Tick out = lastOutBefore(passages, pc.tick, startTick);
+            const Tick out = sortieChassee(passages, pc.tick, startTick);
             if (out >= 0) retenir(programmes, pc.channel, out, pc.program);
         }
         // D331 : LA PLAGE DE PLI (RPN 0) SE CHASSE COMME UNE VALEUR, PAS COMME
@@ -158,7 +168,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
                 if (cc.controller == 101) msb[canal] = cc.value;
                 else if (cc.controller == 100) lsb[canal] = cc.value;
                 else if (cc.controller == 6 && msb[canal] == 0 && lsb[canal] == 0) {
-                    const Tick out = lastOutBefore(passages, cc.tick, startTick);
+                    const Tick out = sortieChassee(passages, cc.tick, startTick);
                     if (out >= 0) retenir(plages, canal, out, cc.value);
                 }
             }
@@ -166,17 +176,17 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
         for (const auto& cc : track.controlChanges) {
             if (cc.controller == 6 || cc.controller == 38 || cc.controller == 100 || cc.controller == 101)
                 continue;   // D331 : portés par la plage, jamais nus
-            const Tick out = lastOutBefore(passages, cc.tick, startTick);
+            const Tick out = sortieChassee(passages, cc.tick, startTick);
             if (out >= 0)
                 retenir(controleurs,
                         static_cast<uint16_t>(cc.channel * 256 + cc.controller), out, cc.value);
         }
         for (const auto& pb : track.pitchBends) {
-            const Tick out = lastOutBefore(passages, pb.tick, startTick);
+            const Tick out = sortieChassee(passages, pb.tick, startTick);
             if (out >= 0) retenir(bends, pb.channel, out, pb.value);
         }
         for (const auto& cp : track.channelPressure) {
-            const Tick out = lastOutBefore(passages, cp.tick, startTick);
+            const Tick out = sortieChassee(passages, cp.tick, startTick);
             if (out >= 0) retenir(pressions, cp.channel, out, cp.pressure);
         }
 
@@ -298,6 +308,29 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
                 if (lu(pc.tick, t) && inRange(t))
                     result.push_back({project.ticksToSeconds(t), trackIndex,
                                        ProgramChangeEvent{pc.channel, pc.program}});
+        }
+        // D335 : LES ÉVÉNEMENTS DE CONTRÔLE HORS DE TOUT PASSAGE, rattachés au
+        // début du passage suivant -- la banque, le volume, la plage de pli
+        // posés avant la première note d'un fichier GM.
+        {
+            auto rattache = [&](Tick source, Tick& out) {
+                out = rattacheAuPassageSuivant(passages, source);
+                return out >= 0 && out >= startTick && out < endTick;
+            };
+            Tick r = 0;
+            for (const auto& cc : track.controlChanges)
+                if (rattache(cc.tick, r))
+                    result.push_back({project.ticksToSeconds(r), trackIndex,
+                                       ControlChangeEvent{cc.channel, cc.controller, cc.value}});
+            for (const auto& pb : track.pitchBends)
+                if (rattache(pb.tick, r))
+                    result.push_back({project.ticksToSeconds(r), trackIndex, PitchBendEvent{pb.channel, pb.value}});
+            for (const auto& cp : track.channelPressure)
+                if (rattache(cp.tick, r))
+                    result.push_back({project.ticksToSeconds(r), trackIndex, ChannelPressureEvent{cp.channel, cp.pressure}});
+            for (const auto& pc : track.programChanges)
+                if (rattache(pc.tick, r))
+                    result.push_back({project.ticksToSeconds(r), trackIndex, ProgramChangeEvent{pc.channel, pc.program}});
         }
     }
 

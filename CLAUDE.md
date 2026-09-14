@@ -329,3 +329,11 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   `grep` suspendu jusqu'à ce que la garde mémoire le tue, une heure plus tard.
   Toute variable de fichier issue d'une recherche se teste (`[ -n "$F" ]`) avant
   de servir d'argument.
+- Un REMPLACEMENT GLOBAL fait APRÈS avoir inséré une fonction qui contient le
+  motif remplacé réécrit la fonction elle-même : le 15/09 (D335), `sortieChassee`
+  appelait `lastOutBefore`, puis un `replace("lastOutBefore(passages, ",
+  "sortieChassee(passages, ")` sur tout le fichier l'a fait s'appeler elle-même —
+  récursion infinie, les tests core morts en segfault au 82e test, et l'export
+  qui ne chasse pas restait vert. Remplacer AVANT d'insérer, ou exclure l'insert ;
+  et lancer les tests core après tout changement du séquenceur, pas seulement
+  ceux dont on croit avoir touché le chemin.
