@@ -769,4 +769,10 @@ DawImportResult importFlStudioFile(const std::string& chemin) {
     return importFlStudio(lireOctets(chemin));
 }
 
+
+std::string ligneDuPremierSonParLeNom(const std::string& piste, const std::string& machine) {
+    return "Piste MIDI \u00ab " + piste + " \u00bb : notes reprises, un premier son d'apr\u00e8s son NOM : " + machine
+         + " \u2014 l'instrument du projet d'origine n'existe pas ici ; \u00e0 changer si ce n'est pas \u00e7a";
+}
+
 } // namespace vsm::interchange

@@ -5913,15 +5913,11 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
         // LA LIGNE DE LA PISTE EST RÉÉCRITE, pas doublée : « AUCUN instrument
         // assigné » suivi de « un premier son d'après son nom » ferait mentir la
         // première. La ligne du lecteur commence par « Piste MIDI « nom » : ».
-        const std::string debut = juce::String(juce::String::fromUTF8(u8"Piste MIDI « ")
-                                               + juce::String::fromUTF8(t.name.c_str())
-                                               + juce::String::fromUTF8(u8" » :")).toStdString();
-        const std::string texte = juce::String(juce::String::fromUTF8(u8"Piste MIDI « ")
-                                               + juce::String::fromUTF8(t.name.c_str())
-                                               + juce::String::fromUTF8(u8" » : notes reprises, un premier son d'après son NOM : ")
-                                               + juce::String(t.instrumentId)
-                                               + juce::String::fromUTF8(u8" — l'instrument du projet d'origine n'existe pas ici ; à changer si ce n'est pas ça"))
-                                      .toStdString();
+        // Le préfixe de la ligne du lecteur se DÉRIVE de la phrase du lecteur :
+        // aucun mot français n'est écrit ici (inventaire de langue).
+        const std::string modele = vsm::interchange::ligneDuPremierSonParLeNom(t.name, std::string());
+        const std::string debut = modele.substr(0, modele.find(" :") + 2);
+        const std::string texte = vsm::interchange::ligneDuPremierSonParLeNom(t.name, t.instrumentId);
         bool reecrite = false;
         for (auto& ligne : resultat.report.lines)
             if (ligne.gravite == vsm::interchange::DawImportReport::Gravite::perte

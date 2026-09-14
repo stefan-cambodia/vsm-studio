@@ -3355,6 +3355,9 @@ const ModeleDePhrase kModeles[] = {
       u8"Tempo: %1 BPM" },
     { u8"Piste AUDIO « %1 » NON importée : un clip audio renvoie à un fichier extérieur au projet, que VSM Studio ne peut pas reprendre ici",
       u8"AUDIO track “%1” NOT imported: an audio clip points to a file outside the project, which VSM Studio cannot take over here" },
+    // D320 : la piste importée qui reçoit un premier son d'après son nom.
+    { u8"Piste MIDI « %1 » : notes reprises, un premier son d'après son NOM : %2 — l'instrument du projet d'origine n'existe pas ici ; à changer si ce n'est pas ça",
+      u8"MIDI track “%1”: notes imported, a first sound from its NAME: %2 — the original project's instrument does not exist here; change it if that is not it" },
     { u8"Piste MIDI « %1 » : %#2 note(s) reprise(s), AUCUN instrument assigné — l'instrument du projet d'origine n'existe pas ici et ses réglages n'ont pas d'équivalent",
       u8"MIDI track “%1”: %2 note(s) imported, NO instrument assigned — the original project's instrument does not exist here and its settings have no equivalent" },
     { u8"Total : %#1 piste(s) MIDI, %#2 note(s), %#3 piste(s) audio ignorée(s)",

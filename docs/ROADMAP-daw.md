@@ -26916,3 +26916,13 @@ pistes, ou la chaîne ne les a pas mesurées » ; `children-c3-plafond` : « Pis
 audio, non reconstruites donc sans distance : Voix · tête, Voix · chœurs », et
 aucune ligne « Sans distance » (les cinq pistes de batterie couvertes par le
 bloc) ; `cdl` : rien. Attendus tenus.
+
+**COMPLÉMENT (00:00).** L'inventaire de langue comptait quatre littéraux ÉCRAN
+de plus (7 → 11) : la phrase du rapport de D320 était assemblée dans
+l'application, en français, sans paire de traduction. Elle vit maintenant avec
+les phrases du lecteur (`interchange::ligneDuPremierSonParLeNom`), sa paire est
+dans la table (D93 : la donnée reste française, l'affichage traduit), et le
+préfixe qui retrouve la ligne du lecteur se dérive de la phrase. Mesuré :
+inventaire **ECRAN 7**, tests `interchange` 300 ; `VSM_LANGUE=en` affiche « MIDI
+track “Bass”: notes imported, a first sound from its NAME: vsm.minimoog — … »
+pendant que le terminal garde la phrase française.

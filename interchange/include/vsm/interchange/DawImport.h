@@ -141,4 +141,11 @@ DawImportResult importDawProject(const std::vector<uint8_t>& octets,
                                  const std::string& nomDuFichier = {});
 DawImportResult importDawProjectFile(const std::string& chemin);
 
+
+/// D320 : la ligne du rapport pour une piste importée qui reçoit un PREMIER
+/// son d'après son nom (voir le § 2 du CDC). Écrite ici, avec les autres
+/// phrases du rapport, pour que la table de langue les traduise toutes de la
+/// même façon (D93 : la donnée reste française, l'affichage traduit).
+std::string ligneDuPremierSonParLeNom(const std::string& piste, const std::string& machine);
+
 } // namespace vsm::interchange
