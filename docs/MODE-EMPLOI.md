@@ -21,11 +21,13 @@ Pour déplacer librement les panneaux, *Affichage ▸ Fenêtre unique* se décoc
 
 *La fenêtre unique : transport, pistes à gauche, arrangement au centre, rack de la piste sélectionnée à droite, console en bas.*
 
+**La console prend la place qu'elle a** (D304) : chaque tranche fait entre 88 et 176 px selon le nombre de pistes visibles, et **sous 120 px le nom passe sur deux lignes** (D314) — à quarante pistes, « Batterie · kick+kick2 » se lit encore. Le relevé de banc `VSM_MIXER_ZONES=1` en dit la géométrie.
+
 ## 2. L'arrangement
 
 C'est la vue où le morceau existe. Chaque ligne est une piste, chaque bloc un **clip** — un morceau de musique qu'on déplace, redimensionne, coupe et duplique à la souris, avec annulation. Un clip posé deux fois ne duplique pas ses notes : éditer l'un modifie l'autre.
 
-**Un clip MIDI montre ses notes** (D283) : une miniature — chaque note un trait, plus haut quand elle est plus aiguë, l'échelle pliée à l'ambitus du clip — dans la même encre que la forme d'onde d'un clip audio. Un motif de basse et une nappe tenue se distinguent d'un coup d'œil, sans ouvrir le piano roll ; un clip rogné montre ce qu'il joue, un clip qui boucle répète ses notes à chaque tour, et une note muette s'estompe.
+**Un clip MIDI montre ses notes** (D283) : une miniature — chaque note un trait, plus haut quand elle est plus aiguë, l'échelle pliée à l'ambitus du clip — dans la même encre que la forme d'onde d'un clip audio. Un motif de basse et une nappe tenue se distinguent d'un coup d'œil, sans ouvrir le piano roll ; un clip rogné montre ce qu'il joue, un clip qui boucle répète ses notes à chaque tour, et une note muette s'estompe ; **une note forte est plus sombre qu'une note faible** (D315 — l'encre suit la vélocité, de 0,35 à 0,80).
 
 Sous le nom de chaque piste, une ligne grise dit ce qu'elle est : `midi`, `audio`, `groupe`, et `gelé` quand la piste a été reportée en audio pour ne plus coûter que le prix d'une lecture. Le triangle plie la piste ; les hauteurs se règlent, les pistes se réordonnent, les couleurs se choisissent.
 
