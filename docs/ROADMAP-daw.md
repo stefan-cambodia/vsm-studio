@@ -25856,3 +25856,22 @@ petit élément de chaque façade **32 px**. Photos côte à côte : TENSION, BR
 A E I O U, TRACT SIZE, TOUCH, DEPTH, RATE, DELAY, LEVEL et l'enveloppe ; RATIO,
 MOD DEPTH, FOLD, SYMMETRY, TOUCH, CUTOFF, VACTROL, LEVEL et l'enveloppe. Tests
 `panels` 11 verts ; réglages de l'utilisateur intacts. **Reste 12 / 63.**
+
+### Phase D297 — A42, suite : cordes et piano sur deux rangées, 9 et 13 → 20 et 27 px (14/09/2026)
+
+Cinq sections en ligne sur 18 colonnes ; STRING (4 colonnes, 81 px) et STRINGS
+(5 colonnes) y posaient quatre curseurs à **9** et **13 px**. Deux rangées :
+EXCITATION 5 + BOW 5 + STRING 8 en haut, BODY 9 + OUTPUT 9 en bas
+(`vsm.string`) ; HAMMER 5 + STRINGS 8 + DAMPER 5 en haut, SOUNDBOARD 9 + OUTPUT 9
+en bas (`vsm.piano`), `gridRows` 4 → 8, façades 364 × 434 → **364 × 818**.
+
+**MESURÉ**, rack de 364 px : `vsm.string` plus petit élément **20 px** (EXCITATION
+/ PLUCK-BOW — trois boutons en ligne dans cinq colonnes, au-dessus du plancher
+mais serrés : une sixième colonne prise au BOW, qui n'a que deux boutons empilés,
+les mettrait à l'aise ; nommé, non fait) ; `vsm.piano` plus petit élément
+**27 px** (STRINGS / DECAY, un curseur). Photos côte à côte : les quatre curseurs
+de chaque façade lisibles, LEVEL et SIZE larges, OUTPUT à quatre boutons. Tests
+`panels` 11 verts ; réglages de l'utilisateur intacts. **Reste 10 / 63** —
+`granular`, `additive`, `phasedist`, `pcmhybrid`, `stochastic`, `wavesequence`,
+`epiano`, `fmdrums`, `ms20`, `tr808` — à rejouer par `tools/balayer-facades.sh`
+quand la batterie le permettra.

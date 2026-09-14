@@ -1760,8 +1760,10 @@ MachinePanel makeString() {
     panel.sectionColour = "#1A140F";
     panel.textColour = "#EFE3D0";
     panel.knobColour = "#C9A567";
+    // D297 (A42) : DEUX RANGÉES DE SECTIONS -- cinq en ligne sur 18 colonnes
+    // laissaient 81 px à quatre boutons (9 px chacun au rack de 364 px, D294).
     panel.gridColumns = 18;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     // Le geste : où l'on touche la corde, et avec quoi. « BLEND » est
     // volontairement un potentiomètre et non un interrupteur : le passage du
@@ -1783,7 +1785,7 @@ MachinePanel makeString() {
     PanelSection bow;
     bow.title = "BOW";
     bow.accentColour = "#B08A4E";
-    bow.column = 5; bow.row = 0; bow.columnSpan = 3; bow.rowSpan = 4;
+    bow.column = 5; bow.row = 0; bow.columnSpan = 5; bow.rowSpan = 4;
     bow.controls = {
         control("Bow Pressure", "PRESSURE", S::Knob, 0, 0),
         control("Bow Speed", "SPEED", S::Knob, 0, 1),
@@ -1795,7 +1797,7 @@ MachinePanel makeString() {
     PanelSection stringSection;
     stringSection.title = "STRING";
     stringSection.accentColour = "#C9A567";
-    stringSection.column = 8; stringSection.row = 0; stringSection.columnSpan = 4; stringSection.rowSpan = 4;
+    stringSection.column = 10; stringSection.row = 0; stringSection.columnSpan = 8; stringSection.rowSpan = 4;
     stringSection.controls = {
         control("String Decay", "DECAY", S::VerticalSlider, 0, 0, 1, 2),
         control("String Damping", "DAMPING", S::VerticalSlider, 1, 0, 1, 2),
@@ -1806,7 +1808,7 @@ MachinePanel makeString() {
     PanelSection body;
     body.title = "BODY";
     body.accentColour = "#8E6B3A";
-    body.column = 12; body.row = 0; body.columnSpan = 3; body.rowSpan = 4;
+    body.column = 0; body.row = 4; body.columnSpan = 9; body.rowSpan = 4;
     body.controls = {
         control("Body Level", "LEVEL", S::Knob, 0, 0),
         control("Body Size", "SIZE", S::Knob, 0, 1),
@@ -1815,7 +1817,7 @@ MachinePanel makeString() {
     PanelSection output;
     output.title = "OUTPUT";
     output.accentColour = "#C9A567";
-    output.column = 15; output.row = 0; output.columnSpan = 3; output.rowSpan = 4;
+    output.column = 9; output.row = 4; output.columnSpan = 9; output.rowSpan = 4;
     output.controls = {
         control("Drive", "DRIVE", S::Knob, 0, 0),
         control("Analog Character", "AGE", S::Knob, 1, 0),
@@ -1844,13 +1846,15 @@ MachinePanel makePiano() {
     panel.sectionColour = "#120E0C";
     panel.textColour = "#F0E7D8";
     panel.knobColour = "#C7A05A";
+    // D297 (A42) : DEUX RANGÉES DE SECTIONS -- cinq en ligne sur 18 colonnes
+    // laissaient 81 px à quatre boutons (9 px chacun au rack de 364 px, D294).
     panel.gridColumns = 18;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     PanelSection hammer;
     hammer.title = "HAMMER";
     hammer.accentColour = "#C7A05A";
-    hammer.column = 0; hammer.row = 0; hammer.columnSpan = 4; hammer.rowSpan = 4;
+    hammer.column = 0; hammer.row = 0; hammer.columnSpan = 5; hammer.rowSpan = 4;
     hammer.controls = {
         control("Hammer Hardness", "FELT", S::LargeKnob, 0, 0),
         control("Hammer Position", "STRIKE", S::Knob, 1, 0),
@@ -1860,7 +1864,7 @@ MachinePanel makePiano() {
     PanelSection strings;
     strings.title = "STRINGS";
     strings.accentColour = "#C7A05A";
-    strings.column = 4; strings.row = 0; strings.columnSpan = 5; strings.rowSpan = 4;
+    strings.column = 5; strings.row = 0; strings.columnSpan = 8; strings.rowSpan = 4;
     strings.controls = {
         control("String Decay", "DECAY", S::VerticalSlider, 0, 0, 1, 2),
         control("String Damping", "DAMPING", S::VerticalSlider, 1, 0, 1, 2),
@@ -1873,7 +1877,7 @@ MachinePanel makePiano() {
     PanelSection damper;
     damper.title = "DAMPER";
     damper.accentColour = "#8E6B3A";
-    damper.column = 9; damper.row = 0; damper.columnSpan = 3; damper.rowSpan = 4;
+    damper.column = 13; damper.row = 0; damper.columnSpan = 5; damper.rowSpan = 4;
     damper.controls = {
         control("Release", "DAMPER", S::Knob, 0, 0),
         control("Sustain Pedal", "PEDAL", S::Toggle, 0, 1),
@@ -1882,7 +1886,7 @@ MachinePanel makePiano() {
     PanelSection board;
     board.title = "SOUNDBOARD";
     board.accentColour = "#8E6B3A";
-    board.column = 12; board.row = 0; board.columnSpan = 3; board.rowSpan = 4;
+    board.column = 0; board.row = 4; board.columnSpan = 9; board.rowSpan = 4;
     board.controls = {
         control("Soundboard Level", "LEVEL", S::Knob, 0, 0),
         control("Soundboard Size", "SIZE", S::Knob, 0, 1),
@@ -1891,7 +1895,7 @@ MachinePanel makePiano() {
     PanelSection output;
     output.title = "OUTPUT";
     output.accentColour = "#C7A05A";
-    output.column = 15; output.row = 0; output.columnSpan = 3; output.rowSpan = 4;
+    output.column = 9; output.row = 4; output.columnSpan = 9; output.rowSpan = 4;
     output.controls = {
         control("Tone Bass", "BASS", S::Knob, 0, 0),
         control("Tone Treble", "TREBLE", S::Knob, 1, 0),
