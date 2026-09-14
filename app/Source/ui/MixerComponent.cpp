@@ -1,4 +1,6 @@
 #include "MixerComponent.h"
+#include <cstdio>
+#include <cstdlib>
 #include "Langue.h"
 #include "vsm/sequencer/AutomationEdit.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
@@ -355,6 +357,13 @@ void ChannelStrip::resized() {
     auto meterArea = r.removeFromRight(10);
     meter_.setBounds(meterArea.reduced(0, 2));
     volume_.setBounds(r);
+}
+
+bool ChannelStrip::nomTronque() const {
+    // D304 : le nom tient-il dans sa case ? Même police, même marge que le Label.
+    const auto& police = nameLabel_.getFont();
+    const float texte = juce::GlyphArrangement::getStringWidth(police, nameLabel_.getText());
+    return texte > static_cast<float>(nameLabel_.getWidth() - 2 * nameLabel_.getBorderSize().getLeft());
 }
 
 // ---------------------------------------------------------------------------
@@ -824,16 +833,36 @@ void MixerComponent::resized() {
     int visibles = 0;
     for (int i = 0; i < strips_.size(); ++i)
         if (!masqueeLa(strips_[i])) ++visibles;
-    stripContainer_.setSize(juce::jmax(r.getWidth(), visibles * kStripWidth), r.getHeight() - 12);
+    // D304 : LA TRANCHE PREND LA PLACE QU'IL Y A, entre 88 px et le double. Dix
+    // tranches de 88 px sur une console de 1 700 px laissaient mille pixels vides
+    // et tronquaient les noms (« Batterie · kick... », « Batterie · perc... ») ;
+    // à quarante pistes, rien ne change : 88 px et l'ascenseur, comme avant.
+    const int largeurTranche = visibles > 0
+        ? juce::jlimit(kStripWidth, kStripWidthMax, r.getWidth() / visibles)
+        : kStripWidth;
+    stripContainer_.setSize(juce::jmax(r.getWidth(), visibles * largeurTranche), r.getHeight() - 12);
     {
         // D17.4 : une tranche masquée occupe une largeur nulle.
         int x = 0;
         for (int i = 0; i < strips_.size(); ++i) {
             const bool masquee = masqueeLa(strips_[i]);
-            const int w = masquee ? 0 : kStripWidth;
+            const int w = masquee ? 0 : largeurTranche;
             strips_[i]->setBounds(x, 0, w, stripContainer_.getHeight());
             strips_[i]->setVisible(!masquee);
             x += w;
         }
+    }
+    // LE RELEVÉ DE BANC (VSM_MIXER_ZONES=1) : la largeur des tranches et, par
+    // tranche, si le nom tient dans sa case -- la troncature en « ... » ne se lit
+    // pas dans un relevé de textes, seulement sur la photo.
+    static const bool releve = std::getenv("VSM_MIXER_ZONES") != nullptr;
+    if (releve) {
+        int tronques = 0;
+        for (int i = 0; i < strips_.size(); ++i) {
+            if (masqueeLa(strips_[i])) continue;
+            if (strips_[i]->nomTronque()) ++tronques;
+        }
+        std::fprintf(stderr, "VSM_MIXER_ZONES : console=%d px, %d tranche(s) de %d px, %d nom(s) tronque(s)\n",
+                     r.getWidth(), visibles, largeurTranche, tronques);
     }
 }

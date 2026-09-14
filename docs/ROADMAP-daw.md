@@ -26128,3 +26128,47 @@ premier paramètre de la TR-909) — attendus 1 et 2 tenus ; sans `piste:N` :
 l'utilisateur intacts (HOME de brouillon). Compilation de 1 min 26 s, la
 campagne D282 gelée le temps du lien et reprise (journal de la course,
 18:23:26 → 18:24:52).
+
+### Phase D304 — la console laissait mille pixels vides et tronquait les noms (14/09/2026)
+
+**TROUVÉE EN REGARDANT LA CONSOLE EN MARCHE**, sur `children-c1-defaut` puis
+`children-c3-plafond` (10 et 12 pistes) à 2117 × 1317 : dix tranches de **88 px**
+occupent 830 px d'une console qui en a environ 1 700 hors master, et les noms
+sont coupés en « ... » — **« Batterie · kick... », « Batterie · perc... »** — sur
+une tranche qui a mille pixels de vide à sa droite. La règle de D16.8 (« entre
+ça tient dans la case et ça se lit, c'est la lisibilité qui gagne : on agrandit
+la case ») s'était arrêtée à la rangée du W ; la case du nom ne s'agrandissait
+jamais. Cubase propose des tranches larges ou étroites ; Live élargit la
+tranche avec la fenêtre.
+
+**CE QUI EST FAIT.** `MixerComponent::resized` donne à chaque tranche visible
+`largeur / visibles`, borné entre **88 px** (le plancher d'hier, celui de D16.8)
+et **176 px** (le double : au-delà, un fader de 170 px de large n'est plus un
+fader). À quarante pistes rien ne change — 88 px et l'ascenseur. Un relevé de
+banc, `VSM_MIXER_ZONES=1`, imprime la largeur de la console, le nombre et la
+largeur des tranches et **le nombre de noms qui débordent de leur case** (police
+et marge du `Label`, mesurées, pas lues sur la photo).
+
+**ATTENDU, écrit avant la mesure** (relevé `VSM_MIXER_ZONES`, onglet *Mixer*) :
+
+| # | cas | attendu |
+|---|---|---|
+| 1 | `children-c3-plafond` (12 pistes), 2117 × 1317 | tranches à **≥ 140 px**, **0 nom tronqué** (à 88 px : les deux « Batterie · kick+kick2 » / « Batterie · percussion » et probablement « Batterie · snare » débordaient — le relevé du binaire neuf le dit par la largeur de texte, celui d'hier n'existait pas) |
+| 2 | même projet, 1366 × 768 | tranches entre 88 et 100 px ; la console tient sans ascenseur |
+| 3 | `cdl` (1 piste), 2117 × 1317 | UNE tranche de **176 px**, pas 1 700 |
+| 4 | contrôle : un projet de 40 pistes (`VSM_VUE=ouvrir-midi:` d'un `.mid` à 40 pistes, ou 40 × « Ajouter une piste ») | tranches à **88 px**, ascenseur — inchangé |
+
+**MESURÉ (binaire de 18:37, relevé `VSM_MIXER_ZONES`, HOME de brouillon).**
+
+| cas | console | tranches | noms tronqués | verdict |
+|---|---|---|---|---|
+| 12 pistes, 2117 × 1317 | 1 965 px | 12 × **163 px** | **0** | tenu — les douze noms entiers sur la photo, « Batterie · kick+kick2 » et « Batterie · percussion » compris |
+| 12 pistes, 1366 × 768 | 1 214 px | 12 × **101 px** | 4 | tenu (88-100 attendu, 101 obtenu : l'arrondi de 1 214 / 12) ; quatre noms de batterie débordent encore à 101 px — c'est la place qu'il y a, et l'ascenseur ne s'ouvre pas |
+| 1 piste, 2117 × 1317 | 1 965 px | 1 × **176 px** | 0 | tenu — le double, pas la console entière |
+| 40 pistes (`quarante.mid`), 2117 × 1317 | 1 965 px | 40 × **88 px** | 40 | tenu — inchangé : le plancher et l'ascenseur ; et « Piste quarante 01 » déborde à 88 px, ce que le relevé dit désormais |
+
+Le relevé compte les noms qui débordent avec la police et la marge du `Label`
+(`ChannelStrip::nomTronque`) ; le binaire d'hier n'en avait pas, le « avant »
+de 88 px est celui du cas à 40 pistes. Photo : la console de douze tranches
+remplit sa largeur, faders et boutons à leur place. Les deux gardes neuves
+(`pianoroll-zones.sh`, `balayer-facades.sh`) sont listées au README.

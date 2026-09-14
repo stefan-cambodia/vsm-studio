@@ -138,6 +138,8 @@ public:
     /// courante -- à la construction, puis à chaque bascule.
     void retraduire();
     void resized() override;
+    /// D304 : vrai si le nom déborde de sa case (le relevé VSM_MIXER_ZONES le compte).
+    bool nomTronque() const;
     void paint(juce::Graphics&) override;
     void setMeasurement(const vsm::audio::engine::TrackMeasurement& m) {
         meter_.setLevel(m.peak);
@@ -655,5 +657,9 @@ private:
     /// nombre seul se confondait avec le volume, et la règle du projet est
     /// d'agrandir la case plutôt que de rétrécir le texte.
     static constexpr int kStripWidth = 88;
+    /// D304 : une tranche s'ÉLARGIT quand la console a la place, jusqu'au double --
+    /// à 2117 px, dix tranches de 88 px laissaient mille pixels vides et des noms
+    /// tronqués (« Batterie · kick... »).
+    static constexpr int kStripWidthMax = 176;
     static constexpr int kMasterWidth = 150;
 };
