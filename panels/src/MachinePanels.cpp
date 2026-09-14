@@ -2293,13 +2293,15 @@ MachinePanel makeAdditive() {
     panel.sectionColour = "#191C20";
     panel.textColour = "#E4EAF0";
     panel.knobColour = "#C89B5A";
+    // D298 (A42) : DEUX RANGÉES DE SECTIONS -- l'enveloppe en ligne y posait des
+    // curseurs de 11 à 14 px au rack de 364 px (D294).
     panel.gridColumns = 15;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     PanelSection spectre;
     spectre.title = "SPECTRUM";
     spectre.accentColour = "#C89B5A";
-    spectre.column = 0; spectre.row = 0; spectre.columnSpan = 5; spectre.rowSpan = 4;
+    spectre.column = 0; spectre.row = 0; spectre.columnSpan = 8; spectre.rowSpan = 4;
     spectre.controls = {
         control("Spectral Tilt", "TILT", S::LargeKnob, 0, 0),
         // « COUNT » et non « PARTIALS » : le bloc voisin s'appelle PARTIALS, et
@@ -2315,7 +2317,7 @@ MachinePanel makeAdditive() {
     PanelSection partiels;
     partiels.title = "PARTIALS";
     partiels.accentColour = "#7FB4C4";
-    partiels.column = 5; partiels.row = 0; partiels.columnSpan = 4; partiels.rowSpan = 4;
+    partiels.column = 8; partiels.row = 0; partiels.columnSpan = 7; partiels.rowSpan = 4;
     partiels.contentColumns = 2;
     partiels.controls = {
         control("Odd/Even Balance", "ODD / EVEN", S::LargeKnob, 0, 0),
@@ -2326,7 +2328,7 @@ MachinePanel makeAdditive() {
     PanelSection enveloppe;
     enveloppe.title = "ENVELOPE";
     enveloppe.accentColour = "#8FA9C9";
-    enveloppe.column = 9; enveloppe.row = 0; enveloppe.columnSpan = 4; enveloppe.rowSpan = 4;
+    enveloppe.column = 0; enveloppe.row = 4; enveloppe.columnSpan = 10; enveloppe.rowSpan = 4;
     enveloppe.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -2337,7 +2339,7 @@ MachinePanel makeAdditive() {
     PanelSection sortie;
     sortie.title = "OUTPUT";
     sortie.accentColour = "#C89B5A";
-    sortie.column = 13; sortie.row = 0; sortie.columnSpan = 2; sortie.rowSpan = 4;
+    sortie.column = 10; sortie.row = 4; sortie.columnSpan = 5; sortie.rowSpan = 4;
     sortie.controls = {
         control("Velocity to Tilt", "TOUCH", S::Knob, 0, 0),
         control("Output Level", "VOLUME", S::Knob, 0, 1),
@@ -2674,13 +2676,15 @@ MachinePanel makePhaseDist() {
     panel.sectionColour = "#C4C7CC";
     panel.textColour = "#20242A";
     panel.knobColour = "#3A4048";
+    // D298 (A42) : DEUX RANGÉES DE SECTIONS -- l'enveloppe en ligne y posait des
+    // curseurs de 11 à 14 px au rack de 364 px (D294).
     panel.gridColumns = 15;
-    panel.gridRows = 5;
+    panel.gridRows = 10;
 
     PanelSection dist;
     dist.title = "PHASE DISTORTION";
     dist.accentColour = "#2C6FB5";
-    dist.column = 0; dist.row = 0; dist.columnSpan = 4; dist.rowSpan = 5;
+    dist.column = 0; dist.row = 0; dist.columnSpan = 7; dist.rowSpan = 5;
     dist.contentColumns = 2;
     dist.controls = {
         control("Distortion", "AMOUNT", S::LargeKnob, 0, 0, 1, 2),
@@ -2691,7 +2695,7 @@ MachinePanel makePhaseDist() {
     PanelSection reso;
     reso.title = "RESONANCE";
     reso.accentColour = "#B5502C";
-    reso.column = 4; reso.row = 0; reso.columnSpan = 3; reso.rowSpan = 5;
+    reso.column = 7; reso.row = 0; reso.columnSpan = 8; reso.rowSpan = 5;
     reso.contentColumns = 1;
     reso.controls = {
         control("Resonance", "DEPTH", S::Knob, 0, 0),
@@ -2705,7 +2709,7 @@ MachinePanel makePhaseDist() {
     PanelSection timbre;
     timbre.title = "TIMBRE ENVELOPE";
     timbre.accentColour = "#2C6FB5";
-    timbre.column = 7; timbre.row = 0; timbre.columnSpan = 4; timbre.rowSpan = 5;
+    timbre.column = 0; timbre.row = 5; timbre.columnSpan = 8; timbre.rowSpan = 5;
     timbre.controls = {
         control("Mod Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Mod Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -2716,7 +2720,7 @@ MachinePanel makePhaseDist() {
     PanelSection ampli;
     ampli.title = "AMP ENVELOPE";
     ampli.accentColour = "#4A5560";
-    ampli.column = 11; ampli.row = 0; ampli.columnSpan = 4; ampli.rowSpan = 5;
+    ampli.column = 8; ampli.row = 5; ampli.columnSpan = 7; ampli.rowSpan = 5;
     ampli.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -2914,13 +2918,15 @@ MachinePanel makeStochastic() {
     panel.sectionColour = "#DAD7CB";
     panel.textColour = "#232019";
     panel.knobColour = "#2E2A22";
+    // D298 (A42) : DEUX RANGÉES DE SECTIONS -- l'enveloppe en ligne y posait des
+    // curseurs de 11 à 14 px au rack de 364 px (D294).
     panel.gridColumns = 14;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     PanelSection forme;
     forme.title = "WAVEFORM";
     forme.accentColour = "#2E2A22";
-    forme.column = 0; forme.row = 0; forme.columnSpan = 4; forme.rowSpan = 4;
+    forme.column = 0; forme.row = 0; forme.columnSpan = 7; forme.rowSpan = 4;
     forme.contentColumns = 1;
     forme.controls = {
         // SÉLECTEUR : un nombre de points est un entier. Un potentiomètre
@@ -2933,7 +2939,7 @@ MachinePanel makeStochastic() {
     PanelSection divagation;
     divagation.title = "WANDER";
     divagation.accentColour = "#A63D2F";
-    divagation.column = 4; divagation.row = 0; divagation.columnSpan = 4; divagation.rowSpan = 4;
+    divagation.column = 7; divagation.row = 0; divagation.columnSpan = 7; divagation.rowSpan = 4;
     divagation.contentColumns = 2;
     divagation.controls = {
         control("Shape Wander", "SHAPE", S::LargeKnob, 0, 0, 1, 2),
@@ -2944,7 +2950,7 @@ MachinePanel makeStochastic() {
     PanelSection verrou;
     verrou.title = "PITCH";
     verrou.accentColour = "#2F6EA6";
-    verrou.column = 8; verrou.row = 0; verrou.columnSpan = 2; verrou.rowSpan = 4;
+    verrou.column = 0; verrou.row = 4; verrou.columnSpan = 5; verrou.rowSpan = 4;
     verrou.contentColumns = 1;
     verrou.controls = {
         control("Pitch Lock", "LOCK", S::Knob, 0, 0),
@@ -2954,7 +2960,7 @@ MachinePanel makeStochastic() {
     PanelSection env;
     env.title = "ENVELOPE";
     env.accentColour = "#2E2A22";
-    env.column = 10; env.row = 0; env.columnSpan = 4; env.rowSpan = 4;
+    env.column = 5; env.row = 4; env.columnSpan = 9; env.rowSpan = 4;
     env.controls = {
         control("Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -3163,13 +3169,15 @@ MachinePanel makeGranular() {
     panel.sectionColour = "#121415";
     panel.textColour = "#E8F0F2";
     panel.knobColour = "#6FC2CE";
+    // D298 (A42) : DEUX RANGÉES DE SECTIONS -- l'enveloppe en ligne y posait des
+    // curseurs de 11 à 14 px au rack de 364 px (D294).
     panel.gridColumns = 16;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     PanelSection matiere;
     matiere.title = "GRAIN";
     matiere.accentColour = "#6FC2CE";
-    matiere.column = 0; matiere.row = 0; matiere.columnSpan = 4; matiere.rowSpan = 4;
+    matiere.column = 0; matiere.row = 0; matiere.columnSpan = 6; matiere.rowSpan = 4;
     matiere.controls = {
         control("Grain Size", "SIZE", S::LargeKnob, 0, 0),
         control("Density", "DENSITY", S::LargeKnob, 1, 0),
@@ -3180,7 +3188,7 @@ MachinePanel makeGranular() {
     PanelSection nuage;
     nuage.title = "CLOUD";
     nuage.accentColour = "#9FDDE6";
-    nuage.column = 4; nuage.row = 0; nuage.columnSpan = 4; nuage.rowSpan = 4;
+    nuage.column = 6; nuage.row = 0; nuage.columnSpan = 6; nuage.rowSpan = 4;
     nuage.controls = {
         control("Pitch Spray", "PITCH", S::LargeKnob, 0, 0),
         control("Time Spray", "TIME", S::Knob, 1, 0),
@@ -3190,7 +3198,7 @@ MachinePanel makeGranular() {
     PanelSection filtre;
     filtre.title = "FILTER";
     filtre.accentColour = "#7CA6C3";
-    filtre.column = 8; filtre.row = 0; filtre.columnSpan = 2; filtre.rowSpan = 4;
+    filtre.column = 12; filtre.row = 0; filtre.columnSpan = 4; filtre.rowSpan = 4;
     filtre.controls = {
         control("Filter Cutoff", "CUTOFF", S::Knob, 0, 0),
         control("Filter Resonance", "RES", S::Knob, 0, 1),
@@ -3199,7 +3207,7 @@ MachinePanel makeGranular() {
     PanelSection env;
     env.title = "ENVELOPE";
     env.accentColour = "#7CA6C3";
-    env.column = 10; env.row = 0; env.columnSpan = 4; env.rowSpan = 4;
+    env.column = 0; env.row = 4; env.columnSpan = 10; env.rowSpan = 4;
     env.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -3210,7 +3218,7 @@ MachinePanel makeGranular() {
     PanelSection output;
     output.title = "OUTPUT";
     output.accentColour = "#6FC2CE";
-    output.column = 14; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.column = 10; output.row = 4; output.columnSpan = 6; output.rowSpan = 4;
     output.controls = {
         control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 0),
         control("Output Level", "VOLUME", S::Knob, 0, 1),
@@ -4092,13 +4100,15 @@ MachinePanel makeWaveSequence() {
     panel.sectionColour = "#1F2226";
     panel.textColour = "#E8ECF0";
     panel.knobColour = "#5FA8D3";
+    // D298 (A42) : DEUX RANGÉES DE SECTIONS -- l'enveloppe en ligne y posait des
+    // curseurs de 11 à 14 px au rack de 364 px (D294).
     panel.gridColumns = 12;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     PanelSection sequence;
     sequence.title = "SEQUENCE";
     sequence.accentColour = "#5FA8D3";
-    sequence.column = 0; sequence.row = 0; sequence.columnSpan = 8; sequence.rowSpan = 4;
+    sequence.column = 0; sequence.row = 0; sequence.columnSpan = 12; sequence.rowSpan = 4;
     sequence.controls = {
         control("Step 1 Wave", "1", S::Knob, 0, 0),
         control("Step 2 Wave", "2", S::Knob, 1, 0),
@@ -4117,7 +4127,7 @@ MachinePanel makeWaveSequence() {
     PanelSection filtre;
     filtre.title = "FILTER";
     filtre.accentColour = "#E0A050";
-    filtre.column = 8; filtre.row = 0; filtre.columnSpan = 2; filtre.rowSpan = 4;
+    filtre.column = 0; filtre.row = 4; filtre.columnSpan = 5; filtre.rowSpan = 4;
     filtre.controls = {
         control("Filter Cutoff", "CUTOFF", S::Knob, 0, 0),
         control("Filter Resonance", "RES", S::Knob, 0, 1),
@@ -4126,7 +4136,7 @@ MachinePanel makeWaveSequence() {
     PanelSection env;
     env.title = "ENVELOPE";
     env.accentColour = "#B9C98A";
-    env.column = 10; env.row = 0; env.columnSpan = 2; env.rowSpan = 4;
+    env.column = 5; env.row = 4; env.columnSpan = 7; env.rowSpan = 4;
     env.controls = {
         control("Attack", "A", S::Knob, 0, 0),
         control("Decay", "D", S::Knob, 1, 0),

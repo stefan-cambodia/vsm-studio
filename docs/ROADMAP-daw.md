@@ -25875,3 +25875,28 @@ de chaque façade lisibles, LEVEL et SIZE larges, OUTPUT à quatre boutons. Test
 `granular`, `additive`, `phasedist`, `pcmhybrid`, `stochastic`, `wavesequence`,
 `epiano`, `fmdrums`, `ms20`, `tr808` — à rejouer par `tools/balayer-facades.sh`
 quand la batterie le permettra.
+
+### Phase D298 — A42, suite : cinq façades à enveloppe sur deux rangées (14/09/2026)
+
+`vsm.granular`, `vsm.additive`, `vsm.stochastic`, `vsm.wavesequence`,
+`vsm.phasedist` : cinq grilles différentes (12 à 16 colonnes, 4 ou 5 rangées),
+un même défaut — l'enveloppe en ligne dans une section de 2 à 4 colonnes — et
+un même remède, chaque façade recoupée en deux rangées de sections (les
+sections larges en haut, l'enveloppe en bas avec sa voisine), `gridRows` doublé.
+
+**MESURÉ**, rack de 364 px, plus petit élément de chaque façade :
+
+| machine | avant (D294) | après | où |
+|---|---|---|---|
+| `vsm.granular` | 11 px | **42 px** | ENVELOPE / A |
+| `vsm.additive` | 12 px | **46 px** | ENVELOPE / A |
+| `vsm.stochastic` | 14 px | **44 px** | ENVELOPE / A |
+| `vsm.wavesequence` | 14 px | **34 px** | SEQUENCE / 1 (les huit pas, sur une rangée pleine largeur) |
+| `vsm.phasedist` | 12 px | **29 px** | AMP ENVELOPE / A |
+
+Photos : l'additif (SPECTRUM et PARTIALS en haut, ENVELOPE et OUTPUT en bas) et
+la wave sequence (les huit pas en haut, FILTER et ENVELOPE en bas). Tests
+`panels` 11 verts ; réglages de l'utilisateur intacts. **Reste 5 / 63** —
+`pcmhybrid` (13 px), `epiano`, `fmdrums`, `ms20` (16 px), `tr808` (17 px), des
+géométries à part (boîtes à rythmes à huit rangées, hybride à 890 px) — pour la
+prochaine batterie, et `tools/balayer-facades.sh` en fera le compte exact.
