@@ -25900,3 +25900,24 @@ la wave sequence (les huit pas en haut, FILTER et ENVELOPE en bas). Tests
 `pcmhybrid` (13 px), `epiano`, `fmdrums`, `ms20` (16 px), `tr808` (17 px), des
 géométries à part (boîtes à rythmes à huit rangées, hybride à 890 px) — pour la
 prochaine batterie, et `tools/balayer-facades.sh` en fera le compte exact.
+
+### Phase D299 — A42, suite : e-piano, MS-20 et hybride PCM (14/09/2026)
+
+Trois géométries à part. `vsm.epiano` (VOICING 6 + PICKUPS 3 + PREAMP 7 sur 16
+colonnes) : VOICING 9 + PICKUPS 7 en haut, PREAMP seul en bas. `vsm.ms20`
+(VCO 5 + FILTRES 6 + MG/EG 5) : VCO 7 + FILTRES 9 en haut, MG/EG seul en bas.
+`vsm.pcmhybrid` (8 colonnes sur 12 rangées, PARTIAL A et STRUCTURE côte à côte
+en tête) : chaque section prend sa rangée, `gridRows` 12 → 14 — la façade
+demande 1 394 px, en reçoit 1 030 et défile sous le rack (D63).
+
+**MESURÉ**, rack de 364 px : `vsm.epiano` **47 px** (PREAMP / BASS, 16 avant),
+`vsm.ms20` **37 px** (HPF CUTOFF, 16 avant), `vsm.pcmhybrid` **18 px** (PARTIAL A
+/ SAMPLE, 13 avant — sur le plancher exactement, six boutons sur une rangée de
+huit colonnes ; à l'aise il en faudrait deux, nommé, non fait). Photos : le MS-20
+avec ses trois VCO et son MG/EG pleine largeur, l'hybride PCM avec PARTIAL A
+seul en tête. Tests `panels` 11 verts ; réglages de l'utilisateur intacts.
+
+Restent `vsm.fmdrums` (16 px) et `vsm.tr808` (17 px), deux boîtes à rythmes dont
+les sections de pièces sont ENGENDRÉES par un gabarit commun avec leur
+séquenceur — un autre chantier que le rééquilibrage à la main. Le balayage
+complet suit.

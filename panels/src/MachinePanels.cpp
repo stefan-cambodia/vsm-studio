@@ -678,13 +678,15 @@ MachinePanel makeMs20() {
     panel.sectionColour = "#232428";
     panel.textColour = "#F0F0EC";
     panel.knobColour = "#1C1D20";
+    // D299 (A42) : la section trop étroite prend une rangée à elle -- ses boutons
+    // faisaient 13 à 16 px au rack de 364 px (D294).
     panel.gridColumns = 16;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     PanelSection oscillators;
     oscillators.title = "VCO 1 / VCO 2";
     oscillators.accentColour = "#D7DADF";
-    oscillators.column = 0; oscillators.row = 0; oscillators.columnSpan = 5; oscillators.rowSpan = 4;
+    oscillators.column = 0; oscillators.row = 0; oscillators.columnSpan = 7; oscillators.rowSpan = 4;
     oscillators.controls = {
         control("VCO-1 Level", "VCO 1 LEVEL", S::Knob, 0, 0),
         control("VCO-1 Shape", "VCO 1 WAVE", S::Selector, 1, 0),
@@ -700,7 +702,7 @@ MachinePanel makeMs20() {
     PanelSection filters;
     filters.title = "HIGH PASS / LOW PASS";
     filters.accentColour = "#E0C25A";
-    filters.column = 5; filters.row = 0; filters.columnSpan = 6; filters.rowSpan = 4;
+    filters.column = 7; filters.row = 0; filters.columnSpan = 9; filters.rowSpan = 4;
     filters.controls = {
         control("HPF Cutoff", "HPF CUTOFF", S::Knob, 0, 0),
         control("HPF Resonance", "HPF PEAK", S::Knob, 1, 0),
@@ -713,7 +715,7 @@ MachinePanel makeMs20() {
     PanelSection modulation;
     modulation.title = "MG / EG";
     modulation.accentColour = "#7FB2C8";
-    modulation.column = 11; modulation.row = 0; modulation.columnSpan = 5; modulation.rowSpan = 4;
+    modulation.column = 0; modulation.row = 4; modulation.columnSpan = 16; modulation.rowSpan = 4;
     modulation.controls = {
         control("MG Rate", "MG FREQUENCY", S::Knob, 0, 0),
         control("MG Waveform", "MG WAVEFORM", S::Selector, 1, 0),
@@ -1028,14 +1030,16 @@ MachinePanel makeEPiano() {
     panel.sectionColour = "#131211";
     panel.textColour = "#E6E1D8";
     panel.knobColour = "#C9C3B6";
+    // D299 (A42) : la section trop étroite prend une rangée à elle -- ses boutons
+    // faisaient 13 à 16 px au rack de 364 px (D294).
     panel.gridColumns = 16;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     // Mécanique : ce que le technicien règle sous le couvercle.
     PanelSection voicing;
     voicing.title = "VOICING";
     voicing.accentColour = "#C4392B";
-    voicing.column = 0; voicing.row = 0; voicing.columnSpan = 6; voicing.rowSpan = 4;
+    voicing.column = 0; voicing.row = 0; voicing.columnSpan = 9; voicing.rowSpan = 4;
     voicing.controls = {
         control("Hammer Hardness", "HAMMER", S::Knob, 0, 0),
         control("Hammer Noise", "KNOCK", S::Knob, 1, 0),
@@ -1050,7 +1054,7 @@ MachinePanel makeEPiano() {
     PanelSection pickup;
     pickup.title = "PICKUPS";
     pickup.accentColour = "#C4392B";
-    pickup.column = 6; pickup.row = 0; pickup.columnSpan = 3; pickup.rowSpan = 4;
+    pickup.column = 9; pickup.row = 0; pickup.columnSpan = 7; pickup.rowSpan = 4;
     pickup.controls = {
         control("Pickup Drive", "DRIVE", S::Knob, 0, 0),
         control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 1),
@@ -1060,7 +1064,7 @@ MachinePanel makeEPiano() {
     PanelSection preamp;
     preamp.title = "PREAMP";
     preamp.accentColour = "#D8B45A";
-    preamp.column = 9; preamp.row = 0; preamp.columnSpan = 7; preamp.rowSpan = 4;
+    preamp.column = 0; preamp.row = 4; preamp.columnSpan = 16; preamp.rowSpan = 4;
     preamp.controls = {
         // rowSpan 2 : sur le préampli réel les curseurs occupent toute la
         // hauteur du panneau. Les laisser sur une demi-hauteur creusait un
@@ -1425,13 +1429,15 @@ MachinePanel makePcmHybrid() {
     panel.sectionColour = "#313337";
     panel.textColour = "#E8E9EB";
     panel.knobColour = "#202225";
+    // D299 (A42) : la section trop étroite prend une rangée à elle -- ses boutons
+    // faisaient 13 à 16 px au rack de 364 px (D294).
     panel.gridColumns = 8;
-    panel.gridRows = 12;
+    panel.gridRows = 14;
 
     PanelSection attack;
     attack.title = "PARTIAL A - PCM ATTACK";
     attack.accentColour = "#C8553D";
-    attack.column = 0; attack.row = 0; attack.columnSpan = 4; attack.rowSpan = 2;
+    attack.column = 0; attack.row = 0; attack.columnSpan = 8; attack.rowSpan = 2;
     attack.controls = {
         control("Attack Sample", "SAMPLE", S::Selector, 0, 0),
         control("Attack Level", "LEVEL", S::Knob, 1, 0),
@@ -1446,7 +1452,7 @@ MachinePanel makePcmHybrid() {
     PanelSection structure;
     structure.title = "STRUCTURE";
     structure.accentColour = "#E8B84B";
-    structure.column = 4; structure.row = 0; structure.columnSpan = 4; structure.rowSpan = 2;
+    structure.column = 0; structure.row = 2; structure.columnSpan = 8; structure.rowSpan = 2;
     structure.controls = {
         control("Structure", "RING MOD", S::Toggle, 0, 0),
     };
@@ -1454,7 +1460,7 @@ MachinePanel makePcmHybrid() {
     PanelSection tone;
     tone.title = "PARTIAL B - SYNTH";
     tone.accentColour = "#4E8098";
-    tone.column = 0; tone.row = 2; tone.columnSpan = 8; tone.rowSpan = 2;
+    tone.column = 0; tone.row = 4; tone.columnSpan = 8; tone.rowSpan = 2;
     tone.controls = {
         control("Tone Shape", "WAVE", S::Selector, 0, 0),
         control("Tone Level", "LEVEL", S::Knob, 1, 0),
@@ -1464,7 +1470,7 @@ MachinePanel makePcmHybrid() {
     PanelSection filter;
     filter.title = "TVF";
     filter.accentColour = "#E8B84B";
-    filter.column = 0; filter.row = 4; filter.columnSpan = 8; filter.rowSpan = 2;
+    filter.column = 0; filter.row = 6; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Resonance", "RESO", S::VerticalSlider, 1, 0, 1, 2),
@@ -1476,7 +1482,7 @@ MachinePanel makePcmHybrid() {
     PanelSection filterEnv;
     filterEnv.title = "TVF ENV";
     filterEnv.accentColour = "#8FA9C9";
-    filterEnv.column = 0; filterEnv.row = 6; filterEnv.columnSpan = 8; filterEnv.rowSpan = 2;
+    filterEnv.column = 0; filterEnv.row = 8; filterEnv.columnSpan = 8; filterEnv.rowSpan = 2;
     filterEnv.controls = {
         control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1487,7 +1493,7 @@ MachinePanel makePcmHybrid() {
     PanelSection ampEnv;
     ampEnv.title = "TVA ENV";
     ampEnv.accentColour = "#8FA9C9";
-    ampEnv.column = 0; ampEnv.row = 8; ampEnv.columnSpan = 8; ampEnv.rowSpan = 2;
+    ampEnv.column = 0; ampEnv.row = 10; ampEnv.columnSpan = 8; ampEnv.rowSpan = 2;
     ampEnv.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1498,7 +1504,7 @@ MachinePanel makePcmHybrid() {
     PanelSection modulation;
     modulation.title = "LFO";
     modulation.accentColour = "#4E8098";
-    modulation.column = 0; modulation.row = 10; modulation.columnSpan = 8; modulation.rowSpan = 2;
+    modulation.column = 0; modulation.row = 12; modulation.columnSpan = 8; modulation.rowSpan = 2;
     modulation.controls = {
         control("LFO Rate", "RATE", S::Knob, 0, 0),
         control("LFO to Pitch", "PITCH", S::Knob, 1, 0),
