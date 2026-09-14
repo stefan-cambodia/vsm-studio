@@ -77,9 +77,15 @@ FIXTURE = Path(__file__).resolve().parent / "donnees" / "banc-minuscule"
 TOLERANCE_MOTEUR = 1e-6
 SEPARATEUR_FACTICE = Path(__file__).resolve().parent / "donnees" / "separateur_factice.py"
 # Les options de la course commise (rapport.json de la fixture, provenance).
+# `--tempo 120` : LA COURSE COMMISE DU 04/09 A ÉTÉ ÉCRITE AU DÉFAUT DE L'ÉPOQUE,
+# 120 BPM. Depuis le 15/09 (ROADMAP-fusion § 5 quindecies), le défaut est un
+# tempo ESTIMÉ sur le mélange -- 120,1 sur ce morceau minuscule, et
+# `arrangement.mid` change d'octet (le méta de tempo et les arrondis de ticks).
+# Ce test garde `--residuel`, pas le tempo : la variable qu'il ne teste pas est
+# tenue à la valeur de sa référence.
 OPTIONS_DE_LA_COURSE = ["--machines", "vsm.juno106,vsm.tb303,vsm.minimoog", "--budget-piste", "4",
                         "--axes-piste", "2", "--rendus-paralleles", "2", "--machines-au-melange", "2",
-                        "--tours-verdict", "1", "--second-verdict", "0"]
+                        "--tours-verdict", "1", "--second-verdict", "0", "--tempo", "120"]
 
 
 def _stems_vrais_groupes(dossier: Path) -> Path:

@@ -774,6 +774,13 @@ Chaque étape s'affiche et **l'opération s'annule**. Le journal dit ce qui a é
 
 Si Python n'est pas installé, la fonction est **grisée avec sa raison**, jamais une erreur au milieu du travail. Le dossier de la chaîne d'analyse se désigne dans les préférences, qui disent `Prête.` quand elle est utilisable.
 
+**Au tempo du morceau.** La chaîne estime le tempo sur le mélange et l'écrit
+dans le projet : la grille, l'aimant, la quantification et la boucle par mesures
+s'appliquent à une reconstruction comme à un projet écrit à la main. Le rapport
+dit d'où vient le tempo (estimé, avec l'instant du premier temps suivi, ou forcé
+par `--tempo`). La mesure 1 commence au début du fichier, pas au premier temps :
+si le morceau commence par un silence ou une levée, décalez la grille vous-même.
+
 **Annuler arrête tout, fermer aussi.** La chaîne tourne dans son propre groupe
 de processus : *Annuler* l'arrête en entier — la séparation et les rendus
 compris, pas seulement le script qui les lance —, et fermer l'application

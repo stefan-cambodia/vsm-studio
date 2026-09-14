@@ -69,6 +69,7 @@ from analyzer.vsm_drumkit import (DrumKit, build_drum_kit, drum_kit_track,  # no
                                   drum_machine_track, eclater_par_piece,
                                   modelled_drum_track, vocal_audio_track,
                                   vocal_sampler_track)
+from analyzer.tempo import estimer_tempo  # noqa: E402
 from analyzer.vsm_engine import (VsmEngine, find_vsm_render, identite_du_moteur,  # noqa: E402
                                  moteur_perime)
 from analyzer.vsm_levels import VOLUME_MAX, match_track_levels  # noqa: E402
@@ -446,6 +447,12 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
         # fichier elle est partie, et c'est au moment de l'ouverture que la
         # comparaison compte.
         "source": str(Path(args.entree).resolve()) if getattr(args, "entree", None) else None,
+        # LE TEMPO ÉCRIT, ET D'OÙ IL VIENT (« estime » sur le mélange, avec le
+        # premier temps suivi ; « force » par --tempo) : la grille du projet en
+        # dépend, et un rapport qui ne le dirait pas ne se rejouerait pas.
+        "tempo": getattr(args, "tempo_provenance", None)
+                 or {"bpm": float(args.tempo) if getattr(args, "tempo", None) is not None else None,
+                     "source": "force"},
         "options": {
             "separation": not args.sans_separation,
             "sampler": not args.sans_sampler,
@@ -807,7 +814,12 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--iterations", type=int, default=20,
                          help="budget de recherche par machine (défaut 20). "
                               "Mesuré : le doubler change souvent la machine retenue.")
-    parseur.add_argument("--tempo", type=float, default=120.0, help="tempo du projet écrit")
+    # F-tempo (15/09/2026) : SANS L'OPTION, LE TEMPO EST ESTIMÉ SUR LE MÉLANGE
+    # (`analyzer.tempo`). 120 fixe était écrit dans tout projet reconstruit, et
+    # la grille du DAW ne voulait rien dire sur un morceau à 128 ou à 96.
+    parseur.add_argument("--tempo", type=float, default=None,
+                         help="tempo du projet écrit, en BPM ; sans lui, estimé sur le mélange "
+                              "(mesuré : 10/10 morceaux du banc à ±2 BPM, tools/tempo-estime.py)")
     parseur.add_argument("--metrique", default="v2", choices=("v1", "v2", "v3", "v4"),
                          help="métrique de comparaison (défaut v2 ; v1 pour rejouer "
                               "d'anciennes mesures, v3 ajoute la hauteur des graves, "
@@ -2966,6 +2978,18 @@ def chaine(args: argparse.Namespace) -> None:
     print(f"[1/5] Lecture de {entree.name}")
     melange = charger_audio(entree)
     print(f"      {melange.size / SAMPLE_RATE:.1f} s, {melange.size} échantillons")
+    # LE TEMPO DU MORCEAU, ESTIMÉ ICI ET PORTÉ PAR `args.tempo` pour tous les
+    # appelants (rendus, cache, projet écrit) ; `--tempo` le force, et la
+    # provenance dit lequel des deux a servi.
+    if args.tempo is None:
+        estimation = estimer_tempo(melange, SAMPLE_RATE)
+        args.tempo = estimation.bpm
+        args.tempo_provenance = estimation.json()
+        print(f"      tempo estimé : {estimation.bpm:.1f} BPM "
+              f"(premier temps à {estimation.premier_temps_secondes:.2f} s, {estimation.temps} temps suivis)")
+    else:
+        args.tempo_provenance = {"bpm": float(args.tempo), "source": "force"}
+        print(f"      tempo forcé : {args.tempo:.1f} BPM (--tempo)")
 
     with dossier_de_travail(args) as travail:
         pistes = obtenir_stems(args, entree, travail)

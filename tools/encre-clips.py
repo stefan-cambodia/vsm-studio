@@ -4,7 +4,9 @@
 # de clip, et rend pour chacune la part d'encre (pixels plus sombres que le fond) et
 # le contraste WCAG fond / encre médiane. Usage : encre-clips.py photo.png [x_sonde]
 # (défaut 1200 ; la bande mesurée va de x=470 à 1720, à 2117 px de large).
-import sys, numpy as np
+import sys
+
+import numpy as np
 from PIL import Image
 from collections import Counter
 im = np.asarray(Image.open(sys.argv[1]).convert('RGB')).astype(int)
@@ -15,7 +17,8 @@ def lum(c):
     r, g, b = [ (v/255)/12.92 if v/255 <= 0.03928 else ((v/255+0.055)/1.055)**2.4 for v in c ]
     return 0.2126*r + 0.7152*g + 0.0722*b
 def ratio(a, b):
-    la, lb = lum(a), lum(b); la, lb = max(la, lb), min(la, lb)
+    la, lb = lum(a), lum(b)
+    la, lb = max(la, lb), min(la, lb)
     return (la+0.05)/(lb+0.05)
 col = im[:, x_sonde, :]
 # segmenter la colonne en runs de couleur saturée (bande de clip) : distance au gris fond > 60.
@@ -26,17 +29,22 @@ y = 0
 while y < H:
     if not masque[y]:
         d = y
-        while y < H and not masque[y]: y += 1
+        while y < H and not masque[y]:
+            y += 1
         if d > 0 and y < H and y - d < 5:
-            for k in range(d, y): masque[k] = True
+            for k in range(d, y):
+                masque[k] = True
     else:
         y += 1
-runs = []; debut = None
+runs = []
+debut = None
 for y in range(H):
     if masque[y]:
-        if debut is None: debut = y
+        if debut is None:
+            debut = y
     else:
-        if debut is not None and y - debut >= 30: runs.append((debut, y))
+        if debut is not None and y - debut >= 30:
+            runs.append((debut, y))
         debut = None
 for (a, b) in runs:
     bande = im[a+17:b-3, x0:x1, :].reshape(-1, 3)

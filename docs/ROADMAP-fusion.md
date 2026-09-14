@@ -3570,6 +3570,75 @@ ce vivier-là, et ne se compare aux chiffres antérieurs qu'en le disant.
 
 ---
 
+## § 5 quindecies. LA RECONSTRUCTION S'OUVRAIT À 120 BPM — le tempo est estimé sur le mélange (15/09/2026)
+
+**LE CONSTAT, VU DANS LE DAW.** L'onglet Tempo de « B4 Wuz Then » reconstruit
+disait « Un seul tempo pour tout le morceau — 120,0 BPM ». `reconstruire.py`
+écrivait `--tempo`, **120 par défaut, dans TOUT projet** : les notes tombaient
+au bon endroit en secondes (les ticks sont calculés à ce tempo, D46), mais la
+grille du DAW — mesures, aimant, quantification, boucle par mesures, « aller à
+la mesure » — ne voulait rien dire sur un morceau à 126. `analyzer/analysis.py`
+savait suivre les temps (`librosa.beat.beat_track`) depuis le début du projet,
+et la chaîne ne l'appelait jamais. Aucun document ne tranchait le tempo de la
+reconstruction ; il est tranché ici.
+
+**CE QUI EST FAIT.** `analyzer/tempo.py` : `estimer_tempo(melange, sr)` suit
+les temps sur l'enveloppe d'attaques du mélange et rend le tempo au dixième de
+BPM, l'instant du premier temps suivi et le nombre de temps. `reconstruire.py`
+l'appelle juste après la lecture ; `--tempo` (défaut `None`) le force ; la
+valeur porte `args.tempo` pour tous les appelants (rendus, cache, projet
+écrit), et **la provenance du rapport dit lequel a servi** (`provenance.tempo` :
+`bpm`, `premierTempsSecondes`, `temps`, `source` = `estime` / `force`). Le
+journal l'écrit à l'étape 1 (« tempo estimé : 110,0 BPM (premier temps à
+0,56 s, 55 temps suivis) »).
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE** (`tools/tempo-estime.py`, qui le garde) :
+sur les dix morceaux de `s1-sec` dont `verite.json` porte un tempo, l'estimation
+tombe à **±2 BPM** de la vérité sur **quatre morceaux sur cinq au moins**, les
+erreurs d'octave (×2, ×½, ×3, ×⅔) comptées à part et publiées ; témoin : 120
+fixe. Le balayage est publié entier.
+
+**MESURÉ** (15/09/2026) :
+
+| morceau | vrai | estimé | écart | témoin 120 |
+|---|---|---|---|---|
+| morceau-0001-g1 | 110 | 110,0 | +0,0 | +10,0 |
+| morceau-0002-g2 | 131 | 132,5 | +1,5 | −11,0 |
+| morceau-0003-g3 | 130 | 129,2 | −0,8 | −10,0 |
+| morceau-0004-g4 | 125 | 126,0 | +1,0 | −5,0 |
+| morceau-0005-g5 | 122 | 123,0 | +1,0 | −2,0 |
+| morceau-0006-g6 | 109 | 110,0 | +1,0 | +11,0 |
+| morceau-0007-g7 | 137 | 136,0 | −1,0 | −17,0 |
+| morceau-0008-g8 | 125 | 126,0 | +1,0 | −5,0 |
+| morceau-0009-g9 | 108 | 107,7 | −0,3 | +12,0 |
+| morceau-0010-g10 | 128 | 129,2 | +1,2 | −8,0 |
+
+**10/10 à ±2 BPM, 0 erreur d'octave, écart médian 1,0 BPM** (témoin 120 fixe :
+10,0). Attendu tenu — et il faut dire ce que ce banc ne prouve pas : ses tempos
+vont de 108 à 137, autour de l'a priori de 120 de `librosa` ; un morceau à 70 ou
+à 175 n'y est pas, et c'est là que les erreurs d'octave vivent. Sur le seul
+enregistrement réel du dépôt, « B4 Wuz Then » (`reconstruction/sources`) :
+**126,0 BPM**, premier temps à 0,19 s, 721 temps suivis — contre 120 écrit
+jusqu'ici.
+
+**De bout en bout** (`morceau-0001-g1`, stems vrais, `--sans-recherche`) : le
+journal dit « tempo estimé : 110,0 BPM », `project.json` porte
+`tempoChanges: [{tick: 0, bpm: 110.0}]`, `rapport.json` porte
+`provenance.tempo = {bpm: 110.0, premierTempsSecondes: 0.557, temps: 55,
+source: "estime"}`, et le DAW ouvre le projet à **« 110.0 BPM »** dans sa
+barre de transport (`VSM_TEXTES_LISTE`), là où il lisait 120,0. Deux tests
+Python (`test_tempo.py` : un clic à 100 BPM → 100 ± 2 ; un signal trop court →
+120, sans lever).
+
+**CE QUI RESTE NOMMÉ, NON FAIT.** Le premier temps suivi est publié, mais la
+grille n'est pas PHASÉE dessus : la mesure 1 commence au tick 0, pas au premier
+temps, et le suivi ne distingue pas le temps fort (aucun estimateur de temps
+fort ici). Phaser la grille sans déplacer les notes par rapport à l'original
+demande une première mesure de longueur libre dans la carte de tempo ou de
+signature — une phase à part, à chiffrer sur des morceaux réels. Les
+changements de tempo (un morceau qui accélère) ne sont pas suivis non plus : un
+seul tempo, comme avant, mais le bon.
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la
