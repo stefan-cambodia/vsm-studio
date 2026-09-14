@@ -614,3 +614,4 @@ VSM_TEST(process_graph_applies_channel_pan_cc10) {
     VSM_ASSERT(d1 < 0.1 * g1);
     VSM_ASSERT(g2 < 0.1 * d2);
 }
+

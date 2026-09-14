@@ -3,6 +3,7 @@
 #include "vsm/sequencer/MidiEffects.h"
 #include <algorithm>
 #include <limits>
+#include <array>
 #include <map>
 #include <utility>
 
@@ -141,7 +142,30 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
             const Tick out = lastOutBefore(passages, pc.tick, startTick);
             if (out >= 0) retenir(programmes, pc.channel, out, pc.program);
         }
+        // D331 : LA PLAGE DE PLI (RPN 0) SE CHASSE COMME UNE VALEUR, PAS COMME
+        // TROIS CONTRÔLEURS. « Le dernier CC 6 » peut appartenir à un autre
+        // paramètre enregistré (l'accord fin, RPN 1), et la carte des
+        // contrôleurs émet le 6 avant le 100 et le 101 : la machine recevrait
+        // la valeur avant de savoir de quoi elle est la valeur. On suit donc
+        // la sélection dans l'ordre du fichier, on retient la dernière plage
+        // posée, et on l'émet en tête, en triplet canonique (101, 100, 6).
+        std::map<uint8_t, std::pair<Tick, uint8_t>> plages;
+        {
+            std::array<uint8_t, 16> msb{}, lsb{};
+            msb.fill(127); lsb.fill(127);
+            for (const auto& cc : track.controlChanges) {
+                const uint8_t canal = static_cast<uint8_t>(cc.channel & 0x0F);
+                if (cc.controller == 101) msb[canal] = cc.value;
+                else if (cc.controller == 100) lsb[canal] = cc.value;
+                else if (cc.controller == 6 && msb[canal] == 0 && lsb[canal] == 0) {
+                    const Tick out = lastOutBefore(passages, cc.tick, startTick);
+                    if (out >= 0) retenir(plages, canal, out, cc.value);
+                }
+            }
+        }
         for (const auto& cc : track.controlChanges) {
+            if (cc.controller == 6 || cc.controller == 38 || cc.controller == 100 || cc.controller == 101)
+                continue;   // D331 : portés par la plage, jamais nus
             const Tick out = lastOutBefore(passages, cc.tick, startTick);
             if (out >= 0)
                 retenir(controleurs,
@@ -158,6 +182,11 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
 
         for (const auto& [canal, v] : programmes)
             resultat.push_back({quand, trackIndex, ProgramChangeEvent{canal, v.second}});
+        for (const auto& [canal, v] : plages) {   // D331 : en tête, dans l'ordre que le MIDI impose
+            resultat.push_back({quand, trackIndex, ControlChangeEvent{canal, 101, 0}});
+            resultat.push_back({quand, trackIndex, ControlChangeEvent{canal, 100, 0}});
+            resultat.push_back({quand, trackIndex, ControlChangeEvent{canal, 6, v.second}});
+        }
         for (const auto& [cle, v] : controleurs)
             resultat.push_back({quand, trackIndex,
                                ControlChangeEvent{static_cast<uint8_t>(cle / 256),

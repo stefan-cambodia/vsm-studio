@@ -27363,3 +27363,53 @@ une erreur d'échelle, et cela s'entend d'autant moins que 0,1 dB est sous le
 seuil de perception. Le côté plein gagne 3 dB (−12,43 contre −15,44) : la loi
 de panoramique à puissance constante de la console, inchangée. Tests audio :
 **1 301 verts** (le CC 7 et le CC 10). Banc de fumée : 0 raté. Manuel § 4.
+
+### Phase D331 — la plage de pitch bend d'un fichier (RPN 0) était ignorée : ± 2 demi-tons pour tous (15/09/2026)
+
+**VU EN INVENTORIANT LES CONTRÔLEURS DES FICHIERS DE L'UTILISATEUR** (après
+D329-D330) : les deux fichiers de Jeff Mills écrivent, sur chaque piste,
+`CC 101 = 0, CC 100 = 0, CC 6 = 12` — le paramètre enregistré n° 0, la
+**sensibilité du pitch bend**, à **12 demi-tons** — puis 35 et 28 plis de
+hauteur. Le graphe convertit tout pli avec une constante de ± 2 demi-tons
+(`kPitchBendRangeSemitones`) : leurs glissés d'une octave jouent un ton.
+Cubase, Live et tout lecteur General MIDI lisent ce RPN.
+
+**CE QUI EST FAIT.** Le graphe suit, par piste, la sélection de paramètre
+enregistré (CC 101 / CC 100) et, quand elle vaut 0 / 0, prend le CC 6 comme
+plage de pli en demi-tons (le CC 38 y ajoute des centièmes) ; la plage vaut
+2 au repos, et se remet à 2 quand le projet est republié. Elle sert dans les
+trois conversions : le planning, la chasse, et l'inverse vers un port MIDI
+(le pli ressort en 14 bits tel qu'il est entré). **Et le même passage vérifie
+que la chasse (D16.2) passe bien par les tenues du graphe** — CC 7, CC 10,
+RPN — et non par la seule machine : un morceau lancé à la mesure 40 doit
+avoir son volume, son panoramique et sa plage sans rejouer les 39 premières.
+
+**ATTENDU** (deux fichiers écrits pour la mesure : A3 deux mesures puis A3
+avec un pli plein (+8191) deux mesures ; `bend-rpn12.mid` pose RPN 0 = 12,
+`bend-sans-rpn.mid` ne pose rien ; `VSM_EXPORT`, hauteur du pic spectral par
+palier) : AVANT, les deux fichiers montent de **+2,00 st** (mesuré) ; APRÈS,
+`bend-rpn12` monte de **+12,00 ± 0,05 st** (220 Hz pour 110), `bend-sans-rpn`
+reste à **+2,00** ; un test du graphe (`process_graph_reads_pitch_bend_range_rpn`)
+le garde ; 1 302 tests audio verts ; banc de fumée 0 raté.
+
+**MESURÉ** (`VSM_EXPORT`, pic spectral par palier, `hauteur-paliers.py`) :
+
+| export | mes. 1-3 (sans pli) | mes. 3-5 (pli plein) |
+|---|---|---|
+| `bend-rpn12.mid` avant | 110,0 Hz | 123,5 Hz (**+2,00 st**) |
+| `bend-rpn12.mid` après | 110,0 Hz | **220,0 Hz (+12,00 st)** |
+| `bend-sans-rpn.mid` avant | 110,0 Hz | 123,5 Hz (+2,00 st) |
+| `bend-sans-rpn.mid` après | 110,0 Hz | 123,5 Hz (**+2,00 st**, inchangé) |
+
+Attendu tenu au centième de demi-ton : l'octave demandée par le RPN est
+jouée, et un fichier sans RPN garde ses ± 2. D329 rejoué sur le même binaire
+(`cc7-paliers.mid` : 0 / −5,95 / −11,97 dB) : les tenues déplacées dans
+`appliquerLesTenues` n'ont rien perdu. Tests core : **340 verts** (la chasse
+émet le triplet canonique en tête, et aucun CC 6 nu quand « le dernier CC 6 »
+appartenait à l'accord fin). Tests audio : le premier essai du test de plage
+était ROUGE pour la mauvaise raison — il mesurait sur `vsm.testtone`, qui
+ignore le pli (rapport 1,0) ; réécrit sur le Minimoog avec l'estimateur de
+hauteur des autres tests de pli. Banc de fumée : 0 raté. Manuel § 4.
+Le test réécrit dit ses chiffres : nue 440,4 Hz, pli sans RPN 494,8 Hz
+(+2 st), pli avec RPN 0 = 12 : 872,7 Hz (× 1,98, l'octave) — **1 302 tests
+audio verts**.

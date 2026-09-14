@@ -11,7 +11,7 @@ namespace vsm::audio::engine {
 /// Plage du pitch bend, en demi-tons pour l'excursion maximale. Deux demi-tons
 /// est la convention par défaut depuis la General MIDI ; une machine qui
 /// voudrait autre chose le fera dans son `handleControlEvent`, pas ici.
-constexpr float kPitchBendRangeSemitones = 2.0f;
+// D331 : la plage de pli n'est plus une constante (± 2) mais une tenue par piste, `bendRange_`, lue au RPN 0.
 
 using namespace vsm::audio::plugin;
 using namespace vsm::sequencer;
@@ -20,6 +20,7 @@ using namespace vsm::midi;
 void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     ccVolume_.fill(1.0f);   // D329 : `{}` initialise à ZÉRO -- un tableau de volumes à zéro rendrait tout muet
     ccPan_.fill(0.0f);      // D330
+    rpnMsb_.fill(127); rpnLsb_.fill(127); bendRange_.fill(2.0f);   // D331
     sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
     maxBlockSize_ = maxBlockSize > 0 ? maxBlockSize : 512;
 
@@ -103,6 +104,7 @@ void ProcessGraph::ensureParallelBuffers() {
 void ProcessGraph::setProject(const Project& project) {
     ccVolume_.fill(1.0f);   // D329 : un projet republié repart au volume de canal plein ; la chasse (D16.2) le rétablit à la lecture
     ccPan_.fill(0.0f);      // D330
+    rpnMsb_.fill(127); rpnLsb_.fill(127); bendRange_.fill(2.0f);   // D331
     auto snapshot = std::make_shared<GraphSnapshot>();
     snapshot->project = project;
     Tick endTick = project.lastUsedTick() + project.ticksPerQuarterNote;
@@ -547,8 +549,7 @@ void ProcessGraph::seekSeconds(double seconds) {
             if constexpr (std::is_same_v<T, PitchBendEvent>) {
                 chasse.event.kind = MidiControlEvent::Kind::PitchBend;
                 chasse.event.channel = data.channel;
-                chasse.event.value =
-                    static_cast<float>(data.value) / 8192.0f * kPitchBendRangeSemitones;
+                chasse.event.value = static_cast<float>(data.value) / 8192.0f;   // D331 : BRUT, converti à la livraison avec la plage de la piste
                 return true;
             } else if constexpr (std::is_same_v<T, ControlChangeEvent>) {
                 chasse.event.kind = MidiControlEvent::Kind::ControlChange;
@@ -574,6 +575,31 @@ void ProcessGraph::seekSeconds(double seconds) {
         if (!chaseQueue_.push(chasse)) ++perdus;
     }
     if (perdus > 0) droppedChasedControls_.fetch_add(perdus, std::memory_order_relaxed);
+}
+
+void ProcessGraph::appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::MidiControlEvent& e) {
+    using Kind = vsm::audio::plugin::MidiControlEvent::Kind;
+    if (trackIndex >= kMaxTracks) return;
+    if (e.kind == Kind::PitchBend) {
+        e.value *= bendRange_[trackIndex];   // brut (-1..1) -> demi-tons, avec la plage de LA piste
+        return;
+    }
+    if (e.kind != Kind::ControlChange) return;
+    const int brut = std::clamp(static_cast<int>(std::lround(e.value * 127.0f)), 0, 127);
+    switch (e.index) {
+        case 7:  ccVolume_[trackIndex] = e.value; break;                    // D329
+        case 10: ccPan_[trackIndex] = e.value * 2.0f - 1.0f; break;         // D330
+        case 101: rpnMsb_[trackIndex] = static_cast<uint8_t>(brut); break;  // D331
+        case 100: rpnLsb_[trackIndex] = static_cast<uint8_t>(brut); break;
+        case 6:
+            if (rpnMsb_[trackIndex] == 0 && rpnLsb_[trackIndex] == 0) bendRange_[trackIndex] = static_cast<float>(brut);
+            break;
+        case 38:
+            if (rpnMsb_[trackIndex] == 0 && rpnLsb_[trackIndex] == 0)
+                bendRange_[trackIndex] = std::floor(bendRange_[trackIndex]) + static_cast<float>(brut) / 100.0f;
+            break;
+        default: break;
+    }
 }
 
 void ProcessGraph::drainChasedControls() {
@@ -709,7 +735,7 @@ void ProcessGraph::emitControlOut(size_t trackIndex, uint8_t channel,
     switch (event.kind) {
         case K::PitchBend: {
             // Demi-tons vers 14 bits, l'inverse exact du planning (± 2 demi-tons).
-            const int brut = std::clamp(static_cast<int>(std::lround(event.value / kPitchBendRangeSemitones * 8192.0f)) + 8192, 0, 16383);
+            const int brut = std::clamp(static_cast<int>(std::lround(event.value / bendRange_[trackIndex] * 8192.0f)) + 8192, 0, 16383);   // D331
             emitMidiOut(trackIndex, event.sampleOffset, static_cast<uint8_t>(0xE0 | canal),
                         static_cast<uint8_t>(brut & 0x7F), static_cast<uint8_t>((brut >> 7) & 0x7F));
             break;
@@ -1397,8 +1423,13 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // sinon à chaque segment.
     if (sampleStart == 0 && (instrument != nullptr || externe)) {
         for (int i = 0; i < drainedChaseCount_; ++i) {
-            const ChasedControlEvent& chasse = drainedChase_[static_cast<size_t>(i)];
+            ChasedControlEvent chasse = drainedChase_[static_cast<size_t>(i)];
             if (chasse.trackIndex != trackIndex) continue;
+            // D331 : la chasse passe par les MÊMES tenues que le planning -- un
+            // morceau lancé à la mesure 40 a son volume, son panoramique et sa
+            // plage de pli (D329 les avait posées sur le seul planning : un
+            // départ en cours de morceau les manquait).
+            appliquerLesTenues(trackIndex, chasse.event);
             if (externe) emitControlOut(trackIndex, track.channel, chasse.event);   // D27.2
             if (interceptSustain(trackIndex, track.channel, chasse.event, events, numEvents)) {   // D25.1
                 if (instrument) instrument->handleControlEvent(chasse.event);   // les huit machines qui ont leur propre étouffoir le gardent
@@ -1551,7 +1582,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                 // instruments depuis la General MIDI.
                 controlEvent.kind = MidiControlEvent::Kind::PitchBend;
                 controlEvent.channel = data.channel;
-                controlEvent.value = static_cast<float>(data.value) / 8192.0f * kPitchBendRangeSemitones;
+                controlEvent.value = static_cast<float>(data.value) / 8192.0f;   // D331 : BRUT, converti par `appliquerLesTenues`
                 return Issue::Control;
             } else if constexpr (std::is_same_v<T, ControlChangeEvent>) {
                 controlEvent.kind = MidiControlEvent::Kind::ControlChange;
@@ -1590,19 +1621,11 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
-        } else if (issue == Issue::Control && controlEvent.kind == MidiControlEvent::Kind::ControlChange
-                   && controlEvent.index == 7 && (ccVolume_[trackIndex] = controlEvent.value, false)) {
-            // D329 : LE VOLUME DE CANAL (CC 7) EST TENU PAR LE GRAPHE. Aucune
-            // machine du parc ne le lit, et un fichier General MIDI écrit ses
-            // fondus ainsi depuis trente ans. Noté ici, appliqué au mixage,
-            // puis traité comme tout contrôleur (la virgule rend faux : on
-            // continue dans les branches suivantes, port et machine compris).
-        } else if (issue == Issue::Control && controlEvent.kind == MidiControlEvent::Kind::ControlChange
-                   && controlEvent.index == 10 && (ccPan_[trackIndex] = controlEvent.value * 2.0f - 1.0f, false)) {
-            // D330 : LE PANORAMIQUE MIDI (CC 10), même tenue que le CC 7. 64 est
-            // le centre (0), 0 la gauche (-1), 127 la droite (+1) ; il
-            // S'AJOUTE au potentiomètre de la tranche, borné à ±1 -- le
-            // fichier place, l'utilisateur corrige, et un CC absent ne change rien.
+        } else if (issue == Issue::Control && (appliquerLesTenues(trackIndex, controlEvent), false)) {
+            // D329-D331 : LES TENUES DU GRAPHE -- volume de canal (CC 7),
+            // panoramique (CC 10), plage de pli (RPN 0) -- notées ici, puis
+            // l'événement est traité comme tout contrôleur (la virgule rend
+            // faux : on continue dans les branches suivantes, port et machine).
         } else if (issue == Issue::Control && externe && (emitControlOut(trackIndex, track.channel, controlEvent), false)) {
             // D27.2 : déposé sur le port, puis traité comme avant (la virgule
             // rend faux : on continue dans les branches suivantes).

@@ -324,3 +324,61 @@ VSM_TEST(the_chase_leaves_a_track_alone_when_the_head_goes_back_to_zero) {
     graphe.seekSeconds(-1.0);
     VSM_ASSERT_EQ(graphe.droppedChasedControls(), uint64_t(0));
 }
+
+// D331 : LA PLAGE DE PLI (RPN 0) EST LUE PAR LE GRAPHE. Deux projets
+// identiques -- une note tenue, pli plein (+8191) à mi-parcours -- dont un
+// seul pose RPN 0 = 12 au tick 0. Sans RPN, le pli vaut ± 2 demi-tons (+12 %) ;
+// avec, une octave (× 2). Le rapport des deux hauteurs bendées vaut donc
+// 2 / 1,122 = 1,78 : on exige au moins 1,6, et le témoin à + 12 % au moins.
+// (Le premier essai mesurait sur `vsm.testtone`, qui IGNORE le pli -- rapport
+// 1,0, test rouge pour la mauvaise raison ; la machine est le Minimoog, celle
+// des autres tests de pli de ce fichier.)
+VSM_TEST(the_graph_reads_the_pitch_bend_range_from_rpn_0) {
+    vsm::audio::plugin::registerBuiltInPlugins();
+    auto projet = [](bool avecRpn) {
+        Project project;
+        project.ticksPerQuarterNote = 480;
+        Track track;
+        track.name = "Bend";
+        track.channel = 0;
+        uint64_t idCounter = 1;
+        track.addNote(0, 960, 69, 100, 0, idCounter);   // une blanche : 1 s à 120 BPM
+        if (avecRpn) {
+            track.controlChanges.push_back(CcPoint{0, 0, 101, 0});
+            track.controlChanges.push_back(CcPoint{0, 0, 100, 0});
+            track.controlChanges.push_back(CcPoint{0, 0, 6, 12});
+        }
+        track.pitchBends.push_back({480, 0, 8191});
+        project.tracks.push_back(track);
+        return project;
+    };
+    auto hauteurBendee = [&](bool avecRpn) {
+        ProcessGraph graph;
+        graph.prepare(48000.0, 512);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        graph.setProject(projet(avecRpn));
+        const auto rendu = OfflineRenderer::render(graph, 48000.0, 512, 1.0);
+        const size_t debut = static_cast<size_t>(0.6 * 48000.0), fin = static_cast<size_t>(0.95 * 48000.0);
+        std::vector<float> seconde(rendu.left.begin() + static_cast<long>(debut), rendu.left.begin() + static_cast<long>(fin));
+        return hauteurApprochee(seconde, 48000.0);
+    };
+    auto hauteurNue = [&]() {
+        ProcessGraph graph;
+        graph.prepare(48000.0, 512);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        Project sans = projet(false);
+        sans.tracks[0].pitchBends.clear();
+        graph.setProject(sans);
+        const auto rendu = OfflineRenderer::render(graph, 48000.0, 512, 1.0);
+        const size_t debut = static_cast<size_t>(0.6 * 48000.0), fin = static_cast<size_t>(0.95 * 48000.0);
+        std::vector<float> seconde(rendu.left.begin() + static_cast<long>(debut), rendu.left.begin() + static_cast<long>(fin));
+        return hauteurApprochee(seconde, 48000.0);
+    }();
+    const double deuxDemiTons = hauteurBendee(false), douzeDemiTons = hauteurBendee(true);
+    std::printf("      nue %.1f Hz, pli sans RPN %.1f Hz, pli avec RPN 0 = 12 : %.1f Hz\n",
+                hauteurNue, deuxDemiTons, douzeDemiTons);
+    VSM_ASSERT(hauteurNue > 50.0);
+    VSM_ASSERT(deuxDemiTons > hauteurNue * 1.05);          // le témoin : ± 2 demi-tons, comme avant
+    VSM_ASSERT(douzeDemiTons > deuxDemiTons * 1.6);        // l'octave : 1,78 attendu
+    VSM_ASSERT(douzeDemiTons < hauteurNue * 2.2);          // et pas plus qu'une octave
+}

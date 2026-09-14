@@ -2,6 +2,8 @@
 #include "vsm/sequencer/PlaybackScheduler.h"
 #include "vsm/sequencer/Project.h"
 #include <algorithm>
+#include <variant>
+#include <vector>
 
 using namespace vsm::sequencer;
 using vsm::midi::Tick;
@@ -463,4 +465,37 @@ VSM_TEST(a_note_pushed_out_of_range_is_dropped_and_counted_never_folded) {
             hauteurs.push_back(static_cast<int>(on->note));
     VSM_ASSERT_EQ(hauteurs.size(), size_t(1));
     VSM_ASSERT_EQ(hauteurs[0], 72);               // et surtout PAS 120 + 12 - 12 = 120
+}
+
+// D331 : LA PLAGE DE PLI SE CHASSE COMME UNE VALEUR. RPN 0 = 12 au tick 0,
+// puis RPN 1 (accord fin) = 64 au tick 100 : la chasse au tick 1000 émet le
+// triplet canonique (101 = 0, 100 = 0, 6 = 12) EN TÊTE des contrôleurs, et
+// aucun CC 6 nu -- « le dernier CC 6 » (64) appartenait à un autre paramètre.
+VSM_TEST(chase_emits_pitch_bend_range_as_canonical_rpn_triplet) {
+    using namespace vsm::sequencer;
+    using namespace vsm::midi;
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track track;
+    track.name = "Bend";
+    uint64_t idCounter = 1;
+    track.addNote(0, 4000, 60, 100, 0, idCounter);
+    track.controlChanges.push_back(CcPoint{0, 0, 101, 0});
+    track.controlChanges.push_back(CcPoint{0, 0, 100, 0});
+    track.controlChanges.push_back(CcPoint{0, 0, 6, 12});
+    track.controlChanges.push_back(CcPoint{100, 0, 101, 0});
+    track.controlChanges.push_back(CcPoint{100, 0, 100, 1});
+    track.controlChanges.push_back(CcPoint{100, 0, 6, 64});
+    track.controlChanges.push_back(CcPoint{200, 0, 7, 90});
+    project.tracks.push_back(track);
+
+    const auto chasse = PlaybackScheduler::chaseAt(project, 1000);
+    std::vector<std::pair<uint8_t, uint8_t>> ccs;   // (contrôleur, valeur), dans l'ordre émis
+    for (const auto& ev : chasse)
+        if (const auto* cc = std::get_if<ControlChangeEvent>(&ev.data)) ccs.push_back({cc->controller, cc->value});
+    VSM_ASSERT(ccs.size() == 4);
+    VSM_ASSERT(ccs[0].first == 101 && ccs[0].second == 0);
+    VSM_ASSERT(ccs[1].first == 100 && ccs[1].second == 0);
+    VSM_ASSERT(ccs[2].first == 6 && ccs[2].second == 12);
+    VSM_ASSERT(ccs[3].first == 7 && ccs[3].second == 90);
 }

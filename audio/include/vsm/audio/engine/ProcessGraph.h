@@ -604,6 +604,13 @@ private:
     std::array<float, kMaxTracks> autoVolume_{};
     std::array<float, kMaxTracks> ccVolume_{};   ///< D329 : volume de canal MIDI (CC 7), 0..1, 1 au repos
     std::array<float, kMaxTracks> ccPan_{};      ///< D330 : panoramique MIDI (CC 10), -1..1, 0 au repos -- s'AJOUTE au potentiomètre
+    std::array<uint8_t, kMaxTracks> rpnMsb_{};   ///< D331 : paramètre enregistré choisi (CC 101 / CC 100), 127 = aucun
+    std::array<uint8_t, kMaxTracks> rpnLsb_{};
+    std::array<float, kMaxTracks> bendRange_{};  ///< D331 : plage de pli en demi-tons (RPN 0), 2 au repos
+    /// D329-D331 : LES TENUES DU GRAPHE, sur tous les chemins (planning, chasse) :
+    /// note le CC 7, le CC 10, la sélection RPN et la plage de pli ; et convertit
+    /// un pli BRUT (-1..1) en demi-tons avec la plage de la piste.
+    void appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::MidiControlEvent& e);
     std::array<float, kMaxTracks> autoPan_{};
     std::array<std::array<float, kMaxSends>, kMaxTracks> autoSend_{};
     /// D30.4 : le trim d'entrée piloté, EN DÉCIBELS comme le réglage qu'il
