@@ -25819,3 +25819,25 @@ doublant de largeur. La façade grandit en hauteur — ce que D292 rend possible
 puisqu'elle ne s'étire plus et que le rack défile sous elle (D63). C'est une
 façade à la fois, une photo et une mesure à chaque fois, et la garde
 `tools/balayer-facades.sh` dit quand c'est fini : **0 / 63**.
+
+### Phase D295 — A42, première façade : le PSG sur deux rangées, 8 → 32 px (14/09/2026)
+
+**LE PLAN DE D294 APPLIQUÉ À LA PIRE.** `vsm.psg` : quatre sections en ligne
+(CHIP 4, SQUARE 4, NOISE 3, ENVELOPE 3 colonnes sur 14) deviennent deux rangées
+de deux (CHIP + SQUARE sur les rangées 0-3, NOISE + ENVELOPE sur les rangées
+4-7, chacune 7 colonnes), `gridRows` 4 → 8. Rien d'autre ne change : les
+commandes gardent leurs places dans leurs sections.
+
+**MESURÉ** (`VSM_MESURE_FACADE`, rack de 364 px, `VSM_GESTE_PISTE=machine:vsm.psg`) :
+
+| | avant (D294) | après |
+|---|---|---|
+| façade | 364 × 434 | 364 × 818 |
+| curseurs A D S R | **8 px** de large | **32 px** (cellule 32 × 250) |
+| plus petit élément de la façade | 8 px | **32 px** |
+
+La façade grandit de 434 à 818 px — ce que D292 rend acceptable : elle ne s'étire
+pas au-delà de son naturel, et elle défile sous le rack quand il est plus court
+(D63). Photo : CLOCK, BITS, VOLUME, WIDTH, VOICES, DETUNE, LEVEL, PERIOD, A D S R,
+tous lisibles. Les onze tests `panels` passent ; réglages de l'utilisateur intacts.
+**Reste 14 / 63** sous le plancher — `tools/balayer-facades.sh` tient le compte.

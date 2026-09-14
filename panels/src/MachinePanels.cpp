@@ -2826,13 +2826,17 @@ MachinePanel makePsg() {
     panel.sectionColour = "#1F2320";
     panel.textColour = "#D8E8D0";
     panel.knobColour = "#8FCB7A";
+    // D295 (A42) : DEUX RANGÉES DE SECTIONS, et non quatre côte à côte. Au rack
+    // de 364 px, ENVELOPE (3 colonnes sur 14) faisait 78 px pour quatre curseurs
+    // : 8 px chacun, mesuré (D294). Empilées, les sections doublent de largeur ;
+    // la façade grandit en hauteur, ce que D292 permet.
     panel.gridColumns = 14;
-    panel.gridRows = 4;
+    panel.gridRows = 8;
 
     PanelSection puce;
     puce.title = "CHIP";
     puce.accentColour = "#8FCB7A";
-    puce.column = 0; puce.row = 0; puce.columnSpan = 4; puce.rowSpan = 4;
+    puce.column = 0; puce.row = 0; puce.columnSpan = 7; puce.rowSpan = 4;
     puce.contentColumns = 2;
     puce.controls = {
         control("Clock", "CLOCK", S::LargeKnob, 0, 0, 1, 2),
@@ -2846,7 +2850,7 @@ MachinePanel makePsg() {
     PanelSection carre;
     carre.title = "SQUARE";
     carre.accentColour = "#7AB8CB";
-    carre.column = 4; carre.row = 0; carre.columnSpan = 4; carre.rowSpan = 4;
+    carre.column = 7; carre.row = 0; carre.columnSpan = 7; carre.rowSpan = 4;
     carre.contentColumns = 2;
     carre.controls = {
         control("Pulse Width", "WIDTH", S::Knob, 0, 0),
@@ -2857,7 +2861,7 @@ MachinePanel makePsg() {
     PanelSection bruit;
     bruit.title = "NOISE";
     bruit.accentColour = "#CB9A7A";
-    bruit.column = 8; bruit.row = 0; bruit.columnSpan = 3; bruit.rowSpan = 4;
+    bruit.column = 0; bruit.row = 4; bruit.columnSpan = 7; bruit.rowSpan = 4;
     bruit.contentColumns = 1;
     bruit.controls = {
         control("Noise Level", "LEVEL", S::Knob, 0, 0),
@@ -2867,7 +2871,7 @@ MachinePanel makePsg() {
     PanelSection env;
     env.title = "ENVELOPE";
     env.accentColour = "#8FCB7A";
-    env.column = 11; env.row = 0; env.columnSpan = 3; env.rowSpan = 4;
+    env.column = 7; env.row = 4; env.columnSpan = 7; env.rowSpan = 4;
     env.controls = {
         control("Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
