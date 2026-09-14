@@ -28,7 +28,7 @@ EventListComponent::EventListComponent() {
     titre_.setColour(juce::Label::textColourId, Palette::textPrimary);
     addAndMakeVisible(titre_);
 
-    filtre_.addItem(vsm::app::ui::tr(u8"Tout"), 1);   // D83
+    filtre_.addItem(vsm::app::ui::tr(u8"Tous"), 1);   // D83
     for (int k = 0; k < 6; ++k)
         filtre_.addItem(vsm::app::ui::tr(juce::String::fromUTF8(vsm::sequencer::eventKindLabel(static_cast<EventKind>(k)).c_str())),
                         k + 2);
@@ -98,7 +98,7 @@ void EventListComponent::retraduire() {
     // de renommer (D78) : JUCE rend 0 pour une entrée dont le texte a changé.
     for (const auto& c : kColonnes) table_.getHeader().setColumnName(c.id, tr(c.nom));
     const int choisie = filtre_.getSelectedId();
-    filtre_.changeItemText(1, tr(u8"Tout"));
+    filtre_.changeItemText(1, tr(u8"Tous"));
     for (int k = 0; k < 6; ++k)
         filtre_.changeItemText(k + 2, tr(juce::String::fromUTF8(
                                           vsm::sequencer::eventKindLabel(static_cast<EventKind>(k)).c_str())));

@@ -1327,6 +1327,10 @@ const Paire kAnglais[] = {
       "All channels" },
     { "Tout",
       "Fit" },
+    // D301 : « Tout » est « Fit » dans la barre du piano roll (tout ajuster) ;
+    // le filtre de la liste d'événements veut « All », donc sa propre clé.
+    { "Tous",
+      "All" },
     { "Tout désélectionner",
       "Select none" },
     { "Tout effacer",

@@ -5,6 +5,9 @@
 #include "PianoRollToolbar.h"
 #include "Langue.h"
 #include "VelocityLaneComponent.h"
+#include "UiScale.h"
+#include <cstdio>
+#include <cstdlib>
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 /// Assemble l'éditeur complet dans une seule fenêtre flottante : barre
@@ -99,6 +102,26 @@ public:
             pianoRoll_.repaint();
             if (onVelocityEdited) onVelocityEdited();
         };
+
+        // D301 : LA HAUTEUR DE LA LANE SE TIRE ET SE RETIENT, comme celle des
+        // trois docks (`dock.bas`). 110 reste le défaut : rien ne change là où
+        // tout tenait. La borne (le tiers de l'éditeur) s'applique dans
+        // resized(), à la valeur lue comme à celle qu'on tire.
+        hauteurDeLane_ = vsm::app::ui::UiScale::properties().getIntValue("pianoroll.lane", hauteurDeLane_);
+        addAndMakeVisible(poignee_);
+        poignee_.onDebut = [this] { laneBase_ = hauteurDeLane_; };
+        poignee_.onGlisse = [this](int delta) {
+            // Tirer vers le HAUT agrandit la lane (elle est en bas).
+            hauteurDeLane_ = std::max(kLanePlancher, laneBase_ - delta);
+            resized();
+        };
+        poignee_.onFin = [this] {
+            // On écrit la hauteur OBTENUE, pas celle qu'on a tirée : une valeur
+            // hors borne retenue reviendrait hors borne à la séance suivante.
+            hauteurDeLane_ = velocityLane_.getHeight();
+            vsm::app::ui::UiScale::properties().setValue("pianoroll.lane", hauteurDeLane_);
+            vsm::app::ui::UiScale::properties().saveIfNeeded();
+        };
     }
 
     /// Rafraîchit règle et barre d'outils (appelé quand la tête de lecture
@@ -163,9 +186,29 @@ public:
         // qu'un clavier se trouve sur un instrument, et c'est aussi l'endroit
         // où il ne coupe pas la lecture du piano roll en deux.
         if (clavier_.isVisible()) clavier_.setBounds(area.removeFromBottom(72).reduced(4, 2));
-        velocityLane_.setBounds(area.removeFromBottom(110));
+        // D301 : LA LANE EST BORNÉE AU TIERS DE CE QUI RESTE, poignée et règle
+        // déduites -- la grille des notes reçoit toujours au moins deux fois la
+        // lane. À 1366 × 768, la lane gardait ses 110 px et la grille en avait
+        // 58 : quatre rangées de notes sous une lane deux fois plus haute que
+        // ce qu'elle retouche. Plancher de 36 px pour que les barres se lisent,
+        // sauf quand le tiers lui-même passe dessous.
         ruler_.setBounds(area.removeFromTop(22));
+        const int disponible = std::max(0, area.getHeight() - kPoignee);
+        const int tiers = disponible / 3;
+        const int lane = std::min(hauteurDeLane_, tiers) < kLanePlancher
+                           ? std::min(kLanePlancher, tiers)
+                           : std::min(hauteurDeLane_, tiers);
+        velocityLane_.setBounds(area.removeFromBottom(lane));
+        poignee_.setBounds(area.removeFromBottom(kPoignee));
         pianoRoll_.setBounds(area);
+        // LE RELEVÉ DE BANC : la géométrie se lit, elle ne se devine pas sur la
+        // photo (VSM_PIANOROLL_ZONES=1).
+        static const bool releve = std::getenv("VSM_PIANOROLL_ZONES") != nullptr;
+        if (releve)
+            std::fprintf(stderr, "VSM_PIANOROLL_ZONES : panneau=%d barre=%d regle=%d notes=%d poignee=%d lane=%d clavier=%d etat=%d\n",
+                         getHeight(), vueBarre_.getHeight(), ruler_.getHeight(), pianoRoll_.getHeight(),
+                         kPoignee, velocityLane_.getHeight(),
+                         clavier_.isVisible() ? clavier_.getHeight() : 0, statusLabel_.getHeight());
     }
 
     /// D32.3 : montre ou cache le clavier à l'écran. Caché par défaut : le
@@ -231,6 +274,30 @@ public:
     }
 
 private:
+    /// D301 : la poignée entre la grille et la lane de vélocité -- même geste,
+    /// même dessin que les séparateurs des docks de la fenêtre unique.
+    class PoigneeDeLane : public juce::Component {
+    public:
+        PoigneeDeLane() { setMouseCursor(juce::MouseCursor::UpDownResizeCursor); }
+        std::function<void()> onDebut;
+        std::function<void(int)> onGlisse;  ///< delta vertical depuis le début du geste
+        std::function<void()> onFin;        ///< moment d'écrire la préférence
+        void mouseDown(const juce::MouseEvent&) override { if (onDebut) onDebut(); }
+        void mouseDrag(const juce::MouseEvent& e) override { if (onGlisse) onGlisse(e.getDistanceFromDragStartY()); }
+        void mouseUp(const juce::MouseEvent&) override { if (onFin) onFin(); }
+        void paint(juce::Graphics& g) override {
+            g.fillAll(juce::Colour(0xff232327));
+            g.setColour(juce::Colour(0xff3d3d44));
+            const auto c = getLocalBounds().toFloat();
+            g.fillRect(c.getX() + 4.0f, c.getCentreY() - 1.0f, c.getWidth() - 8.0f, 2.0f);
+        }
+    };
+    static constexpr int kPoignee = 6;        ///< D301 : la hauteur de la poignée
+    static constexpr int kLanePlancher = 36;  ///< D301 : sous quoi les barres ne se lisent plus
+    int hauteurDeLane_ = 110;                 ///< D301 : la hauteur voulue (préférence `pianoroll.lane`)
+    int laneBase_ = 0;                        ///< D301 : la hauteur au début du geste
+    PoigneeDeLane poignee_;
+
     vsm::midi::Tick derniereTeteRegle_ = -1;
     size_t derniersReperes_ = 0;
 

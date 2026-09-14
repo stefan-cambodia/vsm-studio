@@ -2101,7 +2101,9 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // referme au premier onglet ajouté. `getTabNames().indexOf` ne se trompe
     // pas d'un rang, et rend -1 si l'onglet n'existe pas, ce qui se dit.
     else if (nom == "liste" || nom == "tempo") {
-        const juce::String voulu = (nom == "liste") ? juce::String::fromUTF8(u8"Liste") : "Tempo";
+        // D301 : le libellé passe par tr(), comme l'onglet lui-même -- écrit en
+        // dur, « Liste » ne trouvait rien sous VSM_LANGUE=en (« List »).
+        const juce::String voulu = (nom == "liste") ? tr(u8"Liste") : tr("Tempo");
         const int rang = bottomTabs_.getTabNames().indexOf(voulu);
         if (rang < 0) std::fputs(("VSM_VUE : onglet introuvable — " + voulu.toStdString() + "\n").c_str(),
                                   stderr);

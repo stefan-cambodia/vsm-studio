@@ -25952,3 +25952,87 @@ ACCENT, `vsm.pcmhybrid` PARTIAL A / SAMPLE, `vsm.wavetable` WAVE / TABLE) ; le
 reste va de 19 à 70 px. **A42 est FERMÉE**, et la condition de la mesure — la
 largeur — est écrite dans la garde, pour que « 0 / 63 » ne redevienne pas une
 phrase sans condition.
+
+### Phase D301 — la lane de vélocité prenait plus de place que les notes (14/09/2026)
+
+**TROUVÉE EN REGARDANT L'APPLICATION EN MARCHE, à la taille d'écran de portable
+la plus répandue.** Le projet `children-c1-defaut` (10 pistes) ouvert sur le
+piano roll, fenêtre `VSM_TAILLE=1366x768`, en français puis en anglais : la
+barre d'outils prend ses deux cinquièmes (D61), la barre d'état ses 20 px, la
+règle ses 22, et **la lane de vélocité ses 110 px FIXES** — il reste **58 px à
+la grille des notes, quatre rangées** (F#1 à D#1). La lane, qui ne sert qu'à
+retoucher les notes qu'on voit, est presque deux fois plus haute que ce qu'elle
+retouche. À 1600 × 900 la grille en a 190 (onze rangées) pour 110 de lane ; à
+2117 × 1317, 660 pour 110. La règle de D61 — « l'éditeur est ce qu'on est venu
+voir » — plafonnait la barre et laissait la lane sans plafond.
+
+**Et la lane n'est pas réglable**, alors que Cubase, Live et FL laissent tirer
+la hauteur de leurs lanes de contrôleurs, et que tout volet de cette
+application se tire et se retient (les trois docks de la fenêtre unique, D16.8).
+
+**CE QUI EST FAIT.** Dans `PianoRollPanel::resized` :
+
+* **la lane est BORNÉE AU TIERS** de ce qui reste sous la barre d'outils, la
+  règle et la barre d'état (clavier d'écran déduit) : la grille des notes
+  reçoit toujours au moins **deux fois** la lane ; plancher de **36 px** pour que
+  les barres restent lisibles, sauf quand le tiers lui-même passe dessous ;
+* **une poignée** (`PoigneeDeLane`, 6 px, même dessin que les séparateurs des
+  docks) entre la grille et la lane : on la tire, la lane change de hauteur dans
+  les mêmes bornes, et la valeur est écrite dans les préférences
+  (`pianoroll.lane`) au relâcher — retenue d'une séance à l'autre, comme
+  `dock.bas` ;
+* la valeur par défaut reste 110 : **rien ne change là où tout tenait** ;
+* un relevé de banc, `VSM_PIANOROLL_ZONES=1`, imprime à chaque disposition les
+  hauteurs de la barre, de la règle, de la grille, de la lane, du clavier et de
+  l'état — la géométrie se LIT, elle ne se devine plus sur la photo.
+
+**ATTENDU, écrit avant la mesure** (relevé `VSM_PIANOROLL_ZONES`, projet
+`children-c1-defaut`, vue `pianoroll`, HOME de brouillon) :
+
+| # | cas | attendu |
+|---|---|---|
+| 1 | 1366 × 768, fr et en | grille ≥ 2 × lane, lane ≥ 36 px |
+| 2 | 1600 × 900, fr et en | grille ≥ 2 × lane, lane = 110 (le tiers est au-dessus) |
+| 3 | 2117 × 1317 (défaut) | grille et lane INCHANGÉES par rapport au binaire de D300 : lane 110 |
+| 4 | contrôle : préférence `pianoroll.lane` posée à 60 dans un HOME de brouillon | lane = 60 à 2117 × 1317 |
+| 5 | contrôle : préférence posée à 400 | lane bornée au tiers, pas 400 |
+
+La garde `tools/pianoroll-zones.sh` rejoue 1, 2, 3 et rend non nul dès qu'une
+grille est plus petite que deux fois sa lane.
+
+**AU PASSAGE, un verbe de banc qui ne parlait que français.** `VSM_VUE=liste`
+cherchait l'onglet par son libellé écrit en dur (« Liste ») : sous
+`VSM_LANGUE=en` l'onglet s'appelle « List », et le verbe rendait « onglet
+introuvable — Liste ». D32.2 avait remplacé un index par un nom pour ne plus se
+tromper d'onglet ; le nom devait passer par `tr()`, comme l'onglet lui-même.
+Corrigé ; `tempo` ne souffrait pas du défaut, le mot est le même dans les deux
+langues.
+
+**MESURÉ (binaire de 17:38, garde `tools/pianoroll-zones.sh`, six relevés).**
+
+| cas | notes | lane | attendu | verdict |
+|---|---|---|---|---|
+| 1366 × 768, fr | **110** (58 avant) | **54** (110 avant) | grille ≥ 2 × lane, lane ≥ 36 | tenu (110 ≥ 108) |
+| 1366 × 768, en | 110 | 54 | idem | tenu |
+| 1600 × 900, fr et en | 192 (190 avant) | **96** (110 avant) | « lane = 110 » | **la règle tient, mon chiffre était faux** : le tiers de 288 est 96, pas plus de 110 — l'attendu 2 supposait le tiers au-dessus de 110 sans l'avoir calculé |
+| 2117 × 1317 | 695 | 110 | inchangé | lane inchangée ; la grille perd les **6 px de la poignée** (701 → 695, valeur DÉRIVÉE : le binaire de D300 n'avait pas de relevé) |
+| préférence 60 | 745 | **60** | 60 | tenu |
+| préférence 400 | 537 | **268** | borné au tiers | tenu : (537 + 268) / 3 = 268 |
+
+Photos avant/après à 1366 × 768 : quatre rangées de notes (F#1-D#1) sous une
+lane de 110 → sept rangées (G#1-D1) sur une lane de 54, poignée entre les deux.
+Réglages de l'utilisateur intacts (`~/VintageSynthMidiStudio/*.settings` daté de
+12:29, avant la séance ; tout a tourné sous un HOME de brouillon).
+
+**ET UN SECOND DÉFAUT VU SUR LA PHOTO DU VERBE RÉPARÉ.** L'onglet *List* en
+anglais montre son filtre sur **« Fit »** : la liste d'événements et la barre du
+piano roll employaient la même clé « Tout », et la table de D73 la traduit une
+seule fois — « Fit », pour le bouton « tout ajuster ». Le filtre « tout » de la
+liste est « All ». Une clé à lui (« Tous » → « All ») ; le bouton garde la
+sienne. C'est le piège d'une table indexée par le mot français : deux sens du
+même mot n'y ont qu'une ligne, et l'inventaire de langue (D94, D150) ne peut pas
+le voir — il compte des clés traduites, pas des sens. Vérifié après recompilation par le
+relevé de textes (`VSM_TEXTES_LISTE`, VSM_LANGUE=en) : « liste : All », et le bouton
+de la barre toujours « Fit » ; l'inventaire de langue rend les mêmes comptes
+qu'avant (ECRAN 7, DOUBLONS 0). Garde `tools/pianoroll-zones.sh` rejouée sur le
+binaire de 17:54 : 6 relevés, 0 raté.
