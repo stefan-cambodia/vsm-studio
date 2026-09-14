@@ -5775,6 +5775,10 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
                               + " : " + juce::String(static_cast<int>(pistesLues))
                               + juce::String::fromUTF8(u8" piste(s) lue(s), découpée(s) par canal)")
                             : juce::String())
+                     + (Project::pistesDeConduite(parsed) > 0
+                            ? juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(Project::pistesDeConduite(parsed)))
+                              + juce::String::fromUTF8(u8" piste(s) de conduite (tempo, signature) sans événement de canal, non créée(s)")
+                            : juce::String())
                      + juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(dotees))
                      + juce::String::fromUTF8(u8" piste(s) dotée(s) d'une machine d'après General MIDI, dont ")
                      + juce::String(static_cast<int>(presets)) + juce::String::fromUTF8(u8" par la banque installée")

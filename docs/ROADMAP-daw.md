@@ -26400,7 +26400,35 @@ ses réglages ; c'est le cas 6 à l'envers, et il aurait fallu l'écrire avant.
 
 *Les huit réserves, lues* : « 1 borné » est l'**attaque** du preset — 0,00098 s
 sur FR3-Synth-Bass-1 (le SoundFont dit « instantané »), sous le plancher de
-0.001 s de `vsm.multisample` ; « 2 bornés », l'attaque et le relâchement
-(1,0 s ≤ 5 s, donc c'est l'attaque et une autre borne du profil). L'effet est
-nul à l'oreille — la machine borne à son plus court —, et la réserve reste dite
-parce que c'est la règle (D52), pas parce qu'elle change le son.
+0.001 s de `vsm.multisample` — effet nul ; « 2 bornés » (canaux 11, 13, 16 :
+FR3-Steel-Guitar), l'attaque ET le **relâchement : 25,0 s dans le preset**, plafond
+5 s de la machine — là, la queue de la corde est coupée à cinq secondes, ce qui
+s'entend sur une note tenue, et c'est le SoundFont qui dit 25 s. La réserve est
+dite parce que c'est la règle (D52) ; que l'installateur écrive un relâchement
+que la machine ne peut pas tenir est un défaut de l'installateur, nommé, non fait.
+
+### Phase D310 — les pistes de conduite d'un `.mid` devenaient des lignes vides (14/09/2026)
+
+**VUE EN OUVRANT `Jeff-Mills-The-Hacker…mid`** (format 1, 6 pistes) : deux lignes
+« (Aucun) » en tête, sans note ni clip — les pistes 0 et 1 du fichier ne portent
+que la signature (méta 0x58) et le tempo (méta 0x51), ce que la norme appelle
+la piste de conduite. Leur contenu est lu (carte de tempo, repères), et il leur
+restait une ligne vide, avec un fader, une tranche et un « (Aucun) » que le
+musicien doit comprendre puis supprimer. Cubase ne crée pas de piste pour elles.
+
+**CE QUI EST FAIT.** `Project::pistesDeConduite(parsed)` compte les pistes lues
+sans aucun événement de canal ; avec `unePisteParCanal` (l'ouverture et
+l'import), `fromParsedFile` ne les rend pas — après avoir pris leur tempo, leurs
+signatures et leurs repères ; sans l'option (projets, `vsm-render`), rien ne
+change, le rang compte. Le journal le dit : « 2 piste(s) de conduite (tempo,
+signature) sans événement de canal, non créée(s) ». Un test `core`.
+
+**ATTENDU** : *The Hacker* → **4 pistes** (6 lues), journal « 2 piste(s) de
+conduite … non créée(s) », statistiques `Pistes : 4`, notes inchangées
+(9 430) ; Children → toujours 16 (une seule piste lue, qui porte tout) ;
+`children-c1-defaut` → 10 ; tests `core` **336**.
+
+**MESURÉ (binaire de 19:52, tests `core` 336 verts).** *The Hacker* : « Ouvrir
+MIDI : 4 piste(s) … ; 2 piste(s) de conduite (tempo, signature) sans événement
+de canal, non créée(s) », `Pistes : 4`, `Notes : 9430` (inchangé) ; Children :
+16 pistes, 8 537 notes ; `children-c1-defaut` : 10 pistes. Attendus tenus.

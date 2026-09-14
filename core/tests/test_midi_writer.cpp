@@ -330,3 +330,17 @@ VSM_TEST(un_fichier_de_format_0_se_decoupe_en_une_piste_par_canal) {
     VSM_ASSERT_EQ(intact.tracks[0].name, std::string("Mixdown"));
     VSM_ASSERT_EQ(intact.tracks[0].notes.size(), static_cast<size_t>(1));
 }
+
+// D310 : une piste de conduite (tempo, signature seulement) ne devient pas une
+// ligne vide à l'ouverture ; sans l'option, elle reste une piste (le rang compte).
+VSM_TEST(une_piste_de_conduite_ne_devient_pas_une_ligne_vide_a_l_ouverture) {
+    auto bytes = buildTestSmf(480);                 // piste 0 : conducteur ; piste 1 : Bass
+    ParsedFile parsed = MidiFileParser::parse(bytes);
+    VSM_ASSERT_EQ(Project::pistesDeConduite(parsed), static_cast<size_t>(1));
+    const Project ouvert = Project::fromParsedFile(parsed, true);
+    VSM_ASSERT_EQ(ouvert.tracks.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(ouvert.tracks[0].name, std::string("Bass"));
+    VSM_ASSERT_NEAR(ouvert.tempoMap.bpmAt(0), 120.0, 0.001);   // le tempo du conducteur est bien lu
+    const Project telQuel = Project::fromParsedFile(parsed);
+    VSM_ASSERT_EQ(telQuel.tracks.size(), static_cast<size_t>(2));
+}

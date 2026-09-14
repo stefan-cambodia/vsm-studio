@@ -153,6 +153,12 @@ public:
     /// (project.json + arrangement.mid) apparient leurs pistes par rang, et un
     /// découpage silencieux y décalerait tout.
     static Project fromParsedFile(const midi::ParsedFile& parsed, bool unePisteParCanal = false);
+    /// D310 : combien de pistes lues sont de CONDUITE -- tempo, signature,
+    /// marqueurs, sans aucun événement de canal (note, contrôleur, programme,
+    /// pli, pression). Avec `unePisteParCanal`, `fromParsedFile` ne les rend
+    /// pas : leur contenu va au projet (carte de tempo, repères), pas à une
+    /// ligne vide « (Aucun) ». Sans l'option, rien ne change.
+    static std::size_t pistesDeConduite(const midi::ParsedFile& parsed);
     midi::ParsedFile toParsedFile() const;
 
     /// LE PROJET TEL QU'IL EST ARRANGÉ (D56.1) — ce que l'EXPORT écrit.

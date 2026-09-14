@@ -209,6 +209,27 @@ static std::vector<Track> decouperParCanal(Track&& piste) {
     return resultat;
 }
 
+static bool porteUnEvenementDeCanal(const ParsedTrack& piste) {
+    for (const auto& ev : piste.events) {
+        const bool canal = std::visit([](auto&& d) -> bool {
+            using T = std::decay_t<decltype(d)>;
+            return std::is_same_v<T, NoteOnEvent> || std::is_same_v<T, NoteOffEvent>
+                || std::is_same_v<T, ControlChangeEvent> || std::is_same_v<T, PitchBendEvent>
+                || std::is_same_v<T, PolyPressureEvent> || std::is_same_v<T, ChannelPressureEvent>
+                || std::is_same_v<T, ProgramChangeEvent>;
+        }, ev.data);
+        if (canal) return true;
+    }
+    return false;
+}
+
+std::size_t Project::pistesDeConduite(const ParsedFile& parsed) {
+    std::size_t n = 0;
+    for (const auto& piste : parsed.tracks)
+        if (!porteUnEvenementDeCanal(piste)) ++n;
+    return n;
+}
+
 Project Project::fromParsedFile(const ParsedFile& parsed, bool unePisteParCanal) {
     Project project;
     project.exportFormat = parsed.format;
@@ -341,6 +362,10 @@ Project Project::fromParsedFile(const ParsedFile& parsed, bool unePisteParCanal)
         // D305 : le découpage par canal précède la couleur, pour que chaque
         // piste issue d'un canal prenne la sienne dans l'ordre de la palette.
         std::vector<Track> pistes;
+        // D310 : une piste de conduite (tempo, signature, repères -- aucun
+        // événement de canal) a déjà donné ce qu'elle porte au projet ; à
+        // l'ouverture, elle ne devient pas une ligne vide.
+        if (unePisteParCanal && !porteUnEvenementDeCanal(parsedTrack)) continue;
         if (unePisteParCanal) pistes = decouperParCanal(std::move(track));
         else pistes.push_back(std::move(track));
         for (auto& piste : pistes) {
