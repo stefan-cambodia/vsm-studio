@@ -213,13 +213,23 @@ MainComponent::MainComponent()
     // lane retombe sur le morceau entier, comme avant.
     {
         auto fenetre = [this]() -> std::optional<vsm::app::ui::FenetreDeTemps> {
-            if (!arrangement_.isVisible()
-                || arrangement_.getWidth() <= std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth)
-                return std::nullopt;
-            return vsm::app::ui::FenetreDeTemps{
-                arrangement_.scrollTick(), arrangement_.pixelsPerTick(),
-                arrangement_.getScreenX() + std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth,
-                arrangement_.getWidth() - std::remove_reference_t<decltype(arrangement_)>::kHeaderWidth};
+            using Arr = std::remove_reference_t<decltype(arrangement_)>;
+            if (arrangement_.isVisible() && arrangement_.getWidth() > Arr::kHeaderWidth)
+                return vsm::app::ui::FenetreDeTemps{
+                    arrangement_.scrollTick(), arrangement_.pixelsPerTick(),
+                    arrangement_.getScreenX() + Arr::kHeaderWidth,
+                    arrangement_.getWidth() - Arr::kHeaderWidth};
+            // D326 : LE PIANO ROLL EN HAUT, LA LANE SOUS SES NOTES. « Le morceau
+            // entier quand l'arrangement est caché » (D286) mettait la mesure 1
+            // à 221 sous un piano roll qui montrait 1 à 9 ; Cubase pose ses lanes
+            // de contrôleur à la colonne des notes. L'origine est l'écran plus le
+            // clavier (62 px, 128 sur une batterie).
+            const int clavier = pianoRoll_.keyboardWidth();
+            if (pianoRoll_.isVisible() && pianoRoll_.getWidth() > clavier)
+                return vsm::app::ui::FenetreDeTemps{
+                    pianoRoll_.visibleStartTick(), pianoRoll_.pixelsPerTick(),
+                    pianoRoll_.getScreenX() + clavier, pianoRoll_.getWidth() - clavier};
+            return std::nullopt;
         };
         automation_.fenetreProvider = fenetre;
         midiCc_.fenetreProvider = fenetre;

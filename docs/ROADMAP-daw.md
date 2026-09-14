@@ -27145,3 +27145,44 @@ l'ambitus de deux notes donnait déjà 3 px par rang : l'attendu aurait dû dire
 côte à côte : la basse est une ligne, les points de batterie n'ont pas bougé.
 `VSM_PEINTURE` : 27,85 ms de médiane sur 20 passes à 2117 × 1317 (D315 en
 mesurait 27-28). Banc de fumée : 0 raté.
+
+### Phase D326 — sous le piano roll, les lanes du bas étalaient encore tout le morceau (15/09/2026)
+
+**VU À LA TAILLE DE L'UTILISATEUR**, onglet *Automation* sous le piano roll de
+`children-c3-plafond` : le piano roll montre les mesures 1 à 9, la lane numérote
+1 à 221 — la ligne où l'on pose un point d'automation n'a rien à voir avec la
+note qu'on voit au-dessus. D286 a aligné les trois lanes sur la fenêtre de
+l'ARRANGEMENT et a écrit : « quand l'arrangement est caché (le piano roll à sa
+place), aucune fenêtre : le morceau entier, comme avant ». C'était la règle
+d'hier, gardée faute de besoin ; le besoin est là — Cubase pose ses lanes de
+contrôleur SOUS le piano roll, à la même colonne que les notes.
+
+**CE QUI EST FAIT.** Le fournisseur de fenêtre des lanes lit le piano roll quand
+c'est lui qui est en haut : son premier tick visible, ses pixels par tick, son
+origine à l'écran plus la largeur de son clavier (62 px, 128 sur une piste de
+batterie). Le morceau entier reste la règle quand ni l'un ni l'autre n'est
+visible (panneaux flottants fermés, outils d'aperçu).
+
+**ATTENDU** (`tools/alignement-lanes.py`, celui de D286, la bande du haut prise
+dans le piano roll ; lecture lancée, photo à cinq secondes) : la colonne la plus
+ambre de la bande du piano roll et celle de la lane diffèrent d'**au plus 1 px**
+pour les trois onglets (avant : la lane étale 221 mesures, la tête y est à une
+autre colonne — mesuré d'abord) ; les numéros de mesure de la lane sont ceux du
+piano roll (1 à 9 sur la photo, pas 1 à 221) ; sous l'arrangement, D286 tient
+toujours (rejoué, 0 px) ; banc de fumée 0 raté.
+
+**MESURÉ** (`tools/alignement-lanes.py`, bande du haut y 210-900 dans le piano
+roll, bande de la lane y 1100-1310 ; lecture lancée, photo à cinq secondes) :
+
+| onglet, sous le piano roll | écart tête du piano roll / tête de la lane |
+|---|---|
+| avant (Automation) | **715 px** — lane à la colonne 31, piano roll à 746 |
+| Automation | **1 px** |
+| MIDI CC | **1 px** |
+| Tempo | **0 px** |
+| Tempo sous l'ARRANGEMENT (D286 rejoué) | **0 px** |
+
+Sur la photo, la lane numérote 1 à 12 sous le piano roll qui montre 1 à 9 : la
+lane occupe toute la largeur du dock, le piano roll s'arrête au rack, et les
+mesures communes sont à la même verticale — c'est la même règle que sous
+l'arrangement. Le manuel (§ 4) dit la règle à trois cas. Banc de fumée : 0 raté.
