@@ -1714,7 +1714,7 @@ void MainComponent::listClipsForCapture() {
             std::fputs((juce::String("VSM_CLIP : piste ") + juce::String(static_cast<int>(t))
                         + " \xc2\xab " + juce::String::fromUTF8(piste.name.c_str()) + " \xc2\xbb \xe2\x80\x94 clip #"
                         + juce::String(static_cast<int>(c.id))
-                        + " \xc2\xab " + juce::String::fromUTF8(c.name.c_str()) + " \xc2\xbb d\xc3\xa9but "
+                        + " \xc2\xab " + juce::String::fromUTF8(c.name.c_str()) + " \xc2\xbb d\xc3\xa9" "but "   // D333 : « \xa9b » se lisait comme UN échappement (dÛut)
                         + juce::String(static_cast<int>(c.startTick)) + " longueur "
                         + juce::String(static_cast<int>(c.length))
                         // D322 : la couleur du clip et celle de sa piste, pour que le relevé
@@ -10262,6 +10262,26 @@ bool MainComponent::materializeImplicitClips() {
         vsm::sequencer::Clip clip;
         clip.name = piste.name;
         clip.colorRgba = piste.colorRgba;
+        // D333 : LE CLIP D'UNE PISTE MIDI VA DE SA PREMIÈRE NOTE À SA DERNIÈRE,
+        // à la mesure près -- pas du tick 0 au bout du morceau. Children : seize
+        // pistes, seize rubans de la mesure 1 à la fin, quand le fichier dit
+        // que le canal 6 entre à la 138. Fenêtre et position confondues : le
+        // matériau ne bouge pas, le clip dit seulement où il est.
+        if (piste.kind == vsm::sequencer::Track::Kind::Midi && !piste.notes.empty()) {
+            const auto parMesure = std::max<vsm::midi::Tick>(
+                1, project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote));
+            vsm::midi::Tick premiere = piste.notes.front().startTick, derniere = 0;
+            for (const auto& n : piste.notes) {
+                premiere = std::min(premiere, n.startTick);
+                derniere = std::max(derniere, n.endTick);
+            }
+            const vsm::midi::Tick debut = (premiere / parMesure) * parMesure;
+            const vsm::midi::Tick fin = ((derniere + parMesure - 1) / parMesure) * parMesure;
+            clip.startTick = debut;
+            clip.sourceStart = debut;
+            clip.length = std::max<vsm::midi::Tick>(parMesure, fin - debut);
+            clip.sourceLength = clip.length;
+        }
         project_.ajouterClip(piste.clips, std::move(clip));   // D262
         cree = true;
     }

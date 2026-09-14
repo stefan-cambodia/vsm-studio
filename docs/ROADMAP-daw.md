@@ -27456,3 +27456,54 @@ déménagé dans `interchange` (`declarerLesControleursGM`), appelée par les de
 chemins — c'est le contrat de D21 (« les deux chemins rendent le même son »),
 et c'est l'export qui l'a rappelé, pas le test. Tests : audio **1 303**
 verts, interchange **300** verts, banc de fumée 0 raté. Manuel § 4.
+
+### Phase D333 — un MIDI ouvert donnait des clips de la mesure 1 à la fin, même pour une piste qui entre à la 138 (15/09/2026)
+
+**VU SUR `Children` À LA TAILLE DE L'UTILISATEUR** : seize clips, tous de la
+mesure 1 à la fin du morceau, seize rubans de couleur pleins — et, dans les
+quatorze premières mesures, deux seulement portent des notes. Le fichier dit
+où chaque partie ENTRE (canal 1 à la mesure 19, canal 2 à la 75, canal 6 à la
+138, canal 13 de la 35 à la 67), et l'arrangement le tait : un clip par piste,
+du tick 0 au bout (`materializeImplicitClips`, D45). Cubase fait de chaque
+piste importée une part du premier au dernier événement ; c'est la structure
+du morceau qui apparaît alors dans l'arrangement, sans ouvrir une note.
+
+**CE QUI EST FAIT.** Le clip implicite d'une piste MIDI commence à la mesure
+de sa première note et s'arrête à la fin de la mesure de sa dernière — fenêtre
+et position confondues (`sourceStart = startTick`, le matériau ne bouge pas) ;
+une piste audio garde son clip entier. Le relevé `VSM_CLIPS` écrivait
+« dÛut » : `"\xa9but"` se lisait comme UN échappement hexadécimal (`\xa9b`),
+corrigé.
+
+**ATTENDU** (`Children`, `VSM_CLIPS`, tpq 384, mesure de 1 536 ticks — les
+bornes calculées depuis le fichier par `mido`, pas par l'application) :
+
+| canal | début (mes.) | longueur (mes.) |
+|---|---|---|
+| 1 | 27 648 (19) | 293 376 (191) |
+| 2 | 113 664 (75) | 284 160 (185) |
+| 3 | 3 072 (3) | 319 488 (208) |
+| 6 | 210 432 (138) | 112 128 (73) |
+| 13 | 52 224 (35) | 50 688 (33) |
+| 16 | 101 376 (67) | 296 448 (193) |
+
+Les seize clips (avant : « début 0 longueur 0 » partout) ; `The Hacker`
+(pistes qui entrent à la mesure 1) : début 0, longueur finie ; le banc
+`tools/ouvrir-midi.sh` (8 verdicts) reste vert ; export MIDI du projet ouvert
+identique en notes à l'ouverture (multiensemble) ; banc de fumée 0 raté.
+
+**MESURÉ** (`VSM_CLIPS`, binaire de 01:42) : les **seize** clips de `Children`
+aux bornes calculées depuis le fichier, **au tick près** — canal 1 : 27 648 /
+293 376 ; canal 2 : 113 664 / 284 160 ; canal 3 : 3 072 / 319 488 ; canal 6 :
+210 432 / 112 128 ; canal 13 : 52 224 / 50 688 ; canal 16 : 101 376 /
+296 448 (et les dix autres, tous égaux à la table `mido`). `The Hacker` :
+pistes 1 et 2 début 0, longueur 63 360 ; pistes 3 et 4 début **5 376** et
+**15 360** — l'attendu disait « pistes qui entrent à la mesure 1 : début 0 »
+en supposant les quatre à la mesure 1, deux seulement y sont ; les deux
+autres entrent aux mesures 4 et 9, et le clip le dit désormais. Sur la photo
+de `Children` (mesures 1 à 14), deux clips au lieu de seize rubans : les
+canaux 3 et 12 entrent à la mesure 3, les autres plus tard — c'est la
+structure du morceau, lue sans ouvrir une note. Export MIDI du projet ouvert :
+**8 537 notes, multiensemble identique** (0 de différence, tpq 384 conservé) :
+borner le clip n'a déplacé aucune note. `tools/ouvrir-midi.sh` : 8 verdicts,
+0 raté. Banc de fumée : 0 raté. « dÛut » → « début » au relevé.
