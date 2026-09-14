@@ -5772,7 +5772,10 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         // journal disait « 1 piste lue, découpée par canal », ce qui est faux.
         const size_t conduite = Project::pistesDeConduite(parsed);
         const bool decoupe = project_.tracks.size() > pistesLues - conduite;
-        std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ")
+        // La ligne est ASSEMBLÉE puis écrite (D106) : l'inventaire de langue suit
+        // la variable jusqu'au terminal, là où une expression de douze lignes
+        // lui cachait sa destination.
+        const juce::String ligne = juce::String::fromUTF8(u8"Ouvrir MIDI : ")
                      + juce::String(static_cast<int>(project_.tracks.size()))
                      + juce::String::fromUTF8(u8" piste(s) — ") + fichier.getFileName()
                      + (decoupe
@@ -5787,7 +5790,8 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
                      + juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(dotees))
                      + juce::String::fromUTF8(u8" piste(s) dotée(s) d'une machine d'après General MIDI, dont ")
                      + juce::String(static_cast<int>(presets)) + juce::String::fromUTF8(u8" par la banque installée")
-                     + "\n").toRawUTF8(), stderr);
+                     + "\n";
+        std::fputs(ligne.toRawUTF8(), stderr);
         // D311 : UN FICHIER SANS RIEN À JOUER LE DIT. Ouvrir « audio.mid » -- une
         // piste de conduite, pas une note -- laissait un projet vide sous le
         // titre du fichier, sans un mot : le musicien cherchait ses pistes.
