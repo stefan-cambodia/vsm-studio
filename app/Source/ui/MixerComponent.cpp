@@ -38,7 +38,12 @@ void ChannelStrip::poserInfobulleDuNom() {
 ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
                             const std::vector<std::string>& sendNames)
     : track_(track), index_(index), sendNames_(sendNames) {
-    nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
+    // D308 : le MÊME nom de repli que la liste des pistes -- « Track », en dur et
+    // en anglais, faisait porter à une piste sans nom trois noms selon le volet.
+    nameLabel_.setText(track_.name.empty()
+                           ? vsm::app::ui::tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(index_) + 1))
+                           : juce::String::fromUTF8(track_.name.c_str()),
+                       juce::dontSendNotification);
     nameLabel_.setJustificationType(juce::Justification::centred);
     nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textPrimary);
     nameLabel_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));

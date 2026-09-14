@@ -26311,3 +26311,33 @@ textes (`VSM_TEXTES_LISTE`) lit « CPU 0.0% » et « -inf LUFS » sur la même c
 y compris sur le projet témoin qui joue à 8,7 % sur sa photo — ces deux libellés
 se relèvent AVANT que le transport ne tourne. Pour la lecture, la photo est la
 mesure, pas le relevé (la leçon de D149, dans l'autre sens).
+
+### Phase D308 — une piste sans nom portait trois noms selon le volet (14/09/2026)
+
+**VUE EN OUVRANT `thebells-juno-performance.mid`**, un autre fichier de
+l'utilisateur : format 0, une piste, **sans nom**. La photo la montre sous trois
+identités : **« Piste 1 »** dans la liste des pistes et au rack, **rien** dans
+l'en-tête de l'arrangement (le clip aussi est sans nom), et **« Track »** dans
+la console — un littéral anglais écrit en dur, que l'inventaire de langue ne
+compte pas parce qu'il est passé à `setText` sans `tr()` dans un fichier que
+A9 n'a pas relu à cet endroit. Trois volets, trois réponses à « comment
+s'appelle cette piste ».
+
+**CE QUI EST FAIT.** (1) À l'ouverture d'un `.mid`, une piste sans nom est
+nommée « Piste N » une fois pour toutes ; à l'import dans un projet, « <fichier>
+N » (pour ne pas se confondre avec une « Piste 1 » déjà là). (2) La console
+prend le même repli que la liste (`tr("Piste %1")`) et lit le nom en UTF-8. (3)
+L'en-tête de l'arrangement prend le même repli. Le repli reste là pour un
+projet écrit par un autre logiciel avec des pistes sans nom.
+
+**ATTENDU** : `thebells-juno-performance.mid` ouvert → relevé de textes : « Piste
+1 » dans la liste, la console et l'arrangement ; **0 « Track »** ; le clip
+s'appelle « Piste 1 ». `VSM_LANGUE=en` : « Track 1 » partout, et plus le
+« Track » nu.
+
+**MESURÉ (binaire de 19:20).** `thebells-juno-performance.mid` ouvert : relevé de
+textes **4 × « Piste 1 »** (liste, en-tête de l'arrangement, clip, console) et
+**0 « Track » nu** ; sous `VSM_LANGUE=en`, **4 × « Track 1 »** (le nom est posé
+dans la langue du moment, par `tr()`, comme `addTrack` depuis D107 — le premier
+binaire l'écrivait en français sous l'anglais, corrigé et remesuré). Photo : les
+trois volets disent le même nom. Manuel mis à jour (§ Importer / Ouvrir MIDI).

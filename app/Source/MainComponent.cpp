@@ -5742,6 +5742,13 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         const size_t pistesLues = parsed.tracks.size();
         oublierLesMachines();   // D76
         project_.title = fichier.getFileNameWithoutExtension().toStdString();
+        // D308 : UNE PISTE SANS NOM EN REÇOIT UN ICI, une fois pour tous les
+        // volets -- sinon la liste disait « Piste 1 », la console « Track » et
+        // l'arrangement rien du tout, pour la même piste.
+        for (size_t i = 0; i < project_.tracks.size(); ++i)
+            if (project_.tracks[i].name.empty())
+                project_.tracks[i].name = tr(u8"Piste %1")   // D107 : la langue du moment, comme addTrack
+                                              .replace("%1", juce::String(static_cast<int>(i) + 1)).toStdString();
         // D307 : les programmes General MIDI du fichier désignent les machines --
         // AVANT rebuildFromProject(), qui les fabrique d'après `instrumentId`.
         const size_t dotees = attribuerLesMachinesGM(project_, 0, "Ouvrir MIDI");
@@ -8327,6 +8334,9 @@ void MainComponent::importMidiIntoProject(const juce::File& file) {
     try {
         ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
         Project source = Project::fromParsedFile(parsed, true);   // D305 : par canal
+        for (size_t i = 0; i < source.tracks.size(); ++i)          // D308 : un nom, d'après le fichier
+            if (source.tracks[i].name.empty())
+                source.tracks[i].name = file.getFileNameWithoutExtension().toStdString() + " " + std::to_string(i + 1);
         attribuerLesMachinesGM(source, 0, "Importer un MIDI");      // D307
         beginProjectEdit(u8"Importer un MIDI");
         const auto bilan = vsm::sequencer::appendTracksFrom(project_, source, transport_.currentTick());

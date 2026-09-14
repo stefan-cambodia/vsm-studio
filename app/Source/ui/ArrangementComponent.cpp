@@ -1912,8 +1912,11 @@ void ArrangementComponent::paint(juce::Graphics& g) {
 
         g.setColour(Palette::textPrimary);
         g.setFont(juce::Font(juce::FontOptions(13.0f)));
-        g.drawText(juce::String(track.name), 24, y + 2, kHeaderWidth - 30,
-                    std::min(18, h - 2), juce::Justification::centredLeft);
+        // D308 : le MÊME repli que la liste et la console pour une piste sans nom.
+        g.drawText(track.name.empty()
+                       ? vsm::app::ui::tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(i) + 1))
+                       : juce::String::fromUTF8(track.name.c_str()),
+                   24, y + 2, kHeaderWidth - 30, std::min(18, h - 2), juce::Justification::centredLeft);
         // LA NATURE DE LA PISTE NE S'AFFICHE QUE SI LA PLACE EXISTE : sur une
         // piste pliée, le nom seul est ce qu'on est venu chercher.
         if (h >= 40) {
