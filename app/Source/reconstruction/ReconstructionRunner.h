@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "vsm/interchange/ReconstructionChain.h"
+#include "ProcessusDeChaine.h"
 #include <functional>
 #include <mutex>
 #include <vector>
@@ -76,7 +77,9 @@ private:
     std::atomic<bool> cancelled_{false};
     /// Le processus enfant. Touché par le thread de travail ; `cancel()` le
     /// tue depuis le thread UI, d'où le verrou.
-    std::unique_ptr<juce::ChildProcess> process_;
+    /// D339 : le processus de la chaîne dans son groupe -- lu sans bloquer,
+    /// arrêté en entier (demucs et rendus compris) à l'annulation et à la fermeture.
+    std::unique_ptr<ProcessusDeChaine> process_;
 };
 
 } // namespace vsm::app

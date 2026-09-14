@@ -1,4 +1,5 @@
 #include "ReconstructionRunner.h"
+#include <csignal>
 
 namespace vsm::app {
 
@@ -33,9 +34,11 @@ void ReconstructionRunner::start(const vsm::interchange::ReconstructionChain& ch
 }
 
 void ReconstructionRunner::cancel() {
+    // D339 : SIGTERM AU GROUPE, sans attendre ici (l'appelant est le thread de
+    // message) ; c'est `run()` qui constate l'arrêt, ou achève par SIGKILL.
     cancelled_.store(true);
     std::lock_guard<std::mutex> verrou(mutex_);
-    if (process_) process_->kill();
+    if (process_) process_->signalerLeGroupe(SIGTERM);
 }
 
 void ReconstructionRunner::handleLine(const juce::String& ligne) {
@@ -76,7 +79,7 @@ void ReconstructionRunner::run() {
     juce::StringArray commande;
     for (const auto& argument : arguments) commande.add(juce::String::fromUTF8(argument.c_str()));
 
-    auto enfant = std::make_unique<juce::ChildProcess>();
+    auto enfant = std::make_unique<ProcessusDeChaine>();
     // ON NE CHANGE PAS LE DOSSIER COURANT, et c'est un choix qu'il vaut mieux
     // écrire : `setAsCurrentWorkingDirectory` agit sur le PROCESSUS ENTIER, et
     // depuis un thread de fond, pendant que l'utilisateur ouvre un sélecteur de
@@ -88,8 +91,7 @@ void ReconstructionRunner::run() {
     // `vsm-render` en remontant depuis `__file__`, pas depuis le dossier
     // courant. Tous les chemins qu'on lui passe sont absolus. Vérifié en
     // lançant la chaîne depuis un autre dossier.
-    const bool demarre = enfant->start(commande, juce::ChildProcess::wantStdOut
-                                                  | juce::ChildProcess::wantStdErr);
+    const bool demarre = enfant->demarrer(commande);
     if (!demarre) {
         juce::MessageManager::callAsync([this] {
             if (onFinished)
@@ -107,16 +109,18 @@ void ReconstructionRunner::run() {
     // afficher d'un coup reviendrait à ne rien afficher : la chaîne dure
     // plusieurs minutes, et c'est exactement pendant ces minutes-là qu'on a
     // besoin de savoir qu'elle avance.
+    // D339 : `lire` attend 50 ms au plus (poll), jamais un tube qu'un
+    // petit-enfant tient ouvert ; la fin du flux (-1) vient quand TOUS les
+    // détenteurs ont fermé, la fin du chef se lit par `enVie()`.
     juce::String reste;
     char tampon[4096];
-    while (!threadShouldExit()) {
-        juce::ChildProcess* processus = nullptr;
-        {
-            std::lock_guard<std::mutex> verrou(mutex_);
-            processus = process_.get();
-        }
-        if (processus == nullptr) break;
-        const int lus = processus->readProcessOutput(tampon, sizeof(tampon));
+    ProcessusDeChaine* processus = nullptr;
+    {
+        std::lock_guard<std::mutex> verrou(mutex_);
+        processus = process_.get();
+    }
+    while (processus != nullptr && !threadShouldExit() && !cancelled_.load()) {
+        const int lus = processus->lire(tampon, sizeof(tampon), 50);
         if (lus > 0) {
             reste += juce::String::fromUTF8(tampon, lus);
             int fin;
@@ -125,10 +129,10 @@ void ReconstructionRunner::run() {
                 reste = reste.substring(fin + 1);
             }
             publish();
-        } else if (!processus->isRunning()) {
-            break;
-        } else {
-            wait(50);
+        } else if (lus < 0) {
+            break;   // tube fermé par tous : la chaîne et ses enfants ont fini
+        } else if (!processus->enVie()) {
+            break;   // le chef est mort sans fermer le tube : un rendu orphelin le tient
         }
     }
     if (!reste.isEmpty()) { handleLine(reste); publish(); }
@@ -137,8 +141,10 @@ void ReconstructionRunner::run() {
     {
         std::lock_guard<std::mutex> verrou(mutex_);
         if (process_) {
-            process_->waitForProcessToFinish(5000);
-            code = process_->getExitCode();
+            // Annulation ou fermeture : le GROUPE entier s'arrête, SIGTERM puis
+            // SIGKILL après deux secondes -- demucs et les rendus compris.
+            if (process_->enVie()) process_->terminer(2000);
+            code = process_->codeDeSortie();
         }
         process_.reset();
     }

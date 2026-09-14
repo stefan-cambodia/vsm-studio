@@ -45,6 +45,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/Langue.cpp
     Source/plugins/PluginScanner.cpp
     Source/reconstruction/ReconstructionRunner.cpp
+    Source/reconstruction/ProcessusDeChaine.cpp
     Source/reconstruction/ClipTranscriber.cpp
     Source/project/AutosaveService.cpp
     Source/ui/ReconstructionWindow.cpp
@@ -389,6 +390,7 @@ target_sources(vsm-ui-preview PRIVATE
     Source/ui/UiScale.cpp
     Source/ui/Langue.cpp
     Source/reconstruction/ReconstructionRunner.cpp
+    Source/reconstruction/ProcessusDeChaine.cpp
     Source/reconstruction/ClipTranscriber.cpp
 )
 target_compile_definitions(vsm-ui-preview PRIVATE

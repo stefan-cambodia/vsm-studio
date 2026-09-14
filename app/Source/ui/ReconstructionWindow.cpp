@@ -17,7 +17,10 @@ ReconstructionWindow::ReconstructionWindow() {
     // LE JOURNAL EST EN LECTURE SEULE ET SÉLECTIONNABLE : quand la chaîne
     // échoue, la ligne qui l'explique doit pouvoir être COPIÉE, pas recopiée à
     // la main dans un rapport de bug.
-    journal_.setMultiLine(true, false);
+    // D339 : LES LIGNES SE REPLIENT. Sans repli, la ligne la plus longue (une
+    // mise en garde de demucs, 200 caractères) faisait défiler l'éditeur vers
+    // son bout, et toutes les lignes se lisaient coupées à gauche.
+    journal_.setMultiLine(true, true);
     journal_.setReadOnly(true);
     journal_.setScrollbarsShown(true);
     journal_.setCaretVisible(false);

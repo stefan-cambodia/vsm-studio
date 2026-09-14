@@ -27787,3 +27787,62 @@ zoom ». **Reste nommé, non fait** : au zoom vertical à la souris sous 15 px,
 les étiquettes des do débordent sur la touche noire au-dessus ; Cubase les
 efface au-delà d'un seuil, ce qui vaudrait pour des rangs sous 8 px — non
 mesuré, aucun banc ne zoome à la molette.
+
+### Phase D339 — la fenêtre « Reconstruction » restait à « Démarrage... », « Annuler » ne coupait pas demucs, et quitter pendant la séparation faisait avorter l'application (15/09/2026)
+
+**D'OÙ ELLE VIENT — LA FENÊTRE JAMAIS PHOTOGRAPHIÉE (« nommé ce soir, non
+fait », 14/09).** Un wav de quatre secondes, `VSM_FICHIER` et le menu
+« Reconstruire un morceau... », la photo par `VSM_CAPTURE_PANNEAUX` : au bout
+de **25 s**, la chaîne était à l'étape 3 (57 machines candidates, des rendus
+`vsm-render` en cours) et la fenêtre disait encore **« Démarrage... »**, journal
+vide. Et la course à 12 s — pendant la séparation — s'est terminée sur
+**« !! killing thread by force !! », « terminate called without an active
+exception », code 134** : l'application avortait en quittant.
+
+**LA CAUSE, UNE SEULE, DANS `juce::ChildProcess` (JUCE 8).** Sa lecture passe
+par `fread(dest, 1, 4096, …)`, qui BLOQUE jusqu'à 4 096 octets ou la fin du
+flux : la chaîne n'en écrit pas autant en 25 s, donc rien n'arrivait à la
+fenêtre. Son `kill()` envoie SIGKILL au seul enfant direct (`python`) : demucs
+et les rendus — des PETITS-ENFANTS, qui héritent du tube — continuaient
+seuls, et tenaient le tube ouvert ; le thread de lecture restait dans `fread`,
+`stopThread(4000)` le tuait de force, et la destruction d'un thread tué de
+force finit en `std::terminate`. Le bouton « Annuler » avait le même défaut
+sans le crash : `python` mourait, demucs finissait la séparation pour rien.
+
+**CE QUI EST FAIT.** `ProcessusDeChaine` (`app/Source/reconstruction/`) :
+`fork`, `setpgid(0, 0)` dans l'enfant — il devient chef de son groupe —,
+sortie et erreur dans un tube lu par `poll` (50 ms au plus) puis `read`, qui
+rend ce qui est LÀ ; l'arrêt est `kill(-pgid, SIGTERM)`, puis SIGKILL au
+groupe si le chef vit encore après deux secondes. Le `ReconstructionRunner`
+l'emploie : « Annuler » envoie SIGTERM au groupe sans attendre (c'est le thread
+de message), `run()` constate la fin ou achève ; à la fermeture, le
+destructeur fait de même sous les quatre secondes de `stopThread`. Et le
+journal de la fenêtre **replie ses lignes** (`setMultiLine(true, true)`) : sans
+repli, une mise en garde de demucs de 200 caractères faisait défiler
+l'éditeur vers son bout et toutes les lignes se lisaient coupées à gauche.
+
+**ATTENDU** (écrit avant la mesure ; wav de 4 s, `VSM_MENU`, quitter par la
+capture à 12 s puis à 25 s) : code de sortie **0** aux deux délais, **0**
+« killing thread by force », **0** « terminate » ; **0** processus
+`reconstruire.py` / demucs / `vsm-render` vivant après la sortie (relevé par
+un script fichier, jamais `pgrep -f` en ligne) ; la fenêtre dit l'ÉTAPE en
+cours (« Étape 2 sur 5 » pendant la séparation, « Étape 3 sur 5 » à 25 s) et
+son journal se lit depuis le début de ligne. Témoin : le binaire de 02:38,
+même geste. Banc de fumée 0 raté.
+
+**MESURÉ** (binaire de 03:03 contre celui de 02:38) :
+
+| mesure | avant | après |
+|---|---|---|
+| quitter à 12 s (séparation en cours) | **code 134**, « killing thread by force », `terminate` | **code 0**, 0, 0 |
+| quitter à 25 s (rendus en cours) | code 0, mais un `vsm-render` orphelin vivant après la sortie | code 0, **0 orphelin** |
+| fenêtre à 12 s | « Démarrage... » | **« Étape 2 sur 5 — Séparation en stems (htdemucs_6s) »** |
+| fenêtre à 25 s | « Démarrage... », journal vide | **« Étape 3 sur 5 — 57 machine(s) candidate(s) »**, journal de la chaîne (lecture, séparation, barres de demucs) |
+| journal | lignes coupées à gauche (défilé vers le bout de la plus longue) | repliées, lisibles depuis leur début |
+
+Attendu tenu. Banc de fumée 0 raté. Manuel : § 6. **Reste nommé, non fait** :
+fermer l'application pendant une reconstruction l'interrompt sans poser la
+question (Cubase demande) — la boîte « quitter ? » ne parle que du projet
+modifié ; et aucun banc ne presse « Annuler » lui-même (`VSM_CLIC` prend le
+premier « Annuler » de l'application, celui du piano roll), c'est le
+destructeur qui exerce le même arrêt de groupe.

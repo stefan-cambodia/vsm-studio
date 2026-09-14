@@ -774,6 +774,13 @@ Chaque étape s'affiche et **l'opération s'annule**. Le journal dit ce qui a é
 
 Si Python n'est pas installé, la fonction est **grisée avec sa raison**, jamais une erreur au milieu du travail. Le dossier de la chaîne d'analyse se désigne dans les préférences, qui disent `Prête.` quand elle est utilisable.
 
+**Annuler arrête tout, fermer aussi.** La chaîne tourne dans son propre groupe
+de processus : *Annuler* l'arrête en entier — la séparation et les rendus
+compris, pas seulement le script qui les lance —, et fermer l'application
+pendant une reconstruction l'interrompt de la même façon, sans rien laisser
+tourner derrière. La fenêtre dit l'étape en cours et déroule le journal de la
+chaîne au fil de l'eau, lignes repliées.
+
 Ce que la chaîne ne fait pas : couper une piste. Elle mesure le morceau rendu **sans** chaque piste et le publie au rapport, mais garder ou couper reste une décision humaine.
 
 **Autant de pistes que le morceau a de parties.** Longtemps la chaîne rendait
