@@ -27029,3 +27029,60 @@ noms passent à 12 pt, et un rang plus court les borne toujours. Vu sur la photo
 colonne des touches et rectangles de notes côte à côte. Le master de la console
 (étiquettes LOW/MID/HIGH/COMP/RATIO/SAT/CEIL, 9,5 → 12 pt dans leur bande de
 12 px) se lit sans coupe sur la même photo.
+
+### Phase D324 — la tranche de console montrait « -200.0 ms » et « 0 dt » sans dire de quoi (15/09/2026)
+
+**VU SUR LA PHOTO DE D323**, en regardant la console : sous le potentiomètre de
+panoramique, deux cases « 0.0 ms » et « 0 dt ». Le trim, lui, dit « Trim 0.0 dB »
+depuis D135 — « rien ne distinguait le trim du volume, et un réglage qu'on prend
+pour un autre est pire qu'un réglage caché ». Les deux cases d'en dessous
+avaient gardé le nombre nu : l'infobulle disait « Décalage de la piste, en
+millisecondes » et « Transposition de la piste, en demi-tons », à qui laissait
+la souris dessus. Cubase et Live écrivent le nom du réglage dans la case.
+
+**CE QUI EST FAIT.** Les deux cases portent leur mot, traduit : « Délai -200.0
+ms » / « Delay -200.0 ms », « Transp. -48 dt » / « Transp. -48 st ». Le texte est
+redemandé au changement de langue, comme le trim.
+
+**ATTENDU** (projet `cdl` copié avec trim -24 dB, délai -200 ms, transposition
+-48 dt sur la première piste — les extrêmes, ceux qui prennent le plus de place ;
+relevé `VSM_TEXTES_LISTE`, photo de la console à la largeur par défaut de la
+tranche, 88 px) : les libellés relevés sont « Trim -24.0 dB », « Délai -200.0 ms »,
+« Transp. -48 dt » ; sur la photo, les trois tiennent dans leur case sans points
+de suspension ni écrasement visible ; en anglais (`VSM_LANGUE=en` s'il existe,
+sinon le menu), « Delay -200.0 ms » et « Transp. -48 st » ; inventaire de langue
+inchangé (ECRAN 7, DOUBLONS 0) ; banc de fumée 0 raté.
+
+**PREMIER BINAIRE : L'ATTENDU N'A PAS TENU À 88 PX, ET C'EST PIRE QU'AVANT.** Sur
+`cdl` (trois pistes, tranches étirées à 176 px), les six libellés relevés sont
+exactement ceux attendus, en français puis en anglais, et la photo les montre
+entiers. Mais l'attendu disait « à la largeur par défaut, 88 px », et il a fallu
+douze pistes (`children-c3-plafond`) dans une fenêtre de 1200 × 768 pour y
+descendre (`VSM_MIXER_ZONES : console=1048 px, 12 tranche(s) de 88 px`) : là,
+« Délai -200.… » et « Transp. -48 … » — le NOM avait mangé le NOMBRE, l'inverse
+de ce qu'on voulait, et le trim (« Trim -24.0 dB », D135) tenait à côté.
+
+**RÈGLE RÉÉCRITE : le mot quand la place existe, jamais au prix de la valeur.**
+La case mesure son texte avec sa propre police et sa propre largeur (celles de
+l'étiquette que le curseur pose sur sa barre), et `resized()` redemande le
+texte, puisque la largeur d'une tranche change avec la console. **Attendu
+corrigé** : à 176 px les six libellés avec leur mot ; à 88 px, aux extrêmes,
+« -200.0 ms » et « -48 dt » entiers, sans points de suspension — et « Délai
+0.0 ms » / « Transp. 0 dt » s'ils tiennent, sinon la valeur nue (mesuré, pas
+deviné).
+
+**MESURÉ** (troisième binaire — le deuxième, sans serrage, rendait la valeur
+nue partout à 88 px, même « 0.0 ms » : le mot ne tenait jamais) :
+
+| largeur de tranche | trim | délai (−200 / 0) | transposition (−48 / 0) |
+|---|---|---|---|
+| 176 px (`cdl`, 3 pistes) — fr | Trim -24.0 dB | Délai -200.0 ms | Transp. -48 dt |
+| 176 px — en (`VSM_LANGUE=en`) | Trim -24.0 dB | Delay -200.0 ms | Transp. -48 st |
+| 88 px (12 pistes, 1200 × 768) | Trim -24.0 dB / Trim 0.0 dB | **-200.0 ms** / **0.0 ms** | **-48 dt** / Transp. 0 dt |
+
+À 88 px, les valeurs sont entières (plus de points de suspension, photo) ; le
+mot « Transp. » tient à zéro, le mot « Délai » ne tient à aucune valeur — 11
+tranches sur 12 écrivent « Transp. 0 dt » et « 0.0 ms ». C'est la règle qui
+parle, pas un réglage à la main : le mot vaut moins que le nombre, et la
+tranche s'élargit quand la console a la place. Inventaire de langue : ECRAN 7,
+NU 0, SANS_PAIRE 0, DOUBLONS 0. Banc de fumée : 0 raté.

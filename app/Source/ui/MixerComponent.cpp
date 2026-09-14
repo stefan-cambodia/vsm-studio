@@ -35,6 +35,31 @@ void ChannelStrip::poserInfobulleDuNom() {
                                   .replace("%1", nom).replace("%2", membres_.joinIntoString(", ")));
 }
 
+// D324 : LE MOT QUAND LA PLACE EXISTE, JAMAIS AU PRIX DE LA VALEUR. À la largeur
+// plancher de la tranche (88 px), « Délai -200.0 ms » ne tient pas et la case
+// écrivait « Délai -200.… » : le nom avait mangé le nombre, l'inverse de ce
+// qu'on voulait. La case mesure son texte avec SA police et SA largeur (celles
+// de l'étiquette que le curseur pose sur sa barre) ; `resized()` redemande le
+// texte, puisque la largeur change avec la console.
+static juce::String texteQuiTient(juce::Slider& curseur, const juce::String& avecLeMot,
+                                  const juce::String& valeurSeule) {
+    if (curseur.getWidth() <= 0) return avecLeMot;   // pas encore disposé : on verra à `resized()`
+    for (auto* enfant : curseur.getChildren()) {
+        if (auto* etiquette = dynamic_cast<juce::Label*>(enfant)) {
+            const float dispo = static_cast<float>(etiquette->getWidth()
+                                                   - etiquette->getBorderSize().getLeftAndRight());
+            const float voulu = juce::GlyphArrangement::getStringWidth(etiquette->getFont(), avecLeMot);
+            // Le mot peut se SERRER un peu -- c'est ce que « Trim -24.0 dB » fait
+            // déjà à 88 px (D135), et cela se lit --, pas s'écraser : sous 80 %
+            // de sa largeur, on rend la valeur nue. Mesuré à 88 px : sans ce
+            // serrage, même « Délai 0.0 ms » restait un « 0.0 ms ».
+            constexpr float kSerrageMaximal = 0.8f;
+            return voulu * kSerrageMaximal <= dispo ? avecLeMot : valeurSeule;
+        }
+    }
+    return avecLeMot;
+}
+
 ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
                             const std::vector<std::string>& sendNames)
     : track_(track), index_(index), sendNames_(sendNames) {
@@ -153,8 +178,18 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     delay_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     delay_.setRange(-200.0, 200.0, 0.1);
     delay_.setDoubleClickReturnValue(true, 0.0);    // D25.3 : 0 ms
-    delay_.setTextValueSuffix(" ms");
+    // D324 : LE MOT DANS LA CASE, comme le trim (D135). « -200.0 ms » et « 0 dt »
+    // se lisaient sans qu'on sache de quoi ; l'infobulle le disait, à qui la
+    // demandait. Le mot se traduit ; `retraduire()` redemande le texte.
+    delay_.textFromValueFunction = [this](double v) {
+        const juce::String valeur = juce::String(v, 1) + " ms";
+        return texteQuiTient(delay_, tr(u8"Délai") + " " + valeur, valeur);
+    };
+    delay_.valueFromTextFunction = [](const juce::String& t) {
+        return t.retainCharacters("-0123456789.").getDoubleValue();
+    };
     delay_.setValue(track_.delayMs, juce::dontSendNotification);
+    delay_.updateText();
     delay_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
     delay_.onValueChange = [this] {
         track_.delayMs = delay_.getValue();
@@ -170,7 +205,16 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     transposition_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     transposition_.setRange(-48.0, 48.0, 1.0);
     transposition_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 demi-ton
-    transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);   // l'unité et l'infobulle : `retraduire()`
+    // « dt » est une abréviation FRANÇAISE (demi-ton) : l'anglais écrit « st ».
+    transposition_.textFromValueFunction = [this](double v) {
+        const juce::String valeur = juce::String(static_cast<int>(std::lround(v))) + tr(u8" dt");
+        return texteQuiTient(transposition_, tr(u8"Transp.") + " " + valeur, valeur);
+    };
+    transposition_.valueFromTextFunction = [](const juce::String& t) {
+        return t.retainCharacters("-0123456789").getDoubleValue();
+    };
+    transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);   // l'infobulle : `retraduire()`
+    transposition_.updateText();
     transposition_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
     transposition_.onValueChange = [this] {
         track_.transposeSemitones = static_cast<int>(transposition_.getValue());
@@ -272,8 +316,8 @@ void ChannelStrip::retraduire() {
                         u8"il fait ce que ferait le fader."));
     delay_.setTooltip(tr(u8"Décalage de la piste, en millisecondes. Négatif : elle sonne plus tôt. "
                          u8"Ne change pas la compensation de latence."));
-    // « dt » est une abréviation FRANÇAISE (demi-ton) : l'anglais écrit « st ».
-    transposition_.setTextValueSuffix(tr(u8" dt"));
+    delay_.updateText();            // D324 : « Délai » / « Delay »
+    transposition_.updateText();    // D324 : « dt » / « st »
     transposition_.setTooltip(tr(u8"Transposition de la piste, en demi-tons, appliquée À LA LECTURE : le "
                                  u8"matériau ne bouge pas, et le piano roll continue de montrer les notes "
                                  u8"écrites. Une note poussée hors de 0..127 ne sonne pas, et l'application "
@@ -338,6 +382,8 @@ void ChannelStrip::resized() {
     pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
     delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
     transposition_.setBounds(r.removeFromTop(18).reduced(4, 1));
+    delay_.updateText();            // D324 : le mot selon la largeur
+    transposition_.updateText();
 
     // Deux petits knobs de send (A/B).
     auto sendRow = r.removeFromTop(28);
