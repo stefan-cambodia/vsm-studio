@@ -25438,3 +25438,48 @@ maintenant, suivi compris.
 (`scrollToEnsureRowIsOnscreen`) ; elle court donc le long du bord bas. Centrer
 demanderait de calculer la ligne visible du haut à chaque changement, et rien ne
 le réclame encore.
+
+### Phase D285 — la tête de lecture se voit dans les trois lanes du bas (14/09/2026)
+
+**TROUVÉE PAR LES MÊMES PHOTOS** (lecture lancée, tête à la troisième mesure) :
+les onglets *Automation*, *MIDI CC* et *Tempo* n'avaient **aucun curseur**. La
+tête traversait l'arrangement au-dessus, et rien en dessous — on réglait une
+courbe sans savoir où l'on en était de ce qu'on entendait. Dans Cubase, chaque
+lane porte le curseur du projet ; c'est ce qui permet de lire une automation
+pendant qu'elle joue.
+
+**CE QUI EST FAIT.** `setPlayheadTick()` sur les trois lanes, appelé par la
+minuterie de la fenêtre avec le piano roll, le rack, l'arrangement et la liste
+(D284). Un trait ambre de deux pixels sur la hauteur de la zone d'édition, à
+`tickToX(tête)` — les trois lanes portent le morceau ENTIER sur leur largeur, le
+trait est donc à 1,3 % de la largeur à la troisième mesure d'un morceau de
+226 mesures, et il avance lentement ; c'est leur échelle, pas un défaut du
+trait. **Seules les deux colonnes qui changent se redessinent** (l'ancienne et la
+neuve, quatre pixels de large) : repeindre une lane de six cents points trente
+fois par seconde serait le piège de D169.
+
+**LE PREMIER ESSAI A ÉCHOUÉ, ET LA PHOTO L'A DIT.** Le trait était dessiné en fin
+de `paint()`, après les points — donc après le `return` du cas « aucun point sur
+cette piste ». La lane tempo, qui a toujours son point de départ, le montrait ;
+les deux autres, vides sur ce projet, non. Or une lane vide est exactement celle
+qu'on remplit en écoutant. Le dessin est devenu une méthode (`dessinerTete`),
+appelée avant ce `return` et en fin de `paint()`. Deuxième photo : le trait est
+dans les trois.
+
+**Le coût de cette phase n'a pas été le code.** La recompilation de
+`MainComponent.cpp` a été tuée deux fois par la garde mémoire de l'outil, à
+`-j 2` puis à `-j 1`, la campagne D282 et ses six rendus tournant à côté. Le
+remède — geler le groupe de processus de la campagne (`SIGSTOP`), compiler
+détaché à un travail, reprendre automatiquement (`SIGCONT`) en fin de build — a
+coûté 1 min 34 de gel à la campagne (11:36:50 → 11:38:24, écrit dans son
+journal) et rien d'autre ; il est dans `CLAUDE.md`.
+
+**VÉRIFIÉ** sur le projet réel, `VSM_VUE=sans-rapport,jouer,arrangement,<onglet>`,
+photo à cinq secondes, réglages de l'utilisateur intacts au `cmp`. Le manuel le
+dit au § 4.
+
+**Nommé, non fait** : les lanes ne partagent pas le zoom ni le défilement de
+l'arrangement (elles montrent tout le morceau, lui une fenêtre) ; un curseur
+commun rend l'écart visible, il ne le comble pas. Aligner les trois lanes sur la
+fenêtre de l'arrangement est une phase à part, et elle se mesurerait sur le
+geste (poser un point sous une note qu'on voit là-haut).

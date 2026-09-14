@@ -95,6 +95,15 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   tourne : une compilation JUCE à `-j 6` pendant une séparation demucs a été
   tuée par le manque de mémoire (05/09, 15 Go) — et c'est le build qui a
   été tué, pas la course, par chance. Tuer la course coûterait des heures.
+- Même à `-j 2`, puis à `-j 1`, une compilation de l'application PENDANT une
+  campagne a été tuée deux fois de suite (14/09, D285) — par la garde mémoire de
+  l'outil, sur `MainComponent.cpp` (12 000 lignes, plusieurs Go à compiler), avec
+  six rendus en parallèle à côté. Le remède qui a marché : GELER la campagne le
+  temps du build (`kill -STOP -- -<pgid>` sur le groupe de la course lancée par
+  `setsid`), lancer le build DÉTACHÉ (`setsid nohup bash -c 'cmake … ; kill -CONT
+  -- -<pgid>'`) pour que la reprise soit automatique même si l'on oublie, et
+  attendre par le journal du build. Un gel ne perd rien (SIGSTOP/SIGCONT) ; un
+  build tué à répétition perd une heure.
 - Le code de sortie d'un tube est celui de son DERNIER maillon : `cmake
   --build … | grep …` rend 0 même quand la compilation échoue, et l'on
   vérifie alors un ancien binaire en croyant vérifier le nouveau (payé deux

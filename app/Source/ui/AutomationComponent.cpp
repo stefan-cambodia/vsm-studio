@@ -310,6 +310,7 @@ void AutomationComponent::paint(juce::Graphics& g) {
         g.setColour(Palette::textSecondary.withAlpha(0.7f));
         g.drawText(vsm::app::ui::tr("Cliquez pour ajouter des points d'automation."), a,
                    juce::Justification::centred);
+        dessinerTete(g);
         return;
     }
 
@@ -337,6 +338,33 @@ void AutomationComponent::paint(juce::Graphics& g) {
         g.setColour(Palette::accentAmber);
         g.fillEllipse(x - kPointRadius, y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f);
     }
+    dessinerTete(g);
+}
+
+void AutomationComponent::dessinerTete(juce::Graphics& g) const {
+    // D285 : LA TÊTE DE LECTURE, par-dessus les points -- ET sur une lane
+    // vide : le premier essai la dessinait en fin de paint(), après le
+    // « return » du cas sans point, et la photo l'a montrée absente là où
+    // elle manque le plus (une lane qu'on va remplir en écoutant).
+    if (playheadTick_ >= 0 && playheadTick_ <= maxTick_) {
+        auto aire = editorArea();
+        const int x = tickToX(playheadTick_);
+        if (x >= aire.getX() && x <= aire.getRight()) {
+            g.setColour(Palette::accentAmber.withAlpha(0.9f));
+            g.fillRect(x, aire.getY(), 2, aire.getHeight());
+        }
+    }
+}
+
+void AutomationComponent::setPlayheadTick(vsm::audio::engine::Tick tick) {
+    if (tick == playheadTick_) return;
+    // SEULES LES DEUX COLONNES CHANGENT : l'ancienne et la neuve. Redessiner
+    // la lane entière trente fois par seconde se verrait sur une automation
+    // de six cents points (le piège de D169 : peindre ce qui n'a pas bougé).
+    const auto aire = editorArea();
+    for (const auto t : {playheadTick_, tick})
+        if (t >= 0 && t <= maxTick_) repaint(tickToX(t) - 1, aire.getY(), 4, aire.getHeight());
+    playheadTick_ = tick;
 }
 
 void AutomationComponent::resized() {

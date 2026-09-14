@@ -2767,6 +2767,9 @@ void MainComponent::timerCallback() {
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     arrangement_.setPlayheadTick(playhead);
     eventList_.setPlayheadTick(playhead, audioEngine_.processGraph().isPlaying());   // D284
+    automation_.setPlayheadTick(playhead);   // D285 : les trois lanes du bas aussi
+    midiCc_.setPlayheadTick(playhead);
+    tempoLane_.setPlayheadTick(playhead);
     // D21.4 : LA SIGNATURE SOUS LA TÊTE, pas celle du tick zéro -- mise à
     // jour seulement quand elle change, la barre n'a pas à se redessiner
     // trente fois par seconde.

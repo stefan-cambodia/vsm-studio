@@ -40,6 +40,9 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    /// D285 : LA TÊTE DE LECTURE SE VOIT DANS LA LANE, comme dans l'arrangement
+    /// et le piano roll -- un trait ambre, redessiné par colonne et non par lane.
+    void setPlayheadTick(vsm::midi::Tick tick);
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
@@ -79,6 +82,7 @@ private:
     int dragIndex_ = -1;
     bool dragged_ = false;
     vsm::midi::Tick maxTick_ = 1920 * 4;
+    vsm::midi::Tick playheadTick_ = -1;   // D285 : hors lane tant qu'aucun tick reçu
 
     static constexpr int kPointRadius = 5;
     /// D60 : 26 pixels sur une ligne, 42 quand l'aide en demande deux.

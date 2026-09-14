@@ -23,6 +23,9 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    /// D285 : LA TÊTE DE LECTURE SE VOIT DANS LA LANE, comme dans l'arrangement
+    /// et le piano roll -- un trait ambre, redessiné par colonne et non par lane.
+    void setPlayheadTick(vsm::audio::engine::Tick tick);
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
@@ -66,6 +69,7 @@ private:
     void commit();                  // reconstruit la lane sélectionnée + notifie
 
     juce::Rectangle<int> editorArea() const;
+    void dessinerTete(juce::Graphics& g) const;   // D285
     int   tickToX(vsm::audio::engine::Tick tick) const;
     vsm::audio::engine::Tick xToTick(int x) const;
     int   valueToY(float value) const;
@@ -90,6 +94,7 @@ private:
 
     int dragIndex_ = -1;
     vsm::audio::engine::Tick maxTick_ = 1920 * 4;
+    vsm::audio::engine::Tick playheadTick_ = -1;   // D285 : hors lane tant qu'aucun tick reçu
 
     static constexpr int kPointRadius = 5;
 };
