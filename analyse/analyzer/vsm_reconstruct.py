@@ -709,6 +709,7 @@ def write_reconstruction_report(
     partage: Optional[Sequence[Dict[str, object]]] = None,
     reverb: Optional[Dict[str, object]] = None,
     residuel: Optional[Dict[str, object]] = None,
+    coupure_basse: Optional[Sequence[Dict[str, object]]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -764,6 +765,12 @@ def write_reconstruction_report(
         # ajoutées, distance en l'état, motif d'arrêt. Absent sans l'option :
         # sans elle, le rapport est celui d'aujourd'hui.
         **({"residuel": residuel} if residuel else {}),
+        # LA COUPURE ADAPTÉE DU GRAVE DE LA BASSE (D282, `--coupure-basse-adaptee`) :
+        # par stem, la taille de la sonde, la note du centile et la coupure en
+        # hertz retenue — ou l'absence de coupure, dite. C'est la seule variable
+        # entre une course avec l'option et son témoin : sans elle au rapport,
+        # les deux ne se distingueraient que par leurs chiffres.
+        **({"coupureBasse": list(coupure_basse)} if coupure_basse else {}),
         # COMMENT LE MORCEAU SE PARTAGE ENTRE LES PISTES, en part d'énergie.
         #
         # C'EST LE CHIFFRE QUI A RENDU LE DÉFAUT VISIBLE, et il n'était nulle

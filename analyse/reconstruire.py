@@ -450,6 +450,11 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "modeleBasse": (getattr(args, "modele_basse", "") or None
                             if not (args.stems or args.sans_separation) else None),
             "stemsRepris": args.stems or None,
+            # D282 : la coupure adaptée du grave de la basse. Elle change les
+            # NOTES de la piste bass — deux rapports qui ne l'ont pas au même
+            # état ne se comparent pas. Faux pour toute course antérieure au
+            # 14/09/2026 ; la coupure retenue par stem est sous « coupureBasse ».
+            "coupureBasseAdaptee": bool(getattr(args, "coupure_basse_adaptee", False)),
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
@@ -801,6 +806,20 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "difficile à IMITER pour le parc. Gardée comme résultat négatif "
                               "chiffré. "
                               "Vide (le défaut) : la chaîne d'aujourd'hui, au bit près")
+    parseur.add_argument("--coupure-basse-adaptee", action="store_true",
+                         help="D281-D282 : avant de transcrire le stem « bass », lui RETIRER le "
+                              "grave que la séparation y empile sous la fondamentale (49,8 %% de "
+                              "l'énergie du stem sous 80 Hz, contre 5,2 %% dans la partie jouée, "
+                              "D280). La coupure est ADAPTÉE au morceau : une première transcription "
+                              "sans filtre dit où joue sa basse, et l'on coupe à 0,75 fois la "
+                              "fréquence du 20e centile de ce qu'elle trouve (analyzer/coupure_basse). "
+                              "Validée sur stem (D281) : +3,5 points de bonne hauteur sur la moitié du "
+                              "corpus qui ne l'avait pas réglée, octaves basses 26 → 9, mais 9 %% de "
+                              "notes justes perdues. Seule la TRANSCRIPTION voit le stem coupé : "
+                              "l'arbitrage et le réglage jugent contre le stem tel quel, pour que "
+                              "les distances restent comparables au témoin. La coupure retenue est "
+                              "dite au journal et inscrite au rapport (« coupureBasse »). Sans "
+                              "l'option : la chaîne d'aujourd'hui, au bit près")
     parseur.add_argument("--residuel", type=int, default=0, metavar="N",
                          help="LA BOUCLE RÉSIDUELLE (docs/CDC-separation-par-synthese.md), N "
                               "itérations au plus : la piste la plus sûre est rendue seule, "
@@ -933,6 +952,10 @@ class Contexte:
     # est connu : `deja_portees` sert à ne pas le refabriquer (CDC § 2.5).
     iteration: int = 0
     deja_portees: Optional[DejaPortees] = None
+    # CE QUE LES ÉTAPES ONT DÉCIDÉ ET QUE LE RAPPORT DOIT DIRE — la coupure de
+    # la basse (D282), par stem. Le seul champ que les étapes écrivent : une
+    # décision qui conditionne le résultat et ne serait nulle part sinon.
+    decisions: Dict[str, Any] = field(default_factory=dict)
 
     def options_de_rendu(self, nom: str, audio: np.ndarray) -> Dict[str, Any]:
         """Les réglages communs à tous les rendus hors ligne d'une piste :
@@ -1676,6 +1699,44 @@ def regler_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio: n
           f"{time.perf_counter()-depart:.0f} s) — {resume_des_axes(affine)}")
 
 
+def extraire_notes_basse_coupee(ctx: Contexte, nom: str, chemin: Path) -> List[StemNote]:
+    """D282 : les notes du stem de basse, transcrites APRÈS retrait du grave empilé.
+
+    La règle est celle de `analyzer/coupure_basse.py`, validée sur stem par D281
+    — la même, importée, pas recopiée : deux copies divergent toujours, et l'on
+    mesurerait alors autre chose que ce qui a validé.
+
+    Deux transcriptions : la SONDE (le stem tel quel, celle que la chaîne fait
+    aujourd'hui) dit où joue la basse de ce morceau ; la seconde lit le stem
+    coupé. Ce que la règle décide est DIT au journal et gardé pour le rapport
+    (`ctx.decisions["coupureBasse"]`) : c'est la seule variable entre une course
+    avec l'option et son témoin. Une sonde trop courte laisse le stem tel quel,
+    et le dit — jamais de filtre en silence.
+
+    Le fichier coupé va dans le dossier de travail (16 bits mono, comme l'outil
+    qui a validé : ~5 Mo pour 30 s, ~20 Mo pour quatre minutes), effacé avec lui.
+    """
+    from analyzer.coupure_basse import coupure_adaptee, passe_haut
+
+    sonde = extraire_notes(chemin)
+    coupure = coupure_adaptee(n.note for n in sonde)
+    decision = coupure.json()
+    decision["stem"] = nom
+    ctx.decisions.setdefault("coupureBasse", []).append(decision)
+    if not coupure.active:
+        print(f"      {nom:8s} : coupure adaptée — {coupure.dire()}")
+        return sonde
+    audio = charger_audio(chemin)
+    coupe = ctx.travail / f"{nom}-coupe-{coupure.hz:.0f}hz.wav"
+    ecrire_wav(coupe, [passe_haut(audio, float(SAMPLE_RATE), coupure.hz).astype(np.float32)])
+    notes = extraire_notes(coupe)
+    decision["notesSonde"] = len(sonde)
+    decision["notesApresCoupure"] = len(notes)
+    print(f"      {nom:8s} : coupure adaptée — {coupure.dire()} ; "
+          f"{len(sonde)} notes avant, {len(notes)} après")
+    return notes
+
+
 def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
                                 filtre=None) -> List[ResultatMelodique]:
     """Transcription, découpe en voix s'il y a lieu, puis recherche par voix.
@@ -1690,7 +1751,10 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
     poste coûteux, et il dit ce qu'il retire.
     """
     args = ctx.args
-    notes = extraire_notes(chemin)
+    if getattr(args, "coupure_basse_adaptee", False) and nom == "bass":
+        notes = extraire_notes_basse_coupee(ctx, nom, chemin)
+    else:
+        notes = extraire_notes(chemin)
     if not notes:
         print(f"      {nom:8s} : aucune note détectée, piste ignorée")
         return []
@@ -2950,6 +3014,7 @@ def chaine(args: argparse.Namespace) -> None:
             partage=partage,
             reverb=reverb,
             residuel=rapport_residuel,
+            coupure_basse=ctx.decisions.get("coupureBasse"),
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
                                     metric=args.metrique, iterations=args.iterations,

@@ -73,7 +73,13 @@ def charge_corpus(dossier: Path) -> CorpusCharge:
     if not noms:
         raise ValueError("le manifeste ne déclare aucune machine")
 
-    X, machines, patchs, augmentations = [], [], [], []
+    # B12 (INDEX) : les quatre listes reçoivent des tableaux, et mypy le
+    # demandait — le seul signalement de la suite, laissé en attente tant
+    # qu'une course tournait (on ne touche pas analyzer/ pendant une campagne).
+    X: list = []
+    machines: list = []
+    patchs: list = []
+    augmentations: list = []
     for index, machine in enumerate(noms):
         lots = sorted((dossier / machine).glob("lot-*.npz"))
         if not lots:

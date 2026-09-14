@@ -15,12 +15,14 @@ Le détail des mesures : docs/CDC-banc-synthetique.md § 2.4.
 
 Usage :
   analyse/.venv/bin/python -u analyse/banc_synthetique.py reconstruction/travail/s1-sec --sortie reconstruction/travail/s1-sec-banc
-      [--stems-vrais] [--rendus-paralleles 6] [--sans-course] [-- options supplémentaires de reconstruire.py]
+      [--stems-vrais | --stems-de LOT] [--rendus-paralleles 6] [--sans-course] [-- options supplémentaires de reconstruire.py]
 
 --stems-vrais donne à la chaîne les stems VRAIS regroupés (bass, drums, other)
 au lieu de la séparer : la variable devient la chaîne seule, et l'étage 1
-est marqué « non mesuré ». Reprenable : une course dont rapport.json existe
-n'est pas rejouée.
+est marqué « non mesuré ». --stems-de LOT reprend les stems SÉPARÉS d'un lot
+déjà couru (D282) : la séparation n'est pas repayée, et un A/B sur la suite
+de la chaîne a les mêmes stems des deux côtés. Reprenable : une course dont
+rapport.json existe n'est pas rejouée.
 """
 from __future__ import annotations
 
@@ -55,7 +57,22 @@ def courir(morceau: Path, dossier: Path, args: argparse.Namespace, reste: list) 
         return {"code": 0, "secondes": None, "saute": True, "commande": None}
     commande = [sys.executable, "-u", str(ICI / "reconstruire.py"), str(morceau / "morceau.wav"),
                 "--sortie", str(course), "--rendus-paralleles", str(args.rendus_paralleles)]
-    if args.stems_vrais:
+    if args.stems_de:
+        # LES STEMS D'UN LOT DÉJÀ SÉPARÉ (D282) : demucs est déterministe (les
+        # stems de basse de trois lots sont identiques au md5), refaire la
+        # séparation ne mesurerait rien de plus, et un A/B sur la suite de la
+        # chaîne veut les MÊMES stems des deux côtés. Le sous-dossier `stems/`
+        # seul : le dossier de travail porte aussi les résidus de la boucle
+        # (`residu-r1/stems/bass.wav`), qu'un `rglob` confondrait avec la basse.
+        source = Path(args.stems_de) / morceau.name / "stems-separes" / "stems"
+        if not any(source.glob("*.wav")):
+            print(f"[{heure()}] SANS STEMS {morceau.name} : rien dans {source}")
+            return {"code": 3, "secondes": None, "saute": False, "commande": None,
+                    "raison": f"aucun stem repris dans {source}"}
+        if not stems_separes.exists():
+            stems_separes.symlink_to(source.resolve(), target_is_directory=True)
+        commande += ["--stems", str(source)]
+    elif args.stems_vrais:
         groupes = dossier / "stems-vrais-groupes"
         groupes.mkdir(parents=True, exist_ok=True)
         verite = json.loads((morceau / "verite.json").read_text(encoding="utf-8"))
@@ -85,12 +102,20 @@ def main() -> int:
     ap.add_argument("--sortie", type=Path, required=True, help="dossier du banc (courses, mesures, rapport)")
     ap.add_argument("--stems-vrais", action="store_true",
                     help="donner à la chaîne les stems vrais regroupés au lieu de séparer")
+    ap.add_argument("--stems-de", default=None, metavar="LOT",
+                    help="D282 : reprendre les stems SÉPARÉS d'un lot déjà couru "
+                         "(<LOT>/morceau-*/stems-separes/stems) au lieu de séparer — les mêmes "
+                         "stems des deux côtés d'un A/B sur la suite de la chaîne, et la "
+                         "séparation n'est pas repayée. Un morceau sans stems là-bas n'est pas "
+                         "couru, et c'est dit")
     ap.add_argument("--rendus-paralleles", type=int, default=6)
     ap.add_argument("--sans-course", action="store_true", help="ne mesurer que les courses déjà faites")
     ap.add_argument("--moteur", default=None, help="chemin de vsm-render")
     args, reste = ap.parse_known_args()
     if reste and reste[0] == "--":
         reste = reste[1:]
+    if args.stems_de and args.stems_vrais:
+        ap.error("--stems-de et --stems-vrais s'excluent : les stems viennent d'un lot OU de la vérité")
 
     morceaux = sorted(d for d in args.morceaux.iterdir() if d.is_dir() and morceau_complet(d))
     incomplets = sorted(d.name for d in args.morceaux.iterdir() if d.is_dir() and d.name.startswith("morceau-")
@@ -101,7 +126,10 @@ def main() -> int:
         print(f"aucun morceau complet dans {args.morceaux}")
         return 1
     args.sortie.mkdir(parents=True, exist_ok=True)
-    print(f"[{heure()}] banc : {len(morceaux)} morceaux, chaîne {'sur stems vrais' if args.stems_vrais else 'avec séparation'}"
+    chaine = ("sur stems vrais" if args.stems_vrais
+              else f"sur les stems séparés de {args.stems_de}" if args.stems_de
+              else "avec séparation")
+    print(f"[{heure()}] banc : {len(morceaux)} morceaux, chaîne {chaine}"
           + (f", options {' '.join(reste)}" if reste else ""))
 
     courses: dict = {}
@@ -123,7 +151,8 @@ def main() -> int:
                 courses[morceau.name] = courir(morceau, dossier, args, reste)
                 if courses[morceau.name]["code"] != 0:
                     non_mesures.append({"morceau": morceau.name,
-                                        "raison": f"la chaîne a rendu le code {courses[morceau.name]['code']}"})
+                                        "raison": courses[morceau.name].get("raison")
+                                        or f"la chaîne a rendu le code {courses[morceau.name]['code']}"})
                     continue
             try:
                 mesure = mesurer_morceau(morceau, dossier / "course", dossier / "stems-separes", moteur,
@@ -156,6 +185,7 @@ def ecrire(args, reste, mesures, non_mesures, courses, moteur_identite, secondes
         "provenance": {
             "commit": commit_du_depot(), "date": datetime.now().isoformat(timespec="seconds"),
             "morceaux": str(args.morceaux), "stemsVrais": bool(args.stems_vrais),
+            "stemsDe": str(args.stems_de) if args.stems_de else None,
             "rendusParalleles": args.rendus_paralleles, "optionsChaine": list(reste),
             "chaineDefauts": "reconstruire.py sans autre option : htdemucs_6s, --parite, tout le parc",
             "moteur": moteur_identite, "secondes": secondes, "termine": final,

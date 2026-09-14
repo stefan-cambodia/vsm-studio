@@ -47,33 +47,19 @@ import soundfile as sf
 RACINE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RACINE / "analyse"))
 
+from analyzer.coupure_basse import (CENTILE as CENTILE_ADAPTE,  # noqa: E402
+                                    FACTEUR as FACTEUR_ADAPTE, SONDE_MINIMUM,
+                                    coupure_adaptee, passe_haut)
 from analyzer.synth_engine import midi_to_hz  # noqa: E402
 
 LOT = Path(os.environ.get("VSM_LOT", str(RACINE / "reconstruction/travail/r1f-13sep")))
 SRC = RACINE / "reconstruction/travail/s1-sec"
 TOLERANCE = 0.06
 COUPURE = 300.0
-# D281 : les deux nombres de la coupure adaptée. Ils ne se règlent pas (voir
-# coupure_adaptee) ; ils sont ici pour être imprimés dans l'en-tête du tableau.
-CENTILE_ADAPTE = 20.0
-FACTEUR_ADAPTE = 0.75
-SONDE_MINIMUM = 5   # sous cinq notes, int(n × 0,20) vaut 0 : le centile serait le minimum
-
-
-def passe_haut(x: np.ndarray, sr: float, coupure: float) -> np.ndarray:
-    """D280 : retire au stem ce que la séparation y a AJOUTÉ sous la fondamentale.
-
-    Mesuré le 13/09 sur neuf morceaux : la partie de basse jouée met 5,2 % de son
-    énergie sous 80 Hz (médiane), le stem séparé en met **49,8 %** — et jusqu'à
-    99 % sur un morceau dont la partie vraie n'en portait que 0,2 %. Un filtre ne
-    peut pas faire cela ; le modèle reconstruit sa sortie en y plaçant du grave
-    que la source n'a pas.
-    """
-    if coupure <= 0.0:
-        return x
-    X = np.fft.rfft(x)
-    f = np.fft.rfftfreq(len(x), 1.0 / sr)
-    return np.fft.irfft(np.where(f >= coupure, X, 0.0), n=len(x))
+# D281-D282 : la règle de la coupure adaptée — centile, facteur, plancher de la
+# sonde, mur spectral — vit dans `analyzer/coupure_basse.py`, où la CHAÎNE la
+# lit aussi (`--coupure-basse-adaptee`). Une règle, un endroit : ce que cet outil
+# valide sur stem est, à l'octet près, ce que la chaîne applique en course.
 
 
 def releve(x: np.ndarray, sr: float, gain_db: float) -> np.ndarray:
@@ -88,40 +74,6 @@ def releve(x: np.ndarray, sr: float, gain_db: float) -> np.ndarray:
     # NORMALISÉ SI ÇA DÉBORDE, et c'est dit : un signal écrêté ne transcrit pas ce
     # qu'on croit, et l'écrêtage se confondrait avec l'effet du relevé.
     return y / crete * 0.99 if crete > 0.99 else y
-
-
-def coupure_adaptee(evenements, facteur: float = FACTEUR_ADAPTE,
-                    centile: float = CENTILE_ADAPTE) -> tuple[int | None, float]:
-    """Où couper le grave de CE morceau, d'après ce que la transcription y trouve.
-
-    Rend (note MIDI du centile, coupure en Hz) — ou (None, 0.0) quand la sonde
-    est trop courte pour qu'un centile veuille dire quelque chose : l'appelant le
-    DIT, il ne filtre pas en silence.
-
-    D281 : une coupure FIXE a été réfutée (D280) — réglée à 60 Hz sur la moitié A,
-    elle fait perdre 2,3 points sur la moitié B, dont les basses jouent plus haut.
-    La bonne coupure dépend du REGISTRE du morceau, et le morceau sait le dire :
-    on transcrit une première fois sans filtre, et l'on coupe SOUS ce qu'on a
-    trouvé.
-
-    LE CENTILE PLUTÔT QUE LE MINIMUM, et le facteur 0,75 plutôt que 0,5 :
-      * D280 avait écrit « sous la note la plus grave » ; la règle a été changée
-        AVANT toute mesure, et la variante « minimum » n'a pas été lancée. La note
-        la plus grave écrite est justement celle qu'on soupçonne d'être une octave
-        trop bas — s'en servir pour placer la coupure la protégerait. Le 20ᵉ
-        centile résiste à quelques fausses notes sans monter trop haut — mais PAS
-        à plus de 20 % d'octaves basses sur un morceau : là, le centile tombe sur
-        une fausse note et la coupure la protège. C'est pourquoi la coupure de
-        chaque morceau est imprimée en regard de sa note vraie la plus grave ;
-      * 0,75 × f0 tombe entre la fondamentale (1,0) et son octave inférieure
-        (0,5), donc retire l'une sans toucher l'autre. C'est le seul point qui
-        sépare les deux, et il n'a pas été choisi par balayage.
-    """
-    hauteurs = sorted(int(e[2]) for e in evenements)
-    if len(hauteurs) < SONDE_MINIMUM:
-        return None, 0.0
-    note = hauteurs[min(len(hauteurs) - 1, int(len(hauteurs) * centile / 100.0))]
-    return note, facteur * midi_to_hz(note)
 
 
 @dataclass(frozen=True)
@@ -214,7 +166,8 @@ def mesurer(r: Reglage, tr: Transcripteur, morceaux: list[Path]) -> tuple[dict[s
             # morceau ; c'est celle du témoin, réemployée. La coupure s'en déduit,
             # puis on transcrit pour de bon.
             sonde = tr.brut(d.name, brut, sr) if r.gain_db == 0.0 else tr.transcrire(brut, sr)
-            note, coupure = coupure_adaptee(sonde)
+            decision = coupure_adaptee(int(e[2]) for e in sonde)
+            note, coupure = decision.note, decision.hz
             details.append(Morceau(
                 nom=d.name, sonde=len(sonde), note=note, coupure_hz=coupure,
                 vraies_sous=sum(1 for _, hv in vraies if midi_to_hz(hv) < coupure),

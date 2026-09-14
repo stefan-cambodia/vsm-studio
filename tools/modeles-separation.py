@@ -196,10 +196,10 @@ def main(argv: list[str]) -> int:
         for modele in par_modele:
             j = b = h = 0
             for morceau in mesurables:
-                chemin = stems_des_modeles(racine, morceau).get(modele)
-                if chemin is None:
+                stem_du_modele = stems_des_modeles(racine, morceau).get(modele)
+                if stem_du_modele is None:
                     continue
-                dj, db, dh = octaves(chemin, morceau)
+                dj, db, dh = octaves(stem_du_modele, morceau)
                 j += dj
                 b += db
                 h += dh

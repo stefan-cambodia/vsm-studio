@@ -25245,3 +25245,93 @@ fait (D257, D258, D270, D272, et la coupure fixe de D280). Ce n'est pas encore u
 option de la chaîne : il lui manque de savoir si perdre 9 % des notes justes pour
 gagner 3,5 points de justesse est un bon échange **pour la reconstruction**, et
 cela se mesure en bout de chaîne, pas sur un stem.
+
+### Phase D282 — la coupure adaptée EN BOUT DE CHAÎNE : l'attendu, écrit avant la course (14/09/2026)
+
+D281 s'arrête sur une question qu'un stem ne peut pas trancher : perdre 9 % des
+notes justes de la basse pour gagner 3,5 points de justesse, est-ce un bon
+échange **pour la reconstruction** ? Cette phase pose le dispositif qui y répond,
+et écrit l'attendu AVANT de lancer quoi que ce soit.
+
+**CE QUI EST ÉCRIT (code, tests, provenance) — sans que la chaîne d'aujourd'hui
+bouge d'un bit.**
+
+* **`analyzer/coupure_basse.py`** : la règle de D281 — sonde, 20ᵉ centile,
+  0,75 × f0, mur spectral, plancher de cinq notes — en UN endroit. L'outil qui l'a
+  validée (`tools/basse-aigu-releve.py`) et la chaîne l'importent tous deux : ce
+  que l'outil valide sur stem est, à l'octet près, ce que la chaîne applique.
+  L'outil refondu rejoue la moitié B à l'identique : témoin 326/151/26, adaptée
+  **265/137/9**, et la même table de coupures par morceau (55,1 · 61,8 · 58,3 ·
+  52,0 · 34,7 Hz).
+* **`reconstruire.py --coupure-basse-adaptee`** : avant de transcrire le stem
+  « bass », le grave est retiré sous la coupure que la sonde a désignée. **Seule
+  la transcription voit le stem coupé** : l'arbitrage, le réglage et le verdict
+  jugent contre le stem tel quel, pour que les distances restent comparables au
+  témoin (une cible filtrée serait une autre mesure). La décision est dite au
+  journal (« coupure adaptée — sonde de N notes, 20e centile = MIDI m (f Hz),
+  coupure à c Hz ; N notes avant, M après ») et inscrite au rapport sous
+  `coupureBasse` ; la provenance porte `coupureBasseAdaptee`. Sonde trop courte :
+  stem non filtré, et c'est dit. Sans l'option : la chaîne d'aujourd'hui, au bit
+  près — c'est ce que le test « sans_l_option_la_transcription_est_celle_d_aujourd_hui »
+  garde, par la fonction que la course appelle et un `Contexte` réel.
+* **`banc_synthetique.py --stems-de LOT`** : reprend les stems SÉPARÉS d'un lot
+  déjà couru (`<LOT>/morceau-*/stems-separes/stems`, jamais les résidus de la
+  boucle, dont la basse est homonyme). Demucs est déterministe — D281 l'a vérifié
+  au md5 sur trois lots —, refaire la séparation ne mesurerait rien de plus, et
+  un A/B sur la suite de la chaîne veut les MÊMES stems des deux côtés.
+* 14 tests neufs (`test_coupure_basse.py`), suite Python **205 verts**, ruff et
+  mypy propres — mypy l'était à deux signalements près, B12 (`vsm_classifier.py:76`,
+  laissé en attente tant qu'une course tournait) et `modeles-separation.py:199`,
+  fermés ici.
+
+**LE DISPOSITIF.** Deux courses du banc sur les dix morceaux de `s1-sec`, les
+stems séparés de `r1f-13sep` repris des deux côtés, **le même code, une seule
+variable** :
+
+```
+analyse/.venv/bin/python -u analyse/banc_synthetique.py reconstruction/travail/s1-sec \
+    --stems-de reconstruction/travail/r1f-13sep --sortie reconstruction/travail/d282-temoin \
+    --rendus-paralleles 6                                          # témoin
+analyse/.venv/bin/python -u analyse/banc_synthetique.py reconstruction/travail/s1-sec \
+    --stems-de reconstruction/travail/r1f-13sep --sortie reconstruction/travail/d282-coupure \
+    --rendus-paralleles 6 -- --coupure-basse-adaptee               # traité
+```
+
+Pourquoi un témoin NEUF plutôt que `r1f-13sep` : ce lot a couru avec
+`--residuel 1`, qui ajoute des pistes et triple le temps ; il n'est pas « le même
+code à une option près ». Sans boucle résiduelle ni séparation, une course
+coûte de l'ordre de cinq à quinze minutes par morceau — vingt courses, deux à
+quatre heures.
+
+**L'ATTENDU, écrit avant la première course, avec son contrôle** (la règle de
+D270). Les chiffres se lisent par `tools/bilan-coupure-basse.py d282-temoin
+d282-coupure`, qui apparie les notes de la piste `bass` du projet ÉCRIT à la
+vérité (±60 ms, comme D281), et lit les distances au rapport :
+
+| # | attendu | seuil | pourquoi ce seuil |
+|---|---|---|---|
+| 1 | **la distance de la piste `bass` baisse** | en médiane sur les dix morceaux, ET sur six morceaux au moins | une médiane seule cache un gain fait de deux morceaux |
+| 2 | **contrôle : la piste `bass` ne perd pas plus de 10 % de ses notes justes** | total sur les dix morceaux, traité ≥ 0,90 × témoin | c'est ce que la mesure sur stem a déjà montré perdre (9,3 %) ; au-delà, la chaîne ajoute une perte de son cru |
+| 3 | **la bonne hauteur de la piste `bass` monte** | justes / appariées, +3 points au moins sur le total | ce que le stem promettait (+3,5 sur B, +4,0 sur A) ; moins, et l'effet ne traverse pas la chaîne |
+| 4 | **la distance globale ne monte pas** | médiane des dix, traité ≤ témoin + 0,5 % | la basse est une piste : un gain qui coûte au mélange n'en est pas un |
+
+**Ce que chaque issue veut dire, décidé maintenant** :
+
+* 1, 2, 3 et 4 tenus : la règle devient une option recommandée de la chaîne, et
+  la phase suivante mesure si elle doit être le DÉFAUT — sur un morceau réel
+  (*B4 Wuz Then*), parce que ce corpus est synthétique et que D274 a montré
+  qu'un stem « meilleur » peut donner une reconstruction pire ;
+* 2 tombe : la règle est REFUSÉE telle quelle pour la chaîne — elle casse plus
+  qu'elle ne répare une fois les notes rendues ; son revers (D281) était le vrai
+  chiffre ;
+* 3 tenu mais 1 tombe : l'octave de la basse n'est pas ce que la distance voit
+  (la leçon de D261 et D274, encore) — la règle est juste pour le piano roll, pas
+  pour la métrique, et cela s'écrit tel quel plutôt que de retordre l'attendu ;
+* 1 tenu mais 4 tombe : le gain sur la basse se paie ailleurs (le verdict du
+  mélange rejuge tout), et il faut savoir où avant de rien adopter.
+
+Un morceau que la sonde laisse non filtré (moins de cinq notes) compte dans les
+dix comme un morceau où l'option n'a rien fait — il n'est pas retiré du compte.
+
+*(La course est lancée à la suite de ce paragraphe ; ses chiffres sont ci-dessous
+quand ils existent, jamais avant.)*
