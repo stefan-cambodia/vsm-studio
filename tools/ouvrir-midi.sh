@@ -13,7 +13,8 @@
 #   D310  une piste de conduite (tempo, signature) n'est pas créée ;
 #   D311  un fichier sans rien à jouer le DIT (boîte), et le journal ne parle
 #         de découpage que s'il a eu lieu ;
-#   D312  l'export arrangé écrit les programmes du fichier tels quels.
+#   D312  l'export arrangé écrit les programmes du fichier tels quels ;
+#   D319  l'onglet MIDI CC s'ouvre sur le contrôleur le plus fourni.
 #
 # COMMENT. Trois fichiers sont ENGENDRÉS ici (aucun fixture binaire commis),
 # ouverts par l'application sous un HOME de brouillon (D77), et le journal
@@ -52,12 +53,21 @@ fichier(d + "/format0.mid", 0, [piste(evs)])
 fichier(d + "/conducteur.mid", 1, [piste([(0, tempo), (0, sig)]), piste([(0, nom("Lead"))] + note(0, 64) + note(0, 67))])
 # C. rien à jouer : le conducteur seul
 fichier(d + "/vide.mid", 1, [piste([(0, tempo), (0, sig)])])
+# D. (D319) une piste avec un CC 0 (banque) et cinquante CC 74 : l'onglet MIDI CC
+#    doit s'ouvrir sur le plus fourni, pas sur le premier numéro.
+evs = [(0, nom("Filtre")), (0, bytes([0xb0, 0, 0]))] + [(24, bytes([0xb0, 74, 20 + i])) for i in range(50)] + note(0, 60)
+fichier(d + "/cc.mid", 1, [piste([(0, tempo), (0, sig)]), piste(evs)])
 PY
 rates=0
 verdict() { if [ "$2" -ne 0 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
-lancer() {  # $1 fichier  $2... env supplémentaire ; le journal sur la sortie standard
-    env HOME="$brouillon/home" VSM_PROFILS="$brouillon/profils-vide" VSM_DELAI=1500 "${@:2}" \
+lancer() {  # $1 fichier  $2... env supplémentaire (passé en DERNIER : il peut changer la vue)
+    # UN HOME NEUF ET UNE CAPTURE PAR LANCEMENT (D318) : sans capture l'application
+    # ne quitte pas et le `timeout` la tue, laissant une session interrompue que
+    # le lancement suivant reproposerait avant le geste demandé.
+    local maison; maison="$(mktemp -d "$brouillon/home.XXXX")"
+    env HOME="$maison" VSM_PROFILS="$brouillon/profils-vide" VSM_DELAI=1500 \
         VSM_VUE="ouvrir-midi:$brouillon/$1,sans-rapport,arrangement" VSM_CLIPS=1 VSM_TEXTES_LISTE=1 \
+        VSM_CAPTURE="$maison/capture.png" "${@:2}" \
         timeout 25 "$BIN" 2>&1
 }
 echo "=== D305-D312 : ce qu'un .mid devient à l'ouverture (sans banque) ==="
@@ -74,6 +84,9 @@ verdict "format 1 : le conducteur n'est pas créé, « Lead » → 81 d'après s
 j=$(lancer vide.mid)
 verdict "rien à jouer : 0 piste, la boîte le dit, pas de « découpée »" \
         "$([ "$(grep -c '^Ouvrir MIDI : 0 piste(s)' <<<"$j")" -eq 1 ] && [ "$(grep -c 'VSM_BOITE : Ouvrir MIDI : vide.mid : aucune piste jouable' <<<"$j")" -eq 1 ] && [ "$(grep -c 'découpée' <<<"$j")" -eq 0 ] && echo 1 || echo 0)"
+j=$(lancer cc.mid VSM_VUE="ouvrir-midi:$brouillon/cc.mid,sans-rapport,arrangement,midi-cc")
+verdict "D319 : l'onglet MIDI CC s'ouvre sur « 74 · coupure (50 point(s)) », pas sur CC 0" \
+        "$(grep -c 'VSM_TEXTE : liste : 74 · coupure  (50 point(s))' <<<"$j")"
 j=$(lancer format0.mid VSM_EXPORT_MIDI="$brouillon/export.mid")
 progs=$(python3 - "$brouillon/export.mid" <<'PY'
 import struct, sys
