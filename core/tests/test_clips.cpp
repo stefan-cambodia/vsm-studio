@@ -1,6 +1,7 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/PlaybackScheduler.h"
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/ClipEdit.h"
 #include <algorithm>
 #include <variant>
 #include <vector>
@@ -550,4 +551,126 @@ VSM_TEST(control_events_outside_clips_are_attached_to_the_next_clip_start) {
             }
     VSM_ASSERT(exportes7 == 1 && exportes74 == 0);
     VSM_ASSERT(tick7 == 3840);
+}
+
+// D337 : UNE NOTE ÉCRITE HORS DE TOUT CLIP EST COUVERTE. Un clip borné à la
+// mesure 1 (tpq 480, 1 920 ticks la mesure) ; une note à la mesure 4 (deux
+// mesures de silence : le clip s'étend jusqu'à la fin de la 4) ; une note à la
+// mesure 21 (seize mesures : un clip naît sous elle) ; une note sous le clip ne
+// demande rien ; l'export arrangé porte les quatre notes.
+VSM_TEST(notes_written_outside_clips_extend_the_nearest_clip_or_create_one) {
+    using namespace vsm::sequencer;
+    using namespace vsm::midi;
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track track;
+    track.name = "Lead";
+    uint64_t notes = 1;
+    track.addNote(0, 480, 60, 100, 0, notes);
+    track.addNote(480, 960, 62, 100, 0, notes);
+    Clip clip;
+    clip.id = 1; clip.startTick = 0; clip.length = 1920; clip.sourceStart = 0; clip.sourceLength = 1920;
+    track.clips.push_back(clip);
+    uint64_t clips = 2;
+
+    // Une note déjà couverte : rien.
+    VSM_ASSERT(couvrirLesNotesEcrites(track, 1920, 8, clips, 960).empty());
+
+    // Mesure 4 : le clip s'étend (0 → 7 680), pas de création.
+    track.addNote(5760, 6240, 64, 100, 0, notes);
+    auto faites = couvrirLesNotesEcrites(track, 1920, 8, clips, 6240);
+    VSM_ASSERT(faites.size() == 1);
+    VSM_ASSERT(!faites[0].cree && faites[0].clipId == 1);
+    VSM_ASSERT(faites[0].debut == 0 && faites[0].fin == 7680);
+    VSM_ASSERT(track.clips.size() == 1);
+    VSM_ASSERT(track.clips[0].sourceLength == 7680 && track.clips[0].length == 7680);
+
+    // Mesure 21 : seize mesures de silence, un clip d'une mesure naît sous la note.
+    track.addNote(38400, 38880, 67, 100, 0, notes);
+    faites = couvrirLesNotesEcrites(track, 1920, 8, clips, 38880);
+    VSM_ASSERT(faites.size() == 1);
+    VSM_ASSERT(faites[0].cree && faites[0].clipId == 2 && !faites[0].tronque);
+    VSM_ASSERT(faites[0].debut == 38400 && faites[0].fin == 40320);
+    VSM_ASSERT(track.clips.size() == 2);
+    VSM_ASSERT(clips == 3);
+    const auto& neuf = track.clips.back();
+    VSM_ASSERT(neuf.startTick == 38400 && neuf.sourceStart == 38400 && neuf.sourceLength == 1920 && neuf.length == 1920);
+    VSM_ASSERT(neuf.name == "Lead");
+
+    // Une seconde passe ne change plus rien : tout est couvert.
+    VSM_ASSERT(couvrirLesNotesEcrites(track, 1920, 8, clips, 38880).empty());
+
+    // L'export arrangé porte les quatre notes.
+    project.tracks.push_back(track);
+    const auto fichier = project.toParsedFileArranged();
+    std::vector<Tick> debuts;
+    for (const auto& piste : fichier.tracks)
+        for (const auto& ev : piste.events)
+            if (const auto* on = std::get_if<NoteOnEvent>(&ev.data); on != nullptr && on->velocity > 0)
+                debuts.push_back(ev.tick);
+    std::sort(debuts.begin(), debuts.end());
+    VSM_ASSERT(debuts.size() == 4);
+    VSM_ASSERT(debuts[2] == 5760 && debuts[3] == 38400);
+}
+
+// D337, les cas qui NE s'étendent PAS : un clip déplacé garde son décalage ; un
+// clip bouclé ou muet n'est pas étendu, un clip est créé ; une note AVANT le clip
+// l'étend vers la gauche, fenêtre et position du même pas.
+VSM_TEST(notes_written_outside_moved_looped_or_muted_clips) {
+    using namespace vsm::sequencer;
+    using namespace vsm::midi;
+    uint64_t notes = 1, clips = 10;
+
+    // Déplacé : fenêtre 1 920..3 840 posée au tick 9 600 ; note au 5 760 (mesure 4,
+    // une mesure après la fenêtre) → fenêtre 1 920..7 680, position inchangée.
+    Track deplace;
+    deplace.addNote(1920, 2400, 60, 100, 0, notes);
+    deplace.addNote(5760, 6240, 64, 100, 0, notes);
+    Clip c;
+    c.id = 1; c.sourceStart = 1920; c.sourceLength = 1920; c.startTick = 9600; c.length = 1920;
+    deplace.clips.push_back(c);
+    auto faites = couvrirLesNotesEcrites(deplace, 1920, 8, clips, 6240);
+    VSM_ASSERT(faites.size() == 1 && !faites[0].cree);
+    VSM_ASSERT(deplace.clips[0].startTick == 9600 && deplace.clips[0].sourceStart == 1920);
+    VSM_ASSERT(deplace.clips[0].sourceLength == 5760 && deplace.clips[0].length == 5760);
+
+    // Vers la gauche : fenêtre 3 840..5 760 posée au 3 840 ; note au tick 480
+    // (mesure 1) → fenêtre 0..5 760, position 0.
+    Track gauche;
+    gauche.addNote(3840, 4320, 60, 100, 0, notes);
+    gauche.addNote(480, 960, 64, 100, 0, notes);
+    c = Clip{};
+    c.id = 2; c.sourceStart = 3840; c.sourceLength = 1920; c.startTick = 3840; c.length = 1920;
+    gauche.clips.push_back(c);
+    faites = couvrirLesNotesEcrites(gauche, 1920, 8, clips, 4320);
+    VSM_ASSERT(faites.size() == 1 && !faites[0].cree && faites[0].debut == 0 && faites[0].fin == 5760);
+    VSM_ASSERT(gauche.clips[0].startTick == 0 && gauche.clips[0].sourceStart == 0 && gauche.clips[0].length == 5760);
+
+    // Bouclé (joue 4 mesures d'une fenêtre d'une) : pas étendu, un clip naît à la mesure 6.
+    Track boucle;
+    boucle.addNote(0, 480, 60, 100, 0, notes);
+    boucle.addNote(9600, 10080, 64, 100, 0, notes);
+    c = Clip{};
+    c.id = 3; c.sourceStart = 0; c.sourceLength = 1920; c.startTick = 0; c.length = 7680;
+    boucle.clips.push_back(c);
+    faites = couvrirLesNotesEcrites(boucle, 1920, 8, clips, 10080);
+    VSM_ASSERT(faites.size() == 1 && faites[0].cree && faites[0].clipId != 0);
+    VSM_ASSERT(boucle.clips.size() == 2 && boucle.clips[0].length == 7680 && boucle.clips[0].sourceLength == 1920);
+    VSM_ASSERT(faites[0].debut == 9600 && faites[0].fin == 11520);
+
+    // Muet : ni couvrant, ni extensible -- un clip naît sous la note.
+    Track muet;
+    muet.addNote(0, 480, 60, 100, 0, notes);
+    muet.addNote(2400, 2880, 64, 100, 0, notes);
+    c = Clip{};
+    c.id = 4; c.sourceStart = 0; c.sourceLength = 1920; c.startTick = 0; c.length = 1920; c.muted = true;
+    muet.clips.push_back(c);
+    faites = couvrirLesNotesEcrites(muet, 1920, 8, clips, 2880);
+    VSM_ASSERT(faites.size() == 1 && faites[0].cree && faites[0].clipId != 0);
+    VSM_ASSERT(muet.clips.size() == 2 && faites[0].debut == 1920 && faites[0].fin == 3840);
+
+    // Sans clip : rien -- c'est la règle du clip implicite ouvert (D336).
+    Track vide;
+    vide.addNote(0, 480, 60, 100, 0, notes);
+    VSM_ASSERT(couvrirLesNotesEcrites(vide, 1920, 8, clips, 480).empty());
 }

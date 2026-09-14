@@ -679,6 +679,16 @@ assignée, ou la convention General MIDI si elle n'est pas connue. Une **piste
 audio** le dit : son matériau se voit et se coupe dans l'arrangement, il n'y a
 pas de notes à éditer ici.
 
+**Écrire hors d'un clip.** Une piste ouverte depuis un fichier MIDI porte des
+clips bornés à ses notes, coupés aux longs silences. Une note écrite hors d'eux
+ne reste pas orpheline : **le clip le plus proche s'étend jusqu'à elle**, à la
+mesure, quand moins de huit mesures les séparent — la carrure qui, à
+l'ouverture, sépare deux clips — et, au-delà, **un clip naît sous la note**.
+Un clip bouclé ou muet n'est pas étendu (un clip est créé à côté) ; un clip
+déplacé s'étend en gardant son décalage. Pendant qu'une note se traîne à la
+souris, le clip ne bouge qu'au relâchement. Chaque clip étendu ou créé est dit
+au journal.
+
 **Replier.** Le bouton *Replier* de la barre (ou *Replier sur les hauteurs
 jouées* dans le menu) ne garde qu'une rangée par hauteur présente sur la
 piste : une batterie tient sur ses cinq pièces au lieu de cent vingt-huit

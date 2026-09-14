@@ -27661,3 +27661,69 @@ depuis un MIDI (clips bornés) n'est pas jouée — c'est le modèle des clips
 depuis D45, que D333 rend simplement plus fréquent ; Cubase refuse d'écrire
 hors d'une part, Live crée le clip sous la note. Étendre le clip le plus
 proche (ou en créer un) sous une note écrite est une phase à part.
+
+### Phase D337 — une note écrite hors des clips bornés d'une piste n'était pas jouée (15/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D336.** Depuis D333, le
+clip d'une piste ouverte depuis un MIDI est borné à ses notes (et coupé aux
+silences de huit mesures, D334). Une note écrite dans le piano roll deux
+mesures après la dernière tombait hors de tout clip : ni jouée, ni exportée,
+ni dessinée dans l'arrangement — et rien ne le disait. D336 n'avait réglé que
+la piste SANS clip (clip implicite ouvert) ; le chemin d'écriture ne faisait
+rien dès qu'une piste en avait un. Cubase refuse d'écrire hors d'une part ;
+Live crée le clip sous la note. **Tranché ici : Live, avec une nuance** — le
+clip le plus proche s'ÉTEND jusqu'à la note quand moins de huit mesures les
+séparent (la même carrure que D334 : ce qui, à l'ouverture, ne sépare pas deux
+clips ne doit pas en faire deux à l'écriture), et au-delà un clip naît sous la
+note. Refuser (Cubase) aurait laissé le geste muet ; toujours créer (Live)
+aurait semé un clip par note écrite dans la mesure qui suit.
+
+**CE QUI EST FAIT.** Une règle dans `ClipEdit` (`couvrirLesNotesEcrites`) :
+pour chaque note hors de tout clip (dans le MATÉRIAU), le clip extensible le
+plus proche s'étend à la mesure — vers la droite en poussant sa fenêtre, vers
+la gauche en reculant fenêtre et position du même pas (un clip déplacé garde
+son décalage, jamais avant le tick 0) — ou `createClip` pose un clip d'au
+moins une mesure sous elle, position et fenêtre confondues, nommé et coloré
+comme la piste (D322). N'est pas étendu : un clip BOUCLÉ (agrandir sa fenêtre
+changerait ce qu'il répète), un clip MUET (la note serait muette et l'on la
+croirait perdue ; il ne couvre pas non plus), un clip qui prendrait sur la
+ligne de temps la place d'un autre — dans ces trois cas un clip est créé, et
+les refus de `createClip` (début déjà pris) sont rendus et DITS au journal.
+L'application l'appelle depuis `onNotesEdited` — hors glissement : pendant
+qu'une note se traîne à la souris, le rappel vient à chaque pixel, et un clip
+qui s'étendrait en route garderait la trace de tout le chemin ; le piano roll
+notifie une dernière fois au relâchement (`dragEdite_`), et c'est là que le
+clip couvre. Chaque clip étendu ou créé est dit (« D337 : piste 0 « Lead » :
+note écrite à la mesure 4, hors de tout clip : clip #1 étendu jusqu'à elle
+(mesures 1-4) »). La piste sans clip garde la règle de D336 (clip ouvert).
+
+**ATTENDU** (avant la mesure ; `lead.mid` engendré : « Lead », deux noires à
+la mesure 1 → un clip borné de 1 920 ticks ; `VSM_NOTES` : un mi à la mesure 4
+(tick 5 760, deux mesures de silence) et un sol à la mesure 21 (tick 38 400,
+seize mesures) ; `VSM_CLIPS` ; `VSM_EXPORT_MIDI`) : **deux** clips — le
+premier étendu à « début 0 longueur 7 680 » (mesures 1-4), le second créé
+« début 38 400 longueur 1 920 » — et l'export porte les **quatre** notes ;
+témoin : le binaire de D336 sur le même script, un clip de 1 920 et **deux**
+notes exportées sur quatre. Témoin de D336 inchangé (projet neuf, `VSM_NOTES` :
+un clip « début 0 longueur 0 », aucune ligne D337). Deux tests core (le cas
+nominal ; déplacé, gauche, bouclé, muet, sans clip), 343 verts ;
+`tools/ouvrir-midi.sh` 8 verdicts ; banc de fumée 0 raté.
+
+**MESURÉ** (binaire de 02:21 contre celui de 02:07, même script) :
+
+| mesure | avant (D336) | après |
+|---|---|---|
+| clips de « Lead » (`VSM_CLIPS`) | 1 : début 0 longueur 1 920 | **2** : #1 début 0 longueur **7 680** (étendu, mesures 1-4) ; #2 début **38 400** longueur 1 920 (créé, mesure 21) |
+| notes exportées (`VSM_EXPORT_MIDI`) | **2 / 4** (60, 62 — les deux notes écrites perdues) | **4 / 4** (60, 62, 64 au tick 5 760, 67 au tick 38 400) |
+| journal | rien | deux lignes « D337 : … étendu jusqu'à elle (mesures 1-4) » et « … créé sous elle (mesures 21-21) » |
+| témoin D336 (projet neuf, piste sans clip) | 1 clip « début 0 longueur 0 » | 1 clip « début 0 longueur 0 », aucune ligne D337 |
+
+Attendu tenu. Capture de l'arrangement : le clip « Lead » va de la mesure 1 à
+la 5 avec la note de la mesure 4 dedans. Tests core **343** (341 + 2) ;
+`tools/ouvrir-midi.sh` 8 verdicts verts ; banc de fumée 0 raté. Manuel :
+§ 4 « Écrire hors d'un clip ». **Reste nommé, non fait** : une note glissée
+HORS de son clip par la souris est couverte au relâchement, mais le clip
+d'origine ne rétrécit pas derrière elle — un clip vidé de ses notes reste
+dessiné, ce qui est le modèle des clips (une fenêtre ne dépend pas de ce
+qu'elle montre) ; et l'enregistrement MIDI a ses propres prises (D-takes), non
+touchées ici.

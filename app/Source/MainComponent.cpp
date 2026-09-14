@@ -552,7 +552,13 @@ MainComponent::MainComponent()
     // piste neuve où l'on venait d'écrire ne montrait aucun clip dans
     // l'arrangement tant qu'on n'avait pas sauvegardé et rouvert le projet.
     pianoRoll_.onNotesEdited = [this] {
-        if (materializeImplicitClips(false)) arrangement_.repaint();   // D336 : clip OUVERT à l'écriture
+        bool change = materializeImplicitClips(false);   // D336 : clip OUVERT à l'écriture
+        // D337 : une piste qui a déjà des clips (bornés depuis D333) couvre la note
+        // écrite hors d'eux -- au RELÂCHEMENT d'un glissement, pas à chaque pixel :
+        // un clip qui s'étend pendant qu'on traîne la note laisserait derrière lui
+        // la trace de tout le chemin parcouru.
+        if (!pianoRoll_.glissementEnCours()) change |= couvrirLesNotesEcrites();
+        if (change) arrangement_.repaint();
         refreshTransportSchedule();
     };
     arrangement_.onClipCreationRequested = [this](size_t piste, vsm::midi::Tick tick) {
@@ -10334,6 +10340,40 @@ bool MainComponent::materializeImplicitClips(bool bornerAuxNotes) {
     }
     project_.assignClipIds();
     return cree;
+}
+
+bool MainComponent::couvrirLesNotesEcrites() {
+    bool change = false;
+    for (size_t t = 0; t < project_.tracks.size(); ++t) {
+        auto& piste = project_.tracks[t];
+        if (piste.kind != vsm::sequencer::Track::Kind::Midi || piste.clips.empty() || piste.notes.empty()) continue;
+        const auto parMesure = std::max<vsm::midi::Tick>(
+            1, project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote));
+        vsm::midi::Tick finMateriau = 0;
+        for (const auto& note : piste.notes) finMateriau = std::max(finMateriau, note.endTick);
+        uint64_t compteur = project_.peekNextClipId();
+        // La même carrure que D334 (huit mesures de silence séparent deux clips).
+        const auto faites = vsm::sequencer::couvrirLesNotesEcrites(piste, parMesure, 8, compteur, finMateriau);
+        project_.ensureClipIdAbove(compteur - 1);
+        for (const auto& f : faites) {
+            // PANNE MUETTE INTERDITE : chaque clip étendu ou créé est dit, et un
+            // refus de création l'est aussi -- la note resterait injouée.
+            const auto mesure = [&](vsm::midi::Tick tick) { return juce::String(static_cast<int>(tick / parMesure) + 1); };
+            juce::String ligne = juce::String("D337 : piste ") + juce::String(static_cast<int>(t))
+                + " \xc2\xab " + juce::String::fromUTF8(piste.name.c_str()) + " \xc2\xbb : note \xc3\xa9" "crite \xc3\xa0 la mesure "
+                + mesure(f.noteTick) + ", hors de tout clip : ";
+            if (f.clipId == 0)
+                ligne += "clip REFUS\xc3\x89 (le d\xc3\xa9" "but est d\xc3\xa9j\xc3\xa0 pris sur la ligne de temps) -- la note n'est pas jou\xc3\xa9" "e";
+            else
+                ligne += (f.cree ? juce::String("clip #") + juce::String(static_cast<int>(f.clipId)) + " cr\xc3\xa9\xc3\xa9 sous elle"
+                                 : juce::String("clip #") + juce::String(static_cast<int>(f.clipId)) + " \xc3\xa9" "tendu jusqu'\xc3\xa0 elle")
+                    + " (mesures " + mesure(f.debut) + "-" + mesure(f.fin - 1) + ")"
+                    + (f.tronque ? juce::String(", raccourci par le clip suivant") : juce::String());
+            std::fputs((ligne + "\n").toRawUTF8(), stderr);
+            change |= f.clipId != 0;
+        }
+    }
+    return change;
 }
 
 size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, size_t depuis,

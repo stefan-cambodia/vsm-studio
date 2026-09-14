@@ -1392,6 +1392,11 @@ private:
     /// ouvert (longueur 0 = jusqu'au bout du matériau, D45), sinon la deuxième note écrite trois
     /// mesures après la première tombait hors clip et ne jouait pas.
     bool materializeImplicitClips(bool bornerAuxNotes = true);
+    /// D337 : une note ÉCRITE hors de tout clip d'une piste qui en a est couverte --
+    /// le clip le plus proche s'étend jusqu'à elle, ou un clip naît sous elle
+    /// (`vsm::sequencer::couvrirLesNotesEcrites`) ; chaque geste est DIT au journal.
+    /// Rend vrai si un clip a changé.
+    bool couvrirLesNotesEcrites();
     /// D307 : donne une machine, d'après la convention General MIDI, à chaque
     /// piste MIDI de `projet` (à partir du rang `depuis`) qui n'en a pas : le
     /// canal 10 reçoit un kit, les autres la machine de leur premier programme

@@ -476,4 +476,43 @@ inline Tick passageOut(const ClipPassage& passage, Tick source) {
     return out < passage.outLimit ? out : -1;
 }
 
+/// D337 : UNE NOTE ÉCRITE HORS DE TOUT CLIP EST COUVERTE -- le clip le plus
+/// proche s'étend jusqu'à elle, ou un clip naît sous elle.
+///
+/// D'OÙ ÇA VIENT. Depuis D333, le clip d'une piste ouverte depuis un MIDI est
+/// borné à ses notes ; une note écrite dans le piano roll deux mesures après la
+/// dernière tombait hors de tout clip : ni jouée, ni exportée, ni dessinée dans
+/// l'arrangement -- et rien ne le disait. Cubase refuse d'écrire hors d'une
+/// part ; Live crée le clip sous la note. Ici : le clip le plus proche (dans
+/// le MATÉRIAU) s'étend à la mesure jusqu'à la note quand le silence entre eux
+/// fait MOINS de `mesuresDeSilence` mesures -- la même carrure que D334 qui,
+/// à l'ouverture, coupe deux clips au-delà --, sinon un clip d'au moins une
+/// mesure naît sous elle, position et fenêtre confondues.
+///
+/// CE QUI N'EST PAS ÉTENDU, ET POURQUOI. Un clip BOUCLÉ (durée jouée plus
+/// longue que sa fenêtre) : agrandir sa fenêtre changerait ce qu'il répète.
+/// Un clip MUET : l'étendre rendrait la note muette, et l'on croirait
+/// l'avoir perdue ; il ne couvre pas non plus (une note écrite sous un clip
+/// muet reste muette, c'est le geste de l'utilisateur). Un clip DÉPLACÉ
+/// s'étend en gardant son décalage (la fenêtre et la position bougent du
+/// même pas) -- sauf s'il buterait avant le tick 0 de la ligne de temps, ou
+/// sur un autre clip : alors un clip est créé, et `createClip` garde ses
+/// refus (début déjà pris, raccourci par le voisin), rendus ici tels quels.
+///
+/// Rend une ligne par note couverte, dans l'ordre des notes ; une note DÉJÀ
+/// couverte ne rend rien. `idCounter` avance à chaque création, comme pour
+/// `createClip`. Une piste SANS clip ne rend rien : c'est la règle du clip
+/// implicite ouvert (D336) qui s'en charge, pas celle-ci.
+struct CouvertureDeNote {
+    uint64_t clipId = 0;    ///< le clip étendu ou créé ; 0 = création REFUSÉE
+    bool cree = false;      ///< créé (sinon étendu)
+    bool tronque = false;   ///< créé mais raccourci par le clip suivant
+    Tick noteTick = 0;      ///< la note qui l'a demandé
+    Tick debut = 0;         ///< la fenêtre du clip après le geste (source)
+    Tick fin = 0;
+};
+std::vector<CouvertureDeNote> couvrirLesNotesEcrites(Track& track, Tick ticksPerBar,
+                                                     Tick mesuresDeSilence, uint64_t& idCounter,
+                                                     Tick materialEnd);
+
 } // namespace vsm::sequencer

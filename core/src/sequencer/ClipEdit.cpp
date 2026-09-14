@@ -894,6 +894,107 @@ Tick rattacheAuPassageSuivant(const std::vector<ClipPassage>& passages, Tick sou
     return meilleur;
 }
 
+std::vector<CouvertureDeNote> couvrirLesNotesEcrites(Track& track, Tick ticksPerBar,
+                                                     Tick mesuresDeSilence, uint64_t& idCounter,
+                                                     Tick materialEnd) {
+    std::vector<CouvertureDeNote> faites;
+    if (track.clips.empty() || track.notes.empty()) return faites;
+    const Tick mesure = std::max<Tick>(1, ticksPerBar);
+    const Tick carrure = std::max<Tick>(0, mesuresDeSilence) * mesure;
+    const auto plancher = [mesure](Tick t) { return (t / mesure) * mesure; };
+    const auto plafond = [mesure](Tick t) { return ((t + mesure - 1) / mesure) * mesure; };
+
+    // La fenêtre d'un clip dans le matériau ; une fenêtre de zéro va jusqu'au bout.
+    const auto finFenetre = [](const Clip& c) {
+        return c.sourceLength > 0 ? c.sourceStart + c.sourceLength : std::numeric_limits<Tick>::max();
+    };
+    const auto couvre = [&](const Clip& c, Tick t) { return t >= c.sourceStart && t < finFenetre(c); };
+    // Un clip s'étend s'il joue exactement sa fenêtre : ni bouclé, ni muet.
+    const auto extensible = [&](const Clip& c) {
+        return !c.muted && (c.length == 0 || (c.sourceLength > 0 && c.length == c.sourceLength));
+    };
+    // Le clip étendu prendrait-il sur la ligne de temps la place d'un autre ?
+    const auto libre = [&](const Clip& moi, Tick de, Tick a) {   // [de, a) sur la ligne de temps
+        for (const auto& c : track.clips) {
+            if (&c == &moi) continue;
+            const Tick debut = c.startTick, fin = c.startTick + clipPlayedLength(c, materialEnd);
+            if (de < fin && debut < a) return false;
+        }
+        return true;
+    };
+
+    std::vector<const Note*> triees;
+    triees.reserve(track.notes.size());
+    for (const auto& n : track.notes) triees.push_back(&n);
+    std::sort(triees.begin(), triees.end(),
+              [](const Note* a, const Note* b) { return a->startTick < b->startTick; });
+
+    for (const Note* note : triees) {
+        const Tick s = note->startTick;
+        const Tick e = std::max(note->endTick, s + 1);
+        bool couverte = false;
+        for (const auto& c : track.clips) couverte |= couvre(c, s);
+        if (couverte) continue;
+
+        // Le clip extensible le plus proche, dans le matériau.
+        Clip* proche = nullptr;
+        Tick ecart = std::numeric_limits<Tick>::max();
+        for (auto& c : track.clips) {
+            if (!extensible(c)) continue;
+            const Tick d = s >= finFenetre(c) ? s - finFenetre(c) : c.sourceStart - s;
+            if (d < ecart) { ecart = d; proche = &c; }
+        }
+
+        CouvertureDeNote faite;
+        faite.noteTick = s;
+        bool etendu = false;
+        if (proche != nullptr && ecart < carrure) {
+            Clip& c = *proche;
+            const Tick jouee = clipPlayedLength(c, materialEnd);
+            if (s >= finFenetre(c)) {
+                // Vers la droite : la fenêtre pousse jusqu'à la mesure qui suit la note.
+                const Tick delta = plafond(e) - finFenetre(c);
+                if (delta > 0 && libre(c, c.startTick + jouee, c.startTick + jouee + delta)) {
+                    c.sourceLength += delta;
+                    if (c.length > 0) c.length += delta;
+                    etendu = true;
+                }
+            } else {
+                // Vers la gauche : fenêtre et position reculent du même pas, le
+                // décalage d'un clip déplacé est gardé -- jamais avant le tick 0.
+                const Tick delta = c.sourceStart - plancher(s);
+                if (delta > 0 && c.startTick - delta >= 0 && libre(c, c.startTick - delta, c.startTick)) {
+                    c.sourceStart -= delta;
+                    c.startTick -= delta;
+                    if (c.sourceLength > 0) c.sourceLength += delta;
+                    if (c.length > 0) c.length += delta;
+                    etendu = true;
+                }
+            }
+            if (etendu) {
+                faite.clipId = c.id;
+                faite.debut = c.sourceStart;
+                faite.fin = c.sourceLength > 0 ? c.sourceStart + c.sourceLength : std::max(materialEnd, e);
+            }
+        }
+        if (!etendu) {
+            const Tick debut = plancher(s);
+            const auto creation = createClip(track.clips, debut, std::max(mesure, plafond(e) - debut),
+                                             idCounter, std::max(materialEnd, e));
+            faite.cree = true;
+            faite.clipId = creation.id;
+            faite.tronque = creation.truncated;
+            faite.debut = creation.startTick;
+            faite.fin = creation.startTick + creation.length;
+            if (creation.id != 0)
+                for (auto& c : track.clips)
+                    if (c.id == creation.id) { c.name = track.name; c.colorRgba = track.colorRgba; }
+        }
+        faites.push_back(faite);
+    }
+    return faites;
+}
+
 std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd) {
     std::vector<ClipPassage> passages;
     if (track.clips.empty()) {

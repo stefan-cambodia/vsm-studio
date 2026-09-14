@@ -58,6 +58,13 @@ public:
     // --- Callbacks vers l'application ------------------------------------
     /// Les notes ont changé : reconstruire le planning de lecture.
     std::function<void()> onNotesEdited;
+    /// D337 : vrai pendant qu'une note est déplacée ou redimensionnée à la
+    /// souris. Le rappel `onNotesEdited` est alors appelé à chaque pixel, et
+    /// une fois de plus au relâchement -- ce qui doit ne se faire qu'une fois
+    /// (couvrir la note d'un clip) attend cette dernière.
+    bool glissementEnCours() const {
+        return dragMode_ == DragMode::Move || dragMode_ == DragMode::ResizeLeft || dragMode_ == DragMode::ResizeRight;
+    }
     /// Écoute d'une note (clic sur le clavier, dessin d'une note) : l'app la
     /// route vers l'instrument de la piste active.
     std::function<void(uint8_t note, uint8_t velocity, bool noteOn)> onAudition;
@@ -366,6 +373,7 @@ private:
     vsm::midi::Tick panStartTick_ = 0;
     int panStartTopNote_ = 84;
     bool dragDidCopy_ = false;   ///< Alt+glisser : la copie n'est faite qu'une fois
+    bool dragEdite_ = false;     ///< D337 : le glissement a changé au moins une note
     int auditionNote_ = -1;      ///< note en cours d'écoute (-1 = aucune)
     uint64_t hoveredNoteId_ = 0;
 

@@ -1457,6 +1457,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
                 it->number = static_cast<uint8_t>(juce::jlimit(0, 127, static_cast<int>(snap.number) + deltaNote));
                 if (it->id == draggedNoteId_) startAudition(it->number, it->velocity);
             }
+            dragEdite_ = true;
             if (onNotesEdited) onNotesEdited();
             repaint();
             break;
@@ -1474,6 +1475,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
                 const Tick delta = newEnd - dragSnapshot_.front().endTick;
                 it->endTick = std::max(snap.endTick + delta, it->startTick + 1);
             }
+            dragEdite_ = true;
             if (onNotesEdited) onNotesEdited();
             repaint();
             break;
@@ -1488,6 +1490,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
                 const Tick delta = newStart - dragSnapshot_.front().startTick;
                 it->startTick = std::max<Tick>(0, std::min(snap.startTick + delta, it->endTick - 1));
             }
+            dragEdite_ = true;
             if (onNotesEdited) onNotesEdited();
             repaint();
             break;
@@ -1515,9 +1518,15 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
 
 void PianoRollComponent::mouseUp(const juce::MouseEvent&) {
     stopAudition();
+    const bool edite = dragEdite_;
     dragMode_ = DragMode::None;
     rubberBandRect_ = {};
     dragDidCopy_ = false;
+    dragEdite_ = false;
+    // D337 : le glissement a déplacé ou redimensionné des notes -- une dernière
+    // notification, HORS glissement, pour que le clip couvre la note où elle est
+    // posée (et non tout le chemin qu'elle a parcouru).
+    if (edite && onNotesEdited) onNotesEdited();
     notifyEditState();
     repaint();
 }
