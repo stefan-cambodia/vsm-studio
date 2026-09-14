@@ -195,9 +195,13 @@ void SynthRackComponent::resized() {
         // haut, une façade tronquée à DROITE perd des blocs entiers.
         const int voulue = machinePanel_.hauteurUtile();
         const bool defile = voulue > area.getHeight();
+        // D292 : ENTRE LE PLANCHER ET LA HAUTEUR NATURELLE, jamais au-delà. Une
+        // façade plus courte que le rack reste en haut, le vide en dessous est
+        // celui du rack, pas celui de la façade étirée entre ses rangées.
+        const int hauteur = std::max(voulue, std::min(area.getHeight(), machinePanel_.hauteurNaturelle()));
         machinePanel_.setSize(defile ? area.getWidth() - vueFacade_.getScrollBarThickness()
                                      : area.getWidth(),
-                               std::max(voulue, area.getHeight()));
+                               hauteur);
         return;
     }
     viewport_.setBounds(area);

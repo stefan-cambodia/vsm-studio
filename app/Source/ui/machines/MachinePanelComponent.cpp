@@ -365,6 +365,22 @@ int MachinePanelComponent::hauteurUtile() const {
     return static_cast<int>(std::lround(grille + 2.0f * 14.0f + 22.0f));
 }
 
+int MachinePanelComponent::hauteurNaturelle() const {
+    if (!panel_) return 0;
+    // D292 : LA FAÇADE NE S'ÉTIRE PAS SUR LE VIDE. `hauteurUtile()` est un
+    // PLANCHER (le bouton de 18 px de D62) ; le rack donnait ensuite à la façade
+    // toute la hauteur disponible, et une façade de deux rangées -- la vielle à
+    // roue, le sitar -- écartait ses boutons de huit cents pixels, ceux du haut
+    // sous le titre, ceux du bas contre l'afficheur, le reste peint en vide. Un
+    // instrument de matériel garde sa taille ; une fenêtre de plugin aussi. La
+    // rangée « à l'aise » vaut 96 px : un potentiomètre de 60, sa sérigraphie,
+    // ses marges -- ce que les façades de trois rangées reçoivent déjà dans un
+    // rack de 900 px, et qui se lit bien.
+    constexpr float kRangeeNaturelle = 96.0f;
+    const float grille = kRangeeNaturelle * static_cast<float>(std::max(1, panel_->gridRows));
+    return std::max(hauteurUtile(), static_cast<int>(std::lround(grille + 2.0f * 14.0f + 22.0f)));
+}
+
 void MachinePanelComponent::resized() {
     if (!panel_) return;
     valueReadout_.setBounds(getLocalBounds().removeFromBottom(20).reduced(18, 2));

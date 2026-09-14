@@ -25687,3 +25687,46 @@ Deux fenêtres regardées dans la même série et qui n'appellent rien :
 l'**analyseur de spectre** en lecture (courbe, tenue de crête en gris, « Master —
 crête 797,6 Hz, −31,9 dB ») et les **préférences** (échelle, threads de rendu,
 clic, dossiers, raccourcis).
+
+### Phase D292 — la façade ne s'étire plus sur le vide (14/09/2026)
+
+**TROUVÉE SUR LA PHOTO DU RACK FLOTTANT** (D288), puis revue dans le dock : la
+vielle à roue, façade de quatre rangées de grille et deux rangées de boutons,
+recevait toute la hauteur du rack — **835 px** — et écartait ses boutons de huit
+cents pixels, SPEED et PRESSURE sous le titre, INERTIA et DAMPING contre
+l'afficheur, du vide peint entre les deux. Le sitar, pareil. D63 avait décidé
+que la façade « reçoit la hauteur qu'elle réclame et défile en dessous » ; mais
+`hauteurUtile()` est un PLANCHER (le bouton de 18 px de D62), et au-dessus de ce
+plancher le rack donnait tout ce qu'il avait. Un instrument de matériel garde sa
+taille ; une fenêtre de plugin aussi.
+
+**CE QUI EST FAIT.** `MachinePanelComponent::hauteurNaturelle()` : une rangée de
+grille « à l'aise » vaut **96 px** (un potentiomètre de 60, sa sérigraphie, ses
+marges — ce que les façades de trois rangées recevaient déjà, et qui se lit
+bien), et la façade reçoit `max(plancher, min(hauteur du rack, naturelle))`. Plus
+courte que le rack, elle reste en haut ; le vide en dessous est celui du rack,
+pas celui de la façade étirée entre ses rangées. Plus haute (le TR-909 et ses
+huit rangées : 818 px), rien ne change.
+
+**MESURÉ par `VSM_MESURE_FACADE`**, même projet, même rack de 364 px de large,
+avant et après :
+
+| machine | rangées de grille | façade avant | façade après | bouton le plus petit |
+|---|---|---|---|---|
+| `vsm.hurdygurdy` | 4 | 364 × 835 | **364 × 434** | 42 px (inchangé) |
+| `vsm.sitar` | 4 | (non mesurée) | **364 × 434** | 31 px |
+| `vsm.minimoog` | 6 | 364 × 835 | **364 × 626** | 16 px (inchangé, voir ci-dessous) |
+| `vsm.tr909` | 8 | (non mesurée) | 364 × 818 | 19 px |
+
+Photo de la vielle : les trois blocs tiennent dans les 434 px, leurs deux
+rangées de boutons aux places que la description leur donne (rangées 0 et 3 de
+la grille — c'est le dessin de la machine, pas un étirement). Réglages de
+l'utilisateur intacts au `cmp` (témoin de 15:20).
+
+**CE QUE LA MESURE A MONTRÉ EN PASSANT, ET QUI N'EST PAS DE CETTE PHASE** : le
+bloc MODIFIERS du Minimoog pose huit boutons de **16 px** dans des cellules de
+**16 px de large** — AVANT comme après, à ce rack de 364 px. D64 et D70 avaient
+publié « 0 / 63 façades sous 18 px » ; ce compte tenait à une largeur de rack
+qu'ils ne nomment pas, et ne tient pas à celle-ci. La largeur ne défile pas
+(D64, décision prise en regardant) : la question est donc celle du plancher de
+LARGEUR du rack, ou d'un MODIFIERS à deux rangées. Nommée, chiffrée, non faite.

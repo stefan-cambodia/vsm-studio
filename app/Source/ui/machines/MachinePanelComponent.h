@@ -56,6 +56,10 @@ public:
     /// d'écraser la façade jusqu'à des cellules de hauteur nulle.
     /// Rend 0 quand il n'y a pas de façade.
     int hauteurUtile() const;
+    /// D292 : la hauteur à laquelle la façade est À L'AISE — une rangée de grille
+    /// à 96 px, comme un potentiomètre et sa sérigraphie à taille confortable ;
+    /// au-delà, on n'agrandit que du vide entre les rangées.
+    int hauteurNaturelle() const;
 
 
     /// Proportions naturelles de la façade, pour que le conteneur puisse lui
