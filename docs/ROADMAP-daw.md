@@ -25350,6 +25350,52 @@ porté le morceau 3 à 2 277 s et le 7 au-delà de l'heure. **Le bilan se fera
 par `tools/bilan-coupure-basse.py d282-temoin d282-coupure` une fois les dix
 morceaux traités** ; aucun chiffre partiel n'est publié ici avant.
 
+**LA COURSE EST FINIE (14/09, 23:02 — 20 267 s pour la jambe traitée, veille et
+quatorze gels compris), ET LE BILAN TRANCHE : LA COUPURE ADAPTÉE NE TRAVERSE PAS
+LA CHAÎNE.** Sortie de `tools/bilan-coupure-basse.py`, telle quelle :
+
+```
+10 morceaux comparés — témoin d282-temoin, traité d282-coupure
+
+         morceau   coupure  d bass T  d bass C        Δ justes T justes C bonne h. T bonne h. C  global T  global C     Δ %
+ morceau-0001-g1   38.9 Hz    0.4132    0.4284  +0.0152        0        0       0.0%       0.0%    0.1905    0.2018   +5.90
+ morceau-0002-g2   38.9 Hz    0.3021    0.3147  +0.0126       54       61      40.6%      45.5%    0.1329    0.1329   +0.00
+ morceau-0003-g3   27.5 Hz    0.4186    0.4180  -0.0006        9        9      45.0%      45.0%    0.1557    0.1549   -0.50
+ morceau-0004-g4   36.7 Hz    0.3645    0.3798  +0.0152        4        3      22.2%      25.0%    0.2055    0.2061   +0.30
+ morceau-0005-g5   55.1 Hz    0.3397    0.3406  +0.0009       21       24      38.2%      41.4%    0.1188    0.1207   +1.64
+ morceau-0006-g6   55.1 Hz    0.2563    0.3517  +0.0953        6        4      22.2%      18.2%    0.2275    0.2200   -3.29
+ morceau-0007-g7   61.8 Hz    0.3980    0.4171  +0.0191       14       14      48.3%      73.7%    0.1559    0.1633   +4.73
+ morceau-0008-g8   58.3 Hz    0.3965    0.4081  +0.0116      120      108     100.0%     100.0%    0.2377    0.2413   +1.53
+ morceau-0009-g9         —         —         —      n/c        0        0          —          —    0.1939    0.1939   +0.00
+morceau-0010-g10   34.7 Hz    0.3727    0.3812  +0.0085        3        3      37.5%      17.6%    0.1995    0.1933   -3.11
+
+VERDICT, aux seuils de D282 (écrits avant la course) :
+  1. distance de la piste bass : médiane 0.3727 → 0.3812, en baisse sur 1/9 morceaux (il en faut 6) → TOMBE
+  2. CONTRÔLE — justes de la piste bass : 231 → 226 (+2.2 % perdues, plafond 10 %) → TENU
+  3. bonne hauteur de la piste bass : 55.1 % → 56.5 % (+1.4 pt, il en faut +3) ; 8ve bas 89 → 72, 8ve haut 14 → 14, inventées 263 → 206, écrites 682 → 606 → TOMBE
+  4. distance globale : médiane 0.1922 → 0.1936 (+0.71 %, plafond +0.5 %) → TOMBE
+
+1/4 critères tenus
+```
+
+**Ce que cela décide, selon les issues écrites avant la course.** Le contrôle (2)
+tient — la chaîne ne casse pas plus de notes justes que le stem ne le laissait
+prévoir (−2,2 %) —, mais **1, 3 et 4 tombent** : la distance de la piste `bass`
+MONTE sur huit morceaux sur neuf (médiane 0,3727 → 0,3812), la bonne hauteur ne
+gagne que +1,4 point (il en fallait +3 ; les octaves basses passent de 89 à 72,
+mais 76 notes justes de moins sont écrites, 682 → 606 : la coupure retire du
+grave VRAI avec le grave inventé), et le mélange paie +0,71 % (plafond +0,5 %).
+C'est le cas « 3 tenu mais 1 tombe » en pire — 3 tombe aussi. **La règle de
+D281 est donc REFUSÉE comme défaut** : elle reste une option de la chaîne
+(`--coupure-basse-adaptee`), documentée par ce chiffre, et la voie « rendre
+l'octave de la basse en filtrant le stem » rejoint D272 et D274 dans les voies
+fermées par la mesure : un stem meilleur à l'oreille du transcripteur n'est pas
+une reconstruction meilleure. Le morceau 9 n'a pas de piste `bass` dans les
+deux jambes (n/c) : il compte dans les dix comme un morceau où l'option n'a rien
+fait, comme l'attendu le prévoyait. Ce que la mesure laisse ouvert : l'octave
+de la basse est un défaut de SÉPARATION (D269, D280), et la réponse n'est pas
+en aval de la séparation.
+
 ### Phase D283 — les notes se voient dans le clip MIDI (14/09/2026)
 
 **TROUVÉE EN REGARDANT L'ARRANGEMENT EN MARCHE**, pendant que la campagne D282
@@ -26683,3 +26729,10 @@ avec la note « enveloppe : relâchement de 25.… s ramené à 5.000 s (la born
 vsm.multisample) » ; le SF2 ordinaire (500 ms) passe sans note. La seconde
 moitié — réinstaller les 135 profils et rouvrir Children sans réserve — attend
 la fin de la course D282 (le convertisseur charge des banques de 150 Mo).
+
+
+**MESURÉ, seconde moitié (23:05).** `tools/installer-banques-midi.py --forcer`
+(les archives étaient sur le disque, rien retéléchargé) : **135 profils
+réinstallés**, `FR3-Steel-Guitar.synth.json` porte `"envelope.1.release": 5` et
+`"envelope.1.attack": 0.001`. Le fichier Children rouvert : **0 « réserves du
+preset de banque »** (8 avant), toujours « dont 13 par la banque ». Attendus tenus.
