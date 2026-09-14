@@ -25921,3 +25921,10 @@ Restent `vsm.fmdrums` (16 px) et `vsm.tr808` (17 px), deux boîtes à rythmes do
 les sections de pièces sont ENGENDRÉES par un gabarit commun avec leur
 séquenceur — un autre chantier que le rééquilibrage à la main. Le balayage
 complet suit.
+
+**LE BALAYAGE COMPLET, rejoué à 15:54** (`tools/balayer-facades.sh`, 63 machines,
+rack de 364 px) : **2 façades sur 63 sous 18 px** — `vsm.fmdrums` (16 px, TOM /
+BELL) et `vsm.tr808` (17 px, BASS DRUM / LEVEL) —, contre **15 sur 63 à 13:00**
+(D294). Treize façades réparées en six phases (D293, D295-D299), aucune autre
+touchée : les 48 qui tenaient le plancher le tiennent encore, la plus large à
+70 px. La garde rend 1 tant que les deux boîtes à rythmes ne sont pas faites.
