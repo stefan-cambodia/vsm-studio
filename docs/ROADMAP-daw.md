@@ -26503,3 +26503,12 @@ bass ni guitar. Le fichier Children ouvert puis exporté rend, canal par canal,
 **les programmes du fichier d'origine** (0, 38, 89, 81, 49, 48, 33, 38, 98, kit
 0, 25/81, 17/81, 25, 81, 52, 25) — ses pistes « avec les siens » n'ont rien
 reçu de plus. Attendus tenus, le compte corrigé.
+
+**LA GARDE DE D305-D312 : `tools/ouvrir-midi.sh`.** Trois fichiers engendrés
+(format 0 à trois canaux avec programmes ; format 1 avec conducteur et une piste
+« Lead » sans programme ; conducteur seul), ouverts sans banque (`VSM_PROFILS`
+sur un dossier vide) sous un HOME de brouillon ; sept verdicts lus au journal :
+découpage, noms, machines, clips, conducteur non créé, boîte du fichier vide,
+programmes exportés. Verte sur le binaire de 20:16 (7 / 7) ; **vue rouge** avec
+deux attentes faussées (4 pistes, 4 clips → 2 ratés, code 1), comme la règle le
+demande. Listée au README.

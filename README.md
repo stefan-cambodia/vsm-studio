@@ -362,6 +362,7 @@ analyse/.venv/bin/python tools/modeles-separation.py <dossier> --transcrire  # q
 analyse/.venv/bin/python tools/gestes-vivants.py       # 69 entrées de menu : chacune change le projet, ou DIT pourquoi non
 tools/balayer-facades.sh                              # les 63 façades au rack par défaut : aucun bouton sous 18 px (dernière disposition, D302)
 tools/pianoroll-zones.sh                              # le piano roll à trois tailles de fenêtre : la grille reçoit au moins deux fois la lane (D301)
+tools/ouvrir-midi.sh                                  # ce qu'un .mid devient à l'ouverture : une piste par canal, clips, machines GM, conducteur non créé, export (D305-D312)
 ```
 
 Chacune rend un code de sortie non nul quand elle trouve quelque chose, et
