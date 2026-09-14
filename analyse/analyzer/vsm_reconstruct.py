@@ -710,6 +710,7 @@ def write_reconstruction_report(
     reverb: Optional[Dict[str, object]] = None,
     residuel: Optional[Dict[str, object]] = None,
     coupure_basse: Optional[Sequence[Dict[str, object]]] = None,
+    comparaison: Optional[Dict[str, object]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -771,6 +772,12 @@ def write_reconstruction_report(
         # entre une course avec l'option et son témoin : sans elle au rapport,
         # les deux ne se distingueraient que par leurs chiffres.
         **({"coupureBasse": list(coupure_basse)} if coupure_basse else {}),
+        # CE QUE LE GRAVEUR DE `comparaison.wav` A FAIT (B10) : les crêtes des
+        # deux canaux, le gain commun appliqué pour tenir en 16 bits (0.0 =
+        # rien), et le nombre d'échantillons qui auraient été écrêtés. Un
+        # fichier d'écoute descendu de 4 dB sans que le rapport le dise
+        # ferait croire à une reconstruction plus faible qu'elle n'est.
+        **({"comparaison": comparaison} if comparaison else {}),
         # COMMENT LE MORCEAU SE PARTAGE ENTRE LES PISTES, en part d'énergie.
         #
         # C'EST LE CHIFFRE QUI A RENDU LE DÉFAUT VISIBLE, et il n'était nulle

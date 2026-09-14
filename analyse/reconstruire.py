@@ -186,7 +186,45 @@ def lire_wav(chemin: Path) -> np.ndarray:
     return valeurs
 
 
-def ecrire_wav(chemin: Path, canaux: Sequence[np.ndarray]) -> None:
+# B10 : LA CRÊTE COMMUNE D'UN FICHIER D'ÉCOUTE, en linéaire (-1 dBFS). Le WAV
+# de comparaison est en 16 bits ; une reconstruction qui dépasse 0 dBFS y
+# était ÉCRÊTÉE (« B4 Wuz Then » : +2,7 dB, 1 176 échantillons à fond
+# d'échelle), et le musicien entendait une distorsion qui n'était pas celle de
+# la reconstruction. Les DEUX canaux descendent du même facteur : le rapport
+# original/reconstruction, qui est ce qu'on écoute, reste intact.
+CRETE_ECOUTE = 10.0 ** (-1.0 / 20.0)
+
+
+def preparer_comparaison(canaux: Sequence[np.ndarray]) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+    """Les canaux prêts à graver en 16 bits, et ce qui leur a été fait.
+
+    Si la crête de l'ensemble dépasse `CRETE_ECOUTE`, tous les canaux sont
+    multipliés par le MÊME facteur qui la ramène à -1 dBFS ; sinon rien ne
+    change. Le compte rendu dit la crête de chaque canal avant, le gain
+    appliqué en dB (0.0 = rien) et combien d'échantillons auraient été écrêtés.
+    """
+    cretes = [float(np.max(np.abs(c))) if c.size else 0.0 for c in canaux]
+    crete = max(cretes) if cretes else 0.0
+    ecretes = int(sum(int(np.count_nonzero(np.abs(c) > 1.0)) for c in canaux))
+    if crete <= CRETE_ECOUTE:
+        return list(canaux), {"cretes": cretes, "gainDb": 0.0, "echantillonsEcretesEvites": 0}
+    facteur = CRETE_ECOUTE / crete
+    return ([np.asarray(c, dtype=np.float32) * np.float32(facteur) for c in canaux],
+            {"cretes": cretes, "gainDb": 20.0 * math.log10(facteur),
+             "echantillonsEcretesEvites": ecretes})
+
+
+def ecrire_wav(chemin: Path, canaux: Sequence[np.ndarray], ecoute: bool = False) -> Dict[str, Any]:
+    """Grave un WAV 16 bits ; pour un fichier d'ÉCOUTE, descend d'abord les canaux
+    sous 0 dBFS (`preparer_comparaison`) et rend ce qui a été fait.
+
+    Sans `ecoute`, rien n'est descendu : la sonde coupée d'un stem (D282) est
+    une ENTRÉE de mesure, et la changer changerait la mesure -- un stem
+    au-dessus de 1,0 y est écrêté comme avant, ce qui n'est pas ce que corrige
+    B10.
+    """
+    canaux, compte_rendu = (preparer_comparaison(canaux) if ecoute
+                            else (list(canaux), {"cretes": [], "gainDb": 0.0, "echantillonsEcretesEvites": 0}))
     longueur = max(c.size for c in canaux)
     empile = np.zeros((longueur, len(canaux)), dtype=np.float32)
     for index, canal in enumerate(canaux):
@@ -197,6 +235,7 @@ def ecrire_wav(chemin: Path, canaux: Sequence[np.ndarray]) -> None:
         sortie.setsampwidth(2)
         sortie.setframerate(SAMPLE_RATE)
         sortie.writeframes((empile * 32767).astype("<i2").tobytes())
+    return compte_rendu
 
 
 def niveau_efficace(audio: np.ndarray) -> Optional[float]:
@@ -2551,13 +2590,20 @@ def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarra
     distance = reconstruction_distance(melange, reconstruit, SAMPLE_RATE, metric=args.metrique)
     silence = reconstruction_distance(melange, np.zeros_like(melange), SAMPLE_RATE,
                                       metric=args.metrique)
-    write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
-                                global_distance=distance, metric=args.metrique,
-                                iterations=args.iterations, **complements)
-
     # Comparaison : original à gauche, reconstruction à droite. C'est l'écoute
     # qui tranche, pas le chiffre -- le chiffre dit seulement où regarder.
-    ecrire_wav(sortie / "comparaison.wav", [melange, reconstruit])
+    # B10 : gravée AVANT le rapport, pour que le rapport dise ce que le graveur
+    # a fait aux deux canaux (rien, ou un même gain sous 0 dBFS).
+    comparaison = ecrire_wav(sortie / "comparaison.wav", [melange, reconstruit], ecoute=True)
+    if comparaison["gainDb"] != 0.0:
+        print(f"  comparaison.wav : les DEUX canaux descendus de {comparaison['gainDb']:+.2f} dB "
+              f"(crête de la reconstruction {comparaison['cretes'][1]:.3f}, "
+              f"{comparaison['echantillonsEcretesEvites']} échantillon(s) auraient été écrêtés en 16 bits) ; "
+              "le rapport original/reconstruction est intact")
+    write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
+                                global_distance=distance, metric=args.metrique,
+                                iterations=args.iterations, comparaison=comparaison,
+                                **complements)
 
     print()
     print(f"  DISTANCE GLOBALE : {distance:.4f}  "

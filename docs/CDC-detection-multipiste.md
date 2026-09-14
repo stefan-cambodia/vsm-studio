@@ -1876,9 +1876,21 @@ une distorsion **qui n'est pas celle de la reconstruction**, et rien ne l'en
 avertit. `reconstruit.wav`, écrit en flottant, garde bien la crête de 1,4741 : ce
 n'est donc pas le rendu qui rabote, c'est le graveur du fichier de comparaison.
 
-**Le remède est nommé, et il n'est pas appliqué aujourd'hui** — `CLAUDE.md`
+**APPLIQUÉ LE 15/09/2026, la course finie (B10 clos).** `ecrire_wav(…,
+ecoute=True)` descend les DEUX canaux du même facteur dès que la crête commune
+dépasse −1 dBFS (crête ramenée à −1 dBFS ; sur ce morceau : −4,37 dB), l'écrit
+au journal (« comparaison.wav : les DEUX canaux descendus de −4,37 dB … le
+rapport original/reconstruction est intact ») et au rapport (`comparaison` :
+crêtes des deux canaux, `gainDb`, `echantillonsEcretesEvites`). La sonde coupée
+d'un stem (D282) passe par le même graveur SANS ce réglage : c'est une entrée de
+mesure, la descendre changerait la mesure. Quatre tests
+(`analyse/tests/test_comparaison_ecretage.py`) : le facteur commun, le rapport
+intact, zéro échantillon à fond d'échelle dans le fichier gravé, la sonde
+intouchée. Le texte qui suit est celui du 13/09, gardé pour l'histoire.
+
+**Le remède était nommé, et il n'était pas appliqué ce jour-là** — `CLAUDE.md`
 interdit de toucher `analyse/analyzer/*.py` pendant qu'une course tourne, et le
-lot forcé de R1 tourne. Ce qu'il faudra faire : descendre les DEUX canaux du même
+lot forcé de R1 tournait. Ce qu'il faudra faire : descendre les DEUX canaux du même
 facteur (le rapport original/reconstruction doit rester intact), le **dire** au
 journal et au rapport, ou écrire le fichier en flottant. Inscrit comme **B10** à
 l'INDEX.
