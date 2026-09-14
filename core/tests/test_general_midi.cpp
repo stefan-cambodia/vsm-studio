@@ -49,3 +49,23 @@ VSM_TEST(les_profils_canoniques_couvrent_45_programmes) {
     VSM_ASSERT_EQ(n, static_cast<size_t>(3));
     VSM_ASSERT_EQ(std::string(b[0].prefixe), std::string("FR3"));
 }
+
+// D312 : la table à l'envers rend le plus petit programme de chaque machine.
+VSM_TEST(la_table_a_l_envers_designe_chaque_machine_par_son_premier_programme) {
+    VSM_ASSERT_EQ(programmeGMPourMachine("vsm.piano"), 0);
+    VSM_ASSERT_EQ(programmeGMPourMachine("vsm.tb303"), 38);
+    VSM_ASSERT_EQ(programmeGMPourMachine("vsm.jupiter8"), 63);
+    VSM_ASSERT_EQ(programmeGMPourMachine("vsm.hurdygurdy"), -1);
+    VSM_ASSERT_EQ(programmeGMPourMachine("vsm.generic"), -1);
+    VSM_ASSERT_EQ(programmeGMPourMachine(nullptr), -1);
+    // Aller-retour : le programme d'une machine désigne cette machine.
+    for (int p = 0; p < 128; ++p) {
+        const auto& e = programmeGM(static_cast<uint8_t>(p));
+        VSM_ASSERT_EQ(std::string(programmeGM(static_cast<uint8_t>(programmeGMPourMachine(e.machine))).machine),
+                      std::string(e.machine));
+    }
+    VSM_ASSERT_EQ(kitGMPourMachine("vsm.drums"), 0);
+    VSM_ASSERT_EQ(kitGMPourMachine("vsm.tr808"), 25);
+    VSM_ASSERT_EQ(kitGMPourMachine("vsm.tr909"), 24);
+    VSM_ASSERT_EQ(kitGMPourMachine("vsm.fmdrums"), -1);
+}

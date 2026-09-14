@@ -1,4 +1,5 @@
 #include "vsm/sequencer/GeneralMidi.h"
+#include <cstring>
 
 namespace vsm::sequencer {
 
@@ -144,6 +145,21 @@ const char* profilCanoniqueGM(uint8_t programme) {
 const BanqueGM* banquesGM(std::size_t& compte) {
     compte = sizeof(kBanques) / sizeof(kBanques[0]);
     return kBanques;
+}
+
+int programmeGMPourMachine(const char* machine) {
+    if (machine == nullptr) return -1;
+    for (const auto& e : kTable)
+        if (std::strcmp(e.machine, machine) == 0) return e.numero;
+    return -1;
+}
+
+int kitGMPourMachine(const char* machine) {
+    if (machine == nullptr) return -1;
+    if (std::strcmp(machine, "vsm.drums") == 0) return 0;
+    if (std::strcmp(machine, "vsm.tr808") == 0) return 25;
+    if (std::strcmp(machine, "vsm.tr909") == 0) return 24;
+    return -1;
 }
 
 } // namespace vsm::sequencer

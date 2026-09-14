@@ -26463,3 +26463,43 @@ sans « découpée » ; Children : « (format 0 : 1 piste(s) lue(s), découpée(
 canal) » toujours. Attendus tenus. (Le banc met 100 s par lancement quand une
 boîte modale reste ouverte : la course ne quitte qu'au `timeout` — coût de
 mesure, pas défaut.)
+
+### Phase D312 — le fichier exporté ne disait pas ses instruments (14/09/2026)
+
+**D'où elle vient.** `sky-and-sand-arrangement.mid`, dans les téléchargements,
+est un export de cette application : quatre pistes « bass », « other »,
+« Batterie », « Voix » — **et aucun changement de programme**. Rouvert (D307),
+« bass » devient un piano, faute d'autre indication ; ouvert dans Cubase, tout
+tombe sur le premier instrument. L'export gardait les programmes d'un fichier
+LU, mais n'écrivait ni le programme réglé pour le matériel (D28.2, `midiProgram`,
+`midiBank`) ni rien de la machine.
+
+**CE QUI EST FAIT.** À l'export ARRANGÉ (« Exporter en MIDI… », l'export d'une
+piste), chaque piste MIDI sans programme propre en reçoit un au tick 0 : celui du
+matériel s'il est réglé (avec sa banque en CC 0 / CC 32), sinon **le programme
+General MIDI qui désigne sa machine** — la table de D307 à l'envers, le plus
+petit programme de chaque machine (piano → 0, TB-303 → 38, Jupiter-8 → 63), le
+kit au canal 10 (drums → 0, TR-808 → 25, TR-909 → 24). Une machine sans
+équivalent (vielle, clavicorde, générique…) n'écrit rien, et le journal de
+l'export compte les quatre cas. Le `.mid` d'un dossier de projet (le matériau)
+ne change pas d'un octet. Deux tests `core`.
+
+**ATTENDU** : `children-c1-defaut` exporté (`VSM_EXPORT_MIDI`) → programmes par
+piste, relevés par script : bass (vielle) aucun, guitar (clavicorde) aucun, other
+(sitar) **104**, piano (TB-303) **38**, les cinq pistes TR-909 (canal 10) **24** ;
+journal « 0 avec les siens, 0 réglé(s), 6 dérivé(s), 2 sans équivalent : bass
+(vsm.hurdygurdy), guitar (vsm.clavichord) » ; le fichier Children ouvert puis
+exporté → les 16 programmes du fichier d'origine, inchangés (« 16 avec les
+siens ») ; tests `core` 336 + 2.
+
+**MESURÉ (binaire de 20:16, tests `core` 338 verts).** `children-c1-defaut`
+exporté par le menu : journal « programmes — 0 piste(s) avec les siens, 0
+réglé(s) pour le matériel, **7 dérivé(s)** de la machine, 2 sans équivalent
+General MIDI : bass (vsm.hurdygurdy), guitar (vsm.clavichord) » — l'attendu
+disait 6 : il avait oublié la piste « piano » (TB-303 → 38) dans son compte, les
+sept sont sitar → **104**, TB-303 → **38**, cinq TR-909 au canal 10 → **24** ;
+le fichier relu par script porte exactement ces programmes, et aucun sur
+bass ni guitar. Le fichier Children ouvert puis exporté rend, canal par canal,
+**les programmes du fichier d'origine** (0, 38, 89, 81, 49, 48, 33, 38, 98, kit
+0, 25/81, 17/81, 25, 81, 52, 25) — ses pistes « avec les siens » n'ont rien
+reçu de plus. Attendus tenus, le compte corrigé.

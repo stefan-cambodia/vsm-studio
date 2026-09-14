@@ -43,4 +43,13 @@ const char* profilCanoniqueGM(uint8_t programme);
 struct BanqueGM { const char* prefixe; const char* nom; };
 const BanqueGM* banquesGM(std::size_t& compte);
 
+/// D312 : LA TABLE À L'ENVERS -- le programme General MIDI qui désigne une
+/// machine du parc, pour qu'un fichier EXPORTÉ dise ses instruments. C'est le
+/// plus petit programme dont la machine est celle-là (piano → 0, TB-303 → 38,
+/// Jupiter-8 → 63) ; -1 pour une machine qu'aucun programme ne désigne
+/// (vielle, clavicorde, générique…). Une boîte à rythmes a son kit :
+/// `kitGMPourMachine` -- drums → 0, TR-808 → 25, TR-909 → 24 ; -1 sinon.
+int programmeGMPourMachine(const char* machine);
+int kitGMPourMachine(const char* machine);
+
 } // namespace vsm::sequencer

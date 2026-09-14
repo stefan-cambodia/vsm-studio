@@ -344,3 +344,45 @@ VSM_TEST(une_piste_de_conduite_ne_devient_pas_une_ligne_vide_a_l_ouverture) {
     const Project telQuel = Project::fromParsedFile(parsed);
     VSM_ASSERT_EQ(telQuel.tracks.size(), static_cast<size_t>(2));
 }
+
+// D312 : l'export arrangé écrit un programme par piste -- réglage matériel,
+// sinon le GM de la machine, le kit au canal 10 ; jamais sur une piste qui
+// porte déjà les siens, jamais sur le matériau d'un dossier de projet.
+static int programmesDe(const ParsedTrack& piste, uint8_t* premier) {
+    int n = 0;
+    for (const auto& ev : piste.events)
+        if (const auto* pc = std::get_if<ProgramChangeEvent>(&ev.data)) { if (n == 0 && premier) *premier = pc->program; ++n; }
+    return n;
+}
+VSM_TEST(l_export_arrange_dit_les_instruments_par_un_programme_general_midi) {
+    Project projet;
+    auto ajouter = [&](const char* nom, const char* machine, uint8_t canal) -> Track& {
+        Track t; t.name = nom; t.instrumentId = machine; t.channel = canal;
+        t.notes.push_back(Note{0, 480, canal, 60, 100, 64, projet.nextNoteId()});
+        projet.tracks.push_back(std::move(t));
+        return projet.tracks.back();
+    };
+    ajouter("acid", "vsm.tb303", 0);
+    Track& materiel = ajouter("expandeur", "vsm.minimoog", 1);
+    materiel.midiProgram = 5; materiel.midiBank = 130;               // CC0 = 1, CC32 = 2
+    Track& lue = ajouter("du fichier", "vsm.piano", 2);
+    lue.programChanges.push_back({0, 2, 89});                        // gardé tel quel
+    ajouter("boite", "vsm.tr808", 9);
+    ajouter("vielle", "vsm.hurdygurdy", 3);                          // sans équivalent GM
+
+    const ParsedFile arrange = projet.toParsedFileArranged();
+    uint8_t p = 255;
+    VSM_ASSERT_EQ(programmesDe(arrange.tracks[0], &p), 1); VSM_ASSERT_EQ(static_cast<int>(p), 38);
+    VSM_ASSERT_EQ(programmesDe(arrange.tracks[1], &p), 1); VSM_ASSERT_EQ(static_cast<int>(p), 5);
+    int cc0 = -1, cc32 = -1;
+    for (const auto& ev : arrange.tracks[1].events)
+        if (const auto* cc = std::get_if<ControlChangeEvent>(&ev.data)) { if (cc->controller == 0) cc0 = cc->value; if (cc->controller == 32) cc32 = cc->value; }
+    VSM_ASSERT_EQ(cc0, 1); VSM_ASSERT_EQ(cc32, 2);
+    VSM_ASSERT_EQ(programmesDe(arrange.tracks[2], &p), 1); VSM_ASSERT_EQ(static_cast<int>(p), 89);
+    VSM_ASSERT_EQ(programmesDe(arrange.tracks[3], &p), 1); VSM_ASSERT_EQ(static_cast<int>(p), 25);
+    VSM_ASSERT_EQ(programmesDe(arrange.tracks[4], nullptr), 0);
+
+    const ParsedFile materiau = projet.toParsedFile();
+    VSM_ASSERT_EQ(programmesDe(materiau.tracks[0], nullptr), 0);   // le matériau ne change pas
+    VSM_ASSERT_EQ(programmesDe(materiau.tracks[2], nullptr), 1);   // sauf ce que la piste portait déjà
+}

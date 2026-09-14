@@ -9471,6 +9471,24 @@ void MainComponent::exportMidiFile() {
             // donnerait un morceau que personne n'a jamais entendu.
             ParsedFile parsed = project_.toParsedFileArranged();
             MidiFileWriter::writeFile(parsed, file.getFullPathName().toStdString());
+            // D312 : CE QUE LE FICHIER DIT DE SES INSTRUMENTS, compté au journal.
+            {
+                int derives = 0, regles = 0, gardes = 0; juce::StringArray sans;
+                for (const auto& t : project_.tracks) {
+                    if (t.kind != vsm::sequencer::Track::Kind::Midi) continue;
+                    if (!t.programChanges.empty()) { ++gardes; continue; }
+                    if (t.midiProgram >= 0) { ++regles; continue; }
+                    const int p = t.channel == 9 ? vsm::sequencer::kitGMPourMachine(t.instrumentId.c_str())
+                                                 : vsm::sequencer::programmeGMPourMachine(t.instrumentId.c_str());
+                    if (p >= 0) ++derives; else sans.add(juce::String::fromUTF8(t.name.c_str()) + " (" + juce::String(t.instrumentId) + ")");
+                }
+                std::fputs((juce::String::fromUTF8(u8"Export MIDI : programmes — ") + juce::String(gardes)
+                            + juce::String::fromUTF8(u8" piste(s) avec les siens, ") + juce::String(regles)
+                            + juce::String::fromUTF8(u8" réglé(s) pour le matériel, ") + juce::String(derives)
+                            + juce::String::fromUTF8(u8" dérivé(s) de la machine, ") + juce::String(sans.size())
+                            + juce::String::fromUTF8(u8" sans équivalent General MIDI")
+                            + (sans.isEmpty() ? juce::String() : " : " + sans.joinIntoString(", ")) + "\n").toRawUTF8(), stderr);
+            }
             // D31.5 : CE QUE LE .MID NE PORTE PAS, ON LE DIT. L'export écrit
             // le MATÉRIAU (`toParsedFile`), pas ce qui est joué : ni la chaîne
             // d'effets MIDI (D31), ni la transposition de piste (D17.5). Un

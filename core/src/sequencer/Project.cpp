@@ -1,4 +1,5 @@
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/GeneralMidi.h"
 #include <array>
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
@@ -433,6 +434,27 @@ static ParsedFile buildParsedFile(const Project& projet, bool arrange) {
 
         if (!t.name.empty())
             events.push_back({0, TrackNameEvent{t.name}});
+
+        // D312 : LE FICHIER EXPORTÉ DIT SES INSTRUMENTS. Une piste qui ne porte
+        // aucun changement de programme (ceux d'un fichier ouvert sont gardés
+        // tels quels) en reçoit un au tick 0 : celui réglé pour le matériel
+        // (D28.2, avec sa banque en CC 0 / CC 32), sinon le programme General
+        // MIDI qui désigne sa machine (la table de D307 à l'envers), le kit
+        // pour le canal 10. Une machine sans équivalent GM n'écrit rien. À
+        // l'export ARRANGÉ seulement : le `.mid` d'un dossier de projet reste
+        // le matériau, octet pour octet.
+        if (arrange && t.kind == Track::Kind::Midi && t.programChanges.empty()) {
+            const int programme = t.midiProgram >= 0 ? t.midiProgram
+                                : t.channel == 9 ? kitGMPourMachine(t.instrumentId.c_str())
+                                                 : programmeGMPourMachine(t.instrumentId.c_str());
+            if (programme >= 0 && programme <= 127) {
+                if (t.midiProgram >= 0 && t.midiBank >= 0) {
+                    events.push_back({0, ControlChangeEvent{t.channel, 0, static_cast<uint8_t>((t.midiBank >> 7) & 0x7F)}});
+                    events.push_back({0, ControlChangeEvent{t.channel, 32, static_cast<uint8_t>(t.midiBank & 0x7F)}});
+                }
+                events.push_back({0, ProgramChangeEvent{t.channel, static_cast<uint8_t>(programme)}});
+            }
+        }
 
         // D56.1 : LES PASSAGES. Sans découpe -- et toujours en mode matériau --
         // il n'y en a qu'un, l'identité, et tout ce qui suit écrit exactement
