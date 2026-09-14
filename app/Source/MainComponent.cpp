@@ -7169,6 +7169,7 @@ void MainComponent::refreshBrowser() {
     if (bibliotheque.isNotEmpty())
         vsm::interchange::indexFolder(bibliotheque.toStdString(), tr(u8"Bibliothèque").toStdString(), entrees);
 
+    vsm::interchange::sortBrowserItems(entrees);   // D289 : machines, puis fichiers ; par origine, puis par nom
     browserPanel_.setItems(std::move(entrees));
 }
 

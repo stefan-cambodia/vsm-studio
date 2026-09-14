@@ -127,3 +127,39 @@ VSM_TEST(a_folder_that_is_not_there_is_not_an_error) {
     indexFolder("/chemin/qui/n/existe/pas", "Rien", entrees);
     VSM_ASSERT_EQ(entrees.size(), size_t{0});
 }
+
+VSM_TEST(the_list_is_sorted_by_kind_then_origin_then_name) {
+    // D289 : le registre livrait ses machines dans son ordre interne, et le
+    // navigateur les montrait telles quelles -- quatre-vingts lignes sans ordre.
+    // Le tri garde ce que l'appelant a décidé (machines d'abord, projet avant
+    // bibliothèque) et range le reste par nom, sans casse.
+    std::vector<BrowserItem> entrees;
+    auto ajouter = [&entrees](BrowserItemKind kind, const char* nom, const char* origine) {
+        BrowserItem e;
+        e.kind = kind; e.name = nom; e.origin = origine; e.reference = nom;
+        entrees.push_back(e);
+    };
+    ajouter(BrowserItemKind::Preset, "zeta", "Projet");
+    ajouter(BrowserItemKind::Machine, "Terrain", "Parc VSM");
+    ajouter(BrowserItemKind::Sample, "kick.wav", "Bibliothèque");
+    ajouter(BrowserItemKind::Machine, "additive", "Parc VSM");
+    ajouter(BrowserItemKind::Preset, "alpha", "Bibliothèque");   // origine vue APRÈS « Projet »
+    ajouter(BrowserItemKind::Preset, "beta", "Projet");
+    ajouter(BrowserItemKind::Machine, "Music Box", "Parc VSM");
+    sortBrowserItems(entrees);
+
+    std::vector<std::string> noms;
+    for (const auto& e : entrees) noms.push_back(e.name);
+    const std::vector<std::string> attendu{"additive", "Music Box", "Terrain",   // machines, par nom sans casse
+                                           "beta", "zeta",                       // presets du projet d'abord
+                                           "alpha",                              // puis ceux de la bibliothèque
+                                           "kick.wav"};
+    VSM_ASSERT(noms == attendu);
+    // ET LE FILTRE GARDE CET ORDRE : il parcourt la liste triée sans la remélanger.
+    // « t » : « Music Box » (Parc VSM) est la seule entrée qui n'en porte ni dans son nom ni dans son origine.
+    const auto filtres = filterBrowserItems(entrees, "t");
+    std::vector<std::string> nomsFiltres;
+    for (const auto& e : filtres) nomsFiltres.push_back(e.name);
+    const std::vector<std::string> attenduFiltre{"additive", "Terrain", "beta", "zeta", "alpha", "kick.wav"};
+    VSM_ASSERT(nomsFiltres == attenduFiltre);
+}

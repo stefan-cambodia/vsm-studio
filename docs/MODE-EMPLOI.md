@@ -741,6 +741,8 @@ Deux gestes. Le double-clic applique à la piste sélectionnée — le geste cou
 
 L'inventaire ne lit aucun contenu — des noms de fichiers et des extensions —, ce qui le rend instantané sur un dossier de plusieurs milliers d'échantillons.
 
+**L'ordre de la liste** (D289) : les machines d'abord, puis les presets, les profils et les échantillons ; à nature égale, le dossier du projet avant la bibliothèque ; et à origine égale, le nom, sans casse. Une recherche garde cet ordre.
+
 ![Le navigateur : machines, presets, profils et échantillons dans une seule liste, avec leur origine.](images/manuel/navigateur.png)
 
 *Le navigateur : machines, presets, profils et échantillons dans une seule liste, avec leur origine.*

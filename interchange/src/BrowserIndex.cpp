@@ -128,4 +128,30 @@ std::vector<BrowserItem> filterBrowserItems(const std::vector<BrowserItem>& item
     return retenus;
 }
 
+void sortBrowserItems(std::vector<BrowserItem>& items) {
+    // LE RANG D'UNE ORIGINE est celui de sa première apparition : l'appelant a
+    // choisi l'ordre des dossiers (projet, puis bibliothèque), le tri le garde.
+    std::vector<std::string> origines;
+    auto rangOrigine = [&origines](const std::string& origine) {
+        for (size_t k = 0; k < origines.size(); ++k)
+            if (origines[k] == origine) return k;
+        origines.push_back(origine);
+        return origines.size() - 1;
+    };
+    struct Cle { int nature; size_t origine; std::string nom; };
+    std::vector<std::pair<Cle, size_t>> cles;
+    cles.reserve(items.size());
+    for (size_t k = 0; k < items.size(); ++k)
+        cles.push_back({{static_cast<int>(items[k].kind), rangOrigine(items[k].origin), lowered(items[k].name)}, k});
+    std::stable_sort(cles.begin(), cles.end(), [](const auto& a, const auto& b) {
+        if (a.first.nature != b.first.nature) return a.first.nature < b.first.nature;
+        if (a.first.origine != b.first.origine) return a.first.origine < b.first.origine;
+        return a.first.nom < b.first.nom;
+    });
+    std::vector<BrowserItem> triees;
+    triees.reserve(items.size());
+    for (const auto& [cle, k] : cles) triees.push_back(items[k]);
+    items.swap(triees);
+}
+
 } // namespace vsm::interchange

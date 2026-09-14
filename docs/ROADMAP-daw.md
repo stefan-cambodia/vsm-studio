@@ -25599,3 +25599,36 @@ mode flottant est conservé d'un lancement à l'autre, D77).
 
 **Et deux pixels** : les numéros de mesure des lanes (D287) s'écartent de deux
 pixels de plus de leur barre — collés à elle, un « 17 » se lisait « :17 ».
+
+### Phase D289 — le navigateur range sa liste (14/09/2026)
+
+**TROUVÉE EN OUVRANT LE NAVIGATEUR** (`VSM_MENU=Navigateur`, la fenêtre
+photographiée par `VSM_CAPTURE_PANNEAUX`) : quatre-vingt-trois lignes, les
+machines dans l'ordre du registre — Multisample, Terrain, Music Box, FM Drums,
+Sampler, Percussion, Test Tone… Aucun ordre lisible : une liste qu'on ne parcourt
+pas, qu'on cherche. Cubase et Live rangent leurs navigateurs par nom, avec la
+nature et l'origine en colonnes ; c'est ce qui permet de trouver « Harpsichord »
+sans taper.
+
+**CE QUI EST FAIT.** `vsm::interchange::sortBrowserItems` (D289), appliquée par
+la fenêtre principale avant de remettre l'inventaire au navigateur : la nature
+d'abord (machines, presets, profils, échantillons, presets d'effet — l'ordre de
+`BrowserItemKind`), puis **l'origine dans l'ordre où l'inventaire l'a
+rencontrée** (le projet ouvert avant la bibliothèque : ses presets sont ceux du
+morceau, la décision de D32 est gardée), puis le nom sans casse. Le filtre de
+recherche parcourt la liste triée et garde son ordre. Le tri vit dans
+`interchange/`, à côté du filtre, où il se vérifie sans fenêtre : un test neuf
+(`the_list_is_sorted_by_kind_then_origin_then_name`) — sept entrées mélangées,
+l'ordre attendu écrit à l'avance, et le filtre rejoué dessus. **La suite
+interchange passe à 298** ; le premier essai du test était FAUX, pas le code : la
+requête « a » retenait « Music Box » par son origine « Parc VSM », que l'attendu
+avait oublié — corrigée en « t », la seule lettre qui n'est ni dans ce nom ni
+dans cette origine.
+
+**VÉRIFIÉ** sur la photo du navigateur recompilé : Additive, ARP-Odyssey,
+Bagpipe, Banjo, Carillon, Chebyshev… 83 / 83, la colonne d'origine intacte.
+Réglages de l'utilisateur intacts au `cmp` ; le manuel le dit au § 5.
+
+**Trouvé en chemin, corrigé à part** : `vsm.cone` figurait encore « hors build »
+dans `CLAUDE.md` et au § 5 de ce document, alors qu'elle est livrée depuis le
+01/09 — la photo du navigateur la listait, et c'est ainsi qu'on l'a vu.

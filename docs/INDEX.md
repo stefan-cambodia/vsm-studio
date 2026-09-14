@@ -72,7 +72,7 @@ choisir : **le DAW d'abord**, la chaîne d'analyse ensuite.
 | | |
 |---|---|
 | **Machines** | **63**, plus la tonalité d'essai — 64 identifiants au registre ; **16 effets** d'insert ; **63 façades** dessinées |
-| **Tests** | 1 954 côté moteur — 1 291 audio, 330 core, 297 interchange, 25 clap, 11 panels — et **205 côté Python** (relevé du 14/09, D282 ; 172 au relevé du 10/09) |
+| **Tests** | 1 955 côté moteur — 1 291 audio, 330 core, 298 interchange, 25 clap, 11 panels — et **205 côté Python** (relevé du 14/09, D282 ; 172 au relevé du 10/09) |
 | **Lignes** | `analyse/` 132 k · `audio/` 69 k · `app/` **33 k** · `interchange/` 20 k · `core/` 16 k |
 | **Vérification** | `ruff check .` (lint) et `mypy analyse tools` (types, 104 fichiers) |
 

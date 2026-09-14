@@ -60,6 +60,14 @@ void indexFolder(const std::string& folderPath, const std::string& origin,
 std::vector<BrowserItem> filterBrowserItems(const std::vector<BrowserItem>& items,
                                              const std::string& query);
 
+/// D289 : L'ORDRE DE LA LISTE. Machines, presets, profils, échantillons dans cet
+/// ordre (celui de `BrowserItemKind`) ; à nature égale, les origines dans l'ordre
+/// où l'inventaire les a rencontrées (le projet ouvert avant la bibliothèque —
+/// ses presets sont ceux du morceau) ; à origine égale, le NOM, sans casse. Le
+/// registre livrait ses 64 machines dans son ordre interne, et une liste de
+/// quatre-vingts lignes sans ordre ne se parcourt pas, elle se cherche.
+void sortBrowserItems(std::vector<BrowserItem>& items);
+
 /// Le libellé d'une famille, au pluriel, pour les en-têtes.
 const char* browserKindLabel(BrowserItemKind kind);
 
