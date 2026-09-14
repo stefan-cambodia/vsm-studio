@@ -36,6 +36,14 @@ solo, marqueurs quand il y en a.
   aucun équivalent. Une piste importée arrive donc **sans instrument
   assigné**, et le rapport le dit piste par piste. Prétendre convertir un
   patch d'Operator en `vsm.dx7` serait inventer un son que personne n'a écrit.
+  **Nuance décidée le 14/09/2026 (D320)** : quand le NOM de la piste dit sa
+  famille — « Bass », « Drums », « Strings », « Pad » (la règle de D313) —,
+  l'application lui donne un premier son de cette famille (la banque General
+  MIDI installée, sinon la machine du parc), et le rapport le dit sur sa
+  ligne, en *attention* : « d'après son nom, à changer si ce n'est pas ça ».
+  Ce n'est pas le son du projet d'origine, et personne ne le prétend ; c'est
+  ce qu'il faut pour ENTENDRE l'import au premier Play. Une piste dont le nom
+  ne dit rien (« 3-Operator », « MIDI ») reste sans instrument, comme avant.
 - **L'audio.** Les clips audio référencent des fichiers hors du projet, souvent
   absents. On importe la RÉFÉRENCE et son placement, et le rapport dit si le
   fichier a été trouvé.

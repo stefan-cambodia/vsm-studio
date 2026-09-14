@@ -26842,3 +26842,37 @@ pistes, 13 par la banque) puis *Fichier ▸ Exporter audio* (`VSM_EXPORT`) :
 à sortie — un fichier GM téléchargé devient un WAV du morceau entier sans rien
 régler. Les gardes larges après la soirée : `gestes-vivants.py` (69 entrées) et
 `gestes-promesses.py` rendent 0.
+
+### Phase D320 — un projet Live importé restait muet quand son nom disait « Bass » (14/09/2026)
+
+**D'où elle vient.** Le point laissé ce soir sur les imports Live / FL : le CDC
+(§ 2) veut qu'une piste importée arrive « sans instrument assigné », parce que
+convertir un patch d'Operator serait inventer un son — et c'est juste. Mais une
+piste qui s'appelle « Bass » ou « Drums » a déjà dit sa famille, et D313 sait
+la lire ; l'import la laissait muette au premier Play, quand un `.mid` du même
+nom sonnerait. **Décision écrite au CDC** : le NOM donne un premier son, le
+rapport le dit en *attention* (« un premier son d'après son nom … — à changer
+si ce n'est pas ça »), et un nom qui ne dit rien reste sans instrument.
+
+**CE QUI EST FAIT.** `attribuerLesMachinesGM(…, seulementParLeNom)` : à
+l'import DAW, seules les pistes dont le nom parle sont dotées (banque
+installée d'abord, machine du parc sinon, D307-D309) ; le compte « sans
+instrument » du rapport diminue d'autant, et une ligne par piste dotée s'y
+ajoute.
+
+**ATTENDU** (fixture `.als` engendré depuis celui des tests, deux pistes
+renommées « Bass » et « 3-Operator », `VSM_IMPORT`) : le rapport porte « Piste
+« Bass » : un premier son d'après son nom, vsm.multisample … » (FR3-Finger-Bass
+avec la banque) et garde « 3-Operator » sans instrument (une ligne *perte*) ;
+`VSM_TEXTES` : une liste « (Aucun) » (3-Operator), pas deux.
+
+**MESURÉ (binaire de 23:48, fixture `deux-pistes.als`).** Avec la banque : rapport
+« ! Piste MIDI « Bass » : notes reprises, un premier son d'après son NOM :
+vsm.multisample — l'instrument du projet d'origine n'existe pas ici ; à changer
+si ce n'est pas ça » (journal : FR3-Finger-Bass, FluidR3) et « ! Piste MIDI
+« 3-Operator » : 1 note(s) reprise(s), AUCUN instrument assigné … » ; **une**
+liste « (Aucun) » au relevé (3-Operator). Sans banque : « Bass » → vsm.minimoog,
+même rapport. Le premier binaire AJOUTAIT une ligne sous celle du lecteur, qui
+disait encore « AUCUN instrument assigné » pour la même piste — deux lignes, une
+fausse ; la ligne de la piste est maintenant réécrite, en *attention*, et le
+compte « sans instrument » diminue d'autant. Attendus tenus.

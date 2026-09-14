@@ -5893,7 +5893,47 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
     poserTitreDeBase(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
                      + fichier.getFileNameWithoutExtension());
+    // D320 : LE NOM DE LA PISTE DONNE UN PREMIER SON (CDC import § 2, nuance du
+    // 14/09) : « Bass », « Drums », « Pad »… reçoivent la famille de D313 ; un
+    // nom qui ne dit rien reste sans instrument, comme le rapport l'annonce.
+    presetsGMEnAttente_.clear();
+    std::vector<size_t> dotees;
+    for (size_t i = 0; i < project_.tracks.size(); ++i)
+        if (project_.tracks[i].kind == vsm::sequencer::Track::Kind::Midi
+            && project_.tracks[i].instrumentId.empty() && !project_.tracks[i].notes.empty())
+            dotees.push_back(i);
+    attribuerLesMachinesGM(project_, 0, "Import DAW", true);
     rebuildFromProject();
+    appliquerLesPresetsGM("Import DAW");
+    // ET LE RAPPORT LE DIT, ligne par ligne, en attention : ce son n'est pas
+    // celui du projet d'origine, il est là pour entendre l'import au premier Play.
+    for (size_t i : dotees) {
+        const auto& t = project_.tracks[i];
+        if (t.instrumentId.empty()) continue;
+        // LA LIGNE DE LA PISTE EST RÉÉCRITE, pas doublée : « AUCUN instrument
+        // assigné » suivi de « un premier son d'après son nom » ferait mentir la
+        // première. La ligne du lecteur commence par « Piste MIDI « nom » : ».
+        const std::string debut = juce::String(juce::String::fromUTF8(u8"Piste MIDI « ")
+                                               + juce::String::fromUTF8(t.name.c_str())
+                                               + juce::String::fromUTF8(u8" » :")).toStdString();
+        const std::string texte = juce::String(juce::String::fromUTF8(u8"Piste MIDI « ")
+                                               + juce::String::fromUTF8(t.name.c_str())
+                                               + juce::String::fromUTF8(u8" » : notes reprises, un premier son d'après son NOM : ")
+                                               + juce::String(t.instrumentId)
+                                               + juce::String::fromUTF8(u8" — l'instrument du projet d'origine n'existe pas ici ; à changer si ce n'est pas ça"))
+                                      .toStdString();
+        bool reecrite = false;
+        for (auto& ligne : resultat.report.lines)
+            if (ligne.gravite == vsm::interchange::DawImportReport::Gravite::perte
+                && ligne.texte.compare(0, debut.size(), debut) == 0) {
+                ligne.texte = texte;
+                ligne.gravite = vsm::interchange::DawImportReport::Gravite::attention;
+                reecrite = true;
+                break;
+            }
+        if (!reecrite) resultat.report.note(texte, vsm::interchange::DawImportReport::Gravite::attention);
+        if (resultat.report.tracksWithoutInstrument > 0) --resultat.report.tracksWithoutInstrument;
+    }
     pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
 
     // LE RAPPORT DANS LA FENÊTRE, ET NON DANS UNE ALERTE. Une boîte de message
@@ -10179,7 +10219,7 @@ bool MainComponent::materializeImplicitClips() {
 }
 
 size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, size_t depuis,
-                                             const char* contexte) {
+                                             const char* contexte, bool seulementParLeNom) {
     using vsm::sequencer::Track;
     size_t dotees = 0;
     for (size_t i = depuis; i < projet.tracks.size(); ++i) {
@@ -10195,6 +10235,9 @@ size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, si
         // canal 10 est une batterie, et 52 y serait un « Orchestra Kit ».
         const bool batterie = piste.channel == 9 || duNom.kit;
         const bool nomUtile = piste.programChanges.empty() && (batterie ? duNom.kit : duNom.programme >= 0);
+        // D320 : à l'import d'un projet Live / FL, SEUL le nom peut parler (CDC
+        // import § 2) -- un nom qui ne dit rien laisse la piste sans instrument.
+        if (seulementParLeNom && !nomUtile) continue;
         const uint8_t programme = !piste.programChanges.empty() ? piste.programChanges.front().program
                                 : (nomUtile && !batterie) ? static_cast<uint8_t>(duNom.programme) : uint8_t{0};
         const bool parLeNom = nomUtile;

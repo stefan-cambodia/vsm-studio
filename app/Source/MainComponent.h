@@ -1389,7 +1389,8 @@ private:
     /// (0, le piano, quand le fichier n'en porte pas). Chaque choix est écrit au
     /// journal avec le nom GM ; une machine absente du registre retombe sur
     /// `vsm.generic`, et c'est dit. Rend le nombre de pistes dotées.
-    size_t attribuerLesMachinesGM(vsm::sequencer::Project& projet, size_t depuis, const char* contexte);
+    size_t attribuerLesMachinesGM(vsm::sequencer::Project& projet, size_t depuis, const char* contexte,
+                                  bool seulementParLeNom = false);   // D320 : l'import DAW ne prend que le nom
     /// D309 : les presets de banque choisis par `attribuerLesMachinesGM`
     /// (piste → fichier `.synth.json`), appliqués APRÈS `rebuildFromProject()`,
     /// quand les machines existent. Rend le nombre appliqué, et dit le reste.
