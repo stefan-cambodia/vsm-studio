@@ -2894,8 +2894,8 @@ const Paire kAnglais[] = {
       "the analysis chain could not be started" },
     { "le transcripteur n'a pas pu être lancé",
       "the transcriber could not be started" },
-    { "Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, ce qui est une hypothèse, ce qui est coupé exprès…",
-      "What the chain does not say: why this track comes from that stem, what is a hypothesis, what is cut on purpose…" },
+    { "Vos notes sur ce morceau — ce que la chaîne ne dit pas.",
+      "Your notes on this piece — what the chain does not say." },
     // --- D115 : UN TITRE DE FAÇADE, L'ÉTAT DU PIANO ROLL -------------------------------
     { "RÉGLAGES",
       "SETTINGS" },

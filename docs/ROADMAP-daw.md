@@ -25666,3 +25666,24 @@ sous un `HOME` de brouillon (dont le fichier de réglages, lui, porte toujours
 `-1`). Le piège du 10/09 à 21:13, encore : le témoin `cmp` se reprend JUSTE
 AVANT chaque série, et une différence se lit avant d'être niée ou rétablie —
 rien n'a été rétabli, c'est son réglage.
+
+### Phase D291 — l'invite des notes de projet tient sur sa ligne (14/09/2026)
+
+**TROUVÉE EN OUVRANT LA FENÊTRE** (`VSM_VUE=notes`, photographiée par
+`VSM_CAPTURE_PANNEAUX`) : un éditeur vide dont l'invite, longue de cent vingt
+caractères, se coupait au bord droit — « …ce qui est une … ». JUCE dessine le
+texte d'un éditeur vide sur UNE ligne, sans repli ; l'invite de D18.6 avait été
+écrite comme un paragraphe.
+
+**CE QUI EST FAIT.** Une invite qui tient : « Vos notes sur ce morceau — ce que
+la chaîne ne dit pas. », et sa traduction, « Your notes on this piece — what
+the chain does not say. » — la clé de la table de langue change avec elle, sans
+quoi l'anglais serait retombé sur le français (la règle de D73). **Vérifié dans
+les deux langues** (`VSM_LANGUE=en` pour la seconde, sans toucher au réglage
+conservé), photo de la fenêtre : la ligne entière, les deux fois. Réglages de
+l'utilisateur intacts au `cmp`, contre le témoin repris à 15:20.
+
+Deux fenêtres regardées dans la même série et qui n'appellent rien :
+l'**analyseur de spectre** en lecture (courbe, tenue de crête en gris, « Master —
+crête 797,6 Hz, −31,9 dB ») et les **préférences** (échelle, threads de rendu,
+clic, dossiers, raccourcis).

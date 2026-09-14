@@ -7106,8 +7106,11 @@ void MainComponent::showProjectNotes() {
         projectNotesEditor_.setScrollbarsShown(true);
         projectNotesEditor_.setFont(juce::Font(juce::FontOptions(14.0f)));
         projectNotesEditor_.setTextToShowWhenEmpty(
-            tr(u8"Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, "
-               u8"ce qui est une hypothèse, ce qui est coupé exprès…"),
+            // D291 : UNE LIGNE QUI TIENT. L'invite d'un éditeur vide ne se
+            // replie pas (JUCE la dessine sur une ligne), et la première
+            // version, longue de cent vingt caractères, se lisait « …ce qui
+            // est une … » avec ses trois points au bord droit de la fenêtre.
+            tr(u8"Vos notes sur ce morceau — ce que la chaîne ne dit pas."),
             vsm::ui::Palette::textSecondary);
         // ÉCRIT DANS LE PROJET À CHAQUE FRAPPE, et marqué modifié : des notes
         // qu'il faudrait penser à valider seraient des notes perdues.
