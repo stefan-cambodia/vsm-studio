@@ -70,7 +70,7 @@ lancer() {  # $1 fichier  $2... env supplémentaire (passé en DERNIER : il peut
         VSM_CAPTURE="$maison/capture.png" "${@:2}" \
         timeout 25 "$BIN" 2>&1
 }
-echo "=== D305-D312 : ce qu'un .mid devient à l'ouverture (sans banque) ==="
+echo "=== D305-D319 : ce qu'un .mid devient à l'ouverture (sans banque) ==="
 j=$(lancer format0.mid)
 verdict "format 0 → 3 pistes, découpées par canal"        "$(grep -c '^Ouvrir MIDI : 3 piste(s).*découpée(s) par canal' <<<"$j")"
 verdict "nommées « Mixdown · canal 1 / 4 / 10 »"           "$(grep -cE 'VSM_PISTES : .*Mixdown · canal 1.*Mixdown · canal 4.*Mixdown · canal 10' <<<"$j")"
