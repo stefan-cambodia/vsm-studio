@@ -26736,3 +26736,38 @@ la fin de la course D282 (le convertisseur charge des banques de 150 Mo).
 réinstallés**, `FR3-Steel-Guitar.synth.json` porte `"envelope.1.release": 5` et
 `"envelope.1.attack": 0.001`. Le fichier Children rouvert : **0 « réserves du
 preset de banque »** (8 avant), toujours « dont 13 par la banque ». Attendus tenus.
+
+### Phase D317 — le journal de la reconstruction lisait les étapes à l'envers (14/09/2026)
+
+**TROUVÉE EN PHOTOGRAPHIANT LA FENÊTRE DE RECONSTRUCTION** (le point laissé
+ce soir), sur un fichier de six secondes engendré (deux voix, 110-196 Hz et
+440-659 Hz) : la reconstruction depuis l'application marche de bout en bout en
+45 s — « Terminé — le projet est ouvert, l'original en regard », une piste
+« bass » (kalimba), huit notes, la voix grave juste (A2, D3, G3, A2). Mais le
+journal de la fenêtre montre **« [DEMUCS] Séparation… » et sa barre de
+progression AVANT « [1/5] Lecture de six-secondes.wav » et « [2/5] Séparation
+en stems »** : Python tamponne sa sortie standard quand elle va dans un tube,
+et c'est un tube que l'application lit ; stderr (demucs) arrive sans tampon.
+La règle du dépôt pour toute chaîne longue — `python -u` — manquait au seul
+lanceur qui compte pour le musicien.
+
+**CE QUI EST FAIT.** `ReconstructionChain::commandLine` passe `-u` après
+l'interpréteur ; le test de la ligne de commande le garde (sept arguments, `-u`
+en deuxième). La fenêtre et le lanceur ne changent pas.
+
+**ATTENDU** : la même reconstruction relancée, photo de la fenêtre : « [1/5]
+Lecture » puis « [2/5] Séparation » AVANT « [DEMUCS] » ; tests `interchange`
+300 verts ; même résultat (une piste, huit notes).
+
+**MESURÉ (binaire de 23:15).** La même reconstruction de six secondes, photo de la
+fenêtre : **« [1/5] Lecture de six-secondes.wav », « [2/5] Séparation en stems
+(htdemucs_6s) », PUIS « [DEMUCS] modèle : htdemucs_6s … Séparation… » et sa
+barre** — les étapes dans l'ordre où elles se produisent. Même résultat (une
+piste, huit notes, six douteuses dites à l'ouverture). Tests `interchange` **300
+verts** : les deux tests de la ligne de commande comptent sept arguments et
+lisent `-u` en deuxième (le premier binaire en laissait un à six — vu rouge,
+corrigé). *Au passage* : le HOME de banc `h2`, réutilisé depuis 18:29, portait
+23 sessions interrompues et rouvrait la dernière (16 pistes du fichier Children,
+13 échantillons en échec faute de `VSM_PROFILS`) avant le geste demandé — un
+banc qui réutilise un HOME hérite de ses autosauvegardes ; `tools/ouvrir-midi.sh`
+et les gardes prennent un HOME neuf à chaque course, c'est la bonne façon.

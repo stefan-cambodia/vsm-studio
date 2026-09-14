@@ -116,16 +116,18 @@ VSM_TEST(the_command_line_is_a_list_of_arguments_not_a_shell_string) {
     VSM_ASSERT(chaine.available);
 
     const auto commande = chaine.commandLine("/musique/Sweet Child O' Mine.mp3", "/tmp/sortie");
-    // Cinq arguments et le drapeau de parité, toujours présent depuis que la
+    // Six arguments et le drapeau de parité, toujours présent depuis que la
     // parité est le défaut de la chaîne : décochée, `--sans-parite`.
-    VSM_ASSERT_EQ(commande.size(), size_t{6});
+    // D317 : `-u` juste après l'interpréteur -- le journal sans tampon.
+    VSM_ASSERT_EQ(commande.size(), size_t{7});
     VSM_ASSERT_EQ(commande.back(), std::string("--sans-parite"));
     VSM_ASSERT_EQ(commande[0], chaine.interpreterPath);
-    VSM_ASSERT_EQ(commande[1], chaine.scriptPath);
+    VSM_ASSERT_EQ(commande[1], std::string("-u"));
+    VSM_ASSERT_EQ(commande[2], chaine.scriptPath);
     // Le nom de fichier passe ENTIER et INTACT, apostrophe et espaces compris.
-    VSM_ASSERT_EQ(commande[2], std::string("/musique/Sweet Child O' Mine.mp3"));
-    VSM_ASSERT_EQ(commande[3], std::string("--sortie"));
-    VSM_ASSERT_EQ(commande[4], std::string("/tmp/sortie"));
+    VSM_ASSERT_EQ(commande[3], std::string("/musique/Sweet Child O' Mine.mp3"));
+    VSM_ASSERT_EQ(commande[4], std::string("--sortie"));
+    VSM_ASSERT_EQ(commande[5], std::string("/tmp/sortie"));
     fs::remove_all(racine);
 }
 
@@ -144,12 +146,12 @@ VSM_TEST(la_parite_ajoute_un_drapeau_et_un_seul) {
     VSM_ASSERT(chaine.available);
 
     const auto sans = chaine.commandLine("/m/morceau.mp3", "/tmp/sortie");
-    VSM_ASSERT_EQ(sans.size(), size_t{6});
+    VSM_ASSERT_EQ(sans.size(), size_t{7});   // D317 : -u
     VSM_ASSERT_EQ(sans.back(), std::string("--sans-parite"));   // décochée, la case dit quelque chose
 
     const auto avec = chaine.commandLine("/m/morceau.mp3", "/tmp/sortie", true);
-    VSM_ASSERT_EQ(avec.size(), size_t{6});
-    VSM_ASSERT_EQ(avec[5], std::string("--parite"));
+    VSM_ASSERT_EQ(avec.size(), size_t{7});   // D317 : -u
+    VSM_ASSERT_EQ(avec[6], std::string("--parite"));
     // Le reste de la commande ne bouge pas d'un argument : seul le dernier
     // dit le choix, dans un sens ou dans l'autre.
     for (size_t i = 0; i + 1 < sans.size(); ++i) VSM_ASSERT_EQ(avec[i], sans[i]);

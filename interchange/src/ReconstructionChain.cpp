@@ -90,7 +90,14 @@ std::vector<std::string> ReconstructionChain::commandLine(const std::string& aud
                                                            const std::string& outputFolder,
                                                            bool viserLaParite) const {
     if (!available) return {};
-    std::vector<std::string> commande{interpreterPath, scriptPath, audioFile,
+    // D317 : `-u`, SANS TAMPON. Python tamponne sa sortie standard quand elle
+    // va dans un tube -- et c'est un tube que l'application lit. Le journal de
+    // la fenêtre montrait alors « [DEMUCS] Séparation… » et sa barre de
+    // progression (stderr, sans tampon) AVANT « [1/5] Lecture » et « [2/5]
+    // Séparation » (stdout, arrivés d'un bloc plus tard) : les étapes se
+    // lisaient à l'envers. La règle du dépôt pour toute chaîne longue
+    // (`python -u`), appliquée au seul lanceur qui l'oubliait.
+    std::vector<std::string> commande{interpreterPath, "-u", scriptPath, audioFile,
                                       "--sortie", outputFolder};
     // UN SEUL DRAPEAU, PAS TROIS. `--parite` est le raccourci de la chaîne, et
     // l'application le passe tel quel : recopier ici les trois découpages
