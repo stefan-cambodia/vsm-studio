@@ -362,6 +362,7 @@ analyse/.venv/bin/python tools/modeles-separation.py <dossier> --transcrire  # q
 analyse/.venv/bin/python tools/gestes-vivants.py       # 69 entrées de menu : chacune change le projet, ou DIT pourquoi non
 tools/balayer-facades.sh                              # les 63 façades au rack par défaut : aucun bouton sous 18 px (dernière disposition, D302)
 tools/pianoroll-zones.sh                              # le piano roll à trois tailles de fenêtre : la grille reçoit au moins deux fois la lane (D301)
+analyse/.venv/bin/python tools/etalement-automation.py photo.png  # une courbe d'automation occupe-t-elle sa lane ? médiane et p10-p90 des points (D327)
 analyse/.venv/bin/python tools/encre-clips.py photo.png  # les notes se voient-elles dans les clips ? part d'encre et contraste par bande (D325)
 tools/police-plancher.sh                              # aucune police écrite en dur sous 12 pt dans les panneaux (façades de machines exclues, D323)
 tools/ouvrir-midi.sh                                  # ce qu'un .mid devient à l'ouverture : une piste par canal, clips, machines GM, conducteur non créé, export (D305-D312)

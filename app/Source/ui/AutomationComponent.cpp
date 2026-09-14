@@ -31,6 +31,12 @@ AutomationComponent::AutomationComponent() {
             selectedParam_ = e.id;
             paramMin_ = e.min;
             paramMax_ = e.max;
+            // D327 : UNE COUPURE EN HERTZ SE LIT EN LOG. Sur une échelle linéaire
+            // de 20 à 18 000 Hz, tout ce qui s'entend (200 à 2 000) tenait dans
+            // le dixième du bas de la lane -- 606 points écrasés sur une ligne.
+            // Cubase et Live suivent l'échelle du paramètre ; ici : les Hz qui
+            // couvrent au moins une décade, avec un minimum strictement positif.
+            echelleLog_ = (e.unit == "Hz" && e.min > 0.0f && e.max / e.min >= 10.0f);
             hasSelection_ = true;
             loadSelectedLane();
             repaint();
@@ -130,7 +136,7 @@ void AutomationComponent::rebuildParamBox() {
                 if (premierAvecPoints < 0) premierAvecPoints = itemId - 1;
             }
             paramBox_.addItem(libelle, itemId++);
-            paramEntries_.push_back({info.id, info.minValue, info.maxValue});
+            paramEntries_.push_back({info.id, info.minValue, info.maxValue, info.unit});
         }
         if (paramBox_.getNumItems() > 0) {
             // déclenche onChange -> sélection
@@ -207,14 +213,18 @@ Tick AutomationComponent::xToTick(int x) const {
 int AutomationComponent::valueToY(float value) const {
     auto a = editorArea();
     const float range = (paramMax_ - paramMin_);
-    const float norm = range > 0.0f ? (value - paramMin_) / range : 0.0f;
+    float norm = range > 0.0f ? (value - paramMin_) / range : 0.0f;
+    if (echelleLog_ && value > 0.0f)   // D327
+        norm = std::log(value / paramMin_) / std::log(paramMax_ / paramMin_);
     return a.getBottom() - static_cast<int>(juce::jlimit(0.0f, 1.0f, norm) * a.getHeight());
 }
 
 float AutomationComponent::yToValue(int y) const {
     auto a = editorArea();
-    const float norm = a.getHeight() > 0 ? static_cast<float>(a.getBottom() - y) / a.getHeight() : 0.0f;
-    return paramMin_ + juce::jlimit(0.0f, 1.0f, norm) * (paramMax_ - paramMin_);
+    const float norm = juce::jlimit(0.0f, 1.0f, a.getHeight() > 0 ? static_cast<float>(a.getBottom() - y) / a.getHeight() : 0.0f);
+    if (echelleLog_)   // D327
+        return paramMin_ * std::pow(paramMax_ / paramMin_, norm);
+    return paramMin_ + norm * (paramMax_ - paramMin_);
 }
 
 int AutomationComponent::findPointNear(juce::Point<int> p) const {
@@ -352,6 +362,11 @@ void AutomationComponent::paint(juce::Graphics& g) {
     g.setFont(juce::Font(juce::FontOptions(12.0f)));
     g.drawText(juce::String(paramMax_, 1), a.getX() + 2, a.getY(), 60, 14, juce::Justification::topLeft);
     g.drawText(juce::String(paramMin_, 1), a.getX() + 2, a.getBottom() - 14, 60, 14, juce::Justification::bottomLeft);
+    if (echelleLog_) {   // D327 : le milieu d'une échelle log n'est pas la moyenne -- il est écrit
+        const float milieu = std::sqrt(paramMin_ * paramMax_);
+        g.drawText(juce::String(milieu, 0) + " (log)", a.getX() + 2, a.getCentreY() - 7, 80, 14,
+                   juce::Justification::centredLeft);
+    }
 
     if (editPoints_.empty()) {
         g.setColour(Palette::textSecondary.withAlpha(0.7f));

@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include <JuceHeader.h>
 #include "FenetreDeTemps.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
@@ -90,7 +91,8 @@ private:
     juce::Label trackLabel_, paramLabel_, hintLabel_;
     juce::ComboBox trackBox_, paramBox_;
 
-    struct ParamEntry { vsm::audio::plugin::ParamId id; float min; float max; };
+    struct ParamEntry { vsm::audio::plugin::ParamId id; float min; float max; std::string unit; };
+    bool echelleLog_ = false;   ///< D327 : fréquences (Hz, plus d'une décade) sur une échelle logarithmique
     std::vector<ParamEntry> paramEntries_; // parallèle aux items de paramBox_
 
     std::vector<vsm::audio::engine::AutomationLane> lanes_;

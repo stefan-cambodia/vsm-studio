@@ -27186,3 +27186,50 @@ Sur la photo, la lane numérote 1 à 12 sous le piano roll qui montre 1 à 9 : l
 lane occupe toute la largeur du dock, le piano roll s'arrête au rack, et les
 mesures communes sont à la même verticale — c'est la même règle que sous
 l'arrangement. Le manuel (§ 4) dit la règle à trois cas. Banc de fumée : 0 raté.
+
+### Phase D327 — une coupure en hertz s'automatisait sur une échelle linéaire (15/09/2026)
+
+**VU À LA TAILLE DE L'UTILISATEUR**, onglet *Automation* de `cdl` : « Filter
+Cutoff ● 606 » points, de 20 à 18 000 Hz sur une échelle LINÉAIRE — tout ce qui
+s'entend (200 à 2 000 Hz) tenait dans le dixième du bas de la lane, la courbe
+écrasée sur une ligne, et poser un point à 800 Hz plutôt qu'à 400 demandait un
+pixel de précision. Cubase et Live dessinent l'automation dans l'échelle du
+paramètre (la coupure d'un filtre est logarithmique).
+
+**CE QUI EST FAIT.** Quand le paramètre est en `Hz`, de minimum strictement
+positif et couvrant au moins une décade, la lane passe en échelle logarithmique
+(valeur ↔ hauteur, à l'affichage et au geste) ; le milieu de l'échelle est
+écrit à gauche (« 600 (log) » : la moyenne géométrique), car le milieu d'une
+échelle log n'est pas la moyenne. Les autres unités (dB, %, ms, sans unité) ne
+bougent pas ; le MIDI CC (0-127) non plus.
+
+**ATTENDU** (`tools/etalement-automation.py` sur la photo de `cdl`, onglet
+*Automation*, 2117 × 1317) : la hauteur médiane des points ambre passe de
+**7,1 %** de la lane (mesuré avant : 3 799 px ambre, p10-p90 de 4,3 à 18,6 %,
+soit **14,3 %** d'étalement — l'attendu avait d'abord écrit « 3-4 % » et
+« environ 5 % » de tête, avant de lancer le script : corrigé sur la mesure, les
+seuils visés n'ont pas bougé) à **au moins 35 %**, et l'étalement p10-p90 à
+**au moins 25 %** ; un paramètre en dB
+(le trim, ou le volume du master) photographié à côté garde une échelle
+linéaire avec les mêmes deux libellés de bornes ; banc de fumée 0 raté.
+
+**MESURÉ** (`tools/etalement-automation.py`, même photo de `cdl`, 3 799 px
+ambre avant comme après) :
+
+| | hauteur médiane des points | p10-p90 | étalement |
+|---|---|---|---|
+| avant (linéaire) | 7,1 % | 4,3 → 18,6 % | 14,3 % |
+| après (log) | **58,6 %** | 52,9 → 74,3 % | **21,4 %** |
+| témoin : Detune 0-1 (sans unité), 4 points de 0 à 1, après | 49,5 % | 24,3 → 99,0 % | 74,8 % |
+
+Médiane : tenue (58,6 % pour 35 écrit). Étalement : **manqué** — 21,4 % pour
+25 écrit. La courbe de `cdl` va de 200 à 2 000 Hz environ, une décade sur les
+trois de l'échelle : un tiers de la hauteur au plus, et les points s'y
+répartissent sur les deux tiers de cette décade ; le seuil de 25 % était une
+estimation de tête, pas un calcul. Le témoin sans unité reste linéaire (un
+point à 0,5 à mi-hauteur, 49,5 % de médiane), avec ses deux bornes « 1.0 » et
+« 0.0 » et sans « (log) ». Sur la photo, la coupure se lit enfin comme une
+courbe : ses creux à 250 Hz et ses bosses à 1 200 Hz font des vagues, là où
+tout était une ligne au ras du sol. Les enveloppes en secondes (0,001 à 8 s,
+quatre décades) auraient le même besoin — nommé, non fait, faute d'une courbe
+mesurée. Banc de fumée : 0 raté.
