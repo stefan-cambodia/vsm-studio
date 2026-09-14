@@ -6273,6 +6273,41 @@ void MainComponent::showReconstructionReport(bool montrerLeVolet) {
         }
     }
 
+    // --- D321 : LES PISTES QUE LE RAPPORT NE MESURE PAS SONT NOMMÉES --------
+    // Un vieux rapport (deux stems) sous un projet à quatre pistes affichait
+    // « 4 piste(s) reconstruite(s) » et deux lignes : Batterie et Voix
+    // manquaient sans un mot. Une piste mélodique est couverte par son stem,
+    // une piste de batterie par le bloc « drums » ; une piste audio n'est pas
+    // reconstruite, donc jamais mesurée -- et c'est dit aussi.
+    {
+        juce::StringArray sansDistance, pistesAudio;
+        const bool blocBatterie = racine["drums"].isObject();
+        const std::string machineBatterie = blocBatterie ? racine["drums"]["machine"].asString("") : std::string();
+        for (const auto& t : project_.tracks) {
+            if (t.kind == vsm::sequencer::Track::Kind::Group) continue;
+            const juce::String nom = juce::String::fromUTF8(t.name.c_str());
+            if (t.kind == vsm::sequencer::Track::Kind::Audio) { pistesAudio.add(nom); continue; }
+            bool couverte = false;
+            if (stems.isArray())
+                for (const auto& stem : stems.elements())
+                    if (stem["name"].asString("") == t.name) couverte = true;
+            if (!couverte && blocBatterie
+                && (t.channel == 9 || (!machineBatterie.empty() && t.instrumentId == machineBatterie)))
+                couverte = true;
+            if (!couverte) sansDistance.add(nom);
+        }
+        if (!sansDistance.isEmpty() || !pistesAudio.isEmpty()) lignes.add({{}, Ton::info});
+        if (!sansDistance.isEmpty())
+            lignes.add({tr(u8"Sans distance dans ce rapport : %1 — le rapport est antérieur à ces pistes, "
+                           u8"ou la chaîne ne les a pas mesurées")
+                            .replace("%1", sansDistance.joinIntoString(", ")),
+                        Ton::attention});
+        if (!pistesAudio.isEmpty())
+            lignes.add({tr(u8"Pistes audio, non reconstruites donc sans distance : %1")
+                            .replace("%1", pistesAudio.joinIntoString(", ")),
+                        Ton::info});
+    }
+
     clientDuRapport_ = ClientDuRapport::reconstruction;   // D93
     importReport_.showLines(
         tr(u8"Rapport de reconstruction"),

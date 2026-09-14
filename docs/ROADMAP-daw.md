@@ -26884,3 +26884,35 @@ canal 1 » : 38 → vsm.tb303 », « piste 3 « canal 4 » : 89 → vsm.jupiter8
 « canal 10 » : kit 0 → vsm.drums », `VSM_CLIPS : 4 clip(s)` (le clip de `cdl` plus
 trois), `VSM_PISTES` : melange puis les trois canaux. Les deux portes se
 comportent pareil.
+
+### Phase D321 — le rapport de reconstruction taisait les pistes qu'il ne mesure pas (14/09/2026)
+
+**VUE EN OUVRANT `projet-b4wuzthen-v3`** (téléchargements, un projet de la
+chaîne d'il y a dix jours) : la fenêtre dit « 4 piste(s) reconstruite(s) ·
+distance globale 0,2490 » et n'aligne que deux lignes — bass, other. Batterie
+et Voix n'ont ni ligne ni excuse : le `rapport.json` de l'époque ne porte que
+deux stems et aucun bloc de batterie, et l'écran montrait ce qu'il avait sans
+dire ce qui manquait. Sur un projet récent (`children-c3-plafond`), les deux
+pistes audio « Voix » n'apparaissent pas non plus, et personne ne dit qu'une
+piste audio n'est pas reconstruite.
+
+**CE QUI EST FAIT.** Après les stems, la batterie, le verdict et la
+réverbération, l'écran compte les pistes du projet que rien ne couvre — une
+piste mélodique est couverte par son stem, une piste de batterie par le bloc
+« drums » (canal 10 ou machine du bloc), un groupe ne compte pas — et les nomme
+en *attention* : « Sans distance dans ce rapport : Batterie, Voix — le rapport
+est antérieur à ces pistes, ou la chaîne ne les a pas mesurées » ; les pistes
+audio ont leur ligne en *info*. Deux chaînes traduites.
+
+**ATTENDU** (`VSM_RAPPORT=1`, relevé des textes) : `projet-b4wuzthen-v3` → « Sans
+distance dans ce rapport : Batterie, Voix » ; `children-c3-plafond` → aucune
+ligne « Sans distance » (les cinq pistes de batterie couvertes par le bloc),
+et « Pistes audio, non reconstruites donc sans distance : Voix · tête, Voix ·
+chœurs » ; `cdl` → ni l'une ni l'autre ; inventaire de langue SANS_PAIRE 0.
+
+**MESURÉ (binaire de 23:56, `VSM_RAPPORT_LISTE`).** `projet-b4wuzthen-v3` : « Sans
+distance dans ce rapport : Batterie, Voix — le rapport est antérieur à ces
+pistes, ou la chaîne ne les a pas mesurées » ; `children-c3-plafond` : « Pistes
+audio, non reconstruites donc sans distance : Voix · tête, Voix · chœurs », et
+aucune ligne « Sans distance » (les cinq pistes de batterie couvertes par le
+bloc) ; `cdl` : rien. Attendus tenus.

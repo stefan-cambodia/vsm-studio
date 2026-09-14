@@ -1331,6 +1331,11 @@ const Paire kAnglais[] = {
     // le filtre de la liste d'événements veut « All », donc sa propre clé.
     { "Tous",
       "All" },
+    // D321 : les pistes que le rapport de reconstruction ne mesure pas.
+    { "Sans distance dans ce rapport : %1 — le rapport est antérieur à ces pistes, ou la chaîne ne les a pas mesurées",
+      "No distance in this report: %1 — the report predates these tracks, or the chain did not measure them" },
+    { "Pistes audio, non reconstruites donc sans distance : %1",
+      "Audio tracks, not reconstructed and therefore without a distance: %1" },
     // D311 : le fichier MIDI qui n'a rien à jouer.
     { "Ouvrir MIDI",
       "Open MIDI" },
