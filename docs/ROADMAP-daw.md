@@ -27278,3 +27278,55 @@ dans le code. Le témoin clairsemé garde ses 17 pastilles et ses paliers.
 L'onglet *Automation* dessine ses points de la même façon ; à 606 points sur
 1 700 colonnes (`cdl`), il est sous la densité d'un point par pixel — nommé,
 non fait, faute d'une courbe qui le demande. Banc de fumée : 0 raté.
+
+### Phase D329 — le volume MIDI (CC 7) d'un fichier ne jouait pas (15/09/2026)
+
+**VU SUR LE MÊME FICHIER QUE D328** (`The Hacker`, 37 431 CC 7) : la lane
+montre la courbe — plateau à 99 jusqu'à la mesure 33, puis des vagues de 83 à
+113 —, et le moteur n'en fait rien : aucune machine du parc ne lit le
+contrôleur 7, et le graphe ne le connaît pas (`grep` sur les 65 dossiers et
+`ProcessGraph.cpp` : zéro). Les fondus qu'un fichier General MIDI écrit en
+CC 7 — c'est ainsi que tous les séquenceurs des années 90 ont écrit leurs
+volumes — se perdent à la lecture et à l'export. Cubase les transmet à
+l'instrument, qui les applique.
+
+**CE QUI EST FAIT.** Le graphe tient, par piste, le **volume de canal** (CC 7,
+0 à 127 → 0 à 1, la convention General MIDI) et le multiplie au fader de la
+piste au mixage — le fader reste ce que l'utilisateur règle, l'automation
+`mix.volume` reste prioritaire sur le fader, et le CC 7 s'y multiplie. Chassé
+à la mise en lecture comme tout contrôleur (D16.2), rétabli à 1 quand le
+projet est republié. Le CC 10 (panoramique) a le même statut — nommé, non
+fait dans cette phase : combiner un panoramique MIDI et le potentiomètre de la
+tranche demande une règle (remplacer ? composer ?) qu'aucun fichier mesuré ne
+tranche encore.
+
+**ATTENDU** (fichier écrit pour la mesure, `cc7-paliers.mid` : une piste, la
+même note répétée, CC 7 à 127 puis 64 puis 32 par paliers de deux mesures ;
+`VSM_EXPORT` du projet ouvert, RMS par palier) : AVANT, les trois paliers sont
+au même niveau (écart < 0,5 dB entre eux) ; APRÈS, le deuxième est à **−6,0 ±
+0,5 dB** du premier et le troisième à **−12,0 ± 0,5 dB** (20 · log10(64/127)
+= −5,95 ; 20 · log10(32/127) = −11,97). Témoin réel, sans seuil : `The Hacker`
+exporté, RMS de la mesure 20 et de la mesure 37, avant et après — publiés.
+
+**MESURÉ** (`VSM_EXPORT` du fichier ouvert, RMS par palier, `rms-paliers.py`) :
+
+| export | mes. 1-3 | mes. 3-5 | mes. 5-7 |
+|---|---|---|---|
+| `cc7-paliers.mid` avant | −15,44 dBFS | −15,44 (+0,00) | −15,44 (+0,00) |
+| `cc7-paliers.mid` après | −15,45 dBFS | −21,39 (**−5,95**) | −27,41 (**−11,97**) |
+
+Attendu tenu au centième : −5,95 pour −5,95 calculé, −11,97 pour −11,97.
+Témoin réel, `The Hacker` (155 BPM) :
+
+| export | mes. 20-21 | mes. 37-38 | mes. 45-46 |
+|---|---|---|---|
+| avant | −7,87 dBFS | −7,87 (−0,00) | −7,72 (+0,14) |
+| après | −9,98 dBFS | −10,73 (**−0,75**) | −9,22 (**+0,76**) |
+
+Le plateau à 99 baisse tout de 2,1 dB (99/127 = −2,16 dB, la convention
+General MIDI : 127 est le plein), et les vagues des mesures 35 à 50 (CC 7 de
+83 à 113) font enfin bouger le niveau, de −0,75 à +0,76 dB autour de la mesure
+20 — avant, rien ne bougeait. Test du graphe ajouté
+(`process_graph_applies_channel_volume_cc7` : une blanche, CC 7 de 127 à 64 à
+la noire, rapport RMS 0,504 ± 0,05) : **1 300 tests audio verts**. Banc de
+fumée : 0 raté. Le manuel (§ 4) dit le CC 7 appliqué et le CC 10 non.

@@ -545,3 +545,37 @@ VSM_TEST(chaque_effet_d_insert_rend_pareil_quelle_que_soit_la_taille_de_bloc) {
         }
     }
 }
+
+// D329 : LE VOLUME DE CANAL (CC 7) S'APPLIQUE AU MIXAGE. Une note tenue une
+// blanche ; CC 7 à 127 au tick 0, à 64 à la noire : la seconde moitié doit
+// sonner moitié moins fort (64/127 = 0,504), à 5 % près -- et un projet sans
+// CC 7 sonne plein.
+VSM_TEST(process_graph_applies_channel_volume_cc7) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track track;
+    track.name = "Test";
+    track.channel = 0;
+    uint64_t idCounter = 1;
+    track.addNote(0, 960, 69, 100, 0, idCounter);   // une blanche : 1 s à 120 BPM
+    track.controlChanges.push_back(CcPoint{0, 0, 7, 127});
+    track.controlChanges.push_back(CcPoint{480, 0, 7, 64});
+    project.tracks.push_back(track);
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.testtone");
+    graph.setProject(project);
+    RenderedAudio audio = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+
+    auto rmsEntre = [&](double a, double b) {
+        const size_t i0 = static_cast<size_t>(a * 8000.0), i1 = static_cast<size_t>(b * 8000.0);
+        double somme = 0.0;
+        for (size_t i = i0; i < i1 && i < audio.left.size(); ++i) somme += static_cast<double>(audio.left[i]) * audio.left[i];
+        return std::sqrt(somme / static_cast<double>(i1 - i0));
+    };
+    const double avant = rmsEntre(0.15, 0.45), apres = rmsEntre(0.65, 0.95);
+    VSM_ASSERT(avant > 0.01);
+    const double rapport = apres / avant;
+    VSM_ASSERT(std::abs(rapport - 64.0 / 127.0) < 0.05);
+}

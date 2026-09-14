@@ -18,6 +18,7 @@ using namespace vsm::sequencer;
 using namespace vsm::midi;
 
 void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
+    ccVolume_.fill(1.0f);   // D329 : `{}` initialise à ZÉRO -- un tableau de volumes à zéro rendrait tout muet
     sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
     maxBlockSize_ = maxBlockSize > 0 ? maxBlockSize : 512;
 
@@ -99,6 +100,7 @@ void ProcessGraph::ensureParallelBuffers() {
 }
 
 void ProcessGraph::setProject(const Project& project) {
+    ccVolume_.fill(1.0f);   // D329 : un projet republié repart au volume de canal plein ; la chasse (D16.2) le rétablit à la lecture
     auto snapshot = std::make_shared<GraphSnapshot>();
     snapshot->project = project;
     Tick endTick = project.lastUsedTick() + project.ticksPerQuarterNote;
@@ -1586,6 +1588,13 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
+        } else if (issue == Issue::Control && controlEvent.kind == MidiControlEvent::Kind::ControlChange
+                   && controlEvent.index == 7 && (ccVolume_[trackIndex] = controlEvent.value, false)) {
+            // D329 : LE VOLUME DE CANAL (CC 7) EST TENU PAR LE GRAPHE. Aucune
+            // machine du parc ne le lit, et un fichier General MIDI écrit ses
+            // fondus ainsi depuis trente ans. Noté ici, appliqué au mixage,
+            // puis traité comme tout contrôleur (la virgule rend faux : on
+            // continue dans les branches suivantes, port et machine compris).
         } else if (issue == Issue::Control && externe && (emitControlOut(trackIndex, track.channel, controlEvent), false)) {
             // D27.2 : déposé sur le port, puis traité comme avant (la virgule
             // rend faux : on continue dans les branches suivantes).
@@ -1796,7 +1805,8 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     // et le signe est appliqué aussi aux départs pré-fader plus bas : deux
     // micros en opposition le sont dans la réverbération aussi.
     const float signe = track.invertPhase ? -1.0f : 1.0f;
-    const float volume = ((pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume) * signe;
+    const float volume = ((pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume) * signe
+                         * ccVolume_[trackIndex];   // D329 : le CC 7 se multiplie au fader (ou à son automation)
     const float pan = (pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan;
 
     float peak = mixStereoInto(srcL, srcR, sampleCount,
