@@ -1076,7 +1076,7 @@ rabote.
 ou au clic d'une ligne de piste**, par les mêmes méthodes que la souris :
 `muet`, `renommer:Nom`, `volume:0.25`, `couleur:22DD55`, `machine:vsm.additive`
 et `choisir:0,1,2` (la sélection multiple de D38, qu'aucun menu ne porte).
-`VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des
+`VSM_NOTES=piste:tick:durée:hauteur[;…]` écrit des notes par le chemin du piano roll — le modèle, puis la matérialisation du clip implicite ouvert (D336). `VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des
 raccourcis — **un autre chemin que le bouton**, et c'est tout l'intérêt : D38
 avait mesuré son muet deux fois, par un banc et par une capture, et les deux
 passaient par le même code, si bien que le raccourci clavier faisait autre

@@ -166,6 +166,8 @@ public:
     /// D222 : VSM_ENREGISTRER=dossier -- « Enregistrer sous… » par sa fonction, à
     /// la fin de la course, pour que le fichier écrit porte TOUS les gestes.
     bool enregistrerSousPourCapture(const juce::File& dossier);
+    /// D336 : VSM_NOTES -- écrit une note « piste:tick:durée:hauteur » par le chemin du piano roll.
+    bool ecrireNotesPourCapture(const juce::String& spec);
     /// D213 : VSM_FICHIER=a.wav;b.wav -- la sélection MULTIPLE que le prochain
     /// sélecteur qui en accepte plusieurs (l'import audio) rendra.
     void poserLesFichiersDeBanc(const juce::Array<juce::File>& fichiers) { fichiersDeBanc_ = fichiers; }
@@ -1385,7 +1387,11 @@ private:
     /// notes : sans ce second appel, des notes posées au piano roll sur une
     /// piste neuve n'apparaissaient dans l'arrangement qu'après avoir
     /// sauvegardé et rouvert. Rend vrai si elle a créé quelque chose.
-    bool materializeImplicitClips();
+    /// D336 : `bornerAuxNotes` -- à l'ouverture et à l'import, le clip va de la première note à la
+    /// dernière et se coupe aux silences (D333-D334) ; à l'ÉCRITURE dans le piano roll, il reste
+    /// ouvert (longueur 0 = jusqu'au bout du matériau, D45), sinon la deuxième note écrite trois
+    /// mesures après la première tombait hors clip et ne jouait pas.
+    bool materializeImplicitClips(bool bornerAuxNotes = true);
     /// D307 : donne une machine, d'après la convention General MIDI, à chaque
     /// piste MIDI de `projet` (à partir du rang `depuis`) qui n'en a pas : le
     /// canal 10 reçoit un kit, les autres la machine de leur premier programme

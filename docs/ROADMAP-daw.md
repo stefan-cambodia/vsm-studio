@@ -27619,3 +27619,45 @@ et toutes les autres mesures étaient vertes, parce que l'export ne chasse pas
 et qu'un rendu depuis le tick 0 non plus. C'est le compte des tests core qui
 l'a dit (« 0 réussis » sur une ligne vide, puis `rc=139`). Piège écrit dans
 `CLAUDE.md` ; le script de mesure publie désormais le code de retour des tests.
+
+### Phase D336 — à l'écriture dans le piano roll, le clip implicite reste ouvert (15/09/2026)
+
+**D'OÙ ELLE VIENT — UNE SECONDE CONSÉQUENCE DE D333, VUE EN RELISANT LES
+APPELANTS.** `materializeImplicitClips` sert à quatre endroits : l'ouverture,
+l'import, et **l'écriture d'une note dans le piano roll** (D16.1 : « les notes
+écrites se matérialisent tout de suite »). Avec un clip borné à ses notes, la
+PREMIÈRE note écrite sur une piste neuve fabriquait un clip d'une mesure, et la
+deuxième, écrite trois mesures plus loin, tombait hors de tout clip : ni jouée,
+ni dessinée dans l'arrangement — avant D333, le clip implicite était OUVERT
+(longueur 0 = jusqu'au bout du matériau, D45) et tout ce qu'on écrivait y
+entrait. Aucun banc ne l'a vu : aucun verbe n'écrivait une note.
+
+**CE QUI EST FAIT.** `materializeImplicitClips(bornerAuxNotes)` : bornés et
+coupés aux silences à l'ouverture et à l'import (D333-D334), OUVERTS à
+l'écriture. Et un verbe de banc, `VSM_NOTES=piste:tick:durée:hauteur[;…]`,
+écrit des notes par le chemin du piano roll (le modèle, puis `onNotesEdited`).
+
+**ATTENDU** (projet neuf, une piste ajoutée par le menu, `VSM_NOTES` : une
+noire au tick 0 puis une noire à la mesure 5 (tick 7 680, tpq 480) ;
+`VSM_CLIPS` ; `VSM_EXPORT_MIDI`) : **un** clip, « début 0 longueur 0 » (ouvert),
+et l'export porte les **deux** notes ; témoin : le même fichier ouvert par
+`ouvrir-midi` (D333) donne un clip borné « début 0 longueur 9 600 » (5 mesures)
+— les deux règles côte à côte ; `tools/ouvrir-midi.sh` 8 verdicts ; banc de
+fumée 0 raté.
+
+**MESURÉ** (binaire de 02:07 ; le projet neuf a déjà une piste « Bass », le
+menu en ajoute une seconde, les notes vont sur la première) :
+
+| chemin | clip (`VSM_CLIPS`) | notes exportées |
+|---|---|---|
+| écriture (`VSM_NOTES` : do au tick 0, mi à la mesure 5) | **1 clip, début 0, longueur 0** — ouvert | **60, 64** : les deux |
+| le même fichier rouvert par `ouvrir-midi` (D333) | 1 clip, début 0, **longueur 9 600** (5 mesures) — borné | — |
+
+Attendu tenu, les deux règles côte à côte. Sans D336, la seconde note écrite
+serait tombée hors du clip d'une mesure de la première. `tools/ouvrir-midi.sh`
+8 verdicts verts, banc de fumée 0 raté. Manuel : le verbe `VSM_NOTES`.
+**Reste nommé, non fait** : une note ÉCRITE hors des clips d'une piste ouverte
+depuis un MIDI (clips bornés) n'est pas jouée — c'est le modèle des clips
+depuis D45, que D333 rend simplement plus fréquent ; Cubase refuse d'écrire
+hors d'une part, Live crée le clip sous la note. Étendre le clip le plus
+proche (ou en créer un) sous une note écrite est une phase à part.

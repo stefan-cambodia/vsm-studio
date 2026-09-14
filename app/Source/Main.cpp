@@ -423,6 +423,17 @@ public:
             if (const char* fermer = std::getenv("VSM_FERMER");
                 fermer != nullptr && *fermer && *fermer != '0')
                 content->demanderAvantDeQuitter([] {});
+            // D336 : VSM_NOTES=piste:tick:durée:hauteur[;…] -- écrire des notes par le
+            // chemin du piano roll (le modèle, puis `onNotesEdited`), pour que le clip
+            // implicite d'une piste où l'on ÉCRIT se vérifie sans souris : aucun autre
+            // verbe n'écrivait une note.
+            if (const char* notes = std::getenv("VSM_NOTES"); notes != nullptr && *notes) {
+                juce::StringArray suite;
+                suite.addTokens(juce::String::fromUTF8(notes), ";", "");
+                for (const auto& n : suite)
+                    if (n.trim().isNotEmpty() && !content->ecrireNotesPourCapture(n.trim()))
+                        std::fputs("VSM_NOTES : note illisible (piste:tick:dur\u00e9e:hauteur)\n", stderr);
+            }
             if (const char* touches = std::getenv("VSM_TOUCHE"); touches != nullptr && *touches) {
                 juce::StringArray suite;
                 suite.addTokens(juce::String::fromUTF8(touches), ";", "");

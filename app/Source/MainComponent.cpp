@@ -552,7 +552,7 @@ MainComponent::MainComponent()
     // piste neuve où l'on venait d'écrire ne montrait aucun clip dans
     // l'arrangement tant qu'on n'avait pas sauvegardé et rouvert le projet.
     pianoRoll_.onNotesEdited = [this] {
-        if (materializeImplicitClips()) arrangement_.repaint();
+        if (materializeImplicitClips(false)) arrangement_.repaint();   // D336 : clip OUVERT à l'écriture
         refreshTransportSchedule();
     };
     arrangement_.onClipCreationRequested = [this](size_t piste, vsm::midi::Tick tick) {
@@ -8417,6 +8417,30 @@ void MainComponent::saveProject() {
     writeProjectTo(currentProjectFolder_);
 }
 
+bool MainComponent::ecrireNotesPourCapture(const juce::String& spec) {
+    // D336 : le MÊME chemin que le piano roll -- le modèle, puis `onNotesEdited`,
+    // qui matérialise le clip implicite OUVERT et republie le planning.
+    juce::StringArray champs;
+    champs.addTokens(spec, ":", "");
+    if (champs.size() != 4) return false;
+    const int piste = champs[0].getIntValue();
+    const auto tick = static_cast<vsm::midi::Tick>(champs[1].getLargeIntValue());
+    const auto duree = static_cast<vsm::midi::Tick>(champs[2].getLargeIntValue());
+    const int hauteur = champs[3].getIntValue();
+    if (piste < 0 || static_cast<size_t>(piste) >= project_.tracks.size() || tick < 0 || duree <= 0
+        || hauteur < 0 || hauteur > 127)
+        return false;
+    auto& track = project_.tracks[static_cast<size_t>(piste)];
+    uint64_t compteur = project_.nextNoteId();
+    track.addNote(tick, tick + duree, static_cast<uint8_t>(hauteur), 100, static_cast<uint8_t>(track.channel), compteur);
+    project_.ensureNoteIdAbove(compteur);
+    if (pianoRoll_.onNotesEdited) pianoRoll_.onNotesEdited();
+    std::fputs((juce::String("VSM_NOTES : piste ") + juce::String(piste) + " note " + juce::String(hauteur)
+                + " au tick " + juce::String(static_cast<int>(tick)) + " (dur\xc3\xa9" "e " + juce::String(static_cast<int>(duree)) + ")\n")
+                   .toRawUTF8(), stderr);
+    return true;
+}
+
 bool MainComponent::enregistrerSousPourCapture(const juce::File& dossier) {
     dossier.createDirectory();
     const bool ecrit = writeProjectTo(dossier);   // le cœur de « Enregistrer sous… »
@@ -10251,7 +10275,7 @@ void MainComponent::beginProjectEdit(const juce::String& label) {
     markProjectDirty();
 }
 
-bool MainComponent::materializeImplicitClips() {
+bool MainComponent::materializeImplicitClips(bool bornerAuxNotes) {
     bool cree = false;
     for (auto& piste : project_.tracks) {
         const bool aDuMateriau =
@@ -10267,7 +10291,7 @@ bool MainComponent::materializeImplicitClips() {
         // pistes, seize rubans de la mesure 1 à la fin, quand le fichier dit
         // que le canal 6 entre à la 138. Fenêtre et position confondues : le
         // matériau ne bouge pas, le clip dit seulement où il est.
-        if (piste.kind == vsm::sequencer::Track::Kind::Midi && !piste.notes.empty()) {
+        if (bornerAuxNotes && piste.kind == vsm::sequencer::Track::Kind::Midi && !piste.notes.empty()) {
             const auto parMesure = std::max<vsm::midi::Tick>(
                 1, project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote));
             // D334 : UN SILENCE DE HUIT MESURES SÉPARE DEUX CLIPS. Children : le
