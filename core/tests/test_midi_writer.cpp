@@ -3,6 +3,8 @@
 #include "vsm/midi/MidiFileParser.h"
 #include "vsm/midi/MidiFileWriter.h"
 #include "vsm/sequencer/Project.h"
+#include <algorithm>
+#include <variant>
 
 using namespace vsm::midi;
 using namespace vsm::sequencer;
@@ -263,4 +265,68 @@ VSM_TEST(extracting_a_track_keeps_the_tempo_and_writes_a_one_track_file) {
 
     // Hors bornes : un projet sans piste, jamais une faute.
     VSM_ASSERT_EQ(project.extractTrack(7).tracks.size(), static_cast<size_t>(0));
+}
+
+// D305 : UNE PISTE PAR CANAL À L'OUVERTURE. Un fichier de format 0 met tous les
+// canaux dans une seule piste ; le chargeur doit pouvoir la découper (l'ouverture
+// dans l'application), et ne JAMAIS le faire par défaut (vsm-render et les
+// projets apparient leurs pistes par rang).
+VSM_TEST(un_fichier_de_format_0_se_decoupe_en_une_piste_par_canal) {
+    ParsedFile parsed;
+    parsed.format = SmfFormat::Type0;
+    parsed.ticksPerQuarterNote = 480;
+    ParsedTrack piste;
+    piste.name = "Mixdown";
+    auto on  = [&](Tick t, uint8_t ch, uint8_t n) { piste.events.push_back({t, NoteOnEvent{ch, n, 100}}); };
+    auto off = [&](Tick t, uint8_t ch, uint8_t n) { piste.events.push_back({t, NoteOffEvent{ch, n, 0}}); };
+    on(0, 0, 60);  off(480, 0, 60);          // canal 1
+    on(0, 9, 36);  off(120, 9, 36);          // canal 10
+    on(480, 9, 38); off(600, 9, 38);
+    on(240, 3, 48); off(720, 3, 48);         // canal 4
+    piste.events.push_back({100, ControlChangeEvent{3, 74, 90}});   // un CC sur le canal 4
+    piste.events.push_back({0, ProgramChangeEvent{9, 0}});
+    parsed.tracks.push_back(piste);
+
+    const Project decoupe = Project::fromParsedFile(parsed, true);
+    VSM_ASSERT_EQ(decoupe.tracks.size(), static_cast<size_t>(3));
+    VSM_ASSERT_EQ(decoupe.tracks[0].channel, static_cast<uint8_t>(0));
+    VSM_ASSERT_EQ(decoupe.tracks[1].channel, static_cast<uint8_t>(3));
+    VSM_ASSERT_EQ(decoupe.tracks[2].channel, static_cast<uint8_t>(9));
+    VSM_ASSERT_EQ(decoupe.tracks[0].name, std::string("Mixdown \u00b7 canal 1"));
+    VSM_ASSERT_EQ(decoupe.tracks[1].name, std::string("Mixdown \u00b7 canal 4"));
+    VSM_ASSERT_EQ(decoupe.tracks[2].name, std::string("Mixdown \u00b7 canal 10"));
+    VSM_ASSERT_EQ(decoupe.tracks[0].notes.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(decoupe.tracks[1].notes.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(decoupe.tracks[2].notes.size(), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(decoupe.tracks[1].controlChanges.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(decoupe.tracks[0].controlChanges.size(), static_cast<size_t>(0));
+    VSM_ASSERT_EQ(decoupe.tracks[2].programChanges.size(), static_cast<size_t>(1));
+    // Trois couleurs distinctes, prises dans l'ordre de la palette (D33.5).
+    VSM_ASSERT(decoupe.tracks[0].colorRgba != decoupe.tracks[1].colorRgba);
+    VSM_ASSERT(decoupe.tracks[1].colorRgba != decoupe.tracks[2].colorRgba);
+
+    // Par défaut : rien ne bouge -- une piste, quatre notes, le nom d'origine.
+    const Project telQuel = Project::fromParsedFile(parsed);
+    VSM_ASSERT_EQ(telQuel.tracks.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(telQuel.tracks[0].notes.size(), static_cast<size_t>(4));
+    VSM_ASSERT_EQ(telQuel.tracks[0].name, std::string("Mixdown"));
+
+    // Et une piste à UN canal n'est pas touchée par l'option, nom compris.
+    ParsedFile mono = parsed;
+    mono.format = SmfFormat::Type1;
+    auto& evs = mono.tracks[0].events;
+    evs.erase(std::remove_if(evs.begin(), evs.end(), [](const MidiEvent& e) {
+        return std::visit([](auto&& d) -> bool {
+            using T = std::decay_t<decltype(d)>;
+            if constexpr (std::is_same_v<T, NoteOnEvent> || std::is_same_v<T, NoteOffEvent>
+                          || std::is_same_v<T, ControlChangeEvent> || std::is_same_v<T, ProgramChangeEvent>)
+                return d.channel != 0;
+            else
+                return false;
+        }, e.data);
+    }), evs.end());
+    const Project intact = Project::fromParsedFile(mono, true);
+    VSM_ASSERT_EQ(intact.tracks.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(intact.tracks[0].name, std::string("Mixdown"));
+    VSM_ASSERT_EQ(intact.tracks[0].notes.size(), static_cast<size_t>(1));
 }

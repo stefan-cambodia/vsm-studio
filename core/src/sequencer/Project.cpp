@@ -1,4 +1,5 @@
 #include "vsm/sequencer/Project.h"
+#include <array>
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include <set>
@@ -172,7 +173,43 @@ void applyVsmNoteBlock(const std::vector<uint8_t>& data, Track& track, Project& 
 
 } // namespace
 
-Project Project::fromParsedFile(const ParsedFile& parsed) {
+// D305 : UNE PISTE PAR CANAL. Une piste lue qui porte des notes (ou des
+// contrôleurs) sur plusieurs canaux est rendue en autant de pistes, dans l'ordre
+// des canaux, chacune nommée « <nom> · canal N » ; une piste à un seul canal
+// est rendue telle quelle, nom compris. Les notes gardent leur identifiant.
+static std::vector<Track> decouperParCanal(Track&& piste) {
+    std::array<bool, 16> present{};
+    for (const auto& n : piste.notes) present[n.channel & 0x0F] = true;
+    for (const auto& c : piste.controlChanges) present[c.channel & 0x0F] = true;
+    for (const auto& b : piste.pitchBends) present[b.channel & 0x0F] = true;
+    for (const auto& a : piste.polyAftertouch) present[a.channel & 0x0F] = true;
+    for (const auto& a : piste.channelPressure) present[a.channel & 0x0F] = true;
+    for (const auto& p : piste.programChanges) present[p.channel & 0x0F] = true;
+    int canaux = 0;
+    for (bool b : present) canaux += b ? 1 : 0;
+    std::vector<Track> resultat;
+    if (canaux <= 1) { resultat.push_back(std::move(piste)); return resultat; }
+    for (uint8_t canal = 0; canal < 16; ++canal) {
+        if (!present[canal]) continue;
+        Track t = piste;   // même nom, même couleur par défaut, mêmes réglages
+        t.channel = canal;
+        t.name = piste.name + " \u00b7 canal " + std::to_string(canal + 1);
+        auto garder = [canal](auto& v) {
+            v.erase(std::remove_if(v.begin(), v.end(),
+                                   [canal](const auto& e) { return (e.channel & 0x0F) != canal; }),
+                    v.end());
+        };
+        garder(t.notes); garder(t.controlChanges); garder(t.pitchBends);
+        garder(t.polyAftertouch); garder(t.channelPressure); garder(t.programChanges);
+        // Les événements divers (méta, SysEx) restent sur la première piste
+        // du découpage : ils n'ont pas de canal.
+        if (!resultat.empty()) t.miscEvents.clear();
+        resultat.push_back(std::move(t));
+    }
+    return resultat;
+}
+
+Project Project::fromParsedFile(const ParsedFile& parsed, bool unePisteParCanal) {
     Project project;
     project.exportFormat = parsed.format;
     project.ticksPerQuarterNote = parsed.isSmpteTiming ? 480 : parsed.ticksPerQuarterNote;
@@ -301,9 +338,16 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
         // du même bleu -- l'arrangement devenait illisible au moment précis où
         // il compte le plus. La palette vient de `Track.h`, la même que
         // `addTrack` et que l'import d'un projet Live.
-        if (track.colorRgba == Track{}.colorRgba)
-            track.colorRgba = trackColourForIndex(project.tracks.size());
-        project.tracks.push_back(std::move(track));
+        // D305 : le découpage par canal précède la couleur, pour que chaque
+        // piste issue d'un canal prenne la sienne dans l'ordre de la palette.
+        std::vector<Track> pistes;
+        if (unePisteParCanal) pistes = decouperParCanal(std::move(track));
+        else pistes.push_back(std::move(track));
+        for (auto& piste : pistes) {
+            if (piste.colorRgba == Track{}.colorRgba)
+                piste.colorRgba = trackColourForIndex(project.tracks.size());
+            project.tracks.push_back(std::move(piste));
+        }
     }
 
     (void)tempoFound;

@@ -145,7 +145,14 @@ public:
     /// le cas inverse -- deux copies du même son --, où c'est lui qui tient.
     FadeShape crossfadeShape = FadeShape::EqualPower;
 
-    static Project fromParsedFile(const midi::ParsedFile& parsed);
+    /// Convertit une lecture brute en projet. `unePisteParCanal` (D305) : une
+    /// piste lue qui porte des événements sur PLUSIEURS canaux est découpée en
+    /// une piste par canal, dans l'ordre des canaux -- c'est ce qu'un fichier de
+    /// format 0 est (seize canaux dans une seule piste), et ce que Cubase, Live
+    /// et FL font à l'ouverture. Faux par défaut : `vsm-render` et les projets
+    /// (project.json + arrangement.mid) apparient leurs pistes par rang, et un
+    /// découpage silencieux y décalerait tout.
+    static Project fromParsedFile(const midi::ParsedFile& parsed, bool unePisteParCanal = false);
     midi::ParsedFile toParsedFile() const;
 
     /// LE PROJET TEL QU'IL EST ARRANGÉ (D56.1) — ce que l'EXPORT écrit.

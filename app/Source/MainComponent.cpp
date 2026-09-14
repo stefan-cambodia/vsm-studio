@@ -5734,7 +5734,11 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
     try {
         ParsedFile parsed = MidiFileParser::parseFile(fichier.getFullPathName().toStdString());
         clearHistory();
-        project_ = Project::fromParsedFile(parsed);
+        // D305 : UNE PISTE PAR CANAL. Un fichier de format 0 met seize canaux
+        // dans une piste ; ouvert tel quel, le morceau entier tombait dans UNE
+        // ligne et un seul instrument. Cubase, Live et FL découpent par canal.
+        project_ = Project::fromParsedFile(parsed, true);
+        const size_t pistesLues = parsed.tracks.size();
         oublierLesMachines();   // D76
         project_.title = fichier.getFileNameWithoutExtension().toStdString();
         rebuildFromProject();
@@ -5749,6 +5753,11 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ")
                      + juce::String(static_cast<int>(project_.tracks.size()))
                      + juce::String::fromUTF8(u8" piste(s) — ") + fichier.getFileName()
+                     + (project_.tracks.size() != pistesLues
+                            ? juce::String::fromUTF8(u8" (format ") + juce::String(static_cast<int>(parsed.format))
+                              + " : " + juce::String(static_cast<int>(pistesLues))
+                              + juce::String::fromUTF8(u8" piste(s) lue(s), découpée(s) par canal)")
+                            : juce::String())
                      + "\n").toRawUTF8(), stderr);
         return true;
     } catch (const std::exception& e) {
@@ -8308,7 +8317,7 @@ void MainComponent::chooseMidiToImport() {
 void MainComponent::importMidiIntoProject(const juce::File& file) {
     try {
         ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
-        const Project source = Project::fromParsedFile(parsed);
+        const Project source = Project::fromParsedFile(parsed, true);   // D305 : par canal
         beginProjectEdit(u8"Importer un MIDI");
         const auto bilan = vsm::sequencer::appendTracksFrom(project_, source, transport_.currentTick());
         rebuildFromProject();

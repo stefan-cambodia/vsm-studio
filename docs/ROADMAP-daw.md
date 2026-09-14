@@ -26172,3 +26172,59 @@ Le relevé compte les noms qui débordent avec la police et la marge du `Label`
 de 88 px est celui du cas à 40 pistes. Photo : la console de douze tranches
 remplit sa largeur, faders et boutons à leur place. Les deux gardes neuves
 (`pianoroll-zones.sh`, `balayer-facades.sh`) sont listées au README.
+
+### Phase D305 — un `.mid` de format 0 s'ouvrait en UNE piste : seize canaux dans une ligne (14/09/2026)
+
+**TROUVÉE EN OUVRANT LES FICHIERS DE L'UTILISATEUR.** Son dossier de
+téléchargements porte les `.mid` qu'il compare aux reconstructions —
+`robert-miles-children-…nonstop2k.com.mid`, *Sky and Sand*, deux Jeff Mills. Le
+premier est un fichier de **format 0** : UNE piste « Mixdown », **seize canaux,
+8 537 notes, 26 changements de programme**. « Ouvrir MIDI… » le rendait tel
+quel — journal : `Ouvrir MIDI : 1 piste(s)`, statistiques : `Pistes : 1, Notes :
+8537` —, c'est-à-dire la batterie, la basse, les nappes et le piano dans **une
+seule ligne, un seul instrument, un seul fader**. Cubase, Live et FL Studio
+découpent un format 0 par canal à l'ouverture ; sans cela, le fichier le plus
+courant du web (les banques de MIDI grand public sont en format 0) est
+inutilisable dans l'application.
+
+**CE QUI EST FAIT.** `Project::fromParsedFile(parsed, unePisteParCanal)` : une
+piste lue qui porte des notes ou des contrôleurs sur PLUSIEURS canaux devient
+une piste par canal, dans l'ordre des canaux, nommée « <nom> · canal N », le
+canal de la piste posé, notes, CC, plis, pressions et programmes triés par
+canal, identifiants de notes conservés, couleurs prises dans l'ordre de la
+palette (D33.5). Une piste à un canal n'est pas touchée, nom compris.
+**L'option est FAUSSE par défaut** : `vsm-render` et le chargement d'un projet
+(project.json + arrangement.mid) apparient leurs pistes par rang, et un
+découpage silencieux y décalerait tout — seuls « Ouvrir MIDI… » et « Importer un
+MIDI dans le projet… » la demandent. Le journal le dit : `Ouvrir MIDI : 16
+piste(s) — … (format 0 : 1 piste(s) lue(s), découpée(s) par canal)`. Un test
+`core` neuf : trois canaux → trois pistes ordonnées et nommées, CC et programme
+sur le bon canal, trois couleurs ; sans l'option, une piste et quatre notes ;
+une piste à un canal intacte avec l'option.
+
+**ATTENDU, écrit avant la mesure** (le fichier Children de l'utilisateur, relevé
+par script : 16 canaux portent des notes — de 56 sur le canal 15 à 2 047 sur le
+canal 10 —, total 8 537) :
+
+| # | attendu | seuil |
+|---|---|---|
+| 1 | « Ouvrir MIDI… » sur ce fichier donne **16 pistes** | statistiques : `Pistes : 16`, journal « découpée(s) par canal » |
+| 2 | le total de notes est conservé | `Notes : 8537` |
+| 3 | la piste du canal 10 porte 2 047 notes et se nomme « Mixdown · canal 10 » | relevé de la liste d'événements (`piste:9`, « N événement(s) ») ou de la statistique par piste |
+| 4 | contrôle : un projet reconstruit (`children-c1-defaut`, 10 pistes, un canal par piste) s'ouvre toujours en 10 pistes | `Pistes : 10` |
+| 5 | contrôle : les 330 tests `core` restent verts, plus le neuf | 331 |
+
+**MESURÉ (binaire de 18:51).** Journal : `Ouvrir MIDI : 16 piste(s) — … (format 0 :
+1 piste(s) lue(s), découpée(s) par canal)` ; statistiques : **`Pistes : 16`,
+`Notes : 8537`** (1 et 8537 avant) ; `piste:9` : « Mixdown · canal 10 », liste
+**« 2050 événement(s) »** (2 047 notes + 2 CC + 1 programme, ce que le script
+avait compté) ; `children-c1-defaut` : `Pistes : 10` (inchangé) ; tests `core`
+**332 verts** (331 avant : le compte de l'INDEX, 330, datait). Photo : seize
+lignes « Mixdown · canal 1 » à « canal 16 », seize couleurs, seize tranches de
+122 px (D304), tempo 135 lu dans le fichier. Les cinq attendus sont tenus.
+
+**Ce que la photo montre AUSSI, et qui ouvre la phase suivante** : seize pistes,
+8 537 notes, **et pas un clip dans l'arrangement** — `Clips : 0`. Un `.mid`
+ouvert donne des pistes qui portent leurs notes sans fenêtre dessus ; le piano
+roll les montre, l'arrangement non. Et les seize lignes disent « (Aucun) » : le
+fichier porte 26 changements de programme General MIDI que personne ne lit.
