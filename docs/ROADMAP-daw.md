@@ -26771,3 +26771,40 @@ corrigé). *Au passage* : le HOME de banc `h2`, réutilisé depuis 18:29, portai
 13 échantillons en échec faute de `VSM_PROFILS`) avant le geste demandé — un
 banc qui réutilise un HOME hérite de ses autosauvegardes ; `tools/ouvrir-midi.sh`
 et les gardes prennent un HOME neuf à chaque course, c'est la bonne façon.
+
+### Phase D318 — vingt-deux sessions interrompues demandaient vingt-deux lancements (14/09/2026)
+
+**D'où elle vient.** Le HOME de banc réutilisé ce soir a accumulé 22 sessions
+interrompues (chaque course tuée par son `timeout` en laisse une). À chaque
+lancement, la boîte « Session interrompue » en proposait UNE et disait : « 22
+autre(s) session(s) interrompue(s) seront conservées et proposées au prochain
+lancement » — vingt-deux lancements pour faire le ménage, un musicien qui
+plante souvent ne s'en sort jamais. Cubase liste toutes les sauvegardes.
+
+**CE QUI EST FAIT.** Après « Ignorer et effacer », la session suivante est
+proposée **tout de suite** (par un message, pour ne pas ouvrir une modale dans
+le rappel d'une autre ; le chemin de banc `VSM_RECUPERER` enchaîne de même) ;
+après « Récupérer », on s'arrête — un second « Récupérer » remplacerait le
+projet qu'on vient de rouvrir — et les autres attendent le lancement suivant,
+ce que la boîte dit maintenant. La liste diminue d'une à chaque réponse : la
+récursion finit.
+
+**ATTENDU** : un HOME neuf portant 3 sessions interrompues copiées ; avec
+`VSM_RECUPERER=0` → **3** lignes « session ignorée et effacée par le banc » en
+UN lancement, **0** dossier restant ; avec `VSM_RECUPERER=1` → 1 « récupération
+demandée », **2** dossiers restants ; le message porte « 2 autre(s) session(s)
+interrompue(s) : chacune sera proposée à la suite… ».
+
+**MESURÉ (binaire de 23:21).** HOME neuf, trois sessions copiées : `VSM_RECUPERER=0`
+→ **3 « session ignorée et effacée par le banc » en un lancement, 0 dossier
+restant** ; `VSM_RECUPERER=1` → **1 « récupération demandée », 2 dossiers
+restants**. Attendus tenus. La phrase de la boîte n'apparaît pas au journal du
+banc (le chemin `VSM_RECUPERER` ne l'ouvre pas) ; elle est dans la table de
+langue, dans les deux langues.
+
+*Ce que la première mesure a appris* : sans `VSM_CAPTURE`, un lancement de banc
+NE QUITTE PAS — c'est l'autoportrait qui fait quitter —, et le `timeout` qui le
+tue laisse la session du lancement lui-même : la première passe comptait « 1
+restante » qui était la sienne. C'est aussi l'origine des 22 sessions du HOME
+de banc `h2`. Un lancement de banc porte donc toujours `VSM_CAPTURE` (ou un
+verbe qui quitte), et un HOME neuf.

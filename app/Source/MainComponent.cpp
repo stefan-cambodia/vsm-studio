@@ -6928,9 +6928,14 @@ void MainComponent::offerCrashRecovery() {
         .replace("%1", titre);
     if (reprise.record.originalFolder.empty())
         message += tr(u8"\n\nCe projet n'avait JAMAIS été enregistré : sans cette copie, il serait perdu.");
+    // D318 : LES AUTRES SESSIONS SONT PROPOSÉES À LA SUITE, pas « au prochain
+    // lancement » -- vingt-deux sessions demandaient vingt-deux lancements.
+    // Après « Ignorer et effacer », la suivante vient tout de suite ; après
+    // « Récupérer », on s'arrête : un second « Récupérer » remplacerait le
+    // projet qu'on vient de rouvrir, et les autres attendent le lancement suivant.
     if (sessions.size() > 1)
-        message += tr(u8"\n\n(%1 autre(s) session(s) interrompue(s) seront conservées et proposées "
-                      u8"au prochain lancement.)")
+        message += tr(u8"\n\n(%1 autre(s) session(s) interrompue(s) : chacune sera proposée à la suite "
+                      u8"si vous ignorez celle-ci ; si vous la récupérez, les autres attendent le prochain lancement.)")
                        .replace("%1", juce::String(static_cast<int>(sessions.size()) - 1));
 
     const juce::File dossier = reprise.folder;
@@ -6946,6 +6951,7 @@ void MainComponent::offerCrashRecovery() {
     auto reponse = [this, dossier, origine](int resultat) {
             if (resultat != 1) {
                 vsm::app::AutosaveService::discard(dossier);
+                offerCrashRecovery();   // D318 : la suivante, tout de suite (la liste a diminué d'une)
                 return;
             }
             loadProjectBundleFromFolder(dossier, origine);
@@ -6969,6 +6975,10 @@ void MainComponent::offerCrashRecovery() {
         juce::ModalCallbackFunction::create([this, dossier, origine](int resultat) {
             if (resultat != 1) {
                 vsm::app::AutosaveService::discard(dossier);
+                // D318 : la session suivante est proposée dès que cette boîte est
+                // fermée -- par un message, pour ne pas ouvrir une modale dans le
+                // rappel d'une autre.
+                juce::MessageManager::callAsync([this] { offerCrashRecovery(); });
                 return;
             }
             // LE PROJET VIENT DE LA COPIE, LES MÉDIAS DE SON DOSSIER D'ORIGINE.
