@@ -1390,6 +1390,11 @@ private:
     /// journal avec le nom GM ; une machine absente du registre retombe sur
     /// `vsm.generic`, et c'est dit. Rend le nombre de pistes dotées.
     size_t attribuerLesMachinesGM(vsm::sequencer::Project& projet, size_t depuis, const char* contexte);
+    /// D309 : les presets de banque choisis par `attribuerLesMachinesGM`
+    /// (piste → fichier `.synth.json`), appliqués APRÈS `rebuildFromProject()`,
+    /// quand les machines existent. Rend le nombre appliqué, et dit le reste.
+    std::vector<std::pair<size_t, juce::File>> presetsGMEnAttente_;
+    size_t appliquerLesPresetsGM(const char* contexte);
     void requestMarker(vsm::midi::Tick tick);
     void renameMarker(size_t index);
     void removeMarker(size_t index);

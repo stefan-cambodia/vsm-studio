@@ -2,6 +2,7 @@
 #include "vsm/audio/plugin/ISampleLoader.h"
 #include "MainComponent.h"
 #include "vsm/sequencer/GeneralMidi.h"
+#include "vsm/interchange/MultisampleProfile.h"
 #include <cxxabi.h>
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
@@ -5751,11 +5752,13 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
                                               .replace("%1", juce::String(static_cast<int>(i) + 1)).toStdString();
         // D307 : les programmes General MIDI du fichier désignent les machines --
         // AVANT rebuildFromProject(), qui les fabrique d'après `instrumentId`.
+        presetsGMEnAttente_.clear();
         const size_t dotees = attribuerLesMachinesGM(project_, 0, "Ouvrir MIDI");
         // D306 : LES CLIPS, comme à l'ouverture d'un projet -- une piste avec du
         // matériau et sans clip joue mais ne se voit pas dans l'arrangement.
         materializeImplicitClips();
         rebuildFromProject();
+        const size_t presets = appliquerLesPresetsGM("Ouvrir MIDI");   // D309 : les machines existent
         pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
         // D212 : LE TITRE SUIT LE PROJET, et la marque « non enregistré » repart
         // de zéro. Sans ces deux lignes, la fenêtre gardait le nom du projet
@@ -5773,7 +5776,8 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
                               + juce::String::fromUTF8(u8" piste(s) lue(s), découpée(s) par canal)")
                             : juce::String())
                      + juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(dotees))
-                     + juce::String::fromUTF8(u8" piste(s) dotée(s) d'une machine d'après General MIDI")
+                     + juce::String::fromUTF8(u8" piste(s) dotée(s) d'une machine d'après General MIDI, dont ")
+                     + juce::String(static_cast<int>(presets)) + juce::String::fromUTF8(u8" par la banque installée")
                      + "\n").toRawUTF8(), stderr);
         return true;
     } catch (const std::exception& e) {
@@ -8337,11 +8341,14 @@ void MainComponent::importMidiIntoProject(const juce::File& file) {
         for (size_t i = 0; i < source.tracks.size(); ++i)          // D308 : un nom, d'après le fichier
             if (source.tracks[i].name.empty())
                 source.tracks[i].name = file.getFileNameWithoutExtension().toStdString() + " " + std::to_string(i + 1);
-        attribuerLesMachinesGM(source, 0, "Importer un MIDI");      // D307
         beginProjectEdit(u8"Importer un MIDI");
+        const size_t avant = project_.tracks.size();
         const auto bilan = vsm::sequencer::appendTracksFrom(project_, source, transport_.currentTick());
+        presetsGMEnAttente_.clear();
+        attribuerLesMachinesGM(project_, avant, "Importer un MIDI");   // D307, sur les pistes ajoutées
         materializeImplicitClips();                                  // D306
         rebuildFromProject();
+        appliquerLesPresetsGM("Importer un MIDI");                   // D309
         if (!project_.tracks.empty()) trackList_.selectTrackIndex(project_.tracks.size() - 1);
         // CE QUI EST IGNORÉ EST DIT : le tempo et les mesures du fichier.
         if (bilan.tempoChangesIgnored > 0 || bilan.timeSignaturesIgnored > 0)
@@ -10136,6 +10143,26 @@ size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, si
         const std::string nomGM = batterie ? vsm::sequencer::nomDuKitGM(programme)
                                            : vsm::sequencer::programmeGM(programme).nom;
         juce::String repli;
+        // D309 : LA BANQUE GENERAL MIDI D'ABORD, quand elle est installée. Le
+        // fichier dit « Acoustic Grand Piano » ; si l'installateur de banques a
+        // fabriqué le profil FR3-Grand-Piano, c'est LUI qui rend le programme
+        // (vsm.multisample), et la machine du parc reste le repli -- à un clic.
+        if (!batterie) {
+            if (const char* profil = vsm::sequencer::profilCanoniqueGM(programme); profil != nullptr) {
+                size_t nb = 0;
+                const auto* banques = vsm::sequencer::banquesGM(nb);
+                const juce::File dossier(juce::String::fromUTF8(vsm::interchange::multisampleProfileFolder().c_str()));
+                for (size_t b = 0; b < nb; ++b) {
+                    const juce::File preset = dossier.getChildFile(juce::String(banques[b].prefixe) + "-" + profil + ".synth.json");
+                    if (!preset.existsAsFile()) continue;
+                    machine = "vsm.multisample";
+                    presetsGMEnAttente_.emplace_back(i, preset);
+                    repli = juce::String::fromUTF8(u8" (profil ") + preset.getFileNameWithoutExtension().upToLastOccurrenceOf(".synth", false, false)
+                            + juce::String::fromUTF8(u8", banque ") + banques[b].nom + ")";
+                    break;
+                }
+            }
+        }
         if (!vsm::audio::plugin::PluginRegistry::instance().isRegistered(machine)) {
             repli = juce::String::fromUTF8(u8" (« ") + machine + juce::String::fromUTF8(u8" » absente du registre)");
             machine = "vsm.generic";
@@ -10152,6 +10179,36 @@ size_t MainComponent::attribuerLesMachinesGM(vsm::sequencer::Project& projet, si
                     + repli + "\n").toRawUTF8(), stderr);
     }
     return dotees;
+}
+
+size_t MainComponent::appliquerLesPresetsGM(const char* contexte) {
+    size_t appliques = 0;
+    for (const auto& [piste, fichier] : presetsGMEnAttente_) {
+        auto* machine = piste < project_.tracks.size() ? audioEngine_.processGraph().trackInstrument(piste) : nullptr;
+        const auto lu = vsm::interchange::parseSynthPreset(fichier.loadFileAsString().toStdString());
+        if (machine == nullptr || !lu.success) {
+            std::fputs((juce::String(contexte) + " : piste " + juce::String(static_cast<int>(piste + 1))
+                        + juce::String::fromUTF8(u8" : preset de banque NON appliqué — ")
+                        + (machine == nullptr ? juce::String::fromUTF8(u8"machine absente")
+                                              : juce::String::fromUTF8(lu.error.c_str()))
+                        + " (" + fichier.getFileName() + ")\n").toRawUTF8(), stderr);
+            continue;
+        }
+        const auto rapport = vsm::interchange::applyPreset(lu.preset, *machine, project_.tracks[piste].instrumentId);
+        const auto echantillons = vsm::interchange::applyPresetSamples(
+            lu.preset, *machine, fichier.getParentDirectory().getFullPathName().toStdString());
+        ++appliques;
+        // CE QUI N'A PAS PU ÊTRE APPLIQUÉ EST DIT (D52), au journal : un preset à
+        // moitié posé qui se tait donne un son qu'on croit être celui de la banque.
+        if (rapport.unsupportedCount() > 0 || rapport.clampedCount() > 0 || echantillons.aQuelqueChoseADire())
+            std::fputs((juce::String(contexte) + " : piste " + juce::String(static_cast<int>(piste + 1))
+                        + juce::String::fromUTF8(u8" : réserves du preset de banque — ")
+                        + juce::String::fromUTF8(rapport.summary().c_str()) + " ; "
+                        + juce::String::fromUTF8(echantillons.summary().c_str()) + "\n").toRawUTF8(), stderr);
+    }
+    presetsGMEnAttente_.clear();
+    if (appliques > 0) photographierReglagesDeMachines();   // D154 : l'état va au projet
+    return appliques;
 }
 
 void MainComponent::setTimeSignatureAtPlayhead(int numerator, int denominator) {

@@ -32,3 +32,20 @@ VSM_TEST(le_canal_10_recoit_un_kit) {
     VSM_ASSERT_EQ(std::string(nomDuKitGM(25)), std::string("TR-808 Kit"));
     VSM_ASSERT_EQ(std::string(nomDuKitGM(0)), std::string("Standard Kit"));
 }
+
+// D309 : les profils canoniques -- 45 programmes, les mêmes que l'installateur.
+VSM_TEST(les_profils_canoniques_couvrent_45_programmes) {
+    int couverts = 0;
+    for (int p = 0; p < 128; ++p)
+        if (profilCanoniqueGM(static_cast<uint8_t>(p)) != nullptr) ++couverts;
+    VSM_ASSERT_EQ(couverts, 45);
+    VSM_ASSERT_EQ(std::string(profilCanoniqueGM(0)), std::string("Grand-Piano"));
+    VSM_ASSERT_EQ(std::string(profilCanoniqueGM(38)), std::string("Synth-Bass-1"));
+    VSM_ASSERT_EQ(std::string(profilCanoniqueGM(89)), std::string("Warm-Pad"));
+    VSM_ASSERT(profilCanoniqueGM(1) == nullptr);     // Bright Acoustic Piano : pas de profil
+    VSM_ASSERT(profilCanoniqueGM(98) == nullptr);    // FX 3 (crystal) : pas de profil
+    size_t n = 0;
+    const BanqueGM* b = banquesGM(n);
+    VSM_ASSERT_EQ(n, static_cast<size_t>(3));
+    VSM_ASSERT_EQ(std::string(b[0].prefixe), std::string("FR3"));
+}

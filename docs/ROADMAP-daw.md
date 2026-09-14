@@ -26341,3 +26341,59 @@ textes **4 × « Piste 1 »** (liste, en-tête de l'arrangement, clip, console) 
 dans la langue du moment, par `tr()`, comme `addTrack` depuis D107 — le premier
 binaire l'écrivait en français sous l'anglais, corrigé et remesuré). Photo : les
 trois volets disent le même nom. Manuel mis à jour (§ Importer / Ouvrir MIDI).
+
+### Phase D309 — la banque General MIDI est installée, et le fichier GM ne s'en servait pas (14/09/2026)
+
+**D'où elle vient.** D307 rend chaque programme par « la machine du parc qui lui
+ressemble le plus » — et c'est un vrai premier choix. Mais ce poste a **trois
+banques General MIDI installées** (FluidR3, GeneralUser, MuseScore General,
+`~/.local/share/vsm-studio/banques/`) et `tools/installer-banques-midi.py` en a
+tiré **45 profils par banque** pour `vsm.multisample` (« FR3-Grand-Piano »,
+« GU-Synth-Bass-1 », « MS-Warm-Pad »…), que la chaîne de reconstruction met déjà
+en concurrence à l'arbitrage. Un fichier qui dit « Acoustic Grand Piano » a
+donc, sur ce poste, un piano échantillonné qui l'attend — et D307 lui donnait le
+modèle physique. Cubase ouvre un `.mid` sur HALion Sonic SE en mode GM : la
+banque est l'usage.
+
+**DÉCISION, écrite ici** : quand le profil canonique du programme existe dans le
+dossier des profils, **la banque rend le programme** (`vsm.multisample`, le
+preset `<PRÉFIXE>-<profil>.synth.json` appliqué une fois les machines
+fabriquées, l'état photographié pour que le projet le garde — D154) ; les
+banques se préfèrent dans l'ordre FluidR3, GeneralUser, MuseScore ; les 83
+programmes sans profil, le canal 10 et tout poste sans banque gardent la machine
+de D307. Chaque choix est écrit au journal (« → vsm.multisample (profil
+FR3-Grand-Piano, banque FluidR3) »), une réserve d'application aussi (D52). La
+machine du parc reste à un clic dans la liste des pistes.
+
+**ATTENDU, écrit avant la mesure** (fichier Children, journal + relevé) :
+
+| # | attendu | seuil |
+|---|---|---|
+| 1 | canal 1 (0) → `vsm.multisample` (FR3-Grand-Piano), canal 2 (38) → FR3-Synth-Bass-1, canal 3 (89) → FR3-Warm-Pad | journal |
+| 2 | canal 9 (98, FX 3 crystal, sans profil) → `vsm.dx7` ; canal 10 → `vsm.drums` | journal : le repli de D307 tient |
+| 3 | compte : 16 dotées, **dont 13 par la banque** — les quinze canaux mélodiques moins le 9 (98, FX 3 crystal) et le 12 (17, Percussive Organ), dont les programmes n'ont pas de profil canonique (compté par script avant la course) | journal « dont 13 par la banque installée », 0 « NON appliqué » |
+| 4 | ça joue : photo à la sixième seconde, LUFS ≠ −inf, CPU > 0 | photo |
+| 5 | l'enregistrement puis la réouverture gardent la banque : `project.json` des pistes `vsm.multisample` avec leur preset, `VSM_MACHINES` sans « (Aucun) » | relevé |
+| 6 | contrôle : `VSM_PROFILS=/dossier/vide` (aucune banque) → le journal de D307, 0 par la banque | journal |
+| 7 | tests `core` : 334 + 1 | 335 |
+
+**MESURÉ (binaire de 19:32, tests `core` 335 verts).** Journal : canal 1 « 0
+(Acoustic Grand Piano) → **vsm.multisample (profil FR3-Grand-Piano, banque
+FluidR3)** », canal 2 « 38 → FR3-Synth-Bass-1 », canal 3 « 89 → FR3-Warm-Pad »,
+canal 9 « 98 (FX 3 crystal) → vsm.dx7 », canal 10 « kit 0 → vsm.drums » ; « 16
+piste(s) dotée(s) …, **dont 13 par la banque installée** » — le chiffre écrit
+avant la course ; 0 « NON appliqué » ; **8 réserves dites** (« 2 paramètre(s)
+appliqué(s), 1 ou 2 borné(s) ; 1 échantillon(s) chargé(s) » : le `release` de
+1,0 des presets de l'installateur dépasse la borne de la machine sur ces
+profils, et c'est la machine qui a raison — à regarder dans l'installateur, pas
+ici). Enregistré puis rouvert : `project.json` porte **13 pistes
+`vsm.multisample`** avec leur preset (`instruments/track_NN.synth.json`), la
+réouverture liste 13 « Multisample (acoustique échantillonné) », 0 « (Aucun) ».
+Ça joue : **−23,1 LUFS, CPU 5,3 %** à la mesure 21 (D307 sur les modèles :
+−21,7 LUFS, 9,7 %). Sans banque (`VSM_PROFILS` sur un dossier vide) : le journal
+de D307, « dont 0 par la banque installée ». Sept attendus tenus.
+
+*Piège de banc relevé* : la première mesure a rendu **0 par la banque** — le banc
+tourne sous un HOME de brouillon (D77), où `~/.local/share/vsm-studio/profils`
+n'existe pas. `VSM_PROFILS` désigne le dossier de l'utilisateur sans toucher à
+ses réglages ; c'est le cas 6 à l'envers, et il aurait fallu l'écrire avant.

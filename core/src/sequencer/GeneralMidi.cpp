@@ -114,4 +114,36 @@ const char* nomDuKitGM(uint8_t programme) {
     return "Standard Kit";
 }
 
+namespace {
+// La liste CANONIQUE de tools/installer-banques-midi.py, recopiée : les deux
+// doivent dire la même chose, et le test le garde pour les repères.
+struct ProfilGM { uint8_t numero; const char* profil; };
+const ProfilGM kProfils[] = {
+    {0, "Grand-Piano"}, {4, "E-Piano-Tine"}, {5, "E-Piano-FM"}, {16, "Drawbar-Organ"},
+    {18, "Rock-Organ"}, {19, "Church-Organ"}, {21, "Accordion"}, {24, "Nylon-Guitar"},
+    {25, "Steel-Guitar"}, {26, "Jazz-Guitar"}, {27, "Clean-Guitar"}, {29, "Overdrive-Guitar"},
+    {30, "Distortion-Guitar"}, {32, "Acoustic-Bass"}, {33, "Finger-Bass"}, {34, "Pick-Bass"},
+    {35, "Fretless-Bass"}, {38, "Synth-Bass-1"}, {39, "Synth-Bass-2"}, {40, "Violin"},
+    {42, "Cello"}, {46, "Harp"}, {48, "Strings"}, {49, "Slow-Strings"}, {50, "Synth-Strings-1"},
+    {52, "Choir-Aahs"}, {53, "Voice-Oohs"}, {56, "Trumpet"}, {57, "Trombone"}, {61, "Brass-Section"},
+    {62, "Synth-Brass-1"}, {64, "Soprano-Sax"}, {65, "Alto-Sax"}, {66, "Tenor-Sax"}, {68, "Oboe"},
+    {71, "Clarinet"}, {73, "Flute"}, {80, "Square-Lead"}, {81, "Saw-Lead"}, {88, "New-Age-Pad"},
+    {89, "Warm-Pad"}, {90, "Polysynth"}, {91, "Choir-Pad"}, {94, "Halo-Pad"}, {95, "Sweep-Pad"},
+};
+const BanqueGM kBanques[] = {
+    {"FR3", "FluidR3"}, {"GU", "GeneralUser"}, {"MS", "MuseScore General"},
+};
+} // namespace
+
+const char* profilCanoniqueGM(uint8_t programme) {
+    for (const auto& p : kProfils)
+        if (p.numero == programme) return p.profil;
+    return nullptr;
+}
+
+const BanqueGM* banquesGM(std::size_t& compte) {
+    compte = sizeof(kBanques) / sizeof(kBanques[0]);
+    return kBanques;
+}
+
 } // namespace vsm::sequencer

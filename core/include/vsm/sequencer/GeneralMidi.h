@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 
 namespace vsm::sequencer {
@@ -31,5 +32,15 @@ const ProgrammeGM& programmeGM(uint8_t numero);
 const char* machinePourKitGM(uint8_t programme);
 /// Le nom du kit (GM2) pour le journal.
 const char* nomDuKitGM(uint8_t programme);
+
+/// D309 : LE PROFIL CANONIQUE d'un programme, quand l'installateur de banques
+/// (`tools/installer-banques-midi.py`) en fabrique un -- « Grand-Piano » pour
+/// 0, « Synth-Bass-1 » pour 38, « Warm-Pad » pour 89 ; `nullptr` pour les 83
+/// programmes que la liste canonique ne couvre pas. Le fichier installé
+/// s'appelle `<PRÉFIXE>-<profil>.synth.json` dans le dossier des profils.
+const char* profilCanoniqueGM(uint8_t programme);
+/// Les banques, dans l'ordre où on les préfère : préfixe de fichier et nom.
+struct BanqueGM { const char* prefixe; const char* nom; };
+const BanqueGM* banquesGM(std::size_t& compte);
 
 } // namespace vsm::sequencer
