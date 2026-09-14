@@ -26302,3 +26302,12 @@ construction, i % 16 — l'attendu avait oublié son propre fichier ; 40 dotées
 Photo : seize rectangles nommés, miniatures là où les notes sont (canaux 3 et
 12 dans les quatorze premières mesures), la façade du piano au rack sur la
 piste 1. Sept attendus tenus, le cinquième avec son chiffre corrigé.
+
+**ET ÇA JOUE.** Le même fichier, `jouer` puis photo à la sixième seconde
+(`tete-mesure:17`) : transport à 00:35,957 / mesure 21, **CPU 9,7 %**, master
+**−21,7 LUFS**, phase 0,92 — seize machines qui sonnent là où l'ouverture
+d'hier laissait seize lignes muettes. *Piège relevé au passage* : le relevé de
+textes (`VSM_TEXTES_LISTE`) lit « CPU 0.0% » et « -inf LUFS » sur la même course,
+y compris sur le projet témoin qui joue à 8,7 % sur sa photo — ces deux libellés
+se relèvent AVANT que le transport ne tourne. Pour la lecture, la photo est la
+mesure, pas le relevé (la leçon de D149, dans l'autre sens).
