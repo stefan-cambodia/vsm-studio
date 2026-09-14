@@ -25928,3 +25928,27 @@ BELL) et `vsm.tr808` (17 px, BASS DRUM / LEVEL) —, contre **15 sur 63 à 13:00
 (D294). Treize façades réparées en six phases (D293, D295-D299), aucune autre
 touchée : les 48 qui tenaient le plancher le tiennent encore, la plus large à
 70 px. La garde rend 1 tant que les deux boîtes à rythmes ne sont pas faites.
+
+### Phase D300 — A42 fermée : les deux boîtes à rythmes sur deux rangées, et 0 / 63 (14/09/2026)
+
+Les sections de pièces du TR-808 et des FM Drums sont engendrées par une
+lambda (`voiceSection`, `piece`) qui posait tout sur la rangée 0, quatre pièces
+en ligne. La lambda prend une **rangée** ; les pièces vont deux par deux sur
+deux rangées (BASS DRUM + SNARE en haut, CYMBAL / HAT + CLAP / COWBELL en bas ;
+BASS DRUM + SNARE / CLAP, puis TOM / BELL + HAT), l'ACCENT descend à la rangée
+6, le séquenceur suit, `gridRows` 5 → 8 avant lui.
+
+**MESURÉ**, rack de 364 px : `vsm.tr808` plus petit élément **28 px** (ACCENT ;
+17 avant, BASS DRUM / LEVEL), `vsm.fmdrums` **18 px** (ACCENT — trois colonnes sur
+seize, sur le plancher exactement ; 16 avant, TOM / BELL). Photos côte à côte :
+les quatre pièces de chaque machine, l'accent, la grille de seize pas. Tests
+`panels` 11 verts ; réglages de l'utilisateur intacts.
+
+**LE BALAYAGE COMPLET, rejoué à 16:00 : `0 façade(s) sur 63 sous le plancher de
+18 px`** — la garde `tools/balayer-facades.sh` rend 0 pour la première fois à la
+largeur de la disposition par défaut. Le matin même elle en comptait quinze
+(D294). Trois façades sont sur le plancher exactement (18 px : `vsm.fmdrums`
+ACCENT, `vsm.pcmhybrid` PARTIAL A / SAMPLE, `vsm.wavetable` WAVE / TABLE) ; le
+reste va de 19 à 70 px. **A42 est FERMÉE**, et la condition de la mesure — la
+largeur — est écrite dans la garde, pour que « 0 / 63 » ne redevienne pas une
+phrase sans condition.

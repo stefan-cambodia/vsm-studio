@@ -188,16 +188,18 @@ MachinePanel makeTr808() {
     panel.sectionColour = "#2C2C2E";
     panel.textColour = "#EDEDE8";
     panel.knobColour = "#DCD6C8"; // boutons crème, comme les commandes de la machine d'origine
+    // D300 (A42) : LES PIÈCES SUR DEUX RANGÉES -- quatre en ligne posaient des
+    // boutons de 16-17 px au rack de 364 px (D294), sous le plancher de D62.
     panel.gridColumns = 12;
-    panel.gridRows = 5;
+    panel.gridRows = 8;
 
-    auto voiceSection = [](std::string title, std::string accent, int column, int span,
+    auto voiceSection = [](std::string title, std::string accent, int column, int span, int row,
                             std::vector<PanelControl> controls) {
         PanelSection section;
         section.title = std::move(title);
         section.accentColour = std::move(accent);
         section.column = column;
-        section.row = 0;
+        section.row = row;
         section.columnSpan = span;
         section.rowSpan = 3;
         section.controls = std::move(controls);
@@ -211,24 +213,24 @@ MachinePanel makeTr808() {
     const std::string cream = "#D8D2C4";
 
     panel.sections = {
-        voiceSection("BASS DRUM", orange, 0, 3, {
+        voiceSection("BASS DRUM", orange, 0, 6, 0, {
             control("Kick Level", "LEVEL", S::Knob, 0, 0),
             control("Kick Tune", "TONE", S::Knob, 1, 0),
             control("Kick Decay", "DECAY", S::Knob, 2, 0),
         }),
-        voiceSection("SNARE DRUM", orange, 3, 3, {
+        voiceSection("SNARE DRUM", orange, 6, 6, 0, {
             control("Snare Level", "LEVEL", S::Knob, 0, 0),
             control("Snare Tune", "TONE", S::Knob, 1, 0),
             control("Snare Decay", "DECAY", S::Knob, 2, 0),
             control("Snare Snappy", "SNAPPY", S::Knob, 1, 1),
         }),
-        voiceSection("CYMBAL / HAT", yellow, 6, 3, {
+        voiceSection("CYMBAL / HAT", yellow, 0, 6, 3, {
             control("Closed Hat Level", "CH LEVEL", S::Knob, 0, 0),
             control("Closed Hat Decay", "CH DECAY", S::Knob, 1, 0),
             control("Open Hat Level", "OH LEVEL", S::Knob, 0, 1),
             control("Open Hat Decay", "OH DECAY", S::Knob, 1, 1),
         }),
-        voiceSection("CLAP / COWBELL", cream, 9, 3, {
+        voiceSection("CLAP / COWBELL", cream, 6, 6, 3, {
             control("Clap Level", "CP LEVEL", S::Knob, 0, 0),
             control("Clap Decay", "CP DECAY", S::Knob, 1, 0),
             control("Cowbell Level", "CB LEVEL", S::Knob, 0, 1),
@@ -239,7 +241,7 @@ MachinePanel makeTr808() {
     PanelSection accent;
     accent.title = "ACCENT";
     accent.accentColour = "#C4462F";
-    accent.column = 0; accent.row = 3; accent.columnSpan = 3; accent.rowSpan = 2;
+    accent.column = 0; accent.row = 6; accent.columnSpan = 3; accent.rowSpan = 2;
     accent.contentColumns = 2; // un seul bouton, à gauche -- pas étalé sur toute la largeur
     accent.controls = { control("Accent", "ACCENT", S::Knob, 0, 0) };
     panel.sections.push_back(accent);
@@ -2475,16 +2477,18 @@ MachinePanel makeFmDrums() {
     panel.sectionColour = "#1A2027";
     panel.textColour = "#DCE6EF";
     panel.knobColour = "#8FA6BC";
+    // D300 (A42) : LES PIÈCES SUR DEUX RANGÉES -- quatre en ligne posaient des
+    // boutons de 16-17 px au rack de 364 px (D294), sous le plancher de D62.
     panel.gridColumns = 16;
-    panel.gridRows = 5;
+    panel.gridRows = 8;
 
-    auto piece = [](std::string title, std::string accent, int column, int span,
+    auto piece = [](std::string title, std::string accent, int column, int span, int row,
                     std::vector<PanelControl> controls) {
         PanelSection section;
         section.title = std::move(title);
         section.accentColour = std::move(accent);
         section.column = column;
-        section.row = 0;
+        section.row = row;
         section.columnSpan = span;
         section.rowSpan = 3;
         section.controls = std::move(controls);
@@ -2504,14 +2508,14 @@ MachinePanel makeFmDrums() {
         // (15 px). La grosse caisse, qui est seule dans son bloc et tenait
         // large, rend une colonne ; le charleston, qui n'a que quatre réglages,
         // en gagne une.
-        piece("BASS DRUM", cyan, 0, 3, {
+        piece("BASS DRUM", cyan, 0, 8, 0, {
             control("Kick Level", "LEVEL", S::Knob, 0, 0),
             control("Kick Tune", "TUNE", S::Knob, 0, 1),
             control("Kick Decay", "DECAY", S::Knob, 0, 2),
             control("Kick Ratio", "RATIO", S::Knob, 1, 0),
             control("Kick Clang", "CLANG", S::LargeKnob, 1, 1),
         }),
-        piece("SNARE / CLAP", cyan, 3, 4, {
+        piece("SNARE / CLAP", cyan, 8, 8, 0, {
             control("Snare Level", "LEVEL", S::Knob, 0, 0),
             control("Snare Tune", "TUNE", S::Knob, 0, 1),
             control("Snare Decay", "DECAY", S::Knob, 0, 2),
@@ -2531,7 +2535,7 @@ MachinePanel makeFmDrums() {
         // interdit est qu'une colonne porte deux pièces -- c'est ce qui avait
         // fait écrire, plus haut, qu'« une façade qui mente sur ce qu'elle
         // groupe est pire qu'une façade serrée ».
-        piece("TOM / BELL", ambre, 7, 5, {
+        piece("TOM / BELL", ambre, 0, 8, 3, {
             control("Tom Level", "TOM", S::Knob, 0, 0),
             control("Tom Tune", "TOM TUNE", S::Knob, 0, 1),
             control("Tom Decay", "TOM DEC", S::Knob, 0, 2),
@@ -2543,7 +2547,7 @@ MachinePanel makeFmDrums() {
             control("Bell Ratio", "BELL RATIO", S::Knob, 3, 0),
             control("Bell Clang", "BELL CLANG", S::Knob, 3, 1),
         }),
-        piece("HAT", acier, 12, 4, {
+        piece("HAT", acier, 8, 8, 3, {
             control("Hat Level", "LEVEL", S::Knob, 0, 0),
             control("Hat Tone", "TONE", S::Knob, 1, 0),
             control("Closed Hat Decay", "CH DECAY", S::Knob, 0, 1),
@@ -2554,7 +2558,7 @@ MachinePanel makeFmDrums() {
     PanelSection accent;
     accent.title = "ACCENT";
     accent.accentColour = cyan;
-    accent.column = 0; accent.row = 3; accent.columnSpan = 3; accent.rowSpan = 2;
+    accent.column = 0; accent.row = 6; accent.columnSpan = 3; accent.rowSpan = 2;
     accent.contentColumns = 2;
     accent.controls = { control("Accent", "ACCENT", S::Knob, 0, 0) };
     panel.sections.push_back(accent);
