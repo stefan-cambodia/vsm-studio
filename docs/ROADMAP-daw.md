@@ -27555,3 +27555,14 @@ de `Children` : mes. 3-67 (début 3 072, longueur 98 304) et mes. 227-259
 (début 347 136, longueur 49 152) — 160 mesures de silence ne sont plus sous
 un clip. Export MIDI : 8 537 notes, multiensemble identique. `tools/ouvrir-midi.sh`
 8 verdicts verts, banc de fumée 0 raté. Manuel : § Ouvrir / Importer.
+
+**ET CELA VAUT POUR TOUT PROJET SANS CLIPS**, les reconstructions comprises
+(`materializeImplicitClips` est le chemin de D45) : `children-c3-plafond`
+ouvert après coup donne `bass`, `guitar`, `other`, `piano` en un clip chacun
+(début 0, 432 000 à 435 840 ticks), et la batterie en morceaux — kick 3 clips,
+hihat 4, tom 5, percussion 4 ou plus : une reconstruction qui n'a trouvé la
+charleston qu'à trois endroits le montre maintenant à trois endroits, au lieu
+d'un ruban plein. C'est voulu (la règle est la même pour tout matériau MIDI
+sans clip), et dit ici parce que l'apparence des projets existants change à
+leur prochaine ouverture ; un projet dont les clips sont déjà écrits ne bouge
+pas.
