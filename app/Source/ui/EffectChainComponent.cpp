@@ -30,7 +30,7 @@ EffectChainComponent::EffectChainComponent() {
 
     addLabel_.setText(vsm::app::ui::tr("Ajouter :"), juce::dontSendNotification);
     addLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    addLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
+    addLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     contenu_.addAndMakeVisible(addLabel_);
 
     int id = 1;
@@ -69,13 +69,13 @@ EffectChainComponent::EffectChainComponent() {
     };
 
     paramHeader_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    paramHeader_.setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));
+    paramHeader_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
     contenu_.addAndMakeVisible(paramHeader_);
 
     // D31.4 : l'en-tête de la chaîne MIDI. Visible seulement quand elle
     // existe : un titre au-dessus de rien fait chercher ce qui manque.
     midiHeader_.setColour(juce::Label::textColourId, Palette::accentAmber);
-    midiHeader_.setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));
+    midiHeader_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
     midiHeader_.setText(vsm::app::ui::tr(u8"Effets MIDI (sur les notes, avant la machine)"),
                          juce::dontSendNotification);
     // `addChildComponent` ET NON `addAndMakeVisible` : ce dernier REND VISIBLE
@@ -539,7 +539,7 @@ void EffectChainComponent::rebuildParamControls() {
             pc.label->setText(juce::String(info.name), juce::dontSendNotification);
             pc.label->setJustificationType(juce::Justification::centred);
             pc.label->setColour(juce::Label::textColourId, Palette::textSecondary);
-            pc.label->setFont(juce::Font(juce::FontOptions(10.0f)));
+            pc.label->setFont(juce::Font(juce::FontOptions(12.0f)));
             contenu_.addAndMakeVisible(*pc.label);
             params_.push_back(std::move(pc));
         }
@@ -588,7 +588,7 @@ void EffectChainComponent::rebuildParamControls() {
         pc.label->setText(juce::String(info.name), juce::dontSendNotification);
         pc.label->setJustificationType(juce::Justification::centred);
         pc.label->setColour(juce::Label::textColourId, Palette::textSecondary);
-        pc.label->setFont(juce::Font(juce::FontOptions(10.0f)));
+        pc.label->setFont(juce::Font(juce::FontOptions(12.0f)));
         contenu_.addAndMakeVisible(*pc.label);
 
         params_.push_back(std::move(pc));

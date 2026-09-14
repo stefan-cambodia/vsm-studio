@@ -12,7 +12,7 @@ AutomationComponent::AutomationComponent() {
     // D94 : les trois libellés sont posés par `retraduire()`, en fin de
     // constructeur, puis à chaque bascule de langue.
     trackLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    trackLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
+    trackLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(trackLabel_);
     addAndMakeVisible(trackBox_);
     trackBox_.onChange = [this] {
@@ -21,7 +21,7 @@ AutomationComponent::AutomationComponent() {
     };
 
     paramLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    paramLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
+    paramLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(paramLabel_);
     addAndMakeVisible(paramBox_);
     paramBox_.onChange = [this] {
@@ -38,7 +38,7 @@ AutomationComponent::AutomationComponent() {
     };
 
     hintLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    hintLabel_.setFont(juce::Font(juce::FontOptions(10.0f)));
+    hintLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     hintLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(hintLabel_);
     retraduire();
@@ -349,7 +349,7 @@ void AutomationComponent::paint(juce::Graphics& g) {
 
     // Bornes de valeur.
     g.setColour(Palette::textSecondary);
-    g.setFont(juce::Font(juce::FontOptions(10.0f)));
+    g.setFont(juce::Font(juce::FontOptions(12.0f)));
     g.drawText(juce::String(paramMax_, 1), a.getX() + 2, a.getY(), 60, 14, juce::Justification::topLeft);
     g.drawText(juce::String(paramMin_, 1), a.getX() + 2, a.getBottom() - 14, 60, 14, juce::Justification::bottomLeft);
 

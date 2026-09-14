@@ -44,7 +44,7 @@ void VelocityLaneComponent::paint(juce::Graphics& g) {
     g.setColour(Palette::panel);
     g.fillRect(0, 0, pianoRoll_.keyboardWidth(), getHeight());
     g.setColour(Palette::textSecondary);
-    g.setFont(11.0f);
+    g.setFont(12.0f);
     g.drawText(vsm::app::ui::tr(u8"Vél."), 4, 2, pianoRoll_.keyboardWidth() - 8, 14, juce::Justification::centredLeft);
 
     const auto& selection = pianoRoll_.selectedNoteIds();

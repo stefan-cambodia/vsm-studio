@@ -1794,7 +1794,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             g.setColour(Palette::border);
             g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.0f);
             g.setColour(Palette::textSecondary);
-            g.setFont(juce::Font(juce::FontOptions(11.0f)));
+            g.setFont(juce::Font(juce::FontOptions(12.0f)));
             g.drawText(texte, static_cast<int>(x) + 3, 2, 60, kRulerHeight - 4,
                         juce::Justification::centredLeft);
         }
@@ -1817,7 +1817,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         if (pxParMesure > 0.0)
             while (pasDuNumero * pxParMesure < 34.0 && pasDuNumero < 4096) pasDuNumero *= 2;
         const vsm::midi::Tick premier = (scrollTick_ / parMesure) * parMesure;
-        g.setFont(juce::Font(juce::FontOptions(11.0f)));
+        g.setFont(juce::Font(juce::FontOptions(12.0f)));
         for (vsm::midi::Tick t = premier; tickToX(t) < bounds.getWidth(); t += parMesure) {
             const float x = tickToX(t);
             if (x < kHeaderWidth) continue;
@@ -1946,7 +1946,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             if (track.locked) nature += vsm::app::ui::tr(u8" · verrouillé");
             g.setColour(track.locked ? Palette::accentAmber
                                      : track.frozen ? Palette::accentTeal : Palette::textSecondary);
-            g.setFont(juce::Font(juce::FontOptions(11.0f)));
+            g.setFont(juce::Font(juce::FontOptions(12.0f)));
             g.drawText(nature, 24, y + 22, kHeaderWidth - 30, 14, juce::Justification::centredLeft);
         }
 
@@ -2222,7 +2222,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             }
             if (!clip.name.empty() && r.getWidth() > 30.0f) {
                 g.setColour(Palette::textPrimary);
-                g.setFont(juce::Font(juce::FontOptions(11.0f)).withStyle(
+                g.setFont(juce::Font(juce::FontOptions(12.0f)).withStyle(
                     lie ? juce::Font::italic : juce::Font::plain));
                 g.drawText(juce::String(clip.name),
                             r.reduced(4.0f, 2.0f).withTrimmedRight(lie ? 14.0f : 0.0f),
@@ -2252,7 +2252,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             if (std::abs(clip.gain - 1.0f) > 1e-3f && r.getWidth() > 60.0f) {
                 const float dB = clip.gain > 0.0f ? 20.0f * std::log10(clip.gain) : -96.0f;
                 const juce::String texte = (dB >= 0.0f ? "+" : "") + juce::String(dB, 1) + " dB";
-                g.setFont(juce::Font(juce::FontOptions(11.0f)));
+                g.setFont(juce::Font(juce::FontOptions(12.0f)));
                 const float largeur = juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), texte) + 8.0f;
                 const juce::Rectangle<float> cartouche(droiteVisible - 3.0f - largeur, ySousLeGain, largeur, 14.0f);
                 g.setColour(Palette::background.withAlpha(0.85f));
@@ -2270,7 +2270,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     + (std::abs(n - std::round(n)) < 1e-6 ? juce::String(static_cast<int>(std::lround(n)))
                                                           : juce::String(n, 2))
                     + " st";
-                g.setFont(juce::Font(juce::FontOptions(11.0f)));
+                g.setFont(juce::Font(juce::FontOptions(12.0f)));
                 const float largeur = juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), texte) + 8.0f;
                 const juce::Rectangle<float> cartouche(droiteVisible - 3.0f - largeur, ySousLeGain, largeur, 14.0f);
                 g.setColour(Palette::background.withAlpha(0.85f));
@@ -2350,7 +2350,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // piste -- c'est elle qui décide quelle courbe elle montre.
             if (h >= 40) {
                 g.setColour(Palette::accentAmber.withAlpha(0.85f));
-                g.setFont(juce::Font(juce::FontOptions(10.0f)));
+                g.setFont(juce::Font(juce::FontOptions(12.0f)));
                 g.drawText(juce::String(courbe->parameter), 24, y + h - 16, kHeaderWidth - 30, 13,
                             juce::Justification::centredLeft, true);
             }
@@ -2371,7 +2371,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     // réglage qu'on bascule au clavier et qui ne se voit nulle part se retourne
     // contre celui qui l'a basculé sans s'en souvenir.
     g.setColour(Palette::textSecondary);
-    g.setFont(juce::Font(juce::FontOptions(10.0f)));
+    g.setFont(juce::Font(juce::FontOptions(12.0f)));
     g.drawText((followPlayhead_ ? vsm::app::ui::tr(u8"suit · ") : juce::String())
                    + (snap_ ? (aimanteALaMesure_ ? vsm::app::ui::tr("aimant : mesure") : vsm::app::ui::tr("aimant : grille"))
                                         : vsm::app::ui::tr("aimant : libre"))

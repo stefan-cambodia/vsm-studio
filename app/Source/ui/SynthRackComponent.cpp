@@ -145,7 +145,7 @@ void SynthRackComponent::rebuildControls() {
         juce::String labelText(info.name);
         if (!info.unit.empty()) labelText += " (" + juce::String(info.unit) + ")";
         label->setText(labelText, juce::dontSendNotification);
-        label->setFont(juce::Font(juce::FontOptions(11.0f)));
+        label->setFont(juce::Font(juce::FontOptions(12.0f)));
         label->setJustificationType(juce::Justification::centred);
         label->setColour(juce::Label::textColourId, Palette::textSecondary);
         controlContainer_.addAndMakeVisible(*label);

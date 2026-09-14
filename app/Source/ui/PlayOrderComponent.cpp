@@ -121,7 +121,7 @@ void PlayOrderComponent::paintListBoxItem(int row, juce::Graphics& g, int width,
     // LA LONGUEUR EST DITE : deux sections du même nom se distinguent, et l'on
     // voit tout de suite qu'un ordre fait huit mesures et non trente.
     g.setColour(vsm::ui::Palette::textSecondary);
-    g.setFont(juce::Font(juce::FontOptions(11.0f)));
+    g.setFont(juce::Font(juce::FontOptions(12.0f)));
     g.drawText(juce::String(static_cast<int>(section.length())) + " ticks",
                 width - 84, 0, 76, height, juce::Justification::centredRight);
 }

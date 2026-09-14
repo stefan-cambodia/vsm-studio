@@ -184,7 +184,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     auto label = [this](juce::Label& l, const juce::String& text) {
         l.setText(text, juce::dontSendNotification);
         l.setColour(juce::Label::textColourId, Palette::textSecondary);
-        l.setFont(juce::Font(juce::FontOptions(11.0f)));
+        l.setFont(juce::Font(juce::FontOptions(12.0f)));
         addAndMakeVisible(l);
     };
     label(gridLabel_, vsm::app::ui::tr("Grille"));

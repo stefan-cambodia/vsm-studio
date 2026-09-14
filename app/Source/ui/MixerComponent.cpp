@@ -560,7 +560,7 @@ MasterStrip::MasterStrip() {
     lufsLabel_.setText("-inf LUFS", juce::dontSendNotification);
     lufsLabel_.setJustificationType(juce::Justification::centred);
     lufsLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
-    lufsLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
+    lufsLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(lufsLabel_);
 
     // LA CORRÉLATION DE PHASE EN CLAIR (D4.7). Une bande colorée dit qu'il y a
@@ -569,7 +569,7 @@ MasterStrip::MasterStrip() {
     phaseLabel_.setText("1.00", juce::dontSendNotification);
     phaseLabel_.setJustificationType(juce::Justification::centred);
     phaseLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
-    phaseLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
+    phaseLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(phaseLabel_);
 
     addAndMakeVisible(meter_);
@@ -618,7 +618,7 @@ juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::S
     k.label->setText(label, juce::dontSendNotification);
     k.label->setJustificationType(juce::Justification::centred);
     k.label->setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
-    k.label->setFont(juce::Font(juce::FontOptions(9.5f)));
+    k.label->setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(*k.label);
 
     knobs_.push_back(std::move(k));

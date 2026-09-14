@@ -86,7 +86,7 @@ void PianoRollRulerComponent::paint(juce::Graphics& g) {
     int pasDuNumero = 1;
     if (pxParMesure > 0.0)
         while (pasDuNumero * pxParMesure < 34.0 && pasDuNumero < 1024) pasDuNumero *= 2;
-    g.setFont(11.0f);
+    g.setFont(12.0f);
     for (Tick t = (startTick / barTicks) * barTicks; t <= endTick; t += barTicks) {
         const float x = pianoRoll_.tickToX(t);
         const int numero = static_cast<int>(t / barTicks) + 1;

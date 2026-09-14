@@ -26966,3 +26966,57 @@ session). Corrigé au même titre ; **non mesuré par banc** — enregistrer de
 l'audio demande une entrée son ouverte, ce qu'aucun verbe de banc ne simule —
 et dit tel quel. Les quatre autres sites (clip créé au double-clic, matériau
 d'un clip audio, pistes du MIDI ouvert, clip dupliqué) donnaient déjà la couleur.
+
+### Phase D323 — le plus petit texte de l'écran était un 10 pt écrit en dur (15/09/2026)
+
+**VU SUR LA PHOTO DE D322** : dans le coin de la règle de l'arrangement, « suit ·
+aimant : mesure » en **10 pt**, les numéros de mesure en 11, les natures de piste
+(« midi », « audio ») en 11, les noms de clip en 11 — à côté de menus et de
+boutons en 14-15. L'échelle d'interface (150 %, le réglage validé par
+l'utilisateur) agrandit TOUT du même facteur : un 10 pt reste le plus petit
+texte de l'écran, et c'est exactement le texte qui explique pourquoi la souris
+tombe à côté (l'aimantation) ou où l'on en est (le numéro de mesure). L'inventaire
+des polices écrites en dur dans les panneaux (`app/Source/ui/*.cpp`,
+`app/Source/*.cpp`) donne : 9,5 pt × 1, 10 pt × 6, 11 pt × 19, puis 12 × 17,
+13 × 15, 14 × 10, 15 × 13. Le corps du texte est entre 12 et 15 ; **26 sites**
+sont en dessous (la règle, la liste de pistes, la console, l'automation, la
+chaîne d'effets, la lane de tempo, l'ordre de lecture, la barre du piano roll,
+le rack).
+
+**CE QUI EST FAIT.** Plancher à **12 pt** sur ces 26 sites, et une garde
+(`tools/police-plancher.sh`, règle dans son en-tête) qui refuse toute police
+sous 12 pt dans les panneaux — vue ROUGE sur l'arbre d'avant — et c'est elle qui a compté : **26** sites, là où l'inventaire à la main en avait annoncé 22, un compte par fichier additionné de tête — avant de
+la croire verte.
+
+**HORS DE CETTE PHASE, NOMMÉ.** Les sept sites des façades de machines
+(`app/Source/ui/machines/` : sérigraphie 9-11 pt, titres de section 11 bold, noms
+de note 9 pt dans les pas du séquenceur) vivent dans des cellules dictées par la
+description de chaque machine ; D61 les fait rétrécir plutôt que couper. Les
+monter au plancher sans revoir les grilles ferait des libellés écrasés, pas
+lisibles. Ils sont exclus de la garde, et cela est écrit dans son en-tête.
+
+**ATTENDU** : `tools/police-plancher.sh` rouge avant (26 sites), vert après
+(0) ; sur la photo de `cdl` (même banc que D322), le coin de la règle, les
+numéros de mesure et les natures de piste se lisent à la taille du corps ; aucun
+texte des bandes de 14 px (nom de clip, cartouche de gain) n'est coupé — 12 pt
+tient dans 14 px ; banc de fumée 0 raté.
+
+**LA GARDE NE LISAIT QU'UNE FORME.** Sur la photo du piano roll, les noms de
+touche restaient petits ; en cherchant, deux sites de plus écrivaient leur police
+par le raccourci `g.setFont(11.0f)` (la règle du piano roll, la lane de
+vélocité), que la garde — bâtie sur `FontOptions(…)` — ne voyait pas. Elle lit
+les deux formes désormais ; les deux sites passent à 12 pt : **28 sites** en
+tout. Les noms de touche du piano roll, eux, sont bornés par la hauteur de rang
+(`min(11, hauteur − 3)`) : les monter demande des rangs plus hauts, c'est le
+réglage `regle-pianoroll` et une autre phase — nommé, non fait.
+
+**MESURÉ.** `tools/police-plancher.sh` : **26** sites rouges sur l'arbre d'avant
+(forme `FontOptions`), puis **2** de plus quand elle a appris la forme
+`setFont(N)` ; **0** après. Photos (`cdl` + deux WAV, même banc que D322, à
+l'échelle par défaut) : le coin de la règle « suit · aimant : mesure », les
+numéros de mesure, les natures de piste (« midi », « audio ») et les noms de clip
+sont passés de 10-11 à 12 pt, lisibles côte à côte sur les deux découpes ; les
+onglets Automation et Effets et la règle du piano roll n'ont aucun texte coupé.
+Banc de fumée : 0 raté. Ce que le plancher NE règle pas, et qui reste à l'œil :
+les noms de touche du piano roll (bornés par la hauteur de rang) et la
+sérigraphie des façades — nommés ci-dessus.

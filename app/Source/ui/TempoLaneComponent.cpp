@@ -272,7 +272,7 @@ void TempoLaneComponent::paint(juce::Graphics& g) {
     g.setColour(Palette::accentAmber);
     g.strokePath(path, juce::PathStrokeType(2.0f));
 
-    g.setFont(juce::Font(juce::FontOptions(11.0f)));
+    g.setFont(juce::Font(juce::FontOptions(12.0f)));
     for (const auto& p : points_) {
         const float x = static_cast<float>(tickToX(p.tick));
         const float y = static_cast<float>(bpmToY(p.bpm));

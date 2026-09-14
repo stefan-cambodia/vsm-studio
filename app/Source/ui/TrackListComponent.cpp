@@ -438,7 +438,7 @@ void TrackRowComponent::paint(juce::Graphics& g) {
     // est coupée. Même choix que le « gelé » de l'arrangement.
     if (track_.locked) {
         g.setColour(Palette::accentAmber);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)));
+        g.setFont(juce::Font(juce::FontOptions(12.0f)));
         g.drawText(vsm::app::ui::tr(u8"verrouillée"), bounds.removeFromTop(18).reduced(6, 2),
                     juce::Justification::centredRight);
     }
@@ -463,7 +463,7 @@ void TrackRowComponent::paintOverChildren(juce::Graphics& g) {
     g.setColour(Palette::panel.withAlpha(0.62f));
     g.fillRect(getLocalBounds());
     g.setColour(Palette::accentRed);
-    g.setFont(juce::Font(juce::FontOptions(11.0f)));
+    g.setFont(juce::Font(juce::FontOptions(12.0f)));
     g.drawText(vsm::app::ui::tr(u8"désactivée"), getLocalBounds().removeFromTop(18).reduced(8, 2),
                 juce::Justification::centredRight);
 }
