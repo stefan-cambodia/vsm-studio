@@ -26926,3 +26926,43 @@ préfixe qui retrouve la ligne du lecteur se dérive de la phrase. Mesuré :
 inventaire **ECRAN 7**, tests `interchange` 300 ; `VSM_LANGUE=en` affiche « MIDI
 track “Bass”: notes imported, a first sound from its NAME: vsm.minimoog — … »
 pendant que le terminal garde la phrase française.
+
+### Phase D322 — un clip audio importé restait bleu sur une piste rose (15/09/2026)
+
+**VUE EN IMPORTANT DEUX WAV DES TÉLÉCHARGEMENTS** (`clap-2.wav`,
+`jupiter8_demo.wav`) dans `cdl` : deux pistes neuves, rose et orange à la
+palette (D33.5), et **deux clips du bleu par défaut** — la couleur d'un clip est
+celle de sa piste partout ailleurs (matérialisation, D45 ; report d'une piste ;
+prise enregistrée), et `placeSampleOnTrack` — le chemin de l'import audio et
+du dépôt de fichier — fabriquait son clip sans lui donner de couleur. À douze
+stems importés, l'arrangement montrait douze clips du même bleu sous douze
+lignes de couleur.
+
+**CE QUI EST FAIT.** Le clip prend la couleur de sa piste à sa naissance, comme
+les autres ; le relevé `VSM_CLIPS` dit désormais la couleur du clip ET celle de
+sa piste, pour que l'écart se lise sans photo.
+
+**ATTENDU** (`VSM_IMPORT_AUDIO` de deux WAV dans `cdl`, relevé `VSM_CLIPS`) : les
+deux clips neufs portent « couleur #xxxxxx (piste #xxxxxx) » avec les deux
+valeurs ÉGALES (avant : clip #6b9bff, le bleu par défaut, sous des pistes
+d'autres couleurs) ; le clip de `melange` inchangé.
+
+**MESURÉ** (banc `VSM_IMPORT_AUDIO` de `clap-2.wav` et `jupiter8_demo.wav` dans
+`cdl`, relevé `VSM_CLIPS`, `HOME` neuf) :
+
+| clip | avant (binaire 00:07) | après (binaire 00:10) |
+|---|---|---|
+| `melange` (piste existante) | clip #6b9bff, piste #6b9bff | clip #6b9bff, piste #6b9bff |
+| `clap-2` (piste neuve) | clip **#6b9bff**, piste #ff6b9b | clip **#ff6b9b**, piste #ff6b9b |
+| `jupiter8_demo` (piste neuve) | clip **#6b9bff**, piste #ffb86b | clip **#ffb86b**, piste #ffb86b |
+
+Attendu tenu : les deux clips neufs portent la couleur de leur piste, le clip
+existant n'a pas bougé.
+
+**LE MÊME OUBLI, UNE FOIS ENCORE.** En relisant les six sites qui fabriquent un
+clip (`grep "Clip clip;"`), un second manquait la couleur : la **prise audio
+enregistrée** d'une passe (`closePass`, la fenêtre sur le fichier de la
+session). Corrigé au même titre ; **non mesuré par banc** — enregistrer de
+l'audio demande une entrée son ouverte, ce qu'aucun verbe de banc ne simule —
+et dit tel quel. Les quatre autres sites (clip créé au double-clic, matériau
+d'un clip audio, pistes du MIDI ouvert, clip dupliqué) donnaient déjà la couleur.

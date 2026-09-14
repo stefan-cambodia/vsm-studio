@@ -1705,7 +1705,12 @@ void MainComponent::listClipsForCapture() {
                         + juce::String(static_cast<int>(c.id))
                         + " \xc2\xab " + juce::String::fromUTF8(c.name.c_str()) + " \xc2\xbb d\xc3\xa9but "
                         + juce::String(static_cast<int>(c.startTick)) + " longueur "
-                        + juce::String(static_cast<int>(c.length)) + "\n").toRawUTF8(), stderr);
+                        + juce::String(static_cast<int>(c.length))
+                        // D322 : la couleur du clip et celle de sa piste, pour que le relevé
+                        // dise quand elles divergent (un clip audio importé restait bleu).
+                        + " couleur #" + juce::String::toHexString(static_cast<int>(c.colorRgba & 0xFFFFFFu)).paddedLeft('0', 6)
+                        + " (piste #" + juce::String::toHexString(static_cast<int>(piste.colorRgba & 0xFFFFFFu)).paddedLeft('0', 6) + ")"
+                        + "\n").toRawUTF8(), stderr);
         }
     }
     std::fputs((juce::String("VSM_CLIPS : ") + juce::String(total) + " clip(s)\n").toRawUTF8(), stderr);
@@ -7624,6 +7629,7 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
         project_.ticksToSeconds(clip.startTick) + duree) - clip.startTick);
     clip.sourceStartSeconds = 0.0;
     clip.name = destination.getFileNameWithoutExtension().toStdString();
+    clip.colorRgba = piste.colorRgba;   // D322 : la couleur de sa piste, comme tout clip qui naît
     project_.ajouterClip(piste.clips, clip);   // D262 : numéroté tout de suite
 
     trackList_.refreshTrackRow(trackIndex);
@@ -9877,6 +9883,7 @@ void MainComponent::closePass(uint32_t passe, double debutSecondes, double finSe
             std::max(0.0, debutSecondes - audioTakeSessionStartSeconds_)
             + static_cast<double>(passe) * std::max(0.0, finSecondes - debutSecondes);
         clip.name = nom.toStdString();
+        clip.colorRgba = project_.tracks[audioTakeTrack_].colorRgba;   // D322 : même règle que l'import
         project_.ajouterClip(prise.clips, clip);   // D262
         vsm::sequencer::pushTake(project_.tracks[audioTakeTrack_], std::move(prise));
     }
