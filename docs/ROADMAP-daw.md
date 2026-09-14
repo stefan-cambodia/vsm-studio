@@ -26876,3 +26876,11 @@ même rapport. Le premier binaire AJOUTAIT une ligne sous celle du lecteur, qui
 disait encore « AUCUN instrument assigné » pour la même piste — deux lignes, une
 fausse ; la ligne de la piste est maintenant réécrite, en *attention*, et le
 compte « sans instrument » diminue d'autant. Attendus tenus.
+
+**ET L'AUTRE PORTE, mesurée à 23:50 : « Importer un MIDI dans le projet… »** (le
+chemin de D305-D310 que seule l'ouverture avait été mesurée). `cdl` ouvert, un
+format 0 à trois canaux importé par le menu (`VSM_FICHIER`) : « piste 2 « Mixdown ·
+canal 1 » : 38 → vsm.tb303 », « piste 3 « canal 4 » : 89 → vsm.jupiter8 », « piste 4
+« canal 10 » : kit 0 → vsm.drums », `VSM_CLIPS : 4 clip(s)` (le clip de `cdl` plus
+trois), `VSM_PISTES` : melange puis les trois canaux. Les deux portes se
+comportent pareil.
