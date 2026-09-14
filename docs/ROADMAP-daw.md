@@ -26397,3 +26397,10 @@ de D307, « dont 0 par la banque installée ». Sept attendus tenus.
 tourne sous un HOME de brouillon (D77), où `~/.local/share/vsm-studio/profils`
 n'existe pas. `VSM_PROFILS` désigne le dossier de l'utilisateur sans toucher à
 ses réglages ; c'est le cas 6 à l'envers, et il aurait fallu l'écrire avant.
+
+*Les huit réserves, lues* : « 1 borné » est l'**attaque** du preset — 0,00098 s
+sur FR3-Synth-Bass-1 (le SoundFont dit « instantané »), sous le plancher de
+0.001 s de `vsm.multisample` ; « 2 bornés », l'attaque et le relâchement
+(1,0 s ≤ 5 s, donc c'est l'attaque et une autre borne du profil). L'effet est
+nul à l'oreille — la machine borne à son plus court —, et la réserve reste dite
+parce que c'est la règle (D52), pas parce qu'elle change le son.
