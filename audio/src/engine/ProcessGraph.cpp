@@ -19,6 +19,7 @@ using namespace vsm::midi;
 
 void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     ccVolume_.fill(1.0f);   // D329 : `{}` initialise à ZÉRO -- un tableau de volumes à zéro rendrait tout muet
+    ccPan_.fill(0.0f);      // D330
     sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
     maxBlockSize_ = maxBlockSize > 0 ? maxBlockSize : 512;
 
@@ -101,6 +102,7 @@ void ProcessGraph::ensureParallelBuffers() {
 
 void ProcessGraph::setProject(const Project& project) {
     ccVolume_.fill(1.0f);   // D329 : un projet republié repart au volume de canal plein ; la chasse (D16.2) le rétablit à la lecture
+    ccPan_.fill(0.0f);      // D330
     auto snapshot = std::make_shared<GraphSnapshot>();
     snapshot->project = project;
     Tick endTick = project.lastUsedTick() + project.ticksPerQuarterNote;
@@ -1595,6 +1597,12 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             // fondus ainsi depuis trente ans. Noté ici, appliqué au mixage,
             // puis traité comme tout contrôleur (la virgule rend faux : on
             // continue dans les branches suivantes, port et machine compris).
+        } else if (issue == Issue::Control && controlEvent.kind == MidiControlEvent::Kind::ControlChange
+                   && controlEvent.index == 10 && (ccPan_[trackIndex] = controlEvent.value * 2.0f - 1.0f, false)) {
+            // D330 : LE PANORAMIQUE MIDI (CC 10), même tenue que le CC 7. 64 est
+            // le centre (0), 0 la gauche (-1), 127 la droite (+1) ; il
+            // S'AJOUTE au potentiomètre de la tranche, borné à ±1 -- le
+            // fichier place, l'utilisateur corrige, et un CC absent ne change rien.
         } else if (issue == Issue::Control && externe && (emitControlOut(trackIndex, track.channel, controlEvent), false)) {
             // D27.2 : déposé sur le port, puis traité comme avant (la virgule
             // rend faux : on continue dans les branches suivantes).
@@ -1807,7 +1815,8 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     const float signe = track.invertPhase ? -1.0f : 1.0f;
     const float volume = ((pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume) * signe
                          * ccVolume_[trackIndex];   // D329 : le CC 7 se multiplie au fader (ou à son automation)
-    const float pan = (pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan;
+    const float pan = std::clamp(((pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan) + ccPan_[trackIndex],
+                                 -1.0f, 1.0f);   // D330 : le CC 10 s'ajoute au potentiomètre
 
     float peak = mixStereoInto(srcL, srcR, sampleCount,
                                 volume, pan, audible,

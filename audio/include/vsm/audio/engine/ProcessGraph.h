@@ -603,6 +603,7 @@ private:
     // pas de verrou.
     std::array<float, kMaxTracks> autoVolume_{};
     std::array<float, kMaxTracks> ccVolume_{};   ///< D329 : volume de canal MIDI (CC 7), 0..1, 1 au repos
+    std::array<float, kMaxTracks> ccPan_{};      ///< D330 : panoramique MIDI (CC 10), -1..1, 0 au repos -- s'AJOUTE au potentiomètre
     std::array<float, kMaxTracks> autoPan_{};
     std::array<std::array<float, kMaxSends>, kMaxTracks> autoSend_{};
     /// D30.4 : le trim d'entrée piloté, EN DÉCIBELS comme le réglage qu'il

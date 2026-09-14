@@ -579,3 +579,38 @@ VSM_TEST(process_graph_applies_channel_volume_cc7) {
     const double rapport = apres / avant;
     VSM_ASSERT(std::abs(rapport - 64.0 / 127.0) < 0.05);
 }
+
+// D330 : LE PANORAMIQUE MIDI (CC 10) S'AJOUTE AU POTENTIOMÈTRE. Une blanche ;
+// CC 10 à 0 (gauche) au tick 0, à 127 (droite) à la noire : la première
+// moitié sonne à gauche, la seconde à droite -- le canal opposé sous un
+// dixième de l'autre.
+VSM_TEST(process_graph_applies_channel_pan_cc10) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track track;
+    track.name = "Test";
+    track.channel = 0;
+    uint64_t idCounter = 1;
+    track.addNote(0, 960, 69, 100, 0, idCounter);
+    track.controlChanges.push_back(CcPoint{0, 0, 10, 0});
+    track.controlChanges.push_back(CcPoint{480, 0, 10, 127});
+    project.tracks.push_back(track);
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.testtone");
+    graph.setProject(project);
+    RenderedAudio audio = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+
+    auto rms = [&](const std::vector<float>& c, double a, double b) {
+        const size_t i0 = static_cast<size_t>(a * 8000.0), i1 = static_cast<size_t>(b * 8000.0);
+        double somme = 0.0;
+        for (size_t i = i0; i < i1 && i < c.size(); ++i) somme += static_cast<double>(c[i]) * c[i];
+        return std::sqrt(somme / static_cast<double>(i1 - i0));
+    };
+    const double g1 = rms(audio.left, 0.15, 0.45), d1 = rms(audio.right, 0.15, 0.45);
+    const double g2 = rms(audio.left, 0.65, 0.95), d2 = rms(audio.right, 0.65, 0.95);
+    VSM_ASSERT(g1 > 0.01 && d2 > 0.01);
+    VSM_ASSERT(d1 < 0.1 * g1);
+    VSM_ASSERT(g2 < 0.1 * d2);
+}

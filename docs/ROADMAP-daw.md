@@ -27330,3 +27330,36 @@ General MIDI : 127 est le plein), et les vagues des mesures 35 à 50 (CC 7 de
 (`process_graph_applies_channel_volume_cc7` : une blanche, CC 7 de 127 à 64 à
 la noire, rapport RMS 0,504 ± 0,05) : **1 300 tests audio verts**. Banc de
 fumée : 0 raté. Le manuel (§ 4) dit le CC 7 appliqué et le CC 10 non.
+
+### Phase D330 — le panoramique MIDI (CC 10), même sort que le CC 7 (15/09/2026)
+
+**D'OÙ ELLE VIENT.** D329 l'a nommé, non fait, faute d'une règle : un
+panoramique MIDI et le potentiomètre de la tranche, lequel commande ? Les
+deux : **le CC 10 s'ajoute au potentiomètre**, borné à ±1 — 64 est le centre
+(0), 0 la gauche (−1), 127 la droite (+1). Le fichier place l'instrument,
+l'utilisateur corrige d'un cran, et un fichier sans CC 10 ne change rien
+(0 au repos). Chassé à la lecture, remis à 0 quand le projet est republié.
+
+**ATTENDU** (`cc10-paliers.mid`, écrit pour la mesure : une note répétée, CC 10
+à 64, puis 0, puis 127 par paliers de deux mesures ; `VSM_EXPORT`, RMS gauche
+et droite par palier) : AVANT, les trois paliers ont D−G ≈ 0 dB ; APRÈS, le
+palier du milieu a le canal droit **au moins 20 dB** sous le gauche, et le
+dernier le gauche au moins 20 dB sous le droit ; le premier reste à D−G ≈ 0.
+Test du graphe ajouté (`process_graph_applies_channel_pan_cc10`) ; 1 301
+tests audio verts ; banc de fumée 0 raté.
+
+**MESURÉ** (`VSM_EXPORT`, RMS gauche / droite par palier) :
+
+| export | mes. 1-3 (CC 10 = 64) | mes. 3-5 (CC 10 = 0) | mes. 5-7 (CC 10 = 127) |
+|---|---|---|---|
+| avant | G −15,44 / D −15,44 (D−G 0,00) | G −15,44 / D −15,44 (0,00) | G −15,44 / D −15,44 (0,00) |
+| après | G −15,50 / D −15,39 (**+0,10**) | G −12,43 / D −64,49 (**−52,1**) | G −144,4 / D −12,43 (**+131,9**) |
+
+Les deux seuils de 20 dB tenus, et de loin : à gauche pleine le canal droit
+est 52 dB dessous, à droite pleine le gauche est au silence numérique. Le
+palier « centre » penche de **0,10 dB à droite** : 64 n'est pas le milieu de
+0..127 (63,5), et 64 × 2 / 127 − 1 = +0,008 ; c'est la convention MIDI, pas
+une erreur d'échelle, et cela s'entend d'autant moins que 0,1 dB est sous le
+seuil de perception. Le côté plein gagne 3 dB (−12,43 contre −15,44) : la loi
+de panoramique à puissance constante de la console, inchangée. Tests audio :
+**1 301 verts** (le CC 7 et le CC 10). Banc de fumée : 0 raté. Manuel § 4.
