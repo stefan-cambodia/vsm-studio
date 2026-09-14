@@ -2378,13 +2378,15 @@ MachinePanel makeWestCoast() {
     // 14 x 5 et non 14 x 4 : à quatre rangées, la façade est si plate (rapport
     // 3,5) que le bandeau du nom se faisait couper au bord droit de l'aperçu.
     // Une rangée de plus donne aussi des cases moins écrasées, et c'est visible.
+    // D296 (A42) : DEUX RANGÉES DE SECTIONS -- 3 + 5 + 3 + 3 colonnes en ligne
+    // faisaient des curseurs d'enveloppe de 8 px au rack de 364 px (D294).
     panel.gridColumns = 14;
-    panel.gridRows = 5;
+    panel.gridRows = 10;
 
     PanelSection osc;
     osc.title = "COMPLEX OSCILLATOR";
     osc.accentColour = "#7C6A4A";
-    osc.column = 0; osc.row = 0; osc.columnSpan = 3; osc.rowSpan = 5;
+    osc.column = 0; osc.row = 0; osc.columnSpan = 5; osc.rowSpan = 5;
     // UNE SEULE COLONNE, deux rangées. L'aperçu a montré pourquoi : deux
     // commandes côte à côte dans un bloc large recevaient chacune une case
     // énorme, et l'oscillateur -- qui n'est PAS le sujet de cette machine --
@@ -2400,7 +2402,7 @@ MachinePanel makeWestCoast() {
     PanelSection folder;
     folder.title = "TIMBRE / FOLDER";
     folder.accentColour = "#B4562F";
-    folder.column = 3; folder.row = 0; folder.columnSpan = 5; folder.rowSpan = 5;
+    folder.column = 5; folder.row = 0; folder.columnSpan = 9; folder.rowSpan = 5;
     folder.contentColumns = 2;
     folder.controls = {
         // FOLD occupe DEUX rangées : c'est la seule façon de le rendre plus
@@ -2414,7 +2416,7 @@ MachinePanel makeWestCoast() {
     PanelSection gate;
     gate.title = "LOW PASS GATE";
     gate.accentColour = "#4A6B57";
-    gate.column = 8; gate.row = 0; gate.columnSpan = 3; gate.rowSpan = 5;
+    gate.column = 0; gate.row = 5; gate.columnSpan = 7; gate.rowSpan = 5;
     gate.controls = {
         control("Gate Cutoff", "CUTOFF", S::Knob, 0, 0),
         control("Gate Lag", "VACTROL", S::Knob, 1, 0),
@@ -2424,7 +2426,7 @@ MachinePanel makeWestCoast() {
     PanelSection env;
     env.title = "ENVELOPE";
     env.accentColour = "#7C6A4A";
-    env.column = 11; env.row = 0; env.columnSpan = 3; env.rowSpan = 5;
+    env.column = 7; env.row = 5; env.columnSpan = 7; env.rowSpan = 5;
     env.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -2582,13 +2584,15 @@ MachinePanel makeVocal() {
     panel.sectionColour = "#241D1A";
     panel.textColour = "#F0DFD2";
     panel.knobColour = "#C99B7E";
+    // D296 (A42) : DEUX RANGÉES DE SECTIONS -- 3 + 5 + 3 + 3 colonnes en ligne
+    // faisaient des curseurs d'enveloppe de 8 px au rack de 364 px (D294).
     panel.gridColumns = 14;
-    panel.gridRows = 5;
+    panel.gridRows = 10;
 
     PanelSection glotte;
     glotte.title = "GLOTTIS";
     glotte.accentColour = "#C4665A";
-    glotte.column = 0; glotte.row = 0; glotte.columnSpan = 3; glotte.rowSpan = 5;
+    glotte.column = 0; glotte.row = 0; glotte.columnSpan = 5; glotte.rowSpan = 5;
     glotte.contentColumns = 1;
     glotte.controls = {
         control("Tension", "TENSION", S::Knob, 0, 0),
@@ -2601,7 +2605,7 @@ MachinePanel makeVocal() {
     PanelSection conduit;
     conduit.title = "VOCAL TRACT";
     conduit.accentColour = "#D9A066";
-    conduit.column = 3; conduit.row = 0; conduit.columnSpan = 5; conduit.rowSpan = 5;
+    conduit.column = 5; conduit.row = 0; conduit.columnSpan = 9; conduit.rowSpan = 5;
     conduit.contentColumns = 2;
     conduit.controls = {
         control("Vowel", "A  E  I  O  U", S::LargeKnob, 0, 0, 1, 2),
@@ -2612,7 +2616,7 @@ MachinePanel makeVocal() {
     PanelSection vibrato;
     vibrato.title = "VIBRATO";
     vibrato.accentColour = "#8FA9C9";
-    vibrato.column = 8; vibrato.row = 0; vibrato.columnSpan = 3; vibrato.rowSpan = 5;
+    vibrato.column = 0; vibrato.row = 5; vibrato.columnSpan = 7; vibrato.rowSpan = 5;
     vibrato.controls = {
         control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
         control("Vibrato Rate", "RATE", S::Knob, 1, 0),
@@ -2623,7 +2627,7 @@ MachinePanel makeVocal() {
     PanelSection env;
     env.title = "ENVELOPE";
     env.accentColour = "#C4665A";
-    env.column = 11; env.row = 0; env.columnSpan = 3; env.rowSpan = 5;
+    env.column = 7; env.row = 5; env.columnSpan = 7; env.rowSpan = 5;
     env.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),

@@ -25841,3 +25841,18 @@ pas au-delà de son naturel, et elle défile sous le rack quand il est plus cour
 (D63). Photo : CLOCK, BITS, VOLUME, WIDTH, VOICES, DETUNE, LEVEL, PERIOD, A D S R,
 tous lisibles. Les onze tests `panels` passent ; réglages de l'utilisateur intacts.
 **Reste 14 / 63** sous le plancher — `tools/balayer-facades.sh` tient le compte.
+
+### Phase D296 — A42, suite : la voix et le west-coast sur deux rangées, 8 → 32 px (14/09/2026)
+
+Même géométrie que le PSG (3 + 5 + 3 + 3 colonnes sur 14, une rangée), même
+remède : GLOTTIS 5 + VOCAL TRACT 9 en haut, VIBRATO 7 + ENVELOPE 7 en bas
+(`vsm.vocal`) ; COMPLEX OSCILLATOR 5 + TIMBRE / FOLDER 9 en haut, LOW PASS GATE
+7 + ENVELOPE 7 en bas (`vsm.westcoast`), `gridRows` 5 → 10. Les deux façades
+demandent 1 010 px de naturel et en reçoivent **835**, la hauteur du rack — la
+règle de D292 les y borne, et elles tiennent sans défiler.
+
+**MESURÉ**, rack de 364 px : curseurs A D S R **8 → 32 px** sur les deux, plus
+petit élément de chaque façade **32 px**. Photos côte à côte : TENSION, BREATH,
+A E I O U, TRACT SIZE, TOUCH, DEPTH, RATE, DELAY, LEVEL et l'enveloppe ; RATIO,
+MOD DEPTH, FOLD, SYMMETRY, TOUCH, CUTOFF, VACTROL, LEVEL et l'enveloppe. Tests
+`panels` 11 verts ; réglages de l'utilisateur intacts. **Reste 12 / 63.**
