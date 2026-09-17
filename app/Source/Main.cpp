@@ -639,6 +639,12 @@ public:
             // d'ouverture que le rapport de reconstruction allait remplacer.
             if (const char* liste = std::getenv("VSM_RAPPORT_LISTE"); liste != nullptr && *liste && *liste != '0')
                 content->listReportForCapture();
+            // D343 : VSM_CLIPS_MINI=1 -- la fenêtre de hauteurs des miniatures de
+            // clip. Au démarrage (elle ne dépend que du projet, pas de la mise en
+            // page) et APRÈS les gestes, comme VSM_CLIPS.
+            if (const char* minis = std::getenv("VSM_CLIPS_MINI");
+                minis != nullptr && *minis && *minis != '0')
+                content->listClipMiniaturesForCapture();
             // VSM_TEXTES_LISTE=1 (D94) : les textes que la fenêtre MONTRE -- libellés,
             // boutons, listes, infobulles des composants visibles --, dans la langue
             // courante. Une infobulle ne se photographie pas : elle se liste.

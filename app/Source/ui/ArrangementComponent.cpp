@@ -9,6 +9,65 @@ using namespace vsm::sequencer;
 using namespace vsm::ui;
 
 namespace {
+
+/// D343 : L'AMBITUS D'UNE MINIATURE DE CLIP EST CELUI QUI TIENT 98 % DE SES
+/// NOTES, pas celui de ses extrêmes.
+///
+/// POURQUOI. Sur `children-dream-v12`, la piste « bass » compte 1 638 notes :
+/// **1 634 entre 29 et 48**, et **4 au-dessus** (une à 65, trois à 77 — des
+/// erreurs de transcription, la matière ordinaire d'une reconstruction).
+/// L'ambitus brut 29-77 écrasait donc 99,8 % des notes dans le bas du clip, et
+/// la miniature de D283 — faite pour reconnaître un motif sans l'ouvrir — n'était
+/// plus qu'un trait au fond du rectangle.
+///
+/// LES NOTES ÉCARTÉES NE DISPARAISSENT PAS : le peintre les pose sur la rangée du
+/// bord. Une miniature qui les cacherait mentirait (« il n'y a rien là-haut ») ;
+/// posées au bord, elles disent « ici ou plus haut », ce que la fenêtre du clip
+/// dit déjà de son temps. `hors` les compte, pour que le relevé le dise.
+struct FenetreDesHauteurs {
+    int grave = 128;
+    int aigu = -1;
+    int total = 0;   ///< notes du clip
+    int hors = 0;    ///< notes posées sur une rangée de bord
+};
+
+FenetreDesHauteurs fenetreDesHauteurs(const std::vector<vsm::sequencer::Note>& notes,
+                                       vsm::midi::Tick sourceStart, vsm::midi::Tick sourceFin) {
+    FenetreDesHauteurs f;
+    int comptes[128] = {};
+    for (const auto& n : notes) {
+        if (n.startTick >= sourceFin || n.endTick <= sourceStart) continue;
+        const int h = static_cast<int>(n.number);
+        if (h < 0 || h > 127) continue;
+        ++comptes[h];
+        ++f.total;
+    }
+    if (f.total == 0) return f;
+    const int marge = f.total / 50;   // 2 % de chaque côté
+    int cumul = 0;
+    for (int h = 0; h < 128; ++h) {
+        cumul += comptes[h];
+        if (cumul > marge) { f.grave = h; break; }
+    }
+    cumul = 0;
+    for (int h = 127; h >= 0; --h) {
+        cumul += comptes[h];
+        if (cumul > marge) { f.aigu = h; break; }
+    }
+    // UNE OCTAVE AU MOINS : sans plancher, une partie sur deux hauteurs
+    // remplirait toute la hauteur du clip et ferait passer un bourdon pour une
+    // mélodie.
+    if (f.aigu >= f.grave && f.aigu - f.grave < 11) {
+        const int centre = (f.grave + f.aigu) / 2;
+        f.grave = std::max(0, centre - 5);
+        f.aigu = std::min(127, f.grave + 11);
+    }
+    for (int h = 0; h < 128; ++h)
+        if (comptes[h] > 0 && (h < f.grave || h > f.aigu)) f.hors += comptes[h];
+    return f;
+}
+
+
 /// Largeur, en pixels, de la zone sensible d'un bord de clip. Assez large pour
 /// qu'on l'attrape sans viser, assez étroite pour qu'un clip court reste
 /// déplaçable par son milieu.
@@ -389,6 +448,55 @@ juce::Rectangle<float> ArrangementComponent::colourZone(size_t index) const {
     if (project_ == nullptr || index >= project_->tracks.size()) return {};
     return juce::Rectangle<float>(0.0f, static_cast<float>(trackTop(index)), 5.0f,
                                    static_cast<float>(trackHeight(project_->tracks[index])));
+}
+
+void ArrangementComponent::listerMiniaturesPourCapture() const {
+    if (project_ == nullptr) return;
+    int total = 0;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        const auto& piste = project_->tracks[i];
+        if (piste.kind != Track::Kind::Midi) continue;
+        const vsm::midi::Tick finMateriau = materialEnd(piste);
+        for (const auto& clip : piste.clips) {
+            const vsm::midi::Tick jouee = clipPlayedLength(clip, finMateriau);
+            const vsm::midi::Tick fenetreClip = clip.sourceLength > 0 ? clip.sourceLength : jouee;
+            const auto f = fenetreDesHauteurs(piste.notes, clip.sourceStart,
+                                               clip.sourceStart + fenetreClip);
+            ++total;
+            const int brutGrave = [&] {
+                int g = 128;
+                for (const auto& n : piste.notes)
+                    if (n.startTick < clip.sourceStart + fenetreClip && n.endTick > clip.sourceStart)
+                        g = std::min(g, static_cast<int>(n.number));
+                return g;
+            }();
+            const int brutAigu = [&] {
+                int a = -1;
+                for (const auto& n : piste.notes)
+                    if (n.startTick < clip.sourceStart + fenetreClip && n.endTick > clip.sourceStart)
+                        a = std::max(a, static_cast<int>(n.number));
+                return a;
+            }();
+            // LE BRUT ET LE RETENU CÔTE À CÔTE : sans le premier, « 29-48 » ne
+            // dit pas ce qu'il a coûté, et le gain de la phase serait invérifiable.
+            const int rangsBruts = brutAigu >= brutGrave ? brutAigu - brutGrave + 1 : 0;
+            const int rangs = f.aigu >= f.grave ? f.aigu - f.grave + 1 : 0;
+            std::fputs((juce::String("VSM_CLIP_MINI : piste ") + juce::String(static_cast<int>(i))
+                        + juce::String::fromUTF8(" \xc2\xab ") + juce::String::fromUTF8(piste.name.c_str())
+                        + juce::String::fromUTF8(" \xc2\xbb clip #") + juce::String(static_cast<int>(clip.id))
+                        + " : " + juce::String(f.total) + " note(s), brut "
+                        + juce::String(brutGrave) + "-" + juce::String(brutAigu)
+                        + " (" + juce::String(rangsBruts) + " rangs), retenu "
+                        + juce::String(f.grave) + "-" + juce::String(f.aigu)
+                        + " (" + juce::String(rangs) + " rangs), "
+                        + juce::String(f.hors) + " note(s) au bord, les notes gagnent "
+                        + (rangs > 0 && rangsBruts > 0 ? juce::String(static_cast<double>(rangsBruts) / rangs, 2)
+                                                        : juce::String("1.00"))
+                        + "x en hauteur\n").toRawUTF8(), stderr);
+        }
+    }
+    std::fputs((juce::String("VSM_CLIPS_MINI : ") + juce::String(total)
+                + " miniature(s)\n").toRawUTF8(), stderr);
 }
 
 vsm::midi::Tick ArrangementComponent::materialEnd(const Track& track) const {
@@ -2056,12 +2164,10 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                 const vsm::midi::Tick joueeClip = clipPlayedLength(clip, fin);
                 const vsm::midi::Tick fenetreClip = clip.sourceLength > 0 ? clip.sourceLength : joueeClip;
                 const vsm::midi::Tick sourceFin = clip.sourceStart + fenetreClip;
-                int grave = 128, aigu = -1;
-                for (const auto& n : track.notes) {
-                    if (n.startTick >= sourceFin || n.endTick <= clip.sourceStart) continue;
-                    grave = std::min<int>(grave, n.number);
-                    aigu = std::max<int>(aigu, n.number);
-                }
+                // D343 : l'ambitus qui tient 98 % des notes (voir `fenetreDesHauteurs`).
+                const auto fenetre = fenetreDesHauteurs(track.notes, clip.sourceStart, sourceFin);
+                const int grave = fenetre.grave;
+                const int aigu = fenetre.aigu;
                 if (fenetreClip > 0 && joueeClip > 0 && aigu >= 0) {
                     // Sous le nom quand il y a la place ; le nom garde sa ligne.
                     const float haut = r.getY() + (r.getHeight() > 30.0f ? 16.0f : 3.0f);
@@ -2085,7 +2191,9 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                             const float x1 = std::min(r.getRight(),
                                                       tickToX(clip.startTick + std::min(d1, joueeClip)));
                             if (x1 <= r.getX() || x0 >= r.getRight()) continue;
-                            const float y = bas - static_cast<float>(n.number - grave + 1) * pas;
+                            // D343 : la note hors fenêtre se pose sur la rangée du bord.
+                            const int rang = std::clamp(static_cast<int>(n.number), grave, aigu) - grave + 1;
+                            const float y = bas - static_cast<float>(rang) * pas;
                             // Une note muette s'estompe, comme dans le piano roll.
                             // D315 : LA VÉLOCITÉ SE VOIT -- une note forte est plus
                             // sombre qu'une note faible (Cubase la met en couleur) :

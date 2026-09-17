@@ -748,6 +748,8 @@ l'historique.
 
 ![L'onglet Tempo : trois paliers, 120, 96 puis 140 BPM.](images/manuel/tempo.png)
 
+**La miniature d'un clip montre 98 % de ses notes** (D343) : sa hauteur se plie à l'ambitus qui les tient, et non à celui des extrêmes — sur une reconstruction, trois notes fausses une octave trop haut suffisaient sinon à écraser tout le reste dans le bas du rectangle. Les notes écartées ne disparaissent pas : elles se dessinent sur la rangée du bord, « ici ou plus haut ».
+
 Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.
 
 En haut, les **marqueurs** (`Intro`, `Pont`) sont des entités du projet, pas des étiquettes décoratives : ils survivent à l'aller-retour disque et à l'export MIDI.
@@ -1148,6 +1150,10 @@ distance entre deux positions du capuchon, dont une seule est à l'écran. Le
 relevé est pris au moment de la photo, la disposition du dock du bas n'étant
 faite qu'alors. `tools/fader-console.sh` s'en sert, et compte SUR LA PHOTO le
 repère du 0 dB : un relevé dit ce qui est réservé, la photo dit ce qui est peint.
+`VSM_CLIPS_MINI=1` écrit, pour chaque clip MIDI, la fenêtre de hauteurs de sa
+miniature — l'ambitus **brut** du clip et celui **retenu**, plus le nombre de
+notes posées sur une rangée de bord (D343). Un ambitus ne se photographie pas :
+deux clips très différents donnent la même bande de traits.
 `VSM_NOTES=piste:tick:durée:hauteur[;…]` écrit des notes par le chemin du piano roll — le modèle, puis la matérialisation du clip implicite ouvert (D336). `VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des
 raccourcis — **un autre chemin que le bouton**, et c'est tout l'intérêt : D38
 avait mesuré son muet deux fois, par un banc et par une capture, et les deux

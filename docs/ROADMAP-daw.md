@@ -28081,3 +28081,69 @@ le compilateur n'a rien dit. (c) `juce::String("…")` RÉENCODE des octets UTF-
 aucune graduation (Cubase marque −6 et 0 dBFS sur le sien) ; et la tranche master
 n'a pas de fader du tout — elle est faite de potentiomètres, ce qui est un choix
 de D48, non revu ici.
+
+### Phase D343 — quatre notes fausses sur mille six cents écrasaient la miniature d'un clip (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE MÊME REGARD QUE D342, UNE LIGNE PLUS HAUT.** Sur
+`children-dream-v12`, les traits de note du clip « bass » se tassent dans le bas
+du rectangle : la miniature de D283 — faite pour reconnaître un motif sans
+l'ouvrir, comme chez Cubase, Live et FL — n'est plus qu'un trait au fond. La
+piste compte **1 638 notes, 11 hauteurs distinctes** : **1 634 entre 29 et 48**,
+et **quatre au-dessus** — une à 65, trois à 77. Des erreurs de transcription,
+c'est-à-dire la matière ordinaire d'une reconstruction. L'ambitus brut 29-77
+donnait 49 rangs pour une partie qui en occupe 20.
+
+**CE QUI EST FAIT.** `fenetreDesHauteurs()` (ArrangementComponent) rend la
+fenêtre qui tient **98 % des notes** du clip (2 % écartés de chaque côté, comptés
+sur les notes et non sur les hauteurs distinctes), avec un **plancher d'une
+octave** — sans lui, une partie sur deux hauteurs remplirait toute la hauteur du
+clip et ferait passer un bourdon pour une mélodie. **Les notes écartées ne
+disparaissent pas** : le peintre les pose sur la rangée du bord. Une miniature
+qui les cacherait mentirait (« il n'y a rien là-haut ») ; posées au bord, elles
+disent « ici ou plus haut », ce que la fenêtre d'un clip dit déjà de son temps.
+
+**LE BANC AVANT LA CIBLE, ET IL A FALLU LE PAYER DEUX FOIS.** La première mesure
+était une analyse de PHOTO (« quelle part de la hauteur du clip porte de
+l'encre ») : elle a rendu **100 % avant comme après**, trois fois de suite, sous
+trois définitions différentes. Deux causes, trouvées en imprimant les rangées une
+à une : (a) l'étendue du plus haut au plus bas trait rend 100 % justement quand
+une note aberrante remplit le clip — elle mesurait le défaut comme une réussite ;
+(b) la fenêtre analysée allait jusqu'au bord de l'image et **incluait le rack**,
+sombre sur toute la hauteur : 187 pixels sombres dans CHAQUE rangée. Le script a
+été jeté. **Un ambitus ne se photographie pas** : deux clips très différents
+donnent la même bande de traits. Il se RELÈVE — `VSM_CLIPS_MINI=1`, qui écrit sur
+la même ligne l'ambitus **brut** (ce que faisait le code d'hier) et le **retenu**,
+si bien que le témoin est dans la mesure et non dans un second binaire.
+
+**ATTENDU** (écrit avant la mesure) : sur « bass », fenêtre retenue **29-48**
+(20 rangs) contre 29-77 brut (49 rangs), les notes gagnant **2,4×** en hauteur,
+et les notes écartées **comptées** ; sur une piste engendrée de 100 notes entre
+36 et 48 plus **une** à 90 : brut 55 rangs, retenu **13** (36-48), **1** note au
+bord ; les clips dont l'ambitus tient déjà (batterie 36-49) **inchangés** ;
+`tools/encre-clips.py` (la garde d'encre de D325) toujours au-dessus de ses
+seuils ; cinq suites de tests vertes ; banc de fumée et `tools/ouvrir-midi.sh`
+0 raté.
+
+**MESURÉ** (`VSM_CLIPS_MINI=1`, un seul binaire, brut et retenu côte à côte) :
+
+| clip | notes | ambitus brut | fenêtre retenue | au bord | gain |
+|---|---|---|---|---|---|
+| « bass » #1 | 1 638 | 29-77 (**49 rangs**) | 29-48 (**20 rangs**) | 30 | **2,45×** |
+| « other » #2 | 4 230 | 29-92 (64 rangs) | 29-80 (52 rangs) | 12 | 1,23× |
+| « Batterie » #3 | 10 | 36-49 (14 rangs) | 36-49 (14 rangs) | 0 | 1,00× (inchangé) |
+| « Batterie » #5 | 1 775 | 36-49 (14 rangs) | 36-49 (14 rangs) | 0 | 1,00× (inchangé) |
+| « Voix » #6 | 1 | 60-60 (1 rang) | 55-66 (12 rangs) | 0 | plancher d'une octave |
+| garde, piste engendrée | 101 | 36-90 (55 rangs) | 36-48 (**13 rangs**) | **1** | **4,23×** |
+
+Attendu tenu. Photo : les traits du clip « bass » vont désormais du haut au bas
+de sa bande, là où ils tenaient dans son tiers inférieur. `tools/encre-clips.py`
+sur la même photo : encre 22,6 / 26,2 / 16,5 %, contraste 3,52 / 3,82 / 5,60 —
+au-dessus des seuils de D325. Tests **343** core, 1 303 audio, **300**
+interchange, 25 clap, 11 panels. Banc de fumée 0 raté, `tools/ouvrir-midi.sh`
+8 verdicts verts, `tools/fader-console.sh` 0 raté. Garde
+`tools/miniature-clips.sh`, **vue rouge sur le binaire de D342**.
+
+**Reste nommé, non fait** : la batterie ne se lit pas dans sa miniature — ses
+frappes durent 48 ticks et tombent sous le pixel à l'échelle d'un morceau
+entier, si bien qu'un clip de 1 775 frappes montre une poignée de points. Une
+colonne par pixel (comme la lane MIDI CC de D328) le dirait ; non mesuré.

@@ -382,6 +382,14 @@ private:
     vsm::midi::Tick dropTick_ = 0;
 
     vsm::sequencer::Project* project_ = nullptr;
+public:
+    /// D343 : VSM_CLIPS_MINI=1 -- la fenêtre de hauteurs que la miniature de
+    /// chaque clip MIDI emploie, et le nombre de notes posées sur une rangée de
+    /// bord. Un ambitus ne se photographie pas : deux clips très différents
+    /// donnent la même bande de traits, et c'est ce qui a permis à un défaut de
+    /// tenir depuis D283.
+    void listerMiniaturesPourCapture() const;
+private:
     vsm::sequencer::ClipSelection selection_;
     vsm::midi::Tick playhead_ = 0;
     vsm::midi::Tick scrollTick_ = 0;
