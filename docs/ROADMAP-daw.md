@@ -28143,10 +28143,18 @@ interchange, 25 clap, 11 panels. Banc de fumée 0 raté, `tools/ouvrir-midi.sh`
 8 verdicts verts, `tools/fader-console.sh` 0 raté. Garde
 `tools/miniature-clips.sh`, **vue rouge sur le binaire de D342**.
 
-**Reste nommé, non fait** : la batterie ne se lit pas dans sa miniature — ses
+~~**Reste nommé, non fait** : la batterie ne se lit pas dans sa miniature — ses
 frappes durent 48 ticks et tombent sous le pixel à l'échelle d'un morceau
-entier, si bien qu'un clip de 1 775 frappes montre une poignée de points. Une
-colonne par pixel (comme la lane MIDI CC de D328) le dirait ; non mesuré.
+entier, si bien qu'un clip de 1 775 frappes montre une poignée de points.~~
+**RETIRÉ LE 18/09, APRÈS MESURE : C'ÉTAIT FAUX.** La photo qui l'avait fait
+écrire montrait les **onze premières mesures** du morceau, où le clip de
+batterie (#3, mesures 1-15) compte **10 notes sur 1 786** — la batterie n'entre
+qu'à la mesure 43. Au cadrage « Zoom : tout voir » (menu du clic droit d'un
+clip), les 1 775 frappes du clip #5 forment des rangées denses et parfaitement
+lisibles, comme la basse et le piano. **Une miniature ne se juge pas sur onze
+mesures d'un morceau qui en fait 228** ; et un « on ne voit rien » se revérifie
+au cadrage complet avant d'ouvrir un chantier — c'est la règle du dépôt sur les
+zéros, appliquée à une image.
 
 ### Phase D344 — le vumètre d'une tranche était invisible au repos, sans graduation et sans témoin d'écrêtage (18/09/2026)
 
