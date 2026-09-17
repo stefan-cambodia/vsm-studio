@@ -23,6 +23,16 @@ Pour déplacer librement les panneaux, *Affichage ▸ Fenêtre unique* se décoc
 
 **La console prend la place qu'elle a** (D304) : chaque tranche fait entre 88 et 176 px selon le nombre de pistes visibles, et **sous 120 px le nom passe sur deux lignes** (D314) — à quarante pistes, « Batterie · kick+kick2 » se lit encore. Le relevé de banc `VSM_MIXER_ZONES=1` en dit la géométrie.
 
+**Le fader de chaque tranche est un fader** (D342) : une glissière visible, sa
+portion remplie sous le capuchon, et une **échelle en décibels** à gauche — 6, 0,
+−6, −24, −40 selon la hauteur disponible, le **0 dB en ambre** parce que c'est le
+repère qu'on cherche et celui que le double-clic rétablit. Il avait dix pixels de
+course pour soixante-six décibels, c'est-à-dire plus de six décibels au pixel ; il
+en a désormais quatre-vingt-six sur la disposition par défaut, et **il grandit
+avec le dock** : tirez la poignée du bas vers le haut pour mixer, l'application
+retient la hauteur. La console ne descend plus sous ce qu'il faut pour garder
+quarante pixels de course.
+
 ## 2. L'arrangement
 
 C'est la vue où le morceau existe. Chaque ligne est une piste, chaque bloc un **clip** — un morceau de musique qu'on déplace, redimensionne, coupe et duplique à la souris, avec annulation. Un clip posé deux fois ne duplique pas ses notes : éditer l'un modifie l'autre.
@@ -1131,6 +1141,13 @@ au-delà de `VSM_DELAI`, c'est-à-dire après la fermeture de la course, est ref
 **et dit** : son absence se lirait sinon comme un bouton sans effet.
 `tools/reconstruction-annuler.sh` s'en sert pour garder D339-D341 de bout en
 bout, sur une vraie séparation de quatre secondes d'audio.
+`VSM_MIXEUR=1` écrit la géométrie de chaque tranche de la console — largeur et
+hauteur, rangées, boîte du fader, **course en pixels et décibels par pixel**,
+mètre, échelle (D342). La course d'un fader ne se photographie pas : elle est la
+distance entre deux positions du capuchon, dont une seule est à l'écran. Le
+relevé est pris au moment de la photo, la disposition du dock du bas n'étant
+faite qu'alors. `tools/fader-console.sh` s'en sert, et compte SUR LA PHOTO le
+repère du 0 dB : un relevé dit ce qui est réservé, la photo dit ce qui est peint.
 `VSM_NOTES=piste:tick:durée:hauteur[;…]` écrit des notes par le chemin du piano roll — le modèle, puis la matérialisation du clip implicite ouvert (D336). `VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des
 raccourcis — **un autre chemin que le bouton**, et c'est tout l'intérêt : D38
 avait mesuré son muet deux fois, par un banc et par une capture, et les deux

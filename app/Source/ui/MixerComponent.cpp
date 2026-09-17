@@ -368,6 +368,7 @@ void ChannelStrip::paint(juce::Graphics& g) {
     // Bandeau couleur de la piste en haut.
     g.setColour(juce::Colour(track_.colorRgba));
     g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f).removeFromTop(4.0f), 2.0f);
+    peindreEchelle(g);   // D342 : hors des bornes du fader, donc jamais recouverte
 }
 
 void ChannelStrip::resized() {
@@ -386,11 +387,16 @@ void ChannelStrip::resized() {
     transposition_.updateText();
 
     // Deux petits knobs de send (A/B).
-    auto sendRow = r.removeFromTop(28);
+    // D342 : LA RANGÉE N'EST PRISE QUE S'IL Y A DES DÉPARTS. Le commentaire
+    // ci-dessous disait déjà « aucun bus déclaré : aucune rangée » -- et la
+    // rangée était retirée de `r` dans tous les cas : vingt-huit pixels de vide
+    // au milieu de la tranche, pris au fader, sur tout projet sans bus de départ
+    // (c'est-à-dire sur toutes les reconstructions).
     // Les boutons se partagent la rangée à parts égales, quel qu'en soit le
     // nombre. Aucun bus déclaré : aucune rangée, plutôt que deux boutons qui
     // n'enverraient nulle part.
     if (!sends_.isEmpty()) {
+        auto sendRow = r.removeFromTop(kHauteurDeparts);
         const int largeur = std::max(1, sendRow.getWidth() / sends_.size());
         for (auto* s : sends_) s->setBounds(sendRow.removeFromLeft(largeur).reduced(2, 1));
     }
@@ -411,7 +417,117 @@ void ChannelStrip::resized() {
     // Fader + mètre côte à côte.
     auto meterArea = r.removeFromRight(10);
     meter_.setBounds(meterArea.reduced(0, 2));
+    // D342 : L'ÉCHELLE EN DÉCIBELS, À GAUCHE DU FADER. Cubase, Live et FL en
+    // portent une ; sans elle, la seule façon de savoir où est l'unité est de
+    // lire le nombre sous le fader, c'est-à-dire de ne pas se servir du fader.
+    // Elle ne se pose que là où elle se lit : sous `kLargeurAvecEchelle` de
+    // large, les chiffres mangeraient la course utile du capuchon, et sous
+    // `kCourseAvecEchelle` de haut deux graduations se toucheraient.
+    largeurEchelle_ = (getWidth() >= kLargeurAvecEchelle && r.getHeight() >= kCourseAvecEchelle)
+                          ? kLargeurEchelle : 0;
+    if (largeurEchelle_ > 0) r.removeFromLeft(largeurEchelle_);
     volume_.setBounds(r);
+}
+
+int ChannelStrip::hauteurUtile() const {
+    // Les rangées fixes de `resized()`, dans le même ordre, puis la boîte du
+    // fader. Écrites ici plutôt que déduites : deux endroits qui comptent les
+    // mêmes pixels finiraient par ne plus compter les mêmes.
+    //
+    // RIEN DE TRANSITOIRE ICI, ET C'EST LA MOITIÉ DE LA LEÇON. Écrite d'abord
+    // sur `getWidth()` et sur `sends_`, cette fonction rendait 274 px pendant la
+    // disposition (tranche encore étroite) et 228 px au relevé : le dock se
+    // réglait sur le premier chiffre et prenait 48 px à l'arrangement que
+    // personne n'avait demandés. Un plancher se calcule sur ce qui ne bouge
+    // pas — le nombre de bus de départ du projet —, jamais sur une largeur en
+    // cours d'attribution.
+    const int fixes = 12                                           // marges (4 + 4) + bandeau de couleur
+                    + 18                                           // nom (une ligne ; la seconde, D314, est un cas serré)
+                    + 18 + 34 + 18 + 18                            // trim, pan, délai, transposition
+                    + (sendNames_.empty() ? 0 : kHauteurDeparts)   // départs
+                    + 22 + 22;                                     // W/Ø puis M/S
+    return fixes + kBoiteFaderMinimale;
+}
+
+void ChannelStrip::peindreEchelle(juce::Graphics& g) const {
+    // D342 : LES GRADUATIONS SONT LUES SUR LE CURSEUR LUI-MÊME
+    // (`getPositionOfValue`), pas recalculées : il porte une courbe (skew au
+    // point milieu -12 dB), et une échelle tracée sur une règle linéaire
+    // mentirait exactement là où l'on s'en sert -- autour de l'unité.
+    if (largeurEchelle_ <= 0) return;
+    // L'UNITÉ D'ABORD, ET C'EST UNE PRIORITÉ, PAS UN ORDRE DE DESSIN. Écrite en
+    // ordre de hauteur, la règle d'écart ci-dessous sautait le 0 dB — la courbe
+    // du fader (milieu à -12 dB) serre le haut, et « 6 » puis « 0 » tombent à dix
+    // pixels l'un de l'autre sur une course de 58 px. Le repère qu'on cherche du
+    // regard disparaissait donc le premier. Il passe en tête ; les autres cèdent.
+    static const double reperes[] = { 0.0, 6.0, -6.0, -12.0, -24.0, -40.0, -60.0 };
+    const auto zone = volume_.getBounds();
+    g.setFont(juce::Font(juce::FontOptions(12.0f)));
+    // DEUX GRADUATIONS NE SE TOUCHENT PAS. La courbe du fader serre le bas :
+    // à 86 px de course, « -40 » et « -60 » tombent à huit pixels l'un de
+    // l'autre et se chevauchent (vu sur la photo). On garde celle du haut et
+    // l'on saute la suivante ; le pied du rail dit le minimum sans l'écrire.
+    // PIÈGE PAYÉ ICI MÊME : `dernierY` initialisé à `INT_MIN` fait DÉBORDER
+    // `y - dernierY`, la soustraction rend un nombre négatif, et TOUTES les
+    // graduations se sautent -- l'échelle a disparu de la photo alors que le
+    // relevé disait « échelle 26 px ». Un drapeau, pas une valeur sentinelle.
+    constexpr int kEcartMinimal = 14;
+    std::vector<int> posees;
+    for (const double db : reperes) {
+        const int y = zone.getY() + static_cast<int>(std::round(volume_.getPositionOfValue(db)));
+        if (y < zone.getY() - 2 || y > zone.getBottom()) continue;
+        bool trop = false;
+        for (const int deja : posees)
+            if (std::abs(y - deja) < kEcartMinimal) { trop = true; break; }
+        if (trop) continue;
+        posees.push_back(y);
+        const bool unite = std::abs(db) < 0.01;
+        g.setColour(unite ? vsm::ui::Palette::accentAmber : vsm::ui::Palette::textSecondary);
+        // L'UNITÉ EST UN TRAIT PLUS LONG ET AMBRE : c'est le seul repère qu'on
+        // cherche du regard, et le seul que le double-clic rétablit (D25.3).
+        g.fillRect(zone.getX() - (unite ? 8 : 5), y, unite ? 8 : 5, unite ? 2 : 1);
+        g.drawText(unite ? juce::String("0") : juce::String(static_cast<int>(db)),
+                    zone.getX() - largeurEchelle_, y - 7, largeurEchelle_ - 9, 14,
+                    juce::Justification::centredRight, false);
+    }
+}
+
+juce::String ChannelStrip::geometrieDeBanc() const {
+    // DEUX PIÈGES D'ÉCRITURE PAYÉS SUR CETTE SEULE LIGNE, et tous deux muets.
+    // 1. « \xa9c » est UN échappement hexadécimal (0xa9c) qui mange le « c »
+    //    suivant : « échelle » sortait « éhelle » (D333, même piège, « dÛut »).
+    //    Couper le littéral en deux rend l'échappement à sa longueur.
+    // 2. `juce::String("…")` sur des octets UTF-8 les RÉENCODE (« é » devenait
+    //    « Ã© »), là où `operator+` d'un `const char*` ne le fait pas : d'où
+    //    `fromUTF8` partout ici. Le relevé était lisible à l'œil et illisible
+    //    au `sed` de la garde — c'est-à-dire faux.
+
+    // D342 : LA COURSE SE LIT SUR LE CURSEUR, pas sur sa boîte. `getPositionOfValue`
+    // rend la position du capuchon pour une valeur : l'écart entre le minimum et le
+    // maximum EST la course, boîte de texte et demi-capuchon déduits par JUCE
+    // lui-même. La déduire de la hauteur de `volume_` donnerait un chiffre plus
+    // flatteur que ce que la souris peut réellement parcourir.
+    const double bas = volume_.getPositionOfValue(volume_.getMinimum());
+    const double haut = volume_.getPositionOfValue(volume_.getMaximum());
+    const double course = std::abs(bas - haut);
+    const double plage = volume_.getMaximum() - volume_.getMinimum();
+    return juce::String("piste ") + juce::String(static_cast<int>(index_))
+         + juce::String::fromUTF8(" \xc2\xab ") + nameLabel_.getText() + juce::String::fromUTF8(" \xc2\xbb \xe2\x80\x94 tranche ")
+         + juce::String(getWidth()) + "x" + juce::String(getHeight())
+         + ", nom " + juce::String(nameLabel_.getHeight())
+         + ", trim " + juce::String(trim_.getHeight())
+         + ", pan " + juce::String(pan_.getHeight())
+         + juce::String::fromUTF8(", d\xc3\xa9parts ") + juce::String(sends_.isEmpty() ? 0 : kHauteurDeparts)
+         + " (" + juce::String(sends_.size()) + " bouton)"
+         + ", fader " + juce::String(volume_.getWidth()) + "x" + juce::String(volume_.getHeight())
+         + ", course " + juce::String(course, 1) + " px"
+         + " (" + (course > 0.0 ? juce::String(plage / course, 2) : juce::String("inf")) + " dB/px)"
+         + juce::String::fromUTF8(", m\xc3\xa8tre ") + juce::String(meter_.getWidth()) + "x" + juce::String(meter_.getHeight())
+         // D333, REPAYÉ ICI : « \xa9c » est UN SEUL échappement hexadécimal (0xa9c),
+         // qui mange le « c » de « échelle » -- le compilateur ne dit rien, et le
+         // relevé sort « éhelle », que le sed de la garde ne trouve pas. Couper
+         // le littéral en deux rend l'échappement à sa longueur.
+         + juce::String::fromUTF8(", \xc3\xa9" "chelle ") + juce::String(largeurEchelle_) + " px";
 }
 
 bool ChannelStrip::nomTronque() const {
@@ -880,7 +996,26 @@ void MixerComponent::paint(juce::Graphics& g) {
     g.fillAll(vsm::ui::Palette::background);
 }
 
-int MixerComponent::hauteurMinimale() const { return master_.hauteurUtile(); }   // D59
+int MixerComponent::hauteurMinimale() const {
+    // D59 : le master. D342 : ET LES TRANCHES -- le master demandait 222 px et
+    // les obtenait, pendant qu'une tranche de piste réduisait son fader à dix
+    // pixels de course sans que rien ne le dise. Le plus exigeant des deux
+    // décide, comme pour n'importe quelle disposition.
+    int plancher = master_.hauteurUtile();
+    for (auto* tranche : strips_) plancher = juce::jmax(plancher, tranche->hauteurUtile());
+    return plancher;
+}
+
+void MixerComponent::listerGeometriePourCapture() const {
+    for (auto* tranche : strips_)
+        std::fputs(("VSM_MIXEUR : " + tranche->geometrieDeBanc() + "\n").toRawUTF8(), stderr);
+    // LA CONSOLE ELLE-MÊME, ET SON PLANCHER : une course de fader ne se juge pas
+    // sans savoir ce qu'elle a coûté en hauteur de dock, et le plancher est ce
+    // que `MainComponent` empêche l'utilisateur de descendre.
+    std::fputs(("VSM_MIXEUR : " + juce::String(strips_.size()) + " tranche(s), console "
+                + juce::String(getWidth()) + "x" + juce::String(getHeight())
+                + ", plancher " + juce::String(hauteurMinimale()) + " px\n").toRawUTF8(), stderr);
+}
 
 void MixerComponent::resized() {
     auto r = getLocalBounds();

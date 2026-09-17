@@ -696,6 +696,13 @@ public:
                         textes != nullptr && *textes && *textes != '0')
                         if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
                             principal->listWindowTextsForCapture();
+                    // D342 : VSM_MIXEUR=1 -- la géométrie des tranches de la console.
+                    // ICI, dans le rappel de la photo, et non au démarrage : le dock du
+                    // bas n'est disposé qu'après, et la course lue avant vaudrait zéro.
+                    if (const char* console = std::getenv("VSM_MIXEUR");
+                        console != nullptr && *console && *console != '0')
+                        if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
+                            principal->listMixerForCapture();
                     // D138 : VSM_SANS_SURFACE=1 -- les commandes « visibles » sans surface,
                     // au moment de la photo : la mise en page est faite, les fenêtres ouvertes.
                     if (const char* surface = std::getenv("VSM_SANS_SURFACE");

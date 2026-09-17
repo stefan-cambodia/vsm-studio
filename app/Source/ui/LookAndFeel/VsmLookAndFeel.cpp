@@ -54,14 +54,21 @@ void VsmLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width
                                         static_cast<float>(width), static_cast<float>(height));
     const float cx = area.getCentreX();
 
-    // Rail central.
-    juce::Rectangle<float> rail(cx - 2.0f, area.getY() + 4.0f, 4.0f, area.getHeight() - 8.0f);
-    g.setColour(Palette::pianoKeyBlack);
-    g.fillRoundedRectangle(rail, 2.0f);
+    // D342 : LE RAIL SE VOIT. Il était peint en `pianoKeyBlack` (0x1a1a1f) sur le
+    // fond d'une tranche en `panel` (0x1f1f24) : cinq niveaux d'écart, invisibles
+    // à l'écran. Un fader dont on ne voit ni la glissière ni sa portion remplie ne
+    // dit pas où il est dans sa course -- il faut lire le nombre. `border` tranche
+    // sur les deux fonds où ce curseur sert (tranche et panneau).
+    juce::Rectangle<float> rail(cx - 2.5f, area.getY() + 2.0f, 5.0f, area.getHeight() - 4.0f);
+    g.setColour(Palette::border);
+    g.fillRoundedRectangle(rail, 2.5f);
 
     // Portion "remplie" jusqu'au curseur (accent chaud).
-    g.setColour(Palette::accentAmber.withAlpha(0.55f));
-    g.fillRoundedRectangle({rail.getX(), sliderPos, rail.getWidth(), rail.getBottom() - sliderPos}, 2.0f);
+    if (rail.getBottom() > sliderPos) {
+        g.setColour(Palette::accentAmber.withAlpha(0.55f));
+        g.fillRoundedRectangle({rail.getX(), std::max(sliderPos, rail.getY()), rail.getWidth(),
+                                rail.getBottom() - std::max(sliderPos, rail.getY())}, 2.5f);
+    }
 
     // Poignée de fader (capuchon large, façon console).
     const float capW = static_cast<float>(width) * 0.8f;
@@ -73,6 +80,18 @@ void VsmLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width
     g.drawRoundedRectangle(cap, 3.0f, 1.0f);
     g.setColour(Palette::accentAmber);
     g.fillRect(cap.getX() + 2.0f, cap.getCentreY() - 0.5f, cap.getWidth() - 4.0f, 1.5f);
+}
+
+int VsmLookAndFeel::getSliderThumbRadius(juce::Slider& slider) {
+    // D342 : LE RAYON DU POUCE EST LA MOITIÉ DE CE QU'ON DESSINE, et non 12 px.
+    // JUCE réserve ce rayon EN HAUT ET EN BAS de la course : avec le défaut de
+    // `LookAndFeel_V4` (12 px sur un fader large), une tranche de console laissait
+    // **10 px de course pour 66 dB** -- 6,6 dB au pixel, c'est-à-dire un fader qu'on
+    // ne peut pas régler. Le capuchon dessiné ci-dessus fait 14 px de haut : son
+    // rayon est 7, et les 10 px rendus à la course sont ceux que le dessin
+    // n'utilisait pas. Les autres orientations gardent le défaut.
+    if (slider.getSliderStyle() == juce::Slider::LinearVertical) return 7;
+    return LookAndFeel_V4::getSliderThumbRadius(slider);
 }
 
 void VsmLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,

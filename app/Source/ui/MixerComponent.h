@@ -143,6 +143,33 @@ public:
     /// D314 : combien de lignes la case du nom offre (1, ou 2 sur une tranche étroite).
     int lignesDuNom() const;
     static constexpr int kDeuxLignesSous = 120;   ///< D314 : sous cette largeur, le nom a deux lignes
+    /// D342 : la rangée des départs, prise SEULEMENT s'il y a des départs.
+    static constexpr int kHauteurDeparts = 28;
+    /// D342 : l'échelle en décibels à gauche du fader — sa largeur, et les deux
+    /// seuils sous lesquels elle ne se pose pas (les chiffres mangeraient la
+    /// course, ou deux graduations se toucheraient).
+    static constexpr int kLargeurEchelle = 26;
+    static constexpr int kLargeurAvecEchelle = 120;
+    static constexpr int kCourseAvecEchelle = 60;
+    /// D342 : LA HAUTEUR SOUS LAQUELLE LE FADER N'EST PLUS RÉGLABLE, et le
+    /// chiffre est une DÉCISION, prise contre la mesure et écrite ici.
+    ///
+    /// La règle : **un fader garde au moins 40 px de course**, soit moins de
+    /// 1,7 dB au pixel — seize pixels vont à la boîte de texte et quatorze au
+    /// capuchon, d'où 70. La console la déclare à `hauteurMinimale()`, qui
+    /// borne le dock du bas (D59, pour le master).
+    ///
+    /// POURQUOI PAS PLUS. Un plancher de 96 px (66 px de course, 0,5 dB au
+    /// pixel) a été mesuré : il fait passer le dock de 283 à 357 px et prend
+    /// **74 px à l'arrangement** sur toute disposition par défaut. Une
+    /// disposition réglable ne se reprend pas à son propriétaire (la leçon de
+    /// D64 sur le plancher du rack) : le défaut reste petit, le plancher ne
+    /// garantit que l'usage, et celui qui mixe tire la poignée — le fader
+    /// grandit alors avec le dock, ce qu'il ne faisait pratiquement pas avant
+    /// cette phase (10 px de course sur un dock de 283).
+    static constexpr int kBoiteFaderMinimale = 70;
+    /// D342 : la hauteur que cette tranche réclame pour rester réglable.
+    int hauteurUtile() const;
     void paint(juce::Graphics&) override;
     void setMeasurement(const vsm::audio::engine::TrackMeasurement& m) {
         meter_.setLevel(m.peak);
@@ -160,6 +187,18 @@ public:
     /// les tranches ne sont plus en correspondance de rang avec les pistes, un
     /// dossier n'en ayant pas.
     size_t trackIndex() const { return index_; }
+    /// D342 : CE QUE LA TRANCHE DONNE AU FADER, en pixels, lu sur les composants
+    /// eux-mêmes. La course d'un fader ne se photographie pas -- elle est la
+    /// distance entre deux positions du capuchon, dont une seule est à l'écran --,
+    /// et c'est elle qui dit si le geste est réglable ou non.
+    juce::String geometrieDeBanc() const;
+
+private:
+    /// D342 : les graduations en décibels à gauche du fader, peintes par la
+    /// tranche (elles sont hors des bornes du curseur, qui les recouvrirait).
+    void peindreEchelle(juce::Graphics&) const;
+
+public:
 
     /// D35.5 : le bouton M s'allume AUSSI quand le silence vient d'un dossier.
     /// Un dossier n'a plus de tranche (voir `MixerComponent::rebuild`) : sans
@@ -331,6 +370,10 @@ private:
     /// réglage qu'on croit ne pas avoir posé.
     void rafraichirSolo();
     LevelMeter meter_;
+    /// D342 : la largeur prise par l'échelle en décibels à gauche du fader
+    /// (0 quand la tranche est trop étroite ou la course trop courte pour
+    /// qu'une graduation dise quelque chose).
+    int largeurEchelle_ = 0;
 };
 
 /// Tranche master : EQ 3 bandes, compresseur, saturation, plafond limiteur,
@@ -492,6 +535,10 @@ public:
     /// C'est aussi pourquoi l'appariement passe par `trackIndex()` et non par
     /// le rang de la tranche -- la n-ième tranche n'est plus la n-ième piste,
     /// et D35.5 a payé trois fois pour l'avoir oublié.
+    /// D342 : la géométrie de chaque tranche, une ligne par tranche, lue au
+    /// moment de la photo (la disposition du dock n'est faite qu'alors).
+    void listerGeometriePourCapture() const;
+
     void setSelectedTracks(const std::set<size_t>& tracks) {
         for (auto* strip : strips_) strip->setChoisie(tracks.count(strip->trackIndex()) > 0);
     }

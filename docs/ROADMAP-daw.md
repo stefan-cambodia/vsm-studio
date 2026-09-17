@@ -27978,3 +27978,106 @@ bas à droite. Tests : **343** core, 1 303 audio, **300** interchange, 25 clap,
 `VSM_GESTE_PISTE` seulement — ni une entrée de menu, ni une touche, qui ont
 leurs propres verbes ; aucune course n'en a eu besoin, et un verbe de plus
 sans besoin mesuré serait une commande de plus à garder.
+
+### Phase D342 — le fader de la console avait dix pixels de course pour soixante-six décibels (18/09/2026)
+
+**D'OÙ ELLE VIENT — UN REGARD SUR LA CONSOLE, PROJET RÉEL OUVERT.**
+`reconstruction/children-dream-v12` ouvert à 1 280 × 742, onglet *Mixer* : les
+quatre tranches montrent un capuchon posé sur du noir, sans glissière, sans
+graduation, avec un grand vide au milieu. La première photo a failli conclure
+autre chose : elle était prise **la boîte « Projet ouvert, avec des réserves »
+ENCORE OUVERTE**, et JUCE assombrit toute la fenêtre derrière une modale — le
+mélangeur y paraissait éteint, et j'ai cru un instant que l'ambre du fader ne
+sortait pas. `VSM_VUE=sans-rapport` d'abord ; **une photo prise sous une modale
+ne mesure aucune couleur.**
+
+**CE QUE LA MESURE A DIT**, une fois l'instrument écrit (`VSM_MIXEUR=1`, la
+géométrie de chaque tranche lue sur les composants eux-mêmes, au moment de la
+photo) :
+
+> **course 10,0 px pour 66 dB — 6,60 dB au pixel.**
+
+Un pixel de souris valait plus de six décibels : ce fader ne se règle pas, il se
+subit. Trois causes, toutes muettes :
+
+1. **`getSliderThumbRadius` par défaut réserve 12 px en haut ET en bas** de la
+   course (`LookAndFeel_V4`, sur un curseur large). Le capuchon dessiné par
+   `VsmLookAndFeel` fait 14 px de haut : vingt-quatre pixels étaient réservés
+   pour en dessiner quatorze, sur une boîte qui n'en faisait que cinquante.
+2. **La rangée des départs était retirée même sans départ.** Son commentaire
+   disait déjà « aucun bus déclaré : aucune rangée » — et `r.removeFromTop(28)`
+   s'exécutait dans tous les cas. Vingt-huit pixels de vide au milieu de chaque
+   tranche, sur tout projet sans bus de départ, c'est-à-dire sur toutes les
+   reconstructions.
+3. **Le rail était peint en `pianoKeyBlack` (0x1a1a1f) sur un fond `panel`
+   (0x1f1f24)** : cinq niveaux d'écart. Le relevé de pixels le confirme — dans
+   toute la tranche, les SEULS pixels ambre étaient les deux rangées du trait du
+   capuchon. Ni glissière, ni portion remplie, ni repère d'unité.
+
+**CE QUI EST FAIT.**
+
+- `VsmLookAndFeel::getSliderThumbRadius` rend **7** pour un fader vertical (la
+  moitié du capuchon qu'il dessine), le défaut pour les autres orientations. Les
+  façades de machines ont leur propre `HardwareLookAndFeel` et ne bougent pas.
+- La rangée des départs n'est prise **que s'il y a des départs**.
+- Le rail se voit (`border`), sa portion remplie aussi, et **une échelle en
+  décibels** est peinte à gauche du fader — 6, 0, −6, −12, −24, −40, −60, en
+  12 pt (le plancher de D323), **lues sur le curseur lui-même**
+  (`getPositionOfValue`) parce qu'il porte une courbe (milieu à −12 dB) qu'une
+  règle linéaire trahirait là où l'on s'en sert. **Le 0 dB est prioritaire** et
+  ambre : l'écart minimal de 14 px entre deux graduations le sautait en premier,
+  et c'est le seul repère qu'on cherche du regard.
+- `ChannelStrip::hauteurUtile()` déclare ce que la tranche réclame, et
+  `MixerComponent::hauteurMinimale()` prend le plus exigeant d'elle et du master
+  (D59 ne connaissait que le master). **La règle écrite : un fader garde au moins
+  40 px de course**, soit moins de 1,70 dB au pixel.
+
+**LE PLANCHER EST UNE DÉCISION, PRISE CONTRE LA MESURE.** Un plancher de 96 px
+de boîte (66 px de course, 0,54 dB au pixel) a été écrit, compilé et mesuré : il
+porte le dock du bas de 283 à 357 px et **prend 74 px à l'arrangement** sur toute
+disposition par défaut. Retenu : **70 px** (40 px de course), qui en coûte 38.
+Une disposition réglable ne se reprend pas à son propriétaire — c'est la leçon de
+D64 sur le plancher du rack —, et celui qui mixe tire la poignée : le fader
+grandit désormais avec le dock, ce qu'il ne faisait pratiquement pas
+(10 px de course sur un dock de 283).
+
+**ATTENDU** (écrit avant la mesure finale ; `reconstruction/children-dream-v12`,
+`VSM_TAILLE=1280x742`, `VSM_VUE=sans-rapport,arrangement`) : course **≥ 40 px** et
+**≤ 1,70 dB/px** sur chaque tranche ; échelle réservée (26 px) sur toute tranche
+de 120 px ou plus ; **le repère du 0 dB peint**, compté sur la PHOTO et non sur le
+relevé ; tests des cinq suites verts ; banc de fumée 0 raté ;
+`tools/police-plancher.sh` 0 site ; `tools/pianoroll-zones.sh` 0 raté.
+
+**MESURÉ** (même binaire pour l'instrument, la géométrie avant et après la
+correction de disposition) :
+
+| mesure | avant | après |
+|---|---|---|
+| course du fader (66 dB) | **10,0 px** | **86,0 px** |
+| décibels par pixel | **6,60** | **0,77** |
+| boîte du fader | 158 × 50 | 132 × 116 |
+| rangée des départs (projet sans bus) | 28 px pris | **0** |
+| pixels ambre dans la tranche, hors capuchon | **0** (ni rail, ni remplissage, ni repère) | rail, portion remplie, repère du 0 dB |
+| échelle en décibels | aucune | **26 px**, 6 / 0 / −6 / −24 / −40 à cette hauteur |
+| plancher de la console | 222 px (le master seul) | **232 px** (la tranche décide) |
+| poignée du dock du bas (photo) | y = 455 | y = 417 — **38 px pris à l'arrangement** |
+| `tools/fader-console.sh` | 2 ratés (aucun relevé, aucun repère) | **0 raté** |
+
+Attendu tenu. Tests **343** core, 1 303 audio, **300** interchange, 25 clap,
+11 panels. Banc de fumée 0 raté, `police-plancher` 0 site, `pianoroll-zones`
+7 relevés 0 raté. La garde a été **vue rouge sur le binaire d'avant**.
+
+**TROIS PIÈGES PAYÉS DANS CETTE SEULE PHASE, ET C'EST LA PHOTO QUI LES A DITS.**
+(a) `dernierY` initialisé à `INT_MIN` fait DÉBORDER `y - dernierY` : toutes les
+graduations se sautaient pendant que le relevé annonçait « échelle 26 px » — un
+relevé dit ce qu'on a RÉSERVÉ, la photo dit ce qu'on a PEINT, et la garde compte
+désormais les deux. (b) `"\xc3\xa9chelle"` : `\xa9c` est UN seul échappement
+hexadécimal, qui mange le « c » — c'est le piège de D333 (« dÛut »), repayé, et
+le compilateur n'a rien dit. (c) `juce::String("…")` RÉENCODE des octets UTF-8
+(« é » → « Ã© ») là où `operator+` d'un `const char*` ne le fait pas : le relevé
+était lisible à l'œil et introuvable au `sed` de la garde.
+
+**Reste nommé, non fait** : le mètre de crête fait 10 px de large et ne porte
+aucune graduation (Cubase marque −6 et 0 dBFS sur le sien) ; et la tranche master
+n'a pas de fader du tout — elle est faite de potentiomètres, ce qui est un choix
+de D48, non revu ici.

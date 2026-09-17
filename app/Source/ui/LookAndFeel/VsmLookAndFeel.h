@@ -48,6 +48,10 @@ public:
                            float sliderPosProportional, float rotaryStartAngle,
                            float rotaryEndAngle, juce::Slider&) override;
 
+    /// D342 : voir `getSliderThumbRadius` -- le défaut de JUCE volait 24 px de
+    /// course à un fader vertical large.
+    int getSliderThumbRadius(juce::Slider&) override;
+
     void drawLinearSlider(juce::Graphics&, int x, int y, int width, int height,
                            float sliderPos, float minSliderPos, float maxSliderPos,
                            juce::Slider::SliderStyle, juce::Slider&) override;
