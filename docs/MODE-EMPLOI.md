@@ -23,6 +23,12 @@ Pour déplacer librement les panneaux, *Affichage ▸ Fenêtre unique* se décoc
 
 **La console prend la place qu'elle a** (D304) : chaque tranche fait entre 88 et 176 px selon le nombre de pistes visibles, et **sous 120 px le nom passe sur deux lignes** (D314) — à quarante pistes, « Batterie · kick+kick2 » se lit encore. Le relevé de banc `VSM_MIXER_ZONES=1` en dit la géométrie.
 
+**Le vumètre dit où il en est** (D344) : sa fente se voit même au repos, deux
+graduations marquent **0 et −6 dBFS** — celles que marquent les consoles —, et un
+**témoin rouge s'allume en haut dès qu'une crête touche 0 dBFS et y RESTE**, parce
+qu'une crête dure un buffer et passe entre deux rafraîchissements de l'écran.
+Cliquez sur le mètre pour l'éteindre.
+
 **Le fader de chaque tranche est un fader** (D342) : une glissière visible, sa
 portion remplie sous le capuchon, et une **échelle en décibels** à gauche — 6, 0,
 −6, −24, −40 selon la hauteur disponible, le **0 dB en ambre** parce que c'est le
@@ -1154,6 +1160,14 @@ repère du 0 dB : un relevé dit ce qui est réservé, la photo dit ce qui est p
 miniature — l'ambitus **brut** du clip et celui **retenu**, plus le nombre de
 notes posées sur une rangée de bord (D343). Un ambitus ne se photographie pas :
 deux clips très différents donnent la même bande de traits.
+`VSM_MIXEUR_NIVEAU=piste:dBFS[!]` pose une crête sur le vumètre d'une tranche par
+le même appel que le minuteur de l'application, et `VSM_VUMETRES=1` relit ce que
+chacun montre (D344) — sans eux, un vumètre ne se photographiait que pendant une
+lecture, c'est-à-dire jamais au banc. Le suffixe « ! » pose la crête **une seule
+fois** : c'est le cas que le témoin d'écrêtage sert, une crête d'un buffer, et
+c'est le seul moyen de vérifier qu'un clic l'efface. `cliquer:<nom>` atteint
+désormais aussi un composant qui n'est pas un bouton (le vumètre) ; le journal dit
+lequel des deux chemins a servi.
 `VSM_NOTES=piste:tick:durée:hauteur[;…]` écrit des notes par le chemin du piano roll — le modèle, puis la matérialisation du clip implicite ouvert (D336). `VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des
 raccourcis — **un autre chemin que le bouton**, et c'est tout l'intérêt : D38
 avait mesuré son muet deux fois, par un banc et par une capture, et les deux

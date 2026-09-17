@@ -1691,6 +1691,34 @@ bool MainComponent::cliquerPourCapture(const juce::String& nomOuLegende) {
     }
     for (const auto& contenant : contenants) chercher(*contenant.first, contenant.second);
     if (trouves.empty()) {
+        // D344 : PAS SEULEMENT DES BOUTONS. Un composant qui répond au clic sans
+        // être un `juce::Button` — le vumètre d'une tranche, dont le clic efface
+        // le témoin d'écrêtage — n'était atteignable par aucun banc. À défaut de
+        // bouton, on cherche un composant visible PORTANT CE NOM et on lui envoie
+        // le même `mouseDown`/`mouseUp` ; le journal dit lequel des deux chemins a
+        // servi, sans quoi « cliqué » couvrirait deux gestes différents.
+        std::function<juce::Component*(juce::Component&)> chercherComposant =
+            [&](juce::Component& c) -> juce::Component* {
+                if (c.getName() == cible && !c.getLocalBounds().isEmpty()) return &c;
+                for (auto* enfant : c.getChildren())
+                    if (enfant->isVisible())
+                        if (auto* t = chercherComposant(*enfant)) return t;
+                return nullptr;
+            };
+        for (const auto& contenant : contenants) {
+            if (auto* composant = chercherComposant(*contenant.first)) {
+                const auto centre = composant->getLocalBounds().getCentre().toFloat();
+                const auto quand = juce::Time::getCurrentTime();
+                const juce::MouseEvent e(juce::Desktop::getInstance().getMainMouseSource(), centre,
+                                          juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier), 1.0f,
+                                          0.0f, 0.0f, 0.0f, 0.0f, composant, composant, quand, centre, quand, 1, false);
+                composant->mouseDown(e);
+                composant->mouseUp(e);
+                std::fputs(("VSM_CLIC : " + cible + juce::String(u8" — cliqué dans « ") + contenant.second
+                            + juce::String(u8" », composant (pas un bouton)") + "\n").toRawUTF8(), stderr);
+                return true;
+            }
+        }
         std::fputs(("VSM_CLIC : " + cible + juce::String(u8" — aucun bouton visible de ce nom")
                     + (fenetreDemandee.isNotEmpty()
                            ? juce::String(u8" dans « ") + fenetreDemandee + juce::String(u8" »")

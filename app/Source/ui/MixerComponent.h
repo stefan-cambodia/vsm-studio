@@ -59,10 +59,13 @@ public:
     }
     float correlation() const { return correlation_; }
     float rmsPosition() const { return rms_; }
+    /// D344 : la position de la crête, 0..1 sur l'échelle -60..0 dBFS.
+    float cretePosition() const { return level_; }
 
     void setLevel(float linearPeak) {
         // Amplitude linéaire -> position 0..1 sur une échelle -60..0 dBFS.
         float db = linearPeak > 1.0e-5f ? 20.0f * std::log10(linearPeak) : -100.0f;
+        if (db >= 0.0f && !ecrete_) { ecrete_ = true; repaint(); }   // D344
         float pos = juce::jlimit(0.0f, 1.0f, (db + 60.0f) / 60.0f);
         if (std::abs(pos - level_) > 1.0e-4f || pos > level_) {
             level_ = pos;
@@ -71,10 +74,26 @@ public:
             repaint();
         }
     }
+    /// D344 : le mètre a-t-il touché 0 dBFS depuis la dernière remise à zéro ?
+    bool aEcrete() const { return ecrete_; }
+    /// D344 : la remise à zéro du témoin d'écrêtage, par le clic de l'utilisateur.
+    void effacerEcretage() { if (ecrete_) { ecrete_ = false; repaint(); } }
+    void mouseDown(const juce::MouseEvent&) override { effacerEcretage(); }
+
     void paint(juce::Graphics& g) override {
         auto r = getLocalBounds().toFloat();
+        // D344 : LA FENTE SE VOIT. Le fond était `pianoKeyBlack` (0x1a1a1f) sur
+        // une tranche en `panel` (0x1f1f24) : CINQ niveaux d'écart, mesurés sur
+        // la photo — au repos, le mètre n'existait pas à l'écran, et l'on ne
+        // savait ni où il était ni jusqu'où il pouvait monter. Même défaut que le
+        // rail du fader (D342), même remède : un contour qui tranche.
         g.setColour(vsm::ui::Palette::pianoKeyBlack);
         g.fillRoundedRectangle(r, 2.0f);
+        // `gridLineStrong` et non `border` : mesuré sur la photo, le contour du
+        // mètre passe de 1,06 à 1,46 de contraste avec le fond de la tranche
+        // (1,31 pour `border`, trop peu pour un trait d'un pixel).
+        g.setColour(vsm::ui::Palette::gridLineStrong);
+        g.drawRoundedRectangle(r.reduced(0.5f), 2.0f, 1.0f);
         // LA BANDE DU BAS EST LA CORRÉLATION DE PHASE : au centre, sans
         // rapport ; à droite, en phase ; à GAUCHE, en opposition -- et c'est le
         // seul endroit du logiciel qui dise qu'une piste va disparaître en mono.
@@ -105,6 +124,24 @@ public:
             g.setColour(vsm::ui::Palette::textPrimary);
             g.fillRect(barre.getX(), y, barre.getWidth(), 1.5f);
         }
+        // D344 : LES DEUX GRADUATIONS QUE MARQUENT LES CONSOLES — 0 et -6 dBFS.
+        // Sans elles, une barre aux trois quarts de sa fente ne dit pas si elle
+        // est à -3 ou à -20 : l'échelle est -60..0, et personne ne la devine.
+        // Traits fins, par-dessus la barre, pour rester lisibles quand elle monte.
+        g.setColour(vsm::ui::Palette::textSecondary.withAlpha(0.55f));
+        for (const float db : { 0.0f, -6.0f }) {
+            const float pos = juce::jlimit(0.0f, 1.0f, (db + 60.0f) / 60.0f);
+            const float y = barre.getBottom() - barre.getHeight() * pos;
+            g.fillRect(barre.getX(), std::min(y, barre.getBottom() - 1.0f), barre.getWidth(), 1.0f);
+        }
+        // LE TÉMOIN D'ÉCRÊTAGE RESTE ALLUMÉ. Une crête à 0 dBFS dure un buffer :
+        // elle passe entre deux rafraîchissements de l'écran, et la piste qui
+        // sature se découvre alors au casque. Il s'éteint d'un clic (le master a
+        // le sien depuis D48 ; les pistes n'en avaient pas).
+        if (ecrete_) {
+            g.setColour(vsm::ui::Palette::accentRed);
+            g.fillRect(barre.getX(), barre.getY(), barre.getWidth(), 3.0f);
+        }
 
         g.setColour(vsm::ui::Palette::pianoKeyBlack);
         g.fillRect(phase);
@@ -121,6 +158,7 @@ private:
     float level_ = 0.0f, peakHold_ = 0.0f;
     float rms_ = 0.0f;
     float correlation_ = 1.0f;
+    bool ecrete_ = false;   ///< D344 : a touché 0 dBFS, jusqu'au clic
 };
 
 /// Tranche d'une piste.
@@ -187,11 +225,17 @@ public:
     /// les tranches ne sont plus en correspondance de rang avec les pistes, un
     /// dossier n'en ayant pas.
     size_t trackIndex() const { return index_; }
+    /// D344 : le vumètre de cette tranche, pour le banc.
+    LevelMeter& vumetre() { return meter_; }
+    const LevelMeter& vumetre() const { return meter_; }
     /// D342 : CE QUE LA TRANCHE DONNE AU FADER, en pixels, lu sur les composants
     /// eux-mêmes. La course d'un fader ne se photographie pas -- elle est la
     /// distance entre deux positions du capuchon, dont une seule est à l'écran --,
     /// et c'est elle qui dit si le geste est réglable ou non.
-    juce::String geometrieDeBanc() const;
+    /// `repere` : le composant dans l'espace duquel les positions sont rendues —
+    /// celui que `VSM_CAPTURE` photographie, pour que le relevé et l'image
+    /// parlent des mêmes pixels.
+    juce::String geometrieDeBanc(const juce::Component& repere) const;
 
 private:
     /// D342 : les graduations en décibels à gauche du fader, peintes par la
@@ -535,9 +579,17 @@ public:
     /// C'est aussi pourquoi l'appariement passe par `trackIndex()` et non par
     /// le rang de la tranche -- la n-ième tranche n'est plus la n-ième piste,
     /// et D35.5 a payé trois fois pour l'avoir oublié.
+    /// D344 : VSM_MIXEUR_NIVEAU=piste:dBFS[;…] -- pose une crête sur le vumètre
+    /// d'une tranche, PAR LE MÊME CHEMIN que le minuteur du parent
+    /// (`setMeasurement`). Un vumètre ne se photographiait que pendant une
+    /// lecture, c'est-à-dire jamais au banc : ni sa barre, ni ses graduations,
+    /// ni son témoin d'écrêtage n'avaient de mesure.
+    void poserNiveauxPourCapture(const juce::String& consigne);
+    /// D344 : ce que chaque vumètre montre — crête en dBFS et témoin d'écrêtage.
+    void listerVumetresPourCapture() const;
     /// D342 : la géométrie de chaque tranche, une ligne par tranche, lue au
     /// moment de la photo (la disposition du dock n'est faite qu'alors).
-    void listerGeometriePourCapture() const;
+    void listerGeometriePourCapture(const juce::Component& repere) const;
 
     void setSelectedTracks(const std::set<size_t>& tracks) {
         for (auto* strip : strips_) strip->setChoisie(tracks.count(strip->trackIndex()) > 0);
@@ -702,6 +754,12 @@ private:
     juce::Component stripContainer_;
     juce::OwnedArray<ChannelStrip> strips_;
     MasterStrip master_;
+    /// D344 : les crêtes imposées par le banc (`VSM_MIXEUR_NIVEAU`), rang de
+    /// tranche → dBFS. `updateMeters` les REPOSE à chaque tour : le minuteur du
+    /// parent écrase sinon la consigne dans la fraction de seconde qui suit, et
+    /// la photo montre un mètre vide — payé une fois, relevé « -inf » pour quatre
+    /// consignes posées.
+    std::map<int, double> niveauxDeBanc_;
 
     /// D30.4 : 76 -> 88 px, pour que « Trim -6.0 dB » tienne en entier. Le
     /// nombre seul se confondait avec le volume, et la règle du projet est

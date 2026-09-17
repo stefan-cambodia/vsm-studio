@@ -639,6 +639,12 @@ public:
             // d'ouverture que le rapport de reconstruction allait remplacer.
             if (const char* liste = std::getenv("VSM_RAPPORT_LISTE"); liste != nullptr && *liste && *liste != '0')
                 content->listReportForCapture();
+            // D344 : VSM_MIXEUR_NIVEAU=piste:dBFS[;…] -- des crêtes posées sur les
+            // vumètres de la console, APRÈS les gestes (un geste peut changer les
+            // tranches) et avant la photo.
+            if (const char* niveaux = std::getenv("VSM_MIXEUR_NIVEAU");
+                niveaux != nullptr && *niveaux)
+                content->setMixerLevelsForCapture(juce::String::fromUTF8(niveaux));
             // D343 : VSM_CLIPS_MINI=1 -- la fenêtre de hauteurs des miniatures de
             // clip. Au démarrage (elle ne dépend que du projet, pas de la mise en
             // page) et APRÈS les gestes, comme VSM_CLIPS.
@@ -702,6 +708,12 @@ public:
                         textes != nullptr && *textes && *textes != '0')
                         if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
                             principal->listWindowTextsForCapture();
+                    // D344 : VSM_VUMETRES=1 -- ce que chaque vumètre montre, au moment
+                    // de la photo : c'est là que la barre a sa hauteur définitive.
+                    if (const char* vus = std::getenv("VSM_VUMETRES");
+                        vus != nullptr && *vus && *vus != '0')
+                        if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
+                            principal->listMixerMetersForCapture();
                     // D342 : VSM_MIXEUR=1 -- la géométrie des tranches de la console.
                     // ICI, dans le rappel de la photo, et non au démarrage : le dock du
                     // bas n'est disposé qu'après, et la course lue avant vaudrait zéro.

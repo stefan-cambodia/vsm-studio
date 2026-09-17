@@ -137,13 +137,17 @@ public:
     /// D89 : VSM_RAPPORT_LISTE=1 -- ce que le volet de rapport AFFICHE, ligne par
     /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
     void listReportForCapture();
+    /// D344 : VSM_MIXEUR_NIVEAU=piste:dBFS[;…] -- une crête posée sur un vumètre,
+    /// par le chemin du minuteur ; et VSM_VUMETRES=1, ce que chacun montre.
+    void setMixerLevelsForCapture(const juce::String& consigne) { mixer_.poserNiveauxPourCapture(consigne); }
+    void listMixerMetersForCapture() const { mixer_.listerVumetresPourCapture(); }
     /// D343 : VSM_CLIPS_MINI=1 -- la fenêtre de hauteurs de chaque miniature de
     /// clip MIDI, brute et retenue.
     void listClipMiniaturesForCapture() const { arrangement_.listerMiniaturesPourCapture(); }
     /// D342 : VSM_MIXEUR=1 -- la géométrie de chaque tranche de la console,
     /// lue AU MOMENT DE LA PHOTO : la disposition du dock du bas n'est faite
     /// qu'alors, et la course d'un fader ne se photographie pas.
-    void listMixerForCapture() const { mixer_.listerGeometriePourCapture(); }
+    void listMixerForCapture() const { mixer_.listerGeometriePourCapture(*this); }
     /// D262 : VSM_CLIPS=1 -- chaque clip du projet avec son IDENTIFIANT, écrit
     /// sur la sortie d'erreur. Un identifiant ne se photographie pas, et c'est
     /// lui qui a fait échouer « Découper aux transitoires » en silence : tout

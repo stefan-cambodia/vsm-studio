@@ -28147,3 +28147,81 @@ interchange, 25 clap, 11 panels. Banc de fumée 0 raté, `tools/ouvrir-midi.sh`
 frappes durent 48 ticks et tombent sous le pixel à l'échelle d'un morceau
 entier, si bien qu'un clip de 1 775 frappes montre une poignée de points. Une
 colonne par pixel (comme la lane MIDI CC de D328) le dirait ; non mesuré.
+
+### Phase D344 — le vumètre d'une tranche était invisible au repos, sans graduation et sans témoin d'écrêtage (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D342.** Le fader rendu
+lisible, le mètre d'à côté restait une colonne de dix pixels qu'on ne voyait pas :
+il était peint en `pianoKeyBlack` (0x1a1a1f) sur une tranche en `panel`
+(0x1f1f24) — **contraste 1,07**, mesuré sur la photo, à la position que le relevé
+donne. Au repos, on ne savait ni où était le mètre ni jusqu'où il pouvait monter ;
+en lecture, une barre aux trois quarts de sa fente ne disait pas si elle était
+à −3 ou à −20 dBFS, l'échelle étant −60..0 et personne ne la devinant.
+
+**ET IL N'AVAIT JAMAIS ÉTÉ MESURÉ, PARCE QU'IL N'ÉTAIT PAS MESURABLE.** Un
+vumètre ne montre quelque chose que pendant une lecture : aucun banc du dépôt
+n'en avait jamais photographié un, et ni sa barre, ni ses graduations, ni son
+comportement aux crêtes n'avaient de chiffre. C'est le premier travail de cette
+phase.
+
+**CE QUI EST FAIT.**
+
+- **La fente se voit** : un contour en `gridLineStrong` — `border`, celui du rail
+  du fader, ne donnait que 1,31 pour un trait d'un pixel ; mesuré, pas choisi.
+- **Deux graduations, 0 et −6 dBFS**, celles que marquent les consoles, tracées
+  par-dessus la barre pour rester lisibles quand elle monte.
+- **Un témoin d'écrêtage qui RESTE ALLUMÉ** : une crête à 0 dBFS dure un buffer,
+  elle passe entre deux rafraîchissements de l'écran, et la piste qui sature se
+  découvrait alors au casque. Il s'éteint d'un clic sur le mètre. Le master avait
+  le sien depuis D48 ; les pistes n'en avaient pas.
+- **Le banc peut enfin voir un vumètre** : `VSM_MIXEUR_NIVEAU=piste:dBFS[!]` pose
+  une crête **par le même appel que le minuteur de l'application**
+  (`setMeasurement`), et `VSM_VUMETRES=1` relit ce que chaque mètre montre. Deux
+  détails payés : la consigne posée une seule fois était **écrasée par le
+  minuteur dans la seconde** (quatre consignes, quatre relevés « -inf ») — elle
+  est donc reposée à chaque tour ; et le suffixe « ! » la pose **une seule fois**,
+  sans quoi elle réarmerait le témoin aussitôt effacé et l'effacement serait
+  invérifiable.
+- **Le clic de banc atteint un composant qui n'est pas un bouton** : `cliquer:`
+  ne trouvait que des `juce::Button`, et le mètre n'était donc atteignable par
+  aucune course. À défaut de bouton, il cherche un composant visible de ce nom et
+  lui envoie le même `mouseDown`/`mouseUp` — le journal dit lequel des deux
+  chemins a servi.
+
+**ATTENDU** (écrit avant la mesure) : au repos, contraste fente / fond
+**≥ 1,40** aux pixels que le relevé désigne ; une consigne de −12,00 dBFS relue
+**−12,00** ; une crête d'un seul buffer à +0,5 dBFS qui **arme le témoin et le
+retient** alors que la crête est retombée à −inf ; un clic qui **efface** ;
+cinq suites de tests vertes ; les quatre gardes d'interface 0 raté.
+
+**MESURÉ** (binaire du 18/09 contre celui de D342, aux **mêmes pixels** —
+`VSM_MIXEUR` donne désormais la position du mètre dans l'image) :
+
+| mesure | avant (D342) | après |
+|---|---|---|
+| contraste fente / fond de tranche, au repos | fond (31,31,36), extrême (25,25,30) → **1,07** | fond (31,31,36), contour (58,58,66) → **1,46** |
+| graduations 0 et −6 dBFS | aucune | **2**, tracées par-dessus la barre |
+| consigne −12,00 dBFS relue | *aucun relevé n'existait* | **−12,00 dBFS** |
+| crête d'un buffer à +0,5 dBFS, puis silence | *invérifiable* | crête **−inf**, témoin **1** (retenu) |
+| clic sur le mètre | *aucun banc n'atteignait le mètre* | `cliqué … composant (pas un bouton)`, témoin **1 → 0** |
+| `tools/vumetre-console.sh` | **5 ratés** | **0 raté** |
+
+Attendu tenu. Photo : la fente vide se voit au-dessus de la barre de « other »
+(−20 dBFS), « Batterie » (+0,5 dBFS) porte son capuchon rouge. Tests **343**
+core, 1 303 audio, **300** interchange, 25 clap, 11 panels. Gardes :
+`banc-fumee`, `fader-console`, `miniature-clips`, `pianoroll-zones`,
+`police-plancher` — 0 raté.
+
+**LA GARDE A ÉTÉ CORRIGÉE AVANT LA CIBLE, ET C'EST LA TROISIÈME FOIS DE LA
+JOURNÉE.** Son premier contrôle de contraste cherchait « le mètre » sur une
+rangée du fader, au jugé : il rendait **5,66 avant comme après**, sur deux
+binaires différents — il mesurait le capuchon ambre du fader et **validait le
+défaut qu'il devait attraper**. Le relevé dit désormais OÙ (`mètre 10x84
+@163,595`), la photo dit DE QUELLE COULEUR ; une garde qui cherche sa cible au
+jugé mesure le voisin.
+
+**Reste nommé, non fait** : les graduations ne portent pas leurs chiffres (0 et
+−6 sont des traits ; dix pixels de large ne tiennent pas un « −6 » à 12 pt, et
+l'élargir prendrait au fader) ; et le mètre de la tranche **master** n'a ni
+contour ni graduation — il est fait de potentiomètres et d'une aiguille (D48),
+non revu ici.

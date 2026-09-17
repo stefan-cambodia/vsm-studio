@@ -305,6 +305,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     addAndMakeVisible(solo_);
 
+    meter_.setName("mixeur.vumetre");   // D344 : le nom par lequel le banc le clique
     addAndMakeVisible(meter_);
     retraduire();   // D94 : infobulles et unité, dans la langue courante
 }
@@ -492,7 +493,7 @@ void ChannelStrip::peindreEchelle(juce::Graphics& g) const {
     }
 }
 
-juce::String ChannelStrip::geometrieDeBanc() const {
+juce::String ChannelStrip::geometrieDeBanc(const juce::Component& repere) const {
     // DEUX PIÈGES D'ÉCRITURE PAYÉS SUR CETTE SEULE LIGNE, et tous deux muets.
     // 1. « \xa9c » est UN échappement hexadécimal (0xa9c) qui mange le « c »
     //    suivant : « échelle » sortait « éhelle » (D333, même piège, « dÛut »).
@@ -522,7 +523,12 @@ juce::String ChannelStrip::geometrieDeBanc() const {
          + ", fader " + juce::String(volume_.getWidth()) + "x" + juce::String(volume_.getHeight())
          + ", course " + juce::String(course, 1) + " px"
          + " (" + (course > 0.0 ? juce::String(plage / course, 2) : juce::String("inf")) + " dB/px)"
+         // LA POSITION DU MÈTRE DANS L'IMAGE, et pas seulement sa taille : une
+         // garde qui cherche « le mètre » au jugé mesure le fader d'à côté — elle
+         // a rendu le même contraste avant et après, sur deux binaires différents.
          + juce::String::fromUTF8(", m\xc3\xa8tre ") + juce::String(meter_.getWidth()) + "x" + juce::String(meter_.getHeight())
+         + " @" + juce::String(repere.getLocalArea(&meter_, meter_.getLocalBounds()).getX())
+         + "," + juce::String(repere.getLocalArea(&meter_, meter_.getLocalBounds()).getY())
          // D333, REPAYÉ ICI : « \xa9c » est UN SEUL échappement hexadécimal (0xa9c),
          // qui mange le « c » de « échelle » -- le compilateur ne dit rien, et le
          // relevé sort « éhelle », que le sed de la garde ne trouve pas. Couper
@@ -989,7 +995,67 @@ void MixerComponent::updateMeters(
     // l'air juste.
     for (int i = 0; i < strips_.size(); ++i)
         strips_[i]->setMeasurement(trackMeasure(strips_[i]->trackIndex()));
+    // D344 : LA CONSIGNE DE BANC EST REPOSÉE PAR-DESSUS LA MESURE RÉELLE. Posée
+    // une seule fois, elle était écrasée par ce minuteur dans la fraction de
+    // seconde qui suit, et la photo montrait un mètre vide : quatre consignes
+    // posées, quatre relevés « -inf ».
+    for (const auto& [rang, db] : niveauxDeBanc_)
+        if (rang >= 0 && rang < strips_.size()) {
+            const float lineaire = static_cast<float>(std::pow(10.0, db / 20.0));
+            strips_[rang]->vumetre().setLevel(lineaire);
+            strips_[rang]->vumetre().setRms(lineaire * 0.7f);
+        }
     master_.setMeters(masterLufs, masterPeak, masterRms, masterCorrelation);
+}
+
+void MixerComponent::poserNiveauxPourCapture(const juce::String& consigne) {
+    // D344 : « 0:-3.0;1:0.2 » -- la crête en dBFS, par tranche. On passe par
+    // `setLevel`/`setRms`, les mêmes appels que `updateMeters` : ce qui est
+    // photographié est ce que le moteur dessinerait, y compris l'armement du
+    // témoin d'écrêtage à 0 dBFS.
+    juce::StringArray morceaux;
+    morceaux.addTokens(consigne, ";", "");
+    for (const auto& m : morceaux) {
+        const juce::String texte = m.trim();
+        if (texte.isEmpty()) continue;
+        const int rang = texte.upToFirstOccurrenceOf(":", false, false).getIntValue();
+        juce::String valeur = texte.fromFirstOccurrenceOf(":", false, false).trim();
+        // D344 : « 0:0.5! » — UNE SEULE FOIS, non maintenu. C'est le cas que le
+        // témoin d'écrêtage existe pour servir : une crête qui dure un buffer,
+        // passe entre deux rafraîchissements, et qu'aucune photo ne rattraperait.
+        // Sans cette forme, la consigne reposée à chaque tour RÉARME le témoin
+        // aussitôt effacé, et l'effacement serait invérifiable.
+        const bool uneFois = valeur.endsWith("!");
+        if (uneFois) valeur = valeur.dropLastCharacters(1);
+        const double db = valeur.getDoubleValue();
+        if (rang < 0 || rang >= strips_.size()) {
+            std::fputs(("VSM_MIXEUR_NIVEAU : tranche " + juce::String(rang)
+                        + " hors liste (" + juce::String(strips_.size())
+                        + " tranche(s))\n").toRawUTF8(), stderr);
+            continue;
+        }
+        const float lineaire = static_cast<float>(std::pow(10.0, db / 20.0));
+        if (!uneFois) niveauxDeBanc_[rang] = db;
+        strips_[rang]->vumetre().setLevel(lineaire);
+        strips_[rang]->vumetre().setRms(lineaire * 0.7f);
+        std::fputs(("VSM_MIXEUR_NIVEAU : tranche " + juce::String(rang) + " \xc3\xa0 "
+                    + juce::String(db, 2) + " dBFS"
+                    + (uneFois ? juce::String(" (une seule fois)") : juce::String(" (maintenu)"))
+                    + "\n").toRawUTF8(), stderr);
+    }
+}
+
+void MixerComponent::listerVumetresPourCapture() const {
+    for (int i = 0; i < strips_.size(); ++i) {
+        const auto& m = strips_[i]->vumetre();
+        // LA POSITION RENDUE EN DÉCIBELS : l'échelle du mètre est -60..0, et un
+        // « 0,95 » ne se relit pas. -inf quand rien ne passe.
+        const float pos = m.cretePosition();
+        std::fputs(("VSM_VUMETRE : tranche " + juce::String(i) + " : "
+                    + (pos > 0.0f ? juce::String(pos * 60.0 - 60.0, 2) : juce::String("-inf"))
+                    + " dBFS, \xc3\xa9" "cr\xc3\xaate " + (m.aEcrete() ? "1" : "0") + "\n").toRawUTF8(), stderr);
+    }
+    std::fputs(("VSM_VUMETRES : " + juce::String(strips_.size()) + " vum\xc3\xa8tre(s)\n").toRawUTF8(), stderr);
 }
 
 void MixerComponent::paint(juce::Graphics& g) {
@@ -1006,9 +1072,9 @@ int MixerComponent::hauteurMinimale() const {
     return plancher;
 }
 
-void MixerComponent::listerGeometriePourCapture() const {
+void MixerComponent::listerGeometriePourCapture(const juce::Component& repere) const {
     for (auto* tranche : strips_)
-        std::fputs(("VSM_MIXEUR : " + tranche->geometrieDeBanc() + "\n").toRawUTF8(), stderr);
+        std::fputs(("VSM_MIXEUR : " + tranche->geometrieDeBanc(repere) + "\n").toRawUTF8(), stderr);
     // LA CONSOLE ELLE-MÊME, ET SON PLANCHER : une course de fader ne se juge pas
     // sans savoir ce qu'elle a coûté en hauteur de dock, et le plancher est ce
     // que `MainComponent` empêche l'utilisateur de descendre.
