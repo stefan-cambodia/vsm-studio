@@ -27887,3 +27887,94 @@ cas ; banc de fumée 0 raté.
 Attendu tenu ; la question dit « démarrage » parce que le banc ferme dans la
 seconde qui suit le lancement — la première ligne d'étape n'est pas encore
 arrivée ; au clavier, elle nomme l'étape. Banc de fumée 0 raté. Manuel : § 6.
+
+### Phase D341 — le bouton « Annuler » de la reconstruction était hors d'atteinte de tout banc (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D339.** D339 a réécrit
+l'arrêt de la chaîne (un groupe de processus, SIGTERM puis SIGKILL) et l'a
+mesuré par le DESTRUCTEUR, en fermant l'application. Le bouton « Annuler » de
+la fenêtre, lui, n'a jamais été pressé par une course : « `VSM_CLIC` prend le
+premier « Annuler » de l'application, celui du piano roll ». Deux empêchements,
+et il fallait lever les deux.
+
+1. **LE NOM NE DÉSIGNE PAS.** `cliquer:<nom>` descend depuis `MainComponent`,
+   puis les autres fenêtres, et prend le PREMIER bouton visible de ce nom.
+   « Annuler » en désigne une vingtaine ; celui du piano roll gagne toujours.
+   C'est trait pour trait le piège de `VSM_MENU` (06/09) — « Automatique » a
+   piloté les threads de rendu au lieu du mode d'écoute —, et il était muet :
+   le journal disait « cliqué », sans dire QUOI.
+2. **TOUS LES VERBES AGISSENT AU DÉMARRAGE.** Presser « Annuler » dans la
+   seconde qui suit le lancement ne mesure rien de ce qu'on veut mesurer : il
+   n'y a pas encore de groupe de processus à arrêter. Ce qui est en cause —
+   demucs et les rendus, petits-enfants qui survivaient — n'existe qu'une fois
+   la séparation partie.
+
+**CE QUI EST FAIT.**
+
+- `cliquerPourCapture` (`MainComponent.cpp`) accepte
+  `fenetre:<titre>:<nom>` : la recherche est bornée aux fenêtres dont le titre
+  contient `<titre>`, et un titre qui ne désigne rien LISTE les fenêtres
+  visibles au lieu de se lire comme un bouton absent. Le journal dit désormais
+  **où** le bouton a été pris et **combien** en portent le nom — « cliqué dans
+  « Reconstruction », 1 bouton(s) de ce nom » —, et marque **AMBIGU** quand
+  plusieurs répondent sans que la fenêtre ait été nommée. L'ordre de parcours
+  ne change pas : sans qualificatif, c'est le même bouton qu'avant.
+- `VSM_GESTE_APRES=<ms>:<geste>[;…]` (`Main.cpp`) joue n'importe quel geste de
+  `VSM_GESTE_PISTE` **N millisecondes après le démarrage**, sur le thread de
+  message. Un geste demandé au-delà de `VSM_DELAI` — c'est-à-dire après la
+  fermeture de la course — est refusé **et dit**, sans quoi son absence se
+  lirait comme un bouton sans effet.
+- `tools/reconstruction-annuler.sh` : la garde. Elle engendre quatre secondes
+  d'audio, lance la vraie chaîne, presse « Annuler » sans puis avec le nom de
+  fenêtre (à une seconde d'écart, dans la MÊME course : le témoin est du même
+  code que ce qu'il témoigne), et juge le journal. Elle échantillonne les
+  processus de chaîne par `/proc` toutes les 300 ms : « 0 orphelin » ne veut
+  rien dire sans la preuve qu'il y en avait au moment du clic (la leçon de
+  D215).
+
+**ATTENDU** (écrit avant la mesure ; `tools/reconstruction-annuler.sh`,
+binaire du 18/09 contre le témoin du 15/09 à 03:01) :
+
+- clic **sans** fenêtre nommée : `VSM_CLIC : Annuler — cliqué dans « <fenêtre
+  principale> », N bouton(s) de ce nom … — AMBIGU`, avec **N ≥ 2** ;
+- clic **avec** `fenetre:Reconstruction:` : `cliqué dans « Reconstruction », 1
+  bouton(s) de ce nom` ;
+- **au moins un** processus de chaîne vivant au moment du clic, **zéro** après
+  la sortie ; code de sortie **0** ; **0** « killing thread by force », **0**
+  « terminate called » ;
+- la fenêtre dit **« reconstruction interrompue »** et son bouton **« Fermer »** ;
+- **témoin** : le binaire du 15/09 ne connaît pas `VSM_GESTE_APRES` — aucun des
+  deux clics n'est joué, aucune ligne `VSM_CLIC`, et la fenêtre est encore à
+  une étape en cours à la photo ;
+- banc de fumée **0 raté**.
+
+**MESURÉ** (binaire du 18/09 à 01:37 contre le témoin du 15/09, la même garde
+lancée deux fois) :
+
+| mesure | témoin (15/09) | après |
+|---|---|---|
+| `cliquer:Annuler` (sans fenêtre) | `VSM_CLIC : Annuler — cliqué, bascule 0 → 0` : **rien ne dit lequel** | `Annuler — cliqué dans « Vintage Synth MIDI Studio », **2** bouton(s) de ce nom, bascule 0 → 0 — **AMBIGU**, « fenetre:<titre>:Annuler » pour choisir` |
+| `cliquer:fenetre:Reconstruction:Annuler` | — (le verbe n'existe pas ; le clic non qualifié prend le piano roll) | `Annuler — cliqué dans « **Reconstruction** », **1** bouton(s) de ce nom` |
+| fenêtre inconnue (`fenetre:Zorglub:Annuler`) | — | `aucune fenêtre « Zorglub » visible parmi 2 : Vintage Synth MIDI Studio \| Reconstruction` |
+| gestes différés joués | **0 sur 2** (variable ignorée) | **2 sur 2**, à 14 000 et 15 000 ms |
+| geste demandé après la fermeture (`5000:muet`, `VSM_DELAI=3000`) | — | `JAMAIS JOUÉ, la course ferme à 3000 ms (VSM_DELAI)` |
+| geste mal formé (`bavard`) | — | `"bavard" illisible (<ms>:<geste>)` |
+| processus de chaîne au moment du clic | **2** | **2** (le même, et c'est ce qui donne un sens au zéro d'après) |
+| processus de chaîne après la sortie | 0 | **0** |
+| la fenêtre après l'annulation | encore à une étape en cours | **« reconstruction interrompue »**, bouton **« Fermer »** |
+| code de sortie, « killing thread by force », « terminate called » | 0, 0, 0 | 0, 0, 0 |
+| `tools/reconstruction-annuler.sh` | **5 ratés sur 9** | **0 raté** |
+
+Attendu tenu. **La garde a été vue rouge sur le témoin avant d'être vue verte** :
+les cinq verdicts qui dépendent du changement tombent sur le binaire du 15/09,
+et les quatre qui dépendent de D339 y tiennent déjà — c'est la preuve qu'elle
+mesure bien ce qu'elle annonce et non la simple présence de l'application.
+Photo `VSM_CAPTURE_PANNEAUX` de la fenêtre : titre, « reconstruction
+interrompue » en orange, le journal de la chaîne lisible depuis le début de
+ligne (jusqu'à « [2/5] Séparation en stems (htdemucs_6s) ») et « Fermer » en
+bas à droite. Tests : **343** core, 1 303 audio, **300** interchange, 25 clap,
+11 panels — tous verts. Banc de fumée **0 raté**. Manuel : § 6 et § 12.
+**Reste nommé, non fait** : `VSM_GESTE_APRES` joue les gestes de
+`VSM_GESTE_PISTE` seulement — ni une entrée de menu, ni une touche, qui ont
+leurs propres verbes ; aucune course n'en a eu besoin, et un verbe de plus
+sans besoin mesuré serait une commande de plus à garder.

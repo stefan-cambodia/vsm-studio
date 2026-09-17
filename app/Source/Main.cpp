@@ -397,6 +397,59 @@ public:
                                     + juce::String::fromUTF8(u8" \u2014 refusé (geste inconnu, ou sans effet : "
                                                              u8"voir la ligne au-dessus)\n")).toRawUTF8(), stderr);
             }
+            // D341 : VSM_GESTE_APRES=<ms>:<geste>[;<ms>:<geste>…] -- LE MÊME
+            // GESTE, JOUÉ PLUS TARD, sur le thread de message.
+            //
+            // POURQUOI IL A FALLU L'ÉCRIRE. Tous les verbes du banc agissent au
+            // DÉMARRAGE, d'un bloc : rien ne pouvait toucher une commande qui
+            // n'a de sens qu'une fois un travail de fond engagé. Le cas payé est
+            // celui de D339 : le bouton « Annuler » de la fenêtre de
+            // reconstruction existe dès la première seconde, mais presser
+            // « Annuler » avant que demucs ne démarre ne mesure rien de ce qu'on
+            // veut mesurer -- c'est l'arrêt du GROUPE de processus qui est en
+            // cause, et il n'y a de groupe qu'une fois la séparation partie.
+            //
+            // LE GESTE QUI NE SERA JAMAIS JOUÉ EST DIT. La course ferme à
+            // `VSM_DELAI` : un geste demandé au-delà ne se produirait pas, et
+            // son absence se lirait comme un bouton sans effet.
+            if (const char* differes = std::getenv("VSM_GESTE_APRES");
+                differes != nullptr && *differes) {
+                int delaiDeFermeture = 2000;
+                if (const char* d = std::getenv("VSM_DELAI"); d != nullptr && *d)
+                    delaiDeFermeture = juce::jmax(500, juce::String(d).getIntValue());
+                const bool laCourseFerme = (std::getenv("VSM_CAPTURE") != nullptr)
+                                           || passesDePeinture() > 0;
+                juce::StringArray suite;
+                suite.addTokens(juce::String::fromUTF8(differes), ";", "");
+                for (const auto& entree : suite) {
+                    const juce::String texte = entree.trim();
+                    if (texte.isEmpty()) continue;
+                    const int ms = texte.upToFirstOccurrenceOf(":", false, false).getIntValue();
+                    const juce::String geste = texte.fromFirstOccurrenceOf(":", false, false).trim();
+                    if (ms <= 0 || geste.isEmpty()) {
+                        std::fputs(("VSM_GESTE_APRES : \"" + texte.toStdString()
+                                    + "\" illisible (<ms>:<geste>)\n").c_str(), stderr);
+                        continue;
+                    }
+                    if (laCourseFerme && ms >= delaiDeFermeture) {
+                        std::fputs(("VSM_GESTE_APRES : " + geste.toStdString() + " \u00e0 "
+                                    + std::to_string(ms) + " ms \u2014 JAMAIS JOU\u00c9, la course "
+                                      "ferme \u00e0 " + std::to_string(delaiDeFermeture)
+                                    + " ms (VSM_DELAI)\n").c_str(), stderr);
+                        continue;
+                    }
+                    auto* cible = content;
+                    juce::Timer::callAfterDelay(ms, [cible, geste, ms] {
+                        const bool fait = cible->runTrackGestureForCapture(geste);
+                        std::fputs(("VSM_GESTE_APRES : " + geste.toStdString() + " \u00e0 "
+                                    + std::to_string(ms) + " ms \u2014 "
+                                    + (fait ? "jou\u00e9"
+                                            : "refus\u00e9 (geste inconnu, ou sans effet : voir la "
+                                              "ligne au-dessus)")
+                                    + "\n").c_str(), stderr);
+                    });
+                }
+            }
             // VSM_TOUCHE=« shift + M »[;…] : enfoncer des touches (D39.1).
             // Distinct de VSM_GESTE_PISTE, et c'est tout l'intérêt : elle
             // traverse `keyPressed` et la table des raccourcis, c'est-à-dire un

@@ -786,7 +786,10 @@ de processus : *Annuler* l'arrête en entier — la séparation et les rendus
 compris, pas seulement le script qui les lance —, et fermer l'application
 pendant une reconstruction l'interrompt de la même façon, sans rien laisser
 tourner derrière. La fenêtre dit l'étape en cours et déroule le journal de la
-chaîne au fil de l'eau, lignes repliées.
+chaîne au fil de l'eau, lignes repliées. Le bouton lui-même est **pressé par
+une garde** à chaque changement du lanceur (`tools/reconstruction-annuler.sh`,
+D341) : elle vérifie sur une vraie séparation qu'il ne reste aucun processus
+derrière, et non pas seulement que la fenêtre a changé de phrase.
 Fermer l'application pendant une reconstruction **demande d'abord** — la
 question nomme l'étape en cours (*Quitter et interrompre* / *Continuer la
 reconstruction*) —, puis, si le projet porte des modifications, pose la
@@ -1111,6 +1114,23 @@ rabote.
 ou au clic d'une ligne de piste**, par les mêmes méthodes que la souris :
 `muet`, `renommer:Nom`, `volume:0.25`, `couleur:22DD55`, `machine:vsm.additive`
 et `choisir:0,1,2` (la sélection multiple de D38, qu'aucun menu ne porte).
+`cliquer:<nom>` presse un bouton par son nom, son texte ou son infobulle ; le
+journal dit dans QUELLE fenêtre il a été pris et COMBIEN en portent le nom, et
+marque **AMBIGU** quand plusieurs répondent (D341). `cliquer:fenetre:<titre>:<nom>`
+borne la recherche aux fenêtres dont le titre contient `<titre>` — sans quoi
+« Annuler », qui désigne une vingtaine de boutons, prend toujours celui du piano
+roll et la fenêtre « Reconstruction » reste hors d'atteinte. Un titre qui ne
+désigne rien LISTE les fenêtres visibles, au lieu de se lire comme un bouton
+absent.
+`VSM_GESTE_APRES=<ms>:<geste>[;<ms>:<geste>…]` joue les mêmes gestes **plus
+tard**, sur le thread de message (D341) : tous les autres verbes agissent au
+démarrage, d'un bloc, et rien ne pouvait donc toucher une commande qui n'a de
+sens qu'une fois un travail de fond engagé — presser « Annuler » avant que
+demucs ne démarre ne mesure pas l'arrêt du groupe de processus. Un geste demandé
+au-delà de `VSM_DELAI`, c'est-à-dire après la fermeture de la course, est refusé
+**et dit** : son absence se lirait sinon comme un bouton sans effet.
+`tools/reconstruction-annuler.sh` s'en sert pour garder D339-D341 de bout en
+bout, sur une vraie séparation de quatre secondes d'audio.
 `VSM_NOTES=piste:tick:durée:hauteur[;…]` écrit des notes par le chemin du piano roll — le modèle, puis la matérialisation du clip implicite ouvert (D336). `VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des
 raccourcis — **un autre chemin que le bouton**, et c'est tout l'intérêt : D38
 avait mesuré son muet deux fois, par un banc et par une capture, et les deux

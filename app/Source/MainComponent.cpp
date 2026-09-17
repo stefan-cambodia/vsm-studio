@@ -1623,26 +1623,82 @@ bool MainComponent::cliquerPourCapture(const juce::String& nomOuLegende) {
     // pressé par le chemin de la souris : `mouseDown` puis `mouseUp`, ce que
     // `Button` traduit en clic. `triggerClick()` POSTE un message, et le relevé
     // pourrait le précéder ; ici tout est fait avant de rendre la main.
-    std::function<juce::Button*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Button* {
-        if (auto* bouton = dynamic_cast<juce::Button*>(&c);
-            bouton != nullptr && !bouton->getLocalBounds().isEmpty()
-            && (bouton->getName() == nomOuLegende || bouton->getButtonText() == nomOuLegende
-                || bouton->getTooltip() == nomOuLegende))
-            return bouton;
-        for (auto* enfant : c.getChildren())
-            if (enfant->isVisible())
-                if (auto* trouve = chercher(*enfant)) return trouve;
-        return nullptr;
-    };
-    juce::Button* bouton = chercher(*this);
-    for (int i = 0; bouton == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
-        if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
-            bouton = chercher(*fenetre);
-    if (bouton == nullptr) {
-        std::fputs(("VSM_CLIC : " + nomOuLegende + juce::String(u8" — aucun bouton visible de ce nom")
+    //
+    // D341 : ET LA FENÊTRE QUI LE PORTE, QUAND LE NOM NE SUFFIT PAS.
+    // « Annuler » désigne une vingtaine de boutons dans cette application ; la
+    // recherche partait de `this`, si bien que le premier trouvé était toujours
+    // celui du piano roll et que le bouton « Annuler » de la fenêtre
+    // « Reconstruction » restait hors d'atteinte de tout banc (D339, « aucun
+    // banc ne presse Annuler lui-même »). Deux changements, et le second compte
+    // autant que le premier :
+    //   1. la forme `fenetre:<titre>:<nom>` borne la recherche aux fenêtres dont
+    //      le titre contient `<titre>` ;
+    //   2. le journal DIT dans quelle fenêtre le bouton a été pris et COMBIEN
+    //      en portent le nom. Un homonyme silencieux est exactement la panne du
+    //      `VSM_MENU` qui prend le premier libellé de toute la barre (06/09) :
+    //      le banc croit presser ce qu'il a nommé, la capture est
+    //      vraisemblable, et elle est fausse.
+    juce::String cible = nomOuLegende;
+    juce::String fenetreDemandee;
+    if (cible.startsWithIgnoreCase("fenetre:")) {
+        const juce::String reste = cible.fromFirstOccurrenceOf(":", false, false);
+        fenetreDemandee = reste.upToFirstOccurrenceOf(":", false, false).trim();
+        cible = reste.fromFirstOccurrenceOf(":", false, false);
+    }
+    struct Trouve { juce::Button* bouton; juce::String ou; };
+    std::vector<Trouve> trouves;
+    std::function<void(juce::Component&, const juce::String&)> chercher =
+        [&](juce::Component& c, const juce::String& ou) {
+            if (auto* bouton = dynamic_cast<juce::Button*>(&c);
+                bouton != nullptr && !bouton->getLocalBounds().isEmpty()
+                && (bouton->getName() == cible || bouton->getButtonText() == cible
+                    || bouton->getTooltip() == cible))
+                trouves.push_back({ bouton, ou });
+            for (auto* enfant : c.getChildren())
+                if (enfant->isVisible()) chercher(*enfant, ou);
+        };
+    // LES CONTENANTS, DANS L'ORDRE HISTORIQUE : la fenêtre principale d'abord
+    // (c'est-à-dire `this`, et non la fenêtre qui la porte — la parcourir deux
+    // fois compterait chaque bouton double), puis les autres fenêtres de plus
+    // haut niveau, dans leur ordre d'empilement.
+    std::vector<std::pair<juce::Component*, juce::String>> contenants;
+    const juce::String titrePrincipal = getTopLevelComponent() != nullptr
+                                            ? getTopLevelComponent()->getName()
+                                            : juce::String("principale");
+    contenants.emplace_back(this, titrePrincipal);
+    juce::StringArray fenetresVues { titrePrincipal };
+    for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+        if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i);
+            fenetre != nullptr && fenetre->isVisible() && fenetre != getTopLevelComponent()) {
+            contenants.emplace_back(fenetre, fenetre->getName());
+            fenetresVues.add(fenetre->getName());
+        }
+    if (fenetreDemandee.isNotEmpty()) {
+        const int avant = static_cast<int>(contenants.size());
+        contenants.erase(std::remove_if(contenants.begin(), contenants.end(),
+                                        [&](const auto& c) {
+                                            return !c.second.containsIgnoreCase(fenetreDemandee);
+                                        }),
+                          contenants.end());
+        if (contenants.empty()) {
+            // CE QUI EST ÉCARTÉ EST DIT : sans la liste des fenêtres visibles,
+            // un titre mal orthographié se lit comme un bouton absent.
+            std::fputs(("VSM_CLIC : " + cible + juce::String(u8" — aucune fenêtre « ") + fenetreDemandee
+                        + juce::String(u8" » visible parmi ") + juce::String(avant)
+                        + " : " + fenetresVues.joinIntoString(" | ") + "\n").toRawUTF8(), stderr);
+            return false;
+        }
+    }
+    for (const auto& contenant : contenants) chercher(*contenant.first, contenant.second);
+    if (trouves.empty()) {
+        std::fputs(("VSM_CLIC : " + cible + juce::String(u8" — aucun bouton visible de ce nom")
+                    + (fenetreDemandee.isNotEmpty()
+                           ? juce::String(u8" dans « ") + fenetreDemandee + juce::String(u8" »")
+                           : juce::String())
                     + "\n").toRawUTF8(), stderr);
         return false;
     }
+    juce::Button* bouton = trouves.front().bouton;
     // L'ÉTAT AVANT ET APRÈS : un clic qui n'atterrit pas doit se voir ici, et non
     // passer pour un défaut du logiciel mesuré.
     const bool avant = bouton->getToggleState();
@@ -1658,8 +1714,14 @@ bool MainComponent::cliquerPourCapture(const juce::String& nomOuLegende) {
     auto* composant = static_cast<juce::Component*>(bouton);
     composant->mouseDown(evenement);
     composant->mouseUp(evenement);
-    std::fputs(("VSM_CLIC : " + nomOuLegende + juce::String(u8" — cliqué, bascule ")
+    std::fputs(("VSM_CLIC : " + cible + juce::String(u8" — cliqué dans « ") + trouves.front().ou
+                + juce::String(u8" », ") + juce::String(static_cast<int>(trouves.size()))
+                + juce::String(u8" bouton(s) de ce nom, bascule ")
                 + (avant ? "1" : "0") + juce::String(u8" → ") + (bouton->getToggleState() ? "1" : "0")
+                + (trouves.size() > 1 && fenetreDemandee.isEmpty()
+                       ? juce::String(u8" — AMBIGU, « fenetre:<titre>:") + cible
+                             + juce::String(u8" » pour choisir")
+                       : juce::String())
                 + "\n").toRawUTF8(), stderr);
     return true;
 }
