@@ -738,10 +738,10 @@ où elle ne faisait avant que se jouer. **La tête de lecture traverse ces lanes
 coupure en hertz et **un temps d'enveloppe en secondes** se tracent en
 logarithmique dès que la plage couvre une décade et que le minimum n'est pas nul
 — sans quoi, sur une enveloppe de 0,001 à 8 s, une attaque de 5 ms et une de
-50 ms se posent à un pixel l'une de l'autre. Le milieu de l'échelle est écrit à
-gauche (« 0.089 (log) ») parce que le milieu d'une échelle logarithmique n'est
-pas la moyenne, et les bornes portent autant de décimales que la valeur en
-demande. Le décibel, le pour-cent, les demi-tons et le MIDI CC restent linéaires.
+50 ms se posent à un pixel l'une de l'autre. **Chaque décade y est graduée** (D346) — 0,001 · 0,01 · 0,1 · 1 s, un trait et
+son libellé —, parce que le pas d'une échelle logarithmique n'est pas constant et
+que l'œil ne peut pas l'interpoler ; « (log) » suit la borne du haut, et les
+bornes portent autant de décimales que la valeur en demande. Le décibel, le pour-cent, les demi-tons et le MIDI CC restent linéaires.
 Le contrôleur 7 (volume de canal, celui des fichiers General MIDI) s'applique au mixage, multiplié au fader de la piste (D329) ; le contrôleur 10 (panoramique) s'ajoute au potentiomètre de la tranche, borné à ±1 (D330) — le fichier place, l'utilisateur corrige. La plage de pitch bend d'un fichier (paramètre enregistré RPN 0, par les contrôleurs 101, 100 et 6) est lue par piste (D331) ; sans elle, ± 2 demi-tons. Ces trois tenues sont chassées à la mise en lecture : un morceau lancé au milieu a son volume, son panoramique et sa plage. Les contrôleurs 74 (brillance) et 71 (résonance) pilotent la coupure et la résonance de la machine de la piste quand elle en déclare une (D332) — c'est ainsi que la montée de filtre de « Children » joue. Chaque lane numérote ses mesures au pied de sa grille (D287), une sur quatre ou sur seize quand elles se serrent.
 
 **La liste d'événements** (onglet *Liste* du bas — l'éditeur de liste de Cubase) chiffre tout ce que porte la piste choisie : notes, contrôleurs, plis de hauteur, pressions, changements de programme, avec la position en mesure·temps+ticks, le canal, le numéro, la valeur et la durée. Le filtre réduit à une famille ; un double-clic sur une ligne y mène la tête de lecture ; Suppr retire l'événement (annulable). **Elle suit la lecture** (D284) : la ligne du dernier événement passé sous la tête est teintée en ambre et se tient au milieu de la fenêtre tant que le transport tourne — au-dessus ce qui vient de passer, en dessous ce qui arrive (D287) ; à l'arrêt, la liste ne bouge plus et se parcourt à la main.

@@ -79,7 +79,15 @@ void AutomationComponent::listerEchellePourCapture() const {
                 + unite + " \xc2\xbb, bornes " + juce::String(paramMin_, 4) + ".."
                 + juce::String(paramMax_, 4) + ", \xc3\xa9" "chelle "
                 + (echelleLog_ ? "log" : "lin\xc3\xa9" "aire") + ", "
-                + juce::String(static_cast<int>(editPoints_.size())) + " point(s)\n").toRawUTF8(), stderr);
+                + juce::String(static_cast<int>(editPoints_.size())) + " point(s), "
+                + juce::String(static_cast<int>(graduations_.size())) + " graduation(s)"
+                + [this] {
+                      juce::String liste;
+                      for (const float d : graduations_)
+                          liste += (liste.isEmpty() ? " (" : " ") + juce::String(d, d < 1.0f ? 3 : 0);
+                      return liste.isEmpty() ? juce::String() : liste + ")";
+                  }()
+                + "\n").toRawUTF8(), stderr);
 }
 
 void AutomationComponent::retraduire() {
@@ -402,12 +410,55 @@ void AutomationComponent::paint(juce::Graphics& g) {
     };
     g.setColour(Palette::textSecondary);
     g.setFont(juce::Font(juce::FontOptions(12.0f)));
-    g.drawText(ecrire(paramMax_), a.getX() + 2, a.getY(), 70, 14, juce::Justification::topLeft);
+    // D346 : « (log) » SUIT LA BORNE DU HAUT, et non plus le milieu. Depuis que
+    // les décades sont graduées, une décade occupe souvent la place du milieu et
+    // son libellé se sautait : plus rien ne disait que l'échelle est
+    // logarithmique. Accroché à une borne, le mot est toujours là.
+    g.drawText(ecrire(paramMax_) + (echelleLog_ ? juce::String(" (log)") : juce::String()),
+               a.getX() + 2, a.getY(), 110, 14, juce::Justification::topLeft);
     g.drawText(ecrire(paramMin_), a.getX() + 2, a.getBottom() - 14, 70, 14, juce::Justification::bottomLeft);
-    if (echelleLog_) {   // D327 : le milieu d'une échelle log n'est pas la moyenne -- il est écrit
+    if (echelleLog_) {
+        // D346 : UNE GRADUATION PAR DÉCADE. Trois libellés — les deux bornes et le
+        // milieu géométrique — ne disent pas où se trouve « 0,1 s » sur une lane
+        // qui va de 0,001 à 8 : on lisait la position d'un point à l'estime, sur
+        // une échelle dont le pas n'est même pas constant. Un analyseur de spectre
+        // gradue ses décades ; une lane logarithmique a le même besoin.
+        //
+        // La règle de D342, reprise : une graduation ne se pose pas à moins de
+        // 14 px de la précédente. Et les bornes, écrites juste au-dessus, gardent
+        // leur place — une décade qui les toucherait se saute.
+        graduations_.clear();
+        constexpr int kEcartMinimal = 14;
+        std::vector<int> posees { a.getY(), a.getBottom() };   // les deux bornes
+        double decade = std::pow(10.0, std::ceil(std::log10(static_cast<double>(paramMin_))));
+        for (; decade <= static_cast<double>(paramMax_) + 1e-9; decade *= 10.0) {
+            const int y = valueToY(static_cast<float>(decade));
+            bool trop = false;
+            for (const int deja : posees)
+                if (std::abs(y - deja) < kEcartMinimal) { trop = true; break; }
+            if (trop) continue;
+            posees.push_back(y);
+            graduations_.push_back(static_cast<float>(decade));
+            g.setColour(Palette::gridLineStrong.withAlpha(0.6f));
+            g.fillRect(a.getX(), y, a.getWidth(), 1);
+            g.setColour(Palette::textSecondary);
+            g.drawText(ecrire(static_cast<float>(decade)), a.getX() + 2, y - 7, 70, 14,
+                       juce::Justification::centredLeft);
+        }
+        // D327 : le milieu d'une échelle log n'est pas la moyenne -- il est écrit,
+        // sauf si une décade occupe déjà sa place.
         const float milieu = std::sqrt(paramMin_ * paramMax_);
-        g.drawText(ecrire(milieu) + " (log)", a.getX() + 2, a.getCentreY() - 7, 90, 14,
-                   juce::Justification::centredLeft);
+        const int yMilieu = a.getCentreY();
+        bool libre = true;
+        for (const int deja : posees)
+            if (std::abs(yMilieu - deja) < kEcartMinimal) { libre = false; break; }
+        if (libre) {
+            g.setColour(Palette::textSecondary);
+            g.drawText(ecrire(milieu), a.getX() + 2, yMilieu - 7, 90, 14,
+                       juce::Justification::centredLeft);
+        }
+    } else {
+        graduations_.clear();
     }
 
     if (editPoints_.empty()) {

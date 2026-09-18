@@ -28309,3 +28309,56 @@ Tests **343** core, 1 303 audio, **300** interchange, 25 clap, 11 panels. Gardes
 deux bornes et le milieu) ; une vraie graduation logarithmique en marquerait
 chaque décade (0,001 · 0,01 · 0,1 · 1 s), comme le fait la règle d'un analyseur
 de spectre — non mesuré, aucun banc ne lit les graduations d'une lane.
+
+### Phase D346 — une lane logarithmique n'avait que trois libellés, et aucun ne disait où était « 0,1 s » (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D345**, écrit une heure plus
+tôt : « la lane ne porte que trois libellés de valeur (les deux bornes et le
+milieu) ; une vraie graduation logarithmique en marquerait chaque décade ». Sur
+une lane de 0,001 à 8 s, savoir où se trouve 0,1 s demandait de calculer un
+logarithme de tête. Un analyseur de spectre gradue ses décades ; une lane
+logarithmique a exactement le même besoin, et pour la même raison : le pas n'y
+est pas constant, donc l'œil ne peut pas l'interpoler.
+
+**CE QUI EST FAIT.** En échelle logarithmique, la lane trace **une graduation par
+décade** comprise dans sa plage — un trait fin sur toute la largeur, son libellé à
+gauche en 12 pt (le plancher de D323) — avec la règle d'écart de D342 : **pas de
+graduation à moins de 14 px d'une autre ni d'une borne**. Sur 0,001..8 s, trois
+décades tiennent entre les bornes (0,01 · 0,1 · 1) ; la quatrième, 0,001, EST la
+borne du bas et se saute.
+
+**ET « (log) » A CHANGÉ DE PLACE, PARCE QUE LA MESURE L'A EXIGÉ.** Le mot vivait
+depuis D327 sur le libellé du MILIEU géométrique. Or une décade occupe désormais
+souvent ce milieu, et le libellé se sautait : la première photo de cette phase
+montrait une belle échelle graduée dont **plus rien ne disait qu'elle était
+logarithmique**. Le mot suit maintenant la borne du HAUT, qui est toujours
+écrite.
+
+**ATTENDU** (avant la mesure ; même projet engendré que D345) : sur « Amp Decay »
+(s, 0,001..8), **3 graduations** — 0,01 · 0,1 · 1 — et « 8.00 (log) » en haut ;
+sur le témoin linéaire (`filter.1.drive`, sans unité), **0 graduation** et les
+deux bornes inchangées ; l'étalement des points inchangé (55,0 % de médiane,
+64,7 % d'étalement : cette phase ne touche pas à la courbe) ; cinq suites de
+tests vertes ; les sept gardes d'interface 0 raté.
+
+**MESURÉ** (`VSM_AUTOMATION=1`, qui dit désormais les décades DESSINÉES et non
+celles calculées) :
+
+| mesure | avant (D345) | après |
+|---|---|---|
+| graduations sur la lane log 0,001..8 s | **0** | **3** (0.010, 0.100, 1) |
+| libellés de valeur | 3 (8.00 · 0.089 (log) · 0.001) | **5** (8.00 (log) · 1.00 · 0.100 · 0.010 · 0.001) |
+| où se lit « (log) » | sur le milieu géométrique — **sauté** dès qu'une décade l'occupe | sur la borne du haut, **toujours écrite** |
+| graduations sur une lane linéaire | 0 | **0** (inchangé) |
+| hauteur médiane / étalement des points | 55,0 % / 64,7 % | 55,0 % / 64,7 % (**inchangé**, comme attendu) |
+| `tools/automation-echelle.sh` | 4 verdicts | **6 verdicts, 0 raté** |
+
+Attendu tenu. Photo : « 8.00 (log) », « 1.00 », « 0.100 », « 0.010 », « 0.001 »
+avec leurs traits, et les trente points en diagonale au travers. Tests **343**
+core, 1 303 audio, **300** interchange, 25 clap, 11 panels. Sept gardes
+d'interface : 0 raté.
+
+**Reste nommé, non fait** : une lane LINÉAIRE n'a toujours que ses deux bornes —
+une graduation régulière (quarts, ou pas « rond ») lui rendrait le même service ;
+non mesuré, faute d'un cas où l'absence gêne (une plage linéaire s'interpole à
+l'œil, c'est justement ce qu'une échelle logarithmique interdit).

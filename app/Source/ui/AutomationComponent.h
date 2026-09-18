@@ -108,6 +108,10 @@ private:
     vsm::audio::plugin::ParamId selectedParam_ = 0;
     float paramMin_ = 0.0f, paramMax_ = 1.0f;
     bool hasSelection_ = false;
+    /// D346 : les décades effectivement DESSINÉES au dernier `paint`, pour que le
+    /// relevé dise ce qui est à l'écran et non ce qu'on a calculé. `mutable` :
+    /// `paint` est const de fait, il ne change que ce qu'il vient d'afficher.
+    mutable std::vector<float> graduations_;
 
     int dragIndex_ = -1;
     vsm::audio::engine::Tick maxTick_ = 1920 * 4;

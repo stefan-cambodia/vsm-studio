@@ -114,5 +114,15 @@ spread="$(sed -n 's/.*étalement *\([0-9.]*\) %.*/\1/p' <<<"$etal")"
 verdict "les points occupent la lane : médiane ${med:-?} % (règle : >= 40) et étalement ${spread:-?} % (règle : >= 40)" \
         "$(awk -v m="${med:-0}" -v s="${spread:-0}" 'BEGIN { print (m >= 40 && s >= 40) ? 1 : 0 }')"
 
+# D346 : LES DÉCADES SONT GRADUÉES. Sur 0,001..8 s, trois décades tiennent entre
+# les deux bornes (0,01 · 0,1 · 1) ; la quatrième, 0,001, EST la borne du bas et
+# se saute. Une lane linéaire n'en porte aucune.
+grad0="$(sed -n 's/.*, \([0-9]*\) graduation(s).*/\1/p' <<<"$ligne0")"
+grad1="$(sed -n 's/.*, \([0-9]*\) graduation(s).*/\1/p' <<<"$ligne1")"
+verdict "la lane log gradue ses décades (relevé : ${grad0:-0}, attendu 3 : 0,01 · 0,1 · 1)" \
+        "$([ "${grad0:-0}" = "3" ] && echo 1 || echo 0)"
+verdict "une lane linéaire n'en porte aucune (relevé : ${grad1:-0})" \
+        "$([ "${grad1:-0}" = "0" ] && echo 1 || echo 0)"
+
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]
