@@ -320,3 +320,55 @@ VSM_TEST(a_creation_that_makes_no_sense_is_refused_without_touching_anything) {
     VSM_ASSERT(listTrackEvents(piste).empty());
     VSM_ASSERT_EQ(id, idAvant);   // aucun identifiant de note consommé pour rien
 }
+
+
+// ---------------------------------------------------------------------------
+// D353 — LE CANAL SE MODIFIE, ET IL NE DÉPLACE RIEN.
+//
+// L'attendu, écrit avant la mesure : « le canal se change dans les six
+// familles ; hors de 0-15 il est REFUSÉ et non borné ; et changer le canal
+// d'une note ne la retire pas de sa piste — dans ce logiciel le canal décide de
+// ce qui SORT, pas de qui joue. »
+// ---------------------------------------------------------------------------
+
+VSM_TEST(the_channel_can_be_changed_in_every_kind) {
+    // UN SEUL ÉVÉNEMENT PAR FAMILLE : `pisteComplete()` en porte deux de
+    // certaines, et `ligneDe` rend la première — la seconde serait restée sur
+    // son canal et aurait fait échouer un attendu mal écrit (elle l'a fait).
+    Track piste;
+    uint64_t id = 1;
+    const EventKind familles[] = { EventKind::Note, EventKind::ControlChange,
+                                    EventKind::PitchBend, EventKind::PolyPressure,
+                                    EventKind::ChannelPressure, EventKind::ProgramChange };
+    for (const auto famille : familles) {
+        const int premier = famille == EventKind::PitchBend ? 0 : 60;
+        const int valeur = famille == EventKind::PitchBend ? -2048 : 90;
+        VSM_ASSERT(addTrackEvent(piste, famille, 480, 0, premier, valeur, 240, id));
+    }
+    for (const auto& ligne : listTrackEvents(piste))
+        VSM_ASSERT(setTrackEventField(piste, ligne, EventField::Channel, 9));
+    // Relue, chaque ligne porte le canal 9 — les six familles comprises.
+    const auto apres = listTrackEvents(piste);
+    VSM_ASSERT_EQ(apres.size(), size_t{6});
+    for (const auto& l : apres)
+        VSM_ASSERT_EQ(int{l.channel}, 9);
+}
+
+VSM_TEST(a_channel_out_of_range_is_refused_and_the_note_stays_on_its_track) {
+    Track piste = pisteComplete();
+    const auto lignes = listTrackEvents(piste);
+    const EventRow* note = ligneDe(lignes, EventKind::Note);
+    VSM_ASSERT(note != nullptr);
+    const size_t combien = piste.notes.size();
+    const int canal = int{piste.notes[0].channel};
+    VSM_ASSERT(!setTrackEventField(piste, *note, EventField::Channel, 16));
+    VSM_ASSERT(!setTrackEventField(piste, *note, EventField::Channel, -1));
+    VSM_ASSERT_EQ(int{piste.notes[0].channel}, canal);
+    // CHANGER LE CANAL NE DÉPLACE RIEN : la note reste sur sa piste, et sa
+    // hauteur comme sa durée sont intactes.
+    VSM_ASSERT(setTrackEventField(piste, *note, EventField::Channel, 15));
+    VSM_ASSERT_EQ(piste.notes.size(), combien);
+    VSM_ASSERT_EQ(int{piste.notes[0].channel}, 15);
+    VSM_ASSERT_EQ(int{piste.notes[0].number}, 60);
+    VSM_ASSERT_EQ(piste.notes[0].endTick - piste.notes[0].startTick, Tick{480});
+}

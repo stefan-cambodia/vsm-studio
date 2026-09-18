@@ -407,6 +407,12 @@ void EventListComponent::paintCell(juce::Graphics& g, int row, int columnId, int
 bool EventListComponent::colonneModifiable(int columnId, EventKind nature) {
     switch (columnId) {
         case kColPosition: return true;                       // toutes les familles
+        // D353 : LE CANAL AUSSI, dans les six familles. Dans ce logiciel il ne
+        // choisit pas QUI JOUE — la machine de la piste joue toutes ses notes —,
+        // il décide de ce qui SORT : l'octet de statut du fichier MIDI et du
+        // port. C'est le réglage dont on a besoin quand un format 0 a été
+        // découpé par canal (D305) ou qu'un expandeur attend un canal précis.
+        case kColCanal:    return true;
         case kColSecond:   return nature != EventKind::ProgramChange;   // un programme n'a que son numéro
         case kColPremier:  return nature != EventKind::PitchBend
                                   && nature != EventKind::ChannelPressure;
@@ -427,6 +433,10 @@ void EventListComponent::ouvrirSaisie(int row, int columnId) {
     // et le numéro, qui sont ce que le champ porte.
     const long long actuel =
         columnId == kColPosition ? static_cast<long long>(ligne.tick)
+        // D353 : LE CANAL SE SAISIT COMME IL S'AFFICHE, de 1 à 16. Le modèle le
+        // garde de 0 à 15 (c'est l'octet MIDI) ; demander « 0 » à l'écran pour
+        // le premier canal serait demander à l'utilisateur de penser en octets.
+        : columnId == kColCanal ? ligne.channel + 1
         : columnId == kColPremier ? ligne.first
         : columnId == kColSecond ? ligne.second
         : static_cast<long long>(ligne.length);
@@ -461,9 +471,15 @@ bool EventListComponent::validerSaisie() {
     }
     using vsm::sequencer::EventField;
     const EventField champ = colonneEnSaisie_ == kColPosition ? EventField::Position
+                            : colonneEnSaisie_ == kColCanal ? EventField::Channel
                             : colonneEnSaisie_ == kColPremier ? EventField::Number
                             : colonneEnSaisie_ == kColSecond ? EventField::Value
                                                               : EventField::Length;
+    // D353 : de l'écran (1-16) au modèle (0-15), au seul endroit où la saisie
+    // devient une valeur. Convertir ailleurs ferait diverger l'affichage et la
+    // saisie, qui doivent parler la même langue.
+    const long long saisi = texte.getLargeIntValue()
+                            - (champ == EventField::Channel ? 1 : 0);
     // LE NOM DU PAS SE STOCKE EN FRANÇAIS et se traduit À L'AFFICHAGE
     // (`trGeste`, Langue.cpp) : le traduire ici stockerait l'anglais, et
     // l'historique ne retrouverait plus sa clé. Ce qu'il lui fallait, c'est
@@ -471,8 +487,7 @@ bool EventListComponent::validerSaisie() {
     // D150 (« deux n'avaient aucune clé »).
     if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Modifier un événement"));
     auto& piste = project_->tracks[static_cast<size_t>(activeTrack_)];
-    if (!vsm::sequencer::setTrackEventField(piste, ligne, champ,
-                                             texte.getLargeIntValue())) {
+    if (!vsm::sequencer::setTrackEventField(piste, ligne, champ, saisi)) {
         // PANNE MUETTE INTERDITE (la règle de `deleteKeyPressed`, juste en
         // dessous) : un refus se DIT. `setTrackEventField` refuse une valeur
         // hors bornes plutôt que de la borner en silence — l'utilisateur tape

@@ -774,10 +774,13 @@ pressions de canal.
 *Position*, *N°*, *Valeur* ou *Durée* et tapez le nombre — Entrée valide, Échap
 annule, et le pas s'annule ensuite au Ctrl+Z comme tout le reste. Une valeur hors
 bornes est **refusée**, jamais ramenée en silence : celui qui tape 300 ne doit pas
-obtenir 127 sans le savoir. Déplacer une note **emporte sa durée**. Les colonnes
-*Nature* et *Canal* ne se modifient pas — changer la nature d'un événement, c'est
-en créer un autre —, et c'est là que le double-clic garde son ancien sens :
-placer la tête de lecture.
+obtenir 127 sans le savoir. Déplacer une note **emporte sa durée**. Le **canal** se modifie aussi (D353), de 1 à 16 comme il s'affiche : dans ce
+logiciel il ne choisit pas qui joue — la machine de la piste joue toutes ses
+notes — mais **ce qui sort**, l'octet du fichier MIDI et du port ; c'est le
+réglage dont on a besoin quand un fichier de format 0 a été découpé par canal ou
+qu'un expandeur attend un canal précis. La colonne *Nature*, elle, ne se modifie
+pas — changer la nature d'un événement, c'est en créer un autre —, et c'est là
+que le double-clic garde son ancien sens : placer la tête de lecture.
 
 **La miniature d'un clip montre 98 % de ses notes** (D343) : sa hauteur se plie à l'ambitus qui les tient, et non à celui des extrêmes — sur une reconstruction, trois notes fausses une octave trop haut suffisaient sinon à écraser tout le reste dans le bas du rectangle. Les notes écartées ne disparaissent pas : elles se dessinent sur la rangée du bord, « ici ou plus haut ».
 

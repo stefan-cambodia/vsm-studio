@@ -28745,3 +28745,49 @@ interchange, 25 clap, 11 panels. Onze gardes d'interface : 0 raté.
 routée), et le bouton crée à la tête de lecture sans demander : un clic droit
 qui proposerait « ici » ou « à la tête » serait plus proche de Cubase — non
 mesuré, aucun besoin exprimé.
+
+### Phase D353 — le canal d'un événement ne se modifiait pas, faute d'avoir décidé ce qu'il veut dire (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D348 ET D352**, laissé deux
+fois avec la même raison : « il faudrait décider ce qu'un changement de canal
+veut dire pour une note déjà routée ». La décision se tranche en l'écrivant,
+c'est la règle du dépôt, et la voici.
+
+**LA DÉCISION, ET SA RAISON.** Dans ce logiciel, **le canal ne choisit pas qui
+joue** : la machine de la piste joue toutes ses notes, quel que soit leur canal.
+Il décide de **ce qui SORT** — l'octet de statut que `MidiFileWriter` écrit
+(`0x90 | canal`) et que le port MIDI envoie. Changer le canal d'un événement ne
+le déplace donc **d'aucune piste** ; c'est le réglage dont on a besoin quand un
+fichier de format 0 a été découpé par canal (D305) ou qu'un expandeur attend un
+canal précis. C'est ce qui le rend sûr à modifier, et c'est pourquoi la colonne
+s'ouvre.
+
+**CE QUI EST FAIT.** `EventField::Channel` dans `core/`, commun aux six familles,
+avec la règle de D348 : **0-15, et hors bornes c'est un REFUS, pas un
+écrêtage**. La colonne *Canal* de la liste devient modifiable. **La saisie parle
+la langue de l'affichage** : de 1 à 16, comme la colonne l'écrit depuis toujours,
+convertie **en un seul endroit** — demander « 0 » pour le premier canal serait
+demander à l'utilisateur de penser en octets, et convertir à deux endroits ferait
+diverger l'affichage et la saisie.
+
+**ATTENDU** (avant la mesure) : les six familles changent de canal ; « 0 » et
+« 17 » sont refusés ; un canal saisi **10** se range sur le canal **9** du
+fichier MIDI ; changer le canal d'une note **ne la retire pas de sa piste** et ne
+touche ni sa hauteur ni sa durée ; 355 tests core.
+
+**MESURÉ** (`tools/liste-editer.sh`, élargie ; `.mid` exporté relu) :
+
+| mesure | avant | après |
+|---|---|---|
+| colonne *Canal* | non modifiable | modifiable, six familles |
+| canal 10 saisi | — | notes sur le canal **9** du fichier (0-based), les autres sur 0 |
+| canal 0 et canal 17 | — | **refusés**, et dits |
+| note dont on change le canal | — | reste sur sa piste, hauteur et durée intactes |
+| tests core | 353 | **355** |
+
+Attendu tenu. **Un test mal écrit a échoué avant le code** : l'attendu disait
+« chaque ligne porte le canal 9 » sur une piste qui compte DEUX notes et DEUX
+contrôleurs, alors que le geste n'en changeait qu'un par famille — corrigé en
+bâtissant la piste d'essai avec un seul événement de chaque, ce qui est ce que
+l'attendu voulait dire. Onze gardes d'interface : 0 raté ; inventaire A9
+inchangé (ECRAN 10, SANS_PAIRE 0).

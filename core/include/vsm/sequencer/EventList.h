@@ -77,6 +77,16 @@ enum class EventField {
     Number,     ///< numéro de note, de contrôleur ou de programme (0-127)
     Value,      ///< vélocité, valeur de contrôleur, pli, pression
     Length,     ///< la durée, pour une NOTE seulement
+    /// D353 : le canal MIDI, 0-15 (la liste l'affiche de 1 à 16).
+    ///
+    /// CE QU'IL VEUT DIRE ICI, ET C'EST UNE DÉCISION ÉCRITE. Dans ce logiciel,
+    /// **le canal ne choisit pas qui joue** : la machine de la piste joue toutes
+    /// ses notes, quel que soit leur canal. Il décide de ce qui SORT — l'octet
+    /// de statut que `MidiFileWriter` écrit et que le port MIDI envoie. Le
+    /// modifier ne déplace donc rien d'une piste à l'autre ; c'est le réglage
+    /// dont on a besoin quand un fichier de format 0 a été découpé par canal
+    /// (D305) ou quand un expandeur attend un canal précis.
+    Channel,
 };
 
 /// Change un champ de l'événement décrit par `row`.

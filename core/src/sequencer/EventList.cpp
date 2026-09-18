@@ -114,10 +114,19 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
     // qu'on ramène (à 0) au lieu de refuser : un tick négatif n'existe pas.
     const Tick position = static_cast<Tick>(std::max<long long>(0, value));
 
+    // D353 : LE CANAL EST COMMUN AUX SIX FAMILLES, comme la position — et comme
+    // elle, il se refuse plutôt que de se borner (0-15, rien d'autre).
+    const bool canalValide = value >= 0 && value <= 15;
+
     if (row.kind == EventKind::Note) {
         auto it = std::find_if(track.notes.begin(), track.notes.end(),
                                 [&row](const Note& n) { return n.id == row.noteId; });
         if (it == track.notes.end()) return false;
+        if (field == EventField::Channel) {
+            if (!canalValide) return false;
+            it->channel = static_cast<uint8_t>(value);
+            return true;
+        }
         switch (field) {
             case EventField::Position: {
                 // LA DURÉE SUIT LA NOTE : déplacer une note ne la raccourcit pas.
@@ -152,6 +161,11 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
             auto* e = siCest(track.controlChanges, row.indexInKind, row.tick);
             if (e == nullptr) return false;
             if (field == EventField::Position) { e->tick = position; return true; }
+            if (field == EventField::Channel) {
+                if (!canalValide) return false;
+                e->channel = static_cast<uint8_t>(value);
+                return true;
+            }
             if (!dansSeptBits(value)) return false;
             if (field == EventField::Number) e->controller = static_cast<uint8_t>(value);
             else e->value = static_cast<uint8_t>(value);
@@ -161,6 +175,11 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
             auto* e = siCest(track.pitchBends, row.indexInKind, row.tick);
             if (e == nullptr) return false;
             if (field == EventField::Position) { e->tick = position; return true; }
+            if (field == EventField::Channel) {
+                if (!canalValide) return false;
+                e->channel = static_cast<uint8_t>(value);
+                return true;
+            }
             if (field == EventField::Number) return false;   // un pli n'a pas de numéro
             if (value < -8192 || value > 8191) return false;
             e->value = static_cast<int16_t>(value);
@@ -170,6 +189,11 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
             auto* e = siCest(track.polyAftertouch, row.indexInKind, row.tick);
             if (e == nullptr) return false;
             if (field == EventField::Position) { e->tick = position; return true; }
+            if (field == EventField::Channel) {
+                if (!canalValide) return false;
+                e->channel = static_cast<uint8_t>(value);
+                return true;
+            }
             if (!dansSeptBits(value)) return false;
             if (field == EventField::Number) e->note = static_cast<uint8_t>(value);
             else e->pressure = static_cast<uint8_t>(value);
@@ -179,6 +203,11 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
             auto* e = siCest(track.channelPressure, row.indexInKind, row.tick);
             if (e == nullptr) return false;
             if (field == EventField::Position) { e->tick = position; return true; }
+            if (field == EventField::Channel) {
+                if (!canalValide) return false;
+                e->channel = static_cast<uint8_t>(value);
+                return true;
+            }
             if (field == EventField::Number) return false;   // une pression de canal n'a pas de numéro
             if (!dansSeptBits(value)) return false;
             e->pressure = static_cast<uint8_t>(value);
@@ -188,6 +217,11 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
             auto* e = siCest(track.programChanges, row.indexInKind, row.tick);
             if (e == nullptr) return false;
             if (field == EventField::Position) { e->tick = position; return true; }
+            if (field == EventField::Channel) {
+                if (!canalValide) return false;
+                e->channel = static_cast<uint8_t>(value);
+                return true;
+            }
             if (field == EventField::Value) return false;    // un programme n'a que son numéro
             if (!dansSeptBits(value)) return false;
             e->program = static_cast<uint8_t>(value);

@@ -8,6 +8,9 @@
 #   2. une valeur hors bornes est **REFUSÉE**, jamais bornée en silence : celui
 #      qui tape 300 ne doit pas obtenir 127 sans le savoir ;
 #   3. une colonne qui n'a pas de sens pour la famille est refusée ;
+#   3 bis. le CANAL se saisit de 1 à 16 comme il s'affiche et se range de 0 à 15
+#      dans le fichier (D353) : « 0 » et « 17 » sont refusés, et c'est ainsi
+#      qu'on vérifie que la conversion se fait, une seule fois, au bon endroit ;
 #   4. la modification est ANNULABLE — un pas « Modifier un événement » entre
 #      dans l'historique ;
 #   5. l'éditeur en place se VOIT (forme `ligne:colonne:?`, qui l'ouvre et le
@@ -67,7 +70,7 @@ echo "=== D348 : modifier une valeur depuis la liste d'événements ==="
 maison="$(mktemp -d "$brouillon/home.XXXX")"   # D318 : un HOME NEUF
 env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=2500 \
     VSM_VUE="sans-rapport,arrangement,liste" VSM_TEXTES_LISTE=1 \
-    VSM_LISTE_EDITER="0:5:42;0:4:72;0:6:240;0:5:300;0:2:3" \
+    VSM_LISTE_EDITER="0:5:42;0:4:72;0:6:240;0:5:300;0:2:3;0:3:10;1:3:0;1:3:17" \
     VSM_EXPORT_MIDI="$brouillon/apres.mid" \
     VSM_CAPTURE="$brouillon/liste.png" \
     timeout 45 "$BIN" > "$brouillon/journal.txt" 2>&1
@@ -102,6 +105,27 @@ verdict "la colonne « Nature » n'est pas modifiable" \
         "$(grep -c 'VSM_LISTE : colonne 2 non modifiable' <<<"$j")"
 verdict "la modification entre dans l'historique (annulable)" \
         "$(grep -c 'VSM_HISTORIQUE : Modifier un événement' <<<"$j")"
+# D353 : LE CANAL SE SAISIT DE 1 À 16, comme il s'affiche, et se range de 0 à 15
+# dans le fichier. « 0 » et « 17 » sont donc REFUSÉS — c'est ainsi qu'on vérifie
+# que la conversion se fait, et au bon endroit.
+canaux="$("$PY" - "$brouillon/apres.mid" <<'PY'
+import sys
+from collections import Counter
+import mido
+c = Counter()
+for tr in mido.MidiFile(sys.argv[1]).tracks:
+    for e in tr:
+        if e.type in ("note_on", "note_off"):
+            c[e.channel] += 1
+print(" ".join(f"{k}:{v}" for k, v in sorted(c.items())))
+PY
+)"
+echo "       canaux des notes dans le .mid (0-based) : $canaux"
+verdict "« canal 10 » saisi se range sur le canal 9 du fichier" \
+        "$(grep -c '^9:' <<<"$(tr ' ' '\n' <<<"$canaux")")"
+verdict "« canal 0 » et « canal 17 » sont REFUSÉS (1 à 16 à l'écran)" \
+        "$([ "$(grep -c 'VSM_LISTE : 0 — refusé' <<<"$j")" -ge 1 ] \
+          && [ "$(grep -c 'VSM_LISTE : 17 — refusé' <<<"$j")" -ge 1 ] && echo 1 || echo 0)"
 verdict "code de sortie 0 (relevé : $rc)" "$([ "$rc" -eq 0 ] && echo 1 || echo 0)"
 
 # (5) L'ÉDITEUR EN PLACE SE VOIT, ET LA MESURE PORTE SON TÉMOIN.
