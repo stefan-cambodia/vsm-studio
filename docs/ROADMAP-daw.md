@@ -28504,3 +28504,71 @@ photos, une seule variable entre elles, et c'est leur DIFFÉRENCE qui décide.
 **Reste nommé, non fait** : le canal ne se modifie pas (il faudrait décider ce
 qu'un changement de canal veut dire pour une note déjà routée) ; et la liste ne
 crée pas d'événement — elle en modifie et en supprime.
+
+### Phase D349 — le piège que D32.2 avait nommé était encore armé quatre fois sur six (18/09/2026)
+
+**D'OÙ ELLE VIENT — UNE GARDE QUI MENTAIT SUR CE QU'ELLE PHOTOGRAPHIAIT.** La
+garde du thème (D347) déclarait couvrir huit vues ; deux d'entre elles,
+`navigateur` et `mixeur`, **ne sont pas des verbes de vue** — l'application le
+dit (« VSM_VUE : commande inconnue ») et la course photographiait donc deux fois
+l'onglet par défaut. En cherchant les verbes qui existent, ceci :
+
+> D32.2 avait écrit, seize phases plus tôt : « insérer *Liste* avant *Tempo* a
+> décalé ce dernier d'un rang, et `VSM_VUE=tempo` ouvrait la liste : **un numéro
+> en dur est un piège qui se referme au premier onglet ajouté** ». Et il n'avait
+> corrigé que **les deux onglets qu'il ajoutait**. `mixer`, `automation`,
+> `effets` et `midi-cc` sont restés sur `setCurrentTabIndex(0..3)`.
+
+**Le piège nommé était encore armé quatre fois sur six**, et invisible : les
+quatre numéros étaient JUSTES ce jour-là. Il ne se serait refermé qu'au prochain
+onglet inséré — c'est-à-dire au moment où personne ne le cherche.
+
+**CE QUI EST FAIT.** Les six verbes passent par
+`getTabNames().indexOf(tr(...))` ; un onglet introuvable est **dit**, avec la
+liste de ceux qui existent. Et le relevé dit **ce qu'on a demandé ET ce qu'on a
+obtenu** — « "Effets" demandé, "Effets" obtenu (rang 2 sur 6) » —, l'obtenu lu
+sur la barre d'onglets après le geste : c'est la leçon de D49 et D58, et c'est
+le seul écart qu'une garde peut voir, puisqu'elle ne lit pas le code.
+
+**ATTENDU** (avant la mesure) : les six verbes ouvrent l'onglet qu'ils nomment,
+**dans les deux langues** (« Effets » devient « Effects », « Liste » devient
+« List » — la leçon de D301) ; les six rangs sont **distincts** ; la garde du
+thème couvre huit vues qui existent vraiment.
+
+**MESURÉ** (`tools/onglets-du-dock.sh`, binaire du 18/09 contre celui de D344) :
+
+| mesure | avant (D344) | après |
+|---|---|---|
+| verbes résolus par leur NOM | **2 sur 6** (`liste`, `tempo`) | **6 sur 6** |
+| verbes qui disent ce qu'ils ouvrent | 0 | **6** (demandé et obtenu) |
+| en français | 6 rangs justes, mais 4 par hasard | 6 justes, **par leur nom** |
+| en anglais | idem | 6 justes (« Effects », « List ») |
+| rangs distincts | — | **6** |
+| `tools/onglets-du-dock.sh` | **13 ratés** | **0 raté** |
+
+Attendu tenu. Tests **349** core, 1 303 audio, **300** interchange, 25 clap,
+11 panels. Neuf gardes d'interface : 0 raté.
+
+**ET DEUX CORRECTIONS DE LA GARDE DU THÈME, DONT UNE QUI LA RENDAIT VIDE.**
+(a) `wc -l <<<"$images"` rend **1** sur une chaîne vide : la garde affichait
+« 1 fenêtre(s), 0 claire(s) » alors qu'**aucune image n'avait été écrite**.
+Un compte se vérifie sur le cas vide avant de servir de verdict ; `grep -c .`
+le fait. (b) Le cas « boîte de dialogue » a été **retiré**, et c'est une
+décision : D95 a mesuré qu'« une boîte modale demandée au démarrage d'un banc
+n'est plus là au moment de la photo » — une photo sur sept en D72, aucune sous
+écran verrouillé en D95 —, remesuré ici à **0 sur 5**. C'est pour cela que
+`VSM_BOITE` existe. Le fond d'une boîte reste donc hors de ce balayage, et le
+dire vaut mieux que de garder un verdict qui ne peut pas être vert.
+
+**ET `VSM_VUE=?` ÉNUMÈRE LES VERBES**, fait dans la foulée parce que c'est
+l'erreur qui a ouvert cette phase : l'application disait « commande inconnue »,
+mais il fallait déjà soupçonner la faute pour aller lire le journal. La liste
+vit dans `applyViewCommand`, à côté du code qui la consomme, et **la garde la
+REJOUE** — chacun des 19 verbes sans argument est lancé, et aucun ne doit
+répondre « commande inconnue ». Une liste qu'on ne rejoue pas dérive ; c'est
+ainsi que la garde du thème a demandé « navigateur » et « mixeur » pendant deux
+phases en photographiant l'onglet par défaut sans le savoir.
+
+**Reste nommé, non fait** : `VSM_VUE` n'a toujours aucun verbe pour le
+**navigateur** — il s'ouvre par `VSM_MENU="Navigateur"`, ce qui marche mais
+n'est pas dans la même famille, et la liste des verbes le dit en creux.

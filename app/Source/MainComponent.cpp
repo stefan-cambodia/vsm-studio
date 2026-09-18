@@ -2093,6 +2093,20 @@ void MainComponent::listWindowTextsForCapture() {
 }
 
 void MainComponent::applyViewCommand(const juce::String& nom) {
+    // D349 : `VSM_VUE=?` LES ÉNUMÈRE. Cette phase est née d'une garde qui
+    // demandait « navigateur » et « mixeur » — deux verbes qui n'existent pas
+    // (c'est `mixer`, et le navigateur passe par `VSM_MENU`) : l'application le
+    // disait à l'exécution, mais il fallait déjà soupçonner l'erreur pour aller
+    // lire le journal. La liste vit ICI, à côté des tests qui la consomment,
+    // pour qu'elle ne dérive pas d'un document.
+    if (nom == "?") {
+        std::fputs("VSM_VUE : verbes — arrangement, pianoroll, sans-pistes, sans-rack, "
+                    "sans-mixer, sans-rapport, flottant, historique, spectre, notes, ordre, "
+                    "prises, composer, mixer, automation, effets, midi-cc, liste, tempo, "
+                    "plein:<zone>, agrandir:<zone>, troncon:<n>, retirer-prise:<n>, "
+                    "premier-clip:<n>, piste:<n>, ouvrir-midi:<fichier>\n", stderr);
+        return;
+    }
     // Les MÊMES identifiants que le menu : tester autre chose que ce que
     // l'utilisateur clique ne testerait rien.
     if (nom == "arrangement")      menuItemSelected(kMenuViewArrangement, 5);
@@ -2206,23 +2220,44 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // L'ONGLET DU BAS, pour photographier les effets d'une piste ou son
     // automation : un projet reconstruit avec --reverb-melange porte un
     // insert que personne n'a posé, et il doit se voir là où on le règle.
-    else if (nom == "mixer")       bottomTabs_.setCurrentTabIndex(0);
-    else if (nom == "automation")  bottomTabs_.setCurrentTabIndex(1);
-    else if (nom == "effets")      bottomTabs_.setCurrentTabIndex(2);
-    else if (nom == "midi-cc")     bottomTabs_.setCurrentTabIndex(3);
-    // D32.2 : LES INDEX SONT NOMMÉS PAR LEUR ONGLET, et non écrits en clair.
-    // Insérer « Liste » avant « Tempo » a décalé ce dernier d'un rang, et
-    // `VSM_VUE=tempo` ouvrait la liste : un numéro en dur est un piège qui se
-    // referme au premier onglet ajouté. `getTabNames().indexOf` ne se trompe
-    // pas d'un rang, et rend -1 si l'onglet n'existe pas, ce qui se dit.
-    else if (nom == "liste" || nom == "tempo") {
-        // D301 : le libellé passe par tr(), comme l'onglet lui-même -- écrit en
-        // dur, « Liste » ne trouvait rien sous VSM_LANGUE=en (« List »).
-        const juce::String voulu = (nom == "liste") ? tr(u8"Liste") : tr("Tempo");
+    //
+    // D32.2, PUIS D349 : LES SIX ONGLETS SE DÉSIGNENT PAR LEUR NOM, aucun par
+    // un numéro. D32.2 l'avait écrit — « insérer "Liste" avant "Tempo" a décalé
+    // ce dernier d'un rang, et `VSM_VUE=tempo` ouvrait la liste : un numéro en
+    // dur est un piège qui se referme au premier onglet ajouté » — et n'avait
+    // corrigé QUE les deux onglets qu'il ajoutait : `mixer`, `automation`,
+    // `effets` et `midi-cc` sont restés sur `setCurrentTabIndex(0..3)` pendant
+    // seize phases. Le piège nommé était encore armé quatre fois sur six.
+    //
+    // D301 : le libellé passe par tr(), comme l'onglet lui-même -- écrit en dur,
+    // « Liste » ne trouvait rien sous VSM_LANGUE=en (« List »).
+    else if (nom == "mixer" || nom == "automation" || nom == "effets"
+             || nom == "midi-cc" || nom == "liste" || nom == "tempo") {
+        const juce::String voulu = nom == "mixer"      ? tr("Mixer")
+                                  : nom == "automation" ? tr("Automation")
+                                  : nom == "effets"     ? tr("Effets")
+                                  : nom == "midi-cc"    ? tr("MIDI CC")
+                                  : nom == "liste"      ? tr(u8"Liste")
+                                                        : tr("Tempo");
         const int rang = bottomTabs_.getTabNames().indexOf(voulu);
-        if (rang < 0) std::fputs(("VSM_VUE : onglet introuvable — " + voulu.toStdString() + "\n").c_str(),
-                                  stderr);
-        else bottomTabs_.setCurrentTabIndex(rang);
+        if (rang < 0)
+            std::fputs(("VSM_VUE : onglet introuvable \xe2\x80\x94 " + voulu.toStdString()
+                        + " (onglets : " + bottomTabs_.getTabNames().joinIntoString(", ").toStdString()
+                        + ")\n").c_str(), stderr);
+        else {
+            bottomTabs_.setCurrentTabIndex(rang);
+            // CE QU'ON A DEMANDÉ ET CE QU'ON A OBTENU, tous deux dits, et
+            // l'obtenu lu sur la BARRE D'ONGLETS après le geste — la leçon de
+            // D49 et de D58. Un verbe qui vise un onglet et en ouvre un autre
+            // est exactement le défaut que D32.2 a payé, et il était muet :
+            // c'est cet écart-là qu'une garde peut voir, pas le numéro écrit
+            // dans le code.
+            std::fputs(("VSM_VUE : onglet \xc2\xab " + voulu.toStdString()
+                        + " \xc2\xbb demand\xc3\xa9, \xc2\xab "
+                        + bottomTabs_.getCurrentTabName().toStdString() + " \xc2\xbb obtenu (rang "
+                        + std::to_string(bottomTabs_.getCurrentTabIndex()) + " sur "
+                        + std::to_string(bottomTabs_.getNumTabs()) + ")\n").c_str(), stderr);
+        }
     }
     // CHOISIR UNE PISTE (piste:N, à partir de 0) : le piano roll, le rack et
     // l'onglet Effets suivent la piste choisie, et sans souris seule la

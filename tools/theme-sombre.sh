@@ -7,7 +7,7 @@
 # ainsi pendant toute la vie du logiciel — **2 095 × 22 px à 164 de luminance**,
 # la seule surface claire de l'application.
 #
-# La garde photographie les six onglets du dock du bas et les deux vues du
+# La garde photographie les six onglets du dock du bas sous les deux vues du
 # centre, et passe chaque image à `tools/surfaces-claires.py`, qui cherche une
 # SUITE CONTIGUË de pixels clairs et peu saturés (le texte clair, lui, ne donne
 # que des suites de quelques pixels ; les clips et les accents sont saturés).
@@ -60,9 +60,9 @@ PY
 rates=0
 verdict() { if [ "$2" -ne 0 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
 echo "=== D347 : aucune surface claire dans une application sombre ==="
-for vue in "arrangement,mixeur" "arrangement,liste" "arrangement,automation" \
+for vue in "arrangement,mixer" "arrangement,liste" "arrangement,automation" \
            "arrangement,midi-cc" "arrangement,tempo" "arrangement,effets" \
-           "pianoroll,liste" "arrangement,navigateur"; do
+           "pianoroll,liste" "pianoroll,mixer"; do
     nom="$(tr -c 'a-z0-9' '-' <<<"$vue")"
     # UNE PHOTO QUI NE VIENT PAS N'EST PAS UN DÉFAUT DE THÈME : elle se
     # relance. Enchaînée derrière d'autres gardes qui lancent l'application,
@@ -91,12 +91,28 @@ done
 # sont des fenêtres à part, que `VSM_CAPTURE_PANNEAUX` écrit une par une. Sans
 # cette course, le balayage ne couvrait que le dock — c'est-à-dire l'endroit où
 # le défaut avait été trouvé, et nulle part ailleurs.
-for cas in "historique,spectre,ordre,prises|" "arrangement|perdues"; do
+# LES BOÎTES MODALES N'EN SONT PAS, ET C'EST MESURÉ DEPUIS D95 : « une boîte
+# modale demandée au démarrage d'un banc n'est plus là au moment de la photo »
+# — une photo sur sept en D72, AUCUNE sous un écran verrouillé en D95. Mesuré de
+# nouveau ici : 0 fenêtre photographiée sur 5 courses avec `VSM_BOITE_ESSAI`.
+# C'est pour cela que `VSM_BOITE` existe. Le fond d'une boîte reste donc hors de
+# ce balayage, et le dire vaut mieux que de garder un verdict qui ne peut pas
+# être vert.
+#
+# ET LA PREMIÈRE VERSION DE CETTE GARDE PASSAIT À VIDE : `wc -l <<<"$images"`
+# rend **1** sur une chaîne vide, si bien que « 1 fenêtre(s), 0 claire(s) »
+# s'affichait alors qu'aucune image n'avait été écrite. Un compte se vérifie sur
+# le cas vide avant de servir de verdict.
+for cas in "historique,spectre,ordre,prises|"; do
     vues="${cas%%|*}"
     boite="${cas##*|}"
     maison="$(mktemp -d "$brouillon/home.XXXX")"
     nom="pan-$(tr -c 'a-z0-9' '-' <<<"$vues$boite")"
-    for essai in 1 2; do
+    # TROIS ESSAIS ICI, ET NON DEUX : une boîte modale demandée par
+    # `VSM_BOITE_ESSAI` ne s'ouvre pas à tous les coups (D72, D91 — « une boîte
+    # absente d'une photo ne prouve rien, relancer avant de conclure »), et son
+    # absence n'est pas un défaut de thème.
+    for essai in 1 2 3; do
         maison="$(mktemp -d "$brouillon/home.XXXX")"
         env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=3000 \
             VSM_VUE="sans-rapport,arrangement,$vues" VSM_BOITE_ESSAI="$boite" \
@@ -115,7 +131,7 @@ for cas in "historique,spectre,ordre,prises|" "arrangement|perdues"; do
         c="$(python3 tools/surfaces-claires.py "$img" | sed -n 's/^SURFACES_CLAIRES \([0-9]*\)$/\1/p')"
         [ "${c:-1}" = "0" ] || { mauvaises=$((mauvaises + 1)); echo "       $(basename "$img") : $c surface(s)"; }
     done <<<"$images"
-    verdict "$vues${boite:+ + boîte « $boite »} : $(wc -l <<<"$images") fenêtre(s), $mauvaises claire(s)" \
+    verdict "$vues${boite:+ + boîte « $boite »} : $(grep -c . <<<"$images") fenêtre(s), $mauvaises claire(s)" \
             "$([ "$mauvaises" -eq 0 ] && echo 1 || echo 0)"
 done
 
