@@ -1961,3 +1961,57 @@ Vérifié en listant `~/.local/share/vsm-studio/profils`, où le profil est bien
       | batterie : kick, caisse, charleston | 3 | 2 | **3** |
       | voix : tête, doublage | 2 | 2 | 2 |
 ```
+
+---
+
+## 14. B11 — le témoin de coupure était mesuré trop tôt, et jamais en combinaison (18/09/2026)
+
+**LE DÉFAUT, TEL QUE LE § 13 L'A NOMMÉ.** Le témoin de coupure — « le morceau
+est MEILLEUR sans cette piste », le chiffre que la chaîne publie sans jamais
+couper — est pris DANS la boucle du verdict, contre le projet **tel qu'il est à
+cet instant**. Les pistes jugées après le changent encore. Sur « B4 Wuz Then »,
+les deux témoins comparaient **0,1679** et **0,1691** à **0,1889** — la distance
+d'alors — quand le projet livré valait **0,1688**. L'avis était donc rendu
+contre un état dépassé, et dans ce sens-là il a cessé d'être vrai : le projet
+s'étant amélioré de 10 %, il est devenu plus difficile de faire mieux sans une
+piste. Second manque, du même paragraphe : **couper deux pistes n'est pas la
+somme de deux coupes**, et les combinaisons n'étaient jamais essayées.
+
+**CE QUI EST FAIT** (`analyse/analyzer/vsm_mix_verdict.py`,
+`_rejouer_les_temoins`) :
+
+1. **Une passe finale**, après la boucle. Un rendu pour le projet livré, puis un
+   témoin par piste jouante, **tous comparés à la même référence** — celle du
+   projet qui sort réellement. `MixDecision` porte désormais
+   `muted_distance_final` et `reference_final` à côté des provisoires : le
+   rapport garde les deux, parce que l'écart entre eux est ce que cette phase a
+   corrigé.
+2. **Un avis qui change est DIT.** Quand une piste était signalée au jugement et
+   ne l'est plus sur le projet livré — ou l'inverse —, le journal l'écrit avec
+   les quatre chiffres. Un verdict provisoire qui ne tient plus et qui reste au
+   rapport est une panne muette, exactement ce que ce dépôt s'interdit.
+3. **Les paires, parmi les seules pistes signalées.** Le chiffre publié répond à
+   la question qu'un musicien se pose quand deux pistes sont montrées du doigt :
+   « et si je les coupais toutes les deux ? » On publie la coupe des deux, le
+   meilleur des deux seuls, et si la paire fait mieux.
+
+**LE COÛT EST BORNÉ, ET C'EST UNE DÉCISION.** Un rendu pour le projet final, un
+par piste jouante, puis un par **paire de pistes signalées** — jamais toutes les
+paires : sur dix pistes, ce serait quarante-cinq rendus pour une question que
+personne ne pose. Les signalées se comptent sur les doigts d'une main. Mesuré
+par les tests : sur trois pistes dont deux signalées, la passe finale coûte
+**cinq rendus** (1 projet + 3 témoins + 1 paire) ; avec une seule signalée,
+**trois** et aucune paire.
+
+**CE QUI RESTE À MESURER, ET IL FAUT LE DIRE.** Cette phase est vérifiée par
+**trois tests** (`analyse/tests/test_temoin_de_coupure.py`, 211 → **214**
+Python), le rendu remplacé par une fonction : ce qui est mesuré est la DÉCISION
+de mesurer, pas le moteur — c'est la même convention que les tests de H27.
+**L'effet de bout en bout sur « B4 Wuz Then » n'est pas remesuré** : il demande
+une course complète (plusieurs heures), et la prochaine dira si les deux pistes
+signalées le restent contre 0,1688. Le remède, lui, est en place et ne peut plus
+comparer à un état dépassé.
+
+**LA CHAÎNE NE COUPE TOUJOURS PAS.** Aucune de ces mesures n'agit sur le projet :
+elles s'écrivent au journal et au rapport. Une chaîne autorisée à supprimer une
+piste optimiserait la métrique en abandonnant le morceau.

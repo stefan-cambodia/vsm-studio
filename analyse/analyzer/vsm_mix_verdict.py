@@ -101,6 +101,15 @@ class MixDecision:
     # pourquoi. C'est le repère sans lequel on ne sait pas si la piste rapporte
     # quoi que ce soit.
     muted_distance: Optional[float] = None
+    # B11 : LE MÊME TÉMOIN, REJOUÉ SUR LE PROJET FINAL. Celui du dessus est
+    # mesuré au moment où la piste est jugée, contre un projet que les pistes
+    # SUIVANTES vont encore changer : sur « B4 Wuz Then », les deux témoins
+    # comparaient 0,1679 et 0,1691 à 0,1889 — la distance d'alors — quand le
+    # projet livré valait 0,1688. L'avis « le morceau est meilleur sans cette
+    # piste » était donc rendu contre un état dépassé, et pouvait avoir cessé
+    # d'être vrai. Ces deux champs-ci portent le verdict FINAL.
+    muted_distance_final: Optional[float] = None
+    reference_final: Optional[float] = None
 
 
 # CE QUI N'A PAS CHANGÉ DEPUIS LE TOUR PRÉCÉDENT N'EST PAS REDIT. Le verdict
@@ -451,4 +460,96 @@ def keep_what_helps_the_mix(
                                      meilleur[3], muet))
         derniere_distance = meilleur[1]
 
+    _rejouer_les_temoins(tracks, decisions, distance_du_projet)
     return decisions
+
+
+def _rejouer_les_temoins(tracks: Sequence[ExportTrack], decisions: List[MixDecision],
+                          distance_du_projet) -> None:
+    """B11 -- LE TEMOIN DE COUPURE, REJOUE SUR LE PROJET FINAL, ET PAR PAIRES.
+
+    DEUX DEFAUTS, NOMMES DANS `CDC-detection-multipiste.md` § 13 :
+
+    1. **Le temoin etait mesure trop tot.** Il est pris pendant la boucle,
+       contre le projet TEL QU'IL EST A CET INSTANT ; les pistes jugees apres
+       le changent encore. Sur « B4 Wuz Then », deux pistes se comparaient a
+       0,1889 quand le projet livre valait 0,1688 : un avis rendu contre un
+       etat depasse, qui peut avoir cesse d'etre vrai -- et dans ce sens-la, il
+       a cesse de l'etre (le projet s'est ameliore de 10 %, donc il est plus
+       difficile de faire mieux sans une piste).
+    2. **Couper deux pistes n'est pas la somme de deux coupes.** Les
+       combinaisons n'etaient jamais essayees. Deux pistes qui se recouvrent
+       peuvent chacune paraitre inutile sans que les couper toutes les deux
+       aide -- ou l'inverse.
+
+    CE QUE CETTE FONCTION NE FAIT PAS : couper. Elle mesure et publie, comme le
+    temoin simple. La decision reste humaine, et la regle du depot est que la
+    chaine ne coupe jamais elle-meme.
+
+    LE COUT EST BORNE : un rendu pour le projet final, un par piste jouante,
+    puis un par paire de pistes SIGNALEES (jamais toutes les paires -- sur dix
+    pistes, ce serait quarante-cinq rendus pour une question que personne ne
+    pose). Les signalees se comptent sur les doigts d'une main.
+    """
+    jouantes = [t for t in tracks if piste_jouante(t)]
+    if not jouantes:
+        return
+    par_nom = {t.name: t for t in jouantes}
+    reference = distance_du_projet()
+
+    signalees: List[Tuple[str, float]] = []
+    for decision in decisions:
+        piste = par_nom.get(decision.track)
+        if piste is None:
+            continue
+        muet = _temoin_de_coupure(piste, distance_du_projet)
+        decision.muted_distance_final = muet
+        decision.reference_final = reference
+        # CE QUI A CHANGE D'AVIS EST DIT, et c'est la moitie de l'interet de
+        # cette passe : un verdict provisoire qui ne tient plus est une panne
+        # muette s'il reste au rapport sans etre corrige.
+        avant = decision.muted_distance
+        provisoire = avant is not None and avant < decision.distance_kept - 1e-6
+        final = muet < reference - 1e-6
+        if provisoire != final and avant is not None:
+            print(f"      {decision.track:8s} : le témoin de coupure CHANGE D'AVIS sur le projet "
+                  f"final — « meilleur sans » au jugement "
+                  f"({avant:.4f} contre {decision.distance_kept:.4f}) : "
+                  f"{'OUI' if provisoire else 'non'} ; sur le projet livré "
+                  f"({muet:.4f} contre {reference:.4f}) : "
+                  f"{'OUI' if final else 'non'}.")
+        if final:
+            signalees.append((decision.track, muet))
+            # LE NOM NU, ET NON « … (final) » : `_dire_si_meilleur_sans` tait
+            # ce qui n'a pas bougé depuis le dernier tour (la regle ecrite au
+            # dessus de `_deja_dit`), et un suffixe en ferait une autre piste —
+            # la meme phrase avec les memes chiffres sortirait deux fois. Ainsi,
+            # la ligne finale ne parait que si les chiffres ont CHANGE.
+            _dire_si_meilleur_sans(decision.track, muet, reference)
+
+    if len(signalees) < 2:
+        return
+    # LES PAIRES, PARMI LES SEULES SIGNALEES. Le chiffre publie repond a la
+    # question qu'un musicien se pose quand deux pistes sont montrees du doigt :
+    # « et si je les coupais toutes les deux ? »
+    print(f"      témoin de coupure : {len(signalees)} piste(s) signalée(s), "
+          f"{len(signalees) * (len(signalees) - 1) // 2} paire(s) essayée(s)")
+    for i in range(len(signalees)):
+        for j in range(i + 1, len(signalees)):
+            a_nom, a_muet = signalees[i]
+            b_nom, b_muet = signalees[j]
+            pa, pb = par_nom[a_nom], par_nom[b_nom]
+            va, vb = float(pa.volume), float(pb.volume)
+            pa.volume = 0.0
+            pb.volume = 0.0
+            ensemble = distance_du_projet()
+            pa.volume, pb.volume = va, vb
+            # LA SOMME DES DEUX COUPES N'EST PAS LA COUPE DES DEUX : on publie
+            # l'ecart entre ce qu'on aurait predit (le meilleur des deux seuls)
+            # et ce qu'on mesure, parce que c'est lui qui dit si la question
+            # valait la peine d'etre posee.
+            attendu = min(a_muet, b_muet)
+            mieux = "la paire fait MIEUX" if ensemble < attendu - 1e-6 else "la paire ne fait pas mieux"
+            print(f"      {a_nom} + {b_nom} : sans les deux {ensemble:.4f}, "
+                  f"meilleur des deux seuls {attendu:.4f}, "
+                  f"projet livré {reference:.4f} — {mieux} que la meilleure coupe seule.")

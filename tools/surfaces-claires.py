@@ -29,21 +29,29 @@ import sys
 import numpy as np
 from PIL import Image
 
-args = [a for a in sys.argv[1:] if not a.startswith("--")]
-opts = dict(zip([a for a in sys.argv[1:] if a.startswith("--")],
-                [sys.argv[i + 1] for i, a in enumerate(sys.argv[1:], start=1) if a.startswith("--")]))
+args: list[str] = []
+opts: dict[str, str] = {}
+reste = sys.argv[1:]
+while reste:
+    jeton = reste.pop(0)
+    if jeton.startswith("--"):
+        opts[jeton] = reste.pop(0) if reste else ""
+    else:
+        args.append(jeton)
 if not args:
     print(__doc__)
     raise SystemExit(2)
-im_largeur = Image.open(args[0]).width if args else 0
-suite_min = int(opts.get("--suite", max(80, int(im_largeur * 0.4))))
-hauteur_min = int(opts.get("--hauteur", 8))
 
 try:
     im = np.asarray(Image.open(args[0]).convert("RGB")).astype(int)
-except Exception as e:                                    # noqa: BLE001
-    print(f"image illisible : {e}")
-    raise SystemExit(2)
+except OSError as erreur:
+    print(f"image illisible : {erreur}")
+    raise SystemExit(2) from erreur
+
+# LE SEUIL EST RELATIF À LA LARGEUR DE CETTE IMAGE-CI, lue une fois l'image
+# ouverte : 200 px font 9 % d'une fenêtre entière et la moitié d'un panneau.
+suite_min = int(opts.get("--suite") or max(80, int(im.shape[1] * 0.4)))
+hauteur_min = int(opts.get("--hauteur") or 8)
 
 H, W, _ = im.shape
 lum = 0.2126 * im[..., 0] + 0.7152 * im[..., 1] + 0.0722 * im[..., 2]
@@ -61,18 +69,15 @@ def plus_longue_suite(ligne):
 
 
 rangees = [y for y in range(H) if plus_longue_suite(gris[y]) >= suite_min]
-bandes = []
-debut = None
-precedent = None
+# LES RANGÉES RETENUES, GROUPÉES EN BANDES CONTIGUËS. Écrit sans sentinelle
+# `None` : une borne qui vaut « rien » finit par être additionnée (mypy le dit,
+# et c'est aussi la faute que D346 a payée à l'exécution avec `INT_MIN`).
+bandes: list[tuple[int, int]] = []
 for y in rangees:
-    if debut is None:
-        debut = y
-    elif y != precedent + 1:
-        bandes.append((debut, precedent))
-        debut = y
-    precedent = y
-if debut is not None:
-    bandes.append((debut, precedent))
+    if bandes and y == bandes[-1][1] + 1:
+        bandes[-1] = (bandes[-1][0], y)
+    else:
+        bandes.append((y, y))
 
 surfaces = [(a, b) for a, b in bandes if b - a + 1 >= hauteur_min]
 for a, b in surfaces:

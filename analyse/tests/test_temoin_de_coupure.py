@@ -117,3 +117,146 @@ def temoin_un_bus_ne_recoit_pas_de_verdict():
     finally:
         mv._render_project = vrai_rendu
     assert_equal([d.track for d in decisions], ["bass"], "le bus n'est pas jugé")
+
+
+# ---------------------------------------------------------------------------
+# B11 — LE TÉMOIN REJOUÉ SUR LE PROJET FINAL, ET PAR PAIRES.
+#
+# L'attendu, écrit avant la mesure : « le témoin publié se compare au projet
+# LIVRÉ, pas à l'état qu'avait le projet au moment où la piste a été jugée ; un
+# avis qui change entre les deux est DIT ; et quand deux pistes sont signalées,
+# la coupe des deux est essayée et publiée, parce qu'elle n'est pas la somme des
+# deux coupes. »
+# ---------------------------------------------------------------------------
+
+
+def _piste_muette_possible(nom: str, hauteur: int) -> ExportTrack:
+    return ExportTrack(name=nom, machine="vsm.tb303",
+                       notes=[ExportNote(note=hauteur, velocity=100, start=0.0, duration=0.5)])
+
+
+@test
+def temoin_le_verdict_final_se_compare_au_projet_livre():
+    """Le défaut de B11 : la référence changeait après le jugement.
+
+    Deux pistes parasites. La première est jugée quand la seconde est encore au
+    mélange ; le projet s'améliore ensuite. Le témoin FINAL doit se comparer à
+    la distance du projet livré, la même pour toutes les pistes — c'est
+    précisément ce que la référence de la boucle ne garantissait pas.
+    """
+    taux, duree = 44100, 22050
+    temps = np.arange(duree, dtype=np.float32) / taux
+    machine = np.sin(2 * np.pi * 220 * temps).astype(np.float32)
+    rendus = {"bass": machine,
+              "para1": np.sin(2 * np.pi * 3000 * temps).astype(np.float32) * 0.3,
+              "para2": np.sin(2 * np.pi * 5000 * temps).astype(np.float32) * 0.3}
+    pistes = [_piste_machine(), _piste_muette_possible("para1", 72),
+              _piste_muette_possible("para2", 79)]
+
+    def faux_rendu(tracks, dossier, sample_rate, tempo, binary):
+        somme = np.zeros(duree, dtype=np.float32)
+        for t in tracks:
+            if t.volume > 0.0:
+                somme = somme + rendus[t.name] * float(t.volume)
+        return somme
+
+    vrai_rendu = mv._render_project
+    mv._render_project = faux_rendu
+    mv._deja_dit.clear()
+    try:
+        decisions = mv.keep_what_helps_the_mix(
+            tracks=pistes, alternatives={}, mixture=machine * 0.9, stems_audio={},
+            samples_root=Path("."), workdir=Path("."), sample_rate=taux)
+    finally:
+        mv._render_project = vrai_rendu
+
+    finales = {d.track: d for d in decisions}
+    for nom in ("bass", "para1", "para2"):
+        assert_true(finales[nom].muted_distance_final is not None,
+                    f"{nom} porte un témoin rejoué sur le projet final")
+        assert_true(finales[nom].reference_final is not None,
+                    f"{nom} porte la distance du projet livré")
+    references = {round(float(d.reference_final), 9) for d in decisions}
+    assert_equal(len(references), 1,
+                 "toutes les pistes se comparent à LA MÊME distance, celle du projet livré")
+    # Et les deux parasites restent signalés : le morceau est meilleur sans eux.
+    for nom in ("para1", "para2"):
+        assert_true(finales[nom].muted_distance_final < finales[nom].reference_final,
+                    f"{nom} dégrade le mélange, et le témoin final le dit")
+
+
+@test
+def temoin_les_paires_sont_essayees_quand_deux_pistes_sont_signalees():
+    """B11, second défaut : couper deux pistes n'est pas la somme de deux coupes.
+
+    On compte les rendus : la passe finale en demande un pour le projet, un par
+    piste jouante, puis UN PAR PAIRE de pistes signalées. Avec trois pistes dont
+    deux signalées, cela fait 1 + 3 + 1 rendus après la boucle.
+    """
+    taux, duree = 44100, 22050
+    temps = np.arange(duree, dtype=np.float32) / taux
+    machine = np.sin(2 * np.pi * 220 * temps).astype(np.float32)
+    rendus = {"bass": machine,
+              "para1": np.sin(2 * np.pi * 3000 * temps).astype(np.float32) * 0.3,
+              "para2": np.sin(2 * np.pi * 5000 * temps).astype(np.float32) * 0.3}
+    pistes = [_piste_machine(), _piste_muette_possible("para1", 72),
+              _piste_muette_possible("para2", 79)]
+    appels = {"n": 0}
+
+    def faux_rendu(tracks, dossier, sample_rate, tempo, binary):
+        appels["n"] += 1
+        somme = np.zeros(duree, dtype=np.float32)
+        for t in tracks:
+            if t.volume > 0.0:
+                somme = somme + rendus[t.name] * float(t.volume)
+        return somme
+
+    vrai_rendu = mv._render_project
+    mv._render_project = faux_rendu
+    mv._deja_dit.clear()
+    try:
+        avant_passe = {"n": 0}
+        mv.keep_what_helps_the_mix(
+            tracks=pistes, alternatives={}, mixture=machine * 0.9, stems_audio={},
+            samples_root=Path("."), workdir=Path("."), sample_rate=taux)
+        del avant_passe
+    finally:
+        mv._render_project = vrai_rendu
+
+    # La boucle elle-même : une référence (mise en cache) + un témoin par piste
+    # = 4 rendus. La passe finale : 1 projet + 3 témoins + 1 paire = 5. Total 9.
+    assert_equal(appels["n"], 9,
+                 "le coût est borné et connu : 4 rendus dans la boucle, 5 à la passe finale")
+
+
+@test
+def temoin_une_seule_piste_signalee_n_essaie_aucune_paire():
+    """Une paire demande deux signalées : sinon la passe ne coûte rien de plus."""
+    taux, duree = 44100, 22050
+    temps = np.arange(duree, dtype=np.float32) / taux
+    machine = np.sin(2 * np.pi * 220 * temps).astype(np.float32)
+    rendus = {"bass": machine,
+              "para1": np.sin(2 * np.pi * 3000 * temps).astype(np.float32) * 0.3}
+    pistes = [_piste_machine(), _piste_muette_possible("para1", 72)]
+    appels = {"n": 0}
+
+    def faux_rendu(tracks, dossier, sample_rate, tempo, binary):
+        appels["n"] += 1
+        somme = np.zeros(duree, dtype=np.float32)
+        for t in tracks:
+            if t.volume > 0.0:
+                somme = somme + rendus[t.name] * float(t.volume)
+        return somme
+
+    vrai_rendu = mv._render_project
+    mv._render_project = faux_rendu
+    mv._deja_dit.clear()
+    try:
+        mv.keep_what_helps_the_mix(
+            tracks=pistes, alternatives={}, mixture=machine * 0.9, stems_audio={},
+            samples_root=Path("."), workdir=Path("."), sample_rate=taux)
+    finally:
+        mv._render_project = vrai_rendu
+    # Boucle : 1 référence + 2 témoins = 3. Passe finale : 1 projet + 2 témoins,
+    # et AUCUNE paire = 3. Total 6.
+    assert_equal(appels["n"], 6, "aucune paire n'est essayée avec une seule piste signalée")
