@@ -1168,6 +1168,10 @@ repère du 0 dB : un relevé dit ce qui est réservé, la photo dit ce qui est p
 miniature — l'ambitus **brut** du clip et celui **retenu**, plus le nombre de
 notes posées sur une rangée de bord (D343). Un ambitus ne se photographie pas :
 deux clips très différents donnent la même bande de traits.
+`tools/theme-sombre.sh` photographie huit vues et passe chaque image à
+`tools/surfaces-claires.py`, qui cherche les surfaces restées au gris clair par
+défaut de JUCE (D347) : un fond qu'on oublie de colorer ne casse rien, ne fait
+échouer aucun test, et ne se voit que sur une photo.
 `VSM_AUTOMATION=1` écrit ce que la lane d'automation montre : le paramètre
 choisi, son unité, ses bornes, l'échelle employée (log ou linéaire) et le nombre
 de points (D345). L'échelle d'une lane ne se photographie pas — linéaire ou

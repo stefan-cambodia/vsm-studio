@@ -48,6 +48,23 @@ EventListComponent::EventListComponent() {
     table_.setHeaderHeight(22);
     table_.setRowHeight(20);
     table_.setColour(juce::ListBox::backgroundColourId, Palette::panel);
+    // D347 : L'EN-TÊTE PORTE LES COULEURS DU LOGICIEL. `TableHeaderComponent`
+    // garde sinon le gris clair de `LookAndFeel_V4` : 2 095 x 22 px de clair au
+    // milieu d'une application sombre — mesuré 164 de luminance moyenne sur la
+    // photo, la SEULE surface claire du logiciel, et personne ne l'avait vue
+    // parce qu'un fond qu'on oublie ne casse rien et ne fait échouer aucun test.
+    // `tools/surfaces-claires.py` la cherche désormais sur n'importe quelle photo.
+    auto& entete = table_.getHeader();
+    // `gridLineStrong` ET NON `panelRaised` : les rangées alternent `panel`
+    // (0x1f1f24) et le même éclairci d'un seizième (0x2a2a2e), et `panelRaised`
+    // tombe ENTRE LES DEUX — l'en-tête se confondait avec une rangée sur deux
+    // (1,05 de contraste). Mesuré : 1,46 contre la rangée paire et 1,27 contre
+    // l'impaire, 9,02 avec son texte.
+    entete.setColour(juce::TableHeaderComponent::backgroundColourId, Palette::gridLineStrong);
+    entete.setColour(juce::TableHeaderComponent::outlineColourId, Palette::border);
+    entete.setColour(juce::TableHeaderComponent::textColourId, Palette::textPrimary);
+    entete.setColour(juce::TableHeaderComponent::highlightColourId,
+                      Palette::accentAmber.withAlpha(0.25f));
     addAndMakeVisible(table_);
 }
 

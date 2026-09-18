@@ -28362,3 +28362,58 @@ d'interface : 0 raté.
 une graduation régulière (quarts, ou pas « rond ») lui rendrait le même service ;
 non mesuré, faute d'un cas où l'absence gêne (une plage linéaire s'interpole à
 l'œil, c'est justement ce qu'une échelle logarithmique interdit).
+
+### Phase D347 — la seule surface claire de l'application était l'en-tête du tableau d'événements (18/09/2026)
+
+**D'OÙ ELLE VIENT — UN BALAYAGE, ET NON UN REGARD.** En photographiant les
+onglets du dock du bas l'un après l'autre, l'onglet *Liste* tranche : une bande
+de **2 095 × 22 px de gris clair**, texte noir, au milieu d'une application
+sombre. C'est le défaut de `juce::TableHeaderComponent` — le seul composant du
+logiciel dont les couleurs n'avaient jamais été posées, qui garde donc celles de
+`LookAndFeel_V4`. Il a tenu toute la vie du logiciel : **un fond qu'on oublie ne
+casse rien, ne fait échouer aucun test, et ne se voit que sur une photo.**
+
+**CE QUI EST FAIT.**
+
+- L'en-tête porte les couleurs du logiciel (fond, contour, texte, surbrillance).
+  **`gridLineStrong` et non `panelRaised`**, et c'est une mesure qui l'a décidé :
+  les rangées alternent `panel` (0x1f1f24) et le même éclairci d'un seizième
+  (≈0x2a2a2e), et `panelRaised` tombe ENTRE LES DEUX — l'en-tête se serait
+  confondu avec une rangée sur deux (**1,05** de contraste). `gridLineStrong`
+  donne **1,46** contre la rangée paire, **1,27** contre l'impaire, et **9,02**
+  avec son texte.
+- **`tools/surfaces-claires.py`** : le balayage, écrit pour durer. Il cherche une
+  **SUITE CONTIGUË** de pixels clairs et peu saturés — un texte clair ne donne
+  que des suites de quelques pixels, les clips et les accents sont saturés et ne
+  comptent pas —, groupe les rangées en bandes, et signale toute bande d'au moins
+  huit pixels de haut.
+- **`tools/theme-sombre.sh`** : la garde, qui photographie huit vues (les six
+  onglets du dock, le navigateur, et la liste sous le piano roll) et passe chaque
+  image au balayage.
+
+**ATTENDU** (avant la mesure) : **0 surface claire** sur les huit vues ; le texte
+de l'en-tête au moins aussi lisible qu'avant (contraste ≥ 8,34, celui du noir sur
+le gris de JUCE) ; cinq suites de tests vertes ; les sept autres gardes
+d'interface 0 raté.
+
+**MESURÉ** (binaire du 18/09 contre celui de D344, mêmes huit vues) :
+
+| mesure | avant (D344) | après |
+|---|---|---|
+| surfaces claires, 8 vues | **2** (l'onglet *Liste*, sous l'arrangement ET sous le piano roll) | **0** |
+| la bande | y 1064-1084, **21 px**, #a3a3a5, luminance **164** | — |
+| contraste texte / fond de l'en-tête | 8,34 (noir sur gris clair) | **12,05** puis **9,02** (le fond retenu) |
+| contraste en-tête / rangée paire | — | **1,46** (1,09 avec `panelRaised`, écarté) |
+| `tools/theme-sombre.sh` | **2 ratés**, et sur les deux vues qui portent la liste | **0 raté** |
+
+Attendu tenu. **La garde a été vue rouge sur le binaire d'hier, et rouge AU BON
+ENDROIT** : les six autres vues y passent, les deux qui montrent la liste
+échouent — elle désigne le défaut, elle ne signale pas « quelque chose ».
+Tests **343** core, 1 303 audio, **300** interchange, 25 clap, 11 panels. Huit
+gardes d'interface : 0 raté.
+
+**Reste nommé, non fait** : le balayage ne couvre pas les **fenêtres flottantes**
+ni les **boîtes de dialogue** — `VSM_CAPTURE` ne photographie que la fenêtre
+socle, et `VSM_CAPTURE_PANNEAUX` écrit une image par panneau que la garde ne lit
+pas encore. Les quinze fenêtres flottantes ont été relues en D128 pour leur
+TEXTE, jamais pour leurs FONDS.
