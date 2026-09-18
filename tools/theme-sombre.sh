@@ -78,5 +78,34 @@ for vue in "arrangement,mixeur" "arrangement,liste" "arrangement,automation" \
     [ "${compte:-1}" = "0" ] || grep '^SURFACE CLAIRE' <<<"$sortie" | sed 's/^/       /'
 done
 
+# D348 : ET LES FENÊTRES QUI NE SONT PAS LA FENÊTRE SOCLE. `VSM_CAPTURE` ne
+# photographie que celle-ci ; les panneaux flottants et les boîtes de dialogue
+# sont des fenêtres à part, que `VSM_CAPTURE_PANNEAUX` écrit une par une. Sans
+# cette course, le balayage ne couvrait que le dock — c'est-à-dire l'endroit où
+# le défaut avait été trouvé, et nulle part ailleurs.
+for cas in "historique,spectre,ordre,prises|" "arrangement|perdues"; do
+    vues="${cas%%|*}"
+    boite="${cas##*|}"
+    maison="$(mktemp -d "$brouillon/home.XXXX")"
+    nom="pan-$(tr -c 'a-z0-9' '-' <<<"$vues$boite")"
+    env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=3000 \
+        VSM_VUE="sans-rapport,arrangement,$vues" VSM_BOITE_ESSAI="$boite" \
+        VSM_CAPTURE_PANNEAUX=1 VSM_CAPTURE="$brouillon/$nom.png" \
+        timeout 45 "$BIN" > "$brouillon/$nom.txt" 2>&1
+    images="$(sed -n 's/^VSM_CAPTURE_PANNEAUX : //p' "$brouillon/$nom.txt")"
+    if [ -z "$images" ]; then
+        verdict "$vues${boite:+ + boîte « $boite »} : au moins une fenêtre photographiée" 0
+        continue
+    fi
+    mauvaises=0
+    while IFS= read -r img; do
+        [ -f "$img" ] || continue
+        c="$(python3 tools/surfaces-claires.py "$img" | sed -n 's/^SURFACES_CLAIRES \([0-9]*\)$/\1/p')"
+        [ "${c:-1}" = "0" ] || { mauvaises=$((mauvaises + 1)); echo "       $(basename "$img") : $c surface(s)"; }
+    done <<<"$images"
+    verdict "$vues${boite:+ + boîte « $boite »} : $(wc -l <<<"$images") fenêtre(s), $mauvaises claire(s)" \
+            "$([ "$mauvaises" -eq 0 ] && echo 1 || echo 0)"
+done
+
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

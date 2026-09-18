@@ -28412,8 +28412,22 @@ ENDROIT** : les six autres vues y passent, les deux qui montrent la liste
 Tests **343** core, 1 303 audio, **300** interchange, 25 clap, 11 panels. Huit
 gardes d'interface : 0 raté.
 
-**Reste nommé, non fait** : le balayage ne couvre pas les **fenêtres flottantes**
-ni les **boîtes de dialogue** — `VSM_CAPTURE` ne photographie que la fenêtre
-socle, et `VSM_CAPTURE_PANNEAUX` écrit une image par panneau que la garde ne lit
-pas encore. Les quinze fenêtres flottantes ont été relues en D128 pour leur
-TEXTE, jamais pour leurs FONDS.
+**LE « RESTE NOMMÉ, NON FAIT » A ÉTÉ FERMÉ DANS L'HEURE, ET PAR LA MESURE.** Il
+disait : « le balayage ne couvre pas les fenêtres flottantes ni les boîtes de
+dialogue — `VSM_CAPTURE` ne photographie que la fenêtre socle ». La garde lit
+désormais aussi ce que `VSM_CAPTURE_PANNEAUX` écrit, une image par fenêtre :
+**quatre panneaux flottants** (historique, spectre, ordre de jeu, assemblage des
+prises) et **une boîte de dialogue** (« notes perdues »), soit **dix vues en
+tout**. Résultat : **0 surface claire** — il n'y avait rien à corriger là, et
+c'est un résultat, pas une absence de travail. Le seuil du balayage a été
+corrigé au passage : une suite de **200 px fixes** fait 9 % de la fenêtre entière
+mais **la moitié d'un panneau de 400 px**, si bien qu'il aurait laissé passer sur
+un petit panneau ce qu'il attrapait sur la fenêtre ; il est désormais **relatif**
+(40 % de la largeur, au moins 80 px). **Six façades de machines** (dx7,
+jupiter8, drums, organ, granular, multisample), dessinées par un TOUT AUTRE
+`LookAndFeel`, ont été balayées à la main : 0 surface claire également.
+
+**Reste nommé, non fait** : les 57 autres façades ne sont pas balayées —
+`tools/balayer-facades.sh` les parcourt déjà pour le plancher de 18 px et
+pourrait porter ce contrôle, mais il coûte soixante-trois lancements et la garde
+du thème doit rester courte.

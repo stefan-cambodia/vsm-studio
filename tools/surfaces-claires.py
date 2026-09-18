@@ -11,7 +11,10 @@ CE QUE LE SCRIPT CHERCHE, ET POURQUOI IL NE COMPTE PAS LE TEXTE. Une surface
 claire est une SUITE CONTIGUË de pixels clairs et peu saturés ; un texte clair,
 lui, donne des suites de quelques pixels seulement. On mesure donc, par rangée, la
 PLUS LONGUE suite de pixels « gris clair » (luminance > 130, saturation < 30), et
-l'on ne retient que les rangées où elle dépasse `--suite` pixels (200 par défaut).
+l'on ne retient que les rangées où elle dépasse `--suite` pixels — **40 % de la
+largeur de l'image, au moins 80 px**, et non un nombre fixe : 200 px font 9 % de
+la fenêtre entière mais la MOITIÉ d'un panneau flottant de 400 px, et le seuil
+fixe laissait donc passer sur un petit panneau ce qu'il attrapait sur la fenêtre.
 Les rangées retenues sont groupées en bandes ; une bande d'au moins `--hauteur`
 pixels (8 par défaut) est une SURFACE, et le script la signale.
 
@@ -32,7 +35,8 @@ opts = dict(zip([a for a in sys.argv[1:] if a.startswith("--")],
 if not args:
     print(__doc__)
     raise SystemExit(2)
-suite_min = int(opts.get("--suite", 200))
+im_largeur = Image.open(args[0]).width if args else 0
+suite_min = int(opts.get("--suite", max(80, int(im_largeur * 0.4))))
 hauteur_min = int(opts.get("--hauteur", 8))
 
 try:
