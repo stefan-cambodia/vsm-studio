@@ -28591,3 +28591,34 @@ phases en photographiant l'onglet par défaut sans le savoir.
 **Reste nommé, non fait** : `VSM_VUE` n'a toujours aucun verbe pour le
 **navigateur** — il s'ouvre par `VSM_MENU="Navigateur"`, ce qui marche mais
 n'est pas dans la même famille, et la liste des verbes le dit en creux.
+
+### Phase D350 — le navigateur n'était pas un verbe de vue, donc aucune garde de vues ne le couvrait (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D349.** Le navigateur
+s'ouvrait par `VSM_MENU="Navigateur"`, ce qui marche — et le laissait **hors de
+la famille des verbes de vue**. Conséquence mesurée la même journée : la garde
+du thème (D347) a demandé `navigateur` comme une vue, ne l'a pas obtenu, et a
+**photographié l'onglet par défaut deux fois** sans que rien ne le dise. Une
+fenêtre qui s'ouvre par un menu et pas par un verbe est une fenêtre qu'aucune
+garde de vues ne couvre.
+
+**CE QUI EST FAIT.** `VSM_VUE=navigateur` ouvre le navigateur, par la même
+entrée de menu que la souris (`kMenuViewBrowser`) ; il entre dans la liste de
+`VSM_VUE=?`, donc dans le rejeu que la garde de D349 fait de cette liste. Et
+`tools/theme-sombre.sh` balaie désormais **sa fenêtre**.
+
+**ATTENDU** (avant la mesure) : `VSM_VUE=navigateur` n'est plus « commande
+inconnue » ; `VSM_CAPTURE_PANNEAUX` écrit **une** image de plus, celle du
+navigateur ; **0 surface claire** dessus ; la garde de D349 rejoue **20** verbes
+sans argument (19 + le neuf) sans aucun inconnu.
+
+**MESURÉ** :
+
+| mesure | avant | après |
+|---|---|---|
+| `VSM_VUE=navigateur` | « commande inconnue — rien n'a été fait » | ouvre le navigateur |
+| fenêtres balayées par `tools/theme-sombre.sh` | 8 vues + 4 panneaux | 8 vues + 4 panneaux + **le navigateur** |
+| surfaces claires du navigateur | *jamais mesurées* | **0** |
+| verbes rejoués par `tools/onglets-du-dock.sh` | 19 | **20**, 0 inconnu |
+
+Attendu tenu. Neuf gardes d'interface : 0 raté.

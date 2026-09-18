@@ -1177,7 +1177,7 @@ repère du 0 dB : un relevé dit ce qui est réservé, la photo dit ce qui est p
 miniature — l'ambitus **brut** du clip et celui **retenu**, plus le nombre de
 notes posées sur une rangée de bord (D343). Un ambitus ne se photographie pas :
 deux clips très différents donnent la même bande de traits.
-`VSM_VUE=?` énumère les verbes de vue (D349) : l'application disait déjà
+`VSM_VUE=?` énumère les verbes de vue (D349, D350 — le navigateur en est un depuis) : l'application disait déjà
 « commande inconnue », mais il fallait soupçonner la faute pour aller lire le
 journal — deux gardes ont demandé « navigateur » et « mixeur » sans le savoir.
 `VSM_LISTE_EDITER=ligne:colonne:valeur[;…]` modifie une case de la liste

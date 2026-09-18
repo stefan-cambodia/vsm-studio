@@ -2102,7 +2102,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     if (nom == "?") {
         std::fputs("VSM_VUE : verbes — arrangement, pianoroll, sans-pistes, sans-rack, "
                     "sans-mixer, sans-rapport, flottant, historique, spectre, notes, ordre, "
-                    "prises, composer, mixer, automation, effets, midi-cc, liste, tempo, "
+                    "prises, navigateur, composer, mixer, automation, effets, midi-cc, liste, tempo, "
                     "plein:<zone>, agrandir:<zone>, troncon:<n>, retirer-prise:<n>, "
                     "premier-clip:<n>, piste:<n>, ouvrir-midi:<fichier>\n", stderr);
         return;
@@ -2139,6 +2139,13 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         if (zone >= 0) basculerZoneAgrandie(zone);
         else std::fputs("VSM_VUE : zone inconnue (pistes, rack, bas, centre)\n", stderr);
     }
+    // D350 : `navigateur` — le « reste nommé, non fait » de D349. Le navigateur
+    // s'ouvrait par `VSM_MENU="Navigateur"`, ce qui marche mais le laisse hors
+    // de la famille des verbes de vue : la garde du thème l'a demandé comme une
+    // vue, ne l'a pas obtenu, et a photographié l'onglet par défaut deux fois
+    // sans que rien ne le dise. Une fenêtre qui s'ouvre par un menu et pas par
+    // un verbe est une fenêtre qu'aucune garde de vues ne couvre.
+    else if (nom == "navigateur")  menuItemSelected(kMenuViewBrowser, 5);
     else if (nom == "ordre")       menuItemSelected(kMenuViewPlayOrder, 5);     // D18.4
     else if (nom == "prises")      menuItemSelected(kMenuRecordCompTakes, 3);  // D18.2
     // D55.2 : poser un tronçon, composer, fermer, et surtout COMPTER ce que le

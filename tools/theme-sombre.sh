@@ -103,7 +103,7 @@ done
 # rend **1** sur une chaîne vide, si bien que « 1 fenêtre(s), 0 claire(s) »
 # s'affichait alors qu'aucune image n'avait été écrite. Un compte se vérifie sur
 # le cas vide avant de servir de verdict.
-for cas in "historique,spectre,ordre,prises|"; do
+for cas in "historique,spectre,ordre,prises|" "navigateur|"; do
     vues="${cas%%|*}"
     boite="${cas##*|}"
     maison="$(mktemp -d "$brouillon/home.XXXX")"
