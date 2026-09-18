@@ -316,6 +316,30 @@ public:
         // chose que des curseurs : rien ne les atteignait.
         if (geste.startsWithIgnoreCase("cliquer:"))
             return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D356 : exporter-midi:<fichier> -- L'EXPORT COMME GESTE, pour qu'un geste
+        // DIFFÉRÉ puisse enfin se mesurer sur le fichier écrit.
+        //
+        // POURQUOI IL A FALLU L'ÉCRIRE. Tous les verbes d'export agissent au
+        // DÉMARRAGE (`VSM_EXPORT_MIDI` et les siens, Main.cpp), et D354 a dû
+        // poser un AVERTISSEMENT parce qu'un `VSM_GESTE_APRES` combiné à l'un
+        // d'eux écrit l'état d'AVANT le geste. L'avertissement dit la panne ; il
+        // ne la répare pas, et le seul chemin qui restait — le bouton de la barre
+        // d'outils, qui exige une sélection posée avant lui — n'était mesurable
+        // par aucun fichier. Ici, l'export est un geste comme un autre : il prend
+        // son rang dans la file de `VSM_GESTE_APRES`, donc APRÈS ce qui le
+        // précède. Le chemin réel est le même que celui du menu Fichier
+        // (`exportProjectMidiForCapture`) : deux chemins d'export finiraient par
+        // ne plus écrire la même chose.
+        if (geste.startsWithIgnoreCase("exporter-midi:")) {
+            const juce::File cible = juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim());
+            const bool fait = exportProjectMidiForCapture(cible);
+            std::fputs((juce::String("VSM_EXPORT_MIDI : ") + cible.getFullPathName()
+                        + (fait ? juce::String::fromUTF8(" \xe2\x80\x94 \xc3\xa9" "crit (geste)")
+                                : juce::String::fromUTF8(" \xe2\x80\x94 REFUS\xc3\x89 (geste)"))
+                        + "\n").toRawUTF8(), stderr);
+            return fait;
+        }
         return false;
     }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite

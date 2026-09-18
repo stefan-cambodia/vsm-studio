@@ -1226,6 +1226,7 @@ chose sans que rien ne le dise. Ces deux variables sont lues **après**
 `VSM_MENU`, dans cet ordre : monter la scène par les menus, puis agir. L'ordre
 a été payé deux fois — placés avant, ils agissaient sur une liste d'une seule
 piste et la capture montrait un résultat vraisemblable et faux.
+`VSM_GESTE_APRES=<ms>:exporter-midi:<fichier>` exporte le projet **comme un geste**, à son rang dans la file (D356) : tous les autres verbes d'export agissent au démarrage, si bien qu'un geste différé — le seul moyen de presser un bouton qui exige une sélection posée avant lui — n'était mesurable par aucun fichier. D354 n'avait pu qu'en avertir ; ce verbe-ci le répare.
 `VSM_TOUCHE="pianoroll:ctrl + Q"` envoie la touche au clavier **du piano roll**
 (ou de l'arrangement) et non à la fenêtre (D354). Sans ce préfixe, la touche ne
 traverse que `MainComponent::keyPressed`, c'est-à-dire les commandes **globales** :
@@ -1332,7 +1333,7 @@ un morceau… ») et devant la fermeture. Sans elle, un banc qui modifie un proj
 puis ouvre un autre reste bloqué sur la boîte, et le chemin qu'il croit mesurer
 n'est plus franchi : `annuler` vérifie que rien n'est perdu, `enregistrer` que
 l'écriture précède le remplacement.
-`VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2), `VSM_LECTURE=1`
+`VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2) — **avant** `VSM_TOUCHE` et `VSM_MENU_CONTEXTE` depuis D356, parce que c'est un verbe de scène et non d'action : posée entre les deux, elle servait le menu et pas le clavier, et « Couper à la tête de lecture » rendait alors deux fichiers différents selon la porte employée —,  `VSM_LECTURE=1`
 lance la lecture avant la capture (`VSM_LECTURE=4000` : après 4 s ; les voyants IN et OUT de la barre de
 transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`
 écrit la piste choisie comme preset de piste, sans la boîte qui demande le

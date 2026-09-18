@@ -434,7 +434,8 @@ public:
                                     + juce::String::fromUTF8(" \xc3\xa9" "crit AU D\xc3\x89MARRAGE, "
                                         "donc AVANT ce geste : le fichier montrera l'\xc3\xa9tat d'avant. "
                                         "Passer par VSM_MENU_CONTEXTE ou VSM_GESTE_PISTE pour agir avant "
-                                        "l'export.\n")).toRawUTF8(), stderr);
+                                        "l'export, ou DIFF\xc3\x89RER l'export lui-m\xc3\xaame "
+                                        "(VSM_GESTE_APRES=<ms>:exporter-midi:<fichier>, D356).\n")).toRawUTF8(), stderr);
                 juce::StringArray suite;
                 suite.addTokens(juce::String::fromUTF8(differes), ";", "");
                 for (const auto& entree : suite) {
@@ -503,6 +504,22 @@ public:
                     if (n.trim().isNotEmpty() && !content->ecrireNotesPourCapture(n.trim()))
                         std::fputs("VSM_NOTES : note illisible (piste:tick:dur\u00e9e:hauteur)\n", stderr);
             }
+            // VSM_POSITION=17.3 : la tête à une position saisie (D22.2), pour
+            // que « Aller à la mesure » se vérifie sans souris : la barre de
+            // transport doit dire la nouvelle position.
+            //
+            // D356 : REMONTÉE AVANT `VSM_TOUCHE` ET `VSM_MENU_CONTEXTE`. C'est un
+            // verbe de SCÈNE, pas d'action : il dit OÙ est la tête, et plusieurs
+            // gestes n'ont de sens que par rapport à elle (« Couper à la tête de
+            // lecture », « Coller à la tête »). Posée entre les deux, elle servait
+            // le menu et pas le clavier — deux portes du même geste rendaient alors
+            // des fichiers différents pour une raison qui ne tenait pas au geste
+            // mais à l'ordre des variables. C'est la correction de D38, une fois de
+            // plus : l'ordre des variables d'un banc fait partie du banc.
+            if (const char* position = std::getenv("VSM_POSITION"); position != nullptr && *position)
+                if (!content->goToPositionForCapture(juce::String::fromUTF8(position)))
+                    std::fputs(("VSM_POSITION : \u00ab " + std::string(position)
+                                + " \u00bb refus\u00e9e, la t\u00eate n'a pas boug\u00e9\n").c_str(), stderr);
             if (const char* touches = std::getenv("VSM_TOUCHE"); touches != nullptr && *touches) {
                 juce::StringArray suite;
                 suite.addTokens(juce::String::fromUTF8(touches), ";", "");
@@ -560,13 +577,6 @@ public:
                 content->exportStemsForCapture(
                     juce::File::getCurrentWorkingDirectory().getChildFile(sortie), format, granularite);
             }
-            // VSM_POSITION=17.3 : la tête à une position saisie (D22.2), pour
-            // que « Aller à la mesure » se vérifie sans souris : la barre de
-            // transport doit dire la nouvelle position.
-            if (const char* position = std::getenv("VSM_POSITION"); position != nullptr && *position)
-                if (!content->goToPositionForCapture(juce::String::fromUTF8(position)))
-                    std::fputs(("VSM_POSITION : \u00ab " + std::string(position)
-                                + " \u00bb refus\u00e9e, la t\u00eate n'a pas boug\u00e9\n").c_str(), stderr);
             // VSM_LECTURE=1 : lancer la lecture avant la capture (D22.4) --
             // le voyant OUT ne s'allume que si des notes partent.
             // VSM_LECTURE=1 lance tout de suite ; VSM_LECTURE=4000 lance après

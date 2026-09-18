@@ -29024,3 +29024,100 @@ d'ailleurs pourquoi l'entrée `Ctrl+J` nomme les deux gestes plutôt qu'un seul.
 Et `Ctrl+0` fait deux choses différentes selon le clavier qui l'entend (les deux
 vues, ou le seul piano roll) : nommé ici, non tranché, parce qu'aucun besoin ne
 l'a demandé.
+
+### Phase D356 — les trois portes font-elles la même chose ? (18/09/2026)
+
+**D'OÙ ELLE VIENT.** D355 a mis les portes d'un même geste d'accord sur le NOM.
+Reste la question qui compte : font-elles la même CHOSE ? Un bouton qui
+quantifierait à 50 % là où son raccourci quantifie à 100 % porterait le bon nom
+et mentirait quand même — et c'est le genre de divergence qu'on ne remarque
+qu'après avoir abîmé un morceau.
+
+**IL A FALLU D'ABORD RENDRE LA MESURE POSSIBLE, et c'est le cœur de la phase.**
+
+1. **L'EXPORT DEVIENT UN GESTE** (`VSM_GESTE_APRES=<ms>:exporter-midi:<fichier>`).
+   Le bouton de la barre d'outils exige une sélection posée avant lui, donc un
+   clic joué APRÈS le démarrage ; or tous les verbes d'export agissent AU
+   démarrage, et D354 n'avait pu qu'en AVERTIR. L'avertissement dit la panne, il
+   ne la répare pas : **la porte du bouton n'était mesurable par aucun fichier.**
+   L'export prend désormais son rang dans la file des gestes différés, par la
+   même fonction que « Fichier ▸ Exporter MIDI… » — deux chemins d'export
+   finiraient par ne plus écrire la même chose.
+2. **`VSM_POSITION` REMONTE AVANT `VSM_TOUCHE`.** C'est un verbe de SCÈNE, pas
+   d'action : il dit où est la tête de lecture, dont dépendent « Couper à la tête
+   de lecture » et « Coller à la tête ». Posé entre `VSM_TOUCHE` (qui agissait
+   avant lui) et `VSM_MENU_CONTEXTE` (après), il servait le menu et pas le
+   clavier : les deux portes du même geste auraient rendu des fichiers différents
+   **pour une raison qui ne tient pas au geste mais à l'ordre des variables**.
+   C'est la correction de D38, une fois de plus — *l'ordre des variables d'un banc
+   fait partie du banc* — et elle aurait fabriqué un faux défaut.
+
+**ATTENDU** (écrit avant la mesure) : pour chacun des huit gestes déterministes
+qui ont au moins deux portes, les portes rendent le **même multiensemble de
+notes** dans le `.mid` exporté, et ce multiensemble **diffère du témoin** — sans
+quoi « d'accord » ne voudrait rien dire.
+
+**MESURÉ** (`tools/portes-des-gestes.py`, 19 courses, projet de huit notes) :
+
+| geste | portes | notes au `.mid` (témoin : 8) | accord |
+|---|---|---|---|
+| Quantifier (100 %) | menu, raccourci, **bouton** | 8, aux départs de la grille | **oui** |
+| Legato | menu, raccourci, **bouton** | 8, durées jointives | **oui** |
+| Supprimer | menu, raccourci | 0 | **oui** |
+| Dupliquer | menu, raccourci | 16 | **oui** |
+| Fusionner | menu, raccourci | 6 (deux paires de même hauteur réunies) | **oui** |
+| Couper | menu, raccourci | 0 | **oui** |
+| Rendre muet / audible | menu, raccourci | 0 (une note muette ne s'exporte pas) | **oui** |
+| Couper à la tête de lecture | menu, raccourci | 9 (la note à cheval coupée en deux) | **oui** |
+| désaccords | — | — | **0** |
+
+Attendu tenu : **aucune porte ne trahit son geste.** C'est un résultat NÉGATIF,
+et il vaut d'être écrit : le doute portait sur trois chemins d'appel distincts
+(la lambda d'un bouton, un `case` de menu, un `case` de raccourci) qui pouvaient
+diverger sans que rien ne le dise, et ils ne divergent pas.
+
+**ET LE BANC S'EST TROMPÉ AVANT LE LOGICIEL — DEUX FOIS.** Le premier jet a rendu
+« SANS EFFET VISIBLE » pour *Fusionner* et *Couper à la tête*. Ni l'un ni l'autre
+n'est mort : `joinNotes` ne réunit que des notes de **même hauteur** (« ce serait
+une seule note à deux hauteurs », `NoteEdit.cpp:276`) et le projet d'essai en
+avait huit toutes différentes ; « Couper à la tête » n'avait aucune note sous la
+tête, restée au tick 0. **Un projet incapable d'exercer un geste rend le même
+verdict qu'un geste mort** — d'où la catégorie « SANS EFFET VISIBLE », qui n'est
+ni une réussite ni un échec et qui NOMME ce qu'elle ne peut pas voir (D265). Le
+projet porte maintenant deux paires de même hauteur et une note à cheval sur la
+mesure 2.
+
+**LA GARDE VUE ROUGE — ET CE QUE LE TÉMOIN RÉVÈLE DE D355.** Le bouton
+« Quantifier » a été recâblé sur `quantizeSelection(0.5f, false)` — une porte qui
+fait autre chose que ses sœurs — puis recompilé :
+
+| garde | verdict sur le défaut | ce que cela dit |
+|---|---|---|
+| `tools/portes-des-gestes.py` (D356) | **RATÉ**, « bouton : 8 note(s) en plus, 8 en moins », code **1** | elle voit |
+| `tools/noms-des-gestes.py` (D355) | **0 écart**, et 17 → **18** gestes à plusieurs portes | elle ne voit pas |
+
+La garde statique reste verte parce que le bouton, changeant d'appel, s'apparie
+alors à l'entrée de menu « Quantifier (50 %) » — dont son libellé est bien le
+début. **Les noms restent d'accord pendant que les effets divergent** : c'est
+précisément la limite que D355 nommait, et la raison d'être de cette phase-ci.
+Le seul signal statique est le COMPTE de gestes à plusieurs portes, qui bouge.
+
+**UN PIÈGE DU DÉPÔT REPAYÉ, ET ATTRAPÉ** : le premier relevé du témoin a affiché
+`rc=0` alors que la garde avait bien échoué — le code lu était celui de `tail`,
+au bout d'un tube. Relancée sans tube, elle rend **1**. C'est la règle écrite du
+dépôt sur `${PIPESTATUS[0]}` ; elle vaut aussi pour un simple `| tail`.
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées après le
+changement d'ordre des verbes : `tools/banc-fumee.sh` (0 raté, dont son cas
+`VSM_POSITION`), `tools/quantifier.sh` (0 raté), `tools/gestes-promesses.py`
+(13 promesses, 0 rompue), inventaire A9 inchangé (ECRAN 10, SANS_PAIRE 0).
+
+**Reste nommé, non fait** : les gestes ALÉATOIRES sont hors de la garde et la
+raison est écrite dans son en-tête — « Humaniser » décale au hasard, et comparer
+ses portes mesurerait le générateur, pas les portes ; il faudrait lui donner une
+graine pour l'y faire entrer. Les gestes de SÉLECTION (tout sélectionner,
+inverser, désélectionner) ne laissent aucune trace dans le `.mid` : leurs portes
+ne sont comparées par rien, et il faudrait un relevé de la sélection pour les
+mesurer. Et les portes des autres menus — clip, piste, règles — restent hors du
+compte, comme pour D355.
