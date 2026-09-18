@@ -28785,6 +28785,13 @@ touche ni sa hauteur ni sa durée ; 355 tests core.
 | note dont on change le canal | — | reste sur sa piste, hauteur et durée intactes |
 | tests core | 353 | **355** |
 
+**ET CE QUI EST CRÉÉ SURVIT AU DISQUE**, vérifié dans la foulée et ajouté à la
+garde de D352 : les six familles créées, le projet **enregistré puis rouvert**,
+l'export rendu les mêmes comptes (5 notes, 1 de chacune des cinq autres). Un
+événement créé qu'un enregistrement perdrait serait pire que pas de création du
+tout — c'est le critère (a) du § 2, « ce qu'on fait ne se perd pas », et une
+famille qu'aucun autre geste ne crée n'aurait aucun autre moyen de revenir.
+
 Attendu tenu. **Un test mal écrit a échoué avant le code** : l'attendu disait
 « chaque ligne porte le canal 9 » sur une piste qui compte DEUX notes et DEUX
 contrôleurs, alors que le geste n'en changeait qu'un par famille — corrigé en

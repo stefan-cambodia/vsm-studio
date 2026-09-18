@@ -102,5 +102,40 @@ verdict "le bouton « + » et son infobulle sont dans l'en-tête de la liste" \
           && echo 1 || echo 0)"
 verdict "code de sortie 0 (relevé : $rc)" "$([ "$rc" -eq 0 ] && echo 1 || echo 0)"
 
+# ET ILS SURVIVENT AU DISQUE. Un événement créé qu'un enregistrement perdrait
+# serait pire que pas de création du tout : le critère (a) du § 2 de
+# `ROADMAP-daw.md` est « ce qu'on fait ne se perd pas », et une famille qu'aucun
+# autre geste ne crée n'a aucun autre moyen de revenir.
+maison2="$(mktemp -d "$brouillon/home.XXXX")"
+env HOME="$maison2" VSM_TAILLE="1280x742" VSM_PROJET="$brouillon/projet" VSM_DELAI=2500 \
+    VSM_VUE="sans-rapport,arrangement,liste" \
+    VSM_LISTE_AJOUTER="5:960;3:1440;1:480;2:720;4:1200;0:1920" \
+    VSM_ENREGISTRER="$brouillon/rouvert" VSM_CAPTURE="$brouillon/ecrit.png" \
+    timeout 45 "$BIN" > "$brouillon/ecrit.txt" 2>&1
+maison3="$(mktemp -d "$brouillon/home.XXXX")"
+env HOME="$maison3" VSM_TAILLE="1280x742" VSM_PROJET="$brouillon/rouvert" VSM_DELAI=2500 \
+    VSM_VUE="sans-rapport,arrangement" VSM_EXPORT_MIDI="$brouillon/rouvert.mid" \
+    VSM_CAPTURE="$brouillon/relu.png" \
+    timeout 45 "$BIN" > "$brouillon/relu.txt" 2>&1
+if [ -f "$brouillon/rouvert.mid" ]; then
+    apres="$("$PY" - "$brouillon/rouvert.mid" <<'PY'
+import sys
+from collections import Counter
+import mido
+c = Counter()
+for tr in mido.MidiFile(sys.argv[1]).tracks:
+    for e in tr:
+        c[e.type] += 1
+print(f"{c['note_on']} {c['control_change']} {c['pitchwheel']} {c['polytouch']} "
+      f"{c['aftertouch']} {c['program_change']}")
+PY
+)"
+    echo "       après enregistrement ET réouverture : $apres"
+    verdict "les six familles survivent au disque (mêmes comptes qu'avant l'enregistrement)" \
+            "$([ "$apres" = "$compte" ] && echo 1 || echo 0)"
+else
+    verdict "le projet enregistré se rouvre et s'exporte" 0
+fi
+
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]
