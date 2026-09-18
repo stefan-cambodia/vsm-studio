@@ -283,6 +283,10 @@ public:
     /// ne décide plus quelle touche fait quoi : il exécute une COMMANDE, et le
     /// nom de la touche vit dans un seul endroit -- celui que la page liste.
     void setShortcutTable(const vsm::interchange::ShortcutTable* table) { shortcuts_ = table; }
+    /// D358 : la table, pour qui doit AFFICHER une touche -- la barre d'outils,
+    /// dont cinq infobulles écrivaient « (Ctrl+Q) » en dur et mentaient dès que
+    /// l'utilisateur changeait la touche. Rend nullptr tant qu'aucune n'est posée.
+    const vsm::interchange::ShortcutTable* shortcutTable() const { return shortcuts_; }
     /// Exécute une commande. `mods` sert à celles dont le sens dépend de `Maj`
     /// (la note douteuse PRÉCÉDENTE plutôt que la suivante).
     bool performShortcut(vsm::interchange::ShortcutId id, const juce::ModifierKeys& mods);

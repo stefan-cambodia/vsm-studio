@@ -1333,6 +1333,7 @@ un morceau… ») et devant la fermeture. Sans elle, un banc qui modifie un proj
 puis ouvre un autre reste bloqué sur la boîte, et le chemin qu'il croit mesurer
 n'est plus franchi : `annuler` vérifie que rien n'est perdu, `enregistrer` que
 l'écriture précède le remplacement.
+Les listings de menu (`clip-midi:?`, `pianoroll:?`, `regle-pianoroll:?`) écrivent la touche de chaque entrée **entre accolades** — `Couper à la tête de lecture {Ctrl+Maj+E}` — depuis D358 : la touche n'est plus dans le libellé mais dans un champ que JUCE dessine, et un relevé qui ne la verrait pas la laisserait disparaître sans un mot.
 `VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2) — **avant** `VSM_TOUCHE` et `VSM_MENU_CONTEXTE` depuis D356, parce que c'est un verbe de scène et non d'action : posée entre les deux, elle servait le menu et pas le clavier, et « Couper à la tête de lecture » rendait alors deux fichiers différents selon la porte employée —,  `VSM_LECTURE=1`
 lance la lecture avant la capture (`VSM_LECTURE=4000` : après 4 s ; les voyants IN et OUT de la barre de
 transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`

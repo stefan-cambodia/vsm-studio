@@ -1,4 +1,5 @@
 #include "ArrangementComponent.h"
+#include "Shortcuts.h"   // D358 : ajouterAvecRaccourci
 #include "EntreeDeMenu.h"
 #include "Langue.h"
 #include <limits>
@@ -556,8 +557,24 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
     menu.addItem(3, tr(u8"Couleur de la piste"));
     menu.addItem(4, tr(clip.muted ? u8"R\u00e9activer" : u8"Rendre muet"));
     menu.addSeparator();
-    menu.addItem(5, tr(u8"Couper \u00e0 la t\u00eate de lecture (Ctrl+E)"), !selection_.empty());
-    menu.addItem(6, tr(u8"Joindre les clips choisis (Ctrl+J)"), selection_.size() > 1);
+    // D358 : LA TOUCHE EST DESSINÉE PAR JUCE, PLUS ÉCRITE DANS LE LIBELLÉ. Les
+    // deux parenthèses « (Ctrl+E) » et « (Ctrl+J) » mentaient dès que
+    // l'utilisateur changeait la touche -- mesuré : la fenêtre des raccourcis
+    // disait Ctrl+Maj+E et ce menu-ci Ctrl+E, la touche nommée ne faisant plus
+    // rien. C'est la règle de D155, qui n'était jamais sortie de la barre de
+    // menus. Sans table (aucun appelant ne l'a posée), les entrées s'affichent
+    // comme avant, sans touche : un menu sans raccourci vaut mieux qu'un faux.
+    if (raccourcis_ != nullptr) {
+        vsm::app::ui::ajouterAvecRaccourci(menu, 5, tr(u8"Couper \u00e0 la t\u00eate de lecture"),
+                                            *raccourcis_, vsm::interchange::ShortcutId::EditSplitAtPlayhead,
+                                            !selection_.empty());
+        vsm::app::ui::ajouterAvecRaccourci(menu, 6, tr(u8"Joindre les clips choisis"),
+                                            *raccourcis_, vsm::interchange::ShortcutId::EditJoin,
+                                            selection_.size() > 1);
+    } else {
+        menu.addItem(5, tr(u8"Couper \u00e0 la t\u00eate de lecture"), !selection_.empty());
+        menu.addItem(6, tr(u8"Joindre les clips choisis"), selection_.size() > 1);
+    }
     // D34.2 : DÉLIER UNE COPIE PARTAGÉE. L'entrée est GRISÉE quand le clip
     // n'est lié à rien, plutôt qu'absente : sa présence enseigne que la
     // notion existe, et son grisé dit que ce clip-ci n'est pas concerné.
@@ -727,7 +744,7 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
             juce::StringArray libelles;
             for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
                 if (it.getItem().itemID != 0)
-                    libelles.add(it.getItem().text + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+                    libelles.add(it.getItem().text + (it.getItem().shortcutKeyDescription.isNotEmpty() ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}" : juce::String()) + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
             std::fputs(("VSM_MENU_CONTEXTE : regle = " + libelles.joinIntoString(" | ")
                         + "\n").toRawUTF8(), stderr);
             return true;
@@ -772,7 +789,7 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
             juce::StringArray libelles;
             for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
                 if (it.getItem().itemID != 0)
-                    libelles.add(it.getItem().text + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+                    libelles.add(it.getItem().text + (it.getItem().shortcutKeyDescription.isNotEmpty() ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}" : juce::String()) + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
             std::fputs(("VSM_MENU_CONTEXTE : " + quel + " = " + libelles.joinIntoString(" | ")
                         + "\n").toRawUTF8(), stderr);
             return true;

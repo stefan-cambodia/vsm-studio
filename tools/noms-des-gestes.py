@@ -143,9 +143,18 @@ def lire_portes() -> tuple[dict[str, dict[str, list[str]]], list[str], list[str]
         m[0]: m[1]
         for m in re.findall(r'(\w+Button_)\s*\{\s*(?:u8)?"((?:[^"\\]|\\.)*)"', entete)
     }
+    # D358 : DEUX FORMES D'INFOBULLE, parce que la moitié d'entre elles composent
+    # désormais leur touche (`avecTouche(tr("…"), …)`) au lieu de l'écrire. Le
+    # motif d'origine ne lisait que la forme directe : les trois zooms ont
+    # aussitôt paru « à plusieurs noms », leur infobulle étant devenue invisible
+    # à la garde. Une garde qui ne connaît qu'une forme du code rend un défaut
+    # là où il n'y en a pas -- le pendant exact du « zéro » de D354.
     infobulle = {
         m[0]: m[1]
-        for m in re.findall(r'(\w+Button_)\.setTooltip\(\s*tr\(\s*(?:u8)?"((?:[^"\\]|\\.)*)"', barre)
+        for m in re.findall(
+            r'(\w+Button_)\.setTooltip\((?:\s*(?:vsm::app::ui::)?(?:avecTouche|libelleAvecTouche)\()?'
+            r'\s*(?:vsm::app::ui::)?tr\(\s*(?:u8)?"((?:[^"\\]|\\.)*)"',
+            barre)
     }
     bouton_appel = dict(re.findall(r"(\w+Button_)\.onClick\s*=\s*\[this\]\s*\{\s*pianoRoll_\.([^;]+);", barre))
     if not bouton_appel:

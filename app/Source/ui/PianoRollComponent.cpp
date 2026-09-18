@@ -1059,8 +1059,18 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     // une, au lieu de les chercher à l'œil sur un morceau entier.
     const size_t douteuses = doubtfulNoteCount();
     selectMenu.addSeparator();
-    selectMenu.addItem(kCtxSelectNextDoubtful, tr("Note douteuse suivante (D)"), douteuses > 0);
-    selectMenu.addItem(kCtxSelectPrevDoubtful, tr(u8"Note douteuse précédente (Maj+D)"), douteuses > 0);
+    // D358 : la touche vient de la TABLE, pas du libellé -- « (D) » et « (Maj+D) »
+    // mentaient dès qu'on remaniait la touche. La « précédente » est la MÊME
+    // commande avec Maj : sa composition suit donc la touche de base.
+    selectMenu.addItem(kCtxSelectNextDoubtful,
+                        vsm::app::ui::libelleAvecTouche(tr("Note douteuse suivante"), shortcuts_,
+                                                         vsm::interchange::ShortcutId::NavNextDoubtful),
+                        douteuses > 0);
+    selectMenu.addItem(kCtxSelectPrevDoubtful,
+                        vsm::app::ui::libelleAvecTouche(tr(u8"Note douteuse précédente"), shortcuts_,
+                                                         vsm::interchange::ShortcutId::NavNextDoubtful,
+                                                         tr("Maj+")),
+                        douteuses > 0);
     selectMenu.addItem(kCtxSelectDoubtful,
                        douteuses > 0 ? tr("Toutes les notes douteuses") + " (" + juce::String(static_cast<int>(douteuses)) + ")"
                                      : tr("Toutes les notes douteuses"),
@@ -1197,6 +1207,9 @@ bool PianoRollComponent::actionDeMenuPourCapture(const juce::String& libelle) {
         for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
             if (it.getItem().itemID != 0)
                 libelles.add(it.getItem().text
+                             + (it.getItem().shortcutKeyDescription.isNotEmpty()
+                                    ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}"
+                                    : juce::String())
                              + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
         std::fputs(("VSM_MENU_CONTEXTE : pianoroll = " + libelles.joinIntoString(" | ")
                     + "\n").toRawUTF8(), stderr);

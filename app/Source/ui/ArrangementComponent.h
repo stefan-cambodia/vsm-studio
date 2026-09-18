@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/interchange/ShortcutTable.h"   // D358
 #include <set>
 #include <JuceHeader.h>
 #include "vsm/audio/io/WaveformPeaks.h"
@@ -144,6 +145,10 @@ public:
     /// voisines puissent renvoyer une touche non consommée.
     bool keyPressed(const juce::KeyPress& key) override;
     void setSnapEnabled(bool actif) { snap_ = actif; }
+    /// D358 : la table VIVANTE des raccourcis, pour que le menu du clip dessine la
+    /// touche EFFECTIVE au lieu de l'écrire en dur dans son libellé -- une
+    /// parenthèse écrite ment dès que l'utilisateur change la touche.
+    void setShortcutTable(const vsm::interchange::ShortcutTable* table) { raccourcis_ = table; }
     bool snapEnabled() const { return snap_; }
     /// LA GRILLE FINE EST CELLE DU PIANO ROLL, lue à l'usage plutôt que
     /// recopiée (D5.2 : « mêmes gestes et mêmes raccourcis »). Deux réglages de
@@ -382,6 +387,7 @@ private:
     vsm::midi::Tick dropTick_ = 0;
 
     vsm::sequencer::Project* project_ = nullptr;
+    const vsm::interchange::ShortcutTable* raccourcis_ = nullptr;   // D358
 public:
     /// D343 : VSM_CLIPS_MINI=1 -- la fenêtre de hauteurs que la miniature de
     /// chaque clip MIDI emploie, et le nombre de notes posées sur une rangée de

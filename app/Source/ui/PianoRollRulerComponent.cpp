@@ -325,6 +325,6 @@ juce::StringArray PianoRollRulerComponent::libellesDuMenuPourCapture() const {
     const juce::PopupMenu menu = construireMenuDeRepere(repereSousLaTete());
     for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
         if (it.getItem().itemID != 0)
-            libelles.add(it.getItem().text + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+            libelles.add(it.getItem().text + (it.getItem().shortcutKeyDescription.isNotEmpty() ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}" : juce::String()) + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
     return libelles;
 }

@@ -3136,40 +3136,6 @@ juce::StringArray MainComponent::getMenuBarNames() {
 
 namespace {
 
-/// D155 : LA TOUCHE D'UNE ENTRÉE DE MENU, DESSINÉE PAR JUCE ET NON ÉCRITE DANS
-/// LE LIBELLÉ.
-///
-/// CE QUI EXISTAIT, ET CE QUE LA MESURE EN A DIT. Quatre commandes seulement
-/// vivent des deux côtés — dans un menu ET dans la table des raccourcis, appariées
-/// par l'ACTION qu'elles appellent et non par leur libellé, qui trompe. Trois
-/// affichaient leur touche EN DUR dans le texte (« Enregistrer (Ctrl+S) »,
-/// « Plein écran (F11) », « … (touche R) ») et la quatrième pas du tout. Écrire
-/// la touche dans le libellé a trois conséquences, toutes mesurées : elle part
-/// dans la clé de TRADUCTION, elle perd l'alignement à droite que JUCE donne, et
-/// le banc (`VSM_MENU=libellé`) doit connaître la parenthèse.
-///
-/// CE QUE CETTE FONCTION FAIT : elle lit la touche EFFECTIVE — celle de la table
-/// de l'utilisateur, pas la valeur d'usine —, si bien qu'un raccourci réassigné
-/// s'affiche réassigné. Une commande sans touche rend une chaîne vide, et
-/// l'entrée s'affiche comme avant.
-void ajouterAvecRaccourci(juce::PopupMenu& menu, int identifiant, const juce::String& libelle,
-                          const vsm::interchange::ShortcutTable& table,
-                          vsm::interchange::ShortcutId commande, bool actif = true,
-                          bool coche = false) {
-    juce::PopupMenu::Item entree(libelle);
-    entree.itemID = identifiant;
-    entree.isEnabled = actif;
-    entree.isTicked = coche;
-    const juce::String touche = juce::String(table.keyFor(commande));
-    if (touche.isNotEmpty()) {
-        // D157 : la description de JUCE (« ctrl + shift + S ») réécrite dans la
-        // langue de l'interface. `getTextDescriptionWithIcons()` rendait la
-        // syntaxe brute, qu'aucune autre application n'affiche.
-        if (juce::KeyPress::createFromDescription(touche).isValid())
-            entree.shortcutKeyDescription = vsm::app::ui::toucheLisible(touche);
-    }
-    menu.addItem(std::move(entree));
-}
 
 } // namespace
 
@@ -3219,11 +3185,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          tr(u8"Reconstruire en visant la parité des pistes (le défaut de la chaîne)"), true,
                          vsm::app::ui::UiScale::properties()
                              .getBoolValue(tr("reconstruireEnParite"), true));
-            ajouterAvecRaccourci(menu, kMenuFileSave,
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileSave,
                                  tr("Enregistrer")
                                      + juce::String(currentProjectFolder_ == juce::File() ? "..." : ""),
                                  shortcuts_, vsm::interchange::ShortcutId::FileSave);
-            ajouterAvecRaccourci(menu, kMenuFileSaveAs, tr("Enregistrer sous..."),
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileSaveAs, tr("Enregistrer sous..."),
                                  shortcuts_, vsm::interchange::ShortcutId::FileSaveAs);
             menu.addSeparator();
             // D11.6 : LE MODÈLE. Un seul, dans le dossier des préférences : le
@@ -3255,7 +3221,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               mode == Mode::Mix);
                 menu.addItem(kMenuFileReferenceSolo, tr(u8"Écoute : original"), aUneReference,
                               mode == Mode::Solo);
-                ajouterAvecRaccourci(menu, kMenuFileReferenceCycle, tr(u8"Basculer l'écoute A/B"),
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileReferenceCycle, tr(u8"Basculer l'écoute A/B"),
                                      shortcuts_, vsm::interchange::ShortcutId::ReferenceCycle,
                                      aUneReference);
             }
@@ -3349,15 +3315,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // le morceau, qui n'ont pas leur place dans le piano roll -- elles
             // déplacent aussi les clips, les repères et le tempo.
             menu.addSeparator();
-            ajouterAvecRaccourci(menu, kMenuEditInsertTimeAtLocators,
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditInsertTimeAtLocators,
                                  tr(u8"Insérer du silence entre les locateurs"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditInsertTimeAtLocators,
                                  project_.loopEndTick > project_.loopStartTick);
-            ajouterAvecRaccourci(menu, kMenuEditDeleteTimeAtLocators,
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditDeleteTimeAtLocators,
                                  tr(u8"Supprimer le temps entre les locateurs"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditDeleteTimeAtLocators,
                                  project_.loopEndTick > project_.loopStartTick);
-            ajouterAvecRaccourci(menu, kMenuEditLocatorsFromSelection,
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditLocatorsFromSelection,
                                  tr(u8"Locateurs sur la s\u00e9lection"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditLocatorsFromSelection,
                                  arrangement_.hasSelection() || pianoRoll_.hasSelection());
@@ -3366,13 +3332,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // souris, en zoomant.
             // Le double-clic sur la position reste DANS le libellé : c'est un
             // geste de souris, que `shortcutKeyDescription` ne sait pas dire.
-            ajouterAvecRaccourci(menu, kMenuEditGoToBar,
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditGoToBar,
                                  tr(u8"Aller \u00e0 la mesure\u2026 (double-clic sur la position)"),
                                  shortcuts_, vsm::interchange::ShortcutId::NavGoToBar);
             // D20.1 : RÉPÉTER LA SÉLECTION de l'arrangement, jumeau du menu
             // contextuel du clip -- ici pour qu'il s'atteigne sans souris.
             menu.addSeparator();
-            ajouterAvecRaccourci(menu, kMenuEditSelectAllClips,
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditSelectAllClips,
                                  tr(u8"Tout s\u00e9lectionner dans l'arrangement"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditSelectAll,
                                  !project_.tracks.empty());
@@ -4037,7 +4003,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          true, computerKeyboard_);
             {
                 auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
-                ajouterAvecRaccourci(menu, kMenuViewFullScreen, tr(u8"Plein \u00e9cran"),
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewFullScreen, tr(u8"Plein \u00e9cran"),
                                      shortcuts_, vsm::interchange::ShortcutId::ViewFullScreen,
                                      fenetre != nullptr,
                                      fenetre != nullptr && fenetre->isFullScreen());
@@ -7297,6 +7263,17 @@ void MainComponent::loadShortcuts() {
             tr(u8"Les raccourcis personnalisés n'ont pas pu être relus : ceux d'origine sont rétablis."));
     }
     pianoRoll_.setShortcutTable(&shortcuts_);
+    // D358 : l'arrangement aussi -- son menu de clip dessine désormais la touche
+    // effective, et sans table il l'afficherait sans touche.
+    arrangement_.setShortcutTable(&shortcuts_);
+    transportBar_.setShortcutTable(&shortcuts_);
+    // D358 : ET LES INFOBULLES SE REFONT. Elles sont posées par `retraduire()`
+    // en fin de CONSTRUCTEUR, c'est-à-dire AVANT que la table n'arrive ici : sans
+    // ce rappel, les onze infobulles de la barre d'outils perdaient leur touche
+    // au lieu d'en montrer une fausse -- mesuré, et c'est la mesure qui l'a dit,
+    // pas la relecture du code. La barre de transport, elle, se refait dans son
+    // propre `setShortcutTable`.
+    pianoRollPanel_.retraduireBarre();
     refreshShortcutList();
 }
 

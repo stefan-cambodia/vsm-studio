@@ -1,5 +1,6 @@
 #include "TransportBarComponent.h"
 #include "Langue.h"
+#include "Shortcuts.h"   // D358 : libelleAvecTouche
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 using namespace vsm::sequencer;
@@ -119,7 +120,9 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     };
 
     listenButton_.onClick = [this] { if (onCycleListening) onCycleListening(); };
-    listenButton_.setTooltip(vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original (touche R)"));
+    listenButton_.setTooltip(vsm::app::ui::libelleAvecTouche(
+        vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original"), raccourcis_,
+        vsm::interchange::ShortcutId::ReferenceCycle));
     setListening(vsm::app::ui::tr(u8"Écoute A/B : pas d'original"), false, false);
     openButton_.onClick = [this] { if (onOpenMidiFile) onOpenMidiFile(); };
     exportButton_.onClick = [this] { if (onExportMidiFile) onExportMidiFile(); };
@@ -512,11 +515,15 @@ void TransportBarComponent::retraduire() {
     metronomeButton_.setButtonText(vsm::app::ui::tr("Clic"));
     openButton_.setButtonText(vsm::app::ui::tr("Ouvrir MIDI..."));
     exportButton_.setButtonText(vsm::app::ui::tr("Exporter MIDI..."));
-    listenButton_.setTooltip(vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original (touche R)"));
+    listenButton_.setTooltip(vsm::app::ui::libelleAvecTouche(
+        vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original"), raccourcis_,
+        vsm::interchange::ShortcutId::ReferenceCycle));
     // D94 : LES INFOBULLES ET LES ÉTATS que le constructeur et les setters
     // posaient en français -- la bascule les laissait dans la langue du démarrage.
     using vsm::app::ui::tr;
-    positionLabel_.setTooltip(tr(u8"Double-clic : aller à une mesure (Maj+P)"));
+    positionLabel_.setTooltip(vsm::app::ui::libelleAvecTouche(
+        tr(u8"Double-clic : aller à une mesure"), raccourcis_,
+        vsm::interchange::ShortcutId::NavGoToBar));
     loopButton_.setTooltip(tr(u8"Boucle. La région se règle en tirant sur la règle du piano roll "
                               u8"avec Maj ; sans région, la boucle couvre tout le morceau."));
     metronomeButton_.setTooltip(tr("Metronome : un clic par temps, plus aigu sur le premier "

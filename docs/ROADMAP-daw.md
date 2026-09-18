@@ -29192,3 +29192,94 @@ transcription — « les 10 % les moins sûres », « toutes les notes douteuses
 n'ont pas de raccourci et n'entrent donc pas dans la comparaison ; leur porte
 unique ne se compare à rien. Et les portes des autres menus (clip, piste, règles)
 restent hors du compte, comme depuis D355.
+
+### Phase D358 — un raccourci écrit dans un libellé ment dès qu'on le change (18/09/2026)
+
+**D'OÙ ELLE VIENT — D155, POSÉE UNE FOIS ET JAMAIS SORTIE DE SA PIÈCE.** D155
+avait écrit la règle et ses trois raisons mesurées : *la touche d'une entrée de
+menu est DESSINÉE par JUCE, jamais écrite dans le libellé* — sans quoi elle part
+dans la clé de traduction, perd son alignement, et oblige le banc à connaître la
+parenthèse. La règle avait été appliquée à la **barre de menus**, et n'en était
+jamais sortie. **Dix-neuf** libellés ailleurs nommaient encore leur touche en toutes
+lettres. C'est la forme de D332 (« une règle posée dans l'application seule ne
+vaut pas pour l'export »), appliquée aux libellés.
+
+**IL Y A UNE QUATRIÈME RAISON, ET C'EST LA PIRE : LE LIBELLÉ MENT.** La table des
+raccourcis est **modifiable et persistée** (`loadShortcuts`, clé « raccourcis »
+des préférences). Une parenthèse écrite en dur nomme donc, dès le premier
+remaniement, une touche **qui ne fait plus rien**.
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE** : Ctrl+E rebindé en Ctrl+Maj+E, la
+fenêtre des raccourcis dira Ctrl+Maj+E et le menu du clip dira encore
+« (Ctrl+E) » — deux endroits, deux réponses.
+
+**MESURÉ** (préférences d'un HOME de brouillon, `clip-midi:?` et
+`VSM_TEXTES_LISTE`) :
+
+| ce qu'on lit | avant | après |
+|---|---|---|
+| fenêtre des raccourcis, après rebind | Ctrl+Maj+E | Ctrl+Maj+E |
+| menu du clip, même course | **« (Ctrl+E) »** — faux | **Ctrl+Maj+E**, dessiné par JUCE |
+| infobulle « Quantifier », edit.quantize rebindé | « (Ctrl+Q) » — faux | **« (Ctrl+Maj+Q) »** |
+| libellés nommant une touche configurable | **19** | **0** |
+| `tools/raccourcis-affiches.py` | 5 fautes au premier balayage | **0 faute** |
+| inventaire A9 | ECRAN 10, SANS_PAIRE 0 | ECRAN 10, **SANS_PAIRE 0** |
+
+Attendu tenu. **ET LE CONTRÔLE A FAILLI MANQUER** : la première course a rendu
+« la fenêtre dit Ctrl+E », c'est-à-dire que le rebind n'avait pas pris — fichier
+de préférences écrit au mauvais endroit (`~/.config/...` au lieu de `~/`), puis
+avec la mauvaise chaîne de format (`vsm-shortcuts-1` au lieu de
+`vsm.raccourcis.v1`). Sans ce contrôle, la mesure aurait « prouvé » que le menu
+ment en comparant deux libellés d'usine : c'est la leçon de D215 — *tout verdict
+par comparaison vérifie d'abord que ses deux côtés existent*.
+
+**CE QUI A CHANGÉ** : `ajouterAvecRaccourci` sort de `MainComponent.cpp` pour
+`Shortcuts.h`, et une fabrique `libelleAvecTouche` la rejoint pour ce qui n'est
+pas une entrée de menu (les infobulles, qu'aucun `shortcutKeyDescription` ne
+dessine). Trois composants reçoivent la table vivante — l'arrangement, la barre
+de transport, et la barre d'outils par le piano roll. Les « ? » des menus
+impriment désormais la touche entre accolades (`{Ctrl+Maj+E}`) : un relevé qui ne
+voit pas la touche laisserait celle-ci disparaître sans un mot, et c'est
+justement ce qu'on vient de déplacer hors du libellé.
+
+**TROIS DÉFAUTS TROUVÉS PAR LES GARDES, ET AUCUN PAR LA RELECTURE :**
+
+1. **Une des deux copies de l'infobulle « Écoute A/B » était restée.** Le même
+   texte existe au constructeur ET dans `retraduire()` ; un remplacement à la
+   première occurrence n'en a corrigé qu'une. `tools/raccourcis-affiches.py` a
+   pointé la survivante.
+2. **Les infobulles avaient perdu leur touche au lieu d'en montrer une
+   fausse.** Elles sont posées par `retraduire()` en fin de CONSTRUCTEUR,
+   c'est-à-dire avant que la table n'arrive : la mesure a rendu « Quantifier la
+   sélection sur la grille » tout court. Un rappel de `retraduireBarre()` après
+   la pose de la table les rétablit. **La relecture du code ne l'aurait pas dit ;
+   la course, oui.**
+3. **Quatorze chaînes avaient perdu leur traduction anglaise.** Raccourcir un
+   libellé crée une clé NEUVE, absente de `Langue.cpp` :
+   `tools/inventaire_langue.py` est passé de SANS_PAIRE 0 à **14**, et
+   l'interface anglaise serait restée française sur onze infobulles et trois
+   libellés. Quinze paires ajoutées, retour à **0**.
+
+**ET UNE GARDE VOISINE A CRIÉ POUR UNE BONNE RAISON** : `tools/noms-des-gestes.py`
+(D355) est passée à **3 gestes à plusieurs noms** — non parce que les noms
+divergeaient, mais parce que son motif ne lisait que la forme directe
+`setTooltip(tr("…"))` et devenait aveugle à `setTooltip(avecTouche(tr("…"), …))`.
+Une garde qui ne connaît qu'une forme du code invente un défaut là où il n'y en a
+pas : le pendant exact du « zéro » de D354. Motif élargi, retour à **0**.
+
+**LA GARDE VUE ROUGE** : elle l'a été **d'elle-même**, cinq fois au premier
+balayage (dont la copie survivante ci-dessus), et son refus de lecture a été
+essayé à part — table rendue illisible, `REFUS : 0 touches lues`, code **2**,
+plutôt que « 0 faute ».
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`quantifier.sh`, `portes-des-gestes.py`, `gestes-promesses.py`, `banc-fumee.sh`,
+`noms-des-gestes.py` — 0 raté. Vérifié dans les DEUX langues : *Quantize the
+selection to the grid (Ctrl+Q)*, *Zoom in (=)*.
+
+**Reste nommé, non fait** : la garde ne lit que les chaînes de `tr(…)` — un
+libellé assemblé à partir d'une variable lui échappe, et il faudrait un relevé à
+l'exécution pour le voir. Les touches FIXES (les flèches, `fixedShortcuts()`) ne
+sont pas dans la table et restent écrites en dur là où elles apparaissent : c'est
+juste, puisque personne ne peut les changer, mais rien ne le garde.

@@ -1,5 +1,6 @@
 #include "PianoRollToolbar.h"
 #include "Langue.h"
+#include "Shortcuts.h"   // D358 : libelleAvecTouche
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 using namespace vsm::sequencer;
@@ -449,22 +450,34 @@ void PianoRollToolbar::retraduire() {
     infoLabel_.setText(tr(u8"Note :"), juce::dontSendNotification);
     // D94 : LES INFOBULLES, que le constructeur posait en français une fois
     // pour toutes : la bascule les laissait dans la langue du démarrage.
-    selectTool_.setTooltip(tr(u8"Sélection / déplacement (1)"));
-    drawTool_.setTooltip(tr("Dessiner des notes (2)"));
-    eraseTool_.setTooltip(tr("Effacer, y compris en balayant (3)"));
-    splitTool_.setTooltip(tr("Couper une note au clic (4)"));
-    glueTool_.setTooltip(tr(u8"Coller une note à la suivante (5)"));
-    muteTool_.setTooltip(tr("Rendre une note muette (6)"));
-    undoButton_.setTooltip(tr("Annuler (Ctrl+Z)"));
-    redoButton_.setTooltip(tr(u8"Rétablir (Ctrl+Maj+Z)"));
-    quantizeButton_.setTooltip(tr(u8"Quantifier la sélection sur la grille (Ctrl+Q)"));
-    legatoButton_.setTooltip(tr(u8"Étendre chaque note jusqu'à la suivante (Ctrl+L)"));
+    // D358 : L'INFOBULLE NOMME LA TOUCHE EFFECTIVE, jamais une touche écrite en
+    // dur. « Quantifier la sélection sur la grille (Ctrl+Q) » restait « Ctrl+Q »
+    // après que l'utilisateur eut choisi autre chose -- une infobulle qui nomme
+    // une touche qui ne fait plus rien. La fabrique vit dans `Shortcuts.h` :
+    // trois composants l'emploient, et trois copies finiraient par diverger.
+    const auto avecTouche = [this](const juce::String& texte,
+                                    vsm::interchange::ShortcutId commande) {
+        return vsm::app::ui::libelleAvecTouche(texte, pianoRoll_.shortcutTable(), commande);
+    };
+    selectTool_.setTooltip(avecTouche(tr(u8"Sélection / déplacement"), vsm::interchange::ShortcutId::ToolSelect));
+    drawTool_.setTooltip(avecTouche(tr("Dessiner des notes"), vsm::interchange::ShortcutId::ToolDraw));
+    eraseTool_.setTooltip(avecTouche(tr("Effacer, y compris en balayant"), vsm::interchange::ShortcutId::ToolErase));
+    splitTool_.setTooltip(avecTouche(tr("Couper une note au clic"), vsm::interchange::ShortcutId::ToolSplit));
+    glueTool_.setTooltip(avecTouche(tr(u8"Coller une note à la suivante"), vsm::interchange::ShortcutId::ToolGlue));
+    muteTool_.setTooltip(avecTouche(tr("Rendre une note muette"), vsm::interchange::ShortcutId::ToolMute));
+    undoButton_.setTooltip(avecTouche(tr("Annuler"), vsm::interchange::ShortcutId::EditUndo));
+    redoButton_.setTooltip(avecTouche(tr(u8"Rétablir"), vsm::interchange::ShortcutId::EditRedo));
+    quantizeButton_.setTooltip(avecTouche(tr(u8"Quantifier la sélection sur la grille"),
+                                       vsm::interchange::ShortcutId::EditQuantize));
+    legatoButton_.setTooltip(avecTouche(tr(u8"Étendre chaque note jusqu'à la suivante"),
+                                     vsm::interchange::ShortcutId::EditLegato));
     humanizeButton_.setTooltip(tr(u8"Décaler légèrement timing et vélocité, de façon reproductible"));
     chordButton_.setTooltip(tr(u8"Insérer un accord à la tête de lecture"));
     moreButton_.setTooltip(tr(u8"Toutes les opérations d'édition"));
-    zoomInButton_.setTooltip(tr("Zoom avant (+)"));
-    zoomOutButton_.setTooltip(tr(u8"Zoom arrière (-)"));
-    zoomFitButton_.setTooltip(tr(u8"Zoom : tout voir — toute la piste (Ctrl+0)"));
+    zoomInButton_.setTooltip(avecTouche(tr("Zoom avant"), vsm::interchange::ShortcutId::ViewZoomIn));
+    zoomOutButton_.setTooltip(avecTouche(tr(u8"Zoom arrière"), vsm::interchange::ShortcutId::ViewZoomOut));
+    zoomFitButton_.setTooltip(avecTouche(tr(u8"Zoom : tout voir — toute la piste"),
+                                      vsm::interchange::ShortcutId::ViewZoomToFit));
     stepButton_.setTooltip(tr(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, qui avance "
                               u8"d'un pas de grille ; Entrée = silence, Retour arrière = reculer"));
     foldButton_.setTooltip(tr(u8"Ne montrer que les hauteurs jouées sur la piste (Live : Fold)"));

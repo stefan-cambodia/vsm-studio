@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/interchange/ShortcutTable.h"   // D358
 #include <JuceHeader.h>
 #include "vsm/audio/engine/Transport.h"
 
@@ -8,6 +9,13 @@
 // (D8.3) -- et n'a aucune logique de layout global (ça, c'est MainComponent).
 class TransportBarComponent : public juce::Component, private juce::Timer {
 public:
+    /// D358 : la table VIVANTE, pour que deux infobulles nomment la touche
+    /// effective au lieu de l'écrire en dur (« (Maj+P) », « (touche R) »).
+    void setShortcutTable(const vsm::interchange::ShortcutTable* table) {
+        raccourcis_ = table;
+        retraduire();
+    }
+
     explicit TransportBarComponent(vsm::audio::engine::Transport& transport);
     ~TransportBarComponent() override;
 
@@ -130,6 +138,8 @@ public:
     void setMidiActivity(bool in, bool out);
 
 private:
+    const vsm::interchange::ShortcutTable* raccourcis_ = nullptr;   // D358
+
     void timerCallback() override; // rafraîchit l'affichage de la position de lecture
 
     vsm::audio::engine::Transport& transport_;
