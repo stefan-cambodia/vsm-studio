@@ -35,6 +35,12 @@ public:
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
 
+    /// D345 : VSM_AUTOMATION=1 -- ce que la lane MONTRE : le paramètre choisi,
+    /// son unité, ses bornes, l'échelle employée et le nombre de points. L'échelle
+    /// d'une lane ne se photographie pas : linéaire ou logarithmique, la courbe
+    /// reste une courbe, et c'est la RÈGLE qui décide — elle doit donc se relire.
+    void listerEchellePourCapture() const;
+
     /// (Re)lit les pistes depuis le projet. Conserve les lanes déjà éditées.
     void setProject(vsm::sequencer::Project* project);
 

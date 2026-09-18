@@ -28233,3 +28233,79 @@ jugé mesure le voisin.
 l'élargir prendrait au fader) ; et le mètre de la tranche **master** n'a ni
 contour ni graduation — il est fait de potentiomètres et d'une aiguille (D48),
 non revu ici.
+
+### Phase D345 — les enveloppes s'automatisaient sur une échelle linéaire, et la borne du bas écrivait « 0.0 » pour 0,001 s (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE « NOMMÉ, NON FAIT » DE D327**, qui l'avait laissé « faute
+d'une courbe mesurée » : « Les enveloppes en secondes (0,001 à 8 s, quatre
+décades) auraient le même besoin. » La courbe manquait ; elle a été **engendrée**
+— trente points posés GÉOMÉTRIQUEMENT entre 3 ms et 4 s, c'est-à-dire de la façon
+dont on règle une enveloppe, en doublant.
+
+**CE QUE LE PARC EN DIT.** **223 paramètres** déclarent l'unité `"s"` contre 96
+`"Hz"` : les enveloppes sont, de loin, la famille la plus automatisable du
+logiciel, et beaucoup vont de 0,001 à 8 s — **quatre décades, dont trois sous un
+dixième de seconde**. Sur une lane linéaire, une attaque de 5 ms et une de 50 ms
+se posaient à un pixel l'une de l'autre, au ras du bas ; tout le réglage d'une
+enveloppe vit là.
+
+**ET UNE SECONDE CHOSE, TROUVÉE EN REGARDANT LA PHOTO** : la borne du bas de la
+lane écrivait **« 0.0 »** pour un minimum de 0,001 s. Une décimale fixe
+(`String(v, 1)`) affichait un ZÉRO là où le paramètre ne descend jamais à zéro —
+la borne mentait sur les 223 enveloppes du parc, et sur toute plage plus fine que
+le dixième.
+
+**CE QUI EST FAIT.**
+
+- **La règle, écrite** (`AutomationComponent`) : passe en logarithmique une
+  **unité MULTIPLICATIVE** — `Hz`, `s`, `ms`, où doubler la valeur a partout le
+  même sens — **dont la plage couvre au moins une décade** et **dont le minimum
+  est strictement positif**. Le décibel est déjà un logarithme : le tracer en log
+  une seconde fois serait faux. Le pour-cent, les demi-tons (`st`) et ce qui n'a
+  pas d'unité restent linéaires, comme le MIDI CC.
+- **Les bornes portent autant de décimales que la valeur en demande** : trois
+  sous l'unité, deux sous dix, une sous cent, aucune au-delà. « 0.001 » et
+  « 8.00 » au lieu de « 0.0 » et « 8.0 », et le milieu géométrique écrit
+  « 0.089 (log) » au lieu de « 0 (log) ».
+- **Un relevé, `VSM_AUTOMATION=1`** : le paramètre affiché, son unité, ses
+  bornes, l'échelle employée et le nombre de points. L'échelle d'une lane ne se
+  photographie pas — linéaire ou logarithmique, une courbe reste une courbe —,
+  et c'est la RÈGLE qui décide : elle doit donc se relire.
+- **La garde, `tools/automation-echelle.sh`**, avec ses témoins DANS LE MÊME
+  PROJET, ne changeant qu'une variable à la fois : `filter.1.drive` (0,1..8,
+  **sans unité**, la même forme de plage) et `voice.glideTime` (**en secondes**
+  mais de **minimum nul**) portent les mêmes trente points géométriques et
+  doivent rester linéaires.
+
+**ATTENDU** (écrit avant la mesure ; projet engendré, `VSM_TAILLE` par défaut,
+onglet *Automation*) : « Amp Decay » (s, 0,001..8) en **log**, les deux témoins
+en **linéaire** ; sur la photo, hauteur médiane des points **≥ 40 %** de la lane
+et étalement p10-p90 **≥ 40 %** (mesurés à 3,3 % et 30,4 % avant) ; la borne du
+bas lue **« 0.001 »** ; cinq suites de tests vertes ; les six autres gardes
+d'interface 0 raté.
+
+**MESURÉ** (binaire du 18/09 contre celui de D344, même projet engendré,
+`tools/etalement-automation.py` sur la même bande de lane) :
+
+| mesure | avant (D344) | après |
+|---|---|---|
+| hauteur médiane des 30 points | **3,3 %** de la lane | **55,0 %** |
+| p10-p90 | 0,8 → 31,2 % | 22,9 → 87,5 % |
+| étalement | 30,4 % | **64,7 %** |
+| borne du bas (0,001 s) | **« 0.0 »** | **« 0.001 »** |
+| milieu de l'échelle | *aucun* | **« 0.089 (log) »** |
+| témoin sans unité (0,1..8) | linéaire | linéaire (**inchangé**) |
+| témoin en secondes, minimum nul (0..3) | linéaire | linéaire (**inchangé**) |
+| `tools/automation-echelle.sh` | **4 ratés** | **0 raté** |
+
+Attendu tenu. Sur la photo, les trente points géométriques forment une **droite
+en diagonale** d'un bord à l'autre de la lane — ce qu'une suite géométrique doit
+donner sur une échelle logarithmique — là où ils s'écrasaient en L au ras du bas.
+Tests **343** core, 1 303 audio, **300** interchange, 25 clap, 11 panels. Gardes :
+`banc-fumee`, `fader-console`, `vumetre-console`, `miniature-clips`,
+`automation-echelle`, `police-plancher`, `pianoroll-zones` — 0 raté.
+
+**Reste nommé, non fait** : la lane ne porte que trois libellés de valeur (les
+deux bornes et le milieu) ; une vraie graduation logarithmique en marquerait
+chaque décade (0,001 · 0,01 · 0,1 · 1 s), comme le fait la règle d'un analyseur
+de spectre — non mesuré, aucun banc ne lit les graduations d'une lane.

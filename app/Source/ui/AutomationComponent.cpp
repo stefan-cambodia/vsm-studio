@@ -36,7 +36,23 @@ AutomationComponent::AutomationComponent() {
             // le dixième du bas de la lane -- 606 points écrasés sur une ligne.
             // Cubase et Live suivent l'échelle du paramètre ; ici : les Hz qui
             // couvrent au moins une décade, avec un minimum strictement positif.
-            echelleLog_ = (e.unit == "Hz" && e.min > 0.0f && e.max / e.min >= 10.0f);
+            //
+            // D345 : ET LES TEMPS, qui étaient le « nommé, non fait » de D327.
+            // **223 paramètres du parc sont déclarés en secondes** — les
+            // enveloppes —, et beaucoup vont de 0,001 à 8 s : QUATRE DÉCADES,
+            // dont trois sous un dixième de seconde. Sur une lane linéaire, une
+            // attaque de 5 ms et une de 50 ms se posaient à un pixel l'une de
+            // l'autre, au ras du bas ; tout le réglage d'une enveloppe vit là.
+            //
+            // LA RÈGLE, ÉCRITE : passe en log **une unité MULTIPLICATIVE** (le
+            // hertz, la seconde, la milliseconde — doubler la valeur y a partout
+            // le même sens) **dont la plage couvre au moins une décade et dont le
+            // minimum est strictement positif**. Le décibel est déjà un
+            // logarithme : le tracer en log une seconde fois serait faux. Le
+            // pour-cent, les demi-tons et ce qui n'a pas d'unité restent
+            // linéaires, comme le MIDI CC (0-127).
+            const bool multiplicative = (e.unit == "Hz" || e.unit == "s" || e.unit == "ms");
+            echelleLog_ = (multiplicative && e.min > 0.0f && e.max / e.min >= 10.0f);
             hasSelection_ = true;
             loadSelectedLane();
             repaint();
@@ -48,6 +64,22 @@ AutomationComponent::AutomationComponent() {
     hintLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(hintLabel_);
     retraduire();
+}
+
+void AutomationComponent::listerEchellePourCapture() const {
+    if (!hasSelection_ || paramBox_.getSelectedItemIndex() < 0) {
+        std::fputs("VSM_AUTOMATION : aucun param\xc3\xa8tre choisi\n", stderr);
+        return;
+    }
+    const size_t idx = static_cast<size_t>(paramBox_.getSelectedItemIndex());
+    const juce::String unite = idx < paramEntries_.size()
+                                   ? juce::String(paramEntries_[idx].unit.c_str()) : juce::String();
+    std::fputs(("VSM_AUTOMATION : piste " + juce::String(static_cast<int>(selectedTrack_))
+                + " \xe2\x80\x94 \xc2\xab " + paramBox_.getText() + " \xc2\xbb, unit\xc3\xa9 \xc2\xab "
+                + unite + " \xc2\xbb, bornes " + juce::String(paramMin_, 4) + ".."
+                + juce::String(paramMax_, 4) + ", \xc3\xa9" "chelle "
+                + (echelleLog_ ? "log" : "lin\xc3\xa9" "aire") + ", "
+                + juce::String(static_cast<int>(editPoints_.size())) + " point(s)\n").toRawUTF8(), stderr);
 }
 
 void AutomationComponent::retraduire() {
@@ -358,13 +390,23 @@ void AutomationComponent::paint(juce::Graphics& g) {
     }
 
     // Bornes de valeur.
+    // D345 : AUTANT DE DÉCIMALES QUE LA VALEUR EN DEMANDE. Une décimale fixe
+    // écrivait « 0.0 » pour un minimum de 0,001 s — c'est-à-dire un ZÉRO là où le
+    // paramètre ne descend jamais à zéro, et la borne du bas de la lane mentait
+    // sur toutes les enveloppes du parc. Trois décimales sous l'unité, deux sous
+    // dix, une sous cent, aucune au-delà.
+    const auto ecrire = [](float v) {
+        const float m = std::abs(v);
+        const int decimales = m < 1.0f ? 3 : (m < 10.0f ? 2 : (m < 100.0f ? 1 : 0));
+        return juce::String(v, decimales);
+    };
     g.setColour(Palette::textSecondary);
     g.setFont(juce::Font(juce::FontOptions(12.0f)));
-    g.drawText(juce::String(paramMax_, 1), a.getX() + 2, a.getY(), 60, 14, juce::Justification::topLeft);
-    g.drawText(juce::String(paramMin_, 1), a.getX() + 2, a.getBottom() - 14, 60, 14, juce::Justification::bottomLeft);
+    g.drawText(ecrire(paramMax_), a.getX() + 2, a.getY(), 70, 14, juce::Justification::topLeft);
+    g.drawText(ecrire(paramMin_), a.getX() + 2, a.getBottom() - 14, 70, 14, juce::Justification::bottomLeft);
     if (echelleLog_) {   // D327 : le milieu d'une échelle log n'est pas la moyenne -- il est écrit
         const float milieu = std::sqrt(paramMin_ * paramMax_);
-        g.drawText(juce::String(milieu, 0) + " (log)", a.getX() + 2, a.getCentreY() - 7, 80, 14,
+        g.drawText(ecrire(milieu) + " (log)", a.getX() + 2, a.getCentreY() - 7, 90, 14,
                    juce::Justification::centredLeft);
     }
 

@@ -714,6 +714,13 @@ public:
                         vus != nullptr && *vus && *vus != '0')
                         if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
                             principal->listMixerMetersForCapture();
+                    // D345 : VSM_AUTOMATION=1 -- l'échelle de la lane d'automation, au
+                    // moment de la photo : le paramètre affiché n'est choisi qu'après
+                    // le chargement du projet et la mise en page des onglets.
+                    if (const char* autom = std::getenv("VSM_AUTOMATION");
+                        autom != nullptr && *autom && *autom != '0')
+                        if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
+                            principal->listAutomationScaleForCapture();
                     // D342 : VSM_MIXEUR=1 -- la géométrie des tranches de la console.
                     // ICI, dans le rappel de la photo, et non au démarrage : le dock du
                     // bas n'est disposé qu'après, et la course lue avant vaudrait zéro.
