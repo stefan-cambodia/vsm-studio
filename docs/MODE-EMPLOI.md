@@ -762,6 +762,15 @@ l'historique.
 
 ![L'onglet Tempo : trois paliers, 120, 96 puis 140 BPM.](images/manuel/tempo.png)
 
+**La liste d'événements se MODIFIE** (D348) : double-cliquez une case de
+*Position*, *N°*, *Valeur* ou *Durée* et tapez le nombre — Entrée valide, Échap
+annule, et le pas s'annule ensuite au Ctrl+Z comme tout le reste. Une valeur hors
+bornes est **refusée**, jamais ramenée en silence : celui qui tape 300 ne doit pas
+obtenir 127 sans le savoir. Déplacer une note **emporte sa durée**. Les colonnes
+*Nature* et *Canal* ne se modifient pas — changer la nature d'un événement, c'est
+en créer un autre —, et c'est là que le double-clic garde son ancien sens :
+placer la tête de lecture.
+
 **La miniature d'un clip montre 98 % de ses notes** (D343) : sa hauteur se plie à l'ambitus qui les tient, et non à celui des extrêmes — sur une reconstruction, trois notes fausses une octave trop haut suffisaient sinon à écraser tout le reste dans le bas du rectangle. Les notes écartées ne disparaissent pas : elles se dessinent sur la rangée du bord, « ici ou plus haut ».
 
 Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.
@@ -1168,6 +1177,10 @@ repère du 0 dB : un relevé dit ce qui est réservé, la photo dit ce qui est p
 miniature — l'ambitus **brut** du clip et celui **retenu**, plus le nombre de
 notes posées sur une rangée de bord (D343). Un ambitus ne se photographie pas :
 deux clips très différents donnent la même bande de traits.
+`VSM_LISTE_EDITER=ligne:colonne:valeur[;…]` modifie une case de la liste
+d'événements par le chemin de la saisie (D348) — colonnes 1 position, 4 numéro,
+5 valeur, 6 durée ; la forme `ligne:colonne:?` ouvre l'éditeur et le laisse
+ouvert, seul moyen de le photographier.
 `tools/theme-sombre.sh` photographie huit vues et passe chaque image à
 `tools/surfaces-claires.py`, qui cherche les surfaces restées au gris clair par
 défaut de JUCE (D347) : un fond qu'on oublie de colorer ne casse rien, ne fait

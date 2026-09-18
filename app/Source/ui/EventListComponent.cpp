@@ -48,6 +48,24 @@ EventListComponent::EventListComponent() {
     table_.setHeaderHeight(22);
     table_.setRowHeight(20);
     table_.setColour(juce::ListBox::backgroundColourId, Palette::panel);
+    // D348 : l'éditeur en place, caché jusqu'au double-clic. Entrée valide,
+    // Échap annule, perdre le clavier annule aussi — comme une case de tableur.
+    saisie_.setMultiLine(false);
+    saisie_.setReturnKeyStartsNewLine(false);
+    saisie_.setSelectAllWhenFocused(true);
+    saisie_.setColour(juce::TextEditor::backgroundColourId, Palette::panelRaised);
+    saisie_.setColour(juce::TextEditor::textColourId, Palette::textPrimary);
+    saisie_.setColour(juce::TextEditor::outlineColourId, Palette::accentAmber);
+    saisie_.setFont(juce::Font(juce::FontOptions(13.0f)));
+    saisie_.setVisible(false);
+    saisie_.onReturnKey = [this] {
+        const bool fait = validerSaisie();
+        fermerSaisie();
+        if (fait) { rebuild(); if (onEventsChanged) onEventsChanged(); }
+    };
+    saisie_.onEscapeKey = [this] { fermerSaisie(); };
+    saisie_.onFocusLost = [this] { fermerSaisie(); };
+    addChildComponent(saisie_);
     // D347 : L'EN-TÊTE PORTE LES COULEURS DU LOGICIEL. `TableHeaderComponent`
     // garde sinon le gris clair de `LookAndFeel_V4` : 2 095 x 22 px de clair au
     // milieu d'une application sombre — mesuré 164 de luminance moyenne sur la
@@ -252,8 +270,144 @@ void EventListComponent::paintCell(juce::Graphics& g, int row, int columnId, int
                 juce::Justification::centredLeft, true);
 }
 
-void EventListComponent::cellDoubleClicked(int row, int, const juce::MouseEvent&) {
+// ---------------------------------------------------------------------------
+// D348 — MODIFIER UNE VALEUR DEPUIS LA LISTE.
+//
+// La liste savait REGARDER et SUPPRIMER ; elle ne savait pas MODIFIER, alors
+// que c'est la raison d'être d'un éditeur en liste — Cubase, Logic et Reaper y
+// changent hauteur, vélocité, position et durée au clavier. Corriger une
+// vélocité demandait d'aller retrouver la note dans le piano roll.
+//
+// LE DOUBLE-CLIC GARDE SES DEUX SENS, et c'est un choix : sur une colonne
+// MODIFIABLE il ouvre la saisie, ailleurs il place la tête de lecture (D284).
+// Les colonnes « Nature » et « Canal » ne se modifient pas ici — changer la
+// nature d'un événement, c'est en créer un autre —, et ce sont justement elles
+// qu'on double-clique pour naviguer.
+// ---------------------------------------------------------------------------
+
+bool EventListComponent::colonneModifiable(int columnId, EventKind nature) {
+    switch (columnId) {
+        case kColPosition: return true;                       // toutes les familles
+        case kColSecond:   return nature != EventKind::ProgramChange;   // un programme n'a que son numéro
+        case kColPremier:  return nature != EventKind::PitchBend
+                                  && nature != EventKind::ChannelPressure;
+        case kColDuree:    return nature == EventKind::Note;   // seule une note a une durée
+        default:           return false;
+    }
+}
+
+void EventListComponent::ouvrirSaisie(int row, int columnId) {
     if (row < 0 || row >= static_cast<int>(lignes_.size())) return;
+    const auto& ligne = lignes_[static_cast<size_t>(row)];
+    if (!colonneModifiable(columnId, ligne.kind)) return;
+    ligneEnSaisie_ = row;
+    colonneEnSaisie_ = columnId;
+    // LA SAISIE MONTRE LE NOMBRE, PAS LE TEXTE DE LA CASE. La colonne Position
+    // affiche « 1.3+168 (1128) » et la colonne N° « C#2 (37) » : on ne demande
+    // pas à l'utilisateur de retaper cette mise en forme, on lui donne le tick
+    // et le numéro, qui sont ce que le champ porte.
+    const long long actuel =
+        columnId == kColPosition ? static_cast<long long>(ligne.tick)
+        : columnId == kColPremier ? ligne.first
+        : columnId == kColSecond ? ligne.second
+        : static_cast<long long>(ligne.length);
+    saisie_.setText(juce::String(actuel), juce::dontSendNotification);
+    saisie_.setBounds(table_.getCellPosition(columnId, row, true)
+                          .translated(table_.getX(), table_.getY()));
+    saisie_.setVisible(true);
+    // DEVANT LA TABLE, et il a fallu le payer pour le voir : `saisie_` est
+    // déclarée AVANT `table_` dans la classe, donc ajoutée avant elle au parent,
+    // donc peinte DESSOUS. Le journal disait « saisie ouverte », la photo ne
+    // montrait rien — c'est exactement le genre d'écart que la photo existe pour
+    // attraper.
+    saisie_.toFront(true);
+    saisie_.grabKeyboardFocus();
+    saisie_.selectAll();
+}
+
+bool EventListComponent::validerSaisie() {
+    if (ligneEnSaisie_ < 0 || project_ == nullptr || activeTrack_ < 0
+        || static_cast<size_t>(activeTrack_) >= project_->tracks.size()
+        || ligneEnSaisie_ >= static_cast<int>(lignes_.size()))
+        return false;
+    const auto ligne = lignes_[static_cast<size_t>(ligneEnSaisie_)];
+    const juce::String texte = saisie_.getText().trim();
+    // CE QUI N'EST PAS UN NOMBRE EST REFUSÉ, ET DIT. `getIntValue()` rend 0 sur
+    // une saisie vide ou du texte : accepter ce 0 poserait une vélocité nulle
+    // que personne n'a demandée.
+    if (texte.isEmpty() || !texte.containsOnly("-0123456789")) {
+        std::fputs(("VSM_LISTE : " + texte + juce::String::fromUTF8(
+                        u8" — refusé, ce n'est pas un nombre\n")).toRawUTF8(), stderr);
+        return false;
+    }
+    using vsm::sequencer::EventField;
+    const EventField champ = colonneEnSaisie_ == kColPosition ? EventField::Position
+                            : colonneEnSaisie_ == kColPremier ? EventField::Number
+                            : colonneEnSaisie_ == kColSecond ? EventField::Value
+                                                              : EventField::Length;
+    if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Modifier un événement"));
+    auto& piste = project_->tracks[static_cast<size_t>(activeTrack_)];
+    if (!vsm::sequencer::setTrackEventField(piste, ligne, champ,
+                                             texte.getLargeIntValue())) {
+        // PANNE MUETTE INTERDITE (la règle de `deleteKeyPressed`, juste en
+        // dessous) : un refus se DIT. `setTrackEventField` refuse une valeur
+        // hors bornes plutôt que de la borner en silence — l'utilisateur tape
+        // 300, et il doit savoir qu'il n'a pas obtenu 127.
+        std::fputs(("VSM_LISTE : " + texte + juce::String::fromUTF8(
+                        u8" — refusé (hors bornes, champ sans objet, ou ligne périmée)\n"))
+                       .toRawUTF8(), stderr);
+        return false;
+    }
+    std::fputs(("VSM_LISTE : colonne " + juce::String(colonneEnSaisie_) + " = " + texte
+                + juce::String::fromUTF8(u8" — écrit\n")).toRawUTF8(), stderr);
+    return true;
+}
+
+void EventListComponent::fermerSaisie() {
+    saisie_.setVisible(false);
+    ligneEnSaisie_ = -1;
+    colonneEnSaisie_ = 0;
+}
+
+bool EventListComponent::editerPourCapture(const juce::String& consigne) {
+    const int row = consigne.upToFirstOccurrenceOf(":", false, false).getIntValue();
+    const juce::String reste = consigne.fromFirstOccurrenceOf(":", false, false);
+    const int colonne = reste.upToFirstOccurrenceOf(":", false, false).getIntValue();
+    const juce::String valeur = reste.fromFirstOccurrenceOf(":", false, false).trim();
+    if (row < 0 || row >= static_cast<int>(lignes_.size())) {
+        std::fputs(("VSM_LISTE : ligne " + juce::String(row) + juce::String::fromUTF8(u8" hors liste (")
+                    + juce::String(static_cast<int>(lignes_.size()))
+                    + juce::String::fromUTF8(u8" ligne(s))\n")).toRawUTF8(), stderr);
+        return false;
+    }
+    if (!colonneModifiable(colonne, lignes_[static_cast<size_t>(row)].kind)) {
+        std::fputs(("VSM_LISTE : colonne " + juce::String(colonne)
+                    + juce::String::fromUTF8(u8" non modifiable pour cette nature\n")).toRawUTF8(), stderr);
+        return false;
+    }
+    ouvrirSaisie(row, colonne);
+    // « ? » OUVRE ET LAISSE OUVERT, comme `:?` des menus de banc : c'est le seul
+    // moyen de PHOTOGRAPHIER l'éditeur en place, qui se referme sinon dans la
+    // même fonction et ne serait jamais sur une image.
+    if (valeur == "?") {
+        std::fputs(("VSM_LISTE : saisie ouverte sur la ligne " + juce::String(row)
+                    + ", colonne " + juce::String(colonne) + ", texte \xc2\xab "
+                    + saisie_.getText() + " \xc2\xbb\n").toRawUTF8(), stderr);
+        return true;
+    }
+    saisie_.setText(valeur, juce::dontSendNotification);
+    const bool fait = validerSaisie();
+    fermerSaisie();
+    if (fait) { rebuild(); if (onEventsChanged) onEventsChanged(); }
+    return fait;
+}
+
+void EventListComponent::cellDoubleClicked(int row, int columnId, const juce::MouseEvent&) {
+    if (row < 0 || row >= static_cast<int>(lignes_.size())) return;
+    if (colonneModifiable(columnId, lignes_[static_cast<size_t>(row)].kind)) {
+        ouvrirSaisie(row, columnId);
+        return;
+    }
     if (onSeekRequested) onSeekRequested(lignes_[static_cast<size_t>(row)].tick);
 }
 

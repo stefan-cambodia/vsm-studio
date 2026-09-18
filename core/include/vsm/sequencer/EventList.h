@@ -66,4 +66,29 @@ std::string eventKindLabel(EventKind kind);
 /// et le clic, et qui doit être dit plutôt que de supprimer le voisin.
 bool removeTrackEvent(Track& track, const EventRow& row);
 
+/// D348 : CE QU'UNE LIGNE DE LA LISTE PEUT CHANGER.
+///
+/// La liste d'événements savait REGARDER et SUPPRIMER ; elle ne savait pas
+/// MODIFIER, alors que c'est la raison d'être d'un éditeur en liste (Cubase,
+/// Logic et Reaper y changent hauteur, vélocité, position et durée au clavier).
+/// Corriger une vélocité demandait de retrouver la note dans le piano roll.
+enum class EventField {
+    Position,   ///< le tick de l'événement
+    Number,     ///< numéro de note, de contrôleur ou de programme (0-127)
+    Value,      ///< vélocité, valeur de contrôleur, pli, pression
+    Length,     ///< la durée, pour une NOTE seulement
+};
+
+/// Change un champ de l'événement décrit par `row`.
+///
+/// Rend faux — et ne touche à rien — si la ligne ne désigne plus rien (la piste
+/// a changé entre l'affichage et la saisie), si le champ n'a pas de sens pour
+/// cette famille (une durée sur un contrôleur), ou si la valeur sort des bornes
+/// de son domaine. **On ne borne pas en silence** : une vélocité à 300 est un
+/// refus, pas un 127 — l'utilisateur doit savoir que ce qu'il a tapé n'a pas été
+/// pris. Seule exception, dite ici : une position négative devient 0, parce
+/// qu'un tick négatif n'existe pas et que le geste (« ramener au début ») est
+/// sans ambiguïté.
+bool setTrackEventField(Track& track, const EventRow& row, EventField field, long long value);
+
 } // namespace vsm::sequencer

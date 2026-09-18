@@ -56,6 +56,14 @@ public:
     /// Double-clic sur une ligne : la tête de lecture va là.
     std::function<void(vsm::midi::Tick)> onSeekRequested;
 
+    /// D348 : MODIFIER UNE VALEUR DEPUIS LA LISTE, au banc.
+    /// `VSM_LISTE_EDITER=ligne:colonne:valeur` — la colonne par son numéro
+    /// (1 position, 4 numéro, 5 valeur, 6 durée). Passe par le MÊME chemin que
+    /// la saisie à la souris : ouvrir l'éditeur sur la case, y écrire, valider.
+    /// Rend faux si la ligne, la colonne ou la valeur ne conviennent pas — et
+    /// le journal dit laquelle des trois.
+    bool editerPourCapture(const juce::String& consigne);
+
     // --- TableListBoxModel ---
     int getNumRows() override { return static_cast<int>(lignes_.size()); }
     void paintRowBackground(juce::Graphics&, int row, int w, int h, bool selected) override;
@@ -81,6 +89,18 @@ private:
     juce::ComboBox filtre_;
     juce::Label compte_;
     juce::TableListBox table_ { "evenements", this };
+    /// D348 : LA SAISIE EN PLACE. Un seul éditeur, déplacé sur la case qu'on
+    /// modifie : `TableListBox` n'en demande pas d'autre, et un composant par
+    /// cellule coûterait un parcours complet à chaque rafraîchissement.
+    juce::TextEditor saisie_;
+    int ligneEnSaisie_ = -1;
+    int colonneEnSaisie_ = 0;
+    /// Le champ que porte une colonne, et s'il a un sens pour cette famille.
+    static bool colonneModifiable(int columnId, vsm::sequencer::EventKind nature);
+    void ouvrirSaisie(int row, int columnId);
+    /// Valide ce qui est écrit. `true` si le modèle a changé.
+    bool validerSaisie();
+    void fermerSaisie();
 };
 
 } // namespace vsm::app::ui

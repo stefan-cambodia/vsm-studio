@@ -137,6 +137,9 @@ public:
     /// D89 : VSM_RAPPORT_LISTE=1 -- ce que le volet de rapport AFFICHE, ligne par
     /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
     void listReportForCapture();
+    /// D348 : VSM_LISTE_EDITER=ligne:colonne:valeur -- modifier une case de la
+    /// liste d'événements par le chemin de la saisie (ouvrir, écrire, valider).
+    bool editListForCapture(const juce::String& consigne) { return eventList_.editerPourCapture(consigne); }
     /// D345 : VSM_AUTOMATION=1 -- l'échelle de la lane d'automation affichée.
     void listAutomationScaleForCapture() const { automation_.listerEchellePourCapture(); }
     /// D344 : VSM_MIXEUR_NIVEAU=piste:dBFS[;…] -- une crête posée sur un vumètre,

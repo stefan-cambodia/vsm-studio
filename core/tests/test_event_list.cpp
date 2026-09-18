@@ -121,3 +121,123 @@ VSM_TEST(an_empty_track_lists_nothing_rather_than_failing) {
     Track vide;
     VSM_ASSERT(listTrackEvents(vide).empty());
 }
+
+// ---------------------------------------------------------------------------
+// D348 — MODIFIER UNE VALEUR DEPUIS LA LISTE.
+//
+// L'attendu, écrit avant la mesure : « chaque champ modifiable change CE QU'IL
+// NOMME et rien d'autre ; une valeur hors bornes est REFUSÉE et ne borne pas en
+// silence ; un champ qui n'a pas de sens pour la famille est refusé ; une ligne
+// périmée est refusée comme pour la suppression. »
+// ---------------------------------------------------------------------------
+
+namespace {
+
+const EventRow* ligneDe(const std::vector<EventRow>& lignes, EventKind nature) {
+    for (const auto& l : lignes) if (l.kind == nature) return &l;
+    return nullptr;
+}
+
+} // namespace
+
+VSM_TEST(editing_a_note_changes_only_the_field_named) {
+    Track piste = pisteComplete();
+    const auto lignes = listTrackEvents(piste);
+    const EventRow* note = ligneDe(lignes, EventKind::Note);
+    VSM_ASSERT(note != nullptr);
+    const auto avant = piste.notes;
+
+    VSM_ASSERT(setTrackEventField(piste, *note, EventField::Value, 42));
+    VSM_ASSERT_EQ(int{piste.notes[0].velocity}, 42);
+    VSM_ASSERT_EQ(int{piste.notes[0].number}, int{avant[0].number});
+    VSM_ASSERT_EQ(piste.notes[0].startTick, avant[0].startTick);
+    VSM_ASSERT_EQ(piste.notes[0].endTick, avant[0].endTick);
+
+    VSM_ASSERT(setTrackEventField(piste, *note, EventField::Number, 72));
+    VSM_ASSERT_EQ(int{piste.notes[0].number}, 72);
+    VSM_ASSERT_EQ(int{piste.notes[0].velocity}, 42);
+
+    VSM_ASSERT(setTrackEventField(piste, *note, EventField::Length, 240));
+    VSM_ASSERT_EQ(piste.notes[0].endTick - piste.notes[0].startTick, Tick{240});
+}
+
+VSM_TEST(moving_a_note_carries_its_length) {
+    // LA DURÉE SUIT LA NOTE : déplacer n'est pas raccourcir. Sans cette règle,
+    // corriger une position depuis la liste mangerait la fin de la note.
+    Track piste = pisteComplete();
+    const auto lignes = listTrackEvents(piste);
+    const EventRow* note = ligneDe(lignes, EventKind::Note);
+    VSM_ASSERT(note != nullptr);
+    const Tick duree = piste.notes[0].endTick - piste.notes[0].startTick;
+    VSM_ASSERT(setTrackEventField(piste, *note, EventField::Position, 1920));
+    VSM_ASSERT_EQ(piste.notes[0].startTick, Tick{1920});
+    VSM_ASSERT_EQ(piste.notes[0].endTick - piste.notes[0].startTick, duree);
+}
+
+VSM_TEST(an_out_of_range_value_is_refused_and_never_clamped) {
+    // BORNER EN SILENCE SERAIT PIRE QUE REFUSER : l'utilisateur tape 300, voit
+    // 127, et croit que le logiciel a compris autre chose que ce qu'il a écrit.
+    Track piste = pisteComplete();
+    const auto lignes = listTrackEvents(piste);
+    const EventRow* note = ligneDe(lignes, EventKind::Note);
+    VSM_ASSERT(note != nullptr);
+    const int velocite = int{piste.notes[0].velocity};
+    VSM_ASSERT(!setTrackEventField(piste, *note, EventField::Value, 300));
+    VSM_ASSERT_EQ(int{piste.notes[0].velocity}, velocite);
+    VSM_ASSERT(!setTrackEventField(piste, *note, EventField::Value, -1));
+    VSM_ASSERT_EQ(int{piste.notes[0].velocity}, velocite);
+    // Une durée nulle ou négative : refusée aussi (la note disparaîtrait).
+    VSM_ASSERT(!setTrackEventField(piste, *note, EventField::Length, 0));
+    VSM_ASSERT(piste.notes[0].endTick > piste.notes[0].startTick);
+    // Une position négative, elle, se RAMÈNE à zéro : un tick négatif n'existe
+    // pas et le geste est sans ambiguïté. C'est la seule exception, et elle est
+    // écrite dans l'en-tête.
+    VSM_ASSERT(setTrackEventField(piste, *note, EventField::Position, -50));
+    VSM_ASSERT_EQ(piste.notes[0].startTick, Tick{0});
+}
+
+VSM_TEST(a_field_without_meaning_for_its_kind_is_refused) {
+    Track piste = pisteComplete();
+    const auto lignes = listTrackEvents(piste);
+    const EventRow* cc = ligneDe(lignes, EventKind::ControlChange);
+    const EventRow* pli = ligneDe(lignes, EventKind::PitchBend);
+    const EventRow* prog = ligneDe(lignes, EventKind::ProgramChange);
+    VSM_ASSERT(cc != nullptr && pli != nullptr && prog != nullptr);
+    VSM_ASSERT(!setTrackEventField(piste, *cc, EventField::Length, 100));    // un CC n'a pas de durée
+    VSM_ASSERT(!setTrackEventField(piste, *pli, EventField::Number, 12));    // un pli n'a pas de numéro
+    VSM_ASSERT(!setTrackEventField(piste, *prog, EventField::Value, 12));    // un programme n'a que son numéro
+    // Et ce qui a un sens passe.
+    VSM_ASSERT(setTrackEventField(piste, *cc, EventField::Number, 7));
+    VSM_ASSERT(setTrackEventField(piste, *pli, EventField::Value, -8192));
+    VSM_ASSERT(setTrackEventField(piste, *prog, EventField::Number, 40));
+}
+
+VSM_TEST(editing_a_stale_row_refuses_instead_of_touching_the_neighbour) {
+    Track piste = pisteComplete();
+    const auto lignes = listTrackEvents(piste);
+    const EventRow* cc = ligneDe(lignes, EventKind::ControlChange);
+    VSM_ASSERT(cc != nullptr);
+    EventRow perimee = *cc;
+    perimee.tick += 7;
+    const auto avant = piste.controlChanges;
+    VSM_ASSERT(!setTrackEventField(piste, perimee, EventField::Value, 1));
+    VSM_ASSERT_EQ(int{piste.controlChanges[0].value}, int{avant[0].value});
+
+    EventRow noteFantome;
+    noteFantome.kind = EventKind::Note;
+    noteFantome.noteId = 99999;
+    VSM_ASSERT(!setTrackEventField(piste, noteFantome, EventField::Value, 1));
+}
+
+VSM_TEST(a_pitch_bend_keeps_its_fourteen_bits) {
+    Track piste = pisteComplete();
+    const auto lignes = listTrackEvents(piste);
+    const EventRow* pli = ligneDe(lignes, EventKind::PitchBend);
+    VSM_ASSERT(pli != nullptr);
+    VSM_ASSERT(setTrackEventField(piste, *pli, EventField::Value, 8191));
+    VSM_ASSERT_EQ(int{piste.pitchBends[0].value}, 8191);
+    VSM_ASSERT(!setTrackEventField(piste, *pli, EventField::Value, 8192));
+    VSM_ASSERT_EQ(int{piste.pitchBends[0].value}, 8191);
+    VSM_ASSERT(!setTrackEventField(piste, *pli, EventField::Value, -8193));
+    VSM_ASSERT_EQ(int{piste.pitchBends[0].value}, 8191);
+}

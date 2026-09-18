@@ -28431,3 +28431,76 @@ jupiter8, drums, organ, granular, multisample), dessinées par un TOUT AUTRE
 `tools/balayer-facades.sh` les parcourt déjà pour le plancher de 18 px et
 pourrait porter ce contrôle, mais il coûte soixante-trois lancements et la garde
 du thème doit rester courte.
+
+### Phase D348 — la liste d'événements savait regarder et supprimer, jamais modifier (18/09/2026)
+
+**D'OÙ ELLE VIENT — CE QU'UN ÉDITEUR EN LISTE EST CENSÉ FAIRE.** L'onglet *Liste*
+énumère les six familles d'événements d'une piste (D32.2), suit la lecture
+(D284) et supprime au clavier. Il ne permettait **pas de changer une valeur** —
+alors que c'est la raison d'être d'un éditeur en liste : Cubase, Logic et Reaper
+y changent hauteur, vélocité, position et durée au clavier, sans souris et sans
+viser un rectangle de trois pixels. Corriger une vélocité demandait d'aller
+retrouver la note dans le piano roll.
+
+**CE QUI EST FAIT.**
+
+- **`setTrackEventField` dans `core/`** — fonction pure, donc vérifiable sans
+  ouvrir de fenêtre, comme `listTrackEvents` et `removeTrackEvent` avant elle.
+  Quatre champs (position, numéro, valeur, durée), les six familles, et
+  **six tests** (349 core au lieu de 343). Trois règles y sont écrites :
+  1. **une valeur hors bornes est REFUSÉE, jamais bornée en silence** — celui
+     qui tape 300 ne doit pas obtenir 127 sans le savoir ;
+  2. **un champ sans objet pour sa famille est refusé** (une durée sur un
+     contrôleur, un numéro sur un pli, une valeur sur un changement de
+     programme) ;
+  3. **déplacer une note emporte sa durée** — déplacer n'est pas raccourcir.
+  Seule exception, dite dans l'en-tête : une position négative se ramène à 0,
+  parce qu'un tick négatif n'existe pas et que le geste est sans ambiguïté.
+- **La saisie en place** : double-clic sur une colonne modifiable, un éditeur au
+  contour ambre sur la case, Entrée valide, Échap annule, perdre le clavier
+  annule — comme une case de tableur. **Le double-clic garde ses deux sens** :
+  sur les colonnes *Nature* et *Canal*, qui ne se modifient pas ici, il place la
+  tête de lecture comme avant (D284).
+- Un refus **se dit** (`VSM_LISTE : … — refusé`), et la modification **entre
+  dans l'historique** (« Modifier un événement »), donc s'annule.
+- Au banc : `VSM_LISTE_EDITER=ligne:colonne:valeur[;…]`, par le MÊME chemin que
+  la souris (ouvrir la saisie, écrire, valider) ; la forme `ligne:colonne:?`
+  ouvre l'éditeur **et le laisse ouvert**, seul moyen de le photographier.
+
+**ATTENDU** (avant la mesure ; projet engendré de huit noires à 100 de vélocité,
+480 ticks) : les saisies `0:5:42`, `0:4:72` et `0:6:240` relues **dans le .mid
+exporté** comme hauteur **72**, vélocité **42**, durée **240** ; `0:5:300`
+**refusé** ; `0:2:3` (colonne *Nature*) **refusé** ; un pas « Modifier un
+événement » dans l'historique ; l'éditeur **visible sur la photo** ; 349 tests
+core ; les huit autres gardes d'interface 0 raté.
+
+**MESURÉ** (`tools/liste-editer.sh`, binaire du 18/09 contre celui de D344) :
+
+| mesure | avant (D344) | après |
+|---|---|---|
+| première note du .mid après trois saisies | **48 / 0 / 100 / 480** (rien n'a bougé) | **72 / 0 / 42 / 240** |
+| vélocité 300 | — | **refusée**, la vélocité reste 42 |
+| colonne *Nature* | — | **refusée** (« non modifiable pour cette nature ») |
+| pas d'annulation | aucun | **« Modifier un événement »** |
+| pixels ambre sur la photo, sans / avec l'éditeur | 268 / 268 | 268 / **484** |
+| tests core | 343 | **349** |
+| `tools/liste-editer.sh` | **6 ratés** | **0 raté** |
+
+Attendu tenu. Photo : un cadre ambre sur la case *Valeur* de la ligne « 1.3
+(960) », son contenu sélectionné, comme une case de tableur.
+
+**DEUX PIÈGES PAYÉS, ET LES DEUX RATTRAPÉS PAR LA MESURE.**
+(a) **L'export courait AVANT la saisie** : les trois écritures passaient au
+journal et le `.mid` relu ne bougeait pas. C'est la leçon de D222 — un banc qui
+exporte avant d'agir écrit l'état d'AVANT son geste — et le verbe a été replacé
+avant tous les verbes d'export. (b) **L'éditeur était peint SOUS la table** :
+`saisie_` est déclarée avant `table_`, donc ajoutée avant elle au parent, donc
+dessous ; le journal disait « saisie ouverte » et la photo ne montrait rien.
+Et la garde elle-même a dû être corrigée : compter les pixels ambre d'une photo
+ne prouve rien tout seul — la colonne *Nature* écrit « Note » en ambre sur chaque
+ligne, et le compte passait le seuil SANS éditeur. Elle prend désormais deux
+photos, une seule variable entre elles, et c'est leur DIFFÉRENCE qui décide.
+
+**Reste nommé, non fait** : le canal ne se modifie pas (il faudrait décider ce
+qu'un changement de canal veut dire pour une note déjà routée) ; et la liste ne
+crée pas d'événement — elle en modifie et en supprime.

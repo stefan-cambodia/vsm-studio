@@ -610,6 +610,22 @@ public:
             // de l'état photographié.
             if (const char* liste = std::getenv("VSM_MENU_LISTE"); liste != nullptr && *liste && *liste != '0')
                 content->listMenusForCapture();
+            // D348 : VSM_LISTE_EDITER=ligne:colonne:valeur[;…] -- une case de la liste
+            // d'événements modifiée par le chemin de la saisie. APRÈS VSM_VUE (la liste doit
+            // être montée et remplie) et AVANT TOUT VERBE D'EXPORT — la leçon de
+            // D222 : un banc qui exporte avant d'agir écrit l'état d'AVANT son geste,
+            // et l'on croit que le geste n'a rien fait. Payé une fois ici même : les
+            // trois saisies passaient au journal et le .mid relu ne bougeait pas.
+            if (const char* saisies = std::getenv("VSM_LISTE_EDITER");
+                saisies != nullptr && *saisies) {
+                juce::StringArray suite;
+                suite.addTokens(juce::String::fromUTF8(saisies), ";", "");
+                for (const auto& e : suite)
+                    if (e.trim().isNotEmpty() && !content->editListForCapture(e.trim()))
+                        std::fputs((juce::String("VSM_LISTE_EDITER : ") + e.trim()
+                                    + juce::String::fromUTF8(u8" \u2014 refusé (voir la ligne au-dessus)\n"))
+                                       .toRawUTF8(), stderr);
+            }
             // VSM_EXPORT_MIDI_PISTE=fichier.mid : la piste choisie seule, en
             // MIDI, sans fenêtre (D23.3) -- le fichier relu doit compter UNE piste.
             if (const char* sortie = std::getenv("VSM_EXPORT_MIDI_PISTE"); sortie != nullptr && *sortie)

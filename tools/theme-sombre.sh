@@ -64,12 +64,20 @@ for vue in "arrangement,mixeur" "arrangement,liste" "arrangement,automation" \
            "arrangement,midi-cc" "arrangement,tempo" "arrangement,effets" \
            "pianoroll,liste" "arrangement,navigateur"; do
     nom="$(tr -c 'a-z0-9' '-' <<<"$vue")"
-    maison="$(mktemp -d "$brouillon/home.XXXX")"   # D318 : un HOME NEUF par course
-    env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=2500 \
-        VSM_VUE="sans-rapport,$vue" VSM_CAPTURE="$brouillon/$nom.png" \
-        timeout 45 "$BIN" > "$brouillon/$nom.txt" 2>&1
+    # UNE PHOTO QUI NE VIENT PAS N'EST PAS UN DÉFAUT DE THÈME : elle se
+    # relance. Enchaînée derrière d'autres gardes qui lancent l'application,
+    # celle-ci a raté une capture sur dix courses — et la garde a alors accusé
+    # le thème. C'est la leçon de D72 et D91 (une absence sur une photo ne
+    # prouve rien) appliquée à une garde plutôt qu'à une boîte.
+    for essai in 1 2; do
+        maison="$(mktemp -d "$brouillon/home.XXXX")"   # D318 : un HOME NEUF par course
+        env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=2500 \
+            VSM_VUE="sans-rapport,$vue" VSM_CAPTURE="$brouillon/$nom.png" \
+            timeout 45 "$BIN" > "$brouillon/$nom.txt" 2>&1
+        [ -f "$brouillon/$nom.png" ] && break
+    done
     if [ ! -f "$brouillon/$nom.png" ]; then
-        verdict "$vue : photo prise" 0
+        verdict "$vue : photo prise (deux essais)" 0
         continue
     fi
     sortie="$(python3 tools/surfaces-claires.py "$brouillon/$nom.png")"
@@ -88,10 +96,14 @@ for cas in "historique,spectre,ordre,prises|" "arrangement|perdues"; do
     boite="${cas##*|}"
     maison="$(mktemp -d "$brouillon/home.XXXX")"
     nom="pan-$(tr -c 'a-z0-9' '-' <<<"$vues$boite")"
-    env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=3000 \
-        VSM_VUE="sans-rapport,arrangement,$vues" VSM_BOITE_ESSAI="$boite" \
-        VSM_CAPTURE_PANNEAUX=1 VSM_CAPTURE="$brouillon/$nom.png" \
-        timeout 45 "$BIN" > "$brouillon/$nom.txt" 2>&1
+    for essai in 1 2; do
+        maison="$(mktemp -d "$brouillon/home.XXXX")"
+        env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=3000 \
+            VSM_VUE="sans-rapport,arrangement,$vues" VSM_BOITE_ESSAI="$boite" \
+            VSM_CAPTURE_PANNEAUX=1 VSM_CAPTURE="$brouillon/$nom.png" \
+            timeout 45 "$BIN" > "$brouillon/$nom.txt" 2>&1
+        grep -q '^VSM_CAPTURE_PANNEAUX : ' "$brouillon/$nom.txt" && break
+    done
     images="$(sed -n 's/^VSM_CAPTURE_PANNEAUX : //p' "$brouillon/$nom.txt")"
     if [ -z "$images" ]; then
         verdict "$vues${boite:+ + boîte « $boite »} : au moins une fenêtre photographiée" 0
