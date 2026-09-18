@@ -71,7 +71,7 @@ for vue in "arrangement,mixer" "arrangement,liste" "arrangement,automation" \
     # prouve rien) appliquée à une garde plutôt qu'à une boîte.
     for essai in 1 2; do
         maison="$(mktemp -d "$brouillon/home.XXXX")"   # D318 : un HOME NEUF par course
-        env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=2500 \
+        env VSM_TAILLE="1280x742" HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=2500 \
             VSM_VUE="sans-rapport,$vue" VSM_CAPTURE="$brouillon/$nom.png" \
             timeout 45 "$BIN" > "$brouillon/$nom.txt" 2>&1
         [ -f "$brouillon/$nom.png" ] && break
@@ -114,7 +114,7 @@ for cas in "historique,spectre,ordre,prises|" "navigateur|"; do
     # absence n'est pas un défaut de thème.
     for essai in 1 2 3; do
         maison="$(mktemp -d "$brouillon/home.XXXX")"
-        env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=3000 \
+        env VSM_TAILLE="1280x742" HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_DELAI=3000 \
             VSM_VUE="sans-rapport,arrangement,$vues" VSM_BOITE_ESSAI="$boite" \
             VSM_CAPTURE_PANNEAUX=1 VSM_CAPTURE="$brouillon/$nom.png" \
             timeout 45 "$BIN" > "$brouillon/$nom.txt" 2>&1

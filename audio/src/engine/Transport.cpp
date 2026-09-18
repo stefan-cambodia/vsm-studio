@@ -1,4 +1,6 @@
 #include "vsm/audio/engine/Transport.h"
+#include <cstdio>
+#include <cstdlib>
 #include <algorithm>
 #include <chrono>
 
@@ -32,6 +34,14 @@ double Transport::endOfSongSeconds() const { return endSeconds_.load(std::memory
 
 void Transport::play() {
     if (state_.load(std::memory_order_acquire) == TransportState::Playing) return;
+    // D351 : QUI A LANCÉ LA LECTURE. Un transport qui part sans geste visible est
+    // une panne muette : sur un projet de douze pistes, quatre ouvertures sur six
+    // se sont mises à jouer toutes seules, et aucune ligne ne disait d'où venait
+    // l'ordre. La trace ne coûte rien (une seule ligne, au démarrage d'une
+    // lecture) et elle est SOUS `VSM_TRACE_TRANSPORT` pour ne pas polluer les
+    // journaux des courses qui jouent pour de bon.
+    if (std::getenv("VSM_TRACE_TRANSPORT") != nullptr)
+        std::fprintf(stderr, "VSM_TRANSPORT : play\n");
     state_.store(TransportState::Playing, std::memory_order_release);
     graph_.setPlaying(true);
 }

@@ -28622,3 +28622,65 @@ sans argument (19 + le neuf) sans aucun inconnu.
 | verbes rejoués par `tools/onglets-du-dock.sh` | 19 | **20**, 0 inconnu |
 
 Attendu tenu. Neuf gardes d'interface : 0 raté.
+
+### Phase D351 — un transport qui part sans ordre : vu quatre fois sur six, puis jamais, et l'instrument qui le nommera (18/09/2026)
+
+**CE QUI A ÉTÉ VU.** Sur `children-c3-plafond` (douze pistes, deux pistes audio),
+ouvert par `VSM_PROJET` sans aucun verbe de lecture : le bouton *Play* **allumé**
+et la tête **avancée** — 00:00,186 à une course, **00:02,357** à une autre, six
+secondes après l'ouverture. Mesuré à 13:24 : **quatre fois sur six**. Une course
+à deux secondes montrait l'arrêt, une à six montrait la lecture : la chose se
+déclenche APRÈS l'ouverture, à un moment variable.
+
+**CE QUI N'A PAS ÉTÉ VU.** Une trace posée à 13:26 sur `Transport::play()` — et
+sur chacun de ses cinq appelants, chacun nommé — n'a **jamais rien vu passer** :
+**zéro fois sur neuf** ensuite, et aucune ligne d'ordre. Le défaut n'est ni
+reproduit ni expliqué. **Il ne sera donc pas décrit comme un défaut de
+l'application**, et c'est le point de cette phase : quand un banc accuse, on
+vérifie le banc avant la cible.
+
+**LES DEUX CAUSES RESTENT OUVERTES, ET SONT ÉCRITES POUR NE PAS ÊTRE INVENTÉES
+APRÈS :**
+
+1. **La course de banc prend le clavier de l'utilisateur.** Une fenêtre ouverte
+   en plein écran par-dessus la session reçoit ce que l'utilisateur tape — et
+   **la barre d'espace lance la lecture** (D8.1). C'est le même genre de piège
+   que D77, où un banc écrivait dans les préférences de l'utilisateur, d'un cran
+   plus haut : un banc qui prend l'écran prend la session. Les positions
+   observées (0,186 s puis 2,357 s, sans rapport entre elles) ressemblent à un
+   appui à un instant quelconque bien plus qu'à un démarrage programmé.
+2. **Quelque chose dans l'application** qu'aucune trace n'a encore attrapé.
+
+**CE QUI EST FAIT.**
+
+- **`VSM_TRACE_TRANSPORT=1`** : `Transport::play()` dit qu'une lecture part, et
+  `MainComponent` dit **d'où vient l'ordre** — scrub, barre d'espace,
+  raccourci ou association MIDI, `VSM_VUE=jouer`, `VSM_LECTURE`. Le moteur sait
+  QUE, l'interface sait D'OÙ ; ni l'un ni l'autre ne le savait seul. Sous une
+  variable, pour ne pas polluer le journal des courses qui jouent pour de bon.
+- **`tools/transport-au-repos.sh`** : quatre ouvertures d'un projet engendré de
+  huit pistes ; le transport doit être à l'arrêt et **aucun ordre** donné. C'est
+  la seule façon d'attraper une chose qui arrive quatre fois sur six.
+- **Les gardes bornent leur fenêtre** (`VSM_TAILLE=1280x742` dans
+  `theme-sombre.sh` et `onglets-du-dock.sh`, qui prenaient l'écran entier) : une
+  course n'a aucun besoin de la pleine taille, et la cause n° 1 disparaît avec
+  elle.
+
+**ATTENDU** (avant la mesure) : `tools/transport-au-repos.sh` vert — quatre
+ouvertures, transport à l'arrêt, zéro ordre ; les gardes redimensionnées gardent
+leurs verdicts ; cinq suites de tests vertes.
+
+**MESURÉ** :
+
+| mesure | 13:24 (binaire de D350) | 13:28 et après (trace en place) |
+|---|---|---|
+| ouvertures où le transport roulait | **4 sur 6** | **0 sur 9** |
+| position à six secondes | 00:00,186 et 00:02,357 | 00:00,000 |
+| ordres de lecture tracés | *aucune trace n'existait* | **0** |
+| `tools/transport-au-repos.sh` | — | **0 raté** (4 ouvertures) |
+| `theme-sombre.sh`, `onglets-du-dock.sh` bornés à 1280×742 | pleine taille | verdicts inchangés, 0 raté |
+
+**Ce qui reste ouvert, et c'est écrit pour être repris** : la chose n'a pas été
+revue. Si elle revient, la garde la verra et la trace la nommera — c'est
+exactement ce qu'on n'avait pas ce matin. Ne pas conclure sur six mesures dont
+la moitié ne se reproduit pas est le seul résultat honnête ici.

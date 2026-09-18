@@ -460,7 +460,7 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
         arrangement_.setPlayheadTick(tick);
         audioEngine_.processGraph().setPlaybackSpeed(vitesse);
-        if (!audioEngine_.processGraph().isPlaying()) transport_.play();
+        if (!audioEngine_.processGraph().isPlaying()) { direOrigineDuPlay("scrub"); transport_.play(); }
     };
     pianoRollPanel_.onKeyboardNote = [this](int note, float velo, bool on) {
         audioEngine_.playComputerKey(static_cast<uint8_t>(juce::jlimit(0, 127, note)),
@@ -2280,7 +2280,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // de transport ne dit rien tant que rien ne joue, et c'est justement lui
     // qu'il faut regarder pour juger un projet à soixante-quatre machines.
     // Sans ce jeton, la charge du fil audio ne se vérifie qu'à la souris.
-    else if (nom == "jouer")       transport_.play();
+    else if (nom == "jouer")       { direOrigineDuPlay("VSM_VUE=jouer"); transport_.play(); }
     // CRÉER UN CLIP (D16.1) : `clip:piste:mesure`, à partir de 0 pour les deux.
     // Le geste est un DOUBLE-CLIC sur le vide d'une piste, c'est-à-dire
     // invisible à un autoportrait sans souris -- or c'est précisément le
@@ -7092,7 +7092,7 @@ void MainComponent::applyLearnedControls() {
             case Kind::TransportPlay:
                 if (appui) {
                     if (transport_.state() == TransportState::Playing) transport_.stop();
-                    else transport_.play();
+                    else { direOrigineDuPlay("raccourci/MIDI TransportPlay"); transport_.play(); }
                 }
                 break;
             case Kind::TransportStop:  if (appui) transport_.stop(); break;
@@ -8115,7 +8115,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // premier.
         case Id::TransportPlayStop:
             if (transport_.state() == TransportState::Playing) transport_.stop();
-            else transport_.play();
+            else { direOrigineDuPlay("barre d'espace"); transport_.play(); }
             return true;
         // « R » comme référence : la bascule A/B, depuis n'importe quelle
         // fenêtre -- on compare en regardant le piano roll, pas le menu.
@@ -11884,7 +11884,15 @@ void MainComponent::promptGoToBar() {
         });
 }
 
-void MainComponent::startPlaybackForCapture() { transport_.play(); }
+void MainComponent::direOrigineDuPlay(const char* origine) {
+    // D351 : voir `Transport::play`. Le moteur dit QUE la lecture part ; celle-ci
+    // dit D'OÙ VIENT L'ORDRE, ce que le moteur ne peut pas savoir.
+    if (std::getenv("VSM_TRACE_TRANSPORT") != nullptr)
+        std::fputs((juce::String("VSM_TRANSPORT : ordre de lecture \xe2\x80\x94 ")
+                    + origine + "\n").toRawUTF8(), stderr);
+}
+
+void MainComponent::startPlaybackForCapture() { direOrigineDuPlay("VSM_LECTURE"); transport_.play(); }
 
 // --- D23.2 : l'écoute automatique de l'entrée ---------------------------------
 

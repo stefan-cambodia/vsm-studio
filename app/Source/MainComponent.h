@@ -113,6 +113,8 @@ public:
     /// D22.4 : VSM_LECTURE=1 -- lancer la lecture avant la capture, pour que
     /// le voyant OUT se photographie allumé.
     void startPlaybackForCapture();
+    /// D351 : d'où vient l'ordre de lecture (sous `VSM_TRACE_TRANSPORT`).
+    void direOrigineDuPlay(const char* origine);
     /// D22.4 : VSM_VUE=note:60 -- une note jouée par le chemin du clavier
     /// d'ordinateur, rejouée toutes les 200 ms pendant trois secondes : un
     /// voyant tenu 250 ms ne se photographie que s'il vient de s'allumer.

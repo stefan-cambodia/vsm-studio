@@ -1177,6 +1177,10 @@ repère du 0 dB : un relevé dit ce qui est réservé, la photo dit ce qui est p
 miniature — l'ambitus **brut** du clip et celui **retenu**, plus le nombre de
 notes posées sur une rangée de bord (D343). Un ambitus ne se photographie pas :
 deux clips très différents donnent la même bande de traits.
+`VSM_TRACE_TRANSPORT=1` écrit d'où vient chaque ordre de lecture — scrub, barre
+d'espace, raccourci ou association MIDI, verbe de banc (D351) : un transport qui
+part sans geste visible est une panne muette, et le moteur seul ne sait pas qui
+l'a lancé.
 `VSM_VUE=?` énumère les verbes de vue (D349, D350 — le navigateur en est un depuis) : l'application disait déjà
 « commande inconnue », mais il fallait soupçonner la faute pour aller lire le
 journal — deux gardes ont demandé « navigateur » et « mixeur » sans le savoir.
