@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <JuceHeader.h>
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/sequencer/EventList.h"
@@ -53,9 +54,18 @@ public:
     std::function<void(const juce::String&)> onEditStarted;
     /// Un événement a été retiré : le projet doit être republié au séquenceur.
     std::function<void()> onEventsChanged;
+    /// D352 : un événement vient d'être CRÉÉ. L'application couvre alors la note
+    /// par un clip, comme elle le fait pour le piano roll (D337) — sans quoi une
+    /// note créée hors des clips bornés ne serait ni jouée ni exportée.
+    std::function<void()> onEventsCreated;
     /// Double-clic sur une ligne : la tête de lecture va là.
     std::function<void(vsm::midi::Tick)> onSeekRequested;
 
+    /// D352 : AJOUTER UN ÉVÉNEMENT, au banc — `VSM_LISTE_AJOUTER=nature[:tick]`.
+    /// La nature par son rang (0 note, 1 contrôleur, 2 pli, 3 pression
+    /// polyphonique, 4 pression de canal, 5 programme) ; sans tick, la tête de
+    /// lecture. Le même chemin que le bouton.
+    bool ajouterPourCapture(const juce::String& consigne);
     /// D348 : MODIFIER UNE VALEUR DEPUIS LA LISTE, au banc.
     /// `VSM_LISTE_EDITER=ligne:colonne:valeur` — la colonne par son numéro
     /// (1 position, 4 numéro, 5 valeur, 6 durée). Passe par le MÊME chemin que
@@ -73,6 +83,14 @@ public:
 
 private:
     void rebuild();
+    /// D352 : crée un événement de la nature demandée au tick donné, avec les
+    /// valeurs d'usine de sa famille. Rend faux et le DIT si rien n'est créé.
+    bool ajouterEvenement(vsm::sequencer::EventKind nature, vsm::midi::Tick tick);
+    /// D352 : le bouton « + » se grise quand le filtre ne désigne aucune nature
+    /// ou qu'aucune piste n'est choisie.
+    void rafraichirAjouter();
+    /// La nature que le filtre désigne, ou `std::nullopt` pour « Tous ».
+    std::optional<vsm::sequencer::EventKind> natureDuFiltre() const;
     /// Le texte d'une case -- une seule écriture, employée par le dessin comme
     /// par le compte rendu au journal.
     juce::String texteDe(const vsm::sequencer::EventRow& ligne, int columnId) const;
@@ -87,6 +105,10 @@ private:
     /// Le filtre par nature. « Tout » en tête : la liste s'ouvre PLEINE, comme
     /// le navigateur -- on l'ouvre justement pour voir ce qu'il y a.
     juce::ComboBox filtre_;
+    /// D352 : AJOUTER. À côté du filtre, parce que c'est le filtre qui dit la
+    /// nature de ce qu'on ajoute : « Tous » ne peut rien créer, et le bouton se
+    /// grise alors plutôt que de choisir à la place de l'utilisateur.
+    juce::TextButton ajouter_ { "+" };
     juce::Label compte_;
     juce::TableListBox table_ { "evenements", this };
     /// D348 : LA SAISIE EN PLACE. Un seul éditeur, déplacé sur la case qu'on

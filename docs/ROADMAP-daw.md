@@ -28684,3 +28684,64 @@ leurs verdicts ; cinq suites de tests vertes.
 revue. Si elle revient, la garde la verra et la trace la nommera — c'est
 exactement ce qu'on n'avait pas ce matin. Ne pas conclure sur six mesures dont
 la moitié ne se reproduit pas est le seul résultat honnête ici.
+
+### Phase D352 — la liste savait regarder, modifier et supprimer ; elle ne savait pas créer (18/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D348**, et le manque n'est
+pas théorique. Le piano roll crée des notes, la lane MIDI CC crée des
+contrôleurs, des plis et des pressions de canal. **Un changement de programme et
+une pression polyphonique ne se posaient nulle part** : la liste les montrait, le
+séquenceur les jouait, l'export les écrivait (D312), et aucun geste du logiciel
+ne permettait d'en créer un.
+
+**CE QUI EST FAIT.**
+
+- **`addTrackEvent` dans `core/`** — fonction pure, six familles, avec ses règles
+  écrites : une note de durée nulle est **refusée** (la créer serait créer un
+  problème, pas un événement), une valeur hors du domaine de sa famille aussi,
+  et **les lanes restent triées par tick** parce que `listTrackEvents` et le
+  séquenceur le supposent tous deux. **Quatre tests** (349 → **353** core).
+- **Un bouton « + » dans l'en-tête de la liste**, à côté du filtre — et c'est le
+  filtre qui dit la NATURE de ce qu'on crée : sous « Tous », le bouton se
+  **grise** plutôt que de choisir à la place de l'utilisateur. L'événement naît
+  **à la tête de lecture**, avec des valeurs d'usine qui s'entendent et se
+  voient (do central à la noire, CC 7 à mi-course, pli au centre, programme 1) :
+  rien à zéro, parce qu'un événement invisible qu'on vient de créer se cherche,
+  et l'on croit que le bouton n'a rien fait.
+- Annulable (« Ajouter un événement »), refus **dit**, verbe de banc
+  `VSM_LISTE_AJOUTER=nature[:tick]`.
+
+**ET UN DÉFAUT TROUVÉ PAR LA GARDE, QUI EST LE PLUS INTÉRESSANT DE LA PHASE.**
+La première mesure a rendu **quatre notes au `.mid` pour cinq créées**. La note
+créée au tick 1920, sur une piste dont les clips s'arrêtent à la mesure 2 (D333
+les borne aux notes), **n'était ni jouée ni exportée** — exactement le défaut que
+D337 avait corrigé pour le piano roll. La création passe désormais par le MÊME
+chemin de couverture (`materializeImplicitClips` puis `couvrirLesNotesEcrites`) :
+deux chemins d'écriture finiraient par ne plus écrire la même chose.
+
+**ATTENDU** (avant la mesure ; projet engendré de quatre noires) : les six
+familles créées se retrouvent dans le **`.mid` exporté** — 5 notes (4 + 1), et
+une de chacune des cinq autres ; une nature inconnue **refusée** et dite ; un pas
+« Ajouter un événement » dans l'historique ; le bouton « + » et son infobulle
+présents ; 353 tests core.
+
+**MESURÉ** (`tools/liste-ajouter.sh`, binaire du 18/09 contre celui de D344) :
+
+| mesure | avant (D344) | après |
+|---|---|---|
+| notes / CC / pli / pression poly / pression canal / programme au `.mid` | 4 / 0 / 0 / 0 / 0 / 0 | **5 / 1 / 1 / 1 / 1 / 1** |
+| première mesure, avant la couverture de clip | — | 4 notes pour 5 créées (**la note hors clip perdue**) |
+| nature inconnue | — | refusée, et dite |
+| pas d'annulation | aucun | **« Ajouter un événement »** |
+| tests core | 349 | **353** |
+| `tools/liste-ajouter.sh` | **5 ratés** | **0 raté** |
+
+Attendu tenu. Photo : le « + » à droite du filtre, **grisé** sous « Tous », et
+« 17 événement(s) » après un ajout. Tests **353** core, 1 303 audio, **300**
+interchange, 25 clap, 11 panels. Onze gardes d'interface : 0 raté.
+
+**Reste nommé, non fait** : le canal d'un événement ne se modifie toujours pas
+(il faudrait décider ce qu'un changement de canal veut dire pour une note déjà
+routée), et le bouton crée à la tête de lecture sans demander : un clic droit
+qui proposerait « ici » ou « à la tête » serait plus proche de Cubase — non
+mesuré, aucun besoin exprimé.

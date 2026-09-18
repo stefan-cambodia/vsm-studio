@@ -198,4 +198,49 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
     return false;
 }
 
+bool addTrackEvent(Track& track, EventKind kind, Tick tick, int channel,
+                    int first, int second, Tick length, uint64_t& idCounter) {
+    if (tick < 0) return false;
+    if (channel < 0 || channel > 15) return false;
+    const auto canal = static_cast<uint8_t>(channel);
+
+    switch (kind) {
+        case EventKind::Note:
+            // UNE NOTE DE DURÉE NULLE NE S'ENTEND PAS et ne se voit pas : la
+            // créer serait créer un problème, pas un événement (même règle qu'à
+            // D348 pour la modification d'une durée).
+            if (length <= 0 || !dansSeptBits(first) || !dansSeptBits(second)) return false;
+            track.addNote(tick, tick + length, static_cast<uint8_t>(first),
+                           static_cast<uint8_t>(second), canal, idCounter);
+            break;
+        case EventKind::ControlChange:
+            if (!dansSeptBits(first) || !dansSeptBits(second)) return false;
+            track.controlChanges.push_back({tick, canal, static_cast<uint8_t>(first),
+                                             static_cast<uint8_t>(second)});
+            break;
+        case EventKind::PitchBend:
+            if (second < -8192 || second > 8191) return false;
+            track.pitchBends.push_back({tick, canal, static_cast<int16_t>(second)});
+            break;
+        case EventKind::PolyPressure:
+            if (!dansSeptBits(first) || !dansSeptBits(second)) return false;
+            track.polyAftertouch.push_back({tick, canal, static_cast<uint8_t>(first),
+                                             static_cast<uint8_t>(second)});
+            break;
+        case EventKind::ChannelPressure:
+            if (!dansSeptBits(second)) return false;
+            track.channelPressure.push_back({tick, canal, static_cast<uint8_t>(second)});
+            break;
+        case EventKind::ProgramChange:
+            if (!dansSeptBits(first)) return false;
+            track.programChanges.push_back({tick, canal, static_cast<uint8_t>(first)});
+            break;
+    }
+    // LES LANES RESTENT TRIÉES PAR TICK : `listTrackEvents` et le séquenceur le
+    // supposent tous deux, et un événement posé au milieu du morceau arrive
+    // forcément après ceux qui sont déjà là.
+    track.sortEvents();
+    return true;
+}
+
 } // namespace vsm::sequencer

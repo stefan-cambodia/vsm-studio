@@ -33,8 +33,25 @@ EventListComponent::EventListComponent() {
         filtre_.addItem(vsm::app::ui::tr(juce::String::fromUTF8(vsm::sequencer::eventKindLabel(static_cast<EventKind>(k)).c_str())),
                         k + 2);
     filtre_.setSelectedId(1, juce::dontSendNotification);
-    filtre_.onChange = [this] { rebuild(); };
+    filtre_.onChange = [this] { rebuild(); rafraichirAjouter(); };
     addAndMakeVisible(filtre_);
+
+    // D352 : AJOUTER UN ÉVÉNEMENT. À côté du filtre, et c'est LUI qui dit la
+    // nature : « Tous » ne peut rien créer, et le bouton se grise alors plutôt
+    // que de choisir à la place de l'utilisateur. L'événement naît à la TÊTE DE
+    // LECTURE, avec les valeurs d'usine de sa famille — on le règle ensuite dans
+    // la liste, qui sait modifier depuis D348.
+    ajouter_.setTooltip(tr(u8"Ajouter un événement de la nature choisie, à la tête de lecture"));
+    ajouter_.onClick = [this] {
+        const auto nature = natureDuFiltre();
+        if (!nature) return;
+        if (ajouterEvenement(*nature, tete_ > 0 ? tete_ : 0)) {
+            if (onEventsCreated) onEventsCreated();   // D352 : couvrir la note d'un clip
+            rebuild();
+            if (onEventsChanged) onEventsChanged();
+        }
+    };
+    addAndMakeVisible(ajouter_);
 
     compte_.setColour(juce::Label::textColourId, Palette::textSecondary);
     compte_.setFont(juce::Font(juce::FontOptions(12.0f)));
@@ -120,6 +137,9 @@ void EventListComponent::setActiveTrack(int trackIndex) {
 void EventListComponent::refresh() { rebuild(); }
 
 void EventListComponent::rebuild() {
+    // Le bouton « + » suit l'état : une reconstruction vient d'un changement de
+    // projet, de piste ou de filtre, et c'est justement ce dont il dépend.
+    rafraichirAjouter();
     lignes_.clear();
     juce::String nom = tr(u8"aucune piste");
     if (project_ != nullptr && activeTrack_ >= 0
@@ -171,9 +191,85 @@ void EventListComponent::resized() {
     haut.removeFromLeft(8);
     filtre_.setBounds(haut.removeFromLeft(180));
     haut.removeFromLeft(8);
+    ajouter_.setBounds(haut.removeFromLeft(34));
+    haut.removeFromLeft(8);
     compte_.setBounds(haut);
     zone.removeFromTop(6);
     table_.setBounds(zone);
+}
+
+std::optional<EventKind> EventListComponent::natureDuFiltre() const {
+    const int choix = filtre_.getSelectedId();
+    if (choix <= 1) return std::nullopt;                    // « Tous »
+    return static_cast<EventKind>(choix - 2);
+}
+
+void EventListComponent::rafraichirAjouter() {
+    const bool possible = natureDuFiltre().has_value() && project_ != nullptr && activeTrack_ >= 0;
+    ajouter_.setEnabled(possible);
+}
+
+bool EventListComponent::ajouterEvenement(EventKind nature, vsm::midi::Tick tick) {
+    if (project_ == nullptr || activeTrack_ < 0
+        || static_cast<size_t>(activeTrack_) >= project_->tracks.size()) {
+        std::fputs("VSM_LISTE : aucune piste choisie \xe2\x80\x94 rien n'est ajout\xc3\xa9\n", stderr);
+        return false;
+    }
+    auto& piste = project_->tracks[static_cast<size_t>(activeTrack_)];
+    // LES VALEURS D'USINE DE CHAQUE FAMILLE, et elles sont un choix : ce qui
+    // naît doit s'entendre et se voir. Une note à la noire sur do central, un
+    // contrôleur 7 à mi-course, un pli au centre, une pression à mi-course, un
+    // programme 1. Rien ici n'est à zéro : un événement invisible qu'on vient
+    // de créer se cherche, et l'on croit que le bouton n'a rien fait.
+    const vsm::midi::Tick parNoire = project_->ticksPerQuarterNote > 0
+                                       ? project_->ticksPerQuarterNote : 480;
+    int premier = 60, second = 100;
+    vsm::midi::Tick duree = parNoire;
+    switch (nature) {
+        case EventKind::Note:            break;                       // do central, vélocité 100
+        case EventKind::ControlChange:   premier = 7;  second = 64; break;
+        case EventKind::PitchBend:       premier = 0;  second = 0;  break;
+        case EventKind::PolyPressure:    premier = 60; second = 64; break;
+        case EventKind::ChannelPressure: premier = 0;  second = 64; break;
+        case EventKind::ProgramChange:   premier = 0;  second = 0;  break;
+    }
+    if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Ajouter un événement"));
+    uint64_t compteur = project_->peekNextNoteId();
+    const bool fait = vsm::sequencer::addTrackEvent(piste, nature, tick,
+                                                     static_cast<int>(piste.channel), premier,
+                                                     second, duree, compteur);
+    if (!fait) {
+        // PANNE MUETTE INTERDITE : un refus se dit, comme pour la modification.
+        std::fputs((juce::String::fromUTF8("VSM_LISTE : ajout refus\xc3\xa9 (nature ")
+                    + juce::String(static_cast<int>(nature)) + ", tick "
+                    + juce::String(static_cast<int>(tick)) + ")\n").toRawUTF8(), stderr);
+        return false;
+    }
+    if (nature == EventKind::Note) project_->ensureNoteIdAbove(compteur - 1);
+    std::fputs((juce::String::fromUTF8("VSM_LISTE : ajout\xc3\xa9 \xc2\xab ")
+                + juce::String::fromUTF8(vsm::sequencer::eventKindLabel(nature).c_str())
+                + " \xc2\xbb au tick " + juce::String(static_cast<int>(tick))
+                + ", canal " + juce::String(static_cast<int>(piste.channel) + 1) + "\n").toRawUTF8(), stderr);
+    return true;
+}
+
+bool EventListComponent::ajouterPourCapture(const juce::String& consigne) {
+    const int rang = consigne.upToFirstOccurrenceOf(":", false, false).getIntValue();
+    const juce::String reste = consigne.fromFirstOccurrenceOf(":", false, false).trim();
+    if (rang < 0 || rang > 5) {
+        std::fputs(("VSM_LISTE : nature " + juce::String(rang)
+                    + juce::String::fromUTF8(" inconnue (0 note, 1 contr\xc3\xb4leur, 2 pli, "
+                                              "3 pression poly, 4 pression de canal, 5 programme)")
+                    + "\n").toRawUTF8(), stderr);
+        return false;
+    }
+    const vsm::midi::Tick tick = reste.isNotEmpty() ? static_cast<vsm::midi::Tick>(reste.getLargeIntValue())
+                                                     : (tete_ > 0 ? tete_ : 0);
+    if (!ajouterEvenement(static_cast<EventKind>(rang), tick)) return false;
+    if (onEventsCreated) onEventsCreated();   // D352 : le même chemin que le bouton
+    rebuild();
+    if (onEventsChanged) onEventsChanged();
+    return true;
 }
 
 void EventListComponent::paint(juce::Graphics& g) { g.fillAll(Palette::background); }

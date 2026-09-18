@@ -610,6 +610,19 @@ public:
             // de l'état photographié.
             if (const char* liste = std::getenv("VSM_MENU_LISTE"); liste != nullptr && *liste && *liste != '0')
                 content->listMenusForCapture();
+            // D352 : VSM_LISTE_AJOUTER=nature[:tick][;…] -- créer un événement depuis
+            // la liste. AVANT `VSM_LISTE_EDITER` : on crée, puis on règle ce qu'on
+            // vient de créer, et c'est l'ordre dans lequel un musicien le fait.
+            if (const char* ajouts = std::getenv("VSM_LISTE_AJOUTER");
+                ajouts != nullptr && *ajouts) {
+                juce::StringArray suite;
+                suite.addTokens(juce::String::fromUTF8(ajouts), ";", "");
+                for (const auto& e : suite)
+                    if (e.trim().isNotEmpty() && !content->addListEventForCapture(e.trim()))
+                        std::fputs((juce::String("VSM_LISTE_AJOUTER : ") + e.trim()
+                                    + juce::String::fromUTF8(u8" \u2014 refusé (voir la ligne au-dessus)\n"))
+                                       .toRawUTF8(), stderr);
+            }
             // D348 : VSM_LISTE_EDITER=ligne:colonne:valeur[;…] -- une case de la liste
             // d'événements modifiée par le chemin de la saisie. APRÈS VSM_VUE (la liste doit
             // être montée et remplie) et AVANT TOUT VERBE D'EXPORT — la leçon de

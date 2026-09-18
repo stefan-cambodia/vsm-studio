@@ -241,3 +241,82 @@ VSM_TEST(a_pitch_bend_keeps_its_fourteen_bits) {
     VSM_ASSERT(!setTrackEventField(piste, *pli, EventField::Value, -8193));
     VSM_ASSERT_EQ(int{piste.pitchBends[0].value}, 8191);
 }
+
+
+// ---------------------------------------------------------------------------
+// D352 — CRÉER UN ÉVÉNEMENT DEPUIS LA LISTE.
+//
+// L'attendu, écrit avant la mesure : « chaque famille se crée et se retrouve
+// ensuite dans la liste ; les lanes restent triées par tick ; une demande qui
+// n'a pas de sens (durée nulle, valeur hors domaine, canal hors bornes) est
+// REFUSÉE sans rien toucher ; et les deux familles qui ne se créent nulle part
+// ailleurs — changement de programme et pression polyphonique — se créent ici. »
+// ---------------------------------------------------------------------------
+
+VSM_TEST(creating_an_event_of_each_kind_adds_exactly_one_row) {
+    Track piste;
+    uint64_t id = 1;
+    const EventKind familles[] = { EventKind::Note, EventKind::ControlChange,
+                                    EventKind::PitchBend, EventKind::PolyPressure,
+                                    EventKind::ChannelPressure, EventKind::ProgramChange };
+    size_t attendu = 0;
+    for (const auto famille : familles) {
+        const int premier = famille == EventKind::PitchBend ? 0 : 60;
+        const int valeur = famille == EventKind::PitchBend ? -2048 : 90;
+        VSM_ASSERT(addTrackEvent(piste, famille, 480, 0, premier, valeur, 240, id));
+        ++attendu;
+        VSM_ASSERT_EQ(listTrackEvents(piste).size(), attendu);
+    }
+    // Et chaque famille est bien celle qu'on a demandée.
+    const auto lignes = listTrackEvents(piste);
+    for (const auto famille : familles) {
+        bool vue = false;
+        for (const auto& l : lignes) if (l.kind == famille) vue = true;
+        VSM_ASSERT(vue);
+    }
+}
+
+VSM_TEST(a_created_program_change_is_reachable_nowhere_else) {
+    // LE MANQUE QUE CETTE FONCTION COMBLE : le piano roll fait des notes, la
+    // lane MIDI CC fait des contrôleurs, des plis et des pressions de canal.
+    // Un changement de programme et une pression POLYPHONIQUE ne se posaient
+    // nulle part.
+    Track piste;
+    uint64_t id = 1;
+    VSM_ASSERT(addTrackEvent(piste, EventKind::ProgramChange, 960, 3, 41, 0, 0, id));
+    VSM_ASSERT_EQ(piste.programChanges.size(), size_t{1});
+    VSM_ASSERT_EQ(int{piste.programChanges[0].program}, 41);
+    VSM_ASSERT_EQ(int{piste.programChanges[0].channel}, 3);
+    VSM_ASSERT(addTrackEvent(piste, EventKind::PolyPressure, 960, 3, 64, 100, 0, id));
+    VSM_ASSERT_EQ(piste.polyAftertouch.size(), size_t{1});
+    VSM_ASSERT_EQ(int{piste.polyAftertouch[0].note}, 64);
+    VSM_ASSERT_EQ(int{piste.polyAftertouch[0].pressure}, 100);
+}
+
+VSM_TEST(a_created_event_keeps_its_lane_sorted) {
+    // `listTrackEvents` et le séquenceur supposent des lanes triées : un
+    // événement posé AVANT ceux qui existent ne doit pas casser l'ordre.
+    Track piste;
+    uint64_t id = 1;
+    VSM_ASSERT(addTrackEvent(piste, EventKind::ControlChange, 960, 0, 7, 100, 0, id));
+    VSM_ASSERT(addTrackEvent(piste, EventKind::ControlChange, 240, 0, 7, 20, 0, id));
+    VSM_ASSERT(addTrackEvent(piste, EventKind::ControlChange, 480, 0, 7, 60, 0, id));
+    VSM_ASSERT_EQ(piste.controlChanges.size(), size_t{3});
+    VSM_ASSERT_EQ(piste.controlChanges[0].tick, Tick{240});
+    VSM_ASSERT_EQ(piste.controlChanges[1].tick, Tick{480});
+    VSM_ASSERT_EQ(piste.controlChanges[2].tick, Tick{960});
+}
+
+VSM_TEST(a_creation_that_makes_no_sense_is_refused_without_touching_anything) {
+    Track piste;
+    uint64_t id = 1;
+    const uint64_t idAvant = id;
+    VSM_ASSERT(!addTrackEvent(piste, EventKind::Note, 0, 0, 60, 100, 0, id));      // durée nulle
+    VSM_ASSERT(!addTrackEvent(piste, EventKind::Note, -1, 0, 60, 100, 240, id));   // tick négatif
+    VSM_ASSERT(!addTrackEvent(piste, EventKind::Note, 0, 0, 300, 100, 240, id));   // hauteur hors bornes
+    VSM_ASSERT(!addTrackEvent(piste, EventKind::Note, 0, 16, 60, 100, 240, id));   // canal hors bornes
+    VSM_ASSERT(!addTrackEvent(piste, EventKind::PitchBend, 0, 0, 0, 9000, 0, id)); // pli hors 14 bits
+    VSM_ASSERT(!addTrackEvent(piste, EventKind::ProgramChange, 0, 0, 128, 0, 0, id));
+    VSM_ASSERT(listTrackEvents(piste).empty());
+    VSM_ASSERT_EQ(id, idAvant);   // aucun identifiant de note consommé pour rien
+}

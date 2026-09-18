@@ -139,6 +139,8 @@ public:
     /// D89 : VSM_RAPPORT_LISTE=1 -- ce que le volet de rapport AFFICHE, ligne par
     /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
     void listReportForCapture();
+    /// D352 : VSM_LISTE_AJOUTER=nature[:tick] -- créer un événement depuis la liste.
+    bool addListEventForCapture(const juce::String& consigne) { return eventList_.ajouterPourCapture(consigne); }
     /// D348 : VSM_LISTE_EDITER=ligne:colonne:valeur -- modifier une case de la
     /// liste d'événements par le chemin de la saisie (ouvrir, écrire, valider).
     bool editListForCapture(const juce::String& consigne) { return eventList_.editerPourCapture(consigne); }

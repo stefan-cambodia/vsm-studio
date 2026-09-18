@@ -468,6 +468,17 @@ MainComponent::MainComponent()
                                           static_cast<int>(velo * 127.0f))), on);
     };
     eventList_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(libelle); };
+    // D352 : UNE NOTE CRÉÉE DEPUIS LA LISTE PASSE PAR LE MÊME CHEMIN QUE CELLE
+    // DU PIANO ROLL. Mesuré : créée au tick 1920 sur une piste dont les clips
+    // s'arrêtent à la mesure 2 (D333 les borne aux notes), elle n'était NI JOUÉE
+    // NI EXPORTÉE — quatre notes au .mid pour cinq créées. C'est exactement le
+    // défaut que D337 a corrigé pour le piano roll ; deux chemins d'écriture
+    // finiraient par ne plus écrire la même chose.
+    eventList_.onEventsCreated = [this] {
+        bool change = materializeImplicitClips(false);
+        change |= couvrirLesNotesEcrites();
+        if (change) arrangement_.repaint();
+    };
     eventList_.onEventsChanged = [this] {
         refreshTransportSchedule();
         refreshTrackViews();

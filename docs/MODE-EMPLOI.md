@@ -762,6 +762,14 @@ l'historique.
 
 ![L'onglet Tempo : trois paliers, 120, 96 puis 140 BPM.](images/manuel/tempo.png)
 
+**La liste d'événements CRÉE** (D352) : choisissez une nature dans le filtre et
+cliquez « + » — l'événement naît à la tête de lecture, avec des valeurs d'usine
+qui s'entendent, et se règle ensuite dans la liste. Sous « Tous », le bouton est
+grisé : c'est le filtre qui dit ce qu'on crée. C'est le seul endroit du logiciel
+où l'on pose un **changement de programme** ou une **pression polyphonique** ; le
+piano roll fait les notes, la lane MIDI CC les contrôleurs, les plis et les
+pressions de canal.
+
 **La liste d'événements se MODIFIE** (D348) : double-cliquez une case de
 *Position*, *N°*, *Valeur* ou *Durée* et tapez le nombre — Entrée valide, Échap
 annule, et le pas s'annule ensuite au Ctrl+Z comme tout le reste. Une valeur hors
@@ -1184,6 +1192,9 @@ l'a lancé.
 `VSM_VUE=?` énumère les verbes de vue (D349, D350 — le navigateur en est un depuis) : l'application disait déjà
 « commande inconnue », mais il fallait soupçonner la faute pour aller lire le
 journal — deux gardes ont demandé « navigateur » et « mixeur » sans le savoir.
+`VSM_LISTE_AJOUTER=nature[:tick][;…]` crée un événement depuis la liste (D352) —
+0 note, 1 contrôleur, 2 pli, 3 pression polyphonique, 4 pression de canal,
+5 programme ; sans tick, la tête de lecture.
 `VSM_LISTE_EDITER=ligne:colonne:valeur[;…]` modifie une case de la liste
 d'événements par le chemin de la saisie (D348) — colonnes 1 position, 4 numéro,
 5 valeur, 6 durée ; la forme `ligne:colonne:?` ouvre l'éditeur et le laisse

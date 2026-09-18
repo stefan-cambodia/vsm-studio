@@ -91,4 +91,23 @@ enum class EventField {
 /// sans ambiguïté.
 bool setTrackEventField(Track& track, const EventRow& row, EventField field, long long value);
 
+/// D352 : CRÉER UN ÉVÉNEMENT DEPUIS LA LISTE.
+///
+/// La liste savait regarder, supprimer (D32.2) et modifier (D348) ; elle ne
+/// savait pas CRÉER, et c'est la troisième moitié d'un éditeur en liste. Le
+/// manque n'était pas théorique : un **changement de programme** ou une
+/// **pression polyphonique** ne se posent nulle part ailleurs dans le logiciel
+/// — le piano roll fait des notes, la lane MIDI CC fait des contrôleurs, des
+/// plis et des pressions de canal, et personne ne fait les deux autres.
+///
+/// `channel` est celui de la piste ; `first` et `second` ont le sens qu'ils ont
+/// dans `EventRow` (numéro et valeur), `length` ne sert qu'aux notes.
+/// `idCounter` n'est consommé que si une note est créée.
+///
+/// Rend faux — et ne touche à rien — quand la demande n'a pas de sens : un tick
+/// négatif, une durée nulle pour une note, une valeur hors du domaine de sa
+/// famille. **On ne borne pas en silence**, pour la même raison qu'à D348.
+bool addTrackEvent(Track& track, EventKind kind, Tick tick, int channel,
+                    int first, int second, Tick length, uint64_t& idCounter);
+
 } // namespace vsm::sequencer
