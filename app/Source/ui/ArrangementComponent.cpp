@@ -773,11 +773,22 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
         // la tête de lecture » restait grisée, donc introuvable. Le banc ouvrait un
         // menu que la souris n'ouvre jamais dans cet état.
         if (libelle != "?") {
-            selection_.clear();
-            if (tous)
+            // D359 : ET IL CHOISIT COMME LA SOURIS CHOISIT, pas autrement. Le
+            // verbe VIDAIT toujours la sélection ; le vrai clic, lui, la GARDE
+            // quand le clip visé en fait déjà partie (« saisir un groupe de clips
+            // par l'un d'eux le réduirait à celui-là juste avant de le déplacer »,
+            // mouseDown). L'écart rendait INATTEIGNABLE toute entrée qui exige
+            // plusieurs clips : « Joindre les clips choisis » était grisée quoi
+            // qu'on fasse, et aucun banc ne pouvait le voir autrement que comme
+            // un geste mort. Trouvé par `tools/portes-des-gestes.py`, qui a vu le
+            // menu et le clavier rendre deux fichiers différents.
+            if (tous) {
+                selection_.clear();
                 for (const auto& c : piste.clips) selection_.insert(c.id);
-            else
+            } else if (selection_.count(id) == 0) {
+                selection_.clear();
                 selection_.insert(id);
+            }
             clicTick_ = playhead_;
         }
         const juce::PopupMenu menu = menuDuClip(p, piste.clips.front(), -1);
@@ -1718,21 +1729,46 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
     // LES MÊMES RACCOURCIS QUE LE PIANO ROLL, à la lettre : Ctrl+C, Ctrl+V,
     // Ctrl+D. Deux vues du même morceau qui demanderaient deux gestes
     // différents pour la même chose seraient deux logiciels.
-    if (key.getModifiers().isCommandDown()) {
-        switch (key.getTextCharacter()) {
-            case 'a': case 'A': selectAll(); return true;
-            case 'c': case 'C': copySelection(); return true;
-            case 'v': case 'V': paste(); return true;
-            case 'd': case 'D': duplicateSelection(); return true;
-            case 'x': case 'X': copySelection(); deleteSelection(); return true;
-            // D16.3 : Ctrl+J et Ctrl+E, les mêmes lettres que la table des
-            // raccourcis et que le piano roll. Elles sont écrites ici en
-            // clair, comme les cinq au-dessus : faire consulter la table à
-            // l'arrangement est un autre chantier, et il devra déplacer les
-            // sept d'un coup plutôt que d'en laisser cinq en dur et deux non.
-            case 'j': case 'J': joinSelection(); return true;
-            case 'e': case 'E': splitSelectionAtPlayhead(); return true;
-            default: break;
+    //
+    // D359 : ET ELLES VIENNENT ENFIN DE LA TABLE. Les sept touches étaient
+    // écrites en clair (`case 'd'`), et le commentaire de D16.3 nommait le
+    // chantier : « faire consulter la table à l'arrangement est un autre
+    // chantier, et il devra déplacer les sept d'un coup ». Elles le sont, avec
+    // trois de plus (Suppr, et les deux zooms), pour la même raison qu'à D358 :
+    // la table est MODIFIABLE, et une touche écrite en dur ignore le réglage de
+    // l'utilisateur — le piano roll obéissait à la nouvelle touche, l'arrangement
+    // à l'ancienne. Deux vues, un réglage, deux comportements.
+    //
+    // ET C'EST AUSSI CE QUI LES RENDAIT INMESURABLES : `getTextCharacter()` vaut
+    // ZÉRO sur une touche fabriquée depuis sa description (`KeyPress(key,
+    // modifiers, 0)`, juce_KeyPress.cpp), si bien qu'aucun banc ne pouvait jouer
+    // un raccourci de l'arrangement -- « AUCUNE commande de ce clavier ». La
+    // table, elle, compare des DESCRIPTIONS : le clavier de l'arrangement entre
+    // dans les gardes du même coup.
+    if (raccourcis_ != nullptr) {
+        using Id = vsm::interchange::ShortcutId;
+        Id commande{};
+        if (vsm::app::ui::lookupShortcut(*raccourcis_, key, commande)) {
+            switch (commande) {
+                case Id::EditSelectAll:       selectAll(); return true;
+                case Id::EditCopy:            copySelection(); return true;
+                case Id::EditPaste:           paste(); return true;
+                case Id::EditDuplicate:       duplicateSelection(); return true;
+                case Id::EditCut:             copySelection(); deleteSelection(); return true;
+                case Id::EditJoin:            joinSelection(); return true;
+                case Id::EditSplitAtPlayhead: splitSelectionAtPlayhead(); return true;
+                // Suppr et Retour arrière : la table les porte toutes deux, et
+                // sans sélection la touche REMONTE (elle peut servir ailleurs).
+                case Id::EditDelete:
+                    if (!hasSelection()) return false;
+                    deleteSelection();
+                    return true;
+                case Id::ViewZoomIn:  zoomHorizontally(1.25f); return true;
+                case Id::ViewZoomOut: zoomHorizontally(0.8f); return true;
+                // Ce que l'arrangement ne rend pas : la touche remonte à qui
+                // saura quoi en faire, comme le piano roll le fait depuis D10.3.
+                default: break;
+            }
         }
     }
     // `S` coupe l'aimantation, `G` bascule entre la MESURE et la grille fine du
@@ -1758,7 +1794,12 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
         repaint();
         return true;
     }
-    if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) {
+    // D359 : Suppr et Retour arrière passent par la table ci-dessus. Le repli
+    // ci-dessous sert quand aucune table n'est posée (un banc de panneau, un
+    // aperçu hors écran) : sans lui, la touche la plus utilisée de la vue
+    // dépendrait d'un pointeur.
+    if (raccourcis_ == nullptr
+        && (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)) {
         if (!hasSelection()) return false;
         deleteSelection();
         return true;
@@ -1783,6 +1824,9 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
         moveSelectionAcrossTracks(key == juce::KeyPress::upKey ? -1 : 1);
         return true;
     }
+    // D359 : les deux zooms passent par la table ci-dessus ; ce repli-ci ne sert
+    // qu'en son absence, et garde la touche « + » que la table ne porte qu'en
+    // second (sa touche principale est « = »).
     if (key.getTextCharacter() == '+' || key.getTextCharacter() == '=') {
         zoomHorizontally(1.25f);
         return true;

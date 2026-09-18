@@ -29283,3 +29283,89 @@ libellé assemblé à partir d'une variable lui échappe, et il faudrait un rele
 l'exécution pour le voir. Les touches FIXES (les flèches, `fixedShortcuts()`) ne
 sont pas dans la table et restent écrites en dur là où elles apparaissent : c'est
 juste, puisque personne ne peut les changer, mais rien ne le garde.
+
+### Phase D359 — l'arrangement n'avait jamais consulté la table des raccourcis, et c'est le code qui le disait (18/09/2026)
+
+**D'OÙ ELLE VIENT — D'UN COMMENTAIRE QUI NOMMAIT SON PROPRE CHANTIER.** D16.3
+avait écrit, dans `ArrangementComponent::keyPressed` : « `Ctrl+J` et `Ctrl+E` […]
+sont écrites ici en clair, comme les cinq au-dessus : **faire consulter la table
+à l'arrangement est un autre chantier**, et il devra déplacer les sept d'un coup
+plutôt que d'en laisser cinq en dur et deux non. » Sept `case 'd':` au lieu d'une
+table. D358 venait de corriger les LIBELLÉS qui mentaient après un remaniement de
+touche ; ici c'est le CLAVIER qui n'écoute pas le réglage.
+
+**ET CE N'EST PAS SEULEMENT UN RÉGLAGE IGNORÉ : C'EST CE QUI RENDAIT LA VUE
+INMESURABLE.** `juce::KeyPress::createFromDescription` rend
+`KeyPress(key, modifiers, **0**)` — le caractère est NUL (juce_KeyPress.cpp, lu
+et non supposé). Un gestionnaire qui reconnaît ses touches par
+`getTextCharacter()` est donc invisible à toute touche fabriquée par un banc :
+mesuré, `VSM_TOUCHE=arrangement:ctrl + D` rendait **« AUCUNE commande de ce
+clavier »**. Le clavier de l'arrangement n'était atteint par aucune garde depuis
+qu'il existe. La table, elle, compare des DESCRIPTIONS.
+
+**ATTENDU** (écrit avant la mesure, avec son témoin) : `edit.duplicate` réassigné
+à Ctrl+Maj+D dans les préférences, l'arrangement doit obéir à la NOUVELLE touche
+et ignorer l'ancienne — comme le piano roll, qui consulte la table depuis D10.3
+et sert de témoin. Sans ce témoin, « Ctrl+D duplique » ne prouverait pas que le
+réglage a été lu, seulement que la touche marche.
+
+**MESURÉ** (préférences d'un HOME de brouillon, clips et notes du `.mid` exporté,
+huit notes et un clip au départ) :
+
+| vue | témoin (sélection seule) | Ctrl+D (ancienne) | Ctrl+Maj+D (réglée) |
+|---|---|---|---|
+| piano roll (témoin, consultait déjà la table) | 8 notes | 8 notes — rien | **16 notes** |
+| arrangement, avant | — | « AUCUNE commande de ce clavier » | « AUCUNE commande de ce clavier » |
+| arrangement, après | 1 clip, 8 notes | 1 clip, 8 notes — rien | **2 clips, 16 notes** |
+
+Attendu tenu. **Dix commandes** passent désormais par la table — les sept de
+D16.3, plus Suppr et les deux zooms —, avec un repli inchangé quand aucune table
+n'est posée (un aperçu hors écran n'en a pas). **Ce que la mesure ne dit PAS, et
+qu'il faut écrire** : ce qu'une VRAIE frappe Ctrl+D faisait dans l'arrangement
+avant la correction n'a pas été mesuré — cette machine n'a ni `xdotool` ni
+`ydotool`, et le chemin du système ne se simule pas. Ce qui est établi, c'est que
+la vue ignorait la table (lu dans le code, et vérifié par le fait qu'elle y obéit
+maintenant) et qu'aucun banc ne pouvait l'atteindre (mesuré).
+
+**ET LA GARDE DES PORTES ATTEINT ENFIN L'ARRANGEMENT** (`tools/portes-des-gestes.py`,
+**14 gestes**) : « Couper à la tête de lecture » et « Joindre les clips choisis »
+se jouent par le menu du clip ET par le clavier, et rendent le même fichier.
+
+**DEUX DÉFAUTS TROUVÉS PAR LA GARDE EN LA BRANCHANT, ET LE PREMIER EST DANS LE
+BANC** — ce qui est la règle de D266 (« quand un banc accuse, vérifier le banc
+avant la cible »), appliquée avant d'accuser :
+
+1. **Le verbe de menu de clip choisissait autrement que la souris.** Il VIDAIT
+   toujours la sélection pour ne garder que le clip visé ; le vrai clic droit, lui,
+   la GARDE quand ce clip en fait déjà partie (« saisir un groupe de clips par
+   l'un d'eux le réduirait à celui-là juste avant de le déplacer »). L'écart
+   rendait **inatteignable toute entrée qui exige plusieurs clips** : « Joindre
+   les clips choisis » était grisée quoi qu'on fasse, et se lisait comme un geste
+   mort. Le verbe choisit désormais comme la souris.
+2. **« Rien n'a changé » était le VERDICT ATTENDU, et la garde le comptait comme
+   une absence de mesure.** Couper puis joindre sont des gestes INVERSES — le code
+   le dit depuis D16.3 : « une paire de raccourcis inverses qui ne s'annulent pas
+   est une paire cassée ». La garde porte donc, par geste, ce qu'elle attend du
+   fichier (« change » ou « revient »), et la paire est mesurée comme telle :
+   **identique au témoin, note pour note**, la note à cheval sur la tête de
+   lecture retrouvant sa durée entière (117 → 400 ticks).
+
+**LA GARDE VUE ROUGE** : les dix commandes retirées de la table et recompilées →
+`RATÉ CouperClip les portes NE font pas la même chose`, code **1**. Et avant la
+correction du verbe, la même garde avait rendu un désaccord d'UNE note — la
+dernière, 117 ticks contre 400 — qui a mené aux deux défauts ci-dessus.
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`portes-des-gestes.py` (14 gestes, 0 désaccord), `quantifier.sh`,
+`gestes-promesses.py`, `banc-fumee.sh`, `noms-des-gestes.py`,
+`raccourcis-affiches.py` — 0 raté ; inventaire A9 inchangé (ECRAN 10).
+
+**Reste nommé, non fait, et celui-ci demande un arbitrage** : l'aimantation se
+bascule par **S** dans l'arrangement et par **G** dans la table (`edit.toggleSnap`,
+donc dans le piano roll) — deux touches pour le même réglage, ce que ce même
+fichier appelle « deux logiciels ». Les aligner exige de déplacer le **G** que
+l'arrangement emploie déjà pour la grille à la mesure, c'est-à-dire de choisir une
+touche libre pour celle-ci : un choix d'attribution que rien ne tranche dans les
+documents. Les quatre autres touches locales (A, F, et les flèches) ne sont dans
+la table à aucun titre, et c'est juste — elles ne règlent que la vue.

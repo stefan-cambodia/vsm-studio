@@ -87,6 +87,29 @@ SELECTIONS = [
 ]
 
 
+# LES GESTES DE L'ARRANGEMENT, dont les portes n'étaient comparées à RIEN avant
+# D359 : son clavier était hors d'atteinte de tout banc (`getTextCharacter()` vaut
+# zéro sur une touche fabriquée depuis sa description, et l'arrangement ne
+# reconnaissait ses sept raccourcis que par ce caractère). Depuis qu'il consulte
+# la table, les deux portes se comparent comme celles du piano roll.
+# La sélection vient du menu Édition, qui passe AVANT les deux (D222).
+# « Joindre » EXIGE DEUX CLIPS, et le projet n'en a qu'un : le geste est donc
+# précédé d'une COUPE, dans les deux portes. Sans cela il rendrait « sans effet
+# visible » — un projet incapable d'exercer un geste, et non un geste mort,
+# la même leçon qu'à D356 pour « Fusionner » et « Couper à la tête ».
+# Le quatrième champ dit CE QU'ON ATTEND du fichier : « change » (le geste laisse
+# une trace) ou « revient » (la paire s'annule et le fichier doit redevenir celui
+# du témoin). « Couper » puis « Joindre » sont des gestes INVERSES — le code le
+# dit depuis D16.3 : « une paire de raccourcis inverses qui ne s'annulent pas est
+# une paire cassée » —, et pour cette paire-là « rien n'a changé » est la
+# RÉUSSITE, pas une absence de mesure.
+ARRANGEMENT = [
+    ("CouperClip",  "clip-midi:Couper à la tête de lecture", "ctrl + E", "change"),
+    ("JoindreClip", "clip-midi:Couper à la tête de lecture;clip-midi:Joindre les clips choisis",
+                     "ctrl + E;arrangement:ctrl + J", "revient"),
+]
+
+
 def ecrire_projet(dossier: Path) -> None:
     """Huit notes aux départs et aux durées tous différents — un geste qui ne
     toucherait qu'au temps, ou qu'aux hauteurs, se distingue alors des autres
@@ -302,6 +325,49 @@ def main() -> int:
             rates += 1
         else:
             print(f"  OK   {nom:12s} 2 portes d'accord — {detail} note(s) choisie(s)")
+
+    # --- LES GESTES DE L'ARRANGEMENT : menu du clip contre clavier (D359) ---
+    if not voulu or voulu in {nom for nom, _, _, _ in ARRANGEMENT}:
+        print("    — gestes de l'arrangement (le clavier y entre depuis D359) —")
+    for nom, entree, touche, attendu in ARRANGEMENT:
+        if voulu and voulu != nom:
+            continue
+        portes: dict[str, collections.Counter | None] = {}
+        portes["menu"] = notes_du_midi(course(
+            brouillon, f"arr-{nom}-menu", projet,
+            VSM_VUE="sans-rapport,arrangement",
+            VSM_MENU="Tout sélectionner dans l'arrangement",
+            VSM_MENU_CONTEXTE=entree,
+            VSM_EXPORT_MIDI=str(brouillon / f"arr-{nom}-menu.mid")))
+        portes["clavier"] = notes_du_midi(course(
+            brouillon, f"arr-{nom}-clavier", projet,
+            VSM_VUE="sans-rapport,arrangement",
+            VSM_MENU="Tout sélectionner dans l'arrangement",
+            VSM_TOUCHE=f"arrangement:{touche}",
+            VSM_EXPORT_MIDI=str(brouillon / f"arr-{nom}-clavier.mid")))
+        if any(v is None for v in portes.values()):
+            manquantes = [porte for porte, v in portes.items() if v is None]
+            print(f"  RATÉ {nom:12s} aucune note écrite par : {', '.join(manquantes)}")
+            rates += 1
+            continue
+        lues_arr = {porte: v for porte, v in portes.items() if v is not None}
+        valeurs_arr = list(lues_arr.values())
+        detail = " | ".join(f"{porte} {sum(v.values())} notes" for porte, v in lues_arr.items())
+        revenu = valeurs_arr[0] == temoin
+        if valeurs_arr[0] != valeurs_arr[1]:
+            print(f"  RATÉ {nom:12s} les portes NE font pas la même chose — {detail}")
+            rates += 1
+        elif attendu == "revient" and revenu:
+            print(f"  OK   {nom:12s} 2 portes d'accord, et la paire s'ANNULE "
+                  f"(fichier identique au témoin, note pour note) — {detail}")
+        elif attendu == "revient":
+            print(f"  RATÉ {nom:12s} la paire ne s'annule pas : le fichier diffère du témoin — {detail}")
+            rates += 1
+        elif revenu:
+            print(f"  ---- {nom:12s} SANS EFFET VISIBLE dans le .mid — {detail}")
+            sans_effet.append(nom)
+        else:
+            print(f"  OK   {nom:12s} 2 portes d'accord, et le fichier a changé — {detail}")
 
     if sans_effet:
         print(f"--- {len(sans_effet)} geste(s) sans effet visible dans le .mid : {', '.join(sans_effet)}")
