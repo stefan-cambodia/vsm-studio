@@ -188,6 +188,8 @@ public:
     bool enregistrerSousPourCapture(const juce::File& dossier);
     /// D338 : VSM_PIANOROLL_ZONES -- le rang du piano roll et la police des touches, après les gestes.
     void releverRangPianoRoll() const { pianoRoll_.releverRangPourCapture(); }
+    /// D362 : VSM_ARRANGEMENT -- la part du morceau que l'arrangement montre.
+    void releverFenetreArrangement() const { arrangement_.direLaFenetre(); }
     /// D336 : VSM_NOTES -- écrit une note « piste:tick:durée:hauteur » par le chemin du piano roll.
     bool ecrireNotesPourCapture(const juce::String& spec);
     /// D213 : VSM_FICHIER=a.wav;b.wav -- la sélection MULTIPLE que le prochain

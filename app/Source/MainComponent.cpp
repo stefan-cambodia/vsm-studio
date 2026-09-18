@@ -6690,6 +6690,26 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
 
     updateSynthRackForSelection();
 
+    // D362 : LA VUE SE CADRE SUR CE QU'ON VIENT D'OUVRIR.
+    //
+    // L'arrangement gardait son zoom d'usine (`pixelsPerTick_ = 0.06`) quelle
+    // que soit la longueur du morceau : mesuré sur `children-c3-plafond`
+    // (227 mesures, 454 s), il en montrait **3,8 mesures, soit 1,7 %**. Il
+    // fallait presser Ctrl+0 à chaque ouverture pour voir ce qu'on venait
+    // d'ouvrir — un geste qu'aucun des trois logiciels de référence ne demande.
+    //
+    // POURQUOI CADRER PLUTÔT QUE RETENIR. Un DAW restaure d'ordinaire le zoom
+    // ENREGISTRÉ avec le projet ; `project.json` n'en porte aucun (ses clés sont
+    // format, midi, title, tracks, transport, version), et les projets que la
+    // chaîne d'analyse produit n'en porteront jamais. Tant qu'il n'y a rien à
+    // restaurer, le cadrage est ce qui s'en rapproche le plus. **Le jour où le
+    // format portera un état de vue, c'est LUI qui devra primer** — cette ligne
+    // est le repli, pas la règle.
+    //
+    // Le piano roll a son propre cadrage depuis D338 (avec son plancher de 15 px
+    // par rang) : on ne le touche pas ici.
+    arrangement_.zoomToFit();
+
     // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
     // donnerait un morceau amputé sans explication -- c'est précisément
     // le genre de panne que ce projet refuse.

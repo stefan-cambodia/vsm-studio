@@ -630,6 +630,10 @@ public:
             // panneau, pris à la disposition, ne le voit pas.
             if (const char* zones = std::getenv("VSM_PIANOROLL_ZONES"); zones != nullptr && *zones && *zones != '0')
                 content->releverRangPianoRoll();
+            // D362 : VSM_ARRANGEMENT=1 -- ce que la vue d'arrangement montre du
+            // morceau, APRÈS les gestes (un « Zoom : tout voir » le change).
+            if (const char* arr = std::getenv("VSM_ARRANGEMENT"); arr != nullptr && *arr && *arr != '0')
+                content->releverFenetreArrangement();
             // VSM_MENU_LISTE=1 (D80 ; déplacée par D83 après l'import audio, dont le clip doit y figurer) : la barre de menus entière, telle qu'elle
             // s'affiche, sur la sortie d'erreur -- APRÈS les gestes du banc, pour
             // que les libellés qui en dépendent (« Annuler : … ») soient ceux

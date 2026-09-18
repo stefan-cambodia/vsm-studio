@@ -1395,7 +1395,15 @@ bool ArrangementComponent::selectionBounds(vsm::midi::Tick& debut, vsm::midi::Ti
 
 void ArrangementComponent::zoomToFit() {
     if (project_ == nullptr) return;
-    const vsm::midi::Tick fin = std::max<vsm::midi::Tick>(1, project_->lastUsedTick());
+    // D362 : LA DERNIÈRE CHOSE QUI SONNE, ET NON LA DERNIÈRE NOTE. `lastUsedTick`
+    // ne connaît que le matériau MIDI ; « tout voir » doit montrer tout ce qui est
+    // DESSINÉ, clips compris. Mesuré sur un projet de quatre mesures dont la
+    // dernière note s'arrête au quart de la quatrième : la vue en montrait 81,4 %,
+    // la queue du clip restant hors de l'écran. Et sur un projet uniquement AUDIO,
+    // `lastUsedTick` rend ZÉRO — c'est exactement la panne que D8.3 a corrigée
+    // pour le transport, et `lastSoundingTick` est la fonction qu'elle a écrite
+    // pour cela : « c'est elle que le transport et l'export doivent employer ».
+    const vsm::midi::Tick fin = std::max<vsm::midi::Tick>(1, project_->lastSoundingTick());
     const int largeur = std::max(1, getWidth() - kHeaderWidth);
     pixelsPerTick_ = juce::jlimit(0.0005, 8.0, static_cast<double>(largeur) * 0.96 / static_cast<double>(fin));
     scrollTick_ = 0;
@@ -1869,6 +1877,29 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
 // descend les composants (D149, D152). Un banc ne pouvait donc pas voir ce que
 // ces touches changent, et c'est exactement ce que D359 vient de payer sur le
 // clavier de cette vue. La ligne lit les MÊMES champs que la peinture.
+// D362 : CE QUE LA VUE MONTRE DU MORCEAU, en mesures. Sans ce chiffre, « la vue
+// est mal cadrée à l'ouverture » ne se mesure pas : le zoom vit dans un double
+// privé, et la règle le PEINT sans que personne puisse le lire. Il dit la fenêtre
+// ET l'étendue, parce qu'une fenêtre de quatre mesures n'est un défaut que
+// rapportée à un morceau qui en fait deux cent vingt-sept.
+void ArrangementComponent::direLaFenetre() const {
+    if (project_ == nullptr) return;
+    const double parMesure = static_cast<double>(project_->ticksPerQuarterNote) * 4.0;
+    if (parMesure <= 0.0) return;
+    const double visibles = (pixelsPerTick_ > 0.0)
+                                ? static_cast<double>(juce::jmax(1, getWidth() - kHeaderWidth))
+                                      / pixelsPerTick_ / parMesure
+                                : 0.0;
+    vsm::midi::Tick fin = 0;
+    for (const auto& t : project_->tracks)
+        for (const auto& c : t.clips) fin = std::max(fin, c.startTick + c.length);
+    std::fputs((juce::String::fromUTF8("VSM_ARRANGEMENT : fen\xc3\xaatre ") + juce::String(visibles, 1)
+                + " mesure(s) sur " + juce::String(static_cast<double>(fin) / parMesure, 1)
+                + juce::String::fromUTF8(", soit ")
+                + juce::String(fin > 0 ? 100.0 * visibles * parMesure / static_cast<double>(fin) : 100.0, 1)
+                + " %\n").toRawUTF8(), stderr);
+}
+
 void ArrangementComponent::direLesBascules() const {
     std::fputs((juce::String("VSM_ARRANGEMENT : aimant ")
                 + (snap_ ? (aimanteALaMesure_ ? "mesure" : "grille") : "libre")

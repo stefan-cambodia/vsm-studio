@@ -29512,3 +29512,78 @@ rien, et c'est sans objet tant qu'elles restent à une porte. Le menu de la PIST
 et ceux des deux règles ne sont toujours pas lus : ils n'ont, eux non plus, aucun
 raccourci en commun avec la table, mais rien ne le VÉRIFIE — il faudrait les
 apparier comme les deux autres pour pouvoir l'affirmer.
+
+### Phase D362 — un morceau de 227 mesures s'ouvrait sur 3,8 d'entre elles (19/09/2026)
+
+**D'OÙ ELLE VIENT — D'AVOIR REGARDÉ L'APPLICATION OUVRIR UN VRAI MORCEAU**, ce
+qui est le régime de ce document depuis D283. `children-c3-plafond` (12 pistes,
+31 clips, 227 mesures, 454 s) s'ouvre, et l'arrangement montre **quatre mesures**.
+
+**UNE PREMIÈRE HYPOTHÈSE A ÉTÉ RÉFUTÉE, ET ELLE EST GARDÉE ICI** parce qu'elle a
+coûté une mesure et qu'elle aurait pu être publiée. En regardant la console de ce
+même projet, j'ai cru que le titre d'une tranche RÉTRÉCISSAIT sous le plancher de
+lisibilité quand le nom est long (« Batterie · kick+kick2 » contre « bass »).
+Mesuré au pixel sur les douze tranches, **les hauteurs d'encre sont les mêmes —
+8 px des deux côtés** : JUCE REPLIE le nom long sur deux lignes, il ne le
+rétrécit pas. Aucune police sous 12 pt n'est d'ailleurs déclarée dans les
+en-têtes de `app/Source/ui/`. **L'hypothèse est fausse**, et la mesure qui la
+tranche est écrite plutôt que jetée.
+
+**HYPOTHÈSE TENUE, ELLE** (écrite avant la mesure) : l'arrangement garde son zoom
+d'usine (`pixelsPerTick_ = 0,06`) quelle que soit la longueur du morceau, et
+`project.json` ne porte AUCUN état de vue — ses clés sont *format, midi, title,
+tracks, transport, version*. Rien ne cadre donc la vue sur ce qu'on vient
+d'ouvrir.
+
+**MESURÉ** (relevé `VSM_ARRANGEMENT`, écrit pour l'occasion — le zoom vit dans un
+`double` privé que la règle PEINT, donc qu'aucun relevé ne pouvait lire) :
+
+| projet | à l'ouverture, avant | après |
+|---|---|---|
+| `children-c3-plafond` (227 mes.) | **3,8 mesures — 1,7 %** | **235,5 mesures — 103,7 %** |
+| `b4-v4` (176 mes.) | — | 183,0 mesures — 104,0 % |
+| `cdl` (155 mes.) | — | 161,0 mesures — 103,9 % |
+| garde, projet engendré de 200 mesures | **1,9 %** | **104,2 %** |
+| garde, projet engendré de 4 mesures | 94,6 % *(par accident)* | **104,2 %** |
+
+Attendu tenu. Le cas à quatre mesures dit pourquoi le défaut se voyait si mal :
+le zoom d'usine convient **par accident** à un morceau de sept mesures, et à lui
+seul. Sur tout ce qui ressemble à une chanson, il montre moins de 2 %.
+
+**LA DÉCISION, ET SA RAISON.** Un DAW restaure d'ordinaire le zoom ENREGISTRÉ
+avec le projet. Le format n'en porte aucun, et les projets que la chaîne
+d'analyse produit n'en porteront jamais : **tant qu'il n'y a rien à restaurer, le
+cadrage est ce qui s'en rapproche le plus.** C'est écrit dans le code comme ici :
+le jour où le format portera un état de vue, **c'est lui qui devra primer** — ce
+cadrage est le repli, pas la règle. Le piano roll a le sien depuis D338 (avec son
+plancher de 15 px par rang) et n'est pas touché.
+
+**ET LA GARDE A TROUVÉ UN SECOND DÉFAUT, PLUS ANCIEN QUE LA PHASE.** Sur le
+projet court, le cadrage ne montrait que **81,4 %** : `zoomToFit` cadrait sur
+`lastUsedTick()` — la dernière NOTE — quand ce qui est DESSINÉ est le clip, que
+D333 borne à la mesure. La queue du clip restait hors de l'écran. Or le dépôt a
+déjà la bonne fonction, et son en-tête dit exactement pourquoi elle existe :
+`lastSoundingTick()`, écrite par **D8.3** parce qu'un projet uniquement AUDIO
+« s'arrêtait avant d'avoir commencé » — *« c'est elle que le transport et l'export
+doivent employer »*. « Tout voir » l'emploie désormais aussi. **Un projet sans
+aucune note se cadrait donc sur un tick** ; la correction vaut d'abord pour
+celui-là, et c'est la leçon de D332 sous une autre forme : une règle posée pour
+le transport ne vaut pas pour la vue tant que la vue ne l'appelle pas.
+
+**LA GARDE VUE ROUGE** : le cadrage à l'ouverture retiré, puis recompilé →
+`RATÉ long : 1,9 % visible`, code **1**. La garde ENGENDRE ses deux projets (200
+mesures et 4 mesures) plutôt que d'ouvrir un morceau du corpus : une garde qui
+dépendrait d'un dossier posé à côté d'elle se tairait le jour où il disparaît.
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`portes-des-gestes.py` (14 gestes), `quantifier.sh`, `gestes-promesses.py`
+(13 promesses), `banc-fumee.sh`, `noms-des-gestes.py`, `raccourcis-affiches.py` —
+0 raté ; inventaire A9 inchangé (ECRAN 10, SANS_PAIRE 0).
+
+**Reste nommé, non fait** : le **défilement** n'est pas cadré, seulement le zoom —
+`zoomToFit` remet `scrollTick_` à zéro, ce qui est juste à l'ouverture et
+discutable ailleurs. Et `project.json` ne porte toujours pas d'état de vue : lui
+en donner un (zoom, défilement, piste choisie) rendrait le cadrage inutile dans
+le cas le plus courant — celui d'un projet qu'on rouvre —, mais c'est un
+changement de FORMAT, qui demande sa version et sa migration.

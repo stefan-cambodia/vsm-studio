@@ -148,6 +148,8 @@ public:
     /// D360 : l'état des bascules au journal — ce que la règle PEINT, et qu'aucun
     /// relevé de textes ne peut voir.
     void direLesBascules() const;
+    /// D362 : la part du morceau que la vue montre, en mesures et en pour cent.
+    void direLaFenetre() const;
     /// D358 : la table VIVANTE des raccourcis, pour que le menu du clip dessine la
     /// touche EFFECTIVE au lieu de l'écrire en dur dans son libellé -- une
     /// parenthèse écrite ment dès que l'utilisateur change la touche.
