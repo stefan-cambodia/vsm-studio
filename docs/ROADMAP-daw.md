@@ -28798,3 +28798,129 @@ contrôleurs, alors que le geste n'en changeait qu'un par famille — corrigé e
 bâtissant la piste d'essai avec un seul événement de chaque, ce qui est ce que
 l'attendu voulait dire. Onze gardes d'interface : 0 raté ; inventaire A9
 inchangé (ECRAN 10, SANS_PAIRE 0).
+
+### Phase D354 — le même geste par trois autres portes, et les trois portes mentaient (18/09/2026)
+
+**D'OÙ ELLE VIENT — ET CE QU'ELLE N'EST PAS.** « Quantifier » est **déjà gardé
+de bout en bout** : `tools/gestes-promesses.py` (D240) le joue par le **menu
+Édition** et relit le `.mid` écrit — 2 219 notes, toutes sur la grille, hauteurs
+inchangées, et les treize promesses de cette garde sont vertes ce soir encore.
+Ce qui n'était gardé par rien, c'est le même geste par ses **trois autres
+portes** : le bouton de la barre d'outils, l'entrée du menu du clic droit, et le
+raccourci clavier. Un geste n'a pas une seule porte, et une porte qui ment ne
+casse aucun test.
+
+En les essayant, trois courses de suite ont rendu un `.mid` **INCHANGÉ**, et
+c'est la quantification qu'on a soupçonnée — celle-là même que D240 déclare juste
+depuis six jours. Elle l'était à chaque fois. **Cinq pannes muettes** du banc, et
+pas une du logiciel.
+
+**LES CINQ, ET CE QU'ELLES ONT EN COMMUN.** Toutes sont des endroits où **le banc
+affirme un geste qui n'a pas eu lieu**, ou nie un geste qui existe. C'est la
+leçon de D147 — « un banc qui ne relaie pas ce que l'application dit jette la
+preuve qu'elle lui tend » —, cinq fois dans le même chemin.
+
+1. **`quantizeSelection` a quatre sorties anticipées, toutes muettes.** Sans
+   sélection, elle revenait sans un mot ; le journal disait « cliqué » et le
+   fichier ne bougeait pas. Chacune dit désormais sa raison, et la réussite dit
+   son compte (« 8 note(s) quantifiées »).
+2. **Un bouton GRISÉ passait pour « cliqué ».** `mouseDown` sur un
+   `juce::Button` désactivé ne fait rien — c'est le comportement juste —, mais
+   `cliquer:` écrivait « cliqué » quand même. Il refuse et le dit.
+3. **Un geste DIFFÉRÉ arrive après l'export.** `VSM_GESTE_APRES=1500:…` joue à
+   1 500 ms ; `VSM_EXPORT_MIDI` écrit au démarrage. Le fichier montrait donc
+   l'état d'AVANT le geste — la leçon de D222, une seconde fois. La combinaison
+   AVERTIT maintenant, et nomme les verbes qui agissent avant l'export.
+4. **« aucune entrée » là où l'entrée est GRISÉE.** Sans sélection,
+   « Quantifier (100 %) » est grisée dans le menu du clic droit, et
+   `entreeParLibelle` refuse les grisées depuis D91 — à raison : *le banc ne doit
+   pas pouvoir plus que la souris*. Mais elle le faisait en silence, et le
+   journal rendait « aucune entrée « Quantifier (100 %) » dans le menu
+   pianoroll » : exact au mot près, faux au sens. Une course qui lit « aucune
+   entrée » cherche une faute d'orthographe pendant que la cause est ailleurs.
+   Le refus est dit dans `EntreeDeMenu.h`, au seul endroit qui connaît les deux
+   états — il sert les quatre menus d'un coup.
+5. **TOUTE la table de raccourcis du piano roll était hors d'atteinte de tout
+   banc, depuis qu'elle existe.** `VSM_TOUCHE="ctrl + Q"` rendait « touche
+   inconnue ou sans commande » : `runKeyForCapture` ne parlait qu'à
+   `MainComponent::keyPressed`, qui ne connaît que les commandes **globales**.
+   Quantifier, legato, joindre, couper à la tête, les six outils — tout cela vit
+   dans `PianoRollComponent::performShortcut`, que le système n'appelle que si le
+   piano roll a le clavier. `VSM_TOUCHE="pianoroll:ctrl + Q"` (ou
+   « arrangement: ») appelle la MÊME fonction virtuelle que le système, et le
+   verbe dit à quel clavier il a parlé et si la commande a été prise.
+
+**CE QUE LA PHASE NE CHANGE PAS** : un seul pixel, une seule note. Les cinq
+corrections sont dans l'instrument de mesure, pas dans le produit — et c'est
+justement ce qui les rendait invisibles.
+
+**ATTENDU** (écrit avant la mesure ; huit notes à `i × 240 + décalage`, décalages
+de −23 à +29 des deux côtés de la case, grille 1/16 à 480 ticks par noire) : les
+huit notes tombent **exactement** sur la grille dans le `.mid` **exporté** ; la
+quantification dit son compte ; sans sélection elle dit POURQUOI elle ne fait
+rien et ne touche à rien ; un bouton grisé est refusé et dit ; une entrée de menu
+grisée est dite grisée ; un geste différé combiné à un export avertit.
+
+**MESURÉ** (`tools/quantifier.sh`, binaire du 18/09) :
+
+| mesure | avant | après |
+|---|---|---|
+| ticks des huit notes, `.mid` exporté | 17 · 217 · 491 · 749 · 946 · 1207 · 1462 · 1671 | **0 · 240 · 480 · 720 · 960 · 1200 · 1440 · 1680** |
+| notes hors grille après « Quantifier (100 %) » | 8 | **0** |
+| sorties anticipées muettes de `quantizeSelection` | 4 | **0** |
+| bouton grisé pressé au banc | « cliqué » | **« GRISÉ … rien n'a été fait »** |
+| entrée de menu grisée | « aucune entrée » | **« est GRISÉE — présente dans le menu »** |
+| `VSM_TOUCHE="ctrl + Q"` | « touche inconnue ou sans commande » | **prise par le clavier du piano roll** |
+| `tools/quantifier.sh` | **3 ratés** (premier jet) | **0 raté** sur 8 contrôles |
+
+Attendu tenu. **Le premier jet de la garde comptait 3 ratés sur 8**, et les trois
+étaient les siens, pas ceux du logiciel : c'est en les instruisant qu'on a trouvé
+les pannes 4 et 5.
+
+**LA GARDE VUE ROUGE — TROIS TÉMOINS, PAS UN.** La règle du dépôt depuis le
+13/09 (`tools/gestes-vivants.py`, restée verte sur le défaut qu'elle devait
+attraper) : une garde ne vaut que si on l'a vue échouer. Chaque défaut a donc été
+**remis dans le code, recompilé et rejoué** :
+
+| témoin (défaut remis) | contrôles rouges | attendu |
+|---|---|---|
+| le rapport « GRISÉE » retiré, et la touche ne visant plus que la fenêtre | 3 | les contrôles 3, 4 et 6 |
+| les messages de `quantizeSelection` retirés, le bouton grisé repassant pour « cliqué » | 3 | les contrôles 2, 3 et 7 |
+| l'avertissement du geste différé retiré | 1 | le contrôle 8 |
+
+Six des huit contrôles ont donc été vus rouges sur leur propre défaut. Les deux
+autres — « les huit notes tombent sur la grille » et « les ticks sont ceux de
+l'original » — portent sur le LOGICIEL et non sur ses messages : leur témoin
+rouge est le `.mid` inchangé des trois premières courses, celui par quoi la phase
+a commencé. **Un couplage relevé au passage** : le contrôle 3 (« sans sélection,
+elle dit pourquoi ») tombe aussi quand la touche ne vise plus le piano roll, car
+c'est le SEUL chemin qui atteigne `quantizeSelection` sans sélection — l'entrée
+de menu, elle, est grisée et n'appelle rien.
+
+**UN PIÈGE DU DÉPÔT REPAYÉ, ET ATTRAPÉ PAR LA GARDE** : `"GRIS\xc3\x89E"` se lit
+comme UN SEUL échappement (`\x89E` = 0x89E, hors intervalle), parce que « E » est
+un chiffre hexadécimal — le même piège que le « d\xc3\xa9b » de D333. Le
+compilateur l'a dit, et le contrôle 6 serait tombé de toute façon : le message
+n'aurait pas été celui qu'il cherche.
+
+Photos : le piano roll avant et après le geste, huit notes sélectionnées dans les
+deux ; à 1 280 px, un décalage de 17 ticks fait un pixel, et **ce n'est pas la
+photo qui tranche mais le fichier** — l'écran ne montre que le bouton *Annuler*
+qui s'allume, preuve qu'un pas d'édition a bien été posé.
+
+**Reste nommé, non fait** : `VSM_TOUCHE` vise la fenêtre, le piano roll ou
+l'arrangement, et rien d'autre — les claviers de la console et de la liste
+d'événements restent hors d'atteinte, sans besoin exprimé ; et une entrée grisée
+dit qu'elle l'est, jamais POURQUOI (le menu ne porte pas la raison de son
+grisement). Surtout : **les trois autres portes des ~40 autres gestes du piano
+roll ne sont toujours mesurées par rien** — `gestes-promesses.py` les joue par le
+menu Édition, `gestes-vivants.py` vérifie qu'elles laissent une trace, mais nul
+ne dit que le bouton, le clic droit et le raccourci font la même chose que le
+menu.
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement (136 fichiers). Aucun test
+neuf : la phase ne touche pas au code du produit, et un test de `core/` n'aurait
+pas pu voir ces défauts — ils vivent tous dans le chemin que les suites ne
+traversent pas. `tools/gestes-promesses.py` rejouée après coup : **13 promesses,
+0 rompue**, ce qui vérifie qu'aucun des cinq messages neufs n'a changé un geste.

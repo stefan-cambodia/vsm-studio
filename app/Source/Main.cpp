@@ -419,6 +419,22 @@ public:
                     delaiDeFermeture = juce::jmax(500, juce::String(d).getIntValue());
                 const bool laCourseFerme = (std::getenv("VSM_CAPTURE") != nullptr)
                                            || passesDePeinture() > 0;
+                // D354 : UN GESTE DIFFÉRÉ N'EST PAS VU PAR UN EXPORT DU DÉMARRAGE.
+                // Les verbes d'export et d'enregistrement agissent tout de suite ;
+                // ce qui est demandé « dans 1 500 ms » arrive après eux, et le
+                // fichier écrit montre alors l'état d'AVANT le geste. Payé ici
+                // même : une quantification demandée à 1 500 ms, un .mid exporté
+                // identique, et c'est la QUANTIFICATION qu'on a soupçonnée — elle
+                // était juste. C'est la leçon de D222, une seconde fois.
+                for (const char* verbe : { "VSM_EXPORT", "VSM_EXPORT_MIDI",
+                                            "VSM_EXPORT_MIDI_PISTE", "VSM_EXPORT_STEMS",
+                                            "VSM_ENREGISTRER" })
+                    if (std::getenv(verbe) != nullptr)
+                        std::fputs((juce::String::fromUTF8("VSM_GESTE_APRES : ATTENTION \xe2\x80\x94 ") + verbe
+                                    + juce::String::fromUTF8(" \xc3\xa9" "crit AU D\xc3\x89MARRAGE, "
+                                        "donc AVANT ce geste : le fichier montrera l'\xc3\xa9tat d'avant. "
+                                        "Passer par VSM_MENU_CONTEXTE ou VSM_GESTE_PISTE pour agir avant "
+                                        "l'export.\n")).toRawUTF8(), stderr);
                 juce::StringArray suite;
                 suite.addTokens(juce::String::fromUTF8(differes), ";", "");
                 for (const auto& entree : suite) {

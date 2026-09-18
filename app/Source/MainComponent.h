@@ -193,10 +193,38 @@ public:
     /// D213 : VSM_FICHIER=a.wav;b.wav -- la sélection MULTIPLE que le prochain
     /// sélecteur qui en accepte plusieurs (l'import audio) rendra.
     void poserLesFichiersDeBanc(const juce::Array<juce::File>& fichiers) { fichiersDeBanc_ = fichiers; }
+    /// D354 : `cible:` -- À QUI LA TOUCHE EST ENVOYÉE, et sans elle un banc ne
+    /// pouvait atteindre qu'un seul clavier. `MainComponent::keyPressed` ne lit
+    /// que les commandes GLOBALES ; celles du piano roll (quantifier, legato, les
+    /// outils) vivent dans `PianoRollComponent::performShortcut`, que le système
+    /// n'appelle QUE si le piano roll a le clavier. Une course qui jouait
+    /// « ctrl + Q » lisait donc « touche inconnue ou sans commande » — faux au
+    /// sens : la commande existe, elle est ailleurs, et c'est la panne muette de
+    /// D147 une fois de plus. « pianoroll:ctrl + Q » (ou « arrangement:… »)
+    /// appelle la MÊME fonction virtuelle que le système, sans rien simuler.
     bool runKeyForCapture(const juce::String& description) {
-        const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
-        if (!touche.isValid()) return false;
-        return keyPressed(touche, this);
+        juce::String texte = description.trim();
+        const juce::String prefixe = texte.upToFirstOccurrenceOf(":", false, false).trim().toLowerCase();
+        juce::Component* destinataire = nullptr;
+        if (prefixe == "pianoroll") destinataire = &pianoRoll_;
+        else if (prefixe == "arrangement") destinataire = &arrangement_;
+        if (destinataire != nullptr) texte = texte.fromFirstOccurrenceOf(":", false, false).trim();
+        const juce::KeyPress touche = juce::KeyPress::createFromDescription(texte);
+        if (!touche.isValid()) {
+            std::fputs((juce::String::fromUTF8("VSM_TOUCHE : \xc2\xab ") + texte
+                        + juce::String::fromUTF8(" \xc2\xbb illisible (voir juce::KeyPress)\n")).toRawUTF8(),
+                       stderr);
+            return false;
+        }
+        const bool fait = destinataire != nullptr ? destinataire->keyPressed(touche)
+                                                  : keyPressed(touche, this);
+        std::fputs((juce::String::fromUTF8("VSM_TOUCHE : \xc2\xab ") + texte
+                    + juce::String::fromUTF8(" \xc2\xbb \xe2\x86\x92 ")
+                    + (destinataire != nullptr ? prefixe : juce::String("fen\xc3\xaatre"))
+                    + (fait ? juce::String::fromUTF8(" : prise")
+                            : juce::String::fromUTF8(" : AUCUNE commande de ce clavier"))
+                    + "\n").toRawUTF8(), stderr);
+        return fait;
     }
     /// D36.1 : joue, sans souris, un geste de la LIGNE de piste -- ceux
     /// qu'aucun menu ne porte. Rend false si le geste est inconnu, plutôt que

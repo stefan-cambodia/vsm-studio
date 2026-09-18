@@ -1226,6 +1226,15 @@ chose sans que rien ne le dise. Ces deux variables sont lues **après**
 `VSM_MENU`, dans cet ordre : monter la scène par les menus, puis agir. L'ordre
 a été payé deux fois — placés avant, ils agissaient sur une liste d'une seule
 piste et la capture montrait un résultat vraisemblable et faux.
+`VSM_TOUCHE="pianoroll:ctrl + Q"` envoie la touche au clavier **du piano roll**
+(ou de l'arrangement) et non à la fenêtre (D354). Sans ce préfixe, la touche ne
+traverse que `MainComponent::keyPressed`, c'est-à-dire les commandes **globales** :
+les raccourcis d'édition — quantifier, legato, les outils — vivent dans
+`PianoRollComponent::performShortcut`, que le système n'appelle que si le piano
+roll a le clavier, et aucune course ne pouvait les jouer. Le verbe dit désormais
+à quel clavier il a parlé et si la commande a été prise, au lieu du seul
+« touche inconnue ou sans commande » — qui était faux au sens : la commande
+existe, elle est ailleurs.
 `VSM_TRACE_COUTS=1` écrit sur la sortie d'erreur le temps de calcul de chaque
 piste, une fois par seconde : une capture qui ne montre pas la piste la plus
 chère en ambre laisse deux explications ouvertes — la règle est fausse, ou la

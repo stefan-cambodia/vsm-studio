@@ -744,8 +744,18 @@ void PianoRollComponent::scaleSelectionTime(double factor) {
 }
 
 void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds) {
+    // D354 : UN GESTE QUI NE FAIT RIEN LE DIT. Quatre sorties anticipées, toutes
+    // muettes : une course qui pressait « Quantifier » lisait « cliqué » et un
+    // projet inchangé, et c'est la QUANTIFICATION qu'on allait soupçonner. La
+    // règle du dépôt vaut ici comme ailleurs — ce qui est écarté est dit.
+    const auto refuser = [](const char* raison) {
+        std::fputs((juce::String("VSM_QUANTIFIER : rien fait \xe2\x80\x94 ") + raison + "\n").toRawUTF8(),
+                   stderr);
+    };
     Track* track = activeTrack();
-    if (!track || !project_ || selectedNoteIds_.empty()) return;
+    if (!track) { refuser("aucune piste active"); return; }
+    if (!project_) { refuser("aucun projet"); return; }
+    if (selectedNoteIds_.empty()) { refuser("aucune note s\xc3\xa9lectionn\xc3\xa9" "e"); return; }
 
     QuantizeSettings settings;
     settings.grid = gridResolution_;
@@ -760,15 +770,18 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
     std::vector<Note> selected;
     for (const auto& n : track->notes)
         if (selectedNoteIds_.count(n.id) > 0) selected.push_back(n);
-    if (selected.empty()) return;
+    if (selected.empty()) { refuser("la s\xc3\xa9lection ne d\xc3\xa9signe aucune note de cette piste"); return; }
 
-    if (!beginEdit("Quantifier")) return;
+    if (!beginEdit("Quantifier")) { refuser("l'\xc3\xa9" "dition a \xc3\xa9t\xc3\xa9 refus\xc3\xa9" "e (piste verrouill\xc3\xa9" "e ?)"); return; }
     quantizeNotes(selected, settings, project_->ticksPerQuarterNote);
     for (auto& n : track->notes) {
         auto it = std::find_if(selected.begin(), selected.end(),
                                 [&n](const Note& q) { return q.id == n.id; });
         if (it != selected.end()) n = *it;
     }
+    std::fputs((juce::String("VSM_QUANTIFIER : ") + juce::String(static_cast<int>(selected.size()))
+                + " note(s) quantifi\xc3\xa9" "es"
+                + "\n").toRawUTF8(), stderr);
     notifyEdited();
 }
 

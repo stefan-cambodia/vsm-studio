@@ -1738,6 +1738,18 @@ bool MainComponent::cliquerPourCapture(const juce::String& nomOuLegende) {
         return false;
     }
     juce::Button* bouton = trouves.front().bouton;
+    // D354 : UN BOUTON GRISÉ NE SE CLIQUE PAS, ET LE BANC DOIT LE DIRE.
+    // `mouseDown` sur un `juce::Button` désactivé ne fait rien — c'est le
+    // comportement juste —, mais le journal écrivait « cliqué » quand même. Une
+    // course qui presse « Quantifier » sans sélection lisait donc « cliqué » et
+    // un projet inchangé, et c'est le LOGICIEL qu'on allait soupçonner : la
+    // leçon de D147, à la lettre. Le refus est dit, et il porte la raison.
+    if (!bouton->isEnabled()) {
+        std::fputs(("VSM_CLIC : " + cible + juce::String(u8" — GRISÉ dans « ") + trouves.front().ou
+                    + juce::String(u8" », rien n'a été fait")
+                    + "\n").toRawUTF8(), stderr);
+        return false;
+    }
     // L'ÉTAT AVANT ET APRÈS : un clic qui n'atterrit pas doit se voir ici, et non
     // passer pour un défaut du logiciel mesuré.
     const bool avant = bouton->getToggleState();
