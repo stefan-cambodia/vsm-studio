@@ -28501,6 +28501,25 @@ ne prouve rien tout seul — la colonne *Nature* écrit « Note » en ambre sur 
 ligne, et le compte passait le seuil SANS éditeur. Elle prend désormais deux
 photos, une seule variable entre elles, et c'est leur DIFFÉRENCE qui décide.
 
+**CORRECTIF DU 18/09, ET IL CHANGE UNE RÈGLE.** La case se refermait sur une
+PERTE DE CLAVIER, « comme une case de tableur ». C'était faux deux fois.
+D'abord parce que le clavier part sans que l'utilisateur ait rien fait : le
+journal disait « saisie ouverte, bornes 428,100 90x20 » **puis** « saisie
+refermée », et la photo ne montrait rien — à trois délais différents (600,
+1 200, 2 500 ms). **La photo verte obtenue le jour même n'était que la chance
+du moment où le focus arrivait** : la garde, rejouée après trois phases sans
+rapport, est repassée au rouge et avait raison. Ensuite parce que **jeter ce
+qu'on est en train de taper parce qu'un panneau de fond a pris le clavier est
+une perte de travail**, et ce dépôt traite une perte silencieuse comme un
+défaut. La case se ferme donc sur **Entrée**, **Échap**, l'ouverture d'une
+autre case, et quand la liste change sous elle (`rebuild`, `resized`) — là, sa
+cellule ne désigne plus la même chose. Deux fausses pistes écartées en chemin,
+et toutes deux mesurées : les bornes de la saisie étaient JUSTES (428,100
+90×20 dans 2 115×290, donc pas un problème de placement), et l'ordre des
+enfants a bien été corrigé (la saisie est ajoutée APRÈS la table, l'ordre des
+enfants étant l'ordre de peinture) sans que cela suffise. Verdict stable sur
+trois courses : 268 px d'ambre sans la saisie, **484 avec**.
+
 **Reste nommé, non fait** : le canal ne se modifie pas (il faudrait décider ce
 qu'un changement de canal veut dire pour une note déjà routée) ; et la liste ne
 crée pas d'événement — elle en modifie et en supprime.

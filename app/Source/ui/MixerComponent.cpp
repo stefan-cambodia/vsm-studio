@@ -493,7 +493,7 @@ void ChannelStrip::peindreEchelle(juce::Graphics& g) const {
     }
 }
 
-juce::String ChannelStrip::geometrieDeBanc(const juce::Component& repere) const {
+void ChannelStrip::direGeometrieDeBanc(const juce::Component& repere) const {
     // DEUX PIÈGES D'ÉCRITURE PAYÉS SUR CETTE SEULE LIGNE, et tous deux muets.
     // 1. « \xa9c » est UN échappement hexadécimal (0xa9c) qui mange le « c »
     //    suivant : « échelle » sortait « éhelle » (D333, même piège, « dÛut »).
@@ -512,7 +512,7 @@ juce::String ChannelStrip::geometrieDeBanc(const juce::Component& repere) const 
     const double haut = volume_.getPositionOfValue(volume_.getMaximum());
     const double course = std::abs(bas - haut);
     const double plage = volume_.getMaximum() - volume_.getMinimum();
-    return juce::String("piste ") + juce::String(static_cast<int>(index_))
+    std::fputs(("VSM_MIXEUR : piste " + juce::String(static_cast<int>(index_))
          + juce::String::fromUTF8(" \xc2\xab ") + nameLabel_.getText() + juce::String::fromUTF8(" \xc2\xbb \xe2\x80\x94 tranche ")
          + juce::String(getWidth()) + "x" + juce::String(getHeight())
          + ", nom " + juce::String(nameLabel_.getHeight())
@@ -533,7 +533,8 @@ juce::String ChannelStrip::geometrieDeBanc(const juce::Component& repere) const 
          // qui mange le « c » de « échelle » -- le compilateur ne dit rien, et le
          // relevé sort « éhelle », que le sed de la garde ne trouve pas. Couper
          // le littéral en deux rend l'échappement à sa longueur.
-         + juce::String::fromUTF8(", \xc3\xa9" "chelle ") + juce::String(largeurEchelle_) + " px";
+         + juce::String::fromUTF8(", \xc3\xa9" "chelle ") + juce::String(largeurEchelle_)
+         + " px\n").toRawUTF8(), stderr);
 }
 
 bool ChannelStrip::nomTronque() const {
@@ -1073,8 +1074,7 @@ int MixerComponent::hauteurMinimale() const {
 }
 
 void MixerComponent::listerGeometriePourCapture(const juce::Component& repere) const {
-    for (auto* tranche : strips_)
-        std::fputs(("VSM_MIXEUR : " + tranche->geometrieDeBanc(repere) + "\n").toRawUTF8(), stderr);
+    for (auto* tranche : strips_) tranche->direGeometrieDeBanc(repere);
     // LA CONSOLE ELLE-MÊME, ET SON PLANCHER : une course de fader ne se juge pas
     // sans savoir ce qu'elle a coûté en hauteur de dock, et le plancher est ce
     // que `MainComponent` empêche l'utilisateur de descendre.

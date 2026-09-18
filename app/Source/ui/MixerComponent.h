@@ -235,7 +235,14 @@ public:
     /// `repere` : le composant dans l'espace duquel les positions sont rendues —
     /// celui que `VSM_CAPTURE` photographie, pour que le relevé et l'image
     /// parlent des mêmes pixels.
-    juce::String geometrieDeBanc(const juce::Component& repere) const;
+    ///
+    /// ELLE ÉCRIT, ELLE NE REND PAS. Rendre une `juce::String` que l'appelant
+    /// imprime met les mots français de ce relevé (« départs », « mètre »,
+    /// « échelle ») dans une fonction SANS `fputs` : l'inventaire A9 les compte
+    /// alors comme des textes d'ÉCRAN non traduits, puisqu'il suit la phrase
+    /// jusqu'à sa sortie (D106) et perd la trace à la frontière. Quatre faux
+    /// positifs pour une commodité d'écriture — on imprime ici.
+    void direGeometrieDeBanc(const juce::Component& repere) const;
 
 private:
     /// D342 : les graduations en décibels à gauche du fader, peintes par la

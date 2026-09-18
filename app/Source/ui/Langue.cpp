@@ -1191,6 +1191,8 @@ const Paire kAnglais[] = {
       "Remove an automation point" },
     { "Retirer un repère",
       "Remove a marker" },
+    { "Modifier un événement",
+      "Edit an event" },
     { "Retirer un événement",
       "Remove an event" },
     { "Retirer une prise",

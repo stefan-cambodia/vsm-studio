@@ -64,8 +64,21 @@ EventListComponent::EventListComponent() {
         if (fait) { rebuild(); if (onEventsChanged) onEventsChanged(); }
     };
     saisie_.onEscapeKey = [this] { fermerSaisie(); };
-    saisie_.onFocusLost = [this] { fermerSaisie(); };
-    addChildComponent(saisie_);
+    // LA CASE NE SE REFERME PAS SUR UNE PERTE DE CLAVIER, ET C'EST UNE DÉCISION.
+    //
+    // Elle le faisait — « comme une case de tableur » — et c'était faux deux
+    // fois. D'abord parce que le clavier part sans que l'utilisateur ait rien
+    // fait : ouverte par un banc, la saisie se refermait dans la foulée (le
+    // journal disait « saisie ouverte, bornes 428,100 90x20 » PUIS « saisie
+    // refermée », et la photo ne montrait rien, à trois délais différents ; une
+    // photo verte obtenue une fois n'était que la chance du moment où le focus
+    // arrivait). Ensuite parce que jeter ce qu'on est en train de taper parce
+    // qu'un panneau de fond a pris le clavier est une perte de travail, et ce
+    // dépôt traite une perte silencieuse comme un défaut.
+    //
+    // Elle se ferme donc sur ENTRÉE (valider), ÉCHAP (abandonner), sur
+    // l'ouverture d'une AUTRE case, et quand la liste change sous elle
+    // (`rebuild`, `resized`) — là, sa cellule ne désigne plus la même chose.
     // D347 : L'EN-TÊTE PORTE LES COULEURS DU LOGICIEL. `TableHeaderComponent`
     // garde sinon le gris clair de `LookAndFeel_V4` : 2 095 x 22 px de clair au
     // milieu d'une application sombre — mesuré 164 de luminance moyenne sur la
@@ -84,6 +97,14 @@ EventListComponent::EventListComponent() {
     entete.setColour(juce::TableHeaderComponent::highlightColourId,
                       Palette::accentAmber.withAlpha(0.25f));
     addAndMakeVisible(table_);
+    // APRÈS LA TABLE, ET C'EST STRUCTUREL. L'ordre des enfants EST l'ordre de
+    // peinture : déclarée avant `table_`, la saisie était ajoutée avant elle et
+    // peinte dessous. Un `toFront()` au moment de l'ouverture le corrigeait...
+    // jusqu'à ce qu'un autre geste remette la table devant — mesuré : le relevé
+    // disait « saisie ouverte, bornes 428,100 90x20 » et la photo ne montrait
+    // rien, à trois délais différents. Un ordre juste ne se rattrape pas à
+    // l'exécution.
+    addChildComponent(saisie_);
 }
 
 void EventListComponent::setProject(vsm::sequencer::Project* project) {
@@ -142,6 +163,8 @@ void EventListComponent::retraduire() {
 }
 
 void EventListComponent::resized() {
+    // La cellule bouge : ce qui est ouvert dessus ne la désigne plus.
+    if (saisie_.isVisible() && ligneEnSaisie_ >= 0) fermerSaisie();
     auto zone = getLocalBounds().reduced(8);
     auto haut = zone.removeFromTop(24);
     titre_.setBounds(haut.removeFromLeft(260));
@@ -345,6 +368,11 @@ bool EventListComponent::validerSaisie() {
                             : colonneEnSaisie_ == kColPremier ? EventField::Number
                             : colonneEnSaisie_ == kColSecond ? EventField::Value
                                                               : EventField::Length;
+    // LE NOM DU PAS SE STOCKE EN FRANÇAIS et se traduit À L'AFFICHAGE
+    // (`trGeste`, Langue.cpp) : le traduire ici stockerait l'anglais, et
+    // l'historique ne retrouverait plus sa clé. Ce qu'il lui fallait, c'est
+    // une CLÉ dans la table — l'inventaire A9 le disait, et c'est la leçon de
+    // D150 (« deux n'avaient aucune clé »).
     if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Modifier un événement"));
     auto& piste = project_->tracks[static_cast<size_t>(activeTrack_)];
     if (!vsm::sequencer::setTrackEventField(piste, ligne, champ,
@@ -364,6 +392,10 @@ bool EventListComponent::validerSaisie() {
 }
 
 void EventListComponent::fermerSaisie() {
+    // QUI FERME, ET QUAND : sans cette ligne, une saisie refermée par une perte
+    // de clavier se lit comme une saisie jamais peinte.
+    if (saisie_.isVisible())
+        std::fputs("VSM_LISTE : saisie referm\xc3\xa9" "e\n", stderr);
     saisie_.setVisible(false);
     ligneEnSaisie_ = -1;
     colonneEnSaisie_ = 0;
@@ -390,9 +422,15 @@ bool EventListComponent::editerPourCapture(const juce::String& consigne) {
     // moyen de PHOTOGRAPHIER l'éditeur en place, qui se referme sinon dans la
     // même fonction et ne serait jamais sur une image.
     if (valeur == "?") {
+        // ET SES BORNES : une saisie posée sur une table pas encore disposée
+        // tombe hors de l'écran, visible pour le code et absente de la photo.
+        const auto b = saisie_.getBounds();
         std::fputs(("VSM_LISTE : saisie ouverte sur la ligne " + juce::String(row)
                     + ", colonne " + juce::String(colonne) + ", texte \xc2\xab "
-                    + saisie_.getText() + " \xc2\xbb\n").toRawUTF8(), stderr);
+                    + saisie_.getText() + " \xc2\xbb, bornes " + juce::String(b.getX()) + ","
+                    + juce::String(b.getY()) + " " + juce::String(b.getWidth()) + "x"
+                    + juce::String(b.getHeight()) + " dans " + juce::String(getWidth()) + "x"
+                    + juce::String(getHeight()) + "\n").toRawUTF8(), stderr);
         return true;
     }
     saisie_.setText(valeur, juce::dontSendNotification);
