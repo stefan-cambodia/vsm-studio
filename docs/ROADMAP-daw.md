@@ -29121,3 +29121,74 @@ inverser, désélectionner) ne laissent aucune trace dans le `.mid` : leurs port
 ne sont comparées par rien, et il faudrait un relevé de la sélection pour les
 mesurer. Et les portes des autres menus — clip, piste, règles — restent hors du
 compte, comme pour D355.
+
+### Phase D357 — le geste qu'aucun banc ne pouvait voir, et celui qu'on avait écarté sans le mesurer (18/09/2026)
+
+**D'OÙ ELLE VIENT — DES DEUX PREMIERS « RESTE NOMMÉ, NON FAIT » DE D356**, tous
+deux refermés ici, et le premier l'est parce qu'il reposait sur une phrase
+écrite sans mesure.
+
+**(1) « HUMANISER » N'EST PAS ALÉATOIRE, ET LA GARDE L'AVAIT EXCLU POUR CETTE
+RAISON.** Son en-tête portait écrit que le geste « décale au hasard, et deux
+courses n'en donneraient jamais le même fichier » — affirmé, jamais vérifié, et
+**faux** : la graine est FIXE (`settings.seed = 0x5EED1234u`,
+`PianoRollComponent.cpp:812`), ce que son infobulle disait déjà depuis toujours
+(« de façon reproductible »). Vingt lignes de code à lire auraient suffi. Le
+geste entre dans la garde, et ses deux portes rendent bien le même fichier —
+**la promesse de reproductibilité est désormais MESURÉE, d'un processus à
+l'autre**, et non plus seulement promise par une infobulle.
+
+**(2) LES GESTES DE SÉLECTION ÉTAIENT LES SEULS DU PIANO ROLL QU'AUCUN BANC NE
+POUVAIT MESURER.** `VSM_SELECTION : N note(s) choisie(s)` était écrit par
+`performContextMenuAction` — le dispatcher du MENU — et par lui seul. Le
+raccourci appelle `selectAll()` directement, et ne disait rien ; la souris non
+plus. Mesuré avant tout changement : **1 ligne par le menu, 0 par la touche.**
+« Tout sélectionner » au clavier — le geste le plus courant d'un éditeur — ne
+laissait aucune trace.
+
+**LA CORRECTION, ET OÙ ELLE SE POSE.** Le compte se dit maintenant dans
+`notifyEditState()`, c'est-à-dire **là où la sélection change**, et non dans l'un
+de ses deux dispatchers : c'est le même raisonnement que D332 (« une règle posée
+dans l'application seule ne vaut pas pour l'export ») et que le `beginEdit`
+unique des trente-deux gestes d'édition — *le trente-troisième l'oublierait*. Il
+couvre du même coup la souris, qu'aucun des deux dispatchers ne voyait.
+**Seulement quand le compte CHANGE** : `notifyEditState` est appelée de dix-huit
+endroits, dont un glissé de souris, et répéter la même ligne noierait celle qui
+compte. L'ancienne ligne du menu est retirée — deux lignes pour un geste feraient
+compter double tout banc qui les additionne.
+
+**ATTENDU** (avant la mesure) : les deux portes des trois gestes de sélection
+rendent le même compte ; « Humaniser » rend le même `.mid` par ses deux portes et
+ce `.mid` diffère du témoin ; les gardes voisines restent vertes.
+
+**MESURÉ** (`tools/portes-des-gestes.py`, portée à **douze** gestes) :
+
+| geste | portes | mesure | accord |
+|---|---|---|---|
+| Humaniser | menu, bouton | 8 notes, décalées de la même façon des deux côtés | **oui** |
+| Tout sélectionner | menu, raccourci | 8 et 8 | **oui** |
+| Tout désélectionner | menu, raccourci | 0 et 0 | **oui** |
+| Inverser la sélection | menu, raccourci | 0 et 0 (après un « tout sélectionner ») | **oui** |
+| `VSM_SELECTION` par le raccourci | — | **0 ligne → 1 ligne** | — |
+| désaccords, les douze gestes | — | — | **0** |
+
+Attendu tenu. Les gestes de sélection sont joués APRÈS un « tout sélectionner »,
+sans quoi « Tout désélectionner » serait **grisé** — et la garde le dirait, D355
+ayant appris à l'application à ne plus appeler « absente » une entrée grisée.
+
+**LA GARDE VUE ROUGE.** Le relevé remis dans le seul dispatcher du menu, puis
+recompilé : `RATÉ ToutSelectionner une porte n'a RIEN dit — menu 8 |
+raccourci None`, code **1**. La distinction compte : « une porte muette » n'est
+pas « les portes en désaccord », et c'est le défaut même que la phase répare.
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`tools/quantifier.sh` (0 raté), `tools/banc-fumee.sh` (0 raté, dont son cas
+`VSM_SELECTION`), `tools/noms-des-gestes.py` (0 écart), inventaire A9 inchangé
+(ECRAN 10, SANS_PAIRE 0).
+
+**Reste nommé, non fait** : les gestes de sélection qui dépendent d'une
+transcription — « les 10 % les moins sûres », « toutes les notes douteuses » —
+n'ont pas de raccourci et n'entrent donc pas dans la comparaison ; leur porte
+unique ne se compare à rien. Et les portes des autres menus (clip, piste, règles)
+restent hors du compte, comme depuis D355.

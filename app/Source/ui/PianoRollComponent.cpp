@@ -282,6 +282,24 @@ void PianoRollComponent::notifyEdited() {
 }
 
 void PianoRollComponent::notifyEditState() {
+    // D357 : LE COMPTE DE LA SÉLECTION SE DIT LÀ OÙ ELLE CHANGE, et non dans un
+    // seul de ses deux dispatchers. D233 avait posé cette ligne dans
+    // `performContextMenuAction` : le MENU disait son compte, le RACCOURCI ne
+    // disait rien -- « Tout sélectionner » par Ctrl+A ne laissait AUCUNE trace,
+    // et les gestes de sélection étaient les seuls qu'aucun banc ne pouvait
+    // mesurer (mesuré le 18/09 : 1 ligne par le menu, 0 par la touche). Ici, le
+    // compte est celui de l'état, quel que soit le chemin qui l'a changé -- la
+    // souris comprise, qu'aucun des deux dispatchers ne voyait.
+    //
+    // SEULEMENT QUAND IL CHANGE : `notifyEditState` est appelée par dix-huit
+    // endroits, dont un glissé de souris, et répéter « 8 note(s) choisie(s) »
+    // noierait la ligne qui compte.
+    const int compte = static_cast<int>(selectedNoteIds_.size());
+    if (compte != dernierCompteDit_) {
+        dernierCompteDit_ = compte;
+        std::fputs(("VSM_SELECTION : " + juce::String(compte)
+                    + juce::String::fromUTF8(u8" note(s) choisie(s)\n")).toRawUTF8(), stderr);
+    }
     if (onEditStateChanged) onEditStateChanged();
 }
 
@@ -1261,20 +1279,11 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
     }
     // D233 : TOUTE SÉLECTION DIT SON COMPTE. Une sélection ne se lit pas sans
     // souris : elle ne change ni le titre, ni un texte, et le piano roll la PEINT
-    // (la leçon de D149). D223 avait posé cette ligne pour un seul geste ; les
-    // onze autres restaient muets, si bien qu'un banc pouvait exécuter
-    // « Sélectionner les notes faibles » et n'avoir RIEN à lire.
-    switch (menuItemId) {
-        case kCtxSelectAll: case kCtxSelectNone: case kCtxSelectInvert:
-        case kCtxSelectSamePitch: case kCtxSelectDoubtful: case kCtxSelectLeastConfident:
-        case kCtxSelectNextDoubtful: case kCtxSelectPrevDoubtful:
-        case kCtxSelectWeak64: case kCtxSelectWeak32: case kCtxSelectWeak16:
-        case kCtxSelectShortGrid: case kCtxSelectShortHalfGrid:
-            std::fputs(("VSM_SELECTION : " + juce::String(static_cast<int>(selectedNoteIds_.size()))
-                        + juce::String::fromUTF8(u8" note(s) choisie(s)\n")).toRawUTF8(), stderr);
-            break;
-        default: break;
-    }
+    // (la leçon de D149).
+    //
+    // D357 : LA LIGNE EST PARTIE DANS `notifyEditState`, où elle couvre les trois
+    // chemins au lieu d'un. La garder ICI en plus ferait écrire deux lignes pour
+    // un seul geste, et tout banc qui les compte compterait double.
 }
 
 // ---------------------------------------------------------------------------

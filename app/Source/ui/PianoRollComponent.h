@@ -311,6 +311,9 @@ private:
     bool beginEdit(const juce::String& label);
     void notifyEdited();
     void notifyEditState();
+    /// D357 : le dernier compte de sélection ÉCRIT au journal -- pour ne le dire
+    /// qu'aux changements (`notifyEditState` est appelée de dix-huit endroits).
+    int dernierCompteDit_ = -1;
     void updateStatusText(juce::Point<float> mousePos, bool mouseInside);
 
     // --- Écoute ------------------------------------------------------------

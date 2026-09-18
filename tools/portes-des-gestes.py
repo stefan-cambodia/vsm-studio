@@ -50,19 +50,40 @@ RACINE = Path(__file__).resolve().parents[1]
 BINAIRE = RACINE / "build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
 
 # LES GESTES ET LEURS PORTES. Le libellé du menu, la touche telle que
-# `juce::KeyPress::createFromDescription` la lit, le texte du bouton (ou None).
-# Les gestes ALÉATOIRES sont exclus et la raison est écrite : « Humaniser »
-# décale au hasard, et deux courses n'en donneraient jamais le même fichier --
-# comparer ses portes mesurerait le générateur, pas les portes.
+# `juce::KeyPress::createFromDescription` la lit (ou None : tous les gestes n'ont
+# pas de raccourci), le texte du bouton (ou None).
+#
+# « HUMANISER » EN FAIT PARTIE, ET LE PREMIER JET L'EXCLUAIT À TORT. Il portait
+# écrit ici que le geste « décale au hasard, et deux courses n'en donneraient
+# jamais le même fichier » -- affirmé sans être vérifié, et faux : la graine est
+# FIXE (`settings.seed = 0x5EED1234u`, PianoRollComponent.cpp:812), ce que son
+# infobulle disait déjà (« de façon reproductible »). Un geste écarté sur une
+# hypothèse qu'on n'a pas mesurée est un trou dans la garde, et celui-ci se
+# refermait en lisant vingt lignes de code.
 GESTES = [
     ("Quantifier",      "Quantifier (100 %)",           "ctrl + Q", "Quantifier"),
     ("Legato",          "Legato",                       "ctrl + L", "Legato"),
+    ("Humaniser",       "Humaniser",                    None,       "Humaniser"),
     ("Supprimer",       "Supprimer",                    "delete",   None),
     ("Dupliquer",       "Dupliquer",                    "ctrl + D", None),
     ("Fusionner",       "Fusionner",                    "ctrl + J", None),
     ("Couper",          "Couper",                       "ctrl + X", None),
     ("Muet",            "Rendre muet / audible",        "ctrl + M", None),
     ("CouperTete",      "Couper à la tête de lecture",  "ctrl + E", None),
+]
+
+
+# LES GESTES DE SÉLECTION NE LAISSENT RIEN DANS LE `.mid` : ils ne changent pas
+# une note, seulement ce qui est choisi. Leurs portes se comparent donc sur le
+# RELEVÉ (`VSM_SELECTION : N note(s) choisie(s)`), que D357 a déplacé là où la
+# sélection change -- il n'était écrit que par le menu, si bien que ces gestes-là
+# étaient les seuls du piano roll qu'aucun banc ne pouvait mesurer.
+# Chacun est joué APRÈS un « tout sélectionner », sans quoi « Tout
+# désélectionner » serait grisé (D355) et « Inverser » partirait de rien.
+SELECTIONS = [
+    ("ToutSelectionner",   "Tout sélectionner",     "ctrl + A"),
+    ("ToutDeselectionner", "Tout désélectionner",   "escape"),
+    ("Inverser",           "Inverser la sélection", "ctrl + I"),
 ]
 
 
@@ -138,6 +159,21 @@ def notes_du_midi(fichier: Path) -> collections.Counter | None:
     return comptes
 
 
+def dernier_compte_de_selection(journal: Path) -> int | None:
+    """Le DERNIER `VSM_SELECTION : N note(s) choisie(s)` du journal — le dernier,
+    parce que la course en écrit un par changement et que c'est l'état final qui
+    se compare."""
+    if not journal.is_file():
+        return None
+    dernier = None
+    for ligne in journal.read_text(encoding="utf-8", errors="replace").splitlines():
+        if ligne.startswith("VSM_SELECTION : "):
+            morceaux = ligne.split()
+            if len(morceaux) > 2 and morceaux[2].isdigit():
+                dernier = int(morceaux[2])
+    return dernier
+
+
 def course(brouillon: Path, nom: str, projet: Path, **variables: str) -> Path:
     """Une course de banc sous un HOME NEUF (D318 : un HOME réutilisé rouvre ses
     autosauvegardes avant le geste demandé)."""
@@ -195,10 +231,11 @@ def main() -> int:
             brouillon, f"{nom}-menu", projet,
             VSM_MENU_CONTEXTE=f"pianoroll:Tout sélectionner;pianoroll:{libelle}",
             VSM_EXPORT_MIDI=str(brouillon / f"{nom}-menu.mid")))
-        resultats["raccourci"] = notes_du_midi(course(
-            brouillon, f"{nom}-raccourci", projet,
-            VSM_TOUCHE=f"pianoroll:ctrl + A;pianoroll:{touche}",
-            VSM_EXPORT_MIDI=str(brouillon / f"{nom}-raccourci.mid")))
+        if touche:
+            resultats["raccourci"] = notes_du_midi(course(
+                brouillon, f"{nom}-raccourci", projet,
+                VSM_TOUCHE=f"pianoroll:ctrl + A;pianoroll:{touche}",
+                VSM_EXPORT_MIDI=str(brouillon / f"{nom}-raccourci.mid")))
         if bouton:
             # LE BOUTON EXIGE UNE SÉLECTION POSÉE AVANT LUI, donc un clic DIFFÉRÉ
             # -- et un export différé derrière (D356), sans quoi le fichier
@@ -220,6 +257,8 @@ def main() -> int:
             porte: valeur for porte, valeur in resultats.items() if valeur is not None
         }
         valeurs = list(lues.values())
+        # UNE SEULE PORTE NE SE COMPARE À RIEN, et « 1 porte d'accord » serait une
+        # réussite pour rien : le compte des portes est donc affiché, toujours.
         accord = all(v == valeurs[0] for v in valeurs[1:])
         change = valeurs[0] != temoin
         detail = " | ".join(f"{porte} {sum(v.values())} notes" for porte, v in lues.items())
@@ -238,6 +277,31 @@ def main() -> int:
             sans_effet.append(nom)
         else:
             print(f"  OK   {nom:12s} {len(lues)} porte(s) d'accord, et le fichier a changé — {detail}")
+
+    # --- LES GESTES DE SÉLECTION, mesurés sur le relevé et non sur le fichier ---
+    if not voulu or voulu in {nom for nom, _, _ in SELECTIONS}:
+        print("    — gestes de sélection (relevé VSM_SELECTION, rien à lire dans le .mid) —")
+    for nom, libelle, touche in SELECTIONS:
+        if voulu and voulu != nom:
+            continue
+        comptes: dict[str, int | None] = {}
+        course(brouillon, f"sel-{nom}-menu", projet,
+                VSM_MENU_CONTEXTE=f"pianoroll:Tout sélectionner;pianoroll:{libelle}")
+        comptes["menu"] = dernier_compte_de_selection(brouillon / f"sel-{nom}-menu.txt")
+        course(brouillon, f"sel-{nom}-raccourci", projet,
+                VSM_TOUCHE=f"pianoroll:ctrl + A;pianoroll:{touche}")
+        comptes["raccourci"] = dernier_compte_de_selection(brouillon / f"sel-{nom}-raccourci.txt")
+        detail = " | ".join(f"{porte} {valeur}" for porte, valeur in comptes.items())
+        if any(valeur is None for valeur in comptes.values()):
+            # UNE PORTE MUETTE N'EST PAS UNE PORTE D'ACCORD : c'est le défaut même
+            # que D357 vient de réparer, et la garde doit le revoir s'il revient.
+            print(f"  RATÉ {nom:12s} une porte n'a RIEN dit — {detail}")
+            rates += 1
+        elif len(set(comptes.values())) > 1:
+            print(f"  RATÉ {nom:12s} les portes ne choisissent pas le même nombre — {detail}")
+            rates += 1
+        else:
+            print(f"  OK   {nom:12s} 2 portes d'accord — {detail} note(s) choisie(s)")
 
     if sans_effet:
         print(f"--- {len(sans_effet)} geste(s) sans effet visible dans le .mid : {', '.join(sans_effet)}")
