@@ -29440,3 +29440,75 @@ font double emploi avec rien, mais l'argument de cette phase vaut aussi pour
 elles — une touche hors de la table ne se change pas. Elles n'y entrent pas
 aujourd'hui faute d'un besoin exprimé, et parce qu'une table qui absorbe toutes
 les bascules de vue devient une liste qu'on ne lit plus.
+
+### Phase D361 — la garde des noms atteint l'arrangement, et la règle n'y est pas la même (18/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ, NON FAIT » DE D355, D356 ET D357**, écrit
+trois fois : *la garde ne couvre que les portes du piano roll*. Elle ne pouvait
+pas couvrir l'arrangement avant que son menu porte la touche vivante (D358) et
+que son clavier consulte la table (D359) ; les deux sont faits, et la voici.
+
+**LA RÈGLE N'EST PAS LA MÊME ENTRE DEUX VUES, ET C'EST ÉCRIT AVANT DE COMPTER.**
+
+* **Dans une vue**, toutes les portes d'un geste portent un nom qui se reconnaît
+  — le même, ou l'un commence par l'autre.
+* **Entre deux vues**, elles n'ont PAS à porter le même nom : « Fusionner » des
+  notes et « Joindre les clips choisis » sont deux gestes différents sur deux
+  objets différents, et les confondre serait pire que les distinguer. C'est
+  l'entrée de la TABLE qui doit alors **contenir le nom de chaque vue**,
+  puisqu'elle est la seule ligne que l'utilisateur lit pour les deux. C'est la
+  décision de D355 — « un raccourci qui sert deux vues les nomme toutes les
+  deux » —, et cette phase-ci est ce qui la vérifie.
+
+**MESURÉ** (`tools/noms-des-gestes.py`, élargie) :
+
+| mesure | avant | après |
+|---|---|---|
+| entrées du menu de clip appariées à un appel | non lues | **11** |
+| dont partagées avec un raccourci | — | **2** |
+| écarts inter-vues | **1** | **0** |
+| `Ctrl+J`, entrée de la table | « Fusionner des notes, joindre **des clips** » | « Fusionner des notes, joindre **les clips choisis** » |
+| la même, en anglais | *Join notes, join clips* | *Join notes, join **the selected clips*** |
+
+L'écart était réel et prévisible : la table nommait bien les deux gestes, mais
+avec SES mots — « joindre des clips » quand le menu du clip dit « Joindre les
+clips choisis ». Un utilisateur qui cherche l'un ne trouve pas l'autre. Les deux
+libellés portent maintenant les mêmes mots, **dans les deux langues** : le
+contrôle anglais est joué pour ce cas comme pour les autres, un nom pouvant se
+perdre à la traduction, où personne ne le relirait.
+
+**DEUX DÉFAUTS DE LA GARDE, TROUVÉS AVANT D'ACCUSER LE LOGICIEL** (la règle de
+D266) — et le premier est celui que le dépôt paie régulièrement :
+
+1. **Les échappements du C++ n'étaient pas décodés.** Les sources écrivent tantôt
+   « à », tantôt `à` ; la garde a donc commencé par accuser « Couper à la
+   tête de lecture » de **diverger d'elle-même**. Pire, le premier décodeur
+   traitait les deux formes d'un bloc et **échouait en silence** sur la première :
+   `\uXXXX` désigne un CARACTÈRE, une suite de `\xNN` désigne des OCTETS d'UTF-8.
+   Chaque forme est traitée à part, et `--essai` vérifie la fonction sur un cas de
+   CHACUNE avant qu'elle serve de mesure.
+2. **Le nom du piano roll était pris au hasard** parmi ses portes : l'ordre du
+   dictionnaire rendait le libellé de la TABLE là où il fallait celui du MENU —
+   la garde se comparait à elle-même. C'est le menu qui nomme une vue.
+
+**LA GARDE VUE ROUGE — DANS CHAQUE LANGUE SÉPARÉMENT** :
+
+| témoin | résultat |
+|---|---|
+| l'entrée de table réduite à « Fusionner » (le français perd le nom de l'arrangement) | **RATÉ**, code **1** |
+| l'anglais seul remplacé par *Merge notes and clips* | **RATÉ** (deux gestes touchés : le nom anglais sert aussi de porte au piano roll) |
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`portes-des-gestes.py` (14 gestes, 0 désaccord), `raccourcis-affiches.py`,
+`banc-fumee.sh` — 0 raté ; inventaire A9 inchangé (ECRAN 10, SANS_PAIRE 0).
+Vérifié dans l'application en marche : la fenêtre des raccourcis dit « Fusionner
+des notes, joindre les clips choisis — Ctrl+J », et le menu du clip « Joindre les
+clips choisis {Ctrl+J} ».
+
+**Reste nommé, non fait** : neuf des onze entrées du menu de clip n'ont AUCUN
+raccourci, donc aucune seconde porte à comparer — leur nom ne se vérifie contre
+rien, et c'est sans objet tant qu'elles restent à une porte. Le menu de la PISTE
+et ceux des deux règles ne sont toujours pas lus : ils n'ont, eux non plus, aucun
+raccourci en commun avec la table, mais rien ne le VÉRIFIE — il faudrait les
+apparier comme les deux autres pour pouvoir l'affirmer.

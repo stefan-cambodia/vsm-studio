@@ -28,7 +28,7 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::EditLegato,        "edit.legato",      "Édition",   "Legato",                         "ctrl + L",         ""},
         {ShortcutId::EditQuantize,      "edit.quantize",    "Édition",   "Quantifier",                     "ctrl + Q",         ""},
         {ShortcutId::EditToggleMute,    "edit.toggleMute",  "Édition",   "Rendre muet / audible",          "ctrl + M",         ""},
-        {ShortcutId::EditJoin,          "edit.join",        "Édition",   "Fusionner des notes, joindre des clips", "ctrl + J",         ""},
+        {ShortcutId::EditJoin,          "edit.join",        "Édition",   "Fusionner des notes, joindre les clips choisis", "ctrl + J",         ""},
         {ShortcutId::EditSplitAtPlayhead,"edit.splitAtPlayhead","Édition","Couper à la tête de lecture",   "ctrl + E",         ""},
         {ShortcutId::EditToggleSnap,    "edit.toggleSnap",  "Édition",   "Aimantation",                    "G",                ""},
         {ShortcutId::EditInsertTimeAtLocators, "edit.insertTimeAtLocators", "Édition", "Insérer du silence entre les locateurs (tout le morceau glisse)", "ctrl + shift + I", ""},

@@ -42,6 +42,20 @@ supposerait résolu ce que l'on mesure, et `quantizeSelection(0.5f, false)` —
 « Quantifier (50 %) », un geste voisin sans raccourci — ne doit surtout pas être
 apparié au premier.
 
+**ET DEPUIS D361, L'ARRANGEMENT AUSSI.** Son menu de clip et son clavier sont
+lus comme ceux du piano roll — c'est possible depuis que la vue consulte la table
+(D359) et que son menu porte la touche vivante (D358). Deux commandes servent les
+DEUX vues, et la règle n'y est pas la même :
+
+  * **dans une vue**, toutes les portes d'un geste portent un nom qui se
+    reconnaît (le même, ou l'un commence par l'autre) ;
+  * **entre deux vues**, elles n'ont PAS à porter le même nom — « Fusionner »
+    des notes et « Joindre les clips choisis » sont deux gestes différents sur
+    deux objets différents. C'est l'entrée de la TABLE qui doit alors CONTENIR
+    le nom de chaque vue, puisqu'elle est la seule ligne que l'utilisateur lit
+    pour les deux : c'est la décision de D355 (« un raccourci qui sert deux vues
+    les nomme toutes les deux »), et voici ce qui la vérifie.
+
 CE QU'ELLE NE VOIT PAS, et le dit plutôt que de compter zéro : les entrées de
 menu dont le libellé est CALCULÉ (les accords, bâtis sur `chordTypeName`) n'ont
 pas de texte littéral à lire ; elles sont comptées à part, et ne sont d'ailleurs
@@ -62,6 +76,7 @@ TABLE = RACINE / "interchange/src/ShortcutTable.cpp"
 BARRE_CPP = RACINE / "app/Source/ui/PianoRollToolbar.cpp"
 BARRE_H = RACINE / "app/Source/ui/PianoRollToolbar.h"
 LANGUE = RACINE / "app/Source/ui/Langue.cpp"
+ARRANGEMENT = RACINE / "app/Source/ui/ArrangementComponent.cpp"   # D361
 
 
 def bloc(source: str, debut: str) -> str:
@@ -70,12 +85,37 @@ def bloc(source: str, debut: str) -> str:
     return source[i : source.index("\n}", i)]
 
 
+def decoder(texte: str) -> str:
+    """Les échappements du C++ rendus tels que l'écran les montre.
+
+    D361 : les sources écrivent tantôt le caractère accentué (« à »), tantôt son
+    échappement, et parfois les deux dans le même fichier. Comparer sans décoder
+    invente un écart là où les deux libellés sont identiques à l'écran — la garde
+    a commencé par accuser « Couper à la tête de lecture » de diverger d'elle-même.
+
+    DEUX FORMES, ET ELLES NE SE DÉCODENT PAS PAREIL : `\\u00e0` désigne un
+    CARACTÈRE (U+00E0), tandis qu'une suite de `\\xc3\\xa9` désigne des OCTETS
+    d'UTF-8. Le premier jet les traitait d'un bloc et rendait le texte inchangé sur
+    la première forme — c'est-à-dire qu'il échouait en silence. Chaque forme est
+    donc traitée à part, et la fonction est essayée sur les deux (`--essai`)."""
+    texte = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), texte)
+
+    def octets(m: re.Match[str]) -> str:
+        brut = bytes(int(h, 16) for h in re.findall(r"\\x([0-9a-fA-F]{2})", m.group(0)))
+        try:
+            return brut.decode("utf-8")
+        except UnicodeDecodeError:
+            return m.group(0)
+
+    return re.sub(r"(?:\\x[0-9a-fA-F]{2})+", octets, texte)
+
+
 def premier_tr(texte: str) -> str | None:
     """Le premier `tr("…")` d'une expression — une entrée de menu écrite avec une
     condition (« Annuler » / « Annuler : <geste> ») en porte deux, et c'est le
     début du libellé qui compte pour se reconnaître."""
     m = re.search(r'tr\(\s*(?:u8)?"((?:[^"\\]|\\.)*)"', texte)
-    return m.group(1) if m else None
+    return decoder(m.group(1)) if m else None
 
 
 def lire_anglais() -> dict[str, str]:
@@ -92,7 +132,7 @@ def lire_anglais() -> dict[str, str]:
     return {fr: en for fr, en in paires}
 
 
-def lire_portes() -> tuple[dict[str, dict[str, list[str]]], list[str], list[str]]:
+def lire_portes() -> tuple[dict[str, dict[str, list[str]]], list[str], list[str], dict[str, str]]:
     """Rend {appel: {porte: [libellés]}}, les entrées au libellé calculé, et les
     anomalies de lecture (une forme de code que les motifs ne lisent plus).
 
@@ -107,7 +147,7 @@ def lire_portes() -> tuple[dict[str, dict[str, list[str]]], list[str], list[str]
         re.findall(r"case Id::(\w+):\s*([^;]+);\s*return true;", bloc(piano, "bool PianoRollComponent::performShortcut"))
     )
     libelle_raccourci = {
-        m[0]: m[1]
+        m[0]: decoder(m[1])
         for m in re.findall(r'\{ShortcutId::(\w+),\s*"[^"]*",\s*"[^"]*",\s*"((?:[^"\\]|\\.)*)"', table)
     }
     if not raccourci_appel or not libelle_raccourci:
@@ -173,7 +213,34 @@ def lire_portes() -> tuple[dict[str, dict[str, list[str]]], list[str], list[str]
             noms.append(infobulle[ident])
         if noms:
             portes.setdefault(appel.strip(), {})["bouton"] = noms
-    return portes, calcules, anomalies
+    return portes, calcules, anomalies, libelle_raccourci
+
+
+def lire_arrangement() -> tuple[dict[str, str], dict[str, str], list[str]]:
+    """Les portes de l'ARRANGEMENT (D361), appariées comme celles du piano roll :
+    {appel: libellé du menu du clip}, {appel: identifiant de raccourci}, anomalies."""
+    texte = ARRANGEMENT.read_text(encoding="utf-8")
+    anomalies: list[str] = []
+    corps = bloc(texte, "void ArrangementComponent::clipMenuAction")
+    menu_appel = dict(re.findall(r"case (\d+):\s*([^;\n]+);\s*return;", corps))
+    clavier = bloc(texte, "bool ArrangementComponent::keyPressed")
+    racc_appel = dict(re.findall(r"case Id::(\w+):\s*([^;\n]+);\s*return true;", clavier))
+    construction = bloc(texte, "juce::PopupMenu ArrangementComponent::menuDuClip")
+    libelles: dict[str, str] = {}
+    for m in re.finditer(r"addItem\(\s*(\d+)\s*,", construction):
+        lib = premier_tr(construction[m.end() : m.end() + 300])
+        if lib is not None:
+            libelles.setdefault(m.group(1), lib)
+    # D358 : les entrées qui portent leur touche passent par `ajouterAvecRaccourci`.
+    for m in re.finditer(r'ajouterAvecRaccourci\(menu,\s*(\d+),\s*tr\(\s*(?:u8)?"((?:[^"\\]|\\.)*)"',
+                          construction):
+        libelles.setdefault(m.group(1), decoder(m.group(2)))
+    if not menu_appel or not racc_appel:
+        anomalies.append("arrangement : menu ou clavier illisible, les motifs ne correspondent plus")
+    par_appel_menu = {appel.strip(): libelles[ident]
+                      for ident, appel in menu_appel.items() if ident in libelles}
+    par_appel_racc = {appel.strip(): ident for ident, appel in racc_appel.items()}
+    return par_appel_menu, par_appel_racc, anomalies
 
 
 def se_reconnaissent(a: str, b: str) -> bool:
@@ -194,6 +261,20 @@ def accorde(portes: dict[str, list[str]]) -> bool:
 
 def main() -> int:
     tout = "--tout" in sys.argv
+    if "--essai" in sys.argv:
+        # LA FONCTION QUI DÉCODE SE VÉRIFIE SUR UN CAS DE CHAQUE FORME avant de
+        # servir de mesure (la règle du dépôt sur les motifs qui trient du code).
+        cas = [(r"Couper \u00e0 la t\u00eate de lecture", "Couper à la tête de lecture"),
+               (r"d\xc3\xa9" + "but", "début"),
+               ("Fusionner", "Fusionner")]
+        rates = 0
+        for brut, attendu in cas:
+            obtenu = decoder(brut)
+            etat = "OK  " if obtenu == attendu else "RATÉ"
+            if obtenu != attendu:
+                rates += 1
+            print(f"  {etat} decoder({brut!r}) = {obtenu!r}")
+        return 0 if rates == 0 else 1
     for fichier in (PIANO, TABLE, BARRE_CPP, BARRE_H):
         if not fichier.is_file():
             print(f"REFUS : {fichier} est absent")
@@ -202,7 +283,7 @@ def main() -> int:
     if not LANGUE.is_file():
         print(f"REFUS : {LANGUE} est absent")
         return 2
-    portes, calcules, anomalies = lire_portes()
+    portes, calcules, anomalies, libelle_raccourci_global = lire_portes()
     for mot in anomalies:
         print(f"REFUS : {mot}")
     if anomalies:
@@ -234,6 +315,47 @@ def main() -> int:
             if not bon_en:
                 detail_en = " | ".join(f"{porte} = « {' / '.join(liste)} »" for porte, liste in sorted(en_noms.items()))
                 print(f"       {'':34s} EN : {detail_en}")
+    # --- L'ARRANGEMENT (D361) : ses portes entre elles, puis face au piano roll ---
+    menu_arr, racc_arr, anomalies_arr = lire_arrangement()
+    for mot in anomalies_arr:
+        print(f"REFUS : {mot}")
+    if anomalies_arr:
+        return 2
+    communs = sorted(set(menu_arr) & set(racc_arr))
+    print(f"       arrangement : {len(menu_arr)} entrée(s) de menu appariée(s) à un appel, "
+          f"dont {len(communs)} avec un raccourci")
+    for appel in communs:
+        nom_menu = menu_arr[appel]
+        nom_table = libelle_raccourci_global.get(racc_arr[appel], "?")
+        # DANS LA VUE : le menu du clip et la table doivent se reconnaître, SAUF
+        # si la même commande sert aussi le piano roll -- auquel cas la table
+        # nomme les deux gestes et doit CONTENIR le nom de chacun (D355).
+        deux_vues = appel in portes
+        # ET DANS LES DEUX LANGUES, comme tout le reste de cette garde : un
+        # libellé peut contenir le nom de sa vue en français et l'avoir perdu à
+        # la traduction, où personne ne le relirait.
+        def dans_les_deux(contenu: str, contenant: str) -> bool:
+            return (contenu.casefold() in contenant.casefold()
+                    and anglais.get(contenu, contenu).casefold()
+                        in anglais.get(contenant, contenant).casefold())
+
+        if deux_vues:
+            noms_piano = portes[appel]
+            nom_piano = (noms_piano.get("menu") or noms_piano.get("bouton")
+                          or noms_piano.get("raccourci") or ["?"])[0]
+            bon = dans_les_deux(nom_menu, nom_table) and dans_les_deux(nom_piano, nom_table)
+            quoi = (f"table = « {nom_table} » doit contenir « {nom_menu} » (arrangement) "
+                    f"et « {nom_piano} » (piano roll), dans les deux langues")
+        else:
+            bon = (se_reconnaissent(nom_menu, nom_table)
+                   and se_reconnaissent(anglais.get(nom_menu, nom_menu),
+                                         anglais.get(nom_table, nom_table)))
+            quoi = f"menu = « {nom_menu} » | table = « {nom_table} »"
+        if not bon:
+            ecarts += 1
+        if not bon or tout:
+            print(f"  {'OK  ' if bon else 'RATÉ'} {appel:34s} {quoi}")
+
     print(f"--- {ecarts} geste(s) à plusieurs noms")
     return 0 if ecarts == 0 else 1
 
