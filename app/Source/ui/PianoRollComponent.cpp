@@ -748,14 +748,25 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
     // muettes : une course qui pressait « Quantifier » lisait « cliqué » et un
     // projet inchangé, et c'est la QUANTIFICATION qu'on allait soupçonner. La
     // règle du dépôt vaut ici comme ailleurs — ce qui est écarté est dit.
-    const auto refuser = [](const char* raison) {
-        std::fputs((juce::String("VSM_QUANTIFIER : rien fait \xe2\x80\x94 ") + raison + "\n").toRawUTF8(),
-                   stderr);
-    };
+    // D355 : LA RAISON EST ÉCRITE AU `fputs`, ET NON PASSÉE À UNE LAMBDA. Le
+    // premier jet de D354 confiait les cinq raisons à un `refuser(…)` : aucune ne
+    // va à l'écran, mais `tools/inventaire_langue.py` ne lit que l'INSTRUCTION de
+    // la chaîne, et cinq messages de banc sont entrés dans le compte ÉCRAN — le
+    // chiffre même qui juge la traduction (A9 : 10 → 15). Une mesure qu'on
+    // pollue en corrigeant autre chose est pire qu'une mesure absente.
     Track* track = activeTrack();
-    if (!track) { refuser("aucune piste active"); return; }
-    if (!project_) { refuser("aucun projet"); return; }
-    if (selectedNoteIds_.empty()) { refuser("aucune note s\xc3\xa9lectionn\xc3\xa9" "e"); return; }
+    if (!track) {
+        std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 aucune piste active\n", stderr);
+        return;
+    }
+    if (!project_) {
+        std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 aucun projet\n", stderr);
+        return;
+    }
+    if (selectedNoteIds_.empty()) {
+        std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 aucune note s\xc3\xa9lectionn\xc3\xa9""e\n", stderr);
+        return;
+    }
 
     QuantizeSettings settings;
     settings.grid = gridResolution_;
@@ -770,9 +781,17 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
     std::vector<Note> selected;
     for (const auto& n : track->notes)
         if (selectedNoteIds_.count(n.id) > 0) selected.push_back(n);
-    if (selected.empty()) { refuser("la s\xc3\xa9lection ne d\xc3\xa9signe aucune note de cette piste"); return; }
+    if (selected.empty()) {
+        std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 la s\xc3\xa9lection ne d\xc3\xa9signe "
+                   "aucune note de cette piste\n", stderr);
+        return;
+    }
 
-    if (!beginEdit("Quantifier")) { refuser("l'\xc3\xa9" "dition a \xc3\xa9t\xc3\xa9 refus\xc3\xa9" "e (piste verrouill\xc3\xa9" "e ?)"); return; }
+    if (!beginEdit("Quantifier")) {
+        std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 l'\xc3\xa9""dition a \xc3\xa9t\xc3\xa9 "
+                   "refus\xc3\xa9""e (piste verrouill\xc3\xa9""e ?)\n", stderr);
+        return;
+    }
     quantizeNotes(selected, settings, project_->ticksPerQuarterNote);
     for (auto& n : track->notes) {
         auto it = std::find_if(selected.begin(), selected.end(),

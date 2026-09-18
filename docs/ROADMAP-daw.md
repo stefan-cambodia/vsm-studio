@@ -28924,3 +28924,103 @@ neuf : la phase ne touche pas au code du produit, et un test de `core/` n'aurait
 pas pu voir ces défauts — ils vivent tous dans le chemin que les suites ne
 traversent pas. `tools/gestes-promesses.py` rejouée après coup : **13 promesses,
 0 rompue**, ce qui vérifie qu'aucun des cinq messages neufs n'a changé un geste.
+
+### Phase D355 — un geste, plusieurs portes, et jusqu'à trois noms (18/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ, NON FAIT » DE D354.** D354 a montré qu'un
+geste du piano roll s'atteint par plusieurs portes et que rien ne les compare.
+La première comparaison ne coûte pas une course : les portes portent des
+LIBELLÉS, et ces libellés sont ce que l'utilisateur lit. **La fenêtre des
+raccourcis** (`ShortcutsWindow`, qui affiche `ShortcutTable.cpp`) dit un nom, **le
+menu du clic droit** — qui EST le menu Édition, `MainComponent.cpp:3347` — en dit
+un autre, **le bouton de la barre d'outils** un troisième. Un utilisateur qui lit
+« Joindre — Ctrl+J » dans la fenêtre des raccourcis cherche « Joindre » dans le
+menu : le menu dit « Fusionner ». Il en conclut que la commande n'est pas là.
+
+**L'APPARIEMENT SE FAIT PAR L'APPEL, JAMAIS PAR LE NOM.** Deux portes sont le
+même geste quand elles appellent la même fonction avec les mêmes arguments —
+`quantizeSelection(1.0f, false)` des deux côtés. Apparier par le nom supposerait
+résolu ce qu'on mesure, et « Quantifier (50 %) » (`quantizeSelection(0.5f,
+false)`, sans raccourci) ne doit surtout pas être apparié à « Quantifier ».
+
+**UNE EXCEPTION, ÉCRITE AVANT DE COMPTER.** La face d'un bouton peut être un
+symbole — « + », « - », « Tout » : une barre d'outils serrée ne tient pas des
+phrases. C'est alors son **infobulle** qui nomme la commande, et un bouton
+satisfait la règle si sa face OU son infobulle reconnaît les autres portes. Sans
+cette exception, « + » pour « Zoom avant » compterait comme un défaut ; avec
+elle, le premier jet passe de **6 écarts à 4**, et les quatre sont réels.
+
+**ET LA RÈGLE VAUT DANS LES DEUX LANGUES** (D78, D80). Un geste peut s'accorder
+en français et diverger en anglais, ou l'inverse — les deux sont arrivés :
+« Joindre » et « Fusionner » se traduisent tous deux par *Join* (l'anglais était
+juste quand le français mentait), tandis que « Tout désélectionner » donne
+*Select none* et « Ne rien sélectionner » *Select nothing* (les deux langues
+divergeaient, chacune à sa façon).
+
+**LA DÉCISION, ET SA RAISON** — c'est le choix que les documents laissaient
+ouvert. **Quand deux portes se contredisent, le nom du MENU gagne** : c'est
+celui que l'utilisateur rencontre en travaillant, tandis que la fenêtre des
+raccourcis se consulte une fois puis s'oublie. **Et quand un raccourci sert deux
+vues, son entrée les nomme toutes les deux** plutôt que d'en taire une : `Ctrl+J`
+fusionne des notes dans le piano roll et joint des clips dans l'arrangement,
+`Ctrl+0` ajuste les DEUX vues quand le piano roll n'a pas le clavier (D14.2, et
+`docs/MODE-EMPLOI.md` le documentait déjà).
+
+**ATTENDU** (écrit avant la mesure) : les quatre gestes divergents portent un nom
+reconnaissable depuis toutes leurs portes, en français et en anglais ; aucune
+chaîne neuve sans traduction ; la fenêtre des raccourcis MONTRE les quatre
+nouveaux noms ; les suites restent vertes.
+
+**MESURÉ** (`tools/noms-des-gestes.py`, statique ; relevé `VSM_FENETRE_TEXTE` sur
+la fenêtre ouverte) :
+
+| geste | avant | après |
+|---|---|---|
+| `joinSelection()` | menu « Fusionner » / raccourci « Joindre » (EN : *Join* / *Join*) | **« Fusionner des notes, joindre des clips »** |
+| `selectNone()` | « Tout désélectionner » / « Ne rien sélectionner » (EN : *Select none* / *Select nothing*) | **« Tout désélectionner »** / *Select none* |
+| `toggleSelectionMuted()` | « Rendre muet / audible » / « Muet sur la sélection » (EN : *Mute / unmute* / *Mute the selection*) | **« Rendre muet / audible »** / *Mute / unmute* |
+| `zoomToFit()` | bouton « Tout » + infobulle « Afficher toute la piste » / menu « Zoom : tout voir » / raccourci « Ajuster à la fenêtre » | **« Zoom : tout voir »** partout, l'infobulle en tête et le raccourci précisant « (les deux vues) » |
+| gestes à plusieurs portes | 17 sur 75 | 17 sur 75 |
+| écarts de nom | **4** (dont 1 en français seul, 2 dans les deux langues, 1 à trois noms) | **0** |
+| inventaire A9 | ECRAN 15, SANS_PAIRE 0 | **ECRAN 10**, SANS_PAIRE 0 |
+
+Attendu tenu. Les quatre noms neufs sont lus dans la fenêtre OUVERTE, pas
+seulement dans les sources (`VSM_FENETRE_TEXTE : Raccourcis clavier : libellé :
+Fusionner des notes, joindre des clips`), et la photo de la fenêtre montre
+« Tout désélectionner — Échap » à sa place.
+
+**ET UNE MESURE QUE D354 AVAIT POLLUÉE, RÉPARÉE ICI.** L'inventaire des langues
+est passé de **ECRAN 10 à ECRAN 15** entre D353 et D354, sans qu'une seule
+chaîne d'écran soit apparue : les cinq raisons de refus de `quantizeSelection`
+étaient confiées à une lambda `refuser(…)`, et `tools/inventaire_langue.py` ne lit
+que l'INSTRUCTION où vit la chaîne — il voyait cinq littéraux français hors de
+tout `fputs`, donc cinq textes d'écran à traduire. Les cinq sont désormais écrits
+AU `std::fputs`, et le chiffre revient à **10**. C'est la leçon de D265 dans
+l'autre sens : un chiffre dont on ignore de quoi il est fait ment aussi quand
+c'est nous qui venons de le remplir.
+
+**LA GARDE VUE ROUGE — TROIS TÉMOINS**, dont un qui ne ressemble pas aux autres :
+
+| témoin | résultat attendu | obtenu |
+|---|---|---|
+| « Fusionner » redevient « Joindre » dans la table | 1 écart, français seul | 1 écart, « [le français seul diverge] » |
+| l'anglais de « Fusionner » devient *Merge* | 1 écart, anglais seul, les deux lignes montrées | 1 écart, « [l'anglais seul diverge] » + la ligne EN |
+| un fichier source rendu illisible à la garde | **REFUS**, pas « 0 écart » | `REFUS : aucun bouton de barre d'outils lu`, code 2 |
+
+Le troisième témoin est celui qui compte le plus : une garde statique qui ne
+reconnaît plus la forme du code qu'elle lit rendrait « 0 écart » — un zéro de
+panne muette, exactement ce que D354 vient de payer cinq fois. Elle refuse.
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Aucun test neuf : les
+quatre changements sont des libellés, et aucun test du dépôt n'affirme un libellé
+— `test_shortcut_table.cpp` vérifie que chacun est non vide et qu'il figure dans
+la page imprimable, ce qui reste vrai.
+
+**Reste nommé, non fait** : la garde ne couvre que les portes du **piano roll**.
+Le menu du clip, celui de la piste et celui des règles ont aussi des raccourcis
+(`Ctrl+J` y joint des clips), et leurs noms ne sont comparés à rien — c'est
+d'ailleurs pourquoi l'entrée `Ctrl+J` nomme les deux gestes plutôt qu'un seul.
+Et `Ctrl+0` fait deux choses différentes selon le clavier qui l'entend (les deux
+vues, ou le seul piano roll) : nommé ici, non tranché, parce qu'aucun besoin ne
+l'a demandé.

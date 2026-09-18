@@ -464,7 +464,7 @@ void PianoRollToolbar::retraduire() {
     moreButton_.setTooltip(tr(u8"Toutes les opérations d'édition"));
     zoomInButton_.setTooltip(tr("Zoom avant (+)"));
     zoomOutButton_.setTooltip(tr(u8"Zoom arrière (-)"));
-    zoomFitButton_.setTooltip(tr("Afficher toute la piste (Ctrl+0)"));
+    zoomFitButton_.setTooltip(tr(u8"Zoom : tout voir — toute la piste (Ctrl+0)"));
     stepButton_.setTooltip(tr(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, qui avance "
                               u8"d'un pas de grille ; Entrée = silence, Retour arrière = reculer"));
     foldButton_.setTooltip(tr(u8"Ne montrer que les hauteurs jouées sur la piste (Live : Fold)"));
