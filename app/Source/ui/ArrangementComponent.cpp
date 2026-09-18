@@ -1765,6 +1765,25 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
                     return true;
                 case Id::ViewZoomIn:  zoomHorizontally(1.25f); return true;
                 case Id::ViewZoomOut: zoomHorizontally(0.8f); return true;
+                // D360 : L'AIMANTATION SE BASCULE PAR LA MÊME TOUCHE QUE DANS LE
+                // PIANO ROLL. Elle répondait ici à « S » et là à « G » (la table,
+                // `edit.toggleSnap`) : deux touches pour un seul réglage, ce que ce
+                // fichier appelle lui-même « deux logiciels ». C'est la touche de la
+                // TABLE qui gagne, parce qu'elle est la seule que l'utilisateur
+                // puisse changer — « S » ne figurait nulle part et ne se
+                // reconfigurait pas.
+                case Id::EditToggleSnap:
+                    snap_ = !snap_;
+                    direLesBascules();
+                    repaint();
+                    return true;
+                // Et la grille de l'arrangement a sa propre commande (« M » comme
+                // mesure) au lieu du « G » qu'elle prenait à l'aimantation.
+                case Id::ViewArrangementBarGrid:
+                    aimanteALaMesure_ = !aimanteALaMesure_;
+                    direLesBascules();
+                    repaint();
+                    return true;
                 // Ce que l'arrangement ne rend pas : la touche remonte à qui
                 // saura quoi en faire, comme le piano roll le fait depuis D10.3.
                 default: break;
@@ -1784,15 +1803,21 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
         setFollowPlayhead(!followPlayhead_);
         return true;
     }
-    if (key.getTextCharacter() == 's' || key.getTextCharacter() == 'S') {
-        snap_ = !snap_;
-        repaint();
-        return true;
-    }
-    if (key.getTextCharacter() == 'g' || key.getTextCharacter() == 'G') {
-        aimanteALaMesure_ = !aimanteALaMesure_;
-        repaint();
-        return true;
+    // D360 : « S » et « G » écrites en dur ont disparu au profit de la table
+    // (ci-dessus). Le repli ne vaut que sans table posée — un aperçu hors écran —,
+    // et il garde les deux lettres d'origine pour que ces bancs-là ne changent pas
+    // de geste en cours de route.
+    if (raccourcis_ == nullptr) {
+        if (key.getTextCharacter() == 's' || key.getTextCharacter() == 'S') {
+            snap_ = !snap_;
+            repaint();
+            return true;
+        }
+        if (key.getTextCharacter() == 'g' || key.getTextCharacter() == 'G') {
+            aimanteALaMesure_ = !aimanteALaMesure_;
+            repaint();
+            return true;
+        }
     }
     // D359 : Suppr et Retour arrière passent par la table ci-dessus. Le repli
     // ci-dessous sert quand aucune table n'est posée (un banc de panneau, un
@@ -1836,6 +1861,20 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
         return true;
     }
     return false;
+}
+
+// D360 : CE QUE LA VUE PEINT, ELLE LE DIT AUSSI. L'état des deux bascules
+// s'affiche en haut à droite de la règle (« aimant : mesure », « aimant :
+// libre ») -- et un panneau qui PEINT son texte est invisible au relevé, qui
+// descend les composants (D149, D152). Un banc ne pouvait donc pas voir ce que
+// ces touches changent, et c'est exactement ce que D359 vient de payer sur le
+// clavier de cette vue. La ligne lit les MÊMES champs que la peinture.
+void ArrangementComponent::direLesBascules() const {
+    std::fputs((juce::String("VSM_ARRANGEMENT : aimant ")
+                + (snap_ ? (aimanteALaMesure_ ? "mesure" : "grille") : "libre")
+                + (followPlayhead_ ? ", suit la tête" : ", ne suit pas")
+                + (automationVisible_ ? ", automation visible" : ", automation cachée")
+                + "\n").toRawUTF8(), stderr);
 }
 
 void ArrangementComponent::zoomHorizontally(float facteur) {

@@ -29369,3 +29369,74 @@ l'arrangement emploie déjà pour la grille à la mesure, c'est-à-dire de chois
 touche libre pour celle-ci : un choix d'attribution que rien ne tranche dans les
 documents. Les quatre autres touches locales (A, F, et les flèches) ne sont dans
 la table à aucun titre, et c'est juste — elles ne règlent que la vue.
+
+### Phase D360 — deux touches pour un seul réglage, et celle qui gagne est celle qu'on peut changer (18/09/2026)
+
+**D'OÙ ELLE VIENT — DE L'ARBITRAGE QUE D359 A LAISSÉ OUVERT**, et que la règle du
+dépôt demande de trancher en l'écrivant plutôt qu'en le posant. L'aimantation se
+basculait par **S** dans l'arrangement et par **G** dans le piano roll (la table,
+`edit.toggleSnap`). Un seul réglage, deux touches — ce que
+`ArrangementComponent::keyPressed` appelle lui-même « deux logiciels ».
+
+**LA DÉCISION, ET SA RAISON.** **C'est la touche de la TABLE qui gagne**, dans
+les deux vues, parce qu'elle est la seule que l'utilisateur puisse changer : « S »
+ne figurait nulle part, ne s'affichait dans aucune fenêtre et ne se reconfigurait
+pas. C'est le prolongement direct de D358 et D359 — *une touche hors de la table
+est une touche dont personne n'est maître*.
+
+**ET LA GRILLE DE L'ARRANGEMENT ENTRE DANS LA TABLE PLUTÔT QUE DE DISPARAÎTRE.**
+Elle prenait le « G » qu'il fallait rendre à l'aimantation ; elle aurait pu rester
+une touche en dur sur une autre lettre, ce qui aurait recréé le défaut à côté. Une
+commande neuve — `view.arrangementBarGrid`, « Grille à la mesure dans
+l'arrangement » — porte désormais **M** comme *mesure*, lettre libre dans les deux
+vues comme dans la table.
+
+**ATTENDU** (avant la mesure) : dans l'arrangement, `G` bascule l'aimantation et
+`M` la grille ; `S` ne fait plus rien ; `G` deux fois revient au point de départ ;
+le piano roll répond toujours à `G` ; la commande neuve s'affiche dans la fenêtre
+des raccourcis avec sa touche.
+
+**MESURÉ** (relevé `VSM_ARRANGEMENT`, écrit pour l'occasion) :
+
+| touche | état lu après le geste |
+|---|---|
+| départ | aimant **mesure** |
+| `G` | aimant **libre** |
+| `G` deux fois | aimant **mesure** (la bascule est sa propre inverse) |
+| `M` | aimant **grille** (l'aimantation reste, la grille change) |
+| `S` | **rien** — aucune ligne, la touche ne fait plus rien |
+
+| touche | piano roll | arrangement |
+|---|---|---|
+| `G` | **prise** | **prise** |
+| `S` | AUCUNE commande | AUCUNE commande |
+
+Attendu tenu, et la fenêtre des raccourcis montre « Grille à la mesure dans
+l'arrangement — **M** ».
+
+**IL A FALLU ÉCRIRE UN RELEVÉ POUR MESURER QUOI QUE CE SOIT.** L'état des deux
+bascules s'affiche en haut de la règle (« aimant : mesure », « aimant : libre ») —
+et un texte **PEINT** est invisible au relevé, qui descend les composants (D149,
+D152). Aucun banc ne pouvait donc voir ce que ces touches changent : c'est
+exactement ce que D359 venait de payer sur le clavier de cette même vue. La ligne
+`VSM_ARRANGEMENT` lit les MÊMES champs que la peinture — deux lectures séparées
+finiraient par ne plus dire la même chose.
+
+**CE QUE LA DÉCISION COÛTE, ET QUI EST ÉCRIT PLUTÔT QUE TU** : qui avait pris
+l'habitude de « S » dans l'arrangement doit apprendre « G ». C'est le prix d'un
+seul geste pour un seul réglage, et il se paie une fois ; la touche est désormais
+dans la fenêtre des raccourcis, donc **modifiable** — celui qui préfère « S » peut
+le remettre, ce qui était impossible avant cette phase.
+
+Suites : **355** core, **1 303** audio, **300** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`portes-des-gestes.py` (14 gestes, 0 désaccord), `banc-fumee.sh`,
+`noms-des-gestes.py`, `raccourcis-affiches.py` — 0 raté ; inventaire A9 inchangé
+(ECRAN 10, SANS_PAIRE 0 : le libellé neuf est traduit).
+
+**Reste nommé, non fait** : `A` (montrer les courbes) et `F` (suivre la tête)
+restent des touches en dur de l'arrangement. Elles ne règlent que la VUE et ne
+font double emploi avec rien, mais l'argument de cette phase vaut aussi pour
+elles — une touche hors de la table ne se change pas. Elles n'y entrent pas
+aujourd'hui faute d'un besoin exprimé, et parce qu'une table qui absorbe toutes
+les bascules de vue devient une liste qu'on ne lit plus.

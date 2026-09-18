@@ -2979,6 +2979,8 @@ const Paire kAnglais[] = {
       "Next doubtful note" },
     { "Maj+",
       "Shift+" },
+    { "Grille à la mesure dans l'arrangement",
+      "Bar grid in the arrangement" },
 
 };
 

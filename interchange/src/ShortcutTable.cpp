@@ -45,6 +45,9 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::ViewZoomToFit,     "view.zoomToFit",   "Affichage", "Zoom : tout voir (les deux vues)", "ctrl + 0",         ""},
         {ShortcutId::ViewZoomIn,        "view.zoomIn",      "Affichage", "Zoom avant",                     "=",                "+"},
         {ShortcutId::ViewZoomOut,       "view.zoomOut",     "Affichage", "Zoom arrière",                   "-",                "_"},
+        // D360 : « M » comme MESURE. Libre dans les deux vues et dans la table.
+        {ShortcutId::ViewArrangementBarGrid, "view.arrangementBarGrid", "Affichage",
+                                            "Grille à la mesure dans l'arrangement", "M", ""},
         {ShortcutId::NavNextDoubtful,   "nav.nextDoubtful", "Affichage", "Note douteuse suivante (Maj : précédente)", "D",     ""},
         // D11.3 — se repérer en musique : le début, et les marqueurs.
         {ShortcutId::NavGoToStart,      "nav.goToStart",    "Transport", "Retour au début",                "home",             ""},

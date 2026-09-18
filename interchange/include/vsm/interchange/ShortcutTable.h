@@ -57,6 +57,10 @@ enum class ShortcutId : uint16_t {
     ViewZoomToFit,
     ViewZoomIn,
     ViewZoomOut,
+    /// D360 : la grille de l'arrangement (mesure ou grille fine). Elle se
+    /// basculait par une touche écrite en dur, donc irréglable : une touche
+    /// hors de la table est une touche que l'utilisateur ne peut pas changer.
+    ViewArrangementBarGrid,
     NavNextDoubtful,
     NavGoToStart,
     NavNextMarker,
