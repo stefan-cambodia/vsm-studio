@@ -150,6 +150,22 @@ public:
     void direLesBascules() const;
     /// D362 : la part du morceau que la vue montre, en mesures et en pour cent.
     void direLaFenetre() const;
+    /// D363 : LA VUE, POUR L'ENREGISTRER ET LA REPRENDRE. Le zoom et le
+    /// défilement appartiennent au MORCEAU (deux projets n'ont pas la même
+    /// longueur), et c'est pourquoi ils voyagent dans `project.json` plutôt que
+    /// dans les préférences.
+    double zoomActuel() const { return pixelsPerTick_; }
+    vsm::midi::Tick defilementActuel() const { return scrollTick_; }
+    /// Reprend une vue enregistrée. Un zoom nul ou hors bornes est REFUSÉ (rend
+    /// faux) : l'appelant cadre alors automatiquement, comme D362 le fait quand
+    /// le projet ne dit rien — mieux vaut un cadrage que des bornes inventées.
+    bool reprendreLaVue(double pixelsParTick, vsm::midi::Tick defilement) {
+        if (!(pixelsParTick > 0.0) || pixelsParTick < 0.0005 || pixelsParTick > 8.0) return false;
+        pixelsPerTick_ = pixelsParTick;
+        scrollTick_ = std::max<vsm::midi::Tick>(0, defilement);
+        repaint();
+        return true;
+    }
     /// D358 : la table VIVANTE des raccourcis, pour que le menu du clip dessine la
     /// touche EFFECTIVE au lieu de l'écrire en dur dans son libellé -- une
     /// parenthèse écrite ment dès que l'utilisateur change la touche.

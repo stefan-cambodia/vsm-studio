@@ -671,6 +671,17 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     transport.set("loop", std::move(loop));
     root.set("transport", std::move(transport));
 
+    // D363 : OÙ L'ON EN ÉTAIT DANS LA VUE. Écrit SEULEMENT si un zoom a été
+    // enregistré, comme le punch et les départs : un projet qui n'en a pas garde
+    // exactement le fichier qu'il avait avant que ce champ existe, et un fichier
+    // ancien se relit sans rien remarquer.
+    if (document.view.pixelsPerTick > 0.0) {
+        JsonValue vue = JsonValue::makeObject();
+        vue.set("pixelsPerTick", JsonValue::makeNumber(document.view.pixelsPerTick));
+        vue.set("scrollTick", JsonValue::makeNumber(static_cast<double>(document.view.scrollTick)));
+        root.set("view", std::move(vue));
+    }
+
     // LES BUS DE DÉPART, écrits seulement s'il y en a : un projet qui n'en
     // déclare pas garde le fichier qu'il avait avant qu'ils soient nommés.
     if (!document.sends.empty()) {
@@ -936,6 +947,18 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         return result;
     }
 
+    // D363 : la vue enregistrée, quand il y en a une. Un zoom nul ou négatif est
+    // IGNORÉ plutôt que repris : il ne cadrerait rien, et le repli de D362 vaut
+    // mieux qu'une valeur qui ne veut rien dire.
+    if (json["view"].isObject()) {
+        const JsonValue& vue = json["view"];
+        const double zoom = vue["pixelsPerTick"].asNumber();
+        if (zoom > 0.0) {
+            document.view.pixelsPerTick = zoom;
+            document.view.scrollTick =
+                static_cast<vsm::midi::Tick>(std::max(0.0, vue["scrollTick"].asNumber()));
+        }
+    }
     const JsonValue& transport = json["transport"];
     document.transport.ticksPerQuarterNote = static_cast<int>(transport["ticksPerQuarterNote"].asNumber(480.0));
     if (document.transport.ticksPerQuarterNote <= 0) {

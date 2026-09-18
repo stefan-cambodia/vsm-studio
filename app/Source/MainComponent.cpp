@@ -6708,7 +6708,15 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     //
     // Le piano roll a son propre cadrage depuis D338 (avec son plancher de 15 px
     // par rang) : on ne le touche pas ici.
-    arrangement_.zoomToFit();
+    // D363 : LA VUE ENREGISTRÉE PRIME, quand le projet en porte une. C'est ce
+    // que D362 annonçait en posant son cadrage : « le jour où le format portera
+    // un état de vue, c'est LUI qui devra primer ». Un projet se rouvre donc là
+    // où on l'a laissé, et le cadrage automatique reste le repli — pour un
+    // projet neuf, pour un fichier écrit avant que ce champ existe, et pour une
+    // valeur hors bornes que `reprendreLaVue` REFUSE plutôt que d'y obéir.
+    const auto& vue = loaded.bundle.document.view;
+    if (!arrangement_.reprendreLaVue(vue.pixelsPerTick, vue.scrollTick))
+        arrangement_.zoomToFit();
 
     // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
     // donnerait un morceau amputé sans explication -- c'est précisément
@@ -8577,6 +8585,14 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     vsm::interchange::LoadedBundle aEcrire;
     aEcrire.project = project_;
     aEcrire.document = vsm::interchange::documentFromProject(project_);
+    // D363 : ET LE DOCUMENT EMPORTE LA VUE. Posé ICI, dans le seul chemin qui
+    // ÉCRIT sur le disque (les trois autres `documentFromProject` servent le
+    // rendu et le report, qui n'ont pas de vue) : un projet se rouvre là où on
+    // l'a laissé. `documentFromProject` vit dans `interchange/`, qui ne connaît
+    // aucun composant ; c'est ici, au seul endroit qui voit les deux, que la vue
+    // entre dans le document.
+    aEcrire.document.view.pixelsPerTick = arrangement_.zoomActuel();
+    aEcrire.document.view.scrollTick = arrangement_.defilementActuel();
     aEcrire.folderPath = currentProjectFolder_ == juce::File()
                              ? std::string()
                              : currentProjectFolder_.getFullPathName().toStdString();

@@ -76,9 +76,17 @@ struct BundleSaveResult {
 /// instrument. Les presets sont capturés depuis l'état PAR DÉFAUT de chaque
 /// machine tant que l'application ne fournit pas d'états réels -- l'appelant
 /// peut les remplacer via `presetsByTrack`.
+///
+/// D363 : `view` est l'état de la vue d'arrangement (zoom, défilement) à joindre
+/// au projet. Paramètre en DERNIER et par défaut vide : les appelants existants
+/// ne changent pas, et une vue nulle n'écrit rien dans le fichier. Il fallait le
+/// passer ici parce que cette fonction REBÂTIT le document depuis le projet —
+/// remplir `LoadedBundle::document` ne servait à rien, le document écrit n'était
+/// pas celui-là. Mesuré : le champ `view` restait absent du fichier.
 BundleSaveResult saveProjectBundle(const vsm::sequencer::Project& project,
                                     const std::string& folderPath,
-                                    const std::map<size_t, SynthPreset>& presetsByTrack = {});
+                                    const std::map<size_t, SynthPreset>& presetsByTrack = {},
+                                    const ProjectDocument::View& view = {});
 
 // --- D6.4 : un projet qui s'ouvre ailleurs ----------------------------------
 //

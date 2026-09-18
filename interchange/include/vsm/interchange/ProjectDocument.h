@@ -348,6 +348,23 @@ struct ProjectDocument {
     std::vector<ProjectMarker> markers;
     /// D18.6 : les notes du projet. Vides = rien n'est écrit.
     std::string notes;
+    /// D363 : OÙ L'ON EN ÉTAIT DANS LA VUE D'ARRANGEMENT — le zoom et le point
+    /// de départ du défilement. Champ FACULTATIF, comme `master` et
+    /// `automation` : `pixelsPerTick` à zéro veut dire « rien d'enregistré », et
+    /// un projet qui n'en a pas garde exactement le fichier qu'il avait.
+    ///
+    /// POURQUOI DANS LE PROJET ET NON DANS LES PRÉFÉRENCES. Le zoom appartient au
+    /// MORCEAU : deux projets ouverts tour à tour n'ont pas la même longueur, et
+    /// une préférence globale rendrait le cadrage faux dès le second. C'est
+    /// d'ailleurs ce que D362 a corrigé faute de ce champ — son cadrage
+    /// automatique reste le repli quand rien n'est enregistré.
+    struct View {
+        /// Pixels par tick de la vue d'arrangement. 0 = rien d'enregistré.
+        double pixelsPerTick = 0.0;
+        /// Premier tick montré à gauche.
+        vsm::midi::Tick scrollTick = 0;
+    };
+    View view;
 };
 
 /// Décrit un projet en mémoire (hors notes, qui partent dans le `.mid`).

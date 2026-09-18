@@ -219,12 +219,14 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
 }
 
 BundleSaveResult saveProjectBundle(const Project& project, const std::string& folderPath,
-                                    const std::map<size_t, SynthPreset>& presetsByTrack) {
+                                    const std::map<size_t, SynthPreset>& presetsByTrack,
+                                    const ProjectDocument::View& view) {
     BundleSaveResult result;
     std::error_code code;
     fs::create_directories(folderPath, code);
 
     ProjectDocument document = documentFromProject(project);
+    document.view = view;   // D363 : vide = rien d'écrit
 
     // 1. Le MIDI : les notes, et elles seules.
     const fs::path midiFile = resolve(folderPath, document.midiPath);
@@ -368,7 +370,8 @@ StandaloneExportResult exportStandaloneProject(const LoadedBundle& bundle,
     StandaloneExportResult result;
 
     const BundleSaveResult ecrit =
-        saveProjectBundle(bundle.project, destFolder, bundle.presetsByTrack);
+        saveProjectBundle(bundle.project, destFolder, bundle.presetsByTrack,
+                           bundle.document.view);
     if (!ecrit.success) {
         result.error = ecrit.error;
         return result;

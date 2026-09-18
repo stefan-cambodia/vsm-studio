@@ -10,10 +10,11 @@
 # presser Ctrl+0 à chaque ouverture pour voir ce qu'on venait d'ouvrir. Aucun des
 # trois logiciels de référence ne demande ce geste.
 #
-# POURQUOI CADRER PLUTÔT QUE RESTAURER : `project.json` ne porte AUCUN état de
-# vue (format, midi, title, tracks, transport, version), et les projets que la
-# chaîne d'analyse produit n'en porteront jamais. Le jour où le format en
-# portera un, c'est LUI qui devra primer — le cadrage est le repli.
+# POURQUOI CADRER. `project.json` ne portait AUCUN état de vue quand D362 l'a
+# écrit ; D363 lui en a donné un, et l'ordre annoncé est respecté : **la vue
+# enregistrée prime, le cadrage est le repli**. Il sert encore pour un projet
+# neuf, pour un fichier écrit avant D363, et pour tout ce que la chaîne d'analyse
+# produit — elle n'écrit pas de vue.
 #
 # LA GARDE ENGENDRE SON PROJET plutôt que d'ouvrir un morceau du corpus : une
 # garde qui dépendrait d'un dossier posé à côté d'elle se tairait le jour où il
@@ -21,7 +22,12 @@
 # le second vérifie que le cadrage ne dépend pas de la longueur, et qu'un petit
 # morceau ne se retrouve pas étalé sur une largeur absurde.
 #
-# Rend 0 si les deux tiennent, 1 sinon, 2 si le binaire manque.
+# ET DEPUIS D363, UN TROISIÈME CAS : un projet ENREGISTRÉ après un zoom se rouvre
+# AU MÊME ENDROIT. Le format porte désormais un bloc `view` facultatif, et c'est
+# lui qui prime — le cadrage automatique n'est plus que le repli. Le cas garde les
+# deux bouts : le fichier écrit porte la vue, et la réouverture la reprend.
+#
+# Rend 0 si les trois tiennent, 1 sinon, 2 si le binaire manque.
 #
 #   tools/cadrage-ouverture.sh [chemin/du/binaire]
 set -u
@@ -91,6 +97,29 @@ for cas in "long:200" "court:4"; do
     assez="$(python3 -c "print(1 if float('${part:-0}') >= 90.0 else 0)" 2>/dev/null || echo 0)"
     verdict "$nom : au moins 90 % du morceau visible à l'ouverture" "$assez"
 done
+
+# (3) D363 : ZOOMER, ENREGISTRER, ROUVRIR — la vue revient.
+engendrer "$brouillon/garde" 40
+maison="$(mktemp -d "$brouillon/home.XXXX")"
+env HOME="$maison" VSM_TAILLE="1280x742" VSM_PROJET="$brouillon/garde" VSM_DELAI=2500 \
+    VSM_VUE="sans-rapport,arrangement" VSM_TOUCHE="arrangement:=;arrangement:=" \
+    VSM_ARRANGEMENT=1 VSM_ENREGISTRER="$brouillon/rouvert" \
+    VSM_CAPTURE="$brouillon/zoome.png" timeout 60 "$BIN" > "$brouillon/zoome.txt" 2>&1
+avant="$(grep 'VSM_ARRANGEMENT : fen' "$brouillon/zoome.txt" | tail -1 | sed 's/.*soit \([0-9.]*\) %.*/\1/')"
+maison2="$(mktemp -d "$brouillon/home.XXXX")"
+env HOME="$maison2" VSM_TAILLE="1280x742" VSM_PROJET="$brouillon/rouvert" VSM_DELAI=2500 \
+    VSM_VUE="sans-rapport,arrangement" VSM_ARRANGEMENT=1 \
+    VSM_CAPTURE="$brouillon/rouvert.png" timeout 60 "$BIN" > "$brouillon/rouvert.txt" 2>&1
+apres="$(grep 'VSM_ARRANGEMENT : fen' "$brouillon/rouvert.txt" | tail -1 | sed 's/.*soit \([0-9.]*\) %.*/\1/')"
+echo "       zoomé à ${avant:-?} %, rouvert à ${apres:-?} %"
+# LE ZOOM DOIT AVOIR EU LIEU : sans ce contrôle, « avant = après » serait vrai
+# aussi quand les deux valent le cadrage automatique, et ne prouverait rien.
+verdict "le zoom à la main s'écarte du cadrage automatique" \
+        "$(python3 -c "print(1 if abs(float('${avant:-0}') - 104.2) > 5 else 0)" 2>/dev/null || echo 0)"
+verdict "un projet enregistré se rouvre au MÊME endroit" \
+        "$([ -n "${avant:-}" ] && [ "${avant:-x}" = "${apres:-y}" ] && echo 1 || echo 0)"
+verdict "le fichier écrit porte le bloc « view »" \
+        "$(grep -c '"view"' "$brouillon/rouvert/project.json" 2>/dev/null || echo 0)"
 
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

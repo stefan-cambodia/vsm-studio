@@ -29587,3 +29587,71 @@ discutable ailleurs. Et `project.json` ne porte toujours pas d'état de vue : lu
 en donner un (zoom, défilement, piste choisie) rendrait le cadrage inutile dans
 le cas le plus courant — celui d'un projet qu'on rouvre —, mais c'est un
 changement de FORMAT, qui demande sa version et sa migration.
+
+### Phase D363 — un projet se rouvre là où on l'a laissé (19/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ, NON FAIT » DE D362**, et de la phrase que
+D362 avait écrite dans le code même : *« le jour où le format portera un état de
+vue, c'est LUI qui devra primer — ce cadrage est le repli, pas la règle »*. Le
+format en porte un désormais, et l'ordre annoncé est tenu.
+
+**CE QUI EST FAIT.** Un bloc `view` **facultatif** dans `project.json` —
+`pixelsPerTick` et `scrollTick` —, écrit SEULEMENT quand il dit quelque chose,
+comme `master`, `punch` et les départs : un projet qui n'en a pas garde
+exactement le fichier qu'il avait, et un fichier écrit avant cette phase se relit
+sans rien remarquer. À l'ouverture, la vue enregistrée prime ; le cadrage
+automatique de D362 reste le repli pour un projet neuf, pour un fichier ancien,
+et pour tout ce que la chaîne d'analyse produit — elle n'écrit pas de vue.
+
+**POURQUOI DANS LE PROJET ET NON DANS LES PRÉFÉRENCES.** Le zoom appartient au
+MORCEAU : deux projets ouverts tour à tour n'ont pas la même longueur, et une
+préférence globale rendrait le cadrage faux dès le second.
+
+**ATTENDU** (avant la mesure) : zoomer deux crans, enregistrer, rouvrir — la
+fenêtre doit être la MÊME, et le fichier doit porter le bloc ; un zéro ou une
+valeur négative doivent être ignorés plutôt que repris.
+
+**MESURÉ** (projet engendré de quatre mesures, relevé `VSM_ARRANGEMENT`) :
+
+| étape | fenêtre |
+|---|---|
+| ouverture (cadrage de D362) | 104,2 % |
+| après deux zooms à la main | **66,7 %** |
+| `project.json` écrit | `view = {"pixelsPerTick": 0.08515625, "scrollTick": 0}` |
+| réouverture | **66,7 %** |
+
+Attendu tenu. **Trois tests** d'interchange le tiennent au niveau du format
+(300 → **303**) : l'aller-retour, l'absence d'écriture quand il n'y a rien à
+dire, et un zoom **absurde** (0 ou négatif) qui est ignoré plutôt qu'obéi — le
+reprendre ouvrirait le projet sur une vue vide, alors que l'ignorer rend la main
+au cadrage.
+
+**ET UNE FAUSSE PISTE, QUE SEULE LA MESURE A DÉTROMPÉE.** Le champ avait
+d'abord été rempli dans `LoadedBundle::document`, ce qui semblait le bon endroit
+— et le fichier écrit ne portait **rien**. `saveProjectBundle` **REBÂTIT** le
+document depuis le projet (`documentFromProject(project)`) et ignore celui du
+bundle : remplir ce champ ne servait à rien. La vue passe donc par un paramètre
+de `saveProjectBundle`, en DERNIER et par défaut vide, si bien que les quinze
+appelants existants ne bougent pas. **Relire le code ne l'aurait pas dit ; le
+`view = None` du fichier, si.**
+
+**LA GARDE VUE ROUGE, ET LE TÉMOIN SÉPARE LES DEUX BOUTS** : la LECTURE du bloc
+retirée (l'écriture intacte), puis recompilé → le fichier porte toujours
+« view », et la réouverture retombe à **104,2 %** au lieu de 66,7 % :
+`RATÉ un projet enregistré se rouvre au MÊME endroit`, code **1**. La garde porte
+aussi son propre contre-témoin — *« le zoom à la main s'écarte du cadrage
+automatique »* —, sans quoi « avant = après » serait vrai aussi quand les deux
+valent le cadrage, et ne prouverait rien.
+
+Suites : **355** core, **1 303** audio, **303** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`cadrage-ouverture.sh` (6 contrôles), `portes-des-gestes.py` (14 gestes),
+`gestes-promesses.py`, `banc-fumee.sh` — 0 raté.
+
+**Reste nommé, non fait** : la **sauvegarde automatique** n'emporte pas la vue —
+elle appelle `saveProjectBundle` sans ce paramètre, et une reprise après panne
+rouvrira donc au cadrage. C'est défendable (une reprise n'est pas un
+enregistrement) et ce n'est pas mesuré. Et la vue ne retient que le zoom et le
+défilement : ni la piste choisie, ni l'onglet du dock, ni la position des
+fenêtres flottantes — celles-là vivent dans les préférences, où elles ne
+dépendent pas du morceau.

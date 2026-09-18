@@ -1444,3 +1444,49 @@ VSM_TEST(a_project_on_the_default_crossfade_shape_keeps_the_file_it_had) {
     // pas ne doit rien changer à ce que le projet a déjà.
     VSM_ASSERT(retour.crossfadeShape == vsm::sequencer::FadeShape::Slow);
 }
+
+// D363 : LA VUE D'ARRANGEMENT VOYAGE AVEC LE PROJET, et seulement si elle dit
+// quelque chose. Les trois cas qui comptent : elle survit à l'aller-retour, elle
+// ne s'écrit pas quand il n'y a rien à dire (un fichier ancien se relit sans rien
+// remarquer), et une valeur ABSURDE est ignorée plutôt que reprise.
+VSM_TEST(the_arrangement_view_survives_the_round_trip) {
+    ProjectDocument document = documentFromProject(buildProject());
+    document.view.pixelsPerTick = 0.0125;
+    document.view.scrollTick = 3840;
+    const std::string texte = projectDocumentToJson(document).toString();
+    VSM_ASSERT(texte.find("\"view\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.view.pixelsPerTick > 0.0124 && relu.document.view.pixelsPerTick < 0.0126);
+    VSM_ASSERT(relu.document.view.scrollTick == 3840);
+}
+
+VSM_TEST(a_project_without_a_saved_view_keeps_the_file_it_had) {
+    // Rien d'enregistré = rien d'écrit : un projet d'avant cette phase, et tout
+    // projet que la chaîne d'analyse produit, gardent leur fichier tel quel.
+    const std::string texte = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(texte.find("\"view\"") == std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.view.pixelsPerTick == 0.0);
+}
+
+VSM_TEST(an_impossible_zoom_is_ignored_rather_than_obeyed) {
+    // Un zoom nul ou négatif ne cadre rien. Le relire comme tel ferait ouvrir le
+    // projet sur une vue vide ; l'ignorer rend la main au cadrage automatique de
+    // D362, qui, lui, montre le morceau.
+    for (const char* absurde : {"0", "-1.5"}) {
+        const std::string texte =
+            std::string(R"({"format":"vsm-project","version":1,"title":"x",)")
+            + R"("midi":{"file":"midi/arrangement.mid"},)"
+            + R"("view":{"pixelsPerTick":)" + absurde + R"(,"scrollTick":960},)"
+            + R"("transport":{"ticksPerQuarterNote":480,"tempoChanges":[{"tick":0,"bpm":120}],)"
+            + R"("timeSignatures":[{"tick":0,"numerator":4,"denominator":4}]},"tracks":[]})";
+        const ProjectLoadResult relu = parseProjectDocument(texte);
+        VSM_ASSERT(relu.success);
+        VSM_ASSERT(relu.document.view.pixelsPerTick == 0.0);
+        VSM_ASSERT(relu.document.view.scrollTick == 0);
+    }
+}
