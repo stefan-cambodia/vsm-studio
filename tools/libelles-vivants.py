@@ -190,20 +190,36 @@ def main() -> int:
     # infobulle est affichée dans toutes les vues du piano roll, et « ctrl + F9 »
     # parce qu'aucune commande d'usine ne la porte : une touche déjà prise
     # partirait en conflit et le rebind serait refusé.
-    COMMANDE, TOUCHE_NEUVE = "edit.undo", "ctrl + F9"
-    ancienne = None
-    for touche, commande in touches.items():
-        if commande == COMMANDE:
-            ancienne = touche
-    if ancienne is None:
-        print(f"REFUS : « {COMMANDE} » n'est plus dans la table — cette garde ne "
-              f"sait plus quoi rebinder", file=sys.stderr)
+    # PLUSIEURS COMMANDES D'UN COUP, et cela ne coûte pas un lancement de plus :
+    # la seconde course en porte autant qu'on veut. En rebinder UNE laissait 56
+    # des 57 non éprouvées — c'était le « reste nommé » de la première version.
+    # Les touches neuves sont des touches de fonction qu'aucune commande d'usine
+    # ne porte : une touche déjà prise partirait en conflit et le rebind serait
+    # refusé, ce qui se lirait comme un libellé en dur.
+    REBINDS = {
+        "edit.undo":      ("ctrl + F9",  "Ctrl+F9"),
+        "edit.redo":      ("ctrl + F10", "Ctrl+F10"),
+        "edit.quantize":  ("ctrl + F11", "Ctrl+F11"),
+        "edit.legato":    ("ctrl + F12", "Ctrl+F12"),
+        "view.zoomIn":    ("alt + F9",   "Alt+F9"),
+        "view.zoomOut":   ("alt + F10",  "Alt+F10"),
+        "view.zoomToFit": ("alt + F11",  "Alt+F11"),
+        "tool.select":    ("alt + F12",  "Alt+F12"),
+    }
+    par_commande = {commande: touche for touche, commande in touches.items()}
+    inconnues = sorted(c for c in REBINDS if c not in par_commande)
+    if inconnues:
+        print(f"REFUS : ces commandes ne sont plus dans la table — {', '.join(inconnues)}",
+              file=sys.stderr)
         return 2
-    neuve = "Ctrl+F9"
+    surcharges = {c: REBINDS[c][0] for c in REBINDS}
+    # {ancienne touche affichée: (commande, nouvelle touche affichée)}
+    attendus = {par_commande[c]: (c, REBINDS[c][1]) for c in REBINDS}
 
     print("=== D372 : un libellé affiché suit-il la table des raccourcis ? ===")
     print(f"       {len(touches)} touches configurables, {len(VUES)} vue(s) × 2 courses")
-    print(f"       « {COMMANDE} » : {ancienne} -> {neuve}")
+    print(f"       {len(REBINDS)} commande(s) rebindée(s) : "
+          + ", ".join(f"{a} -> {n}" for a, (_, n) in sorted(attendus.items())))
 
     avant: set[tuple[str, str]] = set()
     apres: set[tuple[str, str]] = set()
@@ -213,7 +229,7 @@ def main() -> int:
             try:
                 avant.update(course(binaire, brouillon, nom, vue, projet))
                 apres.update(course(binaire, brouillon, nom + "-rebind", vue, projet,
-                                     {COMMANDE: TOUCHE_NEUVE}))
+                                     surcharges))
             except subprocess.TimeoutExpired:
                 print(f"  RATÉ {nom} : une course n'a pas rendu la main", file=sys.stderr)
                 return 2
@@ -236,25 +252,29 @@ def main() -> int:
     # (1) LE TÉMOIN DU REBIND : la touche NEUVE doit apparaître quelque part.
     # Sans lui, « plus aucune ancienne touche » serait vrai aussi le jour où le
     # rebind échoue en silence — et la garde passerait au vert sur une panne.
-    portent_la_neuve = [t for _, t in apres if f"({neuve})" in t]
-    for t in portent_la_neuve[:3]:
-        print(f"       la touche neuve s'affiche : {t[:76]}")
-    verdict(f"le rebind a pris : au moins un libellé montre « ({neuve}) »",
-             bool(portent_la_neuve))
+    suivies = sorted({n for _, (_, n) in attendus.items()
+                       if any(f"({n})" in t for _, t in apres)})
+    for n in suivies:
+        exemple = next(t for _, t in apres if f"({n})" in t)
+        print(f"       ({n}) s'affiche : {exemple[:70]}")
+    verdict(f"le rebind a pris : {len(suivies)}/{len(attendus)} touche(s) neuve(s) affichée(s)",
+             bool(suivies))
 
     # (2) LA MESURE : après le rebind, plus AUCUN libellé ne doit montrer
     # l'ancienne touche pour cette commande. Celui qui la montre encore l'a
     # écrite en dur — c'est le défaut que D358 chasse, vu sur l'écran.
-    restes = sorted({t for _, t in apres
-                      if f"({ancienne})" in t and not SOURIS.search(t)})
-    for t in restes:
-        print(f"  RATÉ « ({ancienne}) » est encore affiché après le rebind : {t[:74]}")
-    verdict(f"aucun libellé ne montre encore « ({ancienne}) »", not restes)
+    restes = sorted({(a, t) for a in attendus for _, t in apres
+                      if f"({a})" in t and not SOURIS.search(t)})
+    for a, t in restes:
+        print(f"  RATÉ « ({a}) » ({attendus[a][0]}) est encore affiché après le "
+              f"rebind : {t[:64]}")
+    verdict(f"aucun libellé ne montre encore l'une des {len(attendus)} anciennes touches",
+             not restes)
 
     # CE QU'ELLE N'A PAS PU VOIR, dit à chaque course.
     print("       NON COUVERT : les textes PEINTS (invisibles à ce relevé, D149), "
-          "les boîtes de dialogue (D95), les vues non ouvertes, et les 56 autres "
-          "commandes de la table — une seule est rebindée par course")
+          "les boîtes de dialogue (D95), les vues non ouvertes, et les commandes "
+          "de la table qui ne sont pas rebindées par cette course")
     print()
     if rates:
         print(f"D372 : {rates} contrôle(s) raté(s)")

@@ -30433,9 +30433,12 @@ servi une fois de plus. Régler le motif jusqu'à ce qu'il ne dise plus rien aur
 donné une garde verte et vide.
 
 **CE QUI SÉPARE LES DEUX : REBINDER.** La garde joue **deux** courses par vue —
-l'une avec la table d'usine, l'autre avec `edit.undo` déplacé de `Ctrl+Z` à
-`Ctrl+F9`. Un libellé qui suit la table change ; **un libellé qui montre encore
-l'ancienne touche l'a écrite en dur**. C'est la leçon de D145 — une valeur qui
+l'une avec la table d'usine, l'autre avec **huit** commandes déplacées sur des
+touches de fonction qu'aucune commande d'usine ne porte (annuler, rétablir,
+quantifier, legato, les trois zooms, l'outil de sélection). Un libellé qui suit
+la table change ; **un libellé qui montre encore l'ancienne touche l'a écrite en
+dur**. Huit plutôt qu'une parce que **cela ne coûte pas un lancement de plus** :
+la seconde course en porte autant qu'on veut. C'est la leçon de D145 — une valeur qui
 revient à son point de départ ne prouve rien sans le témoin qui montre qu'elle en
 était partie —, appliquée à du texte.
 
@@ -30446,18 +30449,24 @@ HOME est un brouillon neuf à chaque course (D318).
 
 **MESURÉ** (5 vues × 2 courses, 1600 × 1000, projet `children-dream-v12`) :
 
-| | table d'usine | `edit.undo` rebindé |
+| | table d'usine | 8 commandes rebindées |
 |---|---|---|
 | textes distincts relevés | **183** | **183** |
 | l'infobulle d'Annuler | `Annuler (Ctrl+Z)` | **`Annuler (Ctrl+F9)`** |
-| libellés montrant encore `(Ctrl+Z)` | — | **0** |
+| celle de Quantifier | `… (Ctrl+Q)` | **`… (Ctrl+F11)`** |
+| touches neuves affichées | — | **8 / 8** |
+| libellés montrant encore une ancienne touche | — | **0** |
 
 Les libellés affichés suivent donc la table. **Vue ROUGE sur le défaut qu'elle
 garde** : l'infobulle d'Annuler réécrite en dur (`tr("Annuler (Ctrl+Z)")`),
 recompilée, et la garde cite la ligne fautive mot pour mot — 2 contrôles ratés,
 code 1. Le témoin du rebind tombe alors lui aussi, et c'est attendu : si le SEUL
 libellé de la commande rebindée est en dur, rien ne peut montrer la touche neuve.
-C'est le second contrôle qui nomme la cause.
+C'est le second contrôle qui nomme la cause. Et la détection a été revue une
+seconde fois **sans recompiler**, en déclarant rebindée une commande qu'on ne
+rebindait pas : la garde nomme la commande (`edit.quantize`) et cite le libellé
+resté sur l'ancienne touche, le témoin tombant à **7/8** — c'est ce chiffre qui
+dit LAQUELLE n'a pas suivi.
 
 **LES DEUX GARDES NE SE REMPLACENT PAS**, et c'est écrit dans les deux :
 `raccourcis-affiches.py` lit TOUT le code, y compris les vues qu'aucune course
@@ -30468,7 +30477,8 @@ pouvoir lire.
 **Reste nommé, non fait, et dit à chaque course** : les textes PEINTS
 (`g.drawText`) sont invisibles à ce relevé (D149, D152) ; les boîtes de dialogue
 n'existent qu'après le geste qui les ouvre (D95) — dont les cinq que D371 vient
-de corriger, qu'aucune de ces deux gardes ne voit à l'écran ; et **une seule des
-57 commandes est rebindée par course**, les 56 autres restant non éprouvées à
-l'exécution. Les rebinder toutes coûterait 57 × 2 lancements ; en rebinder
-plusieurs à la fois est possible et n'est pas fait.
+de corriger, qu'aucune de ces deux gardes ne voit à l'écran ; et **8 des 57 commandes sont
+rebindées par course**, les 49 autres restant non éprouvées à l'exécution — non
+parce que ce serait coûteux (la seconde course en porterait autant qu'on veut),
+mais parce que chaque touche neuve doit être choisie libre de tout conflit, et
+que les touches de fonction ne sont pas inépuisables.
