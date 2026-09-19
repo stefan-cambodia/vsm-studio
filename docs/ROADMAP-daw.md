@@ -29733,3 +29733,55 @@ plancher de lisibilité qui tient là tient partout —, mais aucune ne mesure �
 taille de l'écran, si bien qu'un défaut qui n'apparaîtrait qu'en grand passerait
 inaperçu. Nommé ici, non traité : il faudrait choisir quelles gardes doublent
 leur course, et chacune coûte deux lancements de plus.
+
+### Phase D365 — l'audit à la taille de l'écran ne trouve rien, et doubler les gardes n'y changerait rien (19/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ, NON FAIT » DE D364** : *« les gardes
+d'interface continuent de juger à 1 280 × 742 […] un défaut qui n'apparaîtrait
+qu'en grand passerait inaperçu. Il faudrait choisir quelles gardes doublent leur
+course. »* Avant de doubler quoi que ce soit, il fallait savoir s'il y avait
+quelque chose à trouver.
+
+**L'AUDIT, FAIT UNE FOIS, À 3 200 × 2 000** — la taille réelle de l'écran, que
+personne n'avait jamais photographiée. Quatre vues sur un vrai morceau
+(`children-c3-plafond`, 12 pistes, 31 clips, 454 s) :
+
+| vue | surfaces claires | composants sans surface |
+|---|---|---|
+| arrangement | **0** | 0 |
+| piano roll | **0** | 0 |
+| mixeur | **0** | 0 |
+| liste d'événements | **0** | 0 |
+
+**RÉSULTAT NÉGATIF, et il est publié comme tel** : à la taille réelle, le thème
+tient, aucune commande ne perd sa surface, et les trois vues gardent leurs
+proportions. La barre de transport y tient sur une rangée (D364), l'arrangement
+montre tout le morceau (D362) et le piano roll ouvre 1 340 px de notes au lieu
+de 84.
+
+**ET LA CONCLUSION SUR LES GARDES EST L'INVERSE DE CE QUE D364 SUPPOSAIT.**
+Doubler la course du balayage de thème **n'apporterait rien**, et la raison est
+écrite dans l'en-tête de `tools/surfaces-claires.py` depuis D347 : son seuil est
+**relatif** — « 40 % de la largeur de l'image, au moins 80 px, **et non un nombre
+fixe** ». Une surface qui occupe 40 % d'un panneau est attrapée à 1 280 comme à
+3 200 ; la mesure est invariante d'échelle par construction. Il en va de même du
+cadrage de D362, qui compare une fenêtre à l'étendue du morceau, donc un rapport.
+
+**CE QUI N'EST PAS INVARIANT, C'EST LA GÉOMÉTRIE ABSOLUE** — « il faut ~1 400 px
+pour une rangée » —, et c'est exactement là que A6 s'était trompée d'écran.
+Cette famille-là est déjà gardée aux deux tailles par `tools/barre-transport.sh`
+(1 280 et 2 240). Le « reste nommé » de D364 est donc **clos par examen** : il n'y
+a pas de garde à doubler, il y avait une distinction à faire — *une mesure
+relative se moque de la taille, une mesure absolue en dépend, et seule la seconde
+doit être jouée deux fois.*
+
+**CE QUE LA PHASE NE FAIT PAS, ET POURQUOI C'EST ÉCRIT.** La suite du travail
+nommée par la todolist est **B5** — engendrer un lot de morceaux longs, à notes
+brèves et à paramètres de hauteur tirés sur une grille connue —, dont dépend B6
+(le F1 du banc, biaisé dans un sens connu). C'est une CAMPAGNE de plusieurs
+heures. Elle n'a pas été lancée : **la batterie est à 47 % et en décharge**, et
+cette machine ne charge qu'en veille. Une course de plusieurs heures y mourrait
+en route, ce qui coûte plus cher que de ne pas la commencer.
+
+Aucun changement de code. Suites inchangées et vertes au commit précédent
+(355 core, 1 303 audio, 303 interchange, 25 clap, 11 panels, 214 Python).
