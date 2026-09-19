@@ -30309,8 +30309,33 @@ fois). Une garde qui ne trouve plus rien à comparer et se tait est pire que pas
 de garde — `gestes-vivants.py` avait d'abord échoué à échouer, et c'est le
 contrôle qu'on lui doit désormais.
 
-**Reste nommé, non fait** : le menu de la **PISTE** de D361 n'est pas apparié —
-il n'existe pas comme menu contextuel (`TrackListComponent` n'en construit
-aucun), et ce que D361 désignait est l'entrée **Piste** de la barre de menus,
-déjà lue par `raccourcis-affiches.py` pour ses touches mais jamais appariée par
-les NOMS. Il faudrait l'apparier comme le menu du clip ; ce n'est pas fait ici.
+**LE MENU DE LA PISTE, VÉRIFIÉ À LA MAIN ET SANS OBJET.** D361 nommait aussi
+« le menu de la PISTE ». Il n'existe pas comme menu contextuel
+(`TrackListComponent` ne construit aucun `PopupMenu` — 0 occurrence, et les cinq
+menus du clic droit du logiciel sont ailleurs) ; ce que D361 désignait est
+l'entrée **Piste** de la barre de menus. Ses 34 commandes ont été relevées et
+comparées aux **7** que la table range sous « Piste » : **aucune n'est partagée**
+— la table porte `track.mute`, `track.solo`, `track.selectAll`, les quatre
+navigations —, et le menu n'en offre aucune. Il n'y a donc rien à apparier, et
+c'est ce que D361 supposait sans l'avoir vérifié. Sans objet, donc, et dit.
+
+**UNE MESURE ENTREPRISE, PUIS JETÉE — elle ne mesurait pas ce qu'elle croyait.**
+De là venait une question naturelle : combien de commandes de la table n'ont
+AUCUNE entrée de menu ? Le compte est sorti à **40 sur 57**, ce qui aurait fait
+un beau chiffre. Il ne veut rien dire. « Sans entrée de menu » n'est pas « sans
+porte » : `transport.playStop`, `transport.record` et `transport.loop` sont des
+BOUTONS de la barre de transport, `track.mute` et `track.solo` sont les boutons
+M et S de chaque tranche, et **13** des 57 sont des `nav.*` — des déplacements
+aux flèches, qui n'ont pas à figurer dans un menu. Le chiffre comptait comme
+absentes des commandes qui ont une porte parfaitement visible. Une mesure pareille
+se publie en défaut d'interface et fait ouvrir un chantier qui n'existe pas ;
+elle est donc **écartée ici plutôt que rangée dans un tiroir**, avec sa raison.
+La question reste bonne — il faudrait énumérer TOUTES les portes (menus,
+boutons, infobulles) comme `noms-des-gestes.py` le fait pour la seule barre du
+piano roll —, et c'est ce travail-là qui n'est pas fait.
+
+**Reste nommé, non fait** : l'inventaire des portes AUTRES que les menus, sans
+lequel « une commande sans porte » ne se compte pas. Et `track.selectAll`
+(Ctrl+Maj+A) est la seule des sept commandes « Piste » qui n'ait, à la lecture,
+ni bouton ni entrée de menu — une observation, pas une mesure : elle attend
+l'inventaire ci-dessus.
