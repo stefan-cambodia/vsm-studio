@@ -30056,6 +30056,18 @@ seule partie dont le rendu contredise sa vérité**. La campagne de reconstructi
 peut partir : `reconstruction/travail/banc-s2.sh` l'attendait, et **refuse de
 démarrer** tant que la première garde n'est pas verte.
 
+**ELLE N'EST PAS PARTIE CE SOIR, ET LE CALCUL EST ÉCRIT.** La campagne S1 a
+mesuré dix morceaux de **30 s** en **1 h 43** (22:41 → 00:24 le 05/09). Les
+morceaux de `s2` durent **7,7 fois plus**, ce qui met la campagne à **environ
+treize heures** — le chiffre que le § 7 bis du cahier des charges annonçait déjà.
+La batterie est à **54 %** et cette machine ne charge qu'en veille : de quoi
+tenir deux à trois heures, soit un cinquième du travail. Le banc est reprenable
+(un morceau dont `rapport.json` existe n'est pas rejoué), donc rien ne serait
+perdu — mais commencer une course de treize heures avec trois heures devant soi,
+c'est la décision que D365 a déjà refusée, pour la même raison et avec un
+meilleur niveau de batterie. **B5 est livrée, ses deux gardes sont vertes, et la
+campagne part quand la machine aura chargé.**
+
 **Suites, relevées en lançant les cinq suites du moteur et celle de Python** :
 **1 998 côté moteur** (1 303 audio, 355 core, 304 interchange, 25 clap, 11 panels)
 et **223 côté Python** — 214 avant D366, +6 par D366 et **+3 par D367** (la
