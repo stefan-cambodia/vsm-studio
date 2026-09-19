@@ -30253,3 +30253,64 @@ l'a vu, pas en lisant un verdict.
 **Reste nommé, non fait** : la vue ne retient toujours rien des lanes du bas
 (automation, MIDI CC) ni de la largeur des panneaux ; et, comme pour D368, la
 sauvegarde automatique photographie la vue à l'instant où elle part.
+
+### Phase D370 — deux règles, le même menu, les numéros échangés (20/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ » DE D361** : *« Le menu de la PISTE et
+ceux des deux règles ne sont toujours pas lus : ils n'ont, eux non plus, aucun
+raccourci en commun avec la table, mais rien ne le VÉRIFIE — il faudrait les
+apparier comme les deux autres pour pouvoir l'affirmer. »* Une affirmation sans
+vérification est exactement ce que ce dépôt refuse d'écrire.
+
+**CE QU'ON TROUVE EN LES APPARIANT.** L'application a deux règles — celle de
+l'arrangement (D83) et celle du piano roll (D218) — et toutes deux offrent le
+même menu de repères, écrit deux fois à deux moments :
+
+| | poser | renommer | retirer |
+|---|---|---|---|
+| arrangement (`menuDeLaRegle`) | 1 | **2** | **3** |
+| piano roll (`construireMenuDeRepere`) | 1 | **3** | **2** |
+
+**Les numéros 2 et 3 sont ÉCHANGÉS.**
+
+**ET CE N'EST PAS UN DÉFAUT — MESURÉ AVANT D'ÉCRIRE QUOI QUE CE SOIT.** Chaque
+gestionnaire est cohérent avec SON menu : l'arrangement renomme sur 2 et retire
+sur 3, le piano roll renomme sur 3 et retire sur 2. Les deux se comportent
+JUSTE, et la garde ne les compte pas en faute. Il aurait été facile d'écrire
+« deux menus divergent » sur la seule lecture des numéros ; c'est la leçon de
+D266, et elle vaut aussi quand c'est le dépôt qu'on s'apprête à accuser.
+
+**C'EST UN PIÈGE ARMÉ, et D349 l'avait nommé** — *« un numéro en dur est un
+piège qui se referme au premier onglet ajouté »*. Ici il se refermerait au
+premier qui factorise les deux menus, ou qui recopie un gestionnaire d'une règle
+vers l'autre en croyant les numéros partagés. **Mesuré en le posant** :
+gestionnaire du piano roll recopié depuis l'arrangement, et
+« Renommer ce repère… » appelle alors `onMarkerRemoved` — **le libellé qui
+renomme EFFACERAIT le repère**. Aucun test ne le verrait : chaque menu reste
+juste chez soi, comme les libellés divergents de D355.
+
+**CE QUI EST FAIT.** `tools/menus-des-regles.py`, une garde STATIQUE — donc
+jouable pendant une campagne, sans compiler. Elle apparie les deux règles **par
+le LIBELLÉ** et compare l'**ACTION** (le rappel appelé dans le gestionnaire),
+jamais le numéro, qui n'a de sens que dans son propre menu. Trois contrôles :
+
+1. les deux règles offrent les mêmes libellés — **3 et 3** ;
+2. un libellé y appelle le même rappel — **0 désaccord** ;
+3. aucune de ces entrées n'a de raccourci dans la table — **vérifié**, et c'est
+   l'affirmation de D361 qui devient une mesure. La table ne porte que
+   `nav.nextMarker` et `nav.previousMarker`, qui NAVIGUENT entre les repères et
+   n'en posent ni n'en retirent aucun. Si l'une en reçoit un un jour, la garde le
+   dira et la règle de D355 s'appliquera.
+
+**VUE ROUGE SUR LE DÉFAUT QU'ELLE GARDE** (le gestionnaire recopié : 2 désaccords
+nommés, code 1), et **vue refuser** sur deux formes de code qu'elle ne
+reconnaîtrait plus (signature disparue, entrées illisibles : code 2 les deux
+fois). Une garde qui ne trouve plus rien à comparer et se tait est pire que pas
+de garde — `gestes-vivants.py` avait d'abord échoué à échouer, et c'est le
+contrôle qu'on lui doit désormais.
+
+**Reste nommé, non fait** : le menu de la **PISTE** de D361 n'est pas apparié —
+il n'existe pas comme menu contextuel (`TrackListComponent` n'en construit
+aucun), et ce que D361 désignait est l'entrée **Piste** de la barre de menus,
+déjà lue par `raccourcis-affiches.py` pour ses touches mais jamais appariée par
+les NOMS. Il faudrait l'apparier comme le menu du clip ; ce n'est pas fait ici.
