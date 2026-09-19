@@ -19,8 +19,24 @@ COMMENT SE LIT LE RÉSULTAT, et la règle est écrite avant de compter :
   * écart modal **0**            : la partie sonne où elle doit.
   * écart modal **±12 ou ±24**   : l'ambiguïté d'octave du transcripteur (B14),
                                    connue et mesurée ailleurs — pas un défaut du corpus.
-  * **tout autre écart constant** : le rendu CONTREDIT la vérité, et c'est le
-                                   corpus qu'il faut regarder, pas la chaîne.
+  * **tout autre écart constant** : il faut alors DÉPARTAGER, et depuis D367 on
+                                   le peut, parce que la vérité porte la hauteur
+                                   LUE SUR LE RENDU (`desaccord_mesure_demi_tons`) :
+
+        - le patch l'explique (un désaccord déclaré)      → « expliqué par … »
+        - le rendu sonne dans la borne (±2 demi-tons)     → **TRANSCRIPTION**
+        - le rendu sonne hors de la borne                 → **CONTREDIT** : le
+          corpus est en cause, et c'est lui qu'il faut regarder
+        - la hauteur du rendu est illisible, ou la vérité
+          est antérieure à D367                           → **INDÉCIDABLE**, et
+          surtout pas « juste » par défaut
+
+POURQUOI CE DÉPARTAGE CHANGE LE VERDICT. Sur `s2`, cinq parties portaient un
+écart constant et **aucune des cinq n'était un défaut du corpus** : quatre
+sonnent à moins d'un demi-ton de ce qu'elles écrivent (jusqu'à **+0,06**), la
+cinquième n'a pas de hauteur lisible. Sans la mesure du rendu, elles étaient
+comptées contre le corpus — et l'on aurait réglé le corpus pour un défaut du
+transcripteur.
 
 La batterie est ignorée : ses numéros de note désignent des pièces de kit, pas
 des hauteurs, et Basic Pitch ne transcrit pas de percussion.
@@ -50,7 +66,12 @@ from collections import Counter
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
-CORPUS = RACINE / "reconstruction/travail/s1-sec"
+# La borne du § 7 bis : au-delà, le rendu contredit vraiment sa vérité.
+BORNE_MESUREE = 2.0
+CORPUS_DEFAUT = RACINE / "reconstruction/travail/s1-sec"
+# Le corpus se DÉSIGNE (--corpus) : il y en a désormais plus d'un, et un outil
+# qui n'en connaîtrait qu'un mesurerait toujours l'ancien en croyant juger le neuf.
+CORPUS = CORPUS_DEFAUT
 TOLERANCE = 0.06     # secondes : la fenêtre où deux notes sont « au même instant »
 
 
@@ -89,16 +110,20 @@ def desaccords_du_patch(partie: dict) -> list[tuple[str, float]]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--morceaux", type=int, default=10)
+    p.add_argument("--corpus", type=Path, default=CORPUS_DEFAUT,
+                   help="dossier du lot du banc synthétique (défaut : s1-sec)")
     a = p.parse_args()
 
     from basic_pitch import ICASSP_2022_MODEL_PATH
     from basic_pitch.inference import predict
 
     suspectes: list[str] = []
+    transcription: list[str] = []
+    indecidables: list[str] = []
     parties = 0
     print(f"{'morceau':18s} {'rôle':16s} {'machine':20s} {'vraies':>7} {'transcr.':>9} "
           f"{'écart modal':>12} {'sur':>6} {'patch':>8}")
-    for dossier in sorted(CORPUS.glob("morceau-*"))[: a.morceaux]:
+    for dossier in sorted(a.corpus.glob("morceau-*"))[: a.morceaux]:
         verite = json.loads((dossier / "verite.json").read_text(encoding="utf-8"))
         for partie in verite.get("parties", []):
             if partie.get("role") == "batterie":
@@ -121,18 +146,42 @@ def main() -> int:
                 # ce n'est pas le corpus qui se contredit, c'est la mesure qui
                 # compare deux choses différentes.
                 coupable = next(((k, v) for k, v in desaccords if abs(-v - ecart) <= 1.0), None)
+                # LE RENDU A-T-IL ÉTÉ MESURÉ ? Depuis D367, la vérité porte la
+                # dérive LUE SUR LA SONDE (`desaccord_mesure_demi_tons`) et non
+                # plus seulement celle qu'on déduit du patch. Quand elle est là et
+                # qu'elle tient dans la borne, la partie SONNE où elle est écrite :
+                # l'écart est celui du TRANSCRIPTEUR, pas du corpus. Sans cette
+                # distinction, cinq parties de `s2` étaient accusées à tort, dont
+                # une qui sonne à six centièmes de demi-ton de sa note.
+                mesure = partie.get("desaccord_mesure_demi_tons", "absent")
                 if coupable is not None:
                     marque = f"   (expliqué par {coupable[0]} = {coupable[1]:+.2f} st)"
+                elif mesure != "absent" and mesure is not None and abs(float(mesure)) <= BORNE_MESUREE:
+                    marque = f"   (le rendu sonne à {float(mesure):+.2f} st : c'est le TRANSCRIPTEUR)"
+                    transcription.append(
+                        f"{dossier.name} {partie['role']} ({partie['machine']}) : "
+                        f"{ecart:+d} transcrit, {float(mesure):+.2f} st mesuré sur le rendu")
+                elif mesure == "absent" or mesure is None:
+                    marque = "   (INDÉCIDABLE : la hauteur du rendu n'a pas été mesurée)"
+                    indecidables.append(
+                        f"{dossier.name} {partie['role']} ({partie['machine']}) : {ecart:+d} transcrit, "
+                        + ("vérité antérieure à D367" if mesure == "absent"
+                           else "hauteur du rendu illisible"))
                 else:
                     marque = "   <<< LE RENDU CONTREDIT LA VÉRITÉ"
                     suspectes.append(
                         f"{dossier.name} {partie['role']} ({partie['machine']}) : "
-                        f"{ecart:+d} mesuré, patch {desaccords}")
+                        f"{ecart:+d} transcrit, {float(mesure):+.2f} st MESURÉ sur le rendu")
             print(f"{dossier.name:18s} {partie['role']:16s} {partie['machine']:20s} "
                   f"{len(vraies):7d} {len(trans):9d} {ecart:+11d} {compte:5d} {pire:+7.2f}{marque}")
-    print(f"\nPARTIES {parties}  CONTREDITES {len(suspectes)}")
+    print(f"\nPARTIES {parties}  CONTREDITES {len(suspectes)}  "
+          f"TRANSCRIPTION {len(transcription)}  INDECIDABLES {len(indecidables)}")
     for s in suspectes:
-        print(f"  {s}")
+        print(f"  CONTREDIT     {s}")
+    for s in transcription:
+        print(f"  transcripteur {s}")
+    for s in indecidables:
+        print(f"  indécidable   {s}")
 
     # LE SECOND VERDICT, et c'est le plus important (13/09/2026). Qu'un écart
     # soit EXPLIQUÉ par le patch ne le rend pas inoffensif : une partie dont la
@@ -145,7 +194,7 @@ def main() -> int:
     print()
     print("MORCEAUX dont des parties mélodiques ne sonnent PAS à leur hauteur écrite :")
     inutilisables = 0
-    for dossier in sorted(CORPUS.glob("morceau-*"))[: a.morceaux]:
+    for dossier in sorted(a.corpus.glob("morceau-*"))[: a.morceaux]:
         fichier = dossier / "verite.json"
         if not fichier.is_file():
             continue

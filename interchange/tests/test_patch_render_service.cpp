@@ -118,6 +118,26 @@ VSM_TEST(patch_request_parsing_rejects_nonsense) {
     VSM_ASSERT_EQ(ok.request.parameters.size(), size_t{1});
 }
 
+VSM_TEST(patch_request_budget_counts_samples_not_seconds) {
+    // LE BUDGET PORTE SUR LES ÉCHANTILLONS, PAS SUR LA DURÉE SEULE. L'ancien
+    // garde-fou refusait tout rendu de plus de 120 s : il interdisait le seul
+    // cas qui en a besoin -- un morceau du banc synthétique de trois à cinq
+    // minutes (B5) -- et laissait passer un LOT de 512 jeux de 120 s, soit
+    // onze gigaoctets, ce dont il était précisément censé protéger.
+    const auto morceau = parsePatchRequest(
+        R"({"machine":"vsm.minimoog","duration":301,"sampleRate":44100,
+            "notes":[{"note":45,"velocity":100,"start":0,"duration":0.5}]})");
+    VSM_ASSERT(morceau.success);
+    VSM_ASSERT(morceau.request.durationSeconds > 300.0);
+
+    std::string lot = R"({"machine":"vsm.minimoog","duration":120,"sampleRate":48000,"batch":[)";
+    for (int i = 0; i < 512; ++i) lot += (i ? ",{}" : "{}");
+    lot += "]}";
+    const auto refus = parsePatchRequest(lot);
+    VSM_ASSERT(!refus.success);
+    VSM_ASSERT(refus.error.find("trop gros") != std::string::npos);
+}
+
 VSM_TEST(patch_service_loop_answers_one_line_per_request) {
     // Le protocole est fait pour être lu ligne à ligne par un client : une
     // réponse par requête, jamais d'objet réparti sur plusieurs lignes.

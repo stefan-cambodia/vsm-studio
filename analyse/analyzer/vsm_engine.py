@@ -416,10 +416,22 @@ class VsmEngine:
         duration: float,
         sample_rate: Optional[int] = None,
         samples: Optional[Dict[int, str]] = None,
+        profile: Optional[str] = None,
     ) -> np.ndarray:
         """
         Rend `notes` sur `machine` et renvoie l'audio mono (float32).
         Lève VsmEngineError si le moteur refuse la requête.
+
+        `profile` DÉSIGNE le profil multi-échantillons de CE rendu-là et prime
+        sur `profile_for`. Le choix mémorisé du processus reste le défaut, et la
+        raison en est écrite dans `profile_for` : deux rendus d'une même série
+        doivent porter le même profil. Mais un appelant qui fabrique un morceau
+        à plusieurs parties échantillonnées en a besoin d'un par partie -- un
+        chœur et une basse jouée ne sont pas la même banque —, et sans cette
+        dérogation le morceau entier n'aurait qu'un seul instrument
+        d'échantillons (B5, exigence 3 du § 7 bis du cahier des charges). Qui
+        s'en sert DIT lequel dans sa vérité, sans quoi le rendu n'est plus
+        reproductible.
         """
         if self._process.poll() is not None:
             raise VsmEngineError("le moteur de rendu s'est arrêté")
@@ -443,9 +455,9 @@ class VsmEngine:
             ],
             "returnAudio": "base64-f32-mono",
         }
-        profile = self.profile_for(machine)
-        if profile:
-            request["profile"] = profile
+        choisi = profile or self.profile_for(machine)
+        if choisi:
+            request["profile"] = choisi
         if samples:
             # Échantillons à charger dans la machine (sampler) : c'est ainsi
             # qu'un coup découpé d'un enregistrement se rejoue tel quel.

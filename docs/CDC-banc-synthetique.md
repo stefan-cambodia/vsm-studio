@@ -820,3 +820,170 @@ coûtent moins de dix minutes à elles trois :
 **Aucune campagne de reconstruction ne se lance sur le corpus neuf avant que ces
 trois-là soient verts.** Une campagne de treize heures sur un corpus dont la
 vérité ment coûte treize heures et un mois de conclusions à refaire.
+
+**CES TROIS-LÀ NE SE LANCENT PAS ENSEMBLE, ET LE § 7 bis SE CONTREDISAIT SUR CE
+POINT** (tranché en écrivant, le 19/09/2026). `tools/f1-sonnant.py` prend en
+argument un LOT DE RECONSTRUCTION (`reconstruction/travail/r1f-13sep`), pas un
+corpus : il compare, sur des rapports déjà produits, le F1 contre la hauteur
+écrite et contre la hauteur entendue. Exiger qu'il soit vert **avant** toute
+campagne demandait donc une campagne avant la campagne. L'ordre est :
+
+1. `tools/corpus-exigences.py <lot>` puis `tools/corpus-hauteurs.py --corpus <lot>`
+   et `tools/notes-courtes.py 127.7 30 --corpus <lot>` — ils ne lisent que le
+   corpus, et ce sont eux qui gardent la porte ;
+2. la campagne de reconstruction ;
+3. `tools/f1-sonnant.py <lot de reconstruction> <corpus>` — qui devient alors
+   une VÉRIFICATION DE L'EXIGENCE 4 après coup : sur un corpus borné à deux
+   demi-tons, l'écart entre F1 écrit et F1 sonnant doit être petit **par
+   construction**, et s'il ne l'est pas, c'est la borne qui n'a pas tenu.
+
+(Les deux premiers outils ne connaissaient qu'un seul corpus, écrit en dur.
+Ils prennent désormais `--corpus` : un outil qui n'en connaît qu'un mesure
+toujours l'ancien en croyant juger le neuf.)
+
+### 7 bis.4 Les décisions d'écriture, prises AVANT d'engendrer (19/09/2026)
+
+Les exigences 1, 2 et 3 sont écrites dans `analyzer/vsm_morceaux.py`, chacune
+sous son option (`--sections`, `--notes-breves`, `--echantillons`, et `--b5` qui
+pose les trois plus `--borner-hauteur 2`). **Toutes sont à faux par défaut, et
+ce n'est pas une prudence de style** : `s1-sec` est l'étalon de tous les chiffres
+publiés — S1, `r1`, `r1-prod`, `r1f`, `r1f-13sep` — et un générateur qui
+changerait en douce les rendrait incomparables sans que personne s'en aperçoive.
+Le témoin est mesuré : **cinq graines, quarante-quatre parties, mélange et stems
+identiques au bit près** entre le code d'avant et celui-ci, options éteintes.
+
+Sept choix que les exigences laissaient ouverts, tranchés ici avec leur raison :
+
+1. **La section dure huit mesures**, et s'allonge plutôt que de se multiplier
+   au-delà de seize sections. C'est la longueur de section la plus courante de
+   la musique populaire, et la plus courte qui laisse le temps d'ENTENDRE qu'une
+   partie est partie. Un morceau de cinq minutes à 140 bpm ferait dix-huit
+   sections de huit mesures : dix-huit entrées et sorties ne sont plus un
+   arrangement mais un clignotement.
+2. **Deux garanties, parce qu'un tirage ne garantit rien** : aucune section
+   muette (un morceau qui s'interrompt n'est pas un morceau) et au moins deux
+   parties qui ne sonnent pas d'un bout à l'autre. Quand la seconde est
+   impossible — deux parties pour deux sections —, elle est DITE au journal.
+3. **Le calage de niveau se fait sur ce qui SONNE.** Sans cela, une partie
+   absente la moitié du morceau verrait son RMS divisé par deux par ses propres
+   silences, et le calage la rendrait deux fois trop forte quand elle joue :
+   l'arrangement changerait le MIXAGE, qui n'est pas ce qu'il est censé changer.
+4. **La note brève se mesure en SECONDES, pas en valeurs rythmiques.** Le critère
+   est « sous 120 ms », une durée absolue ; une double croche dure 107 ms à
+   140 bpm et 179 ms à 84 bpm, si bien qu'un phrasé écrit en valeurs rythmiques
+   ne tiendrait le critère qu'aux tempos rapides. Les frappes durent de 55 à
+   110 ms, posées sur la grille de double croche : c'est un geste de musicien
+   (une note réarticulée), pas un raccourcissement arbitraire.
+5. **Une partie mélodique par morceau joue bref, toujours ; les autres au
+   tirage.** Le critère porte sur le CORPUS — un cinquième des parties
+   mélodiques —, et un tirage seul ne le garantit pas : mesuré, le même lot est
+   passé de **19 à 14 parties brèves sur 74** (le seuil est 15) parce qu'un
+   autre mécanisme, le rejet des patchs mal accordés du § 7 bis.6, avait décalé
+   le flux de tirages. Un critère de corpus qui dépend du hasard d'un mécanisme
+   voisin n'est pas tenu, il est eu. **Le chant et la nappe sont EXCLUS du
+   phrasé bref**, et c'est une décision,
+   pas un oubli : une voix qui articule des doubles croches détachées de soixante
+   millisecondes n'est plus une voix, et une nappe dont c'est la définition de
+   tenir n'en serait plus une. L'exigence porte sur les notes brèves du corpus,
+   pas sur leur présence dans chaque rôle. **Et l'abandon est dit** : une machine
+   peut ne rien rendre d'audible sur des notes de cette durée ; on revient alors
+   au phrasé long et la vérité l'écrit (`phrase_breve.abandonnee`), un corpus qui
+   annoncerait des notes brèves qu'il ne porte pas faisant mentir tout ce qu'on
+   mesurerait dessus.
+6. **Le chant se partage entre la machine à formants et un chœur échantillonné.**
+   Les deux existent au parc (`vsm.vocal` depuis le § 1 de `ROADMAP-fusion.md`,
+   les profils `Choir-Aahs`, `Voice-Oohs`, `Concert-Choir`), et un corpus qui
+   n'éprouverait qu'une des deux mesurerait la moitié de ce que la chaîne
+   rencontre. La ligne chantée a son propre générateur : des valeurs longues, un
+   ambitus resserré, et un SILENCE d'un temps à la fin de chaque phrase — une
+   voix reprend son souffle, et ce silence régulier la fait reconnaître autant
+   que son timbre.
+7. **LE CORPUS DÉPEND DÉSORMAIS D'UNE BANQUE INSTALLÉE HORS DU DÉPÔT**, et c'est
+   le prix de l'exigence 3 : `vsm.multisample` ne joue que ce qu'on lui installe.
+   La vérité porte donc le **nom, le chemin et l'empreinte SHA-256** de chaque
+   profil employé ; sans elle, deux postes aux banques différentes rendraient
+   deux corpus différents sous la même graine sans que rien ne le dise. Un poste
+   sans banque engendre le même lot **moins les parties échantillonnées**, en le
+   DISANT (`machines_ecartees`), et la garde le voit.
+
+**Et deux choses tirées de la GRAINE plutôt que du hasard**, comme l'est déjà le
+cas de parité et pour la même raison (le premier lot tiré au hasard avait donné
+0 « aucun » sur dix) : le chant un morceau sur deux, les échantillons deux sur
+trois. Le cahier demande un sur quatre et un sur trois ; la marge est prise
+exprès, une partie échantillonnée pouvant être refusée faute de profil jouable.
+
+**Un profil installé n'est pas un profil jouable, et c'est le premier défaut que
+l'écriture a trouvé** : `vsm.multisample` refuse tout profil au-delà de 256 Mo, et
+les banques générales en comptent (288 zones pour un saxophone, 324 pour un
+violoncelle). Chaque profil candidat est donc ÉPROUVÉ une fois par lot, le
+verdict du moteur est mémorisé et les refus sont dits ; sans quoi le tirage
+rendait un profil refusé huit fois de suite et la partie était perdue.
+
+### 7 bis.5 Le lot `s2` — ce qu'on engendre, et ce qui le jugera
+
+| | |
+|---|---|
+| dossier | `reconstruction/travail/s2` |
+| commande | `analyse/morceaux.py --sortie reconstruction/travail/s2 --nombre 10 --graine 1 --b5` |
+| options | `--sections --notes-breves --echantillons --borner-hauteur 2 --duree 180 --duree-max 300` |
+| durées | tirées par morceau, graine propre : 185 à 268 s (10/10 au-delà de 180 s) |
+| poids attendu | ~8 Go (float32 stéréo, `s1-sec` pesant 991 Mo pour 300 s) |
+
+**La garde qui juge, écrite AVANT le lot et vue ROUGE avant d'être vue verte** :
+`tools/corpus-exigences.py <lot>` lit les `verite.json` et rend une ligne par
+exigence. Sur `s1-sec` elle rend **0/4** — et elle a attrapé au passage un piège
+dans sa propre première version, qui comptait « désaccord maximal 0,00 demi-ton »
+sur un corpus dont D267 a mesuré des parties à ±24 : le champ
+`desaccords_demi_tons` est né avec D277 et les vérités d'avant ne le portent pas.
+Une mesure qui ne peut pas voir une chose le DIT (« INDÉCIDABLE ») et ne la
+compte pas nulle — c'est la leçon de D265, payée une fois de plus.
+
+Le lot n'est cru qu'après les trois rejeux du § 7 bis.3, et **aucune campagne de
+reconstruction ne part avant**.
+
+### 7 bis.6 L'exigence 4, second volet : ce que la borne en demi-tons ne voit pas (19/09/2026)
+
+Le lot `s2` a été engendré avec `--borner-hauteur 2`, et **cinq parties sur 74
+contredisaient quand même leur vérité**. La raison est dans le mécanisme de
+D277 : `borner_les_hauteurs` ne peut brider que les dimensions que **le moteur
+déclare** en `st` ou en `cents`. Il existe d'autres chemins, et ils ne
+s'annoncent pas — mesurés par `tools/hauteur-des-patchs.py` :
+
+| chemin | exemples mesurés |
+|---|---|
+| une machine INHARMONIQUE, dès le patch d'usine | `vsm.membrane` −3,83 st, `vsm.plate` −4,29, `vsm.jewsharp` +3,91, `vsm.carillon` sans hauteur lisible |
+| un réglage qui TRANSPOSE sans le dire | `scanned.tension` (la tension EST la hauteur d'une corde), `fm.operator.N.ratio` du DX7, `spectral.stretch`, `epiano.character`, `oscillator.crossMod` du Jupiter-8 |
+| un BOURDON à hauteur fixe | `hurdygurdy.droneNote`, porté aussi par `vsm.bagpipe` |
+
+**LA DÉCISION, ET ELLE TIENT EN DEUX RÈGLES QUI NE SE CONFONDENT PAS.**
+
+1. **Une machine dont le patch d'USINE sonne ailleurs sort du vivier mélodique
+   du banc**, et elle est déclarée avec son chiffre
+   (`MACHINES_SANS_HAUTEUR_JUSTE`). Aucun réglage n'y changerait rien, et sans
+   cette liste le banc retirerait huit patchs par partie avant de l'écarter.
+   **Elles restent au parc et dans le DAW** : c'est le vivier du BANC qu'on
+   restreint, parce que sa vérité compare la hauteur écrite à la hauteur
+   entendue — une restriction qui n'a de sens nulle part ailleurs.
+2. **Une machine dont l'usine sonne juste est bridée AU TIRAGE, sonde par
+   sonde.** Le patch tiré est déjà rendu sur une note-sonde ; on y LIT la
+   hauteur, et le patch qui sonne au-delà de la borne est retiré comme un patch
+   muet l'est. **Cela ne coûte rien** (le rendu existait), **cela voit la dérive
+   quelle qu'en soit la cause** — y compris un paramètre que personne n'a pensé
+   à déclarer — et **cela ne crève pas la variété** : c'est le patch qui est
+   refusé, pas la machine, et seize autres tirages suivent.
+
+On a préféré cette seconde règle à une table de fenêtres par paramètre, qui
+aurait demandé d'étalonner chaque réglage de chaque machine, se serait périmée à
+la première machine neuve, et aurait figé les ratios d'opérateur d'un DX7 —
+c'est-à-dire l'instrument lui-même.
+
+**ET LA VÉRITÉ PORTE LE CHIFFRE MESURÉ** (`desaccord_mesure_demi_tons`, avec la
+note-sonde employée), à côté de celui qui se déduit du patch
+(`desaccords_demi_tons`, D277). Quand la hauteur n'est pas lisible, le champ vaut
+`null` **et non zéro** : ce qui ne peut pas être vu n'est pas compté juste.
+
+**L'écart se lit toujours RAMENÉ DANS L'OCTAVE**, comme le fait déjà la garde qui
+juge le corpus (`tools/corpus-hauteurs.py` écarte ±12 et ±24 comme l'ambiguïté du
+transcripteur depuis D267). Deux mesures de hauteur qui ne diraient pas la même
+chose ne mesureraient rien : c'est la MÊME fonction, celle du module du banc, que
+l'outil et le tirage appellent.

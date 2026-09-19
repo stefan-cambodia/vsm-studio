@@ -32,7 +32,10 @@ from bisect import bisect_left
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
-CORPUS = RACINE / "reconstruction/travail/s1-sec"
+CORPUS_DEFAUT = RACINE / "reconstruction/travail/s1-sec"
+# Le corpus se DÉSIGNE (--corpus) : il y en a désormais plus d'un, et un outil
+# qui n'en connaîtrait qu'un mesurerait toujours l'ancien en croyant juger le neuf.
+CORPUS = CORPUS_DEFAUT
 TOLERANCE = float(os.environ.get("VSM_TOLERANCE", "0.05"))   # secondes
 COURTE = float(os.environ.get("VSM_COURTE", "0.150"))        # la frontière de D260
 
@@ -128,11 +131,13 @@ def main() -> int:
     p.add_argument("valeurs", nargs="+", type=float,
                    help="les minimum_note_length à comparer, en ms ; la PREMIÈRE est le témoin")
     p.add_argument("--morceaux", type=int, default=3, help="combien de morceaux du corpus")
+    p.add_argument("--corpus", type=Path, default=CORPUS_DEFAUT,
+                   help="dossier du lot du banc synthétique (défaut : s1-sec)")
     a = p.parse_args()
 
-    morceaux = sorted(CORPUS.glob("morceau-*"))[: a.morceaux]
+    morceaux = sorted(a.corpus.glob("morceau-*"))[: a.morceaux]
     if not morceaux:
-        print(f"REFUS : aucun morceau sous {CORPUS}")
+        print(f"REFUS : aucun morceau sous {a.corpus}")
         return 2
     print(f"{len(morceaux)} morceau(x) du corpus, stems VRAIS, tolérance {TOLERANCE * 1000:.0f} ms, "
           f"note courte < {COURTE * 1000:.0f} ms")

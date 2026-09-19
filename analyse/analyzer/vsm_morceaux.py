@@ -62,7 +62,8 @@ RMS_STEM_MINIMAL = 1e-4
 TIRAGES_DE_PATCH = 8
 CRETE_MAXIMALE = 0.95
 
-ROLES_MELODIQUES = ("basse", "accompagnement", "melodie", "nappe")
+ROLE_VOIX = "voix"
+ROLES_MELODIQUES = ("basse", "accompagnement", "melodie", "nappe", ROLE_VOIX)
 ROLE_DEUX_MAINS = "piano-deux-mains"
 ROLE_BATTERIE = "batterie"
 CAS = ("aucun", "memes-machine-disjoints", "chevauchement", "deux-mains")
@@ -73,17 +74,106 @@ REGISTRES: Dict[str, Tuple[int, int]] = {
     "accompagnement": (48, 72),
     "melodie": (60, 84),
     "nappe": (48, 76),
+    # Un chant d'alto à soprano : deux octaves, ce qu'une voix couvre vraiment.
+    ROLE_VOIX: (55, 76),
 }
 REGISTRES_DEUX_MAINS = ((36, 52), (60, 84))
 # RMS cible par rôle (linéaire), tiré à ±3 dB autour.
 NIVEAUX: Dict[str, float] = {
     "basse": 0.10, "batterie": 0.12, "accompagnement": 0.05, "melodie": 0.06,
-    "nappe": 0.04, ROLE_DEUX_MAINS: 0.06,
+    "nappe": 0.04, ROLE_DEUX_MAINS: 0.06, ROLE_VOIX: 0.08,
 }
 GATES: Dict[str, float] = {
     "basse": 0.85, "accompagnement": 0.8, "melodie": 0.85, "nappe": 0.98,
-    ROLE_DEUX_MAINS: 0.9,
+    ROLE_DEUX_MAINS: 0.9, ROLE_VOIX: 0.95,
 }
+
+# B5, EXIGENCE 1 — LA SECTION, unité d'entrée et de sortie des parties.
+#
+# Le banc mesurait trente secondes d'une texture stable ; la chaîne travaille
+# sur des disques de quatre minutes où les parties ENTRENT et SORTENT. Huit
+# mesures est la longueur de section la plus courante de la musique populaire
+# (à 120 bpm, seize secondes), et c'est la plus petite qui laisse le temps
+# d'entendre qu'une partie est partie.
+MESURES_PAR_SECTION = 8
+SECTIONS_MAXIMUM = 16
+
+# B5, EXIGENCE 2 — LA NOTE BRÈVE, et pourquoi elle se mesure en SECONDES.
+#
+# Le critère du cahier des charges est « sous 120 ms », une durée absolue : une
+# double croche dure 107 ms à 140 bpm et 179 ms à 84 bpm, si bien qu'un phrasé
+# écrit en valeurs rythmiques ne tiendrait le critère qu'aux tempos rapides. La
+# durée tirée est donc absolue, et la borne haute (110 ms) laisse dix
+# millisecondes de marge sous le critère.
+BREVE_DUREE_S = (0.055, 0.110)
+BREVE_PROPORTION = 0.40   # des parties mélodiques éligibles, en plus de la garantie
+
+# B5, EXIGENCE 3 — LES PROFILS D'ÉCHANTILLONS PAR RÔLE.
+#
+# `vsm.multisample` ne joue que ce qu'on lui installe : les noms ci-dessous sont
+# des FRAGMENTS cherchés dans les profils réellement installés sur le poste
+# (`vsm-render` les déclare), jamais une liste de fichiers supposés présents.
+# Un rôle dont aucun profil n'est installé est DIT et retombe sur la synthèse —
+# une partie échantillonnée qui manque ne doit pas disparaître en silence.
+PROFILS_PAR_ROLE: Dict[str, Tuple[str, ...]] = {
+    "basse": ("Acoustic-Bass", "Finger-Bass", "Fretless-Bass", "Pick-Bass", "Synth-Bass"),
+    "accompagnement": ("Grand-Piano", "E-Piano", "Nylon-Guitar", "Clean-Guitar",
+                       "Jazz-Guitar", "Harp", "Drawbar-Organ"),
+    "melodie": ("Violin", "Trumpet", "Alto-Sax", "Tenor-Sax", "Flute", "Oboe",
+                "Clarinet", "Saw-Lead", "Square-Lead"),
+    "nappe": ("Slow-Strings", "Strings", "Warm-Pad", "Halo-Pad", "New-Age-Pad",
+              "Sweep-Pad", "Synth-Strings"),
+    ROLE_DEUX_MAINS: ("Grand-Piano", "E-Piano"),
+    ROLE_VOIX: ("Choir-Aahs", "Voice-Oohs", "Concert-Choir", "Choir-Pad"),
+}
+# B5, EXIGENCE 4 (second volet) — CE QUE LA BORNE EN DEMI-TONS NE VOIT PAS.
+#
+# `borner_les_hauteurs` ne peut brider que les dimensions que le moteur déclare
+# en `st` ou en `cents`. Le lot `s2` a montré qu'il en existe d'autres, et
+# `tools/hauteur-des-patchs.py` les mesure. Deux familles, qui ne se soignent
+# pas pareil :
+#
+#   * une MACHINE dont le patch d'usine sonne déjà ailleurs que la note jouée :
+#     elle n'a rien à faire dans le vivier MÉLODIQUE du banc, comme les boîtes à
+#     rythmes n'y sont pas. Elle reste au parc et au DAW — c'est le vivier du
+#     BANC qu'on restreint, pas le logiciel ;
+#   * un PARAMÈTRE qui déplace la hauteur sans l'annoncer. Sa fenêtre utile est
+#     MESURÉE (l'intervalle, en 0-1, où l'écart reste sous deux demi-tons) et le
+#     tirage y est ramené, exactement comme pour un désaccord déclaré.
+#
+# Les deux tables sont remplies PAR LA MESURE, jamais à la main : l'outil rend
+# un code non nul dès qu'une machine du vivier en sort sans y être déclarée.
+# MESURÉ le 19/09/2026 par `tools/hauteur-des-patchs.py` (note 60, patch
+# d'usine, hauteur lue par autocorrélation, écart ramené dans l'octave) : ces
+# machines-là ne sonnent PAS à la note qu'on leur joue, et aucun réglage n'y
+# change rien puisque c'est déjà vrai au patch d'usine. Trois sont des
+# résonateurs inharmoniques — une membrane de tambour, une plaque, une guimbarde
+# — dont la hauteur perçue n'est pas le numéro de note ; la quatrième, un
+# carillon, n'a pas de hauteur lisible du tout.
+#
+# ELLES RESTENT AU PARC ET DANS LE DAW. C'est le vivier MÉLODIQUE DU BANC qu'on
+# restreint, et pour une raison qui ne vaut que là : la vérité du banc compare la
+# hauteur ÉCRITE à la hauteur ENTENDUE, et une partie dont les deux diffèrent de
+# quatre demi-tons fausse toute statistique qui la compte (D267). Deux parties de
+# `vsm.membrane` ont contredit leur vérité dans le lot `s2` avant cette mesure.
+MACHINES_SANS_HAUTEUR_JUSTE: Dict[str, str] = {
+    "vsm.membrane": "−3,83 demi-tons au patch d'usine (membrane inharmonique)",
+    "vsm.plate": "−4,29 demi-tons au patch d'usine (plaque inharmonique)",
+    "vsm.jewsharp": "+3,91 demi-tons au patch d'usine (guimbarde inharmonique)",
+    "vsm.carillon": "aucune hauteur lisible au patch d'usine (cloche)",
+}
+
+# Bornes de recherche de la hauteur sonnante, LARGES, et la butée est dite.
+# Une première version cherchait entre 40 et 2 000 Hz : six machines rendaient
+# exactement +35,25 demi-tons, c'est-à-dire 2 000 Hz — la mesure lisait sa
+# propre borne et l'écrivait comme un résultat.
+FMIN_HAUTEUR, FMAX_HAUTEUR = 25.0, 5000.0
+
+MACHINE_ECHANTILLONS = "vsm.multisample"
+# La voix se chante par la machine à formants OU par un chœur échantillonné :
+# les deux existent au parc, et un corpus qui n'en éprouverait qu'une mesurerait
+# la moitié de ce que la chaîne rencontre.
+MACHINE_VOIX_SYNTHESE = "vsm.vocal"
 
 MACHINES_BATTERIE = ("vsm.drums", "vsm.tr808", "vsm.tr909")
 # Les voix que chaque boîte possède réellement (vsm_drumkit.MACHINE_VOICES,
@@ -136,6 +226,30 @@ class Partie:
     # (`tools/hauteur_sonnante.py`) ; il s'écrit désormais ici, à la source, où
     # l'unité est connue sans devinette.
     desaccords_demi_tons: Dict[str, float] = field(default_factory=dict)
+    # B5, EXIGENCE 1 : les SECTIONS où cette partie sonne, ou None quand elle
+    # sonne d'un bout à l'autre (le corpus d'avant : aucune entrée, aucune
+    # sortie). Les notes de `notes` sont DÉJÀ filtrées ; la vérité reste donc
+    # exacte, et ce champ dit ce que le filtre a gardé.
+    sections: Optional[List[int]] = None
+    # B5, EXIGENCE 2 : le phrasé bref, ou None. `{duree_s, notes, sous_120ms}`,
+    # et `abandonnee` avec sa raison quand la machine ne rend rien d'audible sur
+    # des notes de cette durée — un abandon muet ferait mentir le corpus sur ce
+    # qu'il contient.
+    phrase_breve: Optional[Dict[str, Any]] = None
+    # B5, EXIGENCE 3 : le profil d'échantillons de CETTE partie, son nom, son
+    # chemin et l'empreinte du fichier. Sans l'empreinte, deux postes aux
+    # banques différentes rendraient deux corpus différents sous la même graine
+    # sans que rien ne le dise.
+    profil: str = ""
+    profil_chemin: str = ""
+    profil_empreinte: str = ""
+    # B5, EXIGENCE 4 (second volet) : DE COMBIEN LA SONDE DE CETTE PARTIE
+    # SONNAIT-ELLE À CÔTÉ DE SA NOTE ? Mesuré sur le rendu, pas déduit du patch
+    # comme `desaccords_demi_tons` — ce qui couvre les chemins que le moteur ne
+    # déclare pas (tension de corde, ratio d'opérateur FM, bourdon).
+    # `null` quand la hauteur n'est pas lisible : jamais zéro par défaut.
+    desaccord_mesure_demi_tons: Optional[float] = None
+    note_sonde: int = 0
 
 
 @dataclass
@@ -178,7 +292,50 @@ def machines_melodiques_du_banc(engine: VsmEngine) -> List[str]:
     from .vsm_corpus_build import machines_de_recherche
 
     return [m for m in machines_de_recherche(engine)
-            if m not in _NON_MELODIC and m not in _MACHINES_A_PROFIL]
+            if m not in _NON_MELODIC and m not in _MACHINES_A_PROFIL
+            and m not in MACHINES_SANS_HAUTEUR_JUSTE]
+
+
+def hauteur_sonnante(x: np.ndarray, sample_rate: int = SR) -> Optional[float]:
+    """Hauteur MIDI de la partie tenue d'un son, par autocorrélation.
+
+    Rend None quand aucune période ne ressort ET quand la période trouvée est en
+    BUTÉE de la fenêtre de recherche : ce qui ne peut pas être vu n'est pas
+    compté juste. C'est la même fonction pour le banc et pour
+    `tools/hauteur-des-patchs.py` — deux mesures de hauteur qui ne diraient pas
+    la même chose ne mesureraient rien.
+    """
+    y = np.asarray(x, dtype=np.float64)
+    y = y[int(0.05 * sample_rate): int(0.65 * sample_rate)]
+    if y.size < 1024 or float(np.abs(y).max()) < 1e-5:
+        return None
+    y = y - y.mean()
+    n = 1 << int(np.ceil(np.log2(2 * y.size)))
+    spectre = np.fft.rfft(y, n)
+    ac = np.fft.irfft(spectre * np.conj(spectre), n)[: y.size]
+    if ac[0] <= 0:
+        return None
+    ac /= ac[0]
+    lo = int(sample_rate / FMAX_HAUTEUR)
+    hi = min(int(sample_rate / FMIN_HAUTEUR), ac.size - 1)
+    if hi <= lo:
+        return None
+    k = lo + int(np.argmax(ac[lo:hi]))
+    if ac[k] < 0.25 or k <= lo + 1 or k >= hi - 1:
+        return None
+    return 69.0 + 12.0 * float(np.log2((sample_rate / k) / 440.0))
+
+
+def hors_octave(demi_tons: float) -> float:
+    """L'écart RAMENÉ DANS L'OCTAVE, dans [-6, +6].
+
+    L'ambiguïté d'octave n'est pas un défaut du corpus, et le cahier des charges
+    le dit depuis D267 : `tools/corpus-hauteurs.py` écarte explicitement ±12 et
+    ±24 comme étant l'ambiguïté du transcripteur. La même convention vaut ici,
+    sans quoi le banc rejetterait des patchs que la garde qui juge le corpus, elle,
+    laisse passer.
+    """
+    return (float(demi_tons) + 6.0) % 12.0 - 6.0
 
 
 def _hz(midi: float) -> float:
@@ -338,6 +495,187 @@ def notes_nappe(rng: np.random.Generator, s: Structure, registre: Tuple[int, int
     return notes
 
 
+def notes_voix(rng: np.random.Generator, s: Structure, registre: Tuple[int, int],
+               gate: float) -> List[List[float]]:
+    """Une ligne CHANTÉE : des phrases de deux mesures, séparées par un souffle.
+
+    B5, exigence 3 du § 7 bis : « au moins un morceau sur quatre porte un rôle
+    chanté ». Ce qui distingue cette ligne de `notes_melodie`, et qui compte
+    pour une chaîne d'analyse : des valeurs LONGUES (un à deux temps), un
+    ambitus resserré, et un SILENCE d'un temps à la fin de chaque phrase. Une
+    voix reprend son souffle, et ce silence régulier la fait reconnaître autant
+    que son timbre — une mélodie de synthétiseur, elle, enchaîne sans respirer.
+    """
+    disp = float(rng.uniform(3.0, 8.0))
+    bas, haut = registre
+    centre = (bas + haut) // 2
+    indice = min(range(0, 22), key=lambda i: abs(s.note_de_gamme(i) - centre))
+    notes: List[List[float]] = []
+    for bloc in range(0, s.mesures, 2):
+        depart = bloc * 4 * s.battement
+        # la phrase s'arrête un temps avant la fin du bloc : c'est le souffle
+        fin = min(s.duree, (bloc + 2) * 4 * s.battement) - s.battement
+        t = depart
+        premiere = True
+        while t < fin - 1e-9:
+            longueur = float(rng.choice([1.0, 1.0, 1.5, 2.0]))
+            longueur = min(longueur, (fin - t) / s.battement)
+            if longueur < 0.5:
+                break
+            saut = int(rng.choice([-2, -1, -1, 0, 1, 1, 2]))
+            indice = max(0, min(21, indice + saut))
+            while s.note_de_gamme(indice) > haut and indice > 0:
+                indice -= 1
+            while s.note_de_gamme(indice) < bas and indice < 21:
+                indice += 1
+            midi = _dans_registre(s.note_de_gamme(indice), bas, haut)
+            notes.append([midi, _velocite(rng, 92, disp, premiere), t, longueur * s.battement * gate])
+            t += longueur * s.battement
+            premiere = False
+    return notes
+
+
+def raccourcir_phrase(rng: np.random.Generator, s: Structure, notes: List[List[float]],
+                      duree_breve: float) -> List[List[float]]:
+    """Le même phrasé, joué BREF : des frappes courtes sur la grille de double croche.
+
+    B5, exigence 2 du § 7 bis. Le corpus d'avant ne portait AUCUNE note
+    mélodique brève — ses 1 865 notes sous 150 ms étaient 1 865 frappes de
+    batterie, et « la chaîne rate 96,7 % des notes courtes » a tenu trois phases
+    sur cette seule population (D264-D265). Une note longue devient ici une à
+    quatre frappes de `duree_breve` secondes, ce qui est un geste de musicien
+    (une note réarticulée en doubles croches) et non un raccourcissement
+    arbitraire : la hauteur et la place fortes du phrasé sont conservées.
+    """
+    pas = s.battement / 4
+    sortie: List[List[float]] = []
+    for midi, velocite, debut, duree in notes:
+        frappes = max(1, min(4, int(duree / pas + 1e-6)))
+        for i in range(frappes):
+            t = debut + i * pas
+            if t + duree_breve > s.duree:
+                break
+            baisse = 0 if i == 0 else int(rng.integers(4, 14))
+            sortie.append([int(midi), int(max(1, min(127, int(velocite) - baisse))), t, duree_breve])
+    return sortie
+
+
+# ---------------------------------------------------------------------------
+# B5, exigence 1 : l'arrangement — qui joue dans quelle section
+# ---------------------------------------------------------------------------
+
+def sections_du_morceau(s: Structure) -> List[Dict[str, float]]:
+    """Le découpage en sections, en mesures ET en secondes.
+
+    La longueur de section s'agrandit plutôt que de se multiplier au-delà de
+    `SECTIONS_MAXIMUM` : un morceau de cinq minutes à 140 bpm ferait dix-huit
+    sections de huit mesures, et dix-huit entrées et sorties ne sont plus un
+    arrangement mais un clignotement.
+    """
+    par_section = max(MESURES_PAR_SECTION, int(math.ceil(s.mesures / SECTIONS_MAXIMUM)))
+    sections: List[Dict[str, float]] = []
+    for debut in range(0, s.mesures, par_section):
+        fin = min(s.mesures, debut + par_section)
+        sections.append({"mesure": debut, "mesures": fin - debut,
+                         "debut": debut * 4 * s.battement, "fin": fin * 4 * s.battement})
+    return sections
+
+
+def _presence(rng: np.random.Generator, role: str, nb: int) -> List[int]:
+    """Les sections où un rôle sonne : une plage continue, parfois trouée.
+
+    Les archétypes viennent de ce qu'on entend sur un disque, et non d'un
+    tirage uniforme : la basse et la batterie tiennent le morceau et entrent
+    tôt ; la mélodie et le chant entrent après une introduction et se taisent
+    parfois avant la fin ; tout le monde peut sauter une section (le « break »).
+    """
+    if nb <= 1:
+        return [0]
+    if role in ("basse", ROLE_BATTERIE):
+        entree = 0 if rng.random() < 0.45 else 1
+        sortie = nb - 1 if rng.random() < 0.85 else nb - 2
+    elif role in ("melodie", ROLE_VOIX):
+        entree = int(rng.integers(1, max(2, nb // 2 + 1)))
+        sortie = nb - 1 if rng.random() < 0.5 else nb - 2
+    else:
+        entree = int(rng.integers(0, 2))
+        sortie = nb - 1 if rng.random() < 0.7 else nb - 2
+    sortie = max(entree, min(nb - 1, sortie))
+    sections = list(range(entree, sortie + 1))
+    if len(sections) >= 4 and rng.random() < 0.35:
+        trou = int(rng.choice(sections[1:-1]))
+        sections = [k for k in sections if k != trou]
+    return sections
+
+
+def _partielles(presences: List[set], nb: int) -> List[int]:
+    return [i for i, pres in enumerate(presences) if len(pres) < nb]
+
+
+def arranger(rng: np.random.Generator, s: Structure, parties: List[Partie],
+             journal: Callable[[str], None]) -> Optional[Dict[str, Any]]:
+    """Pose les entrées et les sorties, FILTRE les notes, et rend l'arrangement.
+
+    Deux garanties, parce que le critère du cahier des charges les demande et
+    qu'aucune des deux ne sort d'un tirage : **aucune section muette** (un
+    morceau qui s'interrompt n'est pas un morceau) et **au moins deux parties
+    qui ne sonnent pas d'un bout à l'autre**. Quand la seconde est impossible —
+    deux parties pour deux sections —, elle est DITE et non tue.
+    """
+    sections = sections_du_morceau(s)
+    nb = len(sections)
+    if nb < 2 or not parties:
+        journal(f"    arrangement impossible : {s.mesures} mesures font {nb} section(s)")
+        return None
+    presences: List[set] = []
+    for partie in parties:
+        pres = set(_presence(rng, partie.role, nb))
+        presences.append(pres or set(range(nb)))
+    for k in range(nb):
+        if not any(k in pres for pres in presences):
+            i = max(range(len(presences)), key=lambda j: (len(presences[j]), -j))
+            presences[i].add(k)
+    for _ in range(len(parties)):
+        if len(_partielles(presences, nb)) >= 2:
+            break
+        pleines = [i for i in range(len(parties)) if len(presences[i]) == nb]
+        pose = False
+        for i in sorted(pleines, reverse=True):
+            for k in (0, nb - 1):
+                if k in presences[i] and sum(1 for pres in presences if k in pres) >= 2:
+                    presences[i].discard(k)
+                    pose = True
+                    break
+            if pose:
+                break
+        if not pose:
+            break
+    manquantes = 2 - len(_partielles(presences, nb))
+    if manquantes > 0:
+        journal(f"    arrangement : {manquantes} partie(s) de moins que les deux "
+                f"demandées entrent ou sortent ({len(parties)} parties, {nb} sections)")
+    for partie, pres in zip(parties, presences, strict=True):
+        garde = sorted(pres)
+        partie.sections = garde
+        if len(garde) < nb:
+            fenetres = [(sections[k]["debut"], sections[k]["fin"]) for k in garde]
+            partie.notes = [n for n in partie.notes
+                            if any(a - 1e-9 <= n[2] < b for a, b in fenetres)]
+    journal(f"    arrangement : {nb} sections de {sections[0]['mesures']} mesures, "
+            + ", ".join(f"{p.role}={len(p.sections or [])}/{nb}" for p in parties))
+    return {"mesures_par_section": int(sections[0]["mesures"]), "sections": sections,
+            "parties_partielles": len(_partielles(presences, nb))}
+
+
+def _fenetres_de_partie(partie: Partie, arrangement: Optional[Dict[str, Any]]) -> List[Tuple[float, float]]:
+    if arrangement is None or partie.sections is None:
+        return []
+    sections = arrangement["sections"]
+    if len(partie.sections) >= len(sections):
+        return []
+    return [(float(sections[k]["debut"]), float(sections[k]["fin"])) for k in partie.sections]
+
+
 def notes_deux_mains(rng: np.random.Generator, s: Structure, gate: float) -> List[List[float]]:
     """UNE partie, deux registres séparés par un vide : le cas chorale d'H25."""
     (gb, gh), (db, dh) = REGISTRES_DEUX_MAINS
@@ -408,8 +746,17 @@ def notes_batterie(rng: np.random.Generator, s: Structure, machine: str) -> Tupl
 # Le tirage d'un morceau
 # ---------------------------------------------------------------------------
 
-def _tirer_roles(rng: np.random.Generator, nombre: int, cas: str) -> List[Dict[str, Any]]:
-    """La liste des rôles, avec le cas de parité posé sur une ou deux parties."""
+def _tirer_roles(rng: np.random.Generator, nombre: int, cas: str,
+                 voix: bool = False, echantillons: bool = False) -> List[Dict[str, Any]]:
+    """La liste des rôles, avec le cas de parité posé sur une ou deux parties.
+
+    `voix` et `echantillons` viennent de la GRAINE et non d'un tirage — c'est la
+    règle déjà suivie par le cas de parité, et pour la même raison : un lot de
+    dix graines doit voir chaque chose assez souvent pour qu'un attendu se
+    mesure, et le premier lot tiré au hasard avait donné 0 « aucun » sur dix.
+    Le cahier des charges demande un morceau sur quatre chanté et un sur trois
+    échantillonné ; la graine en donne un sur deux et deux sur trois.
+    """
     roles: List[Dict[str, Any]] = []
     if cas == "deux-mains":
         roles.append({"role": ROLE_DEUX_MAINS, "registre": [list(r) for r in REGISTRES_DEUX_MAINS], "cas": cas})
@@ -423,10 +770,24 @@ def _tirer_roles(rng: np.random.Generator, nombre: int, cas: str) -> List[Dict[s
         roles.insert(0, {"role": "basse", "registre": [list(REGISTRES["basse"])], "cas": None})
     if len(roles) < nombre and rng.random() < 0.85:
         roles.append({"role": ROLE_BATTERIE, "registre": [], "cas": None})
+    if voix and len(roles) < nombre:
+        roles.append({"role": ROLE_VOIX, "registre": [list(REGISTRES[ROLE_VOIX])], "cas": None})
     while len(roles) < nombre:
         role = str(rng.choice(["accompagnement", "melodie", "nappe"]))
         roles.append({"role": role, "registre": [list(REGISTRES[role])], "cas": None})
-    return roles[:max(nombre, len(roles))]
+    roles = roles[:max(nombre, len(roles))]
+    if voix and not any(r["role"] == ROLE_VOIX for r in roles):
+        # Le nombre de parties ne laissait pas la place : le chant PREND celle
+        # d'une partie mélodique plutôt que d'être abandonné en silence.
+        for r in roles:
+            if r["role"] in ("melodie", "accompagnement", "nappe"):
+                r["role"], r["registre"] = ROLE_VOIX, [list(REGISTRES[ROLE_VOIX])]
+                break
+    if echantillons:
+        candidats = [r for r in roles if r["role"] in PROFILS_PAR_ROLE and not r.get("paire")]
+        if candidats:
+            candidats[int(rng.integers(0, len(candidats)))]["echantillons"] = True
+    return roles
 
 
 def _panoramique(rng: np.random.Generator, role: str) -> float:
@@ -440,6 +801,23 @@ def _panoramique(rng: np.random.Generator, role: str) -> float:
 def _panner(mono: np.ndarray, pan: float) -> np.ndarray:
     theta = (pan + 1.0) * math.pi / 4.0
     return np.stack([mono * math.cos(theta), mono * math.sin(theta)], axis=1).astype(np.float32)
+
+
+def _rms_fenetres(x: np.ndarray, fenetres: Sequence[Tuple[float, float]]) -> float:
+    """Le RMS des seuls passages où la partie SONNE.
+
+    Sans cela, une partie qui ne joue que la moitié du morceau verrait son RMS
+    divisé par deux par ses propres silences, et le calage la rendrait deux fois
+    trop forte quand elle joue : l'arrangement changerait le MIXAGE, qui n'est
+    pas ce qu'il est censé changer.
+    """
+    parts = []
+    for debut, fin in fenetres:
+        a, b = int(round(debut * SR)), int(round(fin * SR))
+        if b > a:
+            parts.append(x[max(0, a):min(x.shape[0], b)])
+    utile = np.concatenate(parts) if parts else x
+    return _rms(utile) if utile.size else 0.0
 
 
 def _rms(x: np.ndarray) -> float:
@@ -459,9 +837,19 @@ class Generateur:
 
     def __init__(self, engine: VsmEngine, machines: Optional[Sequence[str]] = None,
                  borne_hauteur: float = 0.0,
+                 arrangement: bool = False, notes_breves: bool = False, echantillons: bool = False,
                  rendre: Optional[Callable[..., np.ndarray]] = None,
                  journal: Optional[Callable[[str], None]] = None):
         self.engine = engine
+        # B5 / § 7 bis : LES TROIS EXIGENCES DU CORPUS SUIVANT, chacune sous son
+        # option, et TOUTES À FAUX PAR DÉFAUT. Le défaut est le corpus d'avant
+        # au bit près, et ce n'est pas une prudence de style : `s1-sec` est
+        # l'étalon de tous les chiffres publiés — S1, `r1`, `r1-prod`, `r1f`,
+        # `r1f-13sep` — et un générateur qui changerait en douce les rendrait
+        # tous incomparables sans que personne s'en aperçoive.
+        self.arrangement = bool(arrangement)     # exigence 1 : entrées et sorties
+        self.notes_breves = bool(notes_breves)   # exigence 2 : des notes sous 120 ms
+        self.echantillons = bool(echantillons)   # exigence 3 : échantillons et chant
         # D277 / B5 : DE COMBIEN UN PATCH TIRÉ PEUT-IL DÉSACCORDER LA HAUTEUR ?
         #
         # 0 (le défaut) : sans borne, c'est-à-dire le corpus d'avant, au bit près.
@@ -480,10 +868,97 @@ class Generateur:
         self.machines = list(machines) if machines else machines_melodiques_du_banc(engine)
         if not self.machines:
             raise VsmEngineError("aucune machine mélodique cherchable : le moteur est-il vivant ?")
-        self.rendre = rendre or (lambda machine, patch, notes, duree: engine.render(
-            machine, patch, notes, duration=duree, sample_rate=SR))
+        self.rendre = rendre or (lambda machine, patch, notes, duree, profil=None: engine.render(
+            machine, patch, notes, duration=duree, sample_rate=SR, profile=profil))
         self.journal = journal or (lambda ligne: None)
         self._espaces: Dict[str, list] = {}
+        self._profils: Optional[List[Dict[str, Any]]] = None
+        self._profils_refuses: Dict[str, str] = {}
+        self._derive_sonde: Optional[float] = None
+
+    def _rendre(self, machine: str, patch: Dict[str, float], notes: Sequence[Note],
+                duree: float, profil: str = "") -> np.ndarray:
+        """Le rendu, avec son profil quand il y en a un.
+
+        Le profil n'est passé QUE s'il existe : les doublures de rendu des tests
+        prennent quatre arguments, et leur en imposer un cinquième ferait
+        échouer des tests qui n'ont rien à voir avec les échantillons.
+        """
+        if profil:
+            return self.rendre(machine, patch, notes, duree, profil=profil)
+        return self.rendre(machine, patch, notes, duree)
+
+    def profils_installes(self) -> List[Dict[str, Any]]:
+        if self._profils is None:
+            try:
+                self._profils = [p for p in self.engine.profiles() if not p.get("error")]
+            except Exception as erreur:          # moteur sans consultation de profils
+                self.journal(f"    profils illisibles ({erreur})")
+                self._profils = []
+        return self._profils
+
+    def profil_pour(self, rng: np.random.Generator, role: str) -> Dict[str, str]:
+        """Un profil d'échantillons installé qui convienne au rôle, ou rien.
+
+        Rend `{}` quand aucun profil du poste ne correspond — l'appelant le DIT
+        et retombe sur la synthèse. Le corpus dépend ainsi d'une banque installée
+        hors du dépôt, ce qui est assumé et écrit au § 7 bis : la vérité porte le
+        nom, le chemin et l'EMPREINTE du profil, sans quoi deux postes aux
+        banques différentes rendraient deux corpus différents sous la même
+        graine sans que rien ne le dise.
+        """
+        fragments = PROFILS_PAR_ROLE.get(role, ())
+        candidats = [p for p in self.profils_installes()
+                     if any(f in str(p.get("name", "")) for f in fragments)]
+        if not candidats:
+            return {}
+        # L'ORDRE EST TIRÉ, PUIS CHAQUE CANDIDAT EST ÉPROUVÉ. Un profil installé
+        # n'est pas un profil jouable : `vsm.multisample` refuse tout profil
+        # au-delà de 256 Mo, et les banques générales en comptent (288 zones
+        # pour un saxophone, 324 pour un violoncelle). Sans cette épreuve, le
+        # tirage rendait un profil que le moteur refusait huit fois de suite,
+        # et la partie était perdue.
+        ordre = list(rng.permutation(len(candidats)))
+        refuses: List[str] = []
+        for i in ordre:
+            choisi = candidats[int(i)]
+            chemin = str(choisi.get("path", ""))
+            refus = self.profil_refuse(chemin)
+            if refus:
+                refuses.append(f"{choisi.get('name')} ({refus})")
+                continue
+            empreinte = ""
+            try:
+                empreinte = hashlib.sha256(Path(chemin).read_bytes()).hexdigest()
+            except OSError as erreur:
+                self.journal(f"    profil {choisi.get('name')} : empreinte illisible ({erreur})")
+            if refuses:
+                self.journal(f"    {role} : {len(refuses)} profil(s) refusé(s) par le moteur — "
+                             + "; ".join(refuses[:2]) + ("…" if len(refuses) > 2 else ""))
+            return {"nom": str(choisi.get("name", "")), "chemin": chemin, "empreinte": empreinte}
+        self.journal(f"    {role} : les {len(candidats)} profils qui conviennent sont refusés par "
+                     f"le moteur — " + "; ".join(refuses[:2]) + ("…" if len(refuses) > 2 else ""))
+        return {}
+
+    def profil_refuse(self, chemin: str) -> str:
+        """La raison pour laquelle le moteur refuse ce profil, ou une chaîne vide.
+
+        Le verdict est MÉMORISÉ : un profil de trois cents zones est éprouvé une
+        fois par lot, pas une fois par partie. Le refus vient du moteur lui-même
+        (budget mémoire, fichier d'échantillon manquant), jamais d'une règle
+        écrite ici qui dériverait de ce que la machine accepte vraiment.
+        """
+        if chemin in self._profils_refuses:
+            return self._profils_refuses[chemin]
+        raison = ""
+        try:
+            sonde = self._rendre(MACHINE_ECHANTILLONS, {}, [Note(60, 100, 0.0, 0.5)], 0.75, chemin)
+            if not (sonde.size and np.isfinite(sonde).all() and _rms(sonde) >= RMS_SONDE_MINIMAL):
+                raison = "muet sur la note 60"
+        except VsmEngineError as erreur:
+            raison = str(erreur).replace("profil refusé : ", "")
+        self._profils_refuses[chemin] = raison
+        return raison
 
     def espace(self, machine: str):
         if machine not in self._espaces:
@@ -550,7 +1025,8 @@ class Generateur:
                 trouves[clef] = demi
         return trouves
 
-    def tirer_patch(self, rng: np.random.Generator, machine: str, note_sonde: int) -> Tuple[Dict[str, float], List[float], int, str]:
+    def tirer_patch(self, rng: np.random.Generator, machine: str, note_sonde: int,
+                    profil: str = "") -> Tuple[Dict[str, float], List[float], int, str]:
         """Un patch audible, ou le patch d'usine après TIRAGES_DE_PATCH rejets."""
         espace = self.espace(machine)
         rejets = 0
@@ -558,12 +1034,28 @@ class Generateur:
             vecteur = self.borner_les_hauteurs(machine, rng.random(len(espace)))
             patch = _vector_to_parameters(espace, vecteur)
             try:
-                sonde = self.rendre(machine, patch, [Note(note_sonde, 100, 0.0, 0.75)], 1.0)
+                sonde = self._rendre(machine, patch, [Note(note_sonde, 100, 0.0, 0.75)], 1.0, profil)
             except VsmEngineError as erreur:
                 self.journal(f"    {machine} : rendu refusé ({erreur}) — patch retiré")
                 rejets += 1
                 continue
             if sonde.size and np.isfinite(sonde).all() and _rms(sonde) >= RMS_SONDE_MINIMAL:
+                # LA SONDE EST DÉJÀ RENDUE : on y LIT la hauteur, au lieu de la
+                # déduire du patch. C'est le second volet de l'exigence 4, et il
+                # ne coûte rien. `borner_les_hauteurs` ne bride que ce que le
+                # moteur DÉCLARE en demi-tons ou en cents ; le lot `s2` a montré
+                # qu'il existe d'autres chemins — `scanned.tension` est la tension
+                # d'une corde, les ratios d'opérateur d'un DX7 transposent, un
+                # cornemuse porte un bourdon à hauteur fixe. Aucun ne s'annonce.
+                # Mesurée sur la sonde, la dérive se voit quelle qu'en soit la
+                # cause, et le patch fautif est RETIRÉ comme un patch muet l'est.
+                self._derive_sonde = self.derive_de_hauteur(sonde, note_sonde)
+                if (self.borne_hauteur > 0.0 and self._derive_sonde is not None
+                        and abs(self._derive_sonde) > self.borne_hauteur):
+                    self.journal(f"    {machine} : sonne à {self._derive_sonde:+.2f} demi-ton de la "
+                                 f"note {note_sonde} — patch retiré (borne {self.borne_hauteur:g})")
+                    rejets += 1
+                    continue
                 return patch, [float(v) for v in vecteur], rejets, "tiré dans le SearchProfile"
             rejets += 1
         # Huit patchs muets de suite : c'est peut-être la MACHINE qui ne
@@ -571,13 +1063,31 @@ class Generateur:
         # éprouve le patch d'usine ; s'il est muet aussi, la machine est
         # écartée POUR CE RÔLE, en le disant, et l'appelant en tire une autre.
         try:
-            sonde = self.rendre(machine, {}, [Note(note_sonde, 100, 0.0, 0.75)], 1.0)
+            sonde = self._rendre(machine, {}, [Note(note_sonde, 100, 0.0, 0.75)], 1.0, profil)
         except VsmEngineError as erreur:
             raise MachineMuette(f"{machine} : rendu refusé au patch d'usine ({erreur})") from erreur
         if not (sonde.size and np.isfinite(sonde).all() and _rms(sonde) >= RMS_SONDE_MINIMAL):
             raise MachineMuette(f"{machine} : muette sur la note {note_sonde}, même au patch d'usine")
+        self._derive_sonde = self.derive_de_hauteur(sonde, note_sonde)
+        if (self.borne_hauteur > 0.0 and self._derive_sonde is not None
+                and abs(self._derive_sonde) > self.borne_hauteur):
+            # Le patch d'usine lui-même sonne ailleurs : la machine n'est pas
+            # mélodique au sens du banc, et l'on en tire une autre en le disant.
+            # `MACHINES_SANS_HAUTEUR_JUSTE` évite d'en arriver là pour celles que
+            # la mesure connaît ; ce chemin attrape celles qui viendront.
+            raise MachineMuette(f"{machine} : sonne à {self._derive_sonde:+.2f} demi-ton de la note "
+                                f"{note_sonde} même au patch d'usine")
         self.journal(f"    {machine} : {rejets} patchs inaudibles de suite — patch d'usine")
         return {}, [], rejets, f"patch d'usine après {rejets} rejets"
+
+    def derive_de_hauteur(self, sonde: np.ndarray, note: int) -> Optional[float]:
+        """De combien la sonde sonne-t-elle à côté de la note jouée, dans l'octave.
+
+        None quand la hauteur n'est pas lisible : ce qui ne peut pas être vu
+        n'est pas compté nul, et la vérité l'écrira `null` plutôt que zéro.
+        """
+        entendue = hauteur_sonnante(sonde)
+        return None if entendue is None else hors_octave(entendue - float(note))
 
     def fabriquer(self, graine: int, duree: float = 30.0, production: bool = False,
                   cas: Optional[str] = None, nombre_de_parties: Optional[int] = None) -> Tuple[dict, List[np.ndarray], np.ndarray]:
@@ -594,7 +1104,15 @@ class Generateur:
         cas_choisi = cas if cas else CAS[int(graine) % len(CAS)]
         if cas_choisi not in CAS:
             raise ValueError(f"cas inconnu : {cas_choisi} (attendu {', '.join(CAS)})")
-        roles = _tirer_roles(rng, nombre, cas_choisi)
+        # B5, exigence 3 : LE CHANT UN MORCEAU SUR DEUX, LES ÉCHANTILLONS DEUX
+        # SUR TROIS — par la graine, comme le cas de parité, et pour la même
+        # raison (un tirage ne garantit rien sur dix morceaux). Le cahier des
+        # charges demande un sur quatre et un sur trois : la marge est prise
+        # exprès, une partie échantillonnée pouvant être refusée faute de profil
+        # installé, et un critère se tient avec ce qui SURVIT au tirage.
+        veut_voix = self.echantillons and int(graine) % 2 == 0
+        veut_echantillons = self.echantillons and int(graine) % 3 != 2
+        roles = _tirer_roles(rng, nombre, cas_choisi, voix=veut_voix, echantillons=veut_echantillons)
         self.journal(f"  graine {graine} : {s.tempo} bpm, {'mineur' if s.mineur else 'majeur'} sur "
                      f"{s.tonique}, {s.mesures} mesures ({s.duree:.1f} s), {len(roles)} parties, cas {cas_choisi}")
 
@@ -618,26 +1136,54 @@ class Generateur:
                 else:
                     r = (registres[0][0], registres[0][1])
                     fabrique = {"basse": notes_basse, "accompagnement": notes_accompagnement,
-                                "melodie": notes_melodie, "nappe": notes_nappe}[role]
+                                "melodie": notes_melodie, "nappe": notes_nappe,
+                                ROLE_VOIX: notes_voix}[role]
                     notes = fabrique(rng, s, r, gate)
                     note_sonde = (r[0] + r[1]) // 2
+            # B5, exigence 3 : LA MACHINE À ÉCHANTILLONS, quand le rôle la
+            # demande et qu'un profil du poste lui convient. Sinon, c'est DIT et
+            # le rôle retombe sur la synthèse : une partie échantillonnée
+            # absente en silence ferait croire le corpus conforme.
+            profil: Dict[str, str] = {}
+            if role != ROLE_BATTERIE and (description.get("echantillons") or role == ROLE_VOIX):
+                # Le chant se partage entre la machine à formants et un chœur
+                # échantillonné ; une partie d'échantillons explicite, elle, ne
+                # se joue que par la machine à échantillons.
+                par_synthese = role == ROLE_VOIX and not description.get("echantillons") and rng.random() < 0.5
+                if not par_synthese:
+                    profil = self.profil_pour(rng, role)
+                    if not profil:
+                        raison = (f"aucun profil installé parmi "
+                                  f"{', '.join(PROFILS_PAR_ROLE.get(role, ())) or 'aucun nom'}")
+                        self.journal(f"    {role} : {MACHINE_ECHANTILLONS} écartée — {raison}")
+                        machines_ecartees.append({"role": role, "machine": MACHINE_ECHANTILLONS,
+                                                  "raison": raison})
             # La machine, puis son patch ; une machine muette sur la note du
             # rôle est écartée et dite, et une autre est tirée.
             for _ in range(len(self.machines) + 1):
                 if role == ROLE_BATTERIE:
                     pass
+                elif profil:
+                    machine = MACHINE_ECHANTILLONS
+                elif role == ROLE_VOIX:
+                    machine = MACHINE_VOIX_SYNTHESE
                 elif description.get("paire") and machine_de_paire:
                     machine = machine_de_paire
                 else:
                     machine = str(rng.choice(self.machines))
                 try:
-                    patch, vecteur, rejets, origine = self.tirer_patch(rng, machine, note_sonde)
+                    patch, vecteur, rejets, origine = self.tirer_patch(
+                        rng, machine, note_sonde, profil.get("chemin", ""))
                     break
                 except MachineMuette as erreur:
                     self.journal(f"    écartée : {erreur}")
                     machines_ecartees.append({"role": role, "machine": machine, "raison": str(erreur)})
                     if role == ROLE_BATTERIE:
                         raise
+                    # Le profil vient d'être refusé : le retirer, sans quoi le
+                    # tour suivant redemanderait LE MÊME et la boucle
+                    # s'épuiserait sur une machine déjà connue pour muette.
+                    profil = {}
             else:
                 raise VsmEngineError(f"aucune machine audible pour le rôle {role}")
             if description.get("paire"):
@@ -647,7 +1193,25 @@ class Generateur:
                                   registre=registres, niveau_rms=10 ** (niveau_db / 20), niveau_db=niveau_db,
                                   gain=1.0, pan=_panoramique(rng, role), gate=gate, pieces=pieces,
                                   cas=description.get("cas"), patchs_rejetes=rejets, origine_patch=origine,
-                                  desaccords_demi_tons=self.desaccords_de_hauteur(machine, patch)))
+                                  desaccords_demi_tons=self.desaccords_de_hauteur(machine, patch),
+                                  profil=profil.get("nom", ""), profil_chemin=profil.get("chemin", ""),
+                                  profil_empreinte=profil.get("empreinte", ""),
+                                  desaccord_mesure_demi_tons=self._derive_sonde,
+                                  note_sonde=int(note_sonde)))
+
+        # B5, exigence 2 : LE PHRASÉ BREF, posé après le tirage des parties pour
+        # que le flux de tirages du défaut reste intact quand l'option est à faux.
+        notes_avant_bref: Dict[int, List[List[float]]] = {}
+        if self.notes_breves:
+            notes_avant_bref = self._phraser_bref(rng, s, parties)
+
+        # B5, exigence 1 : LES ENTRÉES ET LES SORTIES, après le phrasé bref —
+        # une frappe ajoutée par le phrasé doit être filtrée comme les autres.
+        arrangement = arranger(rng, s, parties, self.journal) if self.arrangement else None
+        for partie in parties:
+            if partie.phrase_breve is not None:
+                partie.phrase_breve["notes"] = len(partie.notes)
+                partie.phrase_breve["sous_120ms"] = sum(1 for note in partie.notes if note[3] < 0.120)
 
         # Les tirages de PRODUCTION se font avant les rendus : un patch rejeté
         # de plus ou de moins ne doit pas déplacer la réverbération.
@@ -666,10 +1230,30 @@ class Generateur:
         stems: List[np.ndarray] = []
         for indice, partie in enumerate(parties):
             depart = time.perf_counter()
-            audio = self._rendre_partie(partie, duree_rendu, rng)
+            try:
+                audio = self._rendre_partie(partie, duree_rendu, rng)
+            except VsmEngineError as erreur:
+                if indice not in notes_avant_bref:
+                    raise
+                # La machine ne rend rien d'audible sur des notes de cette
+                # DURÉE — une enveloppe qui ne s'ouvre pas en soixante
+                # millisecondes. On revient au phrasé long, et la vérité le DIT :
+                # un corpus qui annoncerait des notes brèves qu'il ne porte pas
+                # ferait mentir toute mesure bâtie dessus.
+                brève = dict(partie.phrase_breve or {})
+                self.journal(f"    {partie.machine} : phrasé bref abandonné ({erreur})")
+                partie.notes = notes_avant_bref[indice]
+                fenetres_bref = _fenetres_de_partie(partie, arrangement)
+                if fenetres_bref:
+                    partie.notes = [note for note in partie.notes
+                                    if any(a - 1e-9 <= note[2] < b for a, b in fenetres_bref)]
+                partie.phrase_breve = {**brève, "abandonnee": True, "raison": str(erreur),
+                                       "notes": len(partie.notes), "sous_120ms": 0}
+                audio = self._rendre_partie(partie, duree_rendu, rng)
             mono = np.zeros(n, dtype=np.float32)
             mono[:min(n, audio.size)] = audio[:n]
-            rms = _rms(mono)
+            fenetres = _fenetres_de_partie(partie, arrangement)
+            rms = _rms_fenetres(mono, fenetres) if fenetres else _rms(mono)
             partie.gain = float(partie.niveau_rms / rms) if rms > 0 else 0.0
             stems.append(_panner(mono * np.float32(partie.gain), partie.pan))
             partie.cout_rendu_s = time.perf_counter() - depart
@@ -706,6 +1290,11 @@ class Generateur:
             "tempo": s.tempo, "mineur": s.mineur, "tonique": s.tonique, "progression": s.progression,
             "mesures": s.mesures, "duree": s.duree, "duree_rendu": duree_rendu, "sample_rate": SR,
             "cas": cas_choisi, "nombre_de_parties": len(parties),
+            # B5 : LES OPTIONS QUI CONDITIONNENT LE RÉSULTAT VONT DANS LA
+            # PROVENANCE. Deux lots ne se comparent que si elles sont les mêmes.
+            "exigences": {"arrangement": self.arrangement, "notes_breves": self.notes_breves,
+                          "echantillons": self.echantillons, "borne_hauteur": self.borne_hauteur},
+            "arrangement": arrangement,
             "gain_crete": gain_crete, "crete_avant_gain": crete,
             "production": asdict(prod) if prod else None,
             "melange_est_la_somme_des_stems": prod is None,
@@ -720,10 +1309,50 @@ class Generateur:
         }
         return verite, stems, melange32
 
+    def _phraser_bref(self, rng: np.random.Generator, s: Structure,
+                      parties: List[Partie]) -> Dict[int, List[List[float]]]:
+        """B5, exigence 2 : quelles parties jouent bref, et le phrasé d'avant.
+
+        LE CHANT ET LA NAPPE EN SONT EXCLUS, et c'est une décision, pas un
+        oubli : une voix qui articule des doubles croches détachées de soixante
+        millisecondes n'est plus une voix, et une nappe dont c'est la définition
+        de tenir n'en serait plus une. L'exigence porte sur les notes brèves du
+        corpus, pas sur leur présence dans chaque rôle.
+
+        Rend le phrasé LONG de chaque partie touchée, par indice : une machine
+        peut ne rien rendre d'audible sur des notes de cette durée, et il faut
+        alors pouvoir y revenir plutôt que de perdre la partie.
+        """
+        avant: Dict[int, List[List[float]]] = {}
+        eligibles = [i for i, partie in enumerate(parties)
+                     if partie.role in ("melodie", "accompagnement")]
+        if not eligibles:
+            self.journal("    notes brèves : aucune partie mélodique éligible dans ce morceau")
+            return avant
+        # LA PREMIÈRE ÉLIGIBLE JOUE BREF, TOUJOURS ; les autres au tirage. Le
+        # critère du cahier des charges porte sur le CORPUS — un cinquième des
+        # parties mélodiques —, et un tirage seul ne le garantit pas : mesuré, le
+        # même lot est passé de 19 à 14 parties brèves sur 74 (le seuil est 15)
+        # parce que le rejet des patchs mal accordés avait décalé le flux de
+        # tirages. Un critère de corpus qui dépend du hasard d'un autre mécanisme
+        # n'est pas tenu, il est eu. Avec la garantie, le plancher est d'une
+        # partie par morceau et le tirage n'ajoute que de la variété.
+        choisies = [eligibles[0]] + [i for i in eligibles[1:] if rng.random() < BREVE_PROPORTION]
+        for indice in choisies:
+            partie = parties[indice]
+            duree_breve = float(rng.uniform(*BREVE_DUREE_S))
+            avant[indice] = list(partie.notes)
+            partie.notes = raccourcir_phrase(rng, s, partie.notes, duree_breve)
+            partie.phrase_breve = {"duree_s": duree_breve, "notes": len(partie.notes),
+                                   "sous_120ms": sum(1 for note in partie.notes if note[3] < 0.120)}
+            self.journal(f"    {partie.role} joue bref : {len(avant[indice])} notes → "
+                         f"{len(partie.notes)} frappes de {duree_breve * 1000:.0f} ms")
+        return avant
+
     def _rendre_partie(self, partie: Partie, duree: float, rng: np.random.Generator) -> np.ndarray:
         notes = [Note(int(n[0]), int(n[1]), float(n[2]), float(n[3])) for n in partie.notes]
         for _essai in range(TIRAGES_DE_PATCH + 1):
-            audio = self.rendre(partie.machine, partie.patch, notes, duree)
+            audio = self._rendre(partie.machine, partie.patch, notes, duree, partie.profil_chemin)
             if audio.size and np.isfinite(audio).all() and _rms(audio) >= RMS_STEM_MINIMAL:
                 return np.asarray(audio, dtype=np.float32)
             # La sonde était audible et le stem ne l'est pas (une enveloppe
@@ -734,8 +1363,14 @@ class Generateur:
             if not partie.patch:
                 break  # c'était déjà le patch d'usine : retirer ne changera rien
             note_sonde = int(partie.notes[0][0]) if partie.notes else 60
-            partie.patch, partie.vecteur, rejets, partie.origine_patch = self.tirer_patch(rng, partie.machine, note_sonde)
+            partie.patch, partie.vecteur, rejets, partie.origine_patch = self.tirer_patch(
+                rng, partie.machine, note_sonde, partie.profil_chemin)
             partie.patchs_rejetes += rejets
+            # Le patch a changé : la dérive mesurée de la partie aussi. Sans
+            # cette ligne la vérité porterait celle du patch REMPLACÉ, ce qui est
+            # la pire sorte de mensonge — un chiffre juste sur autre chose.
+            partie.desaccord_mesure_demi_tons = self._derive_sonde
+            partie.note_sonde = int(note_sonde)
         raise VsmEngineError(f"{partie.machine} ne rend rien d'audible sur ses notes, même au patch d'usine")
 
 

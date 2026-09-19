@@ -92,13 +92,6 @@ PatchRequestParseResult parsePatchRequest(const std::string& jsonLine) {
         result.error = "sampleRate et duration doivent être positifs";
         return result;
     }
-    // Garde-fou : une durée démesurée demandée par erreur ferait allouer des
-    // gigaoctets et bloquerait le service, sans message utile.
-    if (request.durationSeconds > 120.0) {
-        result.error = "durée trop longue (max 120 s pour un rendu de patch)";
-        return result;
-    }
-
     for (const auto& [semanticId, value] : json["parameters"].members())
         if (value.isNumber()) request.parameters.emplace_back(semanticId, static_cast<float>(value.asNumber()));
 
@@ -117,6 +110,29 @@ PatchRequestParseResult parsePatchRequest(const std::string& jsonLine) {
             if (value.isNumber()) jeu.emplace_back(semanticId, static_cast<float>(value.asNumber()));
         request.batch.push_back(std::move(jeu));
     }
+    // GARDE-FOU : le budget porte sur les ÉCHANTILLONS RENDUS, pas sur la durée
+    // seule. La première version refusait tout rendu de plus de 120 s pour
+    // empêcher d'allouer des gigaoctets -- mais elle bornait la mauvaise
+    // grandeur : elle laissait passer un LOT de 512 jeux de 120 s, soit onze
+    // gigaoctets, et elle interdisait le seul cas qui en a vraiment besoin, un
+    // morceau du banc synthétique de trois à cinq minutes (B5, § 7 bis de
+    // docs/CDC-banc-synthetique.md ; 300 s en 44,1 kHz font 53 Mo). Le budget
+    // ci-dessous est plus strict que l'ancien sur les lots et plus large sur un
+    // rendu isolé, ce qui est exactement l'inverse de ce qu'il faisait.
+    {
+        const double jeux = request.batch.empty() ? 1.0 : static_cast<double>(request.batch.size());
+        const double echantillons = request.durationSeconds * request.sampleRate * jeux;
+        constexpr double kBudget = 128.0 * 1024.0 * 1024.0;   // 128 Mi échantillons, 512 Mo en float
+        if (echantillons > kBudget) {
+            result.error = "rendu trop gros : " + std::to_string(static_cast<long long>(echantillons))
+                         + " échantillons (" + std::to_string(request.durationSeconds) + " s x "
+                         + std::to_string(static_cast<long long>(request.sampleRate)) + " Hz x "
+                         + std::to_string(static_cast<long long>(jeux))
+                         + " jeu(x)), maximum 134217728";
+            return result;
+        }
+    }
+
     if (request.batch.size() > 512) {
         // Garde-fou : un lot démesuré ferait allouer des centaines de
         // mégaoctets de réponse et bloquerait le service sans message utile.

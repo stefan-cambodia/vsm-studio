@@ -29785,3 +29785,280 @@ en route, ce qui coûte plus cher que de ne pas la commencer.
 
 Aucun changement de code. Suites inchangées et vertes au commit précédent
 (355 core, 1 303 audio, 303 interchange, 25 clap, 11 panels, 214 Python).
+
+---
+
+### Phase D366 — B5 : le corpus du banc ne portait ni longueur, ni notes brèves, ni voix (19/09/2026)
+
+**D'OÙ ELLE VIENT — DU « CE QUE LA PHASE NE FAIT PAS » DE D365**, qui nommait
+la suite et disait pourquoi elle attendait : *« La suite du travail nommée par la
+todolist est B5 […] C'est une CAMPAGNE de plusieurs heures. Elle n'a pas été
+lancée : la batterie est à 47 % et en décharge. »* Batterie à 100 % au départ de
+celle-ci — et la campagne redoutée n'en était pas une : **engendrer les dix
+morceaux coûte 182 secondes**, c'est la reconstruction qui coûte des heures.
+
+**CE QUE B5 DEMANDE** (`docs/CDC-banc-synthetique.md` § 7 bis.1, cinq exigences
+dont la 4 était faite et la 5 retirée) : des morceaux **longs** dont les parties
+entrent et sortent, des notes mélodiques **brèves**, et des parties à
+**échantillons** et de la **voix**. Le § 7 bis interdit de les livrer une par
+une, et la raison est mesurable : réengendrer le corpus rend tous les chiffres
+publiés incomparables avec les suivants — S1, `r1`, `r1-prod`, `r1f`,
+`r1f-13sep`. **On ne paie ce prix qu'une fois.**
+
+**LE TÉMOIN D'ABORD, PARCE QUE TOUT LE RESTE EN DÉPEND.** Les trois exigences
+sont écrites sous trois options éteintes par défaut (`--sections`,
+`--notes-breves`, `--echantillons` ; `--b5` pose les trois plus
+`--borner-hauteur 2`). Mesuré, code d'avant contre code d'après, options
+éteintes : **cinq graines, quarante-quatre parties, mélange et stems identiques
+au bit près**. Sans ce témoin, une option par défaut déplacée d'un cheveu aurait
+réécrit l'étalon de tous les chiffres du projet sans que rien ne le dise.
+
+**ET LE TÉMOIN A TROUVÉ AUTRE CHOSE, QUI N'EST PAS DE CETTE PHASE.** `s1-sec` ne
+se réengendre PLUS à l'identique avec le moteur d'aujourd'hui : son
+`machines_tirables` en compte **58**, le vivier en rend **57**. La machine partie
+est `vsm.fmdrums`, écartée à juste titre du vivier mélodique (c'est une boîte à
+rythmes, et ses 4 800 rendus du corpus A6 étaient tous inaudibles) — mais un
+retrait de machine décale `rng.choice`, et deux morceaux sur trois changent. Le
+corpus commis reste l'étalon ; **il n'est simplement plus reproductible par sa
+graine**, et c'est une raison de plus de le remplacer maintenant.
+
+| | `s1-sec` (l'étalon d'avant) | `s2` (celui-ci) |
+|---|---|---|
+| morceaux | 10 | 10 |
+| durée | 30 s chacun, 5 min en tout | **186 à 269 s**, **38,5 min** |
+| parties | 82 | 82 |
+| sections par morceau | — | **13 à 16** |
+| parties qui entrent ou sortent | **0** | **2 à 10** par morceau |
+| notes | 8 298 | **64 040** |
+| notes **mélodiques** sous 120 ms | **0** | **22 891** |
+| frappes sous 120 ms | 1 865 | 14 170 |
+| morceaux à échantillons | **0** | **7** |
+| rôles chantés | **0** | **5** (4 `vsm.vocal`, 1 chœur échantillonné) |
+| désaccord maximal | ±24 demi-tons | **1,86** déduit du patch, **1,63 MESURÉ** (borne 2) |
+| poids | 991 Mo | 7,1 Go |
+| coût de fabrication | — | **182 s** |
+
+**LA GARDE, ÉCRITE AVANT LE LOT ET VUE ROUGE AVANT D'ÊTRE VUE VERTE.**
+`tools/corpus-exigences.py` lit les `verite.json` et rend une ligne par exigence.
+Sur `s1-sec` : **0/4**. Sur `s2` : **4/4**, chaque critère avec sa marge (10/10
+morceaux longs pour 5 exigés, 18/74 parties mélodiques brèves pour 15, 22 891
+notes pour 500, 7/10 morceaux échantillonnés pour 4, 5/10 chantés pour 3).
+
+**QUATRE DÉFAUTS TROUVÉS EN ÉCRIVANT, ET AUCUN PAR LA RELECTURE.**
+
+1. **Un profil installé n'est pas un profil jouable.** `vsm.multisample` refuse
+   tout profil au-delà de 256 Mo, et les banques générales en comptent (288 zones
+   pour un saxophone, 324 pour un violoncelle). Le tirage rendait un profil
+   refusé, le patch était retiré huit fois, la machine déclarée muette, et la
+   partie perdue — en ayant dépensé huit rendus pour rien. Chaque profil candidat
+   est désormais ÉPROUVÉ une fois par lot, le verdict du moteur mémorisé, les
+   refus dits ; et quand tous sont refusés, le rôle retombe sur la synthèse en
+   le DISANT (`machines_ecartees`).
+2. **Le garde-fou du moteur bornait la mauvaise grandeur.** `PatchRenderService`
+   refusait tout rendu de plus de **120 s** « pour ne pas allouer des
+   gigaoctets ». Or il laissait passer un LOT de 512 jeux de 120 s — **onze
+   gigaoctets** — et il interdisait le seul cas qui en a besoin : un morceau de
+   quatre minutes, soit 53 Mo. Le budget porte désormais sur les ÉCHANTILLONS
+   RENDUS (durée × fréquence × nombre de jeux, plafond 128 Mi), ce qui est plus
+   strict que l'ancien sur les lots et plus large sur un rendu isolé. Un test le
+   garde aux deux bouts (303 → **304** tests d'interchange).
+3. **Ma propre garde comptait zéro ce qu'elle ne pouvait pas voir** — le piège de
+   D265, repayé. Sa première version annonçait « désaccord maximal 0,00 demi-ton »
+   sur `s1-sec`, dont D267 a mesuré des parties à ±24 : le champ
+   `desaccords_demi_tons` est né avec D277 et les vérités d'avant ne le portent
+   pas. Elle rend maintenant **INDÉCIDABLE** et ne conclut pas.
+4. **Un test qui accusait le code d'un facteur qui était le sien.** Le contrôle
+   du calage de niveau sommait les deux canaux d'un stem pour en refaire le mono ;
+   la loi de panoramique étant à puissance constante, la somme ajoute jusqu'à
+   **√2 = 1,41** au centre — et l'écart mesuré était 1,41. C'est le panoramique
+   qu'il faut inverser, pas le calage qu'il fallait corriger.
+
+**SEPT CHOIX TRANCHÉS EN ÉCRIVANT** (§ 7 bis.4 du cahier des charges, avec leur
+raison) : la section dure huit mesures et s'allonge plutôt que de se multiplier ;
+deux garanties posées à la main parce qu'un tirage n'en donne aucune (aucune
+section muette, au moins deux parties partielles) ; **le calage de niveau se fait
+sur ce qui SONNE**, sans quoi l'arrangement changerait le mixage ; la note brève
+se mesure en secondes et non en valeurs rythmiques (une double croche dure 107 ms
+à 140 bpm et 179 ms à 84) ; le chant et la nappe sont exclus du phrasé bref ; le
+chant se partage entre la machine à formants et un chœur échantillonné, et les
+deux sont sortis au tirage (3 et 2) ; **le corpus dépend désormais d'une banque
+installée hors du dépôt**, et sa vérité porte le nom, le chemin et l'empreinte
+SHA-256 de chaque profil.
+
+**ET UNE CONTRADICTION DU CAHIER DES CHARGES, TRANCHÉE EN ÉCRIVANT.** Le
+§ 7 bis.3 exigeait que `tools/f1-sonnant.py` soit vert **avant** toute campagne —
+or cet outil prend en argument un LOT DE RECONSTRUCTION, pas un corpus : il
+demandait une campagne avant la campagne. L'ordre est écrit (§ 7 bis.3) : les
+gardes de corpus d'abord, la campagne ensuite, `f1-sonnant` en vérification
+d'après. Les deux gardes de corpus ne connaissaient qu'un seul corpus, écrit en
+dur ; elles prennent `--corpus`.
+
+**Suites** : 304 interchange (+1), **+6 tests Python** (l'arrangement, le morceau
+trop court qui le dit, le phrasé bref, le défaut sans exigence, le profil refusé
+mémorisé, les trois exigences de bout en bout). `ruff` propre, `mypy` sans faute.
+
+**LES DEUX GARDES DE CORPUS, PASSÉES SUR `s2` (§ 7 bis.3).**
+
+`tools/notes-courtes.py 127.7 30 --corpus s2` **rend enfin un nombre**, et c'est
+ce que B5 lui demandait : l'A/B sur `minimum_note_length` n'était mesurable par
+rien, le corpus d'avant ne portant aucune note mélodique brève.
+
+| `minimum_note_length` | vraies < 150 ms | rappel < 150 ms | rappel ≥ 150 ms | notes écrites | inventées |
+|---|---|---|---|---|---|
+| **127,7 ms** (le défaut, témoin) | 7 860 | **18,1 %** | 52,0 % | 18 153 | 66,1 % |
+| 30,0 ms | 7 860 | **18,8 %** | 56,9 % | 22 809 | 70,5 % |
+
+**ET LE RÉSULTAT EST NÉGATIF, ce qui vaut d'être écrit.** Descendre le seuil de
+127,7 à 30 ms — le supprimer, en pratique — ne rend que **0,7 point** de rappel
+sur les notes brèves (18,1 → 18,8 %), en écrivant **4 656 notes de plus**
+(+25,6 %) dont la part inventée monte de 66,1 à 70,5 %. Le paramètre que D264
+avait nommé (« la chaîne efface les notes brèves parce qu'on le lui demande »)
+n'est donc **pas** la cause principale : sur des frappes mélodiques de 55 à
+110 ms, le transcripteur en rate plus de quatre sur cinq **quoi qu'on règle**.
+La mesure n'était pas fausse, elle était indécidable ; elle est décidée.
+
+`tools/corpus-hauteurs.py --corpus s2` rend **`MORCEAUX_INUTILISABLES 0`** — le
+critère qui compte, aucun morceau n'a toutes ses parties mélodiques à côté — mais
+**`PARTIES 74 CONTREDITES 5`**, et le second critère du § 7 bis.3 demande zéro.
+**Deux des cinq accusations sont fausses**, et c'est la règle de D266 (« quand un
+banc accuse, vérifier le banc avant la cible ») qui l'a montré : chaque partie
+suspecte a été rendue sur une note, au patch d'usine puis au patch tiré, hauteur
+lue par autocorrélation.
+
+| partie | usine | patch tiré | ce que c'est |
+|---|---|---|---|
+| `vsm.membrane` (× 2) | **−27,8 st** | −27,8 st | **la MACHINE** : une membrane est inharmonique, sa hauteur perçue n'est pas son numéro de note |
+| `vsm.scanned` | +0,09 st | **+32,3 st** | **un PARAMÈTRE** : `scanned.tension` EST la hauteur d'une corde, et rien dans son unité déclarée ne le dit |
+| `vsm.minimoog` | −0,04 st | +1,69 st | **rien** : la borne a tenu (`oscillator.2.detune` = +1,72 st) ; le −9 lu est celui du transcripteur |
+| `vsm.reed` | −0,01 st | **+0,03 st** | **rien** : le rendu sonne où il est écrit ; le −5 lu est celui du transcripteur |
+
+**CE QUE CELA OUVRE, ET QUI EST FAIT EN D367** : la borne de D277 ne peut brider
+que ce que le moteur déclare en `st` ou en `cents`. Deux familles lui échappent —
+les machines dont le patch d'usine sonne déjà ailleurs, et les paramètres qui
+déplacent la hauteur sans l'annoncer. Il faut les MESURER, pas les deviner.
+
+**RESTE NOMMÉ, NON FAIT** : la campagne de reconstruction sur `s2`, dont dépend
+**B6** (le F1 du banc et ses deux biais). C'est elle qui coûte des heures, et
+elle ne part qu'une fois les deux gardes de corpus vertes.
+
+---
+
+### Phase D367 — la borne de hauteur ne bride que ce que le moteur déclare, et il ne déclare pas tout (19/09/2026)
+
+**D'OÙ ELLE VIENT — DU « CE QUE CELA OUVRE » DE D366** : le lot `s2`, engendré
+avec `--borner-hauteur 2`, portait quand même **cinq parties sur 74 qui
+contredisaient leur vérité**, dont deux de `vsm.membrane` et une de
+`vsm.scanned` dont le patch déclarait **zéro** demi-ton de désaccord.
+
+**LA CAUSE, ET ELLE EST DANS LE MÉCANISME DE D277.** `borner_les_hauteurs`
+parcourt les dimensions de l'espace de recherche et bride celles dont le moteur
+déclare l'unité `st` ou `cents`. C'est tout ce qu'elle peut voir. Or la hauteur
+se déplace aussi par des chemins que rien n'annonce.
+
+**LE BANC AVANT LA CIBLE, ET IL A FALLU S'Y REPRENDRE À TROIS FOIS.**
+`tools/hauteur-des-patchs.py` rend une note, lit sa hauteur par autocorrélation
+et compare à la note jouée. Ses deux premières versions ont accusé des machines
+justes :
+
+| version | machines accusées sur 57 | ce qui n'allait pas |
+|---|---|---|
+| 1 | **34** | six machines rendaient **exactement +35,25 demi-tons**, c'est-à-dire 2 000 Hz : la mesure lisait **sa propre borne de recherche** et l'écrivait comme un résultat. Et les écarts d'octave (−11,99, −12,04) étaient comptés comme des fautes, là où la garde qui juge le corpus les écarte explicitement depuis D267 |
+| 2 | **19** | le patch était tiré **à plat**, sans la borne que le banc applique : six synthétiseurs soustractifs classiques (Minimoog, Jupiter-8, Prophet, OB-X, MS-20, Arp Odyssey) étaient accusés pour un désaccord d'oscillateur **déclaré en demi-tons**, que `--borner-hauteur 2` bride déjà |
+| 3 | **14** | fenêtre large (25 à 5 000 Hz), butée DITE et non lue comme un chiffre, écart ramené dans l'octave, tirage borné comme celui du banc |
+
+**CE QUE LA TROISIÈME VERSION MESURE**, sur les 57 machines du vivier :
+
+| | machines | exemples |
+|---|---|---|
+| le patch d'**USINE** sonne ailleurs | **3** (+1 sans hauteur lisible) | `vsm.plate` −4,29 st, `vsm.jewsharp` +3,91, `vsm.membrane` −3,83, `vsm.carillon` illisible |
+| un patch **TIRÉ** sort de la borne | **11** | `vsm.perc` +5,18 st, `vsm.hurdygurdy` +5,00, `vsm.vibraphone` +5,00, `vsm.spectral` +4,90, `vsm.epiano` +4,87 |
+| **sonnent juste** | **43** | le reste du vivier, à ±0,06 demi-ton près au patch d'usine |
+
+La fouille par paramètre nomme les chemins : `scanned.tension` (la tension EST
+la hauteur d'une corde), les six `fm.operator.N.ratio` d'un DX7 (un ratio
+transpose, c'est sa définition), `spectral.stretch`, `epiano.character`,
+`oscillator.crossMod` du Jupiter-8, `drum.bongo.tune` — et un **bourdon à
+hauteur fixe**, `hurdygurdy.droneNote`, que porte aussi la cornemuse.
+
+**DEUX RÈGLES, ET ELLES NE SE CONFONDENT PAS** (écrites au § 7 bis.6 du cahier
+des charges) :
+
+1. **la machine dont l'USINE sonne ailleurs sort du vivier mélodique du banc**,
+   déclarée avec son chiffre. Aucun réglage n'y changerait rien, et sans la
+   liste le banc retirerait huit patchs par partie avant de l'écarter. **Elles
+   restent au parc et dans le DAW** : c'est le vivier du BANC qu'on restreint,
+   parce que sa vérité compare la hauteur écrite à la hauteur entendue ;
+2. **la machine dont l'usine sonne juste est bridée AU TIRAGE, sonde par
+   sonde.** Le patch tiré est déjà rendu sur une note-sonde pour vérifier qu'il
+   s'entend : **on y lit la hauteur**, et le patch qui dérive est retiré comme
+   un patch muet l'est. Coût : **rien** — le rendu existait. Portée : **toute**
+   cause, y compris un paramètre que personne n'a pensé à déclarer. Prix pour la
+   variété : **nul**, c'est le patch qui est refusé, pas la machine.
+
+Une table de fenêtres par paramètre a été écartée, et la raison est écrite :
+elle aurait demandé d'étalonner chaque réglage de chaque machine, se serait
+périmée à la première machine neuve, et aurait figé les ratios d'opérateur d'un
+DX7 — c'est-à-dire l'instrument lui-même.
+
+**ET LA VÉRITÉ PORTE LE CHIFFRE MESURÉ** (`desaccord_mesure_demi_tons`, avec sa
+note-sonde), à côté de celui qui se déduit du patch. Quand la hauteur n'est pas
+lisible, le champ vaut **`null` et non zéro** — la leçon de D265, tenue à la
+source cette fois.
+
+**LA GARDE A ÉTÉ VUE ROUGE.** `tools/hauteur-des-patchs.py` rend 1 dès qu'une
+machine du vivier sonne faux au patch d'usine sans être déclarée : le défaut
+remis (une ligne retirée de la table), elle nomme `vsm.membrane` et rend 1 ; la
+ligne rendue, elle rend 0.
+
+**MESURÉ SUR LE CORPUS RÉENGENDRÉ** (`s2`, mêmes graines, mêmes options) :
+
+| | avant D367 | après |
+|---|---|---|
+| parties contredisant leur vérité | 5 / 74 | 5 / 74 — **mais plus les mêmes** |
+| dont la MACHINE sonnait ailleurs (`vsm.membrane`) | 2 | **0** |
+| dont un paramètre non déclaré déplaçait la hauteur (`vsm.scanned`) | 1 | **0** |
+| patchs retirés pour désaccord mesuré | — | **12** |
+| désaccord MESURÉ maximal du lot | non mesuré | **1,63** demi-ton (borne 2), sur 58 parties lisibles, **0** au-delà |
+
+**ET LE DÉPARTAGE, QUI EST LE VRAI RÉSULTAT.** Les cinq parties qui restaient
+accusées portaient toutes un désaccord de patch **dans la borne** (−1,86 à
++0,77), et la dérive lue sur leur rendu les disculpe toutes :
+
+| partie | lu par le transcripteur | **mesuré sur le rendu** |
+|---|---|---|
+| `vsm.minimoog` (accompagnement) | −7 demi-tons sur 216 notes | **+0,06** |
+| `vsm.pcmhybrid` | +13 sur 11 notes | **−0,40** |
+| `vsm.minimoog` (nappe) | −7 sur 25 notes | **+0,97** |
+| `vsm.jupiter8` | −1 sur 120 notes | **+0,85** |
+| `vsm.reed` (basse) | −5 sur 42 notes | hauteur **illisible** |
+
+**Aucune des cinq n'est un défaut du corpus.** `tools/corpus-hauteurs.py`
+départage donc désormais trois cas là où il n'en voyait qu'un —
+**CONTREDIT** (le rendu sort de la borne), **TRANSCRIPTION** (le rendu sonne
+juste, c'est le transcripteur qui lit ailleurs), **INDÉCIDABLE** (hauteur du
+rendu illisible, ou vérité antérieure à D367) — et une partie indécidable n'est
+**jamais** comptée juste par défaut. Sans ce départage, on aurait réglé le
+corpus pour un défaut du transcripteur : c'est exactement le piège de D266, et
+il aura fallu la mesure du rendu pour en sortir.
+
+**ET LA PORTE DU § 7 bis.3 EST FRANCHIE**, rejouée sur les 74 parties du lot :
+
+```
+PARTIES 74  CONTREDITES 0  TRANSCRIPTION 4  INDECIDABLES 1
+MORCEAUX_INUTILISABLES 0
+```
+
+Les deux gardes de corpus sont vertes — `tools/corpus-exigences.py` rend **4/4**
+(10/10 morceaux longs, 18/74 parties mélodiques brèves pour 15 exigées, 22 891
+notes sous 120 ms pour 500, 7/10 morceaux échantillonnés, 5/10 chantés, désaccord
+mesuré maximal 1,63 demi-ton) et `tools/corpus-hauteurs.py` ne trouve **plus une
+seule partie dont le rendu contredise sa vérité**. La campagne de reconstruction
+peut partir : `reconstruction/travail/banc-s2.sh` l'attendait, et **refuse de
+démarrer** tant que la première garde n'est pas verte.
+
+**Suites, relevées en lançant les cinq suites du moteur et celle de Python** :
+**1 998 côté moteur** (1 303 audio, 355 core, 304 interchange, 25 clap, 11 panels)
+et **223 côté Python** — 214 avant D366, +6 par D366 et **+3 par D367** (la
+hauteur sonnante et ses butées : un 20 Hz est illisible, et non lu comme la
+borne ; le patch mal accordé retiré et dit ; le vivier qui écarte les quatre
+machines déclarées). `ruff` propre, `mypy` sans faute sur 141 fichiers.

@@ -230,5 +230,230 @@ def le_tableau_de_bord_calcule_les_bornes_avec_le_moteur():
     assert_equal(agregat["arbitrage"]["top_6"], 3, "top 6 agrégé")
 
 
+# ---------------------------------------------------------------------------
+# B5 / § 7 bis : les trois exigences du corpus suivant
+# ---------------------------------------------------------------------------
+
+def _partie_d_essai(role: str, notes) -> vsm_morceaux.Partie:
+    return vsm_morceaux.Partie(role=role, machine="vsm.juno106", patch={}, vecteur=[], notes=notes,
+                               registre=[[48, 72]], niveau_rms=0.05, niveau_db=-26.0, gain=1.0,
+                               pan=0.0, gate=0.85)
+
+
+@test
+def l_arrangement_fait_entrer_et_sortir_les_parties():
+    """Exigence 1 : deux parties au moins ne sonnent pas d'un bout à l'autre,
+    aucune section n'est muette, et les notes sont VRAIMENT filtrées."""
+    rng = np.random.default_rng(7)
+    s = vsm_morceaux.Structure(rng, 240.0)
+    sections = vsm_morceaux.sections_du_morceau(s)
+    assert_true(len(sections) >= 4, f"un morceau de {s.duree:.0f} s fait {len(sections)} sections")
+    parties = [_partie_d_essai(role, vsm_morceaux.notes_nappe(rng, s, (48, 72), 0.9))
+               for role in ("basse", "batterie", "melodie", "nappe", "accompagnement")]
+    avant = [len(p.notes) for p in parties]
+    arrangement = vsm_morceaux.arranger(rng, s, parties, lambda ligne: None)
+    assert_true(arrangement is not None, "l'arrangement est posé")
+    nb = len(arrangement["sections"])
+    partielles = [p for p in parties if p.sections is not None and len(p.sections) < nb]
+    assert_true(len(partielles) >= 2, f"au moins deux parties partielles, il y en a {len(partielles)}")
+    for k in range(nb):
+        assert_true(any(k in (p.sections or []) for p in parties), f"la section {k} n'est pas muette")
+    for partie, combien in zip(parties, avant, strict=True):
+        assert_true(len(partie.notes) > 0, f"{partie.role} garde des notes")
+        if len(partie.sections or []) < nb:
+            assert_true(len(partie.notes) < combien, f"{partie.role} : les notes hors sections sont parties")
+            fenetres = [(arrangement["sections"][k]["debut"], arrangement["sections"][k]["fin"])
+                        for k in (partie.sections or [])]
+            assert_true(all(any(a - 1e-9 <= n[2] < b for a, b in fenetres) for n in partie.notes),
+                        f"{partie.role} : aucune note hors de ses sections")
+        else:
+            assert_equal(len(partie.notes), combien, f"{partie.role} sonne partout : rien n'est filtré")
+
+
+@test
+def un_morceau_trop_court_dit_que_l_arrangement_est_impossible():
+    rng = np.random.default_rng(3)
+    s = vsm_morceaux.Structure(rng, 2.0)
+    dit: list[str] = []
+    parties = [_partie_d_essai("melodie", [[60, 100, 0.0, 0.5]])]
+    assert_true(vsm_morceaux.arranger(rng, s, parties, dit.append) is None, "pas d'arrangement")
+    assert_true(any("impossible" in ligne for ligne in dit), "et il est DIT, pas tu")
+    assert_true(parties[0].sections is None, "la partie n'a pas de sections")
+
+
+@test
+def le_phrase_bref_donne_des_notes_sous_120_ms():
+    """Exigence 2 : des frappes courtes sur la grille de double croche, à la
+    hauteur et à la place du phrasé d'origine."""
+    rng = np.random.default_rng(11)
+    s = vsm_morceaux.Structure(rng, 30.0)
+    notes = vsm_morceaux.notes_melodie(rng, s, (60, 84), 0.85)
+    brefs = vsm_morceaux.raccourcir_phrase(rng, s, notes, 0.070)
+    assert_true(len(brefs) >= len(notes), "une note longue donne une à quatre frappes")
+    assert_true(all(abs(n[3] - 0.070) < 1e-9 for n in brefs), "toutes les frappes durent 70 ms")
+    assert_true(all(n[3] < 0.120 for n in brefs), "toutes sous le seuil du cahier des charges")
+    assert_true(set(int(n[0]) for n in brefs) == set(int(n[0]) for n in notes), "mêmes hauteurs")
+    assert_true(all(1 <= n[1] <= 127 for n in brefs), "vélocités bien formées")
+    pas = s.battement / 4
+    assert_true(all(min(abs((n[2] - m[2]) % pas), pas - abs((n[2] - m[2]) % pas)) < 1e-6
+                    for n, m in zip(brefs, brefs[1:], strict=False)), "sur la grille de double croche")
+
+
+@test
+def le_defaut_ne_porte_aucune_des_trois_exigences():
+    """Le corpus d'avant : aucune section, aucun phrasé bref, aucun profil — et
+    la vérité le DIT, pour que deux lots ne se comparent qu'à options égales."""
+    with VsmEngine(sample_rate=44100) as moteur:
+        verite, _, _ = _generateur(moteur).fabriquer(21, duree=1.0, nombre_de_parties=2, cas="aucun")
+    assert_equal(verite["exigences"], {"arrangement": False, "notes_breves": False,
+                                       "echantillons": False, "borne_hauteur": 0.0},
+                 "les trois options sont dans la provenance, à faux")
+    assert_true(verite["arrangement"] is None, "aucun arrangement")
+    for partie in verite["parties"]:
+        assert_true(partie["sections"] is None and partie["phrase_breve"] is None, "aucune exigence posée")
+        assert_equal(partie["profil"], "", "aucun profil")
+
+
+@test
+def un_profil_refuse_par_le_moteur_est_dit_et_remplace():
+    """Exigence 3 : `vsm.multisample` refuse un profil au-delà de son budget
+    mémoire. Le tirage ne doit pas insister sur un profil refusé, et le refus
+    ne doit pas être tu — c'est ce qui a coûté huit rendus par partie perdue."""
+    class MoteurFactice:
+        def profiles(self):
+            return [{"name": "Essai-Grand-Piano", "path": "/tmp/gros.profile.json"},
+                    {"name": "Essai-E-Piano", "path": "/tmp/petit.profile.json"}]
+
+    refuses = []
+
+    def rendre(machine, patch, notes, duree, profil=None):
+        if profil == "/tmp/gros.profile.json":
+            refuses.append(profil)
+            raise vsm_morceaux.VsmEngineError("profil refusé : profil au-delà du budget mémoire de 256 Mo")
+        return np.full(int(duree * vsm_morceaux.SR), 0.1, dtype=np.float32)
+
+    generateur = Generateur(MoteurFactice(), machines=MACHINES, rendre=rendre,  # type: ignore[arg-type]
+                            journal=lambda ligne: None)
+    rng = np.random.default_rng(1)
+    choisis = [generateur.profil_pour(rng, "accompagnement").get("nom") for _ in range(6)]
+    assert_true(all(nom == "Essai-E-Piano" for nom in choisis),
+                f"seul le profil accepté est retenu, six fois : {set(choisis)}")
+    assert_equal(len(refuses), 1, "le gros profil n'est éprouvé QU'UNE fois : le verdict est mémorisé")
+    assert_true("budget mémoire" in generateur.profil_refuse("/tmp/gros.profile.json"),
+                "et la raison du moteur est gardée telle quelle")
+
+
+@test
+def les_trois_exigences_traversent_un_vrai_morceau():
+    """De bout en bout, avec le moteur : les sections filtrent, le phrasé bref
+    donne des notes sous 120 ms, et le CALAGE DE NIVEAU se fait sur ce qui
+    sonne — sans quoi l'arrangement changerait le mixage."""
+    with VsmEngine(sample_rate=44100) as moteur:
+        generateur = _generateur(moteur, arrangement=True, notes_breves=True, borne_hauteur=2.0)
+        verite, stems, _ = generateur.fabriquer(5, duree=90.0, nombre_de_parties=4, cas="aucun")
+    assert_equal(verite["exigences"]["arrangement"], True, "la provenance dit l'arrangement")
+    arrangement = verite["arrangement"]
+    assert_true(arrangement is not None and len(arrangement["sections"]) >= 2, "au moins deux sections")
+    nb = len(arrangement["sections"])
+    partielles = [p for p in verite["parties"] if len(p["sections"]) < nb]
+    assert_true(len(partielles) >= 2, f"deux parties au moins entrent ou sortent ({len(partielles)})")
+    brefs = [p for p in verite["parties"]
+             if p["role"] != "batterie" and any(n[3] < 0.120 for n in p["notes"])]
+    assert_true(brefs, "au moins une partie mélodique porte des notes sous 120 ms")
+    for partie in brefs:
+        assert_true(partie["phrase_breve"] is not None, "et la vérité le dit")
+    # Le niveau : mesuré sur les seules sections où la partie joue. Le mono se
+    # REFAIT en inversant la loi de panoramique, qui est à puissance constante :
+    # sommer les deux canaux ajouterait jusqu'à √2 au centre, et le premier
+    # essai de ce test accusait le calage d'un facteur 1,41 qui était le sien.
+    import math as _math
+    for partie, stem in zip(verite["parties"], stems, strict=True):
+        if len(partie["sections"]) >= nb:
+            continue
+        fenetres = [(arrangement["sections"][k]["debut"], arrangement["sections"][k]["fin"])
+                    for k in partie["sections"]]
+        theta = (float(partie["pan"]) + 1.0) * _math.pi / 4.0
+        mono = stem[:, 0] * _math.cos(theta) + stem[:, 1] * _math.sin(theta)
+        attendu = partie["niveau_rms"] * verite["gain_crete"]
+        assert_near(vsm_morceaux._rms_fenetres(mono, fenetres), attendu, attendu * 0.05,
+                    f"{partie['role']} : calée à son niveau LÀ OÙ ELLE JOUE")
+
+
+@test
+def la_hauteur_sonnante_se_lit_et_dit_quand_elle_ne_lit_rien():
+    """La mesure qui décide du rejet : juste sur un son périodique, None sur du
+    bruit et EN BUTÉE de sa fenêtre — jamais un chiffre tiré de sa propre borne."""
+    sr = vsm_morceaux.SR
+    t = np.arange(int(0.8 * sr)) / sr
+    la440 = np.sin(2 * np.pi * 440.0 * t).astype(np.float32)
+    assert_near(vsm_morceaux.hauteur_sonnante(la440), 69.0, 0.1, "un la 440 est lu comme la note 69")
+    do = np.sin(2 * np.pi * 261.63 * t).astype(np.float32)
+    assert_near(vsm_morceaux.hauteur_sonnante(do), 60.0, 0.1, "un do 3 est lu comme la note 60")
+    bruit = np.zeros(int(0.8 * sr), dtype=np.float32)
+    assert_true(vsm_morceaux.hauteur_sonnante(bruit) is None, "le silence n'a pas de hauteur")
+    # 20 Hz : sous la fenêtre de recherche. La corrélation y est quasi parfaite
+    # dès le plus petit décalage, si bien que le maximum tombe EN BUTÉE — et
+    # c'est ce cas-là qui faisait lire six machines à « +35,25 demi-tons »,
+    # c'est-à-dire la borne elle-même écrite comme un résultat.
+    grave = np.sin(2 * np.pi * 20.0 * t).astype(np.float32)
+    assert_true(vsm_morceaux.hauteur_sonnante(grave) is None,
+                "une hauteur sous la fenêtre est illisible, et non lue comme la borne")
+    # Dans la fenêtre, en revanche, l'aigu se lit (4 kHz ≈ note 107).
+    assert_near(vsm_morceaux.hauteur_sonnante(np.sin(2 * np.pi * 4000.0 * t).astype(np.float32)),
+                107.2, 0.3, "un aigu dans la fenêtre se lit")
+    assert_near(vsm_morceaux.hors_octave(12.3), 0.3, 1e-9, "l'octave est retirée")
+    assert_near(vsm_morceaux.hors_octave(-24.5), -0.5, 1e-9, "deux octaves aussi")
+    assert_near(vsm_morceaux.hors_octave(-3.8), -3.8, 1e-9, "et ce qui n'est pas une octave reste")
+
+
+@test
+def un_patch_qui_sonne_a_cote_est_retire_et_dit():
+    """Le second volet de l'exigence 4 : la dérive est LUE sur la sonde, donc
+    vue quelle qu'en soit la cause — y compris un réglage que le moteur ne
+    déclare pas en demi-tons (tension de corde, ratio d'opérateur FM)."""
+    sr = vsm_morceaux.SR
+
+    def ton(frequence, duree):
+        n = int(duree * sr)
+        return (0.3 * np.sin(2 * np.pi * frequence * np.arange(n) / sr)).astype(np.float32)
+
+    faux = {"n": 0}
+
+    def rendre(machine, patch, notes, duree, profil=None):
+        faux["n"] += 1
+        # Les trois premiers patchs sonnent une quarte trop haut, puis juste.
+        decalage = 5.0 if faux["n"] <= 3 else 0.0
+        return ton(440.0 * 2 ** ((60 + decalage - 69) / 12.0), duree)
+
+    class MoteurFactice:
+        def profiles(self):
+            return []
+
+    with VsmEngine(sample_rate=sr) as moteur:
+        espace = moteur.search_profile("vsm.juno106")
+    generateur = Generateur(MoteurFactice(), machines=["vsm.juno106"], rendre=rendre,  # type: ignore[arg-type]
+                            borne_hauteur=2.0, journal=lambda ligne: None)
+    generateur._espaces["vsm.juno106"] = espace
+    _patch, _vecteur, rejets, origine = generateur.tirer_patch(np.random.default_rng(2), "vsm.juno106", 60)
+    assert_equal(rejets, 3, "les trois patchs faux sont retirés")
+    assert_true("SearchProfile" in origine, "et le quatrième est gardé")
+    assert_near(generateur._derive_sonde, 0.0, 0.1, "la dérive retenue est nulle")
+
+
+@test
+def les_machines_qui_ne_sonnent_pas_juste_sortent_du_vivier():
+    """Mesurées le 19/09 : quatre machines ne sonnent pas à la note qu'on leur
+    joue DÈS le patch d'usine. Elles restent au parc et au DAW ; c'est le vivier
+    mélodique du BANC qui les écarte, parce que sa vérité compare la hauteur
+    écrite à la hauteur entendue."""
+    with VsmEngine(sample_rate=44100) as moteur:
+        vivier = vsm_morceaux.machines_melodiques_du_banc(moteur)
+    assert_true(len(vsm_morceaux.MACHINES_SANS_HAUTEUR_JUSTE) >= 4, "quatre au moins sont déclarées")
+    for machine, raison in vsm_morceaux.MACHINES_SANS_HAUTEUR_JUSTE.items():
+        assert_true(machine not in vivier, f"{machine} hors du vivier mélodique du banc")
+        assert_true(len(raison) > 20, f"{machine} : la raison est écrite, pas sous-entendue")
+    assert_true("vsm.piano" in vivier and "vsm.juno106" in vivier, "le vivier garde ce qui sonne juste")
+
+
 if __name__ == "__main__":
     raise SystemExit(run())
