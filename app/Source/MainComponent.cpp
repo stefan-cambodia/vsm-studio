@@ -6718,6 +6718,22 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     if (!arrangement_.reprendreLaVue(vue.pixelsPerTick, vue.scrollTick))
         arrangement_.zoomToFit();
 
+    // D369 : LA PISTE CHOISIE ET LA VUE DU PIANO ROLL, même règle. Le commentaire
+    // ci-dessus disait « le piano roll a son propre cadrage depuis D338 : on ne
+    // le touche pas ici » — c'était vrai tant que le format ne portait rien sur
+    // lui. Il en porte désormais, et c'est LUI qui prime, le cadrage de D338
+    // restant le repli exactement comme celui de D362 pour l'arrangement.
+    //
+    // L'ORDRE COMPTE : la piste d'abord, la vue du piano roll ensuite. Choisir
+    // une piste change ce que le piano roll montre et le fait se recadrer ;
+    // reprendre la vue avant le choix la ferait écraser par ce recadrage.
+    if (vue.selectedTrack >= 0
+        && static_cast<size_t>(vue.selectedTrack) < project_.tracks.size())
+        trackList_.setSelectedTracks({static_cast<size_t>(vue.selectedTrack)},
+                                      static_cast<size_t>(vue.selectedTrack));
+    pianoRoll_.reprendreLaVue(vue.pianoRollPixelsPerTick, vue.pianoRollScrollTick,
+                               vue.pianoRollTopNote, vue.pianoRollNoteHeight);
+
     // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
     // donnerait un morceau amputé sans explication -- c'est précisément
     // le genre de panne que ce projet refuse.
@@ -7290,10 +7306,30 @@ void MainComponent::autosaveIfNeeded() {
     // et la même raison : `interchange/` ne connaît aucun composant, c'est ici
     // qu'on voit les deux. Sans cela, une reprise après panne rouvrait le
     // projet au cadrage automatique — on retrouvait son travail, pas son écran.
+    autosave_->requestSave(project_, presets, currentProjectFolder_, vueActuelle());   // D369
+}
+
+// D369 : LA VUE COURANTE, COMPOSÉE UNE FOIS POUR LES DEUX CHEMINS D'ÉCRITURE.
+//
+// `interchange/` ne connaît aucun composant : c'est ici, au seul endroit qui
+// voit à la fois l'arrangement, le piano roll et la liste des pistes, que la vue
+// se compose. Elle l'était en DEUX exemplaires — l'enregistrement manuel depuis
+// D363, la sauvegarde automatique depuis D368 —, et le second n'existait que
+// parce que le premier avait été oublié pendant cinq jours. Un seul endroit,
+// donc, à compléter le jour où la vue portera un champ de plus.
+vsm::interchange::ProjectDocument::View MainComponent::vueActuelle() const {
     vsm::interchange::ProjectDocument::View vue;
     vue.pixelsPerTick = arrangement_.zoomActuel();
     vue.scrollTick = arrangement_.defilementActuel();
-    autosave_->requestSave(project_, presets, currentProjectFolder_, vue);
+    // La piste choisie n'est enregistrée que si elle EXISTE : un index qui
+    // déborde le projet rouvrirait sur une piste qui n'est pas là.
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste < project_.tracks.size()) vue.selectedTrack = static_cast<int>(piste);
+    vue.pianoRollPixelsPerTick = pianoRoll_.pixelsPerTick();
+    vue.pianoRollScrollTick = pianoRoll_.visibleStartTick();
+    vue.pianoRollTopNote = pianoRoll_.noteDuHaut();
+    vue.pianoRollNoteHeight = pianoRoll_.noteHeight();
+    return vue;
 }
 
 // D368 : VSM_AUTOSAUVEGARDE -- forcer une sauvegarde automatique et dire OÙ.
@@ -8662,8 +8698,8 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     // l'a laissé. `documentFromProject` vit dans `interchange/`, qui ne connaît
     // aucun composant ; c'est ici, au seul endroit qui voit les deux, que la vue
     // entre dans le document.
-    aEcrire.document.view.pixelsPerTick = arrangement_.zoomActuel();
-    aEcrire.document.view.scrollTick = arrangement_.defilementActuel();
+    // D369 : la MÊME vue que la sauvegarde automatique, composée au même endroit.
+    aEcrire.document.view = vueActuelle();
     aEcrire.folderPath = currentProjectFolder_ == juce::File()
                              ? std::string()
                              : currentProjectFolder_.getFullPathName().toStdString();

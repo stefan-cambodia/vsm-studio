@@ -358,11 +358,46 @@ struct ProjectDocument {
     /// une préférence globale rendrait le cadrage faux dès le second. C'est
     /// d'ailleurs ce que D362 a corrigé faute de ce champ — son cadrage
     /// automatique reste le repli quand rien n'est enregistré.
+    ///
+    /// D369 : ET CE QUI MANQUAIT À D363-D368 — la piste choisie et la vue du
+    /// PIANO ROLL. La règle de partage est celle que D363 a posée et elle
+    /// tranche chaque champ : ce qui dépend du MORCEAU va dans le projet, ce qui
+    /// n'en dépend pas reste dans les préférences. La piste choisie en dépend
+    /// (la piste 3 d'un morceau n'est pas celle d'un autre) ; le zoom, le
+    /// défilement, la hauteur de rang et la note du haut du piano roll en
+    /// dépendent (ils cadrent un matériau) ; l'onglet du dock et la position des
+    /// fenêtres flottantes n'en dépendent PAS, et restent donc où D363 les a
+    /// laissés.
     struct View {
         /// Pixels par tick de la vue d'arrangement. 0 = rien d'enregistré.
         double pixelsPerTick = 0.0;
         /// Premier tick montré à gauche.
         vsm::midi::Tick scrollTick = 0;
+        /// D369 : la piste choisie. -1 = rien d'enregistré (et non 0, qui est
+        /// une piste valable — le défaut ne doit pas se confondre avec un choix).
+        int selectedTrack = -1;
+        /// D369 : pixels par tick du piano roll. 0 = rien d'enregistré.
+        double pianoRollPixelsPerTick = 0.0;
+        /// D369 : premier tick montré par le piano roll.
+        vsm::midi::Tick pianoRollScrollTick = 0;
+        /// D369 : la note dessinée tout en haut du piano roll. 0 = rien
+        /// d'enregistré ; les valeurs utiles vont de 12 à 127.
+        int pianoRollTopNote = 0;
+        /// D369 : la hauteur d'un rang du piano roll, en pixels. 0 = rien
+        /// d'enregistré. Elle voyage avec le reste parce qu'elle décide
+        /// COMBIEN de hauteurs tiennent à l'écran : la reprendre sans elle
+        /// remettrait la note du haut sur une fenêtre d'une autre taille.
+        int pianoRollNoteHeight = 0;
+
+        /// Vrai dès qu'un seul champ dit quelque chose. C'est CE prédicat qui
+        /// décide de l'écriture, et non le seul zoom d'arrangement : depuis
+        /// D369 la vue a plusieurs champs facultatifs indépendants, et n'en
+        /// regarder qu'un ferait taire les autres (un piano roll cadré dans un
+        /// projet dont l'arrangement n'a jamais bougé ne s'écrirait pas).
+        bool ditQuelqueChose() const {
+            return pixelsPerTick > 0.0 || selectedTrack >= 0
+                   || pianoRollPixelsPerTick > 0.0 || pianoRollTopNote > 0;
+        }
     };
     View view;
 };

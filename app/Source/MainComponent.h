@@ -187,9 +187,28 @@ public:
     /// la fin de la course, pour que le fichier écrit porte TOUS les gestes.
     bool enregistrerSousPourCapture(const juce::File& dossier);
     /// D338 : VSM_PIANOROLL_ZONES -- le rang du piano roll et la police des touches, après les gestes.
-    void releverRangPianoRoll() const { pianoRoll_.releverRangPourCapture(); }
+    void releverRangPianoRoll() const {
+        pianoRoll_.releverRangPourCapture();
+        // D369 : ET LA PISTE CHOISIE, dite au même moment. Aucun relevé ne
+        // l'écrivait : `VSM_GESTE : choisir` ne parle que du geste qui vient
+        // d'être joué, si bien qu'une piste choisie par le PROJET à l'ouverture
+        // — ce que cette phase ajoute — ne laissait aucune trace. On dit aussi
+        // COMBIEN il y en a : « piste 2 » sur un projet qui n'en a qu'une ne
+        // veut pas dire la même chose.
+        std::fputs((juce::String("VSM_PISTE_CHOISIE : ")
+                    + juce::String(static_cast<int>(trackList_.selectedTrackIndex()))
+                    + " sur " + juce::String(static_cast<int>(project_.tracks.size()))
+                    + "\n").toRawUTF8(), stderr);
+    }
     /// D362 : VSM_ARRANGEMENT -- la part du morceau que l'arrangement montre.
     void releverFenetreArrangement() const { arrangement_.direLaFenetre(); }
+    /// D369 : LA VUE COURANTE, EN UN SEUL ENDROIT. Les deux chemins qui
+    /// écrivent un projet — « Enregistrer sous… » et la sauvegarde automatique —
+    /// la demandent ici plutôt que de la composer chacun de son côté : c'est
+    /// exactement ainsi que D368 est arrivée, la sauvegarde automatique ayant
+    /// été oubliée quand D363 a donné la vue à l'enregistrement manuel. Un seul
+    /// endroit à compléter le jour où la vue portera un champ de plus.
+    vsm::interchange::ProjectDocument::View vueActuelle() const;
     /// D368 : force une sauvegarde automatique et imprime le chemin écrit
     /// (`VSM_AUTOSAUVEGARDE : <fichier>`). Le dossier de session porte un
     /// UUID tiré au lancement : un banc ne peut pas le deviner.

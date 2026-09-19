@@ -1473,6 +1473,69 @@ VSM_TEST(a_project_without_a_saved_view_keeps_the_file_it_had) {
     VSM_ASSERT(relu.document.view.pixelsPerTick == 0.0);
 }
 
+// D369 : LA PISTE CHOISIE ET LA VUE DU PIANO ROLL font le même voyage, et
+// chaque champ est facultatif SÉPARÉMENT — un projet dont seul le piano roll a
+// été cadré doit s'écrire sans zoom d'arrangement, et non se taire.
+VSM_TEST(the_selected_track_and_piano_roll_view_survive_the_round_trip) {
+    ProjectDocument document = documentFromProject(buildProject());
+    document.view.selectedTrack = 2;
+    document.view.pianoRollPixelsPerTick = 0.25;
+    document.view.pianoRollScrollTick = 1920;
+    document.view.pianoRollTopNote = 48;
+    document.view.pianoRollNoteHeight = 22;
+    const std::string texte = projectDocumentToJson(document).toString();
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.view.selectedTrack == 2);
+    VSM_ASSERT(relu.document.view.pianoRollPixelsPerTick > 0.249
+               && relu.document.view.pianoRollPixelsPerTick < 0.251);
+    VSM_ASSERT(relu.document.view.pianoRollScrollTick == 1920);
+    VSM_ASSERT(relu.document.view.pianoRollTopNote == 48);
+    VSM_ASSERT(relu.document.view.pianoRollNoteHeight == 22);
+    // ET L'ARRANGEMENT N'A RIEN INVENTÉ : on ne lui a donné aucun zoom.
+    VSM_ASSERT(relu.document.view.pixelsPerTick == 0.0);
+}
+
+VSM_TEST(a_view_that_only_holds_a_piano_roll_is_still_written) {
+    // LE PIÈGE QUE CE TEST GARDE : l'écriture était conditionnée au SEUL zoom
+    // d'arrangement. Ajouter des champs sans toucher à cette condition les
+    // aurait fait disparaître en silence dès que l'arrangement n'avait pas bougé.
+    ProjectDocument document = documentFromProject(buildProject());
+    document.view.pianoRollTopNote = 60;
+    const std::string texte = projectDocumentToJson(document).toString();
+    VSM_ASSERT(texte.find("\"view\"") != std::string::npos);
+    VSM_ASSERT(texte.find("pixelsPerTick") == std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.view.pianoRollTopNote == 60);
+}
+
+VSM_TEST(an_impossible_selected_track_or_top_note_is_ignored) {
+    // Mêmes bornes qu'à l'écriture : une piste négative et une note hors du
+    // clavier ne veulent rien dire, et le repli (première piste, cadrage de
+    // D338) vaut mieux qu'une vue que personne ne saurait défaire.
+    const auto lire = [](const char* piste, const char* note) {
+        return parseProjectDocument(
+            std::string(R"({"format":"vsm-project","version":1,"title":"x",)")
+            + R"("midi":{"file":"midi/arrangement.mid"},)"
+            + R"("view":{"selectedTrack":)" + piste + R"(,"pianoRollTopNote":)" + note + R"(},)"
+            + R"("transport":{"ticksPerQuarterNote":480,"tempoChanges":[{"tick":0,"bpm":120}],)"
+            + R"("timeSignatures":[{"tick":0,"numerator":4,"denominator":4}]},"tracks":[]})");
+    };
+    const ProjectLoadResult absurde = lire("-3", "200");
+    VSM_ASSERT(absurde.success);
+    VSM_ASSERT(absurde.document.view.selectedTrack == -1);
+    VSM_ASSERT(absurde.document.view.pianoRollTopNote == 0);
+    // ET LE TÉMOIN : les mêmes champs, valables, sont bien repris — sans quoi ce
+    // test passerait aussi si la lecture ne lisait rien du tout.
+    const ProjectLoadResult bon = lire("0", "48");
+    VSM_ASSERT(bon.success);
+    VSM_ASSERT(bon.document.view.selectedTrack == 0);
+    VSM_ASSERT(bon.document.view.pianoRollTopNote == 48);
+}
+
 VSM_TEST(an_impossible_zoom_is_ignored_rather_than_obeyed) {
     // Un zoom nul ou négatif ne cadre rien. Le relire comme tel ferait ouvrir le
     // projet sur une vue vide ; l'ignorer rend la main au cadrage automatique de

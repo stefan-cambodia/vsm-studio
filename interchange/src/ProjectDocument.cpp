@@ -675,10 +675,28 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     // enregistré, comme le punch et les départs : un projet qui n'en a pas garde
     // exactement le fichier qu'il avait avant que ce champ existe, et un fichier
     // ancien se relit sans rien remarquer.
-    if (document.view.pixelsPerTick > 0.0) {
+    // D369 : CHAQUE CHAMP DE LA VUE EST FACULTATIF SÉPARÉMENT. Le bloc s'écrit
+    // dès qu'un seul dit quelque chose (`ditQuelqueChose`), et chaque champ n'y
+    // entre que s'il a été enregistré : un projet dont seul le piano roll a été
+    // cadré n'écrit pas de zoom d'arrangement, et ne s'en verra pas inventer un.
+    if (document.view.ditQuelqueChose()) {
         JsonValue vue = JsonValue::makeObject();
-        vue.set("pixelsPerTick", JsonValue::makeNumber(document.view.pixelsPerTick));
-        vue.set("scrollTick", JsonValue::makeNumber(static_cast<double>(document.view.scrollTick)));
+        if (document.view.pixelsPerTick > 0.0) {
+            vue.set("pixelsPerTick", JsonValue::makeNumber(document.view.pixelsPerTick));
+            vue.set("scrollTick", JsonValue::makeNumber(static_cast<double>(document.view.scrollTick)));
+        }
+        if (document.view.selectedTrack >= 0)
+            vue.set("selectedTrack", JsonValue::makeNumber(document.view.selectedTrack));
+        if (document.view.pianoRollPixelsPerTick > 0.0) {
+            vue.set("pianoRollPixelsPerTick",
+                     JsonValue::makeNumber(document.view.pianoRollPixelsPerTick));
+            vue.set("pianoRollScrollTick",
+                     JsonValue::makeNumber(static_cast<double>(document.view.pianoRollScrollTick)));
+        }
+        if (document.view.pianoRollTopNote > 0)
+            vue.set("pianoRollTopNote", JsonValue::makeNumber(document.view.pianoRollTopNote));
+        if (document.view.pianoRollNoteHeight > 0)
+            vue.set("pianoRollNoteHeight", JsonValue::makeNumber(document.view.pianoRollNoteHeight));
         root.set("view", std::move(vue));
     }
 
@@ -958,6 +976,23 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             document.view.scrollTick =
                 static_cast<vsm::midi::Tick>(std::max(0.0, vue["scrollTick"].asNumber()));
         }
+        // D369 : LES MÊMES BORNES QU'À L'ÉCRITURE, ET UNE VALEUR ABSURDE EST
+        // IGNORÉE PLUTÔT QU'OBÉIE — c'est la règle de D363, étendue aux champs
+        // neufs. Une piste négative, une note hors du clavier, un rang nul : le
+        // repli (cadrage automatique, première piste) vaut mieux qu'une vue que
+        // personne ne pourrait défaire.
+        const double piste = vue["selectedTrack"].asNumber(-1.0);
+        if (piste >= 0.0) document.view.selectedTrack = static_cast<int>(piste);
+        const double zoomPr = vue["pianoRollPixelsPerTick"].asNumber();
+        if (zoomPr > 0.0) {
+            document.view.pianoRollPixelsPerTick = zoomPr;
+            document.view.pianoRollScrollTick = static_cast<vsm::midi::Tick>(
+                std::max(0.0, vue["pianoRollScrollTick"].asNumber()));
+        }
+        const double haut = vue["pianoRollTopNote"].asNumber();
+        if (haut >= 12.0 && haut <= 127.0) document.view.pianoRollTopNote = static_cast<int>(haut);
+        const double rang = vue["pianoRollNoteHeight"].asNumber();
+        if (rang > 0.0 && rang <= 48.0) document.view.pianoRollNoteHeight = static_cast<int>(rang);
     }
     const JsonValue& transport = json["transport"];
     document.transport.ticksPerQuarterNote = static_cast<int>(transport["ticksPerQuarterNote"].asNumber(480.0));

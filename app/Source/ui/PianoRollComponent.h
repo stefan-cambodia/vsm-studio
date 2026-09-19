@@ -87,6 +87,28 @@ public:
     double pixelsPerTick() const { return pixelsPerTick_; }
     vsm::midi::Tick visibleStartTick() const { return scrollTick_; }
     int noteHeight() const { return noteHeight_; }
+    /// D369 : la note dessinée tout en haut. Avec `noteHeight()`, elle suffit à
+    /// redire la fenêtre de hauteurs — et il faut les DEUX : la note du haut
+    /// seule, reprise sur un rang différent, ne montre pas les mêmes touches.
+    int noteDuHaut() const { return topNote_; }
+    /// D369 : reprend une vue enregistrée du piano roll. Rend FAUX si elle ne
+    /// veut rien dire (zoom hors bornes, note hors clavier, rang absurde) :
+    /// l'appelant laisse alors le cadrage faire son travail, comme
+    /// `ArrangementComponent::reprendreLaVue` depuis D363. Mieux vaut un cadrage
+    /// qu'une fenêtre de hauteurs que personne ne saurait défaire.
+    bool reprendreLaVue(double pixelsParTick, vsm::midi::Tick defilement,
+                         int noteDuHaut, int hauteurDeRang) {
+        if (!(pixelsParTick > 0.0) || pixelsParTick < 0.001 || pixelsParTick > 8.0) return false;
+        if (noteDuHaut < 12 || noteDuHaut > 127) return false;
+        if (hauteurDeRang < 4 || hauteurDeRang > 48) return false;
+        pixelsPerTick_ = pixelsParTick;
+        scrollTick_ = std::max<vsm::midi::Tick>(0, defilement);
+        topNote_ = noteDuHaut;
+        noteHeight_ = hauteurDeRang;
+        updateScrollBars();
+        repaint();
+        return true;
+    }
     /// D338 : LE RANG QUI PORTE UN NOM DE TOUCHE À 12 PT (le plancher de D323,
     /// plus trois pixels d'air). Le cadrage automatique (« Zoom : tout voir »,
     /// « Zoom : sélection ») ne descend jamais dessous : une piste qui ne tient

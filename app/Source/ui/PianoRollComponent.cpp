@@ -441,8 +441,29 @@ void PianoRollComponent::zoomHorizontally(float factor) {
 
 void PianoRollComponent::releverRangPourCapture() const {
     // D338 : ce que le clavier écrit, lu à la source de la peinture -- pas sur la photo.
-    std::fprintf(stderr, "VSM_PIANOROLL_RANG : rang=%d police=12 touches-nommees=%s do-nommes=1\n",
-                 noteHeight_, (noteHeight_ >= kRangNomme || folded()) ? "toutes" : "do-seulement");
+    // D369 : ET LA FENÊTRE DE HAUTEURS, sans quoi « le piano roll se rouvre où on
+    // l'a laissé » n'est mesurable par aucun banc. Le zoom, le défilement et la
+    // note du haut vivent dans des champs privés que la peinture consomme ; la
+    // photo, elle, ne rend que des pixels. On dit donc les DEUX bornes, celle du
+    // haut et celle du bas — la seconde dépend du rang, et c'est précisément ce
+    // couplage qui fait qu'une note du haut reprise sans son rang ne montre pas
+    // les mêmes touches.
+    const int lignes = std::max(1, contentArea().getHeight() / std::max(1, noteHeight_));
+    // LE ZOOM PASSE PAR `juce::String` ET NON PAR `%f` : la locale du processus
+    // est celle de JUCE, pas la nôtre, et `fprintf` y écrivait « zoom=0,080000 »
+    // — une VIRGULE. Un banc qui lit ce nombre pour le comparer ne le lirait
+    // pas. Mesuré ici même à la première course du relevé ; c'est le piège des
+    // nombres qui traversent une frontière, et il vaut pour un relevé comme
+    // pour un fichier.
+    std::fputs((juce::String("VSM_PIANOROLL_RANG : rang=") + juce::String(noteHeight_)
+                + " police=12 touches-nommees="
+                + ((noteHeight_ >= kRangNomme || folded()) ? "toutes" : "do-seulement")
+                + " do-nommes=1 haut=" + juce::String(topNote_)
+                + " bas=" + juce::String(std::max(0, topNote_ - lignes))
+                + " lignes=" + juce::String(lignes)
+                + " zoom=" + juce::String(pixelsPerTick_, 6)
+                + " defilement=" + juce::String(static_cast<juce::int64>(scrollTick_))
+                + "\n").toRawUTF8(), stderr);
 }
 
 void PianoRollComponent::zoomVertically(float factor) {

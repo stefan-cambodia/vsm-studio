@@ -30171,3 +30171,85 @@ piano roll —, exactement comme D363 l'a laissée. Et la sauvegarde automatique
 photographie la vue à l'instant où elle part : un zoom posé dans les secondes qui
 suivent la dernière photo n'est pas dans le fichier. C'est le prix d'une photo
 toutes les trente secondes, et il est le même pour les notes.
+
+### Phase D369 — le morceau se rouvrait avec son zoom, sans sa piste ni son éditeur (20/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ » DE D368**, qui disait ce que D363 avait
+laissé : *« la vue enregistrée ne retient que le zoom et le défilement de
+l'arrangement : ni la piste choisie, ni l'onglet du dock, ni le piano roll ».*
+
+**LA RÈGLE DE PARTAGE EST CELLE DE D363, ET ELLE TRANCHE CHAQUE CHAMP** — ce qui
+dépend du MORCEAU va dans le projet, ce qui n'en dépend pas reste dans les
+préférences :
+
+| champ | dépend du morceau ? | où il va |
+|---|---|---|
+| piste choisie | oui — la piste 3 d'un morceau n'est pas celle d'un autre | **projet** |
+| piano roll : zoom, défilement, note du haut, hauteur de rang | oui — ils cadrent un matériau | **projet** |
+| onglet du dock, fenêtres flottantes | non | préférences (D363) |
+
+**LA HAUTEUR DE RANG VOYAGE AVEC LA NOTE DU HAUT**, et ce n'est pas un détail :
+c'est elle qui décide COMBIEN de hauteurs tiennent à l'écran. Reprendre la note
+du haut sans elle rouvrirait sur d'autres touches.
+
+**CE QUI EST FAIT.** Cinq champs facultatifs de plus dans le bloc `view`, chacun
+écrit seulement s'il dit quelque chose. Et le prédicat qui décide de l'écriture
+change : il portait sur le SEUL zoom d'arrangement, si bien qu'ajouter des
+champs sans y toucher les aurait fait disparaître en silence dès que
+l'arrangement n'avait pas bougé — `ditQuelqueChose()` regarde désormais tous les
+champs, et un test le garde.
+
+**ET LA VUE SE COMPOSE EN UN SEUL ENDROIT** (`MainComponent::vueActuelle`). Elle
+l'était en deux exemplaires — l'enregistrement manuel depuis D363, la sauvegarde
+automatique depuis D368 —, et le second n'existait que parce que le premier avait
+été oublié cinq jours durant. **C'est la cause de D368 qu'on retire ici**, pas
+seulement son symptôme : il n'y a plus qu'un endroit à compléter le jour où la
+vue portera un champ de plus.
+
+**L'ORDRE COMPTE À LA RELECTURE** : la piste d'abord, le piano roll ensuite.
+Choisir une piste change ce que le piano roll montre et le fait se recadrer ;
+reprendre la vue avant le choix la ferait écraser par ce recadrage.
+
+**CE QUI A RENDU LA RÈGLE MESURABLE**, et sans quoi elle ne l'était pas :
+
+* `VSM_PIANOROLL_ZONES=1` dit désormais la **fenêtre de hauteurs** (`haut=`,
+  `bas=`, `lignes=`, `zoom=`, `defilement=`) et non plus le seul rang.
+* **`VSM_PISTE_CHOISIE` est neuf.** Aucun relevé ne disait quelle piste est
+  choisie : `VSM_GESTE : choisir` ne parle que du geste qu'on vient de jouer,
+  donc une piste choisie par le PROJET à l'ouverture ne laissait aucune trace.
+
+**MESURÉ** (projet engendré de trois pistes d'ambitus différents — grave 33,
+médium 60, aiguë 88 —, 1280 × 742) :
+
+| | témoin (reprise retirée) | **avec la reprise** |
+|---|---|---|
+| piste choisie, puis enregistrée | 2 | 2 |
+| fenêtre du piano roll à l'enregistrement | haut 61, rang 36 | haut 61, rang 36 |
+| **à la réouverture** | piste **0**, haut **84**, rang **16** | piste **2**, haut **61**, rang **36** |
+| le même projet SANS bloc `view` (contre-témoin) | piste 0, haut 84 | piste 0, haut 84 |
+
+Attendu tenu. Le contre-témoin est ce qui donne son sens au reste : sans lui,
+« avant = après » serait vrai aussi le jour où les deux valent le défaut. Garde
+`tools/vue-du-morceau.sh`, **six contrôles**, vue ROUGE sur le témoin (2 ratés,
+code 1) — et le témoin sépare bien les deux bouts, le fichier portant toujours
+ses champs quand la reprise est retirée.
+
+**Trois tests** d'interchange (304 → **307**) : l'aller-retour des cinq champs,
+une vue qui ne porte QUE le piano roll et s'écrit quand même, et des valeurs
+absurdes (piste négative, note hors clavier) ignorées plutôt qu'obéies — avec
+leur témoin, les mêmes champs valables étant bien repris, sans quoi le test
+passerait aussi si la lecture ne lisait rien.
+
+**ET LE RELEVÉ NEUF EST NÉ AVEC UNE VIRGULE.** Écrit au `std::fprintf` avec un
+`%.6f`, il publiait `zoom=0,080000` — la locale du processus est celle de JUCE,
+pas la nôtre, et un banc qui lit ce nombre pour le comparer ne le lirait pas.
+Vu à la PREMIÈRE course du relevé, sur un vrai projet. Le zoom passe désormais
+par `juce::String`, comme les autres relevés du dépôt : c'est le piège des
+nombres qui traversent une frontière, et il vaut pour un relevé autant que pour
+un fichier. Les six contrôles de la garde portent sur des entiers (piste, note
+du haut, rang) et ne l'auraient pas attrapé — c'est en REGARDANT la sortie qu'on
+l'a vu, pas en lisant un verdict.
+
+**Reste nommé, non fait** : la vue ne retient toujours rien des lanes du bas
+(automation, MIDI CC) ni de la largeur des panneaux ; et, comme pour D368, la
+sauvegarde automatique photographie la vue à l'instant où elle part.
