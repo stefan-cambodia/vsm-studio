@@ -30410,3 +30410,65 @@ ne peuvent l'être qu'en RELEVANT les libellés à l'exécution — ce que D358
 proposait déjà et que personne n'a écrit. La paire de traduction morte
 `" (Ctrl+S)"` de `Langue.cpp` est laissée en place : elle ne nuit pas, et la
 retirer sans savoir qui l'a posée est le genre de nettoyage qui casse.
+
+### Phase D372 — un libellé juste et un libellé menteur s'affichent pareil (20/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ » DE D371**, qui chiffrait ce que la lecture
+du code ne peut pas atteindre : **36 libellés bâtis sur une variable**, et
+« ne peuvent l'être qu'en RELEVANT les libellés à l'exécution — ce que D358
+proposait déjà et que personne n'a écrit ». Le relevé existait pourtant depuis
+D94 : `VSM_TEXTES_LISTE` descend les composants et rend chaque texte visible.
+
+**LA PREMIÈRE IDÉE ÉTAIT FAUSSE, ET C'EST LE CŒUR DE CETTE PHASE.** Chercher une
+touche entre parenthèses dans les textes affichés donne **15 « fautes »** — et
+les quinze sont JUSTES : « Annuler (Ctrl+Z) », « Zoom avant (=) », « Quantifier
+la sélection sur la grille (Ctrl+Q) »… sont précisément les infobulles que D358 a
+écrites avec `libelleAvecTouche`, qui ajoute la touche **vivante**.
+
+> **À l'exécution, un libellé juste et un libellé écrit en dur s'affichent
+> EXACTEMENT PAREIL.** Aucune lecture d'une seule course ne peut les séparer.
+
+C'était la garde qui accusait, pas le logiciel — le réflexe de D266, et il aura
+servi une fois de plus. Régler le motif jusqu'à ce qu'il ne dise plus rien aurait
+donné une garde verte et vide.
+
+**CE QUI SÉPARE LES DEUX : REBINDER.** La garde joue **deux** courses par vue —
+l'une avec la table d'usine, l'autre avec `edit.undo` déplacé de `Ctrl+Z` à
+`Ctrl+F9`. Un libellé qui suit la table change ; **un libellé qui montre encore
+l'ancienne touche l'a écrite en dur**. C'est la leçon de D145 — une valeur qui
+revient à son point de départ ne prouve rien sans le témoin qui montre qu'elle en
+était partie —, appliquée à du texte.
+
+Il a fallu pour cela poser la table dans le fichier de réglages du HOME de banc
+(clé `raccourcis`, lue par `loadShortcuts`) : **aucun verbe de banc ne rebinde
+une commande**, et c'est le seul chemin. Jamais le fichier de l'utilisateur — le
+HOME est un brouillon neuf à chaque course (D318).
+
+**MESURÉ** (5 vues × 2 courses, 1600 × 1000, projet `children-dream-v12`) :
+
+| | table d'usine | `edit.undo` rebindé |
+|---|---|---|
+| textes distincts relevés | **183** | **183** |
+| l'infobulle d'Annuler | `Annuler (Ctrl+Z)` | **`Annuler (Ctrl+F9)`** |
+| libellés montrant encore `(Ctrl+Z)` | — | **0** |
+
+Les libellés affichés suivent donc la table. **Vue ROUGE sur le défaut qu'elle
+garde** : l'infobulle d'Annuler réécrite en dur (`tr("Annuler (Ctrl+Z)")`),
+recompilée, et la garde cite la ligne fautive mot pour mot — 2 contrôles ratés,
+code 1. Le témoin du rebind tombe alors lui aussi, et c'est attendu : si le SEUL
+libellé de la commande rebindée est en dur, rien ne peut montrer la touche neuve.
+C'est le second contrôle qui nomme la cause.
+
+**LES DEUX GARDES NE SE REMPLACENT PAS**, et c'est écrit dans les deux :
+`raccourcis-affiches.py` lit TOUT le code, y compris les vues qu'aucune course
+n'ouvre, mais ne voit que les littéraux ; celle-ci ne voit que les vues qu'elle
+ouvre, mais elle voit les libellés ASSEMBLÉS — ceux que l'autre déclare ne pas
+pouvoir lire.
+
+**Reste nommé, non fait, et dit à chaque course** : les textes PEINTS
+(`g.drawText`) sont invisibles à ce relevé (D149, D152) ; les boîtes de dialogue
+n'existent qu'après le geste qui les ouvre (D95) — dont les cinq que D371 vient
+de corriger, qu'aucune de ces deux gardes ne voit à l'écran ; et **une seule des
+57 commandes est rebindée par course**, les 56 autres restant non éprouvées à
+l'exécution. Les rebinder toutes coûterait 57 × 2 lancements ; en rebinder
+plusieurs à la fois est possible et n'est pas fait.
