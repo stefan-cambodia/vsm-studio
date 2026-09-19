@@ -634,6 +634,20 @@ public:
             // morceau, APRÈS les gestes (un « Zoom : tout voir » le change).
             if (const char* arr = std::getenv("VSM_ARRANGEMENT"); arr != nullptr && *arr && *arr != '0')
                 content->releverFenetreArrangement();
+            // D368 : VSM_AUTOSAUVEGARDE=1 -- forcer une sauvegarde automatique et
+            // dire où elle a écrit. APRÈS les gestes de vue (le zoom doit être
+            // celui qu'on veut voir emporté) et AVANT VSM_ENREGISTRER, qui est le
+            // dernier à agir : c'est la leçon de D222, un banc qui écrit avant
+            // d'agir publie l'état d'AVANT son geste.
+            // Une valeur autre que « 1 » est un CHEMIN où recopier le fichier
+            // écrit : le dossier de session disparaît à la fermeture normale, et
+            // un banc qui le lirait ensuite ne trouverait rien.
+            if (const char* aut = std::getenv("VSM_AUTOSAUVEGARDE"); aut != nullptr && *aut && *aut != '0') {
+                const juce::String valeur = juce::String::fromUTF8(aut);
+                content->forcerSauvegardeAutomatiquePourCapture(
+                    valeur == "1" ? juce::File()
+                                  : juce::File::getCurrentWorkingDirectory().getChildFile(valeur));
+            }
             // D364 : VSM_TRANSPORT_ZONES=1 -- combien de rangées prend la barre.
             if (const char* tz = std::getenv("VSM_TRANSPORT_ZONES"); tz != nullptr && *tz && *tz != '0')
                 content->releverRangeesTransport();

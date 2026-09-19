@@ -7209,7 +7209,18 @@ void MainComponent::offerCrashRecovery() {
                     + (recuperer ? "r\u00e9cup\u00e9ration demand\u00e9e par le banc"
                                  : "session ignor\u00e9e et effac\u00e9e par le banc") + "\n").c_str(),
                    stderr);
-        reponse(recuperer ? 1 : 0);
+        // D368 : LA RÉPONSE DU BANC PART EN DIFFÉRÉ, COMME CELLE DU CLIC.
+        // Elle partait d'ici même, SYNCHRONE — c'est-à-dire depuis le
+        // constructeur de `MainComponent`, où `offerCrashRecovery()` est
+        // appelée, alors que l'arrangement n'a pas encore sa taille. Le clic,
+        // lui, répond depuis un rappel modal, bien après la mise en page. Le
+        // banc prenait donc un chemin que l'utilisateur ne prend jamais, et il
+        // mesurait un cadrage calculé sur une largeur provisoire : mesuré sur
+        // le même témoin, **1135,4 %** du morceau à l'écran, et **100,0 %** une
+        // fois la réponse différée — onze fois le morceau, pour une session
+        // récupérée sans vue. C'était le BANC qu'il fallait corriger, pas le
+        // logiciel : quand un banc accuse, on vérifie le banc (leçon de D266).
+        juce::MessageManager::callAsync([reponse, recuperer] { reponse(recuperer ? 1 : 0); });
         return;
     }
 
@@ -7274,7 +7285,67 @@ void MainComponent::autosaveIfNeeded() {
     // demande le disque, donc surtout pas lui.
     captureSessionIntoProject();
     const std::map<size_t, vsm::interchange::SynthPreset> presets = presetsDeLaSession();   // D76
-    autosave_->requestSave(project_, presets, currentProjectFolder_);
+    // D368 : LA SAUVEGARDE AUTOMATIQUE EMPORTE LA VUE, comme l'enregistrement
+    // manuel depuis D363. C'est le même geste que huit cents lignes plus bas,
+    // et la même raison : `interchange/` ne connaît aucun composant, c'est ici
+    // qu'on voit les deux. Sans cela, une reprise après panne rouvrait le
+    // projet au cadrage automatique — on retrouvait son travail, pas son écran.
+    vsm::interchange::ProjectDocument::View vue;
+    vue.pixelsPerTick = arrangement_.zoomActuel();
+    vue.scrollTick = arrangement_.defilementActuel();
+    autosave_->requestSave(project_, presets, currentProjectFolder_, vue);
+}
+
+// D368 : VSM_AUTOSAUVEGARDE -- forcer une sauvegarde automatique et dire OÙ.
+//
+// Sans ce verbe, la règle était INMESURABLE par un banc : la sauvegarde part
+// d'elle-même toutes les trente secondes et écrit dans un dossier dont le nom
+// est un UUID tiré au lancement. Un banc devrait attendre une demi-minute puis
+// deviner le dossier — c'est-à-dire ne rien garder du tout.
+void MainComponent::forcerSauvegardeAutomatiquePourCapture(const juce::File& copieVers) {
+    if (!autosave_) {
+        std::fputs("VSM_AUTOSAUVEGARDE : aucun service de sauvegarde\n", stderr);
+        return;
+    }
+    // Le compteur est remis à zéro pour que l'appel ne soit pas refusé par
+    // l'intervalle, et le projet marqué modifié pour qu'il y ait quelque chose
+    // à écrire : un banc qui n'a rien touché n'obtiendrait rien, et croirait
+    // que la sauvegarde ne marche pas.
+    projectDirty_ = true;
+    lastAutosaveSeconds_ = 0.0;
+    autosaveIfNeeded();
+    // L'écriture a lieu sur un autre fil : on attend qu'elle paraisse, et l'on
+    // DIT l'attente plutôt que de rendre un dossier vide.
+    const juce::File dossier = autosave_->sessionFolder();
+    const juce::File fichier = dossier.getChildFile("project.json");
+    const double limite = juce::Time::getMillisecondCounterHiRes() + 5000.0;
+    while (!fichier.existsAsFile() && juce::Time::getMillisecondCounterHiRes() < limite)
+        juce::Thread::sleep(50);
+    if (!fichier.existsAsFile()) {
+        std::fputs((juce::String("VSM_AUTOSAUVEGARDE : rien d'écrit après 5 s dans ")
+                    + dossier.getFullPathName() + "\n").toRawUTF8(), stderr);
+        return;
+    }
+    // LA COPIE, ET C'EST ELLE QUI REND LA RÈGLE MESURABLE. Le dossier de
+    // session est EFFACÉ à la fermeture normale (`endCleanly`) — c'est son
+    // absence qui signale un plantage —, si bien qu'un banc qui irait le lire
+    // APRÈS coup ne trouve rien. Mesuré une fois : le chemin imprimé pointait
+    // sur un fichier déjà disparu.
+    if (copieVers != juce::File()) {
+        copieVers.getParentDirectory().createDirectory();
+        copieVers.deleteFile();
+        if (!fichier.copyFileTo(copieVers)) {
+            std::fputs((juce::String("VSM_AUTOSAUVEGARDE : copie impossible vers ")
+                        + copieVers.getFullPathName() + "\n").toRawUTF8(), stderr);
+            return;
+        }
+        std::fputs((juce::String("VSM_AUTOSAUVEGARDE : ") + fichier.getFullPathName()
+                    + juce::String::fromUTF8(u8" \u2192 ") + copieVers.getFullPathName()
+                    + "\n").toRawUTF8(), stderr);
+        return;
+    }
+    std::fputs((juce::String("VSM_AUTOSAUVEGARDE : ") + fichier.getFullPathName()
+                + "\n").toRawUTF8(), stderr);
 }
 
 // --- D10.3 : les raccourcis se lisent et se changent ------------------------

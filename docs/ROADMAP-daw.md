@@ -30074,3 +30074,100 @@ et **223 côté Python** — 214 avant D366, +6 par D366 et **+3 par D367** (la
 hauteur sonnante et ses butées : un 20 Hz est illisible, et non lu comme la
 borne ; le patch mal accordé retiré et dit ; le vivier qui écarte les quatre
 machines déclarées). `ruff` propre, `mypy` sans faute sur 141 fichiers.
+
+### Phase D368 — une reprise après panne retrouvait le travail, pas l'écran (20/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ, NON FAIT » DE D363**, écrit mot pour mot :
+*« la sauvegarde automatique n'emporte pas la vue — elle appelle
+`saveProjectBundle` sans ce paramètre, et une reprise après panne rouvrira donc
+au cadrage. C'est défendable (une reprise n'est pas un enregistrement) et ce
+n'est pas mesuré. »* Mesuré, donc — et ce n'était pas défendable : le
+`project.json` de récupération ne portait **aucun** bloc `view`, et la session
+reprise s'ouvrait à **104,2 %** là où on l'avait laissée à **66,7 %**. Reprendre
+après une panne, c'est retrouver son écran autant que son travail.
+
+**CE QUI EST FAIT.** `AutosaveService::requestSave` prend la vue en DERNIER et
+par défaut vide, comme `saveProjectBundle` depuis D363 ; la photo la transporte
+jusqu'au fil d'écriture. Elle est lue dans `autosaveIfNeeded()`, au seul endroit
+qui voit à la fois l'arrangement et le service — `interchange/` ne connaît aucun
+composant, et c'est la même raison qu'au chemin manuel, huit cents lignes plus
+bas.
+
+**ATTENDU** (avant la mesure) : zoomer, forcer une sauvegarde automatique, tuer
+l'application, relancer, répondre « Récupérer » — la fenêtre doit être celle
+qu'on avait, et non le cadrage.
+
+**CE QUI A RENDU LA RÈGLE MESURABLE**, et sans quoi elle ne l'était pas :
+
+* **`VSM_AUTOSAUVEGARDE=1|<fichier>`** force une sauvegarde et dit où elle a
+  écrit. Sans lui, un banc devrait attendre trente secondes puis DEVINER un
+  dossier nommé par un UUID tiré au lancement. La forme `<fichier>` recopie ce
+  qui a été écrit : le dossier de session est EFFACÉ à la fermeture normale —
+  c'est son absence qui signale un plantage —, et le premier chemin imprimé
+  pointait sur un fichier déjà disparu.
+* **`VSM_GESTE_APRES=<ms>:relever-arrangement`**, un relevé DIFFÉRÉ. Voir plus
+  bas : c'est lui qui a tranché.
+
+**MESURÉ** (projet engendré de 40 mesures, 1280 × 742, relevé `VSM_ARRANGEMENT`) :
+
+| chemin | témoin (sans la vue) | **avec la vue** |
+|---|---|---|
+| zoom posé à la main | 66,7 % | 66,7 % |
+| `project.json` de récupération | `view` **absent** | `{"pixelsPerTick": 0.008515625, "scrollTick": 0}` |
+| dossier récupéré rouvert | 104,2 % | **66,7 %** |
+| **la vraie reprise** (panne, puis « Récupérer ») | 104,2 % | **66,7 %** |
+| le même projet SANS vue (contre-témoin) | 104,2 % | 104,2 % |
+
+Attendu tenu. La garde `tools/autosauvegarde-vue.sh` porte **six** contrôles,
+dont son propre contre-témoin — *« le zoom à la main s'écarte du cadrage
+automatique »* —, sans quoi « avant = après » serait vrai aussi quand les deux
+valent le cadrage. Vue ROUGE sur le témoin (**3 ratés**, code 1), verte sur le
+correctif.
+
+**ET LA GARDE NE S'EST PAS CONTENTÉE DU FORMAT.** Les deux premiers contrôles
+mesurent un `project.json` recopié à la main ; ils ne disent rien du GESTE, qui
+passe par la boîte « Session interrompue » et par un
+`loadProjectBundleFromFolder(dossier, origine)` à SECOND argument que ce chemin
+n'emprunte pas. La garde provoque donc une vraie panne : un lancement sans
+`VSM_CAPTURE` ne quitte pas (D318), on le TUE, et la session survit faute
+d'avoir été fermée proprement.
+
+**DEUX DÉFAUTS DU BANC, TROUVÉS PARCE QUE LE BANC ACCUSAIT.** La reprise a
+d'abord été mesurée à **1135,4 %** — onze fois le morceau à l'écran. Avant
+d'écrire un défaut pareil, on a vérifié le banc (leçon de D266), et c'était lui
+deux fois :
+
+1. **`VSM_RECUPERER` répondait SYNCHRONEMENT**, depuis le constructeur de
+   `MainComponent` où `offerCrashRecovery()` est appelée — quand l'arrangement
+   n'a pas encore sa taille. Le clic, lui, répond d'un rappel modal bien après la
+   mise en page. Le banc prenait un chemin que l'utilisateur ne prend jamais, et
+   cadrait sur une largeur provisoire. Sa réponse part désormais en différé, par
+   `callAsync`, comme celle du clic : **1135,4 % → 100,0 %**. Le commentaire de
+   D207 promettait déjà *« le MÊME rappel que le clic : ce n'est pas un chemin
+   parallèle »* — le corps de la réponse l'était, son INSTANT ne l'était pas.
+2. **Le relevé partait trop tôt.** Une fois la réponse différée, les relevés de
+   `Main.cpp` — qui agissent tous au démarrage, d'un bloc — mesuraient le projet
+   VIDE d'avant la reprise. D'où le geste `relever-arrangement`, différable.
+
+**ET LE RELEVÉ MENTAIT SUR UN MORCEAU VIDE**, ce qui est ce que cette phase aura
+trouvé de plus durable. `direLaFenetre()` écrivait *« fenêtre 3.8 mesure(s) sur
+**0.0**, soit **100,0 %** »* : dénominateur nul, part écrite `100.0`. Un banc y
+lisait un cadrage parfait là où la mesure ne voyait RIEN. Il dit désormais
+« MORCEAU VIDE, aucune part à montrer » et ne rend aucun nombre — *une mesure qui
+ne peut pas voir une chose doit le DIRE, jamais compter zéro*. Les deux gardes
+qui lisent ce relevé ont été durcies dans la foulée : leur `sed 's/.*soit
+\([0-9.]*\) %.*/\1/'` rendait la LIGNE ENTIÈRE quand elle ne portait pas de
+pourcentage, et une comparaison de chaînes l'aurait prise pour une valeur
+(`tools/cadrage-ouverture.sh`, 3 lectures ; `tools/autosauvegarde-vue.sh`).
+
+Suites : **355** core, **1 303** audio, **304** interchange, **25** clap, **11**
+panels — **1 998**, inchangées : cette phase ne touche que `app/`, et ce qu'elle
+garde est un comportement d'interface, mesuré par une garde. Gardes rejouées :
+`autosauvegarde-vue.sh` (6 contrôles), `cadrage-ouverture.sh` (6) — 0 raté.
+
+**Reste nommé, non fait** : la vue enregistrée ne retient toujours que le zoom et
+le défilement de l'arrangement — ni la piste choisie, ni l'onglet du dock, ni le
+piano roll —, exactement comme D363 l'a laissée. Et la sauvegarde automatique
+photographie la vue à l'instant où elle part : un zoom posé dans les secondes qui
+suivent la dernière photo n'est pas dans le fichier. C'est le prix d'une photo
+toutes les trente secondes, et il est le même pour les notes.

@@ -58,9 +58,18 @@ public:
     /// effet si une écriture est déjà en attente : à trente secondes
     /// d'intervalle, cela ne peut arriver que si le disque est très lent, et
     /// dans ce cas empiler les photos ne ferait qu'aggraver.
+    /// D368 : `view` est l'état de la vue d'arrangement (zoom, défilement).
+    /// En DERNIER et par défaut vide, comme `saveProjectBundle` depuis D363.
+    /// D363 avait donné la vue à l'enregistrement MANUEL et noté que la
+    /// sauvegarde automatique ne l'emportait pas — « c'est défendable et ce
+    /// n'est pas mesuré ». Mesuré : le `project.json` de récupération n'avait
+    /// aucun bloc `view`, si bien qu'une reprise après panne rouvrait au
+    /// cadrage. Reprendre après une panne, c'est retrouver son écran.
     void requestSave(const vsm::sequencer::Project& project,
                       const std::map<size_t, vsm::interchange::SynthPreset>& presets,
-                      const juce::File& originalFolder);
+                      const juce::File& originalFolder,
+                      const vsm::interchange::ProjectDocument::View& view = {});
+
 
     /// Efface le dossier de cette session. Appelée à la fermeture NORMALE :
     /// c'est son absence qui, au prochain lancement, signalera un plantage.
@@ -80,6 +89,7 @@ private:
         vsm::sequencer::Project project;
         std::map<size_t, vsm::interchange::SynthPreset> presets;
         vsm::interchange::RecoveryRecord record;
+        vsm::interchange::ProjectDocument::View view;   // D368
         bool valide = false;
     };
 

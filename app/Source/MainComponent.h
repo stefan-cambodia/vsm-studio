@@ -190,6 +190,10 @@ public:
     void releverRangPianoRoll() const { pianoRoll_.releverRangPourCapture(); }
     /// D362 : VSM_ARRANGEMENT -- la part du morceau que l'arrangement montre.
     void releverFenetreArrangement() const { arrangement_.direLaFenetre(); }
+    /// D368 : force une sauvegarde automatique et imprime le chemin écrit
+    /// (`VSM_AUTOSAUVEGARDE : <fichier>`). Le dossier de session porte un
+    /// UUID tiré au lancement : un banc ne peut pas le deviner.
+    void forcerSauvegardeAutomatiquePourCapture(const juce::File& copieVers = {});
     /// D364 : VSM_TRANSPORT_ZONES -- rangées et hauteur de la barre de transport.
     void releverRangeesTransport() { transportBar_.direLesRangees(); }
     /// D336 : VSM_NOTES -- écrit une note « piste:tick:durée:hauteur » par le chemin du piano roll.
@@ -252,6 +256,13 @@ public:
                         + juce::String::fromUTF8(u8", couleur ")
                         + juce::String::toHexString(static_cast<int>(t.colorRgba)) + "\n").toRawUTF8(), stderr);
         };
+        // D368 : RELEVER LA FENÊTRE PLUS TARD, et c'est le seul moyen de mesurer
+        // ce qui se charge en DIFFÉRÉ. Les relevés de `Main.cpp` partent tous au
+        // démarrage, d'un bloc ; une session récupérée, elle, arrive par un rappel
+        // modal bien après. Mesuré : le relevé publiait « 3.8 mesure(s) sur 0.0 »
+        // — le projet vide d'avant la reprise — et l'on en concluait sur le zoom.
+        // Passer par `VSM_GESTE_APRES=<ms>:relever-arrangement`.
+        if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
         if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); dire("muet"); return true; }
         // D110 : armer, comme le bouton R -- pour les boîtes du départ d'une prise.
         if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); dire("armer"); return true; }

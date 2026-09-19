@@ -86,12 +86,14 @@ void AutosaveService::discard(const juce::File& folder) {
 
 void AutosaveService::requestSave(const vsm::sequencer::Project& project,
                                    const std::map<size_t, vsm::interchange::SynthPreset>& presets,
-                                   const juce::File& originalFolder) {
+                                   const juce::File& originalFolder,
+                                   const vsm::interchange::ProjectDocument::View& view) {
     if (sessionFolder_ == juce::File()) return;
 
     Photo photo;
     photo.project = project;                 // copie de valeur : cohérente et rapide
     photo.presets = presets;
+    photo.view = view;                       // D368
     photo.record.originalFolder = originalFolder == juce::File()
                                        ? std::string()
                                        : originalFolder.getFullPathName().toStdString();
@@ -134,7 +136,8 @@ void AutosaveService::run() {
         provisoire.createDirectory();
 
         const auto ecrit = vsm::interchange::saveProjectBundle(
-            photo.project, provisoire.getFullPathName().toStdString(), photo.presets);
+            photo.project, provisoire.getFullPathName().toStdString(), photo.presets,
+            photo.view);
         if (ecrit.success) {
             juce::File fiche = provisoire.getChildFile(vsm::interchange::kRecoveryRecordFileName);
             fiche.replaceWithText(juce::String::fromUTF8(

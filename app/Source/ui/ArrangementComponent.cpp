@@ -1893,10 +1893,24 @@ void ArrangementComponent::direLaFenetre() const {
     vsm::midi::Tick fin = 0;
     for (const auto& t : project_->tracks)
         for (const auto& c : t.clips) fin = std::max(fin, c.startTick + c.length);
+    // D368 : UN MORCEAU VIDE LE DIT, IL NE REND PAS « 100,0 % ». Le dénominateur
+    // valant zéro, la part montrée était écrite `100.0` — et un banc y lisait un
+    // cadrage parfait. Payé le 20/09 en mesurant la reprise après panne : le
+    // relevé partait AVANT que la session récupérée ne soit chargée et publiait
+    // « fenêtre 3.8 mesure(s) sur 0.0, soit 100.0 % », ce qui a fait soupçonner
+    // le logiciel là où c'était la mesure qui regardait trop tôt. Une mesure qui
+    // ne peut pas voir une chose doit le DIRE, jamais compter zéro.
+    if (fin <= 0) {
+        std::fputs((juce::String::fromUTF8("VSM_ARRANGEMENT : fen\xc3\xaatre ")
+                    + juce::String(visibles, 1)
+                    + juce::String::fromUTF8(" mesure(s) \xe2\x80\x94 MORCEAU VIDE, "
+                                             "aucune part \xc3\xa0 montrer\n")).toRawUTF8(), stderr);
+        return;
+    }
     std::fputs((juce::String::fromUTF8("VSM_ARRANGEMENT : fen\xc3\xaatre ") + juce::String(visibles, 1)
                 + " mesure(s) sur " + juce::String(static_cast<double>(fin) / parMesure, 1)
                 + juce::String::fromUTF8(", soit ")
-                + juce::String(fin > 0 ? 100.0 * visibles * parMesure / static_cast<double>(fin) : 100.0, 1)
+                + juce::String(100.0 * visibles * parMesure / static_cast<double>(fin), 1)
                 + " %\n").toRawUTF8(), stderr);
 }
 

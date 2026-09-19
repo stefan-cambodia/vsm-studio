@@ -1244,7 +1244,18 @@ capture n'a rien attrapé — et c'est le seul moyen de les départager sans éc
 récupère la séance autosauvegardée, `0` l'ignore et l'efface. C'était la dernière
 boîte du dépôt qui s'annonçait sans pouvoir être répondue — et celle dont
 dépendent les deux phases qui promettent qu'une fermeture ou un enregistrement
-raté ne coûte rien.
+raté ne coûte rien. Depuis D368 sa réponse part **en différé**, comme celle du
+clic : elle partait du constructeur de `MainComponent`, avant que l'arrangement
+n'ait sa taille, et un banc y mesurait un cadrage calculé sur une largeur
+provisoire (1135,4 % du morceau à l'écran, contre 100,0 % une fois différée).
+`VSM_AUTOSAUVEGARDE=1|<fichier>` (D368) force une sauvegarde automatique — elle
+part d'elle-même toutes les trente secondes, dans un dossier nommé par un UUID
+tiré au lancement — et écrit le chemin obtenu. La forme `<fichier>` y RECOPIE ce
+qui vient d'être écrit, et c'est elle qu'il faut : le dossier de session est
+effacé à la fermeture normale, si bien qu'un banc qui irait le lire ensuite ne
+trouverait rien. Depuis la même phase, ce que la sauvegarde automatique écrit
+porte la **vue** (zoom, défilement) comme l'enregistrement manuel depuis D363 :
+une reprise après panne retrouve l'écran, pas seulement le travail.
 `VSM_CHOIX=n` répond aux deux fenêtres « Plusieurs plugins / instruments dans ce
 fichier », celle du CLAP et celle du VST3 : elles s'annonçaient depuis D102 sans
 pouvoir être répondues, si bien qu'un fichier à plusieurs plugins — celui du
@@ -1336,7 +1347,8 @@ l'écriture précède le remplacement.
 Depuis D363, `project.json` porte un bloc **`view`** facultatif (`pixelsPerTick`, `scrollTick`) : un projet enregistré se rouvre là où on l'a laissé, et le cadrage automatique de D362 n'est plus que le repli — pour un projet neuf, pour un fichier écrit avant D363, et pour les projets de la chaîne d'analyse, qui n'écrivent pas de vue. Un zoom nul ou négatif est ignoré plutôt que repris.
 **LA TAILLE DES BANCS N'EST PAS CELLE DE L'ÉCRAN.** Toutes les gardes d'interface lancent l'application à `VSM_TAILLE=1280x742` ; l'écran de cette machine fait **3 200 × 2 000**. Une mesure RELATIVE (une part de la largeur, un rapport à l'étendue du morceau) vaut aux deux tailles ; une mesure ABSOLUE — « il faut tant de pixels pour une rangée » — n'a de sens qu'à la taille où elle a été prise, et doit le dire. C'est ce qui avait rendu A6 fausse pendant des mois (D364), et c'est pourquoi `tools/barre-transport.sh` mesure aux deux.
 `VSM_TRANSPORT_ZONES=1` écrit le nombre de rangées et la hauteur de la barre de transport à la largeur courante (D364) : deux rangées et 100 px à 1 280 px, **une rangée et 56 px dès 2 240 px**. Le chiffre se calcule dans une fonction privée et ne se lit sur aucune photo — c'est lui qui a montré que le « compromis » d'A6 n'existait que dans la fenêtre des bancs.
-`VSM_ARRANGEMENT=1` écrit aussi, depuis D362, **la part du morceau que la vue montre** (« fenêtre 235.5 mesure(s) sur 227.0, soit 103.7 % ») : le zoom vit dans un champ privé que la règle peint, et sans ce chiffre « la vue est mal cadrée » ne se mesure pas. Depuis la même phase, ouvrir un projet cadre l'arrangement sur son étendue — `project.json` ne porte aucun état de vue, et le jour où il en portera un, c'est lui qui primera.
+`VSM_GESTE_APRES=<ms>:relever-arrangement` (D368) rejoue ce relevé **plus tard**. Tous les relevés de démarrage partent d'un bloc, avant tout ce qui se charge par un rappel : mesurée au démarrage, une session récupérée publiait « fenêtre 3.8 mesure(s) sur 0.0 » — le projet vide d'avant la reprise.
+`VSM_ARRANGEMENT=1` écrit aussi, depuis D362, **la part du morceau que la vue montre** (« fenêtre 235.5 mesure(s) sur 227.0, soit 103.7 % ») : le zoom vit dans un champ privé que la règle peint, et sans ce chiffre « la vue est mal cadrée » ne se mesure pas. Sur un morceau VIDE il ne rend plus de pourcentage mais écrit « MORCEAU VIDE, aucune part à montrer » (D368) : le dénominateur valant zéro, la part était écrite `100,0 %`, et un banc y lisait un cadrage parfait là où la mesure ne voyait rien. Depuis la même phase, ouvrir un projet cadre l'arrangement sur son étendue — `project.json` ne porte aucun état de vue, et le jour où il en portera un, c'est lui qui primera.
 `VSM_ARRANGEMENT` (D360) écrit l'état des bascules de l'arrangement — « aimant mesure », « aimant libre », « suit la tête », « automation cachée » — chaque fois que l'une d'elles change : la règle les PEINT en haut à droite, et un texte peint est invisible au relevé qui descend les composants. Depuis la même phase, l'aimantation se bascule par **G** dans les deux vues (la touche de la table, donc modifiable) et la grille à la mesure de l'arrangement par **M** ; « S » ne fait plus rien.
 Les listings de menu (`clip-midi:?`, `pianoroll:?`, `regle-pianoroll:?`) écrivent la touche de chaque entrée **entre accolades** — `Couper à la tête de lecture {Ctrl+Maj+E}` — depuis D358 : la touche n'est plus dans le libellé mais dans un champ que JUCE dessine, et un relevé qui ne la verrait pas la laisserait disparaître sans un mot.
 `VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2) — **avant** `VSM_TOUCHE` et `VSM_MENU_CONTEXTE` depuis D356, parce que c'est un verbe de scène et non d'action : posée entre les deux, elle servait le menu et pas le clavier, et « Couper à la tête de lecture » rendait alors deux fichiers différents selon la porte employée —,  `VSM_LECTURE=1`

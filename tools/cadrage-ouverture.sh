@@ -80,7 +80,7 @@ part_visible() {   # $1 = dossier du projet -> le pourcentage montré à l'ouver
         VSM_CAPTURE="$brouillon/$(basename "$1").png" \
         timeout 60 "$BIN" > "$brouillon/$(basename "$1").txt" 2>&1
     grep "VSM_ARRANGEMENT : fen" "$brouillon/$(basename "$1").txt" | tail -1 \
-        | sed 's/.*soit \([0-9.]*\) %.*/\1/'
+        | grep -o 'soit [0-9.]* %' | tail -1 | sed 's/soit \([0-9.]*\) %/\1/'
 }
 
 rates=0
@@ -105,12 +105,12 @@ env HOME="$maison" VSM_TAILLE="1280x742" VSM_PROJET="$brouillon/garde" VSM_DELAI
     VSM_VUE="sans-rapport,arrangement" VSM_TOUCHE="arrangement:=;arrangement:=" \
     VSM_ARRANGEMENT=1 VSM_ENREGISTRER="$brouillon/rouvert" \
     VSM_CAPTURE="$brouillon/zoome.png" timeout 60 "$BIN" > "$brouillon/zoome.txt" 2>&1
-avant="$(grep 'VSM_ARRANGEMENT : fen' "$brouillon/zoome.txt" | tail -1 | sed 's/.*soit \([0-9.]*\) %.*/\1/')"
+avant="$(grep 'VSM_ARRANGEMENT : fen' "$brouillon/zoome.txt" | tail -1 | grep -o 'soit [0-9.]* %' | tail -1 | sed 's/soit \([0-9.]*\) %/\1/')"
 maison2="$(mktemp -d "$brouillon/home.XXXX")"
 env HOME="$maison2" VSM_TAILLE="1280x742" VSM_PROJET="$brouillon/rouvert" VSM_DELAI=2500 \
     VSM_VUE="sans-rapport,arrangement" VSM_ARRANGEMENT=1 \
     VSM_CAPTURE="$brouillon/rouvert.png" timeout 60 "$BIN" > "$brouillon/rouvert.txt" 2>&1
-apres="$(grep 'VSM_ARRANGEMENT : fen' "$brouillon/rouvert.txt" | tail -1 | sed 's/.*soit \([0-9.]*\) %.*/\1/')"
+apres="$(grep 'VSM_ARRANGEMENT : fen' "$brouillon/rouvert.txt" | tail -1 | grep -o 'soit [0-9.]* %' | tail -1 | sed 's/soit \([0-9.]*\) %/\1/')"
 echo "       zoomé à ${avant:-?} %, rouvert à ${apres:-?} %"
 # LE ZOOM DOIT AVOIR EU LIEU : sans ce contrôle, « avant = après » serait vrai
 # aussi quand les deux valent le cadrage automatique, et ne prouverait rien.
