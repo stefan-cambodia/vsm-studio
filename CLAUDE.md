@@ -60,6 +60,14 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   `pgrep … | head -1` a rendu un PID transitoire (un maillon du tube, déjà mort),
   et la surveillance a de nouveau annoncé la fin dans la seconde. Lister d'abord
   (`pgrep -af`), reconnaître la ligne de commande attendue, prendre CE PID.
+  **Et `tail -f` REJOUE les dernières lignes du fichier**, ce qui est la même
+  faute sous un autre outil : une surveillance posée sur un journal déjà écrit
+  reçoit aussitôt son ancien contenu. Payé DEUX FOIS le 20/09 sur la campagne s2
+  — deux surveillances ont annoncé « DÉBUT morceau » une heure après le vrai
+  départ, la ligne de 02:31 étant encore dans les dix dernières du journal. Le
+  remède tient en trois caractères : `tail -n 0 -f`, qui ne rend QUE les lignes
+  neuves. Et l'état réel se vérifie par PID (`kill -0 $PID`), jamais par ce
+  qu'une surveillance vient d'annoncer.
 - Une campagne lancée depuis le shell de l'outil MEURT avec la session, même
   sous nohup (S1, 04/09 : 1 h 44 de course perdues à la reprise). Lancer par
   `setsid nohup script.sh > x.log 2>&1 < /dev/null & disown`, et à chaque
