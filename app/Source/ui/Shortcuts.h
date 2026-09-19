@@ -58,6 +58,27 @@ inline juce::String libelleAvecTouche(const juce::String& texte,
     return texte + " (" + avant + toucheLisible(touche) + ")";
 }
 
+/// D371 : LA TOUCHE EFFECTIVE **AU MILIEU D'UNE PHRASE**, entre parenthèses et
+/// précédée d'une espace — « … Enregistrez d'abord le projet (Ctrl+S). »
+///
+/// `libelleAvecTouche` ne sert que ce qui finit par sa touche ; cinq boîtes de
+/// dialogue, elles, la nomment EN PLEIN MILIEU d'une phrase, et l'écrivaient en
+/// dur. Elles mentent dès que l'utilisateur change la touche, ce qui est
+/// exactement ce que D358 a corrigé dans les menus — et ce que sa garde ne
+/// pouvait pas voir, ne lisant que le premier littéral d'un `tr(…)` : la
+/// parenthèse était dans le second, la phrase étant coupée sur deux lignes.
+///
+/// **RIEN N'EST ÉCRIT QUAND IL N'Y A PAS DE TOUCHE** : la phrase se referme
+/// alors sans parenthèse vide, et c'est pour cela que le modèle porte `%1` là
+/// où l'espace commence, et non `(%1)`. Une commande peut n'être liée à rien.
+inline juce::String toucheEntreParentheses(const vsm::interchange::ShortcutTable* table,
+                                            vsm::interchange::ShortcutId commande) {
+    if (table == nullptr) return {};
+    const juce::String touche = juce::String(table->keyFor(commande));
+    if (touche.isEmpty() || !juce::KeyPress::createFromDescription(touche).isValid()) return {};
+    return " (" + toucheLisible(touche) + ")";
+}
+
 /// D358 : SORTIE DE `MainComponent.cpp`, OÙ ELLE NE SERVAIT QUE LA BARRE DE
 /// MENUS. La règle de D155 y était posée et n'en était jamais sortie : le menu
 /// du clip écrivait encore « Couper à la tête de lecture (Ctrl+E) » dans son

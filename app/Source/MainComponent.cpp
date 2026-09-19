@@ -9514,8 +9514,8 @@ void MainComponent::toggleFreezeSelectedTrack() {
         montrerBoite(
             juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
             tr(u8"Un gel est un FICHIER, et le format range les fichiers d'un projet "
-               u8"par chemin relatif à son dossier. Enregistrez d'abord le projet "
-               u8"(Ctrl+S) : le gel ira dans son sous-dossier gel/."));
+               u8"par chemin relatif à son dossier. Enregistrez d'abord le projet"
+               u8"%1 : le gel ira dans son sous-dossier gel/.").replace("%1", vsm::app::ui::toucheEntreParentheses(&shortcuts_, vsm::interchange::ShortcutId::FileSave)));
         return;
     }
 
@@ -9577,7 +9577,7 @@ void MainComponent::bounceSelectedTrack() {
             juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
             tr(u8"Un report est un FICHIER, et le format range les fichiers d'un "
                u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
-               u8"projet (Ctrl+S)."));
+               u8"projet%1.").replace("%1", vsm::app::ui::toucheEntreParentheses(&shortcuts_, vsm::interchange::ShortcutId::FileSave)));
         return;
     }
 
@@ -9711,7 +9711,7 @@ void MainComponent::bounceSelectionToNewTracks() {
             juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
             tr(u8"Un report est un FICHIER, et le format range les fichiers d'un "
                u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
-               u8"projet (Ctrl+S)."));
+               u8"projet%1.").replace("%1", vsm::app::ui::toucheEntreParentheses(&shortcuts_, vsm::interchange::ShortcutId::FileSave)));
         return;
     }
     vsm::midi::Tick debutTick = 0, finTick = 0;
@@ -10332,8 +10332,8 @@ void MainComponent::startRecording() {
                 tr(u8"Une prise audio est un FICHIER, et le format range les fichiers "
                               u8"d'un projet par chemin relatif à son dossier -- c'est ce qui "
                               u8"permet d'ouvrir le projet sur une autre machine. Enregistrez "
-                              u8"d'abord le projet (Ctrl+S), la prise ira dans son sous-dossier "
-                              u8"audio/."));
+                              u8"d'abord le projet%1, la prise ira dans son sous-dossier "
+                              u8"audio/.").replace("%1", vsm::app::ui::toucheEntreParentheses(&shortcuts_, vsm::interchange::ShortcutId::FileSave)));
             return;
         }
         const size_t index = armeesAudio.front();
@@ -12238,7 +12238,7 @@ bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
         montrerBoite(
             juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistr\u00e9"),
             tr(u8"Un fichier audio import\u00e9 est COPI\u00c9 dans le dossier du projet. "
-               u8"Enregistrez d'abord le projet (Ctrl+S)."));
+               u8"Enregistrez d'abord le projet%1.").replace("%1", vsm::app::ui::toucheEntreParentheses(&shortcuts_, vsm::interchange::ShortcutId::FileSave)));
         std::fputs("Importer un fichier audio : projet jamais enregistr\u00e9, rien n'a \u00e9t\u00e9 fait\n", stderr);
         return false;
     }

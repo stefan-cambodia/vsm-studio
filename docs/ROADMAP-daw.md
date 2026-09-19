@@ -30339,3 +30339,74 @@ lequel « une commande sans porte » ne se compte pas. Et `track.selectAll`
 (Ctrl+Maj+A) est la seule des sept commandes « Piste » qui n'ait, à la lecture,
 ni bouton ni entrée de menu — une observation, pas une mesure : elle attend
 l'inventaire ci-dessus.
+
+### Phase D371 — la garde de D358 ne lisait que le PREMIER littéral, et cinq phrases mentaient derrière (20/09/2026)
+
+**D'OÙ ELLE VIENT — DU « RESTE NOMMÉ » DE D358** : *« la garde ne lit que les
+chaînes de `tr(…)` — un libellé assemblé à partir d'une variable lui échappe, et
+il faudrait un relevé à l'exécution pour le voir ».* La deuxième moitié de cette
+phrase est fausse, et c'est ce qui rendait l'angle mort confortable : **il ne
+fallait pas un relevé à l'exécution, il fallait lire l'appel en entier.**
+
+**LE DÉFAUT DE LA GARDE.** Son motif était
+`tr\(\s*(?:u8)?"((?:[^"\\]|\\.)*)"` : il prend le littéral qui suit
+IMMÉDIATEMENT `tr(`, et s'arrête là. Or le C++ colle les littéraux adjacents, et
+ce dépôt coupe ses longues phrases sur plusieurs lignes :
+
+```cpp
+tr(u8"Un report est un FICHIER, … Enregistrez d'abord le "
+   u8"projet (Ctrl+S).")            // <- ce second littéral n'était jamais lu
+```
+
+La touche était dans le SECOND morceau. La garde rendait « 0 libellé fautif » et
+c'était vrai de ce qu'elle lisait — un zéro sorti d'une mesure qui ne regarde pas.
+
+**CE QU'ELLE TROUVE UNE FOIS L'APPEL LU EN ENTIER : CINQ libellés** qui nomment
+`Ctrl+S` en dur, tous dans des boîtes « Projet jamais enregistré » (gel, report
+× 2, prise audio, import audio). Ce sont exactement les libellés que D358 a
+chassés des menus, restés dans les phrases parce qu'aucune mesure ne les voyait.
+Ils MENTENT dès que l'utilisateur change la touche d'enregistrement, et rien
+n'empêche de la changer.
+
+**MESURÉ** :
+
+| | avant | après |
+|---|---|---|
+| `tr(` lus par la garde | le 1er littéral | **tous** les littéraux de l'appel |
+| libellés fautifs trouvés | 0 | **5**, puis **0** une fois corrigés |
+| libellés assemblés sur une variable | tus | **36, DITS à chaque course** |
+
+**LA CORRECTION.** `toucheEntreParentheses(table, commande)` rend la touche
+VIVANTE entre parenthèses, ou **rien** si la commande n'est liée à aucune touche
+— d'où le modèle `…le projet%1.` et non `…le projet (%1).` : une parenthèse vide
+serait pire que pas de parenthèse. Les cinq phrases et leurs quatre paires de
+traduction anglaise passent au `%1`.
+
+**ET LA PREUVE QUE LA TOUCHE EST VIVANTE**, parce que « (Ctrl+S) » s'affiche
+avant comme après et qu'un tel chiffre ne prouve rien tout seul (leçon de D145) :
+le littéral `(Ctrl+S)` **n'existe plus dans les sources** — il n'en reste qu'une
+paire de traduction morte, que rien n'appelle (`tr(" (Ctrl+S)")` : 0 occurrence).
+La chaîne que la boîte affiche ne peut donc venir que de la table. Relevé à
+l'exécution, la boîte de l'import audio dit : « Un fichier audio importé est
+COPIÉ dans le dossier du projet. Enregistrez d'abord le projet (Ctrl+S). »
+
+**ET L'ANGLE MORT EST DÉSORMAIS DIT, à chaque course et non derrière une
+option** : **36** libellés sont bâtis sur une variable (`tr(cle)`,
+`tr(juce::String::fromUTF8(nom))`) et aucune analyse statique ne les rendra
+lisibles. Les taire ferait passer « 0 libellé fautif » pour « aucun libellé
+fautif », ce qui n'est pas la même phrase — c'est la leçon de D265, où « la
+chaîne rate 96,7 % des notes brèves » a tenu trois phases avant qu'on demande ce
+que ces notes étaient. Quinze autres, eux, ont été RÉCUPÉRÉS : les ternaires à
+branches littérales (`tr(n > 1 ? u8"…" : u8"…")`) entrent dans la garde, puisque
+lire tout l'appel les découvre.
+
+**Un détail de méthode payé deux fois dans la même heure** : le premier relevé de
+l'angle mort a rendu **73** au lieu de 58 — il comptait les `tr()` que les
+COMMENTAIRES citent, et ce dépôt en cite beaucoup. La garde retire désormais les
+commentaires avant de lire (`sans_commentaires`, les numéros de ligne préservés).
+
+**Reste nommé, non fait** : les 36 libellés dynamiques ne sont pas vérifiés, et
+ne peuvent l'être qu'en RELEVANT les libellés à l'exécution — ce que D358
+proposait déjà et que personne n'a écrit. La paire de traduction morte
+`" (Ctrl+S)"` de `Langue.cpp` est laissée en place : elle ne nuit pas, et la
+retirer sans savoir qui l'a posée est le genre de nettoyage qui casse.

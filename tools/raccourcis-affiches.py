@@ -81,13 +81,73 @@ def affichee(description: str) -> str:
     return "+".join(mots.get(m.lower(), m.upper() if len(m) == 1 else m) for m in morceaux)
 
 
-def libelles(fichier: Path) -> list[tuple[int, str]]:
-    """Les chaînes confiées à `tr(`, avec leur numéro de ligne."""
-    texte = fichier.read_text(encoding="utf-8", errors="replace")
-    trouvees = []
-    for m in re.finditer(r'\btr\(\s*(?:u8)?"((?:[^"\\]|\\.)*)"', texte):
-        trouvees.append((texte.count("\n", 0, m.start()) + 1, m.group(1)))
-    return trouvees
+def sans_commentaires(texte: str) -> str:
+    """Le code sans ses commentaires, les numéros de ligne préservés.
+
+    D371 : sans cela, les `tr()` que les commentaires CITENT — et ce dépôt en
+    cite beaucoup — se comptaient comme du code. Le premier relevé de l'angle
+    mort a ainsi rendu 73 au lieu de 58 : quinze commentaires parlant de `tr()`.
+    """
+    def blanc(m: re.Match[str]) -> str:
+        return re.sub(r"[^\n]", " ", m.group(0))
+
+    return re.sub(r"//[^\n]*", blanc, re.sub(r"/\*.*?\*/", blanc, texte, flags=re.S))
+
+
+def fin_de_appel(texte: str, debut: int) -> int:
+    """L'indice de la parenthèse qui ferme l'appel ouvert en `debut`."""
+    profondeur = 0
+    i = debut
+    while i < len(texte):
+        c = texte[i]
+        if c == '"':                      # une chaîne peut contenir des parenthèses
+            i += 1
+            while i < len(texte) and texte[i] != '"':
+                i += 2 if texte[i] == "\\" else 1
+        elif c == "(":
+            profondeur += 1
+        elif c == ")":
+            profondeur -= 1
+            if profondeur == 0:
+                return i
+        i += 1
+    return len(texte)
+
+
+def libelles(fichier: Path) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
+    """({(ligne, chaîne)} lues, {(ligne, extrait)} ILLISIBLES) pour un fichier.
+
+    D371 : ELLE NE LIT PLUS SEULEMENT `tr("…")`. Un libellé assemblé lui
+    échappait — c'est le « reste nommé » de D358 —, et deux formes s'y cachaient
+    qui ne se valent pas :
+
+      * le TERNAIRE dont les deux branches sont des littéraux
+        (`tr(n > 1 ? u8"…" : u8"…")`) : parfaitement lisible, il suffisait de
+        prendre TOUTES les chaînes de l'appel au lieu de la première. Quinze
+        libellés entrent ainsi dans la garde, dont ceux du solo exclusif et du
+        solo protégé, qui NOMMENT un modificateur de souris ;
+      * le vraiment DYNAMIQUE (`tr(cle)`, `tr(juce::String::fromUTF8(nom))`) :
+        aucune chaîne à lire, et aucune analyse statique ne le rendra lisible.
+
+    Les seconds sont RENDUS À PART et comptés, jamais ignorés en silence : une
+    mesure qui ne peut pas voir une chose doit le DIRE (leçon de D265, où « la
+    chaîne rate 96,7 % des notes brèves » a tenu trois phases avant qu'on
+    demande ce que ces notes étaient).
+    """
+    texte = sans_commentaires(fichier.read_text(encoding="utf-8", errors="replace"))
+    lues: list[tuple[int, str]] = []
+    illisibles: list[tuple[int, str]] = []
+    for m in re.finditer(r"\btr\(", texte):
+        ouvrante = m.end() - 1
+        fin = fin_de_appel(texte, ouvrante)
+        argument = texte[ouvrante + 1 : fin]
+        ligne = texte.count("\n", 0, m.start()) + 1
+        chaines = re.findall(r'(?:u8)?"((?:[^"\\]|\\.)*)"', argument)
+        if chaines:
+            lues.extend((ligne, c) for c in chaines)
+        elif argument.strip():            # `tr()` seul n'est pas un libellé
+            illisibles.append((ligne, " ".join(argument.split())[:60]))
+    return lues, illisibles
 
 
 def main() -> int:
@@ -105,8 +165,11 @@ def main() -> int:
     fichiers += sorted(p for p in SOURCES.rglob("*.h") if p.name not in EXEMPTS)
     print(f"       {len(touches)} touches configurables, {len(fichiers)} fichiers lus")
     fautes, tolerees = 0, 0
+    aveugles: list[tuple[Path, int, str]] = []
     for fichier in fichiers:
-        for ligne, texte in libelles(fichier):
+        lues, illisibles = libelles(fichier)
+        aveugles.extend((fichier, ligne, extrait) for ligne, extrait in illisibles)
+        for ligne, texte in lues:
             for touche, commande in touches.items():
                 # DEUX FORMES, ET DEUX SEULEMENT. Le premier jet acceptait aussi
                 # « ({touche} … » et accusait « Canal MIDI (1 à 16) » -- la
@@ -129,6 +192,16 @@ def main() -> int:
                       f"pour « {commande} » : {texte[:70]}")
     if tolerees and not tout:
         print(f"       {tolerees} mention(s) tolérée(s) (modificateurs de souris) — --tout pour les voir")
+    # D371 : L'ANGLE MORT EST DIT, TOUJOURS, et non rangé derrière une option.
+    # Un libellé bâti sur une variable ne peut pas être lu ici ; le taire ferait
+    # passer « 0 libellé fautif » pour « aucun libellé fautif », ce qui n'est
+    # pas la même phrase.
+    print(f"       {len(aveugles)} libellé(s) ASSEMBLÉ(S) sur une variable — "
+          f"illisibles ici, et donc NON vérifiés"
+          + (" (--tout pour les voir)" if not tout else ""))
+    if tout:
+        for fichier, ligne, extrait in aveugles:
+            print(f"  ---- {fichier.relative_to(RACINE)}:{ligne} tr({extrait}) — assemblé, non lu")
     print(f"--- {fautes} libellé(s) qui nomment une touche configurable")
     return 0 if fautes == 0 else 1
 
