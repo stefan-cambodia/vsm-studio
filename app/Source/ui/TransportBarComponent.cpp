@@ -216,6 +216,19 @@ constexpr int kMargeInterne = 0;
 
 void TransportBarComponent::resized() { disposer(getWidth(), true); }
 
+// D364 : COMBIEN DE RANGÉES, ET POURQUOI IL FALLAIT POUVOIR LE LIRE. A6 — le
+// seul point resté ouvert de la section A de la todolist — dit que « la barre
+// prend deux rangées SUR CET ÉCRAN parce qu'il lui faut ~1 400 px et que le
+// plafond est 1 280 ». Ce plafond est celui des BANCS (`VSM_TAILLE=1280x742`) ;
+// l'écran de la machine fait 3 200 px. Pour trancher il fallait un chiffre que
+// la photo ne donne pas : le nombre de rangées à une largeur donnée.
+void TransportBarComponent::direLesRangees() {
+    std::fputs((juce::String("VSM_TRANSPORT_ZONES : largeur=") + juce::String(getWidth())
+                + " rangees=" + juce::String(disposer(getWidth(), false))
+                + " hauteur=" + juce::String(hauteurUtile(getWidth()))
+                + " obtenue=" + juce::String(getHeight()) + "\n").toRawUTF8(), stderr);
+}
+
 int TransportBarComponent::hauteurUtile(int largeur) {
     return 2 * kMargeY + disposer(largeur, false) * kHauteurRangee;
 }

@@ -634,6 +634,9 @@ public:
             // morceau, APRÈS les gestes (un « Zoom : tout voir » le change).
             if (const char* arr = std::getenv("VSM_ARRANGEMENT"); arr != nullptr && *arr && *arr != '0')
                 content->releverFenetreArrangement();
+            // D364 : VSM_TRANSPORT_ZONES=1 -- combien de rangées prend la barre.
+            if (const char* tz = std::getenv("VSM_TRANSPORT_ZONES"); tz != nullptr && *tz && *tz != '0')
+                content->releverRangeesTransport();
             // VSM_MENU_LISTE=1 (D80 ; déplacée par D83 après l'import audio, dont le clip doit y figurer) : la barre de menus entière, telle qu'elle
             // s'affiche, sur la sortie d'erreur -- APRÈS les gestes du banc, pour
             // que les libellés qui en dépendent (« Annuler : … ») soient ceux

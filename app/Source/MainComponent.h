@@ -190,6 +190,8 @@ public:
     void releverRangPianoRoll() const { pianoRoll_.releverRangPourCapture(); }
     /// D362 : VSM_ARRANGEMENT -- la part du morceau que l'arrangement montre.
     void releverFenetreArrangement() const { arrangement_.direLaFenetre(); }
+    /// D364 : VSM_TRANSPORT_ZONES -- rangées et hauteur de la barre de transport.
+    void releverRangeesTransport() { transportBar_.direLesRangees(); }
     /// D336 : VSM_NOTES -- écrit une note « piste:tick:durée:hauteur » par le chemin du piano roll.
     bool ecrireNotesPourCapture(const juce::String& spec);
     /// D213 : VSM_FICHIER=a.wav;b.wav -- la sélection MULTIPLE que le prochain

@@ -29655,3 +29655,81 @@ enregistrement) et ce n'est pas mesuré. Et la vue ne retient que le zoom et le
 défilement : ni la piste choisie, ni l'onglet du dock, ni la position des
 fenêtres flottantes — celles-là vivent dans les préférences, où elles ne
 dépendent pas du morceau.
+
+### Phase D364 — A6 décrivait une fenêtre que l'utilisateur n'a jamais (19/09/2026)
+
+**D'OÙ ELLE VIENT — DE LA TODOLIST, ET DE SON DERNIER POINT OUVERT.** La section A
+de `docs/INDEX.md` compte quarante-deux anomalies dont quarante et une closes ;
+**A6** est la seule qui reste, décrite comme « un compromis assumé et chiffré —
+pas un défaut qui attend un correctif » :
+
+> « La barre de transport prend deux rangées **sur cet écran** (100 px au lieu de
+> 56) parce qu'il lui faut ~1 400 px pour une seule, et que **le plafond est
+> 1 280**. »
+
+**LE PLAFOND DE 1 280 EST CELUI DES BANCS, PAS CELUI DE L'ÉCRAN.** Toutes les
+gardes d'interface du dépôt lancent l'application avec `VSM_TAILLE=1280x742` —
+`quantifier.sh`, `portes-des-gestes.py`, `cadrage-ouverture.sh`, `banc-fumee.sh`,
+toutes. L'écran de la machine, lui, fait **3 200 × 2 000** (`xrandr`,
+`xdpyinfo`). Le « sur cet écran » de A6 désigne une fenêtre de banc.
+
+**HYPOTHÈSE, écrite avant la mesure** : à la taille réelle de l'écran, la barre
+tient sur UNE rangée, et A6 n'est pas un compromis mais une observation faite à
+une taille que l'utilisateur n'a jamais.
+
+**MESURÉ** (relevé `VSM_TRANSPORT_ZONES`, écrit pour l'occasion — le nombre de
+rangées se calcule dans une fonction privée et ne se lit sur aucune photo) :
+
+| largeur de fenêtre | rangées | hauteur |
+|---|---|---|
+| 1 280 px (les bancs) | 2 | 100 px |
+| 1 920 px | 2 | 100 px |
+| **2 240 px** | **1** | **56 px** |
+| 2 560 px | 1 | 56 px |
+| **3 200 px (l'écran de la machine)** | **1** | **56 px** |
+
+**Attendu tenu, et A6 est CLOSE par la mesure.** Sur l'écran de cette machine la
+barre prend **une rangée et 56 px** — exactement les 56 px que A6 donnait pour
+idéal. Le repli sur deux rangées existe toujours et sert toujours : il est le
+comportement correct d'une fenêtre étroite, pas un compromis subi. Le seuil est
+entre 1 920 et 2 240 px, ce qui confirme au passage le « ~1 400 px » de A6 : à
+150 % d'échelle, 2 240 px physiques font 1 493 px logiques.
+
+**AUCUNE LIGNE DE CODE N'A CHANGÉ POUR CELA**, et c'est le fait le plus utile de
+la phase : *le défaut était dans la mesure, pas dans le logiciel.* Un verdict de
+géométrie ne vaut que rapporté à la taille où il a été pris, et une phrase comme
+« sur cet écran » doit dire lequel.
+
+**CE QUE LA GARDE EMPÊCHE.** `tools/barre-transport.sh` épingle les deux bornes —
+deux rangées à 1 280 px, une seule à 2 240 — parce qu'une commande de plus dans
+la barre repousserait le seuil au-delà de la largeur de l'écran, et le défaut
+reviendrait alors **pour de bon**, cette fois sur la vraie machine. Vue rouge :
+la largeur utile amputée de 700 px, puis recompilée → 4 rangées à 1 280 et 2 à
+2 240, **2 ratés**, code 1.
+
+**DEUX HYPOTHÈSES RÉFUTÉES EN CHEMIN**, toutes deux nées d'avoir regardé
+l'application à 1 280 px :
+
+1. *« La barre d'outils du piano roll grandit quand la fenêtre s'élargit »* —
+   mesuré 115 px à 1 280, **148** à 1 600, 120 à 1 920, ce qui semblait un défaut
+   de repli. C'est la hauteur **allouée**, pas celle qu'il faut : le panneau
+   plafonne la barre et la fait DÉFILER au-delà (D61, écrit noir sur blanc dans
+   le code). Un panneau plus haut lui en donne davantage, voilà tout.
+2. *« Le piano roll s'ouvre sur une bande de hauteurs presque vide »* — à
+   1 280 px il montre cinq demi-tons, et les pistes mélodiques n'y ont que 2 à
+   37 % de leurs notes (piano 2 %, guitare 6 %, other 20 %, basse 37 % ; les cinq
+   pistes de batterie, à hauteur unique, 100 %). Mais `cadrerSurLesNotes()` centre
+   déjà sur la médiane pondérée par la durée, et à 3 200 px la zone de notes passe
+   de **84 à 1 340 px**. Le cadrage est juste ; c'était la fenêtre qui était
+   petite.
+
+Suites : **355** core, **1 303** audio, **303** interchange, **25** clap, **11**
+panels, **214** Python ; ruff et mypy sans signalement. Gardes rejouées :
+`barre-transport.sh`, `cadrage-ouverture.sh`, `banc-fumee.sh` — 0 raté.
+
+**Reste nommé, non fait** : les gardes d'interface continuent de juger à
+1 280 × 742. C'est défendable — une fenêtre étroite est le cas DIFFICILE, et un
+plancher de lisibilité qui tient là tient partout —, mais aucune ne mesure à la
+taille de l'écran, si bien qu'un défaut qui n'apparaîtrait qu'en grand passerait
+inaperçu. Nommé ici, non traité : il faudrait choisir quelles gardes doublent
+leur course, et chacune coûte deux lancements de plus.

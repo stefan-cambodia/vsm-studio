@@ -32,6 +32,8 @@ public:
     /// une rangée ne suffit pas ; `MainComponent` lui accorde ce qu'elle
     /// demande, au lieu des 56 px fixes qui coupaient sa moitié gauche.
     int hauteurUtile(int largeur);
+    /// D364 : le nombre de rangées et la hauteur, à la largeur actuelle.
+    void direLesRangees();
 
     void setBpm(double bpm);
     void setTimeSignature(int numerator, int denominator);
