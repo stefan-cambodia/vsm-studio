@@ -3639,6 +3639,31 @@ signature — une phase à part, à chiffrer sur des morceaux réels. Les
 changements de tempo (un morceau qui accélère) ne sont pas suivis non plus : un
 seul tempo, comme avant, mais le bon.
 
+## § 5 sexdecies. LE RECENSEMENT DES SOURCES — H37, réfutée (24/09/2026)
+
+Le cahier des charges et le verdict sont dans
+[`CDC-recensement-des-sources.md`](CDC-recensement-des-sources.md) ; ce
+paragraphe ne recopie que ce qui décide pour la chaîne.
+
+**La question** : compter et nommer les parties d'un morceau mieux que la parité,
+et dire quelle part de l'erreur vient de la séparation. Attendus commités AVANT
+la mesure (`a110fd8`), ablation sur quatre niveaux (partie seule, stems vrais,
+stems séparés, mélange), trente morceaux du banc et cinq disques.
+
+**Le verdict : RÉFUTÉE.** Le recensement par grappes de timbre compte à **4,00**
+d'erreur moyenne sur `s1-sec`, la parité à **3,80** — il ne la bat pas.
+**Ce que la chaîne en garde** :
+
+1. `--recensement` PUBLIE un bloc au rapport et ne décide rien ; éteint par
+   défaut, chaîne inchangée à l'octet sans lui (témoin du 24/09).
+2. **L'erreur n'est pas là où S1 la laissait attendre.** Pour ce recensement, 57
+   parties sur 74 se perdent dès la partie SEULE — l'embedding coupe une partie
+   jouée à plusieurs nuances —, une seule à la séparation. Pour les NOTES, en
+   revanche, la séparation reste le plafond : compter les voix par registre
+   donne 1,30 sur stems vrais et 5,80 sur stems séparés. C1 garde son rang.
+3. La suite est ouverte par la règle écrite d'avance (un embedding pré-entraîné,
+   jugé d'abord sur la partie seule), et s'écrira comme H37.
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la

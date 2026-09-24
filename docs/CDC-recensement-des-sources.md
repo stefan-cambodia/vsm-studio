@@ -388,35 +388,41 @@ chiffres d'avance, après le verdict de H37.
 ## 6. Critères d'acceptation
 
 ```
-[ ] Module vsm_recensement.py : fonctions pures, tests unitaires sur des signaux
+[x] Module vsm_recensement.py : fonctions pures, tests unitaires sur des signaux
     synthétiques (deux timbres alternés → 2 grappes ; un seul timbre sur deux
     registres → mesuré et publié, c'est H25 ; silence → 0 grappe et segments
     silencieux COMPTÉS ; stem vide → recensement vide dit, pas d'exception)
-[ ] Les réglages du § 0.4 sont des constantes nommées du module, et le test
+[x] Les réglages du § 0.4 sont des constantes nommées du module, et le test
     vérifie qu'elles valent ce que le § 0.4 écrit (un seuil ne bouge pas sans
     que le test et le document bougent ensemble)
-[ ] Déterminisme : deux recensements du même morceau → JSON identique
+[x] Déterminisme : deux recensements du même morceau → JSON identique
     (hors `secondes`)
-[ ] Témoin de l'option : sans --recensement, rapport.json et projet d'une
+[x] Témoin de l'option : sans --recensement, rapport.json et projet d'une
     course sur le morceau minuscule du dépôt identiques À L'OCTET à ceux d'avant
     le chantier
-[ ] Avec --recensement : le bloc est présent, conforme au § 3.1, et la
+[x] Avec --recensement : le bloc est présent, conforme au § 3.1, et la
     provenance porte l'option, les réglages, les versions et les empreintes
-[ ] Modèle périmé → recensement sans N3, dit (« classifieur refusé : … »),
+[~] Modèle périmé → recensement sans N3, dit (« classifieur refusé : … »),
     le reste publié
-[ ] banc_recensement.py : sur banc-minuscule (analyse/tests/donnees/), les
+    → NON TENU TEL QU'ÉCRIT (24/09) : sans son classifieur, le recensement
+      n'est PAS publié du tout, et le journal le dit (« recensement NON
+      PUBLIÉ : … ») — le regroupement centre ses descripteurs par les
+      statistiques du corpus que porte ce modèle, il ne peut pas s'en passer.
+      La fraîcheur n'est pas vérifiée : les machines ne sont qu'un classement
+      publié, jamais une décision. Décision écrite ici plutôt que case cochée
+[x] banc_recensement.py : sur banc-minuscule (analyse/tests/donnees/), les
     quatre niveaux se calculent, les métriques (erreur de compte, précision et
     rappel par rôle, ARI, NMI, top 1, top 5, temps) sont présentes, et la part
     imputable à la séparation se calcule ou se dit « non définie »
-[ ] La garde des étiquettes : les métriques N2 sont vérifiées sur un cas
+[x] La garde des étiquettes : les métriques N2 sont vérifiées sur un cas
     construit à la main (étiquettes connues → ARI 1,0 ; permutées → 1,0 ;
     aléatoires → proche de 0) AVANT de mesurer quoi que ce soit — un banc
     se vérifie avant sa cible (leçon de D266)
-[ ] ruff, mypy, suite Python ENTIÈRE verte — hors campagne (CLAUDE.md)
-[ ] Mesures : s1-sec, s1-prod, s2 (L1-L4), puis Clair de Lune et Children ;
+[x] ruff, mypy, suite Python ENTIÈRE verte — hors campagne (CLAUDE.md)
+[x] Mesures : s1-sec, s1-prod, s2 (L1-L4), puis Clair de Lune et Children ;
     le tableau croisé publié au § 7 ; le verdict de H37 écrit selon la règle
     du § 0.6, avec l'attribution par étage
-[ ] INDEX et ROADMAP-fusion mis à jour avec le verdict
+[x] INDEX et ROADMAP-fusion mis à jour avec le verdict
 ```
 
 ## 7. Plan de mesure, et son coût estimé
@@ -454,3 +460,196 @@ brouillon `tmpfs` ; `python -u`.
   une lecture de l'énergie et d'un MIDI d'amateur (§ 12.1 du CDC multipiste),
   pas une session. L'attendu 13 est donc une fourchette, et les trois autres
   disques n'ont pas d'attendu.
+
+## 9. Verdict de H37 — RÉFUTÉE (24/09/2026, 21:00)
+
+**Mesuré, pas supposé.** Code du module et du banc au commit `86f2cc1`, poussé
+AVANT les mesures définitives ; attendus au commit `a110fd8`. Commandes exactes :
+
+```
+analyse/.venv/bin/python -u analyse/banc_recensement.py --lot reconstruction/travail/s1-sec  --banc reconstruction/travail/s1-sec-banc  --sortie reconstruction/travail/recensement-s1-sec
+analyse/.venv/bin/python -u analyse/banc_recensement.py --lot reconstruction/travail/s1-prod --banc reconstruction/travail/s1-prod-banc --sortie reconstruction/travail/recensement-s1-prod
+analyse/.venv/bin/python -u analyse/banc_recensement.py --lot reconstruction/travail/s2 --banc reconstruction/travail/s2-banc --stems-separes reconstruction/travail/recensement-s2 --sortie reconstruction/travail/recensement-s2
+analyse/.venv/bin/python -u analyse/banc_recensement.py --reel <original> --stems reconstruction/travail/recensement-reels/<disque>/stems --sortie reconstruction/travail/recensement-reels/<disque>
+analyse/.venv/bin/python analyse/verdict_h37.py reconstruction/travail      # recalcule tout ce qui suit
+```
+
+30 morceaux du banc mesurés sur 30 (`nonMesures` vide aux trois rapports), cinq
+disques sur cinq. Les stems séparés de `s2` (9 morceaux) et des cinq disques ont
+été produits par la fonction de la chaîne (`reconstruire.separer`, `htdemucs_6s`,
+sous-processus) : **41 à 57 s par morceau de `s2`, 66 à 104 s par disque** — et
+non « 5 à 10 min » comme l'estimait le § 7, qui supposait le CPU ; la séparation
+passe par le périphérique `xpu` de ce poste.
+
+### 9.1 Le tableau croisé — approche × niveau × métrique
+
+Erreur absolue moyenne sur le compte (K = parties mélodiques + pièces de
+batterie), et nombre de morceaux à ±1 :
+
+| approche @ niveau | `s1-sec` K | ±1 | `s1-sec` K_mél | `s1-prod` K | ±1 | `s2` K | ±1 | `s2` K_mél |
+|---|---|---|---|---|---|---|---|---|
+| **P** — la parité (témoin) @ L3 | **3,80** | 2/10 | 3,60 | **3,50** | 4/10 | 1,00 | 1/1 (*) | 1,00 |
+| A-grp @ L2 (stems vrais) | 5,20 | 1/10 | 4,70 | 5,20 | 1/10 | 8,70 | 1/10 | 9,30 |
+| **A-grp @ L3** (stems séparés) | **4,00** | 2/10 | 3,70 | 4,40 | 1/10 | 7,90 | 0/10 | 6,80 |
+| A-pal @ L2 | 6,90 | 0/10 | 6,40 | 6,90 | 0/10 | 4,70 | 2/10 | 4,50 |
+| A-pal @ L3 | 5,40 | 1/10 | 6,50 | 4,40 | 3/10 | **3,10** | 2/10 | 3,40 |
+| **A-voix @ L2** | **1,30** | **6/10** | 1,40 | 1,30 | 6/10 | 3,10 | 4/10 | 3,10 |
+| A-voix @ L3 | 5,80 | 3/10 | 4,90 | 6,50 | 1/10 | 8,30 | 0/10 | 7,00 |
+| B @ L4 (le mélange seul) | 9,40 | 0/10 | 6,00 | 9,70 | 0/10 | 8,00 | 1/10 | 5,70 |
+
+(*) La parité n'est mesurée que sur UN morceau de `s2` : la campagne `banc-s2`
+est morte le 20/09 à 03:38 après le morceau 1. Sur `s2`, le recensement n'a donc
+pas de témoin, et aucune conclusion « bat / ne bat pas la parité » n'y est tirée.
+
+Les autres métriques, `s1-sec` (et `s2` entre crochets) :
+
+| métrique | L1 (partie seule) | L2 (stems vrais) | L3 (stems séparés) |
+|---|---|---|---|
+| parties seules à UNE grappe (A-grp) | **17/74 = 23 %** [1/74] | — | — |
+| ARI / NMI des grappes de `other` | — | 0,157 / 0,309 [0,302 / 0,402] | 0,083 / 0,138 [0,325 / 0,368] |
+| F1 macro des rôles (lead, nappe, accompagnement, piano) | — | **0,069** [0,131] | 0,115 [0,087] |
+| N3 top 1 / top 5 (hasard 1,7 % / 8,6 %) | 28,6 % / 36,5 % (n = 63) [18,1 / 34,7 %] | 25,0 % / 41,7 % (n = 12) [12,1 / 24,2 %] | **0,0 %** / 25,0 % (n = 20) [4,9 / 26,8 %] |
+| distance médiane au corpus A6 (rayon 3,91) | 3,26 [3,52] | 3,39 [3,45] | 3,62 [3,67] |
+| rappel des pièces (grosse caisse · caisse claire · charleston · toms) | — | 1,00 · 0,25 · 0,50 · 0,33 | 1,00 · 0,88 · 0,63 · 0,33 |
+| secondes par morceau (séparation exclue) | — | 5,8 [34,5] | 11,9 [67,5] |
+
+Les segments de `other` sont « mixtes » (aucune partie à 60 % de l'énergie)
+dans **91 %** des cas sur le morceau 2 de `s1-sec` : l'ARI ne porte que sur le
+reste, et il n'est défini que sur 5 morceaux de `s1-sec` sur 10 (une seule
+classe vraie ailleurs).
+
+### 9.2 Les quatorze attendus, un par un (`s1-sec` sauf mention)
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | recensement en L3 ≤ 2,0 (échec ≥ 3,8) | **4,00** (A-grp), parité 3,80 | **ÉCHEC — réfuté** |
+| 2 | part due à la séparation ≥ 0,50 (échec < 0,25) | **−0,30** ; perdues d'abord en L3 : 1/74 | **ÉCHEC — réfuté** |
+| 3 | partie seule → 1 grappe ≥ 80 % (échec < 60 %) | **23 %** ; deux-mains coupés 2/2 | **ÉCHEC — réfuté** |
+| 4 | ARI L2 ≥ 0,30, NMI ≥ 0,45, K_mél ±1 ≥ 5/10 | 0,157 · 0,309 · 3/10 | raté (pas réfuté : ARI ≥ 0,10) |
+| 5 | ARI L2 − L3 ≥ 0,10 | +0,075 | raté |
+| 6 | grosse caisse ≥ 0,9, charleston ≥ 0,8, caisse claire ≥ 0,7, toms ≥ 0,5 | 1,00 · 0,63 · 0,88 · 0,33 ; cymbales INDÉCIDABLE | raté (pas réfuté : grosse caisse ≥ 0,7) |
+| 7 | F1 macro des rôles ≥ 0,40 (échec < 0,25) | **0,069** | **ÉCHEC — réfuté** |
+| 8 | N3 L1 top 1 ≥ 50 %, top 5 ≥ 80 % (échec top 5 < 50 %) | 28,6 % · **36,5 %** | **ÉCHEC — réfuté** |
+| 9 | N3 L2 top 1 ≥ 20 %, top 5 ≥ 40 % ; L3 top 1 ≤ L2 − 5 pt | 25,0 · 41,7 % ; L3 0,0 % | tenu — sur **12** grappes appariées seulement |
+| 10 | distance L1 < L2 < L3, L1 ≤ 3,91, L3 ≥ 5,0 | 3,26 < 3,39 < 3,62 | raté (L3 sous 5,0) |
+| 11 | B moins bon que A en L3 | K_mél 6,00 contre 3,70 | tenu |
+| 12 | coût ≤ 2× la durée | 0,40× (`s2` : 0,30×) | tenu |
+| 13 | *Clair de Lune* = 1 ; *Children* dans [8 ; 10] | **1** ; **15** (9 mélodiques + 6 pièces) | tenu ; **ÉCHEC — réfuté** |
+| 14 | `s1-prod` à +0,5 au plus ; `s2` K_mél ±1 ≥ 3/10 | 4,40 contre 4,00 ; **0/10** | tenu ; raté |
+
+**LA RÈGLE DU § 0.6 S'APPLIQUE SANS DISCUSSION : l'attendu 1 est dans sa zone
+d'échec, H37 est RÉFUTÉE.** Le recensement par grappes de timbre ne compte pas
+mieux que la parité d'aujourd'hui (4,00 contre 3,80 ; 4,40 contre 3,50 avec
+production). Il n'entre pas dans la chaîne comme compte ; `--recensement` reste
+une option publiée, éteinte, dont l'aide porte ce chiffre.
+
+### 9.3 L'attribution par étage — et elle contredit l'hypothèse
+
+Chaque partie mélodique suivie aux trois niveaux (A-grp), l'erreur imputée au
+premier niveau où elle apparaît :
+
+| étage | `s1-sec` (74 parties) | `s2` (74 parties) |
+|---|---|---|
+| segmentation + embedding (L1) | **57** | **73** |
+| regroupement dans un mélange (L2) | 15 | 0 |
+| séparation (L3) | 1 | 1 |
+| juste jusqu'en L3 | 1 | 0 |
+
+**L'erreur de ce recensement vient de l'étage lui-même, pas de la séparation.**
+La part « séparation » est même négative pour les grappes (−0,30 sur `s1-sec`,
+−0,10 sur `s2`) : ce n'est PAS que la séparation aide, c'est que deux erreurs se
+compensent — l'étage sous-compte sur 30 s, et les stems de fuite de
+`htdemucs_6s` lui ajoutent des grappes. Un ratio fait de deux erreurs de signe
+opposé ne s'interprète pas, et il est publié tel quel.
+
+**L'exception qui confirme S1 : les NOTES.** Pour l'approche par voix de
+registre (A-voix), la part due à la séparation vaut **+0,78** sur `s1-sec` et
+**+0,63** sur `s2` : sur les stems vrais, compter les voix par registre est le
+meilleur compte mesuré (**1,30**, 6/10 à ±1), et la séparation le porte à 5,80.
+C'est C1 et C2 de l'INDEX vus par un troisième instrument : ce qui passe par la
+transcription paie la séparation.
+
+### 9.4 Pourquoi l'embedding échoue en L1 — le diagnostic, mesuré APRÈS le verdict et dit comme tel
+
+Aucun seuil n'a bougé. Ce qui suit est un diagnostic des 46 parties seules de
+`s1-sec` coupées en plusieurs grappes :
+
+- **Ce n'est PAS le registre** (le piège H25 que le § 0.2 craignait) : l'écart
+  médian de hauteur entre deux grappes d'une même partie est de **4 demi-tons**,
+  et 5 cas sur 45 seulement dépassent l'octave.
+- **C'est d'abord le NIVEAU** : la part de variance du niveau du segment
+  expliquée par la grappe (η²) vaut **0,46** en médiane (22 parties sur 46
+  au-dessus de 0,5), contre **0,21** pour la hauteur. Les dimensions du
+  descripteur les plus liées au niveau sont le centroïde (|r| 0,52), le rolloff
+  (0,49) et presque tous les MFCC (0,43 à 0,48) — pas seulement `c0`. Ce n'est
+  donc pas un oubli de normalisation : sur ces machines, une note jouée plus
+  fort est aussi plus brillante (la vélocité ouvre le filtre), et un descripteur
+  de timbre « au propre » voit deux sons là où il y a une partie à deux nuances.
+- **Puis la NATURE du segment** : 6 cas sur 27 examinés — toutes des nappes —
+  séparent une grappe d'attaques d'une grappe de fenêtres de tenue.
+- **Et la LONGUEUR aggrave tout** : sur `s2` (186 à 269 s), une partie seule
+  donne jusqu'à **20** grappes, et une seule partie sur 74 n'en donne qu'une.
+
+Le test du module l'avait montré en petit avant toute mesure : sur deux timbres
+alternés, les segments purs se rangent sans une erreur, mais une attaque
+manquée fabrique des grappes de mélange (`test_recensement.py`).
+
+### 9.5 N3 — la bibliothèque de notes ne reconnaît pas les phrases, même au propre
+
+Sur une partie SEULE, sans séparation ni mélange, la vraie machine n'est en top
+5 que **36,5 %** du temps (`s2` : 34,7 %), quand le même modèle fait 83,6 % de
+top 1 sur des notes isolées (A6). L'écart ne vient pas du fossé de domaine du
+disque — la distance au corpus reste DANS le rayon (3,26 < 3,91) — mais de la
+forme : un segment d'une phrase n'est pas une note rendue seule. C'est
+exactement le cas que le § 0.3 avait prévu : **la bibliothèque de MOTIFS
+devient nécessaire.** Après séparation, le top 1 tombe à **0 sur 20** (`s1-sec`).
+
+### 9.6 Les disques
+
+| disque | compte écrit d'avance | A-grp (mél. + pièces) | A-pal | A-voix | B |
+|---|---|---|---|---|---|
+| *Clair de Lune* | 1 | **1** (1 + 0) | 2 | 7 | 1 |
+| *Children* | 8 à 10 (5 + 3) | **15** (9 + 6) | 14 | 19 | 2 |
+| *B4 Wuz Then* | — | 17 (12 + 5) | 10 | 15 | 7 |
+| *Us and Them* | — | 15 (11 + 4) | 10 | 26 | 2 |
+| *Sky and Sand* | — | 11 (6 + 5) | 12 | 13 | 15 |
+
+Sur *Children*, les 15 se décomposent : **6 pièces pour 3** (le kit de la chaîne
+compte `kick` et `kick2`, `tom` et `percussion` — le même sur-découpage que la
+parité), 2 grappes dans `guitar`, stem de FUITE à 0,59 % de l'énergie, et 3
+grappes dans `bass` — dont une de 0 à 49 s qui EST la nappe de l'intro, celle
+que le § 12.4 du CDC multipiste avait mesurée dans ce stem. *Clair de Lune*
+tient à 1 — mais la grappe du piano y est désignée `vsm.stochastic` à 0,40, sans
+abstention.
+
+### 9.7 Deux défauts trouvés en chemin, et dits
+
+- **Le banc accusait la batterie dans un stem qui ne la contient pas** : trouvé
+  sur le morceau 1 avant la mesure publiée, corrigé au commit `86f2cc1` (§ 2 de
+  l'en-tête de `banc_recensement.py`).
+- **Un script de mesure a écrit « rc=0 » pour un processus mort** : dans
+  `echo "… $(date +%T) … rc=$?"`, la substitution `$(date)` précède `$?` et le
+  remet à zéro. La mesure de *B4 Wuz Then* était morte (un `.mp4` que
+  `soundfile` ne lit pas) ; elle a été refaite sur la conversion WAV que la
+  chaîne emploie déjà (`sources/b4wuzthen.wav`). Le piège est écrit dans
+  `CLAUDE.md`.
+
+## 10. Ce que le verdict décide, et la recommandation
+
+1. **Le recensement ne pilote pas la parité.** Il ne la bat pas ; `--recensement`
+   publie, et son aide dit pourquoi on ne s'y fie pas.
+2. **La seconde passe est OUVERTE par la règle écrite d'avance** (attendu 3 sous
+   60 %, § 0.4) : un embedding pré-entraîné est autorisé à concourir, sous le
+   même banc et les mêmes niveaux. **La recommandation est de le mesurer contre
+   le diagnostic du § 9.4, et non contre le compte** : le critère qui compte est
+   qu'une partie SEULE jouée à plusieurs nuances reste UNE grappe (η² du niveau
+   sous 0,2), sur `s1-sec` et sur `s2`. Un embedding qui ne tient pas ce critère
+   en L1 ne peut pas compter en L3, et la mesure du § 9.3 dit que c'est là que
+   tout se perd.
+3. **Pour N3, rendre la bibliothèque de MOTIFS** (§ 0.3), conséquence écrite de
+   l'échec de l'attendu 8 : deux mesures par machine et par patch, aux nuances
+   tirées, et rejouer L1.
+4. **Le meilleur compte mesuré passe par les notes sur stems vrais** (A-voix,
+   1,30) : ce qui l'empêche en L3 est la séparation — C1, encore.
+5. Chaque suite s'écrit comme H37 : hypothèse et attendus commités avant la
+   mesure, puis validation de l'utilisateur avant d'implémenter.

@@ -35,7 +35,7 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -496,3 +496,70 @@ def versions() -> Dict[str, str]:
         except md.PackageNotFoundError:
             sortie[paquet] = "absent"
     return sortie
+
+
+# ---------------------------------------------------------------------------
+# Un morceau entier : ce que la chaîne (--recensement) et le banc (--reel)
+# appellent tous les deux — UN chemin, pour que les deux ne divergent pas.
+# ---------------------------------------------------------------------------
+
+def recenser_morceau(stems: Dict[str, np.ndarray], sample_rate: int,
+                     notes_par_stem: Mapping[str, Sequence[Any]],
+                     kit: Sequence[Tuple[str, int]], classifieur: Any,
+                     classifieur_refuse: str = "") -> Dict[str, Any]:
+    """Le bloc `recensement` du § 3.1 du CDC, pour des stems déjà en mémoire.
+
+    `kit` : les (famille, frappes) que la chaîne retient pour la batterie.
+    Un stem sous le seuil de la chaîne est recensé et publié, et n'entre pas au
+    compte (lecture 2 de l'en-tête).
+    """
+    energie = {k: float(np.sum(np.square(v.astype(np.float64)))) for k, v in stems.items()}
+    totale = sum(energie.values()) or 1.0
+    blocs: List[Dict[str, Any]] = []
+    k_grp = k_pal = k_voix = 0
+    for stem, audio in stems.items():
+        if stem == "drums":
+            continue
+        sous = energie[stem] / totale < SEUIL_STEM
+        r = recenser_stem(stem, audio, sample_rate, notes_par_stem.get(stem, []), classifieur,
+                          sous_seuil=sous)
+        blocs.append(bloc_de_stem(r))
+        if not sous:
+            k_grp += len(r.regroupement.grappes)
+            k_pal += r.paliers
+            k_voix += r.voix
+    drums_compte = "drums" in stems and energie["drums"] / totale >= SEUIL_STEM
+    pieces = list(kit) if drums_compte else []
+    k_bat = len(pieces)
+    indecidable = ["cymbales : le kit de la chaîne ne les distingue pas des autres métaux"]
+    if classifieur_refuse:
+        indecidable.append(f"machines (N3) : {classifieur_refuse}")
+    return {
+        "format": FORMAT, "version": VERSION, "approche": "A-grp",
+        "compte": {"K": k_grp + k_bat, "K_mel": k_grp, "K_bat": k_bat},
+        "comptesParApproche": {"A-grp": {"K_mel": k_grp, "K_bat": k_bat},
+                               "A-pal": {"K_mel": k_pal, "K_bat": k_bat},
+                               "A-voix": {"K_mel": k_voix, "K_bat": k_bat}},
+        "partEnergie": {k: round(v / totale, 5) for k, v in energie.items()},
+        "stems": blocs,
+        "batterie": [{"piece": f, "pieceN1": PIECE_N1.get(f, "autre"), "frappes": n} for f, n in pieces],
+        "indecidable": indecidable,
+        "provenance": {"reglages": reglages(), "versions": versions()},
+    }
+
+
+def resume_journal(bloc: Dict[str, Any], pistes_parite: Optional[int] = None) -> List[str]:
+    """Les lignes du journal (§ 3.2) : une par stem, puis la synthèse."""
+    lignes = []
+    for s in bloc["stems"]:
+        roles = ", ".join(g["role"] for g in s["grappes"]) or "aucune"
+        lignes.append(f"recensement : {s['stem']} → {len(s['grappes'])} grappe(s) ({roles}), "
+                      f"{s['segments']['bruit']} segments de bruit, "
+                      f"{len(s['grappesCourtes'])} grappe(s) sous 4 s écartée(s)"
+                      + (" — SOUS LE SEUIL, hors compte" if s["sousSeuil"] else ""))
+    c = bloc["compte"]
+    fin = f"recensement : K = {c['K']} ({c['K_mel']} mélodiques + {c['K_bat']} pièces)"
+    if pistes_parite is not None:
+        fin += f" — la parité a produit {pistes_parite} pistes"
+    lignes.append(fin)
+    return lignes

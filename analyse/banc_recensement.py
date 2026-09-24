@@ -731,24 +731,18 @@ def mesurer_reel(args, classifieur, provenance) -> int:
     t = time.perf_counter()
     chemins = {k: args.stems / f"{k}.wav" for k in STEMS_SEPARES if (args.stems / f"{k}.wav").exists()}
     stems = {k: lire_mono(c) for k, c in chemins.items()}
-    energie = {k: float(np.sum(np.square(v.astype(np.float64)))) for k, v in stems.items()}
-    totale = sum(energie.values()) or 1.0
-    blocs, k_grp, k_pal, k_voix = [], 0, 0, 0
-    for stem, audio in stems.items():
-        if stem == "drums":
-            continue
-        sous = energie[stem] / totale < R.SEUIL_STEM
-        r = R.recenser_stem(stem, audio, SR, notes_de(chemins[stem]), classifieur, sous_seuil=sous)
-        blocs.append(R.bloc_de_stem(r))
-        if not sous:
-            k_grp += len(r.regroupement.grappes)
-            k_pal += r.paliers
-            k_voix += r.voix
-    kit = kit_de(stems["drums"]) if "drums" in stems and energie["drums"] / totale >= R.SEUIL_STEM else []
+    notes = {k: notes_de(c) for k, c in chemins.items() if k != "drums"}
+    kit = kit_de(stems["drums"]) if "drums" in stems else []
+    bloc = R.recenser_morceau(stems, SR, notes, kit, classifieur)
+    blocs = bloc["stems"]
+    cpa = bloc["comptesParApproche"]
+    kit = [(b["piece"], b["frappes"]) for b in bloc["batterie"]]
+    k_grp, k_pal, k_voix = cpa["A-grp"]["K_mel"], cpa["A-pal"]["K_mel"], cpa["A-voix"]["K_mel"]
+    energie = bloc["partEnergie"]
     l4 = niveau_l4(lire_mono(args.reel), classifieur)
     sortie = {"format": FORMAT_BANC, "version": VERSION_BANC, "provenance": provenance,
               "reel": str(args.reel), "stems": str(args.stems),
-              "partEnergie": {k: round(v / totale, 5) for k, v in energie.items()},
+              "partEnergie": energie,
               "L3": {"compte": {"A-grp": {"K_mel": k_grp, "K_bat": len(kit), "K": k_grp + len(kit)},
                                 "A-pal": {"K_mel": k_pal, "K_bat": len(kit), "K": k_pal + len(kit)},
                                 "A-voix": {"K_mel": k_voix, "K_bat": len(kit), "K": k_voix + len(kit)}},

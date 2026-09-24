@@ -473,6 +473,9 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "finalistes": args.finalistes,
             "preselectionApprise": args.preselection_apprise,
             "portePaliers": args.porte_paliers,
+            # H37 : la clé n'existe QUE si l'option est posée — sans elle, le
+            # rapport reste celui d'avant, à l'octet (témoin du 24/09/2026).
+            **({"recensement": True} if getattr(args, "recensement", False) else {}),
             # Le vivier conditionne le résultat : il va dans la provenance,
             # sans quoi deux rapports ne seraient pas comparables (§ « Mesure »
             # du cahier des charges).
@@ -684,6 +687,14 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "« other » porte 4 timbres installés pour 2,58 de polyphonie, "
                               "et la porte d'aujourd'hui ne l'essaie même pas "
                               "(docs/CDC-detection-multipiste.md § 12.8-12.9)")
+    parseur.add_argument("--recensement", action="store_true",
+                         help="PUBLIER le recensement des sources (H37) : combien de parties, "
+                              "de quel rôle, jouées par quelle machine, dans « recensement » du "
+                              "rapport. Il ne coupe ni ne crée AUCUNE piste. MESURÉ ET RÉFUTÉ "
+                              "le 24/09/2026 (docs/CDC-recensement-des-sources.md § 9) : sur le "
+                              "banc s1-sec il rate le compte de 4,0 en moyenne, contre 3,8 pour "
+                              "la parité — il ne la bat pas ; il est gardé pour ce qu'il publie "
+                              "(parts d'énergie, grappes, activité), pas pour son compte")
     parseur.add_argument("--voix-par-vides", action="store_true",
                          help="AVANT le partage en N voix, découper un stem fourre-tout là "
                               "où sa transcription laisse des VIDES (au moins deux demi-tons "
@@ -2938,6 +2949,51 @@ def aligner_residuel_sur_projet(rapport: Dict[str, Any], pistes_export: Sequence
 # La chaîne
 # ---------------------------------------------------------------------------
 
+def recensement_de_la_chaine(args: argparse.Namespace, stems: Dict[str, Path], frappes,
+                             pistes_parite: int) -> Optional[Dict[str, Any]]:
+    """LE RECENSEMENT DES SOURCES (H37), publié sous `--recensement`.
+
+    Même chemin que le banc (`vsm_recensement.recenser_morceau`) : les notes par
+    la fonction de la chaîne, la batterie par le kit que la chaîne construit à
+    ses propres réglages, le classifieur A6 adopté. Rien de ce qui est calculé
+    ici ne retourne dans le projet. Coût : une transcription de plus par stem
+    (les notes de la chaîne sont découpées en voix et ne se relisent pas stem
+    par stem). La fraîcheur du classifieur n'est PAS vérifiée ici : ses
+    machines ne sont qu'un classement publié, jamais une décision.
+    """
+    from analyzer import vsm_recensement as R
+    from analyzer.vsm_classifier import Classifieur
+    from analyzer.vsm_drumkit import build_drum_kit
+
+    depart = time.perf_counter()
+    audio = {nom: charger_audio(chemin) for nom, chemin in stems.items()}
+    notes = {nom: extraire_notes(chemin) for nom, chemin in stems.items() if nom != "drums"}
+    kit: List[Tuple[str, int]] = []
+    if "drums" in audio:
+        with tempfile.TemporaryDirectory() as dossier:
+            k = build_drum_kit(audio["drums"], SAMPLE_RATE, Path(dossier), write_samples=False,
+                               hit_classifier=frappes,
+                               drop_unisolated=not args.garder_pieces_non_isolees)
+        kit = [] if k is None else [(s.family, s.hit_count) for s in k.slots]
+    chemin = Path(__file__).resolve().parent.parent / "modeles" / "classifieur.joblib"
+    classifieur, refus = None, ""
+    try:
+        classifieur = Classifieur.relit(chemin)
+    except Exception as erreur:  # noqa: BLE001 — dit, jamais tu
+        refus = f"classifieur illisible ({type(erreur).__name__})"
+    if classifieur is None:
+        # NON PUBLIÉ, et dit : le regroupement centre ses descripteurs par les
+        # statistiques du corpus que porte ce modèle ; sans lui, rien à publier.
+        print(f"      recensement NON PUBLIÉ : {refus} — le regroupement a besoin de "
+              f"ses statistiques de centrage")
+        return None
+    bloc = R.recenser_morceau(audio, SAMPLE_RATE, notes, kit, classifieur, refus)
+    bloc["secondes"] = round(time.perf_counter() - depart, 1)
+    for ligne in R.resume_journal(bloc, pistes_parite):
+        print("      " + ligne)
+    return bloc
+
+
 def charger_tous_les_modules() -> None:
     """UNE COURSE EST UNE PHOTOGRAPHIE DU CODE À SON DÉPART, pas un film.
 
@@ -2963,7 +3019,7 @@ def charger_tous_les_modules() -> None:
                 "analyzer.vsm_corpus", "analyzer.vsm_automation", "analyzer.vsm_track_refine",
                 "analyzer.vsm_track_arbitration", "analyzer.vsm_offline_render",
                 "analyzer.vsm_render_cache", "analyzer.vsm_project_export",
-                "analyzer.vsm_residu"):
+                "analyzer.vsm_residu", "analyzer.vsm_recensement"):
         importlib.import_module(nom)
 
 
@@ -3081,6 +3137,8 @@ def chaine(args: argparse.Namespace) -> None:
         # distance globale, écrasait le fichier sans elle, et le rapport final
         # -- le seul qu'on lit -- ne disait ni commit, ni options, ni modèles.
         # A4.2 était « fait » et son résultat n'existait pas sur disque.
+        bloc_recensement = (recensement_de_la_chaine(args, pistes, frappes, len(pistes_export))
+                             if args.recensement else None)
         complements: Dict[str, Any] = dict(
             provenance=provenance(args, classifieur, frappes, identite_moteur),
             drums=chantier.rapport_batterie,
@@ -3089,6 +3147,7 @@ def chaine(args: argparse.Namespace) -> None:
             reverb=reverb,
             residuel=rapport_residuel,
             coupure_basse=ctx.decisions.get("coupureBasse"),
+            recensement=bloc_recensement,
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
                                     metric=args.metrique, iterations=args.iterations,

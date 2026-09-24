@@ -292,6 +292,11 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   deux formes se distinguent d'un mot au journal (« sans réponse de banc »). Trois
   gardes du même jour (D263, D266, D275) n'ont valu que parce qu'on les a vues
   rouges ; celle-ci a d'abord échoué à échouer.
+- `$?` se lit AVANT toute substitution `$(…)` de la même ligne : dans
+  `echo "[$(date +%T)] FIN $n rc=$?"`, le `$(date)` s'exécute d'abord et
+  remet `$?` à zéro. Payé le 24/09 (H37) : la mesure de *B4 Wuz Then* était
+  morte sur un `.mp4` que `soundfile` ne lit pas, et le script a écrit
+  « rc=0 ». Garder `rc=$?` sur la ligne qui suit la commande, puis l'écrire.
 - En zsh, `${PIPESTATUS[0]}` est VIDE : le tableau s'appelle `$pipestatus` et
   s'indexe à partir de 1 (`$pipestatus[1]`). Un `rc=${PIPESTATUS[0]}` rend une
   chaîne vide, et le `echo "rc=$rc"` qui suit affiche `rc=` — ce qui ressemble à

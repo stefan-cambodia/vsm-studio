@@ -711,6 +711,7 @@ def write_reconstruction_report(
     residuel: Optional[Dict[str, object]] = None,
     coupure_basse: Optional[Sequence[Dict[str, object]]] = None,
     comparaison: Optional[Dict[str, object]] = None,
+    recensement: Optional[Dict[str, object]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -778,6 +779,10 @@ def write_reconstruction_report(
         # fichier d'écoute descendu de 4 dB sans que le rapport le dise
         # ferait croire à une reconstruction plus faible qu'elle n'est.
         **({"comparaison": comparaison} if comparaison else {}),
+        # LE RECENSEMENT DES SOURCES (H37, `--recensement`) : combien de parties,
+        # de quel rôle, jouées par quoi — PUBLIÉ, jamais décidé. Absent sans
+        # l'option : sans elle, le rapport est celui d'avant, à l'octet.
+        **({"recensement": recensement} if recensement else {}),
         # COMMENT LE MORCEAU SE PARTAGE ENTRE LES PISTES, en part d'énergie.
         #
         # C'EST LE CHIFFRE QUI A RENDU LE DÉFAUT VISIBLE, et il n'était nulle
