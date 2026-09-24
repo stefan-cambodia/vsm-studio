@@ -653,3 +653,65 @@ abstention.
    1,30) : ce qui l'empêche en L3 est la séparation — C1, encore.
 5. Chaque suite s'écrit comme H37 : hypothèse et attendus commités avant la
    mesure, puis validation de l'utilisateur avant d'implémenter.
+
+---
+
+## 11. H38 — un embedding pré-entraîné garde une partie ENTIÈRE à travers ses nuances (écrite AVANT la mesure, 24/09/2026)
+
+**D'où elle vient.** L'attendu 3 de H37 est tombé sous 60 % (23 %) : c'est le
+critère de plafond qui ouvre la seconde passe (§ 0.4, `CDC-apprentissage.md`
+§ 9). Et le § 9.4 a désigné ce qui manque : le descripteur A6 coupe une partie
+par sa NUANCE (η² du niveau 0,46), parce que centroïde et MFCC suivent la
+vélocité. Un embedding appris sur des millions d'enregistrements pour
+reconnaître des SOURCES (des classes d'instruments, des descriptions de texte)
+devrait avoir appris à ignorer la nuance d'une même source — c'est ce que H38
+éprouve, et rien d'autre.
+
+**UNE variable.** Le descripteur de segment : les 40 grandeurs A6 sont
+remplacées par un embedding pré-entraîné, normé à 1 (géométrie du cosinus ; la
+norme fait partie de la définition de l'embedding, pas un réglage). Tout le
+reste est celui de H37, à l'octet : segmentation, HDBSCAN et ses trois réglages,
+seuil de 4 s, étiquettes, appariement, rôles, kit de batterie, N3 (qui reste sur
+la bibliothèque A6 — la bibliothèque de motifs est une autre hypothèse). Le banc
+reçoit l'option `--embedding a6|clap|ast`, inscrite dans la provenance ; `a6`
+est le défaut et REDONNE les rapports de H37.
+
+**Deux embeddings, épinglés, chacun jugé seul :**
+
+| nom | modèle | révision | entrée |
+|---|---|---|---|
+| `clap` | `laion/clap-htsat-unfused`, encodeur audio (projection 512) | `8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a` | 48 kHz, le segment tel quel (le processeur complète) |
+| `ast` | `MIT/ast-finetuned-audioset-10-10-0.4593`, sortie regroupée (768) | `f826b80d28226b62986cc218e5cec390b1096902` | 16 kHz, idem |
+
+Nouvelle dépendance : `transformers` 5.17.0 (et `tokenizers`), installée dans
+`analyse/.venv` SANS rien modifier de ce qui y est (vérifié par `pip install
+--dry-run` : neuf paquets ajoutés, aucun mis à jour). Elle n'entre PAS dans
+`analyse/requirements.txt` tant qu'aucun embedding n'est adopté : la chaîne ne
+l'importe que sous l'option.
+
+**Les attendus, seuils de RÉUSSITE et d'ÉCHEC, chacun pour `clap` et pour `ast` :**
+
+| # | attendu | RÉUSSITE si | ÉCHEC si |
+|---|---|---|---|
+| 1 | **la partie seule reste UNE grappe** (L1, `s1-sec`) | **≥ 60 %** des 74 parties (H37 : 23 %) ET η² médian du niveau entre grappes d'une même partie **< 0,20** (H37 : 0,46) | **< 35 %**, ou η² ≥ 0,40 — l'embedding coupe encore par la nuance |
+| 2 | idem sur les morceaux longs (L1, `s2`) | **≥ 40 %** (H37 : 1/74) | **< 10 %** |
+| 3 | **le compte bat la parité** (L3, `s1-sec`, K) | erreur **≤ 3,0** (parité 3,80) | **≥ 3,8** |
+| 4 | le compte sur stems vrais (L2, `s1-sec`, K) | **≤ 2,5** (H37 : 5,20) | ≥ 5,2 — pas mieux que H37 |
+| 5 | le regroupement dans le mélange (L2, ARI de `other`) | **≥ 0,30** | **< 0,157** — pas mieux que H37 |
+| 6 | *Clair de Lune* (K) ; *Children* sur **K_mél** | 1 ; K_mél dans **[5 ; 7]** | ≥ 3 ; K_mél ≤ 3 ou ≥ 10 |
+| 7 | coût de l'embedding (L3, séparation exclue) | ≤ **2×** la durée du morceau | > **10×** |
+
+**Pourquoi *Children* se juge ici sur K_mél et non sur K** (changement écrit
+AVANT la mesure) : le kit de batterie compte 6 pièces pour 3 (§ 9.6), et H38 ne
+touche pas au kit ; juger K ferait échouer l'embedding pour une faute qui n'est
+pas la sienne. Les 5 parties mélodiques sûres ou probables du § 12.1 du CDC
+multipiste, 7 avec les deux incertaines.
+
+**Ce que je prédis sans en faire une condition** : la part de l'erreur due à la
+séparation MONTE (≥ 0,5) dès que l'étage cesse de perdre ses parties en L1 —
+c'est ce que H37 n'a pas pu mesurer, l'étage perdant tout avant.
+
+**La règle du verdict, écrite avant** : pour chaque embedding, **CONFIRMÉE** si
+les attendus 1 et 3 sont tenus ; **RÉFUTÉE** si l'attendu 1 est dans sa zone
+d'échec ; **PARTIELLE** sinon. H38 est confirmée si l'un des deux l'est ; les
+deux sont publiés quoi qu'il arrive.
