@@ -715,3 +715,22 @@ c'est ce que H37 n'a pas pu mesurer, l'étage perdant tout avant.
 les attendus 1 et 3 sont tenus ; **RÉFUTÉE** si l'attendu 1 est dans sa zone
 d'échec ; **PARTIELLE** sinon. H38 est confirmée si l'un des deux l'est ; les
 deux sont publiés quoi qu'il arrive.
+
+### 11.1 Ajouté le 24/09 à 22:40, APRÈS le chronométrage et AVANT toute mesure de lot — l'ordre des mesures change, pas les attendus
+
+**Mesuré sur UN morceau de `s1-sec` (`morceau-0002-g2`, 30 s), pour dimensionner
+la campagne** : CLAP **284 s** par morceau (L3 : 85 s, 2,8× la durée) ; AST
+**1 723 s** (L3 : 550 s, **18×**). Au rythme d'AST, `s2` en L1 coûterait environ
+13 h (estimation : 74 parties × 225 s × 2,8 s par seconde de partie). **Décision
+écrite** : AST ne passe sur `s2` QUE s'il n'échoue pas à l'attendu 1 sur
+`s1-sec` (35 % au moins de parties seules à une grappe) — un embedding qui
+coupe déjà ses parties sur 30 s n'apprendrait rien de plus sur quatre minutes.
+Le script de campagne le décide lui-même, et le dit au journal. Aucun seuil ne
+bouge ; ce morceau de chronométrage n'entre dans aucun verdict.
+
+**Deux défauts d'environnement, dits** : le `torchvision` 0.28 de `analyse/.venv`
+ne s'importe pas avec son torch 2.13 (« operator torchvision::nms does not
+exist ») — `transformers` en est empêché de charger CLAP ; le module le
+DÉCLARE absent à `transformers` plutôt que de désinstaller quoi que ce soit
+(`_sans_torchvision`). Et CLAP comme AST tournent sur CPU : deux passes sur le
+même stem donnent des embeddings identiques au bit près (vérifié sur CLAP).

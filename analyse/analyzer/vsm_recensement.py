@@ -208,6 +208,91 @@ def centrer(descripteurs: np.ndarray, moyenne: np.ndarray, echelle: np.ndarray) 
 
 
 # ---------------------------------------------------------------------------
+# H38 : un embedding pré-entraîné À LA PLACE des 40 grandeurs A6
+# (§ 11 du CDC). Une seule variable : ce qui décrit un segment. `a6` reste le
+# défaut, et son chemin ne change pas d'un octet.
+# ---------------------------------------------------------------------------
+
+EMBEDDINGS = {
+    "clap": ("laion/clap-htsat-unfused", "8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a", 48000),
+    "ast": ("MIT/ast-finetuned-audioset-10-10-0.4593", "f826b80d28226b62986cc218e5cec390b1096902", 16000),
+}
+_MODELES: Dict[str, Any] = {}
+
+
+def _sans_torchvision() -> None:
+    """`transformers` importe `torchvision` dès qu'il le croit présent — et le
+    `torchvision` 0.28 installé dans `analyse/.venv` ne s'importe pas avec le
+    torch 2.13 du poste (« operator torchvision::nms does not exist », constaté
+    le 24/09). Rien dans le dépôt ne s'en sert, et les deux modèles de H38 ne
+    touchent pas l'image : on le DÉCLARE absent à `transformers`, sans rien
+    désinstaller de l'environnement de la chaîne."""
+    import transformers.utils as tu
+    import transformers.utils.import_utils as iu
+
+    def absent() -> bool:
+        return False
+
+    for module in (iu, tu):
+        if hasattr(module, "is_torchvision_available"):
+            module.is_torchvision_available = absent  # type: ignore[attr-defined]
+
+
+def _modele(nom: str):
+    """Le modèle et son processeur, chargés UNE fois, révision épinglée, sur CPU."""
+    if nom not in _MODELES:
+        import torch
+
+        _sans_torchvision()
+
+        depot, revision, _ = EMBEDDINGS[nom]
+        modele: Any
+        processeur: Any
+        if nom == "clap":
+            from transformers import ClapModel, ClapProcessor
+            modele = ClapModel.from_pretrained(depot, revision=revision)
+            processeur = ClapProcessor.from_pretrained(depot, revision=revision)
+        else:
+            from transformers import ASTFeatureExtractor, ASTModel
+            modele = ASTModel.from_pretrained(depot, revision=revision)
+            processeur = ASTFeatureExtractor.from_pretrained(depot, revision=revision)
+        modele.eval()
+        torch.set_grad_enabled(False)
+        _MODELES[nom] = (modele, processeur)
+    return _MODELES[nom]
+
+
+def embeddings_de_segments(audio: np.ndarray, sample_rate: int, segmentation: Segmentation,
+                           nom: str, lot: int = 16) -> np.ndarray:
+    """Un embedding normé à 1 par segment (géométrie du cosinus, § 11)."""
+    import librosa
+    import torch
+
+    if not segmentation.segments:
+        return np.zeros((0, 1))
+    modele, processeur = _modele(nom)
+    sr_modele = EMBEDDINGS[nom][2]
+    signal = librosa.resample(audio.astype(np.float32), orig_sr=sample_rate, target_sr=sr_modele)
+    morceaux = [signal[int(s.debut * sr_modele):max(int(s.fin * sr_modele), int(s.debut * sr_modele) + 1)]
+                for s in segmentation.segments]
+    sorties = []
+    for i in range(0, len(morceaux), lot):
+        paquet = [m.astype(np.float32) for m in morceaux[i:i + lot]]
+        if nom == "clap":
+            entree = processeur(audio=paquet, sampling_rate=sr_modele, return_tensors="pt")
+            vecteurs = modele.get_audio_features(**entree)
+            if not isinstance(vecteurs, torch.Tensor):
+                vecteurs = vecteurs.pooler_output
+        else:
+            entree = processeur(paquet, sampling_rate=sr_modele, return_tensors="pt")
+            vecteurs = modele(**entree).pooler_output
+        sorties.append(vecteurs.detach().cpu().numpy().astype(np.float64))
+    x = np.vstack(sorties)
+    normes = np.linalg.norm(x, axis=1, keepdims=True)
+    return x / np.where(normes > 0, normes, 1.0)
+
+
+# ---------------------------------------------------------------------------
 # Regroupement
 # ---------------------------------------------------------------------------
 
@@ -406,7 +491,8 @@ class StemRecense:
 
 
 def recenser_stem(stem: str, audio: np.ndarray, sample_rate: int, notes: Sequence[Any],
-                  classifieur: Any, sous_seuil: bool = False) -> StemRecense:
+                  classifieur: Any, sous_seuil: bool = False,
+                  embedding: str = "a6") -> StemRecense:
     """Segmenter, décrire, grouper, nommer les rôles, identifier — un stem."""
     from analyzer.vsm_paliers import timbres_installes
 
@@ -418,7 +504,12 @@ def recenser_stem(stem: str, audio: np.ndarray, sample_rate: int, notes: Sequenc
     descripteurs = descripteurs_complets(audio, sample_rate, segmentation)
     temps["descripteurs"] = time.perf_counter() - t
     t = time.perf_counter()
-    x = centrer(descripteurs, classifieur.moyenne, classifieur.echelle)
+    if embedding == "a6":
+        x = centrer(descripteurs, classifieur.moyenne, classifieur.echelle)
+    else:
+        x = embeddings_de_segments(audio, sample_rate, segmentation, embedding)
+        temps["embedding"] = time.perf_counter() - t
+        t = time.perf_counter()
     regroupement = grouper(x, segmentation)
     temps["grappes"] = time.perf_counter() - t
     t = time.perf_counter()
@@ -506,7 +597,7 @@ def versions() -> Dict[str, str]:
 def recenser_morceau(stems: Dict[str, np.ndarray], sample_rate: int,
                      notes_par_stem: Mapping[str, Sequence[Any]],
                      kit: Sequence[Tuple[str, int]], classifieur: Any,
-                     classifieur_refuse: str = "") -> Dict[str, Any]:
+                     classifieur_refuse: str = "", embedding: str = "a6") -> Dict[str, Any]:
     """Le bloc `recensement` du § 3.1 du CDC, pour des stems déjà en mémoire.
 
     `kit` : les (famille, frappes) que la chaîne retient pour la batterie.
@@ -522,7 +613,7 @@ def recenser_morceau(stems: Dict[str, np.ndarray], sample_rate: int,
             continue
         sous = energie[stem] / totale < SEUIL_STEM
         r = recenser_stem(stem, audio, sample_rate, notes_par_stem.get(stem, []), classifieur,
-                          sous_seuil=sous)
+                          sous_seuil=sous, embedding=embedding)
         blocs.append(bloc_de_stem(r))
         if not sous:
             k_grp += len(r.regroupement.grappes)

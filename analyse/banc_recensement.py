@@ -246,7 +246,8 @@ def energies_par_segment(parties: Sequence[Partie], segments: Sequence[Any]) -> 
 
 
 def recenser_niveau(nom: str, stems: Dict[str, np.ndarray], chemins: Dict[str, Path],
-                    parties: Sequence[Partie], classifieur: Any) -> Dict[str, Any]:
+                    parties: Sequence[Partie], classifieur: Any,
+                    embedding: str = "a6") -> Dict[str, Any]:
     """L2 ou L3 : recenser chaque stem, compter, apparier, juger."""
     from analyzer import vsm_recensement as R
 
@@ -262,7 +263,8 @@ def recenser_niveau(nom: str, stems: Dict[str, np.ndarray], chemins: Dict[str, P
             continue
         sous = energie[stem] / totale < R.SEUIL_STEM
         notes = notes_de(chemins[stem])
-        r = R.recenser_stem(stem, audio, SR, notes, classifieur, sous_seuil=sous)
+        r = R.recenser_stem(stem, audio, SR, notes, classifieur, sous_seuil=sous,
+                            embedding=embedding)
         bloc = R.bloc_de_stem(r)
         # L'ÉTIQUETTE SE CHOISIT PARMI LES PARTIES QUE CE STEM DOIT PORTER (sa
         # cible, § 2.4.1 du banc : `other`, `guitar` et `piano` ← le reste). Le
@@ -343,7 +345,21 @@ def recenser_niveau(nom: str, stems: Dict[str, np.ndarray], chemins: Dict[str, P
     }
 
 
-def niveau_l1(parties: Sequence[Partie], classifieur: Any) -> Dict[str, Any]:
+def eta2(valeurs: Sequence[float], groupes: Sequence[int]) -> Optional[float]:
+    """Part de la variance de `valeurs` expliquée par `groupes` (η²)."""
+    x = np.asarray(valeurs, dtype=np.float64)
+    g = np.asarray(groupes)
+    if x.size < 3 or len(set(g.tolist())) < 2:
+        return None
+    total = float(np.sum((x - x.mean()) ** 2))
+    if total <= 0.0:
+        return None
+    entre = sum(float(np.sum(g == k)) * (float(x[g == k].mean()) - float(x.mean())) ** 2
+                for k in set(g.tolist()))
+    return entre / total
+
+
+def niveau_l1(parties: Sequence[Partie], classifieur: Any, embedding: str = "a6") -> Dict[str, Any]:
     """Chaque partie SEULE : combien de grappes, et la machine de la plus longue."""
     from analyzer import vsm_recensement as R
 
@@ -357,8 +373,17 @@ def niveau_l1(parties: Sequence[Partie], classifieur: Any) -> Dict[str, Any]:
                                 "kit": kit}
             continue
         notes = notes_de(p.chemin)
-        r = R.recenser_stem(p.route, p.audio, SR, notes, classifieur)
+        r = R.recenser_stem(p.route, p.audio, SR, notes, classifieur, embedding=embedding)
         n = len(r.regroupement.grappes)
+        # H38, attendu 1 : ce qui sépare les grappes d'une MÊME partie est-il
+        # son niveau ? (η² du niveau des segments, sur les grappes qui comptent)
+        niveau_eta2 = None
+        if n >= 2:
+            ids = {g.ident for g in r.regroupement.grappes}
+            idx = [i for i, e in enumerate(r.regroupement.etiquettes) if e in ids]
+            niveaux = [R._dbfs(p.audio[int(r.segmentation.segments[i].debut * SR):
+                                       int(r.segmentation.segments[i].fin * SR)]) for i in idx]
+            niveau_eta2 = eta2(niveaux, [int(r.regroupement.etiquettes[i]) for i in idx])
         rang = dist = None
         if n:
             g = max(r.regroupement.grappes, key=lambda g: g.duree)
@@ -369,19 +394,24 @@ def niveau_l1(parties: Sequence[Partie], classifieur: Any) -> Dict[str, Any]:
         sortie["parties"][p.indice] = {
             "role": p.role, "machine": p.machine, "grappes": n,
             "statut": "ok" if n == 1 else ("fondue" if n == 0 else "dedoublee"),
+            "eta2Niveau": niveau_eta2,
             "rang": rang, "distance": dist, "bloc": R.bloc_de_stem(r)}
     sortie["secondes"] = round(time.perf_counter() - t0, 2)
     return sortie
 
 
-def niveau_l4(melange: np.ndarray, classifieur: Any) -> Dict[str, Any]:
+def niveau_l4(melange: np.ndarray, classifieur: Any, embedding: str = "a6") -> Dict[str, Any]:
     """Approche B : le mélange seul."""
     from analyzer import vsm_recensement as R
 
     t0 = time.perf_counter()
     seg = R.segmenter(melange, SR)
-    d = R.descripteurs_complets(melange, SR, seg)
-    reg = R.grouper(R.centrer(d, classifieur.moyenne, classifieur.echelle), seg)
+    if embedding == "a6":
+        d = R.descripteurs_complets(melange, SR, seg)
+        x = R.centrer(d, classifieur.moyenne, classifieur.echelle)
+    else:
+        x = R.embeddings_de_segments(melange, SR, seg, embedding)
+    reg = R.grouper(x, seg)
     parts = R.part_percussive_par_segment(melange, SR, seg)
     k_bat = sum(1 for g in reg.grappes if float(np.median(parts[g.segments])) >= R.PART_PERCUSSIVE)
     k_mel = len(reg.grappes) - k_bat
@@ -396,7 +426,7 @@ def niveau_l4(melange: np.ndarray, classifieur: Any) -> Dict[str, Any]:
 
 
 def mesurer_morceau(dossier: Path, stems_separes: Optional[Path], sortie: Path,
-                    classifieur: Any, niveaux: Sequence[str]) -> Dict[str, Any]:
+                    classifieur: Any, niveaux: Sequence[str], embedding: str = "a6") -> Dict[str, Any]:
     verite = json.loads((dossier / "verite.json").read_text())
     parties = []
     for i, p in enumerate(verite["parties"]):
@@ -411,7 +441,7 @@ def mesurer_morceau(dossier: Path, stems_separes: Optional[Path], sortie: Path,
                               "parties": [{"indice": p.indice, "role": p.role, "machine": p.machine,
                                            "pieces": p.pieces} for p in parties]}
     if "L1" in niveaux:
-        mesure["L1"] = niveau_l1(parties, classifieur)
+        mesure["L1"] = niveau_l1(parties, classifieur, embedding)
     if "L2" in niveaux:
         n = max(p.audio.size for p in parties)
         sommes: Dict[str, np.ndarray] = {}
@@ -423,18 +453,18 @@ def mesurer_morceau(dossier: Path, stems_separes: Optional[Path], sortie: Path,
             chemins[k] = sortie / dossier.name / "L2" / f"{k}.wav"
             ecrire_mono(chemins[k], v.astype(np.float32))
         mesure["L2"] = recenser_niveau("L2", {k: v.astype(np.float32) for k, v in sommes.items()},
-                                       chemins, parties, classifieur)
+                                       chemins, parties, classifieur, embedding)
     if "L3" in niveaux and stems_separes is not None:
         chemins = {k: stems_separes / f"{k}.wav" for k in STEMS_SEPARES
                    if (stems_separes / f"{k}.wav").exists()}
         manquants = [k for k in STEMS_SEPARES if k not in chemins]
         stems = {k: lire_mono(c) for k, c in chemins.items()}
-        mesure["L3"] = recenser_niveau("L3", stems, chemins, parties, classifieur)
+        mesure["L3"] = recenser_niveau("L3", stems, chemins, parties, classifieur, embedding)
         mesure["L3"]["stemsManquants"] = manquants
     elif "L3" in niveaux:
         mesure["L3"] = {"nonMesure": "aucun stem séparé pour ce morceau"}
     if "L4" in niveaux:
-        mesure["L4"] = niveau_l4(lire_mono(dossier / "morceau.wav"), classifieur)
+        mesure["L4"] = niveau_l4(lire_mono(dossier / "morceau.wav"), classifieur, embedding)
     return mesure
 
 
@@ -519,7 +549,9 @@ def agreger(mesures: Sequence[Dict[str, Any]], parite: Dict[str, Dict[str, int]]
                     "deuxMainsCoupees": sum(1 for pp in deux_mains if pp["grappes"] >= 2),
                     "deuxMains": len(deux_mains),
                     "n3": resume_rangs(rangs, len(l1)),
-                    "distanceMediane": med([pp["distance"] for pp in l1 if pp["distance"] is not None])}
+                    "distanceMediane": med([pp["distance"] for pp in l1 if pp["distance"] is not None]),
+                    "eta2NiveauMedian": med([pp["eta2Niveau"] for pp in l1
+                                             if pp.get("eta2Niveau") is not None])}
     for niveau in ("L2", "L3"):
         ok = [m[niveau] for m in mesures if niveau in m and "compte" in m[niveau]]
         if not ok:
@@ -633,7 +665,8 @@ def tableau(ag: Dict[str, Any], lot: str) -> str:
         lignes.append(f"L1 : {a['uneGrappe']}/{a['parties']} parties seules à 1 grappe "
                       f"({fmt(a['partUneGrappe'])}), distribution {a['distribution']}, "
                       f"deux-mains coupées {a['deuxMainsCoupees']}/{a['deuxMains']} ; "
-                      f"N3 {a['n3']} ; distance médiane au corpus {fmt(a['distanceMediane'], 2)}")
+                      f"N3 {a['n3']} ; distance médiane au corpus {fmt(a['distanceMediane'], 2)} ; "
+                      f"η² médian du niveau entre grappes d'une même partie {fmt(a.get('eta2NiveauMedian'))}")
     for niveau in ("L2", "L3"):
         if niveau in ag:
             a = ag[niveau]
@@ -662,6 +695,8 @@ def main() -> int:
     ap.add_argument("--niveaux", default="L1,L2,L3,L4")
     ap.add_argument("--morceaux", default="", help="filtre sur le nom des morceaux")
     ap.add_argument("--classifieur", type=Path, default=ICI.parent / "modeles" / "classifieur.joblib")
+    ap.add_argument("--embedding", default="a6", choices=["a6", "clap", "ast"],
+                    help="ce qui décrit un segment (H38, § 11 du CDC) ; a6 = H37")
     ap.add_argument("--reel", type=Path, default=None, help="un disque : le mélange")
     ap.add_argument("--stems", type=Path, default=None, help="un disque : ses stems séparés")
     args = ap.parse_args()
@@ -674,6 +709,9 @@ def main() -> int:
     provenance = {"commit": commit(), "commande": sys.argv, "reglages": R.reglages(),
                   "versions": R.versions(),
                   "empreintes": {"classifieur": empreinte(args.classifieur)},
+                  "embedding": args.embedding,
+                  **({"modeleEmbedding": list(R.EMBEDDINGS[args.embedding][:2])}
+                     if args.embedding != "a6" else {}),
                   "date": time.strftime("%Y-%m-%dT%H:%M:%S")}
 
     if args.reel is not None:
@@ -697,7 +735,7 @@ def main() -> int:
         print(f"[{time.strftime('%T')}] DÉBUT {d.name} (stems séparés : {separes or 'AUCUN'})", flush=True)
         t = time.perf_counter()
         try:
-            m = mesurer_morceau(d, separes, args.sortie, classifieur, niveaux)
+            m = mesurer_morceau(d, separes, args.sortie, classifieur, niveaux, args.embedding)
         except Exception as erreur:  # noqa: BLE001 — dit, jamais tu
             import traceback
             traceback.print_exc()
@@ -733,13 +771,13 @@ def mesurer_reel(args, classifieur, provenance) -> int:
     stems = {k: lire_mono(c) for k, c in chemins.items()}
     notes = {k: notes_de(c) for k, c in chemins.items() if k != "drums"}
     kit = kit_de(stems["drums"]) if "drums" in stems else []
-    bloc = R.recenser_morceau(stems, SR, notes, kit, classifieur)
+    bloc = R.recenser_morceau(stems, SR, notes, kit, classifieur, embedding=args.embedding)
     blocs = bloc["stems"]
     cpa = bloc["comptesParApproche"]
     kit = [(b["piece"], b["frappes"]) for b in bloc["batterie"]]
     k_grp, k_pal, k_voix = cpa["A-grp"]["K_mel"], cpa["A-pal"]["K_mel"], cpa["A-voix"]["K_mel"]
     energie = bloc["partEnergie"]
-    l4 = niveau_l4(lire_mono(args.reel), classifieur)
+    l4 = niveau_l4(lire_mono(args.reel), classifieur, args.embedding)
     sortie = {"format": FORMAT_BANC, "version": VERSION_BANC, "provenance": provenance,
               "reel": str(args.reel), "stems": str(args.stems),
               "partEnergie": energie,
