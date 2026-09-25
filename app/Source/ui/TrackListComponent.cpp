@@ -269,10 +269,10 @@ void TrackRowComponent::poserTextes() {
         folderButton_.setTooltip(tr(u8"Replier ou déployer le dossier. N'affecte que la VUE : "
                                     u8"les pistes rangées dedans continuent de jouer."));
     armButton_.setTooltip(
-        audio_ ? tr("Armer la piste : la prochaine prise ecrit l'entree audio dans un "
-                    "fichier du dossier du projet. Une seule piste audio a la fois.")
-               : tr("Armer la piste : elle recoit alors le clavier MIDI, "
-                    "a l'ecoute comme a l'enregistrement."));
+        audio_ ? tr(u8"Armer la piste : la prochaine prise écrit l'entrée audio dans un "
+                    u8"fichier du dossier du projet. Une seule piste audio à la fois.")
+               : tr(u8"Armer la piste : elle reçoit alors le clavier MIDI, "
+                    u8"à l'écoute comme à l'enregistrement."));
     if (track_.kind != Track::Kind::Group) poserInfobulleDeSortie();
 }
 

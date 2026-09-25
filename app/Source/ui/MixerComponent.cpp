@@ -326,7 +326,7 @@ void ChannelStrip::retraduire() {
     // UN BOUTON PAR BUS DÉCLARÉ, et son infobulle dit lequel : « send A » et
     // « send B » n'apprenaient rien.
     for (int bus = 0; bus < sends_.size() && static_cast<size_t>(bus) < sendNames_.size(); ++bus)
-        sends_[bus]->setTooltip(tr("Depart vers %1")
+        sends_[bus]->setTooltip(tr(u8"Départ vers %1")
                                     .replace("%1", juce::String::fromUTF8(sendNames_[static_cast<size_t>(bus)].c_str())));
     armer_.setTooltip(tr(u8"Écrire l'automation en jouant. Un clic : Touch (la main sur un réglage écrit "
                          u8"tant qu'on la tient). Deux : Latch (elle écrit jusqu'à l'arrêt du transport). "
@@ -748,8 +748,8 @@ MasterStrip::MasterStrip() {
 void MasterStrip::retraduire() {
     monoButton_.setTooltip(tr(u8"Écoute en mono : L+R repliés après le limiteur, la corrélation "
                               u8"lue devient ce qu'on entend. Jamais dans un export."));
-    phaseLabel_.setTooltip(tr("Correlation de phase : +1 en phase, 0 sans rapport, "
-                              "negatif = la piste disparait en mono."));
+    phaseLabel_.setTooltip(tr(u8"Corrélation de phase : +1 en phase, 0 sans rapport, "
+                              u8"négatif = la piste disparaît en mono."));
     if (satVue_) poserInfobulleSat();
 }
 

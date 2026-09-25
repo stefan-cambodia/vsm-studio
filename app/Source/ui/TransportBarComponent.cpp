@@ -372,11 +372,11 @@ void TransportBarComponent::setInputLevel(float peak, int channels) {
         poserInfobulleRec([channels] {
             using vsm::app::ui::tr;
             return channels > 0
-                ? tr("%1 entree(s) ouverte(s). L'enregistrement "
-                     "AUDIO arrive en D3.4 ; l'enregistrement MIDI, lui, ne depend "
-                     "pas de ces entrees mais du clavier branche.").replace("%1", juce::String(channels))
-                : tr("Aucune entree audio : la carte n'en donne pas. "
-                     "Voir Fichier > Reglages audio.");
+                ? tr(u8"%1 entrée(s) ouverte(s) : une piste audio armée y enregistre. "
+                     u8"L'enregistrement MIDI, lui, ne dépend pas de ces entrées "
+                     u8"mais du clavier branché.").replace("%1", juce::String(channels))
+                : tr(u8"Aucune entrée audio : la carte n'en donne pas. "
+                     u8"Voir Fichier > Réglages audio.");
         });
     }
     repaint(inputMeterBounds_);
@@ -390,15 +390,15 @@ void TransportBarComponent::setRecordAvailable(bool deviceOpen, int armedTrackCo
     poserInfobulleRec([deviceOpen, armedTrackCount] {
         using vsm::app::ui::tr;
         if (!deviceOpen)
-            return tr("Aucune carte son ouverte : le transport n'avance pas, "
-                      "et aucun clavier MIDI n'est ecoute. "
-                      "Voir Fichier > Reglages audio.");
+            return tr(u8"Aucune carte son ouverte : le transport n'avance pas, "
+                      u8"et aucun clavier MIDI n'est écouté. "
+                      u8"Voir Fichier > Réglages audio.");
         if (armedTrackCount <= 0)
-            return tr("Aucune piste armee : armer une piste avec son bouton R "
-                      "dans la liste des pistes, sinon la prise n'aurait nulle "
-                      "part ou aller.");
-        return tr("Enregistrer sur %1 piste(s) armee(s). Le decompte et le mode "
-                  "(superposer / remplacer) sont dans le menu Enregistrement.")
+            return tr(u8"Aucune piste armée : armer une piste avec son bouton R "
+                      u8"dans la liste des pistes, sinon la prise n'aurait nulle "
+                      u8"part où aller.");
+        return tr(u8"Enregistrer sur %1 piste(s) armée(s). Le décompte et le mode "
+                  u8"(superposer / remplacer) sont dans le menu Enregistrement.")
             .replace("%1", juce::String(armedTrackCount));
     });
 }
@@ -592,8 +592,8 @@ void TransportBarComponent::retraduire() {
         vsm::interchange::ShortcutId::NavGoToBar));
     loopButton_.setTooltip(tr(u8"Boucle. La région se règle en tirant sur la règle du piano roll "
                               u8"avec Maj ; sans région, la boucle couvre tout le morceau."));
-    metronomeButton_.setTooltip(tr("Metronome : un clic par temps, plus aigu sur le premier "
-                                   "de la mesure. Jamais present dans un export."));
+    metronomeButton_.setTooltip(tr(u8"Métronome : un clic par temps, plus aigu sur le premier "
+                                   u8"de la mesure. Jamais présent dans un export."));
     speedBox_.setTooltip(tr(u8"Vitesse de lecture (varispeed) : ralentir pour relever un passage.\n"
                             u8"Le morceau et le tempo ne changent pas. Les instruments CALCULÉS gardent "
                             u8"leur hauteur ; ce qui est lu dans un fichier change de hauteur, comme une "

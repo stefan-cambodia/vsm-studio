@@ -94,7 +94,7 @@ void AutomationComponent::retraduire() {
     using vsm::app::ui::tr;
     trackLabel_.setText(tr("Piste"), juce::dontSendNotification);
     paramLabel_.setText(tr(u8"Paramètre"), juce::dontSendNotification);
-    hintLabel_.setText(tr("Clic : ajouter  -  Glisser : deplacer  -  Clic droit : supprimer"),
+    hintLabel_.setText(tr(u8"Clic : ajouter  -  Glisser : déplacer  -  Clic droit : supprimer"),
                        juce::dontSendNotification);
     repaint();
 }
@@ -392,7 +392,7 @@ void AutomationComponent::paint(juce::Graphics& g) {
 
     if (!hasSelection_) {
         g.setColour(Palette::textSecondary);
-        g.drawText(vsm::app::ui::tr("Selectionnez une piste avec un instrument pour automatiser un parametre."),
+        g.drawText(vsm::app::ui::tr(u8"Sélectionnez une piste avec un instrument pour automatiser un paramètre."),
                    a, juce::Justification::centred);
         return;
     }

@@ -30570,3 +30570,43 @@ le garde. Les deux sont écrits dans l'en-tête de la garde.
 correctif — `etiquette:@793,6`, la position, entre deux mises à jour du
 chronomètre au démarrage ; elle n'occupe aucune rangée qu'elle ne devrait pas.
 Aucun test du moteur ne traverse la barre ; `police-plancher.sh` à 0.
+
+---
+
+### Phase D374 — onze textes français affichés sans un seul accent, et l'un d'eux annonçait une phase livrée (25/09/2026)
+
+**D'OÙ ELLE VIENT — DU MÊME AUDIT QUE D373.** L'onglet Automation affiche
+« Clic : ajouter - Glisser : **deplacer** - Clic droit : supprimer » ; l'onglet
+Tempo, juste à côté, écrit « déplacer ». Ce n'était pas une coquille : la
+recherche, dans le dictionnaire, des mots qui existent AILLEURS avec leur accent
+a trouvé **une famille** — des chaînes tapées sans aucun accent, d'avant le
+passage aux littéraux `u8"…"` : l'aide de l'automation (2), les infobulles du
+bouton Rec (5), du métronome, de l'armement des pistes (2), des départs et de la
+corrélation de la console. « Aucune piste **armee** […] nulle part **ou**
+aller », « elle **recoit** alors le clavier MIDI, **a l'ecoute** »…
+
+**ET L'UNE MENTAIT.** L'infobulle de Rec, quand des entrées audio sont ouvertes,
+disait « L'enregistrement AUDIO **arrive en D3.4** » — une phase livrée depuis
+le début de ce document (critère b du § 2). Elle dit maintenant ce qui est :
+« %1 entrée(s) ouverte(s) : une piste audio armée y enregistre. »
+
+**LE CORRECTIF.** Les onze chaînes réécrites en `u8"…"` avec leurs accents, À
+L'IDENTIQUE dans le code et comme clé du dictionnaire — la clé EST le texte
+français, une seule lettre d'écart et la traduction anglaise ne se trouve plus.
+Vérifié par `tools/inventaire_langue.py` : **SANS_PAIRE 0** avant comme après,
+les mêmes 10 / 0 / 214 / 256 / 34. Une clé morte retirée (`"Depart vers "`,
+qu'aucun code n'appelle plus). L'anglais de l'infobulle de Rec suit le français.
+
+**LA GARDE, `tools/accents-francais.py`** — et sa première forme accusait des
+phrases justes. Le critère « tout mot qui existe accentué ailleurs » rend
+« change », « copie », « touche », « mesure » (justes sans accent), et le
+dictionnaire porte des noms anglais (« Wave **Sequence** », une machine). La
+garde lit donc une LISTE FERMÉE de formes fausses sans accent, plus quatre
+tournures (« a la fois », « ou aller »…), et ignore le contexte après `@`
+(`Poser@repere`, la clé d'un `trSelon`, jamais affichée). **Vue rouge** sur le
+dictionnaire d'avant : **11 clés sur 1 686**, code 1 ; verte après : 0 sur
+1 685, code 0.
+
+**Reste nommé, non fait** : la garde ne lit que les CLÉS du dictionnaire. Un
+texte affiché sans passer par `tr()` y échappe — `inventaire_langue.py` les
+compte (ECRAN 10), et ils sont traités là.
