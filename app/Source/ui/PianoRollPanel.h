@@ -205,10 +205,13 @@ public:
         // photo (VSM_PIANOROLL_ZONES=1).
         static const bool releve = std::getenv("VSM_PIANOROLL_ZONES") != nullptr;
         if (releve)
-            std::fprintf(stderr, "VSM_PIANOROLL_ZONES : panneau=%d barre=%d regle=%d notes=%d poignee=%d lane=%d clavier=%d etat=%d\n",
+            // D383 : `barreVoulue` -- la hauteur que la barre RÉCLAME ; `barre` est
+            // celle de son volet, qui défile au-delà de son plafond.
+            std::fprintf(stderr, "VSM_PIANOROLL_ZONES : panneau=%d barre=%d regle=%d notes=%d poignee=%d lane=%d clavier=%d etat=%d barreVoulue=%d\n",
                          getHeight(), vueBarre_.getHeight(), ruler_.getHeight(), pianoRoll_.getHeight(),
                          kPoignee, velocityLane_.getHeight(),
-                         clavier_.isVisible() ? clavier_.getHeight() : 0, statusLabel_.getHeight());
+                         clavier_.isVisible() ? clavier_.getHeight() : 0, statusLabel_.getHeight(),
+                         toolbar_.getHeight());
     }
 
     /// D32.3 : montre ou cache le clavier à l'écran. Caché par défaut : le
@@ -268,6 +271,11 @@ public:
     /// n'a pas à connaître les enfants des enfants.
     void retraduireBarre() {
         toolbar_.retraduire();
+        // D383 : LES CASES SUIVENT LEUR TEXTE, qui change de longueur avec la
+        // langue : la hauteur voulue se redemande, et la barre se repose même si
+        // son cadre n'a pas bougé (JUCE ne rappelle `resized()` que dans ce cas).
+        resized();
+        toolbar_.resized();
         // D77 : « Prêt » est posé une fois ; tant qu'aucun message ne l'a
         // remplacé, il suit la langue.
         if (statusPret_) statusLabel_.setText(vsm::app::ui::tr(u8"Prêt"), juce::dontSendNotification);

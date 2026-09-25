@@ -31197,3 +31197,56 @@ deux tailles de fenêtre. Hors façades : la barre du piano roll (« 1/16 » à 
 dans sa liste de 24 px, « Swing » et « Vel. » dans des cases de 28 et 18 px) et
 une valeur de tranche (« -5.6 dB », 1,01). **Reste nommé** : la barre du piano
 roll, pour la phase suivante.
+
+---
+
+### Phase D383 — la barre du piano roll comprimait six de ses intitulés (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D382.** Le relevé `VSM_SERRES` sur
+*children-dream-v12* trouve la barre d'outils du piano roll comprimée, **5
+libellés en anglais, 6 en français**, aux deux tailles de fenêtre (2 133 et
+1 280) : « 1/16 » (1,29, case de 24 px dans sa liste de 66), « Note : » (1,15),
+« Grille » (1,04), « Swing » (1,10), « Vél. » (1,04, case de 18 px), « Gamme »
+(1,27). Aucun coupé : tous RESSERRÉS.
+
+**LA CAUSE** : `PianoRollToolbar::disposer` pose chaque élément à une largeur
+écrite en dur (libellés de 30 à 46 px, listes de 66 et 96). D74 avait déjà
+agrandi une liste qu'une seule langue remplissait (« Straight ») ; la règle
+était juste, mais appliquée à la main, case par case.
+
+**LE CORRECTIF** : la largeur d'un libellé est celle de son texte (plus sa
+marge), celle d'une liste celle de son PLUS LONG élément (plus la flèche et la
+marge du thème : 30 + 10 px) ; la valeur écrite reste un MINIMUM. La barre se
+replie déjà par groupes (D61) : ce qui ne tient plus passe à la rangée suivante.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. `VSM_SERRES`, piano roll, `fr` et `en`, 2 133 et 1 280 : **0** libellé de
+   `PianoRollToolbar` comprimé (6 et 5 avant) ;
+2. les autres libellés comprimés de la fenêtre inchangés (façades, tranche) ;
+3. `tools/pianoroll-zones.sh` VERT : la grille des notes garde la place que
+   cette garde exige, même si la barre prend une rangée de plus ;
+4. le nombre de rangées de la barre, relevé aux deux tailles et dans les deux
+   langues, AVANT et APRÈS — publié, quel qu'il soit.
+
+**MESURÉ** (*children-dream-v12*, HOME neuf par lancement ; témoin du même
+binaire par `VSM_BARRE_LARGEURS_FIXES=1`, qui rend les largeurs écrites seules ;
+`VSM_PIANOROLL_ZONES` dit désormais aussi `barreVoulue`, la hauteur que la barre
+RÉCLAME — `barre` n'est que celle de son volet, qui défile) :
+
+| | libellés de la barre comprimés (fr / en) | autres comprimés de la fenêtre | hauteur réclamée, 2 133 / 1 280 |
+|---|---|---|---|
+| témoin (largeurs fixes) | 6 / 5 | 7 | 92 / 176 px |
+| après | **0 / 0** | 7 (les mêmes : six sérigraphies, une tranche) | **92 / 176 px** |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | 0 libellé de la barre comprimé, 2 langues × 2 tailles | TENU |
+| 2 | les autres inchangés | TENU |
+| 3 | `pianoroll-zones.sh` vert | TENU — 11 relevés, 0 raté (5 tailles × 2 langues, et le zoom de D338) |
+| 4 | rangées de la barre publiées | aucune rangée de plus : la hauteur réclamée ne bouge pas, aux deux tailles et dans les deux langues |
+
+Photo à 2 133 (français) : « 1/16 », « Grille », « Swing », « Vél. », « Gamme »
+écrits sans compression ; « Chromatique » a une liste à sa mesure ; la deuxième
+rangée finit à « Suivre », comme avant. Au changement de langue, le panneau
+redemande la hauteur et la barre se repose (`retraduireBarre`). Banc de fumée
+0 raté ; préférences inchangées.

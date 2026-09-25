@@ -1,4 +1,6 @@
 #include "PianoRollToolbar.h"
+#include <cmath>
+#include <cstdlib>
 #include "Langue.h"
 #include "Shortcuts.h"   // D358 : libelleAvecTouche
 #include "LookAndFeel/VsmLookAndFeel.h"
@@ -332,12 +334,38 @@ int PianoRollToolbar::disposer(int largeurTotale, bool placer) {
         { { { &veloEdit_, 90 } },                                 0, false },
     };
 
+    // D383 : LA CASE SUIT SON TEXTE, la largeur écrite n'étant plus qu'un
+    // MINIMUM. Un libellé demande son texte et sa marge ; une liste son PLUS LONG
+    // élément, la flèche et la marge que le thème (V4) retire à son texte :
+    // 30 + 10 px. Mesuré par `VSM_SERRES` : six intitulés de cette barre étaient
+    // comprimés en français, cinq en anglais, avec les largeurs écrites seules.
+    // `VSM_BARRE_LARGEURS_FIXES=1` : le témoin, les largeurs écrites seules.
+    static const bool fixes = [] {
+        const char* v = std::getenv("VSM_BARRE_LARGEURS_FIXES");
+        return v != nullptr && *v == '1';
+    }();
+    const auto voulue = [](juce::Component* c, int minimum) {
+        if (fixes) return minimum;
+        if (auto* l = dynamic_cast<juce::Label*>(c))
+            return std::max(minimum, static_cast<int>(std::ceil(
+                juce::GlyphArrangement::getStringWidth(l->getFont(), l->getText())))
+                + l->getBorderSize().getLeftAndRight() + 2);
+        if (auto* liste = dynamic_cast<juce::ComboBox*>(c)) {
+            const auto police = liste->getLookAndFeel().getComboBoxFont(*liste);
+            float plusLong = juce::GlyphArrangement::getStringWidth(police, liste->getText());
+            for (int i = 0; i < liste->getNumItems(); ++i)
+                plusLong = std::max(plusLong, juce::GlyphArrangement::getStringWidth(police, liste->getItemText(i)));
+            return std::max(minimum, static_cast<int>(std::ceil(plusLong)) + 30 + 10 + 2);
+        }
+        return minimum;
+    };
+
     const int gauche = kMargeX;
     const int droite = std::max(gauche + 60, largeurTotale - kMargeX);
     int x = gauche, y = kMargeY, rangees = 1;
     for (const auto& groupe : groupes) {
         int largeur = 0;
-        for (const auto& e : groupe.elements) largeur += e.largeur;
+        for (const auto& e : groupe.elements) largeur += voulue(e.composant, e.largeur);
         const bool debutDeRangee = (x == gauche);
         const bool aLaLigne = !debutDeRangee &&
                               (groupe.rompt || x + groupe.ecartAvant + largeur > droite);
@@ -349,10 +377,11 @@ int PianoRollToolbar::disposer(int largeurTotale, bool placer) {
             x += groupe.ecartAvant;
         }
         for (const auto& e : groupe.elements) {
+            const int l = voulue(e.composant, e.largeur);
             if (placer)
                 e.composant->setBounds(
-                    juce::Rectangle<int>(x, y + 1, e.largeur, kHauteurRangee - 2).reduced(1, 0));
-            x += e.largeur;
+                    juce::Rectangle<int>(x, y + 1, l, kHauteurRangee - 2).reduced(1, 0));
+            x += l;
         }
     }
     return rangees;
