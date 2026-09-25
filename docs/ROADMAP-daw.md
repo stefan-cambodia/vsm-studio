@@ -30796,3 +30796,41 @@ Banc de fumée 0 raté ; `gestes-promesses.py` 0 promesse rompue ;
 MIDI pour une piste qui « ne joue rien ». C'est la même famille (une valeur
 montrée qui ne veut rien dire), laissée à la phase suivante pour ne pas mêler
 deux variables dans une photo.
+
+---
+
+### Phase D377 — la ligne d'un dossier proposait de changer un canal MIDI qu'il n'a pas (25/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D376.** La ligne d'un dossier affiche
+« Ch 1 », ÉDITABLE au double-clic, avec l'infobulle « Canal MIDI (1 à 16) —
+double-clic pour le changer ». Un dossier « ne joue rien » (c'est écrit juste
+en dessous) : aucune note ne passe par lui, et changer ce canal ne change aucun
+son. C'est la règle de D35.5 — « une commande qui ne fait rien est pire qu'une
+commande absente, parce qu'elle promet » — et D35.5 l'a appliquée à la console
+sans l'appliquer à la ligne.
+
+**LE CORRECTIF** : le libellé du canal caché pour un dossier, dans les deux
+dispositions (`poserLesVisibilites`, D136). Le canal reste dans le fichier : on
+ne touche pas au format pour une question d'affichage.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** (projet `dossier-muet` de D376, `fr` et
+`en`, disposition étroite) :
+
+| relevé | avant (mesuré sur le binaire de D376) | attendu après |
+|---|---|---|
+| libellés « Ch 1 » | 2 (le dossier et Acid Bass) | **1** |
+| libellés « Ch 10 » (Drums) | 1 | 1 |
+| infobulles « Canal MIDI… » / « MIDI channel… » | 3 | **2** |
+| photo | « Ch 1 » à droite de « Dossier » | rien à sa place ; hauteur de ligne inchangée |
+
+**MESURÉ APRÈS LE CORRECTIF** (les deux projets de D376, `fr` et `en`) :
+
+| relevé | avant | attendu | mesuré |
+|---|---|---|---|
+| libellés « Ch 1 » | 2 | 1 | **1**, dans les 4 lancements |
+| « Ch 10 » | 1 | 1 | **1** |
+| infobulles du canal | 3 | 2 | **2** |
+| photo | « Ch 1 » à droite de « Dossier » | rien | **tenu** ; hauteur de ligne inchangée |
+
+Les comptes de D376 ne bougent pas (M/S 5/5, infobulle de muet 2 et 0). Banc
+de fumée 0 raté ; garde de langue 0 ; préférences inchangées (`cmp`).

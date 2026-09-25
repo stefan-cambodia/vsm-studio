@@ -476,6 +476,9 @@ void TrackRowComponent::poserLesVisibilites() {
     // D136 : les visibilités des deux dispositions, en un seul endroit.
     const bool publie = track_.publishesInstrumentOutput(), dossier = track_.isFolder();
     armButton_.setVisible(!publie && !dossier);
+    // D377 : UN DOSSIER N'A PAS DE CANAL MIDI. Le « Ch 1 » éditable promettait
+    // un réglage qu'aucune note ne traverse (la règle de D35.5).
+    channelLabel_.setVisible(!dossier);
     // D376 : UN DOSSIER A SON MUET ET SON SOLO. D19.4 les avait retirés (« un
     // dossier ne touche à aucun signal ») ; D35.4 les a rendus ACTIFS sur son
     // contenu sans les rendre visibles -- le muet d'un dossier agissait sans se
