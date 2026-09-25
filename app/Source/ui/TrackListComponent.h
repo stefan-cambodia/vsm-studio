@@ -145,7 +145,7 @@ public:
     /// endroits -- ici et dans la tranche du mélangeur --, et chacun posait son
     /// bouton une seule fois, à sa construction : rendre une piste muette dans
     /// l'un laissait l'autre montrer le contraire, indéfiniment.
-    void refreshMuteSolo();
+    void refreshMuteSolo(bool tuParUnDossier = false);   // D376 : le muet hérité
     /// D37 : relit le volume et le panoramique (l'autre sens de l'accord avec
     /// la tranche du mélangeur). Le nom a son propre chemin : il se relit par
     /// `refreshName`, qui existait déjà.

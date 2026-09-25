@@ -30726,3 +30726,73 @@ bouton ne le disait pas à l'ouverture.
 **Reste nommé, non fait** : `--garde` n'est appelée par aucun script d'ensemble
 (`banc-fumee.sh` lance l'application, pas les outils Python) ; elle se joue à
 la main, comme `accents-francais.py`.
+
+---
+
+### Phase D376 — un dossier muet ne le disait nulle part dans la liste des pistes (25/09/2026)
+
+**D'OÙ ELLE VIENT — DE LA PHOTO DE D375.** En regardant la console d'un projet
+au dossier muet, la liste des pistes, à côté, ne montrait RIEN : la ligne du
+dossier n'a ni M ni S, et le M d'« Acid Bass », rangée dedans, reste éteint.
+Rejoué par les gestes de l'application et non sur un projet écrit à la main —
+`VSM_MENU=Ranger cette piste dans un dossier neuf`, `VSM_GESTE_PISTE=choisir:0;
+muet` (le journal : « muet : Dossier muet ») — la liste reste muette sur son
+propre muet. Seule la tranche de la console le dit, depuis D375 à l'ouverture.
+
+**LA CAUSE : DEUX DÉCISIONS ÉCRITES, ET LA SECONDE N'A PAS DÉFAIT LA PREMIÈRE.**
+D19.4 a retiré muet et solo de la ligne d'un dossier (« un dossier ne touche à
+aucun signal […] ce serait un bus déguisé ») ; D35.4 a ensuite rendu ce muet et
+ce solo ACTIFS (« la raison d'être des dossiers au-delà du rangement », mesuré
+sur le rendu), et D35.5 écrit qu'ils « restent là où le dossier vit : dans la
+liste des pistes ». Ils n'y sont pas : `poserLesVisibilites` cache M et S pour
+un dossier, et les deux dispositions s'arrêtent avant leur rangée. Le muet d'un
+dossier ne s'atteint qu'au raccourci, et ne se VOIT nulle part dans la liste.
+Et `TrackRowComponent::refreshMuteSolo` ne lit que le muet de la piste
+elle-même, là où la console lit l'hérité (D35.5).
+
+**LA DÉCISION, écrite ici puisque D19.4 et D35.4 se contredisent dans le code** :
+D35.4 l'emporte, parce qu'elle est la plus récente et qu'elle est mesurée — le
+muet d'un dossier AGIT ; une commande qui agit sans se voir est la panne muette,
+et l'argument de D19.4 (« un bus déguisé ») tombait avec D35.4, qui l'a fait
+agir sans en faire un bus. La ligne d'un dossier reçoit **M et S** — pas
+d'armement, de volume, de panoramique ni de sortie, qui restent sans objet —, et
+la ligne d'un membre tu par son dossier allume son M avec l'infobulle « Rendu
+muet par son dossier », comme sa tranche. Cubase donne M et S à ses dossiers.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** (le relevé compte, dans `VSM_TEXTES_LISTE`,
+les boutons « M » et « S » et l'infobulle, projet enregistré par l'application
+avec un dossier muet, et son témoin au dossier audible ; `fr` et `en`) :
+
+| cas | avant (mesuré) | attendu après |
+|---|---|---|
+| dossier muet : boutons M / S | 4 / 4 (2 lignes + 2 tranches) | **5 / 5** (+ la ligne du dossier) |
+| dossier muet : infobulle « Rendu muet… » / « Muted by its folder » | 1 (la tranche) | **2** (la tranche ET la ligne d'Acid Bass) |
+| témoin, dossier audible | M 4, S 4, infobulle 0 | **M 5, S 5, infobulle 0** |
+| photo, dossier muet | ligne du dossier sans M | **M du dossier allumé, M d'Acid Bass allumé**, Drums éteint |
+| geste `muet` sur le dossier, APRÈS ouverture du témoin | — | infobulle **2** : la liste se relit au geste, pas seulement à l'ouverture |
+
+Ce qui réfuterait la décision : une ligne de dossier dont la hauteur change
+(le M doit tenir dans la rangée existante), ou un M de membre allumé sous un
+dossier audible.
+
+**MESURÉ APRÈS LE CORRECTIF** (même relevé, HOME neuf par lancement, huit
+lancements par passe : deux projets × deux langues × deux tailles) :
+
+| cas | avant | attendu | mesuré |
+|---|---|---|---|
+| dossier muet : M / S | 4 / 4 | 5 / 5 | **5 / 5**, dans les 4 lancements |
+| dossier muet : infobulle | 1 | 2 | **2** (« Rendu muet par son dossier » / « Muted by its folder ») |
+| témoin, dossier audible | M 4, S 4, infobulle 0 | M 5, S 5, 0 | **M 5, S 5, 0** |
+| geste `muet` sur le dossier du témoin, après ouverture | — | infobulle 2 | **2** |
+| photo, disposition étroite | ligne du dossier sans M | M du dossier et d'Acid Bass allumés | **tenu** ; Drums éteint ; hauteur de ligne inchangée |
+| photo, disposition large (`VSM_VUE=agrandir:pistes`) | — | idem | **tenu** : M et S à droite de « dossier (ne joue rien) », pas d'armement ni de sortie |
+
+Aucun avertissement de banc (« inconnu », « refusé ») dans les 18 journaux.
+Banc de fumée 0 raté ; `gestes-promesses.py` 0 promesse rompue ;
+`portes-des-gestes.py` 0 désaccord ; `inventaire_langue.py --garde` 0 ;
+`accents-francais.py` 0 ; préférences de l'utilisateur inchangées (`cmp`).
+
+**Reste nommé, non fait** : la ligne d'un dossier affiche « Ch 1 » — un canal
+MIDI pour une piste qui « ne joue rien ». C'est la même famille (une valeur
+montrée qui ne veut rien dire), laissée à la phase suivante pour ne pas mêler
+deux variables dans une photo.

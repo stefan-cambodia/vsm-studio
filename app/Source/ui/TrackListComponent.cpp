@@ -308,11 +308,15 @@ void TrackRowComponent::reglerVolume(float valeur) {
     volumeSlider_.setValue(valeur, juce::sendNotificationSync);
 }
 
-void TrackRowComponent::refreshMuteSolo() {
+void TrackRowComponent::refreshMuteSolo(bool tuParUnDossier) {
     // `dontSendNotification` : on REFLÈTE la piste, on ne la modifie pas. Avec
     // une notification, rafraîchir la liste depuis le mélangeur rappellerait
     // le mélangeur, et les deux panneaux se renverraient la balle.
-    muteButton_.setToggleState(track_.muted, juce::dontSendNotification);
+    // D376 : LE MUET HÉRITÉ D'UN DOSSIER, comme la tranche (D35.5) : la ligne
+    // d'un membre tu par son dossier allume son M et dit pourquoi.
+    muteButton_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
+    muteButton_.setTooltip(tuParUnDossier && !track_.muted ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
+                                                            : juce::String());
     soloButton_.setToggleState(track_.solo, juce::dontSendNotification);
 }
 
@@ -472,8 +476,13 @@ void TrackRowComponent::poserLesVisibilites() {
     // D136 : les visibilités des deux dispositions, en un seul endroit.
     const bool publie = track_.publishesInstrumentOutput(), dossier = track_.isFolder();
     armButton_.setVisible(!publie && !dossier);
-    muteButton_.setVisible(!dossier);
-    soloButton_.setVisible(!dossier);
+    // D376 : UN DOSSIER A SON MUET ET SON SOLO. D19.4 les avait retirés (« un
+    // dossier ne touche à aucun signal ») ; D35.4 les a rendus ACTIFS sur son
+    // contenu sans les rendre visibles -- le muet d'un dossier agissait sans se
+    // voir nulle part dans la liste. Ni armement, ni volume, ni sortie : ceux-là
+    // restent sans objet.
+    muteButton_.setVisible(true);
+    soloButton_.setVisible(true);
     volumeSlider_.setVisible(!dossier);
     panSlider_.setVisible(!dossier);
     outputBox_.setVisible(!dossier && track_.kind != Track::Kind::Group);
@@ -508,7 +517,6 @@ void TrackRowComponent::dispositionEtroite(juce::Rectangle<int> area) {
     if (audio_ || track_.kind == Track::Kind::Group || publie || dossier)
         audioSourceLabel_.setBounds(rangee);
     else instrumentBox_.setBounds(rangee);
-    if (dossier) return;
 
     // Muet, solo, armement ; la sortie prend le reste de la rangée. Des boutons de
     // 24 px suffisent à une lettre, et les 12 px rendus à la sortie lui laissent
@@ -518,6 +526,7 @@ void TrackRowComponent::dispositionEtroite(juce::Rectangle<int> area) {
     muteButton_.setBounds(rangee.removeFromLeft(24));
     rangee.removeFromLeft(3);
     soloButton_.setBounds(rangee.removeFromLeft(24));
+    if (dossier) return;   // D376 : muet et solo, rien d'autre
     if (!publie) {
         rangee.removeFromLeft(3);
         armButton_.setBounds(rangee.removeFromLeft(24));
@@ -564,10 +573,9 @@ void TrackRowComponent::resized() {
     // « ça tient dans la case » et « ça se lit », c'est la lisibilité qui prime.
     const bool publie = track_.publishesInstrumentOutput();
     // D19.4 : UN DOSSIER NE TOUCHE À AUCUN SIGNAL, donc il n'a ni fader, ni
-    // panoramique, ni muet, ni solo, ni armement, ni sortie. Cubase donne un
-    // muet à ses dossiers ; ce serait ici un bus déguisé, et le rangement
-    // cesserait d'être gratuit — on ne pourrait plus replier huit micros sans
-    // se demander si l'on vient de changer le mélange.
+    // panoramique, ni armement, ni sortie. D19.4 lui retirait aussi muet et
+    // solo ; D35.4 les a rendus actifs sur son contenu, et D376 les lui rend
+    // (voir `poserLesVisibilites`).
     const bool dossier = track_.isFolder();
     poserLesVisibilites();   // D136 : les mêmes, dans les deux dispositions
 
@@ -575,12 +583,12 @@ void TrackRowComponent::resized() {
     if (audio_ || track_.kind == Track::Kind::Group || publie || dossier)
         audioSourceLabel_.setBounds(secondRow.removeFromLeft(largeurTexte));
     else instrumentBox_.setBounds(secondRow.removeFromLeft(largeurTexte));
-    if (!dossier) {
+    {   // D376 : le dossier a son muet et son solo, pas d'armement
         secondRow.removeFromLeft(8);
         muteButton_.setBounds(secondRow.removeFromLeft(28));
         secondRow.removeFromLeft(4);
         soloButton_.setBounds(secondRow.removeFromLeft(28));
-        if (!publie) {
+        if (!publie && !dossier) {
             secondRow.removeFromLeft(4);
             armButton_.setBounds(secondRow.removeFromLeft(28));
         }
@@ -695,6 +703,7 @@ void TrackListComponent::loadProject(Project& project) {
         };
     }
     if (!rows_.isEmpty()) rafraichirDessinDeLaSelection();
+    refreshMuteSolo();   // D376 : le muet hérité dès l'ouverture (la leçon de D375)
     removeButton_.setEnabled(!rows_.isEmpty());
 
     resized();
@@ -715,7 +724,16 @@ void TrackListComponent::reglerVolume(size_t index, float valeur) {
 }
 
 void TrackListComponent::refreshMuteSolo() {
-    for (auto* row : rows_) row->refreshMuteSolo();
+    // D376 : le muet HÉRITÉ, calculé comme la console le calcule (D35.5).
+    for (int i = 0; i < rows_.size(); ++i) {
+        bool herite = false;
+        if (project_ != nullptr && static_cast<size_t>(i) < project_->tracks.size()) {
+            const auto& piste = project_->tracks[static_cast<size_t>(i)];
+            herite = !vsm::sequencer::trackAudible(project_->tracks, static_cast<size_t>(i), false)
+                  && !piste.muted && !piste.disabled;
+        }
+        rows_[i]->refreshMuteSolo(herite);
+    }
 }
 
 void TrackListComponent::refreshMix() {
@@ -723,7 +741,8 @@ void TrackListComponent::refreshMix() {
 }
 
 void TrackListComponent::refreshFromTracks() {
-    for (auto* row : rows_) { row->refreshName(); row->refreshMix(); row->refreshMuteSolo(); }
+    for (auto* row : rows_) { row->refreshName(); row->refreshMix(); }
+    refreshMuteSolo();   // D376 : avec le muet hérité
 }
 
 void TrackListComponent::armer(size_t index) {
@@ -741,6 +760,7 @@ void TrackListComponent::basculerMuet(size_t index) {
     if (onEditStarted) onEditStarted(u8"Muet");
     for (size_t i : cible)
         if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->poserMuet(etat);
+    refreshMuteSolo();   // D376 : les membres d'un dossier le disent aussi
     if (onTracksChanged) onTracksChanged();
 }
 
