@@ -8,6 +8,8 @@
     analyse/.venv/bin/python tools/inventaire_langue.py --machines [MACHINES]  # D103
     analyse/.venv/bin/python tools/inventaire_langue.py --sans-suivi # D106 : l'ancienne règle
     analyse/.venv/bin/python tools/inventaire_langue.py --doublons   # D216 : une clé écrite deux fois
+    analyse/.venv/bin/python tools/inventaire_langue.py --garde      # D375 : .cpp ET .h, code 1 si un texte fuit
+    analyse/.venv/bin/python tools/inventaire_langue.py --sans-d375  # D375 : le témoin, l'ancienne classification
 
 LES EN-TÊTES À PART (D94). Le compte d'A9 ne lit que les `.cpp`, et c'est ce
 compte-là que les phases comparent. Mais un `.h` écrit aussi à l'écran (une
@@ -72,6 +74,20 @@ suivants sont des ajouts ou des écritures au terminal, la chaîne est TERMINAL.
 Mesurée sur le code de D105 (les 16 connues passées, une seule autre, juste),
 c'est le DÉFAUT depuis D106 ; `--sans-suivi` rend l'ancienne règle, pour qu'un
 témoin reste possible.
+
+LES DIX QUI N'ÉTAIENT PAS À L'ÉCRAN (D375). ECRAN est resté à 10 pendant vingt
+phases sans que personne en lise la liste ; lus un par un, AUCUN n'atteignait
+l'écran. Trois règles de plus, `--sans-d375` pour le témoin :
+  - le suivi de D106 admet `else v += …` comme `if (…) v += …` ;
+  - COMMANDE admet la barre oblique : « gel/piste- » est un chemin relatif ;
+  - HORS_ECRAN, compté et listé, jamais jeté : l'argument d'une recherche
+    (`contains`, `startsWith`, `endsWith`, `indexOf`), le nom d'un fil
+    (`juce::Thread(`), et ce qu'écrivent les fonctions de banc d'une liste
+    FERMÉE (FONCTIONS_DE_BANC) -- une fonction neuve n'y entre qu'écrite ici.
+Avec ECRAN à 0, l'inventaire devient une GARDE (`--garde`) : les `.cpp` ET les
+en-têtes, code 1 au premier texte en ECRAN, NU ou SANS_PAIRE, chacun nommé. Vue
+rouge sur une infobulle injectée, et sur l'en-tête qu'elle a trouvé :
+`MixerComponent.h`, « Rendu muet par son dossier » posé sans `tr()`.
 """
 
 from __future__ import annotations
@@ -101,7 +117,17 @@ TRADUCTION = re.compile(r"\b(tr|trSelon|trPhrase|trGeste|translate|TRANS)\s*\(\s
 # peinture de la fenêtre d'historique (`trGeste`), donc jamais accolé à `tr(`.
 LIBELLE_DE_PAS = re.compile(r"\b(debutEdition|onEditStarted|beginProjectEdit)\s*\(\s*(u8)?\s*$")
 SORTIE = re.compile(r"fputs|stderr|stdout|std::cout|std::cerr|DBG\s*\(|printf")
-CATEGORIES = ("ECRAN", "NU", "SANS_PAIRE", "TERMINAL", "TABLE", "COMMANDE")   # NU : D217
+CATEGORIES = ("ECRAN", "NU", "SANS_PAIRE", "TERMINAL", "TABLE", "COMMANDE",   # NU : D217
+              "HORS_ECRAN")                                                 # D375
+# D375 : l'argument d'une RECHERCHE dans un texte (jamais affiché : il le trie).
+RECHERCHE = re.compile(r"\.(contains|containsIgnoreCase|startsWith|endsWith|indexOf)\s*\(\s*"
+                       r"(?:juce::String::fromUTF8\s*\(\s*)?(?:u8)?\s*$")
+# D375 : le NOM d'un fil, vu d'un débogueur, jamais d'un écran.
+FIL = re.compile(r"\bjuce::Thread\s*\(\s*(?:u8)?\s*$")
+# D375 : les fonctions de BANC, liste FERMÉE -- une fonction neuve n'y entre pas
+# sans qu'on l'écrive ici. Tout ce qu'elles écrivent va au relevé d'un banc.
+FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture")
+EN_TETE_DE_FONCTION = re.compile(r"^[A-Za-z][^;{}\n]*?\b(\w+)\s*\(", re.M)
 
 
 def sans_commentaires(texte: str) -> str:
@@ -225,7 +251,7 @@ def masquer_les_chaines(texte: str) -> str:
     return LITTERAL.sub(lambda m: m.group(0)[:m.start(1) - m.start(0)] + " " * len(m.group(1)) + '"', texte)
 
 
-def va_seulement_au_terminal(texte: str, debut: int, masque: str = "") -> bool:
+def va_seulement_au_terminal(texte: str, debut: int, masque: str = "", d375: bool = True) -> bool:
     """D106 : la chaîne à `debut` est-elle assemblée dans une variable LOCALE que
     la fonction n'envoie qu'au terminal ? Chaque usage de la variable après son
     instruction doit être un nouvel ajout (`v +=`, `v =`) ou une instruction qui
@@ -249,7 +275,9 @@ def va_seulement_au_terminal(texte: str, debut: int, masque: str = "") -> bool:
     for m in re.finditer(rf"\b{re.escape(nom)}\b", code[fin_instruction:fin_de_fonction]):
         position = fin_instruction + m.start()
         instruction = code[max(code.rfind(c, 0, position) for c in ";{}") + 1:code.find(";", position)]
-        if re.match(rf"\s*(?:if\s*\([^;]*\)\s*)?{re.escape(nom)}\s*(\+=|=)(?!=)", instruction):
+        # D375 : un ajout sous `else` est un ajout comme sous `if (…)`.
+        prefixe = r"(?:if\s*\([^;]*\)\s*|else\s+)?" if d375 else r"(?:if\s*\([^;]*\)\s*)?"
+        if re.match(rf"\s*{prefixe}{re.escape(nom)}\s*(\+=|=)(?!=)", instruction):
             continue
         if not SORTIE.search(instruction):
             return False
@@ -257,8 +285,15 @@ def va_seulement_au_terminal(texte: str, debut: int, masque: str = "") -> bool:
     return usages > 0
 
 
+def fonction_englobante(texte: str, debut: int) -> str:
+    """D375 : le nom de la dernière fonction ouverte en colonne 0 avant `debut`."""
+    noms = [m.group(1) for m in EN_TETE_DE_FONCTION.finditer(texte, 0, debut)
+            if not m.group(0).startswith(("if", "for", "while", "switch", "return"))]
+    return noms[-1] if noms else ""
+
+
 def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "stricte",
-               suivi: bool = True) -> Dict[str, List[str]]:
+               suivi: bool = True, d375: bool = True) -> Dict[str, List[str]]:
     assert regle in REGLES, regle
     cles = cles_de_la_table((racine / "ui" / "Langue.cpp").read_text(encoding="utf-8"))
     comptes: Dict[str, List[str]] = {c: [] for c in CATEGORIES}
@@ -288,7 +323,8 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
                         f"{fichier.relative_to(racine)}:{ligne}: {chaine[:100]}")
                 continue
             instruction = texte[texte.rfind(";", 0, debut) + 1:texte.find(";", fin)]
-            if re.fullmatch(r"[a-z0-9\-:.]+", chaine):   # D150 : le point, pour « pistes.muet »
+            # D150 : le point, pour « pistes.muet » ; D375 : la barre, pour « gel/piste- »
+            if re.fullmatch(r"[a-z0-9\-:./]+" if d375 else r"[a-z0-9\-:.]+", chaine):
                 categorie = "COMMANDE"
             elif SORTIE.search(instruction):
                 categorie = "TERMINAL"
@@ -297,8 +333,11 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
                 # traduira. Compté à part pour ne pas déplacer le chiffre d'A9.
                 categorie = ("NU" if PUITS.search(avant) and not dans_un_appel_de_traduction(avant)
                              else "TABLE")
-            elif suivi and va_seulement_au_terminal(texte, debut, masque):
+            elif suivi and va_seulement_au_terminal(texte, debut, masque, d375):
                 categorie = "TERMINAL"   # D106 : assemblée, puis écrite au terminal
+            elif d375 and (RECHERCHE.search(avant) or FIL.search(avant)
+                           or fonction_englobante(texte, debut) in FONCTIONS_DE_BANC):
+                categorie = "HORS_ECRAN"
             else:
                 categorie = "ECRAN"
             ligne = texte.count("\n", 0, debut) + 1
@@ -349,9 +388,22 @@ def main() -> int:
     if regle not in REGLES:
         print(f"règle inconnue : {regle} (attendu : {', '.join(REGLES)})", file=sys.stderr)
         return 2
+    d375 = "--sans-d375" not in options
+    if "--garde" in options:
+        # D375 : la garde lit les .cpp ET les en-têtes, et nomme ce qu'elle trouve.
+        fautes = 0
+        for motif in ("*.cpp", "*.h"):
+            comptes = inventaire(motif=motif, regle=regle, suivi="--sans-suivi" not in options, d375=d375)
+            print(f"[{motif}] " + "   ".join(f"{c} {len(v)}" for c, v in comptes.items()))
+            for categorie in ("ECRAN", "NU", "SANS_PAIRE"):
+                for entree in comptes[categorie]:
+                    print(f"  RATÉ {categorie} {entree}")
+                    fautes += 1
+        print(f"GARDE : {fautes} texte(s) qui atteindraient l'écran sans traduction")
+        return 1 if fautes else 0
     comptes = inventaire(motif="*.h" if "--entetes" in options else "*.cpp", regle=regle,
-                         suivi="--sans-suivi" not in options)
-    print("   ".join(f"{c} {len(v)}" for c, v in comptes.items()))
+                         suivi="--sans-suivi" not in options, d375=d375)
+    print("   ".join(f"{c} {len(v)}" for c, v in comptes.items() if d375 or c != "HORS_ECRAN"))
     for categorie in arguments:
         for entree in comptes.get(categorie.upper(), []):
             print(f"  {categorie[0].upper()} {entree}")

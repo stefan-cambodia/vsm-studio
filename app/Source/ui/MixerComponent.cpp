@@ -949,6 +949,11 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             strips_.add(strip);
         }
     }
+    // D375 : LE MUET HÉRITÉ DÈS L'OUVERTURE. Chaque tranche naît avec son
+    // propre muet ; celui qu'elle tient d'un dossier (voir plus haut) n'était
+    // posé qu'au premier geste de muet ou de solo -- un projet rouvert avec un
+    // dossier muet montrait ses membres silencieux, M éteint.
+    refreshMuteSolo();
     master_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
         if (onMasterParam) onMasterParam(id, v);
     };

@@ -322,7 +322,7 @@ public:
     void refreshMuteSolo(bool tuParUnDossier = false) {
         mute_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
         mute_.setTooltip(tuParUnDossier && !track_.muted
-                             ? juce::String::fromUTF8(u8"Rendu muet par son dossier")
+                             ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
                              : juce::String());
         rafraichirSolo();   // D30.1 : le libellé et la couleur du solo protégé aussi
     }

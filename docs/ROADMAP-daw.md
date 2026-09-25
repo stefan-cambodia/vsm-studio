@@ -30610,3 +30610,119 @@ dictionnaire d'avant : **11 clés sur 1 686**, code 1 ; verte après : 0 sur
 **Reste nommé, non fait** : la garde ne lit que les CLÉS du dictionnaire. Un
 texte affiché sans passer par `tr()` y échappe — `inventaire_langue.py` les
 compte (ECRAN 10), et ils sont traités là.
+
+---
+
+### Phase D375 — les dix textes « à l'écran » de l'inventaire n'atteignent aucun écran (25/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D374.** D374 renvoyait « un texte affiché
+sans passer par `tr()` » à `tools/inventaire_langue.py`, qui en compte **dix**
+(ECRAN 10) depuis D355. Ce chiffre est le critère d'A9 ; il est répété inchangé
+dans vingt phases, et personne n'a regardé de quoi il est fait (la leçon de
+D265 : décomposer une population avant de la citer). Lus un par un au code,
+AUCUN des dix n'atteint l'écran :
+
+| # | où | chaîne | où elle va vraiment |
+|---|---|---|---|
+| 1 | `MainComponent.cpp:1878` | `libellé` | la NATURE d'un texte relevé par `parcourirLesTextes` (banc D94), à côté de « bouton », « liste » |
+| 2 | `MainComponent.cpp:6783` | `non appliqué` | un MOTIF cherché par `ligne.contains(…)` dans le rapport d'ouverture |
+| 3-5 | `MainComponent.cpp:9490, 9776, 9865` | `gel/piste-`, `audio/report-…` | des CHEMINS de fichier relatifs au dossier du projet |
+| 6-8 | `MainComponent.cpp:10678-10682` | le compte rendu D337 | assemblé dans `ligne`, puis `std::fputs(…, stderr)` |
+| 9 | `plugins/PluginScanner.cpp:134` | `Balayage des plugins` | le NOM D'UN FIL (`juce::Thread`), vu d'un débogueur |
+| 10 | `ui/ArrangementComponent.cpp:701` | `Arrangement / règle` | le nom d'un menu dans `menusPourCapture`, relevé par `VSM_MENU_LISTE` (banc D83) |
+
+**POURQUOI L'OUTIL LES COMPTE** (lu au code, avant de mesurer) : (a) le suivi
+de variable de D106 admet un ajout précédé d'un `if (…)`, pas d'un `else` — les
+trois morceaux 6-8 tombent sur `else ligne += …` ; (b) COMMANDE ne connaît pas
+la barre oblique ; (c) rien ne reconnaît l'argument d'une recherche, le nom d'un
+fil, ni une fonction de banc.
+
+**LE CORRECTIF, et sa limite écrite d'avance.** (a) `else` admis comme `if` ;
+(b) `/` ajoutée au jeton COMMANDE ; (c) une catégorie neuve, **HORS_ECRAN**,
+comptée et listée comme les autres (jamais jetée) : l'argument de
+`contains`/`startsWith`/`endsWith`/`indexOf` (même enveloppé de `fromUTF8`), le
+nom passé à `juce::Thread(`, et les chaînes des fonctions de banc d'une liste
+FERMÉE (`parcourirLesTextes`, `menusPourCapture`) — une liste fermée et non une
+règle « contient Capture », pour qu'une fonction neuve n'y entre pas sans qu'on
+l'écrive. `--sans-d375` rend l'ancienne classification (témoin du même code).
+Et l'inventaire devient une GARDE : `--garde` rend 1 si ECRAN, NU ou SANS_PAIRE
+n'est pas nul.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+
+| mesure | avant | attendu après |
+|---|---|---|
+| ECRAN | 10 | **0** |
+| TERMINAL | 214 | **217** (+ 6-8) |
+| COMMANDE | 34 | **37** (+ 3-5) |
+| HORS_ECRAN | — | **4** (1, 2, 9, 10) |
+| NU, SANS_PAIRE, TABLE | 0, 0, 256 | inchangés, et les MÊMES lignes (comparées au fichier) |
+| `--entetes` ECRAN | 0 | 0 |
+| `--sans-d375` | — | redonne les comptes d'avant à l'identique |
+| `--garde`, une infobulle française sans `tr()` injectée dans une copie | — | **ECRAN 1, code 1** ; code 0 sans l'injection |
+
+L'attendu qui réfuterait la lecture : une ligne passée d'une AUTRE catégorie que
+ECRAN à une nouvelle, ou un ECRAN restant.
+
+**AJOUTÉ AU RELEVÉ DE DÉPART, AVANT TOUT CORRECTIF — UN VRAI DÉFAUT, DANS LES
+EN-TÊTES.** `--entetes` rend **NU 1** : `ui/MixerComponent.h:325`, l'infobulle
+du bouton muet d'une tranche tue par son dossier, « Rendu muet par son
+dossier », posée par `fromUTF8(u8"…")` sans `tr()`. La clé existe
+(`Langue.cpp:1122`) : l'interface anglaise l'affiche en français. Aucune garde
+ne lisait les en-têtes ; `--garde` les lira donc AUSSI. Attendu : `--entetes`
+NU **0** après `tr()`, et l'infobulle lue en anglais par `VSM_LANGUE=en`.
+
+**ET EN VOULANT LA LIRE À L'ÉCRAN, UN SECOND DÉFAUT — PLUS GRAVE QUE LE
+PREMIER.** Projet de démonstration copié, un dossier MUET inséré en tête, « Acid
+Bass » rangée dedans (`folderDepth` 1), ouvert par `VSM_PROJET`, console
+affichée par `VSM_VUE=mixer`, `VSM_TEXTES_LISTE=1`, en `fr` puis en `en` :
+l'infobulle n'apparaît dans AUCUNE des deux langues, et la photo montre le M de
+la tranche éteint. Lu au code : `MixerComponent::setProject` reconstruit les
+tranches sans jamais appeler `refreshMuteSolo()` — le muet HÉRITÉ n'est posé
+que lorsqu'on touche un muet ou un solo APRÈS l'ouverture. C'est exactement la
+panne muette que le commentaire de D35.5, dans cette même fonction, dit avoir
+payée : « une tranche silencieuse dont aucun bouton n'est enfoncé ». Elle n'est
+payée que tant que l'on n'a pas rouvert le projet.
+
+**Attendu, écrit avant le correctif** (un appel à `refreshMuteSolo()` à la fin de
+`setProject`) : à l'ouverture, `VSM_TEXTE : infobulle : Muted by its folder` en
+`en`, « Rendu muet par son dossier » en `fr`, et le M allumé sur la photo ; sans
+le dossier muet (témoin : le même projet, `muted` à faux), aucune des deux.
+
+**MESURÉ APRÈS LES CORRECTIFS.**
+
+| mesure | avant | attendu | mesuré |
+|---|---|---|---|
+| ECRAN | 10 | 0 | **0** |
+| TERMINAL | 214 | 217 | **217** (les trois morceaux de D337) |
+| COMMANDE | 34 | 37 | **37** (les trois chemins) |
+| HORS_ECRAN | — | 4 | **4** (`libellé`, `non appliqué`, le fil, le menu de banc) |
+| NU, SANS_PAIRE, TABLE | 0, 0, 256 | les mêmes lignes | **les mêmes lignes** — comparées au fichier, seules les dix changent de catégorie |
+| `--entetes` NU | 1 | 0 | **0** |
+| `--sans-d375` | — | les comptes d'avant | **ECRAN 10, TERMINAL 214, COMMANDE 34** |
+| `--garde`, infobulle injectée dans une copie | — | ECRAN 1, code 1 | **ECRAN 1, code 1**, la ligne nommée ; code 0 après restauration (`cmp`) |
+| `--garde`, le `tr()` de l'en-tête retiré | — | code 1 | **NU 1**, la ligne nommée |
+
+Et à l'écran (projet au dossier muet, console, HOME de brouillon neuf par
+lancement) :
+
+| projet | `en` | `fr` | M de la tranche |
+|---|---|---|---|
+| dossier muet, AVANT | aucune infobulle | aucune | éteint |
+| dossier muet, APRÈS | **Muted by its folder** | **Rendu muet par son dossier** | **allumé** (photo) |
+| témoin, dossier audible | aucune | aucune | éteint |
+
+Banc de fumée : 0 raté ; les préférences de l'utilisateur inchangées (`cmp`
+contre une copie prise juste avant). Aucune suite C++ ne traverse la console.
+
+**Ce que la phase apprend.** Un chiffre répété vingt fois sans sa liste finit
+par ne plus rien garder : ECRAN 10 était un plancher de bruit, et c'est
+précisément ce qui empêchait d'en faire une garde — il fallait le ramener à 0
+pour qu'un seul texte neuf le fasse bouger. La même lecture a trouvé, dans les
+en-têtes que l'inventaire ne comptait qu'en option, un vrai texte non traduit ;
+et le regarder à l'écran a trouvé, derrière lui, une tranche muette dont le
+bouton ne le disait pas à l'ouverture.
+
+**Reste nommé, non fait** : `--garde` n'est appelée par aucun script d'ensemble
+(`banc-fumee.sh` lance l'application, pas les outils Python) ; elle se joue à
+la main, comme `accents-francais.py`.
