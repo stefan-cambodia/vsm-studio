@@ -734,3 +734,58 @@ exist ») — `transformers` en est empêché de charger CLAP ; le module le
 DÉCLARE absent à `transformers` plutôt que de désinstaller quoi que ce soit
 (`_sans_torchvision`). Et CLAP comme AST tournent sur CPU : deux passes sur le
 même stem donnent des embeddings identiques au bit près (vérifié sur CLAP).
+
+### 11.2 Le verdict (25/09/2026) : H38 RÉFUTÉE pour les deux embeddings — la nuance n'était qu'une partie de la coupure
+
+Recalculé depuis les rapports par `analyse/verdict_h38.py` (les seuils y sont
+recopiés du tableau du § 11, jamais retouchés) :
+
+| # | attendu | `clap` | `ast` |
+|---|---|---|---|
+| 1 | L1 `s1-sec` : parties seules à une grappe ; η² du niveau | **21/74 (28,4 %)** ; η² **0,505** — ÉCHEC | **22/74 (29,7 %)** ; η² **0,281** — ÉCHEC (part < 35 %) |
+| 2 | L1 `s2` | non mesuré (voir plus bas) | non lancé (règle du § 11.1) |
+| 3 | compte L3 (A-grp, parité 3,80) | **4,20** — ÉCHEC | **4,30** — ÉCHEC |
+| 4 | compte L2 (H37 : 5,20) | 4,90 — intermédiaire | 4,80 — intermédiaire |
+| 5 | ARI L2 de `other` (H37 : 0,157) | 0,140 — ÉCHEC | 0,230 — intermédiaire |
+| 6 | *Clair de Lune* K ; *Children* K_mél | 2 — intermédiaire ; **13** (K = 19) — ÉCHEC | 0 — intermédiaire ; non mesuré |
+| 7 | coût L3 / durée du morceau | 1,36× — TENU | 7,62× — intermédiaire |
+
+Témoin A6 (H37, même banc, `--embedding a6`) : 17/74 (23,0 %), η² 0,456,
+compte L3 4,00 (le 4,30 d'`ast` et le 4,20 de `clap` sont sur le même lot, la
+même segmentation, le même HDBSCAN).
+
+**Verdict, par la règle écrite avant** : `clap` **RÉFUTÉE**, `ast` **RÉFUTÉE**
+— l'attendu 1 est dans sa zone d'échec pour les deux ; H38 est réfutée.
+
+**Ce que la mesure apprend, et qui n'était pas prédit.** AST fait exactement ce
+que le § 9.4 demandait à un embedding : il divise par 1,6 la dépendance à la
+nuance (η² 0,456 → **0,281**) — et la part des parties gardées entières ne
+bouge presque pas (23,0 % → 29,7 %, soit 5 parties de plus sur 74). La nuance
+n'est donc qu'**une** des causes de la coupure en L1, pas LA cause : une
+partie jouée seule se coupe encore quand la nuance ne l'explique plus. CLAP,
+lui, suit la nuance plus qu'A6 (0,505). Les 7 à 8 parties à **zéro** grappe
+(tous segments rejetés comme bruit par HDBSCAN) sont présentes sous les trois
+descripteurs : elles ne dépendent pas de l'embedding.
+
+**Ce qui n'a pas été mesuré, et pourquoi — décidé APRÈS le verdict de
+l'attendu 1, et qui ne peut pas le changer** :
+- la campagne est morte à 10:15 le 25/09 sur la batterie (le poste ne charge
+  qu'en veille ; garde de veille à 10 %, trois mises en veille successives) ;
+  *Children* sous `ast` restait à faire ;
+- `clap` sur `s2` n'a pas été relancé : le § 11.1 écrivait pour AST qu'« un
+  embedding qui coupe déjà ses parties sur 30 s n'apprendrait rien de plus sur
+  quatre minutes » ; la même raison vaut pour CLAP, à 28,4 %, sous le même seuil
+  de 35 %. Le verdict est fixé par l'attendu 1, quel que soit l'attendu 2.
+
+**Ce que le verdict décide** :
+1. Aucun embedding n'est adopté ; `transformers` reste hors de
+   `analyse/requirements.txt`, l'option `--embedding` reste au banc (`a6` par
+   défaut) pour que la mesure se rejoue.
+2. La cause restante de la coupure est à chercher HORS du descripteur — la
+   segmentation en phrases et HDBSCAN sur peu de segments sont les deux
+   suspects que ces rapports désignent (les parties à zéro grappe ne dépendent
+   pas de l'embedding). C'est une hypothèse NOUVELLE : elle s'écrit comme H37
+   et H38, attendus commités avant la mesure, puis validation de l'utilisateur
+   avant d'implémenter (§ 10, point 5). Elle n'est pas lancée par ce verdict.
+3. La bibliothèque de MOTIFS (§ 10, point 3) garde sa raison, indépendante de
+   H38.
