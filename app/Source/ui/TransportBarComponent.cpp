@@ -34,13 +34,15 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     };
     setRecordAvailable(false, 0);
 
-    addAndMakeVisible(sansSonLabel_);
-    sansSonLabel_.setVisible(false);   // rien tant que le son est là
-    addAndMakeVisible(xrunLabel_);
-    xrunLabel_.setVisible(false);   // rien tant qu'il n'y a rien à dire
+    // D373 : LES DEUX TÉMOINS NAISSENT CACHÉS, ET LE RESTENT ICI. Cette boucle
+    // les faisait passer par `addAndMakeVisible` après qu'on les eut cachés :
+    // visibles et vides, ils comptaient dans la largeur de la barre, qui
+    // demandait alors DEUX rangées là où une suffisait -- et la seconde restait
+    // vide à l'écran (mesures : ROADMAP-daw.md, D373).
     for (auto* label : { &positionLabel_, &bpmLabel_, &timeSigLabel_, &cpuLabel_, &sampleRateLabel_,
                           &xrunLabel_, &sansSonLabel_ }) {
-        addAndMakeVisible(label);
+        if (label == &xrunLabel_ || label == &sansSonLabel_) addChildComponent(label);  // rien à dire
+        else addAndMakeVisible(label);
         label->setJustificationType(juce::Justification::centredLeft);
         label->setFont(juce::Font(juce::FontOptions(15.0f).withName(juce::Font::getDefaultMonospacedFontName())));
     }
@@ -223,10 +225,44 @@ void TransportBarComponent::resized() { disposer(getWidth(), true); }
 // l'écran de la machine fait 3 200 px. Pour trancher il fallait un chiffre que
 // la photo ne donne pas : le nombre de rangées à une largeur donnée.
 void TransportBarComponent::direLesRangees() {
+    // D373 : ET COMBIEN EN OCCUPENT VRAIMENT DES COMMANDES VISIBLES. Le compte
+    // demandé disait « 2 » à 1 920 px pendant que la photo montrait une seconde
+    // rangée vide : un compte qui ne se confronte pas à ce qui est posé ne
+    // prouve rien. `occupees` se lit sur les composants, pas sur le calcul.
+    // Une étiquette VISIBLE mais VIDE n'occupe rien à l'œil : le premier relevé
+    // la comptait, et le code d'avant le correctif, rejoué, rendait « 2 occupées »
+    // sur une rangée que la photo montrait vide. Elle est comptée à part (`vides`).
+    int occupees = 0, vides = 0;
+    for (auto* enfant : getChildren()) {
+        if (!enfant->isVisible() || enfant->getBounds().isEmpty()) continue;
+        if (auto* e = dynamic_cast<juce::Label*>(enfant); e != nullptr && e->getText().isEmpty()) {
+            ++vides;
+            continue;
+        }
+        occupees = std::max(occupees, 1 + (enfant->getY() - kMargeY) / kHauteurRangee);
+    }
+    // Et CE QUI occupe la dernière rangée, nommé : un compte seul ne dit pas
+    // quel composant le porte, ni s'il se voit.
+    juce::String derniere;
+    for (auto* enfant : getChildren()) {
+        if (!enfant->isVisible() || enfant->getBounds().isEmpty()
+            || 1 + (enfant->getY() - kMargeY) / kHauteurRangee != occupees) continue;
+        juce::String nom;
+        if (auto* e = dynamic_cast<juce::Label*>(enfant)) nom = "etiquette:" + e->getText();
+        else if (auto* b = dynamic_cast<juce::Button*>(enfant)) nom = "bouton:" + b->getButtonText();
+        else nom = "composant";
+        derniere << (derniere.isEmpty() ? "" : "|") << nom.replaceCharacter(' ', '_')
+                 << "@" << enfant->getX() << "," << enfant->getY()
+                 << "," << enfant->getWidth() << "x" << enfant->getHeight();
+    }
     std::fputs((juce::String("VSM_TRANSPORT_ZONES : largeur=") + juce::String(getWidth())
                 + " rangees=" + juce::String(disposer(getWidth(), false))
                 + " hauteur=" + juce::String(hauteurUtile(getWidth()))
-                + " obtenue=" + juce::String(getHeight()) + "\n").toRawUTF8(), stderr);
+                + " obtenue=" + juce::String(getHeight())
+                + " occupees=" + juce::String(occupees) + " vides=" + juce::String(vides)
+                + " temoins=" + juce::String(sansSonLabel_.isVisible() ? 1 : 0)
+                + juce::String(xrunLabel_.isVisible() ? 1 : 0)
+                + " derniere=" + derniere + "\n").toRawUTF8(), stderr);
 }
 
 int TransportBarComponent::hauteurUtile(int largeur) {
@@ -439,23 +475,38 @@ void TransportBarComponent::setCpuUsage(float percent) {
         : vsm::app::ui::tr(u8"Part du temps réel consommée par le calcul du son."));
 }
 
+namespace {
+/// D373 : UN TÉMOIN QUI PARAÎT OU DISPARAÎT CHANGE LA HAUTEUR DE LA BARRE, ET
+/// C'EST LE PARENT QUI LA DONNE. `resized()` seul reposait les commandes sur
+/// une rangée, pendant que `MainComponent` gardait les 100 px de deux : une
+/// bande vide de 44 px sous la barre.
+void reposerLaBarre(TransportBarComponent& barre) {
+    barre.resized();
+    if (auto* parent = barre.getParentComponent();
+        parent != nullptr && barre.getWidth() > 0
+        && barre.hauteurUtile(barre.getWidth()) != barre.getHeight())
+        parent->resized();
+}
+} // namespace
+
 void TransportBarComponent::setAudioUnavailable(const juce::String& raison) {
     if (raison == derniereRaisonSon_) return;
     derniereRaisonSon_ = raison;
     if (raison.isEmpty()) {                 // le son est là : rien à dire
         sansSonLabel_.setVisible(false);
-        resized();
+        reposerLaBarre(*this);
         return;
     }
     sansSonLabel_.setVisible(true);
     sansSonLabel_.setColour(juce::Label::textColourId, Palette::accentRed);
     poserTexteSansSon();
-    resized();
+    reposerLaBarre(*this);
 }
 
 void TransportBarComponent::poserTexteSansSon() {
-    // SUR L'ÉTAT, PAS SUR `isVisible()` : la boucle du constructeur rend le
-    // témoin visible (vide) quel que soit le son ; s'y fier écrivait « SANS
+    // SUR L'ÉTAT, PAS SUR `isVisible()` : la boucle du constructeur rendait le
+    // témoin visible (vide) quel que soit le son -- D373 l'a corrigée, la règle
+    // reste ; s'y fier écrivait « SANS
     // SON », raison « ? », sur une barre qui avait du son (D94, trouvé à la
     // liste des textes). "?" = jamais posée, vide = le son est là.
     if (derniereRaisonSon_.isEmpty() || derniereRaisonSon_ == "?") return;
@@ -475,13 +526,15 @@ void TransportBarComponent::setXrunCount(int count) {
     if (count == derniersXruns_) return;
     derniersXruns_ = count;
     if (count <= 0) {                 // aucun, ou pilote muet : rien à dire
+        const bool etaitVisible = xrunLabel_.isVisible();
         xrunLabel_.setVisible(false);
+        if (etaitVisible) reposerLaBarre(*this);   // D373 : sa place se rend
         return;
     }
     xrunLabel_.setVisible(true);
     xrunLabel_.setColour(juce::Label::textColourId, Palette::accentRed);
     poserTexteXruns();
-    resized();
+    reposerLaBarre(*this);
 }
 
 void TransportBarComponent::poserTexteXruns() {

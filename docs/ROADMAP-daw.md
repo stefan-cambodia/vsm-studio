@@ -30482,3 +30482,91 @@ rebindées par course**, les 49 autres restant non éprouvées à l'exécution �
 parce que ce serait coûteux (la seconde course en porterait autant qu'on veut),
 mais parce que chaque touche neuve doit être choisie libre de tout conflit, et
 que les touches de fonction ne sont pas inépuisables.
+
+---
+
+### Phase D373 — la barre de transport réservait une rangée qu'elle n'occupait pas (25/09/2026)
+
+**D'OÙ ELLE VIENT — D'UN AUDIT À L'ÉCRAN, SANS PISTE DANS LES DOCUMENTS.** La
+section A de l'INDEX est close et la feuille de route n'a plus d'élément ouvert
+côté DAW : l'application a été relancée sur deux morceaux (`b4wuzthen`,
+`children-dream-v12`) et regardée, comme en D283-D291. À **1 920 × 1 200**
+logiques, la photo montre toutes les commandes de la barre sur UNE rangée — la
+dernière, « 44.1 kHz », finit vers 1 625 px — et sous elle **une bande vide de
+44 px** avant les volets. `VSM_TRANSPORT_ZONES` le confirme : `rangees=2
+hauteur=100 obtenue=100`.
+
+**LA CAUSE, LUE AU CODE AVANT TOUTE MESURE.** Deux défauts se composent :
+
+1. la boucle du constructeur qui règle la police des étiquettes passe aussi les
+   deux TÉMOINS (« SANS SON », « N craquements ») par `addAndMakeVisible`, juste
+   après qu'on les a cachés — `poserTexteSansSon` le savait déjà et se gardait
+   de `isVisible()` pour cette raison, sans que la cause soit corrigée ;
+2. quand un témoin paraît ou disparaît, la barre ne rappelle que SON
+   `resized()` : les commandes se reposent, mais la hauteur, que `MainComponent`
+   lui accorde, n'est jamais redemandée. Et le masquage du témoin de
+   craquements n'appelait pas même `resized()`.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** (le correctif : les témoins naissent cachés
+par `addChildComponent` ; tout changement de témoin passe par `reposerLaBarre`,
+qui redemande la hauteur au parent quand elle a changé ; le relevé dit en plus
+les rangées OCCUPÉES par des composants visibles, et l'état des deux témoins) :
+
+| largeur | avant (relevé) | attendu après |
+|---|---|---|
+| 1 280 | 2 rangées, 100 px | 2 demandées, **2 occupées**, 100 px |
+| 1 920 | 2 rangées, 100 px, seconde VIDE (photo) | **1 demandée, 1 occupée, 56 px** |
+| 2 240 | 1 rangée, 56 px | 1 / 1, 56 px |
+
+Et sur la photo à 1 920, les volets commencent **44 px plus haut**. L'attendu
+qui réfuterait le diagnostic : `occupees` < `rangees` à l'une des trois
+largeurs après le correctif.
+
+**MESURÉ APRÈS LE CORRECTIF** (`tools/barre-transport.sh`, HOME de brouillon neuf
+par course, puis `children-dream-v12` à 1 920 × 1 200) :
+
+| largeur | rangées demandées | occupées | hauteur | témoins |
+|---|---|---|---|---|
+| 1 280 | 2 | **2** | 100 | cachés |
+| 1 920 | **1** | **1** | **56** | cachés |
+| 2 240 | 1 | 1 | 56 | cachés |
+
+Seuil relevé à 1 686 / 1 687 px : **deux rangées à 1 686, une à 1 687** —
+la somme des largeurs voulues (1 671 px) plus les deux marges de 8, au pixel.
+Avant, le seuil était celui d'une barre qui portait en plus deux témoins vides
+(246 px) : 1 933. Sur la photo à 1 920, les volets commencent à **y = 82 au lieu
+de 126** : 44 px logiques rendus au morceau, 66 à l'écran à 150 %. Le mode
+3 200 × 2 000 du poste donne une fenêtre d'environ 2 133 px logiques à 150 % :
+**c'est dans la fourchette où le défaut vivait**. Le mode du jour, 1 920 × 1 200
+à 125 % côté bureau, donne 1 280 : là, deux rangées sont légitimes et rien ne
+change.
+
+**LA GARDE, VUE ROUGE — ET SA PREMIÈRE FORME N'ATTRAPAIT PAS CE QU'ELLE
+PRÉTENDAIT.** Le code d'avant, rejoué (le seul relevé greffé dessus), rend la
+garde rouge : 1 raté sur 6, « à 1920x1200, la barre prend 1 rangée(s) ». Mais
+c'est le contrôle de LARGEUR qui tombe ; le contrôle neuf, « chaque rangée
+demandée porte une commande », restait VERT, et deux fois :
+
+1. la première forme comptait occupante toute étiquette visible — les deux
+   témoins, visibles et vides, occupaient donc leur rangée ; on les a comptés à
+   part (`vides=`) ;
+2. la seconde rendait encore « 2 occupées » sur le code d'avant, avec **3**
+   étiquettes vides (1 après le correctif). Il a fallu NOMMER l'occupant pour
+   comprendre : `derniere=etiquette:48.0_kHz@8,50` — **la fréquence
+   d'échantillonnage, seule, à gauche de la seconde rangée**.
+
+Le défaut avait donc DEUX visages selon l'instant : la photo, prise plus tôt
+dans la course, montre « 44.1 kHz » sur la première rangée et la seconde VIDE ;
+le relevé, plus tard, une fois le périphérique ouvert à 48 kHz et les deux
+témoins redevenus visibles par la boucle du constructeur, montre la fréquence
+poussée seule sur la seconde. Les deux ne sont pas contradictoires : ce sont deux
+dispositions successives d'une barre dont la hauteur ne suivait pas son contenu.
+Le contrôle d'occupation reste utile — il attrape la bande VIDE, le premier
+visage — mais il ne voit pas le second, où la rangée est occupée par une
+commande qui ne devrait pas y être : c'est le contrôle de largeur, à 1 920, qui
+le garde. Les deux sont écrits dans l'en-tête de la garde.
+
+**Reste nommé, non fait** : une étiquette reste visible et vide après le
+correctif — `etiquette:@793,6`, la position, entre deux mises à jour du
+chronomètre au démarrage ; elle n'occupe aucune rangée qu'elle ne devrait pas.
+Aucun test du moteur ne traverse la barre ; `police-plancher.sh` à 0.

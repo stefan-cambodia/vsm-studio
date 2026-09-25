@@ -19,7 +19,23 @@
 # Les deux bornes sont donc gardées : deux rangées à 1 280 (le repli marche
 # encore) et une seule à 2 240 (il n'est plus nécessaire).
 #
-# Rend 0 si les deux tiennent, 1 sinon, 2 si le binaire manque.
+# D373 (25/09/2026) — LE COMPTE DEMANDÉ NE PROUVAIT RIEN SEUL. À 1 920 px, le
+# relevé disait « 2 rangées » pendant que la photo montrait la seconde VIDE : les
+# deux témoins (« SANS SON », craquements), cachés, comptaient dans la largeur, et
+# la hauteur n'était jamais redemandée quand ils disparaissaient. La garde
+# confronte donc les rangées DEMANDÉES aux rangées OCCUPÉES par des composants
+# visibles qui MONTRENT quelque chose (`occupees=` ; une étiquette visible mais
+# vide est comptée à part, `vides=` — le premier relevé la comptait occupante,
+# et la garde, rejouée sur le code d'avant, restait verte sur ce point), à chaque largeur, et juge une troisième largeur, 1 920,
+# entre les deux bornes : c'est là que le défaut vivait.
+#
+# CE QUE CHAQUE CONTRÔLE GARDE (vus rouges sur le code d'avant, D373) : le défaut
+# avait deux visages. Tôt, les commandes sur une rangée et la seconde VIDE — c'est
+# le contrôle d'occupation qui le voit. Plus tard, la fréquence poussée SEULE sur
+# la seconde rangée (`derniere=etiquette:48.0_kHz@8,50`) — la rangée est occupée,
+# et seul le contrôle de LARGEUR à 1 920 le voit.
+#
+# Rend 0 si tout tient, 1 sinon, 2 si le binaire manque.
 #
 #   tools/barre-transport.sh [chemin/du/binaire]
 set -u
@@ -37,20 +53,23 @@ rangees_a() {   # $1 = taille de fenêtre -> le nombre de rangées
         VSM_TRANSPORT_ZONES=1 VSM_CAPTURE="$brouillon/$1.png" \
         timeout 60 "$BIN" > "$brouillon/$1.txt" 2>&1
     grep "VSM_TRANSPORT_ZONES" "$brouillon/$1.txt" | tail -1 \
-        | sed 's/.*rangees=\([0-9]*\).*/\1/'
+        | sed 's/.*rangees=\([0-9]*\).*occupees=\([0-9]*\) vides=\([0-9]*\).*/\1 \2 \3/'
 }
 
 rates=0
 verdict() { if [ "$2" -ne 0 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
 echo "=== D364 : la barre de transport et sa largeur de repli ==="
 
-etroite="$(rangees_a 1280x742)"
-large="$(rangees_a 2240x1400)"
-echo "       1 280 px : ${etroite:-?} rangée(s)   |   2 240 px : ${large:-?} rangée(s)"
-verdict "à 1 280 px, la barre se replie sur deux rangées" \
-        "$([ "${etroite:-0}" = "2" ] && echo 1 || echo 0)"
-verdict "à 2 240 px, elle tient sur une seule" \
-        "$([ "${large:-0}" = "1" ] && echo 1 || echo 0)"
+juger() {   # $1 = taille, $2 = rangées attendues
+    set -- "$1" "$2" $(rangees_a "$1")
+    echo "       $1 : ${3:-?} rangée(s) demandée(s), ${4:-?} occupée(s), ${5:-?} étiquette(s) visible(s) mais vide(s)"
+    verdict "à $1, la barre prend $2 rangée(s)" "$([ "${3:-0}" = "$2" ] && echo 1 || echo 0)"
+    verdict "à $1, chaque rangée demandée porte une commande (D373)" \
+            "$([ -n "${4:-}" ] && [ "${3:-0}" = "${4:-x}" ] && echo 1 || echo 0)"
+}
+juger 1280x742 2     # le repli marche encore
+juger 1920x1200 1    # D373 : une seule suffit, et une seule est réservée
+juger 2240x1400 1    # il n'est plus nécessaire
 
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]
