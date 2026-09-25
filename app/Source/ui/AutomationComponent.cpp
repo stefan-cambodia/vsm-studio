@@ -11,8 +11,9 @@ using namespace vsm::ui;
 AutomationComponent::AutomationComponent() {
     // D94 : les trois libellés sont posés par `retraduire()`, en fin de
     // constructeur, puis à chaque bascule de langue.
+    // D381 : À LA POLICE PAR DÉFAUT, comme MIDI CC et Tempo. Ils étaient fixés à
+    // 12 : la même rangée d'en-tête s'écrivait plus petit ici qu'à côté.
     trackLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    trackLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(trackLabel_);
     addAndMakeVisible(trackBox_);
     trackBox_.onChange = [this] {
@@ -21,7 +22,6 @@ AutomationComponent::AutomationComponent() {
     };
 
     paramLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    paramLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(paramLabel_);
     addAndMakeVisible(paramBox_);
     paramBox_.onChange = [this] {
@@ -60,7 +60,6 @@ AutomationComponent::AutomationComponent() {
     };
 
     hintLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    hintLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     hintLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(hintLabel_);
     retraduire();
@@ -96,6 +95,7 @@ void AutomationComponent::retraduire() {
     paramLabel_.setText(tr(u8"Paramètre"), juce::dontSendNotification);
     hintLabel_.setText(tr(u8"Clic : ajouter  -  Glisser : déplacer  -  Clic droit : supprimer"),
                        juce::dontSendNotification);
+    resized();   // D381 : les cases suivent le texte, qui change de longueur avec la langue
     repaint();
 }
 
@@ -524,10 +524,18 @@ void AutomationComponent::setPlayheadTick(vsm::audio::engine::Tick tick) {
 
 void AutomationComponent::resized() {
     auto top = getLocalBounds().removeFromTop(26).reduced(6, 2);
-    trackLabel_.setBounds(top.removeFromLeft(38));
+    // D381 : LA CASE SUIT SON TEXTE. Dimensionnées pour du 12 pt (38 et 70 px),
+    // elles faisaient COMPRIMER « Track » et « Parameter » une fois la police
+    // par défaut rendue ; la largeur vient du texte et de la marge du libellé,
+    // dans les deux langues.
+    const auto largeurDe = [](const juce::Label& l) {
+        return static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(l.getFont(), l.getText())))
+             + l.getBorderSize().getLeftAndRight() + 2;
+    };
+    trackLabel_.setBounds(top.removeFromLeft(largeurDe(trackLabel_)));
     trackBox_.setBounds(top.removeFromLeft(150));
     top.removeFromLeft(10);
-    paramLabel_.setBounds(top.removeFromLeft(70));
+    paramLabel_.setBounds(top.removeFromLeft(largeurDe(paramLabel_)));
     paramBox_.setBounds(top.removeFromLeft(170));
     hintLabel_.setBounds(top);
 }

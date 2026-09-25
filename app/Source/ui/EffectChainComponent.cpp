@@ -30,7 +30,6 @@ EffectChainComponent::EffectChainComponent() {
 
     addLabel_.setText(vsm::app::ui::tr("Ajouter :"), juce::dontSendNotification);
     addLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    addLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     contenu_.addAndMakeVisible(addLabel_);
 
     int id = 1;
@@ -621,7 +620,10 @@ void EffectChainComponent::placerContenu(juce::Rectangle<int> bounds) {
     titleLabel_.setBounds(area.removeFromTop(22));
 
     auto addRow = area.removeFromTop(26);
-    addLabel_.setBounds(addRow.removeFromLeft(56));
+    // D381 : la case suit son texte (« Add: », « Ajouter : ») à la police par défaut.
+    addLabel_.setBounds(addRow.removeFromLeft(juce::jmax(56,
+        static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(addLabel_.getFont(), addLabel_.getText())))
+            + addLabel_.getBorderSize().getLeftAndRight() + 2)));
     addBox_.setBounds(addRow.removeFromLeft(200));
     addRow.removeFromLeft(8);
     allButton_.setBounds(addRow.removeFromLeft(150));

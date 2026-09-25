@@ -54,7 +54,6 @@ EventListComponent::EventListComponent() {
     addAndMakeVisible(ajouter_);
 
     compte_.setColour(juce::Label::textColourId, Palette::textSecondary);
-    compte_.setFont(juce::Font(juce::FontOptions(12.0f)));
     addAndMakeVisible(compte_);
 
     // LES COLONNES DISENT CE QU'ELLES PORTENT, et « n° » / « valeur » plutôt

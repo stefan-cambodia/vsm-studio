@@ -31067,3 +31067,62 @@ changé (364 → 356) sans que personne rejoue la garde. `verifier.sh --gardes`
 (D378) ne la rejoue pas : `balayer-facades.sh` LANCE l'application soixante-trois
 fois (deux minutes), et n'a pas sa place parmi les gardes des sources. **Reste
 nommé** : la rejouer après tout changement de mise en page de la fenêtre.
+
+---
+
+### Phase D381 — trois onglets du bas écrivaient leurs libellés plus petit que les deux autres (26/09/2026)
+
+**D'OÙ ELLE VIENT — D'UN AUDIT À L'ÉCRAN**, *children-dream-v12* en anglais à
+2 133 × 1 333 logiques (la fenêtre du poste à 150 %), les cinq onglets du bas
+photographiés un par un (`VSM_VUE=automation`, `effets`, `midi-cc`, `liste`,
+`tempo`). Automation et MIDI CC ont la MÊME rangée d'en-tête — « Track » + une
+liste, « Parameter » / « Controller » + une liste, l'aide à droite — et
+Automation l'écrit visiblement plus petit et plus pâle.
+
+**LA CAUSE, LUE AU CODE.** `AutomationComponent` fixe ses trois libellés à
+`FontOptions(12.0f)` ; `MidiCcComponent` et `TempoLaneComponent` ne fixent
+rien, et leurs libellés prennent la police par défaut de `juce::Label` (15).
+Même écart dans `EffectChainComponent` (« Add: », 12) et `EventListComponent`
+(le compte « 1638 event(s) », 12). Le plancher de D323 est tenu partout — 12 —,
+mais deux onglets voisins n'écrivent pas la même chose à la même taille, et
+c'est le plus petit qui a tort : entre « ça tient » et « ça se lit », la
+lisibilité prime.
+
+**LE CORRECTIF** : les cinq `setFont(12)` retirés ; ces libellés prennent la
+police par défaut, comme MIDI CC et Tempo. Les titres en gras (13 ou 14) ne
+bougent pas : une variable.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** (hauteur en pixels du texte clair, mesurée
+sur la photo, même projet, même taille, HOME neuf) :
+
+| texte | avant | attendu après |
+|---|---|---|
+| « Track », Automation | 7 | **9** (= MIDI CC) |
+| « Track », MIDI CC (témoin, non touché) | 9 | 9 |
+| « Add: », Effects | 7 | **9** |
+| « 1638 event(s) », List | 7 | **9** |
+| aide d'Automation (« Click: add - Drag: move… ») | plus petite que celle de MIDI CC | même hauteur |
+| rangée d'en-tête | — | aucun texte coupé ni chevauchant sur les cinq photos, en `en` ET en `fr` (le français est plus long) |
+
+**MESURÉ, ET UN SECOND DÉFAUT QUE LA PREMIÈRE MESURE A LAISSÉ VOIR.** Après le
+seul retrait des `setFont(12)`, les hauteurs tenaient (« Track » 9 px dans
+Automation comme dans MIDI CC), mais la photo agrandie montrait encore
+« Track » et « Parameter » plus petits : **comprimés en largeur**. Leurs cases
+(38 et 70 px), dimensionnées pour du 12 pt, étaient trop étroites pour la police
+par défaut, et `juce::Label` resserre les lettres plutôt que de les couper. Un
+chiffre de hauteur juste ne disait pas que le mot se lisait. Les cases suivent
+maintenant leur texte (largeur du texte + marge du libellé), recalculées à
+chaque changement de langue (`retraduire()` rappelle `resized()`). Même règle
+pour « Add: » / « Ajouter : » dans Effects (case de 56 px au moins).
+
+| texte | avant | attendu | mesuré |
+|---|---|---|---|
+| « Track », Automation | 7 px de haut | 9 | **9 px de haut, 30 de large** |
+| « Track », MIDI CC (témoin) | 9 | 9 | **9 px, 30 de large** : identique |
+| « Add: », Effects | 7 px, 21 de large | 9 | **9 px, 27 de large** |
+| « 1638 event(s) », List | 7 | 9 | **10** (la parenthèse descend plus bas que les lettres) |
+| aide d'Automation | plus petite que celle de MIDI CC | même taille | même taille (photo) |
+| rangées d'en-tête, 5 onglets × `en` et `fr` | — | rien de coupé ni chevauchant | **tenu** (dix photos) |
+| langue changée EN COURS de session (`VSM_MENU=English`, sans `VSM_LANGUE`) | — | — | Automation identique au lancement en anglais |
+
+Banc de fumée 0 raté ; `police-plancher.sh` 0 ; préférences inchangées (`cmp`).
