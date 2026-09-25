@@ -1,5 +1,6 @@
 #include "MachinePanelComponent.h"
 #include "../Langue.h"
+#include "../BesoinDeLargeur.h"
 #include <algorithm>
 #include <cstdlib>
 
@@ -15,10 +16,8 @@ namespace {
 /// D379 : largeur que le texte d'une sérigraphie demande, rapportée à celle que
 /// sa case offre sur toutes les lignes qu'elle peut écrire. 1 = tient juste.
 float besoinDeLargeur(const juce::Label& l, const juce::Font& police) {
-    const float largeur = juce::GlyphArrangement::getStringWidth(police, l.getText());
-    const int lignes = std::max(1, static_cast<int>(std::floor(l.getHeight() / police.getHeight())));
-    const float offerte = static_cast<float>(l.getWidth()) * static_cast<float>(lignes);
-    return offerte > 0.0f ? largeur / offerte : 99.0f;
+    // D382 : la formule commune, qui compte aussi le MOT le plus long.
+    return vsm::app::ui::besoinDeLargeur(l.getText(), police, l.getLocalBounds());
 }
 
 float besoinDeLargeur(const juce::Label& l) { return besoinDeLargeur(l, l.getFont()); }

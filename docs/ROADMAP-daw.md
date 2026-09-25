@@ -31126,3 +31126,74 @@ pour « Add: » / « Ajouter : » dans Effects (case de 56 px au moins).
 | langue changée EN COURS de session (`VSM_MENU=English`, sans `VSM_LANGUE`) | — | — | Automation identique au lancement en anglais |
 
 Banc de fumée 0 raté ; `police-plancher.sh` 0 ; préférences inchangées (`cmp`).
+
+---
+
+### Phase D382 — un relevé des libellés comprimés, et la formule de D379 était fausse pour les mots seuls (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE D381.** Un libellé à la bonne hauteur peut être
+illisible parce que `juce::Label` le COMPRIME en largeur ; aucun relevé ne le
+voyait. `VSM_SERRES=1` (greffé sur le relevé des textes) écrit, pour chaque
+libellé visible dont le texte demande plus que sa case, le BESOIN (largeur du
+texte / largeur offerte), s'il est comprimé ou coupé, et le panneau qui le
+porte.
+
+**PREMIÈRE PASSE, ET ELLE CONTREDIT UNE PHOTO.** *children-dream-v12*, `fr`/`en`,
+2 133 × 1 333 et 1 280 × 800 : 85 libellés visibles, 6 ou 7 comprimés, **0
+coupé** — dont « STIFFNESS » de la façade du piano, « comprimé » à **1,02**.
+Or la photo de D379 montre « STIFFN… » : COUPÉ. C'est le relevé qui ment, et la
+raison se lit dans la formule : la case a deux lignes (26 px pour 12 pt), et la
+largeur offerte était comptée « largeur × lignes » — 27 × 2 = 54 pour un texte
+de 55. Mais `drawFittedText` ne coupe pas un MOT entre deux lignes : un mot seul
+doit tenir sur une. Le vrai besoin est de ~2,0.
+
+**ET C'EST LA FORMULE DE D379** (`besoinDeLargeur`, `MachinePanelComponent.cpp`),
+qui sert à la fois à la MESURE (colonne `besoin` de `balayer-facades.sh`) et au
+REPLI (`policeQuiTient` choisit la taille d'après elle). Les chiffres publiés
+par D379 — « 3 coupées », « 1 030 / 1 073 à 12 pt » — sont donc suspects, et
+probablement flatteurs : toute sérigraphie à mot long dans une case à deux
+lignes était comptée comme tenant.
+
+**LE CORRECTIF DE LA FORMULE, écrit avant de remesurer** : le besoin est le plus
+grand de deux rapports — le MOT le plus long sur la largeur d'une ligne, et le
+texte entier sur largeur × lignes ; sur une seule ligne, les deux se confondent.
+La même fonction pour le relevé et pour les façades.
+
+**ATTENDUS** :
+1. « STIFFNESS » (piano) : besoin **≥ 1,8**, dit COUPÉ par le relevé avec la
+   police d'avant ; le repli le fait descendre à la taille où le mot tient ;
+2. `balayer-facades.sh` remesuré : les chiffres de D379 CORRIGÉS et publiés à
+   côté des anciens — à 12 pt, moins de 1 030 ; coupées, plus de 3 si la
+   formule d'avant en cachait ;
+3. le relevé de fenêtre (`VSM_SERRES`) : les libellés qui NE sont PAS des
+   sérigraphies ne changent pas de besoin tant qu'ils sont sur une ligne (la
+   formule est la même pour eux).
+
+**MESURÉ, APRÈS LE CORRECTIF DE LA FORMULE.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | « STIFFNESS » ≥ 1,8, dit coupé à 12 pt | **2,04, COUPÉ** sans repli (l'ancienne formule : 1,02) ; avec le repli, **10,5 pt, 1,78**, entier sur la photo | TENU |
+| 2 | chiffres de D379 corrigés | voir le tableau ci-dessous | TENU — les conclusions de D379 ne bougent pas |
+| 3 | libellés d'une ligne inchangés | les quatre de la première passe gardent leur besoin (1,01 ; 1,29 ; 1,02 ; 1,02) ; « Swing » et « Vel. » APPARAISSENT — cases de 24 px pour 12 pt, donc deux lignes, que l'ancienne formule divisait par deux | TENU |
+
+**LES CHIFFRES DE D379, AVANT ET APRÈS LA FORMULE** (63 façades, 1 073 sérigraphies) :
+
+| réglage | à 12 pt (D379 / corrigé) | coupées (D379 / corrigé) |
+|---|---|---|
+| 8, sans repli (témoin) | 0 / 0 | 19 / **21** |
+| 12, sans repli | 1 073 / 1 073 | 45 / **48** |
+| 12, repli (adopté) | 1 030 / **1 027** | 3 / **3** |
+
+L'ancienne formule sous-comptait les coupées de 2 et 3 ; le repli, qui s'en
+servait, laissait à 12 pt trois sérigraphies qui ne tenaient pas (STIFFNESS en
+est une). Le plafond de 3 de `balayer-facades.sh` tient, garde verte (0 / 63
+sous 18 px).
+
+**LE RELEVÉ DE FENÊTRE** (`VSM_SERRES=1`, qui exige `VSM_TEXTES_LISTE=1` — une
+passe sans lui n'a rien écrit, et c'est dit dans le code) : *children-dream-v12*,
+85 libellés visibles, **12 comprimés en anglais, 13 en français, 0 coupé**, aux
+deux tailles de fenêtre. Hors façades : la barre du piano roll (« 1/16 » à 1,29
+dans sa liste de 24 px, « Swing » et « Vel. » dans des cases de 28 et 18 px) et
+une valeur de tranche (« -5.6 dB », 1,01). **Reste nommé** : la barre du piano
+roll, pour la phase suivante.

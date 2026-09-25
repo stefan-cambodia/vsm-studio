@@ -1,6 +1,8 @@
 #include <filesystem>
 #include "vsm/audio/plugin/ISampleLoader.h"
 #include "MainComponent.h"
+#include "ui/BesoinDeLargeur.h"
+#include <typeinfo>
 #include "vsm/sequencer/GeneralMidi.h"
 #include "vsm/interchange/MultisampleProfile.h"
 #include <cxxabi.h>
@@ -2014,6 +2016,52 @@ void MainComponent::listTextsForCapture() {
         for (auto* enfant : c.getChildren()) valeurs(*enfant);
     };
     valeurs(*this);
+    // D382 : VSM_SERRES=1 -- LES LIBELLÉS COMPRIMÉS. D381 a montré un libellé à
+    // la bonne hauteur mais resserré en largeur : `juce::Label` comprime le
+    // texte qui ne tient pas dans sa case (jusqu'à son échelle minimale), puis
+    // le coupe par « … ». Ni la hauteur mesurée ni `VSM_TEXTE` ne le voient.
+    // Une ligne par libellé visible dont le texte demande plus que sa case :
+    // le BESOIN (largeur du texte / largeur offerte, lignes comprises ; au-delà
+    // de 1 / échelle minimale, il est coupé), puis le panneau de l'application
+    // qui le porte (première classe hors de `juce::` en remontant). Il vit ICI :
+    // il ne tourne qu'avec `VSM_TEXTES_LISTE=1` -- sans, il ne dit rien (payé
+    // une fois, D382).
+    if (const char* serres = std::getenv("VSM_SERRES"); serres != nullptr && *serres && *serres != '0') {
+        int total = 0, comprimes = 0, coupes = 0;
+        const auto panneau = [](const juce::Component& c) {
+            for (auto* p = c.getParentComponent(); p != nullptr; p = p->getParentComponent()) {
+                int etat = 0;
+                char* nom = abi::__cxa_demangle(typeid(*p).name(), nullptr, nullptr, &etat);
+                juce::String n = etat == 0 && nom != nullptr ? juce::String(nom) : juce::String(typeid(*p).name());
+                std::free(nom);
+                if (!n.startsWith("juce::")) return n;
+            }
+            return juce::String("?");
+        };
+        std::function<void(juce::Component&)> descendre = [&](juce::Component& c) {
+            if (!c.isVisible()) return;
+            if (auto* l = dynamic_cast<juce::Label*>(&c); l != nullptr && l->getText().trim().isNotEmpty()
+                                                            && !l->isBeingEdited()) {
+                ++total;
+                const auto police = l->getFont();
+                const auto zone = l->getBorderSize().subtractedFrom(l->getLocalBounds());
+                const float besoin = vsm::app::ui::besoinDeLargeur(l->getText(), police, zone);
+                if (besoin > 1.0f) {
+                    const bool coupe = besoin > 1.0f / std::max(0.01f, l->getMinimumHorizontalScale());
+                    ++comprimes;
+                    coupes += coupe ? 1 : 0;
+                    std::fputs(("VSM_SERRE : " + juce::String(besoin, 2) + (coupe ? " COUPÉ" : " comprimé")
+                                + " : " + panneau(c) + " : " + juce::String(police.getHeight(), 1) + " pt, case "
+                                + juce::String(zone.getWidth()) + "x" + juce::String(zone.getHeight()) + " : "
+                                + l->getText().replace("\n", " / ") + "\n").toRawUTF8(), stderr);
+                }
+            }
+            for (auto* enfant : c.getChildren()) descendre(*enfant);
+        };
+        descendre(*this);
+        std::fputs(("VSM_SERRES : " + juce::String(total) + " libellé(s) visibles, " + juce::String(comprimes)
+                    + " comprimé(s), dont " + juce::String(coupes) + " coupé(s)\n").toRawUTF8(), stderr);
+    }
     // Et le MASTER tel que le MOTEUR le tient : un bouton peut afficher une
     // valeur que le moteur n'a pas (D141, à l'ouverture) -- les deux se lisent.
     for (const auto& [nom, valeur] : vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus()))
