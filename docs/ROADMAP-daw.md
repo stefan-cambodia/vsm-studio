@@ -30834,3 +30834,58 @@ ne touche pas au format pour une question d'affichage.
 
 Les comptes de D376 ne bougent pas (M/S 5/5, infobulle de muet 2 et 0). Banc
 de fumée 0 raté ; garde de langue 0 ; préférences inchangées (`cmp`).
+
+---
+
+### Phase D378 — huit gardes écrites, vues rouges, et qu'aucune vérification ne lançait (25/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D375.** `inventaire_langue.py --garde` « se
+joue à la main ». En cherchant qui la lancerait, `verifier.sh` — le fichier dont
+l'en-tête dit « passe TOUS les garde-fous du dépôt » — ne lance AUCUNE garde de
+`tools/` : cinq suites C++, la suite Python, ruff et mypy. Or la règle du dépôt
+(D150) veut que « ce qui doit empêcher une régression va dans `tools/`, avec sa
+règle écrite dans son en-tête ». Une garde que rien ne rejoue n'empêche rien :
+c'est la faute de D150, un étage plus haut.
+
+**LE RELEVÉ, avant tout changement.** Parmi les 33 scripts de `tools/*.py`, ceux
+qui ne lisent que les SOURCES (aucun lancement de l'application, aucune image,
+aucun audio) et rendent 1 à la faute — vérifié au code, `return 1` — :
+`accents-francais.py`, `clips-numerotes.py`, `index-a-jour.py`,
+`inventaire_langue.py --garde` et `--doublons`, `menus-des-regles.py`,
+`noms-des-gestes.py`, `raccourcis-affiches.py`, `tables-markdown.py`. Tous
+verts aujourd'hui, chacun en 0,5 s au plus. Écartés et dits : les bancs qui
+LANCENT l'application (`gestes-*`, `portes-des-gestes`, `libelles-vivants`,
+`coupe-aux-transitoires`, `alignement-lanes`, `encre-clips`,
+`etalement-automation`) — plusieurs minutes et une fenêtre chacun ;
+`surfaces-claires.py`, qui juge une IMAGE qu'on lui donne ; les mesures de la
+chaîne d'analyse, qui ne sont pas des gardes.
+
+**LE CORRECTIF.** Une section « Gardes des sources » dans `verifier.sh`, qui
+nomme chaque garde et sa dernière ligne ; et l'option `--gardes`, qui ne passe
+QUE cette section (la suite Python entière ne se lance pas pendant une
+campagne — règle du dépôt —, les gardes des sources, si).
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. `./verifier.sh --gardes` : **9 gardes vertes** (l'inventaire compte deux fois),
+   code 0, en moins de **5 s** ;
+2. une infobulle française sans `tr()` injectée dans une copie : **1 garde
+   rouge**, nommée (`inventaire_langue --garde`), code **1** ; restauration
+   vérifiée par `cmp`, puis code 0 ;
+3. une table Markdown cassée (une barre de trop) injectée dans ce document :
+   `tables-markdown` rouge, code 1 — ET `index-a-jour` rouge aussi, puisque la
+   longueur du document change : deux gardes pour une faute, et c'est juste ;
+4. `./verifier.sh` sans option passe désormais les suites, Python, lint, types
+   ET ces neuf gardes.
+
+**MESURÉ.**
+
+| attendu | mesuré |
+|---|---|
+| 1. `--gardes` : 9 vertes, code 0, < 5 s | **9 vertes, code 0, 1,7 s** — après une PREMIÈRE passe rouge, qui avait raison : `index-a-jour` a trouvé l'INDEX pas encore mis à jour après l'écriture de l'hypothèse de cette phase même (30 836 l. annoncées, 30 878 réelles ; 370 phases pour 371) |
+| 2. infobulle injectée | **1 rouge, code 1**, « RATÉ ECRAN ui/ArrangementComponent.cpp:2711 » ; restauration `cmp`, code 0 |
+| 3. table cassée injectée | **`tables-markdown` ET `index-a-jour` rouges, code 1** ; restauration `cmp`, code 0 |
+| 4. `./verifier.sh` complet | **code 0, 542 s** : core 355, audio 1 303, interchange 307, clap 25, panels 11 ; Python 236 ; ruff et mypy (150 fichiers) propres ; les 9 gardes vertes |
+
+La première passe dit à elle seule pourquoi la phase valait d'être faite : la
+garde de l'INDEX existait depuis le 20/09, et l'écart qu'elle a trouvé se
+serait commité si l'on n'avait pas pensé à la lancer.

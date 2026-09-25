@@ -4,6 +4,7 @@
 #
 #     ./verifier.sh            les suites déjà compilées, puis Python, lint, types
 #     ./verifier.sh --compiler compile d'abord les cibles de test (deux travaux)
+#     ./verifier.sh --gardes   seulement les gardes des sources de tools/ (D378)
 #
 # POURQUOI CE FICHIER. Les garde-fous existaient tous — cinq suites C++, une
 # suite Python, `ruff check .` déclaré par `ruff.toml`, `mypy` déclaré par
@@ -16,6 +17,14 @@
 # tourne tue la course (règle du dépôt) ; et à `-j` élevé une compilation JUCE
 # pendant une séparation demucs se fait tuer par le manque de mémoire. Avec
 # `--compiler`, il compile à DEUX travaux, ce qui est la limite écrite.
+#
+# LES GARDES DE tools/ (D378). La règle du dépôt (D150) range dans tools/ ce
+# qui doit empêcher une régression -- et ce fichier n'en lançait AUCUNE : une
+# garde que rien ne rejoue n'empêche rien. Ne passent ici que celles qui lisent
+# les SOURCES seules (ni application lancée, ni image, ni audio) et rendent 1 à
+# la faute ; les bancs qui lancent l'application se jouent à part. `--gardes`
+# ne passe qu'elles : elles tiennent en quelques secondes et peuvent tourner
+# pendant une campagne, ce que la suite Python entière ne peut pas.
 #
 # Le code de sortie vaut 0 si tout ce qui a pu être passé est vert.
 
@@ -31,6 +40,9 @@ vert()   { printf '   \033[32m✓\033[0m %s\n' "$1"; }
 rouge()  { printf '   \033[31m✗\033[0m %s\n' "$1"; ECHECS=$((ECHECS + 1)); }
 saute()  { printf '   \033[33m—\033[0m %s\n' "$1"; SAUTES=$((SAUTES + 1)); }
 
+GARDES_SEULES=0
+[ "${1:-}" = "--gardes" ] && GARDES_SEULES=1
+
 if [ "${1:-}" = "--compiler" ]; then
     titre "Compilation des cibles de test (deux travaux)"
     if cmake --build build -j 2 --target vsm_core_tests vsm_audio_tests \
@@ -40,6 +52,7 @@ if [ "${1:-}" = "--compiler" ]; then
     fi
 fi
 
+if [ "$GARDES_SEULES" -eq 0 ]; then
 titre "Suites du moteur (C++)"
 for suite in core/vsm_core_tests audio/vsm_audio_tests interchange/vsm_interchange_tests \
              clap/vsm_clap_tests panels/vsm_panels_tests; do
@@ -83,6 +96,22 @@ if [ -x "$VENV" ] && "$VENV" -c "import mypy" 2>/dev/null; then
 else
     saute "mypy absent — analyse/.venv/bin/python -m pip install mypy"
 fi
+fi   # GARDES_SEULES
+
+titre "Gardes des sources (tools/, D378)"
+for garde in "accents-francais.py" "clips-numerotes.py" "index-a-jour.py" \
+             "inventaire_langue.py --garde" "inventaire_langue.py --doublons" \
+             "menus-des-regles.py" "noms-des-gestes.py" "raccourcis-affiches.py" \
+             "tables-markdown.py"; do
+    # Le nom et ses options se séparent ici : un seul mot passé à python
+    # chercherait un fichier « inventaire_langue.py --garde ».
+    read -r script options <<< "$garde"
+    if [ ! -x "$VENV" ]; then saute "$garde — environnement absent"; continue; fi
+    # shellcheck disable=SC2086
+    if sortie=$("$VENV" "tools/$script" $options 2>&1); then vert "$garde : $(echo "$sortie" | tail -1)"
+    else rouge "$garde : $(echo "$sortie" | tail -1)"; echo "$sortie" | grep -i 'raté\|écart\|faute' | head -5 | sed 's/^/       /'
+    fi
+done
 
 titre "Bilan"
 if [ "$SAUTES" -gt 0 ]; then
