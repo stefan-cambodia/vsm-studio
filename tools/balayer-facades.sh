@@ -55,10 +55,15 @@ done
 rm -rf "$brouillon"
 echo "$n machine(s) posée(s), mesures dans $sortie"
 # La DERNIÈRE taille rencontrée par machine est la bonne (la façade est posée plusieurs fois au montage).
+# D380 : LA DERNIÈRE À LA PLUS GRANDE LARGEUR. Un balayage sur trois, vsm.chebyshev
+# a écrit une passe transitoire à 197 px APRÈS la bonne (356 × 716) : la règle de
+# D302 la prenait pour la finale et comptait un bouton de 13 px qui n'existe pas à
+# l'écran. La largeur d'une façade est celle du rack ; une passe plus étroite
+# qu'une autre de la même course est transitoire, où qu'elle tombe.
 fi
 # Deux lectures du fichier : la première retient, par machine, la DERNIÈRE
 # taille de façade écrite ; la seconde ne juge que ses lignes (D302).
-awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
+awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") { split($2, t, "x"); if (!($1 in large) || t[1]+0 >= large[$1]) { large[$1]=t[1]+0; derniere[$1]=$2 } }; next }
   FNR>1 && $2!="0x0" && $10>0 && $2==derniere[$1] {
     taille[$1]=$2; if (!($1 in mini) || $10<mini[$1]) { mini[$1]=$10; ou[$1]=$3" / "$4 } }
   FNR>1 && $2!="0x0" && $10>0 && $2!=derniere[$1] {
@@ -66,7 +71,7 @@ awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
   END { for (m in mini) printf "%-22s %-10s %3d px  %s%s\n", m, taille[m], mini[m], ou[m],
             (m in transitoire && transitoire[m]<mini[m]) ? sprintf("   (passe transitoire : %d px, ignoree)", transitoire[m]) : "" }' \
     "$sortie" "$sortie" | sort -k3 -n
-sous=$(awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
+sous=$(awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") { split($2, t, "x"); if (!($1 in large) || t[1]+0 >= large[$1]) { large[$1]=t[1]+0; derniere[$1]=$2 } }; next }
   FNR>1 && $2!="0x0" && $10>0 && $2==derniere[$1] { if (!($1 in mini) || $10<mini[$1]) mini[$1]=$10 }
   END { c=0; for (m in mini) if (mini[m]<18) c++; print c }' "$sortie" "$sortie")
 total=$(awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 {v[$1]=1} END{print length(v)}' "$sortie")
@@ -75,7 +80,7 @@ echo "VERDICT : $sous façade(s) sur $total sous le plancher de 18 px"
 # identiques comptées une fois. Colonnes 11 (police) et 12 (besoin : largeur du
 # texte / largeur offerte ; au-delà de 1/0,55 JUCE coupe par « … »). Plafond de
 # coupées : 3, la valeur mesurée à l'adoption (19 au plancher de 8).
-read -r a12 serig coupees <<< "$(awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
+read -r a12 serig coupees <<< "$(awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") { split($2, t, "x"); if (!($1 in large) || t[1]+0 >= large[$1]) { large[$1]=t[1]+0; derniere[$1]=$2 } }; next }
   FNR>1 && $2!="0x0" && $2==derniere[$1] && NF>=12 && !vu[$0]++ { n++; if ($11>=12) d++; if ($12>1/0.55) c++ }
   END { print d+0, n+0, c+0 }' "$sortie" "$sortie")"
 echo "SÉRIGRAPHIE : $a12 / $serig à 12 pt ou plus, $coupees coupée(s) par « … » (plafond 3)"

@@ -2562,7 +2562,9 @@ MachinePanel makeFmDrums() {
     accent.title = "ACCENT";
     accent.accentColour = cyan;
     accent.column = 0; accent.row = 6; accent.columnSpan = 3; accent.rowSpan = 2;
-    accent.contentColumns = 2;
+    // D380 : UNE colonne interne pour UN bouton. Deux divisaient sa seule
+    // cellule par deux : 18 px au rack de 364 (D300), 17 à celui de 356.
+    accent.contentColumns = 1;
     accent.controls = { control("Accent", "ACCENT", S::Knob, 0, 0) };
     panel.sections.push_back(accent);
 

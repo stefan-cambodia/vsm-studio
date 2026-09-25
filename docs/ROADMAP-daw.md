@@ -31012,3 +31012,58 @@ de 18 à 36 px de large (TR-909, percussions, cordes, Minimoog) ; à ce rack de
 356 px, aucune taille lisible n'y fait entrer « CLAP DECAY ». Le remède est la
 LARGEUR — un rack plus large, ou une sérigraphie abrégée écrite dans la
 description de la machine —, pas la police.
+
+---
+
+### Phase D380 — le bouton ACCENT des FM Drums était sur le plancher à 364 px, et le rack en fait 356 (25/09/2026)
+
+**D'OÙ ELLE VIENT — DU ROUGE DIT AVANT D379.** `balayer-facades.sh` rend 1 sur
+le code d'avant D379 comme après : `vsm.fmdrums`, ACCENT, **17 px**. D300 l'avait
+fermé à **18 px, « sur le plancher exactement »**, au rack de **364** px ; le
+balayage d'aujourd'hui pose les façades à **356** px de large. Un élément posé
+AU plancher ne survit pas à huit pixels de moins : c'est la condition de mesure
+que D300 avait pris soin d'écrire, et elle a bougé.
+
+**LA CAUSE, lue dans la description** (`panels/src/MachinePanels.cpp`) : le bloc
+ACCENT fait 3 colonnes de grille sur 16 et déclare `contentColumns = 2` — une
+grille interne de DEUX colonnes pour UN seul bouton, qui n'en occupe que la
+moitié. Le champ sert, d'après son commentaire, à empêcher deux ou trois
+commandes de s'étaler dans un bloc large ; ici il divise par deux la seule
+cellule.
+
+**LE CORRECTIF** : `contentColumns = 1`. Rien d'autre.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** (balayage complet, même binaire que D379
+hors ce changement) :
+1. ACCENT des FM Drums **≥ 30 px** (la cellule double en largeur) ;
+2. **0 façade sur 63 sous 18 px** : la garde repasse au vert, sérigraphie
+   comprise (coupées ≤ 3) ;
+3. les 62 autres façades **identiques ligne pour ligne** au balayage de D379 ;
+   dans fmdrums, seules les lignes du bloc ACCENT changent — hauteur de façade
+   comprise, sinon c'est que le bloc a déplacé le reste.
+
+**MESURÉ** (trois balayages complets du même binaire) :
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | ACCENT ≥ 30 px | **40 px**, sérigraphie à 12 pt (8,5 avant, repliée) | TENU |
+| 2 | 0 / 63 sous 18 px, coupées ≤ 3 | **0 / 63**, 3 coupées, 1 031 / 1 073 à 12 pt — aux passes 2 et 3 ; la passe 1 disait 1 / 63 (voir plus bas) | TENU |
+| 3 | 62 autres façades identiques ; dans fmdrums, seul ACCENT | identiques ligne pour ligne aux trois passes ; fmdrums : les deux lignes d'ACCENT, taille de façade 356 × 864 inchangée | TENU |
+
+**LA PASSE 1 ÉTAIT ROUGE, ET C'ÉTAIT LE BANC.** Elle comptait `vsm.chebyshev` à
+**13 px** : sa dernière ligne écrite était une passe TRANSITOIRE à **197** px de
+large, tombée APRÈS la bonne disposition (356 × 716), et la règle de D302 — « la
+DERNIÈRE disposition est la bonne » — la prenait pour la finale. Deux passes de
+plus : 33 px, vert. Le juge prend désormais la dernière disposition **à la plus
+grande largeur** de la course : une façade a la largeur du rack, et une passe
+plus étroite qu'une autre de la même course est transitoire, où qu'elle tombe.
+Rejugé sur les cinq balayages du jour : les trois de D380 VERTS (la passe 1
+comprise), ceux d'avant le correctif ROUGES pour fmdrums — la garde voit encore
+la faute qu'elle doit voir. Tests `panels` 11 verts.
+
+**Ce que la phase apprend.** Un élément fermé « sur le plancher exactement » est
+une mesure qui dépend d'une largeur ; D300 l'avait écrit, et la largeur a
+changé (364 → 356) sans que personne rejoue la garde — c'est D378 qui la
+rejouera désormais… non : `balayer-facades.sh` LANCE l'application (deux
+minutes), elle n'est pas dans `verifier.sh --gardes`. **Reste nommé** : la
+rejouer après tout changement de mise en page de la fenêtre.
