@@ -15,6 +15,11 @@
 #   tools/balayer-facades.sh [sortie.tsv]      → tableau, puis verdict ; code 1 si une façade est sous 18 px
 #   tools/balayer-facades.sh --juger fichier.tsv   → rejuge un balayage déjà écrit, sans relancer
 #
+# LA SÉRIGRAPHIE (D379) : 12 pt partout où le mot tient dans sa case, la plus
+# grande taille qui tient ailleurs, jamais sous 8. Le verdict compte aussi les
+# sérigraphies COUPÉES par « … » (plafond 3). Témoin : VSM_SERIGRAPHIE_PLANCHER=8
+# VSM_SERIGRAPHIE_REPLI=0, le comportement d'avant.
+#
 # LA DERNIÈRE DISPOSITION, PAS LA PREMIÈRE (D302, 14/09/2026). Une façade écrit
 # sa mesure à CHAQUE resized() : d'abord à la taille du rack (364 × 626), puis à
 # sa taille naturelle (434, 818, 1 030 px…) une fois D63 posée -- c'est celle-là
@@ -66,4 +71,12 @@ sous=$(awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
   END { c=0; for (m in mini) if (mini[m]<18) c++; print c }' "$sortie" "$sortie")
 total=$(awk -F'\t' 'NR>1 && $2!="0x0" && $10>0 {v[$1]=1} END{print length(v)}' "$sortie")
 echo "VERDICT : $sous façade(s) sur $total sous le plancher de 18 px"
-[ "$sous" -eq 0 ]
+# D379 : LA SÉRIGRAPHIE, sur la dernière disposition de chaque machine, lignes
+# identiques comptées une fois. Colonnes 11 (police) et 12 (besoin : largeur du
+# texte / largeur offerte ; au-delà de 1/0,55 JUCE coupe par « … »). Plafond de
+# coupées : 3, la valeur mesurée à l'adoption (19 au plancher de 8).
+read -r a12 serig coupees <<< "$(awk -F'\t' 'NR==FNR { if (FNR>1 && $2!="0x0") derniere[$1]=$2; next }
+  FNR>1 && $2!="0x0" && $2==derniere[$1] && NF>=12 && !vu[$0]++ { n++; if ($11>=12) d++; if ($12>1/0.55) c++ }
+  END { print d+0, n+0, c+0 }' "$sortie" "$sortie")"
+echo "SÉRIGRAPHIE : $a12 / $serig à 12 pt ou plus, $coupees coupée(s) par « … » (plafond 3)"
+[ "$sous" -eq 0 ] && [ "$coupees" -le 3 ]

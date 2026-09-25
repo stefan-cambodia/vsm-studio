@@ -7,6 +7,47 @@ using namespace vsm::panels;
 
 namespace {
 
+/// D379 : LE PLANCHER DE LA SÉRIGRAPHIE, en points logiques. Il valait 8 : la
+/// police suivait la bande (45 % de sa hauteur, bornée à 8..11) et une façade
+/// serrée écrivait ses intitulés trois fois plus petit que le reste de
+/// l'application, dont le plancher est 12 (D323). `VSM_SERIGRAPHIE_PLANCHER`
+/// rend l'ancien comportement au témoin, du même code.
+/// D379 : largeur que le texte d'une sérigraphie demande, rapportée à celle que
+/// sa case offre sur toutes les lignes qu'elle peut écrire. 1 = tient juste.
+float besoinDeLargeur(const juce::Label& l, const juce::Font& police) {
+    const float largeur = juce::GlyphArrangement::getStringWidth(police, l.getText());
+    const int lignes = std::max(1, static_cast<int>(std::floor(l.getHeight() / police.getHeight())));
+    const float offerte = static_cast<float>(l.getWidth()) * static_cast<float>(lignes);
+    return offerte > 0.0f ? largeur / offerte : 99.0f;
+}
+
+float besoinDeLargeur(const juce::Label& l) { return besoinDeLargeur(l, l.getFont()); }
+
+/// D379 bis : LE REPLI. Une sérigraphie que la police voulue ferait COUPER
+/// (besoin au-delà de 1/0,55, la compression la plus forte que la sérigraphie
+/// s'autorise) descend par demi-point jusqu'à la plus grande taille qui tient,
+/// sans passer sous l'ancien plancher de 8 : elle n'est coupée que si elle
+/// l'était déjà avant. `VSM_SERIGRAPHIE_REPLI=0` rend le témoin sans repli.
+float policeQuiTient(const juce::Label& l, float voulue) {
+    static const bool repli = [] {
+        const char* v = std::getenv("VSM_SERIGRAPHIE_REPLI");
+        return v == nullptr || *v != '0';
+    }();
+    if (!repli) return voulue;
+    for (float taille = voulue; taille > 8.0f; taille -= 0.5f)
+        if (besoinDeLargeur(l, juce::Font(juce::FontOptions(taille))) <= 1.0f / 0.55f) return taille;
+    return std::min(voulue, 8.0f);
+}
+
+float plancherSerigraphie() {
+    static const float plancher = [] {
+        if (const char* v = std::getenv("VSM_SERIGRAPHIE_PLANCHER"); v != nullptr && *v)
+            return juce::jlimit(6.0f, 16.0f, static_cast<float>(std::atof(v)));
+        return 12.0f;   // D379 bis
+    }();
+    return plancher;
+}
+
 /// std::string -> juce::String en UTF-8 EXPLICITE (voir StepSequencerComponent).
 juce::String toJuce(const std::string& text) { return juce::String::fromUTF8(text.c_str()); }
 
@@ -318,7 +359,8 @@ int MachinePanelComponent::hauteurUtile() const {
     // et en devait quatre. Tant qu'aucun bloc ne dépassait deux rangées de
     // commandes, le plancher d'une rangée (70 px, ci-dessous) couvrait l'écart ;
     // la colonne par pièce du sampler, elle, en a quatre.
-    constexpr float kRangeeMinimale = 18.0f + 12.0f + 2.0f * 3.0f;
+    // D379 : la bande de sérigraphie suit son plancher (12 à l'origine).
+    const float kRangeeMinimale = 18.0f + std::max(12.0f, plancherSerigraphie() + 4.0f) + 2.0f * 3.0f;
 
     // ET CE QUE LE BLOC PERD AVANT D'ARRIVER À SES RANGÉES. Trente-quatre
     // pixels, sur le chemin de `resized()` : la marge du bloc (6 de chaque
@@ -458,7 +500,10 @@ void MachinePanelComponent::resized() {
 
         // La sérigraphie prend une part FIXE de la cellule : sur une petite
         // façade elle rétrécit avec le reste, au lieu de dévorer le bouton.
-        const float captionHeight = juce::jlimit(12.0f, 26.0f, cell.getHeight() * 0.26f);
+        // D379 : la bande porte au moins UNE ligne au plancher, plus 4 px d'air.
+        const float plancher = plancherSerigraphie();
+        const float captionHeight =
+            juce::jlimit(std::max(12.0f, plancher + 4.0f), std::max(26.0f, plancher + 4.0f), cell.getHeight() * 0.26f);
 
         // D62 : UNE CELLULE BASSE ET LARGE MET SA SÉRIGRAPHIE À CÔTÉ, PAS
         // DESSOUS. Le plancher de douze pixels ci-dessus s'applique même à une
@@ -484,8 +529,8 @@ void MachinePanelComponent::resized() {
         // l'on ne bascule que si celle d'à côté est au moins égale. Empilé, le
         // nom a toute la largeur sur une ligne ; à côté, une bande plus étroite
         // mais sur toute la hauteur, donc souvent deux lignes.
-        const float policeACote = juce::jlimit(8.0f, 11.0f, cell.getHeight() * 0.45f);
-        const float policeDessous = juce::jlimit(8.0f, 11.0f, captionHeight * 0.45f);
+        const float policeACote = juce::jlimit(plancher, std::max(11.0f, plancher), cell.getHeight() * 0.45f);
+        const float policeDessous = juce::jlimit(plancher, std::max(11.0f, plancher), captionHeight * 0.45f);
         const float largeurNomACote = std::max(0.0f, cell.getWidth() - diametreACote - 3.0f);
         const float surfaceACote =
             largeurNomACote * std::max(1.0f, std::floor(cell.getHeight() / policeACote));
@@ -505,8 +550,7 @@ void MachinePanelComponent::resized() {
             place.removeFromLeft(3.0f);   // sans quoi le nom touche l'anneau du bouton
             control.caption->setBounds(place.toNearestInt());
             control.caption->setJustificationType(juce::Justification::centredLeft);
-            control.caption->setFont(juce::Font(juce::FontOptions(
-                juce::jlimit(8.0f, 11.0f, cell.getHeight() * 0.45f))));
+            control.caption->setFont(juce::Font(juce::FontOptions(policeQuiTient(*control.caption, policeACote))));
             control.widget->setBounds(
                 pourLeBouton.withSizeKeepingCentre(diametreACote, diametreACote).toNearestInt());
             continue;
@@ -514,7 +558,7 @@ void MachinePanelComponent::resized() {
 
         control.caption->setJustificationType(juce::Justification::centredTop);
         control.caption->setBounds(cell.removeFromBottom(captionHeight).toNearestInt());
-        control.caption->setFont(juce::Font(juce::FontOptions(juce::jlimit(8.0f, 11.0f, captionHeight * 0.45f))));
+        control.caption->setFont(juce::Font(juce::FontOptions(policeQuiTient(*control.caption, policeDessous))));
 
         if (control.style == ControlStyle::Knob || control.style == ControlStyle::LargeKnob ||
             control.style == ControlStyle::Selector) {
@@ -558,7 +602,13 @@ void MachinePanelComponent::mesurerSiDemande() const {
                << (estCurseur ? "curseur" : "bouton") << "\t"
                << cellule.getWidth() << "\t" << cellule.getHeight() << "\t"
                << cadre.getWidth() << "\t" << cadre.getHeight() << "\t"
-               << juce::jmin(cadre.getWidth(), cadre.getHeight()) << "\n";
+               << juce::jmin(cadre.getWidth(), cadre.getHeight()) << "\t"
+               // D379 : la POLICE de la sérigraphie, et ce que son texte
+               // demande de largeur rapporté à ce que sa case offre (lignes
+               // comprises). Au-dessus de 1/0,55, JUCE coupe par « … » ;
+               // entre 1 et 1/0,55, il comprime le texte horizontalement.
+               << juce::String(control.caption->getFont().getHeight(), 1) << "\t"
+               << juce::String(besoinDeLargeur(*control.caption), 2) << "\n";
     }
     if (lignes.isEmpty()) return;
     if (!fichier.existsAsFile())
@@ -567,7 +617,7 @@ void MachinePanelComponent::mesurerSiDemande() const {
         // fichier. Un en-tête de colonne n'a pas besoin d'accent ; le fichier
         // reste lisible par `cut` et par un tableur.
         fichier.replaceWithText("machine\tfacade\tbloc\tserigraphie\ttype\t"
-                                "cellule_l\tcellule_h\tpose_l\tpose_h\tdiametre\n");
+                                "cellule_l\tcellule_h\tpose_l\tpose_h\tdiametre\tpolice\tbesoin\n");
     fichier.appendText(lignes);
 }
 

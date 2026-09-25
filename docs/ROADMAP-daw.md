@@ -30889,3 +30889,126 @@ campagne — règle du dépôt —, les gardes des sources, si).
 La première passe dit à elle seule pourquoi la phase valait d'être faite : la
 garde de l'INDEX existait depuis le 20/09, et l'écart qu'elle a trouvé se
 serait commité si l'on n'avait pas pensé à la lancer.
+
+---
+
+### Phase D379 — la sérigraphie des façades s'écrivait en 8 points, le reste de l'application en 12 (25/09/2026)
+
+**D'OÙ ELLE VIENT — D'UN AUDIT À L'ÉCRAN.** *children-dream-v12* ouvert à
+1 920 × 1 200 : dans le rack, la façade du piano écrit FELT, STRIKE, TOUCH,
+DECAY, DAMPING, UNISON en caractères nettement plus petits que tout le reste de
+la fenêtre. `police-plancher.sh` (D323) garde un plancher de 12 pt partout…
+SAUF dans `app/Source/ui/machines/`, écarté par son en-tête : « nommées, non
+traitées ». Le besoin est celui que l'utilisateur a posé (il lit mal les petits
+textes ; 150 % a été choisi pour cela) et il ne s'arrête pas au bord du rack.
+
+**LA CAUSE, LUE AU CODE.** La police de la sérigraphie vaut 45 % de sa bande,
+bornée à **8..11** ; la bande vaut 26 % de la cellule, bornée à 12..26 ; et
+`hauteurUtile()` (D63) dimensionne la façade pour une bande de 12 — c'est-à-dire
+pour une police de 8. La façade défile déjà dans son volet (D63) : elle PEUT
+grandir, c'est la règle « agrandir la case plutôt que rétrécir le texte ».
+
+**LE RELEVÉ DE DÉPART** (`balayer-facades.sh`, deux colonnes ajoutées à
+`VSM_MESURE_FACADE` : la police, et le BESOIN — largeur du texte à cette police
+rapportée à la largeur offerte, lignes comprises ; au-dessus de 1 JUCE comprime,
+au-dessus de 1/0,55 = 1,82 il coupe par « … ») : **63 façades, 1 073
+sérigraphies distinctes** — **616 à 8 pt, 27 à 9, 35 à 10, 395 à 11, aucune à
+12** ; 52 comprimées, **19 déjà coupées** ; hauteurs de façade : médiane 610,
+max 1 030, somme 33 320 px.
+
+**ET UN ROUGE QUI N'EST PAS LE MIEN, DIT AVANT.** Le même balayage rend la garde
+de D62 ROUGE sur le code d'aujourd'hui : `vsm.fmdrums`, bouton ACCENT à **17
+px**. Il ne dépend pas de cette phase (plancher de sérigraphie à 8, le
+comportement d'avant) ; il se traite à part, après.
+
+**L'HYPOTHÈSE.** Porter le plancher de la sérigraphie de 8 à 12 pt (bande d'au
+moins 16 px, et `hauteurUtile` qui la compte) met toute la sérigraphie au
+plancher de l'application, pour un coût en hauteur de façade modéré, sans
+passer un bouton sous 18 px. `VSM_SERIGRAPHIE_PLANCHER` porte le témoin (8 =
+avant), inscrit dans la mesure ; le balayage se publie ENTIER, à 8, 10 et 12.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** (plancher 12, contre le témoin à 8) :
+
+| # | mesure | témoin (8) | RÉUSSITE si | ÉCHEC si |
+|---|---|---|---|---|
+| 1 | sérigraphies sous 12 pt | 1 073 / 1 073 | **0** | > 0 |
+| 2 | somme des hauteurs de façade | 33 320 px | **≤ + 15 %** (38 318) | > + 30 % |
+| 3 | façades sous 18 px (garde D62) | 1 (fmdrums, 17) | **≤ 1**, et la même | une de plus |
+| 4 | sérigraphies coupées (besoin > 1,82) | 19 | **≤ 19** | > 40 — la police plus grande coupe ce qu'elle devait rendre lisible |
+
+L'attendu 4 est celui dont je doute : les cases ne s'ÉLARGISSENT pas, seule leur
+hauteur suit. S'il échoue, le remède est de donner une seconde ligne à la bande
+(la hauteur, qui défile) — pas de rendre les 8 points.
+
+**MESURÉ — LE BALAYAGE ENTIER** (même binaire, seule l'option change) :
+
+| plancher | sous 12 pt | comprimées | **coupées** | somme des hauteurs | façades sous 18 px |
+|---|---|---|---|---|---|
+| 8 (témoin) | 1 073 | 52 | 19 | 33 320 | 1 (fmdrums, 17) |
+| 10 | 1 073 | 114 | 29 | 34 182 (+ 2,6 %) | 1 (la même) |
+| 12 | **0** | 184 | **45** | 35 044 (**+ 5,2 %**) | 1 (la même) |
+
+**Verdict des attendus à 12** : 1 TENU (0), 2 TENU (+ 5,2 %), 3 TENU (fmdrums
+seule, déjà rouge avant), **4 ÉCHEC** (45 > 40). L'hypothèse telle qu'écrite est
+RÉFUTÉE par son attendu 4 : on ne l'adopte pas en l'état.
+
+**ET LE REMÈDE ÉCRIT D'AVANCE NE SUFFIRAIT PAS, la liste le dit.** Les 45
+coupées sont dans des cases ÉTROITES, pas basses : TR-909 et percussions à **18-19
+px** de large (« CLAP DECAY », « WOOD TUNE »), cordes et banjo à 25-27, Minimoog
+et MS-20 à 36 (« LOUDNESS SUSTAIN »). À 12 pt, « DECAY » seul demande ~35 px :
+une seconde ligne ne ferait pas entrer un mot dans une case deux fois plus
+étroite que lui. Le goulot est la LARGEUR du rack par défaut (356 px), que
+l'utilisateur peut agrandir, et que cette phase ne touche pas.
+
+### D379 bis — 12 pt partout où le mot tient, la plus grande taille qui tient ailleurs (écrite AVANT sa mesure)
+
+**LA VARIANTE.** Au plancher de 12, une sérigraphie qui serait COUPÉE descend,
+par demi-point, jusqu'à la plus grande taille où elle ne l'est plus, sans
+passer sous l'ancien plancher de 8. Une sérigraphie ne peut donc être coupée
+que si elle l'était déjà à 8. Option `VSM_SERIGRAPHIE_REPLI=0` pour le témoin
+(12 sans repli, la ligne ci-dessus).
+
+**ATTENDUS** (plancher 12, repli actif, contre le témoin à 8) :
+
+| # | mesure | RÉUSSITE si | ÉCHEC si |
+|---|---|---|---|
+| 1 | sérigraphies à 12 pt | **≥ 95 %** (≥ 1 019 / 1 073) | < 90 % |
+| 2 | coupées | **≤ 19** (jamais pire qu'à 8) | > 19 |
+| 3 | somme des hauteurs | ≤ + 15 % | > + 30 % |
+| 4 | façades sous 18 px | la seule fmdrums | une de plus |
+| 5 | photo du piano de *children-dream-v12* | FELT, STRIKE, DECAY… lisibles, aucun « … » | un « … » neuf |
+
+**MESURÉ — D379 bis** (même binaire ; le témoin à 8 sans repli, rejoué, redonne
+le relevé de départ AU FICHIER PRÈS — même empreinte des lignes triées) :
+
+| plancher | repli | à 12 pt | **coupées** | comprimées | somme des hauteurs | sous 18 px |
+|---|---|---|---|---|---|---|
+| 8 | non (témoin) | 0 / 1 073 | 19 | 52 | 33 320 | fmdrums |
+| 12 | non | 1 073 / 1 073 | 45 | 184 | 35 044 | fmdrums |
+| **12** | **oui** | **1 030 / 1 073 (96,0 %)** | **3** | 213 | 35 044 (+ 5,2 %) | fmdrums |
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | ≥ 95 % à 12 pt | 96,0 % ; les 43 autres de 8 à 11,5 par demi-point | TENU |
+| 2 | coupées ≤ 19 | **3** | TENU — mieux qu'avant : à 8 sans repli, les polices de 9 à 11 ne se repliaient pas |
+| 3 | hauteurs ≤ + 15 % | + 5,2 % | TENU |
+| 4 | fmdrums seule sous 18 px | fmdrums seule (17 px, déjà avant) | TENU |
+| 5 | photo du piano | FELT, STRIKE, TOUCH, DAMPER, LEVEL… à la taille du reste ; « STIFFN… » coupé AVANT comme après (l'une des 3) ; DAMPING et UNISON repliés faute de largeur | TENU |
+
+**D379 bis est ADOPTÉE** : plancher 12 et repli par défaut. Un premier résumé
+de ma main donnait 1 035 à 12 pt : il arrondissait les 11,5 à 12. Le compte
+exact, 1 030, est celui du verdict de l'outil.
+
+**LA GARDE.** `balayer-facades.sh` compte désormais la sérigraphie à son
+verdict — « SÉRIGRAPHIE : 1030 / 1073 à 12 pt ou plus, 3 coupée(s) » — et rend 1
+au-delà de 3 coupées. Rejugé sur les trois balayages : 3 (vert), 19 et 45
+(rouges). Elle reste ROUGE aujourd'hui pour fmdrums seule, qui était rouge
+avant cette phase : c'est la phase suivante. `police-plancher.sh` dit dans son
+en-tête que les façades sont traitées ici. Banc de fumée 0 raté ; préférences
+inchangées.
+
+**Reste nommé, non fait** : les 43 sérigraphies repliées vivent dans des cases
+de 18 à 36 px de large (TR-909, percussions, cordes, Minimoog) ; à ce rack de
+356 px, aucune taille lisible n'y fait entrer « CLAP DECAY ». Le remède est la
+LARGEUR — un rack plus large, ou une sérigraphie abrégée écrite dans la
+description de la machine —, pas la police.

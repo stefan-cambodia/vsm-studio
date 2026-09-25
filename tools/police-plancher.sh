@@ -5,7 +5,10 @@
 # facteur, et un 10 pt reste le plus petit texte de l'écran quelle que soit
 # l'échelle. Les façades de machines (app/Source/ui/machines/) sont HORS de cette
 # garde : leur sérigraphie vit dans des cellules dictées par la description de la
-# machine, et D61 la fait rétrécir plutôt que la couper — nommées, non traitées.
+# machine, et D61 la fait rétrécir plutôt que la couper. Elles sont TRAITÉES
+# depuis D379, ailleurs : 12 pt partout où le mot tient dans sa case, la plus
+# grande taille qui tient sinon, jamais sous 8 — mesuré et gardé par
+# `balayer-facades.sh` (colonne police, plafond de sérigraphies coupées).
 # Sortie 0 = rien sous 12 pt ; 1 = la liste des sites fautifs, un par ligne.
 cd "$(dirname "$0")/.." || exit 2
 # Deux formes : `FontOptions(11.0f)` et le raccourci `g.setFont(11.0f)` — la
