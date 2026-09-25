@@ -31063,7 +31063,7 @@ la faute qu'elle doit voir. Tests `panels` 11 verts.
 
 **Ce que la phase apprend.** Un élément fermé « sur le plancher exactement » est
 une mesure qui dépend d'une largeur ; D300 l'avait écrit, et la largeur a
-changé (364 → 356) sans que personne rejoue la garde — c'est D378 qui la
-rejouera désormais… non : `balayer-facades.sh` LANCE l'application (deux
-minutes), elle n'est pas dans `verifier.sh --gardes`. **Reste nommé** : la
-rejouer après tout changement de mise en page de la fenêtre.
+changé (364 → 356) sans que personne rejoue la garde. `verifier.sh --gardes`
+(D378) ne la rejoue pas : `balayer-facades.sh` LANCE l'application soixante-trois
+fois (deux minutes), et n'a pas sa place parmi les gardes des sources. **Reste
+nommé** : la rejouer après tout changement de mise en page de la fenêtre.
