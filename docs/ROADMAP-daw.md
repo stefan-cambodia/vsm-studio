@@ -32693,7 +32693,11 @@ le verbe fonctionne, le refus vient du bouton absent.
    et « Commands » entière en bas. Garde de langue 0 ; fumée 0 raté ;
    préférences inchangées.
 
-**Vu sur la photo de la boîte ouverte, pour la phase suivante** : les libellés
-de gauche de « Réglages audio » (« Sortie : », « Taux d'échantillonnage : »…)
-sont gris foncé sur fond sombre, à peine lisibles, et « channel 1 + 2 » reste en
-anglais dans l'interface française.
+**Vu sur la photo de la boîte ouverte — et RETIRÉ après vérification** : les
+libellés de gauche de « Réglages audio » semblaient gris foncé sur fond sombre.
+Mesuré : leurs pixels sont clairs (233, 233, 224 — `textPrimary`), posés sur des
+pixels TRANSPARENTS. `VSM_CAPTURE_PANNEAUX` ne peint que le contenu, sans le
+fond de la fenêtre (`Palette::panel`, 0x1f1f24), et la visionneuse rendait la
+transparence en gris. Recomposée sur la vraie couleur de fond, la boîte se lit
+nettement. Aucun défaut ; pas de phase. « channel 1 + 2 » est le nom que le
+pilote ALSA donne aux canaux — une donnée, pas un texte de l'application.

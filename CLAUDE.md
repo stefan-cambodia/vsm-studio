@@ -350,6 +350,12 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   et une photo d'une même course ne datent pas du même instant : lire le
   journal DANS L'ORDRE (le geste « joué » doit précéder le relevé), et pour un
   relevé après geste, prendre le geste immédiat (`VSM_GESTE_PISTE`).
+- Une photo de `VSM_CAPTURE_PANNEAUX` a un fond TRANSPARENT : elle ne peint que
+  le contenu, pas le fond de la fenêtre (`Palette::panel`). Le 26/09 (D417),
+  les libellés de « Réglages audio » y semblaient gris foncé sur fond sombre, et
+  une phase de contraste s'écrivait déjà ; leurs pixels étaient clairs, sur de
+  l'alpha 0 que la visionneuse rendait en gris. Avant de juger un contraste sur
+  une photo de panneau, la recomposer sur `0x1f1f24` (ou lire l'alpha).
 - Un REMPLACEMENT GLOBAL fait APRÈS avoir inséré une fonction qui contient le
   motif remplacé réécrit la fonction elle-même : le 15/09 (D335), `sortieChassee`
   appelait `lastOutBefore`, puis un `replace("lastOutBefore(passages, ",
