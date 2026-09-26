@@ -33637,3 +33637,36 @@ inchangées.
 pas (témoin : piste sans nom, un pas) ; « ␣␣␣ » → pareil ; « ␣Basse␣ » →
 « Basse », un pas « Renommer la piste — Acid Bass » ; « Acid Bass » (inchangé)
 → aucun pas. Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D448 — la queue des exports, « 1,5 » s lu 1 s (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN CHERCHANT LES AUTRES SAISIES APRÈS D447.** Les deux
+fenêtres d'export (audio, stems) lisent leur champ « queue » (les secondes de
+résonance ajoutées après la fin) par `getTextEditorContents("queue")
+.getDoubleValue()` : la lecture de JUCE, qui s'arrête à la virgule. « 1,5 »
+donne 1 s. La garde de D446 ne le voyait pas : elle lit les rappels des
+curseurs et des libellés, pas les champs des fenêtres.
+
+**LE BANC** : une ligne `VSM_EXPORT_QUEUE : <secondes>` écrite dès la réponse de
+la fenêtre, AVANT le rendu (qui attend un fichier : sans lui, rien n'est rendu —
+aucune charge ajoutée à la campagne). Seule, dans un premier binaire. Mesure :
+`VSM_MENU=Exporter audio (WAV)...` et `VSM_OPTIONS=queue=1,5`.
+
+**ATTENDU, écrit avant la mesure** : témoin « 1 » ; après « 1.5 » ; « 2.5 »
+inchangé ; la garde de D446 étendue aux champs de fenêtre
+(`getTextEditorContents(…).getDoubleValue()`), vue rouge sur l'arbre d'avant et
+verte après ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `VSM_EXPORT_QUEUE`, aucune rendu déclenché (0 ligne
+`VSM_EXPORT` : pas de fichier choisi) :
+
+| queue tapée | export audio, témoin → après | stems, témoin → après |
+|---|---|---|
+| « 1,5 » | **1.000** → 1.500 | **1.000** → 1.500 |
+| « 2.5 » | 2.500 → 2.500 | 2.500 → 2.500 |
+
+La garde de D446 gagne une troisième règle (un champ de fenêtre lu par
+`getDoubleValue`) : rouge sur l'arbre d'avant, les deux sites nommés ; verte
+après. Fumée 0 raté ; préférences inchangées.

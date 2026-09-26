@@ -5587,13 +5587,14 @@ void MainComponent::exportAudioFile() {
         const int plage = fenetre->getComboBoxComponent("plage")->getSelectedId();
         const int frequence = fenetre->getComboBoxComponent("frequence")->getSelectedId();
         const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
-        const double queue = std::max(0.0, fenetre->getTextEditorContents("queue").getDoubleValue());
+        const double queue = std::max(0.0, vsm::app::ui::lireNombreSaisi(fenetre->getTextEditorContents("queue")));   // D448 : la virgule
         const int vitesse = fenetre->getComboBoxComponent("vitesse")->getSelectedId();
         const int niveau = fenetre->getComboBoxComponent("niveau")->getSelectedId();
         fenetre->exitModalState(resultat);
         fenetre->setVisible(false);
         if (resultat != 1) return;
 
+        std::fputs(("VSM_EXPORT_QUEUE : " + juce::String(queue, 3) + "\n").toRawUTF8(), stderr);   // D448
         vsm::interchange::RenderOptions options;
         options.blockSize = 512;
         options.tailSeconds = queue;
@@ -5677,11 +5678,12 @@ void MainComponent::exportStems() {
     auto repondre = [this, fenetre](int resultat) {
         const int decoupage = fenetre->getComboBoxComponent("granularite")->getSelectedId();
         const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
-        const double queue = std::max(0.0, fenetre->getTextEditorContents("queue").getDoubleValue());
+        const double queue = std::max(0.0, vsm::app::ui::lireNombreSaisi(fenetre->getTextEditorContents("queue")));   // D448 : la virgule
         fenetre->exitModalState(resultat);
         fenetre->setVisible(false);
         if (resultat != 1) return;
 
+        std::fputs(("VSM_EXPORT_QUEUE : " + juce::String(queue, 3) + "\n").toRawUTF8(), stderr);   // D448
         vsm::interchange::RenderOptions options;
         options.blockSize = 512;
         options.tailSeconds = queue;

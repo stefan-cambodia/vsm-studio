@@ -85,6 +85,22 @@ def cases_sans_lecture(fichier: Path) -> tuple[int, list[str]]:
     return vues, fautes
 
 
+CHAMP_DE_FENETRE = re.compile(r"getTextEditorContents\s*\([^)]*\)\s*\.\s*get(Double|Float)Value\s*\(")
+
+
+def champs_sans_virgule(fichier: Path) -> tuple[int, list[str]]:
+    """TROISIÈME RÈGLE (D448) : le champ d'une FENÊTRE (`AlertWindow`) lu par
+    `getDoubleValue` s'arrête à la virgule -- la queue des exports lisait « 1,5 »
+    comme 1 s. Les deux premières règles ne voyaient que curseurs et libellés."""
+    lignes = fichier.read_text(encoding="utf-8", errors="replace").split("\n")
+    fautes = []
+    for i, ligne in enumerate(lignes):
+        if CHAMP_DE_FENETRE.search(ligne):
+            nom = fichier.relative_to(RACINE) if fichier.is_relative_to(RACINE) else fichier
+            fautes.append(f"RATÉ {nom}:{i + 1}: champ de fenêtre lu sans la virgule : « {ligne.strip()[:70]} »")
+    return len(fautes), fautes
+
+
 def main() -> int:
     fichiers = [Path(a).resolve() for a in sys.argv[1:]] or sorted(
         list((RACINE / "app" / "Source").rglob("*.cpp")) + list((RACINE / "app" / "Source").rglob("*.h")))
@@ -92,8 +108,9 @@ def main() -> int:
     for f in fichiers:
         v, fautes = juger(f)
         c, fautes_cases = cases_sans_lecture(f)
+        _, fautes_champs = champs_sans_virgule(f)
         vus += v + c
-        toutes += fautes + fautes_cases
+        toutes += fautes + fautes_cases + fautes_champs
     for faute in toutes:
         print(faute)
     print(f"VIRGULE SAISIE : {vus} lecture(s) et case(s) jugée(s), {len(toutes)} sans la virgule")
