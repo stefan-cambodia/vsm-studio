@@ -10331,7 +10331,6 @@ void MainComponent::measureInputLatency() {
         // branché : la corrélation trouve bien un maximum quelque part dans le
         // bruit, et l'appliquer décalerait toutes les prises suivantes d'une
         // valeur inventée qu'on ne remettrait jamais en question.
-        constexpr double kNetteteMinimale = 10.0;
         if (!resultat.trouve() || resultat.nettete < kNetteteMinimale || sr <= 0.0) {
             boiteRienNestRevenu(resultat.nettete);
             return;
@@ -10365,11 +10364,12 @@ void MainComponent::boiteMesureImpossible() {
 void MainComponent::boiteRienNestRevenu(double nettete) {
     montrerBoite(
         juce::AlertWindow::WarningIcon, tr(u8"Rien n'est revenu"),
-        tr(u8"Le balayage émis n'a pas été retrouvé dans l'entrée (netteté %1). Branchez la "
+        tr(u8"Le balayage émis n'a pas été retrouvé dans l'entrée (netteté %1 ; il en faut au moins %2). Branchez la "
            u8"sortie de la carte sur son entrée, ou placez un micro devant un haut-parleur, et "
            u8"recommencez. Aucune valeur n'a été retenue : mieux vaut ne pas compenser que "
            u8"compenser d'un chiffre inventé.")
-            .replace("%1", juce::String(nettete, 1)));
+            .replace("%1", juce::String(nettete, 1))
+            .replace("%2", juce::String(kNetteteMinimale, 0)));
 }
 
 void MainComponent::boiteLatenceMesuree(double secondes, int decalageEchantillons, double sr,
@@ -10381,7 +10381,10 @@ void MainComponent::boiteLatenceMesuree(double secondes, int decalageEchantillon
                 .replace("%1", juce::String(secondes * 1000.0, 2))
                 .replace("%2", juce::String(decalageEchantillons))
                 .replace("%3", juce::String(sr / 1000.0, 1))
-            + "\n\n" + tr(u8"Netteté du pic : %1").replace("%1", juce::String(nettete, 1))
+            // D406 : le seuil à côté du chiffre, sans quoi 42,5 ne dit rien.
+            + "\n\n" + tr(u8"Netteté du pic : %1 (la mesure est refusée sous %2)")
+                             .replace("%1", juce::String(nettete, 1))
+                             .replace("%2", juce::String(kNetteteMinimale, 0))
             + "\n\n"
             + tr(u8"Les prises AUDIO sont désormais avancées d'autant. Les prises MIDI, elles, "
                  u8"continuent d'employer la latence de sortie annoncée par le pilote : un clavier "

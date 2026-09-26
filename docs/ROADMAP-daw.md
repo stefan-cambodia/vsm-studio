@@ -32217,3 +32217,30 @@ application. / To fix it: set its location in File ▸ Set the analysis chain
 folder... ». Garde de langue 0 ; banc de fumée 0 raté ; préférences inchangées.
 Attendu tenu. Audit des six boîtes d'essai : les cinq autres étaient déjà
 rédigées en phrases.
+
+---
+
+### Phase D406 — « Netteté du pic : 42.5 », un chiffre sans repère (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE L'AUDIT DES BOÎTES.** La mesure de latence publie
+« Netteté du pic : 42.5 » ; la boîte d'échec, « (netteté %1) ». Ce chiffre est le
+rapport entre le pic de corrélation et la moyenne des autres valeurs
+(`LatencyProbe`), et l'application REFUSE la mesure sous **10**
+(`kNetteteMinimale`) — un seuil que l'utilisateur ne voit nulle part. Sans lui,
+42,5 ne dit ni « très net » ni « limite » : la famille de D400.
+
+**LE CORRECTIF** : les deux boîtes donnent le seuil à côté du chiffre —
+« Netteté du pic : %1 (la mesure est refusée sous %2) », et « (netteté %1 ; il
+en faut au moins %2) » — lu dans la même constante que la décision, rendue
+commune aux deux.
+
+**ATTENDU, ÉCRIT AVANT LA MESURE** : `VSM_BOITE_ESSAI=latence` et `rien`, en
+`fr` et en `en`, disent le chiffre ET le seuil de 10 ; garde de langue 0 ;
+fumée 0 raté.
+
+**MESURÉ** : `latence` — « Netteté du pic : 42.5 (la mesure est refusée sous
+10) » / « Peak sharpness: 42.5 (the measurement is refused below 10) » ; `rien` —
+« (netteté 3.2 ; il en faut au moins 10) » / « (sharpness 3.2; at least 10 is
+needed) ». La constante de la décision et celle des deux textes sont la même
+(`MainComponent::kNetteteMinimale`). Garde de langue 0 ; banc de fumée 0 raté ;
+préférences inchangées. Attendu tenu.

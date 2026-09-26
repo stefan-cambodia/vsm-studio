@@ -1612,6 +1612,9 @@ private:
     SeparateurDock sepBas_ { false };
     void showAboutDialog();
     void ouvrirLeModeDEmploi();   ///< D398
+    /// D406 : sous ce rapport pic / moyenne, la mesure de latence est refusée ;
+    /// UNE constante pour la décision et pour les deux boîtes qui la disent.
+    static constexpr double kNetteteMinimale = 10.0;
     void showAudioSettings();
     /// Écrit le choix du périphérique audio dans les préférences.
     void saveAudioDeviceState();
