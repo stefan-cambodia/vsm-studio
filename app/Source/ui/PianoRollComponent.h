@@ -231,7 +231,7 @@ public:
     bool hasSelection() const { return !selectedNoteIds_.empty(); }
 
     // --- Édition (barre d'outils, menu contextuel, raccourcis) ------------
-    void deleteSelection();
+    void deleteSelection(const juce::String& libelle = "Supprimer");   ///< D439 : le pas nomme le geste
     void duplicateSelection();
     void copySelection();
     void cutSelection();

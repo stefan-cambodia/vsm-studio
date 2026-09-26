@@ -1739,9 +1739,9 @@ bool ArrangementComponent::selectionTickRange(vsm::midi::Tick& debut,
     return trouve;
 }
 
-void ArrangementComponent::deleteSelection() {
+void ArrangementComponent::deleteSelection(const juce::String& libelle) {
     if (project_ == nullptr || selection_.empty()) return;
-    if (onEditStarted) onEditStarted(u8"Supprimer des clips");
+    if (onEditStarted) onEditStarted(libelle);   // D439
     for (auto& track : project_->tracks)
         track.clips.erase(std::remove_if(track.clips.begin(), track.clips.end(),
                                           [this](const Clip& c) { return selection_.count(c.id) > 0; }),
@@ -1780,7 +1780,7 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
                 case Id::EditCopy:            copySelection(); return true;
                 case Id::EditPaste:           paste(); return true;
                 case Id::EditDuplicate:       duplicateSelection(); return true;
-                case Id::EditCut:             copySelection(); deleteSelection(); return true;
+                case Id::EditCut:             copySelection(); deleteSelection(u8"Couper des clips"); return true;   // D439
                 case Id::EditJoin:            joinSelection(); return true;
                 case Id::EditSplitAtPlayhead: splitSelectionAtPlayhead(); return true;
                 // D438 : LA TOUCHE DU PIANO ROLL, ICI AUSSI. Le menu du clip rendait

@@ -664,10 +664,10 @@ void PianoRollComponent::selectNextDoubtfulNote(bool forward) {
 // vsm::sequencer, puis notifier. Aucune ne contient de logique musicale.
 // ---------------------------------------------------------------------------
 
-void PianoRollComponent::deleteSelection() {
+void PianoRollComponent::deleteSelection(const juce::String& libelle) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    if (!beginEdit("Supprimer")) return;
+    if (!beginEdit(libelle)) return;   // D439
     track->notes.erase(std::remove_if(track->notes.begin(), track->notes.end(),
                                        [this](const Note& n) { return selectedNoteIds_.count(n.id) > 0; }),
                         track->notes.end());
@@ -705,7 +705,7 @@ void PianoRollComponent::copySelection() {
 
 void PianoRollComponent::cutSelection() {
     copySelection();
-    deleteSelection();
+    deleteSelection(u8"Couper");   // D439 : le pas dit le geste -- couper, pas supprimer
 }
 
 void PianoRollComponent::paste() {
@@ -892,7 +892,7 @@ void PianoRollComponent::removeOverlapsInSelection() {
 void PianoRollComponent::splitSelectionAtPlayhead() {
     Track* track = activeTrack();
     if (!track || !project_ || selectedNoteIds_.empty()) return;
-    if (!beginEdit("Couper")) return;
+    if (!beginEdit(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Couper à la tête de lecture")))) return;   // D439
     uint64_t idCounter = project_->peekNextNoteId() - 1;
     NoteSelection created;
     const size_t made = splitNotes(track->notes, selectedNoteIds_, playheadTick_, idCounter, &created);
@@ -1392,7 +1392,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
 
         case Tool::Split:
             if (hit) {
-                if (!beginEdit("Couper")) return;
+                if (!beginEdit("Couper une note")) return;   // D439 : les ciseaux scindent
                 const Tick cut = snapTick(xToTick(pos.x));
                 uint64_t idCounter = project_->peekNextNoteId() - 1;
                 NoteSelection one{hit->id};

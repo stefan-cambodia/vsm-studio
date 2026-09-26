@@ -178,7 +178,7 @@ public:
     std::function<vsm::sequencer::GridResolution()> gridProvider;
 
     /// Supprime les clips sélectionnés.
-    void deleteSelection();
+    void deleteSelection(const juce::String& libelle = juce::String::fromUTF8("Supprimer des clips"));   ///< D439
     /// D15.2 : LA SÉLECTION AU CLAVIER. Le pas est celui de l'aimantation --
     /// la mesure, ou la grille fine du piano roll selon `G` -- et c'est le
     /// même qu'à la souris ; annulable ; un clip ne passe pas avant zéro (la

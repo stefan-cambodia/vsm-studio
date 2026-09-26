@@ -33376,3 +33376,39 @@ deux clips audibles ; sans sélection, la touche remonte (comme Suppr) ; fumée
 commande). Puis Ctrl+Z : `[False, False]`, historique vide. Sans sélection :
 « AUCUNE commande de ce clavier », la touche remonte, rien ne change. Fumée 0
 raté ; préférences inchangées.
+
+---
+
+### Phase D439 — « Couper » voulait dire deux gestes dans l'historique (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA MATRICE DES RACCOURCIS D'ÉDITION DANS LES DEUX
+ÉDITEURS.** Au piano roll, Ctrl+X (couper vers le presse-papiers) s'inscrit
+« Supprimer — Acid Bass », et Ctrl+E (couper À LA TÊTE DE LECTURE, c'est-à-dire
+scinder) s'inscrit « Couper — Acid Bass ». En anglais c'est pire : « Delete » et
+« Cut » — le scindage porte le nom du couper-coller. Dans l'arrangement, Ctrl+X
+s'inscrit « Supprimer des clips ». Le menu Édition, lui, distingue « Couper » et
+« Couper à la tête de lecture ».
+
+**TÉMOIN** (démo, « ctrl + A » puis la touche) : piano roll Ctrl+X →
+« Supprimer — Acid Bass », Ctrl+E → « Couper — Acid Bass » ; arrangement
+Ctrl+X → « Supprimer des clips ».
+
+**ATTENDU, écrit avant la mesure** : piano roll Ctrl+X → « Couper — Acid Bass »
+(« Cut — Acid Bass »), Ctrl+E → « Couper à la tête de lecture — Acid Bass »
+(« Split at the playhead — … »), l'outil ciseaux → « Couper une note » ;
+arrangement Ctrl+X → « Couper des clips » (« Cut clips ») ; Suppr garde
+« Supprimer » ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+
+| éditeur, touche | `fr` | `en` |
+|---|---|---|
+| piano roll Ctrl+X | « Couper — Acid Bass » (témoin « Supprimer ») | « Cut — Acid Bass » |
+| piano roll Ctrl+E | « Couper à la tête de lecture — Acid Bass » (témoin « Couper ») | « Split at the playhead — Acid Bass » |
+| piano roll Suppr | « Supprimer — Acid Bass » | « Delete — Acid Bass » |
+| arrangement Ctrl+X | « Couper des clips » (témoin « Supprimer des clips ») | « Cut clips » |
+| arrangement Suppr | « Supprimer des clips » | « Delete clips » |
+
+Non mesuré, dit : l'outil ciseaux (« Couper une note ») — il faut un clic de
+l'outil sur une note ; le libellé est posé au même endroit que le geste. Fumée
+0 raté ; préférences inchangées.
