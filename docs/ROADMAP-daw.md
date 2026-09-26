@@ -33588,3 +33588,28 @@ lecture commune (la virgule vaut le point) : -6.5 dB, +3.5 dB, 12.5 ms, 51 %
 Une lecture commune, `lireNombreSaisi` (BulleDeValeur.h), pour les huit
 cases ; le niveau du clic lisait déjà la virgule et garde la sienne (« -inf »).
 Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D446 — la garde de D444-D445 : un nombre décimal tapé se lit avec sa virgule (27/09/2026)
+
+`tools/virgule-saisie.py`, dans `verifier.sh --gardes`, deux règles : (1) un
+`valueFromTextFunction` ou un `onTextChange` qui lit un décimal passe par
+`lireNombreSaisi` ou traite la virgule ; (2) une case de curseur ÉDITABLE a un
+`valueFromTextFunction` sur le même objet (sinon JUCE la lit, et s'arrête à la
+virgule).
+
+**ATTENDU, écrit avant la mesure** : verte aujourd'hui ; rouge sur les fichiers
+d'avant D444 (`184207e~1`) avec les DIX défauts de D444-D445 (tempo, trim,
+délai, transposition, SAT, swing ; fader, vélocité, deux réglages d'effet),
+chacun une fois.
+
+**MESURÉ.** Règle 1 seule : rouge sur 6 — les trois cases lues par JUCE lui
+échappaient (elles n'avaient pas de rappel du tout). Règle 2 ajoutée, première
+forme (« valueFromTextFunction » cherché dans les 40 lignes suivantes) : le
+swing était compté DEUX fois sur l'ancien arbre (son rappel est écrit AVANT sa
+case), et sur l'arbre d'aujourd'hui il ne passait que grâce au rappel de la
+VÉLOCITÉ, sa voisine. Règle 2 corrigée (le même objet ou son alias `raw =
+x.get()`, de 15 lignes avant à 40 après) : **verte, 10 jugés, 0 défaut** ;
+**rouge, 10 défauts sur 10**, chacun une fois. Troisième garde du jour que
+l'essai en rouge a corrigée avant qu'elle serve.
