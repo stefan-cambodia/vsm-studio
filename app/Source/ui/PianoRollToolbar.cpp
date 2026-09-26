@@ -518,6 +518,18 @@ void PianoRollToolbar::retraduire() {
     stepButton_.setTooltip(tr(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, qui avance "
                               u8"d'un pas de grille ; Entrée = silence, Retour arrière = reculer"));
     foldButton_.setTooltip(tr(u8"Ne montrer que les hauteurs jouées sur la piste (Live : Fold)"));
+    // D422 : LES HUIT COMMANDES QUI NE DISAIENT RIEN AU SURVOL. « Gamme » surtout :
+    // en Chromatique -- la gamme par défaut --, elle ne change rien à l'écran.
+    snapButton_.setTooltip(avecTouche(tr(u8"Aimant : les notes posées et déplacées se calent sur la grille"),
+                                      vsm::interchange::ShortcutId::EditToggleSnap));
+    ghostButton_.setTooltip(tr(u8"Fantômes : les notes des autres pistes, en transparence, pour écrire en regard"));
+    followButton_.setTooltip(tr(u8"Suivre : la vue défile avec la tête de lecture pendant la lecture"));
+    scaleHighlightButton_.setTooltip(tr(u8"Gamme : assombrit les hauteurs hors de la gamme choisie à droite "
+                                        u8"(sans effet en Chromatique)"));
+    gridCombo_.setTooltip(tr(u8"Grille : le pas de l'aimant, des notes dessinées et de la quantification"));
+    gridModifierCombo_.setTooltip(tr(u8"Division de la grille : droite, en triolets ou pointée"));
+    scaleRootCombo_.setTooltip(tr(u8"Tonique de la gamme ; c'est aussi la fondamentale des accords insérés"));
+    scaleTypeCombo_.setTooltip(tr(u8"Gamme : celle qu'assombrit « Gamme » et que suit « Contraindre à la gamme »"));
     debutEdit_.setTooltip(tr(u8"Début : mesure.temps (« 17.3 », « 17.3+120 » en ticks) ; double-clic pour "
                              u8"éditer, déplace toute la sélection"));
     dureeEdit_.setTooltip(tr(u8"Durée en ticks, posée sur toutes les notes choisies"));

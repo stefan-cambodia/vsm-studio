@@ -32822,3 +32822,39 @@ fumée 0 raté ; préférences inchangées.
 son. Pour la changer : Fichier ▸ Réglages audio... » ; `en` : « Sample rate of
 the sound card. To change it: File ▸ Audio settings... ». `menus-cites` : 10
 citations, 0 faute ; fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D422 — huit commandes du piano roll sans un mot au survol (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ SYSTÉMATIQUE DES COMMANDES SANS INFOBULLE.** Sur la
+fenêtre principale (projet de démo, `VSM_TEXTES_LISTE`), une commande (bouton,
+liste, case) non suivie d'une ligne « infobulle » n'en a pas : **29**. La
+plupart se nomment elles-mêmes (Play, Stop, « Ouvrir MIDI... », les onglets du
+dock, « + Ajouter une piste ») et restent ainsi. Huit, groupées dans la barre du
+piano roll, ne disent pas ce qu'elles font : « Aimant », « Fantômes »,
+« Suivre », « Gamme », et les listes « 1/16 », « Droit », « C »,
+« Chromatique ». « Gamme » est la pire : avec la gamme « Chromatique » — celle
+par défaut —, la cliquer ne change RIEN (`scale_.type != Chromatic`).
+
+**ATTENDU, écrit avant la mesure** : même relevé, **29 → 21** commandes sans
+infobulle, les huit du piano roll sorties de la liste ; l'infobulle de
+« Aimant » nomme sa touche (`EditToggleSnap`, par `libelleAvecTouche`) ; celle
+de « Gamme » dit qu'en Chromatique elle est sans effet ; en anglais, 21 aussi ;
+garde de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** Commandes sans infobulle : **29 → 21** en `fr` et en `en` ;
+les huit du piano roll sont sorties de la liste. « Aimant : les notes posées et
+déplacées se calent sur la grille (G) » — la touche effective ; « Gamme :
+assombrit les hauteurs hors de la gamme choisie à droite (sans effet en
+Chromatique) ». Deux infobulles corrigées AVANT la mesure, en relisant le code :
+les accords n'emploient que la TONIQUE (`scale_.root`), pas le type de gamme —
+la phrase « sert aux accords » est passée à la liste des toniques. Fumée 0
+raté ; préférences inchangées.
+
+**Les 21 qui restent, et pourquoi** : Play, Stop, « Ouvrir MIDI... »,
+« Exporter MIDI... », « + Ajouter une piste », « Supprimer », les six onglets
+du dock, les listes de machines (leur texte est le nom de la machine) — elles se
+nomment elles-mêmes. Restent à regarder : M et S des lignes de piste (le
+standard des consoles, mais sans rappel de leur geste Maj/Alt s'il en existe),
+et « MIDI LEARN » de la façade.
