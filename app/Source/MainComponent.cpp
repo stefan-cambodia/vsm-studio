@@ -1363,6 +1363,10 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     // surcoût (barre d'onglets et marges du dock) est mesuré : le mélangeur
     // reçoit 221 px quand le dock en fait 282.
     const int plancherDuBas = juce::jmax(120, mixer_.hauteurMinimale() + kSurcoutDockBas);
+    // D395 : TANT QUE L'UTILISATEUR NE L'A PAS RÉGLÉ, le volet du bas prend 30 %
+    // de la hauteur, jamais moins de 282 px (D16.8). À 282 fixes, une fenêtre de
+    // 1 333 px laissait au fader de la console 58 px pour 66 dB ; à 400, 137.
+    if (!dockBasRegle_) dockBas_ = juce::jmax(282, area.getHeight() * 3 / 10);
     dockBas_ = juce::jlimit(plancherDuBas, juce::jmax(plancherDuBas + 1, area.getHeight() - 220),
                              dockBas_);
     dockGauche_ = juce::jlimit(180, juce::jmax(181, area.getWidth() / 2), dockGauche_);
@@ -2797,8 +2801,15 @@ void MainComponent::dockPanels() {
     dockDroite_ = prefs.getIntValue("dock.droite", dockDroite_);
     dockDroiteRegle_ = prefs.containsKey("dock.droite");   // D394
     dockBas_ = prefs.getIntValue("dock.bas", dockBas_);
+    dockBasRegle_ = prefs.containsKey("dock.bas");   // D395
     // D394 : VSM_DOCK_DROITE=px -- la largeur du rack pour un banc, sans rien
     // écrire dans les préférences (elle ne s'écrit qu'au glissé du séparateur).
+    // D395 : VSM_DOCK_BAS=px -- même chose pour le volet du bas.
+    if (const char* d = std::getenv("VSM_DOCK_BAS"); d != nullptr && *d)
+    {
+        dockBas_ = juce::jlimit(120, 2000, juce::String(d).getIntValue());
+        dockBasRegle_ = true;
+    }
     if (const char* d = std::getenv("VSM_DOCK_DROITE"); d != nullptr && *d)
     {
         dockDroite_ = juce::jlimit(220, 2000, juce::String(d).getIntValue());
@@ -2823,6 +2834,7 @@ void MainComponent::dockPanels() {
     // D394 : tirer le séparateur du rack, c'est le régler -- la règle par défaut
     // (un quart de la fenêtre) cesse alors de s'appliquer.
     sepDroite_.onDebut = [this] { dockBase_ = dockDroite_; dockDroiteRegle_ = true; };
+    sepBas_.onDebut = [this] { dockBase_ = dockBas_; dockBasRegle_ = true; };   // D395
     for (auto* sep : { &sepGauche_, &sepDroite_, &sepBas_ })
         addAndMakeVisible(sep);
     arrangement_.setVisible(centerShowsArrangement_);

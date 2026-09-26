@@ -31818,3 +31818,56 @@ dit qu'au-delà de ~540 px le rack ne gagne plus rien.
 
 Chez l'utilisateur, dont les préférences portent 638, rien ne change. Banc de
 fumée 0 raté ; préférences de l'utilisateur inchangées (`cmp`).
+
+---
+
+### Phase D395 — le volet du bas gardait 282 px quelle que soit la fenêtre (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE D394, le même motif.** La course du fader de la console
+vaut **58 px (1,14 dB au pixel)** à 1 280 × 742 comme à 2 133 × 1 333 : le volet
+du bas est une constante (`dockBas_ = 282`, D16.8), et c'est le centre qui
+prend toute la hauteur gagnée. Les préférences de l'utilisateur portent
+`dock.bas = 551` sur cette fenêtre (41 %).
+
+**LA COURBE, MESURÉE AVANT DE DÉCIDER** (option de banc `VSM_DOCK_BAS`, sans
+rien écrire ; fenêtre 2 133 × 1 333 ; `VSM_MIXEUR`, `VSM_PIANOROLL_ZONES`) :
+
+| volet du bas | course du fader | dB au pixel | grille du piano roll |
+|---|---|---|---|
+| 282 (défaut) | 58 px | 1,14 | 645 px |
+| 350 | 87 px | 0,76 | 616 px |
+| 400 | 137 px | 0,48 | 566 px |
+| 466 | 203 px | 0,33 | 500 px |
+| 551 (l'utilisateur) | 288 px | 0,23 | 415 px |
+
+**LA DÉCISION, ÉCRITE ICI** : tant que l'utilisateur ne l'a pas réglé (pas de
+clé `dock.bas`), le volet du bas prend **30 % de la hauteur, jamais moins de
+282 px** ; dès qu'il tire le séparateur, sa hauteur l'emporte. 30 % et non
+41 % : le centre est ce qu'on vient voir, et à 400 px le fader est déjà 2,4 fois
+plus fin pour 12 % de grille en moins.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. 2 133 × 1 333, HOME neuf : volet de **~400 px**, course **≥ 130 px** ;
+2. 1 280 × 742 (le banc de `fader-console.sh` et de `pianoroll-zones.sh`) :
+   30 % = 222 < 282, **rien ne change** — course 58 px, gardes vertes ;
+3. une préférence `dock.bas` posée l'emporte et n'est pas réécrite ;
+4. `pianoroll-zones.sh` vert à toutes ses tailles (la grille garde deux fois la
+   lane).
+
+**MESURÉ.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | 2 133 × 1 333 : volet ~400, course ≥ 130 px | volet de **~332 px** (tranche 176 × 332), course **112 px** (0,59 dB au pixel, 1,14 avant) ; grille du piano roll 591 px (645 avant) | **RATÉ** |
+| 2 | 1 280 × 742 : rien ne change | course 58 px, tranche 176 × 278 ; `fader-console.sh` 0 raté | TENU |
+| 3 | une préférence l'emporte | `dock.bas = 551` posée : tranche 176 × 508, course 288 px, préférence non réécrite ; sans préférence, aucune clé écrite | TENU |
+| 4 | `pianoroll-zones.sh` vert | 9 relevés, 0 raté (à 2 133 : grille 591, lane 110) | TENU |
+
+**L'ATTENDU 1 EST RATÉ, ET LA FAUTE EST DANS MON HYPOTHÈSE, PAS DANS LE CODE.**
+J'ai écrit « 30 % de la hauteur » en comptant sur la FENÊTRE (1 333 → 400 px) ;
+le code prend 30 % de la ZONE DE TRAVAIL, sous le menu et la barre de transport
+(~1 110 px). Le pourcentage n'est pas retouché pour atteindre le chiffre annoncé
+— ce serait régler après la mesure. Ce qui est gardé est ce qui a été mesuré :
+une course doublée (58 → 112 px) pour 54 px de grille en moins, et rien de
+changé chez qui a réglé son volet (l'utilisateur, à 551). Banc de fumée 0 raté ;
+préférences inchangées.

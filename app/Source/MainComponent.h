@@ -1598,6 +1598,8 @@ private:
     /// D394 : vrai dès que la largeur du rack vient de l'utilisateur (préférence
     /// `dock.droite`, séparateur tiré) ; faux, elle suit la fenêtre.
     bool dockDroiteRegle_ = false;
+    /// D395 : la même chose pour le volet du bas (`dock.bas`).
+    bool dockBasRegle_ = false;
     /// D16.8 : 282 et non 260 -- la tranche de console a gagné la rangée du
     /// bouton W, et à 260 le fader perdait sa poignée. La hauteur reste
     /// réglable et retenue ; c'est le DÉFAUT qui suit ce que la tranche
