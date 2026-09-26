@@ -31250,3 +31250,30 @@ Photo à 2 133 (français) : « 1/16 », « Grille », « Swing », « Vél. »,
 rangée finit à « Suivre », comme avant. Au changement de langue, le panneau
 redemande la hauteur et la barre se repose (`retraduireBarre`). Banc de fumée
 0 raté ; préférences inchangées.
+
+---
+
+### Phase D384 — « trop bas » : un critère de relevé RÉFUTÉ par la photo, et retiré (26/09/2026)
+
+**LA PISTE.** Le relevé de D382, passé sur sept vues (console, cinq onglets du
+bas, arrangement) × deux langues à 2 133 × 1 333 : hors façades, un seul
+libellé comprimé dans toutes les vues — « -5.6 dB » à **1,01** dans une tranche.
+Sa case fait 14 px de haut pour une police de 15 : j'ai ajouté au relevé un
+contrôle « trop bas » (case plus basse que la hauteur de sa police), qui en a
+trouvé **23 par vue de la console** — les champs de chaque tranche (Trim, Délai,
+Transp., la valeur du fader : 14 px pour 15 pt) et les intitulés des boutons du
+MASTER (LOW, MID, HIGH, COMP, RATIO, SAT, CEIL : 10 px pour 12 pt).
+
+**LA PHOTO LE RÉFUTE.** Agrandie deux fois : les textes s'écrivent entiers, à
+leur taille nominale — majuscules de ~10 px pour le 15 pt, ~8 px pour le 12 pt,
+jambage de « Transp. » compris. La hauteur d'une police JUCE est ascendante +
+descendante ; les lettres réelles tiennent dans 14 px, et `juce::Label` ne
+réduit pas la police parce que sa case est plus basse. Le critère signalait un
+défaut qui ne se voit pas : **retiré, non commité** — 23 cases « corrigées »
+auraient déplacé la console sans rien rendre lisible. Le compte du relevé
+(`VSM_SERRES`) reste celui de D382.
+
+**CE QUE LE RELEVÉ DIT, EN RÉSUMÉ, de *children-dream-v12*** : hors des façades
+de machines, plus aucun libellé comprimé au-delà de 1 % dans aucune vue, en
+français comme en anglais. Les restes sont dans les façades, où la largeur du
+rack est le goulot (D379).
