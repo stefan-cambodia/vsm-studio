@@ -33109,3 +33109,28 @@ Le chemin MIDI (`effet-midi.*`) reçoit la même règle, par le même code ; il
 n'est pas mesuré ici (aucun effet MIDI sur la démo). Fumée 0 raté ;
 préférences inchangées. Le balayage de D428 ne trouve plus de curseur dont le
 glissé ouvre un pas et la saisie non.
+
+---
+
+### Phase D430 — la garde de D427-D429 : un curseur qui s'annule au glissé s'annule à la saisie (27/09/2026)
+
+**D'OÙ ELLE VIENT.** Le balayage qui a trouvé D427, D428 et D429 était un
+script de phase ; il va dans `tools/` (la règle de D150) :
+`tools/pas-hors-glisse.py`, dans `verifier.sh --gardes`.
+
+**LA RÈGLE** : tout curseur de `app/Source/ui/` dont `onDragStart` ouvre un pas
+doit en ouvrir un dans son `onValueChange` hors glissé (ou consulter un drapeau
+de glissé). Limite dite dans l'en-tête : la garde lit le texte.
+
+**ATTENDU, écrit avant la mesure** : verte sur l'arbre d'aujourd'hui ; ROUGE,
+chaque défaut nommé, sur `MixerComponent.cpp` et `EffectChainComponent.cpp`
+tels qu'ils étaient avant D427 (`d1fec0c`) — neuf défauts attendus (cinq
+curseurs de tranche, les départs, le MASTER, deux réglages d'effet).
+
+**MESURÉ.** Première version : verte (10 curseurs, 0 défaut), rouge sur
+l'ancien arbre avec **8** défauts sur 9 — le bouton MASTER lui échappait, son
+`onValueChange` étant écrit AVANT son `onDragStart` et la recherche n'allant que
+vers l'avant. Corrigée (le rappel le plus proche, dans les deux sens) : **verte,
+11 curseurs, 0 défaut** ; **rouge, 9 défauts sur 9**, chacun nommé à sa ligne.
+Attendu tenu après correction de la garde — l'essai en rouge a d'abord servi à
+vérifier la garde (CLAUDE.md, 13/09).
