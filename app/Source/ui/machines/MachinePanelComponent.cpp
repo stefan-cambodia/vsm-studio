@@ -17,7 +17,10 @@ namespace {
 /// sa case offre sur toutes les lignes qu'elle peut écrire. 1 = tient juste.
 float besoinDeLargeur(const juce::Label& l, const juce::Font& police) {
     // D382 : la formule commune, qui compte aussi le MOT le plus long.
-    return vsm::app::ui::besoinDeLargeur(l.getText(), police, l.getLocalBounds());
+    // D391 : la case MOINS la marge du libellé -- ce que la peinture retire. Les
+    // titres gardaient celle de JUCE (5 px de chaque côté), et la mesure les
+    // disait entiers quand la photo les montrait coupés.
+    return vsm::app::ui::besoinDeLargeur(l.getText(), police, l.getBorderSize().subtractedFrom(l.getLocalBounds()));
 }
 
 float besoinDeLargeur(const juce::Label& l) { return besoinDeLargeur(l, l.getFont()); }
@@ -27,12 +30,16 @@ float besoinDeLargeur(const juce::Label& l) { return besoinDeLargeur(l, l.getFon
 /// s'autorise) descend par demi-point jusqu'à la plus grande taille qui tient,
 /// sans passer sous l'ancien plancher de 8 : elle n'est coupée que si elle
 /// l'était déjà avant. `VSM_SERIGRAPHIE_REPLI=0` rend le témoin sans repli.
-float policeQuiTient(const juce::Label& l, float voulue) {
+bool repliActif() {
     static const bool repli = [] {
         const char* v = std::getenv("VSM_SERIGRAPHIE_REPLI");
         return v == nullptr || *v != '0';
     }();
-    if (!repli) return voulue;
+    return repli;
+}
+
+float policeQuiTient(const juce::Label& l, float voulue) {
+    if (!repliActif()) return voulue;
     for (float taille = voulue; taille > 8.0f; taille -= 0.5f)
         if (besoinDeLargeur(l, juce::Font(juce::FontOptions(taille))) <= 1.0f / 0.55f) return taille;
     return std::min(voulue, 8.0f);
@@ -134,6 +141,12 @@ void MachinePanelComponent::rebuild() {
         title->setJustificationType(juce::Justification::centredLeft);
         title->setColour(juce::Label::textColourId, colourFrom(section.accentColour, textColour));
         title->setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));
+        // D391 : la même échelle minimale que les sérigraphies ; la taille, elle,
+        // se pose à la disposition (`resized`), où la case est connue.
+        title->setMinimumHorizontalScale(0.55f);
+        // Et SANS MARGE, comme les sérigraphies (D61) : dix pixels de plus au
+        // texte. Le témoin (`VSM_SERIGRAPHIE_REPLI=0`) garde la marge d'avant.
+        if (repliActif()) title->setBorderSize(juce::BorderSize<int>(0));
         addAndMakeVisible(*title);
         sectionTitles_.push_back(std::move(title));
 
@@ -452,7 +465,23 @@ void MachinePanelComponent::resized() {
                                       static_cast<float>(section.columnSpan),
                                       static_cast<float>(section.rowSpan) }).reduced(6.0f);
         if (i < sectionTitles_.size())
-            sectionTitles_[i]->setBounds(bounds.removeFromTop(kTitleHeight).toNearestInt());
+        {
+            auto& titre = *sectionTitles_[i];
+            titre.setBounds(bounds.removeFromTop(kTitleHeight).toNearestInt());
+            // D391 : LE TITRE SUIT LA RÈGLE DES SÉRIGRAPHIES (D379 bis) -- 12 pt
+            // gras où il tient, la plus grande taille qui tient sinon, jamais
+            // sous 8 -- et, s'il reste coupé au plancher, son nom complet en
+            // infobulle : « 16 COWBELL » n'entre dans 30 px à aucune taille.
+            const float voulue = std::max(11.0f, plancherSerigraphie());
+            float taille = voulue;
+            for (; repliActif() && taille > 8.0f; taille -= 0.5f)
+                if (besoinDeLargeur(titre, juce::Font(juce::FontOptions(taille).withStyle("Bold"))) <= 1.0f / 0.55f)
+                    break;
+            taille = std::max(std::min(8.0f, voulue), taille);
+            const juce::Font police(juce::FontOptions(taille).withStyle("Bold"));
+            titre.setFont(police);
+            titre.setTooltip(besoinDeLargeur(titre, police) > 1.0f / 0.55f ? titre.getText() : juce::String());
+        }
         else
             bounds.removeFromTop(kTitleHeight);
         sectionContent.push_back(bounds.reduced(2.0f));

@@ -31620,3 +31620,65 @@ rouges.
 9 comprimés, **13 coupés** : 12 emplacements du sampler (cases de 30 px pour
 « 16 COWBELL », « 11 MID TOM »…) et « COWBELL / WOOD » des percussions (54 px).
 C'est la phase suivante.
+
+---
+
+### Phase D391 — les titres de bloc des façades, en 11 pt et treize fois coupés (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE LA POPULATION DE D390.** 262 titres de bloc, tous à
+**11 pt gras** écrits en dur (`MachinePanelComponent::rebuild`), sous le
+plancher de 12 que D379 a donné aux sérigraphies de la même façade ; 13 coupés,
+dont 12 emplacements du sampler dans des cases de 30 px.
+
+**LE CORRECTIF.** La règle de D379 bis, appliquée aux titres : 12 pt gras (le
+plancher de `VSM_SERIGRAPHIE_PLANCHER`) partout où le titre tient, la plus
+grande taille qui tient sinon, par demi-point, jamais sous 8 ; la même échelle
+minimale (0,55) que les sérigraphies. Et un titre qui reste coupé au plancher —
+« 16 COWBELL » n'entre dans 30 px à aucune taille lisible — reçoit son nom
+complet en INFOBULLE : sans élargir le rack, c'est le seul moyen de le lire. La
+bande du titre (18 px) ne change pas : les commandes ne bougent pas.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** (fenêtre du banc fixée, D390) :
+1. titres à 12 pt : **≥ 90 %** (240 tiennent aujourd'hui à 11 pt) ;
+2. titres coupés : **≤ 13** — jamais pire qu'avant ;
+3. chaque titre encore coupé porte une infobulle, et AUCUN titre entier n'en
+   porte (le nom complet n'y sert qu'à ce qui ne se lit pas) ;
+4. les 1 073 lignes de COMMANDE identiques au balayage de D390 : seules les
+   lignes de titre changent ;
+5. garde verte (0 / 63 sous 18 px, coupées ≤ 3).
+
+**PREMIÈRE MESURE, ET LA PHOTO LA CONTREDIT.** Le balayage a d'abord rendu 255
+titres sur 262 à 12 pt, **0 coupé**, les 1 073 lignes de commande identiques à
+D390, et 0 infobulle sur la façade du sampler (4 au témoin, pour 4 coupés) : les
+cinq attendus semblaient tenus. La photo du sampler montre « 1 KI… », « 2 S… »,
+« 3 H… » — coupés, AVANT COMME APRÈS. L'instrument mentait :
+`besoinDeLargeur(const Label&)` compte toute la case du libellé ; les
+sérigraphies n'ont pas de marge (D61 la leur a retirée), mais les TITRES gardent
+celle de JUCE, **5 px de chaque côté** — sur une case de 30 px, il en reste 20 au
+texte. La mesure de D390 (13 coupés) était donc elle aussi optimiste. C'est la
+leçon de D382 (la formule) sous une autre forme : un relevé qui ne voit pas ce
+que la peinture retire.
+
+**DOUBLE CORRECTIF, AVANT DE REMESURER** : la mesure déduit la marge du libellé
+(sans effet sur les sérigraphies, à marge nulle) ; et les titres perdent cette
+marge, comme les sérigraphies en D61 — la case grandit au lieu du texte qui
+rétrécit. Les attendus ne bougent pas.
+
+**MESURÉ, APRÈS LE DOUBLE CORRECTIF** (fenêtre du banc fixée ; témoin du même
+binaire : `VSM_SERIGRAPHIE_PLANCHER=8 VSM_SERIGRAPHIE_REPLI=0`, 11 pt et la marge
+d'avant) :
+
+| | titres à 12 pt | coupés | comprimés |
+|---|---|---|---|
+| témoin, mesure corrigée | 0 / 262 | **19** (les 16 emplacements du sampler, « MIXER » du Minimoog, « TREMOLO » de la mandoline, « COWBELL / WOOD ») | 8 |
+| après | **255 / 262** | **0** | 24 |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | ≥ 90 % à 12 pt | TENU — 97,3 % ; les 7 autres repliés de 9 à 11 pt |
+| 2 | coupés ≤ 13 | TENU — 0 (19 au témoin mesuré juste ; les « 13 » de D390 étaient la mesure sans la marge) |
+| 3 | infobulle ⇔ coupé | TENU — sampler : **16** infobulles au témoin (les 16 coupés), **0** après ; vérifié sur la PHOTO cette fois : « 1 KICK », « 2 SNARE », « 6 LO TOM », « 8 RIDE » entiers, contre « 1 KI… » au témoin ; « MIXER » du Minimoog entier et plus grand |
+| 4 | commandes identiques à D390 | TENU — les 1 073 lignes (les sérigraphies ont une marge nulle : la correction de la mesure ne les touche pas) |
+| 5 | garde verte | TENU — 0 / 63 sous 18 px, 3 coupées |
+
+Banc de fumée 0 raté ; préférences inchangées.
