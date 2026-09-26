@@ -31348,3 +31348,75 @@ l'application en UTF-8 (« Batterie · hihat »), qu'un lecteur qui suppose le
 Latin-1 — `mido` par défaut, et bien des logiciels — affiche « Batterie Â·
 hihat ». La chaîne, elle, écrit des noms lisibles (`nom_midi_lisible` :
 « Batterie - hihat ») ; l'application ne le fait pas.
+
+---
+
+### Phase D386 — les noms de piste d'un `.mid` : l'application écrivait de l'UTF-8 et relisait des octets bruts (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D385.** Le `.mid` exporté par
+l'application, relu par `mido` : « Batterie **Â·** hihat ». `MidiFileWriter`
+recopie le nom de la piste, qui est de l'UTF-8, octet pour octet ; un lecteur
+qui applique la convention du format — Latin-1 pour les méta-textes, ce que
+`mido` fait et ce que la chaîne d'analyse respecte depuis qu'un « œ » l'a fait
+tomber (`nom_midi_lisible`, qui translittère « œ » en « oe », « · » en « - »,
+« — » en « - »…) — lit deux caractères là où il y en avait un. Le même projet
+sort donc sous deux encodages selon que c'est la chaîne ou l'application qui
+l'exporte.
+
+**ET L'AUTRE SENS, LU AU CODE.** `MidiFileParser` copie les octets du nom
+(`0xFF 0x03`) dans un `std::string` que toute l'application traite ensuite
+comme de l'UTF-8 (`fromUTF8`). Un `.mid` venu d'un autre logiciel avec « Piano
+électrique » en Latin-1 (« é » = un seul octet `0xE9`) devient une chaîne UTF-8
+INVALIDE, que JUCE affiche tronquée ou remplacée.
+
+**LE CORRECTIF** (`core/src/midi/`, pas dans `app/` : c'est le moteur qui lit et
+écrit le fichier, et `vsm-render` passe par lui aussi) :
+- à l'écriture, le nom est translittéré par la MÊME table que la chaîne, puis
+  encodé en Latin-1 ; un caractère sans équivalent devient « ? » — le nom
+  complet vit dans `project.json` ;
+- à la lecture, un nom qui est de l'UTF-8 valide reste tel quel (les `.mid`
+  écrits par l'application jusqu'ici, et les logiciels qui écrivent de
+  l'UTF-8) ; sinon il est lu en Latin-1 et converti.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. l'export de `s2-banc/morceau-0001-g1` relu par `mido` : « Batterie - hihat »,
+   comme le `.mid` que la chaîne écrit pour le même projet — **les deux chemins
+   donnent les mêmes noms** ;
+2. un `.mid` Latin-1 (« Piano électrique », « Cordes à vide ») ouvert dans
+   l'application : les noms s'affichent entiers (`VSM_PISTES`), accents compris ;
+3. un `.mid` UTF-8 (un export d'avant cette phase) : noms inchangés à la
+   lecture ;
+4. aller-retour application → `.mid` → application : « Piano (cordes
+   frappées) » revient identique ; « Voix · chœurs » revient « Voix - choeurs »
+   (la perte est celle du format, et c'est `project.json` qui garde l'original) ;
+5. tests `core` verts, dont des tests neufs sur les deux fonctions, vus rouges
+   sur l'ancien code.
+
+**MESURÉ.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | mêmes noms par les deux chemins | export de l'application (`s2-banc/morceau-0001-g1`) et `.mid` écrit par la chaîne, relus par `mido` : **les huit mêmes noms**, « Batterie - hihat » compris (« Batterie Â· hihat » avant) | TENU |
+| 2 | `.mid` Latin-1 ouvert dans l'application | fichier écrit par `mido` (« é » sur un octet `0xE9`), ouvert par `VSM_VUE=ouvrir-midi:…` : `VSM_PISTES : Piano électrique · Cordes à vide`, entiers | TENU |
+| 3 | `.mid` UTF-8 d'avant D386 | l'export de D385, rouvert : « Batterie · hihat », inchangé | TENU |
+| 4 | aller-retour | test `core` : « Piano (cordes frappées) » revient identique, et s'écrit sur UN octet `0xE9` dans le fichier ; « Voix · chœurs » revient « Voix - choeurs » | TENU |
+| 5 | tests `core` neufs, vus rouges | quatre tests ; l'ancien ÉCRIVAIN fait tomber l'aller-retour, l'ancien ANALYSEUR fait tomber l'aller-retour et la lecture d'un nom Latin-1 (2 échecs) ; verts sur le code neuf : **359** | TENU |
+
+Les autres méta-textes (`0x01`–`0x07` : repères, paroles, texte libre) passent
+par la même règle, qui vit dans `core/include/vsm/midi/TextEncoding.h` — écrire
+et relire un fichier sont l'affaire du moteur, et `vsm-render` comme l'import
+de projets passent par lui. `tools/ouvrir-midi.sh` : 0 raté (les noms
+« Mixdown · canal 1 / 4 / 10 » s'ouvrent comme avant) ; `verifier.sh` : C++ 359
+/ 1 303 / 307 / 25 / 11, Python 239, ruff, mypy, gardes ; banc de fumée 0 raté.
+
+**ET UNE PANNE TROUVÉE EN CHEMIN : `cmake --build build` ÉCHOUAIT EN BLOC DEPUIS
+D364.** Le moteur ayant changé, j'ai compilé TOUTES les cibles, ce qu'aucune
+phase ne faisait plus : deux bancs de `app/` — `vsm-edit-audit` (celui de D36.4,
+« 11 gestes, 0 muet ») et `vsm-arrangement-preview` — compilent des composants
+qui incluent `vsm/interchange/ShortcutTable.h` depuis D364, sans être liés à
+`vsm_interchange`. Ils ne se construisaient plus, et `verifier.sh --compiler`
+ne bâtit que les cinq cibles de test : rien ne le disait. Les deux sont liés ;
+le build complet passe (`-k`, 0 cible en échec) ; `vsm-edit-audit` rejoué :
+**11 gestes, 0 sans pas d'historique**. C'est la leçon de D263 (« aucun d'eux ne
+se liait plus, et `cmake --build build` échouait en bloc »), payée une seconde
+fois. **Reste nommé** : `verifier.sh --compiler` devrait bâtir aussi ces bancs.

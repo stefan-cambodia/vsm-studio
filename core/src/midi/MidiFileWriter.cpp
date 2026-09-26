@@ -1,4 +1,5 @@
 #include "vsm/midi/MidiFileWriter.h"
+#include "vsm/midi/TextEncoding.h"
 #include "vsm/midi/VariableLengthQuantity.h"
 
 #include <algorithm>
@@ -66,15 +67,18 @@ void writeEventBody(std::vector<uint8_t>& out, const MidiEventData& data) {
             out.push_back(ev.numerator); out.push_back(ev.denominatorPow2);
             out.push_back(ev.clocksPerClick); out.push_back(ev.notated32ndsPerQuarter);
         } else if constexpr (std::is_same_v<T, TrackNameEvent>) {
+            // D386 : en Latin-1, par la table de la chaîne (TextEncoding.h).
+            const std::string nom = utf8VersTexteMidi(ev.name);
             out.push_back(0xFF); out.push_back(0x03);
-            writeVLQ(out, static_cast<uint32_t>(ev.name.size()));
-            out.insert(out.end(), ev.name.begin(), ev.name.end());
+            writeVLQ(out, static_cast<uint32_t>(nom.size()));
+            out.insert(out.end(), nom.begin(), nom.end());
         } else if constexpr (std::is_same_v<T, EndOfTrackEvent>) {
             out.push_back(0xFF); out.push_back(0x2F); out.push_back(0x00);
         } else if constexpr (std::is_same_v<T, TextMetaEvent>) {
+            const std::string texte = utf8VersTexteMidi(ev.text);   // D386
             out.push_back(0xFF); out.push_back(ev.metaType);
-            writeVLQ(out, static_cast<uint32_t>(ev.text.size()));
-            out.insert(out.end(), ev.text.begin(), ev.text.end());
+            writeVLQ(out, static_cast<uint32_t>(texte.size()));
+            out.insert(out.end(), texte.begin(), texte.end());
         } else if constexpr (std::is_same_v<T, SysExEvent>) {
             out.push_back(0xF0);
             writeVLQ(out, static_cast<uint32_t>(ev.data.size()));

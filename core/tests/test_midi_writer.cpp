@@ -386,3 +386,78 @@ VSM_TEST(l_export_arrange_dit_les_instruments_par_un_programme_general_midi) {
     VSM_ASSERT_EQ(programmesDe(materiau.tracks[0], nullptr), 0);   // le matériau ne change pas
     VSM_ASSERT_EQ(programmesDe(materiau.tracks[2], nullptr), 1);   // sauf ce que la piste portait déjà
 }
+
+// ---------------------------------------------------------------------------
+// D386 : les textes d'un .mid s'écrivent en Latin-1, par la table de la chaîne,
+// et se relisent en UTF-8 s'ils en sont, en Latin-1 sinon.
+// ---------------------------------------------------------------------------
+#include "vsm/midi/TextEncoding.h"
+
+VSM_TEST(texte_midi_ecrit_en_latin1_par_la_table_de_la_chaine) {
+    VSM_ASSERT_EQ(utf8VersTexteMidi("Batterie · hihat"), std::string("Batterie - hihat"));
+    VSM_ASSERT_EQ(utf8VersTexteMidi("Voix · chœurs"), std::string("Voix - choeurs"));
+    // « é » est du Latin-1 : UN octet, 0xE9.
+    VSM_ASSERT_EQ(utf8VersTexteMidi("frappées"), std::string("frapp\xE9" "es"));
+    VSM_ASSERT_EQ(utf8VersTexteMidi("日本"), std::string("??"));
+    VSM_ASSERT_EQ(utf8VersTexteMidi("bass"), std::string("bass"));
+}
+
+VSM_TEST(texte_midi_relu_en_utf8_ou_en_latin1) {
+    // Latin-1 venu d'un autre logiciel : « é » sur un seul octet.
+    VSM_ASSERT_EQ(texteMidiVersUtf8("Piano \xE9lectrique"), std::string("Piano électrique"));
+    // UTF-8 (les exports d'avant D386) : inchangé.
+    VSM_ASSERT_EQ(texteMidiVersUtf8("Cordes à vide"), std::string("Cordes à vide"));
+    VSM_ASSERT_EQ(texteMidiVersUtf8("bass"), std::string("bass"));
+    VSM_ASSERT(!estUtf8Valide("\xE9t\xE9"));
+    VSM_ASSERT(estUtf8Valide("été"));
+}
+
+VSM_TEST(nom_de_piste_aller_retour_par_un_fichier_midi) {
+    Project projet;
+    Track piste;
+    piste.name = "Piano (cordes frappées)";
+    piste.channel = 0;
+    Note note;
+    note.startTick = 0;
+    note.endTick = 480;
+    note.number = 60;
+    piste.notes.push_back(note);
+    projet.tracks.push_back(piste);
+    Track choeurs = piste;
+    choeurs.name = "Voix · chœurs";
+    choeurs.channel = 1;
+    projet.tracks.push_back(choeurs);
+
+    const auto octets = MidiFileWriter::write(projet.toParsedFile());
+    // Dans le fichier : « é » sur UN octet (Latin-1), pas deux (UTF-8).
+    const std::string brut(octets.begin(), octets.end());
+    VSM_ASSERT(brut.find("frapp\xE9" "es") != std::string::npos);
+    VSM_ASSERT(brut.find("frappées") == std::string::npos);
+
+    const Project relu = Project::fromParsedFile(MidiFileParser::parse(octets));
+    std::vector<std::string> noms;
+    for (const auto& t : relu.tracks) noms.push_back(t.name);
+    VSM_ASSERT(std::find(noms.begin(), noms.end(), std::string("Piano (cordes frappées)")) != noms.end());
+    VSM_ASSERT(std::find(noms.begin(), noms.end(), std::string("Voix - choeurs")) != noms.end());
+}
+
+VSM_TEST(nom_de_piste_latin1_lu_par_l_analyseur) {
+    // Un fichier écrit AILLEURS, en Latin-1 : « é » sur UN octet (0xE9). On part
+    // d'un fichier écrit par nous avec « X » à sa place, et l'on pose l'octet.
+    Project projet;
+    Track piste;
+    piste.name = "Piano Xlectrique";
+    Note note;
+    note.endTick = 480;
+    piste.notes.push_back(note);
+    projet.tracks.push_back(piste);
+    auto octets = MidiFileWriter::write(projet.toParsedFile());
+    const std::string brut(octets.begin(), octets.end());
+    const auto ou = brut.find("Piano Xlectrique");
+    VSM_ASSERT(ou != std::string::npos);
+    octets[ou + 6] = 0xE9;
+    const Project relu = Project::fromParsedFile(MidiFileParser::parse(octets));
+    bool trouve = false;
+    for (const auto& t : relu.tracks) trouve = trouve || t.name == "Piano électrique";
+    VSM_ASSERT(trouve);
+}

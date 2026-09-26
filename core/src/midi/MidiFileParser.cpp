@@ -1,5 +1,6 @@
 #include "vsm/midi/MidiFileParser.h"
 #include "vsm/midi/VariableLengthQuantity.h"
+#include "vsm/midi/TextEncoding.h"
 
 #include <fstream>
 #include <stdexcept>
@@ -102,8 +103,9 @@ std::vector<MidiEvent> parseTrackEvents(const uint8_t* data, uint32_t length) {
                     break;
                 }
                 case 0x03: { // Track Name
+                    // D386 : UTF-8 s'il en est, Latin-1 sinon (TextEncoding.h).
                     events.push_back({absoluteTick, TrackNameEvent{
-                        std::string(reinterpret_cast<const char*>(metaData), len)}});
+                        texteMidiVersUtf8(std::string(reinterpret_cast<const char*>(metaData), len))}});
                     break;
                 }
                 case 0x2F: { // End of Track
@@ -112,7 +114,7 @@ std::vector<MidiEvent> parseTrackEvents(const uint8_t* data, uint32_t length) {
                 }
                 case 0x01: case 0x02: case 0x04: case 0x05: case 0x06: case 0x07: {
                     events.push_back({absoluteTick, TextMetaEvent{
-                        metaType, std::string(reinterpret_cast<const char*>(metaData), len)}});
+                        metaType, texteMidiVersUtf8(std::string(reinterpret_cast<const char*>(metaData), len))}});
                     break;
                 }
                 default: {

@@ -210,7 +210,10 @@ target_compile_definitions(vsm-edit-audit PRIVATE
     JUCE_STANDALONE_APPLICATION=1
 )
 target_link_libraries(vsm-edit-audit PRIVATE
-    vsm_core vsm_audio vsm_panels
+    # D386 : vsm_interchange, dont TransportBarComponent.h inclut la table des
+    # raccourcis depuis D364 -- le banc ne se compilait plus, et `cmake --build
+    # build` échouait en bloc sans que rien ne le dise (aucune garde ne le bâtit).
+    vsm_core vsm_audio vsm_panels vsm_interchange
     juce::juce_gui_basics juce::juce_graphics
 )
 juce_generate_juce_header(vsm-edit-audit)
@@ -364,6 +367,7 @@ target_compile_definitions(vsm-arrangement-preview PRIVATE
 target_link_libraries(vsm-arrangement-preview PRIVATE
     vsm_core
     vsm_audio
+    vsm_interchange   # D386 : même raison que vsm-edit-audit (ShortcutTable.h, D364)
     juce::juce_gui_basics
     juce::juce_graphics
 )
