@@ -1266,6 +1266,8 @@ const Paire kAnglais[] = {
       "Audio settings..." },
     { "Carte son",
       "Sound card" },
+    { "%1 note(s) douteuse(s) sur %2 (%3 %) — touche D : la suivante",
+      "%1 doubtful note(s) out of %2 (%3%) — D key: the next one" },
     { "Réordonner les pistes",
       "Reorder tracks" },
     { "Répéter des clips",

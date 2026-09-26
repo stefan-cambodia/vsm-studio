@@ -32701,3 +32701,50 @@ fond de la fenêtre (`Palette::panel`, 0x1f1f24), et la visionneuse rendait la
 transparence en gris. Recomposée sur la vraie couleur de fond, la boîte se lit
 nettement. Aucun défaut ; pas de phase. « channel 1 + 2 » est le nom que le
 pilote ALSA donne aux canaux — une donnée, pas un texte de l'application.
+
+---
+
+### Phase D418 — chaque reconstruction s'ouvrait sur une boîte « avec des réserves » pour une information (26/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT UN MORCEAU RECONSTRUIT.** La boîte « Projet
+ouvert, avec des réserves » s'ouvre, et sa seule ligne est : « 2916 note(s)
+signalée(s) comme douteuses sur 3472 transcrite(s), soit 84 % … ». Or les
+documents se contredisent avec ce que fait le code :
+`CDC-detection-multipiste.md` écrit que ces notes sont « une information, pas un
+défaut », et le code lui-même (D53) a refusé d'y mettre la distance parce que
+« l'y mettre ferait s'ouvrir une boîte d'avertissement sur CHAQUE
+reconstruction » — ce que la ligne des notes douteuses fait.
+
+**TÉMOIN, en conditions réelles** (les neuf projets de campagne de
+`tools/volet-anglais.sh`, `VSM_PROFILS` sur les profils installés de
+l'utilisateur, pour que le HOME de brouillon n'ajoute pas ses « profil
+introuvable ») : **9 projets sur 9** ouvrent la boîte, et sur les 9, sa SEULE
+ligne est celle des notes douteuses.
+
+**CHOIX TRANCHÉ ICI** : la ligne des notes douteuses reste dans le rapport
+d'ouverture (« Voir le dernier rapport » la retrouve, et elle accompagne toute
+vraie réserve), mais elle n'OUVRE plus la boîte à elle seule. Ce qu'elle
+annonçait passe dans la ligne d'état du piano roll, là où la touche D s'emploie.
+
+**ATTENDU, écrit avant la mesure** :
+1. même course : **0 projet sur 9** n'ouvre la boîte ; le projet d'essai
+   l'ouvre toujours, avec ses 5 réserves ;
+2. la ligne d'état du piano roll (relevée par `VSM_TEXTES_LISTE`) dit « 1327
+   note(s) douteuse(s) sur 3269 (41 %) — touche D : la suivante » sur
+   `s2-banc/morceau-0001-g1`, en `fr` et en `en` ;
+3. garde de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+**Ce que cela coûte, écrit d'avance** : la garde de D411 perd sa couverture de
+la phrase de D409, qui ne paraît plus au volet de ces projets. Elle y
+reparaîtrait si un projet d'essai portait aussi un `rapport.json`.
+
+**MESURÉ — TENU.**
+1. Même course : **0 projet sur 9** n'ouvre la boîte (témoin 9 sur 9) ; le
+   projet d'essai l'ouvre toujours, 5 réserves.
+2. Ligne d'état du piano roll sur `s2-banc/morceau-0001-g1` : « 1327 note(s)
+   douteuse(s) sur 3269 (41 %) — touche D : la suivante » ; en anglais
+   « 1327 doubtful note(s) out of 3269 (41%) — D key: the next one ».
+3. Garde de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+Le coût écrit d'avance est payé : sur ces neuf projets, la garde de D411 ne
+voit plus la phrase de D409.

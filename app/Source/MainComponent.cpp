@@ -6893,6 +6893,15 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // Facultatif : un projet ouvert à la main n'en a pas, et c'est normal.
     // Quand il est là, il porte la confiance de la transcription note par
     // note, et le piano roll marque celles sur lesquelles elle a hésité.
+    //
+    // D418 : LES NOTES DOUTEUSES SONT UNE INFORMATION, PAS UNE RÉSERVE (le CDC
+    // de la détection multipiste l'écrit ; D53 a écarté la distance pour la même
+    // raison). Leur ligne reste au rapport, mais n'ouvre plus la boîte à elle
+    // seule : mesuré, 9 reconstructions sur 9 s'ouvraient sur une boîte « avec
+    // des réserves » dont c'était l'unique ligne. Elle va à la ligne d'état du
+    // piano roll, là où la touche D s'emploie.
+    int lignesDInformation = 0;
+    juce::String etatDesNotes;
     const juce::File fichierRapport = folder.getChildFile("rapport.json");
     // Retenu pour le menu « Voir le rapport de reconstruction » — et EFFACÉ
     // quand le projet n'en a pas : garder celui du projet précédent ferait
@@ -6924,6 +6933,11 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
                                 .replace("%#1", juce::String(static_cast<int>(douteuses)))
                                 .replace("%#2", juce::String(static_cast<int>(marquees)))
                                 .replace("%#3", juce::String(part)));
+                ++lignesDInformation;   // D418
+                etatDesNotes = tr(u8"%1 note(s) douteuse(s) sur %2 (%3 %) — touche D : la suivante")
+                                   .replace("%1", juce::String(static_cast<int>(douteuses)))
+                                   .replace("%2", juce::String(static_cast<int>(marquees)))
+                                   .replace("%3", juce::String(part));
             }
             // D53 : LA DISTANCE N'EST PAS AJOUTÉE ICI, ET LA RAISON EST
             // ÉCRITE PLUTÔT QUE TUE. Cette liste alimente la boîte « Projet
@@ -7011,7 +7025,8 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         std::fputs(("VSM_OUVERTURE : " + ligne + "\n").toRawUTF8(), stderr);
     rapportOuverture_ = rapport;                         // D84
     dossierRapportOuverture_ = folder.getFileName();
-    if (!rapport.isEmpty()) {
+    if (etatDesNotes.isNotEmpty() && pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(etatDesNotes);   // D418
+    if (rapport.size() > lignesDInformation) {   // D418 : une information seule n'ouvre pas la boîte
         clientDuRapport_ = ClientDuRapport::ouverture;
         afficherRapportDOuverture(true);
     }
