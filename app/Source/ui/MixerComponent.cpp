@@ -90,7 +90,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
     volume_.setTextValueSuffix(" dB");
     volume_.onDragStart = [this] {
-        if (onMixEditStarted) onMixEditStarted();
+        if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
         ouvrirPasse("mix.volume");
     };
     volume_.onDragEnd = [this] { fermerPasse("mix.volume", false); };
@@ -113,7 +113,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     pan_.setDoubleClickReturnValue(true, 0.0);      // D25.3 : centre
     pan_.setValue(track_.pan, juce::dontSendNotification);
     pan_.onDragStart = [this] {
-        if (onMixEditStarted) onMixEditStarted();
+        if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Panoramique"))));
         ouvrirPasse("mix.pan");
     };
     pan_.onDragEnd = [this] { fermerPasse("mix.pan", false); };
@@ -155,7 +155,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // rien n'avait bougé, c'est-à-dire sur presque toutes les tranches.
     trim_.updateText();
     trim_.onDragStart = [this] {
-        if (onMixEditStarted) onMixEditStarted();
+        if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Trim d'entrée"))));
         ouvrirPasse("mix.trim");
     };
     trim_.onDragEnd = [this] { fermerPasse("mix.trim", false); };
@@ -190,7 +190,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     delay_.setValue(track_.delayMs, juce::dontSendNotification);
     delay_.updateText();
-    delay_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
+    delay_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Délai")))); };
     delay_.onValueChange = [this] {
         track_.delayMs = delay_.getValue();
         if (onMixChanged) onMixChanged();
@@ -215,7 +215,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);   // l'infobulle : `retraduire()`
     transposition_.updateText();
-    transposition_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
+    transposition_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Transposition"))); };
     transposition_.onValueChange = [this] {
         track_.transposeSemitones = static_cast<int>(transposition_.getValue());
         if (onMixChanged) onMixChanged();
@@ -237,7 +237,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         s->setValue(track_.sendLevel(bus), juce::dontSendNotification);
         const std::string parametre = "mix.send." + std::to_string(bus + 1);
         s->onDragStart = [this, parametre] {
-            if (onMixEditStarted) onMixEditStarted();
+            if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Départ"))));
             ouvrirPasse(parametre);
         };
         s->onDragEnd = [this, parametre] { fermerPasse(parametre, false); };
@@ -262,7 +262,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     phase_.setToggleState(track_.invertPhase, juce::dontSendNotification);
     phase_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentTeal);
     phase_.onClick = [this] {
-        if (onMixEditStarted) onMixEditStarted();
+        if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Polarité"))));
         track_.invertPhase = phase_.getToggleState();
         if (onMixChanged) onMixChanged();
     };
@@ -294,7 +294,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         // du solo qu'il parle -- « celui des autres ne me concerne pas » --,
         // et non un huitième bouton dans une tranche de 76 pixels.
         if (juce::ModifierKeys::getCurrentModifiers().isAltDown()) {
-            if (onMixEditStarted) onMixEditStarted();
+            if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Solo protégé"))));
             track_.soloSafe = !track_.soloSafe;
             rafraichirSolo();
             if (onMixChanged) onMixChanged();
@@ -970,7 +970,7 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             }
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
             strip->onExclusiveSoloRequested = [this](size_t index) { if (onExclusiveSoloRequested) onExclusiveSoloRequested(index); };
-            strip->onMixEditStarted = [this] { if (onMixEditStarted) onMixEditStarted(); };
+            strip->onMixEditStarted = [this](const juce::String& pas) { if (onMixEditStarted) onMixEditStarted(pas); };
             // D16.8 : la tranche a besoin de savoir OÙ en est le transport et
             // s'il roule ; ces deux réponses appartiennent à l'application.
             strip->playheadTickProvider = playheadTickProvider;

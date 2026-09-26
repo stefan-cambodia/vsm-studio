@@ -331,7 +331,7 @@ public:
     /// `onMixChanged`, qui arrive après et à chaque échantillon d'un glissé --
     /// s'en servir empilerait trois cents pas d'annulation pour un seul
     /// mouvement de fader.
-    std::function<void()> onMixEditStarted;
+    std::function<void(const juce::String&)> onMixEditStarted;   ///< D425 : « geste — piste »
     /// ÉCRIRE L'AUTOMATION EN JOUANT (D16.8) — le W de Cubase, l'armement de
     /// Live. La tranche a besoin de deux choses que seule l'application sait :
     /// OÙ en est le transport, et s'il roule. Sans elles, elle écrirait une
@@ -346,6 +346,10 @@ public:
 
 private:
     vsm::sequencer::Track& track_;
+    /// D425 : le nom d'un pas d'annulation -- le geste, puis la piste.
+    juce::String pasDe(const juce::String& geste) const {
+        return geste + juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(track_.name.c_str());
+    }
     size_t index_;
     juce::Label nameLabel_;
     juce::Slider volume_;
@@ -735,7 +739,7 @@ public:
             }
         return false;
     }
-    std::function<void()> onMixEditStarted;
+    std::function<void(const juce::String&)> onMixEditStarted;   ///< D425 : « geste — piste »
 
     /// D16.8 : passés à chaque tranche à sa construction (voir ChannelStrip).
     std::function<vsm::midi::Tick()> playheadTickProvider;

@@ -353,7 +353,10 @@ void TrackRowComponent::rafraichirSolo() {
 }
 
 void TrackRowComponent::debutEdition(const juce::String& libelle) {
-    if (onEditStarted) onEditStarted(libelle);
+    // D425 : le pas nomme sa piste -- « Volume » seul, sur quinze pistes, ne
+    // disait pas où revenir. `trGeste` traduit la partie avant « — ».
+    if (onEditStarted)
+        onEditStarted(libelle + juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(track_.name.c_str()));
 }
 
 void TrackRowComponent::retraduire() {

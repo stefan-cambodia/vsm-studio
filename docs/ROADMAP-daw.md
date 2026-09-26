@@ -32928,3 +32928,36 @@ préférences inchangées. (Texte PEINT : la preuve est la photo — piège de D
 **MESURÉ — TENU.** Photo recomposée : « 20 Hz » entier sous l'origine de l'axe
 des fréquences, « 0 dB » entier à gauche du haut de la grille ; 50, 100, …, 20k
 et -12, …, -96 inchangés. Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D425 — l'historique disait « Mixage » pour tout geste de console, et ne nommait aucune piste (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT LA FENÊTRE D'HISTORIQUE.** Un geste sur le volume
+d'une ligne s'inscrit « Volume » ; un geste sur le fader, le panoramique ou le
+trim d'une tranche s'inscrit « Mixage », tous trois pareils. Aucun ne dit de
+quelle piste il s'agit : sur un projet en parité (quinze pistes), une colonne de
+« Mixage » ne permet pas de choisir où revenir. L'historique de Cubase écrit le
+geste ET la piste.
+
+**TÉMOIN** (projet de démo ; `appuyer:` sur le volume de la ligne, puis le
+fader, le panoramique et le trim de la première tranche ; `VSM_HISTORIQUE`, qui
+passe par le `trGeste` de la fenêtre, D149) : « Volume | Mixage | Mixage |
+Mixage » ; en anglais « Volume | Mixing | Mixing | Mixing ».
+
+**LE CORRECTIF** : chaque tranche nomme son geste (Volume, Panoramique, Trim
+d'entrée, Délai, Transposition, Départ, Polarité, Solo protégé) et sa piste ; la
+ligne ajoute sa piste à ses libellés ; `trGeste` traduit la partie avant « — »
+et recopie le nom de piste comme une donnée.
+
+**ATTENDU, écrit avant la mesure** : « Volume — Acid Bass | Volume — Acid Bass |
+Panoramique — Acid Bass | Trim d'entrée — Acid Bass » ; en anglais « Volume —
+Acid Bass | Volume — Acid Bass | Pan — Acid Bass | Input trim — Acid Bass » ;
+garde de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `VSM_HISTORIQUE`, même course : « Volume — Acid Bass |
+Volume — Acid Bass | Panoramique — Acid Bass | Trim d'entrée — Acid Bass »
+(témoin « Volume | Mixage | Mixage | Mixage ») ; en anglais « Volume — Acid
+Bass | Volume — Acid Bass | Pan — Acid Bass | Input trim — Acid Bass ». Les deux
+bancs qui lisent l'historique (`liste-editer`, `liste-ajouter`) : 0 raté ;
+garde de langue 0 ; fumée 0 raté ; préférences inchangées.

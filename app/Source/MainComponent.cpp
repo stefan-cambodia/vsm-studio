@@ -328,7 +328,7 @@ MainComponent::MainComponent()
     mixer_.masterParamProvider = [this](vsm::audio::plugin::ParamId id) {
         return audioEngine_.processGraph().masterBus().getParameter(id);
     };
-    mixer_.onMixEditStarted = [this] { beginProjectEdit("Mixage"); };
+    mixer_.onMixEditStarted = [this](const juce::String& pas) { beginProjectEdit(pas); };   // D425 : le geste et la piste
     mixer_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };
     trackList_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };   // D423
     // D16.8 : la console écrit l'automation en jouant, et il lui faut la

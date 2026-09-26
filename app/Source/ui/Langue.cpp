@@ -1270,6 +1270,10 @@ const Paire kAnglais[] = {
       "Sound card" },
     { "Solo protégé",
       "Protected solo" },
+    { "Départ",
+      "Send" },
+    { "Polarité",
+      "Polarity" },
     { "Aimant : les notes posées et déplacées se calent sur la grille",
       "Snap: notes you draw and move lock to the grid" },
     { "Fantômes : les notes des autres pistes, en transparence, pour écrire en regard",
@@ -3331,6 +3335,11 @@ juce::String toucheLisible(const juce::String& description) {
 }
 
 juce::String trGeste(const juce::String& libelle) {
+    // D425 : « geste — piste » : le geste se traduit, la piste est une donnée.
+    const juce::String tiret = juce::String::fromUTF8(" \xe2\x80\x94 ");
+    if (libelle.contains(tiret))
+        return trGeste(libelle.upToFirstOccurrenceOf(tiret, false, false)) + tiret
+             + libelle.fromFirstOccurrenceOf(tiret, false, false);
     // LES NOMS FABRIQUÉS se reconnaissent à leur modèle : un préfixe fixe, puis
     // une donnée -- « Signature 3/4 » (D82), « Durée x1.50 » et « Vélocité
     // x0.80 » (D94, les gestes du piano roll). Les autres sont des clés.
