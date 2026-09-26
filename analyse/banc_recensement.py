@@ -699,6 +699,8 @@ def main() -> int:
                     help="ce qui décrit un segment (H38, § 11 du CDC) ; a6 = H37")
     ap.add_argument("--reel", type=Path, default=None, help="un disque : le mélange")
     ap.add_argument("--stems", type=Path, default=None, help="un disque : ses stems séparés")
+    ap.add_argument("--hdbscan-une-grappe", action="store_true",
+                    help="H39 : autoriser HDBSCAN à rendre une seule grappe (allow_single_cluster)")
     args = ap.parse_args()
 
     from analyzer import vsm_recensement as R
@@ -706,6 +708,7 @@ def main() -> int:
 
     classifieur = Classifieur.relit(args.classifieur)
     args.sortie.mkdir(parents=True, exist_ok=True)
+    R.HDBSCAN_UNE_GRAPPE = bool(args.hdbscan_une_grappe)   # H39 : AVANT de lire les réglages
     provenance = {"commit": commit(), "commande": sys.argv, "reglages": R.reglages(),
                   "versions": R.versions(),
                   "empreintes": {"classifieur": empreinte(args.classifieur)},

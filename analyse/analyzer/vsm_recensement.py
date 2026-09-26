@@ -50,6 +50,9 @@ HDBSCAN_PART_MIN = 0.02        # min_cluster_size = max(5, ⌈2 % des segments�
 HDBSCAN_TAILLE_MIN = 5
 HDBSCAN_MIN_SAMPLES = 3
 DUREE_MIN_GRAPPE_S = 4.0
+# H39 (§ 12 du CDC) : autoriser HDBSCAN à rendre UNE grappe. Faux = H37 à
+# l'octet ; posé par l'option `--hdbscan-une-grappe` du banc, jamais édité.
+HDBSCAN_UNE_GRAPPE = False
 DIMENSIONS_DE_TIMBRE = 40      # les 43 descripteurs A6, moins note, gate, durée
 # --- § 0.4, approche B -------------------------------------------------------
 PART_PERCUSSIVE = 0.6
@@ -313,7 +316,8 @@ def grouper(x: np.ndarray, segmentation: Segmentation) -> Regroupement:
     from sklearn.cluster import HDBSCAN
 
     etiquettes = HDBSCAN(min_cluster_size=taille, copy=True,
-                         min_samples=HDBSCAN_MIN_SAMPLES).fit_predict(x)
+                         min_samples=HDBSCAN_MIN_SAMPLES,
+                         allow_single_cluster=HDBSCAN_UNE_GRAPPE).fit_predict(x)
     grappes: List[Grappe] = []
     courtes: List[Tuple[int, float]] = []
     for ident in sorted(set(int(e) for e in etiquettes if e >= 0)):
@@ -572,6 +576,7 @@ def reglages() -> Dict[str, Any]:
             "silenceDbfs": SILENCE_DBFS, "hdbscanPartMin": HDBSCAN_PART_MIN,
             "hdbscanTailleMin": HDBSCAN_TAILLE_MIN, "hdbscanMinSamples": HDBSCAN_MIN_SAMPLES,
             "dureeMinGrappeS": DUREE_MIN_GRAPPE_S, "dimensionsDeTimbre": DIMENSIONS_DE_TIMBRE,
+            "hdbscanUneGrappe": HDBSCAN_UNE_GRAPPE,   # H39
             "partPercussive": PART_PERCUSSIVE, "trameVoixS": TRAME_VOIX_S,
             "centileVoix": CENTILE_VOIX, "partDominante": PART_DOMINANTE,
             "seuilStem": SEUIL_STEM, "gateCorpus": GATE_CORPUS, "dureesCorpus": list(DUREES_CORPUS)}

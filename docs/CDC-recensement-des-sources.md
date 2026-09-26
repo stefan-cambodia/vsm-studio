@@ -789,3 +789,50 @@ l'attendu 1, et qui ne peut pas le changer** :
    avant d'implémenter (§ 10, point 5). Elle n'est pas lancée par ce verdict.
 3. La bibliothèque de MOTIFS (§ 10, point 3) garde sa raison, indépendante de
    H38.
+
+---
+
+## 12. H39 — HDBSCAN ne sait pas rendre UNE grappe, et c'est la question même de L1 (écrite AVANT la mesure, 26/09/2026)
+
+**D'OÙ ELLE VIENT.** H38 a laissé la cause de la coupure « hors du descripteur »
+(§ 11.2) : AST ôte la nuance sans garder les parties. Relu, le regroupement
+(`grouper`) appelle `HDBSCAN(min_cluster_size=…, min_samples=3)` avec la
+méthode de sélection par défaut (« eom ») et **sans `allow_single_cluster`**.
+Dans ce réglage, HDBSCAN ne retient JAMAIS la racine de son arbre : il rend
+deux grappes ou plus, ou tout en bruit, **jamais une seule**. Or L1 pose
+exactement cette question — une partie jouée SEULE fait-elle UNE grappe ? —, et
+la population de H37 en porte la marque : 26 parties à 2 grappes, 14 à 3,
+7 à 4 et plus, 11 à zéro. Les 17 « à une grappe » ne contredisent pas la
+lecture si l'une de leurs grappes est tombée sous le seuil de 4 s — c'est une
+DÉDUCTION, non mesurée, que la course dira (`grappesCourtes` du rapport). La
+propriété elle-même est celle que scikit-learn documente : « by default
+HDBSCAN* will not produce a single cluster ». Aucun descripteur, appris ou non, ne
+pouvait gagner L1 dans ce réglage.
+
+**UNE variable** : `allow_single_cluster=True`. Tout le reste est celui de H37,
+à l'octet : descripteur A6, segmentation, taille minimale et `min_samples`,
+seuil de 4 s, étiquettes, appariement. Option du banc `--hdbscan-une-grappe`,
+inscrite dans la provenance ; sans elle, le banc redonne H37.
+
+**LE RISQUE, ÉCRIT AVANT** : dans un MÉLANGE (L2, L3), autoriser une grappe
+unique peut FUSIONNER des sources distinctes — le compte tomberait alors trop
+bas. C'est l'attendu 3 qui le garde.
+
+**ATTENDUS** (`s1-sec`, puis `s2` en L1 et les deux disques) :
+
+| # | attendu | RÉUSSITE si | ÉCHEC si |
+|---|---|---|---|
+| 1 | L1 `s1-sec` : parties seules à une grappe | **≥ 60 %** (H37 : 23 %) | **< 35 %** |
+| 2 | L1 `s2` : idem sur les morceaux longs | ≥ 40 % (H37 : 1/74) | < 10 % |
+| 3 | compte L3 (A-grp) sur `s1-sec` | erreur **≤ 3,0** (parité 3,80) | **≥ 4,4** — plus mauvais que H37 (4,00) de 10 % |
+| 4 | compte L2 (A-grp) | ≤ 2,5 (H37 : 5,20) | ≥ 5,2 |
+| 5 | *Clair de Lune* K ; *Children* K_mél | 1 ; [5 ; 7] | ≥ 3 ; ≤ 3 ou ≥ 10 |
+
+**La règle du verdict, écrite avant** : **CONFIRMÉE** si 1 et 3 tiennent ;
+**RÉFUTÉE** si 1 est en échec ; **PARTIELLE** sinon. Et si l'attendu 1 tient
+quand l'attendu 3 échoue, c'est que la grappe unique règle L1 en cassant le
+mélange : ce ne serait pas un succès, et ce serait écrit.
+
+**Rien n'est implémenté dans la chaîne** : `--recensement` reste éteint par
+défaut, et toute adoption passe par la validation de l'utilisateur (§ 10,
+point 5).
