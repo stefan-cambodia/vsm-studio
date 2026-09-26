@@ -726,7 +726,7 @@ MasterStrip::MasterStrip() {
     addKnob(MasterBus::kHighShelfGainDb, "HIGH", -18.0f, 18.0f, 0.0f, " dB");
     addKnob(MasterBus::kCompThresholdDb, "COMP", -48.0f, 0.0f, 0.0f, " dB");
     addKnob(MasterBus::kCompRatio, "RATIO", 1.0f, 20.0f, 2.0f, ":1");
-    addKnob(MasterBus::kSaturationDrive, "SAT", 0.0f, 1.0f, 0.0f, "");
+    addKnob(MasterBus::kSaturationDrive, "SAT", 0.0f, 1.0f, 0.0f, " %");   // D416 : une part, en pour cent
     addKnob(MasterBus::kLimiterCeilingDb, "CEIL", -12.0f, 0.0f, -0.3f, " dB");
 
     lufsLabel_.setText("-inf LUFS", juce::dontSendNotification);
@@ -782,7 +782,16 @@ juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::S
     k.bulle = std::make_unique<vsm::app::ui::BulleDeValeur>(*k.slider);
     k.slider->setRange(min, max, (max - min) / 1000.0);
     k.slider->setValue(def, juce::dontSendNotification);
-    k.slider->setTextValueSuffix(suffix);
+    if (suffix == " %") {
+        // D416 : une PART (0 à 1) se lit en pour cent -- « SAT 0.00 » était le
+        // dernier réglage sans unité du relevé des valeurs.
+        k.slider->textFromValueFunction = [](double v) { return juce::String(juce::roundToInt(v * 100.0)) + " %"; };
+        k.slider->valueFromTextFunction = [](const juce::String& t) {
+            return t.upToFirstOccurrenceOf("%", false, false).trim().getDoubleValue() / 100.0;
+        };
+    } else {
+        k.slider->setTextValueSuffix(suffix);
+    }
     const auto pid = id;
     juce::Slider* raw = k.slider.get();
     raw->onValueChange = [this, raw, pid] {

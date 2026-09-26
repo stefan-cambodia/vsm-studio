@@ -32633,3 +32633,24 @@ pour que le témoin sorte du même code.
 
 **Relevé en passant, non traité ici** : « master.SAT : 0.00 » — la saturation
 du master, sans unité elle aussi (la famille de D400, D406 et de celle-ci).
+
+---
+
+### Phase D416 — « SAT 0.00 », le dernier réglage sans unité du relevé (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE D415.** Sur les 18 valeurs que `VSM_VALEUR`
+relève au projet de démo, une seule n'a pas d'unité : « master.SAT : 0.00 »,
+la saturation du master (`kSaturationDrive`, 0 à 1, une PART de saturation :
+`satPre = 1 + drive × 6`). D135 l'avait laissée « sans unité, deux
+décimales » ; c'est une proportion, et elle se lit en pour cent.
+
+**ATTENDU, écrit avant la mesure** : au repos « master.SAT : 0 % » (témoin
+« 0.00 ») ; `valeur:master.SAT=0.5` → « 50 % » (témoin, même geste, binaire de
+D415 : « 0.50 ») ; les 17 autres valeurs relevées inchangées ; fumée 0 raté ;
+préférences inchangées.
+
+**MESURÉ — TENU.** Au repos « master.SAT : 0 % » (témoin « 0.00 ») ;
+`valeur:master.SAT=0.5` → « 50 % » (témoin « 0.50 »). `diff` des 18 valeurs
+relevées au repos, témoin contre après : **une seule ligne change**, celle de
+SAT. Fumée 0 raté ; préférences inchangées. Le relevé des valeurs ne porte plus
+de réglage sans unité.
