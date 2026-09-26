@@ -33302,3 +33302,27 @@ projet relu après le geste.
    depuis le projet, il ne garde pas le point annulé.
 
 Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D436 — « Ajouter un CC » : lequel, sur quelle piste ? (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA SUITE DE D435.** La lane des contrôleurs MIDI ouvre bien
+ses pas, mais les nomme « Ajouter un CC », « Supprimer un CC », « Déplacer un
+CC » : ni le contrôleur (74 ? 7 ? le pitch bend ?) ni la piste. La lane du
+tempo, elle, est globale : ses libellés suffisent.
+
+**LE BANC** : la lane reçoit un nom (`midicc.lane`), seul dans un premier
+binaire, pour le verbe `clic:` de D435. Mesure : onglet MIDI CC de la démo
+(qui s'ouvre sur « 74 · coupure », D319), `clic:midicc.lane:0.5,0.5`.
+
+**ATTENDU, écrit avant la mesure** : témoin « Ajouter un CC » ; après « Ajouter
+un CC — CC 74 — Acid Bass » (le contrôleur sous une forme NEUTRE — « CC 74 »,
+« Pitch bend », « Aftertouch » — puisque le pas est une donnée qui survit au
+changement de langue) ; en anglais « Add a CC — CC 74 — Acid Bass » si la clé
+existe ; Ctrl+Z annule toujours ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `fr` : « Ajouter un CC — CC 74 — Acid Bass » (témoin
+« Ajouter un CC ») ; `en` : « Add a CC — CC 74 — Acid Bass » (témoin « Add a
+CC ») ; Ctrl+Z annule dans les deux langues (historique vide après). Fumée 0
+raté ; préférences inchangées.

@@ -31,6 +31,7 @@ juce::String MidiCcComponent::controllerName(int controller) {
 }
 
 MidiCcComponent::MidiCcComponent() {
+    setName("midicc.lane");   // D436 : le nom par lequel le banc le désigne (clic:)
     // D94 : les libellés sont posés par `retraduire()`, en fin de constructeur.
     trackLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     addAndMakeVisible(trackLabel_);
@@ -199,7 +200,17 @@ void MidiCcComponent::loadPoints() {
 void MidiCcComponent::commit(const juce::String& label) {
     Track* track = activeTrack();
     if (track == nullptr) return;
-    if (history_ != nullptr && project_ != nullptr) history_->beginEdit(*project_, label.toStdString());
+    // D436 : LEQUEL, ET SUR QUELLE PISTE. « Ajouter un CC » ne disait ni l'un ni
+    // l'autre. Le contrôleur sous une forme NEUTRE (« CC 74 », pas « 74 ·
+    // coupure ») : le pas est une donnée, il survit au changement de langue, et
+    // `trGeste` ne traduit que la partie avant le premier « — ».
+    const juce::String tiret = juce::String::fromUTF8(" \xe2\x80\x94 ");
+    const juce::String controleur = selectedController_ == kPitchBend        ? juce::String("Pitch bend")
+                                  : selectedController_ == kChannelPressure ? juce::String("Aftertouch")
+                                                                            : "CC " + juce::String(selectedController_);
+    juce::String nom = label + tiret + controleur;
+    if (!track->name.empty()) nom += tiret + juce::String::fromUTF8(track->name.c_str());
+    if (history_ != nullptr && project_ != nullptr) history_->beginEdit(*project_, nom.toStdString());
     // Les points de CE contrôleur sont remplacés ; les autres contrôleurs et
     // les autres événements de la piste ne bougent pas.
     if (selectedController_ == kPitchBend) {
