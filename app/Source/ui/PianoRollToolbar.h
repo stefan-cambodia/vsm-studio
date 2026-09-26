@@ -56,6 +56,7 @@ private:
     void applyScaleFromCombos();
     void timerCallback() override { refreshSelectionInfo(); }
     void applyInfoLine(int champ);
+    void refuser(const juce::String& modele, const juce::String& saisi);   ///< D449
 
     PianoRollComponent& pianoRoll_;
 

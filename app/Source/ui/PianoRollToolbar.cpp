@@ -171,6 +171,9 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     velocitySlider_.setValue(100.0, juce::dontSendNotification);
     velocitySlider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 44, 18);
     velocitySlider_.setName("pianoroll.velocite");   // D445 : le nom du banc
+    debutEdit_.setName("pianoroll.note.debut");   // D449 : les noms du banc (saisir:)
+    dureeEdit_.setName("pianoroll.note.duree");
+    veloEdit_.setName("pianoroll.note.velocite");
     velocitySlider_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445
     // D29.4 : LA LIGNE D'INFORMATION. Trois champs éditables, relus huit fois
     // par seconde ; l'édition d'un champ ne pose que ce champ.
@@ -432,7 +435,14 @@ void PianoRollToolbar::refreshSelectionInfo() {
                       juce::dontSendNotification);
 }
 
+void PianoRollToolbar::refuser(const juce::String& modele, const juce::String& saisi) {
+    // D449 : LE REFUS SE DIT, dans la ligne d'état du piano roll -- il se faisait
+    // par un `return;`, et le champ reprenait sa valeur sans un mot.
+    if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(modele.replace("%1", saisi));
+}
+
 void PianoRollToolbar::applyInfoLine(int champ) {
+    using vsm::app::ui::tr;
     const auto* track = pianoRoll_.activeTrack();
     const auto* project = pianoRoll_.project();
     const auto& ids = pianoRoll_.selectedNoteIds();
@@ -444,7 +454,10 @@ void PianoRollToolbar::applyInfoLine(int champ) {
         const juce::String position = texte.upToFirstOccurrenceOf("+", false, false);
         const vsm::midi::Tick reste = texte.contains("+") ? static_cast<vsm::midi::Tick>(texte.fromFirstOccurrenceOf("+", false, false).getLargeIntValue()) : 0;
         int64_t mesure = 0, temps = 0;
-        if (!vsm::sequencer::parseBarBeat(position.toStdString(), mesure, temps)) return;
+        if (!vsm::sequencer::parseBarBeat(position.toStdString(), mesure, temps)) {
+            refuser(tr(u8"Début refusé : « %1 » — mesure.temps, par exemple 17.3 ou 17.3+120"), texte);   // D449
+            return;
+        }
         const vsm::midi::Tick voulu = project->timeSignatureMap.tickAtBarBeat(mesure, temps, project->ticksPerQuarterNote) + reste;
         vsm::midi::Tick premier = -1;
         for (const auto& n : track->notes)
@@ -453,9 +466,11 @@ void PianoRollToolbar::applyInfoLine(int champ) {
     } else if (champ == 1) {
         const auto ticks = dureeEdit_.getText().trim().getLargeIntValue();
         if (ticks > 0) pianoRoll_.setSelectionLength(static_cast<vsm::midi::Tick>(ticks));
+        else refuser(tr(u8"Durée refusée : « %1 » — un nombre de ticks, plus grand que 0"), dureeEdit_.getText().trim());   // D449
     } else {
         const int velo = veloEdit_.getText().trim().upToFirstOccurrenceOf(" ", false, false).getIntValue();
         if (velo >= 1 && velo <= 127) pianoRoll_.setSelectionVelocity(static_cast<uint8_t>(velo));
+        else refuser(tr(u8"Vélocité refusée : « %1 » — de 1 à 127"), veloEdit_.getText().trim());   // D449
     }
 }
 

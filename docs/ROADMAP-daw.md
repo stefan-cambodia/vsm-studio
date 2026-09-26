@@ -33670,3 +33670,35 @@ verte après ; fumée 0 raté ; préférences inchangées.
 La garde de D446 gagne une troisième règle (un champ de fenêtre lu par
 `getDoubleValue`) : rouge sur l'arbre d'avant, les deux sites nommés ; verte
 après. Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D449 — la ligne d'information du piano roll refusait en silence (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA SUITE DES SAISIES.** Les trois champs de la ligne
+d'information (D29.4) — début, durée, vélocité — refusent une saisie invalide
+par un `return;` : « abc » au début, « 0 » à la durée, « 200 » à la vélocité ne
+font rien, et le champ reprend sa valeur à la relecture suivante. Rien ne dit
+pourquoi ni ce qui est attendu. La panne muette de D444, ailleurs.
+
+**LE BANC** : les trois champs reçoivent un nom (`pianoroll.note.debut`,
+`.duree`, `.velocite`), seuls dans un premier binaire. La saisie doit suivre la
+sélection (« ctrl + A », `VSM_TOUCHE`) : elle part en geste RETARDÉ
+(`VSM_GESTE_APRES`), et la preuve est donc la PHOTO de la ligne d'état — le
+relevé des textes s'exécute avant les gestes retardés (CLAUDE.md, D414 bis).
+
+**ATTENDU, écrit avant la mesure** : témoin — « 200 » à la vélocité : la ligne
+d'état ne dit rien de neuf ; après — « Vélocité refusée : « 200 » — de 1 à
+127 » ; de même « Durée refusée : « 0 » — un nombre de ticks, plus grand que 0 »
+et « Début refusé : « abc » — mesure.temps, par exemple 17.3 ou 17.3+120 » ;
+une saisie valide (« 90 ») s'applique toujours ; fumée 0 raté ; préférences
+inchangées.
+
+**MESURÉ — TENU.** Photos de la ligne d'état (« ctrl + A » puis saisie
+retardée) : « Vélocité refusée : « 200 » — de 1 à 127 » (témoin : « Prêt »),
+« Durée refusée : « 0 » — un nombre de ticks, plus grand que 0 », « Début
+refusé : « abc » — mesure.temps, par exemple 17.3 ou 17.3+120 », et en anglais
+« Velocity refused: “200” — from 1 to 127 ». La saisie valide « 90 » laisse
+« Prêt » et S'APPLIQUE : le `.mid` exporté après porte « Acid Bass » à [90] ;
+après « 200 », il garde [90, 127] (l'original). Fumée 0 raté ; préférences
+inchangées.
