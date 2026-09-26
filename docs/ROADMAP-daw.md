@@ -31895,3 +31895,16 @@ textes porte la position (« 00:00… | mes. 1 · 1 ») ; la garde reste verte.
 tailles (1 avant, à 2 240 × 1 400), 0 raté ; le relevé des textes, pris au
 démarrage, porte « 00:00,000 | mes. 1 · 1 ». Banc de fumée 0 raté ;
 préférences inchangées. Attendu tenu.
+
+**COMPLÉMENT À D394 (26/09, soir) — LA COMPRESSION, À LA LARGEUR DE L'UTILISATEUR.**
+Le repli de D379 garde 12 pt en COMPRIMANT le texte jusqu'à 0,55 de sa largeur ;
+un texte comprimé se lit moins bien qu'il n'en a l'air au compte « à 12 pt ».
+Mesuré (`balayer-facades.sh`, fenêtre 2 133 × 1 333, `VSM_DOCK_DROITE`) :
+
+| rack | sous 12 pt | comprimées (besoin 1 à 1,82) | dont > 1,4 | coupées |
+|---|---|---|---|---|
+| 380 (ancien défaut) | 42 | 235 | 80 | 1 |
+| 638 (la largeur que l'utilisateur a réglée) | **0** | **26** | **4** | 0 |
+
+À la largeur qu'il utilise, le compromis ne pèse presque plus rien : aucune
+sérigraphie sous 12 pt, 26 sur 1 073 comprimées. Rien n'est changé.
