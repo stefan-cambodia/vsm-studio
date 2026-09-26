@@ -81,8 +81,10 @@ void SpectrumComponent::paint(juce::Graphics& g) {
         g.setColour(Palette::textSecondary.withAlpha(entier == 100 || entier == 1000 || entier == 10000 ? 0.45f : 0.2f));
         g.drawVerticalLine(static_cast<int>(x), zone.getY(), zone.getBottom());
         g.setColour(Palette::textSecondary);
+        // D424 : l'unité une fois, à la graduation d'origine.
         const juce::String etiquette = hz >= 1000.0 ? juce::String(static_cast<int>(hz / 1000.0)) + "k"
-                                                    : juce::String(static_cast<int>(hz));
+                                     : entier == 20  ? juce::String("20 Hz")
+                                                     : juce::String(static_cast<int>(hz));
         g.drawText(etiquette, juce::Rectangle<float>(x - 20.0f, zone.getBottom() + 2.0f, 40.0f, 18.0f),
                    juce::Justification::centred);
     }
@@ -92,7 +94,8 @@ void SpectrumComponent::paint(juce::Graphics& g) {
         g.setColour(Palette::textSecondary.withAlpha(dbEntier == 0 ? 0.45f : 0.2f));
         g.drawHorizontalLine(static_cast<int>(y), zone.getX(), zone.getRight());
         g.setColour(Palette::textSecondary);
-        g.drawText(juce::String(dbEntier), juce::Rectangle<float>(tout.getX(), y - 9.0f, 40.0f, 18.0f),
+        g.drawText(dbEntier == 0 ? juce::String("0 dB") : juce::String(dbEntier),   // D424
+                   juce::Rectangle<float>(tout.getX(), y - 9.0f, 40.0f, 18.0f),
                    juce::Justification::centredRight);
     }
 

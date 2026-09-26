@@ -32906,3 +32906,25 @@ La garde de langue a d'abord été ROUGE, à raison : le libellé du pas
 d'annulation, « Solo protégé », n'était pas dans la table. Ajouté
 (« Protected solo »), binaire refait, mesure Alt rejouée à l'identique, fumée
 0 raté.
+
+---
+
+### Phase D424 — l'analyseur de spectre gradué sans unités (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT LES FENÊTRES DU MENU AFFICHAGE.** L'analyseur
+gradue ses axes « 20 … 20k » et « 0 … -96 » : des hertz et des décibels, mais
+aucun des deux n'est écrit (la famille de D400). Son en-tête, lui, dit « crête
+%1 Hz, %2 dB ».
+
+**LE CORRECTIF** : l'unité une fois par axe, à la graduation d'origine —
+« 20 Hz » et « 0 dB » —, comme le fait un analyseur de console ; les autres
+graduations restent nues.
+
+**ATTENDU, écrit avant la mesure** : photo de la fenêtre (recomposée sur le fond
+0x1f1f24, piège de D417) : « 20 Hz » entier sous l'axe, « 0 dB » entier à
+gauche du haut de la grille ; aucune autre graduation ne change ; fumée 0 raté ;
+préférences inchangées. (Texte PEINT : la preuve est la photo — piège de D149.)
+
+**MESURÉ — TENU.** Photo recomposée : « 20 Hz » entier sous l'origine de l'axe
+des fréquences, « 0 dB » entier à gauche du haut de la grille ; 50, 100, …, 20k
+et -12, …, -96 inchangés. Fumée 0 raté ; préférences inchangées.
