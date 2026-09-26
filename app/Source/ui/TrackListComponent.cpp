@@ -325,7 +325,7 @@ void TrackRowComponent::refreshMuteSolo(bool tuParUnDossier) {
     muteButton_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
     muteButton_.setTooltip(tuParUnDossier && !track_.muted ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
                                                             : juce::String());
-    soloButton_.setToggleState(track_.solo, juce::dontSendNotification);
+    rafraichirSolo();   // D423 : état, « S+ » et infobulle
 }
 
 void TrackRowComponent::poserMuet(bool muet) {
@@ -336,6 +336,20 @@ void TrackRowComponent::poserMuet(bool muet) {
 void TrackRowComponent::poserSolo(bool solo) {
     track_.solo = solo;
     soloButton_.setToggleState(solo, juce::dontSendNotification);
+}
+
+void TrackRowComponent::rafraichirSolo() {
+    // D423 : comme la tranche (`ChannelStrip::rafraichirSolo`) -- l'état, « S+ »
+    // quand la piste est protégée, et l'infobulle qui dit les deux gestes.
+    using vsm::app::ui::tr;
+    soloButton_.setToggleState(track_.solo, juce::dontSendNotification);
+    soloButton_.setButtonText(track_.soloSafe ? "S+" : "S");
+    soloButton_.setTooltip(track_.soloSafe
+        ? tr(u8"Solo PROTÉGÉ (Alt+clic) : le solo des autres pistes ne fait pas taire "
+             u8"celle-ci. Son propre muet reste le sien. À poser sur un retour d'effet, "
+             u8"pour qu'un solo garde sa réverbération.")
+        : tr(u8"Solo. Ctrl+clic : solo exclusif. Alt+clic : protéger cette piste du solo "
+             u8"des autres."));
 }
 
 void TrackRowComponent::debutEdition(const juce::String& libelle) {
@@ -777,6 +791,22 @@ void TrackListComponent::basculerMuet(size_t index) {
 
 void TrackListComponent::basculerSolo(size_t index) {
     if (index >= static_cast<size_t>(rows_.size()) || project_ == nullptr) return;
+    // D423 : LES GESTES DU S DU MIXEUR, ICI AUSSI. Ctrl+clic : solo exclusif
+    // (D21.2) ; Alt+clic : solo protégé (D30.1). Le S de la ligne les ignorait,
+    // et le même signe se comportait autrement à deux endroits.
+    const auto mods = juce::ModifierKeys::getCurrentModifiers();
+    if (mods.isCtrlDown() || mods.isCommandDown()) {
+        rows_[static_cast<int>(index)]->rafraichirSolo();   // le bouton a basculé seul : on le rend
+        if (onExclusiveSoloRequested) onExclusiveSoloRequested(index);
+        return;
+    }
+    if (mods.isAltDown()) {
+        if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Solo protégé"));
+        project_->tracks[index].soloSafe = !project_->tracks[index].soloSafe;
+        rows_[static_cast<int>(index)]->rafraichirSolo();
+        if (onTracksChanged) onTracksChanged();
+        return;
+    }
     const std::set<size_t> cible = selectionPourUnGesteSur(index);
     const bool etat = !project_->tracks[index].solo;
     if (onEditStarted) onEditStarted("Solo");

@@ -358,6 +358,23 @@ public:
         // premier BOUTON visible qui porte ce nom. Les deux commandes du MASTER
         // sont des boutons, et ni `appuyer:` ni `doubleclic:` ne voient autre
         // chose que des curseurs : rien ne les atteignait.
+        // D423 : modificateur:<alt|ctrl|maj>:<geste> -- le geste intérieur joué
+        // touche tenue. Les `onClick` lisent `ModifierKeys::getCurrentModifiers()`,
+        // l'état GLOBAL, et non l'événement : c'est donc lui qu'on pose, le temps
+        // du geste, puis qu'on rend.
+        if (geste.startsWithIgnoreCase("modificateur:")) {
+            const auto reste = geste.fromFirstOccurrenceOf(":", false, false);
+            const auto quel = reste.upToFirstOccurrenceOf(":", false, false).toLowerCase();
+            const int drapeau = quel == "alt"  ? juce::ModifierKeys::altModifier
+                              : quel == "ctrl" ? juce::ModifierKeys::ctrlModifier
+                              : quel == "maj"  ? juce::ModifierKeys::shiftModifier : 0;
+            if (drapeau == 0) return false;
+            const auto avant = juce::ModifierKeys::currentModifiers;
+            juce::ModifierKeys::currentModifiers = avant.withFlags(drapeau);
+            const bool fait = runTrackGestureForCapture(reste.fromFirstOccurrenceOf(":", false, false));
+            juce::ModifierKeys::currentModifiers = avant;
+            return fait;
+        }
         if (geste.startsWithIgnoreCase("cliquer:"))
             return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         // D356 : exporter-midi:<fichier> -- L'EXPORT COMME GESTE, pour qu'un geste

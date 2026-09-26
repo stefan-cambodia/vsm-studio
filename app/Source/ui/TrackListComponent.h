@@ -99,6 +99,7 @@ public:
     /// ouvert pour tout le lot) et met son bouton d'accord.
     void poserMuet(bool muet);
     void poserSolo(bool solo);
+    void rafraichirSolo();   ///< D423 : état, « S+ », infobulle
     /// D37.1 : renomme la piste par le chemin du champ de nom (le libellé
     /// change, donc `onTextChange` part, donc le pas d'historique aussi).
     void renommer(const juce::String& nom);
@@ -234,6 +235,8 @@ public:
     /// elle ne sait pas plus que la ligne ce qu'est un historique.
     std::function<void(const juce::String& label)> onEditStarted;
     std::function<void()> onTracksChanged;
+    /// D423 : Ctrl+clic sur le S d'une ligne -- le solo exclusif de l'application.
+    std::function<void(size_t)> onExclusiveSoloRequested;
     /// D37.1 : une piste a été renommée (voir `TrackRowComponent::onRenamed`).
     std::function<void()> onRenamed;
     /// D39.3 : LA SÉLECTION A CHANGÉ. Les autres panneaux qui dessinent des

@@ -32858,3 +32858,51 @@ du dock, les listes de machines (leur texte est le nom de la machine) — elles 
 nomment elles-mêmes. Restent à regarder : M et S des lignes de piste (le
 standard des consoles, mais sans rappel de leur geste Maj/Alt s'il en existe),
 et « MIDI LEARN » de la façade.
+
+---
+
+### Phase D423 — le S d'une ligne de piste ignorait Ctrl et Alt, que le S du mixeur annonce (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D422.** Le S d'une tranche du mixeur
+porte « Solo. Ctrl+clic : solo exclusif. Alt+clic : protéger cette piste du solo
+des autres », et le fait (D21.2, D30.1). Le S de la LIGNE de la même piste n'a
+pas d'infobulle et ne lit aucun modificateur : Ctrl+clic et Alt+clic y font un
+solo ordinaire. Le même signe se comporte autrement à deux endroits ; Cubase
+traite Ctrl et Alt pareil dans la liste et dans la console.
+
+**LE BANC** : un verbe neuf, `modificateur:<alt|ctrl|maj>:<geste>`, qui pose
+`juce::ModifierKeys::currentModifiers` le temps du geste intérieur — c'est ce
+que lisent les `onClick` (`getCurrentModifiers()`), pas l'événement. Entré seul
+dans un premier binaire, pour que le témoin sorte du même code. Mesure : une
+copie de la démo où « Drums » est déjà en solo ; le projet est écrit APRÈS le
+geste (`VSM_ENREGISTRER`) et ses champs `solo`/`soloSafe` sont lus.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin, `modificateur:ctrl:cliquer:pistes.solo` (le S d'« Acid Bass ») :
+   Acid Bass solo ET Drums solo (Ctrl ignoré) ; `modificateur:alt:…` : Acid Bass
+   solo, `soloSafe` faux ;
+2. après : Ctrl → Acid Bass **seul** en solo (Drums éteint) ; Alt → Acid Bass
+   `soloSafe` vrai, son solo INCHANGÉ, et sa ligne affiche « S+ » ;
+3. l'infobulle du S de la ligne est celle du mixeur ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU.** Copie de la démo, « Drums » en solo ; projet relu après le
+geste (`VSM_ENREGISTRER`).
+
+| geste sur le S de la ligne « Acid Bass » | témoin (verbe seul) | après |
+|---|---|---|
+| aucun | Acid Bass —, Drums solo | identique |
+| `modificateur:ctrl:cliquer:pistes.solo` | Acid Bass solo **et** Drums solo | Acid Bass solo, **Drums éteint** |
+| `modificateur:alt:cliquer:pistes.solo` | Acid Bass solo, `soloSafe` faux | Acid Bass **non** solo, `soloSafe` **vrai** ; « S+ » ×2 (ligne et tranche) |
+
+L'infobulle « Solo. Ctrl+clic : solo exclusif. Alt+clic : protéger cette piste
+du solo des autres. » est relevée **4** fois (deux lignes, deux tranches) ; la
+version « Solo PROTÉGÉ » sur les deux S d'Acid Bass après Alt. Le banc dit
+« AMBIGU » (deux boutons `pistes.solo`) et presse le premier — c'est bien
+Acid Bass, comme le montre le projet relu. Fumée 0 raté ; préférences
+inchangées.
+
+La garde de langue a d'abord été ROUGE, à raison : le libellé du pas
+d'annulation, « Solo protégé », n'était pas dans la table. Ajouté
+(« Protected solo »), binaire refait, mesure Alt rejouée à l'identique, fumée
+0 raté.

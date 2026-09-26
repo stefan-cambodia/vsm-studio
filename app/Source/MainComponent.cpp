@@ -330,6 +330,7 @@ MainComponent::MainComponent()
     };
     mixer_.onMixEditStarted = [this] { beginProjectEdit("Mixage"); };
     mixer_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };
+    trackList_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };   // D423
     // D16.8 : la console écrit l'automation en jouant, et il lui faut la
     // position du transport et son état -- deux choses qu'elle ne peut pas
     // connaître seule.

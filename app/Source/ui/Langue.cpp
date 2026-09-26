@@ -1268,6 +1268,8 @@ const Paire kAnglais[] = {
       "Sample rate of the sound card. To change it: File ▸ Audio settings..." },
     { "Carte son",
       "Sound card" },
+    { "Solo protégé",
+      "Protected solo" },
     { "Aimant : les notes posées et déplacées se calent sur la grille",
       "Snap: notes you draw and move lock to the grid" },
     { "Fantômes : les notes des autres pistes, en transparence, pour écrire en regard",
