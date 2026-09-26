@@ -10422,8 +10422,8 @@ bool MainComponent::showBoxForCapture(const juce::String& nom) {
             reconstructionChain_.reason =
                 "la cha\u00eene d'analyse (le dossier analyse/) est introuvable \u00e0 c\u00f4t\u00e9 de "
                 "l'application";
-            reconstructionChain_.remedy =
-                "indiquer son emplacement dans Fichier \u25b8 Cha\u00eene d'analyse...";
+            reconstructionChain_.remedy =   // D403 : le vrai nom de l'entrée, comme le moteur
+                "indiquer son emplacement dans Fichier \u25b8 Indiquer le dossier de la cha\u00eene...";
             boiteReconstructionIndisponible();
             reconstructionChain_.reason = raison;
             reconstructionChain_.remedy = remede;

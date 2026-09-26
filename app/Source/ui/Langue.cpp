@@ -2928,8 +2928,8 @@ const Paire kAnglais[] = {
       "fix the path, or clear it to let the application search" },
     { "la chaîne d'analyse (le dossier analyse/) est introuvable à côté de l'application",
       "the analysis chain (the analyse/ folder) cannot be found next to the application" },
-    { "indiquer son emplacement dans Fichier ▸ Chaîne d'analyse...",
-      "set its location in File ▸ Analysis chain..." },
+    { "indiquer son emplacement dans Fichier ▸ Indiquer le dossier de la chaîne...",   // D403
+      "set its location in File ▸ Set the analysis chain folder..." },
     { "Terminé — le projet est ouvert, l'original en regard",
       "Done — the project is open, the original alongside" },
     { "%1 — parité des pistes",

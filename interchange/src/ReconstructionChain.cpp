@@ -65,7 +65,8 @@ ReconstructionChain ReconstructionChain::locate(const std::string& startFolder,
         if (chaine.chainFolder.empty()) {
             chaine.reason = "la chaîne d'analyse (le dossier analyse/) est introuvable à côté de "
                             "l'application";
-            chaine.remedy = "indiquer son emplacement dans Fichier ▸ Chaîne d'analyse...";
+            // D403 : le VRAI nom de l'entrée, affichée juste en dessous de ce remède.
+            chaine.remedy = "indiquer son emplacement dans Fichier ▸ Indiquer le dossier de la chaîne...";
             return chaine;
         }
     }

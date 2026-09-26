@@ -109,7 +109,7 @@ fi   # GARDES_SEULES
 titre "Gardes des sources (tools/, D378)"
 for garde in "accents-francais.py" "clips-numerotes.py" "index-a-jour.py" \
              "inventaire_langue.py --garde" "inventaire_langue.py --doublons" \
-             "menus-des-regles.py" "noms-des-gestes.py" "raccourcis-affiches.py" \
+             "menus-des-regles.py" "menus-cites.py" "noms-des-gestes.py" "raccourcis-affiches.py" \
              "tables-markdown.py"; do
     # Le nom et ses options se séparent ici : un seul mot passé à python
     # chercherait un fichier « inventaire_langue.py --garde ».

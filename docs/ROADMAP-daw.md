@@ -32115,3 +32115,49 @@ serré. Garde de langue 0 ; banc de fumée 0 raté ; préférences inchangées.
 **Non éprouvé** : l'apprentissage lui-même (il faudrait un contrôleur MIDI qui
 tourne pendant le banc) ; le texte suit le code qui le fait (`onParamTouched` →
 `armMidiLearn`).
+
+---
+
+### Phase D403 — un remède citait une entrée de menu qui n'existe pas, juste au-dessus de celle qu'il désigne (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE D402, CHERCHÉE EN FAMILLE.** D402 a trouvé un texte qui
+décrivait un geste inexistant. Plutôt que de chercher les autres un à un, les
+chemins « A ▸ B » cités par le dictionnaire ont été confrontés à la barre de
+menus réelle (`VSM_MENU_LISTE`). Un seul ment : quand la chaîne d'analyse est
+introuvable, le menu *Fichier* affiche la raison, puis le remède « indiquer son
+emplacement dans **Fichier ▸ Chaîne d'analyse...** », puis la vraie entrée —
+« **Indiquer le dossier de la chaîne...** ». Le remède (écrit dans
+`interchange/ReconstructionChain.cpp`) nomme une entrée qui n'a jamais porté ce
+nom, une ligne au-dessus de celle qu'il désigne. Les trois autres chemins
+relevés sont justes (« Piste ▸ Déverrouiller la piste » : le libellé change
+quand la piste est verrouillée ; « Fichier ▸ Exporter ▸ Archive de pistes » :
+un menu de Cubase ; le dernier, un faux positif de la détection).
+
+**LE CORRECTIF** : le remède cite le vrai nom, en français et en anglais. Et une
+garde des sources, `tools/menus-cites.py`, que `verifier.sh --gardes` lance :
+chaque chemin « A ▸ B » d'une clé du dictionnaire doit finir par une entrée qui
+EXISTE comme clé (tous les libellés de menu passent par `tr`) ; une phrase qui
+décrit un autre logiciel (Cubase, Live, FL Studio) n'est pas jugée.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** : la garde, sur le code d'AVANT, rend
+**1** faute nommée (« Chaîne d'analyse... ») et le code 1 ; sur le code corrigé,
+**0** ; une citation fausse injectée la fait retomber à 1 ; tests `interchange`
+verts ; garde de langue 0.
+
+**MESURÉ.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | code d'avant : 1 faute nommée, code 1 | « RATÉ « Chaîne d'analyse... » n'est l'entrée d'aucun menu », code 1 — après DEUX corrections de la garde elle-même, faites avant de conclure : sa première forme MANQUAIT la faute (« Chaîne d'analyse », titre de section des Préférences, était pris pour un préfixe valide) et ACCUSAIT « Nouveau depuis le modèle l'ouvrira » (la phrase continue après le nom) ; la seconde accusait « Réglages audio… » contre « Réglages audio... » — le même signe, désormais normalisé | TENU |
+| 2 | code corrigé : 0 | **0** faute sur 8 citations, code 0 | TENU |
+| 3 | citation fausse injectée : 1 | « Affichage ▸ Tableau des machines... » injectée : 1 faute nommée, code 1 ; `Langue.cpp` restauré (`cmp`) | TENU |
+| 4 | tests, garde de langue | `interchange` 307 ; garde de langue 0 — et c'est ELLE qui a trouvé la COPIE du remède que `MainComponent.cpp` garde pour un banc (D243, en échappements `\u`, que `menus-cites.py` ne lit pas), mise à jour | TENU |
+
+À l'écran (`VSM_BOITE_ESSAI=indisponible`, la boîte d'une chaîne introuvable) :
+« Fichier ▸ Indiquer le dossier de la chaîne... » en `fr`, « File ▸ Set the
+analysis chain folder... » en `en`. Banc de fumée 0 raté ; préférences
+inchangées. `verifier.sh --gardes` lance désormais `menus-cites.py`.
+
+**Reste nommé, non fait** : la garde ne lit que les CLÉS du dictionnaire ; une
+phrase écrite en échappements `\u` dans le code (la copie de banc ci-dessus) lui
+échappe — la garde de langue, elle, l'a vue.
