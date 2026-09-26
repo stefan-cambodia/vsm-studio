@@ -609,6 +609,18 @@ void MachinePanelComponent::mesurerSiDemande() const {
                << juce::String(control.caption->getFont().getHeight(), 1) << "\t"
                << juce::String(besoinDeLargeur(*control.caption), 2) << "\n";
     }
+    // D390 : ET LES TITRES DE BLOC, que la mesure ne lisait pas. Même format ;
+    // type « titre », la cellule et le cadre sont ceux du libellé.
+    for (size_t i = 0; i < sectionTitles_.size() && i < panel_->sections.size(); ++i) {
+        const auto& titre = *sectionTitles_[i];
+        const auto cadre = titre.getBounds();
+        lignes << toJuce(panel_->pluginId) << "\t" << getWidth() << "x" << getHeight() << "\t"
+               << toJuce(panel_->sections[i].title) << "\t" << titre.getText() << "\ttitre\t"
+               << cadre.getWidth() << "\t" << cadre.getHeight() << "\t"
+               << cadre.getWidth() << "\t" << cadre.getHeight() << "\t0\t"
+               << juce::String(titre.getFont().getHeight(), 1) << "\t"
+               << juce::String(besoinDeLargeur(titre), 2) << "\n";
+    }
     if (lignes.isEmpty()) return;
     if (!fichier.existsAsFile())
         // EN-TÊTE SANS ACCENT : `juce::String(const char*)` lit les octets en

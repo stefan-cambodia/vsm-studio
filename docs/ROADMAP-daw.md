@@ -31579,3 +31579,44 @@ sur le périphérique CHOISI — la liste des noms de l'ALSA en compte de près 
 Deux lignes de mise au point, écrites au journal pendant la recherche, ont été
 retirées ; la largeur retenue reste dite (« Réglages audio : fenêtre de N px »).
 Banc de fumée 0 raté ; garde de langue 0 ; préférences inchangées.
+
+---
+
+### Phase D390 — la garde des façades mesurait l'écran du jour, et son juge se trompait de passe (26/09/2026)
+
+**D'OÙ ELLE VIENT.** Pour mesurer les TITRES de bloc des façades (D389 en a
+révélé un coupé, « MIXER »), `VSM_MESURE_FACADE` écrit désormais une ligne par
+titre (type `titre`, police et besoin). Le premier balayage avec ces lignes a
+rendu la garde ROUGE : « 2 façade(s) sur 63 sous 18 px » — `vsm.pcmhybrid` et
+`vsm.wavetable` à **2 px** — et 1 sérigraphie coupée au lieu de 3.
+
+**TROIS CAUSES, AUCUNE DANS LES FAÇADES.**
+1. **Les titres entraient dans les comptes** de sérigraphie (1 335 au lieu de
+   1 073). Exclus (`$5 != "titre"`).
+2. **Le juge de D380 se trompait de passe.** « La dernière disposition À LA PLUS
+   GRANDE LARGEUR » a pris, pour ces deux machines, la passe TRANSITOIRE à la
+   taille du rack (364 × 626), avant que la façade ne prenne sa hauteur
+   naturelle et sa barre de défilement (356 × 1 086). Chaque règle simple a son
+   contre-exemple : « la dernière » se trompe sur chebyshev (une passe à 197 px
+   arrive APRÈS la bonne), « la plus large » ici. Règle gardée : la DERNIÈRE
+   passe parmi celles à moins de 16 px de la plus grande largeur — la barre de
+   défilement en prend 8.
+3. **La garde mesurait l'écran.** Le même code a donné des dispositions finales
+   de 356 × 642 (balayage de D382) puis de 364 × 797 : l'écran était passé de
+   1 920 × 1 200 à **3 200 × 2 000** (`xrandr`), la fenêtre par défaut avait
+   grandi, le rack aussi, et les façades ne défilaient plus. La garde fixe
+   désormais la fenêtre du banc (`VSM_TAILLE`, 1 280 × 800 logiques par défaut :
+   un 1 920 × 1 200 à 150 %, la plus serrée, celle des mesures de D294 à D382).
+
+**L'ATTENDU, POSÉ AVANT LE BALAYAGE À FENÊTRE FIXÉE** : redonner à l'identique
+le balayage de D382. **Mesuré : 63 tailles de façade sur 63 identiques, et les
+1 073 lignes de commande identiques** ; verdict 0 / 63 sous 18 px, 3 coupées.
+Rejugés par le juge corrigé, les balayages de D380 et D382 restent verts (la
+passe instable de D380 comprise), ceux d'avant le correctif de fmdrums restent
+rouges.
+
+**LA POPULATION DES TITRES** (fenêtre fixée) : **262 titres, tous à 11 pt gras**
+— sous le plancher de 12 que D379 a donné aux sérigraphies ; 240 tiennent,
+9 comprimés, **13 coupés** : 12 emplacements du sampler (cases de 30 px pour
+« 16 COWBELL », « 11 MID TOM »…) et « COWBELL / WOOD » des percussions (54 px).
+C'est la phase suivante.
