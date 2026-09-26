@@ -520,10 +520,15 @@ void EffectChainComponent::rebuildParamControls() {
             juce::Slider* raw = pc.slider.get();
             const std::string nom = info.name;
             const int slot = selectedEffect_;
+            raw->setName("effet-midi." + juce::String::fromUTF8(info.name));   // D429 : le nom du banc (valeur:)
             raw->onDragStart = [this] {
+                glisseEnCours_ = true;   // D429
                 if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Réglage d'effet MIDI"));
             };
+            raw->onDragEnd = [this] { glisseEnCours_ = false; };   // D429
             raw->onValueChange = [this, raw, nom, slot] {
+                // D429 : hors glissé (saisie, molette, clavier), le pas s'ouvre ici.
+                if (!glisseEnCours_ && onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Réglage d'effet MIDI"));
                 auto* c = activeMidiChain();
                 if (!c || slot < 0 || static_cast<size_t>(slot) >= c->size()) return;
                 (*c)[static_cast<size_t>(slot)].parameters[nom] = static_cast<float>(raw->getValue());
@@ -568,9 +573,13 @@ void EffectChainComponent::rebuildParamControls() {
         if (!info.unit.empty()) pc.slider->setTextValueSuffix(" " + juce::String(info.unit));
         const auto pid = info.id;
         juce::Slider* raw = pc.slider.get();
+        raw->setName("effet." + juce::String::fromUTF8(info.name.c_str()));   // D429 : le nom du banc (valeur:)
         const int slot = selectedEffect_;
-        raw->onDragStart = [this] { if (onEditStarted) onEditStarted(u8"Réglage d'effet"); };
+        raw->onDragStart = [this] { glisseEnCours_ = true; if (onEditStarted) onEditStarted(u8"Réglage d'effet"); };
+        raw->onDragEnd = [this] { glisseEnCours_ = false; };   // D429
         raw->onValueChange = [this, fx, raw, pid, slot] {
+            // D429 : hors glissé (saisie, molette, clavier), le pas s'ouvre ici.
+            if (!glisseEnCours_ && onEditStarted) onEditStarted(u8"Réglage d'effet");
             fx->setParameter(pid, static_cast<float>(raw->getValue()));
             // ET dans la piste, tout de suite : un réglage qui ne vit que dans
             // l'objet vivant est un réglage perdu à la fermeture. On re-décrit

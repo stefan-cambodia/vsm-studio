@@ -33073,3 +33073,39 @@ préférences inchangées.
 
 Fumée 0 raté ; préférences inchangées. Tous les curseurs de la console
 ouvrent désormais leur pas, glissés ou non.
+
+---
+
+### Phase D429 — un réglage d'effet saisi dans sa case ne s'annulait pas (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE BALAYAGE DE TOUS LES PANNEAUX après D428** (chaque
+`onDragStart` qui ouvre un pas, et le `onValueChange` du même curseur) : deux
+restes, tous deux dans `EffectChainComponent` — les réglages des effets audio
+(« Réglage d'effet ») et des effets MIDI (« Réglage d'effet MIDI »). Leurs
+curseurs ont une case de saisie (`TextBoxBelow`) : la saisie, la molette et le
+clavier changeaient le réglage sans pas.
+
+**LE BANC** : les curseurs reçoivent un nom (`effet.<paramètre>`,
+`effet-midi.<paramètre>`), seuls dans un premier binaire. Mesure : copie de la
+démo portant un compresseur, onglet Effets, `cliquer:Compressor` (le choisir),
+`valeur:effet.Threshold=-30`, puis « ctrl + Z » ; le projet relu après
+(`VSM_ENREGISTRER`).
+
+**ATTENDU, écrit avant la mesure** : témoin — le seuil reste à -30 après
+Ctrl+Z, historique vide ; après — rendu à sa valeur d'avant, historique
+« Réglage d'effet » ; un glissé reste un seul pas ; fumée 0 raté ; préférences
+inchangées.
+
+**MESURÉ — TENU.** Copie de la démo, compresseur sur « Acid Bass » (réglages
+d'usine : `parameters {}` au fichier), projet relu après le geste.
+
+| cas | témoin (noms seuls) | après |
+|---|---|---|
+| `valeur:effet.Threshold=-30` | seuil -30, historique vide | seuil -30, « Réglage d'effet » |
+| … puis « ctrl + Z » | **seuil -30** | **`{}`** — rendu à l'usine |
+| `appuyer:effet.Threshold` (glissé) | — | un pas, valeur inchangée |
+
+Le chemin MIDI (`effet-midi.*`) reçoit la même règle, par le même code ; il
+n'est pas mesuré ici (aucun effet MIDI sur la démo). Fumée 0 raté ;
+préférences inchangées. Le balayage de D428 ne trouve plus de curseur dont le
+glissé ouvre un pas et la saisie non.

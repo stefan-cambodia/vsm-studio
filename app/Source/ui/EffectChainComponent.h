@@ -170,6 +170,7 @@ private:
     double sampleRate_ = 48000.0;
     int blockSize_ = 512;
     int selectedEffect_ = -1;
+    bool glisseEnCours_ = false;   ///< D429 : un glissé a déjà ouvert son pas
 
     /// Instances vivantes, alignées piste par piste sur `project_->tracks`.
     /// Reconstruites en bloc à chaque changement de structure : jamais
