@@ -9,6 +9,7 @@ using vsm::audio::engine::Tick;
 using namespace vsm::ui;
 
 AutomationComponent::AutomationComponent() {
+    setName("automation.lane");   // D435 : le nom par lequel le banc le désigne (clic:)
     // D94 : les trois libellés sont posés par `retraduire()`, en fin de
     // constructeur, puis à chaque bascule de langue.
     // D381 : À LA POLICE PAR DÉFAUT, comme MIDI CC et Tempo. Ils étaient fixés à
@@ -176,7 +177,7 @@ void AutomationComponent::rebuildParamBox() {
                 if (premierAvecPoints < 0) premierAvecPoints = itemId - 1;
             }
             paramBox_.addItem(libelle, itemId++);
-            paramEntries_.push_back({info.id, info.minValue, info.maxValue, info.unit});
+            paramEntries_.push_back({info.id, info.minValue, info.maxValue, info.unit, info.name});
         }
         if (paramBox_.getNumItems() > 0) {
             // déclenche onChange -> sélection
@@ -301,8 +302,18 @@ void AutomationComponent::mouseDown(const juce::MouseEvent& e) {
     if (!hasSelection_ || !editorArea().contains(e.getPosition())) return;
 
     int hit = findPointNear(e.getPosition());
+    // D435 : UN PAS PAR GESTE, ouvert AVANT que la courbe ne change. L'onglet
+    // Automation n'en ouvrait aucun : un point posé ne s'annulait pas.
+    const auto ouvrirPas = [this] {
+        if (!onEditStarted) return;
+        juce::String nom;
+        for (const auto& entree : paramEntries_)
+            if (entree.id == selectedParam_) nom = juce::String::fromUTF8(entree.nom.c_str());
+        onEditStarted(selectedTrack_, nom);
+    };
     if (e.mods.isRightButtonDown() || e.mods.isPopupMenu()) {
         if (hit >= 0) {
+            ouvrirPas();
             editPoints_.erase(editPoints_.begin() + hit);
             dragIndex_ = -1;
             commit();
@@ -311,6 +322,7 @@ void AutomationComponent::mouseDown(const juce::MouseEvent& e) {
         return;
     }
 
+    ouvrirPas();   // D435 : un glissé qui commence, ou un point qu'on pose
     if (hit >= 0) {
         dragIndex_ = hit;
     } else {

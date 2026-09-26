@@ -411,6 +411,16 @@ MainComponent::MainComponent()
     automation_.instrumentProvider = [this](size_t track) {
         return audioEngine_.processGraph().trackInstrument(track);
     };
+    // D435 : le pas d'un geste d'automation, ouvert AVANT que la courbe ne
+    // change -- « Automation — Waveform — Acid Bass ».
+    automation_.onEditStarted = [this](size_t piste, const juce::String& parametre) {
+        const juce::String tiret = juce::String::fromUTF8(" \xe2\x80\x94 ");
+        juce::String libelle = "Automation";
+        if (parametre.isNotEmpty()) libelle += tiret + parametre;
+        if (piste < project_.tracks.size() && !project_.tracks[piste].name.empty())
+            libelle += tiret + juce::String::fromUTF8(project_.tracks[piste].name.c_str());
+        beginProjectEdit(libelle);
+    };
     automation_.onAutomationChanged =
         [this](const std::vector<vsm::audio::engine::AutomationLane>& lanes) {
             currentAutomation_ = lanes;
@@ -1614,6 +1624,43 @@ bool MainComponent::valeurPourCapture(const juce::String& nom, double valeur) {
                                       : juce::String(u8" — aucun curseur visible de ce nom"))
                 + "\n").toRawUTF8(), stderr);
     return curseur != nullptr;
+}
+
+bool MainComponent::clicPourCapture(const juce::String& description) {
+    // D435 : « nom:fx,fy[:droit] ». La recherche est celle de `appuyer:`, mais sur
+    // tout composant (une lane n'est pas un curseur) : visible, avec une surface.
+    const juce::String nom = description.upToFirstOccurrenceOf(":", false, false);
+    const juce::String reste = description.fromFirstOccurrenceOf(":", false, false);
+    const bool droit = reste.endsWithIgnoreCase(":droit");
+    const juce::String position = droit ? reste.upToLastOccurrenceOf(":", false, false) : reste;
+    const float fx = position.upToFirstOccurrenceOf(",", false, false).getFloatValue();
+    const float fy = position.fromFirstOccurrenceOf(",", false, false).getFloatValue();
+    std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
+        if (c.getName() == nom && !c.getLocalBounds().isEmpty()) return &c;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Component* cible = chercher(*this);
+    for (int i = 0; cible == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+        if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
+            cible = chercher(*fenetre);
+    std::fputs(("VSM_CLIC_POSITION : " + description
+                + (cible != nullptr ? juce::String::fromUTF8(" \xe2\x80\x94 cliqu\xc3\xa9")
+                                    : juce::String::fromUTF8(" \xe2\x80\x94 aucun composant visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    if (cible == nullptr) return false;
+    const juce::Point<float> point(fx * static_cast<float>(cible->getWidth()), fy * static_cast<float>(cible->getHeight()));
+    const auto maintenant = juce::Time::getCurrentTime();
+    const juce::ModifierKeys bouton(droit ? juce::ModifierKeys::rightButtonModifier : juce::ModifierKeys::leftButtonModifier);
+    const juce::MouseEvent appui(juce::Desktop::getInstance().getMainMouseSource(), point, bouton, 1.0f,
+                                 0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, point, maintenant, 1, false);
+    cible->mouseDown(appui);
+    const juce::MouseEvent relache(juce::Desktop::getInstance().getMainMouseSource(), point, juce::ModifierKeys(), 1.0f,
+                                   0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, point, maintenant, 1, false);
+    cible->mouseUp(relache);
+    return true;
 }
 
 bool MainComponent::appuyerPourCapture(const juce::String& nom) {

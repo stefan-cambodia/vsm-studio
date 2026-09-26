@@ -60,6 +60,10 @@ public:
 
     /// Émis après chaque édition : liste complète des lanes à publier.
     std::function<void(const std::vector<vsm::audio::engine::AutomationLane>&)> onAutomationChanged;
+    /// D435 : le DÉBUT d'un geste qui va changer une courbe (poser, retirer,
+    /// glisser un point) -- l'hôte y ouvre le pas d'annulation, AVANT que la
+    /// courbe ne change. La piste et le nom du paramètre nomment le pas.
+    std::function<void(size_t piste, const juce::String& parametre)> onEditStarted;
 
     /// D37.1 : relit les NOMS des pistes dans la liste déroulante, sans
     /// toucher aux lanes. Le nom d'une piste s'affiche à sept endroits ; celui
@@ -97,7 +101,7 @@ private:
     juce::Label trackLabel_, paramLabel_, hintLabel_;
     juce::ComboBox trackBox_, paramBox_;
 
-    struct ParamEntry { vsm::audio::plugin::ParamId id; float min; float max; std::string unit; };
+    struct ParamEntry { vsm::audio::plugin::ParamId id; float min; float max; std::string unit; std::string nom; };
     bool echelleLog_ = false;   ///< D327 : fréquences (Hz, plus d'une décade) sur une échelle logarithmique
     std::vector<ParamEntry> paramEntries_; // parallèle aux items de paramBox_
 

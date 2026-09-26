@@ -33252,3 +33252,50 @@ Fenêtre élargie (quatre lignes avant) : **verte, 7 comparaisons, 0 branche
 morte** ; **rouge, 5 lignes nommées couvrant les 4 blocs**. Attendu tenu après
 correction de la garde ; c'est la deuxième garde de la journée que l'essai en
 rouge a corrigée avant qu'elle ne serve (D430).
+
+---
+
+### Phase D435 — un point d'automation posé à la souris s'annule-t-il ? (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN CHERCHANT OÙ S'OUVRENT LES PAS DES LANES.** La lane du
+tempo et celle des contrôleurs MIDI ouvrent leur pas (`history_->beginEdit`).
+L'onglet Automation n'en ouvre AUCUN : `AutomationComponent` n'a ni
+`beginEdit` ni `onEditStarted`, et son `onAutomationChanged` écrit les lanes
+dans le projet (`captureSessionIntoProject`) sans `beginProjectEdit`. Poser,
+déplacer ou retirer un point ne s'annulerait donc pas.
+
+**LE BANC** : un verbe neuf, `clic:<nom>:<fx>,<fy>[:droit]`, qui appuie et
+relâche la souris sur un composant nommé, à une position relative (0 à 1) ; la
+lane s'appelle `automation.lane`. Les deux, seuls, dans un premier binaire.
+Mesure : onglet Automation de la démo, `clic:automation.lane:0.5,0.5`, puis
+« ctrl + Z » ; le projet relu après (`VSM_ENREGISTRER`), points comptés.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin : un point posé ; historique vide ; après Ctrl+Z, **toujours** un
+   point — si le point disparaît, l'annulation passait par ailleurs, et la
+   phase s'arrête au banc ;
+2. après correctif (le pas s'ouvre au DÉBUT du geste, `mouseDown` — un clic qui
+   pose, un clic droit qui retire, un glissé qui déplace : un pas chacun) :
+   historique « Automation — <paramètre> — Acid Bass », et Ctrl+Z rend zéro
+   point ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ.** Onglet Automation de la démo (« Acid Bass », paramètre Waveform),
+projet relu après le geste.
+
+| cas | témoin (verbe et nom seuls) | après |
+|---|---|---|
+| `clic:automation.lane:0.5,0.6` | 1 point, historique **vide** | 1 point, « Automation — Waveform — Acid Bass » |
+| … puis « ctrl + Z » | **1 point** — rien à annuler | **0 point** |
+| deux clics (0.4,0.6 ; 0.6,0.3) | — | 2 points, deux pas |
+| … puis « ctrl + Z » | — | 1 point : le dernier seul est annulé |
+
+1. **Le défaut est établi** : un point posé dans l'onglet Automation ne
+   s'annulait pas.
+2. **TENU** pour la pose et le glissé (un pas par geste, ouvert au début).
+3. **NON MESURÉ, et dit** : le retrait au clic droit. Un clic droit au MÊME
+   endroit que la pose n'a rien retiré (1 point, 1 pas) : le point posé n'est
+   pas dessiné exactement sous le clic (il suit la grille), et le second clic le
+   manque. C'est la géométrie du banc, pas une mesure du correctif ; le retrait
+   passe par le même `ouvrirPas()` au même endroit du code.
+
+Fumée 0 raté ; préférences inchangées.

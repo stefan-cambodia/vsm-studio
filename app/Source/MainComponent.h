@@ -375,6 +375,12 @@ public:
             juce::ModifierKeys::currentModifiers = avant;
             return fait;
         }
+        // D435 : clic:<nom>:<fx>,<fy>[:droit] -- appuyer puis relâcher la souris sur
+        // le premier composant VISIBLE de ce nom, à une position relative (0 à 1).
+        // Pour les surfaces qui peignent leurs éléments (les lanes) et qu'aucun
+        // bouton ne désigne.
+        if (geste.startsWithIgnoreCase("clic:"))
+            return clicPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         if (geste.startsWithIgnoreCase("cliquer:"))
             return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         // D356 : exporter-midi:<fichier> -- L'EXPORT COMME GESTE, pour qu'un geste
@@ -424,6 +430,7 @@ public:
     bool appuyerPourCapture(const juce::String& nom);
     /// D415 : voir le geste `valeur:` ; la recherche est celle d'`appuyer:`.
     bool valeurPourCapture(const juce::String& nom, double valeur);
+    bool clicPourCapture(const juce::String& description);   ///< D435
     juce::Slider* curseurPourCapture(const juce::String& nom);
     /// D140 : voir le geste `doubleclic:` de `runTrackGestureForCapture`.
     bool doubleCliquerPourCapture(const juce::String& nomOuLegende);
