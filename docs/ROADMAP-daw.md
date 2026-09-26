@@ -33613,3 +33613,27 @@ VÉLOCITÉ, sa voisine. Règle 2 corrigée (le même objet ou son alias `raw =
 x.get()`, de 15 lignes avant à 40 après) : **verte, 10 jugés, 0 défaut** ;
 **rouge, 10 défauts sur 10**, chacun une fois. Troisième garde du jour que
 l'essai en rouge a corrigée avant qu'elle serve.
+
+---
+
+### Phase D447 — une piste renommée « » perdait son nom (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA SUITE DES SAISIES (D444-D445).** Le nom d'une piste
+s'édite au double-clic ; le texte tapé est écrit tel quel. Effacé (ou réduit à
+des espaces), il laisse une piste SANS NOM — alors que tout ce qui la désigne en
+dépend (l'historique de D425, les réserves de D407, l'export MIDI). Cubase
+rend l'ancien nom quand on valide un nom vide.
+
+**TÉMOIN** (`renommer:` sur « Acid Bass », relevé `VSM_PISTES`) : « » → une
+piste sans nom, et un pas « Renommer la piste — Acid Bass » ; « ␣␣␣ » → pareil ;
+« Basse » → « Basse ».
+
+**ATTENDU, écrit avant la mesure** : « » et « ␣␣␣ » → la piste garde « Acid
+Bass », AUCUN pas d'annulation ; « ␣Basse␣ » → « Basse » (sans les espaces) ;
+un nom identique à l'ancien n'ouvre pas de pas ; fumée 0 raté ; préférences
+inchangées.
+
+**MESURÉ — TENU.** `renommer:` sur « Acid Bass » : « » → « Acid Bass », aucun
+pas (témoin : piste sans nom, un pas) ; « ␣␣␣ » → pareil ; « ␣Basse␣ » →
+« Basse », un pas « Renommer la piste — Acid Bass » ; « Acid Bass » (inchangé)
+→ aucun pas. Fumée 0 raté ; préférences inchangées.

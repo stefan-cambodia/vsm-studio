@@ -36,10 +36,21 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
                         juce::dontSendNotification);
     nameLabel_.setEditable(false, true, false);
     nameLabel_.onTextChange = [this] {
+        // D447 : UN NOM VIDE N'EST PAS UN NOM. Effacé ou réduit à des espaces, il
+        // laissait une piste sans nom -- l'historique, les réserves et l'export la
+        // désignent par lui. L'ancien revient, sans pas d'annulation ; un nom
+        // inchangé n'en ouvre pas non plus.
+        const juce::String nouveau = nameLabel_.getText().trim();
+        const juce::String ancien = juce::String::fromUTF8(track_.name.c_str());
+        if (nouveau.isEmpty() || nouveau == ancien) {
+            nameLabel_.setText(ancien.isNotEmpty() ? ancien : nameLabel_.getText().trim(), juce::dontSendNotification);
+            return;
+        }
         // D36.1 : le signal part AVANT l'écriture. L'historique mémorise l'état
         // d'avant ; signaler après ferait photographier le nom déjà changé.
         debutEdition(u8"Renommer la piste");
-        track_.name = nameLabel_.getText().toStdString();
+        nameLabel_.setText(nouveau, juce::dontSendNotification);
+        track_.name = nouveau.toStdString();
         if (onChanged) onChanged();
         if (onRenamed) onRenamed();
     };
