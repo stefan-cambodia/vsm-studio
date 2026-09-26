@@ -518,6 +518,9 @@ public:
     /// D48 / D94 : l'infobulle du témoin de saturation -- la phase y reste
     /// lisible, puisqu'il lui prend sa ligne.
     void poserInfobulleSat();
+    /// D413 : éteint, le bus master ne touche rien -- ses boutons le montrent
+    /// (opacité réduite), sans cesser d'être réglables.
+    void refleterActivation();
 
 private:
     juce::Slider& addKnob(vsm::audio::plugin::ParamId id, const juce::String& label,

@@ -707,6 +707,7 @@ MasterStrip::MasterStrip() {
     enableButton_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentTeal);
     enableButton_.onClick = [this] {
         if (onMasterEnable) onMasterEnable(enableButton_.getToggleState());
+        refleterActivation();
     };
     addAndMakeVisible(enableButton_);
 
@@ -742,6 +743,7 @@ MasterStrip::MasterStrip() {
     addAndMakeVisible(phaseLabel_);
 
     addAndMakeVisible(meter_);
+    refleterActivation();
     retraduire();   // D94
 }
 
@@ -750,6 +752,10 @@ void MasterStrip::retraduire() {
                               u8"lue devient ce qu'on entend. Jamais dans un export."));
     phaseLabel_.setTooltip(tr(u8"Corrélation de phase : +1 en phase, 0 sans rapport, "
                               u8"négatif = la piste disparaît en mono."));
+    // D413 : le libellé redit le titre de la tranche ; l'infobulle dit ce qu'il allume.
+    enableButton_.setTooltip(tr(u8"Allume la chaîne du master : égaliseur, compresseur, saturation, "
+                                u8"limiteur. Éteinte, elle ne touche pas au son, et ses boutons, "
+                                u8"estompés, ne s'entendent pas."));
     if (satVue_) poserInfobulleSat();
 }
 
@@ -800,6 +806,20 @@ void MasterStrip::syncFromEngine() {
             k.slider->setValue(masterParamProvider(k.id), juce::dontSendNotification);
         enableButton_.setToggleState(masterParamProvider(MasterBus::kEnabled) >= 0.5f,
                                      juce::dontSendNotification);
+    }
+    refleterActivation();
+}
+
+void MasterStrip::refleterActivation() {
+    // D413 : LE BUS CONTOURNÉ SE VOIT. Éteint, `MasterBus::process()` ne touche
+    // rien, et les sept boutons s'affichaient exactement comme allumés (rapport
+    // de luminance 1,000) : on tournait COMP sans rien entendre ni savoir
+    // pourquoi. Ils restent RÉGLABLES -- on prépare un réglage avant de
+    // l'allumer --, seulement estompés, comme une section contournée de Cubase.
+    const float alpha = enableButton_.getToggleState() ? 1.0f : 0.4f;
+    for (auto& k : knobs_) {
+        k.slider->setAlpha(alpha);
+        k.label->setAlpha(alpha);
     }
 }
 

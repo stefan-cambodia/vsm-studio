@@ -32479,3 +32479,41 @@ le silence du détecteur.
 **Ce que la garde ne couvre pas, écrit** : les avertissements du RENDU
 (automation sans paramètre, audio rééchantillonné, machine en temps réel)
 n'atteignent pas ce volet à l'ouverture ; ils vivent dans le rapport d'export.
+
+---
+
+### Phase D413 — le MASTER éteint montrait sept boutons qui ne font rien (26/09/2026)
+
+**D'OÙ ELLE VIENT — EN REGARDANT LA TRANCHE MASTER.** Le bus master est
+CONTOURNÉ par défaut (`MasterBus`, « BYPASS PAR DÉFAUT : process() ne touche
+RIEN ») ; on l'allume par le bouton « MASTER » de la tranche. Éteint, ses sept
+boutons (LOW, MID, HIGH, COMP, RATIO, SAT, CEIL) s'affichent EXACTEMENT comme
+allumés, et le bouton n'a pas d'infobulle : son libellé redit le titre de la
+tranche. On tourne COMP, on n'entend rien, et rien ne dit pourquoi. Cubase et
+Live grisent une section contournée.
+
+**TÉMOIN MESURÉ AVANT LE CORRECTIF** (`docs/examples/demo-project`, 2117 ×
+1317, `VSM_GESTE_PISTE=cliquer:MASTER` pour l'état allumé) : sur les **1 241**
+pixels clairs (> 60) de la zone des boutons dans l'image allumée, luminance
+moyenne 112,9 éteint, 112,9 allumé — **rapport 1,000**.
+
+**LE CORRECTIF** : éteint, les sept boutons et leurs libellés passent à
+l'opacité 0,4 (ils restent réglables : on prépare un réglage avant de
+l'allumer) ; le bouton porte une infobulle qui dit ce qu'il allume et que,
+éteint, les boutons ne s'entendent pas.
+
+**ATTENDU, écrit avant la mesure** :
+1. même mesure, même masque : rapport éteint / allumé **≤ 0,65** (allumé
+   inchangé, à ± 1 près : 112,9) ;
+2. l'infobulle du bouton, relevée par `VSM_TEXTES_LISTE`, existe en `fr` et en
+   `en` ; garde de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ** (même projet, même zone, même masque de 1 241 pixels) :
+1. **TENU.** Éteint 67,6, allumé 112,9 : **rapport 0,599** (témoin 1,000 ;
+   seuil 0,65). L'état allumé est inchangé au pixel près : avant/après,
+   rapport 1,000. La photo le montre — les boutons et leurs libellés estompés,
+   encore lisibles : c'est un état qu'on doit voir, pas un texte qu'on cache.
+2. **TENU.** `VSM_TEXTES_LISTE` relève l'infobulle en `fr` (« Allume la chaîne
+   du master : égaliseur, compresseur, saturation, limiteur. Éteinte, … ») et
+   en `en` (« Turns on the master chain: … ») ; garde de langue 0 ; fumée 0
+   raté ; préférences inchangées.
