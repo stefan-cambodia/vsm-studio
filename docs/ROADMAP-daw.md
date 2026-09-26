@@ -33659,7 +33659,7 @@ inchangé ; la garde de D446 étendue aux champs de fenêtre
 (`getTextEditorContents(…).getDoubleValue()`), vue rouge sur l'arbre d'avant et
 verte après ; fumée 0 raté ; préférences inchangées.
 
-**MESURÉ — TENU.** `VSM_EXPORT_QUEUE`, aucune rendu déclenché (0 ligne
+**MESURÉ — TENU.** `VSM_EXPORT_QUEUE`, aucun rendu déclenché (0 ligne
 `VSM_EXPORT` : pas de fichier choisi) :
 
 | queue tapée | export audio, témoin → après | stems, témoin → après |
