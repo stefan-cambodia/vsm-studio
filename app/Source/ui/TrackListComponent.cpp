@@ -778,6 +778,13 @@ void TrackListComponent::armer(size_t index) {
     if (index < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(index)]->armerPourCapture();
 }
 
+juce::String TrackListComponent::pasPourLaCible(const juce::String& geste, const std::set<size_t>& cible) const {
+    // D441 : « Muet — Acid Bass » pour une piste ; « Muet » pour un lot.
+    if (cible.size() != 1 || project_ == nullptr || *cible.begin() >= project_->tracks.size()) return geste;
+    const auto& nom = project_->tracks[*cible.begin()].name;
+    return nom.empty() ? geste : geste + juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(nom.c_str());
+}
+
 void TrackListComponent::basculerMuet(size_t index) {
     if (index >= static_cast<size_t>(rows_.size()) || project_ == nullptr) return;
     const std::set<size_t> cible = selectionPourUnGesteSur(index);
@@ -785,7 +792,8 @@ void TrackListComponent::basculerMuet(size_t index) {
     // UN SEUL PAS POUR LE LOT (D38.2). Un pas par piste s'annulerait piste par
     // piste : taire six micros de batterie demanderait six Ctrl+Z pour revenir,
     // ce qui n'est pas annuler le geste, c'est le défaire à la main.
-    if (onEditStarted) onEditStarted(u8"Muet");
+    // D441 : UNE piste visée se nomme, comme au M/S de la tranche (D426).
+    if (onEditStarted) onEditStarted(pasPourLaCible(juce::String("Muet"), cible));
     for (size_t i : cible)
         if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->poserMuet(etat);
     refreshMuteSolo();   // D376 : les membres d'un dossier le disent aussi
@@ -812,7 +820,8 @@ void TrackListComponent::basculerSolo(size_t index) {
     }
     const std::set<size_t> cible = selectionPourUnGesteSur(index);
     const bool etat = !project_->tracks[index].solo;
-    if (onEditStarted) onEditStarted("Solo");
+    // D441 : UNE piste visée se nomme, comme au M/S de la tranche (D426).
+    if (onEditStarted) onEditStarted(pasPourLaCible(juce::String("Solo"), cible));
     for (size_t i : cible)
         if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->poserSolo(etat);
     if (onTracksChanged) onTracksChanged();

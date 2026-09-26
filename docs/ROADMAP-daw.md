@@ -33435,3 +33435,25 @@ inchangées.
 « escape » puis « ctrl + I » → prise, **2 sur 2** ; « ctrl + A » → 2 sur 2 ;
 « ctrl + A » puis « ctrl + I » → **0 sur 2**. Aucun pas d'annulation (la
 sélection n'est pas le projet). Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D441 — Maj+M et Maj+S s'inscrivaient « Muet » et « Solo », sans piste (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA MATRICE, GROUPE « PISTE ».** Maj+M et Maj+S (et les M/S
+des lignes) passent par `basculerMuet`/`basculerSolo` de la liste, qui agissent
+sur la SÉLECTION et ouvrent un pas « Muet » ou « Solo ». Le M et le S d'une
+tranche disent « Muet — Acid Bass » depuis D426 : le même geste ne s'inscrit
+pas pareil selon l'endroit.
+
+**TÉMOIN** (démo, « shift + M », puis « shift + S ») : « Muet », « Solo ».
+
+**ATTENDU, écrit avant la mesure** : une seule piste visée → « Muet — Acid
+Bass », « Solo — Acid Bass » ; plusieurs → « Muet », « Solo » inchangés ;
+Ctrl+Z annule toujours ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** « shift + M » → « Acid Bass0! », « Muet — Acid Bass » ;
+« shift + S » → « Solo — Acid Bass » ; puis Ctrl+Z → annulé ; « ctrl + shift + A »
+(les deux pistes) puis « shift + M » → « Acid Bass0! Drums0! », « Muet » — le
+lot garde le nom court ; en anglais « Mute — Acid Bass ». Fumée 0 raté ;
+préférences inchangées.

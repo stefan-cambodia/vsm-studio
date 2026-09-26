@@ -303,6 +303,7 @@ public:
     /// renverser chacune en laisserait quatre muettes et deux non, ce qui ne
     /// ressemble à aucune intention.
     void basculerMuet(size_t index);
+    juce::String pasPourLaCible(const juce::String& geste, const std::set<size_t>& cible) const;   ///< D441
     void basculerSolo(size_t index);
     /// D37 : les deux autres gestes qu'aucun menu ne porte.
     void renommer(size_t index, const juce::String& nom);
