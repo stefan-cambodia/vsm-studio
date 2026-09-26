@@ -257,6 +257,7 @@ public:
     void repeatSelectionUntilLoopEnd();
     /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
     void selectAll();
+    void inverserLaSelection();   ///< D440
     /// D18.3 : ne choisir QUE le premier clip de la piste `index`. Sert à
     /// photographier ce qu'un groupe d'édition fait -- « tout choisir » ne
     /// prouverait rien, puisque tout serait déjà pris.

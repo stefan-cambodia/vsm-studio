@@ -1925,6 +1925,7 @@ void MainComponent::listClipsForCapture() {
                         // dise quand elles divergent (un clip audio importé restait bleu).
                         + " couleur #" + juce::String::toHexString(static_cast<int>(c.colorRgba & 0xFFFFFFu)).paddedLeft('0', 6)
                         + " (piste #" + juce::String::toHexString(static_cast<int>(piste.colorRgba & 0xFFFFFFu)).paddedLeft('0', 6) + ")"
+                        + (arrangement_.selectedClipIds().count(c.id) > 0 ? " [choisi]" : "")   // D440
                         + "\n").toRawUTF8(), stderr);
         }
     }

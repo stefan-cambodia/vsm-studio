@@ -33412,3 +33412,26 @@ arrangement Ctrl+X → « Couper des clips » (« Cut clips ») ; Suppr garde
 Non mesuré, dit : l'outil ciseaux (« Couper une note ») — il faut un clic de
 l'outil sur une note ; le libellé est posé au même endroit que le geste. Fumée
 0 raté ; préférences inchangées.
+
+---
+
+### Phase D440 — « Inverser la sélection » (Ctrl+I) manquait à l'arrangement (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA MÊME MATRICE.** Au piano roll, Ctrl+I inverse la
+sélection des notes ; dans l'arrangement, « AUCUNE commande de ce clavier » —
+mesuré sur le binaire de D439, c'est le témoin. Cubase inverse la sélection
+dans la fenêtre de projet comme dans les éditeurs.
+
+**LE BANC** : le relevé `VSM_CLIPS` (D262) marque « [choisi] » un clip choisi
+dans l'arrangement.
+
+**ATTENDU, écrit avant la mesure** : « escape » puis « ctrl + I » dans
+l'arrangement : prise, les deux clips de la démo « [choisi] » ; « ctrl + A »
+puis « ctrl + I » : aucun ; l'inversion ne crée pas de pas d'annulation (la
+sélection n'est pas le projet, comme au piano roll) ; fumée 0 raté ; préférences
+inchangées.
+
+**MESURÉ — TENU.** Relevé `VSM_CLIPS` : « escape » → 0 clip choisi sur 2 ;
+« escape » puis « ctrl + I » → prise, **2 sur 2** ; « ctrl + A » → 2 sur 2 ;
+« ctrl + A » puis « ctrl + I » → **0 sur 2**. Aucun pas d'annulation (la
+sélection n'est pas le projet). Fumée 0 raté ; préférences inchangées.

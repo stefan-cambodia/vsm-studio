@@ -1697,6 +1697,17 @@ juce::MouseCursor ArrangementComponent::getMouseCursor() {
     return juce::MouseCursor::NormalCursor;
 }
 
+void ArrangementComponent::inverserLaSelection() {
+    // D440 : comme au piano roll -- choisis devient non choisis, et l'inverse.
+    if (project_ == nullptr) return;
+    vsm::sequencer::ClipSelection inverse;
+    for (const auto& track : project_->tracks)
+        for (const auto& clip : track.clips)
+            if (selection_.count(clip.id) == 0) inverse.insert(clip.id);
+    selection_ = std::move(inverse);
+    repaint();
+}
+
 void ArrangementComponent::selectAll() {
     if (project_ == nullptr) return;
     selection_.clear();
@@ -1777,6 +1788,7 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
         if (vsm::app::ui::lookupShortcut(*raccourcis_, key, commande)) {
             switch (commande) {
                 case Id::EditSelectAll:       selectAll(); return true;
+                case Id::EditInvertSelection: inverserLaSelection(); return true;   // D440
                 case Id::EditCopy:            copySelection(); return true;
                 case Id::EditPaste:           paste(); return true;
                 case Id::EditDuplicate:       duplicateSelection(); return true;
