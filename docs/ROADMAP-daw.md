@@ -33186,3 +33186,48 @@ libellé en préfixe, restent à 0 raté ; fumée 0 raté ; préférences inchan
    compare `key == juce::KeyPress::upKey` : l'`operator==(int)` de JUCE exige
    qu'AUCUN modificateur ne soit tenu. La branche Maj est morte depuis
    toujours, pour ↑/↓ (octave) comme pour ←/→ (quatre pas de grille). → D433.
+
+---
+
+### Phase D433 — Maj+flèche, promis par la page des raccourcis, n'a jamais rien fait (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA MESURE DE D432.** La page des raccourcis promet
+« Transposer d'un demi-ton (Maj : d'une octave) », « Déplacer la sélection
+(Maj : par quatre pas) » et, pour l'arrangement, « (Maj : quatre pas) ». Le code
+le voulait (`mods.isShiftDown() ? 12 : 1`, `pas *= 4`), mais sa garde est
+`key == juce::KeyPress::upKey` : l'`operator==(int)` de JUCE exige qu'AUCUN
+modificateur ne soit tenu. La branche Maj n'a jamais été atteinte.
+
+**TÉMOIN** (démo, `VSM_TOUCHE`, après « ctrl + A ») :
+
+| geste | réponse du banc | historique |
+|---|---|---|
+| piano roll ↑ (contrôle) | prise | « Transposer +1 — Acid Bass » |
+| piano roll **Maj+↑** | « touche inconnue ou sans commande » | vide |
+| piano roll → (contrôle) | prise | « Décaler — Acid Bass » |
+| piano roll **Maj+→** | sans commande | vide |
+| arrangement → (contrôle) | prise | « Déplacer des clips » |
+| arrangement **Maj+→** | sans commande | vide |
+
+**LE CORRECTIF** : comparer le CODE de la touche (`key.getKeyCode()`), en
+laissant à la table des raccourcis les combinaisons Ctrl et Alt.
+
+**ATTENDU, écrit avant la mesure** : Maj+↑ → « Transposer +12 — Acid Bass » ;
+Maj+→ au piano roll → « Décaler », et la première note avancée de QUATRE pas de
+grille là où → l'avance d'un (lu dans le `.mid` exporté après les touches) ;
+Maj+→ dans l'arrangement → « Déplacer des clips » ; les contrôles inchangés ;
+fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+
+| geste | témoin | après |
+|---|---|---|
+| piano roll Maj+↑ | sans commande, historique vide | « Transposer +12 — Acid Bass » |
+| piano roll Maj+→ | sans commande | « Décaler — Acid Bass » |
+| arrangement Maj+→ | sans commande | « Déplacer des clips » |
+| contrôles ↑, →, → (arrangement) | « +1 », « Décaler », « Déplacer des clips » | identiques |
+
+Le COMBIEN, lu dans le `.mid` exporté après les touches (480 ticks par noire,
+grille 1/16) : première note d'« Acid Bass » à **0** sans geste, **120** après
+→ (un pas), **480** après Maj+→ (quatre pas) ; « Drums » ne bouge pas. Fumée 0
+raté ; préférences inchangées. La page des raccourcis dit enfin vrai.

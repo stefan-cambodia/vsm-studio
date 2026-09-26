@@ -1842,12 +1842,15 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
     // changer de piste ; sans sélection, ←/→ font défiler. Leur sens EST leur
     // direction : elles ne sont pas dans la table des raccourcis, la page les
     // liste comme fixes.
-    if (key == juce::KeyPress::leftKey || key == juce::KeyPress::rightKey) {
+    // D433 : le CODE de la touche -- `key == leftKey` exige qu'aucun modificateur
+    // ne soit tenu, et « Maj : quatre pas » n'était jamais atteint.
+    if ((key.getKeyCode() == juce::KeyPress::leftKey || key.getKeyCode() == juce::KeyPress::rightKey)
+        && !key.getModifiers().isCommandDown() && !key.getModifiers().isCtrlDown() && !key.getModifiers().isAltDown()) {
         const auto mods = key.getModifiers();
         vsm::midi::Tick pas = snapStep(scrollTick_);
         if (pas <= 0 && project_ != nullptr) pas = project_->ticksPerQuarterNote;
         if (mods.isShiftDown()) pas *= 4;
-        const vsm::midi::Tick delta = key == juce::KeyPress::leftKey ? -pas : pas;
+        const vsm::midi::Tick delta = key.getKeyCode() == juce::KeyPress::leftKey ? -pas : pas;
         if (hasSelection()) nudgeSelection(delta);
         else { scrollTick_ = std::max<vsm::midi::Tick>(0, scrollTick_ + delta); repaint(); }
         return true;

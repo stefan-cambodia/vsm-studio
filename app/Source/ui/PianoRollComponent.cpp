@@ -1695,23 +1695,30 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
     // une flèche gauche qui monte. La page des raccourcis les liste quand même,
     // marquées comme fixes -- taire quatre touches serait mentir davantage que
     // de dire « celles-ci ne bougent pas ».
+    // D433 : LE CODE DE LA TOUCHE, PAS `key == KeyPress::upKey`. L'`operator==(int)`
+    // de JUCE exige qu'AUCUN modificateur ne soit tenu : la branche Maj ci-dessous
+    // (une octave, quatre pas) n'a jamais été atteinte, alors que la page des
+    // raccourcis la promet. Ctrl et Alt restent à la table des raccourcis.
+    const auto fleche = [&key, &mods](int code) {
+        return key.getKeyCode() == code && !mods.isCommandDown() && !mods.isCtrlDown() && !mods.isAltDown();
+    };
     const Tick step = mods.isShiftDown() ? gridTicks() * 4 : gridTicks();
-    if (key == juce::KeyPress::leftKey) {
+    if (fleche(juce::KeyPress::leftKey)) {
         if (hasSelection()) nudgeSelection(-static_cast<int64_t>(step));
         else { scrollTick_ = std::max<Tick>(0, scrollTick_ - step); updateScrollBars(); repaint(); }
         return true;
     }
-    if (key == juce::KeyPress::rightKey) {
+    if (fleche(juce::KeyPress::rightKey)) {
         if (hasSelection()) nudgeSelection(static_cast<int64_t>(step));
         else { scrollTick_ += step; updateScrollBars(); repaint(); }
         return true;
     }
-    if (key == juce::KeyPress::upKey) {
+    if (fleche(juce::KeyPress::upKey)) {
         if (hasSelection()) transposeSelection(mods.isShiftDown() ? 12 : 1);
         else { topNote_ = juce::jlimit(12, 127, topNote_ + 1); updateScrollBars(); repaint(); }
         return true;
     }
-    if (key == juce::KeyPress::downKey) {
+    if (fleche(juce::KeyPress::downKey)) {
         if (hasSelection()) transposeSelection(mods.isShiftDown() ? -12 : -1);
         else { topNote_ = juce::jlimit(12, 127, topNote_ - 1); updateScrollBars(); repaint(); }
         return true;
