@@ -872,3 +872,26 @@ parité sur `s1-sec`.
 2. Le goulot est désormais le regroupement dans un mélange. La suite naturelle
    — permettre la grappe unique là où une seule source est attendue, et non
    partout — est une hypothèse NOUVELLE (H40), à écrire comme celle-ci.
+
+### 12.2 Ce que H40 ne peut pas être (26/09/2026, écrit AVANT d'écrire H40)
+
+La suite annoncée au § 12.1 — permettre la grappe unique là où une seule source
+est attendue — demande un critère qui dise, DANS UN STEM, s'il porte une source
+ou plusieurs. Le premier venu, « deux grappes actives EN MÊME TEMPS sont deux
+sources ; deux grappes qui ALTERNENT sont une partie coupée par ses nuances »,
+tombe à la lecture du code, avant toute mesure :
+
+- `segmenter` découpe UN signal en une suite de segments qui PARTITIONNE le
+  temps ; chaque segment reçoit une étiquette, une seule. Deux grappes d'un même
+  stem ne sont donc jamais actives au même instant au niveau des segments : la
+  simultanéité n'y est pas observable ;
+- la seule approximation disponible, les plages d'`activite` (segments recollés
+  tant qu'aucun trou ne dépasse 2 s), confond une partie qui alterne vite ses
+  nuances avec deux sources qui dialoguent — et départager les deux demanderait
+  un seuil choisi EN REGARDANT les données, c'est-à-dire réglé après coup.
+
+H40 reste donc à écrire, avec un critère que le signal porte vraiment : par
+exemple la polyphonie des notes transcrites DANS chaque grappe (deux parties
+simultanées se voient à la transcription, pas à la segmentation), ou une
+séparation plus fine en amont. Ce choix relève de la validation de
+l'utilisateur (§ 10, point 5) ; rien n'est lancé.
