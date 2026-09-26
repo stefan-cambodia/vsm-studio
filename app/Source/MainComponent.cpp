@@ -426,7 +426,7 @@ MainComponent::MainComponent()
 
     // Éditeur de chaîne d'effets d'insert (dernière pièce UI de la Phase 2).
     // La chaîne est DÉCRITE dans la piste ; ce composant n'en garde rien.
-    effectChain_.onEditStarted = [this](const juce::String& label) { beginProjectEdit(label); };
+    effectChain_.onEditStarted = [this](const juce::String& label) { beginProjectEdit(avecPisteChoisie(label)); };   // D431
     // D71 : les réserves des inserts remontent par le MÊME canal que celles des
     // bus de départ, pour qu'un projet n'ait qu'un seul endroit où se plaindre.
     effectChain_.onEffectReserve = [this](size_t piste, const juce::String& reserve) {
@@ -627,7 +627,7 @@ MainComponent::MainComponent()
     };
     // D36.3 : basculer un pas RÉÉCRIT les notes de la piste. Il lui fallait
     // donc un pas d'historique -- il n'en avait aucun.
-    synthRack_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(libelle); };
+    synthRack_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(avecPisteChoisie(libelle)); };   // D431
     synthRack_.onPatternEdited = [this] {
         refreshTransportSchedule();
         pianoRoll_.repaint(); // le piano roll montre les mêmes notes
@@ -5952,6 +5952,14 @@ bool MainComponent::exportForCapture(const juce::File& file, ExportLevel niveau)
     const bool fait = exportProjectToFile(file, options, message, niveau);
     std::fputs((juce::String(fait ? u8"VSM_EXPORT : " : u8"VSM_EXPORT : ÉCHEC — ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
     return fait;
+}
+
+juce::String MainComponent::avecPisteChoisie(const juce::String& geste) const {
+    // D431 : le rack et la chaîne d'effets agissent sur la piste CHOISIE ; leur
+    // pas la nomme, comme ceux de la console et des lignes (D425).
+    const size_t i = trackList_.selectedTrackIndex();
+    if (i >= project_.tracks.size() || project_.tracks[i].name.empty()) return geste;
+    return geste + juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(project_.tracks[i].name.c_str());
 }
 
 void MainComponent::showAudioSettings() {

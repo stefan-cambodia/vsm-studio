@@ -33134,3 +33134,26 @@ vers l'avant. Corrigée (le rappel le plus proche, dans les deux sens) : **verte
 11 curseurs, 0 défaut** ; **rouge, 9 défauts sur 9**, chacun nommé à sa ligne.
 Attendu tenu après correction de la garde — l'essai en rouge a d'abord servi à
 vérifier la garde (CLAUDE.md, 13/09).
+
+---
+
+### Phase D431 — « Réglage de machine » et « Réglage d'effet » sans leur piste (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA SUITE DE D425.** Le rack et la chaîne d'effets agissent
+sur la piste CHOISIE, et leurs pas s'inscrivent « Réglage de machine » et
+« Réglage d'effet » — sans elle. Depuis D425, tous les pas de la console et des
+lignes nomment leur piste.
+
+**TÉMOIN** (`VSM_HISTORIQUE`) : `facade:CUT OFF FREQ=0.2` sur la démo →
+« Réglage de machine » ; compresseur de la démo, `valeur:effet.Threshold=-30` →
+« Réglage d'effet ».
+
+**ATTENDU, écrit avant la mesure** : « Réglage de machine — Acid Bass »,
+« Réglage d'effet — Acid Bass » ; en anglais « Machine setting — Acid Bass »,
+« Effect setting — Acid Bass » ; Ctrl+Z annule toujours (la façade, historique
+vide après) ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `fr` : « Réglage de machine — Acid Bass », « Réglage d'effet
+— Acid Bass » ; `en` : « Machine setting — Acid Bass », « Effect setting — Acid
+Bass » ; la façade annulée par Ctrl+Z (historique vide après), en `fr` comme en
+`en`. Fumée 0 raté ; préférences inchangées.
