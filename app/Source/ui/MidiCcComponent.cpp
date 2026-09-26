@@ -23,7 +23,7 @@ constexpr NamedCc kNamed[] = {
 juce::String MidiCcComponent::controllerName(int controller) {
     // D94 : le nom USUEL se traduit (« coupure » est « cutoff »), le numéro non.
     if (controller == kPitchBend) return juce::String::fromUTF8("Pitch bend");
-    if (controller == kChannelPressure) return vsm::app::ui::tr(u8"Aftertouch (canal)");
+    if (controller == kChannelPressure) return vsm::app::ui::tr(u8"Aftertouch");   // D392
     for (const auto& n : kNamed)
         if (n.id == controller)
             return juce::String(controller) + juce::String::fromUTF8(" · ") + vsm::app::ui::tr(n.name);

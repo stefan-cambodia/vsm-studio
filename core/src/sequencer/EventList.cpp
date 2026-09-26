@@ -52,9 +52,11 @@ std::string eventKindLabel(EventKind kind) {
     switch (kind) {
         case EventKind::Note:            return "Note";
         case EventKind::ControlChange:   return "CC";
-        case EventKind::PitchBend:       return "Pli";
-        case EventKind::PolyPressure:    return "Pression poly";
-        case EventKind::ChannelPressure: return "Pression canal";
+        // D392 : UN NOM PAR TYPE, le même dans toutes les fenêtres (liste,
+        // statistiques, onglet MIDI CC) -- il y en avait trois.
+        case EventKind::PitchBend:       return "Pitch bend";
+        case EventKind::PolyPressure:    return "Aftertouch poly";
+        case EventKind::ChannelPressure: return "Aftertouch";
         case EventKind::ProgramChange:   return "Programme";
     }
     return "?";

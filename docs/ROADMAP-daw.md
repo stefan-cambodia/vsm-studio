@@ -31682,3 +31682,50 @@ d'avant) :
 | 5 | garde verte | TENU — 0 / 63 sous 18 px, 3 coupées |
 
 Banc de fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D392 — le même événement MIDI avait trois noms selon la fenêtre (26/09/2026)
+
+**D'OÙ ELLE VIENT — D'UN AUDIT DES FENÊTRES SECONDAIRES.** Le relevé de D389,
+passé sur douze vues × deux langues (historique, préférences, navigateur,
+prises, ordre de jeu, spectre, statistiques, notes, courbes…), ne trouve aucun
+libellé comprimé hors des façades. Mais la photo des *Statistiques du projet*
+écrit « **Plis de hauteur** : 0 » — un mot qu'aucun musicien français
+n'emploie —, et l'inventaire du code montre que le même événement porte un nom
+différent dans chaque fenêtre :
+
+| événement | onglet MIDI CC | liste d'événements | statistiques |
+|---|---|---|---|
+| pitch bend | « Pitch bend » | « Pli » / « Bend » | « Plis de hauteur » / « Pitch bends » |
+| pression de canal | « Aftertouch (canal) » / « Aftertouch (channel) » | « Pression canal » / « Channel pressure » | « Pression de canal » / « Channel pressure » |
+| pression polyphonique | — | « Pression poly » / « Poly pressure » | « Pression polyphonique » / « Polyphonic pressure » |
+
+C'est la famille de D355 (« un geste, plusieurs portes, et jusqu'à trois
+noms »), pour les types d'événements.
+
+**LA DÉCISION, ÉCRITE ICI** : un nom par type, le même dans toutes les fenêtres,
+pris au vocabulaire des séquenceurs du commerce (Cubase appelle « Aftertouch »
+la pression de canal et « Poly Pressure » / aftertouch polyphonique l'autre) :
+**Pitch bend** (les deux langues), **Aftertouch** (les deux langues),
+**Aftertouch poly** / **Poly aftertouch** ; « Programme » / « Program » ne change
+pas, ni « Changements de programme » (une phrase, pas un nom de type).
+Contrainte mesurée : la colonne « Nature » fait 120 px en 13 pt ; les trois noms
+retenus y tiennent, « Aftertouch (channel) » n'y tiendrait pas.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. `grep` du code : plus aucun « Pli », « Plis de hauteur », « Pression canal »,
+   « Pression de canal », « Pression poly », « Aftertouch (canal) » affiché ;
+2. statistiques, liste d'événements (sur un projet qui contient ces événements)
+   et onglet MIDI CC, en `fr` et en `en` : les mêmes noms, relevés
+   (`VSM_FENETRE_TEXTE`, `VSM_TEXTES_LISTE`) et photographiés, rien de coupé ;
+3. garde de langue : 0 texte sans traduction ; `tests core` verts.
+
+**MESURÉ** (un `.mid` fabriqué par `mido` avec un pitch bend, un aftertouch et
+un aftertouch polyphonique, ouvert par `VSM_VUE=ouvrir-midi:…`) :
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | plus aucun ancien nom affiché | `grep` du code : 0 ; les clés mortes retirées du dictionnaire | TENU |
+| 2 | les mêmes noms partout, `fr` et `en` | statistiques (`VSM_BOITE`) : « Pitch bend : 1 / Aftertouch poly : 1 / Aftertouch : 1 » et « Pitch bend: 1 / Poly aftertouch: 1 / Aftertouch: 1 » ; liste d'événements (photo, cellules peintes) : « Pitch bend », « Aftertouch », « Aftertouch poly » / « Poly aftertouch », entiers dans la colonne ; onglet MIDI CC : « Pitch bend (1 point(s)) » | TENU |
+| 3 | garde de langue, tests | 0 texte sans traduction, 0 doublon ; `core` 361 ; `liste-editer.sh` et `liste-ajouter.sh` 0 raté ; banc de fumée 0 raté | TENU |

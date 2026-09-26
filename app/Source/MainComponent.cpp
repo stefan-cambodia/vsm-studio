@@ -11486,9 +11486,10 @@ juce::String MainComponent::projectStatisticsText() const {
               .replace("%1", juce::String(static_cast<int>(courbes)))
               .replace("%2", juce::String(static_cast<int>(points))));
     ligne(tr(u8"Contrôleurs (CC)"), juce::String(static_cast<int>(cc)));
-    ligne(tr(u8"Plis de hauteur"), juce::String(static_cast<int>(plis)));
-    ligne(tr(u8"Pression polyphonique"), juce::String(static_cast<int>(poly)));
-    ligne(tr(u8"Pression de canal"), juce::String(static_cast<int>(pression)));
+    // D392 : les noms de la liste d'événements et de l'onglet MIDI CC.
+    ligne(tr(u8"Pitch bend"), juce::String(static_cast<int>(plis)));
+    ligne(tr(u8"Aftertouch poly"), juce::String(static_cast<int>(poly)));
+    ligne(tr(u8"Aftertouch"), juce::String(static_cast<int>(pression)));
     ligne(tr(u8"Changements de programme"), juce::String(static_cast<int>(programmes)));
     ligne(tr(u8"Machines employées"), juce::String(static_cast<int>(machines.size())));
     for (const auto& [id, combien] : machines)
