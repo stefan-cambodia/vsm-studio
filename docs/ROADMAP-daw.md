@@ -32378,3 +32378,53 @@ profiles installed in … ». Sur les 8 lignes du volet anglais : 0 « introuvab
 fumée 0 raté. Les deux attendus TENUS. **Ce qui reste nommé** : la garde de
 langue lit des CLÉS, et un modèle de `kModeles` qui ne reconnaît plus sa phrase
 passe sous elle — D409 en est le cas, trouvé à l'œil sur une photo.
+
+---
+
+### Phase D411 — une garde pour les phrases du volet que l'anglais ne rencontre plus (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D409.** La garde de langue lit des clés ;
+une phrase composée par le moteur (« Piste 1 (bass) : … », « 1327 note(s)… »)
+ne se traduit que si un modèle de `kModeles` la RECONNAÎT, et rien ne vérifie
+qu'il la reconnaisse encore. D409 a été trouvée à l'œil, sur la première photo
+regardée.
+
+**LA GARDE** : `tools/volet-anglais.sh` ouvre en anglais un morceau
+reconstruit par dossier de campagne (`reconstruction/travail/*/`, le premier
+`morceau-*/course` de chacun), relève le volet (`VSM_VOLET_LIGNES`), retire les
+DONNÉES (chemins, noms entre guillemets « » “ ”, nom de piste entre
+parenthèses) et déclare française toute ligne qui garde un mot d'une liste
+fermée de mots français (« introuvable », « piste », « échantillon »,
+« aucun », « réserve », « ignoré »…) ou une lettre accentuée française. Rend 1
+s'il en trouve, et les écrit.
+
+**ATTENDU, écrit avant la mesure** :
+1. la garde se voit ROUGE : lancée en `fr` sur les mêmes projets, elle déclare
+   françaises toutes les lignes de réserve (pas une de moins) ;
+2. en `en`, elle rend un compte N de lignes françaises sur les projets relevés.
+   D409 ayant été trouvée sur le premier projet regardé, je parie **N > 0** ;
+   chaque phrase trouvée reçoit son modèle dans cette phase, jusqu'à N = 0 ;
+3. la garde n'entre PAS dans `verifier.sh --gardes` (elle lance l'application
+   une fois par projet) ; elle se lance comme `automation-echelle.sh`.
+
+**MESURÉ** (9 projets, un par dossier de campagne ; préférences inchangées) :
+1. **TENU — la garde se voit rouge.** En `fr` : rc 1, **27 lignes françaises sur
+   36** relevées — soit toutes les lignes de réserve, les 9 restantes étant le
+   compte « N réserves à l'ouverture », que la garde ne juge pas.
+2. **PARI PERDU : N = 0.** En `en` : rc 0, 0 ligne française sur 36. Mais la
+   variété du relevé est MAIGRE, et je l'écris plutôt que de m'en féliciter :
+   les 27 réserves n'appartiennent qu'à **trois familles** — le résumé
+   d'échantillons, le profil introuvable, les notes douteuses —, précisément
+   celles que D407-D410 viennent de reprendre. La garde aurait vu D409 et D410
+   (elles sont dans chacun des neuf projets) ; elle ne dit rien des autres
+   modèles de `kModeles` (effets inconnus, automation, audio rééchantillonné),
+   qu'aucun de ces projets ne déclenche. Et le « profil introuvable » vient en
+   partie du HOME de brouillon, où aucun profil n'est installé : c'est une
+   réserve du banc autant que du projet.
+3. **TENU.** Hors `verifier.sh --gardes` ; lancée comme
+   `automation-echelle.sh`, 9 lancements.
+
+**Ce qui reste nommé** : un projet d'essai qui déclenche CHAQUE modèle de
+`kModeles` (effet inconnu, réglage inconnu, automation sans paramètre, audio
+rééchantillonné, preset introuvable) donnerait à cette garde la couverture qui
+lui manque.
