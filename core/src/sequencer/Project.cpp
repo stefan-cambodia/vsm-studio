@@ -444,9 +444,13 @@ static ParsedFile buildParsedFile(const Project& projet, bool arrange) {
         // l'export ARRANGÉ seulement : le `.mid` d'un dossier de projet reste
         // le matériau, octet pour octet.
         if (arrange && t.kind == Track::Kind::Midi && t.programChanges.empty()) {
-            const int programme = t.midiProgram >= 0 ? t.midiProgram
-                                : t.channel == 9 ? kitGMPourMachine(t.instrumentId.c_str())
-                                                 : programmeGMPourMachine(t.instrumentId.c_str());
+            int programme = t.midiProgram >= 0 ? t.midiProgram
+                          : t.channel == 9 ? kitGMPourMachine(t.instrumentId.c_str())
+                                           : programmeGMPourMachine(t.instrumentId.c_str());
+            // D388 : une machine qui n'est aucun instrument (multi-échantillons)
+            // est celui de son PROFIL.
+            if (programme < 0 && t.channel != 9 && !t.instrumentProfile.empty())
+                programme = programmeGMPourProfil(t.instrumentProfile.c_str());
             if (programme >= 0 && programme <= 127) {
                 if (t.midiProgram >= 0 && t.midiBank >= 0) {
                     events.push_back({0, ControlChangeEvent{t.channel, 0, static_cast<uint8_t>((t.midiBank >> 7) & 0x7F)}});

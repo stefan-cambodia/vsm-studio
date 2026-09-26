@@ -687,6 +687,12 @@ public:
     /// installer la machine et rouvrir »). Elle survit ici, et s'écrit tant que
     /// la piste n'a pas reçu d'autre machine.
     std::string requestedInstrumentId;
+    /// D388 : LE PROFIL MULTI-ÉCHANTILLONS que joue la machine, pour que
+    /// l'export MIDI dise l'instrument (`programmeGMPourProfil`). JAMAIS écrit
+    /// dans le fichier -- le preset le porte -- et posé par l'application
+    /// DEPUIS LA MACHINE juste avant l'export : le moteur est la seule source de
+    /// vérité, et une copie tenue ailleurs finirait par mentir.
+    std::string instrumentProfile;
     /// D76 : L'IDENTITÉ DE LA PISTE POUR LA SESSION, jamais écrite dans le
     /// fichier. Sans elle, « la piste qui occupait l'emplacement 3 » ne se
     /// distinguait pas de « celle qui l'occupe maintenant », et reconstruire

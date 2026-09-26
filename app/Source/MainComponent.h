@@ -163,6 +163,8 @@ public:
     /// clip né pendant la séance portait 0, la valeur qui veut dire « aucun ».
     void listClipsForCapture();
     void listTextsForCapture();   ///< D94 : VSM_TEXTES_LISTE
+    /// D388 : pose `Track::instrumentProfile` depuis les machines, avant un export MIDI.
+    void poserLesProfilsDesMachines();
     /// D95 : les textes des AUTRES fenêtres visibles -- boîtes, panneaux
     /// flottants --, lus au moment de la photo : une boîte n'existe qu'après
     /// le geste qui l'ouvre.

@@ -156,6 +156,18 @@ int programmeGMPourMachine(const char* machine) {
     return -1;
 }
 
+int programmeGMPourProfil(const char* profil) {
+    if (profil == nullptr || *profil == '\0') return -1;
+    std::string nom(profil);
+    for (const auto& b : kBanques) {
+        const std::string prefixe = std::string(b.prefixe) + "-";
+        if (nom.rfind(prefixe, 0) == 0) { nom.erase(0, prefixe.size()); break; }
+    }
+    for (const auto& p : kProfils)
+        if (nom == p.profil) return p.numero;
+    return -1;
+}
+
 int kitGMPourMachine(const char* machine) {
     if (machine == nullptr) return -1;
     if (std::strcmp(machine, "vsm.drums") == 0) return 0;

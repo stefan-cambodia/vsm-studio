@@ -31454,3 +31454,64 @@ si l'hôte CLAP est compilé, n'est demandé que s'il existe.
 La première forme du diagnostic aurait nommé TOUTES les cibles : elle cherchait
 `CMakeFiles/…` dans tout le journal, où chaque ligne « Building CXX object »
 en contient un. Restreinte aux lignes « Error » avant le premier essai.
+
+---
+
+### Phase D388 — l'export MIDI d'une piste multi-échantillons ne disait pas son instrument (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D385.** L'export de
+`s2-banc/morceau-0001-g1` : « 3 sans équivalent General MIDI : bass
+(vsm.multisample), other (vsm.pcmhybrid), piano (vsm.spectral) ». Depuis D312,
+une piste reçoit à l'export le programme GM de sa MACHINE (`programmeGMPourMachine`).
+Mais `vsm.multisample` n'EST aucun instrument : elle est ce que son PROFIL la
+fait être, et « bass » y charge **MS-E-Piano-FM** — préfixe de banque « MS »,
+nom canonique « E-Piano-FM », que la table des profils de D307 relie déjà au
+programme **5**. L'information existe ; l'export ne la lit pas, parce que la
+piste du modèle ne connaît pas son profil (il vit dans le preset, puis dans la
+machine).
+
+**LA POPULATION, MESURÉE AVANT** : tous les presets des reconstructions du dépôt
+— **58 profils distincts, 779 usages** ; **53 profils, 744 usages (95,5 %)** ont
+un nom canonique que la table connaît une fois le préfixe de banque (`FR3-`,
+`GU-`, `MS-`, la liste fermée `kBanques`) retiré. Les autres — « GU-Concert-Choir »
+(24), « YDP-Grand » (5), « GU-Fast-Strings » (3), « GM-Warm-Pad » (2),
+« Salamander Grand Piano » (1) — restent sans équivalent, et c'est dit.
+
+**LE CORRECTIF** : `programmeGMPourProfil` (`core`, à côté de sa table) ; un
+champ `instrumentProfile` sur la piste, NON sauvegardé — le preset le porte —,
+que l'application pose DEPUIS LA MACHINE (`IMultisampleBank::profileName`, le
+moteur est la source de vérité) juste avant d'exporter ; l'export s'en sert
+quand la machine seule n'a pas d'équivalent. Le compte du journal (D312) dit
+« dérivé du profil » à part. `vsm.pcmhybrid` et `vsm.spectral` ne sont pas des
+instruments GM : elles restent sans équivalent.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. l'export de `morceau-0001-g1` : « bass » porte le programme **5** sur SON
+   canal (relu par `mido`) ; le journal compte **1 dérivé du profil** et **2 sans
+   équivalent** (other, piano) ;
+2. un profil hors table (« GU-Concert-Choir ») : aucun programme écrit, et la
+   piste NOMMÉE parmi les « sans équivalent » ;
+3. `tools/ouvrir-midi.sh` inchangé (0 raté, mêmes programmes : 0:38 3:89 9:0) ;
+4. tests `core` : la fonction (préfixes, nom inconnu, chaîne vide) et l'export
+   d'une piste au profil posé, vus rouges sur l'ancien code.
+
+**MESURÉ** (HOME de brouillon par lancement ; les profils installés de
+l'utilisateur désignés en lecture par `VSM_PROFILS`) :
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | « bass » : programme 5, « 1 dérivé du profil » | `(canal, programme) = (0, 5)` sur la piste « bass » ; journal : « **1 dérivé(s) du profil**, 4 dérivé(s) de la machine, **2 sans équivalent** : other (vsm.pcmhybrid), piano (vsm.spectral) » — le canal est 0 parce que ce projet a été écrit AVANT D385 | TENU |
+| 2 | profil hors table : rien d'écrit, la piste nommée | copie du projet, « bass » sur **GU-Concert-Choir** : aucun programme ; « bass (vsm.multisample, GU-Concert-Choir) » parmi les sans équivalent | TENU |
+| 3 | `ouvrir-midi.sh` inchangé | 0 raté, programmes exportés `0:38 3:89 9:0` | TENU |
+| 4 | tests `core`, vus rouges | la fonction (préfixes, sans préfixe, hors table, préfixe « GM » hors liste fermée, vide, nul) et l'export d'une piste au profil posé ; l'ancien `Project.cpp` fait tomber le second (« 0 != 1 ») ; **361** verts | TENU |
+
+**UN CAS TROUVÉ PAR LA PREMIÈRE PASSE, ET NOMMÉ.** Lancé sans `VSM_PROFILS`,
+le banc donnait « 0 dérivé du profil » : sous un HOME de brouillon, le profil
+« MS-E-Piano-FM » est INTROUVABLE (le journal le dit), la machine n'en charge
+aucun, et il n'y a rien à lire. C'est le comportement voulu — l'export dit ce
+que joue la machine, pas ce que le preset demandait —, mais la ligne du
+journal ne dit alors que « bass (vsm.multisample) ». **Reste nommé** : un
+profil demandé et absent pourrait être dit comme tel dans ce compte, à la
+manière de `requestedInstrumentId` (D76) pour une machine absente.
+
+Banc de fumée 0 raté ; préférences inchangées ; `verifier.sh --compiler` : 12 bancs compilés, C++ 361 / 1 303 / 307 / 25 / 11, Python 239, ruff, mypy, gardes.

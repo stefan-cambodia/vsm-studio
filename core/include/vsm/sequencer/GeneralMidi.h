@@ -52,6 +52,13 @@ const BanqueGM* banquesGM(std::size_t& compte);
 int programmeGMPourMachine(const char* machine);
 int kitGMPourMachine(const char* machine);
 
+/// D388 : LE PROGRAMME D'UN PROFIL MULTI-ÉCHANTILLONS. `vsm.multisample` n'est
+/// aucun instrument : elle est ce que son profil la fait être. « MS-E-Piano-FM »
+/// = préfixe de banque (`banquesGM`, liste fermée) + nom canonique de la table
+/// des profils → 5. -1 pour un nom que la table ne connaît pas (« GU-Concert-
+/// Choir », « Salamander Grand Piano ») ou vide.
+int programmeGMPourProfil(const char* profil);
+
 /// D313 : QUAND LE FICHIER NE DIT RIEN, LE NOM DE LA PISTE PARLE. Un `.mid` sans
 /// changement de programme -- les exports de cette application avant D312, les
 /// stems d'une séparation (« bass », « drums », « other », « vocals ») -- porte

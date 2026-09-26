@@ -2,6 +2,7 @@
 #include "vsm/audio/plugin/ISampleLoader.h"
 #include "MainComponent.h"
 #include "ui/BesoinDeLargeur.h"
+#include "vsm/audio/plugin/IMultisampleBank.h"
 #include <typeinfo>
 #include "vsm/sequencer/GeneralMidi.h"
 #include "vsm/interchange/MultisampleProfile.h"
@@ -9967,22 +9968,32 @@ void MainComponent::exportMidiFile() {
             // fichier ne reçoit pas les clips : lui écrire les notes qu'aucun
             // clip ne montre, et lui retirer les reprises des boucles, lui
             // donnerait un morceau que personne n'a jamais entendu.
+            poserLesProfilsDesMachines();   // D388
             ParsedFile parsed = project_.toParsedFileArranged();
             MidiFileWriter::writeFile(parsed, file.getFullPathName().toStdString());
             // D312 : CE QUE LE FICHIER DIT DE SES INSTRUMENTS, compté au journal.
             {
-                int derives = 0, regles = 0, gardes = 0; juce::StringArray sans;
+                int derives = 0, duProfil = 0, regles = 0, gardes = 0; juce::StringArray sans;
                 for (const auto& t : project_.tracks) {
                     if (t.kind != vsm::sequencer::Track::Kind::Midi) continue;
                     if (!t.programChanges.empty()) { ++gardes; continue; }
                     if (t.midiProgram >= 0) { ++regles; continue; }
                     const int p = t.channel == 9 ? vsm::sequencer::kitGMPourMachine(t.instrumentId.c_str())
                                                  : vsm::sequencer::programmeGMPourMachine(t.instrumentId.c_str());
-                    if (p >= 0) ++derives; else sans.add(juce::String::fromUTF8(t.name.c_str()) + " (" + juce::String(t.instrumentId) + ")");
+                    // D388 : et, pour une machine qui n'est aucun instrument, son profil.
+                    const int pp = (p < 0 && t.channel != 9)
+                                     ? vsm::sequencer::programmeGMPourProfil(t.instrumentProfile.c_str()) : -1;
+                    if (p >= 0) ++derives;
+                    else if (pp >= 0) ++duProfil;
+                    else sans.add(juce::String::fromUTF8(t.name.c_str()) + " (" + juce::String(t.instrumentId)
+                                  + (t.instrumentProfile.empty() ? juce::String()
+                                                                 : ", " + juce::String::fromUTF8(t.instrumentProfile.c_str()))
+                                  + ")");
                 }
                 std::fputs((juce::String::fromUTF8(u8"Export MIDI : programmes — ") + juce::String(gardes)
                             + juce::String::fromUTF8(u8" piste(s) avec les siens, ") + juce::String(regles)
-                            + juce::String::fromUTF8(u8" réglé(s) pour le matériel, ") + juce::String(derives)
+                            + juce::String::fromUTF8(u8" réglé(s) pour le matériel, ") + juce::String(duProfil)
+                            + juce::String::fromUTF8(u8" dérivé(s) du profil, ") + juce::String(derives)
                             + juce::String::fromUTF8(u8" dérivé(s) de la machine, ") + juce::String(sans.size())
                             + juce::String::fromUTF8(u8" sans équivalent General MIDI")
                             + (sans.isEmpty() ? juce::String() : " : " + sans.joinIntoString(", ")) + "\n").toRawUTF8(), stderr);
@@ -11194,6 +11205,18 @@ void MainComponent::removeTakeFromSelectedTrack(int index) {
                                             tr(u8"Retirer une prise"), texte);
 }
 
+void MainComponent::poserLesProfilsDesMachines() {
+    // D388 : le profil que CHAQUE machine multi-échantillons joue, lu dans le
+    // moteur -- la seule source de vérité --, pour que l'export dise son
+    // instrument. Jamais écrit dans le projet (le preset le porte).
+    auto& graphe = audioEngine_.processGraph();
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        auto* machine = graphe.trackInstrument(i);
+        const auto* banque = dynamic_cast<const vsm::audio::plugin::IMultisampleBank*>(machine);
+        project_.tracks[i].instrumentProfile = banque != nullptr ? banque->profileName() : std::string();
+    }
+}
+
 bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier) {
     // D202 : CE VERBE PASSE PAR LE CHEMIN DE L'UTILISATEUR, et ne le recopie
     // plus.
@@ -12106,6 +12129,7 @@ bool MainComponent::writeSelectedTrackMidi(const juce::File& fichier) {
         return false;
     }
     captureSessionIntoProject();
+    poserLesProfilsDesMachines();   // D388
     const Project seule = project_.extractTrack(piste);
     try {
         MidiFileWriter::writeFile(seule.toParsedFileArranged(),   // D56.1

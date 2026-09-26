@@ -1,5 +1,8 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/GeneralMidi.h"
+#include "vsm/sequencer/Project.h"
+#include <variant>
+#include <vector>
 #include <cstring>
 #include <set>
 #include <string>
@@ -86,4 +89,45 @@ VSM_TEST(le_nom_de_la_piste_designe_un_programme_quand_le_fichier_se_tait) {
     VSM_ASSERT_EQ(programmeGMPourNom("Mixdown").programme, -1);
     VSM_ASSERT_EQ(programmeGMPourNom("").programme, -1);
     VSM_ASSERT_EQ(programmeGMPourNom(nullptr).programme, -1);
+}
+
+// D388 : le programme d'un profil multi-échantillons.
+VSM_TEST(programme_gm_d_un_profil) {
+    VSM_ASSERT_EQ(programmeGMPourProfil("MS-E-Piano-FM"), 5);
+    VSM_ASSERT_EQ(programmeGMPourProfil("FR3-Harp"), 46);
+    VSM_ASSERT_EQ(programmeGMPourProfil("GU-Synth-Bass-2"), 39);
+    VSM_ASSERT_EQ(programmeGMPourProfil("Grand-Piano"), 0);          // sans préfixe
+    VSM_ASSERT_EQ(programmeGMPourProfil("GU-Concert-Choir"), -1);    // hors table
+    VSM_ASSERT_EQ(programmeGMPourProfil("Salamander Grand Piano"), -1);
+    VSM_ASSERT_EQ(programmeGMPourProfil("GM-Warm-Pad"), -1);         // préfixe hors liste fermée
+    VSM_ASSERT_EQ(programmeGMPourProfil(""), -1);
+    VSM_ASSERT_EQ(programmeGMPourProfil(nullptr), -1);
+}
+
+VSM_TEST(export_arrange_ecrit_le_programme_du_profil) {
+    Project projet;
+    Track piste;
+    piste.name = "bass";
+    piste.channel = 2;
+    piste.instrumentId = "vsm.multisample";
+    piste.instrumentProfile = "MS-E-Piano-FM";
+    Note note;
+    note.endTick = 480;
+    piste.notes.push_back(note);
+    projet.tracks.push_back(piste);
+    Track autre = piste;
+    autre.name = "choeur";
+    autre.channel = 3;
+    autre.instrumentProfile = "GU-Concert-Choir";
+    projet.tracks.push_back(autre);
+
+    const auto fichier = projet.toParsedFileArranged();
+    std::vector<std::pair<int, int>> programmes;   // (canal, programme)
+    for (const auto& t : fichier.tracks)
+        for (const auto& ev : t.events)
+            if (const auto* pc = std::get_if<vsm::midi::ProgramChangeEvent>(&ev.data))
+                programmes.push_back({pc->channel, pc->program});
+    VSM_ASSERT_EQ(programmes.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(programmes[0].first, 2);
+    VSM_ASSERT_EQ(programmes[0].second, 5);
 }
