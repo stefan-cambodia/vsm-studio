@@ -239,6 +239,7 @@ public:
     void copySelection();
     void paste();
     void duplicateSelection();
+    void basculerMuetDeLaSelection();   ///< D438
     /// D20.1 : RÉPÉTER la sélection `count` fois À LA SUITE -- les copies
     /// contiguës, chacune décalée du bloc que « dupliquer » emploierait --,
     /// ou autant de fois qu'il en tient avant la fin de la boucle. La vue

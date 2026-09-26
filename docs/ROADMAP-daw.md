@@ -33350,3 +33350,29 @@ group — … », « Delete a track — Acid Bass ». Geler/Dégeler passent par
 fonction (`avecPiste`) ; non mesurés ici (le gel REND de l'audio — CLAUDE.md :
 les rendus se groupent après la campagne). Fumée 0 raté ; préférences
 inchangées.
+
+---
+
+### Phase D438 — « Rendre muet / audible » (Ctrl+M) ne répondait pas dans l'arrangement (27/09/2026)
+
+**D'OÙ ELLE VIENT — L'ESSAI DES RACCOURCIS D'ÉDITION DANS LES DEUX ÉDITEURS.**
+Dupliquer, supprimer, couper à la tête de lecture et joindre répondent dans
+l'arrangement comme au piano roll, et s'annulent. « Rendre muet / audible »
+(`edit.toggleMute`, Ctrl+M) rend muettes les notes choisies au piano roll ;
+dans l'arrangement, le banc répond « AUCUNE commande de ce clavier » — alors
+qu'un clip SE rend muet, par son menu (« Rendre muet », pour toute la
+sélection).
+
+**TÉMOIN** (démo, « ctrl + A » puis « ctrl + M » dans l'arrangement) : aucune
+commande, historique vide.
+
+**ATTENDU, écrit avant la mesure** : même course, « Muet sur des clips » à
+l'historique et les deux clips muets dans le projet relu ; puis Ctrl+Z : les
+deux clips audibles ; sans sélection, la touche remonte (comme Suppr) ; fumée
+0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** « ctrl + A » puis « ctrl + M » dans l'arrangement : prise,
+« Muet sur des clips », projet relu `muted [True, True]` (témoin : aucune
+commande). Puis Ctrl+Z : `[False, False]`, historique vide. Sans sélection :
+« AUCUNE commande de ce clavier », la touche remonte, rien ne change. Fumée 0
+raté ; préférences inchangées.

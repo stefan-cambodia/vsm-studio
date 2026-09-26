@@ -332,6 +332,24 @@ void ArrangementComponent::paste() {
     repaint();
 }
 
+void ArrangementComponent::basculerMuetDeLaSelection() {
+    // D438 : le geste du menu du clip (« Rendre muet »), par la touche : UN pas
+    // pour toute la sélection, et l'état suit le premier clip choisi.
+    if (project_ == nullptr || selection_.empty()) return;
+    const Clip* premier = nullptr;
+    for (const auto& t : project_->tracks)
+        for (const auto& c : t.clips)
+            if (premier == nullptr && selection_.count(c.id) > 0) premier = &c;
+    if (premier == nullptr) return;
+    if (onEditStarted) onEditStarted(u8"Muet sur des clips");
+    const bool muet = !premier->muted;
+    for (auto& t : project_->tracks)
+        for (auto& c : t.clips)
+            if (selection_.count(c.id) > 0) c.muted = muet;
+    notifyChanged();
+    repaint();
+}
+
 void ArrangementComponent::duplicateSelection() {
     if (project_ == nullptr || selection_.empty()) return;
 
@@ -1765,6 +1783,12 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
                 case Id::EditCut:             copySelection(); deleteSelection(); return true;
                 case Id::EditJoin:            joinSelection(); return true;
                 case Id::EditSplitAtPlayhead: splitSelectionAtPlayhead(); return true;
+                // D438 : LA TOUCHE DU PIANO ROLL, ICI AUSSI. Le menu du clip rendait
+                // muette la sélection ; Ctrl+M répondait « aucune commande ».
+                case Id::EditToggleMute:
+                    if (!hasSelection()) return false;
+                    basculerMuetDeLaSelection();
+                    return true;
                 // Suppr et Retour arrière : la table les porte toutes deux, et
                 // sans sélection la touche REMONTE (elle peut servir ailleurs).
                 case Id::EditDelete:
