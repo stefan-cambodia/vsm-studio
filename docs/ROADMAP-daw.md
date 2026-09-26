@@ -31754,3 +31754,15 @@ eux, « 1 dérivé du profil » comme en D388 ; « other » et « piano » incha
 (vsm.spectral) » ; avec eux, « **1 dérivé(s) du profil** … 2 sans équivalent :
 other, piano », comme en D388. Les deux attendus tenus ; banc de fumée 0 raté ;
 garde de langue 0 ; préférences inchangées.
+
+**ET UNE FAUTE DE MA PART, CORRIGÉE DANS LE COMMIT SUIVANT.** Le commit de
+D393 est parti avec la garde de langue ROUGE (« 1 texte ») : la commande
+enchaînait vérifications, commit et poussée sans s'arrêter sur le code de la
+garde. Le texte (« , aucun profil chargé ») ne va qu'au journal — il entre dans
+une liste locale (`sans.add(…)`) qu'un `fputs` écrit plus loin —, mais le suivi
+de variable de D106 ne reconnaissait que `=` et `+=`. `inventaire_langue.py`
+compte désormais `v.add(…)` comme un ajout : une seule ligne change de
+catégorie (ÉCRAN → TERMINAL), la garde repasse à 0, et elle reste ROUGE sur un
+`StringArray` rempli par `.add(…)` puis AFFICHÉ par `setText` (essai injecté,
+restauré par `cmp`). La règle de conduite qui en sort : une commande qui
+commite s'arrête au premier garde-fou rouge (`… && git commit`), jamais `;`.

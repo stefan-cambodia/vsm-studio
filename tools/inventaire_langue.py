@@ -84,6 +84,9 @@ l'écran. Trois règles de plus, `--sans-d375` pour le témoin :
     (`contains`, `startsWith`, `endsWith`, `indexOf`), le nom d'un fil
     (`juce::Thread(`), et ce qu'écrivent les fonctions de banc d'une liste
     FERMÉE (FONCTIONS_DE_BANC) -- une fonction neuve n'y entre qu'écrite ici.
+D393 : le suivi de D106 compte aussi `v.add(…)` -- une liste qu'on remplit,
+puis qu'on écrit au terminal -- comme un ajout ; une liste AFFICHÉE reste ECRAN
+(vu rouge sur un `StringArray` injecté puis passé à `setText`).
 Avec ECRAN à 0, l'inventaire devient une GARDE (`--garde`) : les `.cpp` ET les
 en-têtes, code 1 au premier texte en ECRAN, NU ou SANS_PAIRE, chacun nommé. Vue
 rouge sur une infobulle injectée, et sur l'en-tête qu'elle a trouvé :
@@ -242,7 +245,7 @@ def a_l_air_francaise(chaine: str, avant: str, regle: str) -> bool:
     return regle in ("position", "large") and bool(AFFICHAGE.search(avant)) and ressemble_a_du_texte(chaine)
 
 
-AFFECTATION = re.compile(r"(?:^|[\s(;{}])(?:(?:juce::String|std::string|auto)\s+)?([A-Za-z]\w*)\s*(\+=|=)(?!=)")
+AFFECTATION = re.compile(r"(?:^|[\s(;{}])(?:(?:juce::String|std::string|auto)\s+)?([A-Za-z]\w*)\s*(\+=|=(?!=)|\.add\s*\()")
 
 
 def masquer_les_chaines(texte: str) -> str:
@@ -277,7 +280,8 @@ def va_seulement_au_terminal(texte: str, debut: int, masque: str = "", d375: boo
         instruction = code[max(code.rfind(c, 0, position) for c in ";{}") + 1:code.find(";", position)]
         # D375 : un ajout sous `else` est un ajout comme sous `if (…)`.
         prefixe = r"(?:if\s*\([^;]*\)\s*|else\s+)?" if d375 else r"(?:if\s*\([^;]*\)\s*)?"
-        if re.match(rf"\s*{prefixe}{re.escape(nom)}\s*(\+=|=)(?!=)", instruction):
+        # D393 : `v.add(…)` (une liste qu'on remplit) est un ajout comme `v += …`.
+        if re.match(rf"\s*{prefixe}{re.escape(nom)}\s*(\+=|=(?!=)|\.add\s*\()", instruction):
             continue
         if not SORTIE.search(instruction):
             return False
