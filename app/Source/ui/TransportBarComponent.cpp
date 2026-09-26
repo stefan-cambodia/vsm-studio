@@ -605,6 +605,9 @@ void TransportBarComponent::retraduire() {
     // pas au double-clic ; l'infobulle dit où elle se change.
     timeSigLabel_.setTooltip(tr(u8"Signature rythmique à la tête de lecture. Pour la changer : "
                                 u8"Édition ▸ Signature à la tête de lecture"));
+    // D421 : même famille -- un chiffre qui ne se change pas ici.
+    sampleRateLabel_.setTooltip(tr(u8"Fréquence d'échantillonnage de la carte son. Pour la changer : "
+                                   u8"Fichier ▸ Réglages audio..."));
     if (infobulleRec_) recordButton_.setTooltip(infobulleRec_());
     poserTexteSansSon();
     poserTexteXruns();

@@ -1264,6 +1264,8 @@ const Paire kAnglais[] = {
       "MIDI effect setting" },
     { "Réglages audio...",
       "Audio settings..." },
+    { "Fréquence d'échantillonnage de la carte son. Pour la changer : Fichier ▸ Réglages audio...",
+      "Sample rate of the sound card. To change it: File ▸ Audio settings..." },
     { "Carte son",
       "Sound card" },
     { "%1 note(s) douteuse(s) sur %2 (%3 %) — touche D : la suivante",

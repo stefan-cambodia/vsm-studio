@@ -32802,3 +32802,23 @@ de lecture » (témoin : aucune infobulle). `en` : « Time signature at the
 playhead. To change it: Edit ▸ Time signature at the playhead » — les deux mots
 du chemin sont ceux que la table donne au menu. `menus-cites` : 9 citations,
 0 faute ; fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D421 — « 48.0 kHz » : un chiffre de la carte son sans chemin vers ses réglages (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE MÊME RELEVÉ QUE D420.** La fréquence de la carte son
+s'affiche au bout de la barre de transport, sans infobulle. Elle ne se change
+pas là, mais dans « Fichier ▸ Réglages audio... » (et, depuis D417, depuis les
+préférences). **Témoin** : « libellé : 48.0 kHz » n'est suivi d'aucune
+infobulle.
+
+**ATTENDU, écrit avant la mesure** : « infobulle : Fréquence d'échantillonnage
+de la carte son. Pour la changer : Fichier ▸ Réglages audio... » ; en anglais,
+« File ▸ Audio settings... » ; `menus-cites` vert (une citation de plus : 10) ;
+fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `fr` : « infobulle : Fréquence d'échantillonnage de la carte
+son. Pour la changer : Fichier ▸ Réglages audio... » ; `en` : « Sample rate of
+the sound card. To change it: File ▸ Audio settings... ». `menus-cites` : 10
+citations, 0 faute ; fumée 0 raté ; préférences inchangées.
