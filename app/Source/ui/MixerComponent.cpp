@@ -249,11 +249,15 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         s->setValue(track_.sendLevel(bus), juce::dontSendNotification);
         const std::string parametre = "mix.send." + std::to_string(bus + 1);
         s->onDragStart = [this, parametre] {
+            glisseEnCours_ = true;   // D428
             if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Départ"))));
             ouvrirPasse(parametre);
         };
-        s->onDragEnd = [this, parametre] { fermerPasse(parametre, false); };
+        s->onDragEnd = [this, parametre] { glisseEnCours_ = false; fermerPasse(parametre, false); };
         s->onValueChange = [this, s, bus, parametre] {
+            // D428 : hors glissé, le pas s'ouvre ici (la règle de D427).
+            if (!glisseEnCours_ && onMixEditStarted)
+                onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Départ"))));
             track_.setSendLevel(bus, static_cast<float>(s->getValue()));
             noterDansLaPasse(parametre, static_cast<float>(s->getValue()));
             if (onMixChanged) onMixChanged();
@@ -814,9 +818,12 @@ juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::S
     const auto pid = id;
     juce::Slider* raw = k.slider.get();
     raw->onValueChange = [this, raw, pid] {
+        // D428 : hors glissé (molette, clavier, double-clic), le pas s'ouvre ici.
+        if (!glisseMaster_ && onMasterEditStarted) onMasterEditStarted();
         if (onMasterParam) onMasterParam(pid, static_cast<float>(raw->getValue()));
     };
-    raw->onDragStart = [this] { if (onMasterEditStarted) onMasterEditStarted(); };   // D144
+    raw->onDragStart = [this] { glisseMaster_ = true; if (onMasterEditStarted) onMasterEditStarted(); };   // D144
+    raw->onDragEnd = [this] { glisseMaster_ = false; };   // D428
     addAndMakeVisible(*k.slider);
 
     k.label = std::make_unique<juce::Label>();

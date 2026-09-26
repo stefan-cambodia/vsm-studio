@@ -33041,3 +33041,35 @@ pas (pas un par cran) ; fumée 0 raté ; préférences inchangées.
 | contrôle : `valeur:pistes.volume=0.5` + Ctrl+Z | -0.9 dB | -0.9 dB |
 
 Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D428 — les départs et les boutons MASTER, même trou que D427 (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA SUITE DE D427.** Les départs d'une tranche et les sept
+boutons MASTER ouvrent leur pas dans `onDragStart` seulement (D144 pour le
+MASTER).
+
+**TÉMOIN** : `valeur:master.COMP=-12` → « -12.0 dB », historique vide, et
+« ctrl + Z » le laisse à -12.0 dB ; sur une copie de la démo à un bus de départ
+(« Réverb »), `valeur:mixeur.depart=0.5` → le projet relu porte `sends [0.5]`
+avant ET après Ctrl+Z.
+
+**ATTENDU, écrit avant la mesure** : après le même correctif que D427 (un
+drapeau de glissé ; hors glissé, le pas s'ouvre dans `onValueChange`) : COMP
+rendu à 0.0 dB par Ctrl+Z, historique « Master » ; le départ rendu à `[0.0]`,
+historique « Départ — Acid Bass » ; un glissé reste un seul pas ; fumée 0 raté ;
+préférences inchangées.
+
+**MESURÉ — TENU.**
+
+| cas | témoin | après |
+|---|---|---|
+| `valeur:master.COMP=-12` | -12.0 dB, historique vide | -12.0 dB, « Master » |
+| … puis « ctrl + Z » | **-12.0 dB** | **0.0 dB** |
+| `appuyer:master.COMP` (glissé) | — | un pas, « Master » |
+| `valeur:mixeur.depart=0.5` (démo + bus « Réverb ») | `sends [0.5]`, historique vide | `sends [0.5]`, « Départ — Acid Bass » |
+| … puis « ctrl + Z » | **`[0.5]`** | **`[0]`** |
+
+Fumée 0 raté ; préférences inchangées. Tous les curseurs de la console
+ouvrent désormais leur pas, glissés ou non.

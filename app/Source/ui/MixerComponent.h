@@ -534,6 +534,7 @@ private:
     juce::TextButton enableButton_ { "MASTER" };
     juce::TextButton monoButton_ { "MONO" };   ///< D23.5
     juce::Label titleLabel_, lufsLabel_, phaseLabel_;
+    bool glisseMaster_ = false;   ///< D428 : un glissé a déjà ouvert son pas
     /// D48 : le témoin de saturation, et le pire dépassement qu'il retient.
     juce::Label satLabel_;
     bool satVue_ = false;
