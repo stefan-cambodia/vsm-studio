@@ -2048,7 +2048,10 @@ void MainComponent::listTextsForCapture() {
                 const auto zone = l->getBorderSize().subtractedFrom(l->getLocalBounds());
                 const float besoin = vsm::app::ui::besoinDeLargeur(l->getText(), police, zone);
                 if (besoin > 1.0f) {
-                    const bool coupe = besoin > 1.0f / std::max(0.01f, l->getMinimumHorizontalScale());
+                    // D389 : une échelle 0 est la valeur PAR DÉFAUT de JUCE (0,7), pas « sans limite ».
+                    const float echelle = l->getMinimumHorizontalScale() > 0.0f
+                        ? l->getMinimumHorizontalScale() : juce::Font::getDefaultMinimumHorizontalScaleFactor();
+                    const bool coupe = besoin > 1.0f / echelle;
                     ++comprimes;
                     coupes += coupe ? 1 : 0;
                     std::fputs(("VSM_SERRE : " + juce::String(besoin, 2) + (coupe ? " COUPÉ" : " comprimé")
@@ -2059,7 +2062,12 @@ void MainComponent::listTextsForCapture() {
             }
             for (auto* enfant : c.getChildren()) descendre(*enfant);
         };
-        descendre(*this);
+        // D389 : TOUTES LES FENÊTRES, pas la seule principale. Les boîtes de
+        // dialogue sont des fenêtres à part : le relevé de D382 ne les a jamais
+        // vues. La fenêtre principale est l'une d'elles (`*this` y est contenu).
+        for (int w = 0; w < juce::TopLevelWindow::getNumTopLevelWindows(); ++w)
+            if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(w); fenetre != nullptr && fenetre->isVisible())
+                descendre(*fenetre);
         std::fputs(("VSM_SERRES : " + juce::String(total) + " libellé(s) visibles, " + juce::String(comprimes)
                     + " comprimé(s), dont " + juce::String(coupes) + " coupé(s)\n").toRawUTF8(), stderr);
     }
@@ -5864,7 +5872,58 @@ void MainComponent::showAudioSettings() {
         false,  // pas de sortie MIDI
         true,   // afficher le choix stéréo
         false); // vue avancée repliée
-    selector->setSize(500, 420);
+    // D389 : LA FENÊTRE À LA MESURE DU PÉRIPHÉRIQUE CHOISI. À 500 px écrits en
+    // dur, la liste des sorties recevait 199 px et « Default ALSA Output
+    // (currently PipeWire Media Server) » -- le nom que le système donne à la
+    // sortie par défaut -- sortait COUPÉ. Ce qui doit tenir est le nom que la
+    // liste FERMÉE montre, celui du périphérique courant (sortie et entrée) : la
+    // liste ouverte montre tous les noms dans son propre menu, à sa largeur --
+    // et le plus long de ceux-là (« …7.1 Surround output to Front, Center, Side,
+    // Rear and Woofer speakers ») ferait une fenêtre de deux mille pixels. Le
+    // reste de la rangée (intitulé, bouton d'essai, marges) prend ~300 px : on
+    // ajoute le nom, la flèche et la marge de la liste (30 + 10). La police est
+    // celle du thème pour une liste de la hauteur réelle -- une liste de taille
+    // nulle rend une police de hauteur nulle, et un premier calcul valait 4 px.
+    int largeur = 500;
+    {
+        juce::ComboBox essai;
+        essai.setSize(200, 24);
+        const auto police = essai.getLookAndFeel().getComboBoxFont(essai);
+        juce::StringArray noms;
+        if (auto* courant = audioEngine_.deviceManager().getCurrentAudioDevice()) noms.add(courant->getName());
+        juce::AudioDeviceManager::AudioDeviceSetup reglage;
+        audioEngine_.deviceManager().getAudioDeviceSetup(reglage);
+        noms.add(reglage.outputDeviceName);
+        noms.add(reglage.inputDeviceName);
+        float plusLong = 0.0f;
+        for (const auto& nom : noms) plusLong = std::max(plusLong, juce::GlyphArrangement::getStringWidth(police, nom));
+        int plafond = 1600;
+        if (auto* ecran = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+            plafond = std::max(500, ecran->userArea.getWidth() - 80);
+        // LA CASE SE MESURE, ELLE NE SE DEVINE PAS. Un premier calcul supposait
+        // « ~300 px pour le reste de la rangée » : à 724 px, la liste n'avait que
+        // 334 px et le nom sortait encore comprimé (1,13). La disposition du
+        // sélecteur est celle de JUCE ; on la laisse faire, on lit la plus
+        // étroite des listes qui montrent un nom, et l'on élargit de ce qui manque.
+        for (int essaiDeLargeur = 0; essaiDeLargeur < 6; ++essaiDeLargeur) {
+            selector->setSize(largeur, 420);
+            float manque = 0.0f;
+            std::function<void(juce::Component&)> lire = [&](juce::Component& c) {
+                if (auto* liste = dynamic_cast<juce::ComboBox*>(&c); liste != nullptr && liste->isVisible()
+                                                                   && noms.contains(liste->getText())) {
+                    const float case_ = static_cast<float>(liste->getWidth() - 30 - 10);
+                    manque = std::max(manque, plusLong - case_);
+                }
+                for (auto* enfant : c.getChildren()) lire(*enfant);
+            };
+            lire(*selector);
+            if (manque <= 0.0f || largeur >= plafond) break;
+            largeur = std::min(plafond, largeur + static_cast<int>(std::ceil(manque / 0.6f)) + 4);
+        }
+    }
+    selector->setSize(largeur, 420);
+    std::fputs((juce::String::fromUTF8(u8"Réglages audio : fenêtre de ") + juce::String(largeur) + " px\n").toRawUTF8(),
+               stderr);
 
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector.release());

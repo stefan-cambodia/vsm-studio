@@ -31515,3 +31515,67 @@ profil demandé et absent pourrait être dit comme tel dans ce compte, à la
 manière de `requestedInstrumentId` (D76) pour une machine absente.
 
 Banc de fumée 0 raté ; préférences inchangées ; `verifier.sh --compiler` : 12 bancs compilés, C++ 361 / 1 303 / 307 / 25 / 11, Python 239, ruff, mypy, gardes.
+
+---
+
+### Phase D389 — la fenêtre « Réglages audio » coupait le nom du périphérique, et le relevé disait « comprimé » (26/09/2026)
+
+**D'OÙ ELLE VIENT.** Le relevé `VSM_SERRES` ne descendait que la fenêtre
+principale ; il parcourt désormais toutes les fenêtres visibles. Premier essai :
+*Fichier ▸ Réglages audio...*, en `fr` et en `en`. Un libellé de la fenêtre y
+est comprimé à **1,90** : le nom du périphérique de sortie, « Default ALSA
+Output (currently PipeWire Media Server) », dans une liste de 199 px. La photo
+de la fenêtre (`VSM_CAPTURE_PANNEAUX`) le montre **coupé** — « …(currently
+PipeWir... » — et le relevé disait « comprimé ».
+
+**DEUX DÉFAUTS, DONT UN DANS L'INSTRUMENT.**
+1. **Le relevé** : un `juce::Label` dont l'échelle minimale vaut 0 — le défaut
+   — n'est pas « sans limite » : JUCE prend alors
+   `Font::getDefaultMinimumHorizontalScaleFactor()`, **0,7**, et coupe au-delà de
+   1 / 0,7 = 1,43. Le relevé divisait par max(0,01 ; 0), soit « coupé à
+   partir de 100 ». Les libellés de D382-D384 relevés « comprimés » l'étaient
+   tous sous 1,43 : leur verdict ne change pas ; celui-ci, oui.
+2. **La fenêtre** : le sélecteur de JUCE est posé à 500 × 420 px écrits en dur ;
+   la liste des sorties en reçoit 199, et le nom que le système donne à la
+   sortie par défaut n'y tient pas. La règle du projet : agrandir la case.
+
+**LE CORRECTIF** : (1) l'échelle 0 lue comme la valeur par défaut de JUCE ;
+(2) la fenêtre prend la largeur qu'il faut pour que le plus long nom de
+périphérique (sorties et entrées du type courant, à la police des listes)
+tienne, bornée par l'écran, 500 restant le minimum.
+
+**CE QUI N'EST PAS TRAITÉ, ET POURQUOI.** « 512 samples (11.6 ms) » reste en
+anglais dans l'interface française : JUCE écrit « samples » et « ms » EN DUR,
+sans `TRANS` (`juce_AudioDeviceSelectorComponent.cpp:807`) ; aucune table de
+traduction ne peut l'atteindre sans modifier JUCE. « channel 1 + 2 » et « Midi
+Through Port-0 » sont des noms que le SYSTÈME donne à ses canaux et à ses ports.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. le relevé, sur le code d'avant la fenêtre élargie, dit le nom de la sortie
+   **COUPÉ** (1,90 > 1,43) ;
+2. après : **0** libellé comprimé dans la fenêtre des réglages audio, `fr` et
+   `en`, et la photo montre le nom entier ;
+3. les autres fenêtres et la fenêtre principale : comptes inchangés.
+
+**MESURÉ.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | le relevé dit COUPÉ | « 1.90 COUPÉ : … : 16.0 pt, case 199x20 : Default ALSA Output (currently PipeWire Media Server) » | TENU |
+| 2 | 0 comprimé dans la fenêtre, `fr` et `en` | **0** ; fenêtre de **805** px en français, **793** en anglais ; nom entier sur la photo | TENU — au TROISIÈME essai, voir plus bas |
+| 3 | les autres comptes inchangés | fenêtre principale : les mêmes sérigraphies de façade comprimées ; un titre de façade COUPÉ que le critère corrigé révèle (« MIXER », case de 20 px) — voir la phase suivante | TENU |
+
+**LES DEUX PREMIERS CALCULS DE LARGEUR ÉTAIENT FAUX, ET LE JOURNAL L'A DIT.**
+(1) La police de la liste était demandée à une liste de taille NULLE, que le
+thème borne à 85 % de sa hauteur : 0,1 pt, un nom de 4 px, et la fenêtre
+restait à 500. (2) Corrigée, la largeur supposait « ~300 px pour le reste de la
+rangée » : à 724 px, la liste n'avait que 334 px, et le nom sortait encore
+comprimé à 1,13. La version gardée ne suppose plus rien : elle pose la taille,
+LIT la largeur de la liste qui montre le périphérique courant, et élargit de ce
+qui manque (six essais au plus, borné par l'écran). Et elle ne dimensionne que
+sur le périphérique CHOISI — la liste des noms de l'ALSA en compte de près de
+700 px, qu'un menu déroulant montre très bien à sa propre largeur.
+
+Deux lignes de mise au point, écrites au journal pendant la recherche, ont été
+retirées ; la largeur retenue reste dite (« Réglages audio : fenêtre de N px »).
+Banc de fumée 0 raté ; garde de langue 0 ; préférences inchangées.
