@@ -429,7 +429,9 @@ MainComponent::MainComponent()
     // D71 : les réserves des inserts remontent par le MÊME canal que celles des
     // bus de départ, pour qu'un projet n'ait qu'un seul endroit où se plaindre.
     effectChain_.onEffectReserve = [this](size_t piste, const juce::String& reserve) {
-        noterReserveDEffet(juce::String::fromUTF8(vsm::interchange::libellePiste(piste).c_str())
+        noterReserveDEffet(juce::String::fromUTF8(vsm::interchange::libellePiste(
+                               piste, piste < project_.tracks.size() ? project_.tracks[piste].name
+                                                                     : std::string()).c_str())
                            + " : " + reserve);
     };
     effectChain_.onChainChanged =
@@ -6819,7 +6821,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
                     vsm::interchange::avertissementSansMachine(i, piste).c_str()));
         } else if (!piste.disabled && audioEngine_.processGraph().trackInstrument(i) == nullptr) {
             rapport.add(juce::String::fromUTF8(
-                vsm::interchange::avertissementMachineIndisponible(i, piste.instrumentId).c_str()));
+                vsm::interchange::avertissementMachineIndisponible(i, piste.name, piste.instrumentId).c_str()));
         }
     }
     for (const auto& [index, preset] : loaded.bundle.presetsByTrack) {
@@ -6848,7 +6850,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
             preset, *instrument, project_.tracks[index].instrumentId);
         if (applique.unsupportedCount() > 0 || applique.clampedCount() > 0)
             rapport.add(juce::String::fromUTF8(
-                (vsm::interchange::libellePiste(index) + " : " + applique.summary()).c_str()));
+                (vsm::interchange::libellePiste(index, project_.tracks[index].name) + " : " + applique.summary()).c_str()));
 
         // Échantillons : chargés ICI, sur le thread de l'interface, et
         // jamais depuis le thread audio -- ce sont des lectures de
@@ -6858,7 +6860,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
             preset, *instrument, loaded.bundle.folderPath);
         if (echantillons.aQuelqueChoseADire())
             rapport.add(juce::String::fromUTF8(
-                (vsm::interchange::libellePiste(index) + " : " + echantillons.summary()).c_str()));
+                (vsm::interchange::libellePiste(index, project_.tracks[index].name) + " : " + echantillons.summary()).c_str()));
     }
 
     for (const auto& avertissement : loaded.warnings)

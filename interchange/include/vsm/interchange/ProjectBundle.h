@@ -144,6 +144,12 @@ bool writeTextFile(const std::string& path, const std::string& text, std::string
 /// les noms de fichiers (`track_00.synth.json`) et dans le JSON.
 std::string libellePiste(size_t index);
 
+/// D407 : « Piste N (nom) » -- la forme de TOUT avertissement qui atteint une
+/// boîte ou un rapport. La liste de pistes montre des NOMS : « Piste 1 » seul
+/// obligeait à compter les pistes pour savoir de laquelle on parlait. Un nom
+/// vide rend « Piste N ».
+std::string libellePiste(size_t index, const std::string& nom);
+
 /// Une piste qui a BESOIN d'une machine pour sonner : une piste MIDI active.
 /// Ni une piste audio (son matériau est un fichier), ni un bus de groupe (il
 /// somme ce qu'on lui route), ni une piste désactivée (sortie du morceau par
@@ -155,10 +161,11 @@ bool pisteAttendUneMachine(const vsm::sequencer::Track& track);
 /// « Piste N (nom) : aucun instrument, elle restera silencieuse ».
 std::string avertissementSansMachine(size_t index, const vsm::sequencer::Track& track);
 
-/// « Piste N : instrument "id" indisponible » : la piste désigne une machine
+/// « Piste N (nom) : instrument "id" indisponible » : la piste désigne une machine
 /// que ce build ne sait pas créer -- un plugin non installé, une machine
 /// renommée depuis l'écriture du projet.
-std::string avertissementMachineIndisponible(size_t index, const std::string& pluginId);
+std::string avertissementMachineIndisponible(size_t index, const std::string& nom,
+                                             const std::string& pluginId);
 
 /// Faut-il dire de cette piste qu'elle « restera silencieuse » faute de
 /// machine ? Oui pour une piste qui en attend une et n'en désigne AUCUNE. Non

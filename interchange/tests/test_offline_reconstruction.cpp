@@ -212,7 +212,8 @@ VSM_TEST(warnings_count_tracks_from_one_like_the_track_list) {
     VSM_ASSERT(result.success);
     bool un = false, zero = false, redite = false;
     for (const auto& warning : result.warnings) {
-        if (warning == "Piste 1 : instrument \"com.autre.editeur.synth-absent\" indisponible") un = true;
+        // D407 : et nommée par son NOM, que montre la liste de pistes.
+        if (warning == "Piste 1 (Basse acide) : instrument \"com.autre.editeur.synth-absent\" indisponible") un = true;
         if (warning.rfind("Piste 0", 0) == 0) zero = true;
         // La machine absente est dite UNE fois : la piste n'est pas « sans
         // instrument », elle en demande un qu'on n'a pas.
@@ -222,6 +223,8 @@ VSM_TEST(warnings_count_tracks_from_one_like_the_track_list) {
     VSM_ASSERT(!zero);
     VSM_ASSERT(!redite);
     VSM_ASSERT_EQ(libellePiste(0), std::string("Piste 1"));
+    VSM_ASSERT_EQ(libellePiste(0, "bass"), std::string("Piste 1 (bass)"));
+    VSM_ASSERT_EQ(libellePiste(0, ""), std::string("Piste 1"));
 }
 
 VSM_TEST(neither_a_folder_nor_a_disabled_track_is_warned_as_silent) {
@@ -277,7 +280,7 @@ VSM_TEST(loading_reports_a_missing_preset_without_refusing_the_project) {
     bool mentioned = false;
     for (const auto& warning : loaded.warnings)
         // D75 : numérotée comme la liste de pistes, et non plus « piste 0 ».
-        if (warning.find("Piste 1 : preset introuvable") != std::string::npos) mentioned = true;
+        if (warning.find("Piste 1 (Basse acide) : preset introuvable") != std::string::npos) mentioned = true;
     VSM_ASSERT(mentioned);
 }
 

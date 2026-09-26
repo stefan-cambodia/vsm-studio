@@ -92,7 +92,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         declarerLesControleursGM(graph, i, pluginId);   // D332 : le rendu hors-ligne comme l'application
         auto* instrument = graph.trackInstrument(i);
         if (instrument == nullptr) {
-            result.warnings.push_back(avertissementMachineIndisponible(i, pluginId));
+            result.warnings.push_back(avertissementMachineIndisponible(i, piste.name, pluginId));
             continue;
         }
         ++result.tracksWithInstrument;
@@ -103,7 +103,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         if (preset == bundle.presetsByTrack.end()) continue;
         const PresetApplyReport applyReport = applyPreset(preset->second, *instrument, pluginId);
         if (applyReport.unsupportedCount() > 0 || applyReport.clampedCount() > 0)
-            result.warnings.push_back(libellePiste(i) + " : " + applyReport.summary());
+            result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) + " : " + applyReport.summary());
 
         // ÉCHANTILLONS. Chargés après le preset, et avant toute lecture : la
         // lecture de fichiers n'a rien à faire dans le thread audio.
@@ -115,7 +115,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         const SampleLoadReport sampleReport =
             applyPresetSamples(preset->second, *instrument, bundle.folderPath);
         if (sampleReport.aQuelqueChoseADire())
-            result.warnings.push_back(libellePiste(i) + " : " + sampleReport.summary());
+            result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) + " : " + sampleReport.summary());
     }
 
     // PISTES AUDIO. Le fichier est décodé et rééchantillonné ICI, sur le thread
@@ -140,7 +140,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         const auto& sourceAudio = gelee ? track.frozenAudio : track.audio;
         if (track.kind != vsm::sequencer::Track::Kind::Audio && !track.frozen) continue;
         if (sourceAudio.empty()) {
-            result.warnings.push_back(libellePiste(i) + " (" + track.name + ") : "
+            result.warnings.push_back(libellePiste(i, track.name) + " : "
                                        + (track.frozen ? "piste GELÉE sans audio de gel"
                                                        : "piste audio sans fichier")
                                        + ", elle restera silencieuse");
@@ -157,12 +157,12 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         auto charge = vsm::audio::io::loadAudioTrack(
             chemin, options.sampleRate, vsm::audio::io::AudioLoadPolicy::Offline);
         if (!charge.success || !charge.source) {
-            result.warnings.push_back(libellePiste(i) + " : " + charge.error);
+            result.warnings.push_back(libellePiste(i, track.name) + " : " + charge.error);
             continue;
         }
         if (charge.resampled)
             result.warnings.push_back(
-                libellePiste(i) + " (" + track.name + ") : audio rééchantillonné de " +
+                libellePiste(i, track.name) + " : audio rééchantillonné de " +
                 std::to_string(static_cast<int>(charge.fileSampleRate)) + " à " +
                 std::to_string(static_cast<int>(charge.sessionSampleRate)) + " Hz");
         // LA LONGUEUR VIENT DU FICHIER RÉELLEMENT CHARGÉ, et non du nombre de
@@ -200,8 +200,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         charge.source->safetyFadeFrames = static_cast<int64_t>(
             std::llround(vsm::audio::engine::kDefaultSafetyFadeMs / 1000.0 * options.sampleRate));
         if (charge.source->clips.empty()) {
-            result.warnings.push_back(libellePiste(i) + " (" + track.name +
-                                       ") : aucun clip audio à jouer");
+            result.warnings.push_back(libellePiste(i, track.name) + " : aucun clip audio à jouer");
             continue;
         }
         // LES CLIPS QUI SUIVENT LE TEMPO (D12.5) : le rendu hors ligne DOIT
@@ -227,7 +226,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
             auto effect = vsm::audio::effect::EffectFactory::create(entry.type);
             if (!effect) {
                 // Type inconnu : nommé, jamais remplacé par un autre effet.
-                result.warnings.push_back(libellePiste(i) + " : effet « " + entry.type +
+                result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) + " : effet « " + entry.type +
                                            " » inconnu, non appliqué");
                 continue;
             }
@@ -239,7 +238,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
             effect->prepare(options.sampleRate, options.blockSize);
             const EffectApplyReport applyReport = applyEffectDescription(entry, *effect);
             for (const auto& unknown : applyReport.unknownParameters)
-                result.warnings.push_back(libellePiste(i) + " : effet « " + entry.type +
+                result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) + " : effet « " + entry.type +
                                            " », réglage inconnu « " + unknown + " »");
             chain->push_back(std::move(effect));
         }
@@ -294,7 +293,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         if (i >= bundle.project.tracks.size()) continue;
         const std::string& pluginId = bundle.project.tracks[i].instrumentId;
         if (pluginId.empty()) {
-            result.warnings.push_back(libellePiste(i) +
+            result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) +
                                        " : automation sans instrument, ignorée");
             continue;
         }
@@ -302,7 +301,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         for (const auto& lane : documentTrack.automation) {
             const ParameterDescriptor* descriptor = profile.findBySemanticId(lane.parameter);
             if (descriptor == nullptr) {
-                result.warnings.push_back(libellePiste(i) + " : automation « " +
+                result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) + " : automation « " +
                                            lane.parameter + " » : la machine n'a pas ce paramètre");
                 continue;
             }

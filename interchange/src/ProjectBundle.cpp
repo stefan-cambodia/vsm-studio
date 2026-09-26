@@ -38,6 +38,10 @@ std::string presetPathForTrack(size_t index) {
 
 std::string libellePiste(size_t index) { return "Piste " + std::to_string(index + 1); }
 
+std::string libellePiste(size_t index, const std::string& nom) {
+    return nom.empty() ? libellePiste(index) : libellePiste(index) + " (" + nom + ")";
+}
+
 bool pisteAttendUneMachine(const vsm::sequencer::Track& track) {
     // UNE LISTE POSITIVE, ET NON « TOUT SAUF L'AUDIO ET LE GROUPE ». C'est
     // ainsi qu'était écrite la règle du rendu hors ligne, et le quatrième
@@ -48,11 +52,12 @@ bool pisteAttendUneMachine(const vsm::sequencer::Track& track) {
 }
 
 std::string avertissementSansMachine(size_t index, const vsm::sequencer::Track& track) {
-    return libellePiste(index) + " (" + track.name + ") : aucun instrument, elle restera silencieuse";
+    return libellePiste(index, track.name) + " : aucun instrument, elle restera silencieuse";
 }
 
-std::string avertissementMachineIndisponible(size_t index, const std::string& pluginId) {
-    return libellePiste(index) + " : instrument \"" + pluginId + "\" indisponible";
+std::string avertissementMachineIndisponible(size_t index, const std::string& nom,
+                                             const std::string& pluginId) {
+    return libellePiste(index, nom) + " : instrument \"" + pluginId + "\" indisponible";
 }
 
 bool pisteADireSansMachine(const LoadedBundle& bundle, size_t index) {
@@ -151,7 +156,11 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
     const ImportReport& lu = result.bundle.report;
     for (size_t k = 0; k < lu.missingInstruments.size() && k < lu.missingInstrumentTracks.size(); ++k)
         result.warnings.push_back(
-            avertissementMachineIndisponible(lu.missingInstrumentTracks[k], lu.missingInstruments[k]));
+            avertissementMachineIndisponible(
+                lu.missingInstrumentTracks[k],
+                lu.missingInstrumentTracks[k] < result.bundle.project.tracks.size()
+                    ? result.bundle.project.tracks[lu.missingInstrumentTracks[k]].name : std::string(),
+                lu.missingInstruments[k]));
     for (const auto& warning : result.bundle.report.warnings)
         result.warnings.push_back(warning);
 
@@ -203,7 +212,7 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
             // recopiée telle quelle dans le rapport d'ouverture de
             // l'application, sous des lignes qui comptent à partir de 1 : elle
             // y nommait « piste 0 » la piste que ses voisines nommaient « Piste 1 ».
-            result.warnings.push_back(libellePiste(i) + " : preset introuvable (" + relative + ")");
+            result.warnings.push_back(libellePiste(i, document.document.tracks[i].name) + " : preset introuvable (" + relative + ")");
             continue;
         }
         SynthPresetLoadResult preset = parseSynthPreset(presetText);

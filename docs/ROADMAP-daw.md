@@ -32244,3 +32244,74 @@ fumée 0 raté.
 needed) ». La constante de la décision et celle des deux textes sont la même
 (`MainComponent::kNetteteMinimale`). Garde de langue 0 ; banc de fumée 0 raté ;
 préférences inchangées. Attendu tenu.
+
+---
+
+### Phase D407 — « Piste 1 : 0 échantillon(s) chargé(s) », la piste nommée par son seul numéro (26/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT UN PROJET RECONSTRUIT.** Le premier morceau de la
+campagne s2 (`morceau-0001-g1`), ouvert sous un HOME de brouillon, affiche la
+boîte « Projet ouvert, avec des réserves » : « Piste 1 : 0 échantillon(s)
+chargé(s), 1 en échec : … ». La liste des pistes, juste à gauche, dit
+« bass » ; elle ne numérote rien. Pour savoir de quoi parle la réserve, il faut
+compter les pistes. Et la même boîte, deux lignes plus haut dans d'autres
+projets, écrit « Piste 1 (bass) : aucun instrument » : sur les **seize**
+avertissements bâtis sur `libellePiste`, **quatre** ajoutaient le nom à la main
+et **douze** ne le faisaient pas (relevé par `grep` dans `interchange/src` et
+`app/Source`, hors les lignes de banc `VSM_REGLAGE`).
+
+**LE CORRECTIF** : `libellePiste(index, nom)` rend « Piste 1 (bass) » (et
+« Piste 1 » seule quand le nom est vide) ; tout avertissement qui atteint la
+boîte ou le rapport d'export passe par lui. Les modèles de traduction (D89)
+suivent : « Piste %#1 (%2) : … ». Les lignes `VSM_REGLAGE`, lues par les bancs,
+gardent leur forme.
+
+**ATTENDU, écrit avant la mesure** :
+1. la même ouverture (`morceau-0001-g1`) écrit « Piste 1 (bass) : 0
+   échantillon(s) chargé(s)… », et en anglais « Track 1 (bass): 0 sample(s)
+   loaded… » — la traduction du modèle ne laisse aucun mot français ;
+2. `grep` : zéro avertissement bâti sur `libellePiste(i) + " :"` sans nom
+   dans `interchange/src` et `app/Source` (hors `VSM_REGLAGE`) ;
+3. tests `interchange` verts, garde de langue 0, banc de fumée 0 raté,
+   préférences de l'utilisateur inchangées.
+
+**MESURÉ** (`morceau-0001-g1`, HOME de brouillon, 2117 × 1317) :
+1. **PARTIEL.** `fr` — « Piste 1 (bass) : 0 échantillon(s) chargé(s), 1 en
+   échec : » (avant : « Piste 1 : ») ; `en` — « Track 1 (bass): 0 sample(s)
+   loaded, 1 failed: ». Le préfixe et le résumé se traduisent. MAIS la boîte
+   anglaise garde deux phrases françaises, que D407 n'a pas écrites et que sa
+   photo révèle : la sous-ligne « profil « MS-E-Piano-FM » introuvable.
+   Cherché : … » (aucun modèle), et « 1327 note(s) signalée(s) comme douteuses
+   … soit 41 % … « Les 10 % les moins sûres » … » — un modèle EXISTE, mais la
+   phrase a grandi depuis (« soit %3 % », la liste des moins sûres) et ne le
+   rencontre plus. Deux phases à part, pas un réglage de celle-ci.
+2. **TENU.** `grep` des `libellePiste(x)` à un seul argument hors `VSM_REGLAGE`
+   et hors la définition : 0 (16 sites, tous nommés).
+3. **TENU.** `vsm_interchange_tests` 307/307 (deux assertions neuves :
+   `libellePiste(0, "bass")` → « Piste 1 (bass) », nom vide → « Piste 1 ») ;
+   garde de langue 0 ; banc de fumée 0 raté ; préférences inchangées (`cmp`).
+
+---
+
+### Phase D408 — le volet des réserves collait la sous-liste « - » à la fin de sa ligne (26/09/2026)
+
+**D'OÙ ELLE VIENT — LA MÊME PHOTO QUE D407.** Le résumé d'échantillons
+(`SampleLoadReport::summary`) écrit ses échecs en sous-liste : « 1 en
+échec :\n  - profil « MS-E-Piano-FM » introuvable… ». Le journal
+(`VSM_OUVERTURE`) le montre sur deux lignes ; le volet l'affiche sur UNE :
+« 1 en échec :    - profil… ». La cause est dans `envelopper()` : les mots se
+découpent sur l'espace seul, le « \n » reste collé à « : », et la peinture le
+rend comme un blanc. La hiérarchie que le texte exprime disparaît à l'écran.
+
+**LE CORRECTIF** : `envelopper()` découpe d'abord la ligne source sur ses
+retours à la ligne ; chaque morceau est replié pour son compte et garde son
+retrait d'origine (« - » décalé de deux espaces), comme les sous-postes du
+rapport de reconstruction.
+
+**ATTENDU, écrit avant la mesure** :
+1. sur `morceau-0001-g1`, le volet montre « - profil « MS-E-Piano-FM »
+   introuvable… » en DÉBUT de ligne, sous « … 1 en échec : » — lu sur la photo,
+   et au relevé des lignes du volet s'il en existe un ;
+2. aucune ligne du volet ne contient de « \n » (relevé ou lecture du code) ;
+3. « Copier » rend le même texte qu'avant (le presse-papiers lit la source,
+   pas les lignes repliées) ; garde de langue 0 ; fumée 0 raté.
