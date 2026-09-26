@@ -31277,3 +31277,74 @@ auraient déplacé la console sans rien rendre lisible. Le compte du relevé
 de machines, plus aucun libellé comprimé au-delà de 1 % dans aucune vue, en
 français comme en anglais. Les restes sont dans les façades, où la largeur du
 rack est le goulot (D379).
+
+---
+
+### Phase D385 — un projet reconstruit mettait toutes ses parties mélodiques sur le canal 1 (26/09/2026)
+
+**D'OÙ ELLE VIENT — D'UN AUDIT À L'ÉCRAN.** *children-dream-v12* : « bass »
+(piano) et « other » (cordes) affichent **Ch 1** toutes les deux. Relevé sur
+les projets que la chaîne écrit aujourd'hui (`s2-banc`, `d282-*`,
+`temoin-recensement`…) : **toutes** les pistes mélodiques sont au canal 0, jusqu'à
+trois par projet ; seules les pièces de batterie ont le canal 10.
+
+**CE QUE CELA CASSE, MESURÉ ET NON DÉDUIT.** `VSM_EXPORT_MIDI` (le chemin de
+« Fichier ▸ Exporter MIDI… ») sur `s2-banc/morceau-0001-g1`, relu par `mido` :
+`bass` (335 notes), `other` (2 412) et `piano` (522) écrivent **toutes leurs
+notes sur le canal 1**. Un lecteur General MIDI — ou un DAW qui fusionne par
+canal — n'a qu'un programme pour ce canal : trois instruments différents en
+jouent un seul. Depuis D312, l'export écrit un programme par piste, dérivé de
+sa machine : sur un canal partagé, c'est le dernier écrit qui gagne pour tous.
+Dans l'application, chaque piste a sa machine et rien ne s'entend — c'est la
+sortie vers les autres logiciels (critère **e**) qui ment.
+
+**LA CAUSE** (`analyse/analyzer/vsm_project_export.py`) : `ExportTrack.channel`
+vaut 0 par défaut, et aucun étage de la chaîne ne le pose pour une partie
+mélodique ; `write_project_bundle` l'écrit tel quel dans `project.json` et
+`_write_midi` dans le `.mid`. L'application, elle, donne un canal distinct à
+chaque piste qu'elle crée (D11.5) : la chaîne est seule à ne pas le faire.
+
+**LE CORRECTIF, à la source** : au moment d'écrire le projet, chaque piste
+MÉLODIQUE (ni batterie, ni groupe, ni audio) dont le canal est resté à 0 reçoit
+le premier canal libre dans 1..16 hors 10, dans l'ordre des pistes ; au-delà de
+quinze, les canaux se réutilisent, et le compte rendu le DIT. La batterie
+garde le 10 ; un canal posé explicitement (non nul) n'est pas touché.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. un projet écrit par la chaîne donne à ses parties mélodiques des canaux
+   **distincts** (1, 2, 3… en affichage), la batterie au **10** — dans
+   `project.json` ET dans le `.mid` du dossier ;
+2. **le son ne change pas** : `vsm-render` du même projet, canaux d'avant
+   contre canaux d'après, **identique au bit** — le moteur route par piste, le
+   canal ne doit rien y changer ; s'il y change quelque chose, c'est un défaut
+   de plus, à nommer avant d'aller plus loin ;
+3. l'export MIDI de l'application relu par `mido` : chaque partie mélodique sur
+   son canal, avec son programme quand elle en a un ;
+4. la suite Python et les tests du module d'export verts.
+
+**MESURÉ.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | canaux distincts, `project.json` et `.mid` | `test_canaux_midi.py` (le chemin réel : `write_project_bundle` sur des `ExportTrack`) : trois parties → canaux **0, 1, 2**, batterie **9**, groupe et piste audio sans canal consommé ; un canal explicite gardé ; dix-sept parties → canaux réutilisés, et les quatre pistes qui partagent **nommées** au compte rendu (et au journal de `reconstruire.py`). **Vus ROUGES sur l'ancien code** : 2 tests sur 3 (« obtenu [0, 0, 9, 0] ») | TENU |
+| 2 | son identique au bit | `vsm-render` de `s2-banc/morceau-0001-g1`, canaux d'avant contre canaux d'après : **identiques au bit** (md5 `d7198bb8…`) ; témoin : une seule note décalée d'un demi-ton dans la même copie → rendu DIFFÉRENT, le rendu lit donc bien le fichier modifié | TENU |
+| 3 | export MIDI de l'application | `bass` canal 1, `other` canal 2, `piano` canal 3, batterie canal 10 (relu par `mido`) ; ces trois machines n'ont pas d'équivalent General MIDI, l'export le dit au journal (D312) | TENU |
+| 4 | suites vertes | `verifier.sh` complet : C++ 355 / 1 303 / 307 / 25 / 11, Python **239** tests, dont les 3 neufs, ruff, mypy (151 fichiers), 9 gardes | TENU |
+
+**UNE RÉFÉRENCE COMMISE A BOUGÉ, ET C'EST VOULU.** `test_residu_chaine.py`
+fait tourner la vraie chaîne sur le banc minuscule et compare son
+`arrangement.mid` à une course commise le 04/09, octet pour octet. Après
+D385, « other » y passe du canal 0 au canal 1 : la comparaison a échoué, sur
+cette seule différence. La référence n'a pas été refaite par le moteur
+d'aujourd'hui : la règle lui a été APPLIQUÉE (huit octets, tous des quartets de
+canal de 0x90/0x80 ; une ligne de `project.json`, réécrit dans le format exact
+de la chaîne après avoir vérifié que la réécriture de l'original redonnait ses
+octets), puis la sortie de la chaîne l'a égalée octet pour octet. C'est aussi
+la preuve de l'attendu 1 sur la chaîne entière, et pas seulement sur la
+fonction. L'en-tête du test le dit.
+
+**Reste nommé, non fait** : les noms de piste sortent du `.mid` exporté par
+l'application en UTF-8 (« Batterie · hihat »), qu'un lecteur qui suppose le
+Latin-1 — `mido` par défaut, et bien des logiciels — affiche « Batterie Â·
+hihat ». La chaîne, elle, écrit des noms lisibles (`nom_midi_lisible` :
+« Batterie - hihat ») ; l'application ne le fait pas.

@@ -56,7 +56,7 @@ import time
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence, Tuple, cast
 
 import math
 
@@ -3153,6 +3153,12 @@ def chaine(args: argparse.Namespace) -> None:
                                     metric=args.metrique, iterations=args.iterations,
                                     **complements)
         print(f"      {rapport['tracks']} piste(s), {rapport['notes']} note(s)")
+        partagees = [str(n) for n in cast(List[str], rapport.get("shared_channel_tracks") or [])]
+        if partagees:
+            # D385 : plus de quinze parties mélodiques -- dit, jamais tu.
+            print(f"      canaux MIDI PARTAGÉS (plus de quinze parties mélodiques) : "
+                  f"{', '.join(partagees)} — un lecteur General MIDI "
+                  f"leur donnera le même programme")
 
         rendre_et_mesurer(args, sortie, melange, chantier, complements)
         print(f"  projet    : {sortie}/project.json")

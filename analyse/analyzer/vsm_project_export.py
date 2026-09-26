@@ -159,6 +159,38 @@ def _preset_document(track: ExportTrack, name: str) -> dict:
     return document
 
 
+def canaux_des_pistes(tracks: Sequence[ExportTrack]) -> Tuple[List[int], List[str]]:
+    """
+    Le canal MIDI de chaque piste, et les pistes qui PARTAGENT le leur (D385).
+
+    Aucun étage de la chaîne ne pose le canal d'une partie mélodique : il valait
+    0 pour toutes, et un projet reconstruit mettait basse, cordes et piano sur le
+    canal 1. Dans le DAW rien ne s'entend (chaque piste a sa machine) ; dans le
+    `.mid` exporté, un lecteur General MIDI n'a qu'un programme par canal, et
+    trois instruments en jouaient un seul. Chaque piste MÉLODIQUE restée à 0
+    reçoit donc le premier canal libre (0..15 hors 9), dans l'ordre des pistes ;
+    la batterie garde le 9 ; un canal posé explicitement n'est pas touché ; un
+    groupe ou une piste audio n'en a pas l'usage. Au-delà de quinze parties, les
+    canaux se réutilisent, et la liste rendue le DIT.
+    """
+    libres = [c for c in range(16) if c != 9]
+    canaux: List[int] = []
+    rang = 0
+    for track in tracks:
+        if track.is_drums:
+            canaux.append(9)
+        elif track.is_group or track.audio_path or int(track.channel) != 0:
+            canaux.append(int(track.channel) % 16)
+        else:
+            canaux.append(libres[rang % len(libres)])
+            rang += 1
+    partagees = [t.name for t, c in zip(tracks, canaux, strict=True)
+                 if not t.is_drums and not t.is_group and not t.audio_path
+                 and sum(1 for u, d in zip(tracks, canaux, strict=True)
+                         if d == c and not u.is_drums and not u.is_group and not u.audio_path) > 1]
+    return canaux, partagees
+
+
 def _write_midi(tracks: Sequence[ExportTrack], path: Path, tempo: float) -> None:
     """
     Écrit le MIDI avec EXACTEMENT une piste par piste de projet.
@@ -177,6 +209,7 @@ def _write_midi(tracks: Sequence[ExportTrack], path: Path, tempo: float) -> None
     midi = mido.MidiFile(type=1, ticks_per_beat=TICKS_PER_QUARTER_NOTE)
     ticks_per_second = TICKS_PER_QUARTER_NOTE * float(tempo) / 60.0
 
+    canaux, _ = canaux_des_pistes(tracks)
     for index, track in enumerate(tracks):
         midi_track = mido.MidiTrack()
         midi_track.append(mido.MetaMessage("track_name",
@@ -188,7 +221,7 @@ def _write_midi(tracks: Sequence[ExportTrack], path: Path, tempo: float) -> None
 
         # Canal 9 pour la batterie : c'est la convention MIDI, et le DAW s'en
         # sert pour reconnaître une piste percussive.
-        channel = 9 if track.is_drums else int(track.channel) % 16
+        channel = canaux[index]   # D385 : un canal par partie mélodique
 
         events = []
         for note in track.notes:
@@ -281,10 +314,11 @@ def write_project_bundle(
     unassigned: List[str] = []
 
     document_tracks = []
+    canaux, partagees = canaux_des_pistes(tracks)
     for index, track in enumerate(tracks):
         entry: Dict[str, object] = {
             "name": track.name,
-            "channel": 9 if track.is_drums else int(track.channel),
+            "channel": canaux[index],   # D385
             "color": _TRACK_COLOURS[index % len(_TRACK_COLOURS)],
             "effects": [dict(effet) for effet in track.effects],
             "mix": {
@@ -377,4 +411,6 @@ def write_project_bundle(
         "tracks": len(tracks),
         "notes": sum(len(t.notes) for t in tracks),
         "unassigned_tracks": unassigned,
+        # D385 : plus de quinze parties mélodiques -- des canaux se partagent.
+        "shared_channel_tracks": partagees,
     }

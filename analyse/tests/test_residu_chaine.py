@@ -75,6 +75,12 @@ FIXTURE = Path(__file__).resolve().parent / "donnees" / "banc-minuscule"
 # serré que la 4e décimale à laquelle la chaîne publie et compare ses
 # distances. Un écart qui changerait une décision est très au-dessus.
 TOLERANCE_MOTEUR = 1e-6
+# D385 (26/09/2026) : LA RÉFÉRENCE A BOUGÉ D'UNE RÈGLE, ET D'UNE SEULE. Chaque
+# partie mélodique reçoit désormais son canal MIDI ; « other » passe du canal 0
+# au canal 1 dans `course/midi/arrangement.mid` (huit octets : les quartets de
+# canal de ses 0x90/0x80) et dans `course/project.json` (une ligne). La
+# référence n'a pas été refaite par le moteur d'aujourd'hui : la règle lui a été
+# APPLIQUÉE, puis la sortie de la chaîne l'a égalée octet pour octet.
 SEPARATEUR_FACTICE = Path(__file__).resolve().parent / "donnees" / "separateur_factice.py"
 # Les options de la course commise (rapport.json de la fixture, provenance).
 # `--tempo 120` : LA COURSE COMMISE DU 04/09 A ÉTÉ ÉCRITE AU DÉFAUT DE L'ÉPOQUE,
