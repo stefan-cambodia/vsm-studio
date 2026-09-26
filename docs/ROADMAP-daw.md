@@ -31871,3 +31871,27 @@ le code prend 30 % de la ZONE DE TRAVAIL, sous le menu et la barre de transport
 une course doublée (58 → 112 px) pour 54 px de grille en moins, et rien de
 changé chez qui a réglé son volet (l'utilisateur, à 551). Banc de fumée 0 raté ;
 préférences inchangées.
+
+---
+
+### Phase D396 — l'étiquette de position restait vide jusqu'au premier tour du minuteur (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D373.** `barre-transport.sh`, rejoué
+aujourd'hui, le relève encore : « 1 étiquette(s) visible(s) mais vide(s) » —
+la position (`positionLabel_`), qui ne reçoit son texte qu'au premier
+`timerCallback` du chronomètre. Tout relevé ou toute photo pris avant ce tour
+voit une case vide là où l'utilisateur attend « 00:00,000 | mes. 1 · 1 ».
+
+**LE CORRECTIF** : `rafraichirPosition()` écrit la position tout de suite ;
+`MainComponent` l'appelle dès qu'il a branché le fournisseur de position
+musicale — pas dans le constructeur de la barre, où ce fournisseur manque
+encore et où l'on aurait écrit « tick 0 », un texte faux.
+
+**ATTENDU, ÉCRIT AVANT LA MESURE** : `barre-transport.sh` ne relève plus
+AUCUNE étiquette visible et vide (1 avant, à 2 240 × 1 400), et le relevé des
+textes porte la position (« 00:00… | mes. 1 · 1 ») ; la garde reste verte.
+
+**MESURÉ** : `barre-transport.sh` — **0** étiquette visible et vide aux trois
+tailles (1 avant, à 2 240 × 1 400), 0 raté ; le relevé des textes, pris au
+démarrage, porte « 00:00,000 | mes. 1 · 1 ». Banc de fumée 0 raté ;
+préférences inchangées. Attendu tenu.

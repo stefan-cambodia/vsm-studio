@@ -138,6 +138,9 @@ public:
     /// causes, le câble ou la piste ; IN qui clignote sans OUT désigne la
     /// piste, IN éteint désigne le câble.
     void setMidiActivity(bool in, bool out);
+    /// D396 : la position écrite TOUT DE SUITE, sans attendre le minuteur -- à
+    /// appeler dès que `positionInBarsProvider` est branché.
+    void rafraichirPosition() { timerCallback(); }
 
 private:
     const vsm::interchange::ShortcutTable* raccourcis_ = nullptr;   // D358

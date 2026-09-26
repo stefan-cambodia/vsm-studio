@@ -689,6 +689,9 @@ MainComponent::MainComponent()
         return tr(u8"mes. ") + juce::String(static_cast<long long>(bb.bar + 1))   // D78
                + juce::String(u8" \u00b7 ") + juce::String(static_cast<long long>(bb.beat + 1));
     };
+    // D396 : L'ÉTIQUETTE DE POSITION NE RESTE PAS VIDE jusqu'au premier tour du
+    // minuteur (D373 l'avait relevée, visible et vide, au démarrage).
+    transportBar_.rafraichirPosition();
     transportBar_.onPositionDoubleClicked = [this] { promptGoToBar(); };
     arrangement_.onPlayheadRequested = [this](vsm::midi::Tick tick) {
         transport_.seekToTick(tick);
