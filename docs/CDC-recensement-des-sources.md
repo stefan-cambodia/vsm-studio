@@ -954,3 +954,75 @@ regardait les attaques de la nappe, pendant lesquelles aucune mélodie ne sonne 
 alors que c'est le cas même que la règle veut voir. La simultanéité est donc le
 plus grand des DEUX sens. Aucune donnée du banc n'a été lue pour ce changement ;
 seuil, sensibilité et attendus ne bougent pas.
+
+### 13.1 Le verdict (26/09/2026) : H40 PARTIELLE — la simultanéité des notes est un signal trop faible
+
+Recalculé par `analyse/verdict_h40.py`. **Témoin** (sans option) : comptes et
+L1 identiques à H37.
+
+| # | attendu | mesuré (seuil 0,5) | verdict |
+|---|---|---|---|
+| 1 | L1 `s1-sec` ≥ 60 % | **47/74 (63,5 %)** — H39 67,6 % | TENU |
+| 2 | compte L2 ≤ 5,2 | **5,80** — H39 5,90, H37 5,20 | intermédiaire |
+| 3 | compte L3 ≤ 3,0 | **3,60** — H39 3,60, parité 3,80 | intermédiaire |
+| 4 | L1 `s2` ≥ 40 % | **32,4 %** — H39 44,6 % | intermédiaire |
+| 5 | *Clair de Lune* 1 ; *Children* K_mél [5 ; 7] | **1** ; **6** | TENU, TENU |
+
+**Verdict, par la règle écrite avant** : 2 n'est pas en échec, mais 2 n'est pas
+tenu → **PARTIELLE**.
+
+**LA SENSIBILITÉ, PUBLIÉE ENTIÈRE** (`s1-sec`, hors verdict) :
+
+| seuil | L1 | compte L2 | compte L3 |
+|---|---|---|---|
+| 0,25 | 59,5 % | 5,50 | 3,60 |
+| 0,50 | 63,5 % | 5,80 | 3,60 |
+| 0,75 | 66,2 % | 5,90 | 3,60 |
+
+Le seuil ne fait que glisser le long d'un compromis : L2 s'améliore quand L1
+recule, sans jamais repasser sous 5,2 ; le compte L3 ne bouge à aucun seuil.
+
+**POURQUOI, LU DANS LES DÉCISIONS.** Sur `s1-sec`, la règle a gardé la
+séparation 4 fois et fusionné 46 fois. Les simultanéités relevées se
+RECOUVRENT d'une population à l'autre : jusqu'à **0,42** dans L1, où chaque stem
+est une partie SEULE et où fusionner est juste ; de **0,03 à 0,49** dans les
+fusions de L2, où les stems portent plusieurs parties. Aucun seuil ne départage
+deux distributions qui se chevauchent. La raison la plus probable : dans un
+mélange, les grappes ne suivent pas les parties (ARI de L2 : 0,16), et la
+simultanéité ENTRE GRAPPES n'est pas celle ENTRE PARTIES.
+
+**CE QUE LE VERDICT DÉCIDE.** H40 n'est pas retenue. Le compte L3 — celui que la
+chaîne emploierait — vaut 3,60 sous H39 comme sous H40, et bat la parité sur
+`s1-sec` : c'est H39, la plus simple, qui reste candidate. Mais elle n'a pas été
+mesurée en L3 sur les morceaux LONGS (`s2`, où la parité et le recensement de
+H37 se jugent sur trois à quatre minutes). C'est l'étape suivante (§ 14).
+
+**Et la règle de conduite change** : l'utilisateur a demandé, le 26/09, de
+poursuivre les étapes suivantes SANS attendre sa validation (§ 10, point 5,
+levé pour ce chantier) — la discipline de mesure, elle, reste entière.
+
+---
+
+## 14. H41 — H39 sur les morceaux LONGS : le recensement peut-il remplacer la parité ? (écrite AVANT la mesure, 26/09/2026)
+
+**D'OÙ ELLE VIENT.** H39 bat la parité en L3 sur `s1-sec` (3,60 contre 3,80),
+des morceaux de 30 s. La chaîne reconstruit des morceaux de trois à neuf
+minutes. Sur `s2` (dix morceaux de 186 à 269 s), H37 donnait un compte L3 de
+**7,90** quand la parité se trompait de **1,00** : sur les morceaux longs, la
+parité est déjà presque juste, et le recensement très loin.
+
+**UNE variable** : `--hdbscan-une-grappe` (H39), sur `s2`, niveaux L1 à L3,
+stems séparés de la course H37 (`recensement-s2`) — tout le reste identique à
+cette course, qui sert de témoin.
+
+**ATTENDUS** :
+
+| # | attendu | RÉUSSITE si | ÉCHEC si |
+|---|---|---|---|
+| 1 | compte L3 (A-grp) sur `s2` | **≤ 1,00** — bat la parité | **≥ 7,90** — pas mieux que H37 |
+| 2 | compte L2 (A-grp) sur `s2` | ≤ 3,1 (A-voix de H37) | ≥ 8,7 (H37) |
+
+**La règle du verdict** : **CONFIRMÉE** si 1 tient — H39 devient candidate au
+remplacement de la parité, à éprouver ensuite sur les disques ; **RÉFUTÉE** si 1
+est en échec ; **PARTIELLE** sinon — le recensement s'améliore sans rattraper la
+parité, qui reste le compte de la chaîne.
