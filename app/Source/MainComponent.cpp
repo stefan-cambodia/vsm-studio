@@ -1626,6 +1626,25 @@ bool MainComponent::valeurPourCapture(const juce::String& nom, double valeur) {
     return curseur != nullptr;
 }
 
+bool MainComponent::saisirPourCapture(const juce::String& nom, const juce::String& texte) {
+    // D444 : le premier libellé VISIBLE de ce nom ; `setText(…, sendNotification)`
+    // appelle son `onTextChange`, comme une frappe validée.
+    std::function<juce::Label*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Label* {
+        if (auto* l = dynamic_cast<juce::Label*>(&c); l != nullptr && l->getName() == nom) return l;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Label* libelle = chercher(*this);
+    if (libelle != nullptr) libelle->setText(texte, juce::sendNotificationSync);
+    std::fputs(("VSM_SAISIE : " + nom + "=" + texte
+                + (libelle != nullptr ? juce::String::fromUTF8(" \xe2\x80\x94 ") + libelle->getText()
+                                      : juce::String::fromUTF8(" \xe2\x80\x94 aucun libell\xc3\xa9 visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    return libelle != nullptr;
+}
+
 bool MainComponent::clicPourCapture(const juce::String& description) {
     // D435 : « nom:fx,fy[:droit] ». La recherche est celle de `appuyer:`, mais sur
     // tout composant (une lane n'est pas un curseur) : visible, avec une surface.

@@ -33512,3 +33512,39 @@ du parc : sa façade est au rack) ») comme en `en` (« Toggle A/B monitoring (n
 original loaded) »…). Contrôle, clips choisis (« ctrl + A » dans
 l'arrangement) : « Reporter la sélection en audio (sur une piste neuve) »,
 active. `menus-cites` 10/0 ; fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D444 — « 120,5 » tapé dans le tempo devenait « 1205 », refusé sans un mot (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN LISANT LA SAISIE DU TEMPO.** Le tempo de la barre de
+transport s'édite au double-clic. Le texte tapé est lu par
+`retainCharacters("0123456789.")` : la VIRGULE décimale d'un utilisateur
+français est jetée, « 120,5 » devient « 1205 », hors de la plage 20-300, et la
+saisie est refusée — en silence : l'ancien tempo revient, et ni la plage ni le
+refus ne sont dits nulle part (l'infobulle dit seulement « Double-cliquer pour
+changer le tempo. »). La panne muette que CLAUDE.md interdit.
+
+**LE BANC** : un verbe neuf, `saisir:<nom>=<texte>`, qui pose le texte d'un
+libellé éditable nommé AVEC notification (le chemin de la frappe validée) ; le
+tempo s'appelle `transport.tempo`. Seuls, dans un premier binaire.
+
+**ATTENDU, écrit avant la mesure** (démo à 130 BPM ; le tempo relu par le
+libellé et par `VSM_TEXTES_LISTE`) :
+1. témoin : « 120,5 » → 130.0 BPM (refusé) ; « 120.5 » → 120.5 BPM ; « 400 »
+   → 130.0 BPM, sans message ;
+2. après : « 120,5 » → **120.5 BPM** ; « 400 » → 130.0 BPM, et l'infobulle dit
+   désormais la plage et le dernier refus (« Tempo refusé : 400 — de 20 à
+   300 BPM ») ; en anglais aussi ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** Démo à 130 BPM, `saisir:transport.tempo=…` :
+
+| saisie | témoin | après |
+|---|---|---|
+| « 120,5 » | **130.0 BPM** (refusé : « 1205 ») | **120.5 BPM** |
+| « 120.5 » | 120.5 BPM | 120.5 BPM |
+| « 400 » | 130.0 BPM, infobulle « Double-cliquer pour changer le tempo. » | 130.0 BPM, infobulle « Tempo refusé : 400 — de 20 à 300 BPM. Double-cliquer pour changer le tempo (de 20 à 300 BPM). » |
+
+En anglais : « Tempo refused: 400 — 20 to 300 BPM. Double-click to change the
+tempo (20 to 300 BPM). », et « 120,5 » accepté aussi. Fumée 0 raté ;
+préférences inchangées.

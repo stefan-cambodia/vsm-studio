@@ -113,9 +113,21 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
 
     // LE TEMPO S'ÉDITE. Double-clic sur la valeur, ou la frapper au bouton.
     bpmLabel_.setEditable(false, true, false);
+    bpmLabel_.setName("transport.tempo");   // D444 : le nom par lequel le banc le désigne (saisir:)
     bpmLabel_.onTextChange = [this] {
-        const double bpm = bpmLabel_.getText().retainCharacters("0123456789.").getDoubleValue();
-        if (bpm < 20.0 || bpm > 300.0) { setBpm(dernierBpm_); return; }   // valeur refusée, pas devinée
+        // D444 : LA VIRGULE EST UN SÉPARATEUR DÉCIMAL. `retainCharacters` la jetait,
+        // et « 120,5 » devenait « 1205 », refusé. Et LE REFUS SE DIT : il laissait
+        // revenir l'ancien tempo sans un mot, la plage écrite nulle part.
+        const juce::String tape = bpmLabel_.getText();
+        const double bpm = tape.replaceCharacter(',', '.').retainCharacters("0123456789.").getDoubleValue();
+        if (bpm < 20.0 || bpm > 300.0) {   // valeur refusée, pas devinée
+            refusTempo_ = tape.upToFirstOccurrenceOf("BPM", false, true).trim();
+            setBpm(dernierBpm_);
+            poserInfobulleTempo();
+            return;
+        }
+        refusTempo_.clear();
+        poserInfobulleTempo();
         dernierBpm_ = bpm;
         setBpm(bpm);
         if (onTempoChanged) onTempoChanged(bpm);
@@ -600,7 +612,7 @@ void TransportBarComponent::retraduire() {
                             u8"bande qu'on ralentit."));
     tapButton_.setTooltip(tr("Frapper le tempo. Deux frappes suffisent ; une pause d'une "
                              "seconde et demie recommence le compte."));
-    bpmLabel_.setTooltip(tr("Double-cliquer pour changer le tempo."));
+    poserInfobulleTempo();   // D444
     // D420 : la signature, juste à droite, se lit comme le tempo mais ne s'édite
     // pas au double-clic ; l'infobulle dit où elle se change.
     timeSigLabel_.setTooltip(tr(u8"Signature rythmique à la tête de lecture. Pour la changer : "
@@ -617,4 +629,13 @@ void TransportBarComponent::retraduire() {
 void TransportBarComponent::poserInfobulleRec(std::function<juce::String()> fabrique) {
     infobulleRec_ = std::move(fabrique);
     recordButton_.setTooltip(infobulleRec_());
+}
+
+void TransportBarComponent::poserInfobulleTempo() {
+    // D444 : la plage, et le dernier refus s'il y en a un.
+    using vsm::app::ui::tr;
+    const juce::String base = tr(u8"Double-cliquer pour changer le tempo (de 20 à 300 BPM).");
+    bpmLabel_.setTooltip(refusTempo_.isEmpty()
+                             ? base
+                             : tr(u8"Tempo refusé : %1 — de 20 à 300 BPM.").replace("%1", refusTempo_) + " " + base);
 }

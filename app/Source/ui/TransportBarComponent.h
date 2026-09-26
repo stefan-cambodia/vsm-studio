@@ -129,6 +129,8 @@ public:
     /// pas le projet ; elle prévient.
     std::function<void()> onPositionDoubleClicked;
     void mouseDoubleClick(const juce::MouseEvent&) override;
+    void poserInfobulleTempo();   ///< D444
+    juce::String refusTempo_;     ///< D444 : le dernier texte refusé
 
     /// D22.4 : LES VOYANTS « IN » ET « OUT ». `in` = un message MIDI est
     /// arrivé depuis le dernier appel (clavier branché ou d'ordinateur) ;
