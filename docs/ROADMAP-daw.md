@@ -32023,3 +32023,33 @@ fumée 0 raté.
 « Version 0.1.0 / Compilé le 26/09/2026 à 18:26 » en `fr`, « Built on
 2026-09-26 at 18:26 » en `en`. Garde de langue 0 ; banc de fumée 0 raté ;
 préférences inchangées. Attendu tenu. Build fait campagne S2 gelée (89 s).
+
+---
+
+### Phase D400 — « Niveau du clic : 0.35 », un nombre sans unité (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE L'AUDIT DES FENÊTRES.** Les *Préférences* montrent
+« Niveau du clic » avec une valeur de **0.35** : le gain LINÉAIRE du métronome,
+sans unité, quand tout le reste de l'application (faders, trim, départs) parle
+en décibels. C'est la famille de D324 (« -200.0 ms » et « 0 dt » sans dire de
+quoi) : un nombre qui ne dit pas ce qu'il mesure ne se règle qu'à l'oreille.
+
+**LE CORRECTIF** : la valeur stockée ne change pas (gain linéaire, 0 à 1 ; les
+préférences et le moteur la lisent telle quelle) ; le curseur l'AFFICHE en
+décibels (20·log10, une décimale, « -inf dB » pour le silence) et une saisie en
+décibels est convertie (`textFromValueFunction` / `valueFromTextFunction` de
+`juce::Slider`).
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. le relevé de la fenêtre dit « -9.1 dB » pour 0,35 (20·log10 0,35 = −9,12) ;
+2. la préférence enregistrée reste un gain linéaire (aucune clé ne change de
+   sens) ;
+3. photo : le texte tient dans sa case ; garde de langue 0 ; fumée 0 raté.
+
+**MESURÉ** : la fenêtre dit « **-9.1 dB** » (relevé `VSM_FENETRE_TEXTE`, `fr`
+et `en`) ; la photo le montre entier dans sa case ; aucun libellé comprimé dans
+la fenêtre (`VSM_SERRES`). La préférence reste un gain linéaire par
+construction : l'écouteur reçoit `getValue()` et l'écrit sous la même clé
+(`niveauMetronome`). Garde de langue 0 ; banc de fumée 0 raté ; préférences
+inchangées. **Non éprouvé** : la SAISIE d'une valeur en dB dans la case (aucun
+banc ne tape dans ce champ). Build de 27 s, campagne S2 gelée le temps du build.

@@ -1,4 +1,5 @@
 #include "PreferencesWindow.h"
+#include <cmath>
 #include "UiScale.h"
 #include "Langue.h"
 #include "vsm/audio/engine/RenderThreadPool.h"
@@ -42,6 +43,18 @@ PreferencesWindow::PreferencesWindow() {
     niveauClic_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     niveauClic_.setTextValueSuffix("");
     niveauClic_.setNumDecimalPlacesToDisplay(2);
+    // D400 : LE GAIN LINÉAIRE S'AFFICHE EN DÉCIBELS. « 0.35 » ne disait pas ce
+    // qu'il mesurait ; la valeur stockée, elle, ne change pas de sens.
+    niveauClic_.textFromValueFunction = [](double v) {
+        return v <= 0.0005 ? juce::String("-inf dB") : juce::String(20.0 * std::log10(v), 1) + " dB";
+    };
+    niveauClic_.valueFromTextFunction = [](const juce::String& texte) {
+        const juce::String t = texte.trim();
+        if (t.startsWithIgnoreCase("-inf")) return 0.0;
+        const double db = t.retainCharacters("-0123456789.,").replaceCharacter(',', '.').getDoubleValue();
+        return juce::jlimit(0.0, 1.0, std::pow(10.0, db / 20.0));
+    };
+    niveauClic_.updateText();
     niveauClic_.onValueChange = [this] {
         if (onMetronomeLevelChanged) onMetronomeLevelChanged(static_cast<float>(niveauClic_.getValue()));
     };
