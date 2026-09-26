@@ -271,7 +271,13 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     mute_.setClickingTogglesState(true);
     mute_.setToggleState(track_.muted, juce::dontSendNotification);
     mute_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentRed);
+    mute_.setName("mixeur.muet");   // D426 : le nom par lequel le banc le désigne (cliquer:)
+    solo_.setName("mixeur.solo");   // D426
     mute_.onClick = [this] {
+        // D426 : UN PAS D'ANNULATION, comme le M de la ligne (D147). Mesuré : le
+        // M de la tranche posait le muet sans ouvrir de pas -- historique vide,
+        // et Ctrl+Z laissait la piste muette.
+        if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Muet")));
         track_.muted = mute_.getToggleState();
         if (onMixChanged) onMixChanged();
     };
@@ -300,6 +306,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
             if (onMixChanged) onMixChanged();
             return;
         }
+        if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Solo")));   // D426
         track_.solo = solo_.getToggleState();
         if (onMixChanged) onMixChanged();
     };

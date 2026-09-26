@@ -32961,3 +32961,47 @@ Volume — Acid Bass | Panoramique — Acid Bass | Trim d'entrée — Acid Bass 
 Bass | Volume — Acid Bass | Pan — Acid Bass | Input trim — Acid Bass ». Les deux
 bancs qui lisent l'historique (`liste-editer`, `liste-ajouter`) : 0 raté ;
 garde de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D426 — le M et le S d'une tranche s'annulent-ils ? (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN LISANT LES SITES DE D425.** Les huit gestes d'une tranche
+qui ouvrent un pas d'annulation sont nommés depuis D425. Le M et le S n'en font
+pas partie : leur `onClick` pose `muted`/`solo` et appelle `onMixChanged`, sans
+`onMixEditStarted`. D147 a prouvé que le M et le S de la LIGNE s'annulent ; ceux
+de la tranche n'ont jamais été mesurés.
+
+**LE BANC** : les deux boutons reçoivent un nom (`mixeur.muet`, `mixeur.solo`),
+comme ceux de la ligne en D147 — `cliquer:M` prendrait le M de la ligne. Nommés
+seuls dans un premier binaire, pour que le témoin sorte du même code. Mesure :
+`cliquer:mixeur.muet`, puis « ctrl + Z » (`VSM_TOUCHE`), relevé `VSM_PISTES`
+(« ! » muet, « * » solo) et `VSM_HISTORIQUE`.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin : si « ! » reste après Ctrl+Z, le M de la tranche NE s'annule PAS —
+   c'est le défaut, et la phase le corrige (un pas « Muet — <piste> », « Solo —
+   <piste> ») ; si « ! » disparaît, il s'annulait déjà : la phase s'arrête aux
+   noms, et le dit ;
+2. après correctif : « ! » disparaît après Ctrl+Z, et l'historique porte
+   « Muet — Acid Bass » ; de même pour le S (« * ») ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ.** Projet de démo, relevés `VSM_PISTES` et `VSM_HISTORIQUE`.
+
+| cas | témoin (noms seuls) | après |
+|---|---|---|
+| `cliquer:mixeur.muet` | « Acid Bass0! », historique **vide** | « Acid Bass0! », « Muet — Acid Bass » |
+| … puis « ctrl + Z » | « Acid Bass0**!** » — le muet RESTE | « Acid Bass0 » — annulé |
+| `cliquer:mixeur.solo` | « Acid Bass0* », historique vide | « Acid Bass0* », « Solo — Acid Bass » |
+| … puis « ctrl + Z » | « Acid Bass0**\*** » — le solo reste | « Acid Bass0 » — annulé |
+| contrôle : `cliquer:pistes.muet` + Ctrl+Z | annulé | annulé |
+
+1. **Le défaut est établi** par le témoin : le M et le S d'une tranche ne
+   s'annulaient pas, le contrôle (le M de la ligne) montre que la touche agit.
+2. **TENU** après correctif : pas nommé, annulation rendue, pour les deux. Fumée
+   0 raté ; préférences inchangées.
+
+**Au passage** : la ligne `VSM_TOUCHE` du journal écrivait « fenÃªtre » —
+`juce::String("fen\xc3\xaatre")` lit ses octets en Latin-1. `fromUTF8` ;
+relu : « fenêtre ».

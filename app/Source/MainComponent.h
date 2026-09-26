@@ -249,7 +249,7 @@ public:
                                                   : keyPressed(touche, this);
         std::fputs((juce::String::fromUTF8("VSM_TOUCHE : \xc2\xab ") + texte
                     + juce::String::fromUTF8(" \xc2\xbb \xe2\x86\x92 ")
-                    + (destinataire != nullptr ? prefixe : juce::String("fen\xc3\xaatre"))
+                    + (destinataire != nullptr ? prefixe : juce::String::fromUTF8("fen\xc3\xaatre")   /* D426 : lu en Latin-1, il s'écrivait « fenÃªtre » */)
                     + (fait ? juce::String::fromUTF8(" : prise")
                             : juce::String::fromUTF8(" : AUCUNE commande de ce clavier"))
                     + "\n").toRawUTF8(), stderr);
