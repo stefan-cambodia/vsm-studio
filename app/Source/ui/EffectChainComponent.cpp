@@ -1,4 +1,5 @@
 #include "EffectChainComponent.h"
+#include "BulleDeValeur.h"   // D445 : lireNombreSaisi
 #include "Langue.h"
 #include "ReponseDeBanc.h"   // D219
 #include "vsm/sequencer/MidiEffects.h"
@@ -521,6 +522,7 @@ void EffectChainComponent::rebuildParamControls() {
             const std::string nom = info.name;
             const int slot = selectedEffect_;
             raw->setName("effet-midi." + juce::String::fromUTF8(info.name));   // D429 : le nom du banc (valeur:)
+            raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
             raw->onDragStart = [this] {
                 glisseEnCours_ = true;   // D429
                 if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Réglage d'effet MIDI"));
@@ -574,6 +576,7 @@ void EffectChainComponent::rebuildParamControls() {
         const auto pid = info.id;
         juce::Slider* raw = pc.slider.get();
         raw->setName("effet." + juce::String::fromUTF8(info.name.c_str()));   // D429 : le nom du banc (valeur:)
+        raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
         const int slot = selectedEffect_;
         raw->onDragStart = [this] { glisseEnCours_ = true; if (onEditStarted) onEditStarted(u8"Réglage d'effet"); };
         raw->onDragEnd = [this] { glisseEnCours_ = false; };   // D429

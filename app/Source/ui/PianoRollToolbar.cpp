@@ -1,4 +1,5 @@
 #include "PianoRollToolbar.h"
+#include "BulleDeValeur.h"   // D445 : lireNombreSaisi
 #include <cmath>
 #include <cstdlib>
 #include "Langue.h"
@@ -154,7 +155,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     swingSlider_.setRange(0.0, 1.0, 0.01);
     swingSlider_.textFromValueFunction = [](double v) { return juce::String(juce::roundToInt(v * 100.0)) + " %"; };
     swingSlider_.valueFromTextFunction = [](const juce::String& t) {
-        return t.upToFirstOccurrenceOf("%", false, false).trim().getDoubleValue() / 100.0;
+        return vsm::app::ui::lireNombreSaisi(t) / 100.0;   // D445
     };
     swingSlider_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     swingSlider_.setDoubleClickReturnValue(true, 0.0);   // D140 : double-clic, valeur d'usine (sans swing)
@@ -169,6 +170,8 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     velocitySlider_.setDoubleClickReturnValue(true, 100.0);   // D140 : double-clic, valeur d'usine (sa valeur de départ)
     velocitySlider_.setValue(100.0, juce::dontSendNotification);
     velocitySlider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 44, 18);
+    velocitySlider_.setName("pianoroll.velocite");   // D445 : le nom du banc
+    velocitySlider_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445
     // D29.4 : LA LIGNE D'INFORMATION. Trois champs éditables, relus huit fois
     // par seconde ; l'édition d'un champ ne pose que ce champ.
     infoLabel_.setText(vsm::app::ui::tr(u8"Note :"), juce::dontSendNotification);

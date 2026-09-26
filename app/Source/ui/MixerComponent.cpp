@@ -89,6 +89,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setSkewFactorFromMidPoint(-12.0);
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
     volume_.setTextValueSuffix(" dB");
+    volume_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
     volume_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
         ouvrirPasse("mix.volume");
@@ -148,9 +149,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     trim_.textFromValueFunction = [](double v) {
         return juce::String("Trim ") + juce::String(v, 1) + " dB";
     };
-    trim_.valueFromTextFunction = [](const juce::String& t) {
-        return t.retainCharacters("-0123456789.").getDoubleValue();
-    };
+    trim_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445
     trim_.setValue(track_.inputTrimDb, juce::dontSendNotification);
     // ET IL FAUT REDEMANDER LE TEXTE. `setValue` d'une valeur DÉJÀ EN PLACE ne
     // notifie rien, donc ne rappelle pas `textFromValueFunction` : la première
@@ -182,6 +181,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     delay_.setSliderStyle(juce::Slider::LinearBar);
     delay_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     delay_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
+    delay_.setName("mixeur.delai");   // D445 : le nom du banc
     delay_.setRange(-200.0, 200.0, 0.1);
     delay_.setDoubleClickReturnValue(true, 0.0);    // D25.3 : 0 ms
     // D324 : LE MOT DANS LA CASE, comme le trim (D135). « -200.0 ms » et « 0 dt »
@@ -191,9 +191,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         const juce::String valeur = juce::String(v, 1) + " ms";
         return texteQuiTient(delay_, tr(u8"Délai") + " " + valeur, valeur);
     };
-    delay_.valueFromTextFunction = [](const juce::String& t) {
-        return t.retainCharacters("-0123456789.").getDoubleValue();
-    };
+    delay_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445
     delay_.setValue(track_.delayMs, juce::dontSendNotification);
     delay_.updateText();
     delay_.onDragStart = [this] { glisseEnCours_ = true; if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Délai")))); };
@@ -212,6 +210,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     transposition_.setSliderStyle(juce::Slider::LinearBar);
     transposition_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     transposition_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
+    transposition_.setName("mixeur.transposition");   // D445
     transposition_.setRange(-48.0, 48.0, 1.0);
     transposition_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 demi-ton
     // « dt » est une abréviation FRANÇAISE (demi-ton) : l'anglais écrit « st ».
@@ -219,9 +218,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         const juce::String valeur = juce::String(static_cast<int>(std::lround(v))) + tr(u8" dt");
         return texteQuiTient(transposition_, tr(u8"Transp.") + " " + valeur, valeur);
     };
-    transposition_.valueFromTextFunction = [](const juce::String& t) {
-        return t.retainCharacters("-0123456789").getDoubleValue();
-    };
+    transposition_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445
     transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);   // l'infobulle : `retraduire()`
     transposition_.updateText();
     transposition_.onDragStart = [this] { glisseEnCours_ = true; if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Transposition"))); };
@@ -810,7 +807,7 @@ juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::S
         // dernier réglage sans unité du relevé des valeurs.
         k.slider->textFromValueFunction = [](double v) { return juce::String(juce::roundToInt(v * 100.0)) + " %"; };
         k.slider->valueFromTextFunction = [](const juce::String& t) {
-            return t.upToFirstOccurrenceOf("%", false, false).trim().getDoubleValue() / 100.0;
+            return vsm::app::ui::lireNombreSaisi(t) / 100.0;   // D445
         };
     } else {
         k.slider->setTextValueSuffix(suffix);

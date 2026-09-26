@@ -381,6 +381,20 @@ public:
         // bouton ne désigne.
         // D444 : saisir:<nom>=<texte> -- le texte d'un libellé ÉDITABLE nommé, posé
         // AVEC notification : le chemin d'une frappe validée par Entrée.
+        // D445 : saisir-curseur:<nom>=<texte> -- le texte tapé dans la CASE d'un
+        // curseur, lu par `Slider::getValueFromText` : le chemin même de la case.
+        if (geste.startsWithIgnoreCase("saisir-curseur:")) {
+            const auto reste = geste.fromFirstOccurrenceOf(":", false, false);
+            juce::Slider* curseur = curseurPourCapture(reste.upToFirstOccurrenceOf("=", false, false));
+            const auto texte = reste.fromFirstOccurrenceOf("=", false, false);
+            if (curseur != nullptr) curseur->setValue(curseur->getValueFromText(texte), juce::sendNotificationSync);
+            std::fputs(("VSM_SAISIE_CURSEUR : " + reste
+                        + (curseur != nullptr ? juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String(curseur->getValue(), 4)
+                                                    + " (" + curseur->getTextFromValue(curseur->getValue()) + ")"
+                                              : juce::String::fromUTF8(" \xe2\x80\x94 aucun curseur visible de ce nom"))
+                        + "\n").toRawUTF8(), stderr);
+            return curseur != nullptr;
+        }
         if (geste.startsWithIgnoreCase("saisir:")) {
             const auto reste = geste.fromFirstOccurrenceOf(":", false, false);
             return saisirPourCapture(reste.upToFirstOccurrenceOf("=", false, false),

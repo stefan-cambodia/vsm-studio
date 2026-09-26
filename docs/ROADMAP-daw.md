@@ -33548,3 +33548,43 @@ libellé et par `VSM_TEXTES_LISTE`) :
 En anglais : « Tempo refused: 400 — 20 to 300 BPM. Double-click to change the
 tempo (20 to 300 BPM). », et « 120,5 » accepté aussi. Fumée 0 raté ;
 préférences inchangées.
+
+---
+
+### Phase D445 — la virgule décimale dans les cases des curseurs (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA SUITE DE D444.** Neuf curseurs ont une case de saisie
+(fader, trim, délai, transposition de tranche ; swing et vélocité du piano roll ;
+réglages d'effet audio et MIDI ; niveau du clic). Seul le niveau du clic lit la
+virgule. Les autres :
+- le fader, la vélocité et les réglages d'effet passent par la lecture de JUCE
+  (`getDoubleValue`), qui s'ARRÊTE à la virgule : « -6,5 » donnerait -6 ;
+- le trim, le délai (et d'autres) passent par `retainCharacters("-0123456789.")`,
+  qui JETTE la virgule : « 3,5 » donnerait 35, borné au maximum.
+
+**LE BANC** : un verbe neuf, `saisir-curseur:<nom>=<texte>`, qui passe par
+`Slider::getValueFromText` — le chemin même de la case — ; des noms pour le
+délai, la transposition et la vélocité. Seuls, dans un premier binaire.
+
+**ATTENDU, écrit avant la mesure** : témoin — « -6,5 » au fader → -6.0 dB ;
+« 3,5 » au trim → le maximum ; « 12,5 » au délai → 125 ou le maximum ; « 50,5 % »
+au swing → 50 % ; « -30,5 » au seuil du compresseur → -30. Après, par UNE
+lecture commune (la virgule vaut le point) : -6.5 dB, +3.5 dB, 12.5 ms, 51 %
+(affichage arrondi, valeur 0,505), -30.5 dB ; le point marche toujours ; fumée
+0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `saisir-curseur:` (le chemin de la case) :
+
+| case, saisie | témoin | après |
+|---|---|---|
+| fader « -6,5 » | **-6.0 dB** (arrêt à la virgule) | -6.5 dB |
+| fader « -6.5 » (contrôle) | -6.5 dB | -6.5 dB |
+| trim « 3,5 » | **Trim 24.0 dB** — le maximum (« 35 ») | Trim 3.5 dB |
+| délai « 12,5 » | **125.0 ms** — dix fois trop | 12.5 ms |
+| swing « 50,5 % » | 50 % | 51 % (valeur 0,51 : le pas du curseur est 0,01) |
+| seuil du compresseur « -30,5 » | -30.00 dB | -30.48 dB (le pas du curseur, 60/1000 = 0,06) |
+| transposition « 2 », vélocité « 90 » (contrôles) | 2, 90 | 2, 90 |
+
+Une lecture commune, `lireNombreSaisi` (BulleDeValeur.h), pour les huit
+cases ; le niveau du clic lisait déjà la virgule et garde la sienne (« -inf »).
+Fumée 0 raté ; préférences inchangées.

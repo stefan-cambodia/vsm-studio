@@ -77,6 +77,18 @@ private:
     std::function<juce::String()> nom_;
 };
 
+/// D445 : UN NOMBRE TAPÉ DANS UNE CASE, lu comme l'écrit un Français. La
+/// VIRGULE vaut le point : `getDoubleValue` s'arrêtait à elle (« -6,5 » → -6), et
+/// `retainCharacters("-0123456789.")` la jetait (« 3,5 » → 35, borné au maximum ;
+/// « 12,5 » ms → 125). Le préfixe éventuel (« Trim », « Délai ») et l'unité sont
+/// ignorés : on lit le premier nombre.
+inline double lireNombreSaisi(const juce::String& texte) {
+    const juce::String t = texte.replaceCharacter(',', '.');
+    const int debut = t.indexOfAnyOf("-+0123456789.");
+    if (debut < 0) return 0.0;
+    return t.substring(debut).initialSectionContainingOnly("-+0123456789.").getDoubleValue();
+}
+
 /// Un gain linéaire en décibels, comme le fader du mixeur : « -0.9 dB »,
 /// « +1.5 dB », « -inf dB ».
 inline juce::String texteDecibels(double gain) {
