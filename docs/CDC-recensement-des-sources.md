@@ -895,3 +895,53 @@ exemple la polyphonie des notes transcrites DANS chaque grappe (deux parties
 simultanées se voient à la transcription, pas à la segmentation), ou une
 séparation plus fine en amont. Ce choix relève de la validation de
 l'utilisateur (§ 10, point 5) ; rien n'est lancé.
+
+---
+
+## 13. H40 — deux grappes qui jouent EN MÊME TEMPS sont deux sources ; les autres peuvent n'en faire qu'une (écrite AVANT la mesure, validée par l'utilisateur le 26/09/2026)
+
+**D'OÙ ELLE VIENT.** H39 (§ 12.1) a réglé L1 en permettant une grappe unique,
+mais a fusionné des parties distinctes dans les mélanges (L2 : 5,20 → 5,90). Il
+faut dire, DANS UN STEM, si ses grappes sont une source coupée par ses nuances
+ou plusieurs sources. Le § 12.2 a écarté la simultanéité des SEGMENTS (ils
+partitionnent le temps) ; celle des NOTES est observable : une note tenue d'une
+grappe peut sonner quand une autre grappe attaque, parce qu'une note déborde de
+son segment. Deux sources jouent en même temps ; une partie qui alterne ses
+nuances, non.
+
+**LA RÈGLE, UNE VARIABLE** (`--regroupement-par-simultaneite`, dans la
+provenance) — pour chaque stem, les DEUX regroupements sont calculés, celui de
+H37 (sans grappe unique) et celui de H39 (avec) :
+- si H39 n'a pas moins de grappes que H37, il est retenu (il n'a rien fusionné) ;
+- sinon, pour chaque paire de grappes de H37, la **simultanéité** est la part des
+  attaques de la plus petite (en notes) qui tombent pendant qu'une note de
+  l'autre sonne ; si une paire atteint le **seuil de 0,5** (la majorité des
+  attaques — fixé ici, avant toute mesure), les sources sont simultanées et la
+  séparation de H37 est retenue ; sinon, la fusion de H39 ;
+- une grappe de moins de 3 notes ne témoigne de rien : faute de preuve, la
+  fusion de H39 est retenue.
+Tout le reste est celui de H39.
+
+**LE RISQUE, ÉCRIT AVANT** : une partie POLYPHONIQUE jouée seule (le piano,
+dont les accords font sonner une note pendant qu'une autre attaque) peut être
+jugée « deux sources » si ses nuances l'ont coupée, et rester coupée en L1 — le
+gain de H39 en L1 reculerait d'autant. L'attendu 1 le chiffre.
+
+**SENSIBILITÉ, DÉCLARÉE AVANT** : le seuil de 0,5 décide du verdict ; les
+seuils de **0,25** et **0,75** sont mesurés sur `s1-sec` et publiés entiers, sans
+entrer dans le verdict.
+
+**ATTENDUS** :
+
+| # | attendu | RÉUSSITE si | ÉCHEC si |
+|---|---|---|---|
+| 1 | L1 `s1-sec` : parties seules à une grappe | **≥ 60 %** (H39 : 67,6 %) | < 35 % |
+| 2 | compte L2 (A-grp) | **≤ 5,2** — pas pire que H37 (H39 : 5,90) | **≥ 5,9** — pas mieux que H39 |
+| 3 | compte L3 (A-grp) | ≤ 3,0 (parité 3,80 ; H39 : 3,60) | ≥ 4,0 |
+| 4 | L1 `s2` | ≥ 40 % (H39 : 44,6 %) | < 10 % |
+| 5 | *Clair de Lune* K ; *Children* K_mél | 1 ; [5 ; 7] | ≥ 3 ; ≤ 3 ou ≥ 10 |
+
+**La règle du verdict** : **CONFIRMÉE** si 1 et 2 tiennent et que 3 n'est pas en
+échec ; **RÉFUTÉE** si 2 est en échec (la simultanéité des notes ne sauve pas le
+mélange) ; **PARTIELLE** sinon. Rien n'est implémenté dans la chaîne sans une
+nouvelle validation.
