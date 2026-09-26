@@ -1633,6 +1633,14 @@ private:
     /// périphériques étant déjà détruit. Un pointeur SÛR la suit, et le
     /// destructeur la referme AVANT que le moteur ne parte.
     juce::Component::SafePointer<juce::DialogWindow> fenetreReglagesAudio_;
+    /// D397 : réécrit « N samples (X ms) » -- que JUCE pose EN DUR, sans TRANS --
+    /// dans la langue de l'interface, après chaque reconstruction de la liste.
+    struct TraducteurDesTampons : juce::ChangeListener {
+        juce::Component::SafePointer<juce::Component> racine;
+        void changeListenerCallback(juce::ChangeBroadcaster*) override;
+        static void traduire(juce::Component& racine);
+    };
+    std::unique_ptr<TraducteurDesTampons> traducteurDesTampons_;
     vsm::sequencer::ProjectHistory history_;
     /// D154 : CE QUE LA PHOTO DES RÉGLAGES COÛTE, relevé par
     /// `VSM_PHOTO_REGLAGES`. Elle tombe à chaque début de glissé ; l'attendu (d)

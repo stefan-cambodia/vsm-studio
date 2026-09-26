@@ -31908,3 +31908,52 @@ Mesuré (`balayer-facades.sh`, fenêtre 2 133 × 1 333, `VSM_DOCK_DROITE`) :
 
 À la largeur qu'il utilise, le compromis ne pèse presque plus rien : aucune
 sérigraphie sous 12 pt, 26 sur 1 073 comprimées. Rien n'est changé.
+
+---
+
+### Phase D397 — « 512 samples (11.6 ms) » dans l'interface française (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU « NON TRAITÉ » DE D389.** La fenêtre *Réglages audio*
+montre la taille du tampon en anglais dans l'interface française : JUCE écrit
+« samples » et « ms » EN DUR (`juce_AudioDeviceSelectorComponent.cpp:807`), sans
+`TRANS`, et aucune table de traduction ne l'atteint. D389 l'avait écrit comme
+hors de portée ; il ne l'est pas : on peut réécrire les éléments de cette liste
+APRÈS que JUCE les a posés.
+
+**LE CORRECTIF.** À l'ouverture de la fenêtre, puis à chaque changement du
+gestionnaire de périphériques (c'est ce signal qui fait reconstruire la liste
+par JUCE), les éléments de la forme « N samples (X ms) » sont réécrits par
+`tr("%1 échantillons (%2 ms)")` — en différé (`callAsync`), pour passer APRÈS
+la reconstruction de JUCE quel que soit l'ordre des écouteurs. En anglais, la
+clé rend le texte de JUCE à l'identique.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. `fr` : la liste affichée dit « 512 échantillons (11.6 ms) »
+   (`VSM_FENETRE_TEXTE`) ; `en` : « 512 samples (11.6 ms) », inchangé ;
+2. garde de langue 0 ; banc de fumée 0 raté ;
+3. **ce que le banc ne peut pas éprouver, dit d'avance** : la réécriture APRÈS
+   un changement de périphérique (il faudrait changer de carte son en cours de
+   banc) ; le chemin est le même signal que JUCE écoute, mais il n'est pas
+   mesuré.
+
+**PENDANT LA CAMPAGNE S2** : la compilation se fait campagne GELÉE
+(`kill -STOP` sur son groupe), en tâche détachée qui la reprend d'elle-même
+(`kill -CONT`), comme `CLAUDE.md` le prescrit depuis D285.
+
+**MESURÉ — AU TROISIÈME BUILD, ET LE JOURNAL A DIT POURQUOI.** Le premier
+laissait « 512 samples ». Plutôt que de deviner, la traduction a reçu un compte
+au journal (« tampons — N liste(s), N élément(s) lu(s), N réécrit(s) »), et il a
+tout dit : **50 éléments réécrits**, deux fois — à l'ouverture, puis sur le
+signal du gestionnaire (le chemin différé fonctionne donc) — et pourtant
+l'affichage inchangé. La cause est dans JUCE : `ComboBox::getSelectedId()` rend
+0 dès que le texte affiché ne correspond plus à aucun élément, ce que la
+réécriture provoque ; lu APRÈS, l'élément choisi était perdu. Il se lit AVANT.
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | `fr` : « 512 échantillons (11.6 ms) » ; `en` inchangé | `fr` : « 512 échantillons (11.6 ms) », 50 réécrits, photo : le texte tient ; `en` : « 512 samples (11.6 ms) », **0** réécrit | TENU |
+| 2 | garde de langue, fumée | 0 texte sans traduction ; banc de fumée 0 raté ; préférences inchangées | TENU |
+| 3 | changement de périphérique | non éprouvé par le banc (dit d'avance) — mais le second passage, déclenché par le signal du gestionnaire à l'ouverture du périphérique, a réécrit ses 50 éléments | partiellement éprouvé |
+
+Trois builds, trois fois la campagne S2 gelée : 90 s, 94 s, 92 s — `kill -STOP`
+sur son groupe, build détaché qui la reprend.

@@ -1289,6 +1289,9 @@ MainComponent::MainComponent()
 }
 
 MainComponent::~MainComponent() {
+    // D397 : le gestionnaire audio tient un pointeur brut vers cet écouteur.
+    if (traducteurDesTampons_ != nullptr)
+        audioEngine_.deviceManager().removeChangeListener(traducteurDesTampons_.get());
     // FERMETURE NORMALE : c'est l'ABSENCE du dossier de récupération qui, au
     // prochain lancement, signalera un plantage. L'effacer ici est donc la
     // seule chose qui distingue « on a quitté » de « on est mort ».
@@ -5967,6 +5970,59 @@ void MainComponent::showAudioSettings() {
     // fenêtre référence le gestionnaire de périphériques, et lui survivre la
     // fait tomber à la fermeture.
     fenetreReglagesAudio_ = options.launchAsync();
+    // D397 : la taille du tampon dans la langue de l'interface, maintenant et
+    // à chaque reconstruction de la liste par JUCE.
+    if (traducteurDesTampons_ == nullptr) {
+        traducteurDesTampons_ = std::make_unique<TraducteurDesTampons>();
+        audioEngine_.deviceManager().addChangeListener(traducteurDesTampons_.get());
+    }
+    traducteurDesTampons_->racine = fenetreReglagesAudio_.getComponent();
+    if (fenetreReglagesAudio_ != nullptr) TraducteurDesTampons::traduire(*fenetreReglagesAudio_);
+}
+
+void MainComponent::TraducteurDesTampons::changeListenerCallback(juce::ChangeBroadcaster*) {
+    // EN DIFFÉRÉ : le sélecteur de JUCE écoute le même signal et reconstruit sa
+    // liste ; on passe après lui, quel que soit l'ordre des écouteurs.
+    juce::MessageManager::callAsync([p = racine] { if (p != nullptr) traduire(*p); });
+}
+
+void MainComponent::TraducteurDesTampons::traduire(juce::Component& racine) {
+    int listes = 0, lus = 0, reecrits = 0;
+    std::function<void(juce::Component&)> parcourir = [&](juce::Component& c) {
+        if (auto* liste = dynamic_cast<juce::ComboBox*>(&c)) {
+            ++listes;
+            // L'ÉLÉMENT CHOISI SE LIT AVANT : `getSelectedId()` rend 0 dès que le
+            // texte affiché ne correspond plus à aucun élément -- ce que la
+            // réécriture provoque. Lu après, l'affichage n'était jamais mis à jour.
+            const int choisi = liste->getSelectedId();
+            bool change = false;
+            for (int i = 0; i < liste->getNumItems(); ++i) {
+                const juce::String texte = liste->getItemText(i);
+                ++lus;
+                // « 512 samples (11.6 ms) », tel que JUCE l'écrit (ligne 807).
+                if (!texte.contains(" samples (") || !texte.endsWith(" ms)")) continue;
+                const juce::String n = texte.upToFirstOccurrenceOf(" samples (", false, false);
+                const juce::String ms = texte.fromFirstOccurrenceOf(" samples (", false, false)
+                                             .upToLastOccurrenceOf(" ms)", false, false);
+                if (!n.containsOnly("0123456789")) continue;
+                const juce::String neuf = vsm::app::ui::tr(u8"%1 échantillons (%2 ms)")
+                                              .replace("%1", n).replace("%2", ms);
+                if (neuf != texte) {
+                    liste->changeItemText(liste->getItemId(i), neuf);
+                    change = true;
+                    ++reecrits;
+                }
+            }
+            if (change && choisi != 0)
+                liste->setSelectedId(choisi, juce::dontSendNotification);
+        }
+        for (auto* enfant : c.getChildren()) parcourir(*enfant);
+    };
+    parcourir(racine);
+    // Dit, jamais tu : combien de listes, d'éléments lus, d'éléments réécrits.
+    std::fputs((juce::String::fromUTF8(u8"Réglages audio : tampons — ") + juce::String(listes) + " liste(s), "
+                + juce::String(lus) + juce::String::fromUTF8(u8" élément(s) lu(s), ") + juce::String(reecrits)
+                + juce::String::fromUTF8(u8" réécrit(s)\n")).toRawUTF8(), stderr);
 }
 
 void MainComponent::saveAudioDeviceState() {

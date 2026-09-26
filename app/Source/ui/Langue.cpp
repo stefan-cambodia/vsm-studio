@@ -973,6 +973,8 @@ const Paire kAnglais[] = {
       "Load a sample" },
     { "Post-fader (le fader l'emporte avec lui)",
       "Post-fader (the fader carries it along)" },
+    { "%1 échantillons (%2 ms)",   // D397 : la taille du tampon, que JUCE écrit en dur
+      "%1 samples (%2 ms)" },
     { "Aftertouch poly",   // D392 : un nom par type d'événement
       "Poly aftertouch" },
     { "Prise ",
