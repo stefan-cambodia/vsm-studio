@@ -1375,6 +1375,11 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     // choisie et que l'application retient (`dock.droite`). Une disposition
     // réglable ne se reprend pas à son propriétaire ; c'est la façade qui
     // défile quand elle ne tient pas.
+    // D394 : TANT QUE L'UTILISATEUR NE L'A PAS RÉGLÉ, le rack prend un quart de
+    // la fenêtre, jamais moins de 380 px. À 380 fixes, une fenêtre de 2 133 px
+    // donnait tout son surplus à l'arrangement et repliait 42 sérigraphies sous
+    // 12 pt ; la courbe mesurée (D394) ne gagne plus rien au-delà de ~540.
+    if (!dockDroiteRegle_) dockDroite_ = juce::jmax(380, area.getWidth() / 4);
     dockDroite_ = juce::jlimit(220, juce::jmax(221, area.getWidth() / 2), dockDroite_);
 
     sepBas_.setVisible(bottomTabs_.isVisible());
@@ -2790,7 +2795,15 @@ void MainComponent::dockPanels() {
     auto& prefs = vsm::app::ui::UiScale::properties();
     dockGauche_ = prefs.getIntValue("dock.gauche", dockGauche_);
     dockDroite_ = prefs.getIntValue("dock.droite", dockDroite_);
+    dockDroiteRegle_ = prefs.containsKey("dock.droite");   // D394
     dockBas_ = prefs.getIntValue("dock.bas", dockBas_);
+    // D394 : VSM_DOCK_DROITE=px -- la largeur du rack pour un banc, sans rien
+    // écrire dans les préférences (elle ne s'écrit qu'au glissé du séparateur).
+    if (const char* d = std::getenv("VSM_DOCK_DROITE"); d != nullptr && *d)
+    {
+        dockDroite_ = juce::jlimit(220, 2000, juce::String(d).getIntValue());
+        dockDroiteRegle_ = true;
+    }
     auto cabler = [this](SeparateurDock& sep, int& taille, const char* cle, int signe) {
         sep.onDebut = [this, &taille] { dockBase_ = taille; };
         sep.onGlisse = [this, &taille, signe](int delta) {
@@ -2807,6 +2820,9 @@ void MainComponent::dockPanels() {
     cabler(sepGauche_, dockGauche_, "dock.gauche", +1);
     cabler(sepDroite_, dockDroite_, "dock.droite", -1);
     cabler(sepBas_, dockBas_, "dock.bas", -1);
+    // D394 : tirer le séparateur du rack, c'est le régler -- la règle par défaut
+    // (un quart de la fenêtre) cesse alors de s'appliquer.
+    sepDroite_.onDebut = [this] { dockBase_ = dockDroite_; dockDroiteRegle_ = true; };
     for (auto* sep : { &sepGauche_, &sepDroite_, &sepBas_ })
         addAndMakeVisible(sep);
     arrangement_.setVisible(centerShowsArrangement_);

@@ -31766,3 +31766,55 @@ catégorie (ÉCRAN → TERMINAL), la garde repasse à 0, et elle reste ROUGE sur
 `StringArray` rempli par `.add(…)` puis AFFICHÉ par `setText` (essai injecté,
 restauré par `cmp`). La règle de conduite qui en sort : une commande qui
 commite s'arrête au premier garde-fou rouge (`… && git commit`), jamais `;`.
+
+---
+
+### Phase D394 — le rack gardait 380 px quelle que soit la fenêtre (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D379.** 42 sérigraphies se replient sous
+12 pt faute de largeur. Balayées à la fenêtre de l'écran d'aujourd'hui
+(2 133 × 1 333 logiques) plutôt qu'à 1 280, elles sont… les mêmes 42 : la
+façade reste à **364 px**. La largeur par défaut du rack est une constante
+(`dockDroite_ = 380`), et c'est l'arrangement qui prend tout ce que la fenêtre
+gagne.
+
+**LA COURBE, MESURÉE AVANT DE DÉCIDER** (option de banc `VSM_DOCK_DROITE`, qui
+n'écrit rien dans les préférences ; fenêtre 2 133 × 1 333) :
+
+| rack | façade | sérigraphies < 12 pt | titres < 12 pt | plus petit bouton |
+|---|---|---|---|---|
+| 380 (défaut) | 364 | 42 | 7 | 19 px |
+| 460 | 444 | 20 | 1 | 26 px |
+| 540 | 524 | 3 | 0 | 33 px |
+| 620 | 604 | 0 | 0 | 33 px |
+
+**ET CE QUE L'UTILISATEUR A CHOISI LUI-MÊME** : ses préférences portent
+`dock.droite = 638` sur cette fenêtre — environ 30 %. Chez lui, rien ne se
+replie ; le défaut ne concerne que les installations neuves, qui démarrent avec
+42 intitulés repliés et des boutons de 19 px.
+
+**LA DÉCISION, ÉCRITE ICI** : tant que l'utilisateur n'a pas réglé le rack (pas
+de clé `dock.droite`), sa largeur par défaut est **25 % de la fenêtre, jamais
+moins de 380 px** ; dès qu'il tire le séparateur, sa largeur l'emporte, comme
+aujourd'hui. 25 et non 30 : l'arrangement est ce qu'on vient voir, et la courbe
+dit qu'au-delà de ~540 px le rack ne gagne plus rien.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. fenêtre de 2 133, HOME neuf : façade vers **517 px**, sérigraphies sous 12 pt
+   **≤ 5**, titres sous 12 pt **0** ;
+2. fenêtre de 1 280 (le banc de la garde) : 25 % = 320 < 380 — **rien ne
+   change**, lignes identiques au balayage de D390 ;
+3. une préférence `dock.droite` existante l'emporte (HOME de brouillon où l'on
+   pose 638) ;
+4. garde des façades verte.
+
+**MESURÉ.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | 2 133, HOME neuf : façade ~517, sérigraphies < 12 ≤ 5, titres 0 | façade **517** ; sérigraphies sous 12 pt **3** (42 avant) ; titres **0** (7) ; plus petit bouton **32 px** (19) ; 0 coupée | TENU |
+| 2 | 1 280 : rien ne change | les 1 073 lignes de commande **identiques** au balayage de D390 ; garde verte | TENU |
+| 3 | une préférence l'emporte | `dock.droite = 638` posée dans un HOME de brouillon : façade **622** px (638 moins la marge du volet), préférence non réécrite ; sans préférence, aucune clé écrite | TENU |
+
+Chez l'utilisateur, dont les préférences portent 638, rien ne change. Banc de
+fumée 0 raté ; préférences de l'utilisateur inchangées (`cmp`).
