@@ -1580,12 +1580,10 @@ void MainComponent::listMenusForCapture() {
     for (const auto& [nom, menu] : arrangement_.menusPourCapture()) parcourir(menu, nom);
 }
 
-bool MainComponent::appuyerPourCapture(const juce::String& nom) {
+juce::Slider* MainComponent::curseurPourCapture(const juce::String& nom) {
     // D135 : LE CURSEUR DÉSIGNÉ PAR SON NOM DE COMPOSANT, cherché dans la fenêtre
     // principale puis dans les autres (panneaux flottants), en ne descendant que
-    // dans ce qui est visible. L'appui est celui de la souris, au centre, bouton
-    // gauche, sans relâcher : `Slider::mouseDown` ouvre la bulle et ouvre aussi
-    // la passe d'édition du réglage -- sans conséquence sur un projet de banc.
+    // dans ce qui est visible. D415 : partagé par `appuyer:` et `valeur:`.
     std::function<juce::Slider*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Slider* {
         // SANS SURFACE, PAS DE CURSEUR : un curseur « visible » au sens de JUCE peut
         // avoir des limites vides (le panoramique d'une ligne de piste au dock par
@@ -1603,6 +1601,24 @@ bool MainComponent::appuyerPourCapture(const juce::String& nom) {
     for (int i = 0; curseur == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
         if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
             curseur = chercher(*fenetre);
+    return curseur;
+}
+
+bool MainComponent::valeurPourCapture(const juce::String& nom, double valeur) {
+    juce::Slider* curseur = curseurPourCapture(nom);
+    if (curseur != nullptr) curseur->setValue(valeur, juce::sendNotificationSync);
+    std::fputs(("VSM_VALEUR_POSEE : " + nom + "=" + juce::String(valeur)
+                + (curseur != nullptr ? juce::String::fromUTF8(" — ") + curseur->getTextFromValue(curseur->getValue())
+                                      : juce::String(u8" — aucun curseur visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    return curseur != nullptr;
+}
+
+bool MainComponent::appuyerPourCapture(const juce::String& nom) {
+    // L'appui est celui de la souris, au centre, bouton gauche, sans relâcher :
+    // `Slider::mouseDown` ouvre la bulle et ouvre aussi la passe d'édition du
+    // réglage -- sans conséquence sur un projet de banc.
+    juce::Slider* curseur = curseurPourCapture(nom);
     std::fputs(("VSM_APPUI : " + nom
                 + (curseur != nullptr ? juce::String(u8" — appuyé") : juce::String(u8" — aucun curseur visible de ce nom"))
                 + "\n").toRawUTF8(), stderr);

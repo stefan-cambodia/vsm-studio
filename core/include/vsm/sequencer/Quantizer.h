@@ -24,8 +24,9 @@ midi::Tick gridResolutionToTicks(GridResolution res, uint16_t ppq);
 struct QuantizeSettings {
     GridResolution grid;
     float strength = 1.0f; ///< 0 = aucun effet, 1 = alignement total sur la grille
-    /// Swing 0..1 : décale une case de grille sur deux (le "off-beat") d'une
-    /// fraction du pas de grille. 0 = droit, ~0.33 = swing "triolet" classique.
+    /// Swing 0..1 : décale une case de grille sur deux (le "off-beat") de
+    /// swing × pas / 3. 0 = droit, 1 = TRIOLET (rapport 2:1) -- D415 : l'ancien
+    /// commentaire disait « ~0.33 = triolet », ce qui ne décale que d'un neuvième.
     float swing = 0.0f;
     bool quantizeNoteStart = true;
     bool quantizeNoteEnd = false; ///< quantifie aussi la fin (donc la durée)

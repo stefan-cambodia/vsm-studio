@@ -147,7 +147,15 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     scaleTypeCombo_.onChange = [this] { applyScaleFromCombos(); };
 
     addAndMakeVisible(swingSlider_);
-    swingSlider_.setRange(0.0, 0.75, 0.01);
+    // D415 : LA CONVENTION DE CUBASE, 0 à 100 %, 100 % = TRIOLET. La valeur
+    // interne le voulait déjà dire (`Quantizer.cpp` décale le contretemps de
+    // swing × pas / 3) ; le curseur s'arrêtait à 0,75 et s'affichait « 0.00 »,
+    // si bien que le swing classique était hors d'atteinte, et sans unité.
+    swingSlider_.setRange(0.0, 1.0, 0.01);
+    swingSlider_.textFromValueFunction = [](double v) { return juce::String(juce::roundToInt(v * 100.0)) + " %"; };
+    swingSlider_.valueFromTextFunction = [](const juce::String& t) {
+        return t.upToFirstOccurrenceOf("%", false, false).trim().getDoubleValue() / 100.0;
+    };
     swingSlider_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     swingSlider_.setDoubleClickReturnValue(true, 0.0);   // D140 : double-clic, valeur d'usine (sans swing)
     swingSlider_.setName("pianoroll.swing");   // D139 : le nom par lequel le banc le désigne (appuyer:)

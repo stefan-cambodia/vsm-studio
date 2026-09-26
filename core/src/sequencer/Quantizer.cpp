@@ -33,8 +33,8 @@ midi::Tick quantizeTick(midi::Tick tick, const QuantizeSettings& settings, uint1
     long long index = std::llround(static_cast<double>(tick) / static_cast<double>(grid));
     midi::Tick target = index * grid;
 
-    // Swing : décale une case de grille sur deux ("off-beat") d'une fraction
-    // du pas de grille. swing=0 -> droit ; swing~0.33 -> swing "triolet" classique.
+    // Swing : décale une case de grille sur deux ("off-beat") de swing × pas / 3.
+    // swing=0 -> droit ; swing=1 -> triolet (croches : 240 -> 320 ticks). D415.
     if (settings.swing != 0.0f && (index % 2 != 0)) {
         target += static_cast<midi::Tick>(std::llround(settings.swing * static_cast<double>(grid) / 3.0));
     }

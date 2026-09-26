@@ -341,6 +341,14 @@ public:
         // l'appui et reste tant qu'on tient).
         if (geste.startsWithIgnoreCase("appuyer:"))
             return appuyerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D415 : valeur:<nom>=<v> -- la valeur posée sur le premier curseur visible
+        // de ce nom, par `setValue` AVEC notification : le chemin de la saisie dans
+        // sa zone de texte (bornes et rappels compris), sans souris.
+        if (geste.startsWithIgnoreCase("valeur:")) {
+            const auto reste = geste.fromFirstOccurrenceOf(":", false, false);
+            return valeurPourCapture(reste.upToLastOccurrenceOf("=", false, false),
+                                     reste.fromLastOccurrenceOf("=", false, false).getDoubleValue());
+        }
         // D140 : doubleclic:<nom ou légende> -- le double-clic de la souris sur le
         // premier curseur visible (et qui a une surface) de ce nom de composant ou
         // de cette infobulle (les commandes des façades n'ont qu'une légende).
@@ -397,6 +405,9 @@ public:
     void forceWindowSize() { tailleImposee_ = true; }
     /// D135 : voir le geste `appuyer:` de `runTrackGestureForCapture`.
     bool appuyerPourCapture(const juce::String& nom);
+    /// D415 : voir le geste `valeur:` ; la recherche est celle d'`appuyer:`.
+    bool valeurPourCapture(const juce::String& nom, double valeur);
+    juce::Slider* curseurPourCapture(const juce::String& nom);
     /// D140 : voir le geste `doubleclic:` de `runTrackGestureForCapture`.
     bool doubleCliquerPourCapture(const juce::String& nomOuLegende);
     /// D145 : voir le geste `cliquer:` de `runTrackGestureForCapture`.

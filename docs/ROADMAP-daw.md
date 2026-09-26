@@ -32587,3 +32587,49 @@ d'usine) » ; les six infobulles de D414 restent (72 relevées sans geste).
 **MESURÉ** : **TENU** — « Volume : -6.0 dB (double-clic : valeur d'usine) »
 (témoin, binaire précédent, même course : « -0.9 dB ») ; sans geste, 72
 infobulles ; préférences inchangées.
+
+---
+
+### Phase D415 — « Swing 0.00 », une échelle sans unité qui n'atteignait pas le triolet (26/09/2026)
+
+**D'OÙ ELLE VIENT — LA BARRE DU PIANO ROLL.** Le swing s'affiche « 0.00 », sans
+unité, et son curseur va de 0 à **0,75**. Or la valeur, dans le cœur
+(`Quantizer.cpp`), décale le contretemps de `swing × pas / 3` : **1 = le
+triolet** (croches : 240 → 320 ticks, le rapport 2:1 — c'est ce que vérifie
+`swing_offsets_only_odd_grid_steps`). Le swing « classique » était donc hors
+d'atteinte de l'interface, et les deux commentaires du cœur l'écrivent faux
+(« ~0.33 = swing triolet »).
+
+**CHOIX TRANCHÉ ICI, faute de document qui en parle** : la convention de
+Cubase — « Swing 0 % » à « 100 % », 100 % = triolet. Raison : c'est
+EXACTEMENT ce que la valeur interne veut déjà dire (aucune donnée ne change de
+sens), et Cubase est l'étalon nommé. La convention MPC (50 % droit, 66 %
+triolet) aurait demandé une conversion à l'affichage pour le même résultat.
+
+**LE BANC** : un verbe neuf, `valeur:<nom>=<v>`, pose la valeur d'un curseur
+nommé par le chemin normal (avec notification), comme le ferait la saisie dans
+sa zone de texte. Il entre dans un PREMIER binaire, sans rien changer au swing,
+pour que le témoin sorte du même code.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin (verbe seul) : `valeur:pianoroll.swing=1` → la zone de texte relevée
+   dit « 0.75 » (bornée) ;
+2. après : au repos « 0 % » ; `valeur:pianoroll.swing=1` → « 100 % » ; en
+   anglais pareil ;
+3. les commentaires du cœur disent « 1 = triolet » ; tests core verts ; garde
+   de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ** (projet de démo ; relevé `VSM_VALEUR`, déjà existant, et
+`VSM_VALEUR_POSEE`, la ligne du verbe neuf) :
+1. **Témoin** (binaire du verbe seul, 23:09) : au repos « 0.00 » ;
+   `valeur:pianoroll.swing=1` → **« 0.75 »** — borné, le triolet hors
+   d'atteinte. Attendu tenu.
+2. **TENU.** Après : au repos **« 0 % »** ; `valeur:pianoroll.swing=1` →
+   **« 100 % »** ; en anglais identique. La photo montre « 100 % » entier dans
+   sa case de 44 px.
+3. **TENU.** Les commentaires de `Quantizer.h` et `Quantizer.cpp` disent
+   « 1 = triolet (croches : 240 → 320 ticks) » ; `vsm_core_tests` 361/361 ;
+   fumée 0 raté ; préférences inchangées.
+
+**Relevé en passant, non traité ici** : « master.SAT : 0.00 » — la saturation
+du master, sans unité elle aussi (la famille de D400, D406 et de celle-ci).
