@@ -32428,3 +32428,54 @@ s'il en trouve, et les écrit.
 `kModeles` (effet inconnu, réglage inconnu, automation sans paramètre, audio
 rééchantillonné, preset introuvable) donnerait à cette garde la couverture qui
 lui manque.
+
+---
+
+### Phase D412 — le projet d'essai qui déclenche chaque réserve (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D411.** Les neuf projets de campagne ne
+déclenchent que trois familles de réserves. La garde ne dit donc rien des autres
+modèles.
+
+**LE PROJET D'ESSAI**, engendré par la garde elle-même (aucun fixture commis) à
+partir de `docs/examples/demo-project` : sur « Acid Bass », un effet de type
+inconnu et un compresseur à réglage inconnu ; dans son preset, un paramètre
+inconnu et un paramètre hors bornes (`filter.1.resonance` à 9) ; sur « Drums »,
+un preset absent ; et une troisième piste, que le MIDI (deux pistes) ne porte
+pas. `tools/volet-anglais.sh` l'ajoute à ses projets.
+
+**ATTENDU, écrit avant la mesure** :
+1. en `fr`, le volet du projet d'essai compte **au moins cinq** lignes de
+   réserve, de cinq familles distinctes (effet inconnu, réglage inconnu,
+   preset borné ou non pris en charge, preset introuvable, pistes du projet
+   contre pistes du MIDI) ; la garde les déclare toutes françaises ;
+2. en `en`, je parie qu'**au moins une** de ces lignes reste française : ces
+   modèles n'ont jamais été regardés en anglais sur un vrai volet. Chaque
+   phrase trouvée reçoit son modèle dans cette phase, et la garde revient à 0.
+
+**MESURÉ** (garde sur 10 projets : les 9 de campagne et le projet d'essai ;
+préférences inchangées) :
+1. **TENU.** En `fr`, le projet d'essai donne **5 lignes de réserve, 5
+   familles** : « Piste 1 (Acid Bass) : 9 paramètre(s) appliqué(s), 1 borné(s),
+   1 non pris en charge : parametre.inexistant », « Le projet décrit 3 piste(s)
+   mais le MIDI en contient 2 : … », « Piste 2 (Drums) : preset introuvable
+   (…) », « … effet « effet-inexistant » inconnu, non appliqué », « … effet
+   « compressor » : réglage inconnu « reglage-inexistant » ». La garde les
+   déclare toutes françaises : rc 1, 32 lignes françaises sur 42.
+2. **PARI PERDU.** En `en` : rc 0, 0 sur 42, et la lecture des lignes le
+   confirme (« Track 1 (Acid Bass): 9 parameter(s) applied, 1 clamped, 1
+   unsupported: … », « The project describes 3 track(s) but the MIDI contains
+   2: … », « Track 2 (Drums): preset not found (…) », « effect “…” unknown, not
+   applied », « unknown setting “…” »). Les cinq modèles tiennent ; D409 était
+   la seule dérive du volet d'ouverture.
+
+**Au passage, la garde elle-même** : son filtre d'avertissements relayait
+toute ligne contenant « inconnu » — les réserves du projet d'essai y passaient
+six fois. Il ne relaie plus que les avertissements de l'APPLICATION (hors
+`VSM_OUVERTURE`, `VSM_EFFET`, `VSM_VOLET_LIGNE`) : 0 sur la dernière course.
+`VSM_VOLET_TOUT=1` écrit toutes les lignes, pour les lire plutôt que de croire
+le silence du détecteur.
+
+**Ce que la garde ne couvre pas, écrit** : les avertissements du RENDU
+(automation sans paramètre, audio rééchantillonné, machine en temps réel)
+n'atteignent pas ce volet à l'ouverture ; ils vivent dans le rapport d'export.

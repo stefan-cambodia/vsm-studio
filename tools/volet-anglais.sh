@@ -39,11 +39,35 @@ for campagne in reconstruction/travail/*/; do
 done
 [ "${#projets[@]}" -gt 0 ] || { echo "REFUS : aucun morceau reconstruit sous reconstruction/travail"; exit 2; }
 
+# D412 : LE PROJET D'ESSAI, qui déclenche les réserves que les campagnes ne
+# déclenchent pas. Engendré depuis la démo du dépôt, jamais commis.
+essai="$brouillon/projet-essai"
+cp -r docs/examples/demo-project "$essai"
+python3 - "$essai" <<'EOF' || { echo "REFUS : projet d'essai non engendré"; exit 2; }
+import json, pathlib, sys
+d = pathlib.Path(sys.argv[1])
+p = json.loads((d / "project.json").read_text())
+basse, batterie = p["tracks"][0], p["tracks"][1]
+basse["effects"] = [{"type": "effet-inexistant", "parameters": {}},
+                    {"type": "compressor", "parameters": {"reglage-inexistant": 0.5}}]
+batterie["instrument"]["preset"] = "instruments/absent.synth.json"
+p["tracks"].append({"name": "Piste en trop", "channel": 3, "color": "#808080", "effects": [],
+                    "instrument": {"preferredPlugin": "vsm.tb303"},
+                    "mix": {"muted": False, "pan": 0.0, "solo": False, "volume": 0.0}})
+(d / "project.json").write_text(json.dumps(p, ensure_ascii=False, indent=2))
+preset = json.loads((d / "instruments/track_00.synth.json").read_text())
+preset["parameters"]["parametre.inexistant"] = 1.0
+preset["parameters"]["filter.1.resonance"] = 9.0
+(d / "instruments/track_00.synth.json").write_text(json.dumps(preset, ensure_ascii=False, indent=2))
+EOF
+projets+=("$essai")
+
 n=0
 for projet in "${projets[@]}"; do
     n=$((n + 1))
     h="$brouillon/home-$n"; mkdir -p "$h"
-    HOME="$h" VSM_LANGUE="$langue" VSM_VOLET_LIGNES=1 VSM_PROJET="$racine/$projet" \
+    case "$projet" in /*) chemin="$projet" ;; *) chemin="$racine/$projet" ;; esac
+    HOME="$h" VSM_LANGUE="$langue" VSM_VOLET_LIGNES=1 VSM_PROJET="$chemin" \
         VSM_TAILLE=2117x1317 VSM_CAPTURE="$brouillon/capture-$n.png" \
         timeout 90 "$BIN" > "$brouillon/journal-$n.log" 2>&1
     rc=$?
@@ -51,7 +75,7 @@ for projet in "${projets[@]}"; do
 done
 
 python3 - "$brouillon" "$langue" <<'EOF'
-import pathlib, re, sys
+import os, pathlib, re, sys
 brouillon, langue = pathlib.Path(sys.argv[1]), sys.argv[2]
 MOTS = {"introuvable", "cherché", "piste", "pistes", "échantillon", "échantillon(s)",
         "aucun", "aucune", "réserve", "réserves", "ignoré", "ignorée", "inconnu",
@@ -77,12 +101,17 @@ for k, entree in enumerate(projets, 1):
     for l in lignes:
         if l.startswith("    ") and entieres: entieres[-1] += " " + l.strip()
         else: entieres.append(l)
-    avert = [l for l in journal.splitlines() if "inconnu" in l and l.startswith("VSM_")]
+    # Les avertissements de l'APPLICATION (verbe de banc inconnu…), pas les
+    # réserves du projet, qui passent aussi par VSM_OUVERTURE et VSM_EFFET.
+    avert = [l for l in journal.splitlines() if "inconnu" in l and l.startswith("VSM_")
+             and not l.startswith(("VSM_OUVERTURE", "VSM_EFFET", "VSM_VOLET_LIGNE"))]
     fr = [l for l in entieres[1:] if francaise(l)]   # la première est le compte « N réserves »
     total += len(entieres); fautes += len(fr)
     print(f"  {'OK ' if not fr else 'FR '} rc={rc} {len(entieres):2d} ligne(s), {len(fr)} française(s)  {projet}")
     for l in avert: print(f"       AVERTISSEMENT : {l}")
     for l in fr: print(f"       « {l[:160]} »")
+    if os.environ.get("VSM_VOLET_TOUT"):
+        for l in entieres: print(f"       · {l[:200]}")
 print(f"--- {langue} : {fautes} ligne(s) française(s) sur {total} relevée(s), {len(projets)} projet(s)")
 sys.exit(1 if fautes else 0)
 EOF
