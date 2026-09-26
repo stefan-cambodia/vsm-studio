@@ -33005,3 +33005,39 @@ seuls dans un premier binaire, pour que le témoin sorte du même code. Mesure :
 **Au passage** : la ligne `VSM_TOUCHE` du journal écrivait « fenÃªtre » —
 `juce::String("fen\xc3\xaatre")` lit ses octets en Latin-1. `fromUTF8` ;
 relu : « fenêtre ».
+
+---
+
+### Phase D427 — un fader réglé sans le glisser ne s'annulait pas (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE BALAYAGE DES RAPPELS DE LA TRANCHE, après D426.** Les
+cinq curseurs de la tranche (fader, panoramique, trim, délai, transposition)
+ouvrent leur pas d'annulation dans `onDragStart` — seulement là. La molette, le
+clavier, la saisie dans la case et le double-clic de valeur d'usine (D140) ne
+passent pas par un glissé : leur changement n'avait pas de pas. La LIGNE de
+piste a déjà payé ce défaut et l'a réparé (« la molette, le clavier et la
+saisie, que `onDragStart` ne voit jamais »).
+
+**TÉMOIN** (projet de démo, `valeur:mixeur.volume=-6` — le chemin de la saisie —,
+puis « ctrl + Z ») : le fader passe à -6.0 dB, l'historique reste **vide**, et
+Ctrl+Z le laisse à **-6.0 dB**. Contrôle, `valeur:pistes.volume=0.5` puis
+Ctrl+Z : rendu à -0.9 dB.
+
+**LE CORRECTIF** : la règle de la ligne, reprise — un drapeau « glissé en
+cours » ; hors glissé, `onValueChange` ouvre le pas lui-même, nommé (D425).
+
+**ATTENDU, écrit avant la mesure** : même course, historique « Volume — Acid
+Bass », et Ctrl+Z rend -0.9 dB ; un glissé (`appuyer:`) n'ouvre toujours qu'UN
+pas (pas un par cran) ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+
+| cas | témoin | après |
+|---|---|---|
+| `valeur:mixeur.volume=-6` | -6.0 dB, historique vide | -6.0 dB, « Volume — Acid Bass » |
+| … puis « ctrl + Z » | **-6.0 dB** (rien à annuler) | **-0.9 dB** |
+| `valeur:mixeur.trim=3` (posé : « Trim 3.0 dB ») puis Ctrl+Z | — | « Trim 0.0 dB » |
+| `appuyer:mixeur.volume` (un glissé) | — | **un** pas, « Volume — Acid Bass » |
+| contrôle : `valeur:pistes.volume=0.5` + Ctrl+Z | -0.9 dB | -0.9 dB |
+
+Fumée 0 raté ; préférences inchangées.

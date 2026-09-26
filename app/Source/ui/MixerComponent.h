@@ -346,6 +346,7 @@ public:
 
 private:
     vsm::sequencer::Track& track_;
+    bool glisseEnCours_ = false;   ///< D427 : un glissé a déjà ouvert son pas
     /// D425 : le nom d'un pas d'annulation -- le geste, puis la piste.
     juce::String pasDe(const juce::String& geste) const {
         return geste + juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(track_.name.c_str());

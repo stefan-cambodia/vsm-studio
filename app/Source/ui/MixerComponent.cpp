@@ -89,12 +89,14 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setSkewFactorFromMidPoint(-12.0);
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
     volume_.setTextValueSuffix(" dB");
-    volume_.onDragStart = [this] {
+    volume_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
         ouvrirPasse("mix.volume");
     };
-    volume_.onDragEnd = [this] { fermerPasse("mix.volume", false); };
+    volume_.onDragEnd = [this] { glisseEnCours_ = false; fermerPasse("mix.volume", false); };
     volume_.onValueChange = [this] {
+        // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
+        if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
         track_.volume = dbToGain(static_cast<float>(volume_.getValue()));
         // LA COURBE REÇOIT LE GAIN LINÉAIRE, pas les décibels du curseur :
         // `mix.volume` est en gain (voir `AutomationCurve::parameter`), et
@@ -112,12 +114,14 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     pan_.setRange(-1.0, 1.0, 0.01);
     pan_.setDoubleClickReturnValue(true, 0.0);      // D25.3 : centre
     pan_.setValue(track_.pan, juce::dontSendNotification);
-    pan_.onDragStart = [this] {
+    pan_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Panoramique"))));
         ouvrirPasse("mix.pan");
     };
-    pan_.onDragEnd = [this] { fermerPasse("mix.pan", false); };
+    pan_.onDragEnd = [this] { glisseEnCours_ = false; fermerPasse("mix.pan", false); };
     pan_.onValueChange = [this] {
+        // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
+        if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Panoramique"))));
         track_.pan = static_cast<float>(pan_.getValue());
         noterDansLaPasse("mix.pan", track_.pan);
         if (onMixChanged) onMixChanged();
@@ -154,12 +158,14 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // sur celle qui ne l'était pas -- le libellé manquait précisément là où
     // rien n'avait bougé, c'est-à-dire sur presque toutes les tranches.
     trim_.updateText();
-    trim_.onDragStart = [this] {
+    trim_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Trim d'entrée"))));
         ouvrirPasse("mix.trim");
     };
-    trim_.onDragEnd = [this] { fermerPasse("mix.trim", false); };
+    trim_.onDragEnd = [this] { glisseEnCours_ = false; fermerPasse("mix.trim", false); };
     trim_.onValueChange = [this] {
+        // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
+        if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Trim d'entrée"))));
         track_.inputTrimDb = static_cast<float>(trim_.getValue());
         // EN DÉCIBELS DANS LA COURBE, comme dans le curseur : `mix.volume` est
         // en gain parce que le fader l'est ; le trim est gradué en dB, et une
@@ -190,8 +196,11 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     delay_.setValue(track_.delayMs, juce::dontSendNotification);
     delay_.updateText();
-    delay_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Délai")))); };
+    delay_.onDragStart = [this] { glisseEnCours_ = true; if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Délai")))); };
+    delay_.onDragEnd = [this] { glisseEnCours_ = false; };   // D427
     delay_.onValueChange = [this] {
+        // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
+        if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Délai"))));
         track_.delayMs = delay_.getValue();
         if (onMixChanged) onMixChanged();
     };
@@ -215,8 +224,11 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);   // l'infobulle : `retraduire()`
     transposition_.updateText();
-    transposition_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Transposition"))); };
+    transposition_.onDragStart = [this] { glisseEnCours_ = true; if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Transposition"))); };
+    transposition_.onDragEnd = [this] { glisseEnCours_ = false; };   // D427
     transposition_.onValueChange = [this] {
+        // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
+        if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Transposition")));
         track_.transposeSemitones = static_cast<int>(transposition_.getValue());
         if (onMixChanged) onMixChanged();
     };
