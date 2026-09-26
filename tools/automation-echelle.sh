@@ -83,7 +83,11 @@ rates=0
 verdict() { if [ "$2" -ne 0 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
 lancer() {   # $1 index de piste -> journal + photo
     local maison; maison="$(mktemp -d "$brouillon/home.XXXX")"   # D318 : un HOME NEUF
-    env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_AUTOMATION=1 VSM_DELAI=3500 \
+    # D404 : LA FENÊTRE EST FIXÉE, à la taille où la bande de mesure
+    # (1070..1310) a été calibrée. Sans elle, la fenêtre prend ce que l'écran du
+    # moment permet : le 26/09 au soir, 1 051 × 651, et « aucun point ambre
+    # trouvé » sur une lane parfaitement juste (la leçon de D390).
+    env HOME="$maison" VSM_TAILLE="${VSM_TAILLE:-2117x1317}" VSM_PROJET="$brouillon/projet" VSM_AUTOMATION=1 VSM_DELAI=3500 \
         VSM_VUE="sans-rapport,arrangement,automation" VSM_GESTE_PISTE="choisir:$1" \
         VSM_CAPTURE="$brouillon/piste$1.png" \
         timeout 45 "$BIN" > "$brouillon/piste$1.txt" 2>&1

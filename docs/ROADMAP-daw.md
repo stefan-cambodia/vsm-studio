@@ -32161,3 +32161,27 @@ inchangées. `verifier.sh --gardes` lance désormais `menus-cites.py`.
 **Reste nommé, non fait** : la garde ne lit que les CLÉS du dictionnaire ; une
 phrase écrite en échappements `\u` dans le code (la copie de banc ci-dessus) lui
 échappe — la garde de langue, elle, l'a vue.
+
+---
+
+### Phase D404 — la garde de l'échelle d'automation mesurait l'écran du jour (26/09/2026)
+
+**D'OÙ ELLE VIENT.** Les bancs qui lancent l'application, passés après la
+vingtaine de phases d'interface de la journée : 12 sur 13 verts, et
+`automation-echelle.sh` ROUGE — « aucun point ambre trouvé ». La lane est juste :
+le banc cherche les points dans une bande de pixels FIXE (y = 1 070..1 310),
+calibrée sur une fenêtre de 2 117 × 1 317, sans fixer la fenêtre ; ce soir-là,
+l'écran lui en donnait **1 051 × 651**. C'est la leçon de D390, que ce banc
+n'avait pas reçue.
+
+**VÉRIFIÉ AVANT DE CORRIGER** : à 2 117 × 1 317, la lane passe les deux règles —
+avec le volet du bas de D395 (médiane 57,5 %, étalement 64,6 %) comme avec
+l'ancien (282 px : 48,3 % et 54,2 %). L'application n'y est pour rien.
+
+**LE CORRECTIF** : `VSM_TAILLE` fixé à 2 117 × 1 317 dans le lancement du banc
+(surchargeable). Recherche des autres bancs à photo sans taille fixée :
+`liste-editer.sh` compte en RELATIF (moitié basse de l'image, différence entre
+deux courses) et ne dépend pas de la taille ; les autres ne mesurent pas de
+pixels.
+
+**MESURÉ** : `automation-echelle.sh` VERT — « points ambre : 1640 px ; hauteur médiane  57.5 % ; p10-p90  25.4- 90.0 % (étalement  64.6 %) », --- 0 raté(s).
