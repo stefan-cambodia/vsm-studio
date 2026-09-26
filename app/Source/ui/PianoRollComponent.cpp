@@ -264,8 +264,13 @@ bool PianoRollComponent::beginEdit(const juce::String& label) {
         if (onLockRefused) onLockRefused();
         return false;
     }
+    // D432 : le pas nomme la piste qu'il touche, comme ceux de la console
+    // (D425) ; `trGeste` traduit la partie avant « — ».
+    juce::String nom = label;
+    if (const Track* piste = activeTrack(); piste != nullptr && !piste->name.empty())
+        nom += juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(piste->name.c_str());
     if (project_ != nullptr && history_ != nullptr)
-        history_->beginEdit(*project_, label.toStdString());
+        history_->beginEdit(*project_, nom.toStdString());
     return true;
 }
 
@@ -727,7 +732,8 @@ void PianoRollComponent::paste() {
 void PianoRollComponent::transposeSelection(int semitones) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    if (!beginEdit(semitones > 0 ? "Transposer +" : "Transposer -")) return;
+    // D432 : DE COMBIEN -- « Transposer + » valait pour ↑ comme pour Maj+↑.
+    if (!beginEdit("Transposer " + juce::String(semitones > 0 ? "+" : "") + juce::String(semitones))) return;
     transposeNotes(track->notes, selectedNoteIds_, semitones);
     notifyEdited();
 }

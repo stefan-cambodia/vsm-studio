@@ -473,7 +473,7 @@ MainComponent::MainComponent()
                                       static_cast<uint8_t>(juce::jlimit(1, 127,
                                           static_cast<int>(velo * 127.0f))), on);
     };
-    eventList_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(libelle); };
+    eventList_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(avecPisteChoisie(libelle)); };   // D432
     // D352 : UNE NOTE CRÉÉE DEPUIS LA LISTE PASSE PAR LE MÊME CHEMIN QUE CELLE
     // DU PIANO ROLL. Mesuré : créée au tick 1920 sur une piste dont les clips
     // s'arrêtent à la mesure 2 (D333 les borne aux notes), elle n'était NI JOUÉE

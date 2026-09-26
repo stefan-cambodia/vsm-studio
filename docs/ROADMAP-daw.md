@@ -33157,3 +33157,32 @@ vide après) ; fumée 0 raté ; préférences inchangées.
 — Acid Bass » ; `en` : « Machine setting — Acid Bass », « Effect setting — Acid
 Bass » ; la façade annulée par Ctrl+Z (historique vide après), en `fr` comme en
 `en`. Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D432 — les pas du piano roll et de la liste sans leur piste, et « Transposer + » sans combien (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA SUITE DE D431.** Les trente-deux gestes du piano roll
+passent tous par `PianoRollComponent::beginEdit` (le verrou de D16.5) ; ceux de
+la liste d'événements par son `onEditStarted`. Aucun ne nomme la piste. Et la
+transposition s'inscrit « Transposer + » que ce soit d'un demi-ton (↑) ou d'une
+octave (Maj+↑).
+
+**TÉMOIN** (démo, « ctrl + A » puis « cursor up » dans le piano roll) :
+« Transposer + » ; en anglais « Transpose + ».
+
+**ATTENDU, écrit avant la mesure** : « Transposer +1 — Acid Bass » ; Maj+↑ :
+« Transposer +12 — Acid Bass » ; en anglais « Transpose +1 — Acid Bass » ; les
+deux bancs de la liste (`liste-editer`, `liste-ajouter`), qui cherchent leur
+libellé en préfixe, restent à 0 raté ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ.**
+1. **TENU** : « Transposer +1 — Acid Bass » (témoin « Transposer + ») ; en
+   anglais « Transpose +1 — Acid Bass ». `liste-editer`, `liste-ajouter` :
+   0 raté ; fumée 0 raté ; préférences inchangées.
+2. **NON MESURABLE, et c'est un défaut trouvé** : Maj+↑ laisse l'historique
+   VIDE — le banc dit « shift + cursor up → pianoroll : AUCUNE commande de ce
+   clavier ». Le code voulait une octave (`mods.isShiftDown() ? 12 : 1`), mais
+   compare `key == juce::KeyPress::upKey` : l'`operator==(int)` de JUCE exige
+   qu'AUCUN modificateur ne soit tenu. La branche Maj est morte depuis
+   toujours, pour ↑/↓ (octave) comme pour ←/→ (quatre pas de grille). → D433.

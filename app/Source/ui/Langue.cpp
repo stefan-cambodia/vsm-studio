@@ -2080,10 +2080,8 @@ const Paire kAnglais[] = {
       "Resize" },
     { "Créer une note",
       "Create a note" },
-    { "Transposer +",
-      "Transpose +" },
-    { "Transposer -",
-      "Transpose -" },
+    { "Transposer %1",
+      "Transpose %1" },
     // La liste des pistes.
     { "Canal MIDI (1 à 16) — double-clic pour le changer",
       "MIDI channel (1 to 16) — double-click to change it" },
@@ -3343,7 +3341,7 @@ juce::String trGeste(const juce::String& libelle) {
     // LES NOMS FABRIQUÉS se reconnaissent à leur modèle : un préfixe fixe, puis
     // une donnée -- « Signature 3/4 » (D82), « Durée x1.50 » et « Vélocité
     // x0.80 » (D94, les gestes du piano roll). Les autres sont des clés.
-    for (const char8_t* modele : { u8"Signature %1", u8"Durée x%1", u8"Vélocité x%1" }) {
+    for (const char8_t* modele : { u8"Signature %1", u8"Durée x%1", u8"Vélocité x%1", u8"Transposer %1" }) {   // D432
         const juce::String m = juce::String::fromUTF8(reinterpret_cast<const char*>(modele));
         const juce::String prefixe = m.upToFirstOccurrenceOf("%1", false, false);
         if (libelle.startsWith(prefixe))
