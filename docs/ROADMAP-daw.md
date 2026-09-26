@@ -32315,3 +32315,66 @@ rapport de reconstruction.
 2. aucune ligne du volet ne contient de « \n » (relevé ou lecture du code) ;
 3. « Copier » rend le même texte qu'avant (le presse-papiers lit la source,
    pas les lignes repliées) ; garde de langue 0 ; fumée 0 raté.
+
+**MESURÉ** (`VSM_VOLET_LIGNES=1`, `morceau-0001-g1`) : 1. **TENU** — `fr` :
+« Piste 1 (bass) : 0 échantillon(s) chargé(s), 1 en échec : » puis, sur sa
+ligne, « ␣␣- profil « MS-E-Piano-FM » introuvable. Cherché : », et les chemins
+en retrait de quatre ; `en` pareil ; la photo le montre. 2. **TENU** — aucune
+ligne relevée ne porte de « \n » (8 lignes fr, 8 en ; avant, la sous-liste
+tenait sur la ligne de son titre). 3. **TENU** — « Copier » compose depuis
+`source_`, que le correctif ne touche pas ; fumée 0 raté ; préférences
+inchangées (`cmp`).
+
+**LE RELEVÉ, pour les trois phases qui suivent** : le volet PEINT ses lignes
+(`g.drawText`), invisibles à `VSM_TEXTES_LISTE` — le piège de D149 et D152.
+`VSM_VOLET_LIGNES=1` écrit au journal chaque ligne repliée
+(« VSM_VOLET_LIGNE : … »), lue dans `lignes_`, la liste même que `paint`
+dessine.
+
+---
+
+### Phase D409 — la phrase des notes douteuses avait dépassé son modèle anglais (26/09/2026)
+
+**D'OÙ ELLE VIENT — LA PHOTO ANGLAISE DE D407.** « 1327 note(s) signalée(s)
+comme douteuses sur 3269 transcrite(s), soit 41 % : … « Les 10 % les moins
+sûres » donne les pires d'abord » s'affiche EN FRANÇAIS dans l'interface
+anglaise. La phrase a grandi (la part, puis le geste des 10 %) ; son modèle de
+`trPhrase` (`kModeles`) est resté à l'ancienne forme, et ne la reconnaît plus.
+La clé à jour existe dans la table de `tr`, mais `tr` cherche la phrase EXACTE,
+et celle-ci porte déjà ses nombres. La garde de langue ne le voit pas : elle
+lit les clés, pas les phrases composées que les modèles doivent reconnaître.
+
+**LE CORRECTIF** : le modèle reprend la phrase telle que `MainComponent`
+l'écrit (« … soit %#3 % : … »), avec l'anglais de la clé de `tr`.
+
+**ATTENDU, écrit avant la mesure** : en anglais, la ligne relevée commence par
+« 1327 note(s) flagged as doubtful out of 3269 transcribed, that is 41% » et ne
+contient ni « signalée » ni « moins sûres » ; en français, inchangée.
+
+---
+
+### Phase D410 — « profil … introuvable. Cherché : », une réserve sans anglais (26/09/2026)
+
+**D'OÙ ELLE VIENT — LA MÊME PHOTO.** La sous-ligne d'échec du résumé
+d'échantillons (`SynthPreset.cpp`, « profil « X » introuvable. Cherché : A, B,
+et parmi les profils installés de C ») n'a aucun modèle : elle reste en français
+sous « Track 1 (bass): 0 sample(s) loaded, 1 failed: ».
+
+**LE CORRECTIF** : un modèle, « profil « %1 » introuvable. Cherché : %2, et
+parmi les profils installés de %3 » → « profile “%1” not found. Searched: %2,
+and among the profiles installed in %3 » — les chemins recopiés comme données.
+
+**ATTENDU, écrit avant la mesure** : en anglais, la sous-ligne relevée commence
+par « - profile “MS-E-Piano-FM” not found. Searched: » ; aucune ligne du volet
+anglais ne contient « introuvable », « Cherché » ni « signalée » ; garde de
+langue 0 ; fumée 0 raté.
+
+**MESURÉ D409 et D410** (même relevé, `en`) : « 1327 note(s) flagged as
+doubtful out of 3269 transcribed, that is 41% : they are marked in the piano
+roll, the D key steps through them, and “The 10% least certain” gives the worst
+first » ; « ␣␣- profile “MS-E-Piano-FM” not found. Searched: … and among the
+profiles installed in … ». Sur les 8 lignes du volet anglais : 0 « introuvable »,
+0 « Cherché », 0 « signalée ». `fr` inchangé mot pour mot. Garde de langue 0 ;
+fumée 0 raté. Les deux attendus TENUS. **Ce qui reste nommé** : la garde de
+langue lit des CLÉS, et un modèle de `kModeles` qui ne reconnaît plus sa phrase
+passe sous elle — D409 en est le cas, trouvé à l'œil sur une photo.

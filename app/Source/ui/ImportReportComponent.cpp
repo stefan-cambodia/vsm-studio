@@ -1,4 +1,7 @@
 #include "ImportReportComponent.h"
+
+#include <cstdio>
+#include <cstdlib>
 #include "Langue.h"
 
 namespace vsm::app::ui {
@@ -245,6 +248,18 @@ void ImportReportComponent::disposer() {
 }
 
 void ImportReportComponent::envelopper(const Ligne& source, int largeurMax) {
+    // D408 : UNE LIGNE SOURCE PEUT PORTER SA SOUS-LISTE (« 1 en échec :\n  -
+    // profil … », le résumé d'échantillons). Les mots se découpent sur
+    // l'espace seul : le « \n » restait collé à « : » et se peignait comme un
+    // blanc, la sous-liste à la suite. Chaque morceau est donc replié pour son
+    // compte, avec son retrait d'origine ; le titre ne vaut que pour le premier.
+    if (source.texte.containsChar('\n')) {
+        juce::StringArray morceaux;
+        morceaux.addLines(source.texte);
+        for (int i = 0; i < morceaux.size(); ++i)
+            envelopper({morceaux[i], source.couleur, source.titre && i == 0}, largeurMax);
+        return;
+    }
     if (source.texte.isEmpty()) {
         lignes_.add({{}, source.couleur, false});
         return;
@@ -306,6 +321,12 @@ void ImportReportComponent::reconstruireLaListe() {
 
     lignes_.clear();
     for (const auto& ligne : source_) envelopper(ligne, largeurMax);
+    // D408 : LE RELEVÉ DE CE QUE `paint` DESSINE. Le volet peint ses lignes,
+    // invisibles au relevé des composants (D149, D152) : on les écrit depuis
+    // la liste même qu'il peint.
+    if (std::getenv("VSM_VOLET_LIGNES") != nullptr)
+        for (const auto& ligne : lignes_)
+            std::fputs(("VSM_VOLET_LIGNE : " + ligne.texte + "\n").toRawUTF8(), stderr);
 
     liste_.setSize(largeurMax, juce::jmax(1, lignes_.size()) * kHauteurDeLigne);
     liste_.repaint();

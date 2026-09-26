@@ -3341,8 +3341,10 @@ const ModeleDePhrase kModeles[] = {
     { u8"piste \"%1\" : %2 tronçon(s) d'assemblage écarté(s) (prise absente ou bornes vides)",
       u8"track \"%1\": %2 comp segment(s) discarded (missing take or empty bounds)" },
     { u8"Preset pour une piste inexistante (%#1) : ignoré", u8"Preset for a nonexistent track (%1): ignored" },
-    { u8"%#1 note(s) signalée(s) comme douteuses sur %#2 transcrite(s) : elles sont marquées dans le piano roll, et la touche D y mène une par une",
-      u8"%1 note(s) flagged as doubtful out of %2 transcribed: they are marked in the piano roll, and the D key goes to them one by one" },
+    // D409 : LA PHRASE TELLE QUE `MainComponent` L'ÉCRIT AUJOURD'HUI. Le modèle
+    // était resté à la forme sans la part ni les 10 %, et ne la reconnaissait plus.
+    { u8"%#1 note(s) signalée(s) comme douteuses sur %#2 transcrite(s), soit %#3 % : elles sont marquées dans le piano roll, la touche D y mène une par une, et « Les 10 % les moins sûres » donne les pires d'abord",
+      u8"%1 note(s) flagged as doubtful out of %2 transcribed, that is %3% : they are marked in the piano roll, the D key steps through them, and “The 10% least certain” gives the worst first" },
     { u8"Rapport de reconstruction illisible : %1", u8"Unreadable reconstruction report: %1" },
     // les segments des résumés de preset et d'échantillons
     { u8"%#1 paramètre(s) appliqué(s)", u8"%1 parameter(s) applied" },
@@ -3360,6 +3362,9 @@ const ModeleDePhrase kModeles[] = {
     { u8"impossible d'ouvrir : %1", u8"cannot open: %1" },
     { u8"la machine \"%1\" n'accepte pas d'échantillons, %2 déclaré(s) ignoré(s)",
       u8"machine \"%1\" does not accept samples, %2 declared ignored" },
+    // D410 : l'échec d'un profil multi-échantillons, chemins recopiés comme données.
+    { u8"profil « %1 » introuvable. Cherché : %2, et parmi les profils installés de %3",
+      u8"profile “%1” not found. Searched: %2, and among the profiles installed in %3" },
     { u8"profil (« %1 ») : champ ignoré « %2 »", u8"profile (“%1”): field ignored “%2”" },
     // D90 : les avertissements du rendu (export audio, stems)
     { u8"Piste %#1 (%2) : piste audio sans fichier, elle restera silencieuse",
