@@ -32748,3 +32748,29 @@ reparaîtrait si un projet d'essai portait aussi un `rapport.json`.
 
 Le coût écrit d'avance est payé : sur ces neuf projets, la garde de D411 ne
 voit plus la phrase de D409.
+
+---
+
+### Phase D419 — le projet d'essai porte des notes douteuses, et la garde retrouve la phrase de D409 (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE COÛT ÉCRIT PAR D418.** Depuis D418, la ligne des notes
+douteuses ne paraît plus au volet des projets de campagne (elle n'ouvre plus la
+boîte seule) : la garde de D411 ne la voyait plus. Elle ne paraît qu'à côté
+d'une vraie réserve.
+
+**LE CORRECTIF** : le projet d'essai de `tools/volet-anglais.sh`, qui a déjà
+cinq réserves, reçoit un `rapport.json` (format `vsm-reconstruction-report`)
+qui donne aux huit notes d'« Acid Bass » une confiance de 0,2 — mêmes hauteurs,
+mêmes instants (130 BPM, 480 ticks par noire).
+
+**ATTENDU, écrit avant la mesure** : en `fr`, le volet du projet d'essai compte
+**6** réserves, dont « 8 note(s) signalée(s) comme douteuses sur 8
+transcrite(s), soit 100 % … », déclarée française ; en `en`, la même ligne est
+anglaise (« 8 note(s) flagged as doubtful out of 8 transcribed … ») et la garde
+rend 0.
+
+**MESURÉ — TENU.** `fr` : le volet du projet d'essai compte **6** réserves, la
+sixième « 8 note(s) signalée(s) comme douteuses sur 8 transcrite(s), soit
+100 % … », déclarée française (6 sur 7 lignes, rc 1). `en` : « 8 note(s)
+flagged as doubtful out of 8 transcribed, that is 100% : … », garde **0** sur 7.
+La phrase de D409 est de nouveau sous garde.

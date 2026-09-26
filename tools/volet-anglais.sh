@@ -59,6 +59,13 @@ preset = json.loads((d / "instruments/track_00.synth.json").read_text())
 preset["parameters"]["parametre.inexistant"] = 1.0
 preset["parameters"]["filter.1.resonance"] = 9.0
 (d / "instruments/track_00.synth.json").write_text(json.dumps(preset, ensure_ascii=False, indent=2))
+# D419 : des notes douteuses, pour que la phrase de D409 paraisse au volet à côté
+# des vraies réserves (depuis D418, elle n'ouvre plus la boîte seule). Les huit
+# notes d'« Acid Bass » : mêmes hauteurs, mêmes instants (130 BPM, 480 ticks par noire).
+notes = [(0, 36), (240, 36), (480, 48), (720, 36), (960, 39), (1200, 36), (1440, 43), (1680, 36)]
+rapport = {"format": "vsm-reconstruction-report", "stems": [{"name": "Acid Bass", "noteConfidence": [
+    {"note": n, "start": round(t / 480 * 60 / 130, 6), "confidence": 0.2} for t, n in notes]}]}
+(d / "rapport.json").write_text(json.dumps(rapport, indent=2))
 EOF
 projets+=("$essai")
 
