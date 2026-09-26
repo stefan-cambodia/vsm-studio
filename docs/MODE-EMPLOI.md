@@ -1389,6 +1389,8 @@ l'application tourne.
 
 **Le spectre se voit** : Affichage ▸ Analyseur de spectre ouvre une fenêtre qui montre, pendant la lecture, la répartition du bus final — après la tranche master, donc ce qui sort réellement — de 20 Hz à la moitié de la cadence sur un axe logarithmique, en décibels où un sinus plein-échelle lit 0. La courbe claire est tenue et redescend lentement, la courbe pleine est l'instant ; l'en-tête nomme la crête en hertz. Fenêtre fermée, l'analyseur ne coûte rien au fil audio.
 
+**Ce document s'ouvre depuis l'application** : Aide ▸ Mode d'emploi... l'ouvre dans l'éditeur que le système associe aux fichiers `.md` (il vit dans `docs/`, à côté de la chaîne d'analyse ; introuvable, une boîte le dit). Il n'existe qu'en français, et l'interface anglaise le signale avant de l'ouvrir.
+
 **Les fenêtres flottantes se souviennent** : chacune (navigateur, historique, raccourcis, associations MIDI, reconstruction, préférences, analyseur) rouvre là où on l'avait laissée, à la taille qu'on lui avait donnée, ramenée dans l'écran si l'écran a changé.
 
 ## 8. Ne rien perdre

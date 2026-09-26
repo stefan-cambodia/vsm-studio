@@ -711,6 +711,7 @@ private:
         kMenuFileReconstruct,
         kMenuFileChainFolder,
         kMenuHelpAbout,
+        kMenuHelpManual,   // D398
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1610,6 +1611,7 @@ private:
     SeparateurDock sepDroite_ { true };
     SeparateurDock sepBas_ { false };
     void showAboutDialog();
+    void ouvrirLeModeDEmploi();   ///< D398
     void showAudioSettings();
     /// Écrit le choix du périphérique audio dans les préférences.
     void saveAudioDeviceState();

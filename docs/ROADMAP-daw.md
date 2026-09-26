@@ -31957,3 +31957,43 @@ réécriture provoque ; lu APRÈS, l'élément choisi était perdu. Il se lit AV
 
 Trois builds, trois fois la campagne S2 gelée : 90 s, 94 s, 92 s — `kill -STOP`
 sur son groupe, build détaché qui la reprend.
+
+---
+
+### Phase D398 — le mode d'emploi existait, et aucun menu ne l'ouvrait (26/09/2026)
+
+**D'OÙ ELLE VIENT — D'UN AUDIT DES MENUS.** La barre de menus, relevée par
+l'application (`VSM_MENU_LISTE`, 324 entrées dans chaque langue), n'a ni
+libellé en double fautif ni mot d'une langue dans l'autre. Mais le menu *Aide*
+ne porte que « Raccourcis clavier... » et « À propos » : le mode d'emploi du
+dépôt (`docs/MODE-EMPLOI.md`, 1 402 lignes, tenu à jour — dernière retouche le
+20/09 avec D369) ne s'ouvre de nulle part dans l'application, alors que les
+trois logiciels de référence ouvrent leur manuel depuis ce menu.
+
+**LE CORRECTIF** : *Aide ▸ Mode d'emploi...*. Le fichier se trouve comme la
+chaîne d'analyse se trouve (`ReconstructionChain::locate`) : sa racine est le
+dépôt, qui contient `docs/`. Il s'ouvre dans l'application que le système
+associe aux `.md` ; introuvable, une boîte le DIT, avec le chemin cherché. Le
+mode d'emploi n'existe qu'en français : dans l'interface anglaise, la boîte qui
+précède l'ouverture le dit. `VSM_MODE_EMPLOI_SANS_OUVRIR=1` (banc) écrit le
+chemin au journal sans lancer d'éditeur sur l'écran de l'utilisateur.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. l'entrée existe dans les deux langues (`VSM_MENU_LISTE`), libellé unique dans
+   toute la barre (la règle de `VSM_MENU`) ;
+2. `VSM_MENU=Mode d'emploi...` sous `VSM_MODE_EMPLOI_SANS_OUVRIR=1` : le journal
+   donne un chemin qui EXISTE, `…/docs/MODE-EMPLOI.md` ;
+3. garde de langue 0 ; banc de fumée 0 raté.
+
+**MESURÉ** :
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | l'entrée existe, libellé unique | « Mode d'emploi... » / « User manual... », **1** occurrence chacun dans toute la barre (`VSM_MENU_LISTE`) | TENU |
+| 2 | chemin qui existe | « Mode d'emploi : …/docs/MODE-EMPLOI.md (existe) », dans les deux langues ; en anglais, la boîte « The user manual exists only in French. » | TENU |
+| 3 | garde de langue, fumée | 0 texte sans traduction, 0 doublon ; banc de fumée 0 raté ; préférences inchangées | TENU |
+
+**Non éprouvé, et dit** : le cas « introuvable » (il faudrait déplacer la chaîne
+d'analyse pendant le banc) et l'ouverture réelle dans un éditeur (sautée par le
+banc pour ne rien ouvrir sur l'écran de l'utilisateur). Le mode d'emploi, § 7
+bis, dit désormais comment s'ouvrir.

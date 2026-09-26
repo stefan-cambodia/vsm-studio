@@ -4216,6 +4216,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewShortcuts,
                           tr(u8"Raccourcis clavier..."),
                           true, shortcutsWindow_ && shortcutsWindow_->isVisible());
+            // D398 : le mode d'emploi du dépôt, qu'aucun menu n'ouvrait.
+            menu.addItem(kMenuHelpManual, tr(u8"Mode d'emploi..."));
             menu.addItem(kMenuHelpAbout, tr(u8"À propos de Vintage Synth MIDI Studio"));
             break;
         default:
@@ -4672,6 +4674,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             } else togglePanel(arrangementWindow_);
             break;
         case kMenuHelpAbout:     showAboutDialog(); break;
+        case kMenuHelpManual:    ouvrirLeModeDEmploi(); break;
         default:
             if (menuItemID >= kMenuMixRemoveSendFirst && menuItemID <= kMenuMixRemoveSendLast) {
                 const size_t bus = static_cast<size_t>(menuItemID - kMenuMixRemoveSendFirst);
@@ -4789,6 +4792,37 @@ void MainComponent::setUiScale(float factor) {
                                     .getPrimaryDisplay()->userArea),
                             false);
     }
+}
+
+void MainComponent::ouvrirLeModeDEmploi() {
+    // D398 : LE MODE D'EMPLOI DU DÉPÔT, trouvé comme la chaîne d'analyse se
+    // trouve -- sa racine est le dépôt, qui contient `docs/`. Le chemin est
+    // TOUJOURS écrit au journal ; introuvable, une boîte le dit.
+    refreshReconstructionChain();
+    juce::File mode;
+    if (!reconstructionChain_.chainFolder.empty())
+        mode = juce::File(juce::String::fromUTF8(reconstructionChain_.chainFolder.c_str()))
+                   .getParentDirectory().getChildFile("docs").getChildFile("MODE-EMPLOI.md");
+    const bool existe = mode.existsAsFile();
+    std::fputs((juce::String::fromUTF8(u8"Mode d'emploi : ")
+                + (mode == juce::File() ? juce::String::fromUTF8(u8"(chaîne d'analyse introuvable)")
+                                        : mode.getFullPathName())
+                + (existe ? juce::String::fromUTF8(u8" (existe)") : juce::String::fromUTF8(u8" (introuvable)"))
+                + "\n").toRawUTF8(), stderr);
+    if (!existe) {
+        montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Mode d'emploi introuvable"),
+                     tr(u8"Le mode d'emploi n'a pas été trouvé : %1")
+                         .replace("%1", mode == juce::File() ? tr(u8"(chaîne d'analyse introuvable)")
+                                                             : mode.getFullPathName()));
+        return;
+    }
+    // Il n'existe qu'en français : l'interface anglaise le dit avant de l'ouvrir.
+    if (vsm::app::ui::Langue::courante() == vsm::app::ui::Langue::Choix::Anglais)
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Mode d'emploi"),
+                     tr(u8"Le mode d'emploi n'existe qu'en français."));
+    // Banc : le chemin est vérifié, aucun éditeur ne s'ouvre sur l'écran.
+    if (const char* v = std::getenv("VSM_MODE_EMPLOI_SANS_OUVRIR"); v != nullptr && *v == '1') return;
+    mode.startAsProcess();
 }
 
 void MainComponent::showAboutDialog() {

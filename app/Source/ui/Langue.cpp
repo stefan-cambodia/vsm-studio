@@ -973,6 +973,18 @@ const Paire kAnglais[] = {
       "Load a sample" },
     { "Post-fader (le fader l'emporte avec lui)",
       "Post-fader (the fader carries it along)" },
+    { "Mode d'emploi...",   // D398
+      "User manual..." },
+    { "Mode d'emploi",
+      "User manual" },
+    { "Mode d'emploi introuvable",
+      "User manual not found" },
+    { "Le mode d'emploi n'a pas été trouvé : %1",
+      "The user manual was not found: %1" },
+    { "(chaîne d'analyse introuvable)",
+      "(analysis chain not found)" },
+    { "Le mode d'emploi n'existe qu'en français.",
+      "The user manual exists only in French." },
     { "%1 échantillons (%2 ms)",   // D397 : la taille du tampon, que JUCE écrit en dur
       "%1 samples (%2 ms)" },
     { "Aftertouch poly",   // D392 : un nom par type d'événement
