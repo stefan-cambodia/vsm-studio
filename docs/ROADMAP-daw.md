@@ -33457,3 +33457,28 @@ Ctrl+Z annule toujours ; fumée 0 raté ; préférences inchangées.
 (les deux pistes) puis « shift + M » → « Acid Bass0! Drums0! », « Muet » — le
 lot garde le nom court ; en anglais « Mute — Acid Bass ». Fumée 0 raté ;
 préférences inchangées.
+
+---
+
+### Phase D442 — « Nouveau depuis le modèle » grisé sans dire pourquoi (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE MENU FICHIER.** Tant qu'aucun modèle n'est enregistré,
+l'entrée est grisée, muette. Ses voisines disent leur raison (« Ordre de jeu...
+(aucune section) », « Programme MIDI (aucun)... »). Le remède est deux entrées
+plus haut (« Enregistrer comme modèle de projet »), et rien ne le relie.
+
+**TÉMOIN** (`VSM_MENU_LISTE`, HOME neuf) : « Nouveau depuis le modèle
+[grisée] ».
+
+**ATTENDU, écrit avant la mesure** : HOME neuf → « Nouveau depuis le modèle
+(aucun modèle enregistré) [grisée] » ; en anglais « New from template (no
+template saved) » ; après « Enregistrer comme modèle de projet », l'entrée
+reprend son nom court, active ; `menus-cites` vert ; fumée 0 raté ; préférences
+inchangées.
+
+**MESURÉ — TENU.** HOME neuf : « Fichier > Nouveau depuis le modèle (aucun
+modèle enregistré) [grisée] », « File > New from template (no template saved)
+[grisée] ». Puis, dans le MÊME HOME (le modèle y vit — c'est la seule course où
+le HOME se garde, et c'est voulu) : « Enregistrer comme modèle de projet »
+exécutée, et l'entrée redevient « Nouveau depuis le modèle », active.
+`menus-cites` : 10 citations, 0 faute. Fumée 0 raté ; préférences inchangées.

@@ -901,6 +901,8 @@ const Paire kAnglais[] = {
       "Notes softer than 64" },
     { "Nouveau depuis le modèle",
       "New from template" },
+    { "Nouveau depuis le modèle (aucun modèle enregistré)",
+      "New from template (no template saved)" },
     { "Nouveau dossier",
       "New folder" },
     { "Nouveau projet",

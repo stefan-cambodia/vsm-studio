@@ -3360,8 +3360,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // parlent du fichier entier, et non d'une piste.
             menu.addItem(kMenuFileStatistics,
                           tr(u8"Statistiques du projet..."));
-            menu.addItem(kMenuFileNewFromTemplate, tr(u8"Nouveau depuis le modèle"),
-                         templateFolder().getChildFile("project.json").existsAsFile());
+            {
+                // D442 : GRISÉE, ELLE DIT POURQUOI, comme « Ordre de jeu... (aucune
+                // section) ». Le remède est l'entrée au-dessus.
+                const bool modele = templateFolder().getChildFile("project.json").existsAsFile();
+                menu.addItem(kMenuFileNewFromTemplate,
+                             modele ? tr(u8"Nouveau depuis le modèle")
+                                    : tr(u8"Nouveau depuis le modèle (aucun modèle enregistré)"),
+                             modele);
+            }
             menu.addSeparator();
             // Écoute A/B : l'enregistrement d'origine en regard de la
             // reconstruction. Les trois modes sont dans le même menu, cochés,
