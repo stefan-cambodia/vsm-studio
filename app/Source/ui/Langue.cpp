@@ -1264,6 +1264,8 @@ const Paire kAnglais[] = {
       "MIDI effect setting" },
     { "Réglages audio...",
       "Audio settings..." },
+    { "Carte son",
+      "Sound card" },
     { "Réordonner les pistes",
       "Reorder tracks" },
     { "Répéter des clips",

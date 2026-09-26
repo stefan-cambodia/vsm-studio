@@ -1127,6 +1127,7 @@ MainComponent::MainComponent()
                               [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
     };
     preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
+    preferencesPanel_.onOpenAudioSettings = [this] { menuItemSelected(kMenuFileAudioSettings, 0); };   // D417
     retourAuDepart_ = vsm::app::ui::UiScale::properties().getBoolValue("retourAuDepartALArret", false);
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -7824,7 +7825,8 @@ void MainComponent::showPreferences() {
         // bat »). Une fenêtre restée à sa taille d'avant aurait coupé les
         // Commandes -- et « ça tient dans la case » ne l'emporte jamais sur
         // « ça se lit ».
-        preferencesWindow_->setDefaultSize(560, 592);
+        // D417 : et une de plus, « Carte son », en tête de la section Audio.
+        preferencesWindow_->setDefaultSize(560, 622);
     }
     refreshPreferences();
     preferencesWindow_->setVisible(true);

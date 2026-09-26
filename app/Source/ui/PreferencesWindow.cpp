@@ -117,6 +117,13 @@ PreferencesWindow::PreferencesWindow() {
     choisirBibliotheque_.onClick = [this] { if (onChooseLibraryFolder) onChooseLibraryFolder(); };
     addAndMakeVisible(choisirBibliotheque_);
 
+    // D417 : LA CARTE SON SE CHERCHE ICI (Live la range sous Préférences ▸
+    // Audio). Le bouton ouvre la MÊME boîte que « Fichier ▸ Réglages audio... ».
+    ligne(libelleCarteSon_, juce::String());
+    addAndMakeVisible(libelleCarteSon_);
+    reglagesAudio_.onClick = [this] { if (onOpenAudioSettings) onOpenAudioSettings(); };
+    addAndMakeVisible(reglagesAudio_);
+
     raccourcis_.onClick = [this] { if (onOpenShortcuts) onOpenShortcuts(); };
     associations_.onClick = [this] { if (onOpenMidiLearn) onOpenMidiLearn(); };
     addAndMakeVisible(raccourcis_);
@@ -136,6 +143,8 @@ void PreferencesWindow::retraduire() {
     titreBibliotheque_.setText(tr(u8"Bibliothèque (navigateur)"), juce::dontSendNotification);
     libelleEchelle_.setText(tr(u8"Taille de l'interface"), juce::dontSendNotification);
     libelleThreads_.setText(tr(u8"Threads de rendu"), juce::dontSendNotification);
+    libelleCarteSon_.setText(tr(u8"Carte son"), juce::dontSendNotification);   // D417
+    reglagesAudio_.setButtonText(tr(u8"Réglages audio..."));
     libelleRetour_.setText(tr(u8"À l'arrêt"), juce::dontSendNotification);
     libelleClic_.setText(tr(u8"Niveau du clic"), juce::dontSendNotification);
     libelleQuandClic_.setText(tr(u8"Le clic bat"), juce::dontSendNotification);
@@ -182,6 +191,7 @@ void PreferencesWindow::resized() {
     paire(rangee(30), libelleEchelle_, echelle_);
     rangee(12);
     titreAudio_.setBounds(rangee(26));
+    paire(rangee(30), libelleCarteSon_, reglagesAudio_);   // D417
     paire(rangee(30), libelleThreads_, threads_);
     paire(rangee(30), libelleRetour_, retourAuDepart_);
     paire(rangee(30), libelleSuiviAutomation_, automationSuit_);

@@ -32654,3 +32654,46 @@ préférences inchangées.
 relevées au repos, témoin contre après : **une seule ligne change**, celle de
 SAT. Fumée 0 raté ; préférences inchangées. Le relevé des valeurs ne porte plus
 de réglage sans unité.
+
+---
+
+### Phase D417 — les préférences « Audio » ne menaient pas à la carte son (26/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT LES PRÉFÉRENCES.** La section « Audio » des
+préférences règle les threads, le retour à l'arrêt, le suivi de l'automation et
+le clic. La carte son, la fréquence et le tampon sont ailleurs : « Fichier ▸
+Réglages audio... ». Live les range sous Préférences ▸ Audio, et c'est là qu'on
+les cherche ; ici, rien dans la section n'y renvoie.
+
+**LE CORRECTIF** : une rangée « Carte son » en tête de la section, dont le
+bouton « Réglages audio... » ouvre la MÊME boîte que le menu (le même
+`showAudioSettings`). La fenêtre grandit de 30 px par défaut (592 → 622) :
+la rangée ne se paie pas sur la marge.
+
+**TÉMOIN** (binaire de D416) : `VSM_MENU=Préférences...`, puis
+`VSM_GESTE_APRES=1500:cliquer:fenetre:Préférences:Réglages audio...` →
+**« refusé »**, une seule fenêtre photographiée (Préférences). Contrôle du
+banc, même course sur « Raccourcis clavier (57)... » : « joué », deux fenêtres —
+le verbe fonctionne, le refus vient du bouton absent.
+
+**ATTENDU, écrit avant la mesure** :
+1. même course : « joué », et `VSM_CAPTURE_PANNEAUX` photographie la fenêtre
+   « Réglages audio » à côté des Préférences ;
+2. la photo des préférences montre la rangée, et « Commandes » entière en bas ;
+   en anglais, « Sound card » / « Audio settings... » ; garde de langue 0 ;
+   fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. `fr` : « joué », et `VSM_CAPTURE_PANNEAUX` photographie « Préférences » PUIS
+   « Réglages audio » (témoin : « refusé », une seule fenêtre). `en` : « joué »,
+   « Preferences » puis « Audio settings ». (Une première course anglaise a
+   été refusée : je visais `fenetre:Préférences`, alors que la fenêtre
+   s'appelle « Preferences » en anglais — la faute du banc, pas du bouton.)
+2. La photo anglaise montre « Sound card — Audio settings... » en tête d'Audio,
+   et « Commands » entière en bas. Garde de langue 0 ; fumée 0 raté ;
+   préférences inchangées.
+
+**Vu sur la photo de la boîte ouverte, pour la phase suivante** : les libellés
+de gauche de « Réglages audio » (« Sortie : », « Taux d'échantillonnage : »…)
+sont gris foncé sur fond sombre, à peine lisibles, et « channel 1 + 2 » reste en
+anglais dans l'interface française.

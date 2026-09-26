@@ -63,6 +63,8 @@ public:
     /// range ses presets, ses profils et ses échantillons.
     std::function<void()> onChooseLibraryFolder;
     std::function<void()> onOpenShortcuts;
+    /// D417 : la boîte « Réglages audio » du menu Fichier, ouverte d'ici aussi.
+    std::function<void()> onOpenAudioSettings;
     std::function<void()> onOpenMidiLearn;
 
 private:
@@ -80,6 +82,8 @@ private:
     juce::Label titreBibliotheque_, libelleBibliotheque_;
     juce::TextButton choisirBibliotheque_ { u8"Choisir le dossier..." };
     juce::TextButton raccourcis_, associations_;
+    juce::Label libelleCarteSon_;   ///< D417
+    juce::TextButton reglagesAudio_;
 };
 
 } // namespace vsm::app::ui
