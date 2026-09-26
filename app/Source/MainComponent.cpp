@@ -4840,7 +4840,17 @@ void MainComponent::showAboutDialog() {
         juce::AlertWindow::InfoIcon, "Vintage Synth MIDI Studio",
         tr(u8"Séquenceur MIDI, rack de %1 machines modélisées, et la chaîne qui reconstruit "
            u8"un enregistrement en projet jouable.\n\nVersion 0.1.0")
-            .replace("%1", juce::String(machines)));
+            .replace("%1", juce::String(machines))
+        // D399 : QUEL BINAIRE TOURNE -- la date de l'exécutable, qui change à
+        // chaque édition de liens (`__DATE__` ne daterait qu'un seul fichier).
+        + "\n" + [] {
+              const juce::Time quand = juce::File::getSpecialLocation(
+                  juce::File::currentExecutableFile).getLastModificationTime();
+              const bool anglais = vsm::app::ui::Langue::courante() == vsm::app::ui::Langue::Choix::Anglais;
+              return tr(u8"Compilé le %1 à %2")
+                  .replace("%1", quand.formatted(anglais ? "%Y-%m-%d" : "%d/%m/%Y"))
+                  .replace("%2", quand.formatted("%H:%M"));
+          }());
 }
 
 bool MainComponent::prendreLeFichierDeBanc(const std::function<void(const juce::File&)>& suite) {

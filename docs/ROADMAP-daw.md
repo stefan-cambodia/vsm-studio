@@ -31997,3 +31997,29 @@ chemin au journal sans lancer d'éditeur sur l'écran de l'utilisateur.
 d'analyse pendant le banc) et l'ouverture réelle dans un éditeur (sautée par le
 banc pour ne rien ouvrir sur l'écran de l'utilisateur). Le mode d'emploi, § 7
 bis, dit désormais comment s'ouvrir.
+
+---
+
+### Phase D399 — « À propos » ne disait pas quel binaire tourne (26/09/2026)
+
+**D'OÙ ELLE VIENT.** La boîte *Aide ▸ À propos* dit « Version 0.1.0 », écrit en
+dur, et rien d'autre sur ce qui tourne. Le dépôt compile l'application
+plusieurs fois par jour : savoir si la fenêtre ouverte est le binaire d'avant
+ou d'après un correctif est la question qu'on se pose, et la boîte n'y répond
+pas.
+
+**LA SOURCE, CHOISIE POUR NE PAS MENTIR** : la date de modification de
+l'EXÉCUTABLE lui-même, qui change à chaque édition de liens. `__DATE__` /
+`__TIME__` ne dateraient que la dernière compilation de `MainComponent.cpp`, et
+mentiraient dès qu'un autre fichier serait recompilé seul — un texte de plus
+qui vieillit en silence, le défaut que D205 a corrigé dans cette même boîte.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** : la boîte dit « Compilé le JJ/MM/AAAA à
+HH:MM » en `fr` et « Built on AAAA-MM-JJ at HH:MM » en `en`, et cette date est
+celle que `stat` donne au binaire, à la minute ; garde de langue 0 ; banc de
+fumée 0 raté.
+
+**MESURÉ** : `stat` donne au binaire **26/09/2026 18:26** ; la boîte dit
+« Version 0.1.0 / Compilé le 26/09/2026 à 18:26 » en `fr`, « Built on
+2026-09-26 at 18:26 » en `en`. Garde de langue 0 ; banc de fumée 0 raté ;
+préférences inchangées. Attendu tenu. Build fait campagne S2 gelée (89 s).
