@@ -33482,3 +33482,33 @@ modèle enregistré) [grisée] », « File > New from template (no template save
 le HOME se garde, et c'est voulu) : « Enregistrer comme modèle de projet »
 exécutée, et l'entrée redevient « Nouveau depuis le modèle », active.
 `menus-cites` : 10 citations, 0 faute. Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D443 — quatre entrées grisées qui ne disaient pas pourquoi (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE TOUTES LES ENTRÉES GRISÉES, après D442.** Hors
+Édition (grisée sans sélection, par convention universelle), la plupart disent
+leur raison ou n'en ont pas besoin (« Monter la piste » sur la première). Quatre
+ne disent rien, et leur condition n'est pas devinable :
+« Reporter la sélection en audio » (il faut des clips choisis dans
+l'arrangement), « Instrument parmi les plugins trouvés... » (il faut avoir lancé
+la recherche, et une piste MIDI), « Ouvrir l'interface du plugin de la piste »
+(il faut un plugin qui en ait une — une machine du parc a sa façade au rack),
+« Basculer l'écoute A/B » (il faut un original chargé).
+
+**ATTENDU, écrit avant la mesure** (`VSM_MENU_LISTE`, démo, HOME neuf) :
+« Reporter la sélection en audio (aucun clip choisi dans l'arrangement) »,
+« Instrument parmi les plugins trouvés... (aucune recherche lancée) »,
+« Ouvrir l'interface du plugin de la piste (machine du parc : sa façade est au
+rack) », « Basculer l'écoute A/B (aucun original chargé) » — grisées ; actives,
+elles gardent leur nom court ; en anglais aussi ; `menus-cites` vert ; fumée
+0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `VSM_MENU_LISTE`, démo, HOME neuf : les quatre entrées
+grisées disent leur raison, en `fr` (« … (aucun original chargé) », « … (aucun
+clip choisi dans l'arrangement) », « … (aucune recherche lancée) », « … (machine
+du parc : sa façade est au rack) ») comme en `en` (« Toggle A/B monitoring (no
+original loaded) »…). Contrôle, clips choisis (« ctrl + A » dans
+l'arrangement) : « Reporter la sélection en audio (sur une piste neuve) »,
+active. `menus-cites` 10/0 ; fumée 0 raté ; préférences inchangées.

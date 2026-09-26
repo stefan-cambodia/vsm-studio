@@ -3387,7 +3387,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               mode == Mode::Mix);
                 menu.addItem(kMenuFileReferenceSolo, tr(u8"Écoute : original"), aUneReference,
                               mode == Mode::Solo);
-                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileReferenceCycle, tr(u8"Basculer l'écoute A/B"),
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileReferenceCycle,   // D443
+                                     aUneReference ? tr(u8"Basculer l'écoute A/B")
+                                                   : tr(u8"Basculer l'écoute A/B (aucun original chargé)"),
                                      shortcuts_, vsm::interchange::ShortcutId::ReferenceCycle,
                                      aUneReference);
             }
@@ -3845,8 +3847,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   tr(u8"Réduire les points d'automation (%1 points)").replace("%1", juce::String(static_cast<int>(points))),
                                   points > 2);
                 }
+                // D443 : grisée, elle dit pourquoi.
                 menu.addItem(kMenuTrackBounceSelection,
-                              tr(u8"Reporter la sélection en audio (sur une piste neuve)"),
+                              arrangement_.hasSelection()
+                                  ? tr(u8"Reporter la sélection en audio (sur une piste neuve)")
+                                  : tr(u8"Reporter la sélection en audio (aucun clip choisi dans l'arrangement)"),
                               arrangement_.hasSelection());
                 // D18.7b : PUBLIER LES SORTIES. L'entrée dit COMBIEN, parce
                 // qu'une commande grisée sans raison est une commande qu'on
@@ -3913,7 +3918,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   : juce::String(tr(u8"Rechercher les plugins installés...")),
                               pluginScanner_ == nullptr);
                 menu.addItem(kMenuTrackPluginFromCatalogue,
-                              tr(u8"Instrument parmi les plugins trouvés..."),
+                              pluginCatalogue_.instruments().empty()   // D443
+                                  ? tr(u8"Instrument parmi les plugins trouvés... (aucune recherche lancée)")
+                                  : tr(u8"Instrument parmi les plugins trouvés..."),
                               !pluginCatalogue_.instruments().empty()
                                   && piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
@@ -3946,8 +3953,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                             if (!aFacade) aFacade = vsm::clap::hasNativeEditor(*machine);
 #endif
                         }
-                    menu.addItem(kMenuTrackPluginEditor,
-                                  tr(u8"Ouvrir l'interface du plugin de la piste"), aFacade);
+                    menu.addItem(kMenuTrackPluginEditor,   // D443
+                                  aFacade ? tr(u8"Ouvrir l'interface du plugin de la piste")
+                                          : tr(u8"Ouvrir l'interface du plugin de la piste (machine du parc : sa façade est au rack)"),
+                                  aFacade);
                 }
 #endif
             }
