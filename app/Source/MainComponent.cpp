@@ -10044,10 +10044,20 @@ void MainComponent::exportMidiFile() {
                                      ? vsm::sequencer::programmeGMPourProfil(t.instrumentProfile.c_str()) : -1;
                     if (p >= 0) ++derives;
                     else if (pp >= 0) ++duProfil;
-                    else sans.add(juce::String::fromUTF8(t.name.c_str()) + " (" + juce::String(t.instrumentId)
-                                  + (t.instrumentProfile.empty() ? juce::String()
-                                                                 : ", " + juce::String::fromUTF8(t.instrumentProfile.c_str()))
-                                  + ")");
+                    else {
+                        // D393 : UNE MACHINE MULTI-ÉCHANTILLONS SANS PROFIL CHARGÉ n'est
+                        // pas « sans équivalent » : elle ne joue rien, parce que son
+                        // profil manque (le rapport d'ouverture a dit lequel).
+                        const size_t index = static_cast<size_t>(&t - project_.tracks.data());
+                        const bool banqueVide = t.instrumentProfile.empty()
+                            && dynamic_cast<const vsm::audio::plugin::IMultisampleBank*>(
+                                   audioEngine_.processGraph().trackInstrument(index)) != nullptr;
+                        sans.add(juce::String::fromUTF8(t.name.c_str()) + " (" + juce::String(t.instrumentId)
+                                 + (banqueVide ? juce::String::fromUTF8(u8", aucun profil chargé")
+                                  : t.instrumentProfile.empty() ? juce::String()
+                                  : ", " + juce::String::fromUTF8(t.instrumentProfile.c_str()))
+                                 + ")");
+                    }
                 }
                 std::fputs((juce::String::fromUTF8(u8"Export MIDI : programmes — ") + juce::String(gardes)
                             + juce::String::fromUTF8(u8" piste(s) avec les siens, ") + juce::String(regles)

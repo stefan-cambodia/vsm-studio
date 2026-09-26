@@ -31729,3 +31729,28 @@ un aftertouch polyphonique, ouvert par `VSM_VUE=ouvrir-midi:…`) :
 | 1 | plus aucun ancien nom affiché | `grep` du code : 0 ; les clés mortes retirées du dictionnaire | TENU |
 | 2 | les mêmes noms partout, `fr` et `en` | statistiques (`VSM_BOITE`) : « Pitch bend : 1 / Aftertouch poly : 1 / Aftertouch : 1 » et « Pitch bend: 1 / Poly aftertouch: 1 / Aftertouch: 1 » ; liste d'événements (photo, cellules peintes) : « Pitch bend », « Aftertouch », « Aftertouch poly » / « Poly aftertouch », entiers dans la colonne ; onglet MIDI CC : « Pitch bend (1 point(s)) » | TENU |
 | 3 | garde de langue, tests | 0 texte sans traduction, 0 doublon ; `core` 361 ; `liste-editer.sh` et `liste-ajouter.sh` 0 raté ; banc de fumée 0 raté | TENU |
+
+---
+
+### Phase D393 — une machine multi-échantillons sans profil passait pour « sans équivalent » (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D388.** Sous un HOME où le profil
+« MS-E-Piano-FM » n'est pas installé, l'export MIDI disait « bass
+(vsm.multisample) » parmi les pistes « sans équivalent General MIDI » : faux —
+la machine a un équivalent dès qu'elle a un profil ; elle n'en a pas chargé.
+Le rapport d'ouverture nomme déjà le profil manquant (« profil … introuvable.
+Cherché : … ») ; le compte de l'export doit dire POURQUOI, sans promettre plus.
+
+**LE CORRECTIF** : dans ce compte, une piste dont la machine est
+multi-échantillons (`IMultisampleBank`, lue dans le moteur) et n'a aucun profil
+chargé est dite « (vsm.multisample, aucun profil chargé) ».
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** : l'export de `morceau-0001-g1` SANS les
+profils installés dit « bass (vsm.multisample, aucun profil chargé) » ; AVEC
+eux, « 1 dérivé du profil » comme en D388 ; « other » et « piano » inchangés.
+
+**MESURÉ** : sans les profils installés, « 3 sans équivalent General MIDI :
+**bass (vsm.multisample, aucun profil chargé)**, other (vsm.pcmhybrid), piano
+(vsm.spectral) » ; avec eux, « **1 dérivé(s) du profil** … 2 sans équivalent :
+other, piano », comme en D388. Les deux attendus tenus ; banc de fumée 0 raté ;
+garde de langue 0 ; préférences inchangées.
