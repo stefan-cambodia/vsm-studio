@@ -32080,3 +32080,38 @@ après. La photo ne montre que le haut de la liste, où aucune description n'est
 longue : c'est le relevé, qui lit toute la liste, qui fait foi pour les trois
 rangées doublées. Banc de fumée 0 raté ; `raccourcis-affiches.py` vert ;
 préférences inchangées. Build de 30 s, campagne S2 gelée le temps du build.
+
+---
+
+### Phase D402 — la fenêtre des associations MIDI expliquait un geste qui n'existe pas (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE L'AUDIT DES FENÊTRES.** Vide, *Affichage ▸ Associations
+MIDI* dit : « Dans le Synth Rack, clic droit sur un réglage ▸ « Apprendre un
+contrôleur MIDI », puis tournez le potentiomètre. » Cherché dans le code : ce
+libellé n'existe NULLE PART ailleurs, et aucun réglage du rack n'a de menu au
+clic droit. Le vrai chemin (`SynthRackComponent`, `MainComponent`) : presser
+**MIDI LEARN** dans l'en-tête du rack, toucher un réglage de la façade (il arme
+l'apprentissage pour ce paramètre), tourner le contrôleur ; et le bouton
+**Apprendre...** de la fenêtre propose le transport et le mixage de la piste
+choisie. La leçon de D358 (« un raccourci écrit dans un libellé ment dès qu'on
+le change »), pour un geste entier.
+
+**LE CORRECTIF** : le message décrit les deux chemins réels, dans les deux
+langues ; les noms qu'il cite (« MIDI LEARN », « Apprendre... ») sont ceux des
+boutons.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** : la fenêtre vide dit le nouveau texte en
+`fr` et en `en` (relevé et photo) ; chaque commande qu'il nomme existe à
+l'écran (le bouton « MIDI LEARN » du rack, « Apprendre... » / « Learn... » de la
+fenêtre, relevés dans la même course) ; garde de langue 0 ; fumée 0 raté.
+
+**MESURÉ** : la fenêtre vide dit, en `fr`, « Un réglage de machine : pressez
+MIDI LEARN dans le rack, touchez le réglage sur la façade, puis tournez le
+potentiomètre du contrôleur. / Le transport ou le mixage de la piste choisie :
+Apprendre... ci-dessous. », et son équivalent en `en` ; dans la même course, le
+bouton « MIDI LEARN » du rack et « Apprendre... » / « Learn... » de la fenêtre
+sont relevés à l'écran (1 et 1) ; photo : le texte entier ; aucun libellé
+serré. Garde de langue 0 ; banc de fumée 0 raté ; préférences inchangées.
+**Non éprouvé** : l'apprentissage lui-même (il faudrait un contrôleur MIDI qui
+tourne pendant le banc) ; le texte suit le code qui le fait (`onParamTouched` →
+`armMidiLearn`).

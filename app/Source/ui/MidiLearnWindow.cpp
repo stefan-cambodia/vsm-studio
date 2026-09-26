@@ -79,8 +79,11 @@ MidiLearnWindow::MidiLearnWindow() : contenu_(std::make_unique<Contenu>()) {
 void MidiLearnWindow::retraduire() {
     // D87 : l'état vide et les deux boutons ; les lignes sont refaites par le
     // client (`refreshMidiLearnList`).
-    vide_.setText(tr(u8"Aucune association.\n\nDans le Synth Rack, clic droit sur un réglage ▸ "
-                     u8"« Apprendre un contrôleur MIDI », puis tournez le potentiomètre."),
+    // D402 : LES DEUX CHEMINS RÉELS. L'ancien texte décrivait un clic droit et un
+    // libellé qui n'existaient nulle part.
+    vide_.setText(tr(u8"Aucune association.\n\nUn réglage de machine : pressez MIDI LEARN dans le rack, "
+                     u8"touchez le réglage sur la façade, puis tournez le potentiomètre du contrôleur.\n"
+                     u8"Le transport ou le mixage de la piste choisie : Apprendre... ci-dessous."),
                   juce::dontSendNotification);
     toutEffacer_.setButtonText(tr(u8"Tout effacer"));
     apprendre_.setButtonText(tr(u8"Apprendre..."));

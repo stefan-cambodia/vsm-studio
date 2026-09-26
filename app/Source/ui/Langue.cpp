@@ -264,8 +264,8 @@ const Paire kAnglais[] = {
       "MIDI mappings (%1)..." },
     { "Aucun",
       "None" },
-    { "Aucune association.\n\nDans le Synth Rack, clic droit sur un réglage ▸ « Apprendre un contrôleur MIDI », puis tournez le potentiomètre.",
-      "No mappings.\n\nIn the Synth Rack, right-click a control ▸ “Learn a MIDI controller”, then turn the knob." },
+    { "Aucune association.\n\nUn réglage de machine : pressez MIDI LEARN dans le rack, touchez le réglage sur la façade, puis tournez le potentiomètre du contrôleur.\nLe transport ou le mixage de la piste choisie : Apprendre... ci-dessous.",   // D402
+      "No mappings.\n\nA machine control: press MIDI LEARN in the rack, touch the control on the faceplate, then turn the knob on your controller.\nTransport or the selected track's mix: Learn... below." },
     { "Aucune section : posez des repères sur la règle. Une section va d'un repère au suivant.",
       "No sections: place markers on the ruler. A section runs from one marker to the next." },
     { "Aucune — seul le projet ouvert est indexé",
