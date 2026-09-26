@@ -836,3 +836,39 @@ mélange : ce ne serait pas un succès, et ce serait écrit.
 **Rien n'est implémenté dans la chaîne** : `--recensement` reste éteint par
 défaut, et toute adoption passe par la validation de l'utilisateur (§ 10,
 point 5).
+
+### 12.1 Le verdict (26/09/2026) : H39 PARTIELLE — L1 réglé, le goulot passe au mélange
+
+Recalculé par `analyse/verdict_h39.py`. **Témoin** (le même banc, sans l'option) :
+L1 0,2297, compte L3 4,00, tous les comptes identiques à la course H37 — seul
+diffère le champ η², ajouté au rapport par H38 après elle.
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | L1 `s1-sec` ≥ 60 % | **50/74 (67,6 %)** — H37 23,0 % | TENU |
+| 2 | L1 `s2` ≥ 40 % | **44,6 %** — H37 1,4 % | TENU |
+| 3 | compte L3 ≤ 3,0 | **3,60** — bat la parité (3,80) et H37 (4,00), sans atteindre 3,0 | intermédiaire |
+| 4 | compte L2 ≤ 2,5 | **5,90** — H37 5,20 | ÉCHEC |
+| 5 | *Clair de Lune* 1 ; *Children* K_mél [5 ; 7] | **1** ; **6** (K = 12 ; H37 : 9 et 15) | TENU, TENU |
+
+**Verdict, par la règle écrite avant** : 1 tenu, 3 intermédiaire → **PARTIELLE**.
+
+**LA DÉDUCTION DU § 12, MESURÉE** : dans H37, les **17 parties « à une grappe »
+sur 17** avaient au moins une autre grappe ÉCARTÉE par le seuil de 4 s — aucune
+n'était une grappe unique au sens de HDBSCAN, qui n'en rendait jamais.
+
+**CE QUE LA MESURE APPREND.** L'attribution par étage bascule : les parties
+perdues dès la partie seule (L1) passent de **57 à 24** ; les parties à zéro
+grappe de 11 à 4 ; et **37** se perdent désormais AU REGROUPEMENT DANS UN
+MÉLANGE (L2), deux seulement à la séparation. C'est le risque écrit avant, là où
+il était attendu : sur stems vrais, une grappe unique permise fusionne des
+parties d'un même stem, et le compte L2 empire (5,20 → 5,90). En L3, le gain de
+L1 l'emporte (4,00 → 3,60) : pour la première fois, le recensement bat la
+parité sur `s1-sec`.
+
+**CE QUE LE VERDICT DÉCIDE** :
+1. Rien n'est adopté dans la chaîne sans validation de l'utilisateur (§ 10,
+   point 5) ; l'option reste au banc.
+2. Le goulot est désormais le regroupement dans un mélange. La suite naturelle
+   — permettre la grappe unique là où une seule source est attendue, et non
+   partout — est une hypothèse NOUVELLE (H40), à écrire comme celle-ci.
