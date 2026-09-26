@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "Langue.h"
 #include <cmath>
+#include <functional>
 
 namespace vsm::app::ui {
 
@@ -26,17 +27,43 @@ namespace vsm::app::ui {
 // DURÉE DE VIE : la bulle tient une référence au curseur. Elle se déclare
 // APRÈS lui, pour être détruite AVANT.
 // ---------------------------------------------------------------------------
-class BulleDeValeur final : private juce::ComponentListener {
+class BulleDeValeur final : private juce::ComponentListener, private juce::Value::Listener {
 public:
     explicit BulleDeValeur(juce::Slider& curseur) : curseur_(curseur) {
         curseur_.addComponentListener(this);
+        // Le `Value` du curseur, et non `Slider::Listener` : ce dernier se tait
+        // sur `setValue(…, dontSendNotification)`, et c'est ainsi que les lignes
+        // se resynchronisent sur le modèle -- l'infobulle serait restée à
+        // l'ancienne valeur.
+        curseur_.getValueObject().addListener(this);
         poser();
     }
-    ~BulleDeValeur() override { curseur_.removeComponentListener(this); }
+    ~BulleDeValeur() override {
+        curseur_.getValueObject().removeListener(this);
+        curseur_.removeComponentListener(this);
+    }
     BulleDeValeur(const BulleDeValeur&) = delete;
     BulleDeValeur& operator=(const BulleDeValeur&) = delete;
 
+    /// D414 : LE SURVOL DIT CE QUE L'APPUI MONTRE. La bulle ne s'ouvre qu'à
+    /// l'appui ; un curseur sans libellé (le volume et le panoramique d'une
+    /// ligne de piste) ne disait au survol ni ce qu'il règle, ni ce qu'il vaut.
+    /// Nommé, il porte l'infobulle « Volume : -0.9 dB (double-clic : valeur
+    /// d'usine) », refaite à chaque valeur. Le nom est une FONCTION qui rend le
+    /// texte traduit : `rafraichir()`, appelé au changement de langue, le relit.
+    void nommer(std::function<juce::String()> nom) {
+        nom_ = std::move(nom);
+        rafraichir();
+    }
+    void rafraichir() {
+        if (!nom_) return;
+        curseur_.setTooltip(tr(u8"%1 : %2 (double-clic : valeur d'usine)")
+                                .replace("%1", nom_())
+                                .replace("%2", curseur_.getTextFromValue(curseur_.getValue())));
+    }
+
 private:
+    void valueChanged(juce::Value&) override { rafraichir(); }
     void componentParentHierarchyChanged(juce::Component&) override { poser(); }
     void poser() {
         juce::Component* parent = nullptr;
@@ -45,6 +72,7 @@ private:
         curseur_.setPopupDisplayEnabled(true, false, parent);
     }
     juce::Slider& curseur_;
+    std::function<juce::String()> nom_;
 };
 
 /// Un gain linéaire en décibels, comme le fader du mixeur : « -0.9 dB »,

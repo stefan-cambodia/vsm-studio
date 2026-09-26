@@ -312,6 +312,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
 
 void ChannelStrip::retraduire() {
     poserInfobulleDuNom();
+    bullePan_.nommer([] { return tr(u8"Panoramique"); });   // D414 : au survol, le réglage et sa valeur
     trim_.setTooltip(tr(u8"Trim d'entrée : le gain AVANT les inserts. Pousse la piste dans son "
                         u8"compresseur ou sa saturation sans toucher à leur réglage. Sans insert, "
                         u8"il fait ce que ferait le fader."));

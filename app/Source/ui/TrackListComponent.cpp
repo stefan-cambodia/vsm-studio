@@ -246,12 +246,18 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         if (onChanged) onChanged();
     };
 
+    // D414 : nommés, les deux curseurs le disent au survol, avec leur valeur.
+    bulleVolume_.nommer([] { return vsm::app::ui::tr(u8"Volume"); });
+    bullePan_.nommer([] { return vsm::app::ui::tr(u8"Panoramique"); });
+
     setInterceptsMouseClicks(true, true);
     poserTextes();   // D94
 }
 
 void TrackRowComponent::poserTextes() {
     using vsm::app::ui::tr;
+    bulleVolume_.rafraichir();   // D414 : la langue a pu changer
+    bullePan_.rafraichir();
     if (!audio_)
         channelLabel_.setTooltip(tr(u8"Canal MIDI (1 à 16) — double-clic pour le changer"));
     if (audio_)

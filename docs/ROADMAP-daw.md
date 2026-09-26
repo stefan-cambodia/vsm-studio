@@ -32517,3 +32517,43 @@ l'allumer) ; le bouton porte une infobulle qui dit ce qu'il allume et que,
    du master : égaliseur, compresseur, saturation, limiteur. Éteinte, … ») et
    en `en` (« Turns on the master chain: … ») ; garde de langue 0 ; fumée 0
    raté ; préférences inchangées.
+
+---
+
+### Phase D414 — deux curseurs sans nom sous chaque piste, et un bouton de panoramique muet (26/09/2026)
+
+**D'OÙ ELLE VIENT — LA MÊME PHOTO QUE D413.** Sous chaque ligne de piste, deux
+curseurs horizontaux sans libellé ni valeur : le volume et le panoramique.
+D135 leur a donné une BULLE, qui s'ouvre à l'appui ; au survol, rien — ni
+lequel est lequel, ni ce qu'il vaut. Le bouton de panoramique des tranches du
+mixeur est dans le même cas. **Témoin** (`docs/examples/demo-project`,
+`VSM_TEXTES_LISTE`) : sur **66** infobulles relevées, **0** nomme un volume ou
+un panoramique.
+
+**LE CORRECTIF** : `BulleDeValeur` reçoit, facultativement, le NOM du réglage ;
+elle pose alors une infobulle « Volume : -0.9 dB (double-clic : valeur
+d'usine) », refaite à chaque changement de valeur et à chaque changement de
+langue. Posée sur le volume et le panoramique des lignes de piste, et sur le
+panoramique des tranches.
+
+**ATTENDU, écrit avant la mesure** :
+1. même relevé : **6** infobulles de plus sur le projet de démo (2 pistes × 2
+   curseurs de ligne + 2 panoramiques de tranche), dont celle du volume
+   d'« Acid Bass » porte la valeur que montre son fader (« -0.9 dB ») ;
+2. en `en` : « Volume: -0.9 dB (double-click: factory value) », « Pan: C … » ;
+   garde de langue 0 ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ** (même projet, même relevé) :
+1. **TENU.** Infobulles **66 → 72** (+6) : « Volume : -0.9 dB (double-clic :
+   valeur d'usine) » pour « Acid Bass » — la valeur de son fader —, « Volume :
+   0.0 dB » pour « Drums », et quatre « Panoramique : C (…) » (deux lignes, deux
+   tranches).
+2. **TENU.** En `en` : « Volume: -0.9 dB (double-click: factory value) »,
+   « Pan: C (double-click: factory value) » ; garde de langue 0 ; fumée 0
+   raté ; préférences inchangées.
+
+**Ce qui n'est pas mesuré, écrit** : l'infobulle suit la valeur par le `Value`
+du curseur, et non par `Slider::Listener`, qui se tait sur
+`setValue(…, dontSendNotification)` — la voie par laquelle les lignes se
+resynchronisent sur le modèle (le fader du mixeur, une annulation). Aucun banc
+n'a encore bougé un fader pour relire l'infobulle de la ligne ensuite.
