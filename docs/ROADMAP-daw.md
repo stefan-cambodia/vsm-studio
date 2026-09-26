@@ -33292,10 +33292,13 @@ projet relu après le geste.
 1. **Le défaut est établi** : un point posé dans l'onglet Automation ne
    s'annulait pas.
 2. **TENU** pour la pose et le glissé (un pas par geste, ouvert au début).
-3. **NON MESURÉ, et dit** : le retrait au clic droit. Un clic droit au MÊME
-   endroit que la pose n'a rien retiré (1 point, 1 pas) : le point posé n'est
-   pas dessiné exactement sous le clic (il suit la grille), et le second clic le
-   manque. C'est la géométrie du banc, pas une mesure du correctif ; le retrait
-   passe par le même `ouvrirPas()` au même endroit du code.
+3. **Le retrait au clic droit, mesuré en second.** Un premier essai, clic droit
+   au MÊME endroit que la pose, n'a rien retiré (1 point, 1 pas) : la photo
+   montre le point dessiné sur la mesure 5, à 46,4 % de la largeur et non à
+   50 % — il suit la grille, et le clic le manquait. Clic droit là où le point
+   EST dessiné (0.464, 0.6) : **0 point, deux pas** ; puis Ctrl+Z : **1 point**,
+   rendu. **TENU.** Et après Ctrl+Z, la photo de l'onglet montre la lane vide
+   (« Cliquez pour ajouter des points d'automation. ») : le panneau se recharge
+   depuis le projet, il ne garde pas le point annulé.
 
 Fumée 0 raté ; préférences inchangées.
