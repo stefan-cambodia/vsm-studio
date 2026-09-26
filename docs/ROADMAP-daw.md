@@ -32053,3 +32053,30 @@ construction : l'écouteur reçoit `getValue()` et l'écrit sous la même clé
 (`niveauMetronome`). Garde de langue 0 ; banc de fumée 0 raté ; préférences
 inchangées. **Non éprouvé** : la SAISIE d'une valeur en dB dans la case (aucun
 banc ne tape dans ce champ). Build de 27 s, campagne S2 gelée le temps du build.
+
+---
+
+### Phase D401 — la fenêtre des raccourcis coupait ses descriptions longues (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RELEVÉ DES FENÊTRES.** `VSM_SERRES` sur *Aide ▸
+Raccourcis clavier...* : trois descriptions dans une colonne de 414 px, sur une
+rangée d'UNE ligne (30 px, `kHauteur`) — « Déplacer les clips choisis d'un pas
+d'aimantation (Maj : quatre pas) ; sans sélection, faire défiler » **COUPÉE**
+(1,49), deux autres comprimées (1,12 et 1,17).
+
+**LE CORRECTIF** : une description qui ne tient pas sur une ligne reçoit une
+rangée DOUBLE (et le libellé ses deux lignes), mesurée par la même formule que
+les relevés (`ui/BesoinDeLargeur.h`) ; la hauteur du contenu suit, la liste
+défile déjà. Les autres rangées ne bougent pas.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** : `VSM_SERRES` sur la fenêtre, `fr` et
+`en` : **0** libellé comprimé ou coupé (3 avant en `fr`) ; le nombre de
+raccourcis listés inchangé ; photo : les longues descriptions sur deux lignes,
+entières ; garde de langue 0, fumée 0 raté.
+
+**MESURÉ** : `VSM_SERRES` sur la fenêtre — **0** libellé comprimé ou coupé, en
+`fr` comme en `en` (3 avant) ; **76** libellés dans la fenêtre, avant comme
+après. La photo ne montre que le haut de la liste, où aucune description n'est
+longue : c'est le relevé, qui lit toute la liste, qui fait foi pour les trois
+rangées doublées. Banc de fumée 0 raté ; `raccourcis-affiches.py` vert ;
+préférences inchangées. Build de 30 s, campagne S2 gelée le temps du build.

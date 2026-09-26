@@ -1,4 +1,5 @@
 #include "ShortcutsWindow.h"
+#include "BesoinDeLargeur.h"
 #include "Langue.h"
 
 namespace vsm::app::ui {
@@ -93,13 +94,24 @@ public:
     void resized() override {
         int y = 0;
         for (auto& ligne : lignes_) {
-            auto zone = juce::Rectangle<int>(0, y, getWidth(), kHauteur).reduced(4, 2);
-            y += kHauteur;
+            // D401 : UNE DESCRIPTION QUI NE TIENT PAS SUR UNE LIGNE EN REÇOIT DEUX.
+            // La colonne du texte est ce qui reste à droite des touches ; à une
+            // seule ligne de 30 px, les plus longues sortaient coupées.
+            const int reserve = ligne.titre ? 0 : ligne.bouton ? (ligne.defaut ? 34 : 0) + 4 + 180 + 8
+                                                              : ligne.toucheFixe ? 180 + 8 : 0;
+            const int largeurTexte = std::max(1, getWidth() - 8 - reserve);
+            const bool double_ = !ligne.titre
+                && vsm::app::ui::besoinDeLargeur(ligne.libelle->getText(), ligne.libelle->getFont(),
+                                                 ligne.libelle->getBorderSize().subtractedFrom(
+                                                     juce::Rectangle<int>(largeurTexte, kHauteur - 4))) > 1.0f;
+            const int hauteur = double_ ? 2 * kHauteur - 6 : kHauteur;
+            auto zone = juce::Rectangle<int>(0, y, getWidth(), hauteur).reduced(4, 2);
+            y += hauteur;
             if (ligne.titre) { ligne.libelle->setBounds(zone); continue; }
             if (ligne.bouton) {
-                if (ligne.defaut) ligne.defaut->setBounds(zone.removeFromRight(34));
+                if (ligne.defaut) ligne.defaut->setBounds(zone.removeFromRight(34).withSizeKeepingCentre(34, kHauteur - 4));
                 zone.removeFromRight(4);
-                ligne.bouton->setBounds(zone.removeFromRight(180));
+                ligne.bouton->setBounds(zone.removeFromRight(180).withSizeKeepingCentre(180, kHauteur - 4));
                 zone.removeFromRight(8);
             } else if (ligne.toucheFixe) {
                 ligne.toucheFixe->setBounds(zone.removeFromRight(180));
@@ -107,6 +119,9 @@ public:
             }
             ligne.libelle->setBounds(zone);
         }
+        // La hauteur du contenu suit ses rangées (la liste défile déjà) ; le
+        // second passage, provoqué par `setSize`, rend la même somme et s'arrête.
+        if (getHeight() != y + 6) setSize(getWidth(), y + 6);
     }
 
 private:
