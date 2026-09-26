@@ -33231,3 +33231,24 @@ Le COMBIEN, lu dans le `.mid` exporté après les touches (480 ticks par noire,
 grille 1/16) : première note d'« Acid Bass » à **0** sans geste, **120** après
 → (un pas), **480** après Maj+→ (quatre pas) ; « Drums » ne bouge pas. Fumée 0
 raté ; préférences inchangées. La page des raccourcis dit enfin vrai.
+
+---
+
+### Phase D434 — la garde de D433 : une branche « Maj » ne se cache pas derrière `key == KeyPress::…Key` (27/09/2026)
+
+`tools/touches-modifiees.py`, dans `verifier.sh --gardes` : une comparaison
+`key == juce::KeyPress::<touche>Key` entourée (quatre lignes avant, six après)
+d'un test de modificateur est une branche morte.
+
+**ATTENDU, écrit avant la mesure** : verte aujourd'hui ; rouge sur
+`PianoRollComponent.cpp` et `ArrangementComponent.cpp` d'avant D433
+(`2e8278c~1`), les quatre blocs nommés (piano roll ←/→, ↑, ↓ ; arrangement
+←/→).
+
+**MESURÉ.** Première version (six lignes APRÈS seulement) : verte (7
+comparaisons), rouge avec **3 blocs sur 4** — le ←/→ du piano roll lui
+échappait, son pas « Maj : quatre pas » étant calculé la ligne AU-DESSUS.
+Fenêtre élargie (quatre lignes avant) : **verte, 7 comparaisons, 0 branche
+morte** ; **rouge, 5 lignes nommées couvrant les 4 blocs**. Attendu tenu après
+correction de la garde ; c'est la deuxième garde de la journée que l'essai en
+rouge a corrigée avant qu'elle ne serve (D430).
