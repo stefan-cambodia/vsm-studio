@@ -33326,3 +33326,27 @@ existe ; Ctrl+Z annule toujours ; fumée 0 raté ; préférences inchangées.
 « Ajouter un CC ») ; `en` : « Add a CC — CC 74 — Acid Bass » (témoin « Add a
 CC ») ; Ctrl+Z annule dans les deux langues (historique vide après). Fumée 0
 raté ; préférences inchangées.
+
+---
+
+### Phase D437 — « Supprimer une piste » : laquelle ? (27/09/2026)
+
+**D'OÙ ELLE VIENT — L'ESSAI DES ENTRÉES DE MENU QUI ÉDITENT.** Sept entrées
+(signature, accord, groupe, dupliquer, masquer, groupe d'édition, supprimer)
+ouvrent toutes leur pas — rien à réparer là. Mais six pas qui visent UNE piste
+ne la nomment pas : « Supprimer une piste », « Dupliquer une piste », « Masquer
+une piste », « Groupe d'édition », « Geler une piste », « Dégeler une piste ».
+
+**ATTENDU, écrit avant la mesure** : au singulier, le pas nomme la piste —
+« Supprimer une piste — Acid Bass », « Dupliquer une piste — Acid Bass »,
+« Masquer une piste — Acid Bass », « Groupe d'édition — Acid Bass » (mesurés par
+`VSM_MENU` sur la démo) ; les pluriels restent tels quels ; fumée 0 raté ;
+préférences inchangées.
+
+**MESURÉ — TENU.** `fr` : « Dupliquer une piste — Acid Bass », « Masquer une
+piste — Acid Bass », « Groupe d'édition — Acid Bass », « Supprimer une piste —
+Acid Bass » ; `en` : « Duplicate a track — … », « Hide a track — … », « Edit
+group — … », « Delete a track — Acid Bass ». Geler/Dégeler passent par la même
+fonction (`avecPiste`) ; non mesurés ici (le gel REND de l'audio — CLAUDE.md :
+les rendus se groupent après la campagne). Fumée 0 raté ; préférences
+inchangées.

@@ -4657,7 +4657,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         if (piste < project_.tracks.size()) {
             const int groupe = menuItemID - kMenuTrackEditGroupNone;
             if (project_.tracks[piste].editGroup != groupe) {
-                beginProjectEdit(u8"Groupe d'édition");
+                beginProjectEdit(avecPisteChoisie(juce::String::fromUTF8(u8"Groupe d'édition")));   // D437
                 project_.tracks[piste].editGroup = groupe;
                 // AUCUN SIGNAL NE CHANGE : un groupe d'édition lie des gestes,
                 // pas des bus. Rien n'est republié au moteur.
@@ -6001,12 +6001,17 @@ bool MainComponent::exportForCapture(const juce::File& file, ExportLevel niveau)
     return fait;
 }
 
+juce::String MainComponent::avecPiste(const juce::String& geste, size_t i) const {
+    // D437 : le pas qui vise UNE piste la nomme -- « Supprimer une piste » ne
+    // disait pas laquelle. `trGeste` traduit la partie avant « — ».
+    if (i >= project_.tracks.size() || project_.tracks[i].name.empty()) return geste;
+    return geste + juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(project_.tracks[i].name.c_str());
+}
+
 juce::String MainComponent::avecPisteChoisie(const juce::String& geste) const {
     // D431 : le rack et la chaîne d'effets agissent sur la piste CHOISIE ; leur
     // pas la nomme, comme ceux de la console et des lignes (D425).
-    const size_t i = trackList_.selectedTrackIndex();
-    if (i >= project_.tracks.size() || project_.tracks[i].name.empty()) return geste;
-    return geste + juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(project_.tracks[i].name.c_str());
+    return avecPiste(geste, trackList_.selectedTrackIndex());
 }
 
 void MainComponent::showAudioSettings() {
@@ -9766,7 +9771,7 @@ void MainComponent::removeSelectedTrack() {
     // un instantané pris pour un geste sans effet ajouterait un pas
     // d'annulation qui ne défait rien.
     beginProjectEdit(aSupprimer.size() > 1 ? juce::String::fromUTF8(u8"Supprimer des pistes")
-                                            : juce::String("Supprimer une piste"));
+                                            : avecPiste("Supprimer une piste", aSupprimer.front()));   // D437
 
     // La suppression et la RÉPARATION DES ROUTAGES sont une règle du modèle,
     // pas de l'interface : voir `vsm::sequencer::removeTrack`.
@@ -9797,7 +9802,7 @@ void MainComponent::removeSelectedTrack() {
 void MainComponent::duplicateSelectedTrack() {
     const size_t idx = trackList_.selectedTrackIndex();
     if (idx >= project_.tracks.size()) return;
-    beginProjectEdit(u8"Dupliquer une piste");
+    beginProjectEdit(avecPisteChoisie(juce::String::fromUTF8(u8"Dupliquer une piste")));   // D437
     // D35.3 : UN DOSSIER SE DUPLIQUE AVEC SON CONTENU. Avant, la copie de
     // l'en-tête s'insérait ENTRE le dossier et ses membres : ceux-ci passaient
     // sous la copie et l'original restait vide -- dupliquer un dossier lui
@@ -9829,7 +9834,7 @@ void MainComponent::toggleFreezeSelectedTrack() {
         // DÉGELER : l'instrument reprend, et le fichier s'en va. Le garder
         // laisserait dans le dossier un rendu que plus rien ne référence, et
         // qu'on retrouverait des mois plus tard sans savoir ce qu'il est.
-        beginProjectEdit(u8"Dégeler une piste");
+        beginProjectEdit(avecPiste(juce::String::fromUTF8(u8"Dégeler une piste"), index));   // D437
         if (currentProjectFolder_ != juce::File() && !piste.frozenAudio.path.empty())
             currentProjectFolder_.getChildFile(juce::String(piste.frozenAudio.path)).deleteFile();
         piste.frozen = false;
@@ -9888,7 +9893,7 @@ void MainComponent::toggleFreezeSelectedTrack() {
         return;
     }
 
-    beginProjectEdit(u8"Geler une piste");
+    beginProjectEdit(avecPiste(juce::String::fromUTF8(u8"Geler une piste"), index));   // D437
     piste.frozen = true;
     piste.frozenAudio.path = relatif.toStdString();
     piste.frozenAudio.sampleRate = options.sampleRate;
@@ -11765,7 +11770,7 @@ void MainComponent::hideSelectedTrack() {
     if (piste >= project_.tracks.size()) return;
     const std::set<size_t> cible = trackList_.selectedTracks();   // D38.2
     beginProjectEdit(cible.size() > 1 ? juce::String::fromUTF8(u8"Masquer des pistes")
-                                       : juce::String::fromUTF8(u8"Masquer une piste"));
+                                       : avecPiste(juce::String::fromUTF8(u8"Masquer une piste"), piste));   // D437
     for (size_t i : cible) if (i < project_.tracks.size()) project_.tracks[i].hidden = true;
     // RIEN N'EST REPUBLIÉ AU MOTEUR : masquer n'est pas couper, et la piste
     // continue de sonner exactement comme avant. Seules les trois vues qui
