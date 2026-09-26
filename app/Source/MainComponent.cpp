@@ -10391,11 +10391,23 @@ void MainComponent::boiteLatenceMesuree(double secondes, int decalageEchantillon
 // D114 : la raison est celle que `ReconstructionChain::locate` a rendue -- des
 // DONNÉES, françaises à la source (interchange/).
 void MainComponent::boiteReconstructionIndisponible() {
+    // D405 : DEUX PHRASES, ET NON DEUX FRAGMENTS. Les données du moteur restent
+    // telles quelles (le menu les introduit par « ↳ ») ; la boîte leur donne une
+    // majuscule, un point, et dit que la seconde est le remède.
+    const auto phrase = [](juce::String t) {
+        t = t.trim();
+        if (t.isEmpty()) return t;
+        t = t.substring(0, 1).toUpperCase() + t.substring(1);
+        return (t.endsWithChar('.') || t.endsWithChar('!') || t.endsWithChar('?')) ? t : t + ".";
+    };
+    const juce::String raison = vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.reason.c_str()));
+    const juce::String remede = vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
     montrerBoite(
         juce::AlertWindow::InfoIcon,
         tr(u8"Reconstruction indisponible"),
-        vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.reason.c_str())) + "\n\n"
-            + vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.remedy.c_str())));
+        phrase(raison)
+            + (remede.trim().isEmpty() ? juce::String()
+                                       : "\n\n" + tr(u8"Pour y remédier : %1").replace("%1", remede.trim())));
 }
 
 bool MainComponent::showBoxForCapture(const juce::String& nom) {

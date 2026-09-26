@@ -973,6 +973,8 @@ const Paire kAnglais[] = {
       "Load a sample" },
     { "Post-fader (le fader l'emporte avec lui)",
       "Post-fader (the fader carries it along)" },
+    { "Pour y remédier : %1",   // D405 : le remède d'une boîte, présenté comme tel
+      "To fix it: %1" },
     { "Compilé le %1 à %2",   // D399 : la date de l'exécutable
       "Built on %1 at %2" },
     { "Mode d'emploi...",   // D398

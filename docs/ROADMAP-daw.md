@@ -32185,3 +32185,35 @@ deux courses) et ne dépend pas de la taille ; les autres ne mesurent pas de
 pixels.
 
 **MESURÉ** : `automation-echelle.sh` VERT — « points ambre : 1640 px ; hauteur médiane  57.5 % ; p10-p90  25.4- 90.0 % (étalement  64.6 %) », --- 0 raté(s).
+
+---
+
+### Phase D405 — la boîte « Reconstruction indisponible » posait deux fragments bruts (26/09/2026)
+
+**D'OÙ ELLE VIENT — DE L'AUDIT DES BOÎTES** (`VSM_BOITE_ESSAI`, six boîtes ×
+deux langues, photographiées : le relevé ne voit pas le texte qu'une boîte
+d'alerte PEINT). La boîte d'une chaîne introuvable juxtapose la raison et le
+remède tels que le moteur les écrit — « la chaîne d'analyse (le dossier
+analyse/) est introuvable à côté de l'application » puis « indiquer son
+emplacement dans Fichier ▸ … » : deux fragments sans majuscule ni point, dont
+le second ne dit pas qu'il est le remède. (Le disque d'icône peint SOUS le début
+du texte des autres boîtes est le dessin de JUCE — un filigrane à 40 %
+d'opacité — et le texte y reste lisible : laissé tel quel.)
+
+**LE CORRECTIF** : la raison commence par une majuscule et finit par un point ;
+le remède est posé dans « Pour y remédier : %1. » ; les données du moteur, elles,
+ne changent pas (elles servent aussi au menu, où « ↳ » les introduit).
+
+**ATTENDU, ÉCRIT AVANT LA MESURE** : la boîte dit « La chaîne d'analyse (le
+dossier analyse/) est introuvable à côté de l'application. / Pour y remédier :
+indiquer son emplacement dans Fichier ▸ Indiquer le dossier de la chaîne... »,
+et l'équivalent anglais ; garde de langue 0 ; fumée 0 raté.
+
+**MESURÉ** (`VSM_BOITE_ESSAI=indisponible`) : `fr` — « La chaîne d'analyse (le
+dossier analyse/) est introuvable à côté de l'application. / Pour y remédier :
+indiquer son emplacement dans Fichier ▸ Indiquer le dossier de la chaîne... » ;
+`en` — « The analysis chain (the analyse/ folder) cannot be found next to the
+application. / To fix it: set its location in File ▸ Set the analysis chain
+folder... ». Garde de langue 0 ; banc de fumée 0 raté ; préférences inchangées.
+Attendu tenu. Audit des six boîtes d'essai : les cinq autres étaient déjà
+rédigées en phrases.
