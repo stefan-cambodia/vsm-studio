@@ -701,6 +701,10 @@ def main() -> int:
     ap.add_argument("--stems", type=Path, default=None, help="un disque : ses stems séparés")
     ap.add_argument("--hdbscan-une-grappe", action="store_true",
                     help="H39 : autoriser HDBSCAN à rendre une seule grappe (allow_single_cluster)")
+    ap.add_argument("--regroupement-par-simultaneite", action="store_true",
+                    help="H40 : choisir par stem entre H37 et H39 selon la simultanéité des notes")
+    ap.add_argument("--seuil-simultaneite", type=float, default=None,
+                    help="H40 : seuil (0,5 par défaut, fixé avant la mesure ; 0,25 et 0,75 en sensibilité)")
     args = ap.parse_args()
 
     from analyzer import vsm_recensement as R
@@ -709,6 +713,9 @@ def main() -> int:
     classifieur = Classifieur.relit(args.classifieur)
     args.sortie.mkdir(parents=True, exist_ok=True)
     R.HDBSCAN_UNE_GRAPPE = bool(args.hdbscan_une_grappe)   # H39 : AVANT de lire les réglages
+    R.REGROUPEMENT_SIMULTANEITE = bool(args.regroupement_par_simultaneite)   # H40
+    if args.seuil_simultaneite is not None:
+        R.SEUIL_SIMULTANEITE = float(args.seuil_simultaneite)
     provenance = {"commit": commit(), "commande": sys.argv, "reglages": R.reglages(),
                   "versions": R.versions(),
                   "empreintes": {"classifieur": empreinte(args.classifieur)},

@@ -914,8 +914,8 @@ provenance) — pour chaque stem, les DEUX regroupements sont calculés, celui d
 H37 (sans grappe unique) et celui de H39 (avec) :
 - si H39 n'a pas moins de grappes que H37, il est retenu (il n'a rien fusionné) ;
 - sinon, pour chaque paire de grappes de H37, la **simultanéité** est la part des
-  attaques de la plus petite (en notes) qui tombent pendant qu'une note de
-  l'autre sonne ; si une paire atteint le **seuil de 0,5** (la majorité des
+  attaques d'une grappe qui tombent pendant qu'une note de l'autre sonne, **le
+  plus grand des deux sens** ; si une paire atteint le **seuil de 0,5** (la majorité des
   attaques — fixé ici, avant toute mesure), les sources sont simultanées et la
   séparation de H37 est retenue ; sinon, la fusion de H39 ;
 - une grappe de moins de 3 notes ne témoigne de rien : faute de preuve, la
@@ -945,3 +945,12 @@ entrer dans le verdict.
 échec ; **RÉFUTÉE** si 2 est en échec (la simultanéité des notes ne sauve pas le
 mélange) ; **PARTIELLE** sinon. Rien n'est implémenté dans la chaîne sans une
 nouvelle validation.
+
+**CORRECTION DE LA DÉFINITION, AVANT TOUTE MESURE.** La première rédaction
+disait « les attaques de la PLUS PETITE grappe ». Le test du chemin réel
+(`test_simultaneite_h40.py`), écrit avant la campagne, l'a prise en défaut : une
+nappe de trois longues notes sous une mélodie de quatre donnait **0** — on
+regardait les attaques de la nappe, pendant lesquelles aucune mélodie ne sonne —,
+alors que c'est le cas même que la règle veut voir. La simultanéité est donc le
+plus grand des DEUX sens. Aucune donnée du banc n'a été lue pour ce changement ;
+seuil, sensibilité et attendus ne bougent pas.

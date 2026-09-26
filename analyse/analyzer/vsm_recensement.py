@@ -53,6 +53,11 @@ DUREE_MIN_GRAPPE_S = 4.0
 # H39 (§ 12 du CDC) : autoriser HDBSCAN à rendre UNE grappe. Faux = H37 à
 # l'octet ; posé par l'option `--hdbscan-une-grappe` du banc, jamais édité.
 HDBSCAN_UNE_GRAPPE = False
+# H40 (§ 13 du CDC) : choisir, par stem, entre H37 et H39 selon la SIMULTANÉITÉ
+# des notes. Faux = inactif ; posé par `--regroupement-par-simultaneite`.
+REGROUPEMENT_SIMULTANEITE = False
+SEUIL_SIMULTANEITE = 0.5        # fixé AVANT la mesure (§ 13)
+NOTES_MIN_TEMOIN = 3            # une grappe de moins de 3 notes ne témoigne de rien
 DIMENSIONS_DE_TIMBRE = 40      # les 43 descripteurs A6, moins note, gate, durée
 # --- § 0.4, approche B -------------------------------------------------------
 PART_PERCUSSIVE = 0.6
@@ -120,6 +125,10 @@ class Regroupement:
     grappes: List[Grappe]                   # celles qui COMPTENT (≥ 4 s)
     courtes: List[Tuple[int, float]]        # (id, durée) des grappes écartées
     bruit: int
+    # H40 (§ 13 du CDC) : la règle retenue pour ce stem, et la plus forte
+    # simultanéité entre deux grappes de H37 -- vide hors de H40.
+    choix: str = ""
+    simultaneite: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------
@@ -303,8 +312,63 @@ def taille_minimale(n_segments: int) -> int:
     return max(HDBSCAN_TAILLE_MIN, math.ceil(HDBSCAN_PART_MIN * n_segments))
 
 
-def grouper(x: np.ndarray, segmentation: Segmentation) -> Regroupement:
-    """HDBSCAN aux réglages figés ; une grappe COMPTE si elle cumule ≥ 4 s."""
+def simultaneite(notes_a: Sequence[Any], notes_b: Sequence[Any]) -> Optional[float]:
+    """H40 : la part des attaques d'une grappe qui tombent pendant qu'une note de
+    l'autre sonne -- le plus grand des DEUX sens. None si l'une a moins de 3 notes.
+
+    Les deux sens, et c'est une correction écrite AVANT la mesure (§ 13) : « les
+    attaques de la plus petite grappe » donnait 0 pour une nappe de trois
+    longues notes sous une mélodie, alors que c'est le cas même que la règle
+    veut voir -- une note TENUE d'une grappe qui sonne quand l'autre attaque."""
+    if len(notes_a) < NOTES_MIN_TEMOIN or len(notes_b) < NOTES_MIN_TEMOIN:
+        return None
+
+    def dans(attaques: Sequence[Any], tenues: Sequence[Any]) -> float:
+        plages = sorted((float(n.start), float(n.start) + float(n.duration)) for n in tenues)
+        debuts = np.array([p[0] for p in plages])
+        fins_max = np.maximum.accumulate(np.array([p[1] for p in plages]))
+        compte = 0
+        for n in attaques:
+            t = float(n.start)
+            i = int(np.searchsorted(debuts, t, side="left")) - 1   # notes COMMENCÉES strictement avant
+            if i >= 0 and fins_max[i] > t:
+                compte += 1
+        return compte / len(attaques)
+
+    return max(dans(notes_a, notes_b), dans(notes_b, notes_a))
+
+
+def grouper(x: np.ndarray, segmentation: Segmentation,
+            notes: Optional[Sequence[Any]] = None) -> Regroupement:
+    """HDBSCAN aux réglages figés ; une grappe COMPTE si elle cumule ≥ 4 s.
+
+    H40 : avec `REGROUPEMENT_SIMULTANEITE` et des notes, les deux regroupements
+    (sans et avec grappe unique) sont calculés, et la règle du § 13 choisit."""
+    if REGROUPEMENT_SIMULTANEITE and notes is not None:
+        sans = _grouper(x, segmentation, False)
+        avec = _grouper(x, segmentation, True)
+        if len(avec.grappes) >= len(sans.grappes):
+            avec.choix = "grappe unique : rien de fusionné"
+            return avec
+        pire: Optional[float] = None
+        par_grappe = [notes_de_la_grappe(notes, [segmentation.segments[i] for i in g.segments])
+                      for g in sans.grappes]
+        for a in range(len(par_grappe)):
+            for b in range(a + 1, len(par_grappe)):
+                v = simultaneite(par_grappe[a], par_grappe[b])
+                if v is not None and (pire is None or v > pire):
+                    pire = v
+        if pire is not None and pire >= SEUIL_SIMULTANEITE:
+            sans.choix, sans.simultaneite = "séparation gardée : sources simultanées", pire
+            return sans
+        avec.choix = ("fusion : aucune preuve de simultanéité" if pire is None
+                      else "fusion : grappes non simultanées")
+        avec.simultaneite = pire
+        return avec
+    return _grouper(x, segmentation, HDBSCAN_UNE_GRAPPE)
+
+
+def _grouper(x: np.ndarray, segmentation: Segmentation, une_grappe: bool) -> Regroupement:
     n = x.shape[0]
     if n == 0:
         return Regroupement(np.zeros(0, dtype=int), [], [], 0)
@@ -317,7 +381,7 @@ def grouper(x: np.ndarray, segmentation: Segmentation) -> Regroupement:
 
     etiquettes = HDBSCAN(min_cluster_size=taille, copy=True,
                          min_samples=HDBSCAN_MIN_SAMPLES,
-                         allow_single_cluster=HDBSCAN_UNE_GRAPPE).fit_predict(x)
+                         allow_single_cluster=une_grappe).fit_predict(x)
     grappes: List[Grappe] = []
     courtes: List[Tuple[int, float]] = []
     for ident in sorted(set(int(e) for e in etiquettes if e >= 0)):
@@ -514,7 +578,7 @@ def recenser_stem(stem: str, audio: np.ndarray, sample_rate: int, notes: Sequenc
         x = embeddings_de_segments(audio, sample_rate, segmentation, embedding)
         temps["embedding"] = time.perf_counter() - t
         t = time.perf_counter()
-    regroupement = grouper(x, segmentation)
+    regroupement = grouper(x, segmentation, notes)
     temps["grappes"] = time.perf_counter() - t
     t = time.perf_counter()
     for g in regroupement.grappes:
@@ -557,6 +621,11 @@ def bloc_de_stem(r: StemRecense) -> Dict[str, Any]:
                      "silencieux": r.segmentation.silencieux,
                      "tropCourts": r.segmentation.trop_courts,
                      "bruit": r.regroupement.bruit},
+        # H40 : la règle retenue et la simultanéité qui l'a décidée (vides hors H40).
+        **({"choixH40": r.regroupement.choix,
+            "simultaneite": (round(r.regroupement.simultaneite, 3)
+                             if r.regroupement.simultaneite is not None else None)}
+           if r.regroupement.choix else {}),
         "grappes": [{"id": g.ident, "role": g.role, "segments": len(g.segments),
                      "dureeS": round(g.duree, 3), "activite": g.activite, "notes": g.notes,
                      "machines": [[m, round(s, 4)] for m, s in g.machines],
@@ -577,6 +646,8 @@ def reglages() -> Dict[str, Any]:
             "hdbscanTailleMin": HDBSCAN_TAILLE_MIN, "hdbscanMinSamples": HDBSCAN_MIN_SAMPLES,
             "dureeMinGrappeS": DUREE_MIN_GRAPPE_S, "dimensionsDeTimbre": DIMENSIONS_DE_TIMBRE,
             "hdbscanUneGrappe": HDBSCAN_UNE_GRAPPE,   # H39
+            "regroupementSimultaneite": REGROUPEMENT_SIMULTANEITE,   # H40
+            "seuilSimultaneite": SEUIL_SIMULTANEITE, "notesMinTemoin": NOTES_MIN_TEMOIN,
             "partPercussive": PART_PERCUSSIVE, "trameVoixS": TRAME_VOIX_S,
             "centileVoix": CENTILE_VOIX, "partDominante": PART_DOMINANTE,
             "seuilStem": SEUIL_STEM, "gateCorpus": GATE_CORPUS, "dureesCorpus": list(DUREES_CORPUS)}
