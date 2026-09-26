@@ -32774,3 +32774,31 @@ sixième « 8 note(s) signalée(s) comme douteuses sur 8 transcrite(s), soit
 100 % … », déclarée française (6 sur 7 lignes, rc 1). `en` : « 8 note(s)
 flagged as doubtful out of 8 transcribed, that is 100% : … », garde **0** sur 7.
 La phrase de D409 est de nouveau sous garde.
+
+---
+
+### Phase D420 — « 4/4 » se lisait comme le tempo à côté, et ne se changeait pas pareil (26/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DES INFOBULLES DE LA BARRE DE TRANSPORT.** « 130.0
+BPM » porte « Double-cliquer pour changer le tempo », et le double-clic le rend
+éditable. Juste à droite, « 4/4 » n'a AUCUNE infobulle, et un double-clic n'y
+fait rien : la signature se change par « Édition ▸ Signature à la tête de
+lecture ». Rien ne le dit à qui essaie le même geste que sur le tempo.
+
+**TÉMOIN** (`VSM_TEXTES_LISTE`, projet de démo) : « libellé : 4/4 » n'est suivi
+d'aucune ligne « infobulle ».
+
+**LE CORRECTIF** : l'infobulle dit ce qu'est le chiffre et où le changer. Le
+chemin de menu cité est vérifié par la garde `menus-cites` (D403).
+
+**ATTENDU, écrit avant la mesure** : « libellé : 4/4 » suivi de « infobulle :
+Signature rythmique à la tête de lecture. Pour la changer : Édition ▸ Signature
+à la tête de lecture » ; en anglais, le chemin anglais du même menu ; garde
+`menus-cites` verte ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `fr` : « libellé : 4/4 » suivi de « infobulle : Signature
+rythmique à la tête de lecture. Pour la changer : Édition ▸ Signature à la tête
+de lecture » (témoin : aucune infobulle). `en` : « Time signature at the
+playhead. To change it: Edit ▸ Time signature at the playhead » — les deux mots
+du chemin sont ceux que la table donne au menu. `menus-cites` : 9 citations,
+0 faute ; fumée 0 raté ; préférences inchangées.

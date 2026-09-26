@@ -1298,6 +1298,8 @@ const Paire kAnglais[] = {
       "Time signature %1" },
     { "Signature à la tête de lecture",
       "Time signature at the playhead" },
+    { "Signature rythmique à la tête de lecture. Pour la changer : Édition ▸ Signature à la tête de lecture",
+      "Time signature at the playhead. To change it: Edit ▸ Time signature at the playhead" },
     { "Sinus (une période par mesure)",
       "Sine (one cycle per bar)" },
     { "Solo",

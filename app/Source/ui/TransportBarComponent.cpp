@@ -601,6 +601,10 @@ void TransportBarComponent::retraduire() {
     tapButton_.setTooltip(tr("Frapper le tempo. Deux frappes suffisent ; une pause d'une "
                              "seconde et demie recommence le compte."));
     bpmLabel_.setTooltip(tr("Double-cliquer pour changer le tempo."));
+    // D420 : la signature, juste à droite, se lit comme le tempo mais ne s'édite
+    // pas au double-clic ; l'infobulle dit où elle se change.
+    timeSigLabel_.setTooltip(tr(u8"Signature rythmique à la tête de lecture. Pour la changer : "
+                                u8"Édition ▸ Signature à la tête de lecture"));
     if (infobulleRec_) recordButton_.setTooltip(infobulleRec_());
     poserTexteSansSon();
     poserTexteXruns();
