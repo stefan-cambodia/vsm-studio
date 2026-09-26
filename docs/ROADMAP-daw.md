@@ -31420,3 +31420,37 @@ le build complet passe (`-k`, 0 cible en échec) ; `vsm-edit-audit` rejoué :
 **11 gestes, 0 sans pas d'historique**. C'est la leçon de D263 (« aucun d'eux ne
 se liait plus, et `cmake --build build` échouait en bloc »), payée une seconde
 fois. **Reste nommé** : `verifier.sh --compiler` devrait bâtir aussi ces bancs.
+
+---
+
+### Phase D387 — `verifier.sh --compiler` ne bâtissait aucun banc (26/09/2026)
+
+**D'OÙ ELLE VIENT — DU RESTE NOMMÉ DE D386.** Deux bancs de `app/` ne se
+compilaient plus depuis D364, vingt-deux phases, sans que rien ne le dise :
+`verifier.sh --compiler` ne bâtit que les cinq cibles de test, et chaque phase
+ne compile que sa cible (la règle du dépôt le veut, pour ne pas remplacer
+`vsm-render` sous une course).
+
+**LE CORRECTIF.** `--compiler` bâtit aussi les bancs : toutes les cibles
+`vsm-*` que CMake connaît (`--target help`), SAUF `vsm-render` — celui qu'une
+course emploie. La liste se lit à chaque appel : un banc ajouté demain est
+bâti sans qu'on pense à l'inscrire, et `vsm-clap-gui-check`, qui n'existe que
+si l'hôte CLAP est compilé, n'est demandé que s'il existe.
+
+**ATTENDUS, ÉCRITS AVANT LA MESURE** :
+1. sur le code d'aujourd'hui : `--compiler` vert, les bancs nommés au journal ;
+2. le lien de D386 retiré de `vsm-edit-audit` : `--compiler` ROUGE, et le
+   journal de compilation nomme la cible ; restauré (`cmp`), vert ;
+3. `build/tools/vsm-render` n'est pas touché (même date avant et après).
+
+**MESURÉ.**
+
+| # | attendu | mesuré | verdict |
+|---|---|---|---|
+| 1 | vert sur le code d'aujourd'hui | « cinq cibles de test et **12 bancs** compilés » (dont `vsm-clap-gui-check`, présent parce que l'hôte CLAP l'est, et `vsm-sf2`) ; puis toutes les suites vertes (C++ 359 / 1 303 / 307 / 25 / 11, Python 239, ruff, mypy) | TENU |
+| 2 | rouge si le lien de D386 manque | le lien retiré de `vsm-edit-audit` : **code 1**, « compilation en échec », la cible nommée (`CMakeFiles/vsm-edit-audit.dir`) ; restauré (`cmp`), vert | TENU |
+| 3 | `vsm-render` intact | date du binaire identique avant et après, à la nanoseconde | TENU |
+
+La première forme du diagnostic aurait nommé TOUTES les cibles : elle cherchait
+`CMakeFiles/…` dans tout le journal, où chaque ligne « Building CXX object »
+en contient un. Restreinte aux lignes « Error » avant le premier essai.

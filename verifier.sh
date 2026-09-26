@@ -45,10 +45,18 @@ GARDES_SEULES=0
 
 if [ "${1:-}" = "--compiler" ]; then
     titre "Compilation des cibles de test (deux travaux)"
+    # D387 : ET LES BANCS. Deux d'entre eux ne se compilaient plus depuis D364,
+    # vingt-deux phases, parce que rien ne les bâtissait. Toutes les cibles
+    # `vsm-*` que CMake connaît, SAUF `vsm-render` : c'est celui qu'une course
+    # emploie, et le remplacer la tue (règle du dépôt).
+    bancs=$(cmake --build build --target help 2>/dev/null | grep -o 'vsm-[a-z0-9-]*' \
+            | sort -u | grep -vx 'vsm-render' | tr '\n' ' ')
     if cmake --build build -j 2 --target vsm_core_tests vsm_audio_tests \
-             vsm_interchange_tests vsm_clap_tests vsm_panels_tests > /tmp/vsm-verifier-build.log 2>&1
-    then vert "cinq cibles compilées"
-    else rouge "compilation en échec — voir /tmp/vsm-verifier-build.log"; exit 1
+             vsm_interchange_tests vsm_clap_tests vsm_panels_tests $bancs > /tmp/vsm-verifier-build.log 2>&1
+    then vert "cinq cibles de test et $(echo $bancs | wc -w) bancs compilés ($bancs)"
+    else rouge "compilation en échec — voir /tmp/vsm-verifier-build.log"
+         grep 'Error' /tmp/vsm-verifier-build.log | grep -o 'CMakeFiles/[a-z0-9_-]*\.dir' | sort -u | sed 's/^/       /'
+         exit 1
     fi
 fi
 
