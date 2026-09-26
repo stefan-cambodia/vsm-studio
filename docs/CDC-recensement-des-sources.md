@@ -1026,3 +1026,27 @@ cette course, qui sert de témoin.
 remplacement de la parité, à éprouver ensuite sur les disques ; **RÉFUTÉE** si 1
 est en échec ; **PARTIELLE** sinon — le recensement s'améliore sans rattraper la
 parité, qui reste le compte de la chaîne.
+
+### 14.1 Le verdict de H41 (26/09/2026) : PARTIELLE — et la parité de `s2` ne portait que sur UN morceau
+
+`analyse/verdict_h41.py` : compte L3 de H39 sur `s2` **2,90** (H37 : 7,90) ; L2
+**6,00** (H37 : 8,70). Par la règle écrite, 2,90 est entre la réussite (≤ 1,00)
+et l'échec (≥ 7,90) : **PARTIELLE**. L'attribution par étage : 41 parties
+perdues en L1, 21 au regroupement dans un mélange, 3 à la séparation.
+
+**MAIS LE SEUIL DE RÉUSSITE ÉTAIT MAL POSÉ, ET JE NE L'AI VU QU'APRÈS.** La ligne
+de la parité du tableau dit « 0/1 » : `s2-banc`, le banc qui a fait tourner la
+CHAÎNE sur `s2`, n'a couru qu'**un** morceau sur dix (`morceau-0001-g1` ; la
+campagne S2 du 20/09 s'est arrêtée au deuxième). La « parité de 1,00 sur `s2` »
+citée depuis H37 (§ 9) repose donc sur UN morceau, et l'attendu 1 comparait une
+erreur moyenne sur dix morceaux à une erreur sur un seul — ce que la règle du
+dépôt interdit (« deux distances ne se comparent que si… »). Sur le seul morceau
+commun (`g1`, 6 parties vraies) : parité **7** (erreur 1), recensement H37 **23**
+(erreur 17), H39 **9** (erreur 3). La parité reste meilleure là où on peut les
+comparer ; ailleurs, on ne le sait pas.
+
+**CE QUE LE VERDICT DÉCIDE** : mesurer la parité sur les neuf autres morceaux de
+`s2`, en relançant la campagne S2 d'origine (`banc-s2.sh`, inchangée, qui reprend
+sans rejouer `g1`), puis rejuger H41 — H39 contre la parité, morceau par
+morceau, sur les mêmes dix morceaux. Aucun seuil ne bouge : la règle de verdict
+du § 14 s'appliquera telle quelle à la parité mesurée.
