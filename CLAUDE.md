@@ -342,6 +342,14 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   `grep` suspendu jusqu'à ce que la garde mémoire le tue, une heure plus tard.
   Toute variable de fichier issue d'une recherche se teste (`[ -n "$F" ]`) avant
   de servir d'argument.
+- `VSM_TEXTES_LISTE` (et les autres relevés du démarrage) s'exécutent AVANT
+  les gestes de `VSM_GESTE_APRES`, alors que la photo est prise APRÈS : le
+  26/09 (D414 bis), un relevé a lu « Volume : -0.9 dB » pendant que la photo
+  de la même course montrait le fader à -6.0 dB, et j'ai écrit « l'infobulle
+  reste figée 1,7 s plus tard » — le geste n'avait pas encore eu lieu. Un relevé
+  et une photo d'une même course ne datent pas du même instant : lire le
+  journal DANS L'ORDRE (le geste « joué » doit précéder le relevé), et pour un
+  relevé après geste, prendre le geste immédiat (`VSM_GESTE_PISTE`).
 - Un REMPLACEMENT GLOBAL fait APRÈS avoir inséré une fonction qui contient le
   motif remplacé réécrit la fonction elle-même : le 15/09 (D335), `sortieChassee`
   appelait `lastOutBefore`, puis un `replace("lastOutBefore(passages, ",

@@ -27,19 +27,21 @@ namespace vsm::app::ui {
 // DURÉE DE VIE : la bulle tient une référence au curseur. Elle se déclare
 // APRÈS lui, pour être détruite AVANT.
 // ---------------------------------------------------------------------------
-class BulleDeValeur final : private juce::ComponentListener, private juce::Value::Listener {
+class BulleDeValeur final : private juce::ComponentListener, private juce::Slider::Listener {
 public:
     explicit BulleDeValeur(juce::Slider& curseur) : curseur_(curseur) {
         curseur_.addComponentListener(this);
-        // Le `Value` du curseur, et non `Slider::Listener` : ce dernier se tait
-        // sur `setValue(…, dontSendNotification)`, et c'est ainsi que les lignes
-        // se resynchronisent sur le modèle -- l'infobulle serait restée à
-        // l'ancienne valeur.
-        curseur_.getValueObject().addListener(this);
+        // Les gestes de l'utilisateur (glissé, molette, clavier) notifient.
+        // Les RESYNCHRONISATIONS SILENCIEUSES (`setValue(…, dontSendNotification)`,
+        // la ligne qui suit le fader du mixeur) ne notifient pas : le
+        // propriétaire y appelle `rafraichir()` lui-même. Écouter le `Value` du
+        // curseur avait été essayé (D414) : il notifie de façon ASYNCHRONE, et
+        // un relevé fait juste après un volume posé à -6.0 dB lisait -0.9 dB.
+        curseur_.addListener(this);
         poser();
     }
     ~BulleDeValeur() override {
-        curseur_.getValueObject().removeListener(this);
+        curseur_.removeListener(this);
         curseur_.removeComponentListener(this);
     }
     BulleDeValeur(const BulleDeValeur&) = delete;
@@ -63,7 +65,7 @@ public:
     }
 
 private:
-    void valueChanged(juce::Value&) override { rafraichir(); }
+    void sliderValueChanged(juce::Slider*) override { rafraichir(); }
     void componentParentHierarchyChanged(juce::Component&) override { poser(); }
     void poser() {
         juce::Component* parent = nullptr;

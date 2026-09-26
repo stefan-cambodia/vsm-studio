@@ -571,6 +571,7 @@ void ChannelStrip::applyExternalControl(const std::string& parametre, float vale
     } else if (parametre == "mix.pan") {
         track_.pan = valeur;
         pan_.setValue(valeur, juce::dontSendNotification);
+        bullePan_.rafraichir();   // D414
     } else {
         return;
     }

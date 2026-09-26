@@ -32557,3 +32557,33 @@ du curseur, et non par `Slider::Listener`, qui se tait sur
 `setValue(…, dontSendNotification)` — la voie par laquelle les lignes se
 resynchronisent sur le modèle (le fader du mixeur, une annulation). Aucun banc
 n'a encore bougé un fader pour relire l'infobulle de la ligne ensuite.
+
+**D414 bis — LA MESURE DU « NON MESURÉ » A RÉFUTÉ LE COMMIT.** Le commit de
+D414 affirmait que l'infobulle suivait les resynchronisations silencieuses par
+le `Value` du curseur. Mesuré juste après : `VSM_GESTE_PISTE="volume:0.5"`
+(joué AVANT le relevé) — la ligne et le fader passent à **-6.0 dB** (photo),
+l'infobulle dit encore **« Volume : -0.9 dB »**. Un `juce::Value` notifie de
+façon ASYNCHRONE : au mieux, l'infobulle suivait trop tard pour qu'un relevé le
+voie ; « jamais » n'est pas établi.
+
+**PIÈGE DE BANC PAYÉ EN ROUTE** : une seconde course, le geste retardé par
+`VSM_GESTE_APRES="800:volume:0.5"`, semblait montrer l'infobulle figée
+« 1,7 s plus tard ». Elle ne montrait rien : `VSM_TEXTES_LISTE` s'exécute au
+DÉMARRAGE, avec les gestes immédiats, et le geste retardé vient APRÈS lui — le
+journal, lu dans l'ordre, met les lignes `infobulle` avant « volume:0.5 à
+800 ms — joué ». La photo, elle, est prise plus tard, d'où le -6.0 dB du fader.
+Un relevé et une photo de la même course ne datent pas du même instant.
+
+**LE CORRECTIF DU CORRECTIF** : retour à `Slider::Listener` pour les gestes de
+l'utilisateur (qui notifient, de façon synchrone), et `rafraichir()` appelé
+EXPLICITEMENT là où le curseur est posé en silence —
+`TrackRowComponent::refreshMix()` et la synchronisation du panoramique de
+tranche.
+
+**ATTENDU, écrit avant la mesure** : même course (geste immédiat), l'infobulle
+du volume d'« Acid Bass » dit « Volume : -6.0 dB (double-clic : valeur
+d'usine) » ; les six infobulles de D414 restent (72 relevées sans geste).
+
+**MESURÉ** : **TENU** — « Volume : -6.0 dB (double-clic : valeur d'usine) »
+(témoin, binaire précédent, même course : « -0.9 dB ») ; sans geste, 72
+infobulles ; préférences inchangées.

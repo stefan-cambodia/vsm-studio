@@ -294,6 +294,8 @@ void TrackRowComponent::poserInfobulleDeSortie() {
 void TrackRowComponent::refreshMix() {
     volumeSlider_.setValue(track_.volume, juce::dontSendNotification);
     panSlider_.setValue(track_.pan, juce::dontSendNotification);
+    bulleVolume_.rafraichir();   // D414 : le silence du curseur n'atteint pas l'infobulle
+    bullePan_.rafraichir();
 }
 
 bool TrackRowComponent::choisirMachine(const juce::String& pluginId) {
