@@ -284,8 +284,30 @@ void ImportReportComponent::envelopper(const Ligne& source, int largeurMax) {
     const int espacesDeTete = source.texte.length() - source.texte.trimStart().length();
     const juce::String retraitDOrigine = source.texte.substring(0, espacesDeTete);
 
+    juce::StringArray motsBruts;
+    motsBruts.addTokens(source.texte.trimStart(), " ", "");
+    // D466 : UN MOT PLUS LARGE QU'UNE LIGNE SE COUPE LUI-MÊME. Le repli se fait
+    // aux espaces ; un chemin sans espace, plus large que le volet, était posé
+    // entier et la peinture le rognait au bord (« …/tmp.cKnCoyL », la suite
+    // perdue). On le coupe en morceaux qui tiennent derrière le retrait, de
+    // préférence juste après un « / », sinon au caractère.
     juce::StringArray mots;
-    mots.addTokens(source.texte.trimStart(), " ", "");
+    const float place = float(largeurMax) - largeurRetrait;
+    for (const auto& mot : motsBruts) {
+        juce::String reste = mot;
+        while (reste.isNotEmpty() && juce::GlyphArrangement::getStringWidth(police, reste) > place) {
+            int coupe = 0, apresBarre = 0;
+            while (coupe < reste.length()
+                   && juce::GlyphArrangement::getStringWidth(police, reste.substring(0, coupe + 1)) <= place) {
+                ++coupe;
+                if (reste[coupe - 1] == '/') apresBarre = coupe;
+            }
+            const int ici = apresBarre > 0 ? apresBarre : juce::jmax(1, coupe);
+            mots.add(reste.substring(0, ici));
+            reste = reste.substring(ici);
+        }
+        if (reste.isNotEmpty()) mots.add(reste);
+    }
     juce::String courante;
     float largeurCourante = 0.0f;
     bool premiere = true;
@@ -326,7 +348,11 @@ void ImportReportComponent::reconstruireLaListe() {
     // la liste même qu'il peint.
     if (std::getenv("VSM_VOLET_LIGNES") != nullptr)
         for (const auto& ligne : lignes_)
-            std::fputs(("VSM_VOLET_LIGNE : " + ligne.texte + "\n").toRawUTF8(), stderr);
+            // D466 : une ligne plus large que le volet est marquée -- la peinture la rognerait.
+            std::fputs(("VSM_VOLET_LIGNE : " + ligne.texte
+                        + (juce::GlyphArrangement::getStringWidth(policeDeLigne(ligne.titre), ligne.texte)
+                               > float(largeurMax) ? juce::String::fromUTF8(u8"  [TROP LARGE]") : juce::String())
+                        + "\n").toRawUTF8(), stderr);
 
     liste_.setSize(largeurMax, juce::jmax(1, lignes_.size()) * kHauteurDeLigne);
     liste_.repaint();

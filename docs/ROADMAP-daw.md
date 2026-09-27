@@ -34266,3 +34266,35 @@ raté ; préférences inchangées.
 « 2+446  (1406) », « 6+321  (3201) » sous « Durée (temps+ticks) » ; en anglais
 « Length (beats+ticks) », mêmes valeurs. Gardes vertes ; fumée 0 raté ;
 préférences identiques.
+
+---
+
+### Phase D466 — le volet du rapport coupait les chemins longs au bord droit (27/09/2026)
+
+**D'OÙ ELLE VIENT — LA PHOTO DU VOLET** (`s2-banc/morceau-0001-g1`, fenêtre de
+banc). « Cherché : …/scratchpad/tmp.cKnCoyL » s'arrête net au bord, deux fois ;
+le journal dit que le chemin continue (« tmp.cKnCoyLBMn/.local/share/vsm-studio/p… »).
+Le repli de D398 (`ImportReportComponent::envelopper`) coupe aux ESPACES : un
+chemin sans espace plus large que le volet est posé entier sur sa ligne, et la
+peinture le rogne. Celui qui cherche où le profil manquant a été cherché ne le
+lit pas.
+
+**LE CORRECTIF** : un mot qui ne tient pas seul sur une ligne est coupé en
+morceaux qui tiennent, de préférence juste après un « / » (sinon au caractère) ;
+les suites prennent le retrait habituel. « Copier » lit la source : inchangé.
+
+**ATTENDU, écrit avant la mesure** : témoin (`VSM_VOLET_LIGNES=1`) — une ligne
+porte le chemin entier et dépasse la largeur du volet ; après — aucune ligne ne
+dépasse (vérifié en mesurant chaque ligne relevée à la police du volet… à défaut,
+par la photo : aucun chemin coupé au bord), et les lignes, recollées, rendent le
+chemin entier ; fumée 0 raté ; `volet-anglais.sh` vert ; préférences inchangées.
+
+**MESURÉ — TENU.** Témoin (relevé et photo) : deux lignes portent chacune un
+chemin de ~150 caractères, rogné à « …/tmp.cKnCoyL » sur la photo. Après : le
+relevé, qui marque désormais `[TROP LARGE]` toute ligne plus large que le volet,
+en compte **0** ; chaque chemin est coupé juste après « scratchpad/ », la suite
+en retrait sur la ligne suivante, et les morceaux recollés rendent le chemin
+entier ; photo : rien de rogné. `volet-anglais.sh` : 0 ligne française sur 39,
+10 projets. Fumée 0 raté ; préférences identiques. (Le témoin se lit sur la
+photo et non sur la marque `[TROP LARGE]`, écrite dans le même binaire que le
+correctif : dit.)
