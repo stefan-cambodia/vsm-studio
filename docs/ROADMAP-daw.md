@@ -33814,3 +33814,28 @@ statistiques de D450 inchangées ; fumée 0 raté ; préférences inchangées.
 spectrum) », « Drums → TR-909-style Drum Machine ». Statistiques de D450
 inchangées (« TB-303-style Acid Synth : 1 piste(s) »). Fumée 0 raté ;
 préférences inchangées.
+
+---
+
+### Phase D454 — la garde des menus cités lit aussi le mode d'emploi (27/09/2026)
+
+**D'OÙ ELLE VIENT — D452.** Le mode d'emploi citait « Voir le dernier rapport
+d'import » après son renommage ; `tools/menus-cites.py` (D403) ne lisait que
+le dictionnaire. En l'étendant, il trouve une SECONDE citation périmée, plus
+ancienne : « Fichier ▸ Exporter audio… », l'entrée s'appelant « Exporter audio
+(WAV)... » — corrigée dans le mode d'emploi.
+
+**LA RÈGLE, et ce que l'essai en rouge a corrigé.** Une citation BORNÉE par son
+emphase (`*Fichier ▸ …*`) se juge strictement, l'emphase finissant où finit le
+libellé ; une citation SANS BORNE se prend dans sa phrase, et peut citer un
+libellé à parenthèse sans elle (« Clavier d'ordinateur fait jouer… » cite
+« Clavier d'ordinateur (A S D F…) »). La première version appliquait cette
+souplesse partout : la citation périmée « Voir le dernier rapport d'import »
+passait, préfixée par « Voir le dernier rapport (ouverture ou import) » privé de
+sa parenthèse. Une phrase qui parle d'un autre logiciel (« Archive de pistes »,
+Cubase) est écartée au niveau du paragraphe.
+
+**MESURÉ.** Verte : **28 citations, 0 faute** (dictionnaire et mode d'emploi).
+Rouge sur le mode d'emploi d'avant D452 (`276cc57~1`) : **2 fautes**, les deux
+citations périmées exactement — « Exporter audio… » et « Voir le dernier rapport
+d'import ».

@@ -47,7 +47,7 @@ def derniere_entree(citation: str) -> str:
     return segment[:m.start()].strip() if m else segment
 
 
-def cite_une_entree(entree: str, libelles: set[str]) -> bool:
+def cite_une_entree(entree: str, libelles: set[str], souple: bool = False) -> bool:
     """Une citation terminée par « ... » est une entrée EXACTE (« Chaîne d'analyse »,
     titre de section, n'est pas « Chaîne d'analyse... ») ; sinon, citation et
     entrée coïncident sur une frontière de mot, dans un sens ou dans l'autre —
@@ -65,7 +65,55 @@ def cite_une_entree(entree: str, libelles: set[str]) -> bool:
             return True
         if cite.startswith(libelle + " ") and len(libelle) >= 8:
             return True
+        # D454 : une citation SANS BORNE (sans emphase, prise dans sa phrase) peut
+        # citer un libellé à parenthèse sans elle, la phrase continuant après :
+        # « Clavier d'ordinateur fait jouer… ». Jamais une citation bornée : c'est
+        # ainsi que « Voir le dernier rapport d'import » passait (essai en rouge).
+        if souple:
+            base = re.sub(r"\s*\([^()]*\)\s*(\.\.\.)?$", "", libelle)
+            if base != libelle and len(base) >= 8 and (cite == base or cite.startswith(base + " ")):
+                return True
     return False
+
+
+MODE_EMPLOI = RACINE / "docs" / "MODE-EMPLOI.md"
+
+
+def citations_du_mode_d_emploi(chemin: Path) -> list[tuple[str, str, bool]]:
+    """D454 : LE MODE D'EMPLOI CITE AUSSI LES MENUS. D452 a renommé « Voir le
+    dernier rapport d'import » ; le mode d'emploi gardait l'ancien nom, et cette
+    garde ne lisait que le dictionnaire.
+
+    LA CITATION EST BORNÉE PAR SON EMPHASE quand elle en a une (`*Fichier ▸
+    Exporter audio (WAV)...*`) : l'emphase finit là où finit le libellé, ce que
+    la phrase ne dit pas (« Clavier d'ordinateur fait jouer… » continue la
+    phrase). Une première version prenait la phrase entière et, pour ne pas
+    rater les libellés à parenthèse, acceptait un libellé privé de sa
+    parenthèse : la citation périmée « Voir le dernier rapport d'import »
+    passait alors, préfixée par « Voir le dernier rapport » -- vu à l'essai en
+    rouge. Sans emphase, la citation se prend dans sa phrase, comme les clés."""
+    texte = re.sub(r"`[^`]*`", "", chemin.read_text(encoding="utf-8"))
+    sortie = []
+    for paragraphe in re.split(r"\n\s*\n", texte):
+        paragraphe = paragraphe.replace("\n", " ")
+        def prendre(m: re.Match[str]) -> str:
+            contenu = m.group(2)
+            if "▸" in contenu and not AUTRES_LOGICIELS.search(paragraphe):
+                entree = contenu.split("▸")[-1].strip().rstrip(".,;:")
+                if contenu.split("▸")[-1].strip().endswith("..."):
+                    entree = contenu.split("▸")[-1].strip()
+                sortie.append((entree, contenu[:110], False))
+                return " "
+            return m.group(0)
+        reste = re.sub(r"(\*\*|\*)([^*]+?)\1", prendre, paragraphe).replace("*", "")
+        for phrase in re.split(r"(?<=[.!?])\s", reste):
+            if "▸" not in phrase or AUTRES_LOGICIELS.search(phrase):
+                continue
+            for m in CITATION.finditer(phrase):
+                entree = derniere_entree(m.group(1))
+                if entree:
+                    sortie.append((entree, phrase[:110], True))
+    return sortie
 
 
 def main() -> int:
@@ -73,6 +121,12 @@ def main() -> int:
     libelles = set(toutes)
     fautes = []
     jugees = 0
+    # D454 : `--mode-emploi <fichier>` juge un AUTRE texte (l'essai en rouge).
+    manuel = Path(sys.argv[sys.argv.index("--mode-emploi") + 1]) if "--mode-emploi" in sys.argv else MODE_EMPLOI
+    for entree, phrase, souple in citations_du_mode_d_emploi(manuel):
+        jugees += 1
+        if not cite_une_entree(entree, libelles, souple):
+            fautes.append((entree, "MODE-EMPLOI : " + phrase))
     for cle in toutes:
         if "▸" not in cle or AUTRES_LOGICIELS.search(cle):
             continue
