@@ -34012,3 +34012,48 @@ se relit par `mido`.
 retouche arrondit chaque bend importé au multiple de 128 (l'en-tête le dit :
 « un bend enregistré garde ses 14 bits tant qu'on ne touche pas la lane »).
 C'est une perte écrite, pas encore mesurée.
+
+---
+
+### Phase D458 — une retouche de la lane de pitch bend arrondissait tous les bends de la piste (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE D457.** La lane trace le bend sur 7 bits
+(`(valeur + 8192) / 128`) et `commit()` réécrit TOUS les bends de la piste
+depuis ces 7 bits (`v × 128 − 8192`). Poser un seul point arrondit donc chaque
+bend importé ou joué au multiple de 128 inférieur : un bend de +100 devient 0,
+un +8191 (le haut de la roue) devient +8064.
+
+**LE CORRECTIF** : chaque point de la lane garde la valeur 14 bits qu'il a LUE ;
+`commit()` réécrit celle-là pour les points qu'on n'a pas touchés, et ne calcule
+depuis les 7 bits que pour le point posé ou tiré. La bulle de D457 montre la
+valeur lue quand elle existe.
+
+**BANC** : copie de `cdl` sans automation dont la piste porte quatre bends —
++100, +1000, −3000, +8191 — et aucun CC (la lane s'ouvre donc sur le pitch bend,
+le contrôleur le plus fourni, D319) ; `clic:midicc.lane:0.5,0.3` puis
+`exporter-midi:`, bends relus par `mido`.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin sans geste : les quatre bends sortent intacts (+100, +1000, −3000,
+   +8191) — sinon la perte est ailleurs ;
+2. témoin avec le point posé : les quatre deviennent 0, +896, −3072, +8064, plus
+   le point posé ;
+3. après : les quatre sortent intacts, plus le point posé ; sa bulle et sa
+   valeur exportée disent le même nombre ;
+4. fumée 0 raté ; gardes vertes ; préférences inchangées.
+
+**MESURÉ — TENU** (même script, binaire de D457 pour les témoins) :
+
+| cas | bends exportés |
+|---|---|
+| témoin sans geste | +100, +1000, −3000, +8191 — intacts : la perte n'est pas à l'ouverture ni à l'export |
+| témoin, un point posé | **0, +896, −3072, +8064** + le point (+4480) — exactement l'arrondi attendu |
+| après, un point posé | **+100, +1000, −3000, +8191** + le point (+4480) |
+
+La bulle dit « +4480 », la valeur exportée du point posé — ce qui mesure aussi la
+bulle du pitch bend laissée « non mesurée » en D457. Fumée 0 raté ; gardes
+vertes ; préférences identiques. Campagne gelée pendant le build (10:38 → 10:40).
+
+**Reste, écrit** : un point TIRÉ prend la valeur de la lane, à 128 près ; c'est
+la résolution de l'écran (quelques pixels par pas), pas une perte sur ce qu'on
+n'a pas touché.

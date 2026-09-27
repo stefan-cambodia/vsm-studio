@@ -99,7 +99,10 @@ private:
     juce::Label trackLabel_, controllerLabel_, hintLabel_;
     juce::ComboBox trackBox_, controllerBox_;
 
-    struct Point { vsm::midi::Tick tick; int value; };
+    /// D458 : `brut` garde la valeur 14 bits d'un bend LU dans la piste, tant
+    /// qu'on ne touche pas ce point ; `kSansBrut` pour un CC, ou un point posé/tiré.
+    static constexpr int kSansBrut = -100000;
+    struct Point { vsm::midi::Tick tick; int value; int brut = kSansBrut; };
     std::vector<Point> points_;
     std::vector<int> controllerIds_;   // parallèle aux items de controllerBox_
 
@@ -113,7 +116,7 @@ private:
     /// D457 : le point dont la valeur se lit (posé, tiré ou survolé) ; -1 : aucun.
     int pointMontre_ = -1;
     /// D457 : la valeur ÉCRITE dans la piste -- 0..127, ou le bend signé 14 bits.
-    juce::String texteValeur(int valeur) const;
+    juce::String texteValeur(const Point& point) const;
     bool dragged_ = false;
     vsm::midi::Tick maxTick_ = 1920 * 4;
     vsm::midi::Tick playheadTick_ = -1;   // D285 : hors lane tant qu'aucun tick reçu

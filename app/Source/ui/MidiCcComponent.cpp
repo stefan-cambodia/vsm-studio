@@ -185,7 +185,8 @@ void MidiCcComponent::loadPoints() {
             // 14 bits ramenés à 7 pour la lane : (valeur + 8192) / 128, le
             // centre à 64.
             for (const auto& b : track->pitchBends)
-                points_.push_back({b.tick, juce::jlimit(0, 127, (static_cast<int>(b.value) + 8192) / 128)});
+                points_.push_back({b.tick, juce::jlimit(0, 127, (static_cast<int>(b.value) + 8192) / 128),
+                                   static_cast<int>(b.value)});   // D458 : les 14 bits lus
         } else if (selectedController_ == kChannelPressure) {
             for (const auto& p : track->channelPressure)
                 points_.push_back({p.tick, static_cast<int>(p.pressure)});
@@ -216,9 +217,13 @@ void MidiCcComponent::commit(const juce::String& label) {
     // les autres événements de la piste ne bougent pas.
     if (selectedController_ == kPitchBend) {
         track->pitchBends.clear();
+        // D458 : UN POINT QU'ON N'A PAS TOUCHÉ GARDE SES 14 BITS. Tout était
+        // recalculé depuis les 7 bits de la lane : poser un point arrondissait
+        // chaque bend de la piste (+100 → 0, +8191 → +8064 au banc).
         for (const auto& p : points_)
             track->pitchBends.push_back({p.tick, track->channel,
-                                         static_cast<int16_t>(juce::jlimit(-8192, 8191, p.value * 128 - 8192))});
+                                         static_cast<int16_t>(juce::jlimit(-8192, 8191,
+                                             p.brut != kSansBrut ? p.brut : p.value * 128 - 8192))});
         track->sortEvents();
         if (onCcEdited) onCcEdited();
         rebuildControllerBox();
@@ -359,6 +364,7 @@ void MidiCcComponent::mouseDrag(const juce::MouseEvent& e) {
     if (i + 1 < points_.size()) newTick = std::min(newTick, points_[i + 1].tick - 1);
     points_[i].tick = newTick;
     points_[i].value = yToValue(e.y);
+    points_[i].brut = kSansBrut;   // D458 : tiré, il prend la valeur de la lane
     dragged_ = true;
     repaint();
 }
@@ -385,12 +391,14 @@ void MidiCcComponent::mouseExit(const juce::MouseEvent&) {
     if (dragIndex_ < 0 && pointMontre_ >= 0) { pointMontre_ = -1; repaint(); }
 }
 
-juce::String MidiCcComponent::texteValeur(int valeur) const {
+juce::String MidiCcComponent::texteValeur(const Point& point) const {
+    const int valeur = point.value;
     // D457 : CE QUE LA PISTE REÇOIT, pas l'unité interne de la lane. Le bend est
     // tracé sur 7 bits mais écrit sur 14 par `commit()` : c'est ce nombre-là que
     // la liste d'événements et un autre logiciel liront.
     if (selectedController_ != kPitchBend) return juce::String(valeur);
-    const int bend = juce::jlimit(-8192, 8191, valeur * 128 - 8192);
+    const int bend = point.brut != kSansBrut ? point.brut   // D458 : la valeur lue, écrite telle quelle
+                                             : juce::jlimit(-8192, 8191, valeur * 128 - 8192);
     return bend > 0 ? "+" + juce::String(bend) : juce::String(bend);
 }
 
@@ -528,7 +536,7 @@ void MidiCcComponent::paint(juce::Graphics& g) {
     // à droite et au-dessus, retournée quand le bord de la zone la couperait.
     if (pointMontre_ >= 0 && pointMontre_ < static_cast<int>(points_.size())) {
         const auto& p = points_[static_cast<size_t>(pointMontre_)];
-        const juce::String texte = texteValeur(p.value);
+        const juce::String texte = texteValeur(p);
         const juce::Font police(juce::FontOptions(13.0f));
         const int largeur = static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(police, texte))) + 12;
         constexpr int hauteur = 20, ecart = 8;
