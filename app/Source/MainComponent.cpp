@@ -6040,6 +6040,15 @@ bool MainComponent::exportForCapture(const juce::File& file, ExportLevel niveau)
     return fait;
 }
 
+juce::String MainComponent::nomDeMachine(const std::string& id) const {
+    // D450, D453 : LE NOM QUE MONTRE LA LISTE DES MACHINES, traduit comme elle --
+    // pas l'identifiant (« vsm.tb303 »). Inconnue du registre, elle garde son
+    // identifiant plutôt que de disparaître.
+    for (const auto& [autreId, affiche] : vsm::audio::plugin::PluginRegistry::instance().listAvailable())
+        if (autreId == id) return tr(juce::String::fromUTF8(affiche.c_str()));
+    return juce::String::fromUTF8(id.c_str());
+}
+
 juce::String MainComponent::avecPiste(const juce::String& geste, size_t i) const {
     // D437 : le pas qui vise UNE piste la nomme -- « Supprimer une piste » ne
     // disait pas laquelle. `trGeste` traduit la partie avant « — ».
@@ -6610,7 +6619,7 @@ void MainComponent::showReconstructionReport(bool montrerLeVolet) {
             juce::String texte;
             texte << juce::String::fromUTF8(stem["name"].asString("?").c_str())
                   << juce::String::fromUTF8(" → ")
-                  << juce::String::fromUTF8(stem["machine"].asString("?").c_str());
+                  << nomDeMachine(stem["machine"].asString("?"));   // D453
             const double d = stem["distance"].asNumber(-1.0);
             if (d >= 0.0) {
                 texte << juce::String::fromUTF8(" · distance ") << juce::String(d, 4);
@@ -6666,7 +6675,7 @@ void MainComponent::showReconstructionReport(bool montrerLeVolet) {
         juce::String tete = tr(u8"Batterie → %1 · %2 pièce(s), %3 frappe(s)")
                                 .replace("%2", juce::String(static_cast<int>(pieces.size())))
                                 .replace("%3", juce::String(static_cast<int>(batterie["hits"].asNumber(0.0))))
-                                .replace("%1", juce::String::fromUTF8(batterie["machine"].asString("?").c_str()));
+                                .replace("%1", nomDeMachine(batterie["machine"].asString("?")));   // D453
         // LE DÉCOUPAGE PAR PIÈCE, quand il a eu lieu : sans cette ligne, un
         // projet à huit pistes de batterie ne se distinguerait pas d'un
         // projet à une seule dans ce rapport.
@@ -11799,13 +11808,8 @@ juce::String MainComponent::projectStatisticsText() const {
     // D450 : LE NOM DE LA MACHINE, pas son identifiant -- celui que montre la
     // liste des machines, traduit comme elle. Inconnue du registre (un plugin
     // tiers retiré), elle garde son identifiant.
-    const auto registre = vsm::audio::plugin::PluginRegistry::instance().listAvailable();
-    for (const auto& [id, combien] : machines) {
-        juce::String nom = juce::String::fromUTF8(id.c_str());
-        for (const auto& [autreId, affiche] : registre)
-            if (autreId == id) nom = tr(juce::String::fromUTF8(affiche.c_str()));
-        ligne("   " + nom, tr(u8"%1 piste(s)").replace("%1", juce::String(combien)));
-    }
+    for (const auto& [id, combien] : machines)
+        ligne("   " + nomDeMachine(id), tr(u8"%1 piste(s)").replace("%1", juce::String(combien)));
     // D450 : LA DURÉE COMME UN MUSICIEN LA LIT, minutes:secondes d'abord.
     const int totalSecondes = static_cast<int>(std::lround(secondes));
     const juce::String minutes = juce::String(totalSecondes / 60) + ":"

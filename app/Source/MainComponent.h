@@ -1333,6 +1333,7 @@ private:
     void beginProjectEdit(const juce::String& label);
     juce::String avecPisteChoisie(const juce::String& geste) const;   ///< D431
     juce::String avecPiste(const juce::String& geste, size_t piste) const;   ///< D437
+    juce::String nomDeMachine(const std::string& id) const;   ///< D450, D453
     /// D154 : LES RÉGLAGES DES MACHINES DU MOTEUR DANS LE MODÈLE, à l'instant
     /// du geste. Appelée par `beginProjectEdit` et avant tout pas d'historique,
     /// exactement là où le MASTER se photographie depuis D144 : la photo du pas

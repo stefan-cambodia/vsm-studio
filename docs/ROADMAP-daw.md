@@ -33783,3 +33783,33 @@ import) » / « Show the last report (opening or import) », active sur
 (menu Fichier) → le volet rouvert, « 1 information à l'ouverture » ; en anglais
 « Show the last report (opening or import) » → « 1 information on opening ».
 `menus-cites` 10/0 ; fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D453 — le rapport de reconstruction aussi nommait les machines par leur identifiant (27/09/2026)
+
+**D'OÙ ELLE VIENT — D450, dans une autre fenêtre.** Le rapport de reconstruction
+(`VSM_RAPPORT_LISTE`, `morceau-0001-g1`) écrit « bass → vsm.multisample »,
+« other → vsm.pcmhybrid », « Batterie → vsm.tr909 ».
+
+**LE CORRECTIF** : une seule fonction, `nomDeMachine(id)` (le nom de la liste des
+machines, traduit ; l'identifiant s'il est inconnu du registre), employée ici et
+par les statistiques de D450.
+
+**CE QUI RESTE, écrit** : la ligne « percussion : vsm.tr909 n'a pas cette voix ;
+… » est un TEXTE écrit par la chaîne Python dans `rapport.json` ; la changer
+demande d'éditer `analyse/analyzer/` — interdit pendant la campagne (CLAUDE.md).
+Elle attend la fin de la course.
+
+**ATTENDU, écrit avant la mesure** : « bass → Multisample (acoustique
+échantillonné) », « other → PCM + Synth Hybrid », « piano → Spectral (le spectre
+écrit) », « Batterie → TR-909-style Drum Machine · 6 pièce(s)… » ; les
+statistiques de D450 inchangées ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `fr` : « bass → Multisample (acoustique échantillonné) »,
+« other → PCM + Synth Hybrid », « piano → Spectral (le spectre écrit) »,
+« Batterie → TR-909-style Drum Machine · 6 pièce(s), 1028 frappe(s) » ; `en` :
+« bass → Multisample (sampled acoustic) », « piano → Spectral (the written
+spectrum) », « Drums → TR-909-style Drum Machine ». Statistiques de D450
+inchangées (« TB-303-style Acid Synth : 1 piste(s) »). Fumée 0 raté ;
+préférences inchangées.
