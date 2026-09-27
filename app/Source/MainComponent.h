@@ -1097,6 +1097,7 @@ private:
     /// dernier : refaire le rapport d'ouverture par-dessus un rapport d'import
     /// en effacerait un autre.
     juce::StringArray rapportOuverture_;
+    int lignesDInformationOuverture_ = 0;   ///< D451 : combien de lignes du rapport sont de l'information (D418)
     juce::String dossierRapportOuverture_;
     /// D93 : CHAQUE CLIENT A SON NOM. `autre` voulait dire « ne rien refaire »,
     /// et trois clients s'y rangeaient -- l'import, son échec, la reconstruction :

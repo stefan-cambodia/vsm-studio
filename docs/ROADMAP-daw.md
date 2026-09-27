@@ -33730,3 +33730,36 @@ piste(s) », « 4:13 (253.01 s, 222651 ticks) » ; en anglais « Machines used: 
 TB-303-style Acid Synth: 1 track(s) … Length of the material: 0:02 (1.83 s, 1900
 ticks) ». Non mesuré, dit : la machine absente du registre (aucune dans ces
 projets). Fumée 0 raté ; préférences inchangées.
+
+---
+
+### Phase D451 — D418 promettait « Voir le dernier rapport », qui restait grisé (27/09/2026)
+
+**D'OÙ ELLE VIENT — UNE RELECTURE DE D418.** D418 a écrit que la ligne des
+notes douteuses « reste au rapport d'ouverture (« Voir le dernier rapport » la
+retrouve) ». C'est faux dans le cas même que D418 crée : quand elle est SEULE,
+le volet n'est jamais rempli (`afficherRapportDOuverture` n'est appelé que s'il
+y a une vraie réserve), et « Fichier ▸ Voir le dernier rapport d'import » — qui
+rouvre le volet — reste grisé. La ligne n'est plus atteignable que par la ligne
+d'état du piano roll. Et le volet compterait « 1 réserve » sous le titre « avec
+des réserves » pour ce qui n'en est pas une.
+
+**TÉMOIN** (`s2-banc/morceau-0001-g1`, profils installés) : « Voir le dernier
+rapport d'import [grisée] ».
+
+**ATTENDU, écrit avant la mesure** : l'entrée est active ; l'exécuter
+(`VSM_MENU`) rouvre le volet, titré « Projet ouvert », qui compte « 1
+information à l'ouverture » et montre la ligne des notes douteuses ; le projet
+d'essai (5 réserves + l'information) compte « 5 réserves à l'ouverture » ; la
+boîte ne s'ouvre toujours pas seule sur les neuf projets de campagne ; fumée
+0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** `morceau-0001-g1`, profils installés : « Fichier > Voir le
+dernier rapport d'import », ACTIVE (témoin : grisée) ; sans elle, le volet ne se
+montre pas (0 ligne relevée au démarrage) ; exécutée, elle rouvre le volet :
+« 1 information à l'ouverture », puis la ligne des 1327 notes douteuses, sous
+le titre « Projet ouvert » (photo). Garde de D411 : les neuf projets de
+campagne, 0 ouverture seule ; le projet d'essai compte « 5 réserves à
+l'ouverture » (l'information n'est plus comptée comme une réserve ; D412 en
+comptait 6), « 5 reservations on opening » en anglais, 0 ligne française. Fumée
+0 raté ; préférences inchangées. La phrase de D418 est désormais vraie.

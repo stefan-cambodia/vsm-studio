@@ -7125,9 +7125,17 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     rapportOuverture_ = rapport;                         // D84
     dossierRapportOuverture_ = folder.getFileName();
     if (etatDesNotes.isNotEmpty() && pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(etatDesNotes);   // D418
+    lignesDInformationOuverture_ = lignesDInformation;   // D451
     if (rapport.size() > lignesDInformation) {   // D418 : une information seule n'ouvre pas la boîte
         clientDuRapport_ = ClientDuRapport::ouverture;
         afficherRapportDOuverture(true);
+    }
+    else if (!rapport.isEmpty()) {
+        // D451 : L'INFORMATION SEULE N'OUVRE PAS LA BOÎTE (D418), mais le volet est
+        // REMPLI, sans se montrer : « Voir le dernier rapport » la retrouve. D418
+        // le promettait ; l'entrée restait grisée, le volet n'ayant jamais été rempli.
+        clientDuRapport_ = ClientDuRapport::ouverture;
+        afficherRapportDOuverture(false);
     }
 }
 
@@ -7136,9 +7144,14 @@ void MainComponent::afficherRapportDOuverture(bool montrerLeVolet) {
     using Rapport = vsm::app::ui::ImportReportComponent;
     using Ton = Rapport::Ton;
     juce::Array<Rapport::LigneExterne> lignes;
-    lignes.add({juce::String(rapportOuverture_.size()) + (rapportOuverture_.size() > 1
-                                                 ? tr(u8" réserves à l'ouverture")
-                                                 : tr(u8" réserve à l'ouverture")),
+    // D451 : LES RÉSERVES SE COMPTENT SANS L'INFORMATION (D418), et un rapport
+    // qui n'a que de l'information n'est pas « avec des réserves ».
+    const int reserves = rapportOuverture_.size() - lignesDInformationOuverture_;
+    lignes.add({reserves > 0 ? juce::String(reserves) + (reserves > 1 ? tr(u8" réserves à l'ouverture")
+                                                                      : tr(u8" réserve à l'ouverture"))
+                             : juce::String(lignesDInformationOuverture_)
+                                   + (lignesDInformationOuverture_ > 1 ? tr(u8" informations à l'ouverture")
+                                                                       : tr(u8" information à l'ouverture")),
                 Ton::resume});
     for (const auto& ligne : rapportOuverture_) {
         // LE TON SUIT LA CONVENTION DÉJÀ ÉTABLIE PAR LES DEUX AUTRES
@@ -7159,7 +7172,7 @@ void MainComponent::afficherRapportDOuverture(bool montrerLeVolet) {
         // D89 : le ton est lu sur le français (la donnée) ; ce qui s'affiche est traduit.
         lignes.add({vsm::app::ui::trPhrase(ligne), perte ? Ton::perte : Ton::info});
     }
-    importReport_.showLines(tr(u8"Projet ouvert, avec des réserves"),
+    importReport_.showLines(reserves > 0 ? tr(u8"Projet ouvert, avec des réserves") : tr(u8"Projet ouvert"),   // D451
                              dossierRapportOuverture_, lignes, montrerLeVolet);
 }
 
