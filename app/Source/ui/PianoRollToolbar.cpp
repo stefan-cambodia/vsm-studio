@@ -162,6 +162,11 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     swingSlider_.setName("pianoroll.swing");   // D139 : le nom par lequel le banc le désigne (appuyer:)
     swingSlider_.setValue(0.0, juce::dontSendNotification);
     swingSlider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 44, 18);
+    // D460 : LA CASE SE RÉÉCRIT AVEC LA FONCTION DE D415. `juce::Slider` n'écrit
+    // sa case que quand la valeur change ; posée à 0, elle restait « 0.00 » à
+    // l'écran jusqu'au premier geste -- ce que le relevé de D415, qui lisait la
+    // fonction, ne pouvait pas voir.
+    swingSlider_.updateText();
     swingSlider_.onValueChange = [this] { pianoRoll_.setSwing(static_cast<float>(swingSlider_.getValue())); };
 
     addAndMakeVisible(velocitySlider_);

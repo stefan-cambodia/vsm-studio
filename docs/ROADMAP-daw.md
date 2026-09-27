@@ -34089,3 +34089,52 @@ de la liste) :
    « Detune ● 1 » dans la liste) ; le banc (c) de D456 rejoué, toujours tenu
    (master intacte, Detune d'un point, « Detune ● 1 »).
 4. Fumée 0 raté ; gardes vertes ; préférences identiques.
+
+---
+
+### Phase D460 — « Swing 0.00 » était encore à l'écran : le relevé de D415 lisait la fonction, pas la case (27/09/2026)
+
+**D'OÙ ELLE VIENT — UNE PHOTO DU PIANO ROLL** (`cdl`, `VSM_VUE=pianoroll`). La case
+du swing affiche « 0.00 ». D415 a écrit « au repos « 0 % » » : son relevé,
+`VSM_VALEUR` (D141), imprime `getTextFromValue(getValue())` — ce que la fonction
+de texte RENDRAIT —, pas le texte de la case. La case de `juce::Slider` est
+écrite quand la valeur change ; la fonction de D415 posée après sa création, et
+la valeur restant à 0, rien ne la réécrit. La photo de D415 montrait « 100 % »…
+APRÈS un geste qui changeait la valeur. Au repos, la phase n'a jamais été vue.
+
+**LE CORRECTIF, en deux** :
+1. le relevé lit ce qui est AFFICHÉ : `VSM_VALEUR` imprime le texte de la case
+   du curseur quand il en a une, et le signale quand il diffère de la fonction
+   (`… — CASE « 0.00 » ≠ FONCTION « 0 % »`) ; il compte les écarts en fin de
+   relevé (`VSM_VALEUR : N case(s) périmée(s)`) ;
+2. chaque case périmée qu'il trouve est rafraîchie là où sa fonction est posée
+   (`updateText()`).
+
+**ATTENDU, écrit avant la mesure** :
+1. relevé neuf, correctif du swing NON appliqué (un premier binaire) : au moins
+   « pianoroll.swing — CASE « 0.00 » ≠ FONCTION « 0 % » » sur `cdl` et sur la
+   démo ; la liste complète des cases périmées est publiée ici ENTIÈRE ;
+2. après : 0 case périmée sur les deux projets ; photo : « 0 % » dans la case
+   du swing au repos ;
+3. fumée 0 raté ; gardes vertes ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Relevé neuf, swing non corrigé** (premier binaire) : `cdl` (16 curseurs
+   nommés) et démo (18) — **1 case périmée sur chacun, la même, et c'est la
+   liste entière** : « pianoroll.swing : 0 % — CASE « 0.00 » ≠ FONCTION
+   « 0 % » ». Les curseurs sans nom sont comptés aussi (0 périmé).
+2. **Après** (`updateText()` après la fonction) : **0 case périmée** sur les deux ;
+   photo du piano roll agrandi : « 0 % » dans la case, au repos.
+3. Fumée 0 raté ; gardes vertes ; préférences identiques. La campagne a été
+   gelée pendant le build du relevé (`MainComponent.cpp`, 10:46 → 10:48).
+
+**CE QUE D415 AVAIT ÉCRIT, ET CE QUI ÉTAIT VRAI** : « au repos « 0 % » » était
+la sortie d'une fonction, pas l'écran ; « 100 % » après le geste était vrai. La
+leçon est celle de D149 sous une autre forme : un relevé qui ne lit pas la même
+chose que l'écran peut conclure juste sur un cas et faux sur l'autre.
+
+**Relevé en passant** : la ligne de piste écrit « +1.7 dB » (`texteDecibels`) et
+le fader du mixeur « 1.7 dB » pour la même valeur ; et le fader s'arrête à
+−60 dB là où la ligne de piste peut descendre au silence (`gainToDb` rend −60
+pour un gain nul : la tranche afficherait « -60.0 dB » pour une piste muette de
+gain 0).

@@ -2111,14 +2111,39 @@ void MainComponent::listTextsForCapture() {
     // de banc de D135 à D140). Les boutons du MASTER n'ont pas de texte, et la
     // bulle n'apparaît qu'à l'appui : ceci les lit après les gestes et les
     // touches, au moment du relevé.
-    std::function<void(juce::Component&)> valeurs = [&valeurs](juce::Component& c) {
+    //
+    // D460 : ET CE QUI EST AFFICHÉ, PAS SEULEMENT CE QUE LA FONCTION RENDRAIT.
+    // `getTextFromValue` dit ce que la case DEVRAIT montrer ; la case de
+    // `juce::Slider` n'est réécrite que quand la valeur change. D415 a posé la
+    // fonction du swing après la création de la case, la valeur restant à 0 :
+    // l'écran disait « 0.00 » pendant que ce relevé écrivait « 0 % ». Une case
+    // qui diffère de sa fonction est dite, et comptée.
+    int perimees = 0;
+    std::function<void(juce::Component&)> valeurs = [&valeurs, &perimees](juce::Component& c) {
         if (!c.isVisible()) return;
-        if (auto* curseur = dynamic_cast<juce::Slider*>(&c); curseur != nullptr && curseur->getName().isNotEmpty())
-            std::fputs(("VSM_VALEUR : " + curseur->getName() + " : "
-                        + curseur->getTextFromValue(curseur->getValue()) + "\n").toRawUTF8(), stderr);
+        if (auto* curseur = dynamic_cast<juce::Slider*>(&c); curseur != nullptr) {
+            const juce::String fonction = curseur->getTextFromValue(curseur->getValue());
+            const bool nomme = curseur->getName().isNotEmpty();
+            juce::String ligne = "VSM_VALEUR : " + (nomme ? curseur->getName() : juce::String("(sans nom)"))
+                               + " : " + fonction;
+            bool perimee = false;
+            for (auto* enfant : curseur->getChildren())
+                if (auto* caseTexte = dynamic_cast<juce::Label*>(enfant);
+                    caseTexte != nullptr && caseTexte->isVisible() && caseTexte->getText() != fonction) {
+                    ligne += juce::String::fromUTF8(u8" — CASE « ") + caseTexte->getText()
+                           + juce::String::fromUTF8(u8" » ≠ FONCTION « ") + fonction + juce::String::fromUTF8(u8" »");
+                    ++perimees;
+                    perimee = true;
+                }
+            // les curseurs sans nom ne s'impriment que périmés (le relevé de D141
+            // ne listait que les nommés ; le compte, lui, les couvre tous)
+            if (nomme || perimee) std::fputs((ligne + "\n").toRawUTF8(), stderr);
+        }
         for (auto* enfant : c.getChildren()) valeurs(*enfant);
     };
     valeurs(*this);
+    std::fputs(("VSM_VALEUR : " + juce::String(perimees)
+                + juce::String::fromUTF8(u8" case(s) périmée(s)\n")).toRawUTF8(), stderr);
     // D382 : VSM_SERRES=1 -- LES LIBELLÉS COMPRIMÉS. D381 a montré un libellé à
     // la bonne hauteur mais resserré en largeur : `juce::Label` comprime le
     // texte qui ne tient pas dans sa case (jusqu'à son échelle minimale), puis
