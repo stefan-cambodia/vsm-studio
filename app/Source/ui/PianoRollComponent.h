@@ -370,6 +370,11 @@ private:
     vsm::midi::Tick scrollTick_ = 0;
     int noteHeight_ = 16;
     int topNote_ = 84;
+    /// D461 : la hauteur que le dernier cadrage centre (-1 : aucune), et la note
+    /// du haut qu'il a posée. Tant que `topNote_` vaut encore celle-ci, personne
+    /// n'a bougé la vue, et `resized()` recentre la même hauteur.
+    int hauteurCentree_ = -1;
+    int topNoteDuCadrage_ = -1;
 
     // LA COLONNE DU CLAVIER S'ÉLARGIT SUR UNE PISTE DE BATTERIE : elle y porte
     // le nom des pièces (« charleston fermé ») et non des hauteurs (« F#2 »),

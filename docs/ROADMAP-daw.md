@@ -34138,3 +34138,47 @@ le fader du mixeur « 1.7 dB » pour la même valeur ; et le fader s'arrête à
 −60 dB là où la ligne de piste peut descendre au silence (`gainToDb` rend −60
 pour un gain nul : la tranche afficherait « -60.0 dB » pour une piste muette de
 gain 0).
+
+---
+
+### Phase D461 — le piano roll cadrait ses notes sur une rangée, puis ne se recentrait plus (27/09/2026)
+
+**D'OÙ ELLE VIENT — UNE PHOTO DU PIANO ROLL AGRANDI** (`cdl`). Le clavier montre
+C3 → D#4 et la grille est vide sur les sept premières mesures, alors que la lane
+de vélocité y montre des dizaines de notes. `cdl` joue de 32 à 92 ; la médiane
+pondérée par la durée — celle que vise `cadrerSurLesNotes()` (D338) — vaut **63**.
+Relevé (`VSM_PIANOROLL_ZONES`) : à la disposition par défaut, `haut=63 bas=61
+lignes=2` ; agrandi, `haut=63 bas=49 lignes=14`. **Le cadrage est calculé à
+l'ouverture sur la taille du panneau à cet instant — une rangée —, ce qui pose la
+médiane sur la rangée du HAUT ; quand le panneau grandit, rien ne recentre** :
+771 notes sur 2 219 tombent dans la fenêtre agrandie, et toute la moitié haute du
+matériau est hors de la vue.
+
+**LE CORRECTIF** : le cadrage retient la hauteur qu'il centre et la note du haut
+qu'il a posée ; tant que la vue n'a pas bougé depuis (la note du haut est encore
+la sienne), `resized()` recentre la même hauteur sur la nouvelle taille. Une vue
+déplacée par l'utilisateur, ou RESTAURÉE depuis le projet (D369), n'est pas
+touchée : sa note du haut n'est plus celle du cadrage.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin (binaire de D460) : défaut `haut=63 lignes=2`, agrandi `haut=63
+   bas=49` — la médiane au bord ;
+2. après : agrandi, la médiane 63 au MILIEU de la fenêtre (`haut` = 63 + lignes/2
+   à une rangée près, soit 70 pour 14 lignes) ; photo : des notes dans la grille
+   dès la mesure 1 ; défaut : 63 dans la fenêtre de 2 lignes ;
+3. `tools/vue-du-morceau.sh` (D369) reste vert : une vue restaurée n'est pas
+   recentrée ;
+4. fumée 0 raté ; gardes vertes ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D460) : défaut `haut=63 bas=61 lignes=2` ; agrandi
+   `haut=63 bas=49 lignes=14` — la médiane au bord, grille vide sur sept mesures.
+2. **Après** : défaut `haut=64 bas=62` (63 dedans) ; agrandi **`haut=70 bas=56`**,
+   la médiane 63 au milieu ; photo : F4, F#4, G#4, A4, A#4 dans la grille dès la
+   mesure 1.
+3. `tools/vue-du-morceau.sh` (D369) **vert** : rouvert sur sa piste et sa fenêtre
+   de hauteurs, qui s'écartent toujours du défaut — la vue restaurée n'est pas
+   recentrée.
+4. Fumée 0 raté ; préférences identiques ; campagne gelée pendant le build
+   (10:53 → 10:55). `tools/pianoroll-zones.sh` n'avait pas fini au moment du
+   commit : non conclu ici, à relire.

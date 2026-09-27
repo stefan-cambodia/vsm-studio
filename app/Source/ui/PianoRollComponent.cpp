@@ -497,6 +497,12 @@ void PianoRollComponent::cadrerSurLesNotes() {
     }
     const int lignesVisibles = std::max(1, contentArea().getHeight() / std::max(1, noteHeight_));
     topNote_ = juce::jlimit(12, 127, mediane + lignesVisibles / 2);
+    // D461 : LE CADRAGE SE SOUVIENT DE CE QU'IL CENTRE. À l'ouverture, le panneau
+    // n'a souvent qu'une ou deux rangées : la médiane tombait sur celle du haut,
+    // et y restait quand le panneau grandissait (`cdl` agrandi : 771 notes sur
+    // 2 219 dans la fenêtre, la médiane au bord).
+    hauteurCentree_ = mediane;
+    topNoteDuCadrage_ = topNote_;
 }
 
 void PianoRollComponent::zoomToFit() {
@@ -1873,6 +1879,16 @@ void PianoRollComponent::resized() {
                                     bounds.getWidth() - keyboardWidth() - kScrollBarThickness, kScrollBarThickness);
     verticalScrollBar_.setBounds(bounds.getRight() - kScrollBarThickness, 0,
                                   kScrollBarThickness, bounds.getHeight() - kScrollBarThickness);
+    // D461 : un cadrage que personne n'a déplacé depuis suit la taille du panneau.
+    // Une vue déplacée, ou restaurée depuis le projet (D369), a une autre note du
+    // haut : elle n'est pas touchée, et le souvenir du cadrage s'efface.
+    if (hauteurCentree_ >= 0 && topNote_ == topNoteDuCadrage_ && !fold_) {
+        const int lignesVisibles = std::max(1, contentArea().getHeight() / std::max(1, noteHeight_));
+        topNote_ = juce::jlimit(12, 127, hauteurCentree_ + lignesVisibles / 2);
+        topNoteDuCadrage_ = topNote_;
+    } else {
+        hauteurCentree_ = -1;
+    }
     updateScrollBars();
 }
 
