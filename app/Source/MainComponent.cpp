@@ -2311,7 +2311,8 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
                     "sans-mixer, sans-rapport, flottant, historique, spectre, notes, ordre, "
                     "prises, navigateur, composer, mixer, automation, effets, midi-cc, liste, tempo, "
                     "plein:<zone>, agrandir:<zone>, troncon:<n>, retirer-prise:<n>, "
-                    "premier-clip:<n>, piste:<n>, ouvrir-midi:<fichier>\n", stderr);
+                    "premier-clip:<n>, piste:<n>, ouvrir-midi:<fichier>, automation-parametre:<nom>, "
+                    "midicc-controleur:<n>\n", stderr);
         return;
     }
     // Les MÊMES identifiants que le menu : tester autre chose que ce que
@@ -2515,6 +2516,16 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "courbes") arrangement_.toggleAutomation();
     // D234 : « point-automation:0.5:0.5 » pose un point dans l'onglet Automation, à
     // la fraction (x, y) de la zone d'édition, par le MÊME `mouseDown` que la souris.
+    // D467 : choisir le paramètre de l'onglet Automation / le contrôleur de MIDI CC,
+    // par leur liste déroulante -- le chemin de la souris.
+    else if (nom.startsWith("automation-parametre:")) {
+        if (!automation_.choisirParametre(nom.fromFirstOccurrenceOf(":", false, false)))
+            std::fputs(("VSM_VUE : param\xc3\xa8tre d'automation inconnu : " + nom + "\n").toRawUTF8(), stderr);
+    }
+    else if (nom.startsWith("midicc-controleur:")) {
+        if (!midiCc_.choisirControleur(nom.fromFirstOccurrenceOf(":", false, false).getIntValue()))
+            std::fputs(("VSM_VUE : contr\xc3\xb4leur MIDI CC inconnu : " + nom + "\n").toRawUTF8(), stderr);
+    }
     else if (nom.startsWith("point-automation:")) {
         juce::StringArray parts;
         parts.addTokens(nom.fromFirstOccurrenceOf(":", false, false), ":", "");
@@ -7139,6 +7150,11 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
                                       static_cast<size_t>(vue.selectedTrack));
     pianoRoll_.reprendreLaVue(vue.pianoRollPixelsPerTick, vue.pianoRollScrollTick,
                                vue.pianoRollTopNote, vue.pianoRollNoteHeight);
+    // D467 : LES LANES DU BAS, APRÈS LA PISTE (la choisir refait leurs listes). Un
+    // nom ou un contrôleur que la piste n'a plus laisse les replis de D234 et D319.
+    if (!vue.automationParameter.empty())
+        automation_.choisirParametre(juce::String::fromUTF8(vue.automationParameter.c_str()));
+    if (vue.midiCcController >= 0) midiCc_.choisirControleur(vue.midiCcController);
 
     // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
     // donnerait un morceau amputé sans explication -- c'est précisément
@@ -7749,6 +7765,9 @@ vsm::interchange::ProjectDocument::View MainComponent::vueActuelle() const {
     vue.pianoRollScrollTick = pianoRoll_.visibleStartTick();
     vue.pianoRollTopNote = pianoRoll_.noteDuHaut();
     vue.pianoRollNoteHeight = pianoRoll_.noteHeight();
+    // D467 : le paramètre et le contrôleur des lanes du bas.
+    vue.automationParameter = automation_.parametreChoisi().toStdString();
+    vue.midiCcController = midiCc_.controleurChoisi();
     return vue;
 }
 

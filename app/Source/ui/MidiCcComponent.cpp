@@ -391,6 +391,15 @@ void MidiCcComponent::mouseExit(const juce::MouseEvent&) {
     if (dragIndex_ < 0 && pointMontre_ >= 0) { pointMontre_ = -1; repaint(); }
 }
 
+bool MidiCcComponent::choisirControleur(int controleur) {
+    for (size_t i = 0; i < controllerIds_.size(); ++i)
+        if (controllerIds_[i] == controleur) {
+            controllerBox_.setSelectedItemIndex(static_cast<int>(i), juce::sendNotificationSync);
+            return true;
+        }
+    return false;
+}
+
 juce::String MidiCcComponent::texteValeur(const Point& point) const {
     const int valeur = point.value;
     // D457 : CE QUE LA PISTE REÇOIT, pas l'unité interne de la lane. Le bend est

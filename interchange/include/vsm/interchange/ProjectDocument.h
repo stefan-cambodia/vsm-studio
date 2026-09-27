@@ -388,6 +388,13 @@ struct ProjectDocument {
         /// COMBIEN de hauteurs tiennent à l'écran : la reprendre sans elle
         /// remettrait la note du haut sur une fenêtre d'une autre taille.
         int pianoRollNoteHeight = 0;
+        /// D467 : le paramètre de l'onglet Automation, par son NOM (un numéro
+        /// désignerait un autre réglage dès qu'une machine en intercale un).
+        /// Vide = rien d'enregistré.
+        std::string automationParameter;
+        /// D467 : le contrôleur de l'onglet MIDI CC (0..127, 128 = pitch bend,
+        /// 129 = aftertouch). -1 = rien d'enregistré.
+        int midiCcController = -1;
 
         /// Vrai dès qu'un seul champ dit quelque chose. C'est CE prédicat qui
         /// décide de l'écriture, et non le seul zoom d'arrangement : depuis
@@ -396,7 +403,8 @@ struct ProjectDocument {
         /// projet dont l'arrangement n'a jamais bougé ne s'écrirait pas).
         bool ditQuelqueChose() const {
             return pixelsPerTick > 0.0 || selectedTrack >= 0
-                   || pianoRollPixelsPerTick > 0.0 || pianoRollTopNote > 0;
+                   || pianoRollPixelsPerTick > 0.0 || pianoRollTopNote > 0
+                   || !automationParameter.empty() || midiCcController >= 0;   // D467
         }
     };
     View view;

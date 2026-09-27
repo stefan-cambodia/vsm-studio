@@ -68,6 +68,10 @@ public:
 
     /// Le nom usuel d'un contrôleur (« 74 · coupure »), ou « CC n » sinon.
     static juce::String controllerName(int controller);
+    /// D467 : le contrôleur affiché, et son choix par la liste déroulante (comme
+    /// la souris : il compte alors comme choisi par l'utilisateur, D319).
+    int controleurChoisi() const { return selectedController_; }
+    bool choisirControleur(int controleur);
     /// LE PITCH BEND ET L'AFTERTOUCH DE CANAL SONT DES LANES COMME LES AUTRES
     /// (D11, 03/09/2026). Le format les portait (`Track::pitchBends`,
     /// `Track::channelPressure`), le moteur les jouait, et aucune vue ne les

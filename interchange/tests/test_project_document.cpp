@@ -1497,6 +1497,38 @@ VSM_TEST(the_selected_track_and_piano_roll_view_survive_the_round_trip) {
     VSM_ASSERT(relu.document.view.pixelsPerTick == 0.0);
 }
 
+// D467 : LE PARAMÈTRE ET LE CONTRÔLEUR DES LANES DU BAS font le même voyage,
+// facultatifs séparément ; un contrôleur hors de 0..129 est ignoré.
+VSM_TEST(the_bottom_lanes_choice_survives_the_round_trip) {
+    ProjectDocument document = documentFromProject(buildProject());
+    document.view.automationParameter = "Detune";
+    document.view.midiCcController = 128;
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.view.automationParameter == "Detune");
+    VSM_ASSERT(relu.document.view.midiCcController == 128);
+    VSM_ASSERT(relu.document.view.pixelsPerTick == 0.0);   // rien d'inventé ailleurs
+    VSM_ASSERT(relu.document.view.selectedTrack == -1);
+
+    // un contrôleur absurde est ignoré, le paramètre non
+    // le nombre qui suit la clé est remplacé, quelle que soit la mise en forme
+    std::string texte = projectDocumentToJson(document).toString();
+    const auto cle = texte.find("\"midiCcController\"");
+    VSM_ASSERT(cle != std::string::npos);
+    const auto debut = texte.find("128", cle);
+    VSM_ASSERT(debut != std::string::npos);
+    texte.replace(debut, 3, "200");
+    const ProjectLoadResult absurde = parseProjectDocument(texte);
+    VSM_ASSERT(absurde.success);
+    VSM_ASSERT(absurde.document.view.midiCcController == -1);
+    VSM_ASSERT(absurde.document.view.automationParameter == "Detune");
+
+    // sans eux, aucun champ n'est écrit
+    const std::string nu = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(nu.find("automationParameter") == std::string::npos);
+    VSM_ASSERT(nu.find("midiCcController") == std::string::npos);
+}
+
 VSM_TEST(a_view_that_only_holds_a_piano_roll_is_still_written) {
     // LE PIÈGE QUE CE TEST GARDE : l'écriture était conditionnée au SEUL zoom
     // d'arrangement. Ajouter des champs sans toucher à cette condition les

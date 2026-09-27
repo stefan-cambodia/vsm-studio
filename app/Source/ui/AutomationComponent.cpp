@@ -103,6 +103,21 @@ void AutomationComponent::listerEchellePourCapture() const {
                 + "\n").toRawUTF8(), stderr);
 }
 
+juce::String AutomationComponent::parametreChoisi() const {
+    for (const auto& entree : paramEntries_)
+        if (hasSelection_ && entree.id == selectedParam_) return juce::String::fromUTF8(entree.nom.c_str());
+    return {};
+}
+
+bool AutomationComponent::choisirParametre(const juce::String& nom) {
+    for (size_t i = 0; i < paramEntries_.size(); ++i)
+        if (juce::String::fromUTF8(paramEntries_[i].nom.c_str()) == nom) {
+            paramBox_.setSelectedItemIndex(static_cast<int>(i), juce::sendNotificationSync);
+            return true;
+        }
+    return false;
+}
+
 void AutomationComponent::retraduire() {
     using vsm::app::ui::tr;
     trackLabel_.setText(tr("Piste"), juce::dontSendNotification);

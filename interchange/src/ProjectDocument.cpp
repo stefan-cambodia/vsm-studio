@@ -697,6 +697,10 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             vue.set("pianoRollTopNote", JsonValue::makeNumber(document.view.pianoRollTopNote));
         if (document.view.pianoRollNoteHeight > 0)
             vue.set("pianoRollNoteHeight", JsonValue::makeNumber(document.view.pianoRollNoteHeight));
+        if (!document.view.automationParameter.empty())   // D467
+            vue.set("automationParameter", JsonValue::makeString(document.view.automationParameter));
+        if (document.view.midiCcController >= 0 && document.view.midiCcController <= 129)
+            vue.set("midiCcController", JsonValue::makeNumber(document.view.midiCcController));
         root.set("view", std::move(vue));
     }
 
@@ -993,6 +997,12 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         if (haut >= 12.0 && haut <= 127.0) document.view.pianoRollTopNote = static_cast<int>(haut);
         const double rang = vue["pianoRollNoteHeight"].asNumber();
         if (rang > 0.0 && rang <= 48.0) document.view.pianoRollNoteHeight = static_cast<int>(rang);
+        // D467 : le paramètre et le contrôleur des lanes du bas ; hors bornes, ignoré.
+        if (vue["automationParameter"].isString())
+            document.view.automationParameter = vue["automationParameter"].asString();
+        const double controleur = vue["midiCcController"].asNumber(-1.0);
+        if (controleur >= 0.0 && controleur <= 129.0)
+            document.view.midiCcController = static_cast<int>(controleur);
     }
     const JsonValue& transport = json["transport"];
     document.transport.ticksPerQuarterNote = static_cast<int>(transport["ticksPerQuarterNote"].asNumber(480.0));

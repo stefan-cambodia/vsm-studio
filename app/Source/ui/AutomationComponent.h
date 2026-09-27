@@ -84,6 +84,10 @@ public:
     /// d'édition, 0 = bord gauche/haut, 1 = bord droit/bas. Rend faux si aucun
     /// paramètre n'est choisi. Le compte de points est écrit au journal.
     bool poserUnPointPourCapture(double fractionX, double fractionY);
+    /// D467 : le NOM du paramètre affiché (vide : aucun), et son choix par le nom
+    /// -- par la liste déroulante, comme la souris. Rend faux si le nom manque.
+    juce::String parametreChoisi() const;
+    bool choisirParametre(const juce::String& nom);
 
 private:
     void rebuildTrackBox();

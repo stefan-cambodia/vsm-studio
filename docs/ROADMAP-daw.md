@@ -34298,3 +34298,52 @@ entier ; photo : rien de rogné. `volet-anglais.sh` : 0 ligne française sur 39,
 10 projets. Fumée 0 raté ; préférences identiques. (Le témoin se lit sur la
 photo et non sur la marque `[TROP LARGE]`, écrite dans le même binaire que le
 correctif : dit.)
+
+---
+
+### Phase D467 — le projet oubliait quel paramètre et quel contrôleur on regardait en bas (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D369** : *« la vue ne retient
+toujours rien des lanes du bas (automation, MIDI CC) »*. Rouvrir un projet
+ramène l'onglet Automation sur le premier paramètre qui porte une courbe (D234)
+et MIDI CC sur le contrôleur le plus fourni (D319), quel que soit celui qu'on
+éditait.
+
+**LA RÈGLE DE PARTAGE DE D363, APPLIQUÉE** : les deux dépendent du MORCEAU (un
+paramètre d'une machine, un contrôleur d'une piste) → dans le bloc `view` du
+projet, facultatifs séparément comme ceux de D369. Le paramètre s'écrit par son
+NOM (celui de la liste), pas par son numéro — un numéro désigne un autre réglage
+dès qu'une machine en intercale un ; un nom qu'on ne retrouve plus laisse le
+repli de D234. Le contrôleur s'écrit par son numéro (0..127, 128 = pitch bend,
+129 = aftertouch) ; hors de ces bornes, il est ignoré, comme toute valeur absurde
+depuis D363. Les défauts de D234 et D319 restent le repli.
+
+**BANC** : deux verbes de `VSM_VUE`, `automation-parametre:<nom>` et
+`midicc-controleur:<n>`, qui passent par la liste déroulante comme la souris ;
+`VSM_ENREGISTRER`, puis réouverture du dossier écrit, relevée par
+`VSM_AUTOMATION=1` et `VSM_TEXTES_LISTE=1`.
+
+**ATTENDU, écrit avant la mesure** :
+1. test `interchange` : aller-retour des deux champs ; un contrôleur 200 est
+   ignoré ; un projet sans eux garde son fichier (aucun champ inventé) ;
+2. témoin (verbes seuls, sans les champs — premier binaire) : `cdl`, choisir
+   « Detune » et le contrôleur 1, enregistrer, rouvrir → « Filter Cutoff ● 606 »
+   et « 74 · coupure » (les défauts) ;
+3. après : rouvert sur « Detune » et « 1 · … » ;
+4. `vue-du-morceau.sh` vert ; suites `interchange` vertes ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU.**
+1. Test `the_bottom_lanes_choice_survives_the_round_trip` : aller-retour
+   (« Detune », 128), contrôleur 200 ignoré (le paramètre gardé), aucun champ
+   écrit sans eux ; `vsm_interchange_tests` **308/308**. (Sa première version
+   cherchait le texte `"midiCcController":128` et échouait : le JSON est indenté
+   — `": "`. Le test remplace désormais le nombre qui suit la clé.)
+2. **Témoin** (premier binaire, verbes seuls) : choisis « Detune » et
+   « 1 · modulation » avant l'enregistrement ; rouvert sur « Filter Cutoff ● 606 »
+   et « 74 · coupure ».
+3. **Après** : le bloc `view` écrit porte `"automationParameter": "Detune"` et
+   `"midiCcController": 1` ; rouvert sur **« Detune »** et **« 1 · modulation »**.
+4. `vue-du-morceau.sh` vert ; fumée 0 raté ; préférences identiques ;
+   `build/tools/vsm-render` non relié (07:52 avant comme après) ; campagne gelée
+   pendant les deux builds (14:21 → 14:23, 14:25 → 14:29).
