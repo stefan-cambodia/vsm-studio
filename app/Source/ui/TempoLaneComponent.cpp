@@ -246,9 +246,10 @@ void TempoLaneComponent::paint(juce::Graphics& g) {
     g.setColour(Palette::textSecondary);
     // L'échelle à DROITE : le point du tick 0 vit sur le bord gauche, et son
     // étiquette y recouvrait celle de l'échelle.
+    // D464 : l'unité une fois, sur la borne du haut (« 240 BPM »), comme D424 et D455.
     for (double bpm : {kBpmMin, 60.0, 120.0, 180.0, kBpmMax})
-        g.drawText(juce::String(static_cast<int>(bpm)), a.getRight() - 42, bpmToY(bpm) - 7, 40, 14,
-                   juce::Justification::centredRight);
+        g.drawText(juce::String(static_cast<int>(bpm)) + (bpm >= kBpmMax ? " BPM" : ""),
+                   a.getRight() - 82, bpmToY(bpm) - 7, 80, 14, juce::Justification::centredRight);
 
     if (project_ == nullptr) {
         g.drawText(tr(u8"Aucun projet."), a, juce::Justification::centred);

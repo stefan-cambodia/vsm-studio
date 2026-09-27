@@ -34224,3 +34224,20 @@ de piste « -60.0 dB » ; après : les deux « -inf dB » ; saisie « -6,5 » in
 de piste ; après « -inf dB » aux deux (la ligne de piste lit le gain : il vaut
 bien 0). Saisie « -6,5 » : « -6.5 dB » aux deux, inchangé. 0 case périmée ;
 fumée 0 raté ; préférences identiques.
+
+---
+
+### Phase D464 — la voie Tempo graduée sans unité (27/09/2026)
+
+**D'OÙ ELLE VIENT — UNE PHOTO DE L'ONGLET TEMPO** (`cdl`). L'échelle de droite
+écrit « 240 · 180 · 120 · 60 · 40 » ; ses points disent « 120.0 BPM ». Même
+famille que D424 et D455 : l'unité une fois par axe, sur la borne du haut
+(« 240 BPM »), les autres graduations nues.
+
+**ATTENDU, écrit avant la mesure** (texte PEINT : preuve par la photo) : témoin
+« 240 » ; après « 240 BPM » entier, aligné à droite comme avant ; les quatre
+autres inchangées ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** Photo (onglet Tempo agrandi, `cdl`) : témoin « 240 » ; après
+« 240 BPM » entier en haut à droite, sans toucher le numéro de mesure voisin ;
+180, 120, 60, 40 inchangés. Fumée 0 raté ; préférences identiques.
