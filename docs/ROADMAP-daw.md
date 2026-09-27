@@ -33702,3 +33702,31 @@ refusé : « abc » — mesure.temps, par exemple 17.3 ou 17.3+120 », et en ang
 « Prêt » et S'APPLIQUE : le `.mid` exporté après porte « Acid Bass » à [90] ;
 après « 200 », il garde [90, 127] (l'original). Fumée 0 raté ; préférences
 inchangées.
+
+---
+
+### Phase D450 — les statistiques du projet parlaient la langue du développeur (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT « Statistiques du projet... ».** Les machines y
+sont listées par leur IDENTIFIANT (« vsm.tb303 », « vsm.multisample ») là où
+toute l'interface montre leur NOM (« TB-303-style Acid Synth ») ; et la durée
+s'écrit « 253.01 s », quand un musicien lit « 4:13 ».
+
+**TÉMOIN** (`VSM_BOITE`) : démo — « vsm.tb303 : 1 piste(s) », « Durée du
+matériau : 1.83 s (1900 ticks) » ; `s2-banc/morceau-0001-g1` — « vsm.tr909 :
+4 piste(s) », « 253.01 s (222651 ticks) ».
+
+**ATTENDU, écrit avant la mesure** : « TB-303-style Acid Synth : 1 piste(s) »,
+« TR-909-style Drum Machine : 4 piste(s) » (le nom de la liste des machines,
+traduit comme elle) ; « Durée du matériau : 4:13 (253.01 s, 222651 ticks) » et
+« 0:02 (1.83 s, 1900 ticks) » ; une machine inconnue du registre garde son
+identifiant ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** Démo : « TB-303-style Acid Synth : 1 piste(s) », « TR-909-style
+Drum Machine : 1 piste(s) », « Durée du matériau : 0:02 (1.83 s, 1900 ticks) » ;
+`morceau-0001-g1` : « Multisample (acoustique échantillonné) », « PCM + Synth
+Hybrid », « Spectral (le spectre écrit) », « TR-909-style Drum Machine : 4
+piste(s) », « 4:13 (253.01 s, 222651 ticks) » ; en anglais « Machines used: 2 /
+TB-303-style Acid Synth: 1 track(s) … Length of the material: 0:02 (1.83 s, 1900
+ticks) ». Non mesuré, dit : la machine absente du registre (aucune dans ces
+projets). Fumée 0 raté ; préférences inchangées.

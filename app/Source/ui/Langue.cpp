@@ -1282,6 +1282,8 @@ const Paire kAnglais[] = {
       "Sample rate of the sound card. To change it: File ▸ Audio settings..." },
     { "Carte son",
       "Sound card" },
+    { "%1 (%2 s, %3 ticks)",
+      "%1 (%2 s, %3 ticks)" },
     { "Début refusé : « %1 » — mesure.temps, par exemple 17.3 ou 17.3+120",
       "Start refused: “%1” — bar.beat, for example 17.3 or 17.3+120" },
     { "Durée refusée : « %1 » — un nombre de ticks, plus grand que 0",

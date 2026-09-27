@@ -11782,12 +11782,24 @@ juce::String MainComponent::projectStatisticsText() const {
     ligne(tr(u8"Aftertouch"), juce::String(static_cast<int>(pression)));
     ligne(tr(u8"Changements de programme"), juce::String(static_cast<int>(programmes)));
     ligne(tr(u8"Machines employées"), juce::String(static_cast<int>(machines.size())));
-    for (const auto& [id, combien] : machines)
-        ligne("   " + juce::String::fromUTF8(id.c_str()),
-              tr(u8"%1 piste(s)").replace("%1", juce::String(combien)));
+    // D450 : LE NOM DE LA MACHINE, pas son identifiant -- celui que montre la
+    // liste des machines, traduit comme elle. Inconnue du registre (un plugin
+    // tiers retiré), elle garde son identifiant.
+    const auto registre = vsm::audio::plugin::PluginRegistry::instance().listAvailable();
+    for (const auto& [id, combien] : machines) {
+        juce::String nom = juce::String::fromUTF8(id.c_str());
+        for (const auto& [autreId, affiche] : registre)
+            if (autreId == id) nom = tr(juce::String::fromUTF8(affiche.c_str()));
+        ligne("   " + nom, tr(u8"%1 piste(s)").replace("%1", juce::String(combien)));
+    }
+    // D450 : LA DURÉE COMME UN MUSICIEN LA LIT, minutes:secondes d'abord.
+    const int totalSecondes = static_cast<int>(std::lround(secondes));
+    const juce::String minutes = juce::String(totalSecondes / 60) + ":"
+                               + juce::String(totalSecondes % 60).paddedLeft('0', 2);
     ligne(tr(u8"Durée du matériau"),
-          tr(u8"%1 s  (%2 ticks)").replace("%1", juce::String(secondes, 2))
-                                  .replace("%2", juce::String(static_cast<int>(fin))));
+          tr(u8"%1 (%2 s, %3 ticks)").replace("%1", minutes)
+                                     .replace("%2", juce::String(secondes, 2))
+                                     .replace("%3", juce::String(static_cast<int>(fin))));
     ligne(tr(u8"Tempo au départ"),
           juce::String(project_.tempoMap.bpmAt(0), 2) + " BPM");
     return t;
