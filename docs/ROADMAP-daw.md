@@ -34180,5 +34180,6 @@ touchée : sa note du haut n'est plus celle du cadrage.
    de hauteurs, qui s'écartent toujours du défaut — la vue restaurée n'est pas
    recentrée.
 4. Fumée 0 raté ; préférences identiques ; campagne gelée pendant le build
-   (10:53 → 10:55). `tools/pianoroll-zones.sh` n'avait pas fini au moment du
-   commit : non conclu ici, à relire.
+   (10:53 → 10:55). `tools/pianoroll-zones.sh` (fini après le premier commit de
+   la phase) : **7 relevés, 0 raté** — fr et en, trois tailles, et « Zoom : tout
+   voir » de D338.
