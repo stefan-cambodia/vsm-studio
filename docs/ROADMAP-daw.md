@@ -34241,3 +34241,28 @@ autres inchangées ; fumée 0 raté ; préférences inchangées.
 **MESURÉ — TENU.** Photo (onglet Tempo agrandi, `cdl`) : témoin « 240 » ; après
 « 240 BPM » entier en haut à droite, sans toucher le numéro de mesure voisin ;
 180, 120, 60, 40 inchangés. Fumée 0 raté ; préférences identiques.
+
+---
+
+### Phase D465 — la Liste donnait la position en mesures et la durée en ticks bruts (27/09/2026)
+
+**D'OÙ ELLE VIENT — UNE PHOTO DE L'ONGLET LISTE** (`cdl`). « 1.2+111 (591) » pour
+la position, mais « 568 », « 3201 » pour la durée : à 480 ticks la noire, il faut
+diviser de tête pour savoir qu'une note dure un temps et 88 ticks.
+
+**CHOIX TRANCHÉ ICI** : l'écriture de la colonne Position, sans la mesure — le
+nombre de temps (noires), le reste en ticks, et le tick brut entre parenthèses :
+« 1+88  (568) », « 6+321  (3201) », « 0+133  (133) ». Raison : la même forme
+que la colonne voisine, et le brut reste lisible (c'est ce que le fichier porte).
+L'en-tête devient « Durée (temps+ticks) » / « Length (beats+ticks) ». La saisie
+ne change pas : elle montre déjà le NOMBRE de ticks, pas le texte de la case.
+
+**ATTENDU, écrit avant la mesure** (texte PEINT : preuve par la photo) : témoin
+« 568 », « 1406 » ; après « 1+88  (568) », « 2+446  (1406) » ; en anglais
+l'en-tête « Length (beats+ticks) » ; gardes vertes (langue, doublons) ; fumée 0
+raté ; préférences inchangées.
+
+**MESURÉ — TENU.** Photo : témoin « 568 », « 1406 » ; après « 1+88  (568) »,
+« 2+446  (1406) », « 6+321  (3201) » sous « Durée (temps+ticks) » ; en anglais
+« Length (beats+ticks) », mêmes valeurs. Gardes vertes ; fumée 0 raté ;
+préférences identiques.

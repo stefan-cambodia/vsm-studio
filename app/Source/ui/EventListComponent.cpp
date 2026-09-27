@@ -18,7 +18,7 @@ struct Colonne { int id; const char8_t* nom; int largeur; };
 constexpr Colonne kColonnes[] = {
     { kColPosition, u8"Position", 130 }, { kColNature, u8"Nature", 120 },
     { kColCanal, u8"Canal", 60 },        { kColPremier, u8"N°", 110 },
-    { kColSecond, u8"Valeur", 90 },      { kColDuree, u8"Durée (ticks)", 110 },
+    { kColSecond, u8"Valeur", 90 },      { kColDuree, u8"Durée (temps+ticks)", 150 },
 };
 }
 
@@ -371,8 +371,15 @@ juce::String EventListComponent::texteDe(const EventRow& ligne, int columnId) co
             return ligne.kind == EventKind::ProgramChange ? juce::String::fromUTF8(u8"—")
                                                            : juce::String(ligne.second);
         case kColDuree:
-            return ligne.kind == EventKind::Note ? juce::String(static_cast<int>(ligne.length))
-                                                  : juce::String::fromUTF8(u8"—");
+            if (ligne.kind != EventKind::Note) return juce::String::fromUTF8(u8"—");
+            // D465 : TEMPS+TICKS ET LE BRUT, comme la colonne Position : « 1+88  (568) ».
+            if (project_ != nullptr && project_->ticksPerQuarterNote > 0) {
+                const auto parNoire = static_cast<long long>(project_->ticksPerQuarterNote);
+                const auto longueur = static_cast<long long>(ligne.length);
+                return juce::String(longueur / parNoire) + "+" + juce::String(longueur % parNoire)
+                       + "  (" + juce::String(longueur) + ")";
+            }
+            return juce::String(static_cast<int>(ligne.length));
         default: return {};
     }
 }

@@ -2258,8 +2258,8 @@ const Paire kAnglais[] = {
       "No." },
     { "Valeur",
       "Value" },
-    { "Durée (ticks)",
-      "Length (ticks)" },
+    { "Durée (temps+ticks)",
+      "Length (beats+ticks)" },
     { "%1 événement(s)",
       "%1 event(s)" },
     // L'arrangement, le rack, la façade, le séquenceur, le spectre.
