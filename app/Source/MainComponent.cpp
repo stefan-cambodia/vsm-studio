@@ -3347,7 +3347,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // GRISÉE tant qu'aucun import n'a eu lieu, plutôt qu'absente : une
             // entrée qui apparaît puis disparaît ne s'apprend pas. Là, on voit
             // qu'un rapport EXISTE et où le retrouver.
-            menu.addItem(kMenuFileImportReport, tr(u8"Voir le dernier rapport d'import"),
+            // D452 : le volet porte le dernier rapport d'OUVERTURE comme d'import.
+            menu.addItem(kMenuFileImportReport, tr(u8"Voir le dernier rapport (ouverture ou import)"),
                          importReport_.hasReport(), false);
             // Le rapport de RECONSTRUCTION du projet ouvert (§ 4.3 du CDC
             // multipiste) : grisé quand le projet n'en a pas — un projet

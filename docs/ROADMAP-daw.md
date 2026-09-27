@@ -33763,3 +33763,23 @@ campagne, 0 ouverture seule ; le projet d'essai compte « 5 réserves à
 l'ouverture » (l'information n'est plus comptée comme une réserve ; D412 en
 comptait 6), « 5 reservations on opening » en anglais, 0 ligne française. Fumée
 0 raté ; préférences inchangées. La phrase de D418 est désormais vraie.
+
+---
+
+### Phase D452 — « Voir le dernier rapport d'import » rouvrait aussi le rapport d'ouverture (27/09/2026)
+
+**D'OÙ ELLE VIENT — D451.** L'entrée rouvre le volet, qui porte le dernier
+rapport de quatre clients (ouverture d'un projet, import d'un projet d'un autre
+DAW, échec d'import, reconstruction — `ClientDuRapport`). Son nom n'en dit
+qu'un : qui cherche les réserves du projet qu'il vient d'OUVRIR ne regarde pas
+sous « import ».
+
+**ATTENDU, écrit avant la mesure** : « Voir le dernier rapport (ouverture ou
+import) » / « Show the last report (opening or import) », active sur
+`morceau-0001-g1`, et son exécution rouvre le même volet qu'en D451 ;
+`menus-cites` vert ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** « Voir le dernier rapport (ouverture ou import) » exécutée
+(menu Fichier) → le volet rouvert, « 1 information à l'ouverture » ; en anglais
+« Show the last report (opening or import) » → « 1 information on opening ».
+`menus-cites` 10/0 ; fumée 0 raté ; préférences inchangées.
