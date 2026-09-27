@@ -34057,3 +34057,35 @@ vertes ; préférences identiques. Campagne gelée pendant le build (10:38 → 1
 **Reste, écrit** : un point TIRÉ prend la valeur de la lane, à 128 près ; c'est
 la résolution de l'écran (quelques pixels par pas), pas une perte sur ce qu'on
 n'a pas touché.
+
+---
+
+### Phase D459 — « Filter Cutoff ● 606 » sur une courbe de 607 points (27/09/2026)
+
+**D'OÙ ELLE VIENT — LES JOURNAUX DE D455 ET D456.** Après un point posé, le relevé
+dit « « Filter Cutoff  ● 606 », … 607 point(s) » : la marque de D234 (le nombre
+de points d'un paramètre, dans sa liste) n'est calculée qu'à la construction de
+la liste, jamais après une édition. Poser le premier point d'un paramètre vide
+ne le marque pas ; retirer le dernier laisse la marque. La liste MIDI CC voisine
+se refait à chaque retouche (« Pitch bend (5 point(s)) » en D458).
+
+**ATTENDU, écrit avant la mesure** (relevé `VSM_AUTOMATION`, qui lit le texte
+de la liste) :
+1. témoin (binaire de D458) : `cdl`, point posé à `0.5:0.5` → « ● 606 » et
+   607 point(s) ; `cdl` sans automation, point posé → « Detune » sans marque,
+   1 point(s) ;
+2. après : « ● 607 » et 607 ; « Detune  ● 1 » et 1 ;
+3. fumée 0 raté ; gardes vertes ; préférences inchangées.
+
+**MESURÉ — TENU AU SECOND ESSAI.**
+1. **Témoin** : « Filter Cutoff ● 606 » pour 607 point(s) ; « Detune » sans
+   marque pour 1 point(s).
+2. **Premier essai : la liste perdait son choix** — le relevé disait « aucun
+   paramètre choisi ». `ComboBox::getSelectedId()` rend 0 dès que le texte
+   affiché diffère de celui de l'article (`juce_ComboBox.cpp:259`) ; lu APRÈS
+   `changeItemText`, il ne voyait plus l'article choisi, et le texte affiché
+   restait l'ancien. L'article choisi se lit désormais AVANT de changer son texte.
+3. **Après** : « Filter Cutoff ● 607 » pour 607 ; « Detune ● 1 » pour 1 (photo :
+   « Detune ● 1 » dans la liste) ; le banc (c) de D456 rejoué, toujours tenu
+   (master intacte, Detune d'un point, « Detune ● 1 »).
+4. Fumée 0 raté ; gardes vertes ; préférences identiques.

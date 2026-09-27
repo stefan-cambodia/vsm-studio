@@ -252,6 +252,25 @@ void AutomationComponent::commit() {
         for (const auto& p : editPoints_) lane.addPoint(p.tick, p.value, p.curveToNext, p.bend);
         lanes_.push_back(std::move(lane));
     }
+    // D459 : LA MARQUE DE D234 SUIT LA COURBE. Calculée à la construction de la
+    // liste seulement, elle disait « ● 606 » sur 607 points, ne marquait pas un
+    // paramètre qui venait de recevoir son premier point, et gardait la marque
+    // d'une courbe vidée. Le texte de l'article est refait, sans notification.
+    for (size_t i = 0; i < paramEntries_.size(); ++i)
+        if (paramEntries_[i].id == selectedParam_) {
+            juce::String libelle = juce::String::fromUTF8(paramEntries_[i].nom.c_str());
+            if (!editPoints_.empty())
+                libelle += juce::String::fromUTF8(u8"  ● ") + juce::String(static_cast<int>(editPoints_.size()));
+            // `changeItemText` ne touche pas le texte AFFICHÉ ; `setSelectedId` le
+            // refait quand il diffère (juce_ComboBox.cpp), sans notification. Et
+            // l'article choisi se lit AVANT : `getSelectedId()` rend 0 dès que le
+            // texte affiché diffère de celui de l'article -- le premier essai le
+            // lisait après, et la liste restait sans choix (« aucun paramètre
+            // choisi » au relevé).
+            const bool choisi = paramBox_.getSelectedId() == static_cast<int>(i) + 1;
+            paramBox_.changeItemText(static_cast<int>(i) + 1, libelle);
+            if (choisi) paramBox_.setSelectedId(static_cast<int>(i) + 1, juce::dontSendNotification);
+        }
     if (onAutomationChanged) onAutomationChanged(lanes_);
 }
 
