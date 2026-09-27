@@ -1019,7 +1019,7 @@ perdu : les pistes audio vues mais non reprises, les pistes sans instrument, et
 *lus*, qui vous permet de voir si la lecture a mordu sans avoir à nous croire.
 Les avertissements sont en couleur ; le bouton *Copier* met le texte entier dans
 le presse-papiers. Le rapport se relit à tout moment par *Fichier ▸ Voir le
-dernier rapport d'import* — la question à laquelle il répond, « pourquoi cette
+dernier rapport (ouverture ou import)* — la question à laquelle il répond, « pourquoi cette
 piste est-elle muette ? », se pose une heure plus tard.
 
 ![Le rapport d'import : ce qui a été repris, ce qui ne pouvait pas l'être.](images/manuel/rapport-import.png)
