@@ -33799,7 +33799,8 @@ par les statistiques de D450.
 **CE QUI RESTE, écrit** : la ligne « percussion : vsm.tr909 n'a pas cette voix ;
 … » est un TEXTE écrit par la chaîne Python dans `rapport.json` ; la changer
 demande d'éditer `analyse/analyzer/` — interdit pendant la campagne (CLAUDE.md).
-Elle attend la fin de la course.
+Elle attend la fin de la course. La même ligne porte ses bandes sans unité
+(« 20-80=0% 80-200=2% … » — des hertz) : même source, même attente.
 
 **ATTENDU, écrit avant la mesure** : « bass → Multisample (acoustique
 échantillonné) », « other → PCM + Synth Hybrid », « piano → Spectral (le spectre
