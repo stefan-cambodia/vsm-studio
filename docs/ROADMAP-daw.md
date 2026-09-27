@@ -33839,3 +33839,72 @@ Cubase) est écartée au niveau du paragraphe.
 Rouge sur le mode d'emploi d'avant D452 (`276cc57~1`) : **2 fautes**, les deux
 citations périmées exactement — « Exporter audio… » et « Voir le dernier rapport
 d'import ».
+
+---
+
+### Phase D455 — un point d'automation se posait sans qu'on lise sa valeur, sur un axe sans unité (27/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT L'ONGLET AUTOMATION** (`cdl`, « Filter Cutoff »,
+606 points). L'axe se gradue « 18000 (log) », « 10000 », « 1000 », « 100 »,
+« 20.0 » : des hertz, jamais écrits (la famille de D400, D415, D424). Et surtout,
+un point qu'on pose ou qu'on glisse ne dit JAMAIS ce qu'il vaut : le panneau n'a
+aucune infobulle et ne peint aucune valeur (`AutomationComponent.cpp` : ses seuls
+`drawText` sont les graduations et les numéros de mesure). On règle une coupure
+à l'estime, entre deux décades d'une échelle logarithmique. La voie Tempo, à
+côté, écrit « 120.0 BPM » près de chacun de ses points ; Cubase montre la valeur
+d'un point d'automation pendant qu'on le tire, Live au survol.
+
+**LE CORRECTIF** : (1) l'unité du paramètre une fois par axe, sur la borne du
+haut, avant « (log) » — « 18000 Hz (log) » ; les autres graduations restent nues,
+comme D424 ; (2) le point qu'on vient de poser, qu'on tire ou qu'on survole porte
+sa valeur dans une bulle peinte à côté de lui, écrite comme l'afficheur du rack
+(`texteParametre` : « 1250 Hz », « 0.35 s ») ; elle suit le point pendant le
+glissé et s'en va quand la souris quitte le point ou la lane. Un point par bulle :
+606 étiquettes ne se liraient pas.
+
+**TÉMOIN** (binaire d'avant, `VSM_VUE=automation,agrandir:bas,point-automation:0.02:0.5`) :
+photo de la lane après le point posé, et la ligne `VSM_AUTOMATION : N point(s)`.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin : borne du haut « 18000 (log) », aucune valeur près du point posé ;
+2. après : « 18000 Hz (log) » en haut, « 20.0 » en bas et les décades inchangés ;
+   une bulle près du point posé, dont le texte est aussi écrit au journal
+   (`VSM_AUTOMATION : … valeur montrée « … Hz »`) et vaut ce que le point
+   enregistré vaut (le relevé et la photo disent le même nombre) ;
+3. une lane SANS unité (témoin linéaire `filter.1.drive` ou autre paramètre sans
+   unité) garde une borne nue et une bulle sans unité ;
+4. fumée 0 raté ; garde de langue 0 ; préférences inchangées.
+
+**MESURÉ — TENU** (`cdl`, `point-automation:0.5:0.5` ; texte PEINT, preuve par
+la photo et par la ligne de journal, piège de D149) :
+1. **Témoin** : borne du haut « 18000 (log) » ; le point posé à la mesure 2
+   (600 Hz, le milieu géométrique) ne porte aucune valeur ; journal
+   « 607 point(s) sur la courbe choisie », rien d'autre.
+2. **Après** : « 18000 Hz (log) » en haut ; « 10000 », « 1000 », « 600 »,
+   « 100 », « 20.0 » inchangés ; une bulle « 600 Hz » cerclée d'ambre à droite
+   du point ; journal « valeur montrée « 600 Hz » (valeur du point : 600.0000) »
+   — la photo et la valeur enregistrée disent le même nombre.
+3. **Sans unité** (copie de `cdl` sans automation : la lane s'ouvre sur
+   « Detune », 0..1, linéaire ; point à `0.5:0.3`) : témoin « 1.00 » / « 0.000 »
+   et point nu ; après, bornes identiques, bulle « 0.70 » (point : 0.7009),
+   aucune unité inventée.
+4. Fumée 0 raté ; `verifier.sh --gardes` vert (langue 0) ; préférences de
+   l'utilisateur identiques (`cmp`, copie prise juste avant la série).
+
+**Le build a recompilé `MainComponent.cpp`** (l'en-tête change) : la campagne s2
+a été GELÉE pendant la compilation (`kill -STOP` du groupe, reprise automatique
+détachée à la fin du build, 10:24 → 10:25), le remède de D285.
+
+**Relevé en passant, et plus grave — trois défauts du même `commit()`,
+laissés aux phases suivantes pour ne pas mêler les variables** :
+- un point posé sur un tick DÉJÀ occupé s'AJOUTE à la lane (deux points
+  dessinés au même tick, vu sur un premier témoin à `0.02:0.5`), quand le moteur
+  (`AutomationLane::addPoint`) REMPLACE : on voit deux valeurs, on en entend une,
+  choisie par l'ordre d'un `std::sort` non stable ;
+- `commit()` réécrit la lane par `addPoint(tick, value, curveToNext)` — **sans
+  `bend`** : la courbure d'un segment (D17.7) serait perdue par toute retouche
+  faite dans l'onglet ;
+- `commit()` et `loadSelectedLane()` reconnaissent une lane à sa piste et à son
+  `targetParam`, **sans regarder sa cible** (`target`) : une courbe de volume ou
+  de panoramique de la même piste pourrait être prise pour un paramètre de
+  l'instrument, et effacée par la retouche de celui-ci.

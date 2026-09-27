@@ -34,6 +34,9 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
+    /// D455 : le survol d'un point montre sa valeur, comme le glissé.
+    void mouseMove(const juce::MouseEvent&) override;
+    void mouseExit(const juce::MouseEvent&) override;
 
     /// D345 : VSM_AUTOMATION=1 -- ce que la lane MONTRE : le paramètre choisi,
     /// son unité, ses bornes, l'échelle employée et le nombre de points. L'échelle
@@ -118,6 +121,13 @@ private:
     mutable std::vector<float> graduations_;
 
     int dragIndex_ = -1;
+    /// D455 : LE POINT DONT LA VALEUR SE LIT -- celui qu'on vient de poser, qu'on
+    /// tire ou qu'on survole ; -1 : aucun. Un seul : 606 étiquettes ne se liraient pas.
+    int pointMontre_ = -1;
+    /// D455 : une valeur du paramètre choisi, avec son unité (« 1250 Hz »).
+    juce::String texteValeur(float valeur) const;
+    /// D455 : le cadre de la bulle du point montré, dans la zone d'édition.
+    juce::Rectangle<int> cadreDeBulle(int indexPoint) const;
     vsm::audio::engine::Tick maxTick_ = 1920 * 4;
     vsm::audio::engine::Tick playheadTick_ = -1;   // D285 : hors lane tant qu'aucun tick reçu
 

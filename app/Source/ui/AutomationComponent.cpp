@@ -1,5 +1,6 @@
 #include "AutomationComponent.h"
 #include <cmath>
+#include "BulleDeValeur.h"
 #include "Langue.h"
 #include <algorithm>
 
@@ -194,6 +195,32 @@ void AutomationComponent::loadSelectedLane() {
         if (lane.targetTrackIndex == selectedTrack_ && lane.targetParam == selectedParam_)
             editPoints_ = lane.points();
     dragIndex_ = -1;
+    pointMontre_ = -1;   // D455 : l'index désignait un point de l'ancienne courbe
+}
+
+juce::String AutomationComponent::texteValeur(float valeur) const {
+    // D455 : LA VALEUR COMME L'AFFICHEUR DU RACK (`texteParametre`, D135) -- le
+    // même paramètre ne s'écrit pas de deux façons selon l'endroit où on le règle.
+    juce::String unite;
+    for (const auto& entree : paramEntries_)
+        if (entree.id == selectedParam_) unite = juce::String::fromUTF8(entree.unit.c_str());
+    return vsm::app::ui::texteParametre(static_cast<double>(valeur), unite);
+}
+
+juce::Rectangle<int> AutomationComponent::cadreDeBulle(int indexPoint) const {
+    // D455 : à droite et au-dessus du point, comme l'étiquette d'un point de
+    // tempo ; retournée à gauche ou dessous quand le bord de la zone la couperait.
+    const auto a = editorArea();
+    const auto& p = editPoints_[static_cast<size_t>(indexPoint)];
+    const int x = tickToX(p.tick), y = valueToY(p.value);
+    const juce::Font police(juce::FontOptions(13.0f));
+    const int largeur = static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(
+                            police, texteValeur(p.value)))) + 12;
+    constexpr int hauteur = 20, ecart = 8;
+    int bx = x + ecart, by = y - ecart - hauteur;
+    if (bx + largeur > a.getRight()) bx = x - ecart - largeur;
+    if (by < a.getY()) by = y + ecart;
+    return { juce::jmax(a.getX(), bx), by, largeur, hauteur };
 }
 
 void AutomationComponent::commit() {
@@ -293,8 +320,16 @@ bool AutomationComponent::poserUnPointPourCapture(double fractionX, double fract
                              maintenant, 1, false);
     mouseDown(e);
     mouseUp(e);
+    // D455 : la bulle se lit aussi au journal -- c'est un texte PEINT, que le
+    // relevé des composants ne voit pas (piège de D149).
+    const juce::String montre = pointMontre_ >= 0 && pointMontre_ < static_cast<int>(editPoints_.size())
+        ? juce::String::fromUTF8(u8", valeur montrée « ")
+              + texteValeur(editPoints_[static_cast<size_t>(pointMontre_)].value)
+              + juce::String::fromUTF8(u8" » (valeur du point : ")
+              + juce::String(editPoints_[static_cast<size_t>(pointMontre_)].value, 4) + ")"
+        : juce::String::fromUTF8(u8", aucune valeur montrée");
     std::fputs(("VSM_AUTOMATION : " + juce::String(static_cast<int>(editPoints_.size()))
-                + juce::String::fromUTF8(u8" point(s) sur la courbe choisie\n")).toRawUTF8(), stderr);
+                + juce::String::fromUTF8(u8" point(s) sur la courbe choisie") + montre + "\n").toRawUTF8(), stderr);
     return true;
 }
 
@@ -316,6 +351,7 @@ void AutomationComponent::mouseDown(const juce::MouseEvent& e) {
             ouvrirPas();
             editPoints_.erase(editPoints_.begin() + hit);
             dragIndex_ = -1;
+            pointMontre_ = -1;   // D455
             commit();
             repaint();
         }
@@ -337,6 +373,7 @@ void AutomationComponent::mouseDown(const juce::MouseEvent& e) {
             if (editPoints_[i].tick == np.tick) { dragIndex_ = static_cast<int>(i); break; }
         commit();
     }
+    pointMontre_ = dragIndex_;   // D455 : le point posé ou saisi dit sa valeur
     repaint();
 }
 
@@ -357,6 +394,16 @@ void AutomationComponent::mouseDrag(const juce::MouseEvent& e) {
 
 void AutomationComponent::mouseUp(const juce::MouseEvent&) {
     if (dragIndex_ >= 0) { commit(); dragIndex_ = -1; }
+}
+
+void AutomationComponent::mouseMove(const juce::MouseEvent& e) {
+    // D455 : le survol montre la valeur du point sous la souris, et la retire ailleurs.
+    const int sous = hasSelection_ ? findPointNear(e.getPosition()) : -1;
+    if (sous != pointMontre_) { pointMontre_ = sous; repaint(); }
+}
+
+void AutomationComponent::mouseExit(const juce::MouseEvent&) {
+    if (dragIndex_ < 0 && pointMontre_ >= 0) { pointMontre_ = -1; repaint(); }
 }
 
 // ----------------------------------------------------------------- paint ---
@@ -426,8 +473,14 @@ void AutomationComponent::paint(juce::Graphics& g) {
     // les décades sont graduées, une décade occupe souvent la place du milieu et
     // son libellé se sautait : plus rien ne disait que l'échelle est
     // logarithmique. Accroché à une borne, le mot est toujours là.
-    g.drawText(ecrire(paramMax_) + (echelleLog_ ? juce::String(" (log)") : juce::String()),
-               a.getX() + 2, a.getY(), 110, 14, juce::Justification::topLeft);
+    // D455 : ET L'UNITÉ, UNE FOIS PAR AXE, sur cette même borne (« 18000 Hz
+    // (log) ») -- les autres graduations restent nues, comme l'analyseur (D424).
+    juce::String uniteAxe;
+    for (const auto& entree : paramEntries_)
+        if (entree.id == selectedParam_) uniteAxe = juce::String::fromUTF8(entree.unit.c_str());
+    g.drawText(ecrire(paramMax_) + (uniteAxe.isNotEmpty() ? " " + uniteAxe : juce::String())
+                   + (echelleLog_ ? juce::String(" (log)") : juce::String()),
+               a.getX() + 2, a.getY(), 160, 14, juce::Justification::topLeft);
     g.drawText(ecrire(paramMin_), a.getX() + 2, a.getBottom() - 14, 70, 14, juce::Justification::bottomLeft);
     if (echelleLog_) {
         // D346 : UNE GRADUATION PAR DÉCADE. Trois libellés — les deux bornes et le
@@ -504,6 +557,19 @@ void AutomationComponent::paint(juce::Graphics& g) {
         float y = static_cast<float>(valueToY(p.value));
         g.setColour(Palette::accentAmber);
         g.fillEllipse(x - kPointRadius, y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f);
+    }
+    // D455 : LA VALEUR DU POINT MONTRÉ. Aucun `drawText` ne l'écrivait : une
+    // coupure se réglait à l'estime, entre deux décades d'une échelle log.
+    if (pointMontre_ >= 0 && pointMontre_ < static_cast<int>(editPoints_.size())) {
+        const auto cadre = cadreDeBulle(pointMontre_);
+        g.setColour(Palette::background.withAlpha(0.92f));
+        g.fillRoundedRectangle(cadre.toFloat(), 4.0f);
+        g.setColour(Palette::accentAmber);
+        g.drawRoundedRectangle(cadre.toFloat().reduced(0.5f), 4.0f, 1.0f);
+        g.setColour(Palette::textPrimary);
+        g.setFont(juce::Font(juce::FontOptions(13.0f)));
+        g.drawText(texteValeur(editPoints_[static_cast<size_t>(pointMontre_)].value), cadre,
+                   juce::Justification::centred);
     }
     dessinerTete(g);
 }
