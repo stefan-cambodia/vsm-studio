@@ -33908,3 +33908,57 @@ laissés aux phases suivantes pour ne pas mêler les variables** :
   `targetParam`, **sans regarder sa cible** (`target`) : une courbe de volume ou
   de panoramique de la même piste pourrait être prise pour un paramètre de
   l'instrument, et effacée par la retouche de celui-ci.
+
+---
+
+### Phase D456 — l'onglet Automation doublait un point, perdait la courbure, et prenait une courbe du master pour un réglage de la machine (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RELEVÉ EN PASSANT » DE D455.** Trois défauts du même
+panneau, trois variables : chacune a son projet de banc, son témoin pris sur le
+binaire de D455 (`afe308e`), et sa mesure. La preuve est le FICHIER enregistré
+(`VSM_ENREGISTRER`), pas l'écran : les trois défauts font diverger ce qu'on voit
+de ce qu'on garde.
+
+**(a) Un point posé sur un tick occupé.** `mouseDown` ajoute toujours ; le moteur
+(`AutomationLane::addPoint`) remplace. Banc : `cdl`, point à `0.02:0.5` (le
+tick 0, où un point vaut 18000 Hz).
+- témoin attendu : le panneau compte 607 points, le fichier 606 ; la valeur
+  écrite au tick 0 est l'une des deux, sans règle ;
+- ATTENDU : le panneau et le fichier comptent 606 ; le tick 0 vaut la valeur
+  posée (600 Hz), comme le moteur l'aurait fait ; la bulle de D455 dit 600 Hz.
+
+**(b) La courbure perdue.** `commit()` réécrit la lane choisie sans `bend`. Banc :
+copie de `cdl` dont dix segments de « Filter Cutoff » portent une courbure 0,5
+(celle que la poignée de D17.7 pose) ; un point posé à `0.5:0.5`.
+- témoin attendu : le fichier enregistré garde 0 point courbé sur 10 ;
+- ATTENDU : 10 points courbés sur 10, les autres valeurs inchangées.
+
+**(c) La cible ignorée.** `loadSelectedLane`, `commit` et le compte « ● N » de la
+liste reconnaissent une lane à (piste, numéro de paramètre) sans regarder
+`target`. Une courbe du master est rangée sur la piste 0 ; « EQ Low Gain » y
+porte le numéro 1, comme « Detune » du Supersaw. Banc : copie de `cdl` sans
+automation, une courbe `master.EQ Low Gain` de 2 points (-6 → +6 dB) ; un point
+posé à `0.5:0.3`.
+- témoin attendu : l'onglet s'ouvre sur « Detune ● 2 », montre la courbe du
+  master sur l'échelle 0..1 ; après le point posé, le fichier n'a plus de courbe
+  `master.EQ Low Gain` — elle est devenue un « Detune » de 3 points ;
+- ATTENDU : l'onglet s'ouvre sur « Detune » sans marque ; après le point, le
+  fichier porte `master.EQ Low Gain` intacte (2 points, -6 et +6) ET un Detune
+  d'un point.
+
+Commun : fumée 0 raté ; gardes vertes ; préférences inchangées.
+
+**MESURÉ — LES TROIS TENUS** (binaire de D455 pour les témoins, puis celui de
+cette phase ; même script de banc, `VSM_ENREGISTRER`, fichier relu champ par
+champ) :
+
+| cas | témoin | après |
+|---|---|---|
+| (a) tick 0 occupé, `cdl` | panneau **607** points, fichier **606** ; bulle « 18000 Hz » — l'ANCIEN point, la bulle de D455 mentait sur ce cas | panneau **606**, fichier **606**, tick 0 = **600** ; bulle « 600 Hz » |
+| (b) 10 segments courbés | sans geste : 10 courbés sur 10 ; un point posé : **0** | un point posé : **10** courbés, 607 points |
+| (c) courbe `master.EQ Low Gain` | « Detune ● 2 » ; un point posé : la courbe master **disparaît**, devenue un Detune de 3 points dont le premier vaut **-6** sur une échelle 0..1 | « Detune » sans marque ; le fichier garde `master.EQ Low Gain` (0 → -6, 3840 → +6) ET un Detune d'1 point |
+
+Les témoins SANS geste ((b) et (c) ouverts puis enregistrés) gardent tout : c'est
+bien le point posé dans l'onglet qui détruisait. Fumée 0 raté ; gardes vertes ;
+préférences identiques (`cmp`). Seul `AutomationComponent.cpp` a changé : pas de
+recompilation de `MainComponent.cpp`, pas de gel de la campagne.

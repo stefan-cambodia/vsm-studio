@@ -9,6 +9,18 @@ using vsm::audio::engine::AutomationPoint;
 using vsm::audio::engine::Tick;
 using namespace vsm::ui;
 
+namespace {
+// D456 : UNE LANE DE CE PANNEAU EST UN RÉGLAGE DE LA MACHINE. Les lanes reçues
+// sont TOUTES celles du projet -- volume, panoramique, départs, inserts, master --
+// et elles se reconnaissaient à (piste, numéro) seulement : la courbe
+// `master.EQ Low Gain`, rangée sur la piste 0 sous le numéro 1, s'ouvrait comme
+// « Detune ● 2 » du Supersaw, et le premier point posé la détruisait.
+bool estLaLane(const AutomationLane& l, size_t piste, vsm::audio::plugin::ParamId param) {
+    return l.target == vsm::audio::engine::AutomationTarget::InstrumentParam
+        && l.targetTrackIndex == piste && l.targetParam == param;
+}
+} // namespace
+
 AutomationComponent::AutomationComponent() {
     setName("automation.lane");   // D435 : le nom par lequel le banc le désigne (clic:)
     // D94 : les trois libellés sont posés par `retraduire()`, en fin de
@@ -170,7 +182,7 @@ void AutomationComponent::rebuildParamBox() {
         for (const auto& info : inst->parameterList()) {
             size_t points = 0;
             for (const auto& lane : lanes_)
-                if (lane.targetTrackIndex == selectedTrack_ && lane.targetParam == info.id)
+                if (estLaLane(lane, selectedTrack_, info.id))   // D456
                     points = lane.points().size();
             juce::String libelle = juce::String(info.name);
             if (points > 0) {
@@ -192,7 +204,7 @@ void AutomationComponent::rebuildParamBox() {
 void AutomationComponent::loadSelectedLane() {
     editPoints_.clear();
     for (const auto& lane : lanes_)
-        if (lane.targetTrackIndex == selectedTrack_ && lane.targetParam == selectedParam_)
+        if (estLaLane(lane, selectedTrack_, selectedParam_))   // D456
             editPoints_ = lane.points();
     dragIndex_ = -1;
     pointMontre_ = -1;   // D455 : l'index désignait un point de l'ancienne courbe
@@ -227,15 +239,17 @@ void AutomationComponent::commit() {
     // Retire l'ancienne lane (track,param) puis rajoute si des points existent.
     lanes_.erase(std::remove_if(lanes_.begin(), lanes_.end(),
                                 [this](const AutomationLane& l) {
-                                    return l.targetTrackIndex == selectedTrack_ &&
-                                           l.targetParam == selectedParam_;
+                                    return estLaLane(l, selectedTrack_, selectedParam_);   // D456
                                 }),
                  lanes_.end());
     if (!editPoints_.empty()) {
         AutomationLane lane;
         lane.targetTrackIndex = selectedTrack_;
+        lane.target = vsm::audio::engine::AutomationTarget::InstrumentParam;   // D456
         lane.targetParam = selectedParam_;
-        for (const auto& p : editPoints_) lane.addPoint(p.tick, p.value, p.curveToNext);
+        // D456 : ET LA COURBURE (D17.7). Sans `bend`, la moindre retouche dans cet
+        // onglet redressait tous les segments courbés de la lane : 10 sur 10 au banc.
+        for (const auto& p : editPoints_) lane.addPoint(p.tick, p.value, p.curveToNext, p.bend);
         lanes_.push_back(std::move(lane));
     }
     if (onAutomationChanged) onAutomationChanged(lanes_);
@@ -365,10 +379,20 @@ void AutomationComponent::mouseDown(const juce::MouseEvent& e) {
         AutomationPoint np;
         np.tick = xToTick(e.x);
         np.value = yToValue(e.y);
-        editPoints_.push_back(np);
-        std::sort(editPoints_.begin(), editPoints_.end(),
-                  [](const AutomationPoint& a, const AutomationPoint& b) { return a.tick < b.tick; });
-        // Retrouve l'index du point inséré pour permettre un drag immédiat.
+        // D456 : UN TICK OCCUPÉ CHANGE DE VALEUR, il ne reçoit pas un second point.
+        // C'est la règle du moteur (`AutomationLane::addPoint` remplace) : le
+        // panneau en ajoutait un, dessinait deux valeurs au même instant, et la
+        // lane publiée n'en gardait qu'une -- celle que l'ordre du tri désignait.
+        const auto occupe = std::find_if(editPoints_.begin(), editPoints_.end(),
+                                         [&np](const AutomationPoint& p) { return p.tick == np.tick; });
+        if (occupe != editPoints_.end()) {
+            occupe->value = np.value;
+        } else {
+            editPoints_.push_back(np);
+            std::sort(editPoints_.begin(), editPoints_.end(),
+                      [](const AutomationPoint& a, const AutomationPoint& b) { return a.tick < b.tick; });
+        }
+        // Retrouve l'index du point posé pour permettre un drag immédiat.
         for (size_t i = 0; i < editPoints_.size(); ++i)
             if (editPoints_[i].tick == np.tick) { dragIndex_ = static_cast<int>(i); break; }
         commit();
