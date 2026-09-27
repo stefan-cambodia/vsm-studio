@@ -33962,3 +33962,53 @@ Les témoins SANS geste ((b) et (c) ouverts puis enregistrés) gardent tout : c'
 bien le point posé dans l'onglet qui détruisait. Fumée 0 raté ; gardes vertes ;
 préférences identiques (`cmp`). Seul `AutomationComponent.cpp` a changé : pas de
 recompilation de `MainComponent.cpp`, pas de gel de la campagne.
+
+---
+
+### Phase D457 — la lane MIDI CC ne disait pas non plus la valeur d'un point (27/09/2026)
+
+**D'OÙ ELLE VIENT — D455, dans l'onglet voisin.** La lane MIDI CC gradue « 127 /
+64 / 0 » (ou « haut / centre / bas » pour le pitch bend) et ne peint aucune
+valeur de point : un CC 74 se pose à l'estime entre 0 et 127.
+
+**LE CORRECTIF** : la bulle de D455, à l'identique (point posé, tiré ou survolé ;
+un seul). Le texte est la valeur ÉCRITE dans la piste : l'entier 0..127 pour un
+CC et l'aftertouch ; pour le pitch bend, la valeur 14 bits signée que `commit()`
+écrit (`v × 128 − 8192` : « +2048 », « 0 », « −8192 »), pas l'unité interne de
+la lane.
+
+**BANC** : `cdl`, onglet MIDI CC (« 74 · coupure », vide), `VSM_GESTE_APRES`
+`clic:midicc.lane:0.5,0.3` puis `exporter-midi:` ; la valeur du `.mid` exporté
+se relit par `mido`.
+
+**ATTENDU, écrit avant la mesure** :
+1. témoin : un CC 74 posé, aucune valeur peinte près du point (photo) ;
+2. après : une bulle près du point, dont le nombre est EXACTEMENT la valeur du
+   CC 74 du `.mid` exporté ;
+3. fumée 0 raté ; gardes vertes ; préférences inchangées.
+
+**MESURÉ — TENU, et un second défaut trouvé en chemin.**
+1. **Témoin** : CC 74 posé à la mesure 2, exporté à **99** ; aucune valeur
+   peinte (photo).
+2. **Premier essai du correctif : RATÉ, et c'est la photo qui l'a dit** — même
+   image que le témoin. `commit()` relit la piste (`rebuildControllerBox` →
+   `loadPoints`), qui remet à -1 l'index du point montré… **et celui du point
+   à tirer**. Le « drag immédiat » d'un CC qu'on vient de poser (le commentaire
+   l'annonçait) ne tirait donc RIEN : poser-et-tirer d'un seul geste
+   laissait le point où le clic l'avait posé. Les deux index se retrouvent
+   désormais par leur tick APRÈS `commit()` (un tick est unique par
+   contrôleur), et de même à la fin d'un glissé. Ce second défaut est établi par
+   la lecture du code et par la bulle absente ; le glissé lui-même n'est pas
+   mesuré — aucun verbe de banc ne tire la souris, dit.
+3. **Après** : une bulle « 99 » au-dessus à droite du point ; le `.mid` exporté
+   porte CC 74 = **99** — la photo et le fichier disent le même nombre.
+4. Non mesuré, dit : la bulle du pitch bend (« +2048 ») — le banc ne choisit pas
+   le contrôleur ; le calcul est celui de `commit()`, recopié.
+5. Fumée 0 raté ; gardes vertes ; préférences identiques. La campagne a été
+   gelée pendant le build qui recompilait `MainComponent.cpp` (10:32 → 10:34).
+
+**Relevé en passant, non traité** : la lane du pitch bend trace sur 7 bits et
+`commit()` RÉÉCRIT tous les bends de la piste depuis ces 7 bits — la moindre
+retouche arrondit chaque bend importé au multiple de 128 (l'en-tête le dit :
+« un bend enregistré garde ses 14 bits tant qu'on ne touche pas la lane »).
+C'est une perte écrite, pas encore mesurée.

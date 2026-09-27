@@ -179,6 +179,7 @@ void MidiCcComponent::rebuildControllerBox() {
 void MidiCcComponent::loadPoints() {
     points_.clear();
     dragIndex_ = -1;
+    pointMontre_ = -1;   // D457 : l'index désignait un point de l'ancienne liste
     if (const Track* track = activeTrack()) {
         if (selectedController_ == kPitchBend) {
             // 14 bits ramenés à 7 pour la lane : (valeur + 8192) / 128, le
@@ -318,6 +319,7 @@ void MidiCcComponent::mouseDown(const juce::MouseEvent& e) {
         if (hit >= 0) {
             points_.erase(points_.begin() + hit);
             dragIndex_ = -1;
+            pointMontre_ = -1;   // D457
             commit("Supprimer un CC");
         }
         return;
@@ -325,6 +327,8 @@ void MidiCcComponent::mouseDown(const juce::MouseEvent& e) {
     dragged_ = false;
     if (hit >= 0) {
         dragIndex_ = hit;
+        pointMontre_ = hit;   // D457
+        repaint();
         return;
     }
     const Tick tick = xToTick(e.x);
@@ -336,9 +340,15 @@ void MidiCcComponent::mouseDown(const juce::MouseEvent& e) {
                   points_.end());
     points_.push_back({tick, value});
     std::sort(points_.begin(), points_.end(), [](const Point& a, const Point& b) { return a.tick < b.tick; });
+    commit("Ajouter un CC");
+    // D457 : RETROUVÉ APRÈS `commit()`, pas avant. `commit()` relit la piste
+    // (`rebuildControllerBox` → `loadPoints`), qui remet l'index à -1 : le « drag
+    // immédiat » d'un point qu'on vient de poser ne tirait rien, et sa bulle
+    // s'éteignait avant d'être peinte. Le tick est unique pour ce contrôleur.
     for (size_t i = 0; i < points_.size(); ++i)
         if (points_[i].tick == tick) { dragIndex_ = static_cast<int>(i); break; }
-    commit("Ajouter un CC");
+    pointMontre_ = dragIndex_;   // D457 : le point posé dit sa valeur
+    repaint();
 }
 
 void MidiCcComponent::mouseDrag(const juce::MouseEvent& e) {
@@ -354,9 +364,34 @@ void MidiCcComponent::mouseDrag(const juce::MouseEvent& e) {
 }
 
 void MidiCcComponent::mouseUp(const juce::MouseEvent&) {
-    if (dragIndex_ >= 0 && dragged_) commit(u8"Déplacer un CC");
+    if (dragIndex_ >= 0 && dragIndex_ < static_cast<int>(points_.size()) && dragged_) {
+        const Tick lache = points_[static_cast<size_t>(dragIndex_)].tick;
+        commit(u8"Déplacer un CC");   // relit la piste : l'index est à retrouver (D457)
+        for (size_t i = 0; i < points_.size(); ++i)
+            if (points_[i].tick == lache) { pointMontre_ = static_cast<int>(i); break; }
+        repaint();
+    }
     dragIndex_ = -1;
     dragged_ = false;
+}
+
+void MidiCcComponent::mouseMove(const juce::MouseEvent& e) {
+    // D457 : le survol montre la valeur du point sous la souris, et la retire ailleurs.
+    const int sous = activeTrack() != nullptr ? findPointNear(e.getPosition()) : -1;
+    if (sous != pointMontre_) { pointMontre_ = sous; repaint(); }
+}
+
+void MidiCcComponent::mouseExit(const juce::MouseEvent&) {
+    if (dragIndex_ < 0 && pointMontre_ >= 0) { pointMontre_ = -1; repaint(); }
+}
+
+juce::String MidiCcComponent::texteValeur(int valeur) const {
+    // D457 : CE QUE LA PISTE REÇOIT, pas l'unité interne de la lane. Le bend est
+    // tracé sur 7 bits mais écrit sur 14 par `commit()` : c'est ce nombre-là que
+    // la liste d'événements et un autre logiciel liront.
+    if (selectedController_ != kPitchBend) return juce::String(valeur);
+    const int bend = juce::jlimit(-8192, 8191, valeur * 128 - 8192);
+    return bend > 0 ? "+" + juce::String(bend) : juce::String(bend);
 }
 
 // ----------------------------------------------------------------- paint ---
@@ -488,6 +523,27 @@ void MidiCcComponent::paint(juce::Graphics& g) {
             g.setColour(Palette::accentAmber);
             g.fillEllipse(x - kPointRadius, y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f);
         }
+    }
+    // D457 : LA VALEUR DU POINT MONTRÉ, dans la bulle de la lane d'automation (D455) :
+    // à droite et au-dessus, retournée quand le bord de la zone la couperait.
+    if (pointMontre_ >= 0 && pointMontre_ < static_cast<int>(points_.size())) {
+        const auto& p = points_[static_cast<size_t>(pointMontre_)];
+        const juce::String texte = texteValeur(p.value);
+        const juce::Font police(juce::FontOptions(13.0f));
+        const int largeur = static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(police, texte))) + 12;
+        constexpr int hauteur = 20, ecart = 8;
+        const int px = tickToX(p.tick), py = valueToY(p.value);
+        int bx = px + ecart, by = py - ecart - hauteur;
+        if (bx + largeur > a.getRight()) bx = px - ecart - largeur;
+        if (by < a.getY()) by = py + ecart;
+        const juce::Rectangle<int> cadre(juce::jmax(a.getX(), bx), by, largeur, hauteur);
+        g.setColour(Palette::background.withAlpha(0.92f));
+        g.fillRoundedRectangle(cadre.toFloat(), 4.0f);
+        g.setColour(Palette::accentAmber);
+        g.drawRoundedRectangle(cadre.toFloat().reduced(0.5f), 4.0f, 1.0f);
+        g.setColour(Palette::textPrimary);
+        g.setFont(police);
+        g.drawText(texte, cadre, juce::Justification::centred);
     }
     dessinerTete(g);
 }

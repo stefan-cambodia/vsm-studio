@@ -51,6 +51,9 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
+    /// D457 : le survol d'un point montre sa valeur, comme le glissé.
+    void mouseMove(const juce::MouseEvent&) override;
+    void mouseExit(const juce::MouseEvent&) override;
 
     /// (Re)lit les pistes depuis le projet ; garde la piste et le contrôleur choisis.
     void setProject(vsm::sequencer::Project* project);
@@ -107,6 +110,10 @@ private:
     /// à l'autre, le plus fourni de la piste nouvelle l'emporte.
     bool controleurChoisiParLUtilisateur_ = false;
     int dragIndex_ = -1;
+    /// D457 : le point dont la valeur se lit (posé, tiré ou survolé) ; -1 : aucun.
+    int pointMontre_ = -1;
+    /// D457 : la valeur ÉCRITE dans la piste -- 0..127, ou le bend signé 14 bits.
+    juce::String texteValeur(int valeur) const;
     bool dragged_ = false;
     vsm::midi::Tick maxTick_ = 1920 * 4;
     vsm::midi::Tick playheadTick_ = -1;   // D285 : hors lane tant qu'aucun tick reçu
