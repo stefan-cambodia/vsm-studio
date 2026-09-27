@@ -34183,3 +34183,21 @@ touchée : sa note du haut n'est plus celle du cadrage.
    (10:53 → 10:55). `tools/pianoroll-zones.sh` (fini après le premier commit de
    la phase) : **7 relevés, 0 raté** — fr et en, trois tailles, et « Zoom : tout
    voir » de D338.
+
+---
+
+### Phase D462 — « +1.7 dB » sur la ligne de piste, « 1.7 dB » sur le fader (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE D460.** La même valeur s'écrit de deux façons :
+`pistes.volume : +1.7 dB` (`texteDecibels`, D135) et `mixeur.volume : 1.7 dB`
+(suffixe « dB » du fader). Le fader adopte l'écriture de la ligne de piste : le
+signe d'un gain positif, une décimale.
+
+**ATTENDU, écrit avant la mesure** : témoin `mixeur.volume : 1.7 dB` ; après
+`mixeur.volume : +1.7 dB`, identique à `pistes.volume`, 0 case périmée (D460) ;
+une saisie « -6,5 » dans la case donne toujours −6,5 dB (D445) ; fumée 0 raté ;
+préférences inchangées.
+
+**MESURÉ — TENU.** Témoin (relevé de D460) `mixeur.volume : 1.7 dB` ; après
+`mixeur.volume : +1.7 dB`, comme `pistes.volume` ; 0 case périmée ; saisie
+« -6,5 » → −6,5000 (« -6.5 dB »). Fumée 0 raté ; préférences identiques.

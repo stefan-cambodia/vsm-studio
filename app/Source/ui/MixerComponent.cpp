@@ -88,7 +88,12 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 dB
     volume_.setSkewFactorFromMidPoint(-12.0);
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
-    volume_.setTextValueSuffix(" dB");
+    // D462 : ÉCRIT COMME LA LIGNE DE PISTE (« +1.7 dB ») ; le suffixe seul écrivait
+    // « 1.7 dB » pour la même valeur.
+    volume_.textFromValueFunction = [](double db) {
+        return juce::String(db > 0.05 ? "+" : "") + juce::String(db, 1) + " dB";
+    };
+    volume_.updateText();   // D460 : la case se réécrit avec sa fonction
     volume_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
     volume_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
