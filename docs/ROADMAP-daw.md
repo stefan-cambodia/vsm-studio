@@ -34201,3 +34201,26 @@ préférences inchangées.
 **MESURÉ — TENU.** Témoin (relevé de D460) `mixeur.volume : 1.7 dB` ; après
 `mixeur.volume : +1.7 dB`, comme `pistes.volume` ; 0 case périmée ; saisie
 « -6,5 » → −6,5000 (« -6.5 dB »). Fumée 0 raté ; préférences identiques.
+
+---
+
+### Phase D463 — le fader du mixeur ne descendait pas au silence (27/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE D460.** Le fader va de −60 à +6 dB, et son bas
+vaut un gain de 0,001 : la piste n'est jamais muette au fader, là où la ligne de
+piste descend à « -inf dB ». Et une piste de gain 0 (réglée par la ligne de
+piste) s'affiche « -60.0 dB » dans la tranche (`gainToDb` rend −60 pour 0).
+Cubase et Live mettent −∞ au bas du fader.
+
+**LE CORRECTIF** : le bas de la course (−60) vaut le silence — gain 0, écrit
+« -inf dB » ; le reste de la course ne change pas.
+
+**ATTENDU, écrit avant la mesure** : saisie « -60 » dans la case du fader
+(`VSM_GESTE_PISTE`, relevé après le geste) — témoin : fader « -60.0 dB », ligne
+de piste « -60.0 dB » ; après : les deux « -inf dB » ; saisie « -6,5 » inchangée
+(−6,5 dB aux deux) ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.** Saisie « -60 » : témoin « -60.0 dB » au fader et à la ligne
+de piste ; après « -inf dB » aux deux (la ligne de piste lit le gain : il vaut
+bien 0). Saisie « -6,5 » : « -6.5 dB » aux deux, inchangé. 0 case périmée ;
+fumée 0 raté ; préférences identiques.

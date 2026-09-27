@@ -91,6 +91,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // D462 : ÉCRIT COMME LA LIGNE DE PISTE (« +1.7 dB ») ; le suffixe seul écrivait
     // « 1.7 dB » pour la même valeur.
     volume_.textFromValueFunction = [](double db) {
+        if (db <= -60.0) return juce::String("-inf dB");   // D463 : le bas de la course est le silence
         return juce::String(db > 0.05 ? "+" : "") + juce::String(db, 1) + " dB";
     };
     volume_.updateText();   // D460 : la case se réécrit avec sa fonction
@@ -103,7 +104,9 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
         if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
-        track_.volume = dbToGain(static_cast<float>(volume_.getValue()));
+        // D463 : LE BAS DU FADER EST LE SILENCE, comme chez Cubase et Live ; il
+        // valait 0,001 (−60 dB) et la piste n'était jamais muette au fader.
+        track_.volume = volume_.getValue() <= -60.0 ? 0.0f : dbToGain(static_cast<float>(volume_.getValue()));
         // LA COURBE REÇOIT LE GAIN LINÉAIRE, pas les décibels du curseur :
         // `mix.volume` est en gain (voir `AutomationCurve::parameter`), et
         // écrire des dB ici ferait dessiner une courbe qui ne correspond pas
