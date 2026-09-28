@@ -2610,7 +2610,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote));
     // D17.7 : les courbes d'automation par-dessus les clips (la touche `A` de
     // l'arrangement), pour les photographier -- une touche ne se capture pas.
-    else if (nom == "courbes") arrangement_.toggleAutomation();
+    else if (nom == "courbes") arrangement_.basculerCourbes();
     // D234 : « point-automation:0.5:0.5 » pose un point dans l'onglet Automation, à
     // la fraction (x, y) de la zone d'édition, par le MÊME `mouseDown` que la souris.
     // D467 : choisir le paramètre de l'onglet Automation / le contrôleur de MIDI CC,
@@ -4507,6 +4507,30 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                true, arrangement_.rulerInTime());
                 menu.addSubMenu(tr(u8"Règle"), regle);
             }
+            // D491 : LES QUATRE BASCULES DE L'ARRANGEMENT, que la règle PEINT dans
+            // son coin (« suit · aimant : mesure | auto ») et qu'aucun bouton ni
+            // aucune entrée n'atteignait : le clavier seul, et F et A hors de la
+            // table. Cochées selon l'état, touche dessinée par JUCE (D155), et
+            // chacune appelle la fonction que la touche appelle. « Aimantation
+            // DANS L'ARRANGEMENT » et non le « Aimantation » de la table : la
+            // touche vaut pour la vue qui a le clavier, l'entrée pour
+            // l'arrangement seul — un libellé qui dirait moins que le geste
+            // mentirait par omission.
+            {
+                using Id = vsm::interchange::ShortcutId;
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementSnap,
+                                                   tr(u8"Aimantation dans l'arrangement"), shortcuts_,
+                                                   Id::EditToggleSnap, true, arrangement_.aimantActif());
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementBarGrid,
+                                                   tr(u8"Grille à la mesure dans l'arrangement"), shortcuts_,
+                                                   Id::ViewArrangementBarGrid, true, arrangement_.grilleALaMesure());
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementFollow,
+                                                   tr(u8"Suivre la tête de lecture dans l'arrangement"), shortcuts_,
+                                                   Id::ViewArrangementFollow, true, arrangement_.followPlayhead());
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementCurves,
+                                                   tr(u8"Courbes d'automation dans l'arrangement"), shortcuts_,
+                                                   Id::ViewArrangementAutomation, true, arrangement_.automationVisible());
+            }
             menu.addSeparator();
             {
                 // TAILLE DE L'INTERFACE. Le facteur agrandit texte ET cases
@@ -4643,6 +4667,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                                                      choix.forme, choix.descendante);
         return;
     }
+    // D491 : LES MÊMES APPELS QUE LES TOUCHES de l'arrangement (`keyPressed`).
+    if (menuItemID == kMenuViewArrangementSnap)    { arrangement_.basculerAimant(); return; }
+    if (menuItemID == kMenuViewArrangementBarGrid) { arrangement_.basculerGrilleALaMesure(); return; }
+    if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
+    if (menuItemID == kMenuViewArrangementCurves)  { arrangement_.basculerCourbes(); return; }
     if (menuItemID == kMenuViewRulerBars || menuItemID == kMenuViewRulerTime) {
         setRulerInTime(menuItemID == kMenuViewRulerTime);
         return;

@@ -48,6 +48,12 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         // D360 : « M » comme MESURE. Libre dans les deux vues et dans la table.
         {ShortcutId::ViewArrangementBarGrid, "view.arrangementBarGrid", "Affichage",
                                             "Grille à la mesure dans l'arrangement", "M", ""},
+        // D491 : les deux autres bascules de l'arrangement, sorties du code en dur
+        // avec les MÊMES lettres -- rien ne change sous les doigts.
+        {ShortcutId::ViewArrangementFollow, "view.arrangementFollow", "Affichage",
+                                            "Suivre la tête de lecture dans l'arrangement", "F", ""},
+        {ShortcutId::ViewArrangementAutomation, "view.arrangementAutomation", "Affichage",
+                                            "Courbes d'automation dans l'arrangement", "A", ""},
         {ShortcutId::NavNextDoubtful,   "nav.nextDoubtful", "Affichage", "Note douteuse suivante (Maj : précédente)", "D",     ""},
         // D11.3 — se repérer en musique : le début, et les marqueurs.
         {ShortcutId::NavGoToStart,      "nav.goToStart",    "Transport", "Retour au début",                "home",             ""},

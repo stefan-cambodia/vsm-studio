@@ -266,8 +266,27 @@ AutomationCurve* ArrangementComponent::curveShownOn(size_t trackIndex) {
     return &courbes[static_cast<size_t>(index)];
 }
 
-void ArrangementComponent::toggleAutomation() {
+void ArrangementComponent::basculerCourbes() {
     automationVisible_ = !automationVisible_;
+    direLesBascules();
+    repaint();
+}
+
+void ArrangementComponent::basculerAimant() {
+    snap_ = !snap_;
+    direLesBascules();
+    repaint();
+}
+
+void ArrangementComponent::basculerGrilleALaMesure() {
+    aimanteALaMesure_ = !aimanteALaMesure_;
+    direLesBascules();
+    repaint();
+}
+
+void ArrangementComponent::basculerSuivi() {
+    followPlayhead_ = !followPlayhead_;
+    direLesBascules();
     repaint();
 }
 
@@ -1816,52 +1835,32 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
                 // TABLE qui gagne, parce qu'elle est la seule que l'utilisateur
                 // puisse changer — « S » ne figurait nulle part et ne se
                 // reconfigurait pas.
-                case Id::EditToggleSnap:
-                    snap_ = !snap_;
-                    direLesBascules();
-                    repaint();
-                    return true;
+                case Id::EditToggleSnap: basculerAimant(); return true;
                 // Et la grille de l'arrangement a sa propre commande (« M » comme
                 // mesure) au lieu du « G » qu'elle prenait à l'aimantation.
-                case Id::ViewArrangementBarGrid:
-                    aimanteALaMesure_ = !aimanteALaMesure_;
-                    direLesBascules();
-                    repaint();
-                    return true;
+                case Id::ViewArrangementBarGrid: basculerGrilleALaMesure(); return true;
+                // D491 : F ET A, SORTIES DU CODE EN DUR (ci-dessous jusque-là) avec
+                // les mêmes lettres. `A` MONTRE ET CACHE LES COURBES : « plus une
+                // lane isolée dans un onglet », mais pas non plus des courbes en
+                // permanence par-dessus les clips quand on arrange.
+                case Id::ViewArrangementFollow: basculerSuivi(); return true;
+                case Id::ViewArrangementAutomation: basculerCourbes(); return true;
                 // Ce que l'arrangement ne rend pas : la touche remonte à qui
                 // saura quoi en faire, comme le piano roll le fait depuis D10.3.
                 default: break;
             }
         }
     }
-    // `S` coupe l'aimantation, `G` bascule entre la MESURE et la grille fine du
-    // piano roll -- les deux réglages qu'on change en arrangeant, et les seuls.
-    // `A` MONTRE ET CACHE LES COURBES : « plus une lane isolée dans un onglet »,
-    // mais pas non plus des courbes en permanence par-dessus les clips quand on
-    // arrange.
-    if (key.getTextCharacter() == 'a' || key.getTextCharacter() == 'A') {
-        toggleAutomation();
-        return true;
-    }
-    if (key.getTextCharacter() == 'f' || key.getTextCharacter() == 'F') {
-        setFollowPlayhead(!followPlayhead_);
-        return true;
-    }
     // D360 : « S » et « G » écrites en dur ont disparu au profit de la table
-    // (ci-dessus). Le repli ne vaut que sans table posée — un aperçu hors écran —,
-    // et il garde les deux lettres d'origine pour que ces bancs-là ne changent pas
-    // de geste en cours de route.
+    // (ci-dessus) ; D491 : « A » et « F » aussi. Le repli ne vaut que sans table
+    // posée — un aperçu hors écran —, et il garde les lettres d'origine pour que
+    // ces bancs-là ne changent pas de geste en cours de route.
     if (raccourcis_ == nullptr) {
-        if (key.getTextCharacter() == 's' || key.getTextCharacter() == 'S') {
-            snap_ = !snap_;
-            repaint();
-            return true;
-        }
-        if (key.getTextCharacter() == 'g' || key.getTextCharacter() == 'G') {
-            aimanteALaMesure_ = !aimanteALaMesure_;
-            repaint();
-            return true;
-        }
+        const juce::juce_wchar c = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+        if (c == 's') { basculerAimant(); return true; }
+        if (c == 'g') { basculerGrilleALaMesure(); return true; }
+        if (c == 'f') { basculerSuivi(); return true; }
+        if (c == 'a') { basculerCourbes(); return true; }
     }
     // D359 : Suppr et Retour arrière passent par la table ci-dessus. Le repli
     // ci-dessous sert quand aucune table n'est posée (un banc de panneau, un

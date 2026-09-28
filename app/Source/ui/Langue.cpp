@@ -3082,6 +3082,13 @@ const Paire kAnglais[] = {
       "Shift+" },
     { "Grille à la mesure dans l'arrangement",
       "Bar grid in the arrangement" },
+    // D491 : les bascules de l'arrangement, au menu Affichage et dans la table.
+    { "Aimantation dans l'arrangement",
+      "Snap in the arrangement" },
+    { "Suivre la tête de lecture dans l'arrangement",
+      "Follow the playhead in the arrangement" },
+    { "Courbes d'automation dans l'arrangement",
+      "Automation curves in the arrangement" },
 
 };
 

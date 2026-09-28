@@ -35476,3 +35476,113 @@ diffèrent (une piste agrandie à la souris), aucune — ce qui est alors la vé
 
 **LE RELEVÉ `[cochée]` RESTE** : il a servi à passer en revue les 23 bascules du
 projet de démarrage, et il servira à la prochaine qui ne dirait pas son état.
+
+---
+
+### Phase D491 — « suit · aimant : mesure | auto » : quatre bascules de l'arrangement qu'on ne réglait qu'au clavier, dont deux hors de la table (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D471, RELU DU CÔTÉ DE L'ARRANGEMENT.** Des 33
+commandes sans entrée de menu, D472 en a fermé sept (Piste), D483 quinze
+(Transport). Parmi les onze qui restent, deux règlent l'arrangement : l'aimantation
+(G) et la grille à la mesure (M). En lisant `ArrangementComponent::keyPressed` pour
+les brancher, deux autres sont apparues, qui ne sont **pas du tout dans la table** :
+**F** (suivre la tête de lecture) et **A** (montrer les courbes d'automation),
+écrites en dur (`key.getTextCharacter() == 'f'`). L'arrangement a donc quatre
+bascules, dont la règle PEINT l'état dans son coin (« suit · aimant : mesure |
+auto »), et qu'**aucun bouton ni aucune entrée de menu** n'atteint : le clavier
+seul. Et pour F et A, pire : absentes de la fenêtre des raccourcis, donc
+introuvables à qui ne lit pas le mode d'emploi, impossibles à réassigner, et
+invisibles au banc — une touche fabriquée depuis sa description porte un caractère
+nul, le piège que D360 a nommé en sortant G et M du code en dur, et qui a laissé F
+et A derrière. Et `VSM_ARRANGEMENT` ne disait pas leur changement, alors que le
+mode d'emploi l'annonce « chaque fois que l'une d'elles change ». Live range
+« Follow » et « Snap to Grid » dans un menu (Options), touche en regard.
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. **F et A entrent dans la table** (`view.arrangementFollow`,
+   `view.arrangementAutomation`, catégorie Affichage), libellés « Suivre la tête de
+   lecture dans l'arrangement » et « Courbes d'automation dans l'arrangement » —
+   **les mêmes touches par défaut** : rien ne change sous les doigts, elles
+   deviennent listées, réassignables et atteignables par un banc. Le repli sans
+   table garde les deux lettres, comme D360 l'a fait pour S et G.
+2. **Les quatre bascules entrent au menu Affichage**, dans le bloc de l'arrangement
+   (sous « Règle »), cochées selon l'état, touche dessinée par JUCE (D155).
+   Libellés de la table pour M, F et A. Pour G : « Aimantation dans
+   l'arrangement » et non « Aimantation » — la touche de la table vaut pour la vue
+   qui a le clavier (le piano roll a sa propre aimantation, et son bouton), alors
+   que l'entrée de menu n'agit que sur l'arrangement : un libellé qui dirait moins
+   que le geste mentirait par omission. Affichage et non Édition : Édition est le
+   menu du piano roll (D80), et ces quatre-là règlent la VUE, comme « Règle » et
+   « Hauteur des pistes » juste au-dessus.
+3. **Une porte, pas un second chemin** : la touche et le menu appellent les quatre
+   mêmes fonctions de l'arrangement (`basculerAimant`, `basculerGrilleALaMesure`,
+   `basculerSuivi`, `basculerCourbes`), qui disent toutes leur état au journal.
+4. Le relevé `VSM_ARRANGEMENT` écrit aussi l'état des bascules APRÈS les gestes
+   (il ne l'écrivait qu'au changement : un témoin sans geste n'avait rien à lire).
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D490 augmenté du seul relevé des bascules) : aucune des
+   quatre au menu Affichage ; `VSM_TOUCHE=arrangement:F` et `arrangement:A` →
+   « AUCUNE commande de ce clavier », état inchangé (« aimant mesure, suit la tête,
+   automation cachée ») ; `arrangement:G` et `arrangement:M` prises ;
+2. **après** : quatre entrées au menu Affichage, cochées au démarrage comme la
+   règle le peint — aimantation ✓, grille à la mesure ✓, suivre ✓, courbes ✗ ;
+   barre `[touche …]` **51 → 55**, en anglais aussi ; la table **57 → 59**
+   commandes ;
+3. **la porte fait ce que fait la touche** — garde neuve
+   `tools/portes-de-l-arrangement.sh`, quatre cas joués trois fois (témoin, menu,
+   touche) : aimant mesure → libre ; grille mesure → grille ; suit → ne suit pas ;
+   automation cachée → visible ; chaque témoin ≠ attendu ; **vue rouge** sur le
+   binaire témoin ;
+4. test `interchange` : F et A trouvent leur commande, aucune touche partagée ;
+   `raccourcis-affiches.py`, `menus-cites.py`, `noms-des-gestes.py`, garde de
+   langue, `anglais-a-l-ecran.py`, `portes-des-pistes.sh`, `portes-du-transport.sh`
+   verts ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D490 augmenté du seul relevé des bascules,
+   `tools/portes-de-l-arrangement.sh build/temoin-D491`) : **4 ratés sur 4**.
+   `VSM_MENU` : « aucune entrée de menu ne commence par… » pour les quatre
+   libellés ; `arrangement:F` et `arrangement:A` → « AUCUNE commande de ce
+   clavier », état inchangé (suit la tête, automation cachée) ; `arrangement:G` →
+   aimant libre et `arrangement:M` → aimant grille, prises. Barre : **51** entrées
+   `[touche …]` ; table : **57** commandes.
+2. **Après** : les quatre entrées au menu Affichage, sous « Règle », cochées au
+   démarrage comme la règle le peint — **Aimantation dans l'arrangement [G]
+   cochée, Grille à la mesure [M] cochée, Suivre la tête de lecture [F] cochée,
+   Courbes d'automation [A] non cochée** ; barre **51 → 55** en français ET en
+   anglais (« Snap in the arrangement », « Bar grid… », « Follow the playhead… »,
+   « Automation curves… ») ; 369 → 373 entrées ; table **57 → 59**. Photo du menu
+   (`VSM_MENU_PHOTO=Affichage:…`) : le bloc sous « Règle », touches à droite.
+3. **La porte fait ce que fait la touche** — `tools/portes-de-l-arrangement.sh` :
+   | cas | témoin | menu | touche | coche (témoin → menu) |
+   |---|---|---|---|---|
+   | aimantation | mesure | libre | libre | oui → non |
+   | grille à la mesure | mesure | grille | grille | oui → non |
+   | suivre la tête | oui | non | non | oui → non |
+   | courbes | cachée | visible | visible | non → oui |
+
+   **0 raté** ; rouge sur le témoin (point 1).
+4. Test `interchange` neuf (`the_arrangement_follow_and_curves_keys_are_in_the_table` :
+   F et A trouvent leur commande ; réassignée, la lettre d'origine ne répond plus) ;
+   suites `core` 362, `interchange` 309, `audio` 1 306, `panels` 11, `clap` 25,
+   `vst3` 19 vertes.
+   `inventaire_langue.py --garde` 0 et `--doublons` 0, `raccourcis-affiches.py` 0,
+   `menus-cites.py` 0 faute, `noms-des-gestes.py` 0, `touches-modifiees.py` 0,
+   `touches-du-menu-edition.py` 0, `portes-des-gestes.py` 0 désaccord,
+   `anglais-a-l-ecran.py` 0, `portes-des-pistes.sh` et `portes-du-transport.sh`
+   0 raté, `cadrage-ouverture.sh` et `autosauvegarde-vue.sh` verts (ils lisent
+   `VSM_ARRANGEMENT : fen…`, que la ligne de bascules ajoutée ne dérange pas) ;
+   fumée 0 raté ; préférences identiques (`cmp` contre la copie prise avant la série).
+
+**Le repli sans table** (un aperçu hors écran, `vsm-arrangement-preview`) garde
+les lettres S, G, F et A, et passe désormais par les mêmes fonctions `basculer…`.
+
+**Reste nommé, non fait** : (a) des onze commandes sans entrée de menu, restent
+les six outils et le zoom avant/arrière — tous au piano roll, où ils ont leurs
+boutons, dont l'infobulle dit la touche (D358) ; (b) les quatre bascules ne sont
+pas retenues par le projet (le bloc `view` de D363 n'en porte aucune) : un projet
+rouvert revient à « aimant mesure, suit la tête, courbes cachées » ; (c) D11.7
+écrit que le clavier d'ordinateur, actif, « emprunte les lettres aux raccourcis » —
+mais la vue qui a le clavier reçoit la touche AVANT l'écouteur de l'application,
+et A, F, G, D, P, O, I, L… y sont des commandes : à mesurer avant d'y croire.

@@ -96,6 +96,12 @@ enum class ShortcutId : uint16_t {
     NavPreviousBeat,
     NavNextBar,
     NavPreviousBar,
+    /// D491 : suivre la tête et montrer les courbes, dans l'arrangement. Deux
+    /// lettres (F, A) écrites en dur dans sa `keyPressed` : ni listées dans la
+    /// fenêtre des raccourcis, ni réassignables, ni atteignables par un banc --
+    /// ce que D360 avait corrigé pour G et M, en les laissant derrière.
+    ViewArrangementFollow,
+    ViewArrangementAutomation,
 
     Count
 };

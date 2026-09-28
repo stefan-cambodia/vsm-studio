@@ -130,3 +130,20 @@ VSM_TEST(the_printable_page_lists_them_all) {
     // plus à quoi revenir.
     VSM_ASSERT(page.find("spacebar") != std::string::npos);
 }
+
+VSM_TEST(the_arrangement_follow_and_curves_keys_are_in_the_table) {
+    // D491 : F ET A ÉTAIENT ÉCRITES EN DUR dans `ArrangementComponent::keyPressed`
+    // -- ni listées, ni réassignables, ni atteignables par un banc. Elles gardent
+    // leur lettre (rien ne change sous les doigts), et la table les porte.
+    ShortcutTable table;
+    ShortcutId trouve{};
+    VSM_ASSERT(table.commandForKey("F", trouve));
+    VSM_ASSERT(trouve == ShortcutId::ViewArrangementFollow);
+    VSM_ASSERT(table.commandForKey("A", trouve));
+    VSM_ASSERT(trouve == ShortcutId::ViewArrangementAutomation);
+    // Réassignée, la lettre d'origine ne répond plus : c'est tout l'objet.
+    table.setKey(ShortcutId::ViewArrangementFollow, "shift + F");
+    VSM_ASSERT(!table.commandForKey("F", trouve));
+    VSM_ASSERT(table.commandForKey("shift + F", trouve));
+    VSM_ASSERT(trouve == ShortcutId::ViewArrangementFollow);
+}

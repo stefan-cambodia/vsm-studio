@@ -229,7 +229,9 @@ public:
                     + "\n").toRawUTF8(), stderr);
     }
     /// D362 : VSM_ARRANGEMENT -- la part du morceau que l'arrangement montre.
-    void releverFenetreArrangement() const { arrangement_.direLaFenetre(); }
+    /// D491 : et l'état des quatre bascules APRÈS les gestes — `direLesBascules`
+    /// ne parlait qu'au changement, et un témoin sans geste n'avait rien à lire.
+    void releverFenetreArrangement() const { arrangement_.direLaFenetre(); arrangement_.direLesBascules(); }
     /// D369 : LA VUE COURANTE, EN UN SEUL ENDROIT. Les deux chemins qui
     /// écrivent un projet — « Enregistrer sous… » et la sauvegarde automatique —
     /// la demandent ici plutôt que de la composer chacun de son côté : c'est
@@ -768,6 +770,12 @@ private:
         /// D34.4 : la règle de l'arrangement, en mesures ou en minutes:secondes.
         kMenuViewRulerBars,
         kMenuViewRulerTime,
+        /// D491 : les quatre bascules de l'arrangement (G, M, F, A), qu'on ne
+        /// réglait qu'au clavier.
+        kMenuViewArrangementSnap,
+        kMenuViewArrangementBarGrid,
+        kMenuViewArrangementFollow,
+        kMenuViewArrangementCurves,
         /// D34.5 : dessiner une automation par une forme. CINQ entrées
         /// CONTIGUËS, dans cet ordre : `menuItemSelected` en déduit la forme et
         /// le sens par soustraction.

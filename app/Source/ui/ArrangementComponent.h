@@ -81,8 +81,6 @@ public:
     std::function<bool(size_t trackIndex, const std::string& parameter,
                         float& minimum, float& maximum)> automationRange;
 
-    /// Bascule l'affichage des courbes. `A` au clavier.
-    void toggleAutomation();
     bool automationVisible() const { return automationVisible_; }
     /// D34.5 : TRACE UNE FORME sur la courbe montrée de la piste choisie.
     ///
@@ -145,6 +143,16 @@ public:
     /// voisines puissent renvoyer une touche non consommée.
     bool keyPressed(const juce::KeyPress& key) override;
     void setSnapEnabled(bool actif) { snap_ = actif; }
+    /// D491 : LES QUATRE BASCULES, UNE PORTE CHACUNE. La touche (`keyPressed`,
+    /// par la table) et le menu Affichage appellent ces fonctions-ci, et
+    /// aucune autre : chacune dit son nouvel état au journal (`direLesBascules`)
+    /// -- F et A ne le disaient pas.
+    void basculerAimant();
+    void basculerGrilleALaMesure();
+    void basculerSuivi();
+    void basculerCourbes();
+    bool aimantActif() const { return snap_; }
+    bool grilleALaMesure() const { return aimanteALaMesure_; }
     /// D360 : l'état des bascules au journal — ce que la règle PEINT, et qu'aucun
     /// relevé de textes ne peut voir.
     void direLesBascules() const;

@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
         return false;
     };
     vue.setProject(&projet);
-    vue.toggleAutomation();
+    vue.basculerCourbes();
     vue.setPlayheadTick(mesure * 2 + 480);
     vue.setBounds(0, 0, largeur, hauteur);
 
