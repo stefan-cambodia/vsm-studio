@@ -4369,9 +4369,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     sousMenu.addSeparator();
                     sousMenu.addItem(kMenuMixRemoveSendFirst + static_cast<int>(bus),
                                       tr(u8"Retirer ce bus"));
-                    menu.addSubMenu(juce::String(decrit.name.empty() ? tr("Bus") : decrit.name)
-                                         + tr("  (") + juce::String(decrit.effectType) + tr(")"),
-                                     sousMenu);
+                    // D488 : LE NOM DE L'EFFET, PAS SON IDENTIFIANT — « (reverb) » était
+                    // la langue du développeur, à côté d'un sous-menu qui écrit
+                    // « Reverb » ; et rien quand il redit le nom du bus.
+                    juce::String nomDuBus = decrit.name.empty() ? tr("Bus") : juce::String::fromUTF8(decrit.name.c_str());
+                    juce::String nomDeLEffet;
+                    for (const auto& e : effets)
+                        if (e.id == decrit.effectType) nomDeLEffet = juce::String(e.displayName);
+                    if (nomDeLEffet.isNotEmpty() && nomDeLEffet != nomDuBus)
+                        nomDuBus += " (" + nomDeLEffet + ")";
+                    menu.addSubMenu(nomDuBus, sousMenu);
                 }
                 if (project_.sends.empty())
                     menu.addItem(-1, tr(u8"(aucun — les tranches n'ont pas de bouton de départ)"),
@@ -9804,7 +9811,9 @@ void MainComponent::applyAudioConfig() {
 std::vector<vsm::sequencer::SendBusDescription> MainComponent::defaultSendBuses() {
     std::vector<vsm::sequencer::SendBusDescription> bus;
     vsm::sequencer::SendBusDescription reverb;
-    reverb.name = "Reverberation";
+    // D488 : dans la langue de l'interface À LA CRÉATION ; c'est ensuite une
+    // donnée du projet, qui ne suit pas la bascule (comme un nom de piste).
+    reverb.name = tr(u8"Réverbération").toStdString();
     reverb.effectType = "reverb";
     bus.push_back(std::move(reverb));
     vsm::sequencer::SendBusDescription delay;

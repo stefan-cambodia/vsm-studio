@@ -1222,6 +1222,8 @@ const Paire kAnglais[] = {
       "Compress the dynamics by half" },
     { "Retirer",
       "Remove" },
+    { "Réverbération",   // D488 : le bus de départ d'un projet neuf
+      "Reverb" },
     { "Retirer l'effet. Annuler%1 le remet",   // D480
       "Remove the effect. Undo%1 brings it back" },
     { "Retirer ce bus",

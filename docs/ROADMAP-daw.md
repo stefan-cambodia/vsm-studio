@@ -35370,3 +35370,44 @@ C'est la famille de D443.
    d'origine — la raison n'est écrite que quand elle vaut.
 3. `menus-cites.py` (28 citations, 0 faute), garde de langue,
    `anglais-a-l-ecran.py` verts ; fumée 0 raté ; préférences identiques.
+
+---
+
+### Phase D488 — « Reverberation  (reverb) » : le menu Mixage nommait l'effet d'un bus par son identifiant (29/09/2026)
+
+**D'OÙ ELLE VIENT — LA RELECTURE DU MENU MIXAGE** (`VSM_MENU_LISTE`). Chaque bus de
+départ s'y écrit « nom  (type) » : « Reverberation  (reverb) », « Delay  (delay) »
+— deux espaces, et l'**identifiant interne** de l'effet (`effectType`) là où le
+sous-menu, juste à côté, écrit son nom d'affichage (« Reverb », « Delay »). C'est la
+langue du développeur, la famille de D450 et D453. Et le bus que l'application crée
+pour un projet neuf s'appelle « Reverberation » en anglais, quelle que soit la
+langue de l'interface.
+
+**LE CHOIX, TRANCHÉ ICI.** (1) Le libellé écrit le NOM de l'effet, entre
+parenthèses et après une seule espace — et seulement s'il diffère du nom du bus
+(« Delay (Delay) » ne dirait rien). (2) Les bus PAR DÉFAUT d'un projet neuf
+prennent un nom dans la langue de l'interface (« Réverbération » / « Reverb »,
+« Delay » dans les deux) ; c'est ensuite une donnée du projet, qui ne suit pas la
+bascule de langue, comme un nom de piste. Un projet enregistré garde le sien
+(« Reverberation » reste « Reverberation »).
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D487) : « Reverberation  (reverb) », « Delay  (delay) » ;
+2. **après**, projet neuf : « Réverbération (Reverb) » et « Delay » en français,
+   « Reverb » et « Delay » en anglais ; un projet qui porte « Reverberation » :
+   « Reverberation (Reverb) » ;
+3. garde de langue et `anglais-a-l-ecran.py` 0 ; fumée 0 raté ; préférences
+   inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D487) : projet neuf « Reverberation  (reverb) »,
+   « Delay  (delay) » ; projet qui déclare ses bus « Reverberation » et « FX 2 » :
+   « Reverberation  (reverb) », « FX 2  (delay) ».
+2. **Après** : projet neuf **« Réverbération (Reverb) »** et **« Delay »** en
+   français, **« Reverb »** et **« Delay »** en anglais ; projet qui déclare ses bus :
+   **« Reverberation (Reverb) »**, **« FX 2 (Delay) »** — les noms du projet ne
+   bougent pas, l'effet se nomme comme dans son sous-menu.
+3. Garde de langue et `anglais-a-l-ecran.py` 0, fumée 0 raté, préférences
+   identiques. (Le premier projet d'essai écrivait la clé `effectType` au lieu de
+   `effect` : l'ouverture l'a dit — « effet «  » inconnu, non appliqué » — et le
+   projet a été refait avant de mesurer.)
