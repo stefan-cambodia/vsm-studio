@@ -15,6 +15,13 @@ struct ParameterInfo {
     float maxValue = 1.0f;
     float defaultValue = 0.0f;
     std::string unit; // "Hz", "dB", "%", "" ...
+    /// D473 : LES POSITIONS D'UN SÉLECTEUR, une par valeur entière de `minValue`
+    /// à `maxValue` (« LP », « HP », « BP », « Notch »). Vide pour un réglage
+    /// continu — le cas de presque tous. Un sélecteur sans elles se dessinait en
+    /// potentiomètre continu et s'écrivait « 1.599 » : un nombre qui ne dit rien
+    /// de ce que l'effet joue. Elles vivent ici, à côté des bornes, là où un
+    /// commentaire « 0=soft 1=hard » les tenait jusqu'alors.
+    std::vector<std::string> choices;
 };
 
 using ParameterList = std::vector<ParameterInfo>;

@@ -116,7 +116,8 @@ public:
             // 0 = écoute ce qu'il traite ; 1..8 = écoute le bus de départ de ce
             // numéro. C'est un paramètre comme les autres, donc il se
             // sauvegarde, se rappelle et a son bouton sans une ligne de plus.
-            {kSidechain, "Sidechain Bus", 0.0f, 8.0f, 0.0f, ""},
+            {kSidechain, "Sidechain Bus", 0.0f, 8.0f, 0.0f, "",   // D473 : la position = le bus
+             {"Off", "Bus 1", "Bus 2", "Bus 3", "Bus 4", "Bus 5", "Bus 6", "Bus 7", "Bus 8"}},
         };
         for (const auto& p : parameterList_) params_[p.id].store(p.defaultValue, std::memory_order_relaxed);
     }

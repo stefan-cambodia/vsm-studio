@@ -25,7 +25,7 @@ public:
             {kTimeMs, "Time", 1.0f, kMaxDelayMs, 350.0f, "ms"},
             {kFeedback, "Feedback", 0.0f, 0.95f, 0.35f, ""},
             {kMix, "Mix", 0.0f, 1.0f, 0.3f, ""},
-            {kPingPong, "Ping-Pong", 0.0f, 1.0f, 0.0f, ""},
+            {kPingPong, "Ping-Pong", 0.0f, 1.0f, 0.0f, "", {"Off", "On"}},   // D473 : lu >= 0.5
             {kToneHz, "Tone", 500.0f, 18000.0f, 6000.0f, "Hz"},
         };
         for (const auto& p : parameterList_)

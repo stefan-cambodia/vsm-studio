@@ -25,7 +25,7 @@ public:
     Distortion() {
         parameterList_ = {
             {kDrive, "Drive", 0.0f, 1.0f, 0.4f, ""},
-            {kMode, "Mode", 0.0f, 1.0f, 0.0f, ""}, // 0=soft 1=hard
+            {kMode, "Mode", 0.0f, 1.0f, 0.0f, "", {"Soft", "Hard"}},   // D473 : lu >= 0.5
             {kToneHz, "Tone", 800.0f, 18000.0f, 9000.0f, "Hz"},
             {kMix, "Mix", 0.0f, 1.0f, 1.0f, ""},
             {kOutputDb, "Output", -24.0f, 6.0f, 0.0f, "dB"},

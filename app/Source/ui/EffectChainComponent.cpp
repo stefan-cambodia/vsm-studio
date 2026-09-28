@@ -569,14 +569,35 @@ void EffectChainComponent::rebuildParamControls() {
         pc.slider = std::make_unique<juce::Slider>();
         pc.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         pc.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 14);
+        // D473 : UN SÉLECTEUR A UN PAS ENTIER ET LE NOM DE SA POSITION (« LP »,
+        // « Hard », « Off ») — il se dessinait en potentiomètre continu et
+        // s'écrivait « 1.599 ». Les positions sont déclarées par l'effet.
+        const bool selecteur = !info.choices.empty();
         pc.slider->setRange(info.minValue, info.maxValue,
-                            (info.maxValue - info.minValue) / 1000.0);
+                            selecteur ? 1.0 : (info.maxValue - info.minValue) / 1000.0);
         pc.slider->setValue(fx->getParameter(info.id), juce::dontSendNotification);
         if (!info.unit.empty()) pc.slider->setTextValueSuffix(" " + juce::String(info.unit));
         const auto pid = info.id;
         juce::Slider* raw = pc.slider.get();
         raw->setName("effet." + juce::String::fromUTF8(info.name.c_str()));   // D429 : le nom du banc (valeur:)
         raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
+        if (selecteur) {
+            const auto choix = info.choices;
+            const double debut = info.minValue;
+            raw->textFromValueFunction = [choix, debut](double v) {
+                const auto i = static_cast<size_t>(juce::jlimit<long>(0, static_cast<long>(choix.size()) - 1,
+                                                                      std::lround(v - debut)));
+                return juce::String::fromUTF8(choix[i].c_str());
+            };
+            // La saisie accepte le NOM de la position, ou son numéro.
+            raw->valueFromTextFunction = [choix, debut](const juce::String& t) {
+                for (size_t i = 0; i < choix.size(); ++i)
+                    if (t.trim().equalsIgnoreCase(juce::String::fromUTF8(choix[i].c_str())))
+                        return debut + static_cast<double>(i);
+                return vsm::app::ui::lireNombreSaisi(t);
+            };
+            raw->updateText();   // D460 : la case se réécrit avec sa fonction
+        }
         const int slot = selectedEffect_;
         raw->onDragStart = [this] { glisseEnCours_ = true; if (onEditStarted) onEditStarted(u8"Réglage d'effet"); };
         raw->onDragEnd = [this] { glisseEnCours_ = false; };   // D429

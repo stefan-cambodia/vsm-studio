@@ -927,6 +927,8 @@ famille). Un effet tiers CLAP ou VST3 se pose de la même façon.
 
 **Contourner un insert** : chaque rangée de la chaîne commence par un interrupteur *On / Off* ; *Off* ne retire pas l'effet, il le contourne à la façon du *Bypass* de Cubase — l'effet continue de tourner et garde sa latence, seule sa sortie est remplacée par le signal sec retardé d'autant, si bien que la piste ne se déplace pas et que le retour est sans à-coup. *Contourner tout* / *Tout remettre* fait de même pour toute la chaîne de la piste. Le contournement est enregistré avec le projet et l'export le respecte.
 
+**Les sélecteurs d'effet disent leur position** (D473) : le *Mode* du filtre (LP, HP, BP, Notch), celui de la distorsion (Soft, Hard), le *Ping-Pong* du delay (Off, On) et le *Sidechain Bus* du compresseur (Off, Bus 1 à 8) tournent cran par cran et écrivent le nom de la position ; la case accepte ce nom ou son numéro.
+
 **Exporter en audio.** *Fichier ▸ Exporter audio (WAV)...* demande la plage (le
 morceau, la boucle, la sélection), la fréquence, la profondeur et la queue,
 puis le fichier : **WAV**, **FLAC** ou **OGG** selon l'extension. Le rendu est

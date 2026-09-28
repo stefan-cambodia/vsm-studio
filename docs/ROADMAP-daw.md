@@ -34673,3 +34673,64 @@ et c'est le seul menu qui existe sans clic sur une piste.
    la piste active seule ne disait pas qu'on en avait choisi trois.
 4. `noms-des-gestes.py`, `menus-cites.py`, garde de langue verts ; fumée 0 raté ;
    préférences identiques.
+
+---
+
+### Phase D473 — « Mode 1.734 » : quatre sélecteurs d'effet se réglaient comme des potentiomètres (28/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT L'ONGLET EFFETS** d'une vraie reconstruction
+(`b4wuzthen`, trois inserts posés au banc). L'inventaire des seize effets du parc
+(leurs `parameterList`, lues une à une) sépare deux familles de réglages sans
+unité : des PARTS de 0 à 1 (« Mix 0.300 », dix fois — la phase suivante), et
+**quatre SÉLECTEURS dessinés en potentiomètres continus** :
+- Distortion « Mode », 0..1, que le moteur lit `>= 0.5` → *hard* ;
+- Filter « Mode », 0..3, arrondi → LP, HP, BP, Notch ;
+- Delay « Ping-Pong », 0..1, `>= 0.5` → activé ;
+- Compressor « Sidechain Bus », 0..8 → sa propre entrée, ou le bus 1 à 8.
+
+Le panneau les règle au millième (`(max − min) / 1000`) et écrit « 0.000 »,
+« 1.734 » : un nombre qui ne correspond à rien de ce que l'effet fait, et un
+réglage dont on ne sait pas s'il a basculé. Cubase et Live montrent le NOM de la
+position (« LP », « Hard », « Off »).
+
+**LE CHOIX, TRANCHÉ ICI : LES POSITIONS SE DÉCLARENT À LA SOURCE.**
+`ParameterInfo` reçoit une liste `choices` (vide par défaut : aucun des milliers
+de paramètres existants ne change), un libellé par position entière de `min` à
+`max` ; l'effet la remplit à côté de ses bornes, là où le commentaire
+« 0=soft 1=hard » vivait jusqu'ici. Le panneau d'effets en tire un pas ENTIER et
+le libellé de la position ; une saisie accepte le libellé ou le numéro. Les
+libellés restent en anglais, comme les noms de paramètres qu'ils suivent
+(« Mode », « Mix ») et comme la sérigraphie d'une machine.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D472, `VSM_TEXTES_LISTE` après l'ajout de l'effet) :
+   `effet.Mode : 0.000` (Filter et Distortion), `effet.Ping-Pong : 0.000`,
+   `effet.Sidechain Bus : 0.000` ; `valeur:effet.Mode=1.6` sur le Filter →
+   « 1.600 » sur la photo ;
+2. **après** : « LP », « Soft », « Off », « Off » ; `valeur:effet.Mode=1.6` →
+   « BP » (le pas entier arrondit à 2, la position que le moteur joue) ;
+3. un test `audio` : tout paramètre d'effet qui déclare des positions en a
+   exactement `max − min + 1`, sur des bornes entières ; suite audio verte ;
+4. fumée 0 raté ; gardes des sources vertes ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D472) : `effet.Mode : 0.000` (Filter, Distortion),
+   `effet.Ping-Pong : 0.000`, `effet.Sidechain Bus : 0.000` ; `valeur:effet.Mode=1.6`
+   → la photo écrit **« 1.599 »** (pas même 1,6 : le pas du millième compté depuis
+   0 ne tombe pas dessus).
+2. **Après** : **« LP », « Soft », « Off », « Off »** ; `valeur:effet.Mode=1.6` →
+   **« BP »** sur la photo ; 0 case périmée (la case réécrite par sa fonction, D460).
+3. Test `effect_selectors_declare_one_label_per_integer_position` : quatre
+   sélecteurs, chacun `max − min + 1` libellés sur des bornes entières ;
+   **1 304** tests audio (1 303 + 1). Le moteur ne change pas : il lit déjà ces
+   valeurs arrondies ou `>= 0.5`, et le pas entier les pose exactement.
+4. Fumée 0 raté ; gardes des sources vertes ; préférences identiques.
+
+**Relevé en passant, et laissé à la phase suivante pour ne pas mêler deux
+variables** : le même pas du millième **fausse les valeurs par défaut** de tous
+les réglages continus. Le panneau écrit « Cutoff 1998.02 Hz » pour 2 000 Hz,
+« Time 350.825 ms » pour 350, « Ratio 2.995 » pour 3, « Attack 10.0950 ms » pour
+10, « Tone 9004.4 Hz » pour 9 000 — la grille part de `min` par pas de
+`(max − min) / 1000`, et la valeur ronde tombe entre deux crans. La case de
+60 px rogne en outre « 1998.02 Hz » en « 1998.02 … ». Et les parts de 0 à 1
+(« Mix 0.300 ») restent sans unité.
