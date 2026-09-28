@@ -35442,3 +35442,37 @@ droit de l'arrangement) :
    « 161 », « 169 », « 5:00 », « 5:30 » inchangés, les traits de mesure continuent
    sous le bouton.
 3. Fumée 0 raté ; `vue-du-morceau.sh` vert ; préférences identiques.
+
+---
+
+### Phase D490 — « Hauteur des pistes » : trois choix, aucun coché (29/09/2026)
+
+**D'OÙ ELLE VIENT — UN RELEVÉ QUI APPREND À LIRE LES COCHES.** `VSM_MENU_LISTE`
+écrivait `[grisée]`, `[titre]`, `[touche …]`, mais pas l'état d'une bascule : on
+ne pouvait pas vérifier quelle langue, quelle échelle ou quelle règle le menu dit
+choisie. Il écrit désormais `[cochée]` (23 entrées sur le projet de démarrage). Relus
+groupe par groupe, tous se lisent — langue, taille d'interface, règle, signature,
+décompte, mode de prise, forme des fondus, sortie et canal MIDI, groupe d'édition —
+**sauf un** : « Affichage > Hauteur des pistes » propose Petite (24 px), Normale
+(56 px) et Grande (112 px), et n'en coche aucune, alors que toutes les pistes du
+projet ont 56 px. Le menu ne dit pas l'état qu'il règle.
+
+**LE CHOIX, TRANCHÉ ICI** : la hauteur est cochée quand TOUTES les pistes visibles
+et dépliées la partagent (c'est ce que `setAllTrackHeights` pose) ; quand elles
+diffèrent (une piste agrandie à la souris), aucune — ce qui est alors la vérité.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D489 augmenté du seul relevé `[cochée]`) : aucune des
+   trois cochée ;
+2. **après** : « Normale (56 px) [cochée] » au démarrage ; après
+   `VSM_MENU="Grande (112 px)"`, « Grande (112 px) [cochée] » et les deux autres
+   non ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** : Petite, Normale, Grande — aucune cochée.
+2. **Après** : « Normale (56 px) [cochée] » au démarrage ; après
+   `VSM_MENU="Grande (112 px)"`, « Grande (112 px) [cochée] » seule.
+3. Fumée 0 raté ; préférences identiques.
+
+**LE RELEVÉ `[cochée]` RESTE** : il a servi à passer en revue les 23 bascules du
+projet de démarrage, et il servira à la prochaine qui ne dirait pas son état.

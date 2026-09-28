@@ -1586,7 +1586,11 @@ void MainComponent::listMenusForCapture() {
                            ? juce::String(u8" [touche ") + item.shortcutKeyDescription + "]"
                            : juce::String())
                     + (item.isSectionHeader ? juce::String(" [titre]")
-                                            : !item.isEnabled ? juce::String(u8" [grisée]") : juce::String());
+                                            : !item.isEnabled ? juce::String(u8" [grisée]") : juce::String())
+                    // D490 : L'ÉTAT D'UNE BASCULE. Sans lui, un relevé ne pouvait
+                    // pas dire quelle langue, quelle échelle, quelle règle est
+                    // choisie — ni qu'aucune ne l'est.
+                    + (item.isTicked ? juce::String(u8" [cochée]") : juce::String());
                 std::fputs(("VSM_MENU_LISTE : " + ligne + "\n").toRawUTF8(), stderr);
                 if (item.subMenu != nullptr) parcourir(*item.subMenu, chemin + " > " + item.text);
             }
@@ -4477,9 +4481,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          !project_.tracks.empty());
             {
                 juce::PopupMenu hauteurs;
-                hauteurs.addItem(kMenuViewTrackHeightSmall, tr(u8"Petite (24 px)"), !project_.tracks.empty());
-                hauteurs.addItem(kMenuViewTrackHeightNormal, tr(u8"Normale (56 px)"), !project_.tracks.empty());
-                hauteurs.addItem(kMenuViewTrackHeightLarge, tr(u8"Grande (112 px)"), !project_.tracks.empty());
+                // D490 : LA HAUTEUR COMMUNE EST COCHÉE — celle que `setAllTrackHeights`
+                // pose à toutes les pistes visibles et dépliées. Quand elles
+                // diffèrent (une piste agrandie à la souris), aucune : c'est vrai.
+                int commune = -1;
+                for (const auto& t : project_.tracks) {
+                    if (t.hidden || t.folded) continue;
+                    if (commune < 0) commune = t.arrangementHeight;
+                    else if (commune != t.arrangementHeight) { commune = 0; break; }
+                }
+                hauteurs.addItem(kMenuViewTrackHeightSmall, tr(u8"Petite (24 px)"), !project_.tracks.empty(), commune == 24);
+                hauteurs.addItem(kMenuViewTrackHeightNormal, tr(u8"Normale (56 px)"), !project_.tracks.empty(), commune == 56);
+                hauteurs.addItem(kMenuViewTrackHeightLarge, tr(u8"Grande (112 px)"), !project_.tracks.empty(), commune == 112);
                 menu.addSubMenu(tr(u8"Hauteur des pistes"), hauteurs);
             }
             // D34.4 : LA RÈGLE, EN MESURES OU EN TEMPS. La barre de transport
