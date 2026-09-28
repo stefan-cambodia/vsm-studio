@@ -1166,6 +1166,26 @@ MainComponent::MainComponent()
     // D34.4 : la règle retrouve le mode qu'on lui avait laissé.
     arrangement_.setRulerInTime(
         vsm::app::ui::UiScale::properties().getBoolValue("regleEnTemps", false));
+    // D493 : LES QUATRE BASCULES DE L'ARRANGEMENT AUSSI. Des préférences et non
+    // le projet (la règle de D363) : elles disent comment on travaille, pas ce
+    // qu'est le morceau, et suivent l'utilisateur d'un projet au suivant — y
+    // compris dans ceux que la chaîne d'analyse écrit. Les défauts sont ceux
+    // d'avant : aimant à la mesure, suivi, courbes cachées.
+    {
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        arrangement_.setSnapEnabled(reglages.getBoolValue("arrangementAimant", true));
+        arrangement_.setGrilleALaMesure(reglages.getBoolValue("arrangementGrilleMesure", true));
+        arrangement_.setFollowPlayhead(reglages.getBoolValue("arrangementSuitLaTete", true));
+        arrangement_.setCourbesVisibles(reglages.getBoolValue("arrangementCourbes", false));
+        arrangement_.onBasculesChanged = [this] {
+            auto& r = vsm::app::ui::UiScale::properties();
+            r.setValue("arrangementAimant", arrangement_.snapEnabled());
+            r.setValue("arrangementGrilleMesure", arrangement_.grilleALaMesure());
+            r.setValue("arrangementSuitLaTete", arrangement_.followPlayhead());
+            r.setValue("arrangementCourbes", arrangement_.automationVisible());
+            r.saveIfNeeded();
+        };
+    }
 
     // D17.2 : « l'automation suit les clips », active par défaut comme chez
     // Cubase, et retenue d'une exécution à l'autre.

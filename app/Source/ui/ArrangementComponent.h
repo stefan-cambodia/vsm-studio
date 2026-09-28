@@ -152,6 +152,13 @@ public:
     void basculerSuivi();
     void basculerCourbes();
     bool grilleALaMesure() const { return aimanteALaMesure_; }
+    /// D493 : l'état relu des préférences au démarrage — sans rappel, sans journal.
+    void setGrilleALaMesure(bool mesure) { aimanteALaMesure_ = mesure; repaint(); }
+    void setCourbesVisibles(bool visibles) { automationVisible_ = visibles; repaint(); }
+    /// D493 : UNE BASCULE A CHANGÉ (touche ou menu, par les fonctions ci-dessus) :
+    /// l'application écrit les quatre dans les préférences. Elles revenaient à
+    /// leur défaut à chaque lancement.
+    std::function<void()> onBasculesChanged;
     /// D360 : l'état des bascules au journal — ce que la règle PEINT, et qu'aucun
     /// relevé de textes ne peut voir.
     void direLesBascules() const;

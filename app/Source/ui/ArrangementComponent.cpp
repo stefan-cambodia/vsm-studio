@@ -269,24 +269,28 @@ AutomationCurve* ArrangementComponent::curveShownOn(size_t trackIndex) {
 void ArrangementComponent::basculerCourbes() {
     automationVisible_ = !automationVisible_;
     direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();   // D493
     repaint();
 }
 
 void ArrangementComponent::basculerAimant() {
     snap_ = !snap_;
     direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();   // D493
     repaint();
 }
 
 void ArrangementComponent::basculerGrilleALaMesure() {
     aimanteALaMesure_ = !aimanteALaMesure_;
     direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();   // D493
     repaint();
 }
 
 void ArrangementComponent::basculerSuivi() {
     followPlayhead_ = !followPlayhead_;
     direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();   // D493
     repaint();
 }
 

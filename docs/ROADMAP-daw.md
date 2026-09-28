@@ -35683,3 +35683,60 @@ tous les chiffres hexadécimaux qui suivent, et le « c » en est un ; coupé en
 
 **Reste nommé, non fait** : (a) et (b) de D491 (les six outils et le zoom ± au
 menu ; les quatre bascules non retenues par le projet).
+
+---
+
+### Phase D493 — l'aimant, la grille, le suivi et les courbes de l'arrangement revenaient à leur défaut à chaque lancement (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE (b) DE D491.** Les quatre bascules de l'arrangement
+ont désormais une porte au menu (D491) et leurs lettres (D492) ; aucune n'est
+retenue. Couper l'aimant, cacher les courbes, arrêter le suivi : au lancement
+suivant, « aimant mesure, suit la tête, courbes cachées », comme si rien n'avait
+été choisi. `CLAUDE.md` : *« toute disposition … retient ses réglages »*.
+
+**LE CHOIX, TRANCHÉ ICI : LES PRÉFÉRENCES, PAS LE PROJET.** La règle de partage de
+D363 : ce qui appartient au MORCEAU va dans le bloc `view` du projet (le zoom, dont
+la bonne valeur dépend de la longueur du morceau), ce qui dit COMMENT on travaille
+va dans les préférences — « Règle en minutes:secondes » (D34.4) et « l'automation
+suit les clips » (D17.2) y sont. Les quatre bascules sont de la seconde espèce :
+aucune n'a de valeur juste pour un morceau et fausse pour un autre ; elles suivent
+l'utilisateur d'un projet au suivant, y compris dans les projets que la chaîne
+d'analyse écrit (sans vue). Quatre clés (`arrangementAimant`,
+`arrangementGrilleMesure`, `arrangementSuitLaTete`, `arrangementCourbes`), relues
+au démarrage, écrites à chaque bascule — par la touche comme par le menu, qui
+passent par les mêmes fonctions (D491) : l'arrangement le dit par un rappel,
+l'application écrit.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/bascules-retenues.sh`, deux
+paires de lancements sous un même HOME neuf (premier lancement : les gestes ;
+second : le seul relevé `VSM_ARRANGEMENT=1`) :
+1. **témoin** (binaire de D492) : paire A (menu : aimantation, suivi, courbes) —
+   après les gestes « aimant libre, ne suit pas, automation visible », au
+   relancement « aimant mesure, suit la tête, automation cachée » ; paire B (touche
+   M, par `VSM_TOUCHE=arrangement:M`) — « aimant grille », puis « aimant mesure » au
+   relancement ; aucune des quatre clés dans le fichier de préférences ;
+2. **après** : le relancement rend l'état des gestes, dans les deux paires ; les
+   clés sont écrites ; un HOME neuf sans gestes rend toujours les défauts (le
+   défaut ne change pas) ;
+3. `portes-de-l-arrangement.sh`, `clavier-emprunte.sh`, fumée 0 raté ; préférences
+   de l'utilisateur inchangées.
+
+**MESURÉ — TENU** (`tools/bascules-retenues.sh`, garde neuve) :
+
+| paire | geste | après les gestes | relancement — témoin (D492) | relancement — après | clés écrites (témoin → après) |
+|---|---|---|---|---|---|
+| A | menu : aimantation, suivi, courbes | aimant libre, ne suit pas, courbes visibles | aimant mesure, suit, cachées | **aimant libre, ne suit pas, courbes visibles** | 0 → 4 |
+| B | touche `arrangement:M` | aimant grille | aimant mesure | **aimant grille** | 0 → 4 |
+
+HOME neuf sans geste : « aimant mesure, suit la tête, courbes cachées » avant comme
+après — le défaut ne change pas. Rouge sur le témoin (2 ratés), vert après. Photo
+du relancement de la paire A : la règle dit « aimant : libre | auto », sans
+« suit » ; le menu Affichage coche Grille et Courbes, pas Aimantation ni Suivre.
+
+`inventaire_langue.py --garde` 0 ; `portes-de-l-arrangement.sh`,
+`clavier-emprunte.sh`, `cadrage-ouverture.sh` 0 raté, `autosauvegarde-vue.sh`
+vert ; fumée 0 raté ; préférences de l'utilisateur identiques.
+
+**Reste nommé, non fait** : le piano roll a ses PROPRES bascules d'aimantation et
+de suivi (boutons de sa barre) ; elles non plus ne sont pas retenues — même règle,
+à mesurer dans sa phase. Et les six outils et le zoom ± au menu (D491 a).
