@@ -34893,3 +34893,43 @@ D475 — puis recopié ici tel quel) :
 **CE QUE LA GARDE NE VOIT PAS, ET QU'ELLE DIT DANS SON EN-TÊTE** : un mot français
 sans accent, un texte peint, une boîte de dialogue. Son zéro vaut pour ce qu'elle
 regarde — huit vues, et le français accentué.
+
+---
+
+### Phase D477 — « Division 4 », « Mode 0 » : l'arpégiateur se réglait en numéros (28/09/2026)
+
+**D'OÙ ELLE VIENT — LA PHOTO DE D476** (panneau d'effets, arpégiateur posé). Ses
+deux réglages s'écrivent « Division 4 » et « Mode 0 ». Ce que le moteur en fait
+est écrit dans `core/` (`MidiEffects.cpp`) : la division est « en fractions de
+noire : 4 veut dire la double-croche » (le pas vaut noire / 4), et le mode vaut
+« 0 montant, 1 descendant, 2 aller-retour ». Rien de cela n'est à l'écran : il
+faut lire le code pour savoir que « 4 » est une double-croche. Cubase et Live
+écrivent « 1/16 » et « Up ».
+
+**LE CHOIX, TRANCHÉ ICI.** (1) Le MODE est un sélecteur, déclaré comme ceux de D473
+mais dans `core/` : `MidiEffectParam` reçoit ses positions (« Montant »,
+« Descendant », « Aller-retour », traduites à l'affichage). (2) La DIVISION s'écrit
+en VALEUR DE NOTE : `d` subdivisions de la noire font des notes de 1/(4d) — « 1/4 »,
+« 1/8 », « 1/16 », « 1/32 » ; un multiple de trois est un triolet (« 1/8 T » pour
+3, « 1/16 T » pour 6) ; le reste s'écrit tel quel (« 1/20 » pour 5). La saisie garde
+le numéro. Le moteur ne change pas.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D476, `VSM_TEXTES_LISTE`) : `effet-midi.Division : 4`,
+   `effet-midi.Mode : 0` ;
+2. **après** : « 1/16 » et « Montant » (en anglais « Up ») ; `valeur:effet-midi.Division=3`
+   → « 1/8 T », `valeur:effet-midi.Mode=2` → « Aller-retour » (photos) ;
+3. test `core` : le mode d'arpège déclare trois positions sur 0..2 ; suites
+   vertes ; `anglais-a-l-ecran.py` 0 texte français ; fumée 0 raté ; préférences
+   inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D476) : `effet-midi.Division : 4`, `effet-midi.Mode : 0` ;
+   photo après `valeur:effet-midi.Division=3` et `Mode=2` : « 3 », « 2 ».
+2. **Après** : **« 1/16 »** et **« Montant »** (en anglais « 1/16 », **« Up »**) ;
+   photo : **« 1/8 T »** et **« Aller-retour »** ; 0 case périmée dans les deux
+   langues.
+3. Test `the_arpeggio_mode_names_its_three_positions` : **362** tests core ;
+   interchange 308, audio 1 305 (l'en-tête de `core/` change : build complet
+   vert) ; `anglais-a-l-ecran.py` **0** texte français sur huit vues — les trois
+   positions ont leur paire anglaise ; fumée 0 raté ; préférences identiques.

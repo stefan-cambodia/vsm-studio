@@ -149,7 +149,8 @@ std::vector<MidiEffectParam> midiEffectParameters(const std::string& type) {
     if (type == "arpeggio")
         // `Division` en fractions de noire : 1 = la noire, 4 = la
         // double-croche. `Mode` : 0 montant, 1 descendant, 2 aller-retour.
-        return {{"Division", 1.0f, 16.0f, 4.0f}, {"Mode", 0.0f, 2.0f, 0.0f}};
+        return {{"Division", 1.0f, 16.0f, 4.0f},
+                {"Mode", 0.0f, 2.0f, 0.0f, {"Montant", "Descendant", "Aller-retour"}}};   // D477
     return {};
 }
 

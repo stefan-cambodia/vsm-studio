@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/sequencer/Track.h"
 #include <cstddef>
+#include <string>
 #include <vector>
 
 // LES EFFETS MIDI DE PISTE (D31) -- les *MIDI inserts* de Cubase, le *MIDI
@@ -49,6 +50,11 @@ struct MidiEffectParam {
     float minValue;
     float maxValue;
     float defaultValue;
+    /// D477 : LES POSITIONS D'UN SÉLECTEUR, une par valeur entière de
+    /// `minValue` à `maxValue` — le mode d'arpège s'écrivait « 0 » et il fallait
+    /// lire ce fichier pour savoir que c'était « montant ». En français : le
+    /// volet les traduit à l'affichage, comme le nom de l'effet (D476).
+    std::vector<std::string> choices = {};
 };
 /// Vide si le type est inconnu.
 std::vector<MidiEffectParam> midiEffectParameters(const std::string& type);

@@ -208,3 +208,16 @@ VSM_TEST(the_two_transpositions_compose_instead_of_fighting) {
     VSM_ASSERT(on != nullptr);
     VSM_ASSERT_EQ(on->note, uint8_t{67});   // 60 + 5 (effet) + 2 (piste)
 }
+
+VSM_TEST(the_arpeggio_mode_names_its_three_positions) {
+    // D477 : le mode s'écrivait « 0 », « 1 », « 2 ». Une position par valeur
+    // entière, dans l'ordre où `arpeger` les lit : 0 montant, 1 descendant,
+    // 2 aller-retour.
+    for (const auto& p : midiEffectParameters("arpeggio")) {
+        if (std::string(p.name) != "Mode") { VSM_ASSERT(p.choices.empty()); continue; }
+        VSM_ASSERT_EQ(p.choices.size(), size_t{3});
+        VSM_ASSERT_EQ(p.choices.size(), static_cast<size_t>(p.maxValue - p.minValue) + 1);
+        VSM_ASSERT_EQ(p.choices[0], std::string("Montant"));
+        VSM_ASSERT_EQ(p.choices[2], std::string("Aller-retour"));
+    }
+}

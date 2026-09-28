@@ -487,6 +487,18 @@ void EffectChainComponent::rebuildEffectList() {
     resized();
 }
 
+// D477 : `d` SUBDIVISIONS DE LA NOIRE, ÉCRITES EN VALEUR DE NOTE — 1/(4d) :
+// « 1/4 », « 1/8 », « 1/16 » ; un multiple de trois dont le tiers est une
+// puissance de deux est un triolet (« 1/8 T » pour 3, « 1/16 T » pour 6) ; le
+// reste s'écrit tel quel (« 1/20 » pour 5). La saisie garde le numéro.
+static juce::String texteDivisionDeNoire(int d) {
+    d = std::max(1, d);
+    const auto puissanceDeDeux = [](int n) { return n > 0 && (n & (n - 1)) == 0; };
+    if (puissanceDeDeux(d)) return "1/" + juce::String(4 * d);
+    if (d % 3 == 0 && puissanceDeDeux(d / 3)) return "1/" + juce::String(8 * d / 3) + " T";
+    return "1/" + juce::String(4 * d);
+}
+
 // D474 : LA CASE DE VALEUR TIENT LE TEXTE LE PLUS LONG DU PARC (« 20000 Hz ») à
 // la police de la case (15 pt) sans le comprimer : 60 × 14 px le serrait d'un
 // facteur 1,07 dès « 1000 Hz », et rognait « 1998.02 Hz ». La cellule fait 84 px.
@@ -531,6 +543,25 @@ void EffectChainComponent::rebuildParamControls() {
             const int slot = selectedEffect_;
             raw->setName("effet-midi." + juce::String::fromUTF8(info.name));   // D429 : le nom du banc (valeur:)
             raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
+            // D477 : CE QUE LE MOTEUR EN FAIT, À L'ÉCRAN. Le mode d'arpège nomme sa
+            // position (déclarée dans `core/`, traduite ici) ; la division s'écrit
+            // en valeur de note — « 4 » voulait dire la double-croche, et il
+            // fallait lire `MidiEffects.cpp` pour le savoir.
+            if (!info.choices.empty()) {
+                juce::StringArray positions;
+                for (const auto& c : info.choices) positions.add(vsm::app::ui::tr(juce::String::fromUTF8(c.c_str())));
+                const double debut = info.minValue;
+                raw->textFromValueFunction = [positions, debut](double v) {
+                    return positions[juce::jlimit(0, positions.size() - 1, static_cast<int>(std::lround(v - debut)))];
+                };
+                raw->valueFromTextFunction = [positions, debut](const juce::String& t) {
+                    const int i = positions.indexOf(t.trim(), true);
+                    return i >= 0 ? debut + i : vsm::app::ui::lireNombreSaisi(t);
+                };
+            } else if (effet.type == "arpeggio" && std::string(info.name) == "Division") {
+                raw->textFromValueFunction = [](double v) { return texteDivisionDeNoire(static_cast<int>(std::lround(v))); };
+            }
+            raw->updateText();
             raw->onDragStart = [this] {
                 glisseEnCours_ = true;   // D429
                 if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Réglage d'effet MIDI"));

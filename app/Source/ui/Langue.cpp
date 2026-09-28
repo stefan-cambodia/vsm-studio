@@ -196,6 +196,8 @@ const Paire kAnglais[] = {
       "Add ▸" },
     { "Ajuster à la fenêtre",
       "Fit to the window" },
+    { "Aller-retour",   // D477 : le mode d'arpège
+      "Up and down" },
     { "Aller à la fin du morceau",
       "Go to the end of the song" },
     { "Aller à la mesure…",
@@ -434,6 +436,8 @@ const Paire kAnglais[] = {
       "Create a clip" },
     { "Créer un clip d'une mesure à la tête de lecture",
       "Create a one-bar clip at the playhead" },
+    { "Descendant",   // D477
+      "Down" },
     { "Descendre",
       "Move down" },
     { "Descendre la piste",
@@ -788,6 +792,8 @@ const Paire kAnglais[] = {
       "Mixer" },
     { "Mixolydien",
       "Mixolydian" },
+    { "Montant",   // D477
+      "Up" },
     { "Mono-cœur",
       "Single core" },
     { "Mono-cœur (aucun thread auxiliaire)",
