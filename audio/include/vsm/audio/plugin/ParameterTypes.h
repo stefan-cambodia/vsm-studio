@@ -26,6 +26,10 @@ struct ParameterInfo {
     /// de ce que l'effet joue. Elles vivent ici, à côté des bornes, là où un
     /// commentaire « 0=soft 1=hard » les tenait jusqu'alors.
     std::vector<std::string> choices;
+    /// D478 : UN RÉGLAGE QUE L'EFFET ARRONDIT À LA LECTURE (le « Downsample » du
+    /// Bit Crusher, `std::lround`) : pas de 1, écriture entière. Réglé en continu,
+    /// il écrivait « 2.40 x » pour un effet qui joue 2.
+    bool integer = false;
 };
 
 using ParameterList = std::vector<ParameterInfo>;

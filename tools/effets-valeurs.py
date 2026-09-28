@@ -46,7 +46,7 @@ ENTETES = RACINE / "audio/include/vsm/audio/effect"
 # une constante nommée (`kMaxDelayMs`).
 PARAMETRE = re.compile(
     r'\{\s*k\w+\s*,\s*"([^"]+)"\s*,\s*(-?[\d.]+)f?\s*,\s*(-?[\w.]+?)f?\s*,\s*(-?[\d.]+)f?\s*,\s*"([^"]*)"'
-    r'(?:\s*,\s*//[^\n]*\n\s*)?(?:\s*,\s*\{([^}]*)\})?\s*\}', re.S)
+    r'(?:\s*,\s*//[^\n]*\n\s*)?(?:\s*,\s*\{([^}]*)\})?(?:\s*,\s*(true|false))?\s*\}', re.S)
 
 
 def lire_usine() -> tuple[dict[str, str], dict[str, str]]:
@@ -68,7 +68,7 @@ def lire_parametres() -> dict[str, list[tuple[str, float, float, str, list[str]]
             bloc = texte[debut:fin + 2]
             parametres = []
             for p in PARAMETRE.finditer(bloc):
-                nom, mini, _maxi, defaut, unite, choix = p.groups()
+                nom, mini, _maxi, defaut, unite, choix, _entier = p.groups()
                 positions = re.findall(r'"([^"]*)"', choix) if choix else []
                 parametres.append((nom, float(mini), float(defaut), unite, positions))
             par_classe[m.group(1)] = parametres

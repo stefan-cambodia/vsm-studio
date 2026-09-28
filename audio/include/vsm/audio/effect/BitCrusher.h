@@ -20,7 +20,7 @@ public:
     BitCrusher() {
         parameterList_ = {
             {kBits, "Bits", 1.0f, 16.0f, 8.0f, ""},
-            {kDownsample, "Downsample", 1.0f, 64.0f, 1.0f, "x"},
+            {kDownsample, "Downsample", 1.0f, 64.0f, 1.0f, "x", {}, true},   // D478 : lu arrondi
             {kMix, "Mix", 0.0f, 1.0f, 1.0f, "%"},
         };
         for (const auto& p : parameterList_)

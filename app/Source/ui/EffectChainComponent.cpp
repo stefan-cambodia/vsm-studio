@@ -619,12 +619,14 @@ void EffectChainComponent::rebuildParamControls() {
         // 1998.02 Hz » pour 2 000 Hz, 26 réglages sur 66 faux à l'usine
         // (`tools/effets-valeurs.py`), et le premier geste faisait passer
         // l'effet sur la grille.
-        pc.slider->setRange(info.minValue, info.maxValue, selecteur ? 1.0 : 0.0);
+        pc.slider->setRange(info.minValue, info.maxValue, selecteur || info.integer ? 1.0 : 0.0);   // D478
         pc.slider->setValue(fx->getParameter(info.id), juce::dontSendNotification);
         const auto pid = info.id;
         juce::Slider* raw = pc.slider.get();
         raw->setName("effet." + juce::String::fromUTF8(info.name.c_str()));   // D429 : le nom du banc (valeur:)
-        raw->textFromValueFunction = [unite = juce::String::fromUTF8(info.unit.c_str())](double v) {
+        raw->textFromValueFunction = [unite = juce::String::fromUTF8(info.unit.c_str()), entier = info.integer](double v) {
+            // D478 : un réglage entier s'écrit entier (« 2 x »), pas « 2.00 x ».
+            if (entier) return juce::String(juce::roundToInt(v)) + (unite.isNotEmpty() ? " " + unite : juce::String());
             return vsm::app::ui::texteParametre(v, unite);
         };
         raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule

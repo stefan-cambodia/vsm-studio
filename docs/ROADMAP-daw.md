@@ -34933,3 +34933,38 @@ le numéro. Le moteur ne change pas.
    interchange 308, audio 1 305 (l'en-tête de `core/` change : build complet
    vert) ; `anglais-a-l-ecran.py` **0** texte français sur huit vues — les trois
    positions ont leur paire anglaise ; fumée 0 raté ; préférences identiques.
+
+---
+
+### Phase D478 — « Downsample 2.40 x » : un réglage que l'effet arrondit se réglait en continu (28/09/2026)
+
+**D'OÙ ELLE VIENT — L'INVENTAIRE DE D473-D475**, repris sur ce que le moteur FAIT
+de chaque valeur (`params_[…]` lus dans les seize `process`) : un seul réglage
+continu est **arrondi** à la lecture sans être un sélecteur — le « Downsample »
+du Bit Crusher (`std::lround`, 1 à 64 : on garde un échantillon sur N). Depuis
+D474 le panneau est continu ; il écrit donc « 2.40 x » pour un effet qui joue 2,
+et un glissé de 1,00 à 1,49 ne change rien à ce qu'on entend.
+
+**LE CHOIX, TRANCHÉ ICI** : `ParameterInfo` reçoit `integer` (faux par défaut), et
+le panneau en tire un pas de 1 et une écriture entière (« 2 x »). Un sélecteur
+(D473) est aussi entier, mais il a des NOMS ; celui-ci a des nombres.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D477) : `valeur:effet.Downsample=2.4` → « 2.40 x » ;
+2. **après** : « 2 x » ; la valeur d'usine « 1 x » ; `effets-valeurs.py` 0 écart
+   (elle lit le champ et juge un entier à l'unité) ;
+3. test `audio` : un réglage `integer` a des bornes entières ; suites vertes ;
+   fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D477) : `saisir-curseur:effet.Downsample=2.4` →
+   **2.4000 (« 2.40 x »)** — un effet qui jouait 2.
+2. **Après** : **2.0000 (« 2 x »)** ; valeur d'usine « 1 x » ; `effets-valeurs.py`
+   **0 écart sur 66** (elle lit le champ `integer` — 66 déclarations lues).
+3. Test `integer_parameters_have_integer_bounds` : **1 306** tests audio ; core 362,
+   interchange 308 ; build complet vert ; fumée 0 raté ; préférences identiques.
+
+**L'INVENTAIRE EST CLOS SUR CE POINT** : parmi les 66 réglages d'effet, le moteur
+ne lit arrondis que les quatre sélecteurs de D473 et ce Downsample. Le « Grain »
+du pitch shift est converti en échantillons (un entier, mais d'une milliseconde
+continue) et reste continu, à juste titre.

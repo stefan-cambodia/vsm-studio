@@ -80,3 +80,19 @@ VSM_TEST(percent_unit_means_a_part_between_minus_one_and_one) {
     }
     VSM_ASSERT(parts >= 24);   // les vingt-quatre parts d'effet de D475
 }
+
+// D478 : UN RÉGLAGE ENTIER A DES BORNES ENTIÈRES, et ce n'est pas un sélecteur
+// (qui a des noms, D473). Le Downsample du Bit Crusher en est un.
+VSM_TEST(integer_parameters_have_integer_bounds) {
+    int entiers = 0;
+    for (const auto& e : EffectFactory::available())
+        for (const auto& p : EffectFactory::create(e.id)->parameterList()) {
+            if (!p.integer) continue;
+            ++entiers;
+            VSM_ASSERT(p.choices.empty());
+            VSM_ASSERT(std::floor(p.minValue) == p.minValue);
+            VSM_ASSERT(std::floor(p.maxValue) == p.maxValue);
+            VSM_ASSERT(std::floor(p.defaultValue) == p.defaultValue);
+        }
+    VSM_ASSERT(entiers >= 1);
+}
