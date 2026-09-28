@@ -3507,8 +3507,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // Le rapport de RECONSTRUCTION du projet ouvert (§ 4.3 du CDC
             // multipiste) : grisé quand le projet n'en a pas — un projet
             // ouvert à la main n'en a pas, et c'est normal.
+            // D487 : GRISÉE, ELLE DIT POURQUOI (D443).
             menu.addItem(kMenuFileReconstructionReport,
-                         tr(u8"Voir le rapport de reconstruction"),
+                         rapportReconstruction_ != juce::File()
+                             ? tr(u8"Voir le rapport de reconstruction")
+                             : tr(u8"Voir le rapport de reconstruction (ce projet n'en est pas une)"),
                          rapportReconstruction_ != juce::File(), false);
             // LA PARITÉ, COCHÉE PAR DÉFAUT : autant de pistes que le morceau a
             // de parties. C'est un choix de travail — il vaut pour toutes les
@@ -3570,7 +3573,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileExport, tr("Exporter MIDI..."));
             // D24.5 : un fichier audio sur une piste neuve, sans passer par le
             // lâcher -- qui, lui, propose la reconstruction.
-            menu.addItem(kMenuFileImportAudio, tr(u8"Importer un fichier audio sur une piste neuve..."),
+            // D487 : GRISÉE, ELLE DIT POURQUOI — la boîte qui l'expliquait
+            // (`importAudioFileOnNewTrack`) n'était jamais atteinte par ce menu.
+            menu.addItem(kMenuFileImportAudio,
+                         currentProjectFolder_ != juce::File()
+                             ? tr(u8"Importer un fichier audio sur une piste neuve...")
+                             : tr(u8"Importer un fichier audio sur une piste neuve... (enregistrez d'abord le "
+                                  u8"projet : le fichier est copié dans son dossier)"),
                          currentProjectFolder_ != juce::File());
             // D23.3 : la piste choisie seule -- pour donner une partie, pas le morceau.
             {

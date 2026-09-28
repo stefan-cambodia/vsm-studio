@@ -808,6 +808,10 @@ const Paire kAnglais[] = {
       "No track chosen" },
     { "Nature des événements montrés — et de ceux que « + » ajoute",   // D482
       "Kind of events shown — and of those “+” adds" },
+    { "Importer un fichier audio sur une piste neuve... (enregistrez d'abord le projet : le fichier est copié dans son dossier)",   // D487
+      "Import an audio file onto a new track... (save the project first: the file is copied into its folder)" },
+    { "Voir le rapport de reconstruction (ce projet n'en est pas une)",   // D487
+      "Show the reconstruction report (this project is not one)" },
     { "Machine de la piste : %1",   // D486
       "Track machine: %1" },
     { "Muet : cette piste seule ne sonne plus.",   // D481

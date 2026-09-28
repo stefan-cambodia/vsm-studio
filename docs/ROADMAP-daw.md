@@ -35331,3 +35331,42 @@ de machine et à la bascule de langue.
 rack pour la piste choisie, et en entier dans la liste déroulante. Élargir la liste
 des pistes par défaut prendrait la place de l'arrangement ; l'utilisateur, lui, peut
 l'élargir (la disposition est réglable et retenue).
+
+---
+
+### Phase D487 — deux entrées du menu Fichier grisées sans dire pourquoi (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DES ENTRÉES GRISÉES** (`VSM_MENU_LISTE`, projet de
+démarrage) : 116 entrées grisées, 69 sans parenthèse. Celles d'Édition le sont
+faute de sélection — la convention de Cubase, qui ne l'écrit pas, et ce n'est pas
+une énigme. Deux du menu Fichier en sont une :
+- **« Importer un fichier audio sur une piste neuve... »** est grisée tant que le
+  projet n'a pas de dossier. La raison existe — le fichier importé est COPIÉ dans
+  le dossier du projet (D6.4), et `importAudioFileOnNewTrack` la dit dans une
+  boîte —, mais le menu grisé empêche justement d'atteindre cette boîte ;
+- **« Voir le rapport de reconstruction »** est grisée quand le projet ouvert
+  n'est pas une reconstruction, sans le dire.
+C'est la famille de D443.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D486) : les deux entrées grisées, sans raison ;
+2. **après** : « Importer un fichier audio sur une piste neuve... (enregistrez
+   d'abord le projet : le fichier est copié dans son dossier) » et « Voir le
+   rapport de reconstruction (ce projet n'en est pas une) » quand elles sont
+   grisées, le libellé nu quand elles ne le sont pas (`b4wuzthen`, projet enregistré
+   ET reconstruit : les deux actives, libellés d'origine) ; en anglais aussi ;
+3. `menus-cites.py`, garde de langue, `anglais-a-l-ecran.py` verts ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D486) : « Fichier > Voir le rapport de reconstruction
+   [grisée] », « Fichier > Importer un fichier audio sur une piste neuve...
+   [grisée] ».
+2. **Après**, projet de démarrage (jamais enregistré, pas une reconstruction) :
+   « … (ce projet n'en est pas une) » et « … (enregistrez d'abord le projet : le
+   fichier est copié dans son dossier) », grisées ; en anglais « (this project is
+   not one) », « (save the project first: the file is copied into its folder) ».
+   **`b4wuzthen`** (enregistré et reconstruit) : les deux actives, libellés
+   d'origine — la raison n'est écrite que quand elle vaut.
+3. `menus-cites.py` (28 citations, 0 faute), garde de langue,
+   `anglais-a-l-ecran.py` verts ; fumée 0 raté ; préférences identiques.
