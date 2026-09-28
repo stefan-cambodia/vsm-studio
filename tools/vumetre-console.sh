@@ -12,6 +12,14 @@
 #      crête est retombée** (c'est toute sa raison d'être : une crête dure un
 #      buffer et passe entre deux rafraîchissements), et **s'efface d'un clic**.
 #
+#   4. D468 : LA CRÊTE SE LIT SUR L'ÉCHELLE DU FADER. Les seuls chiffres de la
+#      tranche sont ceux du fader (D342) ; le mètre suivait une autre échelle
+#      (-60..0 dBFS, linéaire) et une crête à -12 dBFS montait au « 0 » du fader.
+#      Règle : pour -6, -12 et -24 dBFS, le haut de la barre est à **2 px au
+#      plus** de la graduation du même nombre, lue sur la PHOTO (2 240 x 1 400,
+#      où les six graduations se posent). Vue ROUGE sur le binaire du 27/09
+#      avant d'être verte.
+#
 # COMMENT. `VSM_MIXEUR_NIVEAU=piste:dBFS[!]` pose une crête par le MÊME chemin
 # que le minuteur de l'application (`setMeasurement`) ; le « ! » la pose UNE
 # SEULE FOIS, sans quoi la consigne reposée à chaque tour réarmerait le témoin
@@ -105,5 +113,70 @@ clic="$(grep -c 'VSM_CLIC : mixeur.vumetre — cliqué' "$brouillon/efface.txt")
 verdict "le clic sur le mètre atteint le composant et efface le témoin (clic $clic, témoin $efface)" \
         "$([ "$clic" -ge 1 ] && [ "$efface" = "0" ] && echo 1 || echo 0)"
 
+# (d) D468 : la crête se lit sur l'échelle du fader
+# LA GRADUATION SE REPÈRE PAR SES PIXELS : trois pixels à gauche du fader, là où
+# `peindreEchelle` trace ses traits (le chiffre s'arrête neuf pixels avant) ; le
+# trait ambre est le 0 dB, les gris qui le suivent vers le bas -6, -12, -24, -40.
+# LA CRÊTE, par le haut de la barre dans la colonne du mètre : la première rangée
+# d'où partent six pixels clairs d'affilée (le témoin d'écrêtage n'en a que trois).
+for db in -6 -12 -24; do
+    lancer "aligne$db" VSM_MIXEUR=1 VSM_TAILLE="2240x1400" VSM_MIXEUR_NIVEAU="0:$db.0"
+    mesure="$(python3 - "$brouillon/aligne$db.png" "$brouillon/aligne$db.txt" "$db" <<'PY'
+import re, sys
+try:
+    from PIL import Image
+except ImportError:
+    print("SANS-PIL"); raise SystemExit(0)
+png, releve, db = sys.argv[1], sys.argv[2], int(sys.argv[3])
+texte = open(releve, encoding="utf-8", errors="replace").read()
+m = re.search(r"VSM_MIXEUR : piste 0 .*?tranche (\d+)x\d+.*?mètre (\d+)x(\d+) @(\d+),(\d+), échelle (\d+) px", texte)
+if not m:
+    print("SANS-RELEVE"); raise SystemExit(0)
+sw, mw, mh, mx, my, ech = (int(v) for v in m.groups())
+if ech <= 0:
+    print("SANS-ECHELLE"); raise SystemExit(0)
+im = Image.open(png).convert("RGB")
+px = im.load()
+# La tranche : r = bornes.reduced(4) ; le mètre prend les 10 px de droite, l'échelle
+# les `ech` px de gauche ; le fader commence donc à mx + mw + 8 + ech - sw.
+xt = mx + mw + 8 + ech - sw - 3
+def proche(c, ref): return all(abs(a - b) <= 14 for a, b in zip(c, ref))
+gris, ambre = (138, 136, 146), (227, 162, 77)
+groupes, courant = [], None
+for y in range(max(0, my - 12), min(im.size[1], my + mh + 12)):
+    c = px[xt, y]
+    genre = "a" if proche(c, ambre) else ("g" if proche(c, gris) else None)
+    if genre and courant and courant[1] == genre and y == courant[2] + 1:
+        courant[2] = y
+    elif genre:
+        courant = [y, genre, y]; groupes.append(courant)
+    else:
+        courant = None
+rangs = [g for g in groupes]
+try:
+    ia = next(i for i, g in enumerate(rangs) if g[1] == "a")
+except StopIteration:
+    print("SANS-UNITE"); raise SystemExit(0)
+dessous = [g[0] for g in rangs[ia + 1:] if g[1] == "g"]
+rang = {-6: 0, -12: 1, -24: 2}[db]
+if len(dessous) <= rang:
+    print("GRADUATION-ABSENTE"); raise SystemExit(0)
+yt = dessous[rang]
+xm = mx + mw // 2
+clair = lambda y: sum(px[xm, y]) >= 300
+haut = next((y for y in range(my, my + mh - 6) if all(clair(y + k) for k in range(6))), None)
+if haut is None:
+    print("SANS-BARRE"); raise SystemExit(0)
+print(yt, haut, abs(haut - yt))
+PY
+)"
+    set -- $mesure
+    if [ $# -eq 3 ]; then
+        verdict "une crête à $db dBFS monte à la graduation « $db » du fader (graduation y $1, barre y $2 : écart $3 px, règle : <= 2)" \
+                "$([ "$3" -le 2 ] && echo 1 || echo 0)"
+    else
+        verdict "une crête à $db dBFS se mesure sur la photo ($mesure)" 0
+    fi
+done
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

@@ -47,10 +47,41 @@ inline float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
 /// l'écart entre les deux, qui est la densité de la piste.
 class LevelMeter : public juce::Component {
 public:
-    /// Le niveau efficace, qui remplit la barre.
+    /// D468 : L'ÉCHELLE DE LA TRANCHE, ÉCRITE UNE FOIS — celle du fader : -60..+6
+    /// dB, milieu de course à -12 dB. Le fader la reprend (`ChannelStrip`) et le
+    /// mètre s'y peint : le 0 dB de l'un est à la hauteur du 0 dBFS de l'autre,
+    /// comme chez Cubase et Live. Le mètre suivait SA propre échelle (-60..0,
+    /// linéaire) à côté des seuls chiffres de la tranche, ceux du fader : une
+    /// crête à -12 dBFS montait au « 0 », à 41 px de son « -12 ». Deux copies
+    /// d'une même courbe finiraient par ne plus dire la même chose.
+    static const juce::NormalisableRange<double>& echelle() {
+        static const juce::NormalisableRange<double> e = [] {
+            juce::NormalisableRange<double> r(-60.0, 6.0, 0.1);
+            r.setSkewForCentre(-12.0);
+            return r;
+        }();
+        return e;
+    }
+    /// D468 : la place d'un niveau sur cette échelle, 0 (silence) à 1 (+6 dB).
+    static float proportionDe(float db) {
+        if (!(db > -60.0f)) return 0.0f;
+        return static_cast<float>(echelle().convertTo0to1(std::min(6.0, static_cast<double>(db))));
+    }
+    /// D468 : le niveau qu'une place représente (le relevé de banc la relit ainsi).
+    static float decibelsDe(float proportion) {
+        return static_cast<float>(echelle().convertFrom0to1(juce::jlimit(0.0f, 1.0f, proportion)));
+    }
+    /// D468 : où la course du fader tombe dans le mètre — y local de +6 dB (haut)
+    /// et de -60 dB (bas). Sans course (le master, qui n'a pas de fader), la barre
+    /// prend toute la fente.
+    void setCourse(float haut, float bas) {
+        if (haut != courseHaut_ || bas != courseBas_) { courseHaut_ = haut; courseBas_ = bas; repaint(); }
+    }
+
+    /// Le niveau efficace, marqué d'un trait dans la barre.
     void setRms(float linearRms) {
         const float db = linearRms > 1.0e-5f ? 20.0f * std::log10(linearRms) : -100.0f;
-        const float pos = juce::jlimit(0.0f, 1.0f, (db + 60.0f) / 60.0f);
+        const float pos = proportionDe(db);
         if (std::abs(pos - rms_) > 1.0e-4f) { rms_ = pos; repaint(); }
     }
     /// La corrélation de phase, de -1 à +1, peinte en pied de mètre.
@@ -59,14 +90,14 @@ public:
     }
     float correlation() const { return correlation_; }
     float rmsPosition() const { return rms_; }
-    /// D344 : la position de la crête, 0..1 sur l'échelle -60..0 dBFS.
+    /// D344 : la position de la crête, 0..1 sur l'échelle de la tranche (D468).
     float cretePosition() const { return level_; }
 
     void setLevel(float linearPeak) {
-        // Amplitude linéaire -> position 0..1 sur une échelle -60..0 dBFS.
+        // Amplitude linéaire -> position 0..1 sur l'échelle de la tranche (D468).
         float db = linearPeak > 1.0e-5f ? 20.0f * std::log10(linearPeak) : -100.0f;
         if (db >= 0.0f && !ecrete_) { ecrete_ = true; repaint(); }   // D344
-        float pos = juce::jlimit(0.0f, 1.0f, (db + 60.0f) / 60.0f);
+        float pos = proportionDe(db);
         if (std::abs(pos - level_) > 1.0e-4f || pos > level_) {
             level_ = pos;
             if (pos > peakHold_) peakHold_ = pos;
@@ -101,13 +132,22 @@ public:
         const float hauteurPhase = 4.0f;
         auto phase = barre.removeFromBottom(hauteurPhase);
         barre.removeFromBottom(2.0f);
+        // D468 : LA BARRE MONTE LE LONG DE LA COURSE DU FADER, pas de la fente :
+        // c'est ce qui met chaque niveau en face du chiffre du fader qui le nomme.
+        if (courseBas_ > courseHaut_)
+            barre = barre.getIntersection({ barre.getX(), courseHaut_, barre.getWidth(), courseBas_ - courseHaut_ });
+        const auto yDe = [&barre](float position) { return barre.getBottom() - barre.getHeight() * position; };
 
         if (level_ > 0.0f) {
-            float h = barre.getHeight() * level_;
-            juce::Rectangle<float> bar(barre.getX(), barre.getBottom() - h, barre.getWidth(), h);
+            const float haut = yDe(level_);
+            juce::Rectangle<float> bar(barre.getX(), haut, barre.getWidth(), barre.getBottom() - haut);
+            // Les couleurs se posent en décibels, comme avant D468 : ambre dès
+            // -15 dBFS, rouge à 0 dBFS — et au-dessus, où la course du fader
+            // montre les dépassements.
+            const float yZero = yDe(proportionDe(0.0f));
             juce::ColourGradient grad(vsm::ui::Palette::accentTeal, 0, barre.getBottom(),
-                                       vsm::ui::Palette::accentRed, 0, barre.getY(), false);
-            grad.addColour(0.75, vsm::ui::Palette::accentAmber);
+                                       vsm::ui::Palette::accentRed, 0, yZero, false);
+            grad.addColour(proportionDe(-15.0f) / proportionDe(0.0f), vsm::ui::Palette::accentAmber);
             g.setGradientFill(grad);
             g.fillRoundedRectangle(bar, 2.0f);
         }
@@ -130,8 +170,7 @@ public:
         // Traits fins, par-dessus la barre, pour rester lisibles quand elle monte.
         g.setColour(vsm::ui::Palette::textSecondary.withAlpha(0.55f));
         for (const float db : { 0.0f, -6.0f }) {
-            const float pos = juce::jlimit(0.0f, 1.0f, (db + 60.0f) / 60.0f);
-            const float y = barre.getBottom() - barre.getHeight() * pos;
+            const float y = yDe(proportionDe(db));
             g.fillRect(barre.getX(), std::min(y, barre.getBottom() - 1.0f), barre.getWidth(), 1.0f);
         }
         // LE TÉMOIN D'ÉCRÊTAGE RESTE ALLUMÉ. Une crête à 0 dBFS dure un buffer :
@@ -139,8 +178,10 @@ public:
         // sature se découvre alors au casque. Il s'éteint d'un clic (le master a
         // le sien depuis D48 ; les pistes n'en avaient pas).
         if (ecrete_) {
+            // D468 : au SOMMET DE LA FENTE, au-dessus de la course : le témoin
+            // n'est pas un niveau, et il ne doit pas en masquer un.
             g.setColour(vsm::ui::Palette::accentRed);
-            g.fillRect(barre.getX(), barre.getY(), barre.getWidth(), 3.0f);
+            g.fillRect(r.getX() + 1.0f, r.getY() + 1.0f, r.getWidth() - 2.0f, 3.0f);
         }
 
         g.setColour(vsm::ui::Palette::pianoKeyBlack);
@@ -159,6 +200,7 @@ private:
     float rms_ = 0.0f;
     float correlation_ = 1.0f;
     bool ecrete_ = false;   ///< D344 : a touché 0 dBFS, jusqu'au clic
+    float courseHaut_ = -1.0f, courseBas_ = -1.0f;   ///< D468 : la course du fader, en y local
 };
 
 /// Tranche d'une piste.

@@ -84,9 +84,10 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     volume_.setName("mixeur.volume");   // D139 : le nom par lequel le banc le désigne (appuyer:)
     volume_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 16);
-    volume_.setRange(-60.0, 6.0, 0.1);
+    // D468 : LA COURBE DU FADER EST CELLE DU MÈTRE (-60..+6 dB, milieu à -12),
+    // écrite une seule fois dans `LevelMeter::echelle()`.
+    volume_.setNormalisableRange(LevelMeter::echelle());
     volume_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 dB
-    volume_.setSkewFactorFromMidPoint(-12.0);
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
     // D462 : ÉCRIT COMME LA LIGNE DE PISTE (« +1.7 dB ») ; le suffixe seul écrivait
     // « 1.7 dB » pour la même valeur.
@@ -457,6 +458,12 @@ void ChannelStrip::resized() {
                           ? kLargeurEchelle : 0;
     if (largeurEchelle_ > 0) r.removeFromLeft(largeurEchelle_);
     volume_.setBounds(r);
+    // D468 : LE MÈTRE SE PEINT LE LONG DE LA COURSE DU FADER — lue sur le curseur
+    // (`getPositionOfValue`), comme l'échelle de D342 : une crête à -12 dBFS se
+    // pose alors en face du « -12 » que l'échelle écrit.
+    const float haut = static_cast<float>(volume_.getY() + volume_.getPositionOfValue(volume_.getMaximum()) - meter_.getY());
+    const float bas  = static_cast<float>(volume_.getY() + volume_.getPositionOfValue(volume_.getMinimum()) - meter_.getY());
+    meter_.setCourse(haut, bas);
 }
 
 int ChannelStrip::hauteurUtile() const {
@@ -1116,11 +1123,11 @@ void MixerComponent::poserNiveauxPourCapture(const juce::String& consigne) {
 void MixerComponent::listerVumetresPourCapture() const {
     for (int i = 0; i < strips_.size(); ++i) {
         const auto& m = strips_[i]->vumetre();
-        // LA POSITION RENDUE EN DÉCIBELS : l'échelle du mètre est -60..0, et un
-        // « 0,95 » ne se relit pas. -inf quand rien ne passe.
+        // LA POSITION RENDUE EN DÉCIBELS : un « 0,81 » ne se relit pas. Relue sur
+        // l'échelle du mètre (celle du fader depuis D468). -inf quand rien ne passe.
         const float pos = m.cretePosition();
         std::fputs(("VSM_VUMETRE : tranche " + juce::String(i) + " : "
-                    + (pos > 0.0f ? juce::String(pos * 60.0 - 60.0, 2) : juce::String("-inf"))
+                    + (pos > 0.0f ? juce::String(LevelMeter::decibelsDe(pos), 2) : juce::String("-inf"))
                     + " dBFS, \xc3\xa9" "cr\xc3\xaate " + (m.aEcrete() ? "1" : "0") + "\n").toRawUTF8(), stderr);
     }
     std::fputs(("VSM_VUMETRES : " + juce::String(strips_.size()) + " vum\xc3\xa8tre(s)\n").toRawUTF8(), stderr);

@@ -27,7 +27,10 @@ Pour déplacer librement les panneaux, *Affichage ▸ Fenêtre unique* se décoc
 graduations marquent **0 et −6 dBFS** — celles que marquent les consoles —, et un
 **témoin rouge s'allume en haut dès qu'une crête touche 0 dBFS et y RESTE**, parce
 qu'une crête dure un buffer et passe entre deux rafraîchissements de l'écran.
-Cliquez sur le mètre pour l'éteindre.
+Cliquez sur le mètre pour l'éteindre. **Le mètre se lit sur l'échelle du fader**
+(D468) : une crête à −12 dBFS monte en face du « −12 », une crête à 0 dBFS en face
+du 0 dB ambre, et ce qui dépasse 0 dBFS monte en rouge dans le haut de la course,
+jusqu'à +6 — une seule échelle par tranche, comme chez Cubase et Live.
 
 **Le fader de chaque tranche est un fader** (D342) : une glissière visible, sa
 portion remplie sous le capuchon, et une **échelle en décibels** à gauche — 6, 0,

@@ -34347,3 +34347,65 @@ depuis D363. Les défauts de D234 et D319 restent le repli.
 4. `vue-du-morceau.sh` vert ; fumée 0 raté ; préférences identiques ;
    `build/tools/vsm-render` non relié (07:52 avant comme après) ; campagne gelée
    pendant les deux builds (14:21 → 14:23, 14:25 → 14:29).
+
+---
+
+### Phase D468 — le mètre d'une tranche se lisait sur l'échelle du fader, qui n'était pas la sienne (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE « RESTE NOMMÉ, NON FAIT » DE D344** (*« les graduations ne
+portent pas leurs chiffres »*), **et une photo de la console** (2 240 × 1 400,
+consigne `VSM_MIXEUR_NIVEAU=0:-12.0`). Les seuls chiffres de la tranche sont ceux
+de l'échelle du FADER (D342) : « 6, 0, −6, −12, −24, −40 », sur la courbe du
+curseur (−60..+6 dB, milieu à −12). Le mètre, à côté, suit SA propre échelle :
+−60..0 dBFS, linéaire. Les deux ne coïncident nulle part — sur la photo, une
+crête à **−12 dBFS arrive à la hauteur du « 0 »** du fader (y 1 209 contre 1 208),
+et une crête à 0 dBFS monte au niveau du « 6 ». Qui lit le mètre contre les
+seuls chiffres qu'il a sous les yeux lit douze décibels de trop.
+
+**LE CHOIX, TRANCHÉ ICI : UNE SEULE ÉCHELLE, CELLE DU FADER.** Cubase et Live
+graduent la tranche une fois, et le fader comme le mètre s'y lisent : le 0 dB du
+fader et le 0 dBFS du mètre sont à la même hauteur, et le haut de la course
+(+6) montre les dépassements qu'un mixage en virgule flottante sait porter. La
+raison qui l'emporte sur l'autre voie (chiffrer le mètre lui-même, que D344
+écartait déjà : dix pixels ne tiennent pas un « −6 » à 12 pt) : **deux échelles
+côte à côte dans dix-huit pixels se liraient l'une pour l'autre**, ce qui est
+précisément le défaut constaté. La courbe est écrite UNE fois (dans le mètre) et
+le fader la reprend : deux copies d'une courbe finiraient par diverger.
+
+**CE QUI NE CHANGE PAS** : le témoin d'écrêtage s'arme toujours à 0 dBFS et
+s'efface d'un clic ; la bande de corrélation reste au pied du mètre ; le relevé
+`VSM_VUMETRE` rend toujours des dBFS.
+
+**ATTENDU, écrit avant la mesure** (texte et barres PEINTS : preuve par la photo,
+à 2 240 × 1 400 ; la graduation se repère par ses pixels, la crête par le haut de
+la barre dans la colonne du mètre) :
+1. **témoin** (binaire du 27/09) : pour des consignes de −6, −12 et −24 dBFS, le
+   haut de la barre est à **plus de 10 px** de la graduation du même nombre ;
+2. **après** : à **2 px au plus** des trois graduations ;
+3. `tools/vumetre-console.sh` vert (la consigne de −12 se relit −12,00, le témoin
+   d'écrêtage armé, retenu, effacé), et sa nouvelle vérification — l'alignement
+   ci-dessus — **rouge sur le binaire du 27/09** avant d'être verte sur le neuf ;
+4. `fader-console.sh` vert (la courbe du fader n'a pas bougé : mêmes dB/px) ;
+   fumée 0 raté ; préférences de l'utilisateur inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire du 27/09, la garde neuve rejouée dessus) : la graduation
+   « −6 » est à y 1 231 et la barre d'une crête à −6 dBFS à 1 194, soit **37 px** ;
+   « −12 » à 1 250 contre 1 209, **41 px** (la barre s'arrête à un pixel du « 0 »,
+   tracé à 1 208) ; « −24 » à 1 281 contre 1 240, **41 px**. La garde est **rouge
+   trois fois** sur ce binaire.
+2. **Après** : **1, 0 et 1 px**. Photo : la crête à −12 dBFS en face du « −12 » ;
+   à +2 dBFS, la barre passe au rouge au-dessus du 0 dB ambre et le témoin
+   d'écrêtage s'allume au sommet de la fente, au-dessus de la course.
+3. `vumetre-console.sh` **7 contrôles, 0 raté** (−12 relu −12,00 : la relecture du
+   relevé passe par la même courbe ; témoin armé, retenu, effacé d'un clic).
+4. `fader-console.sh` 0 raté ; relevé du fader identique au pixel près avant et
+   après (course 132 px, 0,50 dB/px à 2 240 × 1 400) — la courbe est la même,
+   elle n'est plus écrite qu'une fois. Fumée 0 raté ; préférences identiques.
+
+**Reste nommé, non fait** : le mètre de la tranche **master** n'a toujours aucun
+chiffre (l'autre moitié du reste de D344) ; il suit désormais la même courbe sur
+toute sa fente, mais rien ne la gradue. Et la barre pleine du mètre est la CRÊTE,
+le RMS un trait à 35 % d'opacité dedans — alors que le commentaire de la classe,
+depuis D4.7, dit l'inverse (« la barre pleine est la valeur efficace, le trait fin
+la crête »).
