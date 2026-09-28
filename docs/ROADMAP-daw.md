@@ -35586,3 +35586,100 @@ rouvert revient à « aimant mesure, suit la tête, courbes cachées » ; (c) D1
 écrit que le clavier d'ordinateur, actif, « emprunte les lettres aux raccourcis » —
 mais la vue qui a le clavier reçoit la touche AVANT l'écouteur de l'application,
 et A, F, G, D, P, O, I, L… y sont des commandes : à mesurer avant d'y croire.
+
+---
+
+### Phase D492 — le clavier d'ordinateur « emprunte les lettres aux raccourcis »… sauf quand une vue a le clavier (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE (c) DE D491.** D11.7 a écrit : *« Actif, [le clavier
+d'ordinateur] emprunte les lettres aux raccourcis »*. Le code le fait dans
+`MainComponent::keyPressed` : `handleComputerKeyboard` passe avant la table. Mais
+`MainComponent` n'est qu'un ÉCOUTEUR, et JUCE distribue une touche **d'abord à la
+vue qui a le clavier**, puis remonte vers ses parents
+(`juce_ComponentPeer.cpp:200-220` : à chaque étage les écouteurs, puis
+`keyPressed`, et la première qui la prend l'arrête). Or le piano roll et
+l'arrangement ont, dans la table, des commandes sur des lettres du clavier
+d'ordinateur : **G** (aimantation) et **D** (note douteuse) au piano roll, **G**,
+**F** et **A** à l'arrangement (D491). Clavier actif et piano roll cliqué, G
+bascule donc l'aimantation au lieu de jouer un sol. Ce n'est écrit nulle part,
+et ce n'est pas ce que D11.7 promet.
+
+**POURQUOI PERSONNE NE L'A VU** : aucun banc ne pouvait jouer une note du clavier
+d'ordinateur. `handleComputerKeyboard` lit `getTextCharacter()`, qui vaut ZÉRO sur
+une touche fabriquée depuis sa description (le piège de D360, une fois de plus),
+et `VSM_TOUCHE` appelait `keyPressed` d'UN composant, jamais la chaîne.
+
+**L'INSTRUMENT, POSÉ DANS LE TÉMOIN** (sans lui, ni l'avant ni l'après ne se
+mesure) :
+1. `VSM_TOUCHE=focus:<vue>:<touche>` rejoue la chaîne de
+   `ComponentPeer::handleKeyPress` depuis la vue (`pianoroll`, `arrangement`)
+   jusqu'à la racine, et dit QUI a pris la touche. `keyListeners` est privé à
+   JUCE ; les écouteurs que l'application pose sont connus — elle-même, sur
+   elle-même et sur ses cinq fenêtres flottantes (`showFloatingPanels`, les deux
+   seuls `addKeyListener` du dépôt) — et rejoués à leur étage. Le vrai focus ne se
+   prend pas au banc : `grabKeyboardFocus` exige `isShowing()`, faux sous un écran
+   verrouillé (D94) — c'est l'état de la machine au moment d'écrire ;
+2. `VSM_CLAVIER : note N` / `octave N` au journal quand le clavier d'ordinateur
+   joue, pendant une touche de banc ;
+3. `handleComputerKeyboard` lit le CODE de la touche, et non son caractère. Sous
+   X11 les deux sont égaux pour une lettre (`juce_XWindowSystem_linux.cpp:3447` :
+   `keyCode = unicodeChar`) : rien ne change sous les doigts, et le banc voit enfin
+   les notes.
+
+**LE CHOIX, TRANCHÉ ICI** : actif, le clavier d'ordinateur prend SES dix-neuf
+touches (a s d f g h j k l ; — w e t y u o p — z x, sans modificateur) quelle que
+soit la vue qui a le clavier ; le piano roll et l'arrangement les laissent
+remonter (un seul prédicat, `estToucheDuClavier`, qui sert aussi à
+`handleComputerKeyboard` : une seule liste). C'est ce que D11.7 promet, et ce que
+fait Live. Une zone de SAISIE garde ses lettres (elle les prend avant, et c'est
+juste : on tape un nom). Inactif, rien ne change : G, D, F, A restent des
+commandes.
+
+**ATTENDU, écrit avant la mesure** — 19 touches jouées par `focus:` dans chaque vue :
+1. **témoin** (binaire de D491 augmenté de l'instrument), clavier ACTIF : le piano
+   roll prend **2** touches (G, D) → **15** notes ; l'arrangement en prend **3**
+   (G, F, A) → **14** notes ; les autres montent à l'application (notes, et z/x
+   l'octave) ;
+2. **après**, clavier ACTIF : **0** touche prise par une vue, **17** notes et **2**
+   changements d'octave dans chacune ;
+3. **contrôle**, clavier INACTIF, avant comme après : G et D pris par le piano
+   roll, G, F et A par l'arrangement — **aucune note** ;
+4. fumée 0 raté ; `portes-de-l-arrangement.sh`, `portes-des-pistes.sh`,
+   `portes-du-transport.sh` 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU** (`tools/clavier-emprunte.sh`, garde neuve ; 19 touches par course) :
+
+| course | témoin (D491 + instrument) | après |
+|---|---|---|
+| piano roll, clavier actif | prises par la vue **D, G** → **15** notes, 2 octaves | **aucune** → **17** notes, 2 octaves |
+| arrangement, clavier actif | prises par la vue **A, F, G** → **14** notes, 2 octaves | **aucune** → **17** notes, 2 octaves |
+| piano roll, clavier inactif (contrôle) | D, G ; 0 note | D, G ; 0 note |
+| arrangement, clavier inactif (contrôle) | A, F, G ; 0 note | A, F, G ; 0 note |
+
+La garde est **rouge sur le témoin** (2 ratés, les deux courses « actif ») et
+verte après ; le contrôle est identique avant et après — les lettres restent des
+commandes quand le clavier est inactif, et Ctrl+Z, clavier actif, reste une
+commande (« prise par application »). L'attendu se tient au chiffre près.
+
+Gardes : `inventaire_langue.py --garde` 0 (elle a d'abord trouvé **1** texte —
+« application (écouteur sur », assemblé dans une variable qui servait aussi de
+test, donc invisible à son suivi du terminal ; la chaîne s'écrit désormais dans
+l'instruction `fputs` elle-même) ; `--doublons` 0 ; `raccourcis-affiches.py`,
+`menus-cites.py`, `noms-des-gestes.py`, `touches-modifiees.py`,
+`touches-du-menu-edition.py`, `anglais-a-l-ecran.py` verts ;
+`portes-de-l-arrangement.sh`, `portes-des-pistes.sh`, `portes-du-transport.sh`
+0 raté ; `portes-des-gestes.py` 0 désaccord ; fumée 0 raté ; préférences
+identiques.
+
+**Deux défauts de l'INSTRUMENT, trouvés avant de mesurer** : le libellé
+`"\xc3\xa9couteur"` s'imprimait « Üouteur » — un échappement hexadécimal C++ avale
+tous les chiffres hexadécimaux qui suivent, et le « c » en est un ; coupé en
+`"\xc3\xa9" "couteur"`. Et le « ; » du clavier ne s'écrit pas tel quel dans
+`VSM_TOUCHE`, qui sépare ses touches par « ; » : `#3b`, le code hexadécimal que
+`KeyPress::createFromDescription` accepte.
+
+**Au passage** : `ArrangementComponent::aimantActif()`, ajoutée par D491, doublait
+`snapEnabled()` qui existait déjà ; retirée, le menu lit `snapEnabled()`.
+
+**Reste nommé, non fait** : (a) et (b) de D491 (les six outils et le zoom ± au
+menu ; les quatre bascules non retenues par le projet).

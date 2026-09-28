@@ -151,7 +151,6 @@ public:
     void basculerGrilleALaMesure();
     void basculerSuivi();
     void basculerCourbes();
-    bool aimantActif() const { return snap_; }
     bool grilleALaMesure() const { return aimanteALaMesure_; }
     /// D360 : l'état des bascules au journal — ce que la règle PEINT, et qu'aucun
     /// relevé de textes ne peut voir.
@@ -178,6 +177,11 @@ public:
     /// touche EFFECTIVE au lieu de l'écrire en dur dans son libellé -- une
     /// parenthèse écrite ment dès que l'utilisateur change la touche.
     void setShortcutTable(const vsm::interchange::ShortcutTable* table) { raccourcis_ = table; }
+    /// D492 : VRAI QUAND LA TOUCHE APPARTIENT AU CLAVIER D'ORDINATEUR (actif, une de
+    /// ses dix-neuf lettres, sans modificateur). La vue la laisse alors REMONTER
+    /// à l'application qui la joue : JUCE la lui donne d'abord, et G, F, A y sont
+    /// des commandes. Posé par l'application ; sans lui, rien ne change.
+    std::function<bool(const juce::KeyPress&)> toucheDuClavier;
     bool snapEnabled() const { return snap_; }
     /// LA GRILLE FINE EST CELLE DU PIANO ROLL, lue à l'usage plutôt que
     /// recopiée (D5.2 : « mêmes gestes et mêmes raccourcis »). Deux réglages de

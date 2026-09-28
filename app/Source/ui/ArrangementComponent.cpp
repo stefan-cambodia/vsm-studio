@@ -1782,6 +1782,10 @@ void ArrangementComponent::deleteSelection(const juce::String& libelle) {
 }
 
 bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
+    // D492 : LE CLAVIER D'ORDINATEUR ACTIF PREND SES LETTRES, même ici (D11.7 :
+    // « il emprunte les lettres aux raccourcis ») -- la touche remonte à
+    // l'application, qui la joue.
+    if (toucheDuClavier && toucheDuClavier(key)) return false;
     // LES MÊMES RACCOURCIS QUE LE PIANO ROLL, à la lettre : Ctrl+C, Ctrl+V,
     // Ctrl+D. Deux vues du même morceau qui demanderaient deux gestes
     // différents pour la même chose seraient deux logiciels.

@@ -1255,6 +1255,15 @@ roll a le clavier, et aucune course ne pouvait les jouer. Le verbe dit désormai
 à quel clavier il a parlé et si la commande a été prise, au lieu du seul
 « touche inconnue ou sans commande » — qui était faux au sens : la commande
 existe, elle est ailleurs.
+`VSM_TOUCHE="focus:pianoroll:G"` (D492) va plus loin : la touche parcourt TOUTE la
+chaîne de JUCE depuis la vue — la vue, ses parents, et les écouteurs que
+l'application pose sur elle-même et sur ses fenêtres flottantes —, comme si la vue
+avait le clavier, et le journal dit QUI l'a prise (« prise par piano roll »,
+« prise par application (écouteur sur application) », « personne ne l'a prise »).
+Le vrai focus ne se prend pas au banc (`grabKeyboardFocus` exige une fenêtre
+affichée, ce qu'elle n'est pas sous un écran verrouillé). Le « ; » s'écrit `#3b`,
+`VSM_TOUCHE` séparant ses touches par « ; ». Pendant une touche de banc, le clavier
+d'ordinateur écrit ce qu'il joue : `VSM_CLAVIER : note 67`, `VSM_CLAVIER : octave -1`.
 `VSM_TRACE_COUTS=1` écrit sur la sortie d'erreur le temps de calcul de chaque
 piste, une fois par seconde : une capture qui ne montre pas la piste la plus
 chère en ambre laisse deux explications ouvertes — la règle est fausse, ou la
@@ -1402,7 +1411,7 @@ l'application tourne.
 
 ## 7 bis. Commencer et retrouver
 
-**Projets récents** : Fichier ▸ Projets récents garde les dix derniers dossiers ouverts ou enregistrés ; un dossier disparu y reste, grisé et marqué « introuvable ». **Modèle de projet** : Fichier ▸ Enregistrer comme modèle de projet fait du projet courant (pistes, machines, routage, tempo) le point de départ de Fichier ▸ Nouveau depuis le modèle — qui ouvre un projet **sans chemin**, pour que Ctrl+S demande où l'écrire et que le modèle reste intact. **Plein écran** : Affichage ▸ Plein écran, ou `F11`. **S'entendre** : Enregistrement ▸ Écouter l'entrée en direct recopie l'entrée audio vers la sortie, à la latence du périphérique (jamais par défaut). **Jouer sans clavier MIDI** : Affichage ▸ Clavier d'ordinateur fait jouer la piste choisie par les lettres — A S D F G H J K L pour les blanches, W E T Y U O P pour les noires, Z et X pour l'octave ; tant qu'il est actif, ces lettres ne sont plus des raccourcis.
+**Projets récents** : Fichier ▸ Projets récents garde les dix derniers dossiers ouverts ou enregistrés ; un dossier disparu y reste, grisé et marqué « introuvable ». **Modèle de projet** : Fichier ▸ Enregistrer comme modèle de projet fait du projet courant (pistes, machines, routage, tempo) le point de départ de Fichier ▸ Nouveau depuis le modèle — qui ouvre un projet **sans chemin**, pour que Ctrl+S demande où l'écrire et que le modèle reste intact. **Plein écran** : Affichage ▸ Plein écran, ou `F11`. **S'entendre** : Enregistrement ▸ Écouter l'entrée en direct recopie l'entrée audio vers la sortie, à la latence du périphérique (jamais par défaut). **Jouer sans clavier MIDI** : Affichage ▸ Clavier d'ordinateur fait jouer la piste choisie par les lettres — A S D F G H J K L pour les blanches, W E T Y U O P pour les noires, Z et X pour l'octave ; tant qu'il est actif, ces lettres ne sont plus des raccourcis — même quand le piano roll ou l'arrangement a le clavier, où G, D, F et A sont des commandes (D492 : ils les prenaient avant lui). Avec Ctrl, Alt ou Maj, elles restent des raccourcis.
 
 **L'historique se voit** : Affichage ▸ Historique des modifications liste chaque pas — les plus anciens en haut, l'état courant en surbrillance, puis ce que Rétablir rendrait — et un clic sur un pas y revient d'un coup.
 

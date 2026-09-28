@@ -305,6 +305,11 @@ public:
     /// ne décide plus quelle touche fait quoi : il exécute une COMMANDE, et le
     /// nom de la touche vit dans un seul endroit -- celui que la page liste.
     void setShortcutTable(const vsm::interchange::ShortcutTable* table) { shortcuts_ = table; }
+    /// D492 : VRAI QUAND LA TOUCHE APPARTIENT AU CLAVIER D'ORDINATEUR (actif, une de
+    /// ses dix-neuf lettres, sans modificateur) : le piano roll la laisse remonter
+    /// à l'application qui la joue -- G et D y sont des commandes. Posé par
+    /// l'application ; sans lui, rien ne change.
+    std::function<bool(const juce::KeyPress&)> toucheDuClavier;
     /// D358 : la table, pour qui doit AFFICHER une touche -- la barre d'outils,
     /// dont cinq infobulles écrivaient « (Ctrl+Q) » en dur et mentaient dès que
     /// l'utilisateur changeait la touche. Rend nullptr tant qu'aucune n'est posée.

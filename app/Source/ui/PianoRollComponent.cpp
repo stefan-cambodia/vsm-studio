@@ -1696,6 +1696,10 @@ void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& event, const juc
 // ---------------------------------------------------------------------------
 
 bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
+    // D492 : LE CLAVIER D'ORDINATEUR ACTIF PREND SES LETTRES, même ici (D11.7 :
+    // « il emprunte les lettres aux raccourcis ») -- la touche remonte à
+    // l'application, qui la joue.
+    if (toucheDuClavier && toucheDuClavier(key)) return false;
     const auto mods = key.getModifiers();
 
     // LA TOUCHE NE DÉCIDE PLUS DE RIEN (D10.3) : elle désigne une COMMANDE, et

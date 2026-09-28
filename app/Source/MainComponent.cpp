@@ -4520,7 +4520,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 using Id = vsm::interchange::ShortcutId;
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementSnap,
                                                    tr(u8"Aimantation dans l'arrangement"), shortcuts_,
-                                                   Id::EditToggleSnap, true, arrangement_.aimantActif());
+                                                   Id::EditToggleSnap, true, arrangement_.snapEnabled());
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementBarGrid,
                                                    tr(u8"Grille à la mesure dans l'arrangement"), shortcuts_,
                                                    Id::ViewArrangementBarGrid, true, arrangement_.grilleALaMesure());
@@ -8083,6 +8083,12 @@ void MainComponent::loadShortcuts() {
             tr(u8"Les raccourcis personnalisés n'ont pas pu être relus : ceux d'origine sont rétablis."));
     }
     pianoRoll_.setShortcutTable(&shortcuts_);
+    // D492 : LES DEUX VUES RENDENT AU CLAVIER D'ORDINATEUR SES TOUCHES. JUCE
+    // donne la touche d'abord à la vue qui a le clavier, et l'écouteur qu'est
+    // l'application ne la voyait que si la vue n'en voulait pas : clavier actif
+    // et piano roll cliqué, G basculait l'aimantation au lieu de jouer un sol.
+    pianoRoll_.toucheDuClavier = [this](const juce::KeyPress& k) { return estToucheDuClavier(k); };
+    arrangement_.toucheDuClavier = [this](const juce::KeyPress& k) { return estToucheDuClavier(k); };
     // D358 : l'arrangement aussi -- son menu de clip dessine désormais la touche
     // effective, et sans table il l'afficherait sans touche.
     arrangement_.setShortcutTable(&shortcuts_);
@@ -8875,20 +8881,36 @@ void MainComponent::seekAllViews(vsm::midi::Tick tick) {
 // D11.7 — LE CLAVIER D'ORDINATEUR. La disposition de Live et de tout le
 // monde : la rangée du milieu pour les blanches (A S D F G H J K L ;), celle du
 // dessus pour les noires (W E T Y U O P). Z et X déplacent l'octave.
-bool MainComponent::handleComputerKeyboard(const juce::KeyPress& key) {
+// D492 : LES DIX-NEUF TOUCHES DU CLAVIER D'ORDINATEUR, en un seul endroit : la
+// vue qui a le clavier les rend (`toucheDuClavier`), et `handleComputerKeyboard`
+// les joue. Deux listes finiraient par ne plus dire la même chose.
+static const juce::String kClavierBlanches("asdfghjkl;");
+static const juce::String kClavierNoires("wetyuop");
+
+bool MainComponent::estToucheDuClavier(const juce::KeyPress& key) const {
     if (!computerKeyboard_ || key.getModifiers().isAnyModifierKeyDown()) return false;
-    const juce::juce_wchar c = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+    // LE CODE DE LA TOUCHE, PAS SON CARACTÈRE. Sous X11 les deux sont égaux pour
+    // une lettre (`juce_XWindowSystem_linux.cpp` : `keyCode = unicodeChar`) ; mais
+    // une touche fabriquée depuis sa description porte un caractère NUL, et aucun
+    // banc n'avait jamais pu jouer une note d'ici.
+    const juce::juce_wchar c = juce::CharacterFunctions::toLowerCase(static_cast<juce::juce_wchar>(key.getKeyCode()));
+    return c == 'z' || c == 'x' || kClavierBlanches.indexOfChar(c) >= 0 || kClavierNoires.indexOfChar(c) >= 0;
+}
+
+bool MainComponent::handleComputerKeyboard(const juce::KeyPress& key) {
+    if (!estToucheDuClavier(key)) return false;
+    const juce::juce_wchar c = juce::CharacterFunctions::toLowerCase(static_cast<juce::juce_wchar>(key.getKeyCode()));
     if (c == 'z' || c == 'x') {
         computerKeyboardOctave_ = juce::jlimit(-3, 3, computerKeyboardOctave_ + (c == 'z' ? -1 : 1));
+        if (toucheDeBanc_)
+            std::fputs(("VSM_CLAVIER : octave " + juce::String(computerKeyboardOctave_) + "\n").toRawUTF8(), stderr);
         return true;
     }
-    static const juce::String kBlanches("asdfghjkl;");
-    static const juce::String kNoires("wetyuop");
     static const int kDemiTonsBlanches[] = {0, 2, 4, 5, 7, 9, 11, 12, 14, 16};
     static const int kDemiTonsNoires[] = {1, 3, 6, 8, 10, 13, 15};
     int demiTons = -1;
-    if (const int i = kBlanches.indexOfChar(c); i >= 0) demiTons = kDemiTonsBlanches[i];
-    else if (const int j = kNoires.indexOfChar(c); j >= 0) demiTons = kDemiTonsNoires[j];
+    if (const int i = kClavierBlanches.indexOfChar(c); i >= 0) demiTons = kDemiTonsBlanches[i];
+    else if (const int j = kClavierNoires.indexOfChar(c); j >= 0) demiTons = kDemiTonsNoires[j];
     if (demiTons < 0) return false;
     const int note = juce::jlimit(0, 127, 60 + 12 * computerKeyboardOctave_ + demiTons);
     // Le clavier RÉPÈTE une touche tenue : la note ne se rejoue pas.
@@ -8896,7 +8918,46 @@ bool MainComponent::handleComputerKeyboard(const juce::KeyPress& key) {
         if (code == key.getKeyCode()) return true;
     computerKeysDown_.emplace_back(key.getKeyCode(), static_cast<uint8_t>(note));
     audioEngine_.playComputerKey(static_cast<uint8_t>(note), 100, true);
+    if (toucheDeBanc_)
+        std::fputs(("VSM_CLAVIER : note " + juce::String(note) + "\n").toRawUTF8(), stderr);
     return true;
+}
+
+bool MainComponent::toucheParLaChaine(juce::Component* depart, const juce::KeyPress& touche,
+                                      const juce::String& texte) {
+    // D492 : LA CHAÎNE DE `juce::ComponentPeer::handleKeyPress`
+    // (juce_ComponentPeer.cpp:200-220), rejouée depuis la vue : à chaque étage,
+    // les ÉCOUTEURS d'abord, puis `keyPressed` ; la première qui prend la touche
+    // l'arrête. `keyListeners` est privé à JUCE ; ceux que l'application pose sont
+    // connus -- elle-même, sur elle-même et sur ses cinq fenêtres flottantes
+    // (`showFloatingPanels`, les seuls `addKeyListener` du dépôt) -- et rejoués à
+    // leur étage. Le VRAI focus ne se prend pas au banc : `grabKeyboardFocus`
+    // exige `isShowing()`, faux sous un écran verrouillé (D94).
+    const juce::Component* ecoutes[] = {this, &trackListWindow_, &pianoRollWindow_, &synthRackWindow_,
+                                        &mixerWindow_, &arrangementWindow_};
+    const auto nommer = [this](const juce::Component* c) -> juce::String {
+        if (c == &pianoRoll_) return "piano roll";
+        if (c == &arrangement_) return "arrangement";
+        if (c == this) return "application";
+        return juce::String::fromUTF8("composant \xc2\xab ") + c->getName() + juce::String::fromUTF8(" \xc2\xbb");
+    };
+    const juce::Component* preneur = nullptr;
+    bool parUnEcouteur = false;
+    toucheDeBanc_ = true;
+    for (juce::Component* c = depart; c != nullptr && preneur == nullptr; c = c->getParentComponent()) {
+        if (std::find(std::begin(ecoutes), std::end(ecoutes), c) != std::end(ecoutes) && keyPressed(touche, c))
+            preneur = c, parUnEcouteur = true;
+        else if (c->keyPressed(touche))
+            preneur = c;
+    }
+    toucheDeBanc_ = false;
+    std::fputs((juce::String::fromUTF8("VSM_TOUCHE : \xc2\xab ") + texte
+                + juce::String::fromUTF8(" \xc2\xbb \xe2\x86\x92 focus ") + nommer(depart)
+                + (preneur == nullptr ? juce::String::fromUTF8(" : personne ne l'a prise")
+                   : parUnEcouteur ? juce::String::fromUTF8(" : prise par application (\xc3\xa9" "couteur sur ") + nommer(preneur) + ")"
+                                   : " : prise par " + nommer(preneur))
+                + "\n").toRawUTF8(), stderr);
+    return preneur != nullptr;
 }
 
 bool MainComponent::keyStateChanged(bool, juce::Component*) {

@@ -261,20 +261,31 @@ public:
     /// appelle la MÊME fonction virtuelle que le système, sans rien simuler.
     bool runKeyForCapture(const juce::String& description) {
         juce::String texte = description.trim();
-        const juce::String prefixe = texte.upToFirstOccurrenceOf(":", false, false).trim().toLowerCase();
+        juce::String prefixe = texte.upToFirstOccurrenceOf(":", false, false).trim().toLowerCase();
+        // D492 : « focus:pianoroll:G » -- la touche comme si la vue avait le
+        // clavier, par TOUTE la chaîne (la vue, ses parents, les écouteurs), et
+        // non par le seul `keyPressed` de la vue.
+        const bool parLaChaine = prefixe == "focus";
+        if (parLaChaine) {
+            texte = texte.fromFirstOccurrenceOf(":", false, false).trim();
+            prefixe = texte.upToFirstOccurrenceOf(":", false, false).trim().toLowerCase();
+        }
         juce::Component* destinataire = nullptr;
         if (prefixe == "pianoroll") destinataire = &pianoRoll_;
         else if (prefixe == "arrangement") destinataire = &arrangement_;
         if (destinataire != nullptr) texte = texte.fromFirstOccurrenceOf(":", false, false).trim();
         const juce::KeyPress touche = juce::KeyPress::createFromDescription(texte);
-        if (!touche.isValid()) {
+        if (!touche.isValid() || (parLaChaine && destinataire == nullptr)) {
             std::fputs((juce::String::fromUTF8("VSM_TOUCHE : \xc2\xab ") + texte
-                        + juce::String::fromUTF8(" \xc2\xbb illisible (voir juce::KeyPress)\n")).toRawUTF8(),
+                        + juce::String::fromUTF8(" \xc2\xbb illisible (voir juce::KeyPress ; focus: veut pianoroll ou arrangement)\n")).toRawUTF8(),
                        stderr);
             return false;
         }
+        if (parLaChaine) return toucheParLaChaine(destinataire, touche, texte);
+        toucheDeBanc_ = true;
         const bool fait = destinataire != nullptr ? destinataire->keyPressed(touche)
                                                   : keyPressed(touche, this);
+        toucheDeBanc_ = false;
         std::fputs((juce::String::fromUTF8("VSM_TOUCHE : \xc2\xab ") + texte
                     + juce::String::fromUTF8(" \xc2\xbb \xe2\x86\x92 ")
                     + (destinataire != nullptr ? prefixe : juce::String::fromUTF8("fen\xc3\xaatre")   /* D426 : lu en Latin-1, il s'écrivait « fenÃªtre » */)
@@ -1307,6 +1318,14 @@ private:
     std::vector<std::pair<int, uint8_t>> computerKeysDown_;
     bool keyStateChanged(bool isKeyDown, juce::Component* origin) override;
     bool handleComputerKeyboard(const juce::KeyPress& key);
+    /// D492 : la touche est-elle une des dix-neuf du clavier d'ordinateur ACTIF ?
+    bool estToucheDuClavier(const juce::KeyPress& key) const;
+    /// D492 : vrai pendant qu'une touche de BANC est jouée (`VSM_TOUCHE`) -- le
+    /// clavier d'ordinateur dit alors au journal ce qu'il joue (`VSM_CLAVIER`).
+    bool toucheDeBanc_ = false;
+    /// D492 : `VSM_TOUCHE=focus:<vue>:<touche>` -- la chaîne de
+    /// `juce::ComponentPeer::handleKeyPress`, depuis la vue jusqu'à la racine.
+    bool toucheParLaChaine(juce::Component* depart, const juce::KeyPress& touche, const juce::String& texte);
     /// Ajoute une piste. Une piste AUDIO n'est pas une autre espèce d'objet :
     /// c'est une piste dont le matériau est un fichier et non des notes (voir
     /// `Track::Kind`). Il n'existait aucun moyen d'en créer une depuis
