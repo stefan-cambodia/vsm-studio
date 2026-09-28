@@ -35,6 +35,49 @@ void ChannelStrip::poserInfobulleDuNom() {
                                   .replace("%1", nom).replace("%2", membres_.joinIntoString(", ")));
 }
 
+// D469 : L'ÉCHELLE EN DÉCIBELS D'UNE TRANCHE, DESSINÉE D'UN SEUL ENDROIT — à
+// gauche du fader (D342) comme à gauche du mètre du master (D469). Deux copies
+// d'une échelle finiraient par ne plus graduer pareil. `xDroite` est le bout
+// droit des traits ; les chiffres s'arrêtent neuf pixels avant, dans `largeur`.
+// `yDe` dit où tombe un niveau ; hors de [yHaut - 2, yBas], il n'est pas écrit.
+static void peindreEchelleDb(juce::Graphics& g, int xDroite, int largeur, int yHaut, int yBas,
+                             const std::function<int(double)>& yDe) {
+    // L'UNITÉ D'ABORD, ET C'EST UNE PRIORITÉ, PAS UN ORDRE DE DESSIN. Écrite en
+    // ordre de hauteur, la règle d'écart ci-dessous sautait le 0 dB — la courbe
+    // du fader (milieu à -12 dB) serre le haut, et « 6 » puis « 0 » tombent à dix
+    // pixels l'un de l'autre sur une course de 58 px. Le repère qu'on cherche du
+    // regard disparaissait donc le premier. Il passe en tête ; les autres cèdent.
+    static const double reperes[] = { 0.0, 6.0, -6.0, -12.0, -24.0, -40.0, -60.0 };
+    g.setFont(juce::Font(juce::FontOptions(12.0f)));
+    // DEUX GRADUATIONS NE SE TOUCHENT PAS. La courbe du fader serre le bas :
+    // à 86 px de course, « -40 » et « -60 » tombent à huit pixels l'un de
+    // l'autre et se chevauchent (vu sur la photo). On garde celle du haut et
+    // l'on saute la suivante ; le pied du rail dit le minimum sans l'écrire.
+    // PIÈGE PAYÉ ICI MÊME : `dernierY` initialisé à `INT_MIN` fait DÉBORDER
+    // `y - dernierY`, la soustraction rend un nombre négatif, et TOUTES les
+    // graduations se sautent -- l'échelle a disparu de la photo alors que le
+    // relevé disait « échelle 26 px ». Un drapeau, pas une valeur sentinelle.
+    constexpr int kEcartMinimal = 14;
+    std::vector<int> posees;
+    for (const double db : reperes) {
+        const int y = yDe(db);
+        if (y < yHaut - 2 || y > yBas) continue;
+        bool trop = false;
+        for (const int deja : posees)
+            if (std::abs(y - deja) < kEcartMinimal) { trop = true; break; }
+        if (trop) continue;
+        posees.push_back(y);
+        const bool unite = std::abs(db) < 0.01;
+        g.setColour(unite ? vsm::ui::Palette::accentAmber : vsm::ui::Palette::textSecondary);
+        // L'UNITÉ EST UN TRAIT PLUS LONG ET AMBRE : c'est le seul repère qu'on
+        // cherche du regard, et le seul que le double-clic rétablit (D25.3).
+        g.fillRect(xDroite - (unite ? 8 : 5), y, unite ? 8 : 5, unite ? 2 : 1);
+        g.drawText(unite ? juce::String("0") : juce::String(static_cast<int>(db)),
+                    xDroite - largeur, y - 7, largeur - 9, 14,
+                    juce::Justification::centredRight, false);
+    }
+}
+
 // D324 : LE MOT QUAND LA PLACE EXISTE, JAMAIS AU PRIX DE LA VALEUR. À la largeur
 // plancher de la tranche (88 px), « Délai -200.0 ms » ne tient pas et la case
 // écrivait « Délai -200.… » : le nom avait mangé le nombre, l'inverse de ce
@@ -492,41 +535,10 @@ void ChannelStrip::peindreEchelle(juce::Graphics& g) const {
     // point milieu -12 dB), et une échelle tracée sur une règle linéaire
     // mentirait exactement là où l'on s'en sert -- autour de l'unité.
     if (largeurEchelle_ <= 0) return;
-    // L'UNITÉ D'ABORD, ET C'EST UNE PRIORITÉ, PAS UN ORDRE DE DESSIN. Écrite en
-    // ordre de hauteur, la règle d'écart ci-dessous sautait le 0 dB — la courbe
-    // du fader (milieu à -12 dB) serre le haut, et « 6 » puis « 0 » tombent à dix
-    // pixels l'un de l'autre sur une course de 58 px. Le repère qu'on cherche du
-    // regard disparaissait donc le premier. Il passe en tête ; les autres cèdent.
-    static const double reperes[] = { 0.0, 6.0, -6.0, -12.0, -24.0, -40.0, -60.0 };
     const auto zone = volume_.getBounds();
-    g.setFont(juce::Font(juce::FontOptions(12.0f)));
-    // DEUX GRADUATIONS NE SE TOUCHENT PAS. La courbe du fader serre le bas :
-    // à 86 px de course, « -40 » et « -60 » tombent à huit pixels l'un de
-    // l'autre et se chevauchent (vu sur la photo). On garde celle du haut et
-    // l'on saute la suivante ; le pied du rail dit le minimum sans l'écrire.
-    // PIÈGE PAYÉ ICI MÊME : `dernierY` initialisé à `INT_MIN` fait DÉBORDER
-    // `y - dernierY`, la soustraction rend un nombre négatif, et TOUTES les
-    // graduations se sautent -- l'échelle a disparu de la photo alors que le
-    // relevé disait « échelle 26 px ». Un drapeau, pas une valeur sentinelle.
-    constexpr int kEcartMinimal = 14;
-    std::vector<int> posees;
-    for (const double db : reperes) {
-        const int y = zone.getY() + static_cast<int>(std::round(volume_.getPositionOfValue(db)));
-        if (y < zone.getY() - 2 || y > zone.getBottom()) continue;
-        bool trop = false;
-        for (const int deja : posees)
-            if (std::abs(y - deja) < kEcartMinimal) { trop = true; break; }
-        if (trop) continue;
-        posees.push_back(y);
-        const bool unite = std::abs(db) < 0.01;
-        g.setColour(unite ? vsm::ui::Palette::accentAmber : vsm::ui::Palette::textSecondary);
-        // L'UNITÉ EST UN TRAIT PLUS LONG ET AMBRE : c'est le seul repère qu'on
-        // cherche du regard, et le seul que le double-clic rétablit (D25.3).
-        g.fillRect(zone.getX() - (unite ? 8 : 5), y, unite ? 8 : 5, unite ? 2 : 1);
-        g.drawText(unite ? juce::String("0") : juce::String(static_cast<int>(db)),
-                    zone.getX() - largeurEchelle_, y - 7, largeurEchelle_ - 9, 14,
-                    juce::Justification::centredRight, false);
-    }
+    peindreEchelleDb(g, zone.getX(), largeurEchelle_, zone.getY(), zone.getBottom(), [&](double db) {
+        return zone.getY() + static_cast<int>(std::round(volume_.getPositionOfValue(db)));
+    });
 }
 
 void ChannelStrip::direGeometrieDeBanc(const juce::Component& repere) const {
@@ -877,6 +889,16 @@ void MasterStrip::paint(juce::Graphics& g) {
     g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f), 4.0f);
     g.setColour(vsm::ui::Palette::border);
     g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f), 4.0f, 1.0f);
+    // D469 : LE MÈTRE DE LA SORTIE SE LIT, lui aussi. Il suit la courbe de la
+    // console depuis D468, et rien ne l'écrivait : c'est pourtant celui qu'on
+    // regarde pour savoir si ce qui part vers la carte son sature. Les traits
+    // s'arrêtent deux pixels avant la fente, pour ne pas se confondre avec son
+    // contour.
+    if (largeurEchelle_ > 0)
+        peindreEchelleDb(g, meter_.getX() - 2, largeurEchelle_ - 2, meter_.getY(), meter_.getBottom(),
+                         [this](double db) {
+                             return meter_.getY() + static_cast<int>(std::round(meter_.yDe(static_cast<float>(db))));
+                         });
 }
 
 void MasterStrip::resized() {
@@ -892,6 +914,15 @@ void MasterStrip::resized() {
     // Grille de knobs 2 colonnes.
     auto meterArea = r.removeFromRight(12);
     meter_.setBounds(meterArea.reduced(0, 2));
+    // D469 : L'ÉCHELLE DU MÈTRE, PRISE À LA GRILLE DES POTENTIOMÈTRES. Un
+    // potentiomètre est borné par la HAUTEUR de sa rangée (30 px au plus), pas
+    // par la largeur de sa colonne : 126 → 98 px lui coûtent zéro pixel de
+    // diamètre, et « RATIO », le libellé le plus long, tient dans 49 px. Sous
+    // `kCourseAvecEchelle` de fente, deux graduations se toucheraient : pas
+    // d'échelle, comme sur une tranche (D342).
+    largeurEchelle_ = meter_.getHeight() >= ChannelStrip::kCourseAvecEchelle
+                          ? ChannelStrip::kLargeurEchelle + 2 : 0;
+    r.removeFromRight(largeurEchelle_);
     // LA SATURATION PREND LA PLACE DE LA PHASE, ELLE N'EN AJOUTE PAS.
     //
     // La tranche master est DÉJÀ trop courte pour ce qu'elle porte : huit
@@ -908,6 +939,8 @@ void MasterStrip::resized() {
     // dans l'infobulle du témoin.
     {
         auto bas = getLocalBounds().reduced(6);
+        // D469 : sous la grille seulement — « −40 » ne s'écrit pas sous « -inf LUFS ».
+        bas.removeFromRight(meterArea.getWidth() + largeurEchelle_);
         lufsLabel_.setBounds(bas.removeFromBottom(16));
         auto ligneDePhase = bas.removeFromBottom(14);
         phaseLabel_.setBounds(ligneDePhase);
@@ -944,6 +977,27 @@ void MasterStrip::resized() {
         knobs_[i].label->setBounds(cell.removeFromBottom(12));
         knobs_[i].slider->setBounds(cell.reduced(2));
     }
+}
+
+void MasterStrip::direGeometrieDeBanc(const juce::Component& repere) const {
+    // D469 : OÙ EST LE MÈTRE (la garde lit la photo à cet endroit), la largeur de
+    // l'échelle, le diamètre des potentiomètres et combien de libellés TIENNENT —
+    // mesurés à la police de l'étiquette, bordure déduite, comme `nomTronque`.
+    const auto m = repere.getLocalArea(&meter_, meter_.getLocalBounds());
+    int tiennent = 0, diametre = 0;
+    for (const auto& k : knobs_) {
+        const float dispo = static_cast<float>(k.label->getWidth() - k.label->getBorderSize().getLeftAndRight());
+        if (juce::GlyphArrangement::getStringWidth(k.label->getFont(), k.label->getText()) <= dispo) ++tiennent;
+        diametre = std::max(diametre, std::min(k.slider->getWidth(), k.slider->getHeight()));
+    }
+    // `fromUTF8` EN TÊTE : un `const char*` à gauche d'un `+` passe par
+    // `String(const char*)`, qui lit de l'ASCII et réencode « è » en « Ã¨ ».
+    std::fputs((juce::String::fromUTF8("VSM_MIXEUR : master \xe2\x80\x94 m\xc3\xa8tre ") + juce::String(m.getWidth()) + "x" + juce::String(m.getHeight())
+                + " @" + juce::String(m.getX()) + "," + juce::String(m.getY())
+                + ", \xc3\xa9" "chelle " + juce::String(largeurEchelle_) + " px"
+                + ", bouton " + juce::String(diametre) + " px"
+                + ", libell\xc3\xa9s " + juce::String(tiennent) + " sur " + juce::String(static_cast<int>(knobs_.size()))
+                + " tiennent\n").toRawUTF8(), stderr);
 }
 
 int MasterStrip::hauteurUtile() const {
@@ -1080,7 +1134,14 @@ void MixerComponent::updateMeters(
             strips_[rang]->vumetre().setLevel(lineaire);
             strips_[rang]->vumetre().setRms(lineaire * 0.7f);
         }
-    master_.setMeters(masterLufs, masterPeak, masterRms, masterCorrelation);
+    // D469 : la consigne du master passe par `setMeters`, le chemin du minuteur
+    // — celui qui arme aussi le témoin « SAT » au-delà de 0 dBFS.
+    if (!std::isnan(niveauMasterDeBanc_)) {
+        const float lineaire = static_cast<float>(std::pow(10.0, niveauMasterDeBanc_ / 20.0));
+        master_.setMeters(masterLufs, lineaire, lineaire * 0.7f, masterCorrelation);
+    } else {
+        master_.setMeters(masterLufs, masterPeak, masterRms, masterCorrelation);
+    }
 }
 
 void MixerComponent::poserNiveauxPourCapture(const juce::String& consigne) {
@@ -1103,6 +1164,16 @@ void MixerComponent::poserNiveauxPourCapture(const juce::String& consigne) {
         const bool uneFois = valeur.endsWith("!");
         if (uneFois) valeur = valeur.dropLastCharacters(1);
         const double db = valeur.getDoubleValue();
+        // D469 : « master:-12.0 » — le mètre de la sortie, qui n'a pas de rang.
+        if (texte.upToFirstOccurrenceOf(":", false, false).trim().equalsIgnoreCase("master")) {
+            const float lineaire = static_cast<float>(std::pow(10.0, db / 20.0));
+            if (!uneFois) niveauMasterDeBanc_ = db;
+            master_.setMeters(vsm::audio::dsp::LufsMeter::kSilence, lineaire, lineaire * 0.7f, 1.0f);
+            std::fputs((juce::String("VSM_MIXEUR_NIVEAU : master") + " \xc3\xa0 " + juce::String(db, 2) + " dBFS"
+                        + (uneFois ? juce::String(" (une seule fois)") : juce::String(" (maintenu)"))
+                        + "\n").toRawUTF8(), stderr);
+            continue;
+        }
         if (rang < 0 || rang >= strips_.size()) {
             std::fputs(("VSM_MIXEUR_NIVEAU : tranche " + juce::String(rang)
                         + " hors liste (" + juce::String(strips_.size())
@@ -1130,6 +1201,11 @@ void MixerComponent::listerVumetresPourCapture() const {
                     + (pos > 0.0f ? juce::String(LevelMeter::decibelsDe(pos), 2) : juce::String("-inf"))
                     + " dBFS, \xc3\xa9" "cr\xc3\xaate " + (m.aEcrete() ? "1" : "0") + "\n").toRawUTF8(), stderr);
     }
+    // D469 : le master, relu sur la même courbe.
+    const float posMaster = master_.vumetre().cretePosition();
+    std::fputs(("VSM_VUMETRE : master : "
+                + (posMaster > 0.0f ? juce::String(LevelMeter::decibelsDe(posMaster), 2) : juce::String("-inf"))
+                + " dBFS, \xc3\xa9" "cr\xc3\xaate " + (master_.vumetre().aEcrete() ? "1" : "0") + "\n").toRawUTF8(), stderr);
     std::fputs(("VSM_VUMETRES : " + juce::String(strips_.size()) + " vum\xc3\xa8tre(s)\n").toRawUTF8(), stderr);
 }
 
@@ -1149,6 +1225,7 @@ int MixerComponent::hauteurMinimale() const {
 
 void MixerComponent::listerGeometriePourCapture(const juce::Component& repere) const {
     for (auto* tranche : strips_) tranche->direGeometrieDeBanc(repere);
+    master_.direGeometrieDeBanc(repere);   // D469
     // LA CONSOLE ELLE-MÊME, ET SON PLANCHER : une course de fader ne se juge pas
     // sans savoir ce qu'elle a coûté en hauteur de dock, et le plancher est ce
     // que `MainComponent` empêche l'utilisateur de descendre.

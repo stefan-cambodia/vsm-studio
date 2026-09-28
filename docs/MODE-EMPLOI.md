@@ -30,7 +30,9 @@ qu'une crête dure un buffer et passe entre deux rafraîchissements de l'écran.
 Cliquez sur le mètre pour l'éteindre. **Le mètre se lit sur l'échelle du fader**
 (D468) : une crête à −12 dBFS monte en face du « −12 », une crête à 0 dBFS en face
 du 0 dB ambre, et ce qui dépasse 0 dBFS monte en rouge dans le haut de la course,
-jusqu'à +6 — une seule échelle par tranche, comme chez Cubase et Live.
+jusqu'à +6 — une seule échelle par tranche, comme chez Cubase et Live. **Le
+mètre du master porte la même échelle, chiffrée à sa gauche** (D469) : c'est
+celui qu'on regarde pour savoir si la sortie sature.
 
 **Le fader de chaque tranche est un fader** (D342) : une glissière visible, sa
 portion remplie sous le capuchon, et une **échelle en décibels** à gauche — 6, 0,
@@ -1218,7 +1220,10 @@ le même appel que le minuteur de l'application, et `VSM_VUMETRES=1` relit ce qu
 chacun montre (D344) — sans eux, un vumètre ne se photographiait que pendant une
 lecture, c'est-à-dire jamais au banc. Le suffixe « ! » pose la crête **une seule
 fois** : c'est le cas que le témoin d'écrêtage sert, une crête d'un buffer, et
-c'est le seul moyen de vérifier qu'un clic l'efface. `cliquer:<nom>` atteint
+c'est le seul moyen de vérifier qu'un clic l'efface. `master:dBFS` vise le mètre
+du master, par `setMeters` — le chemin qui arme aussi le témoin « SAT » — et
+`VSM_MIXEUR=1` dit où est ce mètre et combien de libellés de potentiomètre
+tiennent dans leur case (D469). `cliquer:<nom>` atteint
 désormais aussi un composant qui n'est pas un bouton (le vumètre) ; le journal dit
 lequel des deux chemins a servi.
 `VSM_NOTES=piste:tick:durée:hauteur[;…]` écrit des notes par le chemin du piano roll — le modèle, puis la matérialisation du clip implicite ouvert (D336). `VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des

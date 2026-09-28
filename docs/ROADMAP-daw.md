@@ -34409,3 +34409,66 @@ toute sa fente, mais rien ne la gradue. Et la barre pleine du mètre est la CRÊ
 le RMS un trait à 35 % d'opacité dedans — alors que le commentaire de la classe,
 depuis D4.7, dit l'inverse (« la barre pleine est la valeur efficace, le trait fin
 la crête »).
+
+---
+
+### Phase D469 — le mètre du master n'avait aucun chiffre (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D468**, qui reprend la seconde moitié de
+celui de D344 : *« le mètre de la tranche master n'a ni contour ni graduation »*.
+Le contour est venu avec D344 (même classe) ; la graduation, jamais. Depuis D468,
+ce mètre suit la courbe de la console (−60..+6, milieu à −12) sur toute sa
+fente — et rien ne l'écrit. C'est pourtant le mètre qu'on regarde pour savoir si
+la SORTIE sature : le seul des trois logiciels de référence à ne pas graduer son
+master serait celui-ci.
+
+**LE CHOIX, TRANCHÉ ICI.** L'échelle se peint à GAUCHE du mètre, sur les mêmes
+repères que celle des tranches (0 dB d'abord et en ambre, puis 6, −6, −12, −24,
+−40, −60, une graduation sautée plutôt que deux qui se touchent) — le même dessin,
+tiré d'une seule fonction : deux copies d'une échelle finiraient par ne plus
+graduer pareil. Elle prend ses 26 px à la grille des potentiomètres (126 → 100 px,
+deux colonnes de 50) plutôt qu'au mélangeur : un potentiomètre de la tranche est
+borné par la HAUTEUR de sa rangée (30 px au plus), pas par sa largeur, et ses
+libellés (« RATIO », le plus long) tiennent dans 50 px. Les lignes du bas (phase,
+LUFS, témoin de saturation) se centrent sur la même largeur, pour que « −40 » ne
+vienne pas s'écrire sous « -inf LUFS ».
+
+**BANC** : `VSM_MIXEUR_NIVEAU=master:dBFS` pose une crête sur le master par
+`setMeters` — le chemin du minuteur, qui arme aussi le témoin « SAT » au-delà de
+0 dBFS ; `VSM_VUMETRES` relit la crête du master ; `VSM_MIXEUR` dit où est son
+mètre, et combien de libellés de potentiomètre tiennent dans leur case.
+
+**ATTENDU, écrit avant la mesure** (photo à 2 240 × 1 400) :
+1. **témoin** (binaire de D468, qui ignore `master:` — une crête posée par le
+   geste réel serait-elle graduée ? la photo suffit : aucune graduation) : **aucun
+   trait ambre** à gauche du mètre du master ; la garde neuve **rouge** ;
+2. **après** : le trait ambre du 0 dB et au moins trois gris dessous ; une crête à
+   −6, −12 et −24 dBFS monte à **2 px au plus** de sa graduation ;
+3. les sept libellés de potentiomètre **tiennent** dans leur case (7 sur 7), et le
+   bouton garde sa taille (diamètre inchangé, lu sur le relevé) ;
+4. `vumetre-console.sh`, `fader-console.sh` verts ; fumée 0 raté ; préférences
+   inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D468, photo à 2 240 × 1 400, le mètre du master au même
+   endroit dans les deux binaires : x 2 221, sa fente est prise la première à
+   droite) : dans la bande de 30 px à gauche de la fente, **0 pixel ambre** et 2
+   gris (des bords de libellés). La garde neuve est **rouge quatre fois** sur ce
+   binaire — mais pour une raison moins parlante : il n'écrit pas le relevé du
+   master. Le témoin de fond est donc la photo, lue à la position que donne le
+   nouveau relevé, et c'est dit.
+2. **Après** : 16 pixels ambre (le trait du 0 dB, 8 × 2) et 58 gris ; graduations
+   6, 0, −6, −12, −24, −40, −60 ; une crête à −6, −12, −24 dBFS monte à **0, 0 et
+   0 px** de sa graduation (y 1 192, 1 236, 1 305).
+3. Libellés **7 sur 7** tiennent ; potentiomètres de **30 px**, le diamètre d'avant
+   (la colonne passe de 63 à 49 px, la rangée de 46 px décide toujours). En
+   1 280 × 742 avec +2 dBFS maintenus : même échelle, « SAT +2.0 » centré sous la
+   grille, la barre rouge au-dessus du 0, le témoin au sommet.
+4. `vumetre-console.sh` **11 contrôles, 0 raté** ; `fader-console.sh` 0 raté ;
+   `police-plancher.sh` 0 site sous 12 pt ; fumée 0 raté ; `vsm-scale-audit`
+   compile ; préférences identiques.
+
+**L'ÉCHELLE N'EST PLUS ÉCRITE QU'UNE FOIS** : `peindreEchelleDb`, sortie de
+`ChannelStrip::peindreEchelle`, gradue le fader et le master — les repères, la
+priorité du 0 dB et l'écart minimal de 14 px sont les mêmes par construction.
+L'échelle des tranches est restée au pixel près (garde (d) inchangée : 1, 0, 1 px).

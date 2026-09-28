@@ -12,6 +12,7 @@
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/sequencer/Project.h"
 #include <cmath>
+#include <limits>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -77,6 +78,12 @@ public:
     void setCourse(float haut, float bas) {
         if (haut != courseHaut_ || bas != courseBas_) { courseHaut_ = haut; courseBas_ = bas; repaint(); }
     }
+    /// D469 : l'y local où ce mètre peint un niveau — ce que lit l'échelle qu'on
+    /// dessine À CÔTÉ (le master n'a pas de fader pour la porter).
+    float yDe(float db) const {
+        const auto b = barre();
+        return b.getBottom() - b.getHeight() * proportionDe(db);
+    }
 
     /// Le niveau efficace, marqué d'un trait dans la barre.
     void setRms(float linearRms) {
@@ -128,14 +135,8 @@ public:
         // LA BANDE DU BAS EST LA CORRÉLATION DE PHASE : au centre, sans
         // rapport ; à droite, en phase ; à GAUCHE, en opposition -- et c'est le
         // seul endroit du logiciel qui dise qu'une piste va disparaître en mono.
-        auto barre = r;
-        const float hauteurPhase = 4.0f;
-        auto phase = barre.removeFromBottom(hauteurPhase);
-        barre.removeFromBottom(2.0f);
-        // D468 : LA BARRE MONTE LE LONG DE LA COURSE DU FADER, pas de la fente :
-        // c'est ce qui met chaque niveau en face du chiffre du fader qui le nomme.
-        if (courseBas_ > courseHaut_)
-            barre = barre.getIntersection({ barre.getX(), courseHaut_, barre.getWidth(), courseBas_ - courseHaut_ });
+        const auto phase = r.withTop(r.getBottom() - kHauteurPhase);
+        const auto barre = this->barre();
         const auto yDe = [&barre](float position) { return barre.getBottom() - barre.getHeight() * position; };
 
         if (level_ > 0.0f) {
@@ -201,6 +202,19 @@ private:
     float correlation_ = 1.0f;
     bool ecrete_ = false;   ///< D344 : a touché 0 dBFS, jusqu'au clic
     float courseHaut_ = -1.0f, courseBas_ = -1.0f;   ///< D468 : la course du fader, en y local
+    static constexpr float kHauteurPhase = 4.0f;   ///< la bande de corrélation, au pied de la fente
+
+    /// La fente où monte la barre : tout le mètre moins la bande de corrélation
+    /// et son écart — et, depuis D468, la seule course du fader quand la tranche
+    /// en a une (c'est ce qui met chaque niveau en face du chiffre qui le nomme).
+    /// Une seule définition pour la peinture et pour `yDe` (D469).
+    juce::Rectangle<float> barre() const {
+        auto b = getLocalBounds().toFloat();
+        b.removeFromBottom(kHauteurPhase + 2.0f);
+        if (courseBas_ > courseHaut_)
+            b = b.getIntersection({ b.getX(), courseHaut_, b.getWidth(), courseBas_ - courseHaut_ });
+        return b;
+    }
 };
 
 /// Tranche d'une piste.
@@ -553,6 +567,12 @@ public:
         satLabel_.setVisible(false);
         resized();
     }
+    /// D469 : le mètre, pour la consigne et le relevé de banc.
+    const LevelMeter& vumetre() const { return meter_; }
+    /// D469 : la géométrie du master pour le relevé `VSM_MIXEUR` — où est son
+    /// mètre, la largeur de son échelle, et combien de libellés de potentiomètre
+    /// tiennent dans leur case.
+    void direGeometrieDeBanc(const juce::Component& repere) const;
     /// D48 : pour la mesure -- ce que le témoin annonce, ou rien.
     juce::String saturationAffichee() const {
         return satLabel_.isVisible() ? satLabel_.getText() : juce::String();
@@ -582,6 +602,9 @@ private:
     bool satVue_ = false;
     float pireDepassement_ = 0.0f;
     LevelMeter meter_;
+    /// D469 : la largeur prise par l'échelle en décibels à gauche du mètre (0 si
+    /// la fente est trop courte pour qu'une graduation dise quelque chose).
+    int largeurEchelle_ = 0;
 
     struct Knob {
         std::unique_ptr<juce::Slider> slider;
@@ -818,6 +841,9 @@ private:
     /// la photo montre un mètre vide — payé une fois, relevé « -inf » pour quatre
     /// consignes posées.
     std::map<int, double> niveauxDeBanc_;
+    /// D469 : la crête imposée au master par le banc (`master:dBFS`), reposée à
+    /// chaque tour comme celles des tranches ; NaN quand il n'y en a pas.
+    double niveauMasterDeBanc_ = std::numeric_limits<double>::quiet_NaN();
 
     /// D30.4 : 76 -> 88 px, pour que « Trim -6.0 dB » tienne en entier. Le
     /// nombre seul se confondait avec le volume, et la règle du projet est

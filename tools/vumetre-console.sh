@@ -19,6 +19,11 @@
 #      plus** de la graduation du même nombre, lue sur la PHOTO (2 240 x 1 400,
 #      où les six graduations se posent). Vue ROUGE sur le binaire du 27/09
 #      avant d'être verte.
+#   5. D469 : LE MÈTRE DU MASTER EST GRADUÉ, sur la même échelle. Il n'avait
+#      aucun chiffre. Règle : à gauche de sa fente, le trait ambre du 0 dB et au
+#      moins trois gris dessous ; une crête posée par `master:dBFS` à -6, -12 et
+#      -24 monte à 2 px au plus de sa graduation ; les sept libellés de
+#      potentiomètre tiennent dans leur case (le relevé les mesure à leur police).
 #
 # COMMENT. `VSM_MIXEUR_NIVEAU=piste:dBFS[!]` pose une crête par le MÊME chemin
 # que le minuteur de l'application (`setMeasurement`) ; le « ! » la pose UNE
@@ -178,5 +183,66 @@ PY
         verdict "une crête à $db dBFS se mesure sur la photo ($mesure)" 0
     fi
 done
+# (e) D469 : le mètre du master, gradué sur la même échelle
+# Les traits s'arrêtent DEUX pixels avant la fente (`peindreEchelleDb`, xDroite =
+# fente - 2) : la colonne lue est donc fente - 4. Même lecture de la barre qu'en (d).
+for db in -6 -12 -24; do
+    lancer "master$db" VSM_MIXEUR=1 VSM_TAILLE="2240x1400" VSM_MIXEUR_NIVEAU="master:$db.0"
+    mesure="$(python3 - "$brouillon/master$db.png" "$brouillon/master$db.txt" "$db" <<'PY'
+import re, sys
+try:
+    from PIL import Image
+except ImportError:
+    print("SANS-PIL"); raise SystemExit(0)
+png, releve, db = sys.argv[1], sys.argv[2], int(sys.argv[3])
+texte = open(releve, encoding="utf-8", errors="replace").read()
+m = re.search(r"VSM_MIXEUR : master — mètre (\d+)x(\d+) @(\d+),(\d+), échelle (\d+) px", texte)
+if not m:
+    print("SANS-RELEVE"); raise SystemExit(0)
+mw, mh, mx, my, ech = (int(v) for v in m.groups())
+im = Image.open(png).convert("RGB")
+px = im.load()
+xt = mx - 4
+def proche(c, ref): return all(abs(a - b) <= 14 for a, b in zip(c, ref))
+gris, ambre = (138, 136, 146), (227, 162, 77)
+groupes, courant = [], None
+for y in range(max(0, my - 12), min(im.size[1], my + mh + 12)):
+    c = px[xt, y]
+    genre = "a" if proche(c, ambre) else ("g" if proche(c, gris) else None)
+    if genre and courant and courant[1] == genre and y == courant[2] + 1:
+        courant[2] = y
+    elif genre:
+        courant = [y, genre, y]; groupes.append(courant)
+    else:
+        courant = None
+try:
+    ia = next(i for i, g in enumerate(groupes) if g[1] == "a")
+except StopIteration:
+    print("SANS-UNITE"); raise SystemExit(0)
+dessous = [g[0] for g in groupes[ia + 1:] if g[1] == "g"]
+rang = {-6: 0, -12: 1, -24: 2}[db]
+if len(dessous) < 3:
+    print("GRADUATIONS-" + str(len(dessous))); raise SystemExit(0)
+yt = dessous[rang]
+xm = mx + mw // 2
+clair = lambda y: sum(px[xm, y]) >= 300
+haut = next((y for y in range(my, my + mh - 6) if all(clair(y + k) for k in range(6))), None)
+if haut is None:
+    print("SANS-BARRE"); raise SystemExit(0)
+print(yt, haut, abs(haut - yt))
+PY
+)"
+    set -- $mesure
+    if [ $# -eq 3 ]; then
+        verdict "master : une crête à $db dBFS monte à la graduation « $db » (graduation y $1, barre y $2 : écart $3 px, règle : <= 2)" \
+                "$([ "$3" -le 2 ] && echo 1 || echo 0)"
+    else
+        verdict "master : une crête à $db dBFS se mesure sur la photo ($mesure)" 0
+    fi
+done
+libelles="$(sed -n 's/^VSM_MIXEUR : master .*libellés \([0-9]*\) sur \([0-9]*\) tiennent.*/\1 \2/p' "$brouillon/master-12.txt" | head -1)"
+set -- $libelles
+verdict "master : les libellés de potentiomètre tiennent dans leur case (${1:-?} sur ${2:-?})" \
+        "$([ $# -eq 2 ] && [ "$1" = "$2" ] && [ "$2" -gt 0 ] && echo 1 || echo 0)"
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]
