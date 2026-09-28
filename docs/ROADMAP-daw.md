@@ -34608,3 +34608,68 @@ depuis D358), quatre de la vue (zoom ±, grille de l'arrangement, aimantation), 
 note douteuse suivante (sa touche est dans le LIBELLÉ, D358, parce que Maj la
 compose), et les sept commandes « Piste », dont `track.selectAll` (Ctrl+Maj+A),
 que D370 nommait : **ni bouton ni entrée de menu**.
+
+---
+
+### Phase D472 — les sept commandes « Piste » n'avaient aucune entrée de menu, et Ctrl+Maj+A aucune porte (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D471, QUI EST CELUI DE D370.** Le relevé
+compté par D471 : parmi les 33 commandes sans entrée de menu, les sept de la
+famille « Piste » (Maj+M, Maj+S, Alt+↑ ↓, Maj+Alt+↑ ↓, Ctrl+Maj+A). Six ont une
+porte à la souris (le M et le S de la ligne, un clic, un Maj+clic) ; **« Choisir
+toutes les pistes » n'en a aucune** : on ne l'atteint qu'en connaissant sa touche,
+et l'on ne la connaît qu'en ouvrant la fenêtre des raccourcis.
+
+**LE CHOIX, TRANCHÉ ICI.** Les sept entrent au menu **Piste**, dans un bloc à
+elles, sous « Monter / Descendre la piste », avec leur touche dessinée par JUCE
+(D155) et **les libellés de la table** — ceux de la fenêtre des raccourcis, déjà
+traduits : un geste, un nom (D355). Chaque entrée appelle LA fonction que la
+touche appelle dans `keyPressed` (`selectNeighbourTrack`, `etendreSelection`,
+`choisirToutesLesPistes`, `toggleMuteSelectedTrack`, `toggleSoloSelectedTrack`) :
+une porte de plus, pas un second chemin. Pourquoi le menu Piste et pas un menu
+contextuel : c'est là que Cubase range « Sélectionner » et « Muet » pour la piste,
+et c'est le seul menu qui existe sans clic sur une piste.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D471, `VSM_MENU_LISTE`) : 0 entrée du menu Piste ne porte
+   `[touche …]` ; « Choisir toutes les pistes » n'y figure pas ;
+2. **après** : **7** entrées du menu Piste portent leur touche (barre : 29 → 36) ;
+3. la porte fait ce que fait la touche : sur un projet de trois pistes, piste 1
+   choisie, `VSM_MENU="Choisir toutes les pistes"` choisit les **trois** (relevé
+   `VSM_PISTE_CHOISIE` et `VSM_TEXTES_LISTE`), comme `VSM_TOUCHE=ctrl + shift + A` ;
+   « Piste suivante » mène de la 1 à la 2 comme Alt+↓ ; « Muet (piste choisie) »
+   rend la piste muette et s'annule (`VSM_ENREGISTRER` puis relecture du bloc) ;
+4. libellés uniques dans toute la barre (`VSM_MENU` prend le premier) ; gardes
+   `noms-des-gestes.py`, `menus-cites.py`, langue vertes ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D471) : 0 entrée du menu Piste ne porte `[touche …]`, et
+   « Choisir toutes les pistes » n'y figure pas (`VSM_MENU` : « aucune entrée de
+   menu ne commence par… »).
+2. **Après** : **7** (barre : **29 → 36**) — Alt+↑, Alt+↓, Maj+Alt+↑, Maj+Alt+↓,
+   Ctrl+Maj+A, Maj+M, Maj+S ; chacun des sept libellés **une seule fois** dans la
+   barre. Photo (`VSM_MENU_PHOTO`) : le bloc sous « Descendre la piste », touches à
+   droite, grisées sur le projet de démarrage à une piste (rien à choisir d'autre).
+3. **La porte fait ce que fait la touche** — garde neuve `tools/portes-des-pistes.sh`,
+   projet de trois pistes, chaque cas joué trois fois (témoin, menu, touche) :
+   | cas | témoin | menu | touche |
+   |---|---|---|---|
+   | piste suivante | active 0 | 1 | 1 |
+   | piste précédente (après deux « suivante ») | 0 | 1 | 1 |
+   | étendre vers le bas, deux fois | choix 0 | 0,1,2 | 0,1,2 |
+   | étendre vers le haut depuis la 2 | 0 | 1,2 | 1,2 |
+   | choisir toutes les pistes | 0 | 0,1,2 | 0,1,2 |
+   | muet (piste choisie) | --- | M-- | M-- |
+   | solo (piste choisie) | --- | S-- | S-- |
+
+   Et le muet posé par le menu **s'annule** (Ctrl+Z → « --- »). **Vue rouge sur le
+   binaire de D471 : 8 ratés**, le journal relayé disant pourquoi à chaque cas.
+   Deux défauts de la garde attrapés avant d'être crus : son projet s'ouvrait sur
+   **quatre** pistes (une piste de tempo séparée, comptée comme piste — le journal
+   d'ouverture le disait), et le cas d'annulation passait VERT sur D471, où rien
+   n'avait été rendu muet : il exige désormais que le cas « muet » ait réussi.
+   `VSM_PISTE_CHOISIE` dit aussi le **choix multiple** (« choix : 3 (0, 1, 2) ») —
+   la piste active seule ne disait pas qu'on en avait choisi trois.
+4. `noms-des-gestes.py`, `menus-cites.py`, garde de langue verts ; fumée 0 raté ;
+   préférences identiques.

@@ -1071,7 +1071,7 @@ Dans l'**arrangement**, les mêmes flèches valent pour les clips choisis : `←
 
 La table **s'imprime**, en texte : on l'imprime, on la colle au mur du studio, on la cherche avec Ctrl+F. Une capture d'écran ne ferait aucune des trois.
 
-**Les menus affichent les touches** (D155, D471) : une entrée qui fait exactement ce que fait une commande de la table porte sa touche à droite — « Annuler … Ctrl+Z », « Copier … Ctrl+C », « Quantifier (100 %) … Ctrl+Q », les flèches sous *Hauteur* — et c'est la touche **de votre table** : réassignez Ctrl+C, le menu Édition suit. « Quantifier (50 %) » n'en porte pas, parce que Ctrl+Q quantifie à 100 %.
+**Les menus affichent les touches** (D155, D471) : une entrée qui fait exactement ce que fait une commande de la table porte sa touche à droite — « Annuler … Ctrl+Z », « Copier … Ctrl+C », « Quantifier (100 %) … Ctrl+Q », les flèches sous *Hauteur* — et c'est la touche **de votre table** : réassignez Ctrl+C, le menu Édition suit. « Quantifier (50 %) » n'en porte pas, parce que Ctrl+Q quantifie à 100 %. Le menu **Piste** porte les sept commandes de la piste choisie (D472) : piste précédente et suivante (`Alt+↑` `Alt+↓`), étendre le choix (`Maj+Alt+↑` `↓`), **choisir toutes les pistes** (`Ctrl+Maj+A`), muet et solo de la piste choisie (`Maj+M`, `Maj+S`).
 
 ![La table des raccourcis](images/manuel/raccourcis.png)
 

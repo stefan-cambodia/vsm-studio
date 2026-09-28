@@ -3766,6 +3766,35 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuTrackMoveDown, tr(u8"Descendre la piste"),
                          !project_.tracks.empty()
                              && trackList_.selectedTrackIndex() + 1 < project_.tracks.size());
+            // D472 : LES SEPT COMMANDES « PISTE » DE LA TABLE, AVEC LEUR TOUCHE.
+            // Aucune n'avait d'entrée de menu, et « Choisir toutes les pistes »
+            // (Ctrl+Maj+A) aucune porte du tout : on ne l'atteignait qu'en
+            // connaissant sa touche (D370). Les libellés sont ceux de la table —
+            // ceux de la fenêtre des raccourcis, déjà traduits : un geste, un nom
+            // (D355). Chaque entrée appelle ce que la touche appelle (`keyPressed`).
+            {
+                using Id = vsm::interchange::ShortcutId;
+                const size_t choisie = trackList_.selectedTrackIndex();
+                const bool unePiste = choisie < project_.tracks.size();
+                menu.addSeparator();
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTrackSelectPrevious, tr(u8"Piste précédente"),
+                                                   shortcuts_, Id::NavPreviousTrack, unePiste && choisie > 0);
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTrackSelectNext, tr(u8"Piste suivante"),
+                                                   shortcuts_, Id::NavNextTrack,
+                                                   unePiste && choisie + 1 < project_.tracks.size());
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTrackExtendPrevious, tr(u8"Étendre le choix vers le haut"),
+                                                   shortcuts_, Id::TrackExtendPrevious, project_.tracks.size() > 1);
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTrackExtendNext, tr(u8"Étendre le choix vers le bas"),
+                                                   shortcuts_, Id::TrackExtendNext, project_.tracks.size() > 1);
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTrackSelectAll, tr(u8"Choisir toutes les pistes"),
+                                                   shortcuts_, Id::TrackSelectAll, project_.tracks.size() > 1);
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTrackMuteSelected, tr(u8"Muet (piste choisie)"),
+                                                   shortcuts_, Id::TrackMuteSelected, unePiste,
+                                                   unePiste && project_.tracks[choisie].muted);
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTrackSoloSelected, tr(u8"Solo (piste choisie)"),
+                                                   shortcuts_, Id::TrackSoloSelected, unePiste,
+                                                   unePiste && project_.tracks[choisie].solo);
+            }
             {
                 const size_t choisie = trackList_.selectedTrackIndex();
                 const bool verrouillee = choisie < project_.tracks.size()
@@ -4502,6 +4531,15 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
     if (menuItemID == kMenuTrackMoveUp)   { moveSelectedTrack(-1); return; }
     if (menuItemID == kMenuTrackMoveDown) { moveSelectedTrack(+1); return; }
+    // D472 : LES MÊMES APPELS QUE LES TOUCHES (`keyPressed`) — une porte de plus,
+    // pas un second chemin qui finirait par faire autre chose.
+    if (menuItemID == kMenuTrackSelectPrevious) { selectNeighbourTrack(-1); return; }
+    if (menuItemID == kMenuTrackSelectNext)     { selectNeighbourTrack(+1); return; }
+    if (menuItemID == kMenuTrackExtendPrevious) { trackList_.etendreSelection(-1); return; }
+    if (menuItemID == kMenuTrackExtendNext)     { trackList_.etendreSelection(+1); return; }
+    if (menuItemID == kMenuTrackSelectAll)      { trackList_.choisirToutesLesPistes(); return; }
+    if (menuItemID == kMenuTrackMuteSelected)   { toggleMuteSelectedTrack(); return; }
+    if (menuItemID == kMenuTrackSoloSelected)   { toggleSoloSelectedTrack(); return; }
     if (menuItemID >= kMenuEditDrawAutomationRampUp
         && menuItemID <= kMenuEditDrawAutomationSquare) {
         using vsm::sequencer::AutomationShape;

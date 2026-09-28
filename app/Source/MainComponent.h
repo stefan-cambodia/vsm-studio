@@ -204,9 +204,14 @@ public:
         // — ce que cette phase ajoute — ne laissait aucune trace. On dit aussi
         // COMBIEN il y en a : « piste 2 » sur un projet qui n'en a qu'une ne
         // veut pas dire la même chose.
+        // D472 : ET LE CHOIX MULTIPLE (Maj+clic, Maj+Alt+flèches, Ctrl+Maj+A) :
+        // la piste active seule ne disait pas qu'on en avait choisi trois.
+        juce::StringArray choix;
+        for (const size_t i : trackList_.selectedTracks()) choix.add(juce::String(static_cast<int>(i)));
         std::fputs((juce::String("VSM_PISTE_CHOISIE : ")
                     + juce::String(static_cast<int>(trackList_.selectedTrackIndex()))
                     + " sur " + juce::String(static_cast<int>(project_.tracks.size()))
+                    + ", choix : " + juce::String(choix.size()) + " (" + choix.joinIntoString(", ") + ")"
                     + "\n").toRawUTF8(), stderr);
     }
     /// D362 : VSM_ARRANGEMENT -- la part du morceau que l'arrangement montre.
@@ -747,6 +752,15 @@ private:
         /// était testée, et aucun geste ne l'appelait.
         kMenuTrackMoveUp,
         kMenuTrackMoveDown,
+        /// D472 : les sept commandes « Piste » de la table, au menu Piste --
+        /// Ctrl+Maj+A (toutes les pistes) n'avait aucune porte (D370).
+        kMenuTrackSelectPrevious,
+        kMenuTrackSelectNext,
+        kMenuTrackExtendPrevious,
+        kMenuTrackExtendNext,
+        kMenuTrackSelectAll,
+        kMenuTrackMuteSelected,
+        kMenuTrackSoloSelected,
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
