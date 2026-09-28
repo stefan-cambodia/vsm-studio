@@ -35247,3 +35247,43 @@ association est faite (`setLearnArmed`). La fenêtre des associations le dit
 Stop, Ouvrir/Exporter MIDI…, « + Ajouter une piste », « Supprimer », les six
 onglets, la liste des machines) : la règle de D422 est tenue sur la fenêtre par
 défaut.
+
+---
+
+### Phase D485 — « +6.0 dB » comprimé sous chaque fader de la console (29/09/2026)
+
+**D'OÙ ELLE VIENT — `VSM_SERRES` SUR UN VRAI PROJET** (`b4wuzthen`, vue console
+agrandie) : **7** libellés comprimés, tous la case de valeur d'un fader
+(`ChannelStrip`, 15 pt dans 46 × 14 px) — « +6.0 dB », « +3.8 dB », « +2.0 dB »
+serrés d'un facteur **1,14**. La case fait 56 px de large depuis l'origine ; D462
+y a ajouté le signe « + » d'un gain positif, D463 « -inf » : le texte s'est
+allongé, la case non. Un fader dont on lit mal la valeur se règle à l'estime.
+
+**LE CHOIX, TRANCHÉ ICI** : la case passe à **70 px** de large, **16 de haut
+inchangés** — la hauteur est comptée dans le plancher de course du fader (D342 :
+16 px de boîte + 14 de capuchon + 40 de course), la largeur ne l'est pas. 70 px
+tiennent dans la tranche la plus étroite (88 px : 70 px de zone de fader une fois
+le mètre retiré, sans échelle sous 120 px).
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D484, `b4wuzthen`, `mixer,agrandir:bas`) : 7 comprimés,
+   facteur 1,14 ;
+2. **après** : **0** comprimé dans les tranches, sur ce projet ET sur un projet de
+   quarante pistes (tranches de 88 px) avec une valeur longue (« -24.5 dB », saisie) ;
+3. `fader-console.sh` vert (course ≥ 40 px, ≤ 1,70 dB/px : la hauteur ne change
+   pas) ; `vumetre-console.sh` vert (D468 : le mètre suit la course) ; fumée 0
+   raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D484) : cases de valeur du fader comprimées — **7** sur
+   `b4wuzthen` (« +6.0 dB », « +3.8 dB », « +2.0 dB », facteur 1,14), **1** sur le
+   projet de quarante pistes (« -24.5 dB » saisi, 1,18, tranches de 88 px).
+2. **Après** : **0** et **0** ; photo des tranches de 88 px : « -24.5 dB » a de la
+   marge, la case ne touche pas la fente du mètre.
+3. `fader-console.sh` 0 raté (la hauteur n'a pas bougé) ; `vumetre-console.sh` 0
+   raté ; fumée 0 raté ; préférences identiques.
+
+**Ce que la mesure a vu à côté, et qui n'est pas un défaut** : sur quarante pistes,
+les cases « Trim 0.0 dB » et « Transp. 0 dt » sont serrées (1,18 à 1,22) — c'est la
+décision de D324 (« le mot peut se serrer un peu, pas s'écraser : sous 80 % de sa
+largeur, on rend la valeur nue »), mesurée alors et tenue ici.

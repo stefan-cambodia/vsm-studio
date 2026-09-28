@@ -126,7 +126,11 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setSliderStyle(juce::Slider::LinearVertical);
     volume_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     volume_.setName("mixeur.volume");   // D139 : le nom par lequel le banc le désigne (appuyer:)
-    volume_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 16);
+    // D485 : 70 PX DE LARGE, et non 56 : « +6.0 dB » (le signe de D462) et « -24.5 dB »
+    // s'y serraient d'un facteur 1,14 à 1,18 à 15 pt. La HAUTEUR ne bouge pas : elle
+    // est comptée dans le plancher de course (kBoiteFaderMinimale, D342), la largeur
+    // non ; 70 px tiennent dans la tranche la plus étroite (88 px, zone de fader 70).
+    volume_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 70, 16);
     // D468 : LA COURBE DU FADER EST CELLE DU MÈTRE (-60..+6 dB, milieu à -12),
     // écrite une seule fois dans `LevelMeter::echelle()`.
     volume_.setNormalisableRange(LevelMeter::echelle());
