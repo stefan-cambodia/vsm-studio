@@ -120,6 +120,11 @@ public:
     bool toggleRecord();
     void toggleLoop();
     void toggleMetronome();
+    /// D483 : l'ÉTAT des trois boutons, pour le menu Transport qui les coche ou
+    /// les grise — lu sur les boutons eux-mêmes, qui SONT l'état (D24.3).
+    bool boucleActive() const { return loopButton_.getToggleState(); }
+    bool metronomeActif() const { return metronomeButton_.getToggleState(); }
+    bool enregistrementPossible() const { return recordButton_.isEnabled(); }
 
     void setListening(const juce::String& label, bool enabled, bool active);
     std::function<void()> onCycleListening;

@@ -195,6 +195,20 @@ public:
     /// D222 : VSM_ENREGISTRER=dossier -- « Enregistrer sous… » par sa fonction, à
     /// la fin de la course, pour que le fichier écrit porte TOUS les gestes.
     bool enregistrerSousPourCapture(const juce::File& dossier);
+    /// D483 : VSM_TETE=1 -- la TÊTE DE LECTURE après les gestes, lue sur le transport
+    /// lui-même : le libellé de position n'est réécrit que par la minuterie de la
+    /// barre, et le relevé des textes le lisait encore à « mes. 1 · 1 » après deux
+    /// « mesure suivante » (vu en écrivant la garde du menu Transport).
+    void releverTete() const {
+        const auto tick = transport_.currentTick();
+        const vsm::midi::Tick ppq = std::max<vsm::midi::Tick>(1, project_.ticksPerQuarterNote);
+        auto parMesure = project_.timeSignatureMap.ticksPerBar(tick, project_.ticksPerQuarterNote);
+        if (parMesure <= 0) parMesure = ppq * 4;
+        std::fputs(("VSM_TETE : tick " + juce::String(static_cast<int64_t>(tick))
+                    + ", mes. " + juce::String(static_cast<int64_t>(tick / parMesure + 1))
+                    + juce::String::fromUTF8(" \xc2\xb7 ") + juce::String(static_cast<int64_t>((tick % parMesure) / ppq + 1))
+                    + "\n").toRawUTF8(), stderr);
+    }
     /// D338 : VSM_PIANOROLL_ZONES -- le rang du piano roll et la police des touches, après les gestes.
     void releverRangPianoRoll() const {
         pianoRoll_.releverRangPourCapture();
@@ -430,6 +444,15 @@ public:
         // précède. Le chemin réel est le même que celui du menu Fichier
         // (`exportProjectMidiForCapture`) : deux chemins d'export finiraient par
         // ne plus écrire la même chose.
+        // D483 : enregistrer:<dossier> -- le projet écrit comme `VSM_ENREGISTRER`,
+        // mais comme GESTE, donc jouable plus tard (`VSM_GESTE_APRES`) : un état
+        // posé par `triggerClick()` (la boucle, le métronome) n'existe qu'après le
+        // traitement du message, et `VSM_ENREGISTRER`, qui agit au démarrage,
+        // l'écrivait avant.
+        if (geste.startsWithIgnoreCase("enregistrer:")) {
+            return enregistrerSousPourCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim()));
+        }
         if (geste.startsWithIgnoreCase("exporter-midi:")) {
             const juce::File cible = juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim());
@@ -528,6 +551,11 @@ public:
     // juce::MenuBarModel
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int topLevelMenuIndex, const juce::String& menuName) override;
+    /// D483 : UNE COMMANDE DE LA TABLE, EXÉCUTÉE — par la touche (`keyPressed`) ou
+    /// par le menu Transport : une porte de plus, pas un second chemin. Rend faux
+    /// pour ce qui appartient au piano roll. `origine` nomme l'ordre de lecture
+    /// (D351 : on dit d'où vient un Play).
+    bool executerCommande(vsm::interchange::ShortcutId commande, const char* origine);
     void menuItemSelected(int menuItemID, int topLevelMenuIndex) override;
 
 private:
@@ -761,6 +789,10 @@ private:
         kMenuTrackSelectAll,
         kMenuTrackMuteSelected,
         kMenuTrackSoloSelected,
+        /// D483 : le menu Transport, une entrée par commande de `kCommandesDuTransport`,
+        /// dans cet ordre (identifiants CONTIGUS).
+        kMenuTransportFirst,
+        kMenuTransportLast = kMenuTransportFirst + 15,
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().

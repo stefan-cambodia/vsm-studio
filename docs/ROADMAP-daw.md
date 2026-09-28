@@ -35139,3 +35139,77 @@ pas quelle machine a été posée), deux photos ont été relues : la façade TR
 la façade DX7 sont bien dans le rack. **Le reste de D347 est clos par la mesure** ;
 aucune garde n'est ajoutée, car soixante-trois lancements ne tiennent pas dans une
 garde courte — c'est la raison que D347 donnait déjà.
+
+---
+
+### Phase D483 — pas de menu Transport : quinze touches qu'aucune entrée ne montrait (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D471** : 33 commandes de la table n'ont
+aucune entrée de menu qui affiche leur touche ; **quinze** sont de la famille
+Transport — lecture/arrêt (Espace), enregistrer (F9), boucle (/), métronome (C),
+retour au début, fin du morceau, marqueurs suivant/précédent, tête au début de la
+sélection (L), début et fin de boucle à la tête (I, O), temps et mesure
+suivants/précédents (Alt+flèches, Maj+Alt+flèches). Les quatre premières ont un
+bouton ; les onze autres n'existent qu'au clavier, et l'on ne les apprend qu'en
+ouvrant la fenêtre des raccourcis. Cubase a un menu **Transport** qui les porte
+toutes, touche en regard.
+
+**LE CHOIX, TRANCHÉ ICI.** Un menu **Transport** entre « Piste » et
+« Enregistrement » (l'ordre de Cubase : ce qu'on joue avant la façon de
+l'enregistrer). Ses entrées portent les libellés de la table (uniques dans toute la
+barre : vérifié, 0 occurrence ailleurs) et la touche effective (D155). **Une porte,
+pas un second chemin** : l'aiguillage de `keyPressed` est extrait en une fonction
+`executerCommande`, que la touche et le menu appellent toutes deux. Boucle et
+métronome sont cochés selon leur état ; « Enregistrer » est grisé quand le bouton
+Rec l'est, et dit pourquoi dans son libellé (D443). « Aller à la mesure… » et
+« Basculer l'écoute A/B » restent où ils sont (Édition, Fichier) : un libellé en
+double rendrait `VSM_MENU` ambigu.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D482, `VSM_MENU_LISTE`) : aucun menu « Transport » ;
+   **29** entrées portent `[touche …]` ;
+2. **après** : un menu Transport de **15** entrées, **14** avec leur touche (toutes
+   sauf… aucune : les 15 commandes en ont une) — attendu **15**, barre **29 → 44** ;
+3. **la porte fait ce que fait la touche** — garde neuve `tools/portes-du-transport.sh`,
+   projet de trois pistes, témoin / menu / touche : fin du morceau, mesure
+   suivante ×2, temps suivant, début et fin de boucle à la tête (relus dans le
+   projet enregistré), boucle marche ; chaque cas témoin ≠ attendu. Lecture,
+   enregistrement et métronome ne se mesurent pas au banc (pas de carte son :
+   le transport n'avance pas) — **dit, pas compté** ;
+4. `raccourcis-affiches.py`, `menus-cites.py`, `noms-des-gestes.py`, gardes de
+   langue, `anglais-a-l-ecran.py`, `portes-des-pistes.sh` verts ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D482, `VSM_MENU_LISTE`) : aucun menu Transport ; **36**
+   entrées portent `[touche …]` — **et non 29 comme l'attendu l'écrivait** : 29
+   était le compte d'avant D472, qui en a ajouté sept. L'erreur est dans le chiffre
+   de départ de l'attendu, pas dans sa prédiction (quinze de plus) ; elle est dite
+   ici plutôt que corrigée au-dessus.
+2. **Après** : menu Transport de **15** entrées, **15** avec leur touche ; barre
+   **36 → 51** ; en anglais 51 aussi (« Play / stop [Space] », « Record (start /
+   stop) (no sound card open, or no armed track) [F9] »). « Enregistrer » est grisé
+   au banc, avec sa raison, comme le bouton Rec. Photo (`VSM_MENU_PHOTO`) : trois
+   blocs, touches à droite.
+3. `tools/portes-du-transport.sh` : **9 cas sur 9** — fin du morceau (tick 15 840
+   aux deux portes), mesure suivante ×2 (3 840), mesure précédente (1 920), temps
+   suivant (480), temps précédent (480), début de boucle à la tête (1 920), fin de
+   boucle à la tête (3 840), boucle marche (true), retour au début depuis la fin
+   (0) ; **9 ratés sur le binaire de D482**. Non mesurés, et dit : lecture,
+   enregistrement, métronome (pas de carte son au banc), marqueurs (aucun),
+   tête au début de la sélection (aucune sélection).
+4. **Deux défauts du BANC trouvés en l'écrivant, aucun du logiciel** : le libellé
+   de position n'est réécrit que par la minuterie, et le relevé des textes le lisait
+   à « mes. 1 · 1 » après deux « mesure suivante » — d'où le relevé neuf `VSM_TETE` ;
+   et la boucle bascule par `triggerClick()`, qui POSTE un message, si bien que
+   `VSM_ENREGISTRER` (au démarrage) écrivait « boucle false » par le menu ET par la
+   touche — d'où le geste différé `enregistrer:<dossier>`. Le piège est celui que
+   CLAUDE.md nomme pour `triggerClick`.
+5. Garde de langue : elle a d'abord trouvé **2** textes — la raison du grisé, sans
+   paire anglaise, et le message d'un `static_assert` pris pour un texte d'écran ;
+   0 après. `portes-des-pistes.sh`, `anglais-a-l-ecran.py`, `menus-cites.py` verts ;
+   fumée 0 raté ; préférences identiques.
+
+**L'aiguillage des touches est devenu `executerCommande`** : `keyPressed` y délègue,
+le menu Transport aussi. Une commande ajoutée à la table se branche à un seul
+endroit, et le menu ne peut pas faire autre chose que la touche.

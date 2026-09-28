@@ -800,6 +800,8 @@ const Paire kAnglais[] = {
       "Move up: the effect acts earlier in the chain" },
     { "Montant",   // D477
       "Up" },
+    { " (pas de carte son ouverte, ou aucune piste armée)",   // D483 : « Enregistrer » grisé au menu Transport
+      " (no sound card open, or no armed track)" },
     { "Aucune piste choisie",   // D482
       "No track chosen" },
     { "Nature des événements montrés — et de ceux que « + » ajoute",   // D482

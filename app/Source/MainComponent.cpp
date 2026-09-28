@@ -3439,8 +3439,31 @@ void MainComponent::setRenderThreadChoice(int choice) {
 
 // --- Menu ------------------------------------------------------------------
 
+// D483 : LES COMMANDES DU MENU TRANSPORT, dans l'ordre du menu. Leurs
+// identifiants de menu sont `kMenuTransportFirst + rang` (contigus).
+static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
+    vsm::interchange::ShortcutId::TransportPlayStop,
+    vsm::interchange::ShortcutId::TransportRecord,
+    vsm::interchange::ShortcutId::TransportLoop,
+    vsm::interchange::ShortcutId::TransportMetronome,
+    vsm::interchange::ShortcutId::NavGoToStart,
+    vsm::interchange::ShortcutId::NavGoToEnd,
+    vsm::interchange::ShortcutId::NavPreviousMarker,
+    vsm::interchange::ShortcutId::NavNextMarker,
+    vsm::interchange::ShortcutId::NavToSelection,
+    vsm::interchange::ShortcutId::LoopStartAtPlayhead,
+    vsm::interchange::ShortcutId::LoopEndAtPlayhead,
+    vsm::interchange::ShortcutId::NavPreviousBeat,
+    vsm::interchange::ShortcutId::NavNextBeat,
+    vsm::interchange::ShortcutId::NavPreviousBar,
+    vsm::interchange::ShortcutId::NavNextBar,
+};
+static_assert(std::size(kCommandesDuTransport) == 15);   // D483 : quinze identifiants réservés (kMenuTransportFirst..Last)
+
 juce::StringArray MainComponent::getMenuBarNames() {
-    return { tr("Fichier"), tr(u8"Édition"), tr("Piste"), tr("Enregistrement"), tr("Mixage"), tr("Affichage"), tr("Aide") };
+    // D483 : « Transport » entre Piste et Enregistrement, comme chez Cubase.
+    return { tr("Fichier"), tr(u8"Édition"), tr("Piste"), tr("Transport"), tr("Enregistrement"), tr("Mixage"),
+             tr("Affichage"), tr("Aide") };
 }
 
 namespace {
@@ -4141,7 +4164,30 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 #endif
             }
             break;
-        case 3:
+        case 3: {
+            // D483 : LE MENU TRANSPORT. Quinze commandes de la table n'avaient
+            // aucune entrée ; onze n'existaient qu'au clavier. Libellés de la table
+            // (la fenêtre des raccourcis dit les mêmes), touche effective (D155).
+            using Id = vsm::interchange::ShortcutId;
+            for (size_t i = 0; i < std::size(kCommandesDuTransport); ++i) {
+                const Id commande = kCommandesDuTransport[i];
+                if (i == 4 || i == 11) menu.addSeparator();
+                const auto* declaree = vsm::interchange::findShortcutCommand(commande);
+                juce::String libelle = declaree != nullptr ? tr(juce::String::fromUTF8(declaree->label)) : juce::String();
+                bool actif = true, coche = false;
+                if (commande == Id::TransportLoop) coche = transportBar_.boucleActive();
+                if (commande == Id::TransportMetronome) coche = transportBar_.metronomeActif();
+                if (commande == Id::TransportRecord && !transportBar_.enregistrementPossible()) {
+                    // D443 : GRISÉ, IL DIT POURQUOI — comme le bouton Rec.
+                    actif = false;
+                    libelle += tr(u8" (pas de carte son ouverte, ou aucune piste armée)");
+                }
+                vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTransportFirst + static_cast<int>(i), libelle,
+                                                   shortcuts_, commande, actif, coche);
+            }
+            break;
+        }
+        case 4:
             // ENREGISTREMENT. Les deux réglages qui changent ce qu'une prise
             // fait -- combien de temps on compte avant, et ce qu'elle fait de ce
             // qui était déjà là -- plus la quantification de la dernière prise.
@@ -4280,7 +4326,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               !retrospectif_.empty() && !project_.tracks.empty());
             }
             break;
-        case 4:
+        case 5:
             // LE MIXAGE. Les bus de départ y sont NOMMÉS et leur effet s'y
             // choisit : ils étaient deux, figés dans le code sur une
             // réverbération et un delay, et rien -- ni le projet, ni
@@ -4350,7 +4396,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSubMenu(tr(u8"Forme des fondus croisés"), formes);
             }
             break;
-        case 5:
+        case 6:
             menu.addItem(kMenuViewSingleWindow, tr(u8"Fenêtre unique"),
                           true, singleWindow_);
             menu.addItem(kMenuViewComputerKeyboard,
@@ -4469,7 +4515,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSubMenu(tr("Langue"), langues);
             }
             break;
-        case 6:
+        case 7:
             // D206 (B13) : LA LISTE DES RACCOURCIS EST DE LA DOCUMENTATION, pas
             // une vue — elle n'affiche rien du projet, elle explique le logiciel.
             // Elle vivait sous *Affichage* ; le menu *Aide* ne portait qu'« À
@@ -4535,6 +4581,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
+    // D483 : le menu Transport passe par le MÊME aiguillage que la touche.
+    if (menuItemID >= kMenuTransportFirst && menuItemID < kMenuTransportFirst + 15) {
+        executerCommande(kCommandesDuTransport[menuItemID - kMenuTransportFirst], "menu Transport");
+        return;
+    }
     if (menuItemID == kMenuTrackMoveUp)   { moveSelectedTrack(-1); return; }
     if (menuItemID == kMenuTrackMoveDown) { moveSelectedTrack(+1); return; }
     // D472 : LES MÊMES APPELS QUE LES TOUCHES (`keyPressed`) — une porte de plus,
@@ -8814,7 +8865,10 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
     // personne quelles touches existaient.
     vsm::interchange::ShortcutId commande{};
     if (!vsm::app::ui::lookupShortcut(shortcuts_, key, commande)) return false;
+    return executerCommande(commande, "barre d'espace");
+}
 
+bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, const char* origine) {
     using Id = vsm::interchange::ShortcutId;
     switch (commande) {
         case Id::FileSave:   saveProject(); return true;
@@ -8824,7 +8878,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // premier.
         case Id::TransportPlayStop:
             if (transport_.state() == TransportState::Playing) transport_.stop();
-            else { direOrigineDuPlay("barre d'espace"); transport_.play(); }
+            else { direOrigineDuPlay(origine); transport_.play(); }
             return true;
         // « R » comme référence : la bascule A/B, depuis n'importe quelle
         // fenêtre -- on compare en regardant le piano roll, pas le menu.

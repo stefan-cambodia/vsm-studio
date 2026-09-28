@@ -630,6 +630,9 @@ public:
             // panneau, pris à la disposition, ne le voit pas.
             if (const char* zones = std::getenv("VSM_PIANOROLL_ZONES"); zones != nullptr && *zones && *zones != '0')
                 content->releverRangPianoRoll();
+            // D483 : VSM_TETE=1 -- la tête de lecture, lue sur le transport, APRÈS les gestes.
+            if (const char* tete = std::getenv("VSM_TETE"); tete != nullptr && *tete && *tete != '0')
+                content->releverTete();
             // D362 : VSM_ARRANGEMENT=1 -- ce que la vue d'arrangement montre du
             // morceau, APRÈS les gestes (un « Zoom : tout voir » le change).
             if (const char* arr = std::getenv("VSM_ARRANGEMENT"); arr != nullptr && *arr && *arr != '0')
