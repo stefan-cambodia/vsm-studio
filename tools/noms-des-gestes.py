@@ -163,7 +163,12 @@ def lire_portes() -> tuple[dict[str, dict[str, list[str]]], list[str], list[str]
     # (les accords) aucun -- et celle-là est comptée à part, pas oubliée.
     construction = bloc(piano, "juce::PopupMenu PianoRollComponent::buildContextMenu")
     libelle_menu: dict[str, str] = {}
-    for m in re.finditer(r"addItem\(\s*(kCtx\w+)\s*,", construction):
+    # D471 : TROIS FORMES, et chacune a été vue lue : `addItem(kCtxX, …)`, et
+    # depuis que le menu Édition affiche ses touches, `ajouterAvecRaccourci(menu,
+    # kCtxX, …)` et `ajouterAvecToucheFixe(menu, kCtxX, …)` — l'identifiant y est
+    # le DEUXIÈME argument. Sans elles, vingt entrées sortaient de la garde (qui
+    # le disait : « entrées de menu sans libellé lu »).
+    for m in re.finditer(r"(?:addItem\(|ajouterAvec(?:Raccourci|ToucheFixe)\(\s*\w+\s*,)\s*(kCtx\w+)\s*,", construction):
         ident = m.group(1)
         if ident in libelle_menu:
             continue

@@ -1071,6 +1071,8 @@ Dans l'**arrangement**, les mêmes flèches valent pour les clips choisis : `←
 
 La table **s'imprime**, en texte : on l'imprime, on la colle au mur du studio, on la cherche avec Ctrl+F. Une capture d'écran ne ferait aucune des trois.
 
+**Les menus affichent les touches** (D155, D471) : une entrée qui fait exactement ce que fait une commande de la table porte sa touche à droite — « Annuler … Ctrl+Z », « Copier … Ctrl+C », « Quantifier (100 %) … Ctrl+Q », les flèches sous *Hauteur* — et c'est la touche **de votre table** : réassignez Ctrl+C, le menu Édition suit. « Quantifier (50 %) » n'en porte pas, parce que Ctrl+Q quantifie à 100 %.
+
 ![La table des raccourcis](images/manuel/raccourcis.png)
 
 ### Les associations MIDI
@@ -1227,7 +1229,10 @@ fois** : c'est le cas que le témoin d'écrêtage sert, une crête d'un buffer, 
 c'est le seul moyen de vérifier qu'un clic l'efface. `master:dBFS` vise le mètre
 du master, par `setMeters` — le chemin qui arme aussi le témoin « SAT » — et
 `VSM_MIXEUR=1` dit où est ce mètre et combien de libellés de potentiomètre
-tiennent dans leur case (D469). `cliquer:<nom>` atteint
+tiennent dans leur case (D469). `VSM_MENU_PHOTO=menu[ > sous-menu]:fichier.png`
+(plusieurs, séparés par « ; ») photographie un menu déroulant tel que JUCE le
+dessine, à l'échelle d'interface (D471) : `VSM_CAPTURE` ne prend que la fenêtre,
+et un menu ouvert est une fenêtre à part. `cliquer:<nom>` atteint
 désormais aussi un composant qui n'est pas un bouton (le vumètre) ; le journal dit
 lequel des deux chemins a servi.
 `VSM_NOTES=piste:tick:durée:hauteur[;…]` écrit des notes par le chemin du piano roll — le modèle, puis la matérialisation du clip implicite ouvert (D336). `VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des

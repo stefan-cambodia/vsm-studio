@@ -72,10 +72,10 @@ def cases_sans_lecture(fichier: Path) -> tuple[int, list[str]]:
     lignes = fichier.read_text(encoding="utf-8", errors="replace").split("\n")
     vues, fautes = 0, []
     for i, ligne in enumerate(lignes):
-        if not CASE_EDITABLE.search(ligne):
+        m = CASE_EDITABLE.search(ligne)
+        if m is None:
             continue
         vues += 1
-        m = CASE_EDITABLE.search(ligne)
         objet = m.group(1)
         fenetre = "\n".join(lignes[max(0, i - 15):i + 40])
         noms = {objet} | set(re.findall(r"(\w+)\s*=\s*" + re.escape(objet) + r"\.get\(\)", fenetre))

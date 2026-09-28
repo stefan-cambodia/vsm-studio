@@ -1592,6 +1592,95 @@ void MainComponent::listMenusForCapture() {
     for (const auto& [nom, menu] : arrangement_.menusPourCapture()) parcourir(menu, nom);
 }
 
+void MainComponent::photographierMenuPourCapture(const juce::String& consigne) {
+    // D471 : LE MENU OUVERT, PHOTOGRAPHIÉ. Le relevé `VSM_MENU_LISTE` dit ce que
+    // porte chaque entrée ; il ne dit pas comment elle se LIT — la touche rangée
+    // à droite, sa couleur, sa taille à 150 %. Les tailles et la peinture sont
+    // celles de `juce::PopupMenu` (ItemComponent et MenuWindow) : même texte de
+    // mesure (« libellé   touche »), même bord, même en-tête de section.
+    const juce::String chemin = consigne.upToFirstOccurrenceOf(":", false, false).trim();
+    const juce::File fichier(consigne.fromFirstOccurrenceOf(":", false, false).trim());
+    juce::StringArray etapes;
+    etapes.addTokens(chemin, ">", "");
+    etapes.trim();
+    etapes.removeEmptyStrings();
+    const juce::StringArray noms = getMenuBarNames();
+    const int index = etapes.isEmpty() ? -1 : noms.indexOf(etapes[0]);
+    if (index < 0 || fichier.getFullPathName().isEmpty()) {
+        std::fputs((juce::String::fromUTF8("VSM_MENU_PHOTO : aucun menu \u00ab ") + chemin
+                    + juce::String::fromUTF8(" \u00bb (menus : ") + noms.joinIntoString(", ") + ")\n").toRawUTF8(), stderr);
+        return;
+    }
+    juce::PopupMenu racine = getMenuForIndex(index, noms[index]);
+    const juce::PopupMenu* menu = &racine;
+    for (int e = 1; e < etapes.size(); ++e) {
+        const juce::PopupMenu* suivant = nullptr;
+        for (juce::PopupMenu::MenuItemIterator it(*menu, false); it.next();)
+            if (it.getItem().subMenu != nullptr && it.getItem().text == etapes[e]) {
+                suivant = it.getItem().subMenu.get();
+                break;
+            }
+        if (suivant == nullptr) {
+            std::fputs((juce::String::fromUTF8("VSM_MENU_PHOTO : aucun sous-menu \u00ab ") + etapes[e]
+                        + juce::String::fromUTF8(" \u00bb dans \u00ab ") + etapes[e - 1] + juce::String::fromUTF8(" \u00bb\n")).toRawUTF8(), stderr);
+            return;
+        }
+        menu = suivant;
+    }
+    auto& lf = getLookAndFeel();
+    const juce::PopupMenu::Options options;
+    const int bord = lf.getPopupMenuBorderSizeWithOptions(options);
+    std::vector<std::pair<const juce::PopupMenu::Item*, int>> lignes;
+    int largeur = options.getStandardItemHeight(), hauteur = 0;
+    for (juce::PopupMenu::MenuItemIterator it(*menu, false); it.next();) {
+        const auto& item = it.getItem();
+        int w = 80, h = 16;
+        if (item.isSectionHeader) {
+            lf.getIdealPopupMenuItemSizeWithOptions(item.text, false, -1, w, h, options);
+            h += h / 2;
+            w += w / 4;
+        } else {
+            const juce::String mesure = item.shortcutKeyDescription.isNotEmpty()
+                                            ? item.text + "   " + item.shortcutKeyDescription : item.text;
+            lf.getIdealPopupMenuItemSizeWithOptions(mesure, item.isSeparator, options.getStandardItemHeight(),
+                                                    w, h, options);
+        }
+        h = juce::jlimit(1, 600, h);
+        largeur = std::max(largeur, w);
+        lignes.emplace_back(&item, h);
+        hauteur += h;
+    }
+    largeur += bord * 2;
+    hauteur += bord * 2;
+    const float echelle = juce::Desktop::getInstance().getGlobalScaleFactor();
+    juce::Image image(juce::Image::ARGB, juce::roundToInt(static_cast<float>(largeur) * echelle),
+                      juce::roundToInt(static_cast<float>(hauteur) * echelle), true);
+    {
+        juce::Graphics g(image);
+        g.addTransform(juce::AffineTransform::scale(echelle));
+        lf.drawPopupMenuBackgroundWithOptions(g, largeur, hauteur, options);
+        int y = bord;
+        for (const auto& [item, h] : lignes) {
+            const juce::Rectangle<int> zone(0, y, largeur, h);
+            if (item->isSectionHeader)
+                lf.drawPopupMenuSectionHeaderWithOptions(g, zone.reduced(bord, 0), item->text, options);
+            else
+                lf.drawPopupMenuItemWithOptions(g, zone, false, *item, options);
+            y += h;
+        }
+    }
+    fichier.deleteFile();
+    bool ecrit = false;
+    if (juce::FileOutputStream sortie(fichier); sortie.openedOk())
+        ecrit = juce::PNGImageFormat().writeImageToStream(image, sortie);
+    std::fputs((juce::String::fromUTF8("VSM_MENU_PHOTO : \u00ab ") + chemin + juce::String::fromUTF8(" \u00bb \u2014 ")
+                + juce::String(static_cast<int>(lignes.size())) + juce::String::fromUTF8(" entr\u00e9e(s), ")
+                + juce::String(image.getWidth()) + "x" + juce::String(image.getHeight()) + " px"
+                + (ecrit ? juce::String::fromUTF8(" \u2192 ") + fichier.getFullPathName()
+                         : juce::String::fromUTF8(" \u2014 NON \u00c9CRIT : ") + fichier.getFullPathName())
+                + "\n").toRawUTF8(), stderr);
+}
+
 juce::Slider* MainComponent::curseurPourCapture(const juce::String& nom) {
     // D135 : LE CURSEUR DÉSIGNÉ PAR SON NOM DE COMPOSANT, cherché dans la fenêtre
     // principale puis dans les autres (panneaux flottants), en ne descendant que

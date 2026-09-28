@@ -1072,21 +1072,32 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     using vsm::app::ui::tr;
     juce::PopupMenu menu;
     const bool sel = hasSelection();
+    // D471 : UNE ENTRÉE QUI FAIT CE QUE FAIT UNE TOUCHE AFFICHE CETTE TOUCHE —
+    // la touche EFFECTIVE, lue dans la table de l'utilisateur et dessinée par
+    // JUCE à droite (D155). L'appariement se fait par l'ACTION : dans
+    // `performShortcut` et `performContextMenuAction`, les deux appellent la
+    // même fonction avec les mêmes arguments. `tools/touches-du-menu-edition.py`
+    // le vérifie ; ajouter une entrée appariée par `addItem` nu la fait échouer.
+    using vsm::app::ui::ajouterAvecRaccourci;
+    using vsm::app::ui::ajouterAvecToucheFixe;
+    using Id = vsm::interchange::ShortcutId;
 
-    menu.addItem(kCtxUndo, canUndo() ? tr(u8"Annuler : ") + vsm::app::ui::trGeste(undoLabel()) : tr("Annuler"), canUndo());
-    menu.addItem(kCtxRedo, canRedo() ? tr(u8"Rétablir : ") + vsm::app::ui::trGeste(redoLabel()) : tr(u8"Rétablir"), canRedo());
+    ajouterAvecRaccourci(menu, kCtxUndo, canUndo() ? tr(u8"Annuler : ") + vsm::app::ui::trGeste(undoLabel()) : tr("Annuler"),
+                         shortcuts_, Id::EditUndo, canUndo());
+    ajouterAvecRaccourci(menu, kCtxRedo, canRedo() ? tr(u8"Rétablir : ") + vsm::app::ui::trGeste(redoLabel()) : tr(u8"Rétablir"),
+                         shortcuts_, Id::EditRedo, canRedo());
     menu.addSeparator();
-    menu.addItem(kCtxCut, tr("Couper"), sel);
-    menu.addItem(kCtxCopy, tr("Copier"), sel);
-    menu.addItem(kCtxPaste, tr(u8"Coller à la tête de lecture"), !clipboard_.empty());
-    menu.addItem(kCtxDuplicate, tr("Dupliquer"), sel);
-    menu.addItem(kCtxDelete, tr("Supprimer"), sel);
+    ajouterAvecRaccourci(menu, kCtxCut, tr("Couper"), shortcuts_, Id::EditCut, sel);
+    ajouterAvecRaccourci(menu, kCtxCopy, tr("Copier"), shortcuts_, Id::EditCopy, sel);
+    ajouterAvecRaccourci(menu, kCtxPaste, tr(u8"Coller à la tête de lecture"), shortcuts_, Id::EditPaste, !clipboard_.empty());
+    ajouterAvecRaccourci(menu, kCtxDuplicate, tr("Dupliquer"), shortcuts_, Id::EditDuplicate, sel);
+    ajouterAvecRaccourci(menu, kCtxDelete, tr("Supprimer"), shortcuts_, Id::EditDelete, sel);
     menu.addSeparator();
 
     juce::PopupMenu selectMenu;
-    selectMenu.addItem(kCtxSelectAll, tr(u8"Tout sélectionner"));
-    selectMenu.addItem(kCtxSelectNone, tr(u8"Tout désélectionner"), sel);
-    selectMenu.addItem(kCtxSelectInvert, tr(u8"Inverser la sélection"));
+    ajouterAvecRaccourci(selectMenu, kCtxSelectAll, tr(u8"Tout sélectionner"), shortcuts_, Id::EditSelectAll);
+    ajouterAvecRaccourci(selectMenu, kCtxSelectNone, tr(u8"Tout désélectionner"), shortcuts_, Id::EditSelectNone, sel);
+    ajouterAvecRaccourci(selectMenu, kCtxSelectInvert, tr(u8"Inverser la sélection"), shortcuts_, Id::EditInvertSelection);
     selectMenu.addItem(kCtxSelectSamePitch, tr(u8"Toutes les notes de même hauteur"), sel);
     // Les notes douteuses de la transcription (étape 11.3) : on y VA, une par
     // une, au lieu de les chercher à l'œil sur un morceau entier.
@@ -1142,16 +1153,18 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     menu.addSubMenu(tr(u8"Sélection"), selectMenu);
 
     juce::PopupMenu pitchMenu;
-    pitchMenu.addItem(kCtxTransposeUp, tr("Transposer +1 demi-ton"), sel);
-    pitchMenu.addItem(kCtxTransposeDown, tr("Transposer -1 demi-ton"), sel);
-    pitchMenu.addItem(kCtxOctaveUp, tr("Octave +"), sel);
-    pitchMenu.addItem(kCtxOctaveDown, tr("Octave -"), sel);
+    // D471 : les flèches, touches FIXES — ↑ avec une sélection appelle
+    // `transposeSelection(1)`, Maj+↑ `(12)`, exactement comme ces entrées.
+    ajouterAvecToucheFixe(pitchMenu, kCtxTransposeUp, tr("Transposer +1 demi-ton"), "cursor up", sel);
+    ajouterAvecToucheFixe(pitchMenu, kCtxTransposeDown, tr("Transposer -1 demi-ton"), "cursor down", sel);
+    ajouterAvecToucheFixe(pitchMenu, kCtxOctaveUp, tr("Octave +"), "shift + cursor up", sel);
+    ajouterAvecToucheFixe(pitchMenu, kCtxOctaveDown, tr("Octave -"), "shift + cursor down", sel);
     pitchMenu.addItem(kCtxMirror, tr("Miroir des hauteurs"), sel);
     pitchMenu.addItem(kCtxScaleConstrain, tr(u8"Contraindre à la gamme"), sel && scale_.type != ScaleType::Chromatic);
     menu.addSubMenu(tr("Hauteur"), pitchMenu);
 
     juce::PopupMenu timeMenu;
-    timeMenu.addItem(kCtxQuantizeFull, tr("Quantifier (100 %)"), sel);
+    ajouterAvecRaccourci(timeMenu, kCtxQuantizeFull, tr("Quantifier (100 %)"), shortcuts_, Id::EditQuantize, sel);
     timeMenu.addItem(kCtxQuantizeHalf, tr("Quantifier (50 %)"), sel);
     timeMenu.addItem(kCtxQuantizeEnds, tr(u8"Quantifier début ET fin"), sel);
     timeMenu.addItem(kCtxHumanize, tr("Humaniser"), sel);
@@ -1163,11 +1176,11 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     // longue -- les départs bougent aussi, depuis le premier de la sélection.
     timeMenu.addItem(kCtxTimesDouble, tr(u8"Deux fois plus lent (départs et durées ×2)"), sel);
     timeMenu.addItem(kCtxTimesHalve, tr(u8"Deux fois plus vite (départs et durées ÷2)"), sel);
-    timeMenu.addItem(kCtxLegato, tr("Legato"), sel);
+    ajouterAvecRaccourci(timeMenu, kCtxLegato, tr("Legato"), shortcuts_, Id::EditLegato, sel);
     timeMenu.addItem(kCtxRemoveOverlaps, tr("Retirer les chevauchements"), sel);
     timeMenu.addSeparator();
-    timeMenu.addItem(kCtxSplit, tr(u8"Couper à la tête de lecture"), sel);
-    timeMenu.addItem(kCtxJoin, tr("Fusionner"), selectedNoteIds_.size() >= 2);
+    ajouterAvecRaccourci(timeMenu, kCtxSplit, tr(u8"Couper à la tête de lecture"), shortcuts_, Id::EditSplitAtPlayhead, sel);
+    ajouterAvecRaccourci(timeMenu, kCtxJoin, tr("Fusionner"), shortcuts_, Id::EditJoin, selectedNoteIds_.size() >= 2);
     timeMenu.addItem(kCtxReverse, tr(u8"Rétrograder"), selectedNoteIds_.size() >= 2);
     menu.addSubMenu(tr(u8"Temps et durée"), timeMenu);
 
@@ -1207,9 +1220,9 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     menu.addSubMenu(tr(u8"Insérer un accord"), chordMenu);
 
     menu.addSeparator();
-    menu.addItem(kCtxMute, tr("Rendre muet / audible"), sel);
+    ajouterAvecRaccourci(menu, kCtxMute, tr("Rendre muet / audible"), shortcuts_, Id::EditToggleMute, sel);
     menu.addSeparator();
-    menu.addItem(kCtxZoomFit, tr("Zoom : tout voir"));
+    ajouterAvecRaccourci(menu, kCtxZoomFit, tr("Zoom : tout voir"), shortcuts_, Id::ViewZoomToFit);
     menu.addItem(kCtxZoomSelection, tr(u8"Zoom : sur la sélection"), sel);
     // D20.2 : REPLIER. L'entrée dit combien de hauteurs elle montrerait --
     // ou qu'il n'y en a aucune, auquel cas elle est grisée avec sa raison.

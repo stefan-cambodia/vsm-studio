@@ -96,7 +96,10 @@ def citations_du_mode_d_emploi(chemin: Path) -> list[tuple[str, str, bool]]:
     sortie = []
     for paragraphe in re.split(r"\n\s*\n", texte):
         paragraphe = paragraphe.replace("\n", " ")
-        def prendre(m: re.Match[str]) -> str:
+        # Le paragraphe est LIÉ à la fonction (ruff B023) : `re.sub` l'appelle dans
+        # ce même tour de boucle, mais une fermeture sur une variable de boucle
+        # lirait la dernière valeur si on la gardait pour plus tard.
+        def prendre(m: re.Match[str], paragraphe: str = paragraphe) -> str:
             contenu = m.group(2)
             if "▸" in contenu and not AUTRES_LOGICIELS.search(paragraphe):
                 entree = contenu.split("▸")[-1].strip().rstrip(".,;:")

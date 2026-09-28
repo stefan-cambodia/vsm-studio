@@ -122,4 +122,32 @@ inline void ajouterAvecRaccourci(juce::PopupMenu& menu, int identifiant, const j
     menu.addItem(std::move(entree));
 }
 
+/// D471 : LA MÊME, POUR QUI TIENT LA TABLE PAR POINTEUR — le piano roll, à qui
+/// l'application la prête (D358) et dont le menu contextuel EST le menu Édition
+/// (D80). Seize de ses entrées taisaient Ctrl+Z, Ctrl+C, Ctrl+V… : la règle de
+/// D155 n'était jamais entrée dans ce fichier. Sans table, l'entrée s'affiche
+/// sans touche — une entrée muette vaut mieux qu'une fausse.
+inline void ajouterAvecRaccourci(juce::PopupMenu& menu, int identifiant, const juce::String& libelle,
+                          const vsm::interchange::ShortcutTable* table,
+                          vsm::interchange::ShortcutId commande, bool actif = true,
+                          bool coche = false) {
+    if (table != nullptr) {
+        ajouterAvecRaccourci(menu, identifiant, libelle, *table, commande, actif, coche);
+        return;
+    }
+    menu.addItem(identifiant, libelle, actif, coche);
+}
+
+/// D471 : UNE TOUCHE FIXE (`fixedShortcuts` : les flèches, dont « le sens EST
+/// leur direction »), qu'aucun réglage ne change — écrite dans la langue de
+/// l'interface comme les autres (« Maj+↑ », « Shift+↑ »).
+inline void ajouterAvecToucheFixe(juce::PopupMenu& menu, int identifiant, const juce::String& libelle,
+                                  const juce::String& touche, bool actif = true) {
+    juce::PopupMenu::Item entree(libelle);
+    entree.itemID = identifiant;
+    entree.isEnabled = actif;
+    entree.shortcutKeyDescription = toucheLisible(touche);
+    menu.addItem(std::move(entree));
+}
+
 } // namespace vsm::app::ui

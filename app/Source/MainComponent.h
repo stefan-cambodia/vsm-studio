@@ -134,8 +134,15 @@ public:
     /// qu'un seul.
     /// D80 : VSM_MENU_LISTE=1 -- chaque entrée de la barre de menus, sous-menus
     /// compris, écrite sur la sortie d'erreur TELLE QU'ELLE S'AFFICHE dans la
-    /// langue courante. Un menu déroulant ne se photographie pas.
+    /// langue courante. (Un menu déroulant se photographie depuis D471, par
+    /// `VSM_MENU_PHOTO` ; ce relevé reste celui qui se compare ligne à ligne.)
     void listMenusForCapture();
+    /// D471 : VSM_MENU_PHOTO=menu[ > sous-menu]:fichier.png -- un menu déroulant
+    /// PHOTOGRAPHIÉ tel que JUCE le dessine (mesuré et peint par les mêmes
+    /// fonctions du LookAndFeel, à l'échelle d'interface). Aucun banc ne voyait
+    /// un menu ouvert : `VSM_CAPTURE` ne prend que la fenêtre, et un menu est une
+    /// fenêtre à part, qui n'existe que sous la souris.
+    void photographierMenuPourCapture(const juce::String& consigne);
     /// D89 : VSM_RAPPORT_LISTE=1 -- ce que le volet de rapport AFFICHE, ligne par
     /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
     void listReportForCapture();

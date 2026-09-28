@@ -34521,3 +34521,90 @@ garde un repère d'un pixel sur un dégradé, c'est-à-dire le défaut.
    mêmes écarts sur le binaire de D469** : elle ne mesure pas autre chose qu'avant.
    `vumetre-console.sh` **12 contrôles, 0 raté** ; `fader-console.sh` 0 raté ;
    fumée 0 raté ; `vsm-scale-audit` compile ; préférences identiques.
+
+---
+
+### Phase D471 — le menu Édition taisait Ctrl+Z, Ctrl+C, Ctrl+V… (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D370, MESURÉ AU LIEU D'ÊTRE LU.** D370
+attendait « l'inventaire des portes » pour compter les commandes sans porte. Le
+relevé `VSM_MENU_LISTE`, confronté aux 57 commandes de la table, dit ceci : **9
+entrées de menu seulement affichent leur touche**, et le menu **Édition** porte
+« Annuler », « Rétablir », « Couper », « Copier », « Coller à la tête de lecture »,
+« Dupliquer », « Supprimer », « Rendre muet / audible », « Zoom : tout voir », le
+sous-menu « Sélection » (tout, rien, inverser), « Temps et durée » (Quantifier,
+Legato, Couper à la tête, Fusionner) — **sans une seule de leurs touches**. Chez
+Cubase comme chez Live, « Annuler … Ctrl+Z » est la première ligne du menu
+Édition : c'est là qu'on apprend les touches sans les chercher.
+
+**POURQUOI ELLES MANQUAIENT.** Le menu Édition EST le menu contextuel du piano
+roll (D80), construit dans `PianoRollComponent` par `addItem` nu. D155 avait
+posé la règle (« une entrée qui appelle une commande de la table affiche sa
+touche, dessinée par JUCE ») sans voir ces entrées-là — son appariement ne
+lisait que `MainComponent` — et D358 a prêté la table au piano roll sans s'en
+servir pour ses entrées de menu. La règle n'est jamais entrée dans ce fichier.
+
+**L'APPARIEMENT, PAR L'ACTION ET NON PAR LE LIBELLÉ** (D155) : une entrée reçoit
+la touche d'une commande quand, dans le piano roll, les deux appellent la MÊME
+fonction avec les MÊMES arguments (`case kCtxCopy: copySelection()` et `case
+Id::EditCopy: copySelection()`). « Quantifier (100 %) » la reçoit
+(`quantizeSelection(1.0f, false)` des deux côtés), « Quantifier (50 %) » non.
+Les flèches, touches FIXES de la table (`fixedShortcuts`), vont à « Transposer
+±1 demi-ton » (↑ ↓) et « Octave ± » (Maj+↑ ↓), qui appellent
+`transposeSelection(±1)` et `(±12)` comme elles.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D470, `VSM_MENU_LISTE`) : **5** entrées du menu Édition,
+   sous-menus compris, portent `[touche …]` ;
+2. **après** : **5 + 16 + 4 = 25**, et chacune la touche EFFECTIVE (une touche
+   réassignée dans les préférences s'affiche réassignée — vérifié en changeant
+   Ctrl+C sous un HOME de banc) ; en anglais, « Undo [Ctrl+Z] » ;
+3. une garde neuve (`tools/touches-du-menu-edition.py`) apparie les deux
+   aiguillages du piano roll par la fonction appelée et exige que chaque entrée
+   appariée passe par la table ; **vue rouge** sur le code de D470 (16 entrées
+   muettes), verte après ;
+4. `raccourcis-affiches.py`, `menus-cites.py`, `portes-des-gestes.py`,
+   `noms-des-gestes.py` verts ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D470) : **5** entrées du menu Édition portent `[touche …]`
+   (les locateurs, « Aller à la mesure… », « Tout sélectionner dans
+   l'arrangement ») ; 9 sur toute la barre.
+2. **Après** : **25** au menu Édition (29 sur la barre) — Annuler Ctrl+Z, Rétablir
+   Ctrl+Maj+Z, Couper Ctrl+X, Copier Ctrl+C, Coller Ctrl+V, Dupliquer Ctrl+D,
+   Supprimer Suppr, Tout sélectionner Ctrl+A, Tout désélectionner Échap, Inverser
+   Ctrl+I, ↑ ↓ Maj+↑ Maj+↓, Quantifier (100 %) Ctrl+Q, Legato Ctrl+L, Couper à la
+   tête Ctrl+E, Fusionner Ctrl+J, Rendre muet Ctrl+M, Zoom : tout voir Ctrl+0.
+   **Touche réassignée** (`edit.copy` sur Ctrl+Maj+C, écrite dans le fichier de
+   réglages d'un HOME de banc) : « Copier [touche Ctrl+Maj+C] ». **En anglais** :
+   « Undo [Ctrl+Z] », « Redo [Ctrl+Shift+Z] », 25 aussi.
+3. `touches-du-menu-edition.py` : **16 muettes sur 16** sur le code de D470 (remis
+   en place par `git stash`), **0 sur 16** après. Sa première version, elle, a
+   déclaré muettes les seize entrées CORRIGÉES : elle n'acceptait que la graphie
+   `ShortcutId::EditCopy`, et `buildContextMenu` emploie l'alias `Id::` — c'est la
+   garde qui était fausse, et elle a été corrigée avant d'être crue. Elle lit 26
+   commandes sur 26 et 58 entrées sur 58 (les deux formes de `case` comptées), et
+   passe par `verifier.sh --gardes`.
+4. **`noms-des-gestes.py` a refusé** (rc 2, « entrées de menu sans libellé lu :
+   kCtxCopy, … » — vingt) : elle lisait les libellés par `addItem(kCtx…`. Elle lit
+   désormais aussi `ajouterAvecRaccourci(menu, kCtx…` et `ajouterAvecToucheFixe`, et
+   sa sortie sur le code neuf est **identique octet pour octet** à celle de l'ancien
+   outil sur l'ancien code. `raccourcis-affiches.py`, `menus-cites.py` (28
+   citations, 0 faute), `portes-des-gestes.py` (0 désaccord), garde de langue
+   (SANS_PAIRE 0), fumée : verts ; préférences identiques.
+
+**LE MENU SE PHOTOGRAPHIE DÉSORMAIS** : `VSM_MENU_PHOTO=menu[ > sous-menu]:fichier`
+mesure et peint le menu par les fonctions du LookAndFeel que `juce::PopupMenu`
+appelle (même texte de mesure « libellé   touche », même bord), à l'échelle
+d'interface. Photo du menu Édition : les touches alignées à droite, lisibles. Elles
+sont dessinées par JUCE à **0,75 × 17 = 12,75 pt**, au-dessus du plancher de 12 pt
+de D323 : non retouché.
+
+**Reste nommé, non fait** : **33 commandes sur 57** n'ont toujours aucune entrée de
+menu qui affiche leur touche (compté sur le relevé, pas de tête — j'avais d'abord
+écrit 32) : quinze du transport et de la tête de lecture (qui ont leurs boutons ou
+leur règle), les six outils (qui ont leurs boutons, dont l'infobulle dit la touche
+depuis D358), quatre de la vue (zoom ±, grille de l'arrangement, aimantation), la
+note douteuse suivante (sa touche est dans le LIBELLÉ, D358, parce que Maj la
+compose), et les sept commandes « Piste », dont `track.selectAll` (Ctrl+Maj+A),
+que D370 nommait : **ni bouton ni entrée de menu**.

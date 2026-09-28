@@ -657,6 +657,15 @@ public:
             // de l'état photographié.
             if (const char* liste = std::getenv("VSM_MENU_LISTE"); liste != nullptr && *liste && *liste != '0')
                 content->listMenusForCapture();
+            // D471 : VSM_MENU_PHOTO=menu[ > sous-menu]:fichier.png[;…] -- un menu
+            // déroulant photographié tel que JUCE le dessine, au même moment que
+            // le relevé ci-dessus (après les gestes du banc).
+            if (const char* photos = std::getenv("VSM_MENU_PHOTO"); photos != nullptr && *photos) {
+                juce::StringArray liste;
+                liste.addTokens(juce::String::fromUTF8(photos), ";", "");
+                for (const auto& p : liste)
+                    if (p.trim().isNotEmpty()) content->photographierMenuPourCapture(p.trim());
+            }
             // D352 : VSM_LISTE_AJOUTER=nature[:tick][;…] -- créer un événement depuis
             // la liste. AVANT `VSM_LISTE_EDITER` : on crée, puis on règle ce qu'on
             // vient de créer, et c'est l'ordre dans lequel un musicien le fait.
