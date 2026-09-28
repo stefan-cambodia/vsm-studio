@@ -436,6 +436,8 @@ const Paire kAnglais[] = {
       "Create a clip" },
     { "Créer un clip d'une mesure à la tête de lecture",
       "Create a one-bar clip at the playhead" },
+    { "Descendre : l'effet agit plus tard dans la chaîne",   // D480
+      "Move down: the effect acts later in the chain" },
     { "Descendant",   // D477
       "Down" },
     { "Descendre",
@@ -792,6 +794,8 @@ const Paire kAnglais[] = {
       "Mixer" },
     { "Mixolydien",
       "Mixolydian" },
+    { "Monter : l'effet agit plus tôt dans la chaîne",   // D480
+      "Move up: the effect acts earlier in the chain" },
     { "Montant",   // D477
       "Up" },
     { "Mono-cœur",
@@ -1198,6 +1202,8 @@ const Paire kAnglais[] = {
       "Compress the dynamics by half" },
     { "Retirer",
       "Remove" },
+    { "Retirer l'effet. Annuler%1 le remet",   // D480
+      "Remove the effect. Undo%1 brings it back" },
     { "Retirer ce bus",
       "Remove this bus" },
     { "Retirer ce marqueur",

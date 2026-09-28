@@ -35010,3 +35010,39 @@ les réglages écrits sans unité hors parts et sélecteurs) :
 autre valeur que celle de l'effet, 4 sélecteurs s'écrivaient en décimales, 24 parts
 et 4 grandeurs n'avaient pas d'unité, un entier se réglait au centième. Tous disent
 désormais ce que l'effet joue, et `tools/effets-valeurs.py` le garde.
+
+---
+
+### Phase D480 — « ^ », « v », « X » : six boutons du panneau d'effets sans un mot au survol (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE D422, REJOUÉ SUR LE PANNEAU D'EFFETS** (un
+arpégiateur et une réverbération posés, `VSM_TEXTES_LISTE` : une commande que ne
+suit aucune ligne « infobulle » n'en a pas). Chaque rangée d'effet — MIDI comme
+insert — porte trois boutons faits d'un glyphe, « ^ », « v » et « X », et aucun ne
+dit ce qu'il fait : monter ou descendre l'effet dans la chaîne (donc le faire agir
+plus tôt ou plus tard, ce qui change le son), le retirer (ce qui s'annule). Les
+autres commandes du relevé se nomment elles-mêmes (Play, « Contourner tout », le
+nom de l'effet) ou ont déjà leur infobulle (On, Preset).
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D479) : 6 boutons « ^ », « v », « X » sans infobulle
+   sur les deux rangées ;
+2. **après** : 0 — « Monter : l'effet agit plus tôt dans la chaîne », « Descendre :
+   il agit plus tard », « Retirer l'effet (Ctrl+Z le remet) » — la touche
+   d'annulation lue dans la table (D358) ; en anglais aussi, garde de langue 0 ;
+3. fumée 0 raté ; `anglais-a-l-ecran.py` 0 ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D479) : **19** commandes sans infobulle sur la vue, dont
+   les **6** glyphes « ^ », « v », « X » des deux rangées.
+2. **Après** : **13**, les six sortis — « Monter : l'effet agit plus tôt dans la
+   chaîne », « Descendre : … plus tard », « Retirer l'effet. Annuler (Ctrl+Z) le
+   remet » ; en anglais 13 aussi, « Remove the effect. Undo (Ctrl+Z) brings it
+   back ». **Annuler réassigné sur Ctrl+F9** (fichier de réglages d'un HOME de
+   banc) : « Annuler (Ctrl+F9) le remet » — la touche vient de la table, que le
+   panneau d'effets reçoit désormais comme le piano roll.
+3. `anglais-a-l-ecran.py` 0 ; gardes des sources vertes (langue, raccourcis
+   affichés) ; fumée 0 raté ; préférences identiques.
+
+**Les 13 qui restent se nomment eux-mêmes** (Play, Stop, les onglets, « Contourner
+tout », le nom de l'effet qu'on choisit) — la règle de D422.

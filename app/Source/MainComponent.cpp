@@ -7968,6 +7968,7 @@ void MainComponent::loadShortcuts() {
     // effective, et sans table il l'afficherait sans touche.
     arrangement_.setShortcutTable(&shortcuts_);
     transportBar_.setShortcutTable(&shortcuts_);
+    effectChain_.setShortcutTable(&shortcuts_);   // D480 : l'infobulle de « X » nomme la touche d'annulation
     // D358 : ET LES INFOBULLES SE REFONT. Elles sont posées par `retraduire()`
     // en fin de CONSTRUCTEUR, c'est-à-dire AVANT que la table n'arrive ici : sans
     // ce rappel, les onze infobulles de la barre d'outils perdaient leur touche

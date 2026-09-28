@@ -1,5 +1,6 @@
 #include "EffectChainComponent.h"
 #include "BulleDeValeur.h"   // D445 : lireNombreSaisi
+#include "Shortcuts.h"        // D480 : toucheEntreParentheses
 #include "Langue.h"
 #include "ReponseDeBanc.h"   // D219
 #include "vsm/sequencer/MidiEffects.h"
@@ -204,6 +205,7 @@ void EffectChainComponent::rebuildMidiList() {
         };
         contenu_.addAndMakeVisible(*row.remove);
 
+        infobullesDeRangee(*row.up, *row.down, *row.remove);   // D480
         midiRows_.push_back(std::move(row));
     }
     resized();
@@ -403,6 +405,26 @@ void EffectChainComponent::publishActiveChain() {
     publishChain(static_cast<size_t>(activeTrack_));
 }
 
+void EffectChainComponent::setShortcutTable(const vsm::interchange::ShortcutTable* table) {
+    shortcuts_ = table;
+    rebuildMidiList();     // les infobulles se refont avec la touche effective
+    rebuildEffectList();
+}
+
+void EffectChainComponent::infobullesDeRangee(juce::Button& monter, juce::Button& descendre,
+                                              juce::Button& retirer) const {
+    // D480 : TROIS GLYPHES QUI NE DISAIENT RIEN AU SURVOL. L'ordre d'une chaîne
+    // change le son (un delay avant la réverbération n'est pas l'inverse) : le
+    // dire est la moitié du geste. Et retirer s'annule — la touche est celle de
+    // la table de l'utilisateur, rien n'est écrit quand elle n'en a pas.
+    using vsm::app::ui::tr;
+    monter.setTooltip(tr(u8"Monter : l'effet agit plus tôt dans la chaîne"));
+    descendre.setTooltip(tr(u8"Descendre : l'effet agit plus tard dans la chaîne"));
+    retirer.setTooltip(tr(u8"Retirer l'effet. Annuler%1 le remet")
+                           .replace("%1", vsm::app::ui::toucheEntreParentheses(
+                                              shortcuts_, vsm::interchange::ShortcutId::EditUndo)));
+}
+
 void EffectChainComponent::rebuildEffectList() {
     rows_.clear();
     Chain* chain = activeChain();
@@ -482,6 +504,7 @@ void EffectChainComponent::rebuildEffectList() {
         };
         contenu_.addAndMakeVisible(*row.remove);
 
+        infobullesDeRangee(*row.up, *row.down, *row.remove);   // D480
         rows_.push_back(std::move(row));
     }
     resized();

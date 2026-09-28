@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+namespace vsm::interchange { class ShortcutTable; }
+
 // Éditeur de chaîne d'effets d'insert (section 5 : TRACK -> SYNTH -> EFFECTS
 // -> MIX). Dernière pièce UI de la Phase 2. Pour la piste active :
 //  - "Ajouter" liste les effets de EffectFactory ;
@@ -139,8 +141,15 @@ public:
     /// son libellé exact -- `onChange` fait le reste, comme au clic.
     bool ajouterPourCapture(const juce::String& libelle);
     void presetMenuAction(size_t index, int choix, const std::vector<juce::File>& fichiers);
+    /// D480 : la table des raccourcis, prêtée par l'application — l'infobulle de
+    /// « X » nomme la touche d'annulation EFFECTIVE (D358), jamais une touche écrite.
+    void setShortcutTable(const vsm::interchange::ShortcutTable* table);
 
 private:
+    const vsm::interchange::ShortcutTable* shortcuts_ = nullptr;
+    /// D480 : « ^ », « v », « X » disent ce qu'ils font — sur une rangée d'insert
+    /// comme sur une rangée MIDI.
+    void infobullesDeRangee(juce::Button& monter, juce::Button& descendre, juce::Button& retirer) const;
     void rebuildEffectList();
     void rebuildParamControls();
     void publishChain(size_t trackIndex);
