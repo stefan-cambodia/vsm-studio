@@ -484,6 +484,11 @@ void EffectChainComponent::rebuildEffectList() {
     resized();
 }
 
+// D474 : LA CASE DE VALEUR TIENT LE TEXTE LE PLUS LONG DU PARC (« 20000 Hz ») à
+// la police de la case (15 pt) sans le comprimer : 60 × 14 px le serrait d'un
+// facteur 1,07 dès « 1000 Hz », et rognait « 1998.02 Hz ». La cellule fait 84 px.
+static constexpr int kCaseValeurL = 76, kCaseValeurH = 18;
+
 void EffectChainComponent::rebuildParamControls() {
     params_.clear();
     paramHeader_.setText("", juce::dontSendNotification);
@@ -506,7 +511,7 @@ void EffectChainComponent::rebuildParamControls() {
             ParamControl pc;
             pc.slider = std::make_unique<juce::Slider>();
             pc.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-            pc.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 14);
+            pc.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, kCaseValeurL, kCaseValeurH);   // D474
             // UN PAS ENTIER POUR CE QUI EST ENTIER : un arpégiateur au mode
             // « 1,4 » n'a pas de sens, et un demi-ton se compte.
             const bool entier = std::string(info.name) == "Semitones"
@@ -568,18 +573,26 @@ void EffectChainComponent::rebuildParamControls() {
         ParamControl pc;
         pc.slider = std::make_unique<juce::Slider>();
         pc.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-        pc.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 14);
+        pc.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, kCaseValeurL, kCaseValeurH);   // D474
         // D473 : UN SÉLECTEUR A UN PAS ENTIER ET LE NOM DE SA POSITION (« LP »,
         // « Hard », « Off ») — il se dessinait en potentiomètre continu et
         // s'écrivait « 1.599 ». Les positions sont déclarées par l'effet.
         const bool selecteur = !info.choices.empty();
-        pc.slider->setRange(info.minValue, info.maxValue,
-                            selecteur ? 1.0 : (info.maxValue - info.minValue) / 1000.0);
+        // D474 : UN RÉGLAGE CONTINU EST CONTINU, ET S'ÉCRIT COMME L'AFFICHEUR DU
+        // RACK (`texteParametre`, D135). Il était posé sur une grille de
+        // (max − min) / 1000 comptée depuis min, SANS notification : la case
+        // montrait le cran voisin et l'effet gardait sa valeur — « Cutoff
+        // 1998.02 Hz » pour 2 000 Hz, 26 réglages sur 66 faux à l'usine
+        // (`tools/effets-valeurs.py`), et le premier geste faisait passer
+        // l'effet sur la grille.
+        pc.slider->setRange(info.minValue, info.maxValue, selecteur ? 1.0 : 0.0);
         pc.slider->setValue(fx->getParameter(info.id), juce::dontSendNotification);
-        if (!info.unit.empty()) pc.slider->setTextValueSuffix(" " + juce::String(info.unit));
         const auto pid = info.id;
         juce::Slider* raw = pc.slider.get();
         raw->setName("effet." + juce::String::fromUTF8(info.name.c_str()));   // D429 : le nom du banc (valeur:)
+        raw->textFromValueFunction = [unite = juce::String::fromUTF8(info.unit.c_str())](double v) {
+            return vsm::app::ui::texteParametre(v, unite);
+        };
         raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
         if (selecteur) {
             const auto choix = info.choices;
@@ -596,8 +609,8 @@ void EffectChainComponent::rebuildParamControls() {
                         return debut + static_cast<double>(i);
                 return vsm::app::ui::lireNombreSaisi(t);
             };
-            raw->updateText();   // D460 : la case se réécrit avec sa fonction
         }
+        raw->updateText();   // D460 : la case se réécrit avec sa fonction
         const int slot = selectedEffect_;
         raw->onDragStart = [this] { glisseEnCours_ = true; if (onEditStarted) onEditStarted(u8"Réglage d'effet"); };
         raw->onDragEnd = [this] { glisseEnCours_ = false; };   // D429

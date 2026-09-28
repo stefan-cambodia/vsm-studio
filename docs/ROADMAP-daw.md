@@ -34734,3 +34734,65 @@ les réglages continus. Le panneau écrit « Cutoff 1998.02 Hz » pour 2 000 Hz,
 `(max − min) / 1000`, et la valeur ronde tombe entre deux crans. La case de
 60 px rogne en outre « 1998.02 Hz » en « 1998.02 … ». Et les parts de 0 à 1
 (« Mix 0.300 ») restent sans unité.
+
+---
+
+### Phase D474 — « Cutoff 1998.02 Hz » : le panneau d'effets n'affichait pas la valeur que l'effet tient (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ EN PASSANT DE D473.** Le panneau d'effets règle
+chaque paramètre continu sur une grille de `(max − min) / 1000` comptée depuis
+`min`, et y pose la valeur de l'effet SANS notification : la case montre le cran
+le plus proche, l'effet garde sa valeur. « Cutoff 1998.02 Hz » pour 2 000 Hz,
+« Time 350.825 ms » pour 350, « Ratio 2.995 » pour 3, « Tone 9004.4 Hz » pour
+9 000 — l'écran ment sur ce qu'on entend, et le premier geste sur le bouton
+FAIT passer l'effet sur la grille. Les décimales suivent le pas (« 10.0950 ms »,
+« 0.34960 ») et la case de 60 px rogne « 1998.02 Hz » en « 1998.02 … ».
+
+**LE CHOIX, TRANCHÉ ICI : ÉCRIT COMME L'AFFICHEUR DU RACK.** Le panneau générique
+des machines (D135) est continu (pas nul) et écrit par `texteParametre` : deux
+décimales sous 100, un entier au-delà, l'unité. Un effet et une machine sont
+réglés côte à côte ; deux écritures pour le même genre de nombre en feraient deux
+logiciels. Les sélecteurs de D473 gardent leur pas entier et leur libellé.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/effets-valeurs.sh` : les
+seize effets posés chacun sur une piste, chaque réglage relu (`VSM_VALEUR`) et
+confronté à la valeur d'usine que déclare l'effet (lue dans son en-tête) — un
+nombre affiché doit la désigner à la précision de son écriture, avec son unité :
+1. **témoin** (binaire de D473) : des écarts sur plusieurs effets (au moins
+   Cutoff, Time, Ratio, Tone, Attack, Release) ; la garde **rouge** ;
+2. **après** : **0 écart** sur tous les réglages des seize effets ; « 2000 Hz »,
+   « 350 ms », « 3.00 » ;
+3. une valeur saisie (`valeur:effet.Cutoff=1234`) se relit « 1234 Hz » ;
+4. fumée 0 raté ; gardes vertes ; préférences inchangées.
+
+**ATTENDU COMPLÉMENTAIRE, écrit après la mesure des trois premiers mais AVANT
+celle-ci** : une fois les valeurs justes, `VSM_SERRES` trouve encore **2** cases
+comprimées sur l'Equaliser (« 1000 Hz », « 8000 Hz », facteur 1,07 : 60 × 14 px
+pour une police de 15 pt). La case passe à **76 × 18** (la cellule fait 84 px) :
+attendu **0 comprimée** sur l'Equaliser, et sur le Filter réglé à son maximum
+(« 20000 Hz », le texte le plus long du parc) ; le témoin de ce dernier est pris
+sur le binaire actuel avant l'élargissement.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D473, `tools/effets-valeurs.py`) : **26 écarts sur 66
+   réglages, dans 13 effets sur 16** — bien plus que les exemples vus à l'œil :
+   « Mid Freq 1003.4 Hz », « High Freq 8006 Hz », « Mid Q 0.8006 », « Ceiling
+   -0.312 dB », « Release 49.902 ms », « Bits 8.005 », « Rate 0.59855 Hz »… Seuls
+   Reverb, Transient Shaper et Pitch Shift tombaient juste (leurs défauts sont
+   sur la grille). La garde **rouge**.
+2. **Après** : **0 écart sur 66** — « 2000 Hz », « 350 ms », « 3.00 », « 10.00 ms »,
+   « 120 ms », « -0.30 dB ». La garde lit ses 66 attendus dans les en-têtes (66
+   déclarations comptées, 66 lues, les deux formes — avec et sans positions).
+3. `valeur:effet.Cutoff=1234` → **« 1234 Hz »** sur la photo.
+4. **Complémentaire** : `VSM_SERRES` sur l'Equaliser **2 comprimées → 0** ; le
+   Filter à 20 000 Hz, serré contre ses bords sur la photo témoin, a de l'air
+   après (case 76 × 18, dans la cellule de 84 px).
+5. Fumée 0 raté ; gardes des sources vertes ; ruff et mypy sur l'outil neuf ;
+   préférences identiques.
+
+**Reste nommé, non fait** : les PARTS de 0 à 1 s'écrivent « 0.30 », sans unité —
+dix « Mix », « Size », « Damping », « Width », « Depth », « Feedback »… D416 a
+posé qu'une part se lit en pour cent (le SAT du master), D455 qu'on n'invente pas
+d'unité qu'un paramètre ne déclare pas : les deux se concilient en DÉCLARANT
+l'unité à la source, ce qui touche aussi l'automation et le rack — à trancher
+dans sa propre phase.
