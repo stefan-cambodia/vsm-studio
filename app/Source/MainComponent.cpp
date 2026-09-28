@@ -2401,7 +2401,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
                     "prises, navigateur, composer, mixer, automation, effets, midi-cc, liste, tempo, "
                     "plein:<zone>, agrandir:<zone>, troncon:<n>, retirer-prise:<n>, "
                     "premier-clip:<n>, piste:<n>, ouvrir-midi:<fichier>, automation-parametre:<nom>, "
-                    "midicc-controleur:<n>\n", stderr);
+                    "midicc-controleur:<n>, liste-filtre:<n>\n", stderr);
         return;
     }
     // Les MÊMES identifiants que le menu : tester autre chose que ce que
@@ -2610,6 +2610,12 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom.startsWith("automation-parametre:")) {
         if (!automation_.choisirParametre(nom.fromFirstOccurrenceOf(":", false, false)))
             std::fputs(("VSM_VUE : param\xc3\xa8tre d'automation inconnu : " + nom + "\n").toRawUTF8(), stderr);
+    }
+    else if (nom.startsWith("liste-filtre:")) {
+        // D482 : la nature du filtre de la Liste (0 « Tous », 1 note… 6 programme),
+        // choisie PAR LA NOTIFICATION DE LA LISTE, comme au clic.
+        if (!eventList_.choisirFiltrePourCapture(nom.fromFirstOccurrenceOf(":", false, false).getIntValue()))
+            std::fputs(("VSM_VUE : filtre de liste inconnu : " + nom + "\n").toRawUTF8(), stderr);
     }
     else if (nom.startsWith("midicc-controleur:")) {
         if (!midiCc_.choisirControleur(nom.fromFirstOccurrenceOf(":", false, false).getIntValue()))

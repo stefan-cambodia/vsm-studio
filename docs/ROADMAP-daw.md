@@ -35087,3 +35087,40 @@ sans prévenir est le genre de surprise qu'une infobulle évite.
    désormais `refreshMuteSolo` qui la pose, dans les deux cas.
 4. Garde de langue 0, `anglais-a-l-ecran.py` 0, fumée 0 raté, préférences
    identiques.
+
+---
+
+### Phase D482 — « Tous », et un « + » grisé qui ne dit pas pourquoi (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE D480-D481, REJOUÉ SUR L'ONGLET LISTE.** Deux
+commandes y restent muettes. La liste « Tous » n'a ni libellé ni infobulle : on ne
+sait pas ce qu'elle filtre, ni qu'elle décide aussi de la nature de ce que « + »
+crée (D352). Et « + » est **grisé** quand elle dit « Tous », pendant que son
+infobulle promet « Ajouter un événement de la nature choisie » — il n'y en a
+aucune de choisie, et rien ne dit que c'est la raison. C'est la famille de D443
+(« quatre entrées grisées qui ne disaient pas pourquoi »).
+
+**ATTENDU, écrit avant la mesure** (`VSM_TEXTES_LISTE`, onglet Liste) :
+1. **témoin** (binaire de D481) : « liste : Tous » sans infobulle ; « + » grisé,
+   infobulle « Ajouter un événement de la nature choisie, à la tête de lecture » ;
+2. **après** : la liste dit « Nature des événements montrés — et de ceux que « + »
+   ajoute » ; « + » grisé dit « Choisissez d'abord une nature dans la liste : « Tous »
+   n'en est pas une » ; une nature choisie (`VSM_GESTE_APRES` n'atteint pas une
+   liste — le relevé se prend donc sur le filtre posé par le code d'essai, ou sur la
+   photo) rend l'infobulle d'origine ; en anglais aussi ;
+3. garde de langue et `anglais-a-l-ecran.py` 0 ; fumée 0 raté ; préférences
+   inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D481) : « liste : Tous » sans infobulle ; « + » grisé,
+   « Ajouter un événement de la nature choisie, à la tête de lecture ».
+2. **Après** : la liste dit « Nature des événements montrés — et de ceux que « + »
+   ajoute » ; « + » grisé : « Choisissez d'abord une nature dans la liste : « Tous »
+   n'en est pas une » ; en anglais « Kind of events shown — and of those “+”
+   adds », « First choose a kind in the list: “All” is not one ».
+   **Nature choisie** (`VSM_VUE=liste-filtre:2`, verbe neuf : `VSM_LISTE_AJOUTER`
+   crée sans toucher au filtre, et ne pouvait pas montrer ce cas) : « + » rend
+   « Ajouter un événement de la nature choisie… » / « Add an event of the chosen
+   kind… ».
+3. Garde de langue 0, `anglais-a-l-ecran.py` 0, fumée 0 raté, préférences
+   identiques.

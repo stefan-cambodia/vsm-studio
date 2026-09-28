@@ -436,6 +436,8 @@ const Paire kAnglais[] = {
       "Create a clip" },
     { "Créer un clip d'une mesure à la tête de lecture",
       "Create a one-bar clip at the playhead" },
+    { "Choisissez d'abord une nature dans la liste : « Tous » n'en est pas une",   // D482
+      "First choose a kind in the list: “All” is not one" },
     { "Descendre : l'effet agit plus tard dans la chaîne",   // D480
       "Move down: the effect acts later in the chain" },
     { "Descendant",   // D477
@@ -798,6 +800,10 @@ const Paire kAnglais[] = {
       "Move up: the effect acts earlier in the chain" },
     { "Montant",   // D477
       "Up" },
+    { "Aucune piste choisie",   // D482
+      "No track chosen" },
+    { "Nature des événements montrés — et de ceux que « + » ajoute",   // D482
+      "Kind of events shown — and of those “+” adds" },
     { "Muet : cette piste seule ne sonne plus.",   // D481
       "Mute: this track alone stops sounding." },
     { "Muet.",   // D481

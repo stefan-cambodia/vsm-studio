@@ -1208,7 +1208,7 @@ l'a lancé.
 `VSM_VUE=?` énumère les verbes de vue (D349, D350 — le navigateur en est un depuis) : l'application disait déjà
 « commande inconnue », mais il fallait soupçonner la faute pour aller lire le
 journal — deux gardes ont demandé « navigateur » et « mixeur » sans le savoir.
-`VSM_LISTE_AJOUTER=nature[:tick][;…]` crée un événement depuis la liste (D352) —
+`VSM_VUE=liste-filtre:<n>` choisit la nature du filtre de la Liste (0 « Tous », 1 à 6 une nature), par la notification de la liste comme au clic (D482). `VSM_LISTE_AJOUTER=nature[:tick][;…]` crée un événement depuis la liste (D352) —
 0 note, 1 contrôleur, 2 pli, 3 pression polyphonique, 4 pression de canal,
 5 programme ; sans tick, la tête de lecture.
 `VSM_LISTE_EDITER=ligne:colonne:valeur[;…]` modifie une case de la liste

@@ -66,6 +66,13 @@ public:
     /// polyphonique, 4 pression de canal, 5 programme) ; sans tick, la tête de
     /// lecture. Le même chemin que le bouton.
     bool ajouterPourCapture(const juce::String& consigne);
+    /// D482 : `VSM_VUE=liste-filtre:<n>` — 0 « Tous », 1 à 6 une nature ; posé
+    /// avec notification, par le chemin du clic sur la liste.
+    bool choisirFiltrePourCapture(int rang) {
+        if (rang < 0 || rang >= filtre_.getNumItems()) return false;
+        filtre_.setSelectedId(rang + 1, juce::sendNotificationSync);
+        return true;
+    }
     /// D348 : MODIFIER UNE VALEUR DEPUIS LA LISTE, au banc.
     /// `VSM_LISTE_EDITER=ligne:colonne:valeur` — la colonne par son numéro
     /// (1 position, 4 numéro, 5 valeur, 6 durée). Passe par le MÊME chemin que

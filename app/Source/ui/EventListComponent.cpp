@@ -41,7 +41,6 @@ EventListComponent::EventListComponent() {
     // que de choisir à la place de l'utilisateur. L'événement naît à la TÊTE DE
     // LECTURE, avec les valeurs d'usine de sa famille — on le règle ensuite dans
     // la liste, qui sait modifier depuis D348.
-    ajouter_.setTooltip(tr(u8"Ajouter un événement de la nature choisie, à la tête de lecture"));
     ajouter_.onClick = [this] {
         const auto nature = natureDuFiltre();
         if (!nature) return;
@@ -179,6 +178,7 @@ void EventListComponent::retraduire() {
                                           vsm::sequencer::eventKindLabel(static_cast<EventKind>(k)).c_str())));
     filtre_.setSelectedId(choisie, juce::dontSendNotification);
     rebuild();
+    rafraichirAjouter();   // D482 : les deux infobulles, dans la langue courante
 }
 
 void EventListComponent::resized() {
@@ -206,6 +206,13 @@ std::optional<EventKind> EventListComponent::natureDuFiltre() const {
 void EventListComponent::rafraichirAjouter() {
     const bool possible = natureDuFiltre().has_value() && project_ != nullptr && activeTrack_ >= 0;
     ajouter_.setEnabled(possible);
+    // D482 : GRISÉ, IL DIT POURQUOI. Son infobulle promettait « la nature
+    // choisie » quand la liste disait « Tous » et qu'il n'y en avait aucune.
+    using vsm::app::ui::tr;
+    ajouter_.setTooltip(possible ? tr(u8"Ajouter un événement de la nature choisie, à la tête de lecture")
+                        : !natureDuFiltre() ? tr(u8"Choisissez d'abord une nature dans la liste : « Tous » n'en est pas une")
+                                            : tr(u8"Aucune piste choisie"));
+    filtre_.setTooltip(tr(u8"Nature des événements montrés — et de ceux que « + » ajoute"));
 }
 
 bool EventListComponent::ajouterEvenement(EventKind nature, vsm::midi::Tick tick) {
