@@ -109,7 +109,7 @@ public:
     CompressorEffect() {
         parameterList_ = {
             {kThresholdDb, "Threshold", -60.0f, 0.0f, -18.0f, "dB"},
-            {kRatio, "Ratio", 1.0f, 20.0f, 3.0f, ""},
+            {kRatio, "Ratio", 1.0f, 20.0f, 3.0f, ":1"},   // D479 : comme le master (D135)
             {kAttackMs, "Attack", 0.1f, 200.0f, 10.0f, "ms"},
             {kReleaseMs, "Release", 5.0f, 1000.0f, 120.0f, "ms"},
             {kMakeupDb, "Makeup", 0.0f, 24.0f, 0.0f, "dB"},

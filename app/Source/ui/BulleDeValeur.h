@@ -114,7 +114,9 @@ inline juce::String texteParametre(double valeur, const juce::String& unite) {
     if (unite == "%") return juce::String(juce::roundToInt(valeur * 100.0)) + " %";
     juce::String texte = std::abs(valeur) >= 100.0 ? juce::String(juce::roundToInt(valeur))
                                                    : juce::String(valeur, 2);
-    if (unite.isNotEmpty()) texte += " " + unite;
+    // D479 : une unité qui commence par « : » se colle au nombre — « 3.00:1 »,
+    // le ratio écrit comme au compresseur du master (D135).
+    if (unite.isNotEmpty()) texte += (unite.startsWithChar(':') ? juce::String() : juce::String(" ")) + unite;
     return texte;
 }
 

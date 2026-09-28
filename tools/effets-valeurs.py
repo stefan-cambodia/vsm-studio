@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Le panneau d'effets écrit-il la valeur que l'effet TIENT ?
 
-    python3 tools/effets-valeurs.py [chemin/du/binaire]
+    python3 tools/effets-valeurs.py [chemin/du/binaire] [--sans-unite]
+
+`--sans-unite` (D479) liste en plus les réglages écrits en NOMBRE NU — ni unité,
+ni part en pour cent, ni nom de position — : ce qui reste à dire, ou à justifier.
 
 LA RÈGLE GARDÉE (28/09/2026, D474). Chaque réglage d'un effet d'insert, tout juste
 posé sur une piste, s'affiche à SA valeur d'usine — celle que l'effet déclare
@@ -85,7 +88,7 @@ def juger(texte: str, mini: float, defaut: float, unite: str, positions: list[st
     # L'UNITÉ D'ABORD : sans elle, on ne sait pas lire le nombre (« 0.30 » d'une
     # part non écrite en pour cent se jugerait comme 0,3 %, et la garde dirait
     # « ne désigne pas » là où la faute est l'unité absente).
-    if unite and not texte.endswith(" " + unite):
+    if unite and not texte.endswith(("" if unite.startswith(":") else " ") + unite):   # D479 : « 3.00:1 »
         return f"« {texte} » sans son unité « {unite} »"
     decimales = len(nombre.group(1) or "")
     tolerance = 0.5 * 10 ** (-decimales) + 1e-9
@@ -99,7 +102,10 @@ def juger(texte: str, mini: float, defaut: float, unite: str, positions: list[st
 
 
 def main() -> int:
-    binaire = Path(sys.argv[1]) if len(sys.argv) > 1 else BINAIRE
+    arguments = [a for a in sys.argv[1:] if not a.startswith("--")]
+    sans_unite = "--sans-unite" in sys.argv
+    binaire = Path(arguments[0]) if arguments else BINAIRE
+    nus: list[str] = []
     if not binaire.exists():
         print(f"REFUS : {binaire} absent — compiler d'abord")
         return 2
@@ -139,6 +145,8 @@ def main() -> int:
                 fautes.append(f"cases périmées : {perimees.group(1) if perimees else '?'}")
             for pnom, mini, defaut, unite, positions in attendus:
                 reglages += 1
+                if pnom in lus and re.fullmatch(r"-?\d+(?:\.\d+)?", lus[pnom]):
+                    nus.append(f"{nom} · {pnom} « {lus[pnom]} »")
                 if pnom not in lus:
                     fautes.append(f"{pnom} jamais relevé")
                     continue
@@ -151,6 +159,8 @@ def main() -> int:
             else:
                 print(f"  OK   {nom:<20} {len(attendus)} réglage(s) : "
                       + ", ".join(f"{p[0]} {lus[p[0]]}" for p in attendus))
+    if sans_unite:
+        print(f"SANS UNITÉ : {len(nus)} — " + " | ".join(nus))
     print(f"--- {ecarts} écart(s) sur {reglages} réglage(s) de {len(effets)} effets")
     return 1 if ecarts else 0
 

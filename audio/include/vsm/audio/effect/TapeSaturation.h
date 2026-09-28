@@ -22,7 +22,7 @@ public:
 
     TapeSaturation() {
         parameterList_ = {
-            {kDrive, "Drive", 1.0f, 12.0f, 2.0f, ""},
+            {kDrive, "Drive", 1.0f, 12.0f, 2.0f, "x"},   // D479 : un multiplicateur
             {kTone, "Tone", 0.0f, 1.0f, 0.6f, "%"},   // 0 = aigus atténués, 1 = ouvert
             {kMix, "Mix", 0.0f, 1.0f, 1.0f, "%"},
         };

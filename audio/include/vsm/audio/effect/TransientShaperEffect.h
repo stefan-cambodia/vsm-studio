@@ -23,7 +23,7 @@ public:
         parameterList_ = {
             {kAttack, "Attack", -1.0f, 1.0f, 0.3f, "%"},
             {kSustain, "Sustain", -1.0f, 1.0f, 0.0f, "%"},
-            {kOutput, "Output Level", 0.0f, 2.0f, 1.0f, ""},
+            {kOutput, "Output Level", 0.0f, 2.0f, 1.0f, "x"},   // D479 : un gain linéaire
         };
         for (const auto& p : parameterList_) params_[p.id].store(p.defaultValue, std::memory_order_relaxed);
     }

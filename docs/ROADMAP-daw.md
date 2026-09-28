@@ -34968,3 +34968,45 @@ le panneau en tire un pas de 1 et une écriture entière (« 2 x »). Un sélect
 ne lit arrondis que les quatre sélecteurs de D473 et ce Downsample. Le « Grain »
 du pitch shift est converti en échantillons (un entier, mais d'une milliseconde
 continue) et reste continu, à juste titre.
+
+---
+
+### Phase D479 — « Ratio 3.00 », « Bits 8.00 » : les derniers réglages d'effet sans ce qu'ils mesurent (28/09/2026)
+
+**D'OÙ ELLE VIENT — CE QUE D473-D478 LAISSENT.** Des 66 réglages d'effet, six
+s'écrivent encore sans unité et ne sont ni des parts (D475) ni des sélecteurs
+(D473) : la **Q** du médium de l'EQ, la **Resonance** du filtre (des Q elles
+aussi), le **Ratio** du compresseur, les **Bits** du Bit Crusher, le **Drive** de
+la saturation à bande (1 à 12, un multiplicateur) et l'**Output Level** du
+transient shaper (0 à 2, un gain linéaire). Le compresseur du MASTER écrit son
+ratio « 2.0:1 » (D135) ; celui d'une piste, « 3.00 ».
+
+**LE CHOIX, TRANCHÉ ICI.** Ratio : « :1 », collé au nombre comme au master
+(« 3.00:1 » — une unité qui commence par « : » ne prend pas d'espace). Bits :
+« bits ». Drive et Output Level : « x », ce qu'ils sont — des multiplicateurs ;
+écrire l'Output Level en décibels serait plus musical, mais demanderait une
+conversion dans les deux sens pour un seul réglage, et « 1.00 x » ne ment pas.
+Les deux Q restent nues : un facteur de qualité n'a pas d'unité, et D455 interdit
+d'en inventer une.
+
+**ATTENDU, écrit avant la mesure** (`effets-valeurs.py --sans-unite`, qui compte
+les réglages écrits sans unité hors parts et sélecteurs) :
+1. **témoin** (binaire de D478) : **6** ;
+2. **après** : **2** (les deux Q), « Ratio 3.00:1 », « Bits 8.00 bits »,
+   « Drive 2.00 x », « Output Level 1.00 x » ; 0 écart sur 66 ;
+3. fumée 0 raté ; suites vertes ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D478, `effets-valeurs.py --sans-unite`) : **6** — Mid Q
+   « 0.80 », Ratio « 3.00 », Resonance « 1.00 », Bits « 8.00 », Drive « 2.00 »,
+   Output Level « 1.00 ».
+2. **Après** : **2**, les deux Q ; « Ratio 3.00:1 », « Bits 8.00 bits », « Drive
+   2.00 x », « Output Level 1.00 x » ; **0 écart sur 66** (la garde a appris qu'une
+   unité en « : » se colle au nombre).
+3. Audio 1 306, core 362, interchange 308 ; build complet ; fumée 0 raté ;
+   préférences identiques.
+
+**LE PANNEAU D'EFFETS, BILAN DE D473 À D479** : sur 66 réglages, 26 affichaient une
+autre valeur que celle de l'effet, 4 sélecteurs s'écrivaient en décimales, 24 parts
+et 4 grandeurs n'avaient pas d'unité, un entier se réglait au centième. Tous disent
+désormais ce que l'effet joue, et `tools/effets-valeurs.py` le garde.
