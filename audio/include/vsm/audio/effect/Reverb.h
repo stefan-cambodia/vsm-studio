@@ -24,10 +24,10 @@ public:
 
     Reverb() {
         parameterList_ = {
-            {kSize, "Size", 0.0f, 1.0f, 0.6f, ""},
-            {kDamping, "Damping", 0.0f, 1.0f, 0.5f, ""},
-            {kWidth, "Width", 0.0f, 1.0f, 1.0f, ""},
-            {kMix, "Mix", 0.0f, 1.0f, 0.3f, ""},
+            {kSize, "Size", 0.0f, 1.0f, 0.6f, "%"},
+            {kDamping, "Damping", 0.0f, 1.0f, 0.5f, "%"},
+            {kWidth, "Width", 0.0f, 1.0f, 1.0f, "%"},
+            {kMix, "Mix", 0.0f, 1.0f, 0.3f, "%"},
         };
         for (const auto& p : parameterList_)
             params_[p.id].store(p.defaultValue, std::memory_order_relaxed);

@@ -17,9 +17,9 @@ public:
     Phaser() {
         parameterList_ = {
             {kRate, "Rate", 0.05f, 8.0f, 0.5f, "Hz"},
-            {kDepth, "Depth", 0.0f, 1.0f, 0.7f, ""},
-            {kFeedback, "Feedback", 0.0f, 0.95f, 0.4f, ""},
-            {kMix, "Mix", 0.0f, 1.0f, 0.5f, ""},
+            {kDepth, "Depth", 0.0f, 1.0f, 0.7f, "%"},
+            {kFeedback, "Feedback", 0.0f, 0.95f, 0.4f, "%"},
+            {kMix, "Mix", 0.0f, 1.0f, 0.5f, "%"},
         };
         for (const auto& p : parameterList_)
             params_[p.id].store(p.defaultValue, std::memory_order_relaxed);

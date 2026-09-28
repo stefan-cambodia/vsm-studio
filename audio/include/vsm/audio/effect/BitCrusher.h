@@ -21,7 +21,7 @@ public:
         parameterList_ = {
             {kBits, "Bits", 1.0f, 16.0f, 8.0f, ""},
             {kDownsample, "Downsample", 1.0f, 64.0f, 1.0f, "x"},
-            {kMix, "Mix", 0.0f, 1.0f, 1.0f, ""},
+            {kMix, "Mix", 0.0f, 1.0f, 1.0f, "%"},
         };
         for (const auto& p : parameterList_)
             params_[p.id].store(p.defaultValue, std::memory_order_relaxed);

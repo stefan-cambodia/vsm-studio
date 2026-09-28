@@ -42,7 +42,7 @@ public:
             {kSemitones, "Semitones", -12.0f, 12.0f, 0.0f, "st"},
             {kCents, "Cents", -100.0f, 100.0f, 0.0f, "ct"},
             {kGrain, "Grain", 20.0f, 100.0f, 50.0f, "ms"},
-            {kMix, "Mix", 0.0f, 1.0f, 1.0f, ""},
+            {kMix, "Mix", 0.0f, 1.0f, 1.0f, "%"},
         };
         for (const auto& p : parameterList_) params_[p.id].store(p.defaultValue, std::memory_order_relaxed);
     }

@@ -23,8 +23,8 @@ public:
     TapeSaturation() {
         parameterList_ = {
             {kDrive, "Drive", 1.0f, 12.0f, 2.0f, ""},
-            {kTone, "Tone", 0.0f, 1.0f, 0.6f, ""},   // 0 = aigus atténués, 1 = ouvert
-            {kMix, "Mix", 0.0f, 1.0f, 1.0f, ""},
+            {kTone, "Tone", 0.0f, 1.0f, 0.6f, "%"},   // 0 = aigus atténués, 1 = ouvert
+            {kMix, "Mix", 0.0f, 1.0f, 1.0f, "%"},
         };
         for (const auto& p : parameterList_)
             params_[p.id].store(p.defaultValue, std::memory_order_relaxed);

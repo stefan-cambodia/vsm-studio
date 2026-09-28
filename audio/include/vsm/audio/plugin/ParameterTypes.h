@@ -14,7 +14,11 @@ struct ParameterInfo {
     float minValue = 0.0f;
     float maxValue = 1.0f;
     float defaultValue = 0.0f;
-    std::string unit; // "Hz", "dB", "%", "" ...
+    /// L'unité d'affichage : "Hz", "dB", "ms", "" … **"%" veut dire une PART de
+    /// −1 à 1, écrite × 100** (« 30 % » pour 0,3) — D475 ; un test impose ces
+    /// bornes à tout paramètre du parc qui la déclare. Aucune unité n'est
+    /// inventée à l'affichage (D455) : ce qui n'en déclare pas s'écrit nu.
+    std::string unit;
     /// D473 : LES POSITIONS D'UN SÉLECTEUR, une par valeur entière de `minValue`
     /// à `maxValue` (« LP », « HP », « BP », « Notch »). Vide pour un réglage
     /// continu — le cas de presque tous. Un sélecteur sans elles se dessinait en

@@ -20,7 +20,7 @@ public:
             {kCutoff, "Cutoff", 20.0f, 20000.0f, 2000.0f, "Hz"},
             {kResonance, "Resonance", 0.5f, 20.0f, 1.0f, ""},
             {kMode, "Mode", 0.0f, 3.0f, 0.0f, "", {"LP", "HP", "BP", "Notch"}},   // D473 : lu arrondi
-            {kMix, "Mix", 0.0f, 1.0f, 1.0f, ""},
+            {kMix, "Mix", 0.0f, 1.0f, 1.0f, "%"},
         };
         for (const auto& p : parameterList_)
             params_[p.id].store(p.defaultValue, std::memory_order_relaxed);

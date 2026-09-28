@@ -16,7 +16,7 @@ course (D318) ; le relevé `VSM_VALEUR` donne le texte de chaque réglage. Les
 valeurs d'usine se lisent dans les en-têtes (`audio/include/vsm/audio/effect/`),
 l'appariement classe ↔ effet dans `EffectFactory::create`.
 
-CE QUI FAIT UN ÉCART :
+CE QUI FAIT UN ÉCART (une unité « % » est une part de −1 à 1 écrite × 100, D475) :
   * un SÉLECTEUR (D473) qui n'écrit pas le libellé de sa position d'usine ;
   * un nombre qui ne désigne pas la valeur d'usine À LA PRÉCISION DE SON ÉCRITURE
     (« 2000 Hz » tient 2000 à ±0,5 ; « 0.30 » tient 0,3 à ±0,005 ; « 0.34960 »
@@ -82,12 +82,19 @@ def juger(texte: str, mini: float, defaut: float, unite: str, positions: list[st
     nombre = re.search(r"-?\d+(?:\.(\d+))?", texte)
     if nombre is None:
         return f"« {texte} » : aucun nombre"
-    decimales = len(nombre.group(1) or "")
-    tolerance = 0.5 * 10 ** (-decimales) + 1e-9
-    if abs(float(nombre.group(0)) - defaut) > tolerance:
-        return f"« {texte} » ne désigne pas {defaut:g} (précision de l'écriture : ±{tolerance:g})"
+    # L'UNITÉ D'ABORD : sans elle, on ne sait pas lire le nombre (« 0.30 » d'une
+    # part non écrite en pour cent se jugerait comme 0,3 %, et la garde dirait
+    # « ne désigne pas » là où la faute est l'unité absente).
     if unite and not texte.endswith(" " + unite):
         return f"« {texte} » sans son unité « {unite} »"
+    decimales = len(nombre.group(1) or "")
+    tolerance = 0.5 * 10 ** (-decimales) + 1e-9
+    lu = float(nombre.group(0))
+    # D475 : « % » est une part de −1 à 1 écrite × 100 — « 30 % » désigne 0,3.
+    if unite == "%":
+        lu, tolerance = lu / 100.0, tolerance / 100.0
+    if abs(lu - defaut) > tolerance:
+        return f"« {texte} » ne désigne pas {defaut:g} (précision de l'écriture : ±{tolerance:g})"
     return None
 
 

@@ -594,6 +594,8 @@ void EffectChainComponent::rebuildParamControls() {
             return vsm::app::ui::texteParametre(v, unite);
         };
         raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
+        if (info.unit == "%")   // D475 : « 45 » (ou « 45 % ») tapé dans une part donne 0,45, comme le SAT (D416)
+            raw->valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t) / 100.0; };
         if (selecteur) {
             const auto choix = info.choices;
             const double debut = info.minValue;

@@ -107,7 +107,11 @@ inline juce::String textePanoramique(double pan) {
 
 /// Un paramètre de machine, comme l'afficheur des façades : deux décimales sous
 /// 100, un entier au-delà, et l'unité.
+///
+/// D475 : L'UNITÉ « % » EST UNE PART DE −1 À 1 (`ParameterInfo::unit`), écrite
+/// × 100 et sans décimale — « 30 % », « -50 % » —, comme le SAT du master (D416).
 inline juce::String texteParametre(double valeur, const juce::String& unite) {
+    if (unite == "%") return juce::String(juce::roundToInt(valeur * 100.0)) + " %";
     juce::String texte = std::abs(valeur) >= 100.0 ? juce::String(juce::roundToInt(valeur))
                                                    : juce::String(valeur, 2);
     if (unite.isNotEmpty()) texte += " " + unite;

@@ -22,8 +22,8 @@ public:
     TremoloEffect() {
         parameterList_ = {
             {kRate, "Rate", 0.1f, 20.0f, 4.0f, "Hz"},
-            {kDepth, "Depth", 0.0f, 1.0f, 0.5f, ""},
-            {kShape, "Shape", 0.0f, 1.0f, 0.0f, ""},
+            {kDepth, "Depth", 0.0f, 1.0f, 0.5f, "%"},
+            {kShape, "Shape", 0.0f, 1.0f, 0.0f, "%"},
             {kStereoPhase, "Stereo Phase", 0.0f, 180.0f, 0.0f, "deg"},
         };
         for (const auto& p : parameterList_) params_[p.id].store(p.defaultValue, std::memory_order_relaxed);

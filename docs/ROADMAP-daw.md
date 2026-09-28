@@ -34796,3 +34796,53 @@ posé qu'une part se lit en pour cent (le SAT du master), D455 qu'on n'invente p
 d'unité qu'un paramètre ne déclare pas : les deux se concilient en DÉCLARANT
 l'unité à la source, ce qui touche aussi l'automation et le rack — à trancher
 dans sa propre phase.
+
+---
+
+### Phase D475 — « Mix 0.30 » : vingt-quatre parts d'effet sans unité (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D474.** Vingt-quatre réglages d'effet sont
+des PARTS continues, sans unité : dix « Mix », Size, Damping, Width, Depth et
+Feedback des modulations, le Drive de la distorsion, le Tone et le Shape (0..1),
+l'Attack et le Sustain du transient shaper (−1..1). Ils s'écrivent « 0.30 »,
+« -0.50 ». Cubase et Live écrivent « 30 % » ; D416 a posé la même règle pour le
+SAT du master.
+
+**LA CONTRADICTION APPARENTE, ET SA RÉSOLUTION, ÉCRITES ICI.** D455 interdit
+d'inventer une unité qu'un paramètre ne déclare pas (la bulle d'un « Detune »
+0..1 reste « 0.70 »). La réponse n'est donc pas d'afficher en pour cent tout ce
+qui va de 0 à 1 — 450 paramètres de machines le font, dont des sélecteurs —, mais
+de **DÉCLARER l'unité à la source** : `"%"` dans `ParameterInfo::unit` veut dire
+**une part de −1 à 1, écrite × 100** (« 30 % », « -50 % »). Aucune machine ne
+déclare « % » aujourd'hui (compté : 0) ; `texteParametre` — l'afficheur du rack,
+de l'automation et, depuis D474, du panneau d'effets — l'écrit ainsi partout ; la
+saisie « 45 » donne 0,45, comme le SAT (D416). **Un test l'impose au parc
+entier** : tout paramètre, d'effet ou de machine, qui déclare « % » a ses bornes
+dans [−1, 1] — sans quoi « 50 % » écrirait « 5000 % ».
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D474) : les 24 parts s'écrivent sans unité (« Mix
+   0.30 », « Attack 0.30 ») ;
+2. **après** : « 30 % », « 60 % »… pour les 24, et `tools/effets-valeurs.py`
+   (qui juge une part au centième) **0 écart sur 66** ;
+3. `valeur:effet.Mix=0.45` puis relecture → « 45 % » ; une saisie « 45 » dans la
+   case donne 0,45 (relevé du projet enregistré) ;
+4. test `audio` : les « % » du parc dans [−1, 1] ; suites vertes ; fumée 0
+   raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D474 ; la garde, qui lit désormais « % » dans les
+   en-têtes, juge l'ancien affichage) : **24 écarts sur 66**, exactement les 24
+   parts — « Size 0.60 sans son unité « % » », « Mix 0.30 »… Et une saisie :
+   « 45 » tapé dans le Mix de la réverbération donnait **1.0000** (« 1.00 ») — borné
+   au maximum en silence, l'effet passé tout mouillé.
+2. **Après** : **0 écart sur 66** — « Size 60 % », « Damping 50 % », « Width
+   100 % », « Mix 30 % », « Attack 30 % », « Sustain 0 % ».
+3. `valeur:effet.Mix=0.45` → « 45 % » sur la photo ; `saisir-curseur:effet.Mix=45`
+   → **0.4500 (« 45 % »)**.
+4. Test `percent_unit_means_a_part_between_minus_one_and_one` sur les seize
+   effets ET toutes les machines enregistrées : 24 parts, toutes dans [−1, 1] ;
+   **1 305** tests audio.
+   (L'ordre des jugements de la garde a été corrigé en route : elle jugeait le
+   nombre avant l'unité, et disait « 0.60 ne désigne pas 0,6 » là où la faute
+   était l'unité absente — le constat restait rouge, mais mal nommé.)
