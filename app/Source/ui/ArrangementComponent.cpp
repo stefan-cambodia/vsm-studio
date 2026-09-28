@@ -2087,6 +2087,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.0f);
             g.setColour(Palette::textSecondary);
             g.setFont(juce::Font(juce::FontOptions(12.0f)));
+            if (mordSurLaReserve(g.getCurrentFont(), texte, x)) continue;   // D489
             g.drawText(texte, static_cast<int>(x) + 3, 2, 60, kRulerHeight - 4,
                         juce::Justification::centredLeft);
         }
@@ -2122,6 +2123,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                 g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.0f);
             }
             if (!numerote) continue;
+            if (mordSurLaReserve(g.getCurrentFont(), juce::String(numero), x)) continue;   // D489
             g.setColour(Palette::textSecondary);
             g.drawText(juce::String(numero),
                         static_cast<int>(x) + 3, 2, 40, kRulerHeight - 4,

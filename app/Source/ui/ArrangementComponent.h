@@ -348,6 +348,16 @@ public:
     vsm::midi::Tick scrollTick() const { return scrollTick_; }
     double pixelsPerTick() const { return pixelsPerTick_; }
     static constexpr int kRulerHeight = 22;
+    /// D489 : la largeur réservée au bout droit de la règle, sous le bouton
+    /// « agrandir ce volet » (D122) — comme la liste des pistes et le piano roll.
+    int reserveDroiteRegle_ = 0;
+    void setReserveDroite(int px) { if (px != reserveDroiteRegle_) { reserveDroiteRegle_ = px; repaint(); } }
+    /// D489 : vrai si le texte d'une graduation posé à `x` mordrait sur la réserve.
+    bool mordSurLaReserve(const juce::Font& police, const juce::String& texte, float x) const {
+        if (reserveDroiteRegle_ <= 0) return false;
+        const float fin = x + 3.0f + juce::GlyphArrangement::getStringWidth(police, texte);
+        return fin > static_cast<float>(getWidth() - reserveDroiteRegle_);
+    }
     /// Hauteur d'une piste PLIÉE. Assez pour son nom et rien d'autre : c'est
     /// tout l'intérêt de plier. Seize pistes pliées tiennent alors dans
     /// 16 x 20 + 22 = 342 pixels, ce que demande le critère de l'étape.

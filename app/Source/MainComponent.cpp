@@ -1488,6 +1488,10 @@ void MainComponent::placerLesBoutonsDeZone() {
     trackList_.setReserveDroite(boutonsDeZone_[0].isVisible() ? kTailleBoutonDeZone + 6 : 0);
     pianoRollPanel_.setReserveDroite(boutonsDeZone_[3].isVisible() && !centerShowsArrangement_
                                          ? kTailleBoutonDeZone + 6 : 0);
+    // D489 : l'arrangement aussi — sa règle occupe la rangée du bouton, et « 177 »
+    // passait dessous (on lisait « 17 »).
+    arrangement_.setReserveDroite(boutonsDeZone_[3].isVisible() && centerShowsArrangement_
+                                      ? kTailleBoutonDeZone + 6 : 0);
 }
 
 void MainComponent::basculerZoneAgrandie(int zone) {

@@ -35411,3 +35411,34 @@ bascule de langue, comme un nom de piste. Un projet enregistré garde le sien
    identiques. (Le premier projet d'essai écrivait la clé `effectType` au lieu de
    `effect` : l'ouverture l'a dit — « effet «  » inconnu, non appliqué » — et le
    projet a été refait avant de mesurer.)
+
+---
+
+### Phase D489 — « 17▣ » : le dernier numéro de la règle de l'arrangement passait sous le bouton d'agrandissement (29/09/2026)
+
+**D'OÙ ELLE VIENT — LA PHOTO DE L'ARRANGEMENT DE `b4wuzthen`** (2 133 × 1 333) : le
+numéro de mesure « 177 », au bout de la règle, est à moitié couvert par le bouton
+« agrandir ce volet » (D122) — on lit « 17 ». La liste des pistes et le piano roll
+réservent déjà la place de ce bouton (`setReserveDroite`, appelée par
+`placerLesBoutonsDeZone`) ; l'arrangement, dont la règle occupe la même rangée que
+le bouton, ne le faisait pas.
+
+**LE CHOIX, TRANCHÉ ICI** : l'arrangement reçoit la même réserve, et sa règle
+n'écrit pas un numéro (ou une durée, en mode minutes:secondes) dont le texte
+mordrait sur elle. Les traits de mesure continuent sous le bouton : ils ne se
+lisent pas, ils se voient. Un numéro caché à moitié se lit FAUX (« 17 » pour 177) ;
+un numéro absent ne ment pas, le suivant est huit mesures plus loin.
+
+**ATTENDU, écrit avant la mesure** (texte PEINT : preuve par la photo, coin haut
+droit de l'arrangement) :
+1. **témoin** (binaire de D488) : des chiffres sous ou contre le bouton ;
+2. **après** : aucun chiffre dans la bande du bouton ; les autres numéros
+   inchangés ; en minutes:secondes aussi ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU** (photos du coin haut droit, `b4wuzthen`, 2 133 × 1 333) :
+1. **Témoin** (binaire de D488) : en mesures, « 177 » sous le bouton — on lit
+   « 17 » ; en minutes:secondes, le « 6:00 » y passe aussi, réduit à un fragment.
+2. **Après** : aucun chiffre dans la bande du bouton, dans les deux modes ; « 153 »,
+   « 161 », « 169 », « 5:00 », « 5:30 » inchangés, les traits de mesure continuent
+   sous le bouton.
+3. Fumée 0 raté ; `vue-du-morceau.sh` vert ; préférences identiques.
