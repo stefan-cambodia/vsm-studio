@@ -40,12 +40,15 @@ inline float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
 
 /// Petit vu-mètre vertical (échelle dB), rafraîchi par le parent.
 ///
-/// DEPUIS D4.7 IL EN MONTRE DEUX : la barre pleine est la valeur EFFICACE
-/// (RMS), le trait fin la CRÊTE. La crête seule disait si ça écrête ; elle ne
-/// disait pas si c'était fort, et deux pistes de même crête peuvent être
-/// séparées de quinze décibels perçus. Les deux dans le même mètre, c'est ce
-/// que fait toute console, et pour la même raison : on lit d'un coup d'œil
-/// l'écart entre les deux, qui est la densité de la piste.
+/// DEPUIS D4.7 IL EN MONTRE DEUX, ET DEPUIS D470 ON LES VOIT : le RMS
+/// remplit en pleine couleur, de lui à la CRÊTE la même couleur est pâle, et
+/// le trait blanc est la crête retenue. La crête seule disait si ça écrête ;
+/// elle ne disait pas si c'était fort, et deux pistes de même crête peuvent
+/// être séparées de quinze décibels perçus. Les deux dans le même mètre, c'est
+/// ce que fait toute console, et pour la même raison : on lit d'un coup d'œil
+/// l'écart entre les deux — la bande pâle —, qui est la densité de la piste.
+/// (Jusqu'à D470, ce commentaire décrivait l'inverse de la peinture : la barre
+/// pleine était la crête, et le RMS un trait blanc à 35 % qu'on ne voyait pas.)
 class LevelMeter : public juce::Component {
 public:
     /// D468 : L'ÉCHELLE DE LA TRANCHE, ÉCRITE UNE FOIS — celle du fader : -60..+6
@@ -140,8 +143,6 @@ public:
         const auto yDe = [&barre](float position) { return barre.getBottom() - barre.getHeight() * position; };
 
         if (level_ > 0.0f) {
-            const float haut = yDe(level_);
-            juce::Rectangle<float> bar(barre.getX(), haut, barre.getWidth(), barre.getBottom() - haut);
             // Les couleurs se posent en décibels, comme avant D468 : ambre dès
             // -15 dBFS, rouge à 0 dBFS — et au-dessus, où la course du fader
             // montre les dépassements.
@@ -150,15 +151,19 @@ public:
                                        vsm::ui::Palette::accentRed, 0, yZero, false);
             grad.addColour(proportionDe(-15.0f) / proportionDe(0.0f), vsm::ui::Palette::accentAmber);
             g.setGradientFill(grad);
-            g.fillRoundedRectangle(bar, 2.0f);
-        }
-        // LA CRÊTE EST UN TRAIT, le RMS remplit : la barre pleine dit le
-        // niveau, le trait dit la marge avant écrêtage, et l'écart entre les
-        // deux dit la densité de la piste.
-        if (rms_ > 0.0f) {
-            const float h = barre.getHeight() * rms_;
-            g.setColour(vsm::ui::Palette::textPrimary.withAlpha(0.35f));
-            g.fillRect(barre.getX(), barre.getBottom() - h, barre.getWidth(), 1.0f);
+            // D470 : LA HAUTEUR TOTALE EST LA CRÊTE, peinte PÂLE ; le RMS la
+            // recouvre en PLEINE couleur depuis le pied. La bande pâle qui reste
+            // est l'écart crête/RMS — la densité que D4.7 voulait montrer, et
+            // qu'un trait d'un pixel sur un dégradé ne montrait pas (contraste
+            // 1,00 de part et d'autre, mesuré sur la photo).
+            const float haut = yDe(level_);
+            g.setOpacity(kOpacitePale);
+            g.fillRoundedRectangle({ barre.getX(), haut, barre.getWidth(), barre.getBottom() - haut }, 2.0f);
+            g.setOpacity(1.0f);
+            if (rms_ > 0.0f) {
+                const float hautRms = yDe(std::min(rms_, level_));
+                g.fillRoundedRectangle({ barre.getX(), hautRms, barre.getWidth(), barre.getBottom() - hautRms }, 2.0f);
+            }
         }
         if (peakHold_ > 0.0f) {
             float y = barre.getBottom() - barre.getHeight() * peakHold_;
@@ -167,7 +172,8 @@ public:
         }
         // D344 : LES DEUX GRADUATIONS QUE MARQUENT LES CONSOLES — 0 et -6 dBFS.
         // Sans elles, une barre aux trois quarts de sa fente ne dit pas si elle
-        // est à -3 ou à -20 : l'échelle est -60..0, et personne ne la devine.
+        // est à -3 ou à -20. (Depuis D468, l'échelle est celle du fader, chiffrée
+        // à côté ; les deux traits restent, alignés sur ses chiffres.)
         // Traits fins, par-dessus la barre, pour rester lisibles quand elle monte.
         g.setColour(vsm::ui::Palette::textSecondary.withAlpha(0.55f));
         for (const float db : { 0.0f, -6.0f }) {
@@ -203,6 +209,7 @@ private:
     bool ecrete_ = false;   ///< D344 : a touché 0 dBFS, jusqu'au clic
     float courseHaut_ = -1.0f, courseBas_ = -1.0f;   ///< D468 : la course du fader, en y local
     static constexpr float kHauteurPhase = 4.0f;   ///< la bande de corrélation, au pied de la fente
+    static constexpr float kOpacitePale = 0.4f;    ///< D470 : la bande crête/RMS
 
     /// La fente où monte la barre : tout le mètre moins la bande de corrélation
     /// et son écart — et, depuis D468, la seule course du fader quand la tranche

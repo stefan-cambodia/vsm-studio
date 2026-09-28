@@ -34472,3 +34472,52 @@ mètre, et combien de libellés de potentiomètre tiennent dans leur case.
 `ChannelStrip::peindreEchelle`, gradue le fader et le master — les repères, la
 priorité du 0 dB et l'écart minimal de 14 px sont les mêmes par construction.
 L'échelle des tranches est restée au pixel près (garde (d) inchangée : 1, 0, 1 px).
+
+---
+
+### Phase D470 — le RMS du mètre était un trait qu'on ne voyait pas, et la classe disait l'inverse (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE SECOND RESTE NOMMÉ DE D468.** D4.7 a voulu les deux
+mesures dans le même mètre, et son commentaire le dit encore : *« la barre pleine
+est la valeur EFFICACE (RMS), le trait fin la CRÊTE […] on lit d'un coup d'œil
+l'écart entre les deux, qui est la densité de la piste »*. Le code fait l'inverse :
+la barre pleine est la **crête** (`level_`), et le RMS un trait d'un pixel, blanc
+à **35 %** d'opacité, posé DANS la barre — sur la photo de D468, (226, 180, 115)
+contre (226, 161, 77) autour de lui. L'écart que la phase voulait montrer ne se lit
+pas : une piste écrasée et une piste aux transitoires vives donnent le même mètre.
+
+**LE CHOIX, TRANCHÉ ICI — CELUI DE LIVE.** Le RMS remplit, pleine couleur ; de lui
+à la crête, la même couleur à **40 %** ; le trait de crête retenue (blanc) reste
+au-dessus. La hauteur totale dit toujours la crête (rien ne change pour qui ne
+regarde que le haut de la barre, ni pour le témoin d'écrêtage) ; la bande pâle
+EST l'écart crête/RMS. L'autre voie — un trait de RMS plus épais ou plus opaque —
+garde un repère d'un pixel sur un dégradé, c'est-à-dire le défaut.
+
+**ATTENDU, écrit avant la mesure** (photo à 2 240 × 1 400, consigne de banc
+−12 dBFS, dont le RMS vaut 0,7 fois la crête, soit −15,1 dBFS) :
+1. **témoin** (binaire de D469) : sur la colonne du mètre, le contraste entre le
+   pixel à 3 px AU-DESSUS du haut du RMS et celui à 3 px EN DESSOUS est **sous
+   1,2** — les deux sont dans la même barre pleine ;
+2. **après** : ce même contraste **au-dessus de 1,8** ; le relevé `VSM_VUMETRE` dit
+   aussi le RMS (« efficace −15,10 dBFS ») ;
+3. la crête reste à sa graduation : gardes (d) et (e) de `vumetre-console.sh`
+   vertes, la barre étant désormais repérée par ce qui n'est plus le fond de la
+   fente (la bande pâle n'est pas « claire » au seuil de D468 — la garde se
+   réécrit, et se revoit verte sur les deux binaires, pour ne pas mesurer autre
+   chose qu'avant) ;
+4. fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D469) : le bord du RMS, calculé sur la courbe recalée
+   sur les graduations 0 et −24 de la photo, tombe à **y 1 259** — exactement où
+   la photo montre le trait (226, 184, 125), dans un dégradé à (226, 160, 77) :
+   la garde a trouvé le trait qu'elle cherchait, pas un voisin. Contraste de
+   part et d'autre : **1,00**. Garde (f) **rouge**.
+2. **Après** : contraste **3,39** ; `VSM_VUMETRE` écrit « efficace -15.10 dBFS »
+   (et « -6.10 » pour une crête de −3). Photo : barre pleine jusqu'au RMS, bande
+   pâle jusqu'à la crête, trait blanc au sommet.
+3. La crête ne bouge pas : (d) 1, 0, 1 px et (e) 0, 0, 0 px, identiques à D469.
+   **La garde réécrite** (barre repérée à la somme 150 au lieu de 300) **rend les
+   mêmes écarts sur le binaire de D469** : elle ne mesure pas autre chose qu'avant.
+   `vumetre-console.sh` **12 contrôles, 0 raté** ; `fader-console.sh` 0 raté ;
+   fumée 0 raté ; `vsm-scale-audit` compile ; préférences identiques.

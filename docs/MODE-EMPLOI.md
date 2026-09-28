@@ -32,7 +32,11 @@ Cliquez sur le mètre pour l'éteindre. **Le mètre se lit sur l'échelle du fad
 du 0 dB ambre, et ce qui dépasse 0 dBFS monte en rouge dans le haut de la course,
 jusqu'à +6 — une seule échelle par tranche, comme chez Cubase et Live. **Le
 mètre du master porte la même échelle, chiffrée à sa gauche** (D469) : c'est
-celui qu'on regarde pour savoir si la sortie sature.
+celui qu'on regarde pour savoir si la sortie sature. **Le mètre montre deux
+niveaux** (D470) : la partie pleine est le niveau efficace (RMS), la partie pâle
+au-dessus monte jusqu'à la crête, et le trait blanc est la crête retenue — plus la
+bande pâle est haute, plus la piste a de transitoires ; une piste compressée n'en a
+presque plus.
 
 **Le fader de chaque tranche est un fader** (D342) : une glissière visible, sa
 portion remplie sous le capuchon, et une **échelle en décibels** à gauche — 6, 0,

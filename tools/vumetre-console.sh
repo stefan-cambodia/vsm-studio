@@ -24,6 +24,11 @@
 #      moins trois gris dessous ; une crête posée par `master:dBFS` à -6, -12 et
 #      -24 monte à 2 px au plus de sa graduation ; les sept libellés de
 #      potentiomètre tiennent dans leur case (le relevé les mesure à leur police).
+#   6. D470 : LE RMS SE VOIT DANS LA BARRE. Il était un trait blanc à 35 % posé
+#      dans une barre pleine qui était la crête. Règle : au bord du RMS (sa
+#      hauteur se déduit des graduations 0 et -24 par la courbe de la console),
+#      le pixel 3 px au-dessus et celui 3 px en dessous ont un contraste d'au
+#      moins 1,8 — la bande pâle crête/RMS contre la barre pleine.
 #
 # COMMENT. `VSM_MIXEUR_NIVEAU=piste:dBFS[!]` pose une crête par le MÊME chemin
 # que le minuteur de l'application (`setMeasurement`) ; le « ! » la pose UNE
@@ -123,7 +128,8 @@ verdict "le clic sur le mètre atteint le composant et efface le témoin (clic $
 # `peindreEchelle` trace ses traits (le chiffre s'arrête neuf pixels avant) ; le
 # trait ambre est le 0 dB, les gris qui le suivent vers le bas -6, -12, -24, -40.
 # LA CRÊTE, par le haut de la barre dans la colonne du mètre : la première rangée
-# d'où partent six pixels clairs d'affilée (le témoin d'écrêtage n'en a que trois).
+# d'où partent six pixels hors du fond d'affilée (le témoin d'écrêtage n'en a que
+# trois, les traits de 0 et -6 dBFS un seul).
 for db in -6 -12 -24; do
     lancer "aligne$db" VSM_MIXEUR=1 VSM_TAILLE="2240x1400" VSM_MIXEUR_NIVEAU="0:$db.0"
     mesure="$(python3 - "$brouillon/aligne$db.png" "$brouillon/aligne$db.txt" "$db" <<'PY'
@@ -168,7 +174,9 @@ if len(dessous) <= rang:
     print("GRADUATION-ABSENTE"); raise SystemExit(0)
 yt = dessous[rang]
 xm = mx + mw // 2
-clair = lambda y: sum(px[xm, y]) >= 300
+# D470 : la barre se repère par ce qui n'est plus le FOND DE LA FENTE (0x1a1a1f,
+# somme 83) — la bande pâle crête/RMS n'est pas « claire » au seuil de 300.
+clair = lambda y: sum(px[xm, y]) >= 150
 haut = next((y for y in range(my, my + mh - 6) if all(clair(y + k) for k in range(6))), None)
 if haut is None:
     print("SANS-BARRE"); raise SystemExit(0)
@@ -225,7 +233,9 @@ if len(dessous) < 3:
     print("GRADUATIONS-" + str(len(dessous))); raise SystemExit(0)
 yt = dessous[rang]
 xm = mx + mw // 2
-clair = lambda y: sum(px[xm, y]) >= 300
+# D470 : la barre se repère par ce qui n'est plus le FOND DE LA FENTE (0x1a1a1f,
+# somme 83) — la bande pâle crête/RMS n'est pas « claire » au seuil de 300.
+clair = lambda y: sum(px[xm, y]) >= 150
 haut = next((y for y in range(my, my + mh - 6) if all(clair(y + k) for k in range(6))), None)
 if haut is None:
     print("SANS-BARRE"); raise SystemExit(0)
@@ -244,5 +254,65 @@ libelles="$(sed -n 's/^VSM_MIXEUR : master .*libellés \([0-9]*\) sur \([0-9]*\)
 set -- $libelles
 verdict "master : les libellés de potentiomètre tiennent dans leur case (${1:-?} sur ${2:-?})" \
         "$([ $# -eq 2 ] && [ "$1" = "$2" ] && [ "$2" -gt 0 ] && echo 1 || echo 0)"
+# (f) D470 : le RMS se voit dans la barre
+# La consigne de banc pose le RMS à 0,7 fois la crête : -12 dBFS de crête, -15,10
+# de RMS. Sa hauteur ne se lit pas sur une graduation ; elle se CALCULE sur la
+# courbe de la console (-60..+6, milieu à -12), recalée sur deux graduations lues
+# sur la photo — le 0 dB ambre et le -24.
+lancer "rms" VSM_MIXEUR=1 VSM_VUMETRES=1 VSM_TAILLE="2240x1400" VSM_MIXEUR_NIVEAU="0:-12.0"
+mesure="$(python3 - "$brouillon/rms.png" "$brouillon/rms.txt" <<'PY'
+import math, re, sys
+try:
+    from PIL import Image
+except ImportError:
+    print("SANS-PIL"); raise SystemExit(0)
+png, releve = sys.argv[1], sys.argv[2]
+texte = open(releve, encoding="utf-8", errors="replace").read()
+m = re.search(r"VSM_MIXEUR : piste 0 .*?tranche (\d+)x\d+.*?mètre (\d+)x(\d+) @(\d+),(\d+), échelle (\d+) px", texte)
+if not m:
+    print("SANS-RELEVE"); raise SystemExit(0)
+sw, mw, mh, mx, my, ech = (int(v) for v in m.groups())
+im = Image.open(png).convert("RGB")
+px = im.load()
+xt = mx + mw + 8 + ech - sw - 3
+def proche(c, ref): return all(abs(a - b) <= 14 for a, b in zip(c, ref))
+gris, ambre = (138, 136, 146), (227, 162, 77)
+groupes, courant = [], None
+for y in range(max(0, my - 12), min(im.size[1], my + mh + 12)):
+    c = px[xt, y]
+    genre = "a" if proche(c, ambre) else ("g" if proche(c, gris) else None)
+    if genre and courant and courant[1] == genre and y == courant[2] + 1:
+        courant[2] = y
+    elif genre:
+        courant = [y, genre, y]; groupes.append(courant)
+    else:
+        courant = None
+try:
+    ia = next(i for i, g in enumerate(groupes) if g[1] == "a")
+except StopIteration:
+    print("SANS-UNITE"); raise SystemExit(0)
+dessous = [g[0] for g in groupes[ia + 1:] if g[1] == "g"]
+if len(dessous) < 3:
+    print("GRADUATIONS-" + str(len(dessous))); raise SystemExit(0)
+skew = math.log(0.5) / math.log(48.0 / 66.0)
+p = lambda db: ((db + 60.0) / 66.0) ** skew
+y0, y24 = groupes[ia][0], dessous[2]
+longueur = (y24 - y0) / (p(0.0) - p(-24.0))
+yrms = round(y0 + longueur * (p(0.0) - p(-12.0 + 20.0 * math.log10(0.7))))
+xm = mx + mw // 2
+def lum(c):
+    f = [(v / 255) / 12.92 if v / 255 <= 0.03928 else ((v / 255 + 0.055) / 1.055) ** 2.4 for v in c]
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]
+a, b = sorted((lum(px[xm, yrms - 3]), lum(px[xm, yrms + 3])), reverse=True)
+print(yrms, "%.2f" % ((a + 0.05) / (b + 0.05)))
+PY
+)"
+set -- $mesure
+if [ $# -eq 2 ]; then
+    verdict "le RMS (-15,10 dBFS) se voit dans la barre (bord calculé y $1, contraste de part et d'autre $2, règle : >= 1,80)" \
+            "$(awk -v c="$2" 'BEGIN { print (c >= 1.80) ? 1 : 0 }')"
+else
+    verdict "le RMS se mesure sur la photo ($mesure)" 0
+fi
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

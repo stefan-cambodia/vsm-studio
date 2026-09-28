@@ -1199,7 +1199,11 @@ void MixerComponent::listerVumetresPourCapture() const {
         const float pos = m.cretePosition();
         std::fputs(("VSM_VUMETRE : tranche " + juce::String(i) + " : "
                     + (pos > 0.0f ? juce::String(LevelMeter::decibelsDe(pos), 2) : juce::String("-inf"))
-                    + " dBFS, \xc3\xa9" "cr\xc3\xaate " + (m.aEcrete() ? "1" : "0") + "\n").toRawUTF8(), stderr);
+                    + " dBFS, \xc3\xa9" "cr\xc3\xaate " + (m.aEcrete() ? "1" : "0")
+                // D470 : le RMS aussi, que la barre pleine montre désormais.
+                + ", efficace " + (m.rmsPosition() > 0.0f ? juce::String(LevelMeter::decibelsDe(m.rmsPosition()), 2)
+                                                          : juce::String("-inf")) + " dBFS"
+                + "\n").toRawUTF8(), stderr);
     }
     // D469 : le master, relu sur la même courbe.
     const float posMaster = master_.vumetre().cretePosition();
