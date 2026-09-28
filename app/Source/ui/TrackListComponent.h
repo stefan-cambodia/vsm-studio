@@ -171,6 +171,8 @@ private:
     juce::Label nameLabel_;
     juce::Label channelLabel_;
     juce::ComboBox instrumentBox_; // rempli depuis PluginRegistry::listAvailable()
+    /// D486 : l'infobulle de la liste de machine — son nom entier, que la ligne coupe.
+    void poserInfobulleMachine();
     /// D103 : (identifiant, nom enregistré) des entrées de `instrumentBox_`, dans
     /// leur ordre -- de quoi reposer leurs noms au changement de langue.
     std::vector<std::pair<std::string, std::string>> instruments_;

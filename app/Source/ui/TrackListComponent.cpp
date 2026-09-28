@@ -126,11 +126,13 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         }
         instrumentBox_.setSelectedId(selectedId, juce::dontSendNotification);
         instruments_ = instruments;   // D103 : pour reposer les noms à la bascule
+        poserInfobulleMachine();      // D486
         instrumentBox_.onChange = [this, instruments] {
             int idx = instrumentBox_.getSelectedItemIndex();
             std::string pluginId = (idx <= 0 || idx > static_cast<int>(instruments.size()))
                                         ? ""
                                         : instruments[static_cast<size_t>(idx - 1)].first;
+            poserInfobulleMachine();   // D486
             if (pluginId == track_.instrumentId) return;
             debutEdition(u8"Machine de la piste");
             track_.instrumentId = pluginId;
@@ -393,7 +395,16 @@ void TrackRowComponent::retraduire() {
             instrumentBox_.changeItemText(static_cast<int>(i) + 2, vsm::app::ui::tr(
                 juce::String::fromUTF8(instruments_[i].second.c_str())));
         instrumentBox_.setSelectedId(choisie, juce::dontSendNotification);
+        poserInfobulleMachine();   // D486
     }
+}
+
+void TrackRowComponent::poserInfobulleMachine() {
+    // D486 : LE NOM ENTIER AU SURVOL. Les noms de machine portent une parenthèse
+    // qui dit ce qui les distingue ; la ligne n'a pas la place de l'écrire
+    // (« Clavinet (la corde qui sonne entière au relâ… », coupé à 222 px), et la
+    // liste n'avait aucune infobulle : le texte perdu ne se lisait nulle part.
+    instrumentBox_.setTooltip(vsm::app::ui::tr(u8"Machine de la piste : %1").replace("%1", instrumentBox_.getText()));
 }
 
 void TrackRowComponent::refreshName() {

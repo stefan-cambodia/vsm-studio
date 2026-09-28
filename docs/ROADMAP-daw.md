@@ -35287,3 +35287,47 @@ le mètre retiré, sans échelle sous 120 px).
 les cases « Trim 0.0 dB » et « Transp. 0 dt » sont serrées (1,18 à 1,22) — c'est la
 décision de D324 (« le mot peut se serrer un peu, pas s'écraser : sous 80 % de sa
 largeur, on rend la valeur nue »), mesurée alors et tenue ici.
+
+---
+
+### Phase D486 — « Clavinet (la corde qui sonne entière au relâ… » : le nom coupé ne se lisait nulle part (29/09/2026)
+
+**D'OÙ ELLE VIENT — `VSM_SERRES` SUR `b4wuzthen`** (fenêtre par défaut) : **2**
+libellés **coupés**, les listes de machine des pistes « bass » et « guitar » —
+« Clavinet (la corde qui sonne entière au relâchement) », facteur 1,64 dans une case
+de 222 px — et d'autres comprimés (« Multisample (acoustique échantillonné) »,
+1,22). Les noms de machine portent par convention une parenthèse qui dit ce qui les
+distingue (dix au moins dépassent 35 caractères) ; la ligne de piste n'a pas la
+place de les écrire, et la liste **n'a aucune infobulle** (relevé de D481 : elle
+figurait parmi les commandes muettes). Le rack écrit le nom entier — pour la piste
+CHOISIE seulement.
+
+**LE CHOIX, TRANCHÉ ICI** : ne pas raccourcir les noms (la parenthèse est une
+information voulue), ne pas rétrécir la police (la lisibilité prime, et c'est ce qui
+coupait) ; **rendre le nom entier au survol** : « Machine de la piste : Clavinet (la
+corde qui sonne entière au relâchement) », posée à la construction, au changement
+de machine et à la bascule de langue.
+
+**ATTENDU, écrit avant la mesure** (`VSM_TEXTES_LISTE`, `b4wuzthen`) :
+1. **témoin** (binaire de D485) : les huit listes de machine sans infobulle ;
+2. **après** : chacune suivie de son infobulle au nom entier, dans la langue de
+   l'interface ; commandes sans infobulle sur la fenêtre par défaut du projet de
+   démarrage : 13 → 12 ; garde de langue et `anglais-a-l-ecran.py` 0 ; fumée 0
+   raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D485) : **7** listes de machine, **0** avec infobulle —
+   sept et non huit comme l'attendu l'écrivait : la huitième piste est le bus de
+   groupe « Batterie », qui n'a pas de machine.
+2. **Après** : **7 sur 7** — « Machine de la piste : Clavinet (la corde qui sonne
+   entière au relâchement) » ; en anglais « Track machine: Clavinet (the string
+   that rings whole on release) » ; commandes sans infobulle, projet de
+   démarrage, **13 → 12**.
+3. Garde de langue et `anglais-a-l-ecran.py` 0, fumée 0 raté, préférences
+   identiques.
+
+**Ce qui reste, et c'est dit** : le nom reste COUPÉ dans la case de 222 px
+(`VSM_SERRES` : 2 coupés sur `b4wuzthen`) ; il se lit désormais au survol, dans le
+rack pour la piste choisie, et en entier dans la liste déroulante. Élargir la liste
+des pistes par défaut prendrait la place de l'arrangement ; l'utilisateur, lui, peut
+l'élargir (la disposition est réglable et retenue).

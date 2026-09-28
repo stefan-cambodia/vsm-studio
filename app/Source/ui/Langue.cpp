@@ -808,6 +808,8 @@ const Paire kAnglais[] = {
       "No track chosen" },
     { "Nature des événements montrés — et de ceux que « + » ajoute",   // D482
       "Kind of events shown — and of those “+” adds" },
+    { "Machine de la piste : %1",   // D486
+      "Track machine: %1" },
     { "Muet : cette piste seule ne sonne plus.",   // D481
       "Mute: this track alone stops sounding." },
     { "Muet.",   // D481
