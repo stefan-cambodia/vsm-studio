@@ -35124,3 +35124,18 @@ aucune de choisie, et rien ne dit que c'est la raison. C'est la famille de D443
    kind… ».
 3. Garde de langue 0, `anglais-a-l-ecran.py` 0, fumée 0 raté, préférences
    identiques.
+
+---
+
+### Vérification — le reste nommé de D347 : les 63 façades, balayées pour les surfaces claires (28/09/2026)
+
+D347 n'avait balayé que la fenêtre principale et sept panneaux ; *« les 57 autres
+façades ne sont pas balayées »*. Chaque machine enregistrée dans `MachinePanels.cpp`
+a été posée sur la piste 0 d'un projet neuf (`VSM_GESTE_PISTE=machine:<id>`,
+fenêtre de 1 280 × 800 comme `balayer-facades.sh`, un HOME neuf par course), puis
+photographiée et passée à `tools/surfaces-claires.py`. **Résultat : 0 surface
+claire sur 63 façades.** Pour ne pas prendre ce zéro sur parole (le journal ne dit
+pas quelle machine a été posée), deux photos ont été relues : la façade TR-808 et
+la façade DX7 sont bien dans le rack. **Le reste de D347 est clos par la mesure** ;
+aucune garde n'est ajoutée, car soixante-trois lancements ne tiennent pas dans une
+garde courte — c'est la raison que D347 donnait déjà.
