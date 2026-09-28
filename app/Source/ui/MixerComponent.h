@@ -384,9 +384,11 @@ public:
     }
     void refreshMuteSolo(bool tuParUnDossier = false) {
         mute_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
+        // D481 : le M de la TRANCHE agit sur sa seule piste — celui de la ligne,
+        // sur tout le choix (D38.4). Il n'avait d'infobulle que tu par un dossier.
         mute_.setTooltip(tuParUnDossier && !track_.muted
                              ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
-                             : juce::String());
+                             : vsm::app::ui::tr(u8"Muet : cette piste seule ne sonne plus."));
         rafraichirSolo();   // D30.1 : le libellé et la couleur du solo protégé aussi
     }
     /// Prévenu AVANT qu'un geste ne modifie le mixage : c'est là que

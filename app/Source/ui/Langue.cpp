@@ -798,6 +798,10 @@ const Paire kAnglais[] = {
       "Move up: the effect acts earlier in the chain" },
     { "Montant",   // D477
       "Up" },
+    { "Muet : cette piste seule ne sonne plus.",   // D481
+      "Mute: this track alone stops sounding." },
+    { "Muet.",   // D481
+      "Mute." },
     { "Mono-cœur",
       "Single core" },
     { "Mono-cœur (aucun thread auxiliaire)",
@@ -1398,6 +1402,8 @@ const Paire kAnglais[] = {
       "Delete clips" },
     { "Supprimer des pistes",
       "Delete tracks" },
+    { "Sur une piste choisie, s'applique à toutes les pistes choisies.",   // D481
+      "On a chosen track, applies to all chosen tracks." },
     { "Supprimer la piste sélectionnée",
       "Delete the selected track" },
     { "Supprimer la sélection",

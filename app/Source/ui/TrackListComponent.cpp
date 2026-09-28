@@ -327,6 +327,9 @@ void TrackRowComponent::reglerVolume(float valeur) {
     volumeSlider_.setValue(valeur, juce::sendNotificationSync);
 }
 
+// D481 : ce que le M et le S de la LIGNE font de plus que ceux de la tranche.
+static constexpr const char8_t* kSurLeChoix = u8"Sur une piste choisie, s'applique à toutes les pistes choisies.";
+
 void TrackRowComponent::refreshMuteSolo(bool tuParUnDossier) {
     // `dontSendNotification` : on REFLÈTE la piste, on ne la modifie pas. Avec
     // une notification, rafraîchir la liste depuis le mélangeur rappellerait
@@ -334,8 +337,12 @@ void TrackRowComponent::refreshMuteSolo(bool tuParUnDossier) {
     // D376 : LE MUET HÉRITÉ D'UN DOSSIER, comme la tranche (D35.5) : la ligne
     // d'un membre tu par son dossier allume son M et dit pourquoi.
     muteButton_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
-    muteButton_.setTooltip(tuParUnDossier && !track_.muted ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
-                                                            : juce::String());
+    // D481 : LE M DE LA LIGNE DIT QU'IL VAUT POUR TOUT LE CHOIX (D38.4) — un clic
+    // rendait muettes six pistes sans que rien ne l'annonce ; il n'avait aucune
+    // infobulle quand le S en avait une depuis D423.
+    muteButton_.setTooltip(tuParUnDossier && !track_.muted
+                               ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
+                               : vsm::app::ui::tr(u8"Muet.") + " " + vsm::app::ui::tr(kSurLeChoix));
     rafraichirSolo();   // D423 : état, « S+ » et infobulle
 }
 
@@ -355,12 +362,13 @@ void TrackRowComponent::rafraichirSolo() {
     using vsm::app::ui::tr;
     soloButton_.setToggleState(track_.solo, juce::dontSendNotification);
     soloButton_.setButtonText(track_.soloSafe ? "S+" : "S");
-    soloButton_.setTooltip(track_.soloSafe
+    soloButton_.setTooltip((track_.soloSafe
         ? tr(u8"Solo PROTÉGÉ (Alt+clic) : le solo des autres pistes ne fait pas taire "
              u8"celle-ci. Son propre muet reste le sien. À poser sur un retour d'effet, "
              u8"pour qu'un solo garde sa réverbération.")
         : tr(u8"Solo. Ctrl+clic : solo exclusif. Alt+clic : protéger cette piste du solo "
-             u8"des autres."));
+             u8"des autres."))
+        + " " + tr(kSurLeChoix));   // D481 : comme le M de la ligne
 }
 
 void TrackRowComponent::debutEdition(const juce::String& libelle) {

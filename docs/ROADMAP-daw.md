@@ -35046,3 +35046,44 @@ nom de l'effet) ou ont déjà leur infobulle (On, Preset).
 
 **Les 13 qui restent se nomment eux-mêmes** (Play, Stop, les onglets, « Contourner
 tout », le nom de l'effet qu'on choisit) — la règle de D422.
+
+---
+
+### Phase D481 — le M d'une piste n'a pas d'infobulle, et ni le M ni le S de la ligne ne disent qu'ils agissent sur tout le choix (28/09/2026)
+
+**D'OÙ ELLE VIENT — LE RELEVÉ DE D480 SUR LA FENÊTRE PAR DÉFAUT** : restent sans
+infobulle, parmi les commandes qui ne se nomment pas elles-mêmes, les deux **M**
+(la ligne de piste et la tranche du mixeur) — le S en a une depuis D423. Et le
+code dit ce qu'aucun texte ne dit : le M et le S de la LIGNE agissent sur **toutes
+les pistes choisies** quand on clique sur l'une d'elles (`selectionPourUnGesteSur`,
+D38.4), ceux de la TRANCHE sur leur seule piste. Un clic qui rend muettes six pistes
+sans prévenir est le genre de surprise qu'une infobulle évite.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D480, `VSM_TEXTES_LISTE`, fenêtre par défaut) : 2 « M »
+   sans infobulle ; l'infobulle du S de la ligne ne parle pas du choix ;
+2. **la phrase est vraie avant d'être écrite** : projet de trois pistes, « Choisir
+   toutes les pistes » puis le geste du M de la ligne (`VSM_GESTE_PISTE=muet`) →
+   les TROIS pistes muettes dans le projet enregistré (« MMM ») ; témoin sans le
+   choix : une seule (« M-- ») ;
+3. **après** : 0 « M » sans infobulle ; ligne : « Muet. Sur une piste choisie,
+   s'applique à toutes les pistes choisies. », et le S de la ligne se termine par
+   la même phrase ; tranche : « Muet : cette piste seule ne sonne plus. » ; en
+   anglais aussi ; garde de langue et `anglais-a-l-ecran.py` 0 ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D480) : **16** commandes sans infobulle sur la fenêtre
+   par défaut, dont les **deux M**.
+2. **La phrase avant de l'écrire** : trois pistes toutes choisies, geste du M de la
+   ligne → **« MMM »** dans le projet enregistré ; sans le choix → **« M-- »**.
+3. **Après** : **14** (les deux M sortis), en français et en anglais — ligne :
+   « Muet. Sur une piste choisie, s'applique à toutes les pistes choisies. » et le S
+   de la ligne finit par la même phrase ; tranche : « Muet : cette piste seule ne
+   sonne plus. » (« Mute: this track alone stops sounding. »).
+   **Un premier binaire a laissé le M de la tranche nu** : l'infobulle posée dans
+   `retraduire()` était aussitôt effacée par `refreshMuteSolo()`, qui la remettait à
+   vide hors du cas « muet par son dossier » — le même motif que la ligne. C'est
+   désormais `refreshMuteSolo` qui la pose, dans les deux cas.
+4. Garde de langue 0, `anglais-a-l-ecran.py` 0, fumée 0 raté, préférences
+   identiques.
