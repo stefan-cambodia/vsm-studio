@@ -34846,3 +34846,50 @@ dans [−1, 1] — sans quoi « 50 % » écrirait « 5000 % ».
    (L'ordre des jugements de la garde a été corrigé en route : elle jugeait le
    nombre avant l'unité, et disait « 0.60 ne désigne pas 0,6 » là où la faute
    était l'unité absente — le constat restait rouge, mais mal nommé.)
+
+---
+
+### Phase D476 — « Arpégiateur — parameters » : l'interface anglaise écrivait le nom des effets MIDI en français (28/09/2026)
+
+**D'OÙ ELLE VIENT — EN OUVRANT LE PANNEAU D'EFFETS EN ANGLAIS** (`VSM_LANGUE=en`,
+un arpégiateur posé par « Track ▸ MIDI effects ▸ Add: Arpeggiator »). Le menu dit
+« Add: Arpeggiator » ; le panneau, juste en dessous, écrit **« Arpégiateur —
+parameters »** et un bouton **« Arpégiateur »**. La traduction existe
+(`Langue.cpp` : « Arpégiateur » → « Arpeggiator ») ; le menu passe le nom venu de
+`core/` (`midiEffectDisplayName`) par `tr()`, le panneau non, à deux endroits. La
+garde de langue ne pouvait pas le voir : elle lit les LITTÉRAUX d'`app/Source`, et
+ce nom n'en est pas un.
+
+**LE CORRECTIF** : les deux sites du panneau passent le nom par `tr()`, comme le
+menu. **LA MESURE** est une garde neuve, à l'exécution et non plus sur les
+sources : `tools/anglais-a-l-ecran.py` ouvre huit vues en anglais (démarrage,
+effets avec un insert et un effet MIDI posés, console, automation, MIDI CC,
+liste, tempo, arrangement), relève chaque texte affiché et signale ceux qui
+portent une lettre accentuée française.
+
+**ATTENDU, écrit avant la mesure** (le 28/09 à 23 h, dans un fichier du brouillon,
+AVANT la première course de la garde — la feuille de route attendait le commit de
+D475 — puis recopié ici tel quel) :
+1. **témoin** (binaire de D475) : la vue « effets » signale au moins les deux
+   textes « Arpégiateur — parameters » et « Arpégiateur » ; ce que les sept autres
+   vues signalent n'est pas prédit — c'est ce que la garde est écrite pour trouver,
+   et chaque texte trouvé sera NOMMÉ, corrigé ou expliqué ;
+2. **après** : 0 texte français dans les huit vues, ou chaque reste nommé avec sa
+   raison ;
+3. la garde vue rouge sur le témoin ; aucune vue muette ;
+4. en français, le panneau écrit toujours « Arpégiateur — paramètres » ; fumée 0
+   raté ; gardes des sources vertes ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D475, `tools/anglais-a-l-ecran.py`) : la vue « effets »
+   signale **exactement les deux** textes prédits — « Arpégiateur » (le bouton de la
+   rangée) et « Arpégiateur — parameters » ; les sept autres vues, **0** (204, 68,
+   39, 39, 39, 36, 141 textes relevés : aucune muette). La garde **rouge**.
+2. **Après** : **0 texte français** dans les huit vues ; en anglais « Arpeggiator —
+   parameters » et le bouton « Arpeggiator » ; en français, inchangé :
+   « Arpégiateur — paramètres ».
+3. Gardes des sources vertes, fumée 0 raté, préférences identiques.
+
+**CE QUE LA GARDE NE VOIT PAS, ET QU'ELLE DIT DANS SON EN-TÊTE** : un mot français
+sans accent, un texte peint, une boîte de dialogue. Son zéro vaut pour ce qu'elle
+regarde — huit vues, et le français accentué.

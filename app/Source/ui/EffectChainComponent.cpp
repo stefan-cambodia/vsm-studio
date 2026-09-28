@@ -136,8 +136,11 @@ void EffectChainComponent::rebuildMidiList() {
         const auto index = static_cast<int>(i);
         const bool actif = (*chaine)[i].enabled;
 
-        row.select = std::make_unique<juce::TextButton>(juce::String::fromUTF8(
-            vsm::sequencer::midiEffectDisplayName((*chaine)[i].type).c_str()));
+        // D476 : LE NOM PASSE PAR `tr()`, comme au menu Piste. Il vient de `core/`
+        // et la garde de langue, qui lit les littéraux d'`app/`, ne le voyait pas :
+        // l'interface anglaise écrivait « Arpégiateur » sous « Add: Arpeggiator ».
+        row.select = std::make_unique<juce::TextButton>(vsm::app::ui::tr(juce::String::fromUTF8(
+            vsm::sequencer::midiEffectDisplayName((*chaine)[i].type).c_str())));
         row.select->setColour(juce::TextButton::buttonOnColourId, Palette::accentAmber);
         row.select->setAlpha(actif ? 1.0f : 0.45f);
         row.select->setClickingTogglesState(true);
@@ -501,8 +504,8 @@ void EffectChainComponent::rebuildParamControls() {
         if (midi == nullptr || selectedEffect_ < 0
             || selectedEffect_ >= static_cast<int>(midi->size())) { resized(); return; }
         auto& effet = (*midi)[static_cast<size_t>(selectedEffect_)];
-        paramHeader_.setText(juce::String::fromUTF8(
-                                  vsm::sequencer::midiEffectDisplayName(effet.type).c_str())
+        paramHeader_.setText(vsm::app::ui::tr(juce::String::fromUTF8(   // D476 : traduit, comme au menu
+                                  vsm::sequencer::midiEffectDisplayName(effet.type).c_str()))
                                   + vsm::app::ui::tr(u8" — paramètres"),
                               juce::dontSendNotification);
         // LES BORNES VIENNENT DE `core/`, la même source que les défauts posés
