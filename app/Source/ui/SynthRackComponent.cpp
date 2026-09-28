@@ -49,6 +49,7 @@ SynthRackComponent::SynthRackComponent() {
     viewport_.setScrollBarsShown(true, false);
 
     setSynth(nullptr, {});
+    retraduire();   // D484 : l'infobulle de MIDI LEARN, dans la langue courante, dès la construction
 }
 
 void SynthRackComponent::setSynth(ISynthPlugin* synth, const juce::String& trackName,
@@ -90,6 +91,11 @@ void SynthRackComponent::setSynth(ISynthPlugin* synth, const juce::String& track
 void SynthRackComponent::retraduire() {
     // D94 : le seul texte que le rack écrit lui-même ; le reste vient de la
     // machine (son nom, ses paramètres), c'est-à-dire du moteur.
+    // D484 : LE GESTE QUE « MIDI LEARN » ARME, EN TROIS TEMPS — la fenêtre des
+    // associations le disait (D402), le bouton qui le lance, non.
+    learnButton_.setTooltip(vsm::app::ui::tr(
+        u8"Associer un contrôleur MIDI : pressez, touchez un réglage de la façade, puis tournez le "
+        u8"potentiomètre de votre contrôleur. Le mode s'éteint dès que l'association est faite."));
     if (!synth_)
         machineNameLabel_.setText(vsm::app::ui::tr(u8"(aucun instrument assigné)"),
                                   juce::dontSendNotification);

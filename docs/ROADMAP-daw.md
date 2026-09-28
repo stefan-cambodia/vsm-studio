@@ -35213,3 +35213,37 @@ double rendrait `VSM_MENU` ambigu.
 **L'aiguillage des touches est devenu `executerCommande`** : `keyPressed` y délègue,
 le menu Transport aussi. Une commande ajoutée à la table se branche à un seul
 endroit, et le menu ne peut pas faire autre chose que la touche.
+
+---
+
+### Phase D484 — « MIDI LEARN » : un bouton qui lance un geste en trois temps sans le dire (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE DERNIER « À REGARDER » DE D422**, resté seul dans le relevé
+de D481 : le bouton « MIDI LEARN » du rack n'a pas d'infobulle. Le mot se nomme,
+mais le geste qu'il arme est en trois temps — le presser, toucher un réglage de la
+façade, tourner le potentiomètre du contrôleur — et il s'éteint seul dès qu'une
+association est faite (`setLearnArmed`). La fenêtre des associations le dit
+(D402) ; le bouton qui le lance, non. Cubase et Live l'écrivent au survol.
+
+**ATTENDU, écrit avant la mesure** (`VSM_TEXTES_LISTE`, fenêtre par défaut) :
+1. **témoin** (binaire de D483) : « MIDI LEARN » sans infobulle ;
+2. **après** : « Associer un contrôleur MIDI : pressez, touchez un réglage de la
+   façade, puis tournez le potentiomètre de votre contrôleur. Le mode s'éteint dès
+   que l'association est faite. » ; en anglais aussi ; garde de langue et
+   `anglais-a-l-ecran.py` 0 ; fumée 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU.**
+1. **Témoin** (binaire de D483) : « MIDI LEARN » sans infobulle.
+2. **Après** : l'infobulle dit le geste en trois temps et qu'il s'éteint seul, en
+   français et en anglais ; commandes sans infobulle sur la fenêtre par défaut
+   **14 → 13**. **Un premier binaire ne la montrait pas** : le rack ne passait par
+   `retraduire()` qu'à la bascule de langue, jamais à sa construction — il y passe
+   désormais (le nom « (aucun instrument assigné) » qu'il y pose est celui que
+   `setSynth(nullptr)` venait d'écrire).
+3. Garde de langue et `anglais-a-l-ecran.py` 0, fumée 0 raté, préférences
+   identiques.
+
+**Les 13 commandes qui restent sans infobulle se nomment elles-mêmes** (Play,
+Stop, Ouvrir/Exporter MIDI…, « + Ajouter une piste », « Supprimer », les six
+onglets, la liste des machines) : la règle de D422 est tenue sur la fenêtre par
+défaut.

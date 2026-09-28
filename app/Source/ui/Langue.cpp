@@ -802,6 +802,8 @@ const Paire kAnglais[] = {
       "Up" },
     { " (pas de carte son ouverte, ou aucune piste armée)",   // D483 : « Enregistrer » grisé au menu Transport
       " (no sound card open, or no armed track)" },
+    { "Associer un contrôleur MIDI : pressez, touchez un réglage de la façade, puis tournez le potentiomètre de votre contrôleur. Le mode s'éteint dès que l'association est faite.",   // D484
+      "Map a MIDI controller: press, touch a control on the faceplate, then turn the knob on your controller. The mode turns off once the mapping is made." },
     { "Aucune piste choisie",   // D482
       "No track chosen" },
     { "Nature des événements montrés — et de ceux que « + » ajoute",   // D482
