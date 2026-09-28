@@ -212,6 +212,7 @@ public:
     /// D338 : VSM_PIANOROLL_ZONES -- le rang du piano roll et la police des touches, après les gestes.
     void releverRangPianoRoll() const {
         pianoRoll_.releverRangPourCapture();
+        pianoRollPanel_.direLesBascules();   // D494
         // D369 : ET LA PISTE CHOISIE, dite au même moment. Aucun relevé ne
         // l'écrivait : `VSM_GESTE : choisir` ne parle que du geste qui vient
         // d'être joué, si bien qu'une piste choisie par le PROJET à l'ouverture

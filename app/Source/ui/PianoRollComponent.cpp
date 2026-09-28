@@ -360,12 +360,25 @@ void PianoRollComponent::stopAudition() {
 
 void PianoRollComponent::setTool(Tool tool) { tool_ = tool; notifyEditState(); repaint(); }
 void PianoRollComponent::setGridResolution(GridResolution grid) { gridResolution_ = grid; repaint(); }
-void PianoRollComponent::setSnapEnabled(bool enabled) { snapEnabled_ = enabled; }
+void PianoRollComponent::setSnapEnabled(bool enabled) {
+    if (snapEnabled_ == enabled) return;
+    snapEnabled_ = enabled;
+    if (onBasculesChanged) onBasculesChanged();   // D494
+}
 void PianoRollComponent::setSwing(float swing) { swing_ = swing; repaint(); }
 void PianoRollComponent::setScale(Scale scale) { scale_ = scale; repaint(); }
 void PianoRollComponent::setScaleHighlightEnabled(bool enabled) { scaleHighlight_ = enabled; repaint(); }
-void PianoRollComponent::setGhostNotesVisible(bool visible) { ghostNotes_ = visible; repaint(); }
-void PianoRollComponent::setFollowPlayhead(bool follow) { followPlayhead_ = follow; }
+void PianoRollComponent::setGhostNotesVisible(bool visible) {
+    if (ghostNotes_ == visible) return;
+    ghostNotes_ = visible;
+    if (onBasculesChanged) onBasculesChanged();   // D494
+    repaint();
+}
+void PianoRollComponent::setFollowPlayhead(bool follow) {
+    if (followPlayhead_ == follow) return;
+    followPlayhead_ = follow;
+    if (onBasculesChanged) onBasculesChanged();   // D494
+}
 
 void PianoRollComponent::setLoopRegion(Tick start, Tick end, bool active) {
     loopStartTick_ = start;

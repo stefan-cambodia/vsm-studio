@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # LA GARDE DE D493 : LES QUATRE BASCULES DE L'ARRANGEMENT SURVIVENT AU RELANCEMENT.
+# ET DE D494 : L'AIMANT, LE SUIVI ET LES FANTÔMES DU PIANO ROLL AUSSI (paires C, D).
 #
 # RÈGLE GARDÉE (29/09/2026) : l'aimantation, la grille à la mesure, le suivi de la
 # tête et les courbes d'automation de l'arrangement sont des PRÉFÉRENCES (la règle
@@ -71,6 +72,43 @@ paire() {   # $1 nom ; $2 état attendu après les gestes ; $3... gestes
     fi
 }
 
+# D494 : LE PIANO ROLL. Son relevé (`VSM_PIANOROLL_ZONES=1`) dit l'état ET ce que
+# le bouton montre (« aimant=non/non » : piano roll / bouton) — un état relu que la
+# barre ne montrerait pas serait retenu à moitié.
+DEFAUT_PR="aimant=oui/oui suit=oui/oui fantomes=oui/oui"
+lancement_pr() {   # $1 = HOME ; $2... = variables du geste
+    n=$((n + 1))
+    env HOME="$1" VSM_TAILLE="1600x1000" VSM_DELAI=800 VSM_VUE="sans-rapport" \
+        VSM_PIANOROLL_ZONES=1 VSM_CAPTURE="$brouillon/photo-$n.png" "${@:2}" \
+        timeout 40 "$BIN" > "$brouillon/journal-$n.txt" 2>&1
+    grep -E "VSM_(MENU|TOUCHE|VUE|GESTE|CLIC) : .*(aucune|AUCUNE|aucun |inconnu|illisible|grisée|GRISÉ|AMBIGU)|Session interrompue" \
+        "$brouillon/journal-$n.txt" | sed 's/^/        journal : /' >&2
+    python3 - "$brouillon/journal-$n.txt" <<'PY2'
+import re, sys
+m = re.findall(r"VSM_PIANOROLL : aimant (\w+) \(bouton (\w+)\), suit (\w+) \(bouton (\w+)\), fantômes (\w+) \(bouton (\w+)\)",
+               open(sys.argv[1], encoding="utf-8", errors="replace").read())
+if m:
+    a, ab, s, sb, f, fb = m[-1]
+    print(f"aimant={a}/{ab} suit={s}/{sb} fantomes={f}/{fb}")
+else:
+    print("aimant=? suit=? fantomes=?")
+PY2
+}
+paire_pr() {   # $1 nom ; $2 état attendu après les gestes ; $3... gestes
+    local nom="$1" attendu="$2" maison apres relance cles
+    maison="$(mktemp -d "$brouillon/home.XXXX")"
+    apres="$(lancement_pr "$maison" "${@:3}")"
+    relance="$(lancement_pr "$maison")"
+    cles="$(grep -oh 'name="pianoRoll[A-Za-z]*"' "$maison"/VintageSynthMidiStudio/*.settings 2>/dev/null | wc -l)"
+    if [ "$apres" = "$attendu" ] && [ "$attendu" != "$DEFAUT_PR" ] && [ "$relance" = "$apres" ]; then
+        printf '  OK   paire %s : après les gestes « %s », au relancement « %s » ; %s clé(s) écrite(s)\n' "$nom" "$apres" "$relance" "$cles"
+    else
+        printf '  RATÉ paire %s : après les gestes « %s », au relancement « %s » (attendu « %s » deux fois, différent du défaut) ; %s clé(s) écrite(s)\n' \
+               "$nom" "$apres" "$relance" "$attendu" "$cles"
+        rates=$((rates + 1))
+    fi
+}
+
 echo "=== D493 : les bascules de l'arrangement retrouvées au lancement suivant ==="
 paire A "aimant=libre suit=non courbes=visible" \
       VSM_MENU="Aimantation dans l'arrangement;Suivre la tête de lecture dans l'arrangement;Courbes d'automation dans l'arrangement"
@@ -81,6 +119,16 @@ if [ "$neuf" = "$DEFAUT" ]; then
     printf '  OK   HOME neuf, sans geste : « %s »\n' "$neuf"
 else
     printf '  RATÉ HOME neuf, sans geste : « %s » (attendu « %s »)\n' "$neuf" "$DEFAUT"
+    rates=$((rates + 1))
+fi
+echo "=== D494 : l'aimant, le suivi et les fantômes du piano roll retrouvés, et montrés par leur bouton ==="
+paire_pr C "aimant=non/non suit=non/non fantomes=non/non" VSM_GESTE_PISTE="cliquer:Aimant;cliquer:Suivre;cliquer:Fantômes"
+paire_pr D "aimant=non/non suit=oui/oui fantomes=oui/oui" VSM_TOUCHE="pianoroll:G"
+neuf="$(lancement_pr "$(mktemp -d "$brouillon/home.XXXX")")"
+if [ "$neuf" = "$DEFAUT_PR" ]; then
+    printf '  OK   HOME neuf, sans geste : « %s »\n' "$neuf"
+else
+    printf '  RATÉ HOME neuf, sans geste : « %s » (attendu « %s »)\n' "$neuf" "$DEFAUT_PR"
     rates=$((rates + 1))
 fi
 echo "--- $rates raté(s)"

@@ -79,6 +79,10 @@ public:
     /// Quelque chose a changé qui affecte l'état des boutons (annuler/rétablir,
     /// outil courant, sélection vide ou non).
     std::function<void()> onEditStateChanged;
+    /// D494 : L'AIMANT, LE SUIVI OU LES FANTÔMES ONT CHANGÉ (bouton ou touche) :
+    /// l'application les écrit dans les préférences. Ils revenaient à leur défaut
+    /// à chaque lancement. Appelé seulement quand la valeur change.
+    std::function<void()> onBasculesChanged;
 
     // --- Conversions partagées (règle, lane de vélocité) ------------------
     float tickToX(vsm::midi::Tick tick) const;

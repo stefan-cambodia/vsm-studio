@@ -36,6 +36,9 @@ public:
     void refreshFromPianoRoll();
     /// D29.4 : la ligne d'information des notes choisies, relue par la minuterie.
     void refreshSelectionInfo();
+    /// D494 : VSM_PIANOROLL -- l'aimant, le suivi et les fantômes du piano roll, ET
+    /// ce que leur bouton montre : les deux doivent dire la même chose.
+    void direLesBascules() const;
 
 private:
     /// D169 : CE QUE LA BARRE MONTRE, pour ne pas la redessiner quand rien n'a
@@ -45,7 +48,9 @@ private:
     /// dixième de cœur à redessiner six boutons identiques (D167, D169). Tous
     /// les états affichés tiennent ici ; si le tuple ne bouge pas, l'image non
     /// plus.
-    using EtatAffiche = std::tuple<bool, PianoRollComponent::Tool, bool, bool, bool, bool>;
+    /// D494 : le suivi et les fantômes y entrent — posés une seule fois à la
+    /// construction, leurs boutons ne montraient pas l'état relu des préférences.
+    using EtatAffiche = std::tuple<bool, PianoRollComponent::Tool, bool, bool, bool, bool, bool, bool>;
     std::optional<EtatAffiche> dernierEtat_;
 
     /// Pose (ou seulement compte) les rangées pour cette largeur. Un seul

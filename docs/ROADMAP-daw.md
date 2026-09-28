@@ -35740,3 +35740,74 @@ vert ; fumée 0 raté ; préférences de l'utilisateur identiques.
 **Reste nommé, non fait** : le piano roll a ses PROPRES bascules d'aimantation et
 de suivi (boutons de sa barre) ; elles non plus ne sont pas retenues — même règle,
 à mesurer dans sa phase. Et les six outils et le zoom ± au menu (D491 a).
+
+---
+
+### Phase D494 — le piano roll oubliait son aimant, son suivi et ses fantômes (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE DE D493.** La barre du piano roll porte six
+bascules (Aimant, Fantômes, Replier, Suivre, Gamme, Pas à pas) et quatre listes
+(grille, modificateur, tonique, mode) ; **aucune n'est retenue**, ni par le projet
+ni par les préférences (lu dans `PianoRollToolbar.cpp` : aucun `properties()`, et
+le bloc `view` n'en porte aucune).
+
+**LA RÈGLE DE D363, CHAMP PAR CHAMP** :
+
+| réglage | dépend du morceau ? | où il va |
+|---|---|---|
+| Aimant, Suivre, Fantômes | non — comment on travaille | **préférences** (cette phase) |
+| grille, modificateur | oui — la grille d'un morceau en triolets n'est pas celle d'un autre | projet (phase suivante) |
+| Gamme : tonique, mode, surlignage | oui — la tonalité est celle du morceau ; un surlignage retenu seul surlignerait do majeur sur un morceau en fa dièse mineur | projet (phase suivante) |
+| Replier | ni l'un ni l'autre — il dépend des notes de la piste montrée, et se refuse sur une piste vide | non retenu |
+| Pas à pas | ni l'un ni l'autre — un mode qui ÉCRIT des notes ne doit pas se rallumer seul au lancement | non retenu |
+
+**CE QUI EST FAIT** : trois clés (`pianoRollAimant`, `pianoRollSuitLaTete`,
+`pianoRollFantomes`), relues au démarrage, écrites quand l'une change — par le
+bouton comme par la touche G ; et la barre MONTRE l'état relu (ses boutons
+« Suivre » et « Fantômes » n'étaient posés qu'une fois, à la construction, avant
+que les préférences n'arrivent).
+
+**LE RELEVÉ, POSÉ DANS LE TÉMOIN** : `VSM_PIANOROLL_ZONES=1` écrit aussi
+« VSM_PIANOROLL : aimant oui (bouton oui), suit …, fantômes … » — l'état du piano
+roll ET ce que son bouton montre : les deux doivent dire la même chose.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/bascules-retenues.sh`,
+étendue (deux lancements sous un même HOME, le second sans geste) :
+1. **témoin** (binaire de D493 augmenté du seul relevé) : clic sur Aimant, Suivre et
+   Fantômes → « aimant non, suit non, fantômes non » ; relancé → « oui, oui, oui » ;
+   aucune clé `pianoRoll…` écrite ;
+2. **après** : relancé → « non, non, non », et chaque bouton dit comme le piano
+   roll ; la touche G (`pianoroll:G`) seule → aimant non, retrouvé ; HOME neuf sans
+   geste → « oui, oui, oui » ; les paires de D493 toujours tenues ;
+3. fumée 0 raté ; `clavier-emprunte.sh`, `portes-de-l-arrangement.sh` 0 raté ;
+   préférences de l'utilisateur inchangées.
+
+**MESURÉ — TENU** (`tools/bascules-retenues.sh`, paires C et D ajoutées ;
+« non/non » = piano roll / bouton) :
+
+| paire | geste | après les gestes | relancement — témoin | relancement — après | clés `pianoRoll…` |
+|---|---|---|---|---|---|
+| C | clic sur Aimant, Suivre, Fantômes | non/non, non/non, non/non | oui/oui, oui/oui, oui/oui | **non/non, non/non, non/non** | 0 → 3 |
+| D | touche `pianoroll:G` | aimant non/non | aimant oui/oui | **aimant non/non** | 0 → 3 |
+
+HOME neuf sans geste : « oui/oui » partout, avant comme après ; les paires A et B
+de D493 toujours tenues. Rouge sur le témoin (2 ratés), vert après.
+
+**LE RELEVÉ À DEUX COLONNES A SERVI DÈS LE PREMIER ESSAI** : la première version
+du correctif relisait bien l'état (« aimant non ») mais la barre montrait encore
+« oui » au moment du relevé — les boutons Suivre et Fantômes n'étaient posés qu'à
+la construction, et le rafraîchissement de la barre n'arrivait qu'au premier tour
+de la minuterie, après les relevés du démarrage. Le suivi et les fantômes entrent
+dans l'état que la barre compare (`EtatAffiche`, D169), et la barre se rafraîchit
+dès que les préférences sont appliquées. Photo du relancement (Aimant et Fantômes
+cliqués) : Aimant et Fantômes décochés, Suivre coché.
+
+La relecture au démarrage n'écrit rien : le rappel n'est posé qu'APRÈS elle. Et
+les setters ne l'appellent que si la valeur change — un appel qui repose la même
+valeur ne réécrit pas le fichier de préférences.
+
+`inventaire_langue.py --garde` 0 ; `clavier-emprunte.sh`,
+`portes-de-l-arrangement.sh`, `portes-des-pistes.sh`, `quantifier.sh` 0 raté ;
+`pianoroll-zones.sh` 7 relevés, 0 raté (il lit le même bloc de relevés, où la
+ligne `VSM_PIANOROLL` s'ajoute) ; `portes-des-gestes.py` 0 désaccord ; fumée 0
+raté ; préférences de l'utilisateur identiques.

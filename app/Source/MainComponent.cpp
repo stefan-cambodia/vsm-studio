@@ -1186,6 +1186,27 @@ MainComponent::MainComponent()
             r.saveIfNeeded();
         };
     }
+    // D494 : ET L'AIMANT, LE SUIVI ET LES FANTÔMES DU PIANO ROLL, même règle. La
+    // grille et la gamme appartiennent au morceau (le projet, pas ici) ; « Replier »
+    // dépend des notes de la piste montrée, et « Pas à pas » est un mode qui ÉCRIT :
+    // ni l'un ni l'autre ne se rallume seul.
+    {
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        pianoRoll_.setSnapEnabled(reglages.getBoolValue("pianoRollAimant", true));
+        pianoRoll_.setFollowPlayhead(reglages.getBoolValue("pianoRollSuitLaTete", true));
+        pianoRoll_.setGhostNotesVisible(reglages.getBoolValue("pianoRollFantomes", true));
+        // LA BARRE MONTRE CE QUI VIENT D'ÊTRE RELU, tout de suite : la minuterie
+        // (`PianoRollPanel::refresh`) le ferait au premier tour, APRÈS les relevés
+        // du démarrage — mesuré : « aimant non (bouton oui) ».
+        pianoRollPanel_.refresh();
+        pianoRoll_.onBasculesChanged = [this] {
+            auto& r = vsm::app::ui::UiScale::properties();
+            r.setValue("pianoRollAimant", pianoRoll_.snapEnabled());
+            r.setValue("pianoRollSuitLaTete", pianoRoll_.followPlayhead());
+            r.setValue("pianoRollFantomes", pianoRoll_.ghostNotesVisible());
+            r.saveIfNeeded();
+        };
+    }
 
     // D17.2 : « l'automation suit les clips », active par défaut comme chez
     // Cubase, et retenue d'une exécution à l'autre.

@@ -246,6 +246,15 @@ void PianoRollToolbar::applyScaleFromCombos() {
     pianoRoll_.setScale(scale);
 }
 
+void PianoRollToolbar::direLesBascules() const {
+    const auto oui = [](bool b) { return juce::String(b ? "oui" : "non"); };
+    std::fputs(("VSM_PIANOROLL : aimant " + oui(pianoRoll_.snapEnabled())
+                + " (bouton " + oui(snapButton_.getToggleState()) + "), suit "
+                + oui(pianoRoll_.followPlayhead()) + " (bouton " + oui(followButton_.getToggleState())
+                + juce::String(u8"), fantômes ") + oui(pianoRoll_.ghostNotesVisible())
+                + " (bouton " + oui(ghostButton_.getToggleState()) + ")\n").toRawUTF8(), stderr);
+}
+
 void PianoRollToolbar::refreshFromPianoRoll() {
     // D169 : RIEN À FAIRE QUAND RIEN N'A CHANGÉ. Voir `dernierEtat_` dans
     // l'en-tête : tous les états que cette barre affiche sont dans ce tuple, et
@@ -253,7 +262,8 @@ void PianoRollToolbar::refreshFromPianoRoll() {
     // lui. Le `repaint()` final, lui, n'était gardé par rien.
     const EtatAffiche etat { pianoRoll_.foldEnabled(), pianoRoll_.tool(),
                              pianoRoll_.canUndo(), pianoRoll_.canRedo(),
-                             pianoRoll_.hasSelection(), pianoRoll_.snapEnabled() };
+                             pianoRoll_.hasSelection(), pianoRoll_.snapEnabled(),
+                             pianoRoll_.followPlayhead(), pianoRoll_.ghostNotesVisible() };
     if (dernierEtat_.has_value() && *dernierEtat_ == etat) return;
     dernierEtat_ = etat;
 
@@ -277,6 +287,8 @@ void PianoRollToolbar::refreshFromPianoRoll() {
     legatoButton_.setEnabled(hasSelection);
     humanizeButton_.setEnabled(hasSelection);
     snapButton_.setToggleState(pianoRoll_.snapEnabled(), juce::dontSendNotification);
+    followButton_.setToggleState(pianoRoll_.followPlayhead(), juce::dontSendNotification);   // D494
+    ghostButton_.setToggleState(pianoRoll_.ghostNotesVisible(), juce::dontSendNotification);
     repaint();
 }
 

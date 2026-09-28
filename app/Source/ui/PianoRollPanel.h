@@ -124,6 +124,8 @@ public:
         };
     }
 
+    /// D494 : VSM_PIANOROLL, l'état des bascules et de leurs boutons.
+    void direLesBascules() const { toolbar_.direLesBascules(); }
     /// Rafraîchit règle et barre d'outils (appelé quand la tête de lecture
     /// bouge ou qu'un projet est chargé).
     void refresh() {
