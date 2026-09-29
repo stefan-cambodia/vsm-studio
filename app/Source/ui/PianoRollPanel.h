@@ -8,6 +8,7 @@
 #include "UiScale.h"
 #include <cstdio>
 #include <cstdlib>
+#include <tuple>
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 /// Assemble l'éditeur complet dans une seule fenêtre flottante : barre
@@ -81,6 +82,9 @@ public:
             pianoRoll_.setLoopRegion(start, end, active);
             if (pianoRoll_.onLoopRegionChanged) pianoRoll_.onLoopRegionChanged(start, end, active);
         };
+        ruler_.onRegionDragStarted = [this](bool punch) {   // D520
+            if (pianoRoll_.onRegionDragStarted) pianoRoll_.onRegionDragStarted(punch);
+        };
         ruler_.onPunchRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
             if (pianoRoll_.onPunchRegionChanged) pianoRoll_.onPunchRegionChanged(start, end, active);
         };
@@ -141,9 +145,12 @@ public:
         const auto tete = pianoRoll_.playheadTick();
         const size_t reperes = pianoRoll_.project() != nullptr
                                  ? pianoRoll_.project()->markers.size() : 0u;
-        if (tete != derniereTeteRegle_ || reperes != derniersReperes_) {
+        // D520 : ET LA BOUCLE, que la règle lit désormais dans le piano roll.
+        const auto boucle = std::make_tuple(pianoRoll_.boucleDebut(), pianoRoll_.boucleFin(), pianoRoll_.boucleActive());
+        if (tete != derniereTeteRegle_ || reperes != derniersReperes_ || boucle != derniereBoucleRegle_) {
             derniereTeteRegle_ = tete;
             derniersReperes_ = reperes;
+            derniereBoucleRegle_ = boucle;
             ruler_.repaint();
         }
         toolbar_.refreshFromPianoRoll();
@@ -314,6 +321,7 @@ private:
     PoigneeDeLane poignee_;
 
     vsm::midi::Tick derniereTeteRegle_ = -1;
+    std::tuple<vsm::midi::Tick, vsm::midi::Tick, bool> derniereBoucleRegle_{-1, -1, false};   ///< D520
     size_t derniersReperes_ = 0;
 
     PianoRollComponent& pianoRoll_;

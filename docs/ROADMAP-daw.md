@@ -37462,3 +37462,119 @@ PIXELS et de CLIC** — `fader-console.sh` (« course minimale  px », valeur vi
 la fenêtre passe pour invisible et les photos sont vides (D94, D516). D519 ne touche
 ni la console, ni le mètre, ni la liste d'événements. **Reste nommé** : les rejouer
 écran allumé, avec `vumetre-console.sh` de D518.
+
+---
+
+### Phase D520 — un glissé sur la règle posait la boucle sans pas, et le Ctrl+Z suivant annulait deux gestes en un (29/09/2026)
+
+**D'OÙ ELLE VIENT — LES RESTES NOMMÉS 1 ET 2 DE D518.** La région de boucle entre
+dans l'historique par P, I et O (D29.1 : « annulables ») et n'y entre PAS par la
+règle du piano roll (Maj + glisser) ni par la bascule qui en pose une sur un projet
+qui n'en a pas ; la région de punch, de même, par « La prendre sur la boucle » et
+« L'effacer », mais pas par Alt + glisser. Or l'historique restaure des instantanés
+du projet entier : un geste, puis une région tirée à la règle, puis Ctrl+Z —
+**pronostic : Ctrl+Z annule le geste d'AVANT et rend la région d'avant, deux gestes
+en un** (la faute que D36.4 décrit : un changement sans pas DÉCALE le Ctrl+Z). Et la
+bascule du punch, qui ne fait pas de pas, est ramenée en arrière par le Ctrl+Z d'à
+côté, comme la boucle avant D518. Le double-clic sur la règle (éteindre la boucle)
+est une bascule, sans pas — et D519 ne lui a pas donné la marque.
+
+**L'INSTRUMENT** : la règle a un nom (`pianoroll.regle`) et un geste `glisser:` joue
+le chemin de la souris — appui AVEC le modificateur, glissé, relâché
+(`nom:fx0,fy:fx1:maj|alt`), ou le double-clic (`:double`).
+
+**LE CHOIX, TRANCHÉ ICI : LES RÉGIONS DANS L'HISTORIQUE, LES BASCULES HORS DE LUI —
+PARTOUT.** D29.1 a décidé pour la région (annulable) ; D0, D503 et l'exception
+écrite de l'audit pour la bascule (sans pas). La règle suit donc P, I et O : un
+glissé = UN pas (« Région de boucle », « Région de punch »), ouvert à l'appui comme
+un bouton de façade (D154). La bascule qui POSE une région (projet sans région) ouvre
+ce même pas pour la région qu'elle pose — la bascule elle-même reste sans pas. La
+bascule du punch rejoint celles que D518 reporte ; le double-clic prend la marque de
+D519.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/regions-historique.sh` (un
+HOME neuf par cas ; « Lente » est le geste d'avant, et sa forme de fondus, lue dans
+le fichier enregistré, dit s'il a été annulé) :
+
+| cas | témoin (D519 + instrument) | après |
+|---|---|---|
+| A. Lente, Maj + glisser sur la règle, Ctrl+Z : les fondus | **défaut** (Lente annulée aussi) | `slow` (Lente gardée) |
+| A. … la région de boucle | [0,1920] (celle d'avant) | [0,1920] (celle d'avant) |
+| B. Lente, Alt + glisser, Ctrl+Z : les fondus / la région de punch | **défaut** / [0,1920] | `slow` / [0,1920] |
+| C. Lente, Boucle sur un projet SANS région, Ctrl+Z : les fondus / la région | **défaut** / [0,0] | `slow` / [0,0] |
+| D. Lente, punch Active, Ctrl+Z : le punch | **éteint** | allumé |
+| E. double-clic sur la règle (boucle allumée) : la boucle / la marque / les pas | éteinte / **non** / 0 | éteinte / **oui** / 0 |
+
+`./verifier.sh --bancs` vert (la garde y entre) ; l'audit d'annulation inchangé ;
+préférences de l'utilisateur identiques.
+
+**L'INSTRUMENT, AVANT DE JUGER — trois défauts, dont un de l'environnement.**
+1. **Sous une session VERROUILLÉE, seul le premier lancement d'une rafale dessine sa
+   fenêtre.** Premier témoin : A juste, B et E « aucun composant visible de ce nom ».
+   Rejoué projet par projet puis dans l'ordre inverse : c'est l'ORDRE, pas le
+   projet — photo de 161 096 octets pour le premier lancement, **5 950** (une
+   fenêtre vide) pour les suivants ; espacés de 45 s, tous pleins. La garde espace
+   donc ses lancements quand la session est verrouillée, rejoue UNE fois un
+   lancement dont le geste n'a trouvé aucun composant, et le dit. C'est aussi
+   l'explication des trois rouges de pixels de D519 : ces bancs lancent
+   l'application plusieurs fois de suite.
+2. **`verifier.sh` ne voyait jamais le verrou** (D516) : il lisait `LockedHint` sur la
+   PREMIÈRE session de l'utilisateur, la session « manager » de systemd, sans siège,
+   qui dit toujours `no` — pendant que la vraie (`seat0`) disait `yes`. Il lit
+   désormais la session à siège.
+3. **Le double-clic sur la règle EFFAÇAIT la région.** Le cas E du premier correctif
+   restait rouge (pas de marque) ; lu : la règle gardait sa PROPRE copie de la
+   région, que son setter devait tenir à jour — et ce setter n'était appelé de
+   nulle part (le panneau câblait celui du punch, pas celui de la boucle). Sur un
+   projet ouvert avec sa boucle [0,1920], la copie valait [0,0] : le double-clic
+   renvoyait [0,0] au projet. **Mesuré sur le témoin, joué seul : le fichier
+   enregistré passe de `enabled: true, [0,1920]` à `enabled: false, [0,0]`.** Et la
+   même copie périmée faisait que **la boucle d'un projet ouvert, du bouton, de P,
+   I ou O ne se dessinait pas sur la règle** : photographié à 1 600 × 1 000 sur la
+   bande de la règle, mesures 1 à 2 — **0 pixel sarcelle au témoin, 2 043 après**.
+   Le remède n'est pas de câbler le setter oublié mais de supprimer la copie : la
+   règle lit la boucle dans le piano roll (`boucleDebut`, `boucleFin`,
+   `boucleActive`), comme elle y lit déjà la tête et les repères, et le panneau la
+   repeint quand elle change. Le piano roll reçoit aussi la boucle basculée par une
+   commande apprise (il ne la recevait pas).
+
+**LA RÈGLE DE REPORT, AFFINÉE.** D518 reportait la bascule de boucle sans condition ;
+annuler un pas de RÉGION qui l'avait allumée (P, I, O, un glissé, « L'effacer » pour
+le punch) la laissait donc allumée. Seuls les pas de région touchent une bascule :
+**la bascule suit l'état rendu quand l'annulation déplace sa région, et reste où
+elle est sinon** — pour la boucle comme pour le punch.
+
+**MESURÉ — TENU** (`tools/regions-historique.sh`, garde neuve) :
+
+| cas | témoin (D519 + instrument) | après |
+|---|---|---|
+| A. Lente, Maj + glisser ([2521,4718]), Ctrl+Z : les fondus | **défaut** — deux gestes en un | `slow` — le glissé seul |
+| A. … la région de boucle | [0,1920] | [0,1920] |
+| B. Lente, Alt + glisser ([2521,4718]), Ctrl+Z : les fondus / le punch | **défaut** / [0,1920] | `slow` / [0,1920] |
+| C. Lente, Boucle sur un projet SANS région, Ctrl+Z : les fondus / la région | **défaut** / [0,0] | `slow` / [0,0], moteur éteint |
+| D. Lente, punch Active, Ctrl+Z : le punch | **éteint** | allumé |
+| E. double-clic sur la règle (boucle [0,1920] allumée) : le fichier | **éteinte, [0,0]** — effacée | éteinte, [0,1920] |
+| E. … la marque / les pas | **non** / 0 | oui / 0 |
+
+L'historique après le glissé : « Forme des fondus croisés | Région de boucle » (témoin :
+« Forme des fondus croisés » seul) ; après Ctrl+Z, « Forme des fondus croisés ». **Le
+pronostic est tenu en entier, et le cas E en a montré un de plus que prévu** —
+l'effacement de la région, et la règle qui ne dessinait pas la boucle du projet.
+
+`./verifier.sh --bancs` (la garde y entre : 39 bancs) : **35 sur 39 verts** en 41
+minutes, préférences de l'utilisateur identiques ; et, pour la première fois, le
+lanceur a DIT la session : « écran éteint, **verrouillé** » au départ et à la fin (le
+correctif 2 ci-dessus). **Les quatre rouges portent tous la signature de la fenêtre
+vide** : `vumetre-console.sh` (« SANS-ECHELLE », contraste 0,00),
+`automation-echelle.sh` (« médiane ? % » — rien à mesurer sur la photo) et la garde
+neuve elle-même, dont A, B, C et D sont verts dans la série mais dont le cas E n'a
+pas été JOUÉ — « aucun composant visible de ce nom », deux fois, la seconde après 60
+s — et le DIT au lieu de compter juste ce qu'il n'a pas vu. Jouée seule vingt
+minutes plus tôt, sous la même session verrouillée : **0 raté sur 17**. Aucun de ces
+bancs ne passe par un chemin que D520 touche hors de la règle, et la règle est
+mesurée par la garde. **Reste nommé** : rejouer la série session DÉVERROUILLÉE —
+avec les rouges de pixels de D518 et D519.
+
+Gardes des sources : la garde de langue a trouvé **2 textes sans traduction** — le
+libellé de pas neuf « Région de boucle », qui s'affiche dans « Annuler … » et dans la
+fenêtre d'historique ; traduit (« Loop region », à côté de « Punch region »), 0.

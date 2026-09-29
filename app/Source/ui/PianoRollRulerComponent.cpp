@@ -7,7 +7,9 @@ using namespace vsm::midi;
 using namespace vsm::ui;
 
 PianoRollRulerComponent::PianoRollRulerComponent(PianoRollComponent& pianoRoll)
-    : pianoRoll_(pianoRoll) {}
+    : pianoRoll_(pianoRoll) {
+    setName("pianoroll.regle");   // D520 : le nom par lequel le banc la désigne (glisser:)
+}
 
 void PianoRollRulerComponent::setPunchRegion(Tick start, Tick end, bool active) {
     punchStart_ = start;
@@ -16,20 +18,17 @@ void PianoRollRulerComponent::setPunchRegion(Tick start, Tick end, bool active) 
     repaint();
 }
 
-void PianoRollRulerComponent::setLoopRegion(Tick start, Tick end, bool active) {
-    loopStart_ = start;
-    loopEnd_ = end;
-    loopActive_ = active;
-    repaint();
-}
-
 void PianoRollRulerComponent::paint(juce::Graphics& g) {
     g.fillAll(Palette::panel);
     const auto bounds = getLocalBounds();
 
-    if (loopActive_ && loopEnd_ > loopStart_) {
-        const float x1 = pianoRoll_.tickToX(loopStart_);
-        const float x2 = pianoRoll_.tickToX(loopEnd_);
+    // D520 : LA BOUCLE DU PIANO ROLL, qui est celle du projet. La règle en gardait une
+    // copie que seul son propre glissé remplissait (son setter n'était appelé de
+    // nulle part) : la boucle d'un projet ouvert, du bouton, de P, I ou O ne s'y
+    // dessinait pas, et le double-clic renvoyait cette copie périmée au projet.
+    if (pianoRoll_.boucleActive() && pianoRoll_.boucleFin() > pianoRoll_.boucleDebut()) {
+        const float x1 = pianoRoll_.tickToX(pianoRoll_.boucleDebut());
+        const float x2 = pianoRoll_.tickToX(pianoRoll_.boucleFin());
         g.setColour(Palette::accentTeal.withAlpha(0.30f));
         g.fillRect(juce::Rectangle<float>(x1, 0.0f, x2 - x1, static_cast<float>(bounds.getHeight())));
     }
@@ -188,6 +187,7 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
     }
 
     if (event.mods.isShiftDown()) {
+        if (onRegionDragStarted) onRegionDragStarted(false);   // D520
         loopDragAnchor_ = tick;
         loopStart_ = loopEnd_ = tick;
         loopActive_ = true;
@@ -199,6 +199,7 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
     // touches, deux couleurs -- on les règle souvent au même endroit sans
     // qu'elles disent la même chose.
     if (event.mods.isAltDown()) {
+        if (onRegionDragStarted) onRegionDragStarted(true);   // D520
         punchDragAnchor_ = tick;
         punchStart_ = punchEnd_ = tick;
         punchActive_ = true;
@@ -271,8 +272,8 @@ void PianoRollRulerComponent::mouseUp(const juce::MouseEvent&) {
 }
 
 void PianoRollRulerComponent::mouseDoubleClick(const juce::MouseEvent&) {
-    loopActive_ = false;
-    if (onLoopRegionChanged) onLoopRegionChanged(loopStart_, loopEnd_, false);
+    // D520 : ÉTEINDRE, PAS EFFACER — la région tenue, pas une copie périmée.
+    if (onLoopRegionChanged) onLoopRegionChanged(pianoRoll_.boucleDebut(), pianoRoll_.boucleFin(), false);
     repaint();
 }
 

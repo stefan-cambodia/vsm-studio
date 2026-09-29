@@ -174,6 +174,14 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   entière. Un banc qui lit l'état « affiché » d'un composant lit `isVisible()`
   en descendant depuis la racine, et dit son compte (`VSM_TEXTES : N`). Vérifier
   `loginctl show-session <n> -p LockedHint` avant de croire un zéro.
+  **Et sous une session VERROUILLÉE, seul le PREMIER lancement d'une rafale
+  dessine sa fenêtre** (30/09, D520) : photo de 161 096 octets, puis 5 950 — une
+  fenêtre vide — pour les lancements suivants, quel que soit le projet ; espacés
+  de 45 s, tous pleins. Un banc qui enchaîne les lancements y rend des rouges de
+  pixels et « aucun composant visible » : espacer, ou rejouer écran déverrouillé.
+  Et le verrou se lit sur la session à SIÈGE (`loginctl` : colonne `seat0`) — la
+  première de la liste est la session « manager » de systemd, qui dit toujours
+  `LockedHint=no`.
   **Un écran ÉTEINT fait la même chose** (29/09, D516) : batterie à 16 %, le poste
   inactif a coupé l'écran pendant `--bancs`, et deux bancs de focus et de clic
   sont tombés — le binaire de la veille tombait pareil. `kscreen-doctor --dpms
@@ -228,7 +236,7 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   sur un appariement que le geste justifie — jamais sur deux listes triées à
   l'aveugle.
 - Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les
-  bancs qui lancent l'application — 38 au 29/09 (D518), ~33 min —, préférences comparées
+  bancs qui lancent l'application — 39 au 30/09 (D520), ~38 min —, préférences comparées
   d'office), pas
   seulement par ses bancs voisins : D482 a changé l'infobulle de « + » sans rejouer
   `liste-ajouter.sh`, resté rouge jusqu'à ce que D504 rejoue tout (29/09). Jamais

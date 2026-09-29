@@ -1316,6 +1316,8 @@ const Paire kAnglais[] = {
       "Thin automation points (" },
     { "Réduire les points d'automation (%1 points)",
       "Thin the automation points (%1 points)" },
+    { "Région de boucle",
+      "Loop region" },
     { "Région de punch",
       "Punch region" },
     { "Région de punch (Alt sur la règle)",

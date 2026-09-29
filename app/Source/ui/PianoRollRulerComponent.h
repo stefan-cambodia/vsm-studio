@@ -32,7 +32,6 @@ public:
     /// D218 : ses libellés tels qu'ils s'afficheraient, la langue courante comprise.
     juce::StringArray libellesDuMenuPourCapture() const;
 
-    void setLoopRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active);
     /// RÉGION DE PUNCH (D3.5) : là où l'enregistrement capte, et nulle part
     /// ailleurs. Dessinée en rouge, distincte de la boucle, parce qu'on les
     /// règle souvent au même endroit sans qu'elles disent la même chose.
@@ -50,6 +49,10 @@ public:
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;
     /// La région de punch a été dessinée à la souris (Alt + glisser).
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onPunchRegionChanged;
+    /// D520 : un glissé de RÉGION commence (Maj : la boucle, `punch` faux ; Alt : le
+    /// punch) — appelé à l'appui, AVANT le premier changement, pour qu'un glissé
+    /// soit UN pas d'annulation, comme P, I et O (D29.1).
+    std::function<void(bool punch)> onRegionDragStarted;
 
     /// D33.3 : LE SCRUB. Ctrl+glisser sur la règle fait ENTENDRE ce que la
     /// tête traverse, à la vitesse du geste.

@@ -555,6 +555,11 @@ public:
         }
         if (geste.startsWithIgnoreCase("clic:"))
             return clicPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D520 : un GLISSÉ avec modificateur (la région de boucle ou de punch sur la règle).
+        if (geste.startsWithIgnoreCase("glisser:"))
+            return glisserPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        if (geste.startsWithIgnoreCase("cliquer:"))
+            return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         // D356 : exporter-midi:<fichier> -- L'EXPORT COMME GESTE, pour qu'un geste
         // DIFFÉRÉ puisse enfin se mesurer sur le fichier écrit.
         //
@@ -630,6 +635,7 @@ public:
     bool valeurPourCapture(const juce::String& nom, double valeur);
     bool listePourCapture(const juce::String& nom, const juce::String& entree);   ///< D495
     bool clicPourCapture(const juce::String& description);   ///< D435
+    bool glisserPourCapture(const juce::String& description);   ///< D520
     bool saisirPourCapture(const juce::String& nom, const juce::String& texte);   ///< D444
     juce::Slider* curseurPourCapture(const juce::String& nom);
     /// D140 : voir le geste `doubleclic:` de `runTrackGestureForCapture`.
@@ -1087,6 +1093,9 @@ private:
         std::string notes;
         bool clic = false;
         bool boucle = false;
+        vsm::midi::Tick boucleDebut = 0, boucleFin = 0;   ///< D520 : la région, pour savoir
+        bool punch = false;                              ///< si l'annulation la déplace
+        vsm::midi::Tick punchDebut = 0, punchFin = 0;
     };
     HorsHistorique horsHistorique_;
     juce::String titreDeBase_ { "Vintage Synth MIDI Studio" };

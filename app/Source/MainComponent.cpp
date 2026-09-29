@@ -577,7 +577,16 @@ MainComponent::MainComponent()
         // une boucle sans région ne pouvant pas être active (`onLoopToggled`).
         project_.notes = horsHistorique_.notes;
         project_.metronomeEnabled = horsHistorique_.clic;
-        project_.loopEnabled = horsHistorique_.boucle && project_.loopEndTick > project_.loopStartTick;
+        // D520 : UNE BASCULE SUIT LE PAS QUI DÉPLACE SA RÉGION. Seuls les pas de région
+        // (P, I, O, la règle, « L'effacer »…) touchent une bascule : quand l'annulation
+        // déplace la région, la bascule suit l'état rendu ; sinon elle reste où elle est.
+        const auto& h = horsHistorique_;
+        if (project_.loopStartTick == h.boucleDebut && project_.loopEndTick == h.boucleFin)
+            project_.loopEnabled = h.boucle;
+        if (project_.punchStartTick == h.punchDebut && project_.punchEndTick == h.punchFin)
+            project_.punchEnabled = h.punch;
+        project_.loopEnabled = project_.loopEnabled && project_.loopEndTick > project_.loopStartTick;
+        project_.punchEnabled = project_.punchEnabled && project_.punchEndTick > project_.punchStartTick;
         rebuildFromProject(false);
         refreshHistoryList();
     };
@@ -586,7 +595,9 @@ MainComponent::MainComponent()
     pianoRoll_.onAvantHistorique = [this] {
         project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
         photographierReglagesDeMachines();   // D154 : et les réglages des machines
-        horsHistorique_ = {project_.notes, project_.metronomeEnabled, project_.loopEnabled};   // D518
+        horsHistorique_ = {project_.notes, project_.metronomeEnabled,   // D518, D520
+                           project_.loopEnabled, project_.loopStartTick, project_.loopEndTick,
+                           project_.punchEnabled, project_.punchStartTick, project_.punchEndTick};
     };
     pianoRoll_.setProject(&project_);
     // D16.1 : LES NOTES ÉCRITES SE MATÉRIALISENT TOUT DE SUITE. Avant, une
@@ -972,8 +983,12 @@ MainComponent::MainComponent()
         // serve à quelque chose reviendrait à le laisser inerte.
         vsm::midi::Tick start = project_.loopStartTick;
         vsm::midi::Tick end = project_.loopEndTick;
+        const bool poseUneRegion = end <= start;   // D520
         if (end <= start) { start = 0; end = project_.lastUsedTick(); }
         if (end <= start) { transportBar_.setLooping(false); return; }  // projet vide
+        // D520 : LA RÉGION QU'ELLE POSE est un pas, comme toute région ; la bascule
+        // elle-même n'en fait pas (D0).
+        if (poseUneRegion && active) beginProjectEdit(u8"R\u00e9gion de boucle");
         project_.loopEnabled = active;
         project_.loopStartTick = start;
         project_.loopEndTick = end;
@@ -983,6 +998,12 @@ MainComponent::MainComponent()
         pianoRoll_.setLoopRegion(start, end, active);
         pianoRollPanel_.refresh();
         marquerHorsHistorique();   // D519 : la bascule de boucle, sans pas (D0)
+    };
+    // D520 : LES RÉGIONS DANS L'HISTORIQUE, PARTOUT. P, I et O en faisaient un pas
+    // (D29.1), la règle non : un glissé, puis Ctrl+Z, annulait le geste d'AVANT et la
+    // région ensemble. Un glissé = UN pas, ouvert à l'appui (comme un bouton, D154).
+    pianoRoll_.onRegionDragStarted = [this](bool punch) {
+        beginProjectEdit(punch ? u8"R\u00e9gion de punch" : u8"R\u00e9gion de boucle");
     };
     pianoRoll_.onPunchRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
         // La région de punch est une DONNÉE DE MORCEAU : on refait le même
@@ -996,6 +1017,10 @@ MainComponent::MainComponent()
     pianoRoll_.onLoopRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
         // Écrite dans le projet AUSSI : c'est une donnée de morceau, et elle
         // disparaissait à la fermeture alors que le format savait l'écrire.
+        // D520 : la région seule inchangée, c'est la BASCULE (le double-clic) :
+        // sans pas, mais la marque (D519).
+        const bool bascule = start == project_.loopStartTick && end == project_.loopEndTick
+                             && active != project_.loopEnabled;
         project_.loopEnabled = active;
         project_.loopStartTick = start;
         project_.loopEndTick = end;
@@ -1004,6 +1029,7 @@ MainComponent::MainComponent()
                                                    project_.ticksToSeconds(end), active);
         transportBar_.setLooping(active);
         pianoRollPanel_.refresh();
+        if (bascule) marquerHorsHistorique();
     };
 
     // Décompte et mode d'enregistrement : des PRÉFÉRENCES de session, pas des
@@ -1905,6 +1931,51 @@ bool MainComponent::clicPourCapture(const juce::String& description) {
     const juce::MouseEvent relache(juce::Desktop::getInstance().getMainMouseSource(), point, juce::ModifierKeys(), 1.0f,
                                    0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, point, maintenant, 1, false);
     cible->mouseUp(relache);
+    return true;
+}
+
+bool MainComponent::glisserPourCapture(const juce::String& description) {
+    // D520 : « nom:fx0,fy:fx1[:maj|:alt|:double] » — appui en fx0 AVEC le modificateur,
+    // glissé jusqu'en fx1, relâché : le chemin de la souris sur la règle (Maj : la
+    // boucle, Alt : le punch). « :double » joue le double-clic en fx0.
+    juce::StringArray champs;
+    champs.addTokens(description, ":", "");
+    if (champs.size() < 3) return false;
+    const juce::String nom = champs[0];
+    const float fx0 = champs[1].upToFirstOccurrenceOf(",", false, false).getFloatValue();
+    const float fy = champs[1].fromFirstOccurrenceOf(",", false, false).getFloatValue();
+    const float fx1 = champs[2].getFloatValue();
+    const juce::String mode = champs.size() > 3 ? champs[3].toLowerCase() : juce::String();
+    std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
+        if (c.getName() == nom && !c.getLocalBounds().isEmpty()) return &c;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Component* cible = chercher(*this);
+    std::fputs(("VSM_GLISSE : " + description
+                + (cible != nullptr ? juce::String::fromUTF8(" \xe2\x80\x94 jou\xc3\xa9")
+                                    : juce::String::fromUTF8(" \xe2\x80\x94 aucun composant visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    if (cible == nullptr) return false;
+    const auto w = static_cast<float>(cible->getWidth()), h = static_cast<float>(cible->getHeight());
+    const juce::Point<float> depart(fx0 * w, fy * h), arrivee(fx1 * w, fy * h);
+    int mods = juce::ModifierKeys::leftButtonModifier;
+    if (mode == "maj") mods |= juce::ModifierKeys::shiftModifier;
+    if (mode == "alt") mods |= juce::ModifierKeys::altModifier;
+    const auto maintenant = juce::Time::getCurrentTime();
+    auto evenement = [&](juce::Point<float> ou, int m, int clics, bool glisse) {
+        return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), ou, juce::ModifierKeys(m), 1.0f,
+                                0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, depart, maintenant, clics, glisse);
+    };
+    if (mode == "double") {
+        cible->mouseDoubleClick(evenement(depart, mods, 2, false));
+        return true;
+    }
+    cible->mouseDown(evenement(depart, mods, 1, false));
+    cible->mouseDrag(evenement(arrivee, mods, 1, true));
+    cible->mouseUp(evenement(arrivee, mods & ~juce::ModifierKeys::leftButtonModifier, 1, true));
     return true;
 }
 
@@ -7995,6 +8066,7 @@ void MainComponent::applyLearnedControls() {
                     project_.loopEnabled = actif;
                     transport_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, actif);
                     transportBar_.setLooping(actif);
+                    pianoRoll_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, actif);   // D520 : et la règle
                     boucleTouchee = true;
                 }
                 break;

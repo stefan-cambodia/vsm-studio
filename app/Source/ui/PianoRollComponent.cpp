@@ -420,6 +420,8 @@ void PianoRollComponent::setFollowPlayhead(bool follow) {
 }
 
 void PianoRollComponent::setLoopRegion(Tick start, Tick end, bool active) {
+    // D520 : la règle lit CETTE région (`boucleDebut`…) ; sa propre copie, que rien ne
+    // tenait à jour, effaçait celle du projet au double-clic.
     loopStartTick_ = start;
     loopEndTick_ = end;
     loopActive_ = active;

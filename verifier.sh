@@ -45,7 +45,7 @@ GARDES_SEULES=0
 [ "${1:-}" = "--gardes" ] && GARDES_SEULES=1
 
 # D504 : LES BANCS QUI LANCENT L'APPLICATION. Ils se jouaient « à part » (D378),
-# c'est-à-dire à la main, quatre ou cinq à la fois : rien ne rejouait les trente et un (trente-huit depuis D518),
+# c'est-à-dire à la main, quatre ou cinq à la fois : rien ne rejouait les trente et un (trente-neuf depuis D520),
 # et un script que rien ne rejoue n'est pas une garde (D150). Liste FERMÉE, comme
 # celle des gardes : un banc neuf n'y entre qu'écrit ici.
 # HORS LISTE, ET POURQUOI : `reconstruction-annuler.sh` lance une vraie séparation
@@ -67,7 +67,10 @@ if [ "${1:-}" = "--bancs" ]; then
     ecran() {
         local e=""
         command -v kscreen-doctor > /dev/null && kscreen-doctor --dpms show 2>/dev/null | grep -q ": off" && e="éteint"
-        local n; n=$(loginctl 2>/dev/null | awk -v u="$USER" '$3 == u {print $1; exit}')
+        # D520 : la session qui porte un SIÈGE — la première de la liste est la session
+        # « manager » de systemd, qui dit toujours LockedHint=no : le verrou n'était
+        # jamais vu (le 29/09, « éteint » seul, alors que la session était verrouillée).
+        local n; n=$(loginctl 2>/dev/null | awk -v u="$USER" '$3 == u && $4 ~ /seat/ {print $1; exit}')
         [ -n "$n" ] && loginctl show-session "$n" -p LockedHint 2>/dev/null | grep -q "=yes" && e="${e:+$e, }verrouillé"
         echo "$e"
     }
@@ -88,7 +91,7 @@ if [ "${1:-}" = "--bancs" ]; then
                 fader-console.sh gestes-vivants.py grille-gamme-projet.sh ligne-d-etat.py liste-ajouter.sh \
                 liste-editer.sh marque-enregistre.sh \
                 metronome-projet.sh miniature-clips.sh notes-du-projet.sh onglets-du-dock.sh ouvrir-midi.sh \
-                pas-a-pas.sh pianoroll-zones.sh police-plancher.sh portes-de-l-arrangement.sh \
+                pas-a-pas.sh pianoroll-zones.sh police-plancher.sh portes-de-l-arrangement.sh regions-historique.sh \
                 portes-des-outils.sh portes-des-pistes.sh portes-du-transport.sh quantifier.sh \
                 theme-sombre.sh tout-voir.sh transport-au-repos.sh volet-anglais.sh \
                 vue-du-morceau.sh vumetre-console.sh zoom-reassigne.sh; do
