@@ -65,6 +65,9 @@ REVENDICATION = re.compile(
     r"\[`(?P<nom>[^`]+)`\]\((?P<cible>[^)]+)\)\s*\((?P<lignes>[\d   ]+)\s*l\.\)"
 )
 
+# D516 : « 365 phases closes</span><br><small>D0 → D372 » dans la page consultable
+PHASES_HTML = re.compile(r"(?P<compte>\d+) phases closes</span><br><small>D0 → D(?P<dernier>\d+)")
+
 # « **361 titres de phase** écrits (D0 → D368) »
 PHASES = re.compile(
     r"\*\*(?P<compte>\d+) titres de phase\*\* écrits \(D0 → D(?P<dernier>\d+)\)"
@@ -191,6 +194,27 @@ def main() -> int:
         remplacements.append((mp.group(0),
                               f"**{compte_reel} titres de phase** écrits (D0 → D{dernier_reel})"))
 
+    # D516 : ET LE COMPTE DE PHASES DE LA PAGE, que cet outil ne lisait pas : elle
+    # disait « 365 phases closes, D0 → D372 » neuf jours et 144 phases plus tard,
+    # pendant que ses longueurs, elles, étaient tenues à jour.
+    page_phases_ecart = False
+    if PAGE.is_file():
+        html = PAGE.read_text(encoding="utf-8")
+        mh = PHASES_HTML.search(html)
+        if mh is None:
+            print("REFUS : le compte de phases n'est plus reconnaissable dans ordre-de-marche.html",
+                  file=sys.stderr)
+            return 2
+        if (int(mh.group("compte")), int(mh.group("dernier"))) != (compte_reel, dernier_reel):
+            page_phases_ecart = True
+            print(f"  ÉCART phases de la page : {mh.group('compte')} jusqu'à D{mh.group('dernier')}, "
+                  f"ROADMAP-daw.md en a {compte_reel} jusqu'à D{dernier_reel}")
+            if args.corriger:
+                html = html.replace(mh.group(0), f"{compte_reel} phases closes</span><br><small>"
+                                                 f"D0 → D{dernier_reel}", 1)
+                PAGE.write_text(html, encoding="utf-8")
+                print("1 chiffre réécrit dans docs/ordre-de-marche.html (le compte de phases)")
+
     if args.corriger:
         # LA PAGE A DÉJÀ ÉTÉ RÉÉCRITE PLUS HAUT ; il reste l'INDEX. Et le verdict
         # est 0 dès qu'on a corrigé, même si seule la page l'était : rendre 1
@@ -203,9 +227,9 @@ def main() -> int:
             print(f"\n{len(remplacements)} chiffre(s) réécrit(s) dans docs/INDEX.md")
         return 0
 
-    if ecarts or introuvables or phases_ecart or page_ecarts:
+    if ecarts or introuvables or phases_ecart or page_ecarts or page_phases_ecart:
         total = (len(ecarts) + len(introuvables) + len(page_ecarts)
-                 + (1 if phases_ecart else 0))
+                 + (1 if phases_ecart else 0) + (1 if page_phases_ecart else 0))
         print(f"\nINDEX : {total} chiffre(s) à reprendre "
               f"(`tools/index-a-jour.py --corriger` les réécrit)")
         return 1
