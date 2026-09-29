@@ -852,7 +852,9 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
             juce::StringArray libelles;
             for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
                 if (it.getItem().itemID != 0)
-                    libelles.add(it.getItem().text + (it.getItem().shortcutKeyDescription.isNotEmpty() ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}" : juce::String()) + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+                    libelles.add(it.getItem().text + (it.getItem().shortcutKeyDescription.isNotEmpty() ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}" : juce::String()) + (it.getItem().isEnabled ? "" : juce::String(" [grisee]"))
+                                  // D516 : la valeur en place se lit, comme dans `VSM_MENU_LISTE`
+                                  + (it.getItem().isTicked ? juce::String(" [cochee]") : juce::String()));
             std::fputs(("VSM_MENU_CONTEXTE : " + quel + " = " + libelles.joinIntoString(" | ")
                         + "\n").toRawUTF8(), stderr);
             return true;
@@ -1526,6 +1528,10 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         case 1: if (onClipRenameRequested) onClipRenameRequested(piste, clipId); return;
         case 2: if (onClipColourRequested) onClipColourRequested(piste, clipId); return;
         case 3:
+            // D516 : LA COULEUR DÉJÀ EN PLACE NE S'ÉCRIT PAS — comme la forme des
+            // fondus plus bas. Un clip implicite porte la couleur de sa piste :
+            // le geste ouvrait un pas vide, et son Ctrl+Z n'annulait rien.
+            if (it->colorRgba == track.colorRgba) return;
             if (onEditStarted) onEditStarted(u8"Couleur d'un clip");
             it->colorRgba = track.colorRgba;
             break;

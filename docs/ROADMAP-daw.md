@@ -37108,3 +37108,81 @@ Gardes des sources vertes ; `./verifier.sh --bancs` : **37 bancs sur 37 verts** 
 29 minutes — la garde neuve (8 s) et l'audit, dont le témoin dit désormais le
 résumé de la sélection au lieu de « Prêt » (0 muette, 116 justes, 55 avec trace,
 11 voulues : inchangé) ; préférences de l'utilisateur identiques.
+
+---
+
+### Phase D516 — l'audit d'annulation ne jouait aucun menu contextuel (29/09/2026)
+
+**D'OÙ ELLE VIENT — CE QUE D513 A MONTRÉ EN PASSANT.** Les menus contextuels des
+CLIPS (MIDI et audio) et des deux RÈGLES ne sont joués que par
+`gestes-vivants.py`, qui juge « change le projet ou dit pourquoi » — jamais le pas
+d'annulation. Le menu du piano roll, lui, est le menu Édition (une seule
+définition, dit le code qui le construit) : l'audit par chemins le couvre. Mais « Normaliser », « -6 dB »,
+« À l'envers », les fondus, la hauteur, « Rogner au son », « Poser un repère
+ici… » changent le morceau par le clic droit, et aucun banc ne vérifie qu'un
+Ctrl+Z les défait.
+
+**LE CHOIX, TRANCHÉ ICI.** L'audit gagne une famille « menus contextuels » :
+chaque entrée ACTIVE de `clip-midi-tous`, `clip-audio-tous`, `regle` et
+`regle-pianoroll` (listée par « ? », D227), jouée par `VSM_MENU_CONTEXTE` sur le
+projet d'essai augmenté d'une piste audio (`VSM_IMPORT_AUDIO`, deux secondes de
+son engendrées), jugée comme celles de la barre — juste, suspecte, pas pour rien,
+et les « sans effet » par leur trace (D514). Les noms se donnent comme
+`gestes-vivants.py` les donne (`nom=Essai` pour « Renommer… » et « Poser un repère
+ici… ») ; **deux entrées ne sont pas jouées, et c'est dit** : « Couleur… » (un
+sélecteur de couleur, qu'aucun verbe de banc ne remplit) et « Transcrire en MIDI »
+(un processus Python de plusieurs secondes, mesuré par D20.4).
+
+**ATTENDU, écrit avant la mesure** :
+1. environ **55** entrées jouées (12 du clip MIDI, ~41 du clip audio, 2 des règles) ;
+2. **pronostic** : 0 suspecte, 0 pas pour rien — les gestes de clip que j'ai lus (répéter,
+   déplacer) passent par `onEditStarted` ; ce qui en sortira est publié tel quel, et une
+   suspecte se lit avant d'être corrigée (D266) ;
+3. les verdicts de la barre inchangés (116 justes, 0 muette) ; `./verifier.sh
+   --bancs` vert.
+
+**L'INSTRUMENT, AVANT DE JUGER.** (a) La liste du clic droit ne marquait pas les
+entrées cochées : elle porte désormais « [cochee] », au format de « [grisee] »
+(« Non » et « Droite » sont les valeurs en place du clip audio). (b) Les verbes
+« -tous » CHOISISSENT tous les clips avant d'agir : un témoin qui ne choisit rien
+aurait donné à chaque entrée une fausse trace « menu » (« Répéter » s'active), où
+une muette se serait cachée. Chaque menu a donc son témoin, qui choisit de la même
+façon puis joue un libellé qui n'existe pas.
+
+**MESURÉ** :
+1. **48 entrées jouées** (l'attendu disait « environ 55 » : 10 du clip MIDI, 36 du
+   clip audio, 1 par règle — plus 3 non jouées et dites : « Couleur… » deux fois,
+   « Transcrire en MIDI »). Chaque menu a rendu des entrées actives ; la garde de la
+   garde, vue rouge : un menu inexistant ajouté le temps de l'essai → « RATÉ le menu
+   « clip-rien-tous » n'a rendu AUCUNE entrée active », non jugée.
+2. **Témoin** (binaire d'avant le correctif) : **38 justes, 0 suspecte, 2 pas pour
+   rien, 2 muettes**. Le pronostic « 0 pas pour rien » est **RÉFUTÉ** :
+   « **Couleur de la piste** », sur un clip qui porte déjà la couleur de sa piste
+   (un clip implicite, un clip importé), ouvrait un pas « Couleur d'un clip » sans
+   rien changer — dans les deux menus. `gestes-vivants.py` l'excusait (« déjà en
+   place », D275) : elle voyait juste que le morceau ne changeait pas, pas le Ctrl+Z
+   vide qu'elle laissait.
+3. **LE CORRECTIF** : la couleur déjà en place ne s'écrit pas — la garde même que la
+   forme des fondus porte trois lignes plus bas (`if (it->fadeShape == forme)
+   return;`). **Après : 0 pas pour rien.**
+4. **Les deux muettes** : « Zoom : tout voir » des deux menus de clip. Vérifié
+   plutôt que supposé : à l'ouverture l'arrangement est à 0,07267 px/tick ; « Zoom :
+   la sélection » le porte à 0,06813 ; « la sélection » puis « tout voir » le rend à
+   0,07267 — l'ouverture cadre déjà tout le morceau. Écrites avec leur raison, comme
+   les deux « Couleur de la piste » désormais sans pas. **Final des contextes : 38
+   justes, 6 avec trace, 4 muettes voulues, 0 suspecte, 0 pas pour rien.**
+5. **L'audit complet** (trois familles, 723 s) : **0 suspecte, 0 non jugée, 0 pas
+   pour rien, 0 muette, 154 justes** (116 + 38), 61 avec trace, 15 muettes voulues.
+6. `./verifier.sh --bancs` : **35 sur 37 verts** en 31 minutes, préférences de
+   l'utilisateur identiques. **Deux rouges, et ils ne sont PAS de D516** :
+   `liste-editer.sh` (« contour ambre : 0 px avec ») et `vumetre-console.sh`
+   (« clic 0 », « SANS-ECHELLE »), deux mesures de PIXELS. Rejoués seuls : même
+   échec. Rejoués avec le binaire de D515 — vert sur ces deux bancs une heure plus
+   tôt, dans la série de D515 — : **même échec**. Le code n'y est donc pour rien ;
+   l'environnement a bougé entre-temps : l'écran se déclare en 2 560 × 1 600 (D364
+   le mesurait à 3 200 × 2 000) et le poste est passé en profil « power-saver »,
+   batterie à 16 %. Non expliqué plus avant — dit, pas caché.
+
+**Reste nommé, non fait** : rejouer `liste-editer.sh` et `vumetre-console.sh` quand
+le poste aura retrouvé son écran et sa charge, et, s'ils restent rouges avec le
+binaire de D515, lire ce que leurs photos montrent (D266 : le banc d'abord).

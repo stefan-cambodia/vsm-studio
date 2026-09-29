@@ -78,6 +78,11 @@ MUETTES_VOULUES: dict[str, str] = {
                                           "ne pose rien (ni pas d'annulation)",
     "Enregistrement > Couper toutes les notes (panic)": "une commande d'urgence du moteur : aucune note ne sonne, "
                                                         "il n'y a rien à couper, et rien ne s'en écrit",
+    # D516 : les menus contextuels des clips.
+    "clip-midi-tous:Couleur de la piste": "le clip est implicite : il porte déjà la couleur de sa piste",
+    "clip-audio-tous:Couleur de la piste": "le clip importé porte déjà la couleur de sa piste",
+    "clip-midi-tous:Zoom : tout voir": "l'arrangement est déjà cadré sur tout le morceau (cadrage d'ouverture)",
+    "clip-audio-tous:Zoom : tout voir": "l'arrangement est déjà cadré sur tout le morceau (cadrage d'ouverture)",
 }
 
 # LES CHANGEMENTS LÉGITIMEMENT SANS PAS, avec leur raison. Une exception tacite
@@ -127,7 +132,8 @@ def engendrer(dossier: Path, locateurs: tuple[int, int] = (0, 0), courbe: bool =
         "tracks": [t("une"), t("deux"), t("trois")]}, indent=1))
 
 
-def lancer(binaire: Path, brouillon: Path, nom: str, projet: Path, gestes: str, delai: int) -> tuple[str, Path]:
+def lancer(binaire: Path, brouillon: Path, nom: str, projet: Path, gestes: str, delai: int,
+           extra: dict[str, str] | None = None) -> tuple[str, Path]:
     maison = Path(tempfile.mkdtemp(dir=brouillon, prefix="home."))
     # D514 : LES QUESTIONS SONT RÉPONDUES « OUI » (`VSM_CONFIRMER`, D235). « Reporter la
     # piste en audio (définitif) » demandait « Reporter | Annuler » ; sans réponse, elle
@@ -135,6 +141,7 @@ def lancer(binaire: Path, brouillon: Path, nom: str, projet: Path, gestes: str, 
     env = dict(os.environ, HOME=str(maison), VSM_TAILLE="1280x800", VSM_PROJET=str(projet),
                VSM_VUE="sans-rapport", VSM_DELAI=str(delai), VSM_GESTE_APRES=gestes,
                VSM_CAPTURE=str(brouillon / f"{nom}.png"), VSM_CONFIRMER="oui")
+    env.update(extra or {})
     try:
         r = subprocess.run([str(binaire)], env=env, capture_output=True, text=True,
                            errors="replace", timeout=60)
@@ -262,6 +269,52 @@ ETATS = (
 )
 
 
+# D516 : LES MENUS CONTEXTUELS. Celui du piano roll EST le menu Édition (une seule
+# définition) : l'audit de la barre le couvre. Restent ceux des clips et des règles.
+CONTEXTES = ("clip-midi-tous", "clip-audio-tous", "regle", "regle-pianoroll")
+# Ce qu'il faut taper pour qu'une entrée aboutisse (comme `gestes-vivants.py`).
+OPTIONS_CONTEXTE = {"Renommer…": "nom=Essai", "Poser un repère ici…": "nom=Essai"}
+# Les entrées NON jouées, et pourquoi — dites à chaque course.
+NON_JOUEES_CONTEXTE = {
+    "Couleur…": "un sélecteur de couleur, qu'aucun verbe de banc ne remplit",
+    "Transcrire en MIDI (Basic Pitch, Python)": "un processus Python de plusieurs secondes (mesuré par D20.4)",
+}
+
+
+def ecrire_un_son(chemin: Path) -> None:
+    """Deux secondes de la 220 Hz, engendrées ici : une garde ne dépend pas d'un fichier voisin."""
+    import math
+    import wave
+    with wave.open(str(chemin), "wb") as f:
+        f.setnchannels(2)
+        f.setsampwidth(2)
+        f.setframerate(44100)
+        f.writeframes(b"".join(struct.pack("<hh", v, v) for v in
+                               (int(12000 * math.sin(2 * math.pi * 220.0 * i / 44100)) for i in range(88200))))
+
+
+def relever_contextes(binaire: Path, brouillon: Path, projet: Path,
+                      contexte: dict[str, str]) -> tuple[list[tuple[str, str, bool]], list[str]]:
+    """Les entrées ACTIVES des menus contextuels (« quel:libellé »), et celles écartées."""
+    liste, _ = lancer(binaire, brouillon, "liste-contextes", projet, "", 1500,
+                      dict(contexte, VSM_MENU_CONTEXTE=";".join(f"{q}:?" for q in CONTEXTES)))
+    retenues: list[tuple[str, str, bool]] = []
+    ecartees: list[str] = []
+    for x in liste.splitlines():
+        if not x.startswith("VSM_MENU_CONTEXTE : ") or " = " not in x:
+            continue
+        quel, libelles = x.split("VSM_MENU_CONTEXTE : ", 1)[1].split(" = ", 1)
+        for brut in libelles.split(" | "):
+            if "[grisee]" in brut:
+                continue
+            libelle = re.sub(r" \{[^}]*\}", "", brut.replace(" [cochee]", "")).strip()
+            if libelle in NON_JOUEES_CONTEXTE:
+                ecartees.append(f"{quel}:{libelle}")
+                continue
+            retenues.append((f"{quel}:{libelle}", libelle, "[cochee]" in brut))
+    return retenues, ecartees
+
+
 def relever_entrees(binaire: Path, brouillon: Path, projet: Path, choisir: str,
                     nom: str) -> list[tuple[str, str, bool]]:
     liste, _ = lancer(binaire, brouillon, f"liste-{nom}", projet, f"{choisir}700:lister-menus", 1200)
@@ -319,29 +372,85 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None, seul_etat: in
         juges += 1
         for cle, n in juger(binaire, brouillon, projet, choisir, neuves, f"{k}").items():
             total[cle] += n
+    if seul_etat is None or seul_etat == len(ETATS) + 1:
+        juges += 1
+        for cle, n in auditer_contextes(binaire, brouillon, seulement).items():
+            total[cle] += n
+    else:
+        print(f"    (menus contextuels NON JUGÉS : --etat {seul_etat})")
     print(f"--- {total['suspects']} entrée(s) suspecte(s), {total['incompletes']} non jugée(s), "
           f"{total['pour_rien']} pas pour rien, {total['muettes']} muette(s), {total['justes']} juste(s), "
           f"{total['traces']} sans effet avec trace, {total['voulues']} muette(s) voulue(s), "
-          f"{juges} état(s) jugé(s) sur {len(ETATS)}")
+          f"{juges} famille(s) jugée(s) sur {len(ETATS) + 1}")
     return 1 if total["suspects"] or total["incompletes"] or total["pour_rien"] or total["muettes"] else 0
 
 
+def auditer_contextes(binaire: Path, brouillon: Path, seulement: str | None) -> dict[str, int]:
+    projet = brouillon / "projet-contextes"
+    engendrer(projet)
+    son = brouillon / "son.wav"
+    ecrire_un_son(son)
+    contexte = {"VSM_IMPORT_AUDIO": str(son)}
+    retenues, ecartees = relever_contextes(binaire, brouillon, projet, contexte)
+    if seulement:
+        retenues = [r for r in retenues if r[1] == seulement or r[1].startswith(seulement)]
+    print(f"=== D516 — les menus contextuels ({', '.join(CONTEXTES)}) : {len(retenues)} entrées ===")
+    for c in ecartees:
+        print(f"    NON JOUÉE, et dit : {c} — {NON_JOUEES_CONTEXTE[c.split(':', 1)[1]]}")
+    # LA GARDE DE LA GARDE : chaque menu doit avoir été LU. Un clip audio que l'import
+    # n'aurait pas posé rendrait son menu vide, et l'audit tout vert.
+    lus = {r[0].split(":", 1)[0] for r in retenues} | {c.split(":", 1)[0] for c in ecartees}
+    manquants = [q for q in CONTEXTES if q not in lus]
+    if manquants and not seulement:
+        for q in manquants:
+            print(f"  RATÉ le menu « {q} » n'a rendu AUCUNE entrée active")
+        return {"incompletes": len(manquants)}
+    # UN TÉMOIN PAR MENU, QUI CHOISIT COMME L'ENTRÉE CHOISIT. Les verbes « -tous »
+    # choisissent tous les clips avant d'agir ; un témoin qui ne choisit rien
+    # donnerait à CHAQUE entrée une fausse trace « menu » (« Répéter » s'active), et
+    # une muette s'y cacherait. Le témoin joue un libellé qui n'existe pas : même
+    # sélection, aucune action.
+    total: dict[str, int] = {}
+    for quel in CONTEXTES:
+        siennes = [r for r in retenues if r[0].startswith(quel + ":")]
+        if not siennes:
+            continue
+        temoin = dict(contexte, VSM_MENU_CONTEXTE=f"{quel}:(témoin : aucune entrée)")
+        for cle, n in juger(binaire, brouillon, projet, "", siennes, f"ctx-{quel}", temoin).items():
+            total[cle] = total.get(cle, 0) + n
+    return total
+
+
 def juger(binaire: Path, brouillon: Path, projet: Path, choisir: str,
-          retenues: list[tuple[str, str, bool]], etat: str) -> dict[str, int]:
+          retenues: list[tuple[str, str, bool]], etat: str,
+          contexte: dict[str, str] | None = None) -> dict[str, int]:
+    """`contexte` (D516) : l'environnement du témoin des menus contextuels ; chaque
+    entrée « quel:libellé » est alors jouée par `VSM_MENU_CONTEXTE`, au démarrage."""
     # D510 : DE LA MARGE, ET UNE MESURE ABSENTE N'EST PAS UN ZÉRO. Dans la course
     # complète, quatre entrées (des accords) ont rendu « non jouée » ou « suspecte » :
     # rejouées seules, toutes justes. Sous la charge, un geste différé peut tomber
     # après la photo qui clôt la course ; le relevé d'historique manquait, et
     # l'ancien code le comptait « aucun pas » — un faux suspect fabriqué par le banc.
-    def course(nom: str, gestes: str) -> tuple[str, int, str, str, str]:
+    def course(nom: str, gestes: str, extra: dict[str, str] | None = None) -> tuple[str, int, str, str, str]:
         sortie = brouillon / f"ecrit-{etat}-{nom}"
         j, maison = lancer(binaire, brouillon, f"{etat}-{nom}", projet,
                            # la ligne d'état AVANT l'enregistrement du banc, qui la réécrit
                            # (« 8 note(s) sélectionnée(s)… », une course sur deux)
                            f"{choisir}{gestes}1180:relever-tete;1200:lister-menus;1250:relever-etat;"
                            f"1300:enregistrer:{sortie};"
-                           "1700:relever-historique", 2800)
+                           "1700:relever-historique", 2800, dict(contexte or {}, **(extra or {})))
         return empreinte(sortie), pas(j), j, vue(sortie), preferences(maison)
+
+    def jouer(i: int, essai: int, chemin: str) -> tuple[str, int, str, str, str, bool]:
+        if contexte is None:
+            e, p, j, v, pr = course(f"e{i}-{essai}", f"700:menu:{chemin};")
+            return e, p, j, v, pr, "exécutée" in j and f"« {chemin}" in j
+        quel, libelle = chemin.split(":", 1)
+        extra = {"VSM_MENU_CONTEXTE": chemin}
+        if libelle in OPTIONS_CONTEXTE:
+            extra["VSM_OPTIONS"] = OPTIONS_CONTEXTE[libelle]
+        e, p, j, v, pr = course(f"e{i}-{essai}", "", extra)
+        return e, p, j, v, pr, f"« {libelle} » exécutée ({quel})" in j
 
     e0, p0, j0, v0, pr0 = course("temoin", "")
     if e0 == "absent" or p0 < 0:
@@ -356,8 +465,7 @@ def juger(binaire: Path, brouillon: Path, projet: Path, choisir: str,
     voulues = 0
     for i, (chemin, texte, cochee) in enumerate(retenues):
         for essai in (1, 2):   # une mesure incomplète est rejouée UNE fois
-            e, p, j, v, pr = course(f"e{i}-{essai}", f"700:menu:{chemin};")
-            joue = "exécutée" in j and f"« {chemin}" in j
+            e, p, j, v, pr, joue = jouer(i, essai, chemin)
             if joue and p >= 0 and e != "absent":
                 break
         if not joue or p < 0 or e == "absent":
