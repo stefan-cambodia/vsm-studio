@@ -6771,6 +6771,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     project_ = resultat.project;
     oublierLesMachines();   // D76
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
+    profondeurAuDernierEnregistrement_ = history_.undoDepth();   // D507 : comme un MIDI ouvert
     poserTitreDeBase(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
                      + fichier.getFileNameWithoutExtension());
     // D320 : LE NOM DE LA PISTE DONNE UN PREMIER SON (CDC import § 2, nuance du
@@ -7280,6 +7281,11 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // récupérée dans sa copie de travail la perdrait au prochain lancement.
     currentProjectFolder_ = medias;
     rememberRecentProject(medias);
+    // D507 : LE MORCEAU EST TEL QU'IL EST SUR LE DISQUE, et la marque « non
+    // enregistré » repart de là. L'historique était vidé, le repère gardait celui
+    // du projet PRÉCÉDENT : le projet ouvert s'affichait « modifié », puis, un
+    // geste plus tard, « enregistré » — et fermer ne demandait rien.
+    profondeurAuDernierEnregistrement_ = history_.undoDepth();
     poserTitreDeBase("Vintage Synth MIDI Studio -- " + medias.getFileName());
     // rebuildFromProject() assigne les instruments d'après le projet : les
     // machines n'existent donc PAS avant cet appel, et appliquer les
@@ -7989,14 +7995,38 @@ void MainComponent::offerCrashRecovery() {
     // c'est celle dont dépendent D173 et D175, qui s'appuient sur ce filet pour
     // dire que fermer ou rater un enregistrement ne coûte rien. La réponse passe
     // par le MÊME rappel que le clic : ce n'est pas un chemin parallèle.
+    // D507 : UNE SEULE RÉPONSE, VRAIMENT. Ce commentaire le disait déjà ; le clic
+    // avait pourtant sa propre copie du rappel, qui seule marquait le projet
+    // récupéré « non enregistré » — le banc mesurait l'autre (le piège de D202 :
+    // deux chemins pour un geste, dont un seul est mesuré). Le clic appelle
+    // désormais celui-ci.
     auto reponse = [this, dossier, origine](int resultat) {
             if (resultat != 1) {
                 vsm::app::AutosaveService::discard(dossier);
-                offerCrashRecovery();   // D318 : la suivante, tout de suite (la liste a diminué d'une)
+                // D318 : la session suivante est proposée dès que cette boîte est
+                // fermée -- par un message, pour ne pas ouvrir une modale dans le
+                // rappel d'une autre.
+                juce::MessageManager::callAsync([this] { offerCrashRecovery(); });
                 return;
             }
+            // LE PROJET VIENT DE LA COPIE, LES MÉDIAS DE SON DOSSIER D'ORIGINE.
+            // La copie ne contient pas les médias -- c'est ce qui la rend
+            // écrivable toutes les trente secondes --, et leurs chemins sont
+            // restés relatifs au dossier d'origine.
             loadProjectBundleFromFolder(dossier, origine);
+            // ET ELLE EST EFFACÉE : elle a servi. La garder la ferait
+            // reproposer au prochain lancement, indéfiniment.
             vsm::app::AutosaveService::discard(dossier);
+            // Le projet récupéré n'est PAS enregistré : il vient d'une copie
+            // de travail. Le marquer sale fait qu'une nouvelle photo part tout
+            // de suite, et l'utilisateur garde la main sur le vrai
+            // enregistrement.
+            markProjectDirty();
+            // D507 : ET LA MARQUE LE DIT — l'astérisque, et la question à la
+            // fermeture. Aucune profondeur de pile ne vaut ce repère : il ne
+            // redevient « enregistré » qu'en enregistrant.
+            profondeurAuDernierEnregistrement_ = std::numeric_limits<size_t>::max();
+            rafraichirTitre();
         };
     if (const char* choix = std::getenv("VSM_RECUPERER"); choix != nullptr && *choix) {
         const bool recuperer = *choix != '0';
@@ -8024,29 +8054,7 @@ void MainComponent::offerCrashRecovery() {
         tr(u8"Session interrompue"),
         message, tr(u8"Récupérer"),
         tr(u8"Ignorer et effacer"), this,
-        juce::ModalCallbackFunction::create([this, dossier, origine](int resultat) {
-            if (resultat != 1) {
-                vsm::app::AutosaveService::discard(dossier);
-                // D318 : la session suivante est proposée dès que cette boîte est
-                // fermée -- par un message, pour ne pas ouvrir une modale dans le
-                // rappel d'une autre.
-                juce::MessageManager::callAsync([this] { offerCrashRecovery(); });
-                return;
-            }
-            // LE PROJET VIENT DE LA COPIE, LES MÉDIAS DE SON DOSSIER D'ORIGINE.
-            // La copie ne contient pas les médias -- c'est ce qui la rend
-            // écrivable toutes les trente secondes --, et leurs chemins sont
-            // restés relatifs au dossier d'origine.
-            loadProjectBundleFromFolder(dossier, origine);
-            // ET ELLE EST EFFACÉE : elle a servi. La garder la ferait
-            // reproposer au prochain lancement, indéfiniment.
-            vsm::app::AutosaveService::discard(dossier);
-            // Le projet récupéré n'est PAS enregistré : il vient d'une copie
-            // de travail. Le marquer sale fait qu'une nouvelle photo part tout
-            // de suite, et l'utilisateur garde la main sur le vrai
-            // enregistrement.
-            markProjectDirty();
-        }));
+        juce::ModalCallbackFunction::create([reponse](int resultat) { reponse(resultat); }));
 }
 
 void MainComponent::autosaveIfNeeded() {

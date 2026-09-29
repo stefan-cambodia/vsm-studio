@@ -36546,3 +36546,68 @@ qui n'annule rien. Reste nommé.
 
 La garde entre dans `./verifier.sh --bancs` (33 bancs).
 
+---
+
+### Phase D507 — ouvrir un projet ne remettait pas la marque « non enregistré » à zéro (29/09/2026)
+
+**D'OÙ ELLE VIENT — EN CHERCHANT LES CHANGEMENTS QUI ÉCHAPPENT À L'HISTORIQUE (D506).**
+La marque « non enregistré » — l'astérisque du titre, et la question que pose la
+fermeture — se DÉDUIT de l'historique (D174) : `profondeurAuDernierEnregistrement_`
+contre la profondeur de la pile. Ce repère n'est remis à jour qu'en trois endroits :
+enregistrer, nouveau projet, ouvrir un MIDI. **Ouvrir un dossier de projet** (menu,
+projets récents, reprise après panne) vide l'historique mais garde le repère du
+projet précédent. Lu dans le code, deux conséquences, et la seconde perd du travail :
+1. enregistrer A après un geste (repère 1), ouvrir B (pile 0) : B s'affiche
+   « modifié » alors qu'on n'y a rien fait ;
+2. puis UN geste sur B (pile 1 = repère 1) : B s'affiche « enregistré » — et
+   **fermer ne demande rien : le geste est perdu**.
+
+**L'INSTRUMENT** : un geste `relever-titre` (le titre de la fenêtre, et ce que
+l'application croit : « non enregistré : oui/non »).
+
+**LE CHOIX, TRANCHÉ ICI** : ouvrir un dossier de projet, c'est repartir d'un
+morceau tel qu'il est sur le disque — le repère prend la profondeur de la pile au
+moment où l'ouverture se termine, comme pour un MIDI et un projet neuf. La
+reprise après panne, qui marque ensuite le projet modifié (le récupéré n'est pas
+enregistré), passe par la même ouverture : elle est vérifiée à part.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/marque-enregistre.sh` (deux
+projets ; A ouvert, un geste, enregistré ; B ouvert par « Projets récents ») :
+1. **témoin** (binaire de D506 + `relever-titre`) : B ouvert → « non enregistré :
+   **oui** » (faux) ; un geste sur B → « **non** » (faux : perte à la fermeture) ;
+2. **après** : B ouvert → « non » ; un geste sur B → « oui » ; Ctrl+Z → « non » ;
+3. fumée 0 raté ; `./verifier.sh --bancs` vert ; préférences inchangées.
+
+**MESURÉ — TENU** (`tools/marque-enregistre.sh`, garde neuve) :
+
+| étape | témoin (D506 + `relever-titre`) | après |
+|---|---|---|
+| A : un geste, puis enregistré | « projet-a2 », non | « projet-a2 », non |
+| B ouvert par « Projets récents » | « projet-b **\*** », **oui** (faux) | « projet-b », non |
+| B : un geste | « projet-b », **non** — fermer ne demanderait rien | « projet-b **\*** », oui |
+| B : Ctrl+Z | « projet-b \* », oui (faux) | « projet-b », non |
+| reprise après panne (cas ajouté) | « projet-b », **non** | « projet-b **\*** », oui |
+
+Rouge sur le témoin (4 ratés), vert après.
+
+**LE CORRECTIF** : ouvrir un dossier de projet et importer un projet d'un autre DAW
+reposent le repère sur la pile, comme ouvrir un MIDI et créer un projet le
+faisaient ; un projet RÉCUPÉRÉ reçoit un repère qu'aucune pile n'atteint : il reste
+« non enregistré » jusqu'au prochain enregistrement.
+
+**ET UN DOUBLE CHEMIN TROUVÉ EN LE MESURANT** : la reprise après panne avait deux
+réponses à sa boîte — celle du banc (`VSM_RECUPERER`), dont le commentaire affirmait
+qu'elle passait « par le MÊME rappel que le clic », et celle du clic, qui seule
+marquait le projet modifié. Le premier correctif, posé dans la réponse du clic,
+laissait donc la garde rouge : c'est le piège de D202 (deux chemins pour un geste,
+dont un seul est mesuré). Le clic appelle désormais la réponse unique ; le refus
+d'une session prend le chemin du clic (la suivante proposée par un message).
+
+`./verifier.sh --bancs` : **34 bancs sur 34 verts** en 25 minutes (dont
+`autosauvegarde-vue.sh`, qui éprouve la reprise après panne par l'autre bout), et
+préférences de l'utilisateur identiques. La garde entre dans la liste.
+
+**Reste nommé, non fait** : deux changements du morceau passent encore HORS de
+l'historique, donc hors de la marque — les **notes du projet** (écrites à chaque
+frappe) et les réglages de mixage bougés par une **commande MIDI apprise**
+(coalescés, D10.2). Fermer après eux ne demande rien. Leur phase.

@@ -352,6 +352,14 @@ public:
         if (geste.startsWithIgnoreCase("menu:"))
             return runMenuEntryForCapture(geste.fromFirstOccurrenceOf(":", false, false).trim());
         if (geste.equalsIgnoreCase("lister-menus")) { listMenusForCapture(); return true; }
+        // D507 : le TITRE de la fenêtre et ce que l'application croit de l'état du
+        // projet — c'est lui qui décide si fermer demande (`demanderAvantDeQuitter`).
+        if (geste.equalsIgnoreCase("relever-titre")) {
+            const auto* fenetre = getTopLevelComponent();
+            std::fputs(("VSM_TITRE_ETAT : " + (fenetre != nullptr ? fenetre->getName() : juce::String("?"))
+                        + " (non enregistre : " + (projetNonEnregistre() ? "oui" : "non") + ")\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-historique")) {
             juce::String pas;
             for (const auto& libelle : history_.undoLabels())
