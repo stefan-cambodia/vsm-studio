@@ -3826,8 +3826,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // trémolo régulier ne se posait pas du tout.
             {
                 juce::PopupMenu formes;
-                const bool possible = !project_.tracks.empty()
-                                   && (arrangement_.hasSelection() || project_.loopEnabled);
+                // D512 : GRISÉE AVEC SA RAISON. Sur une piste sans courbe, l'entrée
+                // était active, ne traçait rien, et ne le disait qu'au journal.
+                const juce::String raisonForme =
+                    arrangement_.pourquoiPasDeFormeDAutomation(trackList_.selectedTrackIndex());
+                const bool possible = raisonForme.isEmpty();
                 formes.addItem(kMenuEditDrawAutomationRampUp,
                                 tr(u8"Rampe montante"), possible);
                 formes.addItem(kMenuEditDrawAutomationRampDown,
@@ -3838,7 +3841,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                 tr(u8"Triangle (une période par mesure)"), possible);
                 formes.addItem(kMenuEditDrawAutomationSquare,
                                 tr(u8"Carré (une période par mesure)"), possible);
-                menu.addSubMenu(tr(u8"Dessiner l'automation sur la sélection"),
+                menu.addSubMenu(possible ? tr(u8"Dessiner l'automation sur la sélection")
+                                         : tr(u8"Dessiner l'automation sur la sélection (%1)")
+                                               .replace("%1", raisonForme),
                                  formes, possible);
             }
             {
@@ -4786,8 +4791,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             {AutomationShape::Square, false},
         };
         const auto& choix = kFormes[menuItemID - kMenuEditDrawAutomationRampUp];
-        arrangement_.drawAutomationShapeOnSelection(trackList_.selectedTrackIndex(),
-                                                     choix.forme, choix.descendante);
+        const size_t piste = trackList_.selectedTrackIndex();
+        // D512 : UN REFUS SE DIT À L'ÉCRAN, comme « Découper aux transitoires ».
+        if (!arrangement_.drawAutomationShapeOnSelection(piste, choix.forme, choix.descendante))
+            if (const juce::String raison = arrangement_.pourquoiPasDeFormeDAutomation(piste); raison.isNotEmpty())
+                montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Dessiner une automation"), raison);
         return;
     }
     // D491 : LES MÊMES APPELS QUE LES TOUCHES de l'arrangement (`keyPressed`).

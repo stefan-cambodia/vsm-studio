@@ -200,20 +200,17 @@ bool ArrangementComponent::drawAutomationShapeOnSelection(size_t trackIndex,
     // inventer ici ferait deux sélections capables de diverger.
     if (project_ == nullptr) return false;
     const size_t piste = trackIndex;
-    if (piste >= project_->tracks.size()) return false;
-    auto* courbe = curveShownOn(piste);
-    if (courbe == nullptr) {
-        std::fputs("Dessiner une automation : cette piste n'a aucune courbe.\n", stderr);
+    if (const juce::String raison = pourquoiPasDeFormeDAutomation(piste); raison.isNotEmpty()) {
+        std::fputs((juce::String::fromUTF8(u8"Dessiner une automation : ") + raison
+                    + juce::String::fromUTF8(u8" \u2014 rien n'a \u00e9t\u00e9 trac\u00e9.\n")).toRawUTF8(),
+                   stderr);
         return false;
     }
+    auto* courbe = curveShownOn(piste);
+    if (courbe == nullptr) return false;
 
     vsm::midi::Tick de = 0, a = 0;
     if (!selectionTickRange(de, a)) {
-        if (!project_->loopEnabled || project_->loopEndTick <= project_->loopStartTick) {
-            std::fputs("Dessiner une automation : ni clip choisi ni boucle pos\u00e9e, "
-                       "rien n'a \u00e9t\u00e9 trac\u00e9.\n", stderr);
-            return false;
-        }
         de = project_->loopStartTick;
         a = project_->loopEndTick;
     }
@@ -251,6 +248,20 @@ bool ArrangementComponent::drawAutomationShapeOnSelection(size_t trackIndex,
     notifyChanged();
     repaint();
     return fait.added > 0;
+}
+
+juce::String ArrangementComponent::pourquoiPasDeFormeDAutomation(size_t trackIndex) const {
+    if (project_ == nullptr || trackIndex >= project_->tracks.size())
+        return vsm::app::ui::tr(u8"aucune piste choisie");
+    const auto& piste = project_->tracks[trackIndex];
+    if (piste.automation.empty())
+        return vsm::app::ui::tr(u8"la piste « %1 » n'a aucune courbe — en poser une dans l'onglet Automation")
+            .replace("%1", juce::String::fromUTF8(piste.name.c_str()));
+    vsm::midi::Tick de = 0, a = 0;
+    if (!selectionTickRange(de, a)
+        && (!project_->loopEnabled || project_->loopEndTick <= project_->loopStartTick))
+        return vsm::app::ui::tr(u8"ni clip choisi ni boucle posée");
+    return {};
 }
 
 AutomationCurve* ArrangementComponent::curveShownOn(size_t trackIndex) {

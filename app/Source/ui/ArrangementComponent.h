@@ -101,6 +101,11 @@ public:
     bool drawAutomationShapeOnSelection(size_t trackIndex,
                                         vsm::sequencer::AutomationShape forme, bool descendante);
 
+    /// D512 : POURQUOI `drawAutomationShapeOnSelection` NE TRACERAIT RIEN sur
+    /// cette piste (vide : elle tracerait). Le menu grise l'entrée AVEC cette
+    /// raison ; elle ne se disait qu'au journal, et l'entrée restait active.
+    juce::String pourquoiPasDeFormeDAutomation(size_t trackIndex) const;
+
     /// Choisit la courbe montrée sur une piste (index dans `Track::automation`).
     void showAutomationCurve(size_t trackIndex, int curveIndex);
 

@@ -36822,3 +36822,95 @@ son pas AVANT de constater qu'il n'y avait rien à retirer.
    **312**, clap **25**, panels **11**, toutes vertes. `./verifier.sh --bancs` :
    **35 bancs sur 35 verts** en 27 minutes, préférences de l'utilisateur
    identiques.
+
+---
+
+### Phase D512 — l'audit d'annulation ne jouait pas ce qui agit sur les clips choisis ni entre les locateurs (29/09/2026)
+
+**D'OÙ ELLE VIENT — CE QUE L'AUDIT DE D506 NE VOYAIT PAS.** Il ne juge que les
+entrées ACTIVES, dans UN état du morceau : les notes du piano roll choisies, aucun
+clip de l'arrangement choisi, aucun locateur posé. Tout ce qui agit sur la
+sélection de l'ARRANGEMENT ou entre les LOCATEURS y est grisé — répéter la
+sélection, dessiner l'automation par une forme, insérer ou supprimer du temps
+entre les locateurs, découper aux transitoires, transcrire — et n'a jamais été
+joué. C'est le défaut de D510 (les entrées du second bus) sous une autre forme :
+une garde verte sur ce qu'elle n'atteint pas.
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. L'audit passe par **deux états** : les notes choisies (celui de D506), puis
+   **tous les clips choisis** (« Tout sélectionner dans l'arrangement ») **et des
+   locateurs posés** (mesures 1,5 à 2,5 du projet d'essai, boucle éteinte). Le
+   second ne rejoue que les entrées que le premier laissait grisées : les autres
+   l'ont été, et deux fois 166 courses doubleraient la série pour rien. Ce qui
+   n'est pas rejoué est compté et dit.
+2. **La garde de la garde** : si le second état n'ouvre aucune entrée neuve, le
+   geste qui choisit n'a pas pris — ROUGE, et non « rien à juger ».
+3. **« Pas pour rien » devient ROUGE.** D506 le disait sans échouer, parce qu'il y
+   en avait huit ; D511 les a mis à zéro, et un Ctrl+Z qui n'annule rien (et qui
+   vide la branche « rétablir ») ne doit pas revenir en silence.
+
+**ATTENDU, écrit avant la mesure** :
+1. le second état ouvre **au moins douze** entrées neuves : les cinq « Répéter N
+   fois », les cinq formes d'automation, « Insérer du silence » et « Supprimer le
+   temps entre les locateurs » — sinon le geste qui choisit n'a pas pris ;
+2. leur verdict est publié tel quel. **Mon pronostic**, écrit pour ne pas être
+   tordu après : « Découper aux transitoires » et « Transcrire » refusent un clip
+   MIDI par une boîte — sans effet, sans pas ; les autres justes. Une suspecte ou
+   un pas pour rien se LIT avant d'être corrigé (D266 : le banc d'abord) ;
+3. la garde rejouée sur le binaire de D510 (`--seulement Arpéger`) est **ROUGE**
+   (quatre pas pour rien) : vue rouge avant d'être crue verte ;
+4. `./verifier.sh --bancs` vert, préférences inchangées.
+
+**MESURÉ** :
+1. **Le second état, joué la première fois** (binaire de D511) : **16 entrées
+   neuves**, 125 déjà jugées et non rejouées (41 des 166 du premier état n'y sont
+   pas actives). **9 justes, 0 pas pour rien, 0 suspecte, et 7 « sans effet »** —
+   que l'audit ne nommait pas : il ne donnait qu'un compte. Nommées (l'audit les
+   écrit désormais une à une), ce sont « Découper aux transitoires » et
+   « Transcrire », qui refusent un clip MIDI par une boîte — comme pronostiqué — et
+   **les cinq formes d'automation**, qui ne l'étaient pas : **actives** au menu sur
+   une piste SANS courbe, elles ne traçaient rien, et la raison n'allait qu'au
+   journal (« Dessiner une automation : cette piste n'a aucune courbe. »), jamais à
+   l'écran. L'attendu 1 (au moins douze neuves, dont les cinq formes) est tenu ; le
+   pronostic « les autres justes » est RÉFUTÉ pour les cinq formes, et c'est ce qui
+   a trouvé le défaut.
+2. **LE CORRECTIF, TRANCHÉ ICI** — la règle de D20.4, *une entrée grisée sans raison
+   est une entrée qu'on croit cassée*, à l'envers : une entrée ACTIVE qui ne fait
+   rien est pire. `ArrangementComponent::pourquoiPasDeFormeDAutomation` dit pourquoi
+   rien ne serait tracé (aucune piste choisie ; la piste n'a aucune courbe ; ni clip
+   choisi ni boucle posée) ; c'est la seule source de la raison, pour le menu et
+   pour le geste. Le sous-menu se grise AVEC elle, et un refus qui passerait quand
+   même s'affiche dans une boîte, comme « Découper ». **Témoin** (D511, clips
+   choisis, piste sans courbe) : les cinq entrées **actives**, **0** boîte.
+   **Après** : « Dessiner l'automation sur la sélection (la piste « une » n'a aucune
+   courbe — en poser une dans l'onglet Automation) », **grisée** avec ses cinq
+   formes ; en anglais « Draw automation over the selection (track “une” has no
+   curve — add one in the Automation tab) ».
+3. **Le second état donne désormais une courbe** à la piste « une » (`mix.volume`) :
+   **14 justes** dont les cinq formes, **2 sans effet** (Découper, Transcrire :
+   leurs boîtes), 0 pas pour rien, 0 suspecte.
+4. **La garde vue rouge** sur le binaire de D510 (`--seulement Arpéger`) : **4 pas
+   pour rien, code 1**.
+5. **La garde de la garde, vue rouge — et d'abord vue FAIBLE.** Sa première version
+   déclarait l'état raté s'il n'ouvrait « aucune entrée neuve » : sans le geste qui
+   choisit, l'état ouvre encore **trois** entrées neuves (les locateurs et la courbe
+   y suffisent), et elle serait passée. Elle exige désormais une entrée-preuve par
+   ingrédient de l'état (« Répéter… 2 fois » pour les clips choisis, « Insérer du
+   silence entre les locateurs » pour les locateurs, « Rampe montante » pour la
+   courbe) ; rejouée sans le geste qui choisit : **2 RATÉ** (Répéter, Rampe), **code
+   1**.
+
+6. **Photographié** (`VSM_MENU_PHOTO`, menu Édition, clips choisis) : l'entrée se
+   lit grisée, raison comprise, entre « Tout sélectionner dans l'arrangement » et
+   « Répéter la sélection » — le menu s'élargit à 1 352 px pour la tenir, et c'est
+   la lisibilité qui prime.
+7. Gardes des sources vertes (langue : 0 texte sans traduction, 0 doublon) ;
+   `./verifier.sh --bancs` : **35 bancs sur 35 verts** en 28 minutes, dont l'audit
+   à deux états — **0 suspecte, 0 non jugée, 0 pas pour rien, 115 justes**
+   (101 + 14) ; préférences de l'utilisateur identiques.
+
+**Reste nommé, non fait** : `tools/gestes-vivants.py` (D275 — *une entrée active
+change le projet ou DIT pourquoi*) n'est appelée par AUCUNE série de
+`verifier.sh` ; et l'audit par chemins range encore ses 65 « sans effet » du
+premier état sans juger s'ils laissent une trace. Les cinq formes d'automation
+étaient exactement cela. Sa phase.
