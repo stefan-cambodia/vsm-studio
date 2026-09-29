@@ -1195,6 +1195,8 @@ MainComponent::MainComponent()
         pianoRoll_.setSnapEnabled(reglages.getBoolValue("pianoRollAimant", true));
         pianoRoll_.setFollowPlayhead(reglages.getBoolValue("pianoRollSuitLaTete", true));
         pianoRoll_.setGhostNotesVisible(reglages.getBoolValue("pianoRollFantomes", true));
+        // D496 : et la vélocité des notes dessinées, bornée à 1..127.
+        pianoRollPanel_.barre().poserVelocite(reglages.getIntValue("pianoRollVelocite", 100));
         // LA BARRE MONTRE CE QUI VIENT D'ÊTRE RELU, tout de suite : la minuterie
         // (`PianoRollPanel::refresh`) le ferait au premier tour, APRÈS les relevés
         // du démarrage — mesuré : « aimant non (bouton oui) ».
@@ -1204,6 +1206,7 @@ MainComponent::MainComponent()
             r.setValue("pianoRollAimant", pianoRoll_.snapEnabled());
             r.setValue("pianoRollSuitLaTete", pianoRoll_.followPlayhead());
             r.setValue("pianoRollFantomes", pianoRoll_.ghostNotesVisible());
+            r.setValue("pianoRollVelocite", static_cast<int>(pianoRoll_.defaultVelocity()));   // D496
             r.saveIfNeeded();
         };
     }

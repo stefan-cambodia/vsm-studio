@@ -257,7 +257,16 @@ void PianoRollToolbar::direLesBascules() const {
                 + " (bouton " + oui(snapButton_.getToggleState()) + "), suit "
                 + oui(pianoRoll_.followPlayhead()) + " (bouton " + oui(followButton_.getToggleState())
                 + juce::String(u8"), fantômes ") + oui(pianoRoll_.ghostNotesVisible())
-                + " (bouton " + oui(ghostButton_.getToggleState()) + ")\n").toRawUTF8(), stderr);
+                + " (bouton " + oui(ghostButton_.getToggleState()) + ")"
+                + juce::String(u8", vélocité ") + juce::String(static_cast<int>(pianoRoll_.defaultVelocity()))   // D496
+                + " (curseur " + juce::String(juce::roundToInt(velocitySlider_.getValue())) + ")\n").toRawUTF8(), stderr);
+}
+
+void PianoRollToolbar::poserVelocite(int velocite) {
+    const int v = juce::jlimit(1, 127, velocite);
+    velocitySlider_.setValue(static_cast<double>(v), juce::dontSendNotification);
+    velocitySlider_.updateText();   // D460 : la case ne se réécrit qu'au changement
+    pianoRoll_.setDefaultVelocity(static_cast<uint8_t>(v));
 }
 
 std::string PianoRollToolbar::nomDeLaGrille() const {

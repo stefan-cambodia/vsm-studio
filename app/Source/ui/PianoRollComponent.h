@@ -79,7 +79,8 @@ public:
     /// Quelque chose a changé qui affecte l'état des boutons (annuler/rétablir,
     /// outil courant, sélection vide ou non).
     std::function<void()> onEditStateChanged;
-    /// D494 : L'AIMANT, LE SUIVI OU LES FANTÔMES ONT CHANGÉ (bouton ou touche) :
+    /// D494 : L'AIMANT, LE SUIVI OU LES FANTÔMES ONT CHANGÉ (bouton ou touche) —
+    /// et depuis D496 la vélocité des notes dessinées :
     /// l'application les écrit dans les préférences. Ils revenaient à leur défaut
     /// à chaque lancement. Appelé seulement quand la valeur change.
     std::function<void()> onBasculesChanged;
@@ -148,7 +149,12 @@ public:
     bool snapEnabled() const { return snapEnabled_; }
     void setSwing(float swing);
     float swing() const { return swing_; }
-    void setDefaultVelocity(uint8_t velocity) { defaultVelocity_ = velocity; }
+    /// D496 : retenue dans les préférences (`onBasculesChanged`, seulement au changement).
+    void setDefaultVelocity(uint8_t velocity) {
+        if (defaultVelocity_ == velocity) return;
+        defaultVelocity_ = velocity;
+        if (onBasculesChanged) onBasculesChanged();
+    }
     uint8_t defaultVelocity() const { return defaultVelocity_; }
     void setScale(vsm::sequencer::Scale scale);
     vsm::sequencer::Scale scale() const { return scale_; }

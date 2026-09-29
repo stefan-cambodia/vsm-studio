@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # LA GARDE DE D493 : LES QUATRE BASCULES DE L'ARRANGEMENT SURVIVENT AU RELANCEMENT.
 # ET DE D494 : L'AIMANT, LE SUIVI ET LES FANTÔMES DU PIANO ROLL AUSSI (paires C, D).
+# ET DE D496 : LA VÉLOCITÉ DES NOTES DESSINÉES (paire E).
 #
 # RÈGLE GARDÉE (29/09/2026) : l'aimantation, la grille à la mesure, le suivi de la
 # tête et les courbes d'automation de l'arrangement sont des PRÉFÉRENCES (la règle
@@ -75,7 +76,7 @@ paire() {   # $1 nom ; $2 état attendu après les gestes ; $3... gestes
 # D494 : LE PIANO ROLL. Son relevé (`VSM_PIANOROLL_ZONES=1`) dit l'état ET ce que
 # le bouton montre (« aimant=non/non » : piano roll / bouton) — un état relu que la
 # barre ne montrerait pas serait retenu à moitié.
-DEFAUT_PR="aimant=oui/oui suit=oui/oui fantomes=oui/oui"
+DEFAUT_PR="aimant=oui/oui suit=oui/oui fantomes=oui/oui velocite=100/100"
 lancement_pr() {   # $1 = HOME ; $2... = variables du geste
     n=$((n + 1))
     env HOME="$1" VSM_TAILLE="1600x1000" VSM_DELAI=800 VSM_VUE="sans-rapport" \
@@ -85,13 +86,13 @@ lancement_pr() {   # $1 = HOME ; $2... = variables du geste
         "$brouillon/journal-$n.txt" | sed 's/^/        journal : /' >&2
     python3 - "$brouillon/journal-$n.txt" <<'PY2'
 import re, sys
-m = re.findall(r"VSM_PIANOROLL : aimant (\w+) \(bouton (\w+)\), suit (\w+) \(bouton (\w+)\), fantômes (\w+) \(bouton (\w+)\)",
+m = re.findall(r"VSM_PIANOROLL : aimant (\w+) \(bouton (\w+)\), suit (\w+) \(bouton (\w+)\), fantômes (\w+) \(bouton (\w+)\), vélocité (\d+) \(curseur (\d+)\)",
                open(sys.argv[1], encoding="utf-8", errors="replace").read())
 if m:
-    a, ab, s, sb, f, fb = m[-1]
-    print(f"aimant={a}/{ab} suit={s}/{sb} fantomes={f}/{fb}")
+    a, ab, s, sb, f, fb, v, vc = m[-1]
+    print(f"aimant={a}/{ab} suit={s}/{sb} fantomes={f}/{fb} velocite={v}/{vc}")
 else:
-    print("aimant=? suit=? fantomes=?")
+    print("aimant=? suit=? fantomes=? velocite=?")
 PY2
 }
 paire_pr() {   # $1 nom ; $2 état attendu après les gestes ; $3... gestes
@@ -122,8 +123,10 @@ else
     rates=$((rates + 1))
 fi
 echo "=== D494 : l'aimant, le suivi et les fantômes du piano roll retrouvés, et montrés par leur bouton ==="
-paire_pr C "aimant=non/non suit=non/non fantomes=non/non" VSM_GESTE_PISTE="cliquer:Aimant;cliquer:Suivre;cliquer:Fantômes"
-paire_pr D "aimant=non/non suit=oui/oui fantomes=oui/oui" VSM_TOUCHE="pianoroll:G"
+paire_pr C "aimant=non/non suit=non/non fantomes=non/non velocite=100/100" VSM_GESTE_PISTE="cliquer:Aimant;cliquer:Suivre;cliquer:Fantômes"
+paire_pr D "aimant=non/non suit=oui/oui fantomes=oui/oui velocite=100/100" VSM_TOUCHE="pianoroll:G"
+# D496 : LA VÉLOCITÉ DES NOTES DESSINÉES, par la saisie du curseur (le chemin de `valeur:`).
+paire_pr E "aimant=oui/oui suit=oui/oui fantomes=oui/oui velocite=64/64" VSM_GESTE_PISTE="valeur:pianoroll.velocite=64"
 neuf="$(lancement_pr "$(mktemp -d "$brouillon/home.XXXX")")"
 if [ "$neuf" = "$DEFAUT_PR" ]; then
     printf '  OK   HOME neuf, sans geste : « %s »\n' "$neuf"

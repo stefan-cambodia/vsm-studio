@@ -35909,3 +35909,33 @@ veulent rien dire).
 retenue nulle part — une habitude, donc les préférences, à mesurer dans sa phase ;
 et la grille FINE de l'arrangement, qui est celle du piano roll, suit désormais le
 morceau avec elle — non mesuré séparément.
+
+---
+
+### Phase D496 — « Vél. 100 » : la vélocité des notes dessinées revenait à 100 à chaque lancement (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D495.** Le curseur « Vél. » de la barre du
+piano roll règle la vélocité des notes que le crayon pose. Il repart de 100 à
+chaque lancement, quoi qu'on y ait mis.
+
+**LE CHOIX, TRANCHÉ ICI : LES PRÉFÉRENCES** (la règle de D363) — c'est une façon de
+dessiner, pas une propriété du morceau : aucune valeur n'est juste pour un morceau
+et fausse pour un autre. Une clé, `pianoRollVelocite`, écrite quand la valeur
+change (curseur, saisie, double-clic), relue au démarrage ; le curseur MONTRE la
+valeur relue.
+
+**ATTENDU, écrit avant la mesure** — `tools/bascules-retenues.sh`, paire E ajoutée
+(`valeur:pianoroll.velocite=64`, puis relancement sous le même HOME), le relevé
+`VSM_PIANOROLL` disant aussi « vélocité N (curseur N) » :
+1. **témoin** (binaire de D495 augmenté du seul relevé) : 64/64 après le geste,
+   100/100 au relancement ;
+2. **après** : 64/64 au relancement, une clé de plus ; HOME neuf : 100/100 ; paires
+   A à D toujours tenues ;
+3. fumée 0 raté ; préférences de l'utilisateur inchangées.
+
+**MESURÉ — TENU** (`tools/bascules-retenues.sh`, paire E) : témoin (binaire de D495
+augmenté du relevé) « vélocité 64 (curseur 64) » après le geste, **100/100** au
+relancement, aucune clé ; après, **64/64** au relancement, la clé écrite (4 clés
+`pianoRoll…` au lieu de 3) ; HOME neuf 100/100 ; paires A à D tenues. Garde de
+langue 0, `grille-gamme-projet.sh` 0 raté, `pianoroll-zones.sh` 7 relevés 0 raté,
+fumée 0 raté, préférences de l'utilisateur identiques.

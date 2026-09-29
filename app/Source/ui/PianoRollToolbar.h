@@ -52,6 +52,9 @@ public:
                             std::vector<std::pair<std::string, std::string>>& ecartes);
     /// D495 : le NOM de la grille tenue, tel que le projet l'écrit (« 1/16 », « auto »).
     std::string nomDeLaGrille() const;
+    /// D496 : la vélocité des notes dessinées relue des préférences — le curseur la
+    /// MONTRE, le piano roll la tient.
+    void poserVelocite(int velocite);
 
 private:
     /// D169 : CE QUE LA BARRE MONTRE, pour ne pas la redessiner quand rien n'a
