@@ -1065,20 +1065,30 @@ void PianoRollComponent::stepInputNote(uint8_t note, uint8_t velocity) {
     project_->ensureNoteIdAbove(n.id);
     track->notes.push_back(n);
     selectedNoteIds_ = {n.id};
-    setPlayheadTick(debut + pas);
+    avancerLaSaisie(debut + pas);
     notifyEdited();
 }
 
 void PianoRollComponent::stepInputRest() {
     if (!stepInput_) return;
-    setPlayheadTick(snapTick(playheadTick_) + std::max<vsm::midi::Tick>(1, gridTicks()));
+    avancerLaSaisie(snapTick(playheadTick_) + std::max<vsm::midi::Tick>(1, gridTicks()));
     repaint();
 }
 
 void PianoRollComponent::stepInputBack() {
     if (!stepInput_) return;
-    setPlayheadTick(std::max<vsm::midi::Tick>(0, snapTick(playheadTick_) - std::max<vsm::midi::Tick>(1, gridTicks())));
+    avancerLaSaisie(std::max<vsm::midi::Tick>(0, snapTick(playheadTick_) - std::max<vsm::midi::Tick>(1, gridTicks())));
     repaint();
+}
+
+void PianoRollComponent::avancerLaSaisie(vsm::midi::Tick tick) {
+    // D500 : LA POSITION D'INSERTION EST LA TÊTE DU TRANSPORT (D13.5), et c'est
+    // elle qu'on déplace — par le chemin du clic sur la règle. Déplacer la seule
+    // tête DESSINÉE ne tenait qu'un tour de minuterie : l'application y repousse
+    // la position du transport trente fois par seconde, et des notes tapées à une
+    // demi-seconde d'intervalle tombaient toutes au même tick.
+    if (onPlayheadRequested) onPlayheadRequested(tick);
+    setPlayheadTick(tick);
 }
 
 // ---------------------------------------------------------------------------

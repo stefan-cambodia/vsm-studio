@@ -36145,3 +36145,72 @@ préférences de l'utilisateur identiques.
 qui lit le caractère d'une touche. Relu dans le dépôt, il n'en reste plus
 qu'un : les replis sans table de l'arrangement (S, G, F, A, + = -), désormais
 tous derrière `raccourcis_ == nullptr`.
+
+---
+
+### Phase D500 — la saisie pas à pas écrivait toutes ses notes au même endroit (29/09/2026)
+
+**D'OÙ ELLE VIENT — EN CHERCHANT UNE AUTRE TOUCHE PRISE PAR LA VUE** (la famille de
+D492), une panne plus grave est apparue. D13.5 promet : *« chaque note reçue
+s'écrit à la position, de la longueur de la grille, puis la tête avance d'un
+pas ; la tête de lecture EST la position d'insertion »*. Le piano roll avance
+bien SA tête (`stepInputNote` → `setPlayheadTick`) — mais la minuterie de
+l'application (30 Hz, `timerCallback`) repousse à chaque tour la position du
+TRANSPORT dans le piano roll, et le transport, lui, n'a pas bougé. Entre deux
+notes tapées à une demi-seconde d'intervalle, la tête revient au départ.
+
+**MESURÉ AVANT D'ÉCRIRE L'ATTENDU** (c'est ce relevé qui a ouvert la phase) —
+clavier d'ordinateur, « Pas à pas » armé, A S D tapés à 500 ms d'intervalle :
+**(0, do) (0, ré) (0, mi)** — les trois notes au tick 0, empilées. Les mêmes
+touches jouées d'un bloc au démarrage donnaient 0, 120, 240 : aucun tour de
+minuterie ne tombait entre elles, et c'est ainsi que le banc de D13.5 l'a vue
+juste.
+
+**L'INSTRUMENT** : un geste `touche:<description>`, `VSM_TOUCHE` jouable en différé
+(`VSM_GESTE_APRES`) — au rythme d'un musicien plutôt que d'un bloc.
+
+**LE CHOIX, TRANCHÉ ICI** : c'est la phrase de D13.5 qui a raison — la position
+d'insertion EST la tête de lecture, celle du transport, qui se voit dans toutes
+les vues et se déplace au clic sur la règle. La saisie pas à pas déplace donc le
+TRANSPORT (`onPlayheadRequested`, le chemin du clic sur la règle), et non la seule
+tête dessinée du piano roll.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/pas-a-pas.sh` (1/16 =
+120 ticks ; A, S, Entrée, D, Retour arrière, F, tapés à 500 ms d'intervalle,
+application au clavier) :
+1. **témoin** (binaire de D499 + geste `touche:`) : les quatre notes au tick 0 ;
+2. **après** : A à 0, S à 120, D à 360 (Entrée a laissé un silence à 240), F à
+   360 (Retour arrière est revenu d'un pas) ; la tête du transport (`VSM_TETE`,
+   relevée en différé) à 480 ;
+3. d'un bloc (le banc de D13.5), le même résultat ;
+4. fumée 0 raté ; `clavier-emprunte.sh`, `portes-du-transport.sh` 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU** (`tools/pas-a-pas.sh`, garde neuve ; A S Entrée D Retour-arrière
+F tapés à 500 ms d'intervalle) :
+
+| | notes (tick:note) | tête du transport |
+|---|---|---|
+| témoin (D499 + `touche:`, `relever-tete`) | **0:60 0:62 0:64 0:65** — tout au départ | 0 |
+| après | **0:60 120:62 360:64 360:65** | **480** |
+
+Rouge sur le témoin, vert après : Entrée laisse le silence à 240, Retour arrière
+revient d'un pas, et la tête du TRANSPORT est à la position d'insertion, comme
+D13.5 le promettait.
+
+**L'ATTENDU 3 ÉTAIT FAUX SUR LE BANC, ET C'EST DIT PLUTÔT QUE CORRIGÉ EN SILENCE.**
+« D'un bloc, le même résultat » : la course d'un bloc rend **0, 120, 240, 360**,
+avant comme après (vérifié sur les deux binaires). Les notes du clavier sont
+POSTÉES au fil d'interface et écrites après le bloc, quand Entrée et Retour
+arrière agissent tout de suite : elle mesure l'ordre du banc, pas ce qu'un
+musicien obtient — et c'est précisément ce qui avait fait voir D13.5 juste. La
+garde ne garde que la course au rythme ; son en-tête dit pourquoi.
+
+Garde de langue 0 ; `clavier-emprunte.sh`, `portes-du-transport.sh`,
+`quantifier.sh` 0 raté ; fumée 0 raté ; préférences de l'utilisateur identiques.
+
+**Reste nommé, non fait** : piano roll au clavier, en saisie pas à pas, **Retour
+arrière** est pris par le piano roll (« Supprimer », dans sa table) avant
+d'atteindre l'application : il EFFACE la note qu'on vient d'entrer (elle est
+choisie) au lieu de reculer (relevé par `focus:pianoroll:backspace` — « prise par
+piano roll »). La famille de D492 ; sa propre phase.

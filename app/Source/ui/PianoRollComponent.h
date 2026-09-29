@@ -413,6 +413,8 @@ private:
     bool fold_ = false;
     std::vector<uint8_t> rangees_;
     void refreshFoldRows();
+    /// D500 : déplace la position de la saisie pas à pas — la tête du TRANSPORT.
+    void avancerLaSaisie(vsm::midi::Tick tick);
     bool folded() const { return fold_ && !rangees_.empty(); }
     int rowCount() const { return folded() ? static_cast<int>(rangees_.size()) : 128; }
     int rowOfNote(int note) const;

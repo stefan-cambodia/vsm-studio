@@ -344,6 +344,8 @@ public:
         // — le projet vide d'avant la reprise — et l'on en concluait sur le zoom.
         // Passer par `VSM_GESTE_APRES=<ms>:relever-arrangement`.
         if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
+        // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
+        if (geste.equalsIgnoreCase("relever-tete")) { releverTete(); return true; }
         if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); dire("muet"); return true; }
         // D110 : armer, comme le bouton R -- pour les boîtes du départ d'une prise.
         if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); dire("armer"); return true; }
@@ -507,6 +509,12 @@ public:
             return true;
         }
         if (geste.equalsIgnoreCase("nouveau-projet")) { newProject(); return true; }
+        // D500 : touche:<description> -- `VSM_TOUCHE` comme GESTE, donc jouable
+        // plus tard (`VSM_GESTE_APRES`) : au démarrage, toutes les touches partent
+        // d'un bloc, sans un tour de minuterie entre elles, là où un musicien tape
+        // à des secondes d'intervalle.
+        if (geste.startsWithIgnoreCase("touche:"))
+            return runKeyForCapture(geste.fromFirstOccurrenceOf(":", false, false).trim());
         if (geste.startsWithIgnoreCase("exporter-midi:")) {
             const juce::File cible = juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim());
