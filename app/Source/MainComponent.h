@@ -279,7 +279,23 @@ public:
         if (prefixe == "pianoroll") destinataire = &pianoRoll_;
         else if (prefixe == "arrangement") destinataire = &arrangement_;
         if (destinataire != nullptr) texte = texte.fromFirstOccurrenceOf(":", false, false).trim();
-        const juce::KeyPress touche = juce::KeyPress::createFromDescription(texte);
+        // D499 : « x11: » -- la touche comme la couche X11 de JUCE la livre, AVEC son
+        // caractère (égal au code pour une touche imprimable sans Ctrl ni Alt,
+        // `juce_XWindowSystem_linux.cpp` : `keyCode = unicodeChar`). Fabriquée depuis
+        // sa description, elle porte un caractère NUL, et les chemins qui lisent le
+        // caractère n'étaient atteints qu'au vrai clavier.
+        const bool commeX11 = texte.startsWithIgnoreCase("x11:");
+        if (commeX11) texte = texte.substring(4).trim();
+        juce::KeyPress touche = juce::KeyPress::createFromDescription(texte);
+        if (commeX11 && touche.isValid()) {
+            const auto mods = touche.getModifiers();
+            const int code = touche.getKeyCode();
+            juce::juce_wchar caractere = 0;
+            if (code >= 0x20 && code <= 0x7e && !mods.isCtrlDown() && !mods.isAltDown() && !mods.isCommandDown())
+                caractere = mods.isShiftDown() ? static_cast<juce::juce_wchar>(code)
+                                               : juce::CharacterFunctions::toLowerCase(static_cast<juce::juce_wchar>(code));
+            touche = juce::KeyPress(caractere != 0 ? static_cast<int>(caractere) : code, mods, caractere);
+        }
         if (!touche.isValid() || (parLaChaine && destinataire == nullptr)) {
             std::fputs((juce::String::fromUTF8("VSM_TOUCHE : \xc2\xab ") + texte
                         + juce::String::fromUTF8(" \xc2\xbb illisible (voir juce::KeyPress ; focus: veut pianoroll ou arrangement)\n")).toRawUTF8(),

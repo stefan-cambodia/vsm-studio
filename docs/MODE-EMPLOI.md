@@ -1264,6 +1264,7 @@ Le vrai focus ne se prend pas au banc (`grabKeyboardFocus` exige une fenêtre
 affichée, ce qu'elle n'est pas sous un écran verrouillé). Le « ; » s'écrit `#3b`,
 `VSM_TOUCHE` séparant ses touches par « ; ». Pendant une touche de banc, le clavier
 d'ordinateur écrit ce qu'il joue : `VSM_CLAVIER : note 67`, `VSM_CLAVIER : octave -1`.
+`VSM_TOUCHE="arrangement:x11:="` (D499) fabrique la touche comme X11 la livre, AVEC son caractère (égal au code pour une touche imprimable sans Ctrl ni Alt) : sans lui, les chemins qui lisent le caractère d'une touche — les replis sans table de l'arrangement — n'étaient jamais atteints au banc.
 `VSM_TRACE_COUTS=1` écrit sur la sortie d'erreur le temps de calcul de chaque
 piste, une fois par seconde : une capture qui ne montre pas la piste la plus
 chère en ambre laisse deux explications ouvertes — la règle est fausse, ou la

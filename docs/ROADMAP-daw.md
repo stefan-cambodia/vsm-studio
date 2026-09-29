@@ -35900,6 +35900,13 @@ de l'attendu écrit : le correctif gardait la tonique, comme prévu, et le cas
 sortait rouge contre un attendu qu'il ne jouait pas. Le cas suit désormais
 l'attendu écrit, et « type seul inconnu » est un cas à part.
 
+**Et un choix écrit ici après coup (D498), pour qu'on ne le prenne pas pour un
+oubli** : changer la grille, le swing ou la gamme ne marque PAS le projet
+« non enregistré ». La marque se déduit de l'historique (D174) et ces réglages,
+comme le zoom et la piste choisie du même bloc `view` (D363, D369), ne font pas
+de pas d'annulation : ce sont des réglages de VUE, qui voyagent avec le prochain
+enregistrement ou la prochaine autosauvegarde.
+
 **Le choix qu'il a fallu trancher en l'écrivant** : un TYPE de gamme inconnu garde
 la tonique et le surlignage (c'est le type qui est faux, pas la gamme) ; une
 TONIQUE hors bornes écarte la gamme entière (sans tonique, type et surlignage ne
@@ -36077,3 +36084,64 @@ réponse que D379 donnait (« un rack plus large… que l'utilisateur peut
 agrandir ») : la disposition réglable et retenue fait son office.
 À cette largeur, **les 1 073 sérigraphies sont à 12 pt**, aucune coupée (ligne 4
 du tableau). Fumée non rejouée : aucun code n'a changé.
+
+---
+
+### Phase D499 — « = » et « - » zoomaient encore l'arrangement après qu'on avait réassigné le zoom (29/09/2026)
+
+**D'OÙ ELLE VIENT — EN CHERCHANT D'AUTRES TOUCHES ÉCRITES EN DUR** (la famille de
+D491). Au bout de `ArrangementComponent::keyPressed`, un repli zoome sur « + »,
+« = » et « - », lus par `getTextCharacter()`. Son commentaire dit : *« ce repli-ci
+ne sert qu'en [l'absence de table] »* — mais le code ne le vérifie pas, à la
+différence des replis de D359 et D360 juste au-dessus (`raccourcis_ == nullptr`).
+Tant que le zoom garde ses touches, la table les prend avant et le repli ne se
+voit pas ; dès qu'on les réassigne (Ctrl+=, par exemple), « = » et « - » zooment
+ENCORE l'arrangement, sans rien dans la table ni dans la fenêtre des raccourcis
+pour le dire — et pas le piano roll, qui n'a pas ce repli. Une touche hors de la
+table est une touche que l'utilisateur ne peut pas changer (D360).
+
+**POURQUOI AUCUN BANC NE L'A VU** : une touche fabriquée depuis sa description
+porte un caractère NUL (D360, D492) — le repli, qui lit le caractère, n'était
+jamais atteint au banc, et seulement au vrai clavier.
+
+**L'INSTRUMENT, POSÉ DANS LE TÉMOIN** : `VSM_TOUCHE=<vue>:x11:<touche>` fabrique la
+touche comme la couche X11 de JUCE la livre — le caractère égal au code pour une
+touche imprimable sans Ctrl ni Alt (`juce_XWindowSystem_linux.cpp` : `keyCode =
+unicodeChar`), en minuscule sans Maj. La table la reconnaît de même (elle compare
+des descriptions) ; seuls les chemins qui lisent le CARACTÈRE voient la différence.
+
+**LE CHOIX, TRANCHÉ ICI** : le repli ne vaut plus que sans table, comme ses deux
+voisins et comme son commentaire le disait.
+
+**ATTENDU, écrit avant la mesure** (relevé `VSM_ARRANGEMENT` : la part du morceau
+que la vue montre ; HOME neuf dont les préférences réassignent le zoom à
+« ctrl + = » et « ctrl + - ») :
+1. **témoin** (binaire de D498 + instrument) : `arrangement:x11:=` → la fenêtre
+   CHANGE (le repli zoome) ; `arrangement:x11:-` aussi ; `pianoroll:x11:=` → rien ;
+2. **après** : `arrangement:x11:=` et `:-` → la fenêtre ne bouge pas (« AUCUNE
+   commande ») ; `arrangement:x11:ctrl + =` zoome (la touche réassignée) ; sans
+   réassignation, `arrangement:x11:=` zoome toujours (par la table) ;
+3. fumée 0 raté ; `portes-de-l-arrangement.sh`, `clavier-emprunte.sh` 0 raté ;
+   préférences de l'utilisateur inchangées.
+
+**MESURÉ — TENU** (`tools/zoom-reassigne.sh`, garde neuve ; « soit N % » de
+`VSM_ARRANGEMENT`, témoin 104,2 %) :
+
+| cas | témoin (D498 + instrument) | après |
+|---|---|---|
+| réassigné, `arrangement:x11:=` | **83,3** (le repli zoome) | **104,2** (« AUCUNE commande de ce clavier ») |
+| réassigné, `arrangement:x11:-` | **130,2** | **104,2** |
+| réassigné, `arrangement:x11:ctrl + =` | 83,3 | 83,3 — la touche réassignée zoome |
+| sans réassignation, `arrangement:x11:=` (contrôle) | 83,3 | 83,3 — par la table |
+| réassigné, `pianoroll:x11:=` (contrôle) | immobile | immobile — le piano roll n'avait pas ce repli |
+
+Rouge sur le témoin (2 ratés), vert après. Les préférences d'essai, écrites dans
+le HOME du banc, sont bien relues : Ctrl+= y zoome, et aucune ligne
+« Raccourcis illisibles ». Garde de langue 0 ; `portes-de-l-arrangement.sh`,
+`clavier-emprunte.sh`, `cadrage-ouverture.sh` 0 raté ; fumée 0 raté ;
+préférences de l'utilisateur identiques.
+
+**L'INSTRUMENT RESTE** : `x11:` est la seule façon, au banc, d'atteindre un chemin
+qui lit le caractère d'une touche. Relu dans le dépôt, il n'en reste plus
+qu'un : les replis sans table de l'arrangement (S, G, F, A, + = -), désormais
+tous derrière `raccourcis_ == nullptr`.

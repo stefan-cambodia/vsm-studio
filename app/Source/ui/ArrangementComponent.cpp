@@ -1906,13 +1906,19 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
     // D359 : les deux zooms passent par la table ci-dessus ; ce repli-ci ne sert
     // qu'en son absence, et garde la touche « + » que la table ne porte qu'en
     // second (sa touche principale est « = »).
-    if (key.getTextCharacter() == '+' || key.getTextCharacter() == '=') {
-        zoomHorizontally(1.25f);
-        return true;
-    }
-    if (key.getTextCharacter() == '-') {
-        zoomHorizontally(0.8f);
-        return true;
+    // D499 : ET IL NE LE VÉRIFIAIT PAS — à la différence de ses deux voisins.
+    // Le zoom réassigné (Ctrl+=), « = » et « - » zoomaient ENCORE l'arrangement,
+    // hors de la table et de la fenêtre des raccourcis ; le banc ne le voyait
+    // pas, ses touches portant un caractère nul (voir `x11:` dans le banc).
+    if (raccourcis_ == nullptr) {
+        if (key.getTextCharacter() == '+' || key.getTextCharacter() == '=') {
+            zoomHorizontally(1.25f);
+            return true;
+        }
+        if (key.getTextCharacter() == '-') {
+            zoomHorizontally(0.8f);
+            return true;
+        }
     }
     return false;
 }
