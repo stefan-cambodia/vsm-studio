@@ -56,7 +56,7 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
 
     playButton_.onClick = [this] { transport_.play(); };
     stopButton_.onClick = [this] {
-        transport_.stop();
+        transport_.stopHere();   // D505 : Stop laisse la tête où elle est (D14.5)
         // L'application doit l'apprendre : c'est l'arrêt qui clôt une prise.
         if (onStopPressed) onStopPressed();
     };
@@ -84,6 +84,7 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
             if (v == 1.0) speedBox_.setSelectedId(id, juce::dontSendNotification);
             ++id;
         }
+        speedBox_.setName("transport.vitesse");   // le nom par lequel le banc la désigne (liste:, D495)
         speedBox_.onChange = [this, vitesses] {
             const int index = speedBox_.getSelectedItemIndex();
             const int nombre = static_cast<int>(sizeof(vitesses) / sizeof(vitesses[0]));

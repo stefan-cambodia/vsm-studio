@@ -36412,3 +36412,76 @@ cette phase ferme : un banc qu'on ne rejoue pas ment en silence.
 
 **Ce qui reste à la main, et c'est dit** : `reconstruction-annuler.sh` (une vraie
 séparation demucs, réservée aux changements de la chaîne).
+
+---
+
+### Phase D505 — Stop ramenait toujours la tête au début, préférence décochée ou non (29/09/2026)
+
+**D'OÙ ELLE VIENT — LA LECTURE SE MESURE AU BANC**, contrairement à ce que D483
+écrivait (« le transport n'avance pas ») : relevée en différé, la tête avance de
+958 ticks par seconde à 120 BPM (et de 482 à x0,5 — la vitesse de lecture est
+juste). Ce qui a permis de mesurer l'ARRÊT, jamais mesuré :
+
+**MESURÉ AVANT D'ÉCRIRE L'ATTENDU** — lecture partie de la mesure 3 (tick 3 840),
+tête à 5 200 après 1,5 s, **Espace → tick 0**. D14.5 a posé : *« Stop laisse la
+tête où elle est »*, et la préférence « À l'arrêt, revenir au point de départ » la
+ramène au départ ; le mode d'emploi : *« décochée, la tête reste où elle s'est
+arrêtée »*. C'est faux, et depuis toujours : `Transport::stop()` rembobine à 0
+depuis **D8.3 (30/08)**, cinq jours AVANT D14.5, qui a écrit sa prémisse sans la
+mesurer. Décochée, la préférence donne 0 ; cochée, le départ — elle ne choisit
+qu'entre deux retours en arrière. Et la fin d'un **scrub** à l'arrêt passe par le
+même `stop()` : la tête qu'on vient de traîner retombe à 0.
+
+**LE CHOIX, TRANCHÉ ICI.** Le moteur garde `stop()` (retour à 0, un test l'exige)
+et gagne `stopHere()`, l'arrêt SANS rembobiner. Les gestes d'arrêt de
+l'UTILISATEUR l'emploient — la barre d'espace, le bouton Stop, la commande MIDI
+apprise (lecture/arrêt, arrêt), la fin d'un scrub ; le retour au départ reste
+l'affaire de la préférence (D14.5, inchangée). Gardent le retour à 0 : la **fin du
+morceau** (sans quoi la tête resterait au bout, et Lecture s'arrêterait aussitôt),
+et le changement de projet.
+
+**ATTENDU** — garde neuve `tools/arret-tete.sh` (projet de 32 mesures, lecture
+depuis la mesure 3) :
+1. **témoin** (binaire de D504) : Espace → 0 ; bouton Stop → 0 ; scrub relâché
+   au tick 5 760 → 0 ;
+2. **après** : Espace et Stop → la tête reste APRÈS le départ (> 3 840), là où
+   elle s'est arrêtée ; scrub relâché → **5 760** ;
+3. contrôles, inchangés : préférence cochée → **3 840** (le départ) ; fin du
+   morceau → 0 ;
+4. test du moteur neuf (`stopHere` : arrêté, position gardée) ; fumée 0 raté ;
+   `./verifier.sh --bancs` vert ; préférences inchangées. Non mesurée, et dite :
+   la commande MIDI apprise (aucun verbe de banc n'en joue une).
+
+**MESURÉ — TENU** (`tools/arret-tete.sh`, garde neuve ; lecture depuis 3 840) :
+
+| cas | témoin (D504) | après |
+|---|---|---|
+| Espace, préférence décochée | **0** | **5 177** (là où elle s'est arrêtée) |
+| bouton Stop, préférence décochée | **0** | **5 010** |
+| scrub relâché au tick 5 760 | **0** | **5 760** |
+| Espace, préférence COCHÉE (contrôle) | **3 862**, puis **3 873** au second passage | **3 840** |
+| scrub, préférence cochée (cas ajouté en écrivant le correctif) | 0 | **5 760** |
+| fin du morceau (contrôle) | 0 | 0 |
+
+Rouge sur le témoin (5 ratés), vert après.
+
+**LE CONTRÔLE A TROUVÉ UN SECOND DÉFAUT, ET C'EST DIT** : l'attendu 3 le tenait
+pour acquis (« préférence cochée → 3 840, inchangé ») ; le témoin rend 3 862, puis
+3 873. Le départ était relevé par la minuterie au premier tour APRÈS le démarrage :
+le « retour au départ » glissait d'un tour (~20 à 30 ms) à chaque arrêt, et un
+cycle Lecture/Stop répété avançait d'autant à chaque fois. `play()` relève
+désormais le départ lui-même (`playStartSeconds`), et la préférence ramène à
+3 840 au tick près.
+
+**Et un cas ajouté en écrivant** : un scrub lance la lecture ; cochée, la
+préférence ramenait la tête au début du geste. Un scrub n'est pas une lecture :
+elle ne s'y applique plus (5 760).
+
+Test du moteur neuf (`stop_here_keeps_the_position_and_play_remembers_where_it_started`) :
+`audio` **1 307**. `arret-tete.sh` entre dans `./verifier.sh --bancs` (32 bancs).
+
+Vérification complète après le correctif : construction entière ; `core` 363,
+`interchange` 312, `audio` 1 307, `panels` 11, `clap` 25, `vst3` 19 ; gardes des
+sources vertes (sauf le compteur de l'INDEX, à jour à ce commit) ;
+**`./verifier.sh --bancs` : 32 bancs sur 32 verts en 19 minutes**, préférences de
+l'utilisateur identiques.

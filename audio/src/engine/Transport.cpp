@@ -42,6 +42,7 @@ void Transport::play() {
     // journaux des courses qui jouent pour de bon.
     if (std::getenv("VSM_TRACE_TRANSPORT") != nullptr)
         std::fprintf(stderr, "VSM_TRANSPORT : play\n");
+    departSecondes_.store(graph_.currentSeconds(), std::memory_order_release);   // D505
     state_.store(TransportState::Playing, std::memory_order_release);
     graph_.setPlaying(true);
 }
@@ -55,6 +56,13 @@ void Transport::stop() {
     state_.store(TransportState::Stopped, std::memory_order_release);
     graph_.setPlaying(false);
     graph_.seekSeconds(0.0);
+}
+
+void Transport::stopHere() {
+    // D505 : l'arrêt de l'UTILISATEUR. `stop()` rembobinait à 0 à chaque geste,
+    // et la préférence « revenir au point de départ » décochée n'y changeait rien.
+    state_.store(TransportState::Stopped, std::memory_order_release);
+    graph_.setPlaying(false);
 }
 
 void Transport::seekToTick(Tick tick) {

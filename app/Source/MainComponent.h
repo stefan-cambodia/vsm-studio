@@ -1672,6 +1672,8 @@ private:
     /// C'est ce qui permet de le remettre dans l'état où on l'a trouvé.
     bool scrubEnCours_ = false;
     bool scrubJouaitDeja_ = false;
+    /// D505 : la lecture en cours a été lancée par un scrub -- le retour au départ ne s'y applique pas.
+    bool lectureDuScrub_ = false;
     /// D33.1 : une piste neuve PAR FICHIER. Ce qui échoue est nommé et
     /// n'arrête pas le reste.
     void importAudioFiles(const juce::Array<juce::File>& fichiers);

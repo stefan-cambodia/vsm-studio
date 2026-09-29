@@ -59,7 +59,16 @@ public:
 
     void play();
     void pause();
+    /// Arrête ET rembobine à 0 : la fin du morceau, un changement de projet.
     void stop();
+    /// D505 : ARRÊTE SANS REMBOBINER — le geste « Stop » de l'utilisateur (D14.5 :
+    /// « Stop laisse la tête où elle est » ; le retour au départ est une
+    /// préférence de l'application, qui le fait elle-même).
+    void stopHere();
+    /// D505 : où la DERNIÈRE lecture est partie, en secondes, relevé dans
+    /// `play()` même — et non au tour de minuterie suivant, qui arrivait jusqu'à
+    /// un tour trop tard : le « retour au départ » glissait d'autant à chaque arrêt.
+    double playStartSeconds() const { return departSecondes_.load(std::memory_order_acquire); }
 
     void seekToTick(vsm::midi::Tick tick);
     void seekSeconds(double seconds);
@@ -95,6 +104,7 @@ private:
     vsm::sequencer::Project project_;
     std::atomic<TransportState> state_{TransportState::Stopped};
     std::atomic<double> endSeconds_{0.0};
+    std::atomic<double> departSecondes_{0.0};   ///< D505
 
     std::thread fallbackThread_;
     std::atomic<bool> fallbackRunning_{false};

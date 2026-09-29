@@ -45,7 +45,7 @@ GARDES_SEULES=0
 [ "${1:-}" = "--gardes" ] && GARDES_SEULES=1
 
 # D504 : LES BANCS QUI LANCENT L'APPLICATION. Ils se jouaient « à part » (D378),
-# c'est-à-dire à la main, quatre ou cinq à la fois : rien ne rejouait les trente et un,
+# c'est-à-dire à la main, quatre ou cinq à la fois : rien ne rejouait les trente et un (trente-deux depuis D505),
 # et un script que rien ne rejoue n'est pas une garde (D150). Liste FERMÉE, comme
 # celle des gardes : un banc neuf n'y entre qu'écrit ici.
 # HORS LISTE, ET POURQUOI : `reconstruction-annuler.sh` lance une vraie séparation
@@ -70,7 +70,7 @@ if [ "${1:-}" = "--bancs" ]; then
     [ -f "$prefs" ] && cp "$prefs" "$journaux/preferences-avant.settings"
     debut_serie=$(date +%s)
     passes=0
-    for banc in automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
+    for banc in arret-tete.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
                 barre-transport.sh bascules-retenues.sh cadrage-ouverture.sh clavier-emprunte.sh \
                 fader-console.sh grille-gamme-projet.sh liste-ajouter.sh liste-editer.sh \
                 metronome-projet.sh miniature-clips.sh onglets-du-dock.sh ouvrir-midi.sh \

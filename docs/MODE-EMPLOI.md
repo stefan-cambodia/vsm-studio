@@ -1049,7 +1049,7 @@ que l'application lit déjà.
 
 ## 7. Les réglages
 
-Les *Préférences* (menu Fichier) tiennent aussi le comportement du transport : **À l'arrêt, revenir au point de départ** ramène la tête là où la lecture était partie quand vous appuyez sur Stop — la préférence de Cubase, le défaut de Live ; décochée, la tête reste où elle s'est arrêtée.
+Les *Préférences* (menu Fichier) tiennent aussi le comportement du transport : **À l'arrêt, revenir au point de départ** ramène la tête là où la lecture était partie quand vous appuyez sur Stop — la préférence de Cubase, le défaut de Live ; décochée, la tête reste où elle s'est arrêtée — ce que cette phrase promettait depuis D14.5 et qui n'est vrai que depuis D505 (Stop rembobinait à 0). La fin du morceau, elle, ramène au début, et le relâchement d'un scrub laisse la tête où on l'a lâchée.
 
 Tout ce qui se règle est au même endroit. Un réglage qu'on ne retrouve qu'en se souvenant du menu où il se cache est un réglage qu'on ne change pas.
 

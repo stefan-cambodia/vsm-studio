@@ -464,7 +464,9 @@ MainComponent::MainComponent()
     pianoRollPanel_.onScrub = [this](vsm::midi::Tick tick, double vitesse) {
         if (vitesse <= 0.0) {
             audioEngine_.processGraph().setPlaybackSpeed(1.0);
-            if (!scrubJouaitDeja_) transport_.stop();
+            // D505 : LA TÊTE RESTE OÙ L'ON A RELÂCHÉ. `stop()` la rembobinait à 0 ; et
+            // un scrub n'est pas une lecture : le retour au départ ne s'y applique pas.
+            if (!scrubJouaitDeja_) { lectureDuScrub_ = true; transport_.stopHere(); }
             scrubEnCours_ = false;
             return;
         }
@@ -3245,7 +3247,11 @@ void MainComponent::timerCallback() {
     // endroit, pas quatre.
     {
         const bool lecture = transport_.state() == TransportState::Playing;
-        if (lecture && !etaitEnLecture_) departLecture_ = transport_.currentTick();
+        // D505 : LE DÉPART EST CELUI QUE `play()` A RELEVÉ, pas la position au tour de
+        // minuterie suivant — jusqu'à un tour plus loin (22 ticks mesurés à 120 BPM) :
+        // le retour au départ glissait d'autant à chaque arrêt.
+        if (lecture && !etaitEnLecture_)
+            departLecture_ = project_.secondsToTicks(transport_.playStartSeconds());
         // D16.8 : L'ARRÊT CLÔT LES PASSES EN LATCH. Le front descendant est
         // détecté ICI, et pas dans les six endroits qui appellent
         // `transport_.stop()` : un seul de ces six oublié laisserait une passe
@@ -3254,7 +3260,8 @@ void MainComponent::timerCallback() {
         // retour au départ, pour que la fin de la passe soit là où la lecture
         // s'est arrêtée et non là où elle était partie.
         if (!lecture && etaitEnLecture_) mixer_.closeLatchedPasses();
-        if (!lecture && etaitEnLecture_ && retourAuDepart_) seekAllViews(departLecture_);
+        if (!lecture && etaitEnLecture_ && retourAuDepart_ && !lectureDuScrub_) seekAllViews(departLecture_);
+        if (!lecture) lectureDuScrub_ = false;
         etaitEnLecture_ = lecture;
     }
 
@@ -7896,11 +7903,11 @@ void MainComponent::applyLearnedControls() {
                 break;
             case Kind::TransportPlay:
                 if (appui) {
-                    if (transport_.state() == TransportState::Playing) transport_.stop();
+                    if (transport_.state() == TransportState::Playing) transport_.stopHere();   // D505
                     else { direOrigineDuPlay("raccourci/MIDI TransportPlay"); transport_.play(); }
                 }
                 break;
-            case Kind::TransportStop:  if (appui) transport_.stop(); break;
+            case Kind::TransportStop:  if (appui) transport_.stopHere(); break;   // D505
             case Kind::TransportRecord:
                 if (appui) {
                     if (recordPhase_ == RecordPhase::Off) startRecording();
@@ -9121,7 +9128,7 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         // alors que c'est le seul raccourci que tout musicien essaie en
         // premier.
         case Id::TransportPlayStop:
-            if (transport_.state() == TransportState::Playing) transport_.stop();
+            if (transport_.state() == TransportState::Playing) transport_.stopHere();   // D505 : la tête reste
             else { direOrigineDuPlay(origine); transport_.play(); }
             return true;
         // « R » comme référence : la bascule A/B, depuis n'importe quelle

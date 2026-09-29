@@ -192,6 +192,31 @@ VSM_TEST(pause_keeps_the_position_and_stop_gives_it_back) {
     VSM_ASSERT_NEAR(transport.currentSeconds(), 0.0, 1e-12);
 }
 
+VSM_TEST(stop_here_keeps_the_position_and_play_remembers_where_it_started) {
+    // D505 : L'ARRÊT DE L'UTILISATEUR NE REMBOBINE PAS (D14.5), et le point de
+    // départ est relevé dans `play()` même -- relevé au tour de minuterie suivant,
+    // le « retour au départ » glissait d'un tour à chaque arrêt.
+    const Project projet = projetAvecNotes();
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 512);
+    graphe.setTrackInstrument(0, "vsm.testtone");
+    graphe.setProject(projet);
+    Transport transport(graphe);
+    transport.setProject(projet);
+    transport.seekSeconds(0.25);
+    transport.play();
+    VSM_ASSERT_NEAR(transport.playStartSeconds(), 0.25, 1e-9);
+    rendre(graphe, 20);
+    const double avant = transport.currentSeconds();
+    VSM_ASSERT(avant > 0.25);
+    transport.stopHere();
+    VSM_ASSERT(transport.state() == TransportState::Stopped);
+    VSM_ASSERT_NEAR(transport.currentSeconds(), avant, 1e-12);
+    rendre(graphe, 20);   // arrêté, il n'avance plus
+    VSM_ASSERT_NEAR(transport.currentSeconds(), avant, 1e-12);
+    VSM_ASSERT_NEAR(transport.playStartSeconds(), 0.25, 1e-9);   // le départ ne bouge pas à l'arrêt
+}
+
 VSM_TEST(without_a_sound_card_the_same_clock_keeps_running) {
     // SANS CARTE SON, LE TEMPS DOIT AVANCER QUAND MÊME : l'application reste
     // utilisable pour éditer, faire défiler et exporter. Et il doit avancer par
