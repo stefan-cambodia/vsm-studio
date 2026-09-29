@@ -386,6 +386,13 @@ public:
                         + " : " + pas + "\n").toRawUTF8(), stderr);
             return true;
         }
+        // D514 : la LIGNE D'ÉTAT du piano roll, relevée plus tard. C'est là qu'un
+        // geste sans effet dit « rien à changer » (D511) : l'audit des menus y lit
+        // la trace d'une entrée qui ne change pas le morceau.
+        if (geste.equalsIgnoreCase("relever-etat")) {
+            std::fputs(("VSM_ETAT_PIANOROLL : " + pianoRollPanel_.texteDEtat() + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D506 : les défilements des deux vues, relevés plus tard — le suivi de la
         // tête en lecture ne se voit qu'une fois la lecture engagée.
         if (geste.equalsIgnoreCase("relever-defilement")) {

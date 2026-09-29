@@ -907,6 +907,13 @@ void TrackListComponent::rafraichirDessinDeLaSelection() {
     // changer la sélection passent par ici, et lier l'annonce au dessin est ce
     // qui garantit qu'aucune ne l'oublie -- la leçon de D36, appliquée d'avance.
     if (onSelectionChanged) onSelectionChanged();
+    // D514 : LE COMPTE, AU JOURNAL, QUAND IL CHANGE -- le pendant de `VSM_SELECTION`
+    // des notes (D357). « Choisir toutes les pistes » surlignait trois rangées et
+    // ne laissait rien qu'un banc puisse lire : l'audit des menus la disait muette.
+    if (static_cast<int>(selection_.size()) != dernierComptePistesDit_) {
+        dernierComptePistesDit_ = static_cast<int>(selection_.size());
+        std::fputs(("VSM_PISTES_CHOISIES : " + juce::String(dernierComptePistesDit_) + "\n").toRawUTF8(), stderr);
+    }
 }
 
 void TrackListComponent::setSelectedTracks(std::set<size_t> tracks, size_t active) {

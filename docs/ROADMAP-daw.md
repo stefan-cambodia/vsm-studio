@@ -36997,3 +36997,58 @@ l'audit ne répond pas ; elle n'a jamais été jouée jusqu'au bout.
    genre de D512, lu avant d'être corrigé (D266) ;
 4. les verdicts de l'audit inchangés ailleurs : 0 suspecte, 0 pas pour rien,
    **115 justes au moins** (116 avec « Reporter ») ; `./verifier.sh --bancs` vert.
+
+**L'INSTRUMENT, ÉTALONNÉ AVANT DE JUGER** — deux défauts du banc, trouvés en
+rejouant quatre témoins identiques, et corrigés avant toute mesure publiée :
+1. les **préférences** changeaient à CHAQUE course : `projetsRecents` y inscrit le
+   chemin d'enregistrement du banc, différent à chaque fois. Écarté de la
+   comparaison — après quoi quatre témoins sont identiques, et « 1 mesure » laisse
+   bien sa trace (`recordCountInBars`) ;
+2. la **ligne d'état** relevée APRÈS l'enregistrement du banc disait « Prêt » une
+   course sur deux, « 8 note(s) sélectionnée(s)… » l'autre — l'enregistrement la
+   réécrit. Relevée AVANT : « Prêt » quatre fois sur quatre, et « Arpéger : rien à
+   changer » tient trois courses sur trois.
+
+**MESURÉ** :
+1. **Première course** (traces : vue, boîte, ligne d'état, préférence, cochée) :
+   « Reporter la piste en audio (définitif) », répondue, est **juste** — **116
+   justes** ; 66 sans effet, dont **25 MUETTES**. **Toutes** dans les familles du
+   pronostic : la sélection (4), les outils (5), le transport (10), l'écoute (3), le
+   presse-papiers (1), le choix des pistes (2). Les traces prévues sont là : les sept
+   gestes de D511 disent « … : rien à changer » sur la ligne d'état ; « 4/4 »,
+   « Aucun groupe », « Tous les canaux », la sortie MIDI « aucune » et « Puissance
+   constante » sont **déjà cochées** ; « Créer un clip », « Extraire le groove »,
+   « Découper », « Transcrire » ouvrent leur **boîte**.
+2. **Mais l'instrument était aveugle, pas l'application** : ces muettes AGISSENT, et
+   leur effet se voit ailleurs que dans ce qu'il relevait. Deux traces de plus,
+   relevées après le geste : la **tête** (`relever-tete`) et la **barre de menus**
+   (`lister-menus` : un outil se coche, « Coller » s'active après « Copier », le mono
+   se coche, « Répéter la sélection » s'active quand les clips sont choisis). Stables
+   sur trois témoins. Seconde course : **12 muettes**.
+3. Deux traces encore, qui sont des lignes de journal de l'application : le compte
+   de **notes choisies** (`VSM_SELECTION`, D357) et le compte de **pistes
+   choisies** — celui-ci n'existait pas : « Choisir toutes les pistes » surlignait
+   trois rangées sans rien écrire. `TrackListComponent` l'écrit désormais quand il
+   change (`VSM_PISTES_CHOISIES`), au seul endroit qui redessine la sélection.
+   **Témoin** (seconde course, binaire sans la ligne) : MUETTE ; **après** :
+   « pistes choisies → 3 ».
+4. **Les onze qui restent**, lues une à une : toutes sont AU BORD de l'état d'essai
+   — la tête à 0 (retour au début, temps et mesure précédents, tête au début de la
+   sélection, fin de boucle à la tête), aucun repère (marqueur précédent et
+   suivant), la première piste choisie (étendre vers le haut), toutes les notes
+   déjà choisies (tout sélectionner, même hauteur) — et « Couper toutes les notes
+   (panic) », qui n'a rien à couper. Écrites dans `MUETTES_VOULUES`, chacune avec le
+   fait qui l'explique ; **aucune n'est un défaut**. C'est le pronostic 3, tenu :
+   pas de muette hors des familles prévues.
+5. **Final** : **0 suspecte, 0 non jugée, 0 pas pour rien, 0 muette, 116 justes**,
+   55 sans effet avec trace, 11 muettes voulues.
+6. **Vue rouge** : la liste des muettes voulues vidée le temps de l'essai,
+   `--seulement "Marqueur suivant"` → **MUETTE, code 1** ; pleine → code 0.
+7. Gardes des sources vertes ; `./verifier.sh --bancs` : **36 bancs sur 36 verts**
+   en 29 minutes, l'audit compris (568 s : 0 muette, 116 justes, 55 avec trace, 11
+   voulues) ; préférences de l'utilisateur identiques.
+
+**Reste nommé, non fait** : la **ligne d'état du piano roll** ne se refait qu'aux
+gestes de SOURIS (`updateStatusText` n'a pas d'autre appelant) : après Ctrl+A, les
+huit notes choisies, elle dit « Prêt » — quatre témoins sur quatre. Le compte de
+la sélection va au journal depuis D357, pas à l'écran. Sa phase.

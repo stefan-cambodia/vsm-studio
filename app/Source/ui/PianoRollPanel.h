@@ -268,6 +268,8 @@ public:
         return ruler_.actionDeMenuPourCapture(libelle);
     }
     juce::StringArray libellesDuMenuDeRegle() const { return ruler_.libellesDuMenuPourCapture(); }
+    /// D514 : ce que la ligne d'état dit à cet instant (« Arpéger : rien à changer »).
+    juce::String texteDEtat() const { return statusLabel_.getText(); }
 
     void paint(juce::Graphics& g) override { g.fillAll(vsm::ui::Palette::background); }
 

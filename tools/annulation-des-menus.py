@@ -57,6 +57,29 @@ RACINE = Path(__file__).resolve().parents[1]
 BIN = RACINE / "build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
 MENUS = ("Édition", "Piste", "Transport", "Enregistrement", "Mixage")
 
+# D514 : LES ENTRÉES LÉGITIMEMENT MUETTES — sans effet sur le morceau et sans trace
+# relevable —, chacune avec sa raison. Vide avant la mesure ; rempli entrée par
+# entrée après l'avoir lue, jamais par famille.
+MUETTES_VOULUES: dict[str, str] = {
+    # AU BORD : l'état d'essai a la tête à 0, la première piste choisie, toutes les
+    # notes choisies et aucun repère. Une commande de navigation qui n'a nulle part où
+    # aller laisse les choses où elles devaient aller — et le dit en ne bougeant pas.
+    "Édition > Sélection > Tout sélectionner": "toutes les notes sont déjà choisies (le Ctrl+A de l'état d'essai)",
+    "Édition > Sélection > Toutes les notes de même hauteur": "toutes les notes sont déjà choisies : leurs "
+                                                               "hauteurs rendent la même sélection",
+    "Piste > Étendre le choix vers le haut": "la piste choisie est la première : rien au-dessus",
+    "Transport > Retour au début": "la tête est déjà au début (tick 0)",
+    "Transport > Marqueur précédent": "le projet d'essai n'a aucun repère, et la tête est à 0",
+    "Transport > Marqueur suivant": "le projet d'essai n'a aucun repère : rien à atteindre",
+    "Transport > Tête au début de la sélection": "la sélection commence au tick 0, où la tête est déjà",
+    "Transport > Tête : temps précédent": "la tête est au début : rien avant",
+    "Transport > Tête : mesure précédente": "la tête est au début : rien avant",
+    "Transport > Fin de boucle à la tête": "la tête est à 0 : une fin de boucle à 0 ne délimite rien, et le geste "
+                                          "ne pose rien (ni pas d'annulation)",
+    "Enregistrement > Couper toutes les notes (panic)": "une commande d'urgence du moteur : aucune note ne sonne, "
+                                                        "il n'y a rien à couper, et rien ne s'en écrit",
+}
+
 # LES CHANGEMENTS LÉGITIMEMENT SANS PAS, avec leur raison. Une exception tacite
 # serait la panne muette que cette garde traque.
 EXCEPTIONS = {
@@ -104,17 +127,70 @@ def engendrer(dossier: Path, locateurs: tuple[int, int] = (0, 0), courbe: bool =
         "tracks": [t("une"), t("deux"), t("trois")]}, indent=1))
 
 
-def lancer(binaire: Path, brouillon: Path, nom: str, projet: Path, gestes: str, delai: int) -> str:
+def lancer(binaire: Path, brouillon: Path, nom: str, projet: Path, gestes: str, delai: int) -> tuple[str, Path]:
     maison = Path(tempfile.mkdtemp(dir=brouillon, prefix="home."))
+    # D514 : LES QUESTIONS SONT RÉPONDUES « OUI » (`VSM_CONFIRMER`, D235). « Reporter la
+    # piste en audio (définitif) » demandait « Reporter | Annuler » ; sans réponse, elle
+    # passait pour « sans effet » et n'avait jamais été jouée jusqu'au bout.
     env = dict(os.environ, HOME=str(maison), VSM_TAILLE="1280x800", VSM_PROJET=str(projet),
                VSM_VUE="sans-rapport", VSM_DELAI=str(delai), VSM_GESTE_APRES=gestes,
-               VSM_CAPTURE=str(brouillon / f"{nom}.png"))
+               VSM_CAPTURE=str(brouillon / f"{nom}.png"), VSM_CONFIRMER="oui")
     try:
         r = subprocess.run([str(binaire)], env=env, capture_output=True, text=True,
                            errors="replace", timeout=60)
-        return r.stdout + r.stderr
+        return r.stdout + r.stderr, maison
     except subprocess.TimeoutExpired as e:
-        return (e.stdout or "") + (e.stderr or "") if isinstance(e.stdout, str) else "TIMEOUT"
+        return ((e.stdout or "") + (e.stderr or "") if isinstance(e.stdout, str) else "TIMEOUT"), maison
+
+
+def vue(dossier: Path) -> str:
+    """Le bloc `view` écrit — ce que l'empreinte du morceau écarte."""
+    fichier = dossier / "project.json"
+    if not fichier.exists():
+        return "absent"
+    return json.dumps(json.loads(fichier.read_text(encoding="utf-8")).get("view"), sort_keys=True)
+
+
+def preferences(maison: Path) -> str:
+    """Les préférences écrites, SANS `projetsRecents` : l'enregistrement du banc y
+    inscrit un chemin différent à chaque course, et toute course aurait « changé »."""
+    fichier = maison / "VintageSynthMidiStudio" / "VintageSynthMidiStudio.settings"
+    if not fichier.exists():
+        return ""
+    return "\n".join(x for x in fichier.read_text(encoding="utf-8", errors="replace").splitlines()
+                     if 'name="projetsRecents"' not in x)
+
+
+def boites(journal: str) -> set[str]:
+    return {x for x in journal.splitlines() if x.startswith("VSM_BOITE : ")}
+
+
+def selection(journal: str) -> str | None:
+    """Le compte de notes choisies, écrit par le piano roll quand il CHANGE (D357)."""
+    m = re.findall(r"VSM_SELECTION : (\d+)", journal)
+    return m[-1] if m else None
+
+
+def pistes_choisies(journal: str) -> str | None:
+    """Le compte de pistes choisies, écrit par la liste quand il CHANGE (D514)."""
+    m = re.findall(r"VSM_PISTES_CHOISIES : (\d+)", journal)
+    return m[-1] if m else None
+
+
+def tete(journal: str) -> str | None:
+    m = re.findall(r"VSM_TETE : tick (-?\d+)", journal)
+    return m[-1] if m else None
+
+
+def menus_montres(journal: str) -> list[str]:
+    """La barre relevée APRÈS le geste : libellés, coches, entrées grisées. Un outil
+    choisi se coche, une sélection active « Couper » — l'état se voit au menu."""
+    return [x for x in journal.splitlines() if x.startswith("VSM_MENU_LISTE : ")]
+
+
+def ligne_d_etat(journal: str) -> str | None:
+    m = [x.split(" : ", 1)[1] for x in journal.splitlines() if x.startswith("VSM_ETAT_PIANOROLL : ")]
+    return m[-1] if m else None
 
 
 def empreinte(dossier: Path) -> str:
@@ -186,8 +262,9 @@ ETATS = (
 )
 
 
-def relever_entrees(binaire: Path, brouillon: Path, projet: Path, choisir: str, nom: str) -> list[tuple[str, str]]:
-    liste = lancer(binaire, brouillon, f"liste-{nom}", projet, f"{choisir}700:lister-menus", 1200)
+def relever_entrees(binaire: Path, brouillon: Path, projet: Path, choisir: str,
+                    nom: str) -> list[tuple[str, str, bool]]:
+    liste, _ = lancer(binaire, brouillon, f"liste-{nom}", projet, f"{choisir}700:lister-menus", 1200)
     lignes = [x.split("VSM_MENU_LISTE : ", 1)[1] for x in liste.splitlines() if x.startswith("VSM_MENU_LISTE : ")]
     chemins = [x.split(" [")[0] for x in lignes]
     parents = {c.rsplit(" > ", 1)[0] for c in chemins}
@@ -205,12 +282,12 @@ def relever_entrees(binaire: Path, brouillon: Path, projet: Path, choisir: str, 
         # D510 : L'ENTRÉE EST JOUÉE PAR SON CHEMIN (`menu:Mixage > Delay > Gate`) : les
         # sous-menus de chaque bus répètent les mêmes libellés, et le premier venu
         # était toujours celui du premier bus. Plus aucune entrée n'est hors d'atteinte.
-        retenues.append((c, texte))
+        retenues.append((c, texte, "[cochée]" in ligne))
     return retenues
 
 
 def auditer(binaire: Path, brouillon: Path, seulement: str | None, seul_etat: int | None = None) -> int:
-    total = {"suspects": 0, "incompletes": 0, "pour_rien": 0, "justes": 0}
+    total = {"suspects": 0, "incompletes": 0, "pour_rien": 0, "justes": 0, "muettes": 0, "traces": 0, "voulues": 0}
     deja: set[str] = set()
     juges = 0
     for k, (nom, choisir, locateurs, courbe, preuves) in enumerate(ETATS):
@@ -218,8 +295,8 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None, seul_etat: in
         engendrer(projet, locateurs, courbe)
         retenues = relever_entrees(binaire, brouillon, projet, choisir, f"{k}")
         if seulement:
-            retenues = [(c, t) for c, t in retenues if t == seulement or t.startswith(seulement)]
-        neuves = [(c, t) for c, t in retenues if c not in deja]
+            retenues = [r for r in retenues if r[1] == seulement or r[1].startswith(seulement)]
+        neuves = [r for r in retenues if r[0] not in deja]
         rejouees = len(retenues) - len(neuves)
         print(f"=== D506 — état « {nom} » : les entrées de menu qui modifient le morceau empilent un pas "
               f"({len(neuves)} entrées" + (f" ; {rejouees} déjà jugées dans l'état précédent, non rejouées" if k else "")
@@ -229,13 +306,13 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None, seul_etat: in
         # tairait. « Aucune entrée neuve » ne suffisait pas : sans le geste, les
         # locateurs et la courbe en ouvrent encore trois (vu rouge, D512). Chaque
         # ingrédient de l'état a son entrée-preuve.
-        absentes = [c for c in preuves if c not in {x for x, _ in retenues}]
+        absentes = [c for c in preuves if c not in {r[0] for r in retenues}]
         if absentes and not seulement:
             for c in absentes:
                 print(f"  RATÉ l'état « {nom} » n'a pas pris : « {c} » n'est pas active")
             total["incompletes"] += len(absentes)
             continue
-        deja |= {c for c, _ in retenues}
+        deja |= {r[0] for r in retenues}
         if seul_etat is not None and seul_etat != k + 1:
             print(f"    (état {k + 1} relevé, NON JUGÉ : --etat {seul_etat})")
             continue
@@ -243,24 +320,30 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None, seul_etat: in
         for cle, n in juger(binaire, brouillon, projet, choisir, neuves, f"{k}").items():
             total[cle] += n
     print(f"--- {total['suspects']} entrée(s) suspecte(s), {total['incompletes']} non jugée(s), "
-          f"{total['pour_rien']} pas pour rien, {total['justes']} juste(s), {juges} état(s) jugé(s) sur {len(ETATS)}")
-    return 1 if total["suspects"] or total["incompletes"] or total["pour_rien"] else 0
+          f"{total['pour_rien']} pas pour rien, {total['muettes']} muette(s), {total['justes']} juste(s), "
+          f"{total['traces']} sans effet avec trace, {total['voulues']} muette(s) voulue(s), "
+          f"{juges} état(s) jugé(s) sur {len(ETATS)}")
+    return 1 if total["suspects"] or total["incompletes"] or total["pour_rien"] or total["muettes"] else 0
 
 
 def juger(binaire: Path, brouillon: Path, projet: Path, choisir: str,
-          retenues: list[tuple[str, str]], etat: str) -> dict[str, int]:
+          retenues: list[tuple[str, str, bool]], etat: str) -> dict[str, int]:
     # D510 : DE LA MARGE, ET UNE MESURE ABSENTE N'EST PAS UN ZÉRO. Dans la course
     # complète, quatre entrées (des accords) ont rendu « non jouée » ou « suspecte » :
     # rejouées seules, toutes justes. Sous la charge, un geste différé peut tomber
     # après la photo qui clôt la course ; le relevé d'historique manquait, et
     # l'ancien code le comptait « aucun pas » — un faux suspect fabriqué par le banc.
-    def course(nom: str, gestes: str) -> tuple[str, int, str]:
+    def course(nom: str, gestes: str) -> tuple[str, int, str, str, str]:
         sortie = brouillon / f"ecrit-{etat}-{nom}"
-        j = lancer(binaire, brouillon, f"{etat}-{nom}", projet,
-                   f"{choisir}{gestes}1300:enregistrer:{sortie};1700:relever-historique", 2800)
-        return empreinte(sortie), pas(j), j
+        j, maison = lancer(binaire, brouillon, f"{etat}-{nom}", projet,
+                           # la ligne d'état AVANT l'enregistrement du banc, qui la réécrit
+                           # (« 8 note(s) sélectionnée(s)… », une course sur deux)
+                           f"{choisir}{gestes}1180:relever-tete;1200:lister-menus;1250:relever-etat;"
+                           f"1300:enregistrer:{sortie};"
+                           "1700:relever-historique", 2800)
+        return empreinte(sortie), pas(j), j, vue(sortie), preferences(maison)
 
-    e0, p0, _ = course("temoin", "")
+    e0, p0, j0, v0, pr0 = course("temoin", "")
     if e0 == "absent" or p0 < 0:
         print(f"  RATÉ témoin illisible (empreinte {e0}, pas {p0})")
         return {"incompletes": 1}
@@ -269,9 +352,11 @@ def juger(binaire: Path, brouillon: Path, projet: Path, choisir: str,
     incompletes = []
     pour_rien = []
     neutres = []
-    for i, (chemin, texte) in enumerate(retenues):
+    muettes = 0
+    voulues = 0
+    for i, (chemin, texte, cochee) in enumerate(retenues):
         for essai in (1, 2):   # une mesure incomplète est rejouée UNE fois
-            e, p, j = course(f"e{i}-{essai}", f"700:menu:{chemin};")
+            e, p, j, v, pr = course(f"e{i}-{essai}", f"700:menu:{chemin};")
             joue = "exécutée" in j and f"« {chemin}" in j
             if joue and p >= 0 and e != "absent":
                 break
@@ -299,13 +384,45 @@ def juger(binaire: Path, brouillon: Path, projet: Path, choisir: str,
             pour_rien.append(chemin)
             print(f"  PAS POUR RIEN {chemin} — un pas SANS changement du morceau")
         else:
+            # D514 : SANS EFFET SUR LE MORCEAU, MAIS PAS SANS TRACE. D512 a trouvé dans
+            # cette case cinq entrées actives, inertes et muettes. Chaque trace est
+            # relevée et nommée ; une entrée qui n'en laisse aucune est MUETTE.
+            traces = []
+            if v != v0:
+                traces.append("vue")
+            neuves = sorted(boites(j) - boites(j0))
+            if neuves:
+                traces.append("boîte « " + neuves[0].split(" : ", 1)[1][:70] + " »")
+            ld = ligne_d_etat(j)
+            if ld is not None and ld != ligne_d_etat(j0):
+                traces.append(f"ligne d'état « {ld[:60]} »")
+            if pr != pr0:
+                traces.append("préférence")
+            if selection(j) != selection(j0):
+                traces.append(f"sélection {selection(j0)} → {selection(j)} note(s)")
+            if pistes_choisies(j) != pistes_choisies(j0):
+                traces.append(f"pistes choisies {pistes_choisies(j0)} → {pistes_choisies(j)}")
+            if tete(j) is not None and tete(j) != tete(j0):
+                traces.append(f"tête {tete(j0)} → {tete(j)}")
+            m, m0 = menus_montres(j), menus_montres(j0)
+            if m and m != m0:
+                autre = sorted(set(m) - set(m0))
+                traces.append("menu « " + (autre[0].split(" : ", 1)[1][-60:] if autre else "ordre") + " »")
+            if cochee:
+                traces.append("déjà cochée")
             neutres.append(chemin)
-    print(f"    {len(neutres)} entrée(s) sans effet sur le morceau (vue, écoute, sélection) : non jugées")
-    # D512 : NOMMÉES. Un compte seul cachait que les cinq formes d'automation, jouées
-    # pour la première fois, ne changeaient rien au morceau.
-    for chemin in neutres:
-        print(f"         sans effet : {chemin}")
-    return {"suspects": suspects, "incompletes": len(incompletes), "pour_rien": len(pour_rien), "justes": justes}
+            if traces:
+                print(f"  trace {chemin} — {' ; '.join(traces)}")
+            elif chemin in MUETTES_VOULUES:
+                print(f"  muette {chemin} — et c'est voulu : {MUETTES_VOULUES[chemin]}")
+                voulues += 1
+            else:
+                print(f"  MUETTE {chemin} — ni vue, ni boîte, ni ligne d'état, ni préférence, ni tête, "
+                      "ni menu, ni sélection, ni pistes choisies, ni cochée")
+                muettes += 1
+    print(f"    {len(neutres)} entrée(s) sans effet sur le morceau, dont {muettes} MUETTE(S)")
+    return {"suspects": suspects, "incompletes": len(incompletes), "pour_rien": len(pour_rien), "justes": justes,
+            "muettes": muettes, "voulues": voulues, "traces": len(neutres) - muettes - voulues}
 
 if __name__ == "__main__":
     sys.exit(main())

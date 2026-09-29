@@ -385,6 +385,7 @@ private:
     /// sélection vide et une piste active seraient deux vérités sur la même
     /// chose, et c'est toujours la seconde qui ment.
     std::set<size_t> selection_ { 0 };
+    int dernierComptePistesDit_ = 1;   // D514 : la sélection de départ, { 0 }, ne se redit pas
     /// D38.1 : d'où Maj+clic étend. C'est la dernière piste désignée par un
     /// clic SIMPLE, et non la piste active : étendre depuis le résultat de
     /// l'extension précédente ferait grandir la sélection à chaque Maj+clic.
