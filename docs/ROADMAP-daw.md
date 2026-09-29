@@ -37282,3 +37282,114 @@ désormais (les libellés de l'historique de la course et de son témoin, à cô
 chaque « pas pour rien » et de chaque « suspecte »), pour que la prochaine
 apparition se lise au lieu de se rejouer. L'écran s'est éteint en fin de série ;
 les deux bancs de focus et de clic, joués avant, étaient verts.
+
+---
+
+### Phase D518 — le Ctrl+Z d'un geste défaisait aussi ce qui ne fait pas de pas (29/09/2026)
+
+**D'OÙ ELLE VIENT — EN LISANT L'ANNULATION POUR D517.** L'historique est fait
+d'INSTANTANÉS du projet ENTIER (`SnapshotHistory<Project>`), et Ctrl+Z restaure
+l'instantané tel quel (`onProjectRestored` → `rebuildFromProject`). Or trois données
+du morceau ne font, par décision écrite, AUCUN pas : les **notes du projet** (D508 :
+« un Ctrl+Z qui effacerait des mots dans une autre fenêtre serait
+incompréhensible »), le **clic** (D503) et la **boucle marche/arrêt** (D0, D503 ; et
+l'exception écrite de l'audit : « une bascule de transport, comme dans Cubase et
+Live »). Rien ne les tient hors de la restauration : un geste, puis des notes
+tapées, puis Ctrl+Z — l'instantané d'avant le geste n'a pas les notes. **Pronostic :
+Ctrl+Z annonce « Annuler Forme des fondus croisés » et efface aussi les notes, le
+clic et la boucle.** Personne ne l'a vu : `marque-enregistre.sh` (D508) tape ses
+notes sur un projet qu'on vient d'ouvrir, dont l'historique est vide.
+
+**ET UN SECOND DÉFAUT, LU AU MÊME ENDROIT.** `rebuildFromProject` ne remet la boucle
+au transport et au moteur QUE si l'état restauré a une région
+(`if (loopEndTick > loopStartTick)`) ; le bouton, lui, est toujours remis. Un Ctrl+Z
+de « Début de boucle à la tête » sur un morceau qui n'avait pas de boucle rend donc
+un projet sans boucle, un bouton éteint — et, **pronostic**, un moteur qui boucle
+encore.
+
+**L'INSTRUMENT** : un relevé `relever-boucle` — la boucle du PROJET (état et
+région), du TRANSPORT, du MOTEUR (`ProcessGraph::isLoopActive`) et du BOUTON, au
+même instant.
+
+**LE CHOIX, TRANCHÉ ICI.** Ce qui ne fait pas de pas ne se défait pas par le pas
+d'à côté : l'annulation et le rétablissement **reportent** l'état courant des trois
+données sur l'état restauré — une boucle sans région ne pouvant pas être active
+(l'invariant que le bouton tient déjà, `onLoopToggled`). Et la boucle se remet
+partout, région vide comprise.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/annuler-hors-historique.sh`
+(une piste de quatre notes, sans boucle) :
+
+| étape | témoin (D517 + `relever-boucle`) | après |
+|---|---|---|
+| « Lente » (un pas), puis notes tapées, boucle et clic allumés, enregistré | notes, boucle, clic dans le fichier | les mêmes |
+| Ctrl+Z, enregistré : la forme des fondus | revenue au défaut | revenue au défaut (le pas est bien annulé) |
+| … les notes du projet | **effacées** | **gardées** |
+| … la boucle, le clic | **éteints** | **allumés** |
+| « Début de boucle à la tête », puis Ctrl+Z : projet / bouton | sans boucle / éteint | sans boucle / éteint |
+| … le moteur | **boucle encore** | ne boucle plus |
+| contrôle : des notes tapées AVANT le geste, Ctrl+Z | gardées | gardées |
+
+`./verifier.sh --bancs` vert (la garde y entre) ; l'audit d'annulation inchangé
+(0 suspecte, 0 pas pour rien) ; préférences de l'utilisateur identiques.
+
+**L'INSTRUMENT, AVANT DE JUGER — la bascule pose aussi une RÉGION.** Première
+course du correctif : notes et clic gardés, la boucle **encore éteinte**. Lu avant
+d'être corrigé (D266) : sur un projet SANS région, la bascule en pose une (tout le
+morceau, `onLoopToggled`) — sans pas ; l'instantané rendu n'a donc pas de région, et
+une boucle sans région ne peut pas être allumée. La région de boucle est **mixte** :
+dans l'historique par P, I et O (D29.1 : « annulables »), hors de lui par la
+bascule et par la règle du piano roll (`onLoopRegionChanged`). **Tranché** : le
+report ne porte que sur la BASCULE (D0, D503) ; la région reste où D29.1 l'a mise.
+Le cas principal de la garde prend donc un projet qui a déjà une région éteinte, et
+la région posée sans pas est nommée plus bas. Conséquence écrite : annuler « Début
+de boucle à la tête » rend la région d'avant et laisse la bascule où elle est —
+éteinte d'office si la région rendue est vide.
+
+**MESURÉ — TENU** (`tools/annuler-hors-historique.sh`, garde neuve, un HOME neuf par
+course) :
+
+| étape | témoin (D517 + `relever-boucle`) | après |
+|---|---|---|
+| « Lente », notes tapées, boucle et clic allumés, enregistré | notes, boucle, clic, fondus `slow` | les mêmes |
+| Ctrl+Z (« Forme des fondus croisés »), enregistré : fondus | `slow` → défaut | `slow` → défaut |
+| … les notes du projet | **« Refrain trop long » → « »** | gardées |
+| … la boucle, le clic | **oui → non**, **oui → non** | oui, oui |
+| … projet / moteur / bouton | non / non / non | oui [0,1920] / oui [0–2 s] / oui |
+| « Début de boucle à la tête » : le moteur | boucle (0–2 s) | boucle (0–2 s) |
+| … puis Ctrl+Z : projet / moteur / bouton | non [0,0] / **oui [0–2 s]** / non | non / **non** / non |
+| contrôle : notes tapées AVANT le geste, Ctrl+Z | gardées | gardées |
+
+**5 ratés sur le témoin, 0 après** ; les deux contrôles tiennent des deux côtés.
+Le pronostic est tenu en entier, et la première course en montrait un de plus que
+prévu : sur le projet SANS région, après la bascule puis Ctrl+Z, le moteur bouclait
+sur **0–6,5 s** (la région posée par la bascule) pendant que le projet et le bouton
+disaient « pas de boucle ».
+
+**Les deux correctifs** : (1) `onAvantHistorique` retient les notes, le clic et la
+bascule ; `onProjectRestored` les reporte sur l'état rendu avant de le reconstruire
+— une seule place, qui sert Ctrl+Z, Ctrl+Y et la fenêtre d'historique ; (2)
+`rebuildFromProject` remet la boucle au transport, au moteur et au piano roll
+TOUJOURS, région vide comprise (le graphe borne lui-même : `active && end > start`).
+
+`./verifier.sh --bancs` (la garde y entre : 38 bancs) : **37 sur 38 verts** en 32
+minutes, dont l'audit d'annulation (0 suspecte, 0 pas pour rien, 154 justes) et
+`marque-enregistre`, `notes-du-projet`, `metronome-projet`, `portes-du-transport` ;
+préférences de l'utilisateur identiques. **Le rouge** est `vumetre-console.sh` —
+« clic 0 », « SANS-ECHELLE », contraste 0,00 —, la signature exacte de D516 :
+l'écran était ÉTEINT au départ et à la fin de la série (`kscreen-doctor` : « off »,
+le lanceur l'a dit deux fois). Ce banc, vert à 21 h 35 écran allumé sur le binaire
+de D517, ne passe par aucun chemin que D518 touche. **Reste nommé** : le rejouer
+écran allumé.
+
+**Restes nommés, non faits** — tous de la même forme : une donnée tantôt DANS
+l'historique, tantôt HORS de lui, que le Ctrl+Z d'à côté ramène donc en arrière :
+1. la **région de boucle** posée sans pas — par la bascule sur un projet qui n'en a
+   pas, par la règle du piano roll — quand P, I et O en font un pas (D29.1) ;
+2. le **punch** : « Active » (menu Enregistrement) et la région tirée à la règle
+   (Alt) ne font pas de pas, « La prendre sur la boucle » et « L'effacer » en font un ;
+3. les **commandes MIDI apprises** (D508, D517) : le drapeau, pas de pas — mais les
+   mêmes réglages font un pas à la souris ; un Ctrl+Z d'un geste antérieur rend donc
+   le fader et la coupure d'avant, le bouton physique restant où il est ;
+4. la **marque** : la bascule de boucle et le clic changent le `project.json`
+   (D503) sans poser le drapeau de D508 — fermer après eux ne demande rien.

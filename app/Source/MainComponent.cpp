@@ -569,12 +569,24 @@ MainComponent::MainComponent()
     arrangement_.onMarkerRemoved = [this](size_t index) { removeMarker(index); };
 
     pianoRoll_.setHistory(&history_);
-    pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
+    pianoRoll_.onProjectRestored = [this] {
+        // D518 : CE QUI NE FAIT PAS DE PAS NE SE DÉFAIT PAS PAR LE PAS D'À CÔTÉ. Les
+        // notes du projet (D508), le clic (D503) et la boucle marche/arrêt (D0) ne
+        // font aucun pas ; l'instantané restauré ne les a donc pas à jour, et Ctrl+Z
+        // les ramenait en arrière avec le geste qu'il annonçait. On les reporte —
+        // une boucle sans région ne pouvant pas être active (`onLoopToggled`).
+        project_.notes = horsHistorique_.notes;
+        project_.metronomeEnabled = horsHistorique_.clic;
+        project_.loopEnabled = horsHistorique_.boucle && project_.loopEndTick > project_.loopStartTick;
+        rebuildFromProject(false);
+        refreshHistoryList();
+    };
     // D144 : avant un pas d'historique, le MASTER du moteur dans le modèle -- la
     // photo que le rétablissement garde de l'état courant doit le porter.
     pianoRoll_.onAvantHistorique = [this] {
         project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
         photographierReglagesDeMachines();   // D154 : et les réglages des machines
+        horsHistorique_ = {project_.notes, project_.metronomeEnabled, project_.loopEnabled};   // D518
     };
     pianoRoll_.setProject(&project_);
     // D16.1 : LES NOTES ÉCRITES SE MATÉRIALISENT TOUT DE SUITE. Avant, une
@@ -13949,13 +13961,15 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     // Les chaînes d'inserts sont refabriquées EN BLOC depuis les descriptions
     // des pistes : après une suppression, aucune ne peut rester accrochée à un
     // index qui désigne désormais une autre piste.
-    if (project_.loopEndTick > project_.loopStartTick) {
-        transport_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
-        audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(project_.loopStartTick),
-                                                   project_.ticksToSeconds(project_.loopEndTick),
-                                                   project_.loopEnabled);
-        pianoRoll_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
-    }
+    // D518 : LA BOUCLE SE REMET PARTOUT, RÉGION VIDE COMPRISE. Remise seulement
+    // quand l'état avait une région, un Ctrl+Z qui rendait un projet SANS boucle
+    // éteignait le bouton et laissait le MOTEUR boucler. Le graphe borne lui-même
+    // une région vide (`active && end > start`).
+    transport_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
+    audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(project_.loopStartTick),
+                                               project_.ticksToSeconds(project_.loopEndTick),
+                                               project_.loopEnabled);
+    pianoRoll_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
     transportBar_.setLooping(project_.loopEnabled);
     // D503 : le clic du morceau, au graphe TEMPS RÉEL seulement — le rendu hors
     // ligne (`interchange`) ne le lit pas, et un export ne clique jamais.

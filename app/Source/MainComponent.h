@@ -392,6 +392,19 @@ public:
                        stderr);
             return true;
         }
+        // D518 : la BOUCLE du projet, du moteur et du bouton, au même instant — un
+        // Ctrl+Z qui rendait un projet sans région laissait le moteur boucler.
+        if (geste.equalsIgnoreCase("relever-boucle")) {
+            const auto& graphe = audioEngine_.processGraph();
+            const auto oui = [](bool b) { return juce::String(b ? "oui" : "non"); };
+            std::fputs(("VSM_BOUCLE : projet " + oui(project_.loopEnabled) + " ["
+                        + juce::String(static_cast<juce::int64>(project_.loopStartTick)) + ","
+                        + juce::String(static_cast<juce::int64>(project_.loopEndTick)) + "] ; moteur "
+                        + oui(graphe.isLoopActive()) + " [" + juce::String(graphe.loopStartSeconds(), 3) + ","
+                        + juce::String(graphe.loopEndSeconds(), 3) + " s] ; bouton " + oui(transportBar_.boucleActive())
+                        + " ; clic " + oui(project_.metronomeEnabled) + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-historique")) {
             juce::String pas;
             for (const auto& libelle : history_.undoLabels())
@@ -1061,6 +1074,14 @@ private:
     size_t profondeurAuDernierEnregistrement_ = 0;
     /// D508 : le morceau a changé HORS de l'historique (notes du projet, commande MIDI apprise).
     bool modifieHorsHistorique_ = false;
+    /// D518 : ce qui ne fait pas de pas, retenu juste avant une annulation ou un
+    /// rétablissement pour être reporté sur l'état restauré.
+    struct HorsHistorique {
+        std::string notes;
+        bool clic = false;
+        bool boucle = false;
+    };
+    HorsHistorique horsHistorique_;
     juce::String titreDeBase_ { "Vintage Synth MIDI Studio" };
     void poserTitreDeBase(const juce::String& titre);
     void rafraichirTitre();
