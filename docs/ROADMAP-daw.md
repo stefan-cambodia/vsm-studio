@@ -36753,3 +36753,19 @@ banc, et l'audit de D506 ne les a jamais jouées.
    ne l'avait pas relevé — et les autres accords **« non joués »** par leur chemin.
    Non lu à ce stade : à lire AVANT de conclure quoi que ce soit (D266 — le banc
    d'abord). La suite de cette phase le dira.
+
+**LA SUITE, LUE ET TRANCHÉE — LE SUSPECT ÉTAIT UN DÉFAUT DU BANC.** L'audit par
+chemins, terminé : 166 entrées, 97 justes, 57 sans effet, 8 pas pour rien, **1
+suspecte** (« Majeur sur C4 ») et **3 non jouées** (Mineur, Diminué, Augmenté).
+Rejouées une à une, les quatre sont JUSTES (un pas chacune, « Insérer accord —
+Bass »). Sous la charge de la course complète, un geste différé tombait après la
+photo qui clôt la course : l'entrée n'était pas vue au journal, ou le relevé
+d'historique manquait — et l'audit comptait ce relevé ABSENT comme « aucun pas »,
+fabriquant un suspect. La règle du dépôt, à la lettre : *une mesure qui ne peut
+pas voir une chose doit le dire, jamais compter zéro.* L'audit donne désormais
+plus de marge à ses gestes, rejoue UNE fois une mesure incomplète, et la dit
+« non jugée » (rouge) si elle manque encore — jamais « suspecte ».
+
+**Après** : `./verifier.sh --bancs` **35 sur 35 verts** en 26 minutes, dont l'audit
+par chemins : **0 suspecte, 0 non jugée**, 8 pas pour rien ; préférences de
+l'utilisateur identiques.

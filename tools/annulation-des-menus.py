@@ -175,10 +175,15 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
         retenues = [(c, t) for c, t in retenues if t == seulement or t.startswith(seulement)]
     print(f"=== D506 : les entrées de menu qui modifient le morceau empilent un pas ({len(retenues)} entrées) ===")
 
+    # D510 : DE LA MARGE, ET UNE MESURE ABSENTE N'EST PAS UN ZÉRO. Dans la course
+    # complète, quatre entrées (des accords) ont rendu « non jouée » ou « suspecte » :
+    # rejouées seules, toutes justes. Sous la charge, un geste différé peut tomber
+    # après la photo qui clôt la course ; le relevé d'historique manquait, et
+    # l'ancien code le comptait « aucun pas » — un faux suspect fabriqué par le banc.
     def course(nom: str, gestes: str) -> tuple[str, int, str]:
         sortie = brouillon / f"ecrit-{nom}"
         j = lancer(binaire, brouillon, nom, projet,
-                   f"{choisir};{gestes}1100:enregistrer:{sortie};1400:relever-historique", 1900)
+                   f"{choisir};{gestes}1300:enregistrer:{sortie};1700:relever-historique", 2800)
         return empreinte(sortie), pas(j), j
 
     e0, p0, j0 = course("temoin", "")
@@ -186,15 +191,22 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
         print(f"  RATÉ témoin illisible (empreinte {e0}, pas {p0})")
         return 1
     suspects = 0
+    incompletes = []
     pour_rien = []
     neutres = []
     for i, (chemin, texte) in enumerate(retenues):
-        e, p, j = course(f"e{i}", f"700:menu:{chemin};")
-        joue = "exécutée" in j and f"« {chemin}" in j
-        change, empile = e != e0, p > p0
-        if not joue:
-            print(f"  ?    {chemin} — l'entrée n'a pas été jouée (voir le journal)")
+        for essai in (1, 2):   # une mesure incomplète est rejouée UNE fois
+            e, p, j = course(f"e{i}-{essai}", f"700:menu:{chemin};")
+            joue = "exécutée" in j and f"« {chemin}" in j
+            if joue and p >= 0 and e != "absent":
+                break
+        if not joue or p < 0 or e == "absent":
+            manque = ("l'entrée n'a pas été jouée" if not joue
+                      else "le relevé d'historique manque" if p < 0 else "le projet n'a pas été écrit")
+            print(f"  ?    {chemin} — NON JUGÉE, deux fois : {manque} (une mesure absente n'est pas un zéro)")
+            incompletes.append(chemin)
             continue
+        change, empile = e != e0, p > p0
         if change and empile:
             print(f"  OK   {chemin}")
         elif change and not empile:
@@ -209,8 +221,8 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
         else:
             neutres.append(chemin)
     print(f"    {len(neutres)} entrée(s) sans effet sur le morceau (vue, écoute, sélection) : non jugées")
-    print(f"--- {suspects} entrée(s) suspecte(s), {len(pour_rien)} pas pour rien")
-    return 1 if suspects else 0
+    print(f"--- {suspects} entrée(s) suspecte(s), {len(incompletes)} non jugée(s), {len(pour_rien)} pas pour rien")
+    return 1 if suspects or incompletes else 0
 
 
 if __name__ == "__main__":
