@@ -36706,3 +36706,50 @@ entre dans `./verifier.sh --bancs` (35 bancs).
 
 `./verifier.sh --bancs` : **35 bancs sur 35 verts** en 24 minutes, préférences de
 l'utilisateur identiques.
+
+---
+
+### Phase D510 — deux « Aucun » dans la barre, et des menus de bus qu'aucun banc n'atteignait (29/09/2026)
+
+**D'OÙ ELLE VIENT — L'AUDIT DE D506.** Il nommait une entrée inatteignable :
+« Enregistrement ▸ Aucun » (le décompte), que `VSM_MENU` confondait avec « Piste ▸
+Groupe d'édition ▸ Aucun ». Deux mots identiques dans la barre, ce que la règle du
+dépôt interdit (un libellé neuf est unique) ; et sous leur titre de section, loin
+dans un menu long, « Aucun » ne dit pas de QUOI. Relu sur toute la barre, le même
+défaut du BANC est plus large : les sous-menus de chaque bus de départ répètent
+les mêmes entrées (l'effet, « Retour audible », « Post-fader », « Retirer ce
+bus ») — c'est normal pour l'interface, un menu par bus —, mais `VSM_MENU` prend le
+PREMIER libellé venu : les entrées du second bus n'étaient atteignables par aucun
+banc, et l'audit de D506 ne les a jamais jouées.
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. « Sans décompte » (*No count-in*) et « Aucun groupe » (*No group*) : chacun se lit
+   seul, et la barre n'a plus de libellé en double hors des menus de bus.
+2. `VSM_MENU` (et le geste `menu:`) accepte un **chemin** — « Mixage > Delay > Gate »,
+   celui que `VSM_MENU_LISTE` écrit —, comparé en entier. L'audit de D506 joue
+   désormais chaque entrée par son chemin : plus aucune n'est hors d'atteinte.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D509, `VSM_MENU_LISTE`) : « aucun » deux fois dans la barre ;
+2. **après** : « Sans décompte » et « Aucun groupe », une fois chacun ; en anglais
+   aussi ; `menu:Enregistrement > Sans décompte` le coche ;
+3. l'audit par chemins : 0 entrée inatteignable, et les entrées du SECOND bus
+   jugées pour la première fois — ce qu'elles donnent est publié tel quel, et une
+   suspecte est lue avant d'être corrigée (D266) ;
+4. garde de langue, `menus-cites.py` verts ; `./verifier.sh --bancs` vert.
+
+**MESURÉ (en partie, au moment de ce commit)** :
+1. **Témoin** (binaire de D509, `VSM_MENU_LISTE`) : « Aucun » **deux fois** dans la
+   barre (« None » deux fois en anglais) ; `VSM_MENU="Enregistrement > Sans
+   décompte"` → « aucune entrée de menu ne commence par… ».
+2. **Après** : **0** doublon ; « Sans décompte » et « Aucun groupe » (« No count-in »,
+   « No group ») ; le chemin `Enregistrement > Sans décompte` joue l'entrée, qui se
+   coche. Un chemin se donne dans la langue de l'interface (le chemin français est
+   refusé sous l'anglais, et le dit). Gardes des sources vertes (hors le compteur de
+   l'INDEX, mis à jour à ce commit).
+3. **L'audit par chemins est EN COURS** à l'heure de ce commit, sur 166 entrées. Ses
+   premières lignes : les 7 « pas pour rien » de D506 ; « Insérer un accord ▸ Majeur
+   sur C4 » **suspect** (le morceau change sans pas) — alors que D506, par libellé,
+   ne l'avait pas relevé — et les autres accords **« non joués »** par leur chemin.
+   Non lu à ce stade : à lire AVANT de conclure quoi que ce soit (D266 — le banc
+   d'abord). La suite de cette phase le dira.

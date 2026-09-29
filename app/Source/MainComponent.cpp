@@ -1575,6 +1575,40 @@ bool MainComponent::runMenuEntryForCapture(const juce::String& libelle) {
     const juce::String voulu = libelle.trim();
     if (voulu.isEmpty()) return false;
     const juce::StringArray noms = getMenuBarNames();
+    // D510 : UN CHEMIN, « Mixage > Delay > Gate ». Les sous-menus de chaque bus
+    // répètent les mêmes entrées, et le premier libellé venu était toujours celui du
+    // premier bus : le second n'était atteignable par aucun banc. Le chemin est
+    // comparé EN ENTIER (sans la casse), celui que `VSM_MENU_LISTE` écrit.
+    if (voulu.contains(" > ")) {
+        for (int i = 0; i < noms.size(); ++i) {
+            const juce::PopupMenu racine = getMenuForIndex(i, noms[i]);
+            const juce::PopupMenu::Item* trouve = nullptr;
+            std::function<void(const juce::PopupMenu&, const juce::String&)> chercher =
+                [&](const juce::PopupMenu& menu, const juce::String& chemin) {
+                    for (juce::PopupMenu::MenuItemIterator it(menu, false); it.next() && trouve == nullptr;) {
+                        const auto& item = it.getItem();
+                        if (item.isSeparator || item.isSectionHeader) continue;
+                        const juce::String ici = chemin + " > " + item.text;
+                        if (item.subMenu != nullptr) { chercher(*item.subMenu, ici); continue; }
+                        if (item.itemID != 0 && ici.equalsIgnoreCase(voulu)) trouve = &item;
+                    }
+                };
+            chercher(racine, noms[i]);
+            if (trouve == nullptr) continue;
+            if (!trouve->isEnabled) {
+                std::fputs(("VSM_MENU : \u00ab " + voulu.toStdString()
+                            + " \u00bb est gris\u00e9e, rien n'a \u00e9t\u00e9 fait\n").c_str(), stderr);
+                return false;
+            }
+            menuItemSelected(trouve->itemID, i);
+            std::fputs(("VSM_MENU : \u00ab " + voulu.toStdString()
+                        + " \u00bb ex\u00e9cut\u00e9e (menu " + noms[i].toStdString() + ")\n").c_str(), stderr);
+            return true;
+        }
+        std::fputs(("VSM_MENU : aucune entr\u00e9e de menu au chemin \u00ab " + voulu.toStdString()
+                    + " \u00bb\n").c_str(), stderr);
+        return false;
+    }
     // LE LIBELLÉ EXACT D'ABORD, LE PRÉFIXE ENSUITE : « Tout sélectionner »
     // existe deux fois (les notes du piano roll, les clips de l'arrangement),
     // et le premier préfixe venu n'est pas forcément celui qu'on visait.
@@ -4039,7 +4073,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     const int actuel = choisie < project_.tracks.size()
                                            ? project_.tracks[choisie].editGroup : 0;
                     juce::PopupMenu groupes;
-                    groupes.addItem(kMenuTrackEditGroupNone, tr(u8"Aucun"), true, actuel == 0);
+                    // D510 : « Aucun groupe » et non « Aucun » : le décompte du menu
+                    // Enregistrement portait le même mot, et un libellé en double dans
+                    // la barre n'est atteignable par `VSM_MENU` qu'au premier.
+                    groupes.addItem(kMenuTrackEditGroupNone, tr(u8"Aucun groupe"), true, actuel == 0);
                     for (int g = 1; g <= 8; ++g)
                         groupes.addItem(kMenuTrackEditGroupNone + g,
                                          juce::String(tr(u8"Groupe ")) + juce::String(g),
@@ -4297,7 +4334,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             {
                 const int mesures = countInBars_;
                 menu.addSectionHeader(tr(u8"Décompte"));
-                menu.addItem(kMenuRecordCountInNone, tr("Aucun"), true, mesures == 0);
+                menu.addItem(kMenuRecordCountInNone, tr(u8"Sans décompte"), true, mesures == 0);   // D510
                 menu.addItem(kMenuRecordCountInOne, tr("1 mesure"), true, mesures == 1);
                 menu.addItem(kMenuRecordCountInTwo, tr("2 mesures"), true, mesures == 2);
                 menu.addSectionHeader(tr(u8"Ce que fait la prise MIDI"));

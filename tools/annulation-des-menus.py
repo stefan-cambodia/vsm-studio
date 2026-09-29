@@ -13,9 +13,9 @@ COMMENT. Un projet de trois pistes est engendré. Une course « liste » choisit
 toutes les notes du piano roll (`touche:pianoroll:ctrl + A`) puis relève les
 menus (`lister-menus`) : les entrées ACTIVES des menus qui modifient le morceau
 — Édition, Piste, Transport, Enregistrement, Mixage — sont retenues, sauf celles
-qui ouvrent une fenêtre (libellé en « … » ou « ... ») et celles dont le libellé
-n'est pas unique (`VSM_MENU` prend le premier : on ne saurait pas laquelle on a
-jouée — elles sont NOMMÉES, pas jugées). Puis, pour chaque entrée, une course
+qui ouvrent une fenêtre (libellé en « … » ou « ... »). Puis, pour chaque entrée
+— jouée par son CHEMIN (`menu:Mixage > Delay > Gate`, D510 : les sous-menus de
+chaque bus répètent les mêmes libellés) —, une course
 sous un HOME neuf (D318) : tout choisir, l'entrée (`menu:`), enregistrer
 (`enregistrer:`), relever l'historique (`relever-historique`) — les quatre en
 différé, dans cet ordre. Une course témoin fait la même chose SANS l'entrée.
@@ -156,22 +156,10 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
     lignes = [l.split("VSM_MENU_LISTE : ", 1)[1] for l in liste.splitlines() if l.startswith("VSM_MENU_LISTE : ")]
     chemins = [l.split(" [")[0] for l in lignes]
     parents = {c.rsplit(" > ", 1)[0] for c in chemins}
-    # LA RÈGLE DE `runMenuEntryForCapture`, SIMULÉE : dans l'ordre de la barre (les
-    # menus du clic droit, listés après, n'en sont pas), les entrées qui ont un
-    # identifiant (ni sous-menu, ni titre) ; première passe, le libellé tronqué
-    # avant « ( » ÉGAL au voulu ; seconde, le libellé COMMENÇANT par le voulu.
     barre = ("Fichier", "Édition", "Piste", "Transport", "Enregistrement", "Mixage", "Affichage", "Aide")
     entrees = [(c, l) for l, c in zip(lignes, chemins)
                if c.split(" > ")[0] in barre and c not in parents and "[titre]" not in l]
-    def atteinte(voulu: str) -> str:
-        v = voulu.strip().lower()
-        for passe in (0, 1):
-            for c, _ in entrees:
-                t = c.rsplit(" > ", 1)[-1]
-                if (t.split(" (")[0].strip().lower() == v) if passe == 0 else t.lower().startswith(v):
-                    return c
-        return ""
-    retenues, doubles = [], []
+    retenues = []
     for c, l in entrees:
         menu = c.split(" > ")[0]
         texte = c.rsplit(" > ", 1)[-1]
@@ -179,9 +167,9 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
             continue
         if texte.rstrip().endswith(("...", "…")) or "..." in texte or "…" in texte:
             continue
-        if atteinte(texte) != c:
-            doubles.append(f"{c} (VSM_MENU jouerait « {atteinte(texte)} »)")
-            continue
+        # D510 : L'ENTRÉE EST JOUÉE PAR SON CHEMIN (`menu:Mixage > Delay > Gate`) : les
+        # sous-menus de chaque bus répètent les mêmes libellés, et le premier venu
+        # était toujours celui du premier bus. Plus aucune entrée n'est hors d'atteinte.
         retenues.append((c, texte))
     if seulement:
         retenues = [(c, t) for c, t in retenues if t == seulement or t.startswith(seulement)]
@@ -201,8 +189,8 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
     pour_rien = []
     neutres = []
     for i, (chemin, texte) in enumerate(retenues):
-        e, p, j = course(f"e{i}", f"700:menu:{texte};")
-        joue = "exécutée" in j and f"« {texte}" in j
+        e, p, j = course(f"e{i}", f"700:menu:{chemin};")
+        joue = "exécutée" in j and f"« {chemin}" in j
         change, empile = e != e0, p > p0
         if not joue:
             print(f"  ?    {chemin} — l'entrée n'a pas été jouée (voir le journal)")
@@ -221,9 +209,6 @@ def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
         else:
             neutres.append(chemin)
     print(f"    {len(neutres)} entrée(s) sans effet sur le morceau (vue, écoute, sélection) : non jugées")
-    if doubles:
-        print(f"    {len(doubles)} entrée(s) inatteignable(s) par leur libellé, NON JOUÉE(S) : "
-              + " ; ".join(doubles))
     print(f"--- {suspects} entrée(s) suspecte(s), {len(pour_rien)} pas pour rien")
     return 1 if suspects else 0
 
