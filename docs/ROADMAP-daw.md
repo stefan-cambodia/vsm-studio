@@ -36019,3 +36019,61 @@ fermé 7, D483 15, D491 2, D497 8. Reste « Note douteuse suivante », qui a son
 entrée depuis D358 mais écrit sa touche DANS son libellé (« (D) ») parce que Maj en
 fait la précédente — `raccourcis-affiches.py` la tolère pour cette raison, écrite
 dans son en-tête.
+
+---
+
+### Phase D498 — les 43 sérigraphies repliées sous 12 pt, mesurées à la taille réelle de l'écran (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D379 bis** : *« les 43 sérigraphies repliées
+vivent dans des cases de 18 à 36 px de large ; à ce rack de 356 px, aucune taille
+lisible n'y fait entrer « CLAP DECAY ». Le remède est la LARGEUR »*. Or ce rack de
+356 px est celui de la FENÊTRE DES BANCS (1 280 px) : le dock droit vaut
+`max(380, largeur / 4)` (`MainComponent::resized`), soit ~533 px à la taille de
+la fenêtre de l'utilisateur (2 133 × 1 333, les photos de D489). C'est exactement
+le piège de D364, où « le compromis n'existait que dans la fenêtre des gardes ».
+
+**L'HYPOTHÈSE, écrite avant la mesure** : à la taille réelle, les cases
+s'élargissent avec le rack et la plupart des 43 remontent à 12 pt ; aucun code ne
+change si le compte tombe sous 10 ; sinon, le remède est une sérigraphie abrégée
+écrite par la machine, pour celles qui restent — nommées une par une.
+
+**ATTENDU** (`balayer-facades.sh`, même binaire, seule `VSM_TAILLE` change ; le
+balayage se publie ENTIER) :
+1. **témoin** 1 280 × 800 : 1 030 / 1 073 à 12 pt (43 repliées), 3 coupées —
+   le relevé de D379 bis, rejoué ;
+2. **2 133 × 1 333** (rack ~533 px) : **moins de 10** repliées, aucune coupée de
+   plus ;
+3. **1 706 × 1 066** (l'écran de 2 560 px que XWayland annonce aujourd'hui, à
+   150 %) : entre les deux — publié tel quel ;
+4. la garde de 18 px (D62) : pas une façade de plus sous le plancher.
+
+**MESURÉ — LE BALAYAGE ENTIER** (binaire de D497, seules `VSM_TAILLE` et
+`VSM_DOCK_DROITE` changent ; fichiers dans `~/vsm-mesures-d498/`) :
+
+| fenêtre | rack (façade) | à 12 pt | sous 12 | coupées | façades sous 18 px |
+|---|---|---|---|---|---|
+| 1 280 × 800 (témoin, les bancs) | 356 | 1 027 / 1 073 | 46 | 3 | 0 |
+| 1 706 × 1 066 | 410 | 1 048 / 1 073 | 25 | 3 | 0 |
+| **2 133 × 1 333** (défaut, fenêtre de D489) | **517** | **1 070 / 1 073** | **3** | **0** | 0 |
+| 2 133 × 1 333, `VSM_DOCK_DROITE=792` (le rack des préférences de l'utilisateur) | 776 | **1 073 / 1 073** | **0** | **0** | 0 |
+
+**VERDICT DES ATTENDUS** : 1 — le témoin redonne **1 027** et non les 1 030 de
+D379 bis : trois de moins, écart NON expliqué par cette mesure (D379 bis n'a pas
+publié sa liste par machine ; D380, seule retouche des façades depuis, a fait
+REMONTER ACCENT de 8,5 à 12 pt ; les candidats sont D382 et D391, qui ont durci la
+formule du besoin de largeur après D379 bis — non vérifié) ; 2 — à la taille par
+défaut, **3** sous 12 pt (< 10) et **0** coupée : TENU ; 3 — 1 706 px, 25 : publié ;
+4 — 0 façade sous 18 px aux quatre mesures : TENU.
+
+**LES TROIS QUI RESTENT** à 2 133 px, et aucune n'est loin du plancher :
+AMOUNT OF CONTOUR (Minimoog, 59 px de case, **10,5 pt** — la sérigraphie de la
+machine d'origine), WOOD TUNE (percussions, 35 px, **11,5 pt**), ACCENT THRESHOLD
+(TB-303, 53 px, **10,5 pt**). Par la règle écrite avant la mesure, **aucun code ne
+change** : le reste nommé de D379 venait, pour 43 des 46, de la fenêtre des bancs.
+
+**ET LA DISPOSITION DE L'UTILISATEUR, LUE SANS RIEN ÉCRIRE** : ses préférences
+portent `dock.droite` = **792 px** — le rack y a été élargi à la main. C'est la
+réponse que D379 donnait (« un rack plus large… que l'utilisateur peut
+agrandir ») : la disposition réglable et retenue fait son office.
+À cette largeur, **les 1 073 sérigraphies sont à 12 pt**, aucune coupée (ligne 4
+du tableau). Fumée non rejouée : aucun code n'a changé.
