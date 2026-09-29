@@ -270,8 +270,31 @@ bool PianoRollComponent::beginEdit(const juce::String& label) {
     juce::String nom = label;
     if (const Track* piste = activeTrack(); piste != nullptr && !piste->name.empty())
         nom += juce::String::fromUTF8(" \xe2\x80\x94 ") + juce::String::fromUTF8(piste->name.c_str());
-    if (project_ != nullptr && history_ != nullptr)
+    if (project_ != nullptr && history_ != nullptr) {
         history_->beginEdit(*project_, nom.toStdString());
+        pasOuvert_ = true;   // D511 : jugé à la fin du geste (`notifyEdited`)
+        libelleDuPas_ = label;
+    }
+    return true;
+}
+
+bool PianoRollComponent::notesIdentiquesA(const vsm::sequencer::Project& avant) const {
+    // D511 : les gestes du piano roll ne modifient QUE les notes de la piste active
+    // (relevé des 29 `beginEdit` de ce fichier) : c'est donc là qu'on regarde. Même
+    // ordre, mêmes champs — une note seulement déplacée dans le vecteur compte comme
+    // un changement, et garde son pas : prudent, jamais l'inverse.
+    if (project_ == nullptr || activeTrackIndex_ >= project_->tracks.size()
+        || activeTrackIndex_ >= avant.tracks.size() || avant.tracks.size() != project_->tracks.size())
+        return false;
+    const auto& a = avant.tracks[activeTrackIndex_].notes;
+    const auto& b = project_->tracks[activeTrackIndex_].notes;
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i)
+        if (a[i].startTick != b[i].startTick || a[i].endTick != b[i].endTick || a[i].channel != b[i].channel
+            || a[i].number != b[i].number || a[i].velocity != b[i].velocity
+            || a[i].releaseVelocity != b[i].releaseVelocity || a[i].id != b[i].id || a[i].muted != b[i].muted
+            || a[i].confidence != b[i].confidence)
+            return false;
     return true;
 }
 
@@ -281,6 +304,16 @@ bool PianoRollComponent::activeTrackLocked() const {
 }
 
 void PianoRollComponent::notifyEdited() {
+    // D511 : UN GESTE QUI N'A RIEN CHANGÉ NE LAISSE PAS DE PAS. Arpéger des notes
+    // seules, fusionner ce qui ne se touche pas, couper là où rien ne commence :
+    // chacun laissait un Ctrl+Z qui n'annulait rien — et vidait la branche
+    // « rétablir ». Le pas est retiré, la branche rendue, et la ligne d'état le dit.
+    if (pasOuvert_ && history_ != nullptr && project_ != nullptr) {
+        pasOuvert_ = false;
+        const auto* avant = history_->etatDuDernierPas();
+        if (avant != nullptr && notesIdentiquesA(*avant) && history_->retirerLeDernierPas() && onStatusChanged)
+            onStatusChanged(vsm::app::ui::tr(u8"%1 : rien à changer").replace("%1", vsm::app::ui::trGeste(libelleDuPas_)));
+    }
     if (onNotesEdited) onNotesEdited();
     notifyEditState();
     updateScrollBars();

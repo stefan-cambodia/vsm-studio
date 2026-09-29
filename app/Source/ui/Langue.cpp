@@ -270,6 +270,8 @@ const Paire kAnglais[] = {
       "No group" },
     { "Sans décompte",
       "No count-in" },
+    { "%1 : rien à changer",
+      "%1: nothing to change" },
     { "Aucune association.\n\nUn réglage de machine : pressez MIDI LEARN dans le rack, touchez le réglage sur la façade, puis tournez le potentiomètre du contrôleur.\nLe transport ou le mixage de la piste choisie : Apprendre... ci-dessous.",   // D402
       "No mappings.\n\nA machine control: press MIDI LEARN in the rack, touch the control on the faceplate, then turn the knob on your controller.\nTransport or the selected track's mix: Learn... below." },
     { "Aucune section : posez des repères sur la règle. Une section va d'un repère au suivant.",

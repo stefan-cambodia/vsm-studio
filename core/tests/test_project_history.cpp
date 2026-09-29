@@ -192,3 +192,30 @@ VSM_TEST(an_undone_project_never_hands_a_used_identity_to_a_new_track) {
     VSM_ASSERT(project.tracks[2].uid != project.tracks[0].uid);
     VSM_ASSERT(project.tracks[2].uid != project.tracks[1].uid);
 }
+
+VSM_TEST(a_step_that_changed_nothing_can_be_withdrawn_and_gives_back_the_redo_branch) {
+    // D511 : UN GESTE SANS EFFET NE LAISSE PAS DE CTRL+Z POUR RIEN, et ne vole pas
+    // la branche « rétablir ». Le retrait n'est permis que juste après le
+    // `beginEdit` qu'il retire.
+    ProjectHistory historique;
+    Project projet = deuxPistes();
+    historique.beginEdit(projet, "Fader");
+    projet.tracks[0].volume = 0.5f;
+    VSM_ASSERT(historique.undo(projet));             // une branche « rétablir » existe
+    VSM_ASSERT_EQ(historique.redoDepth(), size_t{1});
+
+    historique.beginEdit(projet, "Arpéger");        // un geste qui ne changera rien
+    VSM_ASSERT_EQ(historique.redoDepth(), size_t{0});  // beginEdit l'a vidée
+    VSM_ASSERT(historique.etatDuDernierPas() != nullptr);
+    VSM_ASSERT(historique.retirerLeDernierPas());
+    VSM_ASSERT_EQ(historique.undoDepth(), size_t{0});
+    VSM_ASSERT_EQ(historique.redoDepth(), size_t{1});  // rendue
+    VSM_ASSERT(historique.redo(projet));
+    VSM_ASSERT(projet.tracks[0].volume == 0.5f);      // et elle rétablit toujours
+
+    // pas deux fois, et pas après un annuler
+    VSM_ASSERT(!historique.retirerLeDernierPas());
+    historique.beginEdit(projet, "Autre");
+    VSM_ASSERT(historique.undo(projet));
+    VSM_ASSERT(!historique.retirerLeDernierPas());
+}

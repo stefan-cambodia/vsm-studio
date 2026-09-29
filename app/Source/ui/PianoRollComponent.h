@@ -381,6 +381,11 @@ private:
 
     vsm::sequencer::Project* project_ = nullptr;
     size_t activeTrackIndex_ = 0;
+    /// D511 : un pas vient d'être ouvert par `beginEdit`, et son libellé ; jugé par
+    /// `notifyEdited` (retiré s'il n'a rien changé).
+    bool pasOuvert_ = false;
+    juce::String libelleDuPas_;
+    bool notesIdentiquesA(const vsm::sequencer::Project& avant) const;
 
     // Vue, exprimée en unités musicales (ticks/notes) plutôt qu'en pixels :
     // un changement de zoom ne déplace donc jamais le contenu sous le curseur.

@@ -36,7 +36,31 @@ public:
     void beginEdit(const StateT& stateBeforeEdit, std::string label) {
         undoStack_.push_back({stateBeforeEdit, std::move(label)});
         if (undoStack_.size() > maxDepth_) undoStack_.pop_front();
-        redoStack_.clear(); // une nouvelle édition invalide la branche "rétablir"
+        // Une nouvelle édition invalide la branche "rétablir" -- gardée de côté
+        // (D511) le temps de savoir si l'édition a changé quelque chose.
+        redoAvantDernierPas_ = std::move(redoStack_);
+        redoStack_.clear();
+        dernierPasRetirable_ = true;
+    }
+
+    /// D511 : L'ÉTAT MÉMORISÉ PAR LE DERNIER `beginEdit` (nul si la pile est vide),
+    /// pour comparer ce que l'édition a produit à ce qu'il y avait avant.
+    const StateT* etatDuDernierPas() const { return undoStack_.empty() ? nullptr : &undoStack_.back().state; }
+
+    /// D511 : RETIRE LE DERNIER PAS, QUI N'A RIEN CHANGÉ, et rend la branche
+    /// « rétablir » que son `beginEdit` avait vidée. Un geste sans effet (arpéger
+    /// des notes seules, fusionner ce qui ne se touche pas) laissait un Ctrl+Z qui
+    /// n'annulait rien — et effaçait ce qu'on pouvait rétablir. Permis SEULEMENT
+    /// juste après le `beginEdit` : après un annuler ou un rétablir, le dernier pas
+    /// n'est plus celui qu'on vient d'ouvrir. (Si la pile était pleine, le plus
+    /// ancien pas, déjà sorti, ne revient pas : il était perdu de toute façon.)
+    bool retirerLeDernierPas() {
+        if (!dernierPasRetirable_ || undoStack_.empty()) return false;
+        undoStack_.pop_back();
+        redoStack_ = std::move(redoAvantDernierPas_);
+        redoAvantDernierPas_.clear();
+        dernierPasRetirable_ = false;
+        return true;
     }
 
     bool canUndo() const { return !undoStack_.empty(); }
@@ -48,6 +72,7 @@ public:
 
     /// Restaure l'état précédent dans `current` (qui est empilé côté rétablir).
     bool undo(StateT& current) {
+        oublierLeRetrait();
         if (undoStack_.empty()) return false;
         Entry entry = std::move(undoStack_.back());
         undoStack_.pop_back();
@@ -57,6 +82,7 @@ public:
     }
 
     bool redo(StateT& current) {
+        oublierLeRetrait();
         if (redoStack_.empty()) return false;
         Entry entry = std::move(redoStack_.back());
         redoStack_.pop_back();
@@ -65,7 +91,7 @@ public:
         return true;
     }
 
-    void clear() { undoStack_.clear(); redoStack_.clear(); }
+    void clear() { undoStack_.clear(); redoStack_.clear(); oublierLeRetrait(); }
 
     /// LES LIBELLÉS, POUR UNE FENÊTRE D'HISTORIQUE (D11) : les pas
     /// annulables du plus ancien au plus récent, les pas rétablissables du
@@ -93,6 +119,11 @@ private:
     };
     std::deque<Entry> undoStack_, redoStack_;
     size_t maxDepth_;
+    /// D511 : la branche « rétablir » vidée par le dernier `beginEdit`, et s'il
+    /// peut encore être retiré.
+    std::deque<Entry> redoAvantDernierPas_;
+    bool dernierPasRetirable_ = false;
+    void oublierLeRetrait() { redoAvantDernierPas_.clear(); dernierPasRetirable_ = false; }
 };
 
 } // namespace vsm::sequencer

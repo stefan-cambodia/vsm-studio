@@ -11805,15 +11805,24 @@ void MainComponent::setTimeSignatureAtPlayhead(int numerator, int denominator) {
                                                      tr(u8"La signature du départ ne se retire pas : un morceau en a toujours une. Changez-la."));
             return;
         }
-        beginProjectEdit(u8"Retirer un changement de signature");
-        if (!carte.removeChangeAt(debut)) {
+        // D511 : RIEN À RETIRER, AUCUN PAS. Le pas s'ouvrait AVANT de constater
+        // qu'aucun changement ne commençait ici : un Ctrl+Z qui n'annulait rien.
+        bool present = false;
+        for (const auto& c : carte.changes()) present = present || c.tick == debut;
+        if (!present) {
             montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Signature"),
                                                      tr(u8"Aucun changement de signature ne commence à cette mesure."));
             return;
         }
+        beginProjectEdit(u8"Retirer un changement de signature");
+        carte.removeChangeAt(debut);
     } else {
         int pow2 = 2;
         while ((1 << pow2) < denominator) ++pow2;
+        // D511 : LA SIGNATURE DÉJÀ EN PLACE ne s'écrit pas une seconde fois — c'est
+        // l'entrée cochée du menu, et la choisir laissait un pas pour rien.
+        if (carte.numeratorAt(debut) == numerator && carte.denominatorAt(debut) == static_cast<uint32_t>(denominator))
+            return;
         beginProjectEdit(juce::String(u8"Signature ") + juce::String(numerator) + "/" + juce::String(denominator));
         carte.addChange(debut, static_cast<uint8_t>(numerator), static_cast<uint8_t>(pow2));
     }

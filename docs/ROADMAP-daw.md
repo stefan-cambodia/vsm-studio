@@ -36769,3 +36769,56 @@ plus de marge à ses gestes, rejoue UNE fois une mesure incomplète, et la dit
 **Après** : `./verifier.sh --bancs` **35 sur 35 verts** en 26 minutes, dont l'audit
 par chemins : **0 suspecte, 0 non jugée**, 8 pas pour rien ; préférences de
 l'utilisateur identiques.
+
+---
+
+### Phase D511 — huit gestes laissaient un Ctrl+Z qui n'annulait rien (29/09/2026)
+
+**D'OÙ ELLE VIENT — LES « PAS POUR RIEN » DE L'AUDIT DE D506**, restés constants
+d'une course à l'autre : « Retirer les chevauchements », « Couper à la tête de
+lecture », « Fusionner », les quatre « Arpéger », « Signature 4/4 » — sur le
+projet d'essai, aucun n'a rien à faire, et chacun ouvre quand même un pas. Deux
+torts : un Ctrl+Z qui n'annule rien (on croit que la touche est cassée), et, pire,
+`beginEdit` VIDE la branche « rétablir » — un geste sans effet détruit ce qu'on
+pouvait rétablir. Et à la lecture, « Retirer le changement de signature » ouvrait
+son pas AVANT de constater qu'il n'y avait rien à retirer.
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. `SnapshotHistory` gagne `retirerLeDernierPas()` : le pas ouvert par le dernier
+   `beginEdit` est retiré ET la branche « rétablir » qu'il avait vidée est rendue.
+   Permis seulement juste après ce `beginEdit` (ni après un annuler, ni deux fois).
+2. Le piano roll juge chaque geste à sa fin (`notifyEdited`) : ses 29 gestes ne
+   touchent QUE les notes de la piste active (relevé) ; si elles sont identiques à
+   l'instantané — mêmes notes, même ordre, mêmes champs —, le pas est retiré, et
+   la ligne d'état dit « Arpéger : rien à changer ». Prudent par construction : une
+   note seulement déplacée dans le vecteur compte comme un changement.
+3. La signature : la signature déjà en place ne s'écrit pas (c'est l'entrée cochée
+   du menu) ; « retirer » vérifie avant d'ouvrir son pas.
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D510, audit par chemins) : **8** pas pour rien ;
+2. **après** : **0** pas pour rien, **0** suspecte, **97** justes comme avant — un
+   retrait à tort ferait tomber une entrée juste en suspecte, c'est le contrôle ;
+3. test du cœur neuf (retrait, branche rendue, refus après annuler) ; suites `core`
+   et application vertes ; `./verifier.sh --bancs` vert ; préférences inchangées.
+
+**MESURÉ** :
+1. **Témoin** (binaire de D510) : **8** pas pour rien à l'audit par chemins (ceux
+   de D506, inchangés). Et le tort le plus grave, isolé sur un projet de quatre
+   notes : forme des fondus « Lente » (un pas), Ctrl+Z, tout choisir, « Arpéger :
+   montant » (rien à arpéger), Ctrl+Maj+Z — l'historique porte **1 pas,
+   « Arpéger »**, et le rétablir ne rend RIEN : forme écrite **par défaut**. Le
+   geste sans effet a détruit la branche.
+2. **Après** : le même enchaînement laisse **0 pas** après « Arpéger » (la ligne
+   d'état : « Arpéger : rien à changer »), et Ctrl+Maj+Z rend la forme :
+   **« slow »** écrite, historique **1 pas, « Forme des fondus croisés »**.
+   L'audit par chemins : **0 pas pour rien, 0 suspecte, 0 non jugée, 101 justes**
+   sur 166 entrées ; les 8 tombent dans « sans effet sur le morceau » (57 → **65**).
+   L'attendu disait « 97 justes » : c'était le compte de la PREMIÈRE course de
+   D510, qui en laissait quatre non jugées ; sa dernière course en avait
+   166 − 57 − 8 = 101. Aucune entrée juste n'est tombée en suspecte — le contrôle.
+3. Test du cœur neuf vert (retrait, branche rendue, refus après annuler et au
+   second retrait) ; suites C++ : core **364**, audio **1 307**, interchange
+   **312**, clap **25**, panels **11**, toutes vertes. `./verifier.sh --bancs` :
+   **35 bancs sur 35 verts** en 27 minutes, préférences de l'utilisateur
+   identiques.
