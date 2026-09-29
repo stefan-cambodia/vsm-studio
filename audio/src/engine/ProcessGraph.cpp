@@ -195,6 +195,12 @@ void ProcessGraph::setInstrumentParameter(size_t trackIndex, ParamId paramId, fl
     if (instrument) instrument->setParameter(paramId, value);
 }
 
+float ProcessGraph::instrumentParameter(size_t trackIndex, ParamId paramId) const {
+    if (trackIndex >= kMaxTracks) return 0.0f;
+    auto instrument = instruments_[trackIndex].load(std::memory_order_acquire);   // D521
+    return instrument ? instrument->getParameter(paramId) : 0.0f;
+}
+
 void ProcessGraph::addAutomationLane(AutomationLane lane) {
     auto current = automationLanes_.load(std::memory_order_acquire);
     auto next = current ? std::make_shared<std::vector<AutomationLane>>(*current)

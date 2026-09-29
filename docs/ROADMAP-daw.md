@@ -37578,3 +37578,91 @@ avec les rouges de pixels de D518 et D519.
 Gardes des sources : la garde de langue a trouvé **2 textes sans traduction** — le
 libellé de pas neuf « Région de boucle », qui s'affiche dans « Annuler … » et dans la
 fenêtre d'historique ; traduit (« Loop region », à côté de « Punch region »), 0.
+
+---
+
+### Phase D521 — un bouton physique appris ne faisait aucun pas, et le Ctrl+Z d'à côté le défaisait (30/09/2026)
+
+**D'OÙ ELLE VIENT — LE TROISIÈME RESTE NOMMÉ DE D518.** Une commande MIDI apprise
+règle le volume, le panoramique, le muet, le solo, un départ ou un paramètre de
+machine — exactement ce que la souris règle aussi, en ouvrant un pas (« Volume —
+une », « Réglage de machine », D154, D425). La commande apprise n'en ouvre aucun
+(D508 : « coalescé : pas de pas »), et D517 n'a fait que lui donner la marque. Ces
+réglages sont donc MIXTES — dans l'historique à la souris, hors de lui au bouton
+physique —, la forme exacte que D518 et D520 ont nommée. **Pronostic** : un geste,
+puis un bouton physique tourné, puis Ctrl+Z — Ctrl+Z annonce le geste, l'annule, et
+rend AUSSI le fader d'avant le bouton : deux en un, comme la règle avant D520.
+
+**LE CHOIX, TRANCHÉ ICI : UNE RAFALE, UN PAS** — ce que D154 a décidé pour un bouton
+de façade (« un glissé = un pas ») et D427 pour la molette. D508 refusait cent pas
+pour cent messages par seconde ; une rafale en fait UN. **Une rafale** : les messages
+d'une même cible (genre, piste, paramètre ou départ) sans silence de plus de **500
+ms** — un bouton physique qu'on tourne envoie plusieurs messages par seconde, et une
+demi-seconde sans rien est la main qui l'a quitté. Le muet et le solo sont des
+appuis : un appui, un pas. Le pas porte le libellé du même geste à la souris
+(« Volume — une »…). **Le paramètre de machine** est réglé par le thread MIDI avant
+que l'interface ne voie la commande : la photo du pas le prendrait déjà tourné. Le
+thread MIDI dépose donc aussi la valeur d'AVANT, et l'interface photographie le pas
+avec elle. Le transport et la boucle ne sont pas des données de pas (D0, D519) :
+inchangés. La marque de D508 et D517 vient désormais de l'historique pour ces
+réglages — et un Ctrl+Z qui défait la rafale rend « enregistré ».
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/commandes-apprises.sh` (CC 20 →
+coupure du Minimoog, CC 21 → volume de la piste, CC 23 → boucle ; « Lente » est le
+geste d'avant) :
+
+| cas | témoin (binaire de D520) | après |
+|---|---|---|
+| A. Lente, CC 21 × 5 (une rafale), relevé de l'historique | 1 pas | 2 pas (le second : « Volume — une ») |
+| A. … Ctrl+Z : les fondus / le volume | **défaut** / 1,0 | `slow` / 1,0 |
+| B. Lente, CC 20 × 5, Ctrl+Z : les fondus / la coupure | **défaut** / 1200 | `slow` / **1200,0** (la valeur d'avant la rafale) |
+| C. deux rafales de CC 21 séparées de 1,2 s : les pas / Ctrl+Z → le volume | 0 / — | 2 / celui d'après la PREMIÈRE rafale |
+| D. contrôle : CC 23 (boucle) : les pas / la marque | 0 / oui | 0 / oui |
+| E. CC 21 × 5, puis Ctrl+Z : la marque | **oui** (le drapeau reste) | **non** (la rafale défaite, rien d'autre) |
+
+`./verifier.sh --bancs` vert (la garde y entre) ; `marque-enregistre.sh` vert ;
+préférences de l'utilisateur identiques.
+
+**MESURÉ — TENU** (`tools/commandes-apprises.sh`, garde neuve ; un HOME neuf par cas,
+les associations dans ses préférences) :
+
+| cas | témoin (binaire de D520) | après |
+|---|---|---|
+| A. Lente, CC 21 × 5 (volume 1,0 → 0,630), relevé de l'historique | **1 pas** | 2 pas, le second « Volume — une » |
+| A. … Ctrl+Z : les fondus / le volume | **défaut** / 1,000 | `slow` / 1,000 |
+| B. Lente, CC 20 × 5 (coupure 1200 → 5113,4) : l'historique | **1 pas** | 2 pas, le second « Réglage de machine » |
+| B. … Ctrl+Z : les fondus / la coupure | **défaut** / 1200,0 | `slow` / 1200,0 |
+| B2. la rafale de CC 20 seule, puis Ctrl+Z : la coupure | **5113,4** (rien à annuler) | 1200,0 |
+| C. deux rafales de CC 21, 1,2 s de silence : les pas / Ctrl+Z → le volume | **0** / **0,787** | 2 / 0,472 (après la première) |
+| D. contrôle : CC 23 (boucle) : les pas / la marque | 0 / non → oui | 0 / non → oui |
+| E. une rafale de CC 21, puis Ctrl+Z : la marque | **oui → oui** (le drapeau reste) | oui → **non** |
+
+**8 ratés sur le témoin, 0 après** ; le contrôle tient des deux côtés. Le pronostic
+« deux en un » est tenu mot pour mot : sur le témoin, Ctrl+Z annonce « Forme des
+fondus croisés », annule la forme ET rend le volume (A) ou la coupure (B) d'avant le
+bouton physique.
+
+**LA VALEUR D'AVANT, VUE ROUGE.** B2 n'a pas d'autre pas que la rafale : seule la
+photo à la valeur d'avant peut y rendre 1200. **Variante d'essai** — la remise
+retirée, compilée à part, jamais commise : B et B2 rendent **2656,7** (200 + 7 800 ×
+40/127, la coupure du PREMIER message, que le thread MIDI avait déjà réglée), deux
+ratés ; la source rétablie, 0. La garde voit donc le défaut qu'elle doit voir.
+
+`marque-enregistre.sh` (les cas de D517 : CC 20 et CC 21 marquent toujours) et
+`annuler-hors-historique.sh` : 0 raté. Le moteur a gagné `instrumentParameter` (la
+lecture, comme le réglage, sur une copie du `shared_ptr`) ; ce qu'il exige d'une
+machine : rien de plus que `getParameter`. Suites : `audio` 1 307, `core` 364,
+`interchange` 312, 0 échec. Garde de langue : 0 (les libellés sont ceux de la souris).
+
+`./verifier.sh --bancs` (la garde y entre : 40 bancs) : **35 sur 40 verts** en 37
+minutes, dont `commandes-apprises.sh` (0 raté), `marque-enregistre.sh`,
+`annuler-hors-historique.sh` et l'audit d'annulation ; préférences de l'utilisateur
+identiques ; session **verrouillée** du début à la fin (dit par le lanceur). Les cinq
+rouges portent la signature de la fenêtre vide (D520) : `vumetre-console.sh`,
+`liste-editer.sh` (« 0 px sans, 0 px avec »), `automation-echelle.sh` (« ? % »),
+`regions-historique.sh` (B et E non joués, « aucun composant visible », deux fois) et
+`autosauvegarde-vue.sh` — celui-ci neuf dans la liste : « rouvre à 42,0 % » au lieu de
+66,7 %, un zoom rapporté à la largeur d'une fenêtre qui n'en avait pas. **Rejoué
+seul, après une minute : vert** (« la reprise après panne retrouve l'écran »). D521 ne
+touche ni la vue, ni l'autosauvegarde, ni la règle. **Reste nommé** : la série entière,
+session déverrouillée — pour D518 à D521.

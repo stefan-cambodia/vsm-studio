@@ -280,9 +280,11 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
     // D517 : LE PARAMÈTRE DE MACHINE EST RÉGLÉ D'ICI — le son suit le bouton sans
     // attendre la minuterie — ET DÉPOSÉ AUSSI : l'enregistrement capture les
     // machines vivantes, le projet a donc changé, et seule l'interface peut le dire.
-    if (target.kind == vsm::audio::engine::MidiLearnKind::InstrumentParam)
-        graph_.setInstrumentParameter(target.trackIndex, target.paramId, paramValue);
     LearnedControl commande;
+    if (target.kind == vsm::audio::engine::MidiLearnKind::InstrumentParam) {
+        commande.valeurAvant = graph_.instrumentParameter(target.trackIndex, target.paramId);   // D521
+        graph_.setInstrumentParameter(target.trackIndex, target.paramId, paramValue);
+    }
     commande.target = target;
     commande.value = paramValue;
     commande.rawValue = value;

@@ -282,6 +282,9 @@ public:
         vsm::audio::engine::MidiLearnTarget target;
         float value = 0.0f;      ///< déjà mise à l'échelle de la cible
         uint8_t rawValue = 0;    ///< la valeur brute du CC, pour les bascules
+        /// D521 : un paramètre de machine est réglé par le thread MIDI AVANT que
+        /// l'interface ne voie la commande ; sa valeur d'avant, pour photographier le pas.
+        float valeurAvant = 0.0f;
     };
     /// Thread UI. Vide la file dans `out` ; renvoie le nombre d'éléments.
     size_t drainLearnedControls(std::vector<LearnedControl>& out);

@@ -7993,6 +7993,52 @@ void MainComponent::refreshMidiLearnList() {
     midiLearnPanel_.setRows(std::move(lignes));
 }
 
+void MainComponent::ouvrirPasDeCommandeApprise(const AudioEngine::LearnedControl& commande, juce::uint32 maintenant) {
+    // D521 : UNE RAFALE, UN PAS — ce que D154 a décidé pour un bouton de façade. Une
+    // rafale : les messages d'une même cible sans silence de plus de 500 ms (un
+    // bouton qu'on tourne en envoie plusieurs par seconde ; une demi-seconde sans
+    // rien, c'est la main qui l'a quitté). Le muet et le solo sont des APPUIS : un
+    // appui, un pas. Le transport et la boucle n'en font pas (D0, D519).
+    using Kind = vsm::audio::engine::MidiLearnKind;
+    const auto& cible = commande.target;
+    const bool appui = cible.kind == Kind::TrackMute || cible.kind == Kind::TrackSolo;
+    const bool fait = appui || cible.kind == Kind::TrackVolume || cible.kind == Kind::TrackPan
+                      || cible.kind == Kind::TrackSend || cible.kind == Kind::InstrumentParam;
+    if (!fait || cible.trackIndex >= project_.tracks.size()) return;
+    if (appui) {
+        if (commande.rawValue < 64) return;   // le relâchement ne fait rien (D10.2)
+    } else {
+        const auto cle = std::make_tuple(static_cast<int>(cible.kind), cible.trackIndex,
+                                         static_cast<juce::uint32>(cible.paramId), static_cast<int>(cible.slot));
+        const auto it = derniereCommandeApprise_.find(cle);
+        const bool nouvelle = it == derniereCommandeApprise_.end() || maintenant - it->second > 500;
+        derniereCommandeApprise_[cle] = maintenant;
+        if (!nouvelle) return;
+    }
+    // LE LIBELLÉ DU MÊME GESTE À LA SOURIS (D425 : le geste, puis la piste ; D154).
+    const juce::String piste = juce::String::fromUTF8(project_.tracks[cible.trackIndex].name.c_str());
+    const juce::String tiret = juce::String::fromUTF8(" \xe2\x80\x94 ");
+    switch (cible.kind) {
+        case Kind::TrackVolume: beginProjectEdit(juce::String("Volume") + tiret + piste); break;
+        case Kind::TrackPan: beginProjectEdit(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Panoramique")) + tiret + piste); break;
+        case Kind::TrackMute: beginProjectEdit(juce::String("Muet") + tiret + piste); break;
+        case Kind::TrackSolo: beginProjectEdit(juce::String("Solo") + tiret + piste); break;
+        case Kind::TrackSend: beginProjectEdit(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Départ")) + tiret + piste); break;
+        case Kind::InstrumentParam:
+            // LA PHOTO À LA VALEUR D'AVANT : le thread MIDI a déjà tourné le bouton.
+            // Remise le temps de la photo, puis rendue — sur ce thread-ci, en quelques
+            // microsecondes ; un message arrivé entre-temps est rattrapé par le suivant.
+            if (auto* machine = audioEngine_.processGraph().trackInstrument(cible.trackIndex)) {
+                const float courante = machine->getParameter(cible.paramId);
+                machine->setParameter(cible.paramId, commande.valeurAvant);
+                beginProjectEdit(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Réglage de machine")));
+                machine->setParameter(cible.paramId, courante);
+            }
+            break;
+        default: break;
+    }
+}
+
 void MainComponent::applyLearnedControls() {
     learnedDrain_.clear();
     if (audioEngine_.drainLearnedControls(learnedDrain_) == 0) return;
@@ -8001,8 +8047,10 @@ void MainComponent::applyLearnedControls() {
     bool projetTouche = false;
     bool reglageTouche = false;   // D517 : un paramètre de machine, réglé par le thread MIDI
     bool boucleTouchee = false;   // D519 : la bascule de boucle, une donnée du morceau
+    const juce::uint32 maintenant = juce::Time::getMillisecondCounter();
     for (const auto& commande : learnedDrain_) {
         const auto& cible = commande.target;
+        ouvrirPasDeCommandeApprise(commande, maintenant);   // D521 : une rafale, un pas
         // UNE BASCULE S'APPUIE, UN FADER SE POSITIONNE. Traiter l'un comme
         // l'autre ferait démarrer la lecture au milieu d'une course de
         // potentiomètre. Le seuil est celui du MIDI : 64.
@@ -8077,15 +8125,20 @@ void MainComponent::applyLearnedControls() {
                 break;
         }
     }
-    if ((reglageTouche || boucleTouchee) && !projetTouche)
-        marquerHorsHistorique();   // D517, D519 : comme D508, le drapeau et pas de pas
+    // D521 : le volume, le panoramique, le muet, le solo, un départ, un réglage de
+    // machine font désormais leur pas (une rafale, un pas) : la marque vient de
+    // l'historique, et un Ctrl+Z qui défait la rafale rend « enregistré ». La boucle,
+    // bascule sans pas (D519), garde le drapeau.
+    if (boucleTouchee) marquerHorsHistorique();
+    if (reglageTouche && !projetTouche) { markProjectDirty(); rafraichirTitre(); }
     if (projetTouche) {
         // REPUBLICATION COALESCÉE, comme pour un geste de souris sur le mixeur :
         // un potentiomètre physique envoie cent messages par seconde, et
         // republier le projet cent fois par seconde reviendrait à reconstruire
         // le planning cent fois pour un fader.
         mixDirty_ = true;
-        marquerHorsHistorique();   // D508 : la marque le dit (coalescé : pas de pas)
+        markProjectDirty();
+        rafraichirTitre();   // D521 : le pas de la rafale marque (D508 posait le drapeau)
         // La console doit MONTRER ce qu'un potentiomètre physique vient de
         // faire : un fader qui bouge sans que le sien bouge à l'écran est
         // exactement ce qui fait douter du câblage.

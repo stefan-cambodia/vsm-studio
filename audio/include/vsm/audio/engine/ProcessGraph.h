@@ -84,6 +84,10 @@ public:
     /// (UI, MIDI input...) -- utilisé par le MIDI Learn. No-op si la piste
     /// n'a pas d'instrument.
     void setInstrumentParameter(size_t trackIndex, vsm::audio::plugin::ParamId paramId, float value);
+    /// D521 : la valeur d'un paramètre de machine, lue comme on la règle — du thread
+    /// MIDI aussi. 0 si la piste n'a pas d'instrument. Ce qu'une machine doit fournir
+    /// pour cela : rien de plus que `getParameter`, qu'elle a déjà.
+    float instrumentParameter(size_t trackIndex, vsm::audio::plugin::ParamId paramId) const;
 
     void addAutomationLane(AutomationLane lane);                 // thread UI
     void clearAutomationLanes();                                 // thread UI

@@ -236,7 +236,7 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   sur un appariement que le geste justifie — jamais sur deux listes triées à
   l'aveugle.
 - Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les
-  bancs qui lancent l'application — 39 au 30/09 (D520), ~38 min —, préférences comparées
+  bancs qui lancent l'application — 40 au 30/09 (D521), ~40 min —, préférences comparées
   d'office), pas
   seulement par ses bancs voisins : D482 a changé l'infobulle de « + » sans rejouer
   `liste-ajouter.sh`, resté rouge jusqu'à ce que D504 rejoue tout (29/09). Jamais

@@ -49,6 +49,7 @@
 #include "plugins/PluginScanner.h"
 #endif
 #include <map>
+#include <tuple>
 #include <memory>
 
 // Composant racine, désormais un simple SOCLE : barre de menu + barre de
@@ -1014,6 +1015,11 @@ private:
     /// Applique ce que le thread MIDI a déposé et que lui seul ne pouvait pas
     /// appliquer : mixage et transport.
     void applyLearnedControls();
+    /// D521 : une rafale de commande apprise, un pas d'annulation (voir le .cpp).
+    void ouvrirPasDeCommandeApprise(const AudioEngine::LearnedControl& commande, juce::uint32 maintenant);
+    /// D521 : l'instant du dernier message de chaque cible apprise (genre, piste,
+    /// paramètre, départ) — une rafale finit après 500 ms de silence.
+    std::map<std::tuple<int, size_t, juce::uint32, int>, juce::uint32> derniereCommandeApprise_;
 
     vsm::app::ui::MidiLearnWindow midiLearnPanel_;
     std::unique_ptr<PanelWindow> midiLearnWindow_;
