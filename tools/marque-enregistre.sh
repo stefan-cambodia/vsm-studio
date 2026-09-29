@@ -2,6 +2,7 @@
 # LA GARDE DE D507 : LA MARQUE « NON ENREGISTRÉ » DIT VRAI APRÈS L'OUVERTURE D'UN PROJET.
 # ET DE D508 : ET APRÈS DES NOTES DU PROJET TAPÉES, qui ne passent pas par l'historique.
 # ET DE D517 : ET APRÈS UN BOUTON PHYSIQUE APPRIS, qui n'y passe pas non plus.
+# ET DE D519 : ET APRÈS LA BOUCLE, LE CLIC OU LE PUNCH BASCULÉS, qui ne font pas de pas (D0, D503).
 #
 # RÈGLE GARDÉE (29/09/2026). La marque (l'astérisque du titre, et la question que
 # pose la fermeture) se déduit de l'historique contre un repère posé à chaque
@@ -183,5 +184,65 @@ esac
 vol="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tracks"][0]["mix"]["volume"])' "$brouillon/cc-2/project.json" 2>/dev/null)"
 if [ -n "$vol" ] && [ "$vol" != "1.0" ]; then printf '  OK   %-40s volume 1.0 -> %s\n' "CC 21 : le projet écrit" "$vol"
 else printf '  RATÉ %-40s volume « %s » (attendu : autre que 1.0)\n' "CC 21 : le projet écrit" "$vol"; rates=$((rates + 1)); fi
+# D519 : LES BASCULES DU MORCEAU — boucle, clic, punch (« Active ») — et la boucle
+# basculée par une commande apprise. Aucune ne fait de pas (D0, D503) ; toutes
+# s'écrivent dans le bloc `transport`. Un projet « c » porte une région de punch
+# éteinte (sans elle, « Active » est grisée). Chaque bascule suit un enregistrement :
+# la marque repart de « non », et le fichier écrit APRÈS dit que la bascule a bien
+# changé le morceau (le témoin qu'elle en était partie, D145).
+mkdir -p "$brouillon/projet-c"
+cp -r "$brouillon/projet-b/midi" "$brouillon/projet-c/"
+python3 - "$brouillon/projet-b/project.json" "$brouillon/projet-c/project.json" <<'PY2'
+import json, sys
+p = json.load(open(sys.argv[1]))
+p["title"] = "projet-c"
+p["transport"]["punch"] = {"enabled": False, "startTick": 0, "endTick": 1920}
+json.dump(p, open(sys.argv[2], "w"), indent=1)
+PY2
+h5="$(mktemp -d "$brouillon/home.XXXX")"
+mkdir -p "$h5/VintageSynthMidiStudio"
+python3 - "$h5/VintageSynthMidiStudio/VintageSynthMidiStudio.settings" <<'PY2'
+import json, sys
+from xml.sax.saxutils import quoteattr
+carte = {"format": "vsm.midilearn.v1", "mappings": [{"controller": 23, "kind": "transportLoop", "min": 0.0, "max": 1.0}]}
+open(sys.argv[1], "w", encoding="utf-8").write(
+    '<?xml version="1.0" encoding="UTF-8"?>\n\n<PROPERTIES>\n  <VALUE name="midiLearnMappings" val='
+    + quoteattr(json.dumps(carte)) + '/>\n</PROPERTIES>\n')
+PY2
+env HOME="$h5" VSM_TAILLE="1280x800" VSM_PROJET="$brouillon/projet-c" VSM_VUE="sans-rapport" VSM_DELAI=5200 \
+    VSM_GESTE_APRES="400:relever-titre;700:menu:Boucle (marche / arrêt);1000:relever-titre;1300:enregistrer:$brouillon/bascule-1;1600:menu:Métronome (marche / arrêt);1900:relever-titre;2200:enregistrer:$brouillon/bascule-2;2500:menu:Enregistrement > Active;2800:relever-titre;3100:enregistrer:$brouillon/bascule-3;3400:cc-entrant:23:127;3700:relever-titre;4000:enregistrer:$brouillon/bascule-4;4300:menu:Tête : mesure suivante;4600:relever-titre" \
+    VSM_CAPTURE="$brouillon/bascules.png" timeout 45 "$BIN" > "$brouillon/bascules.txt" 2>&1
+grep -E "VSM_(MENU|GESTE_APRES|TOUCHE) : .*(aucune|refusé|JAMAIS|grisée|AUCUNE)|Associations MIDI" "$brouillon/bascules.txt" | sed 's/^/        journal : /' >&2
+mapfile -t etats < <(grep -o "non enregistre : [a-z]*" "$brouillon/bascules.txt" | cut -d' ' -f4)
+mapfile -t titres < <(grep "VSM_TITRE_ETAT : " "$brouillon/bascules.txt" | sed 's/VSM_TITRE_ETAT : //')
+echo "=== D519 : les bascules du morceau ==="
+etape 0 "bascules : projet ouvert" non
+etape 1 "Boucle (marche / arrêt)" oui
+etape 2 "Métronome (marche / arrêt)" oui
+etape 3 "Enregistrement ▸ Active (punch)" oui
+etape 4 "CC 23 appris sur la boucle" oui
+etape 5 "contrôle : Tête : mesure suivante" non
+lu="$(python3 - "$brouillon" <<'PY2'
+import json, sys
+from pathlib import Path
+def t(n):
+    f = Path(sys.argv[1]) / f"bascule-{n}" / "project.json"
+    if not f.is_file():
+        return None
+    x = json.loads(f.read_text())["transport"]
+    return (bool(x.get("loop", {}).get("enabled")), bool(x.get("metronome")), bool(x.get("punch", {}).get("enabled")))
+e = [t(n) for n in (1, 2, 3, 4)]
+if None in e:
+    print("ABSENT"); sys.exit()
+print(" ".join("/".join("oui" if v else "non" for v in x) for x in e))
+PY2
+)"
+# boucle/clic/punch dans chaque fichier : chaque bascule change SA donnée, et elle seule.
+if [ "$lu" = "oui/non/non oui/oui/non oui/oui/oui non/oui/oui" ]; then
+    printf '  OK   %-40s boucle/clic/punch : %s\n' "bascules : les fichiers écrits" "$lu"
+else
+    printf '  RATÉ %-40s boucle/clic/punch : %s (attendu : oui/non/non oui/oui/non oui/oui/oui non/oui/oui)\n' \
+        "bascules : les fichiers écrits" "$lu"; rates=$((rates + 1))
+fi
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

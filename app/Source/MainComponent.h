@@ -555,8 +555,6 @@ public:
         }
         if (geste.startsWithIgnoreCase("clic:"))
             return clicPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
-        if (geste.startsWithIgnoreCase("cliquer:"))
-            return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         // D356 : exporter-midi:<fichier> -- L'EXPORT COMME GESTE, pour qu'un geste
         // DIFFÉRÉ puisse enfin se mesurer sur le fichier écrit.
         //
@@ -1027,6 +1025,15 @@ private:
     void autosaveIfNeeded();
     /// Le projet a été modifié depuis la dernière photo.
     void markProjectDirty() { projectDirty_ = true; }
+    /// D519 : UN CHANGEMENT DU MORCEAU SANS PAS D'ANNULATION — les notes du projet
+    /// (D508), une commande MIDI apprise (D508, D517), les bascules de boucle, de clic
+    /// et de punch. Il n'ouvre pas de pas, mais il marque : l'autosauvegarde le prend,
+    /// et fermer le demande.
+    void marquerHorsHistorique() {
+        markProjectDirty();
+        modifieHorsHistorique_ = true;
+        rafraichirTitre();
+    }
     /// D36.2 : vide l'historique ET remet le repère de la sauvegarde
     /// automatique. Les deux vont ENSEMBLE depuis que le drapeau « sale » se
     /// déduit de la profondeur : la vider seule ferait croire, au prochain

@@ -682,6 +682,7 @@ MainComponent::MainComponent()
     transportBar_.onMetronomeToggled = [this](bool actif) {
         audioEngine_.processGraph().setMetronomeEnabled(actif);
         project_.metronomeEnabled = actif;   // D503 : une donnée de morceau, comme la boucle
+        marquerHorsHistorique();             // D519 : sans pas, mais fermer le demande
     };
     transportBar_.onRecordToggled = [this](bool demarrer) {
         if (demarrer) startRecording(); else stopRecording();
@@ -981,6 +982,7 @@ MainComponent::MainComponent()
                                                    project_.ticksToSeconds(end), active);
         pianoRoll_.setLoopRegion(start, end, active);
         pianoRollPanel_.refresh();
+        marquerHorsHistorique();   // D519 : la bascule de boucle, sans pas (D0)
     };
     pianoRoll_.onPunchRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
         // La région de punch est une DONNÉE DE MORCEAU : on refait le même
@@ -5006,6 +5008,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         case kMenuRecordPunchToggle:
             project_.punchEnabled = !project_.punchEnabled;
+            marquerHorsHistorique();   // D519 : la bascule du punch, sans pas
             pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick,
                                        project_.punchEnabled);
             pianoRollPanel_.refresh();
@@ -7926,6 +7929,7 @@ void MainComponent::applyLearnedControls() {
     using Kind = vsm::audio::engine::MidiLearnKind;
     bool projetTouche = false;
     bool reglageTouche = false;   // D517 : un paramètre de machine, réglé par le thread MIDI
+    bool boucleTouchee = false;   // D519 : la bascule de boucle, une donnée du morceau
     for (const auto& commande : learnedDrain_) {
         const auto& cible = commande.target;
         // UNE BASCULE S'APPUIE, UN FADER SE POSITIONNE. Traiter l'un comme
@@ -7991,6 +7995,7 @@ void MainComponent::applyLearnedControls() {
                     project_.loopEnabled = actif;
                     transport_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, actif);
                     transportBar_.setLooping(actif);
+                    boucleTouchee = true;
                 }
                 break;
             case Kind::InstrumentParam:
@@ -8000,20 +8005,15 @@ void MainComponent::applyLearnedControls() {
                 break;
         }
     }
-    if (reglageTouche && !projetTouche) {
-        markProjectDirty();
-        modifieHorsHistorique_ = true;   // D517 : comme D508, le drapeau et pas de pas
-        rafraichirTitre();
-    }
+    if ((reglageTouche || boucleTouchee) && !projetTouche)
+        marquerHorsHistorique();   // D517, D519 : comme D508, le drapeau et pas de pas
     if (projetTouche) {
         // REPUBLICATION COALESCÉE, comme pour un geste de souris sur le mixeur :
         // un potentiomètre physique envoie cent messages par seconde, et
         // republier le projet cent fois par seconde reviendrait à reconstruire
         // le planning cent fois pour un fader.
         mixDirty_ = true;
-        markProjectDirty();
-        modifieHorsHistorique_ = true;   // D508 : la marque le dit (coalescé : pas de pas)
-        rafraichirTitre();
+        marquerHorsHistorique();   // D508 : la marque le dit (coalescé : pas de pas)
         // La console doit MONTRER ce qu'un potentiomètre physique vient de
         // faire : un fader qui bouge sans que le sien bouge à l'écran est
         // exactement ce qui fait douter du câblage.
@@ -8447,11 +8447,9 @@ void MainComponent::showProjectNotes() {
         // qu'il faudrait penser à valider seraient des notes perdues.
         projectNotesEditor_.onTextChange = [this] {
             project_.notes = projectNotesEditor_.getText().toStdString();
-            markProjectDirty();
             // D508 : ET LA MARQUE — pas de pas d'annulation pour des mots tapés dans
             // une autre fenêtre, mais la question à la fermeture, oui.
-            modifieHorsHistorique_ = true;
-            rafraichirTitre();
+            marquerHorsHistorique();
         };
         projectNotesWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Notes du projet"), projectNotesEditor_);

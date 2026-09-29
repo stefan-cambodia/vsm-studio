@@ -37393,3 +37393,72 @@ l'historique, tantôt HORS de lui, que le Ctrl+Z d'à côté ramène donc en arr
    le fader et la coupure d'avant, le bouton physique restant où il est ;
 4. la **marque** : la bascule de boucle et le clic changent le `project.json`
    (D503) sans poser le drapeau de D508 — fermer après eux ne demande rien.
+
+---
+
+### Phase D519 — la boucle, le clic ou le punch basculés, puis fermer : rien n'était demandé (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE QUATRIÈME RESTE NOMMÉ DE D518.** D503 a fait du clic une
+donnée du morceau, « à côté de la boucle » : les deux s'écrivent dans le bloc
+`transport` du `project.json`, comme la bascule du punch (« Active », menu
+Enregistrement). Aucune des trois ne fait de pas (D0, D503 ; l'exception écrite de
+l'audit) — et aucune ne pose le drapeau « modifié hors historique » de D508. Donc :
+allumer la boucle ou le clic d'un morceau, fermer — **rien n'est demandé, et le
+morceau se rouvre comme avant**. Même chose pour la boucle basculée par une commande
+MIDI apprise (`TransportLoop` : `applyLearnedControls` écrit `project_.loopEnabled`
+sans `projetTouche`). Ni l'autosauvegarde (`markProjectDirty`) ne les voit.
+
+**LE CHOIX, TRANCHÉ ICI** : la règle de D508 — « ce n'est pas l'annulation qui
+manquait, c'est la question à la fermeture ». Les trois bascules et la commande
+apprise posent le drapeau et marquent le projet pour l'autosauvegarde, par une
+seule fonction (`marquerHorsHistorique`), que D508 et D517 prennent aussi.
+
+**ATTENDU, écrit avant la mesure** — `tools/marque-enregistre.sh`, une course neuve
+sur un projet qui porte une région de punch éteinte ; chaque bascule suit un
+enregistrement (la marque repart de « non ») :
+
+| étape | témoin (binaire de D518) | après |
+|---|---|---|
+| Boucle (marche / arrêt) | **non** | **oui** — et le fichier suivant porte la boucle |
+| Métronome (marche / arrêt) | **non** | **oui** — et le fichier porte le clic |
+| Enregistrement ▸ Active (punch) | **non** | **oui** — et le fichier porte le punch |
+| CC 23 appris sur la boucle | **non** | **oui** — et le fichier ne porte plus la boucle |
+| contrôle : Tête : mesure suivante (pas une donnée du morceau) | non | non |
+
+`./verifier.sh --bancs` vert ; préférences de l'utilisateur identiques.
+
+**MESURÉ — TENU** (`tools/marque-enregistre.sh`, course neuve ; un enregistrement
+avant chaque bascule) :
+
+| étape | témoin (binaire de D518) | après |
+|---|---|---|
+| projet ouvert | non | non |
+| Boucle (marche / arrêt) | **non** | **oui** |
+| Métronome (marche / arrêt) | **non** | **oui** |
+| Enregistrement ▸ Active (punch) | **non** | **oui** |
+| CC 23 appris sur la boucle | **non** | **oui** |
+| contrôle : Tête : mesure suivante | non | non |
+| les fichiers écrits après chaque bascule (boucle/clic/punch) | oui/non/non · oui/oui/non · oui/oui/oui · non/oui/oui | les mêmes |
+
+**4 ratés sur le témoin, 0 après** ; le contrôle tient des deux côtés, et la
+dernière ligne est le témoin que chaque bascule changeait bien SA donnée du morceau,
+et elle seule — le fichier le disait, la marque non. Les cas de D507, D508 et D517
+tiennent toujours, alors que leurs trois sites passent désormais par
+`marquerHorsHistorique`.
+
+**Ce que la marque ne distingue pas, et c'est dit** : une bascule allumée puis
+éteinte laisse la marque — comme des notes tapées puis effacées (D508). La marque
+dit « le morceau a été touché depuis l'enregistrement », pas « il diffère du
+fichier » ; et Ctrl+Z ne la lève pas (D508 l'a mesuré pour les notes).
+
+`./verifier.sh --bancs` : **35 sur 38 verts** en 31 minutes, dont
+`marque-enregistre.sh` (avec les cas de D519), `annuler-hors-historique.sh`,
+`metronome-projet.sh`, `portes-du-transport.sh` et l'audit d'annulation ;
+préférences de l'utilisateur identiques. **Les trois rouges sont des mesures de
+PIXELS et de CLIC** — `fader-console.sh` (« course minimale  px », valeur vide ;
+« 0 repère du 0 dB peint »), `liste-editer.sh` (« 268 px sans, **0 px avec** »),
+`vumetre-console.sh` (« clic 0 », « SANS-ECHELLE ») — et la série s'est jouée écran
+ÉTEINT et session **VERROUILLÉE** (`kscreen-doctor` : « off » ; `LockedHint=yes`) :
+la fenêtre passe pour invisible et les photos sont vides (D94, D516). D519 ne touche
+ni la console, ni le mètre, ni la liste d'événements. **Reste nommé** : les rejouer
+écran allumé, avec `vumetre-console.sh` de D518.
