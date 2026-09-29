@@ -277,10 +277,11 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
     // l'écrire d'ici. Tout le reste -- volume, panoramique, muet, départs,
     // transport -- vit dans le PROJET, que seul le thread de l'interface a le
     // droit de modifier. On dépose donc, et l'interface applique.
-    if (target.kind == vsm::audio::engine::MidiLearnKind::InstrumentParam) {
+    // D517 : LE PARAMÈTRE DE MACHINE EST RÉGLÉ D'ICI — le son suit le bouton sans
+    // attendre la minuterie — ET DÉPOSÉ AUSSI : l'enregistrement capture les
+    // machines vivantes, le projet a donc changé, et seule l'interface peut le dire.
+    if (target.kind == vsm::audio::engine::MidiLearnKind::InstrumentParam)
         graph_.setInstrumentParameter(target.trackIndex, target.paramId, paramValue);
-        return;
-    }
     LearnedControl commande;
     commande.target = target;
     commande.value = paramValue;

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # LA GARDE DE D507 : LA MARQUE « NON ENREGISTRÉ » DIT VRAI APRÈS L'OUVERTURE D'UN PROJET.
 # ET DE D508 : ET APRÈS DES NOTES DU PROJET TAPÉES, qui ne passent pas par l'historique.
+# ET DE D517 : ET APRÈS UN BOUTON PHYSIQUE APPRIS, qui n'y passe pas non plus.
 #
 # RÈGLE GARDÉE (29/09/2026). La marque (l'astérisque du titre, et la question que
 # pose la fermeture) se déduit de l'historique contre un repère posé à chaque
@@ -127,6 +128,60 @@ if grep -q "Refrain trop long" "$brouillon/projet-b2/project.json" 2>/dev/null; 
 else
     printf '  RATÉ %-40s les notes ne sont pas dans project.json\n' "notes : le fichier"; rates=$((rates + 1))
 fi
-echo "    non mesurée (dite, pas comptée) : la commande MIDI apprise — aucun verbe de banc n'en joue."
+# D517 : LA COMMANDE MIDI APPRISE. Deux chemins (la frontière des threads) : le
+# volume, le panoramique… sont DÉPOSÉS pour l'interface ; un PARAMÈTRE DE MACHINE est
+# écrit par le thread MIDI lui-même — et l'enregistrement capture les machines
+# VIVANTES, donc le bouton tourné change ce que Ctrl+S écrit. Les associations
+# viennent des préférences du HOME, au format que l'application écrit ; le
+# contrôleur entre par `cc-entrant:`, le point d'entrée d'un port MIDI.
+# CC 20 → coupure du Minimoog (paramètre 9), CC 21 → volume de la piste, CC 22 libre.
+h4="$(mktemp -d "$brouillon/home.XXXX")"
+mkdir -p "$h4/VintageSynthMidiStudio"
+python3 - "$h4/VintageSynthMidiStudio/VintageSynthMidiStudio.settings" <<'PY2'
+import json, sys
+from xml.sax.saxutils import quoteattr
+carte = {"format": "vsm.midilearn.v1", "mappings": [
+    {"controller": 20, "kind": "instrumentParam", "track": 0, "param": 9, "min": 200.0, "max": 8000.0},
+    {"controller": 21, "kind": "trackVolume", "track": 0, "min": 0.0, "max": 1.0}]}
+open(sys.argv[1], "w", encoding="utf-8").write(
+    '<?xml version="1.0" encoding="UTF-8"?>\n\n<PROPERTIES>\n  <VALUE name="midiLearnMappings" val='
+    + quoteattr(json.dumps(carte)) + '/>\n</PROPERTIES>\n')
+PY2
+env HOME="$h4" VSM_TAILLE="1280x800" VSM_PROJET="$brouillon/projet-b" VSM_VUE="sans-rapport" VSM_DELAI=3600 \
+    VSM_GESTE_APRES="400:enregistrer:$brouillon/cc-0;700:relever-titre;1000:cc-entrant:22:100;1300:relever-titre;1600:cc-entrant:20:100;1900:relever-titre;2200:enregistrer:$brouillon/cc-1;2500:relever-titre;2800:cc-entrant:21:64;3100:relever-titre;3400:enregistrer:$brouillon/cc-2" \
+    VSM_CAPTURE="$brouillon/cc.png" timeout 40 "$BIN" > "$brouillon/cc.txt" 2>&1
+grep -E "VSM_(MENU|GESTE_APRES|TOUCHE) : .*(aucune|refusé|JAMAIS|grisée|AUCUNE)|Associations MIDI" "$brouillon/cc.txt" | sed 's/^/        journal : /' >&2
+mapfile -t etats < <(grep -o "non enregistre : [a-z]*" "$brouillon/cc.txt" | cut -d' ' -f4)
+mapfile -t titres < <(grep "VSM_TITRE_ETAT : " "$brouillon/cc.txt" | sed 's/VSM_TITRE_ETAT : //')
+echo "=== D517 : la commande MIDI apprise ==="
+[ "$(grep -c "VSM_CC_ENTRANT : " "$brouillon/cc.txt")" -eq 3 ] \
+    || { printf '  RATÉ %-40s les trois contrôleurs ne sont pas tous entrés\n' "cc-entrant"; rates=$((rates + 1)); }
+etape 0 "CC : projet enregistré une première fois" non
+etape 1 "CC 22 (libre) — contrôle" non
+etape 2 "CC 20 (coupure apprise)" oui
+etape 3 "CC : enregistré" non
+etape 4 "CC 21 (volume appris)" oui
+# LE TÉMOIN QU'ELLE EN ÉTAIT PARTIE : la marque qui dit « oui » ne vaut que si le
+# réglage a VRAIMENT bougé — lu dans le preset écrit avant et après le contrôleur.
+change="$(python3 - "$brouillon/cc-0" "$brouillon/cc-1" <<'PY2'
+import json, sys
+from pathlib import Path
+def lire(d):
+    f = Path(d) / "instruments" / "track_00.synth.json"
+    return json.loads(f.read_text())["parameters"] if f.is_file() else None
+a, b = lire(sys.argv[1]), lire(sys.argv[2])
+if a is None or b is None:
+    print("ABSENT"); sys.exit()
+print(" ; ".join(f"{k} {a[k]:.1f} -> {b.get(k, float('nan')):.1f}" for k in sorted(a) if a[k] != b.get(k)) or "RIEN")
+PY2
+)"
+case "$change" in
+    ABSENT) printf '  RATÉ %-40s preset introuvable dans cc-0 ou cc-1\n' "CC 20 : le preset écrit"; rates=$((rates + 1)) ;;
+    RIEN)   printf '  RATÉ %-40s aucun réglage n'"'"'a changé entre les deux enregistrements\n' "CC 20 : le preset écrit"; rates=$((rates + 1)) ;;
+    *)      printf '  OK   %-40s %s\n' "CC 20 : le preset écrit" "$change" ;;
+esac
+vol="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tracks"][0]["mix"]["volume"])' "$brouillon/cc-2/project.json" 2>/dev/null)"
+if [ -n "$vol" ] && [ "$vol" != "1.0" ]; then printf '  OK   %-40s volume 1.0 -> %s\n' "CC 21 : le projet écrit" "$vol"
+else printf '  RATÉ %-40s volume « %s » (attendu : autre que 1.0)\n' "CC 21 : le projet écrit" "$vol"; rates=$((rates + 1)); fi
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

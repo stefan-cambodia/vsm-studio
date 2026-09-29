@@ -378,6 +378,20 @@ public:
                         + " (non enregistre : " + (projetNonEnregistre() ? "oui" : "non") + ")\n").toRawUTF8(), stderr);
             return true;
         }
+        // D517 : un CONTRÔLEUR reçu comme d'un port MIDI — le même point d'entrée que
+        // le matériel (`handleIncomingMidiMessage`), comme le clavier d'ordinateur
+        // (`playComputerKey`). Les associations apprises s'y appliquent.
+        if (geste.startsWithIgnoreCase("cc-entrant:")) {
+            juce::StringArray champs;
+            champs.addTokens(geste.fromFirstOccurrenceOf(":", false, false), ":", "");
+            const int cc = champs.size() == 2 ? champs[0].getIntValue() : -1;
+            const int valeur = champs.size() == 2 ? champs[1].getIntValue() : -1;
+            if (cc < 0 || cc > 127 || valeur < 0 || valeur > 127) return false;
+            audioEngine_.handleIncomingMidiMessage(nullptr, juce::MidiMessage::controllerEvent(1, cc, valeur));
+            std::fputs(("VSM_CC_ENTRANT : cc " + juce::String(cc) + " valeur " + juce::String(valeur) + "\n").toRawUTF8(),
+                       stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-historique")) {
             juce::String pas;
             for (const auto& libelle : history_.undoLabels())

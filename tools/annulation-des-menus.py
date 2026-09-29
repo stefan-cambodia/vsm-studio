@@ -222,6 +222,15 @@ def pas(journal: str) -> int:
     return int(m[-1]) if m else -1
 
 
+def libelles_des_pas(journal: str) -> str:
+    """D517 : les LIBELLÉS de l'historique relevé. Un « pas pour rien » compté dans la
+    série complète (« Tous les canaux », 29/09) n'a pas reparu rejoué seul, trois
+    fois — et son journal était effacé avec le brouillon : on ne savait pas QUEL pas
+    avait été compté. Le verdict le dit désormais, avec ceux du témoin."""
+    m = re.findall(r"VSM_HISTORIQUE_PAS : \d+ : ?(.*)", journal)
+    return m[-1].strip() if m else "?"
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:]]
     seulement = None
@@ -483,14 +492,16 @@ def juger(binaire: Path, brouillon: Path, projet: Path, choisir: str,
                 print(f"  OK   {chemin} — sans pas, et c'est voulu : {EXCEPTIONS[texte]}")
                 justes += 1
             else:
-                print(f"  SUSPECT {chemin} — le morceau change SANS pas d'annulation")
+                print(f"  SUSPECT {chemin} — le morceau change SANS pas d'annulation "
+                      f"(pas : [{libelles_des_pas(j)}] ; témoin : [{libelles_des_pas(j0)}])")
                 suspects += 1
         elif empile:
             # D512 : ROUGE, DÉSORMAIS. D511 a mis les « pas pour rien » à zéro ; un
             # Ctrl+Z qui n'annule rien (et qui vide la branche « rétablir ») ne
             # revient pas en silence.
             pour_rien.append(chemin)
-            print(f"  PAS POUR RIEN {chemin} — un pas SANS changement du morceau")
+            print(f"  PAS POUR RIEN {chemin} — un pas SANS changement du morceau "
+                  f"(pas : [{libelles_des_pas(j)}] ; témoin : [{libelles_des_pas(j0)}])")
         else:
             # D514 : SANS EFFET SUR LE MORCEAU, MAIS PAS SANS TRACE. D512 a trouvé dans
             # cette case cinq entrées actives, inertes et muettes. Chaque trace est

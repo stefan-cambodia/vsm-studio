@@ -3442,7 +3442,8 @@ void MainComponent::timerCallback() {
     autosaveIfNeeded();
 
     // CE QUE LE THREAD MIDI A DÉPOSÉ (D10.2) : mixage et transport, qu'il n'a
-    // pas le droit de toucher lui-même.
+    // pas le droit de toucher lui-même — et, depuis D517, les réglages de machine
+    // qu'il a faits, pour la marque « non enregistré ».
     applyLearnedControls();
     // ET UN APPRENTISSAGE PEUT AVOIR EU LIEU SANS QUE PERSONNE LE DISE : il
     // arrive du thread MIDI, au moment où l'utilisateur tourne un bouton.
@@ -7912,6 +7913,7 @@ void MainComponent::applyLearnedControls() {
 
     using Kind = vsm::audio::engine::MidiLearnKind;
     bool projetTouche = false;
+    bool reglageTouche = false;   // D517 : un paramètre de machine, réglé par le thread MIDI
     for (const auto& commande : learnedDrain_) {
         const auto& cible = commande.target;
         // UNE BASCULE S'APPUIE, UN FADER SE POSITIONNE. Traiter l'un comme
@@ -7980,9 +7982,16 @@ void MainComponent::applyLearnedControls() {
                 }
                 break;
             case Kind::InstrumentParam:
-                // Appliqué par le thread MIDI lui-même : il ne passe pas ici.
+                // Appliqué par le thread MIDI lui-même ; déposé AUSSI pour la marque
+                // (D517) : Ctrl+S capture la machine vivante, le projet a changé.
+                reglageTouche = true;
                 break;
         }
+    }
+    if (reglageTouche && !projetTouche) {
+        markProjectDirty();
+        modifieHorsHistorique_ = true;   // D517 : comme D508, le drapeau et pas de pas
+        rafraichirTitre();
     }
     if (projetTouche) {
         // REPUBLICATION COALESCÉE, comme pour un geste de souris sur le mixeur :

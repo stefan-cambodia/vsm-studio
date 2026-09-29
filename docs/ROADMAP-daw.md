@@ -37190,3 +37190,95 @@ façon puis joue un libellé qui n'existe pas.
 
 **Reste nommé, non fait** : rejouer `liste-editer.sh` et `vumetre-console.sh` écran
 ALLUMÉ, pour que la série de D516 soit verte en entier.
+
+**Reste clos (29/09, 21 h 35)** : rejoués écran ALLUMÉ (`kscreen-doctor --dpms show`
+→ « on » avant chacun), batterie à 97 %, binaire de D516 : `liste-editer.sh` **0
+raté** (contour ambre : 268 px sans, 484 px avec) et `vumetre-console.sh` **0 raté**
+(« clic 1, témoin 0 », les six crêtes à ≤ 1 px de leur graduation). Préférences de
+l'utilisateur identiques. La série de D516 est donc verte en entier : **37 sur 37**,
+les deux rouges n'étaient que l'écran éteint.
+
+---
+
+### Phase D517 — un bouton physique appris sur la coupure changeait le son enregistré, et fermer ne demandait rien (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE « NON MESURÉ » DE D508.** D508 a posé le drapeau « modifié
+hors historique » pour les notes du projet ET pour la commande MIDI apprise, et n'a
+mesuré que les notes : « aucun verbe de banc n'en joue ». En relisant le chemin
+avant de le mesurer, il se sépare en DEUX (`AudioEngine::handleIncomingMidiMessage`,
+« la frontière est celle des threads ») : le volume, le panoramique, le muet, le
+solo, les départs et le transport sont DÉPOSÉS dans une file que l'interface vide
+(`applyLearnedControls`, qui pose le drapeau) ; un **paramètre de machine** — le cas
+historique du MIDI Learn, la coupure sur un bouton physique — est écrit
+DIRECTEMENT par le thread MIDI (`setInstrumentParameter`), et le `case
+InstrumentParam` de l'interface dit : « il ne passe pas ici ». Or l'enregistrement
+capture les réglages depuis les machines VIVANTES (`writeProjectTo`,
+`presetsDeLaSession`) : le bouton tourné change donc ce que Ctrl+S écrit, sans
+marque. Même geste à la souris sur la façade : un pas « Réglage de machine »
+(`ouvrirPasDeReglage`), donc la marque.
+
+**L'INSTRUMENT** : un geste `cc-entrant:<cc>:<valeur>` — un contrôleur reçu comme
+d'un port MIDI, par le MÊME point d'entrée (`handleIncomingMidiMessage`), comme le
+clavier d'ordinateur le fait déjà (`playComputerKey`, D11.7). Les associations
+viennent des préférences du HOME de banc (`midiLearnMappings`, le format que
+l'application écrit elle-même).
+
+**LE CHOIX, TRANCHÉ ICI** : celui de D508 pour les autres cibles apprises — le
+drapeau, pas de pas (cent messages par seconde ne font pas cent pas d'annulation).
+Le thread MIDI règle toujours la machine lui-même (le son suit le bouton sans
+attendre la minuterie de l'interface) ET dépose la commande dans la même file ;
+l'interface, en la vidant, pose la marque.
+
+**ATTENDU, écrit avant la mesure** — `tools/marque-enregistre.sh`, cas ajoutés
+(une piste Minimoog ; CC 20 → coupure, CC 21 → volume de la piste, CC 22 libre) :
+
+| étape | témoin (D516 + `cc-entrant`) | après |
+|---|---|---|
+| projet ouvert, enregistré une première fois | non | non |
+| CC 22 (libre) — contrôle | non | non |
+| CC 20 (coupure apprise) | **non** (faux) | **oui** |
+| enregistré | non | non — et la coupure du preset écrit a CHANGÉ (le témoin qu'elle était partie) |
+| CC 21 (volume appris) | oui (D508, jamais mesuré) | oui |
+
+Les cas de D507 et D508 toujours tenus ; `./verifier.sh --bancs` vert ;
+préférences de l'utilisateur identiques.
+
+**MESURÉ — TENU** (`tools/marque-enregistre.sh`, cas ajoutés ; un HOME neuf dont les
+préférences portent les deux associations) :
+
+| étape | témoin (D516 + `cc-entrant`) | après |
+|---|---|---|
+| projet ouvert, enregistré une première fois | non | non |
+| CC 22 (libre) — contrôle | non | non |
+| CC 20 (coupure apprise) | **non** (faux : fermer ne demandait rien) | **oui** (« cc-0 \* ») |
+| enregistré | non | non |
+| CC 21 (volume appris) | oui | oui |
+| le preset écrit avant / après le CC 20 | `filter.1.cutoff` **1200,0 → 6341,7** | la même |
+| le projet écrit après le CC 21 | volume **1,0 → 0,504** | la même |
+
+Rouge sur le témoin (1 raté), vert après ; les dix cas de D507 et D508 toujours
+tenus. **Le témoin qu'elle en était partie** est dans l'avant-dernière ligne : sur
+le binaire d'avant, le bouton tourné ÉCRIVAIT bien sa coupure dans le preset au
+Ctrl+S suivant — le projet avait changé, la marque ne le disait pas, et une
+fermeture l'aurait perdu sans question. **L'affirmation de D508 sur le volume appris,
+jamais mesurée, est tenue** (« oui » des deux côtés).
+
+**Le correctif** : le thread MIDI règle toujours la machine lui-même, puis dépose la
+commande dans la file que l'interface vide déjà (`learnQueue_`, un seul producteur :
+le même thread) ; `applyLearnedControls` y lit le paramètre de machine et pose le
+drapeau de D508, sans republier le mixage (rien du mixage n'a changé).
+
+`./verifier.sh --bancs` : **36 sur 37 verts** en 32 minutes, `marque-enregistre.sh`
+compris (avec les cas de D517), préférences de l'utilisateur identiques. **Le rouge**
+est l'audit d'annulation : **1 « pas pour rien »**, « Piste ▸ Canal d'entrée MIDI
+(tous) ▸ Tous les canaux », que D514 et D516 jugeaient « déjà cochée ». Lu avant
+d'être cru (D266) : le code garde l'égalité AVANT d'ouvrir un pas
+(`setSelectedTrackInputChannel` : `if (… == voulu) return;`), et D517 ne touche aucun
+de ces chemins. **Rejouée seule, trois fois : « déjà cochée », 0 pas ; l'audit complet
+rejoué, sans rien à côté : 0 suspecte, 0 non jugée, 0 pas pour rien, 0 muette, 154
+justes.** Une apparition sur cinq jeux : c'est le banc. Son journal était effacé
+avec le brouillon, et l'audit ne disait pas QUEL pas il avait compté — il le dit
+désormais (les libellés de l'historique de la course et de son témoin, à côté de
+chaque « pas pour rien » et de chaque « suspecte »), pour que la prochaine
+apparition se lise au lieu de se rejouer. L'écran s'est éteint en fin de série ;
+les deux bancs de focus et de clic, joués avant, étaient verts.
