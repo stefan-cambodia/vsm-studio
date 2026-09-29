@@ -10,7 +10,8 @@
 #      C'est le manque que cette phase comble, et c'est lui qu'on garde ;
 #   3. une nature inconnue est REFUSÉE et le DIT ;
 #   4. la création est ANNULABLE (« Ajouter un événement » à l'historique) ;
-#   5. le bouton « + » existe dans l'en-tête de la liste, avec son infobulle.
+#   5. le bouton « + » existe dans l'en-tête de la liste, avec l'infobulle que
+#      son état appelle (D482 : grisé sur « Tous », il dit pourquoi).
 #
 # Natures : 0 note, 1 contrôleur, 2 pli, 3 pression polyphonique, 4 pression de
 # canal, 5 programme.
@@ -96,9 +97,16 @@ verdict "une nature inconnue est refusée et le dit" \
         "$(grep -c 'VSM_LISTE : nature 9 inconnue' <<<"$j")"
 verdict "la création entre dans l'historique (annulable)" \
         "$(grep -c 'VSM_HISTORIQUE : Ajouter un événement' <<<"$j")"
-verdict "le bouton « + » et son infobulle sont dans l'en-tête de la liste" \
+# D504 : L'INFOBULLE QUE L'ÉTAT APPELLE. Au relevé, la liste montre « Tous » (les
+# ajouts passent par le verbe, pas par le filtre) : depuis D482, « + » y est grisé
+# et son infobulle dit POURQUOI. Ce critère attendait encore la promesse d'avant
+# D482 (« Ajouter un événement de la nature choisie… »), et il est resté rouge sans
+# que personne le voie — D482 ne l'avait pas rejoué. C'est ce que `verifier.sh
+# --bancs` a trouvé à sa première course.
+verdict "le bouton « + » et son infobulle (liste sur « Tous » : la raison du grisé, D482) sont dans l'en-tête" \
         "$([ "$(grep -c '^VSM_TEXTE : bouton : +$' <<<"$j")" -ge 1 ] \
-          && [ "$(grep -c 'VSM_TEXTE : infobulle : Ajouter un événement de la nature choisie' <<<"$j")" -ge 1 ] \
+          && [ "$(grep -c '^VSM_TEXTE : liste : Tous$' <<<"$j")" -ge 1 ] \
+          && [ "$(grep -c "VSM_TEXTE : infobulle : Choisissez d'abord une nature dans la liste" <<<"$j")" -ge 1 ] \
           && echo 1 || echo 0)"
 verdict "code de sortie 0 (relevé : $rc)" "$([ "$rc" -eq 0 ] && echo 1 || echo 0)"
 

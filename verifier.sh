@@ -5,6 +5,7 @@
 #     ./verifier.sh            les suites déjà compilées, puis Python, lint, types
 #     ./verifier.sh --compiler compile d'abord les cibles de test (deux travaux)
 #     ./verifier.sh --gardes   seulement les gardes des sources de tools/ (D378)
+#     ./verifier.sh --bancs    seulement les bancs qui LANCENT l'application (D504)
 #
 # POURQUOI CE FICHIER. Les garde-fous existaient tous — cinq suites C++, une
 # suite Python, `ruff check .` déclaré par `ruff.toml`, `mypy` déclaré par
@@ -22,7 +23,7 @@
 # qui doit empêcher une régression -- et ce fichier n'en lançait AUCUNE : une
 # garde que rien ne rejoue n'empêche rien. Ne passent ici que celles qui lisent
 # les SOURCES seules (ni application lancée, ni image, ni audio) et rendent 1 à
-# la faute ; les bancs qui lancent l'application se jouent à part. `--gardes`
+# la faute ; les bancs qui lancent l'application se jouent par `--bancs` (D504). `--gardes`
 # ne passe qu'elles : elles tiennent en quelques secondes et peuvent tourner
 # pendant une campagne, ce que la suite Python entière ne peut pas.
 #
@@ -42,6 +43,67 @@ saute()  { printf '   \033[33m—\033[0m %s\n' "$1"; SAUTES=$((SAUTES + 1)); }
 
 GARDES_SEULES=0
 [ "${1:-}" = "--gardes" ] && GARDES_SEULES=1
+
+# D504 : LES BANCS QUI LANCENT L'APPLICATION. Ils se jouaient « à part » (D378),
+# c'est-à-dire à la main, quatre ou cinq à la fois : rien ne rejouait les trente et un,
+# et un script que rien ne rejoue n'est pas une garde (D150). Liste FERMÉE, comme
+# celle des gardes : un banc neuf n'y entre qu'écrit ici.
+# HORS LISTE, ET POURQUOI : `reconstruction-annuler.sh` lance une vraie séparation
+# demucs (son en-tête le réserve aux changements de la chaîne) ; `apres-campagne`,
+# `comparer-rendus` et `garder-batterie` ne sont pas des gardes.
+if [ "${1:-}" = "--bancs" ]; then
+    titre "Bancs qui lancent l'application (D504)"
+    # PAS PENDANT UNE CAMPAGNE : certains bancs exportent, et un export pendant une
+    # course la triple (13/09). Le motif est dans CE fichier, pas dans la ligne de
+    # commande d'un shell : `pgrep -f` ne se trouve pas lui-même ici.
+    if course=$(pgrep -af "reconstruire\.py|corpus\.py|demucs" | head -1) && [ -n "$course" ]; then
+        rouge "une campagne tourne — bancs NON passés : $course"
+        exit 1
+    fi
+    BIN="./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
+    [ -x "$BIN" ] || { rouge "binaire absent — ./verifier.sh --compiler, ou compiler la cible de l'application"; exit 1; }
+    journaux="${TMPDIR:-/tmp}/vsm-verifier-bancs"
+    mkdir -p "$journaux"
+    # LES PRÉFÉRENCES DE L'UTILISATEUR, copiées JUSTE AVANT la série (D77 : jamais
+    # contre une copie ancienne — l'application sert pendant qu'on travaille).
+    prefs="$HOME/VintageSynthMidiStudio/VintageSynthMidiStudio.settings"
+    [ -f "$prefs" ] && cp "$prefs" "$journaux/preferences-avant.settings"
+    debut_serie=$(date +%s)
+    passes=0
+    for banc in automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
+                barre-transport.sh bascules-retenues.sh cadrage-ouverture.sh clavier-emprunte.sh \
+                fader-console.sh grille-gamme-projet.sh liste-ajouter.sh liste-editer.sh \
+                metronome-projet.sh miniature-clips.sh onglets-du-dock.sh ouvrir-midi.sh \
+                pas-a-pas.sh pianoroll-zones.sh police-plancher.sh portes-de-l-arrangement.sh \
+                portes-des-outils.sh portes-des-pistes.sh portes-du-transport.sh quantifier.sh \
+                theme-sombre.sh tout-voir.sh transport-au-repos.sh volet-anglais.sh \
+                vue-du-morceau.sh vumetre-console.sh zoom-reassigne.sh; do
+        t0=$(date +%s)
+        passes=$((passes + 1))
+        if [ "$banc" = "balayer-facades.sh" ]; then
+            "tools/$banc" "$journaux/facades.tsv" > "$journaux/$banc.log" 2>&1
+        else
+            "tools/$banc" > "$journaux/$banc.log" 2>&1
+        fi
+        rc=$?
+        duree=$(( $(date +%s) - t0 ))
+        if [ "$rc" -eq 0 ]; then vert "$banc (${duree} s) : $(grep -v '^\s*$' "$journaux/$banc.log" | tail -1 | cut -c1-90)"
+        else rouge "$banc (${duree} s, code $rc) : $(grep -v '^\s*$' "$journaux/$banc.log" | tail -1 | cut -c1-90)"
+             grep -E 'RATÉ|REFUS|rouge' "$journaux/$banc.log" | head -4 | sed 's/^/       /'
+        fi
+    done
+    if [ -f "$journaux/preferences-avant.settings" ]; then
+        if cmp -s "$prefs" "$journaux/preferences-avant.settings"
+        then vert "préférences de l'utilisateur identiques après la série"
+        else rouge "préférences de l'utilisateur MODIFIÉES pendant la série — lire clé par clé avant de conclure (D77) : $journaux/preferences-avant.settings"
+        fi
+    fi
+    titre "Bilan"
+    printf '   %d banc(s) en %d min, journaux dans %s\n' "$passes" $(( ($(date +%s) - debut_serie) / 60 )) "$journaux"
+    if [ "$ECHECS" -eq 0 ]; then printf '   \033[32mTous les bancs sont verts.\033[0m\n'; exit 0; fi
+    printf '   \033[31m%d en échec.\033[0m\n' "$ECHECS"
+    exit 1
+fi
 
 if [ "${1:-}" = "--compiler" ]; then
     titre "Compilation des cibles de test (deux travaux)"

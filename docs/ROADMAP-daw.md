@@ -36364,3 +36364,51 @@ doublons, anglais à l'écran, raccourcis affichés, menus cités, et les bancs
 portes (arrangement, pistes, transport), `pianoroll-zones`, `quantifier`,
 `cadrage-ouverture`, `autosauvegarde-vue`, fumée, `portes-des-gestes` — **29 sur 29
 verts** ; préférences de l'utilisateur identiques.
+
+---
+
+### Phase D504 — trente et un bancs d'interface, et rien pour les rejouer ensemble (29/09/2026)
+
+**D'OÙ ELLE VIENT.** Ce tour de travail a écrit dix gardes neuves dans `tools/`
+(D491 à D503), toutes des BANCS qui lancent l'application. `verifier.sh` ne les
+passe pas, et le dit dans son en-tête (D378) : *« les bancs qui lancent
+l'application se jouent à part »* — mais aucun outil ne les joue. D150 l'a
+écrit : un script que rien ne rejoue n'est pas une garde. Chaque phase de ce
+tour a rejoué à la main les quatre ou cinq bancs voisins ; aucune n'a rejoué les
+trente et un, et c'est ainsi qu'une régression passe entre deux phases.
+
+**LE CHOIX, TRANCHÉ ICI** : `./verifier.sh --bancs` passe la liste FERMÉE des bancs
+(une garde neuve n'y entre qu'écrite dans le fichier, comme les gardes de D378),
+un par un, avec leur durée. **`reconstruction-annuler.sh` n'y est pas** : il
+lance une vraie séparation demucs, et son en-tête le réserve aux changements de
+la chaîne. Trois scripts de `tools/` ne sont pas des gardes (`apres-campagne`,
+`comparer-rendus`, `garder-batterie`). Et le lanceur fait lui-même ce que chaque
+relevé faisait à la main : il copie les **préférences de l'utilisateur** juste
+avant la série et les compare par `cmp` après — un banc qui y écrirait serait
+nommé (D77). Il **refuse de partir pendant une campagne** (une chaîne d'analyse
+ou un corpus en cours) : certains bancs exportent, et un export pendant une
+course la triple (payé le 13/09).
+
+**ATTENDU, écrit avant la mesure** : sur le binaire de D503, les 31 bancs verts ;
+préférences identiques ; durée totale sous 40 minutes. Un banc rouge se lit AVANT
+sa cible (D266) : ceux qui n'ont pas été rejoués aujourd'hui sont les plus
+exposés — un rouge y serait une régression de ce tour, ou une dérive du banc.
+
+**MESURÉ** (`./verifier.sh --bancs`, binaire de D503, première course) : **30 sur
+31 verts en 18 minutes**, préférences de l'utilisateur identiques après la série.
+Les plus longs : `pianoroll-zones.sh` 542 s, `balayer-facades.sh` 111 s ; la
+plupart entre 3 et 40 s.
+
+**LE ROUGE, LU AVANT SA CIBLE (D266)** : `liste-ajouter.sh` — « le bouton « + » et
+son infobulle sont dans l'en-tête de la liste ». Au relevé, la liste montre
+« Tous » ; depuis **D482**, « + » y est grisé et son infobulle dit pourquoi
+(« Choisissez d'abord une nature dans la liste : « Tous » n'en est pas une ») —
+vérifié sur une course. Le banc attendait encore la promesse d'avant D482, que
+D482 avait justement retirée parce qu'elle mentait ; **D482 ne l'avait pas
+rejoué**, et il était rouge depuis sans que personne le voie. C'est une dérive du
+BANC, pas du logiciel : son critère lit désormais l'infobulle que l'état appelle
+(liste « Tous », « + », la raison), et il est vert. C'est exactement le trou que
+cette phase ferme : un banc qu'on ne rejoue pas ment en silence.
+
+**Ce qui reste à la main, et c'est dit** : `reconstruction-annuler.sh` (une vraie
+séparation demucs, réservée aux changements de la chaîne).
