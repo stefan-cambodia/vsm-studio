@@ -95,6 +95,8 @@ public:
     /// Reflète l'état réel de la boucle (l'utilisateur peut aussi la définir
     /// depuis la règle).
     void setLooping(bool active);
+    /// D503 : l'état du clic relu du projet, sans rappel.
+    void setMetronome(bool actif);
 
     /// Écoute A/B (étape 11.2) : le bouton DIT ce qu'on entend -- reconstruction,
     /// les deux, original -- et bascule au clic. Le menu Fichier le permettait

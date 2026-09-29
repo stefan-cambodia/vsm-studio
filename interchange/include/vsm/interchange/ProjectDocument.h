@@ -80,6 +80,8 @@ struct ProjectTransport {
     bool loopEnabled = false;
     int64_t loopStartTick = 0;
     int64_t loopEndTick = 0;
+    /// D503 : le clic ; écrit SEULEMENT quand il est allumé.
+    bool metronome = false;
     /// RÉGION DE PUNCH (D3.5) : entre ces deux ticks, et seulement là,
     /// l'enregistrement capte. Champ FACULTATIF -- un projet qui n'en déclare
     /// pas garde exactement le fichier qu'il avait.

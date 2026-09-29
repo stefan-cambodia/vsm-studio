@@ -108,6 +108,10 @@ public:
     bool loopEnabled = false;
     midi::Tick loopStartTick = 0;
     midi::Tick loopEndTick = 0;
+    /// D503 : LE CLIC, comme la boucle — une donnée de morceau (on le veut sur
+    /// celui qu'on enregistre, pas sur la reconstruction qu'on écoute). Le rendu
+    /// hors ligne ne le lit pas : un export ne clique jamais.
+    bool metronomeEnabled = false;
 
     /// RÉGION DE PUNCH (D3.5) : entre ces deux ticks, et seulement là,
     /// l'enregistrement capte -- avant et après, on entend ce qui est déjà là.

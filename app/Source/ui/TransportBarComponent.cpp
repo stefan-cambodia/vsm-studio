@@ -435,6 +435,10 @@ void TransportBarComponent::setLooping(bool active) {
     loopButton_.setToggleState(active, juce::dontSendNotification);
 }
 
+void TransportBarComponent::setMetronome(bool actif) {
+    metronomeButton_.setToggleState(actif, juce::dontSendNotification);
+}
+
 void TransportBarComponent::setListening(const juce::String& label, bool enabled, bool active) {
     listenButton_.setButtonText(label);
     listenButton_.setEnabled(enabled);

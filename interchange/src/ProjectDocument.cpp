@@ -265,6 +265,7 @@ ProjectDocument documentFromProject(const Project& project) {
         document.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain,
                                    bus.preFader});
     document.transport.punchEnabled = project.punchEnabled;
+    document.transport.metronome = project.metronomeEnabled;   // D503
     document.transport.punchStartTick = project.punchStartTick;
     document.transport.punchEndTick = project.punchEndTick;
 
@@ -448,6 +449,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         project.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain,
                                   bus.preFader});
     project.punchEnabled = document.transport.punchEnabled;
+    project.metronomeEnabled = document.transport.metronome;   // D503
     project.punchStartTick = document.transport.punchStartTick;
     project.punchEndTick = document.transport.punchEndTick;
 
@@ -669,6 +671,8 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         transport.set("punch", std::move(punch));
     }
     transport.set("loop", std::move(loop));
+    // D503 : LE CLIC, écrit seulement allumé — un projet sans clic garde son fichier.
+    if (document.transport.metronome) transport.set("metronome", JsonValue::makeBoolean(true));
     root.set("transport", std::move(transport));
 
     // D363 : OÙ L'ON EN ÉTAIT DANS LA VUE. Écrit SEULEMENT si un zoom a été
@@ -1084,6 +1088,8 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     document.transport.loopEnabled = loop["enabled"].asBoolean(false);
     document.transport.loopStartTick = static_cast<int64_t>(loop["startTick"].asNumber(0.0));
     document.transport.loopEndTick = static_cast<int64_t>(loop["endTick"].asNumber(0.0));
+
+    document.transport.metronome = transport["metronome"].asBoolean(false);   // D503 : absent = éteint
 
     const JsonValue& punch = transport["punch"];
     document.transport.punchEnabled = punch["enabled"].asBoolean(false);

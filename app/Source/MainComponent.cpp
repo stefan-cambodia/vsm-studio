@@ -667,6 +667,7 @@ MainComponent::MainComponent()
     // transport MIDI la suit pour rester cohérent en mode sans carte son.
     transportBar_.onMetronomeToggled = [this](bool actif) {
         audioEngine_.processGraph().setMetronomeEnabled(actif);
+        project_.metronomeEnabled = actif;   // D503 : une donnée de morceau, comme la boucle
     };
     transportBar_.onRecordToggled = [this](bool demarrer) {
         if (demarrer) startRecording(); else stopRecording();
@@ -13844,6 +13845,10 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
         pianoRoll_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
     }
     transportBar_.setLooping(project_.loopEnabled);
+    // D503 : le clic du morceau, au graphe TEMPS RÉEL seulement — le rendu hors
+    // ligne (`interchange`) ne le lit pas, et un export ne clique jamais.
+    transportBar_.setMetronome(project_.metronomeEnabled);
+    audioEngine_.processGraph().setMetronomeEnabled(project_.metronomeEnabled);
     pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick,
                                     project_.punchEnabled);
 

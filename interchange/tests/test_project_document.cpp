@@ -1651,3 +1651,18 @@ VSM_TEST(an_absurd_swing_or_scale_is_set_aside_and_said) {
     VSM_ASSERT(reecrit.find("pianoRollSwing") == std::string::npos);
     VSM_ASSERT(reecrit.find("\"scale\"") == std::string::npos);
 }
+
+// D503 : LE CLIC EST UNE DONNÉE DE MORCEAU, écrite seulement allumée.
+VSM_TEST(the_metronome_switch_travels_with_the_project) {
+    auto projet = buildProject();
+    projet.metronomeEnabled = true;
+    const std::string texte = projectDocumentToJson(documentFromProject(projet)).toString();
+    VSM_ASSERT(texte.find("\"metronome\"") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.transport.metronome);
+    // éteint : aucun champ, et un fichier sans champ se relit éteint
+    const std::string nu = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(nu.find("\"metronome\"") == std::string::npos);
+    VSM_ASSERT(!parseProjectDocument(nu).document.transport.metronome);
+}

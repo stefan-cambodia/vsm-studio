@@ -36308,3 +36308,59 @@ préférences identiques.
 **LAISSÉ TEL QUEL, ET DIT** : le « Zoom : tout voir » du clic droit dans
 l'ARRANGEMENT ne cadre que lui. Il n'affiche pas de touche et ne promet rien
 d'autre : c'est un geste local à la vue qu'on vient de cliquer.
+
+---
+
+### Phase D503 — le métronome repartait éteint à chaque ouverture du morceau (29/09/2026)
+
+**D'OÙ ELLE VIENT — LA BARRE DE TRANSPORT RELUE APRÈS D493-D496.** Son niveau est
+retenu dans les préférences (D16.6), comme « décompte seul » et « à
+l'enregistrement seul » ; mais l'interrupteur **Clic** lui-même ne l'est nulle part :
+un morceau sur lequel on enregistre au clic se rouvre sans clic. Aucune phase n'en
+a décidé (cherché : aucune décision sur son état dans la feuille de route).
+
+**LE CHOIX, TRANCHÉ ICI : LE PROJET**, à côté de la boucle. La règle de D363 : le
+clic dépend du MORCEAU — on le veut sur celui qu'on enregistre, pas sur la
+reconstruction qu'on écoute —, exactement comme la boucle, qui est une donnée de
+morceau depuis D0 (`Project::loopEnabled`) ; Live range aussi le métronome dans le
+Set. Il vit donc dans `Project` et le bloc `transport` du fichier
+(`"metronome": true`, écrit SEULEMENT quand il est allumé : un projet sans clic
+garde son fichier), sans pas d'annulation, comme la boucle. **Le rendu hors ligne
+ne le lit pas** : un export ne clique jamais, et c'est mesuré.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/metronome-projet.sh` :
+1. **témoin** (binaire de D502) : « Métronome (marche / arrêt) » au menu Transport,
+   puis enregistrer (geste différé : le bouton bascule par `triggerClick`, qui
+   POSTE — D483) → le `project.json` n'a pas de `metronome` ; rouvert, l'entrée du
+   menu n'est pas cochée ;
+2. **après** : le fichier porte `"metronome": true` ; rouvert, l'entrée est
+   **cochée** ; un projet sans le champ s'ouvre sans clic ; basculé deux fois, le
+   champ disparaît (le fichier redevient celui d'avant) ;
+3. **l'export ne clique pas** : `VSM_EXPORT` du même projet avec et sans
+   `"metronome": true` → deux fichiers IDENTIQUES (`cmp`), et non vides ;
+4. tests `interchange` (aller-retour ; absent = éteint) ; fumée 0 raté ;
+   `portes-du-transport.sh` 0 raté ; préférences inchangées.
+
+**MESURÉ — TENU** (`tools/metronome-projet.sh`, garde neuve) :
+
+| cas | témoin (D502) | après |
+|---|---|---|
+| Clic allumé au menu Transport, puis enregistré : champ | **absent** | **`"metronome": true`** |
+| ce dossier rouvert : entrée « Métronome » | non cochée | **cochée** |
+| projet sans le champ | non cochée | non cochée |
+| basculé deux fois : champ (jugé seulement si le premier cas l'a écrit, D145) | absent | absent |
+| export avec / sans le champ (`cmp`, fichiers non vides) | identiques, 1 587 644 octets | **identiques**, 1 587 644 octets |
+
+Rouge sur le témoin (2 ratés), vert après. Le dernier cas est celui qui comptait :
+le clic ne passe qu'au graphe TEMPS RÉEL, et l'export d'un morceau « au clic »
+est le même fichier, à l'octet. Test `interchange` neuf (aller-retour ; éteint,
+aucun champ ; absent = éteint) : 312.
+
+Construction complète et suites (`Project` du cœur a changé) : `core` 363,
+`interchange` 312, `audio` 1 306, `panels` 11, `clap` 25, `vst3` 19. Gardes : langue,
+doublons, anglais à l'écran, raccourcis affichés, menus cités, et les bancs
+`grille-gamme-projet`, `metronome-projet`, `pas-a-pas`, `tout-voir`,
+`zoom-reassigne`, `portes-des-outils`, `bascules-retenues`, `clavier-emprunte`,
+portes (arrangement, pistes, transport), `pianoroll-zones`, `quantifier`,
+`cadrage-ouverture`, `autosauvegarde-vue`, fumée, `portes-des-gestes` — **29 sur 29
+verts** ; préférences de l'utilisateur identiques.
