@@ -36255,3 +36255,56 @@ Rouge sur le témoin (1 raté), vert après ; Entrée et Retour arrière sont
 désormais « prise par piano roll » quand il a le clavier, avec l'effet de
 l'application. Garde de langue 0, `clavier-emprunte.sh` 0 raté,
 `portes-des-gestes.py` 0 désaccord, fumée 0 raté, préférences identiques.
+
+---
+
+### Phase D502 — « Zoom : tout voir (les deux vues) » ne cadrait que le piano roll quand il avait le clavier (29/09/2026)
+
+**D'OÙ ELLE VIENT — LA FAMILLE DE D492, CHERCHÉE COMMANDE PAR COMMANDE** : quelles
+commandes l'application ET une vue traitent-elles toutes deux, et différemment ?
+Annuler et Rétablir font la même chose des deux côtés. **Ctrl+0**, non : la table le
+nomme « Zoom : tout voir (les deux vues) », et `executerCommande` cadre bien
+l'arrangement ET le piano roll (D14.2) — mais le piano roll, qui reçoit la touche
+d'abord quand il a le clavier, la traite dans `performShortcut` en ne cadrant que
+lui. Son entrée du menu Édition (« Zoom : tout voir », Ctrl+0 en regard) aussi.
+
+**MESURÉ AVANT D'ÉCRIRE L'ATTENDU** (arrangement zoomé à 26 % de sa part, piano
+roll zoomé) : piano roll au clavier, Ctrl+0 → piano roll cadré, **arrangement
+toujours à 26 %** (« prise par piano roll ») ; arrangement ou application au
+clavier → les deux cadrés, arrangement à 104,2 %.
+
+**LE CHOIX, TRANCHÉ ICI** : c'est la table qui a raison — « les deux vues », quelle
+que soit la vue au clavier, et depuis le menu Édition aussi : sa touche en
+regard est Ctrl+0, et une entrée qui affiche une touche fait ce qu'elle fait
+(D155, D471). Le piano roll DEMANDE « tout voir » à l'application (un rappel),
+qui cadre les deux ; seul, sans application (un aperçu hors écran), il se cadre.
+
+**ATTENDU** — garde neuve `tools/tout-voir.sh` (même projet, mêmes zooms de départ) :
+1. **témoin** (binaire de D501) : `focus:pianoroll:ctrl + 0` → arrangement 26 % ;
+   `VSM_MENU="Zoom : tout voir"` → arrangement 26 % ;
+2. **après** : les deux → arrangement 104,2 %, piano roll cadré ; `focus:arrangement:`
+   et l'application inchangés (104,2 %) ;
+3. `touches-du-menu-edition.py`, `noms-des-gestes.py` verts ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU** (`tools/tout-voir.sh`, garde neuve ; témoin sans geste :
+arrangement 26,0 %, piano roll zoom 0,320) :
+
+| porte | témoin (D501) | après |
+|---|---|---|
+| Ctrl+0, piano roll au clavier | arrangement **26,0** (immobile), piano roll 0,026 | arrangement **104,2**, piano roll 0,026 |
+| Ctrl+0, arrangement au clavier | 104,2 / 0,026 | 104,2 / 0,026 |
+| Ctrl+0, application au clavier | 104,2 / 0,026 | 104,2 / 0,026 |
+| menu Édition « Zoom : tout voir » | arrangement **26,0** (immobile) | **104,2** |
+
+Rouge sur le témoin (2 ratés), vert après. `touches-du-menu-edition.py` 0 muette
+sur 24 (l'entrée et la touche appellent désormais la même `demanderToutVoir`),
+`noms-des-gestes.py` 0, garde de langue 0 ; `pianoroll-zones.sh` 7 relevés 0 raté
+(son « Zoom : tout voir » par le menu du clic droit cadre aussi l'arrangement,
+sans rien changer au rang qu'il juge), `vue-du-morceau.sh` et
+`cadrage-ouverture.sh` verts, `portes-des-outils.sh` 0 raté ; fumée 0 raté ;
+préférences identiques.
+
+**LAISSÉ TEL QUEL, ET DIT** : le « Zoom : tout voir » du clic droit dans
+l'ARRANGEMENT ne cadre que lui. Il n'affiche pas de touche et ne promet rien
+d'autre : c'est un geste local à la vue qu'on vient de cliquer.

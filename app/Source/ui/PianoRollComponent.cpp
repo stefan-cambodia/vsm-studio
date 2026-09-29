@@ -1081,6 +1081,15 @@ void PianoRollComponent::stepInputBack() {
     repaint();
 }
 
+void PianoRollComponent::demanderToutVoir() {
+    // D502 : « ZOOM : TOUT VOIR (LES DEUX VUES) » — c'est le nom de Ctrl+0 dans la
+    // table. Le piano roll reçoit la touche d'abord quand il a le clavier (D492)
+    // et ne cadrait que lui ; il DEMANDE désormais à l'application, qui cadre les
+    // deux. Sans application (un aperçu hors écran), il se cadre.
+    if (onToutVoirDemande) onToutVoirDemande();
+    else zoomToFit();
+}
+
 void PianoRollComponent::avancerLaSaisie(vsm::midi::Tick tick) {
     // D500 : LA POSITION D'INSERTION EST LA TÊTE DU TRANSPORT (D13.5), et c'est
     // elle qu'on déplace — par le chemin du clic sur la règle. Déplacer la seule
@@ -1377,7 +1386,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxArpDown:          arpeggiateSelection(ArpeggioMode::Down); break;
         case kCtxArpUpDown:        arpeggiateSelection(ArpeggioMode::UpDown); break;
         case kCtxArpRandom:        arpeggiateSelection(ArpeggioMode::Random); break;
-        case kCtxZoomFit:          zoomToFit(); break;
+        case kCtxZoomFit:          demanderToutVoir(); break;   // D502
         case kCtxZoomSelection:    zoomToSelection(); break;
         case kCtxZoomIn:           zoomHorizontally(1.25f); break;   // D497 : comme `performShortcut`
         case kCtxZoomOut:          zoomHorizontally(0.8f); break;
@@ -1838,7 +1847,7 @@ bool PianoRollComponent::performShortcut(vsm::interchange::ShortcutId id,
         case Id::ToolSplit:           setTool(Tool::Split); return true;
         case Id::ToolGlue:            setTool(Tool::Glue); return true;
         case Id::ToolMute:            setTool(Tool::Mute); return true;
-        case Id::ViewZoomToFit:       zoomToFit(); return true;
+        case Id::ViewZoomToFit:       demanderToutVoir(); return true;   // D502 : les deux vues
         case Id::ViewZoomIn:          zoomHorizontally(1.25f); return true;
         case Id::ViewZoomOut:         zoomHorizontally(0.8f); return true;
         // « D » comme douteuse : la suivante, Maj+D la précédente. C'est un

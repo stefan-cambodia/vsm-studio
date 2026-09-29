@@ -656,6 +656,8 @@ MainComponent::MainComponent()
 
     // Clic sur la règle : déplacer la tête de lecture, en gardant les deux
     // transports d'accord (voir ARCHITECTURE.md section 6).
+    // D502 : « Zoom : tout voir (les deux vues) », depuis le piano roll aussi.
+    pianoRoll_.onToutVoirDemande = [this] { arrangement_.zoomToFit(); pianoRoll_.zoomToFit(); };
     pianoRoll_.onPlayheadRequested = [this](vsm::midi::Tick tick) {
         transport_.seekToTick(tick);
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));

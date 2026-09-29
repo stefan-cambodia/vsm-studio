@@ -84,6 +84,10 @@ public:
     /// l'application les écrit dans les préférences. Ils revenaient à leur défaut
     /// à chaque lancement. Appelé seulement quand la valeur change.
     std::function<void()> onBasculesChanged;
+    /// D502 : « tout voir » vaut pour les DEUX vues (la table le nomme ainsi) :
+    /// l'application cadre l'arrangement et le piano roll. Sans lui, le piano roll
+    /// se cadre seul.
+    std::function<void()> onToutVoirDemande;
 
     // --- Conversions partagées (règle, lane de vélocité) ------------------
     float tickToX(vsm::midi::Tick tick) const;
@@ -415,6 +419,8 @@ private:
     void refreshFoldRows();
     /// D500 : déplace la position de la saisie pas à pas — la tête du TRANSPORT.
     void avancerLaSaisie(vsm::midi::Tick tick);
+    /// D502 : Ctrl+0 et « Zoom : tout voir » — demandé à l'application (`onToutVoirDemande`).
+    void demanderToutVoir();
     bool folded() const { return fold_ && !rangees_.empty(); }
     int rowCount() const { return folded() ? static_cast<int>(rangees_.size()) : 128; }
     int rowOfNote(int note) const;
