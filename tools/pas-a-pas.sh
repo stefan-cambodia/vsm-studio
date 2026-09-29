@@ -83,5 +83,51 @@ grep -E "VSM_(TOUCHE|GESTE_APRES|CLIC|MENU) : .*(AUCUNE|aucune|refusé|JAMAIS|GR
 tete="$(grep -o "VSM_TETE : tick -\?[0-9]*" "$brouillon/rythme.txt" | tail -1 | grep -o "\-\?[0-9]*$")"
 juger "rythme" "$(lire "$brouillon/rythme")" "${tete:-?}"
 
+# D501 : LA MÊME SUITE, PIANO ROLL AU CLAVIER (c'est là qu'on a cliqué « Pas à
+# pas ») — Entrée et Retour arrière passent par la chaîne de JUCE depuis la vue
+# (`focus:`, D492). Avant D501, Retour arrière y était « Supprimer » : la note
+# qu'on venait d'entrer (choisie) était effacée, et la tête ne reculait pas.
+h="$(mktemp -d "$brouillon/home.XXXX")"
+env HOME="$h" VSM_TAILLE="1600x1000" VSM_VUE="sans-rapport" VSM_MENU="Clavier d'ordinateur" \
+    VSM_GESTE_PISTE="cliquer:Pas à pas" VSM_DELAI=4200 \
+    VSM_GESTE_APRES="400:touche:x11:A;900:touche:x11:S;1400:touche:focus:pianoroll:return;1900:touche:x11:D;2400:touche:focus:pianoroll:backspace;2900:touche:x11:F;3300:relever-tete;3500:enregistrer:$brouillon/vue" \
+    VSM_CAPTURE="$brouillon/vue.png" timeout 40 "$BIN" > "$brouillon/vue.txt" 2>&1
+grep "VSM_TOUCHE : « [a-z]* » → focus" "$brouillon/vue.txt" | sed 's/^/        /'
+tete="$(grep -o "VSM_TETE : tick -\?[0-9]*" "$brouillon/vue.txt" | tail -1 | grep -o "\-\?[0-9]*$")"
+juger "piano roll" "$(lire "$brouillon/vue")" "${tete:-?}"
+
+# CONTRÔLE HORS SAISIE : Retour arrière, piano roll au clavier, supprime toujours
+# la note choisie (sans « Pas à pas », « focus:pianoroll:ctrl + A » choisit tout).
+h="$(mktemp -d "$brouillon/home.XXXX")"
+mkdir -p "$brouillon/ctl/midi"
+"$PY" - "$brouillon/ctl" <<'PY2'
+import json, struct, sys
+d = sys.argv[1]
+def vlq(n):
+    b = [n & 0x7F]; n >>= 7
+    while n:
+        b.append((n & 0x7F) | 0x80); n >>= 7
+    return bytes(reversed(b))
+evs = [(0, b"\xff\x03\x03une"), (0, bytes([0x90, 60, 100])), (480, bytes([0x80, 60, 0]))]
+corps = b"".join(vlq(dt) + o for dt, o in evs) + b"\x00\xff\x2f\x00"
+open(d + "/midi/arrangement.mid", "wb").write(b"MThd" + struct.pack(">IHHH", 6, 1, 1, 480) + b"MTrk" + struct.pack(">I", len(corps)) + corps)
+json.dump({"format": "vsm-project", "version": 1, "title": "ctl", "midi": {"file": "midi/arrangement.mid"},
+           "transport": {"loop": {"enabled": False, "endTick": 0, "startTick": 0}, "tempoChanges": [{"bpm": 120.0, "tick": 0}],
+                         "ticksPerQuarterNote": 480, "timeSignatures": [{"denominator": 4, "numerator": 4, "tick": 0}]},
+           "tracks": [{"channel": 0, "color": "#FF6B9BFF", "effects": [], "instrument": {"preferredPlugin": "vsm.minimoog"},
+                       "mix": {"muted": False, "pan": 0.0, "sends": [0.0, 0.0], "solo": False, "volume": 1.0}, "name": "une"}]},
+          open(d + "/project.json", "w"), indent=1)
+PY2
+env HOME="$h" VSM_PROJET="$brouillon/ctl" VSM_TAILLE="1600x1000" VSM_VUE="sans-rapport" \
+    VSM_TOUCHE="focus:pianoroll:ctrl + A;focus:pianoroll:backspace" VSM_DELAI=1500 \
+    VSM_GESTE_APRES="800:enregistrer:$brouillon/ctl-ecrit" \
+    VSM_CAPTURE="$brouillon/ctl.png" timeout 40 "$BIN" > "$brouillon/ctl.txt" 2>&1
+reste="$(lire "$brouillon/ctl-ecrit")"
+if [ -z "$reste" ]; then
+    printf '  OK   %-10s hors saisie, Retour arrière supprime la note choisie (il n'"'"'en reste aucune)\n' "contrôle"
+else
+    printf '  RATÉ %-10s hors saisie, il reste « %s » (attendu : aucune note)\n' "contrôle" "$reste"
+    rates=$((rates + 1))
+fi
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

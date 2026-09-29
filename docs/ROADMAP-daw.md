@@ -36214,3 +36214,44 @@ arrière** est pris par le piano roll (« Supprimer », dans sa table) avant
 d'atteindre l'application : il EFFACE la note qu'on vient d'entrer (elle est
 choisie) au lieu de reculer (relevé par `focus:pianoroll:backspace` — « prise par
 piano roll »). La famille de D492 ; sa propre phase.
+
+---
+
+### Phase D501 — en saisie pas à pas, Retour arrière effaçait la note qu'on venait d'entrer (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D500.** « Retour arrière recule » (D13.5) est
+écrit dans `MainComponent::keyPressed` — un ÉCOUTEUR, que la touche n'atteint que
+si la vue qui a le clavier n'en veut pas (D492). Le piano roll en veut : Retour
+arrière est l'alias de « Supprimer » dans sa table, et la note qu'on vient de
+saisir est CHOISIE (`stepInputNote`). Piano roll au clavier — c'est là qu'on a
+cliqué « Pas à pas » —, Retour arrière efface donc la dernière note et ne recule
+pas. Entrée, absent de la table, remonte bien.
+
+**LE CHOIX, TRANCHÉ ICI** : en saisie pas à pas, le piano roll traite lui-même
+Entrée (un silence) et Retour arrière (un pas en arrière), avant sa table — ce
+sont SES touches de saisie, comme l'application les traite quand elle a le
+clavier. Hors saisie, rien ne change : Retour arrière supprime.
+
+**ATTENDU, écrit avant la mesure** — `tools/pas-a-pas.sh`, cas ajouté : la même suite,
+Entrée et Retour arrière joués piano roll au clavier (`focus:pianoroll:`) :
+1. **témoin** (binaire de D500) : Retour arrière « prise par piano roll », mi
+   EFFACÉ et la tête non reculée — notes **0:60 120:62 480:65** ;
+2. **après** : **0:60 120:62 360:64 360:65**, tête 480, comme au clavier de
+   l'application ;
+3. contrôle hors saisie : `focus:pianoroll:backspace` sur une note choisie la
+   supprime toujours ;
+4. fumée 0 raté ; `clavier-emprunte.sh`, `portes-des-gestes.py` verts ;
+   préférences inchangées.
+
+**MESURÉ — TENU** (`tools/pas-a-pas.sh`, cas « piano roll » et contrôle ajoutés) :
+
+| cas | témoin (D500) | après |
+|---|---|---|
+| rythme, application au clavier (D500) | 0:60 120:62 360:64 360:65, tête 480 | idem |
+| rythme, **piano roll au clavier** | Retour arrière « prise par piano roll » → **0:60 120:62 480:65**, tête **600** (mi effacé, pas de recul) | **0:60 120:62 360:64 360:65**, tête **480** |
+| contrôle hors saisie : tout choisir, Retour arrière (piano roll) | la note supprimée | la note supprimée |
+
+Rouge sur le témoin (1 raté), vert après ; Entrée et Retour arrière sont
+désormais « prise par piano roll » quand il a le clavier, avec l'effet de
+l'application. Garde de langue 0, `clavier-emprunte.sh` 0 raté,
+`portes-des-gestes.py` 0 désaccord, fumée 0 raté, préférences identiques.

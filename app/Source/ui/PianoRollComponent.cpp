@@ -1754,6 +1754,15 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
     // « il emprunte les lettres aux raccourcis ») -- la touche remonte à
     // l'application, qui la joue.
     if (toucheDuClavier && toucheDuClavier(key)) return false;
+    // D501 : EN SAISIE PAS À PAS, ENTRÉE ET RETOUR ARRIÈRE SONT DES TOUCHES DE
+    // SAISIE, ici comme dans l'application (D13.5 : un silence, un pas en arrière).
+    // L'application les traite quand elle a le clavier ; le piano roll, qui le
+    // reçoit d'abord (D492), faisait de Retour arrière « Supprimer » — et la note
+    // qu'on venait de saisir, choisie, était effacée au lieu de reculer.
+    if (stepInput_ && !key.getModifiers().isAnyModifierKeyDown()) {
+        if (key.getKeyCode() == juce::KeyPress::returnKey) { stepInputRest(); return true; }
+        if (key.getKeyCode() == juce::KeyPress::backspaceKey) { stepInputBack(); return true; }
+    }
     const auto mods = key.getModifiers();
 
     // LA TOUCHE NE DÉCIDE PLUS DE RIEN (D10.3) : elle désigne une COMMANDE, et
