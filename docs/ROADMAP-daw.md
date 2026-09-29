@@ -37666,3 +37666,74 @@ rouges portent la signature de la fenêtre vide (D520) : `vumetre-console.sh`,
 seul, après une minute : vert** (« la reprise après panne retrouve l'écran »). D521 ne
 touche ni la vue, ni l'autosauvegarde, ni la règle. **Reste nommé** : la série entière,
 session déverrouillée — pour D518 à D521.
+
+---
+
+### Phase D522 — « BORNÉ par l'écran » : le banc accusait l'écran d'une fenêtre que le gestionnaire de fenêtres réduisait (30/09/2026)
+
+**D'OÙ ELLE VIENT — LES FENÊTRES VIDES DE D520 ET D521.** Sous la session verrouillée,
+les bancs ont rendu des photos de 5 950 octets. Le journal en dit la cause, et il la
+dit fausse : « VSM_TAILLE : 1280x800 demandé, **128x128 obtenu — BORNÉ par l'écran
+divisé par l'échelle d'interface** ». Ce texte n'a rien lu : il conclut au bornage
+de D58 dès que l'image diffère de la demande. Or l'écran se déclare en 1 707 × 1 067
+logiques (`kscreen-doctor` : 2 560 × 1 600 à 150 %), et l'application refuse
+elle-même de descendre sous son plancher de 900 × 660 (`setResizeLimits`, D58) :
+une fenêtre de 128 × 128 ne vient donc ni de l'écran ni d'elle. Un banc qui lit ce
+message cherche la faute du mauvais côté — c'est une panne muette déguisée en
+explication (règle du dépôt : ce qui est remplacé est DIT, et par qui).
+
+**PRONOSTIC, écrit avant la mesure** : JUCE déclare l'écran à sa vraie taille (de
+l'ordre de 1 707 × 1 067) ; la fenêtre obtenue est SOUS le plancher de
+l'application ; c'est donc le gestionnaire de fenêtres qui l'a réduite (écran
+éteint, session verrouillée).
+
+**LE CHOIX, TRANCHÉ ICI** : le message dit ce qu'il a LU — l'écran déclaré par JUCE
+(zone utile, échelle), le plafond qui en découle, le plancher — et n'attribue le
+bornage qu'à la cause qui l'explique : « bornée par l'écran » si l'image tient au
+plafond, « **réduite par le gestionnaire de fenêtres** » si elle passe sous le
+plancher que l'application impose, avec la conséquence écrite : cette photo ne
+mesure rien de la disposition. Les gardes qui mesurent la géométrie le lisent et
+disent « non jugé » au lieu de « raté ».
+
+**ATTENDU** — relevé sous la session verrouillée de cette nuit :
+
+| | témoin (binaire de D521) | après |
+|---|---|---|
+| le message | « 128x128 obtenu — BORNÉ par l'écran divisé par l'échelle d'interface » | « 128x128 obtenu — RÉDUITE PAR LE GESTIONNAIRE DE FENÊTRES : sous le plancher 900x660 de l'application ; écran déclaré … » |
+| l'écran déclaré | non dit | dit (zone utile et échelle) |
+
+**MESURÉ — TENU**, sous la session verrouillée de cette nuit, six lancements du même
+banc (`VSM_TAILLE=1280x800`, un HOME neuf chacun) :
+
+| lancement | témoin (binaire de D521) | après |
+|---|---|---|
+| fenêtre réduite (128 × 128) | « BORNÉ par l'écran divisé par l'échelle d'interface » | « **RÉDUITE PAR LE GESTIONNAIRE DE FENÊTRES** : sous le plancher 900x660 que l'application s'impose (écran éteint ou session verrouillée ?) ; écran déclaré 1707x1067, échelle d'interface 150 % — cette photo ne mesure rien de la disposition » |
+| fenêtre réduite (1 000 × 82) | — | le même diagnostic |
+| fenêtre obtenue (1 280 × 800) | rien | rien |
+
+Le pronostic est tenu : JUCE déclare l'écran à 1 707 × 1 067 (ce que dit
+`kscreen-doctor`), et la fenêtre obtenue passe SOUS le plancher de l'application —
+le bornage venait du gestionnaire de fenêtres.
+
+**Et il a été plus loin que le pronostic** : la première version du message annonçait
+aussi un « plafond » calculé (zone ÷ échelle d'interface = 1 138 × 711), et la course
+suivante l'a démenti — 1 280 × 800 obtenu. Puis **3 000 × 2 000 demandé, 3 000 × 2 000
+obtenu** : sous cette session, AUCUN bornage à l'écran ne s'exerce. Le plafond a été
+retiré du message — il ne dit que ce qu'il a lu. Le bornage « par l'écran divisé par
+l'échelle » que D58 décrivait a été mesuré session ouverte ; il n'est ni confirmé ni
+réfuté ici, et la branche qui le nomme ne l'affirme plus sans l'écran déclaré à côté.
+
+La garde des régions (D520) relaie désormais ce diagnostic quand son geste ne trouve
+pas la règle. **Ce qui reste bloqué, et c'est dit** : tant que la session reste
+verrouillée, aucune mesure de géométrie ne se fait — la phase suivante (Maj+clic sur
+la règle, écrite et mise en réserve) attend une session ouverte.
+
+Gardes des sources : la garde de langue a d'abord compté **5 textes « à l'écran »**
+— les morceaux du message, assemblés dans deux variables intermédiaires que son suivi
+(D106) ne suit pas jusqu'au `fputs`. Le message est désormais assemblé dans UNE
+variable, par ajouts, puis écrit au terminal : 0. `banc-fumee.sh` et
+`marque-enregistre.sh` : 0 raté. **`./verifier.sh --bancs` n'est pas rejoué pour
+cette phase, et c'est dit** : elle ne change qu'une ligne de journal qu'aucune garde
+ne lit (cherché : aucun outil de `tools/` ne lit la suite de `VSM_TAILLE`), et, la
+session restant verrouillée, la série ne rendrait que les rouges de géométrie déjà
+lus quatre fois.

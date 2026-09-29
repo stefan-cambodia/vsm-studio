@@ -772,17 +772,44 @@ public:
                         // 1 600 px » sous une image de 1 280. Et le composant,
                         // lui, rend encore la taille DEMANDÉE à cet instant :
                         // seule l'image dit la vérité.
-                        if (tailleDemandee.first > 0)
-                            std::fputs(("VSM_TAILLE : " + std::to_string(tailleDemandee.first) + "x"
-                                        + std::to_string(tailleDemandee.second) + " demand\u00e9, "
-                                        + std::to_string(image.getWidth()) + "x"
-                                        + std::to_string(image.getHeight()) + " obtenu"
-                                        + ((image.getWidth() != tailleDemandee.first
-                                            || image.getHeight() != tailleDemandee.second)
-                                               ? " \u2014 BORN\u00c9 par l'\u00e9cran divis\u00e9 "
-                                                 "par l'\u00e9chelle d'interface"
-                                               : "")
-                                        + "\n").c_str(), stderr);
+                        // D522 : ET LA CAUSE, LUE ET NON SUPPOSÉE. Le texte disait
+                        // « BORNÉ par l'écran » dès que l'image différait de la
+                        // demande ; sous une session verrouillée, le gestionnaire de
+                        // fenêtres rendait 128x128 — sous le plancher que
+                        // l'application s'impose (D58) — et le banc cherchait la
+                        // faute à l'écran, qui se déclarait en 1707x1067.
+                        if (tailleDemandee.first > 0) {
+                            const auto* ecran = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+                            const auto zone = ecran != nullptr ? ecran->userArea : juce::Rectangle<int>();
+                            const float echelle = juce::Desktop::getInstance().getGlobalScaleFactor();
+                            // CE QUI EST LU, ET RIEN D'AUTRE : un « plafond » calculé
+                            // (zone / échelle) a été démenti à la première course — 1 280
+                            // obtenu pour un plafond annoncé de 1 138.
+                            const bool differe = image.getWidth() != tailleDemandee.first
+                                                 || image.getHeight() != tailleDemandee.second;
+                            const bool sousLePlancher = image.getWidth() < kLargeurMinimale
+                                                        || image.getHeight() < kHauteurMinimale;
+                            std::string message = "VSM_TAILLE : " + std::to_string(tailleDemandee.first) + "x"
+                                                  + std::to_string(tailleDemandee.second) + " demand\u00e9, "
+                                                  + std::to_string(image.getWidth()) + "x"
+                                                  + std::to_string(image.getHeight()) + " obtenu";
+                            if (differe && sousLePlancher) {
+                                message += " \u2014 R\u00c9DUITE PAR LE GESTIONNAIRE DE FEN\u00caTRES : sous le plancher ";
+                                message += std::to_string(kLargeurMinimale) + "x" + std::to_string(kHauteurMinimale);
+                                message += " que l'application s'impose (\u00e9cran \u00e9teint ou session verrouill\u00e9e ?) ; ";
+                            } else if (differe) {
+                                message += " \u2014 BORN\u00c9 par l'\u00e9cran : ";
+                            }
+                            if (differe) {
+                                message += "\u00e9cran d\u00e9clar\u00e9 " + std::to_string(zone.getWidth()) + "x"
+                                           + std::to_string(zone.getHeight());
+                                message += ", \u00e9chelle d'interface "
+                                           + std::to_string(static_cast<int>(std::lround(echelle * 100.0f))) + " %";
+                            }
+                            if (differe && sousLePlancher)
+                                message += " \u2014 cette photo ne mesure rien de la disposition";
+                            std::fputs((message + "\n").c_str(), stderr);
+                        }
                         fichier.deleteFile();
                         juce::FileOutputStream flux(fichier);
                         if (flux.openedOk())

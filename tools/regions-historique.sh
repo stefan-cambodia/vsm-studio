@@ -88,6 +88,9 @@ lancer() {   # $1 nom ; $2 projet ; $3 gestes
         # UNE FENÊTRE VIDE N'EST PAS UNE MESURE : le geste n'a trouvé aucun composant.
         # Rejouée UNE fois, après une minute, et dit (comme l'audit, D510).
         grep -q "aucun composant visible de ce nom" "$brouillon/$1.txt" || break
+        # D522 : la cause, telle que l'application l'a LUE (la fenêtre réduite par le
+        # gestionnaire de fenêtres sous son plancher), et non supposée.
+        grep "VSM_TAILLE : .*RÉDUITE" "$brouillon/$1.txt" | cut -c1-110 | sed 's/^/        /'
         [ "$essai" -eq 1 ] && { echo "        (« $1 » : fenêtre vide, geste non joué — rejoué après 60 s)"; sleep 60; }
     done
     # D147 : ce que l'application avertit se relaie AVANT de conclure.
