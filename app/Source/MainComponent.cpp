@@ -9878,6 +9878,13 @@ int MainComponent::audioSpansWithCrossfade() const {
 }
 
 void MainComponent::setCrossfadeShape(vsm::sequencer::FadeShape forme) {
+    // D506 : UN PAS D'ANNULATION. La forme est une donnée du morceau (elle est
+    // écrite dans project.json) ; changée sans pas, le Ctrl+Z suivant remontait
+    // AU-DELÀ et annulait deux gestes en un — et, la marque « non enregistré » se
+    // déduisant de l'historique (D174), fermer ne demandait rien. Seulement si la
+    // forme CHANGE : un pas qui n'annule rien serait un Ctrl+Z pour rien.
+    if (project_.crossfadeShape == forme) return;
+    beginProjectEdit(u8"Forme des fondus croisés");
     project_.crossfadeShape = forme;
     // LES CLIPS SONT RECHARGÉS : sans quoi le réglage ne prendrait qu'au
     // prochain chargement de projet -- la leçon de D33.2, telle quelle.

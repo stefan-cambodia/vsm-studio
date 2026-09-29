@@ -1264,6 +1264,7 @@ Le vrai focus ne se prend pas au banc (`grabKeyboardFocus` exige une fenêtre
 affichée, ce qu'elle n'est pas sous un écran verrouillé). Le « ; » s'écrit `#3b`,
 `VSM_TOUCHE` séparant ses touches par « ; ». Pendant une touche de banc, le clavier
 d'ordinateur écrit ce qu'il joue : `VSM_CLAVIER : note 67`, `VSM_CLAVIER : octave -1`.
+Gestes jouables en différé (`VSM_GESTE_APRES`, dans l'ordre), parce que `VSM_MENU` et `VSM_TOUCHE` agissent au démarrage d'un bloc : `touche:<description>` (D500), `relever-tete` (D500), `menu:<libellé>`, `lister-menus`, `relever-historique` et `relever-defilement` (D506). La liste de vitesse de lecture s'appelle `transport.vitesse` (`liste:transport.vitesse=x0.50`).
 `VSM_TOUCHE="arrangement:x11:="` (D499) fabrique la touche comme X11 la livre, AVEC son caractère (égal au code pour une touche imprimable sans Ctrl ni Alt) : sans lui, les chemins qui lisent le caractère d'une touche — les replis sans table de l'arrangement — n'étaient jamais atteints au banc.
 `VSM_TRACE_COUTS=1` écrit sur la sortie d'erreur le temps de calcul de chaque
 piste, une fois par seconde : une capture qui ne montre pas la piste la plus

@@ -36485,3 +36485,64 @@ Vérification complète après le correctif : construction entière ; `core` 363
 sources vertes (sauf le compteur de l'INDEX, à jour à ce commit) ;
 **`./verifier.sh --bancs` : 32 bancs sur 32 verts en 19 minutes**, préférences de
 l'utilisateur identiques.
+
+---
+
+### Phase D506 — l'audit de l'annulation, étendu des widgets de piste aux entrées de menu (29/09/2026)
+
+**D'OÙ ELLE VIENT.** D36.4 a écrit le banc des gestes qui échappent à
+l'annulation (`vsm-edit-audit`) : un geste qui change le projet sans
+`beginProjectEdit` ne supprime pas le Ctrl+Z, il le DÉCALE — le suivant annule
+deux gestes en un, sans le dire. Il parcourt les widgets de la ligne de piste
+(vert aujourd'hui : 11 gestes, 0 sans pas). **Aucun banc ne l'éprouvait sur les
+entrées de MENU**, qui sont pourtant la porte la plus large : l'Édition seule en
+porte une centaine.
+
+**L'INSTRUMENT** : trois gestes jouables en différé (`VSM_GESTE_APRES`), parce que
+`VSM_MENU` agit avant les touches et qu'« tout choisir, PUIS Quantifier » ne se
+jouait pas : `menu:<libellé>`, `lister-menus`, `relever-historique` (le nombre de
+pas et leurs noms). Et `relever-defilement` (les défilements des deux vues et la
+tête), écrit en vérifiant le suivi de la tête en lecture — juste dans les deux
+vues : piano roll 0 → 1 284 → 3 179…, arrangement 0 → 1 232 → 2 469…
+
+**LA GARDE** (`tools/annulation-des-menus.py`) : sélection faite (toutes les notes du
+piano roll), les entrées ACTIVES d'Édition, Piste, Transport, Enregistrement et
+Mixage, sauf celles qui ouvrent une fenêtre ; chacune jouée seule, puis le projet
+enregistré comparé au témoin (project.json sans son bloc `view`, et le .mid) et
+les pas comptés. **Suspect** = le morceau change sans pas ; les exceptions
+voulues (la boucle et le clic, bascules de transport, D503) sont écrites dans la
+garde avec leur raison. Une entrée que `VSM_MENU` ne peut pas atteindre par son
+libellé est NOMMÉE, pas jugée : la garde simule sa règle d'appariement.
+
+**ATTENDU, écrit avant la mesure** : 0 entrée suspecte — le commentaire de
+`beginProjectEdit` dit que « toutes les modifications annulables passent par
+ici », et D36.4 a montré qu'on l'avait oublié trois fois ; la garde dira combien
+de fois pour les menus. Toute suspecte est lue AVANT d'être corrigée (D266).
+
+**MESURÉ** (`tools/annulation-des-menus.py`, première course, binaire de D505) —
+**165 entrées jouées** : **98 justes** (le morceau change, un pas de plus), **56 sans
+effet sur le morceau** (vue, écoute, sélection : non jugées), **8 « pas pour rien »**,
+**3 SUSPECTES**. Une entrée inatteignable par son libellé, nommée : « Enregistrement
+▸ Aucun » (le décompte), que `VSM_MENU` confond avec « Piste ▸ Groupe d'édition ▸
+Aucun » — deux libellés identiques dans la barre, ce que la règle du dépôt interdit.
+
+**LES TROIS SUSPECTES, LUES AVANT D'ÊTRE CORRIGÉES** : « Mixage ▸ Forme des fondus
+croisés ▸ Linéaire / Lente / Rapide ». `setCrossfadeShape` écrit la forme dans le
+projet et le marque pour l'autosauvegarde — sans `beginProjectEdit`. Deux défauts
+en un : le Ctrl+Z suivant annulait deux gestes, et la marque « non enregistré » se
+déduisant de l'historique (D174), **fermer après avoir changé la forme ne demandait
+rien et la perdait**. (« Égale puissance », la forme par défaut, ne changeait rien
+au projet d'essai : non jugée.)
+
+**LE CORRECTIF** : un pas « Forme des fondus croisés », ouvert seulement si la forme
+change. **Après** : les trois OK ; Lente puis Ctrl+Z → la forme d'avant (défaut),
+0 pas ; Lente deux fois → 1 pas, pas deux.
+
+**LES HUIT « PAS POUR RIEN »**, dits et non corrigés ici — sur ce projet d'essai ils
+n'ont rien à faire : « Retirer les chevauchements » (aucun chevauchement), « Couper
+à la tête de lecture » (la tête au tick 0), « Fusionner », les quatre « Arpéger »
+(des notes seules, pas d'accords), « Signature 4/4 » (déjà 4/4). Chacun ouvre un pas
+qui n'annule rien. Reste nommé.
+
+La garde entre dans `./verifier.sh --bancs` (33 bancs).
+

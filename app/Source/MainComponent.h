@@ -346,6 +346,28 @@ public:
         if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
         // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
         if (geste.equalsIgnoreCase("relever-tete")) { releverTete(); return true; }
+        // D506 : L'AUDIT DES MENUS, EN DIFFÉRÉ. `VSM_MENU` agit AVANT les touches et
+        // les gestes : « tout choisir, puis Quantifier » ne se jouait pas. Ces trois
+        // gestes s'enchaînent dans l'ordre de `VSM_GESTE_APRES`.
+        if (geste.startsWithIgnoreCase("menu:"))
+            return runMenuEntryForCapture(geste.fromFirstOccurrenceOf(":", false, false).trim());
+        if (geste.equalsIgnoreCase("lister-menus")) { listMenusForCapture(); return true; }
+        if (geste.equalsIgnoreCase("relever-historique")) {
+            juce::String pas;
+            for (const auto& libelle : history_.undoLabels())
+                pas += (pas.isEmpty() ? "" : " | ") + juce::String::fromUTF8(libelle.c_str());
+            std::fputs(("VSM_HISTORIQUE_PAS : " + juce::String(static_cast<int>(history_.undoLabels().size()))
+                        + " : " + pas + "\n").toRawUTF8(), stderr);
+            return true;
+        }
+        // D506 : les défilements des deux vues, relevés plus tard — le suivi de la
+        // tête en lecture ne se voit qu'une fois la lecture engagée.
+        if (geste.equalsIgnoreCase("relever-defilement")) {
+            std::fputs(("VSM_DEFILEMENT : arrangement " + juce::String(static_cast<juce::int64>(arrangement_.defilementActuel()))
+                        + ", piano roll " + juce::String(static_cast<juce::int64>(pianoRoll_.visibleStartTick()))
+                        + ", tete " + juce::String(static_cast<juce::int64>(transport_.currentTick())) + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); dire("muet"); return true; }
         // D110 : armer, comme le bouton R -- pour les boîtes du départ d'une prise.
         if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); dire("armer"); return true; }

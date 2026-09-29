@@ -70,7 +70,7 @@ if [ "${1:-}" = "--bancs" ]; then
     [ -f "$prefs" ] && cp "$prefs" "$journaux/preferences-avant.settings"
     debut_serie=$(date +%s)
     passes=0
-    for banc in arret-tete.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
+    for banc in annulation-des-menus.py arret-tete.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
                 barre-transport.sh bascules-retenues.sh cadrage-ouverture.sh clavier-emprunte.sh \
                 fader-console.sh grille-gamme-projet.sh liste-ajouter.sh liste-editer.sh \
                 metronome-projet.sh miniature-clips.sh onglets-du-dock.sh ouvrir-midi.sh \
