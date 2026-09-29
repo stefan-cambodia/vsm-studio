@@ -60,6 +60,19 @@ if [ "${1:-}" = "--bancs" ]; then
         rouge "une campagne tourne — bancs NON passés : $course"
         exit 1
     fi
+    # D516 : UN ÉCRAN ÉTEINT OU VERROUILLÉ fausse les bancs de focus et de clic : la
+    # fenêtre passe pour invisible (D94). Le 29/09, l'écran s'est éteint pendant la
+    # série (batterie à 16 %) ; deux bancs sont tombés, et le binaire de la veille
+    # tombait pareil. L'état de l'écran est relevé AVANT et APRÈS, et dit.
+    ecran() {
+        local e=""
+        command -v kscreen-doctor > /dev/null && kscreen-doctor --dpms show 2>/dev/null | grep -q ": off" && e="éteint"
+        local n; n=$(loginctl 2>/dev/null | awk -v u="$USER" '$3 == u {print $1; exit}')
+        [ -n "$n" ] && loginctl show-session "$n" -p LockedHint 2>/dev/null | grep -q "=yes" && e="${e:+$e, }verrouillé"
+        echo "$e"
+    }
+    ecran_avant=$(ecran)
+    [ -n "$ecran_avant" ] && rouge "écran $ecran_avant AU DÉPART : les bancs de focus et de clic ne se jugent pas (D94, D516)"
     BIN="./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
     [ -x "$BIN" ] || { rouge "binaire absent — ./verifier.sh --compiler, ou compiler la cible de l'application"; exit 1; }
     journaux="${TMPDIR:-/tmp}/vsm-verifier-bancs"
@@ -99,6 +112,8 @@ if [ "${1:-}" = "--bancs" ]; then
         else rouge "préférences de l'utilisateur MODIFIÉES pendant la série — lire clé par clé avant de conclure (D77) : $journaux/preferences-avant.settings"
         fi
     fi
+    ecran_apres=$(ecran)
+    [ -n "$ecran_apres" ] && rouge "écran $ecran_apres À LA FIN de la série : un rouge de focus ou de clic peut venir de là — le rejouer écran allumé avant de conclure (D516)"
     titre "Bilan"
     printf '   %d banc(s) en %d min, journaux dans %s\n' "$passes" $(( ($(date +%s) - debut_serie) / 60 )) "$journaux"
     if [ "$ECHECS" -eq 0 ]; then printf '   \033[32mTous les bancs sont verts.\033[0m\n'; exit 0; fi

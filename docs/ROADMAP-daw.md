@@ -37181,8 +37181,12 @@ façon puis joue un libellé qui n'existe pas.
    tôt, dans la série de D515 — : **même échec**. Le code n'y est donc pour rien ;
    l'environnement a bougé entre-temps : l'écran se déclare en 2 560 × 1 600 (D364
    le mesurait à 3 200 × 2 000) et le poste est passé en profil « power-saver »,
-   batterie à 16 %. Non expliqué plus avant — dit, pas caché.
+   batterie à 16 %. **Et la cause est trouvée** : `kscreen-doctor --dpms show` →
+   « **off** », luminosité réelle **0** — le poste inactif avait ÉTEINT l'écran.
+   Les deux bancs mesurent un contour de FOCUS et un CLIC sur un composant : sous un
+   écran éteint, la fenêtre passe pour invisible, comme sous un écran verrouillé
+   (D94). `./verifier.sh --bancs` relève désormais l'état de l'écran avant et après
+   la série, et le dit en rouge.
 
-**Reste nommé, non fait** : rejouer `liste-editer.sh` et `vumetre-console.sh` quand
-le poste aura retrouvé son écran et sa charge, et, s'ils restent rouges avec le
-binaire de D515, lire ce que leurs photos montrent (D266 : le banc d'abord).
+**Reste nommé, non fait** : rejouer `liste-editer.sh` et `vumetre-console.sh` écran
+ALLUMÉ, pour que la série de D516 soit verte en entier.

@@ -174,6 +174,10 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   entière. Un banc qui lit l'état « affiché » d'un composant lit `isVisible()`
   en descendant depuis la racine, et dit son compte (`VSM_TEXTES : N`). Vérifier
   `loginctl show-session <n> -p LockedHint` avant de croire un zéro.
+  **Un écran ÉTEINT fait la même chose** (29/09, D516) : batterie à 16 %, le poste
+  inactif a coupé l'écran pendant `--bancs`, et deux bancs de focus et de clic
+  sont tombés — le binaire de la veille tombait pareil. `kscreen-doctor --dpms
+  show` dit « off » ; `verifier.sh --bancs` le relève désormais avant et après.
 - Une BOÎTE MODALE absente d'une photo (`VSM_CAPTURE_PANNEAUX`) ne prouve
   rien : c'est la course de D72, une photo sur sept au pire. Relancer avant de
   conclure. Trois ratés de suite ont failli faire écrire « le port MIDI ferme
