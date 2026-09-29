@@ -21,6 +21,13 @@ piste », par exemple. Une entrée qui ne fait ni l'un ni l'autre est un geste m
 et c'est exactement ce qu'on ne voit pas à l'usage : on clique, rien ne casse, et
 l'on croit s'être trompé de clic.
 
+UNE ENTRÉE NON JOUÉE N'EST PAS VIVANTE (D513, 29/09/2026). Le journal doit porter
+« « libellé » exécutée » ; sans elle, l'entrée est NON JOUÉE et rouge, quelle que
+soit son excuse. Avant, une excusée passait même quand son libellé avait quitté le
+menu — le verbe disait « aucune entrée », rien ne changeait, et l'excuse faisait
+le reste. Trois libellés portent un compte tiré du projet (« … (1177) ») : le
+premier projet qui bouge les aurait rendus injouables, en silence.
+
 LES TROIS SEULES EXCUSES, écrites ici plutôt que devinées :
   * elle ne touche que la VUE (zoom, repli) — nommée dans `VUE_SEULEMENT` ;
   * elle est GRISÉE — le banc ne l'exécute pas, et le dit ;
@@ -173,12 +180,23 @@ def main() -> int:
         return 2
     menus = a.menu or sorted(MENUS)
 
+    if not PROJET.is_dir():
+        print(f"REFUS : le projet d'essai {PROJET} manque — rien n'a été mesuré")
+        return 2
     brouillon = Path(tempfile.mkdtemp(prefix="vsm-vivants-"))
+    try:
+        return balayer(menus, brouillon)
+    finally:
+        shutil.rmtree(brouillon, ignore_errors=True)
+
+
+def balayer(menus: list[str], brouillon: Path) -> int:
     son = brouillon / "essai.wav"
     ecrire_un_son(son)
     projet = brouillon / "projet"
     shutil.copytree(PROJET, projet)
     rates = 0
+    non_jouees = 0
 
     def course(nom: str, menu: str, libelle: str) -> tuple[str, str]:
         maison = brouillon / f"h-{nom}"
@@ -227,6 +245,14 @@ def main() -> int:
                                for ligne in journal.splitlines() if "VSM_BOITE" in ligne)
             dit = ("VSM_BOITE" in journal) and not sans_reponse
             excuse = VUE_SEULEMENT.get(entree) or DEJA_EN_PLACE.get(entree)
+            # D513 : JOUÉE D'ABORD. Sans sa ligne « exécutée », l'entrée n'a pas eu
+            # lieu, et ni « changé » ni une excuse ne disent rien d'elle.
+            if f"« {entree} » exécutée" not in journal:
+                non_jouees += 1
+                refus = [ligne.strip() for ligne in journal.splitlines()
+                         if "VSM_MENU" in ligne and "aucune" in ligne]
+                print(f"  NON JOUÉE {entree:49s} {refus[0] if refus else 'aucune ligne « exécutée » au journal'}")
+                continue
             vivant = change or dit or excuse is not None
             if not vivant:
                 rates += 1
@@ -235,9 +261,9 @@ def main() -> int:
                     (excuse or ("modale SANS RÉPONSE" if sans_reponse else "RIEN")))
             print(f"  {'OK  ' if vivant else 'MORT'} {entree:54s} {etat}")
 
-    shutil.rmtree(brouillon, ignore_errors=True)
-    print(f"=== {rates} geste(s) mort(s) ===")
-    return 1 if rates else 0
+    print(f"=== {rates} geste(s) mort(s), {non_jouees} entrée(s) non jouée(s) sur "
+          f"{sum(len(MENUS[m]) for m in menus)} ===")
+    return 1 if rates or non_jouees else 0
 
 
 if __name__ == "__main__":

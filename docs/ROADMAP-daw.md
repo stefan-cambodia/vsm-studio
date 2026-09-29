@@ -36914,3 +36914,86 @@ change le projet ou DIT pourquoi*) n'est appelée par AUCUNE série de
 `verifier.sh` ; et l'audit par chemins range encore ses 65 « sans effet » du
 premier état sans juger s'ils laissent une trace. Les cinq formes d'automation
 étaient exactement cela. Sa phase.
+
+---
+
+### Phase D513 — la garde des gestes vivants ne se jouait plus, et comptait vivante une entrée qu'elle n'avait pas jouée (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D512.** `tools/gestes-vivants.py` (D275 :
+*une entrée active change le projet ou DIT pourquoi*) balaye 69 entrées de huit
+menus — dont les menus contextuels des clips et des deux règles, que l'audit par
+chemins n'atteint pas (il ne lit que la barre). Aucune série de `verifier.sh` ne
+l'appelle. Rejouée ce jour sur le binaire de D512 : **verte, 0 geste mort**.
+Mais son verdict ne regarde pas si l'entrée a été JOUÉE : quatorze entrées y sont
+excusées (vue, sélection, valeur déjà en place), et une excusée passe même si son
+libellé n'est plus dans le menu — le verbe dit alors « aucune entrée », le projet
+ne change pas, et l'excuse fait le reste. Trois de ces libellés portent un compte
+tiré du projet (« Toutes les notes douteuses (1177) », « Replier sur les hauteurs
+jouées (54) »…) : le premier projet qui bouge les rend injouables, en silence.
+C'est la leçon de D510 — *une mesure absente n'est pas un zéro* — sur une autre
+garde.
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. Chaque entrée doit être **jouée** : le journal porte « « libellé » exécutée »
+   (`VSM_MENU` ou `VSM_MENU_CONTEXTE`) ; sinon **NON JOUÉE**, rouge, quelle que
+   soit l'excuse.
+2. La garde entre dans `./verifier.sh --bancs` — comme `banc-fumee.sh` et
+   `pianoroll-zones.sh`, elle lit un projet de `reconstruction/travail/`, et le
+   dit par un REFUS s'il manque.
+
+**ATTENDU, écrit avant la mesure** :
+1. **après** : les 69 entrées ont chacune leur ligne « exécutée » — **0 non jouée**
+   (pronostic) ; 0 geste mort ;
+2. **vue rouge** : une entrée excusée au libellé inexistant, ajoutée le temps de
+   l'essai, passe sur l'ancienne garde (OK, « un cadrage ») et tombe sur la neuve
+   (NON JOUÉE, code 1) ;
+3. `./verifier.sh --bancs` vert (36 bancs), préférences inchangées.
+
+**MESURÉ** :
+1. **Après** : les 69 entrées ont chacune leur ligne « exécutée » — **0 non jouée,
+   0 geste mort** ; le pronostic tient.
+2. **Vue rouge** : une entrée « Zoom : nulle part », excusée comme cadrage, ajoutée
+   le temps de l'essai au menu des clips MIDI. **Ancienne garde : OK, « un
+   cadrage », code 0** ; **neuve : NON JOUÉE** (« VSM_MENU_CONTEXTE : aucune entrée
+   « Zoom : nulle part » dans le menu clip-midi-tous »), **code 1**.
+3. `./verifier.sh --bancs` : **36 bancs sur 36 verts** en 33 minutes, dont
+   `gestes-vivants.py` (69 s) ; préférences de l'utilisateur identiques. La règle
+   de `CLAUDE.md` qui nommait « les 31 bancs » dit désormais leur nombre à sa date.
+
+---
+
+### Phase D514 — les 67 « sans effet » de l'audit par chemins, jugés sur leur trace (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE SECOND RESTE NOMMÉ DE D512.** L'audit par chemins range
+dans « sans effet sur le morceau » toute entrée qui ne change ni le morceau ni
+l'historique : **67** entrées (65 dans le premier état, 2 dans le second), non
+jugées. Les cinq formes d'automation de D512 étaient dans cette case — actives,
+inertes, muettes. Et une entrée y est par la faute du banc : « Reporter la piste
+en audio (définitif) » pose une question (« Reporter | Annuler ») à laquelle
+l'audit ne répond pas ; elle n'a jamais été jouée jusqu'au bout.
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. L'audit **répond « oui »** aux questions (`VSM_CONFIRMER=oui`, D235) : un
+   geste que l'application déclare définitif est justement celui dont
+   l'annulation compte le plus.
+2. Une entrée sans effet sur le morceau doit laisser une **trace**, relevée et
+   nommée : la **vue** (le bloc `view` de `project.json` a changé) ; une **boîte**
+   (`VSM_BOITE` que le témoin n'a pas) ; la **ligne d'état** du piano roll (relevé
+   neuf `relever-etat` — c'est là que D511 dit « rien à changer ») ; une
+   **préférence** écrite ; ou l'entrée était **déjà cochée** (la valeur en place).
+   Sans aucune de ces traces, elle est **MUETTE**, et ne passe que par une raison
+   écrite dans l'audit, entrée par entrée.
+
+**ATTENDU, écrit avant la mesure** :
+1. « Reporter la piste en audio (définitif) », répondue : **juste** (un pas) ;
+2. les sept gestes de D511 (Retirer les chevauchements, Couper à la tête,
+   Fusionner, les quatre Arpéger) : trace **ligne d'état** ; « Signature 4/4 » et
+   les réglages déjà en place (« Aucun groupe », « Tous les canaux »…) :
+   **déjà cochée** ; « Créer un clip », « Extraire le groove », « Découper »,
+   « Transcrire » : **boîte** ;
+3. **pronostic** : les muettes sont la sélection, le transport (la tête), les
+   outils, l'écoute et le presse-papiers — des états qui ne sont pas des données
+   du projet —, et rien d'autre. Une muette HORS de ces familles est un défaut du
+   genre de D512, lu avant d'être corrigé (D266) ;
+4. les verdicts de l'audit inchangés ailleurs : 0 suspecte, 0 pas pour rien,
+   **115 justes au moins** (116 avec « Reporter ») ; `./verifier.sh --bancs` vert.

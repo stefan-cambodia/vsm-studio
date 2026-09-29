@@ -223,8 +223,9 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   d'édition musicale se fait sur des MULTIENSEMBLES (`collections.Counter`), ou
   sur un appariement que le geste justifie — jamais sur deux listes triées à
   l'aveugle.
-- Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les 31
-  bancs qui lancent l'application, ~18 min, préférences comparées d'office), pas
+- Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les
+  bancs qui lancent l'application — 36 au 29/09, ~30 min —, préférences comparées
+  d'office), pas
   seulement par ses bancs voisins : D482 a changé l'infobulle de « + » sans rejouer
   `liste-ajouter.sh`, resté rouge jusqu'à ce que D504 rejoue tout (29/09). Jamais
   pendant une campagne (le lanceur refuse).
