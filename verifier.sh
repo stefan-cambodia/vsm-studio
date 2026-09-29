@@ -72,8 +72,8 @@ if [ "${1:-}" = "--bancs" ]; then
     passes=0
     for banc in annulation-des-menus.py arret-tete.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
                 barre-transport.sh bascules-retenues.sh cadrage-ouverture.sh clavier-emprunte.sh \
-                fader-console.sh gestes-vivants.py grille-gamme-projet.sh liste-ajouter.sh liste-editer.sh \
-                marque-enregistre.sh \
+                fader-console.sh gestes-vivants.py grille-gamme-projet.sh ligne-d-etat.py liste-ajouter.sh \
+                liste-editer.sh marque-enregistre.sh \
                 metronome-projet.sh miniature-clips.sh notes-du-projet.sh onglets-du-dock.sh ouvrir-midi.sh \
                 pas-a-pas.sh pianoroll-zones.sh police-plancher.sh portes-de-l-arrangement.sh \
                 portes-des-outils.sh portes-des-pistes.sh portes-du-transport.sh quantifier.sh \

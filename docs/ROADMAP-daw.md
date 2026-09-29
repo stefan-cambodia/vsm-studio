@@ -37052,3 +37052,59 @@ rejouant quatre témoins identiques, et corrigés avant toute mesure publiée :
 gestes de SOURIS (`updateStatusText` n'a pas d'autre appelant) : après Ctrl+A, les
 huit notes choisies, elle dit « Prêt » — quatre témoins sur quatre. Le compte de
 la sélection va au journal depuis D357, pas à l'écran. Sa phase.
+
+---
+
+### Phase D515 — Ctrl+A choisissait huit notes, et la ligne d'état disait « Prêt » (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D514.** La ligne d'état du piano roll résume
+la sélection (« 8 note(s) sélectionnée(s) : C3 - B3, vélocité moyenne 88 »), mais
+`updateStatusText` n'est appelée que par les gestes de SOURIS. Une sélection faite
+au clavier ou au menu ne s'y lit pas tant que la souris ne bouge pas : après
+Ctrl+A, « Prêt » — quatre témoins sur quatre (D514). Cubase et Live mettent leur
+ligne d'information à jour à chaque sélection, d'où qu'elle vienne.
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. Le résumé se refait là où le compte de la sélection est déjà relevé quand il
+   CHANGE (`notifyEditState`, D357 : « là où elle change, et non dans un seul de ses
+   dispatchers ») — clavier, menu et souris compris —, avec la dernière position
+   de la souris.
+2. Un message PROPRE au geste gagne : « Notes plus faibles que 64 » et « plus
+   courtes que » posent leur phrase APRÈS le rafraîchissement (elles la posaient
+   avant) ; « Arpéger : rien à changer » (D511) ne change pas la sélection, et
+   reste.
+3. Une garde neuve, `tools/ligne-d-etat.py`, dans `./verifier.sh --bancs`.
+
+**ATTENDU, écrit avant la mesure** (un projet d'une piste de huit notes) :
+| Geste | Témoin (binaire de D514) | Après |
+|---|---|---|
+| Ctrl+A | « Prêt » | « 8 note(s) sélectionnée(s) : … » |
+| Ctrl+A, puis Inverser la sélection (menu) | publié tel quel | « 8 note(s) sur la piste » |
+| Notes plus faibles que 64 (menu) — contrôle | « 1 note(s) plus faible(s) que 64 » | la même |
+| Ctrl+A, puis Arpéger : montant — contrôle | « Arpéger : rien à changer » | la même |
+
+La garde est ROUGE sur le témoin (au moins la première ligne), VERTE après ;
+`./verifier.sh --bancs` vert (37 bancs).
+
+**MESURÉ** (`tools/ligne-d-etat.py`, un HOME neuf par cas) :
+
+| Geste | Témoin (binaire de D514) | Après |
+|---|---|---|
+| Ctrl+A | « Prêt » — **RATÉ** | « 8 note(s) sélectionnée(s) : C3 - B3, vélocité moyenne 88 » |
+| Ctrl+A, puis Inverser la sélection (menu) | « Prêt » — **RATÉ** | « 8 note(s) sur la piste » |
+| Notes plus faibles que 64 (menu) — contrôle | « 1 note(s) plus faible(s) que 64 » | la même |
+| Ctrl+A, puis Arpéger : montant — contrôle | « Arpéger : rien à changer » | la même |
+
+**2 ratés sur 4 sur le témoin, 0 après** ; les deux contrôles tiennent des deux
+côtés. « Inverser », que l'attendu laissait « publié tel quel », disait « Prêt »
+aussi — alors que l'audit de D514, sur son projet de trois pistes, lui trouvait
+« 8 note(s) sur la piste » : la ligne s'y refaisait par un autre chemin, que je
+n'ai pas identifié. Dit, pas expliqué.
+**Le chargement ne la touche pas** : le premier compte (−1 → 0, relevé au
+démarrage) laisse « Prêt » (D77). **Photographié** à 1 600 × 1 000 : la phrase se
+lit sous la grille du piano roll, à la taille de la ligne d'état.
+
+Gardes des sources vertes ; `./verifier.sh --bancs` : **37 bancs sur 37 verts** en
+29 minutes — la garde neuve (8 s) et l'audit, dont le témoin dit désormais le
+résumé de la sélection au lieu de « Prêt » (0 muette, 116 justes, 55 avec trace,
+11 voulues : inchangé) ; préférences de l'utilisateur identiques.

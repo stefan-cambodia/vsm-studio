@@ -335,9 +335,14 @@ void PianoRollComponent::notifyEditState() {
     // noierait la ligne qui compte.
     const int compte = static_cast<int>(selectedNoteIds_.size());
     if (compte != dernierCompteDit_) {
+        const bool premierCompte = dernierCompteDit_ < 0;
         dernierCompteDit_ = compte;
         std::fputs(("VSM_SELECTION : " + juce::String(compte)
                     + juce::String::fromUTF8(u8" note(s) choisie(s)\n")).toRawUTF8(), stderr);
+        // D515 : ET À L'ÉCRAN. La ligne d'état ne se refaisait qu'aux gestes de
+        // souris : après Ctrl+A, huit notes choisies, elle disait « Prêt ». Le
+        // premier compte (celui du chargement) ne la touche pas : « Prêt » y reste.
+        if (!premierCompte) updateStatusText(derniereSouris_, sourisDedans_);
     }
     if (onEditStateChanged) onEditStateChanged();
 }
@@ -638,22 +643,24 @@ void PianoRollComponent::invertSelection() {
 void PianoRollComponent::selectBelowVelocity(uint8_t velocity) {
     if (Track* track = activeTrack())
         selectedNoteIds_ = selectNotesBelowVelocity(track->notes, velocity);
+    // D515 : LE MESSAGE DU GESTE APRÈS le résumé que `notifyEditState` refait
+    // désormais : c'est lui qui dit ce que le geste a trouvé, et il gagne.
+    notifyEditState();
     if (onStatusChanged)
         onStatusChanged(vsm::app::ui::tr(u8"%1 note(s) plus faible(s) que %2")
                             .replace("%1", juce::String(static_cast<int>(selectedNoteIds_.size())))
                             .replace("%2", juce::String(static_cast<int>(velocity))));
-    notifyEditState();
     repaint();
 }
 
 void PianoRollComponent::selectShorterThan(Tick ticks) {
     if (Track* track = activeTrack())
         selectedNoteIds_ = selectNotesShorterThan(track->notes, ticks);
+    notifyEditState();   // D515 : le résumé d'abord, le message du geste ensuite
     if (onStatusChanged)
         onStatusChanged(vsm::app::ui::tr(u8"%1 note(s) plus courte(s) que %2 ticks")
                             .replace("%1", juce::String(static_cast<int>(selectedNoteIds_.size())))
                             .replace("%2", juce::String(static_cast<int>(ticks))));
-    notifyEditState();
     repaint();
 }
 
@@ -1899,6 +1906,8 @@ bool PianoRollComponent::performShortcut(vsm::interchange::ShortcutId id,
 // ---------------------------------------------------------------------------
 
 void PianoRollComponent::updateStatusText(juce::Point<float> mousePos, bool mouseInside) {
+    derniereSouris_ = mousePos;   // D515
+    sourisDedans_ = mouseInside;
     if (!onStatusChanged || !project_) return;
     juce::String text;
 

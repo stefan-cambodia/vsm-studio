@@ -359,6 +359,10 @@ private:
     /// D357 : le dernier compte de sélection ÉCRIT au journal -- pour ne le dire
     /// qu'aux changements (`notifyEditState` est appelée de dix-huit endroits).
     int dernierCompteDit_ = -1;
+    // D515 : où était la souris au dernier résumé — la ligne se refait quand la
+    // sélection change au clavier ou au menu, sans geste de souris.
+    juce::Point<float> derniereSouris_;
+    bool sourisDedans_ = false;
     void updateStatusText(juce::Point<float> mousePos, bool mouseInside);
 
     // --- Écoute ------------------------------------------------------------
