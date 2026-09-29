@@ -1,6 +1,8 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include <algorithm>
+#include <set>
+#include <string>
 
 using namespace vsm::sequencer;
 using vsm::midi::Tick;
@@ -631,4 +633,25 @@ VSM_TEST(scale_note_times_never_loses_a_note_when_halving_repeatedly) {
     auto temoin = makeNotes();
     scaleNoteTimes(temoin, allIds(temoin), 0.0);
     VSM_ASSERT_EQ(findById(temoin, 4)->startTick, static_cast<Tick>(1440));
+}
+
+VSM_TEST(every_scale_type_has_a_stable_id_that_reads_back) {
+    // D495 : LE TYPE DE GAMME S'ÉCRIT DANS UN PROJET PAR UN IDENTIFIANT STABLE.
+    // Chacun des quatorze se relit en lui-même, et deux types n'en partagent pas.
+    std::set<std::string> vus;
+    for (const auto type : allScaleTypes()) {
+        const std::string id = scaleTypeId(type);
+        VSM_ASSERT(vus.insert(id).second);
+        ScaleType relu = ScaleType::Chromatic;
+        VSM_ASSERT(scaleTypeFromId(id, relu));
+        VSM_ASSERT(relu == type);
+    }
+    VSM_ASSERT_EQ(vus.size(), size_t{14});
+    // Un identifiant inconnu est REFUSÉ et ne touche pas la sortie : c'est à
+    // l'appelant de dire qu'il l'écarte.
+    ScaleType sortie = ScaleType::Dorian;
+    VSM_ASSERT(!scaleTypeFromId("inconnu", sortie));
+    VSM_ASSERT(sortie == ScaleType::Dorian);
+    // Le NOM affiché n'est pas un identifiant.
+    VSM_ASSERT(!scaleTypeFromId("Dorien", sortie));
 }

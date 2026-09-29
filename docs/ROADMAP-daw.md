@@ -35811,3 +35811,101 @@ valeur ne réécrit pas le fichier de préférences.
 `pianoroll-zones.sh` 7 relevés, 0 raté (il lit le même bloc de relevés, où la
 ligne `VSM_PIANOROLL` s'ajoute) ; `portes-des-gestes.py` 0 désaccord ; fumée 0
 raté ; préférences de l'utilisateur identiques.
+
+---
+
+### Phase D495 — la grille, le swing et la gamme du piano roll n'appartenaient à aucun morceau (29/09/2026)
+
+**D'OÙ ELLE VIENT — LA SECONDE MOITIÉ DU TABLEAU DE D494.** La grille (valeur,
+« Auto », modificateur), le swing et la gamme (tonique, mode, surlignage) du
+piano roll ne sont écrits nulle part. Deux défauts, et le second est pire que le
+premier : (1) un morceau rouvert revient à « 1/16, droit, 0 %, C chromatique » ;
+(2) dans une même séance, ouvrir un AUTRE morceau garde ceux du précédent — la
+gamme de fa dièse mineur d'un morceau reste surlignée sur le suivant, et la grille
+en triolets aussi (la grille fine de l'arrangement est celle du piano roll).
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. **Dans le bloc `view` du projet** (la règle de D363 : ils dépendent du
+   morceau), chacun facultatif : `pianoRollGrid` (« 1/1 » … « 1/128 », « auto »),
+   `pianoRollGridModifier` (« triplet », « dotted » ; absent = droit),
+   `pianoRollSwing` (0 à 1), `scale` = { `root` 0-11, `type` (identifiant stable :
+   « major », « dorian »…), `highlight` }. Une valeur hors bornes ou inconnue est
+   IGNORÉE — le défaut reste — et l'application le DIT au journal (`VSM_VUE_IGNOREE`).
+2. **Changer de morceau les reprend ou les remet au défaut**, aux quatre portes qui
+   changent de morceau (nouveau projet, ouvrir un MIDI, importer un projet d'un
+   autre DAW, ouvrir un dossier de projet) : un morceau qui n'en dit rien n'hérite
+   pas de ceux du précédent.
+3. Le type de gamme reçoit un identifiant STABLE dans `core/` (`scaleTypeId`) : le
+   nom affiché est traduit et peut changer, l'identifiant écrit dans un fichier ne
+   le doit pas.
+4. **L'instrument** : un verbe `liste:<nom>:<entrée>` choisit une entrée de liste
+   déroulante par son texte, comme la souris (`onChange`) ; les quatre listes
+   reçoivent un nom de banc (`pianoroll.grille`, `pianoroll.grille.modificateur`,
+   `pianoroll.gamme.tonique`, `pianoroll.gamme.mode`) ; le relevé
+   `VSM_PIANOROLL_ZONES` écrit « VSM_PIANOROLL_GRILLE : … » — l'état du piano roll
+   ET ce que la barre affiche.
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/grille-gamme-projet.sh` :
+1. **témoin** (binaire de D494 augmenté de l'instrument) : gestes « 1/8, Triolet,
+   swing 50 %, D, Dorien, Gamme » puis enregistrer : le `project.json` n'a aucun des
+   champs ; rouvert (HOME neuf) → « 1/16, droit, 0 %, C, chromatique, non » ; gestes
+   puis `ouvrir-midi:` d'un autre morceau → « 1/8, triolet, 50 %, D, dorien, oui »
+   (hérités) ;
+2. **après** : le fichier porte les champs ; rouvert → l'état des gestes, piano roll
+   ET barre ; gestes puis `ouvrir-midi:` → les défauts ; un projet aux valeurs
+   absurdes (grille « 1/7 », swing 2, tonique 13, mode « inconnu ») → les défauts,
+   et quatre lignes `VSM_VUE_IGNOREE` ;
+3. tests `interchange` (aller-retour ; rien d'écrit sans valeur ; valeurs absurdes
+   ignorées) et `core` (`scaleTypeId` aller-retour pour les quatorze types) ;
+   gardes de langue, fumée, `bascules-retenues.sh`, `quantifier.sh`,
+   `pianoroll-zones.sh` verts ; préférences de l'utilisateur inchangées.
+
+**MESURÉ — TENU** (`tools/grille-gamme-projet.sh`, garde neuve ; « défaut » = « 1/16,
+droit, 0 %, C, chromatique, sans surlignage ») :
+
+| cas | témoin (D494 + instrument) | après |
+|---|---|---|
+| gestes « 1/8, Triolet, 50 %, D, Dorien, Gamme » | pris, barre comprise | pris, barre comprise |
+| `project.json` écrit | **0** champ sur 4 | **4** sur 4 |
+| rouvert (HOME neuf) | le défaut | **l'état des gestes**, piano roll ET barre |
+| gestes puis `ouvrir-midi:` d'un autre morceau | **hérités** | le défaut |
+| gestes puis `nouveau-projet` | **hérités** | le défaut |
+| projet absurde (« 1/7 », « wobble », swing 2, tonique 13) | le défaut, **0** ligne dite | le défaut, **4** lignes `VSM_VUE_IGNOREE` |
+| type de gamme seul inconnu (tonique 5) | — | tonique **gardée** (F), type chromatique, surlignage gardé ; **1** ligne |
+
+Rouge sur le témoin (5 ratés), vert après. Le volet d'ouverture porte les valeurs
+écartées comme INFORMATIONS (D418 : elles n'ouvrent pas la boîte à elles seules) :
+« 2 informations à l'ouverture — vue enregistrée : pianoRollSwing « 2 » écartée,
+le défaut est repris », et en anglais « saved view: pianoRollSwing “2” set aside,
+the default is used » (photos, via « Voir le dernier rapport »).
+
+Tests : `core` **363** (+1, `scaleTypeId` aller-retour pour les quatorze types),
+`interchange` **311** (+2 : aller-retour ; swing et tonique hors bornes écartés ET
+consignés, jamais réécrits), `audio` 1 306, `panels` 11, `clap` 25, `vst3` 19.
+Gardes de langue 0, doublons 0, `anglais-a-l-ecran.py`, `raccourcis-affiches.py`,
+`menus-cites.py` verts ; `bascules-retenues.sh`, `clavier-emprunte.sh`, portes
+(arrangement, pistes, transport), `quantifier.sh`, `pianoroll-zones.sh`,
+`cadrage-ouverture.sh` 0 raté, `autosauvegarde-vue.sh` vert, `portes-des-gestes.py`
+0 désaccord ; fumée 0 raté ; préférences de l'utilisateur identiques.
+
+**TROIS DÉFAUTS DU BANC, AUCUN DU LOGICIEL, trouvés avant d'y croire** : (1) un
+compteur incrémenté dans une fonction appelée par `$(…)` ne sort pas du
+sous-shell — le journal du cas « absurde » était cherché dans `absurde-0.txt` ;
+(2) `ouvrir-midi:` n'existait que comme verbe de `VSM_VUE`, qui agit AVANT les
+gestes — « régler la grille, puis ouvrir un autre morceau » ne se jouait pas ; il
+est devenu aussi un GESTE, avec `nouveau-projet`, ce qui a rendu mesurable la
+porte « Nouveau projet » que l'attendu laissait de côté ; (3) le premier projet
+absurde portait une tonique VALABLE (5) avec un type inconnu, et non la tonique 13
+de l'attendu écrit : le correctif gardait la tonique, comme prévu, et le cas
+sortait rouge contre un attendu qu'il ne jouait pas. Le cas suit désormais
+l'attendu écrit, et « type seul inconnu » est un cas à part.
+
+**Le choix qu'il a fallu trancher en l'écrivant** : un TYPE de gamme inconnu garde
+la tonique et le surlignage (c'est le type qui est faux, pas la gamme) ; une
+TONIQUE hors bornes écarte la gamme entière (sans tonique, type et surlignage ne
+veulent rien dire).
+
+**Reste nommé, non fait** : la vélocité des notes dessinées (« Vél. 100 ») n'est
+retenue nulle part — une habitude, donc les préférences, à mesurer dans sa phase ;
+et la grille FINE de l'arrangement, qui est celle du piano roll, suit désormais le
+morceau avec elle — non mesuré séparément.

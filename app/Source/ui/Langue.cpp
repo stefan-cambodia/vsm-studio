@@ -3646,6 +3646,8 @@ const ModeleDePhrase kModeles[] = {
     { u8"l'environnement Python de la chaîne n'a pas été créé (aucun .venv dans %1)", u8"the chain's Python environment has not been created (no .venv in %1)" },
     { u8"la chaîne s'est arrêtée (code %1)", u8"the chain stopped (code %1)" },
     { u8"[le script est sorti en 0 sans écrire %1]", u8"[the script exited with 0 without writing %1]" },
+    // D495 : une valeur de la vue enregistrée écartée à l'ouverture (information).
+    { u8"vue enregistrée : %1 « %2 » écartée, le défaut est repris", u8"saved view: %1 “%2” set aside, the default is used" },
     { u8"Piste %#1 (%2) : %P3", u8"Track %1 (%2): %P3" },
     { u8"Piste %#1 : %P2", u8"Track %1: %P2" },
 };

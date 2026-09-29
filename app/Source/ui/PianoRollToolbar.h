@@ -39,6 +39,19 @@ public:
     /// D494 : VSM_PIANOROLL -- l'aimant, le suivi et les fantômes du piano roll, ET
     /// ce que leur bouton montre : les deux doivent dire la même chose.
     void direLesBascules() const;
+    /// D495 : VSM_PIANOROLL_GRILLE -- grille, swing et gamme du piano roll, et ce
+    /// que la barre en affiche.
+    void direLaGrilleEtLaGamme() const;
+    /// D495 : POSE LA GRILLE, LE SWING ET LA GAMME — ceux d'un projet, ou les
+    /// défauts (noms vides, swing et tonique négatifs) — PAR LES LISTES DE LA
+    /// BARRE, pour que le piano roll et ce que la barre montre ne puissent pas
+    /// diverger. Un nom inconnu (grille, modificateur, type de gamme) est ajouté à
+    /// `ecartes` (champ, valeur), et le défaut est repris à sa place.
+    void poserGrilleEtGamme(const std::string& grille, const std::string& modificateur, double swing,
+                            int tonique, const std::string& type, bool surlignage,
+                            std::vector<std::pair<std::string, std::string>>& ecartes);
+    /// D495 : le NOM de la grille tenue, tel que le projet l'écrit (« 1/16 », « auto »).
+    std::string nomDeLaGrille() const;
 
 private:
     /// D169 : CE QUE LA BARRE MONTRE, pour ne pas la redessiner quand rien n'a

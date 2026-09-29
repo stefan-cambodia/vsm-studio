@@ -1754,6 +1754,38 @@ juce::Slider* MainComponent::curseurPourCapture(const juce::String& nom) {
     return curseur;
 }
 
+bool MainComponent::listePourCapture(const juce::String& nom, const juce::String& entree) {
+    // D495 : LA LISTE DÉSIGNÉE PAR SON NOM DE COMPOSANT, visible, cherchée comme un
+    // curseur (`curseurPourCapture`) ; l'entrée par son TEXTE affiché.
+    std::function<juce::ComboBox*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::ComboBox* {
+        if (auto* liste = dynamic_cast<juce::ComboBox*>(&c); liste != nullptr && liste->getName() == nom)
+            return liste;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouvee = chercher(*enfant)) return trouvee;
+        return nullptr;
+    };
+    juce::ComboBox* liste = chercher(*this);
+    for (int i = 0; liste == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+        if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
+            liste = chercher(*fenetre);
+    if (liste == nullptr) {
+        std::fputs(("VSM_LISTE : " + nom + juce::String(u8" — aucune liste visible de ce nom\n")).toRawUTF8(), stderr);
+        return false;
+    }
+    juce::StringArray entrees;
+    for (int i = 0; i < liste->getNumItems(); ++i) {
+        entrees.add(liste->getItemText(i));
+        if (liste->getItemText(i) != entree) continue;
+        liste->setSelectedId(liste->getItemId(i), juce::sendNotificationSync);
+        std::fputs(("VSM_LISTE : " + nom + "=" + entree + juce::String(u8" — choisie\n")).toRawUTF8(), stderr);
+        return true;
+    }
+    std::fputs(("VSM_LISTE : " + nom + juce::String(u8" — aucune entrée « ") + entree
+                + juce::String(u8" » (entrées : ") + entrees.joinIntoString(", ") + ")\n").toRawUTF8(), stderr);
+    return false;
+}
+
 bool MainComponent::valeurPourCapture(const juce::String& nom, double valeur) {
     juce::Slider* curseur = curseurPourCapture(nom);
     if (curseur != nullptr) curseur->setValue(valeur, juce::sendNotificationSync);
@@ -6569,6 +6601,7 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
     try {
         ParsedFile parsed = MidiFileParser::parseFile(fichier.getFullPathName().toStdString());
         clearHistory();
+        reprendreGrilleEtGamme(nullptr);   // D495 : un MIDI n'en dit rien — les défauts
         // D305 : UNE PISTE PAR CANAL. Un fichier de format 0 met seize canaux
         // dans une piste ; ouvert tel quel, le morceau entier tombait dans UNE
         // ligne et un seul instrument. Cubase, Live et FL découpent par canal.
@@ -6721,6 +6754,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     }
 
     clearHistory();
+    reprendreGrilleEtGamme(nullptr);   // D495 : un import n'en dit rien — les défauts
     project_ = resultat.project;
     oublierLesMachines();   // D76
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
@@ -7442,6 +7476,15 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     if (!vue.automationParameter.empty())
         automation_.choisirParametre(juce::String::fromUTF8(vue.automationParameter.c_str()));
     if (vue.midiCcController >= 0) midiCc_.choisirControleur(vue.midiCcController);
+    // D495 : la grille, le swing et la gamme du morceau — ou les défauts. Ce qui est
+    // écarté est une INFORMATION du rapport d'ouverture (D418) : il n'ouvre pas la
+    // boîte à lui seul, mais « Voir le dernier rapport » le retrouve.
+    for (const auto& [champ, valeur] : reprendreGrilleEtGamme(&vue)) {
+        rapport.add(juce::String(u8"vue enregistrée : %1 « %2 » écartée, le défaut est repris")
+                        .replace("%1", juce::String::fromUTF8(champ.c_str()))
+                        .replace("%2", juce::String::fromUTF8(valeur.c_str())));
+        ++lignesDInformation;
+    }
 
     // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
     // donnerait un morceau amputé sans explication -- c'est précisément
@@ -8055,7 +8098,38 @@ vsm::interchange::ProjectDocument::View MainComponent::vueActuelle() const {
     // D467 : le paramètre et le contrôleur des lanes du bas.
     vue.automationParameter = automation_.parametreChoisi().toStdString();
     vue.midiCcController = midiCc_.controleurChoisi();
+    // D495 : la grille, le swing et la gamme du piano roll — ils appartiennent au morceau.
+    vue.pianoRollGrid = pianoRollPanel_.barre().nomDeLaGrille();
+    const auto grille = pianoRoll_.gridResolution();
+    vue.pianoRollGridModifier = grille.triplet ? "triplet" : grille.dotted ? "dotted" : "";
+    vue.pianoRollSwing = juce::jlimit(0.0, 1.0, static_cast<double>(pianoRoll_.swing()));
+    const auto gamme = pianoRoll_.scale();
+    vue.scaleRoot = static_cast<int>(gamme.root);
+    vue.scaleType = vsm::sequencer::scaleTypeId(gamme.type);
+    vue.scaleHighlight = pianoRoll_.scaleHighlightEnabled();
     return vue;
+}
+
+std::vector<std::pair<std::string, std::string>>
+MainComponent::reprendreGrilleEtGamme(const vsm::interchange::ProjectDocument::View* vue) {
+    // D495 : UN MORCEAU N'HÉRITE PAS DE LA GRILLE NI DE LA GAMME DU PRÉCÉDENT. Les
+    // quatre portes qui changent de morceau passent ici : celles d'un projet, ou
+    // les défauts pour qui n'en dit rien (un MIDI, un projet neuf, un import). Ce
+    // qui est écarté — par la lecture (nombre hors bornes) ou par la barre (nom
+    // inconnu) — est DIT : le défaut repris en silence est la panne muette.
+    std::vector<std::pair<std::string, std::string>> ecartes;
+    if (vue != nullptr) ecartes = vue->ecartes;
+    pianoRollPanel_.barre().poserGrilleEtGamme(
+        vue != nullptr ? vue->pianoRollGrid : std::string(),
+        vue != nullptr ? vue->pianoRollGridModifier : std::string(),
+        vue != nullptr ? vue->pianoRollSwing : -1.0,
+        vue != nullptr ? vue->scaleRoot : -1,
+        vue != nullptr ? vue->scaleType : std::string(),
+        vue != nullptr && vue->scaleHighlight, ecartes);
+    for (const auto& [champ, valeur] : ecartes)
+        std::fputs(("VSM_VUE_IGNOREE : " + champ + " \u00ab " + valeur
+                    + " \u00bb \u2014 le d\u00e9faut est repris\n").c_str(), stderr);
+    return ecartes;
 }
 
 // D368 : VSM_AUTOSAUVEGARDE -- forcer une sauvegarde automatique et dire OÙ.
@@ -10155,6 +10229,7 @@ void MainComponent::applySendBuses() {
 
 void MainComponent::newProject() {
     clearHistory();   // l'annulation d'un autre morceau n'a aucun sens ici
+    reprendreGrilleEtGamme(nullptr);   // D495 : un projet neuf n'hérite de rien
     project_ = Project{};
     oublierLesMachines();   // D76
     project_.title = "Nouveau projet";

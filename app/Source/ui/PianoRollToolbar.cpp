@@ -125,6 +125,11 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     gridCombo_.addItem(vsm::app::ui::tr("Auto"), 100);   // D29.5 : la grille suit le zoom
     gridCombo_.setSelectedId(5, juce::dontSendNotification); // 1/16
     gridCombo_.onChange = [this] { applyGridFromCombos(); };
+    // D495 : les noms par lesquels le banc désigne les quatre listes (liste:).
+    gridCombo_.setName("pianoroll.grille");
+    gridModifierCombo_.setName("pianoroll.grille.modificateur");
+    scaleRootCombo_.setName("pianoroll.gamme.tonique");
+    scaleTypeCombo_.setName("pianoroll.gamme.mode");
 
     addAndMakeVisible(gridModifierCombo_);
     gridModifierCombo_.addItem(vsm::app::ui::tr("Droit"), 1);
@@ -253,6 +258,78 @@ void PianoRollToolbar::direLesBascules() const {
                 + oui(pianoRoll_.followPlayhead()) + " (bouton " + oui(followButton_.getToggleState())
                 + juce::String(u8"), fantômes ") + oui(pianoRoll_.ghostNotesVisible())
                 + " (bouton " + oui(ghostButton_.getToggleState()) + ")\n").toRawUTF8(), stderr);
+}
+
+std::string PianoRollToolbar::nomDeLaGrille() const {
+    if (pianoRoll_.adaptiveGrid()) return "auto";
+    for (const auto& [valeur, libelle] : gridChoices())
+        if (valeur == pianoRoll_.gridResolution().value) return libelle;
+    return "1/16";
+}
+
+void PianoRollToolbar::poserGrilleEtGamme(const std::string& grille, const std::string& modificateur,
+                                          double swing, int tonique, const std::string& type, bool surlignage,
+                                          std::vector<std::pair<std::string, std::string>>& ecartes) {
+    // LA GRILLE : 1/16 par défaut (id 5), « auto » (id 100), sinon par son libellé.
+    int idGrille = 5;
+    if (grille == "auto") idGrille = 100;
+    else if (!grille.empty()) {
+        int trouve = 0;
+        for (size_t i = 0; i < gridChoices().size(); ++i)
+            if (grille == gridChoices()[i].second) trouve = static_cast<int>(i) + 1;
+        if (trouve > 0) idGrille = trouve;
+        else ecartes.emplace_back("pianoRollGrid", grille);
+    }
+    int idModificateur = 1;
+    if (modificateur == "triplet") idModificateur = 2;
+    else if (modificateur == "dotted") idModificateur = 3;
+    else if (!modificateur.empty()) ecartes.emplace_back("pianoRollGridModifier", modificateur);
+    gridCombo_.setSelectedId(idGrille, juce::dontSendNotification);
+    gridModifierCombo_.setSelectedId(idModificateur, juce::dontSendNotification);
+    applyGridFromCombos();
+
+    // LE SWING : la case se réécrit (D460 : `juce::Slider` ne le fait qu'au changement).
+    const double valeurSwing = swing >= 0.0 ? swing : 0.0;
+    swingSlider_.setValue(valeurSwing, juce::dontSendNotification);
+    swingSlider_.updateText();
+    pianoRoll_.setSwing(static_cast<float>(valeurSwing));
+
+    // LA GAMME : chromatique sur do par défaut ; un type inconnu garde la tonique.
+    const auto types = allScaleTypes();
+    ScaleType lu = ScaleType::Chromatic;
+    if (tonique >= 0 && !type.empty() && !scaleTypeFromId(type, lu)) ecartes.emplace_back("scale.type", type);
+    int idType = 1;
+    for (size_t i = 0; i < types.size(); ++i)
+        if (types[i] == lu) idType = static_cast<int>(i) + 1;
+    scaleRootCombo_.setSelectedId(juce::jlimit(0, 11, tonique) + 1, juce::dontSendNotification);
+    scaleTypeCombo_.setSelectedId(idType, juce::dontSendNotification);
+    applyScaleFromCombos();
+    const bool surligne = tonique >= 0 && surlignage;
+    scaleHighlightButton_.setToggleState(surligne, juce::dontSendNotification);
+    pianoRoll_.setScaleHighlightEnabled(surligne);
+}
+
+void PianoRollToolbar::direLaGrilleEtLaGamme() const {
+    // D495 : L'ÉTAT DU PIANO ROLL, PUIS CE QUE LA BARRE AFFICHE. Les deux doivent
+    // dire la même chose : un état repris que la barre ne montrerait pas serait
+    // repris à moitié (la leçon de D494).
+    const auto grille = pianoRoll_.gridResolution();
+    juce::String valeur = "?";
+    for (const auto& [v, libelle] : gridChoices())
+        if (v == grille.value) valeur = libelle;
+    const auto gamme = pianoRoll_.scale();
+    std::fputs(("VSM_PIANOROLL_GRILLE : grille=" + (pianoRoll_.adaptiveGrid() ? juce::String("auto") : valeur)
+                + " modificateur=" + (grille.triplet ? "triplet" : grille.dotted ? "dotted" : "droit")
+                + " swing=" + juce::String(pianoRoll_.swing(), 2)
+                + " tonique=" + juce::String(static_cast<int>(gamme.root))
+                + " mode=" + juce::String(static_cast<int>(gamme.type))
+                + " surlignage=" + (pianoRoll_.scaleHighlightEnabled() ? "oui" : "non")
+                + " | barre : " + gridCombo_.getText() + ", " + gridModifierCombo_.getText()
+                + ", " + (swingSlider_.textFromValueFunction ? swingSlider_.textFromValueFunction(swingSlider_.getValue())
+                                                               : juce::String(swingSlider_.getValue()))
+                + ", " + scaleRootCombo_.getText() + ", " + scaleTypeCombo_.getText()
+                + ", Gamme " + (scaleHighlightButton_.getToggleState() ? "oui" : "non")
+                + "\n").toRawUTF8(), stderr);
 }
 
 void PianoRollToolbar::refreshFromPianoRoll() {

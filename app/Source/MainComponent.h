@@ -240,6 +240,10 @@ public:
     /// été oubliée quand D363 a donné la vue à l'enregistrement manuel. Un seul
     /// endroit à compléter le jour où la vue portera un champ de plus.
     vsm::interchange::ProjectDocument::View vueActuelle() const;
+    /// D495 : la grille, le swing et la gamme du piano roll — ceux de `vue`, ou les
+    /// défauts si `vue` est nul. Rend ce qui a été écarté (et le dit au journal).
+    std::vector<std::pair<std::string, std::string>>
+    reprendreGrilleEtGamme(const vsm::interchange::ProjectDocument::View* vue);
     /// D368 : force une sauvegarde automatique et imprime le chemin écrit
     /// (`VSM_AUTOSAUVEGARDE : <fichier>`). Le dossier de session porte un
     /// UUID tiré au lancement : un banc ne peut pas le deviner.
@@ -389,6 +393,15 @@ public:
             return valeurPourCapture(reste.upToLastOccurrenceOf("=", false, false),
                                      reste.fromLastOccurrenceOf("=", false, false).getDoubleValue());
         }
+        // D495 : liste:<nom>=<entrée> -- l'entrée d'une liste déroulante choisie par
+        // son TEXTE, avec notification (`onChange`, le chemin du choix à la souris).
+        // Aucun verbe n'atteignait une liste : la grille et la gamme du piano roll
+        // ne se réglaient pas sans souris.
+        if (geste.startsWithIgnoreCase("liste:")) {
+            const auto reste = geste.fromFirstOccurrenceOf(":", false, false);
+            return listePourCapture(reste.upToFirstOccurrenceOf("=", false, false),
+                                    reste.fromFirstOccurrenceOf("=", false, false));
+        }
         // D140 : doubleclic:<nom ou légende> -- le double-clic de la souris sur le
         // premier curseur visible (et qui a une surface) de ce nom de composant ou
         // de cette infobulle (les commandes des façades n'ont qu'une légende).
@@ -467,6 +480,17 @@ public:
             return enregistrerSousPourCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim()));
         }
+        // D495 : CHANGER DE MORCEAU, COMME GESTE — donc APRÈS les gestes qui
+        // règlent le morceau courant. `ouvrir-midi:` existait comme verbe de
+        // `VSM_VUE`, qui agit AVANT eux : « régler la grille, puis ouvrir un autre
+        // morceau » ne se jouait pas, ni « … puis Nouveau projet » (VSM_MENU
+        // précède aussi les gestes).
+        if (geste.startsWithIgnoreCase("ouvrir-midi:")) {
+            openMidiFileDirect(juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim()));
+            return true;
+        }
+        if (geste.equalsIgnoreCase("nouveau-projet")) { newProject(); return true; }
         if (geste.startsWithIgnoreCase("exporter-midi:")) {
             const juce::File cible = juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim());
@@ -500,6 +524,7 @@ public:
     bool appuyerPourCapture(const juce::String& nom);
     /// D415 : voir le geste `valeur:` ; la recherche est celle d'`appuyer:`.
     bool valeurPourCapture(const juce::String& nom, double valeur);
+    bool listePourCapture(const juce::String& nom, const juce::String& entree);   ///< D495
     bool clicPourCapture(const juce::String& description);   ///< D435
     bool saisirPourCapture(const juce::String& nom, const juce::String& texte);   ///< D444
     juce::Slider* curseurPourCapture(const juce::String& nom);

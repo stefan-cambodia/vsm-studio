@@ -701,6 +701,21 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             vue.set("automationParameter", JsonValue::makeString(document.view.automationParameter));
         if (document.view.midiCcController >= 0 && document.view.midiCcController <= 129)
             vue.set("midiCcController", JsonValue::makeNumber(document.view.midiCcController));
+        // D495 : la grille, le swing et la gamme du piano roll ; chacun facultatif.
+        if (!document.view.pianoRollGrid.empty())
+            vue.set("pianoRollGrid", JsonValue::makeString(document.view.pianoRollGrid));
+        if (!document.view.pianoRollGridModifier.empty())
+            vue.set("pianoRollGridModifier", JsonValue::makeString(document.view.pianoRollGridModifier));
+        if (document.view.pianoRollSwing >= 0.0 && document.view.pianoRollSwing <= 1.0)
+            vue.set("pianoRollSwing", JsonValue::makeNumber(document.view.pianoRollSwing));
+        if (document.view.scaleRoot >= 0 && document.view.scaleRoot <= 11) {
+            JsonValue gamme = JsonValue::makeObject();
+            gamme.set("root", JsonValue::makeNumber(document.view.scaleRoot));
+            if (!document.view.scaleType.empty())
+                gamme.set("type", JsonValue::makeString(document.view.scaleType));
+            gamme.set("highlight", JsonValue::makeBoolean(document.view.scaleHighlight));
+            vue.set("scale", std::move(gamme));
+        }
         root.set("view", std::move(vue));
     }
 
@@ -1003,6 +1018,47 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         const double controleur = vue["midiCcController"].asNumber(-1.0);
         if (controleur >= 0.0 && controleur <= 129.0)
             document.view.midiCcController = static_cast<int>(controleur);
+        // D495 : LA GRILLE, LE SWING ET LA GAMME. Les NOMS (grille, modificateur,
+        // type de gamme) sont vérifiés par l'application, qui les connaît ; les
+        // NOMBRES le sont ici, et ce qui est hors bornes est ÉCARTÉ ET CONSIGNÉ
+        // (`ecartes`) — l'application le dit, une valeur ignorée en silence étant
+        // la panne muette que ce dépôt refuse.
+        auto ecarter = [&document](const char* champ, const JsonValue& valeur) {
+            // SUR UNE LIGNE : un objet écarté (la gamme) s'écrirait sur plusieurs, et
+            // la ligne du journal qui le dit serait coupée.
+            std::string texte;
+            for (const char c : valeur.toString(0)) {
+                const char propre = (c == '\n' || c == '\r' || c == '\t') ? ' ' : c;
+                if (propre == ' ' && (texte.empty() || texte.back() == ' ')) continue;
+                texte += propre;
+            }
+            while (!texte.empty() && texte.back() == ' ') texte.pop_back();
+            document.view.ecartes.emplace_back(champ, texte);
+        };
+        if (vue["pianoRollGrid"].isString())
+            document.view.pianoRollGrid = vue["pianoRollGrid"].asString();
+        else if (vue.has("pianoRollGrid")) ecarter("pianoRollGrid", vue["pianoRollGrid"]);
+        if (vue["pianoRollGridModifier"].isString())
+            document.view.pianoRollGridModifier = vue["pianoRollGridModifier"].asString();
+        else if (vue.has("pianoRollGridModifier")) ecarter("pianoRollGridModifier", vue["pianoRollGridModifier"]);
+        if (vue.has("pianoRollSwing")) {
+            const double swing = vue["pianoRollSwing"].asNumber(-1.0);
+            if (vue["pianoRollSwing"].isNumber() && swing >= 0.0 && swing <= 1.0)
+                document.view.pianoRollSwing = swing;
+            else ecarter("pianoRollSwing", vue["pianoRollSwing"]);
+        }
+        if (vue.has("scale")) {
+            const JsonValue& gamme = vue["scale"];
+            const double tonique = gamme["root"].asNumber(-1.0);
+            if (gamme.isObject() && gamme["root"].isNumber() && tonique >= 0.0 && tonique <= 11.0
+                && tonique == static_cast<double>(static_cast<int>(tonique))) {
+                document.view.scaleRoot = static_cast<int>(tonique);
+                if (gamme["type"].isString()) document.view.scaleType = gamme["type"].asString();
+                document.view.scaleHighlight = gamme["highlight"].asBoolean(false);
+            } else {
+                ecarter("scale", gamme);
+            }
+        }
     }
     const JsonValue& transport = json["transport"];
     document.transport.ticksPerQuarterNote = static_cast<int>(transport["ticksPerQuarterNote"].asNumber(480.0));

@@ -107,6 +107,32 @@ const char* scaleTypeName(ScaleType type) {
     return "?";
 }
 
+const char* scaleTypeId(ScaleType type) {
+    switch (type) {
+        case ScaleType::Chromatic:       return "chromatic";
+        case ScaleType::Major:           return "major";
+        case ScaleType::NaturalMinor:    return "naturalMinor";
+        case ScaleType::HarmonicMinor:   return "harmonicMinor";
+        case ScaleType::MelodicMinor:    return "melodicMinor";
+        case ScaleType::Dorian:          return "dorian";
+        case ScaleType::Phrygian:        return "phrygian";
+        case ScaleType::Lydian:          return "lydian";
+        case ScaleType::Mixolydian:      return "mixolydian";
+        case ScaleType::Locrian:         return "locrian";
+        case ScaleType::PentatonicMajor: return "pentatonicMajor";
+        case ScaleType::PentatonicMinor: return "pentatonicMinor";
+        case ScaleType::Blues:           return "blues";
+        case ScaleType::WholeTone:       return "wholeTone";
+    }
+    return "chromatic";
+}
+
+bool scaleTypeFromId(const std::string& id, ScaleType& out) {
+    for (const auto type : allScaleTypes())
+        if (id == scaleTypeId(type)) { out = type; return true; }
+    return false;
+}
+
 std::vector<ScaleType> allScaleTypes() {
     return { ScaleType::Chromatic, ScaleType::Major, ScaleType::NaturalMinor,
              ScaleType::HarmonicMinor, ScaleType::MelodicMinor, ScaleType::Dorian,

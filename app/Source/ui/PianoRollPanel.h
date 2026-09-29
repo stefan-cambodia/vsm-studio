@@ -125,7 +125,10 @@ public:
     }
 
     /// D494 : VSM_PIANOROLL, l'état des bascules et de leurs boutons.
-    void direLesBascules() const { toolbar_.direLesBascules(); }
+    void direLesBascules() const { toolbar_.direLesBascules(); toolbar_.direLaGrilleEtLaGamme(); }
+    /// D495 : la barre, pour poser et lire la grille, le swing et la gamme du morceau.
+    PianoRollToolbar& barre() { return toolbar_; }
+    const PianoRollToolbar& barre() const { return toolbar_; }
     /// Rafraîchit règle et barre d'outils (appelé quand la tête de lecture
     /// bouge ou qu'un projet est chargé).
     void refresh() {

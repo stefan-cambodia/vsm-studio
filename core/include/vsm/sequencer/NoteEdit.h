@@ -48,6 +48,12 @@ bool isNoteInScale(uint8_t noteNumber, Scale scale);
 /// à égalité, pour que le résultat soit déterministe et reproductible).
 uint8_t snapNoteToScale(uint8_t noteNumber, Scale scale);
 const char* scaleTypeName(ScaleType type);
+/// D495 : L'IDENTIFIANT STABLE d'un type de gamme, pour un FICHIER (« dorian »).
+/// Le nom affiché (`scaleTypeName`) est traduit et peut changer ; un identifiant
+/// écrit dans un projet ne le doit pas.
+const char* scaleTypeId(ScaleType type);
+/// Rend faux, sans toucher `out`, pour un identifiant inconnu.
+bool scaleTypeFromId(const std::string& id, ScaleType& out);
 std::vector<ScaleType> allScaleTypes();
 /// Nom de note avec octave (« C4 », « F#3 »), convention note 60 = C4.
 std::string noteNumberToName(uint8_t noteNumber);

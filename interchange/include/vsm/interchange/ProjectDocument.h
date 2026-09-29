@@ -4,6 +4,7 @@
 #include "vsm/sequencer/Project.h"
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Format de projet `project.json` (Phase 7, P4 -- docs/ROADMAP-interop.md § 4).
@@ -395,6 +396,23 @@ struct ProjectDocument {
         /// D467 : le contrôleur de l'onglet MIDI CC (0..127, 128 = pitch bend,
         /// 129 = aftertouch). -1 = rien d'enregistré.
         int midiCcController = -1;
+        /// D495 : LA GRILLE, LE SWING ET LA GAMME DU PIANO ROLL — ils appartiennent
+        /// au morceau (la règle de D363). La grille s'écrit par son NOM (« 1/16 »,
+        /// « auto ») et le type de gamme par son identifiant stable (`scaleTypeId`) :
+        /// ces noms sont vérifiés par l'application, qui les connaît. Vide = rien.
+        std::string pianoRollGrid;
+        /// « triplet » ou « dotted » ; vide = droit.
+        std::string pianoRollGridModifier;
+        /// 0..1 ; -1 = rien d'enregistré.
+        double pianoRollSwing = -1.0;
+        /// La tonique, 0 (do) à 11 ; -1 = pas de gamme enregistrée (et alors ni
+        /// type ni surlignage ne sont lus).
+        int scaleRoot = -1;
+        std::string scaleType;
+        bool scaleHighlight = false;
+        /// D495 : CE QUE LA LECTURE A ÉCARTÉ (champ, valeur telle qu'écrite) — une
+        /// valeur hors bornes est ignorée, et l'application le DIT. Jamais écrit.
+        std::vector<std::pair<std::string, std::string>> ecartes;
 
         /// Vrai dès qu'un seul champ dit quelque chose. C'est CE prédicat qui
         /// décide de l'écriture, et non le seul zoom d'arrangement : depuis
@@ -404,7 +422,8 @@ struct ProjectDocument {
         bool ditQuelqueChose() const {
             return pixelsPerTick > 0.0 || selectedTrack >= 0
                    || pianoRollPixelsPerTick > 0.0 || pianoRollTopNote > 0
-                   || !automationParameter.empty() || midiCcController >= 0;   // D467
+                   || !automationParameter.empty() || midiCcController >= 0    // D467
+                   || !pianoRollGrid.empty() || pianoRollSwing >= 0.0 || scaleRoot >= 0;   // D495
         }
     };
     View view;

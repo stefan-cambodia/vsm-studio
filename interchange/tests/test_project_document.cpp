@@ -1585,3 +1585,69 @@ VSM_TEST(an_impossible_zoom_is_ignored_rather_than_obeyed) {
         VSM_ASSERT(relu.document.view.scrollTick == 0);
     }
 }
+
+// D495 : LA GRILLE, LE SWING ET LA GAMME DU PIANO ROLL appartiennent au morceau et
+// font le même voyage, chacun facultatif ; un nombre hors bornes est ÉCARTÉ ET
+// CONSIGNÉ (`ecartes`), pour que l'application puisse le dire.
+VSM_TEST(the_piano_roll_grid_swing_and_scale_survive_the_round_trip) {
+    ProjectDocument document = documentFromProject(buildProject());
+    document.view.pianoRollGrid = "1/8";
+    document.view.pianoRollGridModifier = "triplet";
+    document.view.pianoRollSwing = 0.5;
+    document.view.scaleRoot = 2;
+    document.view.scaleType = "dorian";
+    document.view.scaleHighlight = true;
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.view.pianoRollGrid == "1/8");
+    VSM_ASSERT(relu.document.view.pianoRollGridModifier == "triplet");
+    VSM_ASSERT(relu.document.view.pianoRollSwing > 0.499 && relu.document.view.pianoRollSwing < 0.501);
+    VSM_ASSERT(relu.document.view.scaleRoot == 2);
+    VSM_ASSERT(relu.document.view.scaleType == "dorian");
+    VSM_ASSERT(relu.document.view.scaleHighlight);
+    VSM_ASSERT(relu.document.view.ecartes.empty());
+    VSM_ASSERT(relu.document.view.pixelsPerTick == 0.0);   // rien d'inventé ailleurs
+
+    // un swing nul ET une gamme sans surlignage s'écrivent : ce sont des choix
+    document.view.pianoRollSwing = 0.0;
+    document.view.scaleHighlight = false;
+    const ProjectLoadResult zero = parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(zero.document.view.pianoRollSwing == 0.0);
+    VSM_ASSERT(zero.document.view.scaleRoot == 2);
+    VSM_ASSERT(!zero.document.view.scaleHighlight);
+
+    // sans eux, aucun champ n'est écrit
+    const std::string nu = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(nu.find("pianoRollGrid") == std::string::npos);
+    VSM_ASSERT(nu.find("pianoRollSwing") == std::string::npos);
+    VSM_ASSERT(nu.find("\"scale\"") == std::string::npos);
+}
+
+VSM_TEST(an_absurd_swing_or_scale_is_set_aside_and_said) {
+    ProjectDocument document = documentFromProject(buildProject());
+    document.view.pianoRollGrid = "1/8";
+    JsonValue json = projectDocumentToJson(document);
+    JsonValue vue = json["view"];
+    vue.set("pianoRollSwing", JsonValue::makeNumber(2.0));   // hors de 0..1
+    JsonValue gamme = JsonValue::makeObject();
+    gamme.set("root", JsonValue::makeNumber(13.0));           // hors de 0..11
+    gamme.set("type", JsonValue::makeString("major"));
+    vue.set("scale", std::move(gamme));
+    json.set("view", std::move(vue));
+    const ProjectLoadResult lu = parseProjectDocument(json.toString());
+    VSM_ASSERT(lu.success);
+    VSM_ASSERT(lu.document.view.pianoRollSwing == -1.0);
+    VSM_ASSERT(lu.document.view.scaleRoot == -1);
+    VSM_ASSERT(lu.document.view.scaleType.empty());           // la gamme entière est écartée
+    VSM_ASSERT(lu.document.view.pianoRollGrid == "1/8");      // le reste est gardé
+    VSM_ASSERT_EQ(lu.document.view.ecartes.size(), size_t{2});
+    VSM_ASSERT(lu.document.view.ecartes[0].first == "pianoRollSwing");
+    VSM_ASSERT(lu.document.view.ecartes[0].second == "2");
+    VSM_ASSERT(lu.document.view.ecartes[1].first == "scale");
+    VSM_ASSERT(lu.document.view.ecartes[1].second.find("13") != std::string::npos);
+    VSM_ASSERT(lu.document.view.ecartes[1].second.find('\n') == std::string::npos);   // une ligne
+    // et ce qui est écarté ne se réécrit pas
+    const std::string reecrit = projectDocumentToJson(lu.document).toString();
+    VSM_ASSERT(reecrit.find("pianoRollSwing") == std::string::npos);
+    VSM_ASSERT(reecrit.find("\"scale\"") == std::string::npos);
+}
