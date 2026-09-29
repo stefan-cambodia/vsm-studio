@@ -73,7 +73,7 @@ if [ "${1:-}" = "--bancs" ]; then
     for banc in annulation-des-menus.py arret-tete.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
                 barre-transport.sh bascules-retenues.sh cadrage-ouverture.sh clavier-emprunte.sh \
                 fader-console.sh grille-gamme-projet.sh liste-ajouter.sh liste-editer.sh marque-enregistre.sh \
-                metronome-projet.sh miniature-clips.sh onglets-du-dock.sh ouvrir-midi.sh \
+                metronome-projet.sh miniature-clips.sh notes-du-projet.sh onglets-du-dock.sh ouvrir-midi.sh \
                 pas-a-pas.sh pianoroll-zones.sh police-plancher.sh portes-de-l-arrangement.sh \
                 portes-des-outils.sh portes-des-pistes.sh portes-du-transport.sh quantifier.sh \
                 theme-sombre.sh tout-voir.sh transport-au-repos.sh volet-anglais.sh \

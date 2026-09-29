@@ -36663,3 +36663,46 @@ l'utilisateur identiques. **Au passage**, un défaut de l'outil de D506 : la gar
 écrits par course, sur le `tmpfs` du brouillon de session (dix courses, 360 Mo de
 RAM ; le piège que `CLAUDE.md` nomme). Elle efface désormais son propre brouillon,
 et lui seul.
+
+---
+
+### Phase D509 — fenêtre des notes ouverte, ouvrir un autre projet y laissait les notes du précédent (29/09/2026)
+
+**D'OÙ ELLE VIENT — EN LISANT LE CODE DE D508.** L'éditeur des notes du projet n'est
+rempli qu'en un seul endroit : l'ouverture de SA fenêtre (`showProjectNotes`, sans
+notification). Si la fenêtre est déjà ouverte quand on ouvre un autre projet, elle
+garde le texte du précédent — et la première frappe (`onTextChange`) recopie tout
+l'éditeur dans `project_.notes` : **les notes du projet A entrent dans le projet
+B**, sans que rien ne le dise.
+
+**L'INSTRUMENT** : deux gestes — `notes-frappe:<texte>` (inséré au curseur, comme le
+clavier le fait) et `relever-notes` (ce que l'éditeur montre, et ce que le projet
+porte).
+
+**LE CHOIX, TRANCHÉ ICI** : l'éditeur suit le projet — aux mêmes portes que la grille
+et la gamme (D495) : ouvrir un dossier, un MIDI, un import, un projet neuf ; sans
+notification, pour qu'une ouverture ne se prenne pas pour une frappe (D508).
+
+**ATTENDU, écrit avant la mesure** — garde neuve `tools/notes-du-projet.sh` (A porte
+« Notes de A », B aucune ; fenêtre des notes ouverte sur A, B ouvert par
+« Projets récents ») :
+1. **témoin** (binaire de D508 + instrument) : l'éditeur montre « Notes de A » sur
+   B ; une frappe « ! », B enregistré → ses notes : « **Notes de A!** » ;
+2. **après** : l'éditeur montre « » sur B ; ses notes enregistrées : « ! » ;
+3. `marque-enregistre.sh` vert (B ouvert reste « enregistré ») ;
+   `./verifier.sh --bancs` vert ; préférences inchangées.
+
+**MESURÉ — TENU** (`tools/notes-du-projet.sh`, garde neuve) :
+
+| étape | témoin (D508 + instrument) | après |
+|---|---|---|
+| A ouvert, fenêtre des notes ouverte | éditeur [Notes de A] | éditeur [Notes de A] |
+| B ouvert, fenêtre restée ouverte | éditeur **[Notes de A]**, projet [] | éditeur **[]**, projet [] |
+| B : une frappe « ! », puis enregistré | notes de B : **« !Notes de A »** | notes de B : **« ! »** |
+
+Rouge sur le témoin (2 ratés), vert après ; `marque-enregistre.sh` toujours vert
+(l'éditeur se remplit sans notification : B ouvert reste « enregistré »). La garde
+entre dans `./verifier.sh --bancs` (35 bancs).
+
+`./verifier.sh --bancs` : **35 bancs sur 35 verts** en 24 minutes, préférences de
+l'utilisateur identiques.

@@ -354,6 +354,17 @@ public:
         if (geste.equalsIgnoreCase("lister-menus")) { listMenusForCapture(); return true; }
         // D508 : des notes du projet « tapées » — l'éditeur, `setText` AVEC
         // notification : le rappel `onTextChange` d'une frappe.
+        // D509 : une FRAPPE dans l'éditeur des notes (insérée au curseur, comme le
+        // clavier le fait), et ce que l'éditeur MONTRE à cet instant.
+        if (geste.startsWithIgnoreCase("notes-frappe:")) {
+            projectNotesEditor_.insertTextAtCaret(geste.fromFirstOccurrenceOf(":", false, false));
+            return true;
+        }
+        if (geste.equalsIgnoreCase("relever-notes")) {
+            std::fputs(("VSM_NOTES_EDITEUR : [" + projectNotesEditor_.getText() + "] ; projet : ["
+                        + juce::String::fromUTF8(project_.notes.c_str()) + "]\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.startsWithIgnoreCase("notes:")) {
             showProjectNotes();
             projectNotesEditor_.setText(geste.fromFirstOccurrenceOf(":", false, false), true);
@@ -1561,6 +1572,8 @@ private:
     void changeSelectedTrackFolderDepth(int delta);
     /// D18.6 : ouvre le bloc-notes du projet.
     void showProjectNotes();
+    /// D509 : l'éditeur des notes reprend celles du projet ouvert (sans notification).
+    void rafraichirNotesDuProjet();
     /// D18.4 : ouvre l'ordre de jeu, sections relues depuis les repères.
     void showPlayOrder();
     /// D18.2 : ouvre l'assemblage des prises pour la piste choisie.

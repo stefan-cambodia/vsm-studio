@@ -6646,6 +6646,7 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         poserTitreDeBase("Vintage Synth MIDI Studio -- " + fichier.getFileNameWithoutExtension());
         profondeurAuDernierEnregistrement_ = history_.undoDepth();
         modifieHorsHistorique_ = false;   // D508
+        rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
         rafraichirTitre();
         // D311 : « découpée(s) par canal » ne se dit que si un découpage a eu
         // lieu -- un fichier d'une piste de conduite rendait 0 piste et le
@@ -6774,6 +6775,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
     profondeurAuDernierEnregistrement_ = history_.undoDepth();   // D507 : comme un MIDI ouvert
     modifieHorsHistorique_ = false;   // D508
+    rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
     poserTitreDeBase(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
                      + fichier.getFileNameWithoutExtension());
     // D320 : LE NOM DE LA PISTE DONNE UN PREMIER SON (CDC import § 2, nuance du
@@ -7289,6 +7291,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // geste plus tard, « enregistré » — et fermer ne demandait rien.
     profondeurAuDernierEnregistrement_ = history_.undoDepth();
     modifieHorsHistorique_ = false;   // D508
+    rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
     poserTitreDeBase("Vintage Synth MIDI Studio -- " + medias.getFileName());
     // rebuildFromProject() assigne les instruments d'après le projet : les
     // machines n'existent donc PAS avant cet appel, et appliquer les
@@ -9898,6 +9901,15 @@ int MainComponent::audioSpansWithCrossfade() const {
     return compte;
 }
 
+void MainComponent::rafraichirNotesDuProjet() {
+    // D509 : L'ÉDITEUR DES NOTES SUIT LE MORCEAU. Il n'était rempli qu'à l'ouverture
+    // de SA fenêtre : fenêtre ouverte, ouvrir un autre projet y laissait les notes
+    // du précédent, et la première frappe les recopiait dans le nouveau. Sans
+    // notification : une ouverture n'est pas une frappe (D508).
+    if (projectNotesWindow_ != nullptr)
+        projectNotesEditor_.setText(juce::String::fromUTF8(project_.notes.c_str()), juce::dontSendNotification);
+}
+
 void MainComponent::setCrossfadeShape(vsm::sequencer::FadeShape forme) {
     // D506 : UN PAS D'ANNULATION. La forme est une donnée du morceau (elle est
     // écrite dans project.json) ; changée sans pas, le Ctrl+Z suivant remontait
@@ -10287,6 +10299,7 @@ void MainComponent::newProject() {
     poserTitreDeBase(tr(u8"Vintage Synth MIDI Studio -- nouveau projet"));
     profondeurAuDernierEnregistrement_ = history_.undoDepth();
     modifieHorsHistorique_ = false;   // D508
+    rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
     rafraichirTitre();
 }
 
