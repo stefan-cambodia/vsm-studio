@@ -68,10 +68,18 @@ REVENDICATION = re.compile(
 # D516 : « 365 phases closes</span><br><small>D0 → D372 » dans la page consultable
 PHASES_HTML = re.compile(r"(?P<compte>\d+) phases closes</span><br><small>D0 → D(?P<dernier>\d+)")
 
-# « **361 titres de phase** écrits (D0 → D368) »
+# « **361 titres de phase** écrits (D0 → D368), tous clos » — ou, depuis le 30/09,
+# « …, **515 clos** (en attente : D523) » quand une phase attend sa mesure.
 PHASES = re.compile(
     r"\*\*(?P<compte>\d+) titres de phase\*\* écrits \(D0 → D(?P<dernier>\d+)\)"
+    r"(?P<etat>, tous clos|, \*\*\d+ clos\*\*(?: \(en attente : [D\d, ]+\))?)?"
 )
+# UNE PHASE ÉCRITE N'EST PAS UNE PHASE CLOSE (30/09/2026). Cet outil comptait tout
+# « ### Phase D… » comme clos, et l'INDEX écrivait « tous clos » à côté : le jour où
+# D523 a été écrite AVANT sa mesure — la session verrouillée empêchait de la jouer —,
+# l'INDEX et la page annonçaient « 516 phases closes ». Une phase en attente le dit
+# dans son TITRE (« — EN ATTENTE DE MESURE »), et le compte le reprend.
+EN_ATTENTE = "EN ATTENTE DE MESURE"
 
 
 def entier(texte: str) -> int:
@@ -181,18 +189,25 @@ def main() -> int:
         print("REFUS : le compte de phases n'est plus reconnaissable dans l'INDEX",
               file=sys.stderr)
         return 2
-    titres = re.findall(r"^### Phase D(\d+)", roadmap.read_text(encoding="utf-8"), re.M)
-    if not titres:
+    lignes_titres = re.findall(r"^### Phase D(\d+)(.*)$", roadmap.read_text(encoding="utf-8"), re.M)
+    if not lignes_titres:
         print("REFUS : aucun « ### Phase D… » dans ROADMAP-daw.md", file=sys.stderr)
         return 2
+    titres = [n for n, _ in lignes_titres]
+    ouvertes = [f"D{n}" for n, reste in lignes_titres if EN_ATTENTE in reste]
     compte_reel, dernier_reel = len(titres), max(int(n) for n in titres)
+    closes_reel = compte_reel - len(ouvertes)
+    etat_reel = (", tous clos" if not ouvertes
+                 else f", **{closes_reel} clos** (en attente : {', '.join(ouvertes)})")
     compte_dit, dernier_dit = int(mp.group("compte")), int(mp.group("dernier"))
-    if (compte_dit, dernier_dit) != (compte_reel, dernier_reel):
+    etat_dit = mp.group("etat") or ""
+    if (compte_dit, dernier_dit, etat_dit) != (compte_reel, dernier_reel, etat_reel):
         phases_ecart = True
-        print(f"  ÉCART phases : l'INDEX dit {compte_dit} titres jusqu'à D{dernier_dit}, "
-              f"ROADMAP-daw.md en a {compte_reel} jusqu'à D{dernier_reel}")
+        print(f"  ÉCART phases : l'INDEX dit {compte_dit} titres jusqu'à D{dernier_dit}"
+              f"{etat_dit or ' (sans état)'}, ROADMAP-daw.md en a {compte_reel} jusqu'à "
+              f"D{dernier_reel}{etat_reel}")
         remplacements.append((mp.group(0),
-                              f"**{compte_reel} titres de phase** écrits (D0 → D{dernier_reel})"))
+                              f"**{compte_reel} titres de phase** écrits (D0 → D{dernier_reel}){etat_reel}"))
 
     # D516 : ET LE COMPTE DE PHASES DE LA PAGE, que cet outil ne lisait pas : elle
     # disait « 365 phases closes, D0 → D372 » neuf jours et 144 phases plus tard,
@@ -205,12 +220,12 @@ def main() -> int:
             print("REFUS : le compte de phases n'est plus reconnaissable dans ordre-de-marche.html",
                   file=sys.stderr)
             return 2
-        if (int(mh.group("compte")), int(mh.group("dernier"))) != (compte_reel, dernier_reel):
+        if (int(mh.group("compte")), int(mh.group("dernier"))) != (closes_reel, dernier_reel):
             page_phases_ecart = True
-            print(f"  ÉCART phases de la page : {mh.group('compte')} jusqu'à D{mh.group('dernier')}, "
-                  f"ROADMAP-daw.md en a {compte_reel} jusqu'à D{dernier_reel}")
+            print(f"  ÉCART phases de la page : {mh.group('compte')} closes jusqu'à D{mh.group('dernier')}, "
+                  f"ROADMAP-daw.md en a {closes_reel} closes jusqu'à D{dernier_reel}")
             if args.corriger:
-                html = html.replace(mh.group(0), f"{compte_reel} phases closes</span><br><small>"
+                html = html.replace(mh.group(0), f"{closes_reel} phases closes</span><br><small>"
                                                  f"D0 → D{dernier_reel}", 1)
                 PAGE.write_text(html, encoding="utf-8")
                 print("1 chiffre réécrit dans docs/ordre-de-marche.html (le compte de phases)")

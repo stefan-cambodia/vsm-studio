@@ -37737,3 +37737,39 @@ cette phase, et c'est dit** : elle ne change qu'une ligne de journal qu'aucune g
 ne lit (cherché : aucun outil de `tools/` ne lit la suite de `VSM_TAILLE`), et, la
 session restant verrouillée, la série ne rendrait que les rouges de géométrie déjà
 lus quatre fois.
+
+---
+
+### Phase D523 — Maj+clic sur la règle allumait « Loop » sur une boucle vide (30/09/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — EN LISANT LA RÈGLE POUR D520.** À l'appui (Maj), la règle pose une
+région VIDE ([t,t]) et la dit active ; le glissé l'étend ensuite. Un Maj+clic SANS
+glissé laisse donc au projet une boucle « allumée » sur une région vide :
+`onLoopRegionChanged` écrit `loopEnabled = active` sans condition, quand son voisin du
+punch écrit `punchEnabled = active && end > start` — l'invariant que la bascule tient
+aussi (`onLoopToggled` : « projet vide » → éteint) et que D518 a écrit pour le report.
+Le moteur, lui, borne (`active && end > start`) : **pronostic** — après un Maj+clic,
+le bouton Loop est ALLUMÉ, le projet dit « boucle oui [t,t] », le moteur ne boucle
+pas, et le fichier enregistré porte une boucle allumée qui ne boucle rien.
+
+**LE CHOIX, TRANCHÉ ICI** : l'invariant du punch, pour la boucle — une boucle sans
+région n'est pas active, au projet comme au bouton. Un Maj+clic sans glissé EFFACE
+donc la région (c'est ce qu'il faisait déjà) et éteint la boucle, dans le pas
+« Région de boucle » de D520.
+
+**ATTENDU, écrit avant la mesure** — `tools/regions-historique.sh`, cas F (projet à
+boucle [0,1920] allumée ; Maj+clic sans glissé) :
+
+| relevé après le Maj+clic | témoin (binaire de D521) | après |
+|---|---|---|
+| projet / moteur / bouton | **oui** [t,t] / non / **oui** | non [t,t] / non / non |
+| le fichier enregistré | **boucle allumée**, région vide | éteinte, région vide |
+| les pas | 1 (« Région de boucle ») | 1 |
+
+**MESURE EN ATTENTE, ET C'EST DIT (30/09, 02 h 20).** Écrite pendant D521, cette phase
+ne peut pas se mesurer cette nuit : sous la session verrouillée, le gestionnaire de
+fenêtres rend la fenêtre du banc en 128 × 128 (D522), la règle n'a pas de place, et
+le Maj+clic n'est pas jouable — le témoin l'a dit (« le Maj+clic a été joué : non,
+fenêtre vide deux fois »). L'attendu ci-dessus ne bouge pas ; le cas F entrera dans
+`tools/regions-historique.sh` avec le correctif (une garde rouge sur un défaut connu
+et non corrigé ferait rougir la série pour rien).
