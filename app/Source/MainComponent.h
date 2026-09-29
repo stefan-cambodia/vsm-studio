@@ -352,6 +352,13 @@ public:
         if (geste.startsWithIgnoreCase("menu:"))
             return runMenuEntryForCapture(geste.fromFirstOccurrenceOf(":", false, false).trim());
         if (geste.equalsIgnoreCase("lister-menus")) { listMenusForCapture(); return true; }
+        // D508 : des notes du projet « tapées » — l'éditeur, `setText` AVEC
+        // notification : le rappel `onTextChange` d'une frappe.
+        if (geste.startsWithIgnoreCase("notes:")) {
+            showProjectNotes();
+            projectNotesEditor_.setText(geste.fromFirstOccurrenceOf(":", false, false), true);
+            return true;
+        }
         // D507 : le TITRE de la fenêtre et ce que l'application croit de l'état du
         // projet — c'est lui qui décide si fermer demande (`demanderAvantDeQuitter`).
         if (geste.equalsIgnoreCase("relever-titre")) {
@@ -1020,6 +1027,8 @@ private:
     /// La marque « non enregistré » du titre se déduit de l'écart avec la
     /// profondeur courante, plutôt que d'un drapeau qu'on oublie de poser.
     size_t profondeurAuDernierEnregistrement_ = 0;
+    /// D508 : le morceau a changé HORS de l'historique (notes du projet, commande MIDI apprise).
+    bool modifieHorsHistorique_ = false;
     juce::String titreDeBase_ { "Vintage Synth MIDI Studio" };
     void poserTitreDeBase(const juce::String& titre);
     void rafraichirTitre();

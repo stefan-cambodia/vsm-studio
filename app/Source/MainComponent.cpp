@@ -6645,6 +6645,7 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         currentProjectFolder_ = juce::File();
         poserTitreDeBase("Vintage Synth MIDI Studio -- " + fichier.getFileNameWithoutExtension());
         profondeurAuDernierEnregistrement_ = history_.undoDepth();
+        modifieHorsHistorique_ = false;   // D508
         rafraichirTitre();
         // D311 : « découpée(s) par canal » ne se dit que si un découpage a eu
         // lieu -- un fichier d'une piste de conduite rendait 0 piste et le
@@ -6772,6 +6773,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     oublierLesMachines();   // D76
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
     profondeurAuDernierEnregistrement_ = history_.undoDepth();   // D507 : comme un MIDI ouvert
+    modifieHorsHistorique_ = false;   // D508
     poserTitreDeBase(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
                      + fichier.getFileNameWithoutExtension());
     // D320 : LE NOM DE LA PISTE DONNE UN PREMIER SON (CDC import § 2, nuance du
@@ -7286,6 +7288,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // du projet PRÉCÉDENT : le projet ouvert s'affichait « modifié », puis, un
     // geste plus tard, « enregistré » — et fermer ne demandait rien.
     profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    modifieHorsHistorique_ = false;   // D508
     poserTitreDeBase("Vintage Synth MIDI Studio -- " + medias.getFileName());
     // rebuildFromProject() assigne les instruments d'après le projet : les
     // machines n'existent donc PAS avant cet appel, et appliquer les
@@ -7940,6 +7943,8 @@ void MainComponent::applyLearnedControls() {
         // le planning cent fois pour un fader.
         mixDirty_ = true;
         markProjectDirty();
+        modifieHorsHistorique_ = true;   // D508 : la marque le dit (coalescé : pas de pas)
+        rafraichirTitre();
         // La console doit MONTRER ce qu'un potentiomètre physique vient de
         // faire : un fader qui bouge sans que le sien bouge à l'écran est
         // exactement ce qui fait douter du câblage.
@@ -8374,6 +8379,10 @@ void MainComponent::showProjectNotes() {
         projectNotesEditor_.onTextChange = [this] {
             project_.notes = projectNotesEditor_.getText().toStdString();
             markProjectDirty();
+            // D508 : ET LA MARQUE — pas de pas d'annulation pour des mots tapés dans
+            // une autre fenêtre, mais la question à la fermeture, oui.
+            modifieHorsHistorique_ = true;
+            rafraichirTitre();
         };
         projectNotesWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Notes du projet"), projectNotesEditor_);
@@ -9425,7 +9434,10 @@ void MainComponent::poserTitreDeBase(const juce::String& titre) {
 }
 
 bool MainComponent::projetNonEnregistre() const {
-    return history_.undoDepth() != profondeurAuDernierEnregistrement_;
+    // D508 : OU un changement du morceau passé HORS de l'historique (les notes du
+    // projet, un réglage bougé par une commande MIDI apprise) : sans ce drapeau,
+    // fermer après eux ne demandait rien.
+    return history_.undoDepth() != profondeurAuDernierEnregistrement_ || modifieHorsHistorique_;
 }
 
 void MainComponent::rafraichirTitre() {
@@ -9617,6 +9629,7 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     // instant devient la référence : tout ce qui s'ajoute après est « non
     // enregistré », et l'annulation, qui la fait décroître, compte aussi.
     profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    modifieHorsHistorique_ = false;   // D508
     rafraichirTitre();
     return true;
 }
@@ -10273,6 +10286,7 @@ void MainComponent::newProject() {
     currentProjectFolder_ = juce::File();
     poserTitreDeBase(tr(u8"Vintage Synth MIDI Studio -- nouveau projet"));
     profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    modifieHorsHistorique_ = false;   // D508
     rafraichirTitre();
 }
 

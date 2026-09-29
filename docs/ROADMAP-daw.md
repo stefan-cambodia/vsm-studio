@@ -36611,3 +36611,55 @@ préférences de l'utilisateur identiques. La garde entre dans la liste.
 l'historique, donc hors de la marque — les **notes du projet** (écrites à chaque
 frappe) et les réglages de mixage bougés par une **commande MIDI apprise**
 (coalescés, D10.2). Fermer après eux ne demande rien. Leur phase.
+
+---
+
+### Phase D508 — des notes du projet tapées, puis fermer : rien n'était demandé (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE NOMMÉ DE D507.** La marque « non enregistré » se déduit
+de l'historique (D174). Deux changements du morceau n'y passent pas : les **notes
+du projet** (Affichage ▸ Notes du projet…), écrites dans le projet à chaque frappe
+sans pas d'annulation — c'est voulu : un Ctrl+Z qui effacerait des mots dans une
+autre fenêtre serait incompréhensible —, et les réglages de mixage bougés par une
+**commande MIDI apprise** (coalescés, cent messages par seconde). Ils marquent le
+projet pour l'autosauvegarde (`markProjectDirty`), pas pour la marque : **tapez une
+page de notes, fermez — rien n'est demandé, et elles sont perdues**.
+
+**LE CHOIX, TRANCHÉ ICI** : la marque se déduit de l'historique OU d'un drapeau
+« modifié hors historique », posé par ces deux chemins et par eux seuls, et levé
+quand on enregistre, ouvre ou crée un projet. Pas de pas d'annulation pour les
+notes : ce n'est pas l'annulation qui manquait, c'est la question à la fermeture.
+
+**L'INSTRUMENT** : un geste `notes:<texte>` — l'éditeur des notes, `setText` AVEC
+notification, c'est-à-dire le rappel `onTextChange` d'une frappe.
+
+**ATTENDU, écrit avant la mesure** — `tools/marque-enregistre.sh`, cas ajoutés :
+1. **témoin** (binaire de D507 + `notes:`) : projet ouvert, notes tapées → « non
+   enregistré : **non** » (faux) ;
+2. **après** : « **oui** » ; enregistré → « non », et le `project.json` porte les
+   notes ; Ctrl+Z après des notes → toujours « oui » (les notes ne s'annulent pas,
+   la marque ne ment pas) ;
+3. la commande MIDI apprise : NON mesurée — aucun verbe de banc n'en joue — et dit ;
+4. `./verifier.sh --bancs` vert ; préférences inchangées.
+
+**MESURÉ — TENU** (`tools/marque-enregistre.sh`, cas des notes ajoutés) :
+
+| étape | témoin (D507 + `notes:`) | après |
+|---|---|---|
+| projet ouvert | non | non |
+| notes tapées | **non** (faux : fermer ne demandait rien) | **oui** (« projet-b \* ») |
+| notes tapées, puis Ctrl+Z | non | **oui** — les notes ne s'annulent pas, la marque ne ment pas |
+| enregistré | non | non, et les notes sont dans `project.json` |
+
+Rouge sur le témoin (2 ratés), vert après ; les cinq cas de D507 toujours tenus.
+**Le correctif** : un drapeau « modifié hors historique », posé par les notes et par
+la commande MIDI apprise (celle-ci NON mesurée : aucun verbe de banc n'en joue),
+levé aux cinq endroits où le repère de D507 est reposé (enregistrer, nouveau
+projet, ouvrir un MIDI, un dossier, un import).
+
+`./verifier.sh --bancs` : **34 bancs sur 34 verts** en 21 minutes, préférences de
+l'utilisateur identiques. **Au passage**, un défaut de l'outil de D506 : la garde
+`annulation-des-menus.py` ne supprimait pas son brouillon — 36 Mo de projets
+écrits par course, sur le `tmpfs` du brouillon de session (dix courses, 360 Mo de
+RAM ; le piège que `CLAUDE.md` nomme). Elle efface désormais son propre brouillon,
+et lui seul.

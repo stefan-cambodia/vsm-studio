@@ -37,6 +37,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -138,6 +139,15 @@ def main() -> int:
         print(f"REFUS : {binaire} absent — compiler d'abord")
         return 2
     brouillon = Path(tempfile.mkdtemp(dir=os.environ.get("TMPDIR", "/tmp"), prefix="vsm-annulation-menus."))
+    # LE BROUILLON EST UN tmpfs (CLAUDE.md) : une course y laissait 36 Mo de projets
+    # écrits — dix courses, 360 Mo de RAM. CE brouillon, et lui seul, est effacé.
+    try:
+        return auditer(binaire, brouillon, seulement)
+    finally:
+        shutil.rmtree(brouillon, ignore_errors=True)
+
+
+def auditer(binaire: Path, brouillon: Path, seulement: str | None) -> int:
     projet = brouillon / "projet"
     engendrer(projet)
     choisir = "300:touche:pianoroll:ctrl + A"

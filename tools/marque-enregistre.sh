@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # LA GARDE DE D507 : LA MARQUE « NON ENREGISTRÉ » DIT VRAI APRÈS L'OUVERTURE D'UN PROJET.
+# ET DE D508 : ET APRÈS DES NOTES DU PROJET TAPÉES, qui ne passent pas par l'historique.
 #
 # RÈGLE GARDÉE (29/09/2026). La marque (l'astérisque du titre, et la question que
 # pose la fermeture) se déduit de l'historique contre un repère posé à chaque
@@ -108,5 +109,24 @@ if ! grep -q "VSM_RECUPERER : r" "$brouillon/repris.txt"; then
     rates=$((rates + 1))
 elif [ "$e" = "oui" ]; then printf '  OK   %-40s %s\n' "reprise après panne" "$t"
 else printf '  RATÉ %-40s %s (attendu : non enregistré oui)\n' "reprise après panne" "$t"; rates=$((rates + 1)); fi
+
+# D508 : LES NOTES DU PROJET, écrites hors de l'historique (voulu : pas d'annulation
+# pour des mots tapés dans une autre fenêtre) — mais la marque doit le dire.
+h3="$(mktemp -d "$brouillon/home.XXXX")"
+env HOME="$h3" VSM_TAILLE="1280x800" VSM_PROJET="$brouillon/projet-b" VSM_VUE="sans-rapport" VSM_DELAI=2600 \
+    VSM_GESTE_APRES="400:relever-titre;700:notes:Refrain trop long, couper 4 mesures;1000:relever-titre;1300:touche:ctrl + Z;1600:relever-titre;1900:enregistrer:$brouillon/projet-b2;2200:relever-titre" \
+    VSM_CAPTURE="$brouillon/notes.png" timeout 40 "$BIN" > "$brouillon/notes.txt" 2>&1
+mapfile -t etats < <(grep -o "non enregistre : [a-z]*" "$brouillon/notes.txt" | cut -d' ' -f4)
+mapfile -t titres < <(grep "VSM_TITRE_ETAT : " "$brouillon/notes.txt" | sed 's/VSM_TITRE_ETAT : //')
+etape 0 "notes : projet ouvert" non
+etape 1 "notes tapées" oui
+etape 2 "notes tapées, puis Ctrl+Z" oui
+etape 3 "notes enregistrées" non
+if grep -q "Refrain trop long" "$brouillon/projet-b2/project.json" 2>/dev/null; then
+    printf '  OK   %-40s les notes sont dans project.json\n' "notes : le fichier"
+else
+    printf '  RATÉ %-40s les notes ne sont pas dans project.json\n' "notes : le fichier"; rates=$((rates + 1))
+fi
+echo "    non mesurée (dite, pas comptée) : la commande MIDI apprise — aucun verbe de banc n'en joue."
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]
