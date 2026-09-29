@@ -53,7 +53,8 @@ enum ContextMenuId {
     kCtxScaleConstrain = 100080,
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
-    kCtxZoomFit = 100300, kCtxZoomSelection,
+    kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
+    kCtxToolSelect = 100310, kCtxToolDraw, kCtxToolErase, kCtxToolSplit, kCtxToolGlue, kCtxToolMute,   // D497
     kCtxFold = 100400,
 };
 
@@ -481,6 +482,11 @@ void PianoRollComponent::releverRangPourCapture() const {
                 + " lignes=" + juce::String(lignes)
                 + " zoom=" + juce::String(pixelsPerTick_, 6)
                 + " defilement=" + juce::String(static_cast<juce::int64>(scrollTick_))
+                // D497 : l'outil courant — la barre le marque en couleur, et un
+                // texte peint ne se relève pas (D149).
+                + " outil=" + (tool_ == Tool::Select ? "selection" : tool_ == Tool::Draw ? "crayon"
+                               : tool_ == Tool::Erase ? "gomme" : tool_ == Tool::Split ? "ciseaux"
+                               : tool_ == Tool::Glue ? "colle" : "muet")
                 + "\n").toRawUTF8(), stderr);
 }
 
@@ -1237,6 +1243,23 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     menu.addSeparator();
     ajouterAvecRaccourci(menu, kCtxZoomFit, tr("Zoom : tout voir"), shortcuts_, Id::ViewZoomToFit);
     menu.addItem(kCtxZoomSelection, tr(u8"Zoom : sur la sélection"), sel);
+    // D497 : LE ZOOM ± ET LES SIX OUTILS, les dernières commandes de la table sans
+    // entrée de menu. Ils n'agissent que sur le piano roll — ce menu est le sien
+    // (D80) —, portent les libellés de la table (D355) et leur touche (D155), et
+    // appellent ce que la touche appelle (`performShortcut`). L'outil courant est
+    // coché : la barre le marque en couleur, le menu le dit.
+    ajouterAvecRaccourci(menu, kCtxZoomIn, tr("Zoom avant"), shortcuts_, Id::ViewZoomIn);
+    ajouterAvecRaccourci(menu, kCtxZoomOut, tr(u8"Zoom arrière"), shortcuts_, Id::ViewZoomOut);
+    {
+        juce::PopupMenu outils;
+        ajouterAvecRaccourci(outils, kCtxToolSelect, tr(u8"Sélection"), shortcuts_, Id::ToolSelect, true, tool_ == Tool::Select);
+        ajouterAvecRaccourci(outils, kCtxToolDraw, tr("Crayon"), shortcuts_, Id::ToolDraw, true, tool_ == Tool::Draw);
+        ajouterAvecRaccourci(outils, kCtxToolErase, tr("Gomme"), shortcuts_, Id::ToolErase, true, tool_ == Tool::Erase);
+        ajouterAvecRaccourci(outils, kCtxToolSplit, tr("Ciseaux"), shortcuts_, Id::ToolSplit, true, tool_ == Tool::Split);
+        ajouterAvecRaccourci(outils, kCtxToolGlue, tr("Colle"), shortcuts_, Id::ToolGlue, true, tool_ == Tool::Glue);
+        ajouterAvecRaccourci(outils, kCtxToolMute, tr("Muet"), shortcuts_, Id::ToolMute, true, tool_ == Tool::Mute);
+        menu.addSubMenu(tr("Outils"), outils);
+    }
     // D20.2 : REPLIER. L'entrée dit combien de hauteurs elle montrerait --
     // ou qu'il n'y en a aucune, auquel cas elle est grisée avec sa raison.
     {
@@ -1346,6 +1369,14 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxArpRandom:        arpeggiateSelection(ArpeggioMode::Random); break;
         case kCtxZoomFit:          zoomToFit(); break;
         case kCtxZoomSelection:    zoomToSelection(); break;
+        case kCtxZoomIn:           zoomHorizontally(1.25f); break;   // D497 : comme `performShortcut`
+        case kCtxZoomOut:          zoomHorizontally(0.8f); break;
+        case kCtxToolSelect:       setTool(Tool::Select); break;
+        case kCtxToolDraw:         setTool(Tool::Draw); break;
+        case kCtxToolErase:        setTool(Tool::Erase); break;
+        case kCtxToolSplit:        setTool(Tool::Split); break;
+        case kCtxToolGlue:         setTool(Tool::Glue); break;
+        case kCtxToolMute:         setTool(Tool::Mute); break;
         case kCtxFold:             setFoldEnabled(!fold_); break;
         default: break;
     }

@@ -35939,3 +35939,83 @@ relancement, aucune clé ; après, **64/64** au relancement, la clé écrite (4 
 `pianoRoll…` au lieu de 3) ; HOME neuf 100/100 ; paires A à D tenues. Garde de
 langue 0, `grille-gamme-projet.sh` 0 raté, `pianoroll-zones.sh` 7 relevés 0 raté,
 fumée 0 raté, préférences de l'utilisateur identiques.
+
+---
+
+### Phase D497 — les six outils et le zoom ± : les dernières commandes de la table sans entrée de menu (29/09/2026)
+
+**D'OÙ ELLE VIENT — LE RESTE (a) DE D491**, qui est celui de D471 : des 33
+commandes sans entrée de menu, D472 en a fermé sept, D483 quinze, D491 deux (G, M) ;
+restent les six outils du piano roll (1 à 6) et le zoom avant/arrière (= et -).
+Tous ont un bouton dans la barre du piano roll, dont l'infobulle dit la touche
+(D358) : ce ne sont pas des commandes sans porte, mais des commandes qu'on
+n'apprend qu'en survolant un bouton de trois lettres (« Dess. », « Coup. »).
+
+**LE CHOIX, TRANCHÉ ICI.**
+1. **Dans le menu Édition** — c'est le menu du piano roll (D80), et ces huit
+   commandes n'agissent que sur lui (le piano roll les rend dans
+   `performShortcut`). « Zoom avant » et « Zoom arrière » sous « Zoom : tout
+   voir », qui y est déjà ; les outils dans un sous-menu **Outils** — le nom de
+   leur catégorie dans la table —, l'outil courant COCHÉ.
+2. **Les libellés de la table** (« Sélection », « Crayon », « Gomme », « Ciseaux »,
+   « Colle », « Muet ») : un geste, un nom (D355, `noms-des-gestes.py`). Deux
+   d'entre eux ressemblent à des entrées existantes, et c'est vérifié plutôt que
+   supposé : « Sélection » est aussi le NOM d'un sous-menu d'Édition, mais un
+   sous-menu n'est pas une entrée (`VSM_MENU` ne prend que ce qui a un
+   identifiant) ; « Muet » et « Muet (piste choisie) » (menu Piste) se départagent
+   au libellé entier.
+3. Chaque entrée appelle ce que la touche appelle (`setTool`, `zoomHorizontally`),
+   touche dessinée par JUCE (D155).
+
+**L'INSTRUMENT, DANS LE TÉMOIN** : le relevé `VSM_PIANOROLL_RANG` dit aussi l'outil
+courant (`outil=`) — la barre le MARQUE en couleur, et un texte peint ne se relève
+pas (D149).
+
+**ATTENDU, écrit avant la mesure** :
+1. **témoin** (binaire de D496 + relevé) : pas de sous-menu Outils, ni de « Zoom
+   avant » ; barre `[touche …]` **55** ;
+2. **après** : barre **55 → 63** en français et en anglais ; « Outils » coche
+   « Sélection » au démarrage ; garde neuve `tools/portes-des-outils.sh` — pour
+   chacun des huit gestes, témoin / menu / touche (`pianoroll:<touche>`) : l'outil
+   (ou le zoom) du menu = celui de la touche ≠ celui du témoin ; « Sélection » se
+   juge depuis « Crayon » (depuis le démarrage elle ne prouverait rien) ; **vue
+   rouge** sur le témoin ;
+3. `VSM_MENU="Muet (piste choisie)"` rend toujours la piste muette (et non l'outil
+   Muet) ; `portes-des-pistes.sh`, `noms-des-gestes.py`,
+   `touches-du-menu-edition.py`, `menus-cites.py`, langue verts ; fumée 0 raté ;
+   préférences inchangées.
+
+**MESURÉ — TENU** (`tools/portes-des-outils.sh`, garde neuve) :
+
+| cas | témoin | menu (témoin D496 → après) | touche |
+|---|---|---|---|
+| Crayon | sélection | sélection → **crayon** | crayon |
+| Sélection (depuis Crayon) | crayon | sélection (le menu « Crayon » manquait aussi) → **sélection** | sélection |
+| Gomme, Ciseaux, Colle, Muet | sélection | sélection → **gomme, ciseaux, colle, muet** | idem |
+| Zoom avant | 0,080 | 0,080 → **0,100** | 0,100 |
+| Zoom arrière | 0,080 | 0,080 → **0,064** | 0,064 |
+
+Rouge sur le témoin (10 ratés), vert après (10 sur 10), le sens du zoom compris
+(arrière 0,064 < 0,080 < avant 0,100).
+
+**LE TÉMOIN A MONTRÉ LE PIÈGE QUE LE CHOIX 2 NOMMAIT** : sans l'entrée « Colle »,
+`VSM_MENU="Colle"` est allé à « Coller à la tête de lecture » (par préfixe, grisée),
+et « Muet » à « Muet (piste choisie) ». Après : « Muet » → l'outil (menu Édition),
+« Muet (piste choisie) » → la piste (menu Piste) — les deux vérifiés par la garde.
+
+Barre `[touche …]` **55 → 63** en français et en anglais (« Zoom in », « Tools >
+Selection, Pencil, Eraser, Scissors, Glue, Mute ») ; 373 → 382 entrées ; « Outils »
+coche « Sélection » au démarrage (photo du sous-menu, touches 1 à 6 à droite).
+`touches-du-menu-edition.py` : **0 entrée muette sur 24** (16 avant : les huit
+neuves sont comptées, et toutes portent leur touche). `noms-des-gestes.py` 0,
+`menus-cites.py` 0 faute, `raccourcis-affiches.py` 0, garde de langue 0,
+`anglais-a-l-ecran.py` 0 ; `portes-des-pistes.sh` 0 raté, `pianoroll-zones.sh` 7
+relevés 0 raté (la ligne `VSM_PIANOROLL_RANG` porte `outil=` en plus),
+`vue-du-morceau.sh` vert ; `portes-des-gestes.py` 0 désaccord ; fumée 0 raté ;
+préférences de l'utilisateur identiques.
+
+**LE COMPTE DE D471 EST SOLDÉ** : des 33 commandes sans entrée de menu, D472 en a
+fermé 7, D483 15, D491 2, D497 8. Reste « Note douteuse suivante », qui a son
+entrée depuis D358 mais écrit sa touche DANS son libellé (« (D) ») parce que Maj en
+fait la précédente — `raccourcis-affiches.py` la tolère pour cette raison, écrite
+dans son en-tête.
