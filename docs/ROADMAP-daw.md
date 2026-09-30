@@ -37937,3 +37937,42 @@ groupe, reprise automatique).
 1.5, `dock.bas` 293 → 458) : lues clé par clé, c'est l'application que l'utilisateur
 a lancée lui-même à 07:42 (HOME réel, aucune variable de banc, parent `systemd
 --user`) — son usage, pas un banc. Rien n'a été « rétabli ».
+
+---
+
+### Phase D525 — l'arrangement ne défile pas verticalement, et la molette n'y fait rien (30/09/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — EN CHERCHANT LE JUMEAU DE D524 DANS L'ARRANGEMENT.** Choisir une
+piste dans la liste fait défiler la console jusqu'à sa tranche (D40.3,
+`faireVoirLaTranche`) et la liste jusqu'à sa ligne (`faireVoirLaPiste`) ;
+l'arrangement reçoit la sélection (`setSelectedTracks`) et ne bouge pas. En allant
+voir comment il défilerait, le défaut est plus large que l'oubli d'un appel :
+**l'arrangement n'a AUCUN défilement vertical.** `trackTop(i)` part de
+`kRulerHeight` et additionne les hauteurs, sans décalage ; il n'y a ni barre de
+défilement, ni `mouseWheelMove` (aucun composant de l'arrangement ne le
+surcharge — le piano roll, lui, fait molette = hauteurs, Maj = temps, Ctrl =
+zoom). Le défilement horizontal ne passe que par les flèches sans sélection. Donc,
+dès que les pistes dépassent la hauteur de la fenêtre, celles du bas sont
+**inatteignables dans l'arrangement** : on ne peut ni y voir, ni y couper, ni y
+déplacer un clip. « Toutes les pistes à la fenêtre » borne la hauteur à 24 px
+(`kMinHeight`) : 64 pistes demandent 1 536 px, et la zone d'arrangement en a
+environ 660 à la taille de l'écran. D40.3 a photographié la console et la liste à
+64 pistes ; l'arrangement n'y est pas nommé.
+
+**PRONOSTIC, à mesurer** (relevé à ajouter à `VSM_ARRANGEMENT` : les pistes
+visibles, `i..j sur N`, et le décalage vertical ; un verbe de banc `molette:` qui
+appelle `mouseWheelMove` du composant, comme `glisser:` appelle `mouseDown`) — un
+projet de 40 pistes à 1 280 × 800 : environ 10 pistes sur 40 visibles, la molette
+(sans, Maj, Ctrl) ne change ni les pistes visibles, ni le défilement, ni le zoom ;
+choisir la piste 35 ne la montre pas.
+
+**CE QUI EST PRÉVU, et se tranchera en l'écrivant** : un décalage vertical dans
+`trackTop` / `trackAtY` (les 19 appels passent par eux), les pistes découpées sous
+la règle, borné à la hauteur totale ; la molette comme au piano roll (molette =
+pistes, Maj = temps, Ctrl = zoom horizontal) ; `faireVoirLaPiste` appelé au
+changement de piste, comme la console. Le décalage vertical dans le bloc `view` du
+projet (règle de D363) est un reste à trancher.
+
+**MISE EN ATTENTE, ET C'EST DIT (30/09, 07 h 55)** : l'utilisateur a demandé la
+reconstruction de « Reload — Peschi (Original Mix) », qui passe devant ; aucune
+ligne de code n'a été écrite pour cette phase.
