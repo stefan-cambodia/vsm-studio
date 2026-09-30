@@ -1100,3 +1100,131 @@ se lit pas).
   publiées, et l'hypothèse suivante cherche lequel des seize effets la produit.
 - 2 en échec : avant tout le reste, les mesures prises sur le stem sont relues.
 - 5 en échec : le § 1 est corrigé et la liste des partiels devient la description.
+
+### 11.1 Verdict de H49 (30/09/2026, 20 h 04) : le mouvement est au morceau et il est DISCRET — mais l'attendu « cents ou hertz » ne conclut pas tel qu'il était écrit
+
+`analyse/mesure_h49.py mesurer` (branche `reload-h47`, `cd575ba`, arbre propre),
+l'original et le stem « other » de 16 à 40 s ;
+`reconstruction/travail/reload-h49/mesure.json`.
+
+**Les dix raies se voient toutes dans l'original** (rapport au fond de 11,1 à
+23,9 dB). Raie par raie, dans l'ORIGINAL :
+
+| raie (Hz) | niveau (dB) | part de jupe | composantes | modulation d'amplitude (σ, étendue) | cadence | modulation de fréquence (σ) |
+|---|---|---|---|---|---|---|
+| 166,00 | −17,6 | 2,5 % | 3 | 9,9 dB, 30,5 dB | 3,50 Hz | 11,4 cents |
+| 186,33 | −15,4 | 4,1 % | 5 | 4,9 dB, 16,2 dB | 3,50 Hz | 12,2 cents |
+| 234,79 | −15,3 | 2,3 % | 3 | 11,8 dB, 37,0 dB | 0,27 Hz | 8,2 cents |
+| 248,67 | −10,4 | 1,7 % | 3 | 10,4 dB, 31,3 dB | 1,73 Hz | 6,8 cents |
+| 279,12 | −13,7 | 7,0 % | 5 | 10,8 dB, 33,2 dB | 1,77 Hz | 7,2 cents |
+| 333,71 | −3,6 | 31,1 % | 7 | 10,0 dB, 30,3 dB | 3,50 Hz | 7,9 cents |
+| 372,67 | 0,0 | 16,0 % | 7 | 4,8 dB, 15,4 dB | 1,77 Hz | 7,3 cents |
+| 469,58 | −3,6 | 28,7 % | 6 | 14,1 dB, 41,0 dB | 0,27 Hz | 7,2 cents |
+| 497,33 | −2,2 | 36,1 % | 6 | 10,3 dB, 31,8 dB | 3,50 Hz | 7,7 cents |
+| 554,79 | −1,8 | 45,6 % | 5 | 10,8 dB, 32,6 dB | 3,50 Hz | 5,5 cents |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | l'instrument sur signaux fabriqués | **tenu** (6 tests sur 6) — après DEUX défauts trouvés par ces tests et corrigés avant la mesure : une fréquence instantanée lue sur un signal décimé sans le ramener en bande de base, et un partiel « tenu » par un pic de bruit |
+| 2 | au morceau ou à la séparation ? | **tenu** : médiane des écarts de part de jupe **0,3 point** (de −1,9 à +1,3) ; les composantes du stem sont celles de l'original à 0,01 Hz près |
+| 3 | discret ou continu ? | **tenu** : **10 raies sur 10** se résolvent (3 à 7 composantes) |
+| 4 | cents ou hertz ? | **non conclu**, tel qu'écrit : dispersion de 34 % en cents (moyenne 11,7), de 37 % en hertz (moyenne 2,04 Hz) |
+| 5 | sinusoïdal ? | **entre les deux**, tel qu'écrit : le plus fort partiel « tenu » est à 5 966,7 Hz, −22,3 dB |
+| 6 | le kick pompe-t-il le pad ? | **tenu** : 0 raie sur 10 à 2,30 ou 4,60 Hz (cadences : 3,50 Hz cinq fois, 1,73 à 1,77 trois fois, 0,27 deux fois) |
+
+**CE QUE CELA ÉTABLIT.**
+- **Le stem dit vrai sur le pad** (attendu 2) : ce qui a été mesuré sur lui de H43 à
+  H47 n'est pas à relire pour cause de séparation. Le « tiers hors des raies » de
+  H47 est AU MORCEAU.
+- **Ce tiers est fait de raies DISCRÈTES** (attendu 3), pas d'un souffle : la part
+  de jupe monte avec la hauteur, de 2 % à 166 Hz à 46 % à 555 Hz.
+- **Chaque raie s'éteint presque** : 15 à 41 dB d'étendue de niveau. Un timbre à
+  amplitude fixe — tout ce que H47 a fait jouer — ne peut pas lui ressembler.
+- **Pas de pompage au kick** (attendu 6).
+
+**CE QUE L'ATTENDU 4 N'A PAS SU LIRE — et c'est un défaut du critère, dit.** Il
+comparait, d'une raie à l'autre, l'écart de LA composante secondaire la plus forte.
+Or la plus forte change de famille avec la hauteur (± 1,75 Hz de 166 à 373 Hz,
+± 3,5 Hz à 470 et 497 Hz, + 1,13 Hz à 555 Hz) : le critère compare des choses
+différentes et rend « non conclu ». Le verdict reste tel quel.
+
+**L'attendu 5 est confondu, et c'est mesuré** : les dix partiels « tenus » entre
+2,3 et 6 kHz sont dans le stem de BATTERIE (dix sur dix, aux mêmes fréquences) — un
+charleston métallique tient ses raies d'un bout à l'autre, et « tenir sa fréquence
+sur les trois tiers » ne l'écarte pas. Dans le stem « other », un seul partiel passe
+le seuil : **835,1 Hz à −34,4 dB**. Le pad reste sinusoïdal à −34 dB près ; le
+critère du § 11 ne savait pas le dire sur l'original.
+
+**Relevé APRÈS la mesure — une lecture, pas un verdict.** En rapportant chaque
+composante non plus à la plus forte mais à la hauteur TEMPÉRÉE de sa note (la4 =
+443,1372 Hz) :
+- **la composante la plus proche du tempéré en est à ± 0,4 cent sur les dix raies**
+  (± 0,09 Hz) — le diapason de H42, retrouvé note par note ;
+- **les 40 composantes secondaires tombent toutes sur une famille à deux cadences**,
+  `f1` = 1,75 Hz et `f2` = 2,37 Hz : 23 sur le peigne `k·f1` (58 %, contre 8 % au
+  hasard), 39 sur {`k·f1`, `f2`, `f1`+`f2`, `f2`−`f1`, 2`f1`−`f2`, 2`f2`} à ± 0,08 Hz
+  (98 %, contre 21 %), la quarantième à 2`f1`+`f2`. Les mêmes écarts EN HERTZ sur
+  toutes les raies : une modulation périodique, pas un désaccord ;
+- `f1` lu sur 23 composantes : **1,7512 ± 0,0022 Hz** — ce n'est pas un triolet de
+  blanches à 138 BPM (1,725 Hz) : un oscillateur libre ;
+- **la signature d'un RETARD modulé** : la bande `f1` domine sous 300 Hz et
+  disparaît au-dessus de 450 Hz, où c'est 2·`f1` qui domine — ce que fait une
+  modulation de phase dont l'indice croît avec la fréquence (la première bande
+  latérale s'annule vers un indice de 3,8), c'est-à-dire un chorus : un retard qui
+  oscille d'environ 1 ms à 1,75 Hz, mélangé au son direct.
+
+**CE QUE LE VERDICT DÉCIDE.**
+- Le § 11 rangeait ce cas sous « le mouvement est un EFFET posé sur un timbre
+  simple ; c'est la chaîne d'effets du projet qui est visée, pas le parc ». L'attendu
+  4 ne l'a pas établi ; la lecture ci-dessus le dit, mais elle a été faite APRÈS
+  avoir vu les chiffres : elle devient une hypothèse, **H50 (§ 12)**, jugée sur des
+  extraits que personne n'a regardés.
+- **Aucune machine neuve n'est décrite** : dix sinus et un chorus ne demandent pas
+  de machine, si la lecture tient.
+
+---
+
+## 12. H50 — le pad est un sinus par note sous un chorus à deux cadences : la lecture du § 11.1, jugée sur deux extraits jamais regardés (écrite AVANT la mesure, 30/09/2026, 20 h 13)
+
+**L'hypothèse**, entière et chiffrée, telle que le § 11.1 la lit sur 16-40 s :
+chaque note du pad est une raie à sa hauteur tempérée (la4 = 443,1372 Hz), entourée
+de bandes latérales aux écarts `k·f1`, `f2` et leurs combinaisons, avec
+**`f1` = 1,751 Hz** et **`f2` = 2,37 Hz**, les mêmes EN HERTZ à toutes les hauteurs ;
+et la bande `f1` cède la place à 2·`f1` quand la hauteur monte (un retard modulé).
+
+**Les extraits**, choisis sur la structure du § 1 et jamais analysés à cette
+résolution : **130 à 154 s** (le long pont) et **272 à 296 s** (la sortie) — 24 s
+chacun, comme le premier.
+
+**L'instrument** (`analyse/mesure_h50.py`, branche `reload-h47`) : l'oracle de H47
+sur le stem « other » de l'extrait (les notes peuvent avoir changé) ; les
+composantes de H49 dans l'ORIGINAL ; pour chaque raie vue, la PORTEUSE est la
+composante la plus proche de la hauteur tempérée de sa note, et chaque autre
+composante est rapportée à elle. La famille est fixée ici, avant la mesure :
+{`f1`, 2`f1`, 3`f1`, `f2`, 2`f2`, `f1`+`f2`, `f2`−`f1`, 2`f1`−`f2`, 2`f1`+`f2`}, à
+± 0,08 Hz — neuf membres, soit **24 %** de la bande de ± 6 Hz : c'est le taux du
+hasard, et il est publié à côté.
+
+**ATTENDUS**, sur chaque extrait :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'instrument** (tests écrits avant) : des sinus sous un retard modulé à 1,751 Hz (± 1,2 ms, moitié direct) à cinq hauteurs ; le même à 1,80 Hz ; les mêmes sous un trémolo de 5 Hz | le retard modulé : porteuses au tempéré, ≥ 90 % des composantes sur la famille, `f1` relu à ± 0,01 Hz, la signature « `f1` en bas, 2·`f1` en haut » lue ; à 1,80 Hz, `f1` tombe ; le trémolo : moins de 40 % sur la famille | une lecture fausse : rien ne se lit |
+| 2 | **les porteuses** : écart de la composante la plus proche à la hauteur tempérée | ≤ 1 cent sur ≥ 80 % des raies vues | < 50 % |
+| 3 | **la famille** : part des composantes secondaires qui tombent sur elle | ≥ 70 % (hasard 24 %) | < 40 % |
+| 4 | **`f1`** relu sur les composantes du peigne `k·f1` (moyenne de l'écart divisé par `k`) | 1,751 ± 0,010 Hz | hors de ± 0,030 Hz, ou moins de cinq composantes pour le lire (non mesurable) |
+| 5 | **la signature du retard** : sous 260 Hz, la plus forte bande `f1` dépasse la plus forte 2·`f1` d'au moins 3 dB (ou 2·`f1` est absente) ; au-dessus de 450 Hz, l'inverse | vrai sur ≥ 80 % des raies concernées | < 50 % |
+
+H50 est **tenue** si 2, 3, 4 et 5 tiennent sur les DEUX extraits ; **réfutée** si 3
+échoue sur l'un des deux ; entre les deux, chaque attendu est dit tel quel. Un
+extrait où moins de quatre raies se voient ne juge rien : il est dit « muet ».
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- tenue : le pad se reconstruit par **un timbre sinusoïdal et un chorus**, et la
+  suite (H51) est de le FABRIQUER avec ce que le dépôt a — une machine qui sache
+  jouer un sinus, l'effet chorus du rack s'il sait porter deux cadences et 1 ms de
+  profondeur — puis de juger le rendu AVEC L'INSTRUMENT DE H49, raie par raie,
+  contre l'original. Ce qui manquerait (une seconde cadence, une profondeur) est
+  alors un manque de l'EFFET, chiffré, et non une machine à inventer.
+- réfutée : la lecture du § 11.1 valait pour 24 secondes ; le mouvement change au
+  fil du morceau, et c'est sa trajectoire qu'il faut décrire avant tout.
