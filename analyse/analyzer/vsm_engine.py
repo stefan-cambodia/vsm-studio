@@ -130,6 +130,15 @@ DEFAULT_BINARY_CANDIDATES = (
 )
 
 
+def _avec_diapason(request: dict) -> dict:
+    """H42 : chaque requête porte le diapason de la course, sauf à 440 (la chaîne d'avant au bit près)."""
+    from analyzer import diapason
+    la4 = diapason.valeur()
+    if la4 != 440.0 and "diapason" not in request:
+        request = dict(request, diapason=la4)
+    return request
+
+
 class VsmEngineError(RuntimeError):
     pass
 
@@ -280,7 +289,7 @@ class VsmEngine:
         self._request_id += 1
         request = {k: v for k, v in payload.items() if not k.startswith("_")}
         request["id"] = self._request_id
-        self._stdin.write(json.dumps(request) + "\n")
+        self._stdin.write(json.dumps(_avec_diapason(request)) + "\n")
         self._stdin.flush()
 
         line = self._stdout.readline()
@@ -463,7 +472,7 @@ class VsmEngine:
             # qu'un coup découpé d'un enregistrement se rejoue tel quel.
             request["samples"] = {str(int(slot)): str(path) for slot, path in samples.items()}
 
-        self._stdin.write(json.dumps(request) + "\n")
+        self._stdin.write(json.dumps(_avec_diapason(request)) + "\n")
         self._stdin.flush()
 
         line = self._stdout.readline()
@@ -525,7 +534,7 @@ class VsmEngine:
         if samples:
             request["samples"] = {str(int(slot)): str(path) for slot, path in samples.items()}
 
-        self._stdin.write(json.dumps(request) + "\n")
+        self._stdin.write(json.dumps(_avec_diapason(request)) + "\n")
         self._stdin.flush()
         line = self._stdout.readline()
         if not line:

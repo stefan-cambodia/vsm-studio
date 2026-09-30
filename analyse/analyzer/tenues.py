@@ -59,7 +59,7 @@ def reunir_tenues(notes: Sequence[Any], audio: np.ndarray, sr: int,
     for n in notes:
         par_hauteur[int(n.note)].append(n)
     sortie: List[Any] = []
-    reunies = Counter()
+    reunies: Counter[int] = Counter()
     refusees_attaque = 0
     fenetre = int(FENETRE_S * sr)
     for hauteur, liste in par_hauteur.items():

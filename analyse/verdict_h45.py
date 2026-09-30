@@ -31,7 +31,7 @@ def indice_de_hachure(notes: list) -> float:
     suivies = 0
     for liste in par_h.values():
         liste.sort()
-        suivies += sum(1 for (a0, a1), (b0, _b1) in zip(liste, liste[1:]) if b0 - a1 < ECART)
+        suivies += sum(1 for (_a0, a1), (b0, _b1) in zip(liste, liste[1:], strict=False) if b0 - a1 < ECART)
     return suivies / max(len(notes), 1)
 
 

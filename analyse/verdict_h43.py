@@ -25,7 +25,6 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-import numpy as np
 import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -65,7 +64,7 @@ def main() -> int:
             paires = 0
             for h, liste in vraies.items():
                 liste.sort()
-                for (a0, a1), (b0, _b1) in zip(liste, liste[1:]):
+                for (_a0, a1), (b0, _b1) in zip(liste, liste[1:], strict=False):
                     if b0 - a1 < 0.030:
                         frontieres[h].append(b0)
                         paires += 1

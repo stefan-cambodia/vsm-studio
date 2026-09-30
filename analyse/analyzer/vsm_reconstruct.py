@@ -711,6 +711,7 @@ def write_reconstruction_report(
     residuel: Optional[Dict[str, object]] = None,
     coupure_basse: Optional[Sequence[Dict[str, object]]] = None,
     reunion_tenues: Optional[Sequence[Dict[str, object]]] = None,
+    seuil_attaque: Optional[Sequence[Dict[str, object]]] = None,
     comparaison: Optional[Dict[str, object]] = None,
     recensement: Optional[Dict[str, object]] = None,
 ) -> None:
@@ -775,6 +776,7 @@ def write_reconstruction_report(
         # les deux ne se distingueraient que par leurs chiffres.
         **({"coupureBasse": list(coupure_basse)} if coupure_basse else {}),
         **({"reunionTenues": list(reunion_tenues)} if reunion_tenues else {}),
+        **({"seuilAttaque": list(seuil_attaque)} if seuil_attaque else {}),
         # CE QUE LE GRAVEUR DE `comparaison.wav` A FAIT (B10) : les crêtes des
         # deux canaux, le gain commun appliqué pour tenir en 16 bits (0.0 =
         # rien), et le nombre d'échantillons qui auraient été écrêtés. Un

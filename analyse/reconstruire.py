@@ -268,7 +268,14 @@ def velocite_locale(audio: np.ndarray, debut: float, fenetre: float = 0.20) -> f
     return float(np.sqrt(np.mean(np.square(audio[i:j], dtype=np.float64))))
 
 
-def extraire_notes(chemin: Path) -> List[StemNote]:
+def extraire_notes_seuil_par_stem(chemin: Path) -> Tuple[List[StemNote], Dict[str, Any]]:
+    """H45 : `extraire_notes`, le seuil d'attaque choisi sur l'indice de hachure du stem."""
+    from analyzer.note_extraction import extract_notes_seuil_par_stem
+    brutes, choix = extract_notes_seuil_par_stem(chemin)
+    return extraire_notes(chemin, brutes=brutes), choix
+
+
+def extraire_notes(chemin: Path, brutes: Optional[List[Dict[str, Any]]] = None) -> List[StemNote]:
     """
     Transcrit un fichier en notes.
 
@@ -293,7 +300,8 @@ def extraire_notes(chemin: Path) -> List[StemNote]:
     from analyzer.note_extraction import extract_notes
 
     audio = charger_audio(chemin)
-    brutes = [b for b in extract_notes(chemin) if float(b["end"]) > float(b["start"])]
+    brutes = [b for b in (extract_notes(chemin) if brutes is None else brutes)
+              if float(b["end"]) > float(b["start"])]
     if not brutes:
         return []
 
@@ -453,6 +461,8 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
         "tempo": getattr(args, "tempo_provenance", None)
                  or {"bpm": float(args.tempo) if getattr(args, "tempo", None) is not None else None,
                      "source": "force"},
+        # H42 : LE DIAPASON joué par tous les rendus de la course, et d'où il vient.
+        "diapason": getattr(args, "diapason_provenance", None) or {"la4": 440.0, "source": "defaut"},
         "options": {
             "separation": not args.sans_separation,
             "sampler": not args.sans_sampler,
@@ -507,6 +517,9 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # H43 : la réunion des notes tenues change les NOTES de chaque stem
             # mélodique ; deux rapports qui ne l'ont pas au même état ne se comparent pas.
             "reunirTenues": bool(getattr(args, "reunir_tenues", False)),
+            # H45 : le seuil d'attaque choisi par stem ; les indices et seuils retenus
+            # sont sous « seuilAttaque ».
+            "seuilAttaqueParStem": bool(getattr(args, "seuil_attaque_par_stem", False)),
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
@@ -871,6 +884,16 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "difficile à IMITER pour le parc. Gardée comme résultat négatif "
                               "chiffré. "
                               "Vide (le défaut) : la chaîne d'aujourd'hui, au bit près")
+    parseur.add_argument("--diapason", default="440",
+                         help="H42 : la4 de la course, en Hz (400-480), ou « auto » pour l'estimer sur "
+                              "le mélange (pics tenus, moyenne circulaire). Défaut 440 : la chaîne d'avant "
+                              "au bit près. Joué par tous les rendus de la course et écrit au projet")
+    parseur.add_argument("--seuil-attaque-par-stem", action="store_true",
+                         help="H45 : transcrire à 0,7 (au lieu de 0,5) le seuil d'attaque des stems dont "
+                              "l'indice de hachure — part des notes suivies de la même hauteur à moins de "
+                              "30 ms au seuil d'usine — dépasse 0,4. Validé sur g3-g5 de S2 : aucun rôle ne "
+                              "perd, les nappes +12,4 points de F1. Éteint par défaut ; chaque stem inscrit "
+                              "au rapport (« seuilAttaque »)")
     parseur.add_argument("--reunir-tenues", action="store_true",
                          help="H43 : réunir deux notes de même hauteur que moins de 30 ms séparent quand "
                               "aucune attaque (hausse de plus de 3 dB dans un demi-ton autour de la "
@@ -1828,6 +1851,11 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
     args = ctx.args
     if getattr(args, "coupure_basse_adaptee", False) and nom == "bass":
         notes = extraire_notes_basse_coupee(ctx, nom, chemin)
+    elif getattr(args, "seuil_attaque_par_stem", False):
+        # H45 : le seuil d'attaque choisi sur l'indice de hachure du stem.
+        notes, choix = extraire_notes_seuil_par_stem(chemin)
+        print(f"      {nom:8s} : indice de hachure {choix['indice']:.3f} → seuil d'attaque {choix['seuil']}")
+        ctx.decisions.setdefault("seuilAttaque", []).append({"stem": nom, **choix})
     else:
         notes = extraire_notes(chemin)
     if not notes:
@@ -3063,6 +3091,24 @@ def chaine(args: argparse.Namespace) -> None:
     else:
         args.tempo_provenance = {"bpm": float(args.tempo), "source": "force"}
         print(f"      tempo forcé : {args.tempo:.1f} BPM (--tempo)")
+    # H42 : LE DIAPASON — 440 par défaut (la chaîne d'avant, au bit près) ; « auto »
+    # l'estime sur le mélange ; un nombre le force. Posé UNE fois pour toute la course :
+    # l'arbitrage et le projet écrit jouent au même diapason.
+    from analyzer import diapason as D
+    if str(args.diapason) == "auto":
+        estimation_la4 = D.estimer_cents(melange, SAMPLE_RATE)
+        if estimation_la4["cents"] is None:
+            la4 = 440.0
+            print("      diapason NON MESURABLE (moins de 20 pics tenus) : 440 Hz gardé — dit, pas deviné")
+        else:
+            la4 = D.la4_depuis_cents(float(estimation_la4["cents"]))
+        args.diapason_provenance = {"source": "estime", **estimation_la4, "la4": la4}
+    else:
+        la4 = float(args.diapason)
+        args.diapason_provenance = {"source": "force" if la4 != 440.0 else "defaut", "la4": la4}
+    D.poser(la4)
+    if la4 != 440.0:
+        print(f"      diapason : la4 = {la4:.2f} Hz ({args.diapason_provenance['source']})")
 
     with dossier_de_travail(args) as travail:
         pistes = obtenir_stems(args, entree, travail)
@@ -3165,6 +3211,7 @@ def chaine(args: argparse.Namespace) -> None:
             residuel=rapport_residuel,
             coupure_basse=ctx.decisions.get("coupureBasse"),
             reunion_tenues=ctx.decisions.get("reunionTenues"),
+            seuil_attaque=ctx.decisions.get("seuilAttaque"),
             recensement=bloc_recensement,
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
