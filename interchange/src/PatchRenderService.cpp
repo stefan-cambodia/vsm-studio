@@ -1,4 +1,5 @@
 #include "vsm/interchange/PatchRenderService.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/interchange/MultisampleProfile.h"
 #include "vsm/interchange/SearchProfile.h"
 #include "vsm/interchange/ParameterDescriptor.h"
@@ -87,6 +88,7 @@ PatchRequestParseResult parsePatchRequest(const std::string& jsonLine) {
     request.blockSize = static_cast<int>(json["blockSize"].asNumber(256.0));
     request.outputPath = json["output"].asString();
     request.returnAudio = json["returnAudio"].asString();
+    request.referenceA4Hz = json["diapason"].asNumber(440.0);   // H42
 
     if (request.sampleRate <= 0.0 || request.durationSeconds <= 0.0) {
         result.error = "sampleRate et duration doivent être positifs";
@@ -245,6 +247,9 @@ PatchRenderResponse PatchRenderService::render(const PatchRenderRequest& request
     PatchRenderResponse response;
     response.requestId = request.requestId;
 
+    // H42 : chaque requête porte son diapason (440 si elle n'en dit rien) — posé
+    // AVANT de monter la machine, pour que celles qui tiennent une table s'y accordent.
+    vsm::audio::plugin::setDiapason(static_cast<float>(request.referenceA4Hz));
     auto plugin = vsm::audio::plugin::PluginRegistry::instance().create(request.machineId);
     if (!plugin) {
         response.error = "machine inconnue : " + request.machineId;

@@ -58,6 +58,9 @@ struct PatchRenderRequest {
     std::string outputPath;
     /// "base64-f32-mono" pour recevoir l'audio directement dans la réponse.
     std::string returnAudio;
+    /// H42 : le DIAPASON du rendu (la4, Hz). Posé sur le moteur avant que la
+    /// machine ne soit montée ; absent = 440, la chaîne d'avant au bit près.
+    double referenceA4Hz = 440.0;
 
     /// LOT de jeux de paramètres à rendre en une seule requête (étape 10.1).
     ///

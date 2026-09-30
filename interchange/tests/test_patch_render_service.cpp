@@ -155,3 +155,26 @@ VSM_TEST(patch_service_loop_answers_one_line_per_request) {
     VSM_ASSERT(text.find("\"ok\":false") != std::string::npos);
     VSM_ASSERT(text.find("machine inconnue") != std::string::npos);
 }
+
+// H42 : CHAQUE REQUÊTE PORTE SON DIAPASON, ET N'EN LAISSE RIEN À LA SUIVANTE. Le
+// service vit toute une course et enchaîne des milliers de rendus : un diapason
+// resté posé par une requête désaccorderait en silence toutes celles d'après.
+VSM_TEST(patch_service_diapason_is_per_request_and_does_not_leak) {
+    PatchRenderService service;
+    PatchRenderRequest base = simpleRequest();
+    base.returnAudio = "base64-f32-mono";
+    const auto defaut = service.render(base);
+
+    PatchRenderRequest a440 = base;
+    a440.referenceA4Hz = 440.0;
+    PatchRenderRequest a446 = base;
+    a446.referenceA4Hz = 446.0;
+    const auto explicite = service.render(a440);
+    const auto haut = service.render(a446);
+    const auto apres = service.render(base);   // ne dit rien : 440, pas 446
+
+    VSM_ASSERT(defaut.ok && explicite.ok && haut.ok && apres.ok);
+    VSM_ASSERT_EQ(defaut.audioBase64, explicite.audioBase64);   // 440 dit = 440 tu, au bit près
+    VSM_ASSERT(haut.audioBase64 != defaut.audioBase64);          // le diapason atteint la machine
+    VSM_ASSERT_EQ(apres.audioBase64, defaut.audioBase64);       // et ne fuit pas
+}
