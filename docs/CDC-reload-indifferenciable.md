@@ -332,3 +332,26 @@ ce qu'il répare (la leçon de D270), et courir une reconstruction pour chiffrer
 gain sur « Reload » reviendrait à chercher la mesure qui le sauverait. Le constat de
 § 5.1 tient : la tenue du pad se perd EN AMONT, dans la transcription, et c'est là
 que l'hypothèse suivante devra agir — avec ce même contrôle sur S2.
+
+---
+
+## 6. H44 — un seuil d'attaque plus exigeant rend sa tenue au pad sans rien casser ailleurs (écrite AVANT la mesure, 30/09/2026)
+
+**D'où elle vient.** § 5.2 : réunir après coup ne distingue pas un fragment d'une
+note rejouée ; la tenue se perd EN AMONT. Basic Pitch crée une note neuve à chaque
+pic de son canal d'attaque au-dessus de `onset_threshold` (0,5 par défaut, jamais
+réglé par la chaîne) ; les battements lents du pad produisent de tels pics.
+
+**L'hypothèse.** Relever `onset_threshold` fait tomber les attaques parasites d'un son
+tenu plus vite que les vraies attaques d'une partie rejouée, parce qu'une vraie
+attaque est franche et un battement ne l'est pas.
+
+**La mesure — un balayage publié ENTIER**, le seuil à 0,5 (témoin), 0,6, 0,7, 0,8 et
+0,9, la sortie du modèle calculée UNE fois par stem et les notes redérivées à chaque
+seuil (`basic_pitch.note_creation`), les autres réglages d'usine inchangés :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | « Reload », stem « other », pad (MIDI 58-73) : notes et durée médiane | à un seuil au moins : −50 % de notes ET durée ×2 | à aucun seuil −25 % |
+| 2 | **le contrôle** — S2 (`g1`, `g2`, stems vrais, parties mélodiques) : F1 note à note (même hauteur, attaque à ± 50 ms), par rôle, au MÊME seuil que 1 | aucun rôle ne perd plus d'1 point de F1 sur le témoin | un rôle perd plus de 3 points |
+| 3 | un seuil qui tient 1 ET 2 existe | oui : il devient la proposition pour la chaîne (une option, mesurée ensuite de bout en bout) | non : l'hypothèse est réfutée, et la tenue demandera un traceur de hauteur tenue plutôt qu'un réglage |
