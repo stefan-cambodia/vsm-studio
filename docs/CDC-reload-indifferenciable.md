@@ -230,3 +230,49 @@ fautive sur 56 ; la source rétablie, 0.
 *Les attendus 1 et 4 (le rendu du projet de référence aux deux diapasons) suivent,
 avec un `vsm-render` construit à part (`build-h42/`) : la campagne S2, gelée, se
 sert de `build/tools/vsm-render`, qu'une compilation ne doit pas remplacer.*
+
+---
+
+## 5. H43 — un son tenu que la transcription hache : réunir les notes qui se touchent SANS nouvelle attaque (écrite AVANT la mesure, 30/09/2026)
+
+**Ce qui est vu (mesuré le 30/09 sur le stem « other » de la course de référence,
+Basic Pitch réglages d'usine).** 2 740 notes, durée médiane **0,267 s** ; sur les
+hauteurs du pad, les morceaux se suivent SANS INTERVALLE — la note suivante de même
+hauteur commence là où la précédente finit (écart médian **0,000 s**) dans
+**72 % à 76 %** des cas (MIDI 66 : 687 notes ; 70 : 241 ; 71 : 320 ; 73 : 411). Un
+accord tenu des mesures entières devient ~4 attaques par seconde, et l'arbitrage
+choisit en conséquence des machines FRAPPÉES (§ 3). Rien dans la chaîne ne réunit
+deux notes contiguës (`analyse/analyzer/note_extraction.py` rend les événements de
+Basic Pitch tels quels).
+
+**CE QUE LA RÈGLE CASSERAIT, MESURÉ AVANT DE L'ÉCRIRE.** Dans la vérité du corpus
+S2 (10 morceaux, parties mélodiques), **7 020 paires sur 49 267** (14,25 %) de notes
+consécutives de même hauteur sont séparées de moins de 30 ms — surtout
+l'accompagnement (4 368) et la mélodie (1 694). Réunir sur le seul écart
+détruirait ces notes-là. La règle exige donc une seconde condition : **pas de
+nouvelle attaque à la jonction** dans l'audio du stem.
+
+**L'hypothèse.** Réunir deux notes de même hauteur quand (a) la seconde commence
+moins de 30 ms après la fin de la première ET (b) l'enveloppe du stem, filtrée
+autour de cette hauteur, ne remonte pas à la jonction (pas d'attaque) rend au pad
+des notes tenues, sans casser les notes répétées d'une partie qui les rejoue.
+
+**Le mécanisme (tranché ici).** Une option de la chaîne, `--reunir-tenues`, **éteinte
+par défaut** (la chaîne d'aujourd'hui au bit près, et la campagne S2 inchangée) ;
+la jonction se juge sur l'énergie du stem dans une bande d'un demi-ton autour de la
+hauteur : attaque = hausse de plus de 3 dB entre les 30 ms qui précèdent et les
+30 ms qui suivent la jonction. Chaque réunion est COMPTÉE au rapport (combien, sur
+quelles hauteurs) — rien ne disparaît en silence.
+
+**ATTENDUS** — témoin : la chaîne sans l'option ; essai : avec. Mêmes stems (ceux de
+la course de référence, copiés dans `reconstruction/travail/reload-peschi-stems/`),
+même budget, même métrique :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | notes du pad (stem « other », MIDI 58-73) | au moins **−50 %**, durée médiane au moins ×2 | moins de −25 % |
+| 2 | **le contrôle — ce qu'elle casse** : paires VRAIES contiguës de S2 réunies à tort, sur la transcription des stems vrais de deux morceaux (`g1`, `g2`) | **≤ 5 %** | > 10 % |
+| 3 | les voix du pad à l'arbitrage | une machine TENUE (pad, orgue, cordes, chœur) plutôt que frappée, sur au moins 2 des 3 voix | aucune |
+| 4 | log-mel moyen (outil du § 0), mélange entier | ≤ témoin − 0,3 dB | > témoin |
+
+Un balayage de seuil (3 dB), s'il est fait, se publie ENTIER.
