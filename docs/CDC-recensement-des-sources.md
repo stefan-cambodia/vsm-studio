@@ -1050,3 +1050,35 @@ comparer ; ailleurs, on ne le sait pas.
 sans rejouer `g1`), puis rejuger H41 — H39 contre la parité, morceau par
 morceau, sur les mêmes dix morceaux. Aucun seuil ne bouge : la règle de verdict
 du § 14 s'appliquera telle quelle à la parité mesurée.
+
+### 14.2 La campagne relancée est morte en silence au 7e morceau — et relancée (30/09/2026)
+
+**CE QUI S'EST PASSÉ, ET QUE PERSONNE N'A DIT.** Relancée le 26/09 à 16:57, la
+campagne a couru `g2` à `g6` (3,1 h, 2,3 h, 8,3 h, 3,3 h, 4,4 h), puis est morte le
+**27/09 vers 15:11**, pendant la transcription du piano de `g7` (dernière ligne de
+son journal : « Predicting MIDI for …/piano.wav »). Ni `COURSE`, ni `CAMPAGNE S2
+TERMINEE` : le processus a été tué, pas arrêté par une erreur. La cause ne se lit
+plus — le journal du système ne remonte qu'au 29/09 (deux démarrages depuis). Et
+aucun document ne l'a dit pendant trois jours : les phases du DAW du 27/09 la
+gelaient pour leurs builds, celles du 28/09 n'en parlent plus. C'est la panne
+muette que la règle du dépôt interdit — ici, sur le compte rendu plutôt que sur la
+chaîne.
+
+**CE QUI EST COMPARABLE.** Six morceaux sur dix sont mesurés (`g1`–`g6`). Le code
+qui décide du compte de pistes n'a pas bougé depuis le départ du 26/09 : aucun
+commit dans `analyse/` ni dans `audio/plugins/` ; dans `audio/` et
+`interchange/`, les changements sont d'affichage (unités, positions de sélecteur,
+pas entier des réglages d'effet — D473 à D479, qu'aucun rendu ne lit) et de
+transport (D505, D518-D523), et `OfflineReconstruction.cpp` ne change que le libellé
+de ses avertissements. `g7`–`g10` courront donc la même chaîne que `g1`–`g6`.
+
+**LA RELANCE (30/09, 07:18)** : `banc-s2.sh` inchangée, qui saute les six morceaux
+courus ; la course morte de `g7` est mise de côté, pas effacée
+(`reconstruction/travail/s2-banc-g7-mort-2709/`, son journal compris), et `g7`
+repart de zéro — séparation comprise, le même chemin que les six autres
+(`--stems-de` aurait repris ses stems, mais par un autre chemin de commande).
+Journal : `reconstruction/travail/banc-s2-reprise2.log` ; veille bloquée tant que
+la campagne vit, par `tools/garder-batterie.sh --pid`, qui endort quand même le
+poste sous 10 %. Le rejugement reste celui du § 14.1 (`analyse/rejuger_h41.py`),
+sur les dix, et il n'est **pas** lu à six : les attendus ont été écrits pour dix
+morceaux.

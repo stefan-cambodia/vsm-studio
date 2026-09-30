@@ -37835,4 +37835,8 @@ identiques (`cmp` contre la copie prise avant la série).
 ouverte, pour D518 à D523. À 07 h 03 la session s'est de nouveau verrouillée et
 l'écran s'est éteint (`LockedHint=yes`, DPMS « off ») : la série rendrait les rouges de
 géométrie déjà lus sous verrou (D521), et ne se lance pas pour les lire une
-cinquième fois.
+cinquième fois. À 07 h 17, la session rouverte, la série a été lancée — et le
+lanceur a dit « écran éteint, verrouillé AU DÉPART » : la session s'était refermée
+entre-temps. Arrêtée par son groupe au premier banc, préférences identiques. Elle
+attend désormais aussi la fin de la campagne S2, relancée à 07 h 18 (CDC
+recensement § 14.2) : le lanceur refuse de courir pendant une campagne.
