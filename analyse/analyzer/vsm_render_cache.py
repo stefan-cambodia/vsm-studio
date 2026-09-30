@@ -75,6 +75,14 @@ def cle_de_rendu(track, sample_rate: int, duration, tempo: float,
         "tempo": tempo,
         "moteur": _empreinte_moteur(binary),
     }
+    # H42 : LE DIAPASON DE LA COURSE change chaque rendu mélodique, et il n'était
+    # pas dans la clé — deux courses du même binaire, l'une à 440 et l'autre à
+    # 443, se seraient servi les mesures l'une de l'autre, et l'A/B aurait lu
+    # « aucun effet ». Inscrit SEULEMENT s'il diffère de 440 : les clés d'avant
+    # restent celles d'aujourd'hui, et le cache déjà payé reste valable.
+    from . import diapason
+    if diapason.valeur() != 440.0:
+        descripteur["diapason"] = diapason.valeur()
     texte = json.dumps(descripteur, sort_keys=True, ensure_ascii=True)
     return hashlib.sha256(texte.encode("ascii")).hexdigest()
 

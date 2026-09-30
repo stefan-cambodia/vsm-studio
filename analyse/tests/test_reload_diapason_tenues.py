@@ -98,3 +98,39 @@ def la_reunion_fond_un_son_tenu_et_laisse_une_note_rejouee():
 def l_indice_de_hachure_compte_les_notes_suivies_de_la_meme_hauteur():
     ev = [(0.0, 1.0, 60), (1.01, 2.0, 60), (2.2, 3.0, 60), (0.0, 1.0, 64)]
     assert_true(abs(indice_de_hachure(ev) - 0.25) < 1e-9)
+
+
+@test
+def la_cle_du_cache_de_mesures_porte_le_diapason_et_ne_bouge_pas_a_440():
+    """Deux courses du même binaire à deux diapasons ne se servent pas leurs mesures ;
+    et à 440 la clé est CELLE D'AVANT H42 (recalculée ici par l'ancienne formule) :
+    le cache déjà payé reste valable."""
+    import hashlib
+    import json
+
+    from analyzer.vsm_project_export import ExportNote, ExportTrack
+    from analyzer.vsm_render_cache import _empreinte_moteur, cle_de_rendu
+
+    # LE TYPE DU CHEMIN RÉEL : l'arbitrage de piste passe une ExportTrack.
+    piste = ExportTrack(name="essai", machine="vsm.minimoog", parameters={"cutoff": 0.5},
+                        notes=[ExportNote(note=66, velocity=100, start=0.0, duration=1.0)])
+    binaire = "/bin/true"
+    ancienne = hashlib.sha256(json.dumps({
+        "machine": piste.machine, "profile": piste.profile,
+        "parameters": sorted(piste.parameters.items()),
+        "notes": [(66, 100, 0.0, 1.0)], "samples": [], "channel": 0, "isDrums": False,
+        "duration": 2.0, "sampleRate": 44100, "tempo": 120.0,
+        "moteur": _empreinte_moteur(binaire),
+    }, sort_keys=True, ensure_ascii=True).encode("ascii")).hexdigest()
+    try:
+        diapason.poser(440.0)
+        a440 = cle_de_rendu(piste, 44100, 2.0, 120.0, binaire)
+        diapason.poser(443.1372)
+        a443 = cle_de_rendu(piste, 44100, 2.0, 120.0, binaire)
+        diapason.poser(446.0)
+        a446 = cle_de_rendu(piste, 44100, 2.0, 120.0, binaire)
+    finally:
+        diapason.poser(440.0)
+    assert_equal(a440, ancienne)
+    assert_true(len({a440, a443, a446}) == 3, "deux diapasons partagent une clé")
+    assert_equal(cle_de_rendu(piste, 44100, 2.0, 120.0, binaire), a440)

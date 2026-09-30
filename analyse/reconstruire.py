@@ -3064,7 +3064,8 @@ def charger_tous_les_modules() -> None:
                 "analyzer.vsm_corpus", "analyzer.vsm_automation", "analyzer.vsm_track_refine",
                 "analyzer.vsm_track_arbitration", "analyzer.vsm_offline_render",
                 "analyzer.vsm_render_cache", "analyzer.vsm_project_export",
-                "analyzer.vsm_residu", "analyzer.vsm_recensement"):
+                "analyzer.vsm_residu", "analyzer.vsm_recensement",
+                "analyzer.diapason", "analyzer.tenues"):
         importlib.import_module(nom)
 
 
