@@ -712,3 +712,76 @@ reste l'affaire de `tools/tempo-estime.py` sans `--affine`, comme écrit.
 - **Reste nommé : la PHASE de la grille.** À tempo juste, les notes tombent à un écart
   constant de la grille ; la mesure 1 commence toujours au tick 0 et non au premier
   temps fort. C'est la suite (le « reste nommé » du § 5 quindecies).
+
+---
+
+## 9. H47 — le parc contient-il le pad ? Des notes TENUES idéales, le diapason juste, et chaque machine mesurée sur le pad seul (écrite AVANT la mesure, 30/09/2026, 17 h 35)
+
+**Pourquoi maintenant.** Le § 3 remet la décision sur les machines neuves à « après
+ces trois-là » — le diapason, la transcription hachée, le même instrument joué par
+quatre machines —, et la course 2 qui les réunit ne finira pas avant demain (la
+référence a été relancée à 17 h 01, § 2.1). Or la question « existe-t-il, dans le
+parc, une machine qui sonne comme ce pad ? » ne dépend pas de la transcription : elle
+se pose avec des notes PARFAITES. La poser à part, sur vingt-quatre secondes, la
+tranche ce soir — et dit tout de suite s'il faut décrire une machine.
+
+**L'extrait.** Le stem « other » de la course de référence, de **16 à 40 s** : le pad
+y est seul (il entre à 14 s, la basse à 42 s, § 1).
+
+**L'ORACLE — des notes écrites par une règle, pas à la main.** Le spectre de Welch de
+l'extrait (la fenêtre de l'estimateur de diapason) ; chaque pic de proéminence ≥ 12 dB
+entre 100 et 2 000 Hz, à moins de 20 dB du plus fort, devient UNE note tenue sur tout
+l'extrait, à la hauteur MIDI la plus proche au diapason de 443,14 Hz, vélocité 100.
+Deux pics sur la même note n'en font qu'une.
+
+**LES DEUX BORNES — ce que vaudrait un timbre parfait.** Avant toute machine :
+- `B_égal` : des sinus purs aux fréquences des notes de l'oracle, **amplitudes
+  égales** — ce que peut au mieux une machine parfaitement sinusoïdale jouant ces
+  notes à vélocité égale ;
+- `B_mesuré` : des sinus aux fréquences et **amplitudes mesurées** des pics — ce que
+  vaudrait, en plus, un niveau juste par note.
+L'écart entre les deux est ce que coûte l'absence de niveau par note, machine
+quelconque. Ni l'une ni l'autre ne bat : ce qui reste sous `B_mesuré` est le
+battement du pad et le résidu de séparation.
+
+**LES MESURES** (chacune contre l'extrait, le rendu calé au niveau de l'extrait) :
+- `D` — la distance de la chaîne (métrique v2), celle que l'arbitrage emploie : c'est
+  elle qui CHOISIT ;
+- l'**équilibre par bande** du § 0 (six bandes, chacune relative au total) sur les
+  bandes qui portent à −40 dB du total **dans l'extrait ou dans le rendu** — une
+  machine brillante là où l'extrait se tait doit se voir ;
+- le **log-mel** du § 0, mais sur les seules cases qui portent (à 40 dB du maximum de
+  l'extrait) : sur un stem, les cases vides opposent un plancher de séparation à un
+  silence numérique, et la moyenne du § 0 ne mesurerait qu'elles. Ce n'est donc PAS
+  le chiffre du § 0, et il ne se compare qu'aux bornes ;
+- la **tenue** : niveau du dernier tiers de la note rapporté au premier (dB) — une
+  machine frappée ne peut pas jouer une note de vingt-quatre secondes, quel que soit
+  son timbre.
+
+**Les candidates** : celles de la chaîne — les machines mélodiques du registre à leur
+patch d'usine, le multi-échantillons une fois par profil —, rendues par le
+`vsm-render` de `build-h42` au diapason de 443,14 Hz. Puis le **réglage de piste de
+la chaîne** (`refine_patch_on_track`, son budget de 40 évaluations) sur les cinq
+premières au classement `D`.
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | les notes de l'oracle | les cinq classes de hauteur du § 1 (si, do♯, mi, fa♯, la♯), aucune autre | une classe manque ou s'ajoute : c'est dit, la règle n'est pas retouchée |
+| 2 | **l'instrument** : les bornes | `B_mesuré` ≤ `B_égal` sur le log-mel ; l'extrait contre lui-même = 0 | sinon l'instrument est faux et rien ne se lit |
+| 3 | le meilleur patch d'USINE (premier au classement `D`) | chaque bande qui porte à ≤ 1 dB, et log-mel ≤ `B_égal` + 1 dB | une bande à plus de 3 dB, ou log-mel > `B_égal` + 3 dB |
+| 4 | le meilleur après réglage de piste (les cinq premières) | comme 3 | comme 3 |
+| 5 | **la chaîne sait-elle CHOISIR ?** corrélation de rang (Spearman) entre `D` et le log-mel, toutes candidates | ≥ 0,7 | < 0,4 — le pad existerait-il, la chaîne ne le désignerait pas |
+| 6 | les cinq premières au classement `D` tiennent la note (tenue ≥ −6 dB) | trois au moins | aucune |
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- 3 ou 4 tenu : **le parc a le pad**. Aucune machine neuve pour lui ; ce qui sépare
+  encore la reconstruction de l'original est dans la transcription (H45), le niveau
+  par note (l'écart entre les deux bornes le chiffre) et le mélange.
+- 4 entre 1 et 3 dB : il manque un PATCH, pas une machine — un profil de pad
+  sinusoïdal à écrire pour la machine la plus proche.
+- 4 en échec : la machine manquante est décrite ici (ce qu'elle doit savoir faire,
+  mesuré sur l'extrait) et construite selon `CDC-nouvelle-machine.md`.
+- 5 en échec, quel que soit le reste : le défaut est dans la MÉTRIQUE de l'arbitrage,
+  et c'est elle que l'hypothèse suivante vise.
