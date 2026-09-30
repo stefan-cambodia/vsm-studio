@@ -355,3 +355,67 @@ seuil (`basic_pitch.note_creation`), les autres réglages d'usine inchangés :
 | 1 | « Reload », stem « other », pad (MIDI 58-73) : notes et durée médiane | à un seuil au moins : −50 % de notes ET durée ×2 | à aucun seuil −25 % |
 | 2 | **le contrôle** — S2 (`g1`, `g2`, stems vrais, parties mélodiques) : F1 note à note (même hauteur, attaque à ± 50 ms), par rôle, au MÊME seuil que 1 | aucun rôle ne perd plus d'1 point de F1 sur le témoin | un rôle perd plus de 3 points |
 | 3 | un seuil qui tient 1 ET 2 existe | oui : il devient la proposition pour la chaîne (une option, mesurée ensuite de bout en bout) | non : l'hypothèse est réfutée, et la tenue demandera un traceur de hauteur tenue plutôt qu'un réglage |
+
+### 6.1 Verdict de H44 (30/09/2026, 12 h 20) : RÉFUTÉE comme réglage GLOBAL — et le balayage montre où elle vaut
+
+`analyse/verdict_h44.py` (branche `reload-chaine`), sortie du modèle calculée une
+fois par stem :
+
+| seuil d'attaque | pad de « Reload » : notes | durée médiane |
+|---|---|---|
+| 0,5 (témoin) | 2 238 | 0,279 s |
+| 0,6 | 1 366 (−39 %) | 0,372 s (×1,33) |
+| 0,7 | 865 (**−61 %**) | 0,418 s (**×1,50**) |
+| 0,8 | 757 (−66 %) | 0,383 s (×1,38) |
+| 0,9 | 754 (−66 %) | 0,383 s (×1,38) |
+
+| F1 note à note, S2 (`g1`, `g2`, stems vrais) | 0,5 | 0,6 | 0,7 | 0,8 | 0,9 |
+|---|---|---|---|---|---|
+| accompagnement | 69,7 | 68,6 | 66,2 | 66,3 | 66,7 |
+| basse | 44,7 | **12,0** | 12,0 | 12,0 | 12,0 |
+| mélodie | 99,9 | 99,9 | 99,9 | 99,8 | 99,7 |
+| nappe | 51,3 | 63,7 | **69,8** | 71,6 | 69,5 |
+| voix | 49,0 | 92,0 | **98,5** | 83,1 | 73,5 |
+
+**Attendu 1 : partiel** (−61 % de notes à 0,7, mais la durée ne double à aucun
+seuil). **Attendu 2 : échec à tout seuil au-dessus de 0,5** — la basse perd 32,7
+points dès 0,6, l'accompagnement 3,5 à 0,7. **Attendu 3 : aucun seuil global ne tient
+les deux** — H44 est réfutée telle qu'écrite.
+
+**Ce que le balayage apprend, et qui n'était pas demandé** : sur les parties TENUES,
+le gain est énorme — la voix passe de 49,0 à **98,5** de F1, la nappe de 51,3 à
+**69,8** — pendant que la basse s'effondre. Le seuil d'attaque est donc un réglage
+PAR STEM, pas un réglage de chaîne ; d'où l'hypothèse suivante (§ 7).
+
+**Un défaut de la mesure, attrapé avant d'être publié** : la première course rendait
+un F1 de **0,0 pour tous les rôles à tous les seuils** — la vérité était lue
+(attaque, hauteur) et dépaquetée (hauteur, attaque). Un zéro partout ne mesurait que
+le dépaquetage ; corrigé, rejoué, les chiffres ci-dessus sont ceux de la seconde
+course.
+
+---
+
+## 7. H45 — le seuil d'attaque choisi PAR STEM, sur un indice que la transcription donne d'elle-même (écrite AVANT la mesure, 30/09/2026)
+
+**L'hypothèse.** Un stem TENU se reconnaît sans vérité : transcrit au seuil d'usine
+(0,5), ses notes se suivent à la même hauteur sans intervalle (le pad de « Reload » :
+72 à 76 % sur ses hauteurs principales). Soit l'**indice de hachure** d'un stem : la
+part de ses notes suivies d'une note de même hauteur à moins de 30 ms. Transcrire à
+0,7 les stems dont l'indice dépasse un seuil `X`, et à 0,5 les autres, garde le gain
+de H44 sur les parties tenues sans rien coûter à la basse.
+
+**CALIBRATION ET VALIDATION SÉPARÉES — pour ne pas régler la règle sur ce qui la
+juge.** `g1` et `g2` ont déjà été regardés (§ 5, § 6) : ils servent à CALIBRER `X` —
+l'indice est relevé par rôle, et `X` est posé entre les nappes/voix et les
+basses/accompagnements, la valeur et sa raison écrites avant la validation. La
+validation se fait sur des morceaux que rien n'a encore regardés : **`g3`, `g4`,
+`g5`**.
+
+**ATTENDUS (sur `g3`-`g5`, par rôle, F1 note à note comme au § 6)** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | aucun rôle ne perd sur le témoin (tout à 0,5) | perte ≤ 1 point partout | un rôle perd plus de 3 points |
+| 2 | nappe et voix | gain ≥ 10 points chacune | gain < 3 points |
+| 3 | le pad de « Reload » (stem « other ») est classé tenu | oui | non |
+| 4 | les stems de basse de `g3`-`g5` sont classés non tenus | tous | un seul classé tenu |
