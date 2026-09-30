@@ -4046,3 +4046,19 @@ l'écart par morceau, l'agrégat calculé sur les COMPTES du lot (jamais une moy
 de F1, qui n'est pas un F1), et conclut lui-même — aujourd'hui, **« ÉCART
 INSTABLE : la correction dépend du corpus — l'ancien F1 se garde à côté »**. Le
 jour où le corpus sera réengendré, c'est cette phrase-là qui devra changer.
+
+---
+
+## 10. Quatre défauts de la chaîne trouvés le 30/09/2026 en reconstruisant « Reload » — où ils sont écrits
+
+Aucun n'est tranché ici : ce paragraphe ORIENTE vers `CDC-reload-indifferenciable.md`,
+où chacun a son constat, sa mesure et sa décision. Aucun n'est encore dans l'arbre
+principal (une course y tourne, et `g7`-`g10` de S2 doivent courir la chaîne de
+`g1`-`g6`) ; les branches sont nommées.
+
+| défaut | constat | où | branche |
+|---|---|---|---|
+| le verdict et le réglage au mélange ne laissent rien sur disque : une course morte repart de zéro | 6 142 s et 6 772 s perdues deux fois, par deux extinctions du poste | § 2.2, § 10 (H48) | `reload-h48` |
+| le calage de niveau et l'épreuve d'automation ignorent `--moteur` | ils rendent par `build/tools/vsm-render` quel que soit le moteur demandé ; sans `build/`, la course meurt à l'étape 4/5 | § 10 (trouvé par le témoin de H48) | `reload-h48` |
+| l'arbitrage de batterie écrit au cache sous `--sans-cache-rendus` | 3 fichiers au cache après un témoin qui ne devait rien écrire | § 10 | `reload-h48` |
+| le verdict du mélange juge un morceau sans sa voix | 12 rapports sur 12 : « sans la piste » de voix égale « avec », au seizième chiffre | § 14 (H52) | `reload-h52` |

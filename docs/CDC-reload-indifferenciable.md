@@ -1321,3 +1321,64 @@ mi4, la♯4, do♯5 —, qu'il n'a jamais vues.
 - 1 en échec : le modèle est corrigé contre l'effet avant toute autre lecture.
 - 3 en échec avec 2 tenu : sur-ajustement ; le modèle est trop libre ou la
   modulation n'est pas un retard, et le résidu par raie est publié.
+
+---
+
+## 14. H52 — le verdict du mélange jugeait un morceau SANS sa voix (constaté, corrigé dans une branche, et ce qui reste à mesurer est écrit avant ; 30/09/2026, 20 h 25)
+
+**Ce n'est pas une hypothèse écrite avant sa mesure, et ce paragraphe ne la déguise
+pas en cela** : c'est un défaut de la chaîne trouvé en lisant `_copy_samples` pour
+H48, vérifié dans les rapports existants AVANT d'y toucher, puis corrigé. Ce qui
+reste à mesurer — son effet sur les DÉCISIONS — est, lui, écrit ci-dessous avant.
+
+**Le défaut.** Le verdict du mélange, le réglage au mélange et la boucle résiduelle
+rendent le projet dans un dossier à part, où `_copy_samples` recopie les fichiers
+que les pistes désignent. Elle ne recopiait que `track.samples` — les échantillons
+des samplers. Depuis que la voix est une piste AUDIO (D2 de `ROADMAP-daw.md`), elle
+désigne son fichier par `audio_path` et `samples` est vide : le moteur ne trouve pas
+le fichier, n'en dit rien que sur sa sortie d'erreur (avalée), et la piste sort
+muette. **Le verdict choisissait donc les machines contre un mélange sans la
+voix** — le défaut même que la docstring de `_copy_samples` dit avoir fermé pour le
+sampler (« le verdict se prononçait sur un mélange sans la voix »), revenu par une
+autre porte.
+
+**La preuve était publiée, et personne ne la lisait.** Le témoin de coupure (H27)
+écrit au rapport ce que vaut le morceau SANS chaque piste. Relevé sur les 311
+rapports du dossier de travail : **12 pistes « Voix » au verdict, 12 sur 12 avec
+« sans la piste » ÉGAL à « avec », au seizième chiffre** (`s2-banc` g2, g4, g6 ;
+`d282-temoin`, `d282-coupure`, `r1f-13sep` g3, g5, g6 — par exemple 0,3137599871497436
+des deux côtés). Une valeur qui revient à son point de départ : la piste n'avait
+jamais sonné.
+
+**Par le vrai moteur** (`build-h42`), une machine et une piste audio, le mélange
+visé étant leur rendu COMPLET — le même script lancé dans les deux arbres :
+
+| arbre | la voix « avec » | la voix « sans la piste » | le fichier dans le dossier rendu |
+|---|---|---|---|
+| `reload-h48` (sans la correction) | 0,158163 | 0,158163 | absent |
+| `reload-h52` (avec) | **0,0** | 0,158163 | présent |
+
+Sans la correction, le projet est à 0,158 de SON PROPRE rendu : la voix manque. Avec,
+il est à 0.
+
+**La correction** (branche `reload-h52`, `58ae509`) : `_copy_samples` recopie aussi
+`audio_path`. Deux tests, le premier vu ROUGE la correction retirée.
+
+**ELLE N'ENTRE NI DANS `reload-chaine` NI DANS L'ARBRE PRINCIPAL AUJOURD'HUI.** La
+course 2 de « Reload » doit rester à une variable de sa référence, et `g7`-`g10` de
+S2 doivent courir la chaîne de `g1`-`g6` (§ 8.1). Sur « Reload », la voix pèse 0,5 %
+du morceau (§ 1) : l'effet y est attendu nul, et ce sera mesuré, pas supposé.
+
+**CE QUI RESTE À MESURER, écrit avant** — l'effet sur les décisions, sur un morceau
+CHANTÉ du banc (`s2`, `g2` : ses stems séparés existent, `s2-banc`), témoin = la
+chaîne de `reload-h48`, essai = celle de `reload-h52`, une seule variable :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | la piste « Voix » au rapport de l'essai | « sans la piste » > « avec » | égales : la correction ne porte pas |
+| 2 | le verdict du mélange : pistes dont la machine retenue change entre témoin et essai | publié, piste par piste | — (un relevé) |
+| 3 | la distance globale du morceau (`rapport.json`, mêmes métrique, budget et stems) | essai ≤ témoin + 1 % | essai > témoin + 3 % : juger avec la voix coûte, et il faut comprendre pourquoi avant d'entrer |
+| 4 | les morceaux SANS voix (`g1` de `s1-sec`) : projet et rapport | identiques à l'octet, provenance à part | une différence : la correction touche ce qu'elle ne devait pas |
+
+Elle entrera dans l'arbre principal après S2, dans un commit à elle, avec ces quatre
+chiffres.
