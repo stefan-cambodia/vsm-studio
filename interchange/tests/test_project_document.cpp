@@ -474,6 +474,41 @@ VSM_TEST(the_loop_region_is_project_data_not_screen_state) {
     VSM_ASSERT_EQ(rejoue.loopEndTick, vsm::midi::Tick(3840));
 }
 
+// D523 : un fichier écrit après un Maj+clic sans glissé porte une boucle allumée sur
+// une région vide. Rouverte, elle est éteinte — la région gardée —, et c'est DIT.
+VSM_TEST(a_loop_or_punch_switched_on_over_an_empty_region_opens_switched_off_and_says_so) {
+    Project project = buildProject();
+    project.loopEnabled = true;
+    project.loopStartTick = project.loopEndTick = 2887;
+    project.punchEnabled = true;
+    project.punchStartTick = 960;
+    project.punchEndTick = 480;   // à l'envers : vide aussi
+    const ProjectLoadResult relu =
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.transport.loopEnabled);   // le fichier le dit : la lecture ne ment pas
+
+    Project rejoue = buildProject();
+    const ImportReport rapport = applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.loopEnabled);
+    VSM_ASSERT_EQ(rejoue.loopStartTick, vsm::midi::Tick(2887));   // la région gardée
+    VSM_ASSERT(!rejoue.punchEnabled);
+    VSM_ASSERT_EQ(rejoue.punchStartTick, vsm::midi::Tick(960));
+    VSM_ASSERT_EQ(rapport.corrections.size(), size_t{2});
+    VSM_ASSERT(rapport.corrections[0].find("[2887,2887]") != std::string::npos);
+    VSM_ASSERT(!rapport.hasWarnings());   // une information, pas une réserve (D418)
+
+    // Le témoin : une vraie région, allumée, reste allumée et ne dit rien.
+    project.loopEndTick = 3840;
+    project.punchEndTick = 1920;
+    Project juste = buildProject();
+    const ImportReport rien = applyDocumentToProject(
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString()).document, juste);
+    VSM_ASSERT(juste.loopEnabled);
+    VSM_ASSERT(juste.punchEnabled);
+    VSM_ASSERT(rien.corrections.empty());
+}
+
 // Une piste SANS instrument peut porter des effets : le chargement s'arrêtait
 // avant de les lire pour ces pistes-là, ce qui les aurait perdues sans bruit.
 VSM_TEST(a_track_without_an_instrument_still_keeps_its_effects) {

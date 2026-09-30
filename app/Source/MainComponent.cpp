@@ -1017,17 +1017,23 @@ MainComponent::MainComponent()
     pianoRoll_.onLoopRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
         // Écrite dans le projet AUSSI : c'est une donnée de morceau, et elle
         // disparaissait à la fermeture alors que le format savait l'écrire.
+        // D523 : UNE BOUCLE SANS RÉGION N'EST PAS ACTIVE — l'invariant du punch
+        // (ci-dessus) et de la bascule. Le Maj+clic sans glissé pose [t,t] « active » :
+        // le moteur la bornait déjà, le projet et le bouton la disaient allumée, et
+        // le fichier enregistrait une boucle allumée qui ne boucle rien.
+        const bool actif = active && end > start;
         // D520 : la région seule inchangée, c'est la BASCULE (le double-clic) :
         // sans pas, mais la marque (D519).
         const bool bascule = start == project_.loopStartTick && end == project_.loopEndTick
-                             && active != project_.loopEnabled;
-        project_.loopEnabled = active;
+                             && actif != project_.loopEnabled;
+        project_.loopEnabled = actif;
         project_.loopStartTick = start;
         project_.loopEndTick = end;
-        transport_.setLoopRegion(start, end, active);
+        transport_.setLoopRegion(start, end, actif);
         audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(start),
-                                                   project_.ticksToSeconds(end), active);
-        transportBar_.setLooping(active);
+                                                   project_.ticksToSeconds(end), actif);
+        pianoRoll_.setLoopRegion(start, end, actif);   // le panneau l'a posée « active »
+        transportBar_.setLooping(actif);
         pianoRollPanel_.refresh();
         if (bascule) marquerHorsHistorique();
     };
@@ -7505,6 +7511,9 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
 
     for (const auto& avertissement : loaded.warnings)
         rapport.add(juce::String::fromUTF8(avertissement.c_str()));
+    // D523 : ce que la lecture a corrigé sans changer le son — au journal, pas à la boîte.
+    for (const auto& correction : loaded.bundle.report.corrections)
+        std::fputs(("VSM_PROJET_CORRIGE : " + correction + "\n").c_str(), stderr);
     // D71 : et ce que les EFFETS n'ont pas pu poser. Le rendu hors ligne du
     // même dossier le disait déjà ; l'ouverture le taisait.
     for (const auto& reserve : reservesEffets_) rapport.add(reserve);

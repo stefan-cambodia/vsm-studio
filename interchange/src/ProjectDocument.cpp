@@ -452,6 +452,22 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     project.metronomeEnabled = document.transport.metronome;   // D503
     project.punchStartTick = document.transport.punchStartTick;
     project.punchEndTick = document.transport.punchEndTick;
+    // D523 : UNE BOUCLE (OU UN PUNCH) SANS RÉGION N'EST PAS ACTIVE — l'invariant que
+    // tiennent la règle, la bascule et l'annulation (D518). Un fichier écrit avant
+    // D523 porte une boucle « allumée » sur [t,t] après un Maj+clic : rouvert, le
+    // bouton s'allumait sur une boucle qui ne boucle rien.
+    const auto regionVide = [&report](const char* quoi, int64_t debut, int64_t fin) {
+        report.corrections.push_back(std::string(quoi) + " sur une région vide [" + std::to_string(debut)
+                                     + "," + std::to_string(fin) + "] : interrupteur éteint à l'ouverture");
+    };
+    if (project.loopEnabled && project.loopEndTick <= project.loopStartTick) {
+        project.loopEnabled = false;
+        regionVide("boucle allumée", project.loopStartTick, project.loopEndTick);
+    }
+    if (project.punchEnabled && project.punchEndTick <= project.punchStartTick) {
+        project.punchEnabled = false;
+        regionVide("punch allumé", project.punchStartTick, project.punchEndTick);
+    }
 
     if (document.tracks.size() != project.tracks.size()) {
         std::ostringstream warning;

@@ -37740,7 +37740,7 @@ lus quatre fois.
 
 ---
 
-### Phase D523 — Maj+clic sur la règle allumait « Loop » sur une boucle vide (30/09/2026) — EN ATTENTE DE MESURE
+### Phase D523 — Maj+clic sur la règle allumait « Loop » sur une boucle vide (30/09/2026)
 
 **D'OÙ ELLE VIENT — EN LISANT LA RÈGLE POUR D520.** À l'appui (Maj), la règle pose une
 région VIDE ([t,t]) et la dit active ; le glissé l'étend ensuite. Un Maj+clic SANS
@@ -37773,3 +37773,66 @@ le Maj+clic n'est pas jouable — le témoin l'a dit (« le Maj+clic a été jou
 fenêtre vide deux fois »). L'attendu ci-dessus ne bouge pas ; le cas F entrera dans
 `tools/regions-historique.sh` avec le correctif (une garde rouge sur un défaut connu
 et non corrigé ferait rougir la série pour rien).
+
+**MESURÉ — TENU (30/09, 07 h)**, session ouverte au départ : `tools/regions-historique.sh`,
+cas F entré dans la garde (projet à boucle [0,1920] allumée ; `glisser:pianoroll.regle:0.5,0.5:0.5:maj`,
+le glissé allant au point de départ — la même région que l'appui seul) :
+
+| relevé après le Maj+clic | témoin (binaire de D522, `build/temoin-D523`) | après |
+|---|---|---|
+| la région (le témoin qu'elle a bougé) | [2887,2887] | [2887,2887] |
+| projet / moteur / bouton | **oui** / non / **oui** | non / non / non |
+| le fichier enregistré | **boucle allumée**, région vide | éteinte, région vide |
+| les pas | 1 (« Région de boucle ») | 1 |
+
+**2 ratés sur le témoin, 0 après.** Le pronostic est tenu mot pour mot : le moteur
+bornait déjà (`moteur non [3.007,3.007 s]`), le projet et le bouton disaient la
+boucle allumée, et le fichier l'écrivait. Le correctif est l'invariant du punch
+(`actif = active && end > start`), appliqué au projet, au transport, au moteur, au
+bouton — et au piano roll, que le panneau venait de poser « active » : la règle lit
+SA région (D520). La bascule de D520 compare désormais l'état BORNÉ : un double-clic
+sur une région vide ne compte plus pour une bascule.
+
+**ET LA PORTE DU FICHIER — trouvée en écrivant la phrase précédente.** Elle n'était
+vraie que si le projet ne pouvait plus porter une boucle allumée sur une région
+vide ; or tout fichier enregistré après un Maj+clic par un binaire d'avant D523 la
+porte, et rouvert, il la rendait telle quelle (mesuré sur le binaire corrigé :
+`projet oui [2887,2887] ; moteur non ; bouton oui`). La lecture n'est bornée ni pour
+la boucle ni pour le punch (`applyDocumentToProject`). **LE CHOIX, TRANCHÉ ICI** :
+l'invariant se pose là où le document devient un projet — dans `interchange`, pour
+que l'application et le rendu hors ligne lisent le même projet (D332) —, la région
+gardée, l'interrupteur éteint. C'est une correction qui ne change pas le son (le
+moteur bornait déjà) : elle est DITE au journal (`VSM_PROJET_CORRIGE : boucle
+allumée sur une région vide [2887,2887] : interrupteur éteint à l'ouverture`), et
+n'ouvre pas la boîte « avec des réserves » — une information n'est pas une réserve
+(D418). `ImportReport` porte pour cela une liste `corrections`, distincte des
+`warnings`.
+
+Cas G de la garde (le projet `vide-on`, boucle allumée sur [2887,2887], ouvert puis
+relevé) et un test d'interchange (`a_loop_or_punch_switched_on_over_an_empty_region_…`,
+boucle vide ET punch à l'envers, avec son témoin — une vraie région reste allumée et
+ne dit rien) :
+
+| | témoin (`build/temoin-D523`) | après |
+|---|---|---|
+| G. rouvert : projet / moteur / bouton | **oui** [2887,2887] / non / **oui** | non [2887,2887] / non / non |
+| G. le journal le dit | **aucune ligne** | `VSM_PROJET_CORRIGE : boucle allumée…` |
+| le test d'interchange | **rouge** (`!rejoue.loopEnabled`, bornage retiré) | vert — 313 / 313 |
+
+La garde entière, rejouée sur les deux binaires écran ouvert : **4 ratés sur le
+témoin (F × 2, G × 2), 0 après**, A à E verts des deux côtés ; préférences de
+l'utilisateur identiques.
+
+Les cas A à E de D520, rouges sous la session verrouillée de D521 (« fenêtre vide
+deux fois »), sont **verts sur les deux binaires** : la course du témoin a tourné
+écran ouvert de bout en bout ; celle d'après a vu la session se verrouiller après le
+premier lancement, et l'espacement de 45 s (D520) a suffi — les cinq lancements
+suivants ont dessiné leur fenêtre et joué leur geste. `marque-enregistre.sh` et
+`banc-fumee.sh` : 0 raté ; gardes des sources vertes ; préférences de l'utilisateur
+identiques (`cmp` contre la copie prise avant la série).
+
+**Ce qui reste nommé, et c'est dit** : `./verifier.sh --bancs` en entier, session
+ouverte, pour D518 à D523. À 07 h 03 la session s'est de nouveau verrouillée et
+l'écran s'est éteint (`LockedHint=yes`, DPMS « off ») : la série rendrait les rouges de
+géométrie déjà lus sous verrou (D521), et ne se lance pas pour les lire une
+cinquième fois.

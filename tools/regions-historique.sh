@@ -9,6 +9,7 @@
 # un geste, une région tirée, Ctrl+Z — le geste d'avant était annulé aussi, deux en
 # un. Et les BASCULES (boucle, punch) ne font pas de pas mais ne doivent pas être
 # ramenées en arrière par le Ctrl+Z d'à côté (D518), ni échapper à la marque (D519).
+# Et une boucle SANS RÉGION n'est pas active (D523) : le Maj+clic sans glissé.
 #
 # COMMENT. « Lente » (la forme des fondus croisés, un pas depuis D506) est le geste
 # d'AVANT ; sa forme, lue dans le project.json enregistré après Ctrl+Z, dit s'il a
@@ -27,12 +28,14 @@ BIN="${1:-./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Sy
 brouillon="$(mktemp -d "${TMPDIR:-/tmp}/vsm-regions.XXXXXX")"
 trap 'rm -rf "$brouillon"' EXIT
 
-# Quatre projets d'une piste de quatre notes (tout le morceau : 0 à 6 240 ticks).
+# Cinq projets d'une piste de quatre notes (tout le morceau : 0 à 6 240 ticks).
 #   vide      : ni boucle ni punch ;
 #   boucle    : une région de boucle [0,1920], éteinte ;
 #   boucle-on : la même, allumée ;
-#   punch     : une région de punch [0,1920], éteinte.
-for nom in vide boucle boucle-on punch; do
+#   punch     : une région de punch [0,1920], éteinte ;
+#   vide-on   : une boucle ALLUMÉE sur une région vide [2887,2887] — ce qu'écrivait
+#               un Maj+clic avant D523.
+for nom in vide boucle boucle-on punch vide-on; do
 mkdir -p "$brouillon/$nom/midi"
 python3 - "$brouillon/$nom" "$nom" <<'PY'
 import json, struct, sys
@@ -48,8 +51,9 @@ for i in range(4):
 corps = b"".join(vlq(dt) + o for dt, o in evs) + b"\x00\xff\x2f\x00"
 open(d + "/midi/arrangement.mid", "wb").write(b"MThd" + struct.pack(">IHHH", 6, 1, 1, 480)
                                              + b"MTrk" + struct.pack(">I", len(corps)) + corps)
-transport = {"loop": {"enabled": nom == "boucle-on", "endTick": 1920 if nom.startswith("boucle") else 0,
-                      "startTick": 0},
+transport = {"loop": {"enabled": nom in ("boucle-on", "vide-on"),
+                      "endTick": 1920 if nom.startswith("boucle") else 2887 if nom == "vide-on" else 0,
+                      "startTick": 2887 if nom == "vide-on" else 0},
              "tempoChanges": [{"bpm": 120.0, "tick": 0}], "ticksPerQuarterNote": 480,
              "timeSignatures": [{"denominator": 4, "numerator": 4, "tick": 0}]}
 if nom == "punch":
@@ -179,6 +183,37 @@ case "$(grep "VSM_BOUCLE" "$brouillon/e.txt" | tail -1)" in
     *"projet non"*"moteur non"*) ok "E. double-clic : la boucle éteinte" "" ;;
     *) rate "E. double-clic : la boucle éteinte" "$(grep "VSM_BOUCLE" "$brouillon/e.txt" | tail -1)" ;;
 esac
+
+# F. MAJ+CLIC SANS GLISSÉ (D523) : la règle pose une région VIDE [t,t] et la disait
+# active — le moteur la bornait, le projet et le bouton la disaient allumée, et le
+# fichier enregistrait une boucle allumée qui ne boucle rien. Une boucle sans région
+# n'est pas active (l'invariant du punch). Le glissé va au point de départ : même
+# région que l'appui seul.
+lancer f boucle-on "400:glisser:pianoroll.regle:0.5,0.5:0.5:maj;700:relever-boucle;900:relever-historique;1200:enregistrer:$brouillon/f"
+if grep -q "VSM_GLISSE : .*maj — joué" "$brouillon/f.txt"; then ok "F. le Maj+clic a été joué" ""
+else rate "F. le Maj+clic a été joué" "non (fenêtre vide deux fois ?) : rien de F ne se juge"; fi
+IFS='|' read -r _ bo bd bf _ _ _ <<< "$(lire "$brouillon/f")"
+if [ "$bd" = "$bf" ] && [ "$bd" != "0" ]; then ok "F. la région effacée, ailleurs qu'en [0,1920]" "[$bd,$bf]"
+else rate "F. la région effacée, ailleurs qu'en [0,1920]" "[$bd,$bf] : rien ne se juge"; fi
+l="$(grep "VSM_BOUCLE" "$brouillon/f.txt" | tail -1)"
+echo "        après le Maj+clic : $l"
+juger "F. projet / moteur / bouton" \
+      "$(sed -E 's/.*projet ([a-z]+) .*moteur ([a-z]+) .*bouton ([a-z]+).*/\1 \2 \3/' <<< "$l")" "non non non"
+juger "F. le fichier enregistré : la boucle" "$bo" "non"
+juger "F. les pas" "$(grep -o "VSM_HISTORIQUE_PAS : [0-9]*" "$brouillon/f.txt" | tail -1 | cut -d' ' -f3)" "1"
+
+# G. LE MÊME ÉTAT PAR LA PORTE DU FICHIER (D523) : un projet écrit avant le correctif
+# porte la boucle allumée sur [t,t]. Rouvert, l'interrupteur est éteint — la région
+# gardée —, et le journal le dit.
+lancer g vide-on "400:relever-boucle"
+l="$(grep "VSM_BOUCLE" "$brouillon/g.txt" | tail -1)"
+echo "        à l'ouverture : $l"
+juger "G. rouvert : projet / moteur / bouton" \
+      "$(sed -E 's/.*projet ([a-z]+) \[([0-9]+),([0-9]+)\].*moteur ([a-z]+) .*bouton ([a-z]+).*/\1 [\2,\3] \4 \5/' <<< "$l")" \
+      "non [2887,2887] non non"
+if grep -q "VSM_PROJET_CORRIGE : boucle allumée sur une région vide \[2887,2887\]" "$brouillon/g.txt"; then
+    ok "G. … et le journal le dit" ""
+else rate "G. … et le journal le dit" "aucune ligne VSM_PROJET_CORRIGE"; fi
 
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

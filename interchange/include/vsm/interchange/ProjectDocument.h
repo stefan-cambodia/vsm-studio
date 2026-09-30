@@ -450,6 +450,11 @@ struct ImportReport {
     size_t tracksInDocument = 0;
     size_t tracksInProject = 0;
     std::vector<std::string> warnings;
+    /// D523 : ce que la lecture a CORRIGÉ sans que le morceau sonne autrement — une
+    /// boucle ou un punch « allumés » sur une région vide (le moteur les bornait
+    /// déjà). Une information, pas une réserve (D418) : le journal le dit, la boîte
+    /// « avec des réserves » ne s'ouvre pas pour autant.
+    std::vector<std::string> corrections;
 
     bool hasWarnings() const { return !warnings.empty() || !missingInstruments.empty(); }
     std::string summary() const;
