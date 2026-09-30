@@ -861,3 +861,165 @@ de séparation qu'aucune machine ne joue : les écarts de bande des deux BORNES 
 publiés à côté de ceux des machines. Si `B_mesuré` elle-même rate « chaque bande à
 ≤ 1 dB », l'attendu 3 est intenable tel qu'écrit par quelque machine que ce soit, et
 ce sera dit tel quel — sans retoucher le seuil.
+
+### 9.2 Verdict de H47 (30/09/2026, 19 h 55) : l'instrument ne voit pas le pad — deux attendus en échec qu'AUCUNE machine ne pouvait tenir, et une métrique qui range des harpes devant les sinus de l'oracle
+
+`analyse/mesure_h47.py mesurer` (branche `reload-h47`, `652ce7d`, arbre propre), le
+stem « other » de 16 à 40 s, `vsm-render` de `build-h42` (md5 `52532381…`), diapason
+443,1372 Hz, 560,6 s de mesure à côté de la course de référence ;
+`reconstruction/travail/reload-h47/mesure.json`, verdict recalculé par `verdict`.
+
+**L'oracle** : 10 pics, 10 notes — mi3, fa♯3, la♯3, si3, do♯4, mi4, fa♯4, la♯4, si4,
+do♯5 (MIDI 52 à 73), soit les cinq classes du § 1 sur deux octaves, aucune autre.
+
+**Les candidates** : **198** (58 machines mélodiques, dont le multi-échantillons
+une fois par profil : 141 profils). 190 au classement `D`, 8 hors classement par le
+garde-fou de niveau (dont un profil muet), aucune non mesurée. 164 sur 190 tiennent
+la note à −6 dB.
+
+| | `D` | log-mel (cases qui portent) | bandes (écart médian, dB) |
+|---|---|---|---|
+| l'extrait contre lui-même | 0,000 | 0,00 | toutes à 0,00 |
+| `B_égal` | 0,471 | 13,14 | sub −0,60 · basse +5,70 · bas-médium +0,84 · médium −3,43 |
+| `B_mesuré` | 0,429 | 11,32 | sub −3,96 · basse +0,84 · bas-médium +0,55 · médium −1,81 |
+| 1ʳᵉ à `D` : multi-échantillons « GU-Harp » | 0,353 | 9,37 | sub −14,89 · médium −7,54 · haut-médium +9,38 |
+| la même, réglée (38 évaluations) | 0,295 | 9,18 | sub −14,93 |
+| 5ᵉ à `D`, réglée : « FR3-Fretless-Bass » | 0,380 → 0,282 | 7,20 | haut-médium +25,75 |
+| 1ʳᵉ au log-mel : « GU-Acoustic-Bass » (19ᵉ à `D`) | 0,468 | 6,18 | basse +9,27 · haut-médium +16,26 |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | les cinq classes, aucune autre | **tenu** |
+| 2 | l'instrument : l'extrait contre lui-même = 0, `B_mesuré` ≤ `B_égal` | **tenu** (0,000 ; 11,32 ≤ 13,14) |
+| 3 | le meilleur patch d'usine : chaque bande à ≤ 1 dB, log-mel ≤ `B_égal` + 1 dB | **échec** (« GU-Harp » : sub −14,89 dB ; log-mel 3,78 dB SOUS `B_égal`) |
+| 4 | le meilleur après réglage | **échec** (« FR3-Fretless-Bass » 0,282 : haut-médium +25,75 dB) |
+| 5 | Spearman entre `D` et le log-mel ≥ 0,7 | **échec** : **−0,018** sur 190 (167 `D` distinctes, 160 log-mel distincts) ; −0,057 sur les 198 |
+| 6 | trois des cinq premières tiennent la note | **tenu** (5 sur 5 : −0,75 · −1,23 · −1,23 · 0,00 · −5,41 dB) |
+
+**CE QUE CES ÉCHECS NE DISENT PAS — le § 9.1 l'avait écrit, et c'est le cas.**
+`B_mesuré`, des sinus aux fréquences et amplitudes mesurées sur l'extrait, **rate
+elle-même l'attendu 3** (sub −3,96 dB, médium −1,81 dB) ; `B_égal` aussi (basse
++5,70). « Chaque bande à ≤ 1 dB » n'était tenable par aucune machine : les échecs
+3 et 4 ne disent donc RIEN du parc, et **aucune machine n'est décrite sur leur
+foi**. Le seuil n'est pas retouché ; l'attendu est déclaré mal posé.
+
+**ET LES BORNES NE BORNENT PAS.** Le § 9 tenait `B_égal` pour « ce que peut au mieux
+une machine parfaitement sinusoïdale ». Mesuré : **154 candidates sur 190 font mieux
+que `B_égal` au log-mel, 141 mieux que `B_mesuré`** ; à `D`, 19 et 11. Une harpe,
+un piano électrique et une basse échantillonnés passent devant les sinus de
+l'oracle, aux deux métriques. Cinq des « cinq premières » sont des profils du
+multi-échantillons, dont un doublon (« FR3- » et « MS-E-Piano-Tine » sont la même
+banque sous deux noms : mêmes chiffres au millième).
+
+**Relevé APRÈS la mesure, pour comprendre — il ne change aucun verdict.** De quoi
+l'extrait est fait (la règle du dépôt : décomposer avant d'expliquer) :
+- **99,9 %** de sa puissance est entre 100 et 2 000 Hz ; le sub est à **−39,8 dB**
+  du total et la basse à −41,1 : la « pire bande sub » de l'attendu 3 juge **0,01 %**
+  de la puissance, une bande entrée au ras du seuil « porte » de −40 dB ;
+- **les dix pics de l'oracle (± 2,7 Hz) portent 68,3 % de la puissance** ; le tiers
+  restant est dans les mêmes bandes (bas-médium : 58,7 sur 74,4 % ; médium : 9,6 sur
+  25,5 %), et ce n'est pas de la batterie qui fuit : la séparation
+  harmonique/percussive rend **94,8 % d'harmonique, 0,3 % de percussif** ;
+- aucun pic hors de l'oracle n'approche : le suivant est à −34 dB (150,1 Hz).
+
+**Un tiers du pad n'est donc PAS dans ses dix raies étroites**, et il est tonal : des
+raies plus larges que ± 2,7 Hz — une modulation (battement de plusieurs oscillateurs,
+chorus, vibrato), ou une trace de la séparation, et rien ici ne dit lequel. C'est ce
+tiers que des sinus fixes ne jouent pas, et que des timbres échantillonnés, riches et
+mouvants, remplissent par accident : les deux métriques récompensent le remplissage.
+Le § 1 disait « presque sinusoïdal » sur la foi d'un spectre MOYEN ; la moyenne
+cachait le mouvement.
+
+**CE QUE LE VERDICT DÉCIDE.**
+- **Rien sur les machines neuves.** Ni « le parc a le pad », ni « il manque une
+  machine » : l'instrument ne voyait pas ce qu'il devait juger. H47 est close comme
+  **non concluante sur sa question**, ses deux attendus d'instrument tenus, deux mal
+  posés, et son attendu 5 en échec franc.
+- **L'attendu 5 tient ce qui était écrit avant** (« le défaut est dans la MÉTRIQUE »),
+  avec une précision que la mesure impose : ce n'est pas `D` contre un log-mel qui
+  aurait raison — AUCUNE des deux ne met `B_mesuré` en tête. Une métrique ne se juge
+  que contre une description du pad qui ne dépende d'aucune des deux.
+- **La suite est donc de DÉCRIRE le pad** — ses raies une à une, leur niveau, leur
+  largeur, leur mouvement — **sur l'ORIGINAL et non sur le stem**, pour séparer ce
+  qui est au morceau de ce qui est à la séparation : c'est H49 (§ 11). La machine, ou
+  le patch, se décidera sur cette description, comme le § 3 le demandait (« ce
+  qu'elle doit savoir faire, mesuré sur l'original »).
+
+---
+
+## 10. H48 — une course morte reprend ce qu'elle avait payé : les mesures de PROJET rangées sur disque (écrite AVANT la mesure, 30/09/2026, 20 h 05)
+
+**Pourquoi maintenant, et pourquoi ici.** Le § 2.2 nommait le défaut et le remettait
+« à quand aucune course ne tournera ». C'était mal lu : la règle interdit de toucher
+l'arbre QUE LA COURSE IMPORTE, pas d'écrire dans un autre. Le code est donc écrit
+dans un arbre à part (branche `reload-h48`, tirée de `reload-chaine`), pendant que
+la référence tourne — elle ne tient que si personne n'éteint le poste d'ici cinq
+heures, et la course 2 qui la suit sera aussi longue.
+
+**Le constat, lu dans le code.** Le verdict du mélange (`keep_what_helps_the_mix`),
+le réglage au mélange (`refine_against_mix`) et le second verdict
+(`project_mix_distance`) font tous la même chose : écrire le projet, le rendre par
+`vsm-render`, mesurer sa distance au morceau. Aucune de ces mesures n'est rangée —
+le cache de mesures (H2, `ROADMAP-fusion.md` § 5 duodecies) ne connaît que les
+candidates de PISTE. Sur « Reload » : 6 142 s de verdict et 6 772 s de réglage pour
+trois voix, perdues deux fois.
+
+**L'hypothèse.** Le moteur est déterministe et la suite des états d'une course aussi :
+ranger chaque mesure de projet sous une clé qui dit TOUT ce que le moteur lit suffit
+à ce qu'une course relancée rejoue la morte sans la repayer, et arrive au même
+projet, au bit près.
+
+**La clé** hache le DOSSIER écrit par `write_project_bundle` — chaque fichier, par
+chemin relatif et contenu, hors `rendu.wav` qui est une sortie —, la fréquence,
+l'empreinte du moteur, puis la métrique et l'empreinte de la cible. Le dossier plutôt
+qu'une liste de champs : la clé d'un rendu de piste énumère les siens et en avait
+oublié un, le diapason (§ 4.2) ; un projet en porte bien plus (volumes, effets,
+automation, routage des groupes, échantillons), et hacher ce que le moteur lit ne
+peut rien oublier de ce qui s'y trouve. Ce qu'elle ne voit pas, comme la clé d'une
+piste : le CONTENU d'un profil installé, désigné par son nom.
+
+**Ce qui n'est PAS rangé, dit avant** : les rendus solo du calage de niveau
+(`recaler_avec_son_groupe`), rejoués à chaque évaluation. Déterministes, ils
+redonnent les mêmes volumes, donc les mêmes clés ; leur coût reste dû à la reprise,
+et l'attendu 2 le chiffre.
+
+**L'option** est celle du cache existant (`--sans-cache-rendus` coupe les deux), déjà
+dans la provenance ; le rapport gagne `options.mesuresDeProjet` (payées, relues) et
+le journal une ligne — une mesure relue n'est pas une mesure payée, et cela se dit.
+
+**LA MESURE.** `s1-sec/morceau-0001-g1` (30 s), ses stems déjà séparés
+(`s1-sec-banc/…/stems-separes/stems`), la chaîne de `reload-h48`, le `vsm-render` de
+`build-h42`, 2 rendus parallèles, un cache VIDE au départ (celui de l'arbre à part),
+quatre courses l'une après l'autre, à côté de la course de référence :
+- **T**, le témoin : `--sans-cache-rendus` ;
+- **A** : avec le cache, qu'elle remplit ;
+- **B** : la même, rejouée sur le cache de A ;
+- **C** : cache vidé ; la course est TUÉE (`SIGKILL` sur tout son groupe, ce que fait
+  une extinction) à la première ligne « réglage au MÉLANGE » de son journal, puis
+  relancée telle quelle jusqu'au bout.
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'identité** : `project.json` de A, B et C contre celui de T (`cmp`) ; dans `rapport.json`, la distance globale, le verdict du mélange et les distances par stem | identiques, à l'octet et au dernier chiffre | une seule différence : le cache n'entre pas dans la chaîne |
+| 2 | **le rejeu** : durée des étapes au mélange de B (verdict + réglages + seconds verdicts, lues au journal) rapportée à A | ≤ 25 %, et 0 mesure payée dans B | > 60 % |
+| 3 | **la mort** : dans C relancée, le verdict du mélange et le premier réglage rapportés aux mêmes étapes de C tuée | ≤ 25 % ; et C finit identique à T (attendu 1) | > 60 %, ou un projet différent |
+| 4 | **le témoin n'écrit rien** : fichiers dans le cache après T, et ligne « mesures de projet » à son journal | 0 et aucune | sinon l'option ne coupe pas ce qu'elle dit couper |
+| 5 | **ce que coûte la première passe** : étapes au mélange de A rapportées à T | ≤ 110 % | > 125 % |
+
+Si T et A diffèrent, un second témoin T′ (même commande que T) dira si la chaîne
+diffère d'elle-même d'une course à l'autre : l'attendu 1 ne se lit qu'avec lui.
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- 1, 2 et 3 tenus : le code entre dans `reload-chaine` AVANT le départ de la course 2
+  — une première course ne relit rien, elle fait exactement les calculs d'avant et
+  les range ; le cache ne sert que si elle meurt. Et dans l'arbre principal dès
+  qu'aucune course n'y tourne.
+- 1 en échec : rien n'entre nulle part, et la différence est cherchée avant tout.
+- 2 ou 3 entre les deux : le cache entre (il ne peut pas nuire si 1 tient), et le
+  calage de niveau devient la suite.
+
+**Ce que cette mesure ne prouve pas** : un morceau de 30 s n'a ni report vocal de
+55 Mo à hacher à chaque évaluation, ni onze pistes ; le coût de la clé sur « Reload »
+se lira sur la course 2 (ligne « mesures de projet » de son journal).
