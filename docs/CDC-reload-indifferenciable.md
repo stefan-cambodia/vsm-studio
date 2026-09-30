@@ -815,7 +815,7 @@ premières au classement `D`.
 - 5 en échec, quel que soit le reste : le défaut est dans la MÉTRIQUE de l'arbitrage,
   et c'est elle que l'hypothèse suivante vise.
 
-### 9.1 Ce que le § 9 laissait à l'instrument — écrit avec le code, AVANT la mesure (30/09/2026, 19 h 50)
+### 9.1 Ce que le § 9 laissait à l'instrument — écrit avec le code, AVANT la mesure (30/09/2026, 19 h 40)
 
 L'instrument est `analyse/mesure_h47.py` (branche `reload-h47`, tirée de
 `reload-chaine` : il lui faut le diapason de H42, et `analyse/analyzer/` de l'arbre
@@ -862,7 +862,7 @@ publiés à côté de ceux des machines. Si `B_mesuré` elle-même rate « chaqu
 ≤ 1 dB », l'attendu 3 est intenable tel qu'écrit par quelque machine que ce soit, et
 ce sera dit tel quel — sans retoucher le seuil.
 
-### 9.2 Verdict de H47 (30/09/2026, 19 h 55) : l'instrument ne voit pas le pad — deux attendus en échec qu'AUCUNE machine ne pouvait tenir, et une métrique qui range des harpes devant les sinus de l'oracle
+### 9.2 Verdict de H47 (30/09/2026, mesuré de 19 h 41 à 19 h 50) : l'instrument ne voit pas le pad — deux attendus en échec qu'AUCUNE machine ne pouvait tenir, et une métrique qui range des harpes devant les sinus de l'oracle
 
 `analyse/mesure_h47.py mesurer` (branche `reload-h47`, `652ce7d`, arbre propre), le
 stem « other » de 16 à 40 s, `vsm-render` de `build-h42` (md5 `52532381…`), diapason
@@ -947,7 +947,7 @@ cachait le mouvement.
 
 ---
 
-## 10. H48 — une course morte reprend ce qu'elle avait payé : les mesures de PROJET rangées sur disque (écrite AVANT la mesure, 30/09/2026, 20 h 05)
+## 10. H48 — une course morte reprend ce qu'elle avait payé : les mesures de PROJET rangées sur disque (écrite AVANT la mesure, 30/09/2026, 19 h 56)
 
 **Pourquoi maintenant, et pourquoi ici.** Le § 2.2 nommait le défaut et le remettait
 « à quand aucune course ne tournera ». C'était mal lu : la règle interdit de toucher
@@ -1023,3 +1023,80 @@ diffère d'elle-même d'une course à l'autre : l'attendu 1 ne se lit qu'avec lu
 **Ce que cette mesure ne prouve pas** : un morceau de 30 s n'a ni report vocal de
 55 Mo à hacher à chaque évaluation, ni onze pistes ; le coût de la clé sur « Reload »
 se lira sur la course 2 (ligne « mesures de projet » de son journal).
+
+---
+
+## 11. H49 — décrire le pad sur l'ORIGINAL : ses raies une à une, et la forme de leur mouvement (écrite AVANT la mesure, 30/09/2026, 20 h 00)
+
+**Pourquoi.** H47 a montré qu'on ne peut pas demander « quelle machine sonne comme
+le pad » sans savoir ce qu'est le pad : un tiers de sa puissance est hors de ses dix
+raies étroites, et les deux métriques en main récompensent ce qui le remplit par
+accident (§ 9.2). Le § 3 demandait la description « mesurée sur l'original » ; elle
+n'a jamais été faite — le § 1 s'est arrêté à un spectre moyen.
+
+**Ce qui est connu avant de mesurer, et d'où.** Sur le STEM : dix raies (§ 9.2),
+68,3 % de la puissance à ± 2,7 Hz d'elles, le reste tonal ; la plus forte (fa♯4,
+372,66 Hz) fait 2 Hz de large à −6 dB (§ 1). Sur l'ORIGINAL, rien n'a été regardé à
+cette résolution.
+
+**L'hypothèse.** Le mouvement est AU MORCEAU, pas à la séparation, et il a la forme
+d'un **désaccord entre oscillateurs** : chaque note est jouée par plusieurs
+oscillateurs presque sinusoïdaux, écartés de quelques cents, qui battent. Si c'est
+vrai, chaque raie se résout en composantes DISCRÈTES, et leurs écarts sont les mêmes
+EN CENTS d'une raie à l'autre (un désaccord est proportionnel à la fréquence) ; une
+modulation à cadence fixe (trémolo, chorus à LFO, pompage sur le kick) donnerait les
+mêmes écarts EN HERTZ ; une modulation irrégulière, une bosse continue.
+
+**L'extrait** : 16 à 40 s, le pad seul avec la batterie (§ 1) — de l'ORIGINAL
+(`reconstruction/sources/reload-peschi.wav`, en mono) et du stem « other ».
+
+**L'INSTRUMENT** (`analyse/mesure_h49.py`, branche `reload-h47`), par raie `k` de
+l'oracle de H47, à la fréquence `f_k` :
+- **la forme** : dans le spectre de l'extrait entier (fenêtre de Hann, 0,042 Hz par
+  case), la puissance du **cœur** (à ± 2,7 Hz de `f_k`), de la **jupe** (de 2,7 à
+  6 Hz) et la densité du **fond** (médiane entre 6 et 6,9 Hz, des deux côtés : à
+  mi-chemin des deux raies les plus proches, 13,8 Hz) ; la **part de jupe** est la
+  jupe rapportée au cœur plus la jupe, le fond retiré ; le **rapport au fond** de la
+  raie (cœur + jupe sur le fond ramené à 12 Hz) dit si elle se mesure ;
+- **les composantes** : dans un Welch à segments de 8 s (0,125 Hz par case, cinq
+  segments), les pics à ± 6 Hz de `f_k`, de proéminence ≥ 8 dB et à moins de 15 dB du
+  plus fort ; leur écart au plus fort, en hertz et en cents ;
+- **le mouvement** : le signal analytique de la bande `f_k` ± 6 Hz — profondeur de
+  modulation d'amplitude (écart-type du niveau en dB, et l'étendue du 5ᵉ au
+  95ᵉ centile), cadence dominante de cette modulation, modulation de fréquence
+  (écart-type en cents, pondéré par l'amplitude) ;
+- **les partiels** : tout pic de l'original entre 600 et 6 000 Hz à moins de 40 dB
+  de la raie la plus forte, hors batterie (il doit tenir sa fréquence sur les trois
+  tiers de l'extrait).
+
+**Une raie ne se juge que si elle se VOIT** : rapport au fond ≥ 10 dB dans
+l'original. Celles qui ne passent pas sont nommées, jamais comptées.
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'instrument**, sur des signaux fabriqués (tests écrits avant) : un sinus seul ; trois sinus à −7, 0, +7 cents, à deux hauteurs ; un sinus à trémolo de 5 Hz, à deux hauteurs ; le tout sous un bruit à −30 dB | 1 composante ; 3 composantes, mêmes écarts en cents (± 1) aux deux hauteurs ; bandes latérales à ± 5 Hz (± 0,2) aux deux hauteurs ; le classement « cents / hertz » de l'attendu 4 rend la bonne forme | une seule de ces lectures fausse : rien ne se lit |
+| 2 | **au morceau ou à la séparation ?** écart de la part de jupe entre le stem et l'original, raie par raie (raies vues) | médiane des \|écarts\| ≤ 5 points : la séparation garde la forme, le mouvement est au morceau | médiane > 15 points : le stem ne décrit pas le pad, tout ce qui a été mesuré sur lui (H43 à H47) est à relire |
+| 3 | **discret ou continu ?** raies vues qui se résolvent en ≥ 2 composantes dans l'original | ≥ 7 sur 10 (ou ≥ 70 % des raies vues) | ≤ 3 : une bosse continue, l'hypothèse des oscillateurs tombe |
+| 4 | **cents ou hertz ?** dispersion (écart-type rapporté à la moyenne) de l'écart de la composante secondaire la plus forte, d'une raie à l'autre, exprimé en cents et en hertz | dispersion en cents ≤ 20 % ET en hertz ≥ 2 fois celle en cents : un désaccord | l'inverse : une modulation à cadence fixe ; ni l'un ni l'autre : non conclu, et c'est dit |
+| 5 | **sinusoïdal ?** le plus fort partiel de l'original entre 600 et 6 000 Hz qui tienne sa fréquence | ≤ −30 dB sous la raie la plus forte | > −20 dB : le pad n'est pas « presque sinusoïdal », le § 1 est à corriger |
+| 6 | **le kick pompe-t-il le pad ?** cadence dominante de la modulation d'amplitude, raies vues de l'original | sur moins de 3 raies, elle tombe à ± 0,1 Hz de 2,30 Hz (le temps) ou 4,60 Hz | sur 7 et plus : un pompage, qui se reconstruit par un effet et non par un timbre |
+
+Moins de trois composantes secondaires mesurables sur l'ensemble des raies :
+l'attendu 4 est « non mesurable », pas un échec (un coefficient sur deux points ne
+se lit pas).
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- 3 et 4 tenus (désaccord) : le pad est N oscillateurs sinus désaccordés de `c`
+  cents, et `N` et `c` sont MESURÉS. La question de H47 se repose alors juste : le
+  parc a-t-il une machine qui joue cela ? — cherchée par sa déclaration de
+  paramètres (unisson, désaccord, forme d'onde), puis jugée sur CES descripteurs.
+  Sinon la machine est décrite et construite (`CDC-nouvelle-machine.md`).
+- 4 en « cadence fixe » ou 6 en échec : le mouvement est un EFFET (trémolo, chorus,
+  pompage) posé sur un timbre simple ; c'est la chaîne d'effets du projet qui est
+  visée, pas le parc.
+- 3 en échec (continu) : une modulation irrégulière ; sa largeur et sa cadence sont
+  publiées, et l'hypothèse suivante cherche lequel des seize effets la produit.
+- 2 en échec : avant tout le reste, les mesures prises sur le stem sont relues.
+- 5 en échec : le § 1 est corrigé et la liste des partiels devient la description.
