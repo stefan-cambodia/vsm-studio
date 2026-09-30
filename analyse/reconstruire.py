@@ -520,6 +520,9 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # H45 : le seuil d'attaque choisi par stem ; les indices et seuils retenus
             # sont sous « seuilAttaque ».
             "seuilAttaqueParStem": bool(getattr(args, "seuil_attaque_par_stem", False)),
+            # H46 : le tempo affiné change le tempo écrit au projet (donc les ticks de
+            # chaque note) ; ce qu'il a vu est sous « tempo.affinage ».
+            "tempoAffine": bool(getattr(args, "tempo_affine", False)),
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
@@ -847,6 +850,12 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--tempo", type=float, default=None,
                          help="tempo du projet écrit, en BPM ; sans lui, estimé sur le mélange "
                               "(mesuré : 10/10 morceaux du banc à ±2 BPM, tools/tempo-estime.py)")
+    parseur.add_argument("--tempo-affine", action="store_true",
+                         help="H46 : affiner le tempo estimé par la cohérence de phase des attaques "
+                              "(± 4 %% autour du tempo suivi, grille de doubles croches ou de sextolets), "
+                              "au millième de BPM — « Reload » : 138,00 pour 139,7 suivi. Un affinage non "
+                              "concluant garde le tempo suivi et le dit. Éteint par défaut ; "
+                              "« provenance.tempo.affinage » au rapport. Sans effet avec --tempo")
     parseur.add_argument("--metrique", default="v2", choices=("v1", "v2", "v3", "v4"),
                          help="métrique de comparaison (défaut v2 ; v1 pour rejouer "
                               "d'anciennes mesures, v3 ajoute la hauteur des graves, "
@@ -3084,11 +3093,24 @@ def chaine(args: argparse.Namespace) -> None:
     # appelants (rendus, cache, projet écrit) ; `--tempo` le force, et la
     # provenance dit lequel des deux a servi.
     if args.tempo is None:
-        estimation = estimer_tempo(melange, SAMPLE_RATE)
+        estimation = estimer_tempo(melange, SAMPLE_RATE, affiner=bool(getattr(args, "tempo_affine", False)))
         args.tempo = estimation.bpm
         args.tempo_provenance = estimation.json()
-        print(f"      tempo estimé : {estimation.bpm:.1f} BPM "
-              f"(premier temps à {estimation.premier_temps_secondes:.2f} s, {estimation.temps} temps suivis)")
+        if estimation.affinage is None:
+            print(f"      tempo estimé : {estimation.bpm:.1f} BPM "
+                  f"(premier temps à {estimation.premier_temps_secondes:.2f} s, {estimation.temps} temps suivis)")
+        else:
+            # H46 : ce que l'affinage a vu, et ce qu'il a GARDÉ quand il n'a pas conclu.
+            af = estimation.affinage
+            grille = {4: "doubles croches", 6: "sextolets"}.get(af.subdivision, f"{af.subdivision} par temps")
+            if af.concluant:
+                print(f"      tempo AFFINÉ : {estimation.bpm:.3f} BPM (suivi : {af.depart:.1f} ; cohérence "
+                      f"{af.coherence:.2f} sur une grille de {grille}, {af.attaques} attaques"
+                      f"{' ; entier retenu, maximum à ' + format(af.maximum, '.3f') if af.entier else ''}) — "
+                      f"premier temps à {estimation.premier_temps_secondes:.2f} s")
+            else:
+                print(f"      tempo estimé : {estimation.bpm:.1f} BPM — affinage NON CONCLUANT ({af.raison} : "
+                      f"cohérence {af.coherence:.2f}, seuil {af.seuil:.2f}, {af.attaques} attaques), tempo suivi GARDÉ")
     else:
         args.tempo_provenance = {"bpm": float(args.tempo), "source": "force"}
         print(f"      tempo forcé : {args.tempo:.1f} BPM (--tempo)")
