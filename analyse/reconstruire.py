@@ -1441,6 +1441,9 @@ def arbitrer_batterie(ctx: Contexte, nom: str, kit, piste: ExportTrack, audio: n
             notes=list(candidate.notes), stem_audio=audio,
             candidates=[TrackCandidate(m, dict(candidate.parameters), ORIGINE_USINE)],
             workdir=ctx.travail / "arbitrage" / "batterie" / m,
+            # `--sans-cache-rendus` coupe AUSSI l'arbitrage de batterie : il gardait le
+            # défaut de la fonction et rangeait ses trois mesures sous le témoin même.
+            render_cache=not ctx.args.sans_cache_rendus,
             **ctx.options_de_rendu(PISTE_BATTERIE, audio)))
     verdicts.sort(key=lambda v: v.distance)
     rapport["trackArbitration"] = [
@@ -3139,6 +3142,11 @@ def chaine(args: argparse.Namespace) -> None:
         partage = partage_du_morceau(pistes)
 
         try:
+            # LE MOTEUR DE LA COURSE, posé une fois : le calage de niveau et l'épreuve
+            # d'automation ne recevaient pas `--moteur` et rendaient par le binaire
+            # par défaut (voir `poser_moteur_de_course`).
+            from analyzer.vsm_engine import poser_moteur_de_course
+            poser_moteur_de_course(args.moteur)
             moteur = VsmEngine(binary=args.moteur, sample_rate=SAMPLE_RATE)
         except Exception as erreur:
             raise Abandon(2, f"moteur de rendu introuvable : {erreur}") from erreur

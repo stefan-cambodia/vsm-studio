@@ -297,3 +297,41 @@ def cache_projet_le_reglage_au_melange_rejoue_ne_rend_rien_et_arrive_au_meme_pat
         assert_equal(premiere, temoin, "avec le cache, la même issue que sans")
         assert_equal(seconde, temoin, "rejoué, la même issue encore — évaluations comptées pareil")
         assert_equal((patch_premiere, patch_seconde), (patch_temoin, patch_temoin), "et le même patch sur la piste")
+
+
+def _faux_binaire(chemin: Path, temoin: Path) -> Path:
+    """Un « moteur » qui note qu'on l'a appelé et ne rend rien."""
+    chemin.write_text(f"#!/bin/sh\necho \"$0\" >> '{temoin}'\nexit 0\n", encoding="utf-8")
+    chemin.chmod(0o755)
+    return chemin
+
+
+@test
+def moteur_de_course_le_calage_de_niveau_rend_par_le_moteur_pose():
+    """LE DÉFAUT TROUVÉ EN MESURANT H48 : `match_track_levels` ne recevait pas
+    `--moteur` et rendait par le binaire par défaut — ou mourait faute d'en trouver."""
+    from analyzer import vsm_engine as ve
+    from analyzer.vsm_levels import match_track_levels
+
+    with _Brouillon() as b:
+        appels = b.racine / "appels.txt"
+        pose = _faux_binaire(b.racine / "moteur-de-la-course", appels)
+        autre = _faux_binaire(b.racine / "moteur-nomme", appels)
+        stem = np.sin(np.arange(DUREE) * 0.05).astype(np.float32)
+        avant = ve._MOTEUR_DE_COURSE["chemin"]
+        try:
+            ve.poser_moteur_de_course(str(pose))
+            assert_equal(str(ve.find_vsm_render()), str(pose), "sans argument : le moteur de la course")
+            assert_equal(str(ve.find_vsm_render(str(autre))), str(autre), "un moteur nommé prime")
+            lignes = match_track_levels(_pistes()[:1], {"bass": stem}, b.racine, TAUX)
+            assert_true(appels.is_file(), f"le calage de niveau n'a appelé aucun moteur : {lignes}")
+            assert_equal(set(appels.read_text().split()), {str(pose)}, "et c'est celui de la course")
+            try:
+                ve.poser_moteur_de_course(str(b.racine / "absent"))
+            except ve.VsmEngineError:
+                pass
+            else:
+                assert_true(False, "un moteur absent doit être refusé quand on le pose")
+        finally:
+            ve.poser_moteur_de_course(avant)
+

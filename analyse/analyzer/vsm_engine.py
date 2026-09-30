@@ -160,12 +160,34 @@ class SearchDimension:
     unit: str = ""
 
 
+# LE MOTEUR DE LA COURSE (H48, trouvé en mesurant). `--moteur` désigne le binaire
+# d'une course, et chaque rendu devait le recevoir de main en main par un argument
+# `binary`. Deux étapes l'avaient oublié — le calage de niveau et l'épreuve de
+# l'automation de coupure (`_render_track`) — et retombaient sur la recherche par
+# défaut : dans l'arbre principal, elles rendaient donc par `build/tools/vsm-render`
+# pendant que tout le reste rendait par le moteur demandé, sans un mot ; dans un arbre
+# sans `build/`, la course mourait à l'étape 4/5 (« vsm-render introuvable »). Une
+# liste d'arguments à tenir à la main oublie toujours quelqu'un : la course pose son
+# moteur UNE fois, et tout rendu qui n'en nomme pas un autre prend celui-là.
+_MOTEUR_DE_COURSE: Dict[str, Optional[str]] = {"chemin": None}
+
+
+def poser_moteur_de_course(binary: Optional[str]) -> None:
+    """Pose (ou retire, avec None) le moteur que prend tout rendu sans `binary`.
+    Un chemin qui n'existe pas est refusé ici, bruyamment, pas au premier rendu."""
+    if binary and not Path(binary).is_file():
+        raise VsmEngineError(f"binaire introuvable : {binary}")
+    _MOTEUR_DE_COURSE["chemin"] = str(binary) if binary else None
+
+
 def find_vsm_render(explicit: Optional[str] = None) -> Path:
     """
-    Localise le binaire de rendu. Cherché dans le dépôt puis dans le PATH ;
+    Localise le binaire de rendu : celui qu'on nomme, sinon celui de la course
+    (`poser_moteur_de_course`), sinon cherché dans le dépôt puis dans le PATH ;
     une erreur explicite vaut mieux qu'un pont qui échoue silencieusement à la
     première requête.
     """
+    explicit = explicit or _MOTEUR_DE_COURSE["chemin"]
     if explicit:
         path = Path(explicit)
         if path.is_file():
