@@ -299,3 +299,36 @@ voit pas. Et les battements lents du pad (§ 1) font monter l'énergie de plus d
 3 dB à 451 jonctions sans qu'aucune note ne soit rejouée. Réunir après coup ne rend
 donc au pad qu'une partie de sa tenue ; ce qui manque est en amont (la transcription
 elle-même). Les attendus 2 à 4 restent à mesurer.
+
+### 5.2 Verdict de H43 (30/09/2026, 12 h) : RÉFUTÉE par son contrôle — elle casse une note rejouée sur six
+
+`analyse/verdict_h43.py` (branche `reload-chaine`) : les stems VRAIS des parties
+mélodiques de `g1` et `g2`, transcrits par la fonction de la chaîne, réunis au seuil
+écrit (3 dB), chaque jonction confrontée à la vérité.
+
+| partie | paires vraies contiguës | réunies à tort | jonctions réunies | dont réparations |
+|---|---|---|---|---|
+| g2 accompagnement | 1 500 | **250** | 250 | 0 |
+| g2 nappe | 0 | 0 | 697 | **292** |
+| g2 nappe (2) | 0 | 0 | 58 | 52 |
+| g2 voix | 0 | 0 | 45 | 22 |
+| g2 nappe (3) | 57 | 0 | 0 | 0 |
+| g1 accompagnement | 0 | 0 | **1 233** | 0 |
+| les cinq autres parties | 0 | 0 | 3 | 0 |
+| **total** | **1 557** | **250 (16,06 %)** | 2 286 | 366 |
+
+**Attendu 2 : ÉCHEC** (16,06 % contre un seuil d'échec de 10 %). Et le chiffre écrit
+SOUS-ESTIME le dommage, ce qu'il faut dire : l'attendu ne comptait que les paires
+vraies contiguës à moins de 30 ms, or l'accompagnement de `g1` — des notes vraies de
+66 ms, séparées — a subi **1 233 réunions** dont aucune n'est une réparation : la
+transcription y rend contiguës des notes qui ne le sont pas, et l'énergie d'une
+note qui résonne encore masque l'attaque de la suivante à la même hauteur. Seules
+les nappes montrent le bénéfice attendu (344 réparations sur 755 jonctions).
+
+**CE QUE LE VERDICT DÉCIDE.** H43 n'est pas adoptée : `--reunir-tenues` reste éteinte
+(elle demeure, publiée et comptée, pour mesurer une règle meilleure). Les attendus
+3 et 4 ne sont PAS courus : un correcteur se juge sur ce qu'il casse autant que sur
+ce qu'il répare (la leçon de D270), et courir une reconstruction pour chiffrer son
+gain sur « Reload » reviendrait à chercher la mesure qui le sauverait. Le constat de
+§ 5.1 tient : la tenue du pad se perd EN AMONT, dans la transcription, et c'est là
+que l'hypothèse suivante devra agir — avec ce même contrôle sur S2.
