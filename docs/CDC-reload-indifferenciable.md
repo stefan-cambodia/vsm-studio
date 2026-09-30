@@ -420,7 +420,7 @@ validation se fait sur des morceaux que rien n'a encore regardés : **`g3`, `g4`
 | 3 | le pad de « Reload » (stem « other ») est classé tenu | oui | non |
 | 4 | les stems de basse de `g3`-`g5` sont classés non tenus | tous | un seul classé tenu |
 
-### 7.1 Calibration sur `g1`-`g2` (30/09/2026, 12 h 35) — `X` = 0,4, posé AVANT la validation
+### 7.1 Calibration sur `g1`-`g2` (30/09/2026, 12 h 25) — `X` = 0,4, posé AVANT la validation
 
 Indice de hachure (seuil d'usine 0,5), par stem :
 
@@ -443,7 +443,7 @@ nappe la plus hachée (0,464) et le pad de « Reload » (0,576), et jamais la ba
 elle classe aussi, à tort, l'accompagnement de `g1` — un coût connu d'avance, que la
 validation chiffrera sur des morceaux jamais regardés. `X` ne bougera plus.
 
-### 7.2 Verdict de H45 (30/09/2026, 13 h) : PARTIELLE au sens écrit — et aucun rôle n'y perd
+### 7.2 Verdict de H45 (30/09/2026, 12 h 35) : PARTIELLE au sens écrit — et aucun rôle n'y perd
 
 Validation sur `g3`, `g4`, `g5` (jamais regardés), `X` = 0,4 :
 
