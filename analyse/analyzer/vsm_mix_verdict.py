@@ -366,7 +366,15 @@ def _copy_samples(tracks: Sequence[ExportTrack], samples_root: Path, folder: Pat
     que le rendu qu'elle sert.
     """
     for track in tracks:
-        for chemin_relatif in track.samples.values():
+        # H52 — ET LE FICHIER D'UNE PISTE AUDIO. Depuis que la voix est une piste
+        # audio et non plus un sampler (D2), elle désigne son fichier par
+        # `audio_path` et `samples` est vide : rien n'était recopié, et le défaut
+        # décrit ci-dessus est revenu par cette porte, à l'identique. Lu dans
+        # douze rapports sur douze : la distance du morceau « sans la piste » de
+        # voix égalait celle « avec », au seizième chiffre — le verdict jugeait un
+        # mélange sans la voix, et son témoin de coupure le disait sans être lu.
+        relatifs = list(track.samples.values()) + ([track.audio_path] if track.audio_path else [])
+        for chemin_relatif in relatifs:
             source = Path(samples_root) / chemin_relatif
             if not source.is_file():
                 continue
