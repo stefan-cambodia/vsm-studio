@@ -276,3 +276,26 @@ même budget, même métrique :
 | 4 | log-mel moyen (outil du § 0), mélange entier | ≤ témoin − 0,3 dB | > témoin |
 
 Un balayage de seuil (3 dB), s'il est fait, se publie ENTIER.
+
+### 5.1 Mesuré — attendu 1 (30/09/2026, 12 h) : PARTIEL au seuil écrit, et le balayage entier
+
+La règle (`analyse/analyzer/tenues.py`, branche `reload-chaine` — la campagne S2
+interdit de toucher `analyse/analyzer/` de l'arbre principal pendant qu'elle court)
+appliquée aux 2 740 notes de Basic Pitch sur le stem « other » de la course de
+référence ; le pad = MIDI 58-73 :
+
+| seuil d'attaque | notes du pad | durée médiane | réunions | refusées (attaque) |
+|---|---|---|---|---|
+| 1,5 dB | 2 238 → 1 662 (**−26 %**) | 0,279 → 0,337 s | 680 | 898 |
+| **3 dB (le seuil écrit)** | 2 238 → 1 261 (**−44 %**) | 0,279 → 0,360 s (×1,29) | 1 127 | 451 |
+| 6 dB | 2 238 → 941 (**−58 %**) | 0,279 → 0,372 s (×1,33) | 1 466 | 112 |
+
+**Au seuil écrit, l'attendu 1 est PARTIEL** : −44 % (réussite à −50 %, échec au-delà
+de −25 %) et une durée ×1,29 (réussite à ×2). Le seuil ne bouge pas après coup. Ce
+que le balayage dit : même à 6 dB, où presque plus rien n'est refusé, la durée
+médiane ne passe pas ×1,33 — **la plupart des fragments ne se touchent pas à 30 ms
+près** : Basic Pitch laisse entre eux des intervalles plus longs, et la règle ne les
+voit pas. Et les battements lents du pad (§ 1) font monter l'énergie de plus de
+3 dB à 451 jonctions sans qu'aucune note ne soit rejouée. Réunir après coup ne rend
+donc au pad qu'une partie de sa tenue ; ce qui manque est en amont (la transcription
+elle-même). Les attendus 2 à 4 restent à mesurer.
