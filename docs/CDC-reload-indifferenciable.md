@@ -152,6 +152,35 @@ en 17 s au lieu de 46.
 disant à son journal (`reload-suite.journal`). Après une extinction, on la relance
 telle quelle : elle reprend où l'on en était. Une course à la fois.
 
+### 2.2 Morte une deuxième fois à 18 h 28 — la même extinction — et relancée à 19 h 30 par la suite, telle quelle
+
+**CE QUI S'EST PASSÉ.** La relance de 17 h 01 a retrouvé l'étape 4/5 en **54 minutes**
+(« Écriture du projet » à 17 h 55, contre plus de cinq heures le matin : le cache de
+mesures a servi, comme prévu), puis est entrée dans le réglage au mélange, qui n'écrit
+rien au journal tant qu'une voix n'est pas finie. Le poste a été **éteint une
+deuxième fois** à 18 h 28 min 00 s (`journalctl -b -2` : « poweroff requested from
+client … plasma-shutdown », la même demande depuis le bureau ; capot fermé à 17 h 41,
+sans veille — la garde tenait son blocage), rallumé à 18 h 58, puis **redémarré** à
+19 h 26. Ni `project.json` ni `rapport.json` : 1 h 27 de course (17 h 01-18 h 28)
+sans résultat, dont 33 minutes de réglage au mélange que le journal ne montre pas.
+La suite (PID 23193) est morte à son étape 1.
+
+**LA RELANCE (19 h 30 min 09 s), sans rien réécrire.** `uptime` d'abord (« up 0
+min » : rien ne tournait, et les PID des fichiers `.pid` ne désignaient plus rien),
+puis la commande écrite en tête de `reload-suite.sh`, inchangée : son étape 1 a lu
+que la référence n'avait pas fini et l'a relancée — mêmes stems, même binaire
+(`build/tools/vsm-render`, md5 `93e6587c…`, toujours celui de 07 h 15). Les deux
+morts sont écrites dans `reload-peschi.journal` et `reload-suite.journal`. La garde
+de batterie est reposée sur le PID de la suite (seuil 10 %, 92 % au départ).
+
+**CE QUE CES DEUX MORTS DISENT DE LA CHAÎNE, ET QUI RESTE À FAIRE.** Le cache de
+mesures rend le début rejouable à bas prix ; **le réglage au mélange, lui, ne laisse
+rien** — 6 772 s le matin pour trois voix, perdues deux fois. Une course de
+plusieurs heures sur un poste portable doit pouvoir reprendre à l'étape où elle est
+morte : c'est un défaut de la chaîne, nommé ici, à traiter dans `ROADMAP-fusion.md`
+quand aucune course ne tournera (`analyse/analyzer/` ne se touche pas pendant une
+course).
+
 ---
 
 ## 3. Ce qui s'entend déjà, avant tout chiffre — et qui fera les hypothèses
@@ -785,3 +814,50 @@ premières au classement `D`.
   mesuré sur l'extrait) et construite selon `CDC-nouvelle-machine.md`.
 - 5 en échec, quel que soit le reste : le défaut est dans la MÉTRIQUE de l'arbitrage,
   et c'est elle que l'hypothèse suivante vise.
+
+### 9.1 Ce que le § 9 laissait à l'instrument — écrit avec le code, AVANT la mesure (30/09/2026, 19 h 50)
+
+L'instrument est `analyse/mesure_h47.py` (branche `reload-h47`, tirée de
+`reload-chaine` : il lui faut le diapason de H42, et `analyse/analyzer/` de l'arbre
+principal ne se touche pas pendant la course de référence). Dix tests
+(`analyse/tests/test_h47_pad.py`) le verrouillent sur des signaux à vérité connue et
+sur des mesures fabriquées ; quatre défauts remis à la main les font tomber (la règle
+des 20 dB portée à 40, la largeur de bruit de la fenêtre oubliée, le seuil « porte »
+ouvert à tout, une borne jouée un demi-ton trop haut). Sept choses que le § 9
+n'écrivait pas, tranchées ici et commitées avant toute mesure sur « Reload » :
+
+1. **Le spectre de l'oracle** est le Welch de l'estimateur de diapason (65 536 points,
+   recouvrement de moitié) sur l'extrait entier, mêmes pics, interpolés à la parabole.
+   **L'amplitude d'un pic**, pour `B_mesuré` : la puissance sommée sur ± 4 cases
+   (± 2,7 Hz — le pic du pad fait 2 Hz de large, § 1), divisée par la largeur de bruit
+   de la fenêtre de Hann (1,5 case). Test : un sinus rendu à 3 % près.
+2. **L'équilibre** se lit par tranches de 4 mesures à 138,00 BPM (6,957 s, trois
+   tranches pleines dans l'extrait), écart MÉDIAN par bande comme au § 0 ; une bande
+   porte dans une tranche si elle y dépasse −40 dB du total dans l'extrait OU dans le
+   rendu. Le code est celui de `tools/ecart-a-l-original.py`, chargé tel quel.
+3. **Le rendu est calé** au niveau efficace de l'extrait avant l'équilibre et le
+   log-mel ; `D` reçoit le rendu brut, comme dans la chaîne (elle est insensible au
+   niveau).
+4. **Le classement `D` est celui de la chaîne** : une candidate que le garde-fou de
+   niveau de l'arbitrage écarterait (plus de ×10 au fader pour atteindre l'extrait)
+   est mesurée et publiée, mais HORS classement — la chaîne ne la choisirait jamais.
+   Un rendu vide est « non mesuré », nommé, jamais compté zéro. Le Spearman de
+   l'attendu 5 porte sur le classement ; celui de toutes les candidates mesurées est
+   publié à côté, avec le nombre de valeurs DISTINCTES de chaque série.
+5. **« Les cinq premières » sont cinq CANDIDATES** (machine + profil), pas cinq
+   machines : si cinq profils du multi-échantillons sont en tête, ce sont eux qui
+   sont réglés.
+6. **Le projet rendu** porte le tempo mesuré (138,0 — il ne sert qu'à une machine
+   qui calerait un arpège ou un retard dessus) et UNE note par hauteur de l'oracle,
+   de 0 à la fin de l'extrait.
+7. **Entre « réussite » et « échec »** (attendus 3 à 6), l'outil écrit « entre les
+   deux » : c'est le cas que « ce que le verdict décidera » range sous « il manque un
+   PATCH ».
+
+**Ce que l'instrument ne voit pas, dit avant.** L'extrait commence à 16 s, le pad
+sonnant déjà ; le rendu commence par l'ATTAQUE de la machine — une attaque lente y
+perd sur les premières trames sans être un mauvais pad. Et le stem porte un résidu
+de séparation qu'aucune machine ne joue : les écarts de bande des deux BORNES sont
+publiés à côté de ceux des machines. Si `B_mesuré` elle-même rate « chaque bande à
+≤ 1 dB », l'attendu 3 est intenable tel qu'écrit par quelque machine que ce soit, et
+ce sera dit tel quel — sans retoucher le seuil.
