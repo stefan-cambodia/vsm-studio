@@ -98,7 +98,10 @@ void PianoRollComponent::setActiveTrackIndex(size_t trackIndex) {
     // le milieu de l'étendue, qu'une note fantôme deux octaves plus haut
     // déplacerait. Le zoom horizontal, lui, ne bouge pas : c'est le choix de
     // l'utilisateur, pas celui de la piste.
-    if (autrePiste) cadrerSurLesNotes();
+    if (autrePiste) {
+        cadrerSurLesNotes();
+        amenerLesNotesDansLaFenetre();   // D524 : et le temps, comme la hauteur
+    }
     // L'HISTORIQUE N'EST PLUS VIDÉ ICI. Il portait sur les notes d'une seule
     // piste, et restaurer celles de l'une dans l'autre n'aurait rien voulu
     // dire ; il porte désormais sur le projet entier, et regarder une autre
@@ -508,6 +511,21 @@ void PianoRollComponent::releverRangPourCapture() const {
     // couplage qui fait qu'une note du haut reprise sans son rang ne montre pas
     // les mêmes touches.
     const int lignes = std::max(1, contentArea().getHeight() / std::max(1, noteHeight_));
+    // D524 : CE QUE LA PISTE CHOISIE MONTRE D'ELLE-MÊME — ses notes qui tombent dans
+    // la fenêtre, en temps ET en hauteur, par les mêmes `tickToX` / `noteToY` que la
+    // peinture (lignes repliées comprises). Les notes fantômes des autres pistes
+    // n'en sont pas : une fenêtre qui n'en montre que des fantômes est vide.
+    const auto zone = contentArea();
+    const Tick fenetreFin = xToTick(static_cast<float>(zone.getRight()));
+    int visibles = 0, total = 0;
+    if (const Track* piste = activeTrack())
+        for (const auto& n : piste->notes) {
+            ++total;
+            const int y = noteToY(n.number);
+            if (n.endTick > scrollTick_ && n.startTick < fenetreFin && y + noteHeight_ > zone.getY()
+                && y < zone.getBottom())
+                ++visibles;
+        }
     // LE ZOOM PASSE PAR `juce::String` ET NON PAR `%f` : la locale du processus
     // est celle de JUCE, pas la nôtre, et `fprintf` y écrivait « zoom=0,080000 »
     // — une VIRGULE. Un banc qui lit ce nombre pour le comparer ne le lirait
@@ -522,6 +540,9 @@ void PianoRollComponent::releverRangPourCapture() const {
                 + " lignes=" + juce::String(lignes)
                 + " zoom=" + juce::String(pixelsPerTick_, 6)
                 + " defilement=" + juce::String(static_cast<juce::int64>(scrollTick_))
+                + " fenetre=" + juce::String(static_cast<juce::int64>(scrollTick_)) + ".."
+                + juce::String(static_cast<juce::int64>(fenetreFin))
+                + " visibles=" + juce::String(visibles) + "/" + juce::String(total)
                 // D497 : l'outil courant — la barre le marque en couleur, et un
                 // texte peint ne se relève pas (D149).
                 + " outil=" + (tool_ == Tool::Select ? "selection" : tool_ == Tool::Draw ? "crayon"
@@ -562,6 +583,30 @@ void PianoRollComponent::cadrerSurLesNotes() {
     // 2 219 dans la fenêtre, la médiane au bord).
     hauteurCentree_ = mediane;
     topNoteDuCadrage_ = topNote_;
+}
+
+void PianoRollComponent::amenerLesNotesDansLaFenetre() {
+    // D524 : LE TEMPS, COMME LA HAUTEUR. Le cadrage de la piste choisie était
+    // vertical seulement : une piste qui entre à la mesure 10 s'ouvrait sur les
+    // mesures 1 à 6, ses seuls fantômes à l'écran (`b4wuzthen`, la kick). Si une
+    // note de la piste est déjà dans la fenêtre de temps, RIEN ne bouge — l'endroit
+    // où l'on travaille est le choix de l'utilisateur, comme le zoom, qui ne bouge
+    // jamais ici. Sinon, la note la plus proche : d'après, elle se pose au bord
+    // gauche (la marge de « tout voir ») ; d'avant, elle finit au bord droit.
+    const Track* track = activeTrack();
+    if (!track || track->notes.empty() || pixelsPerTick_ <= 0.0) return;
+    const Tick debut = scrollTick_;
+    const Tick fin = xToTick(static_cast<float>(contentArea().getRight()));
+    const Tick largeur = std::max<Tick>(1, fin - debut);
+    const Tick marge = largeur / 50;
+    Tick prochain = -1, precedent = -1;   // le début de la première d'après, la fin de la dernière d'avant
+    for (const auto& n : track->notes) {
+        if (n.endTick > debut && n.startTick < fin) return;   // déjà à l'écran
+        if (n.startTick >= fin && (prochain < 0 || n.startTick < prochain)) prochain = n.startTick;
+        if (n.endTick <= debut && n.endTick > precedent) precedent = n.endTick;
+    }
+    const bool apres = prochain >= 0 && (precedent < 0 || prochain - fin <= debut - precedent);
+    scrollTick_ = std::max<Tick>(0, apres ? prochain - marge : precedent + marge - largeur);
 }
 
 void PianoRollComponent::zoomToFit() {

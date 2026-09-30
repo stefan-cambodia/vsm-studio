@@ -697,7 +697,11 @@ Le clavier de gauche donne l'échelle ; les octaves sont marquées en clair. Une
 À l'ouverture d'un projet et à chaque changement de piste, la fenêtre se place
 sur la hauteur **médiane** des notes de la piste (pondérée par la durée) : une
 basse reconstruite s'ouvre sur son octave, pas sur un C6 vide, et une note
-fantôme de transcription deux octaves plus haut ne déplace pas la vue. Sur une
+fantôme de transcription deux octaves plus haut ne déplace pas la vue. **Dans le
+temps aussi** (D524) : si aucune note de la piste choisie n'est dans la fenêtre —
+une batterie qui entre à la mesure 10, vue depuis la mesure 1 —, le piano roll
+défile jusqu'à la plus proche, sans changer le zoom ; si l'une d'elles y est déjà,
+rien ne bouge. Un projet rouvert reprend la vue qu'on a enregistrée. Sur une
 **piste de batterie** (canal 10), le clavier s'élargit et nomme les **pièces**
 — grosse caisse, caisse claire, charleston fermé — d'après la machine
 assignée, ou la convention General MIDI si elle n'est pas connue. Une **piste

@@ -190,6 +190,9 @@ public:
     void zoomVertically(float factor);
     void zoomToFit();       ///< tout le contenu de la piste dans la fenêtre
     void cadrerSurLesNotes();  ///< place la fenêtre sur la hauteur médiane de la piste (vertical seul)
+    /// D524 : si aucune note de la piste n'est dans la fenêtre de temps, défile jusqu'à
+    /// la plus proche — sans toucher au zoom.
+    void amenerLesNotesDansLaFenetre();
     void zoomToSelection(); ///< la sélection remplit la fenêtre
     void scrollToPlayhead();
 

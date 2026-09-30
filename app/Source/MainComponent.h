@@ -347,6 +347,8 @@ public:
         if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
         // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
         if (geste.equalsIgnoreCase("relever-tete")) { releverTete(); return true; }
+        // D524 : le relevé du piano roll APRÈS un geste (un `choisir:` au milieu d'une course).
+        if (geste.equalsIgnoreCase("relever-pianoroll")) { releverRangPianoRoll(); return true; }
         // D506 : L'AUDIT DES MENUS, EN DIFFÉRÉ. `VSM_MENU` agit AVANT les touches et
         // les gestes : « tout choisir, puis Quantifier » ne se jouait pas. Ces trois
         // gestes s'enchaînent dans l'ordre de `VSM_GESTE_APRES`.

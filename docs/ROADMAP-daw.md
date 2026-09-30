@@ -37840,3 +37840,100 @@ lanceur a dit « écran éteint, verrouillé AU DÉPART » : la session s'était
 entre-temps. Arrêtée par son groupe au premier banc, préférences identiques. Elle
 attend désormais aussi la fin de la campagne S2, relancée à 07 h 18 (CDC
 recensement § 14.2) : le lanceur refuse de courir pendant une campagne.
+
+---
+
+### Phase D524 — choisir une piste qui entre à la mesure 10 ouvrait le piano roll sur les mesures 1 à 6, vides d'elle (30/09/2026)
+
+**D'OÙ ELLE VIENT — EN REGARDANT L'APPLICATION OUVRIR UN VRAI MORCEAU.** Photo de
+`b4wuzthen` (8 pistes, 354 s) à la taille de l'écran, la piste « Batterie ·
+kick+kick2 » choisie (`VSM_VUE=piste:4,pianoroll`) : le piano roll montre les
+mesures 1 à 6, et pas une note de cette piste — seulement les notes FANTÔMES des
+autres. Son clip commence vers la mesure 10 (l'arrangement le montre). Le cadrage
+au changement de piste (`setActiveTrackIndex` → `cadrerSurLesNotes`) est
+**vertical seulement** : la médiane des hauteurs se centre, le défilement horizontal
+ne bouge jamais. Son commentaire dit pourquoi pour le ZOOM (« c'est le choix de
+l'utilisateur, pas celui de la piste ») ; il ne dit rien du défilement, et
+l'argument qui a fait cadrer la hauteur (« une basse reconstruite montrait une
+fenêtre vide ») vaut mot pour mot dans le temps.
+
+**CE QUI MANQUAIT POUR LE MESURER** : aucun relevé ne disait combien de notes de la
+piste choisie sont À L'ÉCRAN. `VSM_PIANOROLL_RANG` donne le zoom et le défilement,
+pas la largeur ; et une photo ne sépare pas une note de ses fantômes. Le relevé
+ajoute donc `fenetre=<t0>..<t1>` et `visibles=<a>/<n>` — les notes de la piste
+choisie qui tombent dans la fenêtre, en temps ET en hauteur, par les mêmes
+`tickToX` / `noteToY` que la peinture —, et un verbe `relever-pianoroll` pour le
+lire après un `choisir:` au milieu d'une course. Le témoin est le binaire qui porte
+ce relevé SANS le correctif (`build/temoin-D524`).
+
+**PRONOSTIC, écrit avant la mesure** — `b4wuzthen` ouvert, zoom et défilement de
+l'ouverture, chacune des 8 pistes choisie tour à tour (`choisir:N` puis
+`relever-pianoroll`) : les pistes dont la première note tombe après la fenêtre
+d'ouverture rendent `visibles=0/N`, au moins la kick (piste 4) ; celles qui jouent
+dès la mesure 1 rendent `visibles>0`.
+
+**LE CHOIX, TRANCHÉ ICI** : au changement de piste, si AUCUNE note de la piste
+choisie n'est dans la fenêtre, le piano roll défile jusqu'à la note la plus proche
+de la fenêtre — une note d'après se pose au bord gauche (la marge de 2 % de « tout
+voir »), une note d'avant finit au bord droit —, **sans toucher au zoom**. Si une
+seule de ses notes est déjà visible, rien ne bouge : l'endroit où l'on travaille
+est le choix de l'utilisateur. Une vue reprise d'un projet (D369) prime toujours :
+elle est posée après le choix de la piste.
+
+**ATTENDU** :
+
+| | témoin | après |
+|---|---|---|
+| pistes à `visibles=0/N` (N > 0) au choix | ≥ 1 (dont la kick) | **0** |
+| défilement des pistes déjà visibles au choix (le contrôle) | inchangé | inchangé |
+| zoom, à chaque choix | inchangé | inchangé |
+| `vue-du-morceau.sh` (D369 : la vue reprise d'un projet) | vert | vert |
+
+**MESURÉ — TENU.** Garde neuve `tools/piano-roll-piste-choisie.sh` (un projet de trois
+pistes : « tout », une note par mesure de 1 à 60 ; « tard », mesures 40 à 44 ; « tot »,
+mesures 1 et 2), fenêtre de 1 280 × 800 (6 400 ticks visibles) :
+
+| relevé après le choix | témoin (`build/temoin-D524`) | après |
+|---|---|---|
+| ouverture sur « tout » | 4/60, défilement 0 | 4/60, défilement 0 |
+| « tard » (mesures 40-44) | **0/5**, défilement 0 | 4/5, défilement **74 752** (mesure 40 moins la marge) |
+| retour sur « tout », qui joue là aussi | 4/60, 0 → 0 | 4/60, 74 752 → **74 752** (ne bouge pas) |
+| « tot » (mesures 1-2, avant la fenêtre) | 2/2, 0 | 2/2, 0 (sa dernière note au bord droit, borné à 0) |
+| le zoom, aux quatre relevés | 0,08 | 0,08 |
+| projet enregistré sur « tard » à la mesure 1, rouvert | piste 1, défilement 0, 0/5 | piste 1, défilement **0**, 0/5 — la vue reprise prime |
+
+**1 raté sur le témoin, 0 après.** Et sur le morceau qui l'a montrée, `b4wuzthen` à la
+taille de l'écran (1 707 × 1 067, ~11 000 ticks visibles), les huit pistes choisies
+tour à tour :
+
+| piste | témoin | après |
+|---|---|---|
+| bass, guitar, other, hihat | 6/738, 9/338, 40/2 492, 17/892 | identiques, défilement 0 |
+| Batterie · kick+kick2 | **0/763** | 15/763 (défilement 29 067) |
+| Batterie · snare | **0/555** | 3/555 (défilement 88 840) |
+| Batterie · percussion | **0/474** | 19/474 — déjà visible à 88 840, rien ne bouge |
+| Batterie (groupe, sans note) | 0/0 | 0/0 |
+
+**3 pistes sur 7 qui portent des notes** s'ouvraient sans une seule de leurs notes à
+l'écran ; 0 après. Le pronostic (« au moins la kick ») est tenu, et dépassé.
+
+**UN DÉFAUT DU BANC, attrapé par son contrôle.** La première version du cas « vue
+reprise » écrivait une vue sans note du haut ni hauteur de rang : `reprendreLaVue` la
+refuse (D369 : une vue incomplète laisse le cadrage faire son travail), et le
+défilement neuf s'appliquait — rouge après, vert au témoin, ce qui ressemblait à une
+régression du correctif. Une vue enregistrée porte toujours ses quatre champs ; la
+garde les écrit désormais, et le contrôle tient des deux côtés. La vue reprise prime
+parce que l'ouverture choisit la piste AVANT de reprendre la vue (l'ordre écrit par
+D369) ; une vue refusée laisse le cadrage — vertical ET, désormais, temporel.
+
+Voisins : `vue-du-morceau.sh`, `cadrage-ouverture.sh`, `pianoroll-zones.sh`,
+`tout-voir.sh`, `banc-fumee.sh` — 0 raté ; gardes des sources vertes. La garde entre
+dans `./verifier.sh --bancs` (41 bancs). **La série entière n'est pas rejouée, et
+c'est dit** : la campagne S2 tourne (le lanceur refuse), et elle attend déjà pour
+D518 à D523. Les deux builds ont gelé la campagne (97 s et 99 s, `kill -STOP` du
+groupe, reprise automatique).
+
+**Les préférences de l'utilisateur ont changé pendant la série** (`uiScale` 1.0 →
+1.5, `dock.bas` 293 → 458) : lues clé par clé, c'est l'application que l'utilisateur
+a lancée lui-même à 07:42 (HOME réel, aucune variable de banc, parent `systemd
+--user`) — son usage, pas un banc. Rien n'a été « rétabli ».
