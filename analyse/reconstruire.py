@@ -431,6 +431,11 @@ def profils_de(moteur, machines: Sequence[str]) -> Dict[str, str]:
     return {m: nom for m in machines if (nom := profil_de(moteur, m))}
 
 
+def mesures_de_projet() -> Dict[str, int]:
+    from analyzer.vsm_render_cache import COMPTE_PROJET
+    return dict(COMPTE_PROJET)
+
+
 def provenance(args: argparse.Namespace, classifieur, frappes,
                identite_moteur: Optional[dict] = None) -> dict:
     """Ce qu'il faut savoir pour REJOUER ce rapport (phase A4.2)."""
@@ -478,6 +483,9 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "piecesNonIsolees": args.garder_pieces_non_isolees,
             "rendusParalleles": args.rendus_paralleles,
             "cacheRendus": not args.sans_cache_rendus,
+            # H48 : les mesures de PROJET relues du cache et celles payées par
+            # cette course. Une course qui a repris après une mort le montre ici.
+            "mesuresDeProjet": mesures_de_projet(),
             "budgetPiste": args.budget_piste,
             "axesPiste": args.axes_piste,
             "finalistes": args.finalistes,
@@ -811,8 +819,10 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "1 = série, l'ancien comportement. Le classement est "
                               "déterministe quel que soit ce nombre.")
     parseur.add_argument("--sans-cache-rendus", action="store_true",
-                         help="ne pas relire ni écrire le cache de rendus de piste "
-                              "(cache/rendus, H2 du § 5 duodecies). Le cache est sûr "
+                         help="ne pas relire ni écrire le cache de MESURES "
+                              "(cache/mesures : les candidates de piste, H2 du § 5 "
+                              "duodecies, et les rendus de PROJET du verdict et du "
+                              "réglage au mélange, H48). Le cache est sûr "
                               "par construction -- sa clé porte l'empreinte du moteur "
                               "-- mais un A/B doit pouvoir prouver qu'il ne change "
                               "rien : voilà son témoin.")
@@ -2219,7 +2229,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             sample_rate=SAMPLE_RATE, metric=ctx.args.metrique,
             tempo=ctx.args.tempo, binary=ctx.args.moteur,
             profiles=profils_de(ctx.moteur, melodic_machines(ctx.moteur)),
-            groupes=chantier.pistes_groupees)
+            groupes=chantier.pistes_groupees,
+            render_cache=not ctx.args.sans_cache_rendus)
 
     decisions, tours_joues, changees_par_tour = settle_verdict(
         pistes_export, une_passe, ctx.args.tours_verdict)
@@ -2253,7 +2264,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
                 sample_rate=SAMPLE_RATE, engine=ctx.moteur,
                 budget=ctx.args.budget_melange,
                 metric=ctx.args.metrique, tempo=ctx.args.tempo,
-                binary=ctx.args.moteur, groupes=chantier.pistes_groupees)
+                binary=ctx.args.moteur, groupes=chantier.pistes_groupees,
+                render_cache=not ctx.args.sans_cache_rendus)
             if resultat is None:
                 print(f"      {nom_piste:8s} : réglage au mélange non tenté "
                       f"(machine sans axe, ou rendu de départ muet)")
@@ -2307,7 +2319,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             depart = time.perf_counter()
             mesure = lambda: project_mix_distance(  # noqa: E731
                 pistes_export, melange, ctx.sortie, ctx.travail / "verdict",
-                SAMPLE_RATE, ctx.args.metrique, ctx.args.tempo, ctx.args.moteur)
+                SAMPLE_RATE, ctx.args.metrique, ctx.args.tempo, ctx.args.moteur,
+                render_cache=not ctx.args.sans_cache_rendus)
             etat_gagnante = track_state(piste)
             volumes_gagnante = {t.name: float(t.volume) for t in pistes_export}
             machine_gagnante = piste.machine
@@ -2329,7 +2342,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
                     sample_rate=SAMPLE_RATE, engine=ctx.moteur,
                     budget=ctx.args.budget_melange,
                     metric=ctx.args.metrique, tempo=ctx.args.tempo,
-                    binary=ctx.args.moteur, groupes=chantier.pistes_groupees)
+                    binary=ctx.args.moteur, groupes=chantier.pistes_groupees,
+                    render_cache=not ctx.args.sans_cache_rendus)
                 d_reglee = resultat.distance if resultat is not None else d_installee
                 bilan.append({"label": libelle, "mixDistanceAtVerdict": d_verdict,
                               "mixDistanceInstalled": d_installee, "mixDistanceRefined": d_reglee,
@@ -2639,6 +2653,12 @@ def ajouter_groupes(pistes_export: List[ExportTrack], groupes: Dict[str, str]) -
 def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarray,
                       chantier: Chantier, complements: Dict[str, Any]) -> float:
     """Rend le projet écrit, mesure sa distance au mélange, écrit l'écoute A/B."""
+    # H48 : ce que la course a PAYÉ et ce qu'elle a RELU de ses mesures de projet.
+    # Une mesure remplacée par sa copie en cache se dit, comme tout ce qui est remplacé.
+    compte = mesures_de_projet()
+    if compte["payees"] or compte["relues"]:
+        print(f"      mesures de projet : {compte['payees']} payée(s), {compte['relues']} relue(s) "
+              f"du cache (cache/mesures, H48)")
     print("[5/5] Rendu du projet et mesure")
     rendu = sortie / "reconstruit.wav"
     # Résolu par la MÊME recherche que le moteur de la boucle : la version
@@ -2945,7 +2965,8 @@ def boucle_residuelle_de_la_chaine(ctx: Contexte, chantier: Chantier,
     def distance_projet() -> float:
         return project_mix_distance(pistes_export, melange, ctx.sortie,
                                     ctx.travail / "residuel" / "distance", SAMPLE_RATE,
-                                    metric=args.metrique, tempo=args.tempo, binary=args.moteur)
+                                    metric=args.metrique, tempo=args.tempo, binary=args.moteur,
+                                    render_cache=not args.sans_cache_rendus)
 
     unites = unites_du_chantier(chantier, pistes_export, ctx.parts, 0)
     options = OptionsResiduelles(iterations=int(args.residuel),
