@@ -1228,3 +1228,96 @@ extrait où moins de quatre raies se voient ne juge rien : il est dit « muet »
   alors un manque de l'EFFET, chiffré, et non une machine à inventer.
 - réfutée : la lecture du § 11.1 valait pour 24 secondes ; le mouvement change au
   fil du morceau, et c'est sa trajectoire qu'il faut décrire avant tout.
+
+### 12.1 Verdict de H50 (30/09/2026, 20 h 14) : TENUE sur les deux extraits — le pad est un sinus par note sous une modulation de retard à deux cadences
+
+`analyse/mesure_h50.py mesurer` (branche `reload-h47`, `472e58e`, arbre propre) ;
+`reconstruction/travail/reload-h50/mesure.json`.
+
+| attendu | 130-154 s | 272-296 s |
+|---|---|---|
+| raies vues | 10 sur 11 | 10 sur 11 |
+| 2 — porteuses à ≤ 1 cent du tempéré | **tenu** : 9 sur 10 | **tenu** : 9 sur 10 |
+| 3 — composantes sur la famille (hasard 24 %) | **tenu** : 36 sur 38, **95 %** | **tenu** : 36 sur 39, **92 %** |
+| 4 — `f1` relu (attendu 1,751 ± 0,010) | **tenu** : 1,7495 Hz (± 0,0015, 22 composantes) | **tenu** : 1,7501 Hz (± 0,0021, 22 composantes) |
+| 5 — la signature du retard | **tenu** : 6 raies sur 6 | **tenu** : 6 raies sur 6 |
+
+L'attendu 1 (l'instrument) est tenu par 5 tests sur 5, dont deux témoins qui doivent
+tomber et tombent : le même retard modulé à 1,80 Hz fait échouer `f1`, un trémolo de
+5 Hz fait échouer la famille.
+
+**Ce que les deux extraits ajoutent, dit :**
+- **une onzième note**, sol♯4 (418,27 Hz au tempéré), que l'oracle lit sur le stem
+  dans le pont et dans la sortie : sa raie est à **+7,6 cents** du tempéré et ses
+  composantes sont hors famille (+1,42 et +2,69 Hz ; +0,70 Hz). C'est la porteuse
+  manquée des deux attendus 2, et ce n'est pas une raie du pad : une autre source,
+  vers 420,1 Hz, que le stem « other » porte à ces endroits — nommée, pas expliquée ;
+- **si4 (497,4 Hz) ne se voit plus** dans l'original (fond à 7,4 et 7,3 dB, sous le
+  seuil de 10) : autre chose occupe sa bande dans le pont et la sortie ;
+- **les niveaux sont les mêmes d'un extrait à l'autre** à quelques dixièmes de
+  décibel (mi3 : −1,1 / −3,7 dB à 130 s, −1,0 / −3,8 à 272 s, −1,2 / −3,8 à 16 s) :
+  la modulation est stationnaire sur tout le morceau.
+
+**CE QUE LE VERDICT DÉCIDE** (écrit au § 12) : le pad se reconstruit par **un timbre
+sinusoïdal et une modulation de retard** ; aucune machine neuve. La suite est de le
+FABRIQUER avec ce que le dépôt a, et de chiffrer ce qui manque à l'EFFET — H51.
+
+---
+
+## 13. H51 — un chorus à deux cadences REND-il les niveaux des raies ? Un modèle fidèle à l'effet du rack, réglé sur cinq raies, jugé sur cinq autres (écrite AVANT la mesure, 30/09/2026, 20 h 18)
+
+**Ce que le dépôt a, lu dans le code.** `audio/include/vsm/audio/dsp/Chorus.h` : une
+ligne à retard lue à deux positions par deux LFO sinusoïdaux de MÊME cadence, en
+quadrature (gauche et droite) ; le retard va de la base à la base plus la profondeur.
+L'insert du rack (`ChorusEffect.h`) en expose trois réglages — cadence de 0,05 à
+8 Hz, profondeur de 0,5 à 8 ms, dosage de 0 à 1 — et fixe la base à 8 ms. **Une
+seule cadence, une quadrature imposée.**
+
+**Ce que H50 demande** : deux cadences (1,750 et 2,37 Hz) et leurs combinaisons
+(`f1`+`f2`, 2`f1`−`f2`…), c'est-à-dire deux modulations qui se composent.
+
+**L'hypothèse.** Un modèle fait des mêmes pièces que l'effet du rack — un retard
+modulé par un sinus, mélangé au son direct — appliqué DEUX fois à un sinus par note,
+rend les niveaux relatifs des composantes de chaque raie de l'original, à toutes les
+hauteurs, avec les MÊMES réglages.
+
+**Les trois topologies**, toutes publiées :
+- **S** — deux étages en série (la sortie du premier entre dans le second) ;
+- **M** — un seul retard, modulé par la SOMME de deux LFO ;
+- **P** — deux retards en parallèle, chacun son LFO. P ne peut pas produire
+  `f1`+`f2` : c'est le témoin de topologie.
+
+**L'instrument** (`analyse/mesure_h51.py`, branche `reload-h47`). Le modèle est
+calculé en numpy, exactement (la source est un sinus : `x(t − τ(t))` s'écrit sans
+interpolation). Chaque raie synthétisée est lue par l'instrument de H49
+(`composantes`) et rapportée à sa porteuse comme en H50. **La distance** d'une raie :
+moyenne des écarts absolus de niveau (dB, relatifs à la plus forte composante de la
+raie), sur la porteuse et les membres de la famille présents à moins de 15 dB dans
+l'original OU dans le modèle — un membre absent vaut −15 dB. Les réglages (profondeur,
+dosage et base de chaque étage ; `f1` = 1,750 et `f2` = 2,37 Hz fixés) sont cherchés
+par évolution différentielle à graine fixe, bornés (profondeur 0,1 à 8 ms, base 1 à
+20 ms, dosage 0 à 1).
+
+**Réglage et validation séparés.** L'original de 16 à 40 s (§ 11.1). Réglé sur
+CINQ raies — mi3, la♯3, do♯4, fa♯4, si4 — et jugé sur les CINQ autres — fa♯3, si3,
+mi4, la♯4, do♯5 —, qu'il n'a jamais vues.
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **le modèle décrit l'effet du rack** : trois notes (mi3, fa♯4, do♯5) rendues par `vsm-render` (`build-h42`) à travers l'insert chorus (1,751 Hz, 2,4 ms, dosage 0,5), somme mono, contre le modèle à deux lectures en quadrature et base de 8 ms ; la machine est la première de la liste {orgue à tuyaux, additive, roue phonique, générique} dont la raie SANS effet n'a qu'une composante | chaque composante à ≤ 1 dB du modèle, sur les trois raies | > 3 dB quelque part : le modèle ne décrit pas l'effet, rien d'autre ne se lit |
+| 2 | **le réglage** : distance moyenne sur les cinq raies de réglage, meilleure topologie | ≤ 2 dB | > 4 dB |
+| 3 | **la validation** : distance moyenne sur les cinq raies jamais vues, mêmes réglages | ≤ 3 dB | > 6 dB |
+| 4 | **le témoin** : un sinus nu (aucun effet), et le meilleur chorus à UNE cadence, sur les raies de validation | tous deux à plus de 2 dB au-dessus de la meilleure topologie | sinon deux cadences ne sont pas nécessaires, et c'est dit |
+| 5 | **la topologie** : P (sans combinaisons) contre la meilleure de S et M, en validation | P pire d'au moins 1 dB | sinon la topologie n'est pas tranchée |
+| 6 | **ce qui manque au rack**, chiffré : chaque réglage trouvé hors de ce que l'insert expose | la liste, avec ses valeurs | — (un relevé, pas un seuil) |
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- 1, 2 et 3 tenus : l'effet du rack reçoit EXACTEMENT ce que l'attendu 6 liste, dans
+  une phase à lui (`ROADMAP-daw.md`) — défauts inchangés au bit près, mesurée par un
+  EXPORT — puis le pad est rendu par le vrai moteur et jugé par l'instrument de H49
+  contre l'original, raie par raie.
+- 1 en échec : le modèle est corrigé contre l'effet avant toute autre lecture.
+- 3 en échec avec 2 tenu : sur-ajustement ; le modèle est trop libre ou la
+  modulation n'est pas un retard, et le résidu par raie est publié.
