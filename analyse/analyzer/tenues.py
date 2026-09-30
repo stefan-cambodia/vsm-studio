@@ -47,8 +47,14 @@ def _energie_db(x: np.ndarray, i: int, j: int) -> float:
 
 
 def reunir_tenues(notes: Sequence[Any], audio: np.ndarray, sr: int,
-                  ecart_max: float = 0.030, seuil_db: float = 3.0) -> Tuple[List[Any], Dict[str, Any]]:
-    """Rend (notes réunies, bilan). `notes` : objets à champs note/start/duration (StemNote)."""
+                  ecart_max: float = 0.030, seuil_db: float = 3.0,
+                  garder_jonctions: bool = False) -> Tuple[List[Any], Dict[str, Any]]:
+    """Rend (notes réunies, bilan). `notes` : objets à champs note/start/duration (StemNote).
+
+    `garder_jonctions` : le bilan porte aussi les jonctions réunies, (hauteur, instant)
+    — ce que le contrôle de H43 compare à la vérité de S2 pour compter ce qu'elle casse.
+    """
+    jonctions: List[Tuple[int, float]] = []
     par_hauteur: Dict[int, List[Any]] = defaultdict(list)
     for n in notes:
         par_hauteur[int(n.note)].append(n)
@@ -72,6 +78,8 @@ def reunir_tenues(notes: Sequence[Any], audio: np.ndarray, sr: int,
                     courante = replace(courante, duration=nouvelle_fin - courante.start,
                                        confidence=min(float(courante.confidence), float(suivante.confidence)))
                     reunies[hauteur] += 1
+                    if garder_jonctions:
+                        jonctions.append((hauteur, float(suivante.start)))
                     continue
                 refusees_attaque += 1
             sortie.append(courante)
@@ -81,4 +89,6 @@ def reunir_tenues(notes: Sequence[Any], audio: np.ndarray, sr: int,
     bilan = {"notesAvant": len(notes), "notesApres": len(sortie), "reunions": int(sum(reunies.values())),
              "refuseesParAttaque": refusees_attaque, "parHauteur": {str(k): v for k, v in sorted(reunies.items())},
              "ecartMaxS": ecart_max, "seuilDb": seuil_db}
+    if garder_jonctions:
+        bilan["jonctions"] = jonctions
     return sortie, bilan
