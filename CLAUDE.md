@@ -394,3 +394,28 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   qui ne chasse pas restait vert. Remplacer AVANT d'insérer, ou exclure l'insert ;
   et lancer les tests core après tout changement du séquenceur, pas seulement
   ceux dont on croit avoir touché le chemin.
+- Une HEURE écrite dans un document se lit à l'horloge (`date +%H:%M`) au moment où
+  on l'écrit, jamais de tête : le 30/09, quatre titres de section portaient une heure
+  en avance de dix à vingt minutes (« 19 h 50 » pour un commit de 19 h 40), et un
+  commit du matin avait déjà dû « relire les heures à l'horloge ». Une heure devinée
+  fait mentir le « écrit AVANT la mesure » qu'elle est censée prouver.
+- Un TÉMOIN PUBLIÉ se LIT. Le 30/09 (H52), douze rapports sur douze écrivaient pour
+  la piste de voix « sans la piste » ÉGAL à « avec », au seizième chiffre : le fichier
+  d'une piste audio n'était pas recopié dans le dossier que le verdict rend, la voix
+  y était muette, et le verdict du mélange choisissait les machines contre un morceau
+  sans sa voix. Le chiffre qui le disait était au rapport depuis des semaines. Deux
+  mesures « avec » et « sans » qui se répondent au dernier chiffre ne sont pas une
+  piste qui ne sert à rien : c'est une piste qui n'a jamais sonné.
+- Un ARBRE À PART (`git worktree`) n'a pas de `build/`, et c'est une chance : dans
+  l'arbre principal, tout rendu qui oublie son argument `binary` retombe sur
+  `build/tools/vsm-render` sans un mot. Le 30/09, le calage de niveau rendait ainsi
+  par le moteur par défaut pendant que tout le reste rendait par `--moteur` ; c'est
+  le témoin de H48, lancé depuis un arbre sans `build/`, qui l'a montré en mourant
+  (« vsm-render introuvable ») — et la course 2 de « Reload » en serait morte après
+  des heures. Une course lancée avec `--moteur` depuis l'arbre principal ne prouve
+  pas que `--moteur` est respecté partout.
+- `analyse/analyzer/` d'un arbre à part se touche PENDANT qu'une course tourne dans
+  l'arbre principal : la règle interdit d'éditer l'arbre que la course IMPORTE, pas
+  d'écrire ailleurs. Le 30/09, un défaut a d'abord été remis « à quand aucune course
+  ne tournera » (§ 2.2 du cahier des charges de « Reload »), à tort. Mais l'arbre à
+  part d'où tourne un A/B ne se touche pas non plus : un arbre par chantier.
