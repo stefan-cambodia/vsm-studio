@@ -595,7 +595,10 @@ de morceau — sans rien casser là où `beat_track` était déjà juste.
   de cette hypothèse, et reste comptée à part par `tools/tempo-estime.py`.
 - **Concluant** si la cohérence du maximum atteint `max(0,2 ; 3/√N)` (trois fois le
   niveau du hasard). Sinon le tempo de départ est GARDÉ, et c'est DIT au journal et
-  au rapport — jamais un affinage sur du bruit.
+  au rapport — jamais un affinage sur du bruit. Deux autres cas ne concluent pas,
+  ajoutés en écrivant le code et AVANT toute mesure : moins de huit attaques, et un
+  maximum **au bord** de la fenêtre (ce n'est pas un sommet : le vrai est peut-être
+  dehors).
 - **Le tempo ENTIER le plus proche est retenu s'il explique les attaques à 95 % de
   la cohérence du maximum** — ce qui revient à une dérive de moins d'un cinquième de
   subdivision sur le morceau entier, quelle que soit sa durée. Entre deux tempos que
