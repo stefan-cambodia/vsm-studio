@@ -419,3 +419,26 @@ validation se fait sur des morceaux que rien n'a encore regardés : **`g3`, `g4`
 | 2 | nappe et voix | gain ≥ 10 points chacune | gain < 3 points |
 | 3 | le pad de « Reload » (stem « other ») est classé tenu | oui | non |
 | 4 | les stems de basse de `g3`-`g5` sont classés non tenus | tous | un seul classé tenu |
+
+### 7.1 Calibration sur `g1`-`g2` (30/09/2026, 12 h 35) — `X` = 0,4, posé AVANT la validation
+
+Indice de hachure (seuil d'usine 0,5), par stem :
+
+| rôle | indices relevés |
+|---|---|
+| basse | 0,003 |
+| mélodie | 0,136 · 0,262 |
+| accompagnement | 0,000 · 0,254 · **0,644** (`g1` : ses notes de 66 ms, que la transcription rend contiguës) |
+| nappe | 0,000 · 0,000 · 0,247 · 0,464 |
+| voix | 0,473 |
+| « Reload », stem « other » | **0,576** |
+
+**L'indice sépare la BASSE (0,003) de tout le reste** — c'est la condition dont H44
+manquait. **Il ne sépare PAS un accompagnement haché des parties tenues** :
+l'accompagnement de `g1` (0,644) dépasse toutes les nappes et la voix. Aucun `X` ne
+range les rôles sans erreur.
+
+**`X` = 0,4, et pourquoi** : c'est la valeur qui classe tenues la voix (0,473), la
+nappe la plus hachée (0,464) et le pad de « Reload » (0,576), et jamais la basse ;
+elle classe aussi, à tort, l'accompagnement de `g1` — un coût connu d'avance, que la
+validation chiffrera sur des morceaux jamais regardés. `X` ne bougera plus.
