@@ -72,6 +72,18 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   sous nohup (S1, 04/09 : 1 h 44 de course perdues à la reprise). Lancer par
   `setsid nohup script.sh > x.log 2>&1 < /dev/null & disown`, et à chaque
   reprise vérifier `pgrep` avant de croire le journal.
+- Une EXTINCTION du poste tue ce qu'une veille laisse vivre, et la chaîne
+  n'écrit son projet qu'à la FIN : le 30/09, le poste éteint à 16 h 14 a emporté
+  5 h 11 de course de référence de « Reload » (étape 4/5, rien sur disque), la
+  campagne S2 gelée, et l'enchaînement qui attendait un PID. Trois remèdes.
+  (1) À la reprise, `uptime` AVANT tout : trois minutes d'uptime disent que rien
+  ne tourne, et un PGID noté dans un script d'avant le redémarrage ne désigne
+  plus la campagne — `kill -STOP -- -<pgid>` y gèlerait un inconnu. (2) Relancer
+  avec le MÊME `vsm-render` et les mêmes stems (`--stems`) : l'empreinte du
+  binaire et celle de la cible sont dans la clé de `cache/mesures/` ; recompiler
+  d'abord jette tout ce que la course morte avait payé. (3) Un enchaînement
+  s'écrit REJOUABLE — chaque étape sautée si son résultat est là, et dite
+  (`reconstruction/travail/reload-suite.sh`) — pour se relancer tel quel.
 - Python bufferise stdout vers un fichier : lancer les longues chaînes avec
   `python -u`, et surveiller par Monitor (fins ET échecs, jamais le succès
   seul).

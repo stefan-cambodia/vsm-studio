@@ -73,7 +73,9 @@ budget et stems identiques, comme partout dans le dépôt.
 - **Source** : `.mp4` (vidéo h264 640 × 480, audio AAC 44,1 kHz stéréo, ~130 kb/s),
   312,2 s. Converti en `reconstruction/sources/reload-peschi.wav` (PCM 16 bits) —
   `soundfile` ne lit pas le `.mp4` (payé le 24/09, H37).
-- **Tempo 136 BPM** ; **diapason +12,3 cents** au-dessus de 440 Hz sur le morceau
+- **Tempo 138,00 BPM** — *corrigé le 30/09 à 17 h 30 : ce portrait disait « 136 »,
+  et la chaîne estime 139,7 ; les deux sont faux, § 3 point 4 et § 8.* **Diapason
+  +12,3 cents** au-dessus de 440 Hz sur le morceau
   entier (302 pics, concentration 0,94 ; +13 sur le pad seul, 15-34 s) — la
   reconstruction, accordée à 440 Hz, jouerait chaque note ~12 cents trop bas.
 - **Presque mono** (énergie side/mid 0,048) ; RMS −16,3 dBFS, crête 0,94.
@@ -106,6 +108,50 @@ repris au réveil.
 
 *Résultats : à écrire à la fin de la course, par l'outil du § 0 et le rapport.*
 
+### 2.1 La course est morte à 16 h 14, avec l'extinction du poste — relancée à 17 h 01
+
+**CE QUI S'EST PASSÉ.** Le poste a été **éteint** le 30/09 à 16 h 14 min 30 s
+(`journalctl -b -1` : « poweroff requested from client … plasma-shutdown » — une
+extinction demandée depuis le bureau, pas une panne), puis rallumé à 16 h 52. La
+course en était à l'étape 4/5 : le verdict du mélange fait (deux tours, 6 142 s),
+le réglage au mélange des voix 1 à 3 fait (1 724, 2 520 et 2 528 s), dernière ligne
+du journal à 15 h 53. **Elle n'avait encore rien écrit** : ni `project.json`, ni
+`rapport.json` — la chaîne n'écrit le projet qu'après le réglage au mélange.
+**5 h 11 de calcul** (07 h 48-08 h 16, 10 h 21-13 h 35, 14 h 45-16 h 14, deux
+veilles de batterie déduites) sans résultat. Une veille, la course la traverse ;
+une extinction, non. La campagne S2, gelée à `g7` depuis 07 h 48, est morte du même
+coup (`CDC-recensement-des-sources.md` § 14.3). L'enchaînement prévu après la course
+(A/B de H42, course 2) attendait un PID qui n'existe plus : rien de lui n'a couru.
+
+**LA RELANCE (17 h 01).** La même chaîne — l'arbre principal, dont `analyse/` n'a
+pas bougé depuis le départ du matin (dernier commit `d03cdf5`) —, les mêmes options,
+et **le même binaire** `build/tools/vsm-render` (compilé à 07 h 15, md5
+`93e6587c…`), délibérément NON recompilé : son empreinte entre dans la clé du cache
+de mesures (`cache/mesures/`, H2 du § 5 duodecies de `ROADMAP-fusion.md`), où la
+course morte a laissé **996 mesures** de candidates. Un binaire neuf les aurait
+toutes invalidées. Les stems sont ceux de la première course, copiés à 10 h 54 dans
+`reconstruction/travail/reload-peschi-stems/` (`--stems`, la séparation sautée).
+
+Ce que la relance change, dit :
+- la séparation n'est pas rejouée (mêmes fichiers, donc mêmes empreintes de cible) ;
+- la chaîne avertit que le moteur (07 h 15) est plus vieux que
+  `interchange/src/PatchRenderService.cpp` (12 h 37, H42) — c'est voulu : le moteur
+  du matin est celui de la référence, et l'identité au bit du moteur neuf à 440 Hz
+  est contrôlée par `cmp` à l'étape suivante (§ 4, A/B) ;
+- le poste porte une autre session de travail (un émulateur Android, 2,8 Go) : les
+  durées de cette course ne se comparent pas à celles du matin.
+
+Ce qui est identique, vérifié sur le journal : tempo estimé (139,7), partage du
+morceau (drums 69,0 %, other 29,2 %…), et les premières décisions — l'arbitrage de
+batterie rend **0,339 / 0,398 / 0,424** (`tr808`, `tr909`, `drums`) comme le matin,
+en 17 s au lieu de 46.
+
+**LA SUITE NE DÉPEND PLUS D'UN PID QUI PEUT MOURIR.**
+`reconstruction/travail/reload-suite.sh` enchaîne référence → A/B de H42 → course 2
+→ mesure → reprise de S2, et **saute chaque étape dont le résultat est là** en le
+disant à son journal (`reload-suite.journal`). Après une extinction, on la relance
+telle quelle : elle reprend où l'on en était. Une course à la fois.
+
 ---
 
 ## 3. Ce qui s'entend déjà, avant tout chiffre — et qui fera les hypothèses
@@ -126,6 +172,22 @@ tournait. Rien de ceci n'est encore mesuré sur la reconstruction :
    quatre voix par registre (70-73, 64-68, 58-61, 27-54). Les trois premières sont
    le MÊME accord ; chacune reçoit sa machine. La quatrième est la basse, une vraie
    partie distincte.
+4. **Le tempo est faux de 1,7 BPM, et la grille du projet quitte la musique**
+   (relevé le 30/09 à 17 h 30, en relisant le journal de la course). La chaîne
+   estime **139,7 BPM** ; ce portrait disait 136. Mesuré par la cohérence de phase
+   des attaques sur une grille de doubles croches, trois fois et indépendamment :
+   **138,006** (grave du stem de batterie), **137,998** (grave du mélange),
+   **138,002** (aigus du mélange, cohérence 0,80 ; à 136,0 : 0,009 ; à 139,7 :
+   0,012), la phase constante à ± 10 ms d'un bout à l'autre du morceau — un tempo
+   fixe. Les notes restent à leur place EN SECONDES (les ticks sont calculés au
+   tempo écrit), donc le SON n'en souffre pas ; mais à 139,7 la grille du DAW
+   prend une double croche d'avance toutes les 9 secondes, et un temps entier en
+   35 : mesures, aimant et quantification n'y veulent plus rien dire — le défaut
+   que le § 5 quindecies de `ROADMAP-fusion.md` croyait fermé, son attendu
+   (± 2 BPM) étant trop large pour une grille. C'est H46 (§ 8). *Une première
+   mesure d'aujourd'hui, par la cohérence sur une grille de NOIRES, rendait 0,06
+   partout et « aucun tempo fixe » : le kick et la basse à contretemps s'y
+   annulent. Une grille se cherche à la subdivision que le morceau joue.*
 
 **La décision sur les machines neuves se prend APRÈS ces trois-là**, sur la mesure :
 une machine ne se crée pas pour compenser une transcription qui rejoue un accord
@@ -230,6 +292,26 @@ fautive sur 56 ; la source rétablie, 0.
 *Les attendus 1 et 4 (le rendu du projet de référence aux deux diapasons) suivent,
 avec un `vsm-render` construit à part (`build-h42/`) : la campagne S2, gelée, se
 sert de `build/tools/vsm-render`, qu'une compilation ne doit pas remplacer.*
+
+### 4.2 Un défaut trouvé AVANT la course 2 : le cache de mesures ne portait pas le diapason (30/09/2026, 17 h 10)
+
+La clé d'une mesure de candidate (`vsm_render_cache.cle_de_rendu`) scelle machine,
+patch, notes, tempo et empreinte du moteur — « tout ce qui peut changer le rendu,
+rien d'autre ». Le diapason de la course, que H42 fait porter à chaque requête de
+rendu, **n'y était pas**. Une course à 443,14 Hz lancée après une course à 440 avec
+le même `vsm-render` aurait relu les mesures de la première, candidate par
+candidate, et la comparaison des deux aurait conclu « le diapason ne change aucun
+arbitrage » — la panne muette que la règle du dépôt interdit, et exactement la
+course complète que le § 4 annonce. Elle n'a pas eu lieu : ce matin les deux courses
+devaient tourner sur deux binaires (donc deux empreintes), et c'est en relisant la
+chaîne avant de relancer, pas par une mesure fausse, que le trou s'est vu.
+
+Corrigé sur `reload-chaine` (`efc0a27`) : le diapason entre dans la clé **seulement
+s'il diffère de 440** — à 440 la clé est celle d'avant (le test la recalcule par
+l'ancienne formule), et les mesures déjà payées restent valables. La garde a été vue
+rouge : la condition retirée, le test tombe sur « deux diapasons partagent une
+clé ». `analyzer.diapason` et `analyzer.tenues` rejoignent
+`charger_tous_les_modules`.
 
 ---
 
@@ -476,3 +558,78 @@ au rapport pour chaque stem), et sa mesure de bout en bout sur « Reload » — 
 diapason de H42 — dira si le son s'en rapproche (outil du § 0). L'attendu 4 était mal
 posé : il supposait qu'une basse ne doit jamais changer de seuil, et la mesure a
 montré que c'est la basse FRANCHE qui ne le doit pas.
+
+---
+
+## 8. H46 — le tempo à la précision d'une GRILLE : l'estimation affinée par la cohérence de phase des attaques (écrite AVANT la mesure, 30/09/2026, 17 h 45)
+
+**Ce qui est vu (§ 3, point 4).** « Reload » est à **138,00 BPM** ; la chaîne écrit
+139,7 au projet. Et ce n'est pas un accident de ce morceau : l'attendu du § 5
+quindecies de `ROADMAP-fusion.md` était « ± 2 BPM », tenu 10 fois sur 10 sur
+`s1-sec` avec un écart médian de **1,0 BPM**. Un BPM d'écart, c'est une grille qui
+prend un temps entier d'avance en une minute. L'attendu était écrit pour ne plus
+ouvrir un morceau à 120 ; il ne l'était pas pour une grille.
+
+**L'unité juste est la DÉRIVE, pas le BPM** : de combien la grille du projet
+s'écarte de la musique à la fin du morceau — `|Δbpm| / bpm × durée`. Une grille qui
+sert (aimant, quantification, boucle par mesures) ne doit pas dériver de plus de
+quelques dizaines de millisecondes sur le morceau entier.
+
+**L'hypothèse.** Partant du tempo de `librosa.beat.beat_track` (juste à ± 2 BPM),
+chercher dans une fenêtre de ± 4 % le tempo qui rend les attaques du mélange le plus
+COHÉRENTES en phase sur une grille de subdivisions amène la dérive sous 20 ms en fin
+de morceau — sans rien casser là où `beat_track` était déjà juste.
+
+**Le mécanisme (tranché ici).**
+- Les attaques : `librosa.onset.onset_detect` sur l'enveloppe d'attaques du mélange,
+  l'instant de chacune affiné par interpolation parabolique de l'enveloppe, son poids
+  = la force de l'attaque.
+- La cohérence d'un tempo `b` sur une subdivision `d` par temps :
+  `C = |Σ w·exp(2πi·d·t·b/60)| / Σ w` — 1 pour des attaques toutes sur la grille,
+  ~`1/√N` pour `N` attaques au hasard.
+- **Deux subdivisions, 4 (doubles croches) et 6 (sextolets, qui portent le ternaire)**,
+  la plus cohérente gagne. Pas la noire ni la croche seules : un kick sur le temps et
+  une basse à contretemps s'y annulent (payé aujourd'hui, § 3).
+- Fenêtre ± 4 % autour du départ, pas de 0,002 BPM. Au-delà de ± 4 % on entre dans
+  les rapports métriques (16/15 est à 6,7 %) : l'erreur d'OCTAVE n'est pas l'affaire
+  de cette hypothèse, et reste comptée à part par `tools/tempo-estime.py`.
+- **Concluant** si la cohérence du maximum atteint `max(0,2 ; 3/√N)` (trois fois le
+  niveau du hasard). Sinon le tempo de départ est GARDÉ, et c'est DIT au journal et
+  au rapport — jamais un affinage sur du bruit.
+- **Le tempo ENTIER le plus proche est retenu s'il explique les attaques à 95 % de
+  la cohérence du maximum** — ce qui revient à une dérive de moins d'un cinquième de
+  subdivision sur le morceau entier, quelle que soit sa durée. Entre deux tempos que
+  les attaques ne départagent pas, le plus simple est celui que le morceau a été
+  écrit avec. Sinon le tempo est rendu au millième.
+- Une option de la chaîne, `--tempo-affine`, **éteinte par défaut** (la chaîne
+  d'aujourd'hui au bit près, et la campagne S2 inchangée) ; `provenance.tempo` porte
+  le départ, le tempo affiné, sa cohérence, la subdivision, et si l'entier a été
+  retenu.
+
+**CALIBRATION ET VALIDATION.** Rien ici n'a été réglé sur un corpus : les seuils
+ci-dessus sont posés sur leur raison (le hasard, la dérive), avant toute mesure.
+`s1-sec` (dix extraits de 30 s) est mesuré le premier ; `s2` (dix morceaux de 186 à
+269 s, avec entrées et sorties de parties) et `s1-prod` (les mêmes graines, avec
+production) le sont ensuite, sans rien changer entre. Les trois lots partagent
+leurs dix tempos (108 à 137) : ce que `s2` ajoute est la LONGUEUR — là où la dérive
+se voit —, pas de nouveaux tempos, et c'est dit.
+
+**ATTENDUS** — témoin : `beat_track` seul (la chaîne d'aujourd'hui) ; essai :
+affiné. Dérive = `|Δbpm| / bpm vrai × durée du morceau` :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | `s1-sec` : dérive en fin de morceau | ≤ 20 ms sur 9 morceaux sur 10 au moins | moins de 7 sur 10 |
+| 2 | **le contrôle — ce qu'il casse** : morceaux dont la dérive affinée DÉPASSE celle du témoin, sur les trois lots | 0 | 2 ou plus |
+| 3 | `s2` : dérive en fin de morceau | ≤ 20 ms sur 9 sur 10 au moins | moins de 7 sur 10 |
+| 4 | `s1-prod` : dérive en fin de morceau | ≤ 20 ms sur 8 sur 10 au moins | moins de 6 sur 10 |
+| 5 | les affinages « non concluants » | comptés et nommés ; ils comptent comme ratés aux attendus 1, 3 et 4 si leur dérive dépasse 20 ms | — |
+| 6 | sans l'option | `provenance.tempo` et le tempo du projet identiques (test) | un champ change |
+
+« Reload » (138,00, déjà vu) et « B4 Wuz Then » (sans vérité) sont PUBLIÉS, et ne
+valident rien.
+
+**Ce que H46 ne fait pas.** La grille n'est toujours pas PHASÉE sur le premier temps
+fort (le « reste nommé » du § 5 quindecies) : à tempo juste, les notes tombent à un
+écart CONSTANT de la grille au lieu d'un écart qui grandit. C'est la phase suivante,
+et elle ne se mesure qu'une fois le tempo juste.

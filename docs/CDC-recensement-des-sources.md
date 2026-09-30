@@ -1082,3 +1082,22 @@ la campagne vit, par `tools/garder-batterie.sh --pid`, qui endort quand même le
 poste sous 10 %. Le rejugement reste celui du § 14.1 (`analyse/rejuger_h41.py`),
 sur les dix, et il n'est **pas** lu à six : les attendus ont été écrits pour dix
 morceaux.
+
+### 14.3 Morte une troisième fois à `g7` — par l'extinction du poste (30/09/2026, 16 h 14)
+
+**CE QUI S'EST PASSÉ.** La relance de 07 h 18 a rejugé `g1`-`g6` (sautés, mesurés),
+commencé `g7` à 07 h 31, et a été **gelée à 07 h 48** pour laisser la place à la
+reconstruction de « Reload » (`CDC-reload-indifferenciable.md` § 2) — dernière ligne
+de `g7` à 07 h 47 : le réglage de piste de sa batterie. Elle n'a jamais été reprise :
+le poste a été **éteint à 16 h 14** (extinction demandée depuis le bureau, journal
+du système à l'appui), et un processus gelé meurt avec les autres. `g7` a donc couru
+seize minutes ; six morceaux sur dix restent mesurés, comme au § 14.2.
+
+**LA REPRISE EST À LA FIN DE LA SUITE DE « RELOAD »**, pas tout de suite : une
+course à la fois sur ce poste (15 Go, et une autre session de travail y tourne).
+`reconstruction/travail/reload-suite.sh`, étape 5 : la course morte de `g7` est mise
+de côté (`s2-banc-g7-mort-<date>`), `banc-s2.sh` inchangée saute les six morceaux
+courus, journal `banc-s2-reprise3.log`. Ce qui est comparable ne change pas : le
+code d'`analyse/` de l'arbre principal est celui du 26/09, et `build/tools/vsm-render`
+celui de 07 h 15 — le moteur de H42 (`build-h42/`) n'y entre pas. Le rejugement
+(`analyse/rejuger_h41.py`) reste à dix morceaux.
