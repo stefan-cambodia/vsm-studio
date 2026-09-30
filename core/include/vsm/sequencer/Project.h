@@ -112,6 +112,10 @@ public:
     /// celui qu'on enregistre, pas sur la reconstruction qu'on écoute). Le rendu
     /// hors ligne ne le lit pas : un export ne clique jamais.
     bool metronomeEnabled = false;
+    /// H42 : LE DIAPASON — la fréquence du la4, en hertz. Une donnée de morceau :
+    /// un enregistrement accordé à 442 se rejoue à 442. Le graphe la pose sur le
+    /// moteur (`vsm::audio::plugin::setDiapason`) par les deux chemins de rendu.
+    double referenceA4Hz = 440.0;
 
     /// RÉGION DE PUNCH (D3.5) : entre ces deux ticks, et seulement là,
     /// l'enregistrement capte -- avant et après, on entend ce qui est déjà là.

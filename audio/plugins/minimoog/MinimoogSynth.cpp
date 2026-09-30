@@ -1,4 +1,5 @@
 #include "MinimoogSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
@@ -164,7 +165,7 @@ void MinimoogSynth::process(const MidiNoteEvent* events, int numEvents,
         // chemin pour l'atteindre -- l'expression est identique au bit près à
         // ce qu'elle était, ce que l'empreinte de non-régression vérifie.
         const float bend = bendSemitones_.load(std::memory_order_relaxed);
-        float baseHz = 440.0f * std::exp2f((noteNumber + pitchDriftSemis + bend - 69.0f) / 12.0f);
+        float baseHz = vsm::audio::plugin::diapason() * std::exp2f((noteNumber + pitchDriftSemis + bend - 69.0f) / 12.0f);
 
         osc1_.setFrequency(baseHz);
         osc2_.setFrequency(baseHz * std::exp2f(osc2Detune / 12.0f));

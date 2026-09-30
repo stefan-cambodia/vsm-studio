@@ -1,4 +1,5 @@
 #include "BagpipeSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -8,7 +9,7 @@ using namespace vsm::audio::plugin;
 using namespace vsm::audio::dsp;
 
 namespace {
-float noteToHz(float note) { return 440.0f * std::exp2f((note - 69.0f) / 12.0f); }
+float noteToHz(float note) { return vsm::audio::plugin::diapason() * std::exp2f((note - 69.0f) / 12.0f); }
 /// LE SAC QUI SE VIDE DÉTEND LES ANCHES : 4 % de hauteur à pression nulle,
 /// rien à pleine pression. Toutes les anches ensemble, c'est le même sac.
 float sag(float bagPressure) { return 1.0f + 0.04f * (std::clamp(bagPressure, 0.0f, 1.0f) - 1.0f); }

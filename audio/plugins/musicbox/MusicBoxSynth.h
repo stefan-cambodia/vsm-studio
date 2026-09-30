@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/engine/VoiceManager.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
@@ -111,7 +112,7 @@ private:
 
     void pincer(const Params& p) {
         const float velocity = static_cast<float>(velocity_) / 127.0f;
-        const float f0 = 440.0f * std::exp2f(
+        const float f0 = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
         const float force = 1.0f - p.velocitySensitivity * (1.0f - velocity);
         for (int i = 0; i < kModes; ++i) {

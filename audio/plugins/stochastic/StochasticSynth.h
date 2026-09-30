@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/engine/VoiceManager.h"
@@ -101,7 +102,7 @@ public:
         channel_ = channel;
         note_ = note;
         velocity_ = velocity;
-        baseHz_ = 440.0f * std::pow(2.0f, (static_cast<float>(note) - 69.0f) / 12.0f);
+        baseHz_ = vsm::audio::plugin::diapason() * std::pow(2.0f, (static_cast<float>(note) - 69.0f) / 12.0f);
         env_.noteOn();
         reinitialiser();
     }

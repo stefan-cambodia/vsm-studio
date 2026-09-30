@@ -1,6 +1,7 @@
 #include "TestFramework.h"
 #include "../plugins/multisample/MultisampleSynth.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
@@ -244,6 +245,24 @@ VSM_TEST(multisample_zone_boundary_picks_the_right_zone) {
     const double expectedAbove = 329.63 * std::pow(2.0, -4.0 / 12.0);
     VSM_ASSERT(std::abs(centsBetween(frequencyBelow, expectedBelow)) < 5.0);
     VSM_ASSERT(std::abs(centsBetween(frequencyAbove, expectedAbove)) < 5.0);
+}
+
+/// H42 : LE DIAPASON DU PROJET. La note racine d'une zone rejoue son échantillon
+/// tel quel à 440 ; à 446, 446/440 fois plus vite — comme un sampler matériel dont
+/// on règle le « master tune ». Le témoin à 440 fait partie de la mesure.
+VSM_TEST(multisample_follows_the_project_diapason) {
+    const auto joue = [](float la4) {
+        vsm::audio::plugin::setDiapason(la4);
+        auto synth = makeMultisample();
+        synth->setProfile(makeTestProfile());
+        set(*synth, "Attack", 0.001f);
+        set(*synth, "Velocity Amount", 0.0f);
+        const auto y = render(*synth, {noteOn(0, 64, 100)}, 24000);
+        vsm::audio::plugin::setDiapason(440.0f);
+        return estimateFrequency(y, 2400, 20000);
+    };
+    VSM_ASSERT(std::abs(centsBetween(joue(440.0f), 329.63)) < 2.0);
+    VSM_ASSERT(std::abs(centsBetween(joue(446.0f), 329.63 * 446.0 / 440.0)) < 2.0);
 }
 
 /// § 8.2 — deux vélocités de part et d'autre du seuil de couche tirent deux

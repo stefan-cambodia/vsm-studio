@@ -1,4 +1,5 @@
 #include "GenericSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -28,7 +29,7 @@ void GenericVoice::prepare(double sampleRate, uint64_t seed) {
 void GenericVoice::noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
     channel_ = channel; note_ = note; velocity_ = velocity;
     ampEnv_.noteOn(); filterEnv_.noteOn();
-    baseHz_ = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+    baseHz_ = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
     // PHASE REMISE À ZÉRO, et non tirée au sort. Deux rendus du même patch
     // doivent être identiques échantillon pour échantillon : c'est une machine
     // de mesure, la moindre variation ferait du bruit dans la fonction de coût

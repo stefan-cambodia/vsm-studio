@@ -1,4 +1,5 @@
 #include "WindSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -15,7 +16,7 @@ constexpr uint64_t kBaseSeed = 0x57494E44ULL;
 constexpr float kLowestHz = 25.0f;
 
 float noteToHz(uint8_t note, float semitones) {
-    return 440.0f * std::exp2f((static_cast<float>(note) + semitones - 69.0f) / 12.0f);
+    return vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note) + semitones - 69.0f) / 12.0f);
 }
 } // namespace
 

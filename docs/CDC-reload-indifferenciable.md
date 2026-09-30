@@ -186,3 +186,47 @@ pas le gros de l'écart (le pad rejoué en notes brèves du § 3 pèse sans dout
 davantage). Il ne doit simplement pas empirer. La course complète avec
 `--diapason auto` (dont les ARBITRAGES peuvent changer, un timbre accordé se
 comparant autrement) viendra après, et se lira avec `comparer_rapports.py`.
+
+### 4.1 Mesuré — le moteur (30/09/2026, 11 h 30) : attendus 2, 3 et 5 TENUS
+
+**Ce qui est écrit.** `audio/include/vsm/audio/plugin/Diapason.h` : une valeur du
+moteur (atomique, 440 par défaut), posée par `ProcessGraph::setProject` depuis
+`Project::referenceA4Hz` — donc par les deux chemins de rendu, `interchange`
+appelant `setProject` AVANT de monter les machines. **64 conversions** note →
+fréquence dans **58 fichiers** de machines passent par elle ; les quatre `440`
+restants ne sont pas des notes (deux valeurs initiales, un formant, l'opérateur à
+fréquence FIXE du DX7, qui par définition ne suit pas). Le diviseur d'octaves et les
+roues phoniques, qui tiennent une table calculée à l'`initialize`, se réaccordent au
+bloc suivant quand le diapason change (sans toucher aux phases : pas de clic). Le
+multi-échantillons multiplie son avance de lecture par `la4 / 440`. Le document :
+`transport.referenceA4Hz`, écrit seulement s'il diffère de 440 ; hors de 400-480 Hz
+à la lecture, écarté et DIT (une réserve : il changerait le son).
+
+| # | attendu | mesuré |
+|---|---|---|
+| 2 | empreintes et suites inchangées | **tenu** — audio 1 311/1 311 (empreintes comprises : au bit près à 440), core 364, interchange 314 (+1 : le diapason voyage, une valeur absurde est écartée et dite), clap 25 |
+| 3 | chaque machine mélodique suit à ± 2 cents | **tenu** — 56 machines mélodiques du registre à +23,45 ± 2 cents (la4 446 contre 440), le multi-échantillons dans son propre test (profil engendré) |
+| 5 | les machines qui ne suivent pas rendent au bit près | **tenu** — les 7 (5 batteries, sampler, guimbarde), à 38 contre 38 |
+
+**Deux défauts de la MESURE, attrapés avant d'accuser une machine.** La première
+version du test nommait quatre fautives : `vsm.vector` (+27,60 cents), `vsm.carillon`
+(+27,70), `vsm.bagpipe` (+26,48), `vsm.psg` (+21,15). Les hauteurs ABSOLUES lues
+disaient le reste : 192, 233 et 211 Hz pour une note de 220 — l'autocorrélation ne
+lisait PAS la hauteur d'une table qui se déforme, d'une cloche ou d'une cornemuse à
+bourdons, et le rapport de deux lectures fausses ne dit rien. Une seconde mesure,
+indépendante — le décalage du SPECTRE ENTIER sur un axe logarithmique, qui ne
+demande pas de période — arbitre désormais : elle lit **+23,40, +23,29 et +23,48**
+cents pour les trois. Elle a d'abord été vérifiée sur une machine franche (Minimoog :
++23,45 ± 1, et 0 contre elle-même). La puce sonore, elle, **suit et quantifie** :
+sa hauteur est `horloge / (16 · entier)`, fidèle au SN76489 ; lue 220,19 et
+222,90 Hz pour 220,22 et 222,83 prédits par sa formule — le test la juge contre
+cette prédiction. `test.dummy`, une doublure muette des tests du registre, est
+écartée et dite.
+
+**LA GARDE, VUE ROUGE.** `vsm.generic` remis à `440.0f` en dur, recompilé : le test
+le nomme — « +0,00 cents par période, −0,00 par spectre, au lieu de +23,45 » —, 1
+fautive sur 56 ; la source rétablie, 0.
+
+*Les attendus 1 et 4 (le rendu du projet de référence aux deux diapasons) suivent,
+avec un `vsm-render` construit à part (`build-h42/`) : la campagne S2, gelée, se
+sert de `build/tools/vsm-render`, qu'une compilation ne doit pas remplacer.*

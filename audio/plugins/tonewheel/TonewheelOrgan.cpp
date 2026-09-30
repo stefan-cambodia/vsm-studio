@@ -1,4 +1,5 @@
 #include "TonewheelOrgan.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -26,9 +27,18 @@ constexpr int kLowestWheelNote = 24; // do0
 
 void TonewheelGenerator::prepare(double sampleRate) {
     sampleRate_ = sampleRate;
+    la4_ = -1.0f;
+    accorderSurLeDiapason();
+    reset();
+}
+
+bool TonewheelGenerator::accorderSurLeDiapason() {
+    const float la4 = vsm::audio::plugin::diapason();
+    if (la4 == la4_) return false;
+    la4_ = la4;
     for (int i = 0; i < kWheelCount; ++i) {
         const double note = static_cast<double>(kLowestWheelNote + i);
-        const double idealHz = 440.0 * std::exp2((note - 69.0) / 12.0);
+        const double idealHz = static_cast<double>(vsm::audio::plugin::diapason()) * std::exp2((note - 69.0) / 12.0);
 
         // ÉCART DE JUSTESSE VOLONTAIRE. Les rapports d'engrenage réels
         // n'atteignent pas exactement le tempérament égal : chaque roue est
@@ -41,12 +51,11 @@ void TonewheelGenerator::prepare(double sampleRate) {
         const double detuneCents = 0.35 * std::sin(static_cast<double>(i) * 2.399963);
         increment_[static_cast<size_t>(i)] =
             idealHz * std::exp2(detuneCents / 1200.0) / sampleRate_;
-        // Phases réparties : les roues tournent depuis toujours, elles ne
-        // démarrent pas ensemble. Toutes en phase produiraient une bouffée de
-        // niveau au premier accord.
-        phase_[static_cast<size_t>(i)] = std::fmod(static_cast<double>(i) * 0.6180339887, 1.0);
     }
-    reset();
+    // Les phases réparties (les roues tournent depuis toujours, elles ne
+    // démarrent pas ensemble) sont posées par `reset()`, que `prepare` appelle ;
+    // un réaccord ne les touche pas.
+    return true;
 }
 
 void TonewheelGenerator::reset() {
@@ -267,6 +276,7 @@ void TonewheelOrgan::applyNoteEvent(const MidiNoteEvent& event) {
 void TonewheelOrgan::process(const MidiNoteEvent* events, int numEvents,
                               float* outputL, float* outputR, int numSamples) {
     ScopedNoDenormals noDenormals;
+    generator_.accorderSurLeDiapason();   // H42 : le diapason du projet a pu changer
 
     std::array<float, TonewheelGenerator::kDrawbarCount> drawbars{};
     for (int i = 0; i < TonewheelGenerator::kDrawbarCount; ++i) {

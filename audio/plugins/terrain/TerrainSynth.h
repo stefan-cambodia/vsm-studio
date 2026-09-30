@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -107,7 +108,7 @@ public:
         const float rayon = std::clamp(
             p.radius * (1.0f - p.velocityToRadius * (1.0f - velocity)), 0.0f, 1.0f) * 6.0f;
 
-        const float hz = 440.0f * std::exp2f(
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
         phase_ += static_cast<double>(hz) / sampleRate_;
         if (phase_ >= 1.0) phase_ -= 1.0;

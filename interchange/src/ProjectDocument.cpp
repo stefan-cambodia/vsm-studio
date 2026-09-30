@@ -266,6 +266,7 @@ ProjectDocument documentFromProject(const Project& project) {
                                    bus.preFader});
     document.transport.punchEnabled = project.punchEnabled;
     document.transport.metronome = project.metronomeEnabled;   // D503
+    document.transport.referenceA4Hz = project.referenceA4Hz;   // H42
     document.transport.punchStartTick = project.punchStartTick;
     document.transport.punchEndTick = project.punchEndTick;
 
@@ -450,6 +451,12 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
                                   bus.preFader});
     project.punchEnabled = document.transport.punchEnabled;
     project.metronomeEnabled = document.transport.metronome;   // D503
+    // H42 : le diapason ; une valeur écartée à la lecture change le SON — c'est une
+    // réserve, elle ouvre la boîte (au contraire des corrections de D523).
+    project.referenceA4Hz = document.transport.referenceA4Hz;
+    if (!document.transport.diapasonEcarte.empty())
+        report.warnings.push_back("diapason « " + document.transport.diapasonEcarte
+                                  + " Hz » hors des bornes 400-480 Hz : écarté, la4 = 440 Hz repris");
     project.punchStartTick = document.transport.punchStartTick;
     project.punchEndTick = document.transport.punchEndTick;
     // D523 : UNE BOUCLE (OU UN PUNCH) SANS RÉGION N'EST PAS ACTIVE — l'invariant que
@@ -689,6 +696,9 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     transport.set("loop", std::move(loop));
     // D503 : LE CLIC, écrit seulement allumé — un projet sans clic garde son fichier.
     if (document.transport.metronome) transport.set("metronome", JsonValue::makeBoolean(true));
+    // H42 : LE DIAPASON, écrit seulement s'il dit quelque chose.
+    if (document.transport.referenceA4Hz != 440.0)
+        transport.set("referenceA4Hz", JsonValue::makeNumber(document.transport.referenceA4Hz));
     root.set("transport", std::move(transport));
 
     // D363 : OÙ L'ON EN ÉTAIT DANS LA VUE. Écrit SEULEMENT si un zoom a été
@@ -1106,6 +1116,12 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     document.transport.loopEndTick = static_cast<int64_t>(loop["endTick"].asNumber(0.0));
 
     document.transport.metronome = transport["metronome"].asBoolean(false);   // D503 : absent = éteint
+    // H42 : absent = 440 ; hors bornes (ou non fini) = écarté ET DIT.
+    if (transport["referenceA4Hz"].isNumber()) {
+        const double la4 = transport["referenceA4Hz"].asNumber(440.0);
+        if (std::isfinite(la4) && la4 >= 400.0 && la4 <= 480.0) document.transport.referenceA4Hz = la4;
+        else document.transport.diapasonEcarte = transport["referenceA4Hz"].toString(0);   // tel qu'écrit, en locale C
+    }
 
     const JsonValue& punch = transport["punch"];
     document.transport.punchEnabled = punch["enabled"].asBoolean(false);

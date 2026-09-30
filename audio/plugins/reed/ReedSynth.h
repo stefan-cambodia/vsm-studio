@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -113,7 +114,7 @@ public:
         const float pression = std::clamp(
             p.pressure * (1.0f - p.velocityToPressure * (1.0f - velocity)), 0.0f, 1.0f);
 
-        const float hz = 440.0f * std::exp2f(
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
 
         // LA RAIDEUR EFFECTIVE BAISSE AVEC LA PRESSION — c'est le trait de la

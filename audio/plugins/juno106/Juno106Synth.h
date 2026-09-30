@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/AnalogDrift.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Chorus.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -146,7 +147,7 @@ public:
         const float driftSemis = drift_.nextValue() * kMaxDriftSemitones;
         const float vibratoSemis = lfoBipolar * p.lfoPitchAmount * kMaxVibratoSemitones
                                  + lfoBipolar * p.wheelVibratoSemis;
-        const float freq = 440.0f * std::exp2f(
+        const float freq = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + driftSemis + vibratoSemis
              + p.bendSemitones - 69.0f) / 12.0f);
 

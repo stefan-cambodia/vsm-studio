@@ -1,4 +1,5 @@
 #include "SpectralSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -100,7 +101,7 @@ void SpectralSynth::rendreUneTrame() {
 
         const float velocity = static_cast<float>(note.velocity) / 127.0f;
         const float gain = niveau * (1.0f - velSens * (1.0f - velocity));
-        const float f0 = 440.0f * std::exp2f(
+        const float f0 = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note.note) + bend - 69.0f) / 12.0f);
 
         for (int k = 1; k <= partiels; ++k) {

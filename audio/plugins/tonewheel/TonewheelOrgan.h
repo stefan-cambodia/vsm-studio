@@ -58,6 +58,11 @@ public:
     void prepare(double sampleRate);
     void reset();
 
+    /// H42 : recalcule la vitesse des 91 roues pour le diapason courant, SANS
+    /// toucher à leurs phases (un réaccord en cours de morceau ne doit pas
+    /// cliquer). Rend vrai s'il a fallu réaccorder. Sans allocation.
+    bool accorderSurLeDiapason();
+
     /// Avance toutes les roues d'un échantillon. À appeler UNE FOIS par
     /// échantillon, avant de lire les roues : elles sont partagées.
     void advance();
@@ -100,6 +105,7 @@ private:
     double sampleRate_ = 48000.0;
     std::array<double, kWheelCount> phase_{};
     std::array<double, kWheelCount> increment_{};
+    float la4_ = -1.0f;   ///< H42 : le diapason sur lequel les roues sont accordées
     /// Cache d'un échantillon : `stamp_` change à chaque `advance()`, ce qui
     /// invalide toutes les valeurs d'un coup sans avoir à les parcourir.
     mutable std::array<float, kWheelCount> wheelValue_{};

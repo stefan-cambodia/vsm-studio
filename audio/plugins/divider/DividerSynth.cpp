@@ -1,4 +1,5 @@
 #include "DividerSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
@@ -38,12 +39,10 @@ DividerSynth::DividerSynth() {
 
 void DividerSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
     sampleRate_ = sampleRate;
-    for (int k = 0; k < kMasters; ++k) {
+    for (int k = 0; k < kMasters; ++k)
         masters_[static_cast<size_t>(k)].prepare(sampleRate, vsm::util::deriveSeed(kBaseSeed, static_cast<uint64_t>(k)));
-        // Le maître du nom de note `k`, à l'octave la plus aiguë du clavier.
-        const float hz = 440.0f * std::pow(2.0f, (static_cast<float>(kMasterOctaveBase + k) - 69.0f) / 12.0f);
-        masters_[static_cast<size_t>(k)].setBaseHz(hz);
-    }
+    la4_ = -1.0f;
+    accorderLesMaitres();
     for (auto& t : touches_) {
         t.env.setSampleRate(sampleRate);
         t.tenue = false;
@@ -69,9 +68,23 @@ void DividerSynth::applyNoteEvent(const MidiNoteEvent& event) {
     }
 }
 
+void DividerSynth::accorderLesMaitres() {
+    // H42 : les douze maîtres suivent le diapason du projet. Seule leur fréquence
+    // de base change — leur phase et leur dérive continuent, sans clic.
+    const float la4 = vsm::audio::plugin::diapason();
+    if (la4 == la4_) return;
+    la4_ = la4;
+    for (int k = 0; k < kMasters; ++k) {
+        // Le maître du nom de note `k`, à l'octave la plus aiguë du clavier.
+        const float hz = la4 * std::pow(2.0f, (static_cast<float>(kMasterOctaveBase + k) - 69.0f) / 12.0f);
+        masters_[static_cast<size_t>(k)].setBaseHz(hz);
+    }
+}
+
 void DividerSynth::process(const MidiNoteEvent* events, int numEvents,
                            float* outputL, float* outputR, int numSamples) {
     ScopedNoDenormals noDenormals;
+    accorderLesMaitres();
 
     const float niveau16 = params_[kLevel16].load(std::memory_order_relaxed);
     const float niveau8 = params_[kLevel8].load(std::memory_order_relaxed);

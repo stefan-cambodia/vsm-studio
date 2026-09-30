@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/AnalogDrift.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
@@ -157,7 +158,7 @@ public:
             if (!ampEnv_[s].isActive()) continue;
             const auto& couche = p.layer[s];
 
-            const float hz = 440.0f * std::exp2f(
+            const float hz = vsm::audio::plugin::diapason() * std::exp2f(
                 (static_cast<float>(note_) + couche.detune + driftSemis
                  + p.bendSemitones - 69.0f) / 12.0f);
             osc_[s].setFrequency(hz);

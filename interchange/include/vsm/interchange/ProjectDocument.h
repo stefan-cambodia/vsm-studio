@@ -82,6 +82,11 @@ struct ProjectTransport {
     int64_t loopEndTick = 0;
     /// D503 : le clic ; écrit SEULEMENT quand il est allumé.
     bool metronome = false;
+    /// H42 : le diapason (la4, en hertz) ; écrit SEULEMENT s'il diffère de 440 —
+    /// un projet d'avant garde exactement son fichier. Hors de 400-480 Hz à la
+    /// lecture, il est ÉCARTÉ, et `diapasonEcarte` dit ce qu'on a lu.
+    double referenceA4Hz = 440.0;
+    std::string diapasonEcarte;
     /// RÉGION DE PUNCH (D3.5) : entre ces deux ticks, et seulement là,
     /// l'enregistrement capte. Champ FACULTATIF -- un projet qui n'en déclare
     /// pas garde exactement le fichier qu'il avait.

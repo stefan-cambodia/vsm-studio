@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/AnalogDrift.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/LadderFilterZDFx4.h"
@@ -127,7 +128,7 @@ public:
             return 0.0f;
         }
 
-        const float baseHz = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float baseHz = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
         const float filtEnvLevel = filterEnv_.nextSample();
         const float ampLevel = ampEnv_.nextSample();
 

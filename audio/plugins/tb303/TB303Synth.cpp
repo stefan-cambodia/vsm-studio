@@ -1,4 +1,5 @@
 #include "TB303Synth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -133,7 +134,7 @@ void TB303Synth::process(const MidiNoteEvent* events, int numEvents,
 
         float noteNumber = pitchGlide_.nextValue();
         float pitchDriftSemis = pitchDrift_.nextValue() * kMaxPitchDriftSemitones;
-        float hz = 440.0f * std::exp2f((noteNumber + pitchDriftSemis + bendSemitones_.load(std::memory_order_relaxed) - 69.0f) / 12.0f);
+        float hz = vsm::audio::plugin::diapason() * std::exp2f((noteNumber + pitchDriftSemis + bendSemitones_.load(std::memory_order_relaxed) - 69.0f) / 12.0f);
         osc_.setFrequency(hz);
 
         float raw = osc_.nextSample();

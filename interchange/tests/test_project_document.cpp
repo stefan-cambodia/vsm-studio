@@ -474,6 +474,37 @@ VSM_TEST(the_loop_region_is_project_data_not_screen_state) {
     VSM_ASSERT_EQ(rejoue.loopEndTick, vsm::midi::Tick(3840));
 }
 
+// H42 : LE DIAPASON DU PROJET. Écrit seulement s'il diffère de 440 (un fichier
+// d'avant reste le même), relu tel quel, et une valeur hors bornes est ÉCARTÉE et
+// DITE — elle changerait le son, c'est une réserve.
+VSM_TEST(the_project_diapason_travels_and_an_absurd_one_is_set_aside_and_said) {
+    Project project = buildProject();
+    const std::string sansDiapason = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(sansDiapason.find("referenceA4Hz") == std::string::npos);
+
+    project.referenceA4Hz = 442.3;
+    const std::string avec = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(avec.find("referenceA4Hz") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(avec);
+    VSM_ASSERT(relu.success);
+    Project rejoue = buildProject();
+    const ImportReport rien = applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_NEAR(rejoue.referenceA4Hz, 442.3, 1e-9);
+    VSM_ASSERT(rien.warnings.empty());
+
+    JsonValue json = projectDocumentToJson(documentFromProject(project));
+    JsonValue transport = json["transport"];
+    transport.set("referenceA4Hz", JsonValue::makeNumber(1000.0));
+    json.set("transport", std::move(transport));
+    const ProjectLoadResult absurde = parseProjectDocument(json.toString());
+    VSM_ASSERT(absurde.success);
+    Project ecarte = buildProject();
+    const ImportReport dit = applyDocumentToProject(absurde.document, ecarte);
+    VSM_ASSERT(ecarte.referenceA4Hz == 440.0);
+    VSM_ASSERT_EQ(dit.warnings.size(), size_t{1});
+    VSM_ASSERT(dit.warnings[0].find("1000") != std::string::npos);
+}
+
 // D523 : un fichier écrit après un Maj+clic sans glissé porte une boucle allumée sur
 // une région vide. Rouverte, elle est éteinte — la région gardée —, et c'est DIT.
 VSM_TEST(a_loop_or_punch_switched_on_over_an_empty_region_opens_switched_off_and_says_so) {

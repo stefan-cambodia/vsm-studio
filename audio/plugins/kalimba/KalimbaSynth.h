@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/engine/VoiceManager.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
@@ -139,7 +140,7 @@ private:
     void pincer(const Params& p) {
         const float velocity = static_cast<float>(velocity_) / 127.0f;
         const float force = 1.0f - std::clamp(p.velocitySensitivity, 0.0f, 1.0f) * (1.0f - velocity);
-        const float f0 = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float f0 = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
         // Une lame courte meurt plus vite : T60 en 1/sqrt(f), do4 pour repère.
         const float t60 = std::clamp(p.tineDecay * std::sqrt(261.63f / f0), 0.05f, 30.0f);
         // La poutre encastrée-libre : (βL)² = 3,516 · 22,03 · 61,70.

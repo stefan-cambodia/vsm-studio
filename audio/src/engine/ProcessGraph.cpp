@@ -1,6 +1,7 @@
 #include "vsm/audio/engine/ProcessGraph.h"
 #include <chrono>
 #include "vsm/audio/dsp/DenormalGuard.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
@@ -102,6 +103,11 @@ void ProcessGraph::ensureParallelBuffers() {
 }
 
 void ProcessGraph::setProject(const Project& project) {
+    // H42 : LE DIAPASON DU PROJET, posé sur le moteur AVANT que les machines de ce
+    // projet ne soient montées (le rendu hors ligne appelle `setProject` d'abord) ;
+    // celles qui tiennent une table (diviseur, roues phoniques) se réaccordent au
+    // bloc suivant quand il change en cours de séance.
+    setDiapason(static_cast<float>(project.referenceA4Hz));
     ccVolume_.fill(1.0f);   // D329 : un projet republié repart au volume de canal plein ; la chasse (D16.2) le rétablit à la lecture
     ccPan_.fill(0.0f);      // D330
     rpnMsb_.fill(127); rpnLsb_.fill(127); bendRange_.fill(2.0f);   // D331

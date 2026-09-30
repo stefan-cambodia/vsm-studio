@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Envelope.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/dsp/Oscillator.h"
 #include "vsm/audio/engine/VoiceManager.h"
@@ -40,7 +41,7 @@ public:
         channel_ = channel;
         note_ = note;
         velocity_ = velocity;
-        float hz = 440.0f * std::exp2f((static_cast<float>(note) - 69.0f) / 12.0f);
+        float hz = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note) - 69.0f) / 12.0f);
         osc_.setFrequency(hz);
         envelope_.noteOn();
     }

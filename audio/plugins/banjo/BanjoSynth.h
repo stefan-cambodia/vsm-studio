@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Biquad.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -81,7 +82,7 @@ public:
     /// Le signal AU CHEVALET : c'est lui qui va à la peau.
     float render(const Params& p) {
         if (!isActive()) return 0.0f;
-        const float hz = 440.0f * std::exp2f((static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
         // LA PEAU MANGE LA CORDE : plus le chevalet lui livre d'énergie, plus
         // vite la corde se tait. C'est le premier trait, et il tient à ce
         // facteur -- une guitare aurait le t60 entier.

@@ -1,4 +1,5 @@
 #include "ThereminSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -42,7 +43,7 @@ void ThereminSynth::applyNoteEvent(const MidiNoteEvent& event) {
         // n'est pas lue : elle ne veut rien dire pour un instrument qu'on ne
         // touche pas.
         noteTenue_ = event.note;
-        hzVise_ = 440.0f * std::exp2f((static_cast<float>(event.note) - 69.0f) / 12.0f);
+        hzVise_ = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(event.note) - 69.0f) / 12.0f);
         if (hzCourant_ <= 0.0f) hzCourant_ = hzVise_;   // la première note ne glisse de nulle part
     } else if (event.note == noteTenue_) {
         noteTenue_ = -1;

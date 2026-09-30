@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/engine/VoiceManager.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
@@ -98,7 +99,7 @@ private:
         const float durete = std::clamp(p.hardness + p.velocityToHardness * (velocity - 0.5f), 0.0f, 1.0f);
         // La note demandée est la PRIME (la hauteur qu'on entend) : le bourdon
         // sonne une octave dessous, la nominale une octave dessus.
-        const float prime = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float prime = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
         const float tierce = 1.2f + (1.25f - 1.2f) * std::clamp(p.tierce, 0.0f, 1.0f);
         const std::array<float, kPartials> ratios{{0.5f, 1.0f, tierce, 1.5f, 2.0f, 2.514f, 2.662f, 3.011f}};
         // Ce que le battant réveille : la nominale et la prime fort, le bourdon

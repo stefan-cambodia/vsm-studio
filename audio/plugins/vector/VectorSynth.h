@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/AnalogDrift.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
@@ -131,7 +132,7 @@ public:
         const float driftSemis = drift_.nextValue() * 0.05f;
         float mix = 0.0f;
         for (int i = 0; i < 4; ++i) {
-            const float hz = 440.0f * std::exp2f(
+            const float hz = vsm::audio::plugin::diapason() * std::exp2f(
                 (static_cast<float>(note_) + p.detune[static_cast<size_t>(i)]
                  + driftSemis + p.bendSemitones - 69.0f) / 12.0f);
             oscs_[static_cast<size_t>(i)].setFrequency(hz);

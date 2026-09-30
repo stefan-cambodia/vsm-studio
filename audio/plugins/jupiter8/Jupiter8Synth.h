@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/AnalogDrift.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Chorus.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
@@ -107,7 +108,7 @@ public:
     // Contrat VoiceManager
     void noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
         channel_ = channel; note_ = note; velocity_ = velocity;
-        baseHz_ = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        baseHz_ = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
         ampEnv_.noteOn(); filterEnv_.noteOn();
         vco1_.reset(0.0); vco2_.reset(0.0); syncPhase_ = 0.0f;
     }

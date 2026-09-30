@@ -1,4 +1,5 @@
 #include "WavetableSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -28,7 +29,7 @@ void WavetableVoice::prepare(double sampleRate, uint64_t seed) {
 void WavetableVoice::noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
     channel_ = channel; note_ = note; velocity_ = velocity;
     ampEnv_.noteOn(); filterEnv_.noteOn(); waveEnv_.noteOn();
-    baseHz_ = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+    baseHz_ = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
     // Phases décorrélées entre les deux oscillateurs : démarrer ensemble
     // annulerait le battement de timbre qu'on cherche précisément à obtenir.
     oscA_.reset(static_cast<double>(rng_.nextUnipolar()));

@@ -1,4 +1,5 @@
 #include "HurdyGurdySynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -87,7 +88,7 @@ void HurdyGurdySynth::process(const MidiNoteEvent* events, int numEvents,
     filtre_.setCutoffHz(params_[kCutoff].load(std::memory_order_relaxed));
     filtre_.setResonance(0.1f);
 
-    const float tonique = 440.0f * std::exp2f((droneNote - 69.0f) / 12.0f);
+    const float tonique = vsm::audio::plugin::diapason() * std::exp2f((droneNote - 69.0f) / 12.0f);
     // Tonique, quinte, octave : l'accord des vielles en sol/do. Le premier
     // jet mettait le gros bourdon une octave plus bas, à 32 Hz -- et la roue
     // n'y trouvait pas la fondamentale (mesuré : 3·f0 dominait de 70 fois).

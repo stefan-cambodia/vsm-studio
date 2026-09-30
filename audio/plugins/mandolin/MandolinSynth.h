@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/StringWaveguide.h"
 #include "vsm/audio/engine/VoiceManager.h"
@@ -89,7 +90,7 @@ public:
     float render(const Params& p) {
         if (!isActive()) return 0.0f;
         const float hz =
-            440.0f * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
+            vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
         const float hzB = hz * std::exp2f(p.courseDetune / 1200.0f) * (p.octavePair >= 0.5f ? 2.0f : 1.0f);
         const float t60 = tenue_ ? p.decay : 0.12f;
         cordeA_.setTuning(hz, p.damping, 0.02f, t60);

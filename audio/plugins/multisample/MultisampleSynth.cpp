@@ -1,4 +1,5 @@
 #include "multisample/MultisampleSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
@@ -87,7 +88,9 @@ void MultisampleVoice::attach(ProfilePtr profile, const LoadedZone& zone, double
 
     const double semitones = static_cast<double>(note_) - static_cast<double>(zone.rootNote)
                            + (static_cast<double>(zone.tuneCents) + static_cast<double>(globalTuneCents)) / 100.0;
-    const double pitchRatio = std::pow(2.0, semitones / 12.0);
+    // H42 : le diapason du projet. À 440, le facteur vaut exactement 1 : au bit près.
+    const double pitchRatio = std::pow(2.0, semitones / 12.0)
+                            * (static_cast<double>(vsm::audio::plugin::diapason()) / 440.0);
     // Le rapport des fréquences d'échantillonnage est INDISPENSABLE : un
     // fichier à 44,1 kHz relu tel quel par un moteur à 48 kHz sonne un demi-ton
     // trop bas. C'est la panne la plus courante d'un lecteur d'échantillons, et

@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DecayEnvelope.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -101,7 +102,7 @@ public:
             const int degre = kDegres[static_cast<size_t>(i % kDegres.size())];
             const int octave = i / static_cast<int>(kDegres.size());
             const float midi = toniqueMidi + static_cast<float>(degre + 12 * octave);
-            const float hz = 440.0f * std::exp2f((midi - 69.0f) / 12.0f);
+            const float hz = vsm::audio::plugin::diapason() * std::exp2f((midi - 69.0f) / 12.0f);
             cordes_[static_cast<size_t>(i)].setTuning(hz, amortissement, 0.0f, t60);
         }
     }
@@ -177,7 +178,7 @@ public:
     float render(const Params& p) {
         if (!isActive()) return 0.0f;
 
-        const float hz = 440.0f * std::exp2f(
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
         const float t60 = amorti_ ? kEtouffementSecondes : p.decay;
         corde_.setTuning(hz, p.damping, 0.0f, t60);

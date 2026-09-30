@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/AnalogDrift.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/DecayEnvelope.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
@@ -181,7 +182,7 @@ public:
 
         const float driftSemis = drift_.nextValue() * kDriftSemis;
         const float pitchEnvSemis = pitchEnvAmount_ * pitchEnv_.next(); // enveloppe de pitch (§11)
-        const float baseHz = 440.0f * std::exp2f(
+        const float baseHz = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + driftSemis + pitchEnvSemis + lfoPitchSemis - 69.0f) / 12.0f);
 
         std::array<float, kNumOperators> out{};

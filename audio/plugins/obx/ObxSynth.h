@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/AnalogDrift.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
@@ -41,7 +42,7 @@ public:
     void noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
         channel_ = channel; note_ = note; velocity_ = velocity;
         ampEnv_.noteOn(); filterEnv_.noteOn();
-        baseHz_ = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        baseHz_ = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
     }
     void noteOff(uint8_t) { ampEnv_.noteOff(); filterEnv_.noteOff(); }
 

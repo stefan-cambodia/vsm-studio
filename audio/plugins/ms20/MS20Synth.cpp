@@ -1,4 +1,5 @@
 #include "MS20Synth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
@@ -142,8 +143,8 @@ void MS20Synth::process(const MidiNoteEvent* events, int numEvents,
         const float base = noteNumber + pitchDriftSemis + vibratoSemis;
 
         const float bend = bendSemitones_.load(std::memory_order_relaxed);
-        const float hz1 = 440.0f * std::exp2f((base + bend - 69.0f) / 12.0f);
-        const float hz2 = 440.0f * std::exp2f((base + vco2Pitch + bend - 69.0f) / 12.0f);
+        const float hz1 = vsm::audio::plugin::diapason() * std::exp2f((base + bend - 69.0f) / 12.0f);
+        const float hz2 = vsm::audio::plugin::diapason() * std::exp2f((base + vco2Pitch + bend - 69.0f) / 12.0f);
 
         vco1_.setFrequency(hz1);
         vco1_.setWaveform(vco1Wave(vco1Shape));

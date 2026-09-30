@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -122,7 +123,7 @@ public:
         // les grains sont des tranches du même oscillateur -- cohérents --
         // et la dispersion garde tout son effet, une phase commune entre des
         // fréquences différentes n'alignant rien.
-        const float baseHz = 440.0f * std::exp2f(
+        const float baseHz = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
         masterPhase_ += static_cast<double>(baseHz) / sampleRate_;
         if (masterPhase_ >= 1.0) masterPhase_ -= 1.0;
@@ -178,7 +179,7 @@ private:
             // réglage de mélange -- certains grains scintillent, les autres
             // portent, et c'est cette inégalité qui fait la texture.
             const float octave = (rng_.nextUnipolar() < p.shimmer) ? 12.0f : 0.0f;
-            const float hz = 440.0f * std::exp2f(
+            const float hz = vsm::audio::plugin::diapason() * std::exp2f(
                 (static_cast<float>(note_) + spray + octave + p.bendSemitones - 69.0f) / 12.0f);
             grain.osc.setFrequency(hz);
             grain.osc.reset(masterPhase_);

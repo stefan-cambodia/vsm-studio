@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/engine/VoiceManager.h"
@@ -164,7 +165,7 @@ private:
     };
 
     void accorder(const Params& p) {
-        const float f0 = 440.0f * std::exp2f(
+        const float f0 = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f);
         for (int i = 0; i < kModes; ++i) {
             auto& mode = modes_[static_cast<size_t>(i)];

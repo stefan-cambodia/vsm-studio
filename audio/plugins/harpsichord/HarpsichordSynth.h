@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/dsp/StringWaveguide.h"
@@ -117,7 +118,7 @@ public:
     float render(const Params& p) {
         if (!isActive()) return 0.0f;
 
-        const float hz = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
         // Le jeu de luth pose une peau sur le 8' : la corde meurt vite et
         // perd ses aigus. C'est un amortissement, pas un filtre de sortie.
         const float t60 = etouffoirPose_ ? kEtouffoirSecondes

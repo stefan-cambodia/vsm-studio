@@ -1,4 +1,5 @@
 #include "ConeSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cstdio>
@@ -50,7 +51,7 @@ constexpr float kDriveRampCoeff = 1.0f / (0.15f * 48000.0f);
 constexpr float kLowestHz = 25.0f;
 
 float noteToHz(uint8_t note, float semitones) {
-    return 440.0f * std::exp2f((static_cast<float>(note) + semitones - 69.0f) / 12.0f);
+    return vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note) + semitones - 69.0f) / 12.0f);
 }
 } // namespace
 

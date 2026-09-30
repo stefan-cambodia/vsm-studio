@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/engine/VoiceManager.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
@@ -142,7 +143,7 @@ private:
     void frapper(const Params& p) {
         const float velocity = static_cast<float>(velocity_) / 127.0f;
         const float durete = std::clamp(p.hardness + p.velocityToHardness * (velocity - 0.5f), 0.0f, 1.0f);
-        const float f0 = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float f0 = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
         const float x = std::clamp(p.strikeOffset, 0.0f, 1.0f);
 
         for (int i = 0; i < kModes; ++i) {

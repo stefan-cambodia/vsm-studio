@@ -1,4 +1,5 @@
 #include "EPianoSynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 
@@ -11,7 +12,7 @@ namespace {
 constexpr uint64_t kBaseSeed = 0x4550494E4F00ULL;
 
 float noteToHz(uint8_t note, float driftSemis) {
-    return 440.0f * std::exp2f((static_cast<float>(note) + driftSemis - 69.0f) / 12.0f);
+    return vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note) + driftSemis - 69.0f) / 12.0f);
 }
 } // namespace
 

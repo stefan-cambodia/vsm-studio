@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/dsp/StringWaveguide.h"
@@ -126,7 +127,7 @@ public:
     float render(const Params& p, float roue) {
         if (!isActive()) return 0.0f;
         const float hz =
-            440.0f * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
+            vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
         // Touche levée : le sautereau quitte la corde, qui meurt vite -- la
         // roue continue, mais elle ne frotte plus CETTE longueur de corde.
         chanterelle_.setTuning(hz, p.damping, enfoncee_ ? 4.0f : 0.15f);

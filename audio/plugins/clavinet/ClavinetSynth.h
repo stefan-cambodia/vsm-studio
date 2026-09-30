@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/dsp/StringWaveguide.h"
@@ -95,7 +96,7 @@ public:
     float render(const Params& p) {
         if (!isActive()) return 0.0f;
         const float hzTenue =
-            440.0f * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
+            vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
         // Tenue : la longueur enclume-chevalet. Lâchée : la corde ENTIÈRE,
         // plus longue de la part derrière l'embout, donc plus basse.
         const float hz = tenue_ ? hzTenue : hzTenue / (1.0f + std::clamp(p.stringBehind, 0.0f, 1.0f));

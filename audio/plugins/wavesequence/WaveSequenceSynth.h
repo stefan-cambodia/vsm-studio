@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -131,11 +132,11 @@ private:
         return bank.read(std::min(table, bank.tableCount() - 1), position, phase_, limite());
     }
     float limite() const {
-        const float hz = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
         return 0.9f * static_cast<float>(sampleRate_) * 0.5f / hz;
     }
     void avancer() {
-        const float hz = 440.0f * std::exp2f((static_cast<float>(note_) + bendCourant_ - 69.0f) / 12.0f);
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) + bendCourant_ - 69.0f) / 12.0f);
         phase_ += hz / static_cast<float>(sampleRate_);
         if (phase_ >= 1.0f) phase_ -= 1.0f;
     }

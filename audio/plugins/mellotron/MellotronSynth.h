@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
@@ -159,7 +160,7 @@ public:
         const float cents = p.wowDepth * wow + p.flutterDepth * flutter;
 
         // --- LE CONTENU (l'approximation assumée) ----------------------------
-        const float hz = 440.0f * std::exp2f(
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f
             + cents / 1200.0f);
 

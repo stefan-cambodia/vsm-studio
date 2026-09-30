@@ -1,4 +1,5 @@
 #include "ArpOdysseySynth.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
@@ -156,8 +157,8 @@ void ArpOdysseySynth::process(const MidiNoteEvent* events, int numEvents,
         const float d2 = pitchDrift2_.nextValue() * kMaxPitchDriftSemitones;
 
         const float bend = bendSemitones_.load(std::memory_order_relaxed);
-        const float hz1 = 440.0f * std::exp2f((note1 + d1 + vibratoSemis + bend - 69.0f) / 12.0f);
-        const float hz2 = 440.0f * std::exp2f((note2 + vco2Detune + d2 + vibratoSemis + bend - 69.0f) / 12.0f);
+        const float hz1 = vsm::audio::plugin::diapason() * std::exp2f((note1 + d1 + vibratoSemis + bend - 69.0f) / 12.0f);
+        const float hz2 = vsm::audio::plugin::diapason() * std::exp2f((note2 + vco2Detune + d2 + vibratoSemis + bend - 69.0f) / 12.0f);
 
         // VCO-2 d'abord (source de sync).
         vco2_.setFrequency(hz2);

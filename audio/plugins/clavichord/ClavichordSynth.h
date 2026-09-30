@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/dsp/StringWaveguide.h"
@@ -107,7 +108,7 @@ public:
         // cents : c'est l'ordre de grandeur du Bebung sur l'instrument, où le
         // geste sert à colorer une note tenue, pas à la transposer.
         const float montee = 1.0f + 0.017f * p.pressureToTension * pressionLissee_;
-        const float hz = 440.0f * std::exp2f(
+        const float hz = vsm::audio::plugin::diapason() * std::exp2f(
             (static_cast<float>(note_) + p.bendSemitones - 69.0f) / 12.0f) * montee;
 
         // Touche relâchée : le feutre. Le t60 tombe à quelques dizaines de

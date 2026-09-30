@@ -198,8 +198,11 @@ private:
     };
 
     void applyNoteEvent(const vsm::audio::plugin::MidiNoteEvent& event);
+    /// H42 : réaccorde les douze maîtres si le diapason du projet a changé.
+    void accorderLesMaitres();
 
     double sampleRate_ = 48000.0;
+    float la4_ = -1.0f;   ///< le diapason sur lequel les maîtres sont accordés
     vsm::audio::plugin::ParameterList parameterList_;
     std::array<std::atomic<float>, kNumParams> params_;
     std::array<Master, kMasters> masters_;

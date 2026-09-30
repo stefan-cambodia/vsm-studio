@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/engine/VoiceManager.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
@@ -76,7 +77,7 @@ public:
 
     float render(const Params& p) {
         if (!active_) return 0.0f;
-        const float f0 = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f)
+        const float f0 = vsm::audio::plugin::diapason() * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f)
                          * (0.97f + 0.03f * p.pressure);   // le vent qui baisse fait baisser la hauteur (jusqu'à −53 cents à vent nul)
         // LE CHIFF : l'octave s'installe vite, la fondamentale lentement --
         // c'est l'ordre dans lequel un tuyau parle. Le chiff règle l'écart.
