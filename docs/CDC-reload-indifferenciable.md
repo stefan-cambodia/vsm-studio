@@ -442,3 +442,37 @@ range les rôles sans erreur.
 nappe la plus hachée (0,464) et le pad de « Reload » (0,576), et jamais la basse ;
 elle classe aussi, à tort, l'accompagnement de `g1` — un coût connu d'avance, que la
 validation chiffrera sur des morceaux jamais regardés. `X` ne bougera plus.
+
+### 7.2 Verdict de H45 (30/09/2026, 13 h) : PARTIELLE au sens écrit — et aucun rôle n'y perd
+
+Validation sur `g3`, `g4`, `g5` (jamais regardés), `X` = 0,4 :
+
+| rôle (F1 note à note) | témoin (tout à 0,5) | règle par stem | écart |
+|---|---|---|---|
+| accompagnement | 40,4 | 41,6 | +1,2 |
+| basse | 26,8 | 31,3 | **+4,5** |
+| mélodie | 46,8 | 46,5 | −0,3 |
+| nappe | 35,8 | 48,3 | **+12,4** |
+| voix | 97,0 | 97,0 | 0,0 |
+| piano deux mains | 0,0 | 0,0 | *non mesurable* |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | aucun rôle ne perd plus d'1 point | **tenu** (la pire perte : −0,3, la mélodie) |
+| 2 | nappe et voix gagnent 10 points chacune | **partiel** : la nappe +12,4 ; la voix 0,0 — celle de `g4` n'était pas hachée (indice 0,224) et lisait déjà 97,0 au témoin : rien à gagner, mais l'attendu écrit dit échec pour elle |
+| 3 | le pad de « Reload » est classé tenu | **tenu** (indice 0,576) |
+| 4 | aucune basse de `g3`-`g5` classée tenue | **échec** : la basse de `g3` (indice 0,599) l'a été — et c'est la basse qui GAGNE 4,5 points : une basse hachée profite du seuil haut, la basse franche de `g2` (0,003) s'y effondrait |
+
+**Le piano deux mains n'est pas mesuré, et c'est dit** : sa partie vraie joue deux
+oscillateurs désaccordés de 1,46 demi-ton, sans hauteur sonnante mesurée ; aucune note
+transcrite n'y tombe à la même hauteur que la vérité, des deux côtés. Un 0,0 qui ne
+mesure que l'aveuglement de l'appariement, pas la règle.
+
+**CE QUE LE VERDICT DÉCIDE.** Au sens écrit, H45 est partielle (deux attendus tenus,
+un partiel, un en échec). Sur le fond, la règle ne coûte rien à aucun rôle et donne
++12,4 points aux nappes : elle devient une **option de la chaîne**
+(`--seuil-attaque-par-stem`, éteinte par défaut, l'indice et le seuil choisis inscrits
+au rapport pour chaque stem), et sa mesure de bout en bout sur « Reload » — avec le
+diapason de H42 — dira si le son s'en rapproche (outil du § 0). L'attendu 4 était mal
+posé : il supposait qu'une basse ne doit jamais changer de seuil, et la mesure a
+montré que c'est la basse FRANCHE qui ne le doit pas.
