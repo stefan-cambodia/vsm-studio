@@ -73,7 +73,7 @@ budget et stems identiques, comme partout dans le dépôt.
 - **Source** : `.mp4` (vidéo h264 640 × 480, audio AAC 44,1 kHz stéréo, ~130 kb/s),
   312,2 s. Converti en `reconstruction/sources/reload-peschi.wav` (PCM 16 bits) —
   `soundfile` ne lit pas le `.mp4` (payé le 24/09, H37).
-- **Tempo 138,00 BPM** — *corrigé le 30/09 à 17 h 30 : ce portrait disait « 136 »,
+- **Tempo 138,00 BPM** — *corrigé le 30/09 vers 17 h 10 : ce portrait disait « 136 »,
   et la chaîne estime 139,7 ; les deux sont faux, § 3 point 4 et § 8.* **Diapason
   +12,3 cents** au-dessus de 440 Hz sur le morceau
   entier (302 pics, concentration 0,94 ; +13 sur le pad seul, 15-34 s) — la
@@ -173,7 +173,7 @@ tournait. Rien de ceci n'est encore mesuré sur la reconstruction :
    le MÊME accord ; chacune reçoit sa machine. La quatrième est la basse, une vraie
    partie distincte.
 4. **Le tempo est faux de 1,7 BPM, et la grille du projet quitte la musique**
-   (relevé le 30/09 à 17 h 30, en relisant le journal de la course). La chaîne
+   (relevé le 30/09 vers 17 h 10, en relisant le journal de la course). La chaîne
    estime **139,7 BPM** ; ce portrait disait 136. Mesuré par la cohérence de phase
    des attaques sur une grille de doubles croches, trois fois et indépendamment :
    **138,006** (grave du stem de batterie), **137,998** (grave du mélange),
@@ -293,7 +293,7 @@ fautive sur 56 ; la source rétablie, 0.
 avec un `vsm-render` construit à part (`build-h42/`) : la campagne S2, gelée, se
 sert de `build/tools/vsm-render`, qu'une compilation ne doit pas remplacer.*
 
-### 4.2 Un défaut trouvé AVANT la course 2 : le cache de mesures ne portait pas le diapason (30/09/2026, 17 h 10)
+### 4.2 Un défaut trouvé AVANT la course 2 : le cache de mesures ne portait pas le diapason (30/09/2026, 17 h 05)
 
 La clé d'une mesure de candidate (`vsm_render_cache.cle_de_rendu`) scelle machine,
 patch, notes, tempo et empreinte du moteur — « tout ce qui peut changer le rendu,
@@ -561,7 +561,7 @@ montré que c'est la basse FRANCHE qui ne le doit pas.
 
 ---
 
-## 8. H46 — le tempo à la précision d'une GRILLE : l'estimation affinée par la cohérence de phase des attaques (écrite AVANT la mesure, 30/09/2026, 17 h 45)
+## 8. H46 — le tempo à la précision d'une GRILLE : l'estimation affinée par la cohérence de phase des attaques (écrite AVANT la mesure, 30/09/2026, 17 h 15)
 
 **Ce qui est vu (§ 3, point 4).** « Reload » est à **138,00 BPM** ; la chaîne écrit
 139,7 au projet. Et ce n'est pas un accident de ce morceau : l'attendu du § 5
@@ -636,3 +636,79 @@ valident rien.
 fort (le « reste nommé » du § 5 quindecies) : à tempo juste, les notes tombent à un
 écart CONSTANT de la grille au lieu d'un écart qui grandit. C'est la phase suivante,
 et elle ne se mesure qu'une fois le tempo juste.
+
+### 8.1 Verdict de H46 (30/09/2026, 17 h 25) : TENUE — les six attendus, et ce que trente morceaux synthétiques ne prouvent pas
+
+`tools/tempo-estime.py <lot> --affine` (branche `reload-h46`, `b2607ca`, commitée
+AVANT la mesure), `s1-sec` d'abord, puis `s2` et `s1-prod` sans rien changer entre :
+
+| lot | dérive ≤ 20 ms | dérive médiane, affiné | dérive médiane, témoin (tempo suivi) | non concluants | empirés |
+|---|---|---|---|---|---|
+| `s1-sec` (10 extraits de 30 s) | **10 / 10** | 0,0 ms | 246 ms | 0 | 0 |
+| `s2` (10 morceaux de 186 à 269 s) | **10 / 10** | 0,0 ms | **1 671 ms** | 0 | 0 |
+| `s1-prod` (30 s, avec production) | **10 / 10** | 0,0 ms | 246 ms | 0 | 0 |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | `s1-sec` : ≤ 20 ms sur 9 / 10 | **tenu** (10 / 10) |
+| 2 | le contrôle : aucun morceau empiré, sur les trois lots | **tenu** (0 sur 30 — dont `g1`, que le suivi lisait déjà juste à 110,0) |
+| 3 | `s2` : ≤ 20 ms sur 9 / 10 | **tenu** (10 / 10) |
+| 4 | `s1-prod` : ≤ 20 ms sur 8 / 10 | **tenu** (10 / 10) |
+| 5 | les non concluants comptés et nommés | **tenu** (0 sur 30) |
+| 6 | sans l'option, rien ne change | **tenu** (test : `affinage` absent, les quatre champs d'avant, tempo au dixième) |
+
+**CE QUE LE « 0,0 ms » CACHE, ET QU'IL FAUT DIRE.** Les trente vérités sont des tempos
+ENTIERS, et la règle de l'entier a été retenue trente fois sur trente : la dérive
+tombe à zéro par construction du corpus. Le chiffre qui juge le MÉCANISME est celui du
+maximum de cohérence brut (colonne « max. » de l'outil), sans la règle : le pire écart
+est de **0,053 BPM** (`g8` de `s1-sec`, 13,0 ms de dérive) ; sur `s2`, **0,011 BPM**
+(`g8` encore, 16,4 ms) ; sur `s1-prod`, 0,050 BPM (12,3 ms). **Trente sur trente sous
+20 ms SANS la règle de l'entier** — les attendus tiennent sans elle. Ce que la règle
+risque, elle — arrondir un tempo qui n'est PAS entier —, aucun de ces lots ne le
+mesure : seuls un test de construction (127,4 rendu à 0,01 près, non arrondi) et « B4 Wuz
+Then » ci-dessous le touchent.
+
+**`g8` est le moins cohérent des trois lots, et ce n'est pas expliqué** : 0,31 à 0,35
+quand les vingt-sept autres mesures sont à 0,91 et plus. Il conclut (seuil 0,20, 255 à
+1 226 attaques), avec une marge de 1,5 ; pourquoi sa grille s'ajuste moins bien n'a pas
+été cherché.
+
+**LA GARDE, VUE ROUGE.** La fenêtre de ± 4 % réduite à rien (l'affinage ne peut plus
+rien affiner) : **1 / 10** sur `s1-sec`, dix « non concluant (maximum au bord de la
+fenêtre) » nommés, dérive médiane 245,8 ms — celle du témoin —, verdict TOMBE, code 1.
+
+**Les deux enregistrements réels — publiés, sans vérité, ils ne valident rien :**
+
+| morceau | tempo suivi | affiné | cohérence | attaques | entier |
+|---|---|---|---|---|---|
+| « Reload » (312 s) | 139,7 | **138,000** (maximum à 138,001) | 0,93 | 2 098 | retenu |
+| « B4 Wuz Then » (354 s) | 126,0 | **126,973** | 0,96 | 2 104 | NON retenu |
+
+« B4 Wuz Then » n'est donc pas à 126 : à 126,0, la grille que la chaîne lui écrit
+depuis le 15/09 dérive de **2,7 s** d'un bout à l'autre du morceau. Et l'entier voisin,
+127, n'est pas retenu — il coûterait 75 ms de dérive : un enregistrement réel n'a pas à
+tomber sur un entier, et la règle ne l'y force pas.
+
+**CE QUE CES LOTS NE PROUVENT PAS.** Trente morceaux synthétiques ont leurs notes
+EXACTEMENT sur la grille, un tempo fixe et entier, aucun rubato ; le ternaire n'y est
+pas (un test de construction seulement : des triolets à 96 lus sur la grille de
+sextolets). Et l'affinage GARDE le niveau métrique du suivi : vu en écrivant les
+tests, une pulsation nue de croches à 138 est suivie à 92 par `beat_track`, et
+l'affinage rend 92,0 — la même grille physique (six par temps à 92, quatre à 138), le
+mauvais chiffre. L'erreur d'octave
+reste l'affaire de `tools/tempo-estime.py` sans `--affine`, comme écrit.
+
+**CE QUE LE VERDICT DÉCIDE.**
+- `--tempo-affine` entre dans la prochaine course de « Reload » (la course 3, avec H42
+  et H45) ; la course 2, déjà en file, part sans elle, comme elle a été écrite.
+- **Elle deviendra le défaut de la chaîne, mais pas avant la fin de la campagne S2** :
+  le tempo entre dans la clé du cache de mesures et dans chaque rendu (une machine
+  peut caler un arpège ou un retard dessus), et `g7`-`g10` doivent courir la chaîne de
+  `g1`-`g6`. Le basculement se fera dans un commit à lui, avec son A/B à une variable
+  sur un morceau du banc — pour MESURER que le tempo écrit ne change pas le son, au
+  lieu de le supposer.
+- Le code reste sur `reload-h46` tant qu'une course tourne sur l'arbre principal
+  (règle du dépôt : `analyse/analyzer/` ne se touche pas pendant une course).
+- **Reste nommé : la PHASE de la grille.** À tempo juste, les notes tombent à un écart
+  constant de la grille ; la mesure 1 commence toujours au tick 0 et non au premier
+  temps fort. C'est la suite (le « reste nommé » du § 5 quindecies).

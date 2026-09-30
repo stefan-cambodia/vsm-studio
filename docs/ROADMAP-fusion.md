@@ -3639,6 +3639,16 @@ signature — une phase à part, à chiffrer sur des morceaux réels. Les
 changements de tempo (un morceau qui accélère) ne sont pas suivis non plus : un
 seul tempo, comme avant, mais le bon.
 
+**CORRIGÉ LE 30/09/2026 — « le bon » était faux d'un BPM, et ± 2 BPM ne fait pas une
+grille** (`CDC-reload-indifferenciable.md` § 3 point 4 et § 8, H46). L'attendu
+ci-dessus était écrit pour ne plus ouvrir un morceau à 120 ; son écart médian de
+1,0 BPM, c'est un temps entier de dérive par minute. Mesuré en DÉRIVE de grille à la
+fin du morceau : **246 ms** de médiane sur `s1-sec`, **1 671 ms** sur `s2` ; « Reload »
+était écrit à 139,7 pour **138,00**, et « B4 Wuz Then », donné ici à 126,0, est à
+**126,973** (2,7 s de dérive sur le morceau). L'affinage par cohérence de phase des
+attaques (`--tempo-affine`, branche `reload-h46`) ramène les trente morceaux des trois
+lots sous 20 ms, sans en empirer aucun ; il deviendra le défaut après la campagne S2.
+
 ## § 5 sexdecies. LE RECENSEMENT DES SOURCES — H37, réfutée (24/09/2026)
 
 Le cahier des charges et le verdict sont dans
