@@ -133,3 +133,56 @@ tenu (un pad parfait rejoué à 4 notes par seconde reste faux). Si, les notes t
 et le diapason juste, aucun pad du parc n'approche le timbre du § 1 (seuils du § 0,
 bandes et log-mel), la machine manquante sera décrite ici — ce qu'elle doit savoir
 faire, mesuré sur l'original — et construite selon `CDC-nouvelle-machine.md`.
+
+---
+
+## 4. H42 — le morceau est accordé au-dessus de 440 Hz : une reconstruction à 440 bat contre lui sur chaque note tenue (écrite AVANT la mesure, 30/09/2026)
+
+**Numéro.** H42 est le premier libre après H41 (`CDC-recensement-des-sources.md`
+§ 14) ; il se cite avec ce document.
+
+**L'hypothèse.** Donner au projet un **diapason** — la fréquence du la4 — que toutes
+les machines mélodiques respectent, et le faire estimer par la chaîne sur le
+mélange, amène l'écart de diapason de la reconstruction sous le seuil du § 0
+(5 cents) sans rien changer d'autre.
+
+**Ce qui sera écrit (le mécanisme, tranché ici).**
+- **Le moteur** : `ISynthPlugin` porte une référence de la4, 440 Hz par défaut ;
+  chaque machine MÉLODIQUE l'emploie là où elle convertit une note en fréquence
+  (59 fichiers calculent aujourd'hui `440 · 2^((n−69)/12)`, sous une vingtaine de
+  formes) ; le multi-échantillons multiplie son avance de lecture par
+  `la4 / 440`. Les **batteries ne suivent pas** : leurs réglages d'accord sont ceux
+  d'une pièce, pas d'une note (un kick « accordé » sur le morceau l'est par son
+  réglage, que la chaîne cherche déjà). À 440, chaque machine rend **au bit près**
+  ce qu'elle rendait.
+- **Le projet** : `transport.referenceA4Hz`, écrit **seulement s'il diffère de 440**
+  (un fichier d'avant reste identique octet pour octet), appliqué au graphe par les
+  DEUX chemins de rendu — l'application et `interchange` (la leçon de D332 : ce qui
+  conditionne le son d'une piste se pose dans `interchange`).
+- **Le DAW** : une entrée « Diapason du projet… » (menu Transport), un pas
+  d'historique, les deux langues — c'est le « Master Tune » de Cubase, qui manquait.
+- **La chaîne** : `--diapason auto|<Hz>`, **défaut 440** (la chaîne d'aujourd'hui,
+  au bit près, pour que la campagne S2 reste comparable) ; `auto` est l'estimateur
+  validé du § 0 (moyenne circulaire des pics tenus), écrit au projet et à la
+  provenance du rapport.
+
+**LA MESURE — UNE SEULE VARIABLE.** Le projet de la course de référence, rendu deux
+fois par le MÊME `vsm-render` (le neuf) : témoin tel quel (440), essai avec
+`referenceA4Hz` = le diapason estimé par `--diapason auto` sur l'original. Mêmes
+notes, mêmes machines, mêmes réglages ; seul le diapason change.
+
+**ATTENDUS** :
+
+| # | mesure | témoin (440) | essai (diapason estimé) | échec si |
+|---|---|---|---|---|
+| 1 | écart de diapason (outil du § 0) | ≈ −12 cents | \|écart\| ≤ 5 cents | > 5 cents |
+| 2 | les empreintes audio du parc, les suites | vertes, inchangées | — | une empreinte change |
+| 3 | un la4 à 446 Hz, machine par machine (test neuf) | — | toutes les mélodiques à ± 2 cents, les fautives NOMMÉES | une seule hors tolérance non dite |
+| 4 | log-mel moyen (outil du § 0) | publié | ≤ témoin | > témoin + 0,05 dB |
+| 5 | pistes de batterie (le contrôle) | — | leur rendu identique au bit | un échantillon change |
+
+L'attendu 4 n'a pas de seuil de GAIN : le diapason est une condition nécessaire,
+pas le gros de l'écart (le pad rejoué en notes brèves du § 3 pèse sans doute
+davantage). Il ne doit simplement pas empirer. La course complète avec
+`--diapason auto` (dont les ARBITRAGES peuvent changer, un timbre accordé se
+comparant autrement) viendra après, et se lira avec `comparer_rapports.py`.
