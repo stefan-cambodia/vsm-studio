@@ -504,6 +504,9 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # état ne se comparent pas. Faux pour toute course antérieure au
             # 14/09/2026 ; la coupure retenue par stem est sous « coupureBasse ».
             "coupureBasseAdaptee": bool(getattr(args, "coupure_basse_adaptee", False)),
+            # H43 : la réunion des notes tenues change les NOTES de chaque stem
+            # mélodique ; deux rapports qui ne l'ont pas au même état ne se comparent pas.
+            "reunirTenues": bool(getattr(args, "reunir_tenues", False)),
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
@@ -868,6 +871,12 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "difficile à IMITER pour le parc. Gardée comme résultat négatif "
                               "chiffré. "
                               "Vide (le défaut) : la chaîne d'aujourd'hui, au bit près")
+    parseur.add_argument("--reunir-tenues", action="store_true",
+                         help="H43 : réunir deux notes de même hauteur que moins de 30 ms séparent quand "
+                              "aucune attaque (hausse de plus de 3 dB dans un demi-ton autour de la "
+                              "hauteur) ne les sépare dans le stem — un son tenu que la transcription a "
+                              "haché. Éteint par défaut ; chaque réunion est comptée au rapport "
+                              "(« reunionTenues »)")
     parseur.add_argument("--coupure-basse-adaptee", action="store_true",
                          help="D281-D282 : avant de transcrire le stem « bass », lui RETIRER le "
                               "grave que la séparation y empile sous la fondamentale (49,8 %% de "
@@ -1824,6 +1833,14 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
     if not notes:
         print(f"      {nom:8s} : aucune note détectée, piste ignorée")
         return []
+    if getattr(args, "reunir_tenues", False):
+        # H43 (CDC-reload-indifferenciable § 5) : les notes qu'une transcription a
+        # hachées dans un son tenu, réunies quand aucune attaque ne les sépare.
+        from analyzer.tenues import reunir_tenues
+        notes, bilan = reunir_tenues(notes, charger_audio(chemin), SAMPLE_RATE)
+        print(f"      {nom:8s} : notes tenues réunies — {bilan['notesAvant']} → {bilan['notesApres']} "
+              f"({bilan['reunions']} réunion(s), {bilan['refuseesParAttaque']} refusée(s) : une attaque à la jonction)")
+        ctx.decisions.setdefault("reunionTenues", []).append({"stem": nom, **bilan})
     if filtre is not None:
         notes = filtre(nom, notes)
         if not notes:
@@ -3147,6 +3164,7 @@ def chaine(args: argparse.Namespace) -> None:
             reverb=reverb,
             residuel=rapport_residuel,
             coupure_basse=ctx.decisions.get("coupureBasse"),
+            reunion_tenues=ctx.decisions.get("reunionTenues"),
             recensement=bloc_recensement,
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
