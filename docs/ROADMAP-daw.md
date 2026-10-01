@@ -38268,3 +38268,8 @@ campagne. Et un fait qui mérite sa phase : **à 1 280 × 800, la grille du pian
 montre que six hauteurs** (107 px de grille, relevés ; le reste du volet va à la barre
 d'outils et à la lane de vélocité, à l'œil sur la photo) — moins qu'une octave pour
 éditer des notes.
+Mesuré ensuite à trois tailles (la disposition par défaut, un projet de la chaîne,
+02/10, 03 h 15) : **1 280 × 800 : 5 lignes** (586 × 107 px) ; **1 366 × 768 : 5 lignes**
+(672 × 94) ; **1 707 × 1 020 — la fenêtre maximisée de ce poste, 2 560 × 1 600 à
+l'échelle 1,5 : 20 lignes** (967 × 332). Le défaut ne touche que les petits écrans ;
+il reste nommé ici, sans phase ouverte.
