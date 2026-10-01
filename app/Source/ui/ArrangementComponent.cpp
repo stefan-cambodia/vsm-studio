@@ -3,6 +3,7 @@
 #include "EntreeDeMenu.h"
 #include "Langue.h"
 #include <limits>
+#include <optional>
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <algorithm>
 
@@ -76,6 +77,7 @@ constexpr float kBordSensible = 6.0f;
 }
 
 ArrangementComponent::ArrangementComponent() {
+    setName("arrangement");   // D525 : le nom par lequel le banc la désigne (molette:)
     setWantsKeyboardFocus(true);
     setMouseCursor(juce::MouseCursor::NormalCursor);
 }
@@ -472,7 +474,11 @@ int ArrangementComponent::trackHeight(const Track& track) const {
 }
 
 int ArrangementComponent::trackTop(size_t index) const {
-    int y = kRulerHeight;
+    // D525 : LE DÉCALAGE VERTICAL EST ICI ET DANS `trackAtY`, et nulle part
+    // ailleurs : les dix-neuf appels de la vue passent par ces deux fonctions,
+    // ils défilent donc tous sans le savoir — la même économie que D17.4 pour
+    // les pistes masquées.
+    int y = kRulerHeight - decalageVertical();
     for (size_t i = 0; i < index && i < project_->tracks.size(); ++i)
         y += trackHeight(project_->tracks[i]);
     return y;
@@ -483,13 +489,68 @@ int ArrangementComponent::trackAtY(float y) const {
     // LES HAUTEURS SONT VARIABLES (D5.3) : on parcourt, on ne divise pas. Une
     // division supposerait que toutes les pistes ont la même taille, ce qui
     // n'est plus vrai dès qu'on en plie une.
-    int haut = kRulerHeight;
+    int haut = kRulerHeight - decalageVertical();   // D525
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         const int bas = haut + trackHeight(project_->tracks[i]);
         if (y >= haut && y < bas) return static_cast<int>(i);
         haut = bas;
     }
     return -1;
+}
+
+int ArrangementComponent::hauteurDesPistes() const {
+    if (project_ == nullptr) return 0;
+    int total = 0;
+    for (const auto& piste : project_->tracks) total += trackHeight(piste);
+    return total;
+}
+
+int ArrangementComponent::decalageVertical() const {
+    const int zone = std::max(0, getHeight() - kRulerHeight);
+    return juce::jlimit(0, std::max(0, hauteurDesPistes() - zone), scrollY_);
+}
+
+void ArrangementComponent::setDefilementVertical(int pixels) {
+    // Le réglage est retenu BORNÉ à ce qui dépasse aujourd'hui : sans cela, une
+    // molette tournée longtemps vers le bas accumulerait un décalage qu'il
+    // faudrait « remonter » à vide avant que la vue ne bouge.
+    const int zone = std::max(0, getHeight() - kRulerHeight);
+    const int borne = juce::jlimit(0, std::max(0, hauteurDesPistes() - zone), pixels);
+    if (borne == scrollY_) return;
+    scrollY_ = borne;
+    repaint();
+}
+
+void ArrangementComponent::faireVoirLaPiste(size_t index) {
+    if (project_ == nullptr || index >= project_->tracks.size()) return;
+    if (getHeight() <= kRulerHeight) { aMontrer_ = static_cast<int>(index); return; }
+    aMontrer_ = -1;
+    // Les bornes SANS décalage : la position de la piste dans le contenu.
+    int haut = 0;
+    for (size_t i = 0; i < index; ++i) haut += trackHeight(project_->tracks[i]);
+    const int bas = haut + trackHeight(project_->tracks[index]);
+    const int zone = getHeight() - kRulerHeight;
+    const int actuel = decalageVertical();
+    if (haut < actuel) setDefilementVertical(haut);
+    else if (bas > actuel + zone) setDefilementVertical(bas - zone);
+}
+
+void ArrangementComponent::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+    // D525 : COMME AU PIANO ROLL — molette = pistes (ce que la vue a en hauteur),
+    // Maj = temps, Ctrl = zoom horizontal. Le pas ne dépend que du SIGNE, comme
+    // là-bas : les pilotes de souris ne s'accordent pas sur la taille d'un cran.
+    if (project_ == nullptr || (wheel.deltaY == 0.0f && wheel.deltaX == 0.0f)) return;
+    const float sens = wheel.deltaY != 0.0f ? wheel.deltaY : wheel.deltaX;
+    if (event.mods.isCtrlDown() || event.mods.isCommandDown()) {
+        zoomHorizontally(sens > 0 ? 1.15f : 1.0f / 1.15f);
+    } else if (event.mods.isShiftDown() || wheel.deltaY == 0.0f) {
+        vsm::midi::Tick pas = snapStep(scrollTick_);
+        if (pas <= 0) pas = project_->ticksPerQuarterNote;
+        scrollTick_ = std::max<vsm::midi::Tick>(0, scrollTick_ + (sens > 0 ? -pas : pas));
+        repaint();
+    } else {
+        setDefilementVertical(decalageVertical() + (sens > 0 ? -3 : 3) * kMinHeight);
+    }
 }
 
 juce::Rectangle<float> ArrangementComponent::foldZone(size_t index) const {
@@ -1953,6 +2014,26 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
 // rapportée à un morceau qui en fait deux cent vingt-sept.
 void ArrangementComponent::direLaFenetre() const {
     if (project_ == nullptr) return;
+    // D525 : CE QUE LA VUE MONTRE EN HAUTEUR — les pistes dont une partie est dans
+    // la zone sous la règle, et le décalage. La photo montre des pistes ; elle ne
+    // dit pas combien il en reste dessous, ni si la molette a fait quelque chose.
+    {
+        int premiere = -1, derniere = -1, vues = 0;
+        for (size_t i = 0; i < project_->tracks.size(); ++i) {
+            const int y = trackTop(i), h = trackHeight(project_->tracks[i]);
+            if (h <= 0 || y + h <= kRulerHeight || y >= getHeight()) continue;
+            if (premiere < 0) premiere = static_cast<int>(i);
+            derniere = static_cast<int>(i);
+            ++vues;
+        }
+        std::fputs((juce::String("VSM_ARRANGEMENT : pistes visibles ")
+                    + (vues > 0 ? juce::String(premiere + 1) + ".." + juce::String(derniere + 1) : juce::String("aucune"))
+                    + " sur " + juce::String(static_cast<int>(project_->tracks.size()))
+                    + " (" + juce::String(vues) + juce::String(u8" à l'écran), décalage vertical ")
+                    + juce::String(decalageVertical()) + " px sur " + juce::String(std::max(0, hauteurDesPistes() - std::max(0, getHeight() - kRulerHeight)))
+                    + " possibles (pistes " + juce::String(hauteurDesPistes()) + " px, zone "
+                    + juce::String(std::max(0, getHeight() - kRulerHeight)) + " px)\n").toRawUTF8(), stderr);
+    }
     const double parMesure = static_cast<double>(project_->ticksPerQuarterNote) * 4.0;
     if (parMesure <= 0.0) return;
     const double visibles = (pixelsPerTick_ > 0.0)
@@ -2095,7 +2176,10 @@ juce::String ArrangementComponent::formatRulerTime(double secondes, double pas) 
     return negatif ? "-" + texte : texte;
 }
 
-void ArrangementComponent::resized() {}
+void ArrangementComponent::resized() {
+    // D525 : une demande de « faire voir » arrivée avant la mise en page.
+    if (aMontrer_ >= 0) faireVoirLaPiste(static_cast<size_t>(aMontrer_));
+}
 
 void ArrangementComponent::paint(juce::Graphics& g) {
     g.fillAll(Palette::background);
@@ -2192,6 +2276,12 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     }
 
     // --- Pistes et clips ------------------------------------------------------
+    // D525 : les pistes défilent SOUS la règle. Leur dessin et celui des courbes
+    // d'automation se restreignent à la zone d'en dessous ; la règle, les repères
+    // et la tête de lecture, peints avant ou après, ne bougent pas.
+    std::optional<juce::Graphics::ScopedSaveState> sousLaRegle;
+    sousLaRegle.emplace(g);
+    g.reduceClipRegion(0, kRulerHeight, bounds.getWidth(), std::max(0, bounds.getHeight() - kRulerHeight));
     const auto montage = montageSelection();
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         const auto& track = project_->tracks[i];
@@ -2203,6 +2293,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         // l'autre, plus épais, à un endroit qui ne sépare rien.
         if (h <= 0) continue;
         if (y > bounds.getHeight()) break;
+        if (y + h <= kRulerHeight) continue;   // D525 : défilée au-dessus de la règle
 
         g.setColour(i % 2 == 0 ? Palette::panel : Palette::panelRaised);
         g.fillRect(0, y, kHeaderWidth, h);
@@ -2691,6 +2782,8 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         }
     }
 
+    sousLaRegle.reset();   // D525 : fin de la zone qui défile
+
     // --- En-tête et tête de lecture ------------------------------------------
     g.setColour(Palette::border);
     g.drawLine(static_cast<float>(kHeaderWidth), 0.0f,
@@ -2727,6 +2820,8 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         && static_cast<size_t>(dropTrack_) < project_->tracks.size()) {
         const int haut = trackTop(static_cast<size_t>(dropTrack_));
         const int hauteur = trackHeight(project_->tracks[static_cast<size_t>(dropTrack_)]);
+        juce::Graphics::ScopedSaveState cible(g);   // D525 : sous la règle, comme les pistes
+        g.reduceClipRegion(0, kRulerHeight, getWidth(), std::max(0, getHeight() - kRulerHeight));
         g.setColour(juce::Colours::gold.withAlpha(0.18f));
         g.fillRect(juce::Rectangle<int>(0, haut, getWidth(), hauteur));
         const float x = tickToX(dropTick_);

@@ -169,6 +169,20 @@ public:
     void direLesBascules() const;
     /// D362 : la part du morceau que la vue montre, en mesures et en pour cent.
     void direLaFenetre() const;
+    /// D525 : LE DÉFILEMENT VERTICAL. L'arrangement n'en avait AUCUN : `trackTop`
+    /// partait de la règle et additionnait les hauteurs, et dès que les pistes
+    /// dépassaient la fenêtre, celles du bas étaient inatteignables — ni vues, ni
+    /// coupées, ni déplacées. Le décalage est en pixels, sous la règle, BORNÉ à
+    /// la hauteur des pistes au moment où on le lit (une piste pliée ou masquée
+    /// raccourcit le contenu sans que personne ait à y penser).
+    int defilementVertical() const { return decalageVertical(); }
+    void setDefilementVertical(int pixels);
+    /// Fait défiler juste assez pour montrer la piste entière, comme la liste
+    /// (`TrackListComponent::faireVoirLaPiste`) et la console (D40.3). Avant la
+    /// première mise en page, la demande est retenue et `resized()` la sert.
+    void faireVoirLaPiste(size_t index);
+    /// La molette comme au piano roll : molette = pistes, Maj = temps, Ctrl = zoom.
+    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
     /// D363 : LA VUE, POUR L'ENREGISTRER ET LA REPRENDRE. Le zoom et le
     /// défilement appartiennent au MORCEAU (deux projets n'ont pas la même
     /// longueur), et c'est pourquoi ils voyagent dans `project.json` plutôt que
@@ -422,6 +436,12 @@ private:
     vsm::midi::Tick xToTick(float x) const;
     vsm::midi::Tick snapTick(vsm::midi::Tick tick) const;
     int trackAtY(float y) const;
+    /// D525 : la hauteur de toutes les pistes affichées, et le décalage effectif
+    /// (le réglage, borné à ce qui dépasse de la fenêtre).
+    int hauteurDesPistes() const;
+    int decalageVertical() const;
+    int scrollY_ = 0;
+    int aMontrer_ = -1;
     /// La hauteur affichée d'une piste : celle qu'elle déclare, ou celle d'une
     /// piste pliée. Plier n'écrase pas le réglage, il le met de côté.
     int trackHeight(const vsm::sequencer::Track& track) const;

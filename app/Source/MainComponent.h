@@ -561,6 +561,10 @@ public:
         // D520 : un GLISSÉ avec modificateur (la région de boucle ou de punch sur la règle).
         if (geste.startsWithIgnoreCase("glisser:"))
             return glisserPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D525 : molette:<nom>:fx,fy:crans[:maj|:ctrl] -- la molette tournée de `crans`
+        // crans (positif : vers le haut, le signe de `deltaY`), par `mouseWheelMove`.
+        if (geste.startsWithIgnoreCase("molette:"))
+            return molettePourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         if (geste.startsWithIgnoreCase("cliquer:"))
             return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         // D356 : exporter-midi:<fichier> -- L'EXPORT COMME GESTE, pour qu'un geste
@@ -639,6 +643,7 @@ public:
     bool listePourCapture(const juce::String& nom, const juce::String& entree);   ///< D495
     bool clicPourCapture(const juce::String& description);   ///< D435
     bool glisserPourCapture(const juce::String& description);   ///< D520
+    bool molettePourCapture(const juce::String& description);   ///< D525
     bool saisirPourCapture(const juce::String& nom, const juce::String& texte);   ///< D444
     juce::Slider* curseurPourCapture(const juce::String& nom);
     /// D140 : voir le geste `doubleclic:` de `runTrackGestureForCapture`.

@@ -37940,7 +37940,7 @@ a lancée lui-même à 07:42 (HOME réel, aucune variable de banc, parent `syste
 
 ---
 
-### Phase D525 — l'arrangement ne défile pas verticalement, et la molette n'y fait rien (30/09/2026) — EN ATTENTE DE MESURE
+### Phase D525 — l'arrangement ne défile pas verticalement, et la molette n'y fait rien (30/09/2026, faite le 02/10)
 
 **D'OÙ ELLE VIENT — EN CHERCHANT LE JUMEAU DE D524 DANS L'ARRANGEMENT.** Choisir une
 piste dans la liste fait défiler la console jusqu'à sa tranche (D40.3,
@@ -37976,6 +37976,74 @@ projet (règle de D363) est un reste à trancher.
 **MISE EN ATTENTE, ET C'EST DIT (30/09, 07 h 55)** : l'utilisateur a demandé la
 reconstruction de « Reload — Peschi (Original Mix) », qui passe devant ; aucune
 ligne de code n'a été écrite pour cette phase.
+
+**REPRISE (02/10/2026, 00 h 05).** La lignée du pad de « Reload » a atteint sa règle
+d'arrêt (`CDC-reload-indifferenciable.md` § 18.2) et le reste de « Reload » tourne seul
+(la suite rejouable : course de référence, A/B de H42, course 2) : la phase reprend.
+
+**CE QUI A ÉTÉ FAIT** (`ArrangementComponent`, `MainComponent`) :
+- un **décalage vertical** dans `trackTop` et `trackAtY`, et nulle part ailleurs : les
+  dix-neuf appels défilent sans le savoir. Il est **borné au moment où on le lit**
+  (`decalageVertical()`) à ce qui dépasse de la fenêtre — une piste pliée, masquée ou
+  supprimée raccourcit le contenu sans que personne ait à y penser ;
+- le dessin des pistes et des courbes d'automation **restreint à la zone sous la
+  règle** (un `ScopedSaveState` posé avant les pistes, relâché avant l'en-tête et la
+  tête de lecture), et la cible d'un glisser aussi : une piste défilée passe SOUS la
+  règle sans la recouvrir ;
+- la **molette** comme au piano roll : molette = pistes (3 × 24 px par cran, au signe
+  près — les pilotes ne s'accordent pas sur la taille d'un cran), Maj = temps (un pas
+  d'aimantation), Ctrl = zoom horizontal ;
+- **`faireVoirLaPiste`** appelé au changement de piste, comme la liste et la console,
+  avec la même mise en réserve avant la première mise en page ;
+- le relevé `VSM_ARRANGEMENT` dit désormais les **pistes visibles** (`a..b sur N`), le
+  décalage et la hauteur des pistes ; un verbe de banc **`molette:<nom>:fx,fy:crans[:maj|:ctrl]`**
+  passe par `mouseWheelMove`, comme `glisser:` par `mouseDown`, et la vue porte le nom
+  `arrangement`.
+
+**LE RESTE TRANCHÉ, ET POURQUOI : le décalage vertical N'ENTRE PAS dans le bloc
+`view`.** Ni la liste des pistes ni la console ne gardent le leur ; un projet qui se
+rouvrirait défilé dans l'arrangement et pas dans la liste montrerait deux pistes
+différentes en haut des deux vues. Et le décalage dépend de la HAUTEUR de la fenêtre
+autant que du morceau, là où le zoom et le défilement en temps (D363) ne dépendent que
+du morceau. La reprise d'un projet montre donc le haut, comme la liste ; ce qui
+reprend la piste choisie (D369) la fait voir, puisque choisir fait maintenant défiler.
+
+**LA MESURE** — `tools/arrangement-defile.sh` (nouveau, dans la liste fermée de
+`verifier.sh --bancs`), un projet de 40 pistes à 1 280 × 800 : la zone d'arrangement y
+fait **352 px** pour **2 240 px** de pistes — **7 pistes sur 40** à l'écran (le pronostic
+disait « environ 10 » à 660 px).
+
+| cas | binaire du 30/09 (07 h 31) | après D525 |
+|---|---|---|
+| (1) ouverture : la piste 1 en haut, des pistes dessous | aucun relevé vertical | 1..7 sur 40, décalage 0 sur 1 888 possibles |
+| (2) 5 crans de molette vers le bas | `molette:` refusé — et rien ne défilait | 7..13, décalage 360 px ; temps inchangé (0 → 0) |
+| (3) puis 5 crans vers le haut | refusé | 1..7, décalage 0 — (2) est le témoin qu'il en était parti |
+| (4) Maj + molette | refusé | temps 0 → 5 760 ticks ; pistes inchangées |
+| (5) Ctrl + molette | refusé ; fenêtre 8,3 → 8,3 mesures | fenêtre 8,3 → 5,5 mesures ; pistes inchangées |
+| (6) choisir la piste 35 | la liste et la console la montrent, l'arrangement reste sur P01-P07 (photo) | 29..35, décalage 1 608 px (photo : P35 encadrée en bas, la règle intacte) |
+| (7) puis choisir la piste 1 | — | 1..7, décalage 0 |
+
+**Le banc vu ROUGE** sur le binaire d'avant : 7 ratés sur 7, et les refus de `molette:`
+relayés depuis le journal (D147). Vert sur le binaire neuf : 0 raté. Les **bancs
+voisins**, rejoués sur le binaire neuf : `portes-de-l-arrangement`, `cadrage-ouverture`,
+`autosauvegarde-vue`, `vue-du-morceau`, `miniature-clips`, `tout-voir`,
+`zoom-reassigne`, `piano-roll-piste-choisie`, `portes-des-pistes` — **9 sur 9 verts** ;
+les préférences de l'utilisateur comparées par `cmp` avant et après la série :
+intactes.
+
+**LA COMPILATION, PENDANT LA COURSE DE RÉFÉRENCE** : le groupe de la course gelé
+(`SIGSTOP`) de 00 h 09 à 00 h 24, la cible de l'application seule, deux travaux, la
+reprise automatique à la fin (`reconstruction/travail/build-d525.sh`) ;
+`build/tools/vsm-render` relu par `md5sum` avant et après : `93e6587c…`, intact — son
+empreinte est dans la clé du cache de la course. L'application installée porte aussi
+D526 désormais (le chorus et le flanger lisent dans leur tampon).
+
+**CE QUI N'EST PAS FAIT, ET POURQUOI.** La règle veut qu'une phase d'interface se
+termine par `./verifier.sh --bancs` (les 41 bancs) ; le lanceur REFUSE pendant une
+campagne, et la course de référence tourne. La série complète est due à la fin de la
+campagne (`tools/apres-campagne.sh`). Le défilement automatique au bord pendant qu'on
+GLISSE un clip vers une piste hors de la fenêtre n'est pas écrit : on y arrive
+aujourd'hui en lâchant, en faisant défiler, puis en reprenant le clip.
 
 ---
 

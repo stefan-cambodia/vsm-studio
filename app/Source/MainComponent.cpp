@@ -756,6 +756,8 @@ MainComponent::MainComponent()
         // À 64 pistes elle en montre treize : sans cela, la marque de sélection
         // se dessine sur une tranche que personne ne voit.
         mixer_.faireVoirLaTranche(trackList_.selectedTrackIndex());
+        // D525 : et l'arrangement jusqu'à la piste — il ne défilait pas du tout.
+        arrangement_.faireVoirLaPiste(trackList_.selectedTrackIndex());
     };
     // D11.1 : ce qu'un changement de piste a refusé se DIT — un clip audio
     // vers une piste qui porte un autre fichier, un groupe, un genre qui ne
@@ -1982,6 +1984,43 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     cible->mouseDown(evenement(depart, mods, 1, false));
     cible->mouseDrag(evenement(arrivee, mods, 1, true));
     cible->mouseUp(evenement(arrivee, mods & ~juce::ModifierKeys::leftButtonModifier, 1, true));
+    return true;
+}
+
+bool MainComponent::molettePourCapture(const juce::String& description) {
+    // D525 : « nom:fx,fy:crans[:maj|:ctrl] » — la molette tournée au point (fx, fy) du
+    // composant, un événement par cran (positif : vers le haut, comme `deltaY`), avec
+    // le modificateur. `mouseWheelMove` est le chemin même de la souris.
+    juce::StringArray champs;
+    champs.addTokens(description, ":", "");
+    if (champs.size() < 3) return false;
+    const juce::String nom = champs[0];
+    const float fx = champs[1].upToFirstOccurrenceOf(",", false, false).getFloatValue();
+    const float fy = champs[1].fromFirstOccurrenceOf(",", false, false).getFloatValue();
+    const int crans = champs[2].getIntValue();
+    const juce::String mode = champs.size() > 3 ? champs[3].toLowerCase() : juce::String();
+    std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
+        if (c.getName() == nom && !c.getLocalBounds().isEmpty()) return &c;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Component* cible = chercher(*this);
+    std::fputs(("VSM_MOLETTE : " + description
+                + (cible != nullptr ? juce::String(u8" — jouée") : juce::String(u8" — aucun composant visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    if (cible == nullptr || crans == 0) return cible != nullptr;
+    int mods = 0;
+    if (mode == "maj") mods |= juce::ModifierKeys::shiftModifier;
+    if (mode == "ctrl") mods |= juce::ModifierKeys::ctrlModifier;
+    const juce::Point<float> ou(fx * static_cast<float>(cible->getWidth()), fy * static_cast<float>(cible->getHeight()));
+    const auto maintenant = juce::Time::getCurrentTime();
+    const juce::MouseEvent evenement(juce::Desktop::getInstance().getMainMouseSource(), ou, juce::ModifierKeys(mods),
+                                     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, ou, maintenant, 0, false);
+    juce::MouseWheelDetails details{};
+    details.deltaY = crans > 0 ? 0.25f : -0.25f;
+    for (int i = 0; i < std::abs(crans); ++i) cible->mouseWheelMove(evenement, details);
     return true;
 }
 
