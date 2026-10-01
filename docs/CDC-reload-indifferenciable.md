@@ -1977,7 +1977,7 @@ jugée sur son segment, avec un contrôle synthétique soumis aux MÊMES segment
 
 ---
 
-## 18. H56 — accord par accord : là où une raie SONNE, décrit-elle un cercle ? (écrite AVANT la mesure, 02/10/2026, 00 h 02)
+## 18. H56 — accord par accord : là où une raie SONNE, décrit-elle un cercle ? (écrite AVANT la mesure, 01/10/2026, 23 h 56)
 
 **Pourquoi.** § 17.2 : les trois instruments précédents jugeaient des raies qui
 s'éteignaient de 10 à 29 dB au fil des accords. La question du § 15 — « un direct plus
