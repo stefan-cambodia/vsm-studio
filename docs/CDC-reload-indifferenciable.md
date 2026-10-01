@@ -2016,3 +2016,36 @@ raie (début, fin, niveau).
 - **2 en échec sur deux extraits ou plus** : non concluante — et l'on cesse d'empiler
   des instruments sur ce pad sans regarder autre chose : la suite reviendrait à rendre
   le pad par le moteur avec les effets du rack, et à juger à l'oreille et au § 0.
+
+### 18.1 Ce que les tests de l'instrument ont changé — AVANT toute mesure de l'original (02/10/2026, 00 h 00)
+
+L'attendu 1 est la suite `analyse/tests/test_h56_accords.py` (branche `reload-h47`).
+Sur une lecture parfaite à notes intermittentes (portes de 4 à 7 s), **trois choix du
+§ 18 sont tombés**, chacun corrigé avant que l'instrument ait vu l'original :
+
+1. **La porteuse affinée sur l'extrait entier se trompe sous les portes** : de 0,03 à
+   0,10 Hz (si3 : 248,618 Hz pour 248,702) — le filtre de ± 0,3 Hz voit les bandes
+   latérales de la porte. Sur 5 s, le cercle devient un anneau : **0 segment en cercle
+   sur 11**. Elle est désormais affinée SUR CHAQUE SEGMENT : le décalage, cherché à
+   ± 0,15 Hz par pas de 2 mHz, qui rend la trajectoire la plus circulaire. **Cette
+   recherche favorise le cercle, et c'est dit** : la série la subit aussi, et n'en
+   devient pas un (0 segment sur 6, circularités de 13 à 25 %).
+2. **Normaliser par l'enveloppe déformait le rayon** : une fenêtre de 1,5 s ne moyenne
+   pas un nombre entier de cycles des LFO, et `E / env` gardait leurs ondulations —
+   9 segments sur 11, circularités de 6 à 13 %. L'enveloppe ne sert plus qu'à TROUVER
+   les segments ; la trajectoire est jugée telle quelle.
+3. **Le rognage de 0,25 s laissait la transition dans le segment** : il vaut une
+   demi-fenêtre d'enveloppe, 0,75 s.
+
+| cas (cinq raies) | segments en cercle | circularité | retard à `f1` relu (0,85 ms) |
+|---|---|---|---|
+| une lecture, portes graine 11 | 11 sur 11 | 0 à 1 % | 0,845 à 0,892 ms |
+| une lecture, portes graine 12 | 11 sur 11 | 0 à 9 % | 0,794 à 0,853 ms |
+| deux étages en série, portes graine 11 | 0 sur 6 | 13 à 25 % | — |
+| une lecture, notes tenues 24 s | 5 sur 5 | 0 à 1 % | 0,850 à 0,852 ms |
+
+**Une précision sur l'attendu 1 (b)** : intermittentes, les deux raies du haut de la
+série tombent sous 10 dB de leur fond (7,3 et 8,8 dB) et n'ont plus de segment ; (b) se
+juge donc sur TOUS les segments de la série. **L'attendu 1 est TENU.** Les attendus 2 à
+4 et les décisions du § 18 sont inchangés ; le contrôle (attendu 2) passe par le même
+instrument corrigé.
