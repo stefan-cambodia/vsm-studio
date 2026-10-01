@@ -1162,6 +1162,49 @@ A/B écrit avant sa mesure. Ce que le cache en rangerait n'est pas l'audio (un r
 solo de « Reload » pèse 55 Mo) mais le seul nombre que le calage en tire, le niveau
 efficace du rendu, sous une clé qui hache le dossier écrit pour lui — la règle de H48.
 
+### 10.4 H58 — les rendus SOLO du calage de niveau rangés à leur tour : une course relancée ne repaie plus le calage (écrite AVANT la mesure, 02/10/2026, 00 h 43)
+
+**Pourquoi.** § 10.3 : tout relu, 97 % de ce que coûte encore un réglage au mélange sont
+les rendus solo du calage de niveau (`match_track_levels`, `_caler_un_groupe`), que
+le cache de H48 ne range pas. Sur « Reload », chaque évaluation du réglage d'une voix
+de l'« other » en rend QUATRE (le groupe entier), sur 312 s.
+
+**L'hypothèse.** Le calage ne tire de ses rendus solo qu'UN nombre : le niveau efficace
+du rendu — ou, pour un groupe, de la SOMME des rendus de ses membres — sur la longueur
+du stem. Le ranger sous une clé qui hache ce que le moteur lit suffit à ce qu'une
+course relancée ne rende plus rien pour caler, et arrive au même projet, au bit près.
+
+**La clé** : pour une piste seule, la clé de projet de H48 (`cle_de_projet` : le dossier
+écrit pour le rendu solo, échantillons recopiés compris, la fréquence, l'empreinte du
+moteur) jointe à la DURÉE rendue et au nombre d'échantillons du stem (le niveau se
+prend sur `min(stem, rendu)`) ; pour un groupe, les clés de ses membres DANS L'ORDRE,
+jointes de même. Rien du CONTENU du stem n'y entre : le niveau du rendu n'en dépend
+pas.
+
+**L'option** est celle du cache existant (`--sans-cache-rendus` coupe les trois) ; le
+rapport gagne `options.niveauxSolo` (payés, relus) et le journal une ligne.
+
+**LA MESURE** — le banc de H48, trois courses dans un arbre à part (`reload-h58`, tiré
+de `master`), cache VIDE au départ, `vsm-render` de `build-h42`, 2 rendus parallèles,
+`nice 10`, à côté de la course de référence : **T** (`--sans-cache-rendus`), **A** (cache
+vide, qu'elle remplit), **B** (rejouée sur le cache de A).
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'identité** : `project.json` de A et B contre T (`cmp`) ; dans `rapport.json`, hors provenance, aucune différence | identiques, à l'octet et au dernier chiffre | une seule différence |
+| 2 | **le rejeu** : les étapes au mélange de B, rapportées aux 176 s de la course B de H48 (même banc, sans ce cache) | ≤ 50 % | > 80 % |
+| 3 | **ce que B paie** : niveaux solo et mesures de projet payés dans B | 0 et 0 | sinon le cache ne range pas ce qu'il dit |
+| 4 | **le témoin n'écrit rien** : fichiers au cache après T, lignes « niveaux solo » et « mesures de projet » à son journal | 0 et aucune | sinon l'option ne coupe pas ce qu'elle dit couper |
+| 5 | **ce que coûte la première passe** : étapes au mélange de A rapportées à T | ≤ 110 % | > 125 % |
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) : 1 à 4 tenus — le code entre dans
+`reload-chaine` et dans l'arbre principal dès qu'aucune course n'y tourne (la course de
+référence tourne : il attendra sa fin) ; 1 en échec — rien n'entre, la différence est
+cherchée ; 2 entre les deux — le cache entre (il ne peut pas nuire si 1 tient), et le
+nouveau premier poste est profilé comme au § 10.2.
+
 ---
 
 ## 11. H49 — décrire le pad sur l'ORIGINAL : ses raies une à une, et la forme de leur mouvement (écrite AVANT la mesure, 30/09/2026, 20 h 00)
