@@ -38397,3 +38397,21 @@ de référence gelée deux minutes par compilation, `vsm-render` intact.
 **CE QUI N'EST PAS FAIT.** La liste des pistes, cible elle aussi d'un dépôt du navigateur
 (D10.1), vit dans un `Viewport` : son défilement au bord pendant un dépôt n'est pas
 mesuré ; la série complète `--bancs` attend la fin de la campagne.
+
+---
+
+### Phase D531 — un élément du navigateur tenu contre le bord de la liste des pistes ne la fait pas défiler (02/10/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D530** : « La liste des pistes, cible
+elle aussi d'un dépôt du navigateur (D10.1), vit dans un `Viewport` : son défilement au
+bord pendant un dépôt n'est pas mesuré. » Elle montre trois à quatre pistes à 1 280 × 800
+(chaque ligne porte sa machine, sa sortie, ses curseurs) : c'est la vue où une piste est
+le plus vite hors de portée.
+
+**CE QUI EST PRÉVU** : la minuterie de D530, appelant cette fois `Viewport::autoScroll` (la
+fonction que JUCE fournit pour ce cas), et revisant la ligne visée.
+
+**PRONOSTIC, à mesurer avant la correction** (le composant nommé `pistes` pour le verbe
+`deposer-tenir:` de D530) — le projet de 40 pistes : `vsm.juno106` tirée du milieu de la
+liste contre son bord bas et tenue 1,2 s se pose sur la dernière piste visible, exactement
+comme lâchée tout de suite.
