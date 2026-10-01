@@ -246,5 +246,17 @@ echo "       machine du navigateur au bord bas de la liste : tenue 1,2 s → pis
 verdict "(15) tenue au bord bas de la liste, la machine se pose plus bas que lâchée" \
     "$(vrai "'${l1:-?}' != '?' and '${l0:-?}' != '?' and ${l1:-0} > ${l0:-0}")"
 
+# --- (16) AU CLAVIER : le clip de P06 choisi (un appui sans mouvement, hors des bandes),
+# puis ↓ quatre fois — il va sur P10, hors de la vue d'ouverture. La vue doit suivre : le
+# déplacement CHOISIT la piste d'arrivée et `faireVoirLaPiste` (D525) la montre, aucun geste
+# de souris n'étant en cours (D527). Mesuré vert dès son ajout (02/10, 04 h 05), PAS vu
+# rouge : le binaire d'avant D525 ne sait ni relever ni jouer ce verbe ; c'est un relevé de
+# non-régression, et il est dit comme tel.
+course clavier "1200:glisser-tenir:arrangement:0.5,0.882:0.5,0.882:0;1400:touche:arrangement:cursor down;1500:touche:arrangement:cursor down;1600:touche:arrangement:cursor down;1700:touche:arrangement:cursor down;1900:relever-arrangement;2000:enregistrer:$brouillon/clavier-ecrit"
+k="$(ou_est "$brouillon/clavier-ecrit")"; kv="$(vertical clavier 1)"
+echo "       clip de P06 descendu de quatre pistes au clavier : → piste $(champ "$k" 2) (pistes ${kv:-?})"
+verdict "(16) au clavier, le clip va sur P10 et la vue le montre" \
+    "$(vrai "'$(champ "$k" 2)' == '10' and '$kv' != '' and $(champ "$kv" 1) <= 10 <= $(champ "$kv" 2)")"
+
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

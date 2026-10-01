@@ -38435,3 +38435,10 @@ témoin lâché, et ne demandent pas un numéro de piste.
 Bancs voisins sur le binaire (b) : `portes-des-pistes`, `piano-roll-piste-choisie`,
 `vue-du-morceau`, `onglets-du-dock`, `theme-sombre`, `fader-console` — **6 sur 6 verts** ;
 préférences intactes ; course gelée deux minutes par compilation, `vsm-render` intact.
+
+**Relevé en passant, ajouté au banc (04 h 05) : le clavier.** Le clip de P06 choisi puis
+descendu de quatre pistes par ↓ (D15.2) arrive sur **P10**, et la vue le suit (pistes 4..10,
+208 px) : le déplacement choisit la piste d'arrivée, et `faireVoirLaPiste` (D525) la montre,
+aucun geste de souris n'étant en cours (D527). Le cas (16) de `arrangement-defile.sh` le
+garde ; il a été vert dès son ajout et n'a PAS été vu rouge — le binaire d'avant D525 ne sait
+ni relever ni jouer ce verbe —, c'est donc un relevé de non-régression, dit comme tel.
