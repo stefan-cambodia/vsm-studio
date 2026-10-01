@@ -1,5 +1,7 @@
 #include "TestFramework.h"
 #include "vsm/audio/dsp/Chorus.h"
+#include "vsm/audio/effect/Flanger.h"
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -83,3 +85,72 @@ VSM_TEST(chorus_is_deterministic) {
     for (size_t i = 0; i < a.size(); ++i)
         VSM_ASSERT_NEAR(a[i], b[i], 1e-9);
 }
+
+// D526 — LA LECTURE NE SORT JAMAIS DU TAMPON.
+//
+// Trouvé le 30/09/2026 en rendant trois notes tenues à travers l'insert chorus
+// (cadence 1,751 Hz, profondeur 2,4 ms) : à 16,69 s, UN échantillon du canal
+// gauche valait 3,9e28, puis décroissait du coefficient du passe-bas. La position
+// de lecture est `writeIndex - retard`, ramenée dans le tampon par `+= size` tant
+// qu'elle est négative ; quand elle est négative d'une fraction infime (le retard
+// croise un entier au moment où l'écriture y passe), `position + size` s'ARRONDIT
+// à `size` exactement en simple précision, et la lecture se fait une case après la
+// fin du tampon. Ce que contient cette case dépend du tas : le plus souvent rien
+// d'audible, ce jour-là un nombre à vingt-huit chiffres.
+VSM_TEST(chorus_read_position_wraps_inside_the_buffer) {
+    const float size = 2209.0f;   // 50 ms à 44,1 kHz, plus la marge
+    // Les cas qui arrondissaient à `size` : une position négative plus petite que
+    // la demi-résolution d'un flottant voisin de 2209.
+    for (float tiny : {-1.0e-6f, -1.5e-5f, -6.0e-5f, -1.2e-4f}) {
+        const float pos = Chorus::wrapReadPosition(tiny, size);
+        VSM_ASSERT(pos >= 0.0f);
+        VSM_ASSERT(pos < size);
+    }
+    // Et ce qui était juste le reste, au bit près.
+    VSM_ASSERT_NEAR(Chorus::wrapReadPosition(-1.0f, size), 2208.0f, 0.0);
+    VSM_ASSERT_NEAR(Chorus::wrapReadPosition(-457.25f, size), 1751.75f, 0.0);
+    VSM_ASSERT_NEAR(Chorus::wrapReadPosition(12.5f, size), 12.5f, 0.0);
+    VSM_ASSERT_NEAR(Chorus::wrapReadPosition(0.0f, size), 0.0f, 0.0);
+}
+
+VSM_TEST(chorus_constant_input_stays_constant) {
+    // Une entrée CONSTANTE lue n'importe où dans le tampon rend la même constante :
+    // la moindre lecture hors du tampon se voit. Les réglages et la durée sont ceux
+    // de la mesure où le défaut s'est montré (26 s, 1,751 Hz, 2,4 ms, base 8 ms).
+    Chorus chorus;
+    chorus.setSampleRate(44100.0);
+    chorus.setRateHz(1.751f);
+    chorus.setDepthMs(2.4f);
+    chorus.setBaseDelayMs(8.0f);
+    chorus.setMix(1.0f);
+
+    const int total = 26 * 44100;
+    float worst = 0.0f;
+    for (int i = 0; i < total; ++i) {
+        float l = 0.0f, r = 0.0f;
+        chorus.process(0.25f, l, r);
+        if (i < 4410) continue;   // le temps que la ligne à retard et le passe-bas se remplissent
+        worst = std::max(worst, std::max(std::abs(l - 0.25f), std::abs(r - 0.25f)));
+    }
+    VSM_ASSERT(worst < 1.0e-4f);
+}
+
+VSM_TEST(flanger_read_position_wraps_inside_the_buffer) {
+    // La ligne du flanger : 12 ms à 44,1 kHz, plus la marge.
+    const float size = 533.0f;
+    for (float tiny : {-1.0e-6f, -5.0e-6f, -1.5e-5f, -3.0e-5f}) {
+        const float pos = vsm::audio::dsp::wrapReadPosition(tiny, size);
+        VSM_ASSERT(pos >= 0.0f);
+        VSM_ASSERT(pos < size);
+    }
+    VSM_ASSERT_NEAR(vsm::audio::dsp::wrapReadPosition(-44.25f, size), 488.75f, 0.0);
+}
+
+// PAS DE TEST « ENTRÉE CONSTANTE » POUR LE FLANGER, ET C'EST DIT. Écrit deux fois le
+// 30/09 (réglages par défaut sur 300 s ; puis 1 Hz et 0,7 de profondeur, où la
+// position s'arrondit à la taille du tampon à 8,38 s), il est resté VERT sur le
+// flanger d'avant la correction : la case lue après la fin du tampon contenait ce
+// jour-là la même valeur que l'entrée. Un test qui ne tombe pas sur le défaut qu'il
+// vise n'est pas une garde ; celui du chorus, lui, a été vu rouge. Ce qui garde le
+// flanger est le test de la position ci-dessus, et le fait qu'il lit sa ligne par
+// la même fonction.

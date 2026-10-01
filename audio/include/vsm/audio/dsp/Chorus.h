@@ -1,5 +1,6 @@
 #pragma once
 #include "Constants.h"
+#include "DelayRead.h"
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -84,15 +85,21 @@ public:
         if (++writeIndex_ >= buffer_.size()) writeIndex_ = 0;
     }
 
+    /// La position de lecture ramenée DANS le tampon : [0, size) -- voir
+    /// `DelayRead.h` (D526) : une lecture arrondie à `size` sortait du tampon.
+    static float wrapReadPosition(float readPos, float size) {
+        return vsm::audio::dsp::wrapReadPosition(readPos, size);
+    }
+
 private:
     float readTap(float lfo) const {
         // lfo dans [-1,1] -> retard dans [base, base+depth].
         const float delayMs = baseDelayMs_ + depthMs_ * (0.5f + 0.5f * lfo);
         const float delaySamples = delayMs * static_cast<float>(sampleRate_) / 1000.0f;
 
-        float readPos = static_cast<float>(writeIndex_) - delaySamples;
         const float size = static_cast<float>(buffer_.size());
-        while (readPos < 0.0f) readPos += size;
+        const float readPos =
+            wrapReadPosition(static_cast<float>(writeIndex_) - delaySamples, size);
 
         const size_t i0 = static_cast<size_t>(readPos);
         const float frac = readPos - static_cast<float>(i0);

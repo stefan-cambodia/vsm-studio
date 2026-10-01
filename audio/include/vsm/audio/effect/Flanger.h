@@ -1,6 +1,7 @@
 #pragma once
 #include "IAudioEffect.h"
 #include "vsm/audio/dsp/Constants.h"
+#include "vsm/audio/dsp/DelayRead.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include <array>
 #include <atomic>
@@ -83,8 +84,10 @@ public:
 
 private:
     float readInterp(const std::vector<float>& buf, float delaySamples) const {
-        float readPos = static_cast<float>(writeIdx_) - delaySamples;
-        while (readPos < 0.0f) readPos += static_cast<float>(maxDelay_);
+        // D526 : la position ramenée dans le tampon par `wrapReadPosition` -- le
+        // `while` seul pouvait l'arrondir à `maxDelay_` et lire après la fin.
+        const float readPos = vsm::audio::dsp::wrapReadPosition(
+            static_cast<float>(writeIdx_) - delaySamples, static_cast<float>(maxDelay_));
         size_t i0 = static_cast<size_t>(readPos);
         size_t i1 = (i0 + 1) % maxDelay_;
         float frac = readPos - static_cast<float>(i0);

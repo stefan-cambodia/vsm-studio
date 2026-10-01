@@ -37976,3 +37976,82 @@ projet (règle de D363) est un reste à trancher.
 **MISE EN ATTENTE, ET C'EST DIT (30/09, 07 h 55)** : l'utilisateur a demandé la
 reconstruction de « Reload — Peschi (Original Mix) », qui passe devant ; aucune
 ligne de code n'a été écrite pour cette phase.
+
+---
+
+### Phase D526 — le chorus et le flanger lisaient une case APRÈS la fin de leur ligne à retard : un échantillon à 3,9e28 dans un export (30/09/2026)
+
+**D'OÙ ELLE VIENT — D'UNE MESURE QUI NE LA CHERCHAIT PAS.** L'attendu 1 de H51
+(`CDC-reload-indifferenciable.md` § 13) rendait trois notes tenues 26 s par l'orgue
+à tuyaux à travers l'insert chorus (cadence 1,751 Hz, profondeur 2,4 ms, dosage 0,5)
+pour comparer l'effet à son modèle. Les trois tables sont sorties VIDES, et le
+niveau efficace du rendu valait 2,1e25.
+
+**LE DÉFAUT, MESURÉ SUR L'EXPORT** (`vsm-render` de `build-h42`, 26 s, 44,1 kHz) : à
+**16,6906 s**, l'échantillon 736 055 du canal GAUCHE vaut **3,9478528e28** ; les
+suivants décroissent d'un facteur 0,425, qui est le coefficient du passe-bas de
+l'effet ; 77 échantillons dépassent 1,0. Le canal droit est sain (crête 0,426). Dans
+un fichier 16 bits : un claquement à pleine échelle.
+
+**LA CAUSE, retrouvée par le calcul avant de toucher au code.** `Chorus::readTap`
+calcule `position = écriture − retard` en simple précision, puis `position += taille`
+tant qu'elle est négative. À l'échantillon 736 055, l'écriture est à la case 458 et
+le retard vaut 457,99998 échantillons : la position sort négative d'une fraction
+infime, et `position + 2 209` s'ARRONDIT à 2 209 exactement. La lecture se fait à
+`buffer_[2209]`, une case après la fin du tampon — ce que le tas contient là. Le plus
+souvent rien d'audible ; ce jour-là un nombre à vingt-huit chiffres, que le passe-bas
+a ensuite étalé sur 76 échantillons. Le croisement arrive quand le retard modulé
+traverse un entier au moment exact où l'écriture y passe : de l'ordre d'une fois par
+demi-minute et par canal à ces réglages.
+
+**CE QUI LE PORTE** : l'insert chorus du rack ; le chorus intégré du **Juno-106** et
+du **Jupiter-8** (la même classe `dsp::Chorus`) ; et le **flanger**, qui fait le même
+calcul dans `readInterp` — avec une circonstance aggravante, la valeur lue repart
+dans la ligne par la réinjection. Cherché par le même calcul, aux réglages PAR
+DÉFAUT du flanger (0,3 Hz, 0,7) : la position s'arrondit à la taille du tampon à
+76,40 s. La flûte (hors build) lit sa ligne par un modulo, et n'est pas concernée.
+
+**LA CORRECTION** : `audio/include/vsm/audio/dsp/DelayRead.h`, une fonction,
+`wrapReadPosition` — la position ramenée dans [0, taille) ; `taille` est la même
+case que 0, on l'y ramène. Le chorus et le flanger lisent par elle. Tout autre cas
+rend le nombre d'avant, au bit près.
+
+**LES TESTS, ET CE QU'ILS GARDENT.**
+- `chorus_read_position_wraps_inside_the_buffer` et
+  `chorus_constant_input_stays_constant` (une entrée constante lue n'importe où rend
+  la même constante ; 26 s aux réglages de la mesure) : **vus ROUGES tous les deux**
+  sur le calcul d'avant, isolé tel quel dans la fonction, puis verts.
+- `flanger_read_position_wraps_inside_the_buffer` : le calcul de position à la
+  taille de la ligne du flanger.
+- **Un test écrit puis RETIRÉ, et c'est dit** : « entrée constante » pour le flanger,
+  écrit deux fois (réglages par défaut sur 300 s ; puis 1 Hz et 0,7, où le croisement
+  tombe à 8,38 s), est resté VERT sur le flanger d'avant la correction — la case lue
+  après le tampon contenait ce jour-là la valeur de l'entrée. Un test qui ne tombe
+  pas sur le défaut qu'il vise n'est pas une garde ; le commentaire le dit dans
+  `test_chorus.cpp`. Le flanger est gardé par le test de la position et par le fait
+  qu'il lit sa ligne par la même fonction.
+- La suite audio entière, compilée dans `build-h51` : **1 314 réussis, 0 échoué**
+  (les empreintes des effets et des machines, inchangées, comprises).
+
+**MESURÉ PAR UN EXPORT** (règle de D332 : ce qui conditionne le son se juge sur
+l'export) — le même projet rendu par `build-h42` (avant, md5 `52532381…`) et par
+`build-h51` (après, md5 `96cbe46b…`) :
+
+| | avant | après |
+|---|---|---|
+| crête, canal gauche | 3,9478528e28 | **0,4388** |
+| crête, canal droit | 0,4262 | 0,4262 |
+| échantillons au-delà de 1,0 | 77 | **0** |
+| échantillons qui diffèrent entre les deux exports | — | **98 sur 1 146 600**, tous du canal gauche, du 736 055 au 736 152 ; tout le reste identique au bit |
+
+Et l'attendu 1 de H51, rejoué tel qu'écrit avec le moteur corrigé : **tenu** — le
+chorus du rack est à 0,21 dB au pire de son modèle sur les trois raies (0,06, 0,04,
+0,21 dB), et ses deux lectures en quadrature éteignent bien 2·`f1` en somme mono.
+
+**CE QUI N'EST PAS FAIT, ET POURQUOI.** `build/` (l'application et le moteur par
+défaut) et `build-h42/` ne sont PAS recompilés : l'empreinte de `build/tools/vsm-render`
+est dans la clé du cache de la course de référence de « Reload », et `build-h42` est
+le moteur de sa suite. Tant que la campagne tourne, **l'application installée porte
+encore le défaut** ; la correction est dans les sources et dans `build-h51`, et
+entrera dans les deux autres dossiers à la première compilation d'après campagne.
+Aucune ligne d'`app/Source/` n'a changé : pas de banc d'interface à rejouer.

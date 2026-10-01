@@ -1382,3 +1382,141 @@ chaîne de `reload-h48`, essai = celle de `reload-h52`, une seule variable :
 
 Elle entrera dans l'arbre principal après S2, dans un commit à elle, avec ces quatre
 chiffres.
+
+### 13.1 Verdict de H51 (30/09/2026, mesuré de 20 h 20 à 20 h 44) : PARTIELLE — un retard modulé explique l'essentiel, deux cadences n'ajoutent que 0,7 dB, les raies du haut résistent ; et l'attendu 1 a trouvé un défaut du MOTEUR
+
+`analyse/mesure_h51.py mesurer` (branche `reload-h47`, `108f662`, arbre propre),
+l'original de 16 à 40 s, `vsm-render` de `build-h42` ; 1 440 s ;
+`reconstruction/travail/reload-h51/mesure.json`. Le balayage ENTIER :
+
+| topologie | réglage (5 raies) | validation (5 autres) | réglages trouvés |
+|---|---|---|---|
+| N — sinus nu | 6,75 dB | 7,39 dB | — |
+| U1 — une cadence, `f1` | 1,98 dB | 3,56 dB | profondeur 1,74 ms, dosage 0,45, base 1,83 ms |
+| U2 — une cadence, `f2` | 4,50 dB | 5,79 dB | profondeur 1,44 ms, dosage 0,35, base 3,60 ms |
+| **S — deux étages en série** | **1,49 dB** | **2,85 dB** | `f1` : 1,68 ms, 0,47, base 1,81 ms ; `f2` : 1,10 ms, 0,41, base 6,81 ms |
+| M — un retard, deux LFO | 1,58 dB | 4,16 dB | 1,76 et 0,67 ms, dosage 0,48, base 14,41 ms |
+| P — deux retards en parallèle | 1,64 dB | 4,12 dB | 2,11 ms, 0,65, 9,25 ms ; 0,41 ms, 0,81, 19,67 ms |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | le modèle décrit l'effet du rack (par le vrai moteur) | **échec — et ce n'est pas le modèle** : le rendu à travers l'insert chorus contient UN échantillon à **3,9e28** (voir ci-dessous) ; les trois tables du moteur sont vides |
+| 2 | le réglage ≤ 2 dB | **tenu** : S, 1,49 dB |
+| 3 | la validation ≤ 3 dB | **tenu** : S, 2,85 dB — par raie 2,42 · 0,96 · 3,23 · 3,07 · **4,59** (do♯5) |
+| 4 | le témoin : une cadence à plus de 2 dB au-dessus | **échec** : U1 à 3,56 dB, S à 2,85 — **marge de 0,70 dB** ; le sinus nu, lui, est à 7,39 |
+| 5 | la topologie : P pire d'au moins 1 dB | **tenu** : P 4,12 dB, S 2,85 (+1,27) |
+| 6 | ce qui manque au rack | bases de 1,81 et 6,81 ms (le rack : 8 ms, fixe) ; deux cadences composées (une seule) ; une lecture unique en mono (deux lectures en quadrature, dont la somme mono éteint 2·`f1` — vérifié par un test du modèle) |
+
+**CE QUE CELA ÉTABLIT, ET PAS PLUS.**
+- **Un retard modulé à `f1` fait l'essentiel du chemin** : 7,39 → 3,56 dB avec un
+  seul étage. Et ses réglages sont les MÊMES qu'on le cherche seul (1,74 ms, 0,45,
+  1,83 ms) ou en premier étage de S (1,68 ms, 0,47, 1,81 ms) : ce n'est pas un
+  accident de l'optimiseur.
+- **C'est un retard COURT** — de 1,8 à 3,5 ms —, la plage d'un FLANGER sans
+  réinjection plutôt que celle d'un chorus (le rack : base de 8 ms pour le chorus,
+  de 1 ms pour le flanger). Relevé après la mesure, à reprendre.
+- **La seconde cadence n'est PAS établie comme nécessaire par cette distance**
+  (attendu 4 en échec, 0,70 dB). H50 l'a vue — ses composantes existent, sur la
+  famille à 95 % —, mais elles sont à −6 / −12 dB, et une moyenne d'écarts de niveau
+  les pèse peu. Les deux mesures ne se contredisent pas ; elles ne pèsent pas la
+  même chose, et c'est dit.
+- **Le modèle sous-module les raies du haut** : à do♯5, l'original a ses bandes
+  latérales à −0,6 / −2,2 dB de la plus forte et sa porteuse à −0,9 ; le modèle les
+  met à −9. Aucun réglage commun ne rend à la fois le bas (mi3 : 0,72 dB) et le haut
+  (do♯5 : 4,59 dB). « Un son direct et UNE lecture retardée » n'est donc pas toute
+  la structure.
+
+**H51 est PARTIELLE** : 2, 3 et 5 tenus, 4 en échec, 1 en échec pour une raison
+étrangère au modèle. La règle écrite au § 13 — « 1 en échec : avant toute autre
+lecture » — s'applique à la lettre, et ce qu'elle trouve est plus grave que prévu.
+
+**L'ATTENDU 1 A TROUVÉ UN DÉFAUT DU MOTEUR : le chorus lit hors de son tampon.** Trois
+notes tenues 26 s par l'orgue à tuyaux à travers l'insert chorus (1,751 Hz, 2,4 ms) :
+à **16,6906 s**, l'échantillon 736 055 du canal GAUCHE vaut **3,9478528e28**, et les
+75 suivants décroissent d'un facteur 0,425 — le coefficient du passe-bas de l'effet.
+Le canal droit est sain (crête 0,426) ; hors de cette salve, le niveau efficace est
+0,1228. La cause, retrouvée par le calcul : à cet échantillon l'écriture est à la
+case 458 et le retard vaut 457,99998 échantillons ; la position de lecture,
+`écriture − retard`, sort négative d'une fraction infime, et `position + taille`
+s'ARRONDIT à `taille` (2 209) en simple précision — la lecture se fait une case
+après la fin du tampon, et rend ce que le tas contient là. Le même calcul est dans
+le flanger, où la valeur lue repart dans la ligne par la réinjection ; le chorus est
+aussi celui du Juno-106 et du Jupiter-8. **C'est la phase D526 de `ROADMAP-daw.md`**,
+ouverte et corrigée le jour même (deux tests vus rouges, 1 314 tests audio verts,
+l'export identique au bit hors de 98 échantillons).
+
+**L'attendu 1, REJOUÉ tel qu'écrit avec le moteur corrigé (`build-h51`, 21 h 06) :
+TENU.** Le chorus du rack est à **0,21 dB au pire** de son modèle (mi3 0,06 dB,
+fa♯4 0,04, do♯5 0,21) : le modèle décrit bien l'effet — et l'effet, en somme mono,
+éteint bien 2·`f1` (aucune composante à ± 3,5 Hz dans le rendu du moteur). Le rack
+tel qu'il est ne peut donc pas jouer ce pad, dont les raies du haut sont dominées
+par 2·`f1`.
+
+**CE QUE LE VERDICT DÉCIDE.**
+- **D526 d'abord** (le moteur), puis l'attendu 1 rejoué — fait, ci-dessus.
+- **Le rack n'est PAS étendu sur la foi de ce modèle** : il laisse 4,6 dB à do♯5, et
+  étendre un effet pour le rapprocher d'un modèle qui ne rend pas l'original serait
+  régler le septième banc (règle du dépôt). L'attendu 6 reste un relevé.
+- **La suite (H53) interroge la STRUCTURE au lieu de régler un modèle** : si le pad
+  est « un son direct plus une lecture retardée », l'enveloppe complexe de chaque
+  raie décrit un CERCLE dans le plan, et le retard `τ(t)` s'y LIT — sa forme, sa
+  profondeur, ses deux cadences — sans optimiseur. Si elle n'en décrit pas un, il y
+  a plusieurs lectures, et leur nombre se compte.
+
+---
+
+## 15. H53 — l'enveloppe complexe de chaque raie décrit-elle un CERCLE ? La structure du mouvement, lue sans optimiseur (écrite AVANT la mesure, 30/09/2026, 20 h 56)
+
+**Pourquoi.** H51 a RÉGLÉ un modèle et s'est heurtée aux raies du haut : on ne sait
+pas si c'est le modèle qui est faux ou l'optimiseur qui a transigé. Une structure se
+lit plus directement qu'elle ne se règle.
+
+**Ce que la structure « un son direct plus UNE lecture retardée » impose.** Une note
+de pulsation `ω` y devient `A·e^{jωt}·E(t)`, avec `E(t) = (1 − m) + m·e^{−jω·τ(t)}` :
+**`E(t)` parcourt un CERCLE** du plan complexe — centre `1 − m`, rayon `m` — quelle
+que soit la forme du retard `τ(t)`. Et l'angle autour du centre EST le retard :
+`τ(t) = −angle / ω`. Deux lectures (en série ou en parallèle) ne donnent pas un
+cercle. La structure se lit donc sur la FORME de la trajectoire, et si c'est un
+cercle, le retard s'y lit en millisecondes, raie par raie, sans rien régler.
+
+**L'instrument** (`analyse/mesure_h53.py`, branche `reload-h47`), sur l'original de
+16 à 40 s, par raie de l'oracle :
+- la bande analytique de H49, mais de demi-largeur ADAPTÉE à la raie — la moitié de
+  l'écart à la raie voisine la plus proche, bornée à 15 Hz (6,9 Hz pour la♯3 et
+  si3, 10 pour mi3 et fa♯3, 13,9 pour la♯4 et si4, 15 ailleurs) : une modulation
+  d'indice 3 à 4 a des bandes jusqu'à 5 fois `f1`, que ± 6 Hz coupaient ;
+- ramenée en bande de base par la fréquence de la PORTEUSE (la composante la plus
+  proche du tempéré, H50) : c'est `E(t)`, à une constante complexe près ;
+- **le cercle** ajusté aux points de `E(t)` par moindres carrés (algébrique) ; la
+  **circularité** est l'écart-type des distances au centre, rapporté au rayon ;
+- si c'est un cercle : le **dosage** `m` (rayon sur rayon plus distance du centre à
+  l'origine), et le **retard** `τ(t)` déroulé, en millisecondes, dont on publie
+  l'amplitude aux cadences `f1` et `f2` et à leurs doubles.
+
+**Ce que la bande fait au cercle, dit avant.** Le bruit de la batterie dans la bande
+épaissit le trait ; le rapport au fond de H49 est publié par raie, et une raie à
+moins de 10 dB ne se juge pas.
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'instrument** (tests écrits avant), à cinq hauteurs, bruit à −30 dB : un direct plus une lecture (dosage 0,47, retard de 1,8 ms ± 0,85 à `f1` ± 0,3 à `f2`) ; deux étages en série ; un trémolo | une lecture : circularité ≤ 5 %, dosage relu à ± 0,05, amplitude du retard à `f1` relue à ± 10 % ; la série : circularité > 15 % sur les raies du haut ; le trémolo : pas un cercle (circularité > 15 %, ou arc parcouru de moins de 60° — une droite s'ajuste par un cercle immense dont elle est un arc infime) | une lecture fausse : rien ne se lit |
+| 2 | **un cercle ?** circularité de chaque raie vue de l'original | ≤ 10 % ET un arc d'au moins 60° sur au moins 8 raies : la structure est « un direct plus une lecture » | > 25 %, ou un arc de moins de 60°, sur 5 raies ou plus : ce n'est pas elle |
+| 3 | **le même retard pour toutes les notes ?** amplitude de `τ(t)` à `f1`, en ms, d'une raie à l'autre (raies à cercle) | dispersion ≤ 15 % : un seul retard, donc un effet sur le BUS du pad | > 40 % : la modulation est par note |
+| 4 | **le même dosage ?** `m` d'une raie à l'autre | dispersion ≤ 15 % | > 40 % |
+| 5 | **la forme du LFO** : dans `τ(t)`, l'amplitude à 2·`f1` rapportée à celle à `f1` | ≤ 10 % : un sinus | > 30 % : une autre forme (triangle, ou deux lectures) |
+
+Entre « réussite » et « échec », chaque attendu est dit « entre les deux ». Si
+l'attendu 2 échoue, 3 à 5 ne se lisent pas et sont dits « sans objet ».
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- 2, 3 et 4 tenus : l'effet est UN retard modulé sur le bus, de forme, profondeur,
+  base et dosage MESURÉS ; c'est lui qu'on donne au rack (une phase de
+  `ROADMAP-daw.md`), puis le pad est rendu par le moteur et jugé raie par raie.
+- 2 en échec : plusieurs lectures. Les trajectoires sont publiées, et l'hypothèse
+  suivante en compte les lectures (la réponse d'un effet à retards, prise à dix
+  fréquences au même instant, est une somme d'exponentielles dont le nombre se lit).
+- 2 tenu, 3 ou 4 en échec : un cercle par note, mais pas le même — une modulation
+  PAR NOTE (un vibrato de la machine plus un mélange), et c'est alors la machine
+  qui est visée, pas l'effet.
