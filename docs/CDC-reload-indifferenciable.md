@@ -2049,3 +2049,47 @@ série tombent sous 10 dB de leur fond (7,3 et 8,8 dB) et n'ont plus de segment 
 juge donc sur TOUS les segments de la série. **L'attendu 1 est TENU.** Les attendus 2 à
 4 et les décisions du § 18 sont inchangés ; le contrôle (attendu 2) passe par le même
 instrument corrigé.
+
+### 18.2 Verdict de H56 (02/10/2026, mesuré de 00 h 01 à 00 h 02) : NON CONCLUANTE — et la règle d'arrêt écrite avant s'applique
+
+`analyse/mesure_h56.py` (branche `reload-h47`), l'original, trois extraits, l'original
+et son contrôle jugés sur les mêmes segments ; 35 s ;
+`reconstruction/travail/reload-h56/mesure.json`.
+
+| extrait | contrôle : segments en cercle | attendu 2 | original : segments en cercle (pour mémoire) |
+|---|---|---|---|
+| 16-40 s | 15 sur 26 (58 %) | **échec** | 0 sur 26 |
+| 130-154 s | 13 sur 22 (59 %) | **échec** | 0 sur 22 |
+| 272-296 s | 14 sur 25 (56 %) | **échec** | 0 sur 25 |
+
+L'attendu 2 échoue sur les trois extraits : une lecture parfaite, portant les enveloppes
+mesurées sur l'original, n'est relue cercle que sur 56 à 59 % des segments — l'instrument
+reste aveugle à CES enveloppes. **H56 est NON CONCLUANTE**, et rien ne s'écrit sur la
+structure du pad.
+
+**Ce que le contrôle montre de son aveuglement** : il voit sur les raies du bas et du
+milieu (mi3 à mi4 : circularités de 3 à 14 %, la plupart des segments en cercle), et ne
+voit pas sur les deux fa♯ tenus 19 à 20 s (12 à 21 % : leur niveau bouge de 5 dB dans le
+segment) ni sur les raies du haut (sol♯4, la♯4 : 15 à 26 %).
+
+**Relevé, et PAS une conclusion** : sur les raies où le contrôle voit, l'original n'est
+jamais un cercle — si3 25 à 34 % (contrôle 3 à 8 %), la♯3 27 à 36 % (3 à 9 %), do♯4 28 à
+35 % (4 à 9 %). La règle écrite ne lit pas l'attendu 3 raie par raie ; ce relevé ne la
+remplace pas.
+
+**LA RÈGLE D'ARRÊT, écrite au § 18 avant la mesure** : « 2 en échec sur deux extraits
+ou plus : non concluante — et l'on cesse d'empiler des instruments sur ce pad sans
+regarder autre chose : la suite reviendrait à rendre le pad par le moteur avec les
+effets du rack, et à juger à l'oreille et au § 0. » **Elle s'applique.** Le bilan de la
+lignée, dit sans l'arrondir : de H47 à H56, dix hypothèses sur le pad ; H50 tenue (une
+modulation de retard à deux cadences, sur des sinus), H51 partielle (un modèle à deux
+étages en série à 2,85 dB en validation), H52 un défaut de la chaîne, et quatre
+instruments de STRUCTURE (H53 à H56) non concluants, chacun pour une raison que son
+successeur a trouvée — le bruit du contrôle, la batterie qui n'était pas le fond, des
+notes qui n'étaient pas tenues, des enveloppes qui aveuglent encore le dernier. Aucune
+de ces quatre n'a donné un chiffre sur lequel le rack puisse être réglé.
+
+**La suite (H57, à écrire avant sa mesure)** : rendre le pad par le moteur — des sinus,
+sous l'effet que H51 a trouvé (deux étages en série, réglages S) et sous le chorus du
+rack tel qu'il est — et juger contre l'original au § 0, sur les extraits jamais
+entendus par cette lignée, et à l'oreille.
