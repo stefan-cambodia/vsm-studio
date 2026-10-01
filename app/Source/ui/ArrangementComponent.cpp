@@ -1131,6 +1131,8 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         if (event.mods.isLeftButtonDown() && point.x >= kHeaderWidth) {
             geste_ = Geste::Lasso;
             lassoOrigine_ = point;
+            lassoTickOrigine_ = xToTick(point.x);                                  // D529
+            lassoYContenu_ = static_cast<int>(point.y) + decalageVertical();
             lasso_ = juce::Rectangle<float>(point, point);
         }
         repaint();
@@ -1236,11 +1238,12 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
     // et le temps SOUS le pointeur : il suffit que la vue bouge sous lui, et que
     // `mouseDrag` soit encore appelé quand la souris ne bouge plus — c'est ce que
     // demande `beginDragAutoRepeat`. Le lasso n'en est pas : son origine est tenue en
-    // coordonnées de la fenêtre (voir D527 dans ROADMAP-daw).
+    // coordonnées de la fenêtre — il l'est depuis D529, son origine tenue dans le morceau.
     if (geste_ == Geste::Deplacer || geste_ == Geste::Reordonner || geste_ == Geste::BordGauche
-        || geste_ == Geste::BordDroit || geste_ == Geste::Etirer) {
+        || geste_ == Geste::BordDroit || geste_ == Geste::Etirer || geste_ == Geste::Lasso) {
         beginDragAutoRepeat(40);
-        defilerAuBord(event.position, geste_ == Geste::Deplacer || geste_ == Geste::Reordonner,
+        defilerAuBord(event.position,
+                      geste_ == Geste::Deplacer || geste_ == Geste::Reordonner || geste_ == Geste::Lasso,
                       geste_ != Geste::Reordonner);
     }
 
@@ -1312,7 +1315,10 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         return;
     }
     if (geste_ == Geste::Lasso) {
-        lasso_ = juce::Rectangle<float>(lassoOrigine_, event.position);
+        // D529 : l'origine reconvertie depuis le morceau — la vue a pu défiler.
+        const juce::Point<float> origine(tickToX(lassoTickOrigine_),
+                                         static_cast<float>(lassoYContenu_ - decalageVertical()));
+        lasso_ = juce::Rectangle<float>(origine, event.position);
         selectClipsInLasso(event.mods.isShiftDown());
         repaint();
         return;
@@ -2085,7 +2091,10 @@ void ArrangementComponent::direLaFenetre() const {
                     + " (" + juce::String(vues) + juce::String(u8" à l'écran), décalage vertical ")
                     + juce::String(decalageVertical()) + " px sur " + juce::String(std::max(0, hauteurDesPistes() - std::max(0, getHeight() - kRulerHeight)))
                     + " possibles (pistes " + juce::String(hauteurDesPistes()) + " px, zone "
-                    + juce::String(std::max(0, getHeight() - kRulerHeight)) + " px)\n").toRawUTF8(), stderr);
+                    + juce::String(std::max(0, getHeight() - kRulerHeight)) + " px)"
+                    // D529 : et les clips CHOISIS — un lasso ne laissait aucune trace
+                    // qu'un banc puisse lire.
+                    + ", " + juce::String(static_cast<int>(selection_.size())) + " clip(s) choisi(s)\n").toRawUTF8(), stderr);
     }
     const double parMesure = static_cast<double>(project_->ticksPerQuarterNote) * 4.0;
     if (parMesure <= 0.0) return;

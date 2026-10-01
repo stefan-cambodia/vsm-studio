@@ -1659,6 +1659,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
         if (!event.mods.isShiftDown()) selectedNoteIds_.clear();
         dragMode_ = DragMode::RubberBandSelect;
         rubberBandRect_ = { pos.x, pos.y, 0.0f, 0.0f };
+        rectangleTickOrigine_ = xToTick(pos.x);                                    // D529
+        rectangleYContenu_ = rowOfNote(topNote_) * noteHeight_ + static_cast<int>(pos.y);
     }
     repaint();
 }
@@ -1672,11 +1674,11 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
     // déplacement recalcule à chaque appel l'écart entre la hauteur et le tick SOUS le
     // pointeur et ceux du départ ; il suffit que la vue bouge sous lui, et que
     // `mouseDrag` soit encore appelé quand la souris ne bouge plus. La sélection au
-    // rectangle n'en est pas (son origine est en coordonnées de la fenêtre, D527).
+    // rectangle en est depuis D529 : son origine est tenue dans le morceau.
     if (dragMode_ == DragMode::Move || dragMode_ == DragMode::ResizeLeft
-        || dragMode_ == DragMode::ResizeRight) {
+        || dragMode_ == DragMode::ResizeRight || dragMode_ == DragMode::RubberBandSelect) {
         beginDragAutoRepeat(40);
-        defilerAuBord(pos, dragMode_ == DragMode::Move, true);
+        defilerAuBord(pos, dragMode_ == DragMode::Move || dragMode_ == DragMode::RubberBandSelect, true);
     }
 
     switch (dragMode_) {
@@ -1780,7 +1782,11 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
         }
 
         case DragMode::RubberBandSelect: {
-            rubberBandRect_ = juce::Rectangle<float>(dragStartMousePos_, pos);
+            // D529 : l'origine reconvertie depuis le morceau — la vue a pu défiler.
+            rubberBandRect_ = juce::Rectangle<float>(
+                juce::Point<float>(tickToX(rectangleTickOrigine_),
+                                   static_cast<float>(rectangleYContenu_ - rowOfNote(topNote_) * noteHeight_)),
+                pos);
             selectedNoteIds_.clear();
             for (const auto& note : track->notes) {
                 const float x1 = tickToX(note.startTick), x2 = tickToX(note.endTick);

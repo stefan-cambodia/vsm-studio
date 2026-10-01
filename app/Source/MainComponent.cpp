@@ -1988,7 +1988,8 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
 }
 
 bool MainComponent::glisserTenirPourCapture(const juce::String& description) {
-    // D527 : « nom:fx0,fy0:fx1,fy1:répétitions » — l'appui en (fx0, fy0) bouton gauche,
+    // D527 : « nom:fx0,fy0:fx1,fy1:répétitions[:ctrl|:maj|:alt] » — l'appui en (fx0, fy0)
+    // bouton gauche, AVEC le modificateur (D529 : le rectangle du piano roll veut Ctrl),
     // le glissé jusqu'en (fx1, fy1), puis `répétitions` `mouseDrag` à la MÊME place :
     // ce que `beginDragAutoRepeat` fait envoyer à JUCE quand la souris est tenue
     // immobile, et qui est le seul moyen pour une vue de défiler sous un geste tenu.
@@ -2016,7 +2017,11 @@ bool MainComponent::glisserTenirPourCapture(const juce::String& description) {
     if (cible == nullptr) return false;
     const auto w = static_cast<float>(cible->getWidth()), h = static_cast<float>(cible->getHeight());
     const juce::Point<float> depart(p0.x * w, p0.y * h), arrivee(p1.x * w, p1.y * h);
-    const int mods = juce::ModifierKeys::leftButtonModifier;
+    const juce::String mode = champs.size() > 4 ? champs[4].toLowerCase() : juce::String();
+    int mods = juce::ModifierKeys::leftButtonModifier;
+    if (mode == "ctrl") mods |= juce::ModifierKeys::commandModifier;
+    if (mode == "maj") mods |= juce::ModifierKeys::shiftModifier;
+    if (mode == "alt") mods |= juce::ModifierKeys::altModifier;
     const auto maintenant = juce::Time::getCurrentTime();
     auto evenement = [&](juce::Point<float> ou, int m, bool glisse) {
         return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), ou, juce::ModifierKeys(m), 1.0f,
@@ -2025,7 +2030,7 @@ bool MainComponent::glisserTenirPourCapture(const juce::String& description) {
     cible->mouseDown(evenement(depart, mods, false));
     cible->mouseDrag(evenement(arrivee, mods, true));
     for (int i = 0; i < repetitions; ++i) cible->mouseDrag(evenement(arrivee, mods, true));
-    cible->mouseUp(evenement(arrivee, 0, true));
+    cible->mouseUp(evenement(arrivee, mods & ~juce::ModifierKeys::leftButtonModifier, true));
     return true;
 }
 

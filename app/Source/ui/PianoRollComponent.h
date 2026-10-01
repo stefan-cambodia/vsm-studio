@@ -460,6 +460,10 @@ private:
     std::vector<vsm::sequencer::Note> dragSnapshot_;
     juce::Point<float> dragStartMousePos_;
     juce::Rectangle<float> rubberBandRect_;
+    /// D529 : l'origine du rectangle DANS LE MORCEAU — un tick et une ordonnée de
+    /// contenu (rangée du haut comprise) —, reconvertie à chaque appel.
+    vsm::midi::Tick rectangleTickOrigine_ = 0;
+    int rectangleYContenu_ = 0;
     vsm::midi::Tick panStartTick_ = 0;
     int panStartTopNote_ = 84;
     bool dragDidCopy_ = false;   ///< Alt+glisser : la copie n'est faite qu'une fois

@@ -565,7 +565,7 @@ public:
         // crans (positif : vers le haut, le signe de `deltaY`), par `mouseWheelMove`.
         if (geste.startsWithIgnoreCase("molette:"))
             return molettePourCapture(geste.fromFirstOccurrenceOf(":", false, false));
-        // D527 : glisser-tenir:<nom>:fx0,fy0:fx1,fy1:répétitions -- l'appui, le glissé, puis
+        // D527 : glisser-tenir:<nom>:fx0,fy0:fx1,fy1:répétitions[:ctrl|:maj|:alt] -- l'appui, le glissé, puis
         // les `mouseDrag` IMMOBILES que la répétition automatique envoie quand on tient.
         if (geste.startsWithIgnoreCase("glisser-tenir:"))
             return glisserTenirPourCapture(geste.fromFirstOccurrenceOf(":", false, false));

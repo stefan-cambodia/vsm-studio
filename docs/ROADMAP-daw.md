@@ -38276,7 +38276,7 @@ il reste nommé ici, sans phase ouverte.
 
 ---
 
-### Phase D529 — le lasso de l'arrangement et le rectangle du piano roll ne défilent pas au bord (02/10/2026) — EN ATTENTE DE MESURE
+### Phase D529 — le lasso de l'arrangement et le rectangle du piano roll ne défilent pas au bord (02/10/2026, faite le jour même)
 
 **D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D527 ET DE D528**, la même phrase deux
 fois : le lasso (et la sélection au rectangle du piano roll) n'en est pas, « son origine
@@ -38302,3 +38302,40 @@ rectangle ajoutés aux gestes qui défilent au bord (D527, D528).
 - le piano roll, huit notes descendant de do3 (60) à si♭1 (46) par tons, une par temps, la
   vue ouverte en haut à 62 : un rectangle tiré contre le bord bas et tenu choisit **deux**
   notes (60 et 58), comme lâché.
+
+**LA MESURE** — `tools/selection-au-bord.sh` (nouveau, dans la liste fermée de `--bancs`,
+43 bancs), 30 répétitions, chaque cas contre son témoin lâché :
+
+| cas | (a) les clips choisis au relevé, le verbe avec Ctrl (03 h 20) | (b) l'origine tenue dans le morceau (03 h 25) |
+|---|---|---|
+| (1) lasso de l'arrangement tenu au bord bas | **6** clips — comme lâché | **13** clips (lâché : 6) |
+| (2) rectangle du piano roll tenu au bord bas | **2** notes — comme lâché | **8** notes, toutes (lâché : 3) |
+
+**Le pronostic est TENU tel qu'écrit** (a).
+
+**CE QUE LA MESURE A APPRIS, ET TROIS FAUTES DE BANC, DITES.**
+- **Le rectangle du piano roll veut Ctrl** avec l'outil Sélection : sans lui, l'appui dans
+  le vide DESSINE une note (`mouseDown`, « Création d'une note, puis glissement immédiat
+  sur sa durée »). La première course l'a montré sur la photo — une note D4 tirée du début
+  jusqu'au pointeur, « 1 note sélectionnée » — et le verbe `glisser-tenir:` a appris
+  `:ctrl`, `:maj` et `:alt`.
+- **Le témoin du rectangle donnait 3 et non 2** : le glissé lui-même entre dans la bande et
+  fait un pas (62 → 61), qui découvre 56. C'est la TROISIÈME fois en trois phases que le
+  critère d'un témoin oublie cet appel (D527 : 40 puis 13 px ; D528 : 63 au lieu de 62) ;
+  corrigé et dit dans le banc. Pour un banc de défilement au bord, le témoin « lâché tout
+  de suite » contient UN appel dans la bande, et son critère doit le compter.
+- **Une compilation ratée suivie d'une mesure** : la première compilation de (b) a échoué
+  (`Tick` ne nomme pas un type dans `PianoRollComponent.h`), et la commande a lancé le banc
+  derrière elle — sur le binaire précédent, ce que l'ordre de marche interdit en toutes
+  lettres. Les chiffres de cette course ont été jetés ; la commande suivante ne lance le
+  banc que si le journal du build dit `rc=0`.
+
+**CE QUI A ÉTÉ FAIT** : l'origine du lasso (`lassoTickOrigine_`, `lassoYContenu_`) et du
+rectangle (`rectangleTickOrigine_`, `rectangleYContenu_`) retenue dans le morceau et
+reconvertie à chaque appel ; les deux gestes ajoutés à ceux qui défilent au bord (les
+deux axes) ; le nombre de clips choisis à la fin du relevé `VSM_ARRANGEMENT`. Bancs
+voisins sur le binaire (b) : `arrangement-defile`, `pianoroll-bord`,
+`portes-de-l-arrangement`, `tout-voir`, `quantifier`, `portes-des-outils`,
+`liste-editer`, `pas-a-pas`, `miniature-clips` — **9 sur 9 verts** ; préférences
+intactes ; la course de référence gelée deux à trois minutes par compilation,
+`vsm-render` intact. La série complète `--bancs` attend la fin de la campagne.

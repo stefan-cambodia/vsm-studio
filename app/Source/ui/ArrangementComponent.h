@@ -533,6 +533,11 @@ private:
     /// rendu à `onClipsRefused` au relâchement — jamais tu.
     size_t refusesPendantLeGeste_ = 0;
     juce::Point<float> lassoOrigine_;
+    /// D529 : l'origine du lasso DANS LE MORCEAU — un tick et une ordonnée de contenu
+    /// (décalage vertical compris) —, reconvertie à chaque appel : la vue peut défiler
+    /// sous un lasso tenu sans que son origine glisse dans le morceau.
+    vsm::midi::Tick lassoTickOrigine_ = 0;
+    int lassoYContenu_ = 0;
     juce::Rectangle<float> lasso_;
     void selectClipsInLasso(bool etendre);
     /// Les bornes de la sélection et la longueur du BLOC à répéter ou à
