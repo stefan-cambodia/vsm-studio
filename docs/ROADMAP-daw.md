@@ -38123,3 +38123,39 @@ le moteur de sa suite. Tant que la campagne tourne, **l'application installée p
 encore le défaut** ; la correction est dans les sources et dans `build-h51`, et
 entrera dans les deux autres dossiers à la première compilation d'après campagne.
 Aucune ligne d'`app/Source/` n'a changé : pas de banc d'interface à rejouer.
+
+---
+
+### Phase D527 — glisser un clip ou une piste au bord de l'arrangement ne fait rien défiler (02/10/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D525**, écrit mot pour mot : « Le
+défilement automatique au bord pendant qu'on GLISSE un clip vers une piste hors de la
+fenêtre n'est pas écrit : on y arrive aujourd'hui en lâchant, en faisant défiler, puis
+en reprenant le clip. » Tout logiciel de studio fait défiler sa vue quand on tient un
+clip contre son bord ; aucun composant de ce dépôt ne le fait — ni l'arrangement, ni le
+piano roll (aucun `beginDragAutoRepeat`, aucun `autoScroll` hors de la lecture).
+
+**CE QUE LE CODE DIT DÉJÀ, ET QUI REND LA CORRECTION PETITE.** Le déplacement d'un clip
+relit, à chaque `mouseDrag`, la piste SOUS le pointeur (`trackAtY`) et le temps sous le
+pointeur (`xToTick`) et applique l'écart au dernier pas ; le réordonnancement d'une
+piste aussi. Si la vue défile pendant qu'on tient le bouton immobile au bord, la piste
+et le temps sous le pointeur changent, et le geste suit de lui-même — à condition que
+`mouseDrag` soit encore APPELÉ alors que la souris ne bouge pas. C'est ce que fait
+`juce::Component::beginDragAutoRepeat`.
+
+**PRONOSTIC, à mesurer avant la correction** (un verbe de banc
+`glisser-tenir:<nom>:fx0,fy0:fx1,fy1:répétitions`, qui joue l'appui en (fx0, fy0), le
+glissé jusqu'en (fx1, fy1), puis autant de `mouseDrag` immobiles que la répétition
+automatique en enverrait, puis le relâchement) — le projet de 40 pistes de D525, à
+1 280 × 800 : le clip de P02 tiré contre le bord BAS et tenu 30 répétitions atterrit sur
+la dernière piste visible, P07, exactement comme sans répétition ; le décalage vertical
+reste nul ; tiré contre le bord DROIT, le défilement en temps ne bouge pas.
+
+**CE QUI EST PRÉVU, et se tranchera en l'écrivant** : des bandes de 24 px au bord haut
+(sous la règle), bas, gauche (après les en-têtes) et droit ; dedans — ou au-delà —, chaque
+répétition fait défiler d'un pas qui grandit avec la profondeur ; la répétition
+automatique demandée dès qu'un geste qui DÉPLACE commence. Gestes concernés : le
+déplacement d'un clip (les deux axes), le réordonnancement d'une piste (vertical), les
+poignées de bord et l'étirement (horizontal). **Le lasso n'en est pas, et c'est dit** :
+son origine est retenue en coordonnées de la fenêtre, et la faire défiler sous lui
+demande de la tenir en coordonnées du morceau — une phase à elle.
