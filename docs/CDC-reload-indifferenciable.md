@@ -1114,7 +1114,7 @@ entre les deux : le cache entre, et le calage de niveau devient la suite ») :
 chaque évaluation) sur un morceau de 312 s à report vocal de 55 Mo. Il se lira sur la
 ligne « mesures de projet » du journal de la référence relancée.
 
-### 10.2 La suite de H48 : où passent les 72 s du premier réglage de la basse, TOUT RELU ? (écrit AVANT le profil, 02/10/2026, 00 h 40)
+### 10.2 La suite de H48 : où passent les 72 s du premier réglage de la basse, TOUT RELU ? (écrit AVANT le profil, 02/10/2026, 00 h 34)
 
 **La question, laissée par le § 10.1.** Dans la course B (tout relu du cache, 0 mesure
 payée), le premier réglage au mélange — la basse — prend encore **72 s**, quand les deux
