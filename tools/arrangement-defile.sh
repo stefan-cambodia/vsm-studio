@@ -236,5 +236,15 @@ course depot-sans-navigateur "1200:deposer-tenir:arrangement:0.5,0.283:0.5,0.5:0
 verdict "(14) un dépôt ignoré se dit au journal" \
     "$(grep -c "Dépôt du navigateur ignoré" "$brouillon/depot-sans-navigateur.txt" | awk '{print ($1 >= 1) ? 1 : 0}')"
 
+# --- D531 : LE MÊME DÉPÔT TENU CONTRE LE BORD BAS DE LA LISTE DES PISTES --------------
+for cas in tenu:1200 lache:0; do
+    nom="liste-${cas%%:*}"
+    course_nav "$nom" "1200:deposer-tenir:pistes:0.5,0.5:0.5,0.985:${cas##*:}:vsm-browser:0:vsm.juno106;2650:relever-arrangement;2750:enregistrer:$brouillon/$nom-ecrit"
+done
+l1="$(juno "$brouillon/liste-tenu-ecrit")"; l0="$(juno "$brouillon/liste-lache-ecrit")"
+echo "       machine du navigateur au bord bas de la liste : tenue 1,2 s → piste ${l1:-?} ; lâchée → piste ${l0:-?}"
+verdict "(15) tenue au bord bas de la liste, la machine se pose plus bas que lâchée" \
+    "$(vrai "'${l1:-?}' != '?' and '${l0:-?}' != '?' and ${l1:-0} > ${l0:-0}")"
+
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

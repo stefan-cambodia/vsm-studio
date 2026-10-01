@@ -38400,7 +38400,7 @@ mesuré ; la série complète `--bancs` attend la fin de la campagne.
 
 ---
 
-### Phase D531 — un élément du navigateur tenu contre le bord de la liste des pistes ne la fait pas défiler (02/10/2026) — EN ATTENTE DE MESURE
+### Phase D531 — un élément du navigateur tenu contre le bord de la liste des pistes ne la fait pas défiler (02/10/2026, faite le jour même)
 
 **D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D530** : « La liste des pistes, cible
 elle aussi d'un dépôt du navigateur (D10.1), vit dans un `Viewport` : son défilement au
@@ -38415,3 +38415,23 @@ fonction que JUCE fournit pour ce cas), et revisant la ligne visée.
 `deposer-tenir:` de D530) — le projet de 40 pistes : `vsm.juno106` tirée du milieu de la
 liste contre son bord bas et tenue 1,2 s se pose sur la dernière piste visible, exactement
 comme lâchée tout de suite.
+
+**LA MESURE** — `tools/arrangement-defile.sh`, cas (15) ajouté (le navigateur ouvert) :
+
+| cas | (a) le composant nommé (03 h 53) | (b) la minuterie de bord (03 h 57) |
+|---|---|---|
+| (15) `vsm.juno106` tenue 1,2 s au bord bas de la liste | piste **3**, la dernière visible — comme lâchée | piste **7** (lâchée : 3) |
+
+**Le pronostic est TENU tel qu'écrit** (a). La minuterie de D530, appelant
+`Viewport::autoScroll(x, y, 24, 16)` depuis la dernière position du dépôt, revise la ligne
+visée et s'arrête d'elle-même quand la liste ne défile plus ; la vitesse est celle que
+JUCE plafonne à 16 px par appel (une ligne de 120 px toutes les 0,3 s environ).
+
+**Ce qui varie d'une course à l'autre, et c'est dit** : le nombre de déclenchements d'une
+minuterie pendant 1,2 s de temps réel. Le cas (12) de D530 a donné P13 puis P14 sur deux
+binaires qui ne diffèrent pas pour lui ; les critères des cas (12) et (15) sont relatifs au
+témoin lâché, et ne demandent pas un numéro de piste.
+
+Bancs voisins sur le binaire (b) : `portes-des-pistes`, `piano-roll-piste-choisie`,
+`vue-du-morceau`, `onglets-du-dock`, `theme-sombre`, `fader-console` — **6 sur 6 verts** ;
+préférences intactes ; course gelée deux minutes par compilation, `vsm-render` intact.

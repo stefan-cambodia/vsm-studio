@@ -393,6 +393,16 @@ private:
     /// La piste survolée pendant un glisser, ou -1. Sans ce retour, on lâche à
     /// l'aveugle et on découvre après coup sur laquelle.
     int dropRow_ = -1;
+    /// D531 : LE DÉPÔT TENU AU BORD DE LA LISTE. La minuterie de l'arrangement (D530) :
+    /// armée à chaque `itemDragMove`, elle appelle `Viewport::autoScroll` depuis la
+    /// dernière position et revise la ligne visée ; elle s'arrête d'elle-même dès que la
+    /// liste n'a plus rien à faire défiler.
+    struct MinuterieDeBord : juce::Timer {
+        std::function<void()> rappel;
+        void timerCallback() override { if (rappel) rappel(); }
+    };
+    MinuterieDeBord minuterieDeBord_;
+    juce::Point<int> positionDuDepot_;
     /// L'index de piste sous un point de la liste, ou -1.
     int trackIndexAt(juce::Point<int> position) const;
     /// D38.1 : un clic sur une ligne, modificateurs compris.

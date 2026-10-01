@@ -667,6 +667,13 @@ void TrackRowComponent::resized() {
 // ---------------------------------------------------------------------------
 
 TrackListComponent::TrackListComponent() {
+    setName("pistes");   // D531 : le nom par lequel le banc la désigne (deposer-tenir:)
+    minuterieDeBord_.rappel = [this] {   // D531
+        const auto dansLaVue = positionDuDepot_ - viewport_.getPosition();
+        if (!viewport_.autoScroll(dansLaVue.x, dansLaVue.y, 24, 16)) { minuterieDeBord_.stopTimer(); return; }
+        const int rang = trackIndexAt(positionDuDepot_);
+        if (rang != dropRow_) { dropRow_ = rang; repaint(); }
+    };
     // D19.2 : LE FILTRE. La parité pousse le nombre de pistes vers le haut —
     // D18.7b en ajoute cinq pour une seule boîte à rythmes, D19.3 une par
     // pièce de batterie — et faire défiler pour retrouver « Caisse claire »
@@ -1176,6 +1183,8 @@ bool TrackListComponent::isInterestedInDragSource(const SourceDetails& details) 
 void TrackListComponent::itemDragEnter(const SourceDetails& details) { itemDragMove(details); }
 
 void TrackListComponent::itemDragMove(const SourceDetails& details) {
+    positionDuDepot_ = details.localPosition;
+    if (!minuterieDeBord_.isTimerRunning()) minuterieDeBord_.startTimer(40);   // D531
     const int rang = trackIndexAt(details.localPosition);
     if (rang == dropRow_) return;
     dropRow_ = rang;
@@ -1183,11 +1192,13 @@ void TrackListComponent::itemDragMove(const SourceDetails& details) {
 }
 
 void TrackListComponent::itemDragExit(const SourceDetails&) {
+    minuterieDeBord_.stopTimer();   // D531
     dropRow_ = -1;
     repaint();
 }
 
 void TrackListComponent::itemDropped(const SourceDetails& details) {
+    minuterieDeBord_.stopTimer();   // D531
     const int rang = trackIndexAt(details.localPosition);
     dropRow_ = -1;
     repaint();
