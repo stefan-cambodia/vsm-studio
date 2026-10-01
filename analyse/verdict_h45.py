@@ -70,8 +70,8 @@ def main() -> int:
         return 0
     x = float(args[1])
     corpus, morceaux = Path(args[2]), args[3:]
-    temoin = defaultdict(lambda: [0, 0, 0])
-    essai = defaultdict(lambda: [0, 0, 0])
+    temoin: defaultdict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
+    essai: defaultdict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
     classement = []
     for nom, partie, stem in parties(corpus, morceaux):
         vraies = [(float(d), int(h)) for h, _v, d, _du in partie["notes"]]

@@ -46,7 +46,7 @@ def f1(vraies: list, trouvees: list, tol: float = 0.05) -> tuple:
         par_h[h].append(d)
     for h in par_h:
         par_h[h].sort()
-    utilisees = defaultdict(set)
+    utilisees: defaultdict[int, set[int]] = defaultdict(set)
     touches = 0
     # `vraies` : (attaque, hauteur). La première course lisait (hauteur, attaque) et
     # rendait un F1 de 0,0 PARTOUT — un zéro qui ne mesurait que le dépaquetage.
@@ -77,7 +77,8 @@ def main() -> int:
         print(f"  seuil {s:.1f} : {len(pad):5d} notes ({100 * (len(pad) - len(base)) / max(len(base), 1):+5.0f} %), "
               f"durée médiane {dur:.3f} s (×{dur / np.median([f - d for d, f, _ in base]):.2f})")
     print("=== 2. S2, F1 note à note par rôle (même hauteur, attaque ± 50 ms)")
-    par_role = defaultdict(lambda: defaultdict(lambda: [0, 0, 0]))
+    par_role: defaultdict[str, defaultdict[float, list[int]]] = defaultdict(
+        lambda: defaultdict(lambda: [0, 0, 0]))
     for nom in morceaux:
         verite = json.loads((corpus / nom / "verite.json").read_text(encoding="utf-8"))
         for partie in verite["parties"]:

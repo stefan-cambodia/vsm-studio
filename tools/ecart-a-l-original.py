@@ -137,7 +137,7 @@ def calage_ms(a: np.ndarray, b: np.ndarray) -> dict:
         return {"mesurable": False}
     idx = np.searchsorted(b, a)
     ecarts = []
-    for t, i in zip(a, idx):
+    for t, i in zip(a, idx, strict=True):
         cands = [b[j] for j in (i - 1, i) if 0 <= j < len(b)]
         d = min((c - t for c in cands), key=abs)
         if abs(d) < 0.05:
