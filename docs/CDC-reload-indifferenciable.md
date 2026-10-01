@@ -1139,6 +1139,29 @@ calage dans le cache de mesures (une hypothèse de plus, son A/B écrit avant) ;
 échec — la fonction nommée devient la cible ; entre les deux — les deux premières
 fonctions sont publiées, rien n'est entrepris sur cette foi.
 
+### 10.3 Verdict du § 10.2 (02/10/2026, profilé de 00 h 35 à 00 h 41, écrit à 00 h 41) : 97 % du premier réglage, tout relu, sont les rendus SOLO du calage de niveau
+
+La course B rejouée sous le pilote (`reconstruction/travail/h48/profil-B.py`) : mêmes
+décisions au chiffre près (basse 0,2670 → 0,2310 en 30 évaluations ; guitare, autre
+idem), **0 mesure de projet payée, 276 relues**, cache inchangé (839 fichiers).
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | le témoin : le temps profilé contre les 72 s de B (54 à 90 s) | **tenu** : **56,9 s** profilées, 57 s au journal de la course rejouée |
+| 2 | la part sous `recaler_avec_son_groupe` (≥ 60 %) | **tenu** : **55,1 s sur 56,9, 97 %** |
+
+Le profil, fonction par fonction (temps cumulé) : `recaler_avec_son_groupe` →
+`match_track_levels` → `_render_track` → `render_track_offline`, **31 rendus solo,
+54,7 s** (1,8 s chacun) ; l'écriture des projets 1,4 s ; la distance relue 1,3 s ; la
+CLÉ du cache de projet (hacher le dossier) **0,1 s** pour 30 appels — le coût que le
+§ 10 craignait pour « Reload » ne se voit pas ici.
+
+**CE QUE CELA DÉCIDE, comme écrit avant** : ranger les rendus solo du calage dans le
+cache de mesures — une hypothèse de plus (H58 ; H57 est réservée au pad, § 18.2), son
+A/B écrit avant sa mesure. Ce que le cache en rangerait n'est pas l'audio (un rendu
+solo de « Reload » pèse 55 Mo) mais le seul nombre que le calage en tire, le niveau
+efficace du rendu, sous une clé qui hache le dossier écrit pour lui — la règle de H48.
+
 ---
 
 ## 11. H49 — décrire le pad sur l'ORIGINAL : ses raies une à une, et la forme de leur mouvement (écrite AVANT la mesure, 30/09/2026, 20 h 00)
