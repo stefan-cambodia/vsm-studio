@@ -245,18 +245,75 @@ def install_alternative(track: ExportTrack, tracks: Sequence[ExportTrack],
 
 def project_mix_distance(tracks: Sequence[ExportTrack], mixture: np.ndarray, samples_root: Path,
                          workdir: Path, sample_rate: int, metric: str = "v2",
-                         tempo: float = 120.0, binary: Optional[str] = None) -> float:
+                         tempo: float = 120.0, binary: Optional[str] = None,
+                         render_cache: bool = False) -> float:
     """La distance du PROJET rendu au morceau, telle que le verdict la mesure
     -- même dossier de variante, mêmes échantillons recopiés une fois."""
     from .vsm_distance_cache import cached_distance_for
-    mesurer = cached_distance_for(metric)(np.asarray(mixture), sample_rate)
+
+    def mesurer(rendu: np.ndarray) -> float:
+        # Décrite SEULEMENT si la mesure n'est pas relue : sur un hit, décrire la
+        # cible (plusieurs secondes pour un morceau entier) serait le seul coût.
+        return float(cached_distance_for(metric)(np.asarray(mixture), sample_rate)(rendu))
+
     dossier = Path(workdir) / "variante"
     dossier.mkdir(parents=True, exist_ok=True)
     _copy_samples(tracks, samples_root, dossier)
-    rendu = _render_project(tracks, dossier, sample_rate, tempo, binary)
+    return distance_de_projet(tracks, dossier, sample_rate, tempo, binary, mesurer, metric,
+                              _empreinte_si(render_cache, mixture), _render_project)
+
+
+def _empreinte_si(render_cache: bool, mixture: np.ndarray) -> str:
+    """L'empreinte de la cible si le cache est demandé ; vide = pas de cache."""
+    if not render_cache:
+        return ""
+    from .vsm_render_cache import empreinte_de_cible
+    return empreinte_de_cible(np.asarray(mixture))
+
+
+def distance_de_projet(tracks: Sequence[ExportTrack], folder: Path, sample_rate: int,
+                       tempo: float, binary: Optional[str], mesurer, metric: str,
+                       cible: str, rendre) -> float:
+    """LA mesure d'un projet contre le morceau — rendue et payée, ou RELUE (H48).
+
+    POURQUOI (docs/CDC-reload-indifferenciable.md § 10). Le verdict du mélange et
+    le réglage au mélange sont les étapes les plus longues de la chaîne — 1 h 42
+    et 1 h 53 sur « Reload » — et les seules qui ne laissaient RIEN sur disque :
+    le poste éteint, la course repartait de zéro, deux fois le 30/09. Chaque
+    évaluation y est un rendu de PROJET suivi d'une distance ; le moteur est
+    déterministe, la suite des états d'une course aussi. La mesure est donc
+    rangée dans `cache/mesures/` sous une clé qui dit tout ce que le moteur lit
+    (`cle_de_projet` : le dossier écrit, fichier par fichier), la métrique et la
+    cible — et une course relancée relit ce que la morte avait payé.
+
+    `cible` vide = pas de cache : le chemin d'avant, à l'identique. `rendre` est le
+    rendu de l'appelant (`_render_project` de SON module), pour qu'un test qui le
+    remplace remplace bien ce qui est appelé.
+
+    Un rendu en échec (infini) n'est JAMAIS rangé : il peut tenir à l'instant, et
+    un échec relu deviendrait une vérité.
+    """
+    cle = ""
+    if cible:
+        from .vsm_render_cache import (COMPTE_PROJET, cle_de_mesure, cle_de_projet,
+                                       mesure_en_cache, stocker_mesure)
+        # Le dossier est écrit AVANT la clé : c'est lui qu'elle hache. `rendre` le
+        # réécrira à l'identique s'il faut rendre — quelques millisecondes.
+        write_project_bundle(list(tracks), folder, title="verdict-mélange", tempo=tempo)
+        cle = cle_de_mesure(cle_de_projet(folder, sample_rate, binary), metric, cible)
+        en_cache = mesure_en_cache(cle)
+        if en_cache is not None:
+            COMPTE_PROJET["relues"] += 1
+            return en_cache[1]
+    rendu = rendre(tracks, folder, sample_rate, tempo, binary)
     if rendu is None or rendu.size == 0:
         return float("inf")
-    return float(mesurer(rendu))
+    distance = float(mesurer(rendu))
+    if cle:
+        rms = float(np.sqrt(np.mean(np.square(rendu.astype(np.float64)))))
+        stocker_mesure(cle, rms, distance)
+        COMPTE_PROJET["payees"] += 1
+    return distance
 
 
 def settle_verdict(tracks: Sequence[ExportTrack], run_pass, max_rounds: int):
@@ -348,6 +405,7 @@ def keep_what_helps_the_mix(
     binary: Optional[str] = None,
     profiles: Optional[Dict[str, str]] = None,
     groupes: Optional[Dict[str, str]] = None,
+    render_cache: bool = False,
 ) -> List[MixDecision]:
     """
     Tranche piste par piste entre l'état courant et ses concurrentes.
@@ -386,11 +444,11 @@ def keep_what_helps_the_mix(
     _copy_samples(tracks, samples_root, dossier)
     decisions: List[MixDecision] = []
 
+    cible = _empreinte_si(render_cache, mixture)
+
     def distance_du_projet() -> float:
-        rendu = _render_project(tracks, dossier, sample_rate, tempo, binary)
-        if rendu is None or rendu.size == 0:
-            return float("inf")
-        return float(mesurer(rendu))
+        return distance_de_projet(tracks, dossier, sample_rate, tempo, binary, mesurer,
+                                  metric, cible, _render_project)
 
     # H27 : la distance du projet TELLE QU'IL EST à la fin de la derniere
     # iteration. Elle sert de reference aux pistes sans alternative, qui n'ont

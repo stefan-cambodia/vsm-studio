@@ -268,7 +268,14 @@ def velocite_locale(audio: np.ndarray, debut: float, fenetre: float = 0.20) -> f
     return float(np.sqrt(np.mean(np.square(audio[i:j], dtype=np.float64))))
 
 
-def extraire_notes(chemin: Path) -> List[StemNote]:
+def extraire_notes_seuil_par_stem(chemin: Path) -> Tuple[List[StemNote], Dict[str, Any]]:
+    """H45 : `extraire_notes`, le seuil d'attaque choisi sur l'indice de hachure du stem."""
+    from analyzer.note_extraction import extract_notes_seuil_par_stem
+    brutes, choix = extract_notes_seuil_par_stem(chemin)
+    return extraire_notes(chemin, brutes=brutes), choix
+
+
+def extraire_notes(chemin: Path, brutes: Optional[List[Dict[str, Any]]] = None) -> List[StemNote]:
     """
     Transcrit un fichier en notes.
 
@@ -293,7 +300,8 @@ def extraire_notes(chemin: Path) -> List[StemNote]:
     from analyzer.note_extraction import extract_notes
 
     audio = charger_audio(chemin)
-    brutes = [b for b in extract_notes(chemin) if float(b["end"]) > float(b["start"])]
+    brutes = [b for b in (extract_notes(chemin) if brutes is None else brutes)
+              if float(b["end"]) > float(b["start"])]
     if not brutes:
         return []
 
@@ -423,6 +431,11 @@ def profils_de(moteur, machines: Sequence[str]) -> Dict[str, str]:
     return {m: nom for m in machines if (nom := profil_de(moteur, m))}
 
 
+def mesures_de_projet() -> Dict[str, int]:
+    from analyzer.vsm_render_cache import COMPTE_PROJET
+    return dict(COMPTE_PROJET)
+
+
 def provenance(args: argparse.Namespace, classifieur, frappes,
                identite_moteur: Optional[dict] = None) -> dict:
     """Ce qu'il faut savoir pour REJOUER ce rapport (phase A4.2)."""
@@ -453,6 +466,8 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
         "tempo": getattr(args, "tempo_provenance", None)
                  or {"bpm": float(args.tempo) if getattr(args, "tempo", None) is not None else None,
                      "source": "force"},
+        # H42 : LE DIAPASON joué par tous les rendus de la course, et d'où il vient.
+        "diapason": getattr(args, "diapason_provenance", None) or {"la4": 440.0, "source": "defaut"},
         "options": {
             "separation": not args.sans_separation,
             "sampler": not args.sans_sampler,
@@ -468,6 +483,9 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "piecesNonIsolees": args.garder_pieces_non_isolees,
             "rendusParalleles": args.rendus_paralleles,
             "cacheRendus": not args.sans_cache_rendus,
+            # H48 : les mesures de PROJET relues du cache et celles payées par
+            # cette course. Une course qui a repris après une mort le montre ici.
+            "mesuresDeProjet": mesures_de_projet(),
             "budgetPiste": args.budget_piste,
             "axesPiste": args.axes_piste,
             "finalistes": args.finalistes,
@@ -504,6 +522,12 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # état ne se comparent pas. Faux pour toute course antérieure au
             # 14/09/2026 ; la coupure retenue par stem est sous « coupureBasse ».
             "coupureBasseAdaptee": bool(getattr(args, "coupure_basse_adaptee", False)),
+            # H43 : la réunion des notes tenues change les NOTES de chaque stem
+            # mélodique ; deux rapports qui ne l'ont pas au même état ne se comparent pas.
+            "reunirTenues": bool(getattr(args, "reunir_tenues", False)),
+            # H45 : le seuil d'attaque choisi par stem ; les indices et seuils retenus
+            # sont sous « seuilAttaque ».
+            "seuilAttaqueParStem": bool(getattr(args, "seuil_attaque_par_stem", False)),
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
@@ -795,8 +819,10 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "1 = série, l'ancien comportement. Le classement est "
                               "déterministe quel que soit ce nombre.")
     parseur.add_argument("--sans-cache-rendus", action="store_true",
-                         help="ne pas relire ni écrire le cache de rendus de piste "
-                              "(cache/rendus, H2 du § 5 duodecies). Le cache est sûr "
+                         help="ne pas relire ni écrire le cache de MESURES "
+                              "(cache/mesures : les candidates de piste, H2 du § 5 "
+                              "duodecies, et les rendus de PROJET du verdict et du "
+                              "réglage au mélange, H48). Le cache est sûr "
                               "par construction -- sa clé porte l'empreinte du moteur "
                               "-- mais un A/B doit pouvoir prouver qu'il ne change "
                               "rien : voilà son témoin.")
@@ -868,6 +894,22 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "difficile à IMITER pour le parc. Gardée comme résultat négatif "
                               "chiffré. "
                               "Vide (le défaut) : la chaîne d'aujourd'hui, au bit près")
+    parseur.add_argument("--diapason", default="440",
+                         help="H42 : la4 de la course, en Hz (400-480), ou « auto » pour l'estimer sur "
+                              "le mélange (pics tenus, moyenne circulaire). Défaut 440 : la chaîne d'avant "
+                              "au bit près. Joué par tous les rendus de la course et écrit au projet")
+    parseur.add_argument("--seuil-attaque-par-stem", action="store_true",
+                         help="H45 : transcrire à 0,7 (au lieu de 0,5) le seuil d'attaque des stems dont "
+                              "l'indice de hachure — part des notes suivies de la même hauteur à moins de "
+                              "30 ms au seuil d'usine — dépasse 0,4. Validé sur g3-g5 de S2 : aucun rôle ne "
+                              "perd, les nappes +12,4 points de F1. Éteint par défaut ; chaque stem inscrit "
+                              "au rapport (« seuilAttaque »)")
+    parseur.add_argument("--reunir-tenues", action="store_true",
+                         help="H43 : réunir deux notes de même hauteur que moins de 30 ms séparent quand "
+                              "aucune attaque (hausse de plus de 3 dB dans un demi-ton autour de la "
+                              "hauteur) ne les sépare dans le stem — un son tenu que la transcription a "
+                              "haché. Éteint par défaut ; chaque réunion est comptée au rapport "
+                              "(« reunionTenues »)")
     parseur.add_argument("--coupure-basse-adaptee", action="store_true",
                          help="D281-D282 : avant de transcrire le stem « bass », lui RETIRER le "
                               "grave que la séparation y empile sous la fondamentale (49,8 %% de "
@@ -1399,6 +1441,9 @@ def arbitrer_batterie(ctx: Contexte, nom: str, kit, piste: ExportTrack, audio: n
             notes=list(candidate.notes), stem_audio=audio,
             candidates=[TrackCandidate(m, dict(candidate.parameters), ORIGINE_USINE)],
             workdir=ctx.travail / "arbitrage" / "batterie" / m,
+            # `--sans-cache-rendus` coupe AUSSI l'arbitrage de batterie : il gardait le
+            # défaut de la fonction et rangeait ses trois mesures sous le témoin même.
+            render_cache=not ctx.args.sans_cache_rendus,
             **ctx.options_de_rendu(PISTE_BATTERIE, audio)))
     verdicts.sort(key=lambda v: v.distance)
     rapport["trackArbitration"] = [
@@ -1819,11 +1864,24 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
     args = ctx.args
     if getattr(args, "coupure_basse_adaptee", False) and nom == "bass":
         notes = extraire_notes_basse_coupee(ctx, nom, chemin)
+    elif getattr(args, "seuil_attaque_par_stem", False):
+        # H45 : le seuil d'attaque choisi sur l'indice de hachure du stem.
+        notes, choix = extraire_notes_seuil_par_stem(chemin)
+        print(f"      {nom:8s} : indice de hachure {choix['indice']:.3f} → seuil d'attaque {choix['seuil']}")
+        ctx.decisions.setdefault("seuilAttaque", []).append({"stem": nom, **choix})
     else:
         notes = extraire_notes(chemin)
     if not notes:
         print(f"      {nom:8s} : aucune note détectée, piste ignorée")
         return []
+    if getattr(args, "reunir_tenues", False):
+        # H43 (CDC-reload-indifferenciable § 5) : les notes qu'une transcription a
+        # hachées dans un son tenu, réunies quand aucune attaque ne les sépare.
+        from analyzer.tenues import reunir_tenues
+        notes, bilan = reunir_tenues(notes, charger_audio(chemin), SAMPLE_RATE)
+        print(f"      {nom:8s} : notes tenues réunies — {bilan['notesAvant']} → {bilan['notesApres']} "
+              f"({bilan['reunions']} réunion(s), {bilan['refuseesParAttaque']} refusée(s) : une attaque à la jonction)")
+        ctx.decisions.setdefault("reunionTenues", []).append({"stem": nom, **bilan})
     if filtre is not None:
         notes = filtre(nom, notes)
         if not notes:
@@ -2174,7 +2232,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             sample_rate=SAMPLE_RATE, metric=ctx.args.metrique,
             tempo=ctx.args.tempo, binary=ctx.args.moteur,
             profiles=profils_de(ctx.moteur, melodic_machines(ctx.moteur)),
-            groupes=chantier.pistes_groupees)
+            groupes=chantier.pistes_groupees,
+            render_cache=not ctx.args.sans_cache_rendus)
 
     decisions, tours_joues, changees_par_tour = settle_verdict(
         pistes_export, une_passe, ctx.args.tours_verdict)
@@ -2208,7 +2267,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
                 sample_rate=SAMPLE_RATE, engine=ctx.moteur,
                 budget=ctx.args.budget_melange,
                 metric=ctx.args.metrique, tempo=ctx.args.tempo,
-                binary=ctx.args.moteur, groupes=chantier.pistes_groupees)
+                binary=ctx.args.moteur, groupes=chantier.pistes_groupees,
+                render_cache=not ctx.args.sans_cache_rendus)
             if resultat is None:
                 print(f"      {nom_piste:8s} : réglage au mélange non tenté "
                       f"(machine sans axe, ou rendu de départ muet)")
@@ -2262,7 +2322,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             depart = time.perf_counter()
             mesure = lambda: project_mix_distance(  # noqa: E731
                 pistes_export, melange, ctx.sortie, ctx.travail / "verdict",
-                SAMPLE_RATE, ctx.args.metrique, ctx.args.tempo, ctx.args.moteur)
+                SAMPLE_RATE, ctx.args.metrique, ctx.args.tempo, ctx.args.moteur,
+                render_cache=not ctx.args.sans_cache_rendus)
             etat_gagnante = track_state(piste)
             volumes_gagnante = {t.name: float(t.volume) for t in pistes_export}
             machine_gagnante = piste.machine
@@ -2284,7 +2345,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
                     sample_rate=SAMPLE_RATE, engine=ctx.moteur,
                     budget=ctx.args.budget_melange,
                     metric=ctx.args.metrique, tempo=ctx.args.tempo,
-                    binary=ctx.args.moteur, groupes=chantier.pistes_groupees)
+                    binary=ctx.args.moteur, groupes=chantier.pistes_groupees,
+                    render_cache=not ctx.args.sans_cache_rendus)
                 d_reglee = resultat.distance if resultat is not None else d_installee
                 bilan.append({"label": libelle, "mixDistanceAtVerdict": d_verdict,
                               "mixDistanceInstalled": d_installee, "mixDistanceRefined": d_reglee,
@@ -2594,6 +2656,12 @@ def ajouter_groupes(pistes_export: List[ExportTrack], groupes: Dict[str, str]) -
 def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarray,
                       chantier: Chantier, complements: Dict[str, Any]) -> float:
     """Rend le projet écrit, mesure sa distance au mélange, écrit l'écoute A/B."""
+    # H48 : ce que la course a PAYÉ et ce qu'elle a RELU de ses mesures de projet.
+    # Une mesure remplacée par sa copie en cache se dit, comme tout ce qui est remplacé.
+    compte = mesures_de_projet()
+    if compte["payees"] or compte["relues"]:
+        print(f"      mesures de projet : {compte['payees']} payée(s), {compte['relues']} relue(s) "
+              f"du cache (cache/mesures, H48)")
     print("[5/5] Rendu du projet et mesure")
     rendu = sortie / "reconstruit.wav"
     # Résolu par la MÊME recherche que le moteur de la boucle : la version
@@ -2900,7 +2968,8 @@ def boucle_residuelle_de_la_chaine(ctx: Contexte, chantier: Chantier,
     def distance_projet() -> float:
         return project_mix_distance(pistes_export, melange, ctx.sortie,
                                     ctx.travail / "residuel" / "distance", SAMPLE_RATE,
-                                    metric=args.metrique, tempo=args.tempo, binary=args.moteur)
+                                    metric=args.metrique, tempo=args.tempo, binary=args.moteur,
+                                    render_cache=not args.sans_cache_rendus)
 
     unites = unites_du_chantier(chantier, pistes_export, ctx.parts, 0)
     options = OptionsResiduelles(iterations=int(args.residuel),
@@ -3019,7 +3088,8 @@ def charger_tous_les_modules() -> None:
                 "analyzer.vsm_corpus", "analyzer.vsm_automation", "analyzer.vsm_track_refine",
                 "analyzer.vsm_track_arbitration", "analyzer.vsm_offline_render",
                 "analyzer.vsm_render_cache", "analyzer.vsm_project_export",
-                "analyzer.vsm_residu", "analyzer.vsm_recensement"):
+                "analyzer.vsm_residu", "analyzer.vsm_recensement",
+                "analyzer.diapason", "analyzer.tenues"):
         importlib.import_module(nom)
 
 
@@ -3046,6 +3116,24 @@ def chaine(args: argparse.Namespace) -> None:
     else:
         args.tempo_provenance = {"bpm": float(args.tempo), "source": "force"}
         print(f"      tempo forcé : {args.tempo:.1f} BPM (--tempo)")
+    # H42 : LE DIAPASON — 440 par défaut (la chaîne d'avant, au bit près) ; « auto »
+    # l'estime sur le mélange ; un nombre le force. Posé UNE fois pour toute la course :
+    # l'arbitrage et le projet écrit jouent au même diapason.
+    from analyzer import diapason as D
+    if str(args.diapason) == "auto":
+        estimation_la4 = D.estimer_cents(melange, SAMPLE_RATE)
+        if estimation_la4["cents"] is None:
+            la4 = 440.0
+            print("      diapason NON MESURABLE (moins de 20 pics tenus) : 440 Hz gardé — dit, pas deviné")
+        else:
+            la4 = D.la4_depuis_cents(float(estimation_la4["cents"]))
+        args.diapason_provenance = {"source": "estime", **estimation_la4, "la4": la4}
+    else:
+        la4 = float(args.diapason)
+        args.diapason_provenance = {"source": "force" if la4 != 440.0 else "defaut", "la4": la4}
+    D.poser(la4)
+    if la4 != 440.0:
+        print(f"      diapason : la4 = {la4:.2f} Hz ({args.diapason_provenance['source']})")
 
     with dossier_de_travail(args) as travail:
         pistes = obtenir_stems(args, entree, travail)
@@ -3054,6 +3142,11 @@ def chaine(args: argparse.Namespace) -> None:
         partage = partage_du_morceau(pistes)
 
         try:
+            # LE MOTEUR DE LA COURSE, posé une fois : le calage de niveau et l'épreuve
+            # d'automation ne recevaient pas `--moteur` et rendaient par le binaire
+            # par défaut (voir `poser_moteur_de_course`).
+            from analyzer.vsm_engine import poser_moteur_de_course
+            poser_moteur_de_course(args.moteur)
             moteur = VsmEngine(binary=args.moteur, sample_rate=SAMPLE_RATE)
         except Exception as erreur:
             raise Abandon(2, f"moteur de rendu introuvable : {erreur}") from erreur
@@ -3147,6 +3240,8 @@ def chaine(args: argparse.Namespace) -> None:
             reverb=reverb,
             residuel=rapport_residuel,
             coupure_basse=ctx.decisions.get("coupureBasse"),
+            reunion_tenues=ctx.decisions.get("reunionTenues"),
+            seuil_attaque=ctx.decisions.get("seuilAttaque"),
             recensement=bloc_recensement,
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",

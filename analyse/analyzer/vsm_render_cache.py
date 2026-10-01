@@ -75,6 +75,81 @@ def cle_de_rendu(track, sample_rate: int, duration, tempo: float,
         "tempo": tempo,
         "moteur": _empreinte_moteur(binary),
     }
+    # H42 : LE DIAPASON DE LA COURSE change chaque rendu mélodique, et il n'était
+    # pas dans la clé — deux courses du même binaire, l'une à 440 et l'autre à
+    # 443, se seraient servi les mesures l'une de l'autre, et l'A/B aurait lu
+    # « aucun effet ». Inscrit SEULEMENT s'il diffère de 440 : les clés d'avant
+    # restent celles d'aujourd'hui, et le cache déjà payé reste valable.
+    from . import diapason
+    if diapason.valeur() != 440.0:
+        descripteur["diapason"] = diapason.valeur()
+    texte = json.dumps(descripteur, sort_keys=True, ensure_ascii=True)
+    return hashlib.sha256(texte.encode("ascii")).hexdigest()
+
+
+# Le rendu qu'un dossier de projet reçoit du moteur : une SORTIE, jamais une entrée.
+_SORTIES_DE_RENDU = frozenset({"rendu.wav"})
+
+# Ce que la course a fait de ses mesures de PROJET (H48) : dit au journal et au
+# rapport, parce qu'une mesure relue n'est pas une mesure payée, et qu'une course
+# qui a repris après une mort doit pouvoir le montrer.
+COMPTE_PROJET = {"relues": 0, "payees": 0}
+
+_empreintes_de_fichier: dict = {}
+
+
+def _empreinte_de_fichier(chemin: Path) -> str:
+    """Empreinte du CONTENU d'un fichier. Un gros fichier (le report vocal, des
+    dizaines de mégaoctets, relu à chaque évaluation) n'est haché qu'une fois tant
+    que sa taille et sa date ne bougent pas ; un petit l'est à chaque fois."""
+    etat = chemin.stat()
+    gros = etat.st_size >= (1 << 20)
+    repere = (str(chemin), etat.st_size, etat.st_mtime_ns)
+    if gros and repere in _empreintes_de_fichier:
+        return str(_empreintes_de_fichier[repere])
+    h = hashlib.sha256()
+    with open(chemin, "rb") as f:
+        for bloc in iter(lambda: f.read(1 << 20), b""):
+            h.update(bloc)
+    empreinte = h.hexdigest()
+    if gros:
+        _empreintes_de_fichier[repere] = empreinte
+    return empreinte
+
+
+def cle_de_projet(folder: Path, sample_rate: int, binary: Optional[str]) -> str:
+    """La clé d'un rendu de PROJET (H48) : tout ce que le moteur va LIRE dans le
+    dossier — chaque fichier, par son chemin relatif et son CONTENU —, la fréquence
+    demandée et l'empreinte du moteur.
+
+    POURQUOI LE DOSSIER ET NON LES PISTES. La clé d'un rendu de piste
+    (`cle_de_rendu`) énumère les champs d'une piste, et elle en a déjà oublié un :
+    le diapason (H42, § 4.2 du cahier des charges de « Reload »). Un projet en
+    porte bien davantage — volumes, panoramiques, effets, automation, routage des
+    groupes, échantillons — et la liste s'allongera. Le dossier écrit par
+    `write_project_bundle` EST ce que le moteur lit : le hacher ne peut rien
+    oublier de ce qui s'y trouve, aujourd'hui ni demain.
+
+    CE QUE LA CLÉ NE VOIT PAS, comme celle d'une piste : le CONTENU d'un profil
+    multi-échantillons installé, que le projet désigne par son nom. Réinstaller
+    un profil sous le même nom demande de vider `cache/mesures/`.
+
+    Un fichier de trop dans le dossier (le preset d'une variante précédente) ne
+    peut que faire MANQUER un hit, jamais en servir un faux.
+    """
+    folder = Path(folder)
+    h = hashlib.sha256()
+    for chemin in sorted(p for p in folder.rglob("*") if p.is_file()):
+        relatif = chemin.relative_to(folder).as_posix()
+        if relatif in _SORTIES_DE_RENDU:
+            continue
+        h.update(relatif.encode("utf-8") + b"\0" + _empreinte_de_fichier(chemin).encode("ascii") + b"\0")
+    descripteur = {
+        "nature": "projet",
+        "dossier": h.hexdigest(),
+        "sampleRate": sample_rate,
+        "moteur": _empreinte_moteur(binary),
+    }
     texte = json.dumps(descripteur, sort_keys=True, ensure_ascii=True)
     return hashlib.sha256(texte.encode("ascii")).hexdigest()
 

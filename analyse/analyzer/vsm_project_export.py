@@ -399,6 +399,10 @@ def write_project_bundle(
         },
         "tracks": document_tracks,
     }
+    # H42 : le diapason de la course, écrit seulement s'il diffère de 440.
+    from analyzer import diapason
+    if diapason.valeur() != 440.0:
+        document["transport"]["referenceA4Hz"] = diapason.valeur()  # type: ignore[index]
     (folder / "project.json").write_text(
         json.dumps(document, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",

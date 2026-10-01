@@ -30,7 +30,7 @@ import numpy as np
 
 from .vsm_engine import VsmEngine, VsmEngineError
 from .vsm_levels import recaler_avec_son_groupe
-from .vsm_mix_verdict import _copy_samples, _render_project
+from .vsm_mix_verdict import _copy_samples, _empreinte_si, _render_project, distance_de_projet
 from .vsm_track_refine import _probe_values
 
 
@@ -60,6 +60,7 @@ def refine_against_mix(
     tempo: float = 120.0,
     binary: Optional[str] = None,
     groupes: Optional[Dict[str, str]] = None,
+    render_cache: bool = False,
 ) -> Optional[MixRefineOutcome]:
     """Affine les paramètres de `track_name` en jugeant le PROJET rendu.
 
@@ -93,6 +94,9 @@ def refine_against_mix(
 
     compteur = {"n": 0}
     cache: Dict[tuple, float] = {}
+    # H48 : la mesure de chaque évaluation est rangée sur disque — une course
+    # relancée après une mort relit celles que la morte avait payées.
+    cible = _empreinte_si(render_cache, mixture)
 
     def evaluer(valeurs: Dict[str, float]) -> Optional[float]:
         cle = tuple(sorted((k, round(v, 6)) for k, v in valeurs.items()))
@@ -105,12 +109,9 @@ def refine_against_mix(
         # niveaux différents comparés au même volume compareraient des
         # niveaux. C'est la règle du verdict du mélange, reprise telle quelle.
         recaler_avec_son_groupe(piste, tracks, stems_audio, samples_root, sample_rate, groupes)
-        rendu = _render_project(tracks, dossier, sample_rate, tempo, binary)
+        cache[cle] = distance_de_projet(tracks, dossier, sample_rate, tempo, binary, mesurer,
+                                        metric, cible, _render_project)
         compteur["n"] += 1
-        if rendu is None or rendu.size == 0:
-            cache[cle] = float("inf")
-            return cache[cle]
-        cache[cle] = float(mesurer(rendu))
         return cache[cle]
 
     courant: Dict[str, float] = dict(piste.parameters)
