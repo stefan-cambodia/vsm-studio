@@ -38442,3 +38442,36 @@ descendu de quatre pistes par ↓ (D15.2) arrive sur **P10**, et la vue le suit 
 aucun geste de souris n'étant en cours (D527). Le cas (16) de `arrangement-defile.sh` le
 garde ; il a été vert dès son ajout et n'a PAS été vu rouge — le binaire d'avant D525 ne sait
 ni relever ni jouer ce verbe —, c'est donc un relevé de non-régression, dit comme tel.
+
+---
+
+### Phase D532 — un audit des fonctions : trois choses que Cubase fait et que rien ne porte ici (02/10/2026)
+
+**D'OÙ IL VIENT.** Les audits D11 à D62 comparaient l'application aux grands logiciels ;
+depuis, les phases viennent surtout de regards sur l'application en marche (D525 à D531
+cette nuit). Ce relevé reprend la comparaison, avec la règle que D19 a payée : **une
+fonction ne s'écrit manquante qu'après l'avoir cherchée dans le CODE**, pas seulement dans
+les documents (« le mot n'était nulle part, la chose y était » — les signatures
+rythmiques, la table des noms de batterie, les transformations de vélocité).
+
+**CE QUI A ÉTÉ CHERCHÉ ET TROUVÉ, donc hors de cet audit** : les pistes dossier (D19.4),
+le gel et le report (D5.5), les groupes d'édition (D18.3), les marqueurs, la clé latérale,
+l'arpégiateur et les effets MIDI, la compensation de latence, le MIDI learn. **Ce qui est
+déjà écarté par écrit** (§ 4.7 et § 5) : la piste vidéo, la partition, le MPE, la
+synchronisation externe.
+
+**CE QUI MANQUE, VÉRIFIÉ DANS LE CODE** (`core/`, `audio/`, `interchange/`, `app/` : « VCA »
+n'y désigne que l'amplificateur des synthés ; ni piste d'accords, ni versions de piste) :
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D532.1 | **Les faders VCA** — une piste qui ne joue rien et dont le fader règle le volume d'un ensemble de pistes SANS les router : chacune garde son fader, son départ, sa sortie, et le VCA les multiplie | une nature de piste `VCA` (ni notes, ni audio, ni sortie) ; chaque piste MIDI, audio ou groupe désigne au plus un VCA ; le gain effectif d'une piste = son fader × celui de son VCA (automation comprise), le muet du VCA tait ses membres ; **dans le graphe partagé** (`ProcessGraph`), donc à l'identique en lecture et à l'export (contrat de D21, règle de D332) — mesuré par un EXPORT ; un VCA ne va pas dans un VCA ; écrit dans `project.json` seulement s'il y en a un (un projet sans VCA garde son fichier octet pour octet) ; une tranche dans la console, l'affectation dans la liste des pistes, annulable |
+| D532.2 | **Les versions de piste** — plusieurs états d'une même piste (ses notes, ses clips, son automation), dont un seul joue, qu'on essaie et compare sans rien perdre | créer, nommer, choisir, supprimer une version depuis l'en-tête ; une seule joue ; aller-retour du format ; annulable |
+| D532.3 | **La piste d'accords** — une ligne de temps d'accords qui sert de guide d'écriture et peut caler les notes d'une piste sur l'harmonie | une piste à évènements d'accords (fondamentale, qualité, basse) ; « caler les notes sur les accords » comme geste annulable ; l'harmonie lue par la chaîne d'analyse pourrait l'alimenter, et c'est dit comme une suite, pas comme un critère |
+
+**L'ORDRE, TRANCHÉ ICI.** D532.1 d'abord : la parité des pistes (la reconstruction en crée
+dix à quinze) rend le mixage par ensembles utile tout de suite, et le VCA ne demande rien
+au modèle d'édition. Il se fait en deux temps : **le modèle, le format et le moteur**,
+mesurés par un export de `vsm-render` (compilé dans un dossier à part : `build/tools/vsm-render`
+porte l'empreinte du cache de la course de référence et ne se touche pas) ; **puis
+l'interface**. D532.2 et D532.3 restent écrites, non commencées.
