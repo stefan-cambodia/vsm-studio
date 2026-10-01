@@ -14,7 +14,8 @@
 #   (6) choisir la piste 35 la fait voir ;
 #   (7) puis choisir la piste 1 fait remonter jusqu'à elle ;
 #   D527 — (8) à (11) : tenir un clip ou une piste contre un bord fait défiler la vue sous lui
-#   (bas : les pistes ; droit : le temps), chaque cas contre son témoin lâché tout de suite.
+#   (bas : les pistes ; droit : le temps), chaque cas contre son témoin lâché tout de suite ;
+#   D530 — (12) et (13) : un élément du navigateur tenu au bord bas (un glisser-déposer).
 #
 # POURQUOI CE BANC. Avant D525, `trackTop` partait de la règle sans aucun décalage
 # et aucun composant de l'arrangement ne recevait la molette : au-delà de la
@@ -191,6 +192,49 @@ s1="$(horizontal droite-tenu 1)"; s0="$(horizontal droite-lache 1)"
 echo "       clip de P01 au bord droit : tenu → début $(champ "$d1" 4), défilement ${s1:-?} ; lâché → début $(champ "$d0" 4), défilement ${s0:-?}"
 verdict "(11) tenu au bord droit, le temps défile et le clip va plus loin que lâché" \
     "$(vrai "'${s1:-}' != '' and '${s0:-}' != '' and ${s1:-0} > ${s0:-0} and $(champ "$d1" 4) > $(champ "$d0" 4)")"
+
+# --- D530 : UN ÉLÉMENT DU NAVIGATEUR TENU CONTRE LE BORD -------------------------------
+# La machine vsm.juno106 tirée de la hauteur de P02 au bord bas, tenue 1,2 s (le fil de
+# messages tourne) contre lâchée tout de suite. Le projet enregistré dit quelle piste a
+# reçu la machine.
+juno() {   # $1 = dossier enregistré -> le numéro de la piste qui porte la machine déposée
+    python3 - "$1/project.json" <<'PY'
+import json, sys
+try:
+    pistes = json.load(open(sys.argv[1], encoding="utf-8"))["tracks"]
+except (OSError, KeyError, ValueError):
+    print("?"); sys.exit(0)
+ou = [i + 1 for i, p in enumerate(pistes) if "juno106" in json.dumps(p.get("instrument", {}))]
+print(ou[0] if len(ou) == 1 else "?")
+PY
+}
+# LE NAVIGATEUR OUVERT (`VSM_VUE=…,navigateur`) : il ne se remplit qu'à son ouverture, et
+# un élément qu'on tire vient d'un navigateur ouvert. Sans lui, le dépôt ne faisait rien
+# — en silence jusqu'à D530 (02/10, 03 h 37).
+course_nav() {   # comme `course`, le navigateur ouvert
+    local maison
+    maison="$(mktemp -d "$brouillon/home.XXXX")"
+    env HOME="$maison" VSM_PROJET="$brouillon/projet" VSM_TAILLE="1280x800" VSM_DELAI=3000 \
+        VSM_VUE="sans-rapport,arrangement,navigateur" VSM_GESTE_APRES="$2" \
+        VSM_CAPTURE="$brouillon/$1.png" timeout 60 "$BIN" > "$brouillon/$1.txt" 2>&1
+    grep -E "VSM_(GESTE_APRES|GESTE|DEPOT_TENU) : .*(aucun|AUCUN|inconnu|refus|ATTENTION)|Dépôt du navigateur ignoré" "$brouillon/$1.txt" \
+        | sed "s/^/        journal ($1) : /" >&2
+}
+for cas in tenu:1200 lache:0; do
+    nom="depot-${cas%%:*}"
+    course_nav "$nom" "1200:deposer-tenir:arrangement:0.5,0.283:0.5,0.985:${cas##*:}:vsm-browser:0:vsm.juno106;2650:relever-arrangement;2750:enregistrer:$brouillon/$nom-ecrit"
+done
+j1="$(juno "$brouillon/depot-tenu-ecrit")"; j0="$(juno "$brouillon/depot-lache-ecrit")"
+w1="$(vertical depot-tenu 1)"; w0="$(vertical depot-lache 1)"
+echo "       machine du navigateur au bord bas : tenue 1,2 s → piste ${j1:-?} (pistes ${w1:-?}) ; lâchée → piste ${j0:-?} (pistes ${w0:-?})"
+verdict "(12) tenue au bord bas, la machine se pose plus bas que lâchée, et la vue a défilé" \
+    "$(vrai "'${j1:-?}' != '?' and '${j0:-?}' != '?' and ${j1:-0} > ${j0:-0} and '$w1' != '' and $(champ "$w1" 4) > 0")"
+verdict "(13) le témoin lâché : la dernière piste visible" "$(vrai "'${j0:-?}' == '$(champ "$w0" 2)'")"
+# (14) LA PANNE MUETTE QUE LE PREMIER BANC A TROUVÉE : sans navigateur ouvert, l'élément
+# déposé n'est pas dans sa liste — le dépôt ne fait rien, et doit maintenant le DIRE.
+course depot-sans-navigateur "1200:deposer-tenir:arrangement:0.5,0.283:0.5,0.5:0:vsm-browser:0:vsm.juno106" 2> /dev/null
+verdict "(14) un dépôt ignoré se dit au journal" \
+    "$(grep -c "Dépôt du navigateur ignoré" "$brouillon/depot-sans-navigateur.txt" | awk '{print ($1 >= 1) ? 1 : 0}')"
 
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

@@ -448,6 +448,18 @@ private:
     /// qui grandit avec la profondeur. Rend vrai si la vue a bougé.
     bool defilerAuBord(juce::Point<float> pointeur, bool vertical, bool horizontal);
     static constexpr int kBandeDeBord = 24;
+    /// D530 : LE GLISSER-DÉPOSER TENU AU BORD. JUCE n'envoie `itemDragMove` que quand la
+    /// souris bouge : une minuterie, armée à chaque mouvement, fait défiler la vue et
+    /// revise la cible depuis la dernière position, et s'arrête d'elle-même dès que
+    /// `defilerAuBord` n'a plus rien à faire (pointeur hors des bandes, ou vue au bout).
+    struct MinuterieDeBord : juce::Timer {
+        std::function<void()> rappel;
+        void timerCallback() override { if (rappel) rappel(); }
+    };
+    MinuterieDeBord minuterieDeBord_;
+    juce::Point<float> positionDuDepot_;
+    /// La piste et le tick visés par un dépôt, depuis une position de la vue.
+    void viserLeDepot(juce::Point<float> position);
     /// La hauteur affichée d'une piste : celle qu'elle déclare, ou celle d'une
     /// piste pliée. Plier n'écrase pas le réglage, il le met de côté.
     int trackHeight(const vsm::sequencer::Track& track) const;

@@ -38342,7 +38342,7 @@ intactes ; la course de référence gelée deux à trois minutes par compilation
 
 ---
 
-### Phase D530 — un élément du navigateur tenu contre le bord de l'arrangement ne fait rien défiler (02/10/2026) — EN ATTENTE DE MESURE
+### Phase D530 — un élément du navigateur tenu contre le bord de l'arrangement ne fait rien défiler (02/10/2026, faite le jour même)
 
 **D'OÙ ELLE VIENT — LE DERNIER GESTE QUI TRAVERSE L'ARRANGEMENT SANS DÉFILER.** D527 à D529
 ont fait défiler la vue sous les gestes de la SOURIS (clip, piste, poignées, lasso). Le
@@ -38364,3 +38364,36 @@ lesquelles le fil de messages tourne (ce qu'une souris tenue immobile laisse fai
 projet de 40 pistes de D525, la machine `vsm.juno106` tirée de la hauteur de P02 contre le
 bord bas et tenue 1,2 s, se pose sur **P07**, la dernière piste visible, exactement comme
 lâchée tout de suite ; le décalage vertical reste nul.
+
+**LA MESURE** — `tools/arrangement-defile.sh`, cas (12) à (14) ajoutés, le navigateur ouvert
+(`VSM_VUE=…,navigateur`) :
+
+| cas | (a) le verbe seul, le navigateur ouvert (03 h 41) | (b) la minuterie de bord (03 h 45) |
+|---|---|---|
+| (12) `vsm.juno106` tenue 1,2 s au bord bas | piste **7**, décalage 0 — comme lâchée | piste **13**, vue 7..14, 377 px |
+| (13) le témoin lâché | piste 7 | piste 7, décalage 0 |
+| (14) un dépôt sans navigateur ouvert | (le cas n'existait pas) | « Dépôt du navigateur ignoré » au journal |
+
+**Le pronostic est TENU tel qu'écrit** (a).
+
+**UNE PANNE MUETTE TROUVÉE PAR LE PREMIER BANC, ET CORRIGÉE.** La toute première course
+(03 h 37) n'avait pas ouvert le navigateur : la machine ne s'est posée nulle part, tenue
+ou lâchée, et le journal n'en disait RIEN. `applyBrowserDrop` cherche l'élément dans la
+liste que le navigateur MONTRE, et rendait la main sans un mot quand il n'y était pas —
+ce qui arrive en usage aussi, si une recherche est tapée pendant le glisser. La fonction
+le dit désormais (« Dépôt du navigateur ignoré : « … » n'est pas dans la liste qu'il
+montre »), et le cas (14) le garde : sa forme rouge, c'est le journal de cette première
+course, sans aucune ligne.
+
+**CE QUI A ÉTÉ FAIT** : une minuterie de 40 ms dans l'arrangement (`MinuterieDeBord`),
+armée à chaque `itemDragMove`, qui appelle `defilerAuBord` (D527) depuis la dernière
+position et revise la cible (`viserLeDepot`), et s'arrête d'elle-même au premier appel où
+il n'y a rien à faire défiler, à la sortie et au dépôt ; le verbe de banc
+`deposer-tenir:`. Bancs voisins sur le binaire (b) : `onglets-du-dock`, `theme-sombre`,
+`portes-de-l-arrangement`, `cadrage-ouverture`, `selection-au-bord`, `pianoroll-bord`,
+`tout-voir`, `autosauvegarde-vue` — **8 sur 8 verts** ; préférences intactes ; la course
+de référence gelée deux minutes par compilation, `vsm-render` intact.
+
+**CE QUI N'EST PAS FAIT.** La liste des pistes, cible elle aussi d'un dépôt du navigateur
+(D10.1), vit dans un `Viewport` : son défilement au bord pendant un dépôt n'est pas
+mesuré ; la série complète `--bancs` attend la fin de la campagne.

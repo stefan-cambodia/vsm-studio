@@ -79,6 +79,10 @@ constexpr float kBordSensible = 6.0f;
 ArrangementComponent::ArrangementComponent() {
     setName("arrangement");   // D525 : le nom par lequel le banc la désigne (molette:)
     setWantsKeyboardFocus(true);
+    minuterieDeBord_.rappel = [this] {   // D530
+        if (!defilerAuBord(positionDuDepot_, true, true)) { minuterieDeBord_.stopTimer(); return; }
+        viserLeDepot(positionDuDepot_);
+    };
     setMouseCursor(juce::MouseCursor::NormalCursor);
 }
 
@@ -2910,11 +2914,19 @@ bool ArrangementComponent::isInterestedInDragSource(const SourceDetails& details
 void ArrangementComponent::itemDragEnter(const SourceDetails& details) { itemDragMove(details); }
 
 void ArrangementComponent::itemDragMove(const SourceDetails& details) {
-    const int piste = trackAtY(static_cast<float>(details.localPosition.y));
+    positionDuDepot_ = details.localPosition.toFloat();
+    // D530 : la minuterie de bord, armée à chaque mouvement ; elle s'arrête d'elle-même
+    // au premier appel où il n'y a rien à faire défiler.
+    if (!minuterieDeBord_.isTimerRunning()) minuterieDeBord_.startTimer(40);
+    viserLeDepot(positionDuDepot_);
+}
+
+void ArrangementComponent::viserLeDepot(juce::Point<float> position) {
+    const int piste = trackAtY(position.y);
     // AIMANTÉ, COMME TOUT LE RESTE DE L'ARRANGEMENT. Poser un échantillon à
     // trois millisecondes du premier temps est le genre de décalage qu'on ne
     // voit pas et qu'on entend.
-    const vsm::midi::Tick tick = snapTick(xToTick(static_cast<float>(details.localPosition.x)));
+    const vsm::midi::Tick tick = snapTick(xToTick(position.x));
     if (piste == dropTrack_ && tick == dropTick_) return;
     dropTrack_ = piste;
     dropTick_ = tick;
@@ -2922,11 +2934,13 @@ void ArrangementComponent::itemDragMove(const SourceDetails& details) {
 }
 
 void ArrangementComponent::itemDragExit(const SourceDetails&) {
+    minuterieDeBord_.stopTimer();   // D530
     dropTrack_ = -1;
     repaint();
 }
 
 void ArrangementComponent::itemDropped(const SourceDetails& details) {
+    minuterieDeBord_.stopTimer();   // D530
     const int piste = dropTrack_;
     const vsm::midi::Tick tick = dropTick_;
     dropTrack_ = -1;

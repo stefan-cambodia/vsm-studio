@@ -1987,6 +1987,60 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     return true;
 }
 
+bool MainComponent::deposerTenirPourCapture(const juce::String& description) {
+    // D530 : « nom:fx0,fy0:fx1,fy1:durée_ms:description » — la description EN DERNIER,
+    // parce qu'elle contient elle-même des deux-points (« vsm-browser:0:vsm.juno106 »).
+    // L'entrée en (fx0, fy0), le mouvement jusqu'en (fx1, fy1), puis le DÉPÔT après
+    // `durée_ms` : le fil de messages tourne entre les deux, comme quand la souris est
+    // tenue immobile — c'est là qu'une cible peut défiler d'elle-même.
+    juce::String reste = description;
+    auto prendre = [&reste]() {
+        const juce::String champ = reste.upToFirstOccurrenceOf(":", false, false);
+        reste = reste.fromFirstOccurrenceOf(":", false, false);
+        return champ;
+    };
+    const juce::String nom = prendre(), p0s = prendre(), p1s = prendre();
+    const int duree = juce::jmax(0, prendre().getIntValue());
+    const juce::String objet = reste;
+    auto point = [](const juce::String& s) {
+        return juce::Point<float>(s.upToFirstOccurrenceOf(",", false, false).getFloatValue(),
+                                  s.fromFirstOccurrenceOf(",", false, false).getFloatValue());
+    };
+    std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
+        if (c.getName() == nom && !c.getLocalBounds().isEmpty()) return &c;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Component* composant = chercher(*this);
+    auto* cible = dynamic_cast<juce::DragAndDropTarget*>(composant);
+    const auto w = composant != nullptr ? static_cast<float>(composant->getWidth()) : 0.0f;
+    const auto h = composant != nullptr ? static_cast<float>(composant->getHeight()) : 0.0f;
+    const juce::Point<int> depart = (point(p0s) * juce::Point<float>(w, h)).toInt();
+    const juce::Point<int> arrivee = (point(p1s) * juce::Point<float>(w, h)).toInt();
+    const juce::DragAndDropTarget::SourceDetails entree(juce::var(objet), nullptr, depart);
+    const bool interesse = cible != nullptr && cible->isInterestedInDragSource(entree);
+    std::fputs(("VSM_DEPOT_TENU : " + description
+                + (composant == nullptr ? juce::String(u8" — aucun composant visible de ce nom")
+                   : cible == nullptr   ? juce::String(u8" — ce composant ne reçoit pas de dépôt")
+                   : !interesse         ? juce::String(u8" — refusé par la cible")
+                                        : juce::String(u8" — joué"))
+                + "\n").toRawUTF8(), stderr);
+    if (!interesse) return false;
+    cible->itemDragEnter(entree);
+    cible->itemDragMove(juce::DragAndDropTarget::SourceDetails(juce::var(objet), nullptr, arrivee));
+    juce::Component::SafePointer<juce::Component> garde(composant);
+    juce::Timer::callAfterDelay(duree, [garde, objet, arrivee, duree] {
+        auto* t = dynamic_cast<juce::DragAndDropTarget*>(garde.getComponent());
+        if (t == nullptr) return;
+        t->itemDropped(juce::DragAndDropTarget::SourceDetails(juce::var(objet), nullptr, arrivee));
+        std::fputs((juce::String("VSM_DEPOT_TENU : ") + juce::String(u8"déposé après ") + juce::String(duree)
+                    + " ms\n").toRawUTF8(), stderr);
+    });
+    return true;
+}
+
 bool MainComponent::glisserTenirPourCapture(const juce::String& description) {
     // D527 : « nom:fx0,fy0:fx1,fy1:répétitions[:ctrl|:maj|:alt] » — l'appui en (fx0, fy0)
     // bouton gauche, AVEC le modificateur (D529 : le rectangle du piano roll veut Ctrl),
@@ -8879,6 +8933,12 @@ void MainComponent::applyBrowserDrop(size_t trackIndex, const juce::String& desc
             applyBrowserItem(entree, trackIndex);
             return;
         }
+    // D530 : UN DÉPÔT QUI NE FAIT RIEN LE DIT. L'élément lâché n'est plus dans la liste
+    // que montre le navigateur (une recherche tapée pendant le glisser, un navigateur
+    // jamais rempli) : la fonction rendait la main sans un mot, et la piste ne changeait
+    // pas — trouvé par le premier banc du dépôt tenu, qui n'avait pas ouvert le navigateur.
+    std::fputs((juce::String(u8"Dépôt du navigateur ignoré : « ") + reference
+                + juce::String(u8" » n'est pas dans la liste qu'il montre\n")).toRawUTF8(), stderr);
 }
 
 void MainComponent::applyBrowserDropAt(size_t trackIndex, vsm::midi::Tick tick,
