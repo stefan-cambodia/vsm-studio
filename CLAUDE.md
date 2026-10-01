@@ -285,6 +285,11 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   trois secondes de calcul — l'aurait dit au premier jour. Avant d'expliquer un
   chiffre, décomposer sa population ; et une mesure qui ne peut pas voir une
   chose doit le DIRE, jamais compter zéro.
+  **La population d'une mesure, c'est aussi le TEMPS** (01/10, H53-H55) : trois
+  instruments du pad de « Reload », et leurs contrôles, ont supposé qu'une « raie de
+  l'oracle » sonnait pendant tout l'extrait de 24 s ; elle s'y éteignait de 10 à 29 dB
+  par paires d'octaves — le pad change d'accord. Trois hypothèses non concluantes avant
+  qu'un niveau par tranches de 2 s, une seconde de calcul, le montre.
 - Un correcteur se juge sur ce qu'il CASSE autant que sur ce qu'il répare. Le
   13/09 (D270), une relecture d'octave faisait passer les notes fautives de 104 à
   74 : publiable, et faux — elle en réparait 50 et en cassait 42, à tous les

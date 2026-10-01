@@ -1888,7 +1888,7 @@ est dit.
   effet à deux LFO ; la suite mesure sa largeur et son temps de décorrélation.
 - **2 entre les deux** : non concluant, et dit.
 
-### 17.1 Ce que les tests de l'instrument ont changé — AVANT toute mesure de l'original (01/10/2026, 23 h 43)
+### 17.1 Ce que les tests de l'instrument ont changé — AVANT toute mesure de l'original (01/10/2026, 23 h 41)
 
 L'attendu 1 est la suite `analyse/tests/test_h55_repli.py` (branche `reload-h47`,
 `bbcc49a`). **Ses trois tests ont défait trois choix du § 17**, chacun corrigé avant
@@ -1924,3 +1924,53 @@ couples de phases, puis jugée comme au § 15.1 avec l'arc couvert.
 
 **L'attendu 1 est TENU.** Les attendus 2 à 4 et les décisions du § 17 sont inchangés ;
 les seuils de D (0,7 et 0,3) s'appliquent à la D validée.
+
+### 17.2 Verdict de H55 (01/10/2026, mesuré de 23 h 42 à 23 h 53) : attendus 2 et 4 en ÉCHEC tels qu'écrits — NON CONCLUANTE, parce que la prémisse commune à H53, H54 et H55 est fausse : les raies ne sont pas des notes TENUES
+
+`analyse/mesure_h55.py` (branche `reload-h47`, `bbcc49a`), l'original, trois extraits ;
+11 min ; `reconstruction/travail/reload-h55/mesure.json`.
+
+| extrait | cadences trouvées | D validée ≥ 0,7 | D validée ≤ 0,3 | D par raie |
+|---|---|---|---|---|
+| 16-40 s | 1,7542 / 2,3635 Hz | 0 | 8 sur 10 | de −2,94 à 0,53 |
+| 130-154 s | 1,7552 / 2,3640 Hz | 0 | 9 sur 10 | de −1,44 à 0,36 |
+| 272-296 s | 1,7547 / 2,3635 Hz | 0 | 7 sur 10 | de −1,14 à 0,45 |
+
+Attendu 2 en ÉCHEC sur les trois extraits ; attendu 3 sans objet ; **attendu 4 en
+ÉCHEC** d'une façon qui mérite d'être dite : les trois extraits donnent les MÊMES
+cadences entre eux à 1 mHz près — 1,7547 ± 0,0005 et 2,3637 ± 0,0003 Hz —, à 4 à 6 mHz
+de celles de H50. Trois extraits indépendants qui s'accordent si bien ne lisent pas un
+bruit ; ce relevé n'est pas un attendu, il est publié.
+
+**La règle écrite dirait « le fond est un bruit ». Elle ne s'applique pas, et voici
+pourquoi — un relevé de l'hypothèse de l'instrument, fait AVANT d'écrire le verdict.**
+Les trois instruments (§§ 15, 16, 17) supposent qu'une raie de l'oracle SONNE pendant
+tout l'extrait ; leurs tests le supposaient aussi. Le niveau efficace de chaque raie,
+par tranches de 2 s des 22 s utiles, le dément :
+
+| extrait | raies qui s'éteignent ensemble (creux en dB sous la tranche la plus forte) |
+|---|---|
+| 16-40 s | mi3, si3, mi4, si4 : −16,0 à −17,4 ; −9,8 à −10,6 ; −16,8 à −17,6, aux tranches 2, 5 et 9 · la♯3 et la♯4 : −26 à −29, −17 à −18, −23 à −27 · do♯4 et do♯5 : −14 à −15, −11 à −12 · fa♯3 et fa♯4 : jamais sous −5,5 |
+| 130-154 s | sol♯4 ne sonne que de la 8e à la 14e seconde du segment utile (−25 à −28 dB ailleurs) ; la♯3 et la♯4 : −25 à −26 dB deux fois |
+| 272-296 s | sol♯4 absent les 4 premières secondes (−28 dB) ; la♯3 : −23 dB |
+
+**Les raies vont et viennent par PAIRES D'OCTAVES, aux mêmes instants** : le pad change
+d'accord toutes les quelques mesures, et les « dix notes de l'oracle » sont la RÉUNION
+d'une suite d'accords, pas dix notes tenues. Ce que cela fait aux trois mesures :
+- une raie qui s'éteint ramène sa trajectoire vers l'origine — un NUAGE de circularité
+  30 à 50 %, avec des tours que l'angle accumule en frôlant le centre, quelle que soit
+  la structure : c'est ce que H53 et H54 ont lu ;
+- une enveloppe d'accords (de l'ordre de 0,1 Hz) n'est pas dans la famille des deux
+  cadences et ne se PRÉDIT pas d'une moitié à l'autre : c'est ce que la D validée de
+  H55 a lu ;
+- les contrôles et les tests synthétiques tenaient leurs notes 24 s : ils ne pouvaient
+  pas le voir.
+
+**H55 est NON CONCLUANTE**, et H53 et H54 le restent pour la même raison, désormais
+connue. Rien ne s'écrit sur la structure du pad. La leçon est celle de l'ordre de
+marche (13/09, D265) : avant d'expliquer un chiffre, décomposer sa population — ici,
+le temps : une raie de 24 s est une suite de présences et d'absences.
+
+**CE QUI SUIT, à écrire avant sa mesure (H56)** : la même question, ACCORD PAR ACCORD —
+sur les seuls segments où l'ensemble des raies qui sonnent ne change pas, chaque raie
+jugée sur son segment, avec un contrôle synthétique soumis aux MÊMES segments.
