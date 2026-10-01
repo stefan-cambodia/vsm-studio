@@ -1114,6 +1114,31 @@ entre les deux : le cache entre, et le calage de niveau devient la suite ») :
 chaque évaluation) sur un morceau de 312 s à report vocal de 55 Mo. Il se lira sur la
 ligne « mesures de projet » du journal de la référence relancée.
 
+### 10.2 La suite de H48 : où passent les 72 s du premier réglage de la basse, TOUT RELU ? (écrit AVANT le profil, 02/10/2026, 00 h 40)
+
+**La question, laissée par le § 10.1.** Dans la course B (tout relu du cache, 0 mesure
+payée), le premier réglage au mélange — la basse — prend encore **72 s**, quand les deux
+suivants en prennent 19 et 20. Le § 10 nommait d'avance ce que le cache ne range pas :
+les rendus SOLO du calage de niveau (`recaler_avec_son_groupe`), rejoués à chaque
+évaluation. L'attribution n'a pas été mesurée ; elle se mesure ici.
+
+**La mesure.** La course B rejouée telle quelle (même commande, même arbre `reload-h48`,
+même cache de 839 fichiers, même moteur `build-h42`, 2 rendus parallèles, `nice 10`),
+sous un pilote qui PROFILE le seul premier appel de `refine_against_mix` (`cProfile`,
+temps cumulé par fonction appelée) ; `reconstruction/travail/h48/B-profil/`.
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **le témoin** : le temps profilé du premier réglage, contre les 72 s du journal de B | à ± 25 % (54 à 90 s) | ailleurs : la course rejouée n'est pas celle de B, rien ne s'attribue |
+| 2 | **l'attribution** : la part du temps cumulé sous `recaler_avec_son_groupe` | ≥ 60 % : le calage de niveau est bien le coût que le cache ne range pas | < 30 % : la prédiction du § 10 est fausse, et la fonction qui porte le plus est nommée |
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) : 2 tenu — ranger les rendus solo du
+calage dans le cache de mesures (une hypothèse de plus, son A/B écrit avant) ; 2 en
+échec — la fonction nommée devient la cible ; entre les deux — les deux premières
+fonctions sont publiées, rien n'est entrepris sur cette foi.
+
 ---
 
 ## 11. H49 — décrire le pad sur l'ORIGINAL : ses raies une à une, et la forme de leur mouvement (écrite AVANT la mesure, 30/09/2026, 20 h 00)
