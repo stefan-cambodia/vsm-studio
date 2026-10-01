@@ -181,6 +181,41 @@ morte : c'est un défaut de la chaîne, nommé ici, à traiter dans `ROADMAP-fus
 quand aucune course ne tournera (`analyse/analyzer/` ne se touche pas pendant une
 course).
 
+### 2.3 Morte une troisième fois le 30/09 à 23 h 10 — et relancée le 01/10 à 22 h 49, le cache des mesures de projet dans la chaîne
+
+**CE QUI S'EST PASSÉ.** La relance de 19 h 30 avait passé le verdict du mélange (deux
+tours, **7 112 s**) et réglé la première voix au mélange (« other · voix 1 » 0,2546 →
+0,2509, 27 évaluations, **2 298 s**) ; la deuxième était en cours, dernière ligne du
+journal à 23 h 01. Le poste a été **éteint** à 23 h 10 min 34 s (`journalctl -b -2` :
+`org.kde.Shutdown`, une extinction demandée depuis le bureau, la troisième de la
+journée), rallumé à 23 h 29, éteint à 23 h 42, rallumé le 01/10 à 00 h 05. Ni
+`project.json` ni `rapport.json` : **3 h 40 de course** sans résultat, dont au moins 2 h 37 de
+mélange que rien ne rangeait. Personne ne l'a relancée avant la reprise du 01/10 à
+20 h 55 (`uptime` : 20 h 49 ; rien ne tournait).
+
+**CE QUI A CHANGÉ AVANT LA RELANCE, ET POURQUOI MAINTENANT.** Le verdict de H48 (§ 10.1)
+était calculé depuis le 30/09 à 21 h 32 ; sa règle, écrite avant, faisait entrer le
+cache des mesures de projet « dans l'arbre principal dès qu'aucune course n'y
+tourne ». C'était le cas : `reload-h48` y a été fusionnée (`1259f93`), la suite Python
+entière passée deux fois sur l'arbre fusionné (257 sur 257), ruff et mypy verts
+(`5a37823`). La fusion apporte aussi `reload-chaine` — H42, H43, H45, **éteints par
+défaut** — et, à 440 Hz, la clé d'un rendu de piste est celle d'avant : les mesures de
+candidates payées par les trois courses mortes restent valables.
+
+**LA RELANCE (01/10, 22 h 49 min 14 s)**, la commande écrite en tête de
+`reload-suite.sh`, inchangée : mêmes stems, **même binaire** `build/tools/vsm-render`
+(md5 `93e6587c…`, celui du 30/09 à 07 h 15 — D526, corrigé dans les sources, n'y est
+délibérément PAS : le recompiler jetterait tout le cache). Suite PID 743158 ; la garde
+de batterie bloque la veille tant qu'elle vit, et la déclenche à 10 % (95 % au départ).
+
+**Ce que la relance montre déjà** (lu au journal avant d'écrire ces lignes, donc pas
+« dit avant ») : les premières décisions sont celles des trois courses — tempo 139,7,
+arbitrage de batterie 0,339 / 0,398 / 0,424 (en 23 s). **Ce qu'elle doit montrer, dit
+avant** : à la fin, la ligne « mesures de projet » de son journal — toutes payées,
+aucune relue, puisque rien n'était rangé —, qui donne le coût de la clé sur un
+morceau de 312 s (la limite écrite au § 10). **Une quatrième extinction ne coûterait plus le
+mélange** : c'est l'attendu 3 de H48, tenu à 30 % près.
+
 ---
 
 ## 3. Ce qui s'entend déjà, avant tout chiffre — et qui fera les hypothèses
@@ -1024,6 +1059,61 @@ diffère d'elle-même d'une course à l'autre : l'attendu 1 ne se lit qu'avec lu
 55 Mo à hacher à chaque évaluation, ni onze pistes ; le coût de la clé sur « Reload »
 se lira sur la course 2 (ligne « mesures de projet » de son journal).
 
+### 10.1 Verdict de H48 (mesuré le 30/09 de 20 h 09 à 21 h 32 ; écrit le 01/10 à 22 h 43) : 1, 2, 4 et 5 TENUS, 3 ENTRE LES DEUX — le cache entre, comme écrit
+
+**Écrit un jour après sa mesure, et c'est dit.** `verdict_h48.py` a rendu son verdict à
+21 h 32 le 30/09 (`reconstruction/travail/h48/verdict.txt`) ; le poste a été éteint à
+23 h 10 (`journalctl -b -2` : `org.kde.Shutdown`, une extinction demandée depuis le
+bureau) avant qu'il entre ici. Les chiffres ci-dessous sont ceux du fichier, relus, pas
+recalculés.
+
+**Deux départs.** Le premier (19 h 57, code `8906218`) a été arrêté à la main à 20 h 06 :
+le témoin T était mort à l'étape 4/5 (« vsm-render introuvable » — le calage de niveau
+ignorait `--moteur`) et avait laissé **3 fichiers** au cache (l'arbitrage de batterie
+écrivait sous `--sans-cache-rendus`). Deux défauts de la chaîne trouvés par le témoin
+avant toute mesure, corrigés dans `0baad56`. Le second départ (20 h 09, code `0baad56`,
+arbre propre, moteur `build-h42` md5 `52532381`) est la mesure.
+
+| course | étapes au mélange (verdict ; réglages ; seconds verdicts) | total | mesures de projet (payées, relues) |
+|---|---|---|---|
+| T, témoin `--sans-cache-rendus` | 206 ; 127 · 103 · 113 ; 59 · 112 · 110 | 830 s | — (aucune ligne) |
+| A, cache vide qu'elle remplit | 158 ; 140 · 110 · 117 ; 65 · 130 · 150 | 870 s | 242, 34 |
+| B, rejouée sur le cache de A | 28 ; 72 · 19 · 20 ; 13 · 13 · 11 | 176 s | 0, 276 |
+| C tuée (`SIGKILL` du groupe à sa 1re ligne « réglage au MÉLANGE ») | 193 ; 176 ; — | 369 s | — (morte) |
+| C relancée telle quelle | 37 ; 74 · 143 · 159 ; 73 · 151 · 152 | 789 s | 150, 126 |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | l'identité contre T | **tenu** : `project.json` de A, B et C identiques à l'octet ; rapport hors provenance, 0 différence ; distance globale 0,1959822425659897 partout. La provenance diffère de 2 ou 3 champs, ceux que H48 y ajoute (`cacheRendus`, `mesuresDeProjet.payees`, `.relues`) |
+| 2 | le rejeu : B rapportée à A | **tenu** : 176 s pour 870, **20,2 %** ; 0 mesure payée dans B |
+| 3 | la mort : C relancée rapportée à C tuée, verdict + 1er réglage | **entre les deux** : 111 s pour 369, **30,1 %** (seuil 25 %) ; C finit identique à T |
+| 4 | le témoin n'écrit rien | **tenu** : 0 fichier au cache après T, pas de ligne « mesures de projet » |
+| 5 | le coût de la première passe : A rapportée à T | **tenu** : 870 s pour 830, **104,8 %** |
+
+**Ce qui manque à l'attendu 3, lu sur les chiffres.** Le verdict de C relancée descend
+à 37 s (19 % des 193 de la course tuée) ; c'est le premier réglage qui retient : 74 s,
+autant que dans B (72 s), où **rien** n'est payé. Ce reste n'est donc pas une mesure
+que la reprise rate : c'est un coût que le cache ne range pas, et il est propre à la
+basse (les deux autres réglages de B prennent 19 et 20 s). Le § 10 nommait d'avance
+ce que le cache ne range pas — les rendus solo du calage de niveau ; que ce soient
+EUX qui coûtent ces 72 s n'est pas mesuré ici, et ne s'écrit pas comme établi.
+
+**CE QUE LE VERDICT DÉCIDE — la règle écrite avant, appliquée telle quelle** (« 2 ou 3
+entre les deux : le cache entre, et le calage de niveau devient la suite ») :
+- **le cache entre** : `reload-h48` fusionnée dans l'arbre principal le 01/10
+  (`1259f93`), aucune course n'y tournant — la suite Python entière sur l'arbre
+  fusionné, **257 réussis, 0 échoué** ; ruff et mypy verts après quatre annotations
+  manquantes dans les verdicts de H44 et H45 (`5a37823`). `reload-chaine` avancée au
+  même point : la course 2 partira avec lui. À 440 Hz la clé d'un rendu de PISTE est
+  celle d'avant (`efc0a27`) : les mesures déjà payées par la course de référence restent
+  valables, et la référence relancée (§ 2.3) range désormais ses mesures de projet ;
+- **la suite** : ce que coûte le premier réglage de la basse quand tout est relu —
+  décomposé AVANT d'être attribué au calage de niveau.
+
+**Ce que la mesure ne prouve pas, toujours** : le coût de la clé (hacher le dossier à
+chaque évaluation) sur un morceau de 312 s à report vocal de 55 Mo. Il se lira sur la
+ligne « mesures de projet » du journal de la référence relancée.
+
 ---
 
 ## 11. H49 — décrire le pad sur l'ORIGINAL : ses raies une à une, et la forme de leur mouvement (écrite AVANT la mesure, 30/09/2026, 20 h 00)
@@ -1520,3 +1610,48 @@ l'attendu 2 échoue, 3 à 5 ne se lisent pas et sont dits « sans objet ».
 - 2 tenu, 3 ou 4 en échec : un cercle par note, mais pas le même — une modulation
   PAR NOTE (un vibrato de la machine plus un mélange), et c'est alors la machine
   qui est visée, pas l'effet.
+
+### 15.1 Ce que les tests de l'instrument ont changé — AVANT toute mesure de l'original (01/10/2026, 22 h 52)
+
+L'attendu 1 est la suite de tests (`analyse/tests/test_h53_cercle.py`, branche
+`reload-h47`, `8ea9970`) : six tests, cinq hauteurs, bruit à −30 dB. **Ils ont trouvé
+deux défauts de l'instrument**, corrigés avant qu'il ait vu l'original — vérifié :
+aucun dossier `reload-h53`, aucun script ne l'appelle.
+
+1. **L'amplitude du retard était lue à une case de FFT.** Sur 22 s, 1,75 Hz tombe à
+   mi-case (38,5 cases), où la fenêtre de Hann perd 1,42 dB : **0,7224 ms relus pour
+   0,85** — sur toutes les raies, et un sinus pur placé sur une case était relu juste.
+   La transformée est désormais évaluée sur une grille de 1 mHz : 0,8498 à 0,8508 ms.
+2. **Une corde passait pour un arc.** Un trémolo à la cadence `f1` — celle qui compte
+   ici ; le premier test le prenait à 5 Hz, où rien ne se voyait — a fait juger la♯4
+   « CERCLE » : circularité 9,9 %, arc 83°. Un segment parcouru en sinus passe ses
+   instants à ses DEUX BOUTS, qui tombent sur le cercle dont il est la corde ;
+   l'ajustement, trompé, ne peut pas trancher. Critère ajouté, qui ne passe pas par
+   lui : l'**aplatissement** du nuage de points (petit axe sur grand axe). Un arc de
+   demi-angle α parcouru en sinus en a ≈ α/4, soit **0,13 pour les 60° déjà exigés** ;
+   le seuil est **0,10**, tiré de ce calcul et non des tests. Vu rouge le seuil remis
+   à 0.
+
+Relevé sur les quatre structures, par raie (mi3, si3, mi4, la♯4, do♯5) — circularité /
+arc / aplatissement, `*` = jugée cercle :
+
+| structure | mi3 | si3 | mi4 | la♯4 | do♯5 |
+|---|---|---|---|---|---|
+| une lecture | 0,4 % / 138° / 0,31 * | 0,7 % / 207° / 0,48 * | 0,9 % / 277° / 0,66 * | 0,4 % / 389° / 0,94 * | 0,5 % / 461° / 0,99 * |
+| deux étages en série | 13,7 % / 241° / 0,64 | 25,3 % / 1 259° / 0,86 | 24,4 % / 1 584° / 0,82 | 36,6 % / 6 279° / 0,87 | 36,0 % / 6 444° / 0,99 |
+| trémolo à 5 Hz | 43,3 % / 179° / 0,009 | 40,0 % / 166° / 0,013 | 40,5 % / 168° / 0,017 | 24,9 % / 128° / 0,006 | 29,1 % / 138° / 0,009 |
+| trémolo à `f1` | 23,7 % / 125° / 0,009 | 40,5 % / 168° / 0,013 | 39,6 % / 165° / 0,017 | 9,9 % / 83° / 0,006 | 31,2 % / 143° / 0,009 |
+
+**L'attendu 1 est TENU**, après ces deux corrections : une lecture, circularité 0,4 à
+0,9 % (≤ 5 %), dosage 0,470 à 0,4702 (± 0,05), retard à `f1` 0,8498 à 0,8508 ms
+(± 10 %), et la même chose avec la porteuse décalée de 0,05 Hz (vu rouge l'affinage
+retiré : mi3 à 8,7 %) ; la série à 36,6 et 36,0 % sur les deux raies du haut (> 15 %) ;
+aucun des deux trémolos n'est un cercle. **Ce que les tests ne gardent pas, et c'est
+dit** : l'arc de 60° ne décide d'aucun des six cas (le trémolo tombe par la
+circularité) ; il décide sur une lecture de ± 0,05 ms seulement — un vrai cercle à
+arcs de 29 à 36°, circularité 0,5 à 1,2 % —, cas relevé, non gardé par un test.
+
+**L'ATTENDU 2 EST AMENDÉ EN CONSÉQUENCE, avant la mesure** : réussite si circularité
+≤ 10 % ET arc d'au moins 60° **ET aplatissement d'au moins 0,10**, sur au moins 8
+raies ; échec si circularité > 25 %, ou arc de moins de 60°, **ou aplatissement sous
+0,10**, sur 5 raies ou plus. Le reste du § 15 est inchangé.
