@@ -38202,7 +38202,7 @@ complète `--bancs`, refusée pendant la campagne, comme pour D525.
 
 ---
 
-### Phase D528 — tirer une note contre le bord du piano roll ne fait rien défiler (02/10/2026) — EN ATTENTE DE MESURE
+### Phase D528 — tirer une note contre le bord du piano roll ne fait rien défiler (02/10/2026, faite le jour même)
 
 **D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D527** : « le piano roll, qui n'a pas
 davantage de défilement au bord — une phase à lui. » Tirer une note au-dessus de la
@@ -38226,3 +38226,45 @@ barres de défilement) ; en hauteur, une à trois hauteurs par répétition selo
 profondeur, bornées comme la molette (12 à 127) ; en temps, le pas en pixels de D527.
 Gestes : le déplacement des notes (deux axes), les poignées de durée (temps). La
 sélection au rectangle n'en est pas, pour la raison du lasso de D527.
+
+**LA MESURE, EN DEUX BINAIRES** — `tools/pianoroll-bord.sh` (nouveau, dans la liste fermée
+de `--bancs`, 42 bancs), chaque cas contre son témoin lâché sans répétition ; 30
+répétitions ; le banc lit la taille du piano roll et la largeur du clavier au relevé
+avant de viser.
+
+| cas | (a) le nom et la taille seuls (02 h 46) | (b) le défilement au bord (02 h 48) |
+|---|---|---|
+| (1) note de la mesure 2 tenue au bord haut | hauteur **62**, vue en haut à 62 — comme lâchée | hauteur **93** (La6), vue en haut à 93 |
+| (2) le témoin lâché | 62, vue à 62 | 63, vue à 63 |
+| (3) la même tenue au bord droit | début 6 120, défilement 0 — comme lâchée | début **11 160**, défilement **5 022** (lâchée : 6 240 et 162) |
+
+**Le pronostic est TENU tel qu'écrit** (a), à un détail près : écrit à 72, il a été
+mesuré à 62. La première course de (a) a relu la taille du piano roll — **586 × 107 px**
+à 1 280 × 800 : les trois rangées de sa barre d'outils et la lane de vélocité ne laissent
+à la grille que **six hauteurs** — et, ouverte à 72, la vue ne montrait pas do3 : la
+note était saisie HORS de la surface. Le banc ouvre donc la vue à 62 (do3 en troisième
+rangée), et son en-tête le dit avec l'heure.
+
+**Le critère du témoin (2), corrigé et dit** : écrit « exactement 62 », il ignorait que le
+glissé lui-même ENTRE dans la bande et fait déjà un pas (62 → 63) — le même appel qui
+faisait défiler de 13 px le témoin de D527. Il est devenu « la plus haute hauteur
+visible, à trois hauteurs au plus de 62 ».
+
+**CE QUI A ÉTÉ FAIT** : `PianoRollComponent::defilerAuBord` (bandes de 24 px sur la grille,
+entre le clavier et les barres de défilement ; une à trois hauteurs par répétition,
+bornées comme la molette ; en temps, le pas de D527), appelée en tête de `mouseDrag`
+pour le déplacement des notes (deux axes) et les poignées de durée (temps), avec
+`beginDragAutoRepeat(40)` ; le composant nommé `pianoroll` ; la taille et le clavier
+ajoutés au relevé `VSM_PIANOROLL_RANG` (champs en fin de ligne : les bancs qui le lisent
+le font par clé). **Bancs voisins**, sur le binaire (b) : `pianoroll-zones`,
+`piano-roll-piste-choisie`, `portes-des-outils`, `zoom-reassigne`, `tout-voir`,
+`vue-du-morceau`, `quantifier`, `pas-a-pas`, `liste-editer`, `arrangement-defile` —
+**10 sur 10 verts** ; préférences de l'utilisateur intactes. Deux compilations, la
+course de référence gelée deux minutes chacune, `vsm-render` intact.
+
+**CE QUI N'EST PAS FAIT, ET CE QUE LA MESURE A RELEVÉ EN PASSANT.** La sélection au
+rectangle (comme le lasso de D527) ; la série complète `--bancs`, refusée pendant la
+campagne. Et un fait qui mérite sa phase : **à 1 280 × 800, la grille du piano roll ne
+montre que six hauteurs** (107 px de grille, relevés ; le reste du volet va à la barre
+d'outils et à la lane de vélocité, à l'œil sur la photo) — moins qu'une octave pour
+éditer des notes.

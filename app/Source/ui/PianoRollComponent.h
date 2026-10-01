@@ -419,6 +419,11 @@ private:
     static constexpr int kKeyboardWidthNotes = 62;
     static constexpr int kKeyboardWidthDrums = 128;
     static constexpr int kScrollBarThickness = 12;
+    /// D528 : TENU CONTRE UN BORD DE LA GRILLE, LA VUE DÉFILE SOUS LA NOTE — la
+    /// recette de l'arrangement (D527). Une bande de `kBandeDeBord` px au haut, au bas
+    /// (au-dessus de la barre de défilement), à gauche (après le clavier) et à droite.
+    bool defilerAuBord(juce::Point<float> pointeur, bool hauteurs, bool temps);
+    static constexpr int kBandeDeBord = 24;
 
     Tool tool_ = Tool::Select;
     vsm::sequencer::GridResolution gridResolution_ { vsm::sequencer::NoteValue::Sixteenth, false, false };

@@ -61,6 +61,7 @@ enum ContextMenuId {
 } // namespace
 
 PianoRollComponent::PianoRollComponent() {
+    setName("pianoroll");   // D528 : le nom par lequel le banc le désigne (glisser-tenir:)
     setWantsKeyboardFocus(true);
     setOpaque(true);
     addAndMakeVisible(horizontalScrollBar_);
@@ -548,6 +549,10 @@ void PianoRollComponent::releverRangPourCapture() const {
                 + " outil=" + (tool_ == Tool::Select ? "selection" : tool_ == Tool::Draw ? "crayon"
                                : tool_ == Tool::Erase ? "gomme" : tool_ == Tool::Split ? "ciseaux"
                                : tool_ == Tool::Glue ? "colle" : "muet")
+                // D528 : la TAILLE du composant, pour qu'un banc vise une hauteur ou un
+                // tick en fraction de sa surface sans la deviner.
+                + " taille=" + juce::String(getWidth()) + "x" + juce::String(getHeight())
+                + " clavier=" + juce::String(keyboardWidth())
                 + "\n").toRawUTF8(), stderr);
 }
 
@@ -1663,6 +1668,17 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
     if (!track || !project_) return;
     const juce::Point<float> pos = event.position;
 
+    // D528 : TENUE CONTRE UN BORD, LA VUE DÉFILE, ET LA NOTE SUIT D'ELLE-MÊME. Le
+    // déplacement recalcule à chaque appel l'écart entre la hauteur et le tick SOUS le
+    // pointeur et ceux du départ ; il suffit que la vue bouge sous lui, et que
+    // `mouseDrag` soit encore appelé quand la souris ne bouge plus. La sélection au
+    // rectangle n'en est pas (son origine est en coordonnées de la fenêtre, D527).
+    if (dragMode_ == DragMode::Move || dragMode_ == DragMode::ResizeLeft
+        || dragMode_ == DragMode::ResizeRight) {
+        beginDragAutoRepeat(40);
+        defilerAuBord(pos, dragMode_ == DragMode::Move, true);
+    }
+
     switch (dragMode_) {
         case DragMode::Audition: {
             const uint8_t note = yToNote(pos.y);
@@ -1822,6 +1838,45 @@ void PianoRollComponent::mouseExit(const juce::MouseEvent& event) {
     hoveredNoteId_ = 0;
     updateStatusText(event.position, false);
     repaint();
+}
+
+bool PianoRollComponent::defilerAuBord(juce::Point<float> pointeur, bool hauteurs, bool temps) {
+    bool bouge = false;
+    const float basGrille = static_cast<float>(getHeight() - kScrollBarThickness);
+    const float droiteGrille = static_cast<float>(getWidth() - kScrollBarThickness);
+    if (hauteurs) {
+        // Une à trois hauteurs par répétition selon la profondeur, bornées comme la
+        // molette (12 à 127) : à 25 répétitions par seconde, de deux à six octaves.
+        auto pas = [](float profondeur) { return 1 + static_cast<int>(std::min(48.0f, profondeur) / 24.0f); };
+        const float bandeBas = basGrille - static_cast<float>(kBandeDeBord);
+        int d = 0;
+        if (pointeur.y < static_cast<float>(kBandeDeBord)) d = pas(static_cast<float>(kBandeDeBord) - pointeur.y);
+        else if (pointeur.y > bandeBas) d = -pas(pointeur.y - bandeBas);
+        if (d != 0) {
+            const int avant = topNote_;
+            topNote_ = juce::jlimit(12, 127, topNote_ + d);
+            bouge = topNote_ != avant;
+        }
+    }
+    if (temps && pixelsPerTick_ > 0.0) {
+        // Le pas de l'arrangement (D527) : 4 à 28 px par répétition.
+        auto pas = [](float profondeur) { return 4 + static_cast<int>(std::min(48.0f, profondeur) / 2.0f); };
+        const float gauche = static_cast<float>(keyboardWidth() + kBandeDeBord);
+        const float droite = droiteGrille - static_cast<float>(kBandeDeBord);
+        int dx = 0;
+        if (pointeur.x < gauche) dx = -pas(gauche - pointeur.x);
+        else if (pointeur.x > droite) dx = pas(pointeur.x - droite);
+        if (dx != 0) {
+            const Tick avant = scrollTick_;
+            scrollTick_ = std::max<Tick>(0, scrollTick_ + static_cast<Tick>(static_cast<double>(dx) / pixelsPerTick_));
+            bouge = bouge || scrollTick_ != avant;
+        }
+    }
+    if (bouge) {
+        updateScrollBars();
+        repaint();
+    }
+    return bouge;
 }
 
 void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
