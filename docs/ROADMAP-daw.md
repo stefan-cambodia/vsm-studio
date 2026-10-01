@@ -38299,6 +38299,6 @@ rectangle ajoutés aux gestes qui défilent au bord (D527, D528).
 - l'arrangement, quarante pistes à un clip d'une mesure : un lasso parti du vide à côté
   du clip de P02, tiré contre le bord bas et tenu 30 répétitions, choisit **six** clips
   (P02 à P07), exactement comme lâché tout de suite ;
-- le piano roll, huit notes descendant de do3 (60) à la♭1 (46) par tons, une par temps, la
+- le piano roll, huit notes descendant de do3 (60) à si♭1 (46) par tons, une par temps, la
   vue ouverte en haut à 62 : un rectangle tiré contre le bord bas et tenu choisit **deux**
   notes (60 et 58), comme lâché.
