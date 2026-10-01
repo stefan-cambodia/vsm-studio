@@ -38339,3 +38339,28 @@ voisins sur le binaire (b) : `arrangement-defile`, `pianoroll-bord`,
 `liste-editer`, `pas-a-pas`, `miniature-clips` — **9 sur 9 verts** ; préférences
 intactes ; la course de référence gelée deux à trois minutes par compilation,
 `vsm-render` intact. La série complète `--bancs` attend la fin de la campagne.
+
+---
+
+### Phase D530 — un élément du navigateur tenu contre le bord de l'arrangement ne fait rien défiler (02/10/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — LE DERNIER GESTE QUI TRAVERSE L'ARRANGEMENT SANS DÉFILER.** D527 à D529
+ont fait défiler la vue sous les gestes de la SOURIS (clip, piste, poignées, lasso). Le
+glisser-déposer depuis le navigateur (D10.1 : une machine, un preset, un profil, un
+échantillon lâché sur une piste) n'en est pas : c'est un glisser-déposer JUCE, dont la
+cible ne reçoit `itemDragMove` que quand la souris BOUGE — aucune répétition automatique
+n'existe pour lui. Une piste hors de la vue ne peut recevoir un échantillon qu'en
+quittant le geste.
+
+**CE QUI EST PRÉVU** : une minuterie de 40 ms que la cible arme quand le pointeur est dans
+une bande de bord (D527) pendant un glisser-déposer, qui fait défiler et RECALCULE la piste
+et le tick visés depuis la dernière position connue ; désarmée à la sortie, au dépôt, ou
+quand la vue ne peut plus défiler.
+
+**PRONOSTIC, à mesurer avant la correction** — un verbe de banc
+`deposer-tenir:<nom>:fx0,fy0:fx1,fy1:durée_ms:<description>` joue l'entrée en (fx0, fy0),
+le mouvement jusqu'en (fx1, fy1), puis le DÉPÔT après `durée_ms` millisecondes pendant
+lesquelles le fil de messages tourne (ce qu'une souris tenue immobile laisse faire) : le
+projet de 40 pistes de D525, la machine `vsm.juno106` tirée de la hauteur de P02 contre le
+bord bas et tenue 1,2 s, se pose sur **P07**, la dernière piste visible, exactement comme
+lâchée tout de suite ; le décalage vertical reste nul.
