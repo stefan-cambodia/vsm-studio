@@ -1785,3 +1785,105 @@ une structure à plusieurs lectures ne naît pas d'un masque.
   instrument ; H54 non concluante, et la suite est un instrument qui moyenne par note
   sur les cycles du LFO.
 - Tout autre cas : non concluant, et dit.
+
+### 16.1 Verdict de H54 (01/10/2026, mesuré de 23 h 00 à 23 h 01) : NON CONCLUANTE comme écrit — et la mesure DÉFAIT la prémisse des §§ 15.2 et 16 : le fond des raies n'est pas la batterie
+
+`analyse/mesure_h54.py` (branche `reload-h47`, instrument de `8ea9970` inchangé), le stem
+« other » de la course de référence ; 43 s ; `reconstruction/travail/reload-h54/`.
+
+| extrait | contrôle : cercles de la lecture parfaite par tirage | attendu 1 | sur le stem (pour mémoire) |
+|---|---|---|---|
+| 16-40 s | 2, 2, 2 sur 10 | **échec** | 0 cercle, 10 franchement hors |
+| 130-154 s | 3, 3, 3 sur 10 | **échec** | 0 cercle, 9 hors (si4 non vue, 9,5 dB) |
+| 272-296 s | 2, 3, 2 sur 10 | **échec** | 0 cercle, 10 hors (si4 non vue, 5,3 dB) |
+
+Attendu 1 en échec sur les trois extraits : la règle écrite dit « H54 non concluante »,
+et rien ne s'écrit sur la structure du pad.
+
+**CE QUE LA MESURE DÉFAIT.** Les deux hypothèses reposaient sur une prémisse écrite au
+§ 15.2 — « le bruit, c'est surtout la batterie » — et H54 la mettait à l'épreuve sans
+le dire : retirer la batterie devait relever le rapport au fond. Il n'a pas bougé :
+sur 16-40 s, le stem et l'original sont à **1,1 dB près sur dix raies sur dix** (mi3
+20,7 / 20,6 dB ; si3 23,7 / 24,3 ; do♯5 10,0 / 10,2). Relevé direct, source par source,
+de la densité dans la bande du fond (6 à 6,9 Hz de chaque raie), rapportée à celle de
+l'original :
+
+| raie | other | drums | bass | guitar | piano | vocals |
+|---|---|---|---|---|---|---|
+| mi3 | −0,6 | −11,9 | −46,7 | −47,0 | −48,5 | −48,6 |
+| fa♯3 | +0,1 | −14,7 | −52,4 | −48,0 | −54,1 | −48,4 |
+| la♯3 | −0,6 | −17,7 | −52,3 | −47,2 | −49,6 | −37,7 |
+| si3 | +0,4 | −17,9 | −53,8 | −49,7 | −52,5 | −27,6 |
+| do♯4 | −0,6 | −17,4 | −55,9 | −52,4 | −51,4 | −46,7 |
+| mi4 | −0,5 | −26,2 | −64,9 | −63,5 | −62,0 | −58,6 |
+| fa♯4 | −0,2 | −35,4 | −66,8 | −67,0 | −69,5 | −67,4 |
+| la♯4 | −0,7 | −24,0 | −64,7 | −66,4 | −59,5 | −56,7 |
+| si4 | −1,2 | −36,6 | −67,3 | −68,6 | −68,4 | −67,6 |
+| do♯5 | −0,1 | −31,5 | −65,3 | −75,2 | −68,0 | −62,2 |
+
+**Le fond des raies EST le stem « other »** ; la batterie est de 12 à 37 dB dessous.
+Conséquences, dites sans les arrondir :
+- **le contrôle du § 15.2 a modélisé le mauvais bruit** : il a réglé un bruit BLANC pour
+  atteindre un rapport au fond que, dans l'original, fait le pad lui-même (ou ce que le
+  stem « other » porte avec lui). Son verdict « aveugle » ne dit donc pas que
+  l'instrument est aveugle au bruit de l'original ; il dit qu'il l'est à un bruit blanc
+  de ce niveau. **H53 reste non concluante**, mais plus pour la raison écrite au § 15.3 ;
+- le relevé d'après coup du § 15.3 (« l'original plus épais que le contrôle ») perd son
+  témoin pour la même raison ;
+- **la question change** : ce fond est-il du BRUIT (un ensemble dense, des voix
+  désaccordées, une réverbération) ou une STRUCTURE déterministe — les composantes
+  d'une modulation que H50 a trouvées sur une famille à deux cadences, et qui tombent
+  aussi dans la bande du fond (`f1` + 2·`f2` = 6,49 Hz) ? Un fond déterministe ne
+  brouille pas une trajectoire : il la DESSINE.
+
+**CE QUI SUIT, écrit avant sa mesure : H55 (§ 17)** — la suite que la règle du § 16
+nommait pour ce cas (« un instrument qui moyenne par note sur les cycles du LFO »),
+précisée par ce que la mesure vient d'apprendre.
+
+---
+
+## 17. H55 — le fond des raies est-il du BRUIT ou une STRUCTURE ? La trajectoire repliée sur les deux cadences (écrite AVANT la mesure, 01/10/2026, 23 h 03)
+
+**Pourquoi.** § 16.1 : le fond des raies est le stem « other » lui-même. Si le pad est
+un son modulé par deux LFO libres (H50 : `f1` ≈ 1,75 Hz, `f2` ≈ 2,37 Hz), alors à chaque
+instant l'enveloppe complexe `E(t)` d'une raie n'est fonction QUE des deux phases
+`(φ1, φ2)` : la trajectoire, aussi embrouillée qu'elle paraisse dans le temps, se
+REPLIE sur le tore des deux phases en une surface nette. Un bruit (un ensemble dense,
+une réverbération) ne se replie pas. Et la structure repliée se juge ensuite comme au
+§ 15 : une seule lecture donne un cercle pour TOUT couple de phases.
+
+**L'instrument** (`analyse/mesure_h55.py`, branche `reload-h47`), par raie, sur `E(t)`
+tel que le § 15 le construit (bande adaptée, porteuse affinée), à 200 Hz :
+- le **repli** : chaque instant rangé dans une case de 8 × 8 selon `(f1·t mod 1, f2·t
+  mod 1)` ; la **moyenne par case** `M` est la structure, l'écart à elle le résidu ;
+- la **part déterministe** `D = 1 − Σ|E − M|² / Σ|E − Ē|²` ; un bruit pur donne `D`
+  voisin de 64 cases sur 4 400 instants, ≈ 0,015 ;
+- les **cadences** cherchées, communes à toutes les raies vues d'un extrait, sur une
+  grille de 0,5 mHz (`f1` de 1,744 à 1,756 Hz, `f2` de 2,355 à 2,385 Hz), au maximum de
+  `D` — une recherche, donc ses témoins la subissent aussi ;
+- la **forme repliée** : les cases de `M` jugées comme au § 15.1 — circularité,
+  aplatissement, et l'ARC COUVERT (360° moins le plus grand vide angulaire autour du
+  centre : les cases n'ont pas d'ordre temporel, l'arc déroulé n'a pas de sens).
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'instrument** (tests écrits avant), cinq hauteurs, bruit à −30 dB : (a) une lecture ; (b) deux étages en série (S de H51) ; (c) une modulation ALÉATOIRE (bruit complexe passe-bas à 8 Hz) | (a) `D` ≥ 0,9, `M` en cercle (≤ 5 %), cadences relues à ± 2 mHz ; (b) `D` ≥ 0,9, `M` hors cercle (> 15 %) sur les raies du haut ; (c) `D` ≤ 0,3 | une seule faute : rien ne se lit |
+| 2 | **structure ou bruit ?** `D` de chaque raie vue de l'ORIGINAL | `D` ≥ 0,7 sur au moins 8 raies : une STRUCTURE à deux cadences | `D` ≤ 0,3 sur 5 raies ou plus : un BRUIT |
+| 3 | si 2 tient : **la structure est-elle UNE lecture ?** `M` de chaque raie | en cercle (§ 15.1) sur au moins 8 raies | circularité > 25 % ou aplatissement < 0,10 sur 5 raies ou plus : plusieurs lectures |
+| 4 | **les cadences** trouvées sur chaque extrait | à ± 3 mHz de celles de H50 (1,7495-1,7501 ; 2,37) | ailleurs : ce ne sont pas les cadences de H50 qui commandent |
+
+**Les extraits** : les trois de H54 (16-40, 130-154, 272-296 s), sur l'ORIGINAL ; aucun
+n'a été replié. Chaque extrait est jugé ; un verdict qui diffère d'un extrait à l'autre
+est dit.
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- **2 et 3 tenus** : le pad est un direct plus UNE lecture sous deux LFO ; `M` donne le
+  retard en fonction des deux phases, donc la forme et la profondeur de chaque LFO —
+  c'est cet effet que le rack reçoit (une phase de `ROADMAP-daw.md`).
+- **2 tenu, 3 en échec** : une structure déterministe à PLUSIEURS lectures ; la suite
+  les compte sur `M` (une somme de cercles par couple de phases).
+- **2 en échec** : le fond est un bruit — un ensemble ou une réverbération, pas un
+  effet à deux LFO ; la suite mesure sa largeur et son temps de décorrélation.
+- **2 entre les deux** : non concluant, et dit.
