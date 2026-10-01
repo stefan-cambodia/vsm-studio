@@ -1713,3 +1713,75 @@ soit celui de la même raie dans l'original, à ± 1 dB ; trois tirages de bruit
 
 Le contrôle est un script d'analyse (`analyse/controle_h53.py`, branche
 `reload-h47`), sans rendu : il tourne à côté de la course de référence.
+
+### 15.3 Verdict du contrôle (01/10/2026, 22 h 56) : l'instrument est AVEUGLE au bruit de l'original — H53 NON CONCLUANTE
+
+`analyse/controle_h53.py` (branche `reload-h47`), la règle du § 15.2 telle qu'écrite :
+une lecture parfaite (dosage 0,5 ; 1,8 ms ± 0,85 à `f1` ± 0,3 à `f2`) aux dix hauteurs,
+chaque raie à son rapport au fond de l'original (atteint à ± 1 dB, 30 sur 30), bruit
+blanc, trois tirages : **2, 2 et 2 cercles sur 10** — fa♯3 ou la♯3, et si3, les raies
+à 18-24 dB. Aveugle : **H53 est NON CONCLUANTE**, et rien ne s'écrit sur la structure
+du pad. `reconstruction/travail/reload-h53/controle.json`.
+
+**Ce que le contrôle montre en passant, et qui sert la suite.** Là où le jugement
+« cercle » échoue, les RELECTURES restent justes : retard à `f1` de 0,74 à 1,18 ms pour
+0,85, dosage de 0,45 à 0,55. C'est le seuil de circularité qui est aveugle au bruit,
+pas la lecture du retard.
+
+**Relevé après coup, qui n'est PAS une conclusion.** Sur les dix raies, l'original est
+plus épais que le pire des trois tirages : si3 46,5 % pour 5,7 % au plus, la♯3 49,9
+pour 10,0, fa♯3 44,5 pour 12,6, mi4 50,0 pour 17,9 … do♯5 44,2 pour 33,3 (× 1,3 à × 8).
+Deux raisons de ne pas l'écrire comme établi : c'est une lecture d'après coup, et le
+bruit du contrôle est BLANC et stationnaire quand celui de l'original est une
+batterie. Elle fait la question de H54, jugée autrement.
+
+---
+
+## 16. H54 — sur le stem « other », où la batterie est retirée, les raies du pad décrivent-elles un CERCLE ? (écrite AVANT la mesure, 01/10/2026, 22 h 58)
+
+**Pourquoi.** H53 n'a rien pu dire : à 10-24 dB de leur fond, les raies de l'original
+sont trop bruitées pour que l'instrument y voie même une lecture parfaite. Le bruit,
+c'est surtout la batterie — et la séparation l'a retirée : le stem « other » de la
+course de référence porte le pad avec un fond bien plus bas. H49 a mesuré que le
+mouvement des raies y est celui du morceau (stem et original à 0,3 point).
+
+**Une seule variable change par rapport à H53 : la SOURCE** — le stem au lieu de
+l'original. L'instrument est celui du § 15.1 (`8ea9970`), inchangé ; ses critères
+sont ceux de l'attendu 2 amendé (circularité ≤ 10 %, arc ≥ 60°, aplatissement ≥ 0,10).
+
+**Les extraits** : 16-40 s (l'oracle de H47, dix notes) et les deux extraits de H50,
+130-154 s et 272-296 s (onze notes, sol♯4 en plus) — aucun des trois n'a été passé à
+l'instrument du cercle sur le stem. Sur onze raies, les seuils restent ceux du § 15
+(au moins 8 cercles ; 5 raies franchement hors).
+
+**Le contrôle fait partie de la mesure** : pour chaque extrait, la même lecture parfaite
+qu'au § 15.2, chaque raie réglée au rapport au fond qu'elle a DANS LE STEM, trois
+tirages ; c'est l'attendu 1, et un extrait dont l'instrument est aveugle ne juge rien.
+
+**Ce que la séparation peut faire, dit avant.** Demucs travaille par masques et par
+forme d'onde : il pourrait lisser ou épaissir une trajectoire. H49 dit que le
+mouvement survit (0,3 point) ; il ne dit pas que la FORME de la trajectoire survit.
+Un cercle sur le stem ne serait donc pas une preuve que l'original en décrit un — mais
+une structure à plusieurs lectures ne naît pas d'un masque.
+
+**ATTENDUS**, par extrait :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'instrument voit au bruit du stem** : la lecture parfaite, chaque raie à son rapport au fond dans le stem (± 1 dB), trois tirages | au moins 8 cercles dans au moins deux tirages | 5 ou moins dans au moins deux tirages : l'extrait ne juge rien |
+| 2 | **un cercle ?** sur le stem | au moins 8 raies en cercle : « un direct plus une lecture » | 5 raies ou plus franchement hors (circularité > 25 %, arc < 60° ou aplatissement < 0,10) : ce n'est pas elle |
+| 3 | **les trois extraits disent-ils la même chose ?** | le même verdict de l'attendu 2 sur les extraits où l'attendu 1 tient | des verdicts opposés |
+| 4 | si 2 tient : **le même retard, le même dosage, un sinus** — les attendus 3, 4 et 5 du § 15, tels qu'écrits | | |
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- **2 tenu sur au moins deux extraits où 1 tient**, et 3 tenu : le pad est un direct
+  plus UNE lecture ; les attendus 3 à 5 donnent sa forme, sa profondeur et son dosage,
+  et c'est cet effet — mesuré, pas réglé — que le rack reçoit (une phase de
+  `ROADMAP-daw.md`) si 3 et 4 tiennent.
+- **2 en échec sur au moins deux extraits où 1 tient** : ce n'est pas une lecture,
+  même la batterie retirée ; la suite COMPTE les lectures (la réponse d'un effet à
+  retards, prise à dix fréquences au même instant, est une somme d'exponentielles).
+- **1 en échec sur deux extraits ou plus** : même le stem est trop bruité pour cet
+  instrument ; H54 non concluante, et la suite est un instrument qui moyenne par note
+  sur les cycles du LFO.
+- Tout autre cas : non concluant, et dit.
