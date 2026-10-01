@@ -1887,3 +1887,40 @@ est dit.
 - **2 en échec** : le fond est un bruit — un ensemble ou une réverbération, pas un
   effet à deux LFO ; la suite mesure sa largeur et son temps de décorrélation.
 - **2 entre les deux** : non concluant, et dit.
+
+### 17.1 Ce que les tests de l'instrument ont changé — AVANT toute mesure de l'original (01/10/2026, 23 h 43)
+
+L'attendu 1 est la suite `analyse/tests/test_h55_repli.py` (branche `reload-h47`,
+`bbcc49a`). **Ses trois tests ont défait trois choix du § 17**, chacun corrigé avant
+que l'instrument ait vu l'original :
+
+1. **Le repli en cases ne tient pas une modulation profonde.** Sous une lecture dont
+   l'indice atteint 3 radians (do♯5, 0,85 ms à `f1`), la phase de la raie tourne de
+   plus de deux radians à l'intérieur d'une seule case de 8 × 8 : une lecture PARFAITE
+   n'y donnait que D = 0,78 (la série 0,51). Remplacé par ce que le repli approchait :
+   **la famille elle-même**, les composantes `k·f1 + l·f2` (|k| ≤ 8, |l| ≤ 6) qui
+   tombent dans la bande — 165 dans ± 15 Hz, écart minimal 0,11 Hz —, ajustées par
+   moindres carrés. Une fonction du tore EST une somme de ces composantes.
+2. **Un ajustement non validé explique un bruit.** Sur la modulation aléatoire, la
+   famille ajustée sur l'extrait entier « expliquait » **0,28 à 0,34** de la variance
+   (trois raies sur cinq au-delà du seuil de 0,3) : 165 composantes complexes contre
+   un bruit de 16 Hz sur 22 s. **D est donc VALIDÉE PAR MOITIÉS** : la famille ajustée
+   sur une moitié prédit l'autre, dans les deux sens. Un bruit ne se prédit pas : −0,41
+   à −0,75. Vu rouge la validation retirée.
+3. **La recherche des cadences par projection se trompait** : sur une lecture parfaite
+   à 1,750 / 2,370 Hz, le périodogramme de la famille choisissait 1,752 / 2,3575 (des
+   membres voisins, non orthogonaux sur 22 s, y comptent deux fois le même pic).
+   Moindres carrés exacts, sur une grille de 1 mHz puis de 0,25 mHz autour du meilleur
+   point ; `E(t)` décimée à 50 Hz pour que cela tienne à côté de la course.
+
+La forme repliée devient la famille ajustée sur l'extrait entier, ÉVALUÉE sur 24 × 24
+couples de phases, puis jugée comme au § 15.1 avec l'arc couvert.
+
+| structure (cinq raies) | cadences relues | D validée | forme repliée : circularité |
+|---|---|---|---|
+| une lecture | 1,750 / 2,370 | 0,999 à 1,000 | 0,2 à 0,3 % — cinq cercles |
+| deux étages en série | 1,750 / 2,370 | 0,999 à 1,000 | 13,5 à 36,8 % (36,4 et 36,8 sur les deux du haut) |
+| modulation aléatoire | (sans objet) | −0,75 à −0,41 | 43 à 46 % |
+
+**L'attendu 1 est TENU.** Les attendus 2 à 4 et les décisions du § 17 sont inchangés ;
+les seuils de D (0,7 et 0,3) s'appliquent à la D validée.
