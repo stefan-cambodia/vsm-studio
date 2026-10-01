@@ -38199,3 +38199,30 @@ référence gelée (deux minutes chaque fois), `vsm-render` intact (`93e6587c…
 **CE QUI N'EST PAS FAIT.** Le lasso (son origine en coordonnées de la fenêtre) ; le
 piano roll, qui n'a pas davantage de défilement au bord — une phase à lui ; la série
 complète `--bancs`, refusée pendant la campagne, comme pour D525.
+
+---
+
+### Phase D528 — tirer une note contre le bord du piano roll ne fait rien défiler (02/10/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D527** : « le piano roll, qui n'a pas
+davantage de défilement au bord — une phase à lui. » Tirer une note au-dessus de la
+tessiture visible, ou au-delà du bord droit, s'arrête au bord : on lâche, on fait
+défiler, on reprend.
+
+**CE QUE LE CODE DIT DÉJÀ.** Le déplacement des notes (`DragMode::Move`) recalcule à chaque
+appel l'écart entre la hauteur et le tick SOUS le pointeur (`yToNote`, `xToTick`) et ceux
+du départ : comme dans l'arrangement, il suffit que la vue bouge sous un pointeur
+immobile, et que `mouseDrag` soit encore appelé.
+
+**PRONOSTIC, à mesurer avant la correction** (le verbe `glisser-tenir:` de D527 ; le
+composant nommé `pianoroll` pour qu'il le trouve ; sa taille ajoutée au relevé
+`VSM_PIANOROLL_RANG`) — une piste de huit notes à do3 (60), la vue ouverte en haut à 72 :
+la note de la mesure 2 tirée contre le bord HAUT et tenue 30 répétitions atterrit sur la
+plus haute hauteur visible (72), exactement comme sans répétition ; tirée contre le bord
+DROIT, le défilement en temps ne bouge pas.
+
+**CE QUI EST PRÉVU** : les bandes de 24 px de D527 sur la grille (entre le clavier et les
+barres de défilement) ; en hauteur, une à trois hauteurs par répétition selon la
+profondeur, bornées comme la molette (12 à 127) ; en temps, le pas en pixels de D527.
+Gestes : le déplacement des notes (deux axes), les poignées de durée (temps). La
+sélection au rectangle n'en est pas, pour la raison du lasso de D527.
