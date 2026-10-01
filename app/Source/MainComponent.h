@@ -565,6 +565,10 @@ public:
         // crans (positif : vers le haut, le signe de `deltaY`), par `mouseWheelMove`.
         if (geste.startsWithIgnoreCase("molette:"))
             return molettePourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D527 : glisser-tenir:<nom>:fx0,fy0:fx1,fy1:répétitions -- l'appui, le glissé, puis
+        // les `mouseDrag` IMMOBILES que la répétition automatique envoie quand on tient.
+        if (geste.startsWithIgnoreCase("glisser-tenir:"))
+            return glisserTenirPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         if (geste.startsWithIgnoreCase("cliquer:"))
             return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         // D356 : exporter-midi:<fichier> -- L'EXPORT COMME GESTE, pour qu'un geste
@@ -644,6 +648,7 @@ public:
     bool clicPourCapture(const juce::String& description);   ///< D435
     bool glisserPourCapture(const juce::String& description);   ///< D520
     bool molettePourCapture(const juce::String& description);   ///< D525
+    bool glisserTenirPourCapture(const juce::String& description);   ///< D527
     bool saisirPourCapture(const juce::String& nom, const juce::String& texte);   ///< D444
     juce::Slider* curseurPourCapture(const juce::String& nom);
     /// D140 : voir le geste `doubleclic:` de `runTrackGestureForCapture`.

@@ -12,7 +12,9 @@
 #   (4) Maj + molette fait défiler le TEMPS, pas les pistes ;
 #   (5) Ctrl + molette zoome (moins de mesures dans la fenêtre), pas les pistes ;
 #   (6) choisir la piste 35 la fait voir ;
-#   (7) puis choisir la piste 1 fait remonter jusqu'à elle.
+#   (7) puis choisir la piste 1 fait remonter jusqu'à elle ;
+#   D527 — (8) à (11) : tenir un clip ou une piste contre un bord fait défiler la vue sous lui
+#   (bas : les pistes ; droit : le temps), chaque cas contre son témoin lâché tout de suite.
 #
 # POURQUOI CE BANC. Avant D525, `trackTop` partait de la règle sans aucun décalage
 # et aucun composant de l'arrangement ne recevait la molette : au-delà de la
@@ -135,6 +137,60 @@ c="$(vertical retour1 1)"
 echo "       puis la 1 : ${c:-?}"
 verdict "(7) puis choisir la piste 1 fait remonter jusqu'à elle" \
     "$(vrai "'$c' != '' and $(champ "$c" 1) == 1 and $(champ "$c" 4) == 0")"
+
+# --- D527 : TENIR UN GESTE AU BORD FAIT DÉFILER ------------------------------------
+# La vue fait 374 px de haut (22 de règle, 352 de pistes à 56 px), les en-têtes 150 px.
+# P02 est à fy 0,283 ; le bord bas à fy 0,985 (dans la bande de 24 px), le bord droit à
+# fx 0,985. Chaque cas a son TÉMOIN sans répétition : le défilement au bord ne se juge
+# que par l'écart entre « tenu » et « lâché tout de suite » (12/09 : une valeur qui
+# revient ne prouve rien sans le témoin qui montre d'où elle part).
+ou_est() {   # $1 = dossier enregistré -> « source destination ordreP01 debutP01 »
+    python3 - "$1/project.json" <<'PY'
+import json, sys
+try:
+    pistes = json.load(open(sys.argv[1], encoding="utf-8"))["tracks"]
+except (OSError, KeyError, ValueError):
+    print("? ? ? ?"); sys.exit(0)
+noms = [p.get("name", "") for p in pistes]
+n = [len(p.get("clips", [])) for p in pistes]
+source = n.index(0) + 1 if 0 in n else "-"
+dest = n.index(2) + 1 if 2 in n else "-"
+p01 = noms.index("P01") if "P01" in noms else -1
+debut = min((c["start"] for c in pistes[p01].get("clips", [])), default=-1) if p01 >= 0 else -1
+print(source, dest, p01 + 1, int(debut))
+PY
+}
+tenir() {   # $1 = nom ; $2 = description glisser-tenir ; -> le journal et le projet enregistré
+    course "$1" "1200:glisser-tenir:$2;1700:relever-arrangement;1750:relever-defilement;1800:enregistrer:$brouillon/$1-ecrit"
+}
+
+tenir bas-tenu "arrangement:0.5,0.283:0.5,0.985:30"
+tenir bas-lache "arrangement:0.5,0.283:0.5,0.985:0"
+t1="$(ou_est "$brouillon/bas-tenu-ecrit")"; t0="$(ou_est "$brouillon/bas-lache-ecrit")"
+v1="$(vertical bas-tenu 1)"; v0="$(vertical bas-lache 1)"
+echo "       clip de P02 au bord bas : tenu → piste $(champ "$t1" 2) (pistes ${v1:-?}) ; lâché → piste $(champ "$t0" 2) (pistes ${v0:-?})"
+verdict "(8) tenu au bord bas, le clip de P02 descend PLUS BAS que lâché, et la vue a défilé" \
+    "$(vrai "'$(champ "$t1" 2)' not in ('-', '?') and '$(champ "$t0" 2)' not in ('-', '?') and $(champ "$t1" 2) > $(champ "$t0" 2) and '$v1' != '' and $(champ "$v1" 4) > 0")"
+# Le témoin DÉFILE UN PEU, et c'est D525 : le clip qui arrive sur P07 la CHOISIT, et
+# `faireVoirLaPiste` la montre entière (elle dépassait de 40 px). Écrit « sans défiler »
+# avant la première mesure (02/10, 02 h 28), à tort : au plus une piste de décalage.
+verdict "(9) le témoin lâché tout de suite : la dernière piste visible, à moins d'une piste de décalage" \
+    "$(vrai "'$(champ "$t0" 2)' == '$(champ "$v0" 2)' and $(champ "$v0" 4) < 56")"
+
+tenir piste-tenue "arrangement:0.135,0.134:0.135,0.985:30"
+tenir piste-lachee "arrangement:0.135,0.134:0.135,0.985:0"
+r1="$(ou_est "$brouillon/piste-tenue-ecrit")"; r0="$(ou_est "$brouillon/piste-lachee-ecrit")"
+echo "       P01 tirée par son en-tête au bord bas : tenue → rang $(champ "$r1" 3) ; lâchée → rang $(champ "$r0" 3)"
+verdict "(10) une piste tenue au bord bas descend plus bas que lâchée" \
+    "$(vrai "'$(champ "$r1" 3)' != '?' and '$(champ "$r0" 3)' != '?' and $(champ "$r1" 3) > $(champ "$r0" 3)")"
+
+tenir droite-tenu "arrangement:0.5,0.134:0.985,0.134:30"
+tenir droite-lache "arrangement:0.5,0.134:0.985,0.134:0"
+d1="$(ou_est "$brouillon/droite-tenu-ecrit")"; d0="$(ou_est "$brouillon/droite-lache-ecrit")"
+s1="$(horizontal droite-tenu 1)"; s0="$(horizontal droite-lache 1)"
+echo "       clip de P01 au bord droit : tenu → début $(champ "$d1" 4), défilement ${s1:-?} ; lâché → début $(champ "$d0" 4), défilement ${s0:-?}"
+verdict "(11) tenu au bord droit, le temps défile et le clip va plus loin que lâché" \
+    "$(vrai "'${s1:-}' != '' and '${s0:-}' != '' and ${s1:-0} > ${s0:-0} and $(champ "$d1" 4) > $(champ "$d0" 4)")"
 
 echo "--- $rates raté(s)"
 [ "$rates" -eq 0 ]

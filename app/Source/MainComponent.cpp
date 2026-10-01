@@ -1987,6 +1987,48 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     return true;
 }
 
+bool MainComponent::glisserTenirPourCapture(const juce::String& description) {
+    // D527 : « nom:fx0,fy0:fx1,fy1:répétitions » — l'appui en (fx0, fy0) bouton gauche,
+    // le glissé jusqu'en (fx1, fy1), puis `répétitions` `mouseDrag` à la MÊME place :
+    // ce que `beginDragAutoRepeat` fait envoyer à JUCE quand la souris est tenue
+    // immobile, et qui est le seul moyen pour une vue de défiler sous un geste tenu.
+    juce::StringArray champs;
+    champs.addTokens(description, ":", "");
+    if (champs.size() < 4) return false;
+    const juce::String nom = champs[0];
+    auto point = [](const juce::String& s) {
+        return juce::Point<float>(s.upToFirstOccurrenceOf(",", false, false).getFloatValue(),
+                                  s.fromFirstOccurrenceOf(",", false, false).getFloatValue());
+    };
+    const auto p0 = point(champs[1]), p1 = point(champs[2]);
+    const int repetitions = juce::jmax(0, champs[3].getIntValue());
+    std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
+        if (c.getName() == nom && !c.getLocalBounds().isEmpty()) return &c;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Component* cible = chercher(*this);
+    std::fputs(("VSM_GLISSE_TENU : " + description
+                + (cible != nullptr ? juce::String(u8" — joué") : juce::String(u8" — aucun composant visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    if (cible == nullptr) return false;
+    const auto w = static_cast<float>(cible->getWidth()), h = static_cast<float>(cible->getHeight());
+    const juce::Point<float> depart(p0.x * w, p0.y * h), arrivee(p1.x * w, p1.y * h);
+    const int mods = juce::ModifierKeys::leftButtonModifier;
+    const auto maintenant = juce::Time::getCurrentTime();
+    auto evenement = [&](juce::Point<float> ou, int m, bool glisse) {
+        return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), ou, juce::ModifierKeys(m), 1.0f,
+                                0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, depart, maintenant, 1, glisse);
+    };
+    cible->mouseDown(evenement(depart, mods, false));
+    cible->mouseDrag(evenement(arrivee, mods, true));
+    for (int i = 0; i < repetitions; ++i) cible->mouseDrag(evenement(arrivee, mods, true));
+    cible->mouseUp(evenement(arrivee, 0, true));
+    return true;
+}
+
 bool MainComponent::molettePourCapture(const juce::String& description) {
     // D525 : « nom:fx,fy:crans[:maj|:ctrl] » — la molette tournée au point (fx, fy) du
     // composant, un événement par cran (positif : vers le haut, comme `deltaY`), avec

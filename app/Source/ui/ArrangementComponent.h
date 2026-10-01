@@ -442,6 +442,12 @@ private:
     int decalageVertical() const;
     int scrollY_ = 0;
     int aMontrer_ = -1;
+    /// D527 : TENU CONTRE UN BORD, LA VUE DÉFILE SOUS LE GESTE. Une bande de
+    /// `kBandeDeBord` px au haut (sous la règle), au bas, à gauche (après les
+    /// en-têtes) et à droite ; dedans ou au-delà, chaque appel fait défiler d'un pas
+    /// qui grandit avec la profondeur. Rend vrai si la vue a bougé.
+    bool defilerAuBord(juce::Point<float> pointeur, bool vertical, bool horizontal);
+    static constexpr int kBandeDeBord = 24;
     /// La hauteur affichée d'une piste : celle qu'elle déclare, ou celle d'une
     /// piste pliée. Plier n'écrase pas le réglage, il le met de côté.
     int trackHeight(const vsm::sequencer::Track& track) const;

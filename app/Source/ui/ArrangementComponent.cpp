@@ -523,6 +523,12 @@ void ArrangementComponent::setDefilementVertical(int pixels) {
 
 void ArrangementComponent::faireVoirLaPiste(size_t index) {
     if (project_ == nullptr || index >= project_->tracks.size()) return;
+    // D527 : PENDANT UN GESTE DE LA SOURIS, C'EST LE GESTE QUI MÈNE LA VUE. Un clip
+    // qu'on traîne CHOISIT chaque piste où il entre ; la montrer entière amenait la
+    // suivante sous le pointeur, qui la choisissait à son tour — tenu au bord bas,
+    // le clip descendait d'une piste par répétition (P02 → P37 en 30), quand la
+    // piste qu'on réordonne, qui ne choisit rien, descendait au pas prévu (rang 14).
+    if (geste_ != Geste::Aucun) return;
     if (getHeight() <= kRulerHeight) { aMontrer_ = static_cast<int>(index); return; }
     aMontrer_ = -1;
     // Les bornes SANS décalage : la position de la piste dans le contenu.
@@ -533,6 +539,40 @@ void ArrangementComponent::faireVoirLaPiste(size_t index) {
     const int actuel = decalageVertical();
     if (haut < actuel) setDefilementVertical(haut);
     else if (bas > actuel + zone) setDefilementVertical(bas - zone);
+}
+
+bool ArrangementComponent::defilerAuBord(juce::Point<float> pointeur, bool vertical, bool horizontal) {
+    // Le pas grandit avec la profondeur dans la bande (et au-delà, borné) : effleurer le
+    // bord avance doucement, s'y enfoncer va vite. 4 à 28 px par appel ; à 25 appels
+    // par seconde, de 100 à 700 px/s.
+    auto pas = [](float profondeur) { return 4 + static_cast<int>(std::min(48.0f, profondeur) / 2.0f); };
+    bool bouge = false;
+    if (vertical) {
+        const float haut = static_cast<float>(kRulerHeight + kBandeDeBord);
+        const float bas = static_cast<float>(getHeight() - kBandeDeBord);
+        int dy = 0;
+        if (pointeur.y < haut) dy = -pas(haut - pointeur.y);
+        else if (pointeur.y > bas) dy = pas(pointeur.y - bas);
+        if (dy != 0) {
+            const int avant = decalageVertical();
+            setDefilementVertical(avant + dy);
+            bouge = decalageVertical() != avant;
+        }
+    }
+    if (horizontal && pixelsPerTick_ > 0.0) {
+        const float gauche = static_cast<float>(kHeaderWidth + kBandeDeBord);
+        const float droite = static_cast<float>(getWidth() - kBandeDeBord);
+        int dx = 0;
+        if (pointeur.x < gauche) dx = -pas(gauche - pointeur.x);
+        else if (pointeur.x > droite) dx = pas(pointeur.x - droite);
+        if (dx != 0) {
+            const vsm::midi::Tick avant = scrollTick_;
+            scrollTick_ = std::max<vsm::midi::Tick>(
+                0, scrollTick_ + static_cast<vsm::midi::Tick>(static_cast<double>(dx) / pixelsPerTick_));
+            if (scrollTick_ != avant) { bouge = true; repaint(); }
+        }
+    }
+    return bouge;
 }
 
 void ArrangementComponent::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
@@ -1190,6 +1230,19 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
 
 void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
     if (project_ == nullptr || geste_ == Geste::Aucun) return;
+
+    // D527 : TENU CONTRE UN BORD, LA VUE DÉFILE, ET LE GESTE SUIT DE LUI-MÊME. Le
+    // déplacement d'un clip et le réordonnancement relisent à chaque appel la piste
+    // et le temps SOUS le pointeur : il suffit que la vue bouge sous lui, et que
+    // `mouseDrag` soit encore appelé quand la souris ne bouge plus — c'est ce que
+    // demande `beginDragAutoRepeat`. Le lasso n'en est pas : son origine est tenue en
+    // coordonnées de la fenêtre (voir D527 dans ROADMAP-daw).
+    if (geste_ == Geste::Deplacer || geste_ == Geste::Reordonner || geste_ == Geste::BordGauche
+        || geste_ == Geste::BordDroit || geste_ == Geste::Etirer) {
+        beginDragAutoRepeat(40);
+        defilerAuBord(event.position, geste_ == Geste::Deplacer || geste_ == Geste::Reordonner,
+                      geste_ != Geste::Reordonner);
+    }
 
     if (geste_ == Geste::Hauteur && pisteSaisie_ >= 0) {
         auto& track = project_->tracks[static_cast<size_t>(pisteSaisie_)];

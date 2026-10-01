@@ -38126,7 +38126,7 @@ Aucune ligne d'`app/Source/` n'a changé : pas de banc d'interface à rejouer.
 
 ---
 
-### Phase D527 — glisser un clip ou une piste au bord de l'arrangement ne fait rien défiler (02/10/2026) — EN ATTENTE DE MESURE
+### Phase D527 — glisser un clip ou une piste au bord de l'arrangement ne fait rien défiler (02/10/2026, faite le jour même)
 
 **D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D525**, écrit mot pour mot : « Le
 défilement automatique au bord pendant qu'on GLISSE un clip vers une piste hors de la
@@ -38159,3 +38159,43 @@ déplacement d'un clip (les deux axes), le réordonnancement d'une piste (vertic
 poignées de bord et l'étirement (horizontal). **Le lasso n'en est pas, et c'est dit** :
 son origine est retenue en coordonnées de la fenêtre, et la faire défiler sous lui
 demande de la tenir en coordonnées du morceau — une phase à elle.
+
+**LA MESURE, EN TROIS BINAIRES** — `tools/arrangement-defile.sh`, cas (8) à (11) ajoutés à
+ceux de D525, chacun contre son TÉMOIN lâché sans répétition (le défilement au bord ne
+se juge que par l'écart entre « tenu » et « lâché tout de suite ») ; 30 répétitions.
+
+| cas | (a) le verbe seul, sans défilement (02 h 28) | (b) le défilement au bord (02 h 31) | (c) le geste mène la vue (02 h 33) |
+|---|---|---|---|
+| (8) clip de P02 tenu au bord bas | piste **7**, comme lâché | piste **37** | piste **14** ; vue 8..14, 403 px |
+| (9) le témoin lâché | piste 7, décalage 40 px | piste 7, 40 px | piste 7, 13 px |
+| (10) P01 tirée par son en-tête au bord bas | rang **7**, comme lâchée | rang 14 | rang **14** |
+| (11) clip de P01 tenu au bord droit | début 10 113, défilement 0 — comme lâché | début 23 553, défilement 12 493 | idem |
+
+**Le pronostic est TENU tel qu'écrit** (a) : tenu ou lâché, c'était la même chose.
+
+**DEUX CHOSES QUE LA MESURE A APPRISES, et ce qui en a été fait.**
+- **Le témoin défilait déjà** (a) : 40 px, et non 0 comme le critère (9) l'avait écrit.
+  C'est D525 : le clip qui entre dans P07 la CHOISIT, et `faireVoirLaPiste` la montre
+  entière (elle dépassait de 40 px). Le critère était faux, pas le logiciel : il est
+  devenu « la dernière piste visible, à moins d'une piste de décalage », et le banc dit
+  pourquoi avec l'heure de l'erreur.
+- **Le défilement s'emballait** (b) : tenu au bord, le clip descendait jusqu'à P37 en 30
+  répétitions, quand la piste réordonnée, au même bord et pendant le même temps,
+  s'arrêtait au rang 14. Même cause : chaque piste où entre le clip est choisie, montrée
+  entière, et la suivante passe sous le pointeur — une piste par répétition, environ
+  25 par seconde. **Remède (c) : pendant un geste de la souris, c'est le geste qui mène
+  la vue** — `faireVoirLaPiste` ne fait rien tant qu'un geste de l'arrangement est en
+  cours. Le clip et la piste descendent alors au même pas (13 px par répétition à cette
+  profondeur, ~330 px/s), et le relâchement laisse la vue où le geste l'a menée.
+
+**CE QUI A ÉTÉ FAIT** : `defilerAuBord` (bandes de 24 px, pas de 4 à 28 px selon la
+profondeur), appelée en tête de `mouseDrag` pour le déplacement d'un clip (deux axes),
+le réordonnancement (vertical), les poignées de bord et l'étirement (horizontal), avec
+`beginDragAutoRepeat(40)` ; le verbe de banc `glisser-tenir:`. Les bancs voisins de
+l'arrangement (les neuf de D525) rejoués sur le binaire (c) : 9 sur 9 verts ;
+préférences de l'utilisateur intactes (`cmp`). Chaque compilation, la course de
+référence gelée (deux minutes chaque fois), `vsm-render` intact (`93e6587c…`).
+
+**CE QUI N'EST PAS FAIT.** Le lasso (son origine en coordonnées de la fenêtre) ; le
+piano roll, qui n'a pas davantage de défilement au bord — une phase à lui ; la série
+complète `--bancs`, refusée pendant la campagne, comme pour D525.
