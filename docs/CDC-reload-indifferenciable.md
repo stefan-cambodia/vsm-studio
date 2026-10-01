@@ -1974,3 +1974,45 @@ le temps : une raie de 24 s est une suite de présences et d'absences.
 **CE QUI SUIT, à écrire avant sa mesure (H56)** : la même question, ACCORD PAR ACCORD —
 sur les seuls segments où l'ensemble des raies qui sonnent ne change pas, chaque raie
 jugée sur son segment, avec un contrôle synthétique soumis aux MÊMES segments.
+
+---
+
+## 18. H56 — accord par accord : là où une raie SONNE, décrit-elle un cercle ? (écrite AVANT la mesure, 02/10/2026, 00 h 02)
+
+**Pourquoi.** § 17.2 : les trois instruments précédents jugeaient des raies qui
+s'éteignaient de 10 à 29 dB au fil des accords. La question du § 15 — « un direct plus
+UNE lecture » — reste entière ; elle se pose maintenant là seulement où la note sonne.
+
+**L'instrument** (`analyse/mesure_h56.py`, branche `reload-h47`), par raie, sur `E(t)`
+construit comme au § 15 (bande adaptée, porteuse affinée), à 200 Hz :
+- l'**enveloppe lente** `env(t)` : la racine de la moyenne glissante de `|E|²` sur
+  1,5 s — deux cycles et demi de `f1`, trois et demi de `f2` : le mouvement d'une
+  lecture s'y moyenne, un changement d'accord non ;
+- les **segments où la note sonne** : `env` à moins de 10 dB de son maximum sur
+  l'extrait, d'un seul tenant pendant au moins 3 s, rognés de 0,25 s à chaque bout ;
+- sur chaque segment, la trajectoire NORMALISÉE `E / env`, jugée par l'instrument du
+  § 15.1 tel quel (circularité ≤ 10 %, arc ≥ 60°, aplatissement ≥ 0,10) ; le retard à
+  `f1` relu sur le segment.
+
+**ATTENDUS** :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | **l'instrument** (tests écrits avant), cinq hauteurs, bruit à −30 dB, des notes qui s'allument et s'éteignent par segments de 4 à 7 s (fondus de 50 ms) : (a) une lecture ; (b) deux étages en série ; (c) une lecture sous des notes tenues 24 s | (a) au moins 90 % des segments en cercle, retard à `f1` relu à ± 15 % ; (b) au plus 20 % des segments des raies du haut en cercle ; (c) toutes les raies en cercle | une seule faute : rien ne se lit |
+| 2 | **le contrôle** : la même lecture synthétique, chaque raie portant l'enveloppe lente MESURÉE sur l'original (la même `env(t)`), jugée sur les mêmes segments | au moins 80 % des segments en cercle | moins : l'extrait ne juge rien (l'instrument est aveugle à CES enveloppes) |
+| 3 | **l'original**, sur les extraits où 2 tient | au moins 80 % des segments en cercle : « un direct plus une lecture » | au plus 20 % : ce n'est pas elle |
+| 4 | si 3 tient : **un seul retard ?** l'amplitude du retard à `f1` d'un segment à l'autre, toutes raies | dispersion ≤ 15 % : un effet sur le bus | > 40 % : par note |
+
+**Les extraits** : les trois de H55, sur l'original. Les segments sont publiés raie par
+raie (début, fin, niveau).
+
+**CE QUE LE VERDICT DÉCIDERA** (écrit avant) :
+- **3 et 4 tenus** : le pad est un direct plus UNE lecture sur le bus ; son retard, sa
+  profondeur et son dosage sont lus segment par segment, et c'est cet effet — mesuré —
+  que le rack reçoit (une phase de `ROADMAP-daw.md`).
+- **3 tenu, 4 en échec** : une lecture par note — la modulation est dans la machine,
+  pas dans un effet.
+- **3 en échec** (2 tenu) : plusieurs lectures ; la suite les compte.
+- **2 en échec sur deux extraits ou plus** : non concluante — et l'on cesse d'empiler
+  des instruments sur ce pad sans regarder autre chose : la suite reviendrait à rendre
+  le pad par le moteur avec les effets du rack, et à juger à l'oreille et au § 0.
