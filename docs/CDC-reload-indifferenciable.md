@@ -1205,6 +1205,35 @@ référence tourne : il attendra sa fin) ; 1 en échec — rien n'entre, la diff
 cherchée ; 2 entre les deux — le cache entre (il ne peut pas nuire si 1 tient), et le
 nouveau premier poste est profilé comme au § 10.2.
 
+### 10.5 Verdict de H58 (02/10/2026, mesuré de 00 h 52 à 01 h 37) : TENUE — les cinq attendus ; une course relancée rejoue tout le mélange en 8 s
+
+`reconstruction/travail/h58/` (branche `reload-h58`, `f013626`, arbre propre, moteur
+`build-h42` md5 `52532381`), `verdict_h58.py` :
+
+| course | étapes au mélange (verdict ; réglages ; seconds verdicts) | total | mesures de projet (payées, relues) | niveaux solo (payés, relus) |
+|---|---|---|---|---|
+| T, témoin `--sans-cache-rendus` | 210 ; 128 · 98 · 111 ; 59 · 117 · 113 | 836 s | — | — |
+| A, cache vide qu'elle remplit | 141 ; 129 · 104 · 112 ; 60 · 114 · 115 | 775 s | 242, 34 | 220, 13 |
+| B, rejouée sur le cache de A | 2 ; 1 · 1 · 1 ; 1 · 1 · 1 | **8 s** | 0, 276 | **0, 233** |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | l'identité contre T | **tenu** : `project.json` de A et B identiques à l'octet, rapport hors provenance sans différence, distance globale 0,1959822425659897 partout |
+| 2 | le rejeu, rapporté aux 176 s de la course B de H48 (≤ 50 %) | **tenu** : 8 s, **4,5 %** |
+| 3 | ce que B paie (0 et 0) | **tenu** : 0 niveau solo, 0 mesure de projet |
+| 4 | le témoin n'écrit rien | **tenu** : 0 fichier au cache après T, aucune ligne de compte |
+| 5 | la première passe, A rapportée à T (≤ 110 %) | **tenu** : **92,7 %** — elle relit déjà 13 niveaux solo qu'elle avait payés plus tôt dans la même course |
+
+**CE QUE LE VERDICT DÉCIDE, comme écrit avant** (1 à 4 tenus) : le code entre dans
+`reload-chaine` — la course 2 de « Reload » partira avec lui — et dans l'arbre principal
+quand aucune course n'y tournera ; la course de référence y tourne, il attend sa fin
+(`analyse/analyzer/` ne se touche pas sous une course qui l'a importé).
+
+**Ce que la mesure ne prouve pas** : la première passe à 92,7 % tient à un morceau de
+30 s où le réglage repasse par des états déjà vus ; sur « Reload », dont les niveaux
+solo se prennent sur 312 s et par groupes de quatre voix, la ligne « niveaux solo du
+calage » du journal de la course 2 dira combien une première passe en relit.
+
 ---
 
 ## 11. H49 — décrire le pad sur l'ORIGINAL : ses raies une à une, et la forme de leur mouvement (écrite AVANT la mesure, 30/09/2026, 20 h 00)
