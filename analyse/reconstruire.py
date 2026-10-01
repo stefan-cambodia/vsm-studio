@@ -436,6 +436,11 @@ def mesures_de_projet() -> Dict[str, int]:
     return dict(COMPTE_PROJET)
 
 
+def niveaux_solo() -> Dict[str, int]:
+    from analyzer.vsm_render_cache import COMPTE_NIVEAU
+    return dict(COMPTE_NIVEAU)
+
+
 def provenance(args: argparse.Namespace, classifieur, frappes,
                identite_moteur: Optional[dict] = None) -> dict:
     """Ce qu'il faut savoir pour REJOUER ce rapport (phase A4.2)."""
@@ -486,6 +491,8 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # H48 : les mesures de PROJET relues du cache et celles payées par
             # cette course. Une course qui a repris après une mort le montre ici.
             "mesuresDeProjet": mesures_de_projet(),
+            # H58 : de même pour les niveaux des rendus SOLO du calage de niveau.
+            "niveauxSolo": niveaux_solo(),
             "budgetPiste": args.budget_piste,
             "axesPiste": args.axes_piste,
             "finalistes": args.finalistes,
@@ -2662,6 +2669,10 @@ def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarra
     if compte["payees"] or compte["relues"]:
         print(f"      mesures de projet : {compte['payees']} payée(s), {compte['relues']} relue(s) "
               f"du cache (cache/mesures, H48)")
+    niveaux = niveaux_solo()
+    if niveaux["payees"] or niveaux["relues"]:
+        print(f"      niveaux solo du calage : {niveaux['payees']} payé(s), {niveaux['relues']} relu(s) "
+              f"du cache (cache/mesures, H58)")
     print("[5/5] Rendu du projet et mesure")
     rendu = sortie / "reconstruit.wav"
     # Résolu par la MÊME recherche que le moteur de la boucle : la version
@@ -3147,6 +3158,10 @@ def chaine(args: argparse.Namespace) -> None:
             # par défaut (voir `poser_moteur_de_course`).
             from analyzer.vsm_engine import poser_moteur_de_course
             poser_moteur_de_course(args.moteur)
+            # H58 : et son cache des niveaux solo, posé une fois de même — l'option est
+            # celle du cache existant, `--sans-cache-rendus` coupe les trois.
+            from analyzer.vsm_render_cache import poser_cache_des_niveaux
+            poser_cache_des_niveaux(not args.sans_cache_rendus)
             moteur = VsmEngine(binary=args.moteur, sample_rate=SAMPLE_RATE)
         except Exception as erreur:
             raise Abandon(2, f"moteur de rendu introuvable : {erreur}") from erreur

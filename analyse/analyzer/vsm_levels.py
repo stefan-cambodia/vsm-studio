@@ -21,12 +21,12 @@ from __future__ import annotations
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from .vsm_automation import _render_track
-from .vsm_project_export import ExportTrack
+from .vsm_project_export import ExportTrack, write_project_bundle
 
 # Bornes du volume corrigé. Le mixeur applique un gain linéaire sans borne,
 # mais un rapport extrême dit parfois « le rendu est quasi muet » (échec
@@ -110,25 +110,13 @@ def match_track_levels(
             continue
 
         duree = stem.size / float(sample_rate)
-        with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as temporaire:
-            dossier = Path(temporaire)
-            # Les échantillons du kit vivent dans le dossier de sortie ; le
-            # mini-projet les référence par chemin relatif, il lui faut donc
-            # sa propre copie.
-            for chemin_relatif in track.samples.values():
-                source = samples_root / chemin_relatif
-                if source.is_file():
-                    destination = dossier / "solo" / chemin_relatif
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(source, destination)
-            rendu = _render_track(track, dossier / "solo", duree, sample_rate)
-        if rendu is None:
+        mesure = _niveau_du_groupe([track], stem.size, duree, samples_root, sample_rate)
+        if mesure is None:
             rapports.append(f"{track.name} : volume non calé (rendu solo impossible)")
             continue
 
-        n = min(stem.size, rendu.size)
+        rms_rendu, n = mesure
         rms_stem = _rms(stem[:n])
-        rms_rendu = _rms(rendu[:n])
         if rms_rendu < SILENT_RMS or rms_stem < SILENT_RMS:
             rapports.append(f"{track.name} : volume non calé (rendu ou stem muet)")
             continue
@@ -200,34 +188,13 @@ def _caler_un_groupe(nom_groupe: str, pistes: List[ExportTrack],
         return rapports
 
     duree = stem.size / float(sample_rate)
-    somme = None
-    for piste in pistes:
-        if not piste.machine or not piste.notes:
-            continue
-        with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as temporaire:
-            dossier = Path(temporaire)
-            for chemin_relatif in piste.samples.values():
-                source = samples_root / chemin_relatif
-                if source.is_file():
-                    destination = dossier / "solo" / chemin_relatif
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(source, destination)
-            rendu = _render_track(piste, dossier / "solo", duree, sample_rate)
-        if rendu is None:
-            continue
-        if somme is None:
-            somme = np.array(rendu, dtype=np.float64)
-        else:
-            n = min(somme.size, rendu.size)
-            somme = somme[:n] + rendu[:n]
-
-    if somme is None:
+    mesure = _niveau_du_groupe(pistes, stem.size, duree, samples_root, sample_rate)
+    if mesure is None:
         rapports.append(f"{nom_groupe} : groupe non calé (aucun rendu solo)")
         return rapports
 
-    n = min(stem.size, somme.size)
+    rms_somme, n = mesure
     rms_stem = _rms(stem[:n])
-    rms_somme = _rms(somme[:n])
     if rms_somme < SILENT_RMS or rms_stem < SILENT_RMS:
         rapports.append(f"{nom_groupe} : groupe non calé (somme ou stem muet)")
         return rapports
@@ -243,3 +210,69 @@ def _caler_un_groupe(nom_groupe: str, pistes: List[ExportTrack],
             f"somme des {len(pistes)} pistes {rms_somme:.4f})")
         piste.volume = cale
     return rapports
+
+
+def _niveau_du_groupe(pistes: Sequence[ExportTrack], echantillons_stem: int, duree: float,
+                      samples_root: Path, sample_rate: int) -> Optional[Tuple[float, int]]:
+    """Le niveau efficace de la SOMME des rendus solo des pistes (une piste seule est
+    un groupe d'une), pris sur `min(stem, somme)` : (niveau, échantillons), ou None si
+    aucune n'a rendu.
+
+    H58 (§ 10.4 du cahier des charges de « Reload ») : quand la course range ses
+    niveaux (`poser_cache_des_niveaux`), ce nombre est rangé sous une clé qui hache ce
+    que le moteur lit — le dossier écrit pour chaque piste, comme H48 pour un projet —,
+    et relu sans rien rendre. Le dossier est écrit AVANT la clé, par les mêmes
+    arguments que `render_track_offline` lui donnera (titre « ab-automation », tempo
+    120) : le rendu le réécrira à l'identique. Un rendu en échec n'est JAMAIS rangé."""
+    from . import vsm_render_cache as rc
+
+    ranger = rc.cache_des_niveaux_actif()
+    with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as temporaire:
+        dossiers: List[Tuple[ExportTrack, Path]] = []
+        for i, piste in enumerate(pistes):
+            if not piste.machine or not piste.notes:
+                continue
+            solo = Path(temporaire) / f"solo-{i}"
+            # Les échantillons du kit vivent dans le dossier de sortie ; le
+            # mini-projet les référence par chemin relatif, il lui faut donc
+            # sa propre copie.
+            for chemin_relatif in piste.samples.values():
+                source = samples_root / chemin_relatif
+                if source.is_file():
+                    destination = solo / chemin_relatif
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+            dossiers.append((piste, solo))
+        if not dossiers:
+            return None
+        cle = ""
+        if ranger:
+            cles = []
+            for piste, solo in dossiers:
+                write_project_bundle([piste], solo, title="ab-automation", tempo=120.0)
+                cles.append(rc.cle_de_projet(solo, sample_rate, None))
+            cle = rc.cle_de_niveau(cles, duree, echantillons_stem)
+            en_cache = rc.niveau_en_cache(cle)
+            if en_cache is not None:
+                rc.COMPTE_NIVEAU["relues"] += 1
+                return en_cache
+        somme = None
+        echec = False
+        for piste, solo in dossiers:
+            rendu = _render_track(piste, solo, duree, sample_rate)
+            if rendu is None:
+                echec = True
+                continue
+            if somme is None:
+                somme = np.array(rendu, dtype=np.float64)
+            else:
+                m = min(somme.size, rendu.size)
+                somme = somme[:m] + rendu[:m]
+    if somme is None:
+        return None
+    n = min(echantillons_stem, somme.size)
+    niveau = _rms(somme[:n])
+    if cle and not echec:
+        rc.stocker_niveau(cle, niveau, n)
+        rc.COMPTE_NIVEAU["payees"] += 1
+    return niveau, n

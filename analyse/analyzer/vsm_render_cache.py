@@ -29,7 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -94,6 +94,57 @@ _SORTIES_DE_RENDU = frozenset({"rendu.wav"})
 # rapport, parce qu'une mesure relue n'est pas une mesure payée, et qu'une course
 # qui a repris après une mort doit pouvoir le montrer.
 COMPTE_PROJET = {"relues": 0, "payees": 0}
+
+# H58 : ce que la course a fait des niveaux de ses rendus SOLO — ceux du calage de
+# niveau, que le verdict et le réglage au mélange rejouent à chaque évaluation (97 % de
+# ce que coûtait encore un réglage tout relu, § 10.3 du cahier des charges de « Reload »).
+COMPTE_NIVEAU = {"relues": 0, "payees": 0}
+
+# H58 : LA COURSE POSE UNE FOIS si elle range ses niveaux solo, comme elle pose son
+# moteur (H48). Le calage est appelé de quatre endroits dans trois modules ; un drapeau
+# passé de main en main en oublierait un, et l'oubli rendrait en silence.
+_NIVEAUX_DE_COURSE = {"actif": False}
+
+
+def poser_cache_des_niveaux(actif: bool) -> None:
+    _NIVEAUX_DE_COURSE["actif"] = bool(actif)
+
+
+def cache_des_niveaux_actif() -> bool:
+    return bool(_NIVEAUX_DE_COURSE["actif"])
+
+
+def cle_de_niveau(cles_de_projet: Sequence[str], duree: float, echantillons_stem: int) -> str:
+    """La clé du niveau d'un rendu solo (une clé de projet) ou de la SOMME d'un groupe
+    (les clés de ses membres, DANS L'ORDRE où elles s'additionnent), pour une durée
+    rendue et un stem de `echantillons_stem` échantillons — le niveau se prend sur
+    `min(stem, rendu)`. Le CONTENU du stem n'y entre pas : le niveau du rendu n'en
+    dépend pas."""
+    descripteur = {"nature": "niveau-solo", "projets": list(cles_de_projet),
+                   "duree": repr(float(duree)), "stem": int(echantillons_stem)}
+    texte = json.dumps(descripteur, sort_keys=True, ensure_ascii=True)
+    return hashlib.sha256(texte.encode("ascii")).hexdigest()
+
+
+def niveau_en_cache(cle: str) -> Optional[Tuple[float, int]]:
+    """(niveau efficace, nombre d'échantillons sur lequel il est pris), ou None."""
+    chemin = dossier_du_cache() / f"{cle}.json"
+    if not chemin.is_file():
+        return None
+    try:
+        d = json.loads(chemin.read_text(encoding="ascii"))
+        return float(d["rms"]), int(d["n"])
+    except Exception:  # noqa: BLE001 - un fichier corrompu vaut une absence
+        chemin.unlink(missing_ok=True)
+        return None
+
+
+def stocker_niveau(cle: str, rms: float, n: int) -> None:
+    dossier = dossier_du_cache()
+    dossier.mkdir(parents=True, exist_ok=True)
+    temporaire = dossier / f".{cle}.tmp"
+    temporaire.write_text(json.dumps({"rms": rms, "n": int(n)}), encoding="ascii")
+    temporaire.replace(dossier / f"{cle}.json")
 
 _empreintes_de_fichier: dict = {}
 
