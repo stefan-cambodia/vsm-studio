@@ -1655,3 +1655,61 @@ arcs de 29 à 36°, circularité 0,5 à 1,2 % —, cas relevé, non gardé par u
 ≤ 10 % ET arc d'au moins 60° **ET aplatissement d'au moins 0,10**, sur au moins 8
 raies ; échec si circularité > 25 %, ou arc de moins de 60°, **ou aplatissement sous
 0,10**, sur 5 raies ou plus. Le reste du § 15 est inchangé.
+
+### 15.2 Verdict de H53 tel qu'écrit (01/10/2026, mesuré à 22 h 54) : attendu 2 en ÉCHEC — et un contrôle de l'instrument, écrit AVANT d'être lancé (22 h 55)
+
+`analyse/mesure_h53.py mesurer` (branche `reload-h47`, `8ea9970`), l'original de 16 à
+40 s, les dix raies de l'oracle ; 6 s ; `reconstruction/travail/reload-h53/mesure.json`.
+
+| raie | Hz | rapport au fond | circularité | arc | aplatissement |
+|---|---|---|---|---|---|
+| mi3 | 165,99 | 20,6 dB | 39,9 % | 4 326° | 0,544 |
+| fa♯3 | 186,32 | 20,0 dB | 44,5 % | 2 376° | 0,421 |
+| la♯3 | 234,74 | 18,0 dB | 49,9 % | 743° | 0,662 |
+| si3 | 248,70 | 24,3 dB | 46,5 % | 1 605° | 0,723 |
+| do♯4 | 279,16 | 18,6 dB | 31,7 % | 1 357° | 0,644 |
+| mi4 | 331,98 | 18,3 dB | 50,0 % | 1 607° | 0,617 |
+| fa♯4 | 372,63 | 16,5 dB | 42,7 % | 1 252° | 0,781 |
+| la♯4 | 469,49 | 16,4 dB | 40,0 % | 1 586° | 0,878 |
+| si4 | 497,40 | 10,4 dB | 50,3 % | 742° | 0,947 |
+| do♯5 | 558,32 | 10,2 dB | 44,2 % | 1 949° | 0,970 |
+
+| # | attendu | verdict |
+|---|---|---|
+| 2 | un cercle ? | **ÉCHEC** : 0 raie en cercle, 10 franchement hors (circularité de 32 à 50 %), 10 vues sur 10 |
+| 3, 4, 5 | le même retard, le même dosage, la forme du LFO | **sans objet**, comme écrit |
+
+**Ce que les chiffres montrent, et pas plus.** Aucune trajectoire n'est un trait : ce
+sont des NUAGES (aplatissement de 0,42 à 0,97, circularité voisine de celle d'une
+tache gaussienne, ≈ 52 %), et des arcs de deux à douze tours — le retard « lu » y
+ferait de 4 à 72 ms crête à crête, ce qui n'a pas de sens pour un chorus : l'angle,
+déroulé autour d'un centre que la trajectoire frôle sans cesse, accumule des tours.
+
+**POURQUOI LA RÈGLE DU § 15 NE S'APPLIQUE PAS ENCORE.** Elle dit « 2 en échec :
+plusieurs lectures ». Mais l'instrument n'a été éprouvé qu'à un bruit de −30 dB, et
+les raies de l'original sont à **10 à 24 dB** de leur fond — dans une bande de ± 7 à
+± 15 Hz, plus large que celle de H49 (± 6 Hz). Un calcul d'ordre de grandeur : à
+20 dB sur ± 6 Hz, le bruit vaut ≈ 13 à 16 % de l'amplitude efficace de la raie dans
+la bande de H53 ; pour un dosage de 0,5, cette amplitude vaut 0,71 fois celle de la
+note et le rayon 0,5 fois — le bruit fait ≈ 20 % du RAYON, et sa part radiale une
+circularité de 13 à 16 % à lui seul. À 10 dB, trois fois plus : de 40 à 50 %. Le § 15 le prévoyait en mots (« le bruit de la batterie
+épaissit le trait ») sans l'avoir chiffré, et le seuil de 10 dB n'a jamais été
+éprouvé. Règle du dépôt : quand un banc accuse, vérifier le banc avant la cible.
+
+**LE CONTRÔLE, écrit avant d'être lancé.** La structure « un direct plus une lecture »
+(dosage 0,5 ; retard 1,8 ms ± 0,85 à `f1` ± 0,3 à `f2`), aux DIX hauteurs de l'oracle
+et à 443,14 Hz, chaque raie noyée dans un bruit blanc réglé pour que son rapport au
+fond — mesuré par la MÊME fonction que sur l'original (`mesure_h49.forme_de_raie`) —
+soit celui de la même raie dans l'original, à ± 1 dB ; trois tirages de bruit.
+- **Si l'instrument y relit au moins 8 cercles sur 10** (dans au moins deux tirages
+  sur trois) : il voit un cercle à ce bruit, et l'échec de l'attendu 2 dit la
+  STRUCTURE — ce n'est pas une lecture. La suite est celle que le § 15 écrivait.
+- **S'il en relit 5 ou moins** : il est aveugle à ce bruit ; **H53 est NON
+  CONCLUANTE**, et rien ne s'écrit sur la structure du pad. La suite est alors un
+  instrument qui supporte le bruit de l'original (moyenner par note sur des cycles
+  du LFO, ou lire la phase relative de deux raies voisines) — écrit avant d'être
+  mesuré, comme le reste.
+- Entre les deux : non concluante aussi, et dit.
+
+Le contrôle est un script d'analyse (`analyse/controle_h53.py`, branche
+`reload-h47`), sans rendu : il tourne à côté de la course de référence.
