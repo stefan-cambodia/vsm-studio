@@ -2069,8 +2069,8 @@ structure du pad.
 
 **Ce que le contrôle montre de son aveuglement** : il voit sur les raies du bas et du
 milieu (mi3 à mi4 : circularités de 3 à 14 %, la plupart des segments en cercle), et ne
-voit pas sur les deux fa♯ tenus 19 à 20 s (12 à 21 % : leur niveau bouge de 5 dB dans le
-segment) ni sur les raies du haut (sol♯4, la♯4 : 15 à 26 %).
+voit pas sur les deux fa♯, tenus d'un seul segment de 19 à 20 s (12 à 21 % : leur niveau y
+descend jusqu'à 5 dB sous son maximum) ni sur les raies du haut (sol♯4, la♯4 : 15 à 26 %).
 
 **Relevé, et PAS une conclusion** : sur les raies où le contrôle voit, l'original n'est
 jamais un cercle — si3 25 à 34 % (contrôle 3 à 8 %), la♯3 27 à 36 % (3 à 9 %), do♯4 28 à
@@ -2081,10 +2081,10 @@ remplace pas.
 ou plus : non concluante — et l'on cesse d'empiler des instruments sur ce pad sans
 regarder autre chose : la suite reviendrait à rendre le pad par le moteur avec les
 effets du rack, et à juger à l'oreille et au § 0. » **Elle s'applique.** Le bilan de la
-lignée, dit sans l'arrondir : de H47 à H56, dix hypothèses sur le pad ; H50 tenue (une
-modulation de retard à deux cadences, sur des sinus), H51 partielle (un modèle à deux
-étages en série à 2,85 dB en validation), H52 un défaut de la chaîne, et quatre
-instruments de STRUCTURE (H53 à H56) non concluants, chacun pour une raison que son
+lignée, dit sans l'arrondir : de H47 à H56, huit hypothèses sur le pad (H48 et H52
+portaient sur la chaîne) — H47 non concluante, H49 (un mouvement au morceau, discret),
+H50 tenue (une modulation de retard à deux cadences, sur des sinus), H51 partielle (deux
+étages en série à 2,85 dB en validation), et quatre instruments de STRUCTURE (H53 à H56) non concluants, chacun pour une raison que son
 successeur a trouvée — le bruit du contrôle, la batterie qui n'était pas le fond, des
 notes qui n'étaient pas tenues, des enveloppes qui aveuglent encore le dernier. Aucune
 de ces quatre n'a donné un chiffre sur lequel le rack puisse être réglé.
