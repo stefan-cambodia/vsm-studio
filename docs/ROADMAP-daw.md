@@ -38273,3 +38273,32 @@ Mesuré ensuite à trois tailles (la disposition par défaut, un projet de la ch
 (672 × 94) ; **1 707 × 1 020 — la fenêtre maximisée de ce poste, 2 560 × 1 600 à
 l'échelle 1,5 : 20 lignes** (967 × 332). Le défaut ne touche que les petits écrans ;
 il reste nommé ici, sans phase ouverte.
+
+---
+
+### Phase D529 — le lasso de l'arrangement et le rectangle du piano roll ne défilent pas au bord (02/10/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — DU « CE QUI N'EST PAS FAIT » DE D527 ET DE D528**, la même phrase deux
+fois : le lasso (et la sélection au rectangle du piano roll) n'en est pas, « son origine
+est retenue en coordonnées de la fenêtre ». Choisir des clips sur plus de pistes que la
+vue n'en montre — ou des notes sur plus de hauteurs — demande aujourd'hui deux lassos et
+la touche Maj.
+
+**LA CAUSE, LUE DANS LE CODE.** `lassoOrigine_` (l'arrangement) et `dragStartMousePos_` (le
+piano roll) sont des points de la FENÊTRE ; le rectangle va de ce point au pointeur. Faire
+défiler la vue sous un lasso tenu laisserait l'origine sur place à l'écran, donc glisser
+dans le morceau : le rectangle ne couvrirait jamais plus qu'une fenêtre.
+
+**CE QUI EST PRÉVU** : l'origine retenue dans le MORCEAU — un tick, et une ordonnée de
+contenu (décalage vertical compris dans l'arrangement ; rangée du haut comprise dans le
+piano roll) — et reconvertie en point de la fenêtre à chaque appel ; puis le lasso et le
+rectangle ajoutés aux gestes qui défilent au bord (D527, D528).
+
+**PRONOSTIC, à mesurer avant la correction** (le nombre de clips choisis ajouté au relevé
+`VSM_ARRANGEMENT` ; `VSM_SELECTION` existe pour les notes) :
+- l'arrangement, quarante pistes à un clip d'une mesure : un lasso parti du vide à côté
+  du clip de P02, tiré contre le bord bas et tenu 30 répétitions, choisit **six** clips
+  (P02 à P07), exactement comme lâché tout de suite ;
+- le piano roll, huit notes descendant de do3 (60) à la♭1 (46) par tons, une par temps, la
+  vue ouverte en haut à 62 : un rectangle tiré contre le bord bas et tenu choisit **deux**
+  notes (60 et 58), comme lâché.
