@@ -38475,3 +38475,42 @@ au modèle d'édition. Il se fait en deux temps : **le modèle, le format et le 
 mesurés par un export de `vsm-render` (compilé dans un dossier à part : `build/tools/vsm-render`
 porte l'empreinte du cache de la course de référence et ne se touche pas) ; **puis
 l'interface**. D532.2 et D532.3 restent écrites, non commencées.
+
+---
+
+### Phase D533 — le stem d'une piste rangée dans un dossier sort muet (02/10/2026) — EN ATTENTE DE MESURE
+
+**D'OÙ ELLE VIENT — EN PRÉPARANT D532.1.** Le VCA agira sur les membres d'une autre piste,
+comme un dossier sur son contenu ; en lisant comment l'export isole les pistes, une
+interaction est apparue, et elle existe déjà sans VCA. Pour rendre le stem d'une piste,
+`exportStems` (`interchange/src/OfflineReconstruction.cpp`) rend le projet entier en
+COUPANT toutes les autres pistes — dossiers compris. Or depuis D35.4, le muet d'un dossier
+TAIT son contenu (`trackAudible` remonte l'arbre). Le stem d'une piste rangée dans un
+dossier sort donc silencieux, alors que le mélange la fait entendre.
+
+**MESURÉ AVANT TOUTE CORRECTION** (`vsm-render` de `build-h51`, 2 s, un projet à trois
+pistes : A, un dossier, B rangée dans le dossier, toutes deux sur `vsm.minimoog`) :
+
+| rendu | A | Dossier | B |
+|---|---|---|---|
+| stems, B dans le dossier | rms 0,0751 | « silencieux » | **« silencieux »** |
+| stems, témoin : B hors du dossier | — | « silencieux » | crête 0,263 |
+| le MÉLANGE, B dans le dossier | rms total **0,1058** (A seule : 0,0751) — B s'y entend | | |
+
+Le défaut est double : le stem de B est perdu (la somme des stems ne rend pas le mélange,
+ce que l'export promet), et le dossier, qui ne joue rien, reçoit un stem vide.
+
+**CE QUI EST PRÉVU, ET LA RÈGLE QUI LE DÉCIDE.** Un stem se rend en coupant les pistes qui
+SONNENT — MIDI et audio —, jamais celles qui ne font que ranger ou commander (le dossier,
+et demain le VCA de D532.1) : leur muet appartient au mixage, il se garde tel que le
+projet le porte. Et une piste qui ne sonne pas ne reçoit pas de stem.
+
+**ATTENDUS, écrits avant la correction** :
+1. B dans le dossier : son stem sonne, à la crête du témoin (0,263) au bit près — le
+   dossier non coupé n'y change rien ;
+2. aucun fichier de stem pour le dossier ;
+3. un dossier MUET dans le projet tait toujours son contenu dans les stems (le muet du
+   projet est gardé) : le stem de B est alors silencieux, comme dans le mélange ;
+4. la somme des stems de A et B égale le mélange, au bit près (le projet n'a ni départ, ni
+   insert, ni tranche master) ;
+5. un test `interchange/` qui tombe sur le code d'avant.
