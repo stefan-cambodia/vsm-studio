@@ -106,7 +106,7 @@ séparation `htdemucs_6s`, parité, sampler, arbitrages, 6 rendus parallèles),
 poste s'est mis en veille au seuil de batterie (≈ 08 h 15 → 10 h 20) ; la course a
 repris au réveil.
 
-*Résultats : à écrire à la fin de la course, par l'outil du § 0 et le rapport.*
+*Résultats : au § 2.4 (la course finie le 02/10 à 08 h 29 ; distance globale 0,2415 ; aucune des six conditions du § 0 tenue).*
 
 ### 2.1 La course est morte à 16 h 14, avec l'extinction du poste — relancée à 17 h 01
 
@@ -215,6 +215,54 @@ avant** : à la fin, la ligne « mesures de projet » de son journal — toutes 
 aucune relue, puisque rien n'était rangé —, qui donne le coût de la clé sur un
 morceau de 312 s (la limite écrite au § 10). **Une quatrième extinction ne coûterait plus le
 mélange** : c'est l'attendu 3 de H48, tenu à 30 % près.
+
+
+### 2.4 Finie le 02/10 à 08 h 29 — les résultats (écrits à 08 h 39)
+
+**LA COURSE.** Relancée le 01/10 à 22 h 49 min 14 s, `FIN reconstruction rc=0` le 02/10 à
+08 h 29 min 18 s : **9 h 40 à l'horloge, 25 416 s (7 h 04) au compteur de la chaîne**. L'écart,
+9 388 s, est EXACTEMENT celui des deux mises en veille de la nuit relevées par `journalctl`
+(01 h 40 min 01 s → 02 h 21 min 28 s, puis 04 h 58 min 59 s → 06 h 54 min 00 s), que le
+compteur ne voit pas ; les gels de compilation (SIGSTOP), eux, y sont comptés. Douze pistes,
+5 918 notes, les groupes « other » et « Batterie » ; projet, rapport et `comparaison.wav`
+écrits dans `reconstruction/travail/reload-peschi/`.
+
+**DISTANCE GLOBALE : 0,2415** (métrique v2, budget 20 itérations, stems repris de
+`reload-peschi-stems`). Le verdict du mélange : deux tours ; la voix 3 de « other » et le
+piano changent de machine au second verdict (`vsm.tonewheel` → `vsm.stochastic`,
+`vsm.multisample` → `vsm.minimoog`) ; les deux pistes de voix restent « inchangées (aucune
+machine suivante) » — le chiffre « sans la piste » y vaut celui « avec », au dernier chiffre,
+la signature de H52 (§ 14) : cette course est d'AVANT sa correction.
+
+**LES CONDITIONS DU § 0** — l'outil `tools/ecart-a-l-original.py`, passé par l'étape 2 de
+`reload-suite.sh` sur le projet rendu à 44,1 kHz par `build-h42` (le « témoin » de H42, égal
+AU BIT au rendu de l'ancien moteur `build/` — contrôle de la même étape) :
+
+| condition | seuil | référence | tenue |
+|---|---|---|---|
+| diapason | \|écart\| ≤ 5 cents | −12,7 cents (original +12,3, reconstruction −0,4) | non |
+| niveau | \|décalage\| ≤ 0,5 dB, pire tranche ≤ 1 dB | −0,57 dB ; pire tranche 5,43 dB | non |
+| équilibre | \|écart médian\| ≤ 1 dB par bande | sub −1,33, basse −3,15, bas-médium +2,72, médium +1,66, haut-médium −3,01, aigus **−6,94** dB ; 33 à 42 tranches sur 43 au-delà de 1 dB | non (6 bandes sur 6) |
+| calage du kick | \|médian\| ≤ 2 ms, p90 ≤ 6 ms | \|médian\| 4,3 ms, p90 8,7 ms ; 408 attaques appariées sur 849 (618 côté reconstruction) | non |
+| largeur stéréo | ± 30 % de 0,0478 | **0,0001** — la reconstruction est MONO | non |
+| log-mel | écart moyen ≤ 1,3 dB | **10,09 dB** (médian 8,53) | non |
+
+**Aucune des six conditions nécessaires n'est tenue** : c'est le point de départ chiffré
+que le § 2 attendait, pas un verdict sur une hypothèse. Trois écarts dominent par leur
+taille, et chacun a sa piste déjà écrite ou à écrire : les **aigus à −6,9 dB** sur 40
+tranches sur 43 ; la **largeur stéréo nulle** (0,0001 contre 0,0478 — chaque piste est
+rendue au centre, ce que le § 3 n'avait pas relevé) ; le **log-mel à 10,1 dB**, huit fois
+le seuil. Le diapason, lui, a son hypothèse mesurée : H42 (§ 4.3).
+
+**CE QUI AVAIT ÉTÉ DIT AVANT, ET QUI EST FAUX.** Le § 2.3 attendait, sur la ligne
+« mesures de projet », « toutes payées, aucune relue, puisque rien n'était rangé ». Le
+journal dit **368 payées, 57 relues** : 368 fichiers neufs exactement sont apparus dans
+`cache/mesures` pendant la course, et les 57 relectures sont des mesures RÉPÉTÉES au sein
+de la course elle-même — le même projet mesuré deux fois au mélange. La course A du § 10.1
+l'avait déjà montré (« cache vide qu'elle remplit » : 242 payées, **34 relues**) ; la
+prédiction ne l'avait pas lu. Le coût de la clé sur un morceau de 312 s, que cette ligne
+devait donner, n'est pas isolable ici (rien ne chronomètre le hachage) : il reste « non
+mesuré », comme au § 10.
 
 ---
 
@@ -376,6 +424,32 @@ l'ancienne formule), et les mesures déjà payées restent valables. La garde a 
 rouge : la condition retirée, le test tombe sur « deux diapasons partagent une
 clé ». `analyzer.diapason` et `analyzer.tenues` rejoignent
 `charger_tous_les_modules`.
+
+### 4.3 Verdict de H42 (mesuré le 02/10 de 08 h 29 à 08 h 32 par `reload-suite.sh`, écrit à 08 h 39) : attendu 1 TENU, attendu 4 en ÉCHEC de 0,01 dB au-delà de sa marge
+
+La mesure écrite au § 4, sans rien changer : le projet de la course de référence (§ 2.4)
+rendu deux fois par `build-h42`, témoin à 440, essai à `referenceA4Hz` = 443,1372 Hz
+(+12,3 cents, l'estimateur du § 0 sur l'original) ; **une seule variable**. Contrôle : le
+témoin du moteur neuf est égal AU BIT à celui de l'ancien moteur (`build/`).
+
+| # | mesure | témoin (440) | essai (443,14 Hz) | verdict |
+|---|---|---|---|---|
+| 1 | écart de diapason | −12,7 cents | **−0,4 cents** | **tenu** (\|−0,4\| ≤ 5) |
+| 4 | log-mel moyen | 10,09 dB | 10,15 dB | **échec** : +0,06 dB, la marge écrite était +0,05 |
+
+Les autres lignes de l'outil, publiées pour qu'on ne les cherche pas : niveau −0,57 → −0,81 dB
+(pire tranche 5,43 → 6,51 dB) ; bandes, l'essai rapproche le sub, la basse, le bas-médium, le
+haut-médium et les aigus, et éloigne le médium (+1,66 → +2,20 dB) ; kick inchangé (\|médian\|
+4,3 ms, p90 8,7 ms) ; largeur 0,0001 dans les deux.
+
+**CE QUE LE VERDICT DIT, ET NE DIT PAS.** L'hypothèse tient sur ce qu'elle promettait — le
+diapason passe sous le seuil, de −12,7 à −0,4 cents — et l'attendu 4, qui ne demandait que de
+ne pas empirer, est en échec à **0,01 dB au-delà de sa marge, à la précision où l'outil publie
+(0,01 dB)**. Ce n'est pas « dans le bruit » : la marge était écrite avant, elle est dépassée.
+Un projet réglé à 440 (machines, patchs, niveaux choisis À 440) puis transposé de 12 cents
+n'est plus le projet que la chaîne aurait réglé à ce diapason ; c'est exactement ce que la
+course 2 (`--diapason auto`, en cours depuis 08 h 32) mesure, et c'est elle qui dira si le
+diapason doit entrer par défaut. **H42 reste éteinte par défaut** jusque-là.
 
 ---
 
