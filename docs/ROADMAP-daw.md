@@ -39545,3 +39545,33 @@ L'ordre identité {A, B}, lui, tombe juste par coïncidence (delta nul). Mesure 
 du planificateur réel (`PlaybackScheduler::build`, le `hauteursJouees` des tests de D18.4),
 avant et après. **Si elle est fausse, D535.3 reprend la mécanique ; si elle est vraie, elle a
 sa correction ici, avant D535.3.**
+
+**L'HYPOTHÈSE EST VRAIE — et la première mesure l'avait absoute.** Écrite telle quelle, la
+mesure comparait l'ORDRE des hauteurs (`hauteursJouees`) : sol puis do, le test passait. Le
+détail a été suivi à la main dans `clipPassages`, puis relevé : après {B, A}, les notes sont
+déplacées (sol à 0, do à 480), la fenêtre de B (matériau 1920 + 480) est posée à 0 et ne lit
+plus RIEN, celle de A (matériau 0 + 1920) est posée à 480 et lit les DEUX notes — **sol à 0,5 s
+et do à 1 s, au lieu de 0 et 0,5 s**. Sur un vrai morceau, chaque section rejouerait les notes de
+la suivante par-dessus les siennes. La mesure qui tranche porte donc les TEMPS (`notesJouees` :
+(ms, hauteur)), et son témoin les vérifie avant (do à 0, sol à 2 000 ms).
+
+**CE QUI EST TRANCHÉ.** Aplatir ne recopie plus le matériau d'un côté et les fenêtres de l'autre :
+il recopie **ce que chaque section FAIT ENTENDRE**, lu par les fenêtres (`clipPassages`, les
+clips muets compris pour ne rien perdre), et le pose sur un matériau neuf où **chaque clip est
+une fenêtre identité** (`sourceStart = startTick`) — le projet aplati est « un projet ordinaire,
+des notes et des clips à leur place », ce que D18.4 promettait. Les contrôleurs (CC, pli,
+pressions, programmes) voyagent avec les notes — ils restaient à leur place d'avant, ce que rien
+ne disait ; et, comme les courbes d'automation, chaque créneau s'ouvre sur la dernière valeur
+entendue avant sa section, pour ne pas hériter du créneau précédent. Les clips AUDIO, dont la
+fenêtre est en secondes, gardent leur traitement.
+
+**ATTENDUS.**
+1. le test des temps : {B, A} sur une piste à fenêtres identité → (0 ms, sol), (500 ms, do) ;
+   le témoin avant ; et l'ordre identité ne change rien ;
+2. une piste à clip DÉPLACÉ (la fenêtre lit le matériau ailleurs) et à copie LIÉE (D34.2, deux
+   fenêtres sur le même matériau) : chaque créneau fait entendre ce que sa section faisait
+   entendre, au bon temps ; un clip muet reste muet et garde ses notes ;
+3. un CC posé dans B voyage avec B ; un CC posé AVANT B (dans A) ouvre le créneau de B quand B
+   passe en premier ;
+4. les tests de D18.4 restent verts (pistes sans clip, automation, repères, accords, audio) ;
+   chacun des nouveaux vu rouge sur l'ancien code.
