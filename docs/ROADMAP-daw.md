@@ -39326,3 +39326,33 @@ highest − n`), qui reste entre la plus basse et la plus haute : la borne n'y m
    règle ;
 7. un banc `tools/editeur-logique.sh` qui joue 1 à 6, vu rouge sur un défaut remis à la main,
    entré dans `verifier.sh --bancs` ; `tools/gestes-vivants.py` connaît l'entrée.
+
+**COMPLÉMENT, écrit avant son code le 02/10 à 20 h 35, sur ce qu'a montré la photo de la fenêtre.**
+Rouverte, la fenêtre repart de la règle retenue sous sa forme canonique — `velocite < 30 et duree
+< 60` là où l'on avait tapé « vélocité < 30 et durée < 1/32 » : sans accents, en français jusque
+dans l'interface anglaise (photo sous `VSM_LANGUE=en`), et la durée en TICKS. Ce dernier point est
+une panne muette en puissance, pas une affaire de goût : 60 ticks font 1/32 à 480 ppq et **1/64 à
+960** — la règle retenue CHANGE DE SENS d'un projet à l'autre, et rien ne le dit (un MIDI ouvert
+garde sa résolution). L'attendu 5 a été tenu tel qu'écrit ; il est REMPLACÉ ici, et la raison est
+celle-là.
+
+**CE QUI EST TRANCHÉ.** Une seconde écriture de la règle, LISIBLE : les mots accentués, la hauteur
+par son nom (60 → C4, comme le clavier du piano roll), une durée ou une position en fraction de
+ronde quand elle tombe juste (dénominateur puissance de deux jusqu'à 128 : 60 → 1/32, 720 → 3/8,
+1 920 → 1/1), en ticks sinon ; en français (virgule décimale, « oui », « entre », « et ») ou en
+anglais (point, « yes », « between », « and »). Elle se relit en la même règle. Les préférences
+retiennent la forme lisible FRANÇAISE — une seule écriture par règle, donc toujours comparable,
+et indépendante de la résolution dès que la durée est une fraction ; la fenêtre la montre dans la
+langue de l'interface. La forme canonique reste celle du journal (`VSM_LOGIQUE`), que le banc lit.
+
+**ATTENDUS, écrits avant le code.**
+8. tests `core/` : les 56 règles (7 champs × 8 opérateurs), dans les DEUX langues, se relisent
+   en la même règle ; « velocite < 30 et duree < 60 » à 480 ppq s'écrit « vélocité < 30 et durée
+   < 1/32 » et « velocity < 30 and length < 1/32 » ; 61 → C#4, 0 → C-1 ; 0,5 / 0.5 ; oui / yes ;
+   50 ticks restent « 50 », 720 → 3/8, 1 920 → 1/1, 0 → 0 ; « durée < 1/32 » retenu à 480 et relu
+   à 960 vaut **120** ticks (le sens gardé), là où la canonique en donnerait 60 ;
+9. par le banc : le fichier de préférences porte `vélocité < 30 et durée < 1/32` (attendu 5
+   remplacé) ; rouverte sur ces préférences, la fenêtre dit au journal (`VSM_LOGIQUE_REGLE`) la
+   règle qu'elle montre — « vélocité < 30 et durée < 1/32 » en français, « velocity < 30 and length
+   < 1/32 » sous `VSM_LANGUE=en` — et la photo des deux langues la montre ; le banc vu rouge sur
+   la canonique remise dans le champ.
