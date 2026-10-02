@@ -38829,3 +38829,35 @@ de rendre une version vide. La longueur se compte en octets ; la mesure a été 
 QUATRE fonctions communes (`automationToDocument`, `automationToModel`, `automationToJson`,
 `automationFromJson`) — le code de la piste y est passé, les 330 tests d'interchange le
 tiennent ; et `usesWarp` compte les clips des versions rangées, comme ceux des prises.
+
+### Phase D532.2 bis — les versions de piste, second temps : l'interface (02/10/2026)
+
+**CE QUI EST TRANCHÉ ICI** (le critère de D532 : « créer, nommer, choisir, supprimer une
+version depuis l'en-tête ; une seule joue ; annulable ») :
+- **où** : un sous-menu « Versions de la piste » au menu Piste, comme « VCA de la piste »
+  (D532.1 bis) et pour la même raison — la ligne de piste n'a plus de place qui ne se paie
+  sur la sortie à la largeur du dock (D136). « L'en-tête » de D532 est tenu par le menu de la
+  piste choisie et par ce que la ligne MONTRE (ci-dessous), pas par un bouton de plus ;
+- **les entrées** : « Nouvelle version (vide) », « Dupliquer la version », puis chaque
+  version, la case cochée sur celle qu'on entend (la choisir la fait sortir), puis
+  « Renommer la version… » (une fenêtre à un champ « nom », répondable par `VSM_OPTIONS`,
+  D215) et « Supprimer la version » ; chacune est UN pas d'annulation, nommé avec la piste
+  (D437) ;
+- **sur une piste gelée**, les entrées qui changent la matière sont grisées et le DISENT dans
+  leur libellé (« … (piste gelée : dégeler d'abord) », la règle de D443) — c'est le refus de
+  `selectVersion`, rendu visible au lieu de rester un « rien ne se passe » ;
+- **ce que la ligne montre** : quand la piste a des versions, l'infobulle de son nom dit
+  « Version « Refrain » — 2 sur 3 ». Pas dans le texte du nom : il est éditable, et y
+  écrire la version la ferait renommer avec la piste.
+
+**ATTENDUS, écrits avant le code** — mesurés par l'APPLICATION (`tools/versions-piste.sh`),
+sur une piste de deux notes (40 puis 43) :
+1. « Dupliquer la version », puis l'éditeur ajoute une note (verbe `VSM_NOTES` ou équivalent),
+   enregistrer : `project.json` porte deux versions, `activeVersion` = 1, et `versions.mid`
+   porte les DEUX notes d'origine ; l'arrangement, les trois ;
+2. choisir la première version, enregistrer : l'arrangement porte les deux notes d'origine,
+   `versions.mid` les trois ;
+3. Ctrl+Z : de retour sur la seconde (l'arrangement à trois notes) ;
+4. « Renommer la version… » répondu « Refrain » : le nom est au fichier ;
+5. « Supprimer la version » sur l'active : la voisine sort, une seule version reste ;
+6. le banc vu rouge sur un défaut remis à la main, entré dans `verifier.sh --bancs`.
