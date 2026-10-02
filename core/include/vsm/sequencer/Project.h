@@ -4,6 +4,7 @@
 #include "vsm/sequencer/TimeSignatureMap.h"
 #include <functional>
 #include "vsm/sequencer/Track.h"
+#include "vsm/sequencer/ChordTrack.h"
 #include <cstdint>
 #include <map>
 #include <string>
@@ -73,6 +74,10 @@ public:
 
     /// Repères nommés de la ligne de temps, triés par tick.
     std::vector<Marker> markers;
+
+    /// LA LIGNE D'ACCORDS (D532.3), triée par tick ; un accord vaut jusqu'au suivant.
+    /// Elle ne joue rien : elle guide l'écriture (`snapNotesToChords`).
+    std::vector<ChordEvent> chords;
 
     /// LES NOTES DU PROJET (D18.6) — le bloc-notes de Cubase.
     ///

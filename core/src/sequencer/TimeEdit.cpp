@@ -1,6 +1,8 @@
 #include "vsm/sequencer/TimeEdit.h"
+#include "vsm/sequencer/ChordTrack.h"
 #include "vsm/sequencer/ClipEdit.h"
 #include <algorithm>
+#include <optional>
 
 namespace vsm::sequencer {
 
@@ -137,6 +139,20 @@ size_t appliquer(Project& project, Tick at, Tick delta,
     }
     project.ensureClipIdAbove(idClips - 1);
     touches += glisser(project.markers, at, delta);
+
+    // D532.3 : LA LIGNE D'ACCORDS glisse comme les repères — mais l'accord en vigueur à la
+    // FIN d'une plage supprimée le reste au raccord. Commencé dans la plage, il en serait
+    // retiré, et la musique d'après la coupe changerait d'harmonie sans que personne ait
+    // touché à un accord : il est reposé au point de coupe.
+    std::optional<ChordEvent> raccord;
+    if (delta < 0)
+        if (const ChordEvent* c = chordAt(project.chords, at - delta); c != nullptr && c->tick >= at && c->tick < at - delta)
+            raccord = *c;
+    touches += glisser(project.chords, at, delta);
+    if (raccord) {
+        raccord->tick = at;
+        setChordAt(project.chords, *raccord);
+    }
 
     // LE TEMPO ET LES MESURES : l'entrée au tick 0 ne bouge jamais.
     {

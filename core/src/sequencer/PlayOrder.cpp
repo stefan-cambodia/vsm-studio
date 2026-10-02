@@ -1,5 +1,6 @@
 #include "vsm/sequencer/PlayOrder.h"
 #include "vsm/sequencer/AutomationEdit.h"
+#include "vsm/sequencer/ChordTrack.h"
 #include "vsm/sequencer/ClipEdit.h"
 #include <algorithm>
 
@@ -141,6 +142,28 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
     for (const auto& creneau : creneaux)
         reperes.push_back({creneau.sortie, creneau.section.name});
     project.markers = std::move(reperes);
+
+    // D532.3 : LA LIGNE D'ACCORDS SUIT, créneau par créneau, ouverte par l'accord en vigueur
+    // à l'entrée de la section — la règle des courbes ci-dessus, pour la même raison : un
+    // créneau hériterait sinon de l'harmonie du créneau précédent.
+    if (!project.chords.empty()) {
+        std::vector<ChordEvent> accords;
+        for (const auto& creneau : creneaux) {
+            const Tick delta = creneau.sortie - creneau.section.startTick;
+            if (const ChordEvent* entree = chordAt(project.chords, creneau.section.startTick)) {
+                ChordEvent ouverture = *entree;
+                ouverture.tick = creneau.sortie;
+                setChordAt(accords, ouverture);
+            }
+            for (const auto& accord : project.chords) {
+                if (accord.tick <= creneau.section.startTick || accord.tick >= creneau.section.endTick) continue;
+                ChordEvent copie = accord;
+                copie.tick += delta;
+                setChordAt(accords, copie);
+            }
+        }
+        project.chords = std::move(accords);
+    }
 
     // DES IDENTIFIANTS NEUFS : une section jouée deux fois a produit deux fois
     // les mêmes notes, et deux notes de même identifiant rendraient la

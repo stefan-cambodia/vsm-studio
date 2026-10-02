@@ -38919,7 +38919,7 @@ chemin de `VSM_NOTES` (D336) joué APRÈS d'autres gestes — `VSM_NOTES` agit a
 Le mode d'emploi (§ 2) dit les versions : dupliquer, choisir, renommer, supprimer, ce qu'elles
 emportent et ce qu'elles laissent, le refus du gel.
 
-### Phase D532.3 — la piste d'accords, premier temps : le modèle, le format et « caler sur les accords » (02/10/2026)
+### Phase D532.3 — la piste d'accords, premier temps : le modèle, le format et « caler sur les accords » (02/10/2026) — FAITE
 
 **CE QUI EST TRANCHÉ ICI.**
 - **Une ligne d'accords PAR PROJET**, comme les repères et le tempo, et non une nature de
@@ -38958,3 +38958,82 @@ emportent et ce qu'elles laissent, le refus du gel.
 
 Le second temps — la ligne d'accords dans l'arrangement, poser/modifier/retirer un accord à
 la tête de lecture, le geste « Caler sur les accords » au piano roll, annulables — suit.
+
+**AJOUT, écrit avant son code (02/10, 13 h 50) — la ligne d'accords SUIT LES GESTES DE TEMPS.**
+Le cahier des charges ci-dessus n'en dit rien, et la relecture du code avant de commiter l'a
+trouvé : `insertTime`/`deleteTime` (`TimeEdit.cpp`) font glisser notes, courbes, repères et
+tempo, et `flattenPlayOrder` (`PlayOrder.cpp`) réécrit notes, clips, courbes et repères. Une
+ligne d'accords laissée en place y décrocherait de ses notes EN SILENCE — le geste d'après,
+« caler sur les accords », calerait alors sur l'harmonie d'une autre mesure. Tranché :
+- **insérer du temps** : les accords à partir du point glissent, comme les repères ;
+- **supprimer du temps** : les accords DANS la plage disparaissent, ceux d'après glissent — mais
+  l'accord en vigueur à la FIN de la plage le reste au raccord : s'il commençait dans la plage
+  (et qu'aucun autre ne commence pile à la fin), il est reposé au point de coupe. Sinon, la
+  musique d'après la coupe changerait d'harmonie sans que personne n'ait touché à un accord.
+  C'est la règle que `flattenPlayOrder` applique déjà aux courbes (« un point au début du
+  créneau, à la valeur que la courbe avait à l'entrée »), pour la même raison ;
+- **aplatir l'ordre de lecture** : chaque créneau reçoit les accords de sa section, décalés, et
+  un accord à son début — celui qui était en vigueur à l'entrée de la section, s'il y en avait
+  un. Deux accords identiques qui se suivent ne sont pas fusionnés : la ligne garde ce que les
+  sections portaient.
+
+**ATTENDUS de l'ajout.**
+4. tests `core/` : insérer du temps fait glisser l'accord d'après et laisse celui d'avant ;
+   supprimer une plage qui contient un changement d'accord retire les accords internes, fait
+   glisser ceux d'après, et repose au point de coupe l'accord en vigueur à la fin de la plage ;
+   aplatir l'ordre B, A rend la ligne d'accords de B puis de A, chacune ouverte par l'accord en
+   vigueur à son entrée ; chacun vu rouge sur la ligne laissée en place.
+
+**D532.3, PREMIER TEMPS, EST FAITE (02/10, 14 h 10).** Tests core 375 → **384** (six de la ligne
+d'accords, trois de l'ajout), interchange 330 → **333** ; dix-huit
+défauts remis à la main, un par un, binaire recompilé à chaque fois — **dix-huit rouges**, et
+chaque fois le test attendu (`rouges.py` du brouillon de session ; les fichiers rendus à
+l'identique, md5 relus).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | aller-retour des symboles, bémols, refus, `chordAt`, remplacement, calage | 13 types × 12 fondamentales × 13 basses = **1 716** accords relus à l'identique ; « Bb7 » → « A#7 », « Ebm/Gb » → « D#m/F# » ; neuf symboles faux refusés, sortie intacte ; calage 3 déplacées · 1 déjà juste · 1 sans accord. Rouges : suffixe en double, bémol lu dièse, sortie touchée avant le refus, basse à reste acceptée, tick exact exclu, pose qui ne remplace pas, égalité vers l'aigu, note sans accord non comptée, basse hors du masque, sélection ignorée, note juste déplacée | **oui** |
+| 2 | disque, symbole illisible, projet sans accord | 3 accords relus égaux ; « Cmaj13 » au tick 1920 écarté, 2 accords restent, la phrase porte le symbole ET le tick ; aucune clé `"chords"` sans accord. Rouges : clé écrite à vide, symbole deviné, écart non dit, clé non relue | **oui** |
+| 3 | l'export d'un projet avec accords = le même sans | `docs/examples/demo-project` rendu trois fois par `vsm-render` : sans accord, avec trois (« Am », « F », « G7/B »), et un TÉMOIN avec un quatrième illisible — **1 469 592 octets, égaux au bit** les trois ; le témoin prouve que ce binaire LIT la clé (« avertissement : accord « Cmaj13 » illisible au tick 5760 : écarté »), sans quoi « égal » aurait aussi voulu dire « ignoré ». Rendu non muet : 3,83 s, crête 0,577, 2/2 pistes sonorisées | **oui** |
+| 4 | la ligne suit les gestes de temps | insérer 960 à 1920 → `0:C 2880:Am 3840:F 4800:G` ; supprimer [2400, 3360) → `0:C 1920:Am 2400:F 2880:G` (F reposé au raccord, la note d'après reste sous G) ; une plage qui finit pile sur un accord ne repose rien ; aplatir B, A → `0:Am 960:F 1920:G 2400:C`. **Vus rouges AVANT le code** (la ligne laissée en place : 3 tests sur 3), puis sur le raccord retiré, le glissement retiré, l'ouverture de créneau retirée | **oui** |
+
+**UNE FAUTE DE CETTE PHASE, DITE.** La mesure 3 a été faite avec `build/tools/vsm-render`,
+**recompilé** pour l'occasion — alors que le § de l'ordre (plus haut) réserve ce binaire :
+« il porte l'empreinte du cache de la course de référence et ne se touche pas ». Son empreinte
+passe de **93e6587c** (relevée au journal de `reload-suite.sh` le 01/10 à 22 h 49) à
+**a6dd72a2**, et aucune copie de l'ancien n'existe (les quatre `vsm-render` du poste hachés).
+Ce que cela coûte, mesuré et non supposé : la course de référence est FINIE (08 h 29, rc=0) et
+n'en a plus besoin ; la course 2 rend par `build-h42`, intact (2727b308) ; mais la campagne S2
+(`banc-s2.sh`, qui ne nomme aucun binaire) rend par `build/` — ses mesures en cache sous
+l'ancienne empreinte ne seront plus relues, et le morceau g7, mort en cours de route, repartira
+à froid. Ce que cela ne coûte PAS : le témoin de 312 s de « Reload » (`reload-h42/temoin`),
+rendu par le binaire neuf, est **égal au bit** à celui de `build-h42` — lui-même égal au bit à
+l'ancien `build/` (étape 2 de la suite, 08 h 30) : les six morceaux déjà courus de S2 et les
+quatre à venir se comparent toujours. La règle de l'ordre vaut désormais pour tout binaire
+qu'une course NOMME ou TROUVE par défaut, et se vérifie par `sha256sum` avant un build, pas
+par mémoire.
+
+**ÉTAT DES COURSES, relevé à la reprise (14 h 05).** Le poste a été éteint le 02/10 à 09 h 15
+(`journalctl --list-boots`) : la course 2 de « Reload », partie à 08 h 32, est morte après
+43 min, avant d'écrire son projet ; la suite est rejouable et repart telle quelle. Le
+`--bancs` entier que D532.1 bis et D532.2 bis attendent ne se joue PAS pour autant dans cette
+fenêtre sans course : la session est VERROUILLÉE et l'écran ÉTEINT (`LockedHint=yes`,
+`dpms off`), et sous ces deux états seul le premier lancement d'une rafale dessine (D516,
+D520). Il reste à jouer écran allumé et déverrouillé.
+
+**LA SUITE ENTIÈRE, et une garde rouge qui n'était pas de cette phase.** `verifier.sh
+--compiler` (aucune course ne tourne) : core 384, audio 1 314, interchange 333, clap 25,
+panneaux 11, Python 257, ruff et mypy verts — et UNE garde des sources rouge, `menus-cites.py` :
+« Nouveau VCA pour les pistes choisies » et « VCA de la piste », cités par le mode d'emploi
+depuis D532.1 bis, « ne sont l'entrée d'aucun menu ». Ils le sont : la garde lisait les clés
+`{ "…",` du dictionnaire et pas les `{ u8"…",` de la table des modèles de phrase, où ces deux
+libellés sont rangés — **1 633 clés lues sur 1 801**, le piège `u8?"` que l'ordre de marche
+nomme, sous une autre forme. Motif `(?:u8)?"`, validé sur les cinq formes (clé simple, clé
+`u8`, clé à `%1`, guillemets échappés, valeur anglaise qui ne doit PAS être lue) ; essai en
+rouge sur un mode d'emploi de deux lignes : l'ancienne garde accusait la vraie entrée ET la
+fausse, la neuve n'accuse que la fausse (« Zorglub les membres »). La garde était rouge dès le
+commit de D532.1 bis (65c63e3), qui a écrit ces deux citations : ni le mode d'emploi ni le
+dictionnaire n'ont bougé depuis.
+
+Le second temps — la ligne d'accords dans l'arrangement et « Caler sur les accords » au piano
+roll — suit.

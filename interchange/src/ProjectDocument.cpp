@@ -335,6 +335,8 @@ ProjectDocument documentFromProject(const Project& project) {
                                                       1 << change.denominatorPow2});
     for (const auto& marker : project.markers)
         document.markers.push_back({marker.tick, marker.name});
+    for (const auto& accord : project.chords)   // D532.3 : le symbole est le format
+        document.chords.push_back({accord.tick, vsm::sequencer::chordSymbol(accord)});
     document.notes = project.notes;
     document.master = project.masterParameters;
     document.crossfadeShape = fadeShapeName(project.crossfadeShape);
@@ -530,6 +532,19 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         project.markers.clear();
         for (const auto& marker : document.markers)
             project.markers.push_back({marker.tick, marker.name});
+    }
+    // D532.3 : LA LIGNE D'ACCORDS, toujours celle du document — le `.mid` n'en porte
+    // aucune. Un symbole illisible est ÉCARTÉ et DIT, jamais deviné.
+    project.chords.clear();
+    for (const auto& decrit : document.chords) {
+        vsm::sequencer::ChordEvent accord;
+        accord.tick = decrit.tick;
+        if (!vsm::sequencer::parseChordSymbol(decrit.symbol, accord)) {
+            report.warnings.push_back("accord \u00ab " + decrit.symbol + " \u00bb illisible au tick "
+                                      + std::to_string(decrit.tick) + " : \u00e9cart\u00e9");
+            continue;
+        }
+        vsm::sequencer::setChordAt(project.chords, accord);
     }
     if (!document.master.empty()) project.masterParameters = document.master;
     if (!document.crossfadeShape.empty())
@@ -761,6 +776,16 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             markers.append(std::move(m));
         }
         root.set("markers", std::move(markers));
+    }
+    if (!document.chords.empty()) {   // D532.3
+        JsonValue accords = JsonValue::makeArray();
+        for (const auto& accord : document.chords) {
+            JsonValue a = JsonValue::makeObject();
+            a.set("tick", JsonValue::makeNumber(static_cast<double>(accord.tick)));
+            a.set("chord", JsonValue::makeString(accord.symbol));
+            accords.append(std::move(a));
+        }
+        root.set("chords", std::move(accords));
     }
 
     // D18.6 : les notes du projet, écrites seulement s'il y en a.
@@ -1136,6 +1161,9 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
 
     ProjectDocument document;
     document.title = json["title"].asString("Sans titre");
+    for (const auto& accordJson : json["chords"].elements())   // D532.3 : lus tels quels, jugés à l'application
+        document.chords.push_back({static_cast<int64_t>(accordJson["tick"].asNumber(0.0)),
+                                   accordJson["chord"].asString()});
     for (const auto& markerJson : json["markers"].elements()) {
         ProjectMarker marker;
         marker.tick = static_cast<int64_t>(markerJson["tick"].asNumber(0.0));

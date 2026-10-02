@@ -34,7 +34,13 @@ FIN = re.compile(r"(\.\.\.|…)|[.,;:«»()]|\s(pour|puis|et|ou|qui|—)\s|$")
 
 def cles() -> list[str]:
     texte = LANGUE.read_text(encoding="utf-8")
-    return re.findall(r'\{\s*"((?:[^"\\]|\\.)*)"\s*,', texte)
+    # LES DEUX FORMES DE CLÉ (02/10/2026, D532.3) : `{ "…",` dans la table des
+    # libellés, `{ u8"…",` dans celle des modèles de phrase (`ModeleDePhrase`,
+    # char8_t). Le motif ne lisait que la première — 1 633 clés sur 1 801 — et les
+    # deux entrées du menu Piste nées avec D532.1 bis, rangées dans la seconde, y
+    # passaient pour « l'entrée d'aucun menu ». `(?:u8)?"`, et non `u8?"`, qui
+    # voudrait « un u, puis un 8 facultatif » (le piège que l'ordre de marche nomme).
+    return re.findall(r'\{\s*(?:u8)?"((?:[^"\\]|\\.)*)"\s*,', texte)
 
 
 def derniere_entree(citation: str) -> str:

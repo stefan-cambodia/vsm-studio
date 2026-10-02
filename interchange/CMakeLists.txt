@@ -75,6 +75,7 @@ if (VSM_BUILD_TESTS)
         tests/test_project_roundtrip.cpp
         tests/test_automation_resolution.cpp
         tests/test_track_versions_bundle.cpp
+        tests/test_chord_track_bundle.cpp
     )
     target_link_libraries(vsm_interchange_tests PRIVATE vsm_interchange)
     target_include_directories(vsm_interchange_tests PRIVATE tests)

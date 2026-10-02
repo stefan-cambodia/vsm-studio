@@ -8,6 +8,7 @@ add_library(vsm_core STATIC
     src/sequencer/GeneralMidi.cpp
     src/sequencer/Quantizer.cpp
     src/sequencer/NoteEdit.cpp
+    src/sequencer/ChordTrack.cpp
     src/sequencer/StepPattern.cpp
     src/sequencer/AutomationEdit.cpp
     src/sequencer/Groove.cpp
@@ -60,6 +61,7 @@ if (VSM_BUILD_TESTS)
         tests/test_play_order.cpp
         tests/test_vca.cpp
         tests/test_track_versions.cpp
+        tests/test_chord_track.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)
     target_include_directories(vsm_core_tests PRIVATE tests)

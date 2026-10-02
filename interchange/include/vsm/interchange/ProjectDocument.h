@@ -191,6 +191,12 @@ struct ProjectMarker {
     std::string name;
 };
 
+/// D532.3 : un accord de la ligne d'accords, par son SYMBOLE (« Am7/G ») — le format.
+struct ProjectChord {
+    int64_t tick = 0;
+    std::string symbol;
+};
+
 /// UNE PRISE CONSERVÉE (D3.5). Voir `vsm::sequencer::Take` pour le modèle.
 ///
 /// SES NOTES NE SONT PAS ICI, et c'est la règle du format : les notes ont déjà
@@ -373,6 +379,7 @@ struct ProjectDocument {
     std::vector<ProjectTrack> tracks;
     /// Repères nommés. Facultatif, comme les clips.
     std::vector<ProjectMarker> markers;
+    std::vector<ProjectChord> chords;   ///< D532.3 : écrite seulement s'il y en a
     /// D18.6 : les notes du projet. Vides = rien n'est écrit.
     std::string notes;
     /// D363 : OÙ L'ON EN ÉTAIT DANS LA VUE D'ARRANGEMENT — le zoom et le point
