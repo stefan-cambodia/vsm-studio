@@ -39399,3 +39399,62 @@ qui demandait les comptes de lignes que ce commit reprend. **`--bancs` entier : 
 écran gardé allumé** — et c'est la première série entière depuis D532.1 bis : D532.2 bis, D532.3
 bis et D536 l'avaient laissée en attente (session verrouillée, course 2). Son résultat s'écrit
 ci-dessous à sa fin.
+
+
+### Phase D535.2 — les instantanés de la console : garder l'état du mixage sous un nom, et y revenir (02/10/2026)
+
+*Écrite avant son code, le 02/10 à 22 h 04.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Ce qu'un instantané garde, piste par piste** : le volume, le panoramique, le muet, le solo,
+  les niveaux de départ et l'état (actif ou contourné) de chaque insert — la liste de D535 —,
+  plus le trim d'entrée et la polarité, parce que la tranche de console les montre et les règle
+  au même endroit : un instantané qui rappellerait le fader et pas le trim affiché juste
+  au-dessus rappellerait un mixage qui n'a jamais existé. **Pas le master**, ni les réglages des
+  inserts eux-mêmes, ni le routage, ni les machines : c'est ce qui sépare un instantané de
+  console d'une version du projet, et Ctrl+Z ou « Enregistrer sous » font déjà l'autre.
+- **L'état est porté PAR LA PISTE** (nom → état), et le projet garde la liste ordonnée des noms.
+  Rangé par index de piste, il aurait le défaut des chaînes d'effets d'avant `TrackEffect`
+  (supprimer la piste 3 réaffecte en silence l'état de la 4) : porté par la piste, il la suit
+  quand on la déplace et part avec elle quand on la supprime. Une piste DUPLIQUÉE emporte les
+  états de l'originale (`duplicateTrack` copie tout le mixage) : c'était le même mixage.
+- **Les inserts s'apparient par rang ET par type** : l'instantané écrit, pour chacun, son type
+  et son état ; au rappel, l'insert de même rang et de même type reprend son état ; un insert
+  ajouté, retiré ou remplacé depuis est LAISSÉ, et compté.
+- **Rappeler** : chaque piste qui a un état sous ce nom le reprend ; une piste ajoutée après la
+  prise n'en a pas et reste telle quelle — le rappel le DIT (ligne d'état, et `VSM_INSTANTANE`
+  au journal : pistes rappelées, pistes sans état, inserts laissés). UN pas d'historique
+  (« Rappeler l'instantané — A », le nom en donnée comme celui d'une piste, D425) ; un rappel qui
+  ne changerait rien n'en ouvre pas, décidé AVANT d'ouvrir le pas (D511, comme D535.1 bis).
+- **Prendre** : une fenêtre demande le nom, proposé « Instantané N » ; un nom déjà pris fait
+  demander s'il faut REMPLACER (deux boutons), jamais en silence. Un pas d'historique : un
+  instantané est une donnée du projet.
+- **Supprimer** : un pas d'historique, l'état retiré de chaque piste.
+- **Où** : *Mixage ▸ Instantanés de la console ▸* « Prendre un instantané… », puis « Rappeler
+  « A » » par instantané, puis *Supprimer un instantané ▸* « A ». Des libellés uniques dans toute
+  la barre (`VSM_MENU` prend le premier libellé exact).
+- **Le fichier** : `"mixSnapshots": ["A", "B"]` à la racine et, dans chaque piste qui en porte,
+  `"mixSnapshots": {"A": {…}}` — écrits SEULEMENT s'il y en a : un projet sans instantané se
+  relit et se réécrit octet pour octet.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : prendre sur deux pistes, changer volume, panoramique, muet, solo, un départ,
+   le trim, la polarité, contourner un insert ; rappeler → les valeurs d'avant, exactement ;
+   une piste ajoutée après la prise reste telle quelle et est comptée ; un insert remplacé par un
+   autre type est laissé et compté ; la piste 1 supprimée, le rappel rend son état à l'ancienne
+   piste 2 et à elle seule ; rappeler l'état courant → « rien à changer » ; supprimer retire
+   l'état de chaque piste ; chacun vu rouge sur un défaut remis à la main ;
+2. tests `interchange/` : l'aller-retour `project.json` des instantanés (noms dans l'ordre, états,
+   inserts) ; un projet SANS instantané se réécrit au bit près ;
+3. par l'application, mesuré par l'EXPORT AUDIO (la leçon de D332 : une valeur au modèle n'est
+   pas un son) : sur un projet de deux pistes, prendre « Instantané 1 », enregistrer (PA) ; la
+   piste 1 à 0,5, la piste 2 muette, prendre « Instantané 2 », enregistrer (PB) ; rappeler
+   « Instantané 1 », enregistrer (PR) ; Ctrl+Z, enregistrer (PU). Exportés : **PR = PA au bit
+   près**, **PU = PB au bit près**, et le témoin **PB ≠ PA** ; `project.json` de PR porte les deux
+   noms et la piste 1 à son volume d'avant ; le journal dit « 2 piste(s) rappelée(s), 0 sans
+   état » ;
+4. « Prendre » sous un nom déjà pris → la boîte « Remplacer » (au journal), rien de remplacé
+   sans réponse ; rappeler l'instantané qu'on vient de prendre → aucun pas, et c'est dit ;
+5. un banc `tools/instantanes-console.sh` qui joue 3 et 4, vu rouge sur un défaut remis à la
+   main, entré dans `verifier.sh --bancs` ; `gestes-vivants.py` connaît les entrées ; libellés
+   traduits (`inventaire_langue.py --garde` à 0) ; le menu photographié dans les deux langues.
