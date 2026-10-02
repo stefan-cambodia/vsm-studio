@@ -605,9 +605,17 @@ StemResult renderStems(const LoadedBundle& bundle, StemGranularity granularity,
     };
     std::vector<Sortie> sorties;
     std::map<int, size_t> parGroupe;
+    // D533 : UNE LISTE POSITIVE DES PISTES QUI SONNENT. Elles seules reçoivent un stem
+    // et sont COUPÉES pour rendre celui des autres. Un dossier ne fait que ranger : le
+    // couper taisait son contenu (D35.4), et le stem d'une piste rangée sortait muet ;
+    // il recevait en plus un stem vide. Son muet appartient au mixage et se garde tel
+    // que le projet le porte — comme celui d'un groupe, et demain d'un VCA (D532.1).
+    auto sonne = [](const vsm::sequencer::Track& p) {
+        return p.kind == vsm::sequencer::Track::Kind::Midi || p.kind == vsm::sequencer::Track::Kind::Audio;
+    };
     for (size_t i = 0; i < project.tracks.size(); ++i) {
         const auto& piste = project.tracks[i];
-        if (piste.kind == vsm::sequencer::Track::Kind::Group) continue;
+        if (!sonne(piste)) continue;
         if (granularity == StemGranularity::Groups && piste.outputGroup >= 0) {
             const auto trouve = parGroupe.find(piste.outputGroup);
             if (trouve != parGroupe.end()) {
@@ -642,7 +650,7 @@ StemResult renderStems(const LoadedBundle& bundle, StemGranularity granularity,
         for (size_t i = 0; i < rendu.project.tracks.size(); ++i) {
             auto& piste = rendu.project.tracks[i];
             piste.solo = false;
-            if (piste.kind == vsm::sequencer::Track::Kind::Group) continue;
+            if (!sonne(piste)) continue;   // D533 : un dossier ou un groupe garde son muet
             piste.muted = std::find(sortie.pistes.begin(), sortie.pistes.end(), i)
                           == sortie.pistes.end()
                           || project.tracks[i].muted;

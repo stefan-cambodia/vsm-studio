@@ -507,6 +507,85 @@ VSM_TEST(the_sum_of_the_stems_is_the_mix) {
     }
 }
 
+// D533 — LE STEM D'UNE PISTE RANGÉE DANS UN DOSSIER SONNE. Pour rendre le stem d'une
+// piste, l'export coupe les AUTRES ; il coupait aussi les dossiers, et depuis D35.4 un
+// dossier coupé tait son contenu : le stem de B sortait silencieux, et la somme des stems
+// ne rendait plus le mélange. Un stem se rend en coupant ce qui SONNE, et le muet d'un
+// dossier — celui que porte le projet — se garde tel quel.
+Project buildFolderStemProject(bool dossierMuet) {
+    Project project;
+    project.title = "Stems et dossier";
+    project.ticksPerQuarterNote = 480;
+    uint64_t ids = 1;
+    Track a;
+    a.name = "A";
+    a.channel = 0;
+    a.instrumentId = "vsm.tb303";
+    for (int i = 0; i < 4; ++i) a.addNote(i * 240, i * 240 + 200, static_cast<uint8_t>(36 + i * 2), 110, 0, ids);
+    project.tracks.push_back(a);
+    Track dossier;
+    dossier.kind = Track::Kind::Folder;
+    dossier.name = "Dossier";
+    dossier.muted = dossierMuet;
+    project.tracks.push_back(dossier);
+    Track b;
+    b.name = "B";
+    b.channel = 1;
+    b.instrumentId = "vsm.tb303";
+    b.folderDepth = 1;
+    for (int i = 0; i < 3; ++i) b.addNote(i * 320, i * 320 + 260, static_cast<uint8_t>(60 + i * 3), 90, 1, ids);
+    project.tracks.push_back(b);
+    return project;
+}
+
+// Par l'INDEX de la piste, pas par le nom : le nom d'un stem est formaté (« 03 - B »),
+// et le premier état de ce test le cherchait « B » — il a accusé le témoin à tort.
+float creteDuStem(const StemResult& stems, size_t piste) {
+    for (const auto& stem : stems.stems)
+        if (stem.trackIndex == piste) {
+            float c = 0.0f;
+            for (const float v : stem.audio.left) c = std::max(c, std::abs(v));
+            return c;
+        }
+    return -1.0f;   // pas de stem de ce nom
+}
+
+VSM_TEST(a_track_inside_a_folder_has_a_sounding_stem_and_the_folder_none) {
+    TempFolder folder("stems-dossier");
+    saveProjectBundle(buildFolderStemProject(false), folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+    RenderOptions options;
+    options.durationSeconds = 3.0;
+    const StemResult stems = renderStems(chargé.bundle, StemGranularity::Tracks, options);
+    VSM_ASSERT(stems.success);
+    VSM_ASSERT_EQ(stems.stems.size(), static_cast<size_t>(2));   // A et B — pas de stem pour le dossier
+    VSM_ASSERT(creteDuStem(stems, 1) < 0.0f);          // pas de stem pour le dossier
+    VSM_ASSERT(creteDuStem(stems, 2) > 0.01f);
+
+    vsm::audio::engine::RenderedAudio mixage;
+    VSM_ASSERT(renderBundleToBuffer(chargé.bundle, mixage, options).success);
+    for (size_t i = 0; i < mixage.numFrames(); ++i) {
+        float g = 0.0f;
+        for (const auto& stem : stems.stems) g += stem.audio.left[i];
+        VSM_ASSERT_NEAR(g, mixage.left[i], 1e-6);
+    }
+}
+
+VSM_TEST(a_muted_folder_still_silences_its_track_in_the_stems) {
+    TempFolder folder("stems-dossier-muet");
+    saveProjectBundle(buildFolderStemProject(true), folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+    RenderOptions options;
+    options.durationSeconds = 3.0;
+    const StemResult stems = renderStems(chargé.bundle, StemGranularity::Tracks, options);
+    VSM_ASSERT(stems.success);
+    VSM_ASSERT(creteDuStem(stems, 0) > 0.01f);       // le témoin : A sonne
+    VSM_ASSERT(creteDuStem(stems, 2) >= 0.0f);       // B a son stem…
+    VSM_ASSERT(creteDuStem(stems, 2) < 1e-6f);       // … muet, comme dans le mélange
+}
+
 VSM_TEST(a_stem_carries_its_own_send_return) {
     // Le stem du lead doit contenir SA réverbération, sinon il n'est pas
     // utilisable seul -- c'est toute la différence avec le gel (D5.5).

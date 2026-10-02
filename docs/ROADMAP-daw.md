@@ -38478,7 +38478,7 @@ l'interface**. D532.2 et D532.3 restent écrites, non commencées.
 
 ---
 
-### Phase D533 — le stem d'une piste rangée dans un dossier sort muet (02/10/2026) — EN ATTENTE DE MESURE
+### Phase D533 — le stem d'une piste rangée dans un dossier sort muet (02/10/2026, faite le jour même)
 
 **D'OÙ ELLE VIENT — EN PRÉPARANT D532.1.** Le VCA agira sur les membres d'une autre piste,
 comme un dossier sur son contenu ; en lisant comment l'export isole les pistes, une
@@ -38514,3 +38514,22 @@ projet le porte. Et une piste qui ne sonne pas ne reçoit pas de stem.
 4. la somme des stems de A et B égale le mélange, au bit près (le projet n'a ni départ, ni
    insert, ni tranche master) ;
 5. un test `interchange/` qui tombe sur le code d'avant.
+
+**MESURÉ APRÈS LA CORRECTION — TENU** (`vsm-render` de `build-h51` recompilé, même projet) :
+1. B dans le dossier : stem à crête **0,26347**, égal **au bit** au témoin hors du dossier ;
+2. fichiers écrits : `01 - A.wav`, `03 - B.wav` — plus de stem vide pour le dossier ;
+3. le dossier MUET dans le projet : le stem de B reste « silencieux », comme dans le
+   mélange (son muet est gardé) ;
+4. somme A + B contre le mélange : écart maximal **1,5e-08** (fichiers en flottant) ;
+5. `a_track_inside_a_folder_has_a_sounding_stem_and_the_folder_none` vu ROUGE sur le code
+   d'avant (3 stems au lieu de 2), vert après ; `a_muted_folder_still_silences_its_track_in_the_stems`
+   vert avant comme après — il garde ce que la correction ne devait pas casser. Suite
+   `interchange` : **317 réussis, 0 échoué**.
+
+**Une faute de test, dite** : le premier état cherchait les stems par leur nom (« B »), qui
+est formaté (« 03 - B ») ; il a accusé le témoin A à tort. Les stems sont désignés par
+leur index de piste.
+
+**CE QUI N'EST PAS FAIT** : l'application installée et `build/tools/vsm-render` ne sont pas
+recompilés avec la correction (la course de référence tourne ; elle entrera à la
+compilation d'après campagne, avec D526 et H58). D532.1 (le VCA) reste à faire.
