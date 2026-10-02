@@ -39523,3 +39523,25 @@ pris pour modèle, part du projet complet. Le défaut était dans le test.
 
 **LES SUITES**, toutes les cibles recompilées : core **403**, audio 1 314, interchange **336**, clap
 25, panneaux 11 ; Python 257 ; ruff, mypy (174 fichiers) et les gardes des sources verts.
+
+
+### Phase D537 — « Aplatir l'ordre de jeu » sur une piste à clips : une hypothèse, écrite avant sa mesure (03/10/2026)
+
+*Écrite le 03/10 à 4 h 49, en préparant D535.3 (copier une plage sur toutes les pistes), qui
+aurait repris la même mécanique.*
+
+**CE QUI A ÉTÉ LU.** `flattenPlayOrder` (D18.4, `PlayOrder.cpp`) recopie, créneau par créneau,
+les NOTES d'une section d'après leur tick de MATÉRIAU (`note.startTick` dans [début, fin)) et
+déplacées de `delta`, et ses CLIPS d'après leur position sur la LIGNE DE TEMPS
+(`clip.startTick`), en gardant leur fenêtre (`sourceStart`) dans l'ANCIEN matériau. Or un clip
+MIDI est une fenêtre sur le matériau (`passagesOf`) : après aplatissement, la fenêtre recopiée
+lit l'ancien emplacement des notes, d'où elles viennent d'être déplacées. Les tests de D18.4
+n'ont que des pistes SANS clip — et depuis D333 presque toute piste MIDI ouverte en a.
+
+**HYPOTHÈSE.** Sur une piste MIDI à clips (fenêtres identité, celles que pose D333), un ordre
+qui RÉORDONNE fait jouer autre chose que l'ordre demandé : sur « A (do) | B (sol) », l'ordre
+{B, A} devrait faire entendre sol puis do ; il fera entendre moins de deux notes, ou d'autres.
+L'ordre identité {A, B}, lui, tombe juste par coïncidence (delta nul). Mesure : les hauteurs
+du planificateur réel (`PlaybackScheduler::build`, le `hauteursJouees` des tests de D18.4),
+avant et après. **Si elle est fausse, D535.3 reprend la mécanique ; si elle est vraie, elle a
+sa correction ici, avant D535.3.**
