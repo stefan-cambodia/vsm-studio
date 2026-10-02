@@ -598,6 +598,18 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
 
         target.requestedInstrumentId.clear();
         if (source.preferredPlugin.empty()) continue;
+        // D532.1 : UN DOSSIER OU UN VCA NE PORTE PAS DE MACHINE. L'application n'en écrit
+        // jamais pour eux ; un fichier écrit ailleurs en donnait une, qui s'instanciait
+        // pour ne rien jouer. Elle est écartée et DITE -- une correction, pas une
+        // réserve (D523) : le son ne change pas, la piste n'a pas de notes à jouer.
+        if (target.kind == Track::Kind::Folder || target.kind == Track::Kind::Vca) {
+            report.corrections.push_back("piste \"" + target.name + "\" : "
+                                         + (target.kind == Track::Kind::Vca ? "un VCA" : "un dossier")
+                                         + " ne porte pas de machine, \u00ab " + source.preferredPlugin
+                                         + " \u00bb \u00e9cart\u00e9e");
+            target.instrumentId.clear();
+            continue;
+        }
         if (pluginIsInstalled(source.preferredPlugin)) {
             target.instrumentId = source.preferredPlugin;
         } else {

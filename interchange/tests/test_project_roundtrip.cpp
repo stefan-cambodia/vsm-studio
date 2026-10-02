@@ -445,10 +445,6 @@ VSM_TEST(la_recette_d_assemblage_survit_au_disque) {
     VSM_ASSERT_EQ(troncons[1].toTick, vsm::midi::Tick{7680});
 }
 
-// UN PROJET SANS ASSEMBLAGE GARDE SON FICHIER OCTET POUR OCTET. Le critère est
-// vérifié sur le TEXTE et non sur l'absence d'erreur : un champ écrit vide
-// (« "comp": [] ») allongerait tous les fichiers déjà sur le disque, et c'est
-// exactement ce que ce projet refuse depuis D17.1.
 // D532.1 : UN PROJET SANS VCA N'EN PORTE AUCUNE TRACE — ni « vca » ni la nature —, ce
 // qui garde à l'octet le fichier de tous les projets d'avant.
 VSM_TEST(un_projet_sans_vca_n_en_ecrit_rien) {
@@ -460,6 +456,35 @@ VSM_TEST(un_projet_sans_vca_n_en_ecrit_rien) {
     VSM_ASSERT(texte.find("\"vca\"") == std::string::npos);
 }
 
+// D532.1, SECOND TEMPS : UN VCA OU UN DOSSIER NE PORTE PAS DE MACHINE. L'application
+// n'en écrit jamais pour eux ; un fichier écrit ailleurs (à la main, par un script) en
+// donnait une, qui s'instanciait pour ne rien jouer (« 4/4 piste(s) sonorisée(s) »
+// pour trois pistes qui sonnent). Elle est écartée, et c'est DIT — une correction, pas
+// une réserve : le son ne change pas.
+VSM_TEST(un_vca_ou_un_dossier_ne_recoit_pas_de_machine_et_c_est_dit) {
+    ProjectDocument document;
+    for (const char* nature : {"vca", "folder", "midi"}) {
+        ProjectTrack piste;
+        piste.name = nature;
+        piste.kind = nature;
+        piste.preferredPlugin = "vsm.minimoog";
+        document.tracks.push_back(piste);
+    }
+    Project projet;
+    projet.tracks.resize(3);
+    const auto rapport = applyDocumentToProject(document, projet);
+    VSM_ASSERT(projet.tracks[0].instrumentId.empty());
+    VSM_ASSERT(projet.tracks[1].instrumentId.empty());
+    VSM_ASSERT_EQ(projet.tracks[2].instrumentId, std::string("vsm.minimoog"));
+    VSM_ASSERT_EQ(rapport.corrections.size(), static_cast<size_t>(2));
+    VSM_ASSERT(rapport.corrections[0].find("vsm.minimoog") != std::string::npos);
+    VSM_ASSERT(rapport.warnings.empty());
+}
+
+// UN PROJET SANS ASSEMBLAGE GARDE SON FICHIER OCTET POUR OCTET. Le critère est
+// vérifié sur le TEXTE et non sur l'absence d'erreur : un champ écrit vide
+// (« "comp": [] ») allongerait tous les fichiers déjà sur le disque, et c'est
+// exactement ce que ce projet refuse depuis D17.1.
 VSM_TEST(un_projet_sans_assemblage_ecrit_le_meme_fichier) {
     Project p;
     Track t;

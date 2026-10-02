@@ -38709,3 +38709,48 @@ que c'est son attendu 4 qui le demande :
   APRÈS l'inconnu viserait le mauvais maillon. Cas rare (un effet qu'aucune version ne connaît),
   et la phrase de l'insert inconnu est déjà dite ; à trancher le jour où un insert inconnu se
   garde à sa place.
+
+### Phase D532.1 bis — les faders VCA, second temps : l'interface (02/10/2026)
+
+**CE QUI EST TRANCHÉ ICI** (le critère de D532 dit « une tranche dans la console, l'affectation
+dans la liste des pistes, annulable » ; le reste est laissé ouvert) :
+- **créer** : « Ajouter un VCA » au menu Piste, à côté de « Ajouter un groupe » ; et le geste
+  qu'on fait vraiment — choisir les huit pistes d'une batterie, puis **« Nouveau VCA pour les
+  pistes choisies »** : le VCA naît en fin de liste et commande toutes les pistes choisies
+  (Cubase : « Add VCA Fader to Selected Channels ») ;
+- **affecter** : un sous-menu « VCA de la piste » au menu Piste — « Aucun VCA », puis
+  « VCA « nom » » pour chaque VCA du projet, la case cochée sur celui de la piste choisie ;
+  il vaut pour **toute la sélection**, comme le muet de la ligne (D38.4). Pas dans la ligne
+  de piste : elle porte déjà nom, canal, machine, M, S, W, volume, panoramique et sortie, et
+  un menu déroulant de plus y écraserait la sortie à la largeur du dock (D136). Un VCA et un
+  dossier ne s'affectent pas (le VCA d'un VCA est refusé par `vcaOf`, un dossier ne porte
+  aucun signal) ; un BUS de groupe, lui, s'affecte — D532 dit « MIDI, audio ou groupe » ;
+- **la ligne du VCA** dans la liste : son nom, « VCA — N membre(s) » à la place de la machine,
+  M, S et le volume — ni canal, ni armement, ni panoramique, ni sortie : il ne porte aucun
+  signal, et un réglage sans effet est le pire (D18.7b) ;
+- **la tranche du VCA** dans la console : nom en couleur distincte, fader, échelle, W (son
+  automation s'écrit en jouant), M, S — ni trim, ni panoramique, ni délai, ni transposition,
+  ni phase, ni départs, ni vumètre ; la course rendue va au fader. Infobulle du nom : ses
+  membres ;
+- **un membre le dit** : sa tranche et sa ligne allument M quand le silence vient du VCA, avec
+  « Rendu muet par son VCA » (et non « par son dossier ») ; l'infobulle du nom de sa tranche
+  nomme le VCA qui le commande ;
+- un clip ne se pose pas sur un VCA (comme un groupe), et il n'a pas de canal MIDI.
+
+**ATTENDUS, écrits avant le code** — mesurés par l'APPLICATION, après la campagne (sa
+compilation gèlerait la course une demi-heure : `Track.h` a changé, presque tout se recompile) :
+1. un projet de trois pistes ; choisir A et B, « Nouveau VCA pour les pistes choisies »,
+   enregistrer : le `project.json` porte une piste `"kind": "vca"` et `"vca": 3` sur A et B,
+   pas sur C ;
+2. Ctrl+Z, enregistrer : plus de VCA, ni la clé `"vca"` ;
+3. « Aucun VCA » sur A, enregistrer : A perd sa clé, B la garde ;
+4. la photo de la console : la tranche du VCA sans trim, panoramique, départs ni vumètre ;
+   celle de la liste : la ligne du VCA sans canal, armement, panoramique ni sortie ;
+5. le VCA muet : la tranche de A allume M, son infobulle dit « Rendu muet par son VCA » ;
+6. un banc `tools/vca-interface.sh` qui rejoue 1 à 5, vu rouge sur un défaut remis à la main,
+   entré dans `verifier.sh --bancs` ; `--bancs` vert en entier.
+
+**DÉJÀ FAIT AVANT LA COMPILATION** (`interchange`, mesurable dans `build-h51`) : le refus d'une
+machine sur un VCA ou un dossier à la lecture du fichier — la machine écartée et DITE, en
+correction (D523 : le son ne change pas) ; test `un_vca_ou_un_dossier_ne_recoit_pas_de_machine_et_c_est_dit`,
+vu rouge sur le code d'avant (`instrumentId` non vide), interchange 327/327.
