@@ -58,6 +58,7 @@ if (VSM_BUILD_TESTS)
         tests/test_midi_effects.cpp
         tests/test_groove.cpp
         tests/test_play_order.cpp
+        tests/test_vca.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)
     target_include_directories(vsm_core_tests PRIVATE tests)

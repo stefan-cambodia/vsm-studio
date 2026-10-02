@@ -426,6 +426,7 @@ RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
     piste.muted = false;
     piste.solo = false;
     piste.outputGroup = -1;
+    piste.vcaTrack = -1;   // D532.1 : le gel est pré-fader, le VCA reste vivant
     piste.sendLevels.clear();
     piste.volume = 1.0f;
     // Une piste DÉJÀ gelée se regèle depuis son matériau, pas depuis son gel :

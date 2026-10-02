@@ -187,7 +187,15 @@ Project projetDistinctif() {
     groupe.name = "Bus batterie";
     groupe.volume = 0.7f;
 
-    p.tracks = {t, a, pub, dossier, dedans, groupe};
+    // D532.1 : un VCA, et le membre du dossier qui le désigne.
+    Track vca;
+    vca.kind = Track::Kind::Vca;
+    vca.name = "VCA cordes";
+    vca.volume = 0.5f;
+    vca.muted = true;
+    dedans.vcaTrack = 6;
+
+    p.tracks = {t, a, pub, dossier, dedans, groupe, vca};
     p.ensureClipIdAbove(12);
     return p;
 }
@@ -348,6 +356,12 @@ VSM_TEST(aller_retour_disque_champ_par_champ) {
     VSM_ASSERT_EQ(q.tracks[4].outputGroup, p.tracks[4].outputGroup);
     VSM_ASSERT_EQ(static_cast<int>(q.tracks[5].kind), static_cast<int>(Track::Kind::Group));
     VSM_ASSERT_NEAR(q.tracks[5].volume, p.tracks[5].volume, 1e-6);
+    // D532.1 : le VCA, son fader, son muet, et la référence de son membre.
+    VSM_ASSERT_EQ(static_cast<int>(q.tracks[6].kind), static_cast<int>(Track::Kind::Vca));
+    VSM_ASSERT_NEAR(q.tracks[6].volume, 0.5f, 1e-6);
+    VSM_ASSERT(q.tracks[6].muted);
+    VSM_ASSERT_EQ(q.tracks[4].vcaTrack, 6);
+    VSM_ASSERT_EQ(q.tracks[3].vcaTrack, -1);
 }
 
 // LES DEUX CHAMPS QUI NE SURVIVENT PAS, AFFIRMÉS PLUTÔT QUE TUS. Un jour où
@@ -435,6 +449,17 @@ VSM_TEST(la_recette_d_assemblage_survit_au_disque) {
 // vérifié sur le TEXTE et non sur l'absence d'erreur : un champ écrit vide
 // (« "comp": [] ») allongerait tous les fichiers déjà sur le disque, et c'est
 // exactement ce que ce projet refuse depuis D17.1.
+// D532.1 : UN PROJET SANS VCA N'EN PORTE AUCUNE TRACE — ni « vca » ni la nature —, ce
+// qui garde à l'octet le fichier de tous les projets d'avant.
+VSM_TEST(un_projet_sans_vca_n_en_ecrit_rien) {
+    Project p = projetDistinctif();
+    p.tracks.pop_back();              // le VCA
+    p.tracks[4].vcaTrack = -1;        // et la référence
+    const auto document = documentFromProject(p);
+    const std::string texte = projectDocumentToJson(document).toString();
+    VSM_ASSERT(texte.find("\"vca\"") == std::string::npos);
+}
+
 VSM_TEST(un_projet_sans_assemblage_ecrit_le_meme_fichier) {
     Project p;
     Track t;

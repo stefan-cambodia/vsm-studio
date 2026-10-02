@@ -580,6 +580,10 @@ private:
                            float* outputL, float* outputR);
     /// L'index du tampon de groupe d'une piste, ou -1 si elle va au master.
     int groupBufferFor(const vsm::sequencer::Project& project, size_t trackIndex) const;
+    /// D532.1 : LE FACTEUR DU VCA qui commande la piste — son fader, ou son automation
+    /// quand elle le pilote ; 1 sans VCA. Multiplie le fader de la piste aux deux
+    /// points de mixage (la piste, le bus de groupe), départs et mesures compris.
+    float facteurVca(const vsm::sequencer::Project& project, size_t trackIndex) const;
     /// Conclut les mesures accumulées sur le bloc et les publie.
     void publishMeasurement(size_t trackIndex);
 

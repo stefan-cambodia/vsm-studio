@@ -316,6 +316,7 @@ ProjectDocument documentFromProject(const Project& project) {
         for (const auto& effect : track.midiEffects)
             entry.midiEffects.push_back({effect.type, effect.parameters, {}, effect.enabled});
         entry.outputGroup = track.outputGroup;
+        entry.vcaTrack = track.vcaTrack;              // D532.1
         entry.invertPhase = track.invertPhase;
         entry.soloSafe = track.soloSafe;              // D30.1
         entry.disabled = track.disabled;              // D30.2
@@ -344,6 +345,10 @@ ProjectDocument documentFromProject(const Project& project) {
             // D19.4 : UN DOSSIER N'A NI MATÉRIAU NI SORTIE, seulement un nom,
             // une couleur et un état replié. Rien d'autre n'est écrit pour lui.
             entry.kind = "folder";
+        } else if (track.kind == vsm::sequencer::Track::Kind::Vca) {
+            // D532.1 : UN VCA N'A NI MATÉRIAU NI SORTIE, comme un dossier ; son fader
+            // et ses états de mixage sont écrits comme ceux de toute piste.
+            entry.kind = "vca";
         } else if (track.kind == vsm::sequencer::Track::Kind::Audio) {
             entry.kind = "audio";
             entry.audio = {track.audio.path, track.audio.sampleRate,
@@ -517,8 +522,10 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.kind = source.kind == "audio"  ? Track::Kind::Audio
                     : source.kind == "group"  ? Track::Kind::Group
                     : source.kind == "folder" ? Track::Kind::Folder
+                    : source.kind == "vca"    ? Track::Kind::Vca
                                                : Track::Kind::Midi;
         target.outputGroup = source.outputGroup;
+        target.vcaTrack = source.vcaTrack;   // D532.1
         target.arrangementHeight = source.arrangementHeight;
         target.folded = source.folded;
         target.frozen = source.frozen;
@@ -807,6 +814,9 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // au master garde le fichier qu'elle avait avant les groupes.
         if (track.outputGroup >= 0)
             entry.set("output", JsonValue::makeNumber(static_cast<double>(track.outputGroup)));
+        // D532.1 : le VCA, écrit seulement quand la piste en a un.
+        if (track.vcaTrack >= 0)
+            entry.set("vca", JsonValue::makeNumber(static_cast<double>(track.vcaTrack)));
         // Écrits seulement s'ils disent quelque chose : une piste à la hauteur
         // standard et dépliée garde le fichier qu'elle avait.
         if (track.arrangementHeight != 56)
@@ -1174,6 +1184,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
 
         track.kind = entry["kind"].asString();
         track.outputGroup = static_cast<int>(entry["output"].asNumber(-1.0));
+        track.vcaTrack = static_cast<int>(entry["vca"].asNumber(-1.0));   // D532.1
         track.arrangementHeight = static_cast<int>(entry["height"].asNumber(56.0));
         track.folded = entry["folded"].asBoolean(false);
         track.frozen = entry["frozen"].asBoolean(false);

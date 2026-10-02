@@ -554,7 +554,10 @@ public:
     /// referme quand on travaille ailleurs. Confondre les deux obligerait à
     /// router huit micros de batterie dans un bus pour pouvoir les replier,
     /// c'est-à-dire à changer le SON pour ranger la VUE.
-    enum class Kind { Midi, Audio, Group, Folder };
+    /// `Vca` (D532.1) NE JOUE RIEN NON PLUS : son fader MULTIPLIE celui de chaque
+    /// piste qui le désigne (`vcaTrack`), sans router aucun signal — chacune garde
+    /// son fader, ses départs et sa sortie. Les faders VCA de Cubase.
+    enum class Kind { Midi, Audio, Group, Folder, Vca };
     Kind kind = Kind::Midi;
 
     std::string name;
@@ -967,6 +970,13 @@ public:
     /// de tiroir, ce qui est ce qu'on voulait en la déplaçant.
     int folderDepth = 0;
 
+    /// LE VCA QUI COMMANDE CE FADER (D532.1) : l'index d'une piste `Kind::Vca`, -1
+    /// pour aucun. UN INDEX, donc RÉPARÉ partout où `outputGroup` et
+    /// `outputSourceTrack` le sont (déplacer, dupliquer, supprimer, insérer, éclater,
+    /// extraire) — c'est exactement là que ce genre de référence pourrit en silence.
+    /// Lu par `vcaOf`, qui refuse tout ce qui ne désigne pas un VCA.
+    int vcaTrack = -1;
+
     /// LA RECETTE DE L'ASSEMBLAGE (D55.2) : les tronçons qui ont produit le
     /// matériau courant, « de tel tick à tel tick, prends telle prise ».
     ///
@@ -984,6 +994,8 @@ public:
 
     /// Vrai si la piste est un dossier (raccourci de lecture).
     bool isFolder() const { return kind == Kind::Folder; }
+    /// Vrai si la piste est un VCA (D532.1).
+    bool isVca() const { return kind == Kind::Vca; }
 
     /// Vrai quand la piste publie la sortie d'une autre (voir ci-dessus).
     bool publishesInstrumentOutput() const { return outputSourceTrack >= 0; }
@@ -1161,12 +1173,32 @@ inline bool trackAudible(const Track& track, bool anySolo) {
 /// dans process() » sont tombés d'un coup, jusqu'à 6 424 allocations par
 /// mesure. On ne copie donc rien : on calcule les trois booléens et on les
 /// passe aux mêmes règles.
+/// LE VCA D'UNE PISTE (D532.1), ou nullptr. Rien n'est désigné par une référence
+/// hors bornes, vers une piste qui n'est pas un VCA, ou DEPUIS un VCA : un VCA ne
+/// va pas dans un VCA, comme un groupe ne va pas dans un groupe.
+inline const Track* vcaOf(const std::vector<Track>& tracks, size_t index) {
+    if (index >= tracks.size()) return nullptr;
+    const Track& piste = tracks[index];
+    if (piste.isVca() || piste.vcaTrack < 0) return nullptr;
+    const size_t v = static_cast<size_t>(piste.vcaTrack);
+    if (v >= tracks.size() || v == index || !tracks[v].isVca()) return nullptr;
+    return &tracks[v];
+}
+
 inline bool trackAudible(const std::vector<Track>& tracks, size_t index, bool anySolo) {
     if (index >= tracks.size()) return false;
     const Track& piste = tracks[index];
     bool muted = piste.muted;
     bool solo = piste.solo;
     bool disabled = piste.disabled;
+    // D532.1 : LE MUET, LE SOLO ET LA DÉSACTIVATION D'UN VCA ATTEIGNENT SES MEMBRES,
+    // comme ceux d'un dossier son contenu — par les mêmes trois valeurs effectives,
+    // pas par une seconde logique.
+    if (const Track* vca = vcaOf(tracks, index)) {
+        muted = muted || vca->muted;
+        solo = solo || vca->solo;
+        disabled = disabled || vca->disabled;
+    }
     // ON REMONTE VERS LE HAUT DE LA LISTE en cherchant, à chaque niveau, le
     // dossier qui contient la piste -- le même parcours que
     // `hiddenByCollapsedFolder`, et pour la même raison : un dossier n'est pas

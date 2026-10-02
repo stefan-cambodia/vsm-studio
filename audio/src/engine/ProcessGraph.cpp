@@ -1247,6 +1247,14 @@ void ProcessGraph::publishMeasurement(size_t trackIndex) {
     meters_.reportMeasurement(trackIndex, mesure);
 }
 
+float ProcessGraph::facteurVca(const vsm::sequencer::Project& project, size_t trackIndex) const {
+    const auto* vca = vsm::sequencer::vcaOf(project.tracks, trackIndex);
+    if (vca == nullptr) return 1.0f;
+    const size_t v = static_cast<size_t>(project.tracks[trackIndex].vcaTrack);
+    if (v < kMaxTracks && (autoMask_[v] & kAutoVolume)) return autoVolume_[v];
+    return vca->volume;
+}
+
 int ProcessGraph::groupBufferFor(const vsm::sequencer::Project& project, size_t trackIndex) const {
     if (trackIndex >= project.tracks.size()) return -1;
     const auto& track = project.tracks[trackIndex];
@@ -1293,19 +1301,21 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
         // la piste plus bas) -- un bus de batterie en opposition s'inverse
         // entier, départs compris.
         const float signeGroupe = track.invertPhase ? -1.0f : 1.0f;
+        // D532.1 : le fader du groupe, multiplié par celui de son VCA s'il en a un.
+        const float faderGroupe = track.volume * facteurVca(project, trackIndex);
         // BALANCE et non panoramique : le groupe reçoit un signal déjà stéréo,
         // qui a déjà traversé la loi à puissance constante de ses pistes. La
         // lui appliquer une seconde fois lui coûterait encore 3 dB, et grouper
         // deviendrait un choix qu'on paie. Voir `stereoBalance`.
         const float peak = mixStereoBalancedInto(groupL_[g].data(), groupR_[g].data(), numSamples,
-                                                  track.volume * signeGroupe, track.pan, audible,
+                                                  faderGroupe * signeGroupe, track.pan, audible,
                                                   outputL, outputR);
         blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
 
         // Un groupe se mesure comme une piste (D4.7), sur ce qu'il envoie.
         for (int i = 0; i < numSamples; ++i) {
-            const double l = static_cast<double>(groupL_[g][static_cast<size_t>(i)]) * track.volume;
-            const double r = static_cast<double>(groupR_[g][static_cast<size_t>(i)]) * track.volume;
+            const double l = static_cast<double>(groupL_[g][static_cast<size_t>(i)]) * faderGroupe;
+            const double r = static_cast<double>(groupR_[g][static_cast<size_t>(i)]) * faderGroupe;
             blockSumL2_[trackIndex] += l * l;
             blockSumR2_[trackIndex] += r * r;
             blockSumLR_[trackIndex] += l * r;
@@ -1317,7 +1327,7 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
         if (audible) {
             const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
             for (size_t b = 0; b < actifs; ++b) {
-                const float apresFader = (preFader & (1u << b)) ? signeGroupe : track.volume * signeGroupe;
+                const float apresFader = (preFader & (1u << b)) ? signeGroupe : faderGroupe * signeGroupe;
                 const float lvl = track.sendLevel(b) * apresFader;
                 if (lvl <= 0.0f) continue;
                 for (int i = 0; i < numSamples; ++i) {
@@ -1884,7 +1894,8 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     // micros en opposition le sont dans la réverbération aussi.
     const float signe = track.invertPhase ? -1.0f : 1.0f;
     const float volume = ((pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume) * signe
-                         * ccVolume_[trackIndex];   // D329 : le CC 7 se multiplie au fader (ou à son automation)
+                         * ccVolume_[trackIndex]    // D329 : le CC 7 se multiplie au fader (ou à son automation)
+                         * facteurVca(project, trackIndex);   // D532.1 : et le VCA qui le commande
     const float pan = std::clamp(((pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan) + ccPan_[trackIndex],
                                  -1.0f, 1.0f);   // D330 : le CC 10 s'ajoute au potentiomètre
 

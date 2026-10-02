@@ -38536,7 +38536,7 @@ compilation d'après campagne, avec D526 et H58). D532.1 (le VCA) reste à faire
 
 ---
 
-### Phase D532.1 — les faders VCA, premier temps : le modèle, le format et le moteur (02/10/2026) — EN ATTENTE DE MESURE
+### Phase D532.1 — les faders VCA, premier temps : le modèle, le format et le moteur (02/10/2026) — MESURÉE, SAUF L'ATTENDU 4 (bloqué par D534)
 
 **CE QUI EST PRÉVU** (le critère de D532, sans l'interface) :
 - `Track::Kind::Vca` — une piste qui ne joue rien, comme un dossier ; `Track::vcaTrack`, l'index
@@ -38564,3 +38564,89 @@ projet de trois pistes MIDI, A et B membres d'un VCA, C non membre :
 5. tests `core/` (recalage des index, `vcaOf`, audibilité), `interchange/` (aller-retour ;
    un projet sans VCA garde son fichier octet pour octet), chacun vu rouge sur un défaut
    remis à la main ; les suites `core/`, `audio/` et `interchange/` vertes.
+
+**MESURÉ (02/10, 07 h 50)** — `vsm-render` de `build-h51` (le VCA compris), le témoin rendu
+par le MÊME binaire, stems et mélange de 2 s à 48 kHz :
+
+| attendu | mesure | tenu |
+|---|---|---|
+| 1. VCA à 0 dB | mélange égal **au bit** au témoin sans VCA ; les trois stems aussi | oui |
+| 2. VCA à 0,5 | A : crête 0,205891 → 0,102945, B : 0,214711 → 0,107355 ; max \|stem − 0,5 × témoin\| / crête = **0** (au bit, plus fort que 1e-6) ; C égal au bit | oui |
+| 3. VCA muet | A et B silencieux, C égal au bit (crête 0,202914) | oui |
+| 4. automation du VCA | **non mesurable** : le rendu dit « Piste 4 (V) : automation « mix.volume » : la machine n'a pas ce paramètre » — et la même courbe sur A seule rend un stem ÉGAL AU BIT au témoin, avec le binaire d'avant comme avec celui-ci | **bloqué : D534** |
+| 5. tests | core 368/368, interchange 318/318, audio 1 314/1 314 ; **cinq défauts remis à la main, cinq rouges** : `vcaOf` qui accepte une cible non-VCA (`test_vca.cpp:35`), l'audibilité sans le VCA (`:50`), la permutation qui oublie `vcaTrack` (`:67`, « 2 != 0 »), la clé `"vca"` toujours écrite (`test_project_roundtrip.cpp:460`), la référence non relue (`:363`, « -1 != 6 ») ; le sixième, l'éclatement par hauteur, était rouge AVANT sa correction (ci-dessous) | oui |
+
+**UN DÉFAUT PLUS ANCIEN, TROUVÉ EN ÉCRIVANT LE RECALAGE.** `explodeTrackByPitch` copiait le
+groupe de sortie de la piste éclatée dans ses pièces, PUIS décalait les index des pistes du
+projet — sans les pièces, qui n'y étaient pas encore. Une batterie dont le bus vient APRÈS
+elle (l'ordre des reconstructions) envoyait donc ses pièces vers l'ancienne place du bus :
+le test l'a dit avant toute correction (« outputGroup 1 != 3 »). Le décalage s'applique
+désormais aux pièces aussi.
+
+**L'ATTENDU 4 N'EST PAS UN DÉFAUT DU VCA**, et ce n'est pas au VCA de le contourner : c'est
+l'export qui ne joue AUCUNE automation de mixage, sur aucune piste (D534, ci-dessous). Il se
+mesurera quand D534 sera close.
+
+**VU EN MESURANT, ÉCRIT POUR LE SECOND TEMPS.** Le projet de mesure, écrit à la main,
+donnait une machine (`preferredPlugin`) au VCA : `vsm-render` l'a instanciée et compte
+« 4/4 piste(s) sonorisée(s) ». Rien ne sonne (le VCA n'a pas de notes), mais une machine y
+est chargée pour rien. L'application n'écrit jamais de machine pour un VCA (`documentFromProject`
+le traite comme un dossier) ; le refus à la lecture — et sa phrase au rapport, jamais en
+silence — se pose avec l'interface du VCA.
+
+### Phase D534 — l'export ne joue aucune automation de mixage (02/10/2026)
+
+**D'OÙ ELLE VIENT — EN MESURANT D532.1.** L'automation du volume d'un VCA ne faisait rien à
+l'export. Avant d'accuser le VCA, la même courbe (`mix.volume`, de 1 à 0 sur la durée) a été
+posée sur une piste MIDI ordinaire : son stem sort **égal au bit** au témoin sans courbe, avec
+le `vsm-render` d'avant le VCA comme avec celui d'après, et le rendu dit « automation
+« mix.volume » : la machine n'a pas ce paramètre ».
+
+**LA CAUSE, LUE DANS LE CODE.** Deux résolutions des courbes existent, et elles ne disent pas
+la même chose :
+- l'application (`MainComponent::applyAutomationFromProject`) résout SIX familles —
+  `mix.volume`, `mix.pan`, `mix.trim`, `mix.send.N`, `master.<réglage>`,
+  `insert.N.<réglage>` —, puis les réglages de la machine ;
+- l'export (`OfflineReconstruction.cpp`, et donc `vsm-render` et l'export de
+  l'application) ne résout QUE les réglages de la machine. Toute l'automation de mixage est
+  perdue à l'export : un fondu de volume, un panoramique qui bouge, une montée de départ, une
+  automation d'insert ou du master. Une piste sans machine (audio, groupe, VCA) voit même
+  TOUTE sa courbe écartée (« automation sans instrument, ignorée ») ;
+- deux écarts de plus entre les deux : l'export ignore la COURBURE des points (D17.7,
+  `point.curve`), que l'application joue ; et l'export BORNE les valeurs d'une courbe de machine
+  à la plage du paramètre, ce que l'application ne fait pas.
+
+C'est la panne de D332 sous une autre forme — une règle qui conditionne le SON posée dans
+l'application seule —, et D332 dit où la corriger : **une résolution UNIQUE dans
+`interchange`, appelée par les deux chemins**.
+
+**CE QUI EST PRÉVU.**
+- `resolveAutomation(projet, bus master)` dans `interchange` rend les courbes du moteur et,
+  pour chaque courbe non résolue, une phrase qui dit pourquoi (famille inconnue, départ ou
+  insert hors bornes, réglage absent du master, de l'insert ou de la machine, piste sans
+  machine) ;
+- l'application et l'export l'appellent tous deux ; l'application garde la courbe non résolue
+  dans le projet (elle ne la supprime pas, D4.6) et ÉCRIT désormais sa phrase au journal — elle
+  l'écartait sans un mot ;
+- **les deux écarts tranchés ici** : la courbure est jouée (c'est ce qu'on entend en lecture,
+  et le format la porte) ; la borne à la plage du paramètre est GARDÉE pour les réglages de
+  machine et d'insert, dont le descripteur donne la plage (l'interpolation reste dans le vrai
+  espace — la raison écrite dans l'export), et ne s'applique pas aux familles de mixage, qui
+  n'ont pas de descripteur. L'application en lecture change donc pour une seule chose : une
+  courbe de machine hors plage s'y interpole désormais entre valeurs bornées, comme à l'export.
+
+**ATTENDUS, écrits avant le code** — mesurés par l'EXPORT (`vsm-render` de `build-h51`, qui
+ne sert pas la campagne), sur le projet de D532.1 (A, B, C ; 2 s ; témoin rendu par le même
+binaire) :
+1. `mix.volume` de 1 à 0 sur A : le stem de A s'éteint — énergie du dernier quart < 10 % de
+   celle du premier quart, quand le témoin y garde plus de 50 % —, et ceux de B et C restent
+   égaux au bit à leurs témoins ;
+2. la même courbe sur le VCA de A et B (l'attendu 4 de D532.1) : A et B s'éteignent, C égal au
+   bit ;
+3. `mix.pan` de −1 à +1 sur C : le canal gauche domine au premier quart, le droit au dernier ;
+4. une courbe sans famille connue sur une piste sans machine est DITE au rapport de l'export,
+   et une courbe de machine résolue l'est toujours (non-régression : la coupure d'un
+   `vsm.minimoog` qui bouge, le stem diffère du témoin) ;
+5. tests `interchange/` de la résolution, une famille par test, vus rouges sur un défaut remis
+   à la main ; les suites `core/`, `audio/` et `interchange/` vertes ; l'application compile
+   (`build-h51` ne la construit pas : vérifiée après la campagne, avec `--bancs`).

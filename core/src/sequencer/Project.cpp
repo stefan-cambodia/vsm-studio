@@ -390,6 +390,7 @@ Project Project::extractTrack(size_t index) const {
         Track& piste = seul.tracks.back();
         piste.outputGroup = -1;
         piste.outputSourceTrack = -1;
+        piste.vcaTrack = -1;   // D532.1 : extraite, elle n'a plus de VCA
         piste.folderDepth = 0;
     }
     return seul;
@@ -590,7 +591,10 @@ void reorderTracks(Project& project, const std::vector<size_t>& nouvelOrdre) {
     // `outputSourceTrack`.
     std::vector<const Track*> destinations(n, nullptr);
     std::vector<const Track*> sources(n, nullptr);
+    std::vector<const Track*> vcas(n, nullptr);   // D532.1
     for (size_t i = 0; i < n; ++i) {
+        const int vca = project.tracks[i].vcaTrack;
+        if (vca >= 0 && static_cast<size_t>(vca) < n) vcas[i] = &project.tracks[static_cast<size_t>(vca)];
         const int groupe = project.tracks[i].outputGroup;
         if (groupe >= 0 && static_cast<size_t>(groupe) < n)
             destinations[i] = &project.tracks[static_cast<size_t>(groupe)];
@@ -627,6 +631,7 @@ void reorderTracks(Project& project, const std::vector<size_t>& nouvelOrdre) {
     for (size_t i = 0; i < n; ++i) {
         const size_t avant = nouvelOrdre[i];
         remaniees[i].outputGroup = rangDe(destinations[avant]);
+        remaniees[i].vcaTrack = rangDe(vcas[avant]);   // D532.1
         const int rangSource = rangDe(sources[avant]);
         remaniees[i].outputSourceTrack = rangSource;
         // Une publication dont la source a disparu ne désigne plus rien : son
@@ -768,9 +773,11 @@ size_t duplicateTrack(Project& project, size_t index) {
     for (auto& piste : project.tracks) {
         if (piste.outputGroup >= insere) piste.outputGroup += 1;
         if (piste.outputSourceTrack >= insere) piste.outputSourceTrack += 1;
+        if (piste.vcaTrack >= insere) piste.vcaTrack += 1;   // D532.1
     }
     if (copie.outputGroup >= insere) copie.outputGroup += 1;
     if (copie.outputSourceTrack >= insere) copie.outputSourceTrack += 1;
+    if (copie.vcaTrack >= insere) copie.vcaTrack += 1;
     project.tracks.insert(project.tracks.begin() + insere, std::move(copie));
     return static_cast<size_t>(insere);
 }
@@ -792,6 +799,12 @@ void removeTrack(Project& project, size_t index) {
             const size_t cible = static_cast<size_t>(piste.outputSourceTrack);
             if (cible == index) { piste.outputSourceTrack = -1; piste.outputIndex = 0; }
             else if (cible > index) piste.outputSourceTrack -= 1;
+        }
+        // D532.1 : le VCA supprimé ne commande plus personne.
+        if (piste.vcaTrack >= 0) {
+            const size_t cible = static_cast<size_t>(piste.vcaTrack);
+            if (cible == index) piste.vcaTrack = -1;
+            else if (cible > index) piste.vcaTrack -= 1;
         }
     }
 }
@@ -834,6 +847,7 @@ size_t publishInstrumentOutputs(Project& project, size_t source,
     for (auto& piste : project.tracks) {
         if (piste.outputGroup >= insere) piste.outputGroup += combien;
         if (piste.outputSourceTrack >= insere) piste.outputSourceTrack += combien;
+        if (piste.vcaTrack >= insere) piste.vcaTrack += combien;   // D532.1
     }
     project.tracks.insert(project.tracks.begin() + insere,
                            std::make_move_iterator(neuves.begin()),
@@ -871,6 +885,7 @@ size_t explodeTrackByPitch(Project& project, size_t index,
         piste.volume = source.volume;
         piste.pan = source.pan;
         piste.outputGroup = source.outputGroup;
+        piste.vcaTrack = source.vcaTrack;   // D532.1 : les pièces gardent le VCA de la piste éclatée
         const std::string nom = nameFor ? nameFor(hauteur) : std::string();
         piste.name = !nom.empty() ? nom
                                    : source.name + " - " + noteNumberToName(hauteur);
@@ -902,13 +917,19 @@ size_t explodeTrackByPitch(Project& project, size_t index,
         source.name = nom;
 
     // TOUT CE QUI POINTE APRÈS LE POINT D'INSERTION RECULE D'AUTANT, comme
-    // pour `publishInstrumentOutputs` et `duplicateTrack`.
+    // pour `publishInstrumentOutputs` et `duplicateTrack` — LES PIÈCES COMPRISES
+    // (D532.1) : elles ont copié le groupe et le VCA de la piste éclatée AVANT ce
+    // décalage, et une batterie dont le bus est placé après elle — l'ordre des
+    // reconstructions — envoyait ses pièces vers l'ancienne place du bus.
     const int insere = static_cast<int>(index) + 1;
     const int combien = static_cast<int>(neuves.size());
-    for (auto& piste : project.tracks) {
+    auto decaler = [insere, combien](Track& piste) {
         if (piste.outputGroup >= insere) piste.outputGroup += combien;
         if (piste.outputSourceTrack >= insere) piste.outputSourceTrack += combien;
-    }
+        if (piste.vcaTrack >= insere) piste.vcaTrack += combien;   // D532.1
+    };
+    for (auto& piste : project.tracks) decaler(piste);
+    for (auto& piste : neuves) decaler(piste);
     project.tracks.insert(project.tracks.begin() + insere,
                            std::make_move_iterator(neuves.begin()),
                            std::make_move_iterator(neuves.end()));

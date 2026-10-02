@@ -10885,6 +10885,7 @@ void MainComponent::newFolderAboveSelectedTrack() {
     for (auto& t : project_.tracks) {
         if (t.outputGroup >= insere) t.outputGroup += 1;
         if (t.outputSourceTrack >= insere) t.outputSourceTrack += 1;
+        if (t.vcaTrack >= insere) t.vcaTrack += 1;   // D532.1
     }
     project_.tracks.insert(project_.tracks.begin() + insere, std::move(dossier));
     // La piste choisie, désormais juste après, entre dans le dossier.
