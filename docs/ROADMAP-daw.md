@@ -39598,6 +39598,60 @@ endroit. C'est la population d'une mesure (`CLAUDE.md`, 01/10) sous une autre fo
 d'ordre ne voit pas le temps. Le banc d'application lit donc des couples (tick, hauteur).
 
 **LES SUITES**, toutes les cibles recompilées : core **407**, audio 1 314, interchange 336, clap 25,
-panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts. **`--bancs` entier (51) : lancé à 5 h 10
+panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts. **`--bancs` entier (51) : lancé à 5 h 04
 sur ce binaire**, pour D535.2 (qui touchait l'interface) et pour D537 ; son résultat s'écrit à sa
 fin.
+
+
+### Phase D535.3 — copier une plage sur toutes les pistes, et la coller en insérant (03/10/2026)
+
+*Écrite avant son code, le 03/10 à 5 h 05, D537 faite.*
+
+**CE QUI EXISTE, ET CE QUI MANQUE.** Entre les locateurs, *Édition* sait insérer du silence et
+supprimer le temps sur tout le morceau (D13.3) ; l'ordre de jeu (D18.4, sain depuis D537) réécrit
+tout le morceau d'après des repères. Rien ne copie ce que TOUTES les pistes jouent entre deux
+points pour le reposer ailleurs : répéter un refrain se fait piste par piste, clip par clip.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Copier entre les locateurs (toutes les pistes)** garde, pour chaque piste, ce qu'elle FAIT
+  ENTENDRE dans [L, R) — la leçon de D537 : lu par les fenêtres des clips, muets compris —, ses
+  contrôleurs (et le dernier réglage entendu avant L), ses courbes d'automation (et leur valeur
+  en L), les morceaux de ses clips coupés aux bornes par `splitClips` (qui sait couper une fenêtre
+  audio en secondes, étirement compris), et la ligne d'accords de la plage (l'accord en vigueur en
+  L l'ouvre). **Pas** le tempo, les signatures, les repères : ils décrivent la ligne de temps, pas
+  ce qu'on répète — et c'est DIT au moment de coller.
+- **Coller la plage à la tête de lecture (en insérant)** — le *Paste Time* de Cubase : le temps
+  s'ouvre à P (`insertTime`, qui coupe ce qui enjambe P), puis la copie s'y pose ; un clip MIDI
+  collé est une fenêtre IDENTITÉ sur ses notes posées à leur place (la convention de D537), un
+  clip audio garde sa fenêtre en secondes. **Pas de collage « par-dessus »** : le modèle refuse un
+  clip dont le début est déjà couvert (`createClip`), et un recouvrement demanderait une règle que
+  rien n'a fixée.
+- **Couper entre les locateurs** = copier, puis supprimer le temps (D13.3) : un seul pas.
+- **UNE SEULE LECTURE de « ce qu'une piste fait entendre »**, partagée par « Aplatir » (D537) et
+  « Copier la plage » : `clipPassages` (la lecture et l'export) prend un drapeau pour garder les
+  clips muets, et un en-tête interne porte la lecture des notes et des contrôleurs — y compris le
+  rattachement de D335 (un réglage hors de toute fenêtre s'entend au début du passage suivant :
+  la banque et le volume d'un fichier General MIDI, posés avant le premier clip), que la copie
+  perdrait sinon. D537 en avait une recopie locale ; elle disparaît.
+- **Le presse-papiers de plage est de SESSION**, à part de celui des clips et des notes ; les
+  pistes y sont désignées par leur identité de session (`uid`) : une piste supprimée depuis la
+  copie est laissée, et comptée.
+- Chacun est UN pas d'historique ; la ligne d'état et `VSM_PLAGE` au journal disent ce qui a été
+  copié, collé, laissé.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : sur deux pistes — l'une à clips (dont un déplacé), l'autre sans clip, une courbe
+   d'automation, un CC, deux accords —, copier [1920, 3840) puis coller à 3840 : ce qu'on entend
+   (`PlaybackScheduler::build`, couples (ms, hauteur)) dans [3840, 5760) est ce qu'on entendait
+   dans [1920, 3840), et tout ce qui était à ≥ 3840 est décalé de 1 920 ; coller au MILIEU d'un
+   clip le coupe ; la valeur de la courbe en 3840 est celle qu'elle avait en 1920 ; une piste
+   supprimée entre copie et collage est laissée et comptée ; copier une plage vide ne colle rien ;
+   chacun vu rouge sur un défaut remis à la main ;
+2. couper [1920, 3840) : ce qu'on entendait à ≥ 3840 s'entend à ≥ 1920, et un collage à 0 remet
+   la plage devant ;
+3. par l'application, mesuré par l'EXPORT MIDI relu en couples (tick, hauteur) par piste :
+   locateurs sur la mesure 2, copier, tête à la mesure 3, coller → la mesure 2 jouée deux fois, le
+   reste décalé d'une mesure ; Ctrl+Z → le `.mid` d'avant, au multiensemble près ; « Coller »
+   grisé tant que rien n'est copié ;
+4. un banc `tools/copier-plage.sh` qui joue 3, vu rouge sur un défaut remis à la main, entré
+   dans `verifier.sh --bancs` ; `gestes-vivants.py` connaît les trois entrées ; libellés traduits.
