@@ -99,14 +99,30 @@ uint16_t chordMask(const ChordEvent& accord) {
 }
 
 ChordSnapReport snapNotesToChords(std::vector<Note>& notes, const NoteSelection& selection,
-                                  const std::vector<ChordEvent>& accords) {
+                                  const std::vector<ChordEvent>& accords,
+                                  const std::vector<ClipPassage>& passages) {
     ChordSnapReport bilan;
     if (selection.empty()) return bilan;
     for (auto& note : notes) {
         if (selection.count(note.id) == 0) continue;
-        const ChordEvent* accord = chordAt(accords, note.startTick);
-        if (accord == nullptr) { ++bilan.withoutChord; continue; }
-        const uint16_t masque = chordMask(*accord);
+        // D532.3 bis : LES HARMONIES SOUS LESQUELLES LA NOTE SONNE, une par début entendu —
+        // 0 pour « avant le premier accord ». Le calage ne regarde que le masque : deux
+        // accords de mêmes classes de hauteur ne sont pas une ambiguïté.
+        bool entendue = false, sansAccord = false, plusieurs = false;
+        uint16_t masque = 0;
+        for (const auto& passage : passages) {
+            const Tick sortie = passageOut(passage, note.startTick);
+            if (sortie < 0) continue;
+            entendue = true;
+            const ChordEvent* accord = chordAt(accords, sortie);
+            if (accord == nullptr) { sansAccord = true; continue; }
+            const uint16_t ici = chordMask(*accord);
+            if (masque != 0 && ici != masque) plusieurs = true;
+            masque = ici;
+        }
+        if (!entendue) { ++bilan.unheard; continue; }
+        if (plusieurs || (sansAccord && masque != 0)) { ++bilan.ambiguous; continue; }
+        if (masque == 0) { ++bilan.withoutChord; continue; }
         auto dansLAccord = [masque](int hauteur) { return (masque >> (hauteur % 12)) & 1u; };
         if (dansLAccord(note.number)) { ++bilan.alreadyInChord; continue; }
         // La recherche symétrique de `snapNoteToScale` : la plus proche, le grave à égalité.

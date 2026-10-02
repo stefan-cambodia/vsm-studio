@@ -568,6 +568,13 @@ MainComponent::MainComponent()
     arrangement_.onMarkerRequested = [this](vsm::midi::Tick tick) { requestMarker(tick); };
     arrangement_.onMarkerRenameRequested = [this](size_t index) { renameMarker(index); };
     arrangement_.onMarkerRemoved = [this](size_t index) { removeMarker(index); };
+    // D532.3 bis : LA LIGNE D'ACCORDS, les mêmes trois gestes par les deux règles.
+    arrangement_.onChordRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, false); };
+    arrangement_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
+    arrangement_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { retirerAccord(tick); };
+    pianoRollPanel_.onChordRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, false); };
+    pianoRollPanel_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
+    pianoRollPanel_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { retirerAccord(tick); };
 
     pianoRoll_.setHistory(&history_);
     pianoRoll_.onProjectRestored = [this] {
@@ -14141,6 +14148,65 @@ void MainComponent::removeMarker(size_t index) {
     if (index >= project_.markers.size()) return;
     beginProjectEdit(u8"Retirer un repère");
     project_.markers.erase(project_.markers.begin() + static_cast<long>(index));
+    refreshMarkerViews();
+}
+
+// D532.3 bis : LA LIGNE D'ACCORDS. La fenêtre PROPOSE l'accord en vigueur, pour qu'on parte
+// de lui ; « Modifier » réécrit l'accord en vigueur à SON tick (`setChordAt` remplace), et
+// « Poser » au tick visé. Un symbole illisible n'est jamais deviné : il est refusé, la boîte
+// dit les formes acceptées, et rien n'est posé — ni pas d'historique ouvert pour rien.
+void MainComponent::demanderAccord(vsm::midi::Tick tick, bool modifier) {
+    const vsm::sequencer::ChordEvent* enVigueur = vsm::sequencer::chordAt(project_.chords, tick);
+    if (modifier && enVigueur == nullptr) return;
+    const vsm::midi::Tick cible = modifier ? enVigueur->tick : std::max<vsm::midi::Tick>(0, tick);
+    const juce::String propose = enVigueur != nullptr ? juce::String(vsm::sequencer::chordSymbol(*enVigueur))
+                                                      : juce::String();
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        modifier ? tr(u8"Modifier l'accord") : tr(u8"Poser un accord"),
+        tr(u8"Symbole de l'accord (C, Am7, F#m7b5, G7/B…) :"), juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("accord", propose, "");
+    fenetre->addButton(modifier ? juce::String("OK") : vsm::app::ui::trSelon("repere", u8"Poser"), 1,
+                       juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre,
+        [this, cible, modifier, fenetre](int resultat) {
+            const juce::String symbole = fenetre->getTextEditorContents("accord").trim();
+            fenetre->exitModalState(resultat);
+            fenetre->setVisible(false);
+            if (resultat != 1 || symbole.isEmpty()) return;
+            vsm::sequencer::ChordEvent accord;
+            accord.tick = cible;
+            if (!vsm::sequencer::parseChordSymbol(symbole.toStdString(), accord)) {
+                montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Accord illisible"),
+                             tr(u8"« %1 » n'est pas un accord que la ligne sait lire, et rien n'a été posé. "
+                                u8"Un accord s'écrit : une fondamentale de A à G (suivie de # ou de b), "
+                                u8"puis rien, m, dim, aug, sus2, sus4, 5, maj7, m7, 7, m7b5, maj9 ou m9, "
+                                u8"puis /basse au besoin — C, Am7, F#m7b5, Bb7, G7/B.")
+                                 .replace("%1", symbole));
+                return;
+            }
+            beginProjectEdit(modifier ? u8"Modifier un accord" : u8"Poser un accord");
+            vsm::sequencer::setChordAt(project_.chords, accord);
+            // En `std::string` : les littéraux accentués d'un `juce::String(const char*)` se
+            // lisent en Latin-1 (le piège nommé dans ReponseDeBanc.h).
+            const std::string ligne = std::string("VSM_ACCORD : ") + (modifier ? "modifié" : "posé") + " « "
+                                      + vsm::sequencer::chordSymbol(accord) + " » au tick " + std::to_string(cible)
+                                      + " (" + std::to_string(project_.chords.size()) + " accord(s))\n";
+            std::fputs(ligne.c_str(), stderr);
+            refreshMarkerViews();
+        });
+}
+
+void MainComponent::retirerAccord(vsm::midi::Tick tick) {
+    const vsm::sequencer::ChordEvent* enVigueur = vsm::sequencer::chordAt(project_.chords, tick);
+    if (enVigueur == nullptr) return;
+    const vsm::midi::Tick debut = enVigueur->tick;
+    const std::string symbole = vsm::sequencer::chordSymbol(*enVigueur);
+    beginProjectEdit(u8"Retirer un accord");
+    vsm::sequencer::removeChordAt(project_.chords, debut);
+    const std::string ligne = "VSM_ACCORD : retiré « " + symbole + " » du tick " + std::to_string(debut) + " ("
+                              + std::to_string(project_.chords.size()) + " accord(s))\n";
+    std::fputs(ligne.c_str(), stderr);
     refreshMarkerViews();
 }
 

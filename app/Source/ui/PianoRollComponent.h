@@ -291,6 +291,7 @@ public:
     void limitSelectionVelocity(uint8_t bas, uint8_t haut);
     void randomizeSelectionVelocity(int amount);
     void constrainSelectionToScale();
+    void snapSelectionToChords();   ///< D532.3 bis : « Caler sur les accords »
     void toggleSelectionMuted();
     void arpeggiateSelection(vsm::sequencer::ArpeggioMode mode);
     void insertChordAtPlayhead(vsm::sequencer::ChordType type, uint8_t rootNote);

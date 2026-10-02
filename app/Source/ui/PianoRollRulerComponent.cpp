@@ -1,4 +1,5 @@
 #include "PianoRollRulerComponent.h"
+#include "BandeAccords.h"   // D532.3 bis
 #include "EntreeDeMenu.h"   // D218 : entreeParLibelle, partagée depuis D115
 #include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
@@ -18,9 +19,27 @@ void PianoRollRulerComponent::setPunchRegion(Tick start, Tick end, bool active) 
     repaint();
 }
 
+int PianoRollRulerComponent::hauteurBande() const {
+    const auto* project = pianoRoll_.project();
+    return project != nullptr ? vsm::app::ui::hauteurBandeAccords(project->chords) : 0;
+}
+
+bool PianoRollRulerComponent::accordEnVigueurA(Tick tick) const {
+    const auto* project = pianoRoll_.project();
+    return project != nullptr && vsm::sequencer::chordAt(project->chords, tick) != nullptr;
+}
+
 void PianoRollRulerComponent::paint(juce::Graphics& g) {
     g.fillAll(Palette::panel);
-    const auto bounds = getLocalBounds();
+    // D532.3 bis : LA BANDE D'ACCORDS EN BAS, la règle au-dessus garde sa hauteur et son
+    // dessin — tout ce qui suit lit `bounds`, la règle seule.
+    const int bande = hauteurBande();
+    const auto bounds = getLocalBounds().withTrimmedBottom(bande);
+    if (bande > 0)
+        vsm::app::ui::peindreBandeAccords(g, getLocalBounds().removeFromBottom(bande),
+                                          static_cast<float>(pianoRoll_.keyboardWidth()),
+                                          pianoRoll_.project()->chords,
+                                          [this](Tick t) { return pianoRoll_.tickToX(t); });
 
     // D520 : LA BOUCLE DU PIANO ROLL, qui est celle du projet. La règle en gardait une
     // copie que seul son propre glissé remplissait (son setter n'était appelé de
@@ -179,7 +198,7 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
 
         // D218 : LE MENU EST CONSTRUIT ET EXÉCUTÉ AILLEURS, pour que le banc passe
         // par le MÊME code que la souris (la leçon de D115 pour le piano roll).
-        construireMenuDeRepere(survole).showMenuAsync(
+        construireMenuDeRepere(survole, accordEnVigueurA(tick)).showMenuAsync(
             juce::PopupMenu::Options(), [this, tick, survole](int choix) {
                 actionDeMenuDeRepere(choix, tick, survole);
             });
@@ -283,12 +302,19 @@ void PianoRollRulerComponent::mouseDoubleClick(const juce::MouseEvent&) {
 // l'arrangement, le piano roll et les effets) ne le voyaient, et c'est ainsi que
 // ses trois libellés ont pu sortir en français dans l'interface anglaise jusqu'à
 // D217. Un menu qu'aucune course ne peut lire est un menu que personne ne relit.
-juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole) const {
+juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole, bool accordEnVigueur) const {
     using vsm::app::ui::tr;
     juce::PopupMenu menu;
     menu.addItem(1, tr(u8"Poser un repère ici…"));
     menu.addItem(3, tr(u8"Renommer ce repère…"), survole >= 0);
     menu.addItem(2, tr(u8"Retirer ce repère"), survole >= 0);
+    // D532.3 bis : LA LIGNE D'ACCORDS — les mêmes libellés et les mêmes rappels que la règle
+    // de l'arrangement (`tools/menus-des-regles.py`). Modifier et retirer visent l'accord EN
+    // VIGUEUR au point visé : une ligne d'accords n'a pas de trou.
+    menu.addSeparator();
+    menu.addItem(4, tr(u8"Poser un accord ici…"));
+    menu.addItem(5, tr(u8"Modifier cet accord…"), accordEnVigueur);
+    menu.addItem(6, tr(u8"Retirer cet accord"), accordEnVigueur);
     return menu;
 }
 
@@ -297,6 +323,18 @@ void PianoRollRulerComponent::actionDeMenuDeRepere(int choix, vsm::midi::Tick ti
     if (choix == 3 && survole >= 0 && onMarkerRenameRequested)
         onMarkerRenameRequested(static_cast<size_t>(survole));
     if (choix == 2 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
+    if (choix == 4 && onChordRequested) onChordRequested(tick);
+    if (choix == 5 && onChordEditRequested) onChordEditRequested(tick);
+    if (choix == 6 && onChordRemoveRequested) onChordRemoveRequested(tick);
+}
+
+juce::String PianoRollRulerComponent::releverAccords() const {
+    const auto* project = pianoRoll_.project();
+    if (project == nullptr) return "VSM_ACCORDS : pianoroll : aucun projet\n";
+    return vsm::app::ui::releverBandeAccords("pianoroll", project->chords, hauteurBande(),
+                                             static_cast<float>(pianoRoll_.keyboardWidth()),
+                                             static_cast<float>(getWidth()),
+                                             [this](Tick t) { return pianoRoll_.tickToX(t); });
 }
 
 /// D218 : le repère le plus proche de la tête de lecture, ou -1 -- ce que la souris
@@ -311,7 +349,8 @@ int PianoRollRulerComponent::repereSousLaTete() const {
 
 bool PianoRollRulerComponent::actionDeMenuPourCapture(const juce::String& libelle) {
     const int survole = repereSousLaTete();
-    const int choix = vsm::app::ui::entreeParLibelle(construireMenuDeRepere(survole), libelle);
+    const int choix = vsm::app::ui::entreeParLibelle(
+        construireMenuDeRepere(survole, accordEnVigueurA(pianoRoll_.playheadTick())), libelle);
     if (choix == 0) return false;
     actionDeMenuDeRepere(choix, pianoRoll_.playheadTick(), survole);
     return true;
@@ -323,7 +362,7 @@ juce::StringArray PianoRollRulerComponent::libellesDuMenuPourCapture() const {
     // un temporaire créé là meurt à la fin de l'instruction d'initialisation, et
     // l'itérateur lui survivait -- l'application tombait sur un `core dump` au
     // premier relevé (trouvé à la première course, 13/09).
-    const juce::PopupMenu menu = construireMenuDeRepere(repereSousLaTete());
+    const juce::PopupMenu menu = construireMenuDeRepere(repereSousLaTete(), accordEnVigueurA(pianoRoll_.playheadTick()));
     for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
         if (it.getItem().itemID != 0)
             libelles.add(it.getItem().text + (it.getItem().shortcutKeyDescription.isNotEmpty() ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}" : juce::String()) + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));

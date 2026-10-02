@@ -131,7 +131,9 @@ FIL = re.compile(r"\bjuce::Thread\s*\(\s*(?:u8)?\s*$")
 # sans qu'on l'écrive ici. Tout ce qu'elles écrivent va au relevé d'un banc.
 # D532.1 bis / D532.2 bis : `commandesMasquees` nourrit le relevé VSM_MIXEUR, `direLesVersions`
 # écrit VSM_VERSION au journal -- ni l'une ni l'autre n'atteint l'écran.
-FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture", "commandesMasquees", "direLesVersions")
+# D532.3 bis : `releverBandeAccords` compose la ligne VSM_ACCORDS du geste `relever-accords`.
+FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture", "commandesMasquees", "direLesVersions",
+                     "releverBandeAccords")
 EN_TETE_DE_FONCTION = re.compile(r"^[A-Za-z][^;{}\n]*?\b(\w+)\s*\(", re.M)
 
 

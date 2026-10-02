@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "vsm/sequencer/ChordTrack.h"   // D532.3 bis
 #include "EntreeDeMenu.h"
 #include "Langue.h"
 #include "DrumVoiceNames.h"
@@ -50,7 +51,7 @@ enum ContextMenuId {
     kCtxVelocityFull = 100070, kCtxVelocityHalf, kCtxVelocityUp, kCtxVelocityDown,
     kCtxVelocityRampUp, kCtxVelocityRampDown, kCtxVelocityRandom,
     kCtxVelocityCompress, kCtxVelocityCompressFull, kCtxVelocityLimit,
-    kCtxScaleConstrain = 100080,
+    kCtxScaleConstrain = 100080, kCtxSnapChords,   // D532.3 bis
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -1106,6 +1107,31 @@ void PianoRollComponent::constrainSelectionToScale() {
     notifyEdited();
 }
 
+void PianoRollComponent::snapSelectionToChords() {
+    // D532.3 bis : LA NOTE SE CALE LÀ OÙ ELLE SONNE — les passages de sa piste, calculés comme
+    // la lecture et l'export les calculent (`lastUsedTick`, PlaybackScheduler). Ce que le geste
+    // n'a pas pu faire est COMPTÉ et DIT : une note avant le premier accord, entendue sous deux
+    // harmonies ou nulle part reste où elle est, et l'on doit le savoir.
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty() || project_ == nullptr || project_->chords.empty()) return;
+    if (!beginEdit(u8"Caler sur les accords")) return;
+    const auto bilan = snapNotesToChords(track->notes, selectedNoteIds_, project_->chords,
+                                         clipPassages(*track, project_->lastUsedTick()));
+    notifyEdited();
+    std::fprintf(stderr, "VSM_ACCORDS_CALAGE : %zu déplacée(s), %zu déjà dans l'accord, %zu avant le premier "
+                         "accord, %zu sous deux harmonies, %zu entendue(s) nulle part\n",
+                 bilan.moved, bilan.alreadyInChord, bilan.withoutChord, bilan.ambiguous, bilan.unheard);
+    if (onStatusChanged)
+        onStatusChanged(vsm::app::ui::tr(u8"Caler sur les accords : %1 déplacée(s), %2 déjà dans l'accord, "
+                                         u8"%3 avant le premier accord, %4 sous deux harmonies, "
+                                         u8"%5 entendue(s) nulle part — laissées")
+                            .replace("%1", juce::String(static_cast<int>(bilan.moved)))
+                            .replace("%2", juce::String(static_cast<int>(bilan.alreadyInChord)))
+                            .replace("%3", juce::String(static_cast<int>(bilan.withoutChord)))
+                            .replace("%4", juce::String(static_cast<int>(bilan.ambiguous)))
+                            .replace("%5", juce::String(static_cast<int>(bilan.unheard))));
+}
+
 void PianoRollComponent::toggleSelectionMuted() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
@@ -1291,6 +1317,9 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     ajouterAvecToucheFixe(pitchMenu, kCtxOctaveDown, tr("Octave -"), "shift + cursor down", sel);
     pitchMenu.addItem(kCtxMirror, tr("Miroir des hauteurs"), sel);
     pitchMenu.addItem(kCtxScaleConstrain, tr(u8"Contraindre à la gamme"), sel && scale_.type != ScaleType::Chromatic);
+    // D532.3 bis : grisée sans sélection ou sans accord — sans ligne d'accords, rien à suivre.
+    pitchMenu.addItem(kCtxSnapChords, tr(u8"Caler sur les accords"),
+                      sel && project_ != nullptr && !project_->chords.empty());
     menu.addSubMenu(tr("Hauteur"), pitchMenu);
 
     juce::PopupMenu timeMenu;
@@ -1474,6 +1503,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxVelocityCompressFull: compressSelectionVelocity(0.0f); break;
         case kCtxVelocityLimit:        limitSelectionVelocity(20, 100); break;
         case kCtxScaleConstrain:   constrainSelectionToScale(); break;
+        case kCtxSnapChords:       snapSelectionToChords(); break;   // D532.3 bis
         case kCtxArpUp:            arpeggiateSelection(ArpeggioMode::Up); break;
         case kCtxArpDown:          arpeggiateSelection(ArpeggioMode::Down); break;
         case kCtxArpUpDown:        arpeggiateSelection(ArpeggioMode::UpDown); break;

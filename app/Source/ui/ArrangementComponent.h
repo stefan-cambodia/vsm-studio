@@ -380,12 +380,23 @@ public:
     /// Le repère le plus proche d'une abscisse, à dix pixels près, ou -1 : on
     /// vise un trait à la souris, pas un tick.
     int markerAt(float x) const;
+    /// D532.3 bis : LA LIGNE D'ACCORDS, les mêmes gestes que la règle du piano roll
+    /// (`tools/menus-des-regles.py`) — poser au point visé, modifier ou retirer l'accord qui
+    /// y est EN VIGUEUR. Le symbole se demande dans l'application.
+    std::function<void(vsm::midi::Tick)> onChordRequested;
+    std::function<void(vsm::midi::Tick)> onChordEditRequested;
+    std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
+    /// D532.3 bis : la bande d'accords telle qu'elle est dessinée (`VSM_ACCORDS`).
+    juce::String releverAccords() const;
 
     static constexpr int kHeaderWidth = 150;
     /// D286 : la règle de temps de la vue, pour que les lanes du bas s'y alignent.
     vsm::midi::Tick scrollTick() const { return scrollTick_; }
     double pixelsPerTick() const { return pixelsPerTick_; }
     static constexpr int kRulerHeight = 22;
+    /// D532.3 bis : la règle ET, sous elle, la bande d'accords quand le projet en porte —
+    /// le haut de la zone des pistes. `kRulerHeight` reste la règle seule.
+    int hauteurRegle() const;
     /// D489 : la largeur réservée au bout droit de la règle, sous le bouton
     /// « agrandir ce volet » (D122) — comme la liste des pistes et le piano roll.
     int reserveDroiteRegle_ = 0;
@@ -425,7 +436,8 @@ private:
     /// en a pas à voir, et huit pixels de la largeur d'un clip ne doivent pas
     /// se comporter autrement sans raison visible.
     int marqueurAt(const vsm::sequencer::Clip& clip, float x) const;
-    juce::PopupMenu menuDeLaRegle(int survole) const;   // D83
+    juce::PopupMenu menuDeLaRegle(int survole, bool accordEnVigueur) const;   // D83, D532.3 bis
+    bool accordEnVigueurA(vsm::midi::Tick tick) const;   // D532.3 bis
     juce::PopupMenu menuDuClip(size_t piste, const vsm::sequencer::Clip& clip, int surMarqueur) const;
     /// L'indice du marqueur qu'on déplace, et le tick du dernier clic droit --
     /// le menu en a besoin pour savoir OÙ ajouter un marqueur.

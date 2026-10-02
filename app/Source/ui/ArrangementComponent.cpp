@@ -1,4 +1,5 @@
 #include "ArrangementComponent.h"
+#include "BandeAccords.h"   // D532.3 bis
 #include "Shortcuts.h"   // D358 : ajouterAvecRaccourci
 #include "EntreeDeMenu.h"
 #include "Langue.h"
@@ -482,18 +483,18 @@ int ArrangementComponent::trackTop(size_t index) const {
     // ailleurs : les dix-neuf appels de la vue passent par ces deux fonctions,
     // ils défilent donc tous sans le savoir — la même économie que D17.4 pour
     // les pistes masquées.
-    int y = kRulerHeight - decalageVertical();
+    int y = hauteurRegle() - decalageVertical();
     for (size_t i = 0; i < index && i < project_->tracks.size(); ++i)
         y += trackHeight(project_->tracks[i]);
     return y;
 }
 
 int ArrangementComponent::trackAtY(float y) const {
-    if (project_ == nullptr || y < kRulerHeight) return -1;
+    if (project_ == nullptr || y < hauteurRegle()) return -1;
     // LES HAUTEURS SONT VARIABLES (D5.3) : on parcourt, on ne divise pas. Une
     // division supposerait que toutes les pistes ont la même taille, ce qui
     // n'est plus vrai dès qu'on en plie une.
-    int haut = kRulerHeight - decalageVertical();   // D525
+    int haut = hauteurRegle() - decalageVertical();   // D525
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         const int bas = haut + trackHeight(project_->tracks[i]);
         if (y >= haut && y < bas) return static_cast<int>(i);
@@ -510,7 +511,7 @@ int ArrangementComponent::hauteurDesPistes() const {
 }
 
 int ArrangementComponent::decalageVertical() const {
-    const int zone = std::max(0, getHeight() - kRulerHeight);
+    const int zone = std::max(0, getHeight() - hauteurRegle());
     return juce::jlimit(0, std::max(0, hauteurDesPistes() - zone), scrollY_);
 }
 
@@ -518,7 +519,7 @@ void ArrangementComponent::setDefilementVertical(int pixels) {
     // Le réglage est retenu BORNÉ à ce qui dépasse aujourd'hui : sans cela, une
     // molette tournée longtemps vers le bas accumulerait un décalage qu'il
     // faudrait « remonter » à vide avant que la vue ne bouge.
-    const int zone = std::max(0, getHeight() - kRulerHeight);
+    const int zone = std::max(0, getHeight() - hauteurRegle());
     const int borne = juce::jlimit(0, std::max(0, hauteurDesPistes() - zone), pixels);
     if (borne == scrollY_) return;
     scrollY_ = borne;
@@ -533,13 +534,13 @@ void ArrangementComponent::faireVoirLaPiste(size_t index) {
     // le clip descendait d'une piste par répétition (P02 → P37 en 30), quand la
     // piste qu'on réordonne, qui ne choisit rien, descendait au pas prévu (rang 14).
     if (geste_ != Geste::Aucun) return;
-    if (getHeight() <= kRulerHeight) { aMontrer_ = static_cast<int>(index); return; }
+    if (getHeight() <= hauteurRegle()) { aMontrer_ = static_cast<int>(index); return; }
     aMontrer_ = -1;
     // Les bornes SANS décalage : la position de la piste dans le contenu.
     int haut = 0;
     for (size_t i = 0; i < index; ++i) haut += trackHeight(project_->tracks[i]);
     const int bas = haut + trackHeight(project_->tracks[index]);
-    const int zone = getHeight() - kRulerHeight;
+    const int zone = getHeight() - hauteurRegle();
     const int actuel = decalageVertical();
     if (haut < actuel) setDefilementVertical(haut);
     else if (bas > actuel + zone) setDefilementVertical(bas - zone);
@@ -552,7 +553,7 @@ bool ArrangementComponent::defilerAuBord(juce::Point<float> pointeur, bool verti
     auto pas = [](float profondeur) { return 4 + static_cast<int>(std::min(48.0f, profondeur) / 2.0f); };
     bool bouge = false;
     if (vertical) {
-        const float haut = static_cast<float>(kRulerHeight + kBandeDeBord);
+        const float haut = static_cast<float>(hauteurRegle() + kBandeDeBord);
         const float bas = static_cast<float>(getHeight() - kBandeDeBord);
         int dy = 0;
         if (pointeur.y < haut) dy = -pas(haut - pointeur.y);
@@ -696,13 +697,34 @@ Clip* ArrangementComponent::clipAt(juce::Point<float> point, size_t& trackIndex,
     return nullptr;
 }
 
-juce::PopupMenu ArrangementComponent::menuDeLaRegle(int survole) const {
+juce::PopupMenu ArrangementComponent::menuDeLaRegle(int survole, bool accordEnVigueur) const {
     using vsm::app::ui::tr;   // D83
     juce::PopupMenu menu;
     menu.addItem(1, tr(u8"Poser un repère ici…"));
     menu.addItem(2, tr(u8"Renommer ce repère…"), survole >= 0);
     menu.addItem(3, tr(u8"Retirer ce repère"), survole >= 0);
+    // D532.3 bis : LA LIGNE D'ACCORDS — mêmes libellés, mêmes rappels que la règle du piano
+    // roll. Modifier et retirer visent l'accord EN VIGUEUR : une ligne d'accords n'a pas de trou.
+    menu.addSeparator();
+    menu.addItem(4, tr(u8"Poser un accord ici…"));
+    menu.addItem(5, tr(u8"Modifier cet accord…"), accordEnVigueur);
+    menu.addItem(6, tr(u8"Retirer cet accord"), accordEnVigueur);
     return menu;
+}
+
+bool ArrangementComponent::accordEnVigueurA(vsm::midi::Tick tick) const {
+    return project_ != nullptr && vsm::sequencer::chordAt(project_->chords, tick) != nullptr;
+}
+
+int ArrangementComponent::hauteurRegle() const {
+    return kRulerHeight + (project_ != nullptr ? vsm::app::ui::hauteurBandeAccords(project_->chords) : 0);
+}
+
+juce::String ArrangementComponent::releverAccords() const {
+    if (project_ == nullptr) return "VSM_ACCORDS : arrangement : aucun projet\n";
+    return vsm::app::ui::releverBandeAccords("arrangement", project_->chords, hauteurRegle() - kRulerHeight,
+                                             static_cast<float>(kHeaderWidth), static_cast<float>(getWidth()),
+                                             [this](vsm::midi::Tick t) { return tickToX(t); });
 }
 
 juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequencer::Clip& clip,
@@ -855,7 +877,7 @@ std::vector<std::pair<juce::String, juce::PopupMenu>> ArrangementComponent::menu
     // D83 : les deux menus du clic droit, sur le premier clip MIDI et le premier
     // clip audio du projet -- la moitié du menu du clip n'existe que pour l'audio.
     std::vector<std::pair<juce::String, juce::PopupMenu>> menus;
-    menus.emplace_back(juce::String(u8"Arrangement / règle"), menuDeLaRegle(-1));
+    menus.emplace_back(juce::String(u8"Arrangement / règle"), menuDeLaRegle(-1, accordEnVigueurA(playhead_)));
     if (project_ == nullptr) return menus;
     bool vuMidi = false, vuAudio = false;
     for (size_t p = 0; p < project_->tracks.size(); ++p) {
@@ -876,6 +898,9 @@ void ArrangementComponent::regleMenuAction(vsm::midi::Tick tick, int survole, in
     if (choix == 2 && survole >= 0 && onMarkerRenameRequested)
         onMarkerRenameRequested(static_cast<size_t>(survole));
     if (choix == 3 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
+    if (choix == 4 && onChordRequested) onChordRequested(tick);
+    if (choix == 5 && onChordEditRequested) onChordEditRequested(tick);
+    if (choix == 6 && onChordRemoveRequested) onChordRemoveRequested(tick);
 }
 
 // D115 : `entreeParLibelle` vit dans EntreeDeMenu.h, partagée avec le piano roll.
@@ -896,7 +921,7 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
         //
         // « ? » ne fait rien et LISTE, comme pour les menus de clip (D222).
         const int survole = project_->markers.empty() ? -1 : 0;
-        const juce::PopupMenu menu = menuDeLaRegle(survole);
+        const juce::PopupMenu menu = menuDeLaRegle(survole, accordEnVigueurA(playhead_));
         if (libelle == "?") {
             juce::StringArray libelles;
             for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
@@ -979,13 +1004,14 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     const auto point = event.position;
 
     // La règle : on y pose la tête de lecture, on n'y saisit pas de clip ;
-    // le clic droit y pose, renomme ou retire un repère (D16.4).
-    if (point.y < kRulerHeight) {
+    // le clic droit y pose, renomme ou retire un repère (D16.4). D532.3 bis : la bande
+    // d'accords, sous elle, en fait partie — mêmes gestes, même menu.
+    if (point.y < hauteurRegle()) {
         if (point.x < kHeaderWidth) return;
         if (event.mods.isPopupMenu()) {
             const vsm::midi::Tick tick = std::max<vsm::midi::Tick>(0, xToTick(point.x));
             const int survole = markerAt(point.x);
-            juce::PopupMenu menu = menuDeLaRegle(survole);   // D83
+            juce::PopupMenu menu = menuDeLaRegle(survole, accordEnVigueurA(tick));   // D83
             menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
                 regleMenuAction(tick, survole, choix);   // D91 : une fonction, que le banc appelle aussi
             });
@@ -1527,8 +1553,10 @@ void ArrangementComponent::mouseDoubleClick(const juce::MouseEvent& event) {
     if (project_ == nullptr) return;
     // Sur la règle : un double-clic sur un repère le renomme, ailleurs il en
     // pose un (le double-clic de Cubase sur la piste de marqueurs).
-    if (event.position.y < kRulerHeight) {
-        if (event.position.x < kHeaderWidth) return;
+    if (event.position.y < hauteurRegle()) {
+        // D532.3 bis : un double-clic sur la BANDE d'accords ne pose pas de repère — on ne
+        // vise pas la règle. Les accords se posent par le clic droit.
+        if (event.position.x < kHeaderWidth || event.position.y >= kRulerHeight) return;
         const int survole = markerAt(event.position.x);
         if (survole >= 0) {
             if (onMarkerRenameRequested) onMarkerRenameRequested(static_cast<size_t>(survole));
@@ -1619,7 +1647,7 @@ bool ArrangementComponent::runClipMenuActionForCapture(int choix) {
 
 void ArrangementComponent::fitTracksToWindow() {
     if (project_ == nullptr) return;
-    int disponible = getHeight() - kRulerHeight;
+    int disponible = getHeight() - hauteurRegle();
     int depliees = 0;
     for (const auto& t : project_->tracks) {
         if (t.hidden) continue;
@@ -2084,7 +2112,7 @@ void ArrangementComponent::direLaFenetre() const {
         int premiere = -1, derniere = -1, vues = 0;
         for (size_t i = 0; i < project_->tracks.size(); ++i) {
             const int y = trackTop(i), h = trackHeight(project_->tracks[i]);
-            if (h <= 0 || y + h <= kRulerHeight || y >= getHeight()) continue;
+            if (h <= 0 || y + h <= hauteurRegle() || y >= getHeight()) continue;
             if (premiere < 0) premiere = static_cast<int>(i);
             derniere = static_cast<int>(i);
             ++vues;
@@ -2093,9 +2121,9 @@ void ArrangementComponent::direLaFenetre() const {
                     + (vues > 0 ? juce::String(premiere + 1) + ".." + juce::String(derniere + 1) : juce::String("aucune"))
                     + " sur " + juce::String(static_cast<int>(project_->tracks.size()))
                     + " (" + juce::String(vues) + juce::String(u8" à l'écran), décalage vertical ")
-                    + juce::String(decalageVertical()) + " px sur " + juce::String(std::max(0, hauteurDesPistes() - std::max(0, getHeight() - kRulerHeight)))
+                    + juce::String(decalageVertical()) + " px sur " + juce::String(std::max(0, hauteurDesPistes() - std::max(0, getHeight() - hauteurRegle())))
                     + " possibles (pistes " + juce::String(hauteurDesPistes()) + " px, zone "
-                    + juce::String(std::max(0, getHeight() - kRulerHeight)) + " px)"
+                    + juce::String(std::max(0, getHeight() - hauteurRegle())) + " px)"
                     // D529 : et les clips CHOISIS — un lasso ne laissait aucune trace
                     // qu'un banc puisse lire.
                     + ", " + juce::String(static_cast<int>(selection_.size())) + " clip(s) choisi(s)\n").toRawUTF8(), stderr);
@@ -2322,7 +2350,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             const float x = tickToX(markers[i].tick);
             if (x < static_cast<float>(kHeaderWidth) || x > static_cast<float>(bounds.getWidth())) continue;
             g.setColour(Palette::accentTeal.withAlpha(0.45f));
-            g.drawLine(x, static_cast<float>(kRulerHeight), x, static_cast<float>(bounds.getHeight()), 1.0f);
+            g.drawLine(x, static_cast<float>(hauteurRegle()), x, static_cast<float>(bounds.getHeight()), 1.0f);
             g.setColour(Palette::accentTeal);
             g.drawLine(x, 0.0f, x, static_cast<float>(kRulerHeight), 1.5f);
             juce::Path fanion;
@@ -2341,13 +2369,28 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         }
     }
 
+    // --- La bande d'accords (D532.3 bis) : sous la règle, au-dessus des pistes, et seulement
+    // si le projet porte un accord. Son en-tête la nomme : une bande sans nom se lit comme
+    // une piste vide.
+    if (!project_->chords.empty()) {
+        const juce::Rectangle<int> bande(0, kRulerHeight, bounds.getWidth(), hauteurRegle() - kRulerHeight);
+        vsm::app::ui::peindreBandeAccords(g, bande, static_cast<float>(kHeaderWidth), project_->chords,
+                                          [this](vsm::midi::Tick t) { return tickToX(t); });
+        g.setColour(Palette::panel);
+        g.fillRect(bande.withWidth(kHeaderWidth));
+        g.setColour(Palette::textSecondary);
+        g.setFont(juce::Font(juce::FontOptions(12.0f)));
+        g.drawText(vsm::app::ui::tr(u8"Accords"), bande.withWidth(kHeaderWidth).reduced(6, 0),
+                   juce::Justification::centredLeft, false);
+    }
+
     // --- Pistes et clips ------------------------------------------------------
     // D525 : les pistes défilent SOUS la règle. Leur dessin et celui des courbes
     // d'automation se restreignent à la zone d'en dessous ; la règle, les repères
     // et la tête de lecture, peints avant ou après, ne bougent pas.
     std::optional<juce::Graphics::ScopedSaveState> sousLaRegle;
     sousLaRegle.emplace(g);
-    g.reduceClipRegion(0, kRulerHeight, bounds.getWidth(), std::max(0, bounds.getHeight() - kRulerHeight));
+    g.reduceClipRegion(0, hauteurRegle(), bounds.getWidth(), std::max(0, bounds.getHeight() - hauteurRegle()));
     const auto montage = montageSelection();
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         const auto& track = project_->tracks[i];
@@ -2359,7 +2402,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         // l'autre, plus épais, à un endroit qui ne sépare rien.
         if (h <= 0) continue;
         if (y > bounds.getHeight()) break;
-        if (y + h <= kRulerHeight) continue;   // D525 : défilée au-dessus de la règle
+        if (y + h <= hauteurRegle()) continue;   // D525 : défilée au-dessus de la règle
 
         g.setColour(i % 2 == 0 ? Palette::panel : Palette::panelRaised);
         g.fillRect(0, y, kHeaderWidth, h);
@@ -2887,7 +2930,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         const int haut = trackTop(static_cast<size_t>(dropTrack_));
         const int hauteur = trackHeight(project_->tracks[static_cast<size_t>(dropTrack_)]);
         juce::Graphics::ScopedSaveState cible(g);   // D525 : sous la règle, comme les pistes
-        g.reduceClipRegion(0, kRulerHeight, getWidth(), std::max(0, getHeight() - kRulerHeight));
+        g.reduceClipRegion(0, hauteurRegle(), getWidth(), std::max(0, getHeight() - hauteurRegle()));
         g.setColour(juce::Colours::gold.withAlpha(0.18f));
         g.fillRect(juce::Rectangle<int>(0, haut, getWidth(), hauteur));
         const float x = tickToX(dropTick_);

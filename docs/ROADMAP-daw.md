@@ -39038,7 +39038,7 @@ dictionnaire n'ont bougé depuis.
 Le second temps — la ligne d'accords dans l'arrangement et « Caler sur les accords » au piano
 roll — suit.
 
-### Phase D532.3 bis — la piste d'accords, second temps : la ligne sous les deux règles, et « Caler sur les accords » là où la note SONNE (02/10/2026)
+### Phase D532.3 bis — la piste d'accords, second temps : la ligne sous les deux règles, et « Caler sur les accords » là où la note SONNE (02/10/2026) — FAITE, `--bancs` entier en attente de la fin des courses
 
 *Écrite avant son code, le 02/10 à 14 h 55.*
 
@@ -39107,3 +39107,35 @@ dans tous les tests du premier temps.
    projet ; les cinq comptes au journal ; grisée sans accord ;
 5. un banc `tools/accords.sh` qui joue 2 à 4, vu rouge sur un défaut remis à la main, entré
    dans `verifier.sh --bancs`.
+
+**D532.3 BIS EST FAITE (02/10, 15 h 26) — `--bancs` entier en attente, comme D532.1 bis et D532.2 bis.**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | calage là où la note sonne | core 384 → **387** : le fa rangé à 0, lu par un clip posé à 1920, va à fa# sous D (le témoin en place va à mi sous C) ; lu sous C ET sous D, il reste, compté ambigu — sous C deux fois il se cale, sous Csus2 puis Gsus4 (mêmes classes) aussi, avant le premier accord puis sous D il reste ; sous un clip muet ou hors fenêtre, il reste, compté muet. **Cinq défauts, cinq rouges** : le tick de matériau remis (3 tests), l'ambiguë calée, « avant + sous » non ambiguë, la muette calée, l'accord comparé au lieu du masque | **oui** |
+| 2 | les bandes | sans accord : « bande 0 px, 0 accord(s) » dans les deux vues ; avec C à 960, Am7/G à 1920, F à 3840 : « bande 20 px, 3 dans la vue — C@268, Am7/G@386, F@621 » (arrangement) et « C@139, Am7/G@216, F@369 » (piano roll), symboles écrits en entier ; règle du piano roll 22 → **42** px, grille 240 → **220** ; zone des pistes de l'arrangement 524 → **504** ; `menus-des-regles.py` vert sur les six entrées, mêmes rappels des deux côtés. Photos regardées : la bande « Accords » sous les deux règles | **oui** |
+| 3 | le menu des règles | à la mesure 3, « Am7/G » → `3840:Am7/G`, Ctrl+Z → plus de clé ; par la règle du PIANO ROLL, « Bb7 » à la mesure 2 → `1920:A#7` ; « Cmaj13 » → boîte « Accord illisible » au journal, rien d'écrit ; à la mesure 2 temps 3, « Modifier cet accord… » « Dm » → `960:C 1920:Dm 3840:F` (l'accord EN VIGUEUR, à SON tick), « Retirer cet accord » → `960:C 3840:F` ; modifier et retirer grisées 4/4 avant le premier accord, actives 4/4 dessous | **oui** |
+| 4 | « Caler sur les accords » | `.mid` exporté, relu en multiensemble : {62,62,64,64,67,71} → **{60,62,64,65,65,72}** ; « 4 déplacée(s), 1 déjà dans l'accord, 1 avant le premier accord, 0 sous deux harmonies, 0 entendue(s) nulle part » ; Ctrl+Z rend le premier ; grisée sans accord | **oui** |
+| 5 | le banc | `tools/accords.sh`, 15 contrôles verts ; **vu rouge** deux fois, binaire recompilé à chaque fois : modifier/retirer toujours actives → (3) RATÉ, 1 contrôle ; bande non réservée dans la disposition de l'arrangement → (2) RATÉ, 2 contrôles ; rendu vert ensuite. Entré dans `verifier.sh --bancs` (46 bancs). **`--bancs` entier : pas joué** — la session est verrouillée et la course 2 tourne | **en partie** |
+
+**LES SUITES.** C++ entières, recompilées course gelée : core **387**, audio 1 314, interchange
+333, clap 25, panneaux 11 ; ruff et mypy (174 fichiers) verts ; gardes des sources vertes, dont
+`menus-des-regles.py` (six entrées appariées) et `menus-cites.py` (33 citations, la neuve du mode
+d'emploi comprise). La suite Python n'est PAS rejouée : la course 2 tourne (l'ordre de marche
+l'interdit), et rien sous `analyse/` n'a bougé. Préférences de l'utilisateur comparées par `cmp`
+avant et après les bancs : intactes.
+
+**Quatre fautes de cette phase, toutes de mon côté, toutes attrapées avant d'accuser l'application.** (a) `Palette`
+est un ESPACE DE NOMS (`namespace Palette`), et `using vsm::ui::Palette;` ne compile pas :
+premier build perdu, six minutes de course gelée. (b) Le relevé des menus pour l'audit des
+langues (`menusPourCapture`) construisait encore le menu de la règle à un argument — attrapé
+par la compilation, pas par un test. (c) Le script qui jugeait le banc en rouge écrivait
+« banc rc=0 » à côté de ses RATÉ : `echo "[$(date)] … rc=$?"`, le piège que l'ordre de marche
+nomme, payé une fois de plus ; le vrai code se lit sur la dernière ligne du banc (« ACCORDS :
+1 contrôle(s) raté(s) », puis 2). Et la surveillance du build des suites a annoncé la fin dans
+la seconde : `pgrep … | head -1` avait rendu un PID transitoire — l'autre piège nommé.
+
+**Le symbole s'écrit en entier ou pas du tout** — décidé en écrivant la bande, pas dans le
+cahier des charges : un repère trop serré s'écrit tronqué (D16.4), un accord non, parce qu'un
+« Am7/G » rogné en « Am » est un AUTRE accord. Sans la place, le trait seul ; le relevé le dit
+(« (pas la place) »).

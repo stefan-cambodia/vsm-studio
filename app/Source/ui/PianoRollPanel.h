@@ -3,6 +3,7 @@
 #include "PianoRollComponent.h"
 #include "PianoRollRulerComponent.h"
 #include "PianoRollToolbar.h"
+#include "BandeAccords.h"
 #include "Langue.h"
 #include "VelocityLaneComponent.h"
 #include "UiScale.h"
@@ -102,6 +103,10 @@ public:
         ruler_.onMarkerRenameRequested = [this](size_t index) {
             if (onMarkerRenameRequested) onMarkerRenameRequested(index);
         };
+        // D532.3 bis : la ligne d'accords, relayée comme les repères.
+        ruler_.onChordRequested = [this](vsm::midi::Tick tick) { if (onChordRequested) onChordRequested(tick); };
+        ruler_.onChordEditRequested = [this](vsm::midi::Tick tick) { if (onChordEditRequested) onChordEditRequested(tick); };
+        ruler_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { if (onChordRemoveRequested) onChordRemoveRequested(tick); };
         velocityLane_.onVelocityEdited = [this] {
             pianoRoll_.repaint();
             if (onVelocityEdited) onVelocityEdited();
@@ -147,6 +152,19 @@ public:
                                  ? pianoRoll_.project()->markers.size() : 0u;
         // D520 : ET LA BOUCLE, que la règle lit désormais dans le piano roll.
         const auto boucle = std::make_tuple(pianoRoll_.boucleDebut(), pianoRoll_.boucleFin(), pianoRoll_.boucleActive());
+        // D532.3 bis : LA LIGNE D'ACCORDS, comparée EN ENTIER — modifier un accord ne change pas
+        // leur nombre. La bande naît avec le premier accord et meurt avec le dernier : la
+        // disposition se refait alors, la grille des notes descendant ou remontant d'autant.
+        {
+            static const std::vector<vsm::sequencer::ChordEvent> aucun;
+            const auto& accords = pianoRoll_.project() != nullptr ? pianoRoll_.project()->chords : aucun;
+            if (accords != derniersAccords_) {
+                const bool bandeChange = accords.empty() != derniersAccords_.empty();
+                derniersAccords_ = accords;
+                if (bandeChange) resized();
+                ruler_.repaint();
+            }
+        }
         if (tete != derniereTeteRegle_ || reperes != derniersReperes_ || boucle != derniereBoucleRegle_) {
             derniereTeteRegle_ = tete;
             derniersReperes_ = reperes;
@@ -168,6 +186,12 @@ public:
     std::function<void(vsm::midi::Tick)> onMarkerRequested;
     std::function<void(size_t)> onMarkerRenameRequested;
     std::function<void(size_t)> onMarkerRemoved;
+    /// D532.3 bis : poser, modifier, retirer un accord (l'application demande le symbole).
+    std::function<void(vsm::midi::Tick)> onChordRequested;
+    std::function<void(vsm::midi::Tick)> onChordEditRequested;
+    std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
+    /// D532.3 bis : la bande d'accords du piano roll, telle qu'elle est dessinée.
+    juce::String releverAccords() const { return ruler_.releverAccords(); }
 
     /// D122 : la place, à droite de la barre d'outils, du bouton « agrandir » de la zone.
     void setReserveDroite(int px) { if (px != reserveDroite_) { reserveDroite_ = px; resized(); } }
@@ -204,7 +228,10 @@ public:
         // 58 : quatre rangées de notes sous une lane deux fois plus haute que
         // ce qu'elle retouche. Plancher de 36 px pour que les barres se lisent,
         // sauf quand le tiers lui-même passe dessous.
-        ruler_.setBounds(area.removeFromTop(22));
+        // D532.3 bis : la règle porte la bande d'accords sous elle, quand le projet en a.
+        ruler_.setBounds(area.removeFromTop(22 + vsm::app::ui::hauteurBandeAccords(
+                                                     pianoRoll_.project() != nullptr ? pianoRoll_.project()->chords
+                                                                                     : derniersAccords_)));
         const int disponible = std::max(0, area.getHeight() - kPoignee);
         const int tiers = disponible / 3;
         const int lane = std::min(hauteurDeLane_, tiers) < kLanePlancher
@@ -323,6 +350,7 @@ private:
     vsm::midi::Tick derniereTeteRegle_ = -1;
     std::tuple<vsm::midi::Tick, vsm::midi::Tick, bool> derniereBoucleRegle_{-1, -1, false};   ///< D520
     size_t derniersReperes_ = 0;
+    std::vector<vsm::sequencer::ChordEvent> derniersAccords_;   // D532.3 bis
 
     PianoRollComponent& pianoRoll_;
     VelocityLaneComponent& velocityLane_;

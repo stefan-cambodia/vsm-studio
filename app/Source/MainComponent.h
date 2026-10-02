@@ -355,6 +355,13 @@ public:
         if (geste.startsWithIgnoreCase("menu:"))
             return runMenuEntryForCapture(geste.fromFirstOccurrenceOf(":", false, false).trim());
         if (geste.equalsIgnoreCase("lister-menus")) { listMenusForCapture(); return true; }
+        // D532.3 bis : relever-accords -- les deux bandes d'accords telles qu'elles sont
+        // DESSINÉES (même mise en page que la peinture), et la disposition qui en dépend.
+        if (geste.equalsIgnoreCase("relever-accords")) {
+            std::fputs(arrangement_.releverAccords().toRawUTF8(), stderr);
+            std::fputs(pianoRollPanel_.releverAccords().toRawUTF8(), stderr);
+            return true;
+        }
         // D508 : des notes du projet « tapées » — l'éditeur, `setText` AVEC
         // notification : le rappel `onTextChange` d'une frappe.
         // D509 : une FRAPPE dans l'éditeur des notes (insérée au curseur, comme le
@@ -1885,6 +1892,11 @@ private:
     void requestMarker(vsm::midi::Tick tick);
     void renameMarker(size_t index);
     void removeMarker(size_t index);
+    /// D532.3 bis : LA LIGNE D'ACCORDS. Poser à `tick` (`modifier` faux) ou modifier l'accord
+    /// en vigueur à `tick` : une fenêtre demande le symbole, un symbole illisible est refusé
+    /// et DIT. Retirer : l'accord en vigueur à `tick`. Chacun est un pas d'historique.
+    void demanderAccord(vsm::midi::Tick tick, bool modifier);
+    void retirerAccord(vsm::midi::Tick tick);
     void refreshMarkerViews();
     void refreshTransportSchedule();
     void updateSynthRackForSelection();

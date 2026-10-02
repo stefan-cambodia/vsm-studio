@@ -116,7 +116,7 @@ VSM_TEST(caler_sur_les_accords_suit_la_regle_des_gammes_et_compte_ce_qu_il_laiss
         note(5, 2000, 66),   // fa#, sous Am/G : sol (67) à 1 -> sol (la basse compte)
         note(6, 800, 61),    // non choisie : ne bouge pas
     };
-    const ChordSnapReport bilan = snapNotesToChords(notes, {1, 2, 3, 4, 5}, ligne);
+    const ChordSnapReport bilan = snapNotesToChords(notes, {1, 2, 3, 4, 5}, ligne, {ClipPassage{}});
     VSM_ASSERT_EQ(static_cast<int>(notes[0].number), 64);
     VSM_ASSERT_EQ(static_cast<int>(notes[1].number), 67);
     VSM_ASSERT_EQ(static_cast<int>(notes[2].number), 60);
@@ -127,7 +127,7 @@ VSM_TEST(caler_sur_les_accords_suit_la_regle_des_gammes_et_compte_ce_qu_il_laiss
     VSM_ASSERT_EQ(bilan.alreadyInChord, static_cast<size_t>(1));
     VSM_ASSERT_EQ(bilan.withoutChord, static_cast<size_t>(1));
     // Rien de choisi, rien de fait.
-    const ChordSnapReport rien = snapNotesToChords(notes, {}, ligne);
+    const ChordSnapReport rien = snapNotesToChords(notes, {}, ligne, {ClipPassage{}});
     VSM_ASSERT_EQ(rien.moved + rien.alreadyInChord + rien.withoutChord, static_cast<size_t>(0));
 }
 
@@ -199,4 +199,96 @@ VSM_TEST(aplatir_l_ordre_de_lecture_emporte_les_accords_de_chaque_section) {
     q.markers.push_back({2400, "B"});
     VSM_ASSERT(flattenPlayOrder(q, {1}));
     VSM_ASSERT_EQ(ligne(q), std::string("0:Am 480:F 1440:G "));
+}
+
+// D532.3 bis : LE CALAGE REGARDE OÙ LA NOTE SONNE, pas où elle est rangée. Une note est du
+// matériau ; un clip est une fenêtre sur lui, posée ailleurs, et deux clips peuvent lire la
+// même note. Les accords sont sur la ligne de temps.
+namespace {
+/// C (do mi sol) à 0, D (ré fa# la) à 1920.
+std::vector<ChordEvent> cPuisD() {
+    std::vector<ChordEvent> ligne;
+    setChordAt(ligne, accord(0, 0, ChordType::Major));
+    setChordAt(ligne, accord(1920, 2, ChordType::Major));
+    return ligne;
+}
+
+/// Un fa (65) de matériau au tick 0, lu par des clips posés aux ticks donnés.
+Track pisteDuFa(std::vector<Tick> poses, bool muet = false) {
+    Track piste;
+    piste.notes = {note(1, 0, 65)};
+    for (Tick pose : poses) {
+        Clip clip;
+        clip.sourceStart = 0;
+        clip.sourceLength = 1920;
+        clip.startTick = pose;
+        clip.length = 1920;
+        clip.muted = muet;
+        piste.clips.push_back(clip);
+    }
+    return piste;
+}
+
+ChordSnapReport caler(Track& piste, const std::vector<ChordEvent>& ligne) {
+    return snapNotesToChords(piste.notes, {1}, ligne, clipPassages(piste, 1920));
+}
+} // namespace
+
+// Rangé à 0 (sous C, il irait à mi, 64), le fa SONNE à 1920, sous D : il va à fa# (66).
+VSM_TEST(un_clip_deplace_cale_sa_note_sur_l_accord_ou_elle_sonne) {
+    Track piste = pisteDuFa({1920});
+    const ChordSnapReport bilan = caler(piste, cPuisD());
+    VSM_ASSERT_EQ(static_cast<int>(piste.notes[0].number), 66);
+    VSM_ASSERT_EQ(bilan.moved, static_cast<size_t>(1));
+    // Le témoin : le même clip laissé en place cale sous C.
+    Track enPlace = pisteDuFa({0});
+    caler(enPlace, cPuisD());
+    VSM_ASSERT_EQ(static_cast<int>(enPlace.notes[0].number), 64);
+}
+
+// Deux clips lisent le même fa, l'un sous C, l'autre sous D : pas de bonne réponse — il
+// reste, et il est compté. Sous la même harmonie deux fois, il se cale.
+VSM_TEST(une_note_entendue_sous_deux_harmonies_reste_et_se_compte) {
+    Track piste = pisteDuFa({0, 1920});
+    const ChordSnapReport bilan = caler(piste, cPuisD());
+    VSM_ASSERT_EQ(static_cast<int>(piste.notes[0].number), 65);
+    VSM_ASSERT_EQ(bilan.ambiguous, static_cast<size_t>(1));
+    VSM_ASSERT_EQ(bilan.moved, static_cast<size_t>(0));
+
+    std::vector<ChordEvent> deuxFoisC;
+    setChordAt(deuxFoisC, accord(0, 0, ChordType::Major));
+    setChordAt(deuxFoisC, accord(1920, 0, ChordType::Major));
+    Track memeHarmonie = pisteDuFa({0, 1920});
+    const ChordSnapReport cale = caler(memeHarmonie, deuxFoisC);
+    VSM_ASSERT_EQ(static_cast<int>(memeHarmonie.notes[0].number), 64);
+    VSM_ASSERT_EQ(cale.moved, static_cast<size_t>(1));
+
+    // Csus2 (do ré sol) et Gsus4 (sol do ré) : mêmes classes, donc une seule harmonie.
+    std::vector<ChordEvent> memesClasses;
+    setChordAt(memesClasses, accord(0, 0, ChordType::Sus2));
+    setChordAt(memesClasses, accord(1920, 7, ChordType::Sus4));
+    Track sus = pisteDuFa({0, 1920});
+    VSM_ASSERT_EQ(caler(sus, memesClasses).moved, static_cast<size_t>(1));
+
+    // Entendue AVANT le premier accord et SOUS un accord : ambiguë aussi.
+    std::vector<ChordEvent> tardif;
+    setChordAt(tardif, accord(1920, 2, ChordType::Major));
+    Track avantEtSous = pisteDuFa({0, 1920});
+    VSM_ASSERT_EQ(caler(avantEtSous, tardif).ambiguous, static_cast<size_t>(1));
+    VSM_ASSERT_EQ(static_cast<int>(avantEtSous.notes[0].number), 65);
+}
+
+// Une note qu'aucun clip ne fait entendre — hors fenêtre, ou sous un clip muet — reste, et
+// elle est comptée muette : caler ce qu'on n'entend pas, c'est deviner.
+VSM_TEST(une_note_entendue_nulle_part_reste_et_se_compte) {
+    Track muet = pisteDuFa({0}, true);
+    const ChordSnapReport bilan = caler(muet, cPuisD());
+    VSM_ASSERT_EQ(bilan.unheard, static_cast<size_t>(1));
+    VSM_ASSERT_EQ(static_cast<int>(muet.notes[0].number), 65);
+
+    Track horsFenetre = pisteDuFa({0});
+    horsFenetre.notes[0].startTick = 2000;   // la fenêtre lit [0, 1920)
+    horsFenetre.notes[0].endTick = 2200;
+    VSM_ASSERT_EQ(caler(horsFenetre, cPuisD()).unheard, static_cast<size_t>(1));
+    VSM_ASSERT_EQ(static_cast<int>(horsFenetre.notes[0].number), 65);
 }

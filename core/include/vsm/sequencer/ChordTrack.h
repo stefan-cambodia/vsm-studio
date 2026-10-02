@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include <cstddef>
 #include <cstdint>
@@ -55,12 +56,21 @@ struct ChordSnapReport {
     size_t moved = 0;          ///< notes déplacées vers une note de l'accord
     size_t alreadyInChord = 0; ///< notes déjà dans l'accord, laissées
     size_t withoutChord = 0;   ///< notes qui commencent avant le premier accord : laissées, et DITES
+    size_t ambiguous = 0;      ///< D532.3 bis : entendues sous plusieurs harmonies — laissées, DITES
+    size_t unheard = 0;        ///< D532.3 bis : entendues nulle part (hors clip, clip muet) — laissées, DITES
 };
 
 /// « CALER LES NOTES SUR LES ACCORDS » : chaque note CHOISIE va à la note de l'accord en
-/// vigueur à son début la plus proche, l'égalité tranchée vers le grave — la règle de
+/// vigueur LÀ OÙ ELLE SONNE la plus proche, l'égalité tranchée vers le grave — la règle de
 /// `snapNoteToScale`. Une sélection vide ne fait rien.
+///
+/// D532.3 bis : UNE NOTE EST DU MATÉRIAU. Ses débuts entendus sont ceux que rendent les
+/// `passages` de sa piste (`clipPassages`, le calcul de la lecture et de l'export) ; une
+/// piste sans clip a le passage identité. Entendue sous deux harmonies (deux masques de
+/// classes de hauteur différents, ou un accord et « avant le premier »), elle reste et se
+/// compte ambiguë ; entendue nulle part, elle reste et se compte muette.
 ChordSnapReport snapNotesToChords(std::vector<Note>& notes, const NoteSelection& selection,
-                                  const std::vector<ChordEvent>& accords);
+                                  const std::vector<ChordEvent>& accords,
+                                  const std::vector<ClipPassage>& passages);
 
 } // namespace vsm::sequencer

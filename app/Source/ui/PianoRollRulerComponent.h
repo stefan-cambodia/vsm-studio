@@ -46,6 +46,14 @@ public:
     /// Renommer le repère d'index donné (D16.4 : le même geste que dans
     /// l'arrangement ; deux vues, un geste).
     std::function<void(size_t)> onMarkerRenameRequested;
+    /// D532.3 bis : LA LIGNE D'ACCORDS, les mêmes gestes que dans l'arrangement — poser un
+    /// accord au point visé, modifier ou retirer celui qui y est EN VIGUEUR. Les fenêtres (le
+    /// symbole) sont de l'application, comme pour les repères.
+    std::function<void(vsm::midi::Tick)> onChordRequested;
+    std::function<void(vsm::midi::Tick)> onChordEditRequested;
+    std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
+    /// D532.3 bis : la bande d'accords telle qu'elle est dessinée (`VSM_ACCORDS`).
+    juce::String releverAccords() const;
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;
     /// La région de punch a été dessinée à la souris (Alt + glisser).
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onPunchRegionChanged;
@@ -83,7 +91,9 @@ public:
 private:
     /// D218 : la construction et l'exécution du menu des repères, partagées entre
     /// la souris et le banc.
-    juce::PopupMenu construireMenuDeRepere(int survole) const;
+    juce::PopupMenu construireMenuDeRepere(int survole, bool accordEnVigueur) const;
+    bool accordEnVigueurA(vsm::midi::Tick tick) const;
+    int hauteurBande() const;
     void actionDeMenuDeRepere(int choix, vsm::midi::Tick tick, int survole);
     int repereSousLaTete() const;
 
