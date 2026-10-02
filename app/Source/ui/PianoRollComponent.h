@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "vsm/sequencer/LogicalEdit.h"   // D535.1 bis
 #include "vsm/interchange/ShortcutTable.h"
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/NoteEdit.h"
@@ -292,6 +293,19 @@ public:
     void randomizeSelectionVelocity(int amount);
     void constrainSelectionToScale();
     void snapSelectionToChords();   ///< D532.3 bis : « Caler sur les accords »
+
+    /// D535.1 bis : L'ÉDITEUR LOGIQUE. La fenêtre est de l'application (`onLogicalEditorRequested`,
+    /// comme les repères et les accords) ; le geste est ici, sur la piste active.
+    std::function<void()> onLogicalEditorRequested;
+    bool aDesNotesChoisies() const { return !selectedNoteIds_.empty(); }
+    /// Combien de notes répondent, et sur combien — la piste entière, ou les choisies.
+    std::pair<size_t, size_t> compterReponses(const vsm::sequencer::LogicalRule& regle, bool parmiLesChoisies) const;
+    struct BilanLogique { size_t repondaient = 0, changees = 0, refusees = 0; };
+    /// Choisir remplace la sélection sans laisser de pas ; les quatre autres actions sont UN pas
+    /// (« Éditeur logique : … »), ouvert seulement si l'action peut agir — une transposition qui
+    /// ferait sortir une note de 0..127 (D536) ou une vélocité hors de 1..127 est refusée AVANT.
+    BilanLogique appliquerRegleLogique(const vsm::sequencer::LogicalRule& regle, vsm::sequencer::LogicalAction action,
+                                       int valeur, bool parmiLesChoisies);
     void toggleSelectionMuted();
     void arpeggiateSelection(vsm::sequencer::ArpeggioMode mode);
     void insertChordAtPlayhead(vsm::sequencer::ChordType type, uint8_t rootNote);

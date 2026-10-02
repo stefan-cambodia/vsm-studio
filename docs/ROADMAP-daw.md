@@ -39285,7 +39285,7 @@ dans `mirrorNotesPitch` — le miroir se fait autour du milieu de la sélection 
 highest − n`), qui reste entre la plus basse et la plus haute : la borne n'y mord jamais.
 
 
-### Phase D535.1 bis — l'éditeur logique, second temps : la fenêtre au piano roll (02/10/2026)
+### Phase D535.1 bis — l'éditeur logique, second temps : la fenêtre au piano roll (02/10/2026) — FAITE
 
 *Écrite avant son code, le 02/10 à 16 h 08.*
 
@@ -39356,3 +39356,46 @@ langue de l'interface. La forme canonique reste celle du journal (`VSM_LOGIQUE`)
    règle qu'elle montre — « vélocité < 30 et durée < 1/32 » en français, « velocity < 30 and length
    < 1/32 » sous `VSM_LANGUE=en` — et la photo des deux langues la montre ; le banc vu rouge sur
    la canonique remise dans le champ.
+
+**D535.1 BIS EST FAITE (02/10, 21 h 18).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | supprimer les fantômes, Ctrl+Z | `.mid` exporté, relu en multiensemble : {60, 62, 64, 65, 67, 69, 72, 120} → **{60, 62, 65, 67, 120}** — 64, 69 et 72, les trois brèves ET faibles ; la faible longue (62) et la brève forte (65) restent ; « supprimer sur « velocite < 30 et duree < 60 » — 3 répondaient, 3 changée(s), 0 refusée(s) » ; Ctrl+Z → les huit | **oui** |
+| 2 | choisir | `VSM_SELECTION : 3 note(s) choisie(s)`, `.mid` = les huit, 0 pas d'historique | **oui** |
+| 3 | règle illisible | « vélocité < trente » → boîte « Règle illisible » : « « trente » n'est pas un nombre. Rien n'a été fait. », `.mid` = les huit, 0 pas | **oui** |
+| 4 | transposer refusé (D536) | « durée >= 480 », +12 : 4 répondaient, dont la note à 120 → « 0 changée(s), 1 refusée(s) », `.mid` = les huit, 0 pas | **oui** |
+| 5 | la règle retenue | tenu d'abord tel qu'écrit (`velocite < 30 et duree < 60`, action 2), puis **remplacé** par le complément : les préférences portent `vélocité < 30 et durée < 1/32`, action 2 | **oui** (remplacé) |
+| 6 | le compte en direct | `VSM_LOGIQUE_COMPTE : 3 note(s) sur 8 répondent` (« 3 of 8 note(s) match » sous `VSM_LANGUE=en`) ; règle vide → 8 sur 8 | **oui** |
+| 7 | le banc | `tools/editeur-logique.sh`, **10 contrôles** ; **vu rouge** sur le pas d'historique retiré de l'action (« Ctrl+Z rend les huit » RATÉ — {60, 62, 65, 67, 120} après Ctrl+Z —, 1 contrôle), binaire recompilé, puis vert. Entré dans `verifier.sh --bancs` (48 bancs) ; `gestes-vivants.py` connaît l'entrée (« hauteur >= 0 », rendre muettes : un geste qui se voit au fichier dans tout projet) | **oui** |
+| 8 | l'écriture lisible | core 396 → **397** : les 56 règles × 2 langues (112) se relisent en la même règle ; « vélocité < 30 et durée < 1/32 » / « velocity < 30 and length < 1/32 » ; « hauteur entre C-1 C#4 et confiance < 0,5 et muette = oui et durée hors 1/1 50 et position = 3/8 » et son anglais ; retenue à 480 et relue à 960 → **120** ticks, la canonique → 60 (le témoin). **Deux défauts, deux rouges** : « 1/1 » écrit « 1 » (qui se relit comme UN tick), la virgule décimale oubliée | **oui** |
+| 9 | la règle rouverte | `VSM_LOGIQUE_REGLE : vélocité < 30 et durée < 1/32`, et `velocity < 30 and length < 1/32` sous `VSM_LANGUE=en` ; photos des deux langues regardées : le champ porte ces textes, le compte dit 3 sur 8. **Vu rouge** sur la canonique remise dans le champ (les deux contrôles, « velocite < 30 et duree < 60 » dans les deux langues) | **oui** |
+
+**CE QUI A ÉTÉ TRANCHÉ EN ÉCRIVANT LE CODE, et pourquoi.**
+- **La règle se tape aussi en anglais** (pitch, velocity, length ou duration, position, channel,
+  confidence, muted ; between, outside ; and ; yes, no) : l'interface est bilingue, et une règle
+  tapée dans la langue de l'interface n'a pas à être refusée. Core 395 → **396** (la même règle
+  tapée dans les deux langues donne la même règle).
+- **L'erreur de lecture sort de `core/` en GENRE et en MORCEAU tapé**, avec un modèle de phrase
+  (`logicalParseErrorTemplate`, « %1 ») qui est aussi la clé de la table de traduction : une
+  phrase assemblée dans `core/` ne se traduisait pas. Dix modèles, dix traductions ;
+  `inventaire_langue.py --garde` à 0.
+
+**VU SUR LES PHOTOS, ET CORRIGÉ — trois fois.** (a) Dans le message de la fenêtre, JUCE 8 équilibre
+les lignes sur une largeur tirée de la longueur TOTALE du texte (`AlertWindow::updateLayout`,
+`createLayoutWithBalancedLineLengths`) : « muette = | oui » coupé en français ; le texte raccourci,
+la coupure est passée à « pitch between C3 | B3 » en anglais. Chaque retouche déplaçait la
+coupure : les exemples vont dans leur PROPRE étiquette, 560 points, deux lignes écrites à la
+main — sur la photo suivante, chaque exemple est entier sur sa ligne, dans les deux langues.
+(b) La règle rouverte s'affichait sous sa forme canonique — d'où le complément ci-dessus, et la
+panne de résolution qu'il a trouvée derrière. (c) Les photos n'ont été possibles qu'écran
+rallumé : l'écran était éteint (DPMS), et la première série n'a photographié que la fenêtre
+socle, sans la modale (D516).
+
+**LES SUITES.** Toutes les cibles de test recompilées (aucune course ne tourne) : core **397**,
+audio 1 314, interchange 333, clap 25, panneaux 11 ; Python **257** ; ruff et mypy (174 fichiers)
+verts ; gardes des sources vertes, `inventaire_langue.py --garde` à 0 — sauf `index-a-jour.py`,
+qui demandait les comptes de lignes que ce commit reprend. **`--bancs` entier : lancé à 22 h 03,
+écran gardé allumé** — et c'est la première série entière depuis D532.1 bis : D532.2 bis, D532.3
+bis et D536 l'avaient laissée en attente (session verrouillée, course 2). Son résultat s'écrit
+ci-dessous à sa fin.

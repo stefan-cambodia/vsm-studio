@@ -4,6 +4,7 @@
 #include <cctype>
 #include <charconv>
 #include <cmath>
+#include <string_view>
 
 namespace vsm::sequencer {
 
@@ -16,6 +17,14 @@ constexpr std::array<NomDeChamp, 7> kChamps = {{
     {NoteField::Muted, "muette"},
 }};
 
+/// Les mêmes champs en ANGLAIS, et « muet », acceptés à la lecture — jamais écrits : l'écriture
+/// est canonique. L'interface est bilingue, la règle se tape dans l'une ou l'autre langue.
+constexpr std::array<NomDeChamp, 8> kAutresNoms = {{
+    {NoteField::Pitch, "pitch"},       {NoteField::Velocity, "velocity"}, {NoteField::Length, "length"},
+    {NoteField::Length, "duration"},   {NoteField::Channel, "channel"},   {NoteField::Confidence, "confidence"},
+    {NoteField::Muted, "muted"},       {NoteField::Muted, "muet"},
+}};
+
 struct NomDOperateur { CompareOp op; const char* texte; };
 constexpr std::array<NomDOperateur, 8> kOperateurs = {{
     {CompareOp::LessOrEqual, "<="}, {CompareOp::GreaterOrEqual, ">="}, {CompareOp::NotEqual, "!="},
@@ -23,7 +32,7 @@ constexpr std::array<NomDOperateur, 8> kOperateurs = {{
     {CompareOp::Between, "entre"},   {CompareOp::Outside, "hors"},
 }};
 
-/// Les mots se comparent en minuscules, accents ôtés (é, è, ê : les seuls des champs).
+/// Les mots se comparent en minuscules, accents ôtés (é, è, ê et leurs capitales : les seuls des champs).
 std::string normaliser(const std::string& mot) {
     std::string sortie;
     for (size_t i = 0; i < mot.size(); ++i) {
@@ -40,7 +49,19 @@ std::string normaliser(const std::string& mot) {
 bool estBlanc(char c) { return c == ' ' || c == '\t'; }
 bool estLettre(char c) { return std::isalpha(static_cast<unsigned char>(c)) || static_cast<unsigned char>(c) >= 0x80; }
 
-std::string guillemets(const std::string& morceau) { return "« " + morceau + " »"; }
+/// L'erreur : son genre, le morceau tapé, et la phrase française tirée du MODÈLE — la même
+/// source que la table de traduction de l'interface.
+struct Echec {
+    LogicalParseError detail;
+    std::string phrase;
+};
+
+void echouer(Echec& e, LogicalParseErrorKind kind, const std::string& morceau) {
+    e.detail = {kind, morceau};
+    e.phrase = logicalParseErrorTemplate(kind);
+    const size_t ici = e.phrase.find("%1");
+    if (ici != std::string::npos) e.phrase.replace(ici, 2, morceau);
+}
 
 /// Un nombre en locale C, le point OU la virgule pour séparateur décimal.
 bool lireNombre(const std::string& texte, double& sortie) {
@@ -69,12 +90,12 @@ bool lireNomDeNote(const std::string& texte, double& sortie) {
     return true;
 }
 
-/// Une valeur selon son champ ; faux avec un message qui nomme le morceau tapé.
-bool lireValeur(NoteField champ, const std::string& texte, uint16_t ppq, double& sortie, std::string& erreur) {
+/// Une valeur selon son champ ; faux avec le genre d'erreur et le morceau tapé.
+bool lireValeur(NoteField champ, const std::string& texte, uint16_t ppq, double& sortie, Echec& echec) {
     if (lireNombre(texte, sortie)) return true;
     if (champ == NoteField::Pitch) {
         if (lireNomDeNote(texte, sortie)) return true;
-        erreur = guillemets(texte) + " n'est ni un nombre ni une note (C4 = 60, F#3, Bb2)";
+        echouer(echec, LogicalParseErrorKind::NotANote, texte);
         return false;
     }
     if (champ == NoteField::Length || champ == NoteField::BarPosition) {
@@ -85,55 +106,63 @@ bool lireValeur(NoteField champ, const std::string& texte, uint16_t ppq, double&
             sortie = num * 4.0 * ppq / den;   // une fraction de RONDE
             return true;
         }
-        erreur = guillemets(texte) + " n'est ni un nombre de ticks ni une fraction de ronde (1/16)";
+        echouer(echec, LogicalParseErrorKind::NotTicksOrFraction, texte);
         return false;
     }
     if (champ == NoteField::Muted) {
         const std::string mot = normaliser(texte);
-        if (mot == "oui") { sortie = 1.0; return true; }
-        if (mot == "non") { sortie = 0.0; return true; }
+        if (mot == "oui" || mot == "yes") { sortie = 1.0; return true; }
+        if (mot == "non" || mot == "no") { sortie = 0.0; return true; }
     }
-    erreur = guillemets(texte) + " n'est pas un nombre";
+    echouer(echec, LogicalParseErrorKind::NotANumber, texte);
     return false;
 }
 
 /// Une condition, dans le texte tel qu'il a été tapé.
-bool lireCondition(const std::string& clause, uint16_t ppq, NoteCondition& sortie, std::string& erreur) {
+bool lireCondition(const std::string& clause, uint16_t ppq, NoteCondition& sortie, Echec& echec) {
     size_t i = 0;
     while (i < clause.size() && estBlanc(clause[i])) ++i;
     const size_t debutChamp = i;
     while (i < clause.size() && estLettre(clause[i])) ++i;
     const std::string champTape = clause.substr(debutChamp, i - debutChamp);
     if (champTape.empty()) {
-        erreur = guillemets(clause) + " : il manque le champ (hauteur, vélocité, durée, position, canal, confiance, muette)";
+        echouer(echec, LogicalParseErrorKind::MissingField, clause);
         return false;
     }
     const std::string champNorme = normaliser(champTape);
     bool trouve = false;
     for (const auto& [champ, nom] : kChamps)
-        if (champNorme == nom || (champ == NoteField::Muted && champNorme == "muet")) { sortie.field = champ; trouve = true; }
+        if (champNorme == nom) { sortie.field = champ; trouve = true; }
+    for (const auto& [champ, nom] : kAutresNoms)
+        if (champNorme == nom) { sortie.field = champ; trouve = true; }
     if (!trouve) {
-        erreur = guillemets(champTape) + " n'est pas un champ (hauteur, vélocité, durée, position, canal, confiance, muette)";
+        echouer(echec, LogicalParseErrorKind::NotAField, champTape);
         return false;
     }
     while (i < clause.size() && estBlanc(clause[i])) ++i;
     // L'opérateur : un signe (le plus long d'abord), ou un mot.
+    std::string operateurTape;
     trouve = false;
     for (const auto& [op, texte] : kOperateurs) {
         const std::string signe = texte;
         if (std::isalpha(static_cast<unsigned char>(signe[0]))) continue;
-        if (clause.compare(i, signe.size(), signe) == 0) { sortie.op = op; i += signe.size(); trouve = true; break; }
+        if (clause.compare(i, signe.size(), signe) == 0) {
+            sortie.op = op;
+            operateurTape = signe;
+            i += signe.size();
+            trouve = true;
+            break;
+        }
     }
     if (!trouve) {
         const size_t debutMot = i;
         while (i < clause.size() && !estBlanc(clause[i])) ++i;
-        const std::string motTape = clause.substr(debutMot, i - debutMot);
-        const std::string mot = normaliser(motTape);
-        if (mot == "entre") { sortie.op = CompareOp::Between; trouve = true; }
-        else if (mot == "hors") { sortie.op = CompareOp::Outside; trouve = true; }
+        operateurTape = clause.substr(debutMot, i - debutMot);
+        const std::string mot = normaliser(operateurTape);
+        if (mot == "entre" || mot == "between") { sortie.op = CompareOp::Between; trouve = true; }
+        else if (mot == "hors" || mot == "outside") { sortie.op = CompareOp::Outside; trouve = true; }
         if (!trouve) {
-            erreur = guillemets(motTape.empty() ? std::string("(rien)") : motTape)
-                     + " n'est pas un opérateur (=, !=, <, <=, >, >=, entre, hors)";
+            echouer(echec, LogicalParseErrorKind::NotAnOperator, operateurTape.empty() ? std::string("(rien)") : operateurTape);
             return false;
         }
     }
@@ -147,32 +176,40 @@ bool lireCondition(const std::string& clause, uint16_t ppq, NoteCondition& sorti
     const bool deux = sortie.op == CompareOp::Between || sortie.op == CompareOp::Outside;
     const size_t attendues = deux ? 2 : 1;
     if (valeurs.size() < attendues) {
-        erreur = deux ? guillemets(sortie.op == CompareOp::Between ? "entre" : "hors") + " attend deux valeurs"
-                      : guillemets(champTape) + " : il manque la valeur";
+        if (deux) echouer(echec, LogicalParseErrorKind::NeedsTwoValues, operateurTape);
+        else echouer(echec, LogicalParseErrorKind::MissingValue, champTape);
         return false;
     }
     if (valeurs.size() > attendues) {
-        erreur = guillemets(valeurs[attendues]) + " est en trop (une condition par « et »)";
+        echouer(echec, LogicalParseErrorKind::ExtraValue, valeurs[attendues]);
         return false;
     }
-    if (!lireValeur(sortie.field, valeurs[0], ppq, sortie.a, erreur)) return false;
+    if (!lireValeur(sortie.field, valeurs[0], ppq, sortie.a, echec)) return false;
     sortie.b = 0.0;
-    if (deux && !lireValeur(sortie.field, valeurs[1], ppq, sortie.b, erreur)) return false;
+    if (deux && !lireValeur(sortie.field, valeurs[1], ppq, sortie.b, echec)) return false;
     return true;
 }
 
-/// Coupe au mot « et » (isolé, casse indifférente) ; une clause vide est rendue telle quelle.
+/// Coupe au mot « et » ou « and » (isolé, casse indifférente) ; une clause vide est rendue
+/// telle quelle, pour être refusée.
 std::vector<std::string> clauses(const std::string& texte) {
     std::vector<std::string> morceaux;
     size_t debut = 0, i = 0;
     while (i < texte.size()) {
         const bool avantBlanc = i == 0 || estBlanc(texte[i - 1]);
-        const bool mot = i + 2 <= texte.size() && std::tolower(static_cast<unsigned char>(texte[i])) == 'e'
-                         && std::tolower(static_cast<unsigned char>(texte[i + 1])) == 't';
-        const bool apresBlanc = i + 2 == texte.size() || (i + 2 < texte.size() && estBlanc(texte[i + 2]));
-        if (avantBlanc && mot && apresBlanc) {
+        size_t longueur = 0;
+        if (avantBlanc)
+            for (std::string_view conjonction : {std::string_view("et"), std::string_view("and")}) {
+                const size_t n = conjonction.size();
+                if (i + n > texte.size()) continue;
+                bool pareil = true;
+                for (size_t k = 0; k < n; ++k)
+                    if (std::tolower(static_cast<unsigned char>(texte[i + k])) != conjonction[k]) pareil = false;
+                if (pareil && (i + n == texte.size() || estBlanc(texte[i + n]))) longueur = n;
+            }
+        if (longueur > 0) {
             morceaux.push_back(texte.substr(debut, i - debut));
-            i += 2;
+            i += longueur;
             debut = i;
             continue;
         }
@@ -254,16 +291,111 @@ std::string logicalRuleText(const LogicalRule& rule) {
     return texte;
 }
 
-bool parseLogicalRule(const std::string& texte, uint16_t ppq, LogicalRule& sortie, std::string& erreur) {
+namespace {
+
+const char* nomLisible(NoteField champ, bool anglais) {
+    switch (champ) {
+        case NoteField::Pitch: return anglais ? "pitch" : "hauteur";
+        case NoteField::Velocity: return anglais ? "velocity" : "vélocité";
+        case NoteField::Length: return anglais ? "length" : "durée";
+        case NoteField::BarPosition: return "position";
+        case NoteField::Channel: return anglais ? "channel" : "canal";
+        case NoteField::Confidence: return anglais ? "confidence" : "confiance";
+        case NoteField::Muted: return anglais ? "muted" : "muette";
+    }
+    return "";
+}
+
+/// Une durée ou une position en fraction de RONDE quand elle tombe juste — la plus petite
+/// puissance de deux, jusqu'à 128 —, en ticks sinon. 1 920 à 480 ppq s'écrit « 1/1 » : « 1 »
+/// se relirait comme UN tick.
+std::string ecrireDuree(double ticks, uint16_t ppq) {
+    if (ticks == 0.0) return "0";
+    if (ticks > 0.0 && ticks < 1e12 && ticks == std::floor(ticks) && ppq > 0) {
+        const long long t = static_cast<long long>(ticks);
+        const long long ronde = 4LL * ppq;
+        for (long long den = 1; den <= 128; den *= 2)
+            if ((t * den) % ronde == 0) return std::to_string(t * den / ronde) + "/" + std::to_string(den);
+    }
+    return ecrireNombre(ticks);
+}
+
+std::string ecrireValeurLisible(NoteField champ, double v, uint16_t ppq, bool anglais) {
+    std::string texte;
+    switch (champ) {
+        case NoteField::Pitch:
+            texte = v >= 0.0 && v <= 127.0 && v == std::floor(v) ? noteNumberToName(static_cast<uint8_t>(v))
+                                                                 : ecrireNombre(v);
+            break;
+        case NoteField::Length:
+        case NoteField::BarPosition: texte = ecrireDuree(v, ppq); break;
+        case NoteField::Muted:
+            if (v == 1.0) return anglais ? "yes" : "oui";
+            if (v == 0.0) return anglais ? "no" : "non";
+            texte = ecrireNombre(v);
+            break;
+        default: texte = ecrireNombre(v); break;
+    }
+    if (!anglais) std::replace(texte.begin(), texte.end(), '.', ',');   // la virgule décimale
+    return texte;
+}
+
+} // namespace
+
+std::string logicalRuleReadableText(const LogicalRule& rule, uint16_t ppq, RuleLanguage language) {
+    const bool anglais = language == RuleLanguage::English;
+    std::string texte;
+    for (const auto& c : rule.conditions) {
+        if (!texte.empty()) texte += anglais ? " and " : " et ";
+        texte += nomLisible(c.field, anglais);
+        if (c.op == CompareOp::Between) texte += anglais ? " between " : " entre ";
+        else if (c.op == CompareOp::Outside) texte += anglais ? " outside " : " hors ";
+        else
+            for (const auto& [op, signe] : kOperateurs)
+                if (op == c.op) texte += std::string(" ") + signe + " ";
+        texte += ecrireValeurLisible(c.field, c.a, ppq, anglais);
+        if (c.op == CompareOp::Between || c.op == CompareOp::Outside)
+            texte += " " + ecrireValeurLisible(c.field, c.b, ppq, anglais);
+    }
+    return texte;
+}
+
+const char* logicalParseErrorTemplate(LogicalParseErrorKind kind) {
+    switch (kind) {
+        case LogicalParseErrorKind::NotANumber: return "« %1 » n'est pas un nombre";
+        case LogicalParseErrorKind::NotANote: return "« %1 » n'est ni un nombre ni une note (C4 = 60, F#3, Bb2)";
+        case LogicalParseErrorKind::NotTicksOrFraction:
+            return "« %1 » n'est ni un nombre de ticks ni une fraction de ronde (1/16)";
+        case LogicalParseErrorKind::NotAField:
+            return "« %1 » n'est pas un champ (hauteur, vélocité, durée, position, canal, confiance, muette)";
+        case LogicalParseErrorKind::MissingField:
+            return "« %1 » : il manque le champ (hauteur, vélocité, durée, position, canal, confiance, muette)";
+        case LogicalParseErrorKind::NotAnOperator: return "« %1 » n'est pas un opérateur (=, !=, <, <=, >, >=, entre, hors)";
+        case LogicalParseErrorKind::MissingValue: return "« %1 » : il manque la valeur";
+        case LogicalParseErrorKind::NeedsTwoValues: return "« %1 » attend deux valeurs";
+        case LogicalParseErrorKind::ExtraValue: return "« %1 » est en trop (une condition par « et »)";
+        case LogicalParseErrorKind::EmptyCondition: return "une condition est vide (un « et » en trop ?)";
+    }
+    return "";
+}
+
+bool parseLogicalRule(const std::string& texte, uint16_t ppq, LogicalRule& sortie, std::string& erreur,
+                      LogicalParseError* detail) {
     LogicalRule lue;
+    Echec echec;
+    const auto rater = [&]() {
+        erreur = echec.phrase;
+        if (detail != nullptr) *detail = echec.detail;
+        return false;
+    };
     if (!blanc(texte)) {
         for (const auto& clause : clauses(texte)) {
             if (blanc(clause)) {
-                erreur = "une condition est vide (un « et » en trop ?)";
-                return false;
+                echouer(echec, LogicalParseErrorKind::EmptyCondition, "");
+                return rater();
             }
             NoteCondition c;
-            if (!lireCondition(clause, ppq, c, erreur)) return false;
+            if (!lireCondition(clause, ppq, c, echec)) return rater();
             lue.conditions.push_back(c);
         }
     }

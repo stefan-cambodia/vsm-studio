@@ -52,12 +52,41 @@ NoteSelection selectNotesWhere(const std::vector<Note>& notes, const LogicalRule
 /// (« velocite < 30 et duree < 60 ») — ce que le banc et les préréglages comparent.
 std::string logicalRuleText(const LogicalRule& rule);
 
+/// D535.1 bis : L'ÉCRITURE LISIBLE — ce qu'on RELIT dans la fenêtre, et ce que les préférences
+/// retiennent. Les mots accentués, la hauteur par son nom (60 → C4, comme le clavier du piano
+/// roll), une durée ou une position en fraction de RONDE quand elle tombe juste (la plus petite
+/// puissance de deux jusqu'à 128 : 60 ticks à 480 ppq → 1/32), en ticks sinon ; en français
+/// (virgule décimale, « oui », « entre », « et ») ou en anglais (point, « yes », « between »,
+/// « and »). Elle se relit en la même règle. Et, en fraction, elle garde son SENS d'une
+/// résolution à l'autre, ce que la canonique ne fait pas : 60 ticks font 1/32 à 480 ppq et
+/// 1/64 à 960.
+enum class RuleLanguage { French, English };
+std::string logicalRuleReadableText(const LogicalRule& rule, uint16_t ppq, RuleLanguage language);
+
+/// CE QUI N'A PAS PU ÊTRE LU, et le MORCEAU tel qu'il a été tapé : l'interface traduit le
+/// modèle de phrase (`logicalParseErrorTemplate`, en français, « %1 » pour le morceau) — une
+/// phrase assemblée ici ne se traduirait pas.
+enum class LogicalParseErrorKind {
+    NotANumber, NotANote, NotTicksOrFraction, NotAField, MissingField, NotAnOperator,
+    MissingValue, NeedsTwoValues, ExtraValue, EmptyCondition,
+};
+struct LogicalParseError {
+    LogicalParseErrorKind kind = LogicalParseErrorKind::NotANumber;
+    std::string piece;
+};
+/// Le modèle de phrase français d'une erreur — une SEULE source pour `erreur` et pour la table
+/// de traduction de l'interface.
+const char* logicalParseErrorTemplate(LogicalParseErrorKind kind);
+
 /// LA LECTURE : accents facultatifs (« vélocité » = « velocite »), casse indifférente pour les
-/// mots ; une hauteur en nombre ou en nom (C4 = 60, F#3, Bb2) ; une durée ou une position en
-/// ticks ou en fraction de ronde (1/16) ; une confiance avec un point ou une virgule ; « muette »
-/// prend 0/1 ou non/oui. Faux, sans toucher `sortie`, pour tout morceau illisible — et `erreur`
-/// le NOMME tel qu'il a été tapé, jamais deviné.
-bool parseLogicalRule(const std::string& texte, uint16_t ppq, LogicalRule& sortie, std::string& erreur);
+/// mots, et les mots ANGLAIS acceptés aussi (pitch, velocity, length, position, channel,
+/// confidence, muted ; between, outside ; and ; yes, no) — l'interface est bilingue ; une hauteur
+/// en nombre ou en nom (C4 = 60, F#3, Bb2) ; une durée ou une position en ticks ou en fraction
+/// de ronde (1/16) ; une confiance avec un point ou une virgule ; « muette » prend 0/1 ou non/oui.
+/// Faux, sans toucher `sortie`, pour tout morceau illisible — et `erreur` le NOMME tel qu'il a
+/// été tapé, jamais deviné.
+bool parseLogicalRule(const std::string& texte, uint16_t ppq, LogicalRule& sortie, std::string& erreur,
+                      LogicalParseError* detail = nullptr);
 
 enum class LogicalAction { Select, Delete, Mute, Transpose, SetVelocity };
 

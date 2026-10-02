@@ -220,3 +220,80 @@ VSM_TEST(les_actions_ne_touchent_que_les_notes_qui_repondent) {
         VSM_ASSERT_EQ(static_cast<int>(notes[1].number), 64);
     }
 }
+
+// L'INTERFACE EST BILINGUE : la règle se tape aussi en anglais, et l'erreur se rend en GENRE et
+// MORCEAU tapé — c'est le modèle de phrase que l'interface traduit, pas une phrase assemblée.
+VSM_TEST(la_regle_se_lit_en_anglais_et_l_erreur_se_rend_en_genre_et_morceau) {
+    LogicalRule fr, en;
+    std::string erreur;
+    VSM_ASSERT(parseLogicalRule("vélocité < 30 et durée entre 10 60 et muette = oui et canal != 10", kPpq, fr, erreur));
+    VSM_ASSERT(parseLogicalRule("Velocity < 30 AND length between 10 60 and muted = yes and channel != 10", kPpq, en, erreur));
+    VSM_ASSERT(fr == en);
+    VSM_ASSERT_EQ(fr.conditions.size(), static_cast<size_t>(4));
+    LogicalRule sortie;
+    LogicalParseError detail;
+    VSM_ASSERT(!parseLogicalRule("vélocité < Trente", kPpq, sortie, erreur, &detail));
+    VSM_ASSERT(detail.kind == LogicalParseErrorKind::NotANumber);
+    VSM_ASSERT_EQ(detail.piece, std::string("Trente"));
+    VSM_ASSERT_EQ(erreur, std::string("« Trente » n'est pas un nombre"));
+    VSM_ASSERT(!parseLogicalRule("pitch outside 40", kPpq, sortie, erreur, &detail));
+    VSM_ASSERT(detail.kind == LogicalParseErrorKind::NeedsTwoValues);
+    VSM_ASSERT_EQ(detail.piece, std::string("outside"));
+    // Chaque modèle porte « %1 », sauf celui de la condition vide.
+    for (auto genre : {LogicalParseErrorKind::NotANumber, LogicalParseErrorKind::NotANote,
+                       LogicalParseErrorKind::NotTicksOrFraction, LogicalParseErrorKind::NotAField,
+                       LogicalParseErrorKind::MissingField, LogicalParseErrorKind::NotAnOperator,
+                       LogicalParseErrorKind::MissingValue, LogicalParseErrorKind::NeedsTwoValues,
+                       LogicalParseErrorKind::ExtraValue})
+        VSM_ASSERT(std::string(logicalParseErrorTemplate(genre)).find("%1") != std::string::npos);
+}
+
+// D535.1 bis, attendu 8 : L'ÉCRITURE LISIBLE se relit en la même règle, dans les deux langues, et
+// garde son SENS d'une résolution à l'autre — ce que la canonique, en ticks, ne fait pas.
+VSM_TEST(l_ecriture_lisible_fait_l_aller_retour_dans_les_deux_langues) {
+    size_t relues = 0;
+    for (RuleLanguage langue : {RuleLanguage::French, RuleLanguage::English})
+        for (NoteField champ : {NoteField::Pitch, NoteField::Velocity, NoteField::Length, NoteField::BarPosition,
+                                NoteField::Channel, NoteField::Confidence, NoteField::Muted})
+            for (CompareOp op : {CompareOp::Equal, CompareOp::NotEqual, CompareOp::Less, CompareOp::LessOrEqual,
+                                 CompareOp::Greater, CompareOp::GreaterOrEqual, CompareOp::Between, CompareOp::Outside}) {
+                LogicalRule regle;
+                // Des valeurs qui prennent chaque forme : nom de note, fraction, ticks, décimale, oui/non.
+                double a = 3.0, b = 9.0;
+                if (champ == NoteField::Pitch) { a = 61.0; b = 72.0; }
+                if (champ == NoteField::Length) { a = 60.0; b = 50.0; }        // 1/32, et 50 qui reste en ticks
+                if (champ == NoteField::BarPosition) { a = 0.0; b = 720.0; }  // 0, et 3/8
+                if (champ == NoteField::Confidence) { a = 0.25; b = 0.75; }
+                if (champ == NoteField::Muted) { a = 0.0; b = 1.0; }
+                regle.conditions.push_back({champ, op, a, (op == CompareOp::Between || op == CompareOp::Outside) ? b : 0.0});
+                regle.conditions.push_back({NoteField::Velocity, CompareOp::Greater, 10.0, 0.0});
+                LogicalRule relue;
+                std::string erreur;
+                const std::string texte = logicalRuleReadableText(regle, kPpq, langue);
+                VSM_ASSERT(parseLogicalRule(texte, kPpq, relue, erreur));
+                VSM_ASSERT(relue == regle);
+                ++relues;
+            }
+    VSM_ASSERT_EQ(relues, static_cast<size_t>(2 * 7 * 8));
+
+    LogicalRule fantomes;
+    std::string erreur;
+    VSM_ASSERT(parseLogicalRule("velocite < 30 et duree < 60", kPpq, fantomes, erreur));
+    VSM_ASSERT_EQ(logicalRuleReadableText(fantomes, kPpq, RuleLanguage::French), std::string("vélocité < 30 et durée < 1/32"));
+    VSM_ASSERT_EQ(logicalRuleReadableText(fantomes, kPpq, RuleLanguage::English), std::string("velocity < 30 and length < 1/32"));
+    LogicalRule formes;
+    VSM_ASSERT(parseLogicalRule("hauteur entre 0 61 et confiance < 0.5 et muette = 1 et duree hors 1920 50 et position = 720",
+                                kPpq, formes, erreur));
+    VSM_ASSERT_EQ(logicalRuleReadableText(formes, kPpq, RuleLanguage::French),
+                  std::string("hauteur entre C-1 C#4 et confiance < 0,5 et muette = oui et durée hors 1/1 50 et position = 3/8"));
+    VSM_ASSERT_EQ(logicalRuleReadableText(formes, kPpq, RuleLanguage::English),
+                  std::string("pitch between C-1 C#4 and confidence < 0.5 and muted = yes and length outside 1/1 50 and position = 3/8"));
+
+    // LE SENS GARDÉ : retenue à 480 ppq, relue dans un projet à 960.
+    const std::string retenue = logicalRuleReadableText(fantomes, kPpq, RuleLanguage::French);
+    LogicalRule a960, canonique960;
+    VSM_ASSERT(parseLogicalRule(retenue, 960, a960, erreur));
+    VSM_ASSERT_EQ(a960.conditions[1].a, 120.0);
+    VSM_ASSERT(parseLogicalRule(logicalRuleText(fantomes), 960, canonique960, erreur));
+    VSM_ASSERT_EQ(canonique960.conditions[1].a, 60.0);   // le témoin : la canonique, elle, change de sens
+}

@@ -90,6 +90,9 @@ DEJA_EN_PLACE = {
 OPTIONS_PAR_ENTREE = {
     "Poser un repère ici…": "nom=Essai",
     "Renommer…": "nom=Essai",
+    # D535.1 bis : une règle qui répond dans TOUT projet (« hauteur >= 0 »), et une action qui
+    # change le projet (rendre muettes) : le geste se voit au fichier quel que soit le morceau.
+    "Éditeur logique…": "regle=hauteur >= 0;action=3",
 }
 
 MENUS = {
@@ -118,7 +121,7 @@ MENUS = {
                   "Quantifier (100 %)", "Quantifier début ET fin", "Humaniser",
                   "Durée = pas de grille", "Durée x2", "Durée /2", "Legato",
                   "Retirer les chevauchements", "Rétrograder", "Vélocité 127",
-                  "Vélocité 64", "Dupliquer", "Supprimer"],
+                  "Vélocité 64", "Dupliquer", "Supprimer", "Éditeur logique…"],
     # LE MENU MIXAGE : trois entrées actives, dont deux réglages de console.
     "mixage": ["Ajouter un bus de départ", "Écoute en mono (jamais dans un export)"],
     # LE MENU ÉDITION, ses entrées actives sans sélection préalable.

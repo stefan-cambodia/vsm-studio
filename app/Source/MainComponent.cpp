@@ -575,6 +575,7 @@ MainComponent::MainComponent()
     pianoRollPanel_.onChordRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, false); };
     pianoRollPanel_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
     pianoRollPanel_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { retirerAccord(tick); };
+    pianoRoll_.onLogicalEditorRequested = [this] { ouvrirEditeurLogique(); };   // D535.1 bis
 
     pianoRoll_.setHistory(&history_);
     pianoRoll_.onProjectRestored = [this] {
@@ -14195,6 +14196,161 @@ void MainComponent::demanderAccord(vsm::midi::Tick tick, bool modifier) {
             std::fputs(ligne.c_str(), stderr);
             refreshMarkerViews();
         });
+}
+
+namespace {
+/// D535.1 bis : l'erreur de lecture d'une règle, dans la langue de l'interface — le MODÈLE de
+/// phrase vient de `core/` (une seule source), le morceau est celui qui a été tapé.
+juce::String erreurDeRegle(const vsm::sequencer::LogicalParseError& detail) {
+    return vsm::app::ui::tr(juce::String::fromUTF8(vsm::sequencer::logicalParseErrorTemplate(detail.kind)))
+        .replace("%1", juce::String::fromUTF8(detail.piece.c_str()));
+}
+} // namespace
+
+void MainComponent::ouvrirEditeurLogique() {
+    using vsm::sequencer::LogicalAction;
+    auto& prefs = vsm::app::ui::UiScale::properties();
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        tr(u8"Éditeur logique"),
+        tr(u8"Les notes de la piste qui répondent à la règle — des conditions liées par « et »."),
+        juce::AlertWindow::NoIcon);
+    // LES EXEMPLES DANS LEUR PROPRE ÉTIQUETTE, à largeur fixe. Dans le message, JUCE équilibre les
+    // lignes sur une largeur tirée de la longueur TOTALE du texte : « hauteur entre C3 | B3 » se
+    // lisait comme deux conditions, puis, le texte raccourci, « muette = | oui » en français et
+    // « pitch between C3 | B3 » en anglais — chaque retouche déplaçait la coupure (vu sur trois
+    // photos de la fenêtre). Ici, deux lignes écrites à la main, sur 560 points.
+    auto exemples = std::make_shared<juce::Label>();
+    exemples->setText(tr(u8"vélocité < 30 et durée < 1/32 · hauteur entre C3 B3\n"
+                         u8"confiance < 0,5 · position = 0 · canal = 10 · muette = oui"),
+                      juce::dontSendNotification);
+    exemples->setFont(fenetre->getLookAndFeel().getAlertWindowMessageFont());
+    exemples->setJustificationType(juce::Justification::centred);
+    exemples->setMinimumHorizontalScale(1.0f);
+    exemples->setColour(juce::Label::textColourId, fenetre->findColour(juce::AlertWindow::textColourId));
+    exemples->setSize(560, juce::roundToInt(exemples->getFont().getHeight() * 2.0f) + 8);
+    fenetre->addCustomComponent(exemples.get());
+    // LA RÈGLE RETENUE, RÉÉCRITE DANS LA LANGUE DE L'INTERFACE, en fractions de ronde à la
+    // résolution de CE projet : les préférences portent la forme lisible française, qui garde son
+    // sens d'une résolution à l'autre (60 ticks font 1/32 à 480 ppq, 1/64 à 960). Une valeur
+    // qu'on ne sait plus lire est rendue telle quelle — la fenêtre la refusera en la citant.
+    juce::String regleRetenue = prefs.getValue("editeurLogique.regle", "");
+    {
+        vsm::sequencer::LogicalRule lue;
+        std::string erreur;
+        if (vsm::sequencer::parseLogicalRule(regleRetenue.toStdString(), project_.ticksPerQuarterNote, lue, erreur)) {
+            const auto langue = vsm::app::ui::Langue::courante() == vsm::app::ui::Langue::Choix::Anglais
+                                    ? vsm::sequencer::RuleLanguage::English
+                                    : vsm::sequencer::RuleLanguage::French;
+            regleRetenue = juce::String::fromUTF8(
+                vsm::sequencer::logicalRuleReadableText(lue, project_.ticksPerQuarterNote, langue).c_str());
+        }
+    }
+    std::fputs(("VSM_LOGIQUE_REGLE : " + regleRetenue + "\n").toRawUTF8(), stderr);
+    fenetre->addTextEditor("regle", regleRetenue, tr(u8"Règle :"));
+    fenetre->addComboBox("action", {tr(u8"Choisir"), tr(u8"Supprimer"), tr(u8"Rendre muettes"), tr(u8"Transposer"),
+                                    tr(u8"Fixer la vélocité")}, tr(u8"Action :"));
+    fenetre->getComboBoxComponent("action")->setSelectedId(juce::jlimit(1, 5, prefs.getIntValue("editeurLogique.action", 1)),
+                                                           juce::dontSendNotification);
+    fenetre->addTextEditor("valeur", prefs.getValue("editeurLogique.valeur", "12"),
+                           tr(u8"Valeur (demi-tons, ou vélocité de 1 à 127) :"));
+    // LE CHAMP D'APPLICATION EST DIT, jamais deviné : « seulement les choisies » n'est offert que
+    // s'il y en a, et ne revient que si on l'avait pris.
+    const bool choisies = pianoRoll_.aDesNotesChoisies();
+    fenetre->addComboBox("parmi", {tr(u8"Toutes les notes de la piste"), tr(u8"Seulement les notes choisies")},
+                         tr(u8"Notes :"));
+    auto* parmi = fenetre->getComboBoxComponent("parmi");
+    parmi->setItemEnabled(2, choisies);
+    parmi->setSelectedId(choisies && prefs.getIntValue("editeurLogique.parmi", 1) == 2 ? 2 : 1, juce::dontSendNotification);
+    // LE COMPTE EN DIRECT : à chaque frappe, combien répondent — ou ce qui ne se lit pas.
+    auto compte = std::make_shared<juce::Label>();
+    // LE COMPTE EST CE QU'ON LIT AVANT DE PRESSER : la police du message, en gras, et sa couleur
+    // — et non la petite police grise d'une étiquette (vu sur la photo de la fenêtre).
+    compte->setSize(560, 30);
+    compte->setFont(fenetre->getLookAndFeel().getAlertWindowMessageFont().boldened());
+    compte->setColour(juce::Label::textColourId, fenetre->findColour(juce::AlertWindow::textColourId));
+    fenetre->addCustomComponent(compte.get());
+    juce::AlertWindow* w = fenetre.get();
+    juce::Label* l = compte.get();
+    const auto majCompte = [this, w, l] {
+        vsm::sequencer::LogicalRule regle;
+        std::string erreur;
+        vsm::sequencer::LogicalParseError detail;
+        const bool seulement = w->getComboBoxComponent("parmi")->getSelectedId() == 2;
+        juce::String texte;
+        if (vsm::sequencer::parseLogicalRule(w->getTextEditorContents("regle").toStdString(), project_.ticksPerQuarterNote,
+                                             regle, erreur, &detail)) {
+            const auto [repondent, total] = pianoRoll_.compterReponses(regle, seulement);
+            texte = tr(u8"%1 note(s) sur %2 répondent").replace("%1", juce::String(static_cast<int>(repondent)))
+                                                       .replace("%2", juce::String(static_cast<int>(total)));
+        } else {
+            texte = erreurDeRegle(detail);
+        }
+        l->setText(texte, juce::dontSendNotification);
+        std::fputs(("VSM_LOGIQUE_COMPTE : " + texte + "\n").toRawUTF8(), stderr);
+    };
+    fenetre->getTextEditor("regle")->onTextChange = majCompte;
+    parmi->onChange = majCompte;
+    majCompte();
+    fenetre->addButton(tr(u8"Appliquer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, exemples, compte, majCompte](int resultat) {
+        // Un banc remplit le champ SANS frappe (`setText` sans notification) : le compte est
+        // refait ici, comme une frappe l'aurait fait, pour qu'il se lise au journal.
+        majCompte();
+        const juce::String texte = fenetre->getTextEditorContents("regle").trim();
+        const int numeroAction = fenetre->getComboBoxComponent("action")->getSelectedId();
+        const juce::String valeurTapee = fenetre->getTextEditorContents("valeur").trim();
+        const bool seulement = fenetre->getComboBoxComponent("parmi")->getSelectedId() == 2;
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        vsm::sequencer::LogicalRule regle;
+        std::string erreur;
+        vsm::sequencer::LogicalParseError detail;
+        if (!vsm::sequencer::parseLogicalRule(texte.toStdString(), project_.ticksPerQuarterNote, regle, erreur, &detail)) {
+            montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Règle illisible"),
+                         tr(u8"%1. Rien n'a été fait.").replace("%1", erreurDeRegle(detail)));
+            return;
+        }
+        static const LogicalAction actions[] = {LogicalAction::Select, LogicalAction::Delete, LogicalAction::Mute,
+                                                LogicalAction::Transpose, LogicalAction::SetVelocity};
+        const LogicalAction action = actions[juce::jlimit(1, 5, numeroAction) - 1];
+        int valeur = 0;
+        if (action == LogicalAction::Transpose || action == LogicalAction::SetVelocity) {
+            const juce::String chiffres = valeurTapee.startsWithChar('+') ? valeurTapee.substring(1) : valeurTapee;
+            if (chiffres.isEmpty() || !chiffres.trimCharactersAtStart("-").containsOnly("0123456789")) {
+                montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Valeur illisible"),
+                             tr(u8"« %1 » n'est pas un nombre entier. Rien n'a été fait.").replace("%1", valeurTapee));
+                return;
+            }
+            valeur = chiffres.getIntValue();
+        }
+        // LE DERNIER RÉGLAGE RETENU, la règle sous sa forme LISIBLE FRANÇAISE : une seule écriture
+        // par règle, et des fractions qui gardent leur sens dans un projet d'une autre résolution
+        // — la canonique, en ticks, en changeait (D535.1 bis, complément). La canonique reste
+        // celle du journal, que le banc lit.
+        const std::string canonique = vsm::sequencer::logicalRuleText(regle);
+        auto& prefs = vsm::app::ui::UiScale::properties();
+        prefs.setValue("editeurLogique.regle", juce::String::fromUTF8(vsm::sequencer::logicalRuleReadableText(
+            regle, project_.ticksPerQuarterNote, vsm::sequencer::RuleLanguage::French).c_str()));
+        prefs.setValue("editeurLogique.action", numeroAction);
+        prefs.setValue("editeurLogique.valeur", valeurTapee);
+        prefs.setValue("editeurLogique.parmi", seulement ? 2 : 1);
+        prefs.saveIfNeeded();
+        const auto bilan = pianoRoll_.appliquerRegleLogique(regle, action, valeur, seulement);
+        // Des IDENTIFIANTS pour le journal, lus par un banc et non par quelqu'un.
+        static const char* const noms[] = {"choisir", "supprimer", "rendre-muettes", "transposer", "fixer-velocite"};
+        const std::string ligne = std::string("VSM_LOGIQUE : ") + noms[juce::jlimit(1, 5, numeroAction) - 1]
+                                  + " sur « " + canonique + " » — " + std::to_string(bilan.repondaient)
+                                  + " répondaient, " + std::to_string(bilan.changees) + " changée(s), "
+                                  + std::to_string(bilan.refusees) + " refusée(s)\n";
+        std::fputs(ligne.c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Éditeur logique : %1 note(s) répondaient, %2 changée(s), %3 refusée(s)")
+                                           .replace("%1", juce::String(static_cast<int>(bilan.repondaient)))
+                                           .replace("%2", juce::String(static_cast<int>(bilan.changees)))
+                                           .replace("%3", juce::String(static_cast<int>(bilan.refusees))));
+    });
 }
 
 void MainComponent::retirerAccord(vsm::midi::Tick tick) {

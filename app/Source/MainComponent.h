@@ -1897,6 +1897,9 @@ private:
     /// et DIT. Retirer : l'accord en vigueur à `tick`. Chacun est un pas d'historique.
     void demanderAccord(vsm::midi::Tick tick, bool modifier);
     void retirerAccord(vsm::midi::Tick tick);
+    /// D535.1 bis : LA FENÊTRE DE L'ÉDITEUR LOGIQUE — la règle, l'action, la valeur, le champ
+    /// d'application, et le compte EN DIRECT sous la règle ; le dernier réglage est retenu.
+    void ouvrirEditeurLogique();
     void refreshMarkerViews();
     void refreshTransportSchedule();
     void updateSynthRackForSelection();

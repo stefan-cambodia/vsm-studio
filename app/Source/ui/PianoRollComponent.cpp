@@ -52,6 +52,7 @@ enum ContextMenuId {
     kCtxVelocityRampUp, kCtxVelocityRampDown, kCtxVelocityRandom,
     kCtxVelocityCompress, kCtxVelocityCompressFull, kCtxVelocityLimit,
     kCtxScaleConstrain = 100080, kCtxSnapChords,   // D532.3 bis
+    kCtxLogicalEditor = 100450,   // D535.1 bis
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -1146,6 +1147,58 @@ void PianoRollComponent::snapSelectionToChords() {
                             .replace("%5", juce::String(static_cast<int>(bilan.unheard))));
 }
 
+std::pair<size_t, size_t> PianoRollComponent::compterReponses(const vsm::sequencer::LogicalRule& regle,
+                                                              bool parmiLesChoisies) const {
+    const Track* track = activeTrack();
+    if (track == nullptr || project_ == nullptr) return {0, 0};
+    const auto repondent = selectNotesWhere(track->notes, regle, project_->timeSignatureMap,
+                                            project_->ticksPerQuarterNote, parmiLesChoisies ? &selectedNoteIds_ : nullptr);
+    return {repondent.size(), parmiLesChoisies ? selectedNoteIds_.size() : track->notes.size()};
+}
+
+PianoRollComponent::BilanLogique PianoRollComponent::appliquerRegleLogique(const vsm::sequencer::LogicalRule& regle,
+                                                                          vsm::sequencer::LogicalAction action,
+                                                                          int valeur, bool parmiLesChoisies) {
+    using vsm::sequencer::LogicalAction;
+    BilanLogique bilan;
+    Track* track = activeTrack();
+    if (track == nullptr || project_ == nullptr) return bilan;
+    const NoteSelection repondent = selectNotesWhere(track->notes, regle, project_->timeSignatureMap,
+                                                     project_->ticksPerQuarterNote,
+                                                     parmiLesChoisies ? &selectedNoteIds_ : nullptr);
+    bilan.repondaient = repondent.size();
+    if (action == LogicalAction::Select) {
+        // Une sélection n'est pas une donnée du projet : aucun pas (D357 la dit au journal).
+        selectedNoteIds_ = repondent;
+        bilan.changees = repondent.size();
+        notifyEditState();
+        repaint();
+        return bilan;
+    }
+    if (repondent.empty()) return bilan;
+    // LES REFUS SE DÉCIDENT AVANT D'OUVRIR LE PAS : rien à défaire pour un geste qui n'a rien fait.
+    if (action == LogicalAction::Transpose) {
+        bilan.refusees = notesLeavingMidiRange(track->notes, repondent, valeur);   // D536 : tout ou rien
+        if (bilan.refusees > 0) return bilan;
+    }
+    if (action == LogicalAction::SetVelocity && (valeur < 1 || valeur > 127)) {
+        bilan.refusees = repondent.size();
+        return bilan;
+    }
+    const char8_t* libelle = action == LogicalAction::Delete      ? u8"Éditeur logique : supprimer"
+                           : action == LogicalAction::Mute        ? u8"Éditeur logique : rendre muettes"
+                           : action == LogicalAction::Transpose   ? u8"Éditeur logique : transposer"
+                                                                  : u8"Éditeur logique : fixer la vélocité";
+    if (!beginEdit(juce::String(libelle))) return bilan;
+    const auto r = applyLogicalAction(track->notes, repondent, action, valeur);
+    bilan.changees = r.changed;
+    bilan.refusees = r.refused;
+    if (action == LogicalAction::Delete)
+        for (const auto id : repondent) selectedNoteIds_.erase(id);
+    notifyEdited();
+    return bilan;
+}
+
 void PianoRollComponent::toggleSelectionMuted() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
@@ -1391,6 +1444,12 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
                            tr(chordTypeName(chordTypes[i])) + tr(" sur ") +
                            juce::String(noteNumberToName(static_cast<uint8_t>(60 + scale_.root))));
     menu.addSubMenu(tr(u8"Insérer un accord"), chordMenu);
+    // D535.1 bis : L'ÉDITEUR LOGIQUE — actif dès que la piste a une note : sans sélection, la
+    // règle peut viser toute la piste.
+    {
+        const Track* piste = activeTrack();
+        menu.addItem(kCtxLogicalEditor, tr(u8"Éditeur logique…"), piste != nullptr && !piste->notes.empty());
+    }
 
     menu.addSeparator();
     ajouterAvecRaccourci(menu, kCtxMute, tr("Rendre muet / audible"), shortcuts_, Id::EditToggleMute, sel);
@@ -1518,6 +1577,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxVelocityLimit:        limitSelectionVelocity(20, 100); break;
         case kCtxScaleConstrain:   constrainSelectionToScale(); break;
         case kCtxSnapChords:       snapSelectionToChords(); break;   // D532.3 bis
+        case kCtxLogicalEditor:    if (onLogicalEditorRequested) onLogicalEditorRequested(); break;   // D535.1 bis
         case kCtxArpUp:            arpeggiateSelection(ArpeggioMode::Up); break;
         case kCtxArpDown:          arpeggiateSelection(ArpeggioMode::Down); break;
         case kCtxArpUpDown:        arpeggiateSelection(ArpeggioMode::UpDown); break;
