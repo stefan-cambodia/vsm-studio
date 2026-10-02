@@ -64,7 +64,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     // D11.5 : LE CANAL MIDI SE SAISIT. Il était attribué à la création
     // (`n % 16`) et affiché sans qu'on puisse y toucher. Un nombre de 1 à
     // 16 ; tout autre texte rend l'ancien. Le planning du moteur suit.
-    if (!audio_) {
+    if (!audio_ && !track_.isVca()) {
         channelLabel_.setEditable(false, true, false);   // l'infobulle : `poserTextes()` (D94)
         channelLabel_.onTextChange = [this] {
             const int saisi = channelLabel_.getText().retainCharacters("0123456789").getIntValue();
@@ -101,6 +101,12 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         // mettrait. Lui laisser le sélecteur « (Aucun) » était donc offrir un
         // réglage sans effet -- la pire espèce, celle qui se règle et ne fait
         // rien. Elle dit ce qu'elle porte, et d'où ça vient.
+        addAndMakeVisible(audioSourceLabel_);
+        audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
+        audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentTeal);
+    } else if (track_.isVca()) {
+        // D532.1 bis : UN VCA NE JOUE RIEN ET NE PORTE AUCUN SIGNAL : son fader
+        // multiplie ceux qu'il commande. Il dit ce qu'il est, et combien.
         addAndMakeVisible(audioSourceLabel_);
         audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentTeal);
@@ -201,7 +207,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     // OÙ VA CETTE PISTE (D4.2). Un groupe, lui, va toujours au master : les
     // groupes imbriqués demanderaient un ordre topologique pour un besoin que
     // rien n'a exprimé, et proposer le choix laisserait croire le contraire.
-    if (track_.kind != Track::Kind::Group) {
+    if (track_.kind != Track::Kind::Group && !track_.isVca()) {   // D532.1 bis : un VCA ne sort nulle part
         addAndMakeVisible(outputBox_);
         outputBox_.addItem("-> Master", 1);
         int selection = 1;
@@ -284,6 +290,9 @@ void TrackRowComponent::poserTextes() {
                                   juce::dontSendNotification);
     else if (track_.kind == Track::Kind::Group)
         audioSourceLabel_.setText(tr(u8"bus de groupe"), juce::dontSendNotification);
+    else if (track_.isVca())   // D532.1 bis
+        audioSourceLabel_.setText(tr(u8"VCA — %1 membre(s)").replace("%1", juce::String(membresDuVca_)),
+                                  juce::dontSendNotification);
     if (track_.isFolder())
         folderButton_.setTooltip(tr(u8"Replier ou déployer le dossier. N'affecte que la VUE : "
                                     u8"les pistes rangées dedans continuent de jouer."));
@@ -292,7 +301,22 @@ void TrackRowComponent::poserTextes() {
                     u8"fichier du dossier du projet. Une seule piste audio à la fois.")
                : tr(u8"Armer la piste : elle reçoit alors le clavier MIDI, "
                     u8"à l'écoute comme à l'enregistrement."));
-    if (track_.kind != Track::Kind::Group) poserInfobulleDeSortie();
+    if (track_.kind != Track::Kind::Group && !track_.isVca()) poserInfobulleDeSortie();
+    // D532.2 bis : LA VERSION QU'ON ENTEND, en infobulle du nom — pas dans le nom, qui
+    // s'édite : y écrire la version la ferait renommer avec la piste.
+    if (!track_.versions.empty() && track_.activeVersion >= 0
+        && track_.activeVersion < static_cast<int>(track_.versions.size()))
+        nameLabel_.setTooltip(tr(u8"Version « %1 » — %2 sur %3")
+                                  .replace("%1", juce::String::fromUTF8(track_.versions[static_cast<size_t>(track_.activeVersion)].name.c_str()))
+                                  .replace("%2", juce::String(track_.activeVersion + 1))
+                                  .replace("%3", juce::String(static_cast<int>(track_.versions.size()))));
+    else
+        nameLabel_.setTooltip({});
+}
+
+void TrackRowComponent::poserMembresDuVca(int membres) {
+    membresDuVca_ = membres;
+    poserTextes();
 }
 
 void TrackRowComponent::poserInfobulleDeSortie() {
@@ -332,7 +356,7 @@ void TrackRowComponent::reglerVolume(float valeur) {
 // D481 : ce que le M et le S de la LIGNE font de plus que ceux de la tranche.
 static constexpr const char8_t* kSurLeChoix = u8"Sur une piste choisie, s'applique à toutes les pistes choisies.";
 
-void TrackRowComponent::refreshMuteSolo(bool tuParUnDossier) {
+void TrackRowComponent::refreshMuteSolo(bool tuParUnDossier, bool parLeVca) {
     // `dontSendNotification` : on REFLÈTE la piste, on ne la modifie pas. Avec
     // une notification, rafraîchir la liste depuis le mélangeur rappellerait
     // le mélangeur, et les deux panneaux se renverraient la balle.
@@ -343,7 +367,7 @@ void TrackRowComponent::refreshMuteSolo(bool tuParUnDossier) {
     // rendait muettes six pistes sans que rien ne l'annonce ; il n'avait aucune
     // infobulle quand le S en avait une depuis D423.
     muteButton_.setTooltip(tuParUnDossier && !track_.muted
-                               ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
+                               ? vsm::app::ui::tr(parLeVca ? u8"Rendu muet par son VCA" : u8"Rendu muet par son dossier")
                                : vsm::app::ui::tr(u8"Muet.") + " " + vsm::app::ui::tr(kSurLeChoix));
     rafraichirSolo();   // D423 : état, « S+ » et infobulle
 }
@@ -530,10 +554,11 @@ void TrackRowComponent::paintOverChildren(juce::Graphics& g) {
 void TrackRowComponent::poserLesVisibilites() {
     // D136 : les visibilités des deux dispositions, en un seul endroit.
     const bool publie = track_.publishesInstrumentOutput(), dossier = track_.isFolder();
-    armButton_.setVisible(!publie && !dossier);
+    const bool vca = track_.isVca();   // D532.1 bis : ni canal, ni armement, ni panoramique, ni sortie
+    armButton_.setVisible(!publie && !dossier && !vca);
     // D377 : UN DOSSIER N'A PAS DE CANAL MIDI. Le « Ch 1 » éditable promettait
     // un réglage qu'aucune note ne traverse (la règle de D35.5).
-    channelLabel_.setVisible(!dossier);
+    channelLabel_.setVisible(!dossier && !vca);
     // D376 : UN DOSSIER A SON MUET ET SON SOLO. D19.4 les avait retirés (« un
     // dossier ne touche à aucun signal ») ; D35.4 les a rendus ACTIFS sur son
     // contenu sans les rendre visibles -- le muet d'un dossier agissait sans se
@@ -542,8 +567,8 @@ void TrackRowComponent::poserLesVisibilites() {
     muteButton_.setVisible(true);
     soloButton_.setVisible(true);
     volumeSlider_.setVisible(!dossier);
-    panSlider_.setVisible(!dossier);
-    outputBox_.setVisible(!dossier && track_.kind != Track::Kind::Group);
+    panSlider_.setVisible(!dossier && !vca);
+    outputBox_.setVisible(!dossier && !vca && track_.kind != Track::Kind::Group);
 }
 
 void TrackRowComponent::dispositionEtroite(juce::Rectangle<int> area) {
@@ -572,7 +597,8 @@ void TrackRowComponent::dispositionEtroite(juce::Rectangle<int> area) {
     // essai, muet, solo et armement posés à côté le réduisaient à « .. ».
     area.removeFromTop(4);
     rangee = area.removeFromTop(24);
-    if (audio_ || track_.kind == Track::Kind::Group || publie || dossier)
+    const bool vca = track_.isVca();   // D532.1 bis
+    if (audio_ || track_.kind == Track::Kind::Group || publie || dossier || vca)
         audioSourceLabel_.setBounds(rangee);
     else instrumentBox_.setBounds(rangee);
 
@@ -585,19 +611,20 @@ void TrackRowComponent::dispositionEtroite(juce::Rectangle<int> area) {
     rangee.removeFromLeft(3);
     soloButton_.setBounds(rangee.removeFromLeft(24));
     if (dossier) return;   // D376 : muet et solo, rien d'autre
-    if (!publie) {
+    if (!publie && !vca) {
         rangee.removeFromLeft(3);
         armButton_.setBounds(rangee.removeFromLeft(24));
     }
-    if (track_.kind != Track::Kind::Group) {
+    if (track_.kind != Track::Kind::Group && !vca) {
         rangee.removeFromLeft(8);
         outputBox_.setBounds(rangee);
     }
 
-    // Le volume, et le panoramique à sa droite (un tiers au plus).
+    // Le volume, et le panoramique à sa droite (un tiers au plus) ; le VCA n'a que
+    // son volume, qui prend la rangée.
     area.removeFromTop(6);
     rangee = area.removeFromTop(20);
-    panSlider_.setBounds(rangee.removeFromRight(juce::jmin(90, rangee.getWidth() / 3)));
+    if (!vca) panSlider_.setBounds(rangee.removeFromRight(juce::jmin(90, rangee.getWidth() / 3)));
     rangee.removeFromRight(8);
     volumeSlider_.setBounds(rangee);
 }
@@ -637,8 +664,9 @@ void TrackRowComponent::resized() {
     const bool dossier = track_.isFolder();
     poserLesVisibilites();   // D136 : les mêmes, dans les deux dispositions
 
-    const int largeurTexte = (publie || dossier) ? 170 + 4 + 28 : 170;
-    if (audio_ || track_.kind == Track::Kind::Group || publie || dossier)
+    const bool vca = track_.isVca();   // D532.1 bis
+    const int largeurTexte = (publie || dossier || vca) ? 170 + 4 + 28 : 170;
+    if (audio_ || track_.kind == Track::Kind::Group || publie || dossier || vca)
         audioSourceLabel_.setBounds(secondRow.removeFromLeft(largeurTexte));
     else instrumentBox_.setBounds(secondRow.removeFromLeft(largeurTexte));
     {   // D376 : le dossier a son muet et son solo, pas d'armement
@@ -646,7 +674,7 @@ void TrackRowComponent::resized() {
         muteButton_.setBounds(secondRow.removeFromLeft(28));
         secondRow.removeFromLeft(4);
         soloButton_.setBounds(secondRow.removeFromLeft(28));
-        if (!publie && !dossier) {
+        if (!publie && !dossier && !vca) {
             secondRow.removeFromLeft(4);
             armButton_.setBounds(secondRow.removeFromLeft(28));
         }
@@ -656,6 +684,7 @@ void TrackRowComponent::resized() {
     auto thirdRow = area.removeFromTop(20);
     if (dossier) return;
     volumeSlider_.setBounds(thirdRow.removeFromLeft(170));
+    if (vca) return;   // D532.1 bis : son volume, rien d'autre
     thirdRow.removeFromLeft(8);
     panSlider_.setBounds(thirdRow.removeFromLeft(90));
     thirdRow.removeFromLeft(8);
@@ -749,6 +778,12 @@ void TrackListComponent::loadProject(Project& project) {
         if (source >= 0 && static_cast<size_t>(source) < project_->tracks.size())
             nomSource = juce::String(project_->tracks[static_cast<size_t>(source)].name);
         auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i, groupes, nomSource));
+        if (project_->tracks[i].isVca()) {   // D532.1 bis
+            int membres = 0;
+            for (size_t m = 0; m < project_->tracks.size(); ++m)
+                if (vsm::sequencer::vcaOf(project_->tracks, m) == &project_->tracks[i]) ++membres;
+            row->poserMembresDuVca(membres);
+        }
         rowContainer_.addAndMakeVisible(row);
         row->onSelected = [this](size_t idx) { selectTrackIndex(idx); };
         row->onSelectedWithMods = [this](size_t idx, juce::ModifierKeys mods) {
@@ -791,13 +826,15 @@ void TrackListComponent::reglerVolume(size_t index, float valeur) {
 void TrackListComponent::refreshMuteSolo() {
     // D376 : le muet HÉRITÉ, calculé comme la console le calcule (D35.5).
     for (int i = 0; i < rows_.size(); ++i) {
-        bool herite = false;
+        bool herite = false, parLeVca = false;
         if (project_ != nullptr && static_cast<size_t>(i) < project_->tracks.size()) {
             const auto& piste = project_->tracks[static_cast<size_t>(i)];
             herite = !vsm::sequencer::trackAudible(project_->tracks, static_cast<size_t>(i), false)
                   && !piste.muted && !piste.disabled;
+            const auto* vca = vsm::sequencer::vcaOf(project_->tracks, static_cast<size_t>(i));
+            parLeVca = herite && vca != nullptr && (vca->muted || vca->disabled);   // D532.1 bis
         }
-        rows_[i]->refreshMuteSolo(herite);
+        rows_[i]->refreshMuteSolo(herite, parLeVca);
     }
 }
 

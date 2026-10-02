@@ -233,6 +233,10 @@ public:
     /// dit ce qu'on alimente.
     /// Pour un bus de groupe : les pistes routées vers lui, dites en infobulle.
     void setMembers(const juce::StringArray& membres);
+    /// D532.1 bis : le VCA qui commande ce fader, nommé dans l'infobulle du nom.
+    void setVca(const juce::String& nom);
+    /// D532.1 bis : les commandes que la tranche ne montre pas, pour le relevé.
+    juce::String commandesMasquees() const;
     ChannelStrip(vsm::sequencer::Track& track, size_t index,
                   const std::vector<std::string>& sendNames);
     /// D94 : les infobulles et l'unité de transposition, dans la langue
@@ -382,12 +386,13 @@ public:
         volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
         pan_.setValue(track_.pan, juce::dontSendNotification);
     }
-    void refreshMuteSolo(bool tuParUnDossier = false) {
+    void refreshMuteSolo(bool tuParUnDossier = false, bool parLeVca = false) {
         mute_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
         // D481 : le M de la TRANCHE agit sur sa seule piste — celui de la ligne,
         // sur tout le choix (D38.4). Il n'avait d'infobulle que tu par un dossier.
+        // D532.1 bis : ou par son VCA, et l'infobulle nomme la bonne cause.
         mute_.setTooltip(tuParUnDossier && !track_.muted
-                             ? vsm::app::ui::tr(u8"Rendu muet par son dossier")
+                             ? vsm::app::ui::tr(parLeVca ? u8"Rendu muet par son VCA" : u8"Rendu muet par son dossier")
                              : vsm::app::ui::tr(u8"Muet : cette piste seule ne sonne plus."));
         rafraichirSolo();   // D30.1 : le libellé et la couleur du solo protégé aussi
     }
@@ -477,6 +482,7 @@ private:
     /// des départs) et, pour un bus de groupe, ses membres une fois connus.
     std::vector<std::string> sendNames_;
     juce::StringArray membres_;
+    juce::String vcaNom_;   ///< D532.1 bis : le VCA qui commande ce fader, s'il y en a un
     bool membresConnus_ = false;
     void poserInfobulleDuNom();
     juce::TextButton mute_ { "M" };
@@ -790,14 +796,17 @@ public:
         for (auto* strip : strips_) {
             // D35.5 : le muet HÉRITÉ d'un dossier s'affiche sur la tranche du
             // membre, puisque le dossier n'en a plus.
-            bool herite = false;
+            bool herite = false, parLeVca = false;
             if (project_ != nullptr) {
                 const size_t i = strip->trackIndex();
-                if (i < project_->tracks.size())
+                if (i < project_->tracks.size()) {
                     herite = !vsm::sequencer::trackAudible(project_->tracks, i, false)
                           && !project_->tracks[i].muted && !project_->tracks[i].disabled;
+                    const auto* vca = vsm::sequencer::vcaOf(project_->tracks, i);   // D532.1 bis
+                    parLeVca = herite && vca != nullptr && (vca->muted || vca->disabled);
+                }
             }
-            strip->refreshMuteSolo(herite);
+            strip->refreshMuteSolo(herite, parLeVca);
         }
     }
     /// D29.3 : une valeur venue d'AILLEURS que la souris (MIDI Learn) posée sur

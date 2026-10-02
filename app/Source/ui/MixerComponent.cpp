@@ -12,7 +12,7 @@ using vsm::app::ui::tr;
 // ============================================================ ChannelStrip
 
 void ChannelStrip::setMembers(const juce::StringArray& membres) {
-    if (track_.kind != vsm::sequencer::Track::Kind::Group) return;
+    if (track_.kind != vsm::sequencer::Track::Kind::Group && !track_.isVca()) return;
     membres_ = membres;
     membresConnus_ = true;
     poserInfobulleDuNom();
@@ -23,8 +23,15 @@ void ChannelStrip::poserInfobulleDuNom() {
     // « Batterie · kick+kick2 » s'y tronque en « Batterie · ki… ». Un bus de
     // groupe y ajoute ce qu'il est, et ses membres dès qu'on les connaît.
     const juce::String nom = juce::String::fromUTF8(track_.name.c_str());
-    if (track_.kind != vsm::sequencer::Track::Kind::Group)
-        nameLabel_.setTooltip(nom);
+    if (track_.isVca())   // D532.1 bis
+        nameLabel_.setTooltip(membres_.isEmpty()
+                                  ? tr(u8"%1 — VCA : aucune piste ne lui est affectée").replace("%1", nom)
+                                  : tr(u8"%1 — VCA : son fader multiplie celui de %2")
+                                        .replace("%1", nom).replace("%2", membres_.joinIntoString(", ")));
+    else if (track_.kind != vsm::sequencer::Track::Kind::Group)
+        nameLabel_.setTooltip(vcaNom_.isEmpty() ? nom
+                                                : tr(u8"%1 — fader commandé par le VCA « %2 »")
+                                                      .replace("%1", nom).replace("%2", vcaNom_));
     else if (!membresConnus_)
         nameLabel_.setTooltip(tr(u8"%1 — bus de groupe : les pistes routées vers lui passent par ce fader")
                                   .replace("%1", nom));
@@ -33,6 +40,11 @@ void ChannelStrip::poserInfobulleDuNom() {
     else
         nameLabel_.setTooltip(tr(u8"%1 — bus de groupe : %2")
                                   .replace("%1", nom).replace("%2", membres_.joinIntoString(", ")));
+}
+
+void ChannelStrip::setVca(const juce::String& nom) {
+    vcaNom_ = nom;
+    poserInfobulleDuNom();
 }
 
 // D469 : L'ÉCHELLE EN DÉCIBELS D'UNE TRANCHE, DESSINÉE D'UN SEUL ENDROIT — à
@@ -121,6 +133,9 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // parité en aligne onze. Son infobulle : `poserInfobulleDuNom()`.
     if (track_.kind == vsm::sequencer::Track::Kind::Group)
         nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);
+    // D532.1 bis : UN VCA AUSSI, d'une autre couleur — il ne porte aucun signal.
+    if (track_.isVca())
+        nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentTeal);
     addAndMakeVisible(nameLabel_);
 
     volume_.setSliderStyle(juce::Slider::LinearVertical);
@@ -383,6 +398,17 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
 
     meter_.setName("mixeur.vumetre");   // D344 : le nom par lequel le banc le clique
     addAndMakeVisible(meter_);
+    // D532.1 bis : LA TRANCHE D'UN VCA N'A QUE CE QUI AGIT — fader, échelle, W, M, S.
+    // Un trim, un panoramique, un délai, une transposition, une phase ou un départ
+    // n'y traverseraient aucun signal, et un vumètre n'y mesurerait que le silence :
+    // des commandes qui promettent sans rien faire (la leçon des dossiers, D35.5).
+    if (track_.isVca()) {
+        for (juce::Component* c : { static_cast<juce::Component*>(&trim_), static_cast<juce::Component*>(&pan_),
+                                    static_cast<juce::Component*>(&delay_), static_cast<juce::Component*>(&transposition_),
+                                    static_cast<juce::Component*>(&phase_), static_cast<juce::Component*>(&meter_) })
+            c->setVisible(false);
+        for (auto* s : sends_) s->setVisible(false);
+    }
     retraduire();   // D94 : infobulles et unité, dans la langue courante
 }
 
@@ -458,27 +484,31 @@ void ChannelStrip::resized() {
     // écrit le nom sur deux lignes dans sa tranche étroite. Deux lignes coûtent
     // quatorze pixels au fader, seulement là où la tranche est serrée.
     nameLabel_.setBounds(r.removeFromTop(getWidth() < kDeuxLignesSous ? 32 : 18));
-    trim_.setBounds(r.removeFromTop(18).reduced(4, 1));       // D30.4, en tête de chaîne
-    pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
-    delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
-    transposition_.setBounds(r.removeFromTop(18).reduced(4, 1));
-    delay_.updateText();            // D324 : le mot selon la largeur
-    transposition_.updateText();
+    // D532.1 bis : la tranche d'un VCA rend leurs rangées au fader.
+    const bool vca = track_.isVca();
+    if (!vca) {
+        trim_.setBounds(r.removeFromTop(18).reduced(4, 1));       // D30.4, en tête de chaîne
+        pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
+        delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
+        transposition_.setBounds(r.removeFromTop(18).reduced(4, 1));
+        delay_.updateText();            // D324 : le mot selon la largeur
+        transposition_.updateText();
 
-    // Deux petits knobs de send (A/B).
-    // D342 : LA RANGÉE N'EST PRISE QUE S'IL Y A DES DÉPARTS. Le commentaire
-    // ci-dessous disait déjà « aucun bus déclaré : aucune rangée » -- et la
-    // rangée était retirée de `r` dans tous les cas : vingt-huit pixels de vide
-    // au milieu de la tranche, pris au fader, sur tout projet sans bus de départ
-    // (c'est-à-dire sur toutes les reconstructions).
-    // Les boutons se partagent la rangée à parts égales, quel qu'en soit le
-    // nombre. Aucun bus déclaré : aucune rangée, plutôt que deux boutons qui
-    // n'enverraient nulle part.
-    if (!sends_.isEmpty()) {
-        auto sendRow = r.removeFromTop(kHauteurDeparts);
-        const int largeur = std::max(1, sendRow.getWidth() / sends_.size());
-        for (auto* s : sends_) s->setBounds(sendRow.removeFromLeft(largeur).reduced(2, 1));
-    }
+        // Deux petits knobs de send (A/B).
+        // D342 : LA RANGÉE N'EST PRISE QUE S'IL Y A DES DÉPARTS. Le commentaire
+        // ci-dessous disait déjà « aucun bus déclaré : aucune rangée » -- et la
+        // rangée était retirée de `r` dans tous les cas : vingt-huit pixels de vide
+        // au milieu de la tranche, pris au fader, sur tout projet sans bus de départ
+        // (c'est-à-dire sur toutes les reconstructions).
+        // Les boutons se partagent la rangée à parts égales, quel qu'en soit le
+        // nombre. Aucun bus déclaré : aucune rangée, plutôt que deux boutons qui
+        // n'enverraient nulle part.
+        if (!sends_.isEmpty()) {
+            auto sendRow = r.removeFromTop(kHauteurDeparts);
+            const int largeur = std::max(1, sendRow.getWidth() / sends_.size());
+            for (auto* s : sends_) s->setBounds(sendRow.removeFromLeft(largeur).reduced(2, 1));
+        }
+    }   // !vca
 
     // D16.8 : LE W A SA PROPRE RANGÉE. Mis en tiers avec M et S, les trois
     // libellés étaient tronqués en « ... » sur une tranche de 76 pixels à
@@ -489,12 +519,15 @@ void ChannelStrip::resized() {
     solo_.setBounds(bottom.reduced(1));
     {
         auto rangeeW = r.removeFromBottom(22);
-        armer_.setBounds(rangeeW.removeFromLeft(rangeeW.getWidth() / 2).reduced(1, 1));
-        phase_.setBounds(rangeeW.reduced(1, 1));   // D23.1
+        if (vca) armer_.setBounds(rangeeW.reduced(1, 1));   // D532.1 bis : pas de phase
+        else {
+            armer_.setBounds(rangeeW.removeFromLeft(rangeeW.getWidth() / 2).reduced(1, 1));
+            phase_.setBounds(rangeeW.reduced(1, 1));   // D23.1
+        }
     }
 
-    // Fader + mètre côte à côte.
-    auto meterArea = r.removeFromRight(10);
+    // Fader + mètre côte à côte (un VCA n'a pas de mètre : il ne porte aucun signal).
+    auto meterArea = r.removeFromRight(vca ? 0 : 10);
     meter_.setBounds(meterArea.reduced(0, 2));
     // D342 : L'ÉCHELLE EN DÉCIBELS, À GAUCHE DU FADER. Cubase, Live et FL en
     // portent une ; sans elle, la seule façon de savoir où est l'unité est de
@@ -587,7 +620,23 @@ void ChannelStrip::direGeometrieDeBanc(const juce::Component& repere) const {
          // relevé sort « éhelle », que le sed de la garde ne trouve pas. Couper
          // le littéral en deux rend l'échappement à sa longueur.
          + juce::String::fromUTF8(", \xc3\xa9" "chelle ") + juce::String(largeurEchelle_)
-         + " px\n").toRawUTF8(), stderr);
+         + " px"
+         // D532.1 bis : CE QUE LA TRANCHE NE MONTRE PAS. Une hauteur nulle ne le dit
+         // pas (une commande cachée garde ses bornes) : on lit `isVisible`.
+         + juce::String::fromUTF8(", masqu\xc3\xa9" "es ") + commandesMasquees()
+         + "\n").toRawUTF8(), stderr);
+}
+
+juce::String ChannelStrip::commandesMasquees() const {
+    juce::StringArray noms;
+    const std::pair<const juce::Component*, const char*> commandes[] = {
+        { &trim_, "trim" }, { &pan_, "pan" }, { &delay_, "d\xc3\xa9" "lai" },
+        { &transposition_, "transposition" }, { &phase_, "phase" }, { &meter_, "vum\xc3\xa8" "tre" } };
+    for (const auto& [c, nom] : commandes)
+        if (!c->isVisible()) noms.add(juce::String::fromUTF8(nom));
+    for (const auto* s : sends_)
+        if (!s->isVisible()) { noms.add(juce::String::fromUTF8("d\xc3\xa9" "parts")); break; }
+    return noms.isEmpty() ? juce::String("aucune") : noms.joinIntoString(",");
 }
 
 bool ChannelStrip::nomTronque() const {
@@ -1064,6 +1113,16 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
                     if (autre.outputGroup == static_cast<int>(i))
                         membres.add(juce::String::fromUTF8(autre.name.c_str()));
                 strip->setMembers(membres);
+            }
+            // D532.1 bis : le VCA nomme ses membres, chaque membre son VCA.
+            if (project_->tracks[i].isVca()) {
+                juce::StringArray membres;
+                for (size_t m = 0; m < project_->tracks.size(); ++m)
+                    if (vsm::sequencer::vcaOf(project_->tracks, m) == &project_->tracks[i])
+                        membres.add(juce::String::fromUTF8(project_->tracks[m].name.c_str()));
+                strip->setMembers(membres);
+            } else if (const auto* vca = vsm::sequencer::vcaOf(project_->tracks, i)) {
+                strip->setVca(juce::String::fromUTF8(vca->name.c_str()));
             }
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
             strip->onExclusiveSoloRequested = [this](size_t index) { if (onExclusiveSoloRequested) onExclusiveSoloRequested(index); };

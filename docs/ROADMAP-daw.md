@@ -38710,7 +38710,7 @@ que c'est son attendu 4 qui le demande :
   et la phrase de l'insert inconnu est déjà dite ; à trancher le jour où un insert inconnu se
   garde à sa place.
 
-### Phase D532.1 bis — les faders VCA, second temps : l'interface (02/10/2026)
+### Phase D532.1 bis — les faders VCA, second temps : l'interface (02/10/2026) — FAITE, `--bancs` entier en attente de la fin des courses
 
 **CE QUI EST TRANCHÉ ICI** (le critère de D532 dit « une tranche dans la console, l'affectation
 dans la liste des pistes, annulable » ; le reste est laissé ouvert) :
@@ -38754,6 +38754,36 @@ compilation gèlerait la course une demi-heure : `Track.h` a changé, presque to
 machine sur un VCA ou un dossier à la lecture du fichier — la machine écartée et DITE, en
 correction (D523 : le son ne change pas) ; test `un_vca_ou_un_dossier_ne_recoit_pas_de_machine_et_c_est_dit`,
 vu rouge sur le code d'avant (`instrumentId` non vide), interchange 327/327.
+
+**MESURÉ (02/10, 08 h 47 – 08 h 50)** — l'application compilée à 08 h 46 (cible seule, la
+course 2 gelée 8 min 33 s), `tools/vca-interface.sh` :
+
+| attendu | mesure | tenu |
+|---|---|---|
+| 1. nouveau VCA pour A et B | `4 midi,midi,midi,vca` — `vca` = `3,3,-,-` ; le journal : « VSM_VCA : « VCA 1 » commande 2 piste(s) » | oui |
+| 2. Ctrl+Z | `3 midi,midi,midi`, aucune référence, aucune clé | oui |
+| 3. « Aucun VCA » sur A | `vca` = `-,3,-,-` | oui |
+| 4. tranche et ligne | relevé VSM_MIXEUR : tranche du VCA « masquées trim,pan,délai,transposition,phase,vumètre », celle de A « aucune » ; liste : « VCA — 2 membre(s) » ×1, « Ch n » ×3, « -> Master » ×3 pour quatre pistes ; la PHOTO montre la tranche « Cordes » en sarcelle, fader, échelle, W, M, S, la course rendue | oui |
+| 5. VCA muet | « Rendu muet par son VCA » ×4 — A et B, dans la liste et dans la console ; leurs M allumés sur la photo | oui |
+| 6. le banc | **vu rouge** sur la tranche qui ne masque plus rien (défaut remis dans `MixerComponent.cpp`, binaire recompilé) : (4) RATÉ, « masquées aucune », les six autres verts ; entré dans `verifier.sh --bancs` (44 bancs) ; **`--bancs` entier : PAS JOUÉ** — le lanceur refuse pendant une course, et la course 2 de « Reload » tourne depuis 08 h 32, la campagne S2 derrière elle | **en partie** |
+
+Les préférences de l'utilisateur, copiées juste avant la série : inchangées (`cmp`).
+
+**TROIS FAUTES DU BANC, AUCUNE DE L'APPLICATION, TOUTES DITES.** (a) Le projet généré
+s'appelait « vca » : la recherche de la clé `"vca"` dans le TEXTE la trouvait dans le titre, et
+(2) est sorti rouge sur un fichier juste — c'est le piège payé une heure plus tôt par le test
+des versions, titré « versions » ; la clé se cherche désormais dans la STRUCTURE. (b) Le
+filtre qui relaie les avertissements du journal attrapait le mot « aucun » dans le nom du
+dossier `aucun-ecrit`. (c) Le dernier geste tombait à 3 000 ms pour un `VSM_DELAI` de 3 000 :
+l'application l'aurait refusé (et dit) ; corrigé à 4 500 avant la première course.
+
+**LA GARDE DE LANGUE A TROUVÉ DEUX FONCTIONS DE RELEVÉ** (`commandesMasquees`, et
+`direLesVersions` de D532.2 bis), dont les textes partent au journal mais s'assemblent hors
+de l'appel `fputs` qu'elle reconnaît : inscrites dans sa liste fermée `FONCTIONS_DE_BANC`,
+comme son en-tête le demande ; `--garde` : 0 texte qui atteindrait l'écran sans traduction.
+
+Le mode d'emploi (§ 2) dit le VCA : le créer pour la sélection, l'affecter, ce que fait son
+fader, ce que dit un membre qu'il fait taire.
 
 ### Phase D532.2 — les versions de piste, premier temps : le modèle et le format (02/10/2026) — FAITE
 
@@ -38830,7 +38860,7 @@ QUATRE fonctions communes (`automationToDocument`, `automationToModel`, `automat
 `automationFromJson`) — le code de la piste y est passé, les 330 tests d'interchange le
 tiennent ; et `usesWarp` compte les clips des versions rangées, comme ceux des prises.
 
-### Phase D532.2 bis — les versions de piste, second temps : l'interface (02/10/2026)
+### Phase D532.2 bis — les versions de piste, second temps : l'interface (02/10/2026) — FAITE, `--bancs` entier en attente de la fin des courses
 
 **CE QUI EST TRANCHÉ ICI** (le critère de D532 : « créer, nommer, choisir, supprimer une
 version depuis l'en-tête ; une seule joue ; annulable ») :
@@ -38861,3 +38891,30 @@ sur une piste de deux notes (40 puis 43) :
 4. « Renommer la version… » répondu « Refrain » : le nom est au fichier ;
 5. « Supprimer la version » sur l'active : la voisine sort, une seule version reste ;
 6. le banc vu rouge sur un défaut remis à la main, entré dans `verifier.sh --bancs`.
+
+**MESURÉ (02/10, 08 h 53 – 08 h 56)** — l'application compilée à 08 h 52, `tools/versions-piste.sh`,
+une seule course pour (1) à (5), une seconde pour (6) :
+
+| attendu | mesure (versions · active · noms · arrangement · versions.mid) | tenu |
+|---|---|---|
+| 1. dupliquer, puis une note de plus | 2 · 1 · Version 1/Version 2 · 40,43,47 · 40,43 | oui |
+| 2. choisir la première | 2 · 0 · Version 1/Version 2 · 40,43 · 40,43,47 | oui |
+| 3. Ctrl+Z | 2 · 1 · Version 1/Version 2 · 40,43,47 · 40,43 | oui |
+| 4. renommer « Refrain » (répondu par `VSM_OPTIONS`) | 2 · 1 · Version 1/Refrain · 40,43,47 · 40,43 | oui |
+| 5. supprimer l'active | 1 · 0 · Version 1 · 40,43 · — (plus rien de rangé, le fichier n'est pas écrit) | oui |
+| 6. le banc | **vu rouge** sur « choisir » qui n'appelle plus `selectVersion` (binaire recompilé) : (2) RATÉ, « 2 · 1 · … · 40,43,47 » ; entré dans `verifier.sh --bancs` (45 bancs) ; **`--bancs` entier : pas joué**, pour la même raison que D532.1 bis | **en partie** |
+
+Et ce que la ligne montre, ajouté au banc en (6) bis : le projet de (4) rouvert, l'infobulle du
+nom dit « Version « Refrain » — 2 sur 2 ». Le banc du VCA, rejoué sur le même binaire : 7 sur 7.
+**Rejoué sur le binaire FINAL** (08 h 57, la source restaurée après les deux essais en rouge) :
+`versions-piste.sh` 0 raté, `vca-interface.sh` 0 raté, et quatre bancs voisins de ce que les
+deux phases touchent — `fader-console.sh`, `vumetre-console.sh`, `liste-ajouter.sh`,
+`portes-des-pistes.sh` — 0 raté chacun.
+Préférences de l'utilisateur inchangées (`cmp` contre la copie de 08 h 52).
+
+**UN VERBE DE BANC DE PLUS** : `ecrire-note:piste:tick:durée:hauteur` dans `VSM_GESTE_APRES`, le
+chemin de `VSM_NOTES` (D336) joué APRÈS d'autres gestes — `VSM_NOTES` agit au démarrage, et
+« dupliquer la version, PUIS écrire » ne se jouait pas.
+
+Le mode d'emploi (§ 2) dit les versions : dupliquer, choisir, renommer, supprimer, ce qu'elles
+emportent et ce qu'elles laissent, le refus du gel.

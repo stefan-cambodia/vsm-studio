@@ -4155,6 +4155,20 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuTrackAdd, tr("Ajouter une piste MIDI"));
             menu.addItem(kMenuTrackAddAudio, tr("Ajouter une piste audio"));
             menu.addItem(kMenuTrackAddGroup, tr("Ajouter un groupe"));
+            // D532.1 bis : LE VCA. Le second geste est celui qu'on fait vraiment --
+            // choisir les pistes, puis leur donner un fader commun.
+            menu.addItem(kMenuTrackAddVca, tr(u8"Ajouter un VCA"));
+            {
+                size_t affectables = 0;
+                for (size_t i : trackList_.selectedTracks())
+                    if (i < project_.tracks.size() && !project_.tracks[i].isVca() && !project_.tracks[i].isFolder())
+                        ++affectables;
+                menu.addItem(kMenuTrackVcaNew,
+                             affectables > 0
+                                 ? tr(u8"Nouveau VCA pour les pistes choisies (%1)").replace("%1", juce::String(static_cast<int>(affectables)))
+                                 : tr(u8"Nouveau VCA pour les pistes choisies (aucune piste à commander)"),
+                             affectables > 0);
+            }
             menu.addItem(kMenuTrackRemove, tr(u8"Supprimer la piste sélectionnée"),
                          !project_.tracks.empty());
             menu.addItem(kMenuTrackDuplicate, tr(u8"Dupliquer la piste sélectionnée"),
@@ -4321,6 +4335,55 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                          true, actuel == g);
                     menu.addSubMenu(tr(u8"Groupe d'édition (couper et déplacer ensemble)"), groupes,
                                      !project_.tracks.empty());
+                }
+                {
+                    // D532.1 bis : LE VCA DE LA PISTE. Pour toute la sélection, comme
+                    // le muet de la ligne (D38.4) ; la case cochée est celle de la
+                    // piste choisie. Un VCA et un dossier ne s'affectent pas.
+                    const size_t choisie = trackList_.selectedTrackIndex();
+                    const bool affectable = choisie < project_.tracks.size()
+                                         && !project_.tracks[choisie].isVca()
+                                         && !project_.tracks[choisie].isFolder();
+                    const int actuel = affectable ? project_.tracks[choisie].vcaTrack : -1;
+                    const auto vcas = vcasDuProjet();
+                    juce::PopupMenu sousMenu;
+                    sousMenu.addItem(kMenuTrackVcaNone, tr(u8"Aucun VCA"), affectable, affectable && actuel < 0);
+                    for (size_t k = 0; k < vcas.size() && k <= static_cast<size_t>(kMenuTrackVcaLast - kMenuTrackVcaFirst); ++k)
+                        sousMenu.addItem(kMenuTrackVcaFirst + static_cast<int>(k),
+                                          tr(u8"VCA « %1 »").replace("%1", juce::String::fromUTF8(project_.tracks[vcas[k]].name.c_str())),
+                                          affectable, affectable && actuel == static_cast<int>(vcas[k]));
+                    menu.addSubMenu(vcas.empty() ? tr(u8"VCA de la piste (aucun VCA dans le projet)")
+                                                 : tr(u8"VCA de la piste"),
+                                     sousMenu, affectable && !vcas.empty());
+                }
+                {
+                    // D532.2 bis : LES VERSIONS DE LA PISTE. Sur une piste GELÉE, ce qui
+                    // change la matière est grisé et le DIT (D443) : c'est le refus de
+                    // `selectVersion`, rendu visible au lieu d'un « rien ne se passe ».
+                    const size_t choisie = trackList_.selectedTrackIndex();
+                    const Track* t = choisie < project_.tracks.size() ? &project_.tracks[choisie] : nullptr;
+                    const bool gelee = t != nullptr && t->frozen;
+                    const juce::String siGelee = gelee ? " " + tr(u8"(piste gelée : dégeler d'abord)") : juce::String();
+                    juce::PopupMenu versions;
+                    versions.addItem(kMenuTrackVersionNew, tr(u8"Nouvelle version (vide)") + siGelee, t != nullptr && !gelee);
+                    versions.addItem(kMenuTrackVersionDuplicate, tr(u8"Dupliquer la version") + siGelee, t != nullptr && !gelee);
+                    if (t != nullptr && !t->versions.empty()) {
+                        versions.addSeparator();
+                        for (size_t k = 0; k < t->versions.size()
+                                           && k <= static_cast<size_t>(kMenuTrackVersionLast - kMenuTrackVersionFirst); ++k) {
+                            const bool active = static_cast<int>(k) == t->activeVersion;
+                            versions.addItem(kMenuTrackVersionFirst + static_cast<int>(k),
+                                             tr(u8"Version « %1 »").replace("%1", juce::String::fromUTF8(t->versions[k].name.c_str())),
+                                             active || !gelee, active);
+                        }
+                        versions.addSeparator();
+                        versions.addItem(kMenuTrackVersionRename, tr(u8"Renommer la version…"));
+                        versions.addItem(kMenuTrackVersionRemove, tr(u8"Supprimer la version") + siGelee, !gelee);
+                    }
+                    menu.addSubMenu(t != nullptr && !t->versions.empty()
+                                        ? tr(u8"Versions de la piste (%1)").replace("%1", juce::String(static_cast<int>(t->versions.size())))
+                                        : tr(u8"Versions de la piste"),
+                                    versions, t != nullptr);
                 }
                 menu.addItem(kMenuTrackLock,
                               verrouillee ? tr(u8"Déverrouiller la piste (le montage reprend)")
@@ -5282,6 +5345,12 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
+        case kMenuTrackAddVca:   addTrack(Track::Kind::Vca); break;   // D532.1 bis
+        case kMenuTrackVcaNew:   nouveauVcaPourLaSelection(); break;
+        case kMenuTrackVersionNew:       nouvelleVersionDeLaPiste(false); break;   // D532.2 bis
+        case kMenuTrackVersionDuplicate: nouvelleVersionDeLaPiste(true); break;
+        case kMenuTrackVersionRename:    demanderNomDeVersion(); break;
+        case kMenuTrackVersionRemove:    supprimerVersionDeLaPiste(); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
         case kMenuTrackDuplicate: duplicateSelectedTrack(); break;
         case kMenuTrackCreateClip: {
@@ -5334,6 +5403,17 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         const auto fichiers = trackPresetFiles();
         const int i = menuItemID - kMenuTrackPresetFirst;
         if (i < fichiers.size()) applyTrackPresetFile(fichiers[i]);
+        return;
+    }
+    if (menuItemID >= kMenuTrackVersionFirst && menuItemID <= kMenuTrackVersionLast) {   // D532.2 bis
+        choisirVersionDeLaPiste(menuItemID - kMenuTrackVersionFirst);
+        return;
+    }
+    if (menuItemID >= kMenuTrackVcaNone && menuItemID <= kMenuTrackVcaLast) {   // D532.1 bis
+        if (menuItemID == kMenuTrackVcaNone) { affecterVcaALaSelection(-1); return; }
+        const auto vcas = vcasDuProjet();
+        const size_t k = static_cast<size_t>(menuItemID - kMenuTrackVcaFirst);
+        if (k < vcas.size()) affecterVcaALaSelection(static_cast<int>(vcas[k]));
         return;
     }
     if (menuItemID >= kMenuTrackEditGroupNone && menuItemID <= kMenuTrackEditGroupLast) {
@@ -10583,12 +10663,14 @@ void MainComponent::newProject() {
 void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {
     const bool audio = kind == Track::Kind::Audio;
     const bool groupe = kind == Track::Kind::Group;
+    const bool vca = kind == Track::Kind::Vca;   // D532.1 bis
     // D231 : « Ajouter une piste MIDI », et non « Ajouter une piste ». Dans la
     // fenêtre d'historique, le pas générique voisinait « Ajouter une piste audio »
     // et se lisait comme une piste d'une autre sorte -- alors que les deux entrées
     // du menu, elles, disent « MIDI » et « audio ». La clé existe déjà dans la
     // table : le pas se traduit comme le menu.
     beginProjectEdit(groupe ? juce::String(u8"Ajouter un groupe")
+                    : vca    ? juce::String(u8"Ajouter un VCA")
                     : audio  ? juce::String(u8"Ajouter une piste audio")
                               : juce::String(u8"Ajouter une piste MIDI"));
     // D33.5 : LA PALETTE VIENT DE `core/`, comme partout ailleurs. Il y en
@@ -10606,7 +10688,7 @@ void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {
     // pas la même chose, sur le geste même — importer douze stems — que D33.1
     // venait de rendre possible.
     t.name = !nom.empty() ? nom
-           : tr(groupe ? u8"Groupe %1" : audio ? u8"Audio %1" : u8"Piste %1")   // D107 : la langue du moment
+           : tr(groupe ? u8"Groupe %1" : vca ? u8"VCA %1" : audio ? u8"Audio %1" : u8"Piste %1")   // D107 : la langue du moment
                  .replace("%1", juce::String(static_cast<int>(n) + 1)).toStdString();
     t.channel = static_cast<uint8_t>(n % 16);      // canaux MIDI 1..16 en boucle
     t.colorRgba = vsm::sequencer::trackColourForIndex(n);
@@ -10825,6 +10907,150 @@ void MainComponent::newFolderAboveSelectedTrack() {
     project_.tracks[static_cast<size_t>(insere) + 1].folderDepth += 1;
     vsm::sequencer::normalizeFolderDepths(project_);
     rebuildFromProject(false);
+}
+
+std::vector<size_t> MainComponent::vcasDuProjet() const {
+    std::vector<size_t> vcas;
+    for (size_t i = 0; i < project_.tracks.size(); ++i)
+        if (project_.tracks[i].isVca()) vcas.push_back(i);
+    return vcas;
+}
+
+void MainComponent::affecterVcaALaSelection(int vca) {
+    // D532.1 bis : TOUTE LA SÉLECTION, comme le muet de la ligne (D38.4) ; à défaut
+    // d'une sélection, la piste choisie. Un VCA ou un dossier n'est jamais affecté :
+    // `vcaOf` refuserait le premier, le second ne porte aucun signal.
+    std::set<size_t> pistes(trackList_.selectedTracks().begin(), trackList_.selectedTracks().end());
+    if (pistes.empty()) pistes.insert(trackList_.selectedTrackIndex());
+    std::vector<size_t> aChanger;
+    for (size_t i : pistes)
+        if (i < project_.tracks.size() && !project_.tracks[i].isVca() && !project_.tracks[i].isFolder()
+            && project_.tracks[i].vcaTrack != vca)
+            aChanger.push_back(i);
+    // Un geste qui ne change rien n'ouvre pas de pas d'annulation.
+    if (aChanger.empty()) return;
+    captureSessionIntoProject();
+    beginProjectEdit(aChanger.size() > 1 ? juce::String::fromUTF8(u8"VCA des pistes")
+                                         : avecPiste("VCA de la piste", aChanger.front()));
+    for (size_t i : aChanger) project_.tracks[i].vcaTrack = vca;
+    rebuildFromProject(false);
+}
+
+void MainComponent::nouveauVcaPourLaSelection() {
+    std::vector<size_t> membres;
+    for (size_t i : trackList_.selectedTracks())
+        if (i < project_.tracks.size() && !project_.tracks[i].isVca() && !project_.tracks[i].isFolder())
+            membres.push_back(i);
+    if (membres.empty()) return;
+    captureSessionIntoProject();
+    beginProjectEdit(u8"Nouveau VCA");
+    // EN FIN DE LISTE : aucun index ne bouge, donc aucune référence à réparer -- et
+    // c'est là que Cubase range ses VCA, loin des pistes qu'ils commandent.
+    vsm::sequencer::Track vca;
+    vca.kind = Track::Kind::Vca;
+    vca.name = tr(u8"VCA %1").replace("%1", juce::String(static_cast<int>(vcasDuProjet().size()) + 1)).toStdString();
+    vca.colorRgba = project_.tracks[membres.front()].colorRgba;
+    project_.tracks.push_back(std::move(vca));
+    const int index = static_cast<int>(project_.tracks.size()) - 1;
+    for (size_t i : membres) project_.tracks[i].vcaTrack = index;
+    rebuildFromProject(false);
+    std::fputs((juce::String::fromUTF8(u8"VSM_VCA : « ") + juce::String::fromUTF8(project_.tracks.back().name.c_str())
+                + juce::String::fromUTF8(u8" » commande ") + juce::String(static_cast<int>(membres.size()))
+                + juce::String::fromUTF8(u8" piste(s)\n")).toRawUTF8(), stderr);
+}
+
+void MainComponent::direLesVersions(const char* geste) const {
+    const size_t i = trackList_.selectedTrackIndex();
+    if (i >= project_.tracks.size()) return;
+    const auto& t = project_.tracks[i];
+    juce::String texte = "VSM_VERSION : " + juce::String::fromUTF8(geste) + " : piste "
+                       + juce::String(static_cast<int>(i)) + " (" + juce::String::fromUTF8(t.name.c_str()) + ")";
+    if (t.versions.empty()) texte += juce::String::fromUTF8(u8" — aucune version");
+    for (size_t k = 0; k < t.versions.size(); ++k)
+        texte += (k == 0 ? juce::String::fromUTF8(u8" — ") : juce::String(", "))
+               + juce::String::fromUTF8(t.versions[k].name.c_str())
+               + (static_cast<int>(k) == t.activeVersion ? juce::String(" [active]") : juce::String());
+    std::fputs((texte + juce::String::fromUTF8(u8", ") + juce::String(static_cast<int>(t.notes.size()))
+                + " note(s)\n").toRawUTF8(), stderr);
+}
+
+void MainComponent::nouvelleVersionDeLaPiste(bool dupliquer) {
+    const size_t i = trackList_.selectedTrackIndex();
+    if (i >= project_.tracks.size() || project_.tracks[i].frozen) return;
+    captureSessionIntoProject();
+    beginProjectEdit(avecPiste(dupliquer ? "Dupliquer la version" : "Nouvelle version", i));
+    auto& t = project_.tracks[i];
+    // « Version 2 » pour la première création (l'origine devient « Version 1 »), puis
+    // le rang qui suit.
+    const int rang = static_cast<int>(std::max<size_t>(t.versions.size(), 1)) + 1;
+    vsm::sequencer::createVersion(t, tr(u8"Version %1").replace("%1", juce::String(rang)).toStdString(), dupliquer,
+                                  tr(u8"Version %1").replace("%1", "1").toStdString());
+    rebuildFromProject(false);
+    direLesVersions(dupliquer ? "dupliquer" : "nouvelle");
+}
+
+void MainComponent::choisirVersionDeLaPiste(int index) {
+    const size_t i = trackList_.selectedTrackIndex();
+    if (i >= project_.tracks.size()) return;
+    auto& t = project_.tracks[i];
+    if (index < 0 || index >= static_cast<int>(t.versions.size()) || index == t.activeVersion) return;
+    if (t.frozen) {   // le menu le grise déjà ; une autre porte le dirait ici
+        std::fputs(juce::String::fromUTF8(u8"VSM_VERSION : refusé — la piste est gelée, la dégeler d'abord\n").toRawUTF8(),
+                   stderr);
+        return;
+    }
+    captureSessionIntoProject();
+    beginProjectEdit(avecPiste("Choisir la version", i));
+    vsm::sequencer::selectVersion(t, index);
+    rebuildFromProject(false);
+    direLesVersions("choisir");
+}
+
+void MainComponent::demanderNomDeVersion() {
+    const size_t i = trackList_.selectedTrackIndex();
+    if (i >= project_.tracks.size()) return;
+    const auto& t = project_.tracks[i];
+    if (t.activeVersion < 0 || t.activeVersion >= static_cast<int>(t.versions.size())) return;
+    auto fenetre = std::make_shared<BoiteLisible>(tr(u8"Renommer la version"),
+                                                  tr(u8"Le nouveau nom de la version qu'on entend."),
+                                                  juce::AlertWindow::QuestionIcon);
+    fenetre->addTextEditor("nom", juce::String::fromUTF8(t.versions[static_cast<size_t>(t.activeVersion)].name.c_str()),
+                           tr(u8"Nom"));
+    fenetre->addButton(tr(u8"Renommer"), 1);
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0);
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre](int choix) {
+        if (choix == 1) renommerVersionDeLaPiste(fenetre->getTextEditorContents("nom"));
+        fenetre->exitModalState(0);
+        fenetre->setVisible(false);
+    });
+}
+
+void MainComponent::renommerVersionDeLaPiste(const juce::String& nom) {
+    const size_t i = trackList_.selectedTrackIndex();
+    if (i >= project_.tracks.size()) return;
+    auto& t = project_.tracks[i];
+    const std::string neuf = nom.trim().toStdString();
+    // Un nom vide n'est pas un nom (D447), et un nom inchangé n'ouvre pas de pas.
+    if (neuf.empty() || t.activeVersion < 0 || t.activeVersion >= static_cast<int>(t.versions.size())
+        || t.versions[static_cast<size_t>(t.activeVersion)].name == neuf)
+        return;
+    captureSessionIntoProject();
+    beginProjectEdit(avecPiste("Renommer la version", i));
+    t.versions[static_cast<size_t>(t.activeVersion)].name = neuf;
+    rebuildFromProject(false);
+    direLesVersions("renommer");
+}
+
+void MainComponent::supprimerVersionDeLaPiste() {
+    const size_t i = trackList_.selectedTrackIndex();
+    if (i >= project_.tracks.size()) return;
+    auto& t = project_.tracks[i];
+    if (t.versions.empty() || t.frozen) return;
+    captureSessionIntoProject();
+    beginProjectEdit(avecPiste("Supprimer la version", i));
+    vsm::sequencer::removeVersion(t, t.activeVersion);
+    rebuildFromProject(false);
+    direLesVersions("supprimer");
 }
 
 void MainComponent::changeSelectedTrackFolderDepth(int delta) {
@@ -13811,6 +14037,12 @@ void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {
         montrerBoite(
             juce::AlertWindow::InfoIcon, tr(u8"Créer un clip"),
             tr(u8"Un groupe est un bus de mixage, pas une piste de matériau : il ne porte pas de clip."));
+        return;
+    }
+    if (piste.isVca()) {   // D532.1 bis
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Créer un clip"),
+            tr(u8"Un VCA commande des faders, il ne joue rien : il ne porte pas de clip."));
         return;
     }
 

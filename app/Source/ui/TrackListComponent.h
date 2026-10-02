@@ -146,7 +146,11 @@ public:
     /// endroits -- ici et dans la tranche du mélangeur --, et chacun posait son
     /// bouton une seule fois, à sa construction : rendre une piste muette dans
     /// l'un laissait l'autre montrer le contraire, indéfiniment.
-    void refreshMuteSolo(bool tuParUnDossier = false);   // D376 : le muet hérité
+    /// D376 : le muet hérité ; D532.1 bis : `parLeVca` dit qu'il vient du VCA, pas
+    /// d'un dossier — l'infobulle nomme la bonne cause.
+    void refreshMuteSolo(bool tuParUnDossier = false, bool parLeVca = false);
+    /// D532.1 bis : la ligne d'un VCA dit combien de pistes il commande.
+    void poserMembresDuVca(int membres);
     /// D37 : relit le volume et le panoramique (l'autre sens de l'accord avec
     /// la tranche du mélangeur). Le nom a son propre chemin : il se relit par
     /// `refreshName`, qui existait déjà.
@@ -163,6 +167,7 @@ private:
     vsm::sequencer::Track& track_;
     size_t index_;
     juce::String sourceName_;   ///< D94 : gardé pour refaire « sortie n° … de … »
+    int membresDuVca_ = 0;      ///< D532.1 bis : « VCA — N membre(s) »
     bool selected_ = false;
     /// Figé à la construction : la nature d'une piste ne change pas en cours de
     /// route, et la ligne est reconstruite si le projet change.

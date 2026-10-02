@@ -462,6 +462,10 @@ public:
                         + ", " + juce::String(static_cast<int>(choix.size())) + " choisie(s)\n").toRawUTF8(), stderr);
             return true;
         }
+        // D532.2 bis : écrire une note PLUS TARD — `VSM_NOTES` agit au démarrage, avant
+        // les gestes ; « dupliquer la version, PUIS écrire » ne se jouait pas.
+        if (geste.startsWithIgnoreCase("ecrire-note:"))
+            return ecrireNotesPourCapture(geste.fromFirstOccurrenceOf(":", false, false).trim());
         if (geste.startsWithIgnoreCase("machine:")) {
             return trackList_.choisirMachine(piste, geste.fromFirstOccurrenceOf(":", false, false));
         }
@@ -827,6 +831,20 @@ private:
         /// D18.3 : le groupe d'édition de la piste choisie (0 = aucun).
         kMenuTrackEditGroupNone,
         kMenuTrackEditGroupLast = kMenuTrackEditGroupNone + 8,
+        /// D532.1 bis : créer un VCA, en créer un pour la sélection, affecter la
+        /// sélection (aucun, puis un identifiant par VCA du projet).
+        kMenuTrackAddVca,
+        kMenuTrackVcaNew,
+        kMenuTrackVcaNone,
+        kMenuTrackVcaFirst,
+        kMenuTrackVcaLast = kMenuTrackVcaFirst + 63,
+        /// D532.2 bis : les versions de la piste choisie.
+        kMenuTrackVersionNew,
+        kMenuTrackVersionDuplicate,
+        kMenuTrackVersionRename,
+        kMenuTrackVersionRemove,
+        kMenuTrackVersionFirst,
+        kMenuTrackVersionLast = kMenuTrackVersionFirst + 63,
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
     kMenuEditLocatorsFromSelection,
@@ -1649,6 +1667,21 @@ private:
     void explodeSelectedTrackByPitch();
     /// D19.4 : crée un dossier au-dessus de la piste choisie et l'y range.
     void newFolderAboveSelectedTrack();
+    /// D532.1 bis : un VCA neuf en fin de liste, qui commande les pistes choisies.
+    void nouveauVcaPourLaSelection();
+    /// D532.1 bis : les pistes choisies commandées par le VCA d'index `vca` (-1 : aucun).
+    void affecterVcaALaSelection(int vca);
+    /// Les index des VCA du projet, dans l'ordre de la liste (le sous-menu les numérote ainsi).
+    std::vector<size_t> vcasDuProjet() const;
+    /// D532.2 bis : les versions de la piste choisie — créer (vide ou dupliquée),
+    /// choisir, renommer, supprimer ; chacune UN pas d'annulation.
+    void nouvelleVersionDeLaPiste(bool dupliquer);
+    void choisirVersionDeLaPiste(int index);
+    void demanderNomDeVersion();
+    void renommerVersionDeLaPiste(const juce::String& nom);
+    void supprimerVersionDeLaPiste();
+    /// Ce que la piste choisie porte de versions, au journal (`VSM_VERSION : …`).
+    void direLesVersions(const char* geste) const;
     /// D19.4 : fait entrer (+1) ou sortir (-1) la piste choisie d'un dossier.
     void changeSelectedTrackFolderDepth(int delta);
     /// D18.6 : ouvre le bloc-notes du projet.

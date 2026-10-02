@@ -129,7 +129,9 @@ RECHERCHE = re.compile(r"\.(contains|containsIgnoreCase|startsWith|endsWith|inde
 FIL = re.compile(r"\bjuce::Thread\s*\(\s*(?:u8)?\s*$")
 # D375 : les fonctions de BANC, liste FERMÉE -- une fonction neuve n'y entre pas
 # sans qu'on l'écrive ici. Tout ce qu'elles écrivent va au relevé d'un banc.
-FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture")
+# D532.1 bis / D532.2 bis : `commandesMasquees` nourrit le relevé VSM_MIXEUR, `direLesVersions`
+# écrit VSM_VERSION au journal -- ni l'une ni l'autre n'atteint l'écran.
+FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture", "commandesMasquees", "direLesVersions")
 EN_TETE_DE_FONCTION = re.compile(r"^[A-Za-z][^;{}\n]*?\b(\w+)\s*\(", re.M)
 
 
