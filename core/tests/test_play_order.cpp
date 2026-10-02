@@ -3,6 +3,8 @@
 #include "vsm/sequencer/PlaybackScheduler.h"
 #include "vsm/sequencer/PlayOrder.h"
 #include <algorithm>
+#include <cmath>
+#include <utility>
 #include <vector>
 
 using namespace vsm::sequencer;
@@ -41,6 +43,16 @@ std::vector<int> hauteursJouees(const Project& project) {
     std::vector<int> hauteurs;
     for (const auto& [t, n] : evenements) hauteurs.push_back(n);
     return hauteurs;
+}
+
+/// D537 : (temps en millisecondes, hauteur) de chaque note jouée, dans l'ordre du temps.
+std::vector<std::pair<int, int>> notesJouees(const Project& project) {
+    std::vector<std::pair<int, int>> notes;
+    for (const auto& e : PlaybackScheduler::build(project, 0, 1000000))
+        if (const auto* on = std::get_if<vsm::midi::NoteOnEvent>(&e.data))
+            notes.emplace_back(static_cast<int>(std::lround(e.timeSeconds * 1000.0)), static_cast<int>(on->note));
+    std::stable_sort(notes.begin(), notes.end());
+    return notes;
 }
 
 } // namespace
@@ -186,4 +198,105 @@ VSM_TEST(a_project_made_only_of_audio_clips_still_has_sections) {
     VSM_ASSERT(flattenPlayOrder(project, {1, 0}));
     VSM_ASSERT_EQ(project.tracks[0].clips.size(), size_t(2));
     VSM_ASSERT_EQ(project.tracks[0].clips[0].startTick, Tick(0));
+}
+
+// D537 : SUR UNE PISTE À CLIPS — les fenêtres identité que pose D333 à l'ouverture d'un MIDI —,
+// un ordre qui RÉORDONNE fait entendre l'ordre demandé. Les notes et les fenêtres doivent
+// voyager ENSEMBLE : une fenêtre recopiée qui lit l'ancien matériau joue ce qui n'y est plus.
+VSM_TEST(un_ordre_qui_reordonne_une_piste_a_clips_fait_entendre_l_ordre_demande) {
+    Project project = projetAB();
+    Clip a, b;
+    a.sourceStart = 0;    a.sourceLength = 1920; a.startTick = 0;    a.length = 1920;
+    b.sourceStart = 1920; b.sourceLength = 480;  b.startTick = 1920; b.length = 480;
+    project.tracks[0].clips = {a, b};
+    project.assignClipIds();
+    // LES TEMPS, ET PAS SEULEMENT L'ORDRE : la première mesure ne comparait que l'ordre des
+    // hauteurs, et passait — sol puis do sortaient bien dans cet ordre, mais pas à leur place.
+    VSM_ASSERT(notesJouees(project) == (std::vector<std::pair<int, int>>{{0, 60}, {2000, 67}}));   // le témoin
+    VSM_ASSERT(flattenPlayOrder(project, {1, 0}));
+    VSM_ASSERT(notesJouees(project) == (std::vector<std::pair<int, int>>{{0, 67}, {500, 60}}));
+}
+
+// D537, attendu 1 bis : l'ordre IDENTITÉ ne change rien à ce qu'on entend, clips compris.
+VSM_TEST(l_ordre_identite_ne_change_rien_a_une_piste_a_clips) {
+    Project project = projetAB();
+    Clip a, b;
+    a.sourceStart = 0;    a.sourceLength = 1920; a.startTick = 0;    a.length = 1920;
+    b.sourceStart = 1920; b.sourceLength = 480;  b.startTick = 1920; b.length = 480;
+    project.tracks[0].clips = {a, b};
+    project.assignClipIds();
+    const auto avant = notesJouees(project);
+    VSM_ASSERT(flattenPlayOrder(project, {0, 1}));
+    VSM_ASSERT(notesJouees(project) == avant);
+}
+
+// D537, attendu 2 : un clip DÉPLACÉ (sa fenêtre lit le matériau ailleurs), une copie LIÉE (deux
+// fenêtres sur le même matériau, D34.2) et un clip MUET. Chaque créneau fait entendre ce que sa
+// section faisait entendre, au bon temps ; le muet reste muet et garde ses notes.
+VSM_TEST(fenetres_deplacees_liees_et_muettes_voyagent_avec_ce_qu_elles_font_entendre) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);   // 120 BPM : 480 ticks = 500 ms
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);       // le motif, lu par deux fenêtres liées
+    piste.addNote(240, 480, 64, 100, 0, ids);
+    piste.addNote(5000, 5240, 72, 100, 0, ids);   // un matériau lointain, lu par un clip déplacé
+    Clip motif, lie, deplace, muet;
+    motif.sourceStart = 0;      motif.sourceLength = 480;   motif.startTick = 0;      motif.length = 480;
+    lie.sourceStart = 0;        lie.sourceLength = 480;     lie.startTick = 1920;     lie.length = 480;
+    deplace.sourceStart = 5000; deplace.sourceLength = 480; deplace.startTick = 2400; deplace.length = 480;
+    muet = lie; muet.startTick = 2880; muet.muted = true;
+    piste.clips = {motif, lie, deplace, muet};
+    project.tracks.push_back(piste);
+    project.assignClipIds();
+    project.markers.push_back({0, "A"});
+    project.markers.push_back({1920, "B"});
+    // Avant : A = do, mi ; B = do, mi (le lié) puis do aigu (le déplacé) ; le muet se tait.
+    VSM_ASSERT(notesJouees(project) == (std::vector<std::pair<int, int>>{{0, 60}, {250, 64}, {2000, 60}, {2250, 64}, {2500, 72}}));
+    VSM_ASSERT(flattenPlayOrder(project, {1, 0}));
+    // Après {B, A} : B d'abord, puis A là où B finit. B, DERNIÈRE section, court jusqu'à la fin
+    // du MATÉRIAU (`sectionsFromMarkers`) — 5 240, le matériau lointain —, et non jusqu'à la
+    // dernière chose entendue (3 360) : l'écart est nommé au § D537, hors de cette correction.
+    const auto apres = notesJouees(project);
+    const Tick longueurB = 5240 - 1920;
+    const int msA = static_cast<int>(std::lround(project.ticksToSeconds(longueurB) * 1000.0));
+    VSM_ASSERT(apres == (std::vector<std::pair<int, int>>{{0, 60}, {250, 64}, {500, 72}, {msA, 60}, {msA + 250, 64}}));
+    // Le clip muet existe toujours, muet, à sa place dans le créneau de B, et ses notes sont là.
+    size_t muets = 0;
+    for (const auto& c : project.tracks[0].clips)
+        if (c.muted) {
+            ++muets;
+            VSM_ASSERT_EQ(c.startTick, Tick(960));
+            VSM_ASSERT_EQ(c.sourceStart, c.startTick);   // fenêtre identité
+        }
+    VSM_ASSERT_EQ(muets, size_t(1));
+    size_t sousLeMuet = 0;
+    for (const auto& n : project.tracks[0].notes)
+        if (n.startTick >= 960 && n.startTick < 1440) ++sousLeMuet;
+    VSM_ASSERT_EQ(sousLeMuet, size_t(2));
+}
+
+// D537, attendu 3 : un CC posé dans B voyage avec B ; le réglage posé AVANT B (dans A) ouvre le
+// créneau de B quand B passe en premier — sinon B hériterait de ce que joue le créneau d'avant.
+VSM_TEST(les_controleurs_voyagent_et_ouvrent_leur_creneau) {
+    Project project = projetAB();
+    Clip a, b;
+    a.sourceStart = 0;    a.sourceLength = 1920; a.startTick = 0;    a.length = 1920;
+    b.sourceStart = 1920; b.sourceLength = 480;  b.startTick = 1920; b.length = 480;
+    project.tracks[0].clips = {a, b};
+    project.tracks[0].controlChanges = {{0, 0, 7, 40}, {1920, 0, 74, 90}};   // volume dans A, coupure dans B
+    project.assignClipIds();
+    VSM_ASSERT(flattenPlayOrder(project, {1, 0}));
+    const auto& ccs = project.tracks[0].controlChanges;
+    // Créneau de B à 0 : il s'ouvre sur le volume 40 entendu avant B, et porte sa coupure à 0 ;
+    // créneau de A à 480 : son volume 40 à 480.
+    VSM_ASSERT_EQ(ccs.size(), size_t(3));
+    bool volumeOuvreB = false, coupureDansB = false, volumeDeA = false;
+    for (const auto& c : ccs) {
+        if (c.tick == 0 && c.controller == 7 && c.value == 40) volumeOuvreB = true;
+        if (c.tick == 0 && c.controller == 74 && c.value == 90) coupureDansB = true;
+        if (c.tick == 480 && c.controller == 7 && c.value == 40) volumeDeA = true;
+    }
+    VSM_ASSERT(volumeOuvreB && coupureDansB && volumeDeA);
 }

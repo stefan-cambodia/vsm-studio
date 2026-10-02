@@ -46,8 +46,14 @@ std::vector<Section> sectionsFromMarkers(const Project& project);
 /// et c'est le SEUL moment où l'ordre de jeu touche au matériau : tant qu'on
 /// n'aplatit pas, on n'a rien cassé et l'on peut essayer autre chose.
 ///
-/// CE QUI EST TRANSPORTÉ : les notes, les clips, les courbes d'automation et
-/// les repères. Une note qui déborderait de sa section est COUPÉE à sa fin --
+/// CE QUI EST TRANSPORTÉ : les notes, les clips, les courbes d'automation,
+/// les contrôleurs (CC, pli, pressions, programmes) et les repères. D537 : sur
+/// une piste MIDI, on recopie ce que chaque section FAIT ENTENDRE, lu par les
+/// fenêtres des clips (les clips muets compris), et on le pose sur un matériau
+/// neuf où chaque clip est une fenêtre IDENTITÉ ; recopier le matériau d'après
+/// ses ticks et les fenêtres d'après leur place faisait lire à chaque fenêtre
+/// l'ancien emplacement des notes. Un créneau s'ouvre sur le dernier réglage de
+/// contrôleur entendu avant sa section, comme sur la valeur d'une courbe. Une note qui déborderait de sa section est COUPÉE à sa fin --
 /// laissée entière, elle empiéterait sur la section suivante, que personne
 /// n'a arrangée ainsi ; c'est la règle qu'applique déjà `splitClips` au bord
 /// d'un clip.

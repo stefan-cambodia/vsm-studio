@@ -39525,7 +39525,7 @@ pris pour modèle, part du projet complet. Le défaut était dans le test.
 25, panneaux 11 ; Python 257 ; ruff, mypy (174 fichiers) et les gardes des sources verts.
 
 
-### Phase D537 — « Aplatir l'ordre de jeu » sur une piste à clips : une hypothèse, écrite avant sa mesure (03/10/2026)
+### Phase D537 — « Aplatir l'ordre de jeu » sur une piste à clips : une hypothèse, écrite avant sa mesure (03/10/2026) — FAITE
 
 *Écrite le 03/10 à 4 h 49, en préparant D535.3 (copier une plage sur toutes les pistes), qui
 aurait repris la même mécanique.*
@@ -39575,3 +39575,29 @@ fenêtre est en secondes, gardent leur traitement.
    passe en premier ;
 4. les tests de D18.4 restent verts (pistes sans clip, automation, repères, accords, audio) ;
    chacun des nouveaux vu rouge sur l'ancien code.
+
+**D537 EST FAITE (03/10, 4 h 57).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | les temps de {B, A} | core : (0 ms, sol), (500 ms, do) — le témoin (0, do), (2 000, sol) avant ; l'ordre identité laisse les temps intacts. **Par l'application** (`tools/aplatir-clips.sh`, `.mid` exporté relu en (tick, hauteur)) : le binaire d'AVANT rend **{480:67 960:60}** — le défaut au tick près de la prédiction —, le binaire corrigé **{0:67 480:60}** ; {A, B} = le témoin {0:60 1920:67} | **oui** |
+| 2 | fenêtres déplacée, liée, muette | une piste à quatre clips (le motif, sa copie liée, un clip déplacé qui lit un matériau lointain, un clip muet) : après {B, A}, B fait entendre do, mi, do aigu à 0, 250, 500 ms, puis A son motif ; le clip muet reste muet, fenêtre identité à 960, ses deux notes dessous | **oui** |
+| 3 | les contrôleurs | la coupure (CC 74) posée dans B voyage à 0 avec B ; le volume (CC 7) posé dans A ouvre le créneau de B à 0, et revient avec A à 480 — l'ancien code n'en laissait que 2, à leur place d'avant | **oui** |
+| 4 | rien de cassé, chacun vu rouge | core 403 → **407** ; les sept tests de D18.4 verts (sans clip, automation, repères, audio) ; sur l'ancien `PlayOrder.cpp` remis, les trois tests neufs ROUGES (le test d'identité, témoin, y passe) ; le banc rouge sur l'ancien binaire, vert sur le nouveau, entré dans `verifier.sh --bancs` (51) | **oui** |
+
+**NOMMÉ, NON FAIT : la dernière section court jusqu'à la fin du MATÉRIAU, pas jusqu'à la dernière
+chose ENTENDUE.** Sur la piste du test 2, B va de 1 920 à **5 240** (le matériau lointain qu'un
+clip déplacé lit à 2 400) alors que plus rien ne sonne après 3 360 : aplatie, la section traîne
+1 880 ticks de silence. C'est la même confusion matériau / ligne de temps, dans `lastUsedTick`
+et `lastSoundingTick` — que l'export emploie aussi pour sa longueur, d'où une phase à part
+plutôt qu'une retouche ici.
+
+**LA LEÇON, ÉCRITE OÙ ELLE SERVIRA.** La première mesure d'une hypothèse de défaut l'a ABSOUTE :
+elle comparait l'ordre des hauteurs, et les deux notes sortaient dans le bon ordre, au mauvais
+endroit. C'est la population d'une mesure (`CLAUDE.md`, 01/10) sous une autre forme : une mesure
+d'ordre ne voit pas le temps. Le banc d'application lit donc des couples (tick, hauteur).
+
+**LES SUITES**, toutes les cibles recompilées : core **407**, audio 1 314, interchange 336, clap 25,
+panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts. **`--bancs` entier (51) : lancé à 5 h 10
+sur ce binaire**, pour D535.2 (qui touchait l'interface) et pour D537 ; son résultat s'écrit à sa
+fin.
