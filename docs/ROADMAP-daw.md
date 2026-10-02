@@ -39181,7 +39181,7 @@ nettoyer (les fantômes brèves et faibles, les doublons à l'octave), et les ci
 fixes du piano roll n'en couvrent qu'une partie — c'est le geste qui sert la chaîne. Puis la
 console, puis la plage.
 
-### Phase D535.1 — l'éditeur logique, premier temps : les conditions, les actions et la règle écrite (02/10/2026)
+### Phase D535.1 — l'éditeur logique, premier temps : les conditions, les actions et la règle écrite (02/10/2026) — FAITE
 
 *Écrite avant son code, le 02/10 à 15 h 39.*
 
@@ -39229,6 +39229,17 @@ console, puis la plage.
 
 Le second temps — la fenêtre de l'éditeur logique au piano roll, le compte en direct, la
 dernière règle retenue, un banc — suit.
+
+**D535.1, PREMIER TEMPS, EST FAITE (02/10, 16 h 07).** `LogicalEdit.h`/`.cpp` dans `core/` ; core
+387 → **395** (huit tests). **Quatorze défauts remis à la main, quatorze rouges**, chacun sur le
+test attendu.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | champs, opérateurs, position, « et », règle vide, champ d'application | sept champs, chacun sous un ou plusieurs opérateurs, sur six notes aux ensembles connus ; « entre 20 25 » → {2, 3}, « hors 20 25 » → {1, 4, 5, 6}, « hors 20 100 » → {4} (les bornes sont dedans) ; la note 6 est à **120** de sa mesure de 3/4 (à 1 560 si l'on comptait 4/4 partout) ; règle vide → les six ; parmi {1}, « vélocité < 30 » → aucune. Rouges : « entre » exclusif, « hors » inclusif, la position en 4/4 partout, le champ d'application ignoré, la règle vide qui ne répond pour rien | **oui** |
+| 2 | la règle écrite | « vélocité < 30 et durée < 1/32 » = « Velocite<30 et duree <1/32 » → canonique `velocite < 30 et duree < 60` ; F#3 = 54, Bb2 = 46, c4 = 60 ; « 0,5 » = 0.5 ; **56** règles (7 champs × 8 opérateurs) relues à l'identique ; sept textes faux refusés, le message nommant ce qui a été TAPÉ (« trente », « volume », « ≈ », « entre », « vide », « H4 », « 40 »), la sortie intacte. Rouges : accents gardés (5 tests), la fraction prise pour une noire, l'octave décalée, la virgule refusée, le message normalisé (« h4 »), la sortie touchée en route, la valeur en trop ignorée | **oui** |
+| 3 | les actions | supprimer, rendre muettes, transposer (+12 → 76 et 79, le reste intact ; avec une note à 120 : rien ne bouge, 1 refusée), fixer la vélocité (64 ; 0 refusée pour les deux, rien de borné), choisir. Rouges : la vélocité bornée, le muet posé sur toutes | **oui** |
+
 
 ### Phase D536 — « Transposer » bornait en silence : une note à 120 montée d'une octave sonnait à 127 (02/10/2026) — FAITE, `--bancs` entier en attente de la fin des courses
 
