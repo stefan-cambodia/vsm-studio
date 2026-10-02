@@ -1020,6 +1020,14 @@ private:
         kMenuFileChainFolder,
         kMenuHelpAbout,
         kMenuHelpManual,   // D398
+        /// D535.2 : les instantanés de la console — prendre, puis un identifiant par instantané
+        /// pour le rappeler et un pour le supprimer (32 places chacun, CONTIGUËS : l'index se
+        /// déduit par soustraction).
+        kMenuMixSnapshotTake,
+        kMenuMixSnapshotRecallFirst,
+        kMenuMixSnapshotRecallLast = kMenuMixSnapshotRecallFirst + 31,
+        kMenuMixSnapshotRemoveFirst,
+        kMenuMixSnapshotRemoveLast = kMenuMixSnapshotRemoveFirst + 31,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1897,6 +1905,13 @@ private:
     /// et DIT. Retirer : l'accord en vigueur à `tick`. Chacun est un pas d'historique.
     void demanderAccord(vsm::midi::Tick tick, bool modifier);
     void retirerAccord(vsm::midi::Tick tick);
+    /// D535.2 : LES INSTANTANÉS DE LA CONSOLE. Prendre demande le nom (et, s'il est pris, s'il
+    /// faut remplacer) ; rappeler n'ouvre un pas que si la console change ; chacun le dit au
+    /// journal (`VSM_INSTANTANE`) et à la ligne d'état.
+    void prendreInstantane();
+    void ecrireInstantane(const std::string& nom, bool remplace);
+    void rappelerInstantane(size_t index);
+    void supprimerInstantane(size_t index);
     /// D535.1 bis : LA FENÊTRE DE L'ÉDITEUR LOGIQUE — la règle, l'action, la valeur, le champ
     /// d'application, et le compte EN DIRECT sous la règle ; le dernier réglage est retenu.
     void ouvrirEditeurLogique();

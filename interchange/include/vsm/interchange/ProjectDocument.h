@@ -357,6 +357,9 @@ struct ProjectTrack {
     /// recomposer autrement. Faire monter la version pour cela reviendrait à
     /// rendre illisibles, chez les autres, des projets qui sonnent pareil.
     std::vector<ProjectCompSegment> compSegments;
+    /// D535.2 : les états de console de la piste, nom d'instantané → état. Facultatif : une
+    /// piste sans instantané n'écrit rien de plus qu'avant.
+    std::map<std::string, vsm::sequencer::TrackMixState> mixSnapshots;
 };
 
 struct ProjectDocument {
@@ -380,6 +383,8 @@ struct ProjectDocument {
     /// Repères nommés. Facultatif, comme les clips.
     std::vector<ProjectMarker> markers;
     std::vector<ProjectChord> chords;   ///< D532.3 : écrite seulement s'il y en a
+    /// D535.2 : les noms des instantanés de console, dans l'ordre. Écrits seulement s'il y en a.
+    std::vector<std::string> mixSnapshotNames;
     /// D18.6 : les notes du projet. Vides = rien n'est écrit.
     std::string notes;
     /// D363 : OÙ L'ON EN ÉTAIT DANS LA VUE D'ARRANGEMENT — le zoom et le point

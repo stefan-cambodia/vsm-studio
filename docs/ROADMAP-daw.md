@@ -39400,8 +39400,30 @@ qui demandait les comptes de lignes que ce commit reprend. **`--bancs` entier : 
 bis et D536 l'avaient laissée en attente (session verrouillée, course 2). Son résultat s'écrit
 ci-dessous à sa fin.
 
+**LA SÉRIE `--bancs`, 22 h 03 → 2 h 30 : 49 bancs, 47 verts, 2 rouges — un défaut réel, et une
+veille.** Le poste s'est mis en veille SIX fois pendant la série (22 h 10, 23 h 09, 23 h 14,
+0 h 01, 0 h 26, 1 h 38, lues au journal du noyau, `PM: suspend entry`), écran gardé allumé ou
+non : il dort après ~9 min sans geste de l'utilisateur, et ce n'est pas une campagne, donc rien
+ne la bloque (consigne de l'utilisateur : ce poste ne se recharge qu'en veille). Quatre veilles
+sont tombées entre deux bancs ; deux sur un banc.
+- **`arret-tete.sh`, rouge par la veille** : « fin du morceau » lue à 2 441 au lieu de 0 — la
+  veille de 23 h 09 (32 s) en pleine lecture. Rejoué seul, aucune veille : **6/6 verts**.
+- **`annulation-des-menus.py`, rouge par un VRAI défaut**, que la veille de 22 h 10 (50 min,
+  d'où « 3 833 s ») n'explique pas : « Poser un accord ici… » jugée **MUETTE** sur les deux
+  règles. Validée sans symbole (`VSM_CONFIRMER` garde les champs tels quels — un utilisateur qui
+  presse « Poser » sans rien taper fait la même chose), la fenêtre de D532.3 rendait la main sans
+  un mot : `if (resultat != 1 || symbole.isEmpty()) return;`. Elle le DIT désormais (« Aucun
+  symbole n'a été tapé : la ligne d'accords n'a pas changé. », traduit), corrigé avec D535.2.
+  Rejoué : **0 muette** (2 avant), 158 justes, 64 sans effet avec trace (62 + les deux entrées
+  d'accord) — vert, à travers quatre veilles. C'est le prix de deux phases closes sans la série
+  entière : D532.3 bis l'avait laissée « en attente », et ce banc-là est le seul qui juge les
+  menus des règles.
+- **Le compte des bancs était faux d'une unité** : 49 et non 48 (et 48 et non 47 à D536). Le
+  dernier de la liste s'écrit `zoom-reassigne.sh;`, point-virgule collé, et un compte par
+  `\.sh$` le sautait ; c'est la série, qui en a joué 49, qui l'a dit. `CLAUDE.md` est corrigé.
 
-### Phase D535.2 — les instantanés de la console : garder l'état du mixage sous un nom, et y revenir (02/10/2026)
+
+### Phase D535.2 — les instantanés de la console : garder l'état du mixage sous un nom, et y revenir (02/10/2026) — FAITE
 
 *Écrite avant son code, le 02/10 à 22 h 04.*
 
@@ -39430,6 +39452,13 @@ ci-dessous à sa fin.
   demander s'il faut REMPLACER (deux boutons), jamais en silence. Un pas d'historique : un
   instantané est une donnée du projet.
 - **Supprimer** : un pas d'historique, l'état retiré de chaque piste.
+- **Ajouté à 22 h 05, avant le code — un bus de départ RETIRÉ l'est aussi des instantanés.**
+  Retirer le bus 0 efface ce rang dans `sendLevels` de chaque piste (`MainComponent`, « les
+  niveaux des pistes suivent le bus retiré ») ; les états d'instantané, s'ils ne suivaient pas,
+  feraient envoyer au rappel le niveau du bus 1 dans le bus 0 — le défaut même que ce code
+  corrige. Une fonction de `core/` retire le rang PARTOUT (pistes et instantanés), et
+  l'application l'appelle ; attendu 1 : bus 0 retiré, le départ que l'instantané gardait pour
+  le bus 1 revient sur ce bus-là.
 - **Où** : *Mixage ▸ Instantanés de la console ▸* « Prendre un instantané… », puis « Rappeler
   « A » » par instantané, puis *Supprimer un instantané ▸* « A ». Des libellés uniques dans toute
   la barre (`VSM_MENU` prend le premier libellé exact).
@@ -39458,3 +39487,39 @@ ci-dessous à sa fin.
 5. un banc `tools/instantanes-console.sh` qui joue 3 et 4, vu rouge sur un défaut remis à la
    main, entré dans `verifier.sh --bancs` ; `gestes-vivants.py` connaît les entrées ; libellés
    traduits (`inventaire_langue.py --garde` à 0) ; le menu photographié dans les deux langues.
+
+**D535.2 EST FAITE (03/10, 3 h 59).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le modèle | core 397 → **403** (six tests) : les huit réglages de la tranche bougés sur deux pistes, rappelés exactement ; une piste ajoutée après la prise laissée et comptée (1 sans état) ; un insert remplacé par un autre type et un insert ajouté laissés (2), la reverb de même rang reprend son état ; la piste 0 supprimée, la nappe retrouve SON volume (0,6, pas le 0,8 de la basse) ; départs prolongés de zéros : 0 changée, un départ réel : 1 ; prendre sous un nom pris remplace à sa place, supprimer retire partout ; le bus 0 retiré, le départ gardé pour le bus 1 revient sur ce bus. **Cinq défauts, cinq rouges**, chacun sur son test : le type d'insert ignoré, les départs comparés sans leurs zéros, le bus retiré oublié des instantanés, le trim non rappelé, supprimer qui laisse les états | **oui** |
+| 2 | le fichier | interchange 333 → **336** : l'aller-retour par `saveProjectBundle`/`loadProjectBundle` (noms dans l'ordre, huit champs, inserts), et le rappel qui agit sur le projet relu ; un état sous un nom absent de la liste écarté et dit (une phrase par piste) ; un projet sans instantané n'écrit pas la clé et se réécrit **octet pour octet**. **Deux défauts, deux rouges** : les états écrits même vides, l'état orphelin gardé | **oui** |
+| 3 | par l'export audio | `tools/instantanes-console.sh` : PA, PB, PR, PU enregistrés par l'application, exportés (1 058 444 octets chacun) : **PR = PA au bit près**, **PU = PB au bit près**, le témoin **PB ≠ PA** ; PR porte les deux noms, la basse à 0,800, la nappe audible ; PB et PU la basse à 0,500, la nappe muette ; « rappelé « Instantané 1 » — 2 piste(s) rappelée(s), 2 changée(s), 0 sans état, 0 insert(s) laissé(s) » | **oui** |
+| 4 | remplacer, et le rappel qui ne change rien | « Prendre » sous « Instantané 1 » : la fenêtre « Remplacer l'instantané ? » s'ouvre (`VSM_BOITE`), rien de remplacé sans réponse ; rappeler « Instantané 2 » juste après l'avoir pris : « rien à changer, aucun pas » | **oui** |
+| 5 | le banc, les gardes | 10 contrôles ; **vu rouge** sur le rappel fait sans son pas : PU ne porte plus qu'un nom (Ctrl+Z avait défait la PRISE d'« Instantané 2 ») — et le contrôle des exports PU = PB, lui, restait vert, le son étant le même : c'est pourquoi le banc lit aussi le fichier. Entré dans `verifier.sh --bancs` (50) ; `gestes-vivants.py` : 0 geste mort sur 71, « Prendre un instantané… » compris ; 23 libellés traduits, `inventaire_langue.py --garde` à 0 ; `menus-cites.py` : 34 citations, la neuve du mode d'emploi comprise | **oui** |
+
+**CE QUE LE BANC NE MESURE PAS, DIT.** L'export relit le FICHIER enregistré : il prouve que le
+rappel change ce que le projet SONNE, pas ce que le moteur joue à l'instant. Le moteur suit le
+rappel par `rebuildFromProject(false)`, le chemin même de l'annulation ; aucun relevé de banc ne
+lit aujourd'hui le gain d'une tranche en marche (`VSM_MIXEUR` ne relève que sa géométrie).
+
+**REGARDÉ.** Le sous-menu photographié dans les deux langues (`VSM_MENU_PHOTO`, un projet à deux
+instantanés) : « Prendre un instantané… », « Rappeler « Couplet » », « Rappeler « Refrain » »,
+« Supprimer un instantané ▸ » ; « Take a snapshot… », « Recall “Couplet” »… La fenêtre
+« Prendre un instantané » dans les deux langues : la phrase se coupe entre deux mots, le nom
+proposé est « Instantané 3 » / « Snapshot 3 » (deux existent). La première photo française de la
+fenêtre est sortie sans elle — la course de D72 ; relancée, elle est venue.
+
+**REJOUÉS SUR LE BINAIRE FINAL**, chacun avec les veilles relevées pendant sa course :
+`instantanes-console.sh` (vert, 0 veille), `editeur-logique.sh` (vert, 0), `accords.sh` (vert,
+2 veilles traversées), `gestes-vivants.py` (0 geste mort sur 71, 0 veille),
+`annulation-des-menus.py` (vert, 4 veilles traversées).
+
+**UN TEST FAUX, ATTRAPÉ PAR UNE PILE, PAS PAR UN SOUPÇON.** Le premier test d'interchange est
+tombé en faute de segmentation au milieu d'un test sans rapport (les dimensions de recherche,
+dans la sortie bufferisée) ; `gdb` a montré la ligne : j'appliquais un document à un projet
+VIDE, alors que `applyDocumentToProject` écrit sur des pistes existantes — le test des accords,
+pris pour modèle, part du projet complet. Le défaut était dans le test.
+
+**LES SUITES**, toutes les cibles recompilées : core **403**, audio 1 314, interchange **336**, clap
+25, panneaux 11 ; Python 257 ; ruff, mypy (174 fichiers) et les gardes des sources verts.

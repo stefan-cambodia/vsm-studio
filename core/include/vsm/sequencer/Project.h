@@ -79,6 +79,10 @@ public:
     /// Elle ne joue rien : elle guide l'écriture (`snapNotesToChords`).
     std::vector<ChordEvent> chords;
 
+    /// D535.2 : LES NOMS DES INSTANTANÉS DE CONSOLE, dans l'ordre de leur prise — l'état de chaque
+    /// piste vit dans la piste (`Track::mixSnapshots`). Écrits seulement s'il y en a.
+    std::vector<std::string> mixSnapshotNames;
+
     /// LES NOTES DU PROJET (D18.6) — le bloc-notes de Cubase.
     ///
     /// POURQUOI CE PROJET-CI EN A PLUS BESOIN QU'UN AUTRE. Une reconstruction

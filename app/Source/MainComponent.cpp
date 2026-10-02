@@ -24,6 +24,7 @@
 #include "vsm/midi/MidiFileWriter.h"
 #include "vsm/sequencer/MidiEffects.h"
 #include "vsm/sequencer/EventList.h"
+#include "vsm/sequencer/MixSnapshot.h"   // D535.2
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/io/WavFileWriter.h"
 #include "vsm/audio/effect/Reverb.h"
@@ -4827,6 +4828,29 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuMixAddSend, tr(u8"Ajouter un bus de départ"),
                               project_.sends.size() < vsm::audio::engine::ProcessGraph::kMaxSends);
             }
+            // D535.2 : LES INSTANTANÉS DE LA CONSOLE. Des libellés uniques dans toute la barre
+            // (« Rappeler « A » », « Supprimer « A » ») : `VSM_MENU` prend le premier exact.
+            {
+                menu.addSeparator();
+                juce::PopupMenu instantanes;
+                instantanes.addItem(kMenuMixSnapshotTake, tr(u8"Prendre un instantané…"), !project_.tracks.empty());
+                instantanes.addSeparator();
+                const auto& noms = project_.mixSnapshotNames;
+                const size_t places = static_cast<size_t>(kMenuMixSnapshotRecallLast - kMenuMixSnapshotRecallFirst + 1);
+                juce::PopupMenu supprimer;
+                for (size_t i = 0; i < noms.size() && i < places; ++i) {
+                    const juce::String nom = juce::String::fromUTF8(noms[i].c_str());
+                    instantanes.addItem(kMenuMixSnapshotRecallFirst + static_cast<int>(i),
+                                        tr(u8"Rappeler « %1 »").replace("%1", nom));
+                    supprimer.addItem(kMenuMixSnapshotRemoveFirst + static_cast<int>(i),
+                                      tr(u8"Supprimer « %1 »").replace("%1", nom));
+                }
+                if (noms.empty())
+                    instantanes.addItem(-1, tr(u8"(aucun instantané)"), false, false);
+                else
+                    instantanes.addSubMenu(tr(u8"Supprimer un instantané"), supprimer);
+                menu.addSubMenu(tr(u8"Instantanés de la console"), instantanes);
+            }
             // D23.5 : L'ÉCOUTE EN MONO, aussi au menu -- pour le clavier, et pour
             // que VSM_MENU puisse la photographier.
             menu.addSeparator();
@@ -5515,6 +5539,16 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuHelpAbout:     showAboutDialog(); break;
         case kMenuHelpManual:    ouvrirLeModeDEmploi(); break;
         default:
+            // D535.2 : les instantanés de la console.
+            if (menuItemID == kMenuMixSnapshotTake) { prendreInstantane(); break; }
+            if (menuItemID >= kMenuMixSnapshotRecallFirst && menuItemID <= kMenuMixSnapshotRecallLast) {
+                rappelerInstantane(static_cast<size_t>(menuItemID - kMenuMixSnapshotRecallFirst));
+                break;
+            }
+            if (menuItemID >= kMenuMixSnapshotRemoveFirst && menuItemID <= kMenuMixSnapshotRemoveLast) {
+                supprimerInstantane(static_cast<size_t>(menuItemID - kMenuMixSnapshotRemoveFirst));
+                break;
+            }
             if (menuItemID >= kMenuMixRemoveSendFirst && menuItemID <= kMenuMixRemoveSendLast) {
                 const size_t bus = static_cast<size_t>(menuItemID - kMenuMixRemoveSendFirst);
                 if (bus >= project_.sends.size()) break;
@@ -5523,11 +5557,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                 // LES NIVEAUX DES PISTES SUIVENT LE BUS RETIRÉ. Sans cela, le
                 // départ qui visait le bus 2 viserait le bus 1 après la
                 // suppression du 0 : la piste enverrait dans le mauvais effet
-                // sans qu'aucun bouton n'ait bougé.
-                for (auto& piste : project_.tracks)
-                    if (bus < piste.sendLevels.size())
-                        piste.sendLevels.erase(piste.sendLevels.begin()
-                                                + static_cast<std::ptrdiff_t>(bus));
+                // sans qu'aucun bouton n'ait bougé. D535.2 : et ceux que gardent
+                // les instantanés de la console, pour la même raison.
+                vsm::sequencer::eraseSendLevelEverywhere(project_, bus);
                 sendBusesChanged();
                 break;
             }
@@ -14174,7 +14206,15 @@ void MainComponent::demanderAccord(vsm::midi::Tick tick, bool modifier) {
             const juce::String symbole = fenetre->getTextEditorContents("accord").trim();
             fenetre->exitModalState(resultat);
             fenetre->setVisible(false);
-            if (resultat != 1 || symbole.isEmpty()) return;
+            if (resultat != 1) return;
+            // UN SYMBOLE VIDE N'EST PAS UN GESTE MUET. Validée sans rien taper, la fenêtre rendait
+            // la main sans un mot : `annulation-des-menus.py` l'a jugée MUETTE sur les deux règles
+            // (02/10, première série `--bancs` entière depuis D532.3). C'est dit, et rien ne change.
+            if (symbole.isEmpty()) {
+                montrerBoite(juce::AlertWindow::InfoIcon, modifier ? tr(u8"Modifier l'accord") : tr(u8"Poser un accord"),
+                             tr(u8"Aucun symbole n'a été tapé : la ligne d'accords n'a pas changé."));
+                return;
+            }
             vsm::sequencer::ChordEvent accord;
             accord.tick = cible;
             if (!vsm::sequencer::parseChordSymbol(symbole.toStdString(), accord)) {
@@ -14364,6 +14404,110 @@ void MainComponent::retirerAccord(vsm::midi::Tick tick) {
                               + std::to_string(project_.chords.size()) + " accord(s))\n";
     std::fputs(ligne.c_str(), stderr);
     refreshMarkerViews();
+}
+
+namespace {
+/// D535.2 : le nom d'un pas d'instantané — le geste traduit, le nom en DONNÉE (D425, `trGeste`).
+juce::String pasDInstantane(const char8_t* geste, const std::string& nom) {
+    return juce::String::fromUTF8(reinterpret_cast<const char*>(geste)) + juce::String::fromUTF8(" \xe2\x80\x94 ")
+         + juce::String::fromUTF8(nom.c_str());
+}
+} // namespace
+
+void MainComponent::prendreInstantane() {
+    if (project_.tracks.empty()) return;
+    const juce::String propose = juce::String::fromUTF8(
+        vsm::sequencer::nextMixSnapshotName(project_, tr(u8"Instantané").toStdString()).c_str());
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        tr(u8"Prendre un instantané"),
+        tr(u8"Le volume, le panoramique, le muet, le solo, le trim, la polarité, les départs et l'état des inserts "
+           u8"de chaque piste, gardés sous un nom :"),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("nom", propose, tr(u8"Nom :"));
+    fenetre->addButton(tr(u8"Prendre"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre](int resultat) {
+        const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        // UN NOM VIDE N'EST PAS UN GESTE MUET : il est dit (la leçon de « Poser un accord ici… »).
+        if (nom.isEmpty()) {
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Instantané sans nom"),
+                         tr(u8"Un instantané se prend sous un nom : rien n'a été pris."));
+            return;
+        }
+        const std::string n = nom.toStdString();
+        if (!vsm::sequencer::hasMixSnapshot(project_, n)) {
+            ecrireInstantane(n, false);
+            return;
+        }
+        // UN NOM DÉJÀ PRIS : on demande, jamais en silence.
+        auto confirmer = std::make_shared<juce::AlertWindow>(
+            tr(u8"Remplacer l'instantané ?"),
+            tr(u8"« %1 » existe déjà. Le remplacer par l'état présent de la console ?").replace("%1", nom),
+            juce::AlertWindow::QuestionIcon);
+        confirmer->addButton(tr(u8"Remplacer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+        confirmer->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        vsm::app::ui::montrerOuRepondre(*confirmer, [this, confirmer, n](int reponse) {
+            confirmer->exitModalState(reponse);
+            confirmer->setVisible(false);
+            if (reponse == 1) ecrireInstantane(n, true);
+            else std::fputs(("VSM_INSTANTANE : « " + n + " » gardé tel quel (remplacement refusé)\n").c_str(), stderr);
+        });
+    });
+}
+
+void MainComponent::ecrireInstantane(const std::string& nom, bool remplace) {
+    beginProjectEdit(pasDInstantane(remplace ? u8"Remplacer l'instantané" : u8"Prendre l'instantané", nom));
+    vsm::sequencer::takeMixSnapshot(project_, nom);
+    std::fputs(("VSM_INSTANTANE : " + std::string(remplace ? "remplacé" : "pris") + " « " + nom + " » — "
+                + std::to_string(project_.tracks.size()) + " piste(s), "
+                + std::to_string(project_.mixSnapshotNames.size()) + " instantané(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged((remplace ? tr(u8"Instantané « %1 » remplacé : %2 piste(s)")
+                                             : tr(u8"Instantané « %1 » pris : %2 piste(s)"))
+                                       .replace("%1", juce::String::fromUTF8(nom.c_str()))
+                                       .replace("%2", juce::String(static_cast<int>(project_.tracks.size()))));
+}
+
+void MainComponent::rappelerInstantane(size_t index) {
+    if (index >= project_.mixSnapshotNames.size()) return;
+    const std::string nom = project_.mixSnapshotNames[index];
+    const juce::String nomAffiche = juce::String::fromUTF8(nom.c_str());
+    // LE PAS SE DÉCIDE AVANT DE L'OUVRIR (D511) : un rappel qui ne change rien n'en laisse pas.
+    const auto apercu = vsm::sequencer::previewMixRecall(project_, nom);
+    if (apercu.changed == 0) {
+        std::fputs(("VSM_INSTANTANE : rappel de « " + nom + " » — rien à changer, aucun pas\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Rappeler l'instantané « %1 » : rien à changer").replace("%1", nomAffiche));
+        return;
+    }
+    beginProjectEdit(pasDInstantane(u8"Rappeler l'instantané", nom));
+    const auto bilan = vsm::sequencer::recallMixSnapshot(project_, nom);
+    rebuildFromProject(false);   // le chemin de l'annulation : console, moteur et inserts suivent le projet
+    std::fputs(("VSM_INSTANTANE : rappelé « " + nom + " » — " + std::to_string(bilan.recalled)
+                + " piste(s) rappelée(s), " + std::to_string(bilan.changed) + " changée(s), "
+                + std::to_string(bilan.withoutState) + " sans état, " + std::to_string(bilan.insertsLeft)
+                + " insert(s) laissé(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(
+            tr(u8"Instantané « %1 » rappelé : %2 piste(s) ; %3 sans état et %4 insert(s) changé(s) depuis — laissés")
+                .replace("%1", nomAffiche)
+                .replace("%2", juce::String(static_cast<int>(bilan.recalled)))
+                .replace("%3", juce::String(static_cast<int>(bilan.withoutState)))
+                .replace("%4", juce::String(static_cast<int>(bilan.insertsLeft))));
+}
+
+void MainComponent::supprimerInstantane(size_t index) {
+    if (index >= project_.mixSnapshotNames.size()) return;
+    const std::string nom = project_.mixSnapshotNames[index];
+    beginProjectEdit(pasDInstantane(u8"Supprimer l'instantané", nom));
+    vsm::sequencer::removeMixSnapshot(project_, nom);
+    std::fputs(("VSM_INSTANTANE : supprimé « " + nom + " » — " + std::to_string(project_.mixSnapshotNames.size())
+                + " instantané(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Instantané « %1 » supprimé").replace("%1", juce::String::fromUTF8(nom.c_str())));
 }
 
 namespace {

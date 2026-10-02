@@ -38,6 +38,17 @@ au-dessus monte jusqu'à la crête, et le trait blanc est la crête retenue — 
 bande pâle est haute, plus la piste a de transitoires ; une piste compressée n'en a
 presque plus.
 
+**Garder un mixage et y revenir : les instantanés de la console** (D535.2). *Mixage ▸
+Instantanés de la console ▸ Prendre un instantané…* garde, sous un nom, le volume, le
+panoramique, le muet, le solo, le trim, la polarité, les départs et l'état (actif ou
+contourné) des inserts de chaque piste ; *Rappeler « … »* y revient, en un pas que Ctrl+Z
+défait. Le master, les réglages des effets, le routage et les machines n'en font pas partie :
+c'est une vue de la console, pas une version du projet. Une piste ajoutée après la prise n'a
+pas d'état dans l'instantané et reste telle quelle ; un insert remplacé ou ajouté depuis aussi —
+la ligne d'état les compte. Prendre sous un nom déjà pris demande s'il faut remplacer. Les
+instantanés sont écrits dans le projet, et suivent chaque piste quand on la déplace ou en
+supprime une autre.
+
 **Le fader de chaque tranche est un fader** (D342) : une glissière visible, sa
 portion remplie sous le capuchon, et une **échelle en décibels** à gauche — 6, 0,
 −6, −24, −40 selon la hauteur disponible, le **0 dB en ambre** parce que c'est le

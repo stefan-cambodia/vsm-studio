@@ -321,6 +321,45 @@ std::vector<ProjectAutomationLane> automationFromJson(const JsonValue& tableau) 
 // Projet en mémoire -> document
 // ---------------------------------------------------------------------------
 
+namespace {
+/// D535.2 : UN ÉTAT DE CONSOLE dans le fichier. Tous ses champs sont écrits : c'est une donnée
+/// neuve, et un état se relit tel qu'il a été pris.
+JsonValue etatDeConsoleVersJson(const vsm::sequencer::TrackMixState& etat) {
+    JsonValue e = JsonValue::makeObject();
+    e.set("volume", JsonValue::makeFloat(etat.volume));
+    e.set("pan", JsonValue::makeFloat(etat.pan));
+    e.set("muted", JsonValue::makeBoolean(etat.muted));
+    e.set("solo", JsonValue::makeBoolean(etat.solo));
+    e.set("trimDb", JsonValue::makeFloat(etat.inputTrimDb));
+    e.set("invertPhase", JsonValue::makeBoolean(etat.invertPhase));
+    JsonValue departs = JsonValue::makeArray();
+    for (float niveau : etat.sendLevels) departs.append(JsonValue::makeFloat(niveau));
+    e.set("sends", std::move(departs));
+    JsonValue inserts = JsonValue::makeArray();
+    for (const auto& insert : etat.inserts) {
+        JsonValue i = JsonValue::makeObject();
+        i.set("type", JsonValue::makeString(insert.type));
+        i.set("enabled", JsonValue::makeBoolean(insert.enabled));
+        inserts.append(std::move(i));
+    }
+    e.set("inserts", std::move(inserts));
+    return e;
+}
+
+vsm::sequencer::TrackMixState etatDeConsoleDepuisJson(const JsonValue& e) {
+    vsm::sequencer::TrackMixState etat;
+    etat.volume = static_cast<float>(e["volume"].asNumber(1.0));
+    etat.pan = static_cast<float>(e["pan"].asNumber(0.0));
+    etat.muted = e["muted"].asBoolean(false);
+    etat.solo = e["solo"].asBoolean(false);
+    etat.inputTrimDb = static_cast<float>(e["trimDb"].asNumber(0.0));
+    etat.invertPhase = e["invertPhase"].asBoolean(false);
+    for (const auto& niveau : e["sends"].elements()) etat.sendLevels.push_back(static_cast<float>(niveau.asNumber(0.0)));
+    for (const auto& i : e["inserts"].elements()) etat.inserts.push_back({i["type"].asString(), i["enabled"].asBoolean(true)});
+    return etat;
+}
+} // namespace
+
 ProjectDocument documentFromProject(const Project& project) {
     ProjectDocument document;
     document.title = project.title;
@@ -338,6 +377,7 @@ ProjectDocument documentFromProject(const Project& project) {
     for (const auto& accord : project.chords)   // D532.3 : le symbole est le format
         document.chords.push_back({accord.tick, vsm::sequencer::chordSymbol(accord)});
     document.notes = project.notes;
+    document.mixSnapshotNames = project.mixSnapshotNames;   // D535.2
     document.master = project.masterParameters;
     document.crossfadeShape = fadeShapeName(project.crossfadeShape);
     document.transport.loopEnabled = project.loopEnabled;
@@ -403,6 +443,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.soloSafe = track.soloSafe;              // D30.1
         entry.disabled = track.disabled;              // D30.2
         entry.inputTrimDb = track.inputTrimDb;        // D30.4
+        entry.mixSnapshots = track.mixSnapshots;      // D535.2
         entry.arrangementHeight = track.arrangementHeight;
         entry.folded = track.folded;
         entry.frozen = track.frozen;
@@ -533,6 +574,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         for (const auto& marker : document.markers)
             project.markers.push_back({marker.tick, marker.name});
     }
+    project.mixSnapshotNames = document.mixSnapshotNames;   // D535.2
     // D532.3 : LA LIGNE D'ACCORDS, toujours celle du document — le `.mid` n'en porte
     // aucune. Un symbole illisible est ÉCARTÉ et DIT, jamais deviné.
     project.chords.clear();
@@ -611,6 +653,19 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.midiBank = source.midiBank;
         target.midiInputChannel = source.midiInputChannel;
         target.sendLevels = source.sendLevels;
+        // D535.2 : LES ÉTATS D'INSTANTANÉ, ceux dont le nom est au projet. Un état sous un nom
+        // que la liste ne porte pas (un fichier retouché à la main) n'a pas de menu pour être
+        // rappelé : il est ÉCARTÉ, et dit.
+        target.mixSnapshots.clear();
+        for (const auto& [nom, etat] : source.mixSnapshots) {
+            if (std::find(document.mixSnapshotNames.begin(), document.mixSnapshotNames.end(), nom)
+                == document.mixSnapshotNames.end()) {
+                report.warnings.push_back("piste \u00ab " + source.name + " \u00bb : \u00e9tat d'instantan\u00e9 \u00ab "
+                                          + nom + " \u00bb sans nom au projet : \u00e9cart\u00e9");
+                continue;
+            }
+            target.mixSnapshots[nom] = etat;
+        }
 
         // AVANT le `continue` ci-dessous, délibérément : une piste sans
         // instrument peut parfaitement porter des effets et de l'automation,
@@ -786,6 +841,11 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             accords.append(std::move(a));
         }
         root.set("chords", std::move(accords));
+    }
+    if (!document.mixSnapshotNames.empty()) {   // D535.2
+        JsonValue noms = JsonValue::makeArray();
+        for (const auto& nom : document.mixSnapshotNames) noms.append(JsonValue::makeString(nom));
+        root.set("mixSnapshots", std::move(noms));
     }
 
     // D18.6 : les notes du projet, écrites seulement s'il y en a.
@@ -1030,6 +1090,13 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             effects.append(std::move(fx));
         }
         entry.set("effects", std::move(effects));
+        // D535.2 : LES ÉTATS D'INSTANTANÉ, écrits seulement s'il y en a — un projet sans
+        // instantané garde son fichier octet pour octet.
+        if (!track.mixSnapshots.empty()) {
+            JsonValue etats = JsonValue::makeObject();
+            for (const auto& [nom, etat] : track.mixSnapshots) etats.set(nom, etatDeConsoleVersJson(etat));
+            entry.set("mixSnapshots", std::move(etats));
+        }
 
         // D31.1 : LA CHAÎNE MIDI, ÉCRITE SEULEMENT QUAND ELLE EXISTE. Un
         // projet d'avant la phase se relit et se réécrit octet pour octet --
@@ -1161,6 +1228,8 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
 
     ProjectDocument document;
     document.title = json["title"].asString("Sans titre");
+    for (const auto& nom : json["mixSnapshots"].elements())   // D535.2
+        if (nom.isString()) document.mixSnapshotNames.push_back(nom.asString());
     for (const auto& accordJson : json["chords"].elements())   // D532.3 : lus tels quels, jugés à l'application
         document.chords.push_back({static_cast<int64_t>(accordJson["tick"].asNumber(0.0)),
                                    accordJson["chord"].asString()});
@@ -1397,6 +1466,8 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             if (fx["enabled"].isBoolean()) effect.enabled = fx["enabled"].asBoolean(true);
             if (!effect.type.empty()) track.effects.push_back(std::move(effect));
         }
+        for (const auto& [nom, etat] : entry["mixSnapshots"].members())   // D535.2
+            if (etat.isObject()) track.mixSnapshots[nom] = etatDeConsoleDepuisJson(etat);
 
         for (const auto& fx : entry["midiEffects"].elements()) {   // D31.1
             ProjectEffect effect;

@@ -248,11 +248,18 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   sur un appariement que le geste justifie — jamais sur deux listes triées à
   l'aveugle.
 - Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les
-  bancs qui lancent l'application — 48 au 02/10 (D535.1 bis ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
+  bancs qui lancent l'application — 50 au 03/10 (D535.2 ; 49 et non 48 au 02/10 : un compte par `\.sh$` sautait le dernier, `zoom-reassigne.sh;` ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
   d'office), pas
   seulement par ses bancs voisins : D482 a changé l'infobulle de « + » sans rejouer
   `liste-ajouter.sh`, resté rouge jusqu'à ce que D504 rejoue tout (29/09). Jamais
   pendant une campagne (le lanceur refuse).
+  **Et une VEILLE au milieu de la série fabrique des rouges** (02/10, D535.1 bis) :
+  le poste dort après ~9 min sans geste de l'utilisateur, écran gardé allumé ou non —
+  six veilles en une série, deux rouges (« fin du morceau » lue à 2 441 au lieu de 0).
+  On ne bloque pas la veille pour des bancs (ce n'est pas une campagne) : on relève
+  `journalctl -b | grep "PM: suspend"` sur la fenêtre de chaque rouge, et on le
+  rejoue SEUL avant de conclure — sans croire non plus qu'un rouge sous veille est
+  forcément la veille : l'autre rouge de la même série était un vrai défaut.
 - Un script d'analyse écrit pour une phase n'est pas une garde : il n'est ni
   relu, ni rejoué, ni corrigé. Ce qui doit empêcher une régression va dans
   `tools/`, avec sa règle écrite dans son en-tête (12/09, D150).

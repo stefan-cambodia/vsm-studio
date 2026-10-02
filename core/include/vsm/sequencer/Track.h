@@ -374,6 +374,27 @@ struct TrackEffect {
     bool enabled = true;
 };
 
+/// D535.2 : CE QU'UN INSTANTANÉ DE CONSOLE GARDE D'UNE PISTE — ce que sa tranche montre et
+/// règle : fader, panoramique, muet, solo, trim, polarité, départs, et l'état de chaque insert
+/// avec son TYPE (le rappel n'agit que sur l'insert de même rang ET de même type). Ni les
+/// réglages des inserts, ni le routage, ni la machine : c'est ce qui sépare un instantané de
+/// console d'une version du projet. Voir `MixSnapshot.h`.
+struct InsertSnapshot {
+    std::string type;
+    bool enabled = true;
+    bool operator==(const InsertSnapshot& o) const { return type == o.type && enabled == o.enabled; }
+};
+struct TrackMixState {
+    float volume = 1.0f;
+    float pan = 0.0f;
+    bool muted = false;
+    bool solo = false;
+    float inputTrimDb = 0.0f;
+    bool invertPhase = false;
+    std::vector<float> sendLevels;
+    std::vector<InsertSnapshot> inserts;
+};
+
 /// UN EFFET MIDI DE PISTE (D31) -- les *MIDI inserts* de Cubase, le *MIDI
 /// Effects rack* de Live.
 ///
@@ -905,6 +926,13 @@ public:
     std::vector<AutomationCurve> automation;
     /// D16.8 : `Off` par défaut, et absent du fichier dans ce cas.
     AutomationMode automationMode = AutomationMode::Off;
+
+    /// D535.2 : LES INSTANTANÉS DE CONSOLE, nom → état de CETTE piste. Portés par la piste et
+    /// non rangés par index dans le projet — la raison de `TrackEffect` : supprimer une piste
+    /// réaffecterait en silence l'état de la suivante. Une piste ajoutée après une prise n'a pas
+    /// d'état sous ce nom, et le rappel la laisse (en le disant). Le projet garde l'ordre des
+    /// noms (`Project::mixSnapshotNames`).
+    std::map<std::string, TrackMixState> mixSnapshots;
 
     /// Les prises empilées de la piste (D3.5).
     ///

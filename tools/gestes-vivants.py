@@ -93,6 +93,8 @@ OPTIONS_PAR_ENTREE = {
     # D535.1 bis : une règle qui répond dans TOUT projet (« hauteur >= 0 »), et une action qui
     # change le projet (rendre muettes) : le geste se voit au fichier quel que soit le morceau.
     "Éditeur logique…": "regle=hauteur >= 0;action=3",
+    # D535.2 : prendre un instantané écrit son nom et l'état de chaque piste dans le projet.
+    "Prendre un instantané…": "nom=Essai",
 }
 
 MENUS = {
@@ -122,8 +124,9 @@ MENUS = {
                   "Durée = pas de grille", "Durée x2", "Durée /2", "Legato",
                   "Retirer les chevauchements", "Rétrograder", "Vélocité 127",
                   "Vélocité 64", "Dupliquer", "Supprimer", "Éditeur logique…"],
-    # LE MENU MIXAGE : trois entrées actives, dont deux réglages de console.
-    "mixage": ["Ajouter un bus de départ", "Écoute en mono (jamais dans un export)"],
+    # LE MENU MIXAGE : deux réglages de console, et la prise d'un instantané (D535.2).
+    "mixage": ["Ajouter un bus de départ", "Écoute en mono (jamais dans un export)",
+               "Prendre un instantané…"],   # D535.2
     # LE MENU ÉDITION, ses entrées actives sans sélection préalable.
     "edition": ["Replier sur les hauteurs jouées (54)", "Zoom : tout voir"],
     "piste": ["Ajouter une piste MIDI", "Ajouter une piste audio", "Ajouter un groupe",

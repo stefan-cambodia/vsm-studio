@@ -86,7 +86,7 @@ if [ "${1:-}" = "--bancs" ]; then
     [ -f "$prefs" ] && cp "$prefs" "$journaux/preferences-avant.settings"
     debut_serie=$(date +%s)
     passes=0
-    for banc in accords.sh annulation-des-menus.py annuler-hors-historique.sh editeur-logique.sh arrangement-defile.sh arret-tete.sh commandes-apprises.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
+    for banc in accords.sh annulation-des-menus.py annuler-hors-historique.sh editeur-logique.sh instantanes-console.sh arrangement-defile.sh arret-tete.sh commandes-apprises.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
                 barre-transport.sh bascules-retenues.sh cadrage-ouverture.sh clavier-emprunte.sh \
                 fader-console.sh gestes-vivants.py grille-gamme-projet.sh ligne-d-etat.py liste-ajouter.sh \
                 liste-editer.sh marque-enregistre.sh \
