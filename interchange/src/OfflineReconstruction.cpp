@@ -1,4 +1,5 @@
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "vsm/interchange/AutomationResolution.h"
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/audio/effect/BypassableEffect.h"
 #include "vsm/audio/effect/EffectFactory.h"
@@ -281,47 +282,16 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
     if (!bundle.project.masterParameters.empty())
         applyMasterDescription(bundle.project.masterParameters, graph.masterBus());
 
-    // AUTOMATION. Les courbes du document ciblent des identités SÉMANTIQUES ;
-    // le moteur, lui, parle en ParamId. La résolution se fait ici, une fois,
-    // et jamais en silence : une courbe qui vise un paramètre que la machine
-    // n'a pas est RAPPORTÉE, pas ignorée -- une automation muette qui ne dit
-    // pas pourquoi est exactement le genre de panne que ce projet refuse.
-    std::vector<vsm::audio::engine::AutomationLane> automationLanes;
-    for (size_t i = 0; i < bundle.document.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
-        const auto& documentTrack = bundle.document.tracks[i];
-        if (documentTrack.automation.empty()) continue;
-        if (i >= bundle.project.tracks.size()) continue;
-        const std::string& pluginId = bundle.project.tracks[i].instrumentId;
-        if (pluginId.empty()) {
-            result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) +
-                                       " : automation sans instrument, ignorée");
-            continue;
-        }
-        const SemanticProfile profile = buildSemanticProfile(pluginId);
-        for (const auto& lane : documentTrack.automation) {
-            const ParameterDescriptor* descriptor = profile.findBySemanticId(lane.parameter);
-            if (descriptor == nullptr) {
-                result.warnings.push_back(libellePiste(i, bundle.project.tracks[i].name) + " : automation « " +
-                                           lane.parameter + " » : la machine n'a pas ce paramètre");
-                continue;
-            }
-            vsm::audio::engine::AutomationLane engineLane;
-            engineLane.targetTrackIndex = i;
-            engineLane.targetParam = descriptor->paramId;
-            for (const auto& point : lane.points) {
-                // Bornée à la plage RÉELLE du paramètre : une valeur hors
-                // bornes serait écrêtée par la machine de toute façon, mais
-                // l'écrêter ici garde l'interpolation dans le vrai espace.
-                const float value = std::clamp(point.value, descriptor->minimum, descriptor->maximum);
-                engineLane.addPoint(static_cast<vsm::midi::Tick>(point.tick), value,
-                                     point.step ? vsm::audio::engine::AutomationCurve::Step
-                                                : vsm::audio::engine::AutomationCurve::Linear);
-            }
-            automationLanes.push_back(std::move(engineLane));
-        }
-    }
-    if (!automationLanes.empty())
-        graph.setAutomationLanes(std::move(automationLanes));
+    // AUTOMATION. Les courbes du projet ciblent des NOMS ; le moteur, lui, parle
+    // en cibles et en ParamId. La résolution est celle de l'application, mot pour
+    // mot (D534) : celle d'ici ne connaissait que les réglages de machine, et
+    // toute l'automation de MIXAGE -- volume, panoramique, trim, départs, inserts,
+    // master -- se perdait à l'export, en silence. Ce qui ne se résout pas est
+    // RAPPORTÉ, pas ignoré.
+    AutomationResolution automation = resolveAutomation(bundle.project);
+    for (auto& phrase : automation.warnings) result.warnings.push_back(std::move(phrase));
+    if (!automation.lanes.empty())
+        graph.setAutomationLanes(std::move(automation.lanes));
 
     // Durée : jusqu'à la dernière note, plus une queue pour ne pas couper les
     // résonances. Un projet vide produit tout de même un fichier valide (la
@@ -670,6 +640,14 @@ StemResult renderStems(const LoadedBundle& bundle, StemGranularity granularity,
             return result;
         }
         result.renderedSeconds = un.renderedSeconds;
+        // D534 : CE QUE LE RENDU AVERTIT ARRIVE AU RAPPORT DES STEMS. Seuls l'audio
+        // et la crête en étaient gardés : une courbe non résolue, un effet ou un
+        // échantillon introuvable, une machine indisponible disparaissaient d'un
+        // export en stems sans un mot. Chaque rendu redit les phrases du projet
+        // entier : chacune n'est gardée qu'UNE fois, dans l'ordre où elle vient.
+        for (const auto& phrase : un.warnings)
+            if (std::find(result.warnings.begin(), result.warnings.end(), phrase) == result.warnings.end())
+                result.warnings.push_back(phrase);
         // LA CRÊTE DU STEM VIENT DU RENDU LUI-MÊME (D50), pas d'un second
         // parcours : `renderBundleToBuffer` la mesure déjà pour son mixage.
         stem.peakLevel = un.peakLevel;

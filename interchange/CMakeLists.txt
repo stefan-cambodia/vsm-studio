@@ -20,6 +20,7 @@ add_library(vsm_interchange STATIC
     src/ProjectDocument.cpp
     src/ProjectBundle.cpp
     src/OfflineReconstruction.cpp
+    src/AutomationResolution.cpp
     src/ClapParameterIds.cpp
     src/PatchRenderService.cpp
     src/ReconstructionChain.cpp
@@ -72,6 +73,7 @@ if (VSM_BUILD_TESTS)
         tests/test_preset_samples.cpp
         tests/test_reconstruction_report.cpp
         tests/test_project_roundtrip.cpp
+        tests/test_automation_resolution.cpp
     )
     target_link_libraries(vsm_interchange_tests PRIVATE vsm_interchange)
     target_include_directories(vsm_interchange_tests PRIVATE tests)

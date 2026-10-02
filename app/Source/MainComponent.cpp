@@ -37,6 +37,7 @@
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/interchange/EffectDescription.h"
+#include "vsm/interchange/AutomationResolution.h"
 #include "vsm/interchange/EffectPreset.h"
 #include "vsm/interchange/OfflineReconstruction.h"
 #include "ui/DrumVoiceNames.h"
@@ -9669,85 +9670,17 @@ void MainComponent::captureSessionIntoProject() {
 }
 
 void MainComponent::applyAutomationFromProject() {
-    currentAutomation_.clear();
-    for (size_t i = 0; i < project_.tracks.size(); ++i) {
-        const auto& track = project_.tracks[i];
-        for (const auto& curve : track.automation) {
-            if (curve.points.empty()) continue;
-            vsm::audio::engine::AutomationLane lane;
-            lane.targetTrackIndex = i;
-            using Cible = vsm::audio::engine::AutomationTarget;
-
-            // LA RÉSOLUTION DU NOM. Chaque préfixe désigne une famille ; sans
-            // préfixe connu, c'est un réglage de la machine de la piste, ce qui
-            // fait que les projets d'avant D4.6 se relisent inchangés.
-            bool resolue = false;
-            if (curve.parameter == "mix.volume") {
-                lane.target = Cible::TrackVolume;
-                resolue = true;
-            } else if (curve.parameter == "mix.pan") {
-                lane.target = Cible::TrackPan;
-                resolue = true;
-            } else if (curve.parameter == "mix.trim") {   // D30.4
-                lane.target = Cible::TrackTrim;
-                resolue = true;
-            } else if (curve.parameter.rfind("mix.send.", 0) == 0) {
-                const int numero = std::atoi(curve.parameter.substr(9).c_str());
-                if (numero >= 1 && numero <= static_cast<int>(
-                        vsm::audio::engine::ProcessGraph::kMaxSends)) {
-                    lane.target = Cible::TrackSend;
-                    lane.targetSlot = static_cast<size_t>(numero - 1);
-                    resolue = true;
-                }
-            } else if (curve.parameter.rfind("master.", 0) == 0) {
-                const std::string nom = curve.parameter.substr(7);
-                for (const auto& info : audioEngine_.processGraph().masterBus().parameterList())
-                    if (info.name == nom) {
-                        lane.target = Cible::MasterParam;
-                        lane.targetParam = info.id;
-                        resolue = true;
-                    }
-            } else if (curve.parameter.rfind("insert.", 0) == 0) {
-                const size_t point = curve.parameter.find('.', 7);
-                if (point != std::string::npos) {
-                    const int numero = std::atoi(curve.parameter.substr(7, point - 7).c_str());
-                    const std::string semantique = curve.parameter.substr(point + 1);
-                    const size_t slot = numero >= 1 ? static_cast<size_t>(numero - 1) : 0;
-                    if (numero >= 1 && slot < track.effects.size()) {
-                        const auto profil = vsm::interchange::buildSemanticProfile(
-                            vsm::interchange::effectSemanticPluginId(track.effects[slot].type));
-                        const auto* d = profil.findBySemanticId(semantique);
-                        if (d != nullptr) {
-                            lane.target = Cible::InsertParam;
-                            lane.targetSlot = slot;
-                            lane.targetParam = d->paramId;
-                            resolue = true;
-                        }
-                    }
-                }
-            } else if (!track.instrumentId.empty()) {
-                const auto profil = vsm::interchange::buildSemanticProfile(track.instrumentId);
-                const auto* d = profil.findBySemanticId(curve.parameter);
-                if (d != nullptr) {
-                    lane.target = Cible::InstrumentParam;
-                    lane.targetParam = d->paramId;
-                    resolue = true;
-                }
-            }
-            // UNE COURBE QU'ON NE SAIT PAS RÉSOUDRE EST LAISSÉE DANS LE PROJET
-            // et simplement pas jouée : elle vise une machine absente, un
-            // insert retiré ou une version différente. La supprimer ferait
-            // perdre le travail de l'utilisateur à la première ouverture.
-            if (!resolue) continue;
-
-            for (const auto& point : curve.points)
-                lane.addPoint(point.tick, point.value,
-                               point.step ? vsm::audio::engine::AutomationCurve::Step
-                                          : vsm::audio::engine::AutomationCurve::Linear,
-                               point.curve);
-            currentAutomation_.push_back(std::move(lane));
-        }
-    }
+    // D534 : LA RÉSOLUTION EST CELLE DE L'EXPORT, une seule, dans `interchange`.
+    // Elle vivait ici seule pour les six familles de mixage, et l'export ne les
+    // connaissait pas : un fondu de volume s'entendait en lecture et disparaissait
+    // du fichier exporté. Une courbe qu'on ne sait pas résoudre reste dans le
+    // projet (la supprimer perdrait le travail à la première ouverture) et n'est
+    // pas jouée -- mais elle est désormais DITE au journal, comme à l'export, là où
+    // elle était écartée sans un mot.
+    auto resolution = vsm::interchange::resolveAutomation(project_);
+    for (const auto& phrase : resolution.warnings)
+        std::fputs((phrase + "\n").c_str(), stderr);   // déjà en UTF-8
+    currentAutomation_ = std::move(resolution.lanes);
     audioEngine_.processGraph().setAutomationLanes(currentAutomation_);
     // D234 (A41) : ET LE PANNEAU LES REÇOIT AUSSI. Le moteur les avait, le disque
     // les avait, l'onglet Automation ne les a jamais eues -- et son premier point

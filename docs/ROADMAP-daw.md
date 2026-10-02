@@ -38536,7 +38536,7 @@ compilation d'après campagne, avec D526 et H58). D532.1 (le VCA) reste à faire
 
 ---
 
-### Phase D532.1 — les faders VCA, premier temps : le modèle, le format et le moteur (02/10/2026) — MESURÉE, SAUF L'ATTENDU 4 (bloqué par D534)
+### Phase D532.1 — les faders VCA, premier temps : le modèle, le format et le moteur (02/10/2026) — FAITE (l'attendu 4 tenu par D534)
 
 **CE QUI EST PRÉVU** (le critère de D532, sans l'interface) :
 - `Track::Kind::Vca` — une piste qui ne joue rien, comme un dossier ; `Track::vcaTrack`, l'index
@@ -38586,6 +38586,11 @@ désormais aux pièces aussi.
 **L'ATTENDU 4 N'EST PAS UN DÉFAUT DU VCA**, et ce n'est pas au VCA de le contourner : c'est
 l'export qui ne joue AUCUNE automation de mixage, sur aucune piste (D534, ci-dessous). Il se
 mesurera quand D534 sera close.
+**Mesuré à 07 h 59 avec D534** (son attendu 2) : l'automation du volume du VCA, de 1 à 0,
+éteint A et B (énergie du dernier quart sur le premier : 0,0247 et 0,0278, contre 0,8861 et
+0,9505 aux témoins), et C sort égal au bit. **L'attendu 4 est tenu ; le premier temps est fait.**
+Le second — la tranche dans la console, l'affectation dans la liste des pistes, annulable, et
+le refus d'une machine sur un VCA à la lecture — reste à faire.
 
 **VU EN MESURANT, ÉCRIT POUR LE SECOND TEMPS.** Le projet de mesure, écrit à la main,
 donnait une machine (`preferredPlugin`) au VCA : `vsm-render` l'a instanciée et compte
@@ -38594,7 +38599,7 @@ est chargée pour rien. L'application n'écrit jamais de machine pour un VCA (`d
 le traite comme un dossier) ; le refus à la lecture — et sa phrase au rapport, jamais en
 silence — se pose avec l'interface du VCA.
 
-### Phase D534 — l'export ne joue aucune automation de mixage (02/10/2026)
+### Phase D534 — l'export ne joue aucune automation de mixage (02/10/2026, faite le jour même)
 
 **D'OÙ ELLE VIENT — EN MESURANT D532.1.** L'automation du volume d'un VCA ne faisait rien à
 l'export. Avant d'accuser le VCA, la même courbe (`mix.volume`, de 1 à 0 sur la durée) a été
@@ -38650,3 +38655,57 @@ binaire) :
 5. tests `interchange/` de la résolution, une famille par test, vus rouges sur un défaut remis
    à la main ; les suites `core/`, `audio/` et `interchange/` vertes ; l'application compile
    (`build-h51` ne la construit pas : vérifiée après la campagne, avec `--bancs`).
+
+**MESURÉ (02/10, 07 h 59)** — `vsm-render` de `build-h51` reconstruit avec la résolution unique,
+le témoin rendu par lui ; les courbes vont de 0 à 1 920 ticks (2 s, la durée rendue) ; la
+même mesure par le binaire de la campagne (`build/`, d'avant D534) pour l'« avant » :
+
+| attendu | mesure | tenu |
+|---|---|---|
+| 1. `mix.volume` 1 → 0 sur A | énergie dernier quart / premier quart de A : **0,0247** (témoin 0,8861) ; B et C égaux au bit. AVANT : le stem de A égal au bit au témoin | oui |
+| 2. la même sur le VCA de A et B | A **0,0247**, B **0,0278** (témoins 0,8861 et 0,9505) ; C égal au bit — l'attendu 4 de D532.1 | oui |
+| 3. `mix.pan` −1 → +1 sur C | premier quart gauche/droite 185,5 / 8,1 ; dernier quart 9,6 / 151,7 ; A et B égaux au bit | oui |
+| 4. courbe non résolue DITE ; courbe de machine toujours jouée | le MIXAGE dit « Piste 4 (V) : automation « filter.1.cutoff » : la piste n'a pas de machine » et « … « mix.send.9 » : pas de départ de ce numéro (1 à 8) » ; la coupure du `vsm.minimoog` automatisée change le stem de A (écart max 0,354) | **à moitié** : voir ci-dessous |
+| 5. tests | interchange 318 → **325**, core 368 ; six tests de résolution et un de RENDU (le fondu qui s'éteint), vus rouges : le rendu d'avant D534 (`finF / finT < 0.45` tombe), la courbure perdue, la borne retirée, les familles de mixage retirées (quatre tests tombent) | oui |
+
+**TROUVÉ EN MESURANT L'ATTENDU 4 : LES STEMS TAISENT TOUT CE QUE LE RENDU AVERTIT.** Les
+mêmes deux courbes, rendues en stems (`--stems`), ne produisent AUCUNE phrase : `renderStems`
+lance un rendu par stem et ne garde de chacun que l'audio et la crête — ses `warnings` sont
+jetés. Ce n'est pas propre à l'automation : un effet inconnu, un réglage d'effet inconnu, un
+échantillon introuvable, une machine indisponible, « aucun clip audio à jouer » — tout ce
+que `renderBundleToBuffer` avertit disparaît d'un export en stems, dans `vsm-render` comme
+dans l'application (`MainComponent`, qui passe par la même fonction). Corrigé dans D534, parce
+que c'est son attendu 4 qui le demande :
+- `renderStems` réunit les avertissements de ses rendus, **chacun une seule fois** (un projet
+  à douze stems rend douze fois la même phrase sur la même courbe), dans l'ordre de leur
+  première apparition ;
+- attendu : `vsm-render --stems` sur le même projet dit les deux phrases, une fois chacune ;
+  un test `interchange/` le tient, vu rouge sur le code d'avant.
+
+**CLOS (02/10, 08 h 02).**
+- `renderStems` réunit les phrases de ses rendus, une fois chacune : `vsm-render --stems` sur le
+  projet « inconnue » dit désormais « … « filter.1.cutoff » : la piste n'a pas de machine » et
+  « … « mix.send.9 » : pas de départ de ce numéro (1 à 8) », **une fois chacune** pour trois
+  stems ; le test `stems_report_what_their_renders_warn_once_each` vu rouge DEUX fois — sur le
+  code d'avant (0 phrase) et sur une réunion sans dédoublonnage (2 phrases pour 2 stems) ;
+  interchange **326/326**, core 368/368 (`audio/` n'est pas touché par D534 : 1 314/1 314 au
+  commit de D532.1) ;
+- l'attendu 4 est donc tenu entier ;
+- l'application : `applyAutomationFromProject` appelle la résolution unique et écrit au journal
+  chaque courbe qu'elle ne joue pas ; ses nouvelles phrases ont leur anglais (douze modèles,
+  avec et sans nom de piste ; les deux de « automation sans instrument, ignorée », qui ne
+  s'écrit plus, retirés) ; inventaire A9 : ECRAN 0, SANS_PAIRE 0. **Compilée en vérification
+  syntaxique seulement** (`-fsyntax-only` sur `MainComponent.cpp` et `Langue.cpp`, la campagne
+  gelée 19 s) : le binaire de l'application se construit après la campagne, et `--bancs` le
+  rejouera ;
+- **une conséquence pour le gel** : `renderTrackForFreeze` écartait déjà les courbes `mix.*` et
+  `master.*` (elles restent vivantes après le gel), et son commentaire disait que « les
+  réglages de machine et d'insert » se gèlent — mais l'export ne résolvait pas `insert.*` : une
+  piste dont un insert était automatisé se gelait SANS son automation. La résolution unique la
+  rend ; le gel est désormais ce que son commentaire disait ;
+- **vu, non traité, écrit pour qu'il ne se perde pas** : l'export saute un insert de type
+  inconnu (« effet « x » inconnu, non appliqué ») ; la chaîne posée sur le graphe a alors un
+  maillon de moins que la description, et une courbe `insert.N.*` désignant un insert PLACÉ
+  APRÈS l'inconnu viserait le mauvais maillon. Cas rare (un effet qu'aucune version ne connaît),
+  et la phrase de l'insert inconnu est déjà dite ; à trancher le jour où un insert inconnu se
+  garde à sa place.
