@@ -39139,3 +39139,126 @@ la seconde : `pgrep … | head -1` avait rendu un PID transitoire — l'autre pi
 cahier des charges : un repère trop serré s'écrit tronqué (D16.4), un accord non, parce qu'un
 « Am7/G » rogné en « Am » est un AUTRE accord. Sans la place, le trait seul ; le relevé le dit
 (« (pas la place) »).
+
+---
+
+### Phase D535 — un second audit des fonctions : l'éditeur logique, les instantanés de la console, la copie d'une plage sur toutes les pistes (02/10/2026)
+
+*Écrite le 02/10 à 15 h 39, les trois phases de D532 faites.*
+
+**LA MÉTHODE, ET UNE PANNE DE LA MÉTHODE.** La règle de D19 et de D532 : une fonction ne
+s'écrit manquante qu'après l'avoir cherchée dans le CODE (`core/`, `audio/` — machines
+comprises —, `interchange/`, `app/Source/`, 612 fichiers `.cpp`/`.h`). La première passe
+a rendu **onze zéros sur onze** : sur ce poste, `grep` est une fonction de l'interpréteur
+(ugrep), et `--include='*.cpp' --include='*.h'` lui fait tout ignorer — vu en la rejouant
+sur trois mots qui EXISTENT (« snapNotesToChords », « VCA », « Contraindre ») : 0, 0, 0.
+Refaite par `find … | xargs /usr/bin/grep`, validée sur les mêmes témoins (5, 29 et 4
+fichiers), puis rejouée. Un zéro d'audit se vérifie sur un témoin AVANT d'être cru — c'est la
+règle de l'ordre de marche (« un "zéro" sorti d'un grep se revérifie »), payée ici sans dégât
+parce qu'elle a été appliquée.
+
+**CHERCHÉ ET TROUVÉ, donc hors de cet audit** : les préréglages de piste (`TrackPreset.cpp`),
+l'import de pistes d'un fichier (`ProjectImport.h`), la normalisation d'un clip, l'éditeur de
+batterie (le piano roll nomme les pièces sur le canal 10 et se replie sur les hauteurs jouées
+— c'est ce que fait l'éditeur de batterie de Cubase), les sélections par critère FIXE (« plus
+faibles que 64 », « plus courtes que la grille », les douteuses). **Écarté, et pourquoi** : les
+tables d'articulations (*expression maps*) servent des bibliothèques orchestrales à
+commutateurs de touches, et le parc est fait de machines ; la *control room* suppose plusieurs
+sorties physiques, et le retour de casque existe par les départs pré-fader (`Project.h`).
+
+**CE QUI MANQUE, VÉRIFIÉ DANS LE CODE** (aucune occurrence de « logical editor », « éditeur
+logique », « selectNotesWhere », « snapshot » hors des instantanés internes du moteur et du MIDI,
+« copier la plage », « range ») :
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D535.1 | **L'éditeur logique** — choisir ou transformer les notes qui répondent à des CONDITIONS (« vélocité < 30 et durée < 1/32 ») | des conditions sur la hauteur, la vélocité, la durée, la position dans la mesure, le canal, la confiance, le muet, liées par « et » ; cinq actions (choisir, supprimer, rendre muettes, transposer, fixer la vélocité) ; le compte AVANT d'appliquer ; annulable ; une règle s'écrit et se relit en texte |
+| D535.2 | **Les instantanés de la console** — garder l'état du mixage sous un nom et y revenir | volume, panoramique, muet, solo, départs et contournement des inserts de chaque piste ; rappeler = un pas d'historique ; écrit dans `project.json` seulement s'il y en a un |
+| D535.3 | **Copier une plage sur toutes les pistes** — l'outil de plage de Cubase, et sa « copie globale » | entre les locateurs, copier ou couper ce que TOUTES les pistes y ont (clips coupés aux bornes), coller à la tête de lecture ; annulable ; mesuré par un export |
+
+**L'ORDRE, TRANCHÉ ICI.** D535.1 d'abord : une reconstruction livre des centaines de notes à
+nettoyer (les fantômes brèves et faibles, les doublons à l'octave), et les cinq sélections
+fixes du piano roll n'en couvrent qu'une partie — c'est le geste qui sert la chaîne. Puis la
+console, puis la plage.
+
+### Phase D535.1 — l'éditeur logique, premier temps : les conditions, les actions et la règle écrite (02/10/2026)
+
+*Écrite avant son code, le 02/10 à 15 h 39.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une règle = des conditions liées par « et »**, chacune un CHAMP, un OPÉRATEUR, une ou deux
+  valeurs. Champs : hauteur, vélocité, durée, position dans la mesure, canal (1 à 16, comme il
+  s'affiche), confiance (0 à 1), muette (0 ou 1). Opérateurs : `=`, `!=`, `<`, `<=`, `>`,
+  `>=`, `entre a b` et `hors a b` (bornes COMPRISES dans « entre », exclues de « hors »).
+  Pas de « ou » : deux règles successives le font, et une grammaire à parenthèses serait la
+  moitié du travail pour un usage rare.
+- **La position est celle que le piano roll MONTRE** : le tick de la note dans le matériau de sa
+  piste, rapporté au début de SA mesure par la carte des signatures (un 3/4 compte trois temps).
+  La leçon de D532.3 bis ne s'y applique pas, et c'est voulu : le calage sur les accords regarde
+  la ligne de temps parce que les accords y sont ; l'éditeur logique agit DANS le piano roll, sur
+  ce qu'on y voit.
+- **Une règle sans condition répond pour toutes les notes** — c'est ce que « aucune condition »
+  veut dire ; le compte affiché avant d'appliquer est le garde-fou, et tout s'annule.
+- **La règle s'écrit en texte**, dans la langue de l'interface française : `vélocité < 30 et
+  durée < 1/32`. Les accents sont facultatifs à la lecture (`velocite`, `duree`) ; une hauteur
+  se donne en nombre ou en nom (`C4` = 60, `F#3`, `Bb2` — la convention du piano roll) ; une
+  durée ou une position en ticks ou en fraction de ronde (`1/16`). Une seule paire
+  écrire/lire, et l'écriture est CANONIQUE (`velocite < 30 et duree < 60`, ticks et nombres) :
+  ce que le banc et les préréglages compareront. **Un morceau illisible est REFUSÉ, et le
+  message le nomme** (« « trente » n'est pas un nombre »), jamais deviné.
+- **Cinq actions** : choisir (remplace la sélection), supprimer, rendre muettes, transposer de N
+  demi-tons, fixer la vélocité. Elles réemploient les fonctions d'édition qui existent
+  (`transposeNotes`, `setVelocity`, `setNotesMuted`). Une transposition qui pousserait UNE
+  SEULE des notes hors de 0..127 ne déplace RIEN, et le compte le dit — la règle de D536,
+  écrite plus bas, et qui doit être faite AVANT cette phase : écrivant cette phrase, on la
+  croyait déjà vraie (« comme le geste « Transposer » le fait déjà »), et elle était fausse.
+- **Le champ d'application** : toutes les notes de la piste, ou seulement les choisies
+  (`within`) — explicite, jamais déduit de l'existence d'une sélection.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : chaque champ sous chaque opérateur sur un jeu de notes connu ; « entre »
+   inclusif et « hors » exclusif aux deux bornes ; la position en 4/4 puis après un passage à
+   3/4 ; « et » ; règle vide = toutes ; `within` restreint ;
+2. tests de la règle écrite : `vélocité < 30 et durée < 1/32` se lit ; sans accents aussi ;
+   `hauteur entre C3 B3`, `F#3`, `Bb2` ; l'écriture canonique relue redonne la même règle
+   (aller-retour sur un jeu de règles couvrant chaque champ et chaque opérateur) ; six textes
+   faux refusés, chacun avec un message qui NOMME le morceau fautif, la sortie intacte ;
+3. tests des actions : supprimer, rendre muettes, transposer (+12 avec une note à 120 parmi
+   celles qui répondent : RIEN ne bouge, une note comptée), fixer la vélocité, choisir — et chacune ne touche QUE les notes qui répondent ;
+4. chacun vu rouge sur un défaut remis à la main.
+
+Le second temps — la fenêtre de l'éditeur logique au piano roll, le compte en direct, la
+dernière règle retenue, un banc — suit.
+
+### Phase D536 — « Transposer » bornait en silence : une note à 120 montée d'une octave sonnait à 127 (02/10/2026)
+
+*Écrite avant sa correction, le 02/10 à 15 h 40, en écrivant D535.1.*
+
+**CE QUI A ÉTÉ VU, ET OÙ.** `transposeNotes` (`NoteEdit.cpp`) passe chaque hauteur par
+`clampNoteNumber` : une note à 120 transposée de +12 devient 127 — un sol au lieu d'un sol
+une octave plus haut qui n'existe pas en MIDI —, et deux notes à 118 et 120 transposées de +12
+deviennent DEUX 127, un unisson que personne n'a joué. Le geste « Transposer » du piano roll
+(↑, Maj+↑, le menu « Hauteur ») l'appelle tel quel et ne dit rien. Un test l'épingle depuis le
+début (`transpose_clamps_at_midi_range` : « toutes ≤ 127 »). Or la transposition de PISTE,
+écrite plus tard (`PlaybackScheduler::transposeDroppedNotes`, `MainComponent.cpp`), tranche
+l'inverse et l'écrit : « les faire sonner à une hauteur que personne n'a demandée serait
+pire ». Deux règles contraires pour la même idée dans la même application.
+
+**CE QUI EST TRANCHÉ ICI.** Une transposition qui pousserait UNE SEULE des notes choisies hors
+de 0..127 **ne déplace AUCUNE note** : `transposeNotes` rend le nombre de notes qui sortiraient,
+et ne touche à rien s'il n'est pas nul. Tout ou rien, et non « les autres bougent » : transposer
+un accord dont la note du haut ne passe pas le casserait en deux octaves — ce n'est plus la
+même musique, et c'est encore une hauteur que personne n'a demandée. Le piano roll le DIT à la
+ligne d'état (« Transposer +12 : N note(s) sortiraient de la plage MIDI (0 à 127) — rien n'a
+bougé ») et ne laisse aucun pas d'historique (D511). Le test qui épinglait le bornage est
+remplacé par celui de la règle, et la raison est écrite dans son commentaire.
+
+**ATTENDUS.**
+1. tests `core/` : +12 sur (60, 64, 120) → rien ne bouge, rend 1 ; +12 sur (60, 64) → 72, 76,
+   rend 0 ; −70 sur (60, 64) → rien ne bouge, rend 2 ; une note non choisie hors de la plage
+   potentielle ne compte pas ; vus rouges sur le bornage remis ;
+2. le geste du piano roll, mesuré par l'application : sur une note à 120, « Transposer +12 »
+   (Maj+↑) laisse le `.mid` exporté identique, dit la phrase (`VSM_TRANSPOSITION` au journal),
+   et Ctrl+Z ne défait rien d'autre — l'historique n'a pas de pas « Transposer » ; sur une note
+   à 60, le même geste exporte 72 (le témoin).
+
