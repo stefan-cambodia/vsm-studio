@@ -39284,3 +39284,45 @@ remplacé par celui de la règle, et la raison est écrite dans son commentaire.
 dans `mirrorNotesPitch` — le miroir se fait autour du milieu de la sélection (`lowest +
 highest − n`), qui reste entre la plus basse et la plus haute : la borne n'y mord jamais.
 
+
+### Phase D535.1 bis — l'éditeur logique, second temps : la fenêtre au piano roll (02/10/2026)
+
+*Écrite avant son code, le 02/10 à 16 h 08.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une entrée « Éditeur logique… » au menu du clic droit du piano roll**, là où vivent tous les
+  gestes de notes, active dès que la piste a une note (sans sélection : la règle peut viser
+  toute la piste).
+- **Une fenêtre, quatre réglages** : la règle (un champ de texte, la grammaire de D535.1), l'action
+  (choisir, supprimer, rendre muettes, transposer, fixer la vélocité), la valeur (les demi-tons
+  ou la vélocité ; ignorée sinon), le champ d'application (toutes les notes de la piste, ou
+  seulement les choisies — proposé quand il y a une sélection, sans jamais être deviné).
+- **LE COMPTE EN DIRECT, sous le champ** : à chaque frappe, « 12 note(s) sur 340 répondent », ou
+  le message d'erreur de la lecture (« « trente » n'est pas un nombre ») — on sait ce que fera
+  « Appliquer » avant de presser. Le même compte part au journal (`VSM_LOGIQUE_COMPTE`) pour
+  le banc.
+- **Appliquer** : une règle illisible est REFUSÉE par une boîte « Règle illisible » qui cite le
+  message, rien n'est fait. Choisir remplace la sélection et ne laisse aucun pas (une sélection
+  n'est pas une donnée du projet) ; les quatre autres actions sont UN pas d'historique, nommé
+  « Éditeur logique : <action> », et une action qui ne change rien n'en laisse pas (D511). La
+  ligne d'état et le journal (`VSM_LOGIQUE`) disent : combien répondaient, combien ont changé,
+  combien ont été refusées (D536).
+- **La dernière règle, l'action, la valeur et le champ d'application sont RETENUS** dans les
+  préférences (`UiScale::properties()`), sous la forme CANONIQUE de la règle : rouvrir la fenêtre
+  repart de ce qu'on a fait, comme les fenêtres d'export.
+
+**ATTENDUS, écrits avant le code.**
+1. par le banc, sur un projet de huit notes dont trois « fantômes » (brèves ET faibles) :
+   « vélocité < 30 et durée < 1/32 », supprimer → le `.mid` exporté, relu en MULTIENSEMBLE,
+   perd exactement les trois ; le journal dit « 3 répondaient, 3 supprimée(s) » ; Ctrl+Z rend
+   les huit ;
+2. choisir → `VSM_SELECTION` compte 3 et le `.mid` est inchangé ; l'historique n'a aucun pas ;
+3. « vélocité < trente » → boîte « Règle illisible » citant « trente », `.mid` inchangé, aucun pas ;
+4. transposer +12 avec une note à 120 parmi celles qui répondent → rien ne bouge, « 1 refusée »
+   au journal, aucun pas ;
+5. après une course, le fichier de préférences de son HOME porte la règle CANONIQUE
+   (`velocite < 30 et duree < 60`) et l'action ;
+6. le compte en direct : `VSM_LOGIQUE_COMPTE` dit « 3 note(s) sur 8 » quand le champ reçoit la
+   règle ;
+7. un banc `tools/editeur-logique.sh` qui joue 1 à 6, vu rouge sur un défaut remis à la main,
+   entré dans `verifier.sh --bancs` ; `tools/gestes-vivants.py` connaît l'entrée.
