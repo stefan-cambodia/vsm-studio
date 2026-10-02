@@ -850,8 +850,22 @@ void PianoRollComponent::paste() {
 void PianoRollComponent::transposeSelection(int semitones) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
+    // D536 : TOUT OU RIEN, décidé AVANT d'ouvrir le pas — une transposition refusée ne laisse
+    // rien à défaire. Le geste bornait à 127 en silence : une note à 120 montée d'une octave
+    // sonnait à 127, une hauteur que personne n'a demandée.
+    const juce::String combien = juce::String(semitones > 0 ? "+" : "") + juce::String(semitones);
+    if (const size_t dehors = notesLeavingMidiRange(track->notes, selectedNoteIds_, semitones); dehors > 0) {
+        std::fprintf(stderr, "VSM_TRANSPOSITION : %s refusée — %zu note(s) sortiraient de la plage MIDI "
+                             "(0 à 127), rien n'a bougé\n", combien.toRawUTF8(), dehors);
+        if (onStatusChanged)
+            onStatusChanged(vsm::app::ui::tr(u8"Transposer %1 : %2 note(s) sortiraient de la plage MIDI "
+                                             u8"(0 à 127) — rien n'a bougé")
+                                .replace("%1", combien)
+                                .replace("%2", juce::String(static_cast<int>(dehors))));
+        return;
+    }
     // D432 : DE COMBIEN -- « Transposer + » valait pour ↑ comme pour Maj+↑.
-    if (!beginEdit("Transposer " + juce::String(semitones > 0 ? "+" : "") + juce::String(semitones))) return;
+    if (!beginEdit("Transposer " + combien)) return;
     transposeNotes(track->notes, selectedNoteIds_, semitones);
     notifyEdited();
 }

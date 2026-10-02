@@ -200,10 +200,24 @@ std::vector<int> chordIntervals(ChordType type) {
 // Opérations
 // ---------------------------------------------------------------------------
 
-void transposeNotes(std::vector<Note>& notes, const NoteSelection& selection, int semitones) {
+size_t notesLeavingMidiRange(const std::vector<Note>& notes, const NoteSelection& selection, int semitones) {
+    size_t dehors = 0;
+    for (const auto& n : notes) {
+        if (selection.count(n.id) == 0) continue;
+        const int cible = static_cast<int>(n.number) + semitones;
+        if (cible < 0 || cible > 127) ++dehors;
+    }
+    return dehors;
+}
+
+size_t transposeNotes(std::vector<Note>& notes, const NoteSelection& selection, int semitones) {
+    // D536 : tout ou rien — jamais `clampNoteNumber` ici (voir l'en-tête).
+    const size_t dehors = notesLeavingMidiRange(notes, selection, semitones);
+    if (dehors > 0) return dehors;
     forEachSelected(notes, selection, [semitones](Note& n) {
-        n.number = clampNoteNumber(static_cast<int>(n.number) + semitones);
+        n.number = static_cast<uint8_t>(static_cast<int>(n.number) + semitones);
     });
+    return 0;
 }
 
 void nudgeNotes(std::vector<Note>& notes, const NoteSelection& selection, int64_t deltaTicks) {

@@ -87,10 +87,27 @@ VSM_TEST(transpose_shifts_only_selected_notes) {
     VSM_ASSERT_EQ(static_cast<int>(findById(notes, 3)->number), 67); // non sélectionnée, intacte
 }
 
-VSM_TEST(transpose_clamps_at_midi_range) {
-    auto notes = makeNotes();
-    transposeNotes(notes, allIds(notes), 120);
-    for (const auto& n : notes) VSM_ASSERT(n.number <= 127);
+// D536 : TOUT OU RIEN — ce test remplace `transpose_clamps_at_midi_range`, qui épinglait le
+// BORNAGE (« toutes ≤ 127 ») : une note à 120 montée d'une octave sonnait à 127, une hauteur
+// que personne n'a demandée, et deux notes s'y confondaient. La transposition de piste avait
+// déjà tranché l'inverse (`transposeDroppedNotes`) ; l'édition s'y range. Une seule note qui
+// sortirait de 0..127 et RIEN ne bouge — un accord ne se casse pas en deux octaves —, et le
+// nombre est rendu pour être dit.
+VSM_TEST(transpose_moves_nothing_when_one_chosen_note_would_leave_the_midi_range) {
+    const std::vector<Note> depart = {{0, 480, 0, 60, 100, 64, 1}, {0, 480, 0, 64, 100, 64, 2},
+                                      {0, 480, 0, 120, 100, 64, 3}, {0, 480, 0, 127, 100, 64, 4}};
+    auto notes = depart;
+    VSM_ASSERT_EQ(transposeNotes(notes, {1, 2, 3}, 12), static_cast<size_t>(1));
+    for (size_t i = 0; i < notes.size(); ++i) VSM_ASSERT_EQ(notes[i].number, depart[i].number);
+    // La note 4 (127) n'est pas choisie : elle ne compte pas, et les autres montent.
+    VSM_ASSERT_EQ(transposeNotes(notes, {1, 2}, 12), static_cast<size_t>(0));
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 1)->number), 72);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 2)->number), 76);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 4)->number), 127);
+    // Vers le bas aussi : −80 sur {72, 76} sortirait deux fois.
+    VSM_ASSERT_EQ(transposeNotes(notes, {1, 2}, -80), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 1)->number), 72);
+    VSM_ASSERT_EQ(notesLeavingMidiRange(notes, {1, 2, 3, 4}, 8), static_cast<size_t>(2));   // 120 et 127
 }
 
 VSM_TEST(empty_selection_is_a_no_op) {

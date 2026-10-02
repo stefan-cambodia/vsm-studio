@@ -1037,6 +1037,8 @@ const Paire kAnglais[] = {
       "“%1” is not a chord the chord track can read, and nothing was added. A chord is written: a root from A to G (followed by # or b), then nothing, m, dim, aug, sus2, sus4, 5, maj7, m7, 7, m7b5, maj9 or m9, then /bass if needed — C, Am7, F#m7b5, Bb7, G7/B." },
     { "Caler sur les accords",
       "Snap to chords" },
+    { "Transposer %1 : %2 note(s) sortiraient de la plage MIDI (0 à 127) — rien n'a bougé",
+      "Transpose %1: %2 note(s) would leave the MIDI range (0 to 127) — nothing moved" },
     { "Caler sur les accords : %1 déplacée(s), %2 déjà dans l'accord, %3 avant le premier accord, %4 sous deux harmonies, %5 entendue(s) nulle part — laissées",
       "Snap to chords: %1 moved, %2 already in the chord, %3 before the first chord, %4 under two harmonies, %5 heard nowhere — left alone" },
     { "Modifier cet accord…",

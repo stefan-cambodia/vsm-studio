@@ -93,7 +93,7 @@ if [ "${1:-}" = "--bancs" ]; then
                 metronome-projet.sh miniature-clips.sh notes-du-projet.sh onglets-du-dock.sh ouvrir-midi.sh \
                 pas-a-pas.sh piano-roll-piste-choisie.sh pianoroll-bord.sh pianoroll-zones.sh police-plancher.sh portes-de-l-arrangement.sh regions-historique.sh selection-au-bord.sh \
                 portes-des-outils.sh portes-des-pistes.sh portes-du-transport.sh quantifier.sh \
-                theme-sombre.sh tout-voir.sh transport-au-repos.sh vca-interface.sh versions-piste.sh volet-anglais.sh \
+                theme-sombre.sh tout-voir.sh transport-au-repos.sh transposer-hors-plage.sh vca-interface.sh versions-piste.sh volet-anglais.sh \
                 vue-du-morceau.sh vumetre-console.sh zoom-reassigne.sh; do
         t0=$(date +%s)
         passes=$((passes + 1))

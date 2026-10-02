@@ -80,7 +80,12 @@ enum class ArpeggioMode { Up, Down, UpDown, Random };
 /// perdues -- une transposition suivie de son inverse peut donc écraser des
 /// extrêmes, c'est le comportement attendu partout ailleurs (et l'undo est là
 /// pour ça).
-void transposeNotes(std::vector<Note>& notes, const NoteSelection& selection, int semitones);
+/// D536 : TOUT OU RIEN. Rend le nombre de notes choisies que `semitones` pousserait hors de
+/// 0..127 ; s'il n'est pas nul, AUCUNE note ne bouge — ni bornée (une hauteur que personne n'a
+/// demandée), ni laissée seule (un accord cassé en deux octaves). À dire par l'appelant.
+size_t transposeNotes(std::vector<Note>& notes, const NoteSelection& selection, int semitones);
+/// D536 : le compte seul, pour décider AVANT d'ouvrir un pas d'historique.
+size_t notesLeavingMidiRange(const std::vector<Note>& notes, const NoteSelection& selection, int semitones);
 
 /// Décalage temporel. Rien ne passe avant le tick 0 (bornage, pas de perte).
 void nudgeNotes(std::vector<Note>& notes, const NoteSelection& selection, int64_t deltaTicks);

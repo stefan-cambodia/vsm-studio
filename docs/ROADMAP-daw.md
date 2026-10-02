@@ -39230,7 +39230,7 @@ console, puis la plage.
 Le second temps — la fenêtre de l'éditeur logique au piano roll, le compte en direct, la
 dernière règle retenue, un banc — suit.
 
-### Phase D536 — « Transposer » bornait en silence : une note à 120 montée d'une octave sonnait à 127 (02/10/2026)
+### Phase D536 — « Transposer » bornait en silence : une note à 120 montée d'une octave sonnait à 127 (02/10/2026) — FAITE, `--bancs` entier en attente de la fin des courses
 
 *Écrite avant sa correction, le 02/10 à 15 h 40, en écrivant D535.1.*
 
@@ -39261,4 +39261,15 @@ remplacé par celui de la règle, et la raison est écrite dans son commentaire.
    (Maj+↑) laisse le `.mid` exporté identique, dit la phrase (`VSM_TRANSPOSITION` au journal),
    et Ctrl+Z ne défait rien d'autre — l'historique n'a pas de pas « Transposer » ; sur une note
    à 60, le même geste exporte 72 (le témoin).
+
+**D536 EST FAITE (02/10, 15 h 59).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tout ou rien, compté | core **387** (le test du bornage REMPLACÉ, sa raison écrite dans son commentaire) : +12 sur {60, 64, 120} → rien ne bouge, rend 1 ; +12 sur {60, 64} → 72, 76, la note à 127 non choisie ne compte pas ; −80 sur {72, 76} → rien, rend 2. **Trois défauts, trois rouges** : le bornage remis, « les autres bougent », la note non choisie comptée | **oui** |
+| 2 | le geste, mesuré par l'application | `tools/transposer-hors-plage.sh`, 4 contrôles. **Rouge sur le binaire d'AVANT la correction** — le défaut réel, pas un défaut remis : {64, 120} → **{76, 127}**, un pas « Transposer +12 » muet. **Vert après** : {64, 120} → {64, 120}, « Transposer +12 : 1 note(s) sortiraient de la plage MIDI (0 à 127) — rien n'a bougé » à la ligne d'état, 0 pas d'historique ; le témoin {60, 64} → {72, 76} et son pas. Entré dans `verifier.sh --bancs` (47 bancs) ; `--bancs` entier : pas joué (session verrouillée, course 2) | **oui** (sauf `--bancs` entier) |
+
+**CE QUI A ÉTÉ REGARDÉ ET N'EST PAS UN DÉFAUT** : l'autre `clampNoteNumber` de `NoteEdit.cpp`,
+dans `mirrorNotesPitch` — le miroir se fait autour du milieu de la sélection (`lowest +
+highest − n`), qui reste entre la plus basse et la plus haute : la borne n'y mord jamais.
 
