@@ -38754,3 +38754,78 @@ compilation gèlerait la course une demi-heure : `Track.h` a changé, presque to
 machine sur un VCA ou un dossier à la lecture du fichier — la machine écartée et DITE, en
 correction (D523 : le son ne change pas) ; test `un_vca_ou_un_dossier_ne_recoit_pas_de_machine_et_c_est_dit`,
 vu rouge sur le code d'avant (`instrumentId` non vide), interchange 327/327.
+
+### Phase D532.2 — les versions de piste, premier temps : le modèle et le format (02/10/2026) — FAITE
+
+**L'ORDRE.** D532 laissait D532.2 « écrite, non commencée ». Elle commence pendant que
+D532.1 bis attend la fin de la campagne pour être compilée : son premier temps vit dans
+`core/` et `interchange/`, qui se compilent et se mesurent dans `build-h51` sans toucher à
+la course.
+
+**LE MODÈLE, TRANCHÉ ICI — CELUI DES PRISES (D3.5, D55), PAS UN NOUVEAU.** Une piste porte
+`versions` (vide : aucune version, la piste se comporte exactement comme avant) et
+`activeVersion`. La matière de la version active VIT DANS LA PISTE — c'est elle que le
+moteur, l'éditeur et l'export lisent, sans rien savoir des versions — et sa copie rangée est
+PÉRIMÉE, exactement l'invariant de `activeTake`. Changer de version range la matière courante
+dans sa version et sort l'autre. Ce qu'une version emporte : les notes, les contrôleurs, les
+plis, les deux pressions, les changements de programme, l'audio, les clips et l'automation —
+**la matière**, pas le réglage : machine, inserts, départs, fader, nom et couleur restent ceux
+de la piste (une version qu'on essaie se compare dans le même son).
+
+**TROIS CAS LIMITES, TRANCHÉS ICI.**
+- *Une prise active* (`activeTake` ≥ 0) : le tiroir des prises reste celui de la PISTE. Avant
+  de changer de version, la matière courante est rangée dans sa prise et `activeTake` passe à
+  −1 — rien n'est perdu (la matière part aussi dans la version), et aucune prise n'est laissée
+  « active » sur une matière qui n'est plus la sienne, ce qui l'aurait écrasée au changement
+  de prise suivant.
+- *Une piste gelée* : changer de version est REFUSÉ, et dit — le gel est le rendu de la
+  matière courante, il jouerait l'ancienne version sous le nom de la nouvelle. Dégeler d'abord.
+- *Supprimer la version active* : on passe d'abord à sa voisine (la précédente, sinon la
+  suivante), pour que ce qu'on entend soit toujours une version ; supprimer la DERNIÈRE vide le
+  tiroir et laisse sa matière sur la piste — c'est ce qu'on entend, on ne l'efface pas.
+
+**CRÉER.** « Nouvelle version » (vide) et « Dupliquer la version » (copie de la matière
+courante), comme Cubase. La première création range d'abord la matière courante sous
+« Version 1 », puis crée la seconde et la rend active.
+
+**LE FORMAT.** `"versions": [{"name", "clips", "automation", "audio", "midiTrackIndex"}]` et
+`"activeVersion"` dans `project.json`, écrits seulement s'il y a des versions ; les notes et
+événements de canal des versions RANGÉES dans `midi/versions.mid`, une piste MIDI par version
+(le chemin des prises : `midi/takes.mid`). Un projet sans version garde son fichier octet pour
+octet.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : créer (vide, dupliquée), aller-retour d'une version à l'autre qui rend
+   EXACTEMENT la matière (chacun des neuf champs, rempli de valeurs distinctes — un champ
+   oublié dans l'échange tombe), la prise active rangée sans perte, le refus sur une piste
+   gelée, la suppression (active → voisine ; dernière → tiroir vide, matière gardée), le
+   renommage ; chacun vu rouge sur un défaut remis à la main ;
+2. tests `interchange/` : aller-retour disque de deux versions (notes, contrôleurs, clips,
+   automation) ; un projet sans version écrit le même fichier qu'avant ;
+3. mesuré par l'EXPORT (`vsm-render` de `build-h51`) : un projet à deux versions rend la
+   version ACTIVE — la même piste, l'autre version désignée active dans le fichier, donne un
+   stem différent ; et le stem d'une version égale au bit à celui de la même matière sans
+   aucune version.
+
+Le second temps — l'interface : le sous-menu « Versions de la piste » (créer, dupliquer,
+choisir, renommer, supprimer), annulable — suit D532.1 bis, une fois l'application compilée.
+
+**FAIT (02/10, 08 h 37).**
+
+| attendu | mesure | tenu |
+|---|---|---|
+| 1. tests `core/` | **7 tests** (368 → 375) : aucune version, nouvelle (vide, l'origine rangée), dupliquée, les neuf champs de la matière sur deux allers-retours et le nom qui ne se périme pas, la prise active rangée (la retouche faite pendant l'écoute retrouvée dans la prise ET dans la version), le refus sur une piste gelée, la suppression (active → voisine ; dernière → tiroir vide, matière gardée). **Cinq défauts remis à la main, cinq rouges** : un champ oublié dans l'échange (quatre tests tombent), la prise laissée active (« 1 != -1 »), le gel ignoré, la voisine non choisie (« 2 != 1 »), la duplication qui part vide | oui |
+| 2. tests `interchange/` | **3 tests** (327 → 330) : deux versions traversent le disque et la rangée ressort entière (notes, contrôleur, clip, courbe) ; un projet sans version n'écrit ni clé ni `versions.mid` ; un `versions.mid` absent se DIT et le projet s'ouvre. **Trois défauts, trois rouges** : les contrôleurs non relus, la clé toujours écrite, l'absence tue | oui |
+| 3. l'EXPORT | `vsm-render` de `build-h51` : refrain actif = la même matière sans aucune version, **égal au bit** ; couplet actif ≠ refrain actif (écart max 0,262) | oui |
+
+**DEUX FAUTES DE MES BANCS, PAS DU CODE, ET DITES.** Le test « sans version » cherchait la
+chaîne `"versions"` dans un projet… titré « versions » : rouge au premier passage, le titre a
+changé. Et le générateur Python du `versions.mid` de la mesure donnait à un nom accentué sa
+longueur en CARACTÈRES : la lecture a répondu « versions illisibles (midi/versions.mid) :
+running status utilisé sans statut précédent » — c'est-à-dire qu'elle a dit sa panne, au lieu
+de rendre une version vide. La longueur se compte en octets ; la mesure a été refaite.
+
+**EN PASSANT** : l'automation d'une piste et celle de ses versions s'écrivent et se lisent par
+QUATRE fonctions communes (`automationToDocument`, `automationToModel`, `automationToJson`,
+`automationFromJson`) — le code de la piste y est passé, les 330 tests d'interchange le
+tiennent ; et `usesWarp` compte les clips des versions rangées, comme ceux des prises.

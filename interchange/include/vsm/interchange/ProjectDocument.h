@@ -216,6 +216,18 @@ struct ProjectCompSegment {
     int64_t toTick = 0;
 };
 
+/// D532.2 : UNE VERSION RANGÉE de la piste. Ses NOTES et ses événements de canal ne
+/// sont pas ici : ils vont dans `midi/versions.mid`, et `midiTrackIndex` dit laquelle de
+/// ses pistes les porte (-1 : aucune). La version ACTIVE n'écrit que son nom — sa matière
+/// est celle de la piste, sa copie rangée est périmée.
+struct ProjectVersion {
+    std::string name;
+    int midiTrackIndex = -1;
+    ProjectAudioSource audio;
+    std::vector<ProjectClip> clips;
+    std::vector<ProjectAutomationLane> automation;
+};
+
 struct ProjectTrack {
     /// Où va la sortie : index de la piste de GROUPE qui la reçoit, -1 pour le
     /// master. Facultatif : absent vaut -1, donc les projets d'avant les
@@ -320,6 +332,10 @@ struct ProjectTrack {
     /// n'écrit rien de plus qu'avant.
     std::vector<ProjectTake> takes;
     int activeTake = -1;
+    /// D532.2 : les versions de la piste, et celle qui est active. Facultatifs : une
+    /// piste sans version n'écrit rien de plus qu'avant.
+    std::vector<ProjectVersion> versions;
+    int activeVersion = -1;
     /// D55.2 : LA RECETTE DE L'ASSEMBLAGE des prises, « de tel tick à tel
     /// tick, prends telle prise ». Champ FACULTATIF : une piste qu'on n'a
     /// jamais assemblée n'écrit rien de plus qu'avant, et un projet entier

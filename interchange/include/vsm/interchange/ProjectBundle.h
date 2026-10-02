@@ -37,6 +37,8 @@ inline constexpr const char* kDefaultMidiPath = "midi/arrangement.mid";
 /// Absent quand aucune piste n'a de prise -- un projet qui n'en a pas garde
 /// exactement les fichiers qu'il avait.
 inline constexpr const char* kTakesMidiPath = "midi/prises.mid";
+/// D532.2 : les notes et événements de canal des versions RANGÉES, une piste MIDI par version.
+inline constexpr const char* kVersionsMidiPath = "midi/versions.mid";
 inline constexpr const char* kInstrumentsFolder = "instruments";
 
 struct LoadedBundle {

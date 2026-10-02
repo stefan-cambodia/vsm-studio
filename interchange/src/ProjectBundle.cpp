@@ -199,6 +199,47 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
         }
     }
 
+    // 3 ter. D532.2 : LES VERSIONS RANGÉES, recollées depuis leur fichier, avec la même
+    // règle que les prises : absent ou illisible, le projet s'ouvre et le DIT.
+    {
+        bool desVersions = false;
+        for (const auto& piste : result.bundle.document.tracks)
+            for (const auto& version : piste.versions)
+                if (version.midiTrackIndex >= 0) desVersions = true;
+        if (desVersions) {
+            const fs::path versionsFile = resolve(folderPath, kVersionsMidiPath);
+            if (!fs::exists(versionsFile, code)) {
+                result.warnings.push_back(std::string("versions introuvables : ") + kVersionsMidiPath
+                                           + " -- elles s'ouvrent vides");
+            } else {
+                try {
+                    const auto tiroir = Project::fromParsedFile(
+                        vsm::midi::MidiFileParser::parseFile(versionsFile.string()));
+                    for (size_t t = 0; t < result.bundle.project.tracks.size()
+                                        && t < result.bundle.document.tracks.size(); ++t) {
+                        auto& piste = result.bundle.project.tracks[t];
+                        const auto& decrite = result.bundle.document.tracks[t];
+                        for (size_t k = 0; k < piste.versions.size() && k < decrite.versions.size(); ++k) {
+                            const int index = decrite.versions[k].midiTrackIndex;
+                            if (index < 0 || index >= static_cast<int>(tiroir.tracks.size())) continue;
+                            const auto& porteuse = tiroir.tracks[static_cast<size_t>(index)];
+                            auto& version = piste.versions[k];
+                            version.notes = porteuse.notes;
+                            version.controlChanges = porteuse.controlChanges;
+                            version.pitchBends = porteuse.pitchBends;
+                            version.polyAftertouch = porteuse.polyAftertouch;
+                            version.channelPressure = porteuse.channelPressure;
+                            version.programChanges = porteuse.programChanges;
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    result.warnings.push_back(std::string("versions illisibles (")
+                                               + kVersionsMidiPath + ") : " + e.what());
+                }
+            }
+        }
+    }
+
     // 4. Les presets -- absents ou illisibles, on continue en le disant : un
     // projet dont un preset manque doit s'ouvrir avec les réglages par défaut
     // plutôt que refuser de s'ouvrir entièrement.
@@ -289,6 +330,49 @@ BundleSaveResult saveProjectBundle(const Project& project, const std::string& fo
                 return result;
             }
             result.writtenFiles.push_back(kTakesMidiPath);
+        }
+    }
+
+    // 1 ter. D532.2 : LES VERSIONS RANGÉES, dans leur propre fichier, pour la raison des
+    // prises : l'arrangement est ce qu'on ENTEND et ce qu'on exporte. La version active
+    // n'y va pas — sa matière EST l'arrangement.
+    {
+        Project tiroir;
+        tiroir.ticksPerQuarterNote = project.ticksPerQuarterNote;
+        tiroir.title = project.title + " (versions)";
+        for (size_t t = 0; t < project.tracks.size() && t < document.tracks.size(); ++t) {
+            const auto& piste = project.tracks[t];
+            for (size_t k = 0; k < piste.versions.size() && k < document.tracks[t].versions.size(); ++k) {
+                const auto& version = piste.versions[k];
+                document.tracks[t].versions[k].midiTrackIndex = -1;
+                if (static_cast<int>(k) == piste.activeVersion) continue;
+                if (version.notes.empty() && version.controlChanges.empty() && version.pitchBends.empty()
+                    && version.polyAftertouch.empty() && version.channelPressure.empty()
+                    && version.programChanges.empty())
+                    continue;   // une version sans événement n'occupe aucune piste du fichier
+                vsm::sequencer::Track porteuse;
+                porteuse.name = piste.name + " / " + version.name;
+                porteuse.channel = piste.channel;
+                porteuse.notes = version.notes;
+                porteuse.controlChanges = version.controlChanges;
+                porteuse.pitchBends = version.pitchBends;
+                porteuse.polyAftertouch = version.polyAftertouch;
+                porteuse.channelPressure = version.channelPressure;
+                porteuse.programChanges = version.programChanges;
+                document.tracks[t].versions[k].midiTrackIndex = static_cast<int>(tiroir.tracks.size());
+                tiroir.tracks.push_back(std::move(porteuse));
+            }
+        }
+        if (!tiroir.tracks.empty()) {
+            const fs::path versionsFile = resolve(folderPath, kVersionsMidiPath);
+            fs::create_directories(versionsFile.parent_path(), code);
+            try {
+                vsm::midi::MidiFileWriter::writeFile(tiroir.toParsedFile(), versionsFile.string());
+            } catch (const std::exception& e) {
+                result.error = std::string("écriture des versions impossible : ") + e.what();
+                return result;
+            }
+            result.writtenFiles.push_back(kVersionsMidiPath);
         }
     }
 

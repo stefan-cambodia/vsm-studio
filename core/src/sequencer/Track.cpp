@@ -129,6 +129,96 @@ void selectTake(Track& track, int index) {
 }
 
 
+// --- D532.2 : LES VERSIONS DE PISTE ------------------------------------------
+
+namespace {
+// L'ÉCHANGE TIENT EN DEUX FONCTIONS, ET CHAQUE CHAMP DE LA MATIÈRE Y EST NOMMÉ UNE
+// FOIS : un champ oublié ici partirait avec la version suivante sans prévenir (le
+// test `chaque_champ_de_la_matiere_suit_sa_version` les remplit tous et les relit).
+// Le NOM de la version n'est jamais touché : seul le contenu de la version active est
+// périmé, pas son nom.
+void rangerLaVersion(Track& track) {
+    if (track.activeVersion < 0 || track.activeVersion >= static_cast<int>(track.versions.size())) return;
+    TrackVersion& v = track.versions[static_cast<size_t>(track.activeVersion)];
+    v.notes = track.notes;
+    v.controlChanges = track.controlChanges;
+    v.pitchBends = track.pitchBends;
+    v.polyAftertouch = track.polyAftertouch;
+    v.channelPressure = track.channelPressure;
+    v.programChanges = track.programChanges;
+    v.audio = track.audio;
+    v.clips = track.clips;
+    v.automation = track.automation;
+}
+
+void sortirLaVersion(Track& track, const TrackVersion& v) {
+    track.notes = v.notes;
+    track.controlChanges = v.controlChanges;
+    track.pitchBends = v.pitchBends;
+    track.polyAftertouch = v.polyAftertouch;
+    track.channelPressure = v.channelPressure;
+    track.programChanges = v.programChanges;
+    track.audio = v.audio;
+    track.clips = v.clips;
+    track.automation = v.automation;
+    track.sortEvents();
+}
+
+// La prise active est RANGÉE dans le tiroir de la piste, qui ne change pas de
+// version : la matière qui sort ne lui appartient pas.
+void rangerLaPriseActive(Track& track) {
+    rangerLeMateriauCourant(track);
+    track.activeTake = -1;
+}
+} // namespace
+
+int createVersion(Track& track, const std::string& nom, bool dupliquer, const std::string& nomDeLOrigine) {
+    if (track.frozen) return -1;
+    rangerLaPriseActive(track);
+    if (track.versions.empty()) {
+        TrackVersion origine;
+        origine.name = nomDeLOrigine;
+        track.versions.push_back(std::move(origine));
+        track.activeVersion = 0;
+    }
+    rangerLaVersion(track);
+    TrackVersion neuve;
+    if (dupliquer) neuve = track.versions[static_cast<size_t>(track.activeVersion)];
+    neuve.name = nom;
+    track.versions.push_back(std::move(neuve));
+    track.activeVersion = static_cast<int>(track.versions.size()) - 1;
+    sortirLaVersion(track, track.versions.back());
+    return track.activeVersion;
+}
+
+bool selectVersion(Track& track, int index) {
+    if (index < 0 || index >= static_cast<int>(track.versions.size())) return false;
+    if (index == track.activeVersion) return true;
+    if (track.frozen) return false;
+    rangerLaPriseActive(track);
+    rangerLaVersion(track);
+    track.activeVersion = index;
+    sortirLaVersion(track, track.versions[static_cast<size_t>(index)]);
+    return true;
+}
+
+bool removeVersion(Track& track, int index) {
+    if (index < 0 || index >= static_cast<int>(track.versions.size())) return false;
+    if (track.versions.size() == 1) {
+        // LA DERNIÈRE : le tiroir se vide, la matière reste — c'est ce qu'on entend.
+        track.versions.clear();
+        track.activeVersion = -1;
+        return true;
+    }
+    if (index == track.activeVersion) {
+        const int voisine = index > 0 ? index - 1 : index + 1;
+        if (!selectVersion(track, voisine)) return false;
+    }
+    track.versions.erase(track.versions.begin() + index);
+    if (track.activeVersion > index) --track.activeVersion;
+    return true;
+}
+
 TakeRemoval removeTake(Track& track, int index) {
     TakeRemoval bilan;
     if (index < 0 || index >= static_cast<int>(track.takes.size())) return bilan;

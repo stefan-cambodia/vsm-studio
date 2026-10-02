@@ -528,6 +528,28 @@ struct CompSegment {
 /// attributs de mixage/routing exposés par le Track Editor (section 4 du
 /// cahier des charges). Le routing vers un synthé virtuel (`instrumentId`)
 /// est préparé ici mais activé en Phase 2 (Synth Rack).
+/// UNE VERSION DE PISTE (D532.2) : un état de la MATIÈRE d'une piste, qu'on garde
+/// pour l'essayer contre un autre sans rien perdre — les versions de piste de Cubase.
+///
+/// LA MATIÈRE, PAS LE RÉGLAGE : les notes, les événements de canal, l'audio, les clips
+/// et l'automation. La machine, les inserts, les départs, le fader, le nom et la couleur
+/// restent ceux de la piste : deux versions se comparent dans le même son.
+///
+/// LE MODÈLE EST CELUI DES PRISES (`Take`, `Track::activeTake`) : la version active VIT
+/// dans la piste, et sa copie rangée ici est PÉRIMÉE. Voir `selectVersion`.
+struct TrackVersion {
+    std::string name;
+    std::vector<Note> notes;
+    std::vector<CcPoint> controlChanges;
+    std::vector<PitchBendPoint> pitchBends;
+    std::vector<PolyAftertouchPoint> polyAftertouch;
+    std::vector<ChannelPressurePoint> channelPressure;
+    std::vector<ProgramChangePoint> programChanges;
+    AudioSource audio;
+    std::vector<Clip> clips;
+    std::vector<AutomationCurve> automation;
+};
+
 class Track {
 public:
     /// Ce que la piste PORTE. Une piste MIDI joue des notes par un instrument ;
@@ -919,6 +941,13 @@ public:
     /// copies d'accord à chaque note déplacée.
     int activeTake = -1;
 
+    /// LES VERSIONS DE LA PISTE (D532.2). **Vide : aucune version**, la piste se
+    /// comporte exactement comme avant qu'elles existent — c'est le sens littéral du
+    /// mot, comme pour `takes`. Sinon `activeVersion` désigne celle dont la matière
+    /// est DANS la piste, et sa copie rangée est périmée (l'invariant de `activeTake`).
+    std::vector<TrackVersion> versions;
+    int activeVersion = -1;
+
     /// LA SORTIE D'INSTRUMENT QUE CETTE PISTE PUBLIE (D18.7b) : l'index de la
     /// piste dont on prend une sortie, et LAQUELLE.
     ///
@@ -1022,6 +1051,30 @@ void pushTake(Track& track, Take take, const std::string& nomDeLOrigine = "Origi
 /// la prise à laquelle il appartient. Sans effet si l'index est hors bornes ou
 /// désigne déjà la prise active.
 void selectTake(Track& track, int index);
+
+/// D532.2 : CRÉE UNE VERSION et la rend active. `dupliquer` : elle part de la matière
+/// courante (« Dupliquer la version ») ; sinon elle part VIDE (« Nouvelle version »).
+/// La première création range d'abord la matière courante sous `nomDeLOrigine`, pour
+/// ne rien perdre. Rend l'index de la version créée, ou -1 si la piste est gelée (voir
+/// `selectVersion`).
+int createVersion(Track& track, const std::string& nom, bool dupliquer,
+                  const std::string& nomDeLOrigine = "Version 1");
+
+/// D532.2 : REND ACTIVE LA VERSION `index`. La matière courante est rangée dans sa
+/// version, puis l'autre sort. Avant cela, une prise active est RANGÉE dans le tiroir
+/// des prises (qui reste celui de la piste) et `activeTake` passe à -1 : laissée active
+/// sur une matière qui n'est plus la sienne, elle aurait été écrasée au changement de
+/// prise suivant. REFUSÉ (faux) sur une piste GELÉE : le gel est le rendu de la matière
+/// courante, il jouerait l'ancienne version sous le nom de la nouvelle. Faux aussi hors
+/// bornes ; vrai, sans rien faire, si `index` est déjà la version active.
+bool selectVersion(Track& track, int index);
+
+/// D532.2 : RETIRE UNE VERSION. La version ACTIVE cède d'abord la place à sa voisine (la
+/// précédente, sinon la suivante), pour que ce qu'on entend soit toujours une version ;
+/// la DERNIÈRE retirée vide le tiroir et laisse sa matière sur la piste — c'est ce qu'on
+/// entend, on ne l'efface pas. Faux si hors bornes, ou si la voisine ne peut pas sortir
+/// (piste gelée).
+bool removeVersion(Track& track, int index);
 
 /// CE QUE COÛTE LA SUPPRESSION D'UNE PRISE, avant et après l'avoir faite.
 struct TakeRemoval {

@@ -175,6 +175,9 @@ bool usesWarp(const ProjectDocument& document) {
         for (const auto& take : track.takes)
             for (const auto& clip : take.clips)
                 if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0) return true;
+        for (const auto& version : track.versions)   // D532.2 : une version rangée compte aussi
+            for (const auto& clip : version.clips)
+                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0) return true;
     }
     return false;
 }
@@ -235,6 +238,83 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
     c.pitchSemitones = clip.pitchSemitones;   // D54
     c.fadeShape = fadeShapeFromName(clip.fadeShape);
     return c;
+}
+
+// L'AUTOMATION, DANS LES QUATRE SENS, EN UN SEUL ENDROIT (D532.2) : la piste et chacune
+// de ses versions la décrivent de la même façon, et deux copies du même code finiraient
+// par ne plus écrire la même chose — la courbure de D17.7 s'était déjà perdue une fois
+// par un agrégat qui ne s'était pas plaint.
+std::vector<ProjectAutomationLane> automationToDocument(const std::vector<vsm::sequencer::AutomationCurve>& courbes) {
+    std::vector<ProjectAutomationLane> lanes;
+    for (const auto& curve : courbes) {
+        ProjectAutomationLane lane;
+        lane.parameter = curve.parameter;
+        for (const auto& point : curve.points)
+            // D17.7 : la courbure est recopiée EXPLICITEMENT. L'agrégat
+            // positionnel ne s'est pas plaint quand le champ a été ajouté
+            // -- il est en dernier, donc il prenait sa valeur par défaut --
+            // et la courbure se serait perdue à la sauvegarde SANS QUE RIEN
+            // NE LE DISE. Le compilateur avait rattrapé les deux fois de
+            // D17.1 ; celle-ci, il ne pouvait pas.
+            lane.points.push_back({point.tick, point.value, point.step, point.curve});
+        lanes.push_back(std::move(lane));
+    }
+    return lanes;
+}
+
+std::vector<vsm::sequencer::AutomationCurve> automationToModel(const std::vector<ProjectAutomationLane>& lanes) {
+    std::vector<vsm::sequencer::AutomationCurve> courbes;
+    for (const auto& lane : lanes) {
+        vsm::sequencer::AutomationCurve curve;
+        curve.parameter = lane.parameter;
+        for (const auto& point : lane.points)
+            curve.points.push_back({point.tick, point.value, point.step, point.curve});
+        courbes.push_back(std::move(curve));
+    }
+    return courbes;
+}
+
+JsonValue automationToJson(const std::vector<ProjectAutomationLane>& automation) {
+    JsonValue lanes = JsonValue::makeArray();
+    for (const auto& lane : automation) {
+        JsonValue entree = JsonValue::makeObject();
+        entree.set("parameter", JsonValue::makeString(lane.parameter));
+        JsonValue points = JsonValue::makeArray();
+        for (const auto& point : lane.points) {
+            JsonValue p = JsonValue::makeObject();
+            p.set("tick", JsonValue::makeFloat(static_cast<double>(point.tick)));
+            p.set("value", JsonValue::makeFloat(point.value));
+            if (point.step) p.set("step", JsonValue::makeBoolean(true));
+            // D17.7 : la courbure, écrite seulement quand elle n'est
+            // pas nulle -- un projet d'avant se réécrit à l'octet.
+            if (point.curve != 0.0f) p.set("curve", JsonValue::makeFloat(point.curve));
+            points.append(std::move(p));
+        }
+        entree.set("points", std::move(points));
+        lanes.append(std::move(entree));
+    }
+    return lanes;
+}
+
+std::vector<ProjectAutomationLane> automationFromJson(const JsonValue& tableau) {
+    std::vector<ProjectAutomationLane> automation;
+    for (const auto& laneJson : tableau.elements()) {
+        ProjectAutomationLane lane;
+        lane.parameter = laneJson["parameter"].asString();
+        for (const auto& pointJson : laneJson["points"].elements()) {
+            ProjectAutomationPoint point;
+            point.tick = static_cast<int64_t>(pointJson["tick"].asNumber(0.0));
+            point.value = static_cast<float>(pointJson["value"].asNumber(0.0));
+            point.step = pointJson["step"].asBoolean(false);
+            point.curve = static_cast<float>(pointJson["curve"].asNumber(0.0));
+            lane.points.push_back(point);
+        }
+        // Une courbe sans cible ou sans point ne commande rien : refusée
+        // à la lecture plutôt que traînée jusqu'au rendu.
+        if (!lane.parameter.empty() && !lane.points.empty())
+            automation.push_back(std::move(lane));
+    }
+    return automation;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,19 +436,7 @@ ProjectDocument documentFromProject(const Project& project) {
         }
         for (const auto& clip : track.clips)
             entry.clips.push_back(clipToDocument(clip));
-        for (const auto& curve : track.automation) {
-            ProjectAutomationLane lane;
-            lane.parameter = curve.parameter;
-            for (const auto& point : curve.points)
-                // D17.7 : la courbure est recopiée EXPLICITEMENT. L'agrégat
-                // positionnel ne s'est pas plaint quand le champ a été ajouté
-                // -- il est en dernier, donc il prenait sa valeur par défaut --
-                // et la courbure se serait perdue à la sauvegarde SANS QUE RIEN
-                // NE LE DISE. Le compilateur avait rattrapé les deux fois de
-                // D17.1 ; celle-ci, il ne pouvait pas.
-                lane.points.push_back({point.tick, point.value, point.step, point.curve});
-            entry.automation.push_back(std::move(lane));
-        }
+        entry.automation = automationToDocument(track.automation);   // D532.2 : l'aide commune
 
         // LES PRISES. Leurs NOTES ne sont pas décrites ici -- elles vont dans
         // `midi/prises.mid`, comme celles de l'arrangement vont dans son propre
@@ -394,6 +462,25 @@ ProjectDocument documentFromProject(const Project& project) {
             entry.takes.push_back(std::move(described));
         }
         entry.activeTake = track.activeTake;
+
+        // D532.2 : LES VERSIONS. Leurs notes et événements de canal vont dans
+        // `midi/versions.mid` (l'écrivain du dossier remplit `midiTrackIndex`). La
+        // version ACTIVE n'écrit que son nom : sa matière est celle de la piste.
+        for (size_t k = 0; k < track.versions.size(); ++k) {
+            const auto& version = track.versions[k];
+            ProjectVersion decrite;
+            decrite.name = version.name;
+            if (static_cast<int>(k) != track.activeVersion) {
+                decrite.audio.path = version.audio.path;
+                decrite.audio.sampleRate = version.audio.sampleRate;
+                decrite.audio.frames = version.audio.frames;
+                decrite.audio.channels = version.audio.channels;
+                for (const auto& clip : version.clips) decrite.clips.push_back(clipToDocument(clip));
+                decrite.automation = automationToDocument(version.automation);
+            }
+            entry.versions.push_back(std::move(decrite));
+        }
+        entry.activeVersion = track.versions.empty() ? -1 : track.activeVersion;
 
         document.tracks.push_back(std::move(entry));
         ++index;
@@ -587,13 +674,35 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.clips.clear();
         for (const auto& clip : source.clips)
             target.clips.push_back(clipToModel(clip));
-        target.automation.clear();
-        for (const auto& lane : source.automation) {
-            vsm::sequencer::AutomationCurve curve;
-            curve.parameter = lane.parameter;
-            for (const auto& point : lane.points)
-                curve.points.push_back({point.tick, point.value, point.step, point.curve});
-            target.automation.push_back(std::move(curve));
+        target.automation = automationToModel(source.automation);   // D532.2 : l'aide commune
+
+        // D532.2 : LES VERSIONS, sans leurs notes ni leurs événements de canal : ceux-ci
+        // viennent de `versions.mid` et sont recollés par le lecteur de dossier. Une
+        // version active hors bornes n'en désigne aucune — le tiroir est alors gardé,
+        // et c'est la matière de la piste qui joue, comme toujours.
+        target.versions.clear();
+        for (const auto& version : source.versions) {
+            vsm::sequencer::TrackVersion restauree;
+            restauree.name = version.name;
+            restauree.audio.path = version.audio.path;
+            restauree.audio.sampleRate = version.audio.sampleRate;
+            restauree.audio.frames = version.audio.frames;
+            restauree.audio.channels = version.audio.channels;
+            for (const auto& clip : version.clips) restauree.clips.push_back(clipToModel(clip));
+            restauree.automation = automationToModel(version.automation);
+            target.versions.push_back(std::move(restauree));
+        }
+        target.activeVersion = -1;
+        if (!target.versions.empty()) {
+            if (source.activeVersion >= 0 && source.activeVersion < static_cast<int>(target.versions.size())) {
+                target.activeVersion = source.activeVersion;
+            } else {
+                // Jamais en silence : la première version est prise pour celle qu'on
+                // entend, et sa copie rangée sera remplacée au premier changement.
+                target.activeVersion = 0;
+                report.warnings.push_back("piste \"" + target.name + "\" : version active absente ou hors bornes, "
+                                          "la premi\u00e8re est prise pour celle qu'on entend");
+            }
         }
 
         target.requestedInstrumentId.clear();
@@ -969,26 +1078,36 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
 
         // L'automation n'est écrite QUE si elle existe : un projet sans
         // automation garde exactement le fichier qu'il a toujours eu.
-        if (!track.automation.empty()) {
-            JsonValue lanes = JsonValue::makeArray();
-            for (const auto& lane : track.automation) {
-                JsonValue entree = JsonValue::makeObject();
-                entree.set("parameter", JsonValue::makeString(lane.parameter));
-                JsonValue points = JsonValue::makeArray();
-                for (const auto& point : lane.points) {
-                    JsonValue p = JsonValue::makeObject();
-                    p.set("tick", JsonValue::makeFloat(static_cast<double>(point.tick)));
-                    p.set("value", JsonValue::makeFloat(point.value));
-                    if (point.step) p.set("step", JsonValue::makeBoolean(true));
-                    // D17.7 : la courbure, écrite seulement quand elle n'est
-                    // pas nulle -- un projet d'avant se réécrit à l'octet.
-                    if (point.curve != 0.0f) p.set("curve", JsonValue::makeFloat(point.curve));
-                    points.append(std::move(p));
+        if (!track.automation.empty())
+            entry.set("automation", automationToJson(track.automation));   // D532.2 : l'aide commune
+
+        // D532.2 : LES VERSIONS, écrites seulement s'il y en a. Leurs notes sont dans
+        // `midi/versions.mid` ; `midiTrack` dit laquelle de ses pistes les porte.
+        if (!track.versions.empty()) {
+            JsonValue versions = JsonValue::makeArray();
+            for (const auto& version : track.versions) {
+                JsonValue v = JsonValue::makeObject();
+                v.set("name", JsonValue::makeString(version.name));
+                if (version.midiTrackIndex >= 0)
+                    v.set("midiTrack", JsonValue::makeNumber(static_cast<double>(version.midiTrackIndex)));
+                if (!version.audio.path.empty()) {
+                    JsonValue source = JsonValue::makeObject();
+                    source.set("file", JsonValue::makeString(version.audio.path));
+                    source.set("sampleRate", JsonValue::makeNumber(version.audio.sampleRate));
+                    source.set("frames", JsonValue::makeNumber(static_cast<double>(version.audio.frames)));
+                    source.set("channels", JsonValue::makeNumber(version.audio.channels));
+                    v.set("audio", std::move(source));
                 }
-                entree.set("points", std::move(points));
-                lanes.append(std::move(entree));
+                if (!version.clips.empty()) {
+                    JsonValue clips = JsonValue::makeArray();
+                    for (const auto& clip : version.clips) clips.append(clipToJson(clip));
+                    v.set("clips", std::move(clips));
+                }
+                if (!version.automation.empty()) v.set("automation", automationToJson(version.automation));
+                versions.append(std::move(v));
             }
-            entry.set("automation", std::move(lanes));
+            entry.set("versions", std::move(versions));
+            entry.set("activeVersion", JsonValue::makeNumber(static_cast<double>(track.activeVersion)));
         }
 
         tracks.append(std::move(entry));
@@ -1302,22 +1421,30 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             track.compSegments.push_back(troncon);
         }
 
-        for (const auto& laneJson : entry["automation"].elements()) {
-            ProjectAutomationLane lane;
-            lane.parameter = laneJson["parameter"].asString();
-            for (const auto& pointJson : laneJson["points"].elements()) {
-                ProjectAutomationPoint point;
-                point.tick = static_cast<int64_t>(pointJson["tick"].asNumber(0.0));
-                point.value = static_cast<float>(pointJson["value"].asNumber(0.0));
-                point.step = pointJson["step"].asBoolean(false);
-                point.curve = static_cast<float>(pointJson["curve"].asNumber(0.0));
-                lane.points.push_back(point);
+        track.automation = automationFromJson(entry["automation"]);   // D532.2 : l'aide commune
+
+        // D532.2 : les versions, sans leurs notes (dans `midi/versions.mid`).
+        for (const auto& versionJson : entry["versions"].elements()) {
+            ProjectVersion version;
+            version.name = versionJson["name"].asString();
+            version.midiTrackIndex = static_cast<int>(versionJson["midiTrack"].asNumber(-1.0));
+            if (versionJson["audio"].isObject()) {
+                version.audio.path = versionJson["audio"]["file"].asString();
+                if (!isPortableRelativePath(version.audio.path)) {
+                    result.error = "chemin de version non portable : \"" + version.audio.path + "\"";
+                    return result;
+                }
+                version.audio.sampleRate = versionJson["audio"]["sampleRate"].asNumber(0.0);
+                version.audio.frames = static_cast<int64_t>(versionJson["audio"]["frames"].asNumber(0.0));
+                version.audio.channels = static_cast<int>(versionJson["audio"]["channels"].asNumber(0.0));
             }
-            // Une courbe sans cible ou sans point ne commande rien : refusée
-            // à la lecture plutôt que traînée jusqu'au rendu.
-            if (!lane.parameter.empty() && !lane.points.empty())
-                track.automation.push_back(std::move(lane));
+            for (const auto& clipJson : versionJson["clips"].elements())
+                version.clips.push_back(clipFromJson(clipJson));
+            version.automation = automationFromJson(versionJson["automation"]);
+            track.versions.push_back(std::move(version));
         }
+        track.activeVersion = static_cast<int>(entry["activeVersion"].asNumber(-1.0));
+        if (track.activeVersion >= static_cast<int>(track.versions.size())) track.activeVersion = -1;
         document.tracks.push_back(std::move(track));
     }
 
