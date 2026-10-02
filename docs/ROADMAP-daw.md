@@ -38918,3 +38918,43 @@ chemin de `VSM_NOTES` (D336) joué APRÈS d'autres gestes — `VSM_NOTES` agit a
 
 Le mode d'emploi (§ 2) dit les versions : dupliquer, choisir, renommer, supprimer, ce qu'elles
 emportent et ce qu'elles laissent, le refus du gel.
+
+### Phase D532.3 — la piste d'accords, premier temps : le modèle, le format et « caler sur les accords » (02/10/2026)
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une ligne d'accords PAR PROJET**, comme les repères et le tempo, et non une nature de
+  piste de plus : Cubase n'en admet qu'une, un accord ne joue rien, et une « piste » qui ne
+  porte ni son ni machine serait la troisième de cette espèce (dossier, VCA). `Project::chords`,
+  trié par tick ; un accord vaut jusqu'au suivant.
+- **Un accord = une fondamentale, un TYPE, une basse facultative.** Le type est celui que le
+  piano roll connaît déjà (`ChordType`, le bouton « Accord », treize types) — pas une seconde
+  liste qui finirait par ne plus dire la même chose.
+- **Le format écrit le SYMBOLE** (« Am7/G », « F#m7b5 », « C5 ») : lisible dans le fichier,
+  indépendant de la langue, une seule paire écrire/lire. Les dièses à l'écriture ; les bémols
+  acceptés à la lecture (« Bb7 » → « A#7 ») ; un symbole illisible est ÉCARTÉ et DIT au
+  rapport d'ouverture, jamais deviné. `"chords"` n'est écrit que s'il y en a : un projet sans
+  accord garde son fichier à l'octet.
+- **« Caler les notes sur les accords »** : chaque note CHOISIE va à la note de l'accord en
+  vigueur à son début (fondamentale, notes du type, basse) la plus proche, l'égalité tranchée
+  vers le grave — la règle de `snapNoteToScale`, pour qu'un même geste rende toujours le même
+  résultat. Une note déjà dans l'accord ne bouge pas ; une note qui commence AVANT le premier
+  accord n'en a aucun : elle reste, et elle est COMPTÉE (le rapport du geste la dit). Rien de
+  choisi, rien de fait.
+- **Un accord ne sonne pas** : la ligne guide l'écriture, elle ne joue rien — l'export d'un
+  projet avec accords est celui du même projet sans.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : les 13 types × 12 fondamentales, avec et sans basse, font l'aller-retour
+   symbole → accord → symbole à l'identique ; « Bb7 » se lit « A#7 » ; un symbole inconnu est
+   refusé sans toucher la sortie ; `chordAt` avant le premier accord, au tick exact, entre
+   deux ; poser un accord au tick d'un autre le remplace ; le calage — une note de l'accord
+   reste, une autre va à la plus proche (le grave à égalité), une note avant le premier accord
+   reste et se compte, une note non choisie ne bouge pas ; chacun vu rouge sur un défaut remis
+   à la main ;
+2. tests `interchange/` : aller-retour disque ; un symbole illisible dans le fichier écarté et
+   dit ; un projet sans accord n'écrit pas la clé ;
+3. mesuré par l'EXPORT : un projet avec trois accords rend un fichier ÉGAL AU BIT au même projet
+   sans eux.
+
+Le second temps — la ligne d'accords dans l'arrangement, poser/modifier/retirer un accord à
+la tête de lecture, le geste « Caler sur les accords » au piano roll, annulables — suit.
