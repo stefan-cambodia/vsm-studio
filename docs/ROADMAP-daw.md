@@ -39037,3 +39037,73 @@ dictionnaire n'ont bougé depuis.
 
 Le second temps — la ligne d'accords dans l'arrangement et « Caler sur les accords » au piano
 roll — suit.
+
+### Phase D532.3 bis — la piste d'accords, second temps : la ligne sous les deux règles, et « Caler sur les accords » là où la note SONNE (02/10/2026)
+
+*Écrite avant son code, le 02/10 à 14 h 55.*
+
+**UNE FAUTE DU PREMIER TEMPS, TROUVÉE EN PRÉPARANT CELUI-CI.** `snapNotesToChords` cherche
+l'accord « en vigueur au début de la note », et prend pour ce début `note.startTick`. Or une
+note est du MATÉRIAU : un clip MIDI est une fenêtre sur lui (`Clip::sourceStart`), posée
+ailleurs sur la ligne de temps (`Clip::startTick`), répétée par sa boucle, et deux clips nés
+d'un « dupliquer » lisent les MÊMES notes (`ClipEdit.h`, D1.2). Les accords, eux, sont sur la
+ligne de temps. Un clip déplacé d'une mesure faisait donc caler ses notes sur l'accord de la
+mesure qu'elles ont QUITTÉE — en silence, et juste dès qu'aucun clip n'a bougé, c'est-à-dire
+dans tous les tests du premier temps.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une note se cale sur l'accord sous lequel elle SONNE** : ses positions entendues sont
+  celles que rendent les passages de sa piste (`clipPassages`, le calcul de la lecture ET de
+  l'export, D56.1) ; une piste sans clip a le passage identité, et le premier temps en est
+  le cas particulier — ses tests passent tels quels.
+- **Entendue sous PLUSIEURS harmonies, elle reste**, et elle est COMPTÉE (« ambiguë ») : deux
+  clips qui lisent la même note sous Am et sous F n'ont pas de bonne réponse, et en choisir
+  une ferait mentir l'autre. Deux harmonies se comparent par leurs classes de hauteur
+  (`chordMask`) — c'est tout ce que le calage regarde ; Csus2 et Gsus4 ne sont pas une
+  ambiguïté. Entendue en partie avant le premier accord et en partie sous un accord : ambiguë
+  aussi.
+- **Entendue nulle part** (hors de tout clip, ou sous un clip muet) : elle reste, et elle est
+  COMPTÉE (« muette »). Caler ce qu'on n'entend pas, c'est deviner.
+- **LA LIGNE SOUS LES DEUX RÈGLES — l'arrangement ET le piano roll** : une bande de 20 px à
+  100 %, qui n'existe QUE si le projet porte un accord — un projet sans accord garde sa
+  disposition au pixel, et les quarante-cinq bancs qui le photographient avec lui. Chaque
+  accord y écrit son symbole, la place allant jusqu'au suivant (la règle des repères, D16.4 :
+  sans la place, on n'écrit pas). Le clic droit dans la bande est celui de la règle. LES DEUX,
+  et pas l'arrangement seul : `tools/menus-des-regles.py` (D370) exige que les deux règles
+  offrent les mêmes libellés, pour la même action — et c'est au piano roll qu'on ÉCRIT, donc
+  là qu'on veut l'harmonie sous les yeux. Le « nommé, non fait » prévu ici tombe dans la phase.
+- **Trois entrées aux menus des DEUX règles** : « Poser un accord ici… » (une fenêtre à un champ, le
+  symbole ; proposé : l'accord en vigueur, pour qu'on parte de lui), « Modifier cet accord… »
+  et « Retirer cet accord », grisées s'il n'y a aucun accord en vigueur au point visé — elles
+  visent l'accord EN VIGUEUR, pas celui qui commencerait à dix pixels près : une ligne d'accords
+  n'a pas de trou, on est toujours sous l'un d'eux. Un symbole illisible est REFUSÉ et DIT
+  (boîte « Accord illisible », les formes acceptées écrites dedans), rien n'est posé. Chaque
+  geste est un pas d'historique.
+- **« Caler sur les accords »** au sous-menu « Hauteur » du piano roll, à côté de « Contraindre
+  à la gamme » : grisée sans sélection ou sans accord. Un pas d'historique ; la ligne d'état
+  dit les CINQ comptes (déplacées, déjà justes, avant le premier accord, ambiguës,
+  muettes), et `VSM_ACCORDS_CALAGE` les écrit au journal pour le banc.
+- **NOMMÉ, NON FAIT** : l'harmonie lue par la chaîne d'analyse pour alimenter la ligne (la
+  suite dite par le cahier des charges, pas un critère) ; déplacer un accord à la souris.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : un clip déplacé d'une mesure cale sa note sur l'accord où elle SONNE, pas sur
+   celui de son tick de matériau ; deux clips lisant la même note sous deux harmonies la
+   laissent et la comptent ambiguë, sous la même harmonie la calent ; une note hors de tout
+   clip reste et se compte muette ; les tests du premier temps passent avec le passage
+   identité. Vus rouges sur le tick de matériau remis à la main ;
+2. les bandes : un relevé (`VSM_ACCORDS`) liste, pour chacune des deux règles, les accords
+   DESSINÉS (symbole, x) ; sans accord, aucune bande — l'arrangement et le piano roll gardent
+   la disposition d'avant cette phase (relevés `VSM_ARRANGEMENT` et `VSM_PIANOROLL_ZONES`) ;
+   avec accords, la zone des pistes et la grille des notes descendent de la hauteur de la bande ;
+   `tools/menus-des-regles.py` vert sur les six entrées ;
+3. le menu de la règle, par le banc, à la tête de lecture : « Poser un accord ici… » avec « Am7/G »
+   → `project.json` relu porte `{"tick": …, "chord": "Am7/G"}` ; avec « Cmaj13 » → boîte
+   « Accord illisible » au journal, rien d'écrit ; « Modifier cet accord… » → le symbole
+   change ; « Retirer cet accord » → la clé disparaît ; Ctrl+Z après « Poser » → la clé
+   disparaît ;
+4. « Caler sur les accords » par le banc (« Tout sélectionner » d'abord) : le `.mid` exporté,
+   relu en MULTIENSEMBLE de hauteurs, est celui que donne le calcul de `core/` sur le même
+   projet ; les cinq comptes au journal ; grisée sans accord ;
+5. un banc `tools/accords.sh` qui joue 2 à 4, vu rouge sur un défaut remis à la main, entré
+   dans `verifier.sh --bancs`.
