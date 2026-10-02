@@ -38533,3 +38533,34 @@ leur index de piste.
 **CE QUI N'EST PAS FAIT** : l'application installée et `build/tools/vsm-render` ne sont pas
 recompilés avec la correction (la course de référence tourne ; elle entrera à la
 compilation d'après campagne, avec D526 et H58). D532.1 (le VCA) reste à faire.
+
+---
+
+### Phase D532.1 — les faders VCA, premier temps : le modèle, le format et le moteur (02/10/2026) — EN ATTENTE DE MESURE
+
+**CE QUI EST PRÉVU** (le critère de D532, sans l'interface) :
+- `Track::Kind::Vca` — une piste qui ne joue rien, comme un dossier ; `Track::vcaTrack`, l'index
+  du VCA qui commande une piste (-1 : aucun), recalé partout où les index le sont déjà
+  (déplacer, dupliquer, supprimer, insérer, éclater par hauteur, extraire) ;
+  `vcaOf(pistes, i)` rend le VCA d'une piste, ou rien — une référence hors bornes, vers une
+  piste qui n'est pas un VCA, ou DEPUIS un VCA (« un VCA ne va pas dans un VCA ») ne
+  désigne rien ;
+- le muet, le solo et la désactivation du VCA atteignent ses membres, dans la fonction
+  unique d'audibilité (`trackAudible`, D30.1, D35.4) — pas de seconde logique ;
+- `ProcessGraph` multiplie le fader d'un membre (ou son automation) par celui du VCA (ou son
+  automation) aux deux points de mixage, la piste et le bus de groupe : départs post-fader
+  et mesures suivent, puisqu'ils lisent le même gain ;
+- `project.json` : `"kind": "vca"`, et `"vca": <index>` sur un membre, écrits seulement s'ils
+  existent ;
+- le gel (pré-fader) n'emporte pas le VCA ; un VCA ne reçoit ni stem ni machine.
+
+**ATTENDUS, écrits avant le code** — mesurés par l'EXPORT (`vsm-render` de `build-h51`) sur un
+projet de trois pistes MIDI, A et B membres d'un VCA, C non membre :
+1. le VCA à 0 dB : le mélange égal **au bit** au même projet sans VCA ;
+2. le VCA à −6,02 dB (gain 0,5) : les stems de A et B valent 0,5 × leurs témoins (écart
+   relatif ≤ 1e-6), celui de C est égal au bit à son témoin ;
+3. le VCA muet : A et B silencieux, C intact ;
+4. l'automation du volume du VCA (de 1 à 0) éteint A et B sur la durée et laisse C ;
+5. tests `core/` (recalage des index, `vcaOf`, audibilité), `interchange/` (aller-retour ;
+   un projet sans VCA garde son fichier octet pour octet), chacun vu rouge sur un défaut
+   remis à la main ; les suites `core/`, `audio/` et `interchange/` vertes.
