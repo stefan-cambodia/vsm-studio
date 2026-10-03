@@ -40196,6 +40196,9 @@ et la raison écrite dans le code.
 Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` entier (58) lancé à la
 suite ; son résultat s'écrit à sa fin.
 
+**LA SÉRIE, relevée à 22 h 14 : 58 bancs sur 58 verts** (dont `accords-depuis-notes.sh`), à travers huit veilles
+du poste ; préférences de l'utilisateur identiques.
+
 
 ### Phase D543.2 — la fenêtre des repères (03/10/2026)
 
