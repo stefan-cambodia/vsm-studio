@@ -39676,3 +39676,21 @@ moitié qui suit. Les tests de D13.3 n'ont que des clips AUDIO (fenêtre en seco
 presque toute piste MIDI a des clips. Mesure : les couples (ms, hauteur) du planificateur réel sur
 un clip identité [0, 3840) portant do à 0 et sol à 2 880, temps inséré à 1 920 (sol attendu à
 4 880 ticks = 5 083 ms) ; puis supprimé de 960 à 1 920 (sol attendu à 1 920 ticks = 2 000 ms).
+
+**MESURÉE.** Le témoin d'abord : do à 0, sol à 3 000 ms. **Insérer** 1 920 ticks à 1 920 : on
+n'entend plus que le do — **le sol a disparu**, l'hypothèse est juste. **Supprimer** [960, 1 920) :
+le sol sonne à **1 000 ms au lieu de 2 000** — déplacé, pas muet : là, l'hypothèse se trompait de
+symptôme (la seconde moitié lit son matériau décalé d'une plage de trop). *Erratum de l'hypothèse
+publiée* : 2 880 + 1 920 font **4 800** ticks, soit **5 000 ms**, et non « 4 880 ticks = 5 083 ms » —
+une addition faite de tête ; le test emploie 5 000.
+
+**CE QUI EST TRANCHÉ.** L'ordre des opérations : couper d'abord sur la ligne de temps
+(`splitClips`), PUIS faire glisser les fenêtres MIDI qui commencent au-delà de la coupe — de P à
+l'insertion, de la fin de la plage à la suppression. Une seconde moitié née de la coupe a alors sa
+fenêtre là où sont allées ses notes. **Nommé, non fait** : un clip dont la fenêtre ne coïncide pas
+avec sa place (déplacé, ou copie liée de D34.2) et qui chevauche la coupe DANS LE MATÉRIAU reste
+mal servi, parce que l'édition de temps déplace le matériau en coordonnées de ligne de temps ; ce
+cas demande de couper la fenêtre au point de matériau, et il a sa propre mesure à écrire.
+
+**ATTENDUS.** 1. les deux tests ci-dessus verts, rouges sur l'ancien ordre ; 2. les tests de D13.3
+(clips audio, notes, contrôleurs, courbes) verts ; 3. le collage au milieu d'un clip de D535.3 vert.
