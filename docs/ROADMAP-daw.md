@@ -40244,3 +40244,39 @@ rencontrer un autre. Les gestes de la fenêtre n'existent qu'une fois : ce sont 
 **LES SUITES** (relevé à 22 h 33) : core 431, audio 1 319, interchange 336, clap 25, panneaux 11 ; Python
 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` entier (59) lancé à la suite ;
 son résultat s'écrit à sa fin.
+
+
+### Phase D543.3 — quantifier l'audio : caler les attaques d'un clip sur la grille (03/10/2026)
+
+*Écrite avant son code, le 03/10 à 22 h 34, D543.2 faite.*
+
+**CE QUI EXISTE, SÉPARÉMENT.** Les attaques d'un clip audio se détectent (D20.3, `detectOnsets`, qui
+sert « Découper aux transitoires ») ; un clip suit le tempo par des marqueurs d'étirement (D12) qu'on
+pose sans changer le son (`addWarpMarker`) et qu'on déplace en musique (`moveWarpMarker`, « le geste
+de calage »). Rien ne les assemble : caler une prise de batterie jouée un peu devant ou derrière se
+fait marqueur par marqueur, à la souris.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Le cœur** : `quantizeClipToGrid` reçoit les attaques (en secondes du fichier) et un pas de grille ;
+  pour chacune, la position où elle sonne, la ligne de grille la plus proche (comptée depuis le début
+  du MORCEAU, pas du clip), un marqueur posé là où elle sonne puis déplacé sur la ligne. Le clip passe
+  en « hauteur conservée » s'il ne suivait pas le tempo (la paire neutre d'abord, D12). Une attaque
+  déjà sur sa ligne (à moins d'un tick) est laissée ; deux attaques qui viseraient la même ligne, ou
+  une ligne hors de l'ordre des marqueurs, ne gardent que la première — les autres sont comptées et
+  DITES, jamais forcées.
+- **Le geste** : « Quantifier l'audio… » au menu du clip audio ; une fenêtre demande le pas de grille
+  (1/8 proposé, comme la grille du piano roll : 1/4, 1/8, 1/16, 1/32). Un pas d'historique. La ligne
+  d'état et le journal (`VSM_QUANTIFIER_AUDIO`) disent combien d'attaques ont été calées, laissées,
+  écartées, et le plus grand déplacement.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : des attaques à 10, −10, 20 ms de leurs lignes de 1/8 à 120 BPM → chacune sonne sur
+   sa ligne après le calage (`warpTickAtSeconds` relu, au tick près) ; une attaque déjà sur sa ligne
+   laissée ; deux attaques visant la même ligne → une seule calée, l'autre comptée ; le clip en mode
+   « hauteur conservée » ;
+2. par l'application, mesuré par l'EXPORT AUDIO : un fichier de clics joués à +10, −10, +20, +10 ms
+   des temps de 250 ms ; « Quantifier l'audio » (1/8) ; dans l'export, chaque attaque relevée tombe à
+   **3 ms au plus** de sa ligne — le témoin, l'export d'avant, à 10 à 20 ms ; le tout en un pas
+   (Ctrl+Z → l'export d'avant au bit près) ;
+3. un banc `tools/quantifier-audio.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux langues.
