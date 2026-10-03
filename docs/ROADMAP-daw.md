@@ -40195,3 +40195,32 @@ et la raison écrite dans le code.
 **LES SUITES** (relevé à 16 h 49) : core **431**, audio 1 319, interchange 336, clap 25, panneaux 11 ;
 Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` entier (58) lancé à la
 suite ; son résultat s'écrit à sa fin.
+
+
+### Phase D543.2 — la fenêtre des repères (03/10/2026)
+
+*Écrite avant son code, le 03/10 à 16 h 50, D543.1 faite.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Affichage ▸ Repères** ouvre une fenêtre flottante (un `PanelWindow`, comme l'historique) : une
+  ligne par repère, dans l'ordre du morceau — sa position en mesure · temps (« mes. 9 · 1 », le format
+  de la barre de transport) et son nom. Elle suit le projet : poser, renommer, retirer un repère par
+  la règle, l'annuler, la met à jour (`refreshMarkerViews`).
+- **Les gestes de la ligne, par les fonctions qui existent déjà** : un clic place la tête sur le
+  repère ; un double-clic le renomme (la fenêtre de « Renommer ce repère… ») ; la touche Suppr — ou
+  le clic droit, « Retirer ce repère » — le retire. Aucun geste neuf au modèle : la fenêtre est une
+  porte de plus vers ceux des règles, et un pas d'historique chacun, comme par la règle.
+- **Un relevé** (`VSM_REPERES`) dit les lignes telles qu'elles sont peintes — la leçon de D149 : un
+  panneau qui peint ses lignes est invisible au relevé des composants — et des verbes de banc
+  appellent les mêmes fonctions que la souris (D91).
+
+**ATTENDUS, écrits avant le code.**
+1. par l'application, sur un projet à trois repères (Intro à 0, Couplet à 1 920, Refrain à 5 760) :
+   la fenêtre ouverte (`VSM_VUE=reperes`) relève « mes. 1 · 1 Intro | mes. 2 · 1 Couplet | mes. 4 · 1
+   Refrain » ; aller au troisième → la tête à 5 760 ; renommer le deuxième en « Pont » → le
+   `project.json` le porte ; retirer le premier → il n'en reste que deux ; Ctrl+Z → trois ;
+2. la fenêtre suit : un repère posé par la règle pendant qu'elle est ouverte apparaît au relevé
+   suivant ;
+3. un banc `tools/fenetre-reperes.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; le libellé du menu unique dans toute la barre ; traduit ; la fenêtre
+   photographiée dans les deux langues.
