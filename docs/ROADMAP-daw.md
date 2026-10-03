@@ -39993,3 +39993,45 @@ grisée ; `annulation-des-menus.py`, qui juge les menus des règles, la verra à
 **LES SUITES** (relevé à 13 h 22) : core **427**, audio 1 316, interchange 336, clap 25, panneaux 11 ;
 Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). **`--bancs` entier : joué avec
 celui de D542.2**, qui change la façon dont le banc répond aux listes et touche donc tous les bancs.
+
+
+### Phase D542.2 — des préréglages pour l'éditeur logique (03/10/2026)
+
+*Écrite avant son code, le 03/10 à 13 h 23, D542.1 faite.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une liste « Préréglage » en tête de la fenêtre** (D535.1 bis) : « (aucun) », puis les
+  préréglages LIVRÉS, puis ceux de l'utilisateur. Choisir un préréglage REMPLIT la règle (écrite
+  dans la langue de l'interface, D535.1 bis), l'action et la valeur ; on peut ensuite les retoucher
+  avant d'appliquer — c'est le champ qui fait foi, comme dans Cubase.
+- **Les préréglages livrés**, dans `core/` (`builtInLogicalPresets`), chacun une règle que la
+  grammaire de D535.1 sait lire — les noms traduits par l'interface :
+  « Fantômes (brèves et faibles) » — `vélocité < 30 et durée < 1/32`, supprimer ;
+  « Notes douteuses » — `confiance < 0,5`, choisir ;
+  « Premier temps de chaque mesure » — `position = 0`, choisir ;
+  « Batterie (canal 10) » — `canal = 10`, choisir ;
+  « Notes muettes » — `muette = oui`, supprimer ;
+  « Attaques trop fortes » — `vélocité >= 120`, fixer la vélocité à 100 ;
+  « Notes très longues (plus de deux mesures) » — `durée > 2/1`, choisir.
+  **Pas les « doublons à l'octave »** que nommait la table de D542 : la grammaire ne compare une
+  note qu'à des valeurs, jamais à une AUTRE note ; c'est dit, et nommé.
+- **Les préréglages de l'utilisateur** : un champ « Enregistrer sous le nom » ; non vide au moment
+  d'appliquer, il range la règle (sous sa forme lisible française, D535.1 bis), l'action et la
+  valeur sous ce nom dans les préférences — un nom déjà pris est remplacé, et c'est dit. Un champ
+  plutôt qu'un bouton : un bouton d'une fenêtre JUCE la ferme.
+- **Le banc choisit une liste comme un utilisateur** : `VSM_OPTIONS` pose désormais la sélection
+  d'une liste AVEC notification (son `onChange` part), et non plus en silence — sans quoi aucun
+  banc ne pourrait voir un préréglage remplir la fenêtre. Seule la fenêtre de l'éditeur logique
+  écoute un `onChange` de liste aujourd'hui (relevé dans `app/Source`).
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : chaque préréglage livré se lit (`parseLogicalRule`) et sa forme lisible se relit
+   en la même règle ; leurs noms sont uniques ;
+2. par l'application : choisir « Fantômes » (`VSM_OPTIONS prereglage=2`) remplit la règle —
+   `VSM_LOGIQUE_REGLE` au journal après le choix — et l'appliquer supprime les trois fantômes du
+   projet de huit notes de D535.1 bis (le `.mid` relu en multiensemble) ; enregistrer sous « Mes
+   fantômes » → les préférences le portent ; rouverte sur ces préférences, la liste l'offre
+   (`VSM_LOGIQUE_PREREGLAGES` au journal) et le choisir remplit la même règle ;
+3. le banc `editeur-logique.sh` étendu, vu rouge sur un défaut remis à la main ; libellés traduits ;
+   la photo de la fenêtre dans les deux langues ; `--bancs` entier (le changement de `VSM_OPTIONS`
+   touche tous les bancs qui répondent à une liste).
