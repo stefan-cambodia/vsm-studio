@@ -386,6 +386,8 @@ public:
     std::function<void(vsm::midi::Tick)> onChordRequested;
     std::function<void(vsm::midi::Tick)> onChordEditRequested;
     std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
+    /// D542.1 : « Locateurs sur cette section » — la section qui contient le tick visé.
+    std::function<void(vsm::midi::Tick)> onSectionLocatorsRequested;
     /// D532.3 bis : la bande d'accords telle qu'elle est dessinée (`VSM_ACCORDS`).
     juce::String releverAccords() const;
 
@@ -436,7 +438,8 @@ private:
     /// en a pas à voir, et huit pixels de la largeur d'un clip ne doivent pas
     /// se comporter autrement sans raison visible.
     int marqueurAt(const vsm::sequencer::Clip& clip, float x) const;
-    juce::PopupMenu menuDeLaRegle(int survole, bool accordEnVigueur) const;   // D83, D532.3 bis
+    /// D542.1 : le TICK visé — l'accord en vigueur et la section qui le contient s'en déduisent ici.
+    juce::PopupMenu menuDeLaRegle(int survole, vsm::midi::Tick tick) const;   // D83, D532.3 bis
     bool accordEnVigueurA(vsm::midi::Tick tick) const;   // D532.3 bis
     juce::PopupMenu menuDuClip(size_t piste, const vsm::sequencer::Clip& clip, int surMarqueur) const;
     /// L'indice du marqueur qu'on déplace, et le tick du dernier clic droit --

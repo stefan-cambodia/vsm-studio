@@ -1111,6 +1111,13 @@ const Paire kAnglais[] = {
       "a condition is empty (one “and” too many?)" },
     { "Aucun symbole n'a été tapé : la ligne d'accords n'a pas changé.",
       "No symbol was typed: the chord track has not changed." },
+    // D542.1 : LES LOCATEURS SUR UNE SECTION (les « cycle markers » de Cubase).
+    { "Locateurs sur cette section",
+      "Locators to this section" },
+    { "Locateurs sur la section « %1 » : %2 à %3",
+      "Locators to section “%1”: %2 to %3" },
+    { "Locateurs sur la section",
+      "Locators to section" },
     // D535.3 : LA PLAGE SUR TOUTES LES PISTES.
     { "Copier entre les locateurs (toutes les pistes)",
       "Copy between the locators (all tracks)" },

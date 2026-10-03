@@ -1,3 +1,4 @@
+#include "vsm/sequencer/PlayOrder.h"   // D542.1 : sectionAt
 #include "PianoRollRulerComponent.h"
 #include "BandeAccords.h"   // D532.3 bis
 #include "EntreeDeMenu.h"   // D218 : entreeParLibelle, partagée depuis D115
@@ -198,7 +199,7 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
 
         // D218 : LE MENU EST CONSTRUIT ET EXÉCUTÉ AILLEURS, pour que le banc passe
         // par le MÊME code que la souris (la leçon de D115 pour le piano roll).
-        construireMenuDeRepere(survole, accordEnVigueurA(tick)).showMenuAsync(
+        construireMenuDeRepere(survole, tick).showMenuAsync(
             juce::PopupMenu::Options(), [this, tick, survole](int choix) {
                 actionDeMenuDeRepere(choix, tick, survole);
             });
@@ -302,8 +303,9 @@ void PianoRollRulerComponent::mouseDoubleClick(const juce::MouseEvent&) {
 // l'arrangement, le piano roll et les effets) ne le voyaient, et c'est ainsi que
 // ses trois libellés ont pu sortir en français dans l'interface anglaise jusqu'à
 // D217. Un menu qu'aucune course ne peut lire est un menu que personne ne relit.
-juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole, bool accordEnVigueur) const {
+juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole, Tick tick) const {
     using vsm::app::ui::tr;
+    const bool accordEnVigueur = accordEnVigueurA(tick);
     juce::PopupMenu menu;
     menu.addItem(1, tr(u8"Poser un repère ici…"));
     menu.addItem(3, tr(u8"Renommer ce repère…"), survole >= 0);
@@ -315,6 +317,11 @@ juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole, boo
     menu.addItem(4, tr(u8"Poser un accord ici…"));
     menu.addItem(5, tr(u8"Modifier cet accord…"), accordEnVigueur);
     menu.addItem(6, tr(u8"Retirer cet accord"), accordEnVigueur);
+    // D542.1 : LES LOCATEURS SUR UNE SECTION — mêmes libellé et rappel que la règle de l'arrangement.
+    menu.addSeparator();
+    const auto* projet = pianoRoll_.project();
+    menu.addItem(7, tr(u8"Locateurs sur cette section"),
+                 projet != nullptr && vsm::sequencer::sectionAt(*projet, tick).has_value());
     return menu;
 }
 
@@ -326,6 +333,7 @@ void PianoRollRulerComponent::actionDeMenuDeRepere(int choix, vsm::midi::Tick ti
     if (choix == 4 && onChordRequested) onChordRequested(tick);
     if (choix == 5 && onChordEditRequested) onChordEditRequested(tick);
     if (choix == 6 && onChordRemoveRequested) onChordRemoveRequested(tick);
+    if (choix == 7 && onSectionLocatorsRequested) onSectionLocatorsRequested(tick);   // D542.1
 }
 
 juce::String PianoRollRulerComponent::releverAccords() const {
@@ -350,7 +358,7 @@ int PianoRollRulerComponent::repereSousLaTete() const {
 bool PianoRollRulerComponent::actionDeMenuPourCapture(const juce::String& libelle) {
     const int survole = repereSousLaTete();
     const int choix = vsm::app::ui::entreeParLibelle(
-        construireMenuDeRepere(survole, accordEnVigueurA(pianoRoll_.playheadTick())), libelle);
+        construireMenuDeRepere(survole, pianoRoll_.playheadTick()), libelle);
     if (choix == 0) return false;
     actionDeMenuDeRepere(choix, pianoRoll_.playheadTick(), survole);
     return true;
@@ -362,7 +370,7 @@ juce::StringArray PianoRollRulerComponent::libellesDuMenuPourCapture() const {
     // un temporaire créé là meurt à la fin de l'instruction d'initialisation, et
     // l'itérateur lui survivait -- l'application tombait sur un `core dump` au
     // premier relevé (trouvé à la première course, 13/09).
-    const juce::PopupMenu menu = construireMenuDeRepere(repereSousLaTete(), accordEnVigueurA(pianoRoll_.playheadTick()));
+    const juce::PopupMenu menu = construireMenuDeRepere(repereSousLaTete(), pianoRoll_.playheadTick());
     for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
         if (it.getItem().itemID != 0)
             libelles.add(it.getItem().text + (it.getItem().shortcutKeyDescription.isNotEmpty() ? juce::String(" {") + it.getItem().shortcutKeyDescription + "}" : juce::String()) + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));

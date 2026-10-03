@@ -574,9 +574,11 @@ MainComponent::MainComponent()
     arrangement_.onChordRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, false); };
     arrangement_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
     arrangement_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { retirerAccord(tick); };
+    arrangement_.onSectionLocatorsRequested = [this](vsm::midi::Tick tick) { locateursSurSection(tick); };   // D542.1
     pianoRollPanel_.onChordRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, false); };
     pianoRollPanel_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
     pianoRollPanel_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { retirerAccord(tick); };
+    pianoRollPanel_.onSectionLocatorsRequested = [this](vsm::midi::Tick tick) { locateursSurSection(tick); };   // D542.1
     pianoRoll_.onLogicalEditorRequested = [this] { ouvrirEditeurLogique(); };   // D535.1 bis
 
     pianoRoll_.setHistory(&history_);
@@ -10174,6 +10176,21 @@ void MainComponent::locatorsFromSelection() {
     if (!trouve || fin <= debut) return;
     beginProjectEdit(u8"Locateurs sur la sélection");
     setLoopRegionEverywhere(debut, fin, true);
+}
+
+void MainComponent::locateursSurSection(vsm::midi::Tick tick) {
+    const auto section = vsm::sequencer::sectionAt(project_, tick);
+    if (!section) return;   // l'entrée est grisée hors de toute section
+    beginProjectEdit(u8"Locateurs sur la section");
+    setLoopRegionEverywhere(section->startTick, section->endTick, true);
+    const std::string ligne = "VSM_LOCATEURS : section « " + section->name + " » [" + std::to_string(section->startTick)
+                              + ", " + std::to_string(section->endTick) + "), boucle active\n";
+    std::fputs(ligne.c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Locateurs sur la section « %1 » : %2 à %3")
+                                       .replace("%1", juce::String::fromUTF8(section->name.c_str()))
+                                       .replace("%2", transportBar_.positionInBarsProvider(section->startTick))
+                                       .replace("%3", transportBar_.positionInBarsProvider(section->endTick)));
 }
 
 void MainComponent::editTimeAtLocators(bool inserer) {

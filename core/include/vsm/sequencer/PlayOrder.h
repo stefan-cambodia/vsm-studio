@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/sequencer/Project.h"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,10 @@ struct Section {
 /// « aplatir » sur un projet sans repère se contenterait de le recopier en
 /// donnant l'impression d'avoir travaillé.
 std::vector<Section> sectionsFromMarkers(const Project& project);
+
+/// D542.1 : LA SECTION QUI CONTIENT `tick` — celle d'où partent « Locateurs sur cette section »
+/// des deux règles. Rien avant le premier repère, rien sans repère, rien au-delà de la dernière.
+std::optional<Section> sectionAt(const Project& project, Tick tick);
 
 /// APLATIR : réécrit le projet pour qu'il JOUE l'ordre demandé.
 ///

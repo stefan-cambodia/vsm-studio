@@ -43,6 +43,12 @@ std::vector<Section> sectionsFromMarkers(const Project& project) {
     return sections;
 }
 
+std::optional<Section> sectionAt(const Project& project, Tick tick) {
+    for (const auto& section : sectionsFromMarkers(project))
+        if (tick >= section.startTick && tick < section.endTick) return section;
+    return std::nullopt;
+}
+
 bool flattenChangesTempoMeaning(const Project& project) {
     return project.tempoMap.changes().size() > 1
         || project.timeSignatureMap.changes().size() > 1;

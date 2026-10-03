@@ -1,3 +1,4 @@
+#include "vsm/sequencer/PlayOrder.h"   // D542.1 : sectionAt
 #include "ArrangementComponent.h"
 #include "BandeAccords.h"   // D532.3 bis
 #include "Shortcuts.h"   // D358 : ajouterAvecRaccourci
@@ -697,8 +698,9 @@ Clip* ArrangementComponent::clipAt(juce::Point<float> point, size_t& trackIndex,
     return nullptr;
 }
 
-juce::PopupMenu ArrangementComponent::menuDeLaRegle(int survole, bool accordEnVigueur) const {
+juce::PopupMenu ArrangementComponent::menuDeLaRegle(int survole, vsm::midi::Tick tick) const {
     using vsm::app::ui::tr;   // D83
+    const bool accordEnVigueur = accordEnVigueurA(tick);
     juce::PopupMenu menu;
     menu.addItem(1, tr(u8"Poser un repère ici…"));
     menu.addItem(2, tr(u8"Renommer ce repère…"), survole >= 0);
@@ -709,6 +711,11 @@ juce::PopupMenu ArrangementComponent::menuDeLaRegle(int survole, bool accordEnVi
     menu.addItem(4, tr(u8"Poser un accord ici…"));
     menu.addItem(5, tr(u8"Modifier cet accord…"), accordEnVigueur);
     menu.addItem(6, tr(u8"Retirer cet accord"), accordEnVigueur);
+    // D542.1 : LES LOCATEURS SUR UNE SECTION — mêmes libellé et rappel que la règle du piano roll.
+    // Grisée hors de toute section : sa présence enseigne que le geste existe.
+    menu.addSeparator();
+    menu.addItem(7, tr(u8"Locateurs sur cette section"),
+                 project_ != nullptr && vsm::sequencer::sectionAt(*project_, tick).has_value());
     return menu;
 }
 
@@ -877,7 +884,7 @@ std::vector<std::pair<juce::String, juce::PopupMenu>> ArrangementComponent::menu
     // D83 : les deux menus du clic droit, sur le premier clip MIDI et le premier
     // clip audio du projet -- la moitié du menu du clip n'existe que pour l'audio.
     std::vector<std::pair<juce::String, juce::PopupMenu>> menus;
-    menus.emplace_back(juce::String(u8"Arrangement / règle"), menuDeLaRegle(-1, accordEnVigueurA(playhead_)));
+    menus.emplace_back(juce::String(u8"Arrangement / règle"), menuDeLaRegle(-1, playhead_));
     if (project_ == nullptr) return menus;
     bool vuMidi = false, vuAudio = false;
     for (size_t p = 0; p < project_->tracks.size(); ++p) {
@@ -901,6 +908,7 @@ void ArrangementComponent::regleMenuAction(vsm::midi::Tick tick, int survole, in
     if (choix == 4 && onChordRequested) onChordRequested(tick);
     if (choix == 5 && onChordEditRequested) onChordEditRequested(tick);
     if (choix == 6 && onChordRemoveRequested) onChordRemoveRequested(tick);
+    if (choix == 7 && onSectionLocatorsRequested) onSectionLocatorsRequested(tick);   // D542.1
 }
 
 // D115 : `entreeParLibelle` vit dans EntreeDeMenu.h, partagée avec le piano roll.
@@ -921,7 +929,7 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
         //
         // « ? » ne fait rien et LISTE, comme pour les menus de clip (D222).
         const int survole = project_->markers.empty() ? -1 : 0;
-        const juce::PopupMenu menu = menuDeLaRegle(survole, accordEnVigueurA(playhead_));
+        const juce::PopupMenu menu = menuDeLaRegle(survole, playhead_);
         if (libelle == "?") {
             juce::StringArray libelles;
             for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
@@ -1011,7 +1019,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         if (event.mods.isPopupMenu()) {
             const vsm::midi::Tick tick = std::max<vsm::midi::Tick>(0, xToTick(point.x));
             const int survole = markerAt(point.x);
-            juce::PopupMenu menu = menuDeLaRegle(survole, accordEnVigueurA(tick));   // D83
+            juce::PopupMenu menu = menuDeLaRegle(survole, tick);   // D83
             menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
                 regleMenuAction(tick, survole, choix);   // D91 : une fonction, que le banc appelle aussi
             });

@@ -52,6 +52,8 @@ public:
     std::function<void(vsm::midi::Tick)> onChordRequested;
     std::function<void(vsm::midi::Tick)> onChordEditRequested;
     std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
+    /// D542.1 : « Locateurs sur cette section » — la section qui contient le tick visé.
+    std::function<void(vsm::midi::Tick)> onSectionLocatorsRequested;
     /// D532.3 bis : la bande d'accords telle qu'elle est dessinée (`VSM_ACCORDS`).
     juce::String releverAccords() const;
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;
@@ -91,7 +93,8 @@ public:
 private:
     /// D218 : la construction et l'exécution du menu des repères, partagées entre
     /// la souris et le banc.
-    juce::PopupMenu construireMenuDeRepere(int survole, bool accordEnVigueur) const;
+    /// D542.1 : le TICK visé — l'accord en vigueur et la section qui le contient s'en déduisent ici.
+    juce::PopupMenu construireMenuDeRepere(int survole, vsm::midi::Tick tick) const;
     bool accordEnVigueurA(vsm::midi::Tick tick) const;
     int hauteurBande() const;
     void actionDeMenuDeRepere(int choix, vsm::midi::Tick tick, int survole);

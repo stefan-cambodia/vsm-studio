@@ -301,3 +301,25 @@ VSM_TEST(les_controleurs_voyagent_et_ouvrent_leur_creneau) {
     }
     VSM_ASSERT(volumeOuvreB && coupureDansB && volumeDeA);
 }
+
+// D542.1 : LA SECTION QUI CONTIENT UN TICK — celle sur laquelle les deux règles posent les locateurs.
+VSM_TEST(section_at_rend_la_section_qui_contient_le_tick) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 480, 60, 100, 0, ids);
+    piste.addNote(5280, 5760, 67, 100, 0, ids);   // le matériau sonne jusqu'à 5 760
+    p.tracks.push_back(piste);
+    VSM_ASSERT(!sectionAt(p, 0).has_value());     // sans repère, aucune section
+    p.markers = {{0, "A"}, {1920, "B"}, {3840, "C"}};
+    VSM_ASSERT_EQ(sectionAt(p, 1920)->name, std::string("B"));
+    VSM_ASSERT_EQ(sectionAt(p, 3839)->name, std::string("B"));
+    VSM_ASSERT_EQ(sectionAt(p, 1920)->endTick, Tick(3840));
+    VSM_ASSERT_EQ(sectionAt(p, 5000)->name, std::string("C"));
+    VSM_ASSERT_EQ(sectionAt(p, 5000)->endTick, Tick(5760));   // jusqu'à la fin de ce qu'on entend
+    VSM_ASSERT(!sectionAt(p, 5760).has_value());               // au-delà de la dernière
+    p.markers = {{1920, "B"}};
+    VSM_ASSERT(!sectionAt(p, 0).has_value());                  // avant le premier repère
+}

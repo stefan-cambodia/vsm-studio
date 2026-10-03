@@ -107,6 +107,7 @@ public:
         ruler_.onChordRequested = [this](vsm::midi::Tick tick) { if (onChordRequested) onChordRequested(tick); };
         ruler_.onChordEditRequested = [this](vsm::midi::Tick tick) { if (onChordEditRequested) onChordEditRequested(tick); };
         ruler_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { if (onChordRemoveRequested) onChordRemoveRequested(tick); };
+        ruler_.onSectionLocatorsRequested = [this](vsm::midi::Tick tick) { if (onSectionLocatorsRequested) onSectionLocatorsRequested(tick); };   // D542.1
         velocityLane_.onVelocityEdited = [this] {
             pianoRoll_.repaint();
             if (onVelocityEdited) onVelocityEdited();
@@ -190,6 +191,7 @@ public:
     std::function<void(vsm::midi::Tick)> onChordRequested;
     std::function<void(vsm::midi::Tick)> onChordEditRequested;
     std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
+    std::function<void(vsm::midi::Tick)> onSectionLocatorsRequested;   // D542.1
     /// D532.3 bis : la bande d'accords du piano roll, telle qu'elle est dessinée.
     juce::String releverAccords() const { return ruler_.releverAccords(); }
 

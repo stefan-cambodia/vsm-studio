@@ -39950,7 +39950,7 @@ les sections existent depuis D18.4 —, et il fait de l'ordre de jeu un outil de
 le refrain qu'on travaille). Puis D542.2, qui prolonge l'éditeur logique que la chaîne sert déjà ;
 puis D542.3.
 
-### Phase D542.1 — les locateurs sur une section (03/10/2026)
+### Phase D542.1 — les locateurs sur une section (03/10/2026) — FAITE
 
 *Écrite avant son code, le 03/10 à 13 h 07.*
 
@@ -39975,3 +39975,21 @@ puis D542.3.
    grisée (au journal), la boucle intacte ; Ctrl+Z après le geste → la boucle d'avant ;
 3. un banc `tools/locateurs-section.sh` qui joue 2, vu rouge sur un défaut remis à la main, entré
    dans `verifier.sh --bancs` ; `menus-des-regles.py` vert ; le libellé traduit.
+
+**D542.1 EST FAITE (03/10, 13 h 15).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur | core 426 → **427** : `sectionAt` rend B pour 1 920 et 3 839, C pour 5 000 (fin 5 760, ce qu'on entend), rien sans repère, avant le premier, ni au-delà de la dernière — ROUGE sur la fin de section incluse | **oui** |
+| 2 | par l'application | `tools/locateurs-section.sh`, `project.json` relu : par la règle de l'arrangement **active:1920:3840**, par celle du piano roll la même, la tête dans C **active:3840:5760**, Ctrl+Z **inactive:0:0** ; le premier repère à 1 920 et la tête à 0 : « est GRISÉE » au journal, la boucle intacte ; « VSM_LOCATEURS : section « B » [1920, 3840), boucle active » | **oui** |
+| 3 | le banc, les gardes | 6 contrôles ; **vu rouge** sur la boucle posée mais non activée (3 contrôles), binaire recompilé, puis vert ; entré dans `verifier.sh --bancs` (56) ; `menus-des-regles.py` vert (les deux règles, même libellé, même rappel `onSectionLocatorsRequested`) ; libellés traduits | **oui** |
+
+**TRANCHÉ EN ÉCRIVANT LE CODE.** Les deux constructeurs de menu reçoivent le TICK visé et en
+déduisent eux-mêmes l'accord en vigueur et la section : six appels passaient un booléen calculé
+chacun de son côté, et un septième aurait pu oublier le second. **Écart, et sa raison** :
+`gestes-vivants.py` ne joue pas l'entrée — son projet d'essai (`cdl`) n'a aucun repère, elle y est
+grisée ; `annulation-des-menus.py`, qui juge les menus des règles, la verra à la série entière.
+
+**LES SUITES** (relevé à 13 h 22) : core **427**, audio 1 316, interchange 336, clap 25, panneaux 11 ;
+Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). **`--bancs` entier : joué avec
+celui de D542.2**, qui change la façon dont le banc répond aux listes et touche donc tous les bancs.

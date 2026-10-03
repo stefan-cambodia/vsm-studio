@@ -1466,6 +1466,8 @@ private:
     /// LES LOCATEURS SUR LA SÉLECTION : les clips de l'arrangement, ou à
     /// défaut les notes du piano roll.
     void locatorsFromSelection();
+    /// D542.1 : la boucle posée sur la section qui contient `tick`, et activée — un pas, dit.
+    void locateursSurSection(vsm::midi::Tick tick);
     /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la position d'où la lecture est
     /// partie, et l'état précédent du transport pour voir la transition.
     bool retourAuDepart_ = false;
