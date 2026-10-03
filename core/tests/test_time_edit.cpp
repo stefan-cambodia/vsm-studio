@@ -247,3 +247,42 @@ VSM_TEST(supprimer_la_fin_d_un_morceau_a_clips_le_raccourcit_malgre_le_materiau_
     VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(1920));
     VSM_ASSERT(planifieesParLeMoteur(p) == (std::vector<std::pair<int, int>>{{0, 60}}));
 }
+
+// D541 : UN CLIP OUVERT (`sourceLength` et `length` nuls — celui que pose l'import FL Studio ou
+// Ableton) qui ne fait rien entendre après 1 200 n'est pas coupé par une édition de temps posée
+// plus loin, et n'y laisse pas d'écharde.
+namespace {
+Project pisteImportee() {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    piste.addNote(960, 1200, 64, 100, 0, ids);
+    Clip ouvert;   // tout à zéro : « jusqu'au bout du matériau »
+    piste.clips = {ouvert};
+    p.tracks.push_back(piste);
+    p.assignClipIds();
+    return p;
+}
+}
+
+VSM_TEST(inserer_du_temps_apres_un_clip_ouvert_ne_le_coupe_pas) {
+    Project p = pisteImportee();
+    const auto avant = entenduesD538(p);
+    insertTime(p, 1920, 960, [&p](Tick t) { return p.ticksToSeconds(t); });
+    VSM_ASSERT_EQ(p.tracks[0].clips.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[0].clips[0].sourceLength, Tick(0));
+    VSM_ASSERT_EQ(p.tracks[0].clips[0].length, Tick(0));
+    VSM_ASSERT(entenduesD538(p) == avant);
+}
+
+VSM_TEST(supprimer_du_temps_apres_un_clip_ouvert_ne_le_coupe_pas) {
+    Project p = pisteImportee();
+    const auto avant = entenduesD538(p);
+    deleteTime(p, 1920, 2880, [&p](Tick t) { return p.ticksToSeconds(t); });
+    VSM_ASSERT_EQ(p.tracks[0].clips.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[0].clips[0].sourceLength, Tick(0));
+    VSM_ASSERT(entenduesD538(p) == avant);
+}

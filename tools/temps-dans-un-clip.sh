@@ -9,6 +9,9 @@
 #       DISPARAISSAIT ;
 #   (3) « Supprimer le temps entre les locateurs » : sol à 1 920. Avant D538, il sonnait une
 #       plage trop tôt.
+#   (4) D541 : sur une piste à clip OUVERT (celui que pose l'import FL Studio ou Ableton) dont le
+#       matériau finit à 1 200, insérer du temps à 1 920 laisse UN clip, toujours ouvert — avant
+#       D541, une écharde d'un tick naissait au-delà de la coupe (`project.json` relu).
 #
 #   tools/temps-dans-un-clip.sh [binaire]
 set -u
@@ -45,12 +48,26 @@ json.dump({"format": "vsm-project", "version": 1, "title": "essai", "midi": {"fi
                        "instrument": {"preferredPlugin": "vsm.minimoog"},
                        "mix": {"muted": False, "pan": 0.0, "sends": [], "solo": False, "volume": 0.8},
                        "name": "Piano"}]}, open(f"{d}/project.json", "w"), indent=1)
+# D541 : la même piste, son clip OUVERT (tout à zéro), le matériau finissant à 1 200 ; locateurs plus loin.
+o = d.replace("/clip", "/ouvert")
+import os, shutil
+shutil.copytree(d, o)
+j = json.load(open(f"{o}/project.json"))
+j["tracks"][0]["clips"] = [{"sourceStart": 0, "sourceLength": 0, "start": 0, "length": 0, "color": "#FF6B9BFF"}]
+j["transport"]["loop"] = {"enabled": False, "startTick": 1920, "endTick": 2880}
+evs = [(0, b"\xff\x51\x03\x07\xa1\x20"), (0, b"\xff\x03\x05Piano"),
+       (0, bytes([0x90, 60, 100])), (240, bytes([0x80, 60, 0])),
+       (720, bytes([0x90, 64, 100])), (240, bytes([0x80, 64, 0]))]
+corps = b"".join(vlq(dt) + o2 for dt, o2 in evs) + b"\x00\xff\x2f\x00"
+open(f"{o}/midi/arrangement.mid", "wb").write(b"MThd" + struct.pack(">IHHH", 6, 1, 1, 480)
+                                              + b"MTrk" + struct.pack(">I", len(corps)) + corps)
+json.dump(j, open(f"{o}/project.json", "w"), indent=1)
 PY2
 
-course() {   # $1 = nom ; $2 = VSM_GESTE_APRES
+course() {   # $1 = nom ; $2 = VSM_GESTE_APRES ; $3 = projet (« clip » par défaut)
     local nom="$1" maison
     maison="$(mktemp -d "$brouillon/home.XXXX")"   # D318 : un HOME NEUF par course
-    env HOME="$maison" VSM_PROJET="$brouillon/clip" VSM_TAILLE="1600x1000" VSM_VUE="sans-rapport" \
+    env HOME="$maison" VSM_PROJET="$brouillon/${3:-clip}" VSM_TAILLE="1600x1000" VSM_VUE="sans-rapport" \
         VSM_DELAI=3000 VSM_GESTE_APRES="$2" VSM_CAPTURE="$brouillon/$nom.png" timeout 60 "$BIN" > "$brouillon/$nom.txt" 2>&1
     grep -E "VSM_(GESTE_APRES|MENU) : .*(aucun|AUCUN|inconnu|introuvable|refus|REFUS|ATTENTION|AMBIGU|grisée)" "$brouillon/$nom.txt" \
         | sed "s/^/        journal ($nom) : /" >&2
@@ -95,6 +112,18 @@ echo "       témoin {$t} ; inséré {$i} ; supprimé {$s}"
 verdict "(1) le témoin : do à 0, sol à 2 880" "$([ "$t" = "1:0:60 1:2880:67" ] && echo 1 || echo 0)"
 verdict "(2) insérer 960 ticks à 960 : le sol s'entend, à 3 840" "$([ "$i" = "1:0:60 1:3840:67" ] && echo 1 || echo 0)"
 verdict "(3) supprimer [960, 1 920) : le sol à 1 920" "$([ "$s" = "1:0:60 1:1920:67" ] && echo 1 || echo 0)"
+
+course ouvert "1200:menu:Insérer du silence entre les locateurs;1600:enregistrer:$brouillon/ouvert-insere" ouvert
+clips="$(python3 -c "
+import json, sys
+try:
+    j = json.load(open(sys.argv[1]))
+except Exception:
+    print('ABSENT'); sys.exit(0)
+print(' '.join(f\"{c['sourceStart']}+{c['sourceLength']}@{c['start']}x{c['length']}\" for c in j['tracks'][0].get('clips', [])))
+" "$brouillon/ouvert-insere/project.json")"
+echo "       clip ouvert, temps inséré à 1 920 : {$clips}"
+verdict "(4) D541 : un seul clip, toujours ouvert, sans écharde" "$([ "$clips" = "0+0@0x0" ] && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "TEMPS DANS UN CLIP : $rates contrôle(s) raté(s)"; exit 1; fi

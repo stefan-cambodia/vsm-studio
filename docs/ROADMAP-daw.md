@@ -39883,7 +39883,7 @@ ne touchent pas `app/Source` : la série entière, jouée pour D535.3 sur le bin
 n'est pas rejouée.
 
 
-### Phase D541 — l'écharde d'un tick : insérer du temps après la fin d'un clip ouvert le coupe quand même (03/10/2026)
+### Phase D541 — l'écharde d'un tick : insérer du temps après la fin d'un clip ouvert le coupe quand même (03/10/2026) — FAITE
 
 *Écrite avant sa mesure, le 03/10 à 12 h 47 — le reste (a) nommé par D539. (Le premier jet disait « 13 h 07 », une heure écrite de tête ; relue à l’horloge.)*
 
@@ -39901,3 +39901,21 @@ du temps à 1 920 — APRÈS tout ce qu'elle fait entendre — crée un clip d'u
 la fenêtre du premier ; supprimer [1 920, 2 880) fait de même. Mesure : le nombre de clips et leurs
 fenêtres après chaque geste (attendu : un seul clip, inchangé), et ce qu'on entend (inchangé dans
 les deux cas, l'écharde lisant un matériau vide).
+
+**MESURÉE — vraie, sur les deux gestes.** Insérer 960 à 1 920 : [0, 1 920) devenue explicite, et
+une écharde « 1 920 + 1 » posée à 2 880 ; supprimer [1 920, 2 880) : [0, 1 920) et une écharde
+« 2 880 + 1 » à 1 920. **CE QUI EST TRANCHÉ** : la fin de matériau que voit `splitClips` est celle
+de la LECTURE — `lastUsedTick()` du projet, celle que `clipPassages` emploie —, relevée AVANT le
+geste, sans l'allonger jusqu'à la coupe : un clip qui ne fait rien entendre au point de coupe n'est
+pas coupé. **ATTENDUS** : les deux tests verts et rouges sur l'ancien calcul ; D13.3, D538, D539,
+D540 et D535.3 verts ; les bancs de temps verts.
+
+**D541 EST FAITE (03/10, 12 h 51).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | pas d'écharde | core : insérer 960 à 1 920 et supprimer [1 920, 2 880) après un clip ouvert qui finit d'entendre à 1 200 laissent UN clip, toujours ouvert, et ce qu'on entend inchangé — ROUGES sur l'ancien calcul (deux clips, dont l'écharde d'un tick). **Par l'application** (`temps-dans-un-clip.sh`, contrôle 4, `project.json` relu après « Insérer du silence ») : binaire d'avant {0+1920@0x1920 **1920+1@2880x1**}, corrigé **{0+0@0x0}** | **oui** |
+| 2 | rien de cassé | core 424 → **426** ; D13.3, D538, D539, D540, D535.3 verts ; `finDuMateriau`, devenue inutile, retirée (le compilateur le disait) ; les cinq bancs de temps verts sur le nouveau binaire | **oui** |
+
+**LES SUITES** (relevé à 13 h 06) : core **426**, audio 1 316, interchange 336, clap 25, panneaux 11 ;
+Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0).

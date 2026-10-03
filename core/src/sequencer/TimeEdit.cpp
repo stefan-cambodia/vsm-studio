@@ -94,13 +94,6 @@ size_t glisserClips(std::vector<Clip>& clips, Tick at, Tick delta, Tick material
     return touches;
 }
 
-Tick finDuMateriau(const Track& track, const std::function<double(Tick)>&) {
-    Tick fin = 0;
-    for (const auto& note : track.notes) fin = std::max(fin, note.endTick);
-    for (const auto& clip : track.clips) fin = std::max(fin, clip.startTick + clip.length);
-    return fin;
-}
-
 size_t appliquer(Project& project, Tick at, Tick delta,
                  const std::function<double(Tick)>& ticksToSeconds) {
     if (delta == 0 || at < 0) return 0;
@@ -108,6 +101,7 @@ size_t appliquer(Project& project, Tick at, Tick delta,
     uint64_t idNotes = 1;
     for (const auto& t : project.tracks) for (const auto& n : t.notes) idNotes = std::max(idNotes, n.id + 1);
     uint64_t idClips = project.peekNextClipId();
+    const Tick finMateriauDeLaLecture = project.lastUsedTick();   // D541, relevée AVANT le geste
 
     for (auto& track : project.tracks) {
         // D539 : LA RÈGLE DE CUBASE. Sur une piste À CLIPS, une édition de temps coupe et fait
@@ -118,7 +112,11 @@ size_t appliquer(Project& project, Tick at, Tick delta,
         // contrôleurs. Les fenêtres gardent leur `sourceStart` : la seconde moitié d'un clip coupé
         // lit le même matériau qu'avant (ce qui rend sans objet le glissement de fenêtres de D538).
         // Les clips audio ont leur fenêtre en secondes, et `splitClips` la coupe correctement.
-        const Tick materiau = std::max<Tick>(finDuMateriau(track, ticksToSeconds), at - std::min<Tick>(0, delta)) + 1;
+        // D541 : LA FIN DE MATÉRIAU DE LA LECTURE (`clipPassages` : celle du projet, relevée avant le
+        // geste), sans l'allonger jusqu'à la coupe. Allongée (`max(fin, at) + 1`), elle faisait passer
+        // un clip ouvert — celui que pose l'import FL Studio ou Ableton — pour enjamber une coupe posée
+        // après tout ce qu'il fait entendre : il était coupé, et laissait une écharde d'un tick.
+        const Tick materiau = finMateriauDeLaLecture;
         const auto glisserLeMateriau = [&](std::vector<Note>& notes, bool aDesClips) {
             if (aDesClips && track.kind != Track::Kind::Audio) return;
             touches += glisserNotes(notes, at, delta, idNotes);
