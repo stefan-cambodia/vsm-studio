@@ -39758,3 +39758,28 @@ et après chaque geste. **Si elle est vraie**, la règle saine est celle de Cuba
 à clips, une édition de temps coupe et fait glisser les FENÊTRES, jamais le matériau —, ce qui
 oblige « Coller la plage » (D535.3) à poser ses notes dans un matériau NEUF plutôt qu'au trou que
 le glissement du matériau ouvrait.
+
+**MESURÉE — le défaut est là, le symptôme n'était pas celui écrit.** Le témoin : do, sol, do, sol à
+0, 1 000, 2 000, 3 000 ms. Après **« Insérer » 480 à 480** : le motif est juste (do 0, sol 1 500),
+mais la COPIE fait entendre son sol à **4 000 ms au lieu de 3 500** — décalée de la plage insérée,
+non perdue. Après **« Supprimer » [480, 960)** : le motif est juste (do 0, sol 500), la copie fait
+entendre son sol à **2 000 ms au lieu de 2 500**. L'hypothèse disait « perdue » et « effacée » :
+c'est faux — le sol est posé pile sur la borne 960, que la suppression exclut, et la fenêtre de la
+copie, assez longue, le retrouve plus loin. Ce que le geste ne visait pas a changé : c'est cela, le
+défaut.
+
+**CE QUI EST TRANCHÉ — la règle de Cubase.** Sur une piste à clips, une édition de temps coupe et
+fait glisser les FENÊTRES, et ne touche jamais au MATÉRIAU ; seule une piste sans clip (où matériau
+et ligne de temps ne font qu'un) voit glisser ses notes et ses contrôleurs. Les fenêtres gardent
+leur `sourceStart` — le glissement de fenêtres de D538 devient sans objet et disparaît —, et la
+seconde moitié d'un clip coupé lit le même matériau qu'avant. Conséquence pour D535.3 : le trou
+qu'ouvre l'insertion n'est plus libre dans le matériau d'une piste à clips ; « Coller la plage »
+y pose ses notes dans un matériau NEUF, au-delà de tout ce qu'une fenêtre lit, et ses clips sont
+des fenêtres sur ce matériau neuf. Une fenêtre « jusqu'au bout du matériau » (`sourceLength` nul)
+est d'abord bornée à ce qu'elle lisait, pour ne pas avaler le matériau neuf.
+
+**ATTENDUS.** 1. les deux tests de la copie liée verts, rouges sur le code d'avant ; 2. D538, D13.3,
+D535.3, D537 verts (les tests du cœur et les bancs `temps-dans-un-clip.sh`, `copier-plage.sh`,
+`aplatir-clips.sh`) ; 3. un test de collage sur une piste à copies liées : la copie liée reste
+intacte et la plage collée s'entend ; 4. un clip à fenêtre ouverte (`sourceLength` nul) n'avale pas
+le collage.
