@@ -255,11 +255,12 @@ VSM_TEST(fenetres_deplacees_liees_et_muettes_voyagent_avec_ce_qu_elles_font_ente
     // Avant : A = do, mi ; B = do, mi (le lié) puis do aigu (le déplacé) ; le muet se tait.
     VSM_ASSERT(notesJouees(project) == (std::vector<std::pair<int, int>>{{0, 60}, {250, 64}, {2000, 60}, {2250, 64}, {2500, 72}}));
     VSM_ASSERT(flattenPlayOrder(project, {1, 0}));
-    // Après {B, A} : B d'abord, puis A là où B finit. B, DERNIÈRE section, court jusqu'à la fin
-    // du MATÉRIAU (`sectionsFromMarkers`) — 5 240, le matériau lointain —, et non jusqu'à la
-    // dernière chose entendue (3 360) : l'écart est nommé au § D537, hors de cette correction.
+    // Après {B, A} : B d'abord, puis A là où B finit. B, DERNIÈRE section, court jusqu'à la
+    // dernière chose ENTENDUE — 3 360, la fin du clip muet. Jusqu'à D540 elle courait jusqu'à la
+    // fin du MATÉRIAU (5 240, le matériau lointain), et ce test l'épinglait : c'était le reste
+    // nommé de D537.
     const auto apres = notesJouees(project);
-    const Tick longueurB = 5240 - 1920;
+    const Tick longueurB = 3360 - 1920;
     const int msA = static_cast<int>(std::lround(project.ticksToSeconds(longueurB) * 1000.0));
     VSM_ASSERT(apres == (std::vector<std::pair<int, int>>{{0, 60}, {250, 64}, {500, 72}, {msA, 60}, {msA + 250, 64}}));
     // Le clip muet existe toujours, muet, à sa place dans le créneau de B, et ses notes sont là.

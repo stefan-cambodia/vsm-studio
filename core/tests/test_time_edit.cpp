@@ -176,3 +176,74 @@ VSM_TEST(supprimer_du_temps_au_milieu_d_un_clip_midi_garde_ce_qui_suit_audible) 
     deleteTime(p, 960, 1920, [&p](Tick t) { return p.ticksToSeconds(t); });
     VSM_ASSERT(entenduesD538(p) == (std::vector<std::pair<int, int>>{{0, 60}, {2000, 67}}));
 }
+
+// D539 : UNE COPIE LIÉE (D34.2) — deux fenêtres sur le MÊME matériau. Une édition de temps dans le
+// premier motif ne doit pas changer ce que fait entendre le second.
+namespace {
+Project motifEtSaCopieLiee() {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);   // 120 BPM : 960 ticks = 1 000 ms
+    Track piste;
+    piste.name = "Motif";
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    piste.addNote(960, 1200, 67, 100, 0, ids);
+    Clip motif, copie;
+    motif.sourceStart = 0; motif.sourceLength = 1920; motif.startTick = 0;    motif.length = 1920;
+    copie.sourceStart = 0; copie.sourceLength = 1920; copie.startTick = 1920; copie.length = 1920;
+    piste.clips = {motif, copie};
+    p.tracks.push_back(piste);
+    p.assignClipIds();
+    return p;
+}
+}
+
+VSM_TEST(inserer_du_temps_dans_un_motif_ne_change_pas_sa_copie_liee) {
+    Project p = motifEtSaCopieLiee();
+    VSM_ASSERT(entenduesD538(p) == (std::vector<std::pair<int, int>>{{0, 60}, {1000, 67}, {2000, 60}, {3000, 67}}));
+    insertTime(p, 480, 480, [&p](Tick t) { return p.ticksToSeconds(t); });
+    // Le motif coupé à 480 : do à 0, sol à 960 + 480 ; la copie, glissée de 480, intacte.
+    VSM_ASSERT(entenduesD538(p) == (std::vector<std::pair<int, int>>{{0, 60}, {1500, 67}, {2500, 60}, {3500, 67}}));
+}
+
+VSM_TEST(supprimer_du_temps_dans_un_motif_ne_change_pas_sa_copie_liee) {
+    Project p = motifEtSaCopieLiee();
+    deleteTime(p, 480, 960, [&p](Tick t) { return p.ticksToSeconds(t); });
+    // Le motif perd [480, 960) : do à 0, sol à 480 ; la copie, reculée de 480, intacte.
+    VSM_ASSERT(entenduesD538(p) == (std::vector<std::pair<int, int>>{{0, 60}, {500, 67}, {1500, 60}, {2500, 67}}));
+}
+
+// D540 : LA FIN D'UN PROJET EST CE QU'IL FAIT ENTENDRE. Le moteur planifie jusqu'à
+// `lastSoundingTick() + une noire` (`ProcessGraph::setProject`) : c'est cette borne qu'on garde.
+namespace {
+std::vector<std::pair<int, int>> planifieesParLeMoteur(const Project& p) {
+    std::vector<std::pair<int, int>> notes;
+    for (const auto& e : PlaybackScheduler::build(p, 0, p.lastSoundingTick() + p.ticksPerQuarterNote))
+        if (const auto* on = std::get_if<vsm::midi::NoteOnEvent>(&e.data))
+            notes.emplace_back(static_cast<int>(std::lround(e.timeSeconds * 1000.0)), static_cast<int>(on->note));
+    std::sort(notes.begin(), notes.end());
+    return notes;
+}
+}
+
+VSM_TEST(une_copie_liee_au_dela_du_materiau_est_planifiee_par_le_moteur) {
+    const Project p = motifEtSaCopieLiee();   // matériau jusqu'à 1 200, copie liée jusqu'à 3 840
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(3840));
+    VSM_ASSERT(planifieesParLeMoteur(p) == (std::vector<std::pair<int, int>>{{0, 60}, {1000, 67}, {2000, 60}, {3000, 67}}));
+}
+
+VSM_TEST(inserer_du_temps_dans_un_morceau_a_clips_ne_coupe_pas_sa_fin) {
+    Project p = clipIdentite();   // un clip [0, 3 840), sol à 2 880
+    insertTime(p, 0, 1920, [&p](Tick t) { return p.ticksToSeconds(t); });
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(5760));
+    VSM_ASSERT(planifieesParLeMoteur(p) == (std::vector<std::pair<int, int>>{{2000, 60}, {5000, 67}}));
+}
+
+VSM_TEST(supprimer_la_fin_d_un_morceau_a_clips_le_raccourcit_malgre_le_materiau_qui_reste) {
+    Project p = clipIdentite();
+    deleteTime(p, 1920, 3840, [&p](Tick t) { return p.ticksToSeconds(t); });
+    // Le sol (2 880) reste dans le matériau, qu'aucune fenêtre ne lit plus (D539) : il ne compte pas.
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(1920));
+    VSM_ASSERT(planifieesParLeMoteur(p) == (std::vector<std::pair<int, int>>{{0, 60}}));
+}

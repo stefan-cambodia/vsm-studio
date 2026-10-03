@@ -567,10 +567,22 @@ midi::Tick Project::lastUsedTick() const {
 }
 
 midi::Tick Project::lastSoundingTick() const {
-    Tick last = lastUsedTick();
-    for (const auto& t : tracks)
+    // D540 : piste par piste — la fin du matériau pour une piste SANS clip, celle de ses clips
+    // pour une piste qui en a (voir la déclaration).
+    const Tick finMateriau = lastUsedTick();
+    Tick last = 0;
+    for (const auto& t : tracks) {
+        if (t.clips.empty()) {
+            for (const auto& n : t.notes) last = std::max(last, n.endTick);
+            for (const auto& c : t.controlChanges) last = std::max(last, c.tick);
+            for (const auto& p : t.pitchBends) last = std::max(last, p.tick);
+            continue;
+        }
+        // Un clip AUDIO a sa fenêtre en secondes : sa longueur posée fait foi, comme avant.
         for (const auto& c : t.clips)
-            last = std::max(last, c.startTick + std::max<Tick>(c.length, 0));
+            last = std::max(last, c.startTick + (t.kind == Track::Kind::Audio ? std::max<Tick>(c.length, 0)
+                                                                               : clipPlayedLength(c, finMateriau)));
+    }
     return last;
 }
 

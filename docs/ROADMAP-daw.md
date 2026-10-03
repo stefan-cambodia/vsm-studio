@@ -39737,7 +39737,7 @@ mois plus tard. Le geste « Insérer du silence » au milieu d'une partie faisai
 partie, sans un mot. Trouvé non par un banc de D13.3 mais par un test de D535.3 qui y passait.
 
 
-### Phase D539 — les éditions de temps sur une piste à clips déplacent le matériau d'après la ligne de temps : une hypothèse, écrite avant sa mesure (03/10/2026)
+### Phase D539 — les éditions de temps sur une piste à clips déplacent le matériau d'après la ligne de temps : une hypothèse, écrite avant sa mesure (03/10/2026) — FAITE
 
 *Écrite le 03/10 à 8 h 15, D538 faite : c'est le reste qu'elle nommait.*
 
@@ -39785,7 +39785,34 @@ intacte et la plage collée s'entend ; 4. un clip à fenêtre ouverte (`sourceLe
 le collage.
 
 
-### Phase D540 — le moteur ne planifie que jusqu'à la fin du MATÉRIAU : une hypothèse, écrite avant sa mesure (03/10/2026)
+**D539 EST FAITE (03/10, 12 h 38).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | la copie liée intacte | core : insérer 480 à 480 → (0, do), (1 500, sol), (2 500, do), (3 500, sol) ; supprimer [480, 960) → (0, do), (500, sol), (1 500, do), (2 500, sol) — rouges sur l'ancien `TimeEdit.cpp` (le sol de la copie à 4 000 et 2 000 ms). **Par l'application** (`tools/copie-liee-temps.sh`, `.mid` exporté) : le binaire d'avant rend {1:0:60 1:1440:67 1:2400:60 **1:3840:67**} et {1:0:60 1:480:67 1:1440:60 **1:1920:67**}, le corrigé {… **1:3360:67**} et {… **1:2400:67**} | **oui** |
+| 2 | rien de cassé | core 417 → **421** ; D13.3, D537, D538 verts ; les tests de D535.3 verts après que le collage pose ses notes dans un matériau neuf — un seul test réécrit, et pourquoi : il cherchait la note sous le clip muet à la MÊME position de matériau, ce que la règle rend faux ; il lit maintenant la fenêtre du clip. Bancs rejoués sur le nouveau binaire : `temps-dans-un-clip.sh`, `copier-plage.sh`, `aplatir-clips.sh` verts ; `annulation-des-menus.py` vert (159 justes, dont « Couper la plage », 65 sans effet avec trace, dont « Copier ») | **oui** |
+| 3 | coller sur une piste à copie liée | la première noire du motif collée à 1 920 : (2 000, do) entendu, la copie reculée d'une noire et intacte | **oui** |
+| 4 | la fenêtre ouverte | une fenêtre « jusqu'au bout du matériau » posée APRÈS la tête, glissée sans être coupée : bornée, elle n'avale pas le matériau neuf — rouge sans le bornage. Le premier essai la mettait AVANT la tête, où `insertTime` la coupe donc la borne déjà : il ne pouvait rien voir | **oui** |
+
+**CE QUE LA RÈGLE CHANGE, DIT.** Sur une piste à clips, supprimer du temps ne supprime plus de
+notes du matériau : celles qu'aucune fenêtre ne lit plus y restent, inaudibles — c'est le prix de
+ne jamais effacer ce qu'une copie liée lit ailleurs. Le collage de plage, lui, fait grandir le
+matériau à chaque fois.
+
+**NOMMÉ, NON FAIT.** (a) Une fenêtre ouverte (`sourceLength` nul) qui commence avant le point
+d'insertion est coupée par `insertTime` en deux, dont une ÉCHARDE d'un tick (« 1920 + 1 @ 2400 »
+dans le relevé du test) : la règle de fin de matériau de D13.3 (`at + 1`) l'allonge d'un tick au-delà
+de la coupe. Silencieuse, mais visible dans l'arrangement. (b) Le reste nommé de D537 est fait par D540.
+
+**ET D539 SEULE AURAIT CASSÉ DEUX CHOSES — trouvées avant le commit.** En vérifiant ce qu'elle
+change, la lecture de `ProcessGraph::setProject` (un planning borné à la fin du MATÉRIAU) a fait
+écrire D540 ; mesuré par l'export audio sur le binaire de D539 : après « Insérer du silence », la
+dernière mesure était MUETTE, et supprimer la fin laissait 0,5 s de silence de trop. D539 n'a donc
+été commitée qu'avec D540. Ses bancs exportaient en MIDI, qui ne passe pas par le moteur : ils ne
+pouvaient pas le voir.
+
+
+### Phase D540 — le moteur ne planifie que jusqu'à la fin du MATÉRIAU : une hypothèse, écrite avant sa mesure (03/10/2026) — FAITE
 
 *Écrite le 03/10 à 11 h 31, D539 codée mais PAS commitée : c'est en vérifiant ce qu'elle change que
 la lecture suivante a été faite.*
@@ -39811,3 +39838,46 @@ clips n'a pas de raison d'avoir sa fin de matériau là où finit ce qu'elle fai
 une piste sans clip, la fin de ses clips (fenêtres et répétitions) pour une piste à clips — une
 seule fonction pour le planning du moteur, le transport, l'export, et la dernière section de
 l'ordre de jeu (le reste nommé de D537).
+
+
+**MESURÉE — les trois hypothèses sont vraies** (`tools/fin-du-morceau.sh`, crêtes par fenêtre de 2 s
+de l'export audio, binaire d'avant D539 / binaire de D539 / binaire corrigé) :
+1. la copie liée au-delà du matériau : **−138,5 dB** dans sa mesure sur les deux premiers — muette
+   depuis toujours ; le témoin (matériau prolongé d'une note orpheline) : −15,9 dB ; corrigé :
+   **−15,9 dB** ;
+2. après « Insérer du silence » d'une mesure au début : la dernière mesure à −15,0 dB avant D539,
+   **−138,5 dB** avec D539 — la régression —, **−15,0 dB** corrigé ;
+3. après « Supprimer le temps » de la dernière mesure : 4,0 s avant D539, **4,5 s** avec D539 (le
+   matériau orphelin comptait), **4,0 s** corrigé.
+
+**D540 EST FAITE (03/10, 12 h 38).** `lastSoundingTick` compte piste par piste ce qu'elle fait
+entendre — le matériau pour une piste sans clip, ses clips (fenêtres et répétitions) pour une
+piste à clips, la longueur posée pour un clip audio — et le moteur planifie jusque-là, plus une
+noire. Le transport, l'export, le gel et la dernière section de l'ordre de jeu, qui l'employaient
+déjà, suivent sans autre changement.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | la copie liée sonne | **audio** (`test_fin_du_planning.cpp`, à travers le vrai graphe et `vsm.testtone`) : crête > 0,01 sur le do de la copie à 2 s — ROUGE sur l'ancien `ProcessGraph.cpp` ; **export** : −15,9 dB | **oui** |
+| 2 | la fin après insertion sonne | **audio** : le sol poussé à 5 s sonne — ROUGE sur l'ancien ; **export** : −15,0 dB | **oui** |
+| 3 | l'export raccourcit | core : `lastSoundingTick` = 1 920 après la suppression de la dernière mesure, le sol orphelin ne compte pas — ROUGE sur l'ancien `lastSoundingTick` ; **export** : 4,0 s | **oui** |
+| 4 | le reste nommé de D537 | la dernière section d'« Aplatir » finit à la dernière chose entendue : le test de D537 qui épinglait 5 240 (la fin du matériau) dit maintenant 3 360 | **oui** |
+
+**UNE GARDE QUI NE GARDAIT PAS, RECONNUE.** Les deux premiers tests écrits au cœur
+(`planifieesParLeMoteur`) passaient aussi sur l'ancien `lastSoundingTick` : ils recopiaient la
+borne du moteur avec la fonction CORRIGÉE, alors que le défaut était dans le CHOIX de la fonction
+par `ProcessGraph`. Vus verts sur l'ancien code, ils ont été remplacés, comme garde, par le test
+d'`audio/` qui écoute le vrai graphe ; ils restent pour ce qu'ils mesurent (la valeur de la borne).
+
+**CE QUI CHANGE AILLEURS, DIT.** `vsm-render` (le rendu des campagnes) passe par le même
+`setProject` et la même longueur d'export : un projet dont le matériau dépasse ses clips s'exporte
+désormais à la longueur de ce qu'il fait entendre. Les mesures en cache sont rangées par
+l'empreinte du binaire, qui change à la prochaine compilation de `vsm-render` ; aucune course ne
+tourne aujourd'hui.
+
+**LES SUITES**, toutes les cibles recompilées : core **424**, audio **1 316**, interchange 336, clap
+25, panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). Bancs rejoués
+sur le binaire de D540 : `fin-du-morceau.sh`, `copie-liee-temps.sh`, `temps-dans-un-clip.sh`,
+`copier-plage.sh`, `aplatir-clips.sh` verts ; entrés dans `verifier.sh --bancs` (55). D539 et D540
+ne touchent pas `app/Source` : la série entière, jouée pour D535.3 sur le binaire d'avant (53/53),
+n'est pas rejouée.

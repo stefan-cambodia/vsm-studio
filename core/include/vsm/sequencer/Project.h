@@ -228,6 +228,15 @@ public:
     /// commencé : sans note, la réponse était zéro, alors que neuf minutes de
     /// prise attendaient d'être jouées. Cette fonction-ci compte aussi les
     /// clips, et c'est elle que le transport et l'export doivent employer.
+    ///
+    /// D540 : PISTE PAR PISTE, CE QU'ELLE FAIT ENTENDRE. Elle ajoutait la fin du MATÉRIAU de
+    /// tout le projet à celle des clips — or, sur une piste à clips, le matériau n'est pas la
+    /// ligne de temps : des notes qu'aucune fenêtre ne lit (D539 n'efface plus rien) allongeaient
+    /// l'export de silence, et le moteur, qui planifiait jusqu'à `lastUsedTick`, coupait ce que
+    /// les fenêtres posaient au-delà (une copie liée de la dernière mesure, la fin d'un morceau
+    /// où l'on a inséré du temps). Une piste SANS clip finit avec son matériau ; une piste À
+    /// CLIPS, avec ses clips (fenêtres et répétitions, `clipPlayedLength`) ; c'est aussi la fin
+    /// du planning du moteur (`ProcessGraph::setProject`).
     midi::Tick lastSoundingTick() const;
 
     uint64_t nextNoteId() { return nextNoteId_++; }

@@ -140,20 +140,46 @@ RangePasteReport pasteRangeInserting(Project& project, const RangeClipboard& cli
         ++bilan.tracksPasted;
         const size_t index = static_cast<size_t>(piste - project.tracks.begin());
         const bool audio = piste->kind == Track::Kind::Audio;
-        // LES NOTES, posées dans le matériau à leur place sur la ligne de temps : `insertTime` vient
-        // d'y ouvrir le trou, et un clip MIDI collé est une fenêtre IDENTITÉ (D537).
+        // OÙ POSER DANS LE MATÉRIAU (D539). Une piste SANS clip : à sa place sur la ligne de temps —
+        // `insertTime` y a fait glisser le matériau et ouvert le trou. Une piste À CLIPS : le
+        // matériau ne glisse plus (seules les fenêtres le font) ; le trou de la ligne de temps
+        // n'est pas libre dans le matériau, que la seconde moitié d'un clip coupé lit encore. La
+        // copie va dans un matériau NEUF, au-delà de tout ce qu'une fenêtre lit ; les clips collés
+        // sont des fenêtres sur lui.
+        const bool pisteAClips = !piste->clips.empty() && !audio;
+        Tick base = at;
+        if (pisteAClips) {
+            const Tick finMateriau = project.lastUsedTick();
+            Tick neuf = 0;
+            for (auto& c : piste->clips) {
+                // Une fenêtre « jusqu'au bout du matériau » est d'abord BORNÉE à ce qu'elle lisait :
+                // sinon elle avalerait le matériau neuf.
+                if (c.sourceLength == 0) c.sourceLength = std::max<Tick>(0, finMateriau - c.sourceStart);
+                neuf = std::max(neuf, c.sourceStart + c.sourceLength);
+            }
+            for (const auto& n : piste->notes) neuf = std::max(neuf, n.endTick);
+            const auto plusLoin = [&neuf](const auto& points) {
+                for (const auto& p : points) neuf = std::max(neuf, p.tick + 1);
+            };
+            plusLoin(piste->controlChanges);
+            plusLoin(piste->pitchBends);
+            plusLoin(piste->polyAftertouch);
+            plusLoin(piste->channelPressure);
+            plusLoin(piste->programChanges);
+            base = neuf;
+        }
         for (auto note : contenu.notes) {
-            note.startTick += at;
-            note.endTick += at;
+            note.startTick += base;
+            note.endTick += base;
             note.id = project.nextNoteId();
             piste->notes.push_back(note);
             ++bilan.notes;
         }
         std::stable_sort(piste->notes.begin(), piste->notes.end(),
                          [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
-        const auto decaler = [at](auto liste, auto& vers) {
+        const auto decaler = [base](auto liste, auto& vers) {
             for (auto p : liste) {
-                p.tick += at;
+                p.tick += base;
                 vers.push_back(p);
             }
             trierParTick(vers);
@@ -176,9 +202,10 @@ RangePasteReport pasteRangeInserting(Project& project, const RangeClipboard& cli
                 poses.push_back(c);
             }
             for (auto c : poses) {
-                c.startTick += at;
-                if (!audio) {
-                    c.sourceStart = c.startTick;
+                const Tick relatif = c.startTick;
+                c.startTick = at + relatif;
+                if (!audio) {   // une fenêtre sur le matériau neuf, à la même place relative
+                    c.sourceStart = base + relatif;
                     c.sourceLength = c.length;
                 }
                 c.id = 0;

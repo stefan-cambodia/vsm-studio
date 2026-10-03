@@ -175,13 +175,16 @@ VSM_TEST(un_clip_muet_copie_reste_muet_et_garde_ses_notes) {
         if (c.startTick == 1920) c.muted = true;
     const RangeClipboard copie = copyRange(p, 1920, 3840, secondes(p));
     pasteRangeInserting(p, copie, 3840, secondes(p));
-    size_t muetsColles = 0;
+    // SOUS LUI, c'est-à-dire dans SA FENÊTRE — depuis D539, le collage d'une piste à clips pose ses
+    // notes dans un matériau neuf, et la fenêtre du clip collé les y lit.
+    const Clip* muet = nullptr;
     for (const auto& c : p.tracks[0].clips)
-        if (c.muted && c.startTick == 3840) ++muetsColles;
-    VSM_ASSERT_EQ(muetsColles, size_t(1));
+        if (c.muted && c.startTick == 3840) muet = &c;
+    VSM_ASSERT(muet != nullptr);
     size_t sousLui = 0;
     for (const auto& n : p.tracks[0].notes)
-        if (n.startTick == 3840 && n.number == 62) ++sousLui;
+        if (n.number == 62 && n.startTick >= muet->sourceStart && n.startTick < muet->sourceStart + muet->sourceLength)
+            ++sousLui;
     VSM_ASSERT_EQ(sousLui, size_t(1));
     // Et on ne l'entend pas : le ré de la copie se tait, comme celui de la plage.
     for (const auto& [piste, ms, hauteur] : entendu(p)) VSM_ASSERT(!(piste == 0 && hauteur == 62));
@@ -203,4 +206,52 @@ VSM_TEST(coller_au_milieu_d_un_segment_raccorde_la_courbe_et_l_accord_qui_suiven
     VSM_ASSERT_NEAR(automationValueAt(courbe, 4800), 0.5f, 1e-6f);
     VSM_ASSERT_NEAR(automationValueAt(courbe, 5760), 1.0f, 1e-6f);
     VSM_ASSERT_EQ(accords(p), std::string("0:C 1920:G 2880:F 4800:G 5760:F "));
+}
+
+// D539, attendu 3 : COLLER SUR UNE PISTE À COPIE LIÉE. Le motif (do à 0, sol à 960) et sa copie
+// liée à 1 920 lisent le même matériau ; coller la première noire à 1 920 fait entendre la plage,
+// et la copie, reculée d'une plage, reste intacte.
+VSM_TEST(coller_sur_une_piste_a_copie_liee_laisse_la_copie_intacte) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    piste.addNote(960, 1200, 67, 100, 0, ids);
+    Clip motif, copie;
+    motif.sourceStart = 0; motif.sourceLength = 1920; motif.startTick = 0;    motif.length = 1920;
+    copie = motif; copie.startTick = 1920;
+    piste.clips = {motif, copie};
+    p.tracks.push_back(piste);
+    p.assignClipIds();
+    p.assignTrackUids();
+    const RangeClipboard plage = copyRange(p, 0, 960, secondes(p));
+    pasteRangeInserting(p, plage, 1920, secondes(p));
+    VSM_ASSERT(entendu(p) == (Entendu{{0, 0, 60}, {0, 1000, 67}, {0, 2000, 60}, {0, 3000, 60}, {0, 4000, 67}}));
+}
+
+// D539, attendu 4 : UNE FENÊTRE OUVERTE (`sourceLength` nul : « jusqu'au bout du matériau ») posée
+// APRÈS la tête est bornée à ce qu'elle lisait — sinon, glissée sans être coupée, elle lirait aussi
+// le matériau neuf du collage. (Une fenêtre ouverte qui commence AVANT la tête est coupée, donc
+// bornée, par `insertTime` : un premier essai sur ce cas-là ne pouvait rien voir.)
+VSM_TEST(une_fenetre_ouverte_n_avale_pas_le_materiau_neuf_du_collage) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    piste.addNote(960, 1200, 64, 100, 0, ids);
+    Clip motif, ouvert;
+    motif.sourceStart = 0; motif.sourceLength = 1920; motif.startTick = 0; motif.length = 1920;
+    ouvert.sourceStart = 0; ouvert.sourceLength = 0; ouvert.startTick = 3840; ouvert.length = 0;
+    piste.clips = {motif, ouvert};
+    p.tracks.push_back(piste);
+    p.assignClipIds();
+    p.assignTrackUids();
+    VSM_ASSERT(entendu(p) == (Entendu{{0, 0, 60}, {0, 1000, 64}, {0, 4000, 60}, {0, 5000, 64}}));   // le témoin
+    const RangeClipboard plage = copyRange(p, 0, 480, secondes(p));
+    pasteRangeInserting(p, plage, 1920, secondes(p));
+    VSM_ASSERT(entendu(p) == (Entendu{{0, 0, 60}, {0, 1000, 64}, {0, 2000, 60}, {0, 4500, 60}, {0, 5500, 64}}));
 }

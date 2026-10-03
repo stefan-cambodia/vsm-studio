@@ -113,7 +113,10 @@ void ProcessGraph::setProject(const Project& project) {
     rpnMsb_.fill(127); rpnLsb_.fill(127); bendRange_.fill(2.0f);   // D331
     auto snapshot = std::make_shared<GraphSnapshot>();
     snapshot->project = project;
-    Tick endTick = project.lastUsedTick() + project.ticksPerQuarterNote;
+    // D540 : JUSQU'À LA FIN DE CE QUE LE PROJET FAIT ENTENDRE, et non à celle de son matériau : une
+    // copie liée posée au-delà, ou la fin d'un morceau où l'on a inséré du temps, tombait hors du
+    // planning et ne sonnait ni à la lecture ni à l'export.
+    Tick endTick = project.lastSoundingTick() + project.ticksPerQuarterNote;
     snapshot->schedule = PlaybackScheduler::build(project, 0, endTick);
 
     // RANGÉ PAR PISTE, UNE FOIS ICI PLUTÔT QUE PARCOURU À CHAQUE BLOC (D8.4).
