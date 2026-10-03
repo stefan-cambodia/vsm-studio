@@ -39655,3 +39655,24 @@ points pour le reposer ailleurs : répéter un refrain se fait piste par piste, 
    grisé tant que rien n'est copié ;
 4. un banc `tools/copier-plage.sh` qui joue 3, vu rouge sur un défaut remis à la main, entré
    dans `verifier.sh --bancs` ; `gestes-vivants.py` connaît les trois entrées ; libellés traduits.
+
+
+### Phase D538 — insérer ou supprimer du temps au milieu d'un clip MIDI : une hypothèse, écrite avant sa mesure (03/10/2026)
+
+*Écrite le 03/10 à 5 h 09, en écrivant D535.3 : son test « coller au milieu d'un clip » est tombé,
+et le relevé a montré que le défaut n'était pas dans le collage.*
+
+**CE QUI A ÉTÉ VU.** Après `insertTime(4800, 1920)` sur un clip identité [3840, 5760), la seconde
+moitié du clip est posée à 6 720 mais sa fenêtre commence au MATÉRIAU 4 800 — alors que les notes
+du matériau ≥ 4 800 viennent d'être déplacées de 1 920. L'ordre des opérations le fait : les
+fenêtres qui commencent à ≥ P glissent d'abord, PUIS `splitClips` coupe à P sur la ligne de temps
+et donne à la seconde moitié une fenêtre à 4 800, qui ne glisse plus. Dans le test de D535.3, elle
+a relu ce que le collage venait d'y poser (ré et do aigu entendus deux fois, à 7 000 et 7 500 ms).
+
+**HYPOTHÈSE.** Sans aucun collage, « Insérer du silence entre les locateurs » (D13.3) au milieu
+d'un clip MIDI rend MUETTES les notes de sa seconde moitié : sa fenêtre lit l'endroit d'où elles
+sont parties. « Supprimer le temps », qui coupe aussi à la fin de la plage, fait de même avec la
+moitié qui suit. Les tests de D13.3 n'ont que des clips AUDIO (fenêtre en secondes) ; depuis D333,
+presque toute piste MIDI a des clips. Mesure : les couples (ms, hauteur) du planificateur réel sur
+un clip identité [0, 3840) portant do à 0 et sol à 2 880, temps inséré à 1 920 (sol attendu à
+4 880 ticks = 5 083 ms) ; puis supprimé de 960 à 1 920 (sol attendu à 1 920 ticks = 2 000 ms).
