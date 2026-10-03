@@ -39919,3 +39919,59 @@ D540 et D535.3 verts ; les bancs de temps verts.
 
 **LES SUITES** (relevé à 13 h 06) : core **426**, audio 1 316, interchange 336, clap 25, panneaux 11 ;
 Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0).
+
+
+### Phase D542 — un troisième audit des fonctions : les locateurs sur une section, des préréglages pour l'éditeur logique, découper un clip à ses silences (03/10/2026)
+
+*Écrite le 03/10 à 13 h 07, D535 à D541 faites.*
+
+**LA MÉTHODE, celle de D535** : une fonction ne s'écrit manquante qu'après l'avoir cherchée dans le
+CODE (`core/`, `audio/`, `interchange/`, `app/Source/`), par `find … | xargs /usr/bin/grep`
+validé sur trois mots qui existent (`snapNotesToChords` 4 fichiers, `VCA` 23, `Contraindre` 4),
+puis élargie à d'autres formulations — dont les libellés de l'interface (`tr(u8"…")`).
+
+**CHERCHÉ ET TROUVÉ, donc hors de cet audit** : l'égaliseur (l'insert `eq`, et la chaîne du master) ;
+« Reporter la piste en audio » (le *render in place*) ; les rampes de tempo ; le swing ; les départs
+pré-fader ; la transposition de piste ; « Couper à la tête de lecture » ; « Rogner au son (détecter
+le silence) », qui rogne le DÉBUT et la FIN d'un clip audio.
+
+**CE QUI MANQUE, VÉRIFIÉ DANS LE CODE** (zéro pour « locateurs sur la section », « locateurs entre »,
+« repère de cycle », « cycle marker » ; zéro pour « préréglage » associé à l'éditeur logique ; zéro
+pour « strip silence », « découper aux silences », « détecter les silences ») :
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D542.1 | **Les locateurs sur une section** — les *cycle markers* : la boucle posée d'un geste sur l'intervalle entre deux repères | aux menus des DEUX règles, actif là où une section existe (D18.4 : d'un repère au suivant, la dernière jusqu'à la fin de ce qu'on entend, D540) ; la boucle posée et active ; un pas d'historique ; dit |
+| D542.2 | **Des préréglages pour l'éditeur logique** — Cubase en livre des dizaines | des préréglages livrés (les fantômes, les notes douteuses, les doublons à l'octave…) et ceux qu'on enregistre, sous un nom ; choisis dans la fenêtre, ils remplissent règle, action et valeur |
+| D542.3 | **Découper un clip audio à ses silences intérieurs** — le *Detect Silence* : un clip par passage qui sonne | un seuil et une durée minimale de silence ; un clip par passage, les silences retirés ; un pas ; mesuré par l'export (le son des passages inchangé) |
+
+**L'ORDRE, TRANCHÉ ICI.** D542.1 d'abord : il est petit et ne demande rien de neuf au modèle —
+les sections existent depuis D18.4 —, et il fait de l'ordre de jeu un outil de répétition (boucler
+le refrain qu'on travaille). Puis D542.2, qui prolonge l'éditeur logique que la chaîne sert déjà ;
+puis D542.3.
+
+### Phase D542.1 — les locateurs sur une section (03/10/2026)
+
+*Écrite avant son code, le 03/10 à 13 h 07.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **« Locateurs sur cette section »** au menu des deux règles — l'arrangement et le piano roll —,
+  même libellé, même rappel (`tools/menus-des-regles.py`) ; ACTIVE seulement si le point visé tombe
+  dans une section (`sectionsFromMarkers`) : sans repère, ou avant le premier, elle est grisée — sa
+  présence enseigne que le geste existe.
+- **Le geste** : la boucle prend [début, fin) de la section et s'ACTIVE — la convention de
+  « Locateurs sur la sélection » (P). Un pas d'historique (« Locateurs sur la section »), comme P.
+  La ligne d'état et le journal (`VSM_LOCATEURS`) disent quelle section, et où.
+- **Le cœur** : `sectionAt(projet, tick)`, la section qui contient un tick, à côté de
+  `sectionsFromMarkers`.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : repères A à 0, B à 1 920, C à 3 840 sur un matériau jusqu'à 5 760 —
+   `sectionAt` rend B pour 1 920 et pour 3 839, C pour 5 000 (jusqu'à 5 760, la fin de ce qu'on
+   entend), rien avant le premier repère ni sans repère ;
+2. par l'application, `project.json` relu après le geste : la tête dans B, par la règle de
+   l'arrangement → la boucle [1 920, 3 840), active ; par la règle du piano roll → la même ; la tête
+   dans C → [3 840, 5 760) ; sur un projet dont le premier repère est à 1 920, la tête à 0 → l'entrée
+   grisée (au journal), la boucle intacte ; Ctrl+Z après le geste → la boucle d'avant ;
+3. un banc `tools/locateurs-section.sh` qui joue 2, vu rouge sur un défaut remis à la main, entré
+   dans `verifier.sh --bancs` ; `menus-des-regles.py` vert ; le libellé traduit.
