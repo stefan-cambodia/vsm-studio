@@ -40119,6 +40119,9 @@ Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` enti
 suite ; son résultat s'écrit à sa fin. **D542 — le troisième audit — est faite** : ses trois manques le
 sont.
 
+**LA SÉRIE, relevée à 16 h 35 : 57 bancs sur 57 verts** (dont `decouper-aux-silences.sh`), préférences de
+l'utilisateur identiques.
+
 
 ### Phase D543 — un quatrième audit des fonctions : les accords d'après les notes, la fenêtre des repères, quantifier l'audio (03/10/2026)
 
