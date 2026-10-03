@@ -39783,3 +39783,31 @@ D535.3, D537 verts (les tests du cœur et les bancs `temps-dans-un-clip.sh`, `co
 `aplatir-clips.sh`) ; 3. un test de collage sur une piste à copies liées : la copie liée reste
 intacte et la plage collée s'entend ; 4. un clip à fenêtre ouverte (`sourceLength` nul) n'avale pas
 le collage.
+
+
+### Phase D540 — le moteur ne planifie que jusqu'à la fin du MATÉRIAU : une hypothèse, écrite avant sa mesure (03/10/2026)
+
+*Écrite le 03/10 à 11 h 31, D539 codée mais PAS commitée : c'est en vérifiant ce qu'elle change que
+la lecture suivante a été faite.*
+
+**CE QUI A ÉTÉ LU.** `ProcessGraph::setProject` construit le planning du moteur — celui de la
+lecture et du rendu hors ligne — de 0 à `lastUsedTick() + une noire` ; `lastUsedTick` est la fin du
+MATÉRIAU (notes, CC, pli). La fin du transport et celle de l'export (`OfflineReconstruction`) se
+règlent sur `lastSoundingTick`, qui ajoute les fins de clips à la fin du matériau. Or une piste à
+clips n'a pas de raison d'avoir sa fin de matériau là où finit ce qu'elle fait entendre.
+
+**HYPOTHÈSES.**
+1. *Ancienne* : une COPIE LIÉE (D34.2) posée après la fin du matériau — dupliquer la dernière
+   mesure — ne sonne pas : ses événements tombent après la fin du planning. Mesure : la crête, dans
+   l'export audio (`VSM_EXPORT`), de la mesure de la copie, contre la mesure de l'original ; témoin :
+   la même copie avec le matériau prolongé d'une note muette au-delà.
+2. *Née de D539* : insérer du temps dans un morceau à clips ne fait plus grandir le matériau, et
+   la fin du morceau, poussée plus loin, tombe hors du planning — coupée à la lecture et à l'export
+   audio. Mesure : la crête de la dernière mesure dans l'export, après « Insérer du silence ».
+3. *Le pendant* : supprimer la fin d'un morceau à clips laisse au matériau des notes qu'aucune
+   fenêtre ne lit, et `lastSoundingTick` les compte : l'export garde la longueur d'avant (du
+   silence). Mesure : la durée du `.wav` exporté, avant et après.
+**Si elles sont vraies**, la fin d'un projet est ce qu'il fait ENTENDRE : la fin du matériau pour
+une piste sans clip, la fin de ses clips (fenêtres et répétitions) pour une piste à clips — une
+seule fonction pour le planning du moteur, le transport, l'export, et la dernière section de
+l'ordre de jeu (le reste nommé de D537).
