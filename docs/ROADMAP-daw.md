@@ -39735,3 +39735,26 @@ fenêtre est en secondes et que `splitClips` coupe juste ; et c'est D333 (l'ouve
 pose des clips aux bornes des notes) qui a mis des clips MIDI sous presque toutes les pistes, des
 mois plus tard. Le geste « Insérer du silence » au milieu d'une partie faisait taire la fin de la
 partie, sans un mot. Trouvé non par un banc de D13.3 mais par un test de D535.3 qui y passait.
+
+
+### Phase D539 — les éditions de temps sur une piste à clips déplacent le matériau d'après la ligne de temps : une hypothèse, écrite avant sa mesure (03/10/2026)
+
+*Écrite le 03/10 à 8 h 15, D538 faite : c'est le reste qu'elle nommait.*
+
+**CE QUI A ÉTÉ LU.** `insertTime` et `deleteTime` (D13.3) font glisser — ou suppriment — les
+NOTES du matériau d'après leur tick, comme si chaque tick de matériau était un tick de la ligne
+de temps. C'est vrai sous une fenêtre identité (D333) ; c'est faux sous un clip DÉPLACÉ, et faux
+sous une COPIE LIÉE (D34.2) : « Dupliquer des clips » (l'arrangement) pose une seconde fenêtre
+sur le MÊME matériau, ailleurs sur la ligne de temps. D538 a corrigé la coupe des fenêtres ; le
+matériau, lui, continue de bouger pour la seule fenêtre qui est à sa place.
+
+**HYPOTHÈSE.** Un motif d'une mesure (do à 0, sol à 960), dupliqué une mesure plus loin (copie
+liée à 1 920, même fenêtre [0, 1 920)) : le témoin fait entendre do, sol, do, sol. **Insérer** du
+silence à 480, au milieu du PREMIER motif, fait perdre à la COPIE sa seconde moitié — le sol
+qu'elle lisait à 960 dans le matériau est parti à 960 + la plage, hors de sa fenêtre. **Supprimer**
+[480, 960) fait de même pire : le sol est EFFACÉ du matériau, et la copie, que la plage supprimée
+ne touchait pas, le perd aussi. Mesure : les couples (ms, hauteur) du planificateur réel, avant
+et après chaque geste. **Si elle est vraie**, la règle saine est celle de Cubase — sur une piste
+à clips, une édition de temps coupe et fait glisser les FENÊTRES, jamais le matériau —, ce qui
+oblige « Coller la plage » (D535.3) à poser ses notes dans un matériau NEUF plutôt qu'au trou que
+le glissement du matériau ouvrait.
