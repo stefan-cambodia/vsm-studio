@@ -40054,3 +40054,41 @@ renommée. (c) Les « doublons à l'octave » restent hors de la grammaire, nomm
 **LES SUITES** (relevé à 14 h 58) : core **428**, audio 1 316, interchange 336, clap 25, panneaux 11 ;
 Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). **`--bancs` entier (56), pour
 D542.1 et D542.2 : lancé à 13 h 55** ; son résultat s'écrit à sa fin.
+
+
+### Phase D542.3 — découper un clip audio à ses silences intérieurs (03/10/2026)
+
+*Écrite avant son code, le 03/10 à 14 h 58, D542.2 faite.*
+
+**CE QUI EXISTE.** « Rogner au son (détecter le silence) » (D17.6, `detectSound`) rogne le DÉBUT et
+la FIN d'un clip audio : seuil de crête −60 dBFS, 5 ms gardés avant l'attaque, un silence de moins
+de 20 ms n'est pas rogné. Un stem de voix reconstruit — des phrases séparées de silences — reste
+pourtant un seul clip.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **La détection** : `detectSoundRegions`, à côté de `detectSound` dans `audio/io`, rend la LISTE
+  des passages qui sonnent — un silence (crête sous le seuil) d'au moins la durée minimale sépare
+  deux passages ; chaque passage garde la marge d'avant l'attaque, et la même après sa dernière
+  trame (une chute n'est pas plus un mur qu'une attaque). Mêmes règles que `detectSound` aux bords.
+- **Le geste** : « Découper aux silences… » au menu du clip audio, à côté de « Rogner au son » ;
+  une fenêtre demande le seuil (dBFS, −60 proposé) et le silence minimal (ms, 200 proposé — à 20
+  ms, chaque respiration d'une voix ferait un clip) ; le clip est coupé aux bornes des passages
+  (`splitClips`, qui sait couper une fenêtre en secondes) et les morceaux muets RETIRÉS. Un pas
+  d'historique. Rien à découper (un seul passage, ou tout sous le seuil) : rien ne bouge, et c'est
+  dit. La ligne d'état et le journal (`VSM_SILENCES`) disent combien de passages, et combien de
+  secondes de silence retirées.
+- **Clip audio seulement**, comme « Rogner au son », et pour la même raison : une note MIDI qui ne
+  sonne pas n'existe pas.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `audio/` : trois salves séparées de 300 ms de zéros → trois passages, bornes à la marge
+   près ; un trou de 50 ms sous un silence minimal de 200 ms → un seul passage ; tout sous le seuil
+   → aucun ; un son qui touche les deux bords → un passage, bornes du matériau ;
+2. par l'application, mesuré par l'EXPORT AUDIO : un clip fait de trois salves séparées de
+   silences NUMÉRIQUES (des zéros) ; « Découper aux silences » → trois clips au projet (relu), et
+   l'export **identique au bit près** à celui d'avant le geste (ce qui a été retiré n'était que des
+   zéros) ; le témoin : un seuil au-dessus du niveau des salves → rien ne bouge, et c'est dit ;
+   Ctrl+Z → un seul clip ;
+3. un banc `tools/decouper-aux-silences.sh` qui joue 2, vu rouge sur un défaut remis à la main,
+   entré dans `verifier.sh --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux
+   langues.
