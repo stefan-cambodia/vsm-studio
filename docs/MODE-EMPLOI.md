@@ -87,6 +87,8 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Insérer ou retirer une plage de temps.** Placez les locateurs (la boucle) sur la plage, puis Édition ▸ **Insérer du silence entre les locateurs** (Ctrl+Maj+I) ou **Supprimer le temps entre les locateurs** (Ctrl+Maj+K) : tout le morceau glisse — notes, clips, automation, repères, tempo et mesures de toutes les pistes ensemble — et ce qui est à cheval sur la plage est coupé. C'est l'outil qui retire une mesure d'un arrangement sans la retirer piste par piste.
 
+**Répéter un passage sur toutes les pistes** (D535.3). Les locateurs sur le passage, Édition ▸ **Copier entre les locateurs (toutes les pistes)** — ou **Couper…**, qui retire aussitôt la plage —, puis placez la tête là où le passage doit revenir et Édition ▸ **Coller la plage à la tête de lecture (en insérant)** : le temps s'ouvre à la tête, et chaque piste y rejoue ce qu'elle faisait entendre dans la plage — notes, contrôleurs, clips (coupés aux bords, les muets restent muets), courbes d'automation et accords ; ce qui suivait la tête recule d'autant. Le tempo, les mesures et les repères ne sont pas copiés, et la ligne d'état le dit. Une piste supprimée entre la copie et le collage est laissée, et comptée. Chaque geste s'annule d'un Ctrl+Z.
+
 **Normaliser.** Le clic droit sur un clip audio propose *Normaliser* : le gain du clip devient l'inverse de la crête de ce qu'il joue, et la forme d'onde le montre.
 
 **Transposer un clip audio.** Le clic droit sur un clip audio propose *Hauteur

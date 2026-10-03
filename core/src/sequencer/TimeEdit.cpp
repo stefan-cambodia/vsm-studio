@@ -125,14 +125,25 @@ size_t appliquer(Project& project, Tick at, Tick delta,
         // Les clips MIDI regardent le matériau en ticks : leur fenêtre glisse
         // avec lui ; les clips audio ont leur fenêtre en secondes, et
         // `splitClips` la coupe correctement.
-        for (auto& c : track.clips)
-            if (track.kind != Track::Kind::Audio && c.sourceStart >= at) c.sourceStart += delta;
+        //
+        // D538 : COUPER D'ABORD, FAIRE GLISSER LES FENÊTRES ENSUITE. Dans l'ordre
+        // inverse, la seconde moitié d'un clip coupé à P naissait APRÈS le glissement,
+        // avec une fenêtre au matériau P — là d'où ses notes venaient de partir :
+        // insérer du temps au milieu d'un clip faisait TAIRE sa fin, en supprimer la
+        // décalait d'une plage de trop. Glissent les fenêtres qui commencent au-delà
+        // de la coupe : de P à l'insertion, de la fin de la plage à la suppression.
+        const Tick seuil = delta > 0 ? at : at - delta;
+        const auto glisserFenetres = [&](std::vector<Clip>& clips) {
+            if (track.kind == Track::Kind::Audio) return;
+            for (auto& c : clips)
+                if (c.sourceStart >= seuil) c.sourceStart += delta;
+        };
         touches += glisserClips(track.clips, at, delta, materiau, idClips, ticksToSeconds);
+        glisserFenetres(track.clips);
         for (auto& take : track.takes) {
             touches += glisserNotes(take.notes, at, delta, idNotes);
-            for (auto& c : take.clips)
-                if (track.kind != Track::Kind::Audio && c.sourceStart >= at) c.sourceStart += delta;
             touches += glisserClips(take.clips, at, delta, materiau, idClips, ticksToSeconds);
+            glisserFenetres(take.clips);
             if (take.startTick >= at) take.startTick += delta;
             if (take.endTick >= at) take.endTick = std::max(take.startTick, take.endTick + delta);
         }

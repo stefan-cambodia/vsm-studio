@@ -995,7 +995,7 @@ std::vector<CouvertureDeNote> couvrirLesNotesEcrites(Track& track, Tick ticksPer
     return faites;
 }
 
-std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd) {
+std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd, bool includeMuted) {
     std::vector<ClipPassage> passages;
     if (track.clips.empty()) {
         passages.push_back(ClipPassage{});
@@ -1003,7 +1003,7 @@ std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd) {
     }
 
     for (const auto& clip : track.clips) {
-        if (clip.muted) continue;
+        if (clip.muted && !includeMuted) continue;
         const Tick fenetre = clip.sourceLength > 0 ? clip.sourceLength
                                                    : std::max<Tick>(0, materialEnd - clip.sourceStart);
         if (fenetre <= 0) continue;   // fenêtre vide : rien à lire, et pas de boucle infinie

@@ -4,6 +4,7 @@
 #include "vsm/sequencer/MidiRecorder.h"
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/Groove.h"
+#include "vsm/sequencer/RangeCopy.h"   // D535.3 : le presse-papiers de plage
 #include "vsm/audio/engine/Transport.h"
 #include "vsm/audio/engine/AudioTrackSource.h"
 #include "vsm/interchange/ReconstructionChain.h"
@@ -1028,6 +1029,10 @@ private:
         kMenuMixSnapshotRecallLast = kMenuMixSnapshotRecallFirst + 31,
         kMenuMixSnapshotRemoveFirst,
         kMenuMixSnapshotRemoveLast = kMenuMixSnapshotRemoveFirst + 31,
+        /// D535.3 : copier, couper entre les locateurs (toutes les pistes), coller en insérant.
+        kMenuEditCopyRange,
+        kMenuEditCutRange,
+        kMenuEditPasteRange,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1446,6 +1451,11 @@ private:
     /// tempo, mesures, boucle et punch -- et ce qui est à cheval est coupé.
     /// Les locateurs sont la région de boucle, comme dans Cubase.
     void editTimeAtLocators(bool inserer);
+    /// D535.3 : COPIER (ou couper) ce que toutes les pistes font entendre entre les locateurs,
+    /// et le COLLER EN INSÉRANT à la tête. Le presse-papiers de plage est de session.
+    void copierPlage(bool couper);
+    void collerPlage();
+    vsm::sequencer::RangeClipboard plageCopiee_;
     /// IMPORTER UN MIDI DANS LE PROJET (D14.3) : ses pistes s'ajoutent à la
     /// suite, posées à la tête de lecture ; « Ouvrir MIDI » le REMPLACE.
     void importMidiIntoProject(const juce::File& file);

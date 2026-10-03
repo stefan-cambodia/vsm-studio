@@ -2,6 +2,7 @@
 #include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/sequencer/ChordTrack.h"
 #include "vsm/sequencer/ClipEdit.h"
+#include "LectureEntendue.h"   // D535.3 : la lecture commune avec « Copier la plage »
 #include <algorithm>
 #include <limits>
 #include <map>
@@ -11,77 +12,9 @@ namespace vsm::sequencer {
 
 namespace {
 
-/// D537 : UNE FENÊTRE DE LECTURE, celle de `clipPassages` — le matériau [de, a) sort à
-/// `+decalage`, jusqu'à `limite` exclue —, MAIS LES CLIPS MUETS COMPRIS : aplatir ne doit pas
-/// perdre les notes d'un clip qu'on a seulement fait taire ; son clip neuf restera muet.
-struct Fenetre {
-    Tick de = 0;
-    Tick a = std::numeric_limits<Tick>::max();
-    Tick decalage = 0;
-    Tick limite = std::numeric_limits<Tick>::max();
-};
-
-std::vector<Fenetre> fenetresDe(const Track& piste, Tick finMateriau) {
-    std::vector<Fenetre> fenetres;
-    if (piste.clips.empty()) {
-        fenetres.push_back({});   // la piste sans clip : le passage identité
-        return fenetres;
-    }
-    for (const auto& clip : piste.clips) {
-        const Tick fenetre = clip.sourceLength > 0 ? clip.sourceLength : std::max<Tick>(0, finMateriau - clip.sourceStart);
-        if (fenetre <= 0) continue;
-        const Tick jouee = clip.length > 0 ? clip.length : fenetre;
-        for (Tick depart = 0; depart < jouee; depart += fenetre)
-            fenetres.push_back({clip.sourceStart, clip.sourceStart + fenetre, clip.startTick + depart - clip.sourceStart,
-                                clip.startTick + jouee});
-    }
-    return fenetres;
-}
-
-/// Où un événement du matériau SORT par cette fenêtre — faux s'il n'y passe pas.
-bool sortie(const Fenetre& f, Tick source, Tick& out) {
-    if (source < f.de || source >= f.a) return false;
-    out = source + f.decalage;
-    return out < f.limite;
-}
-
-/// Les contrôleurs d'un créneau : ceux que la section fait entendre, déplacés ; et, pour chacun
-/// des « réglages » (même clé), le dernier entendu AVANT la section, posé à l'entrée du créneau
-/// s'il n'y en a pas déjà un — la règle des courbes d'automation, pour la même raison.
-template <typename Point, typename Cle>
-void poserControleurs(const std::vector<Point>& source, const std::vector<Fenetre>& fenetres, Tick debut, Tick fin,
-                      Tick creneau, Cle cle, bool poursuivre, std::vector<Point>& sortieListe) {
-    std::map<decltype(cle(source.front())), std::pair<Tick, Point>> avant;
-    std::vector<Point> dedans;
-    for (const auto& point : source)
-        for (const auto& f : fenetres) {
-            Tick t = 0;
-            if (!sortie(f, point.tick, t)) continue;
-            if (t >= debut && t < fin) {
-                Point copie = point;
-                copie.tick = t - debut + creneau;
-                dedans.push_back(copie);
-            } else if (t < debut && poursuivre) {
-                auto ici = avant.find(cle(point));
-                if (ici == avant.end() || ici->second.first <= t) avant[cle(point)] = {t, point};
-            }
-        }
-    for (auto& [k, entendu] : avant) {
-        bool deja = false;
-        for (const auto& p : dedans)
-            if (cle(p) == k && p.tick == creneau) deja = true;
-        if (deja) continue;
-        Point ouverture = entendu.second;
-        ouverture.tick = creneau;
-        sortieListe.push_back(ouverture);
-    }
-    sortieListe.insert(sortieListe.end(), dedans.begin(), dedans.end());
-}
-
-template <typename Point>
-void trierParTick(std::vector<Point>& points) {
-    std::stable_sort(points.begin(), points.end(), [](const Point& a, const Point& b) { return a.tick < b.tick; });
-}
+using detail::entendreControleurs;
+using detail::entendreNotes;
+using detail::trierParTick;
 
 } // namespace
 
@@ -141,7 +74,7 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
         // de 0 et 0,5. Ce qui sort par les fenêtres est posé sur un matériau neuf, et chaque clip
         // devient une fenêtre IDENTITÉ. Les clips audio (fenêtre en secondes) gardent le reste.
         const bool parLesFenetres = piste.kind != Track::Kind::Audio;
-        const std::vector<Fenetre> fenetres = fenetresDe(piste, finMateriau);
+        const std::vector<ClipPassage> passages = clipPassages(piste, finMateriau, /*includeMuted=*/true);
         std::vector<CcPoint> ccs;
         std::vector<PitchBendPoint> plis;
         std::vector<PolyAftertouchPoint> pressionsPoly;
@@ -162,31 +95,20 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
             const Tick fin = creneau.section.endTick;
 
             if (parLesFenetres) {
-                for (const auto& note : piste.notes)
-                    for (const auto& f : fenetres) {
-                        Tick t = 0;
-                        if (!sortie(f, note.startTick, t) || t < debut || t >= fin) continue;
-                        Note copie = note;
-                        copie.startTick = t + delta;
-                        // COUPÉE À LA FIN DE SA SECTION, et à celle de son clip : laissée entière,
-                        // elle empiéterait sur la section suivante, que personne n'a arrangée
-                        // ainsi. C'est la règle de `splitClips` au bord d'un clip.
-                        copie.endTick = std::min({note.endTick + f.decalage, f.limite, fin}) + delta;
-                        if (copie.endTick <= copie.startTick) copie.endTick = copie.startTick + 1;
-                        copie.id = 0;
-                        notes.push_back(copie);
-                    }
-                poserControleurs(piste.controlChanges, fenetres, debut, fin, creneau.sortie,
-                                 [](const CcPoint& p) { return std::make_tuple(p.channel, p.controller); }, true, ccs);
-                poserControleurs(piste.pitchBends, fenetres, debut, fin, creneau.sortie,
-                                 [](const PitchBendPoint& p) { return p.channel; }, true, plis);
-                poserControleurs(piste.polyAftertouch, fenetres, debut, fin, creneau.sortie,
-                                 [](const PolyAftertouchPoint& p) { return std::make_tuple(p.channel, p.note); }, false,
-                                 pressionsPoly);
-                poserControleurs(piste.channelPressure, fenetres, debut, fin, creneau.sortie,
-                                 [](const ChannelPressurePoint& p) { return p.channel; }, true, pressions);
-                poserControleurs(piste.programChanges, fenetres, debut, fin, creneau.sortie,
-                                 [](const ProgramChangePoint& p) { return p.channel; }, true, programmes);
+                // CE QUE LA SECTION FAIT ENTENDRE, posé au créneau — la lecture commune avec
+                // « Copier la plage » (D535.3), rattachement de D335 compris.
+                entendreNotes(piste.notes, passages, debut, fin, creneau.sortie, notes);
+                entendreControleurs(piste.controlChanges, passages, debut, fin, creneau.sortie,
+                                    [](const CcPoint& p) { return std::make_tuple(p.channel, p.controller); }, true, ccs);
+                entendreControleurs(piste.pitchBends, passages, debut, fin, creneau.sortie,
+                                    [](const PitchBendPoint& p) { return p.channel; }, true, plis);
+                entendreControleurs(piste.polyAftertouch, passages, debut, fin, creneau.sortie,
+                                    [](const PolyAftertouchPoint& p) { return std::make_tuple(p.channel, p.note); }, false,
+                                    pressionsPoly);
+                entendreControleurs(piste.channelPressure, passages, debut, fin, creneau.sortie,
+                                    [](const ChannelPressurePoint& p) { return p.channel; }, true, pressions);
+                entendreControleurs(piste.programChanges, passages, debut, fin, creneau.sortie,
+                                    [](const ProgramChangePoint& p) { return p.channel; }, true, programmes);
                 // LES CLIPS : la part de chacun qui joue dans la section, en fenêtre identité.
                 for (const auto& clip : piste.clips) {
                     const Tick clipFin = clip.startTick + clipPlayedLength(clip, finMateriau);

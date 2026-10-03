@@ -25,6 +25,7 @@
 #include "vsm/sequencer/MidiEffects.h"
 #include "vsm/sequencer/EventList.h"
 #include "vsm/sequencer/MixSnapshot.h"   // D535.2
+#include "vsm/sequencer/RangeCopy.h"     // D535.3
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/io/WavFileWriter.h"
 #include "vsm/audio/effect/Reverb.h"
@@ -4044,6 +4045,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                  tr(u8"Supprimer le temps entre les locateurs"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditDeleteTimeAtLocators,
                                  project_.loopEndTick > project_.loopStartTick);
+            // D535.3 : LA PLAGE SUR TOUTES LES PISTES — copier, couper, coller en insérant.
+            menu.addItem(kMenuEditCopyRange, tr(u8"Copier entre les locateurs (toutes les pistes)"),
+                         project_.loopEndTick > project_.loopStartTick);
+            menu.addItem(kMenuEditCutRange, tr(u8"Couper entre les locateurs (toutes les pistes)"),
+                         project_.loopEndTick > project_.loopStartTick);
+            menu.addItem(kMenuEditPasteRange, tr(u8"Coller la plage à la tête de lecture (en insérant)"),
+                         !plageCopiee_.empty());
             vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditLocatorsFromSelection,
                                  tr(u8"Locateurs sur la s\u00e9lection"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditLocatorsFromSelection,
@@ -5052,6 +5060,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
     if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
     if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
+    if (menuItemID == kMenuEditCopyRange)  { copierPlage(false); return; }   // D535.3
+    if (menuItemID == kMenuEditCutRange)   { copierPlage(true); return; }
+    if (menuItemID == kMenuEditPasteRange) { collerPlage(); return; }
     if (menuItemID == kMenuEditExtractGroove) { extractGrooveFromSelectedTrack(); return; }
     if (menuItemID == kMenuEditApplyGroove)   { applyGrooveToSelection(); return; }
     if (menuItemID == kMenuEditSaveGroove)    { saveCurrentGroove(); return; }
@@ -10185,6 +10196,68 @@ void MainComponent::editTimeAtLocators(bool inserer) {
     arrangement_.repaint();
     pianoRoll_.repaint();
     juce::ignoreUnused(touches);
+}
+
+void MainComponent::copierPlage(bool couper) {
+    const auto de = project_.loopStartTick;
+    const auto a = project_.loopEndTick;
+    if (a <= de) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Locateurs"),
+                     tr(u8"Placez d'abord les locateurs : la région de boucle est la plage à copier."));
+        return;
+    }
+    project_.assignTrackUids();   // le collage retrouve les pistes par leur identité de session
+    const auto conversion = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+    plageCopiee_ = vsm::sequencer::copyRange(project_, de, a, conversion);
+    size_t notes = 0, clips = 0;
+    for (const auto& piste : plageCopiee_.tracks) {
+        notes += piste.notes.size();
+        clips += piste.clips.size();
+    }
+    if (couper) {
+        beginProjectEdit(u8"Couper la plage");
+        vsm::sequencer::deleteTime(project_, de, a, conversion);
+        refreshTransportSchedule();
+        loadAudioTracks();
+        arrangement_.repaint();
+        pianoRoll_.repaint();
+    }
+    std::fputs(("VSM_PLAGE : " + std::string(couper ? "coupée" : "copiée") + " [" + std::to_string(de) + ", "
+                + std::to_string(a) + ") — " + std::to_string(plageCopiee_.tracks.size()) + " piste(s), "
+                + std::to_string(notes) + " note(s), " + std::to_string(clips) + " clip(s), "
+                + std::to_string(plageCopiee_.chords.size()) + " accord(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged((couper ? tr(u8"Plage coupée : %1 note(s) et %2 clip(s) sur %3 piste(s)")
+                                           : tr(u8"Plage copiée : %1 note(s) et %2 clip(s) sur %3 piste(s)"))
+                                       .replace("%1", juce::String(static_cast<int>(notes)))
+                                       .replace("%2", juce::String(static_cast<int>(clips)))
+                                       .replace("%3", juce::String(static_cast<int>(plageCopiee_.tracks.size()))));
+}
+
+void MainComponent::collerPlage() {
+    if (plageCopiee_.empty()) return;
+    const vsm::midi::Tick tete = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+    const auto conversion = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+    beginProjectEdit(u8"Coller la plage");
+    const auto bilan = vsm::sequencer::pasteRangeInserting(project_, plageCopiee_, tete, conversion);
+    refreshTransportSchedule();
+    loadAudioTracks();
+    arrangement_.repaint();
+    pianoRoll_.repaint();
+    std::fputs(("VSM_PLAGE : collée au tick " + std::to_string(tete) + " — " + std::to_string(bilan.tracksPasted)
+                + " piste(s), " + std::to_string(bilan.notes) + " note(s), " + std::to_string(bilan.clips)
+                + " clip(s), " + std::to_string(bilan.tracksMissing) + " piste(s) disparue(s) depuis la copie\n").c_str(),
+               stderr);
+    // CE QUI N'EST PAS COPIÉ EST DIT : le tempo, les signatures et les repères décrivent la ligne
+    // de temps, pas ce qu'on répète ; une piste supprimée depuis la copie est laissée.
+    juce::String phrase = tr(u8"Plage collée : %1 note(s) et %2 clip(s) sur %3 piste(s) — tempo, mesures et repères ne sont pas copiés")
+                              .replace("%1", juce::String(static_cast<int>(bilan.notes)))
+                              .replace("%2", juce::String(static_cast<int>(bilan.clips)))
+                              .replace("%3", juce::String(static_cast<int>(bilan.tracksPasted)));
+    if (bilan.tracksMissing > 0)
+        phrase += tr(u8" ; %1 piste(s) supprimée(s) depuis la copie : laissée(s)")
+                      .replace("%1", juce::String(static_cast<int>(bilan.tracksMissing)));
+    if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(phrase);
 }
 
 // D34.1 : LA FORME DES FONDUS CROISÉS, changée EN MARCHE.

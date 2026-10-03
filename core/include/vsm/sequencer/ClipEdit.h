@@ -457,7 +457,10 @@ struct ClipPassage {
 /// « chemin historique » à côté du chemin des clips, qui pourrait diverger de
 /// lui à la première correction. Il y a un seul chemin, et le cas sans découpe
 /// est la fenêtre qui ne coupe rien.
-std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd);
+///
+/// `includeMuted` (D535.3) : les clips MUETS aussi — la lecture ne les joue pas, mais aplatir
+/// (D537) ou copier une plage (D535.3) ne doit pas perdre leurs notes ; le clip recopié reste muet.
+std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd, bool includeMuted = false);
 
 /// D335 : UN ÉVÉNEMENT DE CONTRÔLE HORS DE TOUT PASSAGE EST RATTACHÉ AU DÉBUT DU
 /// PASSAGE SUIVANT. Un fichier General MIDI pose sa banque, son volume, sa plage

@@ -1,6 +1,10 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/TimeEdit.h"
+#include "vsm/sequencer/PlaybackScheduler.h"
+#include <algorithm>
+#include <cmath>
+#include <utility>
 #include <vector>
 
 using namespace vsm::midi;
@@ -129,4 +133,46 @@ VSM_TEST(time_edits_refuse_nonsense_and_leave_tick_zero_alone) {
     deleteTime(p, 0, 960, enSecondes);
     VSM_ASSERT_EQ(p.tempoMap.changes().front().tick, Tick(0));
     VSM_ASSERT_EQ(p.timeSignatureMap.changes().front().tick, Tick(0));
+}
+
+// D538 : INSÉRER OU SUPPRIMER DU TEMPS AU MILIEU D'UN CLIP MIDI. La seconde moitié du clip coupé
+// doit lire ses notes là où elles sont allées — mesuré par ce qu'on ENTEND, au temps près.
+namespace {
+Project clipIdentite() {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);   // 120 BPM : 1 920 ticks = 2 000 ms
+    Track piste;
+    piste.name = "Clip";
+    uint64_t ids = 1;
+    piste.addNote(0, 480, 60, 100, 0, ids);
+    piste.addNote(2880, 3360, 67, 100, 0, ids);
+    Clip c;
+    c.sourceStart = 0; c.sourceLength = 3840; c.startTick = 0; c.length = 3840;
+    piste.clips.push_back(c);
+    p.tracks.push_back(piste);
+    p.assignClipIds();
+    return p;
+}
+std::vector<std::pair<int, int>> entenduesD538(const Project& p) {
+    std::vector<std::pair<int, int>> notes;
+    for (const auto& e : PlaybackScheduler::build(p, 0, 1000000))
+        if (const auto* on = std::get_if<vsm::midi::NoteOnEvent>(&e.data))
+            notes.emplace_back(static_cast<int>(std::lround(e.timeSeconds * 1000.0)), static_cast<int>(on->note));
+    std::sort(notes.begin(), notes.end());
+    return notes;
+}
+}
+
+VSM_TEST(inserer_du_temps_au_milieu_d_un_clip_midi_garde_sa_seconde_moitie_audible) {
+    Project p = clipIdentite();
+    VSM_ASSERT(entenduesD538(p) == (std::vector<std::pair<int, int>>{{0, 60}, {3000, 67}}));   // le témoin
+    insertTime(p, 1920, 1920, [&p](Tick t) { return p.ticksToSeconds(t); });
+    VSM_ASSERT(entenduesD538(p) == (std::vector<std::pair<int, int>>{{0, 60}, {5000, 67}}));
+}
+
+VSM_TEST(supprimer_du_temps_au_milieu_d_un_clip_midi_garde_ce_qui_suit_audible) {
+    Project p = clipIdentite();
+    deleteTime(p, 960, 1920, [&p](Tick t) { return p.ticksToSeconds(t); });
+    VSM_ASSERT(entenduesD538(p) == (std::vector<std::pair<int, int>>{{0, 60}, {2000, 67}}));
 }

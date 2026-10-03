@@ -11,6 +11,7 @@ add_library(vsm_core STATIC
     src/sequencer/ChordTrack.cpp
     src/sequencer/LogicalEdit.cpp
     src/sequencer/MixSnapshot.cpp
+    src/sequencer/RangeCopy.cpp
     src/sequencer/StepPattern.cpp
     src/sequencer/AutomationEdit.cpp
     src/sequencer/Groove.cpp
@@ -66,6 +67,7 @@ if (VSM_BUILD_TESTS)
         tests/test_chord_track.cpp
         tests/test_logical_edit.cpp
         tests/test_mix_snapshot.cpp
+        tests/test_range_copy.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)
     target_include_directories(vsm_core_tests PRIVATE tests)

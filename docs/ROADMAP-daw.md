@@ -39602,8 +39602,13 @@ panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts. **`--bancs` entier (5
 sur ce binaire**, pour D535.2 (qui touchait l'interface) et pour D537 ; son résultat s'écrit à sa
 fin.
 
+**LA SÉRIE `--bancs` DE D535.2 ET D537 : 51 bancs sur 51 verts** (5 h 04 → 8 h 02, dont une veille
+de deux heures, 5 h 09 → 7 h 08, et trois courtes). Le seul ✗ du bilan est l'avertissement de
+D516 — l'écran verrouillé à la FIN de la série —, qui n'est pas un banc : aucun banc n'est tombé.
+Préférences de l'utilisateur identiques après la série.
 
-### Phase D535.3 — copier une plage sur toutes les pistes, et la coller en insérant (03/10/2026)
+
+### Phase D535.3 — copier une plage sur toutes les pistes, et la coller en insérant (03/10/2026) — FAITE
 
 *Écrite avant son code, le 03/10 à 5 h 05, D537 faite.*
 
@@ -39656,8 +39661,30 @@ points pour le reposer ailleurs : répéter un refrain se fait piste par piste, 
 4. un banc `tools/copier-plage.sh` qui joue 3, vu rouge sur un défaut remis à la main, entré
    dans `verifier.sh --bancs` ; `gestes-vivants.py` connaît les trois entrées ; libellés traduits.
 
+**D535.3 EST FAITE (03/10, 8 h 15).**
 
-### Phase D538 — insérer ou supprimer du temps au milieu d'un clip MIDI : une hypothèse, écrite avant sa mesure (03/10/2026)
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le modèle | core 409 → **417** (huit tests) : copier la mesure 2, coller à la mesure 3 — entendu (ms, hauteur) sur deux pistes, l'une à clips dont un DÉPLACÉ, l'autre sans clip : la mesure 2 deux fois, le reste 2 000 ms plus tard ; la piste sans clip le reste ; coupure (CC 74) recopiée à 3 920, volume (CC 7) d'avant ouvrant la copie à 3 840 ; accords « 0:C 1920:G 3840:G 5760:F » ; collé au milieu d'un clip, le clip coupé (3 840 + 960, et 6 720 + 960) ; collé au milieu d'un segment (2 880), la courbe reprend à 0,5 après le trou et G reprend à 4 800 ; une piste supprimée entre copie et collage laissée et comptée ; plage vide : rien ; couper puis coller au début ; un clip muet copié reste muet, ses notes dessous. **Huit défauts, huit rouges** — dont deux ne l'étaient pas au premier essai : le raccord de courbe et la reprise d'accord, parce que le premier test collait PILE sur un point et un accord, où `insertTime` fait déjà le travail ; le test du milieu de segment a été écrit pour eux | **oui** |
+| 2 | couper | ce qui suivait recule d'une mesure ; recollé à 0, la plage revient devant | **oui** |
+| 3 | par l'export MIDI | `tools/copier-plage.sh` : « Coller » grisé avant toute copie (journal) ; copier [1 920, 3 840), coller à 3 840 → {1:0:60 1:1920:62 **1:3840:62** 1:5760:64 2:0:48 2:1920:50 **2:3840:50** 2:5760:52} ; Ctrl+Z → le `.mid` d'avant ; couper → {1:0:60 1:1920:64 2:0:48 2:1920:52} ; « copiée … 2 piste(s), 2 note(s), 2 clip(s) », « collée au tick 3840 — 2 piste(s) ». Rouge sur le binaire d'avant (4 contrôles), vert sur le nouveau | **oui** |
+| 4 | le banc, les gardes | entré dans `verifier.sh --bancs` (53, avec celui de D538) ; libellés traduits, `inventaire_langue.py --garde` à 0 ; `menus-cites.py` : 35 citations. **Écart à l'attendu, et sa raison** : `gestes-vivants.py` ne connaît PAS les trois entrées — il joue chaque entrée sur un projet sans locateurs (`cdl`), où elles sont grisées, et les y mettre les ferait « non jouées » ; c'est `annulation-des-menus.py`, dont le second état pose des locateurs, qui juge tout le menu Édition, et la série entière l'a rejoué | **en partie** |
+
+**CE QUE LE BANC D'APPLICATION NE VOIT PAS, DIT.** Dans l'application, la piste « Sans clip » en
+reçoit un à l'ouverture (D333 : « 2 clip(s) » copiés, un par piste) : le cas d'une piste vraiment
+sans clip n'est tenu que par les tests du cœur.
+
+**UNE LECTURE COMMUNE.** « Aplatir » (D537) et « Copier la plage » lisent ce qu'une piste fait
+entendre par le même en-tête interne (`LectureEntendue.h`) et par `clipPassages(…, avecLesMuets)`
+— la recopie locale de D537 a disparu, sans régression (407 avant, 407 après la refonte) — et cette
+lecture suit le rattachement de D335, qu'elle ignorait.
+
+**LES SUITES**, toutes les cibles recompilées : core **417**, audio 1 314, interchange 336, clap 25,
+panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts. **`--bancs` entier (53) : lancé à 8 h 14
+sur ce binaire** (D535.3 touche le menu Édition) ; son résultat s'écrit à sa fin.
+
+
+### Phase D538 — insérer ou supprimer du temps au milieu d'un clip MIDI : une hypothèse, écrite avant sa mesure (03/10/2026) — FAITE
 
 *Écrite le 03/10 à 5 h 09, en écrivant D535.3 : son test « coller au milieu d'un clip » est tombé,
 et le relevé a montré que le défaut n'était pas dans le collage.*
@@ -39694,3 +39721,17 @@ cas demande de couper la fenêtre au point de matériau, et il a sa propre mesur
 
 **ATTENDUS.** 1. les deux tests ci-dessus verts, rouges sur l'ancien ordre ; 2. les tests de D13.3
 (clips audio, notes, contrôleurs, courbes) verts ; 3. le collage au milieu d'un clip de D535.3 vert.
+
+**D538 EST FAITE (03/10, 8 h 15).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | les deux tests, rouges sur l'ancien ordre | insérer 1 920 à 1 920 dans un clip identité [0, 3 840) : (0, do), (**5 000 ms**, sol) — l'ancien ordre : le sol avait DISPARU ; supprimer [960, 1 920) : (0, do), (**2 000 ms**, sol) — l'ancien : 1 000 ms. **Par l'application** (`tools/temps-dans-un-clip.sh`, `.mid` exporté) : le binaire d'avant rend {1:0:60} et {1:0:60 1:960:67}, le corrigé {1:0:60 1:3840:67} et {1:0:60 1:1920:67} | **oui** |
+| 2 | D13.3 intacte | les trois tests de D13.3 (clips audio, notes, contrôleurs, courbes) verts | **oui** |
+| 3 | le collage de D535.3 | « coller au milieu d'un clip » vert | **oui** |
+
+**POURQUOI CE DÉFAUT VIVAIT DEPUIS D13.3.** Ses tests n'avaient que des clips AUDIO, dont la
+fenêtre est en secondes et que `splitClips` coupe juste ; et c'est D333 (l'ouverture d'un MIDI
+pose des clips aux bornes des notes) qui a mis des clips MIDI sous presque toutes les pistes, des
+mois plus tard. Le geste « Insérer du silence » au milieu d'une partie faisait taire la fin de la
+partie, sans un mot. Trouvé non par un banc de D13.3 mais par un test de D535.3 qui y passait.
