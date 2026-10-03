@@ -39881,3 +39881,23 @@ sur le binaire de D540 : `fin-du-morceau.sh`, `copie-liee-temps.sh`, `temps-dans
 `copier-plage.sh`, `aplatir-clips.sh` verts ; entrés dans `verifier.sh --bancs` (55). D539 et D540
 ne touchent pas `app/Source` : la série entière, jouée pour D535.3 sur le binaire d'avant (53/53),
 n'est pas rejouée.
+
+
+### Phase D541 — l'écharde d'un tick : insérer du temps après la fin d'un clip ouvert le coupe quand même (03/10/2026)
+
+*Écrite avant sa mesure, le 03/10 à 13 h 07 — le reste (a) nommé par D539.*
+
+**CE QUI A ÉTÉ VU, ET OÙ IL SE PRODUIT.** Dans le relevé d'un test de D539, `insertTime(1920, …)`
+sur un clip à fenêtre OUVERTE (`sourceLength` et `length` nuls : « jusqu'au bout du matériau »)
+dont le matériau finit à 1 200 a rendu deux clips : [0, 1 920) et un clip d'**un tick** posé à
+2 400. `insertTime` passe à `splitClips` une fin de matériau ALLONGÉE jusqu'à la coupe, plus un
+(`max(fin du matériau, at) + 1`) : la fenêtre ouverte, qui ne joue que jusqu'à 1 200, passe alors
+pour enjamber 1 920, et sa « seconde moitié » est une écharde. Ces fenêtres ne sont pas une
+curiosité de test : l'import d'un projet FL Studio ou Ableton (`poserUnClipSurLeMateriau`) en pose
+une par piste.
+
+**HYPOTHÈSE.** Sur une piste importée (un clip ouvert sur un matériau qui finit à 1 200), insérer
+du temps à 1 920 — APRÈS tout ce qu'elle fait entendre — crée un clip d'un tick et rend explicite
+la fenêtre du premier ; supprimer [1 920, 2 880) fait de même. Mesure : le nombre de clips et leurs
+fenêtres après chaque geste (attendu : un seul clip, inchangé), et ce qu'on entend (inchangé dans
+les deux cas, l'écharde lisant un matériau vide).
