@@ -39885,7 +39885,7 @@ n'est pas rejouée.
 
 ### Phase D541 — l'écharde d'un tick : insérer du temps après la fin d'un clip ouvert le coupe quand même (03/10/2026)
 
-*Écrite avant sa mesure, le 03/10 à 13 h 07 — le reste (a) nommé par D539.*
+*Écrite avant sa mesure, le 03/10 à 12 h 47 — le reste (a) nommé par D539. (Le premier jet disait « 13 h 07 », une heure écrite de tête ; relue à l’horloge.)*
 
 **CE QUI A ÉTÉ VU, ET OÙ IL SE PRODUIT.** Dans le relevé d'un test de D539, `insertTime(1920, …)`
 sur un clip à fenêtre OUVERTE (`sourceLength` et `length` nuls : « jusqu'au bout du matériau »)
