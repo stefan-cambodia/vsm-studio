@@ -4057,6 +4057,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditPasteRange, tr(u8"Coller la plage à la tête de lecture (en insérant)"),
                          !plageCopiee_.empty());
+            // D543.1 : LA LIGNE D'ACCORDS D'APRÈS LES NOTES de la piste active.
+            {
+                const auto* active = pianoRoll_.activeTrack();
+                menu.addItem(kMenuEditChordsFromNotes, tr(u8"Créer les accords d'après les notes (piste active)"),
+                             active != nullptr && !active->notes.empty());
+            }
             vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditLocatorsFromSelection,
                                  tr(u8"Locateurs sur la s\u00e9lection"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditLocatorsFromSelection,
@@ -5068,6 +5074,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditCopyRange)  { copierPlage(false); return; }   // D535.3
     if (menuItemID == kMenuEditCutRange)   { copierPlage(true); return; }
     if (menuItemID == kMenuEditPasteRange) { collerPlage(); return; }
+    if (menuItemID == kMenuEditChordsFromNotes) { accordsDepuisLesNotes(); return; }   // D543.1
     if (menuItemID == kMenuEditExtractGroove) { extractGrooveFromSelectedTrack(); return; }
     if (menuItemID == kMenuEditApplyGroove)   { applyGrooveToSelection(); return; }
     if (menuItemID == kMenuEditSaveGroove)    { saveCurrentGroove(); return; }
@@ -10252,6 +10259,34 @@ void MainComponent::copierPlage(bool couper) {
                                        .replace("%1", juce::String(static_cast<int>(notes)))
                                        .replace("%2", juce::String(static_cast<int>(clips)))
                                        .replace("%3", juce::String(static_cast<int>(plageCopiee_.tracks.size()))));
+}
+
+void MainComponent::accordsDepuisLesNotes() {
+    const auto* piste = pianoRoll_.activeTrack();
+    if (piste == nullptr || piste->notes.empty()) return;
+    const auto passages = vsm::sequencer::clipPassages(*piste, project_.lastUsedTick());
+    const auto bilan = vsm::sequencer::chordsFromNotes(piste->notes, passages, project_.timeSignatureMap,
+                                                       project_.ticksPerQuarterNote, 0, project_.lastSoundingTick());
+    std::string ligne;
+    for (const auto& a : bilan.chords) ligne += std::to_string(a.tick) + ":" + vsm::sequencer::chordSymbol(a) + " ";
+    const std::string journal = "VSM_ACCORDS_DEPUIS_NOTES : « " + piste->name + " » — " + std::to_string(bilan.chords.size())
+                                + " accord(s) sur " + std::to_string(bilan.bars) + " mesure(s), "
+                                + std::to_string(bilan.barsWithoutChord) + " sans accord net — " + ligne + "\n";
+    std::fputs(journal.c_str(), stderr);
+    // RIEN À CHANGER : aucun pas (D511), et c'est dit.
+    if (bilan.chords == project_.chords) {
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Créer les accords d'après les notes : la ligne d'accords est déjà celle-là"));
+        return;
+    }
+    beginProjectEdit(u8"Créer les accords d'après les notes");
+    project_.chords = bilan.chords;
+    refreshMarkerViews();
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Créer les accords d'après les notes : %1 accord(s) sur %2 mesure(s), %3 sans accord net")
+                                       .replace("%1", juce::String(static_cast<int>(bilan.chords.size())))
+                                       .replace("%2", juce::String(static_cast<int>(bilan.bars)))
+                                       .replace("%3", juce::String(static_cast<int>(bilan.barsWithoutChord))));
 }
 
 void MainComponent::collerPlage() {

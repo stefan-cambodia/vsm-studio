@@ -1033,6 +1033,8 @@ private:
         kMenuEditCopyRange,
         kMenuEditCutRange,
         kMenuEditPasteRange,
+        /// D543.1 : la ligne d'accords d'après les notes de la piste active.
+        kMenuEditChordsFromNotes,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1455,6 +1457,9 @@ private:
     /// et le COLLER EN INSÉRANT à la tête. Le presse-papiers de plage est de session.
     void copierPlage(bool couper);
     void collerPlage();
+    /// D543.1 : la ligne d'accords RÉÉCRITE d'après ce que la piste active fait entendre — un accord par
+    /// mesure ; un pas, sauf s'il n'y a rien à changer ; dit.
+    void accordsDepuisLesNotes();
     vsm::sequencer::RangeClipboard plageCopiee_;
     /// IMPORTER UN MIDI DANS LE PROJET (D14.3) : ses pistes s'ajoutent à la
     /// suite, posées à la tête de lecture ; « Ouvrir MIDI » le REMPLACE.

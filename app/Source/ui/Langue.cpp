@@ -1111,6 +1111,15 @@ const Paire kAnglais[] = {
       "a condition is empty (one “and” too many?)" },
     { "Aucun symbole n'a été tapé : la ligne d'accords n'a pas changé.",
       "No symbol was typed: the chord track has not changed." },
+    // D543.1 : LES ACCORDS D'APRÈS LES NOTES.
+    { "Créer les accords d'après les notes (piste active)",
+      "Create chords from notes (active track)" },
+    { "Créer les accords d'après les notes : la ligne d'accords est déjà celle-là",
+      "Create chords from notes: the chord track already says this" },
+    { "Créer les accords d'après les notes : %1 accord(s) sur %2 mesure(s), %3 sans accord net",
+      "Create chords from notes: %1 chord(s) over %2 bar(s), %3 without a clear chord" },
+    { "Créer les accords d'après les notes",
+      "Create chords from notes" },
     // D542.3 : DÉCOUPER AUX SILENCES.
     { "Découper aux silences…",
       "Split at silences…" },

@@ -1,7 +1,10 @@
 #pragma once
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
+#include "vsm/sequencer/TimeSignatureMap.h"
 #include <cstddef>
+#include <optional>
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -72,5 +75,24 @@ struct ChordSnapReport {
 ChordSnapReport snapNotesToChords(std::vector<Note>& notes, const NoteSelection& selection,
                                   const std::vector<ChordEvent>& accords,
                                   const std::vector<ClipPassage>& passages);
+
+/// D543.1 : RECONNAÎTRE UN ACCORD d'après le POIDS de chaque classe de hauteur (la durée qu'elle
+/// sonne) et la classe de la BASSE (-1 si inconnue). Le meilleur couple (fondamentale, type) parmi
+/// 12 × 12 types (la quinte à vide exclue) couvre le plus de poids, moins le poids hors de l'accord,
+/// moins une pénalité par note de l'accord absente ; à égalité, le premier des types, qui vont du
+/// plus simple au plus riche. Une classe « sonne » à 5 % du poids au moins. Rien quand
+/// moins de trois classes sonnent, ou quand le meilleur couvre moins des deux tiers du poids.
+std::optional<ChordEvent> detectChord(const std::array<double, 12>& poids, int basse);
+
+struct ChordDetectionReport {
+    std::vector<ChordEvent> chords;   ///< un par mesure reconnue ; deux pareils de suite n'en font qu'un
+    size_t bars = 0;                  ///< mesures examinées
+    size_t barsWithoutChord = 0;      ///< mesures où rien de net ne sonnait
+};
+
+/// La ligne d'accords d'après ce que la piste fait ENTENDRE (par ses fenêtres, `passages`) dans
+/// [from, to) : un accord par mesure, les notes muettes écartées.
+ChordDetectionReport chordsFromNotes(const std::vector<Note>& notes, const std::vector<ClipPassage>& passages,
+                                     const TimeSignatureMap& signatures, uint16_t ppq, Tick from, Tick to);
 
 } // namespace vsm::sequencer

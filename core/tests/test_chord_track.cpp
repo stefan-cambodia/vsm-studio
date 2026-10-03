@@ -292,3 +292,74 @@ VSM_TEST(une_note_entendue_nulle_part_reste_et_se_compte) {
     VSM_ASSERT_EQ(caler(horsFenetre, cPuisD()).unheard, static_cast<size_t>(1));
     VSM_ASSERT_EQ(static_cast<int>(horsFenetre.notes[0].number), 65);
 }
+
+// D543.1 : RECONNAÎTRE UN ACCORD d'après les notes.
+namespace {
+std::array<double, 12> classes(std::initializer_list<std::pair<int, double>> notes) {
+    std::array<double, 12> poids{};
+    for (const auto& [h, duree] : notes) poids[static_cast<size_t>(h % 12)] += duree;
+    return poids;
+}
+std::string reconnu(const std::array<double, 12>& poids, int basse = -1) {
+    const auto accord = detectChord(poids, basse);
+    return accord ? chordSymbol(*accord) : std::string("rien");
+}
+}
+
+VSM_TEST(detect_chord_reconnait_les_accords_et_refuse_ce_qui_n_en_est_pas_un) {
+    VSM_ASSERT_EQ(reconnu(classes({{60, 1920}, {64, 1920}, {67, 1920}})), std::string("C"));
+    VSM_ASSERT_EQ(reconnu(classes({{57, 1920}, {60, 1920}, {64, 1920}, {67, 1920}})), std::string("Am7"));
+    VSM_ASSERT_EQ(reconnu(classes({{59, 1920}, {62, 1920}, {67, 1920}}), 11), std::string("G/B"));
+    VSM_ASSERT_EQ(reconnu(classes({{60, 1920}})), std::string("rien"));                   // une note seule
+    VSM_ASSERT_EQ(reconnu(classes({{48, 1920}, {55, 1920}})), std::string("rien"));       // une quinte à vide
+    // Une quinte à vide et une tierce de passage d'une double croche : la tierce ne SONNE pas (moins de
+    // 5 % du poids), il n'y a toujours que deux classes — pas un accord majeur.
+    VSM_ASSERT_EQ(reconnu(classes({{48, 1920}, {55, 1920}, {52, 120}})), std::string("rien"));
+    // Un ré de passage d'une double croche ne fait pas l'accord : la durée pondère.
+    VSM_ASSERT_EQ(reconnu(classes({{60, 1920}, {64, 1920}, {67, 1920}, {62, 120}})), std::string("C"));
+}
+
+VSM_TEST(detect_chord_reconnait_chaque_type_dans_ses_douze_transpositions) {
+    size_t reconnus = 0;
+    for (const ChordType type : allChordTypes()) {
+        if (type == ChordType::Power) continue;
+        for (int racine = 0; racine < 12; ++racine) {
+            std::array<double, 12> poids{};
+            for (int iv : chordIntervals(type)) poids[static_cast<size_t>((racine + iv) % 12)] += 960.0;
+            const auto accord = detectChord(poids, racine);
+            VSM_ASSERT(accord.has_value());
+            if (!accord) continue;
+            // Le même ENSEMBLE de classes : un accord symétrique (augmenté) peut se nommer d'une autre
+            // fondamentale, ce qui reste juste.
+            ChordEvent attendu;
+            attendu.root = static_cast<uint8_t>(racine);
+            attendu.type = type;
+            VSM_ASSERT_EQ(chordMask(*accord), chordMask(attendu));
+            ++reconnus;
+        }
+    }
+    VSM_ASSERT_EQ(reconnus, size_t(12 * 12));
+}
+
+VSM_TEST(chords_from_notes_donne_un_accord_par_mesure_et_compte_les_mesures_sans) {
+    std::vector<Note> notes;
+    uint64_t ids = 1;
+    const auto poser = [&](Tick debut, std::initializer_list<int> hauteurs) {
+        for (int h : hauteurs) {
+            Note n;
+            n.startTick = debut; n.endTick = debut + 1920; n.number = static_cast<uint8_t>(h); n.velocity = 100; n.id = ids++;
+            notes.push_back(n);
+        }
+    };
+    poser(0, {60, 64, 67});          // C
+    poser(1920, {57, 60, 64, 67});   // Am7
+    poser(3840, {59, 62, 67});       // G/B (si à la basse)
+    poser(5760, {72});               // une note seule
+    TimeSignatureMap signatures;
+    const auto bilan = chordsFromNotes(notes, {ClipPassage{}}, signatures, 480, 0, 7680);
+    std::string ligne;
+    for (const auto& a : bilan.chords) ligne += std::to_string(a.tick) + ":" + chordSymbol(a) + " ";
+    VSM_ASSERT_EQ(ligne, std::string("0:C 1920:Am7 3840:G/B "));
+    VSM_ASSERT_EQ(bilan.bars, size_t(4));
+    VSM_ASSERT_EQ(bilan.barsWithoutChord, size_t(1));
+}

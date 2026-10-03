@@ -40149,7 +40149,7 @@ vérité.
 d'accords, sur laquelle « Caler sur les accords » (D532.3) peut ensuite corriger des hauteurs — et ne
 demande au modèle que ce qu'il a (`chordMask`, les treize types). Puis D543.2, puis D543.3.
 
-### Phase D543.1 — créer la ligne d'accords d'après les notes (03/10/2026)
+### Phase D543.1 — créer la ligne d'accords d'après les notes (03/10/2026) — FAITE
 
 *Écrite avant son code, le 03/10 à 15 h 57.*
 
@@ -40175,3 +40175,23 @@ demande au modèle que ce qu'il a (`chordMask`, les treize types). Puis D543.2, 
    « 0:C 1920:Am7 3840:G/B », la quatrième comptée sans accord ; Ctrl+Z rend la ligne d'avant ;
 3. un banc `tools/accords-depuis-notes.sh`, vu rouge sur un défaut remis à la main, entré dans
    `verifier.sh --bancs` ; libellés traduits.
+
+**D543.1 EST FAITE (03/10, 16 h 41).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | la reconnaissance | core 428 → **431** : do-mi-sol → C, la-do-mi-sol → Am7, si-ré-sol avec si à la basse → G/B ; une note seule, une quinte à vide, une quinte à vide avec une tierce de passage d'une double croche → rien ; un ré de passage dans do-mi-sol → C ; les 12 types (sans la quinte à vide) dans leurs 12 transpositions reconnus — 144 sur 144, par leur ENSEMBLE de classes (un accord augmenté se nomme d'une autre fondamentale, ce qui reste juste) ; quatre mesures → « 0:C 1920:Am7 3840:G/B », 1 sans accord net. **Défauts rouges** : sans le minimum de trois classes, la basse ignorée, le seuil des 5 % retiré (après un test neuf, ci-dessous) | **oui** |
+| 2 | par l'application | `tools/accords-depuis-notes.sh`, `project.json` relu : **0:C 1920:Am7 3840:G/B**, « 3 accord(s) sur 4 mesure(s), 1 sans accord net » ; Ctrl+Z → **(vide)** ; rétabli puis rejoué sur sa propre ligne → **1** pas, pas 2. Rouge sur le binaire d'avant (le geste n'y est pas) et sur la garde « rien à changer » retirée (2 pas) | **oui** |
+| 3 | le banc | 3 contrôles, entré dans `verifier.sh --bancs` (58) ; libellés traduits ; `menus-cites.py` : 36 citations | **oui** |
+
+**DEUX GARDES QUI NE GARDAIENT PAS, DITES.** (a) Retirer le seuil des 5 % ne faisait tomber aucun test :
+le score pondère déjà par la durée, et ce que le seuil garde est le COMPTE des classes — un test neuf
+(une quinte à vide plus une tierce de passage brève) le fait maintenant tomber. (b) Inverser la règle
+« à égalité, le type le plus simple » ne faisait tomber aucun test non plus : avec la pénalité
+d'absence, deux types de tailles différentes ne font jamais le même score, et l'ordre des types
+(du plus simple au plus riche) tranche déjà toute égalité exacte. La règle explicite a été retirée,
+et la raison écrite dans le code.
+
+**LES SUITES** (relevé à 16 h 49) : core **431**, audio 1 319, interchange 336, clap 25, panneaux 11 ;
+Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` entier (58) lancé à la
+suite ; son résultat s'écrit à sa fin.

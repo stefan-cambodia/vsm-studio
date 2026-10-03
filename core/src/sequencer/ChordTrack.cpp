@@ -1,5 +1,6 @@
 #include "vsm/sequencer/ChordTrack.h"
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <utility>
 
@@ -132,6 +133,89 @@ ChordSnapReport snapNotesToChords(std::vector<Note>& notes, const NoteSelection&
             const int haut = static_cast<int>(note.number) + distance;
             if (haut <= 127 && dansLAccord(haut)) { note.number = static_cast<uint8_t>(haut); ++bilan.moved; break; }
         }
+    }
+    return bilan;
+}
+
+std::optional<ChordEvent> detectChord(const std::array<double, 12>& poids, int basse) {
+    double total = 0.0;
+    for (double p : poids) total += p;
+    if (total <= 0.0) return std::nullopt;
+    // UNE CLASSE QUI SONNE pèse au moins 5 % : une note de passage brève ne fait pas l'accord.
+    const double sonne = 0.05 * total;
+    int classes = 0;
+    for (double p : poids) if (p >= sonne) ++classes;
+    if (classes < 3) return std::nullopt;   // une note seule, une quinte à vide ne sont pas des accords
+
+    std::optional<ChordEvent> meilleur;
+    double meilleurScore = -1e300, meilleurCouvert = 0.0;
+    for (const ChordType type : allChordTypes()) {
+        if (type == ChordType::Power) continue;
+        const auto intervalles = chordIntervals(type);
+        for (int racine = 0; racine < 12; ++racine) {
+            double couvert = 0.0;
+            int absentes = 0;
+            for (int iv : intervalles) {
+                const double p = poids[static_cast<size_t>((racine + iv) % 12)];
+                couvert += p;
+                if (p < sonne) ++absentes;
+            }
+            const double score = couvert - (total - couvert) - absentes * 0.25 * total;
+            // À ÉGALITÉ, LE PREMIER — les types vont du plus simple au plus riche (`allChordTypes`).
+            // Une règle explicite « le plus court » a été écrite puis retirée : avec la pénalité
+            // d'absence, deux types de tailles différentes ne font jamais le même score, et un défaut
+            // qui l'inversait ne faisait tomber aucun test (vu le 03/10).
+            if (score <= meilleurScore + 1e-9) continue;
+            ChordEvent accord;
+            accord.root = static_cast<uint8_t>(racine);
+            accord.type = type;
+            meilleur = accord;
+            meilleurScore = score;
+            meilleurCouvert = couvert;
+        }
+    }
+    if (!meilleur || meilleurCouvert < (2.0 / 3.0) * total) return std::nullopt;
+    if (basse >= 0 && basse != meilleur->root) meilleur->bass = basse;
+    return meilleur;
+}
+
+ChordDetectionReport chordsFromNotes(const std::vector<Note>& notes, const std::vector<ClipPassage>& passages,
+                                     const TimeSignatureMap& signatures, uint16_t ppq, Tick from, Tick to) {
+    ChordDetectionReport bilan;
+    // CE QUI SONNE, sur la ligne de temps : (début, fin, hauteur), par les fenêtres de la piste.
+    struct Entendue { Tick debut, fin; int hauteur; };
+    std::vector<Entendue> entendues;
+    for (const auto& n : notes) {
+        if (n.muted) continue;
+        for (const auto& p : passages) {
+            const Tick t = passageOut(p, n.startTick);
+            if (t < 0) continue;
+            entendues.push_back({t, std::min(n.endTick + p.shift, p.outLimit), n.number});
+        }
+    }
+    Tick mesure = signatures.tickAtBarBeat(signatures.barBeatAt(std::max<Tick>(0, from), ppq).bar, 0, ppq);
+    while (mesure < to) {
+        const Tick suivante = mesure + std::max<Tick>(1, signatures.ticksPerBar(mesure, ppq));
+        ++bilan.bars;
+        std::array<double, 12> poids{};
+        int basseAuTemps = 999, basse = 999;
+        for (const auto& e : entendues) {
+            const Tick a = std::max(e.debut, mesure), b = std::min(e.fin, suivante);
+            if (b <= a) continue;
+            poids[static_cast<size_t>(e.hauteur % 12)] += static_cast<double>(b - a);
+            basse = std::min(basse, e.hauteur);
+            if (e.debut <= mesure && e.fin > mesure) basseAuTemps = std::min(basseAuTemps, e.hauteur);
+        }
+        const int laBasse = basseAuTemps != 999 ? basseAuTemps % 12 : (basse != 999 ? basse % 12 : -1);
+        if (auto accord = detectChord(poids, laBasse)) {
+            accord->tick = mesure;
+            const bool pareil = !bilan.chords.empty() && bilan.chords.back().root == accord->root
+                                && bilan.chords.back().type == accord->type && bilan.chords.back().bass == accord->bass;
+            if (!pareil) bilan.chords.push_back(*accord);
+        } else {
+            ++bilan.barsWithoutChord;
+        }
+        mesure = suivante;
     }
     return bilan;
 }
