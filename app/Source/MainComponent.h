@@ -1673,6 +1673,9 @@ private:
     /// D17.6 : rogne le clip à ce qui sonne, en relisant les échantillons du
     /// fichier. Annulable.
     void trimClipToSound(size_t trackIndex, uint64_t clipId);
+    /// D542.3 : un clip par passage qui sonne, les silences intérieurs retirés — seuil et silence
+    /// minimal demandés ; un pas ; dit.
+    void decouperAuxSilences(size_t trackIndex, uint64_t clipId);
     /// D20.3 : les clips audio choisis, coupés à chaque attaque trouvée.
     void sliceSelectedClipsAtOnsets();
     /// D21.3 : la coupe demandée à `tick` sur la piste, déplacée au passage

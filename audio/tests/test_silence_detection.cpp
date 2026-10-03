@@ -88,3 +88,59 @@ VSM_TEST(both_ends_are_trimmed_and_a_wholly_silent_file_is_left_alone) {
     const auto vide = detectSound(lecteur(rien), 48000, kSr);
     VSM_ASSERT(!vide.found);
 }
+
+// D542.3 : LES PASSAGES QUI SONNENT. Des salves de bruit à -6 dB séparées de ZÉROS.
+namespace {
+/// `schema` alterne silence et son, en secondes, en commençant par un silence.
+std::vector<float> salves(double sampleRate, const std::vector<double>& schema) {
+    std::vector<float> s;
+    uint32_t etat = 777u;
+    for (size_t k = 0; k < schema.size(); ++k) {
+        const auto n = static_cast<size_t>(schema[k] * sampleRate);
+        for (size_t i = 0; i < n; ++i) {
+            etat = etat * 1664525u + 1013904223u;
+            const float v = static_cast<float>(static_cast<int32_t>(etat >> 8) % 20001 - 10000) / 10000.0f;
+            s.push_back(k % 2 == 1 ? 0.5f * v : 0.0f);
+        }
+    }
+    return s;
+}
+}
+
+VSM_TEST(trois_salves_separees_de_silences_font_trois_passages) {
+    const double sr = 8000.0;
+    // Des silences de BORD de 300 ms — au-dessus du minimum de 200 ms, donc retirés : la règle des
+    // bords de `detectSound` garderait un silence de bord plus court.
+    const auto s = salves(sr, {0.3, 0.2, 0.3, 0.2, 0.3, 0.2, 0.3});
+    const auto p = detectSoundRegions(lecteur(s), static_cast<int64_t>(s.size()), sr);
+    VSM_ASSERT_EQ(p.size(), size_t(3));
+    // Bornes à la marge près (5 ms = 40 trames) : la première salve va de 2 400 à 4 000.
+    VSM_ASSERT(std::llabs(p[0].firstFrame - (2400 - 40)) <= 2);
+    VSM_ASSERT(std::llabs(p[0].lastFrame - (4000 + 40)) <= 2);
+    VSM_ASSERT(std::llabs(p[1].firstFrame - (6400 - 40)) <= 2);
+    VSM_ASSERT(std::llabs(p[2].lastFrame - (static_cast<int64_t>(s.size()) - 2400 + 40)) <= 2);
+    // Un silence de bord PLUS COURT que le minimum n'est pas retiré.
+    const auto court = salves(sr, {0.1, 0.2, 0.3, 0.2, 0.1});
+    const auto q = detectSoundRegions(lecteur(court), static_cast<int64_t>(court.size()), sr);
+    VSM_ASSERT_EQ(q.size(), size_t(2));
+    VSM_ASSERT_EQ(q.front().firstFrame, int64_t(0));
+    VSM_ASSERT_EQ(q.back().lastFrame, static_cast<int64_t>(court.size()));
+}
+
+VSM_TEST(un_trou_plus_court_que_le_silence_minimal_reste_dans_le_passage) {
+    const double sr = 8000.0;
+    const auto s = salves(sr, {0.1, 0.2, 0.05, 0.2, 0.1});
+    const auto p = detectSoundRegions(lecteur(s), static_cast<int64_t>(s.size()), sr, -60.0, 0.005, 0.200);
+    VSM_ASSERT_EQ(p.size(), size_t(1));
+}
+
+VSM_TEST(tout_sous_le_seuil_ne_fait_aucun_passage_et_un_son_aux_deux_bords_en_fait_un) {
+    const double sr = 8000.0;
+    const std::vector<float> zeros(8000, 0.0f);
+    VSM_ASSERT(detectSoundRegions(lecteur(zeros), 8000, sr).empty());
+    const auto plein = salves(sr, {0.0, 1.0});
+    const auto p = detectSoundRegions(lecteur(plein), static_cast<int64_t>(plein.size()), sr);
+    VSM_ASSERT_EQ(p.size(), size_t(1));
+    VSM_ASSERT_EQ(p[0].firstFrame, int64_t(0));
+    VSM_ASSERT_EQ(p[0].lastFrame, static_cast<int64_t>(plein.size()));
+}

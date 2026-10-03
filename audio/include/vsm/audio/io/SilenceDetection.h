@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 // D17.6 de docs/ROADMAP-daw.md — DÉTECTER LE SILENCE.
 //
@@ -49,5 +50,16 @@ SoundBounds detectSound(const std::function<bool(int64_t, float&, float&)>& fram
                          int64_t frames, double sampleRate, double thresholdDb = -60.0,
                          double preAttackSeconds = 0.005,
                          double minSilenceSeconds = 0.020);
+
+/// D542.3 : LES PASSAGES QUI SONNENT, et non plus seulement leurs bornes extrêmes — pour découper un
+/// clip à ses silences INTÉRIEURS. Un silence (crête sous `thresholdDb`) d'au moins
+/// `minSilenceSeconds` sépare deux passages ; un trou plus court reste dans le passage. Chaque
+/// passage garde `preAttackSeconds` avant sa première trame et autant après sa dernière (une chute
+/// n'est pas plus un mur qu'une attaque), sans empiéter sur son voisin. Aux bords du matériau, la
+/// règle de `detectSound` : un silence plus court que le minimum n'est pas retiré. Vide quand tout
+/// est sous le seuil.
+std::vector<SoundBounds> detectSoundRegions(const std::function<bool(int64_t, float&, float&)>& frameAt,
+                                            int64_t frames, double sampleRate, double thresholdDb = -60.0,
+                                            double preAttackSeconds = 0.005, double minSilenceSeconds = 0.200);
 
 } // namespace vsm::audio::io

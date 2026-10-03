@@ -864,6 +864,8 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
             menu.addSubMenu(titre, hauteur, !vinyle);
         }
         menu.addItem(19, tr(u8"Rogner au son (d\u00e9tecter le silence)"));
+        // D542.3 : DÉCOUPER AUX SILENCES INTÉRIEURS — un clip par passage qui sonne.
+        menu.addItem(25, tr(u8"Découper aux silences…"));
         // D20.3 : DÉCOUPER AUX TRANSITOIRES, sur les clips audio choisis.
         // Le nombre de coupes se dit APRÈS, pas dans l'entrée : le compter
         // d'avance lirait le fichier entier à chaque ouverture du menu, et
@@ -1736,6 +1738,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         }
         case 19:
             if (onClipTrimToSoundRequested) onClipTrimToSoundRequested(piste, clipId);
+            return;
+        case 25:   // D542.3
+            if (onClipSplitAtSilencesRequested) onClipSplitAtSilencesRequested(piste, clipId);
             return;
         case 22:
             if (onClipSliceAtOnsetsRequested) onClipSliceAtOnsetsRequested();

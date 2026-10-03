@@ -40055,8 +40055,12 @@ renommée. (c) Les « doublons à l'octave » restent hors de la grammaire, nomm
 Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). **`--bancs` entier (56), pour
 D542.1 et D542.2 : lancé à 13 h 55** ; son résultat s'écrit à sa fin.
 
+**LA SÉRIE, relevée à 15 h 39 : 56 bancs sur 56 verts**, préférences de l'utilisateur identiques — dont
+`locateurs-section.sh`, `editeur-logique.sh` (12 contrôles) et `annulation-des-menus.py`, qui juge les
+menus des règles et répond désormais aux listes avec notification.
 
-### Phase D542.3 — découper un clip audio à ses silences intérieurs (03/10/2026)
+
+### Phase D542.3 — découper un clip audio à ses silences intérieurs (03/10/2026) — FAITE
 
 *Écrite avant son code, le 03/10 à 14 h 58, D542.2 faite.*
 
@@ -40092,3 +40096,25 @@ pourtant un seul clip.
 3. un banc `tools/decouper-aux-silences.sh` qui joue 2, vu rouge sur un défaut remis à la main,
    entré dans `verifier.sh --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux
    langues.
+
+**D542.3 EST FAITE (03/10, 15 h 48).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | la détection | audio 1 316 → **1 319** : trois salves séparées de 300 ms de zéros → trois passages, bornes à la marge (40 trames) près ; un trou de 50 ms sous un minimum de 200 ms → un passage ; tout sous le seuil → aucun ; un son aux deux bords → un passage, bornes du matériau ; un silence de BORD plus court que le minimum gardé. **Trois défauts, trois rouges** : chaque trou coupe le passage, le silence de bord court retiré quand même, pas de marge après la chute | **oui** |
+| 2 | par l'export audio | `tools/decouper-aux-silences.sh` : **3 clips** (« 3 passage(s), 3 clip(s) gardé(s), 1.369 s de silence retirées ») ; l'export découpé (4,0 s) est, sur ses **176 630 trames, identique au bit près** au début de l'export d'avant (4,3 s), dont les trames de plus ne dépassent pas **un pas de 24 bits** — le plancher de dither de tous ses silences. Le seuil à −3 dBFS : « 0 passage(s) — rien de découpé », un clip ; Ctrl+Z : un clip. **Vu rouge** sur des coupes décalées de 300 trames dans le son : 1 080 échantillons différents | **oui** (attendu corrigé, ci-dessous) |
+| 3 | le banc, les photos | 4 contrôles, entré dans `verifier.sh --bancs` (57) ; la fenêtre photographiée en français et en anglais ; libellés traduits | **oui** |
+
+**L'ATTENDU 2, CORRIGÉ DEUX FOIS PAR LA MESURE, et dit.** Écrit « l'export identique au bit près à
+celui d'avant », il supposait la même longueur ; la première course a montré **4,0 s contre 4,3 s** :
+le silence de FIN retiré raccourcit l'export, qui finit où finit ce qu'on entend (D540). Réécrit
+« le début identique, le reste n'est que des zéros », la seconde course a montré un reste à **±1 pas
+de 24 bits** — le même plancher que dans les 0,1 s de silence d'AVANT la première salve : le dither
+de l'export, pas du signal. Le contrôle compare donc les échantillons communs au bit près et borne le
+reste par le plancher que l'export a dans ses propres silences. Ce que l'attendu voulait garder —
+« aucun échantillon du son n'est perdu » — l'est, et le défaut qui en perd le fait tomber.
+
+**LES SUITES** (relevé à 15 h 55) : core 428, audio **1 319**, interchange 336, clap 25, panneaux 11 ;
+Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` entier (57) lancé à la
+suite ; son résultat s'écrit à sa fin. **D542 — le troisième audit — est faite** : ses trois manques le
+sont.

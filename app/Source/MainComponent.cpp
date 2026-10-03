@@ -635,6 +635,9 @@ MainComponent::MainComponent()
     arrangement_.onClipTrimToSoundRequested = [this](size_t piste, uint64_t clipId) {
         trimClipToSound(piste, clipId);
     };
+    arrangement_.onClipSplitAtSilencesRequested = [this](size_t piste, uint64_t clipId) {   // D542.3
+        decouperAuxSilences(piste, clipId);
+    };
     // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
     // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
     // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et
@@ -13479,6 +13482,117 @@ void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
            u8"clip qui a bougé.")
             .replace("%1", juce::String(static_cast<double>(bornes.firstFrame) / sr * 1000.0, 0))
             .replace("%2", juce::String(static_cast<double>(compte - bornes.lastFrame) / sr * 1000.0, 0)));
+}
+
+void MainComponent::decouperAuxSilences(size_t trackIndex, uint64_t clipId) {
+    if (trackIndex >= project_.tracks.size()) return;
+    const auto& piste = project_.tracks[trackIndex];
+    if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Découper aux silences"),
+                     tr(u8"Cette commande cherche le silence dans un FICHIER : elle ne s'applique qu'à un "
+                        u8"clip de piste audio. Sur une piste MIDI, une note qui ne sonne pas n'existe pas."));
+        return;
+    }
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        tr(u8"Découper aux silences"),
+        tr(u8"Un clip par passage qui sonne ; les silences d'au moins la durée minimale sont retirés."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("seuil", "-60", tr(u8"Seuil de silence (dBFS, crête) :"));
+    fenetre->addTextEditor("silence", "200", tr(u8"Silence minimal (ms) :"));
+    fenetre->addButton(tr(u8"Découper"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, trackIndex, clipId](int resultat) {
+        const double seuilDb = fenetre->getTextEditorContents("seuil").trim().replaceCharacter(',', '.').getDoubleValue();
+        const double silenceMs = fenetre->getTextEditorContents("silence").trim().replaceCharacter(',', '.').getDoubleValue();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1 || trackIndex >= project_.tracks.size()) return;
+        auto& piste = project_.tracks[trackIndex];
+        auto it = std::find_if(piste.clips.begin(), piste.clips.end(),
+                               [clipId](const vsm::sequencer::Clip& c) { return c.id == clipId; });
+        if (it == piste.clips.end()) return;
+        const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+        const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
+        auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+        if (!charge.source || !charge.source->samples) {
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Découper aux silences"),
+                         tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName()));
+            return;
+        }
+        const auto magasin = charge.source->samples;
+        vsm::midi::Tick finMateriau = 0;
+        if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+        const auto jouee = vsm::sequencer::clipPlayedLength(*it, finMateriau);
+        const double duree = project_.ticksToSeconds(it->startTick + jouee) - project_.ticksToSeconds(it->startTick);
+        const auto depart = static_cast<int64_t>(std::llround(it->sourceStartSeconds * sr));
+        const auto compte = static_cast<int64_t>(std::llround(duree * sr));
+        const double sourceDebut = it->sourceStartSeconds;
+        const auto passages = vsm::audio::io::detectSoundRegions(
+            [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); },
+            compte, sr, seuilDb, 0.005, std::max(0.0, silenceMs) / 1000.0);
+        // RIEN À DÉCOUPER : tout sous le seuil, ou un seul passage — rien ne bouge, et c'est dit.
+        if (passages.size() < 2) {
+            const juce::String raison = passages.empty()
+                ? tr(u8"Tout ce que ce clip joue est sous le seuil : rien n'a été découpé.")
+                : tr(u8"Un seul passage sonne dans ce clip : rien à découper (« Rogner au son » en retire les bords).");
+            std::fputs(("VSM_SILENCES : " + std::to_string(passages.size()) + " passage(s) — rien de découpé\n").c_str(), stderr);
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Découper aux silences"), raison);
+            return;
+        }
+        beginProjectEdit(u8"Découper aux silences");
+        const auto versSecondes = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+        // LES BORNES, en secondes du fichier : le début et la fin de chaque passage, sauf aux bords.
+        std::vector<double> bornes;
+        for (const auto& p : passages) {
+            if (p.firstFrame > 0) bornes.push_back(sourceDebut + static_cast<double>(p.firstFrame) / sr);
+            if (p.lastFrame < compte) bornes.push_back(sourceDebut + static_cast<double>(p.lastFrame) / sr);
+        }
+        // LES MORCEAUX du clip d'origine, suivis par identifiant : seule une coupe dans l'un d'eux compte.
+        vsm::sequencer::ClipSelection morceaux{clipId};
+        uint64_t compteur = project_.peekNextClipId();
+        const auto tickDe = [this](const vsm::sequencer::Clip& c, double secondes) {
+            return vsm::sequencer::clipIsWarped(c)
+                ? c.startTick + vsm::sequencer::warpTickAtSeconds(c, secondes)
+                : project_.secondsToTicks(project_.ticksToSeconds(c.startTick) + (secondes - c.sourceStartSeconds));
+        };
+        for (const double secondes : bornes)
+            for (const auto& c : piste.clips) {
+                if (morceaux.count(c.id) == 0) continue;
+                const vsm::midi::Tick ici = tickDe(c, secondes);
+                if (!(c.startTick < ici && ici < c.startTick + vsm::sequencer::clipPlayedLength(c, finMateriau))) continue;
+                vsm::sequencer::ClipSelection avant;
+                for (const auto& x : piste.clips) avant.insert(x.id);
+                vsm::sequencer::splitClips(piste, {c.id}, ici, finMateriau, compteur, versSecondes);
+                for (const auto& x : piste.clips)
+                    if (avant.count(x.id) == 0) morceaux.insert(x.id);
+                break;
+            }
+        project_.ensureClipIdAbove(compteur - 1);
+        // LES MORCEAUX MUETS sont retirés : ceux dont le milieu ne tombe dans aucun passage.
+        double retire = 0.0;
+        size_t gardes = 0;
+        piste.clips.erase(std::remove_if(piste.clips.begin(), piste.clips.end(), [&](const vsm::sequencer::Clip& c) {
+                              if (morceaux.count(c.id) == 0) return false;
+                              const double debut = project_.ticksToSeconds(c.startTick);
+                              const double fin = project_.ticksToSeconds(c.startTick + vsm::sequencer::clipPlayedLength(c, finMateriau));
+                              const double milieu = c.sourceStartSeconds + (fin - debut) / 2.0 - sourceDebut;
+                              const auto trame = static_cast<int64_t>(std::llround(milieu * sr));
+                              for (const auto& p : passages)
+                                  if (trame >= p.firstFrame && trame < p.lastFrame) { ++gardes; return false; }
+                              retire += fin - debut;
+                              return true;
+                          }),
+                          piste.clips.end());
+        refreshTransportSchedule();
+        loadAudioTracks();
+        arrangement_.repaint();
+        std::fputs(("VSM_SILENCES : " + std::to_string(passages.size()) + " passage(s), " + std::to_string(gardes)
+                    + " clip(s) gardé(s), " + juce::String(retire, 3).toStdString() + " s de silence retirées\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Découper aux silences : %1 passage(s), %2 s de silence retirées")
+                                           .replace("%1", juce::String(static_cast<int>(gardes)))
+                                           .replace("%2", juce::String(retire, 2)));
+    });
 }
 
 // --- D17.8 : LE GROOVE ------------------------------------------------------

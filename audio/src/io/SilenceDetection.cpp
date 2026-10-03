@@ -42,4 +42,43 @@ SoundBounds detectSound(const std::function<bool(int64_t, float&, float&)>& fram
     return bornes;
 }
 
+std::vector<SoundBounds> detectSoundRegions(const std::function<bool(int64_t, float&, float&)>& frameAt,
+                                            int64_t frames, double sampleRate, double thresholdDb,
+                                            double preAttackSeconds, double minSilenceSeconds) {
+    std::vector<SoundBounds> passages;
+    if (!frameAt || frames <= 0 || sampleRate <= 0.0) return passages;
+    const float seuil = static_cast<float>(std::pow(10.0, thresholdDb / 20.0));
+    const auto marge = static_cast<int64_t>(std::llround(preAttackSeconds * sampleRate));
+    const auto minimum = std::max<int64_t>(1, static_cast<int64_t>(std::llround(minSilenceSeconds * sampleRate)));
+
+    // LES PASSAGES BRUTS : des trames au-dessus du seuil, réunies tant que le trou qui les sépare
+    // est plus court que le silence minimal.
+    int64_t debut = -1, derniere = -1;
+    for (int64_t i = 0; i < frames; ++i) {
+        float g = 0.0f, d = 0.0f;
+        if (!frameAt(i, g, d)) continue;
+        if (std::max(std::abs(g), std::abs(d)) < seuil) continue;
+        if (debut >= 0 && i - derniere - 1 >= minimum) {
+            passages.push_back({debut, derniere + 1, true});
+            debut = -1;
+        }
+        if (debut < 0) debut = i;
+        derniere = i;
+    }
+    if (debut >= 0) passages.push_back({debut, derniere + 1, true});
+    if (passages.empty()) return passages;
+
+    // LES MARGES, sans empiéter sur le voisin — et les bords du matériau, à la règle de `detectSound`.
+    std::vector<SoundBounds> bruts = passages;
+    for (size_t k = 0; k < passages.size(); ++k) {
+        const int64_t plancher = k == 0 ? 0 : bruts[k - 1].lastFrame;
+        const int64_t plafond = k + 1 == passages.size() ? frames : bruts[k + 1].firstFrame;
+        passages[k].firstFrame = std::max(plancher, bruts[k].firstFrame - marge);
+        passages[k].lastFrame = std::min(plafond, bruts[k].lastFrame + marge);
+    }
+    if (passages.front().firstFrame < minimum) passages.front().firstFrame = 0;
+    if (frames - passages.back().lastFrame < minimum) passages.back().lastFrame = frames;
+    return passages;
+}
+
 } // namespace vsm::audio::io
