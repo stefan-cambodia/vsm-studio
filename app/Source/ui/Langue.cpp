@@ -1111,6 +1111,15 @@ const Paire kAnglais[] = {
       "a condition is empty (one “and” too many?)" },
     { "Aucun symbole n'a été tapé : la ligne d'accords n'a pas changé.",
       "No symbol was typed: the chord track has not changed." },
+    // D543.2 : LA FENÊTRE DES REPÈRES.
+    { "Fenêtre des repères",
+      "Markers window" },
+    { "Repères",
+      "Markers" },
+    { "Un clic place la tête sur le repère ; un double-clic le renomme ; Suppr, ou le clic droit, le retire. Les repères se posent par le clic droit sur la règle.",
+      "A click moves the playhead to the marker; a double-click renames it; Delete, or a right-click, removes it. Markers are added by right-clicking the ruler." },
+    { "(aucun repère)",
+      "(no marker)" },
     // D543.1 : LES ACCORDS D'APRÈS LES NOTES.
     { "Créer les accords d'après les notes (piste active)",
       "Create chords from notes (active track)" },

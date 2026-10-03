@@ -40200,7 +40200,7 @@ suite ; son résultat s'écrit à sa fin.
 du poste ; préférences de l'utilisateur identiques.
 
 
-### Phase D543.2 — la fenêtre des repères (03/10/2026)
+### Phase D543.2 — la fenêtre des repères (03/10/2026) — FAITE
 
 *Écrite avant son code, le 03/10 à 16 h 50, D543.1 faite.*
 
@@ -40227,3 +40227,20 @@ du poste ; préférences de l'utilisateur identiques.
 3. un banc `tools/fenetre-reperes.sh`, vu rouge sur un défaut remis à la main, entré dans
    `verifier.sh --bancs` ; le libellé du menu unique dans toute la barre ; traduit ; la fenêtre
    photographiée dans les deux langues.
+
+**D543.2 EST FAITE (03/10, 22 h 27).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | par l'application | `tools/fenetre-reperes.sh` : « VSM_REPERES : mes. 1 · 1 Intro \| mes. 2 · 1 Couplet \| mes. 4 · 1 Refrain » ; aller au troisième → « VSM_TETE : tick 5760 » ; renommé « Pont », le premier retiré → `project.json` **1920:Pont 5760:Refrain** ; Ctrl+Z → **0:Intro 1920:Pont 5760:Refrain** | **oui** |
+| 2 | la fenêtre suit | après le renommage et le retrait, le relevé dit « mes. 2 · 1 Pont \| mes. 4 · 1 Refrain » ; l'annulation aussi la rafraîchit (`onProjectRestored`) | **oui** |
+| 3 | le banc, les photos | 5 contrôles ; rouge sur le binaire d'avant (5) et sur le rafraîchissement retiré de `refreshMarkerViews` (le contrôle 5) ; entré dans `verifier.sh --bancs` (59) ; « Fenêtre des repères », libellé unique ; photos en français et en anglais regardées (« mes. 4 · 1 », « bar 4 · 1 ») ; libellés traduits | **oui** |
+
+**TRANCHÉ EN ÉCRIVANT LE CODE.** Le libellé du menu est « Fenêtre des repères » et non « Repères » :
+`VSM_MENU` prend le premier libellé exact de toute la barre, et un mot seul a plus de chances d'en
+rencontrer un autre. Les gestes de la fenêtre n'existent qu'une fois : ce sont `renameMarker`,
+`removeMarker` et la tête de l'arrangement, appelés tels quels — par la souris comme par le banc.
+
+**LES SUITES** (relevé à 22 h 33) : core 431, audio 1 319, interchange 336, clap 25, panneaux 11 ; Python
+257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` entier (59) lancé à la suite ;
+son résultat s'écrit à sa fin.

@@ -19,6 +19,7 @@
 #include "vsm/interchange/ShortcutTable.h"
 #include "ui/ShortcutsWindow.h"
 #include "ui/HistoryWindow.h"
+#include "ui/MarkerWindow.h"   // D543.2
 #include "ui/SpectrumComponent.h"
 #include "ui/PlayOrderComponent.h"
 #include "ui/TakeCompComponent.h"
@@ -416,6 +417,21 @@ public:
                         + " ; clic " + oui(project_.metronomeEnabled) + "\n").toRawUTF8(), stderr);
             return true;
         }
+        // D543.2 : LA FENÊTRE DES REPÈRES — le relevé de ses lignes peintes, et ses gestes par les MÊMES
+        // rappels que la souris (D91).
+        if (geste.equalsIgnoreCase("relever-reperes")) {
+            std::fputs(("VSM_REPERES : " + markerPanel_.releverPourCapture() + "\n").toRawUTF8(), stderr);
+            return true;
+        }
+        for (const auto& [verbe, rappel] : {std::pair<const char*, std::function<void(size_t)>*>{"repere-aller:", &markerPanel_.onGoTo},
+                                            {"repere-renommer:", &markerPanel_.onRename},
+                                            {"repere-retirer:", &markerPanel_.onRemove}})
+            if (geste.startsWithIgnoreCase(verbe)) {
+                const int index = geste.fromFirstOccurrenceOf(":", false, false).getIntValue();
+                if (index < 0 || static_cast<size_t>(index) >= project_.markers.size() || !*rappel) return false;
+                (*rappel)(static_cast<size_t>(index));
+                return true;
+            }
         if (geste.equalsIgnoreCase("relever-historique")) {
             juce::String pas;
             for (const auto& libelle : history_.undoLabels())
@@ -1035,6 +1051,7 @@ private:
         kMenuEditPasteRange,
         /// D543.1 : la ligne d'accords d'après les notes de la piste active.
         kMenuEditChordsFromNotes,
+        kMenuViewMarkers,   ///< D543.2 : la fenêtre des repères
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1198,6 +1215,10 @@ private:
     vsm::interchange::ShortcutTable shortcuts_;
     vsm::app::ui::ShortcutsWindow shortcutsPanel_;
     vsm::app::ui::HistoryWindow historyPanel_;
+    /// D543.2 : LA FENÊTRE DES REPÈRES, et sa mise à jour (rien quand elle est fermée).
+    vsm::app::ui::MarkerWindow markerPanel_;
+    std::unique_ptr<PanelWindow> markerWindow_;
+    void rafraichirFenetreReperes();
     std::unique_ptr<PanelWindow> historyWindow_;
     /// D15.3 : l'analyseur de spectre du master, fenêtre flottante retenue.
     vsm::app::ui::SpectrumComponent spectrumPanel_;

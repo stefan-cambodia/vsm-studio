@@ -570,6 +570,13 @@ MainComponent::MainComponent()
     arrangement_.onMarkerRequested = [this](vsm::midi::Tick tick) { requestMarker(tick); };
     arrangement_.onMarkerRenameRequested = [this](size_t index) { renameMarker(index); };
     arrangement_.onMarkerRemoved = [this](size_t index) { removeMarker(index); };
+    // D543.2 : la fenêtre des repères appelle les fonctions des règles.
+    markerPanel_.onGoTo = [this](size_t index) {
+        if (index < project_.markers.size() && arrangement_.onPlayheadRequested)
+            arrangement_.onPlayheadRequested(project_.markers[index].tick);
+    };
+    markerPanel_.onRename = [this](size_t index) { renameMarker(index); };
+    markerPanel_.onRemove = [this](size_t index) { removeMarker(index); };
     // D532.3 bis : LA LIGNE D'ACCORDS, les mêmes trois gestes par les deux règles.
     arrangement_.onChordRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, false); };
     arrangement_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
@@ -602,6 +609,7 @@ MainComponent::MainComponent()
         project_.punchEnabled = project_.punchEnabled && project_.punchEndTick > project_.punchStartTick;
         rebuildFromProject(false);
         refreshHistoryList();
+        rafraichirFenetreReperes();   // D543.2 : une annulation rend ou retire des repères
     };
     // D144 : avant un pas d'historique, le MASTER du moteur dans le modèle -- la
     // photo que le rétablissement garde de l'état courant doit le porter.
@@ -2782,7 +2790,8 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "sans-rack")   menuItemSelected(kMenuViewSynthRack, 5);
     else if (nom == "sans-mixer")  menuItemSelected(kMenuViewMixer, 5);
     else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
-    else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
+    else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);
+    else if (nom == "reperes")     menuItemSelected(kMenuViewMarkers, 5);   // D543.2   // D11 : la fenêtre d'historique, pour la photographier
     else if (nom == "spectre")     menuItemSelected(kMenuViewSpectrum, 5);  // D15.3 : l'analyseur, pour le photographier
     else if (nom == "notes")       menuItemSelected(kMenuViewProjectNotes, 5);  // D18.6
     // D122 : plein:<fenêtre> -- setFullScreen sur un des cinq panneaux flottants,
@@ -4924,6 +4933,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewHistory,
                           tr(u8"Historique des modifications..."),
                           true, historyWindow_ && historyWindow_->isVisible());
+            menu.addItem(kMenuViewMarkers, tr(u8"Fenêtre des repères"),   // D543.2
+                          true, markerWindow_ && markerWindow_->isVisible());
             menu.addItem(kMenuViewSpectrum,
                           tr(u8"Analyseur de spectre..."),
                           true, spectrumWindow_ && spectrumWindow_->isVisible());
@@ -5286,6 +5297,16 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             // « Muet », trois pas.
             historyWindow_->setVisible(!visible);
             if (!visible) refreshHistoryList();
+            break;
+        }
+        case kMenuViewMarkers: {   // D543.2 : montrer d'abord, remplir ensuite (D231)
+            if (!markerWindow_) {
+                markerWindow_ = std::make_unique<PanelWindow>(juce::String::fromUTF8(u8"Repères"), markerPanel_);
+                markerWindow_->setDefaultSize(420, 420);
+            }
+            const bool visible = markerWindow_->isVisible();
+            markerWindow_->setVisible(!visible);
+            if (!visible) rafraichirFenetreReperes();
             break;
         }
         case kMenuViewProjectNotes: showProjectNotes(); break;
@@ -10708,6 +10729,8 @@ void MainComponent::retraduire() {
     pianoRollPanel_.retraduireBarre();
     effectChain_.retraduire();   // D77
     historyPanel_.retraduire();   // D82
+    markerPanel_.retraduire();    // D543.2
+    rafraichirFenetreReperes();
     // D84 : le volet de rapport -- ses boutons, et le rapport d'ouverture s'il
     // est le dernier à l'avoir rempli, refait volet ouvert ou fermé.
     importReport_.retraduire();
@@ -14371,6 +14394,15 @@ void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {
 void MainComponent::refreshMarkerViews() {
     pianoRollPanel_.refresh();
     arrangement_.repaint();
+    rafraichirFenetreReperes();   // D543.2
+}
+
+void MainComponent::rafraichirFenetreReperes() {
+    if (!markerWindow_ || !markerWindow_->isVisible()) return;
+    std::vector<vsm::app::ui::MarkerWindow::Ligne> lignes;
+    for (const auto& m : project_.markers)
+        lignes.push_back({transportBar_.positionInBarsProvider(m.tick), juce::String::fromUTF8(m.name.c_str())});
+    markerPanel_.setLignes(std::move(lignes));
 }
 
 void MainComponent::requestMarker(vsm::midi::Tick tick) {
