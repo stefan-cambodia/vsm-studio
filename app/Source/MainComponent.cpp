@@ -14337,6 +14337,56 @@ juce::String erreurDeRegle(const vsm::sequencer::LogicalParseError& detail) {
 }
 } // namespace
 
+namespace {
+/// D542.2 : UN PRÉRÉGLAGE DE L'ÉDITEUR LOGIQUE tel que la fenêtre le montre — livré (`core/`, nom
+/// traduit) ou enregistré par l'utilisateur (préférences, une ligne « nom⇥règle⇥action⇥valeur »).
+struct PrereglageLogique {
+    juce::String nom;      ///< tel qu'affiché
+    juce::String regle;    ///< forme lisible française (D535.1 bis)
+    int action = 1;        ///< identifiant de la liste « Action » (1 = choisir … 5 = fixer la vélocité)
+    juce::String valeur;
+};
+
+int actionVersListe(vsm::sequencer::LogicalAction a) {
+    using vsm::sequencer::LogicalAction;
+    switch (a) {
+        case LogicalAction::Select: return 1;
+        case LogicalAction::Delete: return 2;
+        case LogicalAction::Mute: return 3;
+        case LogicalAction::Transpose: return 4;
+        case LogicalAction::SetVelocity: return 5;
+    }
+    return 1;
+}
+
+std::vector<PrereglageLogique> prereglagesDeLUtilisateur(juce::PropertiesFile& prefs) {
+    std::vector<PrereglageLogique> liste;
+    juce::StringArray lignes;
+    lignes.addLines(prefs.getValue("editeurLogique.prereglages", ""));
+    for (const auto& ligne : lignes) {
+        juce::StringArray champs;
+        champs.addTokens(ligne, "\t", "");
+        if (champs.size() < 4 || champs[0].trim().isEmpty()) continue;
+        liste.push_back({champs[0], champs[1], juce::jlimit(1, 5, champs[2].getIntValue()), champs[3]});
+    }
+    return liste;
+}
+
+/// Range (ou remplace) un préréglage de l'utilisateur ; rend vrai s'il en remplaçait un.
+bool enregistrerPrereglage(juce::PropertiesFile& prefs, const PrereglageLogique& neuf) {
+    auto liste = prereglagesDeLUtilisateur(prefs);
+    bool remplace = false;
+    for (auto& p : liste)
+        if (p.nom == neuf.nom) { p = neuf; remplace = true; }
+    if (!remplace) liste.push_back(neuf);
+    juce::StringArray lignes;
+    for (const auto& p : liste) lignes.add(p.nom + "\t" + p.regle + "\t" + juce::String(p.action) + "\t" + p.valeur);
+    prefs.setValue("editeurLogique.prereglages", lignes.joinIntoString("\n"));
+    prefs.saveIfNeeded();
+    return remplace;
+}
+} // namespace
+
 void MainComponent::ouvrirEditeurLogique() {
     using vsm::sequencer::LogicalAction;
     auto& prefs = vsm::app::ui::UiScale::properties();
@@ -14359,6 +14409,21 @@ void MainComponent::ouvrirEditeurLogique() {
     exemples->setColour(juce::Label::textColourId, fenetre->findColour(juce::AlertWindow::textColourId));
     exemples->setSize(560, juce::roundToInt(exemples->getFont().getHeight() * 2.0f) + 8);
     fenetre->addCustomComponent(exemples.get());
+    // D542.2 : LES PRÉRÉGLAGES — « (aucun) », les livrés, puis ceux de l'utilisateur. Choisir en
+    // remplit la règle, l'action et la valeur ; le champ fait foi ensuite, comme dans Cubase.
+    auto prereglages = std::make_shared<std::vector<PrereglageLogique>>();
+    for (const auto& p : vsm::sequencer::builtInLogicalPresets())
+        prereglages->push_back({tr(juce::String::fromUTF8(p.name)), juce::String::fromUTF8(p.rule),
+                                actionVersListe(p.action), juce::String(p.value)});
+    for (const auto& p : prereglagesDeLUtilisateur(prefs)) prereglages->push_back(p);
+    {
+        juce::StringArray noms;
+        noms.add(tr(u8"(aucun)"));
+        for (const auto& p : *prereglages) noms.add(p.nom);
+        fenetre->addComboBox("prereglage", noms, tr(u8"Préréglage :"));
+        fenetre->getComboBoxComponent("prereglage")->setSelectedId(1, juce::dontSendNotification);
+        std::fputs(("VSM_LOGIQUE_PREREGLAGES : " + noms.joinIntoString(" | ") + "\n").toRawUTF8(), stderr);
+    }
     // LA RÈGLE RETENUE, RÉÉCRITE DANS LA LANGUE DE L'INTERFACE, en fractions de ronde à la
     // résolution de CE projet : les préférences portent la forme lisible française, qui garde son
     // sens d'une résolution à l'autre (60 ticks font 1/32 à 480 ppq, 1/64 à 960). Une valeur
@@ -14391,6 +14456,8 @@ void MainComponent::ouvrirEditeurLogique() {
     auto* parmi = fenetre->getComboBoxComponent("parmi");
     parmi->setItemEnabled(2, choisies);
     parmi->setSelectedId(choisies && prefs.getIntValue("editeurLogique.parmi", 1) == 2 ? 2 : 1, juce::dontSendNotification);
+    // D542.2 : un CHAMP et non un bouton — un bouton de fenêtre JUCE la ferme.
+    fenetre->addTextEditor("enregistrer", "", tr(u8"Enregistrer sous le nom (facultatif) :"));
     // LE COMPTE EN DIRECT : à chaque frappe, combien répondent — ou ce qui ne se lit pas.
     auto compte = std::make_shared<juce::Label>();
     // LE COMPTE EST CE QU'ON LIT AVANT DE PRESSER : la police du message, en gras, et sa couleur
@@ -14419,11 +14486,33 @@ void MainComponent::ouvrirEditeurLogique() {
         std::fputs(("VSM_LOGIQUE_COMPTE : " + texte + "\n").toRawUTF8(), stderr);
     };
     fenetre->getTextEditor("regle")->onTextChange = majCompte;
+    // D542.2 : CHOISIR UN PRÉRÉGLAGE REMPLIT la règle (dans la langue de l'interface, à la résolution
+    // de ce projet), l'action et la valeur — puis recompte. Le journal dit la règle posée.
+    fenetre->getComboBoxComponent("prereglage")->onChange = [this, w, prereglages, majCompte] {
+        const int id = w->getComboBoxComponent("prereglage")->getSelectedId();
+        if (id < 2 || static_cast<size_t>(id - 2) >= prereglages->size()) return;
+        const PrereglageLogique& p = (*prereglages)[static_cast<size_t>(id - 2)];
+        juce::String regle = p.regle;
+        vsm::sequencer::LogicalRule lue;
+        std::string erreur;
+        if (vsm::sequencer::parseLogicalRule(regle.toStdString(), project_.ticksPerQuarterNote, lue, erreur)) {
+            const auto langue = vsm::app::ui::Langue::courante() == vsm::app::ui::Langue::Choix::Anglais
+                                    ? vsm::sequencer::RuleLanguage::English
+                                    : vsm::sequencer::RuleLanguage::French;
+            regle = juce::String::fromUTF8(
+                vsm::sequencer::logicalRuleReadableText(lue, project_.ticksPerQuarterNote, langue).c_str());
+        }
+        w->getTextEditor("regle")->setText(regle, false);
+        w->getComboBoxComponent("action")->setSelectedId(p.action, juce::dontSendNotification);
+        w->getTextEditor("valeur")->setText(p.valeur, false);
+        std::fputs(("VSM_LOGIQUE_REGLE : " + regle + "\n").toRawUTF8(), stderr);
+        majCompte();
+    };
     parmi->onChange = majCompte;
     majCompte();
     fenetre->addButton(tr(u8"Appliquer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, exemples, compte, majCompte](int resultat) {
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, exemples, compte, majCompte, prereglages](int resultat) {
         // Un banc remplit le champ SANS frappe (`setText` sans notification) : le compte est
         // refait ici, comme une frappe l'aurait fait, pour qu'il se lise au journal.
         majCompte();
@@ -14431,6 +14520,7 @@ void MainComponent::ouvrirEditeurLogique() {
         const int numeroAction = fenetre->getComboBoxComponent("action")->getSelectedId();
         const juce::String valeurTapee = fenetre->getTextEditorContents("valeur").trim();
         const bool seulement = fenetre->getComboBoxComponent("parmi")->getSelectedId() == 2;
+        const juce::String nomAEnregistrer = fenetre->getTextEditorContents("enregistrer").trim();   // D542.2
         fenetre->exitModalState(resultat);
         fenetre->setVisible(false);
         if (resultat != 1) return;
@@ -14454,6 +14544,23 @@ void MainComponent::ouvrirEditeurLogique() {
                 return;
             }
             valeur = chiffres.getIntValue();
+        }
+        // D542.2 : ENREGISTRER SOUS UN NOM, si on l'a demandé — la règle lisible française, l'action, la
+        // valeur. Un nom déjà pris est REMPLACÉ, et c'est dit.
+        if (nomAEnregistrer.isNotEmpty()) {
+            const PrereglageLogique neuf{nomAEnregistrer,
+                                         juce::String::fromUTF8(vsm::sequencer::logicalRuleReadableText(
+                                             regle, project_.ticksPerQuarterNote, vsm::sequencer::RuleLanguage::French).c_str()),
+                                         juce::jlimit(1, 5, numeroAction), valeurTapee};
+            const bool remplace = enregistrerPrereglage(vsm::app::ui::UiScale::properties(), neuf);
+            // En `std::string` : un littéral accentué lu par `juce::String(const char*)` sort en Latin-1.
+            const std::string ligneDuPrereglage = "VSM_LOGIQUE : préréglage « " + nomAEnregistrer.toStdString() + " » "
+                                                  + std::string(remplace ? "remplacé" : "enregistré") + " — « "
+                                                  + neuf.regle.toStdString() + " »\n";
+            std::fputs(ligneDuPrereglage.c_str(), stderr);
+            if (pianoRoll_.onStatusChanged)
+                pianoRoll_.onStatusChanged((remplace ? tr(u8"Préréglage « %1 » remplacé") : tr(u8"Préréglage « %1 » enregistré"))
+                                               .replace("%1", nomAEnregistrer));
         }
         // LE DERNIER RÉGLAGE RETENU, la règle sous sa forme LISIBLE FRANÇAISE : une seule écriture
         // par règle, et des fractions qui gardent leur sens dans un projet d'une autre résolution

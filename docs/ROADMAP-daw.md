@@ -39995,7 +39995,7 @@ Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). **`--bancs` en
 celui de D542.2**, qui change la façon dont le banc répond aux listes et touche donc tous les bancs.
 
 
-### Phase D542.2 — des préréglages pour l'éditeur logique (03/10/2026)
+### Phase D542.2 — des préréglages pour l'éditeur logique (03/10/2026) — FAITE
 
 *Écrite avant son code, le 03/10 à 13 h 23, D542.1 faite.*
 
@@ -40035,3 +40035,22 @@ celui de D542.2**, qui change la façon dont le banc répond aux listes et touch
 3. le banc `editeur-logique.sh` étendu, vu rouge sur un défaut remis à la main ; libellés traduits ;
    la photo de la fenêtre dans les deux langues ; `--bancs` entier (le changement de `VSM_OPTIONS`
    touche tous les bancs qui répondent à une liste).
+
+**D542.2 EST FAITE (03/10, 13 h 55).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | les préréglages livrés | core 427 → **428** : les sept se lisent, leur forme lisible se relit en la même règle dans les deux langues, sept noms uniques ; le premier est celui des fantômes | **oui** |
+| 2 | par l'application | `editeur-logique.sh`, contrôles 8 et 9 : `prereglage=2` → « VSM_LOGIQUE_REGLE : vélocité < 30 et durée < 1/32 » après le choix, l'action Supprimer posée, le `.mid` **{60,62,65,67,120}** ; « préréglage « Mes fantômes » enregistré » ; rouverte sur ces préférences, la liste finit par « Mes fantômes », le choisir (`prereglage=9`) refait le même geste | **oui** |
+| 3 | le banc, les photos | 12 contrôles ; **vu rouge** sur le banc d'AVANT — la liste posée en silence : rien n'est rempli, les contrôles 8 et 9 tombent (3), ce qui est la raison même de la décision ; photos de la fenêtre en français et en anglais regardées (« Préréglage : (aucun) », « Preset: (none) », le champ d'enregistrement) ; libellés traduits, `inventaire_langue.py --garde` à 0 | **oui** |
+
+**DITS.** (a) La liste des préréglages livrés a été codée dans le cœur à partir du brouillon du cahier,
+quelques minutes avant que le cahier soit écrit au document (13 h 23) ; le reste du code est venu
+après. (b) La garde de langue a d'abord compté comme textes d'écran deux mots du journal : une
+variable `ligne` portait le même nom qu'une autre, plus loin dans le même rappel, et la garde, qui
+suit la variable jusqu'à la fin de la fonction, y voyait un usage qui ne va pas au terminal —
+renommée. (c) Les « doublons à l'octave » restent hors de la grammaire, nommés.
+
+**LES SUITES** (relevé à 14 h 58) : core **428**, audio 1 316, interchange 336, clap 25, panneaux 11 ;
+Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). **`--bancs` entier (56), pour
+D542.1 et D542.2 : lancé à 13 h 55** ; son résultat s'écrit à sa fin.

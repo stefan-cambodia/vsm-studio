@@ -17,7 +17,12 @@
 #   (6) le compte de la fenêtre : « 3 note(s) sur 8 répondent » au journal ;
 #   (7) rouverte sur ces préférences, la fenêtre montre la règle dans la langue de l'interface :
 #       « vélocité < 30 et durée < 1/32 », et « velocity < 30 and length < 1/32 » sous
-#       VSM_LANGUE=en (`VSM_LOGIQUE_REGLE`, lu au journal).
+#       VSM_LANGUE=en (`VSM_LOGIQUE_REGLE`, lu au journal) ;
+#   (8) D542.2 : choisir le préréglage « Fantômes » REMPLIT la règle (le journal la dit après le
+#       choix) et l'action, et l'appliquer supprime les trois fantômes ; l'enregistrer sous « Mes
+#       fantômes » le range dans les préférences ;
+#   (9) rouverte sur ces préférences, la liste offre « Mes fantômes », et le choisir remplit la
+#       même règle et supprime les mêmes notes.
 # Chaque fichier se lit AVANT de juger, et les avertissements du journal sont relayés.
 #
 #   tools/editeur-logique.sh [binaire]
@@ -170,6 +175,26 @@ grep "^VSM_LOGIQUE :" "$brouillon/transposer.txt" | sed 's/^/       /'
 echo "       .mid {$h5} ; pas : $(pas transposer)"
 verdict "(4) transposer +12 avec une note à 120 : rien ne bouge, 1 refusée, aucun pas" \
     "$(grep -q "^VSM_LOGIQUE : transposer sur « duree >= 480 » — 4 répondaient, 0 changée(s), 1 refusée(s)" "$brouillon/transposer.txt" && [ "$h5" = "$HUIT" ] && [ "$(pas transposer)" = 0 ] && echo 1 || echo 0)"
+
+# (8) et (9) — D542.2 : LES PRÉRÉGLAGES.
+course prereglage "prereglage=2;enregistrer=Mes fantômes" "1500:exporter-midi:$brouillon/prereglage.mid"
+maison8="$MAISON"
+hp="$(hauteurs "$brouillon/prereglage.mid")"
+grep "^VSM_LOGIQUE_REGLE\|^VSM_LOGIQUE : " "$brouillon/prereglage.txt" | sed 's/^/       /'
+echo "       .mid {$hp}"
+verdict "(8) « Fantômes » remplit la règle, et l'appliquer supprime les trois fantômes" \
+    "$(grep "^VSM_LOGIQUE_REGLE" "$brouillon/prereglage.txt" | tail -1 | grep -qx "VSM_LOGIQUE_REGLE : vélocité < 30 et durée < 1/32" \
+       && [ "$hp" = "60,62,65,67,120" ] && echo 1 || echo 0)"
+verdict "(8) enregistré sous « Mes fantômes »" \
+    "$(grep -q "^VSM_LOGIQUE : préréglage « Mes fantômes » enregistré — « vélocité < 30 et durée < 1/32 »" "$brouillon/prereglage.txt" && echo 1 || echo 0)"
+course mien "prereglage=9" "1500:exporter-midi:$brouillon/mien.mid" \
+    "$maison8/VintageSynthMidiStudio/VintageSynthMidiStudio.settings"
+hm="$(hauteurs "$brouillon/mien.mid")"
+grep "^VSM_LOGIQUE_PREREGLAGES" "$brouillon/mien.txt" | sed 's/^/       /'
+verdict "(9) rouverte, la liste offre « Mes fantômes », et le choisir refait le même geste" \
+    "$(grep -q "^VSM_LOGIQUE_PREREGLAGES : .* | Mes fantômes$" "$brouillon/mien.txt" \
+       && grep "^VSM_LOGIQUE_REGLE" "$brouillon/mien.txt" | tail -1 | grep -qx "VSM_LOGIQUE_REGLE : vélocité < 30 et durée < 1/32" \
+       && [ "$hm" = "60,62,65,67,120" ] && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "ÉDITEUR LOGIQUE : $rates contrôle(s) raté(s)"; exit 1; fi

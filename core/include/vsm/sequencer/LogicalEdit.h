@@ -103,4 +103,17 @@ struct LogicalResult {
 LogicalResult applyLogicalAction(std::vector<Note>& notes, const NoteSelection& matched, LogicalAction action,
                                  int value);
 
+/// D542.2 : UN PRÉRÉGLAGE LIVRÉ — un nom (en français ; l'interface le traduit), une règle écrite
+/// dans la grammaire de `parseLogicalRule`, une action et sa valeur.
+struct LogicalPreset {
+    const char* name;
+    const char* rule;
+    LogicalAction action;
+    int value;
+};
+
+/// Les préréglages livrés, dans l'ordre de la fenêtre. Pas de « doublons à l'octave » : la grammaire
+/// compare une note à des VALEURS, jamais à une autre note.
+const std::vector<LogicalPreset>& builtInLogicalPresets();
+
 } // namespace vsm::sequencer

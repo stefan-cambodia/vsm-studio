@@ -297,3 +297,23 @@ VSM_TEST(l_ecriture_lisible_fait_l_aller_retour_dans_les_deux_langues) {
     VSM_ASSERT(parseLogicalRule(logicalRuleText(fantomes), 960, canonique960, erreur));
     VSM_ASSERT_EQ(canonique960.conditions[1].a, 60.0);   // le témoin : la canonique, elle, change de sens
 }
+
+// D542.2 : LES PRÉRÉGLAGES LIVRÉS se lisent tous, leur forme lisible se relit en la même règle (dans
+// les deux langues), et leurs noms sont uniques.
+VSM_TEST(les_prereglages_livres_se_lisent_et_ont_des_noms_uniques) {
+    std::set<std::string> noms;
+    for (const auto& p : builtInLogicalPresets()) {
+        LogicalRule regle, relue;
+        std::string erreur;
+        VSM_ASSERT(parseLogicalRule(p.rule, kPpq, regle, erreur));
+        VSM_ASSERT(!regle.conditions.empty());
+        for (RuleLanguage langue : {RuleLanguage::French, RuleLanguage::English}) {
+            VSM_ASSERT(parseLogicalRule(logicalRuleReadableText(regle, kPpq, langue), kPpq, relue, erreur));
+            VSM_ASSERT(relue == regle);
+        }
+        VSM_ASSERT(noms.insert(p.name).second);
+    }
+    VSM_ASSERT_EQ(noms.size(), static_cast<size_t>(7));
+    // Le premier est celui que la chaîne demande le plus : les fantômes.
+    VSM_ASSERT_EQ(std::string(builtInLogicalPresets().front().rule), std::string("vélocité < 30 et durée < 1/32"));
+}

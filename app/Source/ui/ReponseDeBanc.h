@@ -32,7 +32,10 @@ inline bool repondreAuxChampsDeBanc(juce::AlertWindow& fenetre) {
         const juce::String valeur = couple.fromFirstOccurrenceOf("=", false, false).trim();
         if (clef.isEmpty()) continue;
         if (auto* liste = fenetre.getComboBoxComponent(clef)) {
-            liste->setSelectedId(valeur.getIntValue(), juce::dontSendNotification);
+            // D542.2 : AVEC NOTIFICATION, comme un utilisateur qui choisit : un préréglage de
+            // l'éditeur logique REMPLIT la fenêtre sur son `onChange`, et un choix posé en silence
+            // n'aurait rien rempli. Seule cette fenêtre écoute un `onChange` de liste (relevé).
+            liste->setSelectedId(valeur.getIntValue(), juce::sendNotificationSync);
             posees.add(clef + "=" + valeur + " (" + liste->getText() + ")");
         } else if (auto* champ = fenetre.getTextEditor(clef)) {
             champ->setText(valeur, false);

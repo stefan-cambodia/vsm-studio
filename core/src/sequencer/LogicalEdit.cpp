@@ -443,4 +443,19 @@ LogicalResult applyLogicalAction(std::vector<Note>& notes, const NoteSelection& 
     return r;
 }
 
+const std::vector<LogicalPreset>& builtInLogicalPresets() {
+    // CE QUE LA CHAÎNE LAISSE LE PLUS SOUVENT À NETTOYER, d'abord : les fantômes brefs et faibles,
+    // les notes douteuses. Les règles sont écrites dans la forme lisible française (D535.1 bis).
+    static const std::vector<LogicalPreset> prereglages = {
+        {"Fantômes (brèves et faibles)", "vélocité < 30 et durée < 1/32", LogicalAction::Delete, 0},
+        {"Notes douteuses", "confiance < 0,5", LogicalAction::Select, 0},
+        {"Premier temps de chaque mesure", "position = 0", LogicalAction::Select, 0},
+        {"Batterie (canal 10)", "canal = 10", LogicalAction::Select, 0},
+        {"Notes muettes", "muette = oui", LogicalAction::Delete, 0},
+        {"Attaques trop fortes", "vélocité >= 120", LogicalAction::SetVelocity, 100},
+        {"Notes très longues (plus de deux mesures)", "durée > 2/1", LogicalAction::Select, 0},
+    };
+    return prereglages;
+}
+
 } // namespace vsm::sequencer
