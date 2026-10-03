@@ -40118,3 +40118,57 @@ reste par le plancher que l'export a dans ses propres silences. Ce que l'attendu
 Python 257 ; ruff, mypy et les gardes verts (`verifier.sh` rc 0). `--bancs` entier (57) lancé à la
 suite ; son résultat s'écrit à sa fin. **D542 — le troisième audit — est faite** : ses trois manques le
 sont.
+
+
+### Phase D543 — un quatrième audit des fonctions : les accords d'après les notes, la fenêtre des repères, quantifier l'audio (03/10/2026)
+
+*Écrite le 03/10 à 15 h 57, D542 faite.*
+
+**LA MÉTHODE, celle de D535 et D542** (recherche dans `core/`, `audio/`, `interchange/`, `app/Source/`,
+validée sur des témoins, élargie aux libellés). **Cherché et trouvé** : l'enregistrement rétrospectif
+(D17.3, « tampon rétrospectif »), le gel, la désactivation, l'arpégiateur, la saisie pas à pas, le tap
+tempo. **Cherché, et écarté de ce que la mesure établit** : les « doublons à l'octave » de D535 et
+D542.2 — sur `cdl`, une transcription du mélange, 586 paires à l'octave sur 2 219 notes, mais sur un
+mélange une octave est le plus souvent voulue, et sans vérité on ne sait pas lesquelles sont fausses :
+le besoin n'est pas établi ; la mesure qui le trancherait se fait sur le banc synthétique, qui a la
+vérité.
+
+**CE QUI MANQUE** (zéro pour « détecter / nommer / identifier l'accord », « chord detection » ; zéro pour
+« liste des repères », « marker list » ; zéro pour « quantifier l'audio », « warp quantize ») :
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D543.1 | **Créer la ligne d'accords d'après les notes** — « Créer des symboles d'accords » | un accord par mesure, reconnu parmi les treize types et douze fondamentales d'après les notes qui SONNENT dans la mesure (durée pondérée), la basse dite si elle n'est pas la fondamentale ; une mesure sans accord net n'en reçoit pas, et c'est compté ; un pas |
+| D543.2 | **La fenêtre des repères** | nom, position ; aller, renommer, retirer ; suit le projet |
+| D543.3 | **Quantifier l'audio** — caler les transitoires d'un clip audio sur la grille | par des marqueurs d'étirement (D12) posés aux transitoires (D20.3) ; mesuré par la position des attaques dans l'export |
+
+**L'ORDRE, TRANCHÉ ICI.** D543.1 d'abord : il sert la chaîne — une transcription donnerait sa ligne
+d'accords, sur laquelle « Caler sur les accords » (D532.3) peut ensuite corriger des hauteurs — et ne
+demande au modèle que ce qu'il a (`chordMask`, les treize types). Puis D543.2, puis D543.3.
+
+### Phase D543.1 — créer la ligne d'accords d'après les notes (03/10/2026)
+
+*Écrite avant son code, le 03/10 à 15 h 57.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **La reconnaissance**, dans `core/` (`detectChord`) : les classes de hauteur qui sonnent dans la
+  mesure, pondérées par la DURÉE qu'elles y sonnent (une note de passage brève ne fait pas l'accord) ;
+  le meilleur couple (fondamentale, type) parmi 12 × 13 est celui qui couvre le plus de poids, moins
+  le poids des notes hors de l'accord, moins une pénalité par note de l'accord absente ; à égalité, le
+  type le plus simple. **Pas d'accord** quand le meilleur couvre moins des deux tiers du poids, ou
+  quand moins de trois classes sonnent (une note seule, une quinte à vide ne sont pas des accords). La
+  BASSE — la note la plus grave qui sonne au premier temps de la mesure, sinon la plus grave — est dite
+  si elle n'est pas la fondamentale (« G/B »).
+- **Le geste** : Édition ▸ « Créer les accords d'après les notes (piste active) » — la ligne d'accords
+  RÉÉCRITE d'un accord par mesure, deux mesures pareilles de suite n'en faisant qu'un ; un pas
+  d'historique ; la ligne d'état et le journal (`VSM_ACCORDS_DEPUIS_NOTES`) disent combien de mesures
+  ont reçu un accord et combien n'en avaient pas de net.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : do-mi-sol → C ; la-do-mi-sol → Am7 ; si-ré-sol avec si à la basse → G/B ; une note
+   seule, une quinte à vide → rien ; do-mi-sol avec un ré de passage d'une double croche → C (la durée
+   pondère) ; douze transpositions de chaque type reconnues en elles-mêmes ;
+2. par l'application, `project.json` relu : quatre mesures (C, Am7, G/B, une note seule) → la ligne
+   « 0:C 1920:Am7 3840:G/B », la quatrième comptée sans accord ; Ctrl+Z rend la ligne d'avant ;
+3. un banc `tools/accords-depuis-notes.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; libellés traduits.
