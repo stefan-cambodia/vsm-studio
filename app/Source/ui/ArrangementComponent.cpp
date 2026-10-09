@@ -829,6 +829,8 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
             menu.addSubMenu(tr(u8"Forme des fondus"), formes);
         }
         menu.addItem(18, tr(u8"Normaliser (gain = 1 / cr\u00eate)"), waveformProvider != nullptr);
+        // D545.3 : NORMALISER À UN NIVEAU CHOISI — la même crête, un maximum demandé (−1 dBFS proposé).
+        menu.addItem(74, tr(u8"Normaliser à un niveau choisi…"), waveformProvider != nullptr);
         // D22.1 : LE GAIN ET LA PHASE À LA MAIN. Des pas fixes relatifs au
         // gain courant plutôt qu'une boîte de dialogue -- le geste est
         // « un peu plus, un peu moins », et il s'enchaîne. Le titre du
@@ -1664,6 +1666,24 @@ int ArrangementComponent::marqueurAt(const Clip& clip, float x) const {
     return -1;
 }
 
+float ArrangementComponent::creteJouee(size_t piste, const vsm::sequencer::Clip& clip) const {
+    // NORMALISER (D13.6, D545.3) : la crête du matériau JOUÉ. Elle vient du cache d'aperçu, qui garde les
+    // extrêmes de chaque tranche de 256 trames : c'est exactement ce qu'il faut, et il est déjà là — pas
+    // besoin de relire le fichier. Une lecture pour les deux entrées du menu.
+    if (!waveformProvider || project_ == nullptr || piste >= project_->tracks.size()) return 0.0f;
+    auto cache = waveformProvider(piste);
+    if (!cache) return 0.0f;
+    const double sr = sampleRateProvider ? sampleRateProvider() : 48000.0;
+    const auto jouee = clipPlayedLength(clip, materialEnd(project_->tracks[piste]));
+    const auto depart = static_cast<int64_t>(clip.sourceStartSeconds * sr);
+    const double duree = project_->ticksToSeconds(clip.startTick + jouee) - project_->ticksToSeconds(clip.startTick);
+    const auto arrivee = depart + static_cast<int64_t>(duree * sr);
+    const auto tranches = vsm::audio::io::peaksForRange(*cache, depart, std::max(arrivee, depart + 1), 1024);
+    float crete = 0.0f;
+    for (const auto& t : tranches) crete = std::max({crete, std::abs(t.minimum), std::abs(t.maximum)});
+    return crete;
+}
+
 double ArrangementComponent::sourceAuClic(size_t piste, const vsm::sequencer::Clip& clip) const {
     if (project_ == nullptr || piste >= project_->tracks.size()) return -1.0;
     return vsm::sequencer::clipSourceSecondsAtTick(clip, clicTick_, materialEnd(project_->tracks[piste]),
@@ -1834,21 +1854,15 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             // La crête vient du cache d'aperçu, qui garde les extrêmes de
             // chaque tranche de 256 trames : c'est exactement ce qu'il faut, et
             // il est déjà là -- pas besoin de relire le fichier.
-            if (!waveformProvider) return;
-            auto cache = waveformProvider(piste);
-            if (!cache) return;
-            const double sr = sampleRateProvider ? sampleRateProvider() : 48000.0;
-            const auto jouee = clipPlayedLength(*it, materialEnd(track));
-            const auto depart = static_cast<int64_t>(it->sourceStartSeconds * sr);
-            const double duree = project_->ticksToSeconds(it->startTick + jouee) - project_->ticksToSeconds(it->startTick);
-            const auto arrivee = depart + static_cast<int64_t>(duree * sr);
-            const auto tranches = vsm::audio::io::peaksForRange(*cache, depart, std::max(arrivee, depart + 1), 1024);
-            float crete = 0.0f;
-            for (const auto& t : tranches) crete = std::max({crete, std::abs(t.minimum), std::abs(t.maximum)});
+            const float crete = creteJouee(piste, *it);
             if (crete < 1e-6f) return;   // du silence ne se normalise pas
             if (onEditStarted) onEditStarted(u8"Normaliser un clip");
             it->gain = 1.0f / crete;
             break;
+        }
+        case 74: {   // D545.3 : à un niveau choisi — la fenêtre est à l'application, la crête est lue ici
+            if (onClipNormalizeToRequested) onClipNormalizeToRequested(piste, clipId, creteJouee(piste, *it));
+            return;
         }
         case 17: {
             // Sur toute la sélection, chacun le sien -- comme la phase.

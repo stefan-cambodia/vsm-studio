@@ -40975,3 +40975,51 @@ rapporté au niveau), **mesuré avant d'être fixé** : boucles 0,393 à 0,459, 
 | 2 | par l'application | `tools/tempo-detecte.sh` : « VSM_TEMPO_DETECTE : 137.50 BPM (confiance 0.67) » ; adopté → le projet relu à **137,50** ; refusé → **120,00** ; adopté puis Ctrl+Z → **120,00** | **oui** |
 | 3 | le banc, les photos | 4 contrôles, entré dans `verifier.sh --bancs` (**65**) ; **rouge** sur une fréquence d'échantillonnage fausse d'1 % dans l'application (138,90) ; la fenêtre photographiée et regardée en français et en anglais (« Tempo du clip », « Clip tempo ») ; libellés traduits | **oui** |
 
+**LA SÉRIE, relevée à 20 h 20 : 65 bancs sur 65 verts en 45 min** (dont `courbe-de-gain.sh` — sa coupe au bit
+près —, `tempo-detecte.sh` et `decouper-aux-silences.sh`), aucune veille, préférences identiques. L'écran a été
+trouvé éteint et la session VERROUILLÉE à la fin (le poste de l'utilisateur, laissé seul) ; aucun banc n'a
+rougi.
+
+
+
+### Phase D545.3 — normaliser un clip à un niveau choisi (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 19 h 34, D545.2 faite.*
+
+**CE QUI EXISTE.** « Normaliser (gain = 1 / crête) » (D13.6) : le gain du clip devient l'inverse de la
+crête du matériau JOUÉ, lue dans le cache d'aperçu — toujours vers 0 dBFS, sans marge. Cubase normalise à un
+MAXIMUM choisi, et l'usage courant en laisse un peu (−1 dBFS, la marge d'un encodage avec perte).
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une entrée de plus, pas une entrée changée** : « Normaliser à un niveau choisi… » s'ajoute ; « Normaliser
+  (gain = 1 / crête) » reste le geste en un clic, et deux gardes (`gestes-vivants.py`, `gestes-promesses.py`)
+  le citent par son nom.
+- **Le calcul en `core/`** (`normalizeGainFor`) : le gain qui amène une crête mesurée au niveau demandé —
+  `10^(niveau / 20) / crête`, borné comme le gain d'un clip ; une crête nulle (du silence) ne se normalise
+  pas, et c'est dit. La crête est celle du MATÉRIAU dans la fenêtre jouée, comme à D13.6 ; la courbe de gain
+  (D545.1) s'applique EN PLUS, comme chez Cubase où l'enveloppe suit le traitement.
+- **Le geste** : une fenêtre demande le niveau, en dBFS (−1 proposé, de −60 à 0) ; un pas d'historique ; le
+  journal (`VSM_NORMALISER`) dit la crête trouvée, le niveau visé et le gain posé.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : une crête de 0,5 à −1 dBFS → gain **1,7825** (±10⁻⁴) ; à 0 dBFS → 2,0 (le geste de D13.6) ;
+   une crête nulle → aucun gain ; un niveau hors de −60..0 → refusé ;
+2. par l'application, mesuré par l'EXPORT : un sinus de crête 0,5, « Normaliser à un niveau choisi… » à
+   −1 dBFS → le gain relu au projet **1,7825** (±10⁻³), et la crête de l'export multipliée par **1,7825**
+   (±0,5 %) par rapport au témoin, l'export d'avant ; « Normaliser (gain = 1 / crête) » → ×2,0 ; Ctrl+Z → le
+   gain d'avant ;
+3. un banc `tools/normaliser-niveau.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux langues.
+
+**D545.3 EST FAITE (09/10, 20 h 33 ; le banc vert à 20 h 26).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 449 → **450** : crête 0,5 à −1 dBFS → **1,7825** ; à 0 dBFS → 2,0 ; une crête nulle, un niveau au-dessus de 0 ou sous −60 → refusés. **Rouge** : la formule en 10·log (1,5887) | **oui** |
+| 2 | par l'application, mesuré par l'EXPORT | `tools/normaliser-niveau.sh` : « crête 0.5000, niveau -1 dBFS, gain 1.7826 » ; le gain relu **1,7826** ; la crête de l'export **0,630210** contre 0,353532 au témoin (× 1,7826) ; en un clic (D13.6) 0,707107 (× 2,0) ; Ctrl+Z → 1 | **oui** |
+| 3 | le banc, les photos | 4 contrôles, entré dans `verifier.sh --bancs` (**66**) ; **rouge** sur le niveau saisi ignoré dans l'application (2,0 au lieu de 1,7825) ; la fenêtre photographiée et regardée en français et en anglais — sous une session VERROUILLÉE, les photos de panneau (`createComponentSnapshot`) sont pleines, contrairement à la photo de fenêtre (D520) ; libellés traduits | **oui** |
+
+**LE SIXIÈME AUDIT EST CLOS : D545.1, D545.1 bis, D545.2, D545.3 faites.** La série `--bancs` des 66 bancs
+attend une session DÉVERROUILLÉE : verrouillée, seul le premier lancement d'une rafale dessine sa fenêtre
+(D520), et les bancs de focus et de clic y rougissent sans rien dire du logiciel.
+

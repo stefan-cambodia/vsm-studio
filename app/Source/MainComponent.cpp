@@ -659,6 +659,42 @@ MainComponent::MainComponent()
     arrangement_.onClipTempoDetectRequested = [this](size_t piste, uint64_t clipId) {   // D545.2
         detecterTempoDuClip(piste, clipId);
     };
+    // D545.3 : NORMALISER À UN NIVEAU CHOISI — le maximum demandé, en dBFS.
+    arrangement_.onClipNormalizeToRequested = [this](size_t piste, uint64_t clipId, float crete) {
+        const juce::String titre = tr(u8"Normaliser à un niveau choisi");
+        if (crete < 1e-6f) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre, tr(u8"Ce clip ne joue que du silence : rien à normaliser."));
+            return;
+        }
+        auto fenetre = std::make_shared<juce::AlertWindow>(
+            titre, tr(u8"La crête du clip est amenée au niveau demandé ; la courbe de gain s'applique en plus."),
+            juce::AlertWindow::NoIcon);
+        fenetre->addTextEditor("niveau", "-1", tr(u8"Niveau (dBFS, de -60 à 0) :"));
+        fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, piste, clipId, crete, titre](int resultat) {
+            const juce::String texte = fenetre->getTextEditorContents("niveau").trim().replaceCharacter(',', '.');
+            fenetre->exitModalState(resultat);
+            fenetre->setVisible(false);
+            if (resultat != 1 || piste >= project_.tracks.size()) return;
+            const float gain = texte.containsOnly("+-0123456789.") && texte.isNotEmpty()
+                                   ? vsm::sequencer::normalizeGainFor(crete, texte.getDoubleValue()) : -1.0f;
+            if (gain < 0.0f) {
+                montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                             tr(u8"Le niveau se donne en dBFS, de -60 à 0 : rien n'a changé."));
+                return;
+            }
+            auto* clip = findClip(piste, clipId);
+            if (clip == nullptr) return;
+            beginProjectEdit(u8"Normaliser à un niveau choisi");
+            clip->gain = gain;
+            std::fputs((juce::String::fromUTF8(u8"VSM_NORMALISER : crête ") + juce::String(crete, 4)
+                        + juce::String::fromUTF8(u8", niveau ") + texte + juce::String::fromUTF8(u8" dBFS, gain ")
+                        + juce::String(gain, 4) + "\n").toRawUTF8(), stderr);
+            loadAudioTracks();
+            arrangement_.repaint();
+        });
+    };
     // D545.1 : LE GAIN D'UN POINT DE LA COURBE, en décibels (« -inf » pour le silence).
     arrangement_.onClipGainPointRequested = [this](size_t piste, uint64_t clipId, size_t index) {
         auto* clip = findClip(piste, clipId);

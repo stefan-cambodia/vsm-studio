@@ -323,6 +323,8 @@ public:
     std::function<void(size_t, uint64_t)> onClipNotesFromAttacksRequested;  // D544.1
     std::function<void(size_t, uint64_t)> onClipGrooveFromAttacksRequested; // D544.2
     std::function<void(size_t, uint64_t)> onClipTempoDetectRequested;       // D545.2
+    /// D545.3 : « Normaliser à un niveau choisi… » — (piste, clip, crête du matériau joué).
+    std::function<void(size_t, uint64_t, float)> onClipNormalizeToRequested;
     /// D545.1 : « Gain de ce point… » — la fenêtre est à l'application (piste, clip, indice du point).
     std::function<void(size_t, uint64_t, size_t)> onClipGainPointRequested;
     /// D545.1 : la courbe d'un clip, dite au journal (`VSM_COURBE_GAIN`) après chaque geste.
@@ -500,6 +502,8 @@ private:
     /// D545.1 : la seconde du fichier que le clip joue au clic (`clicTick_`), ou −1 ; et le point de gain
     /// qui s'y trouve, à cinq pixels près, ou −1.
     double sourceAuClic(size_t piste, const vsm::sequencer::Clip& clip) const;
+    /// D13.6, D545.3 : la crête du matériau que le clip joue, lue dans le cache d'aperçu ; 0 sans cache.
+    float creteJouee(size_t piste, const vsm::sequencer::Clip& clip) const;
     int pointDeGainAuClic(size_t piste, const vsm::sequencer::Clip& clip) const;
     void notifyChanged();
 

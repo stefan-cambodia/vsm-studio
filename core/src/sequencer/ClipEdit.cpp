@@ -154,6 +154,11 @@ void setClipGain(std::vector<Clip>& clips, const ClipSelection& selection, float
         if (selected(selection, clip)) clip.gain = valeur;
 }
 
+float normalizeGainFor(float peak, double targetDbfs) {
+    if (!(peak > 1e-6f) || targetDbfs < -60.0 || targetDbfs > 0.0) return -1.0f;
+    return static_cast<float>(std::pow(10.0, targetDbfs / 20.0) / static_cast<double>(peak));
+}
+
 void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection) {
     if (selection.empty()) return;
     // BASCULE PAR CLIP et non « tous à vrai » : inverser une sélection dont la

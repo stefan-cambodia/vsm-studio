@@ -132,6 +132,10 @@ void setClipFadeOut(std::vector<Clip>& clips, uint64_t clipId, Tick atTick, Tick
 /// inversion de phase est un réglage à part (`Clip::invertPhase`), et la
 /// confondre avec un gain négatif rendrait le bouton illisible.
 void setClipGain(std::vector<Clip>& clips, const ClipSelection& selection, float gain);
+/// D545.3 : le gain LINÉAIRE qui amène une crête mesurée (`peak`, linéaire) au niveau `targetDbfs`, de −60 à
+/// 0 dBFS : `10^(niveau / 20) / crête`. Rend −1 pour une crête nulle (du silence ne se normalise pas) ou un
+/// niveau hors de ces bornes. À 0 dBFS, c'est le geste de D13.6 (1 / crête).
+float normalizeGainFor(float peak, double targetDbfs);
 
 /// Inverse la phase des clips sélectionnés (bascule).
 void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection);

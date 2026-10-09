@@ -1429,3 +1429,12 @@ VSM_TEST(the_second_of_the_file_a_clip_plays_follows_its_map_and_its_loop) {
     etire.reversed = true;
     VSM_ASSERT(clipSourceSecondsAtTick(etire, 960, 100000, enSecondes) < 0.0);
 }
+
+// D545.3 — NORMALISER À UN NIVEAU CHOISI.
+VSM_TEST(normalizing_brings_the_peak_to_the_chosen_level) {
+    VSM_ASSERT_NEAR(normalizeGainFor(0.5f, -1.0), 1.7825, 1e-4);   // 10^(−1/20) / 0,5
+    VSM_ASSERT_NEAR(normalizeGainFor(0.5f, 0.0), 2.0, 1e-6);       // le geste de D13.6
+    VSM_ASSERT_EQ(normalizeGainFor(0.0f, -1.0), -1.0f);            // le silence ne se normalise pas
+    VSM_ASSERT_EQ(normalizeGainFor(0.5f, 3.0), -1.0f);             // au-dessus de 0 dBFS : refusé
+    VSM_ASSERT_EQ(normalizeGainFor(0.5f, -80.0), -1.0f);           // sous −60 : refusé
+}
