@@ -143,3 +143,60 @@ VSM_TEST(a_groove_extracted_from_nothing_is_empty_and_applies_nothing) {
     for (size_t i = 0; i < avant.size(); ++i)
         VSM_ASSERT_EQ(notes[i].startTick, avant[i].startTick);
 }
+
+// D544.2 — LE GROOVE D'UN CLIP AUDIO. 120 BPM, 480 ticks par noire : une seconde fait 960 ticks, la
+// double croche 120.
+namespace {
+Clip clipAudio() {
+    Clip c;
+    c.id = 1;
+    c.length = 3840;
+    c.sourceLength = 3840;
+    return c;
+}
+Tick enTicks960(double secondes) { return static_cast<Tick>(std::llround(secondes * 960.0)); }
+double enSecondes960(Tick tick) { return static_cast<double>(tick) / 960.0; }
+const std::vector<double> kAttaques{0.26, 0.49, 0.77, 1.01};   // ticks 250 · 470 · 739 · 970
+}
+
+VSM_TEST(the_groove_of_an_audio_clip_is_the_offsets_of_its_attacks_to_their_steps) {
+    const auto groove = grooveFromAttacks(clipAudio(), kAttaques, {}, 1920, 16, 100000, enTicks960, enSecondes960,
+                                          "clics (attaques)");
+    VSM_ASSERT_EQ(groove.steps.size(), size_t(16));
+    VSM_ASSERT_EQ(groove.name, std::string("clics (attaques)"));
+    const double attendus[16] = {0, 0, 10.0 / 120, 0, -10.0 / 120, 0, 19.0 / 120, 0, 10.0 / 120, 0, 0, 0, 0, 0, 0, 0};
+    for (size_t i = 0; i < 16; ++i) {
+        const bool present = i == 2 || i == 4 || i == 6 || i == 8;
+        VSM_ASSERT(groove.steps[i].present == present);
+        if (present) VSM_ASSERT_NEAR(groove.steps[i].offset, attendus[i], 1e-9);
+    }
+}
+
+VSM_TEST(the_groove_of_a_take_is_the_groove_of_its_transcription_into_notes) {
+    // LE MÊME, PAR CONSTRUCTION : des notes MIDI posées aux ticks des attaques donnent le même groove.
+    std::vector<Note> notes;
+    for (const Tick t : {Tick(250), Tick(470), Tick(739), Tick(970)}) {
+        Note n;
+        n.startTick = t;
+        n.endTick = t + 1;
+        n.velocity = 100;
+        notes.push_back(n);
+    }
+    const auto depuisNotes = extractGroove(notes, 1920, 16);
+    const auto depuisAudio = grooveFromAttacks(clipAudio(), kAttaques, {}, 1920, 16, 100000, enTicks960, enSecondes960);
+    for (size_t i = 0; i < 16; ++i) {
+        VSM_ASSERT(depuisNotes.steps[i].present == depuisAudio.steps[i].present);
+        VSM_ASSERT_NEAR(depuisNotes.steps[i].offset, depuisAudio.steps[i].offset, 1e-12);
+        VSM_ASSERT_NEAR(depuisNotes.steps[i].velocity, depuisAudio.steps[i].velocity, 1e-6);
+    }
+}
+
+VSM_TEST(the_groove_of_a_quantized_clip_says_every_attack_is_on_its_step) {
+    std::vector<Clip> clips{clipAudio()};
+    quantizeClipToGrid(clips, 1, kAttaques, 240, 100000, enSecondes960);
+    const auto groove = grooveFromAttacks(clips[0], kAttaques, {}, 1920, 16, 100000, enTicks960, enSecondes960);
+    for (size_t i : {size_t(2), size_t(4), size_t(6), size_t(8)}) {
+        VSM_ASSERT(groove.steps[i].present);
+        VSM_ASSERT_NEAR(groove.steps[i].offset, 0.0, 1e-12);
+    }
+}

@@ -188,7 +188,8 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, options.sampleRate,
             [&](int64_t tick) { return bundle.project.ticksToSeconds(tick); },
-            bundle.project.crossfadeShape);
+            bundle.project.crossfadeShape,
+            vsm::sequencer::globalTransposeForAudio(bundle.project, pourLesClips));   // D544.3
         // D34.1 : LE FONDU DE SÉCURITÉ MANQUAIT AU RENDU HORS LIGNE, et
         // personne ne l'avait vu. D33.2 l'avait posé dans `loadAudioTracks`, du
         // côté de l'application seule : un projet EXPORTÉ claquait donc aux

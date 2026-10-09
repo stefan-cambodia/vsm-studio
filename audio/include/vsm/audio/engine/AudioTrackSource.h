@@ -196,10 +196,15 @@ struct AudioTrackSource {
 /// deux appliquait (le calage des portées étirées, D12.5 ; les inserts du
 /// rendu hors ligne). Ce qui doit valoir pour les deux se met dans la
 /// fonction qu'ils appellent tous les deux.
+///
+/// D544.3 : `globalSemitones` — la transposition GLOBALE du projet que cette piste suit
+/// (`vsm::sequencer::globalTransposeForAudio`), ajoutée à la hauteur de chaque clip, sauf en mode
+/// « réchantillonné » où la hauteur suit la durée (D54). Les deux chemins la passent.
 std::vector<AudioClipSpan> spansFromTrack(
     const vsm::sequencer::Track& track, double sampleRate,
     const std::function<double(int64_t)>& ticksToSeconds,
-    vsm::sequencer::FadeShape crossfadeShape = vsm::sequencer::FadeShape::EqualPower);
+    vsm::sequencer::FadeShape crossfadeShape = vsm::sequencer::FadeShape::EqualPower,
+    double globalSemitones = 0.0);
 
 /// LE FONDU CROISÉ AUX RECOUVREMENTS (D34.1).
 ///

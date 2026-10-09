@@ -902,6 +902,7 @@ private:
         kMenuTrackBounceSelection,
         kMenuTrackPublishOutputs,
         kMenuTrackExplodeByPitch,
+        kMenuTrackIndependentTranspose,   // D544.3
         kMenuTrackNewFolder, kMenuTrackFolderIn, kMenuTrackFolderOut,
         kMenuTrackClapPlugin,
         kMenuTrackVst3Plugin,
@@ -942,6 +943,7 @@ private:
         kMenuMixAddSend,
         /// D23.5 : l'écoute en mono du master.
         kMenuMixMonoListen,
+        kMenuMixGlobalTranspose,      // D544.3
         /// D34.1 : la forme des fondus croisés, quatre entrées à la suite.
         /// Elles doivent rester CONTIGUËS et dans l'ordre de `FadeShape` :
         /// `menuItemSelected` en déduit la forme par soustraction.
@@ -1711,6 +1713,13 @@ private:
                             std::vector<double>& niveauxDb, juce::String& erreur);
     /// D544.1 : une piste MIDI neuve, une note par attaque du clip audio ; un pas ; dit (`VSM_NOTES_ATTAQUES`).
     void notesDepuisAttaques(size_t trackIndex, uint64_t clipId);
+    /// D544.2 : le groove courant tiré des attaques du clip audio ; le projet ne change pas (`VSM_GROOVE_AUDIO`).
+    void grooveDepuisAttaques(size_t trackIndex, uint64_t clipId);
+    /// D544.3 : la transposition globale (Mixage), le drapeau « indépendante » d'une piste (Piste), et ce
+    /// qui suit l'un ou l'autre — le calendrier, les portées audio, le journal, les notes écartées.
+    void regleTranspositionGlobale();
+    void basculerTranspositionIndependante();
+    void appliquerTranspositionGlobale();
     /// D20.3 : les clips audio choisis, coupés à chaque attaque trouvée.
     void sliceSelectedClipsAtOnsets();
     /// D21.3 : la coupe demandée à `tick` sur la piste, déplacée au passage

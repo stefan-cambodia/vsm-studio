@@ -79,10 +79,12 @@ Tick sortieChassee(const std::vector<Passage>& passages, Tick source, Tick limit
 size_t PlaybackScheduler::transposeDroppedNotes(const Project& project) {
     size_t perdues = 0;
     for (const auto& track : project.tracks) {
-        if (track.transposeSemitones == 0) continue;
+        if (track.transposeSemitones == 0 && project.globalTransposeSemitones == 0) continue;
         for (const auto& note : track.notes) {
             if (note.muted) continue;
-            const int hauteur = static_cast<int>(note.number) + track.transposeSemitones;
+            // D544.3 : la transposition globale s'y ajoute, pour les notes qui la suivent.
+            const int hauteur = static_cast<int>(note.number) + track.transposeSemitones
+                                + globalTransposeForNote(project, track, note);
             if (hauteur < 0 || hauteur > 127) ++perdues;
         }
     }
@@ -268,7 +270,9 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
                 // lecture : le matériau ne bouge pas. Hors de 0..127, la note
                 // est ÉCARTÉE et non repliée à l'octave -- replier la ferait
                 // sonner à une hauteur que personne n'a demandée.
-                const int hauteur = static_cast<int>(note.number) + track.transposeSemitones;
+                // D544.3 : LA TRANSPOSITION GLOBALE s'ajoute, pour les notes qui la suivent.
+                const int hauteur = static_cast<int>(note.number) + track.transposeSemitones
+                                    + globalTransposeForNote(project, track, note);
                 if (hauteur < 0 || hauteur > 127) continue;
                 const auto numero = static_cast<uint8_t>(hauteur);
                 Tick debut = 0;

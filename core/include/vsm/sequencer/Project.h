@@ -78,6 +78,10 @@ public:
     /// LA LIGNE D'ACCORDS (D532.3), triée par tick ; un accord vaut jusqu'au suivant.
     /// Elle ne joue rien : elle guide l'écriture (`snapNotesToChords`).
     std::vector<ChordEvent> chords;
+    /// D544.3 : LA TRANSPOSITION GLOBALE, en demi-tons (−24 à +24). Elle s'AJOUTE à la transposition de
+    /// chaque piste qui la suit, à la lecture et jamais dans le matériau, et à la hauteur de ses clips
+    /// audio (`globalTransposeForAudio`). Écrite dans `project.json` seulement si elle n'est pas nulle.
+    int globalTransposeSemitones = 0;
 
     /// D535.2 : LES NOMS DES INSTANTANÉS DE CONSOLE, dans l'ordre de leur prise — l'état de chaque
     /// piste vit dans la piste (`Track::mixSnapshots`). Écrits seulement s'il y en a.
@@ -476,5 +480,20 @@ bool hiddenByCollapsedFolder(const Project& project, size_t index);
 /// rétablit, et un arbre incohérent ne se voit qu'au moment où un dossier
 /// avale la moitié du morceau.
 size_t normalizeFolderDepths(Project& project);
+
+/// D544.3 : CE QUE LA TRANSPOSITION GLOBALE AJOUTE À UNE NOTE. Rien pour une piste indépendante ; rien
+/// pour une note du CANAL 10 — la batterie General MIDI y nomme des PIÈCES, pas des hauteurs, et
+/// transposer une grosse caisse en ferait une caisse claire. La règle tient à la note, parce que le
+/// canal est celui de la note dans ce modèle.
+inline int globalTransposeForNote(const Project& project, const Track& track, const Note& note) {
+    if (project.globalTransposeSemitones == 0 || track.independentOfGlobalTranspose || note.channel == 9) return 0;
+    return project.globalTransposeSemitones;
+}
+/// D544.3 : ce que la transposition globale ajoute à la hauteur des clips d'une piste AUDIO (un clip en
+/// mode « réchantillonné » n'en prend rien : sa hauteur suit sa durée, D54 — c'est `spansFromTrack` qui
+/// l'écarte).
+inline double globalTransposeForAudio(const Project& project, const Track& track) {
+    return track.independentOfGlobalTranspose ? 0.0 : static_cast<double>(project.globalTransposeSemitones);
+}
 
 } // namespace vsm::sequencer

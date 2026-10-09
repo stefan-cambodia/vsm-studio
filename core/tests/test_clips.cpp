@@ -674,3 +674,65 @@ VSM_TEST(notes_written_outside_moved_looped_or_muted_clips) {
     vide.addNote(0, 480, 60, 100, 0, notes);
     VSM_ASSERT(couvrirLesNotesEcrites(vide, 1920, 8, clips, 480).empty());
 }
+
+// --------------------------------------------------------------------------
+// D544.3 — LA TRANSPOSITION GLOBALE : elle s'ajoute à celle de chaque piste qui la
+// suit, à la lecture ; ni le canal 10, ni une piste indépendante ne la suivent.
+// --------------------------------------------------------------------------
+
+namespace {
+std::vector<int> hauteursJouees(const Project& project) {
+    std::vector<int> hauteurs;
+    for (const auto& e : PlaybackScheduler::build(project, 0, 100000))
+        if (const auto* on = std::get_if<vsm::midi::NoteOnEvent>(&e.data))
+            hauteurs.push_back(static_cast<int>(on->note));
+    std::sort(hauteurs.begin(), hauteurs.end());
+    return hauteurs;
+}
+}
+
+VSM_TEST(the_global_transpose_adds_to_the_track_transpose_at_playback) {
+    Project project = quatreNotes();          // do, do#, ré, ré# à partir de 60
+    project.globalTransposeSemitones = 2;
+    auto h = hauteursJouees(project);
+    VSM_ASSERT_EQ(h.size(), size_t(4));
+    for (int i = 0; i < 4; ++i) VSM_ASSERT_EQ(h[static_cast<size_t>(i)], 62 + i);
+    project.tracks[0].transposeSemitones = 12;   // +12 de piste, +2 globale : +14
+    h = hauteursJouees(project);
+    for (int i = 0; i < 4; ++i) VSM_ASSERT_EQ(h[static_cast<size_t>(i)], 74 + i);
+    VSM_ASSERT_EQ(int(project.tracks[0].notes[0].number), 60);   // le matériau n'a pas bougé
+}
+
+VSM_TEST(drums_and_an_independent_track_do_not_follow_the_global_transpose) {
+    Project project = quatreNotes();
+    project.globalTransposeSemitones = 2;
+    project.tracks[0].independentOfGlobalTranspose = true;
+    auto h = hauteursJouees(project);
+    for (int i = 0; i < 4; ++i) VSM_ASSERT_EQ(h[static_cast<size_t>(i)], 60 + i);
+    // LE CANAL 10 nomme des pièces de batterie : une grosse caisse transposée deviendrait autre chose.
+    project.tracks[0].independentOfGlobalTranspose = false;
+    for (auto& n : project.tracks[0].notes) n.channel = 9;
+    h = hauteursJouees(project);
+    for (int i = 0; i < 4; ++i) VSM_ASSERT_EQ(h[static_cast<size_t>(i)], 60 + i);
+    // Et la transposition de PISTE, elle, s'applique toujours au canal 10 (D17.5 inchangée).
+    project.tracks[0].transposeSemitones = 1;
+    h = hauteursJouees(project);
+    for (int i = 0; i < 4; ++i) VSM_ASSERT_EQ(h[static_cast<size_t>(i)], 61 + i);
+    VSM_ASSERT_EQ(globalTransposeForAudio(project, project.tracks[0]), 2.0);
+    project.tracks[0].independentOfGlobalTranspose = true;
+    VSM_ASSERT_EQ(globalTransposeForAudio(project, project.tracks[0]), 0.0);
+}
+
+VSM_TEST(a_note_pushed_out_of_range_by_the_sum_is_dropped_and_counted) {
+    Project project = quatreNotes();
+    project.tracks[0].notes[3].number = 120;
+    project.tracks[0].transposeSemitones = 6;
+    VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(project), size_t(0));   // 126
+    project.globalTransposeSemitones = 2;                                           // 128
+    VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(project), size_t(1));
+    VSM_ASSERT_EQ(hauteursJouees(project).size(), size_t(3));
+    // Une piste SANS transposition propre compte aussi : la garde « rien à transposer » regarde les deux.
+    project.tracks[0].transposeSemitones = 0;
+    project.globalTransposeSemitones = 8;
+    VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(project), size_t(1));
+}

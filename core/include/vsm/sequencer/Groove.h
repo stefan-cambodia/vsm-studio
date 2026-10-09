@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include "vsm/sequencer/Track.h"
 #include <string>
@@ -77,5 +78,14 @@ Groove extractGroove(const std::vector<Note>& notes, Tick ticksPerBar, int steps
 size_t applyGroove(std::vector<Note>& notes, const NoteSelection& selection,
                     const Groove& groove, Tick ticksPerBar, float strength = 1.0f,
                     bool applyVelocity = false);
+
+/// D544.2 : LE GROOVE D'UN CLIP AUDIO — ses attaques devenues notes par `notesFromAttacks` (chacune au
+/// tick où elle SONNE, carte d'étirement comprise ; la vélocité selon son niveau), puis `extractGroove`.
+/// Une seule règle pour « où tombe une attaque » : le groove d'une prise et celui de sa transcription en
+/// notes sont le même, par construction.
+Groove grooveFromAttacks(const Clip& clip, const std::vector<double>& onsetSourceSeconds,
+                         const std::vector<double>& levelsDb, Tick ticksPerBar, int stepsPerBar,
+                         Tick materialEnd, const std::function<Tick(double)>& secondsToTicks,
+                         const std::function<double(Tick)>& ticksToSeconds, const std::string& name = {});
 
 } // namespace vsm::sequencer

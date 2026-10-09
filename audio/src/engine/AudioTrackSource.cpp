@@ -323,7 +323,8 @@ void applyCrossfades(std::vector<AudioClipSpan>& spans, vsm::sequencer::FadeShap
 std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                                            double sampleRate,
                                            const std::function<double(int64_t)>& ticksToSeconds,
-                                           vsm::sequencer::FadeShape crossfadeShape) {
+                                           vsm::sequencer::FadeShape crossfadeShape,
+                                           double globalSemitones) {
     std::vector<AudioClipSpan> spans;
     if (track.kind != vsm::sequencer::Track::Kind::Audio || track.audio.empty())
         return spans;
@@ -360,7 +361,9 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
             span.reversed = clip.reversed;
-            span.pitchSemitones = clip.pitchSemitones;   // D54
+            // D54, et D544.3 : la transposition globale s'y ajoute — sauf en mode « réchantillonné ».
+            span.pitchSemitones = clip.pitchSemitones
+                                  + (clip.warpMode == vsm::sequencer::WarpMode::Repitch ? 0.0 : globalSemitones);
             auto warp = std::make_shared<ClipWarp>();
             warp->repitch = clip.warpMode == vsm::sequencer::WarpMode::Repitch;
             // LE VOCODEUR EST LE DÉFAUT DE « HAUTEUR CONSERVÉE » (D12.8, banc
@@ -416,7 +419,9 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
             span.reversed = clip.reversed;
-            span.pitchSemitones = clip.pitchSemitones;   // D54
+            // D54, et D544.3 : la transposition globale s'y ajoute — sauf en mode « réchantillonné ».
+            span.pitchSemitones = clip.pitchSemitones
+                                  + (clip.warpMode == vsm::sequencer::WarpMode::Repitch ? 0.0 : globalSemitones);
             if (span.lengthFrames > 0) spans.push_back(span);
         }
     }

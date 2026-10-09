@@ -330,7 +330,13 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
                     comptes["SANS_PAIRE"].append(
                         f"{fichier.relative_to(racine)}:{ligne}: {chaine[:100]}")
                 continue
-            instruction = texte[texte.rfind(";", 0, debut) + 1:texte.find(";", fin)]
+            # D544.3 : LES BORNES DE L'INSTRUCTION SE CHERCHENT DANS LE TEXTE AUX LITTÉRAUX VIDÉS, comme
+            # celles de D106. Un « ; » écrit DANS une chaîne (« demi-ton(s) ; ») coupait l'instruction au
+            # milieu d'un `fputs` de six lignes, la chaîne d'après n'y voyait plus la sortie, et un message
+            # de journal était compté ÉCRAN — un faux rouge, payé le 09/10 ; d'autres lignes de journal
+            # passaient par chance (leurs morceaux entre deux « ; » n'avaient pas « l'air français »).
+            code = masque or masquer_les_chaines(texte)
+            instruction = texte[code.rfind(";", 0, debut) + 1:code.find(";", fin)]
             # D150 : le point, pour « pistes.muet » ; D375 : la barre, pour « gel/piste- »
             if re.fullmatch(r"[a-z0-9\-:./]+" if d375 else r"[a-z0-9\-:.]+", chaine):
                 categorie = "COMMANDE"

@@ -880,6 +880,11 @@ public:
     /// COMPTÉES (`transposeDroppedNotes`), et l'application le dit.
     int transposeSemitones = 0;
 
+    /// D544.3 : « INDÉPENDANTE DE LA TRANSPOSITION GLOBALE » — le *Follow / Independent* de Cubase. Faux
+    /// par défaut : une piste suit la transposition du projet (`Project::globalTransposeSemitones`), qui
+    /// s'AJOUTE à la sienne. Écrit dans le projet seulement s'il est posé.
+    bool independentOfGlobalTranspose = false;
+
     /// LE GROUPE D'ÉDITION (D18.3) — les Edit Groups de Cubase. 0 = aucun.
     ///
     /// Deux pistes du même groupe se COUPENT, se déplacent et se joignent

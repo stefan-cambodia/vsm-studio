@@ -652,6 +652,9 @@ MainComponent::MainComponent()
     arrangement_.onClipNotesFromAttacksRequested = [this](size_t piste, uint64_t clipId) {   // D544.1
         notesDepuisAttaques(piste, clipId);
     };
+    arrangement_.onClipGrooveFromAttacksRequested = [this](size_t piste, uint64_t clipId) {  // D544.2
+        grooveDepuisAttaques(piste, clipId);
+    };
     // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
     // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
     // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et
@@ -4583,6 +4586,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                             + juce::String(tr(u8" pistes)"))
                                       : juce::String(tr(u8"Éclater par hauteur (une seule hauteur ici)")),
                                   hauteurs >= 2);
+                    // D544.3 : LE « FOLLOW / INDEPENDENT » DE CUBASE, une case par piste.
+                    menu.addItem(kMenuTrackIndependentTranspose, tr(u8"Indépendante de la transposition globale"),
+                                  piste < project_.tracks.size(),
+                                  piste < project_.tracks.size() && project_.tracks[piste].independentOfGlobalTranspose);
                     menu.addItem(kMenuTrackPublishOutputs,
                                   sorties > 1
                                       ? juce::String(tr(u8"Publier les ")) + juce::String(sorties - 1)
@@ -4890,6 +4897,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             menu.addItem(kMenuMixMonoListen, tr(u8"\u00c9coute en mono (jamais dans un export)"), true,
                          audioEngine_.processGraph().masterBus().monoListen());
+            // D544.3 : LA TRANSPOSITION GLOBALE — cochée quand elle n'est pas nulle ; la fenêtre dit la valeur.
+            menu.addItem(kMenuMixGlobalTranspose, tr(u8"Transposition globale…"), true,
+                         project_.globalTransposeSemitones != 0);
             // D34.1 : LA FORME DES FONDUS CROISÉS. Une donnée du MORCEAU, et
             // non une préférence : elle change ce que l'export contient.
             {
@@ -5124,6 +5134,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             static_cast<uint8_t>(menuItemID - kMenuMixCrossfadeLinear)));
         return;
     }
+    if (menuItemID == kMenuMixGlobalTranspose) { regleTranspositionGlobale(); return; }   // D544.3
     if (menuItemID == kMenuMixMonoListen) {
         const bool on = !audioEngine_.processGraph().masterBus().monoListen();
         audioEngine_.processGraph().masterBus().setMonoListen(on);
@@ -5529,6 +5540,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackBounceSelection: bounceSelectionToNewTracks(); break;
         case kMenuTrackPublishOutputs: publishInstrumentOutputsOfSelectedTrack(); break;
         case kMenuTrackExplodeByPitch: explodeSelectedTrackByPitch(); break;
+        case kMenuTrackIndependentTranspose: basculerTranspositionIndependante(); break;   // D544.3
         case kMenuTrackNewFolder: newFolderAboveSelectedTrack(); break;
         case kMenuTrackFolderIn:  changeSelectedTrackFolderDepth(+1); break;
         case kMenuTrackFolderOut: changeSelectedTrackFolderDepth(-1); break;
@@ -10562,7 +10574,7 @@ void MainComponent::loadAudioTracks() {
 
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); },
-            project_.crossfadeShape);
+            project_.crossfadeShape, vsm::sequencer::globalTransposeForAudio(project_, pourLesClips));   // D544.3
         // LES CLIPS QUI SUIVENT LE TEMPO (D12.5) : les attaques du fichier se
         // cherchent ICI, une fois par piste, hors du thread audio -- comme le
         // cache d'aperçu juste au-dessus, et pour la même raison.
@@ -12872,6 +12884,13 @@ juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
             causes.add(tr(u8"transposition ")
                         + (track.transposeSemitones > 0 ? "+" : "")
                         + juce::String(track.transposeSemitones));
+        // D544.3 : LA TRANSPOSITION GLOBALE, pour une piste qui la suit et joue autre chose que le canal 10.
+        if (project_.globalTransposeSemitones != 0 && !track.independentOfGlobalTranspose
+            && std::any_of(track.notes.begin(), track.notes.end(),
+                           [](const vsm::sequencer::Note& n) { return n.channel != 9; }))
+            causes.add(tr(u8"transposition globale ")
+                        + (project_.globalTransposeSemitones > 0 ? "+" : "")
+                        + juce::String(project_.globalTransposeSemitones));
         // LE SILENCE, ET D'OÙ IL VIENT. Le muet n'est pas cuit dans le fichier
         // — c'est un état de mixage qu'on change dix fois par heure, et l'y
         // écrire ferait dépendre l'export du dernier bouton pressé. Mais une
@@ -13903,6 +13922,138 @@ void MainComponent::notesDepuisAttaques(size_t trackIndex, uint64_t clipId) {
                     .replace("%2", juce::String::fromUTF8(project_.tracks[trackIndex + 1].name.c_str()))
                     .replace("%3", juce::String(static_cast<int>(bilan.outside))));
     });
+}
+
+void MainComponent::grooveDepuisAttaques(size_t trackIndex, uint64_t clipId) {
+    // D544.2 : LE GROOVE D'UN CLIP AUDIO — le placement et l'accent de ses attaques (`grooveFromAttacks`),
+    // devenus le groove courant que « Appliquer le groove » donne aux notes choisies. Le projet ne change
+    // pas : ni pas d'historique, ni piste neuve.
+    if (trackIndex >= project_.tracks.size()) return;
+    const auto& piste = project_.tracks[trackIndex];
+    const juce::String titre = tr(u8"Extraire le groove");
+    if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Cette commande lit les attaques d'un FICHIER : elle ne s'applique qu'à un clip de "
+                        u8"piste audio."));
+        return;
+    }
+    const auto* clip = findClip(trackIndex, clipId);
+    if (clip == nullptr) return;
+    if (clip->reversed) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Ce clip joue à l'envers : ses attaques ne tombent pas où le fichier les met, "
+                        u8"aucun groove n'a été extrait."));
+        return;
+    }
+    const vsm::sequencer::Clip leClip = *clip;
+    std::vector<double> attaques, niveaux;
+    juce::String erreur;
+    if (!lireAttaquesDuClip(trackIndex, clipId, attaques, niveaux, erreur)) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre, erreur);
+        return;
+    }
+    vsm::midi::Tick finMateriau = 0;
+    if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+    const auto parMesure = project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
+    const std::string nom = (leClip.name.empty() ? piste.name : leClip.name) + " (attaques)";
+    auto groove = vsm::sequencer::grooveFromAttacks(
+        leClip, attaques, niveaux, parMesure, 16, finMateriau,
+        [this](double s) { return project_.secondsToTicks(s); },
+        [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); }, nom);
+    size_t presents = 0;
+    juce::String ecarts;
+    for (size_t i = 0; i < groove.steps.size(); ++i) {
+        if (!groove.steps[i].present) continue;
+        ++presents;
+        ecarts += (ecarts.isEmpty() ? "" : " ") + juce::String(static_cast<int>(i)) + ":"
+                + juce::String(groove.steps[i].offset, 4);
+    }
+    std::fputs((juce::String::fromUTF8(u8"VSM_GROOVE_AUDIO : ") + juce::String(static_cast<int>(attaques.size()))
+                + juce::String::fromUTF8(u8" attaque(s), ") + juce::String(static_cast<int>(presents))
+                + juce::String::fromUTF8(u8" pas sur 16 ; pas:écart ")
+                + (ecarts.isEmpty() ? juce::String("-") : ecarts) + "\n").toRawUTF8(), stderr);
+    if (presents == 0) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Aucune attaque trouvée dans ce clip : le groove courant n'a pas changé."));
+        return;
+    }
+    grooveCourant_ = std::move(groove);
+    montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                 tr(u8"Groove « %1 » : %2 pas sur 16 renseignés par les attaques du clip. Les pas sans "
+                    u8"attaque laisseront les notes tranquilles.")
+                     .replace("%2", juce::String(static_cast<int>(presents)))
+                     .replace("%1", juce::String::fromUTF8(grooveCourant_.name.c_str())));
+}
+
+void MainComponent::regleTranspositionGlobale() {
+    // D544.3 : LA TRANSPOSITION GLOBALE — un réglage du projet, ajouté à la transposition de chaque piste
+    // qui la suit, à la lecture et à l'export audio ; le matériau ne bouge pas.
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        tr(u8"Transposition globale"),
+        tr(u8"Les pistes qui la suivent jouent transposées d'autant, en plus de leur propre transposition — "
+           u8"sauf les notes du canal 10 (la batterie) et les pistes indépendantes. Le matériau ne bouge pas."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("demitons", juce::String(project_.globalTransposeSemitones), tr(u8"Demi-tons (−24 à +24) :"));
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre](int resultat) {
+        const juce::String texte = fenetre->getTextEditorContents("demitons").trim().removeCharacters("+");
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        const int valeur = texte.getIntValue();
+        if (!texte.containsOnly("-0123456789") || texte.isEmpty() || valeur < -24 || valeur > 24) {
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Transposition globale"),
+                         tr(u8"La transposition globale va de −24 à +24 demi-tons : rien n'a changé."));
+            return;
+        }
+        if (valeur == project_.globalTransposeSemitones) return;
+        beginProjectEdit(u8"Transposition globale");
+        project_.globalTransposeSemitones = valeur;
+        appliquerTranspositionGlobale();
+    });
+}
+
+void MainComponent::basculerTranspositionIndependante() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    beginProjectEdit(u8"Indépendante de la transposition globale");
+    project_.tracks[piste].independentOfGlobalTranspose = !project_.tracks[piste].independentOfGlobalTranspose;
+    appliquerTranspositionGlobale();
+}
+
+void MainComponent::appliquerTranspositionGlobale() {
+    // LES DEUX CHEMINS DU SON : le calendrier des notes, et les portées audio (`spansFromTrack`).
+    refreshTransportSchedule();
+    loadAudioTracks();
+    arrangement_.repaint();
+    int suivent = 0, independantes = 0;
+    for (const auto& t : project_.tracks) {
+        if (t.isFolder() || t.kind == vsm::sequencer::Track::Kind::Group || t.kind == vsm::sequencer::Track::Kind::Vca)
+            continue;
+        if (t.independentOfGlobalTranspose) ++independantes; else ++suivent;
+    }
+    const size_t perdues = vsm::sequencer::PlaybackScheduler::transposeDroppedNotes(project_);
+    const int v = project_.globalTransposeSemitones;
+    std::fputs((juce::String::fromUTF8(u8"VSM_TRANSPOSITION_GLOBALE : ") + (v > 0 ? "+" : "") + juce::String(v)
+                + juce::String::fromUTF8(u8" demi-ton(s) ; ") + juce::String(suivent)
+                + juce::String::fromUTF8(u8" piste(s) la suivent, ") + juce::String(independantes)
+                + juce::String::fromUTF8(u8" indépendante(s) ; ") + juce::String(static_cast<int>(perdues))
+                + juce::String::fromUTF8(u8" note(s) écartée(s)\n")).toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Transposition globale : %1 demi-ton(s), %2 piste(s) la suivent, %3 indépendante(s)")
+                                       .replace("%1", juce::String(v > 0 ? "+" : "") + juce::String(v))
+                                       .replace("%2", juce::String(suivent))
+                                       .replace("%3", juce::String(independantes)));
+    // Comme la transposition de piste (D17.5) : une note poussée hors de 0..127 ne sonne pas, et c'est DIT.
+    if (perdues > 0)
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Transposition"),
+                     tr(perdues > 1 ? u8"%1 notes ne sonneront pas" : u8"%1 note ne sonnera pas")
+                             .replace("%1", juce::String(static_cast<int>(perdues)))
+                         + tr(u8" : la transposition les pousse hors de la plage MIDI (0 à 127). "
+                              u8"Elles ne sont pas repliées à l'octave — les faire sonner à une "
+                              u8"hauteur que personne n'a demandée serait pire. Le matériau, lui, "
+                              u8"n'a pas bougé : remettez la transposition à zéro et tout revient."));
 }
 
 // --- D17.8 : LE GROOVE ------------------------------------------------------

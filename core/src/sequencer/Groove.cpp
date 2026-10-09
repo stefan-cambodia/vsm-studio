@@ -96,4 +96,15 @@ size_t applyGroove(std::vector<Note>& notes, const NoteSelection& selection,
     return deplacees;
 }
 
+Groove grooveFromAttacks(const Clip& clip, const std::vector<double>& onsetSourceSeconds,
+                         const std::vector<double>& levelsDb, Tick ticksPerBar, int stepsPerBar,
+                         Tick materialEnd, const std::function<Tick(double)>& secondsToTicks,
+                         const std::function<double(Tick)>& ticksToSeconds, const std::string& name) {
+    // Des notes de passage : seuls leur tick et leur vélocité comptent, et elles ne vont dans aucune piste.
+    uint64_t ids = 1;
+    const auto attaques = notesFromAttacks(clip, onsetSourceSeconds, levelsDb, 60, 1, true, materialEnd, ids,
+                                           secondsToTicks, ticksToSeconds);
+    return extractGroove(attaques.notes, ticksPerBar, stepsPerBar, name);
+}
+
 } // namespace vsm::sequencer

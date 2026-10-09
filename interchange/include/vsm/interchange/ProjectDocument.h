@@ -270,6 +270,7 @@ struct ProjectTrack {
     /// D17.5 : la transposition de piste, en demi-tons. Écrite seulement
     /// quand elle n'est pas nulle.
     int transposeSemitones = 0;
+    bool independentOfGlobalTranspose = false;   ///< D544.3 : écrit seulement s'il est posé
     /// D18.3 : le groupe d'édition. 0 = aucun, et rien n'est écrit.
     int editGroup = 0;
 
@@ -383,6 +384,7 @@ struct ProjectDocument {
     /// Repères nommés. Facultatif, comme les clips.
     std::vector<ProjectMarker> markers;
     std::vector<ProjectChord> chords;   ///< D532.3 : écrite seulement s'il y en a
+    int globalTransposeSemitones = 0;   ///< D544.3 : écrite seulement si elle n'est pas nulle
     /// D535.2 : les noms des instantanés de console, dans l'ordre. Écrits seulement s'il y en a.
     std::vector<std::string> mixSnapshotNames;
     /// D18.6 : les notes du projet. Vides = rien n'est écrit.

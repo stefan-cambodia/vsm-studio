@@ -532,3 +532,24 @@ VSM_TEST(un_troncon_sans_prise_est_ecarte_et_nomme) {
     VSM_ASSERT_EQ(rapport.warnings.size(), size_t{1});
     VSM_ASSERT(rapport.warnings[0].find("2") != std::string::npos);
 }
+
+// D544.3 : LA TRANSPOSITION GLOBALE ET LE DRAPEAU « INDÉPENDANTE » SURVIVENT AU DISQUE — et ne
+// s'écrivent PAS quand ils sont nuls : un projet sans transposition globale s'écrit comme avant.
+VSM_TEST(la_transposition_globale_survit_au_disque_et_ne_s_ecrit_pas_nulle) {
+    Project p = projetDistinctif();
+    {
+        const std::string texte = projectDocumentToJson(documentFromProject(p)).toString();
+        VSM_ASSERT(texte.find("\"globalTranspose\"") == std::string::npos);
+        VSM_ASSERT(texte.find("\"independentOfGlobalTranspose\"") == std::string::npos);
+    }
+    p.globalTransposeSemitones = -3;
+    p.tracks[0].independentOfGlobalTranspose = true;
+    const fs::path dossier = dossierNeuf("transposition-globale");
+    VSM_ASSERT(saveProjectBundle(p, dossier.string()).success);
+    const auto relu = loadProjectBundle(dossier.string());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_EQ(relu.bundle.project.globalTransposeSemitones, -3);
+    VSM_ASSERT(relu.bundle.project.tracks[0].independentOfGlobalTranspose);
+    for (size_t i = 1; i < relu.bundle.project.tracks.size(); ++i)
+        VSM_ASSERT(!relu.bundle.project.tracks[i].independentOfGlobalTranspose);
+}

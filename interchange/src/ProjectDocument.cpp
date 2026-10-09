@@ -378,6 +378,7 @@ ProjectDocument documentFromProject(const Project& project) {
         document.chords.push_back({accord.tick, vsm::sequencer::chordSymbol(accord)});
     document.notes = project.notes;
     document.mixSnapshotNames = project.mixSnapshotNames;   // D535.2
+    document.globalTransposeSemitones = project.globalTransposeSemitones;   // D544.3
     document.master = project.masterParameters;
     document.crossfadeShape = fadeShapeName(project.crossfadeShape);
     document.transport.loopEnabled = project.loopEnabled;
@@ -450,6 +451,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.locked = track.locked;
         entry.hidden = track.hidden;
         entry.transposeSemitones = track.transposeSemitones;
+        entry.independentOfGlobalTranspose = track.independentOfGlobalTranspose;   // D544.3
         entry.editGroup = track.editGroup;
         entry.outputSourceTrack = track.outputSourceTrack;
         entry.outputIndex = track.outputIndex;
@@ -575,6 +577,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             project.markers.push_back({marker.tick, marker.name});
     }
     project.mixSnapshotNames = document.mixSnapshotNames;   // D535.2
+    project.globalTransposeSemitones = document.globalTransposeSemitones;   // D544.3
     // D532.3 : LA LIGNE D'ACCORDS, toujours celle du document — le `.mid` n'en porte
     // aucune. Un symbole illisible est ÉCARTÉ et DIT, jamais deviné.
     project.chords.clear();
@@ -689,6 +692,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.locked = source.locked;
         target.hidden = source.hidden;
         target.transposeSemitones = source.transposeSemitones;
+        target.independentOfGlobalTranspose = source.independentOfGlobalTranspose;   // D544.3
         target.editGroup = source.editGroup;
         target.outputSourceTrack = source.outputSourceTrack;
         target.outputIndex = source.outputIndex;
@@ -832,6 +836,10 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         }
         root.set("markers", std::move(markers));
     }
+    // D544.3 : LA TRANSPOSITION GLOBALE, écrite seulement si elle n'est pas nulle — un projet sans elle
+    // s'écrit comme avant, au bit près.
+    if (document.globalTransposeSemitones != 0)
+        root.set("globalTranspose", JsonValue::makeNumber(document.globalTransposeSemitones));
     if (!document.chords.empty()) {   // D532.3
         JsonValue accords = JsonValue::makeArray();
         for (const auto& accord : document.chords) {
@@ -1036,6 +1044,8 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         if (track.hidden) entry.set("hidden", JsonValue::makeBoolean(true));
         if (track.transposeSemitones != 0)
             entry.set("transpose", JsonValue::makeNumber(track.transposeSemitones));
+        if (track.independentOfGlobalTranspose)   // D544.3
+            entry.set("independentOfGlobalTranspose", JsonValue::makeBoolean(true));
         if (track.editGroup != 0) entry.set("editGroup", JsonValue::makeNumber(track.editGroup));
         // D18.7b : LA SOURCE D'ABORD, L'INDEX SEULEMENT S'IL Y A UNE SOURCE.
         // Écrire un « outputIndex » orphelin décrirait une piste qui publie la
@@ -1228,6 +1238,10 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
 
     ProjectDocument document;
     document.title = json["title"].asString("Sans titre");
+    // D544.3 : bornée à ±24 à la lecture, comme à la saisie — un fichier écrit à la main ne pousse pas
+    // toutes les notes hors de la plage MIDI.
+    document.globalTransposeSemitones =
+        std::clamp(static_cast<int>(json["globalTranspose"].asNumber(0.0)), -24, 24);
     for (const auto& nom : json["mixSnapshots"].elements())   // D535.2
         if (nom.isString()) document.mixSnapshotNames.push_back(nom.asString());
     for (const auto& accordJson : json["chords"].elements())   // D532.3 : lus tels quels, jugés à l'application
@@ -1419,6 +1433,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.locked = entry["locked"].asBoolean(false);
         track.hidden = entry["hidden"].asBoolean(false);
         track.transposeSemitones = static_cast<int>(entry["transpose"].asNumber(0.0));
+        track.independentOfGlobalTranspose = entry["independentOfGlobalTranspose"].asBoolean(false);   // D544.3
         track.editGroup = static_cast<int>(entry["editGroup"].asNumber(0.0));
         track.folderDepth = static_cast<int>(entry["folderDepth"].asNumber(0.0));
         track.outputSourceTrack = static_cast<int>(entry["outputSourceTrack"].asNumber(-1.0));

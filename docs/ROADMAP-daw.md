@@ -40643,3 +40643,115 @@ ce qu'elle faisait, d'où les tests verts ; mais le prochain appelant aurait pou
 numérotées », la faute même que D262 a payée. La fonction prend désormais un compteur (`idCounter++`, la
 convention de `ClipEdit.cpp` : `peekNextNoteId()`, puis `ensureNoteIdAbove`), le test vérifie les
 identifiants (7, 8, 9, 10), la garde repasse à 0, et le banc rejoué (13 h 54) donne les mêmes chiffres.
+
+**LA SÉRIE, relevée à 14 h 40 : 61 bancs sur 61 verts en 44 min** (dont `notes-depuis-attaques.sh`, et
+`arrangement-defile.sh` — le rouge non reproduit de D543.4 n'est pas revenu), aucune veille, préférences de
+l'utilisateur identiques. (Le message du commit de D544.1 disait « --bancs 61 » : le banc y était ENTRÉ,
+la série n'avait pas encore tourné — elle l'a fait ici.)
+
+### Phase D544.2 — extraire le groove d'un clip audio (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 13 h 56, D544.1 faite.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Le groove d'un clip audio est celui de ses attaques devenues notes** : `grooveFromAttacks` dans
+  `core/` compose `notesFromAttacks` (D544.1 — chaque attaque au tick où elle sonne, la vélocité selon son
+  niveau) et `extractGroove` (D17.8 — l'écart de chaque attaque à son pas, moyenné par pas, et l'accent).
+  Une seule règle pour « où tombe une attaque » dans tout le logiciel ; le groove d'une prise et celui de
+  sa transcription en notes sont le MÊME, par construction.
+- **Le geste** : « Extraire le groove de ce clip » au menu du clip audio, sans fenêtre — seize pas par
+  mesure, comme « Extraire le groove de la piste choisie » ; le groove devient le groove courant, nommé
+  d'après le clip (« … (attaques) »), et « Appliquer le groove » le donne aux notes choisies du piano roll.
+  La boîte dit combien de pas sont renseignés ; le journal (`VSM_GROOVE_AUDIO`) dit chaque écart en
+  fraction de pas. Ni pas d'historique (le projet ne change pas), ni piste neuve.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : les quatre attaques de D544.1 → les pas 2, 4, 6 et 8 renseignés (de seize), écarts
+   **+10/120, −10/120, +19/120, +10/120** — les ticks 250 · 470 · 739 · 970 rapportés à la double croche ;
+   les autres pas absents ; le groove est IDENTIQUE à celui que `extractGroove` tire de notes MIDI posées à
+   ces ticks ; le clip calé (D543.3) → quatre écarts nuls ;
+2. par l'application, mesuré par le `.mid` exporté : une partie MIDI droite (240 · 480 · 720 · 960) et
+   la piste des clics de D543.3 ; « Extraire le groove de ce clip », puis la partie choisie, « Appliquer
+   le groove » → **250 · 470 · 739 · 970** (±1) ; le témoin, sans appliquer : 240 · 480 · 720 · 960 ;
+   extrait du clip CALÉ d'abord, le groove ne déplace rien (la boîte « Aucune note n'a bougé ») ;
+3. un banc `tools/groove-depuis-audio.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; libellés traduits.
+
+**D544.2 EST FAITE (09/10, 14 h 56 ; le banc vert à 14 h 47, rejoué à 14 h 55 sur le binaire final).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 439 → **442** : les pas 2 · 4 · 6 · 8 renseignés, écarts +10/120 · −10/120 · +19/120 · +10/120, les autres absents ; le groove d'une prise IDENTIQUE à celui de notes MIDI posées à ses ticks (écarts à 10⁻¹², vélocités à 10⁻⁶) ; le clip calé → quatre écarts nuls. **Rouge** : la carte d'étirement ignorée (0,0833 au lieu de 0) | **oui** |
+| 2 | par l'application, mesuré par le `.mid` exporté | `tools/groove-depuis-audio.sh` : le journal, « 4 pas sur 16 ; 2:0.0833 4:-0.0833 6:0.1583 8:0.0833 » ; la partie droite → **250 · 470 · 739 · 970**, le témoin 240 · 480 · 720 · 960 ; extrait du clip calé, le groove ne déplace rien (« Aucune note n'a bougé ») | **oui** |
+| 3 | le banc | 3 contrôles, entré dans `verifier.sh --bancs` ; **rouge** sur la carte ignorée dans l'application (le contrôle 3 : le groove du clip calé a déplacé la partie à 250 · 470 · 739 · 970) ; libellés traduits | **oui** |
+
+### Phase D544.3 — la transposition globale (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 14 h 17.*
+
+**CE QUI EXISTE.** La transposition de PISTE (D17.5) : `Track::transposeSemitones`, appliquée par
+`PlaybackScheduler` à la lecture et jamais au matériau, saisie dans la console ; les notes hors 0..127
+écartées et comptées (`transposeDroppedNotes`). La hauteur d'un CLIP audio (D54) : `Clip::pitchSemitones`,
+portée au moteur par `spansFromTrack` — que l'application ET le rendu hors ligne (`OfflineReconstruction`)
+appellent. L'export `.mid` écrit le MATÉRIAU et dit ce qu'il ne porte pas (D31.5 : « Drums (transposition
+−5) »).
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Un réglage du projet**, `Project::globalTransposeSemitones` (−24 à +24), écrit dans `project.json`
+  seulement s'il n'est pas nul — un projet sans transposition s'écrit comme avant, au bit près.
+- **Il s'AJOUTE à la transposition de chaque piste qui le suit** : aux notes à la lecture (les deux
+  endroits de `PlaybackScheduler`, et le compte des notes écartées), à la hauteur des clips audio par
+  `spansFromTrack` — donc dans les DEUX chemins, lecture et export (la leçon de D332 : ce qui conditionne le
+  son se pose là où les deux chemins le prennent).
+- **Qui ne le suit pas.** (a) Une piste MIDI sur le canal 10 : la batterie General MIDI y nomme des
+  PIÈCES, pas des hauteurs, et transposer une grosse caisse en ferait une caisse claire — exclue par règle,
+  pas par réglage ; (b) toute piste marquée « indépendante de la transposition globale » (le *Follow /
+  Independent* de Cubase), un drapeau de piste écrit seulement s'il est posé ; (c) un clip audio en mode
+  « réchantillonné » : sa hauteur SUIT sa durée (D54), elle n'est pas un réglage.
+- **Les gestes** : Mixage ▸ « Transposition globale… » (une fenêtre, en demi-tons ; un pas d'historique) ;
+  Piste ▸ « Indépendante de la transposition globale » (une case, un pas). Le journal
+  (`VSM_TRANSPOSITION_GLOBALE`) dit la valeur, les pistes qui la suivent et celles qui ne la suivent pas,
+  et les notes écartées ; l'export `.mid` l'ajoute à ce qu'il dit ne pas porter.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : +2 → les notes d'une piste MIDI jouées deux demi-tons plus haut, en plus de sa propre
+   transposition (+12 de piste et +2 globale → +14) ; une piste du canal 10 et une piste indépendante
+   inchangées ; une note poussée hors de 0..127 par la somme écartée et comptée ; `project.json` relu
+   porte la valeur et le drapeau, et ne porte rien quand ils sont nuls ;
+2. par l'application, mesuré par l'EXPORT AUDIO : un clip audio d'un la 440 Hz → **493,9 Hz** à +2
+   (±1 Hz) ; le même clip sur une piste indépendante → 440 Hz ; le témoin, à 0 → 440 Hz ; Ctrl+Z → l'export
+   d'avant au bit près ;
+3. un banc `tools/transposition-globale.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux langues.
+
+**TRANCHÉ EN ÉCRIVANT LE CODE.** (a) **La batterie se reconnaît à la NOTE, pas à la piste** : le modèle
+`core/` ne porte pas de canal de piste — le canal est celui de chaque note (`Note::channel`). Une note du
+canal 10 ne suit pas la transposition globale, où qu'elle soit ; la transposition de PISTE (D17.5), elle,
+s'y applique toujours, comme avant (testé). (b) **Ce que l'export mesure, dit** : l'export audio passe par
+`OfflineReconstruction`, et le défaut posé là SEUL rend le banc rouge (440 Hz à +2) ; la lecture appelle le
+même `spansFromTrack` avec le même argument dans `loadAudioTracks`, que l'export ne mesure pas. Les notes
+MIDI, dans les deux chemins, passent par `PlaybackScheduler::build` (`ProcessGraph.cpp`), que les tests
+`core/` mesurent. (c) L'entrée de menu garde un libellé FIXE (« Transposition globale… », cochée quand la
+valeur n'est pas nulle) : un libellé qui porterait la valeur changerait à chaque réglage, et `VSM_MENU` ne
+l'atteindrait plus.
+
+**D544.3 EST FAITE (09/10, 14 h 56 ; le banc vert à 14 h 47, rejoué à 14 h 55 sur le binaire final).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 442 → **445** : +2 → 62 à 65 ; +12 de piste et +2 globale → 74 à 77 ; le matériau inchangé ; une piste indépendante et les notes du canal 10 inchangées, la transposition de piste toujours appliquée au canal 10 ; une note poussée à 128 par la SOMME écartée et comptée, et comptée aussi sur une piste sans transposition propre. **Rouges** : le compte gardé derrière « transposition de piste nulle » (0 au lieu de 1) ; la règle du canal 10 retirée (62 au lieu de 60) | **oui** |
+| 2 | par l'application, mesuré par l'EXPORT AUDIO | `tools/transposition-globale.sh` : un la 440 Hz → **493,9 Hz** à +2 (témoin 440,0) ; la piste indépendante → **440,0 Hz** ; `project.json` porte `"globalTranspose": 2` et le drapeau, et rien quand ils sont nuls ; +2 puis Ctrl+Z → l'export d'avant **au bit près** (926 144 octets) | **oui** |
+| 3 | le banc, les photos | 4 contrôles, entré dans `verifier.sh --bancs` (**63**) ; **rouge** sur l'argument retiré dans les deux chemins, puis dans le seul chemin d'export (440 Hz à +2) ; la fenêtre photographiée et regardée en français et en anglais ; libellés traduits | **oui** |
+| — | le disque | interchange 336 → **337** : la valeur et le drapeau relus, et ABSENTS du fichier quand ils sont nuls ; **rouge** sur l'écriture retirée (0 au lieu de −3) | **oui** |
+
+**UNE GARDE QUI ACCUSAIT À TORT, RÉPARÉE ET VUE ROUGE.** La suite entière (finie à 15 h 11) n'avait qu'un rouge :
+`inventaire_langue.py --garde`, « ÉCRAN — `MainComponent.cpp` : " piste(s) la suivent, " ». C'est un morceau
+du message de journal `VSM_TRANSPOSITION_GLOBALE`, écrit par `fputs`. La garde bornait l'instruction au
+« ; » le plus proche du TEXTE BRUT — or deux littéraux voisins en portent un (« demi-ton(s) ; »,
+« indépendante(s) ; ») : l'instruction lue s'arrêtait entre eux, sans `fputs`, et la chaîne tombait dans
+ÉCRAN. Les lignes de journal de D543.3 et D544.1, faites pareil, passaient par chance — leurs morceaux entre
+deux « ; » n'avaient pas « l'air français ». La garde cherche désormais ces bornes dans le texte aux
+littéraux vidés, qu'elle calculait déjà pour la règle de D106 : ÉCRAN 1 → **0**, TERMINAL 316 → **317**, rien
+d'autre ne bouge ; et une VRAIE chaîne d'écran non traduite qui porte un « ; » (« Les pistes ont été
+transposées ; vérifiez la batterie », dans un `montrerBoite`) reste attrapée — vue rouge, puis retirée.
+
