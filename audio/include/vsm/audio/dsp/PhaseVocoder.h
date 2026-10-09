@@ -53,6 +53,8 @@ public:
         ringSize_ = kSize + kHop + maxBlock_;
         ringL_.assign(static_cast<size_t>(ringSize_), 0.0f);
         ringR_.assign(static_cast<size_t>(ringSize_), 0.0f);
+        ringW_.assign(static_cast<size_t>(ringSize_), 0.0f);
+        plusPetitPoids_ = 1.5f;
         window_.resize(static_cast<size_t>(kSize));
         for (int n = 0; n < kSize; ++n)
             window_[static_cast<size_t>(n)] = static_cast<float>(0.5 - 0.5 * std::cos(2.0 * M_PI * n / kSize));
@@ -100,6 +102,16 @@ public:
     /// Zéro, le témoin : le vocodeur d'avant D543.3.
     static constexpr int kGardeParDefaut = 48;
     void setTransientGuard(int frames) { garde_ = std::max(0, frames); }
+    /// D543.4 : LA SORTIE DIVISÉE PAR LA SOMME RÉELLE DES POIDS — fenêtre d'analyse × fenêtre de
+    /// synthèse des trames qui contribuent, et rien là où la trame d'analyse a été COUPÉE à un
+    /// transitoire. La division constante par 1,5 n'en est que le cas où rien n'est coupé ; sur la
+    /// région d'une attaque, deux trames seulement portent le son, et elle rendait un clic calé de 3,5
+    /// à 14 dB trop bas selon l'endroit où il tombait dans le saut (D543.3 : −13,7 dB). `false`, le
+    /// témoin : la division constante d'avant D543.4.
+    void setWeightedNormalization(bool on) { pondere_ = on; }
+    /// Le plus petit poids par lequel la sortie a été divisée depuis `prepare()` (plancher compris) :
+    /// ce que la normalisation a AMPLIFIÉ au plus, publié par le banc.
+    float smallestWeight() const { return plusPetitPoids_; }
 
     double sourceFor(double outputFrame) const {
         size_t i = 1;
@@ -120,6 +132,7 @@ public:
     void seek(int64_t outputFrame) {
         std::fill(ringL_.begin(), ringL_.end(), 0.0f);
         std::fill(ringR_.begin(), ringR_.end(), 0.0f);
+        std::fill(ringW_.begin(), ringW_.end(), 0.0f);
         // Les quatre trames dont le support couvre `outputFrame` : on repart
         // trois sauts plus tôt pour que la somme des fenêtres soit entière
         // dès la première trame lue.
@@ -151,9 +164,16 @@ public:
             while (nextFrame_ <= kMax) calculerTrame(source, nextFrame_++);
             for (int i = 0; i < n; ++i) {
                 const size_t idx = ringIndex(debut + i);
-                outL[fait + i] += ringL_[idx] * gain;
-                outR[fait + i] += ringR_[idx] * gain;
-                ringL_[idx] = 0.0f; ringR_[idx] = 0.0f;
+                float g = gain;
+                if (pondere_) {
+                    // Le plancher : jamais une division par presque rien (un gain de 20 au plus).
+                    const float poids = std::max(kPoidsPlancher, ringW_[idx]);
+                    plusPetitPoids_ = std::min(plusPetitPoids_, poids);
+                    g = gain / poids;
+                }
+                outL[fait + i] += ringL_[idx] * g;
+                outR[fait + i] += ringR_[idx] * g;
+                ringL_[idx] = 0.0f; ringR_[idx] = 0.0f; ringW_[idx] = 0.0f;
             }
             fait += n;
             consumed_ = debut + n;
@@ -219,7 +239,15 @@ private:
             auto it = std::lower_bound(transients_.begin(), transients_.end(), a + 1);
             if (it != transients_.end() && *it < a + kSize) {
                 const int64_t o = proprietaire(*it);
-                if (k < o) nFin = static_cast<int>(std::max<int64_t>(0, *it - garde_ - a));
+                if (k < o) {
+                    // D543.4 : la PREMIÈRE des deux bornes — l'instant de coupe dans la source, et la
+                    // place de l'attaque dans la sortie selon la carte. Une trame qui n'est pas alignée
+                    // pose la source à son propre rythme : sur un segment comprimé, la borne de source
+                    // tombait APRÈS l'attaque dans la sortie (94 et 156 trames, D543.4), et la trame y versait du
+                    // silence et tout son poids.
+                    const auto outT = static_cast<int64_t>(std::llround(outputFor(static_cast<double>(*it))));
+                    nFin = static_cast<int>(std::clamp<int64_t>(std::min(*it - garde_ - a, outT - garde_ - gs), 0, kSize));
+                }
                 else if (k > o) nDebut = static_cast<int>(*it - a);
             }
         }
@@ -307,15 +335,24 @@ private:
         }
         fft_.inverse(reL_.data(), imL_.data(), trameL_.data());
         fft_.inverse(reR_.data(), imR_.data(), trameR_.data());
-        // La synthèse, fenêtrée à son tour et normalisée par la somme des
-        // fenêtres au carré à ce recouvrement (1,5).
+        // La synthèse, fenêtrée à son tour. D543.4 : le POIDS de la trame — fenêtre d'analyse ×
+        // fenêtre de synthèse — s'accumule là où la trame d'analyse n'a pas été coupée, et la sortie
+        // se divise par la somme (`render`). Le témoin divise par 1,5, la somme quand quatre trames
+        // entières se recouvrent.
         constexpr float kNorme = 1.0f / 1.5f;
-        for (int n = 0; n < kSize; ++n) {
+        // D543.4 : RIEN AVANT CE QUI RESTE À LIRE. Les trames d'après un `seek` commencent trois sauts
+        // avant la position demandée ; les positions qui la précèdent ne sont jamais lues, donc jamais
+        // remises à zéro, et leur case dans l'anneau est celle de la position 3 072 trames plus loin.
+        // Écrites, elles y laissaient un reste : −9,4 dB pendant 30 ms, 40 ms après chaque départ de
+        // lecture au milieu d'un clip étiré. En régime, aucune trame n'écrit avant `consumed_`.
+        const int premier = static_cast<int>(std::clamp<int64_t>(consumed_ - gs, 0, kSize));
+        for (int n = premier; n < kSize; ++n) {
             const auto i = static_cast<size_t>(n);
-            const float w = window_[i] * kNorme;
             const size_t idx = ringIndex(gs + n);
+            const float w = pondere_ ? window_[i] : window_[i] * kNorme;
             ringL_[idx] += trameL_[i] * w;
             ringR_[idx] += trameR_[i] * w;
+            if (n >= nDebut && n < nFin) ringW_[idx] += window_[i] * window_[i];
         }
         prevSource_ = a;
         hasPrev_ = true;
@@ -323,7 +360,10 @@ private:
 
     int maxBlock_ = 512;
     int64_t ringSize_ = 1;
-    std::vector<float> ringL_, ringR_, window_, trameL_, trameR_;
+    std::vector<float> ringL_, ringR_, ringW_, window_, trameL_, trameR_;
+    static constexpr float kPoidsPlancher = 0.05f;
+    float plusPetitPoids_ = 1.5f;
+    bool pondere_ = true;
     std::vector<float> reL_, imL_, reR_, imR_, magL_, phaL_, phaR_, phaPrevL_, phaPrevR_, synL_, synR_;
     std::vector<int> pic_;
     std::vector<MapPoint> map_;

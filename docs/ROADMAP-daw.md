@@ -40370,7 +40370,7 @@ la garde de l'utilisateur endort le poste à 15 %, et quarante minutes de lancem
 veille au milieu de la série fabrique des rouges (D535.1 bis). La série se rejoue à la recharge, avant
 de fermer D543.4, et son résultat s'écrit ici.
 
-### Phase D543.4 — le creux du vocodeur aux attaques : une frappe calée garde sa crête (09/10/2026) — EN ATTENTE DE MESURE
+### Phase D543.4 — le creux du vocodeur aux attaques : une frappe calée garde sa crête (09/10/2026) — FAITE
 
 *Écrite avant son code, le 09/10 à 08 h 58, D543.3 faite.*
 
@@ -40404,3 +40404,94 @@ constante ; (v) un sixième contrôle de `tools/quantifier-audio.sh` : dans l'ex
 ±1 dB de celle de l'export d'avant. **Si H2 est fausse** — les crêtes restent basses à poids réel —, la
 cause se cherche dans le contenu des trames (la propagation de phase de celle d'après) avant tout réglage
 du plancher.
+
+**LA PREMIÈRE MESURE DE H2 (09/10, 09 h 07) : DEUX ROUGES, ET LE PREMIER N'EST PAS H2.** (a) Les crêtes
+des clics calés, pondéré | témoin : −0,4 | −6,8 · −0,0 | −2,3 · **−8,7 | −8,7** dB — la troisième ne bouge
+pas d'un dixième ; le test s'arrête sur elle. (b) Sur la voix, SANS transitoire, la sortie pondérée
+s'écarte de la constante de **5,7 × 10⁻²** — pas de l'arrondi. Le plus petit poids relevé y vaut 1,5 ;
+c'est donc qu'un poids DÉPASSE 1,5 : au 2 910ᵉ échantillon, la sortie pondérée vaut la moitié de la
+constante, un poids de 3.
+
+**LA CAUSE DE (b), ÉTABLIE, ET C'EST UN DÉFAUT DU VOCODEUR D'AVANT.** L'anneau de sortie fait
+2 048 + 512 + 512 = 3 072 trames. Après un `seek(o)`, les trois trames calculées avant `o` (« on repart
+trois sauts plus tôt ») ÉCRIVENT les positions qui précèdent `o` ; elles ne sont jamais lues, donc jamais
+remises à zéro, et leur case est celle de la position 3 072 trames plus loin. Au début d'un fichier,
+elles lisent du silence et la division constante n'en voit rien — le poids, lui, s'y ajoute. **Au milieu
+d'un clip, elles lisent du son** : mesuré, vocodeur d'avant (division constante), un sinus tenu de crête
+0,100, lecture démarrée à la trame 51 200 d'un clip étiré ×1,1 — l'enveloppe tombe à **0,081 · 0,053 ·
+0,035 · 0,034** de 1 792 à 3 072 trames après le départ (−9,4 dB pendant 30 ms, 40 ms après chaque
+démarrage de lecture dans un clip étiré), puis 0,100. Aucun test ne lançait la lecture au milieu.
+
+**L'HYPOTHÈSE H3, écrite à 09 h 09 avant la mesure qui la tranche.** Une trame n'écrit pas les positions
+qui précèdent la première position encore à lire (`consumed_`) : rien d'autre ne les lit, et c'est leur
+seul effet. En régime, aucune trame n'en écrit (la trame k se calcule quand la sortie atteint k × 512) :
+seules les trames d'après un `seek` sont touchées. **Attendus** : (i) le même départ à 51 200 : l'enveloppe
+à 0,100 ± 0,002 partout, à division constante comme pondérée ; (ii) un test neuf du vocodeur (départ au
+milieu), vu ROUGE sur le code d'avant ; (iii) la voix sans transitoire : l'écart pondéré-constant tombe
+sous 10⁻⁴ (l'attendu (ii) de H2) ; (iv) ce que cela pourrait casser : `test_phase_vocoder` entier
+(déterminisme, blocs) et la suite audio. H3 se juge AVANT H2 : tant que l'anneau garde des restes, le
+poids réel ne mesure rien. Puis (a) se cherche à part.
+
+**H3 EST VRAIE (09 h 10).** Le même départ à la trame 51 200 : l'enveloppe à **0,100 partout**, à
+division constante comme pondérée (contre 0,034 au creux, avant) ; la voix sans transitoire, pondéré
+contre constant : **3,7 × 10⁻⁸** (l'arrondi). Le test neuf vient avec H2 et H4, plus bas.
+
+**LA CAUSE DE (a), MESURÉE À 09 h 11.** Le poids accumulé à l'instant de chaque attaque, dans le décor du
+test : attaque 1 **1,500** (puis 0,785 à +1 ms) ; attaque 2 1,146 ; **attaque 3 1,500 à +0 et à +1 ms**,
+0,771 à +2 ms ; attaque 4 1,025. Les attaques 1 et 3 sont celles que précède un segment COMPRIMÉ (0,96 et
+0,893). Une trame d'avant la propriétaire, qui n'est pas alignée, pose la source au rythme de son propre
+saut et non de la carte : comprimée, elle met l'instant de coupe (dans la SOURCE, `T − marge`) APRÈS
+l'attaque dans la SORTIE — pour l'attaque 3, 94 et 156 trames plus loin (les trames 68 et 67, calculées sur la carte : coupe de source à 1 280 et 1 854, soit 36 096 et 36 158 en sortie, l'attaque étant posée à 36 002). Sur ce recouvrement, elle n'apporte que
+du silence, et tout son poids : le clic est divisé par 1,5 comme avant.
+
+**L'HYPOTHÈSE H4, écrite à 09 h 11 avant la mesure qui la tranche.** Une trame d'avant la propriétaire
+s'arrête à la PREMIÈRE des deux bornes : l'instant de coupe dans la source (`T − marge − a`), et la place
+de l'attaque dans la sortie selon la carte (`outT − marge − gs`). **Attendus** : (i) le test des crêtes
+de H2 vert — les quatre à ±1 dB du fichier ; (ii) les positions inchangées — le test de D543.3 (≤ 1 ms,
+rien avant) vert ; (iii) à division CONSTANTE, la borne de sortie seule ne change rien d'utile (elle
+creuse le silence d'avant l'attaque, sans rendre la crête) : c'est la paire H2 + H4 qui se juge ;
+(iv) `test_phase_vocoder` entier et la suite audio verts.
+
+**H2 ET H4 SONT VRAIES (mesure de 09 h 13).** Le décor du test (les clics et la carte de D543.3, à
+48 kHz), les quatre crêtes en dB de celle du fichier :
+
+| | attaque 1 | attaque 2 | attaque 3 | attaque 4 |
+|---|---|---|---|---|
+| division constante (le témoin) | −6,8 | −2,3 | −8,7 | −3,3 |
+| poids réel, sans la borne de sortie (H2 seule, 09 h 07) | −0,4 | −0,0 | **−8,7** | (non lue : le test s'arrêtait) |
+| poids réel et borne de sortie (H2 + H4) | **−0,0** | **−0,0** | **−0,0** | **−0,0** |
+
+Les positions ne bougent pas (+0,02 ms, rien avant aucune des quatre) ; le plus petit poids rencontré
+vaut **0,452** — la normalisation amplifie au plus de 2,2 fois là où la division constante divisait par
+1,5 (un gain de 3,3 fois plus fort, sur la région des attaques seulement). Là où rien n'est coupé, rien ne
+bouge : la voix ×1,1, pondéré contre constant, **8,9 × 10⁻⁸** (le plus petit poids y vaut 1,500). Ce qui
+pouvait casser n'a pas cassé : le banc 4 à 0,98 ms (16 et 16 attaques, inchangé), le banc 6 à 4,0 ms, le
+banc 7 au même creux de 7,1 %, la suite audio **1 323** sur 1 323 (1 320 + les trois tests neufs).
+**Rouges vus** : le test des crêtes, sur H2 seule (l'attaque 3) ; le test du départ au milieu, sur le
+code sans H3 (0,088 au lieu de 0,100 ; et l'écart pondéré-constant de la voix y repasse à 10⁻² — les deux
+défauts se tenaient).
+
+**NOMMÉ, CHIFFRÉ, NON FAIT ICI : LE WSOLA A LE MÊME RESTE.** Le même départ à la trame 51 200, le même
+sinus, par `TimeStretch` (le mode « hauteur conservée (WSOLA, témoin) », que l'utilisateur peut choisir
+clip par clip) : l'enveloppe tombe à **0,083 · 0,047 · 0,016** (−16 dB) de 2 816 à 3 584 trames après le
+départ, puis 0,100. C'est un autre étireur, avec son propre anneau et ses propres tests ; D543.4 juge le
+vocodeur, qui est le défaut du mode « hauteur conservée ». La parade se mesure à part — la phase qui suit.
+
+**D543.4 EST FAITE (09/10, 10 h 40).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | vocodeur seul : les quatre crêtes à ±1 dB, les positions inchangées | **−0,0 · −0,0 · −0,0 · −0,0 dB** (témoin −6,8 · −2,3 · −8,7 · −3,3) ; +0,02 ms, rien avant ; plus petit poids 0,452 | **oui** — par H2 + H4 ; H2 seule laissait l'attaque 3 à −8,7 |
+| 2 | là où rien n'est coupé, rien ne bouge | la voix ×1,1, pondéré contre constant : 8,9 × 10⁻⁸ — après H3 ; avant, 5,7 × 10⁻² (l'anneau) | **oui** |
+| 3 | ce qui pouvait casser | banc 4 : 0,98 ms, 16 et 16 ; banc 6 : 4,0 ms ; banc 7 : creux 7,1 % — inchangés ; audio 1 320 → **1 323** | **oui** |
+| 4 | tests neufs, vus rouges | les crêtes (rouge sur H2 seule) ; le départ au milieu (rouge sans H3 : 0,088) ; « rien ne bouge » (rouge sans H3 : 10⁻²) | **oui** |
+| 5 | par l'application : l'export calé garde ses crêtes | `tools/quantifier-audio.sh`, contrôle (6) : crêtes **0,5194 · 0,5194 · 0,5143 · 0,5194** contre 0,5194 (+0,0 · +0,0 · −0,1 · +0,0 dB) ; les cinq autres contrôles verts. Le contrôle (6) rejoué — même code, extrait du banc — sur l'export calé du vocodeur d'avant : **RATÉ** (−5,5 · −13,7 · −4,8 · −12,2) | **oui** |
+
+**CE QUE LA PHASE A TROUVÉ EN CHEMIN, ET RÉPARÉ** : le reste de l'anneau après un `seek` (H3) — un
+démarrage de lecture au milieu d'un clip étiré perdait 9,4 dB pendant 30 ms, 40 ms après le départ, depuis
+D12.8. Aucun test ne démarrait au milieu ; il y en a un.
+
+**LES SUITES** (relevé à 10 h 39, la course ayant traversé trois veilles du poste) : core 436, audio
+**1 323**, interchange 336, clap 25, panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts, sauf
+`index-a-jour.py` (les longueurs que ces lignes déplacent), réécrit par `--corriger` et rejoué vert.
+`--bancs` (60) se lance à la suite du commit, batterie à 55 % ; son résultat s'écrit ici.

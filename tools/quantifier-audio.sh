@@ -15,7 +15,9 @@
 #       ligne »), et le projet garde ses six marqueurs — ceux du premier calage sont repris, pas
 #       doublés ;
 #   (5) la fenêtre du geste photographiée en français et en anglais (sa liste « Grille » lue au
-#       journal, la photo regardée à la main).
+#       journal, la photo regardée à la main) ;
+#   (6) D543.4 : chaque crête de l'export calé à ±1 dB de celle de l'export d'avant — le vocodeur les
+#       rendait de 4,8 à 13,7 dB trop bas (le « creux » d'une trame coupée, divisé par 1,5).
 # L'attaque se relève dans l'export au premier échantillon qui dépasse le DIXIÈME de la crête de sa
 # fenêtre (±125 ms autour de la ligne) : un clic part du silence à pleine amplitude, ce seuil le date à
 # l'échantillon près, et un pré-écho du vocodeur de phase s'y verrait comme une attaque en avance.
@@ -79,6 +81,19 @@ if not audio or len(audio[0].get('clips', [])) != 1:
 c = audio[0]['clips'][0]
 print(c.get('warp', 'off'), len(c.get('warpMarkers', [])))
 " "$1"
+}
+cretes() {   # la crête de chaque clic de l'export (fenêtre de ±125 ms autour de sa ligne) — ou « ABSENT »
+    "$PY" - "$1" <<'PY3'
+import sys
+import numpy as np
+import soundfile as sf
+try:
+    x, sr = sf.read(sys.argv[1], dtype="float64", always_2d=True)
+except Exception:
+    print("ABSENT"); sys.exit(0)
+m = np.abs(x).max(axis=1)
+print(" ".join(f"{m[int((l - 0.125) * sr):int((l + 0.125) * sr)].max():.4f}" for l in (0.25, 0.50, 0.75, 1.00)))
+PY3
 }
 attaques() {   # l'écart de chaque attaque de l'export à sa ligne, en ms — ou « ABSENT »
     "$PY" - "$1" <<'PY2'
@@ -158,6 +173,20 @@ verdict "(4) quantifier à nouveau : rien ne bouge, c'est dit, les six marqueurs
         && grep -q "^VSM_QUANTIFIER_AUDIO : grille 1/8, 4 attaque(s) à .* ; 0 calée(s), 4 déjà sur la ligne, 0 écartée(s)" "$brouillon/encore.txt" \
         && grep -q "^VSM_BOITE : Quantifier l'audio" "$brouillon/encore.txt" \
         && echo 1 || echo 0)"
+
+ca_="$(cretes "$brouillon/avant.wav")"; cp_="$(cretes "$brouillon/apres.wav")"
+echo "       crêtes des clics : avant [$ca_] ; après [$cp_]"
+verdict "(6) chaque crête de l'export calé à ±1 dB de celle d'avant" \
+    "$(python3 -c "
+import math, sys
+try:
+    a = [float(v) for v in sys.argv[1].split()]
+    b = [float(v) for v in sys.argv[2].split()]
+except ValueError:
+    sys.exit(1)
+db = [20 * math.log10(y / x) for x, y in zip(a, b) if x > 0 and y > 0]
+print('       écarts (dB) : ' + ' '.join(f'{d:+.1f}' for d in db), file=sys.stderr)
+sys.exit(0 if len(a) == len(b) == len(db) == 4 and all(abs(d) <= 1.0 for d in db) else 1)" "$ca_" "$cp_" && echo 1 || echo 0)"
 
 # (5) LA FENÊTRE, dans les deux langues : ouverte sans réponse de banc, photographiée.
 photos=0

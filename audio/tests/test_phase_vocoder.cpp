@@ -265,29 +265,46 @@ VSM_TEST(phase_vocoder_locks_transients_once_and_in_place) {
 /// sinus à phase nulle, le transitoire daté deux échantillons plus tard (ce que rend le détecteur du
 /// moteur), une carte à genoux — un segment étiré de 1,087 puis comprimé, puis de nouveau étiré. Sans
 /// la marge de coupe, une copie du clic sortait 5 ms avant lui, plus forte que lui.
-VSM_TEST(phase_vocoder_does_not_double_a_click_whose_detected_instant_is_late) {
+namespace {
+/// Quatre clics à phase nulle joués à +10, −10, +20, +10 ms des croches de 120 BPM, et la carte qui les
+/// cale — le fichier et le clip de `tools/quantifier-audio.sh`, à 48 kHz. Les transitoires sont déclarés
+/// deux échantillons après chaque clic, comme les date le détecteur du moteur.
+const int64_t kDebutsCales[] = {12480, 23520, 36960, 48480};      // 0,26 · 0,49 · 0,77 · 1,01 s
+const int64_t kLignesCalees[] = {12000, 24000, 36000, 48000};     // les croches de 120 BPM
+MemorySampleStore clicsACaler() {
     const auto n = static_cast<size_t>(2.0 * kSr);
     std::vector<float> l(n, 0.0f), r(n, 0.0f);
-    const int64_t debuts[] = {12480, 23520, 36960, 48480};          // 0,26 · 0,49 · 0,77 · 1,01 s
-    for (const int64_t d : debuts)
+    for (const int64_t d : kDebutsCales)
         for (size_t i = 0; i < 480; ++i) {
             const float v = 0.8f * static_cast<float>(std::sin(2.0 * M_PI * 3000.0 * static_cast<double>(i) / kSr)
                                                      * std::exp(-static_cast<double>(i) / 57.6));
             l[static_cast<size_t>(d) + i] = v; r[static_cast<size_t>(d) + i] = v;
         }
-    const MemorySampleStore src(std::move(l), std::move(r));
-    const int64_t lignes[] = {12000, 24000, 36000, 48000};          // les croches de 120 BPM
+    return MemorySampleStore(std::move(l), std::move(r));
+}
+Rendu rendreCales(const MemorySampleStore& src, bool pondere, float* plusPetitPoids = nullptr) {
     Vocoder v;
     v.prepare(512);
+    v.setWeightedNormalization(pondere);
     const Vocoder::MapPoint carte[] = {{0, 0.0}, {12000, 12480.0}, {24000, 23520.0}, {36000, 36960.0},
                                        {48000, 48480.0}, {96000, 96000.0}};
     v.setMap(carte, 6);
     std::vector<int64_t> declares;
-    for (const int64_t d : debuts) declares.push_back(d + 2);
+    for (const int64_t d : kDebutsCales) declares.push_back(d + 2);
     v.setTransients(declares.data(), static_cast<int>(declares.size()));
-    const auto out = rendre(v, src, static_cast<int64_t>(n), 512);
+    auto out = rendre(v, src, static_cast<int64_t>(2.0 * kSr), 512);
+    if (plusPetitPoids) *plusPetitPoids = v.smallestWeight();
+    return out;
+}
+} // namespace
+
+VSM_TEST(phase_vocoder_does_not_double_a_click_whose_detected_instant_is_late) {
+    const auto src = clicsACaler();
+    const int64_t* lignes = kLignesCalees;
+    const auto out = rendreCales(src, true);
     std::printf("    [banc vocodeur] clics calés :");
-    for (const int64_t ligne : lignes) {
+    for (int c = 0; c < 4; ++c) {
+        const int64_t ligne = lignes[c];
         const auto a = static_cast<size_t>(ligne - 6000), b = static_cast<size_t>(ligne + 6000);
         float crete = 0.0f;
         for (size_t i = a; i < b; ++i) crete = std::max(crete, std::abs(out.l[i]));
@@ -301,6 +318,80 @@ VSM_TEST(phase_vocoder_does_not_double_a_click_whose_detected_instant_is_late) {
         VSM_ASSERT(avant <= 0.1f * crete);
     }
     std::printf("\n");
+}
+
+/// D543.4 : UNE FRAPPE CALÉE GARDE SA CRÊTE. Sur la région d'une attaque, les trames d'avant la
+/// propriétaire sont coupées : deux trames portent le son, et la division constante par 1,5 rendait
+/// chaque clic de 3,5 à 14 dB trop bas selon l'endroit où il tombait dans le saut. Divisée par la somme
+/// RÉELLE des poids, chaque crête revient à ±1 dB de celle du fichier. Le témoin, division constante,
+/// est publié à côté.
+VSM_TEST(phase_vocoder_keeps_the_peak_of_a_click_whose_neighbour_frames_are_cut) {
+    const auto src = clicsACaler();
+    float crete = 0.0f;
+    for (size_t i = 0; i < 480; ++i) {
+        float g = 0.0f, d = 0.0f;
+        src.frameAt(kDebutsCales[0] + static_cast<int64_t>(i), g, d);
+        crete = std::max(crete, std::abs(g));
+    }
+    float plusPetit = 0.0f;
+    const auto pondere = rendreCales(src, true, &plusPetit);
+    const auto temoin = rendreCales(src, false);
+    std::printf("    [banc vocodeur] crêtes des clics calés, dB du fichier (pondéré | témoin) :");
+    for (const int64_t ligne : kLignesCalees) {
+        float p = 0.0f, t = 0.0f;
+        for (size_t i = static_cast<size_t>(ligne - 480); i < static_cast<size_t>(ligne + 960); ++i) {
+            p = std::max(p, std::abs(pondere.l[i]));
+            t = std::max(t, std::abs(temoin.l[i]));
+        }
+        const double dbP = 20.0 * std::log10(p / crete), dbT = 20.0 * std::log10(t / crete);
+        std::printf(" %+.1f|%+.1f", dbP, dbT);
+        VSM_ASSERT(std::abs(dbP) <= 1.0);
+    }
+    std::printf(" ; plus petit poids %.3f\n", plusPetit);
+}
+
+/// D543.4 : LÀ OÙ RIEN N'EST COUPÉ, RIEN NE BOUGE. Sans transitoire, la somme réelle des poids vaut 1,5
+/// partout, et la sortie pondérée est la sortie constante à l'arrondi près — sur la voix du banc 6.
+VSM_TEST(phase_vocoder_weighted_normalization_changes_nothing_where_nothing_is_cut) {
+    auto src = voixDeSynthese(3.0);
+    double pire = 0.0;
+    float plusPetit = 0.0f;
+    Vocoder a, b;
+    a.prepare(512); b.prepare(512);
+    a.setRatio(0, 0.0, 1.1); b.setRatio(0, 0.0, 1.1);
+    b.setWeightedNormalization(false);
+    const auto trames = static_cast<int64_t>(2.5 * kSr);
+    const auto oa = rendre(a, src, trames, 512), ob = rendre(b, src, trames, 512);
+    for (size_t i = 0; i < oa.l.size(); ++i) pire = std::max(pire, static_cast<double>(std::abs(oa.l[i] - ob.l[i])));
+    plusPetit = a.smallestWeight();
+    std::printf("    [banc vocodeur] voix ×1,1, pondéré contre constant : écart max %.2e ; plus petit poids %.3f\n",
+                pire, plusPetit);
+    VSM_ASSERT(pire <= 1e-4);
+}
+
+/// D543.4 : UNE LECTURE QUI DÉMARRE AU MILIEU D'UN CLIP ÉTIRÉ NE LAISSE PAS DE RESTE. Après un `seek`,
+/// les trames commencent trois sauts avant la position demandée ; elles écrivaient les positions qui la
+/// précèdent — jamais lues, jamais remises à zéro —, et leur case de l'anneau est celle de la position
+/// 3 072 trames plus loin : un sinus tenu tombait de 0,100 à 0,034 de 1 792 à 3 072 trames après le
+/// départ. Aucun test ne démarrait au milieu.
+VSM_TEST(phase_vocoder_started_mid_clip_leaves_no_remainder_in_its_ring) {
+    auto src = sinus(440.0, 3.0, 0.1f);
+    for (bool pondere : {true, false}) {
+        Vocoder v;
+        v.prepare(512);
+        v.setRatio(0, 0.0, 1.1);
+        v.setWeightedNormalization(pondere);
+        const auto out = rendre(v, src, 8192, 512, 51200);   // la première demande SAUTE à 51 200
+        float pire = 1.0f;
+        for (size_t t = 0; t + 256 <= out.l.size(); t += 256) {
+            float m = 0.0f;
+            for (size_t i = t; i < t + 256; ++i) m = std::max(m, std::abs(out.l[i]));
+            pire = std::min(pire, m);
+        }
+        std::printf("    [banc vocodeur] départ au milieu (%s) : plus basse crête par 256 trames %.3f (source 0,100)\n",
+                    pondere ? "pondéré" : "constant", pire);
+        VSM_ASSERT(pire >= 0.098f);
+    }
 }
 
 /// BANC 6 : LE PLACEMENT NE FLOTTE PAS. Une voix de synthèse compressée de
