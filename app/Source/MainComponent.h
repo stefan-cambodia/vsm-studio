@@ -1709,6 +1709,16 @@ private:
     void quantifierAudio(size_t trackIndex, uint64_t clipId);
     /// D544.1 : les attaques d'un clip audio, relues dans son fichier (secondes du fichier, et la crête
     /// des 20 ms qui suivent chacune, en dBFS). Faux, et `erreur` dite, si le fichier ne se relit pas.
+    /// D545.2 : la fenêtre du FICHIER que joue un clip audio, relue (le magasin, le départ et le nombre de
+    /// trames) — partagée par la lecture des attaques et la détection de tempo.
+    struct FenetreDuClip {
+        std::shared_ptr<const vsm::audio::engine::SampleStore> magasin;
+        int64_t depart = 0, compte = 0;
+        double sampleRate = 48000.0, sourceDebut = 0.0;
+    };
+    bool chargerFenetreDuClip(size_t trackIndex, uint64_t clipId, FenetreDuClip& fenetre, juce::String& erreur);
+    /// D545.2 : le tempo du matériau d'un clip audio, proposé à l'adoption ; dit (`VSM_TEMPO_DETECTE`).
+    void detecterTempoDuClip(size_t trackIndex, uint64_t clipId);
     bool lireAttaquesDuClip(size_t trackIndex, uint64_t clipId, std::vector<double>& secondes,
                             std::vector<double>& niveauxDb, juce::String& erreur);
     /// D544.1 : une piste MIDI neuve, une note par attaque du clip audio ; un pas ; dit (`VSM_NOTES_ATTAQUES`).

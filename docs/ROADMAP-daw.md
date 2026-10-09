@@ -40872,3 +40872,106 @@ point de la courbe ». La fenêtre d'historique les affiche (la règle de D150) 
 repasse à 0. Le reste vert : core 449, audio 1 328, interchange 337 (puis 338), clap 25, panneaux 11,
 Python 257, ruff, mypy.
 
+**LA SÉRIE, relevée à 18 h 19 : 63 bancs sur 64 verts en 46 min**, aucune veille, préférences identiques. Le
+rouge : `courbe-de-gain.sh`, contrôle (3) — et il était ATTENDU : le banc avait déjà été réécrit pour D545.1
+bis (« coupé dans un son continu, l'export au bit près ») pendant que la série tournait, contre un binaire
+qui n'avait pas encore D545.1 bis. C'est le contrôle neuf vu rouge sur le code d'avant (jonction 0,31) ; la
+leçon tient en une ligne : un banc ne se réécrit pas pendant que la série le joue.
+
+
+
+### Phase D545.1 bis — une coupe dans un son continu ne creuse pas (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 17 h 34, D545.1 faite.*
+
+**CE QUI EST MESURÉ (D545.1, le témoin de la coupe).** Un sinus continu, coupé à 2 s par « Couper à la
+tête de lecture » : l'export s'écarte de l'export d'avant de **0,31** (crête 0,35) sur **174 trames** autour
+de la coupe. Le fondu de sécurité de D33.2 s'applique à TOUT bord de portée où l'utilisateur n'a rien
+posé — il a été écrit pour un clip dont le matériau ne commence pas à zéro, et il le fait ; mais aux deux
+bords NEUFS d'une coupe, le matériau ne s'interrompt pas, et le fondu y fait un trou de 4 ms. Chaque
+Ctrl+E dans une prise qui joue le pose.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Un RACCORD CONTINU** est une jonction où la seconde portée commence à la trame même où la première
+  finit, sur la ligne de temps ET dans le fichier — la portée d'après continue la matière de celle d'avant.
+  Il se reconnaît dans `applyCrossfades`, que les deux chemins appellent déjà. Sur ses deux bords, le
+  fondu de SÉCURITÉ ne s'applique pas ; un fondu que l'utilisateur a posé, si.
+- **Ce qui n'en est pas un, et garde son fondu** : un tour de boucle (la fenêtre REPART : la matière saute),
+  deux matériaux différents bout à bout, une jonction avec un trou ou un recouvrement (le fondu croisé
+  décide, D34.1), deux portées de gains ou de phases différents (le saut de niveau ferait un clic) ; et, à
+  défaut d'une correspondance établie, un clip étiré, à l'envers ou transposé — le raccord y est une
+  affaire de carte, pas de trames.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `audio/` : un clip coupé en deux sur un son constant → aucune trame sous 1 autour de la coupe
+   (avant : un creux à 0) ; un clip qui boucle → le creux de sécurité reste à chaque tour ; deux portées
+   bout à bout de DEUX endroits du fichier → le creux reste ; deux moitiés de gains différents → le creux
+   reste ;
+2. par l'application, mesuré par l'EXPORT : le sinus coupé à 2 s → l'export **identique au bit près** à
+   celui d'avant la coupe (le contrôle (3) de `tools/courbe-de-gain.sh` le juge désormais ainsi, avec et
+   sans courbe) ; `tools/decouper-aux-silences.sh` inchangé ;
+3. ce que cela pourrait casser : la suite audio (D33.2, D34.1 et les bancs du fondu croisé), et toute la
+   série `--bancs`.
+
+**D545.1 BIS EST FAITE (09/10, 18 h 31 ; les bancs verts à 18 h 24).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `audio/` | audio 1 328 → **1 330** : deux portées qui se continuent, sur une constante → aucune trame sous 1 autour de la coupe, les bords extérieurs fondus ; un tour de boucle, un autre endroit du fichier, un autre gain → le creux reste (sous 0,05). **Rouge** : la détection du raccord retirée (un creux à 0) | **oui** |
+| 2 | par l'application, mesuré par l'EXPORT | `tools/courbe-de-gain.sh`, contrôle (3) : coupé à 2 s, l'export du clip entier **au bit près**, sans courbe ET avec (jonction 0,0000 / 0,0000, contre 0,31 / 0,155 avant) ; `tools/decouper-aux-silences.sh` inchangé, vert. **Rouge** : le même contrôle sur le binaire d'avant (la série de 18 h 19) | **oui** |
+| 3 | ce qui pouvait casser | la suite audio verte, D33.2 et D34.1 compris (la série `--bancs` suit le commit) | **oui** |
+
+
+### Phase D545.2 — détecter le tempo d'une prise (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 18 h 03 (D545.1 bis en cours de mesure).*
+
+**CE QUI EXISTE.** Le tempo d'un clip se DÉDUIT d'un nombre de mesures que l'utilisateur donne (D12.6,
+« Le clip fait N mesures ») ; la chaîne d'analyse estime celui d'un mélange (§ 5 *quindecies* de
+`ROADMAP-fusion.md`, `librosa.beat.beat_track`), en Python, hors de l'application. Rien, dans le DAW, ne
+cherche le tempo d'une prise qu'on vient d'importer.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **L'estimateur, dans `audio/io`** (`estimateTempo`), en deux temps — le principe de librosa, que la chaîne
+  emploie déjà, avec un affinage que le DAW exige (on cale une boucle au dixième de BPM, pas à 3 BPM près) :
+  1. **grossier** : une enveloppe de FORCE D'ATTAQUE (le flux d'énergie par bandes de `detectOnsets`, par pas
+     de ~6 ms), son autocorrélation entre 40 et 240 BPM, pondérée par un a priori log-normal centré sur
+     120 BPM (un écart-type d'une octave) — c'est ce qui tranche entre un tempo et son double ;
+  2. **fin** : le pic de l'autocorrélation interpolé, puis ses MULTIPLES (2, 3, … périodes) mesurés de même,
+     la période ajustée sur eux par moindres carrés — l'erreur se divise par le nombre de périodes.
+  Il rend le tempo et une confiance (la hauteur du pic retenu, rapportée à l'énergie de l'enveloppe) ; sous
+  un seuil, il ne rend RIEN — un bruit, une nappe tenue n'ont pas de tempo, et le dire vaut mieux qu'un
+  chiffre.
+- **Le geste** : « Détecter le tempo de ce clip » au menu du clip audio ; une fenêtre dit le tempo trouvé et
+  propose « Adopter ce tempo pour le projet » ou « Garder le tempo du projet » (les deux boutons de « Tempo du
+  clip », D13.7) ; adopter = un pas d'historique, le changement de tempo au tick 0. Le journal
+  (`VSM_TEMPO_DETECTE`) dit le tempo, la confiance, ou pourquoi il n'y en a pas. Ni le premier temps de la
+  mesure, ni un tempo qui varie : hors de cette phase, et dit.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `audio/` : des boucles de batterie de synthèse (grosse caisse sur 1 et 3, caisse claire sur 2 et 4,
+   charleston aux croches, quatre mesures) à **92,0 · 120,0 · 137,5 BPM** → chacune à **±0,1 BPM** ; la même à
+   100 BPM avec un charleston aux DOUBLES croches → 100, pas 200 ; un charleston seul aux croches à 120 → 120
+   (l'a priori), pas 240 ; un bruit blanc et un sinus tenu → aucun tempo, et c'est dit ;
+2. par l'application : la boucle à 137,5 importée, « Détecter le tempo de ce clip », adoptée
+   (`VSM_CONFIRMER=oui`) → `project.json` relu à **137,5 ±0,1** ; refusée → 120 inchangé ; un pas (Ctrl+Z → 120) ;
+3. un banc `tools/tempo-detecte.sh`, vu rouge sur un défaut remis à la main, entré dans `verifier.sh
+   --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux langues.
+
+**CE QUE L'ESTIMATEUR A DEMANDÉ, AVANT DE TENIR SES ATTENDUS** (les attendus n'ont pas bougé ; le code, si) :
+(a) une **normalisation en place** fausse — `r[l] /= r[0]` ramène `r[0]` à 1 au premier tour, et une
+confiance de 5 490 l'a dit ; (b) **le logarithme** du niveau des bandes égalisait la force des attaques (un
+charleston y pesait une grosse caisse) : 92 → **184**, 100 → 80 — en AMPLITUDE, 92,01 et 100,00 ; (c) un sinus
+tenu « avait un tempo » : la ride de son niveau, découpé en pas qui ne tombent pas sur sa période, est
+périodique, et l'autocorrélation normalisée ne voit pas l'échelle. Un plancher de DYNAMIQUE (le flux moyen
+rapporté au niveau), **mesuré avant d'être fixé** : boucles 0,393 à 0,459, charleston seul 1,00, sinus tenu
+0,093, bruit 0,071 — le seuil à **0,15**, entre les deux (1 %, écrit d'abord, laissait passer le sinus).
+
+**D545.2 EST FAITE (09/10, 18 h 31 ; le banc vert à 18 h 25).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `audio/` | audio 1 330 → **1 333** : **92,01 · 119,98 · 137,50** (±0,1) ; doubles croches à 100 → **100,00** ; charleston seul à 120 → **120,09** ; un bruit et un sinus tenu → aucun tempo, la raison dite. **Rouges** : sans l'a priori, 92 → 46,01, 100 → 50,01, le charleston seul → 240,15 ; sans l'affinage par les multiples, 137,65 et 100,10 | **oui** |
+| 2 | par l'application | `tools/tempo-detecte.sh` : « VSM_TEMPO_DETECTE : 137.50 BPM (confiance 0.67) » ; adopté → le projet relu à **137,50** ; refusé → **120,00** ; adopté puis Ctrl+Z → **120,00** | **oui** |
+| 3 | le banc, les photos | 4 contrôles, entré dans `verifier.sh --bancs` (**65**) ; **rouge** sur une fréquence d'échantillonnage fausse d'1 % dans l'application (138,90) ; la fenêtre photographiée et regardée en français et en anglais (« Tempo du clip », « Clip tempo ») ; libellés traduits | **oui** |
+

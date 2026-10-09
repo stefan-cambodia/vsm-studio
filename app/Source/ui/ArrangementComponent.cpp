@@ -886,6 +886,8 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
         menu.addItem(27, tr(u8"Créer des notes depuis les attaques…"));
         // D544.2 : LE GROOVE DE CE CLIP — le placement de ses attaques, pour « Appliquer le groove ».
         menu.addItem(28, tr(u8"Extraire le groove de ce clip"));
+        // D545.2 : LE TEMPO DE CETTE PRISE, cherché dans ses attaques, proposé au projet.
+        menu.addItem(29, tr(u8"Détecter le tempo de ce clip"));
         // D20.4 : TRANSCRIRE EN MIDI, un clip à la fois -- le premier
         // choisi. L'application dit si Python manque, avec la raison.
         menu.addItem(23, tr(u8"Transcrire en MIDI (Basic Pitch, Python)"));
@@ -1795,6 +1797,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             return;
         case 28:   // D544.2
             if (onClipGrooveFromAttacksRequested) onClipGrooveFromAttacksRequested(piste, clipId);
+            return;
+        case 29:   // D545.2
+            if (onClipTempoDetectRequested) onClipTempoDetectRequested(piste, clipId);
             return;
         case 23:
             if (onClipTranscribeRequested) onClipTranscribeRequested();

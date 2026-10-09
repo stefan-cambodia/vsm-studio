@@ -89,6 +89,11 @@ struct AudioClipSpan {
     /// sécurité** -- du plus intentionnel au plus machinal.
     int64_t crossfadeInFrames = 0;
     int64_t crossfadeOutFrames = 0;
+    /// D545.1 bis : UN RACCORD CONTINU à l'entrée, à la sortie — la portée voisine continue la même matière
+    /// à la trame près (une coupe dans un son qui joue). Le fondu de SÉCURITÉ ne s'y applique pas : il y
+    /// ferait un trou de quelques millisecondes là où le son ne s'interrompt pas. Posés par `applyCrossfades`.
+    bool seamlessIn = false;
+    bool seamlessOut = false;
     /// La forme du fondu croisé, distincte de `fadeShape` : la forme choisie
     /// pour un fondu d'entrée dessiné à la main n'a aucune raison d'être celle
     /// qui joint deux prises, et confondre les deux ferait changer l'une en

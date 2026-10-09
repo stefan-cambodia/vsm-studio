@@ -1025,3 +1025,48 @@ VSM_TEST(clips_that_do_not_touch_get_no_crossfade_at_all) {
     VSM_ASSERT(spans[0].crossfadeOutFrames == 0);
     VSM_ASSERT(spans[1].crossfadeInFrames == 0);
 }
+
+// ---------------------------------------------------------------------------
+// D545.1 bis — UNE COUPE DANS UN SON CONTINU NE CREUSE PAS. Le fondu de sécurité de D33.2
+// s'appliquait à tout bord de portée : aux deux bords NEUFS d'une coupe, il faisait un trou là où le son
+// ne s'interrompt pas (0,31 sur 174 trames d'un sinus, mesuré par l'export de D545.1). Sur un RACCORD
+// CONTINU — bout à bout sur la ligne de temps et dans le fichier, au même gain —, il ne s'applique plus ;
+// partout ailleurs, il reste.
+// ---------------------------------------------------------------------------
+
+namespace {
+/// Deux portées bout à bout sur la ligne de temps (100..500 et 500..900), sur une constante de 1 ; la
+/// seconde lit le fichier à `sourceSuivante`, au gain `gainSuivant`.
+std::vector<float> deuxPortees(int64_t sourceSuivante, float gainSuivant) {
+    auto source = std::make_shared<AudioTrackSource>();
+    source->setMemorySamples(std::vector<float>(4000, 1.0f), std::vector<float>(4000, 1.0f));
+    AudioClipSpan a, b;
+    a.startFrame = 100; a.lengthFrames = 400; a.sourceStartFrame = 0;
+    b.startFrame = 500; b.lengthFrames = 400; b.sourceStartFrame = sourceSuivante; b.gain = gainSuivant;
+    std::vector<AudioClipSpan> portees{a, b};
+    applyCrossfades(portees, vsm::sequencer::FadeShape::EqualPower);
+    source->clips = std::move(portees);
+    source->safetyFadeFrames = 96;
+    std::vector<float> g(1000, 0.0f), d(1000, 0.0f);
+    source->mixInto(g.data(), d.data(), 0, 1000);
+    return g;
+}
+float plusBasAutour(const std::vector<float>& g, size_t centre) {
+    float bas = 1.0f;
+    for (size_t i = centre - 100; i < centre + 100; ++i) bas = std::min(bas, g[i]);
+    return bas;
+}
+}
+
+VSM_TEST(a_cut_inside_a_continuous_sound_leaves_no_hole) {
+    const auto g = deuxPortees(400, 1.0f);             // la seconde continue la matière de la première
+    VSM_ASSERT_EQ(plusBasAutour(g, 500), 1.0f);         // aucun creux à la coupe
+    VSM_ASSERT_EQ(g[100], 0.0f);                        // les bords EXTÉRIEURS gardent leur fondu
+    VSM_ASSERT(std::fabs(g[899]) < 0.05f);
+}
+
+VSM_TEST(a_loop_turn_two_materials_or_two_gains_keep_their_safety_fade) {
+    VSM_ASSERT(plusBasAutour(deuxPortees(0, 1.0f), 500) < 0.05f);      // un tour de boucle : la fenêtre repart
+    VSM_ASSERT(plusBasAutour(deuxPortees(1000, 1.0f), 500) < 0.05f);   // un autre endroit du fichier
+    VSM_ASSERT(plusBasAutour(deuxPortees(400, 0.5f), 500) < 0.05f);    // la même matière, un autre gain
+}

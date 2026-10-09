@@ -322,6 +322,7 @@ public:
     std::function<void(size_t, uint64_t)> onClipQuantizeAudioRequested;     // D543.3
     std::function<void(size_t, uint64_t)> onClipNotesFromAttacksRequested;  // D544.1
     std::function<void(size_t, uint64_t)> onClipGrooveFromAttacksRequested; // D544.2
+    std::function<void(size_t, uint64_t)> onClipTempoDetectRequested;       // D545.2
     /// D545.1 : « Gain de ce point… » — la fenêtre est à l'application (piste, clip, indice du point).
     std::function<void(size_t, uint64_t, size_t)> onClipGainPointRequested;
     /// D545.1 : la courbe d'un clip, dite au journal (`VSM_COURBE_GAIN`) après chaque geste.

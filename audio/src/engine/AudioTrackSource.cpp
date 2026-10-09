@@ -64,11 +64,14 @@ inline float fadeGain(const AudioClipSpan& clip, int64_t position, int64_t secur
     // donner la courbe d'un fondu d'entrée creusait 3 dB (voir plus haut).
     const int64_t plafond = std::max<int64_t>(0, length / 2);
     const int64_t securiteBornee = std::min(securite, plafond);
+    // D545.1 bis : PAS DE FONDU DE SÉCURITÉ SUR UN RACCORD CONTINU — le son ne s'y interrompt pas.
     const int64_t entree = clip.crossfadeInFrames > 0 ? clip.crossfadeInFrames
                           : fadeIn > 0                ? fadeIn
+                          : clip.seamlessIn           ? 0
                                                       : securiteBornee;
     const int64_t sortie = clip.crossfadeOutFrames > 0 ? clip.crossfadeOutFrames
                           : fadeOut > 0                ? fadeOut
+                          : clip.seamlessOut           ? 0
                                                        : securiteBornee;
     // LA FORME DU FONDU DE SÉCURITÉ EST LINÉAIRE, toujours : il ne dit rien
     // d'un geste musical, il ne fait qu'éviter une discontinuité, et deux
@@ -324,6 +327,17 @@ void applyCrossfades(std::vector<AudioClipSpan>& spans, vsm::sequencer::FadeShap
         auto& suivant = spans[i];
         const int64_t finPrecedent = precedent.startFrame + precedent.lengthFrames;
         const int64_t chevauchement = finPrecedent - suivant.startFrame;
+        // D545.1 bis : LE RACCORD CONTINU — bout à bout sur la ligne de temps ET dans le fichier, la même
+        // matière lue au même gain. Un tour de boucle n'en est pas un (la fenêtre repart), ni deux matériaux,
+        // ni deux gains ; un clip étiré, à l'envers ou transposé non plus, faute d'une correspondance en
+        // trames établie (sa matière se lit par une carte).
+        if (chevauchement == 0 && !precedent.warp && !suivant.warp && !precedent.reversed && !suivant.reversed
+            && precedent.pitchSemitones == 0.0 && suivant.pitchSemitones == 0.0
+            && suivant.sourceStartFrame == precedent.sourceStartFrame + precedent.lengthFrames
+            && precedent.gain == suivant.gain && precedent.invertPhase == suivant.invertPhase) {
+            precedent.seamlessOut = true;
+            suivant.seamlessIn = true;
+        }
         if (chevauchement <= 0) continue;
         const int64_t fondu = std::min({chevauchement, precedent.lengthFrames, suivant.lengthFrames});
         if (fondu > precedent.fadeOutFrames) {

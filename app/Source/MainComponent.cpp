@@ -12,6 +12,7 @@
 #include "vsm/sequencer/PlayOrder.h"
 #include "vsm/interchange/GroovePreset.h"
 #include "vsm/audio/io/OnsetDetection.h"
+#include "vsm/audio/io/TempoDetection.h"
 #include "vsm/audio/io/ZeroCrossing.h"
 #include "vsm/audio/dsp/LufsMeter.h"
 #include "vsm/audio/io/SilenceDetection.h"
@@ -654,6 +655,9 @@ MainComponent::MainComponent()
     };
     arrangement_.onClipGrooveFromAttacksRequested = [this](size_t piste, uint64_t clipId) {  // D544.2
         grooveDepuisAttaques(piste, clipId);
+    };
+    arrangement_.onClipTempoDetectRequested = [this](size_t piste, uint64_t clipId) {   // D545.2
+        detecterTempoDuClip(piste, clipId);
     };
     // D545.1 : LE GAIN D'UN POINT DE LA COURBE, en décibels (« -inf » pour le silence).
     arrangement_.onClipGainPointRequested = [this](size_t piste, uint64_t clipId, size_t index) {
@@ -13715,6 +13719,34 @@ void MainComponent::decouperAuxSilences(size_t trackIndex, uint64_t clipId) {
     });
 }
 
+bool MainComponent::chargerFenetreDuClip(size_t trackIndex, uint64_t clipId, FenetreDuClip& f, juce::String& erreur) {
+    // D545.2 : LA FENÊTRE DU FICHIER QUE JOUE UN CLIP AUDIO, relue — une seule lecture pour les attaques
+    // (D543.3, D544) et le tempo (D545.2).
+    if (trackIndex >= project_.tracks.size()) return false;
+    const auto& piste = project_.tracks[trackIndex];
+    const auto* clip = findClip(trackIndex, clipId);
+    if (clip == nullptr) return false;
+    f.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
+    auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), f.sampleRate);
+    if (!charge.source || !charge.source->samples) {
+        erreur = tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName());
+        return false;
+    }
+    f.magasin = charge.source->samples;
+    vsm::midi::Tick finMateriau = 0;
+    if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+    // CE QUE LE CLIP JOUE DU FICHIER : par sa carte s'il suit déjà le tempo, par le tempo sinon.
+    const auto jouee = vsm::sequencer::clipPlayedLength(*clip, finMateriau);
+    const double duree = vsm::sequencer::clipIsWarped(*clip)
+        ? vsm::sequencer::warpSourceSecondsAt(*clip, jouee) - clip->sourceStartSeconds
+        : project_.ticksToSeconds(clip->startTick + jouee) - project_.ticksToSeconds(clip->startTick);
+    f.sourceDebut = clip->sourceStartSeconds;
+    f.depart = static_cast<int64_t>(std::llround(clip->sourceStartSeconds * f.sampleRate));
+    f.compte = static_cast<int64_t>(std::llround(std::max(0.0, duree) * f.sampleRate));
+    return true;
+}
+
 bool MainComponent::lireAttaquesDuClip(size_t trackIndex, uint64_t clipId, std::vector<double>& secondes,
                                        std::vector<double>& niveauxDb, juce::String& erreur) {
     // D544.1 : LES ATTAQUES D'UN CLIP AUDIO, relues dans son fichier — une seule lecture pour « Quantifier
@@ -13723,27 +13755,13 @@ bool MainComponent::lireAttaquesDuClip(size_t trackIndex, uint64_t clipId, std::
     // où l'on couperait. Le NIVEAU d'une attaque est la crête des 20 ms qui la suivent, en dBFS.
     secondes.clear();
     niveauxDb.clear();
-    if (trackIndex >= project_.tracks.size()) return false;
-    const auto& piste = project_.tracks[trackIndex];
+    FenetreDuClip f;
+    if (!chargerFenetreDuClip(trackIndex, clipId, f, erreur)) return false;
     const auto* clip = findClip(trackIndex, clipId);
     if (clip == nullptr) return false;
-    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
-    const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
-    auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
-    if (!charge.source || !charge.source->samples) {
-        erreur = tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName());
-        return false;
-    }
-    const auto magasin = charge.source->samples;
-    vsm::midi::Tick finMateriau = 0;
-    if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
-    // CE QUE LE CLIP JOUE DU FICHIER : par sa carte s'il suit déjà le tempo, par le tempo sinon.
-    const auto jouee = vsm::sequencer::clipPlayedLength(*clip, finMateriau);
-    const double duree = vsm::sequencer::clipIsWarped(*clip)
-        ? vsm::sequencer::warpSourceSecondsAt(*clip, jouee) - clip->sourceStartSeconds
-        : project_.ticksToSeconds(clip->startTick + jouee) - project_.ticksToSeconds(clip->startTick);
-    const auto depart = static_cast<int64_t>(std::llround(clip->sourceStartSeconds * sr));
-    const auto compte = static_cast<int64_t>(std::llround(std::max(0.0, duree) * sr));
+    const auto magasin = f.magasin;
+    const double sr = f.sampleRate;
+    const int64_t depart = f.depart, compte = f.compte;
     const auto lire = [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); };
     const auto trouvees = vsm::audio::io::detectOnsets(lire, compte, sr, 8.0, 0.050, -50.0, 0.0);
     const auto fenetre = static_cast<int64_t>(std::llround(0.020 * sr));
@@ -14091,6 +14109,67 @@ void MainComponent::appliquerTranspositionGlobale() {
                               u8"Elles ne sont pas repliées à l'octave — les faire sonner à une "
                               u8"hauteur que personne n'a demandée serait pire. Le matériau, lui, "
                               u8"n'a pas bougé : remettez la transposition à zéro et tout revient."));
+}
+
+void MainComponent::detecterTempoDuClip(size_t trackIndex, uint64_t clipId) {
+    // D545.2 : LE TEMPO D'UNE PRISE, cherché dans le matériau que le clip joue (`estimateTempo`), proposé à
+    // l'adoption comme celui de « Le clip fait N mesures » (D13.7). Le matériau tel qu'enregistré : sur un
+    // clip étiré, c'est le tempo d'AVANT l'étirement, et la fenêtre le dit.
+    if (trackIndex >= project_.tracks.size()) return;
+    const auto& piste = project_.tracks[trackIndex];
+    const juce::String titre = tr(u8"Tempo du clip");
+    if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Cette commande lit les attaques d'un FICHIER : elle ne s'applique qu'à un clip de "
+                        u8"piste audio."));
+        return;
+    }
+    FenetreDuClip f;
+    juce::String erreur;
+    if (!chargerFenetreDuClip(trackIndex, clipId, f, erreur)) {
+        if (erreur.isNotEmpty()) montrerBoite(juce::AlertWindow::InfoIcon, titre, erreur);
+        return;
+    }
+    const auto magasin = f.magasin;
+    const int64_t depart = f.depart;
+    const auto estime = vsm::audio::io::estimateTempo(
+        [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); },
+        f.compte, f.sampleRate);
+    if (!estime.found) {
+        std::fputs((juce::String::fromUTF8(u8"VSM_TEMPO_DETECTE : aucun — ")
+                    + juce::String::fromUTF8(estime.reason.c_str()) + "\n").toRawUTF8(), stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Aucun tempo trouvé dans ce clip : %1.").replace("%1", tr(juce::String::fromUTF8(estime.reason.c_str()))));
+        return;
+    }
+    const double bpm = std::round(estime.bpm * 10.0) / 10.0;   // au dixième, comme le tempo du projet s'écrit
+    std::fputs((juce::String::fromUTF8(u8"VSM_TEMPO_DETECTE : ") + juce::String(estime.bpm, 2)
+                + juce::String::fromUTF8(u8" BPM (confiance ") + juce::String(estime.confidence, 2) + ")\n")
+                   .toRawUTF8(), stderr);
+    const auto* clip = findClip(trackIndex, clipId);
+    auto* choix = new juce::AlertWindow(
+        titre,
+        tr(u8"Le matériau de ce clip est à %1 BPM (confiance %2).\nLe projet est à %3 BPM.")
+                .replace("%1", juce::String(bpm, 1))
+                .replace("%2", juce::String(estime.confidence, 2))
+                .replace("%3", juce::String(project_.tempoMap.bpmAt(0), 1))
+            + (clip != nullptr && vsm::sequencer::clipIsWarped(*clip)
+                   ? "\n" + tr(u8"(Le clip est étiré : c'est le tempo du matériau d'avant l'étirement.)")
+                   : juce::String()),
+        juce::MessageBoxIconType::InfoIcon);
+    choix->addButton(tr(u8"Garder le tempo du projet"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    choix->addButton(tr(u8"Adopter ce tempo pour le projet"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    vsm::app::ui::montrerOuRepondre(*choix, [this, bpm](int resultat) {
+        if (resultat != 1 || bpm <= 0.0) return;
+        beginProjectEdit(u8"Adopter le tempo détecté");
+        project_.tempoMap.addTempoChange(0, static_cast<uint32_t>(std::lround(60'000'000.0 / bpm)));
+        refreshTransportSchedule();
+        loadAudioTracks();
+        arrangement_.repaint();
+        tempoLane_.repaint();
+        std::fputs((juce::String::fromUTF8(u8"VSM_TEMPO_DETECTE : adopté, le projet à ")
+                    + juce::String(project_.tempoMap.bpmAt(0), 2) + " BPM\n").toRawUTF8(), stderr);
+    });
 }
 
 // --- D17.8 : LE GROOVE ------------------------------------------------------

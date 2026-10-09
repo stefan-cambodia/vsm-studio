@@ -7,6 +7,7 @@ add_library(vsm_audio STATIC
     src/io/WaveformPeaks.cpp
     src/io/SilenceDetection.cpp
     src/io/OnsetDetection.cpp
+    src/io/TempoDetection.cpp
     src/io/ZeroCrossing.cpp
     src/engine/AudioTrackSource.cpp
     src/engine/SampleStore.cpp
@@ -149,6 +150,7 @@ if (VSM_BUILD_TESTS)
         tests/test_audio_track.cpp
         tests/test_silence_detection.cpp
         tests/test_onset_detection.cpp
+        tests/test_tempo_detection.cpp
         tests/test_zero_crossing.cpp
         tests/test_metronome.cpp
         tests/test_count_in.cpp

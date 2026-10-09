@@ -9,11 +9,10 @@
 #       de la piste, −3 dB) : par tranches de 100 ms, la crête vaut 1 × le témoin avant 1 s, 0,5 × (±0,04)
 #       autour de 2 s, et le silence (sous −60 dBFS) après 3 s. Écrit d'abord en valeurs ABSOLUES (0,5 ;
 #       0,25) : la première course a montré la bonne FORME à 0,354 près ;
-#   (3) la courbe TIENT AU MATÉRIAU : le clip coupé à 2 s (« Couper à la tête de lecture ») rend le même
-#       export que le clip entier, à 10⁻⁴ près, HORS de ±20 ms autour de la coupe ; sur la jonction, une
-#       coupe change le son d'elle-même — le témoin, coupé SANS courbe, s'écarte de 0,31 de l'export d'avant
-#       sur ±2 ms (le fondu de sécurité de D33.2, posé aux deux bords neufs) —, et la courbe y rend
-#       exactement cet écart-là multiplié par son gain (0,5 à 2 s), à 5 % près ;
+#   (3) la courbe TIENT AU MATÉRIAU : le clip coupé à 2 s (« Couper à la tête de lecture ») rend l'export du
+#       clip entier AU BIT PRÈS — avec la courbe, et sans elle (le témoin). Avant D545.1 bis, une coupe
+#       creusait d'elle-même 0,31 sur ±2 ms (le fondu de sécurité de D33.2 aux deux bords neufs) ; ce
+#       contrôle jugeait alors « identique hors de ±20 ms, et sur la jonction l'écart de la coupe × 0,5 » ;
 #   (4) un pas : un point posé puis Ctrl+Z → l'export d'avant au bit près, et le projet relu sans courbe ;
 #   (5) la courbe se DESSINE : la photo de l'arrangement (regardée à la main) et la ligne `VSM_COURBE_GAIN`.
 # Chaque fichier se lit AVANT de juger (deux .wav présents et non vides avant toute comparaison).
@@ -163,14 +162,10 @@ sys.exit(0 if ok else 1)" "$eb" "$ec" && echo 1 || echo 0)"
 
 jn="$(jonction "$brouillon/base.wav" "$brouillon/coupe-temoin.wav" "$brouillon/courbe.wav" "$brouillon/coupe.wav")"
 echo "       coupe à 2 s (hors ±20 ms : témoin, courbe ; sur la jonction : témoin, courbe) : $jn"
-verdict "(3) la courbe tient au matériau : coupé à 2 s, le même export hors de la jonction ; sur elle, l'écart de la coupe × 0,5" \
-    "$(python3 -c "
-import sys
-try:
-    ht, hc, jt, jc = (float(v) for v in sys.argv[1].split())
-except ValueError:
-    sys.exit(1)
-sys.exit(0 if ht <= 1e-4 and hc <= 1e-4 and jt > 0 and abs(jc - 0.5 * jt) <= 0.05 * jt else 1)" "$jn" && echo 1 || echo 0)"
+identique() { [ -s "$1" ] && [ -s "$2" ] && cmp -s "$1" "$2"; }   # deux .wav présents, non vides, égaux
+verdict "(3) la courbe tient au matériau : coupé à 2 s dans un son continu, l'export du clip entier au bit près (le témoin aussi)" \
+    "$(identique "$brouillon/base.wav" "$brouillon/coupe-temoin.wav" && identique "$brouillon/courbe.wav" "$brouillon/coupe.wav" \
+        && echo 1 || echo 0)"
 
 pa="$(stat -c %s "$brouillon/base.wav" 2>/dev/null || echo 0)"; pz="$(stat -c %s "$brouillon/annule.wav" 2>/dev/null || echo 0)"
 identiques=0
