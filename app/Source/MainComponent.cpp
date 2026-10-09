@@ -646,6 +646,9 @@ MainComponent::MainComponent()
     arrangement_.onClipSplitAtSilencesRequested = [this](size_t piste, uint64_t clipId) {   // D542.3
         decouperAuxSilences(piste, clipId);
     };
+    arrangement_.onClipQuantizeAudioRequested = [this](size_t piste, uint64_t clipId) {   // D543.3
+        quantifierAudio(piste, clipId);
+    };
     // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
     // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
     // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et
@@ -13650,6 +13653,115 @@ void MainComponent::decouperAuxSilences(size_t trackIndex, uint64_t clipId) {
             pianoRoll_.onStatusChanged(tr(u8"Découper aux silences : %1 passage(s), %2 s de silence retirées")
                                            .replace("%1", juce::String(static_cast<int>(gardes)))
                                            .replace("%2", juce::String(retire, 2)));
+    });
+}
+
+void MainComponent::quantifierAudio(size_t trackIndex, uint64_t clipId) {
+    // D543.3 : LES ATTAQUES DU CLIP CALÉES SUR LA GRILLE, par des marqueurs d'étirement posés à
+    // chacune (`quantizeClipToGrid`). La détection est celle de « Découper aux transitoires », sans
+    // sa marge d'avant l'attaque : on cale l'attaque elle-même, pas l'endroit où l'on couperait.
+    if (trackIndex >= project_.tracks.size()) return;
+    const auto& piste = project_.tracks[trackIndex];
+    const juce::String titre = tr(u8"Quantifier l'audio");
+    if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Cette commande cale les attaques d'un FICHIER : elle ne s'applique qu'à un clip de "
+                        u8"piste audio. Une piste MIDI se quantifie par ses notes."));
+        return;
+    }
+    if (piste.locked) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre, tr(u8"La piste est verrouillée : rien n'a été calé."));
+        return;
+    }
+    const auto* clip = findClip(trackIndex, clipId);
+    if (clip == nullptr) return;
+    if (clip->reversed) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Ce clip joue à l'envers : ses attaques ne tombent pas où le fichier les met, "
+                        u8"rien n'a été calé."));
+        return;
+    }
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        titre,
+        tr(u8"Chaque attaque du clip est calée sur la ligne de grille la plus proche par un marqueur "
+           u8"d'étirement ; le clip suit alors le tempo, hauteur conservée."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addComboBox("grille", {"1/4", "1/8", "1/16", "1/32"}, tr(u8"Grille :"));
+    fenetre->getComboBoxComponent("grille")->setSelectedId(2, juce::dontSendNotification);   // 1/8
+    fenetre->addButton(tr(u8"Quantifier"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, trackIndex, clipId, titre](int resultat) {
+        const int choix = fenetre->getComboBoxComponent("grille")->getSelectedId();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1 || choix < 1 || choix > 4 || trackIndex >= project_.tracks.size()) return;
+        auto& piste = project_.tracks[trackIndex];
+        auto it = std::find_if(piste.clips.begin(), piste.clips.end(),
+                               [clipId](const vsm::sequencer::Clip& c) { return c.id == clipId; });
+        if (it == piste.clips.end()) return;
+        const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+        const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
+        auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+        if (!charge.source || !charge.source->samples) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName()));
+            return;
+        }
+        const auto magasin = charge.source->samples;
+        vsm::midi::Tick finMateriau = 0;
+        if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+        const auto versSecondes = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+        // CE QUE LE CLIP JOUE DU FICHIER : par sa carte s'il suit déjà le tempo, par le tempo sinon.
+        const auto jouee = vsm::sequencer::clipPlayedLength(*it, finMateriau);
+        const double duree = vsm::sequencer::clipIsWarped(*it)
+            ? vsm::sequencer::warpSourceSecondsAt(*it, jouee) - it->sourceStartSeconds
+            : versSecondes(it->startTick + jouee) - versSecondes(it->startTick);
+        const auto depart = static_cast<int64_t>(std::llround(it->sourceStartSeconds * sr));
+        const auto compte = static_cast<int64_t>(std::llround(std::max(0.0, duree) * sr));
+        const auto trouvees = vsm::audio::io::detectOnsets(
+            [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); },
+            compte, sr, 8.0, 0.050, -50.0, 0.0);
+        std::vector<double> attaques;
+        juce::String instants;
+        for (const int64_t a : trouvees) {
+            attaques.push_back(it->sourceStartSeconds + static_cast<double>(a) / sr);
+            instants += (instants.isEmpty() ? "" : ", ") + juce::String(attaques.back(), 4);
+        }
+        const auto pas = static_cast<vsm::midi::Tick>(project_.ticksPerQuarterNote) >> (choix - 1);
+        // SUR UNE COPIE D'ABORD : un geste qui ne cale rien n'ouvre pas de pas d'historique.
+        auto essai = piste.clips;
+        const auto bilan = vsm::sequencer::quantizeClipToGrid(essai, clipId, attaques, pas, finMateriau, versSecondes);
+        const double plusGrandMs =
+            1000.0 * (versSecondes(it->startTick + bilan.largestShift) - versSecondes(it->startTick));
+        const juce::String grille = fenetre->getComboBoxComponent("grille")->getText();
+        std::fputs((juce::String::fromUTF8(u8"VSM_QUANTIFIER_AUDIO : grille ") + grille + ", "
+                    + juce::String(static_cast<int>(attaques.size())) + juce::String::fromUTF8(u8" attaque(s) à ")
+                    + (instants.isEmpty() ? juce::String("-") : instants) + " s ; "
+                    + juce::String(static_cast<int>(bilan.moved)) + juce::String::fromUTF8(u8" calée(s), ")
+                    + juce::String(static_cast<int>(bilan.alreadyOnGrid)) + juce::String::fromUTF8(u8" déjà sur la ligne, ")
+                    + juce::String(static_cast<int>(bilan.dropped)) + juce::String::fromUTF8(u8" écartée(s), au plus ")
+                    + juce::String(plusGrandMs, 1) + " ms\n").toRawUTF8(), stderr);
+        if (bilan.moved == 0) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         attaques.empty()
+                             ? tr(u8"Aucune attaque trouvée dans ce clip : rien n'a été calé.")
+                             : tr(u8"Rien à caler : %1 attaque(s) déjà sur la grille, %2 écartée(s).")
+                                   .replace("%1", juce::String(static_cast<int>(bilan.alreadyOnGrid)))
+                                   .replace("%2", juce::String(static_cast<int>(bilan.dropped))));
+            return;
+        }
+        beginProjectEdit(u8"Quantifier l'audio");
+        piste.clips = std::move(essai);
+        refreshTransportSchedule();
+        loadAudioTracks();
+        arrangement_.repaint();
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(
+                tr(u8"Quantifier l'audio : %1 attaque(s) calée(s), %2 déjà sur la grille, %3 écartée(s) — au plus %4 ms")
+                    .replace("%1", juce::String(static_cast<int>(bilan.moved)))
+                    .replace("%2", juce::String(static_cast<int>(bilan.alreadyOnGrid)))
+                    .replace("%3", juce::String(static_cast<int>(bilan.dropped)))
+                    .replace("%4", juce::String(plusGrandMs, 1)));
     });
 }
 

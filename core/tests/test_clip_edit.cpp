@@ -1243,3 +1243,75 @@ VSM_TEST(an_unlinked_clip_keeps_the_velocity_and_the_mute_of_the_notes_it_copies
     }
     VSM_ASSERT_EQ(vus, 2);
 }
+
+// D543.3 — QUANTIFIER L'AUDIO. 120 BPM, 480 ticks par noire : la croche fait 240 ticks, 0,25 s.
+
+VSM_TEST(quantizing_audio_puts_every_attack_on_its_line_and_counts_what_it_could_not_place) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    // +10, −10, +20 ms de leurs lignes ; une sur sa ligne ; deux qui visent la même (1,5 s).
+    const std::vector<double> attaques{0.26, 0.49, 0.77, 1.0, 1.49, 1.56};
+    const auto bilan = quantizeClipToGrid(clips, 1, attaques, 240, 100000, enSecondes);
+    VSM_ASSERT(clips[0].warpMode == WarpMode::KeepPitch);
+    VSM_ASSERT_EQ(bilan.moved, size_t(4));
+    VSM_ASSERT_EQ(bilan.alreadyOnGrid, size_t(1));
+    VSM_ASSERT_EQ(bilan.dropped, size_t(1));                  // 1,56 s : la ligne de 1,49 s est prise
+    VSM_ASSERT_EQ(bilan.largestShift, Tick(19));              // 0,77 s sonnait à 739
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 0.26), Tick(240));
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 0.49), Tick(480));
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 0.77), Tick(720));
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 1.0), Tick(960));    // ancrée, pas emportée
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 1.49), Tick(1440));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(7));    // la paire neutre + cinq
+    VSM_ASSERT_EQ(clips[0].warpMarkers.back().tick, Tick(3840));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers.back().sourceSeconds, 4.0, 1e-9);
+}
+
+VSM_TEST(the_grid_of_audio_quantize_counts_from_the_song_not_from_the_clip) {
+    std::vector<Clip> clips{clip(1, 100, 3840)};
+    const auto bilan = quantizeClipToGrid(clips, 1, {0.26}, 240, 100000, enSecondes);
+    VSM_ASSERT_EQ(bilan.moved, size_t(1));
+    VSM_ASSERT_EQ(clips[0].startTick + warpTickAtSeconds(clips[0], 0.26), Tick(240));
+}
+
+VSM_TEST(audio_quantize_leaves_a_clip_alone_when_nothing_moves_and_refuses_a_reversed_one) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    const auto bilan = quantizeClipToGrid(clips, 1, {0.25, 0.5}, 240, 100000, enSecondes);
+    VSM_ASSERT_EQ(bilan.moved, size_t(0));
+    VSM_ASSERT_EQ(bilan.alreadyOnGrid, size_t(2));
+    VSM_ASSERT(clips[0].warpMode == WarpMode::Off);           // pas même le mode
+    VSM_ASSERT(clips[0].warpMarkers.empty());
+    clips[0].reversed = true;
+    const auto refuse = quantizeClipToGrid(clips, 1, {0.26}, 240, 100000, enSecondes);
+    VSM_ASSERT_EQ(refuse.moved + refuse.alreadyOnGrid + refuse.dropped, size_t(0));
+    VSM_ASSERT(clips[0].warpMarkers.empty());
+}
+
+VSM_TEST(a_marker_already_there_bounds_the_targets_and_is_kept) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    clips[0].warpMode = WarpMode::KeepPitch;
+    clips[0].warpMarkers = {{0.0, 0}, {1.0, 960}, {4.0, 3840}};
+    // 0,99 s vise 960, la place du marqueur de 1 s : écartée ; 0,26 s passe.
+    const auto bilan = quantizeClipToGrid(clips, 1, {0.26, 0.99}, 240, 100000, enSecondes);
+    VSM_ASSERT_EQ(bilan.moved, size_t(1));
+    VSM_ASSERT_EQ(bilan.dropped, size_t(1));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(4));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[2].tick, Tick(960));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[2].sourceSeconds, 1.0, 1e-12);
+}
+
+VSM_TEST(quantizing_again_moves_the_markers_of_the_first_pass_instead_of_doubling_them) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    quantizeClipToGrid(clips, 1, {0.26, 0.77}, 240, 100000, enSecondes);
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(4));
+    // La même grille : rien ne bouge, rien ne s'ajoute.
+    const auto encore = quantizeClipToGrid(clips, 1, {0.26, 0.77}, 240, 100000, enSecondes);
+    VSM_ASSERT_EQ(encore.moved, size_t(0));
+    VSM_ASSERT_EQ(encore.alreadyOnGrid, size_t(2));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(4));
+    // À la noire : les deux marqueurs se déplacent, aucun n'est doublé.
+    const auto noire = quantizeClipToGrid(clips, 1, {0.26, 0.77}, 480, 100000, enSecondes);
+    VSM_ASSERT_EQ(noire.moved, size_t(2));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(4));
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 0.26), Tick(480));
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 0.77), Tick(960));
+}

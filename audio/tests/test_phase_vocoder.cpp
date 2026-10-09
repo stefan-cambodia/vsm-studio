@@ -259,6 +259,50 @@ VSM_TEST(phase_vocoder_locks_transients_once_and_in_place) {
     }
 }
 
+/// D543.3 : UN CLIC NE SE DÉDOUBLE PAS DEVANT UN SEGMENT ÉTIRÉ. Le banc 4 ne pouvait pas le voir :
+/// ses clics partent à pleine amplitude au premier échantillon, et ses transitoires sont DÉCLARÉS à cet
+/// échantillon. Ici, comme sur un vrai fichier calé par « Quantifier l'audio » : un clic qui part d'un
+/// sinus à phase nulle, le transitoire daté deux échantillons plus tard (ce que rend le détecteur du
+/// moteur), une carte à genoux — un segment étiré de 1,087 puis comprimé, puis de nouveau étiré. Sans
+/// la marge de coupe, une copie du clic sortait 5 ms avant lui, plus forte que lui.
+VSM_TEST(phase_vocoder_does_not_double_a_click_whose_detected_instant_is_late) {
+    const auto n = static_cast<size_t>(2.0 * kSr);
+    std::vector<float> l(n, 0.0f), r(n, 0.0f);
+    const int64_t debuts[] = {12480, 23520, 36960, 48480};          // 0,26 · 0,49 · 0,77 · 1,01 s
+    for (const int64_t d : debuts)
+        for (size_t i = 0; i < 480; ++i) {
+            const float v = 0.8f * static_cast<float>(std::sin(2.0 * M_PI * 3000.0 * static_cast<double>(i) / kSr)
+                                                     * std::exp(-static_cast<double>(i) / 57.6));
+            l[static_cast<size_t>(d) + i] = v; r[static_cast<size_t>(d) + i] = v;
+        }
+    const MemorySampleStore src(std::move(l), std::move(r));
+    const int64_t lignes[] = {12000, 24000, 36000, 48000};          // les croches de 120 BPM
+    Vocoder v;
+    v.prepare(512);
+    const Vocoder::MapPoint carte[] = {{0, 0.0}, {12000, 12480.0}, {24000, 23520.0}, {36000, 36960.0},
+                                       {48000, 48480.0}, {96000, 96000.0}};
+    v.setMap(carte, 6);
+    std::vector<int64_t> declares;
+    for (const int64_t d : debuts) declares.push_back(d + 2);
+    v.setTransients(declares.data(), static_cast<int>(declares.size()));
+    const auto out = rendre(v, src, static_cast<int64_t>(n), 512);
+    std::printf("    [banc vocodeur] clics calés :");
+    for (const int64_t ligne : lignes) {
+        const auto a = static_cast<size_t>(ligne - 6000), b = static_cast<size_t>(ligne + 6000);
+        float crete = 0.0f;
+        for (size_t i = a; i < b; ++i) crete = std::max(crete, std::abs(out.l[i]));
+        size_t i = a;
+        while (i < b && std::abs(out.l[i]) < 0.1f * crete) ++i;
+        float avant = 0.0f;   // le plus fort à plus d'une demi-milliseconde avant la ligne
+        for (size_t j = a; j < static_cast<size_t>(ligne - 24); ++j) avant = std::max(avant, std::abs(out.l[j]));
+        const double ecart = (static_cast<double>(i) - static_cast<double>(ligne)) / kSr * 1000.0;
+        std::printf(" %+.2f ms (crête %.2f, avant %.3f)", ecart, crete, avant);
+        VSM_ASSERT(std::abs(ecart) <= 1.0);
+        VSM_ASSERT(avant <= 0.1f * crete);
+    }
+    std::printf("\n");
+}
+
 /// BANC 6 : LE PLACEMENT NE FLOTTE PAS. Une voix de synthèse compressée de
 /// 1,1 : l'enveloppe de sortie, fenêtre par fenêtre de 1,8 s, contre
 /// l'enveloppe attendue. LA PREMIÈRE FORME DE L'ATTENDU (« ≤ 2 ms, et le

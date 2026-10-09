@@ -40246,7 +40246,7 @@ rencontrer un autre. Les gestes de la fenêtre n'existent qu'une fois : ce sont 
 son résultat s'écrit à sa fin.
 
 
-### Phase D543.3 — quantifier l'audio : caler les attaques d'un clip sur la grille (03/10/2026)
+### Phase D543.3 — quantifier l'audio : caler les attaques d'un clip sur la grille (03/10/2026) — FAITE
 
 *Écrite avant son code, le 03/10 à 22 h 34, D543.2 faite.*
 
@@ -40280,3 +40280,127 @@ fait marqueur par marqueur, à la souris.
    (Ctrl+Z → l'export d'avant au bit près) ;
 3. un banc `tools/quantifier-audio.sh`, vu rouge sur un défaut remis à la main, entré dans
    `verifier.sh --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux langues.
+
+**LA PREMIÈRE COURSE DU BANC (09/10, finie entre 08 h 40 et 08 h 44 — l'heure n'a pas été lue sur le moment) : LE GESTE TIENT, LE VOCODEUR NON.** `tools/quantifier-audio.sh`
+passe quatre contrôles sur cinq : 4 attaques calées, le clip « keepPitch » à six marqueurs, Ctrl+Z rend
+l'export d'avant au bit près et le clip sans suivi de tempo, un second calage ne bouge rien et ne double
+aucun marqueur, la fenêtre photographiée dans les deux langues. Le contrôle (2) tombe : dans l'export, les
+attaques sont à **+0,0 · −5,1 · +0,0 · −2,7 ms** de leurs lignes (le témoin, l'export d'avant : +10,0 ·
+−10,0 · +20,0 · +10,0, exactement le fichier). Les deux en défaut sont celles que précède un segment
+ÉTIRÉ (rapport 1,087 et 1,042) ; l'enveloppe à la milliseconde y montre le clic DÉDOUBLÉ — une copie 5 ms
+(et 3 ms) avant la ligne, la vraie sur la ligne —, et la crête de chaque clic tombe de 0,52 à 0,27-0,30.
+
+**CE QUI EST ÉTABLI AVANT TOUTE HYPOTHÈSE.** (a) Les marqueurs sont justes : les attaques 1 et 3 tombent à
+0,0 ms, et le second calage les retrouve toutes « déjà sur la ligne ». (b) Le vocodeur de phase SEUL
+(`PhaseVocoder`, la carte du clip, le fichier du banc, hors application) reproduit le dédoublement : copie
+de 0,19 à −5 ms pour un clic de 0,17 sur la ligne (attaque 2), 0,21 à −3 ms (attaque 4) ; sans liste de
+transitoires, aucun dédoublement mais un clic étalé. (c) Le détecteur du moteur (`TransientDetector`)
+trouve les quatre clics, chacun **deux échantillons après** son premier échantillon (11 468 pour 11 466…)
+— le clic du banc part d'un sinus à phase nulle : 0, puis 0,33, puis 0,58. (d) La crête divisée par deux
+est le « creux » que l'en-tête du vocodeur assume (autour d'une trame coupée, deux trames sur quatre) : ce
+n'est pas l'objet de l'attendu, qui juge la POSITION.
+
+**L'HYPOTHÈSE H1, écrite à 08 h 46 avant la mesure qui la tranche.** Le fantôme vient des premiers
+échantillons du clic situés AVANT l'instant détecté : les trames qui précèdent la trame propriétaire sont
+coupées À cet instant et les gardent ; propagés en phase sans remise à zéro, ces deux échantillons
+s'étalent sur la trame et ressortent en avance. Le banc 4 du vocodeur ne pouvait pas le voir : ses clics
+partent à pleine amplitude au premier échantillon et ses transitoires sont DÉCLARÉS à ce même échantillon.
+**La parade** : couper ces trames une MARGE avant l'instant — une option du vocodeur, pour que le témoin
+(marge nulle) soit le même code. **Attendus** : (i) dans le banc isolé, à marge de 1 ms, les quatre
+attaques à 3 ms au plus de leur ligne et plus aucune copie avant elles ; marge nulle, le dédoublement
+d'aujourd'hui (le témoin) ; le balayage des marges (0 ; 0,25 ; 0,5 ; 1 ; 2 ; 3 ms) publié entier ;
+(ii) un test neuf du vocodeur sur ce cas (clic à phase nulle, transitoire deux échantillons en retard,
+carte à genou), vu ROUGE à marge nulle ; (iii) **ce que la parade pourrait casser** : `test_phase_vocoder`
+entier (le banc 4 à ≤ 1 ms, le rapport un au bit près, la voix de synthèse à ≤ 4 ms) et la suite audio
+restent verts ; (iv) le contrôle (2) de `tools/quantifier-audio.sh` passe. **Si H1 est fausse** — la
+marge ne supprime pas la copie —, elle est dite fausse ici, et la cause se cherche ailleurs avant tout
+réglage.
+
+**H1 EST VRAIE (09/10, balayage de 08 h 47, une minute après l'hypothèse).** Le balayage, entier — vocodeur seul, la carte du clip, le fichier du
+banc ; écart de chaque attaque à sa ligne (premier échantillon au dixième de la crête) et le plus fort
+niveau à plus d'une demi-milliseconde AVANT la ligne :
+
+| marge | attaque 1 | attaque 2 | attaque 3 | attaque 4 |
+|---|---|---|---|---|
+| 0 (le témoin) | +0,0 ms, avant 0,01 | **−4,8 ms, avant 0,19** | +0,0 ms, avant 0,02 | **−2,4 ms, avant 0,21** |
+| 0,25 ms | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 |
+| 0,5 ms | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 |
+| 1 ms | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 |
+| 2 ms | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 |
+| 3 ms | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 | +0,0, avant 0,00 |
+
+Deux échantillons de retard du détecteur suffisaient ; toute marge de 0,25 à 3 ms les couvre. **Tranché :
+1 ms (48 trames, `kGardeParDefaut`), le milieu du plateau** — un détecteur qui date une attaque molle à sa
+plus forte pente peut la dater plus tard que deux échantillons, et la marge ne coûte que ceci : sur elle,
+deux trames portent le son au lieu de quatre, comme juste après l'attaque. Un réglage en trames et non en
+millisecondes : le vocodeur ne connaît pas la fréquence d'échantillonnage (1,09 ms à 44,1 kHz).
+
+**D543.3 EST FAITE (09/10, 08 h 58 ; le banc rejoué à 08 h 56).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 431 → **436** : +10, −10, +20 ms et une attaque sur sa ligne → toutes sur leur ligne (`warpTickAtSeconds` relu au tick), l'attaque déjà calée ANCRÉE (sans ancre, ses voisines l'emportaient à 950 au lieu de 960 — vu rouge) ; deux attaques sur la même ligne → une calée, l'autre comptée ; le mode « hauteur conservée » ; la grille comptée depuis le morceau ; un clip où rien ne bouge laissé intact, mode compris ; un clip à l'envers refusé ; un marqueur déjà là borne les cibles ; un second calage DÉPLACE les marqueurs du premier au lieu de les doubler (sans cela : « 0 déjà sur la ligne » au lieu de 2 — vu rouge) | **oui** |
+| 2 | par l'application, mesuré par l'EXPORT | `tools/quantifier-audio.sh` : attaques de l'export à **+0,0 · +0,0 · +0,0 · +0,0 ms** de leurs lignes ; le témoin, l'export d'avant, à +10,0 · −10,0 · +20,0 · +10,0 ; Ctrl+Z → l'export d'avant **au bit près** (1 058 444 octets) ET le clip relu sans suivi de tempo ni marqueur — un pas | **oui** — après H1 ; à la première course, −5,1 et −2,7 ms |
+| 3 | le banc, les photos | 5 contrôles, entré dans `verifier.sh --bancs` (**60**) ; rouge sur le vocodeur d'avant (le contrôle 2) ; un second calage dit « 0 calée(s), 4 déjà sur la ligne » et garde six marqueurs ; la fenêtre photographiée et regardée en français et en anglais (« Grille : 1/8 », « Grid: 1/8 », « Quantise ») ; libellés traduits | **oui** |
+
+**TRANCHÉ EN ÉCRIVANT LE CODE.** (a) L'attaque calée est celle de `detectOnsets` SANS sa marge d'avant
+l'attaque (`preAttackSeconds` = 0) : « Découper aux transitoires » coupe 3 ms avant pour ne pas raboter le
+transitoire ; ici on veut que l'attaque ELLE-MÊME tombe sur la ligne. (b) Le plan se fait sur une COPIE du
+clip : un geste qui ne cale rien n'ouvre pas de pas d'historique et ne change pas le mode du clip. (c) Un
+marqueur à moins d'une milliseconde d'une attaque est le sien et se déplace ; c'est ce qui rend le geste
+rejouable avec une autre grille (deux marqueurs à la même seconde feraient un segment de pente nulle).
+
+**CE QUE LA MESURE A MONTRÉ EN PLUS, ET QUI N'EST PAS RÉGLÉ ICI : LA CRÊTE.** Les attaques tombent juste,
+mais leur crête, dans l'export, n'est plus celle du fichier : **−5,5 · −13,7 · −4,8 · −12,2 dB**. Ce n'est
+pas D543.3 qui la fait : c'est le « creux » que l'en-tête du vocodeur assume depuis D12.8 (« autour d'une
+trame coupée, un creux ») — et il se calcule au chiffre près : sur la région du clic, seules les trames
+propriétaire et d'avant portent le son, et la sortie est divisée par 1,5, la somme des fenêtres au carré
+quand QUATRE trames sont là. Attaque 2 : l'instant tombe 36 trames après le début de la trame propriétaire,
+(0,555² + 0,003²) / 1,5 = 0,205, et 0,52 × 0,205 = **0,107** — l'export dit 0,107. Attaque 1 (275 trames) :
+0,53, soit 0,275 ; l'export dit 0,275. Aucun banc ne l'avait vu : le banc 4 juge la POSITION des attaques,
+le banc 7 l'enveloppe d'un son tenu (creux 7,1 %). Or « Quantifier l'audio » se fait d'abord sur une
+batterie, et une frappe calée qui perd 14 dB n'est pas une frappe calée. C'est la phase suivante.
+
+
+**LES SUITES** (relevé à 09 h 05) : core **436**, audio **1 320** (le test neuf du vocodeur), interchange
+336, clap 25, panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts, sauf `index-a-jour.py` — les
+chiffres que ces lignes déplacent, réécrits par `--corriger` et la garde rejouée verte. **`--bancs` entier
+(60) PAS LANCÉ** : la batterie était à 20 % à 09 h 05 (8 points perdus en un quart d'heure de compilation),
+la garde de l'utilisateur endort le poste à 15 %, et quarante minutes de lancements n'y tiennent pas — une
+veille au milieu de la série fabrique des rouges (D535.1 bis). La série se rejoue à la recharge, avant
+de fermer D543.4, et son résultat s'écrit ici.
+
+### Phase D543.4 — le creux du vocodeur aux attaques : une frappe calée garde sa crête (09/10/2026) — EN ATTENTE DE MESURE
+
+*Écrite avant son code, le 09/10 à 08 h 58, D543.3 faite.*
+
+**CE QUI EST MESURÉ (D543.3).** Quatre clics calés par « Quantifier l'audio » sortent de l'export à
+−5,5 · −13,7 · −4,8 · −12,2 dB de leur crête dans le fichier, et le chiffre se calcule : sur la région de
+l'attaque, les trames d'avant la propriétaire sont coupées (c'est leur rôle, D12.3), seules deux trames
+portent le son, et la sortie reste divisée par 1,5 — la somme des fenêtres de Hann au carré quand quatre
+trames se recouvrent. Le facteur dépend de l'endroit où l'attaque tombe dans le saut de 512 trames : de
+0,2 à 0,67. Une frappe de batterie perd donc de 3,5 à 14 dB selon le hasard de sa position, et deux
+frappes égales n'ont plus la même force.
+
+**CE QUI EST TRANCHÉ ICI.** La sortie est divisée, échantillon par échantillon, par la somme RÉELLE des
+poids des trames qui y contribuent — fenêtre d'analyse × fenêtre de synthèse, et rien là où la trame
+d'analyse a été coupée : c'est l'addition-recouvrement pondérée ordinaire, dont la division par 1,5 n'est
+que le cas où rien n'est coupé. Un plancher borne la division (le poids ne descend pas sous 0,05 — un gain
+de 30 au plus, jamais une division par presque rien). Une option du vocodeur garde l'ancienne division
+constante : c'est le témoin, du même code.
+
+**L'HYPOTHÈSE H2, écrite à 08 h 58 avant la mesure qui la tranche.** Sur la région d'une attaque, les
+trames propriétaire et d'avant reprennent leurs phases d'analyse telles quelles (la remise à zéro) — ce
+sont des copies exactes du fichier sous leurs fenêtres —, et celle d'après les suit au saut près ; divisées
+par leur poids réel, elles RECOMPOSENT le fichier. **Attendus** : (i) vocodeur seul, la carte et le fichier
+de D543.3 : les quatre crêtes à **±1 dB** de celle du fichier, les positions inchangées (+0,0 ms) ; division
+constante, les −5,5 à −13,7 dB d'aujourd'hui (le témoin) ; (ii) là où rien n'est coupé, la somme réelle vaut
+1,5 et la sortie ne bouge pas : sur le son tenu du banc 7 et la voix du banc 6, l'écart à la division
+constante ne dépasse pas 10⁻⁴ ; (iii) **ce que la parade pourrait casser** : `test_phase_vocoder` entier —
+le banc 4 (≤ 1 ms), le banc 6 (≤ 4 ms), le banc 7 (creux 7,1 % : publié avant et après) — et la suite
+audio ; et la parade AMPLIFIE là où le poids est petit : le plus petit poids rencontré se publie, sur les
+clics et sur la voix ; (iv) un test neuf du vocodeur (les crêtes du test de D543.3), vu ROUGE à division
+constante ; (v) un sixième contrôle de `tools/quantifier-audio.sh` : dans l'export calé, chaque crête à
+±1 dB de celle de l'export d'avant. **Si H2 est fausse** — les crêtes restent basses à poids réel —, la
+cause se cherche dans le contenu des trames (la propagation de phase de celle d'après) avant tout réglage
+du plancher.

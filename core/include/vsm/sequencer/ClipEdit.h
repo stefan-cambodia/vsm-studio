@@ -242,6 +242,26 @@ int addWarpMarker(std::vector<Clip>& clips, uint64_t clipId, Tick relativeTick);
 /// les autres restent strictement entre leurs voisins.
 bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tick relativeTick);
 
+/// D543.3 : QUANTIFIER L'AUDIO — caler les attaques d'un clip sur la grille. `onsetSourceSeconds` :
+/// les attaques, en secondes du FICHIER, croissantes ; `grid` : le pas, en ticks, compté depuis le
+/// début du MORCEAU. Tout le plan se fait sur l'ANCIENNE carte, avant de toucher au clip (déplacer un
+/// marqueur déplace ce qui le suit) : chaque attaque reçoit un marqueur à sa seconde exacte, posé sur
+/// sa ligne — y compris celle qui y est déjà, que ses voisines calées emporteraient sinon. Un
+/// marqueur à moins d'une milliseconde d'une attaque est le SIEN (un calage précédent) et se déplace
+/// au lieu d'être doublé ; les autres sont gardés et bornent les cibles. Le clip passe en « hauteur
+/// conservée » s'il ne suivait pas le tempo. Une cible qui casserait l'ordre de la carte (même ligne
+/// qu'une autre, hors des marqueurs qui l'encadrent) est écartée — comptée, jamais forcée. Rien ne
+/// bouge → le clip n'est pas touché, pas même son mode. Un clip à l'envers est refusé (rapport nul).
+struct AudioQuantizeReport {
+    size_t moved = 0;           ///< attaques calées
+    size_t alreadyOnGrid = 0;   ///< déjà sur leur ligne
+    size_t dropped = 0;         ///< écartées (même ligne qu'une autre, hors des marqueurs)
+    Tick largestShift = 0;      ///< le plus grand déplacement, en ticks
+};
+AudioQuantizeReport quantizeClipToGrid(std::vector<Clip>& clips, uint64_t clipId,
+                                       const std::vector<double>& onsetSourceSeconds, Tick grid,
+                                       Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+
 /// Retire le marqueur `index` — jamais le premier, jamais sous deux.
 bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index);
 

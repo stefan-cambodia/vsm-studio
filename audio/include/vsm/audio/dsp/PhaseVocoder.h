@@ -91,6 +91,15 @@ public:
     void setTransients(const int64_t* frames, int count) {
         transients_.assign(frames, frames + std::max(0, count));
     }
+    /// D543.3 : LA MARGE DE COUPE, en trames. Les trames qui PRÉCÈDENT la trame propriétaire d'un
+    /// transitoire sont coupées `frames` trames AVANT l'instant déclaré, pas à l'instant même : le
+    /// détecteur date une attaque à sa plus forte pente, quelques échantillons APRÈS son premier, et
+    /// ces premiers échantillons, laissés dans une trame qui n'est pas remise à zéro, s'y étalaient et
+    /// ressortaient en avance — un clic dédoublé 5 ms avant sa place dans un segment étiré (D543.3 :
+    /// 0,19 avant un clic de 0,17 ; marge de 0,25 à 3 ms, plus rien). `kGardeParDefaut` : 1 ms à 48 kHz.
+    /// Zéro, le témoin : le vocodeur d'avant D543.3.
+    static constexpr int kGardeParDefaut = 48;
+    void setTransientGuard(int frames) { garde_ = std::max(0, frames); }
 
     double sourceFor(double outputFrame) const {
         size_t i = 1;
@@ -210,7 +219,7 @@ private:
             auto it = std::lower_bound(transients_.begin(), transients_.end(), a + 1);
             if (it != transients_.end() && *it < a + kSize) {
                 const int64_t o = proprietaire(*it);
-                if (k < o) nFin = static_cast<int>(*it - a);
+                if (k < o) nFin = static_cast<int>(std::max<int64_t>(0, *it - garde_ - a));
                 else if (k > o) nDebut = static_cast<int>(*it - a);
             }
         }
@@ -321,7 +330,7 @@ private:
     std::vector<int64_t> transients_;
     RealIfft<static_cast<size_t>(kSize)> fft_;
     int64_t nextFrame_ = 0, consumed_ = 0, prevSource_ = 0;
-    int naturel_ = 0, resetSuivant_ = 0;
+    int naturel_ = 0, resetSuivant_ = 0, garde_ = kGardeParDefaut;
     bool hasPrev_ = false, prepared_ = false, bypass_ = true;
 };
 

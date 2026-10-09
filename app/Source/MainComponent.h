@@ -1702,6 +1702,9 @@ private:
     /// D542.3 : un clip par passage qui sonne, les silences intérieurs retirés — seuil et silence
     /// minimal demandés ; un pas ; dit.
     void decouperAuxSilences(size_t trackIndex, uint64_t clipId);
+    /// D543.3 : les attaques du clip calées sur la grille demandée, par des marqueurs d'étirement ;
+    /// un pas ; dit (`VSM_QUANTIFIER_AUDIO`).
+    void quantifierAudio(size_t trackIndex, uint64_t clipId);
     /// D20.3 : les clips audio choisis, coupés à chaque attaque trouvée.
     void sliceSelectedClipsAtOnsets();
     /// D21.3 : la coupe demandée à `tick` sur la piste, déplacée au passage

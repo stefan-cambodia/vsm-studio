@@ -708,6 +708,88 @@ int addWarpMarker(std::vector<Clip>& clips, uint64_t clipId, Tick relativeTick) 
     return static_cast<int>(indice);
 }
 
+AudioQuantizeReport quantizeClipToGrid(std::vector<Clip>& clips, uint64_t clipId,
+                                       const std::vector<double>& onsetSourceSeconds, Tick grid,
+                                       Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    AudioQuantizeReport bilan;
+    Clip* original = clipById(clips, clipId);
+    if (!original || original->reversed || grid <= 0 || onsetSourceSeconds.empty()) return bilan;
+    // SUR UNE COPIE : un clip où rien ne bouge n'est pas touché, pas même son mode.
+    std::vector<Clip> copie{*original};
+    if (!clipIsWarped(copie[0])) setClipWarpMode(copie, {clipId}, WarpMode::KeepPitch, materialEnd, ticksToSeconds);
+    Clip& clip = copie[0];
+    if (!clipIsWarped(clip)) return bilan;
+    const std::vector<WarpMarker> ancienne = clip.warpMarkers;
+
+    // UN MARQUEUR À MOINS D'UNE MILLISECONDE D'UNE ATTAQUE EST LE SIEN (un calage précédent, ou la
+    // main) : il se DÉPLACE au lieu d'être doublé — deux marqueurs à la même seconde feraient un
+    // segment de pente nulle. Le premier et le dernier ne bougent jamais.
+    constexpr double kMemeAttaque = 0.001;
+    struct Point { double secondes; Tick origine; Tick cible; int marqueur; bool attaque; };
+    std::vector<Point> points;
+    std::vector<bool> absorbe(ancienne.size(), false);
+    double precedente = -std::numeric_limits<double>::infinity();
+    for (const double s : onsetSourceSeconds) {
+        if (s <= precedente) { ++bilan.dropped; continue; }
+        precedente = s;
+        const Tick origine = warpTickAtSeconds(clip, s);
+        const Tick absolu = clip.startTick + origine;
+        const Tick cible = ((absolu + grid / 2) / grid) * grid - clip.startTick;
+        // Au bord du clip (le premier ou le dernier marqueur), pas de marqueur à poser.
+        if (s <= ancienne.front().sourceSeconds + kMemeAttaque || s >= ancienne.back().sourceSeconds - kMemeAttaque) {
+            if (cible == origine) ++bilan.alreadyOnGrid; else ++bilan.dropped;
+            continue;
+        }
+        int sien = -1;
+        for (size_t i = 1; i + 1 < ancienne.size(); ++i)
+            if (!absorbe[i] && std::fabs(ancienne[i].sourceSeconds - s) <= kMemeAttaque) { sien = static_cast<int>(i); break; }
+        if (sien >= 0) absorbe[static_cast<size_t>(sien)] = true;
+        points.push_back({s, sien >= 0 ? ancienne[static_cast<size_t>(sien)].tick : origine, cible, sien, true});
+    }
+    for (size_t i = 0; i < ancienne.size(); ++i)
+        if (!absorbe[i]) points.push_back({ancienne[i].sourceSeconds, ancienne[i].tick, ancienne[i].tick, static_cast<int>(i), false});
+    std::stable_sort(points.begin(), points.end(), [](const Point& a, const Point& b) { return a.secondes < b.secondes; });
+
+    // LA MARCHE, dans l'ordre du fichier. Un point « dur » est un marqueur qui restera quoi qu'il
+    // arrive (un marqueur gardé) ou qui restera à sa place s'il est écarté (le marqueur d'une
+    // attaque) : chaque cible doit passer SOUS le plancher du prochain point dur — sa place si
+    // c'est un marqueur gardé, la plus basse de sa place et de sa cible si c'est une attaque — et
+    // AU-DESSUS du dernier point posé. Ainsi la carte finale reste strictement croissante, et ce
+    // qui ne passe pas est écarté, compté, jamais forcé.
+    const auto plancher = [&points](size_t depuis) {
+        for (size_t j = depuis; j < points.size(); ++j) {
+            const Point& p = points[j];
+            if (!p.attaque) return p.cible;
+            if (p.marqueur >= 0) return std::min(p.origine, p.cible);
+        }
+        return std::numeric_limits<Tick>::max();
+    };
+    std::vector<WarpMarker> neuve;
+    size_t calees = 0;
+    for (size_t i = 0; i < points.size(); ++i) {
+        const Point& p = points[i];
+        const Tick dernier = neuve.empty() ? std::numeric_limits<Tick>::min() : neuve.back().tick;
+        if (!p.attaque) { neuve.push_back({p.secondes, p.cible}); continue; }
+        if (dernier < p.cible && p.cible < plancher(i + 1)) {
+            // Le marqueur d'une attaque déjà sur sa ligne est posé aussi : sans lui, ses voisines
+            // calées l'emporteraient avec elles.
+            const double secondes = p.marqueur >= 0 ? ancienne[static_cast<size_t>(p.marqueur)].sourceSeconds : p.secondes;
+            neuve.push_back({secondes, p.cible});
+            if (p.cible == p.origine) { ++bilan.alreadyOnGrid; continue; }
+            ++calees;
+            bilan.largestShift = std::max<Tick>(bilan.largestShift, std::llabs(p.cible - p.origine));
+            continue;
+        }
+        ++bilan.dropped;
+        if (p.marqueur >= 0) neuve.push_back(ancienne[static_cast<size_t>(p.marqueur)]);
+    }
+    bilan.moved = calees;
+    if (calees == 0) return bilan;
+    clip.warpMarkers = std::move(neuve);
+    *original = std::move(clip);
+    return bilan;
+}
+
 bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tick relativeTick) {
     Clip* clip = clipById(clips, clipId);
     if (!clip || !clipIsWarped(*clip)) return false;

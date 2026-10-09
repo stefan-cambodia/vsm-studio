@@ -319,6 +319,7 @@ public:
     /// retrouver — un composant de dessin n'ouvre pas de fichier.
     std::function<void(size_t, uint64_t)> onClipTrimToSoundRequested;
     std::function<void(size_t, uint64_t)> onClipSplitAtSilencesRequested;   // D542.3
+    std::function<void(size_t, uint64_t)> onClipQuantizeAudioRequested;     // D543.3
     /// D20.3 : découper les clips audio CHOISIS aux transitoires. L'application
     /// lit les fichiers et coupe ; la vue ne sait pas lire un fichier.
     std::function<void()> onClipSliceAtOnsetsRequested;
