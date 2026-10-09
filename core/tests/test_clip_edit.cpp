@@ -1315,3 +1315,57 @@ VSM_TEST(quantizing_again_moves_the_markers_of_the_first_pass_instead_of_doublin
     VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 0.26), Tick(480));
     VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 0.77), Tick(960));
 }
+
+// D544.1 — DES NOTES DEPUIS LES ATTAQUES. 120 BPM, 480 ticks par noire : une seconde fait 960 ticks.
+namespace {
+Tick enTicks(double secondes) { return static_cast<Tick>(std::llround(secondes * 960.0)); }
+}
+
+VSM_TEST(attacks_become_notes_where_they_sound_with_a_velocity_from_their_level) {
+    const Clip c = clip(1, 0, 3840);
+    uint64_t ids = 7;
+    const std::vector<double> attaques{0.26, 0.49, 0.77, 1.01};
+    const auto bilan = notesFromAttacks(c, attaques, {0.0, -6.0, -12.0, -50.0}, 36, 120, true, 100000,
+                                        ids, enTicks, enSecondes);
+    VSM_ASSERT_EQ(bilan.notes.size(), size_t(4));
+    VSM_ASSERT_EQ(bilan.outside, size_t(0));
+    const Tick ticks[] = {250, 470, 739, 970};
+    const int velocites[] = {127, 109, 91, 1};
+    for (size_t i = 0; i < 4; ++i) {
+        VSM_ASSERT_EQ(bilan.notes[i].startTick, ticks[i]);
+        VSM_ASSERT_EQ(bilan.notes[i].endTick, ticks[i] + 120);
+        VSM_ASSERT_EQ(int(bilan.notes[i].number), 36);
+        VSM_ASSERT_EQ(int(bilan.notes[i].velocity), velocites[i]);
+        VSM_ASSERT_EQ(bilan.notes[i].id, uint64_t(7 + i));   // numérotées, jamais nulles (D262)
+    }
+    // La vélocité FIXE : 100 partout, niveaux ou pas.
+    const auto fixe = notesFromAttacks(c, attaques, {0.0, -6.0, -12.0, -50.0}, 38, 60, false, 100000,
+                                       ids, enTicks, enSecondes);
+    for (const auto& n : fixe.notes) { VSM_ASSERT_EQ(int(n.velocity), 100); VSM_ASSERT_EQ(int(n.number), 38); }
+}
+
+VSM_TEST(attacks_of_a_quantized_clip_become_notes_on_the_grid) {
+    // Le clip calé par « Quantifier l'audio » : la CARTE dit où les attaques sonnent.
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    const std::vector<double> attaques{0.26, 0.49, 0.77, 1.01};
+    quantizeClipToGrid(clips, 1, attaques, 240, 100000, enSecondes);
+    uint64_t ids = 1;
+    const auto bilan = notesFromAttacks(clips[0], attaques, {}, 36, 120, true, 100000, ids, enTicks, enSecondes);
+    VSM_ASSERT_EQ(bilan.notes.size(), size_t(4));
+    const Tick lignes[] = {240, 480, 720, 960};
+    for (size_t i = 0; i < 4; ++i) VSM_ASSERT_EQ(bilan.notes[i].startTick, lignes[i]);
+    for (const auto& n : bilan.notes) VSM_ASSERT_EQ(int(n.velocity), 100);   // niveaux absents : fixe
+}
+
+VSM_TEST(an_attack_outside_the_played_window_is_left_out_and_counted) {
+    // Le clip posé à la mesure 2 joue la seconde 1 à 2 du fichier : 0,26 s n'en est pas, ni 3,5 s.
+    Clip c = clip(1, 1920, 960);
+    c.sourceStartSeconds = 1.0;
+    uint64_t ids = 1;
+    const auto bilan = notesFromAttacks(c, {0.26, 1.25, 3.5}, {0.0, -3.0, 0.0}, 36, 120, true, 100000,
+                                        ids, enTicks, enSecondes);
+    VSM_ASSERT_EQ(bilan.outside, size_t(2));
+    VSM_ASSERT_EQ(bilan.notes.size(), size_t(1));
+    VSM_ASSERT_EQ(bilan.notes[0].startTick, Tick(1920 + 240));
+    VSM_ASSERT_EQ(int(bilan.notes[0].velocity), 127);   // la plus forte des GARDÉES fixe l'échelle
+}

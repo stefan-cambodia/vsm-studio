@@ -262,6 +262,24 @@ AudioQuantizeReport quantizeClipToGrid(std::vector<Clip>& clips, uint64_t clipId
                                        const std::vector<double>& onsetSourceSeconds, Tick grid,
                                        Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
 
+/// D544.1 : DES NOTES DEPUIS LES ATTAQUES d'un clip audio. Chaque attaque (secondes du FICHIER) est posée
+/// au tick où elle SONNE — la carte d'étirement si le clip suit le tempo, la carte de tempo sinon — et
+/// devient une note de hauteur `pitch` et de durée `length`. Une attaque hors de la fenêtre jouée du clip
+/// est écartée et comptée. LA VÉLOCITÉ suit le niveau (`levelsDb`, un par attaque) rapporté à l'attaque
+/// la plus forte du clip : la plus forte joue à 127, chaque décibel de moins en retire 3, bornée à 1 ;
+/// `velocityFromLevel` faux (ou des niveaux absents) : 100 partout. Chaque note reçoit `idCounter++` —
+/// la convention de ce fichier (`peekNextNoteId()`, puis `ensureNoteIdAbove(compteur - 1)`) : une note
+/// d'identifiant nul serait « jamais numérotée » pour tout ce qui la vise (D262, `clips-numerotes.py`).
+struct AttackNotes {
+    std::vector<Note> notes;
+    size_t outside = 0;   ///< attaques hors de la fenêtre jouée du clip
+};
+AttackNotes notesFromAttacks(const Clip& clip, const std::vector<double>& onsetSourceSeconds,
+                             const std::vector<double>& levelsDb, uint8_t pitch, Tick length,
+                             bool velocityFromLevel, Tick materialEnd, uint64_t& idCounter,
+                             const std::function<Tick(double)>& secondsToTicks,
+                             const std::function<double(Tick)>& ticksToSeconds);
+
 /// Retire le marqueur `index` — jamais le premier, jamais sous deux.
 bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index);
 

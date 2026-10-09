@@ -1705,6 +1705,12 @@ private:
     /// D543.3 : les attaques du clip calées sur la grille demandée, par des marqueurs d'étirement ;
     /// un pas ; dit (`VSM_QUANTIFIER_AUDIO`).
     void quantifierAudio(size_t trackIndex, uint64_t clipId);
+    /// D544.1 : les attaques d'un clip audio, relues dans son fichier (secondes du fichier, et la crête
+    /// des 20 ms qui suivent chacune, en dBFS). Faux, et `erreur` dite, si le fichier ne se relit pas.
+    bool lireAttaquesDuClip(size_t trackIndex, uint64_t clipId, std::vector<double>& secondes,
+                            std::vector<double>& niveauxDb, juce::String& erreur);
+    /// D544.1 : une piste MIDI neuve, une note par attaque du clip audio ; un pas ; dit (`VSM_NOTES_ATTAQUES`).
+    void notesDepuisAttaques(size_t trackIndex, uint64_t clipId);
     /// D20.3 : les clips audio choisis, coupés à chaque attaque trouvée.
     void sliceSelectedClipsAtOnsets();
     /// D21.3 : la coupe demandée à `tick` sur la piste, déplacée au passage

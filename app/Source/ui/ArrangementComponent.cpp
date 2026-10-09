@@ -873,6 +873,8 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
         menu.addItem(22, tr(u8"D\u00e9couper aux transitoires (clips audio choisis)"));
         // D543.3 : QUANTIFIER L'AUDIO — les attaques calées sur la grille par des marqueurs.
         menu.addItem(26, tr(u8"Quantifier l'audio…"));
+        // D544.1 : DES NOTES DEPUIS LES ATTAQUES — une piste MIDI neuve, une note par attaque.
+        menu.addItem(27, tr(u8"Créer des notes depuis les attaques…"));
         // D20.4 : TRANSCRIRE EN MIDI, un clip à la fois -- le premier
         // choisi. L'application dit si Python manque, avec la raison.
         menu.addItem(23, tr(u8"Transcrire en MIDI (Basic Pitch, Python)"));
@@ -1749,6 +1751,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             return;
         case 26:   // D543.3
             if (onClipQuantizeAudioRequested) onClipQuantizeAudioRequested(piste, clipId);
+            return;
+        case 27:   // D544.1
+            if (onClipNotesFromAttacksRequested) onClipNotesFromAttacksRequested(piste, clipId);
             return;
         case 23:
             if (onClipTranscribeRequested) onClipTranscribeRequested();

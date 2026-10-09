@@ -790,6 +790,43 @@ AudioQuantizeReport quantizeClipToGrid(std::vector<Clip>& clips, uint64_t clipId
     return bilan;
 }
 
+AttackNotes notesFromAttacks(const Clip& clip, const std::vector<double>& onsetSourceSeconds,
+                             const std::vector<double>& levelsDb, uint8_t pitch, Tick length,
+                             bool velocityFromLevel, Tick materialEnd, uint64_t& idCounter,
+                             const std::function<Tick(double)>& secondsToTicks,
+                             const std::function<double(Tick)>& ticksToSeconds) {
+    AttackNotes bilan;
+    const Tick fin = clip.startTick + clipPlayedLength(clip, materialEnd);
+    const bool niveaux = velocityFromLevel && levelsDb.size() == onsetSourceSeconds.size();
+    // LES TICKS D'ABORD, et la plus forte des attaques GARDÉES : celle qu'on écarte ne fixe pas l'échelle.
+    std::vector<std::pair<Tick, double>> gardees;
+    double plusForte = -std::numeric_limits<double>::infinity();
+    for (size_t i = 0; i < onsetSourceSeconds.size(); ++i) {
+        const double s = onsetSourceSeconds[i];
+        const Tick tick = clipIsWarped(clip)
+            ? clip.startTick + warpTickAtSeconds(clip, s)
+            : (secondsToTicks && ticksToSeconds
+                   ? secondsToTicks(ticksToSeconds(clip.startTick) + (s - clip.sourceStartSeconds))
+                   : clip.startTick);
+        if (tick < clip.startTick || tick >= fin) { ++bilan.outside; continue; }
+        const double niveau = niveaux ? levelsDb[i] : 0.0;
+        gardees.emplace_back(tick, niveau);
+        plusForte = std::max(plusForte, niveau);
+    }
+    for (const auto& [tick, niveau] : gardees) {
+        Note note;
+        note.startTick = tick;
+        note.endTick = tick + std::max<Tick>(1, length);
+        note.number = pitch;
+        note.id = idCounter++;
+        note.velocity = niveaux
+            ? static_cast<uint8_t>(std::clamp<long long>(std::llround(127.0 + 3.0 * (niveau - plusForte)), 1, 127))
+            : uint8_t{100};
+        bilan.notes.push_back(note);
+    }
+    return bilan;
+}
+
 bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tick relativeTick) {
     Clip* clip = clipById(clips, clipId);
     if (!clip || !clipIsWarped(*clip)) return false;

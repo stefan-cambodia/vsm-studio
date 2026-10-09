@@ -649,6 +649,9 @@ MainComponent::MainComponent()
     arrangement_.onClipQuantizeAudioRequested = [this](size_t piste, uint64_t clipId) {   // D543.3
         quantifierAudio(piste, clipId);
     };
+    arrangement_.onClipNotesFromAttacksRequested = [this](size_t piste, uint64_t clipId) {   // D544.1
+        notesDepuisAttaques(piste, clipId);
+    };
     // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
     // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
     // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et
@@ -13656,6 +13659,50 @@ void MainComponent::decouperAuxSilences(size_t trackIndex, uint64_t clipId) {
     });
 }
 
+bool MainComponent::lireAttaquesDuClip(size_t trackIndex, uint64_t clipId, std::vector<double>& secondes,
+                                       std::vector<double>& niveauxDb, juce::String& erreur) {
+    // D544.1 : LES ATTAQUES D'UN CLIP AUDIO, relues dans son fichier — une seule lecture pour « Quantifier
+    // l'audio », « Créer des notes depuis les attaques » et le groove. La détection est celle de
+    // « Découper aux transitoires », SANS sa marge d'avant l'attaque : l'attaque elle-même, pas l'endroit
+    // où l'on couperait. Le NIVEAU d'une attaque est la crête des 20 ms qui la suivent, en dBFS.
+    secondes.clear();
+    niveauxDb.clear();
+    if (trackIndex >= project_.tracks.size()) return false;
+    const auto& piste = project_.tracks[trackIndex];
+    const auto* clip = findClip(trackIndex, clipId);
+    if (clip == nullptr) return false;
+    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
+    auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+    if (!charge.source || !charge.source->samples) {
+        erreur = tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName());
+        return false;
+    }
+    const auto magasin = charge.source->samples;
+    vsm::midi::Tick finMateriau = 0;
+    if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+    // CE QUE LE CLIP JOUE DU FICHIER : par sa carte s'il suit déjà le tempo, par le tempo sinon.
+    const auto jouee = vsm::sequencer::clipPlayedLength(*clip, finMateriau);
+    const double duree = vsm::sequencer::clipIsWarped(*clip)
+        ? vsm::sequencer::warpSourceSecondsAt(*clip, jouee) - clip->sourceStartSeconds
+        : project_.ticksToSeconds(clip->startTick + jouee) - project_.ticksToSeconds(clip->startTick);
+    const auto depart = static_cast<int64_t>(std::llround(clip->sourceStartSeconds * sr));
+    const auto compte = static_cast<int64_t>(std::llround(std::max(0.0, duree) * sr));
+    const auto lire = [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); };
+    const auto trouvees = vsm::audio::io::detectOnsets(lire, compte, sr, 8.0, 0.050, -50.0, 0.0);
+    const auto fenetre = static_cast<int64_t>(std::llround(0.020 * sr));
+    for (const int64_t a : trouvees) {
+        secondes.push_back(clip->sourceStartSeconds + static_cast<double>(a) / sr);
+        float crete = 0.0f;
+        for (int64_t i = a; i < std::min(compte, a + fenetre); ++i) {
+            float g = 0.0f, d = 0.0f;
+            if (lire(i, g, d)) crete = std::max({crete, std::abs(g), std::abs(d)});
+        }
+        niveauxDb.push_back(20.0 * std::log10(std::max(1e-6, static_cast<double>(crete))));
+    }
+    return true;
+}
+
 void MainComponent::quantifierAudio(size_t trackIndex, uint64_t clipId) {
     // D543.3 : LES ATTAQUES DU CLIP CALÉES SUR LA GRILLE, par des marqueurs d'étirement posés à
     // chacune (`quantizeClipToGrid`). La détection est celle de « Découper aux transitoires », sans
@@ -13699,34 +13746,17 @@ void MainComponent::quantifierAudio(size_t trackIndex, uint64_t clipId) {
         auto it = std::find_if(piste.clips.begin(), piste.clips.end(),
                                [clipId](const vsm::sequencer::Clip& c) { return c.id == clipId; });
         if (it == piste.clips.end()) return;
-        const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
-        const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
-        auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
-        if (!charge.source || !charge.source->samples) {
-            montrerBoite(juce::AlertWindow::InfoIcon, titre,
-                         tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName()));
+        std::vector<double> attaques, niveaux;
+        juce::String erreur;
+        if (!lireAttaquesDuClip(trackIndex, clipId, attaques, niveaux, erreur)) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre, erreur);
             return;
         }
-        const auto magasin = charge.source->samples;
         vsm::midi::Tick finMateriau = 0;
         if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
         const auto versSecondes = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
-        // CE QUE LE CLIP JOUE DU FICHIER : par sa carte s'il suit déjà le tempo, par le tempo sinon.
-        const auto jouee = vsm::sequencer::clipPlayedLength(*it, finMateriau);
-        const double duree = vsm::sequencer::clipIsWarped(*it)
-            ? vsm::sequencer::warpSourceSecondsAt(*it, jouee) - it->sourceStartSeconds
-            : versSecondes(it->startTick + jouee) - versSecondes(it->startTick);
-        const auto depart = static_cast<int64_t>(std::llround(it->sourceStartSeconds * sr));
-        const auto compte = static_cast<int64_t>(std::llround(std::max(0.0, duree) * sr));
-        const auto trouvees = vsm::audio::io::detectOnsets(
-            [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); },
-            compte, sr, 8.0, 0.050, -50.0, 0.0);
-        std::vector<double> attaques;
         juce::String instants;
-        for (const int64_t a : trouvees) {
-            attaques.push_back(it->sourceStartSeconds + static_cast<double>(a) / sr);
-            instants += (instants.isEmpty() ? "" : ", ") + juce::String(attaques.back(), 4);
-        }
+        for (const double a : attaques) instants += (instants.isEmpty() ? "" : ", ") + juce::String(a, 4);
         const auto pas = static_cast<vsm::midi::Tick>(project_.ticksPerQuarterNote) >> (choix - 1);
         // SUR UNE COPIE D'ABORD : un geste qui ne cale rien n'ouvre pas de pas d'historique.
         auto essai = piste.clips;
@@ -13762,6 +13792,116 @@ void MainComponent::quantifierAudio(size_t trackIndex, uint64_t clipId) {
                     .replace("%2", juce::String(static_cast<int>(bilan.alreadyOnGrid)))
                     .replace("%3", juce::String(static_cast<int>(bilan.dropped)))
                     .replace("%4", juce::String(plusGrandMs, 1)));
+    });
+}
+
+void MainComponent::notesDepuisAttaques(size_t trackIndex, uint64_t clipId) {
+    // D544.1 : UNE NOTE PAR ATTAQUE du clip audio, sur une piste MIDI neuve — les « hitpoints » de Cubase
+    // devenus des notes. Les attaques sont celles de « Quantifier l'audio » (`lireAttaquesDuClip`), posées
+    // où elles SONNENT par `notesFromAttacks` (la carte d'étirement comprise).
+    if (trackIndex >= project_.tracks.size()) return;
+    const auto& piste = project_.tracks[trackIndex];
+    const juce::String titre = tr(u8"Créer des notes depuis les attaques");
+    if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Cette commande lit les attaques d'un FICHIER : elle ne s'applique qu'à un clip de "
+                        u8"piste audio."));
+        return;
+    }
+    const auto* clip = findClip(trackIndex, clipId);
+    if (clip == nullptr) return;
+    if (clip->reversed) {
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"Ce clip joue à l'envers : ses attaques ne tombent pas où le fichier les met, "
+                        u8"aucune note n'a été créée."));
+        return;
+    }
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        titre,
+        tr(u8"Une piste MIDI neuve, après la piste audio : une note par attaque du clip, à sa place."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("hauteur", "36", tr(u8"Hauteur (numéro de note MIDI ; 36 = grosse caisse) :"));
+    fenetre->addComboBox("duree", {"1/32", "1/16", "1/8", "1/4"}, tr(u8"Durée des notes :"));
+    fenetre->getComboBoxComponent("duree")->setSelectedId(2, juce::dontSendNotification);   // 1/16
+    fenetre->addComboBox("velocite", {tr(u8"selon le niveau de l'attaque"), tr(u8"fixe (100)")}, tr(u8"Vélocité :"));
+    fenetre->getComboBoxComponent("velocite")->setSelectedId(1, juce::dontSendNotification);
+    fenetre->addButton(tr(u8"Créer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, trackIndex, clipId, titre](int resultat) {
+        const int hauteur = fenetre->getTextEditorContents("hauteur").trim().getIntValue();
+        const int duree = fenetre->getComboBoxComponent("duree")->getSelectedId();
+        const bool selonNiveau = fenetre->getComboBoxComponent("velocite")->getSelectedId() == 1;
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1 || duree < 1 || duree > 4 || trackIndex >= project_.tracks.size()) return;
+        if (hauteur < 0 || hauteur > 127) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         tr(u8"La hauteur doit être un numéro de note de 0 à 127 : aucune note n'a été créée."));
+            return;
+        }
+        const auto* clip = findClip(trackIndex, clipId);
+        if (clip == nullptr) return;
+        const vsm::sequencer::Clip leClip = *clip;
+        std::vector<double> attaques, niveaux;
+        juce::String erreur;
+        if (!lireAttaquesDuClip(trackIndex, clipId, attaques, niveaux, erreur)) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre, erreur);
+            return;
+        }
+        const auto& source = project_.tracks[trackIndex];
+        vsm::midi::Tick finMateriau = 0;
+        if (source.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(source.audio.durationSeconds());
+        const auto longueur = static_cast<vsm::midi::Tick>(project_.ticksPerQuarterNote) >> (4 - duree);   // 1/32 … 1/4
+        uint64_t compteurNotes = project_.peekNextNoteId();
+        auto bilan = vsm::sequencer::notesFromAttacks(
+            leClip, attaques, niveaux, static_cast<uint8_t>(hauteur), longueur, selonNiveau, finMateriau,
+            compteurNotes, [this](double s) { return project_.secondsToTicks(s); },
+            [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); });
+        juce::String detail;
+        for (const auto& n : bilan.notes)
+            detail += (detail.isEmpty() ? "" : " ") + juce::String(static_cast<int>(n.startTick)) + ":"
+                    + juce::String(static_cast<int>(n.velocity));
+        std::fputs((juce::String::fromUTF8(u8"VSM_NOTES_ATTAQUES : ") + juce::String(static_cast<int>(bilan.notes.size()))
+                    + juce::String::fromUTF8(u8" note(s) de hauteur ") + juce::String(hauteur) + ", "
+                    + juce::String(static_cast<int>(bilan.outside)) + juce::String::fromUTF8(u8" écartée(s) ; tick:vélocité ")
+                    + (detail.isEmpty() ? juce::String("-") : detail) + "\n").toRawUTF8(), stderr);
+        if (bilan.notes.empty()) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         tr(u8"Aucune attaque trouvée dans ce clip : aucune piste créée."));
+            return;
+        }
+        // LA PISTE NAÎT COMME CELLE DE « TRANSCRIRE EN MIDI » : après la piste audio, sa couleur, un clip sur
+        // la plage du clip audio ; l'instrument reste à choisir.
+        vsm::sequencer::Track neuve;
+        neuve.kind = vsm::sequencer::Track::Kind::Midi;
+        neuve.name = (leClip.name.empty() ? source.name : leClip.name) + " (attaques)";
+        neuve.colorRgba = source.colorRgba;
+        neuve.folderDepth = source.folderDepth;
+        vsm::midi::Tick finNotes = 0;
+        for (const auto& note : bilan.notes) finNotes = std::max(finNotes, note.endTick);
+        neuve.notes = std::move(bilan.notes);
+        beginProjectEdit(u8"Créer des notes depuis les attaques");
+        project_.ensureNoteIdAbove(compteurNotes - 1);
+        const auto finClip = leClip.startTick + vsm::sequencer::clipPlayedLength(leClip, finMateriau);
+        const auto fin = std::max(finClip, finNotes);
+        uint64_t compteur = project_.peekNextClipId();
+        const auto plage = vsm::sequencer::createClip(neuve.clips, leClip.startTick,
+                                                        std::max<vsm::midi::Tick>(1, fin - leClip.startTick),
+                                                        compteur, fin);
+        project_.ensureClipIdAbove(compteur - 1);
+        for (auto& c : neuve.clips)
+            if (c.id == plage.id) { c.name = neuve.name; c.colorRgba = neuve.colorRgba; }
+        const size_t notes = neuve.notes.size();
+        project_.tracks.push_back(std::move(neuve));
+        vsm::sequencer::moveTrack(project_, project_.tracks.size() - 1, trackIndex + 1);
+        rebuildFromProject(false);
+        trackList_.selectTrackIndex(trackIndex + 1);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(
+                tr(u8"Créer des notes depuis les attaques : %1 note(s) sur « %2 », %3 écartée(s)")
+                    .replace("%1", juce::String(static_cast<int>(notes)))
+                    .replace("%2", juce::String::fromUTF8(project_.tracks[trackIndex + 1].name.c_str()))
+                    .replace("%3", juce::String(static_cast<int>(bilan.outside))));
     });
 }
 

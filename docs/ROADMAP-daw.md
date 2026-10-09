@@ -40551,3 +40551,95 @@ verts ; la suite Python (257, inchangée depuis les deux courses vertes du matin
 encore au moment du commit, demandé par l'utilisateur ; leur résultat s'écrit au commit suivant.
 **Relevé à leur fin** : Python 257 sur 257, ruff et mypy sans signalement, toutes les gardes vertes
 (`index-a-jour.py` : 554 phases jusqu'à D543, concordantes) — `verifier.sh` rc 0.
+
+
+### Phase D544 — un cinquième audit des fonctions : des notes depuis les attaques, un groove depuis l'audio, la transposition globale (09/10/2026)
+
+*Écrite le 09/10 à 12 h 50, D543 faite.*
+
+**LA MÉTHODE, celle de D535, D542 et D543** : une fonction ne s'écrit manquante qu'après l'avoir cherchée
+dans le code (`core/`, `audio/`, `interchange/`, `app/Source/`, 626 fichiers), par `find … | xargs
+/usr/bin/grep`, la recherche validée sur des témoins qui existent (« snapNotesToChords » 5 fichiers,
+« VCA » 29, « Contraindre » 4, « quantizeClipToGrid » 4). **Un zéro de cet audit était faux, et il a été
+revu avant d'être écrit** : « piste dossier | folder track | dossier de pistes | folderTrack » rendait 0,
+et les pistes dossier existent (`Track::Kind::Folder`, `moveTrackWithFolder`) — le motif ne contenait pas
+« Folder » seul. **Cherché et trouvé** : le rendu d'une piste ou d'une sélection (`bounceSelectedTrack`,
+`bounceSelectionToNewTracks`), les versions de piste, le *side-chain*, le swing, le métronome et le
+précompte, l'enregistrement en boucle, les repères de cycle (D542.1), les durées fixes et le legato, le
+découpage aux silences (D542.3), l'export de pistes séparées, l'extraction de groove — mais **depuis des
+NOTES seulement** (`extractGrooveFromSelectedTrack` lit `source.notes`). **Écarté, et pourquoi** : les
+*chord pads* (un outil de jeu, et le parc se joue par MIDI) ; l'alignement d'une prise sur une autre
+(*audio alignment*, un déformateur temporel par programmation dynamique — gros, et sans besoin établi) ;
+la courbe de gain DANS un clip (*event envelope*, manquante — 0 pour « enveloppe du clip », « gain
+envelope », « courbe de gain » — mais la plus coûteuse des quatre, du dessin sur le clip à ses poignées, et
+le volume de piste s'automatise déjà : **elle ouvre le prochain audit**).
+
+**CE QUI MANQUE, VÉRIFIÉ DANS LE CODE** (seul un commentaire nomme les « hitpoints » de Cubase ; 0 pour
+« transposition globale », « global transpose », « transposer le projet ») :
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D544.1 | **Créer des notes MIDI depuis les attaques d'un clip audio** — « Créer des notes MIDI » des points d'attaque | une piste MIDI neuve, après la piste audio : une note par attaque, à SA place sur la ligne de temps (la carte d'étirement comprise), hauteur et durée choisies, vélocité selon le niveau de l'attaque ; annulable ; mesuré par le `.mid` exporté |
+| D544.2 | **Extraire le groove d'un clip audio** — le groove depuis les points d'attaque | le placement et l'accentuation des attaques deviennent le groove courant, que « Appliquer le groove » donne à une partie MIDI ; mesuré : une partie droite prend les écarts de la prise |
+| D544.3 | **La transposition globale** — transposer tout le morceau d'un réglage | un réglage du projet en demi-tons, appliqué à la lecture ET à l'export à chaque piste MIDI (sauf la batterie, et toute piste qui s'en exclut) et à la hauteur des clips audio ; écrit dans `project.json` seulement s'il n'est pas nul ; un pas ; mesuré par l'export |
+
+**L'ORDRE, TRANCHÉ ICI.** D544.1 d'abord : il prolonge D543.3 (la même détection, les mêmes instants
+rapportés par la carte du clip) et sert une prise de batterie enregistrée, que la chaîne sépare en stem
+audio ; puis D544.2, qui réemploie la même lecture des attaques ; puis D544.3.
+
+### Phase D544.1 — créer des notes MIDI depuis les attaques d'un clip audio (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 12 h 50.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **La lecture des attaques est UNE fonction de l'application**, partagée avec « Quantifier l'audio »
+  (et D544.2) : le fichier relu, `detectOnsets` sans marge d'avant l'attaque, et pour chaque attaque son
+  NIVEAU — la crête des 20 ms qui la suivent, en dBFS. « Quantifier l'audio » y passe, à l'identique (son
+  banc le rejoue).
+- **Le passage en notes est dans `core/`** (`notesFromAttacks`) : chaque attaque est posée au tick où elle
+  SONNE — la carte d'étirement si le clip suit le tempo, la carte de tempo sinon (la règle de
+  « Transcrire en MIDI » et de « Découper aux transitoires ») ; une attaque hors de la fenêtre jouée du
+  clip est écartée et comptée.
+- **La vélocité suit le niveau, rapporté à l'attaque la plus forte du clip** : la plus forte joue à 127,
+  chaque décibel de moins en retire 3, bornée à 1 — 6 dB plus bas, 109 ; 12 dB, 91 ; 42 dB et plus, 1. Une
+  frappe de batterie se compare aux autres frappes de la même prise, pas à un niveau absolu que le gain
+  d'enregistrement déplacerait. Une option « vélocité fixe » donne 100 à toutes.
+- **Le geste** : « Créer des notes depuis les attaques… » au menu du clip audio ; la fenêtre demande la
+  hauteur (36, la grosse caisse General MIDI, proposée), la durée (1/16 proposée ; 1/32 à 1/4) et la
+  vélocité (selon le niveau, ou fixe). La piste naît comme celle de « Transcrire en MIDI » : après la piste
+  audio, sa couleur, un clip sur la plage du clip audio ; l'instrument reste à choisir. Un pas ; la ligne
+  d'état et le journal (`VSM_NOTES_ATTAQUES`) disent combien de notes, d'écartées, et leurs vélocités.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : quatre attaques d'un clip non étiré à 120 BPM → quatre notes aux ticks attendus
+   (0,26 s → 250) ; le même clip calé (D543.3) → les notes sur les lignes (240, 480, 720, 960) ; niveaux
+   0, −6, −12, −50 dB → vélocités 127, 109, 91, 1 ; vélocité fixe → 100 partout ; hauteur et durée
+   choisies ; une attaque hors du clip écartée, comptée ;
+2. par l'application, mesuré par le `.mid` EXPORTÉ : le fichier de D543.3 (clics de crêtes 0,8 · 0,4 ·
+   0,2 · 0,8) → quatre notes de hauteur 36 aux ticks **250 · 470 · 739 · 970**, vélocités **127 · 109 ·
+   91 · 127** (à ±1 tick et ±2 de vélocité : la crête relue après le chargement) ; le même projet calé
+   d'abord par « Quantifier l'audio » → **240 · 480 · 720 · 960** — la carte est lue ; Ctrl+Z → plus de
+   piste neuve ; « Quantifier l'audio » rejoué par son banc, inchangé ;
+3. un banc `tools/notes-depuis-attaques.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; libellés traduits ; la fenêtre photographiée dans les deux langues.
+
+**D544.1 EST FAITE (09/10, 13 h 12 ; le banc vert à 13 h 06).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 436 → **439** : 0,26 · 0,49 · 0,77 · 1,01 s → ticks 250 · 470 · 739 · 970, niveaux 0 · −6 · −12 · −50 dB → 127 · 109 · 91 · 1, durée et hauteur choisies ; vélocité fixe → 100 ; le clip calé → 240 · 480 · 720 · 960 ; une attaque hors de la fenêtre jouée écartée et comptée, et la plus forte des GARDÉES fixe l'échelle. **Rouges** : la carte ignorée (250 au lieu de 240) ; l'échelle fixée par toutes les attaques (118 au lieu de 127) | **oui** |
+| 2 | par l'application, mesuré par le `.mid` exporté | `tools/notes-depuis-attaques.sh` : **250:127 · 470:109 · 739:91 · 970:127**, hauteur 36, durée 120 ; le clip calé d'abord : **240 · 480 · 720 · 960** ; Ctrl+Z → les pistes d'avant ; `quantifier-audio.sh` rejoué après la mise en commun de la lecture des attaques : ses six contrôles, mêmes chiffres | **oui** |
+| 3 | le banc, les photos | 5 contrôles, entré dans `verifier.sh --bancs` (**61**) ; rouge sur la vélocité forcée à fixe (toutes à 100, le contrôle 2) ; la fenêtre photographiée et regardée dans les deux langues (« Hauteur (numéro de note MIDI ; 36 = grosse caisse) », « Pitch (MIDI note number; 36 = kick drum) ») ; libellés traduits | **oui** |
+
+**TRANCHÉ EN ÉCRIVANT LE BANC.** Sa première course a déclaré « rouge » le contrôle (1) : il voulait deux
+pistes, et le projet importé en a déjà une, MIDI et vide, DEVANT la piste audio — la piste neuve était bien
+juste après la piste audio. Le contrôle juge désormais « une piste de plus, MIDI, juste après la piste
+audio ». Le geste n'avait pas changé.
+
+**UNE GARDE A ATTRAPÉ CE QUE LES TESTS LAISSAIENT PASSER.** La suite entière (13 h 15) est verte, sauf
+`clips-numerotes.py` : « SANS IDENTIFIANT — `ClipEdit.cpp` : `bilan.notes.push_back(note)` ». La première
+forme de `notesFromAttacks` rendait des notes d'identifiant NUL et laissait l'application les numéroter —
+ce qu'elle faisait, d'où les tests verts ; mais le prochain appelant aurait poussé des notes « jamais
+numérotées », la faute même que D262 a payée. La fonction prend désormais un compteur (`idCounter++`, la
+convention de `ClipEdit.cpp` : `peekNextNoteId()`, puis `ensureNoteIdAbove`), le test vérifie les
+identifiants (7, 8, 9, 10), la garde repasse à 0, et le banc rejoué (13 h 54) donne les mêmes chiffres.
