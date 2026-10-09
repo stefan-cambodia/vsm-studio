@@ -742,6 +742,8 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
     menu.addItem(2, tr(u8"Couleur\u2026"));
     menu.addItem(3, tr(u8"Couleur de la piste"));
     menu.addItem(4, tr(clip.muted ? u8"R\u00e9activer" : u8"Rendre muet"));
+    // D546.3 : VERROUILLER LA POSITION — une case, sur toute la sélection.
+    menu.addItem(75, tr(u8"Verrouiller la position"), true, clip.locked);
     menu.addSeparator();
     // D358 : LA TOUCHE EST DESSINÉE PAR JUCE, PLUS ÉCRITE DANS LE LIBELLÉ. Les
     // deux parenthèses « (Ctrl+E) » et « (Ctrl+J) » mentaient dès que
@@ -1877,6 +1879,14 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             if (addWarpMarker(track.clips, clipId, clicTick_ - it->startTick) < 0) return;
             break;
         }
+        case 75: {   // D546.3 : sur TOUTE la sélection, comme le muet
+            if (onEditStarted) onEditStarted(u8"Verrouiller la position d'un clip");
+            const bool verrou = !it->locked;
+            for (auto& t : project_->tracks)
+                for (auto& c : t.clips)
+                    if (selection_.count(c.id) > 0 || c.id == clipId) c.locked = verrou;
+            break;
+        }
         case 70: {   // D545.1
             const double s = sourceAuClic(piste, *it);
             if (s < 0.0 || it->reversed) return;
@@ -2843,6 +2853,15 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     avant = s;
                 }
                 g.strokePath(ligne, juce::PathStrokeType(1.5f));
+            }
+
+            // D546.3 : UN CLIP VERROUILLÉ PORTE UN CADENAS, en haut à droite — ce qu'on ne peut pas saisir doit
+            // se voir avant qu'on essaie (la règle de D16.5).
+            if (clip.locked && r.getWidth() > 16.0f) {
+                const float cx = r.getRight() - 9.0f, cy = r.getY() + 3.0f;
+                g.setColour(Palette::textPrimary.withAlpha(0.9f));
+                g.drawRoundedRectangle(cx - 2.5f, cy, 5.0f, 5.0f, 2.0f, 1.2f);   // l'anse
+                g.fillRoundedRectangle(cx - 4.0f, cy + 3.5f, 8.0f, 6.0f, 1.0f);   // le corps
             }
 
             // LA PHASE INVERSÉE SE VOIT AUSSI : un liséré en tirets. Deux clips

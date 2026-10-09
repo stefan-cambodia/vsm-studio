@@ -1438,3 +1438,43 @@ VSM_TEST(normalizing_brings_the_peak_to_the_chosen_level) {
     VSM_ASSERT_EQ(normalizeGainFor(0.5f, 3.0), -1.0f);             // au-dessus de 0 dBFS : refusé
     VSM_ASSERT_EQ(normalizeGainFor(0.5f, -80.0), -1.0f);           // sous −60 : refusé
 }
+
+// D546.3 — VERROUILLER LA POSITION D'UN CLIP : le chemin du verrou de piste (D16.5), clip par clip.
+namespace {
+Track deuxClipsDontUnVerrouille() {
+    Track t;
+    t.kind = Track::Kind::Midi;
+    t.clips = {clip(1, 0, 960), clip(2, 1920, 960)};
+    t.clips[0].locked = true;
+    return t;
+}
+}
+
+VSM_TEST(a_locked_clip_stays_while_its_unlocked_neighbour_moves) {
+    Track t = deuxClipsDontUnVerrouille();
+    VSM_ASSERT_EQ(moveClips(t, {1, 2}, 480, false, 100000), size_t(1));
+    VSM_ASSERT_EQ(t.clips[0].startTick, Tick(0));       // verrouillé : en place
+    VSM_ASSERT_EQ(t.clips[1].startTick, Tick(2400));    // le voisin a bougé
+    resizeClipsEnd(t, {1, 2}, 240, 100000);
+    VSM_ASSERT_EQ(t.clips[0].length, Tick(960));
+    VSM_ASSERT_EQ(t.clips[1].length, Tick(1200));
+    resizeClipsStart(t, {1}, 240, 100000, enSecondes);
+    VSM_ASSERT_EQ(t.clips[0].startTick, Tick(0));
+    uint64_t ids = 10;
+    VSM_ASSERT_EQ(splitClips(t, {1}, 480, 100000, ids, enSecondes), size_t(0));   // pas coupé
+    VSM_ASSERT_EQ(t.clips.size(), size_t(2));
+}
+
+VSM_TEST(a_locked_clip_is_counted_refused_across_tracks_and_its_copy_is_free) {
+    std::vector<Track> pistes{deuxClipsDontUnVerrouille(), Track{}};
+    pistes[1].kind = Track::Kind::Midi;
+    VSM_ASSERT_EQ(lockedClipsInSelection(pistes, {1, 2}), size_t(1));
+    const auto rapport = moveClipsAcrossTracks(pistes, {1}, 1, false, 100000);
+    VSM_ASSERT_EQ(rapport.refused, size_t(1));
+    VSM_ASSERT_EQ(pistes[0].clips.size(), size_t(2));   // il n'a pas quitté sa piste
+    uint64_t ids = 10;
+    const auto copies = duplicateClips(pistes[0], {1}, 3840, ids);
+    VSM_ASSERT_EQ(copies.size(), size_t(1));
+    for (const auto& c : pistes[0].clips)
+        if (copies.count(c.id) > 0) VSM_ASSERT(!c.locked);
+}

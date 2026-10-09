@@ -737,14 +737,15 @@ MainComponent::MainComponent()
     // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et
     // ne dit rien laisse chercher la panne ailleurs.
     arrangement_.onLockRefused = [](size_t refuses) {
+        // D546.3 : LE VERROU EST CELUI DE LA PISTE OU CELUI DU CLIP — la phrase dit les deux portes.
         montrerBoite(
-            juce::AlertWindow::InfoIcon, tr(u8"Piste verrouillée"),
-            tr(refuses > 1 ? u8"%1 clips appartiennent à une piste verrouillée"
-                           : u8"%1 clip appartient à une piste verrouillée")
+            juce::AlertWindow::InfoIcon, tr(u8"Montage refusé"),
+            tr(refuses > 1 ? u8"%1 clips verrouillés n'ont pas bougé"
+                           : u8"%1 clip verrouillé n'a pas bougé")
                     .replace("%1", juce::String(static_cast<int>(refuses)))
-                + tr(u8" et n'ont pas bougé. Piste ▸ Déverrouiller la piste pour "
-                     u8"reprendre le montage. Une piste verrouillée continue de "
-                     u8"sonner et de se mixer : seul le montage est refusé."));
+                + tr(u8" : par sa piste (Piste ▸ Déverrouiller la piste) ou par lui-même (« Verrouiller la "
+                     u8"position », au menu du clip). Un clip verrouillé continue de sonner et de se mixer : "
+                     u8"seul le montage est refusé."));
     };
     pianoRoll_.onLockRefused = [] {
         montrerBoite(

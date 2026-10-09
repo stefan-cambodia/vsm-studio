@@ -148,6 +148,7 @@ JsonValue clipToJson(const ProjectClip& clip) {
         }
         c.set("gainEnvelope", std::move(points));
     }
+    if (clip.locked) c.set("locked", JsonValue::makeBoolean(true));   // D546.3
     return c;
 }
 
@@ -176,6 +177,7 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
     clip.pitchSemitones = clipJson["pitch"].asNumber(0.0);
     for (const auto& p : clipJson["gainEnvelope"].elements())   // D545.1
         clip.gainEnvelope.emplace_back(p["seconds"].asNumber(0.0), static_cast<float>(p["gain"].asNumber(1.0)));
+    clip.locked = clipJson["locked"].asBoolean(false);   // D546.3
     return clip;
 }
 
@@ -231,6 +233,7 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     c.reversed = clip.reversed;
     c.pitchSemitones = clip.pitchSemitones;   // D54
     for (const auto& p : clip.gainEnvelope) c.gainEnvelope.emplace_back(p.sourceSeconds, p.gain);   // D545.1
+    c.locked = clip.locked;   // D546.3
     // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
@@ -258,6 +261,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
               [](const vsm::sequencer::GainPoint& a, const vsm::sequencer::GainPoint& b) {
                   return a.sourceSeconds < b.sourceSeconds;
               });
+    c.locked = clip.locked;   // D546.3
     return c;
 }
 

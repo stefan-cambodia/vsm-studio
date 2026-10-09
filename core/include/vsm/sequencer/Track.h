@@ -264,6 +264,11 @@ struct Clip {
     /// du clip et ses fondus. EN DERNIER, la règle de ce struct : posée d'abord après `warpMode`, elle
     /// décalait d'un cran l'agrégat positionnel de `clipToModel` (`{…, WarpMode::Off, {}, 0}`).
     std::vector<GainPoint> gainEnvelope;
+
+    /// D546.3 : LA POSITION VERROUILLÉE — le clip ne se déplace, ne se rogne, ne s'étire, ne se coupe ni ne se
+    /// joint plus ; il se COPIE (la copie naît déverrouillée). Il passe par le chemin du verrou de piste
+    /// (D16.5) : mêmes gestes refusés, même refus dit. EN DERNIER, la règle de l'agrégat positionnel.
+    bool locked = false;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

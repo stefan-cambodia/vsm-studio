@@ -53,6 +53,7 @@ enum ContextMenuId {
     kCtxVelocityCompress, kCtxVelocityCompressFull, kCtxVelocityLimit,
     kCtxScaleConstrain = 100080, kCtxSnapChords,   // D532.3 bis
     kCtxLogicalEditor = 100450,   // D535.1 bis
+    kCtxDeleteDoubles = 100460,   // D546.1
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -1022,6 +1023,34 @@ void PianoRollComponent::removeOverlapsInSelection() {
     notifyEdited();
 }
 
+void PianoRollComponent::deleteDoublesInSelection() {
+    // D546.1 : LES DOUBLONS DE LA SÉLECTION — même hauteur, même canal, à moins d'un 1/64 (30 ticks à 480 par
+    // noire, à l'échelle de la résolution du projet). Mesuré sur une copie d'abord : rien à retirer, pas de pas.
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    const Tick tolerance = std::max<Tick>(1, (project_ ? project_->ticksPerQuarterNote : 480) / 16);
+    auto essai = track->notes;
+    const size_t retirees = deleteDoubleNotes(essai, selectedNoteIds_, tolerance);
+    const auto choisies = selectedNoteIds_.size();
+    std::fputs(("VSM_DOUBLONS : " + juce::String(static_cast<int>(retirees)) + juce::String::fromUTF8(u8" retirée(s) sur ")
+                + juce::String(static_cast<int>(choisies)) + juce::String::fromUTF8(u8" choisie(s), tolérance ")
+                + juce::String(static_cast<int>(tolerance)) + " ticks\n").toRawUTF8(), stderr);
+    if (onStatusChanged)
+        onStatusChanged(retirees == 0 ? vsm::app::ui::tr(u8"Supprimer les doublons : aucun doublon dans la sélection")
+                                      : vsm::app::ui::tr(u8"Supprimer les doublons : %1 note(s) retirée(s)")
+                                            .replace("%1", juce::String(static_cast<int>(retirees))));
+    if (retirees == 0) return;
+    if (!beginEdit(juce::String::fromUTF8(u8"Supprimer les doublons"))) return;
+    track->notes = std::move(essai);
+    for (auto it = selectedNoteIds_.begin(); it != selectedNoteIds_.end();) {
+        const uint64_t id = *it;
+        const bool reste = std::any_of(track->notes.begin(), track->notes.end(),
+                                       [id](const Note& n) { return n.id == id; });
+        it = reste ? std::next(it) : selectedNoteIds_.erase(it);
+    }
+    notifyEdited();
+}
+
 void PianoRollComponent::splitSelectionAtPlayhead() {
     Track* track = activeTrack();
     if (!track || !project_ || selectedNoteIds_.empty()) return;
@@ -1404,6 +1433,7 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     timeMenu.addItem(kCtxTimesHalve, tr(u8"Deux fois plus vite (départs et durées ÷2)"), sel);
     ajouterAvecRaccourci(timeMenu, kCtxLegato, tr("Legato"), shortcuts_, Id::EditLegato, sel);
     timeMenu.addItem(kCtxRemoveOverlaps, tr("Retirer les chevauchements"), sel);
+    timeMenu.addItem(kCtxDeleteDoubles, tr(u8"Supprimer les doublons"), sel);   // D546.1
     timeMenu.addSeparator();
     ajouterAvecRaccourci(timeMenu, kCtxSplit, tr(u8"Couper à la tête de lecture"), shortcuts_, Id::EditSplitAtPlayhead, sel);
     ajouterAvecRaccourci(timeMenu, kCtxJoin, tr("Fusionner"), shortcuts_, Id::EditJoin, selectedNoteIds_.size() >= 2);
@@ -1555,6 +1585,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxHumanize:         humanizeSelection(static_cast<float>(gridTicks()) * 0.12f, 12.0f); break;
         case kCtxLegato:           applyLegatoToSelection(); break;
         case kCtxRemoveOverlaps:   removeOverlapsInSelection(); break;
+        case kCtxDeleteDoubles:    deleteDoublesInSelection(); break;
         case kCtxLengthToGrid:     setSelectionLengthToGrid(); break;
         case kCtxLengthDouble:     scaleSelectionLength(2.0f); break;
         case kCtxLengthHalve:      scaleSelectionLength(0.5f); break;

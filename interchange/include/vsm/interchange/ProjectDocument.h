@@ -177,6 +177,8 @@ struct ProjectClip {
     /// D545.1 : la courbe de gain (seconde du fichier, gain linéaire), écrite seulement s'il y a des points.
     /// EN DERNIER, pour l'agrégat positionnel de `clipToDocument`.
     std::vector<std::pair<double, float>> gainEnvelope;
+    /// D546.3 : la position verrouillée, écrite seulement si elle l'est. EN DERNIER, lui aussi.
+    bool locked = false;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

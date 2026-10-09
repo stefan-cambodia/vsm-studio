@@ -111,6 +111,14 @@ void applyLegato(std::vector<Note>& notes, const NoteSelection& selection);
 /// lecture (un NoteOff coupant la note suivante).
 void removeOverlaps(std::vector<Note>& notes, const NoteSelection& selection);
 
+/// D546.1 : SUPPRIMER LES DOUBLONS. Parmi les notes choisies, celles de même HAUTEUR et même CANAL qui
+/// commencent à moins de `toleranceTicks` de la PREMIÈRE d'un groupe n'en gardent qu'une : la plus forte,
+/// puis la plus longue ; une note muette ne bat jamais une note qui sonne. Une tolérance mesurée depuis la
+/// première note du groupe, et non de proche en proche : une suite de notes rapprochées ne se fond pas en
+/// une. Les notes hors de la sélection ne sont ni retirées ni ne font retirer. Rend le nombre de notes
+/// retirées.
+size_t deleteDoubleNotes(std::vector<Note>& notes, const NoteSelection& selection, Tick toleranceTicks);
+
 /// Coupe en deux, au tick donné, chaque note sélectionnée qui le traverse.
 /// Renvoie le nombre de notes créées ; les nouvelles moitiés sont ajoutées à
 /// `newIds` si le pointeur est fourni (pour que l'appelant les sélectionne).

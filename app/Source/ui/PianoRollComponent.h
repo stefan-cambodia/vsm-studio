@@ -278,6 +278,7 @@ public:
     void humanizeSelection(float timingTicks, float velocityAmount);
     void applyLegatoToSelection();
     void removeOverlapsInSelection();
+    void deleteDoublesInSelection();   // D546.1
     void splitSelectionAtPlayhead();
     void joinSelection();
     void reverseSelection();

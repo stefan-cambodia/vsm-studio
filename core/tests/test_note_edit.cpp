@@ -672,3 +672,64 @@ VSM_TEST(every_scale_type_has_a_stable_id_that_reads_back) {
     // Le NOM affiché n'est pas un identifiant.
     VSM_ASSERT(!scaleTypeFromId("Dorien", sortie));
 }
+
+// --- D546.1 : supprimer les doublons ---------------------------------------
+namespace {
+Note doublon(uint64_t id, Tick debut, uint8_t hauteur, uint8_t velocite, Tick duree = 120, uint8_t canal = 0,
+             bool muette = false) {
+    Note n;
+    n.id = id; n.startTick = debut; n.endTick = debut + duree; n.number = hauteur;
+    n.velocity = velocite; n.channel = canal; n.muted = muette;
+    return n;
+}
+NoteSelection toutes(const std::vector<Note>& notes) {
+    NoteSelection s;
+    for (const auto& n : notes) s.insert(n.id);
+    return s;
+}
+std::set<uint64_t> restantes(const std::vector<Note>& notes) {
+    std::set<uint64_t> ids;
+    for (const auto& n : notes) ids.insert(n.id);
+    return ids;
+}
+}
+
+VSM_TEST(delete_doubles_keeps_the_loudest_of_notes_that_start_together) {
+    std::vector<Note> notes{doublon(1, 0, 60, 80), doublon(2, 0, 60, 100)};
+    VSM_ASSERT_EQ(deleteDoubleNotes(notes, toutes(notes), 30), size_t(1));
+    VSM_ASSERT(restantes(notes) == std::set<uint64_t>{2});
+    // À 20 ticks : un doublon ; à 40 : deux notes (hors tolérance).
+    notes = {doublon(1, 0, 60, 90), doublon(2, 20, 60, 80)};
+    VSM_ASSERT_EQ(deleteDoubleNotes(notes, toutes(notes), 30), size_t(1));
+    VSM_ASSERT(restantes(notes) == std::set<uint64_t>{1});
+    notes = {doublon(1, 0, 60, 90), doublon(2, 40, 60, 80)};
+    VSM_ASSERT_EQ(deleteDoubleNotes(notes, toutes(notes), 30), size_t(0));
+}
+
+VSM_TEST(different_pitches_or_channels_are_not_doubles) {
+    std::vector<Note> notes{doublon(1, 0, 60, 90), doublon(2, 0, 62, 90), doublon(3, 0, 60, 90, 120, 1)};
+    VSM_ASSERT_EQ(deleteDoubleNotes(notes, toutes(notes), 30), size_t(0));
+    VSM_ASSERT_EQ(notes.size(), size_t(3));
+}
+
+VSM_TEST(at_equal_velocity_the_longest_stays_and_a_muted_note_never_wins) {
+    std::vector<Note> notes{doublon(1, 0, 60, 90, 60), doublon(2, 5, 60, 90, 240)};
+    deleteDoubleNotes(notes, toutes(notes), 30);
+    VSM_ASSERT(restantes(notes) == std::set<uint64_t>{2});
+    notes = {doublon(1, 0, 60, 127, 480, 0, true), doublon(2, 0, 60, 40)};
+    deleteDoubleNotes(notes, toutes(notes), 30);
+    VSM_ASSERT(restantes(notes) == std::set<uint64_t>{2});
+}
+
+VSM_TEST(notes_outside_the_selection_are_neither_removed_nor_remove) {
+    std::vector<Note> notes{doublon(1, 0, 60, 80), doublon(2, 0, 60, 100), doublon(3, 0, 60, 120)};
+    VSM_ASSERT_EQ(deleteDoubleNotes(notes, NoteSelection{1, 2}, 30), size_t(1));
+    VSM_ASSERT(restantes(notes) == (std::set<uint64_t>{2, 3}));   // la 3, plus forte, n'était pas choisie
+}
+
+VSM_TEST(a_run_of_close_notes_does_not_melt_into_one) {
+    // De proche en proche, 0 · 25 · 50 · 75 seraient UN groupe ; depuis la première, deux groupes de deux.
+    std::vector<Note> notes{doublon(1, 0, 60, 90), doublon(2, 25, 60, 80), doublon(3, 50, 60, 90), doublon(4, 75, 60, 80)};
+    VSM_ASSERT_EQ(deleteDoubleNotes(notes, toutes(notes), 30), size_t(2));
+    VSM_ASSERT(restantes(notes) == (std::set<uint64_t>{1, 3}));
+}

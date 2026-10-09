@@ -191,11 +191,18 @@ size_t comptes(const std::vector<Clip>& clips, const ClipSelection& selection) {
     for (const auto& c : clips) if (selected(selection, c)) ++n;
     return n;
 }
+/// D546.3 : la sélection sans les clips VERROUILLÉS de cette piste — ce que les gestes de position touchent.
+ClipSelection sansVerrous(const std::vector<Clip>& clips, const ClipSelection& selection) {
+    ClipSelection libres = selection;
+    for (const auto& c : clips) if (c.locked) libres.erase(c.id);
+    return libres;
+}
 } // namespace
 
-size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks,
+size_t moveClips(Track& track, const ClipSelection& demandee, Tick deltaTicks,
                   bool automationFollows, Tick materialEnd) {
     if (track.locked) return 0;
+    const ClipSelection selection = sansVerrous(track.clips, demandee);   // D546.3
     const size_t touches = comptes(track.clips, selection);
     if (touches == 0) return 0;
 
@@ -228,25 +235,28 @@ size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks,
     return touches;
 }
 
-size_t resizeClipsEnd(Track& track, const ClipSelection& selection, Tick deltaTicks,
+size_t resizeClipsEnd(Track& track, const ClipSelection& demandee, Tick deltaTicks,
                        Tick materialEnd) {
     if (track.locked) return 0;
+    const ClipSelection selection = sansVerrous(track.clips, demandee);   // D546.3
     const size_t touches = comptes(track.clips, selection);
     resizeClipsEnd(track.clips, selection, deltaTicks, materialEnd);
     return touches;
 }
 
-size_t resizeClipsStart(Track& track, const ClipSelection& selection, Tick deltaTicks,
+size_t resizeClipsStart(Track& track, const ClipSelection& demandee, Tick deltaTicks,
                          Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
     if (track.locked) return 0;
+    const ClipSelection selection = sansVerrous(track.clips, demandee);   // D546.3
     const size_t touches = comptes(track.clips, selection);
     resizeClipsStart(track.clips, selection, deltaTicks, materialEnd, ticksToSeconds);
     return touches;
 }
 
-size_t stretchClipsEnd(Track& track, const ClipSelection& selection, Tick deltaTicks,
+size_t stretchClipsEnd(Track& track, const ClipSelection& demandee, Tick deltaTicks,
                         Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
     if (track.locked) return 0;
+    const ClipSelection selection = sansVerrous(track.clips, demandee);   // D546.3
     const size_t touches = comptes(track.clips, selection);
     if (!stretchClipsEnd(track.clips, selection, deltaTicks, materialEnd, ticksToSeconds)) return 0;
     return touches;
@@ -255,7 +265,8 @@ size_t stretchClipsEnd(Track& track, const ClipSelection& selection, Tick deltaT
 size_t splitClips(Track& track, const ClipSelection& selection, Tick atTick, Tick materialEnd,
                    uint64_t& idCounter, const std::function<double(Tick)>& ticksToSeconds) {
     if (track.locked) return 0;
-    return splitClips(track.clips, selection, atTick, materialEnd, idCounter, ticksToSeconds);
+    return splitClips(track.clips, sansVerrous(track.clips, selection), atTick, materialEnd, idCounter,
+                      ticksToSeconds);   // D546.3
 }
 
 ClipSelection duplicateClips(Track& track, const ClipSelection& selection, Tick offsetTicks,
@@ -273,8 +284,8 @@ ClipCreation createClip(Track& track, Tick startTick, Tick length, uint64_t& idC
 ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEnd,
                     const std::function<double(Tick)>& ticksToSeconds) {
     if (track.locked) return {};
-    return joinClips(track.clips, selection, materialEnd, track.kind == Track::Kind::Audio,
-                      ticksToSeconds);
+    return joinClips(track.clips, sansVerrous(track.clips, selection), materialEnd,
+                      track.kind == Track::Kind::Audio, ticksToSeconds);   // D546.3
 }
 
 ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
@@ -315,8 +326,10 @@ ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
 
 size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection) {
     size_t n = 0;
-    for (const auto& track : tracks)
-        if (track.locked) n += comptes(track.clips, selection);
+    for (const auto& track : tracks) {
+        if (track.locked) { n += comptes(track.clips, selection); continue; }
+        for (const auto& c : track.clips) if (c.locked && selected(selection, c)) ++n;   // D546.3
+    }
     return n;
 }
 
@@ -358,7 +371,7 @@ ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelect
         // correspond pas, un fichier audio qui n'est pas le sien, une piste
         // VERROUILLÉE des deux côtés (D16.5) -- on ne prend rien à une piste
         // verrouillée, et on ne lui pose rien.
-        if (source.locked || cible.locked) { ++rapport.refused; continue; }
+        if (source.locked || cible.locked || it->locked) { ++rapport.refused; continue; }   // D546.3 : le clip aussi
         const bool memeGenre = source.kind == cible.kind && cible.kind != Track::Kind::Group;
         const bool audioOk = cible.kind != Track::Kind::Audio || cible.audio.empty()
                              || cible.audio.path == source.audio.path;
@@ -473,6 +486,7 @@ ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& sele
         if (!selected(selection, clip)) continue;
         Clip copie = clip;
         copie.id = idCounter++;
+        copie.locked = false;   // D546.3 : le verrou protège une position, la copie en a une autre
         copie.startTick = std::max<Tick>(0, clip.startTick + offsetTicks);
         copies.push_back(copie);
         creees.insert(copie.id);
@@ -980,6 +994,7 @@ ClipSelection repeatClips(std::vector<Clip>& clips, const ClipSelection& selecti
         for (int k = 1; k <= count; ++k) {
             Clip copie = clip;
             copie.id = idCounter++;
+            copie.locked = false;   // D546.3 : le verrou protège une position, la copie en a une autre
             copie.startTick = clip.startTick + static_cast<Tick>(k) * spanTicks;
             creees.insert(copie.id);
             copies.push_back(std::move(copie));

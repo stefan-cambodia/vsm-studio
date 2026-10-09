@@ -278,6 +278,50 @@ void applyLegato(std::vector<Note>& notes, const NoteSelection& selection) {
     }
 }
 
+size_t deleteDoubleNotes(std::vector<Note>& notes, const NoteSelection& selection, Tick toleranceTicks) {
+    std::vector<size_t> choisies;
+    for (size_t i = 0; i < notes.size(); ++i)
+        if (selection.count(notes[i].id) > 0) choisies.push_back(i);
+    std::sort(choisies.begin(), choisies.end(), [&notes](size_t a, size_t b) {
+        const Note& x = notes[a];
+        const Note& y = notes[b];
+        if (x.channel != y.channel) return x.channel < y.channel;
+        if (x.number != y.number) return x.number < y.number;
+        if (x.startTick != y.startTick) return x.startTick < y.startTick;
+        return x.id < y.id;
+    });
+    // LA MEILLEURE D'UN GROUPE : celle qui sonne, puis la plus forte, puis la plus longue, puis la première.
+    const auto meilleure = [&notes](size_t a, size_t b) {
+        const Note& x = notes[a];
+        const Note& y = notes[b];
+        if (x.muted != y.muted) return !x.muted;
+        if (x.velocity != y.velocity) return x.velocity > y.velocity;
+        const Tick dx = x.endTick - x.startTick, dy = y.endTick - y.startTick;
+        if (dx != dy) return dx > dy;
+        return x.startTick < y.startTick;
+    };
+    std::set<uint64_t> retirees;
+    for (size_t i = 0; i < choisies.size();) {
+        const Note& premiere = notes[choisies[i]];
+        size_t j = i + 1;
+        while (j < choisies.size() && notes[choisies[j]].channel == premiere.channel
+               && notes[choisies[j]].number == premiere.number
+               && notes[choisies[j]].startTick - premiere.startTick < toleranceTicks)
+            ++j;
+        size_t garde = choisies[i];
+        for (size_t k = i + 1; k < j; ++k)
+            if (meilleure(choisies[k], garde)) garde = choisies[k];
+        for (size_t k = i; k < j; ++k)
+            if (choisies[k] != garde) retirees.insert(notes[choisies[k]].id);
+        i = j;
+    }
+    if (retirees.empty()) return 0;
+    notes.erase(std::remove_if(notes.begin(), notes.end(),
+                               [&retirees](const Note& n) { return retirees.count(n.id) > 0; }),
+                notes.end());
+    return retirees.size();
+}
+
 void removeOverlaps(std::vector<Note>& notes, const NoteSelection& selection) {
     if (selection.empty()) return;
     for (auto& note : notes) {

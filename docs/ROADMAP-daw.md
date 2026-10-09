@@ -41023,3 +41023,146 @@ MAXIMUM choisi, et l'usage courant en laisse un peu (−1 dBFS, la marge d'un en
 attend une session DÉVERROUILLÉE : verrouillée, seul le premier lancement d'une rafale dessine sa fenêtre
 (D520), et les bancs de focus et de clic y rougissent sans rien dire du logiciel.
 
+**LA SÉRIE, relevée à 21 h 56 (la session déverrouillée) : 66 bancs sur 66 verts** (dont
+`normaliser-niveau.sh`), en 63 min — plus longue que les autres, des compilations à basse priorité tournant à
+côté pour D546 ; préférences de l'utilisateur identiques.
+
+
+
+### Phase D546 — un septième audit des fonctions : les doublons, le pré-défilement, la position verrouillée (09/10/2026)
+
+*Écrite le 09/10 à 20 h 53, D545 faite.*
+
+**LA MÉTHODE, celle de D535 à D545**, la recherche validée sur son témoin (« snapNotesToChords » 5).
+**Cherché et trouvé** : « Retirer les chevauchements » (le piano roll, D-legato), « Couper entre les
+locateurs (toutes les pistes) » — ce qui couvre l'essentiel de « rogner à la plage » —, l'inversion de la
+sélection, les macros de commandes. **Écarté pour cet audit, et pourquoi** : le mode d'édition « en chaîne »
+(*Shuffle* de Cubase : déplacer un clip pousse les suivants) — 0 pour « ripple », « shuffle » — est le plus
+gros des candidats, il touche tous les gestes de l'arrangement, et il ouvre le prochain audit ; une piste
+d'échantillonneur faite d'un clip (0 pour « sampler track », « créer un sampler ») suppose un échantillonneur
+qui joue un fichier du projet, que le parc n'a pas.
+
+**CE QUI MANQUE, VÉRIFIÉ DANS LE CODE** (0 pour « supprimer les doubles », « deleteDoubles » — les deux
+« doublons » du code sont des commentaires sans rapport ; 0 pour « pré-roll », « pre-roll », « post-roll » ;
+0 pour « verrouiller la position », « positionLock ») :
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D546.1 | **Supprimer les doublons** — *Delete Doubles* | les notes de même hauteur, même canal, qui commencent au même endroit (à une tolérance écrite) ne gardent qu'UNE note — la plus forte, puis la plus longue ; sur la sélection ou la piste ; compté et dit ; un pas ; mesuré par le `.mid` exporté |
+| D546.2 | **Le pré-défilement et le post-défilement** — *Pre-roll / Post-roll* | un enregistrement en *punch* commence à jouer N mesures AVANT le point d'entrée et continue M mesures APRÈS la sortie, sans rien enregistrer hors du *punch* ; réglage retenu ; mesuré par la position de la tête et ce qui est enregistré |
+| D546.3 | **Verrouiller la position d'un clip** — *Lock* | un clip verrouillé ne bouge plus (ni glissé, ni rogné, ni coupé par un geste de groupe), et le refus se DIT ; le verrou s'écrit au projet ; un pas |
+
+**L'ORDRE, TRANCHÉ ICI.** D546.1 d'abord : il sert la chaîne — une transcription du mélange pose des notes
+doubles là où deux stems jouent la même hauteur — et ne demande que `core/` et le piano roll ; puis D546.3,
+puis D546.2, qui touche au transport et à l'enregistrement.
+
+### Phase D546.1 — supprimer les doublons (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 20 h 54.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Un doublon** : deux notes de même HAUTEUR, même CANAL, qui commencent à moins d'une tolérance l'une de
+  l'autre. **La tolérance est d'une quadruple croche (un 1/64, 30 ticks à 480 par noire)** et non zéro :
+  Cubase ne retire que les notes au même tick, mais une transcription pose ses doubles à quelques
+  millisecondes l'un de l'autre (deux stems, deux détecteurs) — au tick près, elle n'en trouverait presque
+  aucun ; et un 1/64 reste sous la plus courte note qu'on joue exprès deux fois (une double croche répétée
+  est à 120 ticks).
+- **Celle qui reste** : la plus FORTE (vélocité), puis la plus LONGUE ; une note muette ne bat jamais une
+  note qui sonne. Les notes retirées sont COMPTÉES et dites (`VSM_DOUBLONS`, la ligne d'état).
+- **Le cœur dans `core/`** (`deleteDoubleNotes`), sur la sélection — comme « Retirer les chevauchements »,
+  dont il est le voisin dans le menu « Temps et durée » du piano roll. Un pas d'historique ; rien à retirer :
+  pas de pas, et c'est dit.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : deux do au même tick (vélocités 80 et 100) → reste celui à 100 ; deux do à 20 ticks →
+   un seul ; à 40 ticks → les deux (hors tolérance) ; même tick, hauteurs différentes → les deux ; même
+   tick, canaux différents → les deux ; à vélocité égale, le plus long reste ; un muet contre un sonore →
+   le sonore reste ; les notes hors de la sélection ne sont ni retirées ni ne font retirer ;
+2. par l'application, mesuré par le `.mid` exporté : huit notes dont trois doublons (au même tick, à 10 et
+   à 25 ticks) → « Supprimer les doublons » sur tout → **cinq** notes, celles attendues ; Ctrl+Z → huit ;
+3. un banc `tools/doublons.sh`, vu rouge sur un défaut remis à la main, entré dans `verifier.sh --bancs` ;
+   libellés traduits.
+
+**D546.1 EST FAITE (09/10, 22 h 06 ; le banc vert à 22 h 03).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 450 → **455** : même tick, 80 et 100 → reste 100 ; à 20 ticks → un seul, à 40 → deux ; autre hauteur, autre canal → deux ; à vélocité égale le plus long reste ; un muet ne gagne jamais ; les notes hors sélection ne sont ni retirées ni ne font retirer ; une suite à 0 · 25 · 50 · 75 → deux groupes, pas un. **Rouge** : la tolérance mesurée de proche en proche (3 retirées au lieu de 2) | **oui** |
+| 2 | par l'application, mesuré par le `.mid` exporté | `tools/doublons.sh` : « 3 retirée(s) sur 8 choisie(s), tolérance 30 ticks » ; le `.mid` porte **0:60:100 · 480:62:90 · 985:64:60 (240 ticks) · 1440:65 · 1440:67** ; le témoin 8, Ctrl+Z 8 | **oui** |
+| 3 | le banc | 3 contrôles, entré dans `verifier.sh --bancs` (**68**) ; **rouge** sur la tolérance réduite à un tick dans l'application (1 retirée au lieu de 3) ; libellés traduits | **oui** |
+
+### Phase D546.3 — verrouiller la position d'un clip (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 21 h 24 (D546.1 en cours de mesure ; l'ordre de D546 la met avant
+D546.2).*
+
+**CE QUI EXISTE.** Le verrou de PISTE (D16.5) : `Track::locked`, que les surcharges `Track&` de
+`ClipEdit.cpp` respectent toutes (`if (track.locked) return 0`), que `lockedClipsInSelection` compte, et dont
+l'arrangement DIT le refus (`onLockRefused`) — un déplacement entièrement refusé ne laisse rien dans
+l'historique.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **`Clip::locked`**, EN DERNIER dans le struct (la règle de l'agrégat positionnel, qui a déjà coûté une
+  relecture à D545.1), écrit au projet seulement s'il est posé.
+- **Il passe par le chemin du verrou de piste** : `lockedClipsInSelection` compte aussi les clips
+  verrouillés ; les surcharges `Track&` qui DÉPLACENT, ROGNENT, ÉTIRENT, COUPENT ou JOIGNENT retirent les
+  clips verrouillés de la sélection avant d'agir ; le passage d'une piste à l'autre les refuse et les compte.
+  Ainsi tout geste qui respectait déjà le verrou de piste respecte celui du clip, et dit son refus de la
+  même façon. Un clip verrouillé se COPIE (dupliquer, répéter) — la copie naît déverrouillée — : le verrou
+  protège une position, pas un contenu.
+- **Le geste** : au menu du clip, « Verrouiller la position » (une case, sur toute la sélection) ; un pas ;
+  le clip verrouillé porte un cadenas dessiné.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : un clip verrouillé ne bouge pas (déplacer, rogner au début et à la fin, étirer, couper,
+   joindre, changer de piste) quand son voisin non verrouillé de la même sélection bouge ; il est compté
+   par `lockedClipsInSelection` ; sa copie (dupliquer) naît déverrouillée ;
+2. par l'application : deux clips choisis, l'un verrouillé, décalés au clavier → le `project.json` relu
+   garde le premier en place et a déplacé le second ; le refus dit au journal ; le verrou relu ; Ctrl+Z ;
+3. un banc `tools/clip-verrouille.sh`, vu rouge sur un défaut remis à la main, entré dans `verifier.sh
+   --bancs` ; le cadenas photographié ; libellés traduits.
+
+**D546.3 EST FAITE (09/10, 22 h 06 ; le banc vert à 22 h 04).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 455 → **457** : le clip verrouillé reste quand son voisin choisi bouge (déplacer, rogner les deux bords, couper : 0 coupe) ; compté par `lockedClipsInSelection` ; refusé d'une piste à l'autre ; sa copie naît déverrouillée. **Rouge** : le verrou ignoré au déplacement (2 clips bougés au lieu de 1) | **oui** |
+| 2 | par l'application | `tools/clip-verrouille.sh` : verrouillé → « A:0:V B:1920:- » ; les deux choisis, décalés d'une mesure → **A:0:V B:3840:-**, et la boîte « Montage refusé : 1 clip verrouillé n'a pas bougé » ; le témoin → A:1920 B:3840 ; verrouillé puis Ctrl+Z → plus de verrou | **oui** |
+| 3 | le banc, la photo | 4 contrôles, entré dans `verifier.sh --bancs` (**68**) ; **rouge** sur le verrou ignoré au déplacement (A parti à 1920) ; le cadenas photographié et regardé — sur A, pas sur B ; libellés traduits | **oui** |
+
+**TRANCHÉ EN ÉCRIVANT LE CODE.** Le refus de l'arrangement disait « appartient à une piste verrouillée » ; il
+dit désormais « clip verrouillé » et nomme les DEUX portes — la piste (Piste ▸ Déverrouiller la piste) ou le
+clip lui-même (« Verrouiller la position ») —, puisque le même compte couvre les deux. Aucun banc ne lisait
+l'ancienne phrase (relevé avant de la changer).
+
+**LA SUITE ENTIÈRE de D546.1 et D546.3** (`verifier.sh --compiler`, lancée le 09/10 à 22 h 08, finie le 10/10 à
+06 h 13 — six veilles de nuit au milieu, que la suite a traversées) : C++ **457 / 1 333 / 338 / 25 / 11**,
+Python 257, ruff, mypy, toutes les gardes vertes sauf `index-a-jour.py`, qui comptait déjà la phase D546.2
+ouverte (567 titres, 566 clos) — un chiffre à reprendre, pas un défaut.
+
+
+### Phase D546.2 — le décompte d'un punch au milieu du morceau, et ce qu'est le pré-défilement (09/10/2026) — EN ATTENTE DE MESURE
+
+*Écrite avant son code, le 09/10 à 22 h 20.*
+
+**CE QUE L'ÉTUDE A TROUVÉ AVANT D'ÉCRIRE UNE LIGNE.** (a) **Le pré-défilement existe, sous le nom de
+décompte** : `startRecording` place la tête N mesures AVANT le point d'entrée (`punchSeconds_ − decompte`) et
+lance la lecture — « le décompte EST de la lecture, simplement située avant le point d'entrée » ; le morceau y
+joue, et l'enregistrement ne prend qu'à partir du point d'entrée (`recorder_.begin(punchSeconds_, …)`). (b) **Le
+post-défilement aussi, à sa façon** : après la sortie du punch, la lecture continue jusqu'à ce qu'on l'arrête
+(`setRecordPunchOut` ne coupe que la prise) ; un arrêt automatique M mesures plus loin n'a pas de besoin établi,
+et n'est pas écrit. (c) **Et un défaut probable, lu dans le code** : le moteur ne force le clic du décompte que
+sur les positions NÉGATIVES (`ProcessGraph::processBlock` : `decompte = blockStartSeconds < 0.0`) — le décompte
+de D3.2 était « un morceau de ligne de temps situé avant zéro », ce qui était vrai tant qu'on n'enregistrait
+qu'au début. Le punch (D16) l'a mis au milieu du morceau : un décompte de deux mesures avant la mesure 9 joue
+les mesures 7 et 8, à des positions POSITIVES, où le clic n'est plus forcé. Métronome éteint (ou réglé
+« seulement au décompte »), ce décompte-là ne bat pas — or « un décompte qu'on n'entend pas ne compte rien ».
+
+**L'HYPOTHÈSE H6, écrite à 22 h 20 avant la mesure qui la tranche.** Un décompte avant un point d'entrée au
+milieu du morceau ne fait entendre AUCUN clic quand le métronome est éteint. **La parade** : le moteur reçoit
+la FIN du décompte (`setCountInEndSeconds`, le point d'entrée ; zéro par défaut, la règle d'avant) et force le
+clic tant que le bloc commence avant elle ; l'application la pose au départ d'un enregistrement avec décompte,
+et la retire quand la prise commence ou s'arrête. **Attendus** : (i) un test `audio/`, métronome éteint, une
+fin de décompte à 16 s, le moteur placé à 12 s : des clics sur chaque temps de 12 à 16 s, plus rien après
+16 s ; le TÉMOIN, sans fin de décompte posée, muet de 12 à 16 s — c'est ce qui tranche H6 ; (ii) les tests du
+décompte de D3.2 (`test_count_in.cpp`) inchangés ; (iii) la suite audio verte.
