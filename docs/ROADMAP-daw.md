@@ -40549,3 +40549,5 @@ tous les deux ; verts avec (0,100 à 0,100).
 **LES SUITES** (relevé à 12 h 09) : core 436, audio **1 324**, interchange 336, clap 25, panneaux 11 —
 verts ; la suite Python (257, inchangée depuis les deux courses vertes du matin) et les gardes tournaient
 encore au moment du commit, demandé par l'utilisateur ; leur résultat s'écrit au commit suivant.
+**Relevé à leur fin** : Python 257 sur 257, ruff et mypy sans signalement, toutes les gardes vertes
+(`index-a-jour.py` : 554 phases jusqu'à D543, concordantes) — `verifier.sh` rc 0.
