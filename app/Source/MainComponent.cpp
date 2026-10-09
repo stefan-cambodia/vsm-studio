@@ -655,6 +655,43 @@ MainComponent::MainComponent()
     arrangement_.onClipGrooveFromAttacksRequested = [this](size_t piste, uint64_t clipId) {  // D544.2
         grooveDepuisAttaques(piste, clipId);
     };
+    // D545.1 : LE GAIN D'UN POINT DE LA COURBE, en décibels (« -inf » pour le silence).
+    arrangement_.onClipGainPointRequested = [this](size_t piste, uint64_t clipId, size_t index) {
+        auto* clip = findClip(piste, clipId);
+        if (clip == nullptr || index >= clip->gainEnvelope.size()) return;
+        const float actuel = clip->gainEnvelope[index].gain;
+        auto fenetre = std::make_shared<juce::AlertWindow>(
+            tr(u8"Gain de ce point"),
+            tr(u8"En décibels : 0 laisse le son tel quel, -6 le divise par deux, -inf le fait taire (au plus +12)."),
+            juce::AlertWindow::NoIcon);
+        fenetre->addTextEditor("gain", actuel <= 0.0f ? juce::String("-inf")
+                                                       : juce::String(20.0 * std::log10(actuel), 1),
+                               tr(u8"Gain (dB) :"));
+        fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, piste, clipId, index](int resultat) {
+            const juce::String texte = fenetre->getTextEditorContents("gain").trim().replaceCharacter(',', '.');
+            fenetre->exitModalState(resultat);
+            fenetre->setVisible(false);
+            if (resultat != 1 || piste >= project_.tracks.size()) return;
+            const bool muet = texte.equalsIgnoreCase("-inf") || texte == juce::String::fromUTF8(u8"−∞")
+                              || texte == juce::String::fromUTF8(u8"-∞");
+            if (!muet && !texte.containsOnly("+-0123456789.")) {
+                montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Gain de ce point"),
+                             tr(u8"Un gain se donne en décibels, ou « -inf » : rien n'a changé."));
+                return;
+            }
+            const double db = texte.getDoubleValue();
+            const float gain = muet || db <= -96.0 ? 0.0f : static_cast<float>(std::pow(10.0, db / 20.0));
+            auto essai = project_.tracks[piste].clips;
+            if (!vsm::sequencer::setGainPoint(essai, clipId, index, gain)) return;
+            beginProjectEdit(u8"Gain d'un point de la courbe");
+            project_.tracks[piste].clips = std::move(essai);
+            arrangement_.direCourbeDeGain(project_.tracks[piste], clipId);
+            loadAudioTracks();
+            arrangement_.repaint();
+        });
+    };
     // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
     // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
     // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et

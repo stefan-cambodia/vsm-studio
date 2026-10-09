@@ -805,6 +805,15 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
         menu.addItem(14, tr(u8"Ajouter un marqueur ici"), vsm::sequencer::clipIsWarped(clip)
                                                       && surMarqueur < 0);
         menu.addItem(15, tr(u8"Retirer ce marqueur"), surMarqueur > 0);
+        // D545.1 : LA COURBE DE GAIN, au clic (la tête de lecture pour un banc).
+        {
+            const int point = pointDeGainAuClic(piste, clip);
+            const bool lisible = !clip.reversed && sourceAuClic(piste, clip) >= 0.0;
+            menu.addItem(70, tr(u8"Ajouter un point de gain ici"), lisible && point < 0);
+            menu.addItem(71, tr(u8"Gain de ce point…"), point >= 0);
+            menu.addItem(72, tr(u8"Retirer ce point de gain"), point >= 0);
+            menu.addItem(73, tr(u8"Aplatir la courbe de gain"), !clip.gainEnvelope.empty());
+        }
         menu.addItem(17, tr(u8"\u00c0 l'envers"), true, clip.reversed);
         // D17.1 : LA FORME DES FONDUS. Sur une piste audio seulement --
         // un clip MIDI n'a pas de fondu à donner une forme.
@@ -1653,6 +1662,33 @@ int ArrangementComponent::marqueurAt(const Clip& clip, float x) const {
     return -1;
 }
 
+double ArrangementComponent::sourceAuClic(size_t piste, const vsm::sequencer::Clip& clip) const {
+    if (project_ == nullptr || piste >= project_->tracks.size()) return -1.0;
+    return vsm::sequencer::clipSourceSecondsAtTick(clip, clicTick_, materialEnd(project_->tracks[piste]),
+                                                   [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+}
+
+int ArrangementComponent::pointDeGainAuClic(size_t piste, const vsm::sequencer::Clip& clip) const {
+    const double s = sourceAuClic(piste, clip);
+    if (s < 0.0 || clip.gainEnvelope.empty()) return -1;
+    // CINQ PIXELS DE PART ET D'AUTRE, en secondes du morceau à cet endroit.
+    const double tolerance = std::fabs(project_->ticksToSeconds(xToTick(tickToX(clicTick_) + 5.0f))
+                                       - project_->ticksToSeconds(clicTick_));
+    return vsm::sequencer::gainPointNear(clip, s, std::max(0.002, tolerance));
+}
+
+void ArrangementComponent::direCourbeDeGain(const vsm::sequencer::Track& track, uint64_t clipId) const {
+    for (const auto& c : track.clips) {
+        if (c.id != clipId) continue;
+        juce::String points;
+        for (const auto& p : c.gainEnvelope)
+            points += (points.isEmpty() ? "" : " ") + juce::String(p.sourceSeconds, 3) + ":" + juce::String(p.gain, 3);
+        std::fputs((juce::String::fromUTF8(u8"VSM_COURBE_GAIN : « ") + juce::String::fromUTF8(c.name.c_str())
+                    + juce::String::fromUTF8(u8" » : ") + (points.isEmpty() ? juce::String("plate") : points) + "\n")
+                       .toRawUTF8(), stderr);
+    }
+}
+
 bool ArrangementComponent::runClipMenuActionForCapture(int choix) {
     if (!project_) return false;
     for (size_t p = 0; p < project_->tracks.size(); ++p)
@@ -1820,6 +1856,34 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         case 14: {
             if (onEditStarted) onEditStarted(u8"Ajouter un marqueur de tempo");
             if (addWarpMarker(track.clips, clipId, clicTick_ - it->startTick) < 0) return;
+            break;
+        }
+        case 70: {   // D545.1
+            const double s = sourceAuClic(piste, *it);
+            if (s < 0.0 || it->reversed) return;
+            if (onEditStarted) onEditStarted(u8"Ajouter un point de gain");
+            if (addGainPoint(track.clips, clipId, s) < 0) return;
+            direCourbeDeGain(track, clipId);
+            break;
+        }
+        case 71: {
+            const int point = pointDeGainAuClic(piste, *it);
+            if (point >= 0 && onClipGainPointRequested) onClipGainPointRequested(piste, clipId, static_cast<size_t>(point));
+            return;
+        }
+        case 72: {
+            const int point = pointDeGainAuClic(piste, *it);
+            if (point < 0) return;
+            if (onEditStarted) onEditStarted(u8"Retirer un point de gain");
+            if (!removeGainPoint(track.clips, clipId, static_cast<size_t>(point))) return;
+            direCourbeDeGain(track, clipId);
+            break;
+        }
+        case 73: {
+            if (it->gainEnvelope.empty()) return;
+            if (onEditStarted) onEditStarted(u8"Aplatir la courbe de gain");
+            clearGainEnvelope(track.clips, clipId);
+            direCourbeDeGain(track, clipId);
             break;
         }
         case 15: {
@@ -2731,6 +2795,35 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     pointe.addTriangle(mx - 3.5f, r.getY(), mx + 3.5f, r.getY(), mx, r.getY() + 5.0f);
                     g.fillPath(pointe);
                 }
+            }
+
+            // D545.1 : LA COURBE DE GAIN SE VOIT — une ligne, et ses points. Lue pixel par pixel à la
+            // seconde du fichier que le clip joue là (carte et boucle comprises), par la MÊME fonction que le
+            // moteur : ce qu'on voit est ce qu'on entend. Une échelle LINÉAIRE en amplitude — gain 1 à
+            // mi-hauteur, 2 (+6 dB) en haut, 0 en bas, au-delà de +6 dB collé au bord : la droite que le son
+            // suit se voit droite (une échelle en racine, essayée d'abord, la montrait courbe).
+            if (!clip.gainEnvelope.empty() && !clip.reversed) {
+                const auto versSecondes = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+                const auto hauteurDe = [&r](float gain) {
+                    return r.getBottom() - r.getHeight() * std::clamp(gain, 0.0f, 2.0f) / 2.0f;
+                };
+                juce::Path ligne;
+                bool commencee = false;
+                double avant = -1.0;
+                g.setColour(Palette::accentTeal);
+                for (float x = r.getX(); x <= r.getRight(); x += 1.0f) {
+                    const double s = vsm::sequencer::clipSourceSecondsAtTick(clip, xToTick(x), fin, versSecondes);
+                    if (s < 0.0) { avant = -1.0; continue; }
+                    const float y = hauteurDe(vsm::sequencer::clipEnvelopeGainAt(clip, s));
+                    if (!commencee) { ligne.startNewSubPath(x, y); commencee = true; } else ligne.lineTo(x, y);
+                    // UN POINT SE DESSINE LÀ OÙ LA LECTURE LE FRANCHIT — à chaque tour d'une boucle.
+                    if (avant >= 0.0)
+                        for (const auto& p : clip.gainEnvelope)
+                            if (p.sourceSeconds > avant && p.sourceSeconds <= s)
+                                g.fillRect(x - 2.5f, hauteurDe(p.gain) - 2.5f, 5.0f, 5.0f);
+                    avant = s;
+                }
+                g.strokePath(ligne, juce::PathStrokeType(1.5f));
             }
 
             // LA PHASE INVERSÉE SE VOIT AUSSI : un liséré en tirets. Deux clips

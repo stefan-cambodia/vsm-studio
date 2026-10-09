@@ -322,6 +322,10 @@ public:
     std::function<void(size_t, uint64_t)> onClipQuantizeAudioRequested;     // D543.3
     std::function<void(size_t, uint64_t)> onClipNotesFromAttacksRequested;  // D544.1
     std::function<void(size_t, uint64_t)> onClipGrooveFromAttacksRequested; // D544.2
+    /// D545.1 : « Gain de ce point… » — la fenêtre est à l'application (piste, clip, indice du point).
+    std::function<void(size_t, uint64_t, size_t)> onClipGainPointRequested;
+    /// D545.1 : la courbe d'un clip, dite au journal (`VSM_COURBE_GAIN`) après chaque geste.
+    void direCourbeDeGain(const vsm::sequencer::Track& track, uint64_t clipId) const;
     /// D20.3 : découper les clips audio CHOISIS aux transitoires. L'application
     /// lit les fichiers et coupe ; la vue ne sait pas lire un fichier.
     std::function<void()> onClipSliceAtOnsetsRequested;
@@ -492,6 +496,10 @@ private:
     /// Le clip saisi pour un fondu, pendant le geste.
     uint64_t clipFondu_ = 0;
     vsm::midi::Tick materialEnd(const vsm::sequencer::Track& track) const;
+    /// D545.1 : la seconde du fichier que le clip joue au clic (`clicTick_`), ou −1 ; et le point de gain
+    /// qui s'y trouve, à cinq pixels près, ou −1.
+    double sourceAuClic(size_t piste, const vsm::sequencer::Clip& clip) const;
+    int pointDeGainAuClic(size_t piste, const vsm::sequencer::Clip& clip) const;
     void notifyChanged();
 
     /// La cible d'un glisser en cours : la piste survolée et la position

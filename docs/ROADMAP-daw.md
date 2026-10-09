@@ -40744,6 +40744,10 @@ l'atteindrait plus.
 | 3 | le banc, les photos | 4 contrôles, entré dans `verifier.sh --bancs` (**63**) ; **rouge** sur l'argument retiré dans les deux chemins, puis dans le seul chemin d'export (440 Hz à +2) ; la fenêtre photographiée et regardée en français et en anglais ; libellés traduits | **oui** |
 | — | le disque | interchange 336 → **337** : la valeur et le drapeau relus, et ABSENTS du fichier quand ils sont nuls ; **rouge** sur l'écriture retirée (0 au lieu de −3) | **oui** |
 
+**LA SÉRIE, relevée à 16 h 59 : 63 bancs sur 63 verts** (dont `groove-depuis-audio.sh` et
+`transposition-globale.sh`), en 101 min — à travers une veille du poste de 15 h 45 à 16 h 41 (la garde de
+l'utilisateur, batterie à 14 %), sans un rouge ; préférences de l'utilisateur identiques.
+
 **UNE GARDE QUI ACCUSAIT À TORT, RÉPARÉE ET VUE ROUGE.** La suite entière (finie à 15 h 11) n'avait qu'un rouge :
 `inventaire_langue.py --garde`, « ÉCRAN — `MainComponent.cpp` : " piste(s) la suivent, " ». C'est un morceau
 du message de journal `VSM_TRANSPOSITION_GLOBALE`, écrit par `fputs`. La garde bornait l'instruction au
@@ -40754,4 +40758,117 @@ deux « ; » n'avaient pas « l'air français ». La garde cherche désormais ce
 littéraux vidés, qu'elle calculait déjà pour la règle de D106 : ÉCRAN 1 → **0**, TERMINAL 316 → **317**, rien
 d'autre ne bouge ; et une VRAIE chaîne d'écran non traduite qui porte un « ; » (« Les pistes ont été
 transposées ; vérifiez la batterie », dans un `montrerBoite`) reste attrapée — vue rouge, puis retirée.
+
+
+
+### Phase D545 — un sixième audit des fonctions : la courbe de gain d'un clip, le tempo d'une prise, normaliser à un niveau choisi (09/10/2026)
+
+*Écrite le 09/10 à 15 h 19, D544 faite.*
+
+**LA MÉTHODE, celle de D535 à D544**, la recherche validée sur ses témoins (« snapNotesToChords » 5).
+**Cherché et trouvé, sous un autre nom** : les fondus AUTOMATIQUES de Cubase sont le fondu de sécurité
+(D33.2, D34.1 : posé d'office aux bords de tout clip, réglable, et il cède au fondu de l'utilisateur) — 0
+pour « fondu automatique », mais la fonction est là. **Écarté, et pourquoi** : le traitement hors ligne
+d'un clip (*Direct Offline Processing* — 0 pour « traitement hors ligne ») rend des effets DANS un clip,
+c'est-à-dire un second moteur de rendu par clip à garder égal au premier ; sans besoin établi, il ne
+s'ouvre pas sur une liste.
+
+**CE QUI MANQUE, VÉRIFIÉ DANS LE CODE** (0 pour « courbe de gain », « gain envelope », « enveloppe du
+clip », « clipGainPoints » ; 0 pour « normaliser à », « niveau cible », « targetDb » ; « tempo du clip »
+n'existe que DÉDUIT d'un nombre de mesures que l'utilisateur donne — D12.6 — et rien ne le cherche) :
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D545.1 | **La courbe de gain d'un clip audio** — l'enveloppe d'événement (*event envelope*) | des points de gain posés sur le clip, une droite entre deux ; ils tiennent au MATÉRIAU (déplacer, rogner, couper, boucler ne les déplacent pas dans le son) ; dans les deux chemins ; un pas par geste ; mesuré par l'export audio |
+| D545.2 | **Détecter le tempo d'une prise** — *Tempo Detection* | le tempo d'un clip audio cherché dans ses attaques, proposé à l'adoption comme celui de « Le clip fait N mesures » ; mesuré sur des prises de tempo connu |
+| D545.3 | **Normaliser un clip à un niveau choisi** | la crête du clip amenée au niveau demandé (−1 dBFS proposé) et non plus toujours à 0 ; mesuré par l'export |
+
+**L'ORDRE, TRANCHÉ ICI.** D545.1 d'abord : elle était nommée dès D544 comme l'ouverture de cet audit, et
+c'est la plus utilisée des trois au montage d'une prise. Puis D545.2, qui sert l'enregistrement et
+l'import d'une boucle ; puis D545.3.
+
+### Phase D545.1 — la courbe de gain d'un clip audio (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 15 h 19.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Un point est une paire (seconde du FICHIER, gain linéaire)**, et non (tick du clip, gain). C'est la
+  décision qui porte tout le reste : un point tient au matériau, comme les attaques de D543.3 et
+  `sourceStartSeconds`. Déplacer un clip, le rogner, le couper, le répéter en boucle : AUCUN code de
+  transport à écrire — chaque moitié d'une coupe garde la liste entière, et la droite entre deux points de
+  part et d'autre de la coupe donne, au bord, exactement la valeur d'avant (le contrat de `splitClips` :
+  « les deux moitiés rejouent EXACTEMENT ce que jouait l'original »). Les marqueurs d'étirement ont fait
+  l'autre choix (ticks du clip), et il leur a fallu du code dans `resizeClipsStart`, `splitClips` et
+  `stretchClipsEnd` ; ici, il n'en faut pas.
+- **Entre deux points, une droite en AMPLITUDE** (comme le fondu « droite » de D17.1) ; avant le premier
+  et après le dernier, la valeur du plus proche ; sans point, 1. Elle MULTIPLIE le gain du clip et ses
+  fondus. Un point se borne à 0..4 (+12 dB).
+- **Le moteur l'applique là où il lit le fichier** : chaque portée reçoit la courbe en trames du fichier
+  (`spansFromTrack`, que l'application et le rendu hors ligne appellent), et le gain de chaque trame est
+  lu à la position du FICHIER qu'elle joue — étirement, inversion et boucle compris, sans cas à part.
+- **Le fichier** : `"gainEnvelope": [{"seconds": …, "gain": …}]` sur le clip, écrit seulement s'il y a
+  des points.
+- **Les gestes, premier temps** : au menu du clip audio, « Ajouter un point de gain ici » (à la position
+  du clic, au gain que la courbe y a déjà — le son ne change pas), « Gain de ce point… » (une fenêtre, en
+  dB) et « Retirer ce point de gain » quand le clic tombe sur un point, « Aplatir la courbe de gain » ;
+  la courbe se DESSINE sur le clip (une ligne et ses points). Un pas par geste. Le glisser à la souris
+  d'un point est le second temps (D545.1 bis), écrit quand celui-ci sera mesuré.
+
+**ATTENDUS, écrits avant le code.**
+1. tests `core/` : sans point → 1 partout ; deux points (1 s → 1, 3 s → 0) → 0,5 à 2 s, 1 avant, 0
+   après ; un point posé « ici » prend la valeur que la courbe a déjà (le son inchangé) ; un clip coupé à
+   2 s : chaque moitié rend, à chaque seconde du fichier, la même valeur que l'original ;
+2. par l'application, mesuré par l'EXPORT AUDIO : un sinus de 1 kHz de 4 s à crête 0,5 ; points à 1 s
+   (gain 1) et 3 s (gain 0) → l'enveloppe de l'export, par tranches de 100 ms : 0,5 avant 1 s, 0,25 à 2 s
+   (±0,02), le silence (sous −60 dBFS) après 3 s ; le TÉMOIN, l'export sans point, à 0,5 partout ; un clip
+   COUPÉ à 2 s rend le même export à 10⁻⁴ près ; Ctrl+Z → l'export d'avant au bit près ;
+3. un banc `tools/courbe-de-gain.sh`, vu rouge sur un défaut remis à la main, entré dans
+   `verifier.sh --bancs` ; la courbe photographiée sur le clip ; libellés traduits.
+
+**LA PREMIÈRE COURSE DU BANC (09/10, finie à 17 h 06) : LA COURBE TIENT, TROIS CONTRÔLES DU BANC NON.** La courbe
+est au journal et au projet relu (« 1.000:1.000 3.000:0.000 ») ; l'export la suit exactement : par tranches
+de 100 ms, 0,3535 jusqu'à 1 s, puis une droite — **0,1767 à 2 s, la moitié** —, et 0,0000 dès 3 s. Les trois
+rouges tiennent au BANC : (a) l'attendu (2) était écrit en valeurs ABSOLUES (0,5 ; 0,25) et l'export ne
+rend pas 0,5 mais 0,3535 — la loi de panoramique de la piste (−3 dB), que le témoin plat montre aussi ; la
+FORME demandée est tenue, le contrôle se rapporte désormais au témoin ; (b) le contrôle (3) supposait qu'une
+coupe est transparente, et SON TÉMOIN l'a réfuté — voir ci-dessous ; (c) une commande du banc (`grep -c` qui
+rend 0 avec le code 1, suivi d'un « || echo ABSENT ») écrivait deux valeurs.
+
+**CE QUE LE TÉMOIN DE LA COUPE A TROUVÉ — NOMMÉ, CHIFFRÉ, PAS RÉGLÉ ICI.** Un clip coupé à 2 s, SANS
+courbe, s'écarte de l'export d'avant de **0,31** (pour un sinus de crête 0,35) sur **174 trames, de 1,998 à
+2,002 s** — et de rien du tout ailleurs. C'est le fondu de sécurité de D33.2, posé aux DEUX bords neufs
+d'une coupe faite dans un son continu : un trou de 4 ms à chaque Ctrl+E dans une prise qui joue. Aucun banc
+ne pouvait le voir — celui de D542.3 coupe dans du silence NUMÉRIQUE, où un fondu multiplie des zéros. Pour
+D545.1, il suffit de savoir que la courbe y ajoute exactement son gain (l'écart sur la jonction, avec la
+courbe, vaut 0,155 = 0,31 × 0,5) et qu'ailleurs les deux exports sont identiques au dernier bit. Le trou
+lui-même est la phase qui suit.
+
+**TRANCHÉ EN ÉCRIVANT LE CODE.** (a) **La courbe se pose sur la PORTÉE, et le mixage n'a qu'à la lire.**
+Le moteur multiplie déjà, à trois endroits, par le gain de la trame `dansLeClip` (position dans la portée) ;
+`spansFromTrack`, qui connaît la carte, la boucle et le sens, y convertit les secondes du fichier en
+trames de portée (et ajoute, sur un clip étiré, la valeur de la courbe à chaque marqueur : la carte n'est
+affine qu'entre deux). Une seule lecture par trame, et aucune connaissance des magasins miroir ou
+transposés dans le mixage. (b) **Le champ va EN DERNIER** dans `Clip` comme dans `ProjectClip` : posé
+d'abord après `warpMode`, il décalait l'agrégat positionnel de `clipToModel` — l'en-tête du struct le
+disait, il a été relu à temps. (c) **Une courbe fait monter la version du fichier**, comme l'étirement,
+l'inversion et la transposition : un lecteur ancien la jouerait à plat, sans un mot. (d) **L'échelle du
+dessin est linéaire** (1 à mi-hauteur, +6 dB en haut) : en racine, essayée d'abord, la droite que le son
+suit se voyait courbe sur la photo. (e) Le point « ici » d'un banc est la tête de lecture (`VSM_POSITION`),
+comme pour « Ajouter un marqueur ici ».
+
+**D545.1 EST FAITE (09/10, 17 h 15 ; le banc vert à 17 h 12).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | core 445 → **449** : 1 sans point ; 0,5 à 2 s entre (1 s → 1) et (3 s → 0), 1 avant, 0 après ; un point posé ici prend la valeur de la droite (0,25), refusé à moins d'1 ms, borné à 4 ; coupé à 2 s, chaque moitié rend la valeur de l'original à chaque dixième de seconde ; la seconde du fichier jouée suit la carte et la boucle, et un clip à l'envers rend −1. **Rouge** : le point posé à 1 au lieu de la valeur de la droite | **oui** |
+| 1 bis | le moteur (ce que le banc ne voit pas) | audio 1 324 → **1 328**, sur une constante de 0,5 : le clip simple (0,25 à 2 s), la BOUCLE (0,25 à chaque tour), l'ENVERS (0 à 0,5 s, 0,5 à 3,5 s), l'ÉTIREMENT par sa carte (0,25 à 1 s). **Rouges** : le retournement retiré (0,5 au lieu de 0), la carte ignorée (0 au lieu de 0,25) | **oui** |
+| 2 | par l'application, mesuré par l'EXPORT | `tools/courbe-de-gain.sh` : la courbe au journal et au projet relu (« 1.000:1.000 3.000:0.000 ») ; l'export, rapporté au témoin plat (0,3535) : 1 jusqu'à 1 s, **0,5 à 2 s**, 0,0000 dès 3 s ; coupé à 2 s, identique hors de ±20 ms (0,00), et sur la jonction 0,155 = 0,31 (l'écart de la coupe seule) × 0,5 ; un point puis Ctrl+Z → l'export d'avant **au bit près**, le projet sans courbe | **oui** — attendus (2) et (3) reformulés après la première course, et dit plus haut |
+| 3 | le banc, la photo | 5 contrôles, entré dans `verifier.sh --bancs` (**64**) ; **rouge** sur la courbe retirée du moteur (les contrôles 2 et 3) ; la photo de l'ARRANGEMENT, zoomée sur le clip, regardée : la droite, ses deux points, le silence après ; libellés traduits | **oui** |
+| — | le disque | interchange 337 → **338** : la courbe relue (deux points), ABSENTE du fichier quand elle est vide ; **rouge** sur l'écriture retirée (0 point relu) | **oui** |
+
+**LA SUITE ENTIÈRE (finie à 17 h 29) : UN ROUGE, ET IL ÉTAIT JUSTE.** `inventaire_langue.py --garde` : trois noms de
+pas d'historique sans traduction — « Ajouter un point de gain », « Retirer un point de gain », « Gain d'un
+point de la courbe ». La fenêtre d'historique les affiche (la règle de D150) ; ils sont traduits, la garde
+repasse à 0. Le reste vert : core 449, audio 1 328, interchange 337 (puis 338), clap 25, panneaux 11,
+Python 257, ruff, mypy.
 

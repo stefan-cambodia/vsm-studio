@@ -280,6 +280,24 @@ AttackNotes notesFromAttacks(const Clip& clip, const std::vector<double>& onsetS
                              const std::function<Tick(double)>& secondsToTicks,
                              const std::function<double(Tick)>& ticksToSeconds);
 
+/// D545.1 : LA COURBE DE GAIN d'un clip audio, lue à une seconde du FICHIER : une droite en amplitude entre
+/// deux points, la valeur du plus proche avant le premier et après le dernier, 1 sans point.
+float clipEnvelopeGainAt(const Clip& clip, double sourceSeconds);
+/// La seconde du fichier que le clip joue au tick `absoluteTick` du morceau — sa carte s'il suit le tempo,
+/// sa fenêtre répétée s'il boucle, le tempo sinon. Un clip à l'envers n'y passe pas (rend −1).
+double clipSourceSecondsAtTick(const Clip& clip, Tick absoluteTick, Tick materialEnd,
+                               const std::function<double(Tick)>& ticksToSeconds);
+/// Pose un point à `sourceSeconds`, au gain que la courbe y a DÉJÀ (le son ne change pas) ; refusé à moins
+/// d'une milliseconde d'un autre. Rend son indice, ou −1.
+int addGainPoint(std::vector<Clip>& clips, uint64_t clipId, double sourceSeconds);
+/// Le gain d'un point, borné à 0..4. Faux si rien n'a changé.
+bool setGainPoint(std::vector<Clip>& clips, uint64_t clipId, size_t index, float gain);
+bool removeGainPoint(std::vector<Clip>& clips, uint64_t clipId, size_t index);
+/// Retire tous les points. Faux s'il n'y en avait pas.
+bool clearGainEnvelope(std::vector<Clip>& clips, uint64_t clipId);
+/// L'indice du point le plus proche de `sourceSeconds` à `toleranceSeconds` près, ou −1.
+int gainPointNear(const Clip& clip, double sourceSeconds, double toleranceSeconds);
+
 /// Retire le marqueur `index` — jamais le premier, jamais sous deux.
 bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index);
 

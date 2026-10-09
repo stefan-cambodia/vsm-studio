@@ -137,6 +137,17 @@ JsonValue clipToJson(const ProjectClip& clip) {
     // transposition se réécrit octet pour octet, comme avant.
     if (clip.pitchSemitones != 0.0)
         c.set("pitch", JsonValue::makeFloat(static_cast<float>(clip.pitchSemitones)));
+    // D545.1 : LA COURBE DE GAIN, écrite seulement s'il y a des points.
+    if (!clip.gainEnvelope.empty()) {
+        JsonValue points = JsonValue::makeArray();
+        for (const auto& [secondes, gain] : clip.gainEnvelope) {
+            JsonValue p = JsonValue::makeObject();
+            p.set("seconds", JsonValue::makeNumber(secondes));
+            p.set("gain", JsonValue::makeNumber(static_cast<double>(gain)));
+            points.append(std::move(p));
+        }
+        c.set("gainEnvelope", std::move(points));
+    }
     return c;
 }
 
@@ -163,21 +174,23 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
                                       static_cast<int64_t>(m["tick"].asNumber(0.0)));
     clip.reversed = clipJson["reversed"].asBoolean(false);
     clip.pitchSemitones = clipJson["pitch"].asNumber(0.0);
+    for (const auto& p : clipJson["gainEnvelope"].elements())   // D545.1
+        clip.gainEnvelope.emplace_back(p["seconds"].asNumber(0.0), static_cast<float>(p["gain"].asNumber(1.0)));
     return clip;
 }
 
 /// Un projet a-t-il un clip qui suit le tempo ? C'est ce qui décide de la
-/// version écrite.
+/// version écrite. D545.1 : une courbe de gain aussi — un lecteur ancien la jouerait à plat, sans un mot.
 bool usesWarp(const ProjectDocument& document) {
     for (const auto& track : document.tracks) {
         for (const auto& clip : track.clips)
-            if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0) return true;
+            if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty()) return true;
         for (const auto& take : track.takes)
             for (const auto& clip : take.clips)
-                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0) return true;
+                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty()) return true;
         for (const auto& version : track.versions)   // D532.2 : une version rangée compte aussi
             for (const auto& clip : version.clips)
-                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0) return true;
+                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty()) return true;
     }
     return false;
 }
@@ -217,6 +230,7 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     for (const auto& m : clip.warpMarkers) c.warpMarkers.emplace_back(m.sourceSeconds, m.tick);
     c.reversed = clip.reversed;
     c.pitchSemitones = clip.pitchSemitones;   // D54
+    for (const auto& p : clip.gainEnvelope) c.gainEnvelope.emplace_back(p.sourceSeconds, p.gain);   // D545.1
     // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
@@ -237,6 +251,13 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
     c.reversed = clip.reversed;
     c.pitchSemitones = clip.pitchSemitones;   // D54
     c.fadeShape = fadeShapeFromName(clip.fadeShape);
+    // D545.1 : triée et bornée à la lecture — un fichier écrit à la main ne casse pas la courbe.
+    for (const auto& [secondes, gain] : clip.gainEnvelope)
+        c.gainEnvelope.push_back({std::max(0.0, secondes), std::clamp(gain, 0.0f, 4.0f)});
+    std::sort(c.gainEnvelope.begin(), c.gainEnvelope.end(),
+              [](const vsm::sequencer::GainPoint& a, const vsm::sequencer::GainPoint& b) {
+                  return a.sourceSeconds < b.sourceSeconds;
+              });
     return c;
 }
 

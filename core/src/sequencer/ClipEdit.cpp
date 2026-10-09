@@ -827,6 +827,79 @@ AttackNotes notesFromAttacks(const Clip& clip, const std::vector<double>& onsetS
     return bilan;
 }
 
+float clipEnvelopeGainAt(const Clip& clip, double sourceSeconds) {
+    const auto& p = clip.gainEnvelope;
+    if (p.empty()) return 1.0f;
+    if (sourceSeconds <= p.front().sourceSeconds) return p.front().gain;
+    if (sourceSeconds >= p.back().sourceSeconds) return p.back().gain;
+    const auto suivant = std::upper_bound(p.begin(), p.end(), sourceSeconds,
+                                          [](double s, const GainPoint& x) { return s < x.sourceSeconds; });
+    const auto& b = *suivant;
+    const auto& a = *(suivant - 1);
+    const double t = (sourceSeconds - a.sourceSeconds) / std::max(1e-12, b.sourceSeconds - a.sourceSeconds);
+    return static_cast<float>(a.gain + (b.gain - a.gain) * t);
+}
+
+double clipSourceSecondsAtTick(const Clip& clip, Tick absoluteTick, Tick materialEnd,
+                               const std::function<double(Tick)>& ticksToSeconds) {
+    if (clip.reversed) return -1.0;
+    const Tick dans = absoluteTick - clip.startTick;
+    if (dans < 0 || dans >= clipPlayedLength(clip, materialEnd)) return -1.0;
+    if (clipIsWarped(clip)) return warpSourceSecondsAt(clip, dans);
+    if (!ticksToSeconds) return -1.0;
+    // LA BOUCLE DE CLIP (D5.2) : au-delà de la fenêtre, le clip la REJOUE.
+    const Tick fenetre = clip.sourceLength > 0 ? clip.sourceLength : clipPlayedLength(clip, materialEnd);
+    const Tick tour = fenetre > 0 ? (dans / fenetre) * fenetre : 0;
+    return clip.sourceStartSeconds + ticksToSeconds(absoluteTick) - ticksToSeconds(clip.startTick + tour);
+}
+
+int addGainPoint(std::vector<Clip>& clips, uint64_t clipId, double sourceSeconds) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || sourceSeconds < 0.0) return -1;
+    if (gainPointNear(*clip, sourceSeconds, 0.001) >= 0) return -1;
+    const GainPoint neuf{sourceSeconds, clipEnvelopeGainAt(*clip, sourceSeconds)};
+    auto& p = clip->gainEnvelope;
+    // L'INDICE AVANT L'INSERTION — la leçon d'`addWarpMarker` (deux opérandes non séquencés).
+    const auto indice = std::upper_bound(p.begin(), p.end(), sourceSeconds,
+                                         [](double s, const GainPoint& x) { return s < x.sourceSeconds; })
+                        - p.begin();
+    p.insert(p.begin() + indice, neuf);
+    return static_cast<int>(indice);
+}
+
+bool setGainPoint(std::vector<Clip>& clips, uint64_t clipId, size_t index, float gain) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || index >= clip->gainEnvelope.size()) return false;
+    const float borne = std::clamp(gain, 0.0f, 4.0f);
+    if (clip->gainEnvelope[index].gain == borne) return false;
+    clip->gainEnvelope[index].gain = borne;
+    return true;
+}
+
+bool removeGainPoint(std::vector<Clip>& clips, uint64_t clipId, size_t index) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || index >= clip->gainEnvelope.size()) return false;
+    clip->gainEnvelope.erase(clip->gainEnvelope.begin() + static_cast<std::ptrdiff_t>(index));
+    return true;
+}
+
+bool clearGainEnvelope(std::vector<Clip>& clips, uint64_t clipId) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || clip->gainEnvelope.empty()) return false;
+    clip->gainEnvelope.clear();
+    return true;
+}
+
+int gainPointNear(const Clip& clip, double sourceSeconds, double toleranceSeconds) {
+    int meilleur = -1;
+    double ecart = toleranceSeconds;
+    for (size_t i = 0; i < clip.gainEnvelope.size(); ++i) {
+        const double d = std::fabs(clip.gainEnvelope[i].sourceSeconds - sourceSeconds);
+        if (d <= ecart) { ecart = d; meilleur = static_cast<int>(i); }
+    }
+    return meilleur;
+}
+
 bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tick relativeTick) {
     Clip* clip = clipById(clips, clipId);
     if (!clip || !clipIsWarped(*clip)) return false;

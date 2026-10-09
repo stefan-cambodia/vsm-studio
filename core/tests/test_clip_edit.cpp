@@ -1369,3 +1369,63 @@ VSM_TEST(an_attack_outside_the_played_window_is_left_out_and_counted) {
     VSM_ASSERT_EQ(bilan.notes[0].startTick, Tick(1920 + 240));
     VSM_ASSERT_EQ(int(bilan.notes[0].velocity), 127);   // la plus forte des GARDÉES fixe l'échelle
 }
+
+// D545.1 — LA COURBE DE GAIN D'UN CLIP AUDIO, tenue au matériau. 120 BPM : une seconde fait 960 ticks.
+
+VSM_TEST(the_gain_envelope_is_a_line_in_amplitude_between_points_of_the_file) {
+    Clip c = clip(1, 0, 3840);
+    VSM_ASSERT_NEAR(clipEnvelopeGainAt(c, 2.0), 1.0, 1e-9);               // sans point : 1
+    c.gainEnvelope = {{1.0, 1.0f}, {3.0, 0.0f}};
+    VSM_ASSERT_NEAR(clipEnvelopeGainAt(c, 0.5), 1.0, 1e-9);               // avant le premier
+    VSM_ASSERT_NEAR(clipEnvelopeGainAt(c, 2.0), 0.5, 1e-6);               // au milieu
+    VSM_ASSERT_NEAR(clipEnvelopeGainAt(c, 3.5), 0.0, 1e-9);               // après le dernier
+}
+
+VSM_TEST(a_gain_point_added_here_takes_the_value_the_line_already_has) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    clips[0].gainEnvelope = {{1.0, 1.0f}, {3.0, 0.0f}};
+    const int i = addGainPoint(clips, 1, 2.5);
+    VSM_ASSERT_EQ(i, 1);
+    VSM_ASSERT_NEAR(clips[0].gainEnvelope[1].gain, 0.25, 1e-6);          // le son ne change pas
+    VSM_ASSERT_EQ(addGainPoint(clips, 1, 2.5005), -1);                     // à moins d'une milliseconde : refusé
+    VSM_ASSERT(setGainPoint(clips, 1, 1, 9.0f));
+    VSM_ASSERT_NEAR(clips[0].gainEnvelope[1].gain, 4.0, 1e-9);            // borné à +12 dB
+    VSM_ASSERT_EQ(gainPointNear(clips[0], 2.49, 0.02), 1);
+    VSM_ASSERT(removeGainPoint(clips, 1, 1));
+    VSM_ASSERT_EQ(clips[0].gainEnvelope.size(), size_t(2));
+    VSM_ASSERT(clearGainEnvelope(clips, 1));
+    VSM_ASSERT(!clearGainEnvelope(clips, 1));
+}
+
+VSM_TEST(a_cut_clip_plays_the_same_gain_at_every_second_of_the_file) {
+    // LE CONTRAT DE `splitClips` : les deux moitiés rejouent EXACTEMENT ce que jouait l'original.
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    clips[0].gainEnvelope = {{1.0, 1.0f}, {3.0, 0.0f}};
+    const Clip original = clips[0];
+    uint64_t ids = 10;
+    VSM_ASSERT_EQ(splitClips(clips, {1}, 1920, 100000, ids, enSecondes), size_t(1));
+    VSM_ASSERT_EQ(clips.size(), size_t(2));
+    for (int k = 0; k <= 40; ++k) {
+        const double s = 0.1 * k;
+        const Clip& moitie = s < 2.0 ? clips[0] : clips[1];
+        VSM_ASSERT_NEAR(clipEnvelopeGainAt(moitie, s), clipEnvelopeGainAt(original, s), 1e-9);
+    }
+}
+
+VSM_TEST(the_second_of_the_file_a_clip_plays_follows_its_map_and_its_loop) {
+    Clip c = clip(1, 960, 3840);
+    c.sourceStartSeconds = 0.5;
+    VSM_ASSERT_NEAR(clipSourceSecondsAtTick(c, 960 + 480, 100000, enSecondes), 1.0, 1e-9);
+    VSM_ASSERT(clipSourceSecondsAtTick(c, 100, 100000, enSecondes) < 0.0);   // hors du clip
+    // EN BOUCLE : une fenêtre d'une seconde, rejouée.
+    Clip boucle = clip(2, 0, 3840);
+    boucle.sourceLength = 960;
+    VSM_ASSERT_NEAR(clipSourceSecondsAtTick(boucle, 960 + 240, 100000, enSecondes), 0.25, 1e-9);
+    // ÉTIRÉ : par la carte.
+    Clip etire = clip(3, 0, 3840);
+    etire.warpMode = WarpMode::KeepPitch;
+    etire.warpMarkers = {{0.0, 0}, {1.0, 1920}, {4.0, 3840}};
+    VSM_ASSERT_NEAR(clipSourceSecondsAtTick(etire, 960, 100000, enSecondes), 0.5, 1e-9);
+    etire.reversed = true;
+    VSM_ASSERT(clipSourceSecondsAtTick(etire, 960, 100000, enSecondes) < 0.0);
+}

@@ -152,6 +152,14 @@ enum class WarpMode : uint8_t { Off = 0, KeepPitch = 1, Repitch = 2, KeepPitchWs
 /// marqueurs, la relation est linéaire ; avant le premier et après le dernier,
 /// le rapport du segment voisin se prolonge. Un clip étiré en a au moins
 /// deux : son début (tick 0) et sa fin.
+/// D545.1 : UN POINT DE LA COURBE DE GAIN d'un clip audio — une seconde du FICHIER et un gain linéaire
+/// (0 à 4). La position est celle du MATÉRIAU, pas du clip : déplacer, rogner, couper ou boucler le clip
+/// ne déplace aucun point dans le son, sans une ligne de code de transport (voir `clipEnvelopeGainAt`).
+struct GainPoint {
+    double sourceSeconds = 0.0;
+    float gain = 1.0f;
+};
+
 struct WarpMarker {
     double sourceSeconds = 0.0;
     Tick tick = 0;
@@ -251,6 +259,11 @@ struct Clip {
     /// `fadeOutSeconds` et `gain`, ce champ décalait tout ce qui suit — la
     /// première écriture de D17.1 l'a fait, et le compilateur l'a rattrapée.
     FadeShape fadeShape = FadeShape::Linear;
+
+    /// D545.1 : LA COURBE DE GAIN, triée par seconde du fichier ; vide = 1 partout. Elle multiplie le gain
+    /// du clip et ses fondus. EN DERNIER, la règle de ce struct : posée d'abord après `warpMode`, elle
+    /// décalait d'un cran l'agrégat positionnel de `clipToModel` (`{…, WarpMode::Off, {}, 0}`).
+    std::vector<GainPoint> gainEnvelope;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

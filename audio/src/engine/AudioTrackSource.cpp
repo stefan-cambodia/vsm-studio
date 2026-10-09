@@ -17,6 +17,20 @@ namespace {
 /// « ne s'entend pas sur des fondus courts » ; c'est vrai d'un fondu simple et
 /// faux d'un fondu ENCHAÎNÉ, où deux droites qui se croisent creusent 3 dB sur
 /// du matériau décorrélé.
+/// D545.1 : la courbe de gain d'une portée à la trame `dansLeClip` — une droite entre deux points, la
+/// valeur du plus proche au-delà, 1 sans point.
+inline float envelopeGain(const AudioClipSpan& clip, double dansLeClip) {
+    const auto& c = clip.gainCurve;
+    if (c.empty()) return 1.0f;
+    if (dansLeClip <= c.front().first) return c.front().second;
+    if (dansLeClip >= c.back().first) return c.back().second;
+    const auto b = std::upper_bound(c.begin(), c.end(), dansLeClip,
+                                    [](double x, const std::pair<double, float>& p) { return x < p.first; });
+    const auto a = b - 1;
+    const double t = (dansLeClip - a->first) / std::max(1e-9, b->first - a->first);
+    return static_cast<float>(a->second + (b->second - a->second) * t);
+}
+
 inline float fadeGain(const AudioClipSpan& clip, int64_t position, int64_t securite) {
     const int64_t length = clip.lengthFrames;
     const int64_t fadeIn = clip.fadeInFrames;
@@ -169,7 +183,8 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                 }
                 for (int i = 0; i < n; ++i) {
                     const int64_t dansLeClip = position + i - clip.startFrame;
-                    const float gain = signeW * fadeGain(clip, dansLeClip, safetyFadeFrames);
+                    const float gain = signeW * fadeGain(clip, dansLeClip, safetyFadeFrames)
+                                       * envelopeGain(clip, static_cast<double>(dansLeClip));   // D545.1
                     const auto j = static_cast<size_t>(position + i - timelineStart);
                     outLeft[j] += w.scratchL[static_cast<size_t>(i)] * gain;
                     outRight[j] += w.scratchR[static_cast<size_t>(i)] * gain;
@@ -198,7 +213,8 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             // n'a pas encore livré : le trou est alors COMPTÉ (`cacheMisses`).
             float g = 0.0f, d = 0.0f;
             if (!magasin.frameAt(dansLeFichier, g, d)) continue;
-            const float gain = signe * fadeGain(clip, dansLeClip, safetyFadeFrames);
+            const float gain = signe * fadeGain(clip, dansLeClip, safetyFadeFrames)
+                               * envelopeGain(clip, static_cast<double>(dansLeClip));   // D545.1
             const auto j = static_cast<size_t>(position - timelineStart);
             outLeft[j] += g * gain;
             outRight[j] += d * gain;
@@ -270,7 +286,8 @@ int AudioTrackSource::mixIntoAtSpeed(float* outLeft, float* outRight, double tim
             // est exactement le même problème.
             kernel.stereoAt(lire, positionSource(positionMorceau), g, d);
             const float gain = signe * fadeGain(clip, static_cast<int64_t>(std::llround(dansLeClip)),
-                                                 safetyFadeFrames);
+                                                 safetyFadeFrames)
+                               * envelopeGain(clip, dansLeClip);   // D545.1
             outLeft[static_cast<size_t>(n)] += g * gain;
             outRight[static_cast<size_t>(n)] += d * gain;
             ++ecrits;
@@ -319,6 +336,46 @@ void applyCrossfades(std::vector<AudioClipSpan>& spans, vsm::sequencer::FadeShap
         }
     }
 }
+
+namespace {
+/// D545.1 : LA COURBE DE GAIN D'UN CLIP, POSÉE SUR UNE PORTÉE. Chaque point (une seconde du FICHIER) va à la
+/// trame de la portée où le clip, joué à l'endroit, lit cette seconde : par la carte s'il est étiré, par
+/// la fenêtre sinon (chaque tour d'une boucle a sa portée, et la même fenêtre). Sur un clip étiré, la
+/// carte n'est affine qu'entre deux marqueurs : la valeur de la courbe à chaque marqueur s'ajoute, et la
+/// droite entre deux trames reste la droite entre deux secondes. À l'envers, la portée joue à la trame d
+/// ce que l'endroit jouait à L − 1 − d : la courbe se retourne de même.
+std::vector<std::pair<double, float>> courbeDeGain(const vsm::sequencer::Clip& clip, const AudioClipSpan& span,
+                                                   double sampleRate) {
+    std::vector<std::pair<double, float>> courbe;
+    if (clip.gainEnvelope.empty()) return courbe;
+    const auto aLEndroit = [&](double secondes) -> double {
+        const double f = secondes * sampleRate;
+        if (span.warp && span.warp->map.size() >= 2) {
+            const auto& m = span.warp->map;
+            size_t i = 1;
+            while (i + 1 < m.size() && m[i].sourceFrame <= f) ++i;
+            const auto& a = m[i - 1];
+            const auto& b = m[i];
+            const double ds = b.sourceFrame - a.sourceFrame;
+            const double sortie = ds > 0.0
+                ? static_cast<double>(a.outputFrame)
+                      + (f - a.sourceFrame) * static_cast<double>(b.outputFrame - a.outputFrame) / ds
+                : static_cast<double>(a.outputFrame);
+            return sortie - static_cast<double>(span.startFrame);
+        }
+        return f - static_cast<double>(span.sourceStartFrame);
+    };
+    for (const auto& p : clip.gainEnvelope) courbe.emplace_back(aLEndroit(p.sourceSeconds), p.gain);
+    if (span.warp)
+        for (const auto& m : span.warp->map)
+            courbe.emplace_back(static_cast<double>(m.outputFrame - span.startFrame),
+                                vsm::sequencer::clipEnvelopeGainAt(clip, m.sourceFrame / sampleRate));
+    if (clip.reversed)
+        for (auto& x : courbe) x.first = static_cast<double>(span.lengthFrames - 1) - x.first;
+    std::sort(courbe.begin(), courbe.end());
+    return courbe;
+}
+} // namespace
 
 std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                                            double sampleRate,
@@ -375,6 +432,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                                       m.sourceSeconds * sampleRate});
             }
             span.warp = std::move(warp);
+            span.gainCurve = courbeDeGain(clip, span, sampleRate);   // D545.1
             spans.push_back(std::move(span));
             continue;
         }
@@ -422,6 +480,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             // D54, et D544.3 : la transposition globale s'y ajoute — sauf en mode « réchantillonné ».
             span.pitchSemitones = clip.pitchSemitones
                                   + (clip.warpMode == vsm::sequencer::WarpMode::Repitch ? 0.0 : globalSemitones);
+            span.gainCurve = courbeDeGain(clip, span, sampleRate);   // D545.1
             if (span.lengthFrames > 0) spans.push_back(span);
         }
     }

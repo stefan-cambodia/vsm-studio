@@ -553,3 +553,25 @@ VSM_TEST(la_transposition_globale_survit_au_disque_et_ne_s_ecrit_pas_nulle) {
     for (size_t i = 1; i < relu.bundle.project.tracks.size(); ++i)
         VSM_ASSERT(!relu.bundle.project.tracks[i].independentOfGlobalTranspose);
 }
+
+// D545.1 : LA COURBE DE GAIN D'UN CLIP SURVIT AU DISQUE — et ne s'écrit pas quand elle est vide.
+VSM_TEST(la_courbe_de_gain_d_un_clip_survit_au_disque) {
+    Project p = projetDistinctif();
+    size_t piste = p.tracks.size();
+    for (size_t i = 0; i < p.tracks.size(); ++i)
+        if (!p.tracks[i].clips.empty()) { piste = i; break; }
+    VSM_ASSERT(piste < p.tracks.size());
+    {
+        const std::string texte = projectDocumentToJson(documentFromProject(p)).toString();
+        VSM_ASSERT(texte.find("\"gainEnvelope\"") == std::string::npos);
+    }
+    p.tracks[piste].clips[0].gainEnvelope = {{1.0, 1.0f}, {3.0, 0.0f}};
+    const fs::path dossier = dossierNeuf("courbe-de-gain");
+    VSM_ASSERT(saveProjectBundle(p, dossier.string()).success);
+    const auto relu = loadProjectBundle(dossier.string());
+    VSM_ASSERT(relu.success);
+    const auto& courbe = relu.bundle.project.tracks[piste].clips[0].gainEnvelope;
+    VSM_ASSERT_EQ(courbe.size(), size_t(2));
+    VSM_ASSERT_NEAR(courbe[0].sourceSeconds, 1.0, 1e-9);
+    VSM_ASSERT_NEAR(courbe[1].gain, 0.0, 1e-9);
+}

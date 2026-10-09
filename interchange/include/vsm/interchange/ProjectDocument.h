@@ -174,6 +174,9 @@ struct ProjectClip {
     /// raison : `clipToDocument` construit un `ProjectClip` par agrégat
     /// POSITIONNEL, et un champ glissé au milieu décale tout ce qui suit.
     std::string fadeShape;
+    /// D545.1 : la courbe de gain (seconde du fichier, gain linéaire), écrite seulement s'il y a des points.
+    /// EN DERNIER, pour l'agrégat positionnel de `clipToDocument`.
+    std::vector<std::pair<double, float>> gainEnvelope;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace vsm::audio::engine {
@@ -94,6 +95,10 @@ struct AudioClipSpan {
     /// réglant l'autre.
     vsm::sequencer::FadeShape crossfadeShape = vsm::sequencer::FadeShape::EqualPower;
     float gain = 1.0f;
+    /// D545.1 : LA COURBE DE GAIN du clip, en trames DE LA PORTÉE — la position que les trois chemins de
+    /// mixage lisent déjà (`dansLeClip`) : (trame, gain), triée ; vide = 1. `spansFromTrack` la calcule, lui
+    /// qui connaît la carte d'étirement, la boucle et le sens de lecture ; le mixage n'a qu'à la lire.
+    std::vector<std::pair<double, float>> gainCurve;
     bool invertPhase = false;
     /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`
     /// en un miroir du matériau et une fenêtre convertie.
