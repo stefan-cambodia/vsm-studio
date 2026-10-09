@@ -264,6 +264,12 @@ private:
                 else if (k > o) nDebut = static_cast<int>(*it - q);    // après : ce qui suit
             }
         }
+        // D543.5 : RIEN AVANT CE QUI RESTE À LIRE. Après un `seek`, le grain d'avant écrivait les
+        // positions qui précèdent le départ ; jamais lues, jamais remises à zéro, leur case dans
+        // l'anneau est celle de la position 3 584 trames plus loin : −16 dB pendant 16 ms, 60 ms après
+        // chaque départ de lecture au milieu d'un clip étiré. En régime, aucun grain n'écrit avant.
+        nDebut = std::max(nDebut, static_cast<int>(std::clamp<int64_t>(consumed_ - gs, 0, kWindow)));
+        if (nDebut >= nFin) { prevSource_ = static_cast<double>(q); hasPrev_ = true; return; }
         source.requestRange(q + nDebut, nFin - nDebut);
         for (int n = nDebut; n < nFin; ++n) {
             float g = 0.0f, d = 0.0f;

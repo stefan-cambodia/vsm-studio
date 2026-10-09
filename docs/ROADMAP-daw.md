@@ -40495,3 +40495,57 @@ D12.8. Aucun test ne démarrait au milieu ; il y en a un.
 **1 323**, interchange 336, clap 25, panneaux 11 ; Python 257 ; ruff, mypy et les gardes verts, sauf
 `index-a-jour.py` (les longueurs que ces lignes déplacent), réécrit par `--corriger` et rejoué vert.
 `--bancs` (60) se lance à la suite du commit, batterie à 55 % ; son résultat s'écrit ici.
+
+**LA SÉRIE, relevée à 11 h 23 : 59 bancs sur 60 verts en 42 min** (dont `quantifier-audio.sh`, 26 s),
+préférences de l'utilisateur identiques ; une veille à 11 h 10, **l'écran trouvé éteint à la fin**.
+Le rouge : `arrangement-defile.sh`, contrôle (5), à 10 h 58 — aucune veille dans sa fenêtre — :
+Ctrl + molette y a DÉZOOMÉ (8,3 → 10,3 mesures) et réduit la hauteur des pistes (7 → 11 visibles), quand
+le banc attend un zoom sans défilement. **Rejoué seul, écran allumé, trois fois : vert les trois fois**,
+à l'identique (8,3 → 5,5 mesures, pistes 1 7 7 0 1888 inchangées). Aucune ligne de D543.3-D543.5 ne touche
+à la molette. Non reproduit, non expliqué : pas décrit comme un défaut (la règle de D351) ; s'il revient,
+la ligne « Ctrl : » du banc dit déjà ce qu'il faut regarder.
+
+
+### Phase D543.5 — le WSOLA ne laisse pas de reste après un départ au milieu (09/10/2026) — FAITE
+
+*Écrite avant son code, le 09/10 à 10 h 41, D543.4 faite.*
+
+**CE QUI EST MESURÉ (D543.4).** `TimeStretch`, le mode « hauteur conservée (WSOLA, témoin) » qu'un clip
+peut choisir : un sinus tenu de crête 0,100, étiré ×1,1, lecture démarrée à la trame 51 200 — l'enveloppe
+tombe à 0,083 · 0,047 · **0,016** (−16 dB) de 2 816 à 3 584 trames après le départ. Même mécanisme que H3 :
+`seek` calcule aussi le grain d'avant (« pour que la somme des fenêtres vaille un dès la première
+trame »), qui écrit les positions précédant le départ ; jamais lues, jamais remises à zéro, leur case est
+celle de la position 3 584 trames plus loin (2 048 + 1 024 + 512). Le test du `seek` qui existe
+(`time_stretch_seek_restarts_the_chain_deterministically`) compare deux courses qui portent le MÊME reste :
+il ne pouvait pas le voir.
+
+**L'HYPOTHÈSE H5, écrite à 10 h 41 avant la mesure qui la tranche.** Comme H3 : un grain n'écrit pas les
+positions qui précèdent `consumed_`. **Attendus** : (i) le même départ : l'enveloppe à 0,100 ± 0,002
+partout ; (ii) un test neuf (départ au milieu, l'enveloppe), vu ROUGE sur le code d'avant ; (iii) ce que
+cela pourrait casser : `test_time_stretch` entier (le rapport un au bit près, le banc 4, le `seek`
+déterministe) et la suite audio. Pas de poids réel ici : le WSOLA a son propre creux aux transitoires
+(une seule fenêtre, la somme vaut un à 50 % de recouvrement), et ce n'est pas l'objet de cette phase.
+
+**H5 EST VRAIE (mesure de 10 h 41, juste après l'hypothèse).** Le même départ à la trame 51 200 : l'enveloppe
+à **0,100 partout** (0,016 au creux, avant).
+
+**UNE GARDE QUI NE GARDAIT PAS, TROUVÉE EN LA FAISANT ÉCHOUER (11 h 46 ; corrigée et rejouée rouge à 11 h 54).** Le test neuf du WSOLA, écrit
+comme celui de H3 — « la plus basse crête par 256 trames ≥ 0,098 » —, est resté **VERT sur le code sans
+H5**. Le reste n'y creusait pas : à 440 Hz, la position 3 584 trames plus loin tombe 32,85 périodes après,
+presque en phase, et le reste **BOMBE** l'enveloppe au lieu de la creuser — le banc à la main avait pris
+un sinus de 382 Hz, presque en opposition. Le test borne désormais l'enveloppe des DEUX côtés (0,098 à
+0,102), et le même défaut aveugle était dans le test du vocodeur de H3 — rouge par la chance d'une phase
+(0,088). Rejoués sur le code sans leurs parades : **WSOLA 0,100 à 0,180**, vocodeur 0,088 à 0,100, rouges
+tous les deux ; verts avec (0,100 à 0,100).
+
+**D543.5 EST FAITE (09/10, 12 h 09).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le même départ : l'enveloppe à 0,100 ± 0,002 | 0,100 à 0,100 (avant : 0,016 au creux à 382 Hz, 0,180 en bosse à 440 Hz) | **oui** |
+| 2 | un test neuf, vu rouge sur le code d'avant | `time_stretch_started_mid_clip_leaves_no_remainder_in_its_ring`, rouge à 0,180 — après correction de sa garde (il ne bornait que le creux) ; le test du vocodeur corrigé de même | **oui** |
+| 3 | ce qui pouvait casser | `test_time_stretch` entier (le rapport un au bit près, le banc 4 à 0,98 ms, le `seek` déterministe) ; audio 1 323 → **1 324** | **oui** |
+
+**LES SUITES** (relevé à 12 h 09) : core 436, audio **1 324**, interchange 336, clap 25, panneaux 11 —
+verts ; la suite Python (257, inchangée depuis les deux courses vertes du matin) et les gardes tournaient
+encore au moment du commit, demandé par l'utilisateur ; leur résultat s'écrit au commit suivant.

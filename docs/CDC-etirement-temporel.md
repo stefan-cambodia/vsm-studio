@@ -450,6 +450,18 @@ reste le défaut, et le chiffre du vocodeur se publie à côté du sien.
 > son coût est une transformée aller-retour par saut de 512 échantillons,
 > de l'ordre de cent multiplications par échantillon et par canal — le
 > double du WSOLA, sans conséquence à vingt clips sur cette machine.
+>
+> **Le creux, mesuré et retiré le 09/10/2026 (D543.4 de `ROADMAP-daw.md`).**
+> « Quantifier l'audio » a calé des clics : leur crête sortait de 3,5 à 14 dB
+> trop basse selon l'endroit où l'attaque tombait dans le saut — sur la région
+> d'une attaque, deux trames portent le son, et la division restait par 1,5.
+> Le vocodeur divise depuis par la somme RÉELLE des poids (crêtes à −0,0 dB),
+> coupe une trame à la première des deux bornes, dans la source et dans la
+> sortie, et une marge d'une milliseconde avant l'instant détecté (D543.3 : un
+> clic se dédoublait 5 ms en avance). Et un départ de lecture au milieu d'un
+> clip étiré n'y laisse plus de reste dans l'anneau (−9,4 dB pendant 30 ms) ;
+> le WSOLA avait le même reste (−16 dB), D543.5. Le creux du WSOLA aux
+> transitoires, lui, demeure : il n'est que le témoin.
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 

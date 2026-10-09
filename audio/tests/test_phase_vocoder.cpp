@@ -382,15 +382,15 @@ VSM_TEST(phase_vocoder_started_mid_clip_leaves_no_remainder_in_its_ring) {
         v.setRatio(0, 0.0, 1.1);
         v.setWeightedNormalization(pondere);
         const auto out = rendre(v, src, 8192, 512, 51200);   // la première demande SAUTE à 51 200
-        float pire = 1.0f;
+        float bas = 1.0f, haut = 0.0f;   // un reste peut CREUSER ou BOMBER selon sa phase
         for (size_t t = 0; t + 256 <= out.l.size(); t += 256) {
             float m = 0.0f;
             for (size_t i = t; i < t + 256; ++i) m = std::max(m, std::abs(out.l[i]));
-            pire = std::min(pire, m);
+            bas = std::min(bas, m); haut = std::max(haut, m);
         }
-        std::printf("    [banc vocodeur] départ au milieu (%s) : plus basse crête par 256 trames %.3f (source 0,100)\n",
-                    pondere ? "pondéré" : "constant", pire);
-        VSM_ASSERT(pire >= 0.098f);
+        std::printf("    [banc vocodeur] départ au milieu (%s) : crête par 256 trames de %.3f à %.3f (source 0,100)\n",
+                    pondere ? "pondéré" : "constant", bas, haut);
+        VSM_ASSERT(bas >= 0.098f && haut <= 0.102f);
     }
 }
 

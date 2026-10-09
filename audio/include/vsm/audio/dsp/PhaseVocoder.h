@@ -36,9 +36,13 @@ namespace vsm::audio::dsp {
 /// l'ordre, donc indépendance de la taille des blocs ; aucune allocation hors
 /// `prepare()`/`setMap()`/`setTransients()` ; `seek()` repart à froid.
 ///
-/// APPROXIMATION ASSUMÉE : quatre trames se recouvrent (saut = taille/4),
-/// et la somme des fenêtres au carré vaut 1,5 -- constante seulement quand
-/// les quatre sont là ; autour d'une trame coupée, un creux, comme au WSOLA.
+/// LA NORMALISATION : quatre trames se recouvrent (saut = taille/4), et la
+/// somme des fenêtres au carré vaut 1,5 quand les quatre sont entières. Elle
+/// fut longtemps une division CONSTANTE, « un creux autour d'une trame coupée »
+/// assumé ; D543.4 l'a mesuré sur des clics calés — de 3,5 à 14 dB perdus selon
+/// l'endroit où l'attaque tombe dans le saut — et la sortie se divise depuis par
+/// la somme RÉELLE des poids des trames qui y contribuent (`setWeightedNormalization`,
+/// la division constante gardée pour témoin).
 template <class Source>
 class PhaseVocoder {
 public:
