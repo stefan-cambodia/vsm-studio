@@ -41641,3 +41641,28 @@ la course de 16 h 34 n'a pas reçu son Ctrl+A à temps. Aucun code touché ; l'a
 INCOMPLÈTES, pas ses muettes — un fait à garder en tête devant la prochaine.
 
 **LE DIXIÈME AUDIT (D549) EST CLOS** : le fondu à la tête, le silence d'une plage, les dispositions nommées.
+
+### Phase D550 — un onzième audit : choisir des clips par la tête et les locateurs, couper aux locateurs, retirer les pistes vides (11/10/2026)
+
+*Écrite le 11/10 à 04 h 46, D549 close ; aucun banc ne tourne.*
+
+**LA MÉTHODE, celle de D535 à D549.** **Cherché** dans `app/Source` et `core/` : « Tout sélectionner dans
+l'arrangement » existe (Ctrl+A), et le menu contextuel du PIANO ROLL a son sous-menu « Sélection » (inverser, rien,
+par vélocité, par durée) ; **l'arrangement n'a rien d'autre** — 0 pour « entre les locateurs », « du début à la tête »,
+« de la tête à la fin » dans un geste de sélection (*Edit ▸ Select ▸ In Loop / From Start to Cursor / From Cursor to
+End / Invert / None* de Cubase). « Couper à la tête » existe (Ctrl+E) ; **0 pour « Couper aux locateurs »** (*Split
+Loop*). Et **0 pour « pistes vides »** (*Project ▸ Remove Empty Tracks*) : une reconstruction, ou un import MIDI, laisse
+des pistes sans un clip ni une note, qu'on retire une à une. **Trouvé et écarté** : « Détecter les silences »
+(*Detect Silence*) existe sous le nom « Découper aux silences » ; « Dissoudre une partie » existe sous celui
+d'« Éclater par hauteur » ; le *Tap Tempo* existe dans la barre de transport ; les fonctions MIDI de longueur et de
+vélocité (*Fixed Lengths*, *Velocity Compress*) sont au piano roll (« Durée = pas de grille », « Resserrer les
+nuances de moitié »).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D550.1 | **Choisir des clips par la tête et les locateurs** — *Select ▸ In Loop, From Start to Cursor, From Cursor to End, Invert, None* | *Édition ▸ Sélectionner dans l'arrangement ▸* cinq entrées ; « entre les locateurs » prend les clips qui touchent la plage, même en partie ; « du début à la tête », ceux qui COMMENCENT avant la tête ; « de la tête à la fin », ceux qui FINISSENT après elle (les règles de Cubase) ; inverser, ne rien choisir ; mesuré par un relevé de la sélection, puis par un geste qui agit sur elle (Suppr) et le `project.json` relu |
+| D550.2 | **Couper aux locateurs** — *Split Loop* | les clips choisis — ou, sans choix, tous ceux qu'un locateur traverse (la règle de Cubase pour *Split at Cursor*) — coupés aux deux locateurs ; le verrou respecté et dit ; aimanté au passage par zéro comme Ctrl+E ; les morceaux d'ENTRE les locateurs restent choisis ; un pas ; mesuré par le `project.json` relu et l'export |
+| D550.3 | **Retirer les pistes vides** — *Remove Empty Tracks* | *Piste ▸ Retirer les pistes vides* : une piste MIDI ou audio sans clip ni note, sans automation, est retirée ; un groupe ne l'est jamais (il route d'autres pistes), un dossier seulement s'il n'a plus de membre ; les routages réparés (`removeTrack`) ; le compte DIT, et les noms ; aucune → dit, sans pas ; un pas ; mesuré par le `project.json` relu |
+
+**L'ORDRE, TRANCHÉ ICI.** D550.1 d'abord (D550.2 en dépend : ses morceaux d'entre les locateurs se choisissent par
+la même règle), puis D550.2, puis D550.3, qui touche à la liste des pistes et se mesure à part.
