@@ -3138,3 +3138,29 @@ constante (`τ`) de son balayage, leurs défauts aux valeurs d'aujourd'hui (5 et
 identique au bit près le prouve), et H70 les règle sur l'original, mesurée au mélange ; 1 et 2 tenus, 3 en échec →
 la saturation est le suspect suivant, et c'est elle qui devient un paramètre ; 1 ou 2 en échec → rien ne se conclut
 de cet instrument.
+
+### 30.1 Ce que les tests de l'instrument ont changé — AVANT toute mesure de l'original (11/10/2026, 02 h 30)
+
+`analyse/mesure_h69.py`, `analyse/tests/test_mesure_h69.py` (4 tests) : un kick de forme CONNUE (la réplique du
+TR-808 à 55 Hz, r = 3, τ = 20 ms, τₐ = 0,2 s — d'autres réglages que ceux de « Reload »), posé 95 fois à des
+instants connus dans un fond de bruit et d'une note de basse non synchrone, les instants donnés à l'instrument faux
+de ± 8 ms. Trois changements, chacun vu ROUGE avant :
+
+1. **Le début du kick se lit sur le signal redressé, pas sur l'enveloppe de Hilbert** : le noyau de Hilbert (1/πt)
+   étale l'enveloppe AVANT l'attaque, et le début était lu 5 ms trop tôt (183 Hz lus à « 10 ms » pour 155).
+2. **La fréquence se lit par périodes entre passages par zéro, pas par la phase du signal analytique** : sur un
+   sinus SATURÉ (le `tanh` du TR-808), la phase tourne inégalement dans la période, et un lissage plus court qu'une
+   période lisait 60,3 Hz pour 68,5 à 50 ms. La saturation garde le signe, donc les passages du fondamental.
+3. **L'instant « sous 150 Hz » se lit sur le modèle ajusté** : la fréquence brute, lue dans le bruit d'avant
+   l'attaque, le donnait à 2,5 ms.
+
+Et une condition ajoutée à la sélection, sans test qui l'ait demandée : **aucun autre kick dans les 300 ms
+QUI PRÉCÈDENT** (le § 30 ne gardait que celles qui suivent). La traîne d'un kick précédent est grave ; dans la
+moyenne de l'original, elle baisserait la part au-dessus de 150 Hz — un biais EN FAVEUR de l'hypothèse — alors que
+le TR-808, monophonique, coupe sa traîne à chaque frappe. Frappes retenues : 138 au lieu de 211.
+
+Sur la scène connue, l'instrument rend : f(10, 25, 50, 100, 200 ms) = 156,3 · 103,2 · 69,1 · 56,3 · 55,0 Hz pour
+155,1 · 102,3 · 68,5 · 56,1 · 55,0 ; f₁ 55,01 Hz, r 3,014, τ 20,1 ms, τₐ 0,200 s ; corrélation paires/impaires
+0,9995 ; sur du bruit seul, sans kick, elle tombe sous 0,7 (le contrôle de l'attendu 2) ; et deux balayages
+différents (r 5, τ 45 ms contre r 2, τ 10 ms) sont lus à plus de 3 dB l'un de l'autre au-dessus de 150 Hz (le
+contrôle de l'attendu 3).
