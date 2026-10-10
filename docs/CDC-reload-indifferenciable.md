@@ -3326,3 +3326,31 @@ son critère doit être de ceux que cette pièce peut faire bouger (ici, les ban
 garde comme CONTRÔLE (« ne recule pas »), pas comme critère de réussite. (c) **Ce qui reste au log-mel est dans la
 moitié haute** — haut-médium −3,46 et aigus −7,26 en K, inchangés : le territoire de H63 et H65 (le charleston trois
 fois trop bas, la caisse claire près de quatre fois trop forte), où H65 avait mené le log-mel à 8,17.
+
+## 32. H71 — les deux moitiés du spectre se corrigent-elles l'une sans l'autre ? Le kick de H70 et les niveaux de H65, ensemble (écrite AVANT la mesure, 11/10/2026, 02 h 50)
+
+**Ce que H65 et H70 ont fait, chacun de son côté.** H65 (les niveaux du charleston et de la caisse claire, lus à
+leurs frappes) a réparé la moitié HAUTE — aigus −6,94 → −0,38, log-mel 10,09 → 8,17 — sans toucher au grave ; H70
+(le kick réglé sur ses frappes) a réparé la moitié BASSE — \|médian\| sub · basse · bas-médium · médium 7,63 · 6,12 ·
+2,80 · 1,89 → 1,51 · 1,47 · 1,31 · 1,21 — sans toucher au haut ni au log-mel. Ni l'une ni l'autre n'est entrée.
+
+**L'HYPOTHÈSE H71** : les deux corrections sont INDÉPENDANTES — appliquées ensemble, chacune garde ce qu'elle a fait
+seule. **Le point mesuré** : le projet de référence, la piste du kick réglée comme le point K de H70 (37 Hz, 0,05 s,
+tenue 0,04 s, volume ×0,7075), celles du charleston et de la caisse claire à leurs facteurs de H65 — **repris en
+rejouant `mesure_h65.py` tel quel** (`build-h42`, mêmes solos de H59, même stem), parce que H65 ne les a publiés qu'à
+trois chiffres ; le rejeu doit rendre un essai **identique au bit près** à celui de H65 (sinon c'est dit, et les
+facteurs du rejeu servent). Le facteur du kick de H65 (×0,985) n'est PAS appliqué : celui de K le remplace. Rendu
+par le moteur de `reload-h70` ; l'outil du § 0, ses sections.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | le CONTRÔLE : le log-mel | ≤ celui de H65 + 0,3 dB (8,47) — le kick ne défait pas ce que H65 a gagné | > H65 + 1,0 dB (9,17) |
+| 2 | la moitié basse : \|médian\| sub, basse, bas-médium, médium | chacune à moins de 0,5 dB de celle de K (1,51 · 1,47 · 1,31 · 1,21), ou mieux | l'une pire de plus de 1,5 dB |
+| 3 | la moitié haute : médianes du haut-médium et des aigus | à moins de 0,5 dB de celles de H65 (−1,61 · −0,38), ou plus près de 0 | l'une plus loin de plus de 1,5 dB |
+| 4 | relevés : niveau, pire tranche, les pleines par bande | — | — |
+
+**La règle de décision** : 1, 2 et 3 tenus → les deux corrections sont indépendantes ; ce point devient le **repère**
+du chantier (« la référence H71 »), contre lequel se mesure ce qui reste — et chacune va à la chaîne par son propre
+chemin (le niveau d'une pièce à ses frappes, une fois l'instrument de H65 capable de dire ce qu'une frappe contient ;
+le kick réglé sur ses frappes, une fois la tenue entrée dans `master`) ; 2 ou 3 en échec → elles interagissent, et
+la bande qui recule dit laquelle gêne l'autre.
