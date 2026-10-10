@@ -41746,3 +41746,25 @@ banc qu'il faudra regarder s'il revient.
 
 **LE ONZIÈME AUDIT (D550) EST CLOS** : choisir des clips par la tête et les locateurs, couper les clips aux
 locateurs, retirer les pistes vides — et une garde de langue qui voyait la clé dans la mauvaise table.
+
+### Phase D551 — un douzième audit : coller sur plusieurs pistes, coller à l'origine, rogner aux locateurs (11/10/2026)
+
+*Écrite le 11/10 à 06 h 27, D550 close.*
+
+**LA MÉTHODE, celle de D535 à D550.** **Lu dans le code, à mesurer avant tout** : `ArrangementComponent::copySelection`
+range dans le presse-papiers les clips de TOUTES les pistes, mais ne retient qu'UNE piste d'origine
+(`pistePressePapiers_`, la dernière vue) ; `paste()` pose alors tous les clips sur la piste courante. Une copie prise
+sur deux pistes se recollerait donc FONDUE sur une seule (H14). Et un clip MIDI n'est qu'une fenêtre sur les notes de
+SA piste : un test du cœur garde que le DÉPLACER vers une autre piste emporte ses notes
+(`moving_a_clip_to_another_track_takes_the_notes_its_window_covers`) ; rien ne dit ce que fait le COLLER (H15).
+**Cherché** : 0 pour « Coller à l'origine » (*Paste at Origin*) ; 0 pour « Rogner les clips aux locateurs » (*Range ▸
+Crop*), le jumeau de « Couper les clips aux locateurs » (D550.2).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D551.1 | **Coller sur plusieurs pistes** — *Paste* | H14 et H15 mesurées d'abord ; puis chaque clip collé sur la piste qui garde son ÉCART à la première piste copiée, à partir de la piste courante (Cubase), ce qui déborde sous la dernière piste écarté et DIT ; un clip MIDI emporte les notes de sa fenêtre ; un pas ; mesuré par le `project.json` relu et l'export |
+| D551.2 | **Coller à l'origine** — *Paste at Origin* | chaque clip recollé sur SA piste, à SA position ; un pas ; mesuré par le `project.json` relu |
+| D551.3 | **Rogner les clips aux locateurs** — *Crop Range* | des clips choisis (sans choix : ceux qui touchent la plage), seule la part d'entre les locateurs reste ; un clip tout dehors n'est pas touché ; le verrou respecté et dit ; un pas ; mesuré par le `project.json` relu et l'export (la plage au bit près) |
+
+**L'ORDRE, TRANCHÉ ICI.** D551.1 d'abord (un défaut présumé, mesuré avant d'être corrigé), puis D551.2, qui passe par
+le même chemin, puis D551.3.
