@@ -87,7 +87,7 @@ echo "       clips (nom:début:verrou) : verrouillé [$cv] ; décalés [$cd_] ; 
 verdict "(1) le premier clip verrouillé, et lui seul" "$([ "$cv" = "A:0:V B:1920:-" ] && echo 1 || echo 0)"
 verdict "(2) décalés d'une mesure : le verrouillé reste, l'autre part, le refus est dit ; le témoin décale les deux" \
     "$([ "$cd_" = "A:0:V B:3840:-" ] && [ "$ct" = "A:1920:- B:3840:-" ] \
-        && grep -q "^VSM_BOITE : Montage refusé : 1 clip verrouillé n'a pas bougé" "$brouillon/deplacer.txt" && echo 1 || echo 0)"
+        && grep -q "^VSM_BOITE : Montage refusé : 1 clip verrouillé est resté en place" "$brouillon/deplacer.txt" && echo 1 || echo 0)"
 verdict "(3) un pas : verrouillé puis Ctrl+Z → plus de verrou" "$([ "$ca" = "A:0:- B:1920:-" ] && echo 1 || echo 0)"
 verdict "(4) le cadenas : la photo de l'arrangement est prise (à regarder)" "$([ -s "$brouillon/photo.png" ] && echo 1 || echo 0)"
 echo "       photo : $brouillon/photo.png (VSM_GARDER pour la garder)"

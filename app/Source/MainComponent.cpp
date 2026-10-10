@@ -738,14 +738,25 @@ MainComponent::MainComponent()
     // ne dit rien laisse chercher la panne ailleurs.
     arrangement_.onLockRefused = [](size_t refuses) {
         // D546.3 : LE VERROU EST CELUI DE LA PISTE OU CELUI DU CLIP — la phrase dit les deux portes.
+        // D547.1 : « resté en place » et non « n'a pas bougé » -- la suppression refusée passe ici aussi.
         montrerBoite(
             juce::AlertWindow::InfoIcon, tr(u8"Montage refusé"),
-            tr(refuses > 1 ? u8"%1 clips verrouillés n'ont pas bougé"
-                           : u8"%1 clip verrouillé n'a pas bougé")
+            tr(refuses > 1 ? u8"%1 clips verrouillés sont restés en place"
+                           : u8"%1 clip verrouillé est resté en place")
                     .replace("%1", juce::String(static_cast<int>(refuses)))
                 + tr(u8" : par sa piste (Piste ▸ Déverrouiller la piste) ou par lui-même (« Verrouiller la "
                      u8"position », au menu du clip). Un clip verrouillé continue de sonner et de se mixer : "
                      u8"seul le montage est refusé."));
+    };
+    // D547.2 : UNE CHAÎNE QUI BUTE SUR UN CLIP VERROUILLÉ ne fait rien sur sa piste, et le dit.
+    arrangement_.onChainBlocked = [](size_t pistes) {
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Montage en chaîne refusé"),
+            tr(pistes > 1 ? u8"Sur %1 pistes, un clip verrouillé suit le geste : rien n'y a bougé"
+                          : u8"Sur %1 piste, un clip verrouillé suit le geste : rien n'y a bougé")
+                    .replace("%1", juce::String(static_cast<int>(pistes)))
+                + tr(u8". La chaîne le déplacerait : déverrouillez-le, ou décochez Affichage ▸ Montage en "
+                     u8"chaîne dans l'arrangement."));
     };
     pianoRoll_.onLockRefused = [] {
         montrerBoite(
@@ -1341,12 +1352,14 @@ MainComponent::MainComponent()
         arrangement_.setGrilleALaMesure(reglages.getBoolValue("arrangementGrilleMesure", true));
         arrangement_.setFollowPlayhead(reglages.getBoolValue("arrangementSuitLaTete", true));
         arrangement_.setCourbesVisibles(reglages.getBoolValue("arrangementCourbes", false));
+        arrangement_.setMontageEnChaine(reglages.getBoolValue("arrangementEnChaine", false));   // D547.2
         arrangement_.onBasculesChanged = [this] {
             auto& r = vsm::app::ui::UiScale::properties();
             r.setValue("arrangementAimant", arrangement_.snapEnabled());
             r.setValue("arrangementGrilleMesure", arrangement_.grilleALaMesure());
             r.setValue("arrangementSuitLaTete", arrangement_.followPlayhead());
             r.setValue("arrangementCourbes", arrangement_.automationVisible());
+            r.setValue("arrangementEnChaine", arrangement_.montageEnChaine());
             r.saveIfNeeded();
         };
     }
@@ -3807,9 +3820,12 @@ void MainComponent::timerCallback() {
     // c'est ici qu'on lui demande de regarder.
     transport_.poll();
     const bool playing = (transport_.state() == TransportState::Playing);
-    // LE TRANSPORT PEUT S'ARRÊTER TOUT SEUL, à la fin du morceau : une prise
-    // laissée ouverte serait une prise perdue, puisque rien ne l'écrirait.
-    if (!playing && recordPhase_ == RecordPhase::Recording) stopRecording();
+    // LE TRANSPORT PEUT S'ARRÊTER D'AILLEURS -- la barre d'espace, le menu
+    // Transport, un bouton MIDI appris : une prise laissée ouverte serait une
+    // prise perdue, puisque rien ne l'écrirait. D547.3 : ET UN DÉCOMPTE AUSSI.
+    // Il restait ouvert, le compte figé, jusqu'à F9 ; `stopRecording` sait le
+    // fermer (rien d'écrit, la tête au point d'entrée).
+    if (!playing && recordPhase_ != RecordPhase::Off) stopRecording();
 
     transportBar_.setCpuUsage(audioEngine_.currentCpuUsagePercent());
     transportBar_.setXrunCount(audioEngine_.xrunCount());   // D41.3
@@ -5111,6 +5127,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementCurves,
                                                    tr(u8"Courbes d'automation dans l'arrangement"), shortcuts_,
                                                    Id::ViewArrangementAutomation, true, arrangement_.automationVisible());
+                // D547.2 : la cinquième, sans touche (Cubase n'en donne pas à ses modes).
+                menu.addItem(kMenuViewArrangementChain, tr(u8"Montage en chaîne dans l'arrangement"), true,
+                             arrangement_.montageEnChaine());
             }
             menu.addSeparator();
             {
@@ -5261,6 +5280,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewArrangementBarGrid) { arrangement_.basculerGrilleALaMesure(); return; }
     if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
     if (menuItemID == kMenuViewArrangementCurves)  { arrangement_.basculerCourbes(); return; }
+    if (menuItemID == kMenuViewArrangementChain)   { arrangement_.basculerEnChaine(); return; }   // D547.2
     if (menuItemID == kMenuViewRulerBars || menuItemID == kMenuViewRulerTime) {
         setRulerInTime(menuItemID == kMenuViewRulerTime);
         return;

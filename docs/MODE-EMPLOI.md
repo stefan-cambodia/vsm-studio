@@ -65,7 +65,7 @@ morceau jusqu'au point d'entrée, où la prise commence. **Le décompte clique t
 « seulement au décompte » compris — au début du morceau comme au milieu, devant une région de punch à la
 mesure 9 par exemple. **La prise court au-delà de la fin du morceau** : c'est ainsi qu'on ajoute une partie après
 la dernière note, ou la première d'un projet vide ; elle s'arrête quand vous l'arrêtez (`F9` ou la barre
-d'espace). `F9` pendant le décompte l'interrompt sans rien écrire, la tête au point d'entrée.
+d'espace). `F9`, la barre d'espace ou le bouton d'arrêt pendant le décompte l'interrompt sans rien écrire, la tête au point d'entrée (D547.3).
 
 ## 2. L'arrangement
 
@@ -111,7 +111,9 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Supprimer les doublons** (D546.1). Dans le piano roll, choisissez des notes, puis clic droit ▸ *Temps et durée* ▸ *Supprimer les doublons* : deux notes de même hauteur et même canal qui commencent à moins d'un 1/64 l'une de l'autre n'en gardent qu'une — la plus forte, puis la plus longue ; une note muette ne gagne jamais contre une note qui sonne. Utile après une transcription, qui pose souvent la même note deux fois à quelques millisecondes. La ligne d'état dit combien de notes ont été retirées ; Ctrl+Z les rend.
 
-**Verrouiller la position d'un clip** (D546.3). Clic droit sur un clip, *Verrouiller la position* (une case, sur toute la sélection) : le clip ne se déplace, ne se rogne, ne s'étire, ne se coupe ni ne se joint plus, et un cadenas le dit. Un geste qui le toucherait le laisse en place et le dit (« Montage refusé ») ; les autres clips choisis bougent. Il se copie (la copie naît déverrouillée), il sonne et se mixe comme avant. Comme une piste verrouillée, mais clip par clip.
+**Verrouiller la position d'un clip** (D546.3). Clic droit sur un clip, *Verrouiller la position* (une case, sur toute la sélection) : le clip ne se déplace, ne se rogne, ne s'étire, ne se coupe ni ne se joint plus, et un cadenas le dit. Un geste qui le toucherait le laisse en place et le dit (« Montage refusé ») ; les autres clips choisis bougent. Il se copie (la copie naît déverrouillée), il sonne et se mixe comme avant. Comme une piste verrouillée, mais clip par clip. **Il ne se supprime pas non plus** (D547.1) : Suppr ou Couper sur une sélection qui en contient le laisse, comme ceux d'une piste verrouillée, retire les autres et le dit (« N clip(s) verrouillé(s) resté(s) en place ») ; une suppression entièrement refusée ne laisse aucun pas dans l'historique.
+
+**Le montage en chaîne** (D547.2, le *Shuffle* de Cubase). *Affichage ▸ Montage en chaîne dans l'arrangement* : une pastille ambre « Montage en chaîne » s'allume à droite de la règle. Supprimer un clip referme alors **sa place** sur sa piste — les clips qui le suivaient reculent de sa longueur, un espace qui le précédait reste ; tirer la fin d'un clip **pousse ou tire** les clips qui le suivaient de la même quantité. Les clips d'avant, et les autres pistes, ne bougent pas ; l'automation suit si *l'automation suit les clips* est coché. Si un clip verrouillé fait partie de la suite, la chaîne le déplacerait : rien ne bouge sur cette piste, et la boîte « Montage en chaîne refusé » le dit. La bascule est retenue d'un lancement à l'autre, comme les quatre autres ; un pas d'historique par geste. **L'aimant tient au bord que vous tirez** (D547.4) : déplacer un clip pose son DÉBUT sur la grille, tirer son bord droit pose sa FIN sur la grille, où que vous l'ayez saisi — avant, le clip gardait l'écart entre le point saisi et la grille.
 
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
 

@@ -156,6 +156,11 @@ public:
     void basculerGrilleALaMesure();
     void basculerSuivi();
     void basculerCourbes();
+    /// D547.2 : LE MONTAGE EN CHAÎNE (*Shuffle*) — supprimer referme la place du clip sur sa piste,
+    /// déplacer une fin pousse ou tire la suite. Une cinquième bascule, par la même porte que les quatre.
+    void basculerEnChaine();
+    bool montageEnChaine() const { return enChaine_; }
+    void setMontageEnChaine(bool actif) { enChaine_ = actif; repaint(); }
     bool grilleALaMesure() const { return aimanteALaMesure_; }
     /// D493 : l'état relu des préférences au démarrage — sans rappel, sans journal.
     void setGrilleALaMesure(bool mesure) { aimanteALaMesure_ = mesure; repaint(); }
@@ -167,6 +172,10 @@ public:
     /// D360 : l'état des bascules au journal — ce que la règle PEINT, et qu'aucun
     /// relevé de textes ne peut voir.
     void direLesBascules() const;
+    /// D547.2 : OÙ EST CHAQUE CLIP À L'ÉCRAN, en pixels de la vue, avec sa taille -- la géométrie que
+    /// le test de prise (`clipAt`) emploie. Un banc qui tire un BORD de clip (`glisser:arrangement:…`)
+    /// en déduit ses fractions, au lieu de les deviner d'une photo.
+    void direLesClipsAEcran() const;
     /// D362 : la part du morceau que la vue montre, en mesures et en pour cent.
     void direLaFenetre() const;
     /// D525 : LE DÉFILEMENT VERTICAL. L'arrangement n'en avait AUCUN : `trackTop`
@@ -303,6 +312,8 @@ public:
     /// Appelé au relâchement quand un déplacement de piste a refusé des clips
     /// (nombre refusé) : la vue ne sait pas parler, l'application si.
     std::function<void(size_t)> onClipsRefused;
+    /// D547.2 : un clip verrouillé a arrêté la chaîne sur N piste(s) — rien n'y a bougé.
+    std::function<void(size_t)> onChainBlocked;
     /// D11.4 : renommer et colorer UN clip. Les fenêtres sont de JUCE, donc
     /// dans l'application ; la vue demande (piste, identifiant du clip).
     std::function<void(size_t, uint64_t)> onClipRenameRequested;
@@ -529,6 +540,7 @@ private:
     double pixelsPerTick_ = 0.06;
     bool snap_ = true;
     bool automationSuit_ = true;
+    bool enChaine_ = false;   // D547.2
     /// D34.4 : la règle en minutes:secondes plutôt qu'en mesures. Conservée
     /// d'une exécution à l'autre par l'appelant, comme les autres réglages de
     /// vue.
@@ -561,6 +573,9 @@ private:
     Geste geste_ = Geste::Aucun;
     vsm::midi::Tick gesteOrigine_ = 0;
     vsm::midi::Tick gesteDernier_ = 0;
+    /// D547.4 : le BORD que le geste déplace (début, ou fin pour le bord droit et l'étirement), là où il
+    /// était au départ -- c'est lui que l'aimant pose sur la grille, pas le pointeur.
+    vsm::midi::Tick ancreGeste_ = 0;
     Geste survol_ = Geste::Aucun;
     /// La piste saisie par son en-tête, pendant un réordonnancement ou un
     /// réglage de hauteur.
@@ -576,6 +591,8 @@ private:
     /// Ce que le geste a refusé (clips audio vers un autre fichier, groupes),
     /// rendu à `onClipsRefused` au relâchement — jamais tu.
     size_t refusesPendantLeGeste_ = 0;
+    /// D547.2 : les pistes où un clip verrouillé a arrêté la chaîne pendant le geste, dites au relâchement.
+    std::set<size_t> chaineBloqueePendantLeGeste_;
     juce::Point<float> lassoOrigine_;
     /// D529 : l'origine du lasso DANS LE MORCEAU — un tick et une ordonnée de contenu
     /// (décalage vertical compris) —, reconvertie à chaque appel : la vue peut défiler

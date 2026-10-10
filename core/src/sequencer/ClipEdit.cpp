@@ -288,6 +288,105 @@ ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEn
                       track.kind == Track::Kind::Audio, ticksToSeconds);   // D546.3
 }
 
+size_t deleteClips(Track& track, const ClipSelection& demandee) {
+    if (track.locked) return 0;   // D547.1
+    const ClipSelection selection = sansVerrous(track.clips, demandee);
+    const size_t avant = track.clips.size();
+    track.clips.erase(std::remove_if(track.clips.begin(), track.clips.end(),
+                                     [&selection](const Clip& c) { return selected(selection, c); }),
+                      track.clips.end());
+    return avant - track.clips.size();
+}
+
+namespace {
+/// Les décalages de la chaîne, appliqués par `moveClips(Track&)` -- celui qui porte l'automation qui
+/// suit (D17.2) -- un groupe par valeur de décalage. Rend le nombre de clips déplacés.
+size_t decalerLaChaine(Track& track, const std::map<uint64_t, Tick>& decalages, bool automationFollows,
+                       Tick materialEnd) {
+    std::map<Tick, ClipSelection> parDecalage;
+    for (const auto& [id, d] : decalages)
+        if (d != 0) parDecalage[d].insert(id);
+    size_t n = 0;
+    for (const auto& [d, groupe] : parDecalage) n += moveClips(track, groupe, d, automationFollows, materialEnd);
+    return n;
+}
+/// Un clip verrouillé parmi ceux que la chaîne déplacerait ?
+bool chaineBloquee(const Track& track, const std::map<uint64_t, Tick>& decalages) {
+    for (const auto& c : track.clips) {
+        const auto it = decalages.find(c.id);
+        if (it != decalages.end() && it->second != 0 && c.locked) return true;
+    }
+    return false;
+}
+} // namespace
+
+ChainEdit deleteClipsChained(Track& track, const ClipSelection& demandee, bool automationFollows,
+                             Tick materialEnd) {
+    ChainEdit rapport;
+    if (track.locked) return rapport;
+    const ClipSelection selection = sansVerrous(track.clips, demandee);
+    std::vector<std::pair<Tick, Tick>> trous;   // (début, fin) des clips supprimés
+    for (const auto& c : track.clips)
+        if (selected(selection, c)) trous.emplace_back(c.startTick, c.startTick + clipPlayedLength(c, materialEnd));
+    if (trous.empty()) return rapport;
+    std::sort(trous.begin(), trous.end());
+    std::map<uint64_t, Tick> decalages;
+    for (const auto& c : track.clips) {
+        if (selected(selection, c)) continue;
+        // La place refermée est la RÉUNION des clips supprimés finis avant lui : deux clips
+        // supprimés qui se chevauchent ne referment pas deux fois leur part commune.
+        Tick d = 0, couvert = std::numeric_limits<Tick>::min();
+        for (const auto& [debut, fin] : trous) {
+            if (fin > c.startTick) continue;
+            const Tick depuis = std::max(debut, couvert);
+            if (fin > depuis) d -= fin - depuis;
+            couvert = std::max(couvert, fin);
+        }
+        decalages[c.id] = d;
+    }
+    if (chaineBloquee(track, decalages)) { rapport.blocked = 1; return rapport; }
+    rapport.edited = deleteClips(track, selection);
+    rapport.shifted = decalerLaChaine(track, decalages, automationFollows, materialEnd);
+    return rapport;
+}
+
+ChainEdit resizeClipsEndChained(Track& track, const ClipSelection& demandee, Tick deltaTicks,
+                                bool automationFollows, Tick materialEnd) {
+    ChainEdit rapport;
+    if (track.locked || deltaTicks == 0) return rapport;
+    const ClipSelection selection = sansVerrous(track.clips, demandee);
+    std::map<uint64_t, Tick> anciennesFins;
+    for (const auto& c : track.clips)
+        if (selected(selection, c)) anciennesFins[c.id] = c.startTick + clipPlayedLength(c, materialEnd);
+    if (anciennesFins.empty()) return rapport;
+    const std::vector<Clip> avant = track.clips;
+    resizeClipsEnd(track.clips, selection, deltaTicks, materialEnd);
+    // Ce qui a RÉELLEMENT bougé, clip par clip : le geste simple borne la fin (longueur minimale,
+    // fin du matériau), et la chaîne suit la fin, pas la souris.
+    std::vector<std::pair<Tick, Tick>> fins;   // (ancienne fin, déplacement)
+    for (const auto& c : track.clips) {
+        const auto it = anciennesFins.find(c.id);
+        if (it == anciennesFins.end()) continue;
+        const Tick fin = c.startTick + clipPlayedLength(c, materialEnd);
+        fins.emplace_back(it->second, fin - it->second);
+        if (fin != it->second) ++rapport.edited;
+    }
+    std::map<uint64_t, Tick> decalages;
+    for (const auto& c : track.clips) {
+        if (anciennesFins.count(c.id) > 0) continue;
+        Tick d = 0;
+        for (const auto& [fin, deplacement] : fins)
+            if (fin <= c.startTick) d += deplacement;
+        decalages[c.id] = d;
+    }
+    if (chaineBloquee(track, decalages)) {
+        track.clips = avant;   // rien n'a bougé sur cette piste
+        return ChainEdit{0, 0, 1};
+    }
+    rapport.shifted = decalerLaChaine(track, decalages, automationFollows, materialEnd);
+    return rapport;
+}
+
 ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
                                            const ClipSelection& selection, Tick materialEnd) {
     ClipSelection elargie = selection;

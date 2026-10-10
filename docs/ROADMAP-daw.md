@@ -41244,3 +41244,178 @@ départ, qui reprend le décompte où il en était. Une pause, peut-être voulue
 **LE SEPTIÈME AUDIT (D546) EST CLOS** : les doublons, la position verrouillée, le décompte. Le mode d'édition
 « en chaîne » (*Shuffle*), écarté de cet audit parce qu'il touche tous les gestes de l'arrangement, ouvre le
 suivant.
+
+### Phase D547 — un huitième audit : le montage en chaîne, et ce que le verrou laisse passer (10/10/2026)
+
+*Écrite le 10/10 à 07 h 21, D546 close, pendant la série des 69 bancs (aucun binaire touché avant sa fin).*
+
+**LA MÉTHODE, celle de D535 à D546.** **Cherché** : 0 pour « ripple », « shuffle », « en chaîne » dans
+`app/Source`, `core/` ; la suppression de clips de l'arrangement est `ArrangementComponent::deleteSelection`,
+qui ôte les clips choisis de toutes les pistes par identifiant — **sans passer par `ClipEdit`**, donc sans le
+cadenas de D16.5 ni celui de D546.3 (lu dans le code, à mesurer : H10). **Trouvé et écarté** : le fondu
+automatique (*Auto Fades*) existe sous le nom de fondu de sécurité (D33.2) ; « remplir la boucle » est la
+répétition jusqu'à un point (`repeatsThatFit`) ; la table de batterie (*Drum Map*) suppose un éditeur de
+batterie, chantier à part.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D547.1 | **Le verrou refuse la suppression** — *Lock* | un clip d'une piste verrouillée, ou verrouillé lui-même, ne se supprime pas (Suppr, Couper) ; le refus est DIT comme les autres ; les clips libres de la même sélection partent ; mesuré par le `project.json` relu |
+| D547.2 | **Le montage en chaîne** — *Shuffle* | un mode de l'arrangement, retenu ; supprimer un clip referme le trou sur SA piste (les clips d'après reculent de sa longueur) ; allonger ou raccourcir la fin d'un clip pousse ou tire les suivants de la même quantité ; hors du mode, rien ne change ; un pas par geste ; mesuré par le `project.json` relu et l'export |
+| D547.3 | **L'arrêt pendant le décompte** — *Stop* pendant le *Precount* | la barre d'espace (ou le bouton Stop) pendant un décompte l'interrompt comme F9 : rien d'écrit, la phase close, la tête au point d'entrée — le « reste nommé » de D546.2 ; mesuré par `relever-decompte` |
+
+**L'ORDRE, TRANCHÉ ICI.** D547.1 d'abord : c'est un défaut, petit, et D547.2 en dépend — une suppression en
+chaîne qui ferait reculer un clip verrouillé tournerait le cadenas. Puis D547.3, petit aussi, puis D547.2.
+
+### Phase D547.1 — le verrou refuse la suppression (10/10/2026) — FAITE
+
+*Écrite avant son code et avant sa mesure, le 10/10 à 07 h 21.*
+
+**L'HYPOTHÈSE H10.** Suppr sur un clip d'une piste verrouillée le supprime ; Suppr sur un clip verrouillé
+(D546.3) aussi. **Mesure** (après la série, l'application ne se lance pas à côté d'elle) : un projet de deux
+pistes MIDI à un clip chacune, la première verrouillée (`"locked": true`), tout choisi, Suppr, enregistré —
+H10 vraie : le `project.json` relu n'a plus aucun clip ; fausse : le clip de la piste verrouillée reste. Puis
+la même chose avec un clip verrouillé sur une piste libre.
+
+**LA PARADE, si H10 tient.** Une surcharge `deleteClips(Track&, sélection)` dans `ClipEdit`, à côté des autres,
+qui ne retire rien d'une piste verrouillée ni un clip verrouillé et rend ce qu'elle a retiré ; `deleteSelection`
+passe par elle et dit le refus par `onLockRefused` (« Montage refusé : N clip(s) verrouillé(s) n'a/n'ont pas
+bougé… » — le même compte que les déplacements, `lockedClipsInSelection`). Une suppression entièrement refusée
+ne laisse pas de pas d'historique. **Attendus** : (1) tests `core/` — une piste verrouillée rend 0 et garde ses
+clips, un clip verrouillé reste, ses voisins libres partent ; (2) par l'application, le `project.json` relu ;
+le témoin, sans verrou, supprime tout ; la boîte dite ; (3) un banc, vu rouge, dans `verifier.sh --bancs`.
+
+**ÉCRIT EN ATTENDANT LA MESURE (07 h 26).** `deleteClips(Track&, sélection)` est dans `ClipEdit`, et ses deux
+tests `core/` sont vus rouges sur la même fonction sans cadenas (« 2 != 1 », « 2 != 0 ») puis verts (core
+459 → 461). `deleteSelection` passe par elle ; la phrase du refus devient « N clip(s) verrouillé(s) est/sont
+resté(s) en place » — « n'a pas bougé » ne disait pas une suppression refusée. Rien n'est compilé dans
+l'application avant que H10 soit mesurée sur le binaire d'avant.
+
+**La mesure de H10 (08 h 05, le binaire de D546.2, la série des 69 bancs finie) : VRAIE.** `tools/verrou-suppression.sh`
+sur l'ancien binaire : tout choisi, Suppr → **aucun clip** au projet relu (A sur la piste verrouillée, B
+verrouillé, C : tous partis) ; A seul choisi → A parti, et un pas « Supprimer des clips » à l'historique. Le
+témoin sans verrou (les trois partent) et Ctrl+Z (A · B · C) tiennent déjà.
+
+**D547.1 EST FAITE (10/10, 08 h 27 ; le banc vert à 08 h 26).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | `deleteClips(Track&, sélection)` : un clip verrouillé reste, son voisin libre part ; une piste verrouillée garde tout (0 retiré) ; le témoin libre perd ses deux clips et rien d'autre. **Rouge** : la même fonction sans cadenas (« 2 != 1 », « 2 != 0 ») ; core 459 → **461** | **oui** |
+| 2 | par l'application, le `project.json` relu | `tools/verrou-suppression.sh` : tout choisi, Suppr → **A:0 B:0** (C parti), « Montage refusé : 2 clips verrouillés sont restés en place » ; le témoin sans verrou → aucun clip ; Ctrl+Z → A · B · C ; A seul → rien de parti, **0 pas** d'historique, « 1 clip verrouillé est resté en place ». **Rouge** sur le binaire d'avant : aucun clip, et A seul parti avec un pas | **oui** |
+| 3 | le banc, la phrase | 4 contrôles, dans `verifier.sh --bancs` ; la phrase du refus dit « resté(s) en place » (et non « n'a pas bougé ») en français et en anglais, et `tools/clip-verrouille.sh` la lit, vert | **oui** |
+
+### Phase D547.3 — l'arrêt pendant le décompte (10/10/2026) — FAITE
+
+*Écrite avant sa mesure, le 10/10 à 07 h 26.*
+
+**L'HYPOTHÈSE H11.** La barre d'espace pendant un décompte arrête le transport (`stopHere`) sans clore le
+décompte : le minuteur ne clôt une prise arrêtée d'ailleurs que dans la phase « prise »
+(`if (!playing && recordPhase_ == RecordPhase::Recording) stopRecording();`). **Mesure** : le banc de D546.2,
+la barre d'espace à la place du second F9 ; H11 vraie : « phase décompte, transport arrêté » une seconde après ;
+fausse : « phase arrêt ». **La parade, si elle tient** : la même règle pour les deux phases — un transport
+arrêté d'ailleurs clôt l'enregistrement, décompte compris ; `stopRecording` sait déjà fermer un décompte
+(rien d'écrit, la tête au point d'entrée). Une ligne, qui couvre la barre d'espace, le menu Transport et la
+commande apprise d'un bouton MIDI d'un coup.
+
+**La mesure de H11 (08 h 05, le même binaire) : VRAIE.** Le banc de D546.2 prolongé d'un contrôle (7) : la barre
+d'espace à 1,6 s, pendant le décompte du punch à la mesure 9 → « phase décompte, transport arrêté, tête
+14,998 s », et encore une seconde plus tard ; F9 l'aurait clos.
+
+**D547.3 EST FAITE (10/10, 08 h 27).** La règle du minuteur vaut pour les deux phases :
+`if (!playing && recordPhase_ != RecordPhase::Off) stopRecording();`. Le contrôle (7) de
+`tools/decompte-punch.sh`, rouge sur le binaire d'avant (« phase décompte, transport arrêté, tête 14,998 »),
+est vert : la barre d'espace à 1,6 s → **« phase arrêt, transport arrêté, tête 16,000 »**, une seconde plus tard
+aussi. Le banc passe à 7 contrôles, tous verts.
+
+### Phase D547.2 — le montage en chaîne (10/10/2026) — FAITE
+
+*Écrite le 10/10 à 07 h 36, avant sa mesure ; le code `core/` l'a précédée de quelques minutes, ses tests
+écrits et vus rouges avec lui.*
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une bascule de l'arrangement, la cinquième** — *Affichage ▸ Montage en chaîne dans l'arrangement*, cochée
+  selon l'état, retenue dans les préférences (`arrangementEnChaine`) comme les quatre autres, éteinte par
+  défaut ; sans touche : Cubase n'en donne pas à ses modes, et la table n'a pas de place libre évidente.
+- **Ce qu'elle change, et seulement cela** : Suppr (et Couper) referme la PLACE du clip supprimé sur SA piste
+  — les clips qui commencent à sa fin ou après reculent de sa longueur, un espace qui le précédait reste
+  (Cubase) ; deux clips supprimés qui se chevauchent referment leur RÉUNION, pas deux fois leur part commune ;
+  tirer la fin d'un clip pousse ou tire les clips qui commençaient à son ancienne fin, de ce que la fin a
+  RÉELLEMENT parcouru (la longueur ne descend pas sous un tick, la chaîne non plus). Les clips d'avant ne
+  bougent pas ; les autres pistes non plus. L'automation suit si « l'automation suit les clips » (D17.2) :
+  la chaîne passe par `moveClips(Track&)`, qui la porte.
+- **Écarté, et pourquoi** : déplacer un clip en chaîne (l'échange de places de Cubase) et coller en chaîne —
+  le critère de l'audit ne les nomme pas, et l'échange suppose une règle d'ordre que rien ici ne demande.
+- **Le cadenas** : un clip choisi verrouillé reste, comme ailleurs ; un clip verrouillé que la chaîne
+  DÉPLACERAIT arrête le geste sur toute sa piste — rien n'y bouge, rien n'y est supprimé — et la boîte
+  « Montage en chaîne refusé » le dit : le laisser en place ferait chevaucher les clips qui le rejoignent.
+  Pour la suppression, le refus est su AVANT l'instantané (le geste joué sur une copie) : un geste
+  entièrement refusé ne laisse aucun pas.
+- **Le mode se voit** : une pastille ambre « Montage en chaîne » à droite de la règle ; le coin des bascules
+  est plein (142 px), et un mode qui déplace des clips qu'on n'a pas touchés ne doit pas se faire oublier.
+- **Le relevé de banc** `relever-clips` dit la place de chaque clip à l'écran (`VSM_CLIP_ECRAN`), pour qu'un
+  banc tire un BORD de clip par `glisser:arrangement:…` au lieu de deviner ses fractions sur une photo.
+
+**ATTENDUS.**
+1. tests `core/` : supprimer B de A · B · C → C recule de la longueur de B, A reste ; le témoin (suppression
+   simple) laisse C ; deux supprimés qui se chevauchent referment leur réunion ; allonger A de 480 pousse B et
+   C de 480, le raccourcir au-delà de sa longueur tire de ce qui a vraiment bougé ; allonger B ne touche pas A ;
+   un clip verrouillé dans la suite arrête tout sur la piste, un clip verrouillé avant ne gêne rien, une piste
+   verrouillée ne fait rien — **fait, core 461 → 465, rouges** : réunion comptée deux fois (« 0 != 480 »),
+   décalage demandé au lieu de réel (« 0 != 961 »), cadenas ignoré (« 0 != 1 ») ;
+2. par l'application, mesuré par le `project.json` relu : en chaîne, Suppr sur B → C recule ; hors chaîne
+   (le TÉMOIN, même projet, même geste) → C reste ; en chaîne, le bord droit de B tiré d'une mesure → C
+   avance d'une mesure ; hors chaîne → C reste ; un C verrouillé → rien ne bouge, la boîte dite ; Ctrl+Z
+   d'une suppression en chaîne rend A · B · C ;
+3. la bascule retenue d'un lancement à l'autre, la pastille photographiée en français et en anglais ;
+4. un banc `tools/montage-en-chaine.sh`, vu rouge, dans `verifier.sh --bancs` ; l'export d'un projet monté en
+   chaîne a la durée attendue.
+
+**D547.2 EST FAITE (10/10, 08 h 27 ; le banc vert à 08 h 26).**
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | tests `core/` | voir l'attendu 1 : core 461 → **465**, trois rouges | **oui** |
+| 2 | par l'application, le `project.json` relu | `tools/montage-en-chaine.sh` : en chaîne, Suppr sur B → **A:0 C:5 760** ; témoin hors chaîne → C:7 680 ; Ctrl+Z → A · B · C ; le bord droit de B tiré à la souris → **B 3 840 de long, C à 9 600** (C avance exactement de ce que la fin de B a parcouru), témoin → C:7 680 ; C verrouillé → rien ne bouge, « Montage en chaîne refusé : Sur 1 piste, un clip verrouillé suit le geste » | **oui** |
+| 3 | la bascule retenue, la pastille | relancé dans le même HOME : « … automation cachée, en chaîne » ; la pastille photographiée et regardée, « Montage en chaîne » et « Shuffle editing », entières | **oui** |
+| 4 | le banc, l'export | 7 contrôles, dans `verifier.sh --bancs` ; l'export monté en chaîne **10,000 s**, le témoin **12,000 s** (une mesure à 120 BPM). **Rouge** : la chaîne ignorée dans l'application (une construction à part) → (1), (3), (4) et (6) | **oui** |
+
+**DEUX FAUTES DU BANC, VUES AVANT DE CONCLURE.** (a) La pastille se dessinait sous le bouton « agrandir ce
+volet » et se lisait « Montage en chaî » : elle se pose désormais à gauche de la réserve de D489. (b) Le
+contrôle de la photo passait À VIDE en anglais : le banc donnait le libellé FRANÇAIS du menu à l'interface
+anglaise, le menu n'était pas joué (« aucune entrée de menu ne commence par… », au journal, que le banc ne
+relayait pas), et la photo sans pastille comptait quand même. Le contrôle lit maintenant l'EFFET (« en chaîne »
+au relevé) avec le libellé de chaque langue, et relaie l'avertissement ; vu rouge avec l'ancien libellé.
+
+### Phase D547.4 — l'aimant au glisser de la souris (10/10/2026) — FAITE
+
+*Écrite le 10/10 à 08 h 15, trouvée en mesurant D547.2, avant la mesure qui la tranche.*
+
+**CE QUI A ÉTÉ VU.** Le premier passage de `tools/montage-en-chaine.sh` tirait le bord droit de B (fin à 5 760)
+saisi 2 px en deçà du bord, jusqu'à une mesure plus loin, aimant à la mesure : B a fini à **7 708**, et non
+7 680 — témoin hors chaîne compris. La chaîne, elle, a suivi au tick près (C de 7 680 à 9 628 : les 1 948
+ticks de la fin de B). Le geste de souris part de `gesteDernier_ = xToTick(point.x)` — le point SAISI, pas
+aimanté — puis aimante le pointeur : le premier décalage vaut « grille la plus proche du pointeur − point
+saisi », et le clip garde pour toujours l'écart entre le point saisi et la grille.
+
+**L'HYPOTHÈSE H12, écrite à 08 h 15 avant sa mesure.** Ce n'est pas propre au bord : DÉPLACER un clip à la
+souris, aimant à la mesure, le pose hors de la grille de cet écart. B (début 3 840) saisi un temps après son
+début (4 320) et tiré d'une mesure (le pointeur à 6 240, aimanté à 5 760) : H12 vraie, B commence à **5 280** ;
+fausse, à 5 760. **La parade, si elle tient** : l'aimant s'applique au BORD que le geste déplace — le début
+pour déplacer et rogner à gauche, la fin pour rogner à droite et étirer —, pas au pointeur : la cible est
+`snapTick(bord d'origine + (pointeur − point saisi))`, comme Cubase pose le début d'un événement sur la
+grille. Sans aimant, rien ne change (la cible est alors exactement celle d'avant). Les autres clips d'une
+sélection gardent leur écart au clip saisi.
+
+**La mesure de H12 (08 h 16, le binaire de D547.1–3) : VRAIE.** B saisi à 4 320 et tiré d'une mesure : début
+**5 281** (5 280 prédit, un tick d'arrondi du pixel), et non 5 760.
+
+**D547.4 EST FAITE (10/10, 08 h 27 ; le banc vert à 08 h 26).** `ancreGeste_` : le bord que le geste déplace,
+posé au départ ; la cible est `snapTick(ancre + pointeur − point saisi)`. `tools/aimant-glisser.sh` (2
+contrôles), le pointeur parcourant une mesure et quart pour que l'aimant fasse une différence : B saisi un temps
+après son début → **5 760** (aimant) et 6 240 (témoin sans aimant, même geste) ; le bord droit saisi 2 px en
+deçà → B finit à **7 680** (aimant) et 8 160 (témoin). **Rouge** sur le binaire d'avant : 5 281 et 7 708.
+`tools/montage-en-chaine.sh` lit maintenant B 3 840 de long au lieu de 3 868 ; son contrôle (3) jugeait déjà la
+chaîne sur ce que la fin avait parcouru, pas sur la grille.
+
+**LE HUITIÈME AUDIT (D547) EST CLOS** : le verrou qui laissait supprimer, l'arrêt qui laissait le décompte
+ouvert, le montage en chaîne, et l'aimant qui gardait l'écart du point saisi — trois défauts trouvés pour une
+fonction ajoutée. Le prochain audit reprend la méthode.

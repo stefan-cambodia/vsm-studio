@@ -391,6 +391,33 @@ ClipCreation createClip(Track& track, Tick startTick, Tick length, uint64_t& idC
                          Tick materialEnd);
 ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEnd,
                     const std::function<double(Tick)>& ticksToSeconds);
+/// D547.1 : SUPPRIMER, avec le même cadenas que les gestes d'au-dessus. La suppression de
+/// l'arrangement ôtait les clips choisis par identifiant, de toutes les pistes, sans passer par
+/// ici : un clip d'une piste verrouillée (D16.5) ou verrouillé lui-même (D546.3) partait sous Suppr.
+/// Rend le nombre de clips retirés -- zéro sur une piste verrouillée.
+size_t deleteClips(Track& track, const ClipSelection& selection);
+
+/// D547.2 — LE MONTAGE EN CHAÎNE (*Shuffle* de Cubase), piste par piste.
+///
+/// Supprimer un clip referme le trou qu'il laisse : les clips de SA piste qui commencent à sa fin ou
+/// après reculent de sa longueur (un espace qui le précédait reste, comme chez Cubase : seule la
+/// place du clip se referme). Déplacer la fin d'un clip pousse ou tire de la même quantité -- celle
+/// RÉELLEMENT appliquée, bornée comme le geste simple -- les clips qui commençaient à son ancienne
+/// fin ou après. Les clips d'avant ne bougent pas.
+///
+/// LE CADENAS. Une piste verrouillée ne fait rien ; un clip choisi verrouillé est écarté comme par
+/// les gestes simples ; et un clip verrouillé que la chaîne DEVRAIT déplacer arrête le geste sur
+/// toute la piste -- rien n'y bouge, rien n'y est supprimé --, compté dans `blocked` : le laisser
+/// sur place ferait chevaucher les clips qui le rejoignent.
+struct ChainEdit {
+    size_t edited = 0;    ///< clips supprimés, ou clips dont la fin a bougé
+    size_t shifted = 0;   ///< clips que la chaîne a déplacés
+    size_t blocked = 0;   ///< 1 si un clip verrouillé a arrêté le geste sur cette piste
+};
+ChainEdit deleteClipsChained(Track& track, const ClipSelection& selection, bool automationFollows,
+                             Tick materialEnd);
+ChainEdit resizeClipsEndChained(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                                bool automationFollows, Tick materialEnd);
 
 /// Combien de clips de la sélection appartiennent à une piste verrouillée :
 /// ce que l'appelant doit DIRE quand un geste n'a pas tout fait.

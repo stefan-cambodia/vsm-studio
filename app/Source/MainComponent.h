@@ -347,6 +347,8 @@ public:
         // — le projet vide d'avant la reprise — et l'on en concluait sur le zoom.
         // Passer par `VSM_GESTE_APRES=<ms>:relever-arrangement`.
         if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
+        // D547.2 : la géométrie des clips à l'écran, pour tirer un bord de clip.
+        if (geste.equalsIgnoreCase("relever-clips")) { arrangement_.direLesClipsAEcran(); return true; }
         // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
         if (geste.equalsIgnoreCase("relever-tete")) { releverTete(); return true; }
         // D524 : le relevé du piano roll APRÈS un geste (un `choisir:` au milieu d'une course).
@@ -1002,6 +1004,7 @@ private:
         kMenuViewArrangementBarGrid,
         kMenuViewArrangementFollow,
         kMenuViewArrangementCurves,
+        kMenuViewArrangementChain,   ///< D547.2 : le montage en chaîne
         /// D34.5 : dessiner une automation par une forme. CINQ entrées
         /// CONTIGUËS, dans cet ordre : `menuItemSelected` en déduit la forme et
         /// le sens par soustraction.

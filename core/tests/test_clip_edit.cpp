@@ -1478,3 +1478,108 @@ VSM_TEST(a_locked_clip_is_counted_refused_across_tracks_and_its_copy_is_free) {
     for (const auto& c : pistes[0].clips)
         if (copies.count(c.id) > 0) VSM_ASSERT(!c.locked);
 }
+
+// D547.1 — LE VERROU REFUSE LA SUPPRESSION. Suppr ôtait les clips par identifiant, sans passer par
+// `ClipEdit` : ni le cadenas de piste (D16.5) ni celui du clip (D546.3) ne le retenaient.
+VSM_TEST(a_locked_clip_is_not_deleted_but_its_free_neighbour_is) {
+    Track t = deuxClipsDontUnVerrouille();
+    VSM_ASSERT_EQ(deleteClips(t, {1, 2}), size_t(1));
+    VSM_ASSERT_EQ(t.clips.size(), size_t(1));
+    VSM_ASSERT_EQ(t.clips[0].id, uint64_t(1));   // le verrouillé est resté
+}
+
+VSM_TEST(a_locked_track_keeps_all_its_clips_on_delete) {
+    Track t;
+    t.kind = Track::Kind::Midi;
+    t.clips = {clip(1, 0, 960), clip(2, 1920, 960)};
+    t.locked = true;
+    VSM_ASSERT_EQ(deleteClips(t, {1, 2}), size_t(0));
+    VSM_ASSERT_EQ(t.clips.size(), size_t(2));
+    // Le TÉMOIN : la même piste, libre, perd ses deux clips -- et rien d'autre.
+    t.locked = false;
+    t.clips.push_back(clip(3, 3840, 960));
+    VSM_ASSERT_EQ(deleteClips(t, {1, 2}), size_t(2));
+    VSM_ASSERT_EQ(t.clips.size(), size_t(1));
+    VSM_ASSERT_EQ(t.clips[0].id, uint64_t(3));
+}
+
+// D547.2 — LE MONTAGE EN CHAÎNE (Shuffle) : supprimer referme la place du clip, déplacer une fin pousse la suite.
+namespace {
+Track troisClips() {   // A [0, 960) · B [1920, 2880) · C [3840, 4800)
+    Track t;
+    t.kind = Track::Kind::Midi;
+    t.clips = {clip(1, 0, 960), clip(2, 1920, 960, 1920), clip(3, 3840, 960, 3840)};
+    return t;
+}
+Tick debutDe(const Track& t, uint64_t id) {
+    for (const auto& c : t.clips) if (c.id == id) return c.startTick;
+    return -1;
+}
+}
+
+VSM_TEST(a_chained_delete_closes_the_clip_place_and_keeps_the_gaps) {
+    Track t = troisClips();
+    const auto r = deleteClipsChained(t, {2}, false, 100000);
+    VSM_ASSERT_EQ(r.edited, size_t(1));
+    VSM_ASSERT_EQ(r.shifted, size_t(1));
+    VSM_ASSERT_EQ(debutDe(t, 1), Tick(0));      // avant : ne bouge pas
+    VSM_ASSERT_EQ(debutDe(t, 3), Tick(2880));   // recule de la longueur de B, l'espace d'avant B reste
+    // Le TÉMOIN, la suppression simple : C reste à 3840.
+    Track u = troisClips();
+    deleteClips(u, {2});
+    VSM_ASSERT_EQ(debutDe(u, 3), Tick(3840));
+}
+
+VSM_TEST(a_chained_delete_of_overlapping_clips_closes_their_union_once) {
+    Track t;
+    t.kind = Track::Kind::Midi;
+    t.clips = {clip(1, 0, 960), clip(2, 480, 960, 480), clip(3, 1920, 960, 1920)};   // réunion [0, 1440)
+    deleteClipsChained(t, {1, 2}, false, 100000);
+    VSM_ASSERT_EQ(t.clips.size(), size_t(1));
+    VSM_ASSERT_EQ(debutDe(t, 3), Tick(480));   // 1920 - 1440, et non 1920 - 1920
+}
+
+VSM_TEST(a_chained_end_resize_pushes_and_pulls_what_follows) {
+    Track t = troisClips();
+    auto r = resizeClipsEndChained(t, {1}, 480, false, 100000);
+    VSM_ASSERT_EQ(r.edited, size_t(1));
+    VSM_ASSERT_EQ(r.shifted, size_t(2));
+    VSM_ASSERT_EQ(t.clips[0].length, Tick(1440));
+    VSM_ASSERT_EQ(debutDe(t, 2), Tick(2400));
+    VSM_ASSERT_EQ(debutDe(t, 3), Tick(4320));
+    // Raccourcir tire de la même quantité -- et de ce qui a VRAIMENT bougé : la longueur ne descend pas
+    // sous un tick, la chaîne non plus.
+    r = resizeClipsEndChained(t, {1}, -100000, false, 100000);
+    VSM_ASSERT_EQ(t.clips[0].length, Tick(1));
+    VSM_ASSERT_EQ(debutDe(t, 2), Tick(2400 - 1439));
+    VSM_ASSERT_EQ(debutDe(t, 3), Tick(4320 - 1439));
+    // Les clips d'AVANT ne bougent pas : B allongé ne touche ni A ni la place d'avant.
+    Track u = troisClips();
+    resizeClipsEndChained(u, {2}, 240, false, 100000);
+    VSM_ASSERT_EQ(debutDe(u, 1), Tick(0));
+    VSM_ASSERT_EQ(debutDe(u, 3), Tick(4080));
+}
+
+VSM_TEST(a_locked_clip_in_the_chain_stops_the_whole_gesture_on_its_track) {
+    Track t = troisClips();
+    t.clips[2].locked = true;   // C
+    auto r = deleteClipsChained(t, {2}, false, 100000);
+    VSM_ASSERT_EQ(r.blocked, size_t(1));
+    VSM_ASSERT_EQ(t.clips.size(), size_t(3));   // B n'est pas supprimé
+    VSM_ASSERT_EQ(debutDe(t, 3), Tick(3840));
+    r = resizeClipsEndChained(t, {1}, 480, false, 100000);
+    VSM_ASSERT_EQ(r.blocked, size_t(1));
+    VSM_ASSERT_EQ(t.clips[0].length, Tick(960));   // la fin de A est revenue
+    VSM_ASSERT_EQ(debutDe(t, 2), Tick(1920));
+    // Un clip verrouillé AVANT la place ne gêne rien.
+    Track u = troisClips();
+    u.clips[0].locked = true;   // A
+    r = deleteClipsChained(u, {2}, false, 100000);
+    VSM_ASSERT_EQ(r.blocked, size_t(0));
+    VSM_ASSERT_EQ(debutDe(u, 3), Tick(2880));
+    // Une piste verrouillée ne fait rien.
+    Track v = troisClips();
+    v.locked = true;
+    r = deleteClipsChained(v, {2}, false, 100000);
+    VSM_ASSERT_EQ(v.clips.size(), size_t(3));
+}

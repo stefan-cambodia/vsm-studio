@@ -313,6 +313,13 @@ void ArrangementComponent::basculerSuivi() {
     repaint();
 }
 
+void ArrangementComponent::basculerEnChaine() {
+    enChaine_ = !enChaine_;
+    direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();
+    repaint();
+}
+
 void ArrangementComponent::showAutomationCurve(size_t trackIndex, int curveIndex) {
     courbeMontree_[trackIndex] = curveIndex;
     repaint();
@@ -1280,7 +1287,14 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         && project_->tracks[piste].kind == Track::Kind::Audio)
         geste_ = Geste::Etirer;
     gesteOrigine_ = xToTick(point.x);
-    gesteDernier_ = gesteOrigine_;
+    // D547.4 : L'AIMANT TIENT AU BORD, PAS AU POINTEUR. Partir du point saisi et aimanter le pointeur
+    // gardait pour toujours l'écart entre ce point et la grille : un clip saisi un temps après son
+    // début et tiré d'une mesure commençait à 5 281 au lieu de 5 760 (H12). Le geste suit désormais
+    // le bord qu'il déplace ; sans aimant, la cible reste exactement celle d'avant.
+    ancreGeste_ = (geste_ == Geste::BordDroit || geste_ == Geste::Etirer)
+                      ? clip->startTick + clipPlayedLength(*clip, materialEnd(project_->tracks[piste]))
+                      : clip->startTick;
+    gesteDernier_ = ancreGeste_;
     clipFondu_ = clip->id;
     if (onEditStarted)
         onEditStarted(geste_ == Geste::Etirer ? juce::String(u8"Étirer un clip")
@@ -1437,7 +1451,7 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
     // ON APPLIQUE LE DÉLTA DEPUIS LA DERNIÈRE POSITION, pas depuis l'origine :
     // les opérations de `ClipEdit` sont RELATIVES, et rejouer le geste entier à
     // chaque mouvement le doublerait.
-    const vsm::midi::Tick maintenant = snapTick(xToTick(event.position.x));
+    const vsm::midi::Tick maintenant = snapTick(ancreGeste_ + xToTick(event.position.x) - gesteOrigine_);   // D547.4
     const vsm::midi::Tick delta = maintenant - gesteDernier_;
     if (delta == 0) return;
     gesteDernier_ = maintenant;
@@ -1446,12 +1460,21 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
     // le suivent parce que la SÉLECTION a grandi -- aucun geste n'a eu à
     // apprendre ce qu'est un groupe.
     const auto montage = montageSelection();
-    for (auto& track : project_->tracks) {
+    for (size_t indice = 0; indice < project_->tracks.size(); ++indice) {
+        auto& track = project_->tracks[indice];
         const vsm::midi::Tick fin = materialEnd(track);
         auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
         switch (geste_) {
             case Geste::Deplacer:   moveClips(track, montage, delta, automationSuit_, fin); break;
-            case Geste::BordDroit:  resizeClipsEnd(track, montage, delta, fin); break;
+            case Geste::BordDroit:
+                // D547.2 : en chaîne, la suite de la piste suit la fin.
+                if (enChaine_) {
+                    if (resizeClipsEndChained(track, montage, delta, automationSuit_, fin).blocked > 0)
+                        chaineBloqueePendantLeGeste_.insert(indice);
+                } else {
+                    resizeClipsEnd(track, montage, delta, fin);
+                }
+                break;
             case Geste::Etirer:     stretchClipsEnd(track, montage, delta, fin, conversion); break;
             case Geste::BordGauche: resizeClipsStart(track, montage, delta, fin, conversion); break;
             // Les autres gestes ont été traités plus haut et n'atteignent jamais
@@ -1476,6 +1499,9 @@ void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     if (geste_ == Geste::Lasso) { lasso_ = {}; repaint(); }
     if (refusesPendantLeGeste_ > 0 && onClipsRefused) onClipsRefused(refusesPendantLeGeste_);
     refusesPendantLeGeste_ = 0;
+    if (!chaineBloqueePendantLeGeste_.empty() && onChainBlocked)
+        onChainBlocked(chaineBloqueePendantLeGeste_.size());   // D547.2
+    chaineBloqueePendantLeGeste_.clear();
     pisteDerniere_ = -1;
     geste_ = Geste::Aucun;
     pisteSaisie_ = -1;
@@ -2065,14 +2091,44 @@ bool ArrangementComponent::selectionTickRange(vsm::midi::Tick& debut,
 
 void ArrangementComponent::deleteSelection(const juce::String& libelle) {
     if (project_ == nullptr || selection_.empty()) return;
-    if (onEditStarted) onEditStarted(libelle);   // D439
-    for (auto& track : project_->tracks)
-        track.clips.erase(std::remove_if(track.clips.begin(), track.clips.end(),
-                                          [this](const Clip& c) { return selection_.count(c.id) > 0; }),
-                           track.clips.end());
-    selection_.clear();
-    notifyChanged();
-    repaint();
+    // D547.1 : PAR `ClipEdit`, QUI PORTE LE CADENAS. Les clips étaient ôtés ici par
+    // identifiant, et Suppr emportait ceux d'une piste verrouillée (D16.5) comme un
+    // clip verrouillé (D546.3). Comme au déplacement : le refus se compte AVANT
+    // l'instantané -- une suppression entièrement refusée ne laisse aucun pas -- et
+    // il se dit ; les clips refusés restent choisis.
+    const size_t verrouilles = vsm::sequencer::lockedClipsInSelection(project_->tracks, selection_);
+    size_t retires = 0, bloquees = 0;
+    // D547.2 : EN CHAÎNE, la piste dont la suite porte un clip verrouillé ne fait RIEN ; on le sait
+    // avant l'instantané en jouant le geste sur une copie -- un geste entièrement refusé ne laisse
+    // aucun pas, ici comme ailleurs.
+    bool rienAFaire = verrouilles >= selection_.size();
+    if (enChaine_ && !rienAFaire) {
+        rienAFaire = true;
+        for (const auto& track : project_->tracks) {
+            auto essai = track;
+            const auto r = vsm::sequencer::deleteClipsChained(essai, selection_, automationSuit_,
+                                                              materialEnd(track));
+            if (r.edited > 0) rienAFaire = false;
+            if (r.blocked > 0) ++bloquees;
+        }
+    }
+    if (!rienAFaire) {
+        if (onEditStarted) onEditStarted(libelle);   // D439
+        for (auto& track : project_->tracks)
+            retires += enChaine_ ? vsm::sequencer::deleteClipsChained(track, selection_, automationSuit_,
+                                                                       materialEnd(track)).edited
+                                 : vsm::sequencer::deleteClips(track, selection_);
+        ClipSelection restants;
+        for (const auto& track : project_->tracks)
+            for (const auto& c : track.clips)
+                if (selection_.count(c.id) > 0) restants.insert(c.id);
+        selection_ = std::move(restants);
+        notifyChanged();
+        repaint();
+    }
+    (void)retires;
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);
+    if (bloquees > 0 && onChainBlocked) onChainBlocked(bloquees);
 }
 
 bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
@@ -2284,7 +2340,26 @@ void ArrangementComponent::direLesBascules() const {
                 + (snap_ ? (aimanteALaMesure_ ? "mesure" : "grille") : "libre")
                 + (followPlayhead_ ? ", suit la tête" : ", ne suit pas")
                 + (automationVisible_ ? ", automation visible" : ", automation cachée")
+                + (enChaine_ ? juce::String::fromUTF8(u8", en chaîne") : juce::String(", libre"))   // D547.2
                 + "\n").toRawUTF8(), stderr);
+}
+
+void ArrangementComponent::direLesClipsAEcran() const {
+    if (project_ == nullptr) return;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        const auto& track = project_->tracks[i];
+        const vsm::midi::Tick fin = materialEnd(track);
+        const int haut = trackTop(i), hauteur = trackHeight(track);
+        for (const auto& c : track.clips) {
+            const float x1 = tickToX(c.startTick);
+            const float x2 = tickToX(c.startTick + clipPlayedLength(c, fin));
+            std::fputs((juce::String::fromUTF8(u8"VSM_CLIP_ECRAN : piste ") + juce::String(static_cast<int>(i))
+                        + " \"" + juce::String::fromUTF8(c.name.c_str()) + "\" x " + juce::String(x1, 1)
+                        + ".." + juce::String(x2, 1) + " y " + juce::String(haut) + ".."
+                        + juce::String(haut + hauteur) + juce::String::fromUTF8(u8" sur ")
+                        + juce::String(getWidth()) + "x" + juce::String(getHeight()) + "\n").toRawUTF8(), stderr);
+        }
+    }
 }
 
 void ArrangementComponent::zoomHorizontally(float facteur) {
@@ -3072,6 +3147,24 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                                         : vsm::app::ui::tr("aimant : libre"))
                    + (automationVisible_ ? "  |  auto" : ""),
                 4, 2, kHeaderWidth - 8, kRulerHeight - 4, juce::Justification::centredRight);
+    // D547.2 : LE MONTAGE EN CHAÎNE SE VOIT, à droite de la règle, en ambre. Le coin des bascules est
+    // plein ; et un mode qui déplace des clips qu'on n'a pas touchés ne doit pas se faire oublier.
+    if (enChaine_) {
+        const juce::String texte = vsm::app::ui::tr(u8"Montage en chaîne");
+        const juce::Font police(juce::FontOptions(12.0f, juce::Font::bold));
+        const int largeur = static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(police, texte))) + 14;
+        // À gauche de la réserve du bouton « agrandir ce volet » (D489) : le premier essai, collé au bord,
+        // passait dessous et se lisait « Montage en chaî ».
+        const juce::Rectangle<float> pastille(static_cast<float>(bounds.getWidth() - reserveDroiteRegle_ - largeur - 6), 2.0f,
+                                              static_cast<float>(largeur), static_cast<float>(kRulerHeight - 4));
+        g.setColour(Palette::accentAmber.withAlpha(0.25f));
+        g.fillRoundedRectangle(pastille, 3.0f);
+        g.setColour(Palette::accentAmber);
+        g.drawRoundedRectangle(pastille, 3.0f, 1.0f);
+        g.setColour(Palette::textPrimary);
+        g.setFont(police);
+        g.drawText(texte, pastille, juce::Justification::centred);
+    }
 
     if (project_->tracks.empty()) {
         g.setColour(Palette::textSecondary);

@@ -16,7 +16,9 @@
 #   (5) sans punch, la tête à 0 : 50 ms après F9, la phase est « décompte » et la tête NÉGATIVE (H8 : la durée
 #       du décompte valait zéro au début du morceau) ;
 #   (6) la même prise, 2,9 s plus tard : toujours « prise », la tête au-delà de 0,5 s (H7 : la fin du morceau
-#       l'arrêtait).
+#       l'arrêtait) ;
+#   (7) D547.3 : la BARRE D'ESPACE pendant le décompte (projet de 12 mesures) le clôt comme F9 — « arrêt », le
+#       transport arrêté, la tête au point d'entrée ; elle laissait la phase « décompte », le compte figé (H11).
 #
 #   tools/decompte-punch.sh [binaire]
 set -u
@@ -89,13 +91,17 @@ p = json.load(open(sys.argv[1])); del p['transport']['punch']; json.dump(p, open
 " "$brouillon/debut/project.json"
 course debut VSM_DELAI=4500 VSM_PROJET="$brouillon/debut" \
     VSM_GESTE_APRES="300:armer;600:touche:F9;650:relever-decompte;3500:relever-decompte"
+course espace VSM_DELAI=3500 VSM_PROJET="$brouillon/long" \
+    VSM_GESTE_APRES="300:armer;600:touche:F9;1200:relever-decompte;1600:touche:spacebar;1700:relever-decompte;2700:relever-decompte"
 
 mapfile -t p < <(releves "$brouillon/prise.txt")
 mapfile -t q < <(releves "$brouillon/interrompu.txt")
 mapfile -t d < <(releves "$brouillon/debut.txt")
+mapfile -t e < <(releves "$brouillon/espace.txt")
 for r in "${p[@]}"; do echo "       prise      : $r"; done
 for r in "${q[@]}"; do echo "       interrompu : $r"; done
 for r in "${d[@]}"; do echo "       début      : $r"; done
+for r in "${e[@]}"; do echo "       espace     : $r"; done
 
 verdict "(1) pendant le décompte : fin à 16,000 s, tête entre 14 et 16 s" \
     "$([ "${#p[@]}" = 3 ] && [ "$(champ "${p[0]}" phase)" = "décompte" ] && [ "$(champ "${p[0]}" fin)" = "16.000" ] \
@@ -115,6 +121,10 @@ verdict "(5) au début du morceau : un décompte, la tête négative" \
 verdict "(6) la prise court au-delà de la fin du morceau" \
     "$([ "${#d[@]}" = 2 ] && [ "$(champ "${d[1]}" phase)" = "prise" ] && entre "$(champ "${d[1]}" tete)" 0.5 30 \
         && echo 1 || echo 0)"
+verdict "(7) la barre d'espace pendant le décompte le clôt : arrêt, transport arrêté, tête au point d'entrée" \
+    "$([ "${#e[@]}" = 3 ] && [ "$(champ "${e[0]}" phase)" = "décompte" ] && [ "$(champ "${e[1]}" phase)" = "arrêt" ] \
+        && [ "$(champ "${e[2]}" phase)" = "arrêt" ] && [ "$(champ "${e[2]}" transport)" = "arrêté" ] \
+        && [ "$(champ "${e[2]}" tete)" = "16.000" ] && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "DECOMPTE-PUNCH : $rates contrôle(s) raté(s)"; exit 1; fi
