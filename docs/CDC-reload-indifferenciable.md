@@ -2417,3 +2417,56 @@ sinus + rack, calés au même niveau efficace, sont dans `reconstruction/travail
 de mesurable : (1) un jugement du timbre qui ne préfère pas les sons attaqués — la question que H47 a
 posée et que personne n'a tranchée ; (2) un rack dont la modulation est la même à gauche et à droite.
 
+---
+
+## 20. H59 — les extrêmes manquent parce que la batterie est calée EN BLOC : le niveau de chaque piste de batterie, résolu sur les bandes de son stem (écrite AVANT la mesure, 10/10/2026, 17 h 45)
+
+**Numéro.** H57 est la dernière écrite ; H58 est prise (§ 10.4). H59.
+
+**CE QUI A ÉTÉ LU AVANT, et ne tranche rien** (10/10, 17 h 44) — la part de chaque bande dans le total,
+original contre le rendu de la référence (`reload-h42/temoin.wav`, `build-h42`), et dans les stems :
+
+| bande | original | référence | écart | stem drums | stem other |
+|---|---|---|---|---|---|
+| 20-60 Hz | −18,6 | −25,8 | **−7,2** | −16,5 | −35,3 |
+| 60-150 Hz | −4,2 | −8,7 | **−4,5** | −2,4 | −16,7 |
+| 150-500 Hz | −4,4 | −1,9 | +2,5 | −7,4 | −1,3 |
+| 500-2 000 Hz | −9,4 | −8,4 | +1,0 | −20,4 | −6,2 |
+| 2-6 kHz | −13,3 | −13,8 | −0,5 | −11,3 | −45,4 |
+| 6-10 kHz | −13,2 | −17,5 | **−4,3** | −11,0 | −63,2 |
+| 10-16 kHz | −14,9 | −20,9 | **−6,0** | −12,6 | −68,6 |
+
+Les deux extrémités manquent, et **toutes deux viennent de la batterie** (le stem « other » est à −45 dB et
+plus au-dessus de 2 kHz, à −35 dB sous 60 Hz). Or la chaîne cale la batterie EN BLOC : ses trois pistes
+(charleston, kick, caisse claire) reçoivent le MÊME volume, 1,823 (« groupe Batterie : rms stem 0,1203, somme
+des 3 pistes 0,0594 », journal de la course) — un niveau d'ensemble juste, un partage entre pistes que rien ne
+mesure. Un charleston trop discret et un kick sans grave donnent exactement ce tableau.
+
+**L'HYPOTHÈSE H59.** Résoudre le volume de CHAQUE piste de batterie aux moindres carrés non négatifs sur
+l'énergie par bande du stem « drums » — `E_stem(b) ≈ Σ_t g_t² · E_t(b)`, `E_t` mesurée sur le rendu SOLO de la
+piste `t`, sept bandes —, à la place du volume commun, rapproche l'équilibre spectral de la reconstruction de
+l'original sur les bandes où la batterie domine, sans rien coûter ailleurs. **Chaque bande pesée par l'inverse de son
+énergie au stem** — une erreur RELATIVE : sur les énergies brutes, la bande de 60 à 150 Hz, la plus forte,
+déciderait seule. Le nouveau volume d'une piste est son volume commun × √`g²`.
+
+**LA MESURE, une seule variable** : le projet de la course de référence, rendu par `build-h42` (le moteur de son
+témoin), ses trois pistes de batterie aux volumes résolus, TOUT le reste identique ; le TÉMOIN est
+`reload-h42/temoin.wav` (même moteur, même projet, volumes communs), déjà mesuré par l'outil du § 0
+(`ecart-temoin.json`, `--tempo 136`) ; l'essai mesuré par le MÊME outil, mêmes options. Les rendus solo des
+trois pistes, la résolution et les volumes trouvés sont publiés.
+
+**ATTENDUS** (outil du § 0, écart médian par bande) :
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | aigus | \|écart\| ≤ 2 dB (témoin −6,94) | pas de gain de 3 dB : les aigus manquants ne sont pas un partage de niveaux — le timbre du charleston |
+| 2 | sub et basse | chacune gagne ≥ 1,5 dB vers 0 (témoin −1,33 et −3,15) | l'une s'éloigne |
+| 3 | les quatre autres bandes | aucune ne s'éloigne de plus de 1 dB | une s'éloigne de plus de 1 dB |
+| 4 | log-mel moyen | ≤ témoin (10,09 dB) | > témoin + 0,1 dB |
+| 5 | le calage du kick (ms) | inchangé à 0,5 ms près | — (un contrôle : on ne touche à aucune note) |
+
+**La règle de décision** : 1, 2 et 3 tenus → le calage par bande des pistes d'un groupe de batterie entre dans
+la chaîne, par une hypothèse à elle, mesurée sur un morceau du banc à une variable ; 2 et 3 tenus sans 1 →
+le grave est un partage, l'aigu est un timbre — le charleston du parc est à mesurer sur le stem seul.
+**Quand** : après la course 2 — trois rendus solo et un rendu entier de 312 s ne se lancent pas à côté d'elle.
+
