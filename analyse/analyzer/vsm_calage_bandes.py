@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import List, Mapping, Optional, Tuple
 
 import numpy as np
+import numpy.typing as npt
 
 BANDES: Tuple[Tuple[float, float], ...] = ((20, 60), (60, 150), (150, 500), (500, 2000), (2000, 6000),
                                            (6000, 10000), (10000, 16000))
@@ -59,7 +60,7 @@ def _db(rapport: float) -> float:
     return 10.0 * math.log10(max(rapport, 1e-30))
 
 
-def facteurs_par_bande(stem: Sequence[float], pieces: Dict[str, Sequence[float]],
+def facteurs_par_bande(stem: npt.ArrayLike, pieces: Mapping[str, npt.ArrayLike],
                        part_dominante: float = PART_DOMINANTE, part_gardee: float = PART_GARDEE,
                        garde_db: float = GARDE_DB) -> List[FacteurDePiece]:
     """Le facteur de chaque pièce (voir l'en-tête). `stem` et chaque pièce : une énergie par bande de `BANDES`."""

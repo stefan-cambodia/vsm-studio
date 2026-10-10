@@ -2789,3 +2789,27 @@ refus de la garde publiés pièce par pièce. **Échec** : une dégradation de p
 vaut pas ailleurs. **Le code vit dans un arbre à part** tant que des courses tournent, et n'entre dans la chaîne que
 par la mesure 2.
 
+### 25.1 La mesure 1 de H64 (10/10/2026, 18 h 10) : le CONTRÔLE de la règle échoue sur le morceau qui l'a fait naître — dominer la somme des rendus n'est pas porter la bande dans l'original
+
+`analyse/mesure_h64.py` (`b0474e3d` ; ses annotations corrigées après coup : mypy y voyait deux erreurs, passées au
+premier commit sans que la ligne soit lue), les rendus solo de H59, `build-h42`, l'outil du § 0 :
+
+| pièce | ce que la règle a fait |
+|---|---|
+| Batterie · hihat | « ne domine aucune bande (part maximale 36 %) » — **laissé à son niveau** |
+| Batterie · kick+kick2 | × 0,91 sur 20 à 2 000 Hz |
+| Batterie · snare | **× 1,52** sur 2 à 16 kHz |
+
+Mesuré : sub −2,18 · basse −2,78 · bas-médium +2,10 · médium +1,24 · haut-médium −0,40 · aigus −5,15 ; **log-mel
+10,59** (témoin 10,09, H63 8,58) ; kick 4,35 / 9,87 ms.
+
+**La règle ne rend pas H63, et la raison est dans la règle, pas dans le code** : la domination se calcule sur la
+somme des RENDUS. Dans la reconstruction, c'est le SOUFFLE de la caisse claire du TR-808 qui porte l'aigu (le
+charleston, réglé court et à 0,7 dans le kit, n'en porte que 36 % au plus) ; la règle monte donc la caisse claire —
+et son ton avec, d'où le grave — là où l'original demandait le charleston. Dire QUELLE PIÈCE porte une bande de
+l'ORIGINAL demanderait de décomposer le stem par pièce, ce que la chaîne ne sait pas faire (un seul stem « drums »).
+**H64 ne va pas au banc telle qu'écrite.** La fonction et ses tests restent, sans appel par la chaîne. Ce qui reste
+établi est H63 lui-même — sur « Reload », le charleston était 3,5 fois trop bas — et la question qu'il pose est plus
+précise que ma règle : « à quel niveau une pièce de batterie doit-elle sonner pour que ses FRAPPES ressemblent aux
+frappes du stem au même instant ? » — une mesure aux instants de chaque pièce, pas sur des bandes du morceau entier.
+
