@@ -3649,3 +3649,45 @@ fait la méthode** : sur sa scène, un solveur SANS termes croisés (chaque piè
 passait aussi. Une scène où la caisse est LARGE BANDE et frappe avec le charleston le sépare : pièce par pièce, le
 charleston est lu ×1,48 pour ×0,5 ; résolu ensemble, ×0,52. Ce test-là est vu rouge sur le mutant. Une borne
 atteinte (×8 demandé) est ramenée à ×4 et dite.
+
+### 35.2 Verdict de H74 (11/10/2026, mesuré de 04 h 39 à 04 h 42, écrit à 04 h 43) : 3 et 4 en ÉCHEC — caler une pièce sur UNE bande déplace toutes les autres là où son timbre n'est pas celui de l'original
+
+`reconstruction/travail/reload-h74.sh` (rejouable), moteur de `reload-h70` (`1eff3b6d`) ; la décroissance du charleston
+reprise de H72 (0,20 s) et H73 (0,05 s). Les systèmes, résidu nul sur les deux morceaux :
+
+| morceau | pièce | bande principale (de son rendu) | rendu / stem à ses frappes, avant | facteur |
+|---|---|---|---|---|
+| Reload | charleston | 4-8 kHz | 0,53 | ×1,926 (+5,7 dB) |
+| Reload | kick | **150-500 Hz** | 3,54 | **×0,533 (−5,5 dB)** |
+| Reload | caisse claire | 150-500 Hz | 94,4 | ×0,25 — **borne** (×0,091 demandé), dit |
+| B4 | charleston | 4-8 kHz | 0,27 | ×2,035 (+6,2 dB) |
+| B4 | kick | 30-150 Hz | 1,49 | ×0,819 (−1,7 dB) |
+| B4 | caisse claire | **150-500 Hz** | 0,35 | **×1,781 (+5,0 dB)** |
+| B4 | clap | 500-2 000 Hz | 15,8 | ×0,25 — **borne** (×0,232 demandé), dit |
+
+| mesure | Reload : témoin → H74 (H65 ; H72) | B4 : témoin → H74 (H73) |
+|---|---|---|
+| log-mel moyen | 10,09 → **7,10** (8,17 ; 7,08) | 8,57 → 8,43 (8,37) |
+| aigus : médiane (\|médian\|) | −6,94 (6,94) → +2,23 (3,06) | −1,26 (3,47) → **+4,13 (4,25)** |
+| \|médian\| sub · basse · bas-médium | 7,63 · 6,12 · 2,80 → 9,14 · **8,17** · 2,40 | 3,25 · 1,30 · 1,02 → 2,47 · 1,68 · 1,21 |
+| niveau : décalage (pire tranche) | −0,57 (5,43) → −2,65 (7,65) | −0,49 (10,65) → −1,23 (10,80) |
+| pleines, sub · basse absolus | −9,7 · −7,5 (1ʳᵉ) → −15,1 · −12,9 | — |
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : 7,10 ≤ 8,17 |
+| 2 | **entre les deux** : 8,43, sous le témoin, au-dessus de H73 |
+| 3 | **échec** : les aigus de « B4 » s'éloignent (\|médian\| 3,47 → 4,25) |
+| 4 | **échec** : la basse de « Reload » recule de 2,05 dB (6,12 → 8,17), au-delà des 2 dB |
+
+**La règle** écrit « 4 en échec → l'hypothèse d'additivité ne tient pas ». **Ce n'est pas ce que la mesure montre**, et
+c'est écrit plutôt que suivi : le système est résolu (résidu nul), chaque pièce rend à ses frappes, DANS SA BANDE,
+l'énergie du stem (rapports après réglage 1,00 à 1,01, sauf les deux bornes). Ce qui casse, c'est le CHOIX de la
+bande : elle est lue sur le RENDU, et quand le timbre du rendu n'est pas celui de l'original, la pièce est calée sur
+une bande que l'original ne lui donne pas. Le kick du TR-808 de « Reload » (50 Hz, 0,05 s) dépense l'essentiel de son
+énergie dans son balayage (H69) : calé sur 150-500 Hz, il descend de 5,5 dB, et le grave des pleines avec lui (sub
+−15, basse −13 dB). La caisse claire de « B4 », calée sur 150-500 Hz, monte de 5 dB et son souffle aigu avec elle
+(aigus +4,1). **La leçon** : un niveau unique ne corrige un timbre faux dans aucune bande — il choisit laquelle
+sacrifier. Le réglage d'une pièce à ses frappes doit lire TOUTES ses bandes (un système de 6 × *N* équations, où un
+timbre faux se voit dans le résidu au lieu de se cacher dans un facteur), et ne caler son niveau qu'une fois son
+timbre approché (le kick de H70, le charleston de H72). Rien n'entre.
