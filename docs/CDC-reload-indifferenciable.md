@@ -476,6 +476,34 @@ diapason estimé (H42) doit entrer par défaut — l'écart de diapason sous 5 c
 log-mel au-delà de sa marge, sur un projet RÉGLÉ à ce diapason et non transposé après coup —, et ce que
 le seuil d'attaque par stem (H45) fait au morceau entier.
 
+### 4.5 La course 2 finie (10/10 à 22 h 23, rc=0) et mesurée (22 h 24) : le diapason estimé N'ENTRE PAS par défaut — −6,1 cents, et le log-mel recule de 1,58 dB
+
+Relancée à 17 h 30, finie à **22 h 23** — 4 h 53 à l'horloge, **11 099 s au compteur** : la différence est celle des
+veilles de la soirée (`journalctl`), la batterie ayant été tenue par `garder-batterie --pid`. Ce qu'elle avait payé
+le 02/10 s'est relu (elle a dépassé en vingt minutes l'endroit où elle était morte). La mesure, par
+`reload-course2-mesure.sh` (l'étape 4 de `reload-suite.sh` à l'identique, `--tempo 136`), contre la référence :
+
+| mesure (outil du § 0) | référence (§ 2.4) | course 2 |
+|---|---|---|
+| diapason (écart) | −12,7 cents | **−6,1 cents** (reconstruction +6,2 ; concentration 0,34) |
+| sub · basse · bas-médium | −1,33 · −3,15 · +2,72 | −1,13 · −3,26 · +2,67 |
+| médium · haut-médium · aigus | +1,66 · −3,01 · −6,94 | +0,96 · −2,82 · −7,54 |
+| niveau : décalage (pire tranche) | −0,57 (5,43) | −0,83 (**8,23**) |
+| kick \|médian\| · p90 (appariées) | 4,35 · 8,71 (408) | 4,35 · 10,16 (476) |
+| largeur | 0,0001 | 0,0 |
+| log-mel moyen (médian) | 10,09 (8,53) | **11,67 (9,90)** |
+| distance globale (`rapport.json`) | 0,2415 | 0,2402 |
+
+**Les attendus du § 4 que la course 2 devait trancher** : l'écart de diapason sous 5 cents — **échec** (−6,1) ; le
+log-mel au plus au témoin — **échec** (+1,58 dB). **Le diapason estimé reste éteint par défaut**, comme le § 4.3
+l'avait laissé. Ce que la course ne permet pas de dire, et qui était su en la lançant : elle porte DEUX variables
+(H42 et H45) contre la référence, et les deux reculs ne s'attribuent pas ; la distance de la chaîne, elle, avance
+de 0,5 %, et c'est la troisième fois dans ce chantier qu'elle et le log-mel disent deux choses différentes (§ 9.2).
+**Relevé, sans conclusion** : le projet porte bien `referenceA4Hz` = 443,14 Hz, et le rendu ne se lit qu'à +6,2 cents
+avec une concentration de 0,34 (0,89 pour la référence) — les machines retenues ont changé (un thérémine, un
+générateur stochastique, un diviseur, deux multi-échantillons), et des machines qui glissent ou bougent leur hauteur
+dispersent l'estimateur ; ce n'est pas mesuré ici.
+
 ---
 
 ## 5. H43 — un son tenu que la transcription hache : réunir les notes qui se touchent SANS nouvelle attaque (écrite AVANT la mesure, 30/09/2026)
