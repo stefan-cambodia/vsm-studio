@@ -3722,3 +3722,11 @@ chaîne, charleston à 0,05 s, tous les volumes de batterie résolus. Même mote
 calage interne d'un groupe de batterie, D-phase et banc à elle) ; 3 et 4 tenus sans 1 ou 2 → elle ne casse rien mais
 n'apporte pas plus que les corrections partielles ; 3 ou 4 en échec → même sur toutes les bandes, un niveau déplace
 de l'énergie entre pièces au prix d'une bande, et le résidu dira laquelle et chez qui.
+
+### 36.1 L'instrument de H75, AVANT toute mesure (11/10/2026, 05 h 38)
+
+`mesure_h74.py --toutes-bandes` (`resoudre_toutes_bandes`), un test de plus dans `test_mesure_h74.py`. Sur la scène
+de H74 (gains ×1 · ×2 · ×0,5), les gains retrouvés à 10 % près sur les six bandes. **Le timbre faux** : l'original a
+une caisse large bande (dès 200 Hz), le rendu une caisse sans rien sous 2 kHz — le résidu de la caisse le dit à
+500-2 000 Hz (sous −6 dB) et reste sous 2 dB à 4-8 kHz, où son timbre est juste. **Vu rouge** sur un mutant qui
+calcule le résidu sans les facteurs (−7,8 dB à 4-8 kHz).

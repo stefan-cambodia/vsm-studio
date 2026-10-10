@@ -1,4 +1,5 @@
-"""H74 — toutes les pièces de batterie à leurs frappes, résolues ENSEMBLE (docs/CDC-reload-indifferenciable.md § 35).
+"""H74 — toutes les pièces de batterie à leurs frappes, résolues ENSEMBLE (docs/CDC-reload-indifferenciable.md § 35) ;
+H75 (§ 36, `--toutes-bandes`) — sur leurs six bandes, le résidu par pièce et par bande publié.
 
 Pour chaque pièce *i* : sa BANDE PRINCIPALE *bᵢ* (celle des six bandes de `mesure_h72.BANDES_DENSITE` où son rendu
 solo a le plus d'énergie sur le morceau), et, sur ses frappes (fenêtres de `AVANT_S` avant à `APRES_S` après),
@@ -93,6 +94,49 @@ def resoudre(stem: np.ndarray, solos: Mapping[str, np.ndarray], frappes: Mapping
             "dits": dits}
 
 
+def resoudre_toutes_bandes(stem: np.ndarray, solos: Mapping[str, np.ndarray], frappes: Mapping[str, Sequence[float]]
+                           ) -> Dict[str, object]:
+    """H75 (§ 36) : les facteurs résolus sur les SIX bandes aux frappes de chaque pièce.
+
+    Pour la pièce *i* et la bande *k* : `S_k(i) = Σⱼ xⱼ E_jk(i)`, en erreur relative, pondérée par `√w_ik`, où
+    `w_ik` est la part de la bande *k* dans l'énergie du stem aux frappes de *i* -- une bande où le stem n'a presque
+    rien ne tire pas le niveau. Le RÉSIDU par pièce et par bande (`rendu / stem` après réglage, en dB) est rendu :
+    c'est là qu'un timbre faux se voit."""
+    from scipy.optimize import nnls
+
+    noms = list(solos)
+    nb = len(h72.BANDES_DENSITE)
+    s = np.array([[energie_aux_frappes(stem, frappes[i], k) for k in range(nb)] for i in noms])          # N × 6
+    e = np.array([[[energie_aux_frappes(solos[j], frappes[i], k) for k in range(nb)] for j in noms]
+                  for i in noms])                                                                         # N × N × 6
+    w = s / s.sum(axis=1, keepdims=True)
+    lignes, cibles = [], []
+    for a in range(len(noms)):
+        for k in range(nb):
+            if s[a, k] <= 0:
+                continue
+            poids = math.sqrt(w[a, k])
+            lignes.append(poids * e[a, :, k] / s[a, k])
+            cibles.append(poids)
+    x, residu = nnls(np.array(lignes), np.array(cibles))
+    facteurs: Dict[str, float] = {}
+    dits: List[str] = []
+    for n, xi in zip(noms, x, strict=True):
+        g = math.sqrt(max(float(xi), 0.0))
+        if g < BORNES[0] or g > BORNES[1]:
+            dits.append(f"« {n} » : facteur {g:.3f} hors de {BORNES}, ramené à la borne")
+            g = min(max(g, BORNES[0]), BORNES[1])
+        facteurs[n] = round(g, 4)
+    xb = np.array([facteurs[n] ** 2 for n in noms])
+    bandes = [f"{a}-{b}" for a, b in h72.BANDES_DENSITE]
+    apres = {n: {bandes[k]: round(10 * math.log10(max(float(xb @ e[a, :, k]) / s[a, k], 1e-12)), 2)
+                 for k in range(nb) if s[a, k] > 0} for a, n in enumerate(noms)}
+    parts = {n: {bandes[k]: round(float(w[a, k]), 3) for k in range(nb)} for a, n in enumerate(noms)}
+    return {"facteurs": facteurs, "facteurs_db": {n: round(20 * math.log10(g), 2) for n, g in facteurs.items()},
+            "residu_pondere": round(float(residu), 4), "rendu_sur_stem_db": apres, "parts_du_stem": parts,
+            "dits": dits}
+
+
 def main() -> int:
     from mesure_h65 import frappes_par_piste
 
@@ -101,6 +145,7 @@ def main() -> int:
     ap.add_argument("--stem", type=Path, required=True)
     ap.add_argument("--solo", action="append", required=True, help="« nom de la piste MIDI=fichier.wav »")
     ap.add_argument("--sortie", type=Path, required=True)
+    ap.add_argument("--toutes-bandes", action="store_true", help="H75 : résoudre sur les six bandes (§ 36)")
     a = ap.parse_args()
     solos_chemins: List[Tuple[str, Path]] = [(s.split("=", 1)[0], Path(s.split("=", 1)[1])) for s in a.solo]
     for chemin in [a.projet / "project.json", a.stem] + [c for _, c in solos_chemins]:
@@ -123,6 +168,21 @@ def main() -> int:
             return 2
         solos[nom] = bandes_par_trame(x, sr)
     frappes = {nom: pistes[nom] for nom, _ in solos_chemins}
+    if a.toutes_bandes:
+        r6 = resoudre_toutes_bandes(stem, solos, frappes)
+        res6 = {"provenance": {k: str(v) for k, v in vars(a).items()},
+                "constantes": {"avant_s": AVANT_S, "apres_s": APRES_S, "bornes": BORNES, "bandes": h72.BANDES_DENSITE},
+                "frappes": {n: len(v) for n, v in frappes.items()}, **r6}
+        a.sortie.parent.mkdir(parents=True, exist_ok=True)
+        a.sortie.write_text(json.dumps(res6, indent=2, ensure_ascii=False), encoding="utf-8")
+        for n in frappes:
+            print(f"« {n} » : {len(frappes[n])} frappes ; facteur {r6['facteurs'][n]} "  # type: ignore[index]
+                  f"({r6['facteurs_db'][n]:+.2f} dB) ; rendu/stem après, par bande (dB) : "  # type: ignore[index]
+                  f"{r6['rendu_sur_stem_db'][n]}")  # type: ignore[index]
+        print(f"résidu pondéré {r6['residu_pondere']}")
+        for ligne in r6["dits"]:  # type: ignore[attr-defined]
+            print("DIT :", ligne)
+        return 0
     r = resoudre(stem, solos, frappes)
     res = {"provenance": {k: str(v) for k, v in vars(a).items()},
            "constantes": {"avant_s": AVANT_S, "apres_s": APRES_S, "bornes": BORNES, "bandes": h72.BANDES_DENSITE},

@@ -93,5 +93,27 @@ def test_h74_une_borne_atteinte_est_dite():
     assert_true(any("charleston" in d for d in r["dits"]), f"dits : {r['dits']}")
 
 
+@test
+def test_h75_toutes_bandes_retrouve_les_gains_et_montre_un_timbre_faux_dans_le_residu():
+    """Les gains connus se retrouvent sur les six bandes ; et quand le RENDU d'une pièce n'a pas le timbre de
+    l'original (une caisse rendue sans son grave, contre une caisse large bande), le facteur reste juste dans la
+    bande qui porte la pièce et le résidu montre la bande manquante, au lieu de la cacher dans le facteur."""
+    g = grille()
+    gains = {"kick": 1.0, "caisse": 2.0, "charleston": 0.5}
+    stem = sum(gains[n] * piece(n, g[n], 10 + k) for k, n in enumerate(gains))
+    solos = {n: h74.bandes_par_trame(piece(n, g[n], 20 + k), SR) for k, n in enumerate(gains)}
+    r = h74.resoudre_toutes_bandes(h74.bandes_par_trame(stem, SR), solos, g)
+    for n, attendu in gains.items():
+        assert_near(r["facteurs"][n], attendu, 0.1 * attendu, f"« {n} » : {r['facteurs']}")
+    # le timbre faux : l'original a une caisse large bande (dès 200 Hz), le rendu une caisse sans rien sous 2 kHz
+    stem2 = sum(gains[n] * piece(n, g[n], 10 + k, caisse_large=(n == "caisse")) for k, n in enumerate(gains))
+    solos2 = dict(solos)
+    solos2["caisse"] = h74.bandes_par_trame(h69.filtrer(piece("caisse", g["caisse"], 21), SR, 2000, None), SR)
+    r2 = h74.resoudre_toutes_bandes(h74.bandes_par_trame(stem2, SR), solos2, g)
+    residu = r2["rendu_sur_stem_db"]["caisse"]
+    assert_true(residu["500-2000"] < -6.0, f"le bas de la caisse manque, et le résidu le dit : {residu}")
+    assert_true(abs(residu["4000-8000"]) < 2.0, f"là où le timbre est juste, le résidu est petit : {residu}")
+
+
 if __name__ == "__main__":
     raise SystemExit(run())
