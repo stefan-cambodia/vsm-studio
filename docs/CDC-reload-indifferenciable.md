@@ -3527,3 +3527,36 @@ celui de l'original y a de la matière (son 2-4 kHz est aussi dense que son 4-8)
 trouvé à la lecture** : le champ « énergie » de la densité rendait +inf (`10 ** (er / 10).sum()` élevait 10 à la
 SOMME des niveaux) ; corrigé, un test le garde (vu rouge sur l'ancien code), les deux densités rejouées — les
 centiles, qui jugent l'attendu 1, n'en dépendaient pas.
+
+## 34. H73 — la méthode de H72 sur un SECOND morceau : le charleston de « B4 Wuz Then » réglé sur ses frappes (écrite AVANT toute mesure de ce morceau, 11/10/2026, 03 h 08)
+
+**Pourquoi avant la chaîne.** La règle de H72 envoie la méthode à la chaîne. Une course complète coûte de deux à huit
+heures par morceau (campagne S2) ; or l'étape visée agit APRÈS la batterie, sur un projet déjà construit : elle se
+juge sur un projet que la chaîne a produit, avec et sans elle, contre l'original — sans rejouer la chaîne. Et un
+réglage trouvé sur UN morceau, regardé pendant douze hypothèses, n'est pas une règle : il faut le voir valoir
+ailleurs AVANT d'en faire du code de chaîne.
+
+**Le morceau** : « B4 Wuz Then », le projet de la chaîne `reconstruction/travail/b4wuzthen/` (commit `021f9cb`,
+batterie éclatée par pièce, un TR-808 : charleston 892 frappes à `closedHat.decay` 0,05 s, kick 763, caisse claire
+555, clap 474 — tous au même volume, 1,545), l'original `reconstruction/sources/b4-wuz-then.wav` (354,08 s). Le stem
+« drums » de l'instrument : `reconstruction/travail/b4/drums.wav` (htdemucs, la famille du modèle de la chaîne),
+choisi ici avant de le regarder. Rien de ce morceau n'a servi à écrire H69-H72.
+
+**La méthode, celle de H72 sans rien y changer** (instrument `mesure_h72.py`, mêmes constantes) : frappes de la piste
+« hihat » sur le morceau entier, sans caisse claire NI clap de 150 ms avant à 100 ms après (ce morceau a un clap, que
+« Reload » n'avait pas : la seule adaptation, écrite ici) ; décroissance du charleston fermé choisie parmi
+{0,05 · 0,08 · 0,12 · 0,16 · 0,20 s} sur la forme de la frappe moyenne au-dessus de 4 kHz ; volume de la piste au
+rapport des énergies. **Une variable** : la piste du charleston (sa décroissance et son volume). Témoin et essai
+rendus par le MÊME moteur (`reload-h70`, « Kick Hold » à 0 partout : celui de `master` au bit près), à 354,08 s ; outil
+du § 0 sans `--tempo` (tranches de 7 s) pour les deux ; densité de la batterie seule (les quatre pistes) contre le stem
+sur le morceau entier.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | la densité : écart du 10ᵉ centile à 4-8 kHz, batterie seule contre stem | réduit de moitié au moins — ou, s'il est déjà sous 6 dB au témoin, la prémisse ne tient pas et c'est dit | réduit de moins de 3 dB alors qu'il dépassait 6 |
+| 2 | log-mel du mélange | ≤ témoin − 0,3 dB | > témoin |
+| 3 | le CONTRÔLE : \|médian\| sub, basse, bas-médium | chacune à moins de 0,5 dB du témoin | l'une pire de plus de 1,5 dB |
+
+**La règle de décision** : 1, 2, 3 tenus → la méthode vaut sur un morceau qu'elle n'a pas vu : elle devient une étape
+de la chaîne (une option, éteinte par défaut, mesurée par une course) ; 2 en échec → elle ne valait que pour
+« Reload », et c'est écrit ; prémisse absente (1) → ce morceau n'a pas le défaut, et rien ne se conclut de lui.
