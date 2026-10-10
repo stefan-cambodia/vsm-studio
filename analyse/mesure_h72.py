@@ -170,7 +170,8 @@ def main() -> int:
     c = sous.add_parser("choisir")
     c.add_argument("--projet", type=Path, required=True)
     c.add_argument("--piste-charleston", default="Batterie - hihat")
-    c.add_argument("--piste-caisse", default="Batterie - snare")
+    c.add_argument("--piste-caisse", action="append", default=None,
+                   help="pistes dont les frappes écartent un charleston voisin (répétable ; « Batterie - snare » par défaut)")
     c.add_argument("--stem", type=Path, required=True)
     c.add_argument("--sections", required=True)
     c.add_argument("--solo", action="append", required=True, help="DÉCROISSANCE=fichier.wav")
@@ -208,7 +209,8 @@ def main() -> int:
             return 2
     p = json.loads((a.projet / "project.json").read_text(encoding="utf-8"))
     pistes = frappes_par_piste(a.projet, p)
-    instants, compte = retenir(pistes[a.piste_charleston], pistes[a.piste_caisse], sections_de(a.sections))
+    caisses = [t for nom in (a.piste_caisse or ["Batterie - snare"]) for t in pistes[nom]]
+    instants, compte = retenir(pistes[a.piste_charleston], caisses, sections_de(a.sections))
     print("FRAPPES : " + ", ".join(f"{k} {v}" for k, v in compte.items()))
     xo, sr = h69.lire_mono(a.stem)
     original, dec_o = enveloppe_moyenne(xo, sr, instants)

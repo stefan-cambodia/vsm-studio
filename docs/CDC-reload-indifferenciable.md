@@ -3560,3 +3560,42 @@ sur le morceau entier.
 **La règle de décision** : 1, 2, 3 tenus → la méthode vaut sur un morceau qu'elle n'a pas vu : elle devient une étape
 de la chaîne (une option, éteinte par défaut, mesurée par une course) ; 2 en échec → elle ne valait que pour
 « Reload », et c'est écrit ; prémisse absente (1) → ce morceau n'a pas le défaut, et rien ne se conclut de lui.
+
+### 34.1 Verdict de H73 (11/10/2026, mesuré de 03 h 09 à 03 h 11, écrit à 03 h 12) : PARTIELLE — la méthode choisit juste sur un morceau qu'elle n'a pas vu, mais ses gains restent sous les seuils écrits ; rien n'entre
+
+`reconstruction/travail/reload-h73.sh` (rejouable), moteur de `reload-h70` (`1eff3b6d`). Frappes du charleston : 892,
+dont **471 près d'une caisse claire ou d'un clap**, **421 retenues** (22 recalées en butée).
+
+**Le choix** : écart de forme **0,93** · 1,57 · 2,47 · 2,94 · 3,59 dB pour 0,05 · 0,08 · 0,12 · 0,16 · 0,20 s →
+**0,05 s, la décroissance que le projet avait déjà** ; constante relevée sur l'original **0,056 s** (0,436 sur
+« Reload »). L'instrument ne tire pas vers le long par habitude : il lit un charleston bref et le garde bref. Le
+niveau : **×1,809 (+5,15 dB)** — le charleston de ce projet était trop bas, comme celui de « Reload » avant H65.
+L'essai ne change donc que le volume de la piste.
+
+| mesure | témoin | essai |
+|---|---|---|
+| densité, 10ᵉ centile rendu − stem : 2-4 · 4-8 · 8-11 kHz | −15,4 · −15,2 · −13,0 | −11,7 · −11,2 · −9,8 |
+| énergie de la bande 4-8 · 8-11 kHz, rendu − stem | −0,3 · −0,9 | +0,4 · +0,6 |
+| log-mel moyen (médian) | 8,57 (6,88) | **8,37 (6,62)** |
+| \|médian\| sub · basse · bas-médium | 3,25 · 1,30 · 1,02 | 3,23 · 1,31 · 1,02 |
+| aigus : médiane (\|médian\|) | −1,26 (3,47) | **−0,38 (1,57)** |
+| haut-médium : médiane (\|médian\|) | −1,50 (3,33) | −1,40 (3,28) |
+| niveau : décalage (pire tranche) | −0,49 (10,65) | −0,47 (10,64) |
+
+| # | verdict |
+|---|---|
+| 1 | **entre les deux** : la prémisse tient (−15,2 dB au témoin, au-delà de 6) ; l'écart se réduit de 4,0 dB — pas de moitié (il fallait −7,6), plus que les 3 dB de l'échec |
+| 2 | **entre les deux** : −0,20 dB, quand la réussite en demandait 0,3 ; le log-mel ne recule pas |
+| 3 | **tenu** : à 0,02 dB près |
+
+**La règle, à la lettre** : ni « 1, 2, 3 tenus », ni « 2 en échec » — **rien n'entre dans la chaîne sur ce verdict**.
+
+**CE QUE LE SECOND MORCEAU DIT.** (a) La méthode est **sûre** sur un morceau qu'elle n'a pas vu : elle y choisit la
+décroissance que l'original demande (bref ici, long sur « Reload »), et son niveau rapproche les aigus de moitié
+(\|médian\| 3,47 → 1,57) sans toucher au grave. (b) Son **gain dépend du défaut** que le morceau porte : sur « Reload »,
+le charleston manquait de LONGUEUR (H72 : −1,08 dB de log-mel) ; ici, seulement de NIVEAU (−0,20). (c) Ce qui reste
+de creux entre les frappes de « B4 » n'est pas le charleston : le 10ᵉ centile reste à −10 à −12 dB dans les trois
+bandes hautes après lui, et le 2-4 kHz y est aussi creux que le 4-8 — d'autres pièces (la caisse claire et le clap,
+1 029 frappes) ont leur part. **La suite nommée** : la même méthode étendue à TOUTES les pièces (chacune dans sa
+bande, son niveau et sa longueur à ses frappes moyennes), jugée sur ces deux morceaux — une hypothèse à elle, avec
+des seuils écrits pour un gain qui dépend du défaut du morceau.
