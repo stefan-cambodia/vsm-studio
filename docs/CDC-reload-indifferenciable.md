@@ -2944,7 +2944,7 @@ son sub). **La suite est le timbre du kick**, mesuré sur ses frappes contre cel
 accord et à sa décroissance actuels (`tune` 50, `decay` 0,05, choisis par une recherche sur le stem entier) contre
 le fondamental de 86 Hz et la longue décroissance du § 1. **Rien n'entre de H66** : sa règle (« 1 en échec ») le dit.
 
-## 28. H67 — le kick du TR-808 à l'accord et à la longueur du kick original (écrite AVANT la mesure, 10/10/2026, 18 h 19)
+## 28. H67 — le kick du TR-808 à l'accord et à la longueur du kick original (écrite AVANT la mesure, 10/10/2026, 18 h 18)
 
 **Ce que le code et le projet disent.** Le kick du TR-808 (`KickVoice`) part à six fois son accord et y chute en
 45 ms, puis s'éteint en `decay` secondes. Le projet de la référence l'a à **`tune` 50 Hz** (plage 30-90) et
