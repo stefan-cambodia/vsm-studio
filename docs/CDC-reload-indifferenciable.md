@@ -3691,3 +3691,34 @@ une bande que l'original ne lui donne pas. Le kick du TR-808 de « Reload » (50
 sacrifier. Le réglage d'une pièce à ses frappes doit lire TOUTES ses bandes (un système de 6 × *N* équations, où un
 timbre faux se voit dans le résidu au lieu de se cacher dans un facteur), et ne caler son niveau qu'une fois son
 timbre approché (le kick de H70, le charleston de H72). Rien n'entre.
+
+## 36. H75 — les pièces résolues ensemble sur TOUTES leurs bandes, une fois leur timbre approché (écrite AVANT son instrument et sa mesure, 11/10/2026, 05 h 36)
+
+**Ce que H74 a appris** (§ 35.2) : caler une pièce sur UNE bande — celle de son rendu — sacrifie les autres là où son
+timbre n'est pas celui de l'original. **L'instrument, étendu** : pour chaque pièce *i* et chacune des six bandes *k*,
+aux frappes de *i*, `S_k(i) = Σⱼ xⱼ E_jk(i)` — 6 × *N* équations pour *N* inconnues, chacune en erreur relative et
+pondérée par la part de la bande dans l'énergie du stem à ces frappes (une bande où le stem n'a presque rien ne doit
+pas tirer le niveau) ; moindres carrés positifs ; facteurs bornés à ×¼-×4, bornes dites. Le RÉSIDU par pièce et par
+bande est publié : c'est là qu'un timbre faux se voit, au lieu de se cacher dans un facteur.
+
+**L'HYPOTHÈSE H75** : sur des pièces dont le timbre est déjà approché — le kick de H70 (37 Hz, 0,05 s, tenue 0,04 s :
+moteur de `reload-h70`) et le charleston de H72 (0,20 s) sur « Reload » ; le charleston de H73 (0,05 s) sur « B4 » —,
+les niveaux résolus sur toutes les bandes rapprochent le mélange de l'original AU MOINS autant que les meilleurs
+niveaux partiels déjà mesurés (H65 et le niveau de la frappe moyenne de H70-H72 sur « Reload » ; H73 sur « B4 »),
+sans casser le grave ni l'aigu. **Les points mesurés** : « Reload » — le projet de référence, kick et charleston à
+leurs réglages de H70 et H72, tous les volumes de batterie résolus par H75 (et rien d'autre) ; « B4 » — le projet de la
+chaîne, charleston à 0,05 s, tous les volumes de batterie résolus. Même moteur, même outil, mêmes sections que
+§§ 33-35.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | log-mel, « Reload » | ≤ celui de H72 (7,08), dont les niveaux venaient de H65 et de la frappe moyenne | > H72 + 0,5 dB |
+| 2 | log-mel, « B4 » | ≤ celui de H73 (8,37) | > témoin (8,57) |
+| 3 | le grave : \|médian\| sub, basse, bas-médium | « Reload » : chacune à moins de 0,5 dB de H72 (1,35 · 1,39 · 1,09) ; « B4 » : à moins de 0,5 dB du témoin (3,25 · 1,30 · 1,02) | l'une pire de plus de 1,5 dB |
+| 4 | l'aigu : \|médian\| des aigus | « Reload » ≤ H72 (1,67) ; « B4 » ≤ H73 (1,57) | plus loin de plus de 1 dB que la référence, sur l'un |
+| 5 | relevés : facteurs, bornes, résidu par pièce et par bande | — | — |
+
+**La règle de décision** : 1 à 4 tenus → la résolution sur toutes les bandes est la règle candidate pour la chaîne (le
+calage interne d'un groupe de batterie, D-phase et banc à elle) ; 3 et 4 tenus sans 1 ou 2 → elle ne casse rien mais
+n'apporte pas plus que les corrections partielles ; 3 ou 4 en échec → même sur toutes les bandes, un niveau déplace
+de l'énergie entre pièces au prix d'une bande, et le résidu dira laquelle et chez qui.
