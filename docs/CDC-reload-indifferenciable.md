@@ -2842,3 +2842,36 @@ témoin. Publiés : le nombre de frappes isolées par pièce, les rapports (méd
 calage interne d'un groupe de batterie), et elle va au banc par une hypothèse à elle ; 1 tenu, 2 ou 3 en échec → le
 niveau de la pièce est juste, son timbre ne l'est pas (le kick) ; 1 en échec → l'idée ne voit pas le charleston.
 
+### 26.1 Verdict de H65 (10/10/2026, mesuré à 18 h 13) : le meilleur résultat du chantier — log-mel 8,17, aigus à 0,38 dB — mais le filtre d'isolement n'a rien filtré, et la basse dépasse sa marge de 0,02 dB
+
+`analyse/mesure_h65.py` (`6e1c5003`), rendus solo de H59, `build-h42`, outil du § 0, même témoin.
+
+| pièce | frappes | isolées | rapport stem/rendu (médiane ; quartiles) | facteur |
+|---|---|---|---|---|
+| charleston | 1 692 | **1 692** | 9,596 ; 6,745 · 17,718 | **× 3,10 (+9,8 dB)** |
+| kick | 555 | **555** | 0,970 ; 0,120 · 1,141 | × 0,985 (−0,1 dB) |
+| caisse claire | 192 | **192** | 0,076 ; 0,009 · 0,193 | **× 0,276 (−11,2 dB)** |
+
+| mesure (outil du § 0) | témoin | H63 | **H65** |
+|---|---|---|---|
+| sub · basse · bas-médium | −1,33 · −3,15 · +2,72 | −1,45 · −3,21 · +2,50 | −1,28 · −4,17 · +2,79 |
+| médium · haut-médium · aigus | +1,66 · −3,01 · −6,94 | +0,87 · +0,03 · +0,66 | +1,63 · −1,61 · **−0,38** |
+| log-mel moyen (médian) | 10,09 (8,53) | 8,58 (6,55) | **8,17 (6,03)** |
+| niveau : décalage (pire tranche) | −0,57 (5,43) | −0,09 (6,01) | −0,81 (5,66) |
+| kick \|médian\| · p90 | 4,35 · 8,71 | 4,35 · 8,71 | 4,35 · 8,71 |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | le charleston à ± 3 dB de H63 (+10,9 dB) | **tenu** : +9,8 dB |
+| 2 | log-mel ≤ H63 + 0,3 | **tenu** : 8,17 contre 8,58 — le meilleur chiffre de ce chantier |
+| 3 | sub et basse : aucune ne s'éloigne de plus de 1 dB | **entre les deux** : le sub se rapproche (−1,33 → −1,28), la basse s'éloigne de **1,02 dB** — 0,02 au-delà de la marge, sous les 2 dB de l'échec. C'est l'effet déjà mesuré par H62 (−1,19) : le ton de la caisse claire remplissait un peu de grave, et H65 la baisse de 11 dB |
+| 4 | ≥ 30 frappes isolées par pièce | **tenu, et c'est un défaut de la mesure** : TOUTES les frappes sont « isolées » (1 692 sur 1 692, 555 sur 555, 192 sur 192) — la transcription ne met JAMAIS deux pièces à moins de 60 ms, elle donne un seul nom par attaque. Le filtre écrit pour se défendre des frappes simultanées n'a donc rien écarté : H65 a mesuré à CHAQUE frappe, et un kick frappé avec un charleston compte l'énergie du charleston dans le stem |
+
+**La règle, à la lettre** : « 1, 2 et 3 tenus » ne l'est pas — 3 est entre les deux, de 0,02 dB, comme l'attendu 4 de
+H42 dépassait sa marge de 0,01 dB et a été déclaré en échec. **H65 ne va pas au banc sur ce verdict.** Ce qu'elle
+établit, chiffré : à leurs propres frappes, **le charleston est trois fois trop bas (+9,8 dB) et la caisse claire près
+de quatre fois trop forte (−11,2 dB)** dans la reconstruction de référence ; corrigés ensemble, le morceau gagne
+**1,92 dB de log-mel** et ses aigus passent de −6,94 à −0,38 dB. Ce qui reste à faire avant le banc : une mesure qui
+sache ce qu'une frappe contient — la transcription ne le dit pas —, et le grave des pleines, que ni H59 ni H65 ne
+touchent (le kick et la basse, § 21).
+
