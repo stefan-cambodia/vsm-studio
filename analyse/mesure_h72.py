@@ -156,7 +156,7 @@ def densite(stem: np.ndarray, rendu: np.ndarray, sr: int, sections: Sequence[Tup
         res[f"{g0}-{g1}"] = {
             "stem": [round(float(v), 1) for v in cs], "rendu": [round(float(v), 1) for v in cr],
             "ecart": [round(float(b - a), 1) for a, b in zip(cs, cr, strict=True)],
-            "energie_rendu_moins_stem_db": round(float(10 * np.log10(10 ** (er / 10).sum() / (10 ** (es / 10)).sum())), 1)}
+            "energie_rendu_moins_stem_db": round(float(10 * np.log10((10 ** (er / 10)).sum() / (10 ** (es / 10)).sum())), 1)}
     return res
 
 

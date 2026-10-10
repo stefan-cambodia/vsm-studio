@@ -3478,3 +3478,52 @@ contre un long creuse le 10ᵉ centile de plus de 15 dB. **Vu rouge** : la bande
 dans l'enveloppe) fait choisir 0,20 s. **Resté vert, et pourquoi** : une fenêtre de forme réduite à 10 ms — sur un
 signal sans bruit, dix millisecondes de pente suffisent à séparer les cinq décroissances ; ce n'est pas un défaut,
 mais ce test ne garde pas la longueur de la fenêtre.
+
+### 33.2 Verdict de H72 (11/10/2026, mesuré de 03 h 03 à 03 h 04, écrit à 03 h 06) : TENUE — la batterie retrouve sa densité, le log-mel passe de 8,16 à 7,08 ; et le charleston de l'original est plus long que tout ce que le charleston fermé du TR-808 sait faire
+
+`reconstruction/travail/reload-h72.sh` (rejouable), moteur de `reload-h70` (`1eff3b6d`). Frappes : 1 692 ; 1 201 hors
+des pleines, 25 près d'une caisse claire ; **466 retenues** (11 recalées en butée de ± 20 ms).
+
+**Le choix sur les frappes** : écart de forme 3,53 · 1,97 · 1,14 · 1,45 · **0,94** dB pour une décroissance de 0,05 ·
+0,08 · 0,12 · 0,16 · **0,20 s** → 0,20 s, **le bord de la plage** du charleston fermé (0,02-0,2 s) ; facteur de niveau
+×0,489 (−6,21 dB : un charleston plus long porte plus d'énergie par frappe), volume de la piste 5,6474 → 2,7616.
+Constante relevée sur la forme (pente de 10 à 60 ms) : **0,436 s pour l'original**, 0,050 · 0,080 · 0,120 · 0,164 ·
+0,207 s pour les rendus — l'instrument relit les leurs à 4 % près ; celle de l'original est deux fois plus longue
+que le plus long charleston fermé (et la moyenne d'une grille de double croche y mêle la traîne de la frappe
+précédente : c'est une borne haute).
+
+| densité de la batterie seule contre son stem, pleines : écart des centiles 10 · 50 · 90 · 99 (dB) | H71 | **H72** |
+|---|---|---|
+| 500-2 000 Hz | −11,5 · −4,9 · −0,6 · +0,5 | −1,1 · −5,7 · −0,6 · +0,5 |
+| 2-4 kHz | −31,4 · −8,4 · −5,2 · −3,6 | −4,8 · −3,6 · −7,5 · −8,3 |
+| 4-8 kHz | −27,3 · −8,1 · +1,5 · +4,3 | **+1,0 · −2,6 · −0,6 · −0,4** |
+| 8-11 kHz | −25,8 · −7,4 · +1,5 · +4,7 | **+3,8 · −1,5 · −0,9 · +0,1** |
+| énergie de la bande 4-8 · 8-11 kHz, rendu − stem | −0,7 · −0,4 | −1,5 · −1,3 |
+
+| mesure (outil du § 0) | H71 | **H72** |
+|---|---|---|
+| log-mel moyen (médian) | 8,16 (5,98) | **7,08 (5,35)** |
+| \|médian\| sub · basse · bas-médium · médium | 1,30 · 1,44 · 1,13 · 1,54 | 1,35 · 1,39 · 1,09 · 1,62 |
+| médianes haut-médium · aigus | −2,16 · −0,68 | −3,09 · −1,67 |
+| haut-médium des pleines, absolu | −1,9 · −3,1 · −2,9 | −2,9 · −3,8 · −3,5 |
+| aigus des pleines, absolu | +0,3 · −0,5 · −0,2 | −0,8 · −1,2 · −1,0 |
+| niveau : décalage (pire tranche) | −0,24 (5,09) | −0,38 (**4,71**) |
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : le 10ᵉ centile à 4-8 kHz passe de −27,3 à +1,0 dB, à 8-11 kHz de −25,8 à +3,8 — l'écart fermé, pas seulement réduit de moitié |
+| 2 | **tenu** : log-mel 7,08, sous H71 − 0,5 (7,66) — le plus grand gain d'une pièce seule depuis H65 |
+| 3 | **tenu** : 1,35 · 1,39 · 1,09, à 0,05 dB au plus de H71 |
+
+**La règle** : « 1, 2, 3 tenus → le charleston se règle sur ses frappes comme le kick, et la chaîne reçoit une
+hypothèse à elle (la longueur et le niveau des pièces de batterie à leurs frappes moyennes) ». **H72 est TENUE.**
+
+**Ce qu'elle ne règle pas, et qui se voit dans la même mesure.** (a) **Le charleston est trop COURT pour la machine** :
+choisi au bord de sa plage, il reste deux fois plus bref que celui de l'original ; le charleston OUVERT du TR-808
+(0,1-1 s, passé à 5 kHz) en aurait la longueur. (b) **Le haut du spectre a perdu 0,6 à 1,1 dB** dans les pleines, en
+absolu : le niveau choisi sur les 100 premières ms de la frappe moyenne laisse la bande du charleston 1,3 à 1,5 dB
+sous le stem, et le 2-4 kHz reste à −6,1 dB d'énergie — le charleston du TR-808, passé à 7 kHz, n'y joue pas, quand
+celui de l'original y a de la matière (son 2-4 kHz est aussi dense que son 4-8). (c) **Un défaut de l'instrument
+trouvé à la lecture** : le champ « énergie » de la densité rendait +inf (`10 ** (er / 10).sum()` élevait 10 à la
+SOMME des niveaux) ; corrigé, un test le garde (vu rouge sur l'ancien code), les deux densités rejouées — les
+centiles, qui jugent l'attendu 1, n'en dépendaient pas.

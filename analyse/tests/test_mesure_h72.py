@@ -73,6 +73,11 @@ def test_h72_la_densite_lit_un_trou_entre_les_frappes():
     assert_true(ecart_10 < -15.0, f"10e centile, bref − long : {ecart_10}")
     r2 = h72.densite(long_, long_, SR, [(2.0, 38.0)])
     assert_near(r2["4000-8000"]["ecart"][0], 0.0, 1e-9, "contre lui-même")
+    # l'énergie de la bande : 0 dB contre lui-même, −6 dB à moitié d'amplitude (vu +inf le 11/10 : une priorité
+    # d'opérateur élevait 10 à la SOMME des niveaux)
+    assert_near(r2["4000-8000"]["energie_rendu_moins_stem_db"], 0.0, 1e-9, "énergie contre lui-même")
+    r3 = h72.densite(long_, 0.5 * long_, SR, [(2.0, 38.0)])
+    assert_near(r3["4000-8000"]["energie_rendu_moins_stem_db"], -6.0, 0.1, "énergie à moitié d'amplitude")
 
 
 @test
