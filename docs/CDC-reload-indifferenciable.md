@@ -2813,3 +2813,32 @@ l'ORIGINAL demanderait de décomposer le stem par pièce, ce que la chaîne ne s
 précise que ma règle : « à quel niveau une pièce de batterie doit-elle sonner pour que ses FRAPPES ressemblent aux
 frappes du stem au même instant ? » — une mesure aux instants de chaque pièce, pas sur des bandes du morceau entier.
 
+## 26. H65 — le niveau d'une pièce de batterie mesuré à SES frappes isolées (écrite AVANT la mesure, 10/10/2026, 18 h 12)
+
+**L'hypothèse** : le niveau juste d'une pièce de batterie se lit aux instants où elle frappe SEULE — aucune autre
+pièce dans ± 60 ms, d'après le MIDI de la transcription —, en comparant, sur une fenêtre de 80 ms après chaque
+frappe, l'énergie du stem « drums » à celle du rendu solo de la pièce (H59) ; le facteur d'amplitude est la
+racine de la médiane des rapports d'énergie. Appliqué aux trois pièces de « Reload », il rapproche le morceau de
+l'original autant que H63 au moins.
+
+**Ce qui la distingue de H64** : elle n'a pas besoin de savoir qui porte une bande — elle compare des frappes à des
+frappes, là où une seule pièce sonne dans l'original comme dans la reconstruction. **Ce qui peut la fausser, dit
+avant** : le pad et la voix sont dans le mélange, pas dans le stem « drums » (le stem seul est comparé) ; une
+frappe isolée DANS LA TRANSCRIPTION peut ne pas l'être dans l'original (une pièce que la transcription a ratée) —
+la médiane s'en défend, sans le prouver ; et le kick, dont le timbre n'est pas celui du stem (H59), recevra un
+facteur qui égale l'ÉNERGIE de ses frappes, pas leur forme.
+
+**LA MESURE, une variable — les trois volumes de batterie, comme H59** : rendu `build-h42`, outil du § 0, même
+témoin. Publiés : le nombre de frappes isolées par pièce, les rapports (médiane, quartiles), les facteurs.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | le facteur du charleston | à ± 3 dB de celui que H63 a trouvé (× 3,5, soit +10,9 dB) | à plus de 6 dB : la mesure aux frappes ne voit pas ce que H63 a vu |
+| 2 | log-mel | ≤ celui de H63 (8,58) + 0,3 dB | > témoin (10,09) |
+| 3 | sub et basse | aucune ne s'éloigne de plus de 1 dB du témoin | une s'éloigne de plus de 2 dB |
+| 4 | les frappes isolées | ≥ 30 par pièce | moins : la pièce n'est pas mesurable ainsi, et c'est dit |
+
+**La règle de décision** : 1, 2 et 3 tenus → la mesure aux frappes isolées est la règle candidate pour la chaîne (le
+calage interne d'un groupe de batterie), et elle va au banc par une hypothèse à elle ; 1 tenu, 2 ou 3 en échec → le
+niveau de la pièce est juste, son timbre ne l'est pas (le kick) ; 1 en échec → l'idée ne voit pas le charleston.
+
