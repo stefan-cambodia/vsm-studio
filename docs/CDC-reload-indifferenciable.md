@@ -2470,3 +2470,70 @@ la chaîne, par une hypothèse à elle, mesurée sur un morceau du banc à une v
 le grave est un partage, l'aigu est un timbre — le charleston du parc est à mesurer sur le stem seul.
 **Quand** : après la course 2 — trois rendus solo et un rendu entier de 312 s ne se lancent pas à côté d'elle.
 
+---
+
+## 21. Le log-mel décomposé — 10,1 dB qui ne sont pas un timbre mais une DISPOSITION — et H60, la caisse claire qui est un clap (relevé à 17 h 50, H60 écrite AVANT sa mesure, 10/10/2026, 17 h 57)
+
+**LE RELEVÉ, sans hypothèse** (la règle du dépôt : décomposer un chiffre avant de l'expliquer). Le log-mel du
+§ 0 (10,09 dB) de la référence (`reload-h42/temoin.wav`), signé (reconstruction − original), par section du § 1
+et par bande :
+
+| section | sub | basse | bas-médium | médium | haut-médium | aigus | niveau efficace |
+|---|---|---|---|---|---|---|---|
+| intro 0-14 s (percussions seules) | **+30,8** | **+24,7** | +18,1 | +10,6 | +8,8 | +3,7 | +4,7 |
+| pad 14-42 s | +12,6 | −2,5 | −8,5 | +1,3 | −3,7 | −8,2 | −1,4 |
+| pleine 56-84 s | −16,3 | −12,2 | −5,3 | −3,4 | −12,3 | −12,9 | −1,3 |
+| pont 84-92 s | **+24,0** | +8,6 | −6,6 | +4,5 | +7,3 | +2,9 | −0,6 |
+| pleine 98-127 s | −12,3 | −8,5 | −5,7 | −7,1 | −13,1 | −14,8 | −0,7 |
+| long pont 127-162 s | +11,2 | −3,7 | −9,2 | −0,1 | −4,0 | −7,8 | −1,4 |
+| pleine 218-268 s | −7,7 | −6,9 | −6,6 | −5,4 | −9,3 | −11,2 | −0,9 |
+| sortie 268-305 s | +15,2 | +0,9 | −5,4 | +3,1 | +1,3 | −3,0 | −0,6 |
+
+Le niveau large bande de chaque section est juste à 1,4 dB près (sauf l'intro, +4,7) : **l'écart n'est pas un
+niveau, c'est une disposition** — du grave là où l'original n'en a presque pas (intro, ponts : +24 à +31 dB),
+pas assez de grave ni d'aigu là où il en a (les pleines : −7 à −16). La condition « niveau » du § 0, dominée par
+le kick, ne pouvait pas le voir.
+
+**QUI JOUE LE GRAVE DE L'INTRO** — chaque piste rendue SEULE sur 0-14 s (`build-h42`, au volume du projet),
+énergie par bande contre l'original (même échelle, dB) :
+
+| | sub | basse | bas-médium | médium | haut-médium | aigus |
+|---|---|---|---|---|---|---|
+| ORIGINAL 0-14 s | 53,2 | 49,7 | 55,5 | 67,7 | 77,0 | 80,3 |
+| Batterie · **snare** | 49,7 | **80,6** | **80,8** | 73,5 | 81,2 | 78,0 |
+| other · voix 4 (orgue) | 60,8 | 60,2 | 52,9 | 44,3 | 16,9 | 16,4 |
+| piano (Minimoog) | 62,9 | 58,5 | 55,8 | 52,0 | 61,7 | 48,3 |
+| Batterie · hihat | 13,5 | 17,0 | 31,9 | 49,5 | 64,5 | 69,0 |
+| Batterie · kick | −4,9 | −0,2 | −8,3 | −26,8 | −64,0 | −75,9 |
+
+Le kick ne joue pas dans l'intro (0,1 note par seconde au MIDI) ni dans les ponts (0) ; la « snare » y joue (2,4
+par seconde, et presque rien dans les pleines) — exactement là où le grave est en trop. Elle a l'aigu de l'original
+(78 contre 80 dB) et **trente et un décibels de trop entre 60 et 150 Hz** : 192 frappes que la transcription range
+en caisse claire (note 38), jouées par la caisse claire du TR-808 (accord 120 Hz, timbre « snappy » 0,6), quand le
+§ 1 nommait « caisse claire / clap » sans trancher. L'orgue de la voix 4 et le Minimoog du piano ajoutent 8 à 11 dB
+de sub et de grave dans une intro où l'original n'a que des percussions — des notes de résidu de séparation, une
+autre affaire, nommée ici et non mesurée.
+
+**L'HYPOTHÈSE H60** : la frappe que la chaîne appelle « caisse claire » est un CLAP — sans corps grave —, et la même
+partition jouée par le clap du TR-808 (note 39, la machine déjà choisie par l'arbitrage, ses réglages d'usine de
+clap) rapproche l'intro et les ponts de l'original, sans rien coûter ailleurs.
+
+**LA MESURE, une seule variable** : le projet de la référence, la piste « Batterie · snare » réécrite note 38 → 39
+(et rien d'autre : ni volume, ni machine, ni autre piste), rendue par `build-h42` ; témoin : le même projet tel
+quel. Sur l'intro (0-14 s) et les deux ponts (84-92 s, 211-218 s), le MÉLANGE entier, énergie par bande contre
+l'original ; puis, la course 2 finie, le morceau entier par l'outil du § 0.
+
+**ATTENDUS :**
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | intro, ponts : écart (mélange − original) en basse et bas-médium | réduit d'au moins 10 dB | réduit de moins de 5 dB : la caisse claire n'est pas la cause |
+| 2 | intro, ponts : haut-médium et aigus | à ± 3 dB de l'original | à plus de 6 dB : le clap ne porte pas l'aigu de la frappe |
+| 3 | morceau entier, § 0 : log-mel moyen | ≤ témoin (10,09) | > témoin + 0,1 dB |
+| 4 | morceau entier, § 0 : les six bandes | aucune ne s'éloigne de plus de 1 dB | une s'éloigne de plus de 1 dB |
+
+**La règle de décision** : 1, 2, 3 tenus → l'arbitrage de batterie de la chaîne doit choisir, frappe par frappe de
+classe, entre caisse claire et clap (une hypothèse à elle, mesurée sur un morceau du banc à une variable) ; 1 tenu
+sans 2 → le grave est la caisse claire, l'aigu est un autre timbre ; 1 en échec → la cause est ailleurs, et ce
+relevé le dit.
+
