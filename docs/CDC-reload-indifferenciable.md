@@ -2369,3 +2369,51 @@ rack, et H57b ne s'ouvre que si l'attendu 4 accuse la base de 1 ms. **Et l'oreil
 original, sinus nus, sinus + rack, écrits en `.wav` côte à côte pour l'utilisateur — la chaîne n'écoute pas
 (§ 0).
 
+### 19.1 Verdict de H57a (10/10/2026, mesuré de 17 h 38 à 17 h 42, écrit à 17 h 43) : la règle écrite dit « rien n'entre » — et deux de ses attendus étaient jugés par une mesure que H47 avait déjà prise en défaut
+
+`analyse/mesure_h57.py` (branche `reload-h47`, `3ea6ff3`), le stem « other » de la course de référence,
+`vsm-render` de `build-h51`, sous `nice` à côté de la course 2 ; 229 s ;
+`reconstruction/travail/reload-h57/mesure.json`. Les trois extraits portent le MÊME accord à l'oracle (onze
+notes : mi, fa♯, la♯, si, do♯ sur deux octaves, et **sol♯4**, absent du § 1) — d'où des rendus de sinus
+identiques d'un extrait à l'autre, et c'est vérifié, pas une panne. Énergie sous 120 Hz : −25,6 / −27,4 /
+−26,3 dB du total ; la basse n'y est donc pas tout à fait absente. Le contrôle : les effets changent le son
+(écart efficace 0,75 du niveau des sinus nus).
+
+| extrait | 1 instrument | 2 rack contre nus | 3 contre le parc (1re à `D`) | 4 contre `B_mesuré` | 5 largeur | 6 tenue |
+|---|---|---|---|---|---|---|
+| 84-92 s | tenu | **tenu** (23,40 contre 25,17, +1,77) | échec (E-Piano 10,33 ; +13,07) | échec (+4,50) | **échec** (0,416 contre 0,070) | tenu |
+| 154-162 s | tenu | **tenu** (26,30 contre 28,41, +2,10) | échec (Harp 11,19 ; +15,11) | échec (+3,16) | **échec** (0,416 contre 0,074) | tenu |
+| 211-218 s | tenu | **tenu** (20,64 contre 22,01, +1,37) | échec (E-Piano 8,92 ; +11,72) | échec (+4,01) | **échec** (0,413 contre 0,056) | tenu |
+
+**LA RÈGLE ÉCRITE, appliquée telle quelle** : « 2 tenu sans 3 → le rack aide, une machine du parc fait mieux,
+rien n'entre ». **Rien n'entre dans la chaîne.**
+
+**CE QUI ÉTAIT FAUX DANS L'ÉCRITURE DE H57, et que le verdict ne doit pas cacher.** Les attendus 3 et 4
+jugent au log-mel des cases qui portent ; or H47 (§ 9.2) avait trouvé que **ses bornes ne bornent pas** :
+sur 16-40 s, 141 candidates sur 190 passaient sous `B_mesuré`, une harpe et un piano électrique devant les
+sinus de l'oracle, et le classement `D` de la chaîne ne corrélait pas à ce log-mel (Spearman −0,018). Le
+même défaut est ici, plus fort : la meilleure guitare nylon échantillonnée est à **5,3 à 6,5 dB**, sous des
+bornes de sinus parfaits à 16,6 à 23,1 dB. Écrire « les mesures de H47 sans en changer une » reprenait donc
+une mesure DÉJÀ prise en défaut : les attendus 3 et 4 ne disent pas si le rack approche le pad — ils disent
+que ce log-mel préfère des sons attaqués. Ce n'est pas un échec du rack, c'est l'instrument, et c'était
+écrit avant H57 ; je ne l'ai pas relu.
+
+**CE QUI TIENT, et n'en dépend pas.**
+- **L'attendu 2, trois fois sur trois** : à notes et diapason égaux, le flanger puis le chorus du rack
+  rapprochent les sinus de l'original de 1,4 à 2,1 dB au log-mel — le même instrument des deux côtés, une
+  seule variable : la comparaison se lit, même si l'échelle absolue est suspecte.
+- **L'attendu 5, trois fois sur trois, et c'est le résultat le plus net** : le rack rend le pad **six fois
+  trop large** (side/mid 0,41 contre 0,056 à 0,074). Le flanger du rack met ses deux lectures en quadrature
+  sur la GAUCHE et la DROITE ; dans l'original, la modulation que H50-H51 ont trouvée **ne se répartit pas
+  ainsi** — le pad est presque mono. Les « deux lectures en quadrature » de H51 étaient une propriété de la
+  somme MONO (elles éteignent 2·`f1`), pas une image stéréo. Le pad se modulera donc des DEUX côtés à la
+  fois, ou ne se modulera pas par ce flanger.
+
+**À L'OREILLE** — la chaîne n'écoute pas (§ 0) : les trois extraits, l'original, les sinus nus et les
+sinus + rack, calés au même niveau efficace, sont dans `reconstruction/travail/reload-h57/ecoute/`.
+
+**La suite, sans l'écrire ici comme hypothèse** : H57b (une base réglable) ne s'ouvre pas — sa condition
+était « l'attendu 4 accuse la base de 1 ms », et l'attendu 4 n'est pas lisible. Ce que ce verdict laisse
+de mesurable : (1) un jugement du timbre qui ne préfère pas les sons attaqués — la question que H47 a
+posée et que personne n'a tranchée ; (2) un rack dont la modulation est la même à gauche et à droite.
+
