@@ -3218,3 +3218,47 @@ tenue ~80 ms puis coupée, là où `KickVoice` ne sait que décroître en expone
 **La suite, nommée et pas encore écrite en hypothèse** : un paramètre de TENUE de l'amplitude du kick (défaut 0, le
 son d'aujourd'hui au bit près), le kick réglé sur le relevé (≈ 37 Hz, tenue ≈ 80 ms, la décroissance la plus courte),
 mesuré au mélange contre le témoin — H70.
+
+## 31. H70 — le kick du TR-808 réglé sur SES frappes : l'accord relevé, une TENUE d'amplitude, le niveau de la frappe moyenne (écrite AVANT son code et sa mesure, 11/10/2026, 02 h 36)
+
+**Ce qui manque au TR-808, d'après H69** : l'amplitude de `KickVoice` décroît en exponentielle dès l'attaque ; celle
+du kick de l'original est TENUE ~80 ms puis coupée. **Le code, dans un arbre à part** (`reload-h70`, worktree
+`../vsm-studio-h70`, son propre `vsm-render` construit sans l'application) : un paramètre « Kick Hold »
+(`drum.kick.hold`, 0 à 0,3 s, **défaut 0**) pendant lequel l'enveloppe d'amplitude reste à 1 avant de décroître ;
+à 0, le chemin de calcul est celui d'aujourd'hui. **Sans règle au profil de recherche** : la chaîne ne le cherche
+pas (`buildSearchProfile` ne garde que les paramètres qui ont une règle) — il ne change aucune reconstruction tant
+qu'une hypothèse ne l'y fait pas entrer. Le panneau du TR-808 reçoit son bouton (la garde
+`no_parameter_is_silently_unreachable` l'exige) ; **il n'entre dans `master` — photo de l'interface et bancs à
+l'appui — que si la règle ci-dessous le dit.**
+
+**Le contrôle d'abord** : le témoin (le projet de référence tel quel) rendu par le nouveau `vsm-render` doit être
+**identique au bit près** à `reload-h42/temoin.wav` (rendu par `build-h42`). Identique → le paramètre à 0 ne change
+rien, et les rendus de H67 et H68 restent valables ; différent → le témoin de H70 est le rendu du nouveau moteur, et
+c'est dit, avec l'écart.
+
+**L'HYPOTHÈSE H70** : un kick réglé sur ses frappes par l'instrument de H69, SANS regarder le mélange, rapproche le
+mélange de l'original — grave ET bas-médium. Le réglage, entièrement fixé avant toute mesure du mélange :
+- **accord 37 Hz** (le relevé du § 30.2 : f₁ 36,0 à 39,3 Hz), balayage inchangé (r 5, τ 45 ms : ceux de l'original
+  à 0,5 et 3 ms près), **décroissance 0,05 s** (le minimum de sa plage : la coupure de l'original est plus vive) ;
+- **tenue** : celle de {0,04 · 0,06 · 0,08 · 0,10 s} dont le kick moyen du rendu solo a l'enveloppe la plus proche
+  de celle de l'original (enveloppe de Hilbert 30-600 Hz depuis le début de chacun, en dB sous son maximum, plancher
+  à −20 dB, écart quadratique moyen sur 5-130 ms) ;
+- **niveau** : le volume de la piste multiplié par `√(E_original / E_rendu)`, énergies des deux kicks moyens sous
+  1 kHz sur leurs 150 premières ms — la frappe moyenne à l'énergie de celle du stem (la méthode de H65, sur la frappe
+  moyenne au lieu de la médiane des frappes).
+
+Mesuré au mélange : ce point « K » contre le témoin ; en relevés, pour décomposer, K sans le niveau (« K₀ »), et
+37 Hz / 0,05 s sans tenue (« A ») ; le point 60 Hz / 0,15 s de H68 sert de repère pour le bas-médium.
+
+| # | mesure (au point K) | réussite | échec |
+|---|---|---|---|
+| 1 | le kick, sur ses frappes (rendu solo, instrument de H69) | part au-dessus de 150 Hz à ± 1,5 dB de celle de l'original (−7,78 dB) ; fréquence à 25, 50, 100 ms à ± 10 % de l'original (139,6 · 91,7 · 60,0 Hz) | part à plus de 3 dB : le TR-808, même tenu, ne fait pas ce kick |
+| 2 | le grave et le bas-médium du mélange | sub du § 0 \|écart\| ≤ 1,33 dB (le témoin) ; basse des trois pleines à ± 2 dB ; bas-médium des trois pleines au moins 2 dB plus près de l'original qu'au point 60 Hz / 0,15 s de H68 (+5,4 · +6,2 · +5,7) | sub au-delà de 3 dB, ou basse au-delà de 4, ou bas-médium pas plus près que H68 |
+| 3 | log-mel | ≤ témoin − 0,3 dB (9,79) | > témoin (10,09) |
+| 4 | relevés : niveau du § 0, les six bandes, K₀ et A | — | — |
+
+**La règle de décision** : 1, 2 et 3 tenus → « Kick Hold » entre dans `master` (son bouton photographié, les bancs
+rejoués), et la chaîne reçoit une hypothèse à elle : régler le kick d'une batterie sur ses frappes par moyenne
+synchrone ; 1 tenu, 2 ou 3 en échec → le kick est juste sur ses frappes et le mélange ne suit pas : ce qui l'éloigne
+est ailleurs (les autres pièces, leurs niveaux — H65) ; 1 en échec → le TR-808 tenu ne fait pas ce kick, et c'est
+une autre machine (le kick de l'original est un échantillon répété : un échantillonneur le jouerait tel quel).
