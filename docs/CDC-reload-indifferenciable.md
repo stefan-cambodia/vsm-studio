@@ -3279,3 +3279,50 @@ réglages enregistrés ne bougent pas), sa ligne au descripteur (`drum.kick.hold
 sous « TONE »), et deux tests C++ : la tenue garde l'amplitude à moins de 0,5 dB jusqu'à 75 ms puis la décroissance
 reprend (< −15 dB 100 ms après), sans tenue −11 dB à 65 ms ; et à 0 — le défaut — le rendu est identique au bit près
 à celui d'un TR-808 où l'on n'a rien posé.
+
+### 31.2 Verdict de H70 (11/10/2026, rendu et mesuré de 02 h 43 à 02 h 47, écrit à 02 h 49) : rien n'est tenu en entier, rien n'entre — mais les trois bandes graves des pleines sont, pour la première fois, à moins de 1,5 dB de l'original, et le log-mel ne le voit pas
+
+`reconstruction/travail/reload-h70.sh` (rejouable), moteur de `reload-h70` (`1eff3b6d`, branche poussée).
+
+**Le contrôle : tenu.** Le témoin rendu par le nouveau moteur est **identique au bit près** à celui de `build-h42` :
+« Kick Hold » à 0 ne change rien, et les rendus de H67 et H68 restent comparables à ceux-ci.
+
+**Le choix sur les frappes, à la lettre** : écart d'enveloppe 3,09 · 4,44 · 6,33 · 8,00 dB pour 0,04 · 0,06 · 0,08 ·
+0,10 s → **tenue 0,04 s**, au BORD du balayage ; niveau `√(E_o/E_r)` = **×0,7075 (−3,01 dB)**. **Un défaut de
+l'instrument, vu sur les frappes AVANT de lire le mélange** : l'enveloppe est rapportée à son MAXIMUM, et celui de
+l'original est le clic de l'attaque, **4,3 dB au-dessus de son plateau** — le rendu tenu, plat à son maximum, est
+pénalisé d'autant plus longtemps qu'il est tenu. Rapportées à leur forme seule (décalage constant retiré), les
+mêmes enveloppes s'écartent de 2,64 · **2,48** · 3,46 · 4,82 dB : le choix aurait été 0,06 s, voisin. Et aucune
+tenue ne colle bien, pour une raison de la machine : la décroissance du TR-808 ne descend pas sous 0,05 s, quand la
+coupure de l'original (−6 dB à 81 ms, −20 à 127) a une constante d'environ 25 ms. Le point K a été rendu à la lettre
+(0,04 s) ; 0,06 s n'est pas rendu.
+
+| point | basse des pleines | sub des pleines | bas-médium des pleines | § 0, \|médian\| sub · basse · bas-méd. · médium | haut-méd. · aigus (médian) | niveau (pire) | log-mel (médian) |
+|---|---|---|---|---|---|---|---|
+| témoin | −7,5 · −6,4 · −6,5 | −9,7 · −9,0 · −8,9 | +2,7 · +3,4 · +2,9 | 7,63 · 6,12 · 2,80 · 1,89 | −3,01 · −6,94 | −0,57 (5,43) | 10,09 (8,53) |
+| H68, 60 Hz / 0,15 s | +0,9 · +1,7 · +1,7 | +2,2 · +2,3 · +2,3 | +5,4 · +6,2 · +5,7 | 1,23 · 1,86 · 2,09 · 1,39 | −4,05 · −8,72 | +2,54 (6,44) | 9,89 (8,39) |
+| **K** (37 Hz, 0,05 s, tenue 0,04 s, ×0,7075) | **−1,3 · 0,0 · −0,1** | **+0,6 · +1,3 · +1,2** | **+0,9 · +1,5 · +1,0** | **1,51 · 1,47 · 1,31 · 1,21** | −3,46 · −7,26 | **−0,23 (5,17)** | 10,09 (8,44) |
+| K₀ (sans le niveau) | +1,7 · +3,0 · +2,9 | +3,6 · +4,3 · +4,2 | +3,5 · +4,2 · +3,7 | 1,62 · 2,18 · 1,22 · 1,48 | −3,93 · −8,61 | +2,19 (6,09) | 10,10 (8,45) |
+| A (37 Hz, 0,05 s, sans tenue) | −4,5 · −3,2 · −3,3 | −2,8 · −2,2 · −2,2 | +1,6 · +2,3 · +1,8 | 1,57 · 3,03 · 2,05 · 1,98 | −3,01 · −6,95 | −0,57 (5,43) | 10,07 (8,43) |
+
+| # | verdict au point K |
+|---|---|
+| 1 | **entre les deux** : fréquence à 25 · 50 · 100 ms = 143,4 · 98,2 · 57,3 Hz, à 2,7 · 7,1 · 4,5 % de l'original (tenu) ; part au-dessus de 150 Hz −5,04 dB contre −7,78 — **2,74 dB**, au-delà des ± 1,5 dB, en deçà des 3 dB de l'échec (à 0,08 s, elle aurait été à −7,37 : la tenue choisie par l'enveloppe et celle que demande la part au-dessus de 150 Hz ne sont pas les mêmes, et c'est la décroissance trop lente qui les sépare) |
+| 2 | **entre les deux** : basse des pleines dans les ± 2 dB (tenu) ; bas-médium des pleines **4,5 à 4,7 dB** plus près que H68 (tenu) ; sub du § 0 à **+1,51**, 0,18 dB au-delà du témoin (\|−1,33\|) — mais son écart absolu médian, tranche à tranche, passe de 7,63 à 1,51 dB |
+| 3 | **entre les deux** : 10,09, égal au témoin au centième publié — ni 0,3 dB dessous, ni au-dessus |
+
+**La règle** : rien n'est tenu en entier, **« Kick Hold » n'entre pas dans `master`** ; il reste dans sa branche.
+
+**CE QUE LA MESURE MONTRE.** (a) **La moitié basse du spectre est réparée** : sur le morceau entier, l'écart absolu
+médian tranche à tranche des bandes sub, basse, bas-médium et médium passe de 7,63 · 6,12 · 2,80 · 1,89 dB à
+**1,51 · 1,47 · 1,31 · 1,21** ; dans les pleines, les trois bandes graves sont à moins de 1,5 dB ; le niveau se
+rapproche (−0,57 → −0,23 dB) et la pire tranche aussi (5,43 → 5,17). La décomposition : l'accord seul (A) divise
+par deux les écarts du sub et de la basse sans toucher au niveau ; la tenue (K₀) amène la basse et le bas-médium
+mais rend le morceau 2,2 dB trop fort ; le niveau de la frappe moyenne (K) le ramène — sans que le mélange ait
+servi à le choisir. (b) **Le log-mel ne voit pas le kick** : 10,09 au témoin comme en K, et de 9,86 à 10,15 pour
+TOUS les réglages de kick essayés depuis H67. L'attendu 3 a été écrit sur une mesure que la variable ne pouvait pas
+faire bouger — H68 l'avait montré, et je l'ai recopié. La leçon, pour toute hypothèse qui touche une seule pièce :
+son critère doit être de ceux que cette pièce peut faire bouger (ici, les bandes qu'elle porte), et le log-mel se
+garde comme CONTRÔLE (« ne recule pas »), pas comme critère de réussite. (c) **Ce qui reste au log-mel est dans la
+moitié haute** — haut-médium −3,46 et aigus −7,26 en K, inchangés : le territoire de H63 et H65 (le charleston trois
+fois trop bas, la caisse claire près de quatre fois trop forte), où H65 avait mené le log-mel à 8,17.
