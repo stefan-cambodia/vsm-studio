@@ -3398,3 +3398,67 @@ absolu. **Les deux corrections sont indépendantes** dans les mesures qui le dis
 et H71 est, chiffré, le meilleur état mesuré du chantier : log-mel 8,16, pire tranche 5,09 dB, les quatre bandes
 basses à moins de 1,6 dB d'écart médian. Ce qui reste, dans les pleines : le haut-médium (−1,9 à −3,1 dB absolus)
 et le médium des deux dernières (−1,5 et −3,3).
+
+## 33. Le log-mel de H71 décomposé : la batterie a l'ÉNERGIE du stem et pas sa DENSITÉ — et H72, la longueur du charleston réglée sur ses frappes (relevé de 02 h 54 à 02 h 57, H72 écrite AVANT sa mesure, 11/10/2026, 02 h 58)
+
+**LE RELEVÉ, sans hypothèse** (la règle : décomposer un chiffre avant de l'expliquer). Le log-mel de H71 (8,16 dB),
+signé (reconstruction − original), par groupe de bandes mel (64 bandes jusqu'à 11 kHz : **2 sous 150 Hz, 19 au-dessus
+de 2 kHz** — d'où la cécité au kick des §§ 31.2 et 32.1) :
+
+| bandes | 0-150 Hz | 150-500 | 500-2 000 | 2-4 kHz | 4-8 kHz | 8-11 kHz |
+|---|---|---|---|---|---|---|
+| bandes mel | 2 | 7 | 23 | 13 | 13 | 6 |
+| \|écart\| moyen (dB) | 10,62 | 12,06 | 6,94 | 7,84 | 7,91 | 8,65 |
+| signé | −0,88 | −7,18 | −2,25 | −4,02 | −4,44 | −4,78 |
+| part du total | 4,1 % | 16,2 % | 30,6 % | 19,5 % | 19,7 % | 9,9 % |
+
+Par section, l'écart signé est de **−5 à −8 dB dans les trois pleines et dans 162-211 s** (dans toutes les bandes),
+quand l'intro et la fin sont au-dessus (+4). Or le niveau du § 0 est juste (−0,24 dB) : l'énergie y est, trame à trame
+elle n'y est pas. Dans les pleines, l'original n'est que batterie (stem à −15 dB) et « other » (−23 dB) ; voix, guitare
+et piano y sont à −52 dB. Rendues chacune SEULE (`reload-h71/parties/`, moteur de `reload-h70`) contre leur stem, dans
+les pleines : « other » a 10 à 11 dB de trop peu sous 500 Hz et 2 à 6 dB de trop au-dessus ; **la batterie est 9 à
+11 dB sous son stem en log-mel dans cinq groupes sur six — sur les trames fortes comme sur les faibles — avec la même
+énergie à 1 dB près** (sauf 2-4 kHz, −5,3 dB, et 150-500 Hz, +2,8). La distribution des niveaux trame à trame (STFT
+de 46 ms, pleines) dit pourquoi :
+
+| bande | énergie, rendu − stem | stem : centiles 10 · 50 · 90 · 99 (dB) | rendu : centiles 10 · 50 · 90 · 99 |
+|---|---|---|---|
+| 30-150 Hz | −0,2 | 17,2 · 28,7 · 42,3 · 43,9 | −8,2 · 19,8 · 41,1 · 44,3 |
+| 150-500 Hz | +2,8 | 4,2 · 18,5 · 30,1 · 43,4 | −19,8 · 9,2 · 39,4 · 44,5 |
+| 500-2 000 Hz | −0,7 | 2,5 · 11,6 · 20,5 · 27,1 | −9,1 · 6,6 · 19,9 · 27,6 |
+| 2-4 kHz | −5,3 | 11,1 · 16,7 · 24,8 · 27,2 | −20,3 · 8,3 · 19,6 · 23,6 |
+| 4-8 kHz | −0,7 | **13,2 · 23,4 · 25,9 · 27,3** | **−14,1 · 15,3 · 27,4 · 31,6** |
+| 8-11 kHz | −0,4 | 7,5 · 19,6 · 23,4 · 24,4 | −18,3 · 12,2 · 24,9 · 29,1 |
+
+**La batterie de l'original est DENSE et celle du rendu est CREUSE** : entre les frappes, le rendu retombe 20 à 30 dB
+sous le stem (10ᵉ centile), et compense par des crêtes plus hautes (99ᵉ). Entre 4 et 8 kHz, le stem est presque
+continu — 14 dB du 10ᵉ au 99ᵉ centile, contre 46 dans le rendu.
+
+**Le premier suspect, lu dans le code et le projet** : le charleston du TR-808 (`HatVoice` : six carrés inharmoniques
+passés au-dessus de 7 kHz) décroît avec une constante de **0,05 s** (`drum.closedHat.decay`, plage 0,02-0,2 s) ; il
+frappe sur la double croche (intervalle médian 128 ms, 105 ms au 10ᵉ centile ; 107 ms à 139,7 BPM) et retombe de
+18,6 dB avant la suivante.
+
+**L'HYPOTHÈSE H72** : le charleston de l'original est plus LONG ; réglé sur ses frappes — sa décroissance choisie sur
+l'enveloppe de sa frappe moyenne, son niveau sur l'énergie de celle-ci, dans SA bande —, le charleston du TR-808
+rend à la batterie sa densité, et le log-mel — qui, lui, voit les aigus — le dit. **Le réglage, fixé sur les frappes
+avant toute mesure du mélange** : l'instrument de H69-H70 rapporté au charleston — frappes de la piste « hihat »
+dans les pleines, sans caisse claire de 150 ms avant à 100 ms après ; moyenne synchrone au-dessus de 4 kHz (le
+charleston du TR-808 est passé à 7 kHz) ; l'enveloppe comparée en FORME (décalage constant retiré — le défaut du
+§ 31.2 corrigé), sur 5-100 ms (avant la double croche suivante), aux rendus solo de la piste à
+`closedHat.decay` ∈ {0,05 · 0,08 · 0,12 · 0,16 · 0,20 s} ; le volume de la piste au rapport des énergies des deux
+frappes moyennes sur leurs 100 premières ms. **Le point mesuré** : H71 (§ 32) avec ce charleston — une variable,
+la piste du charleston (sa décroissance et son volume) ; même moteur, même outil, mêmes sections.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | la densité : 10ᵉ centile de la batterie seule contre son stem, pleines, 4-8 kHz et 8-11 kHz | l'écart (−27,3 et −25,8 dB en H71) réduit de moitié au moins | réduit de moins de 5 dB : la longueur du charleston n'est pas ce qui manque |
+| 2 | log-mel du mélange | ≤ H71 − 0,5 dB (7,66) | > H71 (8,16) |
+| 3 | le CONTRÔLE de la moitié basse : \|médian\| sub, basse, bas-médium | chacune à moins de 0,5 dB de H71 (1,30 · 1,44 · 1,13), ou mieux | l'une pire de plus de 1,5 dB |
+| 4 | relevés : haut-médium et aigus en ABSOLU dans les pleines, niveau, la décroissance et le facteur choisis | — | — |
+
+**La règle de décision** : 1, 2, 3 tenus → le charleston se règle sur ses frappes comme le kick, et la chaîne reçoit
+une hypothèse à elle (la longueur et le niveau des pièces de batterie à leurs frappes moyennes) ; 1 tenu sans 2 → la
+densité revient sans que le log-mel suive : ce qu'il voit est ailleurs (le 2-4 kHz, la caisse claire ?) ; 1 en échec
+→ le charleston n'est pas ce qui manque — un son continu de l'original (une boucle, une réverbération) que la
+transcription ne donne pas, à chercher sur la frappe moyenne et entre les frappes.
