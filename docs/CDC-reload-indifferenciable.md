@@ -3262,3 +3262,20 @@ rejoués), et la chaîne reçoit une hypothèse à elle : régler le kick d'une 
 synchrone ; 1 tenu, 2 ou 3 en échec → le kick est juste sur ses frappes et le mélange ne suit pas : ce qui l'éloigne
 est ailleurs (les autres pièces, leurs niveaux — H65) ; 1 en échec → le TR-808 tenu ne fait pas ce kick, et c'est
 une autre machine (le kick de l'original est un échantillon répété : un échantillonneur le jouerait tel quel).
+
+### 31.1 L'instrument de H70 et le code du paramètre, AVANT toute mesure (11/10/2026, 02 h 39)
+
+`analyse/mesure_h70.py` (sur `mesure_h69.py`) et `analyse/tests/test_mesure_h70.py` : un « original » connu (la
+réplique du TR-808 à 37 Hz, tenue 70 ms) contre des rendus à 0 · 40 · 70 · 100 ms de tenue et à moitié du niveau →
+la tenue choisie est 70 ms (écart d'enveloppe < 0,5 dB, sans tenue > 3 dB), le facteur de niveau ×2,00. **Vu rouge
+en mutant l'instrument** : une fenêtre d'enveloppe arrêtée à 30 ms (aveugle à toute tenue de 40 ms ou plus) fait
+tomber le test (écart sans tenue 2,7 dB). **Ce que ces tests ne gardent PAS** : le recalage du début de chaque kick
+moyen — un instrument qui part du début de la fenêtre reste vert, parce que le test pose l'original et les rendus au
+même instant ; dans « Reload », le début de l'original est lu 5,2 ms avant celui du rendu (§ 30.2), et le recalage
+y compte.
+
+Dans l'arbre `reload-h70` : « Kick Hold » (`kKickHold`, ajouté APRÈS `kAccent` pour que les identifiants des
+réglages enregistrés ne bougent pas), sa ligne au descripteur (`drum.kick.hold`), son bouton au panneau (« HOLD »,
+sous « TONE »), et deux tests C++ : la tenue garde l'amplitude à moins de 0,5 dB jusqu'à 75 ms puis la décroissance
+reprend (< −15 dB 100 ms après), sans tenue −11 dB à 65 ms ; et à 0 — le défaut — le rendu est identique au bit près
+à celui d'un TR-808 où l'on n'a rien posé.
