@@ -218,3 +218,79 @@ VSM_TEST(record_only_stays_quiet_until_the_application_says_it_records) {
     graphe.setPlaying(true);
     VSM_ASSERT(crete(rendre(graphe, 48000.0, 256, 0.9)) > 0.01f);
 }
+
+// --------------------------------------------------------------------------
+// D546.2 — LE DÉCOMPTE D'UN PUNCH AU MILIEU DU MORCEAU. Deux mesures avant la
+// mesure 9, ce sont les mesures 7 et 8 : des positions POSITIVES, où la règle
+// « avant zéro » de D3.2 ne forçait plus le clic. Métronome éteint, ce
+// décompte-là ne battait pas.
+// --------------------------------------------------------------------------
+
+namespace {
+
+/// Quatre secondes rendues à partir de 12 s, métronome ÉTEINT, avec ou sans fin
+/// de décompte posée à 16 s ; puis quatre de plus, passé le point d'entrée.
+struct DecompteAuMilieu {
+    std::vector<float> avant;   // de 12 à 16 s
+    std::vector<float> apres;   // de 16 à 20 s
+};
+
+DecompteAuMilieu decompteAuMilieu(double finDuDecompte) {
+    ProcessGraph graphe;
+    graphe.prepare(8000.0, 333);   // aucun temps sur une frontière de bloc
+    graphe.setProject(projetDUneNote());
+    VSM_ASSERT(!graphe.metronomeEnabled());
+    graphe.setCountInEndSeconds(finDuDecompte);
+    graphe.seekSeconds(12.0);
+    graphe.setPlaying(true);
+    DecompteAuMilieu son;
+    son.avant = rendre(graphe, 8000.0, 333, 4.0);
+    son.apres = rendre(graphe, 8000.0, 333, 4.0);
+    return son;
+}
+
+/// Crête d'une fenêtre de 20 ms commençant `secondes` après le début de `son`.
+float creteVers(const std::vector<float>& son, double secondes) {
+    const auto debut = static_cast<size_t>(secondes * 8000.0);
+    float valeur = 0.0f;
+    for (size_t i = debut; i < debut + 160 && i < son.size(); ++i)
+        valeur = std::max(valeur, std::abs(son[i]));
+    return valeur;
+}
+
+} // namespace
+
+VSM_TEST(a_count_in_before_a_punch_in_the_middle_clicks_on_every_beat) {
+    const auto son = decompteAuMilieu(16.0);
+    // Huit temps de 12 à 15,5 s, chacun à sa place, et rien entre deux temps.
+    for (int k = 0; k < 8; ++k) VSM_ASSERT(creteVers(son.avant, 0.5 * k) > 0.01f);
+    for (int k = 0; k < 8; ++k) VSM_ASSERT(creteVers(son.avant, 0.5 * k + 0.25) < 1.0e-4f);
+    // Le clic sur lequel on entre, à 16 s, porté par le bloc qui franchit le
+    // point d'entrée -- comme le dernier clic de D3.2 sur le premier temps.
+    VSM_ASSERT(creteVers(son.apres, 0.0) > 0.01f);
+    // Passé le point d'entrée, le métronome éteint se tait.
+    for (int k = 1; k < 8; ++k) VSM_ASSERT(creteVers(son.apres, 0.5 * k) < 1.0e-4f);
+}
+
+VSM_TEST(without_a_count_in_end_the_middle_of_the_song_stays_silent) {
+    // LE TÉMOIN, la règle d'avant (zéro par défaut) : de 12 à 16 s, rien. C'est
+    // ce silence que H6 annonçait.
+    const auto son = decompteAuMilieu(0.0);
+    float valeur = 0.0f;
+    for (float e : son.avant) valeur = std::max(valeur, std::abs(e));
+    VSM_ASSERT_NEAR(static_cast<double>(valeur), 0.0, 1.0e-9);
+}
+
+VSM_TEST(a_count_in_end_taken_back_leaves_the_next_playback_silent) {
+    // L'application remet zéro quand la prise commence ou s'arrête : la lecture
+    // suivante, partie d'avant l'ancien point d'entrée, ne doit plus cliquer.
+    ProcessGraph graphe;
+    graphe.prepare(8000.0, 333);
+    graphe.setProject(projetDUneNote());
+    graphe.setCountInEndSeconds(16.0);
+    VSM_ASSERT_NEAR(graphe.countInEndSeconds(), 16.0, 1e-12);
+    graphe.setCountInEndSeconds(0.0);
+    graphe.seekSeconds(12.0);
+    graphe.setPlaying(true);
+    VSM_ASSERT_NEAR(static_cast<double>(crete(rendre(graphe, 8000.0, 333, 4.0))), 0.0, 1.0e-9);
+}

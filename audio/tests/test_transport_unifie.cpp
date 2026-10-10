@@ -153,6 +153,49 @@ VSM_TEST(the_transport_stops_at_the_end_of_the_song) {
     VSM_ASSERT_NEAR(transport.currentSeconds(), 0.0, 1e-12);
 }
 
+VSM_TEST(a_take_runs_past_the_end_of_the_song) {
+    // D546.2 (H7) : c'est en enregistrant au-delà de la dernière note qu'un
+    // morceau s'allonge. La première partie d'un projet vide s'arrêtait à 0,5 s.
+    // Le TÉMOIN est le test d'au-dessus : sans prise, l'arrêt à la fin reste.
+    const Project projet = projetAvecNotes();
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 512);
+    graphe.setProject(projet);
+    Transport transport(graphe);
+    transport.setProject(projet);
+
+    graphe.setRecording(true);
+    transport.play();
+    rendre(graphe, 400);   // 4,3 s : bien au-delà de la fin (1,5 s)
+    transport.poll();
+    VSM_ASSERT(transport.state() == TransportState::Playing);
+    VSM_ASSERT(transport.currentSeconds() > 4.0);
+
+    // La prise finie, la fin du morceau reprend son droit.
+    graphe.setRecording(false);
+    transport.poll();
+    VSM_ASSERT(transport.state() == TransportState::Stopped);
+}
+
+VSM_TEST(a_count_in_started_past_the_end_is_not_rewound) {
+    // Le décompte d'un punch posé après la dernière note : arrêté et rembobiné
+    // dès son premier tour, il laissait la prise en phase « décompte » pour
+    // toujours. L'application pose l'enregistrement AVANT le décompte.
+    const Project projet = projetAvecNotes();
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 512);
+    graphe.setProject(projet);
+    Transport transport(graphe);
+    transport.setProject(projet);
+
+    graphe.setRecording(true);
+    transport.seekSeconds(14.0);
+    transport.play();
+    transport.poll();
+    VSM_ASSERT(transport.state() == TransportState::Playing);
+    VSM_ASSERT_NEAR(transport.currentSeconds(), 14.0, 1e-9);
+}
+
 VSM_TEST(a_loop_never_reaches_the_end_of_the_song) {
     const Project projet = projetAvecNotes();
     ProcessGraph graphe;

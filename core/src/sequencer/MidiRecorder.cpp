@@ -1,4 +1,5 @@
 #include "vsm/sequencer/MidiRecorder.h"
+#include "vsm/sequencer/Project.h"
 #include <limits>
 #include <algorithm>
 #include <deque>
@@ -289,6 +290,20 @@ void applyRecordedControls(Track& track, const RecordedControls& controls, bool 
     poser(track.pitchBends, controls.pitchBends);
     poser(track.channelPressure, controls.channelPressure);
     poser(track.polyAftertouch, controls.polyAftertouch);
+}
+
+double countInSeconds(const Project& project, midi::Tick punchTick, int bars) {
+    if (bars <= 0) return 0.0;
+    const midi::Tick parMesure = project.timeSignatureMap.ticksPerBar(punchTick, project.ticksPerQuarterNote);
+    if (parMesure <= 0 || project.ticksPerQuarterNote == 0) return 0.0;
+    const midi::Tick debut = punchTick - parMesure * bars;
+    if (debut >= 0) return project.ticksToSeconds(punchTick) - project.ticksToSeconds(debut);
+    // Avant zéro, au tempo du début : la carte n'a rien là, le décompte si.
+    const double bpm = project.tempoMap.bpmAt(0);
+    if (bpm <= 0.0) return 0.0;
+    const double parTick = 60.0 / (bpm * static_cast<double>(project.ticksPerQuarterNote));
+    return project.ticksToSeconds(std::max<midi::Tick>(punchTick, 0))
+           + static_cast<double>(-debut) * parTick;
 }
 
 } // namespace vsm::sequencer

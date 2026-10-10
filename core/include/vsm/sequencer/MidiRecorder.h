@@ -235,4 +235,16 @@ std::vector<Note> recoverRetrospective(const RetrospectiveBuffer& buffer,
 void applyRecording(Track& track, const std::vector<Note>& take, RecordMode mode,
                      midi::Tick spanStart, midi::Tick spanEnd);
 
+class Project;
+
+/// LA DURÉE D'UN DÉCOMPTE DE `bars` MESURES avant le point d'entrée `punchTick`, en secondes (D546.2).
+///
+/// Mesurée sur la carte de tempo en remontant depuis le point d'entrée : à tempo variable, deux mesures
+/// avant la mesure 30 ne durent pas ce que durent les deux premières. MAIS LA CARTE NE VA PAS AVANT ZÉRO :
+/// `ticksToSeconds` rend 0 s pour tout tick négatif, et un décompte avant la mesure 1 durait donc 0 s --
+/// ni décompte, ni position négative (H8, mesurée dans l'application). La part située avant zéro se
+/// compte au tempo du début, celui que le moteur prolonge lui-même vers l'arrière (`secondsToTicks` d'une
+/// position négative, voir `ProcessGraph::processBlock`).
+double countInSeconds(const Project& project, midi::Tick punchTick, int bars);
+
 } // namespace vsm::sequencer

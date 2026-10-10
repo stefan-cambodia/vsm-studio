@@ -418,3 +418,36 @@ VSM_TEST(the_retrospective_buffer_keeps_controllers_in_their_own_ring) {
     tampon.clear();
     VSM_ASSERT(tampon.takeControls(0.0, 10.0, conversion(projet)).empty());
 }
+
+// --------------------------------------------------------------------------
+// D546.2 — LA DURÉE DU DÉCOMPTE. Au début du morceau, elle valait ZÉRO : la
+// carte de tempo ne va pas avant zéro (`ticksToSeconds` d'un tick négatif rend
+// 0 s), et la prise partait sans décompte (H8, mesurée dans l'application).
+// --------------------------------------------------------------------------
+
+VSM_TEST(a_count_in_before_bar_one_lasts_its_bars) {
+    Project p;
+    p.ticksPerQuarterNote = 480;   // 120 BPM, 4/4 par défaut
+    VSM_ASSERT_NEAR(countInSeconds(p, 0, 1), 2.0, 1e-9);
+    VSM_ASSERT_NEAR(countInSeconds(p, 0, 2), 4.0, 1e-9);
+    // À cheval sur zéro : une mesure avant le troisième temps, moitié dans le
+    // morceau, moitié avant.
+    VSM_ASSERT_NEAR(countInSeconds(p, 960, 1), 2.0, 1e-9);
+    // Et au tempo du début, pas à 120 : deux mesures à 90 BPM, huit temps.
+    Project lent;
+    lent.ticksPerQuarterNote = 480;
+    lent.tempoMap.addTempoChange(0, 666667);   // 90 BPM
+    VSM_ASSERT_NEAR(countInSeconds(lent, 0, 2), 8.0 * 60.0 / 90.0, 1e-5);
+}
+
+VSM_TEST(a_count_in_in_the_middle_follows_the_tempo_map) {
+    // La règle d'avant, gardée : au milieu du morceau, la durée se mesure sur la
+    // carte en remontant depuis le point d'entrée.
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    VSM_ASSERT_NEAR(countInSeconds(p, 8 * 1920, 1), 2.0, 1e-9);
+    p.tempoMap.addTempoChange(8 * 1920, 1000000);   // 60 BPM à partir de la mesure 9
+    // Deux mesures avant la mesure 10 : la 8 à 120 BPM (2 s), la 9 à 60 (4 s).
+    VSM_ASSERT_NEAR(countInSeconds(p, 9 * 1920, 2), 6.0, 1e-9);
+    VSM_ASSERT_NEAR(countInSeconds(p, 9 * 1920, 0), 0.0, 1e-12);
+}

@@ -41141,7 +41141,7 @@ Python 257, ruff, mypy, toutes les gardes vertes sauf `index-a-jour.py`, qui com
 ouverte (567 titres, 566 clos) — un chiffre à reprendre, pas un défaut.
 
 
-### Phase D546.2 — le décompte d'un punch au milieu du morceau, et ce qu'est le pré-défilement (09/10/2026) — EN ATTENTE DE MESURE
+### Phase D546.2 — le décompte d'un punch au milieu du morceau, et ce qu'est le pré-défilement (09/10/2026) — FAITE
 
 *Écrite avant son code, le 09/10 à 22 h 20.*
 
@@ -41166,3 +41166,81 @@ et la retire quand la prise commence ou s'arrête. **Attendus** : (i) un test `a
 fin de décompte à 16 s, le moteur placé à 12 s : des clics sur chaque temps de 12 à 16 s, plus rien après
 16 s ; le TÉMOIN, sans fin de décompte posée, muet de 12 à 16 s — c'est ce qui tranche H6 ; (ii) les tests du
 décompte de D3.2 (`test_count_in.cpp`) inchangés ; (iii) la suite audio verte.
+
+**TROUVÉ EN MESURANT, le 10/10 à 06 h 20 — et ce n'était pas ce qu'on cherchait.** Le premier passage du banc
+de l'application (`tools/decompte-punch.sh` : une piste armée, le punch à la mesure 9, F9) a lu la phase
+« décompte » à 1,2 s ET à 3,6 s, la tête à **0,000** les deux fois. Le projet du banc n'avait qu'une noire à
+0 ; `Transport::poll` arrête le transport et le remet à zéro dès que la tête dépasse la FIN DU MORCEAU
+(`lastSoundingTick` + une noire, ici 1,0 s), sans regarder si l'on enregistre. Le décompte partait à 14 s :
+arrêté aussitôt, rembobiné, et la prise restée en phase « décompte » pour toujours — le bouton allumé, rien
+d'enregistré, rien de dit. Le minuteur ne clôt une prise arrêtée par la fin du morceau qu'en phase
+« prise ».
+
+**L'HYPOTHÈSE H7, écrite à 06 h 22 avant la mesure qui la tranche.** Ce n'est pas propre au punch : une prise
+SANS punch, lancée au début d'un projet VIDE (la première partie qu'on enregistre), s'arrête d'elle-même à la
+fin du morceau, c'est-à-dire une noire après zéro — 0,5 s à 120 BPM. **Mesure** : le même banc, un projet sans
+une note, sans région de punch, sans décompte, F9 au début ; un relevé à 1,5 s. H7 vraie : phase « arrêt » ;
+fausse : phase « prise ». **Si elle est vraie, la parade** : le transport ne s'arrête pas à la fin du morceau
+tant que le moteur enregistre (`ProcessGraph::setRecording`, que l'application pose déjà au départ d'une prise
+ET d'un décompte) — Cubase et Live laissent courir une prise au-delà de la dernière note, c'est ainsi qu'un
+morceau s'allonge. Le témoin (même code) : sans enregistrement, l'arrêt à la fin du morceau reste.
+
+**La mesure de H7 (06 h 23) : « arrêt » dès 1,2 s, la tête à 0** — compatible avec H7, mais trop tôt : avec le
+décompte d'une mesure (la préférence par défaut), la phase aurait dû être « décompte » jusqu'à 2,6 s. **D'où
+l'HYPOTHÈSE H8, écrite à 06 h 23 avant la mesure qui la tranche** : au début du morceau, il n'y a PAS de
+décompte. `countInSeconds` mesure sa durée sur la carte de tempo, du point d'entrée moins N mesures au point
+d'entrée ; au tick 0, le début est NÉGATIF, et `TempoMap::ticksToSeconds` rend 0 s pour tout tick avant le
+premier changement de tempo — durée nulle, donc ni décompte ni position négative. Le décompte « situé avant
+zéro » de D3.2 ne serait plus atteint par l'application depuis que sa durée se compte sur la carte (les tests
+de D3.2 placent le MOTEUR à −1 s eux-mêmes, et ne passent pas par `countInSeconds`). **Mesure** : un relevé
+50 ms après F9, projet vide, tête à 0, décompte d'une mesure. H8 vraie : phase « prise », tête ≥ 0 ; fausse :
+phase « décompte », tête négative.
+
+**La mesure de H8 (06 h 24) : « prise », la tête à 0,046 s, 50 ms après F9** — pas de décompte au début du
+morceau, H8 VRAIE ; et « arrêt » à 1,2 s — la prise d'un projet vide arrêtée à la fin du morceau, H7 VRAIE.
+
+**ET UN QUATRIÈME, vu en mesurant les parades, à 06 h 39 — l'HYPOTHÈSE H9, écrite avant sa mesure.** Le
+décompte interrompu (F9 pendant qu'il compte) rendait la tête à 16,000 s avant les parades, et la rend à
+**0,000** après. `stopRecording` arrête le MOTEUR (`processGraph().setPlaying(false)`) et le replace au point
+d'entrée, mais laisse le TRANSPORT dans l'état « lecture » ; avant, la fin du morceau l'avait déjà arrêté au
+premier tour du décompte, et cela ne se voyait pas ; maintenant qu'il ne l'est plus, le minuteur suivant le
+trouve « en lecture » au-delà de la fin, l'arrête et le rembobine. H9 : **après un décompte interrompu, le
+transport se dit encore en lecture**, quel que soit l'endroit du morceau — un projet où le point d'entrée est
+AVANT la fin garderait ce faux état (bouton de lecture compris) jusqu'au geste suivant. **Mesure** : le relevé
+dit aussi l'état du transport ; un punch à la mesure 9 d'un projet qui dure 12 mesures, F9 pendant le
+décompte : H9 vraie, « transport en lecture » et la tête figée. **Parade** si elle l'est : le transport
+s'arrête par lui-même (`transport_.stopHere()`), puis la tête va au point d'entrée.
+
+**La mesure de H9 (06 h 42) : « arrêt, tête 16,000 s, transport en lecture »**, et encore une seconde plus tard
+— H9 VRAIE.
+
+**D546.2 EST FAITE (10/10, 06 h 52 ; le banc vert à 06 h 51).** Quatre défauts pour une phase qui en cherchait
+un : le décompte muet au milieu du morceau (H6), absent au début (H8), la prise arrêtée par la fin du morceau
+et le décompte d'après la fin rembobiné (H7), le transport resté « en lecture » après un décompte interrompu
+(H9).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| H6 | le décompte d'un punch au milieu clique, métronome éteint (`audio/`) | `setCountInEndSeconds` : fin à 16 s, moteur placé à 12 s → **huit clics** de 12 à 15,5 s (crête > 0,01), rien entre deux temps (< 10⁻⁴), le clic d'entrée à 16 s, plus rien après ; le TÉMOIN (fin à zéro, la règle d'avant) **muet** de 12 à 16 s ; remise à zéro → muet. **Rouge** : la règle `< 0.0` remise, le premier test tombe | **oui** |
+| H6 | les tests de D3.2 inchangés, la suite audio verte | les cinq de `test_count_in.cpp` et les trois de D16.6 passent sans retouche ; audio 1 333 → **1 336** | **oui** |
+| H8 | un décompte au début du morceau dure ses mesures (`core/`) | `countInSeconds` passe dans `core/` (`MidiRecorder.h`) : au tick 0, une mesure → **2,0 s** (0 avant), deux → 4,0, à cheval sur zéro → 2,0, deux mesures à 90 BPM → 5,333 ; au milieu, la carte de tempo comme avant (6,0 s sur un changement à 60 BPM). **Rouge** : l'ancienne formule → « 0 vs 2 » ; core 457 → **459** | **oui** |
+| H7 | la prise court au-delà de la fin du morceau (`audio/`) | `Transport::poll` ne s'arrête plus tant que le moteur enregistre : la prise à **4,3 s** sur un morceau qui finit à 1,5 s, toujours en lecture ; la prise finie, l'arrêt reprend ; un décompte parti à 14 s n'est pas rembobiné. Le TÉMOIN est le test de D8.3 (`the_transport_stops_at_the_end_of_the_song`), inchangé et vert. **Rouge** : sans la garde, les deux tombent ; audio → **1 338** | **oui** |
+| H9 | le décompte interrompu arrête le transport | `stopRecording` passe par `transport_.stopHere()` puis le point d'entrée | **oui** |
+| banc | par l'application | `tools/decompte-punch.sh`, 6 contrôles, préférences inchangées : punch à la mesure 9 d'un morceau d'une noire → **décompte, fin 16,000, tête 14,592** ; **prise, fin 0,000, tête 16,995** ; arrêt 0,000 ; interrompu sur 12 mesures → 16,000 puis **arrêté, tête 16,000**, une seconde plus tard aussi ; sans punch à la tête 0 → **décompte, tête −1,942**, puis **prise, tête 0,902**. **Rouge** sur le binaire d'avant H7/H8 (4 contrôles : tête 0,000 en « décompte », « arrêt » à 1,2 s) et sur la parade de H9 retirée ((4) : « transport en lecture ») ; entré dans `verifier.sh --bancs` (**69**) | **oui** |
+
+**TRANCHÉ EN ÉCRIVANT LE CODE.** (1) La carte de tempo n'est PAS prolongée avant zéro : `ticksToSeconds` d'un
+tick négatif rend 0 s, et des appelants peuvent s'y fier ; seul le décompte a besoin d'un avant-zéro, et il le
+compte lui-même au tempo du début — celui que le moteur prolonge déjà (`secondsToTicks` d'une position
+négative). (2) La garde de H7 lit l'enregistrement dans le MOTEUR (`ProcessGraph::isRecording`), que
+l'application pose avant le décompte : un seul drapeau, déjà là pour « le clic seulement à l'enregistrement »
+(D16.6). (3) Le relevé de banc `relever-decompte` dit la phase, la fin du décompte reçue par le moteur, la tête
+et l'état du transport (`VSM_DECOMPTE`). (4) Le post-défilement reste ce que l'étude a trouvé : la lecture
+continue après la sortie du punch, jusqu'à ce qu'on l'arrête.
+
+**RESTE NOMMÉ, lu dans le code et non mesuré** : la barre d'espace pendant un décompte arrête le transport
+(`stopHere`) sans clore le décompte — la phase reste « décompte », le compte figé, jusqu'à F9 ou un nouveau
+départ, qui reprend le décompte où il en était. Une pause, peut-être voulue ; à mesurer avant d'y toucher.
+
+**LE SEPTIÈME AUDIT (D546) EST CLOS** : les doublons, la position verrouillée, le décompte. Le mode d'édition
+« en chaîne » (*Shuffle*), écarté de cet audit parce qu'il touche tous les gestes de l'arrangement, ouvre le
+suivant.

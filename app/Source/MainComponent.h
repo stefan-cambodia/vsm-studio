@@ -443,6 +443,23 @@ public:
         // D514 : la LIGNE D'ÉTAT du piano roll, relevée plus tard. C'est là qu'un
         // geste sans effet dit « rien à changer » (D511) : l'audit des menus y lit
         // la trace d'une entrée qui ne change pas le morceau.
+        // D546.2 : LA PHASE D'ENREGISTREMENT ET LA FIN DU DÉCOMPTE que le moteur
+        // a reçue, relevées plus tard -- le décompte d'un punch dure deux secondes
+        // à 120 BPM, et c'est pendant lui qu'il faut lire.
+        if (geste.equalsIgnoreCase("relever-decompte")) {
+            std::fputs((juce::String("VSM_DECOMPTE : phase ")
+                        + (recordPhase_ == RecordPhase::CountIn     ? juce::String::fromUTF8(u8"décompte")
+                           : recordPhase_ == RecordPhase::Recording ? juce::String("prise")
+                                                                    : juce::String::fromUTF8(u8"arrêt"))
+                        + juce::String::fromUTF8(u8", fin du décompte ")
+                        + juce::String(audioEngine_.processGraph().countInEndSeconds(), 3)
+                        + juce::String::fromUTF8(u8" s, tête ")
+                        + juce::String(audioEngine_.processGraph().currentSeconds(), 3) + " s, transport "
+                        + (transport_.state() == vsm::audio::engine::TransportState::Playing
+                               ? juce::String("en lecture") : juce::String::fromUTF8(u8"arrêté"))
+                        + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-etat")) {
             std::fputs(("VSM_ETAT_PIANOROLL : " + pianoRollPanel_.texteDEtat() + "\n").toRawUTF8(), stderr);
             return true;

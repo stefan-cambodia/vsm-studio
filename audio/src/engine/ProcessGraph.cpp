@@ -1100,7 +1100,9 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     // D16.6 : deux restrictions par-dessus l'interrupteur, et le décompte qui
     // passe outre les trois. « Seulement au décompte » et « seulement à
     // l'enregistrement » se cumulent ; le décompte, lui, n'est pas réglable.
-    const bool decompte = blockStartSeconds < 0.0;
+    // D546.2 : « avant zéro » devient « avant la fin du décompte », qui vaut zéro tant que
+    // l'application ne dit rien -- le punch au milieu du morceau compte sur des positions positives.
+    const bool decompte = blockStartSeconds < countInEndSeconds_.load(std::memory_order_relaxed);
     bool clic = metronomeEnabled_.load(std::memory_order_relaxed);
     if (clic && metronomeCountInOnly_.load(std::memory_order_relaxed)) clic = false;
     if (clic && metronomeRecordOnly_.load(std::memory_order_relaxed)

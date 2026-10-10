@@ -3690,6 +3690,7 @@ void MainComponent::timerCallback() {
                 // changer de phase.
                 recordPhase_ = RecordPhase::Recording;
                 transportBar_.setCountIn(0);
+                audioEngine_.processGraph().setCountInEndSeconds(0.0);   // D546.2
             } else {
                 const double restant = punchSeconds_ - horlogeAudio;
                 const double parTemps =
@@ -12009,15 +12010,9 @@ void MainComponent::refreshArmedTracks() {
 }
 
 double MainComponent::countInSeconds(vsm::midi::Tick punchTick) const {
-    if (countInBars_ <= 0) return 0.0;
-    const vsm::midi::Tick parMesure =
-        project_.timeSignatureMap.ticksPerBar(punchTick, project_.ticksPerQuarterNote);
-    if (parMesure <= 0) return 0.0;
-    // La DURÉE d'un décompte de N mesures se mesure sur la carte de tempo,
-    // depuis le point d'entrée en remontant : à tempo variable, deux mesures
-    // avant la mesure 30 ne durent pas ce que durent les deux premières.
-    const vsm::midi::Tick debut = punchTick - parMesure * countInBars_;
-    return project_.ticksToSeconds(punchTick) - project_.ticksToSeconds(debut);
+    // D546.2 : la durée se compte dans `core/`, où un décompte avant la mesure 1
+    // ne vaut plus zéro (H8) -- voir `vsm::sequencer::countInSeconds`.
+    return vsm::sequencer::countInSeconds(project_, punchTick, countInBars_);
 }
 
 void MainComponent::startRecording() {
@@ -12115,6 +12110,11 @@ void MainComponent::startRecording() {
         // Le décompte est un morceau de ligne de temps situé AVANT le point
         // d'entrée : le moteur y saute, le métronome y bat de lui-même (voir
         // ProcessGraph::processBlock), et le transport MIDI attend son tour.
+        // D546.2 : « avant le point d'entrée », et non plus « avant zéro » -- un
+        // punch à la mesure 9 compte sur les mesures 7 et 8, des positions
+        // positives où le moteur ne forçait pas le clic. On lui dit où finit le
+        // décompte ; on le lui retire quand la prise commence ou s'arrête.
+        audioEngine_.processGraph().setCountInEndSeconds(punchSeconds_);
         transport_.seekSeconds(punchSeconds_ - decompte);
         transport_.play();
     } else {
@@ -12141,6 +12141,10 @@ void MainComponent::stopRecording() {
 
     drainRecording();   // ce qui restait dans la file appartient à la prise
     audioEngine_.setRecording(false);
+    // D546.2 : la fin du décompte retirée, prise faite ou décompte interrompu --
+    // sans quoi la lecture suivante, partie d'avant le point d'entrée,
+    // cliquerait métronome éteint.
+    audioEngine_.processGraph().setCountInEndSeconds(0.0);
     const RecordPhase phase = recordPhase_;
     recordPhase_ = RecordPhase::Off;
     transportBar_.setRecording(false);
@@ -12155,8 +12159,11 @@ void MainComponent::stopRecording() {
     // Arrêté pendant le décompte : il n'y a rien à écrire, et il ne faut
     // surtout pas laisser le moteur à une position négative.
     if (phase == RecordPhase::CountIn) {
-        audioEngine_.processGraph().setPlaying(false);
-        audioEngine_.processGraph().seekSeconds(punchSeconds_);
+        // D546.2 (H9) : par le TRANSPORT, et non par le moteur seul -- arrêter le
+        // graphe laissait le transport se dire « en lecture », la tête figée au
+        // point d'entrée, jusqu'au geste suivant.
+        transport_.stopHere();
+        transport_.seekSeconds(punchSeconds_);
         if (audioTakeFile_ != juce::File()) audioTakeFile_.deleteFile();  // prise vide
         audioTakeTrack_ = static_cast<size_t>(-1);
         return;

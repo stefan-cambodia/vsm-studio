@@ -90,6 +90,11 @@ void Transport::poll() {
     if (state_.load(std::memory_order_acquire) != TransportState::Playing) return;
     // UNE BOUCLE NE FINIT JAMAIS, et c'est bien tout son intérêt.
     if (graph_.isLoopActive()) return;
+    // D546.2 : UNE PRISE NON PLUS. C'est en enregistrant au-delà de la dernière note
+    // qu'un morceau s'allonge -- la première partie d'un projet vide s'arrêtait à
+    // 0,5 s (H7), et un décompte parti après la fin restait bloqué, rembobiné.
+    // L'arrêt de la prise appartient à celui qui enregistre.
+    if (graph_.isRecording()) return;
     const double fin = endSeconds_.load(std::memory_order_acquire);
     if (fin <= 0.0) return;
     if (graph_.currentSeconds() >= fin) stop();

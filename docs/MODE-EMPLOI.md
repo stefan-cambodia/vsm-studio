@@ -59,6 +59,14 @@ avec le dock** : tirez la poignée du bas vers le haut pour mixer, l'application
 retient la hauteur. La console ne descend plus sous ce qu'il faut pour garder
 quarante pixels de course.
 
+**Enregistrer : le décompte et la prise** (D546.2). Armez une piste (bouton R), placez la tête, puis `F9` : le
+transport recule du décompte choisi (menu *Enregistrement ▸ Décompte* : aucun, une ou deux mesures) et joue le
+morceau jusqu'au point d'entrée, où la prise commence. **Le décompte clique toujours**, métronome éteint ou réglé
+« seulement au décompte » compris — au début du morceau comme au milieu, devant une région de punch à la
+mesure 9 par exemple. **La prise court au-delà de la fin du morceau** : c'est ainsi qu'on ajoute une partie après
+la dernière note, ou la première d'un projet vide ; elle s'arrête quand vous l'arrêtez (`F9` ou la barre
+d'espace). `F9` pendant le décompte l'interrompt sans rien écrire, la tête au point d'entrée.
+
 ## 2. L'arrangement
 
 C'est la vue où le morceau existe. Chaque ligne est une piste, chaque bloc un **clip** — un morceau de musique qu'on déplace, redimensionne, coupe et duplique à la souris, avec annulation. Un clip posé deux fois ne duplique pas ses notes : éditer l'un modifie l'autre.

@@ -179,6 +179,17 @@ public:
     /// L'application dit au graphe qu'elle enregistre : lui seul sait si le
     /// clic doit battre, et il ne peut pas le deviner.
     void setRecording(bool actif) { recording_.store(actif, std::memory_order_relaxed); }
+    bool isRecording() const { return recording_.load(std::memory_order_relaxed); }
+    /// D546.2 — LA FIN DU DÉCOMPTE, en secondes du morceau. Le clic est forcé tant que le bloc
+    /// commence AVANT elle. Zéro par défaut : la règle de D3.2, un décompte situé avant le début
+    /// du morceau. Un punch au milieu du morceau compte, lui, sur des positions POSITIVES (deux
+    /// mesures avant la mesure 9, ce sont les mesures 7 et 8) : l'application pose ici son point
+    /// d'entrée au départ d'un enregistrement avec décompte, et remet zéro quand la prise commence
+    /// ou s'arrête -- sinon la lecture suivante, partie d'avant ce point, cliquerait sans raison.
+    void setCountInEndSeconds(double secondes) {
+        countInEndSeconds_.store(secondes, std::memory_order_relaxed);
+    }
+    double countInEndSeconds() const { return countInEndSeconds_.load(std::memory_order_relaxed); }
 
     void resetEventCounters() {
         droppedNoteEvents_.store(0, std::memory_order_relaxed);
@@ -967,6 +978,7 @@ private:
     std::atomic<bool> metronomeCountInOnly_{false};
     std::atomic<bool> metronomeRecordOnly_{false};
     std::atomic<bool> recording_{false};
+    std::atomic<double> countInEndSeconds_{0.0};
 };
 
 } // namespace vsm::audio::engine
