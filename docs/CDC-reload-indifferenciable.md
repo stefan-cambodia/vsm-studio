@@ -2537,3 +2537,48 @@ classe, entre caisse claire et clap (une hypothèse à elle, mesurée sur un mor
 sans 2 → le grave est la caisse claire, l'aigu est un autre timbre ; 1 en échec → la cause est ailleurs, et ce
 relevé le dit.
 
+### 21.1 Verdict de H60 (10/10/2026, mesuré de 17 h 58 à 17 h 59) : le grave EST la caisse claire, mais le clap ne porte pas son aigu — rien n'entre
+
+Le projet de la référence, la piste « Batterie · snare » réécrite 38 → 39 (les 192 frappes, 384 événements ;
+les autres pistes et `project.json` identiques, vérifié), rendu par `build-h42` (19 s) ; témoin :
+`reload-h42/temoin.wav`, le même projet et le même moteur. **Écart au plan écrit** : le rendu entier et l'outil
+du § 0 ont été passés PENDANT la course 2, sous `nice`, au lieu d'après — un rendu de 19 s et une mesure d'une
+minute ; le plan écartait la charge, pas une autre valeur.
+
+**Attendus 1 et 2** — le MÉLANGE, écart à l'original par bande (dB), témoin → essai :
+
+| section | basse | bas-médium | médium | haut-médium | aigus |
+|---|---|---|---|---|---|
+| intro 0-14 s | **+31,1 → +14,2** | **+25,3 → +12,4** | +5,8 → +12,6 | +4,3 → +0,9 | −1,8 → **−7,2** |
+| pont 84-92 s | **+19,6 → −4,3** | −2,2 → −3,9 | −1,8 → −0,7 | +3,7 → +0,3 | −0,4 → **−5,4** |
+| pont 211-218 s | **+23,0 → −0,3** | −0,9 → −2,7 | −4,8 → −2,2 | +3,1 → −0,5 | −0,4 → **−6,1** |
+| pleine 56-84 s (contrôle) | −7,4 → −7,4 | +2,7 → +2,7 | +1,3 → +1,3 | −10,9 → −10,9 | −9,2 → −9,2 |
+
+**Attendus 3 et 4** — le morceau entier, l'outil du § 0, `--tempo 136` comme le témoin :
+
+| mesure | témoin | essai |
+|---|---|---|
+| log-mel moyen (médian) | 10,09 (8,53) | **10,85 (9,47)** |
+| sub · basse · bas-médium | −1,33 · −3,15 · +2,72 | −1,11 · −4,27 · +2,90 |
+| médium · haut-médium · aigus | +1,66 · −3,01 · −6,94 | +2,47 · **−6,27** · −8,21 |
+| niveau (pire tranche) | −0,57 (5,43) | −1,16 (4,68) |
+| kick \|médian\| · p90 | 4,35 · 8,71 ms | 4,35 · 8,71 ms |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | basse et bas-médium de l'intro et des ponts réduits de 10 dB | **tenu en basse** (−16,9, −15,3, −22,7 dB d'écart), tenu en bas-médium dans l'intro (−12,9) ; dans les ponts, le bas-médium était déjà à 2,2 dB et s'éloigne de 1,7 |
+| 2 | haut-médium et aigus à ± 3 dB | **échec** : le haut-médium tient (0,9 · 0,3 · 0,5) ; les aigus tombent à −7,2 · −5,4 · −6,1 |
+| 3 | log-mel ≤ témoin | **échec** : 10,85 contre 10,09 |
+| 4 | aucune bande ne s'éloigne de plus de 1 dB | **échec** : haut-médium +3,26, aigus +1,27, basse +1,12 |
+
+**La règle écrite, appliquée** : « 1 tenu sans 2 → le grave est la caisse claire, l'aigu est un autre timbre ».
+**Rien n'entre.** Ce que la mesure établit : les **trente et un décibels de grave en trop** dans l'intro et
+les ponts viennent du CORPS de la caisse claire du TR-808 (son ton accordé), et le clap les retire ; mais le
+SOUFFLE de la caisse claire (« snappy ») portait l'aigu et le haut-médium de la frappe originale, ce que le
+clap ne fait pas — et sur le morceau entier, les tranches où la frappe porte le haut du spectre pèsent plus que
+l'intro. La frappe de l'original est donc une caisse claire SANS corps grave, ou un clap AVEC un souffle :
+c'est une question de réglage de la frappe, pas de choix entre deux voix. La suite nommée, sans hypothèse
+écrite : la caisse claire du TR-808 son ton retiré ou monté (`drum.snare.tune`), son souffle gardé — une
+variable — que l'arbitrage de batterie de la chaîne ne règle pas aujourd'hui, la recherche de piste ayant
+trouvé « decay » et « tune » sur le kick, rien sur ce qui fait le grave de la caisse.
+
