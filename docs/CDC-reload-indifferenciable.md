@@ -2761,3 +2761,31 @@ bandes baisse le kick pour son médium et lui retire son sub ; la règle à écr
 (le charleston sur l'aigu) et laisser une piste dont le timbre n'est pas celui du stem (le kick ici) à son niveau,
 le dire, et ne pas la forcer. Cette hypothèse s'écrit avant son code ; elle n'entre pas aujourd'hui dans la chaîne.
 
+## 25. H64 — dans la chaîne : chaque pièce d'une batterie calée sur SA bande, sous une garde (écrite AVANT son code, 10/10/2026, 18 h 08)
+
+**Ce que la chaîne fait, lu dans `analyzer/vsm_levels.py`.** `_caler_un_groupe` rend chaque piste du groupe seule,
+additionne, et applique à toutes le MÊME facteur (rms du stem / rms de la somme) : « l'équilibre interne — celui que
+la détection ou le découpage ont trouvé — n'est pas touché ». Rien ne le mesure. Sur « Reload », il coûtait 10,9 dB
+au charleston (H63).
+
+**L'HYPOTHÈSE H64.** Après le facteur de groupe, pour un groupe de BATTERIE, chaque pièce reçoit un facteur propre :
+celui qui égale l'énergie de la bande où elle DOMINE la somme des rendus (sa part ≥ 60 % de cette bande) à celle du
+stem dans la même bande — **sous une garde** : le facteur est refusé, et le refus DIT, s'il éloignerait du stem de
+plus de 3 dB une autre bande où la pièce porte au moins 25 % de la somme. Sur « Reload », la règle doit rendre H63 :
+le charleston monté de son aigu, le kick laissé (son sub le monterait de 7,8 dB et éloignerait le bas-médium, qu'il
+porte, de 5,8 à 13,6 dB — refusé, et dit).
+
+**LES MESURES, dans l'ordre :**
+1. **Reproduire ce qui l'a fait naître, sans en faire une preuve** : la règle, appliquée par une fonction pure aux
+   rendus solo de la référence (ceux de H59), rend les facteurs — charleston ≈ × 3,5, kick et caisse claire refusés
+   ou proches de 1 — et le projet qui en sort, mesuré au § 0, tient ce que H63 tenait. C'est un contrôle de la
+   fonction, pas de l'idée : la règle a été écrite en regardant ce morceau.
+2. **La preuve, ailleurs** : un morceau du banc à stems VRAIS (S2), la chaîne avec et sans l'option, une seule
+   variable, mêmes stems, même moteur, métrique et budget identiques ; la distance globale et l'outil du § 0.
+
+**ATTENDUS (mesure 2)** : la distance globale ≤ témoin (aucune dégradation de plus de 1 %) ; l'équilibre par bande
+du groupe batterie plus proche du stem sur au moins la moitié des bandes, aucune ne s'éloignant de plus de 1 dB ; les
+refus de la garde publiés pièce par pièce. **Échec** : une dégradation de plus de 3 % — la règle de « Reload » ne
+vaut pas ailleurs. **Le code vit dans un arbre à part** tant que des courses tournent, et n'entre dans la chaîne que
+par la mesure 2.
+
