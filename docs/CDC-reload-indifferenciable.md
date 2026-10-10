@@ -3463,7 +3463,7 @@ densité revient sans que le log-mel suive : ce qu'il voit est ailleurs (le 2-4 
 → le charleston n'est pas ce qui manque — un son continu de l'original (une boucle, une réverbération) que la
 transcription ne donne pas, à chercher sur la frappe moyenne et entre les frappes.
 
-### 33.1 L'instrument de H72, AVANT toute mesure de l'original (11/10/2026, 03 h 07)
+### 33.1 L'instrument de H72, AVANT toute mesure de l'original (11/10/2026, 03 h 01)
 
 `analyse/mesure_h72.py` et `analyse/tests/test_mesure_h72.py` (4 tests). **Ce que H69 ne pouvait pas faire ici** : le
 charleston du TR-808 laisse tourner ses six oscillateurs d'une frappe à l'autre (`HatVoice` ne remet pas leurs
