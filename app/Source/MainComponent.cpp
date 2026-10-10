@@ -758,6 +758,21 @@ MainComponent::MainComponent()
                 + tr(u8". La chaîne le déplacerait : déverrouillez-le, ou décochez Affichage ▸ Montage en "
                      u8"chaîne dans l'arrangement."));
     };
+    // D548.2 : DÉPLACER À LA TÊTE UN CLIP QUI Y EST DÉJÀ se dit aussi.
+    arrangement_.onAlreadyAtPlayhead = [] {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rien à déplacer"),
+                     tr(u8"Le premier clip choisi commence déjà à la tête de lecture : placez la tête là où "
+                        u8"il doit commencer."));
+    };
+    // D548.3 : ROGNER À LA TÊTE SANS RIEN À ROGNER se dit.
+    arrangement_.onTrimOutside = [](size_t choisis) {
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Rien à rogner"),
+            tr(choisis > 1 ? u8"Aucun des %1 clips choisis ne contient la tête de lecture"
+                           : u8"Le clip choisi ne contient pas la tête de lecture")
+                    .replace("%1", juce::String(static_cast<int>(choisis)))
+                + tr(u8" : placez-la à l'intérieur du clip, à l'endroit où il doit commencer ou finir."));
+    };
     pianoRoll_.onLockRefused = [] {
         montrerBoite(
             juce::AlertWindow::InfoIcon, tr(u8"Piste verrouillée"),

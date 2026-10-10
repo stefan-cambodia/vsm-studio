@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <tuple>
 #include <limits>
 
 namespace vsm::sequencer {
@@ -347,6 +348,69 @@ ChainEdit deleteClipsChained(Track& track, const ClipSelection& demandee, bool a
     if (chaineBloquee(track, decalages)) { rapport.blocked = 1; return rapport; }
     rapport.edited = deleteClips(track, selection);
     rapport.shifted = decalerLaChaine(track, decalages, automationFollows, materialEnd);
+    return rapport;
+}
+
+ClipSelection clipsWithoutLocks(const std::vector<Clip>& clips, const ClipSelection& selection) {
+    return sansVerrous(clips, selection);
+}
+
+Tick deltaToMoveSelectionTo(const std::vector<Track>& tracks, const ClipSelection& selection, Tick tick,
+                            const std::function<Tick(const Track&)>& materialEnd) {
+    bool trouve = false;
+    Tick premier = 0;
+    for (const auto& track : tracks) {
+        if (track.locked) continue;
+        Tick debut = 0, fin = 0;
+        if (!clipSelectionBounds(track.clips, sansVerrous(track.clips, selection), materialEnd(track), debut, fin))
+            continue;
+        premier = trouve ? std::min(premier, debut) : debut;
+        trouve = true;
+    }
+    return trouve ? tick - premier : 0;
+}
+
+namespace {
+/// Les clips choisis et déplaçables de la piste, (identifiant, début, fin jouée).
+std::vector<std::tuple<uint64_t, Tick, Tick>> clipsARogner(const Track& track, const ClipSelection& selection,
+                                                          Tick materialEnd) {
+    std::vector<std::tuple<uint64_t, Tick, Tick>> liste;
+    if (track.locked) return liste;
+    const ClipSelection libres = sansVerrous(track.clips, selection);
+    for (const auto& c : track.clips)
+        if (selected(libres, c)) liste.emplace_back(c.id, c.startTick, c.startTick + clipPlayedLength(c, materialEnd));
+    return liste;
+}
+} // namespace
+
+TrimToTick trimClipsStartTo(Track& track, const ClipSelection& selection, Tick tick, Tick materialEnd,
+                            const std::function<double(Tick)>& ticksToSeconds) {
+    TrimToTick rapport;
+    for (const auto& [id, debut, fin] : clipsARogner(track, selection, materialEnd)) {
+        if (tick <= debut || tick >= fin) { ++rapport.outside; continue; }
+        resizeClipsStart(track.clips, {id}, tick - debut, materialEnd, ticksToSeconds);
+        ++rapport.trimmed;
+    }
+    return rapport;
+}
+
+TrimToTick trimClipsEndTo(Track& track, const ClipSelection& selection, Tick tick, Tick materialEnd,
+                          bool chained, bool automationFollows) {
+    TrimToTick rapport;
+    // D'arrière en avant : en chaîne, rogner un clip tire ceux d'après, et le suivant de la liste aurait
+    // bougé avant d'être lu.
+    auto liste = clipsARogner(track, selection, materialEnd);
+    std::sort(liste.begin(), liste.end(), [](const auto& a, const auto& b) { return std::get<1>(a) > std::get<1>(b); });
+    for (const auto& [id, debut, fin] : liste) {
+        if (tick <= debut || tick >= fin) { ++rapport.outside; continue; }
+        if (chained) {
+            const auto r = resizeClipsEndChained(track, {id}, tick - fin, automationFollows, materialEnd);
+            if (r.blocked > 0) { rapport.blocked = 1; continue; }
+        } else {
+            resizeClipsEnd(track.clips, {id}, tick - fin, materialEnd);
+        }
+        ++rapport.trimmed;
+    }
     return rapport;
 }
 

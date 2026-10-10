@@ -314,6 +314,10 @@ public:
     std::function<void(size_t)> onClipsRefused;
     /// D547.2 : un clip verrouillé a arrêté la chaîne sur N piste(s) — rien n'y a bougé.
     std::function<void(size_t)> onChainBlocked;
+    /// D548.3 : aucun clip choisi ne contenait la tête (N choisis) -- le geste n'a rien fait, et le dit.
+    std::function<void(size_t)> onTrimOutside;
+    /// D548.2 : le premier clip choisi commence déjà à la tête -- rien à déplacer, et le dire.
+    std::function<void()> onAlreadyAtPlayhead;
     /// D11.4 : renommer et colorer UN clip. Les fenêtres sont de JUCE, donc
     /// dans l'application ; la vue demande (piste, identifiant du clip).
     std::function<void(size_t, uint64_t)> onClipRenameRequested;
@@ -380,6 +384,10 @@ public:
     /// les entendait -- or c'est dans l'arrangement qu'on colle des clips.
     void joinSelection();
     void splitSelectionAtPlayhead();
+    /// D548.2 : les clips choisis vont à la tête, le premier y commence.
+    void moveSelectionToPlayhead();
+    /// D548.3 : le début (`laFin` faux) ou la fin des clips qui contiennent la tête va à la tête.
+    void trimSelectionToPlayhead(bool laFin);
     /// Ce qui n'a pas pu être joint (nombre de paires), pour que
     /// l'application le dise : la vue ne sait pas parler.
     std::function<void(size_t)> onJoinRefused;

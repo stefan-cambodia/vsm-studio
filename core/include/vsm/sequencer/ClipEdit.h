@@ -419,6 +419,30 @@ ChainEdit deleteClipsChained(Track& track, const ClipSelection& selection, bool 
 ChainEdit resizeClipsEndChained(Track& track, const ClipSelection& selection, Tick deltaTicks,
                                 bool automationFollows, Tick materialEnd);
 
+/// D548.1 : la sélection SANS les clips verrouillés de ces clips (D546.3), pour un geste qui travaille sur
+/// une COPIE des clips (Ctrl+E, Ctrl+J : on mesure avant de prendre l'instantané) et ne peut donc pas
+/// passer par les surcharges `Track&`.
+ClipSelection clipsWithoutLocks(const std::vector<Clip>& clips, const ClipSelection& selection);
+
+/// D548.2 — DÉPLACER À LA TÊTE (*Move to Cursor*) : le décalage qui pose le début du premier clip choisi
+/// DÉPLAÇABLE (ni sur une piste verrouillée, ni verrouillé lui-même) sur `tick`. Zéro s'il n'y en a pas.
+Tick deltaToMoveSelectionTo(const std::vector<Track>& tracks, const ClipSelection& selection, Tick tick,
+                            const std::function<Tick(const Track&)>& materialEnd);
+
+/// D548.3 — ROGNER À LA TÊTE (*Events Start / End to Cursor*). Le début (ou la fin) de chaque clip choisi qui
+/// CONTIENT `tick` -- strictement : un clip qui commence ou finit sur la tête n'a rien à rogner -- va à
+/// `tick`. Les autres ne bougent pas. Piste et clips verrouillés comme ailleurs. `chained` (D547.2) : la fin
+/// rognée tire la suite de la piste. Rend le nombre de clips rognés.
+struct TrimToTick {
+    size_t trimmed = 0;
+    size_t outside = 0;   ///< choisis, déplaçables, mais ne contenant pas la tête
+    size_t blocked = 0;   ///< en chaîne : 1 si un clip verrouillé de la suite a arrêté la piste
+};
+TrimToTick trimClipsStartTo(Track& track, const ClipSelection& selection, Tick tick, Tick materialEnd,
+                            const std::function<double(Tick)>& ticksToSeconds);
+TrimToTick trimClipsEndTo(Track& track, const ClipSelection& selection, Tick tick, Tick materialEnd,
+                          bool chained, bool automationFollows);
+
 /// Combien de clips de la sélection appartiennent à une piste verrouillée :
 /// ce que l'appelant doit DIRE quand un geste n'a pas tout fait.
 /// ÉLARGIR UNE SÉLECTION AUX GROUPES D'ÉDITION (D18.3).

@@ -1583,3 +1583,51 @@ VSM_TEST(a_locked_clip_in_the_chain_stops_the_whole_gesture_on_its_track) {
     r = deleteClipsChained(v, {2}, false, 100000);
     VSM_ASSERT_EQ(v.clips.size(), size_t(3));
 }
+
+// D548.2 — DÉPLACER À LA TÊTE : le premier clip choisi DÉPLAÇABLE commence à la tête, les autres gardent leur écart.
+VSM_TEST(the_first_movable_chosen_clip_goes_to_the_playhead) {
+    std::vector<Track> pistes(2);
+    pistes[0].kind = pistes[1].kind = Track::Kind::Midi;
+    pistes[0].clips = {clip(1, 0, 960), clip(2, 1920, 960, 1920)};
+    pistes[1].clips = {clip(3, 960, 960, 960)};
+    const auto fin = [](const Track&) { return Tick(100000); };
+    VSM_ASSERT_EQ(deltaToMoveSelectionTo(pistes, {1, 2, 3}, 7680, fin), Tick(7680));   // A, à 0
+    pistes[0].clips[0].locked = true;                                                  // A verrouillé
+    pistes[1].locked = true;                                                           // C sur piste verrouillée
+    VSM_ASSERT_EQ(deltaToMoveSelectionTo(pistes, {1, 2, 3}, 7680, fin), Tick(7680 - 1920));   // B, à 1920
+    VSM_ASSERT_EQ(deltaToMoveSelectionTo(pistes, {1, 3}, 7680, fin), Tick(0));        // rien de déplaçable
+}
+
+// D548.3 — ROGNER À LA TÊTE : seuls les clips qui CONTIENNENT la tête bougent ; en chaîne, la fin tire la suite.
+VSM_TEST(trimming_to_the_playhead_touches_only_the_clips_that_contain_it) {
+    Track t = troisClips();   // A [0, 960) · B [1920, 2880) · C [3840, 4800)
+    auto r = trimClipsStartTo(t, {1, 2}, 2400, 100000, enSecondes);
+    VSM_ASSERT_EQ(r.trimmed, size_t(1));
+    VSM_ASSERT_EQ(r.outside, size_t(1));                 // A ne contient pas 2400
+    VSM_ASSERT_EQ(debutDe(t, 2), Tick(2400));
+    VSM_ASSERT_EQ(t.clips[1].length, Tick(480));
+    VSM_ASSERT_EQ(debutDe(t, 1), Tick(0));
+    // Une tête POSÉE sur le début n'a rien à rogner.
+    Track u = troisClips();
+    VSM_ASSERT_EQ(trimClipsStartTo(u, {2}, 1920, 100000, enSecondes).trimmed, size_t(0));
+}
+
+VSM_TEST(trimming_the_end_to_the_playhead_pulls_the_chain_only_in_chain_mode) {
+    Track t = troisClips();
+    auto r = trimClipsEndTo(t, {2}, 2400, 100000, false, false);
+    VSM_ASSERT_EQ(r.trimmed, size_t(1));
+    VSM_ASSERT_EQ(t.clips[1].length, Tick(480));
+    VSM_ASSERT_EQ(debutDe(t, 3), Tick(3840));            // hors chaîne, C reste
+    Track u = troisClips();
+    trimClipsEndTo(u, {2}, 2400, 100000, true, false);
+    VSM_ASSERT_EQ(debutDe(u, 3), Tick(3840 - 480));      // en chaîne, C recule de ce que B a perdu
+    Track v = troisClips();
+    v.clips[2].locked = true;
+    r = trimClipsEndTo(v, {2}, 2400, 100000, true, false);
+    VSM_ASSERT_EQ(r.blocked, size_t(1));
+    VSM_ASSERT_EQ(v.clips[1].length, Tick(960));         // rien n'a bougé
+    Track w = troisClips();
+    w.clips[1].locked = true;                            // B verrouillé lui-même
+    VSM_ASSERT_EQ(trimClipsEndTo(w, {2}, 2400, 100000, false, false).trimmed, size_t(0));
+    VSM_ASSERT_EQ(w.clips[1].length, Tick(960));
+}

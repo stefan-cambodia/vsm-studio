@@ -751,6 +751,10 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
     menu.addItem(4, tr(clip.muted ? u8"R\u00e9activer" : u8"Rendre muet"));
     // D546.3 : VERROUILLER LA POSITION — une case, sur toute la sélection.
     menu.addItem(75, tr(u8"Verrouiller la position"), true, clip.locked);
+    // D548.2–3 : LES GESTES À LA TÊTE DE LECTURE (Move to Cursor, Events Start / End to Cursor).
+    menu.addItem(76, tr(u8"Déplacer à la tête de lecture"));
+    menu.addItem(77, tr(u8"Rogner le début à la tête de lecture"));
+    menu.addItem(78, tr(u8"Rogner la fin à la tête de lecture"));
     menu.addSeparator();
     // D358 : LA TOUCHE EST DESSINÉE PAR JUCE, PLUS ÉCRITE DANS LE LIBELLÉ. Les
     // deux parenthèses « (Ctrl+E) » et « (Ctrl+J) » mentaient dès que
@@ -1517,13 +1521,18 @@ void ArrangementComponent::joinSelection() {
     // toute refusée qui laisserait « Joindre des clips » dans l'historique
     // ferait annuler du vide. On mesure donc d'abord sur une copie.
     std::vector<std::pair<size_t, std::vector<Clip>>> resultats;
+    // D548.1 : LE VERROU DU CLIP TIENT AU CLAVIER. Le geste travaille sur une COPIE (on mesure avant
+    // l'instantané) et ne passe donc pas par `joinClips(Track&)` : il écartait le verrou de piste et
+    // laissait passer celui du clip (D546.3) -- un clip verrouillé se joignait à son voisin (H13).
+    const size_t verrouilles = vsm::sequencer::lockedClipsInSelection(project_->tracks, montage);
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         auto& track = project_->tracks[i];
         auto essai = track.clips;
         const auto bilan =
             track.locked
                 ? vsm::sequencer::ClipJoin{}
-                : vsm::sequencer::joinClips(essai, montage, materialEnd(track),
+                : vsm::sequencer::joinClips(essai, vsm::sequencer::clipsWithoutLocks(track.clips, montage),
+                                             materialEnd(track),
                                              track.kind == Track::Kind::Audio,
                                              [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         joints += bilan.joined;
@@ -1545,6 +1554,68 @@ void ArrangementComponent::joinSelection() {
         repaint();
     }
     if (refuses > 0 && onJoinRefused) onJoinRefused(refuses);
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);   // D548.1
+}
+
+void ArrangementComponent::moveSelectionToPlayhead() {
+    // D548.2 : LE PREMIER CLIP CHOISI DÉPLAÇABLE COMMENCE À LA TÊTE, les autres gardent leur écart -- un seul
+    // décalage, par `moveClips(Track&)` comme les flèches : verrou, groupes d'édition et automation suivent.
+    if (project_ == nullptr || selection_.empty()) return;
+    const auto montage = montageSelection();
+    const size_t verrouilles = vsm::sequencer::lockedClipsInSelection(project_->tracks, montage);
+    const vsm::midi::Tick delta = vsm::sequencer::deltaToMoveSelectionTo(
+        project_->tracks, montage, playhead_, [this](const Track& t) { return materialEnd(t); });
+    size_t deplaces = 0;
+    if (delta != 0) {
+        if (onEditStarted) onEditStarted(u8"Déplacer à la tête de lecture");
+        for (auto& track : project_->tracks)
+            deplaces += vsm::sequencer::moveClips(track, montage, delta, automationSuit_, materialEnd(track));
+        notifyChanged();
+        repaint();
+    }
+    std::fputs((juce::String::fromUTF8(u8"VSM_A_LA_TETE : déplacer, ") + juce::String(static_cast<int>(deplaces))
+                + juce::String::fromUTF8(u8" clip(s) de ") + juce::String(static_cast<juce::int64>(delta))
+                + " tick(s)\n").toRawUTF8(), stderr);
+    // Le premier clip DÉJÀ à la tête : rien à faire, et cela se dit -- `annulation-des-menus.py` a trouvé le
+    // geste MUET, la tête et le clip à 0 (seul le journal parlait, que l'utilisateur ne lit pas).
+    if (delta == 0 && verrouilles < montage.size() && onAlreadyAtPlayhead) onAlreadyAtPlayhead();
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);
+}
+
+void ArrangementComponent::trimSelectionToPlayhead(bool laFin) {
+    // D548.3 : le début (ou la fin) des clips choisis QUI CONTIENNENT la tête va à la tête. Mesuré sur une
+    // copie d'abord : un geste qui ne rogne rien ne laisse aucun pas, et dit pourquoi.
+    if (project_ == nullptr || selection_.empty()) return;
+    const auto montage = montageSelection();
+    const size_t verrouilles = vsm::sequencer::lockedClipsInSelection(project_->tracks, montage);
+    auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+    auto rogner = [&](Track& track) {
+        return laFin ? vsm::sequencer::trimClipsEndTo(track, montage, playhead_, materialEnd(track), enChaine_,
+                                                      automationSuit_)
+                     : vsm::sequencer::trimClipsStartTo(track, montage, playhead_, materialEnd(track), conversion);
+    };
+    size_t rognes = 0, dehors = 0, bloquees = 0;
+    for (const auto& track : project_->tracks) {
+        auto essai = track;
+        const auto r = rogner(essai);
+        rognes += r.trimmed;
+        dehors += r.outside;
+        bloquees += r.blocked;
+    }
+    if (rognes > 0) {
+        if (onEditStarted)
+            onEditStarted(laFin ? u8"Rogner la fin à la tête de lecture" : u8"Rogner le début à la tête de lecture");
+        for (auto& track : project_->tracks) rogner(track);
+        notifyChanged();
+        repaint();
+    }
+    std::fputs((juce::String::fromUTF8(laFin ? u8"VSM_A_LA_TETE : rogner la fin, " : u8"VSM_A_LA_TETE : rogner le début, ")
+                + juce::String(static_cast<int>(rognes)) + juce::String::fromUTF8(u8" clip(s) rogné(s), ")
+                + juce::String(static_cast<int>(dehors)) + juce::String::fromUTF8(u8" ne contiennent pas la tête\n"))
+                   .toRawUTF8(), stderr);
+    if (rognes == 0 && dehors > 0 && onTrimOutside) onTrimOutside(dehors);
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);
+    if (bloquees > 0 && onChainBlocked) onChainBlocked(bloquees);
 }
 
 void ArrangementComponent::splitSelectionAtPlayhead() {
@@ -1553,6 +1624,7 @@ void ArrangementComponent::splitSelectionAtPlayhead() {
     const auto montage = montageSelection();
     const uint64_t depart = project_->peekNextClipId();
     uint64_t compteur = depart;
+    size_t verrouilles = 0;   // D548.1
     // Même précaution : on compte avant de prendre l'instantané.
     std::vector<std::pair<size_t, std::vector<Clip>>> resultats;
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
@@ -1561,14 +1633,22 @@ void ArrangementComponent::splitSelectionAtPlayhead() {
         // D21.3 : LA COUPE S'AIMANTE AU PASSAGE PAR ZÉRO sur une piste audio,
         // piste par piste -- deux pistes n'ont pas leurs zéros au même endroit.
         const vsm::midi::Tick coupe = cutSnapProvider ? cutSnapProvider(i, playhead_) : playhead_;
+        // D548.1 : un clip verrouillé que la tête traverse reste entier, et se compte (H13 : Ctrl+E le
+        // coupait, le geste passant par la copie et non par `splitClips(Track&)`).
+        for (const auto& c : track.clips)
+            if ((track.locked || c.locked) && montage.count(c.id) > 0 && c.startTick < coupe
+                && coupe < c.startTick + clipPlayedLength(c, materialEnd(track)))
+                ++verrouilles;
         const size_t faites =
             track.locked
                 ? 0u
-                : splitClips(essai, montage, coupe, materialEnd(track), compteur,
+                : splitClips(essai, vsm::sequencer::clipsWithoutLocks(track.clips, montage), coupe,
+                              materialEnd(track), compteur,
                               [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         coupes += faites;
         if (faites > 0) resultats.emplace_back(i, std::move(essai));
     }
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);   // D548.1
     if (coupes == 0) return;
     if (onEditStarted) onEditStarted(u8"Couper à la tête de lecture");
     for (auto& [i, clips] : resultats) project_->tracks[i].clips = std::move(clips);
@@ -1854,6 +1934,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             return;
         case 5: splitSelectionAtPlayhead(); return;
         case 6: joinSelection(); return;
+        case 76: moveSelectionToPlayhead(); return;          // D548.2
+        case 77: trimSelectionToPlayhead(false); return;     // D548.3
+        case 78: trimSelectionToPlayhead(true); return;
         case 40: case 41: case 42: case 43: case 44: {
             static const int kNombres[] = {2, 3, 4, 8, 16};
             repeatSelection(kNombres[choix - 40]);

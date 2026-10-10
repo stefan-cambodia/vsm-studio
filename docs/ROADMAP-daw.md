@@ -41419,3 +41419,106 @@ chaîne sur ce que la fin avait parcouru, pas sur la grille.
 **LE HUITIÈME AUDIT (D547) EST CLOS** : le verrou qui laissait supprimer, l'arrêt qui laissait le décompte
 ouvert, le montage en chaîne, et l'aimant qui gardait l'écart du point saisi — trois défauts trouvés pour une
 fonction ajoutée. Le prochain audit reprend la méthode.
+
+### Phase D548 — un neuvième audit : les gestes à la tête de lecture, et le verrou au clavier (10/10/2026)
+
+*Écrite le 10/10 à 08 h 30, D547 close, pendant la série des 72 bancs (aucun binaire touché avant sa fin).*
+
+**LA MÉTHODE, celle de D535 à D547.** **Cherché** : les gestes de Cubase qui portent sur la tête de lecture —
+« Coller à la tête », « Couper à la tête » (Ctrl+E), « Créer un clip d'une mesure à la tête », « Début / fin de
+boucle à la tête », « Insérer un accord à la tête » existent ; **0** pour « Déplacer à la tête »
+(*Move to Cursor*), « Rogner le début / la fin à la tête » (*Events Start / End to Cursor*), « marqueur de
+cycle » (*Cycle Marker*, une plage nommée). **Trouvé en lisant** : `splitSelectionAtPlayhead` (Ctrl+E) et
+`joinSelection` (Ctrl+J) copient les clips de la piste et appellent les surcharges `std::vector<Clip>&` de
+`splitClips` / `joinClips` — celles qui ne savent rien du cadenas —, en ne vérifiant que le verrou de PISTE ;
+le clic Alt, lui, passe par `splitClips(Track&)`. Le verrou d'un clip (D546.3) ne tiendrait donc pas au
+clavier (H13). **Écarté pour cet audit** : les marqueurs de cycle — une donnée de projet neuve (un marqueur
+devient une plage), leur dessin dans la règle et leur menu : un chantier à part, qui ouvre le suivant.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D548.1 | **Le verrou au clavier** — *Lock* | Ctrl+E et Ctrl+J laissent un clip verrouillé entier et seul, coupent et joignent les autres, et le disent ; mesuré par le `project.json` relu |
+| D548.2 | **Déplacer à la tête de lecture** — *Move to Cursor* | les clips choisis se déplacent ensemble pour que le premier commence à la tête ; leurs écarts gardés ; le verrou respecté et dit ; un pas ; mesuré par le `project.json` relu |
+| D548.3 | **Rogner à la tête** — *Events Start / End to Cursor* | le début (ou la fin) des clips choisis qui contiennent la tête va à la tête ; les autres ne bougent pas, et le compte le dit ; en chaîne (D547.2), la fin rognée tire la suite ; un pas ; mesuré par le `project.json` relu |
+
+**L'ORDRE, TRANCHÉ ICI.** D548.1 d'abord (un défaut, et D548.2–3 passeront par le même chemin que lui), puis
+D548.2, puis D548.3.
+
+### Phase D548.1 — le verrou au clavier (10/10/2026) — FAITE
+
+*Écrite avant son code et sa mesure, le 10/10 à 08 h 30.*
+
+**L'HYPOTHÈSE H13.** Ctrl+E à la tête de lecture COUPE un clip verrouillé (D546.3) qu'elle traverse, et Ctrl+J
+JOINT un clip verrouillé à son voisin. **Mesure** (après la série) : une piste, A [0, 1920) verrouillé et
+B [1920, 3840) libre, tout choisi, la tête à la mesure 1 · 3 (960) : Ctrl+E → H13 vraie, trois clips relus ;
+fausse, deux. Puis A et B choisis, Ctrl+J : H13 vraie, un seul clip ; fausse, deux. **La parade** : les deux
+gestes écartent les clips verrouillés de la sélection (`sansVerrous`, par une fonction `core/` publique ou par
+les surcharges `Track&`), comptent les refusés (`lockedClipsInSelection`) et les disent par `onLockRefused`.
+
+**ÉCRIT EN ATTENDANT LA MESURE (08 h 38).** `clipsWithoutLocks` (la `sansVerrous` de D546.3, rendue publique)
+dans `core/` ; Ctrl+J la passe à `joinClips`, Ctrl+E à `splitClips`, et chacun dit son refus — pour Ctrl+E, les
+seuls clips verrouillés que la tête TRAVERSE (un clip verrouillé loin de la tête n'aurait pas été coupé : le
+dire serait mentir). Rien de compilé dans l'application avant la mesure de H13, après la série.
+
+**La mesure de H13 (09 h 25, le binaire de D547, la série des 72 bancs finie — 72/72 en 55 min, une veille
+traversée, préférences identiques) : VRAIE.** `tools/a-la-tete.sh` sur ce binaire : Ctrl+E, A verrouillé →
+**A:0:960 A:960:960 B:1920:1920**, coupé comme le témoin sans verrou ; Ctrl+J → **A:0:3840**, joint comme le
+témoin. Les contrôles (3) à (6) y sont rouges aussi : les trois entrées du menu n'existent pas encore.
+
+**D548.1 EST FAITE (10/10, 11 h 06 ; le banc vert à 09 h 42).** Sur le binaire neuf, `tools/a-la-tete.sh` :
+Ctrl+E, A verrouillé → **A:0:1920 B:1920:1920** et « Montage refusé : 1 clip verrouillé est resté en place » ;
+Ctrl+J → **A:0:1920 B:1920:1920**, le refus dit ; les témoins sans verrou coupent (trois clips) et joignent
+(un clip). Les gestes de D546.3 et D547.1 (`clip-verrouille.sh`, `verrou-suppression.sh`) restent verts.
+
+### Phase D548.2 — déplacer à la tête de lecture (10/10/2026) — FAITE
+
+*Écrite le 10/10 à 08 h 38 ; le code `core/` l'a précédée de quelques minutes, ses tests vus rouges avec lui.*
+
+**CE QUI EST TRANCHÉ ICI.** Au menu du clip, « Déplacer à la tête de lecture » : UN décalage pour toute la
+sélection (groupes d'édition compris), celui qui pose le début du premier clip choisi DÉPLAÇABLE sur la tête —
+un clip verrouillé ou sur une piste verrouillée ne compte pas pour « premier » et ne bouge pas, et le refus se
+dit ; les écarts entre clips sont gardés, sur toutes les pistes. Le geste passe par `moveClips(Track&)`, comme
+les flèches : l'automation suit si elle suit. Pas de touche (Cubase n'en donne pas). Un pas ; un geste sans
+décalage (le premier y est déjà) n'en fait pas. Le journal dit le décalage (`VSM_A_LA_TETE`).
+**Attendus** : (1) `core/` : le premier déplaçable, les verrous écartés, zéro s'il n'y a rien — **fait, core
+465 → 466** ; (2) par l'application, le `project.json` relu : trois clips sur deux pistes, la tête à 5 · 1 → le
+premier à 7 680, les autres à leur écart ; Ctrl+Z ; (3) un banc vu rouge, dans `verifier.sh --bancs`.
+
+### Phase D548.3 — rogner à la tête de lecture (10/10/2026) — FAITE
+
+*Écrite le 10/10 à 08 h 38, même état.*
+
+**CE QUI EST TRANCHÉ ICI.** « Rogner le début à la tête de lecture » et « Rogner la fin à la tête de lecture »,
+au menu du clip. Seuls les clips choisis qui CONTIENNENT la tête, strictement, sont rognés — Cubase déplacerait
+aussi le bord d'un clip situé ailleurs, ce qui l'ALLONGE : un geste nommé « rogner » ne doit pas allonger ; les
+autres sont comptés et dits. Le début passe par `resizeClipsStart` (la fenêtre de matériau suit, l'étirement
+aussi), la fin par `resizeClipsEnd` — ou, EN CHAÎNE (D547.2), par `resizeClipsEndChained` : la suite de la piste
+recule de ce que la fin a perdu. Un geste qui ne rogne rien ne laisse aucun pas et le DIT (« Rien à rogner »).
+**Attendus** : (1) `core/` : un seul des clips choisis contient la tête, lui seul bouge ; une tête posée sur un
+bord ne rogne rien ; la fin en chaîne tire la suite, hors chaîne non ; un clip verrouillé dans la suite arrête
+la piste ; un clip verrouillé n'est pas rogné — **fait, core 466 → 468** (les trois fonctions vues rouges :
+verrou ignoré « 7 680 != 5 760 », clip hors de la tête rogné « 2 != 1 », chaîne ignorée « 3 840 != 3 360 ») ;
+(2) par l'application, le `project.json` relu : le début et la fin à 2 · 3, la fin en chaîne, « rien à
+rogner » sans pas ; (3) un banc vu rouge, dans `verifier.sh --bancs`.
+
+**D548.2 ET D548.3 SONT FAITES (10/10, 11 h 06 ; le banc vert à 09 h 42).** `tools/a-la-tete.sh`, 6 contrôles,
+rouges sur le binaire de D547 (les entrées n'existaient pas) et verts sur le neuf, préférences inchangées :
+
+| # | geste | mesure | tenu |
+|---|---|---|---|
+| 3 | déplacer à la tête (5 · 1) | **A:7 680 C:9 600 B:11 520** — le premier à la tête, les écarts gardés sur les deux pistes ; Ctrl+Z → A:1 920 B:5 760 C:3 840 | **oui** |
+| 4 | rogner le début (2 · 3) | **A:2 880 (960 de long)**, B et C inchangés ; « 1 clip(s) rogné(s), 2 ne contiennent pas la tête » | **oui** |
+| 5 | rogner la fin (2 · 3) | **A:1 920 (960 de long)**, B à 5 760 ; EN CHAÎNE, **B recule à 4 800**, C (une autre piste) reste | **oui** |
+| 6 | rien à rogner (9 · 1) | « Rien à rogner » dit, **0 pas** d'historique, rien de changé | **oui** |
+| 7 | rien à déplacer (2 · 1, A y commence déjà) | « Rien à déplacer » dit, **0 pas**, rien de changé | **oui** |
+
+**LA GARDE A VU CE QUE LE BANC LAISSAIT PASSER.** `tools/annulation-des-menus.py`, rejouée sur le premier binaire
+de D548, a rendu **2 entrées MUETTES** : « Déplacer à la tête de lecture », au menu d'un clip MIDI et d'un clip
+audio, dans son état d'essai où la tête ET le premier clip sont à 0 — décalage nul, ni boîte, ni ligne d'état ;
+seul le journal (`VSM_A_LA_TETE`) parlait, que l'utilisateur ne lit pas. Le geste dit maintenant « Rien à
+déplacer » ; le contrôle (7) du banc le mesure, rouge sur ce premier binaire, vert sur le second.
+
+`tools/gestes-vivants.py` : 0 geste mort sur 71 entrées jouées ; `tools/annulation-des-menus.py` : 0 muette, 0 suspecte, 165 justes, 77 sans effet avec trace (deux de plus : les deux « Rien à déplacer »).
+
+**LE NEUVIÈME AUDIT (D548) EST CLOS** : le verrou tient au clavier, et les clips vont et se rognent à la tête.
+Les marqueurs de cycle, écartés ici (une donnée de projet neuve), ouvrent le suivant.
