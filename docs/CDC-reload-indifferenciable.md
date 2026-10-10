@@ -2689,3 +2689,43 @@ recherche de piste de batterie réglant CHAQUE voix sur SES frappes (la caisse c
 « snare », pas sur le stem entier), mesurée sur un morceau du banc à une variable — et le grave des PLEINES (−7 à
 −16 dB, § 21), la vraie part du log-mel, reste à attaquer : le kick et la basse.
 
+### 20.1 Verdict de H59 (10/10/2026, mesuré de 18 h 04 à 18 h 05) : le plus grand gain du chantier au log-mel (10,09 → 8,49) — et deux attendus en échec, parce que le KICK n'a pas le timbre que son niveau voudrait
+
+`analyse/mesure_h59.py` (`91450436`), `build-h42`, 66 s. **Écart au plan écrit** : passé pendant la course 2 sous
+`nice` (quatre rendus de 19 s), comme H60 — le plan écartait une charge qui s'est révélée nulle. Volumes résolus :
+**charleston 1,823 → 6,409** (× 3,5), **kick 1,823 → 0,939** (× 0,5), caisse claire 1,823 → 1,253. L'écart au stem
+par bande, volume commun → résolu : 20-60 Hz −7,8 → **−13,5** ; 60-150 −4,6 → **−9,7** ; 150-500 +5,8 → +0,3 ;
+500-2 000 +4,3 → +0,3 ; 2-6 kHz −0,9 → −0,2 ; 6-10 kHz −4,9 → +0,1 ; 10-16 kHz −6,8 → 0,0. Le kick du TR-808 a trop
+de bas-médium et de médium pour son sub : les moindres carrés le baissent pour ces bandes-là, et son sub part avec.
+
+| # | attendu | mesure | verdict |
+|---|---|---|---|
+| 1 | aigus \|écart\| ≤ 2 dB | −6,94 → **+2,50** (un gain de 4,4 dB) | **entre les deux** (au-delà de 2, au-delà du gain de 3 qui définissait l'échec) |
+| 2 | sub et basse se rapprochent de 1,5 dB | sub −1,33 → **−3,80**, basse −3,15 → **−5,73** | **échec** : les deux s'éloignent |
+| 3 | les quatre autres bandes : aucune ne s'éloigne de plus de 1 dB | bas-médium +2,72 → +1,66, médium +1,66 → +1,70, haut-médium −3,01 → +1,82 | **tenu** |
+| 4 | log-mel ≤ témoin | **10,09 → 8,49** (médian 8,53 → 6,25) | **tenu** — le plus grand gain de ce chantier |
+| 5 | contrôle : le calage du kick inchangé à 0,5 ms | \|médian\| 4,35 → 5,08, p90 8,71 → 10,16 | **échec du contrôle** : aucune note n'a bougé ; le détecteur d'attaques basses de l'outil lit autre chose quand le kick baisse de 6 dB — c'est l'outil qui bouge, et c'est dit |
+
+Niveau : décalage −0,57 → −2,04 dB, pire tranche 5,43 → 7,60. **La règle écrite ne couvre pas le cas** (2 en échec) :
+**rien n'entre**. Ce que la mesure établit : (a) **le charleston est trois fois et demie trop bas**, et c'est la
+plus grande part des aigus et du haut-médium manquants — un partage de niveaux, pas un timbre ; (b) **le kick ne peut
+pas être calé par son niveau** : son timbre (trop de 150-2 000 Hz pour son sub) fait que tout niveau qui rend l'un
+fausse l'autre. D'où H63, le charleston seul.
+
+## 24. H63 — le charleston seul à son niveau (écrite AVANT la mesure, 10/10/2026, 18 h 05)
+
+**L'hypothèse** : le volume de la piste « Batterie · hihat » porté à celui que H59 a résolu (1,823 → 6,409), le kick
+et la caisse claire laissés au volume commun, rapproche les aigus et le haut-médium de l'original sans rien coûter au
+grave. **Une variable**, la mesure de H59 à l'identique (même témoin, même outil, mêmes options).
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | aigus | \|écart\| ≤ 3 dB (témoin 6,94) | gain de moins de 3 dB |
+| 2 | sub, basse, bas-médium | aucune ne s'éloigne de plus de 0,5 dB | une s'éloigne de plus de 1 dB |
+| 3 | log-mel | ≤ témoin − 0,5 dB | > témoin |
+| 4 | contrôle : le calage du kick | inchangé à 0,5 ms près | — |
+
+**La règle de décision** : 1, 2 et 3 tenus → le niveau de chaque piste d'un groupe de batterie se résout sur les
+bandes du stem où CETTE piste domine (le charleston sur l'aigu), et l'entrée dans la chaîne est une hypothèse à elle,
+mesurée sur un morceau du banc à une variable ; 3 tenu sans 2 → le charleston porte aussi du grave, à mesurer.
+
