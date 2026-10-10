@@ -3099,3 +3099,42 @@ dit d'où peut venir ce bas-médium, et aucune de ces sources n'est un paramètr
 (`tanh(sinus × 1,8)`, qui ajoute les harmoniques impaires — 180 et 300 Hz pour un kick à 60 Hz) et un BALAYAGE
 d'attaque fixe (départ à six fois l'accord, chute en 45 ms — de 360 Hz vers 60). La suite nommée : dire LAQUELLE
 des deux porte le surplus de 150-500 Hz, ce qui demande d'abord de pouvoir les régler.
+
+## 30. H69 — le kick de l'ORIGINAL, estimé par moyenne synchrone de ses frappes : balaye-t-il moins haut ou plus vite que celui du TR-808 ? (écrite AVANT la mesure, 11/10/2026, 02 h 26)
+
+**Ce que le code dit, relu après H68.** Dans `KickVoice`, la fréquence vaut `accord × (1 + 5 e^(−t/0,045))` : 45 ms
+est une CONSTANTE DE TEMPS (`DecayEnvelope` : e⁻¹ au bout de la durée), pas la durée du balayage. Accordé à 60 Hz, le
+kick passe 300 Hz à 10 ms, 232 Hz à 25 ms, 159 Hz à 50 ms et 92 Hz à 100 ms ; il reste au-dessus de 150 Hz pendant
+**54 ms**, et, sous une amplitude qui décroît en 0,15 s, y dépense **54 %** de son énergie sur ses 300 premières ms
+(à 0,05 s : 91 %) — chiffres d'une réplique du code en numpy, coupure à 150 Hz par un Butterworth d'ordre 4. C'est le
+premier suspect du surplus de bas-médium que H68 a mesuré ; le second est la saturation fixe (`tanh(sinus × 1,8)`,
+harmoniques 3 et 5 — 180 et 300 Hz à 60 Hz), mais la même réplique la dit faible : sans elle, la part au-dessus de
+150 Hz passe de 54 à 52 %. Aucun des deux n'est un paramètre.
+
+**L'instrument.** Un kick de production est, le plus souvent, le MÊME échantillon à chaque frappe. Moyennées après
+alignement, ses frappes dans le stem « drums » rendent sa forme d'onde, et ce qui ne frappe pas avec lui s'y efface
+(√N : 200 frappes, 23 dB). Les frappes retenues : la piste « kick+kick2 » de la référence, dans les trois pleines,
+sans caisse claire à moins de 150 ms, sans autre kick dans les 300 ms qui suivent (le compte est publié) ; alignées
+sur une référence par corrélation à ± 20 ms (la transcription en est à 4 ms près au médian, 9 à 12 ms au p90),
+filtrées sous 1 kHz. Du kick moyen : sa fréquence instantanée (phase du signal analytique, 30-600 Hz) à 10, 25, 50,
+100 et 200 ms ; sa part d'énergie au-dessus de 150 Hz sur ses 300 premières ms ; et un ajustement du modèle du code
+(`f(t) = f₁ (1 + r e^(−t/τ))`, amplitude en e^(−t/τₐ)). **Le même instrument, appliqué au rendu solo de la piste du
+kick** (60 Hz, 0,15 s, `build-h42`), sert de contrôle : sa réponse est connue d'avance par le code.
+
+**L'HYPOTHÈSE H69** : le kick de l'original balaye moins haut ou plus vite que celui du TR-808 réglé comme H68 l'a
+trouvé (60 Hz, 0,15 s) — sa part d'énergie au-dessus de 150 Hz est plus basse, et sa fréquence passe sous 150 Hz
+plus tôt.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | CONTRÔLE : l'instrument sur le rendu solo du TR-808 | fréquence à 10, 25, 50, 100 ms à ± 10 % de la formule du code (300 · 232 · 159 · 92 Hz) ; part au-dessus de 150 Hz à ± 1 dB de celle d'une réplique du code passée par le même instrument | l'un ou l'autre hors marge : l'instrument ne lit pas un balayage connu, rien ne se conclut de l'original |
+| 2 | STABILITÉ : les frappes paires et impaires moyennées à part | corrélation ≥ 0,9 sous 1 kHz sur les 300 ms | < 0,7 : ce kick n'est pas un échantillon répété (ou l'alignement échoue), sa moyenne ne le représente pas |
+| 3 | part d'énergie au-dessus de 150 Hz, original contre TR-808 (60 Hz, 0,15 s) | au moins 3 dB plus basse dans l'original | à moins de 1 dB : le balayage n'est pas la cause, la saturation l'est peut-être |
+| 4 | instant où la fréquence passe sous 150 Hz | original < 30 ms (TR-808 : 54 ms) | original ≥ 54 ms |
+| 5 | relevé : `f₁`, `r`, `τ`, `τₐ` ajustés sur l'original | — (ce que H70 donnerait au TR-808) | — |
+
+**La règle de décision** : 1 et 2 tenus, 3 et 4 tenus → le TR-808 reçoit deux paramètres, la profondeur (`r`) et la
+constante (`τ`) de son balayage, leurs défauts aux valeurs d'aujourd'hui (5 et 0,045 s — un rendu de la référence
+identique au bit près le prouve), et H70 les règle sur l'original, mesurée au mélange ; 1 et 2 tenus, 3 en échec →
+la saturation est le suspect suivant, et c'est elle qui devient un paramètre ; 1 ou 2 en échec → rien ne se conclut
+de cet instrument.
