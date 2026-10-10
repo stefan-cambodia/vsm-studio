@@ -23,7 +23,9 @@ using DecayEnv = vsm::audio::dsp::DecayEnvelope;
 class KickVoice {
 public:
     void setSampleRate(double sr) { sampleRate_ = sr; amp_.setSampleRate(sr); pitch_.setSampleRate(sr); }
-    void configure(float tuneHz, float decay, float level) { tuneHz_ = tuneHz; decay_ = decay; level_ = level; }
+    void configure(float tuneHz, float decay, float level, float holdSeconds = 0.0f) {
+        tuneHz_ = tuneHz; decay_ = decay; level_ = level; hold_ = holdSeconds;
+    }
     bool isActive() const { return amp_.isActive(); }
 
     void trigger(float velGain) {
@@ -33,6 +35,7 @@ public:
         pitch_.setDecaySeconds(0.045f); // balayage de pitch bref
         amp_.trigger();
         pitch_.trigger();
+        holdLeft_ = static_cast<int>(hold_ * static_cast<float>(sampleRate_) + 0.5f);
     }
 
     float render() {
@@ -42,14 +45,20 @@ public:
         phase_ += static_cast<float>(vsm::audio::dsp::kTwoPi) * freq / static_cast<float>(sampleRate_);
         if (phase_ > static_cast<float>(vsm::audio::dsp::kTwoPi)) phase_ -= static_cast<float>(vsm::audio::dsp::kTwoPi);
         const float sine = std::sin(phase_);
-        const float a = amp_.next();
+        // TENUE (CDC-reload § 31, H70) : l'amplitude reste à 1 pendant `hold_` secondes avant de
+        // décroître -- le kick d'un morceau produit est souvent un échantillon tenu puis coupé, que
+        // l'exponentielle seule ne rend pas. À 0 (le défaut), `amp_` décroît dès l'attaque comme avant.
+        float a;
+        if (holdLeft_ > 0) { --holdLeft_; a = 1.0f; }
+        else a = amp_.next();
         return std::tanh(sine * 1.8f) * a * level_ * velGain_;
     }
 
 private:
     double sampleRate_ = 48000.0;
     DecayEnv amp_, pitch_;
-    float tuneHz_ = 52.0f, decay_ = 0.45f, level_ = 1.0f, velGain_ = 1.0f, phase_ = 0.0f;
+    float tuneHz_ = 52.0f, decay_ = 0.45f, level_ = 1.0f, hold_ = 0.0f, velGain_ = 1.0f, phase_ = 0.0f;
+    int holdLeft_ = 0;
 };
 
 /// Caisse claire (section 12) : partie tonale (deux oscillateurs) + générateur
@@ -239,6 +248,7 @@ public:
         kClapLevel, kClapDecay,
         kCowbellLevel, kCowbellTune,
         kAccent,
+        kKickHold, // ajouté à la fin (H70) : les identifiants des réglages enregistrés ne bougent pas
         kNumParams
     };
 

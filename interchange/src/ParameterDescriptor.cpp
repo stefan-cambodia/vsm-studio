@@ -1398,6 +1398,7 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Cowbell Level", "drum.cowbell.level"},
         {"Cowbell Tune", "drum.cowbell.tune"},
         {"Accent", "accent.amount"},
+        {"Kick Hold", "drum.kick.hold"},
     }},
     // --- vsm.jupiter8 ---
     {"vsm.jupiter8", {

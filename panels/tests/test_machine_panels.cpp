@@ -206,7 +206,12 @@ VSM_TEST(each_panel_keeps_the_layout_of_its_original) {
         size_t kickControls = 0;
         for (const auto& control : section.controls)
             if (control.parameterName.rfind("Kick", 0) == 0) ++kickControls;
-        kickSectionHoldsAllKickControls = (kickControls == section.controls.size() && kickControls == 3);
+        // TOUS les réglages « Kick… » de la machine (trois, puis quatre avec la tenue de H70), et rien d'autre.
+        size_t kickParameters = 0;
+        for (const auto& name : realParameterNames("vsm.tr808"))
+            if (name.rfind("Kick", 0) == 0) ++kickParameters;
+        kickSectionHoldsAllKickControls =
+            (kickControls == section.controls.size() && kickControls == kickParameters && kickParameters >= 3);
     }
     VSM_ASSERT(kickSectionHoldsAllKickControls);
 }

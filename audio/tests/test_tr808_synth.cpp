@@ -137,7 +137,45 @@ VSM_TEST(tr808_save_load_roundtrip) {
 
 VSM_TEST(tr808_parameter_list_size) {
     auto d = makeTr808();
-    VSM_ASSERT_EQ(d->parameterList().size(), static_cast<size_t>(16));
+    VSM_ASSERT_EQ(d->parameterList().size(), static_cast<size_t>(17));
+}
+
+// H70 (CDC-reload § 31) : la TENUE du kick. Pendant `Kick Hold`, l'amplitude reste à 1 ; ensuite elle
+// décroît comme avant. Mesuré sur la crête de chaque fenêtre de 10 ms, à 48 kHz, décroissance 0,05 s.
+VSM_TEST(tr808_kick_hold_keeps_amplitude_then_decays) {
+    auto crete = [](float hold, int de, int a) {
+        auto d = makeTr808();
+        d->setParameter(paramByName(*d, "Kick Decay"), 0.05f);
+        d->setParameter(paramByName(*d, "Kick Hold"), hold);
+        MidiNoteEvent k = hit(0, 36);
+        std::vector<float> l(9600, 0.0f), r(9600, 0.0f);
+        d->process(&k, 1, l.data(), r.data(), 9600);
+        return peakAbs(std::vector<float>(l.begin() + de, l.begin() + a));
+    };
+    const float tot = crete(0.08f, 240, 720);      // 5-15 ms
+    const float tard = crete(0.08f, 3120, 3600);   // 65-75 ms : encore dans la tenue
+    const float apres = crete(0.08f, 8640, 9120);  // 180-190 ms : 100 ms de décroissance après
+    const float sans = crete(0.0f, 3120, 3600);    // 65-75 ms sans tenue
+    VSM_ASSERT(tot > 0.05f);
+    VSM_ASSERT(std::abs(20.0f * std::log10(tard / tot)) < 0.5f);   // tenue : moins d'un demi-décibel
+    VSM_ASSERT(20.0f * std::log10(apres / tot) < -15.0f);           // puis la décroissance de 0,05 s
+    VSM_ASSERT(20.0f * std::log10(sans / tot) < -9.0f);            // sans tenue : e^(-65/50), -11 dB
+}
+
+// À 0 (le défaut), la tenue ne change RIEN, au bit près : c'est ce qui permet de l'ajouter sans
+// rejouer aucune reconstruction.
+VSM_TEST(tr808_kick_hold_default_is_zero_and_changes_nothing) {
+    auto rendu = [](bool poser) {
+        auto d = makeTr808();
+        if (poser) d->setParameter(paramByName(*d, "Kick Hold"), 0.0f);
+        std::vector<MidiNoteEvent> evs = {hit(0, 36), hit(2000, 36, 60)};
+        std::vector<float> l(6000, 0.0f), r(6000, 0.0f);
+        d->process(evs.data(), static_cast<int>(evs.size()), l.data(), r.data(), 6000);
+        return l;
+    };
+    auto d = makeTr808();
+    VSM_ASSERT_NEAR(d->getParameter(paramByName(*d, "Kick Hold")), 0.0, 1e-9);
+    VSM_ASSERT(rendu(false) == rendu(true));
 }
 
 // --------------------------------------------------------------------------
