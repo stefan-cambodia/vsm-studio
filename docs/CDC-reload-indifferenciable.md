@@ -3164,3 +3164,57 @@ Sur la scène connue, l'instrument rend : f(10, 25, 50, 100, 200 ms) = 156,3 · 
 0,9995 ; sur du bruit seul, sans kick, elle tombe sous 0,7 (le contrôle de l'attendu 2) ; et deux balayages
 différents (r 5, τ 45 ms contre r 2, τ 10 ms) sont lus à plus de 3 dB l'un de l'autre au-dessus de 150 Hz (le
 contrôle de l'attendu 3).
+
+### 30.2 Verdict de H69 (11/10/2026, rendu et mesuré à 02 h 31, écrit à 02 h 33) : 1 à 4 tenus — et la règle prescrit des paramètres inutiles : le balayage de l'original EST celui du TR-808, vers 37 Hz, sous une amplitude tenue puis coupée
+
+`reconstruction/travail/reload-h69.sh` (rejouable) : le rendu solo de la piste du kick à 60 Hz / 0,15 s par
+`build-h42` (moteur `52532381`), puis `analyse/mesure_h69.py`. Frappes : 555 ; 241 hors des pleines, 2 près d'une
+caisse claire, 175 avec un kick voisin à moins de 300 ms ; **137 retenues** (138 au § 30.1 : le décompte d'alors ne
+demandait pas que les 300 ms de la fenêtre tiennent dans la section).
+
+| | fréquence à 10 · 25 · 50 · 100 · 200 ms (Hz) | sous 150 Hz | part > 150 Hz | paires/impaires |
+|---|---|---|---|---|
+| formule du code (60 Hz) | 300,2 · 232,1 · 158,8 · 92,5 · 63,5 | 54,2 ms | — | — |
+| réplique du code | 300,9 · 232,6 · 159,1 · 92,7 · 63,6 | 54,3 ms | 0,531 (−2,75 dB) | — |
+| rendu solo du TR-808 | 301,0 · 232,7 · 159,1 · 92,7 · 63,6 | 54,3 ms | 0,530 (−2,75 dB) | 1,0 |
+| **original (stem « drums »)** | 185,4 · 139,6 · 91,7 · 60,0 · *164,6* | 16,3 ms (modèle) ; 15-18 ms (lu) | **0,167 (−7,78 dB)** | **0,9996** |
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : le rendu solo à 0,3 % de la formule aux quatre instants, sa part au-dessus de 150 Hz à 0,01 dB de la réplique ; décalages d'alignement nuls (médiane −0,02 ms) |
+| 2 | **tenu** : 0,9996 — le kick de l'original est un échantillon répété |
+| 3 | **tenu** : −7,78 contre −2,75 dB, **5,0 dB plus bas** dans l'original |
+| 4 | **tenu** : 145,5 Hz à 17,8 ms (169,9 à 14,9), 16,3 ms par le modèle ; le TR-808 : 54 ms |
+| 5 | **relevé tel qu'écrit, INUTILISABLE** : sur 5-200 ms, f₁ 104,9 Hz, r 1,52, τ 12,9 ms, τₐ 0,099 s, résidu 0,39 en log (le rendu : 0,0005). La fenêtre de 200 ms prend des périodes où le kick n'est plus : la valeur à 200 ms (164,6 Hz) en est une |
+
+**CE QUE LA TRAJECTOIRE DIT, LUE PÉRIODE PAR PÉRIODE.** De 4 à 15 ms, une attaque irrégulière de 160 à 210 Hz ; puis
+un glissement régulier — 145,5 Hz à 18 ms, 127,0 à 29, 112,1 à 37, 95,6 à 47, 82,8 à 58, 72,8 à 71, 61,3 à 86,
+57,7 à 94 ms — sous une amplitude **PLATE** (−4,5 dB en moyenne de 5 à 80 ms, écart-type 1,5 dB), qui tombe
+d'un coup : −6 dB à 81 ms, −10 à 90, −20 à 127 ms. Après 100 ms, ce que l'instrument lit n'est plus le kick (13 à
+20 dB plus bas, des fréquences de 70 à 180 Hz sans suite) ; 9,6 % seulement de l'énergie des 300 ms est au-delà de
+100 ms.
+
+**Un ajustement A POSTERIORI — décidé après avoir vu la trajectoire, donc un relevé et non une preuve —, borné à la
+zone où le kick domine** (l'enveloppe à moins de 10 dB de son maximum) :
+
+| fenêtre | périodes | f₁ | r | départ | τ | résidu (log) |
+|---|---|---|---|---|---|---|
+| 5-86 ms | 18 | 36,0 Hz | 4,89 | 212 Hz | 44,3 ms | 0,064 |
+| 15-86 ms | 14 | 39,3 Hz | 4,41 | 213 Hz | 42,2 ms | 0,021 |
+| 5-95 ms | 19 | 37,1 Hz | 4,73 | 213 Hz | 43,6 ms | 0,062 |
+
+**Le balayage de l'original a la forme de celui du TR-808** — r 4,4 à 4,9 pour 5, τ 42 à 44 ms pour 45 —, **vers
+36 à 39 Hz**, pas vers 60. **La règle, à la lettre** (« 1 et 2 tenus, 3 et 4 tenus → le TR-808 reçoit la profondeur et
+la constante de son balayage ») donnerait au TR-808 deux paramètres que l'original règle à leurs valeurs d'aujourd'hui :
+**elle ne s'applique pas**, et c'est écrit plutôt que fait. Sa prémisse — « l'original balaye moins haut ou plus
+vite » — est vraie dans le chiffre (3 et 4 tenus), fausse dans la cause : la part au-dessus de 150 Hz est plus basse
+parce que le balayage descend vers 37 Hz et passe 150 Hz à 19 ms au lieu de 54, pas parce qu'il a une autre forme.
+
+**Ce que cela explique de H68.** À 40 Hz et 0,15 s, H68 trouvait 8,5 dB de sub en trop : le TR-808 accordé bas
+continue de sonner à 40 Hz des centaines de millisecondes, quand le kick de l'original est COUPÉ à 85-90 ms, à 58 Hz,
+avant d'avoir atteint le sub. Ce qui sépare les deux kicks n'est pas le balayage, c'est **l'enveloppe d'amplitude** :
+tenue ~80 ms puis coupée, là où `KickVoice` ne sait que décroître en exponentielle depuis l'attaque.
+
+**La suite, nommée et pas encore écrite en hypothèse** : un paramètre de TENUE de l'amplitude du kick (défaut 0, le
+son d'aujourd'hui au bit près), le kick réglé sur le relevé (≈ 37 Hz, tenue ≈ 80 ms, la décroissance la plus courte),
+mesuré au mélange contre le témoin — H70.
