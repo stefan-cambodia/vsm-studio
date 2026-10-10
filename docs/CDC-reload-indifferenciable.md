@@ -2970,3 +2970,30 @@ trois pleines, contre le même témoin.
 le timbre reste loin ; 2 en échec → ni l'accord ni la longueur du TR-808 ne font ce kick, et c'est une autre machine
 (ou une nouvelle) qui est à mesurer.
 
+### 28.1 Verdict de H67 (10/10/2026, mesuré de 18 h 19 à 18 h 22) : la longueur ramène le grave des pleines, l'accord à 86 Hz vide le sub — « le grave revient, le timbre reste loin »
+
+Le balayage ENTIER (préréglage du kick seul, `build-h42`, outil du § 0) :
+
+| réglage | basse des trois pleines (mélange − original) | sub · basse · bas-médium (§ 0) | log-mel |
+|---|---|---|---|
+| témoin (50 Hz, 0,05 s) | −7,4 · −6,4 · −6,5 | −1,33 · −3,15 · +2,72 | 10,09 |
+| (a) 86 Hz, 0,05 s | −14,8 · −14,1 · −14,1 | −7,68 · −7,41 · +3,10 | 10,15 |
+| (b) 86 Hz, 0,15 s | **−0,7 · −0,4 · −0,4** | −6,36 · −2,08 · +2,77 | **9,96** |
+| (b) 86 Hz, 0,30 s | +4,2 · +4,3 · +4,4 | −5,45 · +0,43 · +2,10 | 9,99 |
+| (b) 86 Hz, 0,45 s | +6,1 · +6,1 · +6,3 | −5,07 · +1,30 · +1,44 | 10,00 |
+| (b) 86 Hz, 0,80 s | +7,9 · +7,8 · +8,0 | −4,70 · +2,06 · +0,84 | 10,01 |
+
+| # | verdict |
+|---|---|
+| 1 | **échec** : l'accord seul éloigne la basse des pleines de 7 dB (le kick bref de 86 Hz a moins d'énergie encore sous 150 Hz) |
+| 2 | **tenu** : à 0,15 s, la basse des pleines passe de −7,4 / −6,4 / −6,5 à −0,7 / −0,4 / −0,4 dB |
+| 3 | **entre les deux** : log-mel 9,96, sous le témoin (10,09) mais au-dessus de la marge (9,79) |
+| 4 | **tenu** : bas-médium +2,77 (+0,05) |
+
+**La règle** : « 2 tenu sans 3 → le grave revient, le timbre reste loin ». Rien n'entre. **Ce que le balayage montre** :
+la longueur du kick règle la basse des pleines de façon monotone (de −7 à +8 dB de 0,05 à 0,80 s), et 0,15 s la met
+à moins d'un décibel ; mais l'accord à 86 Hz retire le SUB (20-60 Hz : −1,33 → −4,7 à −7,7 dB) que l'accord de 50 Hz
+fournissait — le kick de l'original a donc du sub SOUS son fondamental de 86 Hz, ce qu'un TR-808 accordé à 86 Hz
+n'a pas. La suite nommée : un balayage de l'accord à longueur 0,15 s, et le kick « kick+kick2 » qui est peut-être
+DEUX sons superposés (le nom de la piste le dit) — à mesurer avant d'en faire une hypothèse.
+
