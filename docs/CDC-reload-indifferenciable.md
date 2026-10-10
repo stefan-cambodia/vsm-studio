@@ -2729,3 +2729,35 @@ grave. **Une variable**, la mesure de H59 à l'identique (même témoin, même o
 bandes du stem où CETTE piste domine (le charleston sur l'aigu), et l'entrée dans la chaîne est une hypothèse à elle,
 mesurée sur un morceau du banc à une variable ; 3 tenu sans 2 → le charleston porte aussi du grave, à mesurer.
 
+### 24.1 Verdict de H63 (10/10/2026, mesuré à 18 h 06) : TENUE — le charleston trois fois et demie plus fort ramène l'aigu et le haut-médium dans le seuil du § 0, sans toucher au grave, et le log-mel gagne 1,51 dB
+
+Une variable, vérifiée : le volume de la piste 5 (« Batterie · hihat ») 1,823 → 6,409, le reste du projet identique ;
+`build-h42`, même témoin, même outil, mêmes options.
+
+| mesure (outil du § 0) | témoin | H63 |
+|---|---|---|
+| sub · basse · bas-médium | −1,33 · −3,15 · +2,72 | −1,45 · −3,21 · +2,50 |
+| médium · haut-médium · **aigus** | +1,66 · −3,01 · **−6,94** | +0,87 · **+0,03** · **+0,66** |
+| log-mel moyen (médian) | 10,09 (8,53) | **8,58 (6,55)** |
+| niveau : décalage (pire tranche) | −0,57 (5,43) | −0,09 (6,01) |
+| kick \|médian\| · p90 | 4,35 · 8,71 ms | 4,35 · 8,71 ms |
+
+| # | attendu | verdict |
+|---|---|---|
+| 1 | aigus \|écart\| ≤ 3 dB | **tenu** : 0,66 — sous le seuil du § 0 lui-même (1 dB) |
+| 2 | sub, basse, bas-médium : aucune ne s'éloigne de plus de 0,5 dB | **tenu** : +0,12, +0,06, −0,22 |
+| 3 | log-mel ≤ témoin − 0,5 dB | **tenu** : −1,51 dB |
+| 4 | contrôle : le calage du kick | **tenu** : identique au centième |
+
+**H63 EST TENUE.** Pour la première fois dans ce chantier, **trois des six bandes tiennent le seuil du § 0** (médium
+0,87, haut-médium 0,03, aigus 0,66, toutes ≤ 1 dB) ; le témoin n'en tenait aucune. Seule la pire tranche de niveau
+recule (5,43 → 6,01 dB). **Le charleston était 3,5 fois trop bas** : le calage EN BLOC de la chaîne donnait aux trois
+pistes de batterie le même volume, et la plus aiguë, la plus faible des trois en énergie, y perdait 10,9 dB.
+
+**La règle écrite, appliquée** : « 1, 2 et 3 tenus → le niveau de chaque piste d'un groupe de batterie se résout sur
+les bandes du stem où CETTE piste domine, et l'entrée dans la chaîne est une hypothèse à elle, mesurée sur un morceau
+du banc à une variable ». **Ce qu'H59 a appris borne cette hypothèse-là** : résoudre TOUTES les pistes sur toutes les
+bandes baisse le kick pour son médium et lui retire son sub ; la règle à écrire doit caler chaque piste sur SA bande
+(le charleston sur l'aigu) et laisser une piste dont le timbre n'est pas celui du stem (le kick ici) à son niveau,
+le dire, et ne pas la forcer. Cette hypothèse s'écrit avant son code ; elle n'entre pas aujourd'hui dans la chaîne.
+
