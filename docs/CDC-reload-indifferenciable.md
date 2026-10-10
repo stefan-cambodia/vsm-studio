@@ -3730,3 +3730,46 @@ de H74 (gains ×1 · ×2 · ×0,5), les gains retrouvés à 10 % près sur les s
 une caisse large bande (dès 200 Hz), le rendu une caisse sans rien sous 2 kHz — le résidu de la caisse le dit à
 500-2 000 Hz (sous −6 dB) et reste sous 2 dB à 4-8 kHz, où son timbre est juste. **Vu rouge** sur un mutant qui
 calcule le résidu sans les facteurs (−7,8 dB à 4-8 kHz).
+
+### 36.2 Verdict de H75 (11/10/2026, mesuré de 06 h 27 à 06 h 29, écrit à 06 h 30) : 4 en ÉCHEC sur « B4 » — et le résidu nomme les timbres faux, ce que H74 cachait
+
+`reconstruction/travail/reload-h75.sh` (rejouable), moteur de `reload-h70`. Les facteurs : « Reload » charleston +6,47 ·
+kick −4,70 · caisse claire −12,04 dB (borne ; ×0,143 demandé, dit), résidu pondéré 0,91 ; « B4 » charleston +6,94 ·
+kick −5,28 · caisse claire −0,51 · clap −10,43 dB, résidu 1,52.
+
+| mesure | Reload : H72 → **H75** | B4 : témoin · H73 → **H75** |
+|---|---|---|
+| log-mel moyen (médian) | 7,08 (5,35) → **6,89 (5,04)** | 8,57 · 8,37 → 8,42 (6,38) |
+| \|médian\| sub · basse · bas-médium | 1,35 · 1,39 · 1,09 → 0,91 · 1,75 · 1,07 | 3,25 · 1,30 · 1,02 → 1,48 · 2,29 · 1,73 |
+| aigus : médiane (\|médian\|) | −1,67 (1,67) → +1,68 (1,97) | −0,38 (1,57) [H73] → **+3,83 (3,89)** |
+| haut-médium : \|médian\| | 3,09 → **0,97** | 3,33 → 2,25 |
+| niveau : décalage (pire tranche) | −0,38 (4,71) → −0,83 (6,14) | −0,49 (10,65) → −3,80 (10,61) |
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : 6,89 ≤ 7,08 — le meilleur log-mel du chantier |
+| 2 | **entre les deux** : 8,42, sous le témoin, au-dessus de H73 |
+| 3 | « Reload » **tenu** (la basse à +0,36 dB) ; « B4 » **entre les deux** (basse +0,99, bas-médium +0,71) |
+| 4 | « Reload » **entre les deux** (+0,30 dB) ; **« B4 » en ÉCHEC** : les aigus 2,32 dB plus loin que H73 |
+
+**La règle** : « 3 ou 4 en échec → un niveau déplace de l'énergie entre pièces au prix d'une bande, et le résidu dira
+laquelle et chez qui ». **Il le dit** (rendu / stem aux frappes de la pièce, après réglage, en dB) :
+
+| pièce | 30-150 | 150-500 | 500-2 k | 2-4 k | 4-8 k | 8-11 k |
+|---|---|---|---|---|---|---|
+| Reload · charleston | −4,3 | −3,9 | −4,2 | −2,9 | +0,8 | +0,5 |
+| Reload · kick | −1,0 | +2,0 | −0,6 | **−9,1** | −2,6 | −1,2 |
+| Reload · caisse claire (à sa borne) | −0,2 | **+7,9** | −2,4 | −6,0 | −1,2 | +2,3 |
+| B4 · charleston | +2,6 | −3,1 | **−10,7** | −7,3 | −0,5 | +1,6 |
+| B4 · kick | −3,5 | −7,4 | **−16,3** | **−13,3** | −7,9 | −6,0 |
+| B4 · caisse claire | +1,1 | −5,4 | **−12,5** | −1,2 | +3,7 | +2,3 |
+| B4 · clap | −9,1 | −8,7 | +1,7 | −2,1 | −4,5 | −4,6 |
+
+**CE QUE LE RÉSIDU NOMME.** Sur « Reload » : la caisse claire du TR-808 a 7,9 dB de trop à 150-500 Hz MÊME divisée par
+quatre — son corps tonal, que H60-H62 avaient déjà désigné (le « ton » de 120 Hz) ; le kick manque de 9 dB à 2-4 kHz
+— le clic d'attaque de l'original, que le TR-808 n'a pas. Sur « B4 » : **toutes les pièces manquent de 500-2 000 Hz à
+leurs frappes** (−10 à −16 dB), le kick de partout au-dessus de 150 Hz : ce kit n'est pas un TR-808, et aucun niveau
+ne le fera ressembler. Les aigus de « B4 » montent parce que le système, pour combler ce que le charleston et la caisse
+n'ont pas au médium, les monte en entier. **Rien n'entre.** La leçon de H74, confirmée et précisée : le niveau d'une
+pièce ne se règle qu'une fois son TIMBRE juste, et le résidu de H75 est l'instrument qui dit, pièce par pièce, quel
+timbre est faux et où — le point de départ d'un choix de machine (ou d'un échantillon) par pièce.
