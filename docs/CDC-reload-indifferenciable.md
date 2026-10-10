@@ -2656,3 +2656,36 @@ piste de batterie doit pouvoir le faire d'elle-même (une hypothèse à elle) ; 
 moins de 2 dB → noté, non bloquant (le grave des pleines est une autre affaire, § 21) ; 2 en échec → le souffle
 de l'original n'est pas celui du TR-808 au même niveau, et c'est un timbre.
 
+### 23.1 Verdict de H62 (10/10/2026, mesuré de 18 h 02 à 18 h 03) : le ton retiré seul — le grave de l'intro et des ponts part, rien d'autre ne bouge, et le log-mel gagne 0,09 dB
+
+`drum.snare.snappy` 0,6 → 1,0 et `drum.snare.level` 0,8 → 0,48 (souffle · snappy · niveau : 0,48 avant et après),
+`build-h42`, témoin `reload-h42/temoin.wav`.
+
+| section | basse | bas-médium | médium | haut-médium | aigus |
+|---|---|---|---|---|---|
+| intro | +31,1 → **+13,9** | +25,3 → **+3,9** | +5,8 → +5,2 | +4,3 → +4,3 | −1,8 → −1,8 |
+| pont 84-92 s | +19,6 → **−5,9** | −2,2 → −4,0 | −1,8 → −1,8 | +3,7 → +3,7 | −0,4 → −0,5 |
+| pont 211-218 s | +23,0 → **−1,6** | −0,9 → −2,7 | −4,8 → −4,9 | +3,1 → +3,1 | −0,4 → −0,5 |
+
+Morceau entier (outil du § 0) : **log-mel 10,09 → 10,00** (médian 8,53 → 8,48) ; sub −1,33 → −1,17 ; basse −3,15
+→ −4,34 ; bas-médium +2,72 → +2,83 ; médium +1,66 → +2,03 ; haut-médium −3,01 → −2,71 ; aigus −6,94 → −6,73 ;
+niveau −0,57 → −1,06, **pire tranche 5,43 → 4,77** ; kick inchangé.
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : 17,2 · 13,7 · 21,4 dB de rapprochés |
+| 2 | **entre les deux** : les aigus tiennent (−1,8 · −0,5 · −0,5) ; le haut-médium reste à +4,3 · +3,7 · +3,1, au-delà de ± 3 — EXACTEMENT les valeurs du témoin : H62 n'y touche pas, et le seuil, écrit pour H61 où le souffle bougeait, juge ici un écart qu'elle n'a pas fait |
+| 3 | **tenu** : 10,00 contre 10,09 |
+| 4 | **échec par la seule basse** (+1,19 dB d'éloignement, sous 2 dB : « noté, non bloquant » selon la règle écrite) |
+
+**La règle, à la lettre** : « 1, 2 et 3 tenus » ne l'est pas — 2 est entre les deux, sur une bande que le geste ne
+touche pas. **Ce que la mesure établit, sans l'arrondir** : le ton de la caisse claire du TR-808, réglé à 120 Hz
+par une recherche menée sur le stem entier, fait les 31 dB de grave en trop de l'intro et des ponts ; le retirer
+les ramène à 2-14 dB, sans changer une seule autre bande de ces sections ni des pleines (contrôle identique au
+dixième), et le morceau gagne 0,09 dB de log-mel et 0,66 dB sur sa pire tranche. **C'est petit sur le morceau
+entier**, parce que l'intro et les ponts n'en sont que 29 s sur 312. **Rien n'entre dans la chaîne aujourd'hui** :
+retirer un ton à la main sur UN morceau n'est pas une règle. La suite que cela nomme est une hypothèse à elle — la
+recherche de piste de batterie réglant CHAQUE voix sur SES frappes (la caisse claire sur les instants de la piste
+« snare », pas sur le stem entier), mesurée sur un morceau du banc à une variable — et le grave des PLEINES (−7 à
+−16 dB, § 21), la vraie part du log-mel, reste à attaquer : le kick et la basse.
+
