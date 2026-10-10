@@ -2912,3 +2912,35 @@ les sections, la basse du mélange contre l'original.
 | 3 | log-mel | ≤ témoin | > témoin + 0,3 dB |
 | 4 | basse de l'intro et du pad, mélange contre original | — (un relevé : de combien les notes de résidu montent) | — |
 
+### 27.1 Verdict de H66 (10/10/2026, mesuré à 18 h 17) : la basse montée de 12 dB ne bouge le grave des pleines que de 0,1 à 0,2 dB — ce grave est celui de la BATTERIE
+
+Énergie sous 150 Hz, stem « other » / voix 4 rendue = 16,8 → **× 4,10 (+12,3 dB)**, volume 0,104 → 0,428 ; une
+variable ; `build-h42` ; outil du § 0.
+
+| section | sub, témoin → essai | basse, témoin → essai |
+|---|---|---|
+| pleine 56-84 s | −9,7 → −9,6 | −7,4 → −7,3 |
+| pleine 98-127 s | −9,7 → −8,7 | −6,4 → −6,2 |
+| pleine 218-268 s | −9,6 → −8,2 | −6,5 → −6,3 |
+| intro (relevé) | +10,2 → **+19,3** | +31,1 → +31,7 |
+| pad (relevé) | +0,4 → +3,2 | +24,4 → +25,0 |
+
+Morceau entier : **sub −1,33 → −0,48**, basse −3,15 → −3,16, les autres bandes à 0,2 dB près ; **log-mel 10,09 → 9,62**
+(médian 8,53 → 8,08) ; niveau −0,57 → −0,39 (pire tranche 5,43 → 5,67) ; le calage du kick lu 5,8 / 11,6 ms (l'outil,
+comme sous H59, lit autrement ses attaques basses quand le grave change ; aucune note n'a bougé).
+
+| # | verdict |
+|---|---|
+| 1 | **échec** : 0,1 à 0,2 dB de rapprochement en basse dans les pleines |
+| 2 | **entre les deux** : le sub se rapproche de 0,85 dB, la basse ne bouge pas (+0,01) |
+| 3 | **tenu** : −0,47 dB |
+| 4 | relevé : les notes de résidu de l'intro montent avec elle — +9,1 dB de sub |
+
+**CE QUE LE CHIFFRE DIT, et que le relevé du § 27 n'avait pas lu** : dans les pleines, l'original a **98 dB** entre 60
+et 150 Hz au MÉLANGE, et le stem « other » n'en a que 71 à 79 — **le grave des pleines est dans le stem « drums »**, la
+basse n'en est qu'une petite part, et la monter de 12 dB ne pouvait rien y faire. La part qui manque est donc celle
+du kick — dont H65 a trouvé le NIVEAU juste à ses frappes (× 0,985) et H59 le TIMBRE faux (trop de 150-2 000 Hz pour
+son sub). **La suite est le timbre du kick**, mesuré sur ses frappes contre celles du stem : un kick du TR-808 à son
+accord et à sa décroissance actuels (`tune` 50, `decay` 0,05, choisis par une recherche sur le stem entier) contre
+le fondamental de 86 Hz et la longue décroissance du § 1. **Rien n'entre de H66** : sa règle (« 1 en échec ») le dit.
+
