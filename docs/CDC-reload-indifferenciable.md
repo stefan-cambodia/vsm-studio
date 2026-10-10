@@ -2582,3 +2582,34 @@ c'est une question de réglage de la frappe, pas de choix entre deux voix. La su
 variable — que l'arbitrage de batterie de la chaîne ne règle pas aujourd'hui, la recherche de piste ayant
 trouvé « decay » et « tune » sur le kick, rien sur ce qui fait le grave de la caisse.
 
+## 22. H61 — la caisse claire du TR-808 sans son ton : le souffle seul (écrite AVANT la mesure, 10/10/2026, 18 h 00)
+
+**Ce que le code dit, lu avant d'écrire.** La caisse claire du TR-808 rend `ton · (1 − snappy) + souffle · snappy`
+(`TR808Synth.h`, `SnareVoice`). Le projet de la référence l'a à **`tune` = 120 Hz — le BAS de sa plage**
+(120-300 Hz, défaut 180) — et `snappy` = 0,6 : le réglage de piste de la batterie a cherché ses paramètres sur le
+stem « drums » ENTIER, que le kick domine (« réglage piste … tune=50, tune=120, level=1, decay=0.449 »), et un
+ton de caisse claire à 120 Hz tombe en plein dans la bande de 60 à 150 Hz où l'intro a 31 dB de trop (§ 21).
+
+**L'HYPOTHÈSE H61** : la frappe de l'original est le SOUFFLE de la caisse claire sans son ton — `snappy` = 1, le
+reste du réglage gardé — et elle tient ce que le clap de H60 tenait (le grave de l'intro et des ponts) sans perdre
+ce qu'il perdait (l'aigu). **Une seule variable, et ce qu'elle fait d'autre est dit** : `drum.snare.snappy` 0,6 →
+1,0 dans le préréglage de la piste « Batterie · snare » ; le ton disparaît, et le souffle monte de 20·log₁₀(1/0,6)
+= **+4,4 dB** — la piste n'est pas recalée, pour que le geste reste un.
+
+**LA MESURE** : celle de H60, à l'identique — le mélange par bande sur l'intro et les deux ponts, puis l'outil du
+§ 0 sur le morceau entier, `build-h42`, contre le même témoin.
+
+**ATTENDUS :**
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | intro, ponts : basse | écart réduit d'au moins 10 dB (comme le clap) | moins de 5 dB |
+| 2 | intro, ponts : haut-médium et aigus | à ± 3 dB de l'original | à plus de 6 dB |
+| 3 | morceau entier : log-mel moyen | ≤ témoin (10,09) | > témoin + 0,1 dB |
+| 4 | morceau entier : les six bandes | aucune ne s'éloigne de plus de 1 dB | une s'éloigne de plus de 1 dB |
+
+**La règle de décision** : 1 à 4 tenus → le réglage de la caisse claire (son ton, son souffle) entre dans ce que la
+recherche de piste de batterie explore SUR LES FRAPPES DE CAISSE CLAIRE, et non sur le stem entier — une hypothèse à
+elle, mesurée sur un morceau du banc ; 1 et 2 tenus, 3 ou 4 en échec → le souffle à +4,4 dB pèse trop ailleurs, et
+la variable suivante est son niveau.
+
