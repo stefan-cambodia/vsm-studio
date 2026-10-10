@@ -3025,7 +3025,7 @@ fournissait — le kick de l'original a donc du sub SOUS son fondamental de 86 H
 n'a pas. La suite nommée : un balayage de l'accord à longueur 0,15 s, et le kick « kick+kick2 » qui est peut-être
 DEUX sons superposés (le nom de la piste le dit) — à mesurer avant d'en faire une hypothèse.
 
-## 29. H68 — l'accord du kick, à la longueur que H67 a trouvée (écrite AVANT la mesure, 10/10/2026, 23 h 27)
+## 29. H68 — l'accord du kick, à la longueur que H67 a trouvée (écrite AVANT la mesure, 10/10/2026, 23 h 26)
 
 **L'hypothèse** : à `decay` 0,15 s (où la basse des pleines est à moins d'un décibel, H67), un accord plus bas que
 86 Hz rend le sub que 86 Hz retirait, sans perdre la basse : le kick du TR-808 trouve un réglage où sub ET basse sont
