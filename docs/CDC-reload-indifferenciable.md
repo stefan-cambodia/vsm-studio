@@ -2613,3 +2613,46 @@ recherche de piste de batterie explore SUR LES FRAPPES DE CAISSE CLAIRE, et non 
 elle, mesurée sur un morceau du banc ; 1 et 2 tenus, 3 ou 4 en échec → le souffle à +4,4 dB pèse trop ailleurs, et
 la variable suivante est son niveau.
 
+### 22.1 Verdict de H61 (10/10/2026, mesuré de 18 h 00 à 18 h 01) : le grave part, mais le souffle monté de 4,4 dB passe l'aigu de la frappe — 1 tenu, 2, 3 et 4 en échec
+
+`drum.snare.snappy` 0,6 → 1,0 dans `instruments/track_07.synth.json`, seul fichier changé (vérifié par `cmp` sur
+le projet, le MIDI et les deux autres préréglages de batterie) ; `build-h42`, témoin `reload-h42/temoin.wav`.
+
+| section | basse | bas-médium | médium | haut-médium | aigus |
+|---|---|---|---|---|---|
+| intro | +31,1 → **+13,9** | +25,3 → +6,1 | +5,8 → +9,6 | +4,3 → **+8,7** | −1,8 → +2,3 |
+| pont 84-92 s | +19,6 → **−5,7** | −2,2 → −4,0 | −1,8 → −1,4 | +3,7 → **+8,0** | −0,4 → +3,5 |
+| pont 211-218 s | +23,0 → **−1,4** | −0,9 → −2,7 | −4,8 → −3,6 | +3,1 → **+7,5** | −0,4 → +3,7 |
+
+Morceau entier (outil du § 0) : log-mel **10,09 → 10,53** ; sub −1,33 → −1,58 ; **basse −3,15 → −4,79** ; bas-médium
++2,72 → +2,18 ; médium +1,66 → +1,77 ; **haut-médium −3,01 → +0,99** ; **aigus −6,94 → −4,43** ; niveau −0,57 →
+−0,39 (pire tranche 5,43 → 6,31) ; kick inchangé.
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : la basse de l'intro et des ponts se rapproche de 17,2 · 13,9 · 21,6 dB |
+| 2 | **échec** : le haut-médium passe à +7,5 à +8,7 dB — le souffle monté de 4,4 dB, l'effet secondaire que H61 disait |
+| 3 | **échec** : log-mel +0,44 dB |
+| 4 | **échec** : la basse du morceau s'éloigne de 1,64 dB — le ton de la caisse claire remplissait un peu le grave des pleines, où le vrai manque est ailleurs (kick, basse : § 21) |
+
+**La règle écrite ne couvrait pas ce cas** (1 tenu, 2 en échec) : elle le disait pour « 1 et 2 tenus ». **Rien
+n'entre.** Ce que la mesure montre : retirer le ton est juste dans l'intro et les ponts, et le haut du morceau
+entier s'en rapproche de 2 à 2,5 dB ; ce qui fait échouer, c'est la part du geste que H61 nommait sans la
+vouloir — le souffle plus fort. D'où H62.
+
+## 23. H62 — le ton retiré, le souffle GARDÉ tel quel (écrite AVANT la mesure, 10/10/2026, 18 h 02)
+
+**L'hypothèse** : `snappy` = 1 et le niveau de la caisse claire × 0,6 (`drum.snare.level` 0,8 → 0,48), de sorte
+que `souffle · snappy · level` reste ce qu'il était (1 × 0,48 = 0,6 × 0,8) et que seul le ton disparaisse. C'est UN
+geste — retirer le ton — écrit avec les deux paramètres qui le font sans rien changer d'autre ; H61 le faisait
+avec un seul et changeait le souffle aussi.
+
+**LA MESURE** : celle de H60 et H61. **ATTENDUS** : les quatre de H61, aux mêmes seuils ; et, écrit en plus, **la
+basse du morceau entier** — H61 a montré qu'elle perd 1,64 dB quand le ton part : si H62 la perd aussi, l'attendu
+4 échoue pour une raison connue, et la suite est le grave des pleines (le kick et la basse), pas la caisse claire.
+
+**La règle de décision** : 1, 2 et 3 tenus → le TON de la caisse claire est retiré du réglage, et la recherche de
+piste de batterie doit pouvoir le faire d'elle-même (une hypothèse à elle) ; 4 en échec par la seule basse, à
+moins de 2 dB → noté, non bloquant (le grave des pleines est une autre affaire, § 21) ; 2 en échec → le souffle
+de l'original n'est pas celui du TR-808 au même niveau, et c'est un timbre.
+
