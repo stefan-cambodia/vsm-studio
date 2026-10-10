@@ -381,6 +381,19 @@ size_t moveTrackWithFolder(Project& project, size_t from, size_t to);
 /// ce qui rend la suppression franche plutôt que dangereuse.
 size_t removeTrackWithFolder(Project& project, size_t index);
 
+/// D550.1/.3 — UNE PISTE VIDE (*Remove Empty Tracks* de Cubase), au sens où la retirer ne retire RIEN qui sonne,
+/// se transmette ou se rejoue : une piste MIDI ou audio sans clip, sans note ni événement MIDI d'aucune lane
+/// (contrôleurs, pitch bend, pressions, changements de programme, méta conservés), sans fichier audio, sans
+/// point d'automation, sans prise ni version. Ses réglages -- machine, inserts, fader -- ne la font pas pleine :
+/// Cubase retire de même une piste d'instrument sans partie. **Un groupe ne l'est JAMAIS** (il route d'autres
+/// pistes, et son rôle n'est pas de contenir), **un VCA non plus** ; un DOSSIER l'est quand il n'a plus de membre.
+bool trackIsEmpty(const Project& project, size_t index);
+
+/// RETIRE LES PISTES VIDES, de la DERNIÈRE à la première : chaque `removeTrack` répare les routages de ce qui
+/// reste (la règle de D5.3), et un dossier n'est jugé qu'APRÈS ses membres -- vidé par le geste, il part avec
+/// eux. Rend les NOMS des pistes retirées, dans l'ordre du projet, pour que l'appelant les DISE.
+std::vector<std::string> removeEmptyTracks(Project& project);
+
 /// DUPLIQUE UNE PISTE **ET CE QU'ELLE CONTIENT** (D35.3), et rend l'index de la
 /// copie de la piste elle-même.
 ///

@@ -464,6 +464,32 @@ struct SilenceReport {
 SilenceReport silenceClipsRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
                                 Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
 
+/// D550.1 — CHOISIR DES CLIPS PAR LA TÊTE ET LES LOCATEURS (*Edit ▸ Select* de Cubase), un clip étant
+/// [début, début + longueur jouée) :
+/// - `Between` : ceux qui TOUCHENT la plage [a, b), même en partie (*In Loop*) ;
+/// - `StartsBefore` : ceux qui COMMENCENT avant `a` (*From Start to Cursor*) ;
+/// - `EndsAfter` : ceux qui FINISSENT après `a` (*From Cursor to End*) ;
+/// - `Contains` : ceux que `a` traverse STRICTEMENT -- les bords de `splitClips` : un clip qui commence ou
+///   finit sur `a` n'a rien à y couper.
+/// Un clip qui finit exactement sur la tête ne « finit pas après » elle ; un clip qui y commence ne
+/// « commence pas avant ». `b` ne sert qu'à `Between`, et une plage vide n'y choisit rien.
+enum class RangeRule { Between, StartsBefore, EndsAfter, Contains };
+ClipSelection clipsByRange(const std::vector<Clip>& clips, Tick materialEnd, RangeRule rule, Tick a, Tick b = 0);
+
+/// D550.2 — COUPER AUX LOCATEURS (*Split Loop*). Les clips choisis sont coupés à `from`, puis à `to` -- les
+/// morceaux nés de la première coupe passent par la seconde, si bien qu'un clip qui couvre toute la plage en
+/// donne trois. Rend le nombre de coupes et les morceaux d'ENTRE les locateurs ([from, to] les contient
+/// entiers), que l'appelant laisse choisis : le geste suivant -- supprimer, déplacer -- porte sur la plage.
+/// Le verrou n'est pas lu ici, comme dans `splitClips(std::vector<Clip>&…)` : l'appelant passe une sélection
+/// déjà privée des clips verrouillés (`clipsWithoutLocks`) et compte ceux-ci pour les DIRE.
+struct RangeSplit {
+    size_t cuts = 0;
+    ClipSelection inside;
+};
+RangeSplit splitClipsAtRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
+                             Tick materialEnd, uint64_t& idCounter,
+                             const std::function<double(Tick)>& ticksToSeconds);
+
 /// Combien de clips de la sélection appartiennent à une piste verrouillée :
 /// ce que l'appelant doit DIRE quand un geste n'a pas tout fait.
 /// ÉLARGIR UNE SÉLECTION AUX GROUPES D'ÉDITION (D18.3).

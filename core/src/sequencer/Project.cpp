@@ -747,6 +747,29 @@ size_t removeTrackWithFolder(Project& project, size_t index) {
     return taille;
 }
 
+bool trackIsEmpty(const Project& project, size_t index) {
+    if (index >= project.tracks.size()) return false;
+    const Track& t = project.tracks[index];
+    if (t.kind == Track::Kind::Group || t.kind == Track::Kind::Vca) return false;
+    if (t.kind == Track::Kind::Folder) return folderContents(project, index).empty();
+    for (const auto& courbe : t.automation)
+        if (!courbe.points.empty()) return false;
+    return t.clips.empty() && t.notes.empty() && t.controlChanges.empty() && t.pitchBends.empty()
+           && t.polyAftertouch.empty() && t.channelPressure.empty() && t.programChanges.empty()
+           && t.miscEvents.empty() && t.audio.empty() && t.takes.empty() && t.versions.empty();
+}
+
+std::vector<std::string> removeEmptyTracks(Project& project) {
+    std::vector<std::string> noms;
+    for (size_t k = project.tracks.size(); k > 0; --k) {
+        if (!trackIsEmpty(project, k - 1)) continue;
+        noms.push_back(project.tracks[k - 1].name);
+        removeTrack(project, k - 1);
+    }
+    std::reverse(noms.begin(), noms.end());
+    return noms;
+}
+
 size_t duplicateTrackWithFolder(Project& project, size_t index) {
     if (index >= project.tracks.size()) return index;
     const size_t taille = 1 + folderContents(project, index).size();

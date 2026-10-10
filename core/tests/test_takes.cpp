@@ -1045,3 +1045,37 @@ VSM_TEST(retirer_une_prise_qui_n_existe_pas_ne_touche_a_rien) {
         VSM_ASSERT_EQ(t.takes.size(), size_t{3});
     }
 }
+
+// D550.3 — RETIRER LES PISTES VIDES : ce qui ne contient rien part, de la dernière à la première ; un dossier vidé
+// par le geste part avec ses membres ; un groupe reste, et le routage vers lui suit son nouveau rang.
+VSM_TEST(removing_empty_tracks_keeps_groups_and_content_and_repairs_routing) {
+    Project p;
+    p.tracks.resize(7);
+    p.tracks[0].name = "Vide 1";                                              // MIDI, rien
+    p.tracks[1].kind = Track::Kind::Folder; p.tracks[1].name = "Dossier vide";
+    p.tracks[2].name = "Membre vide";  p.tracks[2].folderDepth = 1;           // le seul membre du dossier
+    p.tracks[3].name = "Avec CC";      p.tracks[3].controlChanges.push_back({});   // pas une note, mais du MIDI
+    p.tracks[4].kind = Track::Kind::Group; p.tracks[4].name = "Bus";           // jamais retiré
+    p.tracks[5].name = "Avec note";    p.tracks[5].outputGroup = 4;           // route vers le bus
+    p.tracks[5].notes.push_back({});
+    p.tracks[6].name = "Automation";   p.tracks[6].automation.push_back({});   // une courbe SANS point : vide
+    VSM_ASSERT(trackIsEmpty(p, 0));
+    VSM_ASSERT(!trackIsEmpty(p, 1));     // le dossier a encore son membre…
+    VSM_ASSERT(!trackIsEmpty(p, 3));
+    VSM_ASSERT(!trackIsEmpty(p, 4));
+    VSM_ASSERT(trackIsEmpty(p, 6));
+    const auto noms = removeEmptyTracks(p);
+    // … et part avec lui : jugé après ses membres.
+    VSM_ASSERT(noms == (std::vector<std::string>{"Vide 1", "Dossier vide", "Membre vide", "Automation"}));
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(3));
+    VSM_ASSERT_EQ(p.tracks[0].name, std::string("Avec CC"));
+    VSM_ASSERT_EQ(p.tracks[1].name, std::string("Bus"));
+    VSM_ASSERT_EQ(p.tracks[2].outputGroup, 1);   // le routage a suivi le bus de son rang 4 à son rang 1
+    // Une courbe qui a un point fait de la piste une piste pleine.
+    Project q;
+    q.tracks.resize(1);
+    q.tracks[0].automation.push_back({});
+    q.tracks[0].automation[0].points.push_back({});
+    VSM_ASSERT(!trackIsEmpty(q, 0));
+    VSM_ASSERT(removeEmptyTracks(q).empty());
+}

@@ -194,6 +194,20 @@ def cles_de_la_table(langue: str) -> Set[str]:
     return cles
 
 
+def cles_de_kanglais(langue: str) -> Set[str]:
+    """Les clés de `kAnglais` SEULE -- la table que `tr()` installe pour JUCE.
+
+    Pourquoi elle est à part (D550, 11/10/2026). La règle TABLE acceptait pour un appel `tr()` une clé écrite dans
+    `kModeles`, la table des MODÈLES de phrases du moteur, que seul `trPhrase` consulte. Les libellés du VCA et des
+    versions de piste (D532.1 bis, D532.2 bis) y avaient été rangés : la garde les disait traduits, et la photo du
+    menu Piste, en anglais, les montrait en français."""
+    debut = langue.find("kAnglais[] = {")
+    if debut < 0:
+        return cles_de_la_table(langue)
+    fin = langue.find("\n};", debut)
+    return cles_de_la_table(langue[debut:fin if fin > 0 else len(langue)])
+
+
 def doublons_de_la_table(langue: str) -> List[Tuple[str, str, List[int]]]:
     """Les clés écrites DEUX FOIS dans la MÊME table de Langue.cpp.
 
@@ -303,7 +317,9 @@ def fonction_englobante(texte: str, debut: int) -> str:
 def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "stricte",
                suivi: bool = True, d375: bool = True) -> Dict[str, List[str]]:
     assert regle in REGLES, regle
-    cles = cles_de_la_table((racine / "ui" / "Langue.cpp").read_text(encoding="utf-8"))
+    langue = (racine / "ui" / "Langue.cpp").read_text(encoding="utf-8")
+    cles = cles_de_la_table(langue)
+    cles_tr = cles_de_kanglais(langue)   # D550 : ce que `tr()` sait vraiment traduire
     comptes: Dict[str, List[str]] = {c: [] for c in CATEGORIES}
     for fichier in sorted(racine.rglob(motif)):
         if fichier.name == "Langue.cpp" or "tools" in fichier.relative_to(racine).parts:
@@ -325,7 +341,7 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
                 # trSelon(clé, contexte) et trPhrase (modèles) ont leurs propres
                 # tables : seule la clé nue de tr() se vérifie ici.
                 appel = TRADUCTION.search(texte[max(0, debut - 24):debut])
-                if appel is not None and appel.group(1) == "tr" and chaine not in cles:
+                if appel is not None and appel.group(1) == "tr" and chaine not in cles_tr:
                     ligne = texte.count("\n", 0, debut) + 1
                     comptes["SANS_PAIRE"].append(
                         f"{fichier.relative_to(racine)}:{ligne}: {chaine[:100]}")

@@ -1677,3 +1677,49 @@ VSM_TEST(silencing_a_range_zeroes_it_and_leaves_the_curve_outside_exactly_as_it_
     VSM_ASSERT_EQ(r2.refused, size_t(2));
     for (const auto& x : autres) VSM_ASSERT(x.gainEnvelope.empty());
 }
+
+// D550.1 — CHOISIR PAR LA TÊTE ET LES LOCATEURS, les règles de Cubase, bords compris.
+VSM_TEST(selecting_clips_by_range_follows_the_rules_of_cubase_at_the_edges) {
+    const Track t = troisClips();   // A [0, 960) · B [1920, 2880) · C [3840, 4800)
+    using R = RangeRule;
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::Between, 900, 2000) == ClipSelection({1, 2}));   // A et B touchés
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::Between, 960, 1920) == ClipSelection());        // le creux seul
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::Between, 2000, 2000) == ClipSelection());       // plage vide
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::StartsBefore, 1920) == ClipSelection({1}));     // B y COMMENCE
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::StartsBefore, 1921) == ClipSelection({1, 2}));
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::EndsAfter, 2880) == ClipSelection({3}));        // B y FINIT
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::EndsAfter, 2879) == ClipSelection({2, 3}));
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::Contains, 1920) == ClipSelection());            // sur un bord
+    VSM_ASSERT(clipsByRange(t.clips, 100000, R::Contains, 2400) == ClipSelection({2}));
+}
+
+// D550.2 — COUPER AUX LOCATEURS : un clip qui couvre la plage en donne trois, le morceau du milieu est rendu.
+VSM_TEST(splitting_at_the_locators_cuts_twice_and_returns_the_pieces_between_them) {
+    Track t;
+    t.kind = Track::Kind::Midi;
+    t.clips = {clip(1, 0, 3840), clip(2, 4800, 960, 4800)};   // A [0, 3840) couvre la plage ; B après elle
+    uint64_t compteur = 10;
+    const auto r = splitClipsAtRange(t.clips, {1, 2}, 960, 2880, 100000, compteur, enSecondes);
+    VSM_ASSERT_EQ(r.cuts, size_t(2));
+    VSM_ASSERT_EQ(t.clips.size(), size_t(4));
+    VSM_ASSERT_EQ(r.inside.size(), size_t(1));
+    const uint64_t milieu = *r.inside.begin();
+    for (const auto& c : t.clips) {
+        if (c.id != milieu) continue;
+        VSM_ASSERT_EQ(c.startTick, Tick(960));
+        VSM_ASSERT_EQ(c.length, Tick(1920));
+        VSM_ASSERT_EQ(c.sourceStart, Tick(960));   // le milieu rejoue exactement ce que jouait l'original
+    }
+    // Les trois morceaux de A se suivent sans trou ni recouvrement, et B n'a pas bougé.
+    std::vector<std::pair<Tick, Tick>> morceaux;
+    for (const auto& c : t.clips) if (c.startTick < 3840) morceaux.emplace_back(c.startTick, c.startTick + c.length);
+    std::sort(morceaux.begin(), morceaux.end());
+    VSM_ASSERT(morceaux == (std::vector<std::pair<Tick, Tick>>{{0, 960}, {960, 2880}, {2880, 3840}}));
+    VSM_ASSERT_EQ(debutDe(t, 2), Tick(4800));
+    // Un locateur sur le bord d'un clip ne le coupe pas ; un clip entièrement dans la plage est rendu tel quel.
+    Track u = troisClips();
+    uint64_t c2 = 10;
+    const auto r2 = splitClipsAtRange(u.clips, {2}, 1920, 2880, 100000, c2, enSecondes);
+    VSM_ASSERT_EQ(r2.cuts, size_t(0));
+    VSM_ASSERT(r2.inside == ClipSelection({2}));
+}

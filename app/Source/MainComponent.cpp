@@ -4343,6 +4343,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditCutRange, tr(u8"Couper entre les locateurs (toutes les pistes)"),
                          project_.loopEndTick > project_.loopStartTick);
+            // D550.2 : COUPER LES CLIPS AUX LOCATEURS (*Split Loop*) -- les SCINDER, sans rien emporter : à ne
+            // pas confondre avec l'entrée du dessus, qui coupe la plage vers le presse-papiers.
+            menu.addItem(kMenuEditSplitAtLocators, tr(u8"Couper les clips aux locateurs"),
+                         project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditPasteRange, tr(u8"Coller la plage à la tête de lecture (en insérant)"),
                          !plageCopiee_.empty());
             // D543.1 : LA LIGNE D'ACCORDS D'APRÈS LES NOTES de la piste active.
@@ -4370,6 +4374,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                  tr(u8"Tout s\u00e9lectionner dans l'arrangement"), shortcuts_,
                                  vsm::interchange::ShortcutId::EditSelectAll,
                                  !project_.tracks.empty());
+            // D550.1 : CHOISIR PAR LA TÊTE ET LES LOCATEURS (*Edit ▸ Select* de Cubase). « Inverser » existait au
+            // clavier depuis D440, sans entrée de menu : la voici, au même geste.
+            {
+                bool desClips = false;
+                for (const auto& t : project_.tracks) desClips = desClips || !t.clips.empty();
+                juce::PopupMenu choisir;
+                choisir.addItem(kMenuEditSelectNone, tr(u8"Ne rien sélectionner dans l'arrangement"),
+                                arrangement_.hasSelection());
+                vsm::app::ui::ajouterAvecRaccourci(choisir, kMenuEditSelectInvert,
+                                     tr(u8"Inverser la sélection de l'arrangement"), shortcuts_,
+                                     vsm::interchange::ShortcutId::EditInvertSelection, desClips);
+                choisir.addItem(kMenuEditSelectInLoop, tr(u8"Sélectionner entre les locateurs"),
+                                desClips && project_.loopEndTick > project_.loopStartTick);
+                choisir.addItem(kMenuEditSelectStartToCursor, tr(u8"Sélectionner du début à la tête"), desClips);
+                choisir.addItem(kMenuEditSelectCursorToEnd, tr(u8"Sélectionner de la tête à la fin"), desClips);
+                menu.addSubMenu(tr(u8"Sélectionner dans l'arrangement"), choisir, desClips);
+            }
             // D34.5 : DESSINER UNE AUTOMATION PAR UNE FORME. Un balayage de
             // filtre sur seize mesures se posait point par point, et un
             // trémolo régulier ne se posait pas du tout.
@@ -4487,6 +4508,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             menu.addItem(kMenuTrackRemove, tr(u8"Supprimer la piste sélectionnée"),
                          !project_.tracks.empty());
+            // D550.3 : RETIRER LES PISTES VIDES (*Remove Empty Tracks*). Toujours offerte quand il y a des
+            // pistes : sans piste vide, le geste le DIT plutôt que d'être grisé sans raison (D512).
+            menu.addItem(kMenuTrackRemoveEmpty, tr(u8"Retirer les pistes vides"), !project_.tracks.empty());
             menu.addItem(kMenuTrackDuplicate, tr(u8"Dupliquer la piste sélectionnée"),
                          !project_.tracks.empty());
             menu.addItem(kMenuTrackCreateClip, tr(u8"Créer un clip d'une mesure à la tête de lecture"),
@@ -5478,6 +5502,12 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuEditSelectAllClips) { arrangement_.selectAll(); return; }
+    if (menuItemID >= kMenuEditSelectNone && menuItemID <= kMenuEditSelectCursorToEnd) {
+        choisirClipsParRegle(menuItemID);
+        return;
+    }
+    if (menuItemID == kMenuEditSplitAtLocators) { couperClipsAuxLocateurs(); return; }
+    if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
     if (menuItemID == kMenuEditTranscribeClip) { transcribeSelectedClip(); return; }
@@ -10540,6 +10570,97 @@ void MainComponent::locateursSurSection(vsm::midi::Tick tick) {
                                        .replace("%1", juce::String::fromUTF8(section->name.c_str()))
                                        .replace("%2", transportBar_.positionInBarsProvider(section->startTick))
                                        .replace("%3", transportBar_.positionInBarsProvider(section->endTick)));
+}
+
+void MainComponent::choisirClipsParRegle(int menuItemID) {
+    using vsm::sequencer::RangeRule;
+    const auto tete = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+    juce::String quoi;
+    if (menuItemID == kMenuEditSelectNone) {
+        arrangement_.aucunClip();
+        quoi = tr(u8"aucun clip");
+    } else if (menuItemID == kMenuEditSelectInvert) {
+        arrangement_.inverserLaSelection();
+        quoi = tr(u8"la sélection inversée");
+    } else if (menuItemID == kMenuEditSelectInLoop) {
+        if (project_.loopEndTick <= project_.loopStartTick) {
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Locateurs"),
+                         tr(u8"Aucune plage entre les locateurs : posez-les d'abord (Maj sur la règle, ou Transport ▸ "
+                            u8"Début de boucle à la tête et Fin de boucle à la tête)."));
+            return;
+        }
+        arrangement_.choisirParPlage(RangeRule::Between, project_.loopStartTick, project_.loopEndTick);
+        quoi = tr(u8"les clips entre les locateurs");
+    } else if (menuItemID == kMenuEditSelectStartToCursor) {
+        arrangement_.choisirParPlage(RangeRule::StartsBefore, tete);
+        quoi = tr(u8"les clips qui commencent avant la tête");
+    } else {
+        arrangement_.choisirParPlage(RangeRule::EndsAfter, tete);
+        quoi = tr(u8"les clips qui finissent après la tête");
+    }
+    const int n = static_cast<int>(arrangement_.clipsChoisis());
+    std::fputs(("VSM_SELECTION_CLIPS : " + std::to_string(n) + " clip(s) choisi(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Sélection : %1 — %2 clip(s)").replace("%1", quoi).replace("%2", juce::String(n)));
+}
+
+void MainComponent::couperClipsAuxLocateurs() {
+    const auto de = project_.loopStartTick, a = project_.loopEndTick;
+    if (a <= de) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Locateurs"),
+                     tr(u8"Aucune plage entre les locateurs : posez-les d'abord (Maj sur la règle, ou Transport ▸ "
+                        u8"Début de boucle à la tête et Fin de boucle à la tête)."));
+        return;
+    }
+    const auto bilan = arrangement_.couperAuxLocateurs(de, a);
+    std::fputs(("VSM_COUPE_LOCATEURS : " + std::to_string(bilan.coupes) + " coupe(s), "
+                + std::to_string(bilan.morceaux) + " morceau(x) entre les locateurs, "
+                + std::to_string(bilan.verrouilles) + " verrouillé(s)"
+                + (bilan.sansChoix ? ", sans sélection" : "") + "\n").c_str(), stderr);
+    if (bilan.coupes == 0) {
+        // Le verrou, lui, a déjà dit sa part (`onLockRefused`) ; ce qui reste à dire est l'absence de coupe.
+        if (bilan.verrouilles == 0)
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rien à couper"),
+                         bilan.sansChoix
+                             ? tr(u8"Aucun clip n'est traversé par un locateur : un clip ne se coupe pas sur son bord.")
+                             : tr(u8"Aucun des clips choisis n'est traversé par un locateur : un clip ne se coupe pas "
+                                  u8"sur son bord."));
+        return;
+    }
+    // PAS DE `rebuildFromProject()` : la coupe a déjà notifié l'arrangement (`notifyChanged`, comme Ctrl+E), et
+    // tout reconstruire remettait la sélection à zéro -- les morceaux d'entre les locateurs n'étaient plus
+    // choisis, et le Suppr qui suivait ne trouvait rien (vu par le banc, 11/10).
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Couper aux locateurs : %1 coupe(s), %2 morceau(x) entre eux, choisis")
+                                       .replace("%1", juce::String(static_cast<int>(bilan.coupes)))
+                                       .replace("%2", juce::String(static_cast<int>(bilan.morceaux))));
+}
+
+void MainComponent::retirerPistesVides() {
+    std::vector<size_t> vides;
+    for (size_t i = 0; i < project_.tracks.size(); ++i)
+        if (vsm::sequencer::trackIsEmpty(project_, i)) vides.push_back(i);
+    if (vides.empty()) {
+        std::fputs("VSM_PISTES_VIDES : 0\n", stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Retirer les pistes vides"),
+                     tr(u8"Aucune piste vide : chaque piste a un clip, une note, un événement MIDI, un fichier ou "
+                        u8"une automation — et un groupe n'est jamais retiré."));
+        return;
+    }
+    // L'instantané d'annulation après qu'on sait qu'il y a quelque chose à retirer (un pas qui ne défait rien
+    // serait un mensonge de l'historique).
+    beginProjectEdit(juce::String::fromUTF8(u8"Retirer les pistes vides"));
+    const auto noms = vsm::sequencer::removeEmptyTracks(project_);
+    rebuildFromProject();
+    juce::StringArray liste;
+    for (const auto& n : noms) liste.add(juce::String::fromUTF8(n.c_str()));
+    std::fputs((juce::String("VSM_PISTES_VIDES : ") + juce::String(static_cast<int>(noms.size())) + " : "
+                + liste.joinIntoString(" | ") + "\n").toRawUTF8(), stderr);
+    if (!project_.tracks.empty()) trackList_.selectTrackIndex(0);
+    montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Retirer les pistes vides"),
+                 tr(u8"%1 piste(s) vide(s) retirée(s) : %2")
+                     .replace("%1", juce::String(static_cast<int>(noms.size())))
+                     .replace("%2", liste.joinIntoString(", ")));
 }
 
 void MainComponent::editTimeAtLocators(bool inserer) {

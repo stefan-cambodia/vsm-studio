@@ -2202,6 +2202,80 @@ void ArrangementComponent::inverserLaSelection() {
     repaint();
 }
 
+size_t ArrangementComponent::choisirParPlage(vsm::sequencer::RangeRule regle, vsm::midi::Tick a, vsm::midi::Tick b) {
+    if (project_ == nullptr) return 0;
+    selection_.clear();
+    for (const auto& track : project_->tracks)
+        for (uint64_t id : vsm::sequencer::clipsByRange(track.clips, materialEnd(track), regle, a, b))
+            selection_.insert(id);
+    repaint();   // une sélection n'est pas une édition du projet : rien à noter, rien à sauver (comme `selectAll`)
+    return selection_.size();
+}
+
+void ArrangementComponent::aucunClip() {
+    selection_.clear();
+    repaint();
+}
+
+ArrangementComponent::CoupeAuxLocateurs ArrangementComponent::couperAuxLocateurs(vsm::midi::Tick de,
+                                                                                vsm::midi::Tick a) {
+    CoupeAuxLocateurs bilan;
+    if (project_ == nullptr || a <= de) return bilan;
+    bilan.sansChoix = selection_.empty();
+    const auto montage = montageSelection();
+    const uint64_t depart = project_->peekNextClipId();
+    uint64_t compteur = depart;
+    vsm::sequencer::ClipSelection morceaux;
+    // On compte et on calcule sur des COPIES, et l'instantané d'annulation n'est pris que s'il y a coupe
+    // (la précaution de Ctrl+E).
+    std::vector<std::pair<size_t, std::vector<Clip>>> resultats;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        auto& track = project_->tracks[i];
+        const vsm::midi::Tick fin = materialEnd(track);
+        // D21.3 : chaque piste coupe à SON passage par zéro, comme Ctrl+E.
+        const vsm::midi::Tick c1 = cutSnapProvider ? cutSnapProvider(i, de) : de;
+        const vsm::midi::Tick c2 = cutSnapProvider ? cutSnapProvider(i, a) : a;
+        // LA CIBLE : la sélection (élargie aux groupes d'édition) ; sans elle, tout clip qu'un locateur
+        // traverse -- la règle de Cubase pour *Split at Cursor*, appliquée aux deux locateurs.
+        vsm::sequencer::ClipSelection cible;
+        if (bilan.sansChoix) {
+            for (auto t : {c1, c2})
+                for (uint64_t id : vsm::sequencer::clipsByRange(track.clips, fin, vsm::sequencer::RangeRule::Contains, t))
+                    cible.insert(id);
+        } else {
+            for (const auto& c : track.clips)
+                if (montage.count(c.id) > 0) cible.insert(c.id);
+        }
+        if (cible.empty()) continue;
+        // D548.1 : un clip verrouillé qu'un locateur traverse reste entier, et se compte.
+        for (const auto& c : track.clips) {
+            if (cible.count(c.id) == 0 || !(track.locked || c.locked)) continue;
+            const vsm::midi::Tick bout = c.startTick + clipPlayedLength(c, fin);
+            if ((c.startTick < c1 && c1 < bout) || (c.startTick < c2 && c2 < bout)) ++bilan.verrouilles;
+        }
+        if (track.locked) continue;
+        auto essai = track.clips;
+        const auto r = vsm::sequencer::splitClipsAtRange(
+            essai, vsm::sequencer::clipsWithoutLocks(track.clips, cible), c1, c2, fin, compteur,
+            [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+        morceaux.insert(r.inside.begin(), r.inside.end());
+        bilan.coupes += r.cuts;
+        if (r.cuts > 0) resultats.emplace_back(i, std::move(essai));
+    }
+    if (bilan.verrouilles > 0 && onLockRefused) onLockRefused(bilan.verrouilles);
+    if (bilan.coupes == 0) return bilan;
+    if (onEditStarted) onEditStarted(u8"Couper les clips aux locateurs");
+    for (auto& [i, clips] : resultats) project_->tracks[i].clips = std::move(clips);
+    project_->ensureClipIdAbove(compteur - 1);
+    // LES MORCEAUX D'ENTRE LES LOCATEURS RESTENT CHOISIS : le geste suivant -- supprimer, déplacer -- porte sur
+    // la plage, comme les deux moitiés de Ctrl+E restent choisies.
+    selection_ = morceaux;
+    bilan.morceaux = morceaux.size();
+    notifyChanged();
+    repaint();
+    return bilan;
+}
+
 void ArrangementComponent::selectAll() {
     if (project_ == nullptr) return;
     selection_.clear();

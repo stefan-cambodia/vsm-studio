@@ -447,6 +447,21 @@ public:
         // la trace d'une entrée qui ne change pas le morceau.
         // D549.3 : LA DISPOSITION COURANTE, relevée plus tard -- ce que la photo ne dit pas (les tailles, ce qui
         // est masqué).
+        // D550.1 : LA SÉLECTION DE L'ARRANGEMENT, relevée plus tard -- clip par clip, « piste:début-fin » en
+        // ticks, triée : ce que la photo d'un cadre surligné ne dit pas.
+        if (geste.equalsIgnoreCase("relever-selection")) {
+            std::vector<std::string> reperes;   // « piste:début » -- pas `clips` : la garde des clips numérotés lit ce nom
+            const auto& choisis = arrangement_.selectedClipIds();
+            for (size_t i = 0; i < project_.tracks.size(); ++i)
+                for (const auto& c : project_.tracks[i].clips)
+                    if (choisis.count(c.id) > 0)
+                        reperes.push_back(project_.tracks[i].name + ":" + std::to_string(c.startTick));
+            std::sort(reperes.begin(), reperes.end());
+            std::string ligne = "VSM_SELECTION_CLIPS : " + std::to_string(reperes.size()) + " :";
+            for (const auto& r : reperes) ligne += " " + r;
+            std::fputs((ligne + "\n").c_str(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-disposition")) {
             std::fputs((juce::String("VSM_DISPOSITION : courante ")
                         + direDisposition(*decrireDisposition("courante")) + "\n").toRawUTF8(), stderr);
@@ -1100,6 +1115,15 @@ private:
         /// D543.1 : la ligne d'accords d'après les notes de la piste active.
         kMenuEditChordsFromNotes,
         kMenuViewMarkers,   ///< D543.2 : la fenêtre des repères
+        /// D550.1 : choisir des clips par la tête et les locateurs ; D550.2 : couper les clips aux locateurs ;
+        /// D550.3 : retirer les pistes vides.
+        kMenuEditSelectNone,
+        kMenuEditSelectInvert,
+        kMenuEditSelectInLoop,
+        kMenuEditSelectStartToCursor,
+        kMenuEditSelectCursorToEnd,
+        kMenuEditSplitAtLocators,
+        kMenuTrackRemoveEmpty,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1522,6 +1546,12 @@ private:
     /// tempo, mesures, boucle et punch -- et ce qui est à cheval est coupé.
     /// Les locateurs sont la région de boucle, comme dans Cubase.
     void editTimeAtLocators(bool inserer);
+    /// D550.1 : la sélection de l'arrangement par une règle de Cubase (`kMenuEditSelect…`), dite.
+    void choisirClipsParRegle(int menuItemID);
+    /// D550.2 : couper les clips aux locateurs (*Split Loop*), dit.
+    void couperClipsAuxLocateurs();
+    /// D550.3 : retirer les pistes vides (*Remove Empty Tracks*), dit avec leurs noms.
+    void retirerPistesVides();
     /// D535.3 : COPIER (ou couper) ce que toutes les pistes font entendre entre les locateurs,
     /// et le COLLER EN INSÉRANT à la tête. Le presse-papiers de plage est de session.
     void copierPlage(bool couper);

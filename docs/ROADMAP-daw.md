@@ -41666,3 +41666,83 @@ nuances de moitié »).
 
 **L'ORDRE, TRANCHÉ ICI.** D550.1 d'abord (D550.2 en dépend : ses morceaux d'entre les locateurs se choisissent par
 la même règle), puis D550.2, puis D550.3, qui touche à la liste des pistes et se mesure à part.
+
+**CE QUE L'INVENTAIRE A MANQUÉ, ET QUI SE CORRIGE ICI.** « Inverser » existait DANS l'arrangement, au clavier
+(`inverserLaSelection`, Ctrl+I, D440), sans entrée de menu : l'entrée de D550.1 l'appelle au lieu de le réécrire, et
+son raccourci s'affiche.
+
+### Phase D550.1 — choisir des clips par la tête et les locateurs (11/10/2026) — FAITE
+
+*La phase close à 06 h 26, ses bancs rejoués dans la série entière.*
+
+**CE QUI EST TRANCHÉ.** `clipsByRange` (`core/`, `ClipEdit.h`) : `Between` (touche [a, b), même en partie),
+`StartsBefore` (commence avant `a`), `EndsAfter` (finit après `a`), `Contains` (que `a` traverse strictement — les
+bords de `splitClips`). La sélection est REMPLACÉE, pas étendue ; ce n'est pas une édition du projet (rien à noter,
+comme Ctrl+A). Sans locateurs, l'entrée « entre les locateurs » est grisée. Un relevé de banc neuf,
+`relever-selection` (`VSM_SELECTION_CLIPS : N : piste:début …`), dit ce que la photo d'un cadre surligné ne dit pas.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | les quatre règles et leurs bords : B qui COMMENCE sur la tête n'est pas « avant », B qui y FINIT n'est pas « après », un locateur sur un bord ne « traverse » pas ; une plage vide ne choisit rien. **Rouge** sur le mutant `fin >= a` (« finit après » inclusif). core 470 → **473** (avec D550.2 et D550.3) | **oui** |
+| 2 | par l'application, relevé puis geste | `tools/choisir-par-plage.sh`, 7 contrôles : entre les locateurs [2 880, 4 800) → « Bas:1920 Haut:3840 » ; du début à la tête (2 · 3) → A et C, la tête sur le début de C (2 · 1) → A seul ; de la tête à la fin → C, B, D ; inverser → A ; ne rien sélectionner → 0 ; puis Suppr après « entre les locateurs » → il reste A et D ; sans locateurs, « est grisée, rien n'a été fait » | **oui** |
+| 3 | le menu en français et en anglais | photographié et regardé : « Ne rien sélectionner dans l'arrangement » (grisée sans sélection), « Inverser la sélection de l'arrangement · Ctrl+I », les trois « Sélectionner … » ; « Select nothing in the arrangement · Invert the arrangement selection · Select between locators · from start to playhead · from playhead to end » | **oui** |
+
+**ROUGE, ET C'ÉTAIT LE BANC** : (7) cherchait « GRISÉE » au journal, l'application écrit « est grisée, rien n'a été
+fait ». Le banc lit la ligne exacte.
+
+### Phase D550.2 — couper les clips aux locateurs (11/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** `splitClipsAtRange` (`core/`) coupe à `from` puis à `to` — les morceaux nés de la première
+coupe passent par la seconde — et rend les morceaux d'ENTRE les locateurs. Dans l'arrangement, `couperAuxLocateurs`
+suit Ctrl+E pas à pas : la sélection élargie aux groupes d'édition (D18.3), sinon tout clip qu'un locateur traverse
+(la règle de Cubase pour *Split at Cursor*) ; chaque piste à son passage par zéro (D21.3) ; le verrou de piste et de
+clip compté et dit (D548.1) ; l'instantané pris seulement s'il y a coupe. Libellé : « Couper les CLIPS aux
+locateurs », pour ne pas le confondre avec « Couper entre les locateurs (toutes les pistes) », qui emporte la plage
+au presse-papiers.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | un clip qui couvre la plage en donne trois, jointifs ([0, 960) [960, 2 880) [2 880, 3 840)), le milieu rejoue sa fenêtre (`sourceStart` 960), un clip d'une autre piste ne bouge pas ; un locateur sur un bord ne coupe rien. **Rouge** sur le mutant qui oublie de passer les morceaux de la première coupe à la seconde (« 1 != 2 ») | **oui** |
+| 2 | par l'application, le projet relu et l'EXPORT | `tools/couper-aux-locateurs.sh`, 6 contrôles : sans choix, [0, 7 680) → « 0:1920 1920:3840 5760:1920 », le milieu choisi (« 1 : Partie:1920 ») ; Suppr → « 0:1920 5760:1920 » ; **l'export coupé contre l'export d'origine : écart maximal 0** (crête 0,212, 441 000 trames) ; Ctrl+Z → un clip ; verrouillé → rien de coupé, « Montage refusé : 1 clip verrouillé est resté en place » ; locateurs sur les bords → « Rien à couper », 0 pas | **oui** |
+
+**ROUGE, ET C'ÉTAIT L'APPLICATION.** Le premier passage a rendu (1) et (2) rouges : la coupe était faite, mais la
+sélection relevée était VIDE, et le Suppr qui suivait n'avait « AUCUNE commande ». `couperClipsAuxLocateurs`
+appelait `rebuildFromProject()` après la coupe — Ctrl+E ne le fait pas, il s'en remet à `notifyChanged` — et tout
+reconstruire remettait la sélection à zéro. Retiré ; le banc vert ensuite.
+
+### Phase D550.3 — retirer les pistes vides (11/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** `trackIsEmpty` / `removeEmptyTracks` (`core/`, `Project.h`) : une piste MIDI ou audio est vide
+sans clip, note, événement MIDI d'aucune lane (contrôleurs, pitch bend, pressions, programmes, méta conservés),
+fichier audio, point d'automation, prise ni version — ses réglages ne la font pas pleine (Cubase retire de même une
+piste d'instrument sans partie). Un groupe et un VCA ne le sont jamais ; un dossier l'est sans membre. Retrait de la
+DERNIÈRE à la première par `removeTrack` (les routages réparés, D5.3) — un dossier vidé par le geste part avec ses
+membres. Toujours offerte : sans piste vide, la boîte le dit.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | sept pistes : « Vide 1 », un dossier et son seul membre vide, une piste qui n'a QUE des contrôleurs, un groupe, une piste pleine routée vers lui, une courbe d'automation SANS point → retirées : Vide 1, Dossier vide, Membre vide, Automation ; le routage suit le groupe de son rang 4 à son rang 1 ; une courbe avec un point fait une piste pleine. **Rouge** sur le mutant qui juge du début à la fin (le dossier, jugé avant son membre, restait) | **oui** |
+| 2 | par l'application, le projet relu, la boîte et l'export | `tools/pistes-vides.sh`, 5 contrôles : « Pleine→1 \| Bus \| CC seuls » ; « 3 piste(s) vide(s) retirée(s) : Vide, Dossier, Membre vide » ; Ctrl+Z → les six ; **l'export avant et après : écart maximal 0** (crête 0,170) ; sans piste vide, « Aucune piste vide… », 0 pas | **oui** |
+| 3 | le menu en français et en anglais | photographié et regardé : « Retirer les pistes vides » / « Remove empty tracks » | **oui** |
+
+**ROUGE, ET C'ÉTAIT LE BANC** : (5) attendait « Pleine→1 » sur un projet que le banc lui-même avait écrit « →2 »
+(un routage vers un rang qui n'existait pas, recopié du projet à six pistes). Le projet du banc est corrigé.
+
+**LA PHOTO ANGLAISE DU MENU PISTE A TROUVÉ UN DÉFAUT PLUS VIEUX, ET LA GARDE QUI NE LE VOYAIT PAS.** « Ajouter un VCA »
+et « Nouveau VCA pour les pistes choisies (1) » s'affichaient EN FRANÇAIS dans l'interface anglaise, alors que
+`inventaire_langue.py --garde` disait « 0 texte sans traduction ». Les 31 paires de D532.1 bis et D532.2 bis (le VCA,
+les versions de piste) avaient été rangées dans `kModeles` — la table des MODÈLES de phrases du moteur, que seul
+`trPhrase` consulte — et non dans `kAnglais`, la seule que `tr()` installe ; et la règle TABLE de la garde acceptait
+une clé de l'une OU de l'autre. **La garde d'abord** : pour un appel `tr()`, la clé doit être dans `kAnglais`
+(`cles_de_kanglais`) — elle a alors vu **18 textes rouges** (le menu Piste, la console, la liste des pistes) ; **puis
+la table** : les 31 paires déplacées (sans leur préfixe `u8`, `kAnglais` étant en `const char*`), la garde à 0, aucun
+doublon, et la photo anglaise du menu Piste relue : « Add a VCA · New VCA for the chosen tracks (1) ».
+
+**LA SÉRIE DE D550** (lancée à 05 h 35, finie à 06 h 24 — 49 min, aucune veille au journal du noyau) : **78/79**,
+préférences identiques. Le rouge, `decompte-punch.sh` (4) — la tête lue à 15,010 s après un décompte interrompu,
+au lieu du point d'entrée (16,000) —, sur un chemin que D550 ne touche pas ; rejoué seul sur le même binaire :
+**3/3 vert**. Sa cause n'est pas connue ; le relevé qui suit F9 peut précéder le replacement de la tête, et c'est le
+banc qu'il faudra regarder s'il revient.
+
+**LE ONZIÈME AUDIT (D550) EST CLOS** : choisir des clips par la tête et les locateurs, couper les clips aux
+locateurs, retirer les pistes vides — et une garde de langue qui voyait la clé dans la mauvaise table.

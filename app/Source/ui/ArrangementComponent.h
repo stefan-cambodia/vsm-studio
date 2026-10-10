@@ -305,6 +305,21 @@ public:
     /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
     void selectAll();
     void inverserLaSelection();   ///< D440
+    /// D550.1 : la sélection REMPLACÉE par les clips qui répondent à la règle (`clipsByRange`, celles de Cubase) ;
+    /// rend leur nombre. `aucun` vide la sélection.
+    size_t choisirParPlage(vsm::sequencer::RangeRule regle, vsm::midi::Tick a, vsm::midi::Tick b = 0);
+    void aucunClip();
+    size_t clipsChoisis() const { return selection_.size(); }
+    /// D550.2 : COUPER AUX LOCATEURS (*Split Loop*). Les clips choisis -- ou, sans choix, tous ceux qu'un locateur
+    /// traverse -- coupés à `de` et à `a`, chaque piste à SON passage par zéro comme Ctrl+E ; le verrou respecté
+    /// et compté (`onLockRefused`) ; les morceaux d'entre les locateurs restent choisis. Un pas, s'il y a coupe.
+    struct CoupeAuxLocateurs {
+        size_t coupes = 0;
+        size_t morceaux = 0;
+        size_t verrouilles = 0;
+        bool sansChoix = false;
+    };
+    CoupeAuxLocateurs couperAuxLocateurs(vsm::midi::Tick de, vsm::midi::Tick a);
     /// D18.3 : ne choisir QUE le premier clip de la piste `index`. Sert à
     /// photographier ce qu'un groupe d'édition fait -- « tout choisir » ne
     /// prouverait rien, puisque tout serait déjà pris.

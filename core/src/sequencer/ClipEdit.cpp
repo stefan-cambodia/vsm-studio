@@ -431,6 +431,43 @@ TrimToTick fadeClipsTo(std::vector<Clip>& clips, const ClipSelection& selection,
     return rapport;
 }
 
+ClipSelection clipsByRange(const std::vector<Clip>& clips, Tick materialEnd, RangeRule rule, Tick a, Tick b) {
+    ClipSelection choix;
+    for (const auto& c : clips) {
+        const Tick debut = c.startTick, fin = c.startTick + clipPlayedLength(c, materialEnd);
+        bool pris = false;
+        switch (rule) {
+            case RangeRule::Between:      pris = a < b && debut < b && fin > a; break;
+            case RangeRule::StartsBefore: pris = debut < a; break;
+            case RangeRule::EndsAfter:    pris = fin > a; break;
+            case RangeRule::Contains:     pris = debut < a && a < fin; break;
+        }
+        if (pris) choix.insert(c.id);
+    }
+    return choix;
+}
+
+RangeSplit splitClipsAtRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
+                             Tick materialEnd, uint64_t& idCounter,
+                             const std::function<double(Tick)>& ticksToSeconds) {
+    RangeSplit r;
+    if (selection.empty() || to <= from) return r;
+    const uint64_t premier = idCounter;
+    r.cuts = splitClips(clips, selection, from, materialEnd, idCounter, ticksToSeconds);
+    // Les morceaux nés à `from` portent les identifiants que le compteur vient de distribuer : ils passent
+    // par la seconde coupe avec les clips choisis.
+    ClipSelection seconde = selection;
+    for (uint64_t id = premier; id < idCounter; ++id) seconde.insert(id);
+    const uint64_t deuxieme = idCounter;
+    r.cuts += splitClips(clips, seconde, to, materialEnd, idCounter, ticksToSeconds);
+    for (uint64_t id = deuxieme; id < idCounter; ++id) seconde.insert(id);
+    for (const auto& c : clips) {
+        if (seconde.count(c.id) == 0) continue;
+        if (c.startTick >= from && c.startTick + clipPlayedLength(c, materialEnd) <= to) r.inside.insert(c.id);
+    }
+    return r;
+}
+
 SilenceReport silenceClipsRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
                                 Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
     SilenceReport rapport;
