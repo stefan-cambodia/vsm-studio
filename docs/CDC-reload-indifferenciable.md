@@ -2944,3 +2944,29 @@ son sub). **La suite est le timbre du kick**, mesuré sur ses frappes contre cel
 accord et à sa décroissance actuels (`tune` 50, `decay` 0,05, choisis par une recherche sur le stem entier) contre
 le fondamental de 86 Hz et la longue décroissance du § 1. **Rien n'entre de H66** : sa règle (« 1 en échec ») le dit.
 
+## 28. H67 — le kick du TR-808 à l'accord et à la longueur du kick original (écrite AVANT la mesure, 10/10/2026, 18 h 19)
+
+**Ce que le code et le projet disent.** Le kick du TR-808 (`KickVoice`) part à six fois son accord et y chute en
+45 ms, puis s'éteint en `decay` secondes. Le projet de la référence l'a à **`tune` 50 Hz** (plage 30-90) et
+**`decay` 0,05 s — le plus court possible** (plage 0,05-1,5) : réglés par une recherche sur le stem « drums » entier.
+Un kick aussi bref est presque tout entier dans son balayage d'attaque (de 300 Hz vers 50) — le « trop de 150-2 000 Hz
+pour son sub » de H59. L'original (§ 1, § 25.1) : un fondamental à **86 Hz** et une longue décroissance.
+
+**L'HYPOTHÈSE H67** : le kick à l'accord de l'original (86 Hz) et à une décroissance plus longue rapproche le grave des
+pleines de l'original. **Deux variables, mesurées UNE À UNE** : (a) `drum.kick.tune` 50 → 86, `decay` gardé à 0,05 ;
+(b) à `tune` 86, `drum.kick.decay` balayé — 0,15 · 0,30 · 0,45 · 0,80 s — et **publié ENTIER**, pas à son meilleur
+point. Seul le préréglage de la piste « Batterie · kick+kick2 » change ; `build-h42` ; l'outil du § 0 et le grave des
+trois pleines, contre le même témoin.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | (a) l'accord seul : sub et basse des pleines | se rapprochent | s'éloignent de plus de 1 dB |
+| 2 | (b) le meilleur point du balayage : basse des trois pleines | se rapproche d'au moins 3 dB du témoin | moins de 1 dB |
+| 3 | log-mel du meilleur point | ≤ témoin − 0,3 dB | > témoin |
+| 4 | bas-médium du § 0 au meilleur point | ne s'éloigne pas de plus de 1 dB | s'éloigne de plus de 2 dB |
+
+**La règle de décision** : 2, 3 et 4 tenus → la recherche de piste de batterie doit régler le kick sur SES frappes
+(le timbre aux instants du kick, pas sur le stem entier), une hypothèse à elle ; 2 tenu sans 3 → le grave revient,
+le timbre reste loin ; 2 en échec → ni l'accord ni la longueur du TR-808 ne font ce kick, et c'est une autre machine
+(ou une nouvelle) qui est à mesurer.
+
