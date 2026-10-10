@@ -164,7 +164,15 @@ def main() -> int:
     ap.add_argument("reconstruction", type=Path)
     ap.add_argument("--tempo", type=float, default=None, help="BPM, pour des tranches de 4 mesures (sinon 7 s)")
     ap.add_argument("--json", type=Path, default=None)
+    ap.add_argument("--sections", default=None,
+                    help="« 56-84,98-127 » (s) : l'écart par bande de chaque section, sur les tranches dont le "
+                         "CENTRE y tombe — en absolu (mélange − original) et relatif au total de la tranche")
     a = ap.parse_args()
+    sections: list[tuple[float, float]] = []
+    if a.sections:
+        for morceau in a.sections.split(","):
+            debut, fin = morceau.split("-")
+            sections.append((float(debut), float(fin)))
     # UNE COMPARAISON DONT UN CÔTÉ MANQUE REND « RATÉ », PAS « DIFFÉRENT » (règle du dépôt).
     for p in (a.original, a.reconstruction):
         if not p.is_file() or p.stat().st_size == 0:
@@ -219,6 +227,25 @@ def main() -> int:
             "tranches_hors_seuil": int(np.sum(np.abs(e) > SEUILS["bande_db"])), "tranches": int(len(e))}
     res["equilibre"] = par_bande
 
+    # 3 bis. PAR SECTION (11/10/2026, CDC-reload § 29) : H66, H67 et H68 jugent « la basse des
+    # trois pleines » ; le calcul de H66 et H67 était fait à la volée et ne s'est pas retrouvé
+    # (écarts de 0,1 à 0,5 dB entre les définitions essayées). Il vit donc ici, sur les tranches
+    # de l'outil : la médiane, sur les tranches dont le centre tombe dans la section, de l'écart
+    # ABSOLU par bande (ce que H66 et H67 publiaient) et de l'écart RELATIF au total de la tranche
+    # (ce que l'équilibre juge) — un mélange plus fort partout monte l'un et pas l'autre.
+    if sections:
+        centres = (np.arange(k) + 0.5) * tranche
+        res["sections"] = []
+        for debut, fin in sections:
+            dedans = (centres >= debut) & (centres < fin)
+            if not dedans.any():
+                dit.append(f"section {debut:g}-{fin:g} s : aucune tranche n'y a son centre — non mesurée")
+                continue
+            res["sections"].append({
+                "debut_s": debut, "fin_s": fin, "tranches": int(dedans.sum()),
+                "absolu_db": {nom: round(float(np.median((br - bo)[dedans, j])), 2) for j, (_, _, nom) in enumerate(BANDES)},
+                "relatif_db": {nom: round(float(np.median((rel_r - rel_o)[dedans, j])), 2) for j, (_, _, nom) in enumerate(BANDES)}})
+
     # 4. CALAGE DES ATTAQUES BASSES
     res["calage_kick"] = calage_ms(attaques_basses(mo, sro), attaques_basses(mr, sro))
     res["calage_kick"]["decalage_global_ms"] = decalage_global_ms(mo, mr, sro)
@@ -263,6 +290,9 @@ def main() -> int:
     lg = res["largeur_side_sur_mid"]
     print(f"largeur stéréo  : original {lg['original']}, reconstruction {lg['reconstruction']} (énergie side/mid)")
     print(f"log-mel         : écart moyen {res['logmel_db']['ecart_abs_moyen']:.2f} dB, médian {res['logmel_db']['ecart_abs_median']:.2f} dB")
+    for s in res.get("sections", []):
+        print(f"section {s['debut_s']:g}-{s['fin_s']:g} s ({s['tranches']} tranches), mélange − original, absolu · relatif :")
+        print("  " + " ; ".join(f"{nom} {s['absolu_db'][nom]:+.1f} · {s['relatif_db'][nom]:+.1f}" for _, _, nom in BANDES))
     for ligne in dit:
         print("DIT :", ligne)
     if a.json:

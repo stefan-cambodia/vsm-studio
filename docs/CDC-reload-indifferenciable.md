@@ -3042,3 +3042,60 @@ proches de l'original. **Une variable** : `drum.kick.tune` balayé — 40 · 50 
 de piste de batterie doit le faire d'elle-même — une hypothèse à elle, au banc ; 2 tenu sans 1 → le TR-808 n'a pas
 le sub de ce kick à cette longueur, et le « kick+kick2 » (deux sons superposés ?) est à mesurer.
 
+
+### 29.1 Verdict de H68 (11/10/2026, rendus le 10/10 de 23 h 27 à 23 h 30, rejoués à 00 h 33 au bit près, mesurés de 02 h 15 à 02 h 20, écrit à 02 h 22) : à la lettre « 2 tenu sans 1 » — mais le balayage entier dément la conclusion que la règle en tire : à 60 Hz, sub ET basse sont à l'original
+
+**L'instrument d'abord.** Le calcul « basse des trois pleines » de H66 et H67, fait à la volée, ne se retrouvait pas à
+0,1-0,5 dB près ; il vit désormais dans l'outil du § 0 (`--sections 56-84,98-127,218-268` : la médiane, sur les
+tranches de 4 mesures dont le CENTRE tombe dans la section — 4, 4 et 7 —, de l'écart absolu par bande et de l'écart
+relatif au total de la tranche). Contrôlé sur une perturbation connue (40 s de l'original contre lui-même à +6 dB :
+absolu +6,0, relatif 0,0 sur les six bandes ; une section sans tranche est DITE, pas comptée zéro). Le témoin et tout
+le balayage de H67 sont remesurés sous ce même instrument : le § 0 se retrouve au centième (sub −1,33, log-mel 10,09),
+la basse des pleines à 0,5 dB près de ce que H67 publiait (témoin −7,5 · −6,4 · −6,5 contre −7,4 · −6,4 · −6,5 ;
+(a) −15,3 · −14,6 · −14,6 contre −14,8 · −14,1 · −14,1) — aucun verdict de H67 ne change. Le point 86 Hz de H68 est
+**identique au bit près** au point (b) 0,15 s de H67 : le script de H68 reproduit son prédécesseur.
+
+Le balayage ENTIER, `build-h42` (moteur `52532381`), préréglage du kick seul, décroissance 0,15 s (sections : mélange
+− original, dB absolus ; § 0 : médianes relatives) :
+
+| réglage | basse des pleines | sub des pleines | bas-médium des pleines | § 0 sub · basse · bas-médium | niveau (pire) | log-mel |
+|---|---|---|---|---|---|---|
+| témoin (50 Hz, 0,05 s) | −7,5 · −6,4 · −6,5 | −9,7 · −9,0 · −8,9 | +2,7 · +3,4 · +2,9 | −1,33 · −3,15 · +2,72 | −0,57 (5,43) | 10,09 |
+| 40 Hz | +1,2 · +2,4 · +2,3 | +11,2 · +11,4 · +11,4 | +3,4 · +4,1 · +3,6 | +8,49 · +1,51 · +0,39 | +2,55 (6,46) | 9,90 |
+| **50 Hz** | **+1,0 · +1,9 · +1,9** | +8,4 · +8,4 · +8,4 | +4,6 · +5,4 · +5,0 | **+5,57** · +1,01 · +1,15 | +2,54 (6,45) | **9,86** |
+| 60 Hz | +0,9 · +1,7 · +1,7 | +2,2 · +2,3 · +2,3 | +5,4 · +6,2 · +5,7 | +0,15 · +0,56 · +1,86 | +2,54 (6,44) | 9,89 |
+| 70 Hz | +0,4 · +1,0 · +1,0 | −11,3 · −9,2 · −9,3 | +5,9 · +6,7 · +6,3 | −2,80 · −0,24 · +2,34 | +2,54 (6,44) | 9,88 |
+| 86 Hz (= H67 b, 0,15 s) | −0,9 · −0,5 · −0,4 | −17,1 · −15,2 · −15,5 | +6,4 · +7,2 · +6,8 | −6,36 · −2,08 · +2,77 | +2,57 (6,47) | 9,96 |
+
+Le meilleur point par le log-mel, comme la règle le veut : **50 Hz** (9,86).
+
+| # | verdict à 50 Hz |
+|---|---|
+| 1 | **échec** : sub du § 0 à +5,57 dB, au-delà des 3 dB |
+| 2 | **tenu** : basse des pleines +1,0 · +1,9 · +1,9, dans les ± 2 dB — de 0,1 dB |
+| 3 | **entre les deux** : 9,86, sous le témoin (10,09) mais au-dessus de la marge (9,79) |
+
+**La règle, à la lettre** : « 2 tenu sans 1 → le TR-808 n'a pas le sub de ce kick à cette longueur, et le
+“kick+kick2” est à mesurer ». Rien n'entre (3 n'est tenu nulle part : 9,86 au mieux).
+
+**CE QUE LE BALAYAGE ENTIER DIT, ET QUI DÉMENT LA CONCLUSION DE LA RÈGLE.** À **60 Hz**, le sub du § 0 est à
+**+0,15 dB** et la basse des pleines à +0,9 · +1,7 · +1,7 : les attendus 1 et 2 y sont tenus ENSEMBLE. Le TR-808 A
+donc le sub de ce kick à cette longueur. C'est le CHOIX du point qui l'a écarté : **le log-mel ne départage pas
+l'accord** — 9,86 à 9,90 de 40 à 70 Hz, 0,04 dB d'étendue, quand le sub du § 0 y parcourt 11,3 dB. Un « meilleur
+point » choisi par une mesure plate est choisi au hasard ; la leçon, pour toute règle de ce chantier : avant de
+désigner un point par une mesure, montrer que cette mesure VARIE sur le balayage plus que d'un écart qu'on sache
+interpréter. La seconde moitié de la branche est faite aussi, et ne trouve rien : la piste « kick+kick2 » ne porte
+qu'**une** hauteur (MIDI 36, 555 frappes) ; son nom est celui de deux classes de la transcription fondues en une
+piste, pas deux sons superposés dans le projet. Si le kick de l'ORIGINAL est fait de deux couches, le projet ne
+permet pas de le lire.
+
+**Ce que le balayage montre de plus.** (a) Le sub se règle par l'accord, avec un bord franc : dans les pleines, de
++2,2 dB à 60 Hz à −11,3 à 70 Hz — le fondamental du kick quitte la bande 20-60 Hz. (b) À 0,15 s, quel que soit
+l'accord, le mélange est **3,1 dB plus fort** au total que le témoin (niveau −0,57 → +2,54 ; pire tranche 5,43 →
+6,45), et le surplus est dans le **bas-médium** des pleines (+2,7-3,4 → +5,4-6,2 dB à 60 Hz) ; les aigus relatifs
+du § 0 en perdent 1,8 dB (−6,94 → −8,72) sans que rien n'ait changé au-dessus de 6 kHz (−8,9 en absolu, avant comme
+après) — la mesure relative suit le total. (c) Le code du kick (`audio/plugins/tr808/TR808Synth.h`, `KickVoice`)
+dit d'où peut venir ce bas-médium, et aucune de ces sources n'est un paramètre : une SATURATION fixe
+(`tanh(sinus × 1,8)`, qui ajoute les harmoniques impaires — 180 et 300 Hz pour un kick à 60 Hz) et un BALAYAGE
+d'attaque fixe (départ à six fois l'accord, chute en 45 ms — de 360 Hz vers 60). La suite nommée : dire LAQUELLE
+des deux porte le surplus de 150-500 Hz, ce qui demande d'abord de pouvoir les régler.
