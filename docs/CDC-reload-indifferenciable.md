@@ -3025,3 +3025,20 @@ fournissait — le kick de l'original a donc du sub SOUS son fondamental de 86 H
 n'a pas. La suite nommée : un balayage de l'accord à longueur 0,15 s, et le kick « kick+kick2 » qui est peut-être
 DEUX sons superposés (le nom de la piste le dit) — à mesurer avant d'en faire une hypothèse.
 
+## 29. H68 — l'accord du kick, à la longueur que H67 a trouvée (écrite AVANT la mesure, 10/10/2026, 23 h 27)
+
+**L'hypothèse** : à `decay` 0,15 s (où la basse des pleines est à moins d'un décibel, H67), un accord plus bas que
+86 Hz rend le sub que 86 Hz retirait, sans perdre la basse : le kick du TR-808 trouve un réglage où sub ET basse sont
+proches de l'original. **Une variable** : `drum.kick.tune` balayé — 40 · 50 · 60 · 70 · 86 Hz —, `decay` 0,15 s,
+**publié ENTIER** ; le préréglage du kick seul ; `build-h42` ; outil du § 0 et basse des trois pleines, même témoin.
+
+| # | mesure (au meilleur point du balayage, choisi par le log-mel) | réussite | échec |
+|---|---|---|---|
+| 1 | sub du § 0 | \|écart\| ≤ celui du témoin (1,33) | au-delà de 3 dB |
+| 2 | basse des trois pleines | à ± 2 dB de l'original | au-delà de 4 dB |
+| 3 | log-mel | ≤ témoin − 0,3 dB (9,79) | > témoin |
+
+**La règle de décision** : 1, 2, 3 tenus → le kick se règle sur SES frappes (l'accord et la longueur), et la recherche
+de piste de batterie doit le faire d'elle-même — une hypothèse à elle, au banc ; 2 tenu sans 1 → le TR-808 n'a pas
+le sub de ce kick à cette longueur, et le « kick+kick2 » (deux sons superposés ?) est à mesurer.
+
