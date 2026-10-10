@@ -451,6 +451,31 @@ n'est plus le projet que la chaîne aurait réglé à ce diapason ; c'est exacte
 course 2 (`--diapason auto`, en cours depuis 08 h 32) mesure, et c'est elle qui dira si le
 diapason doit entrer par défaut. **H42 reste éteinte par défaut** jusque-là.
 
+### 4.4 La course 2 morte le 02/10 à 19 h 05, à l'étape 4/5 — reprise le 10/10 à 17 h 30, telle quelle
+
+**CE QUE LE DISQUE DIT, relu le 10/10 à 17 h 30.** `reload-course2.log` s'arrête au milieu du verdict
+du mélange (« other · voix 2 : ATTENTION — le morceau est MEILLEUR sans cette piste… »), sans ligne
+`FIN` ; le dossier de sortie n'a que ses `samples/` (aucun `project.json`, aucun `rapport.json`). La
+course avait déjà été relancée une fois le 02/10 (deux « [1/5] » au journal). Du 02/10 au 10/10, le
+travail est passé au DAW (D525 à D549) ; personne ne l'a relancée — et ce document ne le disait pas.
+
+**LA REPRISE, rejouable et écrite avant de lancer** (la règle des extinctions, `CLAUDE.md`) : la MÊME
+chaîne — l'arbre `vsm-studio-reload`, branche `reload-chaine` à `f0136266` (H58), propre —, le MÊME
+`build-h42/tools/vsm-render` (30/09, 12 h 45, inchangé : son empreinte est dans la clé de
+`cache/mesures/`, 109 864 mesures rangées), les MÊMES stems, les mêmes options (`--diapason auto
+--seuil-attaque-par-stem --rendus-paralleles 6`). Ce qu'elle avait payé se relit (§ 10.5 : un mélange
+entier rejoué en 8 s) ; seul ce qu'elle n'avait pas atteint se paie. **La branche ne porte ni H52 (la
+voix dans le verdict) ni H46** : c'est voulu — la course 2 est la seconde moitié d'un A/B contre la
+course de RÉFÉRENCE, qui ne les portait pas non plus ; leur ajouter H52 ferait deux variables.
+`reconstruction/travail/reload-course2-reprise.sh`, lancé par `setsid nohup`, la veille bloquée par
+`tools/garder-batterie.sh --pid` (une campagne : la veille ne se bloque que pour elle, et le poste est
+endormi à 10 % quoi qu'il arrive). Batterie à 54 % au départ, en décharge.
+
+**CE QU'ELLE DOIT DIRE, écrit au § 4 et au § 7 avant la course, et rappelé ici sans y toucher** : si le
+diapason estimé (H42) doit entrer par défaut — l'écart de diapason sous 5 cents SANS dégrader le
+log-mel au-delà de sa marge, sur un projet RÉGLÉ à ce diapason et non transposé après coup —, et ce que
+le seuil d'attaque par stem (H45) fait au morceau entier.
+
 ---
 
 ## 5. H43 — un son tenu que la transcription hache : réunir les notes qui se touchent SANS nouvelle attaque (écrite AVANT la mesure, 30/09/2026)
