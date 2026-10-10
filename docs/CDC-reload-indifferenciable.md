@@ -3462,3 +3462,19 @@ une hypothèse à elle (la longueur et le niveau des pièces de batterie à leur
 densité revient sans que le log-mel suive : ce qu'il voit est ailleurs (le 2-4 kHz, la caisse claire ?) ; 1 en échec
 → le charleston n'est pas ce qui manque — un son continu de l'original (une boucle, une réverbération) que la
 transcription ne donne pas, à chercher sur la frappe moyenne et entre les frappes.
+
+### 33.1 L'instrument de H72, AVANT toute mesure de l'original (11/10/2026, 03 h 07)
+
+`analyse/mesure_h72.py` et `analyse/tests/test_mesure_h72.py` (4 tests). **Ce que H69 ne pouvait pas faire ici** : le
+charleston du TR-808 laisse tourner ses six oscillateurs d'une frappe à l'autre (`HatVoice` ne remet pas leurs
+phases à zéro), et un charleston d'échantillon est surtout du bruit : moyennées en ONDE, ses frappes s'annuleraient.
+L'instrument moyenne donc leur ÉNERGIE — l'enveloppe de puissance au-dessus de 4 kHz, lissée sur 2 ms, chaque frappe
+recalée à ± 20 ms sur la moyenne par corrélation —, compare les formes en écart-type de leur différence (un
+décalage constant, c'est-à-dire un niveau, n'y compte plus : le défaut du § 31.2), et relève la DENSITÉ par les
+centiles des niveaux trame à trame. Sur une scène connue (des charlestons de bruit, une graine par frappe, à 0,12 s,
+sur une grille de double croche, instants faux de ± 6 ms, un fond à 80 Hz) : la décroissance choisie est 0,12 s parmi
+cinq, le facteur de niveau ×2 à 0,1 près, la constante relevée sur la forme 0,12 s à 10 % près ; un charleston bref
+contre un long creuse le 10ᵉ centile de plus de 15 dB. **Vu rouge** : la bande descendue à 20 Hz (le fond grave entre
+dans l'enveloppe) fait choisir 0,20 s. **Resté vert, et pourquoi** : une fenêtre de forme réduite à 10 ms — sur un
+signal sans bruit, dix millisecondes de pente suffisent à séparer les cinq décroissances ; ce n'est pas un défaut,
+mais ce test ne garde pas la longueur de la fenêtre.
