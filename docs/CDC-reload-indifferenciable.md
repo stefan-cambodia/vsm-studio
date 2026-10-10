@@ -2875,3 +2875,40 @@ de quatre fois trop forte (−11,2 dB)** dans la reconstruction de référence ;
 sache ce qu'une frappe contient — la transcription ne le dit pas —, et le grave des pleines, que ni H59 ni H65 ne
 touchent (le kick et la basse, § 21).
 
+## 27. Le grave des pleines est la BASSE, calée en bloc avec le pad — et H66, la voix de basse à son niveau (relevé à 18 h 15, H66 écrite AVANT la mesure, 10/10/2026, 18 h 16)
+
+**LE RELEVÉ.** Le kick n'en est pas la cause : sur les 77 kicks de la pleine 56-84 s, le stem a son fondamental à
+86,1 Hz et le kick reconstruit à 80,7 Hz, et leurs enveloppes sous 150 Hz décroissent de même sur les 0,45 s entre
+deux temps. La basse, elle (« other · voix 4 », un orgue à roue phonique, rendue SEULE par `build-h42`), contre le
+stem « other », par section, sous 500 Hz (dB, même échelle) :
+
+| section | stem other : sub · basse · bas-médium | voix 4 rendue : sub · basse · bas-médium |
+|---|---|---|
+| intro 0-14 s | −0,3 · −4,0 · 2,0 (silence) | **60,8 · 60,2** · 52,9 |
+| pad 14-42 s | 54,4 · 52,9 · 93,4 | 46,4 · **61,8** · 70,3 |
+| pleine 56-84 s | 56,8 · **71,2** · 89,8 | 43,5 · **59,2** · 66,8 |
+| pleine 98-127 s | 63,6 · **76,6** · 87,4 | 56,8 · **64,6** · 68,4 |
+| long pont 127-162 s | 57,3 · 62,4 · 95,1 | 48,3 · 62,9 · 71,7 |
+| pleine 218-268 s | 67,2 · **78,6** · 88,3 | 63,8 · **70,4** · 72,9 |
+
+Dans les pleines, la voix de basse est **8 à 12 dB sous le stem** entre 60 et 150 Hz. Ailleurs, elle joue là où le stem
+n'a pas de basse (l'intro : soixante décibels sur un silence ; le pad : 9 dB au-dessus) — des notes de résidu, une
+autre affaire. Les quatre voix d'« other » ont le MÊME volume (0,104) : le calage en bloc, encore — trois voix de pad
+au-dessus de 233 Hz (MIDI 58 et plus) et une basse en dessous, qui y perd.
+
+**L'HYPOTHÈSE H66** : le volume de « other · voix 4 » porté au rapport des énergies, sur le morceau entier, du stem
+« other » et de son rendu solo SOUS 150 Hz — la bande où, dans le stem, elle est seule (les voix de pad commencent à
+233 Hz) — rapproche le grave du morceau de l'original. **Ce qu'elle ne fait pas, dit avant** : les notes de résidu
+de l'intro et du pad montent avec elle — un niveau unique ne peut pas corriger une voix qui joue où elle ne devrait
+pas ; si elles l'emportent, c'est elles qu'il faudra attaquer.
+
+**LA MESURE, une variable** (le volume de la piste 3), `build-h42`, l'outil du § 0, le témoin de toujours ; et, sur
+les sections, la basse du mélange contre l'original.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | basse (60-150 Hz) des trois pleines, mélange contre original | se rapproche d'au moins 3 dB | moins de 1 dB |
+| 2 | sub et basse du § 0 (médianes) | se rapprochent toutes deux | l'une s'éloigne de plus de 1 dB |
+| 3 | log-mel | ≤ témoin | > témoin + 0,3 dB |
+| 4 | basse de l'intro et du pad, mélange contre original | — (un relevé : de combien les notes de résidu montent) | — |
+
