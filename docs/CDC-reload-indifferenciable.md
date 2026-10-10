@@ -2312,3 +2312,55 @@ de ces quatre n'a donné un chiffre sur lequel le rack puisse être réglé.
 sous l'effet que H51 a trouvé (deux étages en série, réglages S) et sous le chorus du
 rack tel qu'il est — et juger contre l'original au § 0, sur les extraits jamais
 entendus par cette lignée, et à l'oreille.
+
+---
+
+## 19. H57 — le pad rendu par le MOTEUR : des sinus sous les effets du rack, jugés sur des extraits jamais entendus (écrite AVANT la mesure, 10/10/2026, 17 h 34)
+
+**Pourquoi maintenant, et ce que le § 18.2 avait décidé.** La règle d'arrêt du § 18 s'est appliquée :
+on cesse d'empiler des instruments de STRUCTURE sur ce pad, et l'on rend le pad par le moteur — des
+sinus, sous l'effet que H51 a trouvé et sous le rack tel qu'il est —, jugé contre l'original. La course 2
+(§ 4.4) tourne : ce qui suit RENDRE peu (quelques secondes de son, quelques rendus), et passe sous
+`nice` ; ce qui rendrait beaucoup attend sa fin.
+
+**CE QUE LE RACK PEUT, lu dans le code avant d'écrire l'hypothèse.** H51 a trouvé deux étages de retard
+modulé en série : `f1` (base 1,81 ms, profondeur 1,68 ms, dosage 0,47) puis `f2` (base 6,81 ms,
+profondeur 1,10 ms, dosage 0,41), deux lectures en quadrature. Le **flanger** du rack retarde de
+`1 ms + lfo · 6 ms · profondeur`, `lfo` ∈ [0, 1], gauche et droite en QUADRATURE — la forme de `f1`,
+mais sa base est fixée à 1 ms : un centre à 1,81 ms et une excursion de 1,68 ms (de 0,13 à 3,49 ms) ne
+s'y atteignent pas. Le **chorus** a sa base fixée à 8 ms (l'étage `f2` : 6,81). **H57 se mesure donc en
+deux temps** : H57a avec le rack TEL QU'IL EST, à ses réglages les plus proches ; H57b — un retard de
+base réglable dans le moteur — seulement si H57a échoue POUR CETTE RAISON (son attendu 4).
+
+**L'HYPOTHÈSE H57a.** Des notes tenues (l'oracle de H47), jouées par une machine SINUSOÏDALE du parc
+(`vsm.additive`, un seul partiel — mesurée « propre » par H51), sous le flanger du rack (réinjection 0,
+cadence `f1`, profondeur et dosage au plus près de l'étage `f1`) puis sous son chorus (cadence `f2`,
+profondeur 1,10 ms, dosage 0,41), approchent le stem « other » de l'original plus près que les mêmes
+sinus NUS, et plus près que la meilleure machine du parc de H47 — sur des extraits que la lignée n'a
+JAMAIS mesurés : **84 à 92 s, 154 à 162 s, 211 à 218 s** (deux ponts et la fin du long pont ; 7 à 8 s
+chacun, un accord, la basse absente — vérifié sur l'énergie sous 120 Hz avant la mesure, et dit).
+
+**LES MESURES**, celles de H47 (§ 9) sans en changer une, contre l'extrait du stem « other », chaque
+rendu calé à son niveau : le log-mel des cases qui portent, l'équilibre par bande, la tenue ; PLUS la
+**largeur** (side/mid) — le § 2.4 a trouvé la reconstruction MONO (0,0001) là où l'original est à
+0,048 et son stem « other » à 0,052 : le flanger en quadrature est la première pièce du parc qui donne
+une largeur à une note tenue. Bornes : `B_égal`, `B_mesuré` (§ 9).
+
+**ATTENDUS, sur chacun des trois extraits :**
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | l'instrument : `B_mesuré` ≤ `B_égal` au log-mel ; l'extrait contre lui-même = 0 | tenu | l'instrument est faux : rien ne se lit |
+| 2 | log-mel : sinus + rack contre sinus NUS | au moins 1,0 dB de mieux | pas mieux : le rack n'apporte rien au timbre |
+| 3 | log-mel : sinus + rack contre la meilleure machine de H47 sur le MÊME extrait | mieux | pire de plus de 1 dB |
+| 4 | log-mel : sinus + rack contre `B_mesuré` | à 2 dB ou moins | à plus de 3 dB — et si le flanger plafonne à sa base de 1 ms (son réglage optimal collé à la borne), c'est H57b |
+| 5 | la largeur du rendu (side/mid) | à ± 30 % de celle de l'extrait | sous 0,01 : le rack ne donne pas de largeur |
+| 6 | la tenue | ≥ −1 dB (des sinus tenus) | — (un contrôle) |
+
+**La règle de décision, écrite avant** : 2, 3 et 5 tenus sur deux extraits au moins → le pad se rend par
+« sinus + rack », et la chaîne apprend à le choisir (une hypothèse à elle) ; 2 tenu sans 3 → le rack aide,
+une machine du parc fait mieux, rien n'entre ; 2 en échec partout → l'effet de H51 n'est pas celui du
+rack, et H57b ne s'ouvre que si l'attendu 4 accuse la base de 1 ms. **Et l'oreille** : les trois extraits,
+original, sinus nus, sinus + rack, écrits en `.wav` côte à côte pour l'utilisateur — la chaîne n'écoute pas
+(§ 0).
+
