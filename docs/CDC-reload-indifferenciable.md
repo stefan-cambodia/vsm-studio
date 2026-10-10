@@ -3636,3 +3636,16 @@ une course complète de « Reload » avant de devenir un défaut ; 3 et 4 tenus,
 spectre sans battre les corrections partielles : la résolution conjointe n'apporte rien de plus que H65 et H72
 chacun de son côté, et c'est dit ; 4 en échec → la résolution conjointe déplace de l'énergie entre pièces au prix du
 grave : l'hypothèse d'additivité ne tient pas.
+
+### 35.1 L'instrument de H74, AVANT toute mesure (11/10/2026, 04 h 39)
+
+`analyse/mesure_h74.py` et `analyse/tests/test_mesure_h74.py` (3 tests). Trois pièces synthétiques de gains connus
+(×1 · ×2 · ×0,5) qui frappent souvent ensemble, rendues chacune au gain 1 avec d'autres graines de bruit : les gains
+retrouvés à 1 % près (0,998 · 1,984 · 0,498), résidu < 0,05, aucune borne. **Deux corrections du TEST, dites.**
+(1) L'attendu des bandes principales, écrit de tête (« 30-150 · 500-2 000 · 4-8 kHz »), était faux — la réplique du
+kick dépense plus de la moitié de son énergie au-dessus de 150 Hz (H69), et un bruit blanc remplit d'abord la bande
+la plus large en hertz : 150-500 · 2-4 kHz · 8-11 kHz, que l'instrument lisait. (2) **Le test ne gardait pas ce qui
+fait la méthode** : sur sa scène, un solveur SANS termes croisés (chaque pièce seule contre le stem, H65 en somme)
+passait aussi. Une scène où la caisse est LARGE BANDE et frappe avec le charleston le sépare : pièce par pièce, le
+charleston est lu ×1,48 pour ×0,5 ; résolu ensemble, ×0,52. Ce test-là est vu rouge sur le mutant. Une borne
+atteinte (×8 demandé) est ramenée à ×4 et dite.
