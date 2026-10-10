@@ -116,6 +116,18 @@ verdict() { if [ "$2" = 1 ]; then printf '  OK   %s\n' "$1"; else printf '  RAT�
 echo "=== D545.1 : la courbe de gain d'un clip audio ==="
 course import "$brouillon/base" VSM_DELAI=2500 VSM_IMPORT_AUDIO="$brouillon/la1k.wav" \
     VSM_GESTE_APRES="1500:enregistrer:$brouillon/base"
+# LE PROJET DE DÉPART SE VÉRIFIE (10/10) : une fois sur la série du jour, l'import n'a laissé AUCUN clip, et le
+# banc a conclu sur la courbe (« deux points… » raté) au lieu de l'import — le journal de l'import n'était pas
+# relayé. Il l'est, et un départ sans clip audio arrête tout en le disant.
+grep -h "^Import audio" "$brouillon/import.txt" | sed 's/^/       /'
+if ! python3 -c "
+import json, sys
+p = json.load(open(sys.argv[1]))
+sys.exit(0 if any(t.get('kind') == 'audio' and t.get('clips') for t in p['tracks']) else 1)" "$brouillon/base/project.json" 2>/dev/null; then
+    echo "  RATÉ l'import : le projet de départ n'a pas de clip audio — rien d'autre n'est mesuré"
+    grep -E "Import audio|VSM_IMPORT|VSM_ENREGISTRER|erreur|Erreur" "$brouillon/import.txt" | head -5 | sed 's/^/        journal (import) : /'
+    exit 1
+fi
 geste p1 base 1.3 "Ajouter un point de gain ici"
 geste p2 p1 2.3 "Ajouter un point de gain ici"
 geste courbe p2 2.3 "Gain de ce point…" VSM_OPTIONS="gain=-inf"

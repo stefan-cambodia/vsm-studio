@@ -1631,3 +1631,49 @@ VSM_TEST(trimming_the_end_to_the_playhead_pulls_the_chain_only_in_chain_mode) {
     VSM_ASSERT_EQ(trimClipsEndTo(w, {2}, 2400, 100000, false, false).trimmed, size_t(0));
     VSM_ASSERT_EQ(w.clips[1].length, Tick(960));
 }
+
+// D549.1 — FONDU À LA TÊTE : seuls les clips qui contiennent la tête reçoivent le fondu, jusqu'à elle.
+VSM_TEST(a_fade_to_the_playhead_ends_or_starts_there_and_only_in_the_clips_that_contain_it) {
+    Track t = troisClips();   // A [0, 960) · B [1920, 2880) · C [3840, 4800), 120 BPM : 960 ticks = 1 s
+    auto r = fadeClipsTo(t.clips, {1, 2, 3}, 2400, false, 100000, enSecondes);
+    VSM_ASSERT_EQ(r.trimmed, size_t(1));
+    VSM_ASSERT_EQ(r.outside, size_t(2));
+    VSM_ASSERT_NEAR(t.clips[1].fadeInSeconds, enSecondes(2400) - enSecondes(1920), 1e-9);
+    VSM_ASSERT_NEAR(t.clips[0].fadeInSeconds, 0.0, 1e-12);   // A ne contient pas la tête
+    r = fadeClipsTo(t.clips, {2}, 2400, true, 100000, enSecondes);
+    VSM_ASSERT_NEAR(t.clips[1].fadeOutSeconds, enSecondes(2880) - enSecondes(2400), 1e-9);
+    // Une tête posée sur le début du clip ne pose rien : un fondu de longueur nulle n'est pas un geste.
+    VSM_ASSERT_EQ(fadeClipsTo(t.clips, {3}, 3840, false, 100000, enSecondes).trimmed, size_t(0));
+}
+
+// D549.2 — RENDRE SILENCIEUSE UNE PLAGE, par la courbe de gain : zéro dedans, la courbe d'avant dehors, exactement.
+VSM_TEST(silencing_a_range_zeroes_it_and_leaves_the_curve_outside_exactly_as_it_was) {
+    auto t2s = [](Tick t) { return static_cast<double>(t) / 960.0; };   // 960 ticks = 1 s
+    Clip c = clip(1, 0, 3840);       // 4 s
+    c.sourceStartSeconds = 0.0;
+    c.gainEnvelope = {{0.5, 0.8f}, {2.0, 0.2f}, {3.5, 1.0f}};   // une courbe d'avant, un point DANS la plage
+    const Clip avant = c;
+    std::vector<Clip> clips{c};
+    const auto r = silenceClipsRange(clips, {1}, 960, 2880, 100000, t2s);   // [1 s, 3 s)
+    VSM_ASSERT_EQ(r.silenced, size_t(1));
+    const Clip& apres = clips.front();
+    for (double s : {1.01, 1.5, 2.0, 2.5, 2.99}) VSM_ASSERT_NEAR(clipEnvelopeGainAt(apres, s), 0.0, 1e-6);
+    // LA FORME DE LA COURBE, pas seulement ses valeurs aux instants lus : un point d'avant resté dans la plage
+    // la DÉSORDONNE, et la recherche dichotomique peut ne pas le voir aux instants choisis (vu le 10/10 : la
+    // garde restait verte avec le point de 2,0 s gardé).
+    for (size_t i = 1; i < apres.gainEnvelope.size(); ++i)
+        VSM_ASSERT(apres.gainEnvelope[i - 1].sourceSeconds < apres.gainEnvelope[i].sourceSeconds);
+    for (const auto& p : apres.gainEnvelope)
+        VSM_ASSERT(p.sourceSeconds <= 1.0051 || p.sourceSeconds >= 2.9949 || p.gain == 0.0f);
+    for (double s : {0.0, 0.3, 0.5, 0.75, 1.0, 3.0, 3.2, 3.5, 3.9})
+        VSM_ASSERT_NEAR(clipEnvelopeGainAt(apres, s), clipEnvelopeGainAt(avant, s), 1e-6);
+    // Les clips hors de la plage, à l'envers, en boucle : rien, et compté.
+    std::vector<Clip> autres{clip(2, 7680, 960), clip(3, 0, 1920), clip(4, 0, 3840)};
+    autres[1].reversed = true;
+    autres[2].sourceLength = 960;   // joué 4 s, fenêtre 1 s : il boucle
+    const auto r2 = silenceClipsRange(autres, {2, 3, 4}, 960, 2880, 100000, t2s);
+    VSM_ASSERT_EQ(r2.silenced, size_t(0));
+    VSM_ASSERT_EQ(r2.outside, size_t(1));
+    VSM_ASSERT_EQ(r2.refused, size_t(2));
+    for (const auto& x : autres) VSM_ASSERT(x.gainEnvelope.empty());
+}

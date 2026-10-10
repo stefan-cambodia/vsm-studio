@@ -445,6 +445,13 @@ public:
         // D514 : la LIGNE D'ÉTAT du piano roll, relevée plus tard. C'est là qu'un
         // geste sans effet dit « rien à changer » (D511) : l'audit des menus y lit
         // la trace d'une entrée qui ne change pas le morceau.
+        // D549.3 : LA DISPOSITION COURANTE, relevée plus tard -- ce que la photo ne dit pas (les tailles, ce qui
+        // est masqué).
+        if (geste.equalsIgnoreCase("relever-disposition")) {
+            std::fputs((juce::String("VSM_DISPOSITION : courante ")
+                        + direDisposition(*decrireDisposition("courante")) + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D546.2 : LA PHASE D'ENREGISTREMENT ET LA FIN DU DÉCOMPTE que le moteur
         // a reçue, relevées plus tard -- le décompte d'un punch dure deux secondes
         // à 120 BPM, et c'est pendant lui qu'il faut lire.
@@ -698,6 +705,18 @@ public:
     bool listePourCapture(const juce::String& nom, const juce::String& entree);   ///< D495
     bool clicPourCapture(const juce::String& description);   ///< D435
     bool glisserPourCapture(const juce::String& description);   ///< D520
+    // --- D549.3 : les dispositions nommées -------------------------------------------------------------
+    /// La disposition COURANTE, décrite (nom compris) : fenêtre unique, centre, volets montrés, tailles, et la
+    /// place des cinq panneaux flottants.
+    std::unique_ptr<juce::XmlElement> decrireDisposition(const juce::String& nom) const;
+    /// Les dispositions rangées aux préférences (`dispositions`), jamais nulles.
+    std::unique_ptr<juce::XmlElement> lireDispositions() const;
+    void ecrireDispositions(const juce::XmlElement& dispositions);
+    void enregistrerDisposition();
+    void rappelerDisposition(int indice);
+    void retirerDisposition(int indice);
+    /// La disposition dite en une ligne (journal et relevé de banc).
+    juce::String direDisposition(const juce::XmlElement& d) const;
     bool molettePourCapture(const juce::String& description);   ///< D525
     bool glisserTenirPourCapture(const juce::String& description);   ///< D527
     bool deposerTenirPourCapture(const juce::String& description);   ///< D530
@@ -1041,6 +1060,13 @@ private:
         // écrites à la main qu'il faudrait retoucher en ajoutant une langue.
         kMenuViewLangueFirst,
         kMenuViewLangueLast = kMenuViewLangueFirst + 7,
+        /// D549.3 : les dispositions nommées -- enregistrer, puis une entrée par disposition pour la rappeler,
+        /// et autant pour la retirer (identifiants CONTIGUS, l'indice dans la liste rangée).
+        kMenuViewLayoutSave,
+        kMenuViewLayoutFirst,
+        kMenuViewLayoutLast = kMenuViewLayoutFirst + 31,
+        kMenuViewLayoutRemoveFirst,
+        kMenuViewLayoutRemoveLast = kMenuViewLayoutRemoveFirst + 31,
         // THREADS DE RENDU (D8.1). Le premier identifiant est « automatique » ;
         // les suivants valent kMenuAudioThreadsFirst + 1 + n threads auxiliaires.
         kMenuAudioThreadsFirst,

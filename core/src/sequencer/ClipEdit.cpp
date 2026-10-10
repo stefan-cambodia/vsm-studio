@@ -414,6 +414,55 @@ TrimToTick trimClipsEndTo(Track& track, const ClipSelection& selection, Tick tic
     return rapport;
 }
 
+TrimToTick fadeClipsTo(std::vector<Clip>& clips, const ClipSelection& selection, Tick tick, bool fadeOut,
+                       Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    TrimToTick rapport;
+    for (auto& c : clips) {
+        if (!selected(selection, c)) continue;
+        const Tick fin = c.startTick + clipPlayedLength(c, materialEnd);
+        if (tick <= c.startTick || tick >= fin) { ++rapport.outside; continue; }
+        std::vector<Clip> un;   // les fonctions des poignées visent un identifiant : on leur passe le clip seul
+        un.push_back(c);
+        if (fadeOut) setClipFadeOut(un, c.id, tick, materialEnd, ticksToSeconds);
+        else setClipFadeIn(un, c.id, tick, materialEnd, ticksToSeconds);
+        c = un.front();
+        ++rapport.trimmed;
+    }
+    return rapport;
+}
+
+SilenceReport silenceClipsRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
+                                Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    SilenceReport rapport;
+    if (!ticksToSeconds || to <= from) return rapport;
+    for (auto& c : clips) {
+        if (!selected(selection, c)) continue;
+        const Tick joue = clipPlayedLength(c, materialEnd);
+        const Tick a = std::max(from, c.startTick), b = std::min(to, c.startTick + joue);
+        if (a >= b) { ++rapport.outside; continue; }
+        const Tick fenetre = c.sourceLength > 0 ? c.sourceLength : joue;
+        if (c.reversed || (!clipIsWarped(c) && joue > fenetre)) { ++rapport.refused; continue; }
+        auto source = [&](Tick t) {
+            return clipIsWarped(c) ? warpSourceSecondsAt(c, t - c.startTick)
+                                   : c.sourceStartSeconds + ticksToSeconds(t) - ticksToSeconds(c.startTick);
+        };
+        const double sa = source(a), sb = source(b);
+        if (!(sb > sa)) { ++rapport.refused; continue; }
+        const double rampe = std::min(0.005, (sb - sa) / 4.0);
+        const float avant = clipEnvelopeGainAt(c, sa), apres = clipEnvelopeGainAt(c, sb);
+        auto& p = c.gainEnvelope;
+        p.erase(std::remove_if(p.begin(), p.end(),
+                               [&](const GainPoint& x) { return x.sourceSeconds >= sa && x.sourceSeconds <= sb; }),
+                p.end());
+        const auto ou = std::lower_bound(p.begin(), p.end(), sa,
+                                         [](const GainPoint& x, double s) { return x.sourceSeconds < s; });
+        p.insert(ou, {GainPoint{sa, avant}, GainPoint{sa + rampe, 0.0f}, GainPoint{sb - rampe, 0.0f},
+                      GainPoint{sb, apres}});
+        ++rapport.silenced;
+    }
+    return rapport;
+}
+
 ChainEdit resizeClipsEndChained(Track& track, const ClipSelection& demandee, Tick deltaTicks,
                                 bool automationFollows, Tick materialEnd) {
     ChainEdit rapport;

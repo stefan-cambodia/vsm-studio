@@ -443,6 +443,27 @@ TrimToTick trimClipsStartTo(Track& track, const ClipSelection& selection, Tick t
 TrimToTick trimClipsEndTo(Track& track, const ClipSelection& selection, Tick tick, Tick materialEnd,
                           bool chained, bool automationFollows);
 
+/// D549.1 — FONDU À LA TÊTE (*Fade In / Out to Cursor*). Le fondu d'entrée des clips choisis qui CONTIENNENT
+/// `tick` (strictement) finit à `tick` ; celui de sortie (`fadeOut`) y commence. Les autres sont comptés dans
+/// `outside`. Le fondu est un réglage du SON du clip, comme son gain : aucun verrou ne le refuse -- le geste
+/// de souris des poignées non plus (D5.6).
+TrimToTick fadeClipsTo(std::vector<Clip>& clips, const ClipSelection& selection, Tick tick, bool fadeOut,
+                       Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+
+/// D549.2 — RENDRE SILENCIEUSE UNE PLAGE [from, to) des clips AUDIO choisis (*Process ▸ Silence*), sans toucher au
+/// fichier : par la courbe de gain du clip (D545.1). Quatre points -- (début, gain d'avant), début + 5 ms à 0,
+/// fin − 5 ms à 0, (fin, gain d'avant) -- et les points d'avant situés DANS la plage retirés : hors de la plage,
+/// la courbe vaut exactement ce qu'elle valait (elle est linéaire par morceaux, et prolongée en palier). Les
+/// rampes de 5 ms (moins si la plage est courte) évitent le clic. REFUSÉS, et comptés : un clip à l'envers
+/// (sa courbe se lit à rebours) et un clip qui BOUCLE (un point de sa courbe vaut pour chaque tour).
+struct SilenceReport {
+    size_t silenced = 0;
+    size_t outside = 0;   ///< choisis, mais hors de la plage
+    size_t refused = 0;   ///< à l'envers ou en boucle
+};
+SilenceReport silenceClipsRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
+                                Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+
 /// Combien de clips de la sélection appartiennent à une piste verrouillée :
 /// ce que l'appelant doit DIRE quand un geste n'a pas tout fait.
 /// ÉLARGIR UNE SÉLECTION AUX GROUPES D'ÉDITION (D18.3).

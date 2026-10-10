@@ -133,7 +133,7 @@ FIL = re.compile(r"\bjuce::Thread\s*\(\s*(?:u8)?\s*$")
 # écrit VSM_VERSION au journal -- ni l'une ni l'autre n'atteint l'écran.
 # D532.3 bis : `releverBandeAccords` compose la ligne VSM_ACCORDS du geste `relever-accords`.
 FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture", "commandesMasquees", "direLesVersions",
-                     "releverBandeAccords")
+                     "releverBandeAccords", "direDisposition")   # D549.3 : la disposition dite au journal
 EN_TETE_DE_FONCTION = re.compile(r"^[A-Za-z][^;{}\n]*?\b(\w+)\s*\(", re.M)
 
 

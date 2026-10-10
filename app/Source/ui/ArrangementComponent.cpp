@@ -755,6 +755,9 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
     menu.addItem(76, tr(u8"Déplacer à la tête de lecture"));
     menu.addItem(77, tr(u8"Rogner le début à la tête de lecture"));
     menu.addItem(78, tr(u8"Rogner la fin à la tête de lecture"));
+    // D549.1 : LE FONDU À LA TÊTE (Fade In / Out to Cursor).
+    menu.addItem(79, tr(u8"Fondu d'entrée jusqu'à la tête de lecture"));
+    menu.addItem(80, tr(u8"Fondu de sortie depuis la tête de lecture"));
     menu.addSeparator();
     // D358 : LA TOUCHE EST DESSINÉE PAR JUCE, PLUS ÉCRITE DANS LE LIBELLÉ. Les
     // deux parenthèses « (Ctrl+E) » et « (Ctrl+J) » mentaient dès que
@@ -826,6 +829,9 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
             menu.addItem(71, tr(u8"Gain de ce point…"), point >= 0);
             menu.addItem(72, tr(u8"Retirer ce point de gain"), point >= 0);
             menu.addItem(73, tr(u8"Aplatir la courbe de gain"), !clip.gainEnvelope.empty());
+            // D549.2 : RENDRE SILENCIEUX ENTRE LES LOCATEURS, par la même courbe. Toujours offert : sans
+            // locateurs, le geste dit ce qui manque plutôt que d'être grisé sans raison.
+            menu.addItem(81, tr(u8"Rendre silencieux entre les locateurs"));
         }
         menu.addItem(17, tr(u8"\u00c0 l'envers"), true, clip.reversed);
         // D17.1 : LA FORME DES FONDUS. Sur une piste audio seulement --
@@ -1618,6 +1624,69 @@ void ArrangementComponent::trimSelectionToPlayhead(bool laFin) {
     if (bloquees > 0 && onChainBlocked) onChainBlocked(bloquees);
 }
 
+void ArrangementComponent::fadeSelectionToPlayhead(bool sortie) {
+    // D549.1 : le fondu d'entrée finit à la tête (ou celui de sortie y commence) sur les clips choisis qui la
+    // CONTIENNENT. Mesuré sur une copie : aucun pas pour rien, et le geste qui ne pose rien le dit.
+    if (project_ == nullptr || selection_.empty()) return;
+    const auto montage = montageSelection();
+    auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+    size_t poses = 0, dehors = 0;
+    for (const auto& track : project_->tracks) {
+        auto essai = track.clips;
+        const auto r = vsm::sequencer::fadeClipsTo(essai, montage, playhead_, sortie, materialEnd(track), conversion);
+        poses += r.trimmed;
+        dehors += r.outside;
+    }
+    if (poses > 0) {
+        if (onEditStarted)
+            onEditStarted(sortie ? u8"Fondu de sortie depuis la tête de lecture"
+                                 : u8"Fondu d'entrée jusqu'à la tête de lecture");
+        for (auto& track : project_->tracks)
+            vsm::sequencer::fadeClipsTo(track.clips, montage, playhead_, sortie, materialEnd(track), conversion);
+        notifyChanged();
+        repaint();
+    }
+    std::fputs((juce::String::fromUTF8(sortie ? u8"VSM_A_LA_TETE : fondu de sortie, " : u8"VSM_A_LA_TETE : fondu d'entrée, ")
+                + juce::String(static_cast<int>(poses)) + juce::String::fromUTF8(u8" clip(s), ")
+                + juce::String(static_cast<int>(dehors)) + juce::String::fromUTF8(u8" ne contiennent pas la tête\n"))
+                   .toRawUTF8(), stderr);
+    if (poses == 0 && dehors > 0 && onFadeOutside) onFadeOutside(dehors);
+}
+
+void ArrangementComponent::silenceSelectionBetweenLocators() {
+    // D549.2 : ENTRE LES LOCATEURS, sur les clips AUDIO choisis, par la courbe de gain (D545.1) : le fichier ne
+    // change pas, et hors de la plage la courbe non plus. Mesuré sur une copie : aucun pas pour rien.
+    if (project_ == nullptr || selection_.empty()) return;
+    const vsm::midi::Tick de = project_->loopStartTick, a = project_->loopEndTick;
+    if (a <= de) {
+        if (onSilenceReport) onSilenceReport(0, 0, 0, false);
+        return;
+    }
+    auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+    size_t tus = 0, dehors = 0, refuses = 0;
+    for (const auto& track : project_->tracks) {
+        if (track.kind != Track::Kind::Audio) continue;
+        auto essai = track.clips;
+        const auto r = vsm::sequencer::silenceClipsRange(essai, selection_, de, a, materialEnd(track), conversion);
+        tus += r.silenced;
+        dehors += r.outside;
+        refuses += r.refused;
+    }
+    if (tus > 0) {
+        if (onEditStarted) onEditStarted(u8"Rendre silencieux entre les locateurs");
+        for (auto& track : project_->tracks)
+            if (track.kind == Track::Kind::Audio)
+                vsm::sequencer::silenceClipsRange(track.clips, selection_, de, a, materialEnd(track), conversion);
+        notifyChanged();
+        repaint();
+    }
+    std::fputs((juce::String::fromUTF8(u8"VSM_SILENCE : ") + juce::String(static_cast<int>(tus))
+                + juce::String::fromUTF8(u8" clip(s) rendu(s) silencieux, ") + juce::String(static_cast<int>(dehors))
+                + juce::String::fromUTF8(u8" hors de la plage, ") + juce::String(static_cast<int>(refuses))
+                + juce::String::fromUTF8(u8" refusé(s) (à l'envers ou en boucle)\n")).toRawUTF8(), stderr);
+    if ((tus == 0 || refuses > 0) && onSilenceReport) onSilenceReport(tus, dehors, refuses, true);
+}
+
 void ArrangementComponent::splitSelectionAtPlayhead() {
     if (project_ == nullptr || selection_.empty()) return;
     size_t coupes = 0;
@@ -1937,6 +2006,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         case 76: moveSelectionToPlayhead(); return;          // D548.2
         case 77: trimSelectionToPlayhead(false); return;     // D548.3
         case 78: trimSelectionToPlayhead(true); return;
+        case 79: fadeSelectionToPlayhead(false); return;     // D549.1
+        case 81: silenceSelectionBetweenLocators(); return;  // D549.2
+        case 80: fadeSelectionToPlayhead(true); return;
         case 40: case 41: case 42: case 43: case 44: {
             static const int kNombres[] = {2, 3, 4, 8, 16};
             repeatSelection(kNombres[choix - 40]);

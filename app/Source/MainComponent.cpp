@@ -764,6 +764,29 @@ MainComponent::MainComponent()
                      tr(u8"Le premier clip choisi commence déjà à la tête de lecture : placez la tête là où "
                         u8"il doit commencer."));
     };
+    // D549.2 : CE QUE « RENDRE SILENCIEUX » N'A PAS FAIT se dit.
+    arrangement_.onSilenceReport = [](size_t tus, size_t dehors, size_t refuses, bool locateurs) {
+        juce::String texte;
+        if (!locateurs)
+            texte = tr(u8"Aucune plage entre les locateurs : posez-les d'abord (Maj sur la règle, ou Transport ▸ "
+                       u8"Début de boucle à la tête et Fin de boucle à la tête).");
+        else
+            texte = tr(u8"%1 clip(s) rendu(s) silencieux, %2 hors de la plage, %3 refusé(s) : un clip à l'envers "
+                       u8"ou qui boucle ne se rend pas silencieux par sa courbe de gain.")
+                        .replace("%1", juce::String(static_cast<int>(tus)))
+                        .replace("%2", juce::String(static_cast<int>(dehors)))
+                        .replace("%3", juce::String(static_cast<int>(refuses)));
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rendre silencieux"), texte);
+    };
+    // D549.1 : UN FONDU À LA TÊTE SANS CLIP QUI LA CONTIENNE se dit.
+    arrangement_.onFadeOutside = [](size_t choisis) {
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Aucun fondu posé"),
+            tr(choisis > 1 ? u8"Aucun des %1 clips choisis ne contient la tête de lecture"
+                           : u8"Le clip choisi ne contient pas la tête de lecture")
+                    .replace("%1", juce::String(static_cast<int>(choisis)))
+                + tr(u8" : placez-la à l'intérieur du clip, là où le fondu doit finir ou commencer."));
+    };
     // D548.3 : ROGNER À LA TÊTE SANS RIEN À ROGNER se dit.
     arrangement_.onTrimOutside = [](size_t choisis) {
         montrerBoite(
@@ -2079,6 +2102,143 @@ bool MainComponent::clicPourCapture(const juce::String& description) {
                                    0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, point, maintenant, 1, false);
     cible->mouseUp(relache);
     return true;
+}
+
+// --- D549.3 : LES DISPOSITIONS NOMMÉES ------------------------------------------------------------------
+std::unique_ptr<juce::XmlElement> MainComponent::decrireDisposition(const juce::String& nom) const {
+    auto d = std::make_unique<juce::XmlElement>("DISPOSITION");
+    d->setAttribute("nom", nom);
+    d->setAttribute("fenetreUnique", singleWindow_);
+    d->setAttribute("centre", centerShowsArrangement_ ? "arrangement" : "pianoroll");
+    d->setAttribute("pistes", singleWindow_ ? trackList_.isVisible() : trackListWindow_.isVisible());
+    d->setAttribute("rack", singleWindow_ ? synthRack_.isVisible() : synthRackWindow_.isVisible());
+    d->setAttribute("bas", singleWindow_ ? bottomTabs_.isVisible() : mixerWindow_.isVisible());
+    d->setAttribute("dockGauche", dockGauche_);
+    d->setAttribute("dockDroite", dockDroite_);
+    d->setAttribute("dockBas", dockBas_);
+    // Les panneaux flottants : leur place et s'ils sont montrés, même en fenêtre unique (ils y sont rangés,
+    // et la disposition flottante qu'on rappellera plus tard les retrouvera).
+    const PanelWindow* fenetres[] = {&trackListWindow_, &pianoRollWindow_, &synthRackWindow_, &mixerWindow_,
+                                     &arrangementWindow_};
+    for (int i = 0; i < 5; ++i) {
+        auto* f = d->createNewChildElement("FENETRE");
+        f->setAttribute("place", fenetres[i]->getBounds().toString());
+        f->setAttribute("montree", fenetres[i]->isVisible());
+    }
+    return d;
+}
+
+std::unique_ptr<juce::XmlElement> MainComponent::lireDispositions() const {
+    if (auto xml = vsm::app::ui::UiScale::properties().getXmlValue("dispositions"))
+        if (xml->hasTagName("DISPOSITIONS")) return xml;
+    return std::make_unique<juce::XmlElement>("DISPOSITIONS");
+}
+
+void MainComponent::ecrireDispositions(const juce::XmlElement& dispositions) {
+    vsm::app::ui::UiScale::properties().setValue("dispositions", &dispositions);
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+}
+
+juce::String MainComponent::direDisposition(const juce::XmlElement& d) const {
+    auto oui = [&](const char* a) { return d.getBoolAttribute(a) ? juce::String("oui") : juce::String("non"); };
+    return juce::String::fromUTF8(u8"« ") + d.getStringAttribute("nom") + juce::String::fromUTF8(u8" » : ")
+           + (d.getBoolAttribute("fenetreUnique") ? juce::String::fromUTF8(u8"fenêtre unique") : juce::String("flottante"))
+           + ", centre " + d.getStringAttribute("centre") + ", pistes " + oui("pistes") + ", rack " + oui("rack")
+           + ", bas " + oui("bas") + ", volets " + d.getStringAttribute("dockGauche") + "/"
+           + d.getStringAttribute("dockDroite") + "/" + d.getStringAttribute("dockBas");
+}
+
+void MainComponent::enregistrerDisposition() {
+    const juce::String titre = tr(u8"Enregistrer la disposition");
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        titre, tr(u8"La disposition de la fenêtre — volets montrés, leurs tailles, la vue du centre, les panneaux "
+                  u8"flottants — est retenue sous ce nom, et se rappelle par Affichage ▸ Dispositions."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("nom", "", tr(u8"Nom :"));
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, titre](int resultat) {
+        const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        if (nom.isEmpty()) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre, tr(u8"Une disposition a besoin d'un nom : rien n'a été enregistré."));
+            return;
+        }
+        auto rangees = lireDispositions();
+        bool remplacee = false;
+        for (int i = 0; i < rangees->getNumChildElements(); ++i)
+            if (rangees->getChildElement(i)->getStringAttribute("nom") == nom) {
+                rangees->removeChildElement(rangees->getChildElement(i), true);
+                remplacee = true;
+                break;
+            }
+        auto d = decrireDisposition(nom);
+        const juce::String dite = direDisposition(*d);
+        rangees->addChildElement(d.release());
+        ecrireDispositions(*rangees);
+        std::fputs((juce::String("VSM_DISPOSITION : ") + (remplacee ? juce::String::fromUTF8(u8"remplacée ")
+                                                                     : juce::String::fromUTF8(u8"enregistrée "))
+                    + dite + "\n").toRawUTF8(), stderr);
+        if (remplacee)
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         tr(u8"La disposition « %1 » existait : elle est remplacée par celle-ci.").replace("%1", nom));
+    });
+}
+
+void MainComponent::rappelerDisposition(int indice) {
+    const auto rangees = lireDispositions();
+    const auto* d = rangees->getChildElement(indice);
+    if (d == nullptr) return;
+    // LES MÊMES GESTES QUE LE MENU Affichage : la fenêtre unique se bascule par sa propre entrée.
+    if (d->getBoolAttribute("fenetreUnique", true) != singleWindow_) menuItemSelected(kMenuViewSingleWindow, 0);
+    rendreLesZones();
+    const PanelWindow* constantes[] = {&trackListWindow_, &pianoRollWindow_, &synthRackWindow_, &mixerWindow_,
+                                       &arrangementWindow_};
+    PanelWindow* fenetres[] = {&trackListWindow_, &pianoRollWindow_, &synthRackWindow_, &mixerWindow_,
+                               &arrangementWindow_};
+    (void)constantes;
+    if (singleWindow_) {
+        centerShowsArrangement_ = d->getStringAttribute("centre") == "arrangement";
+        arrangement_.setVisible(centerShowsArrangement_);
+        pianoRollPanel_.setVisible(!centerShowsArrangement_);
+        trackList_.setVisible(d->getBoolAttribute("pistes", true));
+        synthRack_.setVisible(d->getBoolAttribute("rack", true));
+        bottomTabs_.setVisible(d->getBoolAttribute("bas", true));
+        dockGauche_ = d->getIntAttribute("dockGauche", dockGauche_);
+        dockDroite_ = d->getIntAttribute("dockDroite", dockDroite_);
+        dockBas_ = d->getIntAttribute("dockBas", dockBas_);
+        dockDroiteRegle_ = dockBasRegle_ = true;
+        auto& prefs = vsm::app::ui::UiScale::properties();
+        prefs.setValue("dock.gauche", dockGauche_);
+        prefs.setValue("dock.droite", dockDroite_);
+        prefs.setValue("dock.bas", dockBas_);
+        prefs.saveIfNeeded();
+        resized();
+    } else {
+        int i = 0;
+        for (auto* f : d->getChildWithTagNameIterator("FENETRE")) {
+            if (i >= 5) break;
+            const auto place = juce::Rectangle<int>::fromString(f->getStringAttribute("place"));
+            if (!place.isEmpty()) fenetres[i]->setBounds(place);
+            fenetres[i]->setVisible(f->getBoolAttribute("montree", true));
+            ++i;
+        }
+    }
+    // `fromUTF8` : `juce::String(const char*)` lit du Latin-1, et la ligne sortait « rappelÃ©e » (le banc l'a vue).
+    std::fputs((juce::String::fromUTF8(u8"VSM_DISPOSITION : rappelée ") + direDisposition(*d) + "\n").toRawUTF8(), stderr);
+}
+
+void MainComponent::retirerDisposition(int indice) {
+    auto rangees = lireDispositions();
+    auto* d = rangees->getChildElement(indice);
+    if (d == nullptr) return;
+    const juce::String nom = d->getStringAttribute("nom");
+    rangees->removeChildElement(d, true);
+    ecrireDispositions(*rangees);
+    std::fputs((juce::String::fromUTF8(u8"VSM_DISPOSITION : retirée « ") + nom + juce::String::fromUTF8(u8" »\n"))
+                   .toRawUTF8(), stderr);
 }
 
 bool MainComponent::glisserPourCapture(const juce::String& description) {
@@ -5031,6 +5191,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             break;
         case 6:
+            // D549.3 : LES DISPOSITIONS NOMMÉES, à côté de ce qu'elles retiennent.
+            {
+                juce::PopupMenu dispositions;
+                dispositions.addItem(kMenuViewLayoutSave, tr(u8"Enregistrer la disposition…"));
+                const auto rangees = lireDispositions();
+                dispositions.addSeparator();
+                if (rangees->getNumChildElements() == 0)
+                    dispositions.addItem(-1, tr(u8"(aucune disposition enregistrée)"), false, false);
+                juce::PopupMenu retirer;
+                for (int i = 0; i < rangees->getNumChildElements() && i <= kMenuViewLayoutLast - kMenuViewLayoutFirst; ++i) {
+                    const juce::String nom = rangees->getChildElement(i)->getStringAttribute("nom");
+                    dispositions.addItem(kMenuViewLayoutFirst + i, nom);
+                    retirer.addItem(kMenuViewLayoutRemoveFirst + i, nom);
+                }
+                dispositions.addSubMenu(tr(u8"Retirer une disposition"), retirer, rangees->getNumChildElements() > 0);
+                menu.addSubMenu(tr(u8"Dispositions"), dispositions);
+            }
             menu.addItem(kMenuViewSingleWindow, tr(u8"Fenêtre unique"),
                           true, singleWindow_);
             menu.addItem(kMenuViewComputerKeyboard,
@@ -5658,6 +5835,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackNewFolder: newFolderAboveSelectedTrack(); break;
         case kMenuTrackFolderIn:  changeSelectedTrackFolderDepth(+1); break;
         case kMenuTrackFolderOut: changeSelectedTrackFolderDepth(-1); break;
+        case kMenuViewLayoutSave: enregistrerDisposition(); break;   // D549.3
         case kMenuViewSingleWindow:
             singleWindow_ = !singleWindow_;
             // Écrit DÈS le choix, comme les associations MIDI : une disposition
@@ -5785,6 +5963,14 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                 const int index = menuItemID - kMenuViewLangueFirst;
                 if (index >= 0 && index < static_cast<int>(std::size(choix)))
                     if (vsm::app::ui::Langue::appliquer(choix[index])) retraduire();
+                break;
+            }
+            if (menuItemID >= kMenuViewLayoutFirst && menuItemID <= kMenuViewLayoutLast) {   // D549.3
+                rappelerDisposition(menuItemID - kMenuViewLayoutFirst);
+                break;
+            }
+            if (menuItemID >= kMenuViewLayoutRemoveFirst && menuItemID <= kMenuViewLayoutRemoveLast) {
+                retirerDisposition(menuItemID - kMenuViewLayoutRemoveFirst);
                 break;
             }
             if (menuItemID >= kMenuViewScaleFirst && menuItemID <= kMenuViewScaleLast) {
@@ -8824,7 +9010,7 @@ void MainComponent::forcerSauvegardeAutomatiquePourCapture(const juce::File& cop
     while (!fichier.existsAsFile() && juce::Time::getMillisecondCounterHiRes() < limite)
         juce::Thread::sleep(50);
     if (!fichier.existsAsFile()) {
-        std::fputs((juce::String("VSM_AUTOSAUVEGARDE : rien d'écrit après 5 s dans ")
+        std::fputs((juce::String::fromUTF8(u8"VSM_AUTOSAUVEGARDE : rien d'écrit après 5 s dans ")
                     + dossier.getFullPathName() + "\n").toRawUTF8(), stderr);
         return;
     }

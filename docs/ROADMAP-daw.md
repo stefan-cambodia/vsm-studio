@@ -41522,3 +41522,122 @@ déplacer » ; le contrôle (7) du banc le mesure, rouge sur ce premier binaire,
 
 **LE NEUVIÈME AUDIT (D548) EST CLOS** : le verrou tient au clavier, et les clips vont et se rognent à la tête.
 Les marqueurs de cycle, écartés ici (une donnée de projet neuve), ouvrent le suivant.
+
+### Phase D549 — un dixième audit : les fondus à la tête, le silence d'une plage, les dispositions nommées (10/10/2026)
+
+*Écrite le 10/10 à 11 h 09, D548 close, pendant la série des 73 bancs.*
+
+**LA MÉTHODE, celle de D535 à D548.** **Les marqueurs de cycle, nommés par D548, sont ÉCARTÉS après examen** :
+leur usage premier — poser les locateurs sur une plage nommée — est déjà celui de « Locateurs sur cette
+section » (D542.1), les sections naissant des repères ; ce qui resterait (des plages qui se chevauchent,
+indépendantes des repères) n'a pas de besoin établi, et coûterait une donnée de projet et un dessin neufs.
+**Cherché** : 0 pour « fondu à la tête » (*Fade In / Out to Cursor* de Cubase) ; 0 pour « rendre silencieux »,
+« plage silencieuse » (*Process ▸ Silence*) ; 0 pour « espace de travail », « disposition enregistrée »
+(*Workspaces*) — alors que la disposition est réglable et retenue (`dock.gauche`, `dock.bas`,
+`dock.droite`, `fenetreUnique`, `fenetre.*` aux préférences) mais UNE seule : on ne passe pas d'une
+disposition de mixage à une disposition d'édition. **Trouvé** : les modèles de projet existent
+(« Enregistrer comme modèle de projet ») ; la courbe de gain (D545.1) peut porter un silence sans toucher au
+fichier.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D549.1 | **Fondu à la tête** — *Fade In / Out to Cursor* | au menu du clip, le fondu d'entrée finit à la tête, celui de sortie y commence, sur les clips choisis qui contiennent la tête ; les autres comptés et dits ; un pas ; mesuré par le `project.json` relu et l'export |
+| D549.2 | **Rendre silencieuse une plage** — *Process ▸ Silence* | entre les locateurs, sur les clips audio choisis : le son se tait, sans toucher au fichier (par la courbe de gain de D545.1) ; hors de la plage, rien ne change au bit près ; un pas ; mesuré par l'export |
+| D549.3 | **Les dispositions nommées** — *Workspaces* | *Affichage ▸ Dispositions* : enregistrer la disposition sous un nom, la rappeler, la retirer ; elle porte les volets montrés, leurs tailles, la fenêtre unique ou flottante, la vue du centre ; retenues d'un lancement à l'autre ; mesuré par les photos et les préférences relues |
+
+**L'ORDRE, TRANCHÉ ICI.** D549.1 d'abord (petit, `core/` a déjà les fondus), puis D549.2 (l'export le mesure),
+puis D549.3, le plus gros et le seul qui touche à la fenêtre entière.
+
+**LA SÉRIE DE D548** (lancée à 11 h 08, finie à 13 h 01 — 112 min, plusieurs veilles) : **72/73**, préférences
+identiques. Le rouge, `courbe-de-gain.sh` à 11 h 36 (entre deux veilles, pas pendant), rejoué seul sur le même
+binaire : **3/3 vert**. Sa cause n'est pas connue, et c'est la faute du banc : l'import qui bâtit son projet de
+départ n'avait laissé AUCUN clip audio (exports de 2,0 s muets au lieu de 6,0 s), le banc a conclu sur la courbe
+(« deux points… » raté) et ne relayait pas la ligne « Import audio : … » de l'application. Il la relaie
+désormais, et un départ sans clip audio l'arrête en le disant (« RATÉ l'import ») — vu rouge sur un fichier
+absent (« 0 piste(s) créée(s) sur 1 fichier(s) ; refusé(s) : absent.wav »). Même garde dans les bancs neufs qui
+importent.
+
+### Phase D549.1 — le fondu à la tête (10/10/2026) — FAITE
+
+*Le code `core/` construit le 10/10 à 11 h 12, avant sa mesure ; la phase close à 16 h 14.*
+
+**CE QUI EST TRANCHÉ.** Au menu du clip : « Fondu d'entrée jusqu'à la tête de lecture », « Fondu de sortie
+depuis la tête de lecture », sur les clips choisis qui CONTIENNENT la tête (les autres comptés ; aucun → « Aucun
+fondu posé », sans pas). Le fondu est un réglage du SON du clip, comme son gain : aucun verrou ne le refuse — le
+geste de souris des poignées (D5.6) non plus. Il passe par `setClipFadeIn` / `setClipFadeOut`, ceux des poignées.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | `fadeClipsTo` : seul B contient la tête → fondu d'entrée de 0,5 s, A et C comptés dehors ; une tête sur le début ne pose rien. **Rouge** : sans le test « contient » (« 3 != 1 ») ; core 468 → **469** | **oui** |
+| 2 | par l'application, le projet relu et l'EXPORT | `tools/fondu-a-la-tete.sh` (16 h 10) : la tête à 1,0 s dans un sinus de 2 s → fondu d'entrée **1,000 s** relu ; à l'export, le niveau de 0,05 à 0,25 s vaut **0,161** de celui de 1,3 à 1,5 s, le TÉMOIN (même export sans le geste) **1,000** ; fondu de sortie **1,000 s**, **0,161** contre 1,000 ; Ctrl+Z → aucun fondu ; la tête hors du clip → « Aucun fondu posé », 0 pas | **oui** |
+
+### Phase D549.2 — rendre silencieuse une plage (10/10/2026) — FAITE
+
+*Le code `core/` construit le 10/10 à 11 h 28, avant sa mesure ; la phase close à 16 h 14.*
+
+**CE QUI EST TRANCHÉ.** Au menu d'un clip audio : « Rendre silencieux entre les locateurs », toujours offert
+(sans locateurs, le geste dit ce qui manque plutôt que d'être grisé sans raison). Par la courbe de gain de
+D545.1 : quatre points — (début, gain d'avant), début + 5 ms à 0, fin − 5 ms à 0, (fin, gain d'avant) — et les
+points d'avant situés dans la plage retirés ; le fichier ne change pas. Refusés et dits : un clip à l'envers
+(sa courbe se lit à rebours) et un clip qui boucle (un point vaut pour chaque tour).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | `silenceClipsRange` : zéro de 1,01 à 2,99 s, la courbe d'avant hors de la plage à 10⁻⁶ près, triée, aucun point d'avant dedans ; hors plage, à l'envers, en boucle : rien, comptés. core 469 → **470**. **La garde a d'abord échoué à échouer** : le point d'avant gardé dans la plage DÉSORDONNAIT la courbe, et la recherche dichotomique ne le voyait pas aux instants lus — vert à tort ; le test lit maintenant la forme (triée, rien d'autre que des zéros dedans), et tombe (« … < … ») | **oui** |
+| 2 | par l'application, l'EXPORT | `tools/silence-plage.sh` (16 h 14) : les locateurs de 1,0 à 3,0 s sur un sinus de 4 s → dans la plage **2,4·10⁻⁷** du témoin ; hors d'elle, écart maximal **0,0** — au bit près ; le fichier du projet a l'empreinte de l'importé ; Ctrl+Z → 0 point ; sans locateurs, la boîte le dit, 0 pas | **oui** |
+
+### Phase D549.3 — les dispositions nommées (10/10/2026) — FAITE
+
+*Écrite le 10/10 à 16 h 20, avant son code.*
+
+**CE QUI EXISTE, LU DANS LE CODE.** La disposition est faite de : la fenêtre unique ou les panneaux flottants
+(`fenetreUnique`, retenu) ; les tailles des trois volets (`dock.gauche`, `dock.droite`, `dock.bas`, retenues au
+glissé d'un séparateur) ; la vue du centre (arrangement ou piano roll, `centerShowsArrangement_`) ; les volets
+montrés (pistes, rack, bas — *Affichage*) ; la place de chaque panneau flottant (`fenetre.*`, retenue). **Les
+volets montrés et la vue du centre ne sont PAS retenus** : un rack masqué revient au lancement suivant.
+
+**CE QUI EST TRANCHÉ ICI.**
+- **Une disposition nommée porte tout cela** — fenêtre unique ou flottante, vue du centre, trois volets
+  montrés ou non, trois tailles, et la place des cinq panneaux flottants —, rangée aux préférences
+  (`dispositions`, un bloc XML : elles suivent l'utilisateur d'un projet à l'autre, comme la disposition
+  elle-même, et non le projet).
+- **Le menu** : *Affichage ▸ Dispositions ▸ Enregistrer la disposition…* (un nom ; un nom déjà pris est
+  remplacé, et la boîte le dit), puis une entrée par disposition, qui la RAPPELLE, et *Retirer une disposition ▸*
+  par nom. Une disposition rappelée passe par les MÊMES gestes que le menu *Affichage* (la fenêtre unique se
+  bascule par sa propre entrée), pour ne pas écrire un second chemin de la disposition.
+- **Le journal le dit** (`VSM_DISPOSITION : …`), et un relevé de banc dit l'état de la disposition
+  (`relever-disposition`) : la photo seule ne dit ni les tailles ni ce qui est masqué derrière un panneau.
+- **Hors de ce qui est tranché** : les dispositions ne retiennent pas l'échelle d'interface (un besoin de
+  lisibilité, pas une disposition) ni la langue.
+
+**ATTENDUS.** (1) par l'application : une disposition « Mixage » (rack masqué, volet du bas à 420 px) enregistrée
+dans un lancement, rappelée dans le suivant (même HOME) qui part de la disposition par défaut → le relevé dit
+« rack masqué, bas 420 » ; une seconde, « Édition » (piano roll au centre), rappelée → piano roll ; la retirer
+→ elle n'est plus au menu ; (2) un nom déjà pris remplacé et dit ; (3) le menu photographié en français et en
+anglais ; (4) un banc vu rouge, dans `verifier.sh --bancs`.
+
+**D549.3 EST FAITE (10/10, 17 h 24 ; le banc vert à 17 h 24).** `tools/dispositions.sh`, 5 contrôles, un HOME de
+banc gardé d'un lancement à l'autre :
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | enregistrer | « enregistrée « Mixage » : fenêtre unique, centre arrangement, pistes oui, **rack non**, bas oui, volets 300/400/**420** » ; « Édition » : centre **pianoroll** | **oui** |
+| 2 | rappeler au lancement suivant | le TÉMOIN, relevé avant le rappel : « rack oui … 300/400/293 » (la disposition par défaut) ; après *Affichage ▸ Dispositions ▸ Mixage* : « **rack non** … 300/400/**420** » | **oui** |
+| 3 | une seconde disposition | « Édition » rappelée → centre **pianoroll** | **oui** |
+| 4 | remplacer, retirer | « Mixage » enregistrée de nouveau → « remplacée », et la boîte « La disposition « Mixage » existait… » ; « Retirer une disposition ▸ Édition » → retirée, absente du relevé des menus, « Mixage » présente | **oui** |
+| 5 | le menu en français et en anglais | photographié et regardé : « Enregistrer la disposition… · Mixage · Retirer une disposition ▸ » et « Save layout… · Mixage · Remove a layout ▸ », entiers | **oui** |
+
+**ROUGE, ET C'ÉTAIT L'APPLICATION.** Le premier passage a rendu (2) rouge : la ligne du journal disait
+« rappel**Ã©**e » — `juce::String("…rappelée…")` lit du Latin-1, le piège que `CLAUDE.md` nomme ; `fromUTF8`.
+Le même piège dormait dans une ligne d'autosauvegarde (« rien d'écrit après 5 s »), corrigée du même geste.
+`inventaire_langue.py` compte `direDisposition` parmi les fonctions qui n'écrivent qu'au journal (comme
+`direLesVersions`) : ses mots ne vont pas à l'écran.
+
+**L'AUDIT DES MENUS (16 h 34) A RENDU UNE MUETTE QUI N'EN ÉTAIT PAS UNE.** « Édition ▸ Temps et durée ▸
+Supprimer les doublons » : ni ligne d'état, ni rien — alors que les audits de 09 h 59 et 11 h 06 y lisaient
+« aucun doublon dans la sélection ». Rejouée trois fois seule, par la même suite de gestes que l'audit (Ctrl+A à
+300 ms, l'entrée à 700, le relevé à 1 250) : **3/3**, la ligne d'état. Le geste n'a pas changé depuis D546.1 ;
+la course de 16 h 34 n'a pas reçu son Ctrl+A à temps. Aucun code touché ; l'audit ne rejoue que ses mesures
+INCOMPLÈTES, pas ses muettes — un fait à garder en tête devant la prochaine.
+
+**LE DIXIÈME AUDIT (D549) EST CLOS** : le fondu à la tête, le silence d'une plage, les dispositions nommées.

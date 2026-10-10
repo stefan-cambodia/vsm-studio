@@ -318,6 +318,11 @@ public:
     std::function<void(size_t)> onTrimOutside;
     /// D548.2 : le premier clip choisi commence déjà à la tête -- rien à déplacer, et le dire.
     std::function<void()> onAlreadyAtPlayhead;
+    /// D549.1 : aucun clip choisi ne contenait la tête -- aucun fondu posé, et le dire.
+    std::function<void(size_t)> onFadeOutside;
+    /// D549.2 : ce que « Rendre silencieux » n'a pas pu faire (rendus, hors plage, refusés ; faux = pas de
+    /// locateurs) -- appelé quand rien n'a été rendu silencieux ou qu'un clip a été refusé.
+    std::function<void(size_t, size_t, size_t, bool)> onSilenceReport;
     /// D11.4 : renommer et colorer UN clip. Les fenêtres sont de JUCE, donc
     /// dans l'application ; la vue demande (piste, identifiant du clip).
     std::function<void(size_t, uint64_t)> onClipRenameRequested;
@@ -388,6 +393,10 @@ public:
     void moveSelectionToPlayhead();
     /// D548.3 : le début (`laFin` faux) ou la fin des clips qui contiennent la tête va à la tête.
     void trimSelectionToPlayhead(bool laFin);
+    /// D549.1 : le fondu d'entrée (`sortie` faux) finit à la tête, ou celui de sortie y commence.
+    void fadeSelectionToPlayhead(bool sortie);
+    /// D549.2 : la plage entre les locateurs se tait sur les clips audio choisis (courbe de gain).
+    void silenceSelectionBetweenLocators();
     /// Ce qui n'a pas pu être joint (nombre de paires), pour que
     /// l'application le dise : la vue ne sait pas parler.
     std::function<void(size_t)> onJoinRefused;
