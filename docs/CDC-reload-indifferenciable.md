@@ -3599,3 +3599,40 @@ bandes hautes après lui, et le 2-4 kHz y est aussi creux que le 4-8 — d'autre
 1 029 frappes) ont leur part. **La suite nommée** : la même méthode étendue à TOUTES les pièces (chacune dans sa
 bande, son niveau et sa longueur à ses frappes moyennes), jugée sur ces deux morceaux — une hypothèse à elle, avec
 des seuils écrits pour un gain qui dépend du défaut du morceau.
+
+## 35. H74 — toutes les pièces de batterie à leurs frappes, résolues ENSEMBLE ; le charleston à sa longueur (écrite AVANT son instrument et sa mesure, 11/10/2026, 03 h 13)
+
+**Ce que H59, H64 et H65 n'ont pas su faire, et ce que la moyenne permet.** H59 résolvait les volumes sur les bandes
+du morceau ENTIER (le kick y prenait le grave de tout le monde) ; H64 donnait chaque bande à la pièce qui DOMINE les
+rendus (et la caisse claire du TR-808 volait l'aigu du charleston) ; H65 comparait chaque frappe au stem en large
+bande (et un kick frappé avec un charleston comptait le charleston). Aux INSTANTS d'une pièce et dans SA bande, le
+stem contient cette pièce ET ses voisines habituelles — et le rendu de la batterie entière aussi, aux mêmes
+instants. D'où un système : pour chaque pièce *i*, sur ses frappes (fenêtres de −10 à +100 ms) et dans sa bande
+principale *bᵢ* (celle des six du § 33 où son rendu solo a le plus d'énergie), l'énergie moyenne du stem vaut
+`Σⱼ xⱼ · Eⱼ(i)`, où `Eⱼ(i)` est celle du rendu solo de la pièce *j* dans la même bande aux mêmes fenêtres et
+`xⱼ = gⱼ²` le carré de son facteur de volume. *N* pièces, *N* équations, *N* inconnues positives : **moindres carrés
+positifs** (en erreur relative, chaque équation divisée par son terme de stem), facteurs bornés à ×¼-×4 et toute
+borne atteinte DITE. Les énergies s'additionnent si les pièces ne sont pas cohérentes entre elles — une hypothèse de
+l'instrument, nommée.
+
+**L'HYPOTHÈSE H74** : sur « Reload » et « B4 Wuz Then », la batterie de la chaîne réglée ainsi — le charleston d'abord
+à sa longueur (la méthode de H72, inchangée), puis les volumes de toutes ses pièces résolus ensemble — rapproche
+chaque mélange de son original plus que chacune des corrections partielles déjà mesurées. **Le point mesuré**, sur
+chaque morceau : le projet de la chaîne tel quel (le témoin) contre le même projet aux pistes de batterie ainsi
+réglées ; le kick garde son préréglage (la tenue de H70 n'est pas dans `master`) — seul son volume est résolu. Même
+moteur pour tous (`reload-h70`, tenue à 0) ; outil du § 0 comme aux §§ 33-34 (« Reload » : `--tempo 136` et ses
+sections ; « B4 » : tranches de 7 s).
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | log-mel, « Reload » | ≤ celui de H65 (8,17), qui ne réglait que les niveaux | > témoin (10,09) |
+| 2 | log-mel, « B4 Wuz Then » | ≤ celui de H73 (8,37), qui ne réglait que le charleston | > témoin (8,57) |
+| 3 | aigus : \|médian\| sur les deux morceaux | plus près que leur témoin | plus loin sur l'un |
+| 4 | le CONTRÔLE : \|médian\| sub, basse, bas-médium sur les deux | aucune pire de plus de 1 dB | l'une pire de plus de 2 dB |
+| 5 | relevés : les bandes principales, les facteurs, les bornes atteintes, le résidu du système | — | — |
+
+**La règle de décision** : 1 à 4 tenus → l'étape entre dans la chaîne comme OPTION, éteinte par défaut, mesurée par
+une course complète de « Reload » avant de devenir un défaut ; 3 et 4 tenus, 1 ou 2 non → l'instrument rapproche le
+spectre sans battre les corrections partielles : la résolution conjointe n'apporte rien de plus que H65 et H72
+chacun de son côté, et c'est dit ; 4 en échec → la résolution conjointe déplace de l'énergie entre pièces au prix du
+grave : l'hypothèse d'additivité ne tient pas.
