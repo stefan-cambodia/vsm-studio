@@ -3354,3 +3354,47 @@ du chantier (« la référence H71 »), contre lequel se mesure ce qui reste —
 chemin (le niveau d'une pièce à ses frappes, une fois l'instrument de H65 capable de dire ce qu'une frappe contient ;
 le kick réglé sur ses frappes, une fois la tenue entrée dans `master`) ; 2 ou 3 en échec → elles interagissent, et
 la bande qui recule dit laquelle gêne l'autre.
+
+### 32.1 Verdict de H71 (11/10/2026, mesuré de 02 h 50 à 02 h 52, écrit à 02 h 53) : 1 et 2 tenus, 3 à 0,05 dB de sa marge — et en absolu, la moitié haute n'a pas bougé d'un dixième : les deux corrections sont indépendantes
+
+`reconstruction/travail/reload-h71.sh` (rejouable). **Le rejeu de H65** (`build-h42`) rend un essai **identique au
+bit près** au sien ; ses facteurs exacts : charleston ×3,097806, caisse claire ×0,276083 (le kick, ×0,985134, non
+appliqué). Le point H71 rendu par le moteur de `reload-h70` (`1eff3b6d`).
+
+| mesure (outil du § 0) | témoin | H65 | K (H70) | **H71** |
+|---|---|---|---|---|
+| \|médian\| sub · basse · bas-médium · médium | 7,63 · 6,12 · 2,80 · 1,89 | — | 1,51 · 1,47 · 1,31 · 1,21 | **1,30 · 1,44 · 1,13 · 1,54** |
+| médianes haut-médium · aigus | −3,01 · −6,94 | −1,61 · −0,38 | −3,46 · −7,26 | −2,16 · −0,68 |
+| log-mel moyen (médian) | 10,09 (8,53) | 8,17 (6,03) | 10,09 (8,44) | **8,16 (5,98)** |
+| niveau : décalage (pire tranche) | −0,57 (5,43) | −0,81 (5,66) | −0,23 (5,17) | −0,24 (**5,09**) |
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : log-mel 8,16, sous H65 + 0,3 (8,47) — et 0,01 dB sous H65 lui-même |
+| 2 | **tenu** : 1,30 · 1,44 · 1,13 · 1,54 contre 1,51 · 1,47 · 1,31 · 1,21 — trois bandes mieux, le médium pire de 0,33 dB, dans la marge |
+| 3 | **entre les deux, à la lettre** : aigus −0,68 (0,30 plus loin que H65, dans la marge) ; haut-médium **−2,16 contre −1,61 : 0,55 dB, 0,05 au-delà de la marge** |
+
+**La règle, à la lettre** : « 1, 2 et 3 tenus » ne l'est pas, de 0,05 dB — comme H65 l'a manqué de 0,02 dB. Le point
+n'est pas déclaré « référence H71 ».
+
+**CE QUE L'ABSOLU DIT DE L'ATTENDU 3.** L'essai de H65, mesuré après coup par sections (`h65-essai-sections.json`),
+contre H71, écart absolu mélange − original dans les trois pleines :
+
+| bande | H65 | H71 |
+|---|---|---|
+| haut-médium | −1,9 · −3,1 · −2,9 | −1,9 · −3,1 · −2,9 |
+| aigus | +0,3 · −0,5 · −0,2 | +0,3 · −0,5 · −0,2 |
+| médium | +1,8 · −0,8 · −2,6 | +1,4 · −1,5 · −3,3 |
+| basse | −7,7 · −6,5 · −6,6 | −1,3 · −0,0 · −0,2 |
+| sub | −9,8 · −9,2 · −9,1 | +0,6 · +1,3 · +1,2 |
+
+**La moitié haute est identique au dixième.** Le recul du haut-médium relatif est celui du TOTAL : le kick rend au
+morceau son grave, le total monte de 0,57 dB (niveau −0,81 → −0,24), et toute bande relative au total descend
+d'autant. C'est l'effet que le § 29.1 avait nommé (« la mesure relative suit le total ») — et que j'ai oublié en
+écrivant l'attendu 3 sur une médiane relative pour une hypothèse qui change le total. **La leçon, la troisième de
+la nuit sur le même thème** : le critère d'une hypothèse se choisit parmi les mesures que sa variable peut faire
+bouger (§ 31.2) ET que les autres variables ne font pas bouger ; une bande qu'on veut « inchangée » se juge en
+absolu. **Les deux corrections sont indépendantes** dans les mesures qui le disent (le haut absolu, le bas relatif),
+et H71 est, chiffré, le meilleur état mesuré du chantier : log-mel 8,16, pire tranche 5,09 dB, les quatre bandes
+basses à moins de 1,6 dB d'écart médian. Ce qui reste, dans les pleines : le haut-médium (−1,9 à −3,1 dB absolus)
+et le médium des deux dernières (−1,5 et −3,3).
