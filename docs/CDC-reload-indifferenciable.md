@@ -2325,10 +2325,15 @@ sinus, sous l'effet que H51 a trouvé et sous le rack tel qu'il est —, jugé c
 
 **CE QUE LE RACK PEUT, lu dans le code avant d'écrire l'hypothèse.** H51 a trouvé deux étages de retard
 modulé en série : `f1` (base 1,81 ms, profondeur 1,68 ms, dosage 0,47) puis `f2` (base 6,81 ms,
-profondeur 1,10 ms, dosage 0,41), deux lectures en quadrature. Le **flanger** du rack retarde de
-`1 ms + lfo · 6 ms · profondeur`, `lfo` ∈ [0, 1], gauche et droite en QUADRATURE — la forme de `f1`,
-mais sa base est fixée à 1 ms : un centre à 1,81 ms et une excursion de 1,68 ms (de 0,13 à 3,49 ms) ne
-s'y atteignent pas. Le **chorus** a sa base fixée à 8 ms (l'étage `f2` : 6,81). **H57 se mesure donc en
+profondeur 1,10 ms, dosage 0,41), deux lectures en quadrature. Dans le modèle de H51, la base est le
+retard MINIMAL (`base + profondeur · (½ + ½ sin)`, `retard_s`) : `f1` va de 1,81 à 3,49 ms, `f2` de 6,81
+à 7,91 ms. Le **flanger** du rack retarde de `1 ms + lfo · 6 ms · profondeur`, `lfo` ∈ [0, 1], gauche et
+droite en QUADRATURE — la forme de `f1`, mais son minimum est fixé à 1 ms : celui de `f1`, 1,81 ms, ne
+s'y atteint pas. **Réglage, aux moindres carrés sur la trajectoire du retard** : profondeur 0,46, de 1 à
+3,76 ms. Le **chorus** a sa base fixée à 8 ms : de 8 à 9,1 ms pour une profondeur de 1,10, là où `f2` va
+de 6,81 à 7,91. *(Corrigé le 10/10 à 17 h 36, avant le code : la première écriture prenait la base pour
+un centre — « de 0,13 à 3,49 ms » — en lisant mal `retard_s` ; la conclusion — le rack n'atteint pas
+`f1` — ne change pas, le réglage si.)* **H57 se mesure donc en
 deux temps** : H57a avec le rack TEL QU'IL EST, à ses réglages les plus proches ; H57b — un retard de
 base réglable dans le moteur — seulement si H57a échoue POUR CETTE RAISON (son attendu 4).
 
