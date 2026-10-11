@@ -1128,6 +1128,8 @@ private:
         kMenuEditPasteAtOrigin,
         /// D551.3 : rogner les clips aux locateurs.
         kMenuEditCropAtLocators,
+        /// D552.1 : caler les débuts des clips sur la grille.
+        kMenuEditSnapClipStarts,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------

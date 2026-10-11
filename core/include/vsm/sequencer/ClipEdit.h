@@ -464,6 +464,27 @@ struct SilenceReport {
 SilenceReport silenceClipsRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
                                 Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
 
+/// D552.1 — CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements). Chaque clip choisi
+/// de la piste commence à `grid(son début)` -- la ligne de grille la plus proche que l'appelant calcule (l'aimant de
+/// l'arrangement) ; il se DÉPLACE, sa matière avec lui (`moveClips`, l'automation selon `automationFollows`), il n'est
+/// pas rogné. Un clip verrouillé, ou sur une piste verrouillée, reste en place et se compte dans `locked`. Rend le
+/// nombre de clips déplacés -- un clip déjà sur sa ligne ne compte pas.
+struct GridSnap {
+    size_t moved = 0;
+    size_t locked = 0;
+};
+GridSnap snapClipStartsToGrid(Track& track, const ClipSelection& selection, const std::function<Tick(Tick)>& grid,
+                              Tick materialEnd, bool automationFollows);
+
+/// D552.3 — GLISSER LE CONTENU D'UN CLIP (le *Slip* de Cubase) : la MATIÈRE se décale de `delta` ticks sous la fenêtre,
+/// la fenêtre et sa place restant les mêmes -- vers la droite, ce qui jouait à `t` joue à `t + delta`. MIDI : la
+/// fenêtre recule dans la matière (`sourceStart`), sans passer avant son début. AUDIO : `sourceStartSeconds`, borné au
+/// fichier (la fenêtre ne sort pas de [0, durée]). REFUSÉS (rendent 0) : un clip verrouillé ou sur une piste
+/// verrouillée, et un clip calé sur le tempo (D12), dont la carte de marqueurs dit déjà où est chaque seconde du
+/// fichier. Rend le décalage APPLIQUÉ, réduit quand la matière bute.
+Tick slipClipContent(Track& track, uint64_t clipId, Tick delta, Tick materialEnd,
+                     const std::function<double(Tick)>& ticksToSeconds);
+
 /// D550.1 — CHOISIR DES CLIPS PAR LA TÊTE ET LES LOCATEURS (*Edit ▸ Select* de Cubase), un clip étant
 /// [début, début + longueur jouée) :
 /// - `Between` : ceux qui TOUCHENT la plage [a, b), même en partie (*In Loop*) ;

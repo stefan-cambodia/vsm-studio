@@ -1,4 +1,5 @@
 #include "vsm/sequencer/NoteEdit.h"
+#include <set>
 #include "vsm/util/DeterministicRng.h"
 #include <algorithm>
 #include <cmath>
@@ -333,6 +334,37 @@ void removeOverlaps(std::vector<Note>& notes, const NoteSelection& selection) {
         }
         if (note.endTick <= note.startTick) note.endTick = note.startTick + 1;
     }
+}
+
+MonoOverlaps removeOverlapsMono(std::vector<Note>& notes, const NoteSelection& selection) {
+    MonoOverlaps r;
+    if (selection.empty()) return r;
+    std::vector<size_t> ligne;   // les indices des notes choisies, dans l'ordre des départs, la plus aiguë d'abord
+    for (size_t i = 0; i < notes.size(); ++i)
+        if (selection.count(notes[i].id) > 0) ligne.push_back(i);
+    std::sort(ligne.begin(), ligne.end(), [&](size_t a, size_t b) {
+        if (notes[a].startTick != notes[b].startTick) return notes[a].startTick < notes[b].startTick;
+        return notes[a].number > notes[b].number;
+    });
+    std::set<uint64_t> retirees;
+    std::vector<size_t> gardees;
+    for (size_t i : ligne) {
+        if (!gardees.empty() && notes[gardees.back()].startTick == notes[i].startTick) {
+            retirees.insert(notes[i].id);   // même départ qu'une plus aiguë déjà gardée
+            continue;
+        }
+        gardees.push_back(i);
+    }
+    for (size_t k = 0; k + 1 < gardees.size(); ++k) {
+        Note& n = notes[gardees[k]];
+        const Tick suivante = notes[gardees[k + 1]].startTick;
+        if (n.endTick > suivante) { n.endTick = suivante; ++r.shortened; }
+    }
+    r.removed = retirees.size();
+    if (!retirees.empty())
+        notes.erase(std::remove_if(notes.begin(), notes.end(), [&](const Note& n) { return retirees.count(n.id) > 0; }),
+                    notes.end());
+    return r;
 }
 
 size_t splitNotes(std::vector<Note>& notes, const NoteSelection& selection, Tick atTick,

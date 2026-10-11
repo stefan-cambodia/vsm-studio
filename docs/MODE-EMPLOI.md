@@ -131,6 +131,12 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Rogner les clips aux locateurs** (D551.3). *Édition ▸ Rogner les clips aux locateurs* ne garde, des clips choisis — ou, sans sélection, de ceux qui touchent la plage —, que la part d'entre les locateurs. Un clip tout dehors n'est pas touché ; un clip verrouillé reste entier, et c'est dit.
 
+**Caler les débuts des clips sur la grille** (D552.1). *Édition ▸ Caler les débuts des clips sur la grille* pose le début de chaque clip choisi sur la ligne de grille la plus proche — celle de l'aimant de l'arrangement, la mesure ou la grille fine —, sa matière avec lui. Un clip verrouillé reste en place, et c'est dit.
+
+**Les chevauchements en mono** (D552.2). Au piano roll (ou *Édition ▸ Temps et durée*), *Retirer les chevauchements (mono)* fait des notes choisies une ligne qui ne joue jamais deux notes à la fois : une note qui déborde sur la suivante, quelle que soit sa hauteur, s'arrête où celle-ci commence ; de deux notes qui partent ensemble, la plus aiguë reste.
+
+**Glisser le contenu d'un clip** (D552.3). Ctrl+Alt + glisser dans le corps d'un clip déplace sa matière sous sa fenêtre, qui ne bouge pas — l'aimant s'applique au décalage. Un clip verrouillé, ou calé sur le tempo, refuse, et le dit.
+
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
 
 **Les locateurs sur une section** (D542.1). Clic droit sur la règle — celle de l'arrangement ou celle du piano roll —, puis *Locateurs sur cette section* : la boucle prend la section où vous avez cliqué (d'un repère au suivant ; la dernière va jusqu'à la fin de ce qu'on entend) et s'active, pour travailler un refrain en boucle. L'entrée est grisée là où il n'y a pas de section (sans repère, ou avant le premier). Ctrl+Z rend la boucle d'avant.

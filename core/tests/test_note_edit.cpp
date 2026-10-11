@@ -733,3 +733,27 @@ VSM_TEST(a_run_of_close_notes_does_not_melt_into_one) {
     VSM_ASSERT_EQ(deleteDoubleNotes(notes, toutes(notes), 30), size_t(2));
     VSM_ASSERT(restantes(notes) == (std::set<uint64_t>{1, 3}));
 }
+
+// D552.2 — LES CHEVAUCHEMENTS EN MONO : une ligne qui ne joue jamais deux notes à la fois, toutes hauteurs confondues.
+VSM_TEST(remove_overlaps_mono_makes_a_line_that_never_plays_two_notes) {
+    std::vector<Note> notes;
+    auto poser = [&](Tick d, Tick f, uint8_t h, uint64_t id) {
+        Note n; n.startTick = d; n.endTick = f; n.number = h; n.id = id; notes.push_back(n);
+    };
+    poser(0, 1000, 40, 1);      // déborde sur la suivante, d'une AUTRE hauteur
+    poser(480, 900, 45, 2);     // commence avec 3, plus grave : retirée
+    poser(480, 1200, 52, 3);    // la plus aiguë du départ 480 : gardée, déborde sur 4
+    poser(960, 1400, 40, 4);
+    poser(0, 3000, 30, 5);      // NON choisie : ne bouge pas, ne compte pas
+    const auto r = removeOverlapsMono(notes, {1, 2, 3, 4});
+    VSM_ASSERT_EQ(r.removed, size_t(1));
+    VSM_ASSERT_EQ(r.shortened, size_t(2));
+    VSM_ASSERT(findById(notes, 2) == nullptr);
+    VSM_ASSERT_EQ(static_cast<long long>(findById(notes, 1)->endTick), 480LL);
+    VSM_ASSERT_EQ(static_cast<long long>(findById(notes, 3)->endTick), 960LL);
+    VSM_ASSERT_EQ(static_cast<long long>(findById(notes, 4)->endTick), 1400LL);
+    VSM_ASSERT_EQ(static_cast<long long>(findById(notes, 5)->endTick), 3000LL);
+    // Le même geste, rejoué : plus rien à faire.
+    const auto r2 = removeOverlapsMono(notes, {1, 3, 4});
+    VSM_ASSERT_EQ(r2.removed + r2.shortened, size_t(0));
+}

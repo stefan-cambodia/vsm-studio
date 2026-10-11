@@ -41842,3 +41842,58 @@ une basse jouée par une machine monophonique. **Écarté** : grouper des clips 
 
 **L'ORDRE, TRANCHÉ ICI.** D552.1 d'abord (le chemin du déplacement existe), puis D552.2 (`core/` et le piano roll), puis
 D552.3, le seul geste de souris neuf.
+
+### Phase D552.1 — caler les débuts des clips sur la grille (11/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** `snapClipStartsToGrid` (`core/`) : chaque clip choisi va à `grid(son début)` par `moveClips` — un
+déplacement, sa fenêtre sur la même matière, l'automation selon le réglage de l'arrangement —, les départs lus avant
+tout déplacement ; un clip verrouillé (lui ou sa piste) reste et se compte. Dans l'arrangement, la grille est celle de
+l'aimant (`snapStep` : la mesure par défaut, ou la grille fine), même aimant COUPÉ — la quantification de Cubase suit
+sa grille sans demander l'aimant ; essai sur des copies, aucun pas pour rien.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | grille de 960 : 100 → 0, 1 500 → 1 920, 1 920 n'est pas compté (déjà sur sa ligne), 2 900 verrouillé reste et se compte ; la fenêtre d'un clip déplacé garde sa matière. **Rouge** sur le mutant qui compte un clip déjà sur sa ligne (« 3 != 2 ») | **oui** |
+| 2 | par l'application | `tools/caler-grille.sh`, 3 contrôles : « A:0:300 B:1920:2100 C:5000:5000 D:3840:3840 » (début : `sourceStart`), « Montage refusé : 1 clip verrouillé… » ; Ctrl+Z → les places d'avant ; tout déjà calé → « Rien à caler », 0 pas | **oui** |
+
+### Phase D552.2 — les chevauchements en mono (11/10/2026) — FAITE
+
+`removeOverlapsMono` (`core/`, `NoteEdit.h`) : dans l'ordre des départs, de deux notes qui partent ensemble la plus
+aiguë reste ; une note qui déborde sur la suivante, quelle que soit sa hauteur, finit où elle commence ; les notes non
+choisies ne bougent pas. Au piano roll (et *Édition ▸ Temps et durée*), essai sur une copie et la ligne d'état qui dit
+« aucun » ou les comptes (D511).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | 40 à 1 000 → 480, la 45 du départ 480 retirée (52 plus aiguë), 52 → 960, la dernière intacte, une note NON choisie de 3 000 ticks intacte ; rejoué : 0. **Rouge** sur le mutant qui garde la plus grave (« 1 != 2 ») | **oui** |
+| 2 | par l'application, le `.mid` joué | `tools/chevauchements-mono.sh`, 3 contrôles : « 0-480:41 480-960:52 960-1400:40 », « 2 raccourcie(s), 1 retirée(s) » ; le témoin, les quatre notes ; Ctrl+Z → le témoin | **oui** |
+| 3 | le menu dans les deux langues | photographié : « Retirer les chevauchements (mono) » / d'abord « Delete overlaps (mono) » — sous « Remove overlaps », l'incohérence s'est vue sur la photo, et l'anglais dit désormais « Remove overlaps (mono) » | **oui** |
+
+### Phase D552.3 — glisser le contenu d'un clip (11/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** `slipClipContent` (`core/`) : MIDI, la fenêtre recule dans la matière (`sourceStart`, pas avant
+0) ; AUDIO, `sourceStartSeconds` à la carte de tempo, borné au fichier (la fenêtre n'en sort pas) ; refusés : verrou
+(clip ou piste), clip calé sur le tempo (D12) — rend le décalage APPLIQUÉ, réduit à la butée. Le geste : Ctrl+Alt sur le
+corps d'un clip, intercepté AVANT le clic Alt qui coupe ; le contenu du seul clip tenu ; l'aimant sur le décalage
+(D547.4) ; un verrou dit au clic, sans pas. Les verbes de banc `glisser` et `glisser-tenir` acceptent désormais des
+combinaisons (« ctrl+alt »).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | MIDI +480 → `sourceStart` 960 → 480, la fenêtre immobile ; +2 000 → butée à 0 (480 appliqués) ; verrouillé → 0 ; AUDIO +480 ticks → −0,5 s ; −100 000 → 8,0 s (10 s de fichier, 2 s de fenêtre). **Rouge** sur le mutant sans borne haute (104,7 s) | **oui** |
+| 2 | par l'application, le projet relu et le `.mid` joué | `tools/glisser-contenu.sh`, 5 contrôles : glissé d'une mesure → « 1920:1920:0 », A JOUE 60 et 62 au lieu de 64 et 65 ; Ctrl+Z → « 1920:1920:1920 » ; verrouillé → intact, dit ; le témoin SANS les touches est un déplacement (« 3840:1920:1920 ») ; (5) H17, ci-dessous | **oui** |
+
+**H17, TROUVÉ PAR CE BANC : L'ANNULATION ÉTENDAIT UN CLIP.** Le premier passage a rendu (2) rouge — après Ctrl+Z, A valait
+« 0:3840:0 », ni l'avant ni l'après. Le même déplacement SANS le *slip*, puis Ctrl+Z : pareil. Le défaut était plus
+vieux que D552 : `PianoRollComponent::undo` (et `redo`) notifiaient le projet rendu par `notifyEdited`, qui menait à
+`couvrirLesNotesEcrites` (D337) — et les notes de 0 et 960, hors du clip, que l'ouverture laisse dehors, étaient
+« couvertes » : le clip s'étendait jusqu'à elles (le journal le disait : « D337 : … note écrite à la mesure 1, hors de
+tout clip : clip #1 étendu »). Une restauration n'écrit rien : un drapeau `restaurationEnCours` la marque, et ni la
+matérialisation implicite ni la couverture n'agissent pendant elle. Le contrôle (5) le garde : déplacer puis Ctrl+Z
+rend A tel qu'il était, sans ligne D337.
+
+**LA SÉRIE DE D552** (lancée à 11 h 14, finie à 12 h 05 — 51 min, deux veilles brèves à 11 h 20 au journal du noyau) :
+**84/84**, préférences identiques ; C++ 477 · 1 338 · 338 · 25 · 11, Python 275, mypy et gardes verts.
+
+**LE TREIZIÈME AUDIT (D552) EST CLOS** : caler les débuts des clips sur la grille, les chevauchements en mono, glisser
+le contenu d'un clip — et une annulation qui étendait un clip (H17), trouvée par le banc du dernier.

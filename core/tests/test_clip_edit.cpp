@@ -1782,3 +1782,50 @@ VSM_TEST(pasting_clips_keeps_each_on_its_relative_track_and_carries_midi_notes_t
     VSM_ASSERT(placesDes(w) == (std::vector<std::pair<std::string, Tick>>{
                                    {"Bas", 0}, {"Haut", 0}, {"Haut", 0}, {"Prise", 0}, {"Prise", 0}}));
 }
+
+// D552.1 — CALER LES DÉBUTS SUR LA GRILLE : chaque début à la ligne la plus proche, la matière suit, le verrou tient.
+VSM_TEST(snapping_clip_starts_to_the_grid_moves_each_clip_to_its_nearest_line) {
+    Track t;
+    t.kind = Track::Kind::Midi;
+    t.clips = {clip(1, 100, 480, 100), clip(2, 1500, 480, 1500), clip(3, 1920, 480, 1920), clip(4, 2900, 480, 2900)};
+    t.clips[3].locked = true;
+    auto grille = [](Tick x) { return ((x + 480) / 960) * 960; };   // une grille de 960 ticks
+    const auto r = snapClipStartsToGrid(t, {1, 2, 3, 4}, grille, 100000, false);
+    VSM_ASSERT_EQ(r.moved, size_t(2));    // 100 → 0, 1500 → 1920 ; 1920 y est déjà
+    VSM_ASSERT_EQ(r.locked, size_t(1));   // 2900 reste, verrouillé
+    VSM_ASSERT_EQ(debutDe(t, 1), Tick(0));
+    VSM_ASSERT_EQ(debutDe(t, 2), Tick(1920));
+    VSM_ASSERT_EQ(debutDe(t, 3), Tick(1920));
+    VSM_ASSERT_EQ(debutDe(t, 4), Tick(2900));
+    for (const auto& c : t.clips)
+        if (c.id == 1) VSM_ASSERT_EQ(c.sourceStart, Tick(100));   // déplacé, pas rogné : sa fenêtre est la même matière
+}
+
+// D552.3 — GLISSER LE CONTENU : la matière bouge sous la fenêtre, la fenêtre et sa place restent ; bornes et refus.
+VSM_TEST(slipping_clip_content_moves_the_material_under_a_fixed_window) {
+    Track t;
+    t.kind = Track::Kind::Midi;
+    t.clips = {clip(1, 1920, 960, 960)};   // la fenêtre montre la matière [960, 1920) à partir de 1 920
+    VSM_ASSERT_EQ(slipClipContent(t, 1, 480, 100000, enSecondes), Tick(480));
+    VSM_ASSERT_EQ(t.clips[0].sourceStart, Tick(480));      // ce qui jouait à t joue à t + 480
+    VSM_ASSERT_EQ(t.clips[0].startTick, Tick(1920));       // la fenêtre n'a pas bougé
+    VSM_ASSERT_EQ(t.clips[0].length, Tick(960));
+    VSM_ASSERT_EQ(slipClipContent(t, 1, 2000, 100000, enSecondes), Tick(480));   // butée : le début de la matière
+    VSM_ASSERT_EQ(t.clips[0].sourceStart, Tick(0));
+    t.clips[0].locked = true;
+    VSM_ASSERT_EQ(slipClipContent(t, 1, -480, 100000, enSecondes), Tick(0));
+    // AUDIO : en secondes, borné au fichier. 960 ticks = 1 s ; un fichier de 10 s, une fenêtre de 2 s.
+    Track a;
+    a.kind = Track::Kind::Audio;
+    a.audio.path = "prise.wav";
+    a.audio.sampleRate = 48000.0;
+    a.audio.frames = 480000;
+    Clip c = clip(2, 960, 1920);
+    c.sourceStartSeconds = 1.0;
+    a.clips = {c};
+    VSM_ASSERT_EQ(slipClipContent(a, 2, 480, 100000, enSecondes), Tick(480));
+    VSM_ASSERT_NEAR(a.clips[0].sourceStartSeconds, 0.5, 1e-9);
+    slipClipContent(a, 2, -100000, 100000, enSecondes);
+    VSM_ASSERT_NEAR(a.clips[0].sourceStartSeconds, 8.0, 1e-9);   // 10 s − 2 s : la fenêtre ne sort pas du fichier
+}
+

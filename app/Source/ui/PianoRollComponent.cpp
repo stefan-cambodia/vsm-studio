@@ -54,6 +54,7 @@ enum ContextMenuId {
     kCtxScaleConstrain = 100080, kCtxSnapChords,   // D532.3 bis
     kCtxLogicalEditor = 100450,   // D535.1 bis
     kCtxDeleteDoubles = 100460,   // D546.1
+    kCtxRemoveOverlapsMono = 100470,   // D552.2
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -358,6 +359,10 @@ void PianoRollComponent::undo() {
     if (onAvantHistorique) onAvantHistorique();   // D144
     if (project_ == nullptr || history_ == nullptr || !history_->undo(*project_)) return;
     if (onProjectRestored) onProjectRestored();
+    // D552 (H17) : UNE RESTAURATION N'ÉCRIT AUCUNE NOTE. Sans ce drapeau, `notifyEdited` menait à la couverture des
+    // notes « écrites » hors clip (D337) : un Ctrl+Z après n'importe quel geste ÉTENDAIT un clip jusqu'à des notes que
+    // l'ouverture laissait dehors -- l'état rendu n'était plus celui d'avant.
+    const juce::ScopedValueSetter<bool> restauration(restauration_, true);
     Track* track = activeTrack();
     if (!track) { notifyEdited(); return; }
     // Une note annulée peut avoir disparu : la sélection ne doit pas garder de
@@ -373,6 +378,10 @@ void PianoRollComponent::redo() {
     if (onAvantHistorique) onAvantHistorique();   // D144
     if (project_ == nullptr || history_ == nullptr || !history_->redo(*project_)) return;
     if (onProjectRestored) onProjectRestored();
+    // D552 (H17) : UNE RESTAURATION N'ÉCRIT AUCUNE NOTE. Sans ce drapeau, `notifyEdited` menait à la couverture des
+    // notes « écrites » hors clip (D337) : un Ctrl+Z après n'importe quel geste ÉTENDAIT un clip jusqu'à des notes que
+    // l'ouverture laissait dehors -- l'état rendu n'était plus celui d'avant.
+    const juce::ScopedValueSetter<bool> restauration(restauration_, true);
     Track* track = activeTrack();
     if (!track) { notifyEdited(); return; }
     NoteSelection stillValid;
@@ -1051,6 +1060,34 @@ void PianoRollComponent::deleteDoublesInSelection() {
     notifyEdited();
 }
 
+void PianoRollComponent::removeOverlapsMonoInSelection() {
+    // D552.2 : LES CHEVAUCHEMENTS EN MONO de la sélection -- une ligne qui ne joue jamais deux notes à la fois. Mesuré
+    // sur une copie d'abord : rien à changer, pas de pas, et la ligne d'état le dit (D511).
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    auto essai = track->notes;
+    const auto r = removeOverlapsMono(essai, selectedNoteIds_);
+    std::fputs(("VSM_CHEVAUCHEMENTS_MONO : " + juce::String(static_cast<int>(r.shortened))
+                + juce::String::fromUTF8(u8" raccourcie(s), ") + juce::String(static_cast<int>(r.removed))
+                + juce::String::fromUTF8(u8" retirée(s)\n")).toRawUTF8(), stderr);
+    if (onStatusChanged)
+        onStatusChanged(r.shortened + r.removed == 0
+                            ? vsm::app::ui::tr(u8"Chevauchements (mono) : aucun dans la sélection")
+                            : vsm::app::ui::tr(u8"Chevauchements (mono) : %1 note(s) raccourcie(s), %2 retirée(s)")
+                                  .replace("%1", juce::String(static_cast<int>(r.shortened)))
+                                  .replace("%2", juce::String(static_cast<int>(r.removed))));
+    if (r.shortened + r.removed == 0) return;
+    if (!beginEdit(juce::String::fromUTF8(u8"Retirer les chevauchements (mono)"))) return;
+    track->notes = std::move(essai);
+    for (auto it = selectedNoteIds_.begin(); it != selectedNoteIds_.end();) {
+        const uint64_t id = *it;
+        const bool reste = std::any_of(track->notes.begin(), track->notes.end(),
+                                       [id](const Note& n) { return n.id == id; });
+        it = reste ? std::next(it) : selectedNoteIds_.erase(it);
+    }
+    notifyEdited();
+}
+
 void PianoRollComponent::splitSelectionAtPlayhead() {
     Track* track = activeTrack();
     if (!track || !project_ || selectedNoteIds_.empty()) return;
@@ -1434,6 +1471,7 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     ajouterAvecRaccourci(timeMenu, kCtxLegato, tr("Legato"), shortcuts_, Id::EditLegato, sel);
     timeMenu.addItem(kCtxRemoveOverlaps, tr("Retirer les chevauchements"), sel);
     timeMenu.addItem(kCtxDeleteDoubles, tr(u8"Supprimer les doublons"), sel);   // D546.1
+    timeMenu.addItem(kCtxRemoveOverlapsMono, tr(u8"Retirer les chevauchements (mono)"), sel);   // D552.2
     timeMenu.addSeparator();
     ajouterAvecRaccourci(timeMenu, kCtxSplit, tr(u8"Couper à la tête de lecture"), shortcuts_, Id::EditSplitAtPlayhead, sel);
     ajouterAvecRaccourci(timeMenu, kCtxJoin, tr("Fusionner"), shortcuts_, Id::EditJoin, selectedNoteIds_.size() >= 2);
@@ -1586,6 +1624,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxLegato:           applyLegatoToSelection(); break;
         case kCtxRemoveOverlaps:   removeOverlapsInSelection(); break;
         case kCtxDeleteDoubles:    deleteDoublesInSelection(); break;
+        case kCtxRemoveOverlapsMono: removeOverlapsMonoInSelection(); break;   // D552.2
         case kCtxLengthToGrid:     setSelectionLengthToGrid(); break;
         case kCtxLengthDouble:     scaleSelectionLength(2.0f); break;
         case kCtxLengthHalve:      scaleSelectionLength(0.5f); break;

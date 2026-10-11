@@ -59,6 +59,8 @@ public:
     // --- Callbacks vers l'application ------------------------------------
     /// Les notes ont changé : reconstruire le planning de lecture.
     std::function<void()> onNotesEdited;
+    /// D552 (H17) : vrai pendant qu'une annulation ou un rétablissement notifie le projet rendu -- rien n'y est ÉCRIT.
+    bool restaurationEnCours() const { return restauration_; }
     /// D337 : vrai pendant qu'une note est déplacée ou redimensionnée à la
     /// souris. Le rappel `onNotesEdited` est alors appelé à chaque pixel, et
     /// une fois de plus au relâchement -- ce qui doit ne se faire qu'une fois
@@ -279,6 +281,7 @@ public:
     void applyLegatoToSelection();
     void removeOverlapsInSelection();
     void deleteDoublesInSelection();   // D546.1
+    void removeOverlapsMonoInSelection();   // D552.2
     void splitSelectionAtPlayhead();
     void joinSelection();
     void reverseSelection();
@@ -484,6 +487,7 @@ private:
     int panStartTopNote_ = 84;
     bool dragDidCopy_ = false;   ///< Alt+glisser : la copie n'est faite qu'une fois
     bool dragEdite_ = false;     ///< D337 : le glissement a changé au moins une note
+    bool restauration_ = false;  ///< D552 (H17) : vrai pendant qu'une annulation ou un rétablissement se notifie
     int auditionNote_ = -1;      ///< note en cours d'écoute (-1 = aucune)
     uint64_t hoveredNoteId_ = 0;
 

@@ -626,6 +626,12 @@ MainComponent::MainComponent()
     // piste neuve où l'on venait d'écrire ne montrait aucun clip dans
     // l'arrangement tant qu'on n'avait pas sauvegardé et rouvert le projet.
     pianoRoll_.onNotesEdited = [this] {
+        // D552 (H17) : une ANNULATION rend un état, elle n'écrit rien -- ni clip matérialisé, ni note couverte.
+        if (pianoRoll_.restaurationEnCours()) {
+            arrangement_.repaint();
+            refreshTransportSchedule();
+            return;
+        }
         bool change = materializeImplicitClips(false);   // D336 : clip OUVERT à l'écriture
         // D337 : une piste qui a déjà des clips (bornés depuis D333) couvre la note
         // écrite hors d'eux -- au RELÂCHEMENT d'un glissement, pas à chaque pixel :
@@ -763,6 +769,12 @@ MainComponent::MainComponent()
         montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rien à déplacer"),
                      tr(u8"Le premier clip choisi commence déjà à la tête de lecture : placez la tête là où "
                         u8"il doit commencer."));
+    };
+    // D552.3 : UN CLIP CALÉ SUR LE TEMPO NE GLISSE PAS SON CONTENU -- dit.
+    arrangement_.onSlipRefusedWarped = [] {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Glisser le contenu"),
+                     tr(u8"Ce clip suit le tempo (ses marqueurs disent où est chaque seconde du fichier) : son contenu "
+                        u8"ne se glisse pas. Déplacez ses marqueurs, ou retirez-les d'abord."));
     };
     // D551.1 : CE QU'UN COLLAGE N'A PAS POSÉ se dit, et les notes qu'il a emportées s'écrivent.
     arrangement_.onPasteReport = [this](size_t poses, size_t refuses, size_t dehors, size_t notes) {
@@ -2289,8 +2301,10 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     const auto w = static_cast<float>(cible->getWidth()), h = static_cast<float>(cible->getHeight());
     const juce::Point<float> depart(fx0 * w, fy * h), arrivee(fx1 * w, fy * h);
     int mods = juce::ModifierKeys::leftButtonModifier;
-    if (mode == "maj") mods |= juce::ModifierKeys::shiftModifier;
-    if (mode == "alt") mods |= juce::ModifierKeys::altModifier;
+    // D552.3 : des COMBINAISONS, « ctrl+alt » -- le glisser du contenu d'un clip en tient deux.
+    if (mode.contains("ctrl")) mods |= juce::ModifierKeys::commandModifier;
+    if (mode.contains("maj")) mods |= juce::ModifierKeys::shiftModifier;
+    if (mode.contains("alt")) mods |= juce::ModifierKeys::altModifier;
     const auto maintenant = juce::Time::getCurrentTime();
     auto evenement = [&](juce::Point<float> ou, int m, int clics, bool glisse) {
         return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), ou, juce::ModifierKeys(m), 1.0f,
@@ -2392,9 +2406,9 @@ bool MainComponent::glisserTenirPourCapture(const juce::String& description) {
     const juce::Point<float> depart(p0.x * w, p0.y * h), arrivee(p1.x * w, p1.y * h);
     const juce::String mode = champs.size() > 4 ? champs[4].toLowerCase() : juce::String();
     int mods = juce::ModifierKeys::leftButtonModifier;
-    if (mode == "ctrl") mods |= juce::ModifierKeys::commandModifier;
-    if (mode == "maj") mods |= juce::ModifierKeys::shiftModifier;
-    if (mode == "alt") mods |= juce::ModifierKeys::altModifier;
+    if (mode.contains("ctrl")) mods |= juce::ModifierKeys::commandModifier;   // D552.3 : « ctrl+alt »
+    if (mode.contains("maj")) mods |= juce::ModifierKeys::shiftModifier;
+    if (mode.contains("alt")) mods |= juce::ModifierKeys::altModifier;
     const auto maintenant = juce::Time::getCurrentTime();
     auto evenement = [&](juce::Point<float> ou, int m, bool glisse) {
         return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), ou, juce::ModifierKeys(m), 1.0f,
@@ -4416,6 +4430,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 choisir.addItem(kMenuEditSelectCursorToEnd, tr(u8"Sélectionner de la tête à la fin"), desClips);
                 menu.addSubMenu(tr(u8"Sélectionner dans l'arrangement"), choisir, desClips);
             }
+            // D552.1 : CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements).
+            menu.addItem(kMenuEditSnapClipStarts, tr(u8"Caler les débuts des clips sur la grille"),
+                         arrangement_.hasSelection());
             // D34.5 : DESSINER UNE AUTOMATION PAR UNE FORME. Un balayage de
             // filtre sur seize mesures se posait point par point, et un
             // trémolo régulier ne se posait pas du tout.
@@ -5534,6 +5551,18 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditSplitAtLocators) { couperClipsAuxLocateurs(); return; }
     if (menuItemID == kMenuEditPasteAtOrigin) { arrangement_.pasteAtOrigin(); return; }
     if (menuItemID == kMenuEditCropAtLocators) { rognerClipsAuxLocateurs(); return; }
+    if (menuItemID == kMenuEditSnapClipStarts) {
+        const auto [deplaces, verrouilles] = arrangement_.calerDebutsSurGrille();
+        std::fputs(("VSM_CALER_GRILLE : " + std::to_string(deplaces) + " déplacé(s), " + std::to_string(verrouilles)
+                    + " verrouillé(s)\n").c_str(), stderr);
+        if (deplaces == 0 && verrouilles == 0)
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rien à caler"),
+                         tr(u8"Les clips choisis commencent déjà sur la grille."));
+        else if (deplaces > 0 && pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Caler sur la grille : %1 clip(s) déplacé(s)")
+                                           .replace("%1", juce::String(static_cast<int>(deplaces))));
+        return;
+    }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }

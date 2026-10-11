@@ -119,6 +119,17 @@ void removeOverlaps(std::vector<Note>& notes, const NoteSelection& selection);
 /// retirées.
 size_t deleteDoubleNotes(std::vector<Note>& notes, const NoteSelection& selection, Tick toleranceTicks);
 
+/// D552.2 — LES CHEVAUCHEMENTS EN MONO (*Delete Overlaps (mono)* de Cubase) : les notes CHOISIES deviennent une ligne qui
+/// ne joue jamais deux notes à la fois -- ce que demande une basse confiée à une machine monophonique. Dans l'ordre
+/// des départs : deux notes qui commencent ENSEMBLE n'en gardent qu'une, la plus aiguë (les autres sont retirées,
+/// `removed`) ; une note qui déborde sur le départ de la SUIVANTE, quelle que soit sa hauteur, finit où celle-ci
+/// commence (`shortened`). Les notes non choisies ne bougent pas et ne comptent pas.
+struct MonoOverlaps {
+    size_t shortened = 0;
+    size_t removed = 0;
+};
+MonoOverlaps removeOverlapsMono(std::vector<Note>& notes, const NoteSelection& selection);
+
 /// Coupe en deux, au tick donné, chaque note sélectionnée qui le traverse.
 /// Renvoie le nombre de notes créées ; les nouvelles moitiés sont ajoutées à
 /// `newIds` si le pointeur est fourni (pour que l'appelant les sélectionne).

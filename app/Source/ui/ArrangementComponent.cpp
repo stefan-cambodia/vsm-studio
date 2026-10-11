@@ -1258,6 +1258,29 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         return;
     }
 
+    // D552.3 : CTRL+ALT SUR LE CORPS D'UN CLIP GLISSE SON CONTENU (le *Slip* de Cubase) -- avant le clic Alt, qui
+    // coupe : les deux tiennent Alt, et c'est Ctrl qui les sépare. La fenêtre et sa place ne bougent pas.
+    if (event.mods.isAltDown() && event.mods.isCtrlDown() && bord == Geste::Deplacer) {
+        const auto& track = project_->tracks[piste];
+        if (track.locked || clip->locked) {
+            if (onLockRefused) onLockRefused(1);
+            return;
+        }
+        if (vsm::sequencer::clipIsWarped(*clip)) {
+            if (onSlipRefusedWarped) onSlipRefusedWarped();
+            return;
+        }
+        geste_ = Geste::Contenu;
+        gesteOrigine_ = xToTick(point.x);
+        ancreGeste_ = clip->startTick;
+        gesteDernier_ = ancreGeste_;
+        clipFondu_ = clip->id;
+        pisteSaisie_ = static_cast<int>(piste);
+        if (onEditStarted) onEditStarted(u8"Glisser le contenu d'un clip");
+        repaint();
+        return;
+    }
+
     // ALT COUPE, plutôt qu'un OUTIL qu'on choisit et qu'on oublie de quitter.
     // Un mode se laisse allumé, et le geste suivant fait autre chose que ce
     // qu'on croit ; un modificateur ne dure que le temps où on le tient. C'est
@@ -1463,6 +1486,22 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         return;
     }
 
+    // D552.3 : LE CONTENU D'UN SEUL CLIP, celui qu'on tient -- l'aimant s'applique au décalage comme au déplacement
+    // (D547.4 : il tient au bord, ici au début de la fenêtre).
+    if (geste_ == Geste::Contenu) {
+        if (pisteSaisie_ < 0 || static_cast<size_t>(pisteSaisie_) >= project_->tracks.size()) return;
+        const vsm::midi::Tick maintenant = snapTick(ancreGeste_ + xToTick(event.position.x) - gesteOrigine_);
+        const vsm::midi::Tick delta = maintenant - gesteDernier_;
+        if (delta == 0) return;
+        auto& track = project_->tracks[static_cast<size_t>(pisteSaisie_)];
+        const vsm::midi::Tick fait = vsm::sequencer::slipClipContent(
+            track, clipFondu_, delta, materialEnd(track),
+            [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+        gesteDernier_ += fait;   // une butée garde le geste là où la matière l'a arrêté
+        if (fait != 0) { notifyChanged(); repaint(); }
+        return;
+    }
+
     // ON APPLIQUE LE DÉLTA DEPUIS LA DERNIÈRE POSITION, pas depuis l'origine :
     // les opérations de `ClipEdit` sont RELATIVES, et rejouer le geste entier à
     // chaque mouvement le doublerait.
@@ -1502,6 +1541,7 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
             case Geste::FonduSortie:
             case Geste::Lasso:
             case Geste::MarqueurWarp:
+            case Geste::Contenu:
             case Geste::Aucun: break;
         }
     }
@@ -2338,6 +2378,31 @@ ArrangementComponent::RognageAuxLocateurs ArrangementComponent::rognerAuxLocateu
     notifyChanged();
     repaint();
     return bilan;
+}
+
+std::pair<size_t, size_t> ArrangementComponent::calerDebutsSurGrille() {
+    if (project_ == nullptr || selection_.empty()) return {0, 0};
+    const auto montage = montageSelection();
+    auto grille = [this](vsm::midi::Tick t) {
+        const vsm::midi::Tick pas = snapStep(t);
+        return pas > 0 ? ((t + pas / 2) / pas) * pas : t;
+    };
+    // L'ESSAI SUR DES COPIES : aucun pas d'annulation pour un geste qui ne déplace rien.
+    size_t deplaces = 0, verrouilles = 0;
+    for (const auto& track : project_->tracks) {
+        auto essai = track;
+        const auto r = vsm::sequencer::snapClipStartsToGrid(essai, montage, grille, materialEnd(track), automationSuit_);
+        deplaces += r.moved;
+        verrouilles += r.locked;
+    }
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);
+    if (deplaces == 0) return {0, verrouilles};
+    if (onEditStarted) onEditStarted(u8"Caler les débuts des clips sur la grille");
+    for (auto& track : project_->tracks)
+        vsm::sequencer::snapClipStartsToGrid(track, montage, grille, materialEnd(track), automationSuit_);
+    notifyChanged();
+    repaint();
+    return {deplaces, verrouilles};
 }
 
 void ArrangementComponent::selectAll() {

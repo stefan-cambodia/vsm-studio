@@ -431,6 +431,49 @@ TrimToTick fadeClipsTo(std::vector<Clip>& clips, const ClipSelection& selection,
     return rapport;
 }
 
+GridSnap snapClipStartsToGrid(Track& track, const ClipSelection& selection, const std::function<Tick(Tick)>& grid,
+                              Tick materialEnd, bool automationFollows) {
+    GridSnap r;
+    if (!grid) return r;
+    // Les départs se lisent AVANT tout déplacement : un clip déplacé ne doit pas changer la cible d'un autre.
+    std::vector<std::pair<uint64_t, Tick>> cibles;
+    for (const auto& c : track.clips) {
+        if (selection.count(c.id) == 0) continue;
+        if (track.locked || c.locked) { ++r.locked; continue; }
+        const Tick ligne = std::max<Tick>(0, grid(c.startTick));
+        if (ligne != c.startTick) cibles.emplace_back(c.id, ligne - c.startTick);
+    }
+    for (const auto& [id, delta] : cibles)
+        r.moved += moveClips(track, ClipSelection{id}, delta, automationFollows, materialEnd);
+    return r;
+}
+
+Tick slipClipContent(Track& track, uint64_t clipId, Tick delta, Tick materialEnd,
+                     const std::function<double(Tick)>& ticksToSeconds) {
+    if (delta == 0 || track.locked) return 0;
+    auto it = std::find_if(track.clips.begin(), track.clips.end(), [&](const Clip& c) { return c.id == clipId; });
+    if (it == track.clips.end() || it->locked || clipIsWarped(*it)) return 0;
+    Clip& c = *it;
+    if (track.kind != Track::Kind::Audio) {
+        const Tick neuf = std::max<Tick>(0, c.sourceStart - delta);
+        const Tick applique = c.sourceStart - neuf;
+        c.sourceStart = neuf;
+        return applique;
+    }
+    if (!ticksToSeconds) return 0;
+    // EN SECONDES, à la carte de tempo du projet : un décalage de `delta` ticks à la place du clip.
+    const Tick d = delta > 0 ? delta : -delta;
+    const double secondes = ticksToSeconds(c.startTick + d) - ticksToSeconds(c.startTick);
+    const double voulu = c.sourceStartSeconds - (delta > 0 ? secondes : -secondes);
+    const double fenetre = ticksToSeconds(c.startTick + clipPlayedLength(c, materialEnd)) - ticksToSeconds(c.startTick);
+    const double duree = track.audio.durationSeconds();
+    const double haut = duree > 0.0 ? std::max(0.0, duree - fenetre) : std::numeric_limits<double>::max();
+    const double neuf = std::clamp(voulu, 0.0, haut);
+    const double fait = c.sourceStartSeconds - neuf;
+    c.sourceStartSeconds = neuf;
+    return secondes > 0.0 ? static_cast<Tick>(std::llround(static_cast<double>(d) * fait / secondes)) : 0;
+}
+
 ClipSelection clipsByRange(const std::vector<Clip>& clips, Tick materialEnd, RangeRule rule, Tick a, Tick b) {
     ClipSelection choix;
     for (const auto& c : clips) {

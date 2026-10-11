@@ -293,6 +293,8 @@ public:
     void definirPisteCourante(size_t piste) { pisteCourante_ = piste; }
     /// D551.1 : ce qu'un collage n'a pas posé, et les notes qu'il a emportées : (posés, refusés, hors liste, notes).
     std::function<void(size_t, size_t, size_t, size_t)> onPasteReport;
+    /// D552.3 : un clip calé sur le tempo ne glisse pas son contenu -- dit.
+    std::function<void()> onSlipRefusedWarped;
     void duplicateSelection();
     void basculerMuetDeLaSelection();   ///< D438
     /// D20.1 : RÉPÉTER la sélection `count` fois À LA SUITE -- les copies
@@ -339,6 +341,9 @@ public:
         bool sansChoix = false;
     };
     RognageAuxLocateurs rognerAuxLocateurs(vsm::midi::Tick de, vsm::midi::Tick a);
+    /// D552.1 : CALER LES DÉBUTS DES CLIPS CHOISIS SUR LA GRILLE -- celle de l'aimant (`snapStep` : la mesure, ou la
+    /// grille fine), même aimant coupé, comme la quantification de Cubase suit sa grille. (déplacés, verrouillés).
+    std::pair<size_t, size_t> calerDebutsSurGrille();
     /// D18.3 : ne choisir QUE le premier clip de la piste `index`. Sert à
     /// photographier ce qu'un groupe d'édition fait -- « tout choisir » ne
     /// prouverait rien, puisque tout serait déjà pris.
@@ -497,7 +502,9 @@ private:
                         FonduEntree, FonduSortie, Lasso, MarqueurWarp, Etirer,
                         /// D17.7 : la poignée du MILIEU d'un segment d'automation,
                         /// qu'on tire vers le haut ou le bas pour le courber.
-                        CourbureAutomation };
+                        CourbureAutomation,
+                        /// D552.3 : Ctrl+Alt sur le corps d'un clip -- glisser son CONTENU sous la fenêtre (*Slip*).
+                        Contenu };
     /// D17.7 : la courbure du segment saisi au moment du clic, et l'ordonnée
     /// du clic. La courbure se calcule par rapport à ces deux-là plutôt qu'en
     /// s'accumulant : un glissement qui repasse par son point de départ doit
