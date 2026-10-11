@@ -342,41 +342,46 @@ float ArrangementComponent::yToValue(float y, float minimum, float maximum,
 
 void ArrangementComponent::copySelection() {
     if (project_ == nullptr || selection_.empty()) return;
-    presse_papiers_.clear();
-    for (size_t p = 0; p < project_->tracks.size(); ++p)
-        for (const auto& clip : project_->tracks[p].clips)
-            if (selection_.count(clip.id) > 0) {
-                presse_papiers_.push_back(clip);
-                pistePressePapiers_ = p;
-            }
+    presse_papiers_ = vsm::sequencer::copyClips(*project_, selection_);   // D551.1
+}
+
+namespace {
+/// D551.1 : coller -- à la tête sur la piste courante, ou à l'origine. L'ESSAI se fait sur une COPIE du projet : un
+/// collage qui ne pose rien (tout hors liste, tout refusé) ne doit pas empiler un pas d'annulation qui ne défait rien.
+vsm::sequencer::ClipPaste collerSur(vsm::sequencer::Project& projet,
+                                    const std::vector<vsm::sequencer::CopiedClip>& clips, size_t cible,
+                                    vsm::midi::Tick tete, bool aLOrigine, const std::function<void()>& avant) {
+    vsm::sequencer::Project essai = projet;
+    const auto bilan = vsm::sequencer::pasteClips(essai, clips, cible, tete, aLOrigine);
+    if (bilan.pasted.empty()) return bilan;
+    if (avant) avant();
+    return vsm::sequencer::pasteClips(projet, clips, cible, tete, aLOrigine);
+}
 }
 
 void ArrangementComponent::paste() {
     if (project_ == nullptr || presse_papiers_.empty()) return;
-    // ON COLLE À LA TÊTE DE LECTURE, comme le piano roll : c'est le seul point
-    // que l'utilisateur regarde en collant, et il n'a pas à viser à la souris.
-    vsm::midi::Tick plusTot = presse_papiers_.front().startTick;
-    for (const auto& clip : presse_papiers_) plusTot = std::min(plusTot, clip.startTick);
-    const vsm::midi::Tick decalage = playhead_ - plusTot;
+    // ON COLLE À LA TÊTE DE LECTURE, comme le piano roll : c'est le seul point que l'utilisateur regarde en collant,
+    // et il n'a pas à viser à la souris. SUR LA PISTE COURANTE -- celle qu'on a choisie, dans la liste ou ici --,
+    // chaque clip gardant son écart de pistes à la première copiée (D551.1, la règle de Cubase).
+    size_t cible = pisteCourante_;
+    if (cible >= project_->tracks.size()) cible = presse_papiers_.front().sourceTrack;
+    const auto bilan = collerSur(*project_, presse_papiers_, cible, playhead_, false,
+                                 [this] { if (onEditStarted) onEditStarted(u8"Coller des clips"); });
+    if (onPasteReport) onPasteReport(bilan.pasted.size(), bilan.refused, bilan.outside, bilan.notesCarried);
+    if (bilan.pasted.empty()) return;
+    selection_ = bilan.pasted;
+    notifyChanged();
+    repaint();
+}
 
-    // LA PISTE COURANTE, pas celle d'origine : coller sur la piste qu'on
-    // regarde est ce qu'on attend, et c'est aussi ce qui permet de recopier un
-    // motif d'une piste à l'autre.
-    const size_t cible = pisteCourante_ < project_->tracks.size() ? pisteCourante_
-                                                                   : pistePressePapiers_;
-    if (cible >= project_->tracks.size()) return;
-
-    if (onEditStarted) onEditStarted(u8"Coller des clips");
-    selection_.clear();
-    for (const auto& source : presse_papiers_) {
-        Clip copie = source;
-        copie.id = project_->nextClipId();
-        copie.startTick = std::max<vsm::midi::Tick>(0, source.startTick + decalage);
-        selection_.insert(copie.id);
-        project_->tracks[cible].clips.push_back(std::move(copie));
-    }
-    std::stable_sort(project_->tracks[cible].clips.begin(), project_->tracks[cible].clips.end(),
-                      [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
+void ArrangementComponent::pasteAtOrigin() {
+    if (project_ == nullptr || presse_papiers_.empty()) return;
+    const auto bilan = collerSur(*project_, presse_papiers_, 0, 0, true,
+                                 [this] { if (onEditStarted) onEditStarted(u8"Coller à l'origine"); });
+    if (onPasteReport) onPasteReport(bilan.pasted.size(), bilan.refused, bilan.outside, bilan.notesCarried);
+    if (bilan.pasted.empty()) return;
+    selection_ = bilan.pasted;
     notifyChanged();
     repaint();
 }
@@ -2271,6 +2276,65 @@ ArrangementComponent::CoupeAuxLocateurs ArrangementComponent::couperAuxLocateurs
     // la plage, comme les deux moitiés de Ctrl+E restent choisies.
     selection_ = morceaux;
     bilan.morceaux = morceaux.size();
+    notifyChanged();
+    repaint();
+    return bilan;
+}
+
+ArrangementComponent::RognageAuxLocateurs ArrangementComponent::rognerAuxLocateurs(vsm::midi::Tick de,
+                                                                                  vsm::midi::Tick a) {
+    RognageAuxLocateurs bilan;
+    if (project_ == nullptr || a <= de) return bilan;
+    bilan.sansChoix = selection_.empty();
+    const auto montage = montageSelection();
+    auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+    vsm::sequencer::ClipSelection cibleTotale;
+    // La cible de chaque piste : sa part de la sélection, ou -- sans choix -- les clips qui touchent la plage.
+    auto cibleDe = [&](const Track& track) {
+        if (bilan.sansChoix)
+            return vsm::sequencer::clipsByRange(track.clips, materialEnd(track), vsm::sequencer::RangeRule::Between,
+                                                de, a);
+        vsm::sequencer::ClipSelection c;
+        for (const auto& clip : track.clips)
+            if (montage.count(clip.id) > 0) c.insert(clip.id);
+        return c;
+    };
+    auto rogner = [&](Track& track, const vsm::sequencer::ClipSelection& cible) {
+        vsm::sequencer::trimClipsStartTo(track, cible, de, materialEnd(track), conversion);
+        vsm::sequencer::trimClipsEndTo(track, cible, a, materialEnd(track), false, automationSuit_);
+    };
+    // L'ESSAI SUR DES COPIES : on compte les clips qui ont changé, et ceux qui sont tout dehors.
+    for (const auto& track : project_->tracks) {
+        const auto cible = cibleDe(track);
+        if (cible.empty()) continue;
+        cibleTotale.insert(cible.begin(), cible.end());
+        auto essai = track;
+        rogner(essai, cible);
+        const vsm::midi::Tick fin = materialEnd(track);
+        for (const auto& avant : track.clips) {
+            if (cible.count(avant.id) == 0) continue;
+            const vsm::midi::Tick bout = avant.startTick + clipPlayedLength(avant, fin);
+            if (bout <= de || avant.startTick >= a) { ++bilan.dehors; continue; }
+            // D548.1 : un clip verrouillé qu'un locateur traverse reste entier, et se compte -- celui qui est tout
+            // entier dans la plage n'avait rien à perdre, il ne se compte pas.
+            const bool traverse = (avant.startTick < de && de < bout) || (avant.startTick < a && a < bout);
+            if ((track.locked || avant.locked) && traverse) { ++bilan.verrouilles; continue; }
+            // PAR IDENTIFIANT, pas par rang : on ne suppose pas que le rognage garde l'ordre des clips.
+            const auto apres = std::find_if(essai.clips.begin(), essai.clips.end(),
+                                            [&](const Clip& c) { return c.id == avant.id; });
+            if (apres != essai.clips.end()
+                && (apres->startTick != avant.startTick || clipPlayedLength(*apres, fin) != clipPlayedLength(avant, fin)))
+                ++bilan.rognes;
+        }
+    }
+    if (bilan.verrouilles > 0 && onLockRefused) onLockRefused(bilan.verrouilles);
+    if (bilan.rognes == 0) return bilan;
+    if (onEditStarted) onEditStarted(u8"Rogner les clips aux locateurs");
+    for (auto& track : project_->tracks) {
+        const auto cible = cibleDe(track);
+        if (!cible.empty()) rogner(track, cible);
+    }
+    selection_ = cibleTotale;
     notifyChanged();
     repaint();
     return bilan;

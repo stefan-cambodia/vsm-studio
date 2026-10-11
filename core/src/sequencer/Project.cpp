@@ -770,6 +770,78 @@ std::vector<std::string> removeEmptyTracks(Project& project) {
     return noms;
 }
 
+std::vector<CopiedClip> copyClips(const Project& project, const ClipSelection& selection) {
+    std::vector<CopiedClip> copie;
+    for (size_t p = 0; p < project.tracks.size(); ++p) {
+        const Track& t = project.tracks[p];
+        for (const auto& c : t.clips) {
+            if (selection.count(c.id) == 0) continue;
+            CopiedClip cc;
+            cc.clip = c;
+            cc.sourceTrack = p;
+            cc.kind = t.kind;
+            cc.audio = t.audio;
+            if (t.kind == Track::Kind::Midi) {
+                // LA RÈGLE DU DÉPLACEMENT (`moveClipsAcrossTracks`) : une note est couverte si elle COMMENCE dans
+                // la fenêtre.
+                const bool jusquAuBout = c.sourceLength <= 0;
+                for (const auto& n : t.notes)
+                    if (n.startTick >= c.sourceStart && (jusquAuBout || n.startTick < c.sourceStart + c.sourceLength))
+                        cc.notes.push_back(n);   // identifiant conservé : le presse-papiers, pas une piste -- `pasteClips` en donne un neuf
+            }
+            copie.push_back(std::move(cc));
+        }
+    }
+    return copie;
+}
+
+ClipPaste pasteClips(Project& project, const std::vector<CopiedClip>& clips, size_t targetTrack, Tick startTick,
+                     bool atOrigin) {
+    ClipPaste r;
+    if (clips.empty()) return r;
+    size_t premiere = clips.front().sourceTrack;
+    Tick plusTot = clips.front().clip.startTick;
+    for (const auto& c : clips) {
+        premiere = std::min(premiere, c.sourceTrack);
+        plusTot = std::min(plusTot, c.clip.startTick);
+    }
+    std::set<size_t> touchees;
+    for (const auto& c : clips) {
+        const size_t dest = atOrigin ? c.sourceTrack : targetTrack + (c.sourceTrack - premiere);
+        if (dest >= project.tracks.size()) { ++r.outside; continue; }
+        Track& cible = project.tracks[dest];
+        const bool genre = cible.kind == c.kind && (cible.kind == Track::Kind::Midi || cible.kind == Track::Kind::Audio);
+        const bool fichier = cible.kind != Track::Kind::Audio || cible.audio.empty() || cible.audio.path == c.audio.path;
+        if (cible.locked || !genre || !fichier) { ++r.refused; continue; }
+        if (cible.kind == Track::Kind::Audio && cible.audio.empty()) cible.audio = c.audio;
+        Clip copie = c.clip;
+        copie.id = project.nextClipId();
+        copie.startTick = atOrigin ? c.clip.startTick : std::max<Tick>(0, startTick + (c.clip.startTick - plusTot));
+        if (cible.kind == Track::Kind::Midi && dest != c.sourceTrack) {
+            // LES NOTES SUIVENT : posées à la place que la fenêtre collée leur donne, et la fenêtre les vise.
+            const Tick decalage = copie.startTick - c.clip.startTick + (c.clip.startTick - c.clip.sourceStart);
+            for (const auto& n : c.notes) {
+                Note neuve = n;
+                neuve.id = project.nextNoteId();
+                neuve.startTick = n.startTick + decalage;
+                neuve.endTick = n.endTick + decalage;
+                cible.notes.push_back(neuve);
+                ++r.notesCarried;
+            }
+            copie.sourceStart = c.clip.sourceStart + decalage;
+            touchees.insert(dest);
+        }
+        r.pasted.insert(copie.id);
+        cible.clips.push_back(std::move(copie));
+        std::stable_sort(cible.clips.begin(), cible.clips.end(),
+                         [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
+    }
+    for (size_t t : touchees)
+        std::stable_sort(project.tracks[t].notes.begin(), project.tracks[t].notes.end(),
+                         [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+    return r;
+}
+
 size_t duplicateTrackWithFolder(Project& project, size_t index) {
     if (index >= project.tracks.size()) return index;
     const size_t taille = 1 + folderContents(project, index).size();

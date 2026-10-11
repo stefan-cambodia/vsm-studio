@@ -285,6 +285,14 @@ public:
     /// Les mêmes trois gestes que le piano roll, aux mêmes raccourcis.
     void copySelection();
     void paste();
+    /// D551.2 : chaque clip recollé sur SA piste, à SA place (*Paste at Origin*).
+    void pasteAtOrigin();
+    bool aDesClipsCopies() const { return !presse_papiers_.empty(); }
+    /// D551.1 (H16) : la piste où l'on colle est celle qu'on a CHOISIE, dans la liste comme dans l'arrangement --
+    /// elle n'était posée que par un clic dans l'arrangement, et choisir une piste dans la liste n'y changeait rien.
+    void definirPisteCourante(size_t piste) { pisteCourante_ = piste; }
+    /// D551.1 : ce qu'un collage n'a pas posé, et les notes qu'il a emportées : (posés, refusés, hors liste, notes).
+    std::function<void(size_t, size_t, size_t, size_t)> onPasteReport;
     void duplicateSelection();
     void basculerMuetDeLaSelection();   ///< D438
     /// D20.1 : RÉPÉTER la sélection `count` fois À LA SUITE -- les copies
@@ -320,6 +328,17 @@ public:
         bool sansChoix = false;
     };
     CoupeAuxLocateurs couperAuxLocateurs(vsm::midi::Tick de, vsm::midi::Tick a);
+    /// D551.3 : ROGNER LES CLIPS AUX LOCATEURS (*Range ▸ Crop*). Des clips choisis -- sans choix, de ceux qui touchent
+    /// la plage --, seule la part d'entre les locateurs reste : le début de ceux que `de` traverse va à `de`, la fin
+    /// de ceux que `a` traverse va à `a` (`trimClipsStartTo` / `trimClipsEndTo`, ceux de D548.3, sans chaîne : la
+    /// plage garde sa place). Un clip tout dehors n'est pas touché, et compté. Un pas, s'il y a rognage.
+    struct RognageAuxLocateurs {
+        size_t rognes = 0;
+        size_t dehors = 0;
+        size_t verrouilles = 0;
+        bool sansChoix = false;
+    };
+    RognageAuxLocateurs rognerAuxLocateurs(vsm::midi::Tick de, vsm::midi::Tick a);
     /// D18.3 : ne choisir QUE le premier clip de la piste `index`. Sert à
     /// photographier ce qu'un groupe d'édition fait -- « tout choisir » ne
     /// prouverait rien, puisque tout serait déjà pris.
@@ -587,10 +606,9 @@ private:
     bool followPlayhead_ = true;
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne
-    /// alors plus rien.
-    std::vector<vsm::sequencer::Clip> presse_papiers_;
-    /// La piste d'où vient le presse-papiers, pour y recoller par défaut.
-    size_t pistePressePapiers_ = 0;
+    /// alors plus rien. D551.1 : chacun avec SA piste d'origine et, pour un clip MIDI, les notes de sa fenêtre
+    /// (`copyClips`) -- une seule piste d'origine retenue fondait sur une piste une copie prise sur deux (H14).
+    std::vector<vsm::sequencer::CopiedClip> presse_papiers_;
     size_t pisteCourante_ = 0;
     /// D39.3 : les pistes choisies, telles que la liste les connaît. Nommée
     /// `pistesChoisies_` et non `selection_` : ce dernier nom est PRIS, par la

@@ -764,6 +764,23 @@ MainComponent::MainComponent()
                      tr(u8"Le premier clip choisi commence déjà à la tête de lecture : placez la tête là où "
                         u8"il doit commencer."));
     };
+    // D551.1 : CE QU'UN COLLAGE N'A PAS POSÉ se dit, et les notes qu'il a emportées s'écrivent.
+    arrangement_.onPasteReport = [this](size_t poses, size_t refuses, size_t dehors, size_t notes) {
+        std::fputs(("VSM_COLLER : " + std::to_string(poses) + " posé(s), " + std::to_string(refuses) + " refusé(s), "
+                    + std::to_string(dehors) + " hors des pistes, " + std::to_string(notes) + " note(s) emportée(s)\n")
+                       .c_str(), stderr);
+        if (refuses + dehors > 0)
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Coller"),
+                         tr(u8"%1 clip(s) posé(s) ; %2 refusé(s) — une piste d'un autre genre, un groupe, une piste "
+                            u8"verrouillée ou un autre fichier audio — et %3 sans piste où se poser, sous la dernière.")
+                             .replace("%1", juce::String(static_cast<int>(poses)))
+                             .replace("%2", juce::String(static_cast<int>(refuses)))
+                             .replace("%3", juce::String(static_cast<int>(dehors))));
+        else if (notes > 0 && pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Coller : %1 clip(s), %2 note(s) emportée(s) vers leur nouvelle piste")
+                                           .replace("%1", juce::String(static_cast<int>(poses)))
+                                           .replace("%2", juce::String(static_cast<int>(notes))));
+    };
     // D549.2 : CE QUE « RENDRE SILENCIEUX » N'A PAS FAIT se dit.
     arrangement_.onSilenceReport = [](size_t tus, size_t dehors, size_t refuses, bool locateurs) {
         juce::String texte;
@@ -911,6 +928,9 @@ MainComponent::MainComponent()
     // pistes. Ils la reçoivent, ils ne la tiennent pas.
     trackList_.onSelectionChanged = [this] {
         arrangement_.setSelectedTracks(trackList_.selectedTracks());
+        // D551.1 (H16) : la piste où l'on colle est la piste CHOISIE -- elle ne suivait que les clics dans
+        // l'arrangement, et une piste choisie dans la liste recevait le collage d'une autre.
+        arrangement_.definirPisteCourante(trackList_.selectedTrackIndex());
         mixer_.setSelectedTracks(trackList_.selectedTracks());
         // D40.3 : et la console défile jusqu'à la tranche de la piste ACTIVE.
         // À 64 pistes elle en montre treize : sans cela, la marque de sélection
@@ -4347,8 +4367,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // pas confondre avec l'entrée du dessus, qui coupe la plage vers le presse-papiers.
             menu.addItem(kMenuEditSplitAtLocators, tr(u8"Couper les clips aux locateurs"),
                          project_.loopEndTick > project_.loopStartTick);
+            // D551.3 : ROGNER LES CLIPS AUX LOCATEURS (*Range ▸ Crop*) -- ne garder que la plage.
+            menu.addItem(kMenuEditCropAtLocators, tr(u8"Rogner les clips aux locateurs"),
+                         project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditPasteRange, tr(u8"Coller la plage à la tête de lecture (en insérant)"),
                          !plageCopiee_.empty());
+            // D551.2 : COLLER À L'ORIGINE (*Paste at Origin*) -- chaque clip copié sur sa piste, à sa place.
+            menu.addItem(kMenuEditPasteAtOrigin, tr(u8"Coller à l'origine"), arrangement_.aDesClipsCopies());
             // D543.1 : LA LIGNE D'ACCORDS D'APRÈS LES NOTES de la piste active.
             {
                 const auto* active = pianoRoll_.activeTrack();
@@ -5507,6 +5532,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuEditSplitAtLocators) { couperClipsAuxLocateurs(); return; }
+    if (menuItemID == kMenuEditPasteAtOrigin) { arrangement_.pasteAtOrigin(); return; }
+    if (menuItemID == kMenuEditCropAtLocators) { rognerClipsAuxLocateurs(); return; }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
@@ -10634,6 +10661,28 @@ void MainComponent::couperClipsAuxLocateurs() {
         pianoRoll_.onStatusChanged(tr(u8"Couper aux locateurs : %1 coupe(s), %2 morceau(x) entre eux, choisis")
                                        .replace("%1", juce::String(static_cast<int>(bilan.coupes)))
                                        .replace("%2", juce::String(static_cast<int>(bilan.morceaux))));
+}
+
+void MainComponent::rognerClipsAuxLocateurs() {
+    const auto de = project_.loopStartTick, a = project_.loopEndTick;
+    if (a <= de) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Locateurs"),
+                     tr(u8"Aucune plage entre les locateurs : posez-les d'abord (Maj sur la règle, ou Transport ▸ "
+                        u8"Début de boucle à la tête et Fin de boucle à la tête)."));
+        return;
+    }
+    const auto bilan = arrangement_.rognerAuxLocateurs(de, a);
+    std::fputs(("VSM_ROGNE_LOCATEURS : " + std::to_string(bilan.rognes) + " rogné(s), " + std::to_string(bilan.dehors)
+                + " hors de la plage, " + std::to_string(bilan.verrouilles) + " verrouillé(s)"
+                + (bilan.sansChoix ? ", sans sélection" : "") + "\n").c_str(), stderr);
+    if (bilan.rognes == 0 && bilan.verrouilles == 0)
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rien à rogner"),
+                     tr(u8"Aucun clip ne déborde des locateurs : un clip tout entier dedans n'a rien à perdre, et un "
+                        u8"clip tout dehors n'est pas touché."));
+    else if (bilan.rognes > 0 && pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Rogner aux locateurs : %1 clip(s) rogné(s), %2 hors de la plage")
+                                       .replace("%1", juce::String(static_cast<int>(bilan.rognes)))
+                                       .replace("%2", juce::String(static_cast<int>(bilan.dehors))));
 }
 
 void MainComponent::retirerPistesVides() {

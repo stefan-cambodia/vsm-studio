@@ -1723,3 +1723,62 @@ VSM_TEST(splitting_at_the_locators_cuts_twice_and_returns_the_pieces_between_the
     VSM_ASSERT_EQ(r2.cuts, size_t(0));
     VSM_ASSERT(r2.inside == ClipSelection({2}));
 }
+
+// D551.1 — COLLER SUR PLUSIEURS PISTES (H14) ; UN CLIP MIDI COLLÉ AILLEURS EMPORTE SES NOTES (H15) ; D551.2 — À L'ORIGINE.
+namespace {
+Project deuxPistesEtUnAudio() {
+    Project p;
+    p.tracks.resize(3);
+    p.tracks[0].name = "Haut";
+    p.tracks[0].notes = {note(0, 57, 1)};
+    p.tracks[0].clips = {clip(1, 0, 1920)};
+    p.tracks[1].name = "Bas";
+    p.tracks[1].notes = {note(0, 64, 2)};
+    p.tracks[1].clips = {clip(2, 0, 1920)};
+    p.tracks[2].name = "Prise";
+    p.tracks[2].kind = Track::Kind::Audio;
+    p.tracks[2].audio.path = "prise.wav";
+    p.tracks[2].clips = {clip(3, 0, 1920)};
+    p.ensureClipIdAbove(10);
+    p.ensureNoteIdAbove(10);
+    return p;
+}
+std::vector<std::pair<std::string, Tick>> placesDes(const Project& p) {
+    std::vector<std::pair<std::string, Tick>> v;
+    for (const auto& t : p.tracks) for (const auto& c : t.clips) v.emplace_back(t.name, c.startTick);
+    std::sort(v.begin(), v.end());
+    return v;
+}
+}
+
+VSM_TEST(pasting_clips_keeps_each_on_its_relative_track_and_carries_midi_notes_to_another_track) {
+    Project p = deuxPistesEtUnAudio();
+    // (H14) Haut et Bas copiés, collés à 3 840 depuis Haut : chacun sur SA piste relative.
+    auto r = pasteClips(p, copyClips(p, {1, 2}), 0, 3840, false);
+    VSM_ASSERT_EQ(r.pasted.size(), size_t(2));
+    VSM_ASSERT(placesDes(p) == (std::vector<std::pair<std::string, Tick>>{
+                                   {"Bas", 0}, {"Bas", 3840}, {"Haut", 0}, {"Haut", 3840}, {"Prise", 0}}));
+    VSM_ASSERT_EQ(r.notesCarried, size_t(0));   // sur sa propre piste, la fenêtre vise la même matière
+    // (H15) le clip de Haut collé sur Bas : sa note (57) part avec lui, à 3 840, et la fenêtre la vise.
+    Project q = deuxPistesEtUnAudio();
+    r = pasteClips(q, copyClips(q, {1}), 1, 3840, false);
+    VSM_ASSERT_EQ(r.notesCarried, size_t(1));
+    bool vue = false;
+    for (const auto& n : q.tracks[1].notes)
+        if (n.number == 57) { vue = true; VSM_ASSERT_EQ(n.startTick, Tick(3840)); VSM_ASSERT(n.id > 10); }
+    VSM_ASSERT(vue);
+    for (const auto& c : q.tracks[1].clips)
+        if (c.startTick == 3840) VSM_ASSERT_EQ(c.sourceStart, Tick(3840));
+    VSM_ASSERT_EQ(q.tracks[0].notes.size(), size_t(1));   // l'original n'a rien perdu
+    // Ce qui ne se pose pas est COMPTÉ : sous la dernière piste, et sur une piste d'un autre genre.
+    Project u = deuxPistesEtUnAudio();
+    r = pasteClips(u, copyClips(u, {2, 3}), 2, 3840, false);   // Bas → Prise (MIDI sur audio), Prise → hors liste
+    VSM_ASSERT_EQ(r.refused, size_t(1));
+    VSM_ASSERT_EQ(r.outside, size_t(1));
+    VSM_ASSERT(r.pasted.empty());
+    // (D551.2) À L'ORIGINE : chacun sur sa piste, à sa place, quelle que soit la cible.
+    Project w = deuxPistesEtUnAudio();
+    r = pasteClips(w, copyClips(w, {1, 3}), 1, 9999, true);
+    VSM_ASSERT(placesDes(w) == (std::vector<std::pair<std::string, Tick>>{
+                                   {"Bas", 0}, {"Haut", 0}, {"Haut", 0}, {"Prise", 0}, {"Prise", 0}}));
+}

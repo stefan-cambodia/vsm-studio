@@ -41768,3 +41768,55 @@ Crop*), le jumeau de « Couper les clips aux locateurs » (D550.2).
 
 **L'ORDRE, TRANCHÉ ICI.** D551.1 d'abord (un défaut présumé, mesuré avant d'être corrigé), puis D551.2, qui passe par
 le même chemin, puis D551.3.
+
+### Phase D551.1 — coller sur plusieurs pistes (11/10/2026) — FAITE
+
+**MESURÉ AVANT D'ÊTRE CORRIGÉ** (`tools/coller-pistes.sh`, sur le binaire de D550) : **H14 confirmée** — tout choisi,
+Ctrl+C, Ctrl+V depuis « Haut » : « Haut:0,3840,3840 | Bas:0 », les deux clips sur une seule piste. **H15 n'était pas
+mesurable par l'application** : le collage visait la dernière piste CLIQUÉE dans l'arrangement, et choisir « Bas »
+dans la liste (`piste:1`) n'y changeait rien — le clip est allé sur « Haut ». C'est un troisième écart, **H16** :
+`pisteCourante_` ne suivait que les clics de l'arrangement, la liste ne lui disait rien. H15 se lisait dans le code
+(la copie collée gardait sa fenêtre, donc la matière de la piste d'arrivée).
+
+**CE QUI EST TRANCHÉ.** `copyClips` / `pasteClips` (`core/`, `Project.h`) : chaque clip copié garde sa piste, le genre
+et le fichier de celle-ci, et — pour un clip MIDI — les notes que sa fenêtre couvrait (la règle de
+`moveClipsAcrossTracks` : une note est couverte si elle y COMMENCE). Collé, chaque clip va sur la piste qui garde son
+écart à la première piste copiée, à partir de la piste courante (Cubase) ; un clip MIDI posé sur une AUTRE piste que
+la sienne y emporte ses notes (identifiants neufs, à la place que la fenêtre collée leur donne) ; sur SA piste, il
+reste une fenêtre sur la même matière, comme avant. Refusés et comptés comme au déplacement : un autre genre, un
+groupe, un dossier, un VCA, une piste verrouillée, un autre fichier audio ; hors liste, compté à part. L'ESSAI se fait
+sur une copie du projet : un collage qui ne pose rien n'empile pas de pas. **H16** : la liste pose la piste courante de
+l'arrangement (`definirPisteCourante`, appelée à chaque changement de sa sélection).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | deux pistes collées depuis la première → chacune sur la sienne ; le clip de « Haut » collé sur « Bas » y emporte sa note (57, à 3 840, identifiant neuf, la fenêtre la visant), l'original intact ; MIDI vers une piste audio refusé, sous la dernière piste compté dehors ; à l'origine, chacun à sa place. **Rouge** sur deux mutants : tout sur la piste cible (le défaut H14), et les notes non emportées (« 0 != 1 »). core 473 → **474** | **oui** |
+| 2 | par l'application | `tools/coller-pistes.sh`, 5 contrôles : « Haut:0,3840 \| Bas:0,3840 » ; le clip de « Haut » collé sur « Bas » choisie dans la liste y JOUE 57 (le `.mid` de ce qui est joué) ; Ctrl+Z → l'origine ; à l'origine « Haut:0,0 \| Bas:0,0 » ; depuis « Bas », le clip de « Bas » n'a pas de piste sous elle — posé 1, « … et 1 sans piste où se poser, sous la dernière » dit. **Rouge sur le binaire de D550** : (1) et (2) | **oui** |
+
+### Phase D551.2 — coller à l'origine (11/10/2026) — FAITE
+
+*Édition ▸ Coller à l'origine* (`pasteAtOrigin`) : `pasteClips` avec `atOrigin`, le même chemin, les mêmes refus. Mesuré
+par (4) ci-dessus ; photographié en français et en anglais (« Coller à l'origine » / « Paste at origin », grisé tant
+que rien n'est copié).
+
+### Phase D551.3 — rogner les clips aux locateurs (11/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** `rognerAuxLocateurs` compose `trimClipsStartTo` et `trimClipsEndTo` (D548.3) aux deux
+locateurs, SANS chaîne (la plage garde sa place), sur les clips choisis ou — sans choix — ceux qui touchent la plage ;
+essai sur des copies, compte par IDENTIFIANT (une première version comparait par rang, et comptait comme refusé un
+clip verrouillé tout entier dans la plage, qui n'avait rien à perdre — relus et corrigés avant le banc).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | par l'application, le projet relu et l'EXPORT | `tools/rogner-aux-locateurs.sh`, 6 contrôles : sans choix, A [0, 7 680) → « A:1920:3840 », choisi ; Ctrl+Z → entier ; verrouillé → intact et dit ; A seul choisi sur deux pistes → « A:1920:1920 B:0:3840 » ; tout dans la plage → « Rien à rogner », 0 pas | **oui** |
+| 2 | l'export | **contre le TÉMOIN** (le même projet non rogné, SANS la note d'avant la plage) : **écart 0 dans la plage ET avant elle**, au bit près. Contre le projet d'origine : 2,7·10⁻⁵ dans la plage — l'état de la machine, qui avait joué la note d'avant (le « caractère analogique » du Minimoog est aléatoire). La première version du banc demandait le bit près contre l'origine et tombait : c'est le témoin qui a départagé « la coupe est fausse » de « l'état diffère » | **oui** |
+
+**LA SÉRIE DE D551** (lancée à 07 h 22, finie à 10 h 49 — 206 min, dont une VEILLE de 08 h 12 à 10 h 45 au journal du
+noyau) : **79/81**, préférences identiques. Deux rouges, sur des chemins que D551 ne touche pas : `arret-tete.sh`
+(07 h 50, « fin du morceau » lue à 2 430 au lieu de 0 — la signature que D535.1 bis avait vue sous veille, ici sans
+veille au journal sur sa fenêtre) et `transport-au-repos.sh` (10 h 47, deux minutes après la sortie de veille, trois
+lignes `VSM_TRANSPORT` là où il n'en attend aucune). Rejoués seuls sur le même binaire : **3/3 vert** chacun.
+
+**LE DOUZIÈME AUDIT (D551) EST CLOS** : coller sur plusieurs pistes (deux défauts mesurés, un troisième trouvé par la
+mesure), coller à l'origine, rogner aux locateurs — dont l'export se juge contre un témoin, l'état d'une machine
+n'étant pas celui qu'elle aurait eu sans les notes retirées.

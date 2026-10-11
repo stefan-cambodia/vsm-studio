@@ -127,6 +127,10 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Retirer les pistes vides** (D550.3). *Piste ▸ Retirer les pistes vides* retire d'un geste les pistes MIDI et audio qui ne portent ni clip, ni note, ni événement MIDI, ni fichier, ni point d'automation — leurs réglages ne comptent pas. Un groupe n'est jamais retiré ; un dossier l'est quand il n'a plus de membre. Les routages suivent, la boîte nomme ce qui est parti, et Ctrl+Z rend tout.
 
+**Coller sur plusieurs pistes, coller à l'origine** (D551.1, D551.2). Ctrl+V colle les clips copiés à la tête de lecture, à partir de la piste CHOISIE (dans la liste comme dans l'arrangement), chacun gardant son écart de pistes à la première copiée — une copie prise sur deux pistes se recolle sur deux pistes. Un clip MIDI collé sur une autre piste y emporte ses notes. Ce qui tomberait sous la dernière piste, ou sur une piste d'un autre genre, n'est pas posé, et la boîte le dit. *Édition ▸ Coller à l'origine* recolle chaque clip sur sa piste, à sa place.
+
+**Rogner les clips aux locateurs** (D551.3). *Édition ▸ Rogner les clips aux locateurs* ne garde, des clips choisis — ou, sans sélection, de ceux qui touchent la plage —, que la part d'entre les locateurs. Un clip tout dehors n'est pas touché ; un clip verrouillé reste entier, et c'est dit.
+
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
 
 **Les locateurs sur une section** (D542.1). Clic droit sur la règle — celle de l'arrangement ou celle du piano roll —, puis *Locateurs sur cette section* : la boucle prend la section où vous avez cliqué (d'un repère au suivant ; la dernière va jusqu'à la fin de ce qu'on entend) et s'active, pour travailler un refrain en boucle. L'entrée est grisée là où il n'y a pas de section (sans repère, ou avant le premier). Ctrl+Z rend la boucle d'avant.

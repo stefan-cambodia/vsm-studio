@@ -4,6 +4,7 @@
 #include "vsm/sequencer/TimeSignatureMap.h"
 #include <functional>
 #include "vsm/sequencer/Track.h"
+#include "vsm/sequencer/ClipEdit.h"   // D551.1 : ClipSelection
 #include "vsm/sequencer/ChordTrack.h"
 #include <cstdint>
 #include <map>
@@ -393,6 +394,36 @@ bool trackIsEmpty(const Project& project, size_t index);
 /// reste (la règle de D5.3), et un dossier n'est jugé qu'APRÈS ses membres -- vidé par le geste, il part avec
 /// eux. Rend les NOMS des pistes retirées, dans l'ordre du projet, pour que l'appelant les DISE.
 std::vector<std::string> removeEmptyTracks(Project& project);
+
+/// D551.1 — LE PRESSE-PAPIERS DE CLIPS. Chaque clip copié garde SA PISTE d'origine (une copie prise sur deux pistes se
+/// recollait fondue sur une seule : H14), le genre et le fichier de celle-ci, et -- pour un clip MIDI, qui n'est
+/// qu'une fenêtre sur la matière de sa piste -- les NOTES que sa fenêtre couvrait au moment de la copie : collé sur
+/// une autre piste, il les emporte (H15), comme le déplacement entre pistes les emporte déjà.
+struct CopiedClip {
+    Clip clip;
+    size_t sourceTrack = 0;
+    Track::Kind kind = Track::Kind::Midi;
+    AudioSource audio;
+    std::vector<Note> notes;   ///< celles de la fenêtre, aux ticks de la matière
+};
+std::vector<CopiedClip> copyClips(const Project& project, const ClipSelection& selection);
+
+/// COLLER (D551.1) ou COLLER À L'ORIGINE (D551.2). Chaque clip va sur la piste qui garde son ÉCART à la première piste
+/// copiée, à partir de `targetTrack` (la règle de Cubase), au tick `startTick` plus son écart au premier clip ; à
+/// l'origine (`atOrigin`), sur sa propre piste et à sa propre place. COMPTÉS ET NON POSÉS : un clip qui tomberait
+/// sous la dernière piste (`outside`) ; une piste d'un autre genre, un groupe, un dossier, un VCA, une piste
+/// verrouillée, une piste audio qui porte un autre fichier (`refused`) -- une piste audio sans fichier l'adopte, comme
+/// au déplacement. Un clip MIDI posé sur une AUTRE piste que la sienne y emporte ses notes (copiées, identifiants
+/// neufs, décalées avec lui) et sa fenêtre les vise ; sur SA piste, il reste une fenêtre sur la même matière -- le
+/// collage d'avant, inchangé. Rend les identifiants des clips posés.
+struct ClipPaste {
+    ClipSelection pasted;
+    size_t refused = 0;
+    size_t outside = 0;
+    size_t notesCarried = 0;
+};
+ClipPaste pasteClips(Project& project, const std::vector<CopiedClip>& clips, size_t targetTrack, Tick startTick,
+                     bool atOrigin);
 
 /// DUPLIQUE UNE PISTE **ET CE QU'ELLE CONTIENT** (D35.3), et rend l'index de la
 /// copie de la piste elle-même.

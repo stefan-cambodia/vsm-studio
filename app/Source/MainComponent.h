@@ -1124,6 +1124,10 @@ private:
         kMenuEditSelectCursorToEnd,
         kMenuEditSplitAtLocators,
         kMenuTrackRemoveEmpty,
+        /// D551.2 : coller à l'origine.
+        kMenuEditPasteAtOrigin,
+        /// D551.3 : rogner les clips aux locateurs.
+        kMenuEditCropAtLocators,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1550,6 +1554,8 @@ private:
     void choisirClipsParRegle(int menuItemID);
     /// D550.2 : couper les clips aux locateurs (*Split Loop*), dit.
     void couperClipsAuxLocateurs();
+    /// D551.3 : rogner les clips aux locateurs (*Crop Range*), dit.
+    void rognerClipsAuxLocateurs();
     /// D550.3 : retirer les pistes vides (*Remove Empty Tracks*), dit avec leurs noms.
     void retirerPistesVides();
     /// D535.3 : COPIER (ou couper) ce que toutes les pistes font entendre entre les locateurs,
