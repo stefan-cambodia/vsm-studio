@@ -41820,3 +41820,25 @@ lignes `VSM_TRANSPORT` là où il n'en attend aucune). Rejoués seuls sur le mê
 **LE DOUZIÈME AUDIT (D551) EST CLOS** : coller sur plusieurs pistes (deux défauts mesurés, un troisième trouvé par la
 mesure), coller à l'origine, rogner aux locateurs — dont l'export se juge contre un témoin, l'état d'une machine
 n'étant pas celui qu'elle aurait eu sans les notes retirées.
+
+### Phase D552 — un treizième audit : glisser le contenu d'un clip, caler les débuts des clips sur la grille, les chevauchements en mono (11/10/2026)
+
+*Écrite le 11/10 à 10 h 53, D551 close.*
+
+**LA MÉTHODE, celle de D535 à D551.** **Cherché** : 0 pour « glisser le contenu », « slip » dans `app/Source` et `core/`
+— déplacer la MATIÈRE sous la fenêtre d'un clip, la fenêtre restant en place (le *Slip* de Cubase, Ctrl+Alt+glisser) ;
+on ne le fait aujourd'hui qu'en rognant les deux bords. 0 pour « quantifier les clips » : l'aimant agit au glisser
+(D547.4), mais rien ne CALE sur la grille les débuts de clips déjà posés à la main ou par un import. « Retirer les
+chevauchements » existe au piano roll pour une même hauteur (`removeOverlaps`) ; **pas la version MONO** de Cubase
+(*Delete Overlaps (mono)*), qui fait d'une partie une ligne qui ne joue jamais deux notes à la fois — ce que demande
+une basse jouée par une machine monophonique. **Écarté** : grouper des clips (*Group*) — une donnée de projet neuve
+(un identifiant de groupe par clip, lu et écrit par `interchange`), un chantier à part.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D552.1 | **Caler les débuts des clips sur la grille** — *Quantize* (événements) | *Édition ▸ Caler les débuts des clips sur la grille* : chaque clip choisi commence à la ligne de grille la plus proche (l'aimant courant de l'arrangement : la mesure, ou la grille fine) ; sa matière le suit (un déplacement, pas un rognage) ; le verrou respecté et dit ; aucun clip à déplacer → dit, sans pas ; mesuré par le `project.json` relu |
+| D552.2 | **Les chevauchements en mono** — *Delete Overlaps (mono)* | au piano roll, *Retirer les chevauchements (mono)* : une note qui chevauche la SUIVANTE, quelle que soit sa hauteur, finit où celle-ci commence ; deux notes qui commencent ensemble : la plus aiguë reste, l'autre part, et c'est compté ; mesuré par le `project.json` relu et le `.mid` exporté |
+| D552.3 | **Glisser le contenu d'un clip** — *Slip* | Ctrl+Alt + glisser dans le corps d'un clip déplace sa matière sous la fenêtre, la fenêtre et sa place inchangées ; l'aimant s'applique au décalage ; borné à la matière (pas avant son début) ; un clip étiré sur le tempo (D12) ou verrouillé refusé et dit ; un pas ; mesuré par le `project.json` relu et l'export |
+
+**L'ORDRE, TRANCHÉ ICI.** D552.1 d'abord (le chemin du déplacement existe), puis D552.2 (`core/` et le piano roll), puis
+D552.3, le seul geste de souris neuf.
