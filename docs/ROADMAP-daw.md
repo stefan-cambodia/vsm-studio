@@ -41897,3 +41897,23 @@ rend A tel qu'il était, sans ligne D337.
 
 **LE TREIZIÈME AUDIT (D552) EST CLOS** : caler les débuts des clips sur la grille, les chevauchements en mono, glisser
 le contenu d'un clip — et une annulation qui étendait un clip (H17), trouvée par le banc du dernier.
+
+### Phase D553 — un quatorzième audit : retirer l'automation d'une piste, lire la sélection, fusionner le MIDI entre les locateurs (11/10/2026)
+
+*Écrite le 11/10 à 17 h 28, D552 close.*
+
+**LA MÉTHODE, celle de D535 à D552.** **Cherché** dans `app/Source` et `core/` : « Tête au début de la sélection »
+existe (L, D28.4) ; **0 pour « lire la sélection »** (*Play Selection Range* de Cubase, qui joue la sélection et
+s'arrête à sa fin). « Réduire les points d'automation » existe ; **0 pour « supprimer l'automation »** d'une piste —
+une courbe se vide aujourd'hui point par point. **0 pour « fusionner le MIDI »** (*Merge MIDI in Loop*) : « Copier la
+plage » (D535.3) prend ce que chaque piste fait entendre entre les locateurs, mais piste par piste ; rien ne rassemble
+en UNE partie ce que plusieurs pistes jouent. **Trouvé et écarté** : le retour au départ à l'arrêt existe (Préférences,
+D14.5) ; la sélection des notes de même hauteur existe au piano roll.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D553.1 | **Supprimer l'automation d'une piste** — *Remove Automation* | *Piste ▸ Supprimer l'automation de la piste choisie* : toutes ses courbes retirées (le gain de clip, qui n'est pas de l'automation, reste) ; le compte de courbes et de points DIT ; rien à retirer → dit, sans pas ; un pas ; mesuré par le `project.json` relu et l'export (une rampe de volume qui ne s'entend plus) |
+| D553.2 | **Lire la sélection** — *Play Selection Range* | *Transport ▸ Lire la sélection* (Maj+Espace : l'Alt+Espace de Cubase ouvre KRunner sous Plasma) : la tête au début des clips choisis — à défaut, des notes choisies au piano roll —, la lecture, et l'arrêt à leur FIN, la tête posée exactement sur elle (ou au départ si la préférence de retour le veut) ; rien de choisi → dit ; mesuré par le relevé du transport pendant et après |
+| D553.3 | **Fusionner le MIDI entre les locateurs** — *Merge MIDI in Loop* | *Édition ▸ Fusionner le MIDI entre les locateurs* : ce que les pistes MIDI font ENTENDRE entre les locateurs (clips et pistes muets exclus, le solo respecté, la transposition de piste appliquée) rassemblé sur une piste NEUVE, sous la piste choisie, avec sa machine ; un pas ; mesuré par le `project.json` relu et le `.mid` joué |
+
+**L'ORDRE, TRANCHÉ ICI.** D553.1 d'abord (le plus petit), puis D553.2, puis D553.3, qui crée une piste.
