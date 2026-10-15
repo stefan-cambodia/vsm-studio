@@ -42285,3 +42285,33 @@ C++ 486 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE SEIZIÈME AUDIT (D555) EST CLOS** : lire autour de la sélection, supprimer les contrôleurs d'une piste, éclater
 par canal — et, trouvés en route, un banc qui comptait des programmes que l'export fabrique, et une lecture qui
 partait de la fin du morceau pour revenir à 0 sans un mot.
+
+### Phase D556 — un dix-septième audit : lire jusqu'au repère suivant, la tête d'un événement à l'autre, les notes de même nom à toutes les octaves (16/10/2026)
+
+*Écrite le 16/10 à 2 h 44, D555 close.*
+
+**LA MÉTHODE, celle de D535 à D555.** **Cherché** dans `app/Source` et la table des raccourcis, au script Python :
+**0 pour « repère suivant »** dans un geste de LECTURE — « Marqueur suivant » déplace la tête, rien ne joue jusqu'à
+lui ; c'est le dernier des *Play Options* de Cubase qui manque (*Play until Next Marker*) ; **0 pour « événement
+suivant / précédent »** — la tête saute de temps, de mesure, de repère (D29.2, D483), jamais d'une note ou d'un clip au
+suivant (*Locate Next / Previous Event*), le geste qui sert à se poser sur une attaque sans zoomer ; **0 pour « même
+nom »** — « Toutes les notes de même hauteur » existe au piano roll, à la même OCTAVE ; la variante *all Octaves* de
+Cubase (tous les do, tous les fa dièse), celle qui sert à régler une même note d'un instrument à toutes ses hauteurs,
+n'existe pas. **Trouvé et écarté** : « Sélectionner de la tête à la fin » existe, « Masquer la piste » aussi.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D556.1 | **Lire jusqu'au repère suivant** — *Play until Next Marker* | *Transport ▸ Lire jusqu'au repère suivant* : la lecture part de la tête et s'arrête sur le premier repère APRÈS elle, la tête posée exactement dessus ; aucun repère après la tête → dit ; sur la machine de D553.2 (une tête qui recule abandonne) ; mesuré par le relevé du transport |
+| D556.2 | **La tête à l'événement suivant, précédent** — *Locate Next / Previous Event* | *Transport ▸ Tête : événement suivant* et *précédent* : la tête au prochain DÉBUT ou FIN de note ou de clip de la piste choisie, strictement après (avant) elle ; rien après (avant) → dit, la tête ne bouge pas ; mesuré par le relevé de la tête |
+| D556.3 | **Les notes de même nom, à toutes les octaves** — *Select Equal Pitch – all Octaves* | Au piano roll, *Sélection ▸ Toutes les notes de même nom (toutes octaves)* : toutes les notes dont la hauteur modulo 12 est celle d'une note choisie ; le compte dit ; mesuré par le relevé de la sélection, puis par un geste appliqué à elle (le `.mid` joué) |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D556.1.** Le repère suivant est le premier STRICTEMENT après la tête : posée sur un repère, la commande joue
+  jusqu'au suivant, pas zéro seconde.
+- **D556.2.** Les événements sont ceux de la piste CHOISIE — notes ET clips, débuts ET fins : c'est ce que montre
+  l'arrangement. Une note hors de tout clip borné (que la lecture n'entend pas) ne compte pas : la tête ne se pose
+  pas sur un événement muet. Touches : Maj+Alt+… sont pris (la mesure), Alt+↑/↓ aussi ; Ctrl+Alt+→ et Ctrl+Alt+←,
+  si la table et le bureau les laissent libres — vérifié avant de les poser.
+- **D556.3.** « De même nom » = même hauteur modulo 12 ; la sélection s'ÉTEND (les notes déjà choisies restent).
+
+**L'ORDRE, TRANCHÉ ICI.** D556.3 d'abord (le plus petit), puis D556.1, puis D556.2.
