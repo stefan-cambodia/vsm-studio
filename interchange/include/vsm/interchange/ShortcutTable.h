@@ -106,6 +106,10 @@ enum class ShortcutId : uint16_t {
     TransportPlaySelection,
     /// D554.1 : boucler la sélection -- les locateurs sur elle, la boucle allumée, la lecture (*Loop Selection*).
     TransportLoopSelection,
+    /// D555.1 : lire la mesure d'AVANT la sélection, jusqu'à son début (*Play until Selection Start*).
+    TransportPlayUntilSelectionStart,
+    /// D555.1 : lire la mesure d'APRÈS la sélection, depuis sa fin (*Play from Selection End*).
+    TransportPlayFromSelectionEnd,
 
     Count
 };

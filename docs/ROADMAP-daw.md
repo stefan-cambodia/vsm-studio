@@ -42202,3 +42202,86 @@ puis Suppr).
   externe d'une piste à port garde ses canaux.
 
 **L'ORDRE, TRANCHÉ ICI.** D555.2 d'abord (le plus petit), puis D555.1, puis D555.3, qui crée des pistes.
+
+### Phase D555.2 — supprimer les contrôleurs d'une piste (16/10/2026) — FAITE
+
+`countControllers` et `removeAllControllers` (`core/`, `EventList.h`, près des éditions d'événements de D348 et
+D352) ; *Piste ▸ Supprimer les contrôleurs MIDI de la piste (N)*, grisée à zéro.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | 4 CC (dont 2 de banque), 1 pli, 1 pression de canal, 1 polyphonique → partis, comptés ; le programme et la note restent ; rejoué : 0. **Rouge** sur le mutant qui efface aussi les programmes | **oui** |
+| 2 | par l'application, le `.mid` joué | `tools/controleurs-retires.sh`, 4 contrôles : le témoin « CC 3 · pli 1 · pression 1 · programme 5 » ; après, « CC 0 · pli 0 · pression 0 · programme 5 », les notes intactes, « 3 CC (dont 1 de banque), 1 pli(s), 1 pression(s) de canal » dit ; le menu « (5) » puis « (0) [grisée] » ; Ctrl+Z → le témoin | **oui** |
+| 3 | le témoin du banc | le binaire d'avant : (2) et (3) **rouges** | **oui** |
+| 4 | le menu dans les deux langues | photographié : « Supprimer les contrôleurs MIDI de la piste (2) » / « Remove the track's MIDI controllers (2) » | **oui** |
+
+**LE BANC COMPTAIT CE QU'IL FALLAIT LIRE.** Sous le mutant qui efface les programmes, le banc est d'abord resté vert :
+il comptait UN changement de programme avant et UN après. Le `.mid` relu disait pourquoi — l'export ÉCRIT un programme
+à une piste qui n'en a pas, tiré de sa machine (`vsm.juno106` → 51). Le banc lit désormais le NUMÉRO (5 doit rester
+5), et rouge sous le mutant (« programme 51 »). Et deux contrôles « un pas » passaient sur le binaire d'avant, Ctrl+Z
+rendant le témoin parce que rien n'avait bougé : ils exigent désormais que le geste ait eu lieu dans leur course.
+
+### Phase D555.1 — lire autour de la sélection (16/10/2026) — FAITE
+
+*Transport ▸ Lire jusqu'au début de la sélection* et *Lire depuis la fin de la sélection*
+(`transport.playUntilSelectionStart`, `transport.playFromSelectionEnd`), sur la machine de D553.2 ; Maj+I et Maj+O,
+à côté de I et O qui posent l'entrée et la sortie de boucle (D29.1) — écrites d'abord sans touche, elles ont fait
+tomber `every_command_is_declared_once_and_completely` (le catalogue exige une touche par commande) ; la mesure est celle du chiffrage au point de départ. **CE QUI A ÉTÉ TRANCHÉ EN ROUTE, ET POURQUOI.** Le
+premier passage du banc a vu « depuis la fin » d'un DERNIER clip partir de 6 s puis revenir aussitôt à 0, sans un
+mot : la fin du morceau arrête toute lecture et rembobine. Le second a montré que la fin du transport porte une noire
+de marge pour les résonances (`lastSoundingTick` + 480) : la lecture jouait 0,24 s de queue, puis rembobinait. Une
+sélection qui finit avec la dernière chose qui SONNE (`lastSoundingTick`, sans la marge) le dit désormais, comme
+celle qui commence au début du morceau ; une mesure d'après qui déborde la fin s'arrête à la fin, comme toute lecture.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | jusqu'au début, par Maj+I | `tools/lire-autour.sh` (A [4 ; 6) s choisi, C après lui) : 0,8 s après, en lecture, tête à 2,801 s ; 2,6 s après, arrêté, **4,000 s** | **oui** |
+| 2 | depuis la fin, par le menu | en lecture entre 6 et 8 s ; arrêté à **8,000 s** | **oui** |
+| 3 | au début du morceau | « La sélection commence au début du morceau : il n'y a rien à lire avant elle. » dit, rien ne part | **oui** |
+| 4 | rien de choisi | « Rien n'est choisi… » dit, rien ne part | **oui** |
+| 5 | à la fin du morceau | « La sélection finit avec le morceau : il n'y a rien à lire après elle. » dit, rien ne part — rouge aux deux premiers passages, ci-dessus | **oui** |
+| 6 | le témoin du banc | le binaire d'avant : les cinq **rouges** | **oui** |
+| 7 | le menu dans les deux langues | photographié : « Lire jusqu'au début de la sélection — Maj+I » / « Play until the selection start — Shift+I », « Lire depuis la fin de la sélection — Maj+O » / « Play from the selection end — Shift+O », aux rangs 4 et 5 du menu Transport | **oui** |
+
+### Phase D555.3 — éclater une piste par canal (16/10/2026) — FAITE
+
+`trackChannels` et `explodeTrackByChannel` (`core/`, `Project.h`) : la piste COPIÉE (machine, effets, mixage,
+automation, fenêtres de clips d'identifiants neufs), chaque famille d'événements filtrée par canal, les notes
+DÉPLACÉES ; ce qui pointe après le point d'insertion recule, les pièces comprises (la leçon de D532.1, qu'« Éclater
+par hauteur » applique déjà). L'application recopie l'ÉTAT de la machine d'origine sur chaque pièce (le projet ne le
+porte pas). *Piste ▸ Éclater par canal (N canaux)*, grisée à un seul.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | canaux 1, 3, 10 → « Batterie », « — canal 3 », « — canal 10 », notes, CC, pli et programme à leur canal ; le bus placé après reçoit les TROIS pièces (`outputGroup` 1 → 3) ; un seul canal : 0. **Rouge** sur le mutant qui ne décale pas les pièces (« 1 != 3 ») | **oui** |
+| 2 | par l'application | `tools/eclater-canal.sh`, 5 contrôles : 4 pistes en `vsm.juno106`, « 2 piste(s) créée(s), canaux 1, 3, 10 ; état de la machine recopié sur 2 » ; au `.mid` joué, « Mêlée : 48,50 · CC7 1 », « canal 3 : 60 · pli 1 », « canal 10 : 36,38,42 », la basse intacte ; le témoin, les six notes sur « Mêlée » ; Ctrl+Z ; une piste d'un canal, « (1 canaux) [grisée] » | **oui** |
+| 3 | le témoin du banc | le binaire d'avant : (1), (2), (5) **rouges** | **oui** |
+| 4 | le menu dans les deux langues | photographié : « Éclater par canal (1 canaux) » / « Explode by channel (1 channels) » | **oui** |
+
+**CE QUE L'ÉCLATEMENT CHANGE AU SON, ET QUI EST VOULU.** Le graphe tient le volume de canal (CC 7, D329) PAR PISTE, et
+non par canal : sur la piste d'origine, le CC 7 du canal 1 réglait aussi les notes des canaux 3 et 10. Éclatée, chaque
+piste n'obéit plus qu'aux contrôleurs de son canal — ce que le fichier demandait. L'export n'est donc pas promis
+identique (le critère de réception ne mesure que le projet et le `.mid`) ; le banc le dit dans son en-tête. **Et le
+`.mid` exporté écrit « Mêlée - canal 3 »** : les noms de piste y sont en Latin-1, où « ê » existe et le tiret
+cadratin non.
+
+**LA SÉRIE DE D555** (le 16/10, de 1 h 23 à 2 h 27 — 64 min, aucune veille au journal du noyau ; une première série,
+lancée à 1 h 06, a été ARRÊTÉE dès son premier banc : `vsm_interchange_tests` venait de tomber sur les deux commandes
+sans touche, et le binaire à mesurer devait changer) : 93 bancs, préférences identiques, les six bancs de D554 et D555
+et les trois de D553 verts. **L'écran éteint et la session verrouillée depuis 23 h 35** ; 17 rouges :
+
+| bancs | ce qu'ils disaient | ce que c'était |
+|---|---|---|
+| `quantifier-audio.sh`, `transposition-globale.sh`, `normaliser-niveau.sh`, `notes-depuis-attaques.sh` | la fenêtre modale non photographiée | sous verrou, aucune boîte modale (D95) ; le dernier, le rouge antérieur de D553 |
+| `montage-en-chaine.sh`, `aimant-glisser.sh`, `dispositions.sh`, `glisser-contenu.sh`, `arrangement-defile.sh`, `automation-echelle.sh`, `fader-console.sh`, `liste-editer.sh`, `piano-roll-piste-choisie.sh`, `pianoroll-bord.sh`, `selection-au-bord.sh`, `vumetre-console.sh` | des géométries vides (« piano roll 0x0 »), des glissés sans effet, des repères non peints | rejoués SEULS à 45 s d'intervalle (2 h 29 - 2 h 42) : toujours rouges — et **le binaire de D553 rate les mêmes** à 2 h 43 (`fader-console.sh` : 2 ratés, `pianoroll-bord.sh` : « 0x0 »). L'environnement, pas D555 : après trois heures d'écran éteint, les fenêtres ne se mettent plus en page. À 0 h 42, sous le même verrou mais plus tôt, des rejeux espacés passaient encore |
+| `autosauvegarde-vue.sh` | 1 raté | rejoué seul : vert |
+
+**DÛ, ÉCRAN ALLUMÉ, avant tout autre geste de la prochaine séance : `./verifier.sh --bancs` en entier.** Trois phases
+(D553 en partie, D554, D555) n'ont été vues par leurs voisins que sous verrou ; leurs propres bancs, eux, n'ont pas
+besoin de l'écran et sont verts.
+
+C++ 486 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE SEIZIÈME AUDIT (D555) EST CLOS** : lire autour de la sélection, supprimer les contrôleurs d'une piste, éclater
+par canal — et, trouvés en route, un banc qui comptait des programmes que l'export fabrique, et une lecture qui
+partait de la fin du morceau pour revenir à 0 sans un mot.

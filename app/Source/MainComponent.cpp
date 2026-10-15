@@ -4168,6 +4168,8 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::TransportPlayStop,
     vsm::interchange::ShortcutId::TransportPlaySelection,   // D553.2
     vsm::interchange::ShortcutId::TransportLoopSelection,   // D554.1
+    vsm::interchange::ShortcutId::TransportPlayUntilSelectionStart,   // D555.1
+    vsm::interchange::ShortcutId::TransportPlayFromSelectionEnd,      // D555.1
     vsm::interchange::ShortcutId::TransportRecord,
     vsm::interchange::ShortcutId::TransportLoop,
     vsm::interchange::ShortcutId::TransportMetronome,
@@ -4183,7 +4185,7 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::NavPreviousBar,
     vsm::interchange::ShortcutId::NavNextBar,
 };
-static_assert(std::size(kCommandesDuTransport) == 17);   // D483, D553.2, D554.1 ; la plage réservée est gardée à l'aiguillage
+static_assert(std::size(kCommandesDuTransport) == 19);   // D483, D553.2, D554.1, D555.1 ; la plage réservée est gardée à l'aiguillage
 
 juce::StringArray MainComponent::getMenuBarNames() {
     // D483 : « Transport » entre Piste et Enregistrement, comme chez Cubase.
@@ -4908,6 +4910,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   tr(u8"Supprimer l'automation de la piste (%1 courbe(s))")
                                       .replace("%1", juce::String(static_cast<int>(courbes))),
                                   courbes > 0);
+                    // D555.2 : SUPPRIMER LES CONTRÔLEURS MIDI -- le compte dans le libellé, grisée à zéro.
+                    const size_t controleurs = piste < project_.tracks.size()
+                                                   ? vsm::sequencer::countControllers(project_.tracks[piste]).total()
+                                                   : 0;
+                    menu.addItem(kMenuTrackRemoveControllers,
+                                  tr(u8"Supprimer les contrôleurs MIDI de la piste (%1)")
+                                      .replace("%1", juce::String(static_cast<int>(controleurs))),
+                                  controleurs > 0);
                 }
                 // D443 : grisée, elle dit pourquoi.
                 menu.addItem(kMenuTrackBounceSelection,
@@ -4958,6 +4968,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                             + juce::String(tr(u8" pistes)"))
                                       : juce::String(tr(u8"Éclater par hauteur (une seule hauteur ici)")),
                                   hauteurs >= 2);
+                    // D555.3 : ÉCLATER PAR CANAL -- le nombre de canaux dans le libellé, grisée à un seul.
+                    {
+                        const size_t canaux = piste < project_.tracks.size()
+                                                  ? vsm::sequencer::trackChannels(project_.tracks[piste]).size()
+                                                  : 0;
+                        menu.addItem(kMenuTrackExplodeByChannel,
+                                      tr(u8"Éclater par canal (%1 canaux)").replace("%1", juce::String(static_cast<int>(canaux))),
+                                      canaux >= 2);
+                    }
                     // D544.3 : LE « FOLLOW / INDEPENDENT » DE CUBASE, une case par piste.
                     menu.addItem(kMenuTrackIndependentTranspose, tr(u8"Indépendante de la transposition globale"),
                                   piste < project_.tracks.size(),
@@ -5034,7 +5053,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             using Id = vsm::interchange::ShortcutId;
             for (size_t i = 0; i < std::size(kCommandesDuTransport); ++i) {
                 const Id commande = kCommandesDuTransport[i];
-                if (i == 6 || i == 13) menu.addSeparator();   // D553.2, D554.1 : deux entrées insérées aux rangs 1 et 2
+                if (i == 8 || i == 15) menu.addSeparator();   // D553.2, D554.1, D555.1 : quatre entrées insérées aux rangs 1 à 4
                 const auto* declaree = vsm::interchange::findShortcutCommand(commande);
                 juce::String libelle = declaree != nullptr ? tr(juce::String::fromUTF8(declaree->label)) : juce::String();
                 bool actif = true, coche = false;
@@ -5886,6 +5905,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAppendChain: pasteChainIntoSelectedTrack(false); break;
         case kMenuTrackThinAutomation: thinAutomationOfSelectedTrack(); break;   // D30.5
         case kMenuTrackRemoveAutomation: supprimerAutomationDeLaPiste(); break;   // D553.1
+        case kMenuTrackRemoveControllers: supprimerControleursDeLaPiste(); break;   // D555.2
         case kMenuTrackMidiFxClear: clearMidiEffectsOfSelectedTrack(); break;    // D31.4
         case kMenuTrackMidiFxBake:  bakeMidiEffectsOfSelectedTrack(); break;     // D31.5
         case kMenuTrackRenameSeries: promptRenameTracksInSeries(); break;        // D32.4
@@ -5961,6 +5981,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackBounceSelection: bounceSelectionToNewTracks(); break;
         case kMenuTrackPublishOutputs: publishInstrumentOutputsOfSelectedTrack(); break;
         case kMenuTrackExplodeByPitch: explodeSelectedTrackByPitch(); break;
+        case kMenuTrackExplodeByChannel: eclaterPisteParCanal(); break;   // D555.3
         case kMenuTrackIndependentTranspose: basculerTranspositionIndependante(); break;   // D544.3
         case kMenuTrackNewFolder: newFolderAboveSelectedTrack(); break;
         case kMenuTrackFolderIn:  changeSelectedTrackFolderDepth(+1); break;
@@ -10150,6 +10171,8 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         }
         case Id::TransportPlaySelection: lireLaSelection(); return true;   // D553.2
         case Id::TransportLoopSelection: bouclerLaSelection(); return true;   // D554.1
+        case Id::TransportPlayUntilSelectionStart: lireAutourDeLaSelection(true); return true;    // D555.1
+        case Id::TransportPlayFromSelectionEnd:    lireAutourDeLaSelection(false); return true;   // D555.1
         // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
         // piano roll traitait ces deux touches lui-même, et elles n'arrivaient
         // ici que quand il n'avait PAS le focus -- pour y tomber dans le
@@ -11863,6 +11886,36 @@ void MainComponent::explodeSelectedTrackByPitch() {
             : tr(u8"Rien à faire : cette piste n'a qu'une seule hauteur."));
 }
 
+void MainComponent::eclaterPisteParCanal() {
+    // D555.3 : une piste par canal MIDI, le plus bas restant sur l'originale (`explodeTrackByChannel`). Chaque pièce
+    // reçoit l'ÉTAT de la machine d'origine -- le projet ne le porte pas, et une machine neuve à ses réglages par
+    // défaut ne sonnerait pas comme sa part de l'original (le geste de la fusion de D553.3).
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto canaux = vsm::sequencer::trackChannels(project_.tracks[piste]);
+    if (canaux.size() < 2) {
+        std::fputs("VSM_ECLATER_CANAL : un seul canal, rien à faire\n", stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    captureSessionIntoProject();
+    beginProjectEdit(avecPisteChoisie(juce::String::fromUTF8(u8"Éclater par canal")));
+    const size_t creees = vsm::sequencer::explodeTrackByChannel(project_, piste);
+    rebuildFromProject(false);
+    size_t etats = 0;
+    if (auto* original = audioEngine_.processGraph().trackInstrument(piste)) {
+        const auto etat = original->saveState();
+        for (size_t k = 1; k <= creees; ++k)
+            if (auto* piece = audioEngine_.processGraph().trackInstrument(piste + k)) { piece->loadState(etat); ++etats; }
+    }
+    std::string liste;
+    for (auto c : canaux) liste += (liste.empty() ? "" : ", ") + std::to_string(c + 1);
+    std::fputs(("VSM_ECLATER_CANAL : " + std::to_string(creees) + " piste(s) créée(s), canaux " + liste
+                + " ; état de la machine recopié sur " + std::to_string(etats) + "\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Éclater par canal : %1 piste(s) créée(s) — le canal le plus bas reste sur la piste d'origine")
+                                       .replace("%1", juce::String(static_cast<int>(creees))));
+}
+
 void MainComponent::publishInstrumentOutputsOfSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
@@ -13194,6 +13247,50 @@ void MainComponent::bouclerLaSelection() {
     transport_.play();
 }
 
+void MainComponent::lireAutourDeLaSelection(bool avant) {
+    // D555.1 : L'ENTRÉE ET LA SORTIE D'UN PASSAGE (*Play until Selection Start*, *Play from Selection End*). UNE
+    // MESURE, au chiffrage du point de départ -- ce logiciel n'a pas de pre-roll réglable, et une mesure se lit en
+    // musique quel que soit le tempo. L'arrêt passe par la machine de D553.2 (`finLectureSelection_`), boucle comprise.
+    const juce::String titre = avant ? tr(u8"Lire jusqu'au début de la sélection") : tr(u8"Lire depuis la fin de la sélection");
+    vsm::midi::Tick debut = 0, fin = 0;
+    bool clips = false;
+    if (!bornesDeLaSelection(debut, fin, clips, titre)) return;
+    const auto ppq = project_.ticksPerQuarterNote;
+    vsm::midi::Tick de = 0, a = 0;
+    if (avant) {
+        const auto mesure = std::max<vsm::midi::Tick>(1, project_.timeSignatureMap.ticksPerBar(std::max<vsm::midi::Tick>(0, debut - 1), ppq));
+        de = std::max<vsm::midi::Tick>(0, debut - mesure);
+        a = debut;
+    } else {
+        de = fin;
+        a = fin + std::max<vsm::midi::Tick>(1, project_.timeSignatureMap.ticksPerBar(fin, ppq));
+    }
+    if (a <= de) {
+        std::fputs("VSM_LIRE_AUTOUR : rien avant la sélection (elle commence au début du morceau)\n", stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"La sélection commence au début du morceau : il n'y a rien à lire avant elle."));
+        return;
+    }
+    // LA FIN DU MORCEAU ARRÊTE TOUTE LECTURE (et rembobine) : partir d'elle ne jouerait que la noire de marge que le
+    // transport garde pour les résonances, puis reviendrait à 0 sans un mot -- les deux premiers passages du banc
+    // l'ont montré. « Finir avec le morceau », c'est finir avec la dernière chose qui SONNE (`lastSoundingTick`), sans
+    // cette marge ; on le DIT. Une mesure d'après qui déborde la fin s'arrête à la fin, comme toute lecture.
+    if (!avant && de >= project_.lastSoundingTick()) {
+        std::fputs("VSM_LIRE_AUTOUR : rien après la sélection (elle finit avec le morceau)\n", stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                     tr(u8"La sélection finit avec le morceau : il n'y a rien à lire après elle."));
+        return;
+    }
+    if (transport_.state() == TransportState::Playing) transport_.stop();
+    seekAllViews(de);
+    finLectureSelection_ = a;
+    dernierTickSelection_ = de;
+    std::fputs(("VSM_LIRE_AUTOUR : de " + std::to_string(de) + " à " + std::to_string(a) + " ticks ("
+                + (avant ? "avant" : "après") + " la sélection, " + (clips ? "clips" : "notes") + ")\n").c_str(), stderr);
+    direOrigineDuPlay(avant ? "Lire jusqu'au début de la sélection" : "Lire depuis la fin de la sélection");
+    transport_.play();
+}
+
 void MainComponent::lireLaSelection() {
     vsm::midi::Tick debut = 0, fin = 0;
     bool clips = false;
@@ -13286,6 +13383,32 @@ void MainComponent::supprimerAutomationDeLaPiste() {
         pianoRoll_.onStatusChanged(tr(u8"Automation supprimée : %1 courbe(s), %2 point(s)")
                                        .replace("%1", juce::String(static_cast<int>(r.curves)))
                                        .replace("%2", juce::String(static_cast<int>(r.points))));
+}
+
+void MainComponent::supprimerControleursDeLaPiste() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    if (vsm::sequencer::countControllers(track).total() == 0) {
+        std::fputs("VSM_CONTROLEURS_RETIRES : aucun\n", stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    beginProjectEdit(avecPisteChoisie(juce::String::fromUTF8(u8"Supprimer les contrôleurs MIDI de la piste")));
+    const auto r = vsm::sequencer::removeAllControllers(track);
+    refreshTransportSchedule();
+    refreshTrackViews();
+    pianoRollPanel_.refresh();
+    std::fputs((juce::String("VSM_CONTROLEURS_RETIRES : ") + juce::String(static_cast<int>(r.controlChanges))
+                + " CC (dont " + juce::String(static_cast<int>(r.bankSelects)) + juce::String::fromUTF8(u8" de banque), ")
+                + juce::String(static_cast<int>(r.pitchBends)) + " pli(s), "
+                + juce::String(static_cast<int>(r.channelPressure)) + " pression(s) de canal, "
+                + juce::String(static_cast<int>(r.polyAftertouch)) + " pression(s) polyphonique(s)\n").toRawUTF8(),
+               stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Contrôleurs supprimés : %1 CC, %2 pli(s), %3 pression(s)")
+                                       .replace("%1", juce::String(static_cast<int>(r.controlChanges)))
+                                       .replace("%2", juce::String(static_cast<int>(r.pitchBends)))
+                                       .replace("%3", juce::String(static_cast<int>(r.channelPressure + r.polyAftertouch))));
 }
 
 void MainComponent::thinAutomationOfSelectedTrack() {

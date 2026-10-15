@@ -1043,6 +1043,62 @@ size_t explodeTrackByPitch(Project& project, size_t index,
     return static_cast<size_t>(combien);
 }
 
+std::vector<uint8_t> trackChannels(const Track& track) {
+    std::set<uint8_t> canaux;
+    for (const auto& n : track.notes) canaux.insert(n.channel);
+    for (const auto& e : track.controlChanges) canaux.insert(e.channel);
+    for (const auto& e : track.pitchBends) canaux.insert(e.channel);
+    for (const auto& e : track.channelPressure) canaux.insert(e.channel);
+    for (const auto& e : track.polyAftertouch) canaux.insert(e.channel);
+    for (const auto& e : track.programChanges) canaux.insert(e.channel);
+    return {canaux.begin(), canaux.end()};
+}
+
+size_t explodeTrackByChannel(Project& project, size_t index) {
+    if (index >= project.tracks.size()) return 0;
+    const std::vector<uint8_t> canaux = trackChannels(project.tracks[index]);
+    if (canaux.size() < 2) return 0;
+    // UN FILTRE PAR CANAL, appliqué à chaque famille d'événements : `garder` ne laisse que ceux du canal.
+    auto garder = [](Track& piste, uint8_t canal) {
+        auto filtrer = [canal](auto& v) {
+            v.erase(std::remove_if(v.begin(), v.end(), [canal](const auto& e) { return e.channel != canal; }), v.end());
+        };
+        filtrer(piste.notes);
+        filtrer(piste.controlChanges);
+        filtrer(piste.pitchBends);
+        filtrer(piste.channelPressure);
+        filtrer(piste.polyAftertouch);
+        filtrer(piste.programChanges);
+        piste.channel = canal;
+    };
+    std::vector<Track> neuves;
+    neuves.reserve(canaux.size() - 1);
+    for (size_t k = 1; k < canaux.size(); ++k) {
+        Track piste = project.tracks[index];
+        garder(piste, canaux[k]);
+        piste.name = project.tracks[index].name + " \xe2\x80\x94 canal " + std::to_string(canaux[k] + 1);
+        piste.armed = false;
+        piste.takes.clear();
+        piste.versions.clear();
+        for (auto& c : piste.clips) c.id = project.nextClipId();
+        neuves.push_back(std::move(piste));
+    }
+    garder(project.tracks[index], canaux.front());
+    // TOUT CE QUI POINTE APRÈS LE POINT D'INSERTION RECULE D'AUTANT, les pièces comprises -- la leçon de D532.1.
+    const int insere = static_cast<int>(index) + 1;
+    const int combien = static_cast<int>(neuves.size());
+    auto decaler = [insere, combien](Track& piste) {
+        if (piste.outputGroup >= insere) piste.outputGroup += combien;
+        if (piste.outputSourceTrack >= insere) piste.outputSourceTrack += combien;
+        if (piste.vcaTrack >= insere) piste.vcaTrack += combien;
+    };
+    for (auto& piste : project.tracks) decaler(piste);
+    for (auto& piste : neuves) decaler(piste);
+    project.tracks.insert(project.tracks.begin() + insere, std::make_move_iterator(neuves.begin()),
+                          std::make_move_iterator(neuves.end()));
+    return static_cast<size_t>(combien);
+}
+
 std::vector<size_t> folderContents(const Project& project, size_t index) {
     std::vector<size_t> contenu;
     if (index >= project.tracks.size() || !project.tracks[index].isFolder()) return contenu;

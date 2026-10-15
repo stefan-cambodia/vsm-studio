@@ -120,4 +120,20 @@ bool setTrackEventField(Track& track, const EventRow& row, EventField field, lon
 bool addTrackEvent(Track& track, EventKind kind, Tick tick, int channel,
                     int first, int second, Tick length, uint64_t& idCounter);
 
+/// D555.2 — SUPPRIMER LES CONTRÔLEURS D'UNE PISTE (*Delete Controllers* de Cubase) : ses CC, ses plis et ses
+/// pressions (de canal et polyphoniques) retirés. Les changements de programme RESTENT -- le choix d'un son, pas un
+/// contrôleur : les retirer changerait l'instrument d'un fichier General MIDI --, les notes aussi. La banque (CC 0 et
+/// 32) part avec les autres CC, et elle est comptée à part. Rend ce qui est parti, par nature, pour qu'on le DISE ;
+/// `countControllers` rend le même compte sans rien toucher (le libellé du menu).
+struct ControllerCount {
+    size_t controlChanges = 0;   ///< dont `bankSelects`
+    size_t bankSelects = 0;
+    size_t pitchBends = 0;
+    size_t channelPressure = 0;
+    size_t polyAftertouch = 0;
+    size_t total() const { return controlChanges + pitchBends + channelPressure + polyAftertouch; }
+};
+ControllerCount countControllers(const Track& track);
+ControllerCount removeAllControllers(Track& track);
+
 } // namespace vsm::sequencer

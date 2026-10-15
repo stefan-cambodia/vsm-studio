@@ -372,3 +372,30 @@ VSM_TEST(a_channel_out_of_range_is_refused_and_the_note_stays_on_its_track) {
     VSM_ASSERT_EQ(int{piste.notes[0].number}, 60);
     VSM_ASSERT_EQ(piste.notes[0].endTick - piste.notes[0].startTick, Tick{480});
 }
+
+// D555.2 — SUPPRIMER LES CONTRÔLEURS : CC (la banque comptée à part), plis et pressions partent ; le changement de
+// programme et les notes restent ; rejoué, plus rien.
+VSM_TEST(removing_track_controllers_keeps_notes_and_program_changes) {
+    Track t;
+    uint64_t ids = 1;
+    t.addNote(0, 480, 60, 100, 0, ids);
+    t.controlChanges = {{0, 0, 0, 1}, {0, 0, 32, 0}, {0, 0, 7, 100}, {480, 0, 64, 127}};
+    t.pitchBends = {{240, 0, 4096}};
+    t.channelPressure = {{240, 0, 80}};
+    t.polyAftertouch = {{240, 0, 60, 70}};
+    t.programChanges = {{0, 0, 5}};
+    const auto avant = countControllers(t);
+    VSM_ASSERT_EQ(avant.total(), size_t(7));
+    VSM_ASSERT_EQ(t.controlChanges.size(), size_t(4));   // compter ne touche à rien
+    const auto r = removeAllControllers(t);
+    VSM_ASSERT_EQ(r.controlChanges, size_t(4));
+    VSM_ASSERT_EQ(r.bankSelects, size_t(2));
+    VSM_ASSERT_EQ(r.pitchBends, size_t(1));
+    VSM_ASSERT_EQ(r.channelPressure, size_t(1));
+    VSM_ASSERT_EQ(r.polyAftertouch, size_t(1));
+    VSM_ASSERT(t.controlChanges.empty() && t.pitchBends.empty() && t.channelPressure.empty() && t.polyAftertouch.empty());
+    VSM_ASSERT_EQ(t.programChanges.size(), size_t(1));
+    VSM_ASSERT_EQ(t.notes.size(), size_t(1));
+    VSM_ASSERT_EQ(removeAllControllers(t).total(), size_t(0));
+}
+

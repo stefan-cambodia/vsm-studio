@@ -1079,3 +1079,54 @@ VSM_TEST(removing_empty_tracks_keeps_groups_and_content_and_repairs_routing) {
     VSM_ASSERT(!trackIsEmpty(q, 0));
     VSM_ASSERT(removeEmptyTracks(q).empty());
 }
+
+// D555.3 — ÉCLATER PAR CANAL : le canal le plus bas reste, chaque autre part sur une piste neuve juste dessous, avec
+// ses notes ET ses événements ; le bus placé APRÈS reçoit toujours toutes les pièces ; rien n'est copié deux fois.
+VSM_TEST(exploding_a_track_by_channel_moves_each_channel_and_keeps_the_bus) {
+    Project p;
+    Track source;
+    source.name = "Batterie";
+    source.instrumentId = "vsm.tr808";
+    uint64_t ids = 1;
+    source.addNote(0, 120, 36, 100, 9, ids);
+    source.addNote(480, 600, 38, 100, 9, ids);
+    source.addNote(0, 480, 48, 90, 0, ids);
+    source.addNote(240, 480, 60, 80, 2, ids);
+    source.controlChanges = {{0, 0, 7, 100}, {0, 9, 7, 110}};
+    source.pitchBends = {{240, 2, 1000}};
+    source.programChanges = {{0, 9, 0}};
+    Clip c;
+    c.id = p.nextClipId(); c.startTick = 0; c.length = 1920; c.sourceStart = 0; c.sourceLength = 1920;
+    source.clips = {c};
+    source.outputGroup = 1;
+    Track bus;
+    bus.name = "Bus";
+    p.tracks = {source, bus};
+    VSM_ASSERT((trackChannels(p.tracks[0]) == std::vector<uint8_t>{0, 2, 9}));
+    VSM_ASSERT_EQ(explodeTrackByChannel(p, 0), size_t(2));
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(4));
+    VSM_ASSERT_EQ(p.tracks[0].name, std::string("Batterie"));
+    VSM_ASSERT_EQ(p.tracks[1].name, std::string("Batterie \xe2\x80\x94 canal 3"));
+    VSM_ASSERT_EQ(p.tracks[2].name, std::string("Batterie \xe2\x80\x94 canal 10"));
+    VSM_ASSERT_EQ(p.tracks[3].name, std::string("Bus"));
+    VSM_ASSERT_EQ(static_cast<int>(p.tracks[0].channel), 0);
+    VSM_ASSERT_EQ(static_cast<int>(p.tracks[2].channel), 9);
+    VSM_ASSERT_EQ(p.tracks[0].notes.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[1].notes.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[2].notes.size(), size_t(2));
+    VSM_ASSERT_EQ(p.tracks[0].controlChanges.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[2].controlChanges.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[1].pitchBends.size(), size_t(1));
+    VSM_ASSERT(p.tracks[0].pitchBends.empty());
+    VSM_ASSERT_EQ(p.tracks[2].programChanges.size(), size_t(1));
+    VSM_ASSERT(p.tracks[0].programChanges.empty());
+    for (size_t i = 0; i < 3; ++i) {
+        VSM_ASSERT_EQ(p.tracks[i].outputGroup, 3);   // le bus a reculé de deux rangs, pour TOUTES les pièces
+        VSM_ASSERT_EQ(p.tracks[i].instrumentId, std::string("vsm.tr808"));
+        VSM_ASSERT_EQ(p.tracks[i].clips.size(), size_t(1));
+    }
+    VSM_ASSERT(p.tracks[1].clips[0].id != p.tracks[0].clips[0].id && p.tracks[2].clips[0].id != p.tracks[1].clips[0].id);
+    // Un seul canal : rien à faire.
+    VSM_ASSERT_EQ(explodeTrackByChannel(p, 0), size_t(0));
+}
+

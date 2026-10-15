@@ -1134,6 +1134,10 @@ private:
         kMenuTrackRemoveAutomation,
         /// D553.3 : fusionner le MIDI entre les locateurs.
         kMenuEditMergeMidiInLoop,
+        /// D555.2 : supprimer les contrôleurs MIDI de la piste choisie.
+        kMenuTrackRemoveControllers,
+        /// D555.3 : éclater la piste choisie par canal MIDI.
+        kMenuTrackExplodeByChannel,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1566,10 +1570,16 @@ private:
     void retirerPistesVides();
     /// D553.1 : supprimer l'automation de la piste choisie (*Remove Automation*), dit.
     void supprimerAutomationDeLaPiste();
+    /// D555.2 : supprimer les contrôleurs MIDI de la piste choisie (*Delete Controllers*), dit par nature.
+    void supprimerControleursDeLaPiste();
+    /// D555.3 : éclater la piste choisie par canal MIDI (*Dissolve Part ▸ Separate Channels*), dit.
+    void eclaterPisteParCanal();
     /// D553.2 : lire la sélection, de son début à sa fin, puis l'arrêt (*Play Selection Range*).
     void lireLaSelection();
     /// D554.1 : boucler la sélection -- les locateurs sur elle, la boucle allumée, la lecture (*Loop Selection*).
     void bouclerLaSelection();
+    /// D555.1 : la mesure d'avant la sélection jusqu'à son début (`avant`), ou celle d'après depuis sa fin.
+    void lireAutourDeLaSelection(bool avant);
     /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).
     /// Rien de choisi : faux, et la boîte `titre` le DIT.
     bool bornesDeLaSelection(vsm::midi::Tick& debut, vsm::midi::Tick& fin, bool& clips, const juce::String& titre);

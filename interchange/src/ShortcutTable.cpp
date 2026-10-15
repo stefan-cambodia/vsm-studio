@@ -89,6 +89,10 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::TransportPlaySelection, "transport.playSelection", "Transport", "Lire la sélection", "shift + spacebar", ""},
         // D554.1 — boucler la sélection : Maj+G, comme chez Cubase (libre dans la table : G seul bascule l'aimant).
         {ShortcutId::TransportLoopSelection, "transport.loopSelection", "Transport", "Boucler la sélection", "shift + G", ""},
+        // D555.1 — l'entrée et la sortie d'un passage, une mesure chacune. Maj+I et Maj+O : I et O posent déjà
+        // l'entrée et la sortie de boucle (D29.1) ; le catalogue exige une touche par commande, et celles-ci étaient libres.
+        {ShortcutId::TransportPlayUntilSelectionStart, "transport.playUntilSelectionStart", "Transport", "Lire jusqu'au début de la sélection", "shift + I", ""},
+        {ShortcutId::TransportPlayFromSelectionEnd, "transport.playFromSelectionEnd", "Transport", "Lire depuis la fin de la sélection", "shift + O", ""},
     };
     return catalogue;
 }

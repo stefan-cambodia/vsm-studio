@@ -149,6 +149,12 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **La pédale en durées de notes** (D554.3). *Édition ▸ Temps et durée ▸ Pédale en durées de notes* écrit dans les notes de la piste active ce que la pédale forte (CC 64) leur faisait tenir — chaque note dure jusqu'au relâchement, ou jusqu'à la frappe suivante de la même hauteur —, puis retire les CC 64. Le son ne change pas, sauf quand une même note est frappée de nouveau sous la pédale : elle s'arrête alors à la nouvelle frappe. Le libellé dit combien d'appuis la piste porte ; il est grisé quand elle n'en a aucun.
 
+**Lire autour de la sélection** (D555.1). *Transport ▸ Lire jusqu'au début de la sélection* joue la mesure qui précède les clips choisis (ou les notes choisies) et s'arrête sur leur début ; *Transport ▸ Lire depuis la fin de la sélection* joue la mesure qui suit leur fin, puis s'arrête. Leurs touches sont Maj+I et Maj+O, à côté de I et O qui posent l'entrée et la sortie de boucle. Une sélection qui commence au début du morceau, ou qui finit avec lui, le dit.
+
+**Supprimer les contrôleurs MIDI d'une piste** (D555.2). *Piste ▸ Supprimer les contrôleurs MIDI de la piste* retire ses CC, ses plis et ses pressions ; ses notes et ses changements de programme restent. Le libellé dit combien il y en a ; Ctrl+Z les rend.
+
+**Éclater une piste par canal** (D555.3). *Piste ▸ Éclater par canal* sépare une piste dont les notes et les événements portent plusieurs canaux MIDI : le canal le plus bas reste sur la piste, chaque autre part sur une piste neuve juste dessous, avec la même machine réglée de même, et ses contrôleurs. Grisée pour une piste d'un seul canal.
+
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
 
 **Les locateurs sur une section** (D542.1). Clic droit sur la règle — celle de l'arrangement ou celle du piano roll —, puis *Locateurs sur cette section* : la boucle prend la section où vous avez cliqué (d'un repère au suivant ; la dernière va jusqu'à la fin de ce qu'on entend) et s'active, pour travailler un refrain en boucle. L'entrée est grisée là où il n'y a pas de section (sans repère, ou avant le premier). Ctrl+Z rend la boucle d'avant.

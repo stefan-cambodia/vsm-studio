@@ -279,4 +279,24 @@ bool addTrackEvent(Track& track, EventKind kind, Tick tick, int channel,
     return true;
 }
 
+ControllerCount countControllers(const Track& track) {
+    ControllerCount c;
+    c.controlChanges = track.controlChanges.size();
+    for (const auto& cc : track.controlChanges)
+        if (cc.controller == 0 || cc.controller == 32) ++c.bankSelects;
+    c.pitchBends = track.pitchBends.size();
+    c.channelPressure = track.channelPressure.size();
+    c.polyAftertouch = track.polyAftertouch.size();
+    return c;
+}
+
+ControllerCount removeAllControllers(Track& track) {
+    const ControllerCount c = countControllers(track);
+    track.controlChanges.clear();
+    track.pitchBends.clear();
+    track.channelPressure.clear();
+    track.polyAftertouch.clear();
+    return c;
+}
+
 } // namespace vsm::sequencer

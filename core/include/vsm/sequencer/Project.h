@@ -493,6 +493,20 @@ size_t publishInstrumentOutputs(Project& project, size_t source,
 size_t explodeTrackByPitch(Project& project, size_t index,
                             const std::function<std::string(uint8_t)>& nameFor = {});
 
+/// D555.3 — LES CANAUX MIDI QUE PORTE UNE PISTE : ceux de ses notes et de tous ses événements (CC, plis, pressions,
+/// programmes), dans l'ordre croissant, sans doublon.
+std::vector<uint8_t> trackChannels(const Track& track);
+
+/// D555.3 — ÉCLATER UNE PISTE PAR CANAL (*Dissolve Part ▸ Separate Channels* de Cubase) : une piste dont les
+/// notes et les événements portent plusieurs canaux devient une piste par canal. Le PLUS BAS reste sur la piste
+/// d'origine (la règle d'« Éclater par hauteur ») ; chaque autre canal part sur une piste neuve, insérée juste
+/// dessous dans l'ordre des canaux, COPIE de l'originale -- machine, effets, mixage, automation, fenêtres de clips
+/// (neuves d'identifiant) : chaque pièce doit sonner comme sa part de l'original --, sans ses prises ni ses
+/// versions, nommée « <piste> — canal N » (N de 1 à 16), avec ce canal pour `Track::channel`. Les notes et les
+/// événements sont DÉPLACÉS, jamais copiés. Ce qui pointe après le point d'insertion recule d'autant, les pièces
+/// comprises. Rend le nombre de pistes créées ; 0 pour une piste d'un seul canal (rien à faire, et l'appelant le dit).
+size_t explodeTrackByChannel(Project& project, size_t index);
+
 /// LES PISTES CONTENUES PAR LE DOSSIER À `index` (D19.4), y compris celles des
 /// sous-dossiers, dans l'ordre de la liste.
 ///
