@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <set>
+#include <utility>
 #include <vector>
 
 // Les gestes de la vue d'arrangement -- déplacer, redimensionner, couper --, en
@@ -641,6 +642,12 @@ struct ClipPassage {
 /// (D537) ou copier une plage (D535.3) ne doit pas perdre leurs notes ; le clip recopié reste muet.
 std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd, bool includeMuted = false);
 
+/// D556.2 — LES INSTANTS OÙ UNE PISTE A UN ÉVÉNEMENT, tels que l'arrangement les montre : débuts et fins de ses
+/// clips, débuts et fins des notes qu'on ENTEND (par les fenêtres des clips non muets, `clipPassages` ; une note
+/// muette, ou hors de tout clip borné, n'en est pas un), sur la ligne de temps, triés, sans doublon. Sert à poser la
+/// tête d'un événement à l'autre (*Locate Next / Previous Event*).
+std::vector<Tick> trackEventTicks(const Track& track, Tick materialEnd);
+
 /// D335 : UN ÉVÉNEMENT DE CONTRÔLE HORS DE TOUT PASSAGE EST RATTACHÉ AU DÉBUT DU
 /// PASSAGE SUIVANT. Un fichier General MIDI pose sa banque, son volume, sa plage
 /// de pli au tick 0, deux carrures avant la première note ; un clip borné aux
@@ -693,8 +700,18 @@ struct CouvertureDeNote {
     Tick debut = 0;         ///< la fenêtre du clip après le geste (source)
     Tick fin = 0;
 };
+///
+/// D556 (H21) — CE QUI ÉTAIT DÉJÀ DEHORS N'A PAS ÉTÉ ÉCRIT. `laissees` nomme les notes qui étaient hors de tout clip
+/// AVANT le geste (`notesHorsDesClips` de l'état d'avant), par identifiant ET départ : elles ne sont pas couvertes.
+/// Sans cela, le premier geste venu sur une AUTRE note rattrapait une note que l'ouverture avait laissée dehors, ou
+/// défaisait un rognage (D551.3) en ré-étendant le clip -- mesuré par `tools/couverture-laissee.sh`. Une note
+/// DÉPLACÉE garde son identifiant mais change de départ : elle est couverte, c'est le geste. Nul : tout est couvert.
 std::vector<CouvertureDeNote> couvrirLesNotesEcrites(Track& track, Tick ticksPerBar,
                                                      Tick mesuresDeSilence, uint64_t& idCounter,
-                                                     Tick materialEnd);
+                                                     Tick materialEnd,
+                                                     const std::set<std::pair<uint64_t, Tick>>* laissees = nullptr);
+
+/// D556 (H21) — les notes hors de toute fenêtre de clip (muets compris : ils couvrent), par identifiant et départ.
+std::set<std::pair<uint64_t, Tick>> notesHorsDesClips(const Track& track);
 
 } // namespace vsm::sequencer

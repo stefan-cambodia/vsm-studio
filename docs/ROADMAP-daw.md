@@ -42276,9 +42276,9 @@ et les trois de D553 verts. **L'écran éteint et la session verrouillée depuis
 | `montage-en-chaine.sh`, `aimant-glisser.sh`, `dispositions.sh`, `glisser-contenu.sh`, `arrangement-defile.sh`, `automation-echelle.sh`, `fader-console.sh`, `liste-editer.sh`, `piano-roll-piste-choisie.sh`, `pianoroll-bord.sh`, `selection-au-bord.sh`, `vumetre-console.sh` | des géométries vides (« piano roll 0x0 »), des glissés sans effet, des repères non peints | rejoués SEULS à 45 s d'intervalle (2 h 29 - 2 h 42) : toujours rouges — et **le binaire de D553 rate les mêmes** à 2 h 43 (`fader-console.sh` : 2 ratés, `pianoroll-bord.sh` : « 0x0 »). L'environnement, pas D555 : après trois heures d'écran éteint, les fenêtres ne se mettent plus en page. À 0 h 42, sous le même verrou mais plus tôt, des rejeux espacés passaient encore |
 | `autosauvegarde-vue.sh` | 1 raté | rejoué seul : vert |
 
-**DÛ, ÉCRAN ALLUMÉ, avant tout autre geste de la prochaine séance : `./verifier.sh --bancs` en entier.** Trois phases
-(D553 en partie, D554, D555) n'ont été vues par leurs voisins que sous verrou ; leurs propres bancs, eux, n'ont pas
-besoin de l'écran et sont verts.
+**DÛ, ÉCRAN ALLUMÉ** : `./verifier.sh --bancs` en entier (repris à la fin de D556). Trois phases (D553 en partie,
+D554, D555) n'ont été vues par leurs voisins que sous verrou ; leurs propres bancs, eux, n'ont pas besoin de l'écran
+et sont verts.
 
 C++ 486 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 
@@ -42315,3 +42315,79 @@ n'existe pas. **Trouvé et écarté** : « Sélectionner de la tête à la fin �
 - **D556.3.** « De même nom » = même hauteur modulo 12 ; la sélection s'ÉTEND (les notes déjà choisies restent).
 
 **L'ORDRE, TRANCHÉ ICI.** D556.3 d'abord (le plus petit), puis D556.1, puis D556.2.
+
+### Phase D556.3 — les notes de même nom, à toutes les octaves (16/10/2026) — FAITE
+
+`selectNotesWithSamePitchClass` (`core/`, à côté de `selectNotesWithSamePitch`) ; au piano roll, *Sélection ▸ Toutes
+les notes de même nom (toutes octaves)*, grisée sans sélection ; le compte se dit par `notifyEditState` (D357).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | un do choisi → les trois do (60, 72, 48), pas le do# ; un do et un mi → les do et les mi ; rien → rien. **Rouge** sur le mutant sans modulo | **oui** |
+| 2 | par l'application, le `.mid` joué | `tools/meme-nom.sh` : le do4 choisi sans souris (la seule note faible, « Notes plus faibles que 64 (1) ») ; « même nom » → « 3 note(s) choisie(s) », puis +1 demi-ton : **{49, 61, 61, 64, 73}** ; le témoin « même hauteur » → 1 note, **{48, 61, 61, 64, 72}** ; rien de choisi : grisée. Le binaire d'avant : (1) et (3) **rouges** | **oui** |
+| 3 | le menu dans les deux langues | photographié : « Toutes les notes de même nom (toutes octaves) » / « All notes of the same name (all octaves) » | **oui** |
+
+### Phase D556.1 — lire jusqu'au repère suivant (16/10/2026) — FAITE
+
+*Transport ▸ Lire jusqu'au repère suivant*, Alt+N (`transport.playUntilNextMarker`) — N avance d'un événement (D556.2),
+Maj+N d'un repère, Alt+N JOUE jusqu'au repère —, sur la machine de D553.2.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | depuis 0, par Alt+N | `tools/repere-suivant.sh` : 0,8 s après, en lecture à 0,801 s ; 2,6 s après, arrêté à **2,000 s**, sur « Couplet » | **oui** |
+| 2 | posée sur un repère, par le menu | la lecture va au SUIVANT : arrêtée à **6,000 s**, « Refrain » | **oui** |
+| 3 | après le dernier | « Aucun repère après la tête : il n'y a rien jusqu'où lire. » dit, rien ne part | **oui** |
+| 4 | le témoin et le menu | le binaire d'avant : les trois **rouges** ; photographié « Lire jusqu'au repère suivant — Alt+N » / « Play until the next marker — Alt+N » | **oui** |
+
+**NOMMÉ, NON FAIT : deux mots pour la même chose dans le menu Transport.** « Marqueur précédent / suivant » (D29) y
+côtoie désormais « Lire jusqu'au repère suivant », et la fenêtre de D543.2 s'appelle « Fenêtre des repères ». Le mot de
+D543 est suivi ici ; ramener « Marqueur » à « repère » touche aux libellés que des bancs et des traductions citent, et
+se fait en un geste à part, gardé par `tools/noms-des-gestes.py`.
+
+### Phase D556.2 — la tête d'un événement à l'autre (16/10/2026) — FAITE
+
+`trackEventTicks` (`core/`, `ClipEdit.h`) : les débuts et fins des clips et des notes ENTENDUES (par les passages de
+lecture, `passageOut`) ; *Transport ▸ Tête : événement suivant / précédent*, N et B — les touches de Cubase, libres
+ici ; rien après (avant) la tête : la ligne d'état le dit, la tête reste.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | A [0, 1 920), B [3 840, 5 760) : **0, 480, 960, 1 920, 3 840, 4 320, 5 760** — ni la note hors clip, ni la muette. **Rouge** sur le mutant qui compte la muette | **oui** |
+| 2 | par l'application | `tools/tete-evenement.sh` : N ×7 depuis 0 → « 480 960 1920 3840 4320 5760 5760 », la septième dit « aucun après la tête » ; B ×2 depuis 5 760 → « 4320 3840 » ; B depuis 0 → la tête reste, dit. Le binaire d'avant : les trois **rouges** | **oui** |
+| 3 | le menu dans les deux langues | photographié : « Tête : événement suivant — N » / « Playhead: next event — N », et « précédent — B » | **oui** |
+
+**H21, TROUVÉ PAR CE BANC : UNE ÉDITION QUELCONQUE DÉFAISAIT UN ROGNAGE.** Le premier passage a posé la tête sur 2 400
+et 2 880 — la note HORS des clips — et sauté 1 920, la fin de A. Le journal disait pourquoi : « D337 : … note écrite à
+la mesure 2, hors de tout clip : clip #1 étendu jusqu'à elle », imprimé par le geste « Rendre muet » sur une AUTRE
+note (le banc rend muette la note de 1 200 par le geste réel : le format de projet n'écrit pas les notes muettes). La
+couverture de D337 traitait TOUTE note hors des clips comme « écrite », à chaque édition. *H21, écrite à 2 h 55 avant
+sa mesure* : le premier geste venu sur une autre note rattrape une note que l'ouverture a laissée dehors, et la rend
+audible. `tools/couverture-laissee.sh` l'a **confirmée** sur le binaire d'alors, et plus gravement qu'écrit : après
+*Rogner les clips aux locateurs* (D551.3), un simple « Rendre muet » ré-étendait le clip aux mesures 1 à 4 — le
+rognage défait sans un geste de l'utilisateur (« 60,64,65 » joués au lieu de « 64 »). Le remède : la couverture reçoit
+les notes qui étaient hors des clips AVANT le geste (`notesHorsDesClips` de `history_.etatDuDernierPas()`), par
+identifiant ET départ, et ne les rattrape pas ; une note déplacée change de départ et reste couverte, une note écrite
+aussi. Après : « 60,65 » sans ligne D337, le rognage tient (« 64 »), une note ÉCRITE hors des clips est toujours
+couverte et jouée. **Rouges** sous le mutant qui retire l'exclusion : le test core (« 2 != 1 ») et les contrôles (2) et
+(3) du banc. Les voisins de la couverture rejoués : `coller-pistes.sh`, `liste-ajouter.sh` (D352) et
+`glisser-contenu.sh` (H17) verts.
+
+**LA SÉRIE DE D556** (le 16/10, de 3 h 23 à 4 h 34 — 71 min, aucune veille au journal du noyau) : 97 bancs,
+préférences identiques, les quatre bancs de D556 et tous ceux de D553 à D555 verts. L'écran toujours éteint et
+verrouillé ; 16 rouges :
+
+| bancs | ce que c'était |
+|---|---|
+| `annulation-des-menus.py` : « Toutes les notes de même nom (toutes octaves) » MUETTE | dans l'état d'essai TOUT est déjà choisi (Ctrl+A) : l'étendre ne change rien — la raison que l'outil écrivait déjà pour « … de même hauteur ». Inscrite parmi les muettes voulues, avec elle ; rejouée seule, l'entrée laisse sa trace (« vue ») |
+| `accords.sh` | une règle sans sa bande d'accords (« 22 px sans accord, 42 avec ») : rouge aussi avec le binaire de D553 (2 ratés) — l'environnement |
+| les quatre photos de fenêtre modale | sous verrou, aucune boîte (D95) |
+| `montage-en-chaine.sh`, `aimant-glisser.sh`, `dispositions.sh`, `glisser-contenu.sh`, `arrangement-defile.sh`, `automation-echelle.sh`, `piano-roll-piste-choisie.sh`, `pianoroll-bord.sh`, `selection-au-bord.sh`, `vumetre-console.sh` | la famille d'environnement de D555, que le binaire de D553 rate aussi ; trois de ses membres d'alors (`fader-console.sh`, `liste-editer.sh`, `autosauvegarde-vue.sh`) passent cette fois |
+
+**DÛ, ÉCRAN ALLUMÉ, avant tout autre geste de la prochaine séance : `./verifier.sh --bancs` en entier** — quatre phases
+(D553 à D556) attendent leurs voisins.
+
+C++ 489 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE DIX-SEPTIÈME AUDIT (D556) EST CLOS** : lire jusqu'au repère suivant, la tête d'un événement à l'autre, les notes
+de même nom à toutes les octaves — et, trouvé en route par le banc de la tête (H21), une édition quelconque qui
+défaisait un rognage en rattrapant les notes qu'il avait laissées dehors.

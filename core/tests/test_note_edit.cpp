@@ -864,3 +864,19 @@ VSM_TEST(a_pedal_pressed_on_the_very_tick_a_note_ends_does_not_hold_it) {
     VSM_ASSERT_EQ(notes[0].endTick, Tick(480));
     VSM_ASSERT_EQ(r.pedalEvents, size_t(2));
 }
+
+// D556.3 — LES NOTES DE MÊME NOM : un do choisi appelle tous les do, à toutes les octaves, et rien d'autre ; la
+// sélection s'étend (un mi déjà choisi reste, et appelle ses mi).
+VSM_TEST(selecting_equal_pitch_in_all_octaves_takes_every_note_of_that_name) {
+    std::vector<Note> notes;
+    uint64_t id = 1;
+    for (uint8_t h : {60, 72, 48, 61, 64, 76, 67}) {
+        Note n; n.startTick = 0; n.endTick = 480; n.number = h; n.id = id++; notes.push_back(n);
+    }
+    const auto dos = selectNotesWithSamePitchClass(notes, NoteSelection{1});
+    VSM_ASSERT((dos == NoteSelection{1, 2, 3}));   // 60, 72, 48 — pas 61
+    const auto etendue = selectNotesWithSamePitchClass(notes, NoteSelection{1, 5});
+    VSM_ASSERT((etendue == NoteSelection{1, 2, 3, 5, 6}));   // les do et les mi
+    VSM_ASSERT(selectNotesWithSamePitchClass(notes, NoteSelection{}).empty());
+}
+

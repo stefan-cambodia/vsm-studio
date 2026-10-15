@@ -749,6 +749,16 @@ NoteSelection selectNotesWithSamePitch(const std::vector<Note>& notes, const Not
     return result;
 }
 
+NoteSelection selectNotesWithSamePitchClass(const std::vector<Note>& notes, const NoteSelection& selection) {
+    std::set<int> noms;
+    for (const auto& n : notes)
+        if (selection.count(n.id) > 0) noms.insert(n.number % 12);
+    NoteSelection result = selection;
+    for (const auto& n : notes)
+        if (noms.count(n.number % 12) > 0) result.insert(n.id);
+    return result;
+}
+
 NoteSelection selectNotesBelowVelocity(const std::vector<Note>& notes, uint8_t belowVelocity) {
     NoteSelection result;
     for (const auto& n : notes)

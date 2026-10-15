@@ -155,6 +155,12 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Éclater une piste par canal** (D555.3). *Piste ▸ Éclater par canal* sépare une piste dont les notes et les événements portent plusieurs canaux MIDI : le canal le plus bas reste sur la piste, chaque autre part sur une piste neuve juste dessous, avec la même machine réglée de même, et ses contrôleurs. Grisée pour une piste d'un seul canal.
 
+**Lire jusqu'au repère suivant** (D556.1). *Transport ▸ Lire jusqu'au repère suivant* (Alt+N) joue depuis la tête et s'arrête sur le premier repère qui la suit — posée sur un repère, la lecture va au suivant.
+
+**La tête d'un événement à l'autre** (D556.2). N et B posent la tête sur le prochain, ou le précédent, début ou fin de note ou de clip de la piste choisie — seulement ce qu'on entend : une note hors de tout clip, ou muette, n'arrête pas la tête.
+
+**Les notes de même nom, à toutes les octaves** (D556.3). Au piano roll, *Sélection ▸ Toutes les notes de même nom (toutes octaves)* ajoute à la sélection toutes les notes qui portent le nom d'une note choisie — tous les do, à toutes les hauteurs.
+
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
 
 **Les locateurs sur une section** (D542.1). Clic droit sur la règle — celle de l'arrangement ou celle du piano roll —, puis *Locateurs sur cette section* : la boucle prend la section où vous avez cliqué (d'un repère au suivant ; la dernière va jusqu'à la fin de ce qu'on entend) et s'active, pour travailler un refrain en boucle. L'entrée est grisée là où il n'y a pas de section (sans repère, ou avant le premier). Ctrl+Z rend la boucle d'avant.

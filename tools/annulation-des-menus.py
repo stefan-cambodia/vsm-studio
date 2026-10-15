@@ -67,6 +67,8 @@ MUETTES_VOULUES: dict[str, str] = {
     "Édition > Sélection > Tout sélectionner": "toutes les notes sont déjà choisies (le Ctrl+A de l'état d'essai)",
     "Édition > Sélection > Toutes les notes de même hauteur": "toutes les notes sont déjà choisies : leurs "
                                                                "hauteurs rendent la même sélection",
+    # D556.3 : la sœur « toutes octaves » -- même raison, l'état d'essai a déjà tout choisi.
+    "Édition > Sélection > Toutes les notes de même nom (toutes octaves)": "toutes les notes sont déjà choisies : leurs noms rendent la même sélection",
     "Piste > Étendre le choix vers le haut": "la piste choisie est la première : rien au-dessus",
     "Transport > Retour au début": "la tête est déjà au début (tick 0)",
     "Transport > Marqueur précédent": "le projet d'essai n'a aucun repère, et la tête est à 0",

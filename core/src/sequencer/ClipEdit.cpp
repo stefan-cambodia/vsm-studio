@@ -1398,9 +1398,23 @@ Tick rattacheAuPassageSuivant(const std::vector<ClipPassage>& passages, Tick sou
     return meilleur;
 }
 
+std::set<std::pair<uint64_t, Tick>> notesHorsDesClips(const Track& track) {
+    std::set<std::pair<uint64_t, Tick>> dehors;
+    for (const auto& n : track.notes) {
+        bool couverte = false;
+        for (const auto& c : track.clips) {
+            const Tick fin = c.sourceLength > 0 ? c.sourceStart + c.sourceLength : std::numeric_limits<Tick>::max();
+            couverte |= n.startTick >= c.sourceStart && n.startTick < fin;
+        }
+        if (!couverte) dehors.insert({n.id, n.startTick});
+    }
+    return dehors;
+}
+
 std::vector<CouvertureDeNote> couvrirLesNotesEcrites(Track& track, Tick ticksPerBar,
                                                      Tick mesuresDeSilence, uint64_t& idCounter,
-                                                     Tick materialEnd) {
+                                                     Tick materialEnd,
+                                                     const std::set<std::pair<uint64_t, Tick>>* laissees) {
     std::vector<CouvertureDeNote> faites;
     if (track.clips.empty() || track.notes.empty()) return faites;
     const Tick mesure = std::max<Tick>(1, ticksPerBar);
@@ -1439,6 +1453,7 @@ std::vector<CouvertureDeNote> couvrirLesNotesEcrites(Track& track, Tick ticksPer
         bool couverte = false;
         for (const auto& c : track.clips) couverte |= couvre(c, s);
         if (couverte) continue;
+        if (laissees != nullptr && laissees->count({note->id, s}) > 0) continue;   // H21 : laissée, pas écrite
 
         // Le clip extensible le plus proche, dans le matériau.
         Clip* proche = nullptr;
@@ -1523,6 +1538,27 @@ std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd, bool
         }
     }
     return passages;
+}
+
+std::vector<Tick> trackEventTicks(const Track& track, Tick materialEnd) {
+    std::vector<Tick> instants;
+    for (const auto& c : track.clips) {
+        instants.push_back(c.startTick);
+        instants.push_back(c.startTick + c.length);
+    }
+    const auto passages = clipPassages(track, materialEnd, /*includeMuted=*/false);
+    for (const auto& n : track.notes) {
+        if (n.muted) continue;
+        for (const auto& passage : passages) {
+            const Tick debut = passageOut(passage, n.startTick);
+            if (debut < 0) continue;
+            instants.push_back(debut);
+            instants.push_back(std::min(n.endTick + passage.shift, passage.outLimit));
+        }
+    }
+    std::sort(instants.begin(), instants.end());
+    instants.erase(std::unique(instants.begin(), instants.end()), instants.end());
+    return instants;
 }
 
 } // namespace vsm::sequencer

@@ -1580,6 +1580,10 @@ private:
     void bouclerLaSelection();
     /// D555.1 : la mesure d'avant la sélection jusqu'à son début (`avant`), ou celle d'après depuis sa fin.
     void lireAutourDeLaSelection(bool avant);
+    /// D556.1 : lire de la tête jusqu'au repère suivant, puis l'arrêt sur lui (*Play until Next Marker*).
+    void lireJusquAuRepereSuivant();
+    /// D556.2 : la tête au prochain (`suivant`) ou au précédent événement de la piste choisie.
+    void teteALEvenement(bool suivant);
     /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).
     /// Rien de choisi : faux, et la boîte `titre` le DIT.
     bool bornesDeLaSelection(vsm::midi::Tick& debut, vsm::midi::Tick& fin, bool& clips, const juce::String& titre);

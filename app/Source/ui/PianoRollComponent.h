@@ -242,6 +242,7 @@ public:
     void selectNone();
     void invertSelection();
     void selectSamePitch();
+    void selectSamePitchClass();   // D556.3
     /// Notes douteuses (étape 11.3) : celles sur lesquelles la transcription a
     /// hésité. Y ALLER, une par une, dans l'ordre du morceau -- la vue défile
     /// jusqu'à la note sans changer le zoom -- ou les prendre toutes.

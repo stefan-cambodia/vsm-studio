@@ -110,6 +110,11 @@ enum class ShortcutId : uint16_t {
     TransportPlayUntilSelectionStart,
     /// D555.1 : lire la mesure d'APRÈS la sélection, depuis sa fin (*Play from Selection End*).
     TransportPlayFromSelectionEnd,
+    /// D556.1 : lire de la tête jusqu'au repère suivant (*Play until Next Marker*).
+    TransportPlayUntilNextMarker,
+    /// D556.2 : la tête au prochain début ou fin de note ou de clip de la piste choisie (*Locate Next Event*).
+    NavNextEvent,
+    NavPreviousEvent,
 
     Count
 };

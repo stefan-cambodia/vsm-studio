@@ -57,6 +57,7 @@ enum ContextMenuId {
     kCtxRemoveOverlapsMono = 100470,   // D552.2
     kCtxRestrictPolyFirst = 100480,    // D554.2 : + rang dans kVoixPossibles
     kCtxPedalsToLength = 100490,       // D554.3
+    kCtxSelectSamePitchClass = 100495,   // D556.3
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -735,6 +736,14 @@ void PianoRollComponent::selectShorterThan(Tick ticks) {
 void PianoRollComponent::selectSamePitch() {
     if (Track* track = activeTrack())
         selectedNoteIds_ = selectNotesWithSamePitch(track->notes, selectedNoteIds_);
+    notifyEditState();
+    repaint();
+}
+
+void PianoRollComponent::selectSamePitchClass() {
+    // D556.3 : le compte se DIT par `notifyEditState` (D357), comme toute sélection qui change.
+    if (Track* track = activeTrack())
+        selectedNoteIds_ = selectNotesWithSamePitchClass(track->notes, selectedNoteIds_);
     notifyEditState();
     repaint();
 }
@@ -1463,6 +1472,8 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     ajouterAvecRaccourci(selectMenu, kCtxSelectNone, tr(u8"Tout désélectionner"), shortcuts_, Id::EditSelectNone, sel);
     ajouterAvecRaccourci(selectMenu, kCtxSelectInvert, tr(u8"Inverser la sélection"), shortcuts_, Id::EditInvertSelection);
     selectMenu.addItem(kCtxSelectSamePitch, tr(u8"Toutes les notes de même hauteur"), sel);
+    // D556.3 : la même NOTE à toutes les octaves (tous les do), quand la précédente garde l'octave.
+    selectMenu.addItem(kCtxSelectSamePitchClass, tr(u8"Toutes les notes de même nom (toutes octaves)"), sel);
     // Les notes douteuses de la transcription (étape 11.3) : on y VA, une par
     // une, au lieu de les chercher à l'œil sur un morceau entier.
     const size_t douteuses = doubtfulNoteCount();
@@ -1702,6 +1713,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectNone:       selectNone(); break;
         case kCtxSelectInvert:     invertSelection(); break;
         case kCtxSelectSamePitch:  selectSamePitch(); break;
+        case kCtxSelectSamePitchClass: selectSamePitchClass(); break;   // D556.3
         case kCtxSelectNextDoubtful: selectNextDoubtfulNote(true); break;
         case kCtxSelectPrevDoubtful: selectNextDoubtfulNote(false); break;
         case kCtxSelectDoubtful:   selectDoubtfulNotes(); break;

@@ -93,6 +93,11 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         // l'entrée et la sortie de boucle (D29.1) ; le catalogue exige une touche par commande, et celles-ci étaient libres.
         {ShortcutId::TransportPlayUntilSelectionStart, "transport.playUntilSelectionStart", "Transport", "Lire jusqu'au début de la sélection", "shift + I", ""},
         {ShortcutId::TransportPlayFromSelectionEnd, "transport.playFromSelectionEnd", "Transport", "Lire depuis la fin de la sélection", "shift + O", ""},
+        // D556.1 — Alt+N : N avance d'un événement, Maj+N d'un repère, Alt+N JOUE jusqu'au repère.
+        {ShortcutId::TransportPlayUntilNextMarker, "transport.playUntilNextMarker", "Transport", "Lire jusqu'au repère suivant", "alt + N", ""},
+        // D556.2 — N et B, les touches de Cubase pour *Locate Next / Previous Event* (Maj+N et Maj+B y sont les repères, comme ici).
+        {ShortcutId::NavNextEvent,     "nav.nextEvent",     "Transport", "Tête : événement suivant",   "N", ""},
+        {ShortcutId::NavPreviousEvent, "nav.previousEvent", "Transport", "Tête : événement précédent", "B", ""},
     };
     return catalogue;
 }

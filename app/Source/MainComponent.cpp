@@ -4170,6 +4170,7 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::TransportLoopSelection,   // D554.1
     vsm::interchange::ShortcutId::TransportPlayUntilSelectionStart,   // D555.1
     vsm::interchange::ShortcutId::TransportPlayFromSelectionEnd,      // D555.1
+    vsm::interchange::ShortcutId::TransportPlayUntilNextMarker,       // D556.1
     vsm::interchange::ShortcutId::TransportRecord,
     vsm::interchange::ShortcutId::TransportLoop,
     vsm::interchange::ShortcutId::TransportMetronome,
@@ -4184,8 +4185,10 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::NavNextBeat,
     vsm::interchange::ShortcutId::NavPreviousBar,
     vsm::interchange::ShortcutId::NavNextBar,
+    vsm::interchange::ShortcutId::NavPreviousEvent,   // D556.2
+    vsm::interchange::ShortcutId::NavNextEvent,       // D556.2
 };
-static_assert(std::size(kCommandesDuTransport) == 19);   // D483, D553.2, D554.1, D555.1 ; la plage réservée est gardée à l'aiguillage
+static_assert(std::size(kCommandesDuTransport) == 22);   // D483, D553.2, D554.1, D555.1, D556.1-2 ; la plage réservée est gardée à l'aiguillage
 
 juce::StringArray MainComponent::getMenuBarNames() {
     // D483 : « Transport » entre Piste et Enregistrement, comme chez Cubase.
@@ -5053,7 +5056,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             using Id = vsm::interchange::ShortcutId;
             for (size_t i = 0; i < std::size(kCommandesDuTransport); ++i) {
                 const Id commande = kCommandesDuTransport[i];
-                if (i == 8 || i == 15) menu.addSeparator();   // D553.2, D554.1, D555.1 : quatre entrées insérées aux rangs 1 à 4
+                if (i == 9 || i == 16) menu.addSeparator();   // D553.2-D556.1 : cinq entrées insérées aux rangs 1 à 5
                 const auto* declaree = vsm::interchange::findShortcutCommand(commande);
                 juce::String libelle = declaree != nullptr ? tr(juce::String::fromUTF8(declaree->label)) : juce::String();
                 bool actif = true, coche = false;
@@ -10173,6 +10176,9 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         case Id::TransportLoopSelection: bouclerLaSelection(); return true;   // D554.1
         case Id::TransportPlayUntilSelectionStart: lireAutourDeLaSelection(true); return true;    // D555.1
         case Id::TransportPlayFromSelectionEnd:    lireAutourDeLaSelection(false); return true;   // D555.1
+        case Id::TransportPlayUntilNextMarker:     lireJusquAuRepereSuivant(); return true;       // D556.1
+        case Id::NavNextEvent:                     teteALEvenement(true); return true;            // D556.2
+        case Id::NavPreviousEvent:                 teteALEvenement(false); return true;           // D556.2
         // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
         // piano roll traitait ces deux touches lui-même, et elles n'arrivaient
         // ici que quand il n'avait PAS le focus -- pour y tomber dans le
@@ -12943,6 +12949,9 @@ bool MainComponent::materializeImplicitClips(bool bornerAuxNotes) {
 
 bool MainComponent::couvrirLesNotesEcrites() {
     bool change = false;
+    // D556 (H21) : L'ÉTAT D'AVANT LE GESTE dit ce qui était DÉJÀ dehors -- laissé par l'ouverture, un rognage, un
+    // clip raccourci -- et que ce geste n'a ni écrit ni déplacé. Sans pas ouvert, tout est couvert (l'ancienne règle).
+    const auto* avant = history_.etatDuDernierPas();
     for (size_t t = 0; t < project_.tracks.size(); ++t) {
         auto& piste = project_.tracks[t];
         if (piste.kind != vsm::sequencer::Track::Kind::Midi || piste.clips.empty() || piste.notes.empty()) continue;
@@ -12952,7 +12961,10 @@ bool MainComponent::couvrirLesNotesEcrites() {
         for (const auto& note : piste.notes) finMateriau = std::max(finMateriau, note.endTick);
         uint64_t compteur = project_.peekNextClipId();
         // La même carrure que D334 (huit mesures de silence séparent deux clips).
-        const auto faites = vsm::sequencer::couvrirLesNotesEcrites(piste, parMesure, 8, compteur, finMateriau);
+        std::set<std::pair<uint64_t, vsm::midi::Tick>> laissees;
+        if (avant != nullptr && t < avant->tracks.size()) laissees = vsm::sequencer::notesHorsDesClips(avant->tracks[t]);
+        const auto faites = vsm::sequencer::couvrirLesNotesEcrites(piste, parMesure, 8, compteur, finMateriau,
+                                                                    avant != nullptr ? &laissees : nullptr);
         project_.ensureClipIdAbove(compteur - 1);
         for (const auto& f : faites) {
             // PANNE MUETTE INTERDITE : chaque clip étendu ou créé est dit, et un
@@ -13289,6 +13301,58 @@ void MainComponent::lireAutourDeLaSelection(bool avant) {
                 + (avant ? "avant" : "après") + " la sélection, " + (clips ? "clips" : "notes") + ")\n").c_str(), stderr);
     direOrigineDuPlay(avant ? "Lire jusqu'au début de la sélection" : "Lire depuis la fin de la sélection");
     transport_.play();
+}
+
+void MainComponent::lireJusquAuRepereSuivant() {
+    // D556.1 : de la tête au premier repère STRICTEMENT après elle -- posée sur un repère, la lecture va au suivant. Sur
+    // la machine de D553.2 (`finLectureSelection_`) : l'arrêt pose la tête exactement sur le repère.
+    const vsm::midi::Tick ici = transport_.currentTick();
+    vsm::midi::Tick cible = -1;
+    for (const auto& m : project_.markers)
+        if (m.tick > ici && (cible < 0 || m.tick < cible)) cible = m.tick;
+    if (cible < 0) {
+        std::fputs("VSM_LIRE_REPERE : aucun repère après la tête\n", stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Lire jusqu'au repère suivant"),
+                     tr(u8"Aucun repère après la tête : il n'y a rien jusqu'où lire."));
+        return;
+    }
+    if (transport_.state() == TransportState::Playing) transport_.stop();
+    seekAllViews(ici);
+    finLectureSelection_ = cible;
+    dernierTickSelection_ = ici;
+    std::fputs(("VSM_LIRE_REPERE : de " + std::to_string(ici) + " à " + std::to_string(cible) + " ticks\n").c_str(), stderr);
+    direOrigineDuPlay("Lire jusqu'au repère suivant");
+    transport_.play();
+}
+
+void MainComponent::teteALEvenement(bool suivant) {
+    // D556.2 : les débuts et fins des clips et des notes ENTENDUES de la piste choisie (`trackEventTicks`), strictement
+    // après (avant) la tête. Rien : la tête ne bouge pas, et la ligne d'état le dit -- pas de boîte pour un geste de
+    // navigation qu'on enchaîne au clavier.
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto& track = project_.tracks[piste];
+    const auto instants = vsm::sequencer::trackEventTicks(track, project_.lastUsedTick());
+    const vsm::midi::Tick ici = transport_.currentTick();
+    vsm::midi::Tick cible = -1;
+    if (suivant) {
+        const auto it = std::upper_bound(instants.begin(), instants.end(), ici);
+        if (it != instants.end()) cible = *it;
+    } else {
+        const auto it = std::lower_bound(instants.begin(), instants.end(), ici);
+        if (it != instants.begin()) cible = *std::prev(it);
+    }
+    if (cible < 0) {
+        std::fputs((juce::String("VSM_TETE_EVENEMENT : aucun ") + (suivant ? juce::String::fromUTF8(u8"après") : juce::String("avant"))
+                    + juce::String::fromUTF8(u8" la tête, qui reste à ") + juce::String(static_cast<juce::int64>(ici)) + "\n").toRawUTF8(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged((suivant ? tr(u8"Aucun événement après la tête sur « %1 »")
+                                                : tr(u8"Aucun événement avant la tête sur « %1 »"))
+                                           .replace("%1", juce::String::fromUTF8(track.name.c_str())));
+        return;
+    }
+    seekAllViews(cible);
+    std::fputs(("VSM_TETE_EVENEMENT : " + std::to_string(ici) + " -> " + std::to_string(cible) + " ticks\n").c_str(), stderr);
 }
 
 void MainComponent::lireLaSelection() {

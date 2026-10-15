@@ -243,6 +243,9 @@ NoteSelection selectAllNotes(const std::vector<Note>& notes);
 NoteSelection invertNoteSelection(const std::vector<Note>& notes, const NoteSelection& selection);
 /// Toutes les notes ayant la même hauteur qu'une note déjà sélectionnée.
 NoteSelection selectNotesWithSamePitch(const std::vector<Note>& notes, const NoteSelection& selection);
+/// D556.3 — LES NOTES DE MÊME NOM, À TOUTES LES OCTAVES (*Select Equal Pitch – all Octaves* de Cubase) : toutes
+/// celles dont la hauteur modulo 12 est celle d'une note déjà sélectionnée ; la sélection s'ÉTEND.
+NoteSelection selectNotesWithSamePitchClass(const std::vector<Note>& notes, const NoteSelection& selection);
 /// Toutes les notes qui commencent dans [fromTick, toTick).
 NoteSelection selectNotesInTimeRange(const std::vector<Note>& notes, Tick fromTick, Tick toTick);
 

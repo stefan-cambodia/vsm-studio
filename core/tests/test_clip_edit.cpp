@@ -1850,3 +1850,42 @@ VSM_TEST(removing_track_automation_counts_what_leaves_and_keeps_clip_gain) {
     VSM_ASSERT_EQ(rien.curves + rien.points, size_t(0));
 }
 
+// D556.2 — LES ÉVÉNEMENTS D'UNE PISTE pour la tête : débuts et fins des clips et des notes ENTENDUES ; une note hors de
+// tout clip borné, une note muette n'en sont pas.
+VSM_TEST(track_event_ticks_are_clip_bounds_and_heard_note_bounds) {
+    Track t;
+    uint64_t ids = 1;
+    t.addNote(480, 960, 60, 100, 0, ids);     // dans A
+    t.addNote(2400, 2880, 62, 100, 0, ids);   // entre A et B : hors de tout clip, pas entendue
+    t.addNote(3840, 4320, 64, 100, 0, ids);   // dans B
+    t.addNote(1200, 1440, 65, 100, 0, ids);   // dans A, mais muette
+    t.notes.back().muted = true;
+    t.clips = {clip(1, 0, 1920), clip(2, 3840, 1920, 3840)};   // B montre la matière de 3 840
+    const auto v = trackEventTicks(t, 5760);
+    VSM_ASSERT((v == std::vector<Tick>{0, 480, 960, 1920, 3840, 4320, 5760}));
+}
+
+// D556 (H21) — CE QUI ÉTAIT DÉJÀ DEHORS N'A PAS ÉTÉ ÉCRIT : un clip rogné à [1 920, 5 760) laisse dehors la note de 0 ;
+// la couverture, informée de ce qui était dehors avant le geste, la laisse — et couvre la note NEUVE de 6 000, et la
+// note de 0 si on la DÉPLACE (même identifiant, autre départ).
+VSM_TEST(coverage_leaves_notes_that_were_already_outside_before_the_gesture) {
+    Track t;
+    uint64_t ids = 1;
+    t.addNote(0, 480, 60, 100, 0, ids);
+    t.addNote(1920, 2400, 62, 100, 0, ids);
+    t.clips = {clip(1, 1920, 3840, 1920)};
+    const auto avant = notesHorsDesClips(t);
+    VSM_ASSERT((avant == std::set<std::pair<uint64_t, Tick>>{{1, 0}}));
+    t.addNote(6000, 6240, 64, 100, 0, ids);   // le geste : une note ÉCRITE
+    uint64_t compteur = 10;
+    auto r = couvrirLesNotesEcrites(t, 1920, 8, compteur, 6240, &avant);
+    VSM_ASSERT_EQ(r.size(), size_t(1));
+    VSM_ASSERT_EQ(r[0].noteTick, Tick(6000));
+    VSM_ASSERT_EQ(t.clips[0].sourceStart, Tick(1920));   // le rognage tient : la note de 0 reste dehors
+    // La note de 0 DÉPLACÉE à 300 : un geste sur elle -- couverte.
+    t.notes[0].startTick = 300; t.notes[0].endTick = 780;
+    r = couvrirLesNotesEcrites(t, 1920, 8, compteur, 6240, &avant);
+    VSM_ASSERT_EQ(r.size(), size_t(1));
+    VSM_ASSERT_EQ(r[0].noteTick, Tick(300));
+}
+
