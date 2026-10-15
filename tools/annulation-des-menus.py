@@ -71,8 +71,8 @@ MUETTES_VOULUES: dict[str, str] = {
     "Édition > Sélection > Toutes les notes de même nom (toutes octaves)": "toutes les notes sont déjà choisies : leurs noms rendent la même sélection",
     "Piste > Étendre le choix vers le haut": "la piste choisie est la première : rien au-dessus",
     "Transport > Retour au début": "la tête est déjà au début (tick 0)",
-    "Transport > Marqueur précédent": "le projet d'essai n'a aucun repère, et la tête est à 0",
-    "Transport > Marqueur suivant": "le projet d'essai n'a aucun repère : rien à atteindre",
+    "Transport > Tête : repère précédent": "le projet d'essai n'a aucun repère, et la tête est à 0",   # D557.4
+    "Transport > Tête : repère suivant": "le projet d'essai n'a aucun repère : rien à atteindre",
     "Transport > Tête au début de la sélection": "la sélection commence au tick 0, où la tête est déjà",
     "Transport > Tête : temps précédent": "la tête est au début : rien avant",
     "Transport > Tête : mesure précédente": "la tête est au début : rien avant",

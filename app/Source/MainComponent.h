@@ -1138,6 +1138,12 @@ private:
         kMenuTrackRemoveControllers,
         /// D555.3 : éclater la piste choisie par canal MIDI.
         kMenuTrackExplodeByChannel,
+        /// D557.2 : éclaircir les contrôleurs MIDI de la piste choisie, un écart par entrée (`kEcartsEclaircir`).
+        kMenuTrackThinControllersFirst,
+        kMenuTrackThinControllersLast = kMenuTrackThinControllersFirst + 3,
+        /// D557.3 : annuler et rétablir un zoom de l'arrangement.
+        kMenuViewZoomUndo,
+        kMenuViewZoomRedo,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1574,6 +1580,9 @@ private:
     void supprimerControleursDeLaPiste();
     /// D555.3 : éclater la piste choisie par canal MIDI (*Dissolve Part ▸ Separate Channels*), dit.
     void eclaterPisteParCanal();
+    /// D557.2 : éclaircir les contrôleurs MIDI de la piste choisie (*Thin Out Data*) à l'écart donné, dit — retirés,
+    /// laissés (les commandes), et l'écart rejoué mesuré.
+    void eclaircirControleursDeLaPiste(int ecart);
     /// D553.2 : lire la sélection, de son début à sa fin, puis l'arrêt (*Play Selection Range*).
     void lireLaSelection();
     /// D554.1 : boucler la sélection -- les locateurs sur elle, la boucle allumée, la lecture (*Loop Selection*).

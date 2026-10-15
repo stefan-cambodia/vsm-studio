@@ -399,3 +399,90 @@ VSM_TEST(removing_track_controllers_keeps_notes_and_program_changes) {
     VSM_ASSERT_EQ(removeAllControllers(t).total(), size_t(0));
 }
 
+
+// D557.2 — ÉCLAIRCIR LES CONTRÔLEURS (*Thin Out Data*) : dans chaque flux, un événement part quand il reste à l'écart
+// choisi ou moins de la dernière valeur GARDÉE ; le premier et le dernier restent ; les commandes (banque, RPN, entrée
+// de données) et les poids faibles restent tous ; notes et programmes intacts ; l'écart rejoué tient la tolérance.
+VSM_TEST(thinning_controllers_keeps_ends_commands_and_the_tolerance) {
+    Track t;
+    uint64_t ids = 1;
+    t.addNote(0, 480, 60, 100, 0, ids);
+    t.programChanges = {{0, 0, 5}};
+    // Une molette (CC 1) qui monte de 0 à 10 un par un, puis un doublon ; le volume (CC 7) répété ; deux RPN égaux et
+    // une banque répétée (des COMMANDES, laissées) ; un poids faible (CC 33) répété.
+    for (int v = 0; v <= 10; ++v) t.controlChanges.push_back({static_cast<Tick>(v * 10), 0, 1, static_cast<uint8_t>(v)});
+    t.controlChanges.push_back({110, 0, 1, 10});
+    t.controlChanges.push_back({0, 0, 7, 100});
+    t.controlChanges.push_back({50, 0, 7, 100});
+    t.controlChanges.push_back({100, 0, 7, 100});
+    t.controlChanges.push_back({0, 0, 101, 0});
+    t.controlChanges.push_back({10, 0, 101, 0});
+    t.controlChanges.push_back({0, 0, 0, 1});
+    t.controlChanges.push_back({10, 0, 0, 1});
+    t.controlChanges.push_back({0, 0, 33, 3});
+    t.controlChanges.push_back({10, 0, 33, 3});
+    // Un pli qui revient au centre par petits pas (14 bits : l'écart 1 vaut 128).
+    t.pitchBends = {{0, 0, 0}, {10, 0, 1000}, {20, 0, 1100}, {30, 0, 1200}, {40, 0, 60}, {50, 0, 0}};
+    t.channelPressure = {{0, 0, 10}, {10, 0, 11}, {20, 0, 12}};
+    t.polyAftertouch = {{0, 0, 60, 50}, {10, 0, 60, 50}, {10, 0, 62, 50}};
+    t.sortEvents();
+    const Track avant = t;
+
+    // L'écart 0 ne retire que les DOUBLONS : le 10 répété de la molette (le dernier du flux, mais il ne change pas la
+    // valeur), deux volumes, la pression polyphonique répétée de la note 60 (pas celle de la 62, un autre flux) — et ni
+    // la banque, ni le RPN, ni le poids faible.
+    {
+        Track u = avant;
+        const auto r = thinControllers(u, 0);
+        VSM_ASSERT_EQ(r.removed, size_t(4));
+        VSM_ASSERT_EQ(r.untouched, size_t(6));
+        VSM_ASSERT_EQ(maxControllerDeviation(avant, u), 0.0);
+        VSM_ASSERT_EQ(countThinnableControllers(avant, 0).removed, size_t(4));   // l'aperçu dit la même chose
+    }
+    // L'écart 2 : la molette garde 0, 3, 6, 9, et son dernier 10 ; le pli (écart 256 en 14 bits) garde 0, 1000, 60, et
+    // son dernier 0 ; la pression garde 10 et son dernier 12.
+    {
+        Track u = avant;
+        const auto r = thinControllers(u, 2);
+        size_t molette = 0;
+        for (const auto& c : u.controlChanges) if (c.controller == 1) ++molette;
+        VSM_ASSERT_EQ(molette, size_t(5));
+        for (size_t i = 1; i < u.controlChanges.size(); ++i)   // toujours trié par tick
+            VSM_ASSERT(u.controlChanges[i - 1].tick <= u.controlChanges[i].tick);
+        VSM_ASSERT_EQ(u.pitchBends.size(), size_t(4));
+        VSM_ASSERT_EQ(u.pitchBends.back().value, int16_t(0));   // le dernier du flux, le centre
+        VSM_ASSERT_EQ(u.channelPressure.size(), size_t(2));
+        VSM_ASSERT_EQ(u.channelPressure.back().pressure, uint8_t(12));
+        VSM_ASSERT(maxControllerDeviation(avant, u) <= 2.0);
+        VSM_ASSERT(maxControllerDeviation(avant, u) > 0.0);   // la mesure voit bien quelque chose
+        VSM_ASSERT_EQ(r.removed, avant.controlChanges.size() + avant.pitchBends.size() + avant.channelPressure.size()
+                                     + avant.polyAftertouch.size() - u.controlChanges.size() - u.pitchBends.size()
+                                     - u.channelPressure.size() - u.polyAftertouch.size());
+        VSM_ASSERT_EQ(u.notes.size(), size_t(1));
+        VSM_ASSERT_EQ(u.programChanges.size(), size_t(1));
+        size_t commandes = 0;
+        for (const auto& c : u.controlChanges) if (c.controller == 0 || c.controller == 101 || c.controller == 33) ++commandes;
+        VSM_ASSERT_EQ(commandes, size_t(6));
+        // Rejoué : ce qui reste est déjà éclairci.
+        VSM_ASSERT_EQ(thinControllers(u, 2).removed, size_t(0));
+    }
+    // L'écart négatif ne retire rien.
+    {
+        Track u = avant;
+        VSM_ASSERT_EQ(thinControllers(u, -1).removed, size_t(0));
+    }
+}
+
+// L'écart rejoué se mesure sur l'UNION des ticks : sur la seule piste éclaircie, il rendrait zéro à tous les coups.
+VSM_TEST(controller_deviation_is_measured_where_events_were_removed) {
+    Track a;
+    a.controlChanges = {{0, 0, 1, 0}, {10, 0, 1, 5}, {20, 0, 1, 9}};
+    Track b;
+    b.controlChanges = {{0, 0, 1, 0}, {20, 0, 1, 9}};
+    VSM_ASSERT_EQ(maxControllerDeviation(a, b), 5.0);
+    Track c;
+    c.pitchBends = {{0, 0, 0}, {10, 0, 256}};
+    Track d;
+    d.pitchBends = {{0, 0, 0}};
+    VSM_ASSERT_EQ(maxControllerDeviation(c, d), 2.0);   // 256 en 14 bits = 2 en 7 bits
+}

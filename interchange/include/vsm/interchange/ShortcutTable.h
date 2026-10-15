@@ -115,6 +115,9 @@ enum class ShortcutId : uint16_t {
     /// D556.2 : la tête au prochain début ou fin de note ou de clip de la piste choisie (*Locate Next Event*).
     NavNextEvent,
     NavPreviousEvent,
+    /// D557.3 : la vue de l'arrangement d'avant le dernier geste de zoom, et retour (*Undo Zoom / Redo Zoom*).
+    ViewZoomUndo,
+    ViewZoomRedo,
 
     Count
 };

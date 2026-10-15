@@ -136,4 +136,34 @@ struct ControllerCount {
 ControllerCount countControllers(const Track& track);
 ControllerCount removeAllControllers(Track& track);
 
+/// D557.2 — ÉCLAIRCIR LES CONTRÔLEURS (*Thin Out Data* de Cubase). Un potentiomètre enregistré ou un fichier importé
+/// pose des centaines d'événements là où le geste en valait dix ; « Réduire les points d'automation » (D30.5) ne
+/// travaille que les courbes d'automation, pas les CC, plis et pressions d'une piste.
+///
+/// PAR FLUX : un contrôleur d'un canal, le pli d'un canal, sa pression, la pression d'une note d'un canal. Dans chacun,
+/// dans l'ordre du temps, un événement PART quand sa valeur reste à `tolerance` ou moins de la dernière valeur GARDÉE
+/// — la valeur tenue entre deux événements gardés s'écarte donc de celle d'avant de `tolerance` au plus. Le PREMIER
+/// reste ; le DERNIER aussi, s'il change la valeur : la valeur sur laquelle un flux finit (un pli revenu au centre) ne
+/// bouge pas. `tolerance` est en unités de 7 bits ; pour le pli (14 bits), elle est multipliée par 128, la même part de
+/// sa plage. 0 ne retire que les doublons ; une tolérance négative ne retire rien.
+///
+/// LES COMMANDES NE S'ÉCLAIRCISSENT PAS : la banque (CC 0, 32), l'entrée de données (6, 38), les incréments (96, 97),
+/// les RPN et NRPN (98 à 101), les modes de canal (120 à 127) et les poids faibles (32 à 63) restent tous — une
+/// commande répétée n'est pas un échantillon redondant, et un RPN amputé change la plage du pli. Ils sont COMPTÉS
+/// (`untouched`), pour que ce qui est laissé soit dit. Notes et changements de programme ne sont pas touchés.
+struct ControllerThinning {
+    size_t examined = 0;    ///< événements des flux continus
+    size_t removed = 0;
+    size_t untouched = 0;   ///< commandes et poids faibles, laissés entiers
+};
+/// Vrai pour un contrôleur CONTINU (ce que `thinControllers` peut éclaircir).
+bool isContinuousController(uint8_t controller);
+ControllerThinning thinControllers(Track& track, int tolerance);
+/// Le même compte, sans rien toucher (les libellés du menu).
+ControllerThinning countThinnableControllers(const Track& track, int tolerance);
+/// L'ÉCART REJOUÉ entre deux états d'une piste, en unités de 7 bits (le pli divisé par 128) : le plus grand écart de
+/// valeur TENUE, flux par flux, sur l'UNION des ticks des deux — sur les seuls ticks de la piste éclaircie, il
+/// rendrait zéro à tous les coups. Un flux sans événement avant un tick y vaut 0.
+double maxControllerDeviation(const Track& a, const Track& b);
+
 } // namespace vsm::sequencer

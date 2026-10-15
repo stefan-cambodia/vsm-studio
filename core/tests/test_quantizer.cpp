@@ -64,6 +64,43 @@ VSM_TEST(quantize_notes_preserves_duration_when_end_not_quantized) {
     VSM_ASSERT_EQ(notes[0].durationTicks(), static_cast<Tick>(240)); // durée inchangée
 }
 
+// H22 (D557.1) : « Quantifier début ET fin » réduisait à UN TICK une note plus courte qu'une demi-case — les deux bouts
+// allaient à la même ligne, et `endTick = startTick + 1` rattrapait la durée nulle. La fin va désormais à la PREMIÈRE
+// ligne après le début.
+VSM_TEST(quantize_start_and_end_never_collapses_a_short_note_to_one_tick) {
+    std::vector<Note> notes = { Note{100, 150, 0, 60, 100, 64, 1} };   // 50 ticks, moins d'une demi-case
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};   // 120
+    settings.quantizeNoteEnd = true;
+    quantizeNotes(notes, settings, 480);
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(120));
+    VSM_ASSERT_EQ(notes[0].durationTicks(), static_cast<Tick>(120));
+}
+
+// D557.1 — QUANTIFIER LES FINS (*Quantize MIDI Event Ends* de Cubase) : le début ne bouge pas, la fin va à la ligne la
+// plus proche ; une fin qui y tomberait sur ou avant le début va à la première ligne APRÈS lui.
+VSM_TEST(quantize_ends_only_keeps_starts_and_moves_ends_to_the_grid) {
+    std::vector<Note> notes = {
+        Note{125, 365, 0, 60, 100, 64, 1},   // fin 365 → 360
+        Note{0, 200, 0, 62, 100, 64, 2},     // fin 200 → 240
+        Note{130, 170, 0, 64, 100, 64, 3},   // fin 170 → 120, avant le début : → 240, la ligne après 130
+        Note{240, 290, 0, 65, 100, 64, 4},   // fin 290 → 240, SUR le début : → 360
+    };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};
+    settings.quantizeNoteStart = false;
+    settings.quantizeNoteEnd = true;
+    quantizeNotes(notes, settings, 480);
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(125));
+    VSM_ASSERT_EQ(notes[0].endTick, static_cast<Tick>(360));
+    VSM_ASSERT_EQ(notes[1].startTick, static_cast<Tick>(0));
+    VSM_ASSERT_EQ(notes[1].endTick, static_cast<Tick>(240));
+    VSM_ASSERT_EQ(notes[2].startTick, static_cast<Tick>(130));
+    VSM_ASSERT_EQ(notes[2].endTick, static_cast<Tick>(240));
+    VSM_ASSERT_EQ(notes[3].startTick, static_cast<Tick>(240));
+    VSM_ASSERT_EQ(notes[3].endTick, static_cast<Tick>(360));
+}
+
 VSM_TEST(humanize_is_deterministic_for_same_seed) {
     std::vector<Note> notesA = {
         Note{0, 240, 0, 60, 100, 64, 1},

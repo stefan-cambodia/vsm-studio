@@ -57,8 +57,10 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavNextDoubtful,   "nav.nextDoubtful", "Affichage", "Note douteuse suivante (Maj : précédente)", "D",     ""},
         // D11.3 — se repérer en musique : le début, et les marqueurs.
         {ShortcutId::NavGoToStart,      "nav.goToStart",    "Transport", "Retour au début",                "home",             ""},
-        {ShortcutId::NavNextMarker,     "nav.nextMarker",   "Transport", "Marqueur suivant",               "shift + N",        ""},
-        {ShortcutId::NavPreviousMarker, "nav.previousMarker","Transport","Marqueur précédent",             "shift + B",        ""},
+        // D557.4 : « repère », le mot de tout le reste du logiciel (« marqueur » nomme ceux d'étirement d'un clip), et le
+        // nom de leur famille au menu Transport. Les identifiants ne bougent pas : les préférences les retiennent.
+        {ShortcutId::NavNextMarker,     "nav.nextMarker",   "Transport", "Tête : repère suivant",          "shift + N",        ""},
+        {ShortcutId::NavPreviousMarker, "nav.previousMarker","Transport","Tête : repère précédent",        "shift + B",        ""},
         {ShortcutId::ViewFullScreen,    "view.fullScreen",  "Affichage", "Plein écran",                    "F11",              ""},
         // D22.2 — aller à une mesure : Maj+P, comme Cubase (la position se tape, on ne zoome plus pour la rejoindre).
         {ShortcutId::NavGoToBar,        "nav.goToBar",      "Transport", "Aller à la mesure…",             "shift + P",        ""},
@@ -98,6 +100,11 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         // D556.2 — N et B, les touches de Cubase pour *Locate Next / Previous Event* (Maj+N et Maj+B y sont les repères, comme ici).
         {ShortcutId::NavNextEvent,     "nav.nextEvent",     "Transport", "Tête : événement suivant",   "N", ""},
         {ShortcutId::NavPreviousEvent, "nav.previousEvent", "Transport", "Tête : événement précédent", "B", ""},
+        // D557.3 — Alt+Z et Maj+Alt+Z, en miroir d'Annuler et Rétablir (Ctrl+Z, Ctrl+Maj+Z) : libres dans la table et
+        // les touches fixes, au bureau (`kglobalshortcutsrc`) ; le clavier d'ordinateur (D492) laisse les touches à
+        // modificateur, son Z d'octave n'est pas pris.
+        {ShortcutId::ViewZoomUndo,     "view.zoomUndo",     "Affichage", "Annuler le zoom",  "alt + Z",         ""},
+        {ShortcutId::ViewZoomRedo,     "view.zoomRedo",     "Affichage", "Rétablir le zoom", "shift + alt + Z", ""},
     };
     return catalogue;
 }

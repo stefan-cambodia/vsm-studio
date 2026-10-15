@@ -1,5 +1,9 @@
 #include "vsm/sequencer/EventList.h"
 #include <algorithm>
+#include <cmath>
+#include <iterator>
+#include <map>
+#include <set>
 
 namespace vsm::sequencer {
 
@@ -297,6 +301,157 @@ ControllerCount removeAllControllers(Track& track) {
     track.channelPressure.clear();
     track.polyAftertouch.clear();
     return c;
+}
+
+bool isContinuousController(uint8_t controller) {
+    if (controller == 0 || controller == 6) return false;              // banque, entrée de données
+    if (controller >= 32 && controller <= 63) return false;            // poids faibles (dont 32 et 38)
+    if (controller >= 96 && controller <= 101) return false;           // incréments, NRPN, RPN
+    if (controller >= 120) return false;                               // modes de canal
+    return true;
+}
+
+namespace {
+
+// D557.2 : les marques « gardé » d'une famille d'événements, flux par flux. `cle` désigne le flux, `valeur` sa valeur,
+// `eclaircir` dit si l'événement appartient à un flux continu. Les vecteurs sont triés par tick (`sortEvents`) ; l'ordre
+// d'origine départage deux événements au même tick, comme le séquenceur.
+template <typename Point, typename Cle, typename Valeur, typename Eclaircir>
+std::vector<bool> marquesGardees(const std::vector<Point>& points, Cle cle, Valeur valeur, Eclaircir eclaircir,
+                                 long long tolerance, ControllerThinning& r) {
+    std::vector<bool> garde(points.size(), true);
+    std::map<long long, std::vector<size_t>> flux;
+    for (size_t i = 0; i < points.size(); ++i) {
+        if (!eclaircir(points[i])) { ++r.untouched; continue; }
+        ++r.examined;
+        flux[cle(points[i])].push_back(i);
+    }
+    if (tolerance < 0) return garde;
+    for (auto& [k, indices] : flux) {
+        std::stable_sort(indices.begin(), indices.end(),
+                         [&points](size_t x, size_t y) { return points[x].tick < points[y].tick; });
+        long long gardee = valeur(points[indices.front()]);
+        for (size_t j = 1; j < indices.size(); ++j) {
+            const long long v = valeur(points[indices[j]]);
+            const long long ecart = v > gardee ? v - gardee : gardee - v;
+            const bool dernier = j + 1 == indices.size();
+            if (ecart > tolerance || (dernier && ecart > 0)) {
+                gardee = v;
+            } else {
+                garde[indices[j]] = false;
+                ++r.removed;
+            }
+        }
+    }
+    return garde;
+}
+
+template <typename Point>
+void garderMarques(std::vector<Point>& points, const std::vector<bool>& garde) {
+    std::vector<Point> restants;
+    restants.reserve(points.size());
+    for (size_t i = 0; i < points.size(); ++i)
+        if (garde[i]) restants.push_back(points[i]);
+    points = std::move(restants);
+}
+
+struct MarquesDeLaPiste {
+    std::vector<bool> cc, pli, pression, poly;
+};
+
+MarquesDeLaPiste marquerLaPiste(const Track& track, int tolerance, ControllerThinning& r) {
+    const long long tol = tolerance;
+    MarquesDeLaPiste m;
+    m.cc = marquesGardees(
+        track.controlChanges, [](const CcPoint& p) { return p.channel * 128LL + p.controller; },
+        [](const CcPoint& p) { return static_cast<long long>(p.value); },
+        [](const CcPoint& p) { return isContinuousController(p.controller); }, tol, r);
+    m.pli = marquesGardees(
+        track.pitchBends, [](const PitchBendPoint& p) { return static_cast<long long>(p.channel); },
+        [](const PitchBendPoint& p) { return static_cast<long long>(p.value); },
+        [](const PitchBendPoint&) { return true; }, tol < 0 ? tol : tol * 128, r);
+    m.pression = marquesGardees(
+        track.channelPressure, [](const ChannelPressurePoint& p) { return static_cast<long long>(p.channel); },
+        [](const ChannelPressurePoint& p) { return static_cast<long long>(p.pressure); },
+        [](const ChannelPressurePoint&) { return true; }, tol, r);
+    m.poly = marquesGardees(
+        track.polyAftertouch, [](const PolyAftertouchPoint& p) { return p.channel * 128LL + p.note; },
+        [](const PolyAftertouchPoint& p) { return static_cast<long long>(p.pressure); },
+        [](const PolyAftertouchPoint&) { return true; }, tol, r);
+    return m;
+}
+
+// La valeur TENUE de chaque flux, tick par tick : (flux, tick) → valeur après tous les événements de ce tick.
+template <typename Point, typename Cle, typename Valeur>
+void valeursTenues(const std::vector<Point>& points, Cle cle, Valeur valeur,
+                   std::map<long long, std::map<Tick, double>>& out) {
+    for (const auto& p : points) out[cle(p)][p.tick] = valeur(p);   // trié : le dernier d'un tick l'emporte
+}
+
+double ecartDesFlux(const std::map<long long, std::map<Tick, double>>& a,
+                    const std::map<long long, std::map<Tick, double>>& b) {
+    std::set<long long> cles;
+    for (const auto& [k, v] : a) cles.insert(k);
+    for (const auto& [k, v] : b) cles.insert(k);
+    const std::map<Tick, double> vide;
+    double pire = 0.0;
+    for (const long long k : cles) {
+        const auto ia = a.find(k);
+        const auto ib = b.find(k);
+        const auto& fa = ia != a.end() ? ia->second : vide;
+        const auto& fb = ib != b.end() ? ib->second : vide;
+        std::set<Tick> ticks;
+        for (const auto& [t, v] : fa) ticks.insert(t);
+        for (const auto& [t, v] : fb) ticks.insert(t);
+        auto tenue = [](const std::map<Tick, double>& f, Tick t) {
+            auto it = f.upper_bound(t);
+            return it == f.begin() ? 0.0 : std::prev(it)->second;
+        };
+        for (const Tick t : ticks) pire = std::max(pire, std::fabs(tenue(fa, t) - tenue(fb, t)));
+    }
+    return pire;
+}
+
+} // namespace
+
+ControllerThinning thinControllers(Track& track, int tolerance) {
+    ControllerThinning r;
+    const MarquesDeLaPiste m = marquerLaPiste(track, tolerance, r);
+    garderMarques(track.controlChanges, m.cc);
+    garderMarques(track.pitchBends, m.pli);
+    garderMarques(track.channelPressure, m.pression);
+    garderMarques(track.polyAftertouch, m.poly);
+    return r;
+}
+
+ControllerThinning countThinnableControllers(const Track& track, int tolerance) {
+    ControllerThinning r;
+    marquerLaPiste(track, tolerance, r);
+    return r;
+}
+
+double maxControllerDeviation(const Track& a, const Track& b) {
+    // Chaque famille a ses clés à elle : une pression de canal et un pli du même canal ne sont pas le même flux.
+    auto ecartFamille = [](auto const& pa, auto const& pb, auto cle, auto valeur) {
+        std::map<long long, std::map<Tick, double>> ta, tb;
+        valeursTenues(pa, cle, valeur, ta);
+        valeursTenues(pb, cle, valeur, tb);
+        return ecartDesFlux(ta, tb);
+    };
+    double pire = 0.0;
+    pire = std::max(pire, ecartFamille(a.controlChanges, b.controlChanges,
+                                       [](const CcPoint& p) { return p.channel * 128LL + p.controller; },
+                                       [](const CcPoint& p) { return static_cast<double>(p.value); }));
+    pire = std::max(pire, ecartFamille(a.pitchBends, b.pitchBends,
+                                       [](const PitchBendPoint& p) { return static_cast<long long>(p.channel); },
+                                       [](const PitchBendPoint& p) { return static_cast<double>(p.value) / 128.0; }));
+    pire = std::max(pire, ecartFamille(a.channelPressure, b.channelPressure,
+                                       [](const ChannelPressurePoint& p) { return static_cast<long long>(p.channel); },
+                                       [](const ChannelPressurePoint& p) { return static_cast<double>(p.pressure); }));
+    pire = std::max(pire, ecartFamille(a.polyAftertouch, b.polyAftertouch,
+                                       [](const PolyAftertouchPoint& p) { return p.channel * 128LL + p.note; },
+                                       [](const PolyAftertouchPoint& p) { return static_cast<double>(p.pressure); }));
+    return pire;
 }
 
 } // namespace vsm::sequencer

@@ -50,10 +50,18 @@ void quantizeNotes(std::vector<Note>& notes, const QuantizeSettings& settings, u
         midi::Tick duration = note.durationTicks();
         if (settings.quantizeNoteStart)
             note.startTick = quantizeTick(note.startTick, settings, ppq);
-        if (settings.quantizeNoteEnd)
+        if (settings.quantizeNoteEnd) {
             note.endTick = quantizeTick(note.endTick, settings, ppq);
-        else
+            // H22 (D557.1) : UNE FIN QUI TOMBE SUR OU AVANT LE DÉBUT VA À LA PREMIÈRE LIGNE APRÈS LUI. Le rattrapage
+            // d'un tick ci-dessous réduisait une note plus courte qu'une demi-case à une milliseconde : 100-150 sur
+            // une grille de 120 rendait [120, 121). La ligne passe par `quantizeTick`, pour garder swing et force.
+            const midi::Tick pas = gridResolutionToTicks(settings.grid, ppq);
+            if (note.endTick <= note.startTick && pas > 0)
+                note.endTick = std::max(note.startTick + 1,
+                                        quantizeTick((note.startTick / pas + 1) * pas, settings, ppq));
+        } else {
             note.endTick = note.startTick + duration; // conserve la durée d'origine
+        }
 
         if (note.endTick <= note.startTick)
             note.endTick = note.startTick + 1; // jamais de durée nulle/négative

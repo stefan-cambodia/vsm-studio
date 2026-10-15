@@ -278,7 +278,8 @@ public:
     /// D28.4 : le tick de la première note choisie ; faux sans sélection.
     bool selectionStartTick(vsm::midi::Tick& debut) const;
     bool selectionEndTick(vsm::midi::Tick& fin) const;   ///< D553.2 : la fin de la dernière note choisie
-    void quantizeSelection(float strength, bool alsoQuantizeEnds);
+    /// D557.1 : `quantizeStarts` faux — « Quantifier les fins » (*Quantize MIDI Event Ends*), les débuts ne bougent pas.
+    void quantizeSelection(float strength, bool alsoQuantizeEnds, bool quantizeStarts = true);
     void humanizeSelection(float timingTicks, float velocityAmount);
     void applyLegatoToSelection();
     void removeOverlapsInSelection();

@@ -765,6 +765,12 @@ MainComponent::MainComponent()
                      u8"chaîne dans l'arrangement."));
     };
     // D548.2 : DÉPLACER À LA TÊTE UN CLIP QUI Y EST DÉJÀ se dit aussi.
+    // D557.3 : RIEN À ANNULER OU À RÉTABLIR DANS LES ZOOMS -- la ligne d'état le dit (la touche n'a pas de grisé).
+    arrangement_.onZoomSansHistoire = [this](bool annuler) {
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(annuler ? tr(u8"Aucun zoom de l'arrangement à annuler")
+                                               : tr(u8"Aucun zoom de l'arrangement à rétablir"));
+    };
     arrangement_.onAlreadyAtPlayhead = [] {
         montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rien à déplacer"),
                      tr(u8"Le premier clip choisi commence déjà à la tête de lecture : placez la tête là où "
@@ -4198,6 +4204,9 @@ juce::StringArray MainComponent::getMenuBarNames() {
 
 namespace {
 
+/// D557.2 : les écarts proposés par « Éclaircir les contrôleurs MIDI » — 0 ne retire que les doublons.
+constexpr int kEcartsEclaircir[] = {0, 1, 2, 4};
+static_assert(std::size(kEcartsEclaircir) == 4);   // kMenuTrackThinControllersLast en réserve quatre
 
 } // namespace
 
@@ -4921,6 +4930,24 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   tr(u8"Supprimer les contrôleurs MIDI de la piste (%1)")
                                       .replace("%1", juce::String(static_cast<int>(controleurs))),
                                   controleurs > 0);
+                    // D557.2 : ÉCLAIRCIR LES CONTRÔLEURS -- chaque écart dit combien partiraient, grisé à zéro.
+                    {
+                        juce::PopupMenu ecarts;
+                        for (size_t k = 0; k < std::size(kEcartsEclaircir); ++k) {
+                            const size_t partiraient =
+                                piste < project_.tracks.size()
+                                    ? vsm::sequencer::countThinnableControllers(project_.tracks[piste], kEcartsEclaircir[k]).removed
+                                    : 0;
+                            const juce::String libelle =
+                                kEcartsEclaircir[k] == 0
+                                    ? tr(u8"Écart 0, les doublons (%1 retiré(s))")
+                                    : tr(u8"Écart %2 (%1 retiré(s))").replace("%2", juce::String(kEcartsEclaircir[k]));
+                            ecarts.addItem(kMenuTrackThinControllersFirst + static_cast<int>(k),
+                                           libelle.replace("%1", juce::String(static_cast<int>(partiraient))),
+                                           partiraient > 0);
+                        }
+                        menu.addSubMenu(tr(u8"Éclaircir les contrôleurs MIDI de la piste"), ecarts, controleurs > 0);
+                    }
                 }
                 // D443 : grisée, elle dit pourquoi.
                 menu.addItem(kMenuTrackBounceSelection,
@@ -5392,6 +5419,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             menu.addItem(kMenuViewFitTracks, tr(u8"Toutes les pistes \u00e0 la fen\u00eatre (arrangement)"),
                          !project_.tracks.empty());
+            // D557.3 : ANNULER ET RÉTABLIR UN ZOOM de l'arrangement -- grisées quand il n'y a rien à reprendre.
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewZoomUndo, tr(u8"Annuler le zoom"), shortcuts_,
+                                               vsm::interchange::ShortcutId::ViewZoomUndo, arrangement_.zoomsAAnnuler() > 0);
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewZoomRedo, tr(u8"Rétablir le zoom"), shortcuts_,
+                                               vsm::interchange::ShortcutId::ViewZoomRedo, arrangement_.zoomsARetablir() > 0);
             {
                 juce::PopupMenu hauteurs;
                 // D490 : LA HAUTEUR COMMUNE EST COCHÉE — celle que `setAllTrackHeights`
@@ -5556,6 +5588,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuViewFitTracks) { arrangement_.fitTracksToWindow(); return; }
+    if (menuItemID == kMenuViewZoomUndo) { arrangement_.annulerZoom(); return; }    // D557.3
+    if (menuItemID == kMenuViewZoomRedo) { arrangement_.retablirZoom(); return; }   // D557.3
     if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
@@ -5934,6 +5968,10 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         const auto noms = audioEngine_.availableMidiOutputs();
         const size_t i = static_cast<size_t>(menuItemID - kMenuTrackMidiOutFirst);
         if (i < noms.size()) setSelectedTrackMidiOutput(noms[i]);
+        return;
+    }
+    if (menuItemID >= kMenuTrackThinControllersFirst && menuItemID <= kMenuTrackThinControllersLast) {   // D557.2
+        eclaircirControleursDeLaPiste(kEcartsEclaircir[menuItemID - kMenuTrackThinControllersFirst]);
         return;
     }
     if (menuItemID >= kMenuTrackPresetFirst && menuItemID <= kMenuTrackPresetLast) {
@@ -8398,6 +8436,9 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     const auto& vue = loaded.bundle.document.view;
     if (!arrangement_.reprendreLaVue(vue.pixelsPerTick, vue.scrollTick))
         arrangement_.zoomToFit();
+    // D557.3 : la vue d'ouverture n'est pas un geste -- ni le cadrage ci-dessus, ni les zooms du projet d'avant ne
+    // s'annulent.
+    arrangement_.oublierLesZooms();
 
     // D369 : LA PISTE CHOISIE ET LA VUE DU PIANO ROLL, même règle. Le commentaire
     // ci-dessus disait « le piano roll a son propre cadrage depuis D338 : on ne
@@ -10194,6 +10235,8 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
         // ne l'entendait pas, seul le piano roll répondait.
         case Id::ViewZoomToFit: arrangement_.zoomToFit(); pianoRoll_.zoomToFit(); return true;
+        case Id::ViewZoomUndo: arrangement_.annulerZoom(); return true;    // D557.3 : l'arrangement, quelle que soit la vue
+        case Id::ViewZoomRedo: arrangement_.retablirZoom(); return true;   // qui a le clavier
         case Id::EditDeleteTimeAtLocators: editTimeAtLocators(false); return true;
         case Id::ViewFullScreen: toggleFullScreen(); return true;
         case Id::NavNextMarker: {
@@ -13473,6 +13516,37 @@ void MainComponent::supprimerControleursDeLaPiste() {
                                        .replace("%1", juce::String(static_cast<int>(r.controlChanges)))
                                        .replace("%2", juce::String(static_cast<int>(r.pitchBends)))
                                        .replace("%3", juce::String(static_cast<int>(r.channelPressure + r.polyAftertouch))));
+}
+
+void MainComponent::eclaircirControleursDeLaPiste(int ecart) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    if (vsm::sequencer::countThinnableControllers(track, ecart).removed == 0) {
+        std::fputs((juce::String::fromUTF8(u8"VSM_CONTROLEURS_ECLAIRCIS : aucun à l'écart ") + juce::String(ecart) + "\n").toRawUTF8(),
+                   stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    // LE TÉMOIN D'ABORD, comme pour l'automation (D30.5) : sans la piste d'avant, on annoncerait un éclaircissement sans
+    // pouvoir dire ce qu'il a coûté.
+    const vsm::sequencer::Track avant = track;
+    beginProjectEdit(avecPisteChoisie(juce::String::fromUTF8(u8"Éclaircir les contrôleurs MIDI")));
+    const auto r = vsm::sequencer::thinControllers(track, ecart);
+    const double ecartRejoue = vsm::sequencer::maxControllerDeviation(avant, track);
+    refreshTransportSchedule();
+    refreshTrackViews();
+    pianoRollPanel_.refresh();
+    std::fputs((juce::String("VSM_CONTROLEURS_ECLAIRCIS : ") + juce::String(static_cast<int>(r.removed)) + juce::String::fromUTF8(u8" retiré(s) sur ")
+                + juce::String(static_cast<int>(r.examined)) + juce::String::fromUTF8(u8" continu(s), ")
+                + juce::String(static_cast<int>(r.untouched)) + juce::String::fromUTF8(u8" commande(s) laissée(s), écart ")
+                + juce::String(ecart) + juce::String::fromUTF8(u8", écart rejoué ") + juce::String(ecartRejoue, 3) + "\n").toRawUTF8(),
+               stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Contrôleurs éclaircis : %1 retiré(s) sur %2, %3 commande(s) laissée(s) — écart rejoué %4")
+                                       .replace("%1", juce::String(static_cast<int>(r.removed)))
+                                       .replace("%2", juce::String(static_cast<int>(r.examined)))
+                                       .replace("%3", juce::String(static_cast<int>(r.untouched)))
+                                       .replace("%4", juce::String(ecartRejoue, 2)));
 }
 
 void MainComponent::thinAutomationOfSelectedTrack() {

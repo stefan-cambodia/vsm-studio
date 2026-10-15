@@ -58,6 +58,7 @@ enum ContextMenuId {
     kCtxRestrictPolyFirst = 100480,    // D554.2 : + rang dans kVoixPossibles
     kCtxPedalsToLength = 100490,       // D554.3
     kCtxSelectSamePitchClass = 100495,   // D556.3
+    kCtxQuantizeEndsOnly = 100496,       // D557.1
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -953,7 +954,7 @@ void PianoRollComponent::scaleSelectionTime(double factor) {
     notifyEdited();
 }
 
-void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds) {
+void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds, bool quantizeStarts) {
     // D354 : UN GESTE QUI NE FAIT RIEN LE DIT. Quatre sorties anticipées, toutes
     // muettes : une course qui pressait « Quantifier » lisait « cliqué » et un
     // projet inchangé, et c'est la QUANTIFICATION qu'on allait soupçonner. La
@@ -982,7 +983,7 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
     settings.grid = gridResolution_;
     settings.strength = strength;
     settings.swing = swing_;
-    settings.quantizeNoteStart = true;
+    settings.quantizeNoteStart = quantizeStarts;   // D557.1 : faux pour « Quantifier les fins »
     settings.quantizeNoteEnd = alsoQuantizeEnds;
 
     // quantizeNotes() travaille sur un vecteur entier : on lui passe une copie
@@ -997,7 +998,7 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
         return;
     }
 
-    if (!beginEdit("Quantifier")) {
+    if (!beginEdit(quantizeStarts ? juce::String("Quantifier") : juce::String(u8"Quantifier les fins"))) {
         std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 l'\xc3\xa9""dition a \xc3\xa9t\xc3\xa9 "
                    "refus\xc3\xa9""e (piste verrouill\xc3\xa9""e ?)\n", stderr);
         return;
@@ -1010,6 +1011,7 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
     }
     std::fputs((juce::String("VSM_QUANTIFIER : ") + juce::String(static_cast<int>(selected.size()))
                 + " note(s) quantifi\xc3\xa9" "es"
+                + (quantizeStarts ? "" : " (fins seules)")
                 + "\n").toRawUTF8(), stderr);
     notifyEdited();
 }
@@ -1545,6 +1547,7 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     ajouterAvecRaccourci(timeMenu, kCtxQuantizeFull, tr("Quantifier (100 %)"), shortcuts_, Id::EditQuantize, sel);
     timeMenu.addItem(kCtxQuantizeHalf, tr("Quantifier (50 %)"), sel);
     timeMenu.addItem(kCtxQuantizeEnds, tr(u8"Quantifier début ET fin"), sel);
+    timeMenu.addItem(kCtxQuantizeEndsOnly, tr(u8"Quantifier les fins"), sel);   // D557.1
     timeMenu.addItem(kCtxHumanize, tr("Humaniser"), sel);
     timeMenu.addSeparator();
     timeMenu.addItem(kCtxLengthToGrid, tr(u8"Durée = pas de grille"), sel);
@@ -1730,6 +1733,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxQuantizeFull:     quantizeSelection(1.0f, false); break;
         case kCtxQuantizeHalf:     quantizeSelection(0.5f, false); break;
         case kCtxQuantizeEnds:     quantizeSelection(1.0f, true); break;
+        case kCtxQuantizeEndsOnly: quantizeSelection(1.0f, true, false); break;   // D557.1
         case kCtxHumanize:         humanizeSelection(static_cast<float>(gridTicks()) * 0.12f, 12.0f); break;
         case kCtxLegato:           applyLegatoToSelection(); break;
         case kCtxRemoveOverlaps:   removeOverlapsInSelection(); break;

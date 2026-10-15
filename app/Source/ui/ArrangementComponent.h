@@ -276,6 +276,16 @@ public:
     /// et que l'arrangement n'avait pas.
     void zoomToFit();
     void zoomToSelection();
+    /// D557.3 : ANNULER ET RÉTABLIR UN ZOOM (*Undo Zoom / Redo Zoom*). Chaque geste de zoom (touches, molette, « tout
+    /// voir », « sur la sélection ») qui CHANGE la vue empile la vue d'avant — zoom ET défilement ; un geste qui ne
+    /// change rien n'empile rien, sinon « annuler » aurait l'air de ne rien faire. Un nouveau zoom vide le « rétablir ».
+    /// La vue reprise avec le projet (`reprendreLaVue`, D363) n'est pas un geste : l'ouverture appelle
+    /// `oublierLesZooms`. Rend faux, en le DISANT, quand il n'y a rien à reprendre.
+    bool annulerZoom();
+    bool retablirZoom();
+    size_t zoomsAAnnuler() const { return zoomsPasses_.size(); }
+    size_t zoomsARetablir() const { return zoomsDefaits_.size(); }
+    void oublierLesZooms() { zoomsPasses_.clear(); zoomsDefaits_.clear(); }
     /// LES BORNES DE LA SÉLECTION sur la ligne de temps, toutes pistes
     /// confondues (D6.1 : « exporter la sélection »). Rend faux si rien n'est
     /// sélectionné. Les clips sélectionnés peuvent appartenir à des pistes
@@ -362,6 +372,8 @@ public:
     std::function<void(size_t)> onTrimOutside;
     /// D548.2 : le premier clip choisi commence déjà à la tête -- rien à déplacer, et le dire.
     std::function<void()> onAlreadyAtPlayhead;
+    /// D557.3 : rien à annuler (vrai) ou à rétablir (faux) dans les zooms -- et le dire.
+    std::function<void(bool annuler)> onZoomSansHistoire;
     /// D549.1 : aucun clip choisi ne contenait la tête -- aucun fondu posé, et le dire.
     std::function<void(size_t)> onFadeOutside;
     /// D549.2 : ce que « Rendre silencieux » n'a pas pu faire (rendus, hors plage, refusés ; faux = pas de
@@ -601,6 +613,17 @@ private:
     vsm::midi::Tick playhead_ = 0;
     vsm::midi::Tick scrollTick_ = 0;
     double pixelsPerTick_ = 0.06;
+    /// D557.3 : les vues d'avant chaque geste de zoom, et celles qu'« annuler » a quittées.
+    struct VueDeZoom {
+        double pixelsParTick = 0.0;
+        vsm::midi::Tick defilement = 0;
+    };
+    std::vector<VueDeZoom> zoomsPasses_, zoomsDefaits_;
+    VueDeZoom vueDeZoom() const { return {pixelsPerTick_, scrollTick_}; }
+    /// Empile `avant` si le geste a changé la vue, et vide le « rétablir ».
+    void noterZoom(const VueDeZoom& avant);
+    /// Pose une vue empilée, et le DIT (`VSM_ZOOM`, puis la fenêtre).
+    void poserVueDeZoom(const VueDeZoom& vue, bool annulee);
     bool snap_ = true;
     bool automationSuit_ = true;
     bool enChaine_ = false;   // D547.2

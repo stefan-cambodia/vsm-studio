@@ -1862,8 +1862,10 @@ void ArrangementComponent::zoomToFit() {
     // pour cela : « c'est elle que le transport et l'export doivent employer ».
     const vsm::midi::Tick fin = std::max<vsm::midi::Tick>(1, project_->lastSoundingTick());
     const int largeur = std::max(1, getWidth() - kHeaderWidth);
+    const VueDeZoom avant = vueDeZoom();   // D557.3
     pixelsPerTick_ = juce::jlimit(0.0005, 8.0, static_cast<double>(largeur) * 0.96 / static_cast<double>(fin));
     scrollTick_ = 0;
+    noterZoom(avant);
     repaint();
 }
 
@@ -1872,8 +1874,10 @@ void ArrangementComponent::zoomToSelection() {
     if (!selectionBounds(debut, fin)) return;
     const vsm::midi::Tick etendue = std::max<vsm::midi::Tick>(1, fin - debut);
     const int largeur = std::max(1, getWidth() - kHeaderWidth);
+    const VueDeZoom avant = vueDeZoom();   // D557.3
     pixelsPerTick_ = juce::jlimit(0.0005, 8.0, static_cast<double>(largeur) * 0.9 / static_cast<double>(etendue));
     scrollTick_ = std::max<vsm::midi::Tick>(0, debut - etendue / 20);
+    noterZoom(avant);
     repaint();
 }
 
@@ -2540,6 +2544,8 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
                     return true;
                 case Id::ViewZoomIn:  zoomHorizontally(1.25f); return true;
                 case Id::ViewZoomOut: zoomHorizontally(0.8f); return true;
+                case Id::ViewZoomUndo: annulerZoom(); return true;    // D557.3
+                case Id::ViewZoomRedo: retablirZoom(); return true;   // D557.3
                 // D360 : L'AIMANTATION SE BASCULE PAR LA MÊME TOUCHE QUE DANS LE
                 // PIANO ROLL. Elle répondait ici à « S » et là à « G » (la table,
                 // `edit.toggleSnap`) : deux touches pour un seul réglage, ce que ce
@@ -2721,8 +2727,59 @@ void ArrangementComponent::direLesClipsAEcran() const {
 }
 
 void ArrangementComponent::zoomHorizontally(float facteur) {
+    const VueDeZoom avant = vueDeZoom();   // D557.3
     pixelsPerTick_ = juce::jlimit(0.004, 2.0, pixelsPerTick_ * static_cast<double>(facteur));
+    noterZoom(avant);
     repaint();
+}
+
+void ArrangementComponent::noterZoom(const VueDeZoom& avant) {
+    if (avant.pixelsParTick == pixelsPerTick_ && avant.defilement == scrollTick_) return;   // rien n'a changé
+    zoomsPasses_.push_back(avant);
+    // UNE PILE BORNÉE : soixante-quatre gestes suffisent à revenir de n'importe quel détour, et une molette tenue
+    // n'y empile pas des milliers de vues.
+    if (zoomsPasses_.size() > 64) zoomsPasses_.erase(zoomsPasses_.begin());
+    zoomsDefaits_.clear();
+}
+
+void ArrangementComponent::poserVueDeZoom(const VueDeZoom& vue, bool annulee) {
+    pixelsPerTick_ = vue.pixelsParTick;
+    scrollTick_ = vue.defilement;
+    repaint();
+    const double parMesure = project_ != nullptr ? static_cast<double>(project_->ticksPerQuarterNote) * 4.0 : 1920.0;
+    std::fputs((juce::String("VSM_ZOOM : ") + juce::String::fromUTF8(annulee ? u8"annulé" : u8"rétabli") + juce::String::fromUTF8(u8" — zoom ")
+                + juce::String(pixelsPerTick_, 6) + juce::String::fromUTF8(u8" px/tick, défilement depuis la mesure ")
+                + juce::String(1.0 + static_cast<double>(scrollTick_) / parMesure, 2) + " ("
+                + juce::String(static_cast<int>(zoomsPasses_.size())) + juce::String::fromUTF8(u8" à annuler, ")
+                + juce::String(static_cast<int>(zoomsDefaits_.size())) + juce::String::fromUTF8(u8" à rétablir)\n")).toRawUTF8(),
+               stderr);
+    direLaFenetre();
+}
+
+bool ArrangementComponent::annulerZoom() {
+    if (zoomsPasses_.empty()) {
+        std::fputs("VSM_ZOOM : aucun zoom \xc3\xa0 annuler\n", stderr);
+        if (onZoomSansHistoire) onZoomSansHistoire(true);
+        return false;
+    }
+    zoomsDefaits_.push_back(vueDeZoom());
+    const VueDeZoom vue = zoomsPasses_.back();
+    zoomsPasses_.pop_back();
+    poserVueDeZoom(vue, true);
+    return true;
+}
+
+bool ArrangementComponent::retablirZoom() {
+    if (zoomsDefaits_.empty()) {
+        std::fputs("VSM_ZOOM : aucun zoom \xc3\xa0 r\xc3\xa9tablir\n", stderr);
+        if (onZoomSansHistoire) onZoomSansHistoire(false);
+        return false;
+    }
+    zoomsPasses_.push_back(vueDeZoom());
+    const VueDeZoom vue = zoomsDefaits_.back();
+    zoomsDefaits_.pop_back();
+    poserVueDeZoom(vue, false);
+    return true;
 }
 
 void ArrangementComponent::notifyChanged() {

@@ -42443,3 +42443,106 @@ le rognage, la répétition, la copie liée rendue indépendante — tous prése
   les touches fixes de l'application et les raccourcis globaux du bureau.
 
 **L'ORDRE, TRANCHÉ ICI.** D557.1 d'abord (le plus petit, et H22 avec lui), puis D557.2, puis D557.3.
+
+**ET LE « NOMMÉ, NON FAIT » DE D556.1, EN D557.4 : UN SEUL MOT POUR LES REPÈRES.** *Écrit à 6 h 14, avant le geste.*
+Relevé dans les 1 643 libellés : « repère » nomme partout les repères du morceau (« Poser un repère », « Fenêtre des
+repères », « Lire jusqu'au repère suivant »…), et « marqueur » ne nomme plus que les marqueurs d'ÉTIREMENT d'un clip
+(« Ajouter un marqueur ici », « Retirer ce marqueur ») — sauf deux commandes de la TABLE, hors de cet inventaire
+puisqu'elles vivent dans `interchange` : « Marqueur suivant » et « Marqueur précédent » (Maj+N, Maj+B). Deux mots
+pour une même chose, et un même mot pour deux choses. **Tranché** : elles deviennent « Tête : repère suivant » et
+« Tête : repère précédent », le nom de leur famille dans le menu Transport (« Tête : temps suivant », « Tête :
+événement suivant ») ; en anglais « Playhead: next marker » / « Playhead: previous marker ». Les identifiants
+(`nav.nextMarker`, `nav.previousMarker`) ne bougent pas : ce sont eux que les préférences retiennent. Critère : le
+menu Transport photographié dans les deux langues, `tools/noms-des-gestes.py` vert, et les deux entrées inscrites
+sous leur nouveau nom dans `tools/annulation-des-menus.py`.
+
+### Phase D557.1 — quantifier les fins, et H22 (16/10/2026) — FAITE
+
+`quantizeNotes` (`core/`, `Quantizer.cpp`) : une fin quantifiée qui tombe sur ou avant le début va à la première ligne
+APRÈS lui, par `quantizeTick` (swing et force gardés) ; au piano roll, *Temps et durée ▸ Quantifier les fins*
+(`quantizeSelection(…, quantizeStarts = false)`), grisée sans sélection, « (fins seules) » au journal.
+
+**H22 CONFIRMÉE, par la fonction puis par l'application.** Le test `core/` écrit avant le remède a rendu une durée de
+**1** pour 100-150 sur une grille de 120 (« 1 != 120 »), et 131 pour la fin seule de 130-170 ; le binaire d'avant,
+par le menu, rend **120-121** et **240-241** — deux notes d'une milliseconde sur quatre, sans un mot. Après : 120-240
+et 240-360.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | les fins à 360, 240, 240 (130-170 : la fin tomberait à 120, avant le début), 360 (240-290 : sur le début) ; les débuts immobiles ; H22 : 120 ticks et non 1. **Rouge** avant le remède, les deux tests | **oui** |
+| 2 | par l'application, le `.mid` joué | `tools/quantifier-fins.sh`, 5 contrôles : fins seules **0-240, 125-360, 130-240, 240-360** ; début ET fin **0-240, 120-240, 120-360, 240-360** ; le témoin sans geste rend les notes d'origine, Ctrl+Z aussi (après un geste qui a eu lieu) ; rien de choisi, grisée | **oui** |
+| 3 | le témoin du banc | le binaire d'avant : (1), (2), (4), (5) **rouges** — dont « 120-121:64 » et « 240-241:65 » | **oui** |
+
+### Phase D557.2 — éclaircir les contrôleurs MIDI (16/10/2026) — FAITE
+
+`thinControllers`, `countThinnableControllers`, `isContinuousController` et `maxControllerDeviation` (`core/`,
+`EventList.h`) ; *Piste ▸ Éclaircir les contrôleurs MIDI de la piste ▸ Écart 0, les doublons (N) / Écart 1 / 2 / 4*,
+chaque entrée grisée à zéro, le sous-menu grisé sans contrôleur ; « VSM_CONTROLEURS_ECLAIRCIS : … » au journal et la
+ligne d'état disent retirés, examinés, commandes laissées et écart rejoué.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | écart 0 : **4** doublons partis (le 20 final répété, deux volumes, une pression polyphonique), les **6** commandes laissées, écart rejoué 0 ; écart 2 : la molette garde 0, 3, 6, 9, 20, le pli 0, 1000, 60 et son 0 final, la pression 10 et 12 ; écart rejoué ≤ 2 et non nul ; rejoué, 0 ; l'aperçu compte comme le geste. **Rouge** sur le mutant qui ne garde pas le dernier d'un flux (« 4 != 5 ») | **oui** |
+| 2 | par l'application, le `.mid` joué | `tools/eclaircir-controleurs.sh`, 6 contrôles : le menu dit **3, 15, 19, 22** — les comptes que le banc REFAIT en Python par la règle écrite ; « 19 retiré(s) sur 34 continu(s), 8 commande(s) laissée(s), écart 2, écart rejoué 2.000 » ; au `.mid`, la molette 22 → 8, le volume 3 → 1, le pli 6 → 4, la pression 3 → 2, notes, programme 5 et 8 commandes intacts, dernières valeurs égales, **écart rejoué 2,000** mesuré par le banc sur les deux fichiers ; après, « Écart 2 (0 retiré(s)) [grisée] » ; Ctrl+Z ; une piste sans contrôleur, sous-menu grisé | **oui** |
+| 3 | le témoin du banc | le binaire d'avant : (2) à (6) **rouges** | **oui** |
+
+**LE BANC A D'ABORD ACCUSÉ À TORT.** Son premier passage a rendu (1) et (3) rouges, les valeurs justes : l'attendu
+écrivait « CC 25 | pli 6 | pression 3 » là où son propre résumé écrit « CC 25 pli 6 pression 3 ». Lu au journal avant
+de toucher au code, corrigé dans le banc.
+
+### Phase D557.3 — annuler et rétablir un zoom (16/10/2026) — FAITE
+
+Dans `ArrangementComponent`, deux piles de vues (zoom ET défilement), bornées à 64 : `zoomHorizontally`, `zoomToFit`
+et `zoomToSelection` empilent la vue d'avant quand le geste l'a changée (`noterZoom`) ; `annulerZoom`, `retablirZoom`,
+`oublierLesZooms` (appelée à l'ouverture d'un projet). *Affichage ▸ Annuler le zoom* (Alt+Z) et *Rétablir le zoom*
+(Maj+Alt+Z), `view.zoomUndo` et `view.zoomRedo` dans la table — Alt+Z libre dans la table, les touches fixes et
+`kglobalshortcutsrc` (19 raccourcis Alt+, aucun en Z), et le clavier d'ordinateur (D492) ignore les touches à
+modificateur. Rien à reprendre : `VSM_ZOOM : aucun zoom à annuler` et la ligne d'état.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | à l'ouverture | `tools/annuler-zoom.sh` : les deux entrées grisées | **oui** |
+| 2 | annuler, trois fois | fenêtres relues **10,7 · 13,3 · 16,7** mesures — V2, V1, V0 (V0 = 16,7 ; attendus 10,69 et 13,36) ; « 2 à annuler, 1 à rétablir » après la première | **oui** |
+| 3 | une de trop | « aucun zoom à annuler », rien ne bouge | **oui** |
+| 4 | rétablir | **13,3** (V1) ; les deux entrées actives, touches dessinées « Alt+Z », « Maj+Alt+Z » | **oui** |
+| 5 | un zoom neuf | « Rétablir le zoom » grisée | **oui** |
+| 6 | le témoin et le mutant | le binaire d'avant : tout **rouge** ; le mutant qui empile un zoom SANS effet : (2), (3), (4) **rouges** — la première annulation revient au cadrage (16,7) au lieu de V2 | **oui** |
+
+### Phase D557.4 — un seul mot pour les repères (16/10/2026) — FAITE
+
+Dans la table (`interchange`), « Marqueur suivant / précédent » deviennent « Tête : repère suivant / précédent » —
+« Playhead: next / previous marker » —, les identifiants `nav.nextMarker` et `nav.previousMarker` inchangés ; la
+traduction suit, et l'audit des menus les connaît sous leur nouveau nom.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le menu Transport, dans les deux langues | photographié : « Tête : repère précédent — Maj+B », « Tête : repère suivant — Maj+N », rangés entre « Aller à la fin du morceau » et « Tête au début de la sélection » ; « Playhead: previous marker — Shift+B », « Playhead: next marker — Shift+N » | **oui** |
+| 2 | les gardes | `noms-des-gestes.py` : 0 geste à plusieurs noms ; `menus-cites.py` : 69 citations, 0 faute (le mode d'emploi dit désormais « au repère suivant ou précédent ») | **oui** |
+| 3 | l'audit des menus | `annulation-des-menus.py --seulement "Tête : repère"` : les deux « muettes voulues » sous leur nouveau nom (le projet d'essai n'a aucun repère) ; « Quantifier les fins », jugée seule : **juste** (le morceau change, un pas) | **oui** |
+
+**CE QUE LA PHOTO A MONTRÉ EN PLUS.** Le sous-menu « Éclaircir » sur une molette de 21 pas réguliers dit 0, 10, 13 et 16
+— l'écart 0 grisé, faute de doublon : les comptes de la règle, refaits de tête (0, 2, 4… ; 0, 3, 6… 18, 20 ; 0, 5, 10,
+15, 20).
+
+**LA SÉRIE ÉCRAN ALLUMÉ QUE D556 RENDAIT DUE — FAITE EN PARTIE, ET CE QU'ELLE TRANCHE.** Lancée à 5 h 52 sur le
+binaire de D556, écran allumé et session ouverte (vérifiés au départ, et encore à 6 h 12 : `LockedHint=no`, `dpms
+on`) ; vus éteint et verrouillée à 6 h 16, le poste étant inactif — l'instant exact n'est pas au journal. Arrêtée à
+6 h 17 au 32ᵉ banc (`choisir-par-plage.sh`) : **31 bancs, 31 verts**, préférences identiques. **Sûrement écran
+allumé** (finis avant 6 h 12) : `accords.sh` (« 22 px sans accord » sous verrou en D556) et, deux des quatre photos de
+fenêtre modale rouges sous verrou en D555 et D556, `quantifier-audio.sh` et `notes-depuis-attaques.sh` — verts ici,
+c'était bien l'environnement. **Dans la fenêtre incertaine ou
+après** : `transposition-globale.sh` et `normaliser-niveau.sh` (les deux autres photos modales), `montage-en-chaine.sh`,
+`aimant-glisser.sh`, `dispositions.sh` — verts aussi, mais un vert sous un verrou RÉCENT ne départage rien (D555 : « à
+0 h 42, sous le même verrou mais plus tôt, des rejeux espacés passaient encore »). Restent dus écran allumé, avec
+ceux-là : `glisser-contenu.sh`, `arrangement-defile.sh`, `automation-echelle.sh`, `piano-roll-piste-choisie.sh`,
+`pianoroll-bord.sh`, `selection-au-bord.sh`, `vumetre-console.sh`. On ne bloque ni la veille ni l'écran
+pour des bancs : ils se joueront quand l'utilisateur sera devant le poste.
+
+**LA SÉRIE DE D557**, sur son binaire, est lancée à 6 h 30, écran éteint et session verrouillée ; son résultat est écrit
+avec D558.
+
+C++ 493 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE DIX-HUITIÈME AUDIT (D557) EST CLOS** : quantifier les fins, éclaircir les contrôleurs, annuler un zoom, un seul mot
+pour les repères — et, mesurée avant d'être corrigée (H22), une quantification début ET fin qui réduisait à un tick
+toute note plus courte qu'une demi-case.
