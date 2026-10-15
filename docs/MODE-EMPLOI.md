@@ -137,6 +137,12 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Glisser le contenu d'un clip** (D552.3). Ctrl+Alt + glisser dans le corps d'un clip déplace sa matière sous sa fenêtre, qui ne bouge pas — l'aimant s'applique au décalage. Un clip verrouillé, ou calé sur le tempo, refuse, et le dit.
 
+**Supprimer l'automation d'une piste** (D553.1). *Piste ▸ Supprimer l'automation de la piste* retire d'un geste toutes les courbes de la piste choisie ; le libellé dit combien il y en a, et l'entrée est grisée quand il n'y en a aucune. Le gain des clips, qui n'est pas de l'automation, reste. Ctrl+Z les rend.
+
+**Lire la sélection** (D553.2). *Transport ▸ Lire la sélection* (Maj+Espace) joue les clips choisis — à défaut, les notes choisies au piano roll — de leur début à leur fin, puis s'arrête la tête posée sur la fin (ou revenue au départ si la préférence de retour le demande). Si la boucle, ou un clic sur la règle, ramène la tête en arrière, la lecture continue normalement et ne s'arrête plus à la fin de la sélection.
+
+**Fusionner le MIDI entre les locateurs** (D553.3). *Édition ▸ Fusionner le MIDI entre les locateurs* rassemble sur une piste NEUVE, juste sous la piste choisie et avec sa machine, les notes que les pistes MIDI font entendre entre les locateurs : les pistes et les clips muets n'y entrent pas, le solo est respecté, la transposition de chaque piste est appliquée. Une note qui commence avant le locateur gauche n'est pas prise ; une note qui dépasse le locateur droit y est coupée.
+
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
 
 **Les locateurs sur une section** (D542.1). Clic droit sur la règle — celle de l'arrangement ou celle du piano roll —, puis *Locateurs sur cette section* : la boucle prend la section où vous avez cliqué (d'un repère au suivant ; la dernière va jusqu'à la fin de ce qu'on entend) et s'active, pour travailler un refrain en boucle. L'entrée est grisée là où il n'y a pas de section (sans repère, ou avant le premier). Ctrl+Z rend la boucle d'avant.

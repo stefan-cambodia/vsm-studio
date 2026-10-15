@@ -160,6 +160,14 @@ void simplifier(const std::vector<AutomationPoint>& points, size_t debut, size_t
 
 } // namespace
 
+AutomationRemoval removeAllAutomation(Track& track) {
+    AutomationRemoval r;
+    r.curves = track.automation.size();
+    for (const auto& c : track.automation) r.points += c.points.size();
+    track.automation.clear();
+    return r;
+}
+
 size_t thinAutomation(AutomationCurve& curve, float tolerance) {
     if (tolerance <= 0.0f || curve.points.size() <= 2) return 0;
     const auto& points = curve.points;

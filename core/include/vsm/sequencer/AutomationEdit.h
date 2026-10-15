@@ -112,6 +112,14 @@ bool removeAutomationPointNear(AutomationCurve& curve, Tick tick, Tick tolerance
 /// réduction, plutôt que de la faire en silence.
 size_t thinAutomation(AutomationCurve& curve, float tolerance);
 
+/// D553.1 — SUPPRIMER L'AUTOMATION D'UNE PISTE (*Remove Automation* de Cubase) : toutes ses courbes retirées. Le gain
+/// d'un clip (`Clip::gainEnvelope`) n'est pas de l'automation et reste. Rend ce qui est parti, pour qu'on le DISE.
+struct AutomationRemoval {
+    size_t curves = 0;
+    size_t points = 0;
+};
+AutomationRemoval removeAllAutomation(Track& track);
+
 /// Le plus grand écart de VALEUR entre deux courbes, mesuré sur l'union de
 /// leurs ticks. Sert à vérifier une réduction : c'est le chiffre qui dit si
 /// `thinAutomation` a tenu sa tolérance, et il est ici plutôt que dans un test

@@ -35,6 +35,36 @@ void trierCourbe(AutomationCurve& courbe) {
 
 } // namespace
 
+MidiMerge mergeHeardMidi(const Project& project, Tick from, Tick to, const std::function<uint64_t()>& nextNoteId) {
+    MidiMerge r;
+    if (to <= from || from < 0) return r;
+    const Tick finMateriau = project.lastUsedTick();
+    bool unSolo = false;
+    for (const auto& t : project.tracks) unSolo = unSolo || t.solo;
+    auto muetPar = [&](int indice) {
+        return indice >= 0 && static_cast<size_t>(indice) < project.tracks.size()
+               && project.tracks[static_cast<size_t>(indice)].muted;
+    };
+    for (const auto& piste : project.tracks) {
+        if (piste.kind != Track::Kind::Midi || piste.notes.empty()) continue;
+        if (piste.muted || muetPar(piste.outputGroup) || muetPar(piste.vcaTrack)) continue;
+        if (unSolo && !piste.solo && !piste.soloSafe) continue;
+        std::vector<Note> entendues;
+        entendreNotes(piste.notes, clipPassages(piste, finMateriau, /*includeMuted=*/false), from, to, from, entendues);
+        if (entendues.empty()) continue;
+        ++r.tracksHeard;
+        for (auto& n : entendues) {
+            const int hauteur = static_cast<int>(n.number) + piste.transposeSemitones;
+            if (hauteur < 0 || hauteur > 127) { ++r.outOfRange; continue; }
+            n.number = static_cast<uint8_t>(hauteur);
+            n.id = nextNoteId();
+            r.notes.push_back(n);
+        }
+    }
+    std::stable_sort(r.notes.begin(), r.notes.end(), [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+    return r;
+}
+
 RangeClipboard copyRange(const Project& project, Tick from, Tick to,
                          const std::function<double(Tick)>& ticksToSeconds) {
     RangeClipboard copie;

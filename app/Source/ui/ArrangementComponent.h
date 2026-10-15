@@ -247,6 +247,11 @@ public:
         vsm::midi::Tick fin = 0, bloc = 0;
         return hasSelection() && selectionSpan(debut, fin, bloc);
     }
+    /// D553.2 : le tick où FINIT la sélection (la fin jouée du dernier clip) ; faux sans sélection.
+    bool selectionEndTick(vsm::midi::Tick& fin) const {
+        vsm::midi::Tick debut = 0, bloc = 0;
+        return hasSelection() && selectionSpan(debut, fin, bloc);
+    }
     void setAllTrackHeights(int height);
     /// D22.1 : exécuter une entrée du menu contextuel du clip sur le premier
     /// clip choisi, par son identifiant de menu -- pour l'autoportrait

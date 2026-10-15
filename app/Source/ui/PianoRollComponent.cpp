@@ -922,6 +922,15 @@ bool PianoRollComponent::selectionStartTick(vsm::midi::Tick& debut) const {
     return trouve;
 }
 
+bool PianoRollComponent::selectionEndTick(vsm::midi::Tick& fin) const {
+    const Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return false;
+    bool trouve = false;
+    for (const auto& n : track->notes)
+        if (selectedNoteIds_.count(n.id) > 0 && (!trouve || n.endTick > fin)) { fin = n.endTick; trouve = true; }
+    return trouve;
+}
+
 void PianoRollComponent::scaleSelectionTime(double factor) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;

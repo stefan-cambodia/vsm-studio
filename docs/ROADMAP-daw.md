@@ -41917,3 +41917,112 @@ D14.5) ; la sélection des notes de même hauteur existe au piano roll.
 | D553.3 | **Fusionner le MIDI entre les locateurs** — *Merge MIDI in Loop* | *Édition ▸ Fusionner le MIDI entre les locateurs* : ce que les pistes MIDI font ENTENDRE entre les locateurs (clips et pistes muets exclus, le solo respecté, la transposition de piste appliquée) rassemblé sur une piste NEUVE, sous la piste choisie, avec sa machine ; un pas ; mesuré par le `project.json` relu et le `.mid` joué |
 
 **L'ORDRE, TRANCHÉ ICI.** D553.1 d'abord (le plus petit), puis D553.2, puis D553.3, qui crée une piste.
+
+### Phase D553.1 — supprimer l'automation d'une piste (15/10/2026) — FAITE
+
+*Reprise le 15/10 à 21 h 22 : le code des trois sous-phases avait été écrit le 11/10 et laissé sans commit, sans
+compilation de l'application ni banc joué. Rien n'en a été cru : tout ce qui suit a été mesuré ce soir.*
+
+`removeAllAutomation` (`core/`, `AutomationEdit.h`) retire toutes les courbes de la piste et rend leur compte et
+celui de leurs points ; le gain d'un clip (`Clip::gainEnvelope`), qui n'est pas de l'automation, reste. *Piste ▸
+Supprimer l'automation de la piste (N courbe(s))* : le compte est dans le libellé, l'entrée est grisée à zéro — c'est
+le « rien à retirer → dit, sans pas » du critère, dit avant le clic plutôt qu'après.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | deux courbes (2 + 3 points) → « 2 courbes, 5 points », la piste sans courbe, l'enveloppe de gain du clip intacte ; rejoué : 0 et 0. **Rouge** sur le mutant qui vide les points sans retirer les courbes | **oui** |
+| 2 | par l'application, le projet relu et l'export | `tools/automation-retiree.sh`, 4 contrôles : le TÉMOIN — une rampe `mix.volume` de 1 à 0 sur 8 s — s'éteint à l'export (6-7 s : **0,229** du niveau de 1-2 s) ; après le geste, « 1 courbe(s), 2 point(s) » dit, `project.json` relu sans courbe, l'export ne descend plus (**0,995**) ; le menu lu avant et après : « (1 courbe(s)) », puis « (0 courbe(s)) [grisée] » ; Ctrl+Z → la courbe et ses deux points | **oui** |
+| 3 | le menu dans les deux langues | photographié : « Supprimer l'automation de la piste (1 courbe(s)) » / « Remove the track's automation (1 curve(s)) » | **oui** |
+
+**LE BANC AVAIT D'ABORD ÉCHOUÉ À ÉCHOUER.** Sous le mutant du contrôle 1 (les points effacés, les courbes VIDES
+gardées), les trois contrôles du banc restaient verts : une courbe sans point n'est pas écrite dans `project.json`, et
+l'export ne l'entend pas — le fichier relu ne distingue pas « retirée » de « vidée ». La séance, elle, les distingue :
+le menu disait encore « (1 courbe(s)) » après le geste, et un second geste aurait annoncé « 1 courbe(s), 0 point(s) ».
+Le contrôle (2 bis) lit donc le MENU avant et après (`lister-menus`), et il est rouge sous ce mutant.
+
+### Phase D553.2 — lire la sélection (15/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** *Transport ▸ Lire la sélection*, Maj+Espace (dans la table des raccourcis,
+`transport.playSelection`) : la sélection est celle de L (D28.4) — les clips choisis de l'arrangement, à défaut les
+notes choisies au piano roll ; la tête va à son début, la lecture part, et la minuterie unique du transport l'arrête
+dès que la tête atteint la fin, puis POSE la tête exactement sur elle ; le retour au départ (D14.5), s'il est demandé,
+l'emporte au tour suivant par le même front descendant que pour tout arrêt. Rien de choisi → la boîte le dit, le
+transport ne part pas. **La boucle** : si la tête RECULE de plus d'une double croche pendant la lecture de la
+sélection — la boucle qui la ramène avant la fin, ou un clic sur la règle —, la lecture de la sélection est
+abandonnée SANS arrêter le transport, et le journal le dit (« abandonnée, la tête a reculé de … à … ») : la boucle
+est un choix de l'utilisateur, et une fin restée armée arrêterait plus tard une lecture qui n'est plus celle de la
+sélection.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | par la touche, pendant | `tools/lire-selection.sh` (A choisi, [2 ; 4) s) : 0,8 s après Maj+Espace, « en lecture », tête à **2,801 s** | **oui** |
+| 2 | après, la tête sur la fin | 3,4 s après : « arrêté », tête à **4,000 s** (la fin de A, et non la fin du morceau ni le clip B). **Rouge** sur le mutant qui arrête sans reposer la tête : elle tombe à 0,000 s — l'arrêt seul ne la laisse pas où elle était | **oui** |
+| 3 | par le menu, le retour au départ demandé | la préférence écrite dans le HOME du banc : la tête revient à **2,000 s** | **oui** |
+| 4 | rien de choisi | « Lire la sélection : Rien n'est choisi… » dit, le transport arrêté à 0,000 s | **oui** |
+| 5 | la boucle | allumée sur [1 920, 2 880), dans A : « abandonnée, la tête a reculé de 2879 à 1952 ticks », la lecture continue (tête à 2,402 s, 3,4 s après le départ), aucun arrêt à 4 s. **Rouge** sur le binaire d'avant la décision : la boucle tournait, sans un mot | **oui** |
+| 6 | le menu dans les deux langues | photographié : « Lire la sélection — Maj+Espace » / « Play selection — Shift+Space », au rang 2 du menu Transport | **oui** |
+
+**H18, TROUVÉ PAR LA SÉRIE : « LIRE LA SÉLECTION » AVAIT RENDU MUETTE « TÊTE : MESURE SUIVANTE » AU MENU.** Écrit à 21 h 57,
+AVANT la série, en relisant le code pour D554 : le menu Transport était aiguillé par `menuItemID < kMenuTransportFirst
++ 15`, un 15 écrit en dur depuis D483. « Lire la sélection », inséré au rang 1, a poussé la dernière entrée au rang
+15, que ce 15 n'aiguillait plus — l'entrée s'affichait, se cliquait, et ne faisait rien ; la touche, elle, marchait.
+L'hypothèse : sur le binaire d'alors, ce geste par le MENU ne bouge pas la tête. La série l'a confirmée deux fois,
+sans qu'on le lui demande : l'audit des menus de D506 l'a classée **MUETTE** (« ni vue, ni boîte, ni ligne d'état…
+ni tête »), et `portes-du-transport.sh` a rendu **4 ratés** (« mesure-suivante… menu 0, touche 3840 »). La borne
+vient désormais du tableau des commandes, et une assertion statique lie le tableau à la plage d'identifiants
+réservée, à l'endroit où ses deux bornes se lisent. Rejoué : l'entrée rend « tête 0 → 1920 », la porte 0 raté.
+
+### Phase D553.3 — fusionner le MIDI entre les locateurs (15/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** `mergeHeardMidi` (`core/`, `RangeCopy.h`) : les notes que les pistes MIDI font ENTENDRE dans
+[gauche, droite) — par les fenêtres de leurs clips non muets (`clipPassages`), coupées à la fin de la plage et à leur
+clip —, à leur place sur la ligne de temps, la transposition de PISTE appliquée (la globale non : elle s'appliquera à
+la piste neuve comme aux autres). Une note dont l'attaque précède le locateur gauche n'est pas prise, même tenue
+au-delà : c'est la règle de « Copier la plage » (D535.3), qui prend ce qui ATTAQUE dans la plage. N'est pas entendue :
+une piste muette, routée vers un groupe muet, rendue muette par son VCA, ou tue par le solo d'une autre (sauf
+`soloSafe`). Une note que la transposition pousse hors de 0-127 est comptée, laissée, et dite dans une boîte. La piste
+NEUVE est une copie de la piste choisie (sa machine et son état, ses effets, son mixage — `duplicateTrack`, puis l'état
+de l'instrument recopié), vidée de son contenu, transposition remise à zéro (les notes portent déjà la leur), juste
+sous elle, avec UN clip sur la plage ; nommée « <piste> — fusion (mesures a-b) ». Si la piste choisie n'est pas MIDI,
+le modèle est la première piste MIDI.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | B transposée de +12 et A entendues, la piste muette, le clip muet et la note d'avant la plage absents ; le solo de B tait A ; une transposition de +70 → 1 note comptée hors des 128 hauteurs. **Rouge** sur le mutant sans transposition, et sur celui qui ignore le solo | **oui** |
+| 2 | par l'application, le projet relu | `tools/fusionner-midi.sh` : 5 pistes, la neuve au rang 1 sous « Basse », en `vsm.sh101` comme elle, un clip [1 920, +3 840), notes **{ 40@1920, 60@2400, 43@3840, 62@4320, 45@5280 }**, toutes de 480 ticks — la 45 tenue 960 coupée à la fin, la 38 partie avant la plage absente, la Lead à −12 rendue en 60 et 62, ni la piste muette ni le clip muet | **oui** |
+| 3 | le `.mid` joué | la piste neuve joue ce multiensemble au tick près ; les quatre pistes d'origine jouent ce que joue le témoin non touché. **Rouge** sur le mutant sans transposition | **oui** |
+| 4 | le solo | Lead en solo → **{ 60@2400, 62@4320 }** seules. **Rouge** sur le mutant qui ignore le solo | **oui** |
+| 5 | un pas ; rien d'entendu | Ctrl+Z → les quatre pistes d'avant ; locateurs sur [7 680, 9 600) → « Rien à fusionner » dit, 0 pas, 4 pistes | **oui** |
+| 6 | le menu dans les deux langues | photographié : « Fusionner le MIDI entre les locateurs » / « Merge MIDI between locators », sous « Rogner les clips aux locateurs » | **oui** |
+
+**LA GARDE DE D262 A VU CE QUE LA RELECTURE N'AVAIT PAS VU.** Le code du 11/10 rendait les notes fusionnées à
+l'identifiant 0, « l'appelant les numérote » — et l'appelant le faisait. `tools/clips-numerotes.py` l'a pourtant
+déclaré fautif (`RangeCopy.cpp:60`, « SANS IDENTIFIANT ») : sa règle est qu'un identifiant se pose là où la note
+NAÎT, parce qu'un 0 qui voyage jusqu'à un appelant qui oublie est exactement le défaut de D262. Écrire « identifiant
+conservé » pour la faire taire aurait été faux. `mergeHeardMidi` reçoit donc le compteur du projet (comme
+`splitNotes` reçoit le sien) et numérote chaque note retenue ; la garde passe de 38 poussées dont 1 fautive à 37 et 0.
+
+**LA SÉRIE DE D553** (lancée à 21 h 57, finie à 22 h 51 — 54 min, aucune veille au journal du noyau) : 87 bancs, trois
+neufs compris (`automation-retiree.sh`, `lire-selection.sh`, `fusionner-midi.sh`), préférences identiques ; **4
+rouges**, et chacun a été lu avant de conclure :
+
+| banc | ce qu'il disait | ce que c'était |
+|---|---|---|
+| `annulation-des-menus.py` | 1 entrée MUETTE : *Transport ▸ Tête : mesure suivante* | H18, un défaut de D553.2 — corrigé, rejoué juste |
+| `portes-du-transport.sh` | 4 ratés, tous par « mesure suivante » au menu | H18 encore — corrigé, rejoué : 0 raté |
+| `quantifier-audio.sh` (5) | la fenêtre non photographiée | rejoué SEUL : vert, les deux photos prises |
+| `notes-depuis-attaques.sh` (5) | la fenêtre non photographiée | rouge rejoué seul, deux fois ; **et rouge sur le binaire de D552** (les changements de D553 mis de côté par `git stash`, l'état de HEAD recompilé : 0 photo de panneau sur 2 courses, la boîte pourtant ouverte) — antérieur à D553 |
+
+**NOMMÉ, NON FAIT : la photo de la fenêtre de « Créer des notes depuis les attaques ».** Verte le 11/10 dans la série
+de D552, rouge le 15/10 sur le même code : la boîte modale s'ouvre (« fenêtre modale ouverte (2 bouton(s)) »), mais
+au moment de la photo aucune fenêtre de premier niveau visible n'est trouvée par `VSM_CAPTURE_PANNEAUX`. Sa voisine
+« Quantifier l'audio », ouverte par le même chemin (`montrerOuRepondre`), rate en série et passe seule ; celle-ci
+porte en plus un CHAMP TEXTE. Le poste a redémarré le jour même : la cause est à chercher dans l'environnement
+avant le code, et elle n'est pas cherchée ici — D553 n'y est pour rien, le témoin le montre.
+
+C++ 479 · 1 338 · 338 · 25 · 11, Python 275, ruff et mypy verts, gardes vertes (après les deux corrections
+ci-dessus : `clips-numerotes.py` et l'INDEX).
+
+**LE QUATORZIÈME AUDIT (D553) EST CLOS** : supprimer l'automation d'une piste, lire la sélection, fusionner le MIDI
+entre les locateurs — et, trouvés en route, une garde qui a vu un identifiant à zéro et un menu Transport dont la
+dernière entrée était devenue muette.

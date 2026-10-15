@@ -1130,6 +1130,10 @@ private:
         kMenuEditCropAtLocators,
         /// D552.1 : caler les débuts des clips sur la grille.
         kMenuEditSnapClipStarts,
+        /// D553.1 : supprimer l'automation de la piste choisie.
+        kMenuTrackRemoveAutomation,
+        /// D553.3 : fusionner le MIDI entre les locateurs.
+        kMenuEditMergeMidiInLoop,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1560,6 +1564,14 @@ private:
     void rognerClipsAuxLocateurs();
     /// D550.3 : retirer les pistes vides (*Remove Empty Tracks*), dit avec leurs noms.
     void retirerPistesVides();
+    /// D553.1 : supprimer l'automation de la piste choisie (*Remove Automation*), dit.
+    void supprimerAutomationDeLaPiste();
+    /// D553.2 : lire la sélection, de son début à sa fin, puis l'arrêt (*Play Selection Range*).
+    void lireLaSelection();
+    /// D553.3 : fusionner le MIDI entendu entre les locateurs sur une piste neuve (*Merge MIDI in Loop*), dit.
+    void fusionnerMidiEntreLocateurs();
+    vsm::midi::Tick finLectureSelection_ = -1;   ///< D553.2 : la fin de la lecture de la sélection en cours, sinon -1
+    vsm::midi::Tick dernierTickSelection_ = 0;   ///< D553.2 : la tête au tour précédent, pour voir un recul
     /// D535.3 : COPIER (ou couper) ce que toutes les pistes font entendre entre les locateurs,
     /// et le COLLER EN INSÉRANT à la tête. Le presse-papiers de plage est de session.
     void copierPlage(bool couper);

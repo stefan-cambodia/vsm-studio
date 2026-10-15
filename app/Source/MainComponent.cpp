@@ -3862,6 +3862,31 @@ void MainComponent::timerCallback() {
         if (!lecture && etaitEnLecture_ && retourAuDepart_ && !lectureDuScrub_) seekAllViews(departLecture_);
         if (!lecture) lectureDuScrub_ = false;
         etaitEnLecture_ = lecture;
+        // D553.2 : LIRE LA SÉLECTION s'arrête à sa fin, sur cette horloge unique (un tour : au plus 33 ms de son au-delà),
+        // et la tête est posée EXACTEMENT sur la fin -- le retour au départ, s'il est demandé, l'emporte au tour suivant,
+        // par le front descendant ci-dessus. UNE TÊTE QUI RECULE (la boucle qui la ramène avant la fin, un clic sur la
+        // règle) met fin à la lecture de la sélection SANS arrêter : la boucle est un choix de l'utilisateur, et une
+        // fin restée armée arrêterait plus tard une lecture qui n'est plus celle de la sélection. C'est dit.
+        if (finLectureSelection_ >= 0) {
+            const vsm::midi::Tick ici = transport_.currentTick();
+            const vsm::midi::Tick tolerance = std::max<vsm::midi::Tick>(1, project_.ticksPerQuarterNote / 4);
+            if (!lecture) {
+                finLectureSelection_ = -1;
+            } else if (ici < dernierTickSelection_ - tolerance) {
+                std::fputs(("VSM_LIRE_SELECTION : abandonnée, la tête a reculé de " + std::to_string(dernierTickSelection_)
+                            + " à " + std::to_string(ici) + " ticks (boucle ou déplacement) -- la lecture continue\n")
+                               .c_str(), stderr);
+                finLectureSelection_ = -1;
+            } else if (ici < finLectureSelection_) {
+                dernierTickSelection_ = ici;
+            } else {
+                const vsm::midi::Tick fin = finLectureSelection_;
+                finLectureSelection_ = -1;
+                transport_.stop();
+                seekAllViews(fin);
+                std::fputs(("VSM_LIRE_SELECTION : arrêt à " + std::to_string(fin) + " ticks\n").c_str(), stderr);
+            }
+        }
     }
 
     const bool audioClockAvailable = audioEngine_.isDeviceOpen();
@@ -4141,6 +4166,7 @@ void MainComponent::setRenderThreadChoice(int choice) {
 // identifiants de menu sont `kMenuTransportFirst + rang` (contigus).
 static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::TransportPlayStop,
+    vsm::interchange::ShortcutId::TransportPlaySelection,   // D553.2
     vsm::interchange::ShortcutId::TransportRecord,
     vsm::interchange::ShortcutId::TransportLoop,
     vsm::interchange::ShortcutId::TransportMetronome,
@@ -4156,7 +4182,7 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::NavPreviousBar,
     vsm::interchange::ShortcutId::NavNextBar,
 };
-static_assert(std::size(kCommandesDuTransport) == 15);   // D483 : quinze identifiants réservés (kMenuTransportFirst..Last)
+static_assert(std::size(kCommandesDuTransport) == 16);   // D483, D553.2 : seize identifiants réservés (kMenuTransportFirst..Last)
 
 juce::StringArray MainComponent::getMenuBarNames() {
     // D483 : « Transport » entre Piste et Enregistrement, comme chez Cubase.
@@ -4383,6 +4409,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          project_.loopEndTick > project_.loopStartTick);
             // D551.3 : ROGNER LES CLIPS AUX LOCATEURS (*Range ▸ Crop*) -- ne garder que la plage.
             menu.addItem(kMenuEditCropAtLocators, tr(u8"Rogner les clips aux locateurs"),
+                         project_.loopEndTick > project_.loopStartTick);
+            // D553.3 : FUSIONNER LE MIDI ENTRE LES LOCATEURS (*Merge MIDI in Loop*) -- sur une piste neuve.
+            menu.addItem(kMenuEditMergeMidiInLoop, tr(u8"Fusionner le MIDI entre les locateurs"),
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditPasteRange, tr(u8"Coller la plage à la tête de lecture (en insérant)"),
                          !plageCopiee_.empty());
@@ -4872,6 +4901,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     menu.addItem(kMenuTrackThinAutomation,
                                   tr(u8"Réduire les points d'automation (%1 points)").replace("%1", juce::String(static_cast<int>(points))),
                                   points > 2);
+                    // D553.1 : SUPPRIMER L'AUTOMATION de la piste -- grisée sans courbe, et le compte dit pourquoi.
+                    const size_t courbes = piste < project_.tracks.size() ? project_.tracks[piste].automation.size() : 0;
+                    menu.addItem(kMenuTrackRemoveAutomation,
+                                  tr(u8"Supprimer l'automation de la piste (%1 courbe(s))")
+                                      .replace("%1", juce::String(static_cast<int>(courbes))),
+                                  courbes > 0);
                 }
                 // D443 : grisée, elle dit pourquoi.
                 menu.addItem(kMenuTrackBounceSelection,
@@ -4998,7 +5033,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             using Id = vsm::interchange::ShortcutId;
             for (size_t i = 0; i < std::size(kCommandesDuTransport); ++i) {
                 const Id commande = kCommandesDuTransport[i];
-                if (i == 4 || i == 11) menu.addSeparator();
+                if (i == 5 || i == 12) menu.addSeparator();   // D553.2 : « Lire la sélection » s'est inséré au rang 1
                 const auto* declaree = vsm::interchange::findShortcutCommand(commande);
                 juce::String libelle = declaree != nullptr ? tr(juce::String::fromUTF8(declaree->label)) : juce::String();
                 bool actif = true, coche = false;
@@ -5502,7 +5537,13 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
     // D483 : le menu Transport passe par le MÊME aiguillage que la touche.
-    if (menuItemID >= kMenuTransportFirst && menuItemID < kMenuTransportFirst + 15) {
+    // D553.2 : LA BORNE VIENT DU TABLEAU, plus d'un 15 écrit en dur. « Lire la sélection » inséré au rang 1 a poussé
+    // « Tête : mesure suivante » au rang 15, que ce 15 n'aiguillait plus : l'entrée était muette au menu, et la touche
+    // marchait (l'audit de D506 et `portes-du-transport.sh` l'ont vu, 15/10). La plage réservée est gardée ici, là où
+    // ses deux bornes sont visibles.
+    static_assert(std::size(kCommandesDuTransport) <= kMenuTransportLast - kMenuTransportFirst + 1);
+    if (menuItemID >= kMenuTransportFirst
+        && menuItemID < kMenuTransportFirst + static_cast<int>(std::size(kCommandesDuTransport))) {
         executerCommande(kCommandesDuTransport[menuItemID - kMenuTransportFirst], "menu Transport");
         return;
     }
@@ -5551,6 +5592,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditSplitAtLocators) { couperClipsAuxLocateurs(); return; }
     if (menuItemID == kMenuEditPasteAtOrigin) { arrangement_.pasteAtOrigin(); return; }
     if (menuItemID == kMenuEditCropAtLocators) { rognerClipsAuxLocateurs(); return; }
+    if (menuItemID == kMenuEditMergeMidiInLoop) { fusionnerMidiEntreLocateurs(); return; }
     if (menuItemID == kMenuEditSnapClipStarts) {
         const auto [deplaces, verrouilles] = arrangement_.calerDebutsSurGrille();
         std::fputs(("VSM_CALER_GRILLE : " + std::to_string(deplaces) + " déplacé(s), " + std::to_string(verrouilles)
@@ -5842,6 +5884,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackPasteChain:  pasteChainIntoSelectedTrack(true); break;
         case kMenuTrackAppendChain: pasteChainIntoSelectedTrack(false); break;
         case kMenuTrackThinAutomation: thinAutomationOfSelectedTrack(); break;   // D30.5
+        case kMenuTrackRemoveAutomation: supprimerAutomationDeLaPiste(); break;   // D553.1
         case kMenuTrackMidiFxClear: clearMidiEffectsOfSelectedTrack(); break;    // D31.4
         case kMenuTrackMidiFxBake:  bakeMidiEffectsOfSelectedTrack(); break;     // D31.5
         case kMenuTrackRenameSeries: promptRenameTracksInSeries(); break;        // D32.4
@@ -10104,6 +10147,7 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
             if (arrangement_.selectionStartTick(debut) || pianoRoll_.selectionStartTick(debut)) seekAllViews(debut);
             return true;
         }
+        case Id::TransportPlaySelection: lireLaSelection(); return true;   // D553.2
         // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
         // piano roll traitait ces deux touches lui-même, et elles n'arrivaient
         // ici que quand il n'avait PAS le focus -- pour y tomber dans le
@@ -13109,6 +13153,107 @@ void MainComponent::pasteChainIntoSelectedTrack(bool remplace) {
                + juce::String(static_cast<int>(cible.effects.size()))
                + juce::String::fromUTF8(u8" après.\n");
     std::fputs(message.toRawUTF8(), stderr);
+}
+
+void MainComponent::lireLaSelection() {
+    // D553.2 : les clips choisis de l'arrangement, à défaut les notes choisies au piano roll -- l'ordre de L (D28.4).
+    vsm::midi::Tick debut = 0, fin = 0;
+    const bool clips = arrangement_.selectionStartTick(debut) && arrangement_.selectionEndTick(fin);
+    if (!clips && !(pianoRoll_.selectionStartTick(debut) && pianoRoll_.selectionEndTick(fin))) {
+        std::fputs("VSM_LIRE_SELECTION : rien de choisi\n", stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Lire la sélection"),
+                     tr(u8"Rien n'est choisi : choisissez des clips dans l'arrangement, ou des notes au piano roll."));
+        return;
+    }
+    if (fin <= debut) return;
+    if (transport_.state() == TransportState::Playing) transport_.stop();
+    seekAllViews(debut);
+    finLectureSelection_ = fin;
+    dernierTickSelection_ = debut;
+    std::fputs(("VSM_LIRE_SELECTION : de " + std::to_string(debut) + " à " + std::to_string(fin) + " ticks ("
+                + (clips ? "clips" : "notes") + ")\n").c_str(), stderr);
+    direOrigineDuPlay("Lire la sélection");
+    transport_.play();
+}
+
+void MainComponent::fusionnerMidiEntreLocateurs() {
+    const auto de = project_.loopStartTick, a = project_.loopEndTick;
+    if (a <= de) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Locateurs"),
+                     tr(u8"Aucune plage entre les locateurs : posez-les d'abord (Maj sur la règle, ou Transport ▸ "
+                        u8"Début de boucle à la tête et Fin de boucle à la tête)."));
+        return;
+    }
+    const auto fusion = vsm::sequencer::mergeHeardMidi(project_, de, a, [this] { return project_.nextNoteId(); });
+    if (fusion.notes.empty()) {
+        std::fputs("VSM_FUSION_MIDI : rien\n", stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rien à fusionner"),
+                     tr(u8"Aucune piste MIDI ne fait entendre de note entre les locateurs (les pistes et les clips "
+                        u8"muets ne comptent pas)."));
+        return;
+    }
+    // LE MODÈLE : la piste choisie si elle est MIDI, sinon la première piste MIDI -- sa machine, ses effets, son
+    // mixage passent à la piste neuve (`duplicateTrack`), son CONTENU non.
+    size_t modele = trackList_.selectedTrackIndex();
+    if (modele >= project_.tracks.size() || project_.tracks[modele].kind != vsm::sequencer::Track::Kind::Midi) {
+        modele = project_.tracks.size();
+        for (size_t i = 0; i < project_.tracks.size(); ++i)
+            if (project_.tracks[i].kind == vsm::sequencer::Track::Kind::Midi) { modele = i; break; }
+        if (modele >= project_.tracks.size()) return;
+    }
+    beginProjectEdit(juce::String::fromUTF8(u8"Fusionner le MIDI entre les locateurs"));
+    const size_t copie = vsm::sequencer::duplicateTrack(project_, modele);
+    auto& t = project_.tracks[copie];
+    const auto parMesure = std::max<vsm::midi::Tick>(1, project_.timeSignatureMap.ticksPerBar(de, project_.ticksPerQuarterNote));
+    t.name = project_.tracks[modele].name + " \xe2\x80\x94 fusion (mesures " + std::to_string(de / parMesure + 1) + "-"
+             + std::to_string((a - 1) / parMesure + 1) + ")";
+    t.notes = fusion.notes;   // numérotées par `mergeHeardMidi`, au compteur du projet
+    t.controlChanges.clear(); t.pitchBends.clear(); t.polyAftertouch.clear(); t.channelPressure.clear();
+    t.programChanges.clear(); t.automation.clear(); t.takes.clear(); t.versions.clear(); t.midiEffects.clear();
+    t.transposeSemitones = 0;   // les notes portent déjà la transposition de leur piste
+    t.muted = false; t.solo = false;
+    vsm::sequencer::Clip clip;
+    clip.id = project_.nextClipId();
+    clip.startTick = de; clip.length = a - de; clip.sourceStart = de; clip.sourceLength = a - de;
+    clip.name = "Fusion";
+    t.clips = {clip};
+    rebuildFromProject();
+    auto* original = audioEngine_.processGraph().trackInstrument(modele);
+    auto* duplique = audioEngine_.processGraph().trackInstrument(copie);
+    if (original != nullptr && duplique != nullptr) duplique->loadState(original->saveState());
+    trackList_.selectTrackIndex(copie);
+    std::fputs(("VSM_FUSION_MIDI : " + std::to_string(fusion.notes.size()) + " note(s) de "
+                + std::to_string(fusion.tracksHeard) + " piste(s), " + std::to_string(fusion.outOfRange)
+                + " hors des 128 hauteurs, sur la piste " + std::to_string(copie) + "\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Fusion : %1 note(s) de %2 piste(s) sur une piste neuve")
+                                       .replace("%1", juce::String(static_cast<int>(fusion.notes.size())))
+                                       .replace("%2", juce::String(static_cast<int>(fusion.tracksHeard))));
+    if (fusion.outOfRange > 0)
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Fusionner le MIDI entre les locateurs"),
+                     tr(u8"%1 note(s) laissée(s) : la transposition de leur piste les poussait hors des 128 hauteurs MIDI.")
+                         .replace("%1", juce::String(static_cast<int>(fusion.outOfRange))));
+}
+
+void MainComponent::supprimerAutomationDeLaPiste() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    if (track.automation.empty()) {
+        std::fputs("VSM_AUTOMATION_RETIREE : 0 courbe\n", stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    beginProjectEdit(avecPisteChoisie(juce::String::fromUTF8(u8"Supprimer l'automation de la piste")));
+    const auto r = vsm::sequencer::removeAllAutomation(track);
+    applyAutomationFromProject();
+    refreshTrackViews();
+    std::fputs((juce::String("VSM_AUTOMATION_RETIREE : ") + juce::String(static_cast<int>(r.curves))
+                + juce::String::fromUTF8(u8" courbe(s), ") + juce::String(static_cast<int>(r.points)) + " point(s)\n")
+                   .toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Automation supprimée : %1 courbe(s), %2 point(s)")
+                                       .replace("%1", juce::String(static_cast<int>(r.curves)))
+                                       .replace("%2", juce::String(static_cast<int>(r.points))));
 }
 
 void MainComponent::thinAutomationOfSelectedTrack() {

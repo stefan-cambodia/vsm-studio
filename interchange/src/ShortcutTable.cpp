@@ -85,6 +85,8 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavPreviousBeat,   "nav.previousBeat", "Transport", "Tête : temps précédent",         "alt + cursor left", ""},
         {ShortcutId::NavNextBar,        "nav.nextBar",      "Transport", "Tête : mesure suivante",         "shift + alt + cursor right", ""},
         {ShortcutId::NavPreviousBar,    "nav.previousBar",  "Transport", "Tête : mesure précédente",       "shift + alt + cursor left", ""},
+        // D553.2 — lire la sélection : Maj+Espace (l'Alt+Espace de Cubase ouvre KRunner sous Plasma).
+        {ShortcutId::TransportPlaySelection, "transport.playSelection", "Transport", "Lire la sélection", "shift + spacebar", ""},
     };
     return catalogue;
 }

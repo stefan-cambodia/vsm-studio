@@ -102,6 +102,8 @@ enum class ShortcutId : uint16_t {
     /// ce que D360 avait corrigé pour G et M, en les laissant derrière.
     ViewArrangementFollow,
     ViewArrangementAutomation,
+    /// D553.2 : lire la sélection -- de son début à sa fin, puis l'arrêt (*Play Selection Range*).
+    TransportPlaySelection,
 
     Count
 };

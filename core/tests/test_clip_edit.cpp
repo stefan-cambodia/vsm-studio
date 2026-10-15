@@ -1829,3 +1829,24 @@ VSM_TEST(slipping_clip_content_moves_the_material_under_a_fixed_window) {
     VSM_ASSERT_NEAR(a.clips[0].sourceStartSeconds, 8.0, 1e-9);   // 10 s − 2 s : la fenêtre ne sort pas du fichier
 }
 
+// D553.1 — SUPPRIMER L'AUTOMATION D'UNE PISTE : les courbes partent, comptées ; le gain de clip reste.
+VSM_TEST(removing_track_automation_counts_what_leaves_and_keeps_clip_gain) {
+    Track t;
+    t.clips = {clip(1, 0, 1920)};
+    t.clips[0].gainEnvelope = {{0.0, 1.0f}, {1.0, 0.5f}};
+    AutomationCurve volume;
+    volume.parameter = "mix.volume";
+    volume.points = {{0, 1.0f}, {1920, 0.0f}};
+    AutomationCurve coupure;
+    coupure.parameter = "filter.1.cutoff";
+    coupure.points = {{0, 500.0f}, {960, 2000.0f}, {1920, 500.0f}};
+    t.automation = {volume, coupure};
+    const auto r = removeAllAutomation(t);
+    VSM_ASSERT_EQ(r.curves, size_t(2));
+    VSM_ASSERT_EQ(r.points, size_t(5));
+    VSM_ASSERT(t.automation.empty());
+    VSM_ASSERT_EQ(t.clips[0].gainEnvelope.size(), size_t(2));
+    const auto rien = removeAllAutomation(t);
+    VSM_ASSERT_EQ(rien.curves + rien.points, size_t(0));
+}
+

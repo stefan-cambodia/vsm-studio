@@ -255,3 +255,44 @@ VSM_TEST(une_fenetre_ouverte_n_avale_pas_le_materiau_neuf_du_collage) {
     pasteRangeInserting(p, plage, 1920, secondes(p));
     VSM_ASSERT(entendu(p) == (Entendu{{0, 0, 60}, {0, 1000, 64}, {0, 2000, 60}, {0, 4500, 60}, {0, 5500, 64}}));
 }
+
+// D553.3 — FUSIONNER LE MIDI ENTRE LES LOCATEURS : ce que les pistes font ENTENDRE, à sa place, transposition de piste
+// appliquée ; une piste muette, un clip muet, une piste tue par le solo d'une autre ne s'entendent pas.
+VSM_TEST(merging_midi_between_locators_keeps_only_what_is_heard) {
+    const auto piste = [](const char* nom, Tick note, uint8_t hauteur, bool clipMuet = false) {
+        Track t;
+        t.name = nom;
+        uint64_t ids = 1;
+        t.addNote(note, note + 480, hauteur, 100, 0, ids);
+        Clip c;
+        c.id = 1; c.startTick = 0; c.length = 3840; c.sourceStart = 0; c.sourceLength = 3840; c.muted = clipMuet;
+        t.clips = {c};
+        return t;
+    };
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tracks = {piste("A", 1920, 62), piste("B", 960, 64), piste("Muette", 960, 67), piste("Clip muet", 960, 69, true),
+                piste("Avant", 0, 50)};
+    p.tracks[1].transposeSemitones = 12;
+    p.tracks[2].muted = true;
+    uint64_t compteur = 100;
+    const auto numero = [&compteur] { return compteur++; };
+    auto r = mergeHeardMidi(p, 480, 2400, numero);
+    std::vector<std::pair<Tick, int>> v;
+    for (const auto& n : r.notes) v.emplace_back(n.startTick, n.number);
+    // B transposée (64 + 12) à 960, A à 1 920 ; la piste muette, le clip muet, et la note d'AVANT la plage, absents.
+    VSM_ASSERT(v == (std::vector<std::pair<Tick, int>>{{960, 76}, {1920, 62}}));
+    VSM_ASSERT_EQ(r.tracksHeard, size_t(2));
+    // Numérotées là où elles naissent (D262), dans l'ordre où elles sont retenues -- piste A (62) avant B (76).
+    VSM_ASSERT(r.notes[0].id != r.notes[1].id && r.notes[0].id >= 100 && r.notes[1].id >= 100);
+    // Le solo de B tait A.
+    p.tracks[1].solo = true;
+    r = mergeHeardMidi(p, 480, 2400, numero);
+    VSM_ASSERT_EQ(r.notes.size(), size_t(1));
+    VSM_ASSERT_EQ(static_cast<int>(r.notes[0].number), 76);
+    // Hors des 128 hauteurs : comptée et laissée.
+    p.tracks[1].solo = false;
+    p.tracks[1].transposeSemitones = 70;
+    r = mergeHeardMidi(p, 480, 2400, numero);
+    VSM_ASSERT_EQ(r.outOfRange, size_t(1));
+}

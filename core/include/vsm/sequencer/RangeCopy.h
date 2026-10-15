@@ -41,6 +41,20 @@ struct RangeClipboard {
 RangeClipboard copyRange(const Project& project, Tick from, Tick to,
                          const std::function<double(Tick)>& ticksToSeconds);
 
+/// D553.3 — FUSIONNER LE MIDI ENTRE LES LOCATEURS (*Merge MIDI in Loop* de Cubase) : les notes que les pistes MIDI font
+/// ENTENDRE dans [from, to) -- par les fenêtres de leurs clips NON muets (`clipPassages`), coupées aux bornes et à
+/// leur clip --, à leur place sur la ligne de temps, la transposition de PISTE appliquée (la globale ne l'est pas :
+/// elle s'appliquera à la piste qui les reçoit comme aux autres). Une piste muette, ou routée vers un groupe muet, ou
+/// rendue muette par son VCA, ou tue par le solo d'une autre (sauf `soloSafe`) n'est pas entendue. Une note poussée
+/// hors de 0-127 par la transposition est comptée et laissée. Chaque note retenue est numérotée par `nextNoteId`
+/// (le compteur du projet qui la recevra : `Project::nextNoteId`), là où elle naît -- la règle de D262.
+struct MidiMerge {
+    std::vector<Note> notes;
+    size_t tracksHeard = 0;
+    size_t outOfRange = 0;
+};
+MidiMerge mergeHeardMidi(const Project& project, Tick from, Tick to, const std::function<uint64_t()>& nextNoteId);
+
 struct RangePasteReport {
     size_t tracksPasted = 0;    ///< pistes retrouvées et collées
     size_t tracksMissing = 0;   ///< pistes de la copie supprimées depuis : laissées
