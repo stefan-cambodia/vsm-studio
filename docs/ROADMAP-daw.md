@@ -42391,3 +42391,55 @@ C++ 489 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE DIX-SEPTIÈME AUDIT (D556) EST CLOS** : lire jusqu'au repère suivant, la tête d'un événement à l'autre, les notes
 de même nom à toutes les octaves — et, trouvé en route par le banc de la tête (H21), une édition quelconque qui
 défaisait un rognage en rattrapant les notes qu'il avait laissées dehors.
+
+### Phase D557 — un dix-huitième audit : quantifier les fins, éclaircir les contrôleurs, annuler un zoom (16/10/2026)
+
+*Écrite le 16/10 à 6 h 00, D556 close, pendant la série écran allumé que D556 rendait due.*
+
+**LA MÉTHODE, celle de D535 à D556 — et un inventaire par libellés qui a menti.** Le premier inventaire de cette
+séance a extrait les 1 643 libellés passés par `tr(` et `fromUTF8(`, puis y a cherché des mots : **0 pour
+« rétrospectif » et 0 pour « tap tempo »** — or les deux existent (D17.3, `kMenuRecordRetrospective` ; le *tap tempo*
+de la barre de transport), leurs libellés disant autre chose. Un zéro de libellé n'est donc pas un zéro de
+fonction : chaque candidat ci-dessous a été recherché AUSSI par identifiant de code (`kMenu*`, `core/include`,
+`interchange/include`), et c'est ce second zéro qui le retient. **Cherché** : **0 pour une quantification des FINS
+SEULES** — `QuantizeSettings` sait ne quantifier que la fin (`quantizeNoteStart = false`), mais le piano roll n'offre
+que « Quantifier » (débuts) et « Quantifier début ET fin » : le *Quantize MIDI Event Ends* de Cubase, qui ferme les
+notes sur la grille sans toucher à leurs attaques, n'a pas d'entrée ; **0 pour éclaircir des CONTRÔLEURS** —
+« Réduire les points d'automation » (D30.5, `thinAutomation`) travaille les courbes d'automation, rien ne travaille
+les CC, plis et pressions d'une piste, qu'un potentiomètre enregistré ou un fichier importé rend denses (*Thin Out
+Data*) ; **0 pour revenir à un zoom** — l'arrangement zoome par touches, molette, « tout voir », « sur la sélection »,
+et aucun geste ne ramène la vue d'avant (*Undo Zoom / Redo Zoom*). **Trouvé et écarté** : l'enregistrement
+rétrospectif, le *tap tempo*, les longueurs fixes (« Durée = pas de grille »), la panique, le bloc-notes du projet,
+le rognage, la répétition, la copie liée rendue indépendante — tous présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D557.1 | **Quantifier les fins** — *Quantize MIDI Event Ends* | Au piano roll, *Temps et durée ▸ Quantifier les fins* : la fin de chaque note choisie va à la ligne de grille la plus proche, son début ne bouge pas ; une fin qui tomberait sur ou avant le début va à la PREMIÈRE ligne après lui — jamais une note d'un tick ; grisée sans sélection ; un pas ; mesuré par le `.mid` joué (débuts inchangés, fins sur la grille) |
+| D557.2 | **Éclaircir les contrôleurs MIDI** — *Thin Out Data* | *Piste ▸ Éclaircir les contrôleurs MIDI de la piste ▸ écart 0 (doublons) / 1 / 2 / 4* : dans chaque flux (un contrôleur d'un canal, le pli d'un canal, sa pression, la pression d'une note), un événement part quand sa valeur reste à l'écart choisi ou moins de la dernière GARDÉE ; le premier et le dernier de chaque flux restent ; chaque entrée dit combien partiraient, grisée à zéro ; un pas ; mesuré par le `.mid` joué (notes et programmes intacts, dernières valeurs identiques, écart rejoué ≤ la tolérance) |
+| D557.3 | **Annuler et rétablir un zoom** — *Undo Zoom / Redo Zoom* | *Affichage ▸ Annuler le zoom* et *Rétablir le zoom* : l'arrangement revient à la vue (zoom ET défilement) d'avant le dernier geste de zoom, puis y retourne ; un nouveau zoom vide le « rétablir » ; rien à annuler → grisée et dite ; mesuré par le relevé de la fenêtre (`VSM_ARRANGEMENT`) avant, pendant et après |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D557.1.** La ligne « la plus proche » est celle de `quantizeTick` (grille, swing et force du piano roll) — la
+  même fonction que les deux autres quantifications, pour qu'elles ne divergent pas. La règle du repli (« la
+  première ligne APRÈS le début ») vaut aussi pour « Quantifier début ET fin », qui partage la fonction : voir H22.
+- **H22, écrite à 6 h 00 avant sa mesure : « Quantifier début ET fin » réduit à UN TICK une note plus courte qu'une
+  demi-case.** `quantizeNotes` quantifie le début et la fin chacun vers sa ligne la plus proche, puis rattrape une
+  durée nulle par `endTick = startTick + 1`. Une double croche de 50 ticks posée de 100 à 150, grille à la double
+  croche (120) : les deux bouts vont à 120, la note devient [120, 121) — une milliseconde à 120 BPM, une note
+  détruite sans un mot. Attendu de la mesure (un test `core/` sur la fonction réelle, puis le banc sur le `.mid`
+  joué) : la durée rendue est 1 avant le remède, 120 après.
+- **D557.2.** L'écart est en unités de 7 bits ; pour le pli (14 bits), il est multiplié par 128 — la même part de
+  sa plage. Les COMMANDES ne s'éclaircissent pas, seuls les contrôleurs CONTINUS : la banque (CC 0, 32), l'entrée
+  de données (6, 38), les incréments (96, 97), les RPN et NRPN (98 à 101), les modes de canal (120 à 127) et les
+  poids faibles (32 à 63) restent tous — une commande répétée n'est pas un échantillon redondant, et un RPN amputé
+  change la plage du pli. Ce qui est laissé ainsi est COMPTÉ et dit. Le premier et le dernier événement de chaque
+  flux restent : la valeur sur laquelle un flux finit (un pli revenu au centre) ne doit pas bouger. L'écart rejoué
+  (la valeur tenue à chaque tick d'origine, avant contre après) est borné par construction ; il est MESURÉ quand
+  même, au journal et au banc.
+- **D557.3.** La pile tient l'ARRANGEMENT seul : le piano roll a son propre zoom, et un « annuler le zoom » qui
+  défairait la vue de la fenêtre qu'on ne regarde pas serait une surprise. Un geste qui ne change rien (« tout voir »
+  deux fois) n'empile rien : sinon « annuler » aurait l'air de ne rien faire. La vue rouverte avec le projet
+  (`reprendreLaVue`, D363) n'est pas un geste et n'empile rien. Les touches se choisissent APRÈS avoir lu la table,
+  les touches fixes de l'application et les raccourcis globaux du bureau.
+
+**L'ORDRE, TRANCHÉ ICI.** D557.1 d'abord (le plus petit, et H22 avec lui), puis D557.2, puis D557.3.
