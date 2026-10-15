@@ -42026,3 +42026,50 @@ ci-dessus : `clips-numerotes.py` et l'INDEX).
 **LE QUATORZIÈME AUDIT (D553) EST CLOS** : supprimer l'automation d'une piste, lire la sélection, fusionner le MIDI
 entre les locateurs — et, trouvés en route, une garde qui a vu un identifiant à zéro et un menu Transport dont la
 dernière entrée était devenue muette.
+
+### Phase D554 — un quinzième audit : boucler la sélection, restreindre la polyphonie, les pédales en durées de notes (15/10/2026)
+
+*Écrite le 15/10 à 23 h 10, D553 close.*
+
+**LA MÉTHODE, celle de D535 à D553.** **Cherché** dans `app/Source` (103 fichiers, libellés passés par `tr(`, au
+script Python — l'`ugrep` du poste lit mal `--include` et a d'abord rendu des zéros sans regarder) : **0 pour
+« boucler la sélection »** (*Loop Selection* de Cubase, Maj+G) — « Locateurs à la sélection » (P) existe, et
+« Lire la sélection » depuis D553.2, mais rien ne fait des deux un seul geste qui tourne ; **0 pour « restreindre la
+polyphonie »** (*Restrict Polyphony*) — le mot n'apparaît que dans la ligne de statistiques du piano roll, et la
+version à une voix existe (« Retirer les chevauchements (mono) », D552.2) ; **0 pour les pédales** (*Pedals to Note
+Length*) — le graphe RETIENT les NoteOff sous la pédale (D25.1) pour toutes les machines, mais rien ne fait de la
+pédale ce qu'elle produit : des durées qu'on voit et qu'on édite. **Trouvé et écarté** : « Répéter » (×N) existe,
+« Durée = pas de grille » tient lieu de *Fixed Lengths*, « Convertir en copie indépendante » existe.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D554.1 | **Boucler la sélection** — *Loop Selection* | *Transport ▸ Boucler la sélection* (Maj+G) : les locateurs posés sur la sélection (les clips choisis, à défaut les notes choisies — l'ordre de L et de D553.2), la boucle allumée, la tête au début, la lecture ; rien de choisi → dit ; mesuré par le relevé de la boucle (projet ET moteur) et par la tête qui revient au début après la fin |
+| D554.2 | **Restreindre la polyphonie** — *Restrict Polyphony* | Au piano roll (*Édition ▸ Temps et durée*), *Restreindre la polyphonie ▸ 2, 3, 4, 6, 8 voix* : parmi les notes choisies, jamais plus de N à la fois — à chaque attaque qui ferait N + 1, la plus ANCIENNE s'arrête où la nouvelle commence ; de plusieurs notes qui partent ensemble au-delà de N, les plus graves sont retirées (la règle de D552.2 : la plus aiguë reste) ; les comptes dits ; un pas ; mesuré en `core/` et par le `.mid` joué |
+| D554.3 | **Les pédales en durées de notes** — *Pedals to Note Length* | Au piano roll, *Édition ▸ Pédale en durées de notes (N appui(s))* sur la piste active : chaque note dont la fin tombe pédale enfoncée dure jusqu'au relâchement — ou jusqu'à la frappe suivante de la même hauteur, si elle vient avant —, et les CC 64 sont retirés ; les comptes dits ; rien à faire → dit ; un pas ; mesuré par le `.mid` joué et par l'EXPORT, qui ne doit pas changer (le graphe faisait déjà sonner la pédale ainsi) |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D554.1.** La sélection est celle de L, de P et de D553.2. P (« Locateurs sur la sélection ») allume DÉJÀ la boucle
+  (`setLoopRegionEverywhere(…, true)`) ; ce qu'il ne fait pas, c'est lire — et, rien de choisi, il ne fait RIEN et ne
+  le dit pas (`locatorsFromSelection` rend la main sans un mot) : une panne muette, fermée ici avec la même boîte que
+  D553.2. Les locateurs posés sont UN pas (« Boucler la sélection »), comme ceux de P (D520) ; la lecture n'en est pas
+  un. L'entrée prend la 17ᵉ place du menu Transport : la plage d'identifiants réservée (16) sera élargie APRÈS avoir
+  vu l'assertion statique posée par H18 refuser de compiler — c'est le seul essai en rouge qu'elle aura.
+- **D554.2.** `restrictPolyphony` (`core/`), par groupes d'attaques simultanées, dans l'ordre des départs : un groupe
+  de plus de N notes garde ses N plus aiguës ; puis, tant que les notes qui sonnent encore plus le groupe dépassent N,
+  la plus ANCIENNE (à départ égal, la plus grave) finit où le groupe attaque. À N = 1 la règle doit rendre exactement
+  `removeOverlapsMono` (D552.2) — un test le vérifie sur le cas du banc de D552.2. Essai sur une copie : rien à faire,
+  aucun pas, et la ligne d'état le dit (D511).
+- **D554.3.** `pedalsToNoteLength` (`core/`) sur la piste ACTIVE du piano roll, sans sélection (la pédale est un état
+  de la piste). La pédale est celle de la piste, tous canaux confondus, comme le graphe la retient. Une note est
+  tenue si le dernier CC 64 posé STRICTEMENT avant sa fin est enfoncé : dans un passage, le planning pousse les notes
+  avant les contrôleurs puis trie de façon stable par le temps (`PlaybackScheduler::build`), si bien qu'à tick égal
+  la fin de note passe AVANT la pédale — une pédale enfoncée au tick même où la note finit ne la tient pas, et un test
+  le garde. Une pédale jamais relâchée tient jusqu'à la fin du matériau, et ces notes-là sont comptées à part. La
+  RE-FRAPPE : le graphe oublie la retenue au NoteOn suivant de la même hauteur (D25.1) sans couper la première voix,
+  la conversion arrête la première note à la re-frappe — l'export peut donc différer dans ce cas-là, et l'écart est
+  PUBLIÉ, pas jugé. Hors re-frappe, l'attendu est un export inchangé à moins de 1e-4 près, avec deux témoins : le
+  projet d'origine exporté deux fois (la machine est-elle déterministe ?) et le projet SANS ses CC 64 (la pédale
+  s'entend-elle ?).
+
+**L'ORDRE, TRANCHÉ ICI.** D554.1 d'abord (il ne fait qu'assembler des briques mesurées), puis D554.2, puis D554.3,
+dont l'attendu le plus fort — un export inchangé — demande une machine déterministe.
