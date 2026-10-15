@@ -1063,7 +1063,7 @@ private:
         /// D483 : le menu Transport, une entrée par commande de `kCommandesDuTransport`,
         /// dans cet ordre (identifiants CONTIGUS).
         kMenuTransportFirst,
-        kMenuTransportLast = kMenuTransportFirst + 15,
+        kMenuTransportLast = kMenuTransportFirst + 23,   // D554.1 : 24 places (17 prises) ; l'aiguillage garde la borne
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
@@ -1568,6 +1568,11 @@ private:
     void supprimerAutomationDeLaPiste();
     /// D553.2 : lire la sélection, de son début à sa fin, puis l'arrêt (*Play Selection Range*).
     void lireLaSelection();
+    /// D554.1 : boucler la sélection -- les locateurs sur elle, la boucle allumée, la lecture (*Loop Selection*).
+    void bouclerLaSelection();
+    /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).
+    /// Rien de choisi : faux, et la boîte `titre` le DIT.
+    bool bornesDeLaSelection(vsm::midi::Tick& debut, vsm::midi::Tick& fin, bool& clips, const juce::String& titre);
     /// D553.3 : fusionner le MIDI entendu entre les locateurs sur une piste neuve (*Merge MIDI in Loop*), dit.
     void fusionnerMidiEntreLocateurs();
     vsm::midi::Tick finLectureSelection_ = -1;   ///< D553.2 : la fin de la lecture de la sélection en cours, sinon -1

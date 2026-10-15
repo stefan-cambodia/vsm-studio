@@ -305,6 +305,50 @@ VSM_TEST(sustain_pedal_holds_a_released_note_until_the_pedal_is_released) {
     VSM_ASSERT_EQ(avec.ignoredControlEvents(), static_cast<uint64_t>(0));
 }
 
+// D554.3 (H20) : LA PÉDALE RELÂCHÉE AU MILIEU D'UN BLOC libère ses notes À L'ÉCHANTILLON du CC, pas en tête de bloc.
+// Une note tenue par la pédale jusqu'au tick T doit sonner EXACTEMENT comme la même note écrite jusqu'à T : c'est
+// ce que « Pédale en durées de notes » écrit, et l'export de son banc s'en écartait de 0,0054 (relâché 102
+// échantillons trop tôt, au début du bloc de 512). Ici T = 1 000 ticks = 8 333 échantillons à 8 kHz, au milieu du
+// 33e bloc de 256.
+VSM_TEST(a_pedal_released_mid_block_frees_its_notes_on_the_very_sample) {
+    auto rendre = [](bool pedale) {
+        Project project;
+        project.ticksPerQuarterNote = 480;
+        Track track;
+        uint64_t id = 1;
+        track.addNote(0, pedale ? 240 : 1000, 57, 120, 0, id);
+        if (pedale) {
+            track.controlChanges.push_back({0, 0, 64, 127});
+            track.controlChanges.push_back({1000, 0, 64, 0});
+        }
+        project.tracks.push_back(track);
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        graph.setTrackInstrument(0, "vsm.juno106");
+        graph.setProject(project);
+        graph.seekSeconds(0.0);
+        graph.setPlaying(true);
+        std::vector<float> l(256), r(256), tout;
+        for (int b = 0; b < 63; ++b) {   // ~2 s
+            graph.processBlock(l.data(), r.data(), 256);
+            tout.insert(tout.end(), l.begin(), l.end());
+        }
+        return tout;
+    };
+    const auto tenue = rendre(true);
+    const auto ecrite = rendre(false);
+    float ecart = 0.0f;
+    size_t premier = tenue.size();
+    for (size_t i = 0; i < tenue.size(); ++i) {
+        const float d = std::abs(tenue[i] - ecrite[i]);
+        if (d > 1e-6f && premier == tenue.size()) premier = i;
+        ecart = std::max(ecart, d);
+    }
+    // Le premier échantillon qui diffère, s'il y en a un, dit OÙ la pédale a relâché.
+    VSM_ASSERT_EQ(premier, tenue.size());
+    VSM_ASSERT(ecart < 1e-6f);
+}
+
 // --- D27.2 : la file de sortie MIDI ----------------------------------------
 
 VSM_TEST(a_track_with_a_midi_output_port_deposits_its_notes_in_order_even_without_a_machine) {

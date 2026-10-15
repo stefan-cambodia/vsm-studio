@@ -1,6 +1,8 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include <algorithm>
+#include <map>
+#include <tuple>
 #include <set>
 #include <string>
 
@@ -756,4 +758,109 @@ VSM_TEST(remove_overlaps_mono_makes_a_line_that_never_plays_two_notes) {
     // Le même geste, rejoué : plus rien à faire.
     const auto r2 = removeOverlapsMono(notes, {1, 3, 4});
     VSM_ASSERT_EQ(r2.removed + r2.shortened, size_t(0));
+}
+
+// D554.2 — RESTREINDRE LA POLYPHONIE : un accord de quatre et une note qui entre au milieu, à trois voix.
+VSM_TEST(restricting_polyphony_keeps_the_highest_and_shortens_the_oldest) {
+    std::vector<Note> notes;
+    uint64_t ids = 1;
+    const auto ajoute = [&](Tick d, Tick f, uint8_t h) {
+        Note n; n.startTick = d; n.endTick = f; n.number = h; n.id = ids++; notes.push_back(n); return n.id; };
+    NoteSelection choix;
+    for (uint8_t h : {60, 64, 67, 71}) choix.insert(ajoute(0, 1920, h));
+    choix.insert(ajoute(960, 1440, 62));
+    const uint64_t horsChoix = ajoute(0, 3000, 48);   // non choisie : ne bouge pas et ne compte pas
+    const auto r = restrictPolyphony(notes, choix, 3);
+    VSM_ASSERT_EQ(r.removed, size_t(1));     // le 60, le plus grave de l'accord de quatre
+    VSM_ASSERT_EQ(r.shortened, size_t(1));   // le 64 : le plus ancien, et à départ égal le plus grave
+    std::map<int, std::pair<Tick, Tick>> v;
+    for (const auto& n : notes) v[n.number] = {n.startTick, n.endTick};
+    VSM_ASSERT(v.count(60) == 0);
+    VSM_ASSERT(v[64] == std::make_pair(Tick(0), Tick(960)));
+    VSM_ASSERT(v[67] == std::make_pair(Tick(0), Tick(1920)));
+    VSM_ASSERT(v[71] == std::make_pair(Tick(0), Tick(1920)));
+    VSM_ASSERT(v[62] == std::make_pair(Tick(960), Tick(1440)));
+    VSM_ASSERT(v[48] == std::make_pair(Tick(0), Tick(3000)));
+    VSM_ASSERT(std::any_of(notes.begin(), notes.end(), [&](const Note& n) { return n.id == horsChoix; }));
+    // Rejoué : plus rien à faire.
+    const auto rien = restrictPolyphony(notes, choix, 3);
+    VSM_ASSERT_EQ(rien.removed + rien.shortened, size_t(0));
+}
+
+// D554.2 — LA PLUS ANCIENNE, PAS LA PLUS RÉCENTE : à deux voix, 60 [0, …) puis 64 [480, …) sonnent quand 67 entre à
+// 960 — c'est 60 qui s'arrête. Le premier test ne le distinguait pas (toutes ses notes partaient ensemble), et le
+// mutant qui coupe la plus récente y passait.
+VSM_TEST(restricting_polyphony_cuts_the_oldest_sounding_note_not_the_newest) {
+    std::vector<Note> notes;
+    NoteSelection choix;
+    uint64_t id = 1;
+    for (auto [d, h] : std::vector<std::pair<Tick, uint8_t>>{{0, 60}, {480, 64}, {960, 67}}) {
+        Note n; n.startTick = d; n.endTick = 1920; n.number = h; n.id = id; choix.insert(id++); notes.push_back(n);
+    }
+    const auto r = restrictPolyphony(notes, choix, 2);
+    VSM_ASSERT_EQ(r.shortened, size_t(1));
+    VSM_ASSERT_EQ(notes[0].endTick, Tick(960));    // 60, la plus ancienne
+    VSM_ASSERT_EQ(notes[1].endTick, Tick(1920));   // 64 continue
+    VSM_ASSERT_EQ(notes[2].endTick, Tick(1920));
+}
+
+// D554.2 — À UNE VOIX, c'est exactement `removeOverlapsMono` (D552.2), sur le cas de son banc.
+VSM_TEST(restricting_polyphony_to_one_voice_is_removing_overlaps_mono) {
+    std::vector<Note> base;
+    NoteSelection choix;
+    uint64_t id = 1;
+    for (auto [d, f, h] : std::vector<std::tuple<Tick, Tick, uint8_t>>{{0, 1000, 41}, {480, 900, 45}, {480, 1200, 52},
+                                                                      {960, 1400, 40}}) {
+        Note n; n.startTick = d; n.endTick = f; n.number = h; n.id = id; choix.insert(id++); base.push_back(n);
+    }
+    auto a = base, b = base;
+    const auto ra = restrictPolyphony(a, choix, 1);
+    const auto rb = removeOverlapsMono(b, choix);
+    VSM_ASSERT_EQ(ra.removed, rb.removed);
+    VSM_ASSERT_EQ(ra.shortened, rb.shortened);
+    VSM_ASSERT_EQ(a.size(), b.size());
+    for (size_t i = 0; i < a.size(); ++i) {
+        VSM_ASSERT_EQ(a[i].id, b[i].id);
+        VSM_ASSERT_EQ(a[i].endTick, b[i].endTick);
+    }
+}
+
+// D554.3 — LES PÉDALES EN DURÉES : tenue jusqu'au relâchement, bornée par la frappe suivante de même hauteur ; une
+// note finie pédale levée intacte ; une pédale jamais relâchée tient jusqu'à la fin du matériau, comptée à part.
+VSM_TEST(pedals_become_note_lengths_and_leave) {
+    std::vector<Note> notes;
+    uint64_t ids = 1;
+    const auto ajoute = [&](Tick d, Tick f, uint8_t h) {
+        Note n; n.startTick = d; n.endTick = f; n.number = h; n.id = ids++; notes.push_back(n); };
+    ajoute(0, 240, 60);       // sous la pédale [0, 1440) : jusqu'à la re-frappe du 60 à 960
+    ajoute(480, 720, 64);     // jusqu'au relâchement, 1440
+    ajoute(960, 1200, 60);    // jusqu'au relâchement, 1440
+    ajoute(1920, 2160, 67);   // pédale levée : intacte
+    ajoute(2880, 3000, 69);   // pédale enfoncée à 2880, jamais relâchée : jusqu'à la fin du matériau
+    ajoute(3600, 3700, 71);   // idem
+    std::vector<CcPoint> ccs = {{0, 0, 64, 127}, {100, 0, 7, 90}, {1440, 0, 64, 0}, {2880, 0, 64, 100}};
+    VSM_ASSERT_EQ(countPedalPresses(ccs), size_t(2));
+    const auto r = pedalsToNoteLength(notes, ccs, 3840);
+    std::vector<std::pair<Tick, Tick>> v;
+    for (const auto& n : notes) v.emplace_back(n.startTick, n.endTick);
+    VSM_ASSERT(v == (std::vector<std::pair<Tick, Tick>>{{0, 960}, {480, 1440}, {960, 1440}, {1920, 2160}, {2880, 3840},
+                                                         {3600, 3840}}));
+    VSM_ASSERT_EQ(r.lengthened, size_t(5));
+    VSM_ASSERT_EQ(r.heldToEnd, size_t(2));
+    VSM_ASSERT_EQ(r.pedalEvents, size_t(3));
+    VSM_ASSERT_EQ(ccs.size(), size_t(1));   // le CC 7 reste
+    VSM_ASSERT_EQ(static_cast<int>(ccs[0].controller), 7);
+    VSM_ASSERT_EQ(countPedalPresses(ccs), size_t(0));
+}
+
+// D554.3 — À TICK ÉGAL, la fin de note passe AVANT le CC 64 (le planning pousse les notes avant les contrôleurs, et
+// trie de façon stable) : une pédale enfoncée au tick même où une note finit ne la tient pas.
+VSM_TEST(a_pedal_pressed_on_the_very_tick_a_note_ends_does_not_hold_it) {
+    std::vector<Note> notes(1);
+    notes[0].startTick = 0; notes[0].endTick = 480; notes[0].number = 60; notes[0].id = 1;
+    std::vector<CcPoint> ccs = {{480, 0, 64, 127}, {960, 0, 64, 0}};
+    const auto r = pedalsToNoteLength(notes, ccs, 1920);
+    VSM_ASSERT_EQ(r.lengthened, size_t(0));
+    VSM_ASSERT_EQ(notes[0].endTick, Tick(480));
+    VSM_ASSERT_EQ(r.pedalEvents, size_t(2));
 }

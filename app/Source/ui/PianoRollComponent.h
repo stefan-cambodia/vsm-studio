@@ -283,6 +283,8 @@ public:
     void removeOverlapsInSelection();
     void deleteDoublesInSelection();   // D546.1
     void removeOverlapsMonoInSelection();   // D552.2
+    void restrictPolyphonyInSelection(int voix);   // D554.2
+    void pedalsToNoteLengthOnTrack();   // D554.3
     void splitSelectionAtPlayhead();
     void joinSelection();
     void reverseSelection();

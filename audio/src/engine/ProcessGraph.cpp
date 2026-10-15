@@ -813,13 +813,16 @@ bool ProcessGraph::interceptSustain(size_t trackIndex, uint8_t channel,
     const bool enfoncee = event.value >= 0.5f;
     sustainDown_[trackIndex] = enfoncee;
     if (enfoncee) return true;
-    // RELÂCHÉE : tout ce qui était retenu part maintenant, en tête de bloc.
+    // RELÂCHÉE : tout ce qui était retenu part maintenant -- À L'ÉCHANTILLON DU CC (D554.3, H20). Il partait en tête
+    // de bloc (`sampleOffset = 0`) : jusqu'à un bloc trop tôt, 102 échantillons mesurés sur un export de 512, et une
+    // note tenue par la pédale ne sonnait pas comme la même note écrite jusqu'au relâchement. La chasse et les
+    // contrôleurs en direct arrivent en tête de bloc (décalage 0) : pour eux, rien ne change.
     auto& retenus = heldNoteOffs_[trackIndex];
     for (size_t note = 0; note < retenus.size() && numEvents < kMaxEventsPerBlock; ++note) {
         if (!retenus[note]) continue;
         MidiNoteEvent off;
         off.kind = MidiNoteEvent::Kind::NoteOff;
-        off.sampleOffset = 0;
+        off.sampleOffset = event.sampleOffset;
         off.channel = channel;
         off.note = static_cast<uint8_t>(note);
         off.velocity = 64;

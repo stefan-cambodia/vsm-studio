@@ -55,12 +55,16 @@ enum ContextMenuId {
     kCtxLogicalEditor = 100450,   // D535.1 bis
     kCtxDeleteDoubles = 100460,   // D546.1
     kCtxRemoveOverlapsMono = 100470,   // D552.2
+    kCtxRestrictPolyFirst = 100480,    // D554.2 : + rang dans kVoixPossibles
+    kCtxPedalsToLength = 100490,       // D554.3
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
     kCtxToolSelect = 100310, kCtxToolDraw, kCtxToolErase, kCtxToolSplit, kCtxToolGlue, kCtxToolMute,   // D497
     kCtxFold = 100400,
 };
+/// D554.2 : les nombres de voix proposés par « Restreindre la polyphonie » (une voix, c'est D552.2).
+constexpr int kVoixPossibles[] = {2, 3, 4, 6, 8};
 
 } // namespace
 
@@ -1097,6 +1101,68 @@ void PianoRollComponent::removeOverlapsMonoInSelection() {
     notifyEdited();
 }
 
+void PianoRollComponent::restrictPolyphonyInSelection(int voix) {
+    // D554.2 : RESTREINDRE LA POLYPHONIE de la sélection -- jamais plus de `voix` notes à la fois. Essai sur une copie,
+    // comme D552.2 : rien à changer, pas de pas, et la ligne d'état le dit (D511).
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    auto essai = track->notes;
+    const auto r = restrictPolyphony(essai, selectedNoteIds_, voix);
+    std::fputs(("VSM_POLYPHONIE : " + juce::String(voix) + " voix, " + juce::String(static_cast<int>(r.shortened))
+                + juce::String::fromUTF8(u8" raccourcie(s), ") + juce::String(static_cast<int>(r.removed))
+                + juce::String::fromUTF8(u8" retirée(s)\n")).toRawUTF8(), stderr);
+    if (onStatusChanged)
+        onStatusChanged(r.shortened + r.removed == 0
+                            ? vsm::app::ui::tr(u8"Polyphonie (%1 voix) : aucune note à changer dans la sélection")
+                                  .replace("%1", juce::String(voix))
+                            : vsm::app::ui::tr(u8"Polyphonie (%1 voix) : %2 note(s) raccourcie(s), %3 retirée(s)")
+                                  .replace("%1", juce::String(voix))
+                                  .replace("%2", juce::String(static_cast<int>(r.shortened)))
+                                  .replace("%3", juce::String(static_cast<int>(r.removed))));
+    if (r.shortened + r.removed == 0) return;
+    if (!beginEdit(juce::String::fromUTF8(u8"Restreindre la polyphonie"))) return;
+    track->notes = std::move(essai);
+    for (auto it = selectedNoteIds_.begin(); it != selectedNoteIds_.end();) {
+        const uint64_t id = *it;
+        const bool reste = std::any_of(track->notes.begin(), track->notes.end(),
+                                       [id](const Note& n) { return n.id == id; });
+        it = reste ? std::next(it) : selectedNoteIds_.erase(it);
+    }
+    notifyEdited();
+}
+
+void PianoRollComponent::pedalsToNoteLengthOnTrack() {
+    // D554.3 : LA PÉDALE EN DURÉES, sur la piste active entière (la pédale est un état de la piste, pas des notes
+    // choisies). Essai sur une copie ; la fin du matériau borne une pédale jamais relâchée.
+    Track* track = activeTrack();
+    if (!track) return;
+    auto notes = track->notes;
+    auto ccs = track->controlChanges;
+    Tick finMateriau = project_ != nullptr ? project_->lastUsedTick() : 0;
+    for (const auto& n : notes) finMateriau = std::max(finMateriau, n.endTick);
+    const auto r = pedalsToNoteLength(notes, ccs, finMateriau);
+    std::fputs(("VSM_PEDALES : " + juce::String(static_cast<int>(r.lengthened))
+                + juce::String::fromUTF8(u8" note(s) allongée(s), ") + juce::String(static_cast<int>(r.pedalEvents))
+                + juce::String::fromUTF8(u8" CC 64 retiré(s), ") + juce::String(static_cast<int>(r.heldToEnd))
+                + juce::String::fromUTF8(u8" tenue(s) jusqu'à la fin\n")).toRawUTF8(), stderr);
+    if (r.pedalEvents == 0) {
+        if (onStatusChanged) onStatusChanged(vsm::app::ui::tr(u8"Pédale en durées : la piste n'a aucun CC 64"));
+        return;
+    }
+    if (onStatusChanged)
+        onStatusChanged((r.heldToEnd == 0
+                             ? vsm::app::ui::tr(u8"Pédale en durées : %1 note(s) allongée(s), %2 CC 64 retiré(s)")
+                             : vsm::app::ui::tr(u8"Pédale en durées : %1 note(s) allongée(s), %2 CC 64 retiré(s) — %3 "
+                                                u8"tenue(s) jusqu'à la fin, la pédale n'étant jamais relâchée")
+                                   .replace("%3", juce::String(static_cast<int>(r.heldToEnd))))
+                            .replace("%1", juce::String(static_cast<int>(r.lengthened)))
+                            .replace("%2", juce::String(static_cast<int>(r.pedalEvents))));
+    if (!beginEdit(juce::String::fromUTF8(u8"Pédale en durées de notes"))) return;
+    track->notes = std::move(notes);
+    track->controlChanges = std::move(ccs);
+    notifyEdited();
+}
+
 void PianoRollComponent::splitSelectionAtPlayhead() {
     Track* track = activeTrack();
     if (!track || !project_ || selectedNoteIds_.empty()) return;
@@ -1481,6 +1547,22 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     timeMenu.addItem(kCtxRemoveOverlaps, tr("Retirer les chevauchements"), sel);
     timeMenu.addItem(kCtxDeleteDoubles, tr(u8"Supprimer les doublons"), sel);   // D546.1
     timeMenu.addItem(kCtxRemoveOverlapsMono, tr(u8"Retirer les chevauchements (mono)"), sel);   // D552.2
+    // D554.2 : RESTREINDRE LA POLYPHONIE -- N voix au plus parmi les notes choisies.
+    {
+        juce::PopupMenu voix;
+        for (size_t k = 0; k < std::size(kVoixPossibles); ++k)
+            voix.addItem(kCtxRestrictPolyFirst + static_cast<int>(k),
+                         tr(u8"%1 voix").replace("%1", juce::String(kVoixPossibles[k])), sel);
+        timeMenu.addSubMenu(tr(u8"Restreindre la polyphonie"), voix, sel);
+    }
+    // D554.3 : LA PÉDALE EN DURÉES, sur la piste active -- le compte d'appuis dans le libellé, grisée à zéro.
+    {
+        const auto* piste = activeTrack();
+        const size_t appuis = piste != nullptr ? countPedalPresses(piste->controlChanges) : 0;
+        timeMenu.addItem(kCtxPedalsToLength,
+                         tr(u8"Pédale en durées de notes (%1 appui(s))").replace("%1", juce::String(static_cast<int>(appuis))),
+                         appuis > 0);
+    }
     timeMenu.addSeparator();
     ajouterAvecRaccourci(timeMenu, kCtxSplit, tr(u8"Couper à la tête de lecture"), shortcuts_, Id::EditSplitAtPlayhead, sel);
     ajouterAvecRaccourci(timeMenu, kCtxJoin, tr("Fusionner"), shortcuts_, Id::EditJoin, selectedNoteIds_.size() >= 2);
@@ -1601,6 +1683,13 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         return;
     }
 
+    // D554.2 : une entrée par nombre de voix, au rang de `kVoixPossibles`.
+    if (menuItemId >= kCtxRestrictPolyFirst
+        && menuItemId < kCtxRestrictPolyFirst + static_cast<int>(std::size(kVoixPossibles))) {
+        restrictPolyphonyInSelection(kVoixPossibles[static_cast<size_t>(menuItemId - kCtxRestrictPolyFirst)]);
+        return;
+    }
+
     switch (menuItemId) {
         case kCtxUndo:             undo(); break;
         case kCtxRedo:             redo(); break;
@@ -1634,6 +1723,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxRemoveOverlaps:   removeOverlapsInSelection(); break;
         case kCtxDeleteDoubles:    deleteDoublesInSelection(); break;
         case kCtxRemoveOverlapsMono: removeOverlapsMonoInSelection(); break;   // D552.2
+        case kCtxPedalsToLength:   pedalsToNoteLengthOnTrack(); break;   // D554.3
         case kCtxLengthToGrid:     setSelectionLengthToGrid(); break;
         case kCtxLengthDouble:     scaleSelectionLength(2.0f); break;
         case kCtxLengthHalve:      scaleSelectionLength(0.5f); break;

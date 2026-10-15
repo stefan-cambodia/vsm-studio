@@ -130,6 +130,31 @@ struct MonoOverlaps {
 };
 MonoOverlaps removeOverlapsMono(std::vector<Note>& notes, const NoteSelection& selection);
 
+/// D554.2 — RESTREINDRE LA POLYPHONIE (*Restrict Polyphony* de Cubase) : parmi les notes CHOISIES, jamais plus de
+/// `voices` à la fois. Dans l'ordre des départs, par groupe d'attaques simultanées : un groupe plus nombreux que
+/// `voices` garde ses plus AIGUËS et retire les autres (`removed`, la règle de D552.2) ; puis, tant que les notes qui
+/// sonnent encore et le groupe dépassent `voices`, la plus ANCIENNE (à départ égal, la plus grave) finit où le groupe
+/// commence (`shortened`). À une voix, c'est `removeOverlapsMono`. Les notes non choisies ne bougent pas et ne
+/// comptent pas ; `voices` < 1 ne fait rien.
+MonoOverlaps restrictPolyphony(std::vector<Note>& notes, const NoteSelection& selection, int voices);
+
+
+/// D554.3 — LES PÉDALES EN DURÉES DE NOTES (*Pedals to Note Length* de Cubase) : ce que la pédale forte (CC 64,
+/// enfoncée à 64 et plus) fait ENTENDRE devient la durée écrite. Une note dont la fin tombe pédale ENFONCÉE -- l'état
+/// laissé par le dernier CC 64 posé AVANT sa fin -- dure jusqu'au relâchement suivant, ou jusqu'à la frappe suivante de
+/// la même hauteur si elle vient avant (une note ne se chevauche pas elle-même) ; puis les CC 64 sont retirés. La
+/// pédale est celle de la PISTE, tous canaux confondus, comme le graphe la retient (`sustainDown_`, D25.1). Une
+/// pédale jamais relâchée tient jusqu'à `materialEnd` ; ces notes-là sont comptées à part (`heldToEnd`).
+struct PedalConversion {
+    size_t lengthened = 0;    ///< notes allongées
+    size_t pedalEvents = 0;   ///< CC 64 retirés
+    size_t heldToEnd = 0;     ///< parmi les allongées, celles qu'aucun relâchement ne termine
+};
+PedalConversion pedalsToNoteLength(std::vector<Note>& notes, std::vector<CcPoint>& controlChanges, Tick materialEnd);
+/// Le nombre d'APPUIS (passages de relâchée à enfoncée) : ce que dit le libellé du menu.
+size_t countPedalPresses(const std::vector<CcPoint>& controlChanges);
+
+
 /// Coupe en deux, au tick donné, chaque note sélectionnée qui le traverse.
 /// Renvoie le nombre de notes créées ; les nouvelles moitiés sont ajoutées à
 /// `newIds` si le pointeur est fourni (pour que l'appelant les sélectionne).

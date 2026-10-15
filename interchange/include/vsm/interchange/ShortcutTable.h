@@ -104,6 +104,8 @@ enum class ShortcutId : uint16_t {
     ViewArrangementAutomation,
     /// D553.2 : lire la sélection -- de son début à sa fin, puis l'arrêt (*Play Selection Range*).
     TransportPlaySelection,
+    /// D554.1 : boucler la sélection -- les locateurs sur elle, la boucle allumée, la lecture (*Loop Selection*).
+    TransportLoopSelection,
 
     Count
 };

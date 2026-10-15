@@ -1,4 +1,5 @@
 #include "vsm/sequencer/NoteEdit.h"
+#include <map>
 #include <set>
 #include "vsm/util/DeterministicRng.h"
 #include <algorithm>
@@ -364,6 +365,103 @@ MonoOverlaps removeOverlapsMono(std::vector<Note>& notes, const NoteSelection& s
     if (!retirees.empty())
         notes.erase(std::remove_if(notes.begin(), notes.end(), [&](const Note& n) { return retirees.count(n.id) > 0; }),
                     notes.end());
+    return r;
+}
+
+MonoOverlaps restrictPolyphony(std::vector<Note>& notes, const NoteSelection& selection, int voices) {
+    MonoOverlaps r;
+    if (selection.empty() || voices < 1) return r;
+    std::vector<size_t> ligne;   // les notes choisies, dans l'ordre des départs, la plus aiguë d'abord
+    for (size_t i = 0; i < notes.size(); ++i)
+        if (selection.count(notes[i].id) > 0) ligne.push_back(i);
+    std::sort(ligne.begin(), ligne.end(), [&](size_t a, size_t b) {
+        if (notes[a].startTick != notes[b].startTick) return notes[a].startTick < notes[b].startTick;
+        return notes[a].number > notes[b].number;
+    });
+    const size_t n = static_cast<size_t>(voices);
+    std::set<uint64_t> retirees;
+    std::vector<size_t> sonnent;   // les notes gardées qui sonnent encore, la plus ancienne d'abord
+    for (size_t k = 0; k < ligne.size();) {
+        const Tick t = notes[ligne[k]].startTick;
+        size_t fin = k;
+        while (fin < ligne.size() && notes[ligne[fin]].startTick == t) ++fin;
+        sonnent.erase(std::remove_if(sonnent.begin(), sonnent.end(), [&](size_t i) { return notes[i].endTick <= t; }),
+                      sonnent.end());
+        // LE GROUPE : ses `n` plus aiguës, les autres retirées.
+        const size_t garde = std::min(n, fin - k);
+        for (size_t j = k + garde; j < fin; ++j) retirees.insert(notes[ligne[j]].id);
+        // LES PLUS ANCIENNES s'arrêtent où le groupe attaque. `sonnent` est dans l'ordre des départs, et à départ
+        // égal la plus aiguë d'abord : la plus grave d'un même départ est donc la DERNIÈRE de son groupe -- on
+        // choisit explicitement, plutôt que de compter sur l'ordre.
+        while (sonnent.size() + garde > n) {
+            auto victime = std::min_element(sonnent.begin(), sonnent.end(), [&](size_t a, size_t b) {
+                if (notes[a].startTick != notes[b].startTick) return notes[a].startTick < notes[b].startTick;
+                return notes[a].number < notes[b].number;
+            });
+            notes[*victime].endTick = t;
+            ++r.shortened;
+            sonnent.erase(victime);
+        }
+        for (size_t j = k; j < k + garde; ++j) sonnent.push_back(ligne[j]);
+        k = fin;
+    }
+    r.removed = retirees.size();
+    if (!retirees.empty())
+        notes.erase(std::remove_if(notes.begin(), notes.end(), [&](const Note& x) { return retirees.count(x.id) > 0; }),
+                    notes.end());
+    return r;
+}
+
+namespace {
+std::vector<CcPoint> pedaleTriee(const std::vector<CcPoint>& ccs) {
+    std::vector<CcPoint> p;
+    for (const auto& cc : ccs)
+        if (cc.controller == 64) p.push_back(cc);
+    std::stable_sort(p.begin(), p.end(), [](const CcPoint& a, const CcPoint& b) { return a.tick < b.tick; });
+    return p;
+}
+} // namespace
+
+size_t countPedalPresses(const std::vector<CcPoint>& controlChanges) {
+    size_t appuis = 0;
+    bool enfoncee = false;
+    for (const auto& cc : pedaleTriee(controlChanges)) {
+        const bool bas = cc.value >= 64;
+        if (bas && !enfoncee) ++appuis;
+        enfoncee = bas;
+    }
+    return appuis;
+}
+
+PedalConversion pedalsToNoteLength(std::vector<Note>& notes, std::vector<CcPoint>& controlChanges, Tick materialEnd) {
+    PedalConversion r;
+    const auto pedale = pedaleTriee(controlChanges);
+    if (pedale.empty()) return r;
+    // Les frappes de chaque hauteur, dans l'ordre : la suivante borne la note.
+    std::map<uint8_t, std::vector<Tick>> frappes;
+    for (const auto& n : notes) frappes[n.number].push_back(n.startTick);
+    for (auto& [h, v] : frappes) std::sort(v.begin(), v.end());
+    for (auto& n : notes) {
+        // L'ÉTAT À LA FIN DE LA NOTE : le dernier CC 64 posé STRICTEMENT avant elle.
+        auto apres = std::lower_bound(pedale.begin(), pedale.end(), n.endTick,
+                                      [](const CcPoint& cc, Tick t) { return cc.tick < t; });
+        if (apres == pedale.begin() || std::prev(apres)->value < 64) continue;
+        // LE RELÂCHEMENT : le premier CC 64 sous 64 posé à la fin de la note ou après.
+        auto releve = std::find_if(apres, pedale.end(), [](const CcPoint& cc) { return cc.value < 64; });
+        Tick fin = releve != pedale.end() ? releve->tick : materialEnd;
+        const auto& v = frappes[n.number];
+        auto suivante = std::upper_bound(v.begin(), v.end(), n.startTick);
+        if (suivante != v.end() && *suivante < fin) fin = *suivante;
+        if (fin <= n.endTick) continue;
+        if (releve == pedale.end() && fin == materialEnd) ++r.heldToEnd;
+        n.endTick = fin;
+        ++r.lengthened;
+    }
+    const auto avant = controlChanges.size();
+    controlChanges.erase(std::remove_if(controlChanges.begin(), controlChanges.end(),
+                                        [](const CcPoint& cc) { return cc.controller == 64; }),
+                         controlChanges.end());
+    r.pedalEvents = avant - controlChanges.size();
     return r;
 }
 

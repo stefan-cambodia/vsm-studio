@@ -42073,3 +42073,98 @@ pédale ce qu'elle produit : des durées qu'on voit et qu'on édite. **Trouvé e
 
 **L'ORDRE, TRANCHÉ ICI.** D554.1 d'abord (il ne fait qu'assembler des briques mesurées), puis D554.2, puis D554.3,
 dont l'attendu le plus fort — un export inchangé — demande une machine déterministe.
+
+### Phase D554.1 — boucler la sélection (15/10/2026) — FAITE
+
+*Transport ▸ Boucler la sélection*, Maj+G (`transport.loopSelection`) : les bornes de la sélection viennent du même
+endroit que pour « Lire la sélection » (`bornesDeLaSelection`, écrit pour les deux) ; les locateurs y sont posés en UN
+pas, la boucle allumée partout (projet, moteur, bouton), la tête au début, la lecture. P sans rien de choisi le DIT
+désormais. L'entrée est la 17ᵉ du menu Transport : posée AVANT d'élargir la plage réservée, elle a fait refuser la
+compilation par l'assertion statique de H18 (« l'assertion statique a échoué », `MainComponent.cpp:5545`) — le seul
+essai en rouge que cette garde pouvait avoir ; la plage passe à 24 places.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | par la touche | `tools/boucler-selection.sh` (A choisi, [2 ; 4) s) : 0,6 s après Maj+G, « projet oui [1920,3840] ; moteur oui [2.000,4.000 s] ; bouton oui », en lecture, tête à 2,604 s | **oui** |
+| 2 | la boucle tourne | 2,6 s après le départ — 0,6 s passé la fin de A —, en lecture, tête à **2,601 s** (une lecture sans boucle serait à 4,6 s) | **oui** |
+| 3 | un pas | « VSM_HISTORIQUE_PAS : 1 : Boucler la sélection » | **oui** |
+| 4 | rien de choisi, par le menu | « Boucler la sélection : Rien n'est choisi… » dit, transport arrêté, boucle intacte « projet non [0,0] » | **oui** |
+| 5 | P sans rien de choisi | « Locateurs sur la sélection : Rien n'est choisi… » dit | **oui** |
+| 6 | le témoin | les cinq contrôles **rouges** sur le binaire d'avant D554 — (5) compris : P se taisait | **oui** |
+| 7 | le menu dans les deux langues | photographié : « Boucler la sélection — Maj+G » / « Loop selection — Shift+G », au rang 3 du menu Transport | **oui** |
+
+### Phase D554.2 — restreindre la polyphonie (15/10/2026) — FAITE
+
+`restrictPolyphony` (`core/`, `NoteEdit.h`) et, au piano roll, *Temps et durée ▸ Restreindre la polyphonie ▸ 2, 3, 4,
+6, 8 voix* (une voix, c'est D552.2) ; essai sur une copie, la ligne d'état dit les comptes ou « aucune note à
+changer ».
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | accord de quatre + une entrée, à trois voix : 60 retiré, 64 → 960 ; une note non choisie intacte ; rejoué : 0 ; à UNE voix, le résultat de `removeOverlapsMono` sur le cas du banc de D552.2, identifiant par identifiant ; à deux voix, 60 [0, …) et 64 [480, …) quand 67 entre : 60 s'arrête. **Rouge** sur le mutant qui coupe la plus RÉCENTE — après qu'il a d'abord SURVÉCU, voir ci-dessous | **oui** |
+| 2 | par l'application, le `.mid` joué | `tools/restreindre-polyphonie.sh`, 4 contrôles : « 0-480:64 0-960:67 0-1920:71 480-1920:55 960-1440:62 », « 3 voix, 2 raccourcie(s), 1 retirée(s) » ; le témoin, six notes ; Ctrl+Z → le témoin ; 8 voix → « Polyphonie (8 voix) : aucune note à changer dans la sélection », 0 pas | **oui** |
+| 3 | le menu dans les deux langues | photographié : « Restreindre la polyphonie ▸ 2 voix… » / « Restrict polyphony ▸ 2 voices… » | **oui** |
+
+**LE MUTANT QUI A SURVÉCU.** Le premier état du test et du banc ne faisait entrer qu'une note sur un accord parti
+d'un bloc : toutes les notes qui sonnaient avaient le même départ, et « la plus ancienne » désignait la même note que
+« la plus récente ». Le mutant qui coupe la plus récente est passé au vert dans les deux. Une attaque décalée — sol
+55 à 480 — les sépare : sous ce mutant, le banc rend « 480-960:55 » (la plus récente coupée) au lieu de « 0-960:67 »,
+et le test neuf tombe (« 1920 != 960 »). **Et le premier rouge du contrôle (4) était le BANC** : un geste joué au
+démarrage voyait son message recouvert par la ligne d'état refaite après le Ctrl+A du même démarrage ; joué en
+différé par le menu de la barre, il se lit.
+
+### Phase D554.3 — les pédales en durées de notes (15/10/2026) — FAITE
+
+`pedalsToNoteLength` et `countPedalPresses` (`core/`) ; au piano roll, *Temps et durée ▸ Pédale en durées de notes
+(N appui(s))*, sur la piste active, grisée à zéro.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | tenue jusqu'au relâchement, bornée par la re-frappe ; finie pédale levée : intacte ; jamais relâchée : jusqu'à la fin du matériau, comptée à part ; le CC 7 reste ; à tick égal, la pédale enfoncée ne tient pas la note. **Rouges** : le mutant sans borne de re-frappe, celui qui compte la pédale du tick même | **oui** |
+| 2 | par l'application, le `.mid` joué | `tools/pedales-en-durees.sh`, 5 contrôles : « 0-1440:60 480-1440:64 960-1440:67 1920-2160:72 », plus aucun CC 64, « 3 note(s) allongée(s), 2 CC 64 retiré(s) » ; Ctrl+Z → le témoin, ses deux CC 64 compris ; la re-frappe « 0-960:60 960-1440:60 » ; sans pédale, « (0 appui(s)) [grisée] » | **oui** |
+| 3 | L'EXPORT NE CHANGE PAS | écart à l'export d'origine : **0** — la machine (`vsm.juno106`) rejouée : 0, et SANS ses CC 64 : 0,332. Il valait **0,0054** avant H20, ci-dessous. La re-frappe, publiée et non jugée : 0,167 | **oui** |
+| 4 | le menu dans les deux langues | photographié : « Pédale en durées de notes (1 appui(s)) » / « Sustain pedal to note lengths (1 press(es)) » | **oui** |
+
+**H19, H19 BIS, H20 : LA PÉDALE DU GRAPHE RELÂCHAIT JUSQU'À UN BLOC TROP TÔT.** L'attendu (3), écrit avant le code
+(« moins de 1e-4 »), est tombé au premier passage : **0,0054**, la machine déterministe, la pédale bien entendue. Le
+premier échantillon qui différait était le 66 048, quand le relâchement écrit tombe au 66 150 (1,5 s). *H19, écrite
+à 23 h 19 avant sa mesure* : la quantification du relâchement à 128 échantillons ; un relâchement posé sur cette
+grille (tick 2 048) devait annuler l'écart. **Réfutée** : 0,0176, et le premier écart au 93 696 — 384 échantillons
+trop tôt. 66 048 = 129 × 512, 93 696 = 183 × 512 : la grille était celle du BLOC de 512 de l'export. *H19 bis, écrite
+à 23 h 21* : relâchement sur une frontière de 512 (tick 8 192 = 735 × 512) → export identique. **Confirmée : 0, au
+bit près.** La cause était lisible dans `ProcessGraph::interceptSustain` (D25.1) : les notes retenues partaient « en
+tête de bloc », `sampleOffset = 0`, alors que le CC porte son décalage. *H20, écrite à 23 h 22* : les libérer à ce
+décalage rend l'export du cas d'origine identique, seuil inchangé. Un test audio neuf
+(`a_pedal_released_mid_block_frees_its_notes_on_the_very_sample` : une note tenue par la pédale jusqu'au tick 1 000,
+8 333 échantillons à 8 kHz, contre la même note écrite jusque-là) était **rouge** avant (premier écart au 8 192, le
+début du bloc) ; après, vert, 1 339 tests audio verts, et le banc rend **0**. **Confirmée.** Ce que cela change hors
+de ce banc : en lecture comme à l'export, une pédale relâchée au milieu d'un bloc relâchait ses notes jusqu'à un bloc
+plus tôt — 11,6 ms à 512 échantillons et 44,1 kHz, davantage avec une carte son réglée sur un plus grand tampon. Tout
+rendu d'un morceau qui porte une pédale bouge donc de quelques millisecondes à chaque relâchement : `vsm-render`
+n'est pas recompilé dans cette phase, et ses mesures en cache (`cache/mesures/`, clé : l'empreinte du binaire) ne
+sont pas touchées ; elles le seront à sa prochaine compilation.
+
+**LA SÉRIE DE D554** (lancée le 15/10 à 23 h 35, finie le 16/10 à 00 h 41 — 65 min, aucune veille au journal du
+noyau) : 90 bancs, préférences identiques. **L'écran s'est éteint et la session s'est verrouillée avant le premier
+banc** (« écran éteint, verrouillé AU DÉPART » et « À LA FIN ») : l'utilisateur s'était éloigné. 7 bancs rouges, et
+chacun lu avant de conclure :
+
+| banc | ce qu'il disait | ce que c'était |
+|---|---|---|
+| `arret-tete.sh` | « fin du morceau » lue à 2 441 au lieu de 0 | le rouge d'écran éteint de D535.1 bis — rejoué SEUL, 45 s après le précédent : 0 raté |
+| `automation-echelle.sh` | médiane et étalement « ? % » : rien relevé | rejoué seul, espacé : 0 raté |
+| `vumetre-console.sh` | « clic 0, témoin 1 » | un banc de CLIC sous verrou (D516) — rejoué seul, espacé : 0 raté |
+| `quantifier-audio.sh` (5), `transposition-globale.sh` (4), `normaliser-niveau.sh` (4) | la fenêtre modale non photographiée | sous verrou, aucune boîte modale ne se montre (D95) : **non jugés**. Verts dans la série de D553, écran allumé, deux heures plus tôt ; D554 ne touche ni ces gestes ni le chemin des fenêtres modales |
+| `notes-depuis-attaques.sh` (5) | la fenêtre modale non photographiée | le rouge ANTÉRIEUR nommé à D553 (rouge aussi sur le binaire de D552) |
+
+**À REJOUER ÉCRAN ALLUMÉ, avant tout autre geste de la prochaine séance** : `quantifier-audio.sh`,
+`transposition-globale.sh`, `normaliser-niveau.sh` — trois bancs qu'aucune mesure de cette nuit n'a pu juger. Tous
+les bancs de D553 et de D554 sont verts dans cette série, l'audit des menus compris (170 entrées justes, 0 muette).
+
+C++ 484 · 1 339 · 338 · 25 · 11, Python 275, ruff et mypy verts, gardes vertes — dont `menus-cites.py`, qui a refusé
+une citation du manuel (« Restreindre la polyphonie ▸ 2, 3, 4, 6 ou 8 voix » n'est l'entrée d'aucun menu : le
+dictionnaire porte « %1 voix »), réécrite.
+
+**LE QUINZIÈME AUDIT (D554) EST CLOS** : boucler la sélection, restreindre la polyphonie, les pédales en durées de
+notes — et, trouvés en route, un mutant qui a survécu à un test trop régulier, et une pédale de graphe qui relâchait
+ses notes jusqu'à un bloc trop tôt (H19-H20).

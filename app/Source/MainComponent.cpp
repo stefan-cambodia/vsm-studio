@@ -4167,6 +4167,7 @@ void MainComponent::setRenderThreadChoice(int choice) {
 static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::TransportPlayStop,
     vsm::interchange::ShortcutId::TransportPlaySelection,   // D553.2
+    vsm::interchange::ShortcutId::TransportLoopSelection,   // D554.1
     vsm::interchange::ShortcutId::TransportRecord,
     vsm::interchange::ShortcutId::TransportLoop,
     vsm::interchange::ShortcutId::TransportMetronome,
@@ -4182,7 +4183,7 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::NavPreviousBar,
     vsm::interchange::ShortcutId::NavNextBar,
 };
-static_assert(std::size(kCommandesDuTransport) == 16);   // D483, D553.2 : seize identifiants réservés (kMenuTransportFirst..Last)
+static_assert(std::size(kCommandesDuTransport) == 17);   // D483, D553.2, D554.1 ; la plage réservée est gardée à l'aiguillage
 
 juce::StringArray MainComponent::getMenuBarNames() {
     // D483 : « Transport » entre Piste et Enregistrement, comme chez Cubase.
@@ -5033,7 +5034,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             using Id = vsm::interchange::ShortcutId;
             for (size_t i = 0; i < std::size(kCommandesDuTransport); ++i) {
                 const Id commande = kCommandesDuTransport[i];
-                if (i == 5 || i == 12) menu.addSeparator();   // D553.2 : « Lire la sélection » s'est inséré au rang 1
+                if (i == 6 || i == 13) menu.addSeparator();   // D553.2, D554.1 : deux entrées insérées aux rangs 1 et 2
                 const auto* declaree = vsm::interchange::findShortcutCommand(commande);
                 juce::String libelle = declaree != nullptr ? tr(juce::String::fromUTF8(declaree->label)) : juce::String();
                 bool actif = true, coche = false;
@@ -10148,6 +10149,7 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
             return true;
         }
         case Id::TransportPlaySelection: lireLaSelection(); return true;   // D553.2
+        case Id::TransportLoopSelection: bouclerLaSelection(); return true;   // D554.1
         // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
         // piano roll traitait ces deux touches lui-même, et elles n'arrivaient
         // ici que quand il n'avait PAS le focus -- pour y tomber dans le
@@ -10652,7 +10654,14 @@ void MainComponent::locatorsFromSelection() {
             }
         }
     }
-    if (!trouve || fin <= debut) return;
+    // D554.1 : RIEN DE CHOISI SE DIT. P rendait la main sans un mot, et sans rien poser : une panne muette.
+    if (!trouve) {
+        std::fputs("VSM_SELECTION_BORNES : Locateurs sur la sélection -- rien de choisi\n", stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Locateurs sur la sélection"),
+                     tr(u8"Rien n'est choisi : choisissez des clips dans l'arrangement, ou des notes au piano roll."));
+        return;
+    }
+    if (fin <= debut) return;
     beginProjectEdit(u8"Locateurs sur la sélection");
     setLoopRegionEverywhere(debut, fin, true);
 }
@@ -13155,17 +13164,40 @@ void MainComponent::pasteChainIntoSelectedTrack(bool remplace) {
     std::fputs(message.toRawUTF8(), stderr);
 }
 
-void MainComponent::lireLaSelection() {
+bool MainComponent::bornesDeLaSelection(vsm::midi::Tick& debut, vsm::midi::Tick& fin, bool& clips,
+                                        const juce::String& titre) {
     // D553.2 : les clips choisis de l'arrangement, à défaut les notes choisies au piano roll -- l'ordre de L (D28.4).
-    vsm::midi::Tick debut = 0, fin = 0;
-    const bool clips = arrangement_.selectionStartTick(debut) && arrangement_.selectionEndTick(fin);
+    clips = arrangement_.selectionStartTick(debut) && arrangement_.selectionEndTick(fin);
     if (!clips && !(pianoRoll_.selectionStartTick(debut) && pianoRoll_.selectionEndTick(fin))) {
-        std::fputs("VSM_LIRE_SELECTION : rien de choisi\n", stderr);
-        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Lire la sélection"),
+        std::fputs(("VSM_SELECTION_BORNES : " + titre + " -- rien de choisi\n").toRawUTF8(), stderr);
+        montrerBoite(juce::AlertWindow::InfoIcon, titre,
                      tr(u8"Rien n'est choisi : choisissez des clips dans l'arrangement, ou des notes au piano roll."));
-        return;
+        return false;
     }
-    if (fin <= debut) return;
+    return fin > debut;
+}
+
+void MainComponent::bouclerLaSelection() {
+    // D554.1 : BOUCLER LA SÉLECTION (*Loop Selection*) -- les locateurs sur la sélection (un pas, comme P : D520), la
+    // boucle allumée, la tête au début, la lecture. Une lecture de la sélection en cours (D553.2) cède la place.
+    vsm::midi::Tick debut = 0, fin = 0;
+    bool clips = false;
+    if (!bornesDeLaSelection(debut, fin, clips, tr(u8"Boucler la sélection"))) return;
+    beginProjectEdit(juce::String::fromUTF8(u8"Boucler la sélection"));
+    setLoopRegionEverywhere(debut, fin, true);
+    finLectureSelection_ = -1;
+    if (transport_.state() == TransportState::Playing) transport_.stop();
+    seekAllViews(debut);
+    std::fputs(("VSM_BOUCLER_SELECTION : de " + std::to_string(debut) + " à " + std::to_string(fin) + " ticks ("
+                + (clips ? "clips" : "notes") + "), boucle allumée\n").c_str(), stderr);
+    direOrigineDuPlay("Boucler la sélection");
+    transport_.play();
+}
+
+void MainComponent::lireLaSelection() {
+    vsm::midi::Tick debut = 0, fin = 0;
+    bool clips = false;
+    if (!bornesDeLaSelection(debut, fin, clips, tr(u8"Lire la sélection"))) return;
     if (transport_.state() == TransportState::Playing) transport_.stop();
     seekAllViews(debut);
     finLectureSelection_ = fin;

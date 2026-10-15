@@ -87,6 +87,8 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavPreviousBar,    "nav.previousBar",  "Transport", "Tête : mesure précédente",       "shift + alt + cursor left", ""},
         // D553.2 — lire la sélection : Maj+Espace (l'Alt+Espace de Cubase ouvre KRunner sous Plasma).
         {ShortcutId::TransportPlaySelection, "transport.playSelection", "Transport", "Lire la sélection", "shift + spacebar", ""},
+        // D554.1 — boucler la sélection : Maj+G, comme chez Cubase (libre dans la table : G seul bascule l'aimant).
+        {ShortcutId::TransportLoopSelection, "transport.loopSelection", "Transport", "Boucler la sélection", "shift + G", ""},
     };
     return catalogue;
 }
