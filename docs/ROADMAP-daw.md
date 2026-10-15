@@ -42546,3 +42546,38 @@ C++ 493 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE DIX-HUITIÈME AUDIT (D557) EST CLOS** : quantifier les fins, éclaircir les contrôleurs, annuler un zoom, un seul mot
 pour les repères — et, mesurée avant d'être corrigée (H22), une quantification début ET fin qui réduisait à un tick
 toute note plus courte qu'une demi-case.
+
+### Phase D558 — un dix-neuvième audit : poser un repère à la tête, la tête à la fin de la sélection, la tête d'une attaque à l'autre (16/10/2026)
+
+*Écrite le 16/10 à 6 h 32, D557 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D557 — par identifiant de code, pas seulement par libellé** (la leçon de D557). Le
+sous-menu *Transport ▸ Locate* de Cubase, rapproché du menu Transport photographié à D557.4 : **0 pour poser un repère
+SANS boîte** — un repère naît par la règle (« Poser un repère ici… ») ou la fenêtre des repères, toujours par une boîte
+qui demande son nom (`requestMarker`), et aucune touche ne le pose à la tête pendant qu'on écoute (*Insert Marker*,
+Inser chez Cubase) ; **0 pour la FIN de la sélection** — « Tête au début de la sélection » (L) existe, sa sœur
+*Locate Selection End* non (`selectionEnd` n'est lu que par la lecture de D553.2) ; **0 pour les attaques** — la tête
+saute d'un temps, d'une mesure, d'un repère, d'un événement (D556.2), mais pas d'une attaque d'un clip audio
+(*Locate Next / Previous Hitpoint*), alors que les attaques se lisent depuis D544.1 (`lireAttaquesDuClip`) : aucun
+`hitpoint`, ni identifiant ni libellé. **Trouvé et écarté** : la tête au début de la sélection, aux repères, aux
+événements — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D558.1 | **Poser un repère à la tête** — *Insert Marker* | *Transport ▸ Poser un repère à la tête* (Inser) : un repère au tick de la tête, SANS boîte, nommé « Repère N » (le premier N dont le nom est libre) ; un repère déjà à ce tick → dit, rien posé ; un pas ; mesuré par le projet relu (`project.json`, ses repères) |
+| D558.2 | **La tête à la fin de la sélection** — *Locate Selection End* | *Transport ▸ Tête à la fin de la sélection* (Maj+L) : la tête va à la fin de la sélection — les clips choisis de l'arrangement, sinon les notes choisies du piano roll, l'ordre de L ; rien de choisi → dit, la tête reste ; mesuré par le relevé de la tête |
+| D558.3 | **La tête d'une attaque à l'autre** — *Locate Next / Previous Hitpoint* | *Transport ▸ Tête : attaque suivante / précédente* (Ctrl+Alt+N, Ctrl+Alt+B) : la tête à la prochaine attaque, strictement après (avant) elle, des clips audio NON muets de la piste choisie — celles de D544.1, lues dans le fichier, placées où elles SONNENT dans le clip ; rien → dit, la tête reste ; mesuré par le relevé de la tête sur un fichier aux attaques connues |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D558.1.** Le nom suit la langue de l'interface (« Repère 3 », « Marker 3 ») : c'est une donnée que l'utilisateur
+  lit dans la règle et renomme. Le numéro est le premier libre, pas le compte : après le retrait de « Repère 2 », le
+  suivant reprend 2. Inser est libre dans la table, les touches fixes et `kglobalshortcutsrc`, vérifié à 6 h 32.
+- **D558.2.** Maj+L, à côté de L — libre, vérifié. La fin est la fin JOUÉE du dernier clip choisi (`selectionBounds`),
+  ou la fin de la dernière note choisie (`selectionEndTick`, D553.2).
+- **D558.3.** Une attaque compte si elle tombe DANS la fenêtre jouée du clip ; un clip à l'envers ou suivant le tempo
+  (`warpMode`) est écarté et COMPTÉ, ses attaques n'étant pas au temps que le fichier dit — la règle de D544.1, qui
+  les refuse aussi. Ctrl+Alt+N et Ctrl+Alt+B : Alt+N joue jusqu'au repère (D556.1), N et B sautent d'un événement ;
+  libres, vérifiés. La lecture des attaques coûte une passe sur le fichier : elle se fait au geste, pas à chaque
+  peinture.
+
+**L'ORDRE, TRANCHÉ ICI.** D558.2 d'abord (le plus petit), puis D558.1, puis D558.3.
