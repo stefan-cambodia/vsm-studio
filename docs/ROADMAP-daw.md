@@ -42168,3 +42168,37 @@ dictionnaire porte « %1 voix »), réécrite.
 **LE QUINZIÈME AUDIT (D554) EST CLOS** : boucler la sélection, restreindre la polyphonie, les pédales en durées de
 notes — et, trouvés en route, un mutant qui a survécu à un test trop régulier, et une pédale de graphe qui relâchait
 ses notes jusqu'à un bloc trop tôt (H19-H20).
+
+### Phase D555 — un seizième audit : lire autour de la sélection, supprimer les contrôleurs d'une piste, éclater par canal (16/10/2026)
+
+*Écrite le 16/10 à 0 h 45, D554 close.*
+
+**LA MÉTHODE, celle de D535 à D554.** **Cherché** dans `app/Source` au script Python (les libellés passés par
+`tr(`) : **0 pour « lire jusqu'à » et « lire depuis »** — des *Play Options* de Cubase, D553.2 a pris *Play Selection
+Range* et D554.1 *Loop Selection*, restent *Play until Selection Start* et *Play from Selection End*, qui servent à
+entendre l'ENTRÉE et la SORTIE d'un passage ; **0 pour « supprimer les contrôleurs »** — « Tout effacer » n'existe que
+dans la fenêtre d'apprentissage MIDI, une courbe de CC s'efface point par point ou par la gomme, et rien ne vide une
+piste de ses contrôleurs (*Delete Controllers*) ; **0 pour « par canal »** — « Éclater par hauteur » existe
+(`explodeTrackByPitch`), et l'import découpe un format 0 par canal (D304-D309), mais une piste qui porte déjà
+plusieurs canaux ne se sépare pas (*Dissolve Part ▸ Separate Channels*). **Trouvé et écarté** : supprimer les notes
+courtes ou faibles se fait en deux gestes qui existent (« choisir les notes plus courtes / plus faibles que… »,
+puis Suppr).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D555.1 | **Lire jusqu'au début de la sélection, lire depuis sa fin** — *Play until Selection Start*, *Play from Selection End* | *Transport ▸ Lire jusqu'au début de la sélection* : la lecture part UNE MESURE avant le début de la sélection (borné à 0) et s'arrête sur son début ; *Transport ▸ Lire depuis la fin de la sélection* : elle part de sa fin et s'arrête une mesure plus loin ; la sélection est celle de D553.2 ; rien de choisi → dit ; mesuré par le relevé du transport pendant et après |
+| D555.2 | **Supprimer les contrôleurs d'une piste** — *Delete Controllers* | *Piste ▸ Supprimer les contrôleurs MIDI de la piste (N)* : ses CC, pitch bends et pressions (de canal et polyphoniques) retirés, les changements de programme gardés ; le compte par nature DIT ; grisée à zéro ; un pas ; mesuré par le `.mid` joué (les notes intactes, plus aucun contrôleur) |
+| D555.3 | **Éclater une piste par canal** — *Dissolve Part ▸ Separate Channels* | *Piste ▸ Éclater par canal (N canaux)* : une piste dont les notes et événements portent plusieurs canaux MIDI devient une piste par canal — le plus bas reste sur la piste d'origine, chaque piste neuve juste dessous, avec sa machine, son canal, et les contrôleurs de son canal ; grisée à un seul canal ; un pas ; mesuré par le projet relu et le `.mid` joué (le multiensemble des notes de chaque canal, inchangé) |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D555.1.** UNE MESURE, et non deux secondes : Cubase prend son *pre-roll*, réglable ; ce logiciel n'en a pas, et
+  une mesure se lit en musique quel que soit le tempo. La mesure est celle du chiffrage au point de départ. Les deux
+  gestes passent par la machine de D553.2 (`finLectureSelection_`), boucle comprise : une tête qui recule abandonne.
+- **D555.2.** Les changements de programme RESTENT : ce n'est pas un contrôleur mais le choix d'un son, et le
+  retirer changerait l'instrument d'un fichier General MIDI. La banque (CC 0 et 32) part avec les autres CC — c'est
+  un contrôleur ; le compte le dit à part s'il y en a.
+- **D555.3.** Le canal le PLUS BAS reste sur la piste d'origine (la règle d'« Éclater par hauteur », où la hauteur
+  la plus grave reste) ; chaque piste neuve prend le canal de ses notes (`Track::channel`), si bien que la sortie MIDI
+  externe d'une piste à port garde ses canaux.
+
+**L'ORDRE, TRANCHÉ ICI.** D555.2 d'abord (le plus petit), puis D555.1, puis D555.3, qui crée des pistes.
