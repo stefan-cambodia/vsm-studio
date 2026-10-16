@@ -32,15 +32,15 @@ def vlq(n):
     o = [n & 0x7F]; n >>= 7
     while n: o.insert(0, (n & 0x7F) | 0x80); n >>= 7
     return bytes(o)
+# UN BLOC PAR PISTE DU PROJET, le tempo dans le premier : un bloc de conduite à part serait une cinquième piste
+# (« Le projet décrit 4 piste(s) mais le MIDI en contient 5 », et chaque réglage décalé d'un cran).
 pistes = []
 for canal, (nom, hauteur) in enumerate((("A", 60), ("B", 64), ("C", 67), ("D", 72))):
-    corps = b"\x00\xff\x03" + bytes([len(nom)]) + nom.encode()
+    corps = (b"\x00\xff\x51\x03\x07\xa1\x20" if canal == 0 else b"") + b"\x00\xff\x03" + bytes([len(nom)]) + nom.encode()
     corps += b"\x00" + bytes([0x90 | canal, hauteur, 100]) + vlq(1920) + bytes([0x80 | canal, hauteur, 0]) + b"\x00\xff\x2f\x00"
     pistes.append(b"MTrk" + struct.pack(">I", len(corps)) + corps)
-tempo = b"\x00\xff\x51\x03\x07\xa1\x20\x00\xff\x2f\x00"
 os.makedirs(f"{b}/base/midi", exist_ok=True)
-open(f"{b}/base/midi/arrangement.mid", "wb").write(
-    b"MThd" + struct.pack(">IHHH", 6, 1, 5, 480) + b"MTrk" + struct.pack(">I", len(tempo)) + tempo + b"".join(pistes))
+open(f"{b}/base/midi/arrangement.mid", "wb").write(b"MThd" + struct.pack(">IHHH", 6, 1, 4, 480) + b"".join(pistes))
 def mix(muted=False, solo=False, safe=False):
     m = {"muted": muted, "pan": 0.0, "sends": [0.0, 0.0], "solo": solo, "volume": 0.8}
     if safe: m["soloSafe"] = True
@@ -128,7 +128,10 @@ verdict "(2) les solos levés, les muets et la protection gardés, et c'est dit"
        && echo 1 || echo 0)"
 verdict "(3) puis les muets : plus rien, et l'export sonne plus fort (les deux muettes entrent)" \
     "$([ "$esm" = "A: B: C: D:P" ] && plus_fort "$rsm" "$rs" && echo 1 || echo 0)"
-verdict "(4) un pas : Ctrl+Z rend les solos" "$([ "$ez" = "$e0" ] && [ "$e0" = "A:S B:S C:M D:MP" ] && echo 1 || echo 0)"
+# LE GESTE A EU LIEU dans la course d'annulation : sur le binaire d'avant, rien ne bougeait et Ctrl+Z rendait aussi le
+# départ — ce contrôle y était vert (la leçon de D555.2).
+verdict "(4) un pas : Ctrl+Z rend les solos, après un geste qui a eu lieu" \
+    "$([ "$ez" = "$e0" ] && [ "$e0" = "A:S B:S C:M D:MP" ] && grep -q "^VSM_CONSOLE : 2 solo(s) levé(s)" "$brouillon/annuler.txt" && echo 1 || echo 0)"
 verdict "(5) le menu après : zéro et grisés" \
     "$(echo "${apres[0]:-}" | grep -q "^Lever tous les solos (0) \[grisée\]$" && echo "${apres[1]:-}" | grep -q "^Lever tous les muets (0) \[grisée\]$" && echo 1 || echo 0)"
 

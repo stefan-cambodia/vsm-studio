@@ -29,6 +29,9 @@ struct AudioTrackLoadResult {
     bool streamed = false;
     /// Ce que cette piste occupe en mémoire vive, une fois chargée.
     size_t residentBytes = 0;
+    /// D559.3 : LES CANAUX DU FICHIER (1 ou 2) — le magasin rend toujours deux canaux, un fichier mono les remplit à
+    /// l'identique ; l'import l'écrivait « 2 » en dur dans le projet, et un clip mono passait pour stéréo.
+    int fileChannels = 0;
 };
 
 /// COMMENT LE MATÉRIAU EST TENU (D8.2).

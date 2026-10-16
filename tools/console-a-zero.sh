@@ -26,15 +26,13 @@ trap '[ -n "$GARDER" ] && mkdir -p "$GARDER" && cp "$brouillon"/*.png "$brouillo
 python3 - "$brouillon" <<'PY'
 import json, os, struct, sys
 b = sys.argv[1]
-pistes = []
+pistes = []   # un bloc par piste du projet, le tempo dans le premier
 for canal, (nom, hauteur) in enumerate((("Basse", 40), ("Nappe", 64))):
-    corps = b"\x00\xff\x03" + bytes([len(nom)]) + nom.encode()
+    corps = (b"\x00\xff\x51\x03\x07\xa1\x20" if canal == 0 else b"") + b"\x00\xff\x03" + bytes([len(nom)]) + nom.encode()
     corps += b"\x00" + bytes([0x90 | canal, hauteur, 100]) + b"\x8f\x00" + bytes([0x80 | canal, hauteur, 0]) + b"\x00\xff\x2f\x00"
     pistes.append(b"MTrk" + struct.pack(">I", len(corps)) + corps)
-tempo = b"\x00\xff\x51\x03\x07\xa1\x20\x00\xff\x2f\x00"
 os.makedirs(f"{b}/base/midi", exist_ok=True)
-open(f"{b}/base/midi/arrangement.mid", "wb").write(
-    b"MThd" + struct.pack(">IHHH", 6, 1, 3, 480) + b"MTrk" + struct.pack(">I", len(tempo)) + tempo + b"".join(pistes))
+open(f"{b}/base/midi/arrangement.mid", "wb").write(b"MThd" + struct.pack(">IHHH", 6, 1, 2, 480) + b"".join(pistes))
 basse = {"muted": False, "pan": -0.5, "sends": [0.3, 0.0], "solo": False, "volume": 0.5, "trimDb": 6.0, "invertPhase": True}
 nappe = {"muted": True, "pan": 0.0, "sends": [0.0, 0.0], "solo": True, "volume": 1.0}
 effets = [{"type": "compressor", "parameters": {}}, {"type": "reverb", "parameters": {}, "enabled": False}]

@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -179,6 +180,40 @@ VSM_TEST(the_loader_streams_what_is_long_and_keeps_what_is_short) {
 
     std::filesystem::remove(court);
     std::filesystem::remove(long_);
+}
+
+// D559.3 — LES CANAUX DU FICHIER, rendus par le chargeur, en mémoire comme en diffusion : le magasin rend toujours deux
+// canaux, et l'import écrivait « 2 » en dur — un fichier mono passait pour stéréo dans le projet.
+namespace {
+std::string ecrireMono16(const std::string& nom, int64_t trames, int frequence) {
+    const auto chemin = std::filesystem::temp_directory_path() / nom;
+    std::ofstream f(chemin, std::ios::binary);
+    const auto u32 = [&f](uint32_t v) { f.put(char(v & 0xFF)); f.put(char((v >> 8) & 0xFF)); f.put(char((v >> 16) & 0xFF)); f.put(char(v >> 24)); };
+    const auto u16 = [&f](uint16_t v) { f.put(char(v & 0xFF)); f.put(char(v >> 8)); };
+    const auto octets = static_cast<uint32_t>(trames * 2);
+    f.write("RIFF", 4); u32(36 + octets); f.write("WAVEfmt ", 8); u32(16); u16(1); u16(1);
+    u32(static_cast<uint32_t>(frequence)); u32(static_cast<uint32_t>(frequence * 2)); u16(2); u16(16);
+    f.write("data", 4); u32(octets);
+    for (int64_t i = 0; i < trames; ++i) u16(static_cast<uint16_t>(static_cast<int16_t>((i % 100) * 100)));
+    return chemin.string();
+}
+} // namespace
+
+VSM_TEST(the_loader_reports_how_many_channels_the_file_has) {
+    const std::string stereo = ecrireFichierReperable("vsm-d559-stereo.wav", 4800, 48000.0);
+    const std::string mono = ecrireMono16("vsm-d559-mono.wav", 4800, 48000);
+    const std::string monoLong = ecrireMono16("vsm-d559-mono-long.wav", static_cast<int64_t>(48000.0 * (kStreamAboveSeconds + 1.0)), 48000);
+    const auto s = loadAudioTrack(stereo, 48000.0);
+    const auto m = loadAudioTrack(mono, 48000.0);
+    const auto ml = loadAudioTrack(monoLong, 48000.0);
+    VSM_ASSERT(s.success && m.success && ml.success);
+    VSM_ASSERT_EQ(s.fileChannels, 2);
+    VSM_ASSERT_EQ(m.fileChannels, 1);
+    VSM_ASSERT(ml.streamed);   // le chemin de la diffusion, lui aussi
+    VSM_ASSERT_EQ(ml.fileChannels, 1);
+    std::filesystem::remove(stereo);
+    std::filesystem::remove(mono);
+    std::filesystem::remove(monoLong);
 }
 
 VSM_TEST(streamed_store_resamples_like_the_resident_path) {

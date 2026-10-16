@@ -9796,7 +9796,9 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
     piste.audio.path = relatif.toStdString();
     piste.audio.sampleRate = sr;
     piste.audio.frames = lu.source->frames();
-    piste.audio.channels = 2;
+    // D559.3 : LES CANAUX DU FICHIER, et non « 2 » en dur — un fichier mono passait pour stéréo, et « Gauche et
+    // droite échangées » s'y offrait sans rien avoir à échanger.
+    piste.audio.channels = lu.fileChannels > 0 ? lu.fileChannels : 2;
 
     vsm::sequencer::Clip clip;
     clip.startTick = std::max<vsm::midi::Tick>(0, tick);

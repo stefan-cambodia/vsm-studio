@@ -54,6 +54,7 @@ AudioTrackLoadResult loadAudioTrack(const std::string& path, double sessionSampl
                     result.resampled = store->resampled();
                     result.streamed = true;
                     result.residentBytes = store->residentBytes();
+                    result.fileChannels = entete.reader->isStereo() ? 2 : 1;   // D559.3
                     result.source = std::move(source);
                     result.success = true;
                     return result;
@@ -77,6 +78,7 @@ AudioTrackLoadResult loadAudioTrack(const std::string& path, double sessionSampl
     }
 
     result.fileSampleRate = lu.buffer.sampleRate;
+    result.fileChannels = lu.buffer.isStereo() ? 2 : 1;   // D559.3
     auto source = std::make_shared<vsm::audio::engine::AudioTrackSource>();
 
     const bool memeFrequence = std::abs(lu.buffer.sampleRate - sessionSampleRate) < 1e-6;

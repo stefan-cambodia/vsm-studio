@@ -42697,3 +42697,47 @@ rouge sous le mutant sans échange, « 0,05 vs −0,05 »), `interchange` 339 (l
 fichiers de l'application compilent (objets seuls : la série de D558 tournait sur le binaire, qu'une édition des liens
 aurait remplacé). **Pas encore vérifiés** : le binaire de D559, ses trois bancs (`lever-solos-muets.sh`,
 `console-a-zero.sh`, `canaux-echanges.sh`, écrits, jamais lancés), les photos des menus, l'audit des menus.
+
+**LA SÉRIE DE D558 (binaire de D558, qui porte D557)** — le 16/10, de 7 h 04 à 8 h 00 : **103 bancs, 103 verts**,
+préférences identiques ; le seul rouge est l'avertissement d'écran verrouillé à la fin. Le verrou a été relevé toutes
+les dix secondes, et recoupé avec l'heure de fin de chaque banc : session ouverte de 7 h 04 à 7 h 10, de 7 h 14 à
+7 h 26, de 7 h 37 à 7 h 45, de 7 h 46 à 7 h 54. **Verts écran allumé**, eux qui rougissaient sous verrou en D555 et D556 :
+`accords.sh`, les quatre photos de boîte modale, `fader-console.sh`, `liste-editer.sh`, `piano-roll-piste-choisie.sh`,
+`pianoroll-bord.sh`, `selection-au-bord.sh` — c'était l'environnement. **Verts sous un verrou récent seulement** :
+`montage-en-chaine.sh`, `aimant-glisser.sh`, `dispositions.sh`, `glisser-contenu.sh`, `arrangement-defile.sh`,
+`vumetre-console.sh` — à revoir écran allumé, sans soupçon particulier. L'audit des menus, cette fois, ne trouve aucune
+muette : les deux de 6 h 46 étaient bien l'environnement.
+
+### Phase D559.1 — lever tous les solos et tous les muets (16/10/2026) — FAITE
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | 2 solos et 2 muets comptés ; levés, rejoués : 0 ; les muets restent quand on lève les solos ; le solo PROTÉGÉ reste | **oui** |
+| 2 | par l'application | `tools/lever-solos-muets.sh` (A et B en solo, C muette, D muette et protégée) : le menu « (2) » et « (2) » ; solos levés : **A: B: C:M D:MP**, dit, et l'export **identique** (−25,18 dBFS avant et après — le témoin qui dit que les muets n'ont pas bougé) ; muets levés : **A: B: C: D:P**, l'export à **−20,68** ; Ctrl+Z ; après, « (0) [grisée] » l'un et l'autre | **oui** |
+| 3 | le témoin du banc | le binaire de D558 : (1), (2), (3), (5) **rouges** — et (4), d'abord VERT : Ctrl+Z après un geste qui n'a rien fait rend le départ (la leçon de D555.2) ; il exige désormais le geste au journal, et rougit | **oui** |
+| 4 | le menu dans les deux langues | photographié : « Lever tous les solos (1) » / « Clear all solos (1) », « Lever tous les muets (1) » / « Clear all mutes (1) » ; l'audit des menus ne les joue pas — grisées dans ses deux états, son projet n'ayant ni solo ni muet | **oui** |
+
+### Phase D559.2 — remettre la console à zéro (16/10/2026) — FAITE
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | deux tranches remises, inserts et leur état gardés ; rejoué : 0. **Rouge** sur le mutant qui oublie les départs (« 0,25 != 0 ») | **oui** |
+| 2 | par l'application | `tools/console-a-zero.sh` : la question dit « Les inserts restent (2) » ; oui → **v1 p0 -- t0 nor d0/0 [compressor,reverb(off)]** et la Nappe neutre, « 2 tranche(s) remise(s) à zéro, 2 insert(s) laissé(s) » ; non → rien ; Ctrl+Z → la console d'avant ; après, « (0 tranche(s))… [grisée] » | **oui** |
+| 3 | le témoin et le menu | le binaire de D558 : les cinq **rouges** ; photographié « Remettre la console à zéro (2 tranche(s))… » / « Reset the mixer (2 channel(s))… » — le compte AVANT les points de suspension, la forme des entrées qui ouvrent une fenêtre (la garde des citations ne reconnaissait pas l'ordre inverse) | **oui** |
+
+### Phase D559.3 — échanger gauche et droite d'un clip audio (16/10/2026) — FAITE
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `audio/` | la portée réelle (`spansFromTrack` puis le mixage) joue la gauche à droite ; le témoin sans échange, à sa place. **Rouge** sur le mutant sans échange (« 0,05 vs −0,05 ») | **oui** |
+| 2 | `interchange` | `swapChannels` écrit seulement s'il est vrai, relu jusqu'au modèle, et le fichier passe en version 3 | **oui** |
+| 3 | par l'export | `tools/canaux-echanges.sh`, un la à gauche, le silence à droite : témoin **−15,06 / −144,47** dBFS ; échangé, enregistré, rouvert, exporté : **−144,48 / −15,06** ; le projet « oui v3 », Ctrl+Z « non v2 » | **oui** |
+| 4 | un fichier mono | l'entrée grisée — voir ci-dessous ; le binaire de D558 : (2) à (4) **rouges** | **oui** |
+
+**TROUVÉ PAR CE BANC : UN FICHIER MONO IMPORTÉ ÉTAIT DÉCLARÉ STÉRÉO.** Le premier passage trouvait l'entrée ACTIVE sur un
+clip mono. Le projet enregistré disait `"channels": 2` pour un fichier qu'un lecteur indépendant (`soundfile`) lit à
+**un** canal : l'import (« Poser un échantillon ») écrivait `audio.channels = 2` en dur, le magasin rendant toujours deux
+canaux. Le champ n'était lu par personne — d'où le silence. Le chargeur rend désormais les canaux du FICHIER
+(`AudioTrackLoadResult::fileChannels`, en mémoire comme en diffusion, test `audio/` sur un mono de chaque sorte), et
+l'import les écrit. **Nommé, non fait** : un projet enregistré avant D559 garde son « 2 » — le recompter à l'ouverture est
+un geste à part ; les reports en audio et les gels, qui écrivent eux-mêmes leurs fichiers en stéréo, disent vrai.
