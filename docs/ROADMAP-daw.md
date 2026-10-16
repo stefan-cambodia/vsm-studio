@@ -42654,3 +42654,36 @@ C++ 494 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE DIX-NEUVIÈME AUDIT (D558) EST CLOS** : poser un repère à la tête, la tête à la fin de la sélection, la tête d'une
 attaque à l'autre — à chaque tour d'une boucle. **LA SÉRIE COMPLÈTE**, sur le binaire de D558 (qui porte D557), est
 lancée à la suite ; son résultat s'écrit avec la phase suivante.
+
+### Phase D559 — un vingtième audit : lever tous les solos et tous les muets, remettre la console à zéro, échanger gauche et droite d'un clip (16/10/2026)
+
+*Écrite le 16/10 à 7 h 06, D558 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D558, par identifiant et par libellé.** La console de Cubase et son menu *Audio ▸
+Process*, rapprochés de nos menus Piste et Mixage : **0 pour lever TOUS les solos** — « Plus aucun solo » existe, mais
+c'est le solo exclusif qu'on relâche, offert seulement quand la piste choisie est la SEULE en solo ; trois pistes en
+solo se relâchent une à une (*Deactivate All Solo*) ; **0 pour lever tous les muets** (*Deactivate All Mute*), ni
+libellé ni identifiant (`unmute`, `clearMute`) ; **0 pour remettre la console à zéro** (*Reset Mixer*) — « 0 dB
+(remettre) » vaut pour le gain d'UN clip, et les instantanés de D535.2 rappellent un état PRIS, pas l'état neutre ;
+**0 pour échanger les canaux d'un clip audio** (*Stereo Flip*, mode « échanger ») — un clip sait inverser sa phase
+(D17), pas permuter gauche et droite, ni par libellé ni par identifiant (`swap`, `flip`). **Trouvé et écarté** : le
+solo exclusif, le solo protégé, l'inversion de phase d'un clip et d'une piste — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D559.1 | **Lever tous les solos, tous les muets** — *Deactivate All Solo / Mute* | *Mixage ▸ Lever tous les solos (N)* et *Lever tous les muets (N)* : toutes les pistes (groupes et VCA compris) perdent leur solo, ou leur muet ; le compte dit combien ; grisées à zéro ; un pas chacune ; le solo PROTÉGÉ (D30.1) n'est pas un solo et reste ; mesuré par le projet relu et l'export (ce qui sonne) |
+| D559.2 | **Remettre la console à zéro** — *Reset Mixer* | *Mixage ▸ Remettre la console à zéro…* : après confirmation, chaque tranche revient à l'état d'une piste neuve — volume 0 dB, panoramique au centre, ni muet ni solo, trim 0, polarité normale, départs à zéro ; les INSERTS restent, et c'est dit ; le compte de tranches changées dit ; un pas ; mesuré par le projet relu |
+| D559.3 | **Échanger gauche et droite d'un clip audio** — *Stereo Flip (Swap)* | Clic droit sur un clip audio, *Gauche et droite échangées* (case cochée, comme « Phase inversée ») : le clip joue son canal gauche à droite et l'inverse, sur toute la sélection ; enregistré dans le projet ; un pas ; mesuré par l'EXPORT (un fichier dont la gauche porte un son et la droite le silence : après, la gauche se tait et la droite sonne) — le contrat de D21, la lecture et l'export passant par la même source |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D559.1.** Le menu MIXAGE, et non Piste : ces deux gestes portent sur toutes les pistes, pas sur la choisie. Pas de
+  touche : Cubase n'en donne pas par défaut, et la table n'en exige que pour ses propres commandes.
+- **D559.2.** Les INSERTS restent : retirer une chaîne d'effets est un autre geste, que « remettre à zéro » ne laisse
+  pas deviner ; leur état (actif, contourné) aussi. Une confirmation, parce que le geste touche toutes les tranches d'un
+  coup — mais il reste annulable. Les bus de départ et le master gardent leur réglage : ce sont les TRANCHES de piste
+  qu'on remet à zéro (un master à 0 dB n'est pas un état neutre pour une chaîne de mastering).
+- **D559.3.** Le champ du clip se pose APRÈS les autres (la règle positionnelle de `Clip`), écrit dans le projet
+  seulement s'il est vrai. Un clip MONO n'a rien à échanger : l'entrée y est grisée. L'échange se fait à la source
+  (`AudioTrackSource`), là où la phase s'inverse déjà : lecture et export l'entendent ensemble.
+
+**L'ORDRE, TRANCHÉ ICI.** D559.1 d'abord (le plus petit), puis D559.2, puis D559.3.
