@@ -869,6 +869,10 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
             const float dB = clip.gain > 0.0f ? 20.0f * std::log10(clip.gain) : -96.0f;
             menu.addSubMenu(tr(u8"Gain du clip (%1 dB)").replace("%1", juce::String(dB >= 0.0f ? "+" : "") + juce::String(dB, 1)), gain);
             menu.addItem(57, tr(u8"Phase invers\u00e9e"), true, clip.invertPhase);
+            // D559.3 : GAUCHE ET DROITE ÉCHANGÉES, cochée comme la phase ; grisée pour un fichier mono, qui n'a rien
+            // à échanger.
+            menu.addItem(82, tr(u8"Gauche et droite échangées"), project_->tracks[piste].audio.channels >= 2,
+                         clip.swapChannels);
         }
         // D54 : LA HAUTEUR DU CLIP — l'élément que D21 avait reporté. Même
         // forme que le gain, et pour la même raison : le geste est « un
@@ -2175,6 +2179,20 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             ClipSelection cibles = selection_;
             cibles.insert(clipId);
             for (auto& t : project_->tracks) toggleClipPhase(t.clips, cibles);
+            break;
+        }
+        case 82: {   // D559.3 : sur toute la sélection, comme la phase
+            if (onEditStarted) onEditStarted(u8"Gauche et droite échangées");
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            size_t echanges = 0;
+            for (auto& t : project_->tracks) {
+                toggleClipChannelSwap(t.clips, cibles);
+                for (const auto& c : t.clips)
+                    if (cibles.count(c.id) > 0 && c.swapChannels) ++echanges;
+            }
+            std::fputs(("VSM_CANAUX_ECHANGES : " + std::to_string(echanges) + " clip(s) gauche/droite \xc3\xa9" "chang\xc3\xa9" "s\n").c_str(),
+                       stderr);
             break;
         }
         case 60: case 61: case 62: case 63: case 64: case 65: case 66: {

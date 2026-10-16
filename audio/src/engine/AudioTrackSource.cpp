@@ -189,8 +189,10 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                     const float gain = signeW * fadeGain(clip, dansLeClip, safetyFadeFrames)
                                        * envelopeGain(clip, static_cast<double>(dansLeClip));   // D545.1
                     const auto j = static_cast<size_t>(position + i - timelineStart);
-                    outLeft[j] += w.scratchL[static_cast<size_t>(i)] * gain;
-                    outRight[j] += w.scratchR[static_cast<size_t>(i)] * gain;
+                    const auto& gauche = clip.swapChannels ? w.scratchR : w.scratchL;   // D559.3
+                    const auto& droite = clip.swapChannels ? w.scratchL : w.scratchR;
+                    outLeft[j] += gauche[static_cast<size_t>(i)] * gain;
+                    outRight[j] += droite[static_cast<size_t>(i)] * gain;
                 }
                 position += n;
                 ecrits += n;
@@ -216,6 +218,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             // n'a pas encore livré : le trou est alors COMPTÉ (`cacheMisses`).
             float g = 0.0f, d = 0.0f;
             if (!magasin.frameAt(dansLeFichier, g, d)) continue;
+            if (clip.swapChannels) std::swap(g, d);   // D559.3
             const float gain = signe * fadeGain(clip, dansLeClip, safetyFadeFrames)
                                * envelopeGain(clip, static_cast<double>(dansLeClip));   // D545.1
             const auto j = static_cast<size_t>(position - timelineStart);
@@ -288,6 +291,7 @@ int AudioTrackSource::mixIntoAtSpeed(float* outLeft, float* outRight, double tim
             // « vinyle » de l'étirement : lire à une position fractionnaire
             // est exactement le même problème.
             kernel.stereoAt(lire, positionSource(positionMorceau), g, d);
+            if (clip.swapChannels) std::swap(g, d);   // D559.3
             const float gain = signe * fadeGain(clip, static_cast<int64_t>(std::llround(dansLeClip)),
                                                  safetyFadeFrames)
                                * envelopeGain(clip, dansLeClip);   // D545.1
@@ -334,7 +338,8 @@ void applyCrossfades(std::vector<AudioClipSpan>& spans, vsm::sequencer::FadeShap
         if (chevauchement == 0 && !precedent.warp && !suivant.warp && !precedent.reversed && !suivant.reversed
             && precedent.pitchSemitones == 0.0 && suivant.pitchSemitones == 0.0
             && suivant.sourceStartFrame == precedent.sourceStartFrame + precedent.lengthFrames
-            && precedent.gain == suivant.gain && precedent.invertPhase == suivant.invertPhase) {
+            && precedent.gain == suivant.gain && precedent.invertPhase == suivant.invertPhase
+            && precedent.swapChannels == suivant.swapChannels) {
             precedent.seamlessOut = true;
             suivant.seamlessIn = true;
         }
@@ -431,6 +436,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.fadeOutFrames = static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate));
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
+            span.swapChannels = clip.swapChannels;   // D559.3
             span.reversed = clip.reversed;
             // D54, et D544.3 : la transposition globale s'y ajoute — sauf en mode « réchantillonné ».
             span.pitchSemitones = clip.pitchSemitones
@@ -490,6 +496,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                 ? static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate)) : 0;
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
+            span.swapChannels = clip.swapChannels;   // D559.3
             span.reversed = clip.reversed;
             // D54, et D544.3 : la transposition globale s'y ajoute — sauf en mode « réchantillonné ».
             span.pitchSemitones = clip.pitchSemitones

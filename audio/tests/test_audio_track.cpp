@@ -115,6 +115,35 @@ VSM_TEST(reading_past_the_end_of_the_material_is_silence_not_noise) {
         VSM_ASSERT_NEAR(gauche[i], 0.0f, 1e-9);
 }
 
+// D559.3 — GAUCHE ET DROITE ÉCHANGÉES : le clip du modèle passe l'échange à sa portée (`spansFromTrack`), et le mixage
+// joue la gauche du fichier à droite et l'inverse ; sans l'échange, la gauche reste la gauche (le témoin).
+VSM_TEST(a_clip_with_swapped_channels_plays_left_on_the_right) {
+    Track piste;
+    piste.kind = Track::Kind::Audio;
+    piste.audio = {"samples/voix.wav", 1000.0, 1000, 2};
+    Clip clip;
+    clip.startTick = 0;
+    clip.length = 960;   // une seconde à 960 ticks par seconde : tout le fichier
+    clip.swapChannels = true;
+    piste.clips.push_back(clip);
+    const auto spans = spansFromTrack(piste, 1000.0, [](int64_t t) { return t / 960.0; });
+    VSM_ASSERT_EQ(spans.size(), size_t(1));
+    VSM_ASSERT(spans[0].swapChannels);
+
+    auto echange = materiauReperable(1000);
+    echange->clips = spans;
+    auto temoin = materiauReperable(1000);
+    temoin->clips = spans;
+    temoin->clips[0].swapChannels = false;
+    std::vector<float> g(100, 0.0f), d(100, 0.0f), gt(100, 0.0f), dt(100, 0.0f);
+    echange->mixInto(g.data(), d.data(), 0, 100);
+    temoin->mixInto(gt.data(), dt.data(), 0, 100);
+    VSM_ASSERT_NEAR(gt[50], 50.0f / 1000.0f, 1e-6);    // le témoin : la gauche est la gauche
+    VSM_ASSERT_NEAR(dt[50], -50.0f / 1000.0f, 1e-6);
+    VSM_ASSERT_NEAR(g[50], -50.0f / 1000.0f, 1e-6);    // échangées
+    VSM_ASSERT_NEAR(d[50], 50.0f / 1000.0f, 1e-6);
+}
+
 VSM_TEST(an_audio_track_without_a_clip_plays_its_whole_file) {
     // La même règle que pour une piste MIDI : « pas de clip » veut dire « pas
     // de découpe », pas « rien ».

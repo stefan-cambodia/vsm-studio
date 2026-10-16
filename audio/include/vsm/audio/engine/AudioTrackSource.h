@@ -105,6 +105,8 @@ struct AudioClipSpan {
     /// qui connaît la carte d'étirement, la boucle et le sens de lecture ; le mixage n'a qu'à la lire.
     std::vector<std::pair<double, float>> gainCurve;
     bool invertPhase = false;
+    /// D559.3 : gauche et droite échangées — lues ainsi par les trois chemins de mixage.
+    bool swapChannels = false;
     /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`
     /// en un miroir du matériau et une fenêtre convertie.
     bool reversed = false;

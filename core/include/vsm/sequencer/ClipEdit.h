@@ -140,6 +140,8 @@ float normalizeGainFor(float peak, double targetDbfs);
 
 /// Inverse la phase des clips sélectionnés (bascule).
 void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection);
+/// D559.3 : échanger gauche et droite des clips choisis — une bascule PAR clip, comme la phase.
+void toggleClipChannelSwap(std::vector<Clip>& clips, const ClipSelection& selection);
 
 /// D54 : règle la HAUTEUR des clips audio sélectionnés, en demi-tons.
 ///

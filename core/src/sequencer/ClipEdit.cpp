@@ -168,6 +168,12 @@ void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection) {
         if (selected(selection, clip)) clip.invertPhase = !clip.invertPhase;
 }
 
+void toggleClipChannelSwap(std::vector<Clip>& clips, const ClipSelection& selection) {
+    if (selection.empty()) return;
+    for (auto& clip : clips)
+        if (selected(selection, clip)) clip.swapChannels = !clip.swapChannels;
+}
+
 bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
                           Tick materialEnd, Tick& startTick, Tick& endTick) {
     bool trouve = false;
@@ -817,6 +823,7 @@ ClipJoin joinClips(std::vector<Clip>& clips, const ClipSelection& selection, Tic
         if (a.warpMode != WarpMode::Off || b.warpMode != WarpMode::Off) return false;
         if (a.muted != b.muted || a.reversed != b.reversed) return false;
         if (a.invertPhase != b.invertPhase || a.gain != b.gain) return false;
+        if (a.swapChannels != b.swapChannels) return false;   // D559.3 : deux sons différents
         // POUR L'AUDIO, la fenêtre du FICHIER doit se prolonger aussi : c'est
         // la même exigence, dans l'unité du matériau. Un demi-échantillon de
         // tolérance à 96 kHz, soit ce qu'un aller-retour en ticks peut coûter.

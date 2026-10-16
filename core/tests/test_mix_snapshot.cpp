@@ -148,3 +148,47 @@ VSM_TEST(un_bus_retire_l_est_aussi_des_instantanes) {
     VSM_ASSERT(p.tracks[0].sendLevels == (std::vector<float>{0.5f}));
     VSM_ASSERT_EQ(p.tracks[1].sendLevels.size(), static_cast<size_t>(0));   // rien à effacer : rien d'inventé
 }
+
+// D559.1 — LEVER TOUS LES SOLOS, TOUS LES MUETS (*Deactivate All Solo / Mute*) : chaque piste perd le sien, le compte dit
+// combien ; le solo PROTÉGÉ (D30.1) n'est pas un solo et reste ; rejoué, zéro.
+VSM_TEST(clearing_all_solos_and_mutes_counts_them_and_keeps_solo_safe) {
+    Project p = deuxPistes();
+    p.tracks.resize(4);
+    p.tracks[0].solo = true;
+    p.tracks[1].solo = true;
+    p.tracks[2].muted = true;
+    p.tracks[3].soloSafe = true;
+    p.tracks[3].muted = true;
+    VSM_ASSERT_EQ(countSoloedTracks(p), size_t(2));
+    VSM_ASSERT_EQ(countMutedTracks(p), size_t(2));
+    VSM_ASSERT_EQ(clearAllSolos(p), size_t(2));
+    VSM_ASSERT(!p.tracks[0].solo && !p.tracks[1].solo);
+    VSM_ASSERT(p.tracks[2].muted);   // lever les solos ne touche pas aux muets
+    VSM_ASSERT(p.tracks[3].soloSafe);
+    VSM_ASSERT_EQ(clearAllSolos(p), size_t(0));
+    VSM_ASSERT_EQ(clearAllMutes(p), size_t(2));
+    VSM_ASSERT(!p.tracks[2].muted && !p.tracks[3].muted);
+    VSM_ASSERT_EQ(countMutedTracks(p), size_t(0));
+}
+
+// D559.2 — REMETTRE LA CONSOLE À ZÉRO (*Reset Mixer*) : chaque tranche revient à l'état d'une piste neuve — volume 0 dB,
+// panoramique au centre, ni muet ni solo, trim 0, polarité normale, départs à zéro ; les INSERTS restent, leur état
+// compris ; le compte dit les tranches changées ; rejoué, zéro.
+VSM_TEST(resetting_the_console_brings_every_strip_back_to_a_new_track_but_keeps_inserts) {
+    Project p = deuxPistes();
+    touteLaConsoleBouge(p.tracks[1]);
+    p.tracks[0].effects[1].enabled = false;   // un insert contourné
+    VSM_ASSERT_EQ(countTracksToReset(p), size_t(2));
+    VSM_ASSERT_EQ(resetConsole(p), size_t(2));
+    for (const auto& t : p.tracks) {
+        VSM_ASSERT_EQ(t.volume, 1.0f);
+        VSM_ASSERT_EQ(t.pan, 0.0f);
+        VSM_ASSERT(!t.muted && !t.solo && !t.invertPhase);
+        VSM_ASSERT_EQ(t.inputTrimDb, 0.0f);
+        for (const float d : t.sendLevels) VSM_ASSERT_EQ(d, 0.0f);
+    }
+    VSM_ASSERT_EQ(p.tracks[0].effects.size(), size_t(2));   // les inserts restent
+    VSM_ASSERT(!p.tracks[0].effects[1].enabled);              // et leur état
+    VSM_ASSERT_EQ(countTracksToReset(p), size_t(0));
+    VSM_ASSERT_EQ(resetConsole(p), size_t(0));
+}

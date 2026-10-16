@@ -1067,6 +1067,28 @@ VSM_TEST(warp_survives_the_trip_through_the_model_and_bumps_the_version_only_whe
     VSM_ASSERT_EQ(temoin.document.tracks[0].clips[0].warpMode, 3);
 }
 
+// D559.3 — GAUCHE ET DROITE ÉCHANGÉES, écrit seulement quand c'est vrai ; et le fichier passe à la version qui porte
+// les clips étirés, qu'un lecteur ancien refuse au lieu de jouer les canaux dans l'ordre du fichier.
+VSM_TEST(a_clip_with_swapped_channels_survives_the_trip_and_raises_the_version) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.length = 960; clip.sourceLength = 960;
+    project.tracks[0].clips.push_back(clip);
+    const std::string sans = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(sans.find("swapChannels") == std::string::npos);
+    project.tracks[0].clips[0].swapChannels = true;
+    const JsonValue avec = projectDocumentToJson(documentFromProject(project));
+    VSM_ASSERT(avec.toString().find("\"swapChannels\"") != std::string::npos);
+    VSM_ASSERT_EQ(static_cast<int>(avec["version"].asNumber(0)), kProjectVersion);
+    const ProjectLoadResult relu = parseProjectDocument(avec.toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.tracks[0].clips[0].swapChannels);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].clips.empty() && rejoue.tracks[0].clips[0].swapChannels);   // jusqu'au MODÈLE
+}
+
 // D16.5 — LE VERROU D'UNE PISTE, écrit seulement quand il est mis.
 VSM_TEST(a_locked_track_survives_the_trip_and_an_unlocked_one_adds_nothing_to_the_file) {
     Project project = buildProject();

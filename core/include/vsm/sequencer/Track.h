@@ -269,6 +269,12 @@ struct Clip {
     /// joint plus ; il se COPIE (la copie naît déverrouillée). Il passe par le chemin du verrou de piste
     /// (D16.5) : mêmes gestes refusés, même refus dit. EN DERNIER, la règle de l'agrégat positionnel.
     bool locked = false;
+
+    /// D559.3 : GAUCHE ET DROITE ÉCHANGÉES (*Stereo Flip* de Cubase, mode « échanger ») — le clip joue le canal gauche du
+    /// fichier à droite, et l'inverse. L'échange se fait à la SOURCE (`AudioTrackSource`), là où la phase s'inverse
+    /// déjà : la lecture et l'export l'entendent ensemble (le contrat de D21). Sans effet sur un fichier mono. EN
+    /// DERNIER, la règle de l'agrégat positionnel.
+    bool swapChannels = false;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

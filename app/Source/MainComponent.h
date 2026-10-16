@@ -1144,6 +1144,10 @@ private:
         /// D557.3 : annuler et rétablir un zoom de l'arrangement.
         kMenuViewZoomUndo,
         kMenuViewZoomRedo,
+        /// D559.1 : lever tous les solos, tous les muets ; D559.2 : remettre la console à zéro.
+        kMenuMixClearSolos,
+        kMenuMixClearMutes,
+        kMenuMixResetConsole,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1599,6 +1603,10 @@ private:
     void teteALaFinDeLaSelection();
     /// D558.3 : la tête à la prochaine (`suivante`) ou précédente attaque des clips audio de la piste choisie.
     void teteALAttaque(bool suivante);
+    /// D559.1 : lever le solo (`solos`) ou le muet de toutes les pistes, dit ; un pas.
+    void leverToutesLesPistes(bool solos);
+    /// D559.2 : remettre la console à zéro, après confirmation (`demanderOuiNon`) ; les inserts restent, dit ; un pas.
+    void remettreLaConsoleAZero();
     /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).
     /// Rien de choisi : faux, et la boîte `titre` le DIT.
     bool bornesDeLaSelection(vsm::midi::Tick& debut, vsm::midi::Tick& fin, bool& clips, const juce::String& titre);

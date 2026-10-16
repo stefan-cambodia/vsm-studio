@@ -42672,7 +42672,7 @@ solo exclusif, le solo protégé, l'inversion de phase d'un clip et d'une piste 
 | # | Fonction (Cubase) | Critère de réception |
 |---|---|---|
 | D559.1 | **Lever tous les solos, tous les muets** — *Deactivate All Solo / Mute* | *Mixage ▸ Lever tous les solos (N)* et *Lever tous les muets (N)* : toutes les pistes (groupes et VCA compris) perdent leur solo, ou leur muet ; le compte dit combien ; grisées à zéro ; un pas chacune ; le solo PROTÉGÉ (D30.1) n'est pas un solo et reste ; mesuré par le projet relu et l'export (ce qui sonne) |
-| D559.2 | **Remettre la console à zéro** — *Reset Mixer* | *Mixage ▸ Remettre la console à zéro…* : après confirmation, chaque tranche revient à l'état d'une piste neuve — volume 0 dB, panoramique au centre, ni muet ni solo, trim 0, polarité normale, départs à zéro ; les INSERTS restent, et c'est dit ; le compte de tranches changées dit ; un pas ; mesuré par le projet relu |
+| D559.2 | **Remettre la console à zéro** — *Reset Mixer* | *Mixage ▸ Remettre la console à zéro (N tranche(s))…* : après confirmation, chaque tranche revient à l'état d'une piste neuve — volume 0 dB, panoramique au centre, ni muet ni solo, trim 0, polarité normale, départs à zéro ; les INSERTS restent, et c'est dit ; le compte de tranches changées dit ; un pas ; mesuré par le projet relu |
 | D559.3 | **Échanger gauche et droite d'un clip audio** — *Stereo Flip (Swap)* | Clic droit sur un clip audio, *Gauche et droite échangées* (case cochée, comme « Phase inversée ») : le clip joue son canal gauche à droite et l'inverse, sur toute la sélection ; enregistré dans le projet ; un pas ; mesuré par l'EXPORT (un fichier dont la gauche porte un son et la droite le silence : après, la gauche se tait et la droite sonne) — le contrat de D21, la lecture et l'export passant par la même source |
 
 **CE QUI EST TRANCHÉ AVANT LE CODE.**
@@ -42687,3 +42687,13 @@ solo exclusif, le solo protégé, l'inversion de phase d'un clip et d'une piste 
   (`AudioTrackSource`), là où la phase s'inverse déjà : lecture et export l'entendent ensemble.
 
 **L'ORDRE, TRANCHÉ ICI.** D559.1 d'abord (le plus petit), puis D559.2, puis D559.3.
+
+**ÉTAT AU COMMIT DE 7 h 57, DEMANDÉ PAR L'UTILISATEUR — D559 N'EST PAS CLOSE.** Écrits : `countSoloedTracks`,
+`clearAllSolos`, `clearAllMutes`, `countTracksToReset`, `resetConsole` (`core/`, `MixSnapshot.h`), le champ
+`Clip::swapChannels` et `toggleClipChannelSwap`, leur passage au format (`swapChannels`, version 3) et aux trois chemins
+de mixage d'`AudioTrackSource` ; les entrées du menu Mixage et du menu du clip audio. **Vérifiés** : `core/` 496 (dont 2
+tests neufs, rouges sous le mutant qui oublie les départs, « 0,25 != 0 »), `audio/` 1 340 (l'échange par la portée réelle,
+rouge sous le mutant sans échange, « 0,05 vs −0,05 »), `interchange` 339 (l'aller-retour et la version 3). Les trois
+fichiers de l'application compilent (objets seuls : la série de D558 tournait sur le binaire, qu'une édition des liens
+aurait remplacé). **Pas encore vérifiés** : le binaire de D559, ses trois bancs (`lever-solos-muets.sh`,
+`console-a-zero.sh`, `canaux-echanges.sh`, écrits, jamais lancés), les photos des menus, l'audit des menus.

@@ -179,6 +179,8 @@ struct ProjectClip {
     std::vector<std::pair<double, float>> gainEnvelope;
     /// D546.3 : la position verrouillée, écrite seulement si elle l'est. EN DERNIER, lui aussi.
     bool locked = false;
+    /// D559.3 : gauche et droite échangées, écrit seulement si vrai. EN DERNIER.
+    bool swapChannels = false;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

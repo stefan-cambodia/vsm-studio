@@ -5324,6 +5324,19 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             menu.addItem(kMenuMixMonoListen, tr(u8"\u00c9coute en mono (jamais dans un export)"), true,
                          audioEngine_.processGraph().masterBus().monoListen());
+            // D559.1-2 : LES GESTES DE TOUTE LA CONSOLE -- le compte dans le libellé, grisés à zéro.
+            {
+                const auto solos = vsm::sequencer::countSoloedTracks(project_);
+                const auto muets = vsm::sequencer::countMutedTracks(project_);
+                const auto aRemettre = vsm::sequencer::countTracksToReset(project_);
+                menu.addItem(kMenuMixClearSolos,
+                             tr(u8"Lever tous les solos (%1)").replace("%1", juce::String(static_cast<int>(solos))), solos > 0);
+                menu.addItem(kMenuMixClearMutes,
+                             tr(u8"Lever tous les muets (%1)").replace("%1", juce::String(static_cast<int>(muets))), muets > 0);
+                menu.addItem(kMenuMixResetConsole,
+                             tr(u8"Remettre la console à zéro (%1 tranche(s))…").replace("%1", juce::String(static_cast<int>(aRemettre))),
+                             aRemettre > 0);
+            }
             // D544.3 : LA TRANSPOSITION GLOBALE — cochée quand elle n'est pas nulle ; la fenêtre dit la valeur.
             menu.addItem(kMenuMixGlobalTranspose, tr(u8"Transposition globale…"), true,
                          project_.globalTransposeSemitones != 0);
@@ -5587,6 +5600,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuMixGlobalTranspose) { regleTranspositionGlobale(); return; }   // D544.3
+    if (menuItemID == kMenuMixClearSolos) { leverToutesLesPistes(true); return; }    // D559.1
+    if (menuItemID == kMenuMixClearMutes) { leverToutesLesPistes(false); return; }   // D559.1
+    if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixMonoListen) {
         const bool on = !audioEngine_.processGraph().masterBus().monoListen();
         audioEngine_.processGraph().masterBus().setMonoListen(on);
@@ -13406,6 +13422,59 @@ void MainComponent::teteALEvenement(bool suivant) {
     }
     seekAllViews(cible);
     std::fputs(("VSM_TETE_EVENEMENT : " + std::to_string(ici) + " -> " + std::to_string(cible) + " ticks\n").c_str(), stderr);
+}
+
+void MainComponent::leverToutesLesPistes(bool solos) {
+    // D559.1 : LEVER TOUS LES SOLOS, TOUS LES MUETS (*Deactivate All Solo / Mute*) -- toutes les pistes, groupes et VCA
+    // compris ; le solo PROTÉGÉ (D30.1) reste. La console, le moteur et la liste suivent le projet par le chemin de
+    // l'annulation (`rebuildFromProject`).
+    const size_t avant = solos ? vsm::sequencer::countSoloedTracks(project_) : vsm::sequencer::countMutedTracks(project_);
+    if (avant == 0) {
+        std::fputs((juce::String("VSM_CONSOLE : aucun ") + (solos ? "solo" : "muet") + juce::String::fromUTF8(u8" à lever\n"))
+                       .toRawUTF8(), stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    beginProjectEdit(solos ? juce::String::fromUTF8(u8"Lever tous les solos") : juce::String::fromUTF8(u8"Lever tous les muets"));
+    const size_t leves = solos ? vsm::sequencer::clearAllSolos(project_) : vsm::sequencer::clearAllMutes(project_);
+    rebuildFromProject(false);
+    std::fputs((juce::String("VSM_CONSOLE : ") + juce::String(static_cast<int>(leves)) + (solos ? " solo(s)" : " muet(s)")
+                + juce::String::fromUTF8(u8" levé(s)\n")).toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged((solos ? tr(u8"Solos levés : %1 piste(s)") : tr(u8"Muets levés : %1 piste(s)"))
+                                       .replace("%1", juce::String(static_cast<int>(leves))));
+}
+
+void MainComponent::remettreLaConsoleAZero() {
+    // D559.2 : REMETTRE LA CONSOLE À ZÉRO (*Reset Mixer*) -- chaque tranche de piste à l'état d'une piste neuve, les
+    // inserts gardés ; une confirmation, parce que le geste touche toutes les tranches d'un coup ; un pas.
+    const size_t aRemettre = vsm::sequencer::countTracksToReset(project_);
+    if (aRemettre == 0) {
+        std::fputs("VSM_CONSOLE : rien \xc3\xa0 remettre \xc3\xa0 z\xc3\xa9ro\n", stderr);
+        return;
+    }
+    size_t inserts = 0;
+    for (const auto& t : project_.tracks) inserts += t.effects.size();
+    demanderOuiNon(
+        juce::AlertWindow::QuestionIcon, tr(u8"Remettre la console à zéro"),
+        tr(u8"%1 tranche(s) reviendront à 0 dB, au centre, sans muet ni solo, sans trim ni polarité inversée, leurs départs "
+           u8"à zéro. Les inserts restent (%2).")
+            .replace("%1", juce::String(static_cast<int>(aRemettre)))
+            .replace("%2", juce::String(static_cast<int>(inserts))),
+        tr(u8"Remettre à zéro"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
+        juce::ModalCallbackFunction::create([this, inserts](int resultat) {
+            if (resultat != 1) {
+                std::fputs("VSM_CONSOLE : remise \xc3\xa0 z\xc3\xa9ro refus\xc3\xa9" "e\n", stderr);
+                return;
+            }
+            beginProjectEdit(juce::String::fromUTF8(u8"Remettre la console à zéro"));
+            const size_t remises = vsm::sequencer::resetConsole(project_);
+            rebuildFromProject(false);
+            std::fputs(("VSM_CONSOLE : " + std::to_string(remises) + " tranche(s) remise(s) \xc3\xa0 z\xc3\xa9ro, "
+                        + std::to_string(inserts) + " insert(s) laiss\xc3\xa9(s)\n").c_str(), stderr);
+            if (pianoRoll_.onStatusChanged)
+                pianoRoll_.onStatusChanged(tr(u8"Console remise à zéro : %1 tranche(s) ; les inserts restent")
+                                               .replace("%1", juce::String(static_cast<int>(remises))));
+        }));
 }
 
 void MainComponent::poserUnRepereALaTete() {

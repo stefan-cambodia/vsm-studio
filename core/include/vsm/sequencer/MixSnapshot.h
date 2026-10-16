@@ -49,4 +49,20 @@ bool removeMixSnapshot(Project& project, const std::string& name);
 /// retire le bus de `Project::sends` elle-même.
 void eraseSendLevelEverywhere(Project& project, size_t bus);
 
+/// D559.1 — LEVER TOUS LES SOLOS, TOUS LES MUETS (*Deactivate All Solo / Mute* de Cubase). « Plus aucun solo » (D21.2)
+/// n'est que le solo exclusif relâché ; ceci lève celui de TOUTES les pistes — groupes et VCA compris. Le solo PROTÉGÉ
+/// (`soloSafe`, D30.1) n'est pas un solo : il reste. Les deux rendent combien de pistes ont perdu le leur.
+size_t countSoloedTracks(const Project& project);
+size_t countMutedTracks(const Project& project);
+size_t clearAllSolos(Project& project);
+size_t clearAllMutes(Project& project);
+
+/// D559.2 — REMETTRE LA CONSOLE À ZÉRO (*Reset Mixer* de Cubase) : chaque tranche de piste revient à l'état d'une piste
+/// neuve — volume 0 dB, panoramique au centre, ni muet ni solo, trim 0, polarité normale, départs à zéro (le vecteur
+/// garde sa taille). Les INSERTS restent, et leur état : retirer une chaîne d'effets est un autre geste. Les bus de
+/// départ et le master ne sont pas des tranches de piste et ne bougent pas. Rend le nombre de tranches CHANGÉES ;
+/// `countTracksToReset` le même compte sans rien toucher (le libellé du menu).
+size_t countTracksToReset(const Project& project);
+size_t resetConsole(Project& project);
+
 } // namespace vsm::sequencer

@@ -171,6 +171,12 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **La tête d'une attaque à l'autre** (D558.3). *Transport ▸ Tête : attaque suivante* (`Ctrl+Alt+N`) et *précédente* (`Ctrl+Alt+B`) posent la tête sur l'attaque suivante ou précédente des clips audio de la piste choisie — celles que *Créer des notes depuis les attaques* détecte, là où elles sonnent, à chaque tour d'un clip qui boucle. Un clip muet ou à l'envers ne compte pas ; une piste MIDI n'en a pas, et c'est dit.
 
+**Lever tous les solos, tous les muets** (D559.1). *Mixage ▸ Lever tous les solos* et *Lever tous les muets* rendent la parole à toutes les pistes d'un geste — groupes et VCA compris ; le libellé dit combien de pistes sont concernées. Le solo protégé (Alt+clic sur Solo) n'est pas un solo : il reste. Ctrl+Z annule chacun.
+
+**Remettre la console à zéro** (D559.2). *Mixage ▸ Remettre la console à zéro* remet chaque tranche de piste à l'état d'une piste neuve — 0 dB, au centre, sans muet ni solo, sans trim, polarité normale, départs à zéro —, après une question qui dit combien de tranches changeront. Les inserts restent, et leur état (actif ou contourné) aussi ; les bus de départ et le master ne bougent pas. Ctrl+Z rend la console d'avant.
+
+**Échanger gauche et droite d'un clip audio** (D559.3). Clic droit sur un clip audio, *Gauche et droite échangées* : le clip joue son canal gauche à droite et l'inverse — sur toute la sélection, à la lecture comme à l'export, et le projet le retient. L'entrée est grisée pour un fichier mono.
+
 **Annuler et rétablir un zoom** (D557.3). *Affichage ▸ Annuler le zoom* (`Alt+Z`) rend à l'arrangement la vue — zoom et défilement — d'avant le dernier zoom, et *Rétablir le zoom* (`Maj+Alt+Z`) y retourne. Un zoom neuf efface ce qui restait à rétablir ; un zoom qui ne change rien ne compte pas. La vue d'ouverture d'un projet ne s'annule pas.
 
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
