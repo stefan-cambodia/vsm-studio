@@ -4184,7 +4184,9 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::NavGoToEnd,
     vsm::interchange::ShortcutId::NavPreviousMarker,
     vsm::interchange::ShortcutId::NavNextMarker,
+    vsm::interchange::ShortcutId::TransportInsertMarker,   // D558.1
     vsm::interchange::ShortcutId::NavToSelection,
+    vsm::interchange::ShortcutId::NavToSelectionEnd,       // D558.2
     vsm::interchange::ShortcutId::LoopStartAtPlayhead,
     vsm::interchange::ShortcutId::LoopEndAtPlayhead,
     vsm::interchange::ShortcutId::NavPreviousBeat,
@@ -4193,8 +4195,10 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::NavNextBar,
     vsm::interchange::ShortcutId::NavPreviousEvent,   // D556.2
     vsm::interchange::ShortcutId::NavNextEvent,       // D556.2
+    vsm::interchange::ShortcutId::NavPreviousHitpoint,   // D558.3
+    vsm::interchange::ShortcutId::NavNextHitpoint,       // D558.3
 };
-static_assert(std::size(kCommandesDuTransport) == 22);   // D483, D553.2, D554.1, D555.1, D556.1-2 ; la plage réservée est gardée à l'aiguillage
+static_assert(std::size(kCommandesDuTransport) == 26);   // D483, D553.2, D554.1, D555.1, D556.1-2, D558 ; la plage réservée est gardée à l'aiguillage
 
 juce::StringArray MainComponent::getMenuBarNames() {
     // D483 : « Transport » entre Piste et Enregistrement, comme chez Cubase.
@@ -5083,7 +5087,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             using Id = vsm::interchange::ShortcutId;
             for (size_t i = 0; i < std::size(kCommandesDuTransport); ++i) {
                 const Id commande = kCommandesDuTransport[i];
-                if (i == 9 || i == 16) menu.addSeparator();   // D553.2-D556.1 : cinq entrées insérées aux rangs 1 à 5
+                // D558 : LES SÉPARATEURS TIENNENT À LEUR COMMANDE, plus à leur rang (« 9 » et « 16 » jusqu'ici) : chaque
+                // insertion de D553 à D556 avait dû les recompter, et celles de D558 les auraient décalés.
+                if (commande == Id::NavGoToStart || commande == Id::NavPreviousBeat) menu.addSeparator();
                 const auto* declaree = vsm::interchange::findShortcutCommand(commande);
                 juce::String libelle = declaree != nullptr ? tr(juce::String::fromUTF8(declaree->label)) : juce::String();
                 bool actif = true, coche = false;
@@ -10220,6 +10226,10 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         case Id::TransportPlayUntilNextMarker:     lireJusquAuRepereSuivant(); return true;       // D556.1
         case Id::NavNextEvent:                     teteALEvenement(true); return true;            // D556.2
         case Id::NavPreviousEvent:                 teteALEvenement(false); return true;           // D556.2
+        case Id::TransportInsertMarker:            poserUnRepereALaTete(); return true;           // D558.1
+        case Id::NavToSelectionEnd:                teteALaFinDeLaSelection(); return true;        // D558.2
+        case Id::NavNextHitpoint:                  teteALAttaque(true); return true;              // D558.3
+        case Id::NavPreviousHitpoint:              teteALAttaque(false); return true;             // D558.3
         // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
         // piano roll traitait ces deux touches lui-même, et elles n'arrivaient
         // ici que quand il n'avait PAS le focus -- pour y tomber dans le
@@ -13396,6 +13406,115 @@ void MainComponent::teteALEvenement(bool suivant) {
     }
     seekAllViews(cible);
     std::fputs(("VSM_TETE_EVENEMENT : " + std::to_string(ici) + " -> " + std::to_string(cible) + " ticks\n").c_str(), stderr);
+}
+
+void MainComponent::poserUnRepereALaTete() {
+    // D558.1 : UN REPÈRE À LA TÊTE, SANS BOÎTE (*Insert Marker*) -- on le pose en écoutant, on le nomme après. Le nom suit
+    // la langue de l'interface, et son numéro est le premier LIBRE : après le retrait de « Repère 2 », le suivant
+    // reprend 2.
+    const vsm::midi::Tick ici = transport_.currentTick();
+    for (const auto& m : project_.markers)
+        if (m.tick == ici) {
+            std::fputs(("VSM_REPERE_POSE : refus\xc3\xa9, un rep\xc3\xa8re est d\xc3\xa9j\xc3\xa0 \xc3\xa0 " + std::to_string(ici)
+                        + " ticks (\xc2\xab " + m.name + " \xc2\xbb)\n").c_str(), stderr);
+            if (pianoRoll_.onStatusChanged)
+                pianoRoll_.onStatusChanged(tr(u8"Un repère est déjà à la tête : « %1 »")
+                                               .replace("%1", juce::String::fromUTF8(m.name.c_str())));
+            return;
+        }
+    juce::String nom;
+    for (int n = 1;; ++n) {
+        nom = tr(u8"Repère %1").replace("%1", juce::String(n));
+        const std::string candidat = nom.toStdString();
+        if (std::none_of(project_.markers.begin(), project_.markers.end(),
+                         [&candidat](const vsm::sequencer::Marker& m) { return m.name == candidat; }))
+            break;
+    }
+    beginProjectEdit(juce::String::fromUTF8(u8"Poser un repère à la tête"));
+    project_.markers.push_back({ici, nom.toStdString()});
+    std::sort(project_.markers.begin(), project_.markers.end(),
+              [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) { return a.tick < b.tick; });
+    refreshMarkerViews();
+    std::fputs(("VSM_REPERE_POSE : \xc2\xab " + nom.toStdString() + " \xc2\xbb \xc3\xa0 " + std::to_string(ici) + " ticks ("
+                + std::to_string(project_.markers.size()) + " rep\xc3\xa8re(s))\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Repère « %1 » posé à la tête").replace("%1", nom));
+}
+
+void MainComponent::teteALaFinDeLaSelection() {
+    // D558.2 : LA FIN DE LA SÉLECTION (*Locate Selection End*), sœur de L -- les clips choisis de l'arrangement, à défaut
+    // les notes choisies au piano roll, l'ordre de L (D28.4). Rien de choisi : la ligne d'état le dit, la tête reste --
+    // pas de boîte pour un geste de navigation (la règle de D556.2).
+    vsm::midi::Tick fin = 0;
+    const bool clips = arrangement_.selectionEndTick(fin);
+    if (!clips && !pianoRoll_.selectionEndTick(fin)) {
+        std::fputs(("VSM_TETE_FIN_SELECTION : rien de choisi, la t\xc3\xaate reste \xc3\xa0 "
+                    + std::to_string(transport_.currentTick()) + "\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Rien n'est choisi : la tête reste où elle est."));
+        return;
+    }
+    seekAllViews(fin);
+    std::fputs(("VSM_TETE_FIN_SELECTION : " + std::to_string(fin) + " ticks (" + (clips ? "clips" : "notes") + ")\n").c_str(),
+               stderr);
+}
+
+void MainComponent::teteALAttaque(bool suivante) {
+    // D558.3 : D'UNE ATTAQUE À L'AUTRE (*Locate Next / Previous Hitpoint*) -- celles des clips audio NON muets de la
+    // piste choisie, lues dans le fichier au geste (`lireAttaquesDuClip`, D544.1) et posées où elles sonnent, à chaque
+    // tour d'une boucle (`clipAttackTicks`). Un clip à l'envers est écarté et COMPTÉ.
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto& track = project_.tracks[piste];
+    const juce::String nomPiste = juce::String::fromUTF8(track.name.c_str());
+    if (track.kind != vsm::sequencer::Track::Kind::Audio || track.audio.empty()) {
+        std::fputs(("VSM_TETE_ATTAQUE : \xc2\xab " + track.name + " \xc2\xbb n'est pas une piste audio\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"« %1 » n'est pas une piste audio : elle n'a pas d'attaques.").replace("%1", nomPiste));
+        return;
+    }
+    // La fin du matériau d'une piste audio : la durée de son fichier (la règle des gestes de clip voisins).
+    const vsm::midi::Tick finMateriau =
+        track.audio.sampleRate > 0.0 ? project_.secondsToTicks(track.audio.durationSeconds()) : 0;
+    std::vector<vsm::midi::Tick> instants;
+    size_t aLEnvers = 0, illisibles = 0;
+    for (const auto& clip : track.clips) {
+        if (clip.muted) continue;
+        if (clip.reversed) { ++aLEnvers; continue; }
+        std::vector<double> secondes, niveaux;
+        juce::String erreur;
+        if (!lireAttaquesDuClip(piste, clip.id, secondes, niveaux, erreur)) { ++illisibles; continue; }
+        const auto ticks = vsm::sequencer::clipAttackTicks(
+            clip, secondes, finMateriau, [this](double s) { return project_.secondsToTicks(s); },
+            [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); });
+        instants.insert(instants.end(), ticks.begin(), ticks.end());
+    }
+    std::sort(instants.begin(), instants.end());
+    instants.erase(std::unique(instants.begin(), instants.end()), instants.end());
+    const vsm::midi::Tick ici = transport_.currentTick();
+    vsm::midi::Tick cible = -1;
+    if (suivante) {
+        const auto it = std::upper_bound(instants.begin(), instants.end(), ici);
+        if (it != instants.end()) cible = *it;
+    } else {
+        const auto it = std::lower_bound(instants.begin(), instants.end(), ici);
+        if (it != instants.begin()) cible = *std::prev(it);
+    }
+    const std::string compte = std::to_string(instants.size()) + " attaque(s), " + std::to_string(aLEnvers)
+                               + " clip(s) \xc3\xa0 l'envers \xc3\xa9" "cart\xc3\xa9(s), " + std::to_string(illisibles)
+                               + " illisible(s)";
+    if (cible < 0) {
+        std::fputs(("VSM_TETE_ATTAQUE : aucune " + std::string(suivante ? "apr\xc3\xa8s" : "avant")
+                    + " la t\xc3\xaate, qui reste \xc3\xa0 " + std::to_string(ici) + " (" + compte + ")\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged((suivante ? tr(u8"Aucune attaque après la tête sur « %1 »")
+                                                 : tr(u8"Aucune attaque avant la tête sur « %1 »"))
+                                           .replace("%1", nomPiste));
+        return;
+    }
+    seekAllViews(cible);
+    std::fputs(("VSM_TETE_ATTAQUE : " + std::to_string(ici) + " -> " + std::to_string(cible) + " ticks (" + compte + ")\n").c_str(),
+               stderr);
 }
 
 void MainComponent::lireLaSelection() {

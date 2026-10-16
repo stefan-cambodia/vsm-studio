@@ -285,6 +285,16 @@ AttackNotes notesFromAttacks(const Clip& clip, const std::vector<double>& onsetS
                              const std::function<Tick(double)>& secondsToTicks,
                              const std::function<double(Tick)>& ticksToSeconds);
 
+/// D558.3 : LES ATTAQUES D'UN CLIP AUDIO, OÙ ELLES SONNENT — la tête s'y pose (*Locate Next / Previous Hitpoint*).
+/// Chaque attaque (secondes du FICHIER) au tick où le clip la joue : par sa carte d'étirement s'il suit le tempo, par
+/// le tempo sinon, comme `notesFromAttacks` ; et, ce que celle-ci ne fait pas, À CHAQUE TOUR d'un clip qui boucle
+/// (D5.2 : la fenêtre `sourceLength` rejouée, la lecture de `clipSourceSecondsAtTick`). Ce qui tombe hors de la
+/// fenêtre jouée est laissé. Un clip à l'envers ne rend rien : ses attaques ne sonnent pas où le fichier les met.
+/// Trié, sans doublon.
+std::vector<Tick> clipAttackTicks(const Clip& clip, const std::vector<double>& onsetSourceSeconds, Tick materialEnd,
+                                  const std::function<Tick(double)>& secondsToTicks,
+                                  const std::function<double(Tick)>& ticksToSeconds);
+
 /// D545.1 : LA COURBE DE GAIN d'un clip audio, lue à une seconde du FICHIER : une droite en amplitude entre
 /// deux points, la valeur du plus proche avant le premier et après le dernier, 1 sans point.
 float clipEnvelopeGainAt(const Clip& clip, double sourceSeconds);

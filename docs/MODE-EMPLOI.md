@@ -165,6 +165,12 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Éclaircir les contrôleurs MIDI d'une piste** (D557.2). *Piste ▸ Éclaircir les contrôleurs MIDI de la piste* retire les événements redondants d'une molette, d'un pli ou d'une pression enregistrés trop serrés : un événement part quand sa valeur reste à l'écart choisi (0, 1, 2 ou 4, en pas de 0 à 127) de la dernière valeur gardée. Le premier et le dernier de chaque contrôleur restent, si bien qu'un pli revenu au centre y revient toujours ; les commandes — banque, RPN et NRPN, entrée de données — restent toutes. Chaque écart dit combien d'événements il retirerait ; la ligne d'état dit combien sont partis et de combien, au plus, la valeur jouée s'écarte de celle d'avant. Ctrl+Z les rend.
 
+**Poser un repère à la tête** (D558.1). *Transport ▸ Poser un repère à la tête* (`Inser`) pose un repère là où est la tête, sans boîte — on le fait en écoutant, on le renomme ensuite (double-clic dans la fenêtre des repères). Il s'appelle « Repère N », du premier numéro libre ; s'il y a déjà un repère à cet endroit, la ligne d'état le dit et rien n'est posé. Ctrl+Z le retire.
+
+**La tête à la fin de la sélection** (D558.2). *Transport ▸ Tête à la fin de la sélection* (`Maj+L`) pose la tête à la fin des clips choisis dans l'arrangement, ou, à défaut, de la dernière note choisie au piano roll — le pendant de `L`, qui va à son début.
+
+**La tête d'une attaque à l'autre** (D558.3). *Transport ▸ Tête : attaque suivante* (`Ctrl+Alt+N`) et *précédente* (`Ctrl+Alt+B`) posent la tête sur l'attaque suivante ou précédente des clips audio de la piste choisie — celles que *Créer des notes depuis les attaques* détecte, là où elles sonnent, à chaque tour d'un clip qui boucle. Un clip muet ou à l'envers ne compte pas ; une piste MIDI n'en a pas, et c'est dit.
+
 **Annuler et rétablir un zoom** (D557.3). *Affichage ▸ Annuler le zoom* (`Alt+Z`) rend à l'arrangement la vue — zoom et défilement — d'avant le dernier zoom, et *Rétablir le zoom* (`Maj+Alt+Z`) y retourne. Un zoom neuf efface ce qui restait à rétablir ; un zoom qui ne change rien ne compte pas. La vue d'ouverture d'un projet ne s'annule pas.
 
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.

@@ -118,6 +118,13 @@ enum class ShortcutId : uint16_t {
     /// D557.3 : la vue de l'arrangement d'avant le dernier geste de zoom, et retour (*Undo Zoom / Redo Zoom*).
     ViewZoomUndo,
     ViewZoomRedo,
+    /// D558.1 : un repère à la tête, sans boîte (*Insert Marker*).
+    TransportInsertMarker,
+    /// D558.2 : la tête à la fin de la sélection (*Locate Selection End*).
+    NavToSelectionEnd,
+    /// D558.3 : la tête à la prochaine (précédente) attaque des clips audio de la piste choisie (*Locate Hitpoint*).
+    NavNextHitpoint,
+    NavPreviousHitpoint,
 
     Count
 };

@@ -105,6 +105,13 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         // modificateur, son Z d'octave n'est pas pris.
         {ShortcutId::ViewZoomUndo,     "view.zoomUndo",     "Affichage", "Annuler le zoom",  "alt + Z",         ""},
         {ShortcutId::ViewZoomRedo,     "view.zoomRedo",     "Affichage", "Rétablir le zoom", "shift + alt + Z", ""},
+        // D558 — le sous-menu *Locate* de Cubase : Inser pose un repère (sa touche chez Cubase), Maj+L va à la fin de la
+        // sélection (L va à son début), Ctrl+Alt+N et Ctrl+Alt+B d'une attaque à l'autre (Alt+N joue jusqu'au repère,
+        // N et B sautent d'un événement). Libres dans la table, les touches fixes et `kglobalshortcutsrc`.
+        {ShortcutId::TransportInsertMarker, "transport.insertMarker", "Transport", "Poser un repère à la tête", "insert", ""},
+        {ShortcutId::NavToSelectionEnd,   "nav.toSelectionEnd",   "Transport", "Tête à la fin de la sélection", "shift + L", ""},
+        {ShortcutId::NavNextHitpoint,     "nav.nextHitpoint",     "Transport", "Tête : attaque suivante",   "ctrl + alt + N", ""},
+        {ShortcutId::NavPreviousHitpoint, "nav.previousHitpoint", "Transport", "Tête : attaque précédente", "ctrl + alt + B", ""},
     };
     return catalogue;
 }

@@ -1138,6 +1138,37 @@ AttackNotes notesFromAttacks(const Clip& clip, const std::vector<double>& onsetS
     return bilan;
 }
 
+std::vector<Tick> clipAttackTicks(const Clip& clip, const std::vector<double>& onsetSourceSeconds, Tick materialEnd,
+                                  const std::function<Tick(double)>& secondsToTicks,
+                                  const std::function<double(Tick)>& ticksToSeconds) {
+    std::vector<Tick> ticks;
+    if (clip.reversed) return ticks;
+    const Tick joue = clipPlayedLength(clip, materialEnd);
+    const Tick fin = clip.startTick + joue;
+    if (clipIsWarped(clip)) {
+        // LA CARTE dit où chaque seconde du fichier sonne (D12) — la règle de `notesFromAttacks`.
+        for (const double s : onsetSourceSeconds) {
+            const Tick t = clip.startTick + warpTickAtSeconds(clip, s);
+            if (t >= clip.startTick && t < fin) ticks.push_back(t);
+        }
+    } else if (secondsToTicks && ticksToSeconds) {
+        // UN TOUR PAR FENÊTRE : sans boucle, la fenêtre est la durée jouée, et il n'y a qu'un tour.
+        const Tick fenetre = clip.sourceLength > 0 ? std::min(clip.sourceLength, joue) : joue;
+        for (Tick tour = clip.startTick; fenetre > 0 && tour < fin; tour += fenetre) {
+            const Tick finDuTour = std::min(fin, tour + fenetre);
+            const double debut = ticksToSeconds(tour);
+            for (const double s : onsetSourceSeconds) {
+                if (s < clip.sourceStartSeconds) continue;
+                const Tick t = secondsToTicks(debut + (s - clip.sourceStartSeconds));
+                if (t >= tour && t < finDuTour) ticks.push_back(t);
+            }
+        }
+    }
+    std::sort(ticks.begin(), ticks.end());
+    ticks.erase(std::unique(ticks.begin(), ticks.end()), ticks.end());
+    return ticks;
+}
+
 float clipEnvelopeGainAt(const Clip& clip, double sourceSeconds) {
     const auto& p = clip.gainEnvelope;
     if (p.empty()) return 1.0f;

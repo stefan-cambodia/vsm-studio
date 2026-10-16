@@ -1063,7 +1063,7 @@ private:
         /// D483 : le menu Transport, une entrée par commande de `kCommandesDuTransport`,
         /// dans cet ordre (identifiants CONTIGUS).
         kMenuTransportFirst,
-        kMenuTransportLast = kMenuTransportFirst + 23,   // D554.1 : 24 places (17 prises) ; l'aiguillage garde la borne
+        kMenuTransportLast = kMenuTransportFirst + 31,   // D558 : 32 places (26 prises) ; l'aiguillage garde la borne
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
@@ -1593,6 +1593,12 @@ private:
     void lireJusquAuRepereSuivant();
     /// D556.2 : la tête au prochain (`suivant`) ou au précédent événement de la piste choisie.
     void teteALEvenement(bool suivant);
+    /// D558.1 : un repère au tick de la tête, sans boîte, nommé « Repère N » (le premier N libre) ; dit.
+    void poserUnRepereALaTete();
+    /// D558.2 : la tête à la fin de la sélection — les clips choisis, sinon les notes choisies ; dit si rien.
+    void teteALaFinDeLaSelection();
+    /// D558.3 : la tête à la prochaine (`suivante`) ou précédente attaque des clips audio de la piste choisie.
+    void teteALAttaque(bool suivante);
     /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).
     /// Rien de choisi : faux, et la boîte `titre` le DIT.
     bool bornesDeLaSelection(vsm::midi::Tick& debut, vsm::midi::Tick& fin, bool& clips, const juce::String& titre);

@@ -1370,6 +1370,39 @@ VSM_TEST(an_attack_outside_the_played_window_is_left_out_and_counted) {
     VSM_ASSERT_EQ(int(bilan.notes[0].velocity), 127);   // la plus forte des GARDÉES fixe l'échelle
 }
 
+// D558.3 — LES ATTAQUES OÙ ELLES SONNENT, pour y poser la tête. Sur un clip qui ne boucle pas : les ticks mêmes de
+// `notesFromAttacks` (D544.1) ; sur un clip qui boucle : à chaque tour ; à l'envers : rien ; calé sur la grille : la carte.
+VSM_TEST(clip_attack_ticks_are_those_of_the_notes_and_repeat_with_the_loop) {
+    const std::vector<double> attaques{0.26, 0.49, 0.77, 1.01};
+    const Clip simple = clip(1, 0, 3840);
+    uint64_t ids = 1;
+    const auto notes = notesFromAttacks(simple, attaques, {}, 36, 120, false, 100000, ids, enTicks, enSecondes);
+    const auto ticks = clipAttackTicks(simple, attaques, 100000, enTicks, enSecondes);
+    VSM_ASSERT_EQ(ticks.size(), notes.notes.size());
+    for (size_t i = 0; i < ticks.size(); ++i) VSM_ASSERT_EQ(ticks[i], notes.notes[i].startTick);   // 250, 470, 739, 970
+
+    // Posé à la mesure 2, il joue la seconde 1 à 2 du fichier, TROIS fois : 1,25 s et 1,5 s à chaque tour ; 0,26 s
+    // et 3,5 s ne sont pas dans la fenêtre.
+    Clip boucle = clip(2, 1920, 2880);
+    boucle.sourceStartSeconds = 1.0;
+    boucle.sourceLength = 960;
+    const auto tours = clipAttackTicks(boucle, {0.26, 1.25, 1.5, 3.5}, 100000, enTicks, enSecondes);
+    const std::vector<Tick> attendus{2160, 2400, 3120, 3360, 4080, 4320};
+    VSM_ASSERT_EQ(tours.size(), attendus.size());
+    for (size_t i = 0; i < attendus.size(); ++i) VSM_ASSERT_EQ(tours[i], attendus[i]);
+
+    Clip envers = clip(3, 0, 3840);
+    envers.reversed = true;
+    VSM_ASSERT(clipAttackTicks(envers, attaques, 100000, enTicks, enSecondes).empty());
+
+    std::vector<Clip> cales{clip(4, 0, 3840)};
+    quantizeClipToGrid(cales, 4, attaques, 240, 100000, enSecondes);
+    const auto grille = clipAttackTicks(cales[0], attaques, 100000, enTicks, enSecondes);
+    const std::vector<Tick> lignes{240, 480, 720, 960};
+    VSM_ASSERT_EQ(grille.size(), lignes.size());
+    for (size_t i = 0; i < lignes.size(); ++i) VSM_ASSERT_EQ(grille[i], lignes[i]);
+}
+
 // D545.1 — LA COURBE DE GAIN D'UN CLIP AUDIO, tenue au matériau. 120 BPM : une seconde fait 960 ticks.
 
 VSM_TEST(the_gain_envelope_is_a_line_in_amplitude_between_points_of_the_file) {

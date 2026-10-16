@@ -42574,10 +42574,83 @@ saute d'un temps, d'une mesure, d'un repère, d'un événement (D556.2), mais pa
   suivant reprend 2. Inser est libre dans la table, les touches fixes et `kglobalshortcutsrc`, vérifié à 6 h 32.
 - **D558.2.** Maj+L, à côté de L — libre, vérifié. La fin est la fin JOUÉE du dernier clip choisi (`selectionBounds`),
   ou la fin de la dernière note choisie (`selectionEndTick`, D553.2).
-- **D558.3.** Une attaque compte si elle tombe DANS la fenêtre jouée du clip ; un clip à l'envers ou suivant le tempo
-  (`warpMode`) est écarté et COMPTÉ, ses attaques n'étant pas au temps que le fichier dit — la règle de D544.1, qui
-  les refuse aussi. Ctrl+Alt+N et Ctrl+Alt+B : Alt+N joue jusqu'au repère (D556.1), N et B sautent d'un événement ;
-  libres, vérifiés. La lecture des attaques coûte une passe sur le fichier : elle se fait au geste, pas à chaque
-  peinture.
+- **D558.3.** Une attaque compte si elle tombe DANS la fenêtre jouée du clip, placée comme D544.1 la place
+  (`notesFromAttacks`) : par la carte d'étirement si le clip suit le tempo, par le tempo sinon. **Corrigé à 6 h 33,
+  avant le code** : la première écriture de ce point écartait les clips qui suivent le tempo « comme D544.1 » — relu,
+  D544.1 ne refuse que les clips À L'ENVERS ; ceux-là seuls sont écartés ici, et COMPTÉS. Et ce que D544.1 ne fait
+  pas, parce qu'il crée une note par attaque du fichier : un clip qui BOUCLE (D5.2) fait entendre ses attaques à
+  CHAQUE tour, et la tête doit pouvoir s'y poser — la fenêtre (`sourceLength`) rejouée, comme
+  `clipSourceSecondsAtTick` la lit. Une fonction `core/` les place (`clipAttackTicks`), et un test vérifie qu'elle
+  rend les ticks de `notesFromAttacks` sur un clip qui ne boucle pas. Ctrl+Alt+N et Ctrl+Alt+B : Alt+N joue jusqu'au
+  repère (D556.1), N et B sautent d'un événement ; libres, vérifiés. La lecture des attaques coûte une passe sur le
+  fichier : elle se fait au geste, pas à chaque peinture.
 
 **L'ORDRE, TRANCHÉ ICI.** D558.2 d'abord (le plus petit), puis D558.1, puis D558.3.
+
+**LA SÉRIE DE D557, ARRÊTÉE, ET CE QU'ELLE A DIT.** Lancée à 6 h 30 sur le binaire de D557, écran éteint et session
+verrouillée, elle a été arrêtée à 6 h 46 après ses trois premiers bancs, pour ne pas bloquer une heure la compilation de
+D558 : une seule série complète se jouera sur le binaire de D558, qui porte D557. L'audit des menus y a classé
+**deux entrées MUETTES** qu'il ne voyait pas à 5 h 53 : *Restreindre la polyphonie ▸ 2 voix* et *Couper à la tête de
+lecture*, que D557 ne touche pas. **Rejouées seules** (`--seulement`), même binaire, même verrou : les deux laissent leur
+trace — « Polyphonie (2 voix) : aucune note à changer dans la sélection », « Couper à la tête de lecture : rien à
+changer ». Leur seule trace est la ligne d'état, et sous verrou une rafale de lancements ne dessine que le premier
+(D520) : l'environnement, pas D557.
+
+### Phase D558.2 — la tête à la fin de la sélection (16/10/2026) — FAITE
+
+`teteALaFinDeLaSelection` : la fin des clips choisis (`selectionEndTick` de l'arrangement), sinon celle des notes
+choisies au piano roll ; rien de choisi, la ligne d'état le dit et la tête reste. *Transport ▸ Tête à la fin de la
+sélection*, Maj+L (`nav.toSelectionEnd`).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | les clips, Maj+L | `tools/tete-fin-selection.sh`, la tête partie de 960 : **5 760**, « (clips) » au journal | **oui** |
+| 2 | les notes, par le menu | **4 800**, « (notes) » | **oui** |
+| 3 | rien de choisi | « rien de choisi, la tête reste à 960 », la tête à **960** | **oui** |
+| 4 | le témoin L | parti de 960 : **0** — et le binaire d'avant : (1) à (3) **rouges** | **oui** |
+
+### Phase D558.1 — poser un repère à la tête (16/10/2026) — FAITE
+
+`poserUnRepereALaTete` : au tick de la tête, sans boîte, « Repère N » du premier N libre (`tr`, donc « Marker N » en
+anglais) ; un repère déjà à ce tick, refusé et dit ; un pas. *Transport ▸ Poser un repère à la tête*, Inser
+(`transport.insertMarker`).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | Inser, la tête à 960, « Repère 1 » et « Repère 3 » déjà là | `tools/repere-a-la-tete.sh` : « Repère 2 » à 960 — le premier numéro libre, pas le compte —, dit, le projet relu **0 · 960 · 3 840** | **oui** |
+| 2 | au même tick | « refusé, un repère est déjà à 960 ticks (« Repère 2 ») », trois repères | **oui** |
+| 3 | par le menu, à 1 920 | « Repère 2 » à 1 920 | **oui** |
+| 4 | un pas, et le témoin | Ctrl+Z rend les deux d'origine (le geste a eu lieu) ; sans geste, les deux d'origine ; le binaire d'avant : (1) à (4) **rouges** | **oui** |
+| 5 | l'audit des menus | `--seulement "Poser un repère à la tête"` : **juste** (le morceau change, un pas) | **oui** |
+
+### Phase D558.3 — la tête d'une attaque à l'autre (16/10/2026) — FAITE
+
+`clipAttackTicks` (`core/`, `ClipEdit.h`) place les attaques d'un clip audio là où elles sonnent — la carte s'il suit
+le tempo, le tempo sinon, à chaque tour d'une boucle ; à l'envers, rien. `teteALAttaque` les lit au geste
+(`lireAttaquesDuClip`) sur les clips non muets de la piste choisie. *Transport ▸ Tête : attaque suivante /
+précédente*, Ctrl+Alt+N et Ctrl+Alt+B.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | sur un clip qui ne boucle pas, les ticks mêmes de `notesFromAttacks` (250, 470, 739, 970) ; qui boucle trois fois, **2 160 · 2 400 · 3 120 · 3 360 · 4 080 · 4 320** ; à l'envers, rien ; calé sur la grille, la carte (240 · 480 · 720 · 960). **Rouge** sur le mutant sans tours (« 3 != 6 ») | **oui** |
+| 2 | suivante, cinq fois | `tools/tete-attaque.sh`, le fichier de clics de D543.3 : **250 · 470 · 739 · 970**, puis « aucune après la tête, qui reste à 970 » | **oui** |
+| 3 | précédente | depuis 1 920 : 970 · 739 ; depuis 0 : aucune, la tête à 0 | **oui** |
+| 4 | le clip qui boucle | depuis 960 : **970 · 2 170 · 2 390** — le second tour, que D544.1 ne place pas | **oui** |
+| 5 | une piste MIDI, et le témoin | « « Partie » n'est pas une piste audio », la tête à 0 ; le binaire d'avant : les quatre **rouges** | **oui** |
+
+**LE BANC A D'ABORD VISÉ LA MAUVAISE PISTE.** Son premier passage lisait « «  » n'est pas une piste audio » : un projet
+vide reçoit à l'ouverture une piste MIDI sans nom, et l'import pose la piste audio APRÈS elle. Relu dans le projet
+enregistré, corrigé dans le banc (`piste:1`) — l'application disait vrai.
+
+**LE MENU TRANSPORT, photographié dans les deux langues** : « Poser un repère à la tête — Inser » / « Add a marker at
+the playhead — Insert », « Tête à la fin de la sélection — Maj+L » / « Playhead to the end of the selection —
+Shift+L », « Tête : attaque précédente / suivante — Ctrl+Alt+B / N » / « Playhead: previous / next hitpoint ». Ses
+deux séparateurs tiennent désormais à leur commande (« Retour au début », « Tête : temps précédent ») et non plus à
+leur rang, que chaque insertion de D553 à D556 avait dû recompter. L'audit des menus : les trois gestes de tête,
+« sans effet sur le morceau, avec trace » (la tête bouge, ou la ligne d'état parle).
+
+C++ 494 · 1 339 · 338 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE DIX-NEUVIÈME AUDIT (D558) EST CLOS** : poser un repère à la tête, la tête à la fin de la sélection, la tête d'une
+attaque à l'autre — à chaque tour d'une boucle. **LA SÉRIE COMPLÈTE**, sur le binaire de D558 (qui porte D557), est
+lancée à la suite ; son résultat s'écrit avec la phase suivante.
