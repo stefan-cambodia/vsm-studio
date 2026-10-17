@@ -42741,3 +42741,50 @@ canaux. Le champ n'était lu par personne — d'où le silence. Le chargeur rend
 (`AudioTrackLoadResult::fileChannels`, en mémoire comme en diffusion, test `audio/` sur un mono de chaque sorte), et
 l'import les écrit. **Nommé, non fait** : un projet enregistré avant D559 garde son « 2 » — le recompter à l'ouverture est
 un geste à part ; les reports en audio et les gels, qui écrivent eux-mêmes leurs fichiers en stéréo, disent vrai.
+
+### Phase D560 — un vingt et unième audit : retirer les fondus, plier toutes les pistes, des repères aux attaques — et le « 2 canaux » des projets d'avant D559 (17/10/2026)
+
+*Écrite le 17/10 à 11 h 41, D559 close, le poste redémarré à 11 h 30 (rien ne tournait).*
+
+**LA MÉTHODE, celle de D535 à D559, par identifiant et par libellé.** Le menu *Audio* de Cubase (*Remove Fades*,
+*Hitpoints ▸ Create Markers from Hitpoints*) et son *Project ▸ Track Folding*, rapprochés du menu du clip audio et du
+menu Piste : **0 pour retirer les fondus** — un fondu se pose à la poignée ou à la tête (D549.1), et ne se retire qu'en
+ramenant la poignée à la main, clip par clip (`removeFade`, `clearFades`, « Retirer les fondus » : rien) ; **0 pour
+plier ou déplier TOUTES les pistes** — le triangle plie UNE piste, le bouton d'un dossier UN dossier (`foldAll`,
+« tous les dossiers », « toutes les pistes » : rien) ; **0 pour des repères aux attaques** — les attaques se lisent
+(D544.1), la tête s'y pose (D558.3), mais aucun repère n'y naît (`markersFromHit`, « repères depuis » : rien). **Trouvé
+et écarté** : les chevauchements (poly) — « Retirer les chevauchements » ; les durées fixes — « Durée = grille », « Durée
+en ticks » ; la copie partagée rendue indépendante (D34.2) — présents.
+
+**ET CE QUI MENT D'ABORD** (l'ordre de l'index) : le « nommé, non fait » de D559.3. Un projet enregistré avant D559 garde
+`"channels": 2` pour un fichier mono — l'import l'écrivait en dur —, et sur ce projet-là « Gauche et droite échangées »
+s'offre encore sur un clip qui n'a rien à échanger.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D560.1 | **Les canaux recomptés à l'ouverture** — le reste de D559.3 | À l'ouverture (et à chaque rechargement des pistes audio), une piste audio non gelée dont le projet déclare d'autres canaux que son FICHIER prend ceux du fichier ; dit au journal (`VSM_PROJET_CORRIGE`, la règle de D523 : corrigé sans changer le son, au journal, pas à la boîte) ; le projet ne passe pas « modifié » ; l'enregistrement suivant écrit le vrai compte ; mesuré sur un projet écrit à « 2 » pour un mono : l'entrée grisée, le projet réenregistré à 1 |
+| D560.2 | **Retirer les fondus** — *Remove Fades* | Clic droit sur un clip audio, *Retirer les fondus* : le fondu d'entrée et celui de sortie des clips choisis (le cliqué et la sélection) remis à zéro ; grisée quand aucun n'en porte ; un pas ; le compte dit ; mesuré par le projet relu et par l'EXPORT (un son constant, fondu sur 0,5 s aux deux bouts : le témoin s'éteint aux bords, retiré il sonne au niveau du milieu dès la première tranche) |
+| D560.3 | **Plier, déplier toutes les pistes** — *Fold Tracks / Unfold Tracks / Flip Fold States* | *Piste ▸ Plier toutes les pistes (N)*, *Déplier toutes les pistes (N)*, *Inverser les plis (N)* : N dit combien de pistes changent ; grisées à zéro ; un pas chacune ; un dossier plié cache son contenu (D19.4, inchangé) ; mesuré par le projet relu (`folded` piste par piste) |
+| D560.4 | **Poser des repères aux attaques** — *Create Markers from Hitpoints* | Clic droit sur un clip audio, *Poser des repères aux attaques* : un repère à chaque attaque des clips audio choisis, placée là où elle sonne (`clipAttackTicks`, D558.3 : la carte, le tempo, chaque tour d'une boucle) ; nommés comme D558.1 ; un tick qui porte déjà un repère est sauté et COMPTÉ ; rien trouvé, ou un clip à l'envers → dit ; un pas ; mesuré par le projet relu sur le fichier de clics de D543.3 (attaques connues : 250 · 470 · 739 · 970) |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D560.1.** La correction se fait dans `loadAudioTracks`, là où le fichier est lu : c'est le seul endroit qui sait ce
+  que le fichier porte, et elle est rappelée après chaque pas d'annulation — un pas qui rendrait le « 2 » d'avant le
+  voit recorrigé aussitôt. Elle ne pousse PAS de pas d'historique : ce n'est pas un geste de l'utilisateur, et un
+  projet qui s'ouvrait « modifié » demanderait d'enregistrer sans que rien ait bougé. Les PRISES et les VERSIONS gardent
+  leur compte : elles ne sont pas lues à l'ouverture, et rien ne les affiche. Une piste GELÉE joue son fichier de gel,
+  qui n'est pas celui que `audio.channels` décrit : elle n'est pas touchée.
+- **D560.2.** Le fondu est un réglage du SON du clip, comme son gain (la règle de D549.1) : le verrou ne le refuse pas.
+  Les fondus CROISÉS ne sont pas des fondus de clip — ils naissent du chevauchement de deux clips (`crossfadeShape`) — et
+  restent ; le fondu de sécurité de D33.2 aussi. La forme des fondus (D17.1) reste : elle redevient utile au fondu
+  suivant. Au menu du clip seulement : c'est là que les fondus se règlent.
+- **D560.3.** Au menu Piste, à côté de « Afficher toutes les pistes » : le pli est de l'état de morceau (`folded` est
+  dans le fichier, D19.4), donc un pas, comme le triangle. TOUTES les pistes, masquées comprises : le pli d'une piste
+  masquée se retrouve quand on l'affiche, et « toutes » qui en oublierait une mentirait. Pas de touche : Cubase n'en
+  donne pas par défaut.
+- **D560.4.** Les clips MUETS choisis comptent — le choix est explicite, à la différence de D558.3 qui parcourt une
+  piste. Le nom suit D558.1 (« Repère N », le premier N libre, dans la langue de l'interface) : un repère sans nom ne se
+  lirait ni dans la règle ni dans la fenêtre des repères. Pas de compte dans le libellé : lire les attaques coûte une
+  passe sur le fichier, au geste et non à chaque ouverture du menu (D558.3).
+
+**L'ORDRE, TRANCHÉ ICI.** D560.1 d'abord (ce qui ment), puis D560.2, D560.3, D560.4.
