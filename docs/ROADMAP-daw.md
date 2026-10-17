@@ -42857,3 +42857,46 @@ C++ 498 · 1 341 · 339 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE VINGT ET UNIÈME AUDIT (D560) EST CLOS** : les canaux d'un projet d'avant D559 recomptés, retirer les fondus, plier
 toutes les pistes, des repères aux attaques. **LA SÉRIE COMPLÈTE**, sur le binaire de D560 (110 bancs, quatre neufs),
 est lancée à 14 h 41, écran allumé et déverrouillé ; son résultat s'écrit avec la phase suivante.
+
+### Phase D561 — un vingt-deuxième audit : les clips des pistes choisies, taper le tempo, retirer le décalage continu d'un clip (17/10/2026)
+
+*Écrite le 17/10 à 15 h 05, D560 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D560, par identifiant et par libellé.** Le menu *Edit ▸ Select*, la piste de tempo et
+le menu *Audio ▸ Process* de Cubase, rapprochés de nos menus Édition, Transport et du menu du clip audio : **0 pour
+choisir les clips des PISTES choisies** (*Select ▸ All on Selected Tracks*) — « Tout sélectionner dans
+l'arrangement » prend toutes les pistes, et les cinq entrées de D550.1 choisissent par la tête et les locateurs,
+jamais par la piste (`selectAllOnTracks`, « des pistes choisies » : rien) ; **0 pour TAPER le tempo** (*Tap Tempo*,
+le bouton *Tap* de Live) — le tempo se tape au clavier dans le champ de la barre de transport, se dessine dans
+l'onglet Tempo, se détecte dans une prise (D545.2), mais ne se bat pas (`tapTempo`, « taper » : rien) ; **0 pour
+retirer le décalage continu** (*Remove DC Offset*) — un clip se normalise (D545.3), se tait sur une plage (D549.2),
+échange ses canaux (D559.3), mais une prise dont le convertisseur a décalé le zéro le garde (`dcOffset`, « décalage
+continu » : rien). **Trouvé et écarté** : suivre la tête (`followPlayhead`), la saisie pas à pas (`stepInput`),
+l'échelle des vélocités (`scaleVelocity`), dupliquer — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D561.1 | **Choisir les clips des pistes choisies** — *Select ▸ All on Selected Tracks* | *Édition ▸ Sélectionner dans l'arrangement ▸ Les clips des pistes choisies (N)* : la sélection de l'arrangement devient tous les clips des pistes choisies dans la liste — un DOSSIER choisi apporte ceux de son contenu ; N dit combien ; grisée à zéro ; mesuré par le relevé de la sélection (`VSM_SELECTION_CLIPS`) et par un geste qui agit sur elle (Suppr, le projet relu) |
+| D561.2 | **Taper le tempo** — *Tap Tempo* | *Transport ▸ Taper le tempo* (Maj+T) : chaque frappe compte ; dès la QUATRIÈME (trois intervalles), le tempo de départ devient 60 / la moyenne des huit derniers intervalles au plus ; une pause de plus de deux secondes recommence la série ; hors de 20 à 300 BPM, refusé et dit ; UN pas par série ; mesuré par le projet relu (`tempoChanges`), huit frappes à 500 ms → 120 BPM à ±1,5, à 400 ms → 150 |
+| D561.3 | **Retirer le décalage continu** — *Remove DC Offset* | Clic droit sur un clip audio, *Retirer le décalage continu* (case cochée) : la moyenne de chaque canal sur la fenêtre que le clip joue est soustraite à la source (`AudioTrackSource`, ses trois chemins), lecture et export ensemble ; sur toute la sélection, chaque clip sa moyenne ; décochée, le décalage revient ; écrite au projet seulement si elle n'est pas nulle ; sous −80 dBFS sur les deux canaux, rien à retirer, et dit ; un pas ; mesuré par l'EXPORT (un la sur un décalage de +0,25 à gauche et −0,10 à droite : après, une moyenne sous 0,001 et le la au même niveau à 0,05 dB) |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D561.1.** La sélection est REMPLACÉE, comme par les autres entrées du sous-menu. Le dossier apporte son contenu
+  (`folderContents`, sous-dossiers compris) : un dossier n'a pas de clip à lui, et le choisir pour ne rien prendre
+  ferait de l'entrée un geste mort justement là où l'on range. Les clips verrouillés sont choisis : le verrou refuse le
+  GESTE qui suit, et le dit (D546.3).
+- **D561.2.** Le tempo de DÉPART, comme le champ de la barre de transport dont c'est le jumeau (« seul le tempo de départ
+  change », son gestionnaire) : une carte de tempo dessinée reste. Quatre frappes et non deux : sur un seul intervalle de
+  500 ms, 20 ms d'erreur de la main font 5 BPM ; sur trois, moins de 2. La ligne d'état parle dès la première frappe
+  (« 1 / 4 »), pour qu'on sache que le geste compte. Maj+T : T seul est une note du clavier d'ordinateur (D492), qui
+  laisse les touches à modificateur ; libre dans la table, les touches fixes et `kglobalshortcutsrc` (Alt+Maj+T y est
+  pris, Maj+T non), vérifié à 15 h 05. Un seul pas par série : le premier tempo appliqué ouvre le pas, les suivants le
+  complètent — sauf si l'historique a bougé entre-temps (un Ctrl+Z au milieu), auquel cas un nouveau pas s'ouvre.
+- **D561.3.** Un réglage du clip, non destructif comme le gain (D13.6) et la courbe (D545.1), et non un fichier réécrit :
+  le fichier reste celui de la prise. Deux nombres (gauche, droite), posés APRÈS `swapChannels` (la règle positionnelle
+  de `Clip`), soustraits AVANT l'échange, le gain et les fondus — c'est le fichier qu'on corrige. Le format les compte
+  parmi les réglages qui exigent la version 3 (`usesWarp`), comme l'échange : un lecteur ancien refuse plutôt que de
+  jouer le décalage. La moyenne se prend sur la fenêtre JOUÉE (`sourceStart`, sa longueur), pas sur le fichier entier :
+  deux clips d'une même prise peuvent n'avoir pas le même zéro, si le convertisseur a dérivé.
+
+**L'ORDRE, TRANCHÉ ICI.** D561.1 d'abord (le plus petit), puis D561.2, puis D561.3.
