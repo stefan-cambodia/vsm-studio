@@ -43118,3 +43118,39 @@ C++ 501 · 1 343 · 340 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE VINGT-TROISIÈME AUDIT (D562) EST CLOS** : les statistiques d'un clip, les chevauchements des clips retirés, les
 réglages d'une tranche copiés. **LA SÉRIE COMPLÈTE**, sur le binaire de D562 (117 bancs, trois neufs), est lancée à la
 suite.
+
+### Phase D563 — un vingt-quatrième audit : enregistrer une nouvelle version, revenir à la version enregistrée, enregistrer une copie (18/10/2026)
+
+*Écrite le 18/10 à 06 h 08, D562 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D562, les zéros revérifiés en listant ce qu'on a cherché et où.** Le menu *File* de
+Cubase, entrée par entrée, rapproché du menu Fichier relevé (24 entrées : nouveau, ouvrir, importer, enregistrer,
+enregistrer sous, modèle, statistiques, exports, préférences, quitter…) : **0 pour une nouvelle version**
+(*Save New Version*, Ctrl+Alt+S) — `NewVersion`, `newVersion`, « nouvelle version » ne désignent que les versions d'une
+PISTE (D532.2) ; **0 pour revenir à la version enregistrée** (*Revert*) — `revert`, « revenir » (« au point de départ »,
+« à la disposition d'avant », « aux valeurs d'usine » : rien qui recharge le projet) ; **0 pour une copie de secours**
+(*Back up Project*) — `backup`, « copie de sauvegarde » : rien ; « Enregistrer sous… » copie les médias (D6.4) mais
+BASCULE la session sur le nouveau dossier. **Trouvé et écarté** : contourner tous les effets d'une piste (« Contourner
+tous les effets »), les projets récents, les modèles — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D563.1 | **Enregistrer une nouvelle version** — *Save New Version* | *Fichier ▸ Enregistrer une nouvelle version* (Ctrl+Alt+S) : le projet s'enregistre, médias compris, dans un dossier VOISIN au numéro suivant — « Morceau » → « Morceau-02 », « Morceau-02 » → « Morceau-03 », le premier numéro LIBRE — et la session y passe (le titre le dit) ; l'ancien dossier n'est pas touché ; jamais d'écrasement ; un projet jamais enregistré passe par « Enregistrer sous… » ; mesuré sur les dossiers relus |
+| D563.2 | **Revenir à la version enregistrée** — *Revert* | *Fichier ▸ Revenir à la version enregistrée…* : après confirmation, le projet se recharge depuis son dossier, les modifications perdues ; grisée quand rien n'est modifié ou que le projet n'a pas de dossier ; mesuré par l'état rechargé (un repère posé puis abandonné) et par le titre (plus d'astérisque) ; refusé, rien ne change |
+| D563.3 | **Enregistrer une copie** — *Back up Project* | *Fichier ▸ Enregistrer une copie…* : le projet et ses médias écrits dans le dossier choisi, SANS que la session y passe — le titre, la marque « modifié » et le dossier courant restent ; un Ctrl+S qui suit écrit dans le dossier d'origine ; mesuré sur les deux dossiers relus |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D563.1.** Le numéro sur deux chiffres (« -02 »), parce que c'est ainsi que les dossiers se trient dans un gestionnaire
+  de fichiers ; la première version d'un projet n'en porte pas, la deuxième est « -02 » (« -01 » serait le nom d'une
+  version qui n'existe pas). La session PASSE à la nouvelle version, comme chez Cubase : la version d'avant est un
+  point de retour, pas l'endroit où l'on continue. Ctrl+Alt+S, la touche de Cubase : libre dans la table, les touches
+  fixes et `kglobalshortcutsrc`, vérifié à 06 h 08.
+- **D563.2.** Une confirmation, et le geste ne s'annule PAS — recharger efface l'historique comme toute ouverture —, et
+  la boîte le dit. Le projet se recharge par le chemin d'« Ouvrir un projet VSM… » (`loadProjectBundleFromFolder`), pas
+  par un chemin à lui : deux façons d'ouvrir un projet en feraient deux. Grisée plutôt qu'absente quand rien n'a changé.
+- **D563.3.** La copie et l'enregistrement passent par la MÊME écriture (`exportStandaloneProject`, médias compris, D6.4) :
+  `writeProjectTo` se coupe en deux — écrire, puis basculer la session —, et la copie ne fait que la première moitié.
+  Le dossier choisi par un sélecteur, comme « Enregistrer sous… ». Pas de touche.
+
+**L'ORDRE, TRANCHÉ ICI.** D563.3 d'abord (elle coupe `writeProjectTo` en deux, ce que D563.1 réutilise), puis D563.1,
+puis D563.2.
