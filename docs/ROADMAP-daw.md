@@ -43027,3 +43027,39 @@ C++ 499 · 1 342 · 340 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE VINGT-DEUXIÈME AUDIT (D561) EST CLOS** : les clips des pistes choisies, une règle de tempo tapé pour trois chemins,
 le décalage continu d'un clip retiré — et, trouvé en chemin, des gestes d'analyse sourds au-delà de vingt secondes de
 fichier. **LA SÉRIE COMPLÈTE**, sur le binaire de D561 (114 bancs, quatre neufs), est lancée à la suite.
+
+### Phase D562 — un vingt-troisième audit : les statistiques d'un clip, retirer les chevauchements des clips, copier les réglages d'une tranche (18/10/2026)
+
+*Écrite le 18/10 à 01 h 31, D561 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D561 — et ses zéros revérifiés en listant ce qu'on a cherché ET où** (la leçon du bouton
+« Tap », D561.2) : identifiants dans `core/`, `app/Source`, `audio/`, `interchange/`, `.h` ET `.cpp` ; libellés par
+`(u8)?"…"`, la regex validée sur un littéral de chaque forme (avec et sans préfixe — `u8?"` sautait les seconds, le piège
+de D149). Le menu *Audio* (*Statistics*), *Edit ▸ Advanced* (*Delete Overlaps*) et la console de Cubase (*Copy / Paste
+Channel Settings*) : **0 pour les statistiques d'un clip** — « Statistiques du projet… » existe (D32.5), et la seule
+« crête » d'un message est celle du résumé d'export ; **0 pour les chevauchements entre CLIPS** — `removeOverlaps` et
+`removeOverlapsMono` portent sur des NOTES, et `ClipEdit.h` écrit lui-même que deux clips qui se recouvrent « lisent
+DEUX FOIS le même matériau », ce que déplacer ou dupliquer laisse faire ; **0 pour les réglages d'une tranche** — seule
+la chaîne d'inserts se copie (D30.3, `chainClipboard_`), ni le trim, ni la phase, ni les départs.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D562.1 | **Les statistiques d'un clip audio** — *Audio ▸ Statistics* | Clic droit sur un clip audio, *Statistiques du clip…* : par canal, sur la fenêtre que le clip JOUE (la relecture résidente de D561.4), la crête et la valeur efficace en dBFS, le décalage continu, et la durée ; une boîte, aucun pas ; dit au journal (`VSM_STATISTIQUES`) ; mesuré contre un lecteur indépendant (`soundfile` et numpy sur le même fichier) à 0,05 dB |
+| D562.2 | **Retirer les chevauchements des clips** — *Delete Overlaps* | *Édition ▸ Retirer les chevauchements des clips (N)* : sur chaque piste, un clip recouvert par le SUIVANT est raccourci jusqu'au début de celui-ci ; entièrement recouvert, il est retiré, et compté ; les clips choisis, ou tous sans choix ; le verrou respecté et dit ; N dit combien de recouvrements ; grisée à zéro ; un pas ; mesuré par le projet relu et par l'export MIDI (une note que deux clips jouaient en double ne sonne plus qu'une fois) |
+| D562.3 | **Copier et coller les réglages d'une tranche** — *Copy / Paste Channel Settings* | *Piste ▸ Copier les réglages de la tranche* puis *Coller les réglages sur les pistes choisies (N)* : le trim, la phase, les départs et la chaîne d'inserts (réglages et état compris) ; le volume, le panoramique, le muet et le solo RESTENT ; un pas ; mesuré par le projet relu, et par l'export (l'insert collé s'entend sur la piste qui le reçoit) |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D562.1.** Une BOÎTE et non un volet : on la lit une fois, au moment où l'on se pose la question ; le journal la
+  garde pour le banc. La fenêtre jouée, pas le fichier : c'est le clip qu'on interroge, et deux clips d'une prise n'ont
+  pas les mêmes crêtes. Le gain du clip n'y entre pas (Cubase mesure l'événement tel que le fichier le porte) — et c'est
+  écrit dans la boîte, pour qu'on ne cherche pas le gain dans la crête.
+- **D562.2.** Le clip d'AVANT perd sa fin, jamais celui d'après son début : c'est la règle de Cubase, et c'est celle qui
+  laisse chaque attaque à sa place. Un recouvrement compte une fois par paire de clips qui se suivent. Les fondus
+  croisés d'un clip AUDIO naissent de ces recouvrements (D17) : les retirer est le but du geste, et la boîte du compte le
+  dit. Pas de touche.
+- **D562.3.** Le volume, le panoramique, le muet et le solo restent : c'est la balance du morceau, piste par piste, et
+  coller un « son » de tranche (sa chaîne, son trim, ses départs) ne doit pas déplacer un fader. Le routage de sortie
+  reste aussi (où va une piste n'est pas un réglage de son). Un presse-papiers à part de celui de la chaîne : copier
+  une chaîne n'efface pas des réglages copiés, et l'inverse. Pas de touche.
+
+**L'ORDRE, TRANCHÉ ICI.** D562.1 d'abord (lecture seule), puis D562.2, puis D562.3.
