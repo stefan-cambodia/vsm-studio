@@ -37,6 +37,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <set>
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/interchange/EffectDescription.h"
@@ -658,6 +659,9 @@ MainComponent::MainComponent()
     };
     arrangement_.onClipNotesFromAttacksRequested = [this](size_t piste, uint64_t clipId) {   // D544.1
         notesDepuisAttaques(piste, clipId);
+    };
+    arrangement_.onClipMarkersFromAttacksRequested = [this](size_t piste, uint64_t clipId) {   // D560.4
+        reperesAuxAttaques(piste, clipId);
     };
     arrangement_.onClipGrooveFromAttacksRequested = [this](size_t piste, uint64_t clipId) {  // D544.2
         grooveDepuisAttaques(piste, clipId);
@@ -4688,6 +4692,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   ? tr(u8"Afficher toutes les pistes (aucune masquée)")
                                   : tr(u8"Afficher toutes les pistes (%1 masquées)").replace("%1", juce::String(static_cast<int>(masquees))),
                               masquees > 0);
+                // D560.3 : PLIER, DÉPLIER, INVERSER LES PLIS DE TOUTES LES PISTES (Track Folding) — le compte dit
+                // combien changent, grisées à zéro.
+                {
+                    using vsm::sequencer::FoldAll;
+                    const auto n = [this](FoldAll f) { return static_cast<int>(vsm::sequencer::countFoldChanges(project_, f)); };
+                    menu.addItem(kMenuTrackFoldAll, tr(u8"Plier toutes les pistes (%1)").replace("%1", juce::String(n(FoldAll::Fold))),
+                                 n(FoldAll::Fold) > 0);
+                    menu.addItem(kMenuTrackUnfoldAll, tr(u8"Déplier toutes les pistes (%1)").replace("%1", juce::String(n(FoldAll::Unfold))),
+                                 n(FoldAll::Unfold) > 0);
+                    menu.addItem(kMenuTrackFlipFolds, tr(u8"Inverser les plis (%1)").replace("%1", juce::String(n(FoldAll::Flip))),
+                                 n(FoldAll::Flip) > 0);
+                }
                 // D22.5 : LES PRESETS DE PISTE. Le sous-menu LISTE le dossier,
                 // et dit lequel quand il est vide : un sous-menu vide sans
                 // raison est un sous-menu qu'on croit cassé.
@@ -5685,6 +5701,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
+    if (menuItemID == kMenuTrackFoldAll) { plierToutesLesPistes(vsm::sequencer::FoldAll::Fold); return; }       // D560.3
+    if (menuItemID == kMenuTrackUnfoldAll) { plierToutesLesPistes(vsm::sequencer::FoldAll::Unfold); return; }
+    if (menuItemID == kMenuTrackFlipFolds) { plierToutesLesPistes(vsm::sequencer::FoldAll::Flip); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
     if (menuItemID == kMenuEditTranscribeClip) { transcribeSelectedClip(); return; }
@@ -11186,6 +11205,16 @@ void MainComponent::loadAudioTracks() {
         // LA MENTION VA SUR LA LIGNE, PAS DANS UNE BOÎTE (règle de D43) : la
         // fréquence d'un fichier ne change pas, on la relit chaque fois qu'on
         // se demande ce que joue cette piste, et une boîte fermée se ferme.
+        // D560.1 : LES CANAUX DU FICHIER, recomptés ici — le seul endroit qui le lit. Un projet d'avant D559 déclare
+        // « 2 » pour un mono (l'import l'écrivait en dur), et « Gauche et droite échangées » s'y offrait. Corrigé sans
+        // pas d'historique (ce n'est pas un geste, et le projet ne s'ouvre pas « modifié »), dit au journal comme les
+        // corrections de lecture de D523. Un gel joue son propre fichier : `audio.channels` ne le décrit pas.
+        if (!gelee && charge.fileChannels > 0 && track.audio.channels != charge.fileChannels) {
+            std::fputs(("VSM_PROJET_CORRIGE : " + vsm::interchange::libellePiste(i, track.name)
+                        + " : le projet d\xc3\xa9" "clarait " + std::to_string(track.audio.channels)
+                        + " canal(aux), le fichier en a " + std::to_string(charge.fileChannels) + "\n").c_str(), stderr);
+            project_.tracks[i].audio.channels = charge.fileChannels;
+        }
         trackList_.setAudioSourceRate(i, charge.resampled ? charge.fileSampleRate : 0.0, sr,
                                        charge.streamed, charge.residentBytes);
         if (charge.resampled)
@@ -13446,6 +13475,28 @@ void MainComponent::leverToutesLesPistes(bool solos) {
                                        .replace("%1", juce::String(static_cast<int>(leves))));
 }
 
+void MainComponent::plierToutesLesPistes(vsm::sequencer::FoldAll comment) {
+    // D560.3 : PLIER, DÉPLIER, INVERSER LES PLIS de toutes les pistes, masquées comprises (*Track Folding*). Le pli est
+    // dans le fichier : un pas, comme le triangle d'une piste et le bouton d'un dossier.
+    using vsm::sequencer::FoldAll;
+    const char* const verbe = comment == FoldAll::Fold ? "pli\xc3\xa9" "es" : comment == FoldAll::Unfold ? "d\xc3\xa9" "pli\xc3\xa9" "es" : "invers\xc3\xa9" "es";
+    if (vsm::sequencer::countFoldChanges(project_, comment) == 0) {
+        std::fputs((std::string("VSM_PLIS : aucune piste \xc3\xa0 changer (") + verbe + ")\n").c_str(), stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    beginProjectEdit(comment == FoldAll::Fold     ? juce::String::fromUTF8(u8"Plier toutes les pistes")
+                     : comment == FoldAll::Unfold ? juce::String::fromUTF8(u8"Déplier toutes les pistes")
+                                                  : juce::String::fromUTF8(u8"Inverser les plis"));
+    const size_t changees = vsm::sequencer::foldAllTracks(project_, comment);
+    rebuildFromProject(false);
+    std::fputs(("VSM_PLIS : " + std::to_string(changees) + " piste(s) " + verbe + "\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged((comment == FoldAll::Fold     ? tr(u8"Pistes pliées : %1")
+                                    : comment == FoldAll::Unfold ? tr(u8"Pistes dépliées : %1")
+                                                                 : tr(u8"Plis inversés : %1 piste(s)"))
+                                       .replace("%1", juce::String(static_cast<int>(changees))));
+}
+
 void MainComponent::remettreLaConsoleAZero() {
     // D559.2 : REMETTRE LA CONSOLE À ZÉRO (*Reset Mixer*) -- chaque tranche de piste à l'état d'une piste neuve, les
     // inserts gardés ; une confirmation, parce que le geste touche toutes les tranches d'un coup ; un pas.
@@ -13586,6 +13637,82 @@ void MainComponent::teteALAttaque(bool suivante) {
     seekAllViews(cible);
     std::fputs(("VSM_TETE_ATTAQUE : " + std::to_string(ici) + " -> " + std::to_string(cible) + " ticks (" + compte + ")\n").c_str(),
                stderr);
+}
+
+void MainComponent::reperesAuxAttaques(size_t piste, uint64_t clipId) {
+    // D560.4 : DES REPÈRES AUX ATTAQUES (*Create Markers from Hitpoints*) -- celles des clips audio CHOISIS (le cliqué et
+    // la sélection), muets compris : le choix est explicite, à la différence de D558.3 qui parcourt une piste. Placées
+    // où elles sonnent (`clipAttackTicks`), nommées comme D558.1 (« Repère N », le premier N libre) ; un tick qui porte
+    // déjà un repère est sauté et COMPTÉ, un clip à l'envers écarté et compté. Un pas.
+    (void)piste;
+    vsm::sequencer::ClipSelection cibles = arrangement_.selectedClipIds();
+    cibles.insert(clipId);
+    std::vector<vsm::midi::Tick> instants;
+    size_t clips = 0, aLEnvers = 0, illisibles = 0;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& track = project_.tracks[i];
+        if (track.kind != vsm::sequencer::Track::Kind::Audio || track.audio.empty()) continue;
+        const vsm::midi::Tick finMateriau =
+            track.audio.sampleRate > 0.0 ? project_.secondsToTicks(track.audio.durationSeconds()) : 0;
+        for (const auto& clip : track.clips) {
+            if (cibles.count(clip.id) == 0) continue;
+            ++clips;
+            if (clip.reversed) { ++aLEnvers; continue; }
+            std::vector<double> secondes, niveaux;
+            juce::String erreur;
+            if (!lireAttaquesDuClip(i, clip.id, secondes, niveaux, erreur)) { ++illisibles; continue; }
+            const auto ticks = vsm::sequencer::clipAttackTicks(
+                clip, secondes, finMateriau, [this](double s) { return project_.secondsToTicks(s); },
+                [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); });
+            instants.insert(instants.end(), ticks.begin(), ticks.end());
+        }
+    }
+    std::sort(instants.begin(), instants.end());
+    instants.erase(std::unique(instants.begin(), instants.end()), instants.end());
+    std::vector<vsm::midi::Tick> neufs;
+    size_t deja = 0;
+    for (const auto t : instants) {
+        if (std::any_of(project_.markers.begin(), project_.markers.end(),
+                        [t](const vsm::sequencer::Marker& m) { return m.tick == t; }))
+            ++deja;
+        else
+            neufs.push_back(t);
+    }
+    std::string ticks;
+    for (const auto t : neufs) ticks += (ticks.empty() ? "" : " ") + std::to_string(t);
+    std::fputs(("VSM_REPERES_ATTAQUES : " + std::to_string(neufs.size()) + " rep\xc3\xa8re(s) pos\xc3\xa9(s) ["
+                + ticks + "], " + std::to_string(deja) + " d\xc3\xa9j\xc3\xa0 l\xc3\xa0, " + std::to_string(clips)
+                + " clip(s) audio, " + std::to_string(aLEnvers) + " \xc3\xa0 l'envers \xc3\xa9" "cart\xc3\xa9(s), "
+                + std::to_string(illisibles) + " illisible(s)\n").c_str(), stderr);
+    if (neufs.empty()) {
+        juce::String raison = instants.empty() ? tr(u8"Aucune attaque trouvée dans les clips audio choisis.")
+                                               : tr(u8"Chaque attaque porte déjà un repère (%1).").replace("%1", juce::String(static_cast<int>(deja)));
+        if (aLEnvers > 0)
+            raison << "\n\n" << tr(u8"%1 clip(s) à l'envers écarté(s) : leurs attaques ne sonnent pas où le fichier les met.")
+                                    .replace("%1", juce::String(static_cast<int>(aLEnvers)));
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Poser des repères aux attaques"), raison);
+        return;
+    }
+    std::set<std::string> pris;
+    for (const auto& m : project_.markers) pris.insert(m.name);
+    beginProjectEdit(juce::String::fromUTF8(u8"Poser des repères aux attaques"));
+    int n = 1;
+    for (const auto t : neufs) {
+        std::string nom;
+        for (;; ++n) {
+            nom = tr(u8"Repère %1").replace("%1", juce::String(n)).toStdString();
+            if (pris.count(nom) == 0) break;
+        }
+        pris.insert(nom);
+        project_.markers.push_back({t, nom});
+    }
+    std::sort(project_.markers.begin(), project_.markers.end(),
+              [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) { return a.tick < b.tick; });
+    refreshMarkerViews();
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"%1 repère(s) posé(s) aux attaques, %2 déjà là")
+                                       .replace("%1", juce::String(static_cast<int>(neufs.size())))
+                                       .replace("%2", juce::String(static_cast<int>(deja))));
 }
 
 void MainComponent::lireLaSelection() {

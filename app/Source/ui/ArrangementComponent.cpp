@@ -763,6 +763,14 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
     // D549.1 : LE FONDU À LA TÊTE (Fade In / Out to Cursor).
     menu.addItem(79, tr(u8"Fondu d'entrée jusqu'à la tête de lecture"));
     menu.addItem(80, tr(u8"Fondu de sortie depuis la tête de lecture"));
+    // D560.2 : RETIRER LES FONDUS (Remove Fades), sur toute la sélection ; grisée quand aucun clip visé n'en porte.
+    {
+        bool unFondu = clip.fadeInSeconds > 0.0 || clip.fadeOutSeconds > 0.0;
+        for (const auto& t : project_->tracks)
+            for (const auto& c : t.clips)
+                if (selection_.count(c.id) > 0 && (c.fadeInSeconds > 0.0 || c.fadeOutSeconds > 0.0)) unFondu = true;
+        menu.addItem(83, tr(u8"Retirer les fondus"), unFondu);
+    }
     menu.addSeparator();
     // D358 : LA TOUCHE EST DESSINÉE PAR JUCE, PLUS ÉCRITE DANS LE LIBELLÉ. Les
     // deux parenthèses « (Ctrl+E) » et « (Ctrl+J) » mentaient dès que
@@ -916,6 +924,9 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
         menu.addItem(27, tr(u8"Créer des notes depuis les attaques…"));
         // D544.2 : LE GROOVE DE CE CLIP — le placement de ses attaques, pour « Appliquer le groove ».
         menu.addItem(28, tr(u8"Extraire le groove de ce clip"));
+        // D560.4 : DES REPÈRES AUX ATTAQUES des clips audio choisis (Create Markers from Hitpoints). Le compte se dit
+        // APRÈS : le compter d'avance lirait le fichier à chaque ouverture du menu (la règle de D20.3).
+        menu.addItem(84, tr(u8"Poser des repères aux attaques"));
         // D545.2 : LE TEMPO DE CETTE PRISE, cherché dans ses attaques, proposé au projet.
         menu.addItem(29, tr(u8"Détecter le tempo de ce clip"));
         // D20.4 : TRANSCRIRE EN MIDI, un clip à la fois -- le premier
@@ -2048,6 +2059,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         case 28:   // D544.2
             if (onClipGrooveFromAttacksRequested) onClipGrooveFromAttacksRequested(piste, clipId);
             return;
+        case 84:   // D560.4
+            if (onClipMarkersFromAttacksRequested) onClipMarkersFromAttacksRequested(piste, clipId);
+            return;
         case 29:   // D545.2
             if (onClipTempoDetectRequested) onClipTempoDetectRequested(piste, clipId);
             return;
@@ -2179,6 +2193,20 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             ClipSelection cibles = selection_;
             cibles.insert(clipId);
             for (auto& t : project_->tracks) toggleClipPhase(t.clips, cibles);
+            break;
+        }
+        case 83: {   // D560.2 : sur toute la sélection ; mesuré sur une copie, aucun pas pour rien
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            size_t retires = 0;
+            for (const auto& t : project_->tracks) {
+                auto essai = t.clips;
+                retires += removeClipFades(essai, cibles);
+            }
+            std::fputs(("VSM_FONDUS_RETIRES : " + std::to_string(retires) + " clip(s)\n").c_str(), stderr);
+            if (retires == 0) return;
+            if (onEditStarted) onEditStarted(u8"Retirer les fondus");
+            for (auto& t : project_->tracks) removeClipFades(t.clips, cibles);
             break;
         }
         case 82: {   // D559.3 : sur toute la sélection, comme la phase

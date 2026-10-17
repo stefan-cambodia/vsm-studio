@@ -762,6 +762,29 @@ VSM_TEST(collapsing_only_the_inner_folder_leaves_its_siblings_alone) {
     VSM_ASSERT(!hiddenByCollapsedFolder(p, 5));   // Basse
 }
 
+// D560.3 — PLIER, DÉPLIER, INVERSER TOUTES LES PISTES, masquées comprises ; le compte dit ce qui change.
+VSM_TEST(folding_all_tracks_counts_what_changes_and_keeps_the_folder_rule) {
+    Project p = projetAvecDossiers();
+    p.tracks[2].folded = true;
+    p.tracks[5].hidden = true;
+    VSM_ASSERT_EQ(countFoldChanges(p, FoldAll::Fold), size_t(5));
+    VSM_ASSERT_EQ(countFoldChanges(p, FoldAll::Unfold), size_t(1));
+    VSM_ASSERT_EQ(countFoldChanges(p, FoldAll::Flip), size_t(6));
+
+    VSM_ASSERT_EQ(foldAllTracks(p, FoldAll::Fold), size_t(5));
+    for (const auto& t : p.tracks) VSM_ASSERT(t.folded);           // la masquée aussi
+    VSM_ASSERT(hiddenByCollapsedFolder(p, 4));                      // le dossier plié cache son contenu
+    VSM_ASSERT_EQ(foldAllTracks(p, FoldAll::Fold), size_t(0));      // rejoué : rien
+    VSM_ASSERT(p.tracks[5].hidden);                                  // le pli ne démasque pas
+
+    p.tracks[1].folded = false;
+    VSM_ASSERT_EQ(foldAllTracks(p, FoldAll::Flip), size_t(6));
+    VSM_ASSERT(p.tracks[1].folded);
+    VSM_ASSERT(!p.tracks[0].folded && !p.tracks[4].folded);
+    VSM_ASSERT_EQ(foldAllTracks(p, FoldAll::Unfold), size_t(1));
+    for (const auto& t : p.tracks) VSM_ASSERT(!t.folded);
+}
+
 VSM_TEST(folder_depths_are_put_back_in_order_rather_than_left_incoherent) {
     Project p;
     for (int i = 0; i < 4; ++i) p.tracks.emplace_back();

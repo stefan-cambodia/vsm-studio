@@ -1403,6 +1403,22 @@ VSM_TEST(clip_attack_ticks_are_those_of_the_notes_and_repeat_with_the_loop) {
     for (size_t i = 0; i < lignes.size(); ++i) VSM_ASSERT_EQ(grille[i], lignes[i]);
 }
 
+// D560.2 — RETIRER LES FONDUS : l'entrée et la sortie à zéro sur les clips choisis, la forme gardée, le verrou ignoré.
+VSM_TEST(removing_fades_zeroes_both_ends_of_the_chosen_clips_only) {
+    std::vector<Clip> clips{clip(1, 0, 960), clip(2, 960, 960), clip(3, 1920, 960), clip(4, 2880, 960)};
+    clips[0].fadeInSeconds = 0.5;
+    clips[0].fadeShape = FadeShape::EqualPower;
+    clips[1].fadeOutSeconds = 0.25;
+    clips[1].locked = true;
+    clips[3].fadeInSeconds = 0.1;                                    // pas choisi
+    VSM_ASSERT_EQ(removeClipFades(clips, {1, 2, 3}), size_t(2));     // le 3 n'avait rien
+    VSM_ASSERT_NEAR(clips[0].fadeInSeconds, 0.0, 1e-12);
+    VSM_ASSERT_NEAR(clips[1].fadeOutSeconds, 0.0, 1e-12);            // verrouillé : retiré quand même
+    VSM_ASSERT(clips[0].fadeShape == FadeShape::EqualPower);         // la forme reste
+    VSM_ASSERT_NEAR(clips[3].fadeInSeconds, 0.1, 1e-12);
+    VSM_ASSERT_EQ(removeClipFades(clips, {1, 2, 3}), size_t(0));     // rejoué : rien
+}
+
 // D545.1 — LA COURBE DE GAIN D'UN CLIP AUDIO, tenue au matériau. 120 BPM : une seconde fait 960 ticks.
 
 VSM_TEST(the_gain_envelope_is_a_line_in_amplitude_between_points_of_the_file) {

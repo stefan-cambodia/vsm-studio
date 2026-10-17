@@ -397,6 +397,7 @@ public:
     std::function<void(size_t, uint64_t)> onClipSplitAtSilencesRequested;   // D542.3
     std::function<void(size_t, uint64_t)> onClipQuantizeAudioRequested;     // D543.3
     std::function<void(size_t, uint64_t)> onClipNotesFromAttacksRequested;  // D544.1
+    std::function<void(size_t, uint64_t)> onClipMarkersFromAttacksRequested;  // D560.4
     std::function<void(size_t, uint64_t)> onClipGrooveFromAttacksRequested; // D544.2
     std::function<void(size_t, uint64_t)> onClipTempoDetectRequested;       // D545.2
     /// D545.3 : « Normaliser à un niveau choisi… » — (piste, clip, crête du matériau joué).

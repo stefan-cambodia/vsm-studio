@@ -142,6 +142,10 @@ float normalizeGainFor(float peak, double targetDbfs);
 void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection);
 /// D559.3 : échanger gauche et droite des clips choisis — une bascule PAR clip, comme la phase.
 void toggleClipChannelSwap(std::vector<Clip>& clips, const ClipSelection& selection);
+/// D560.2 — RETIRER LES FONDUS des clips choisis (*Remove Fades*) : le fondu d'entrée et celui de sortie remis à zéro.
+/// La forme (D17.1) reste, et les fondus CROISÉS ne sont pas des fondus de clip (ils naissent du chevauchement). Le
+/// fondu est un réglage du son, comme le gain : aucun verrou ne le refuse (D549.1). Rend le nombre de clips changés.
+size_t removeClipFades(std::vector<Clip>& clips, const ClipSelection& selection);
 
 /// D54 : règle la HAUTEUR des clips audio sélectionnés, en demi-tons.
 ///

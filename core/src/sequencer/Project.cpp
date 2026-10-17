@@ -1113,6 +1113,19 @@ std::vector<size_t> folderContents(const Project& project, size_t index) {
     return contenu;
 }
 
+size_t countFoldChanges(const Project& project, FoldAll how) {
+    if (how == FoldAll::Flip) return project.tracks.size();
+    const bool voulu = how == FoldAll::Fold;
+    return static_cast<size_t>(std::count_if(project.tracks.begin(), project.tracks.end(),
+                                             [voulu](const Track& t) { return t.folded != voulu; }));
+}
+
+size_t foldAllTracks(Project& project, FoldAll how) {
+    const size_t changes = countFoldChanges(project, how);
+    for (auto& t : project.tracks) t.folded = how == FoldAll::Flip ? !t.folded : how == FoldAll::Fold;
+    return changes;
+}
+
 bool hiddenByCollapsedFolder(const Project& project, size_t index) {
     if (index >= project.tracks.size()) return false;
     const int profondeur = project.tracks[index].folderDepth;

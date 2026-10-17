@@ -1148,6 +1148,10 @@ private:
         kMenuMixClearSolos,
         kMenuMixClearMutes,
         kMenuMixResetConsole,
+        /// D560.3 : plier, déplier, inverser les plis de toutes les pistes.
+        kMenuTrackFoldAll,
+        kMenuTrackUnfoldAll,
+        kMenuTrackFlipFolds,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1603,8 +1607,12 @@ private:
     void teteALaFinDeLaSelection();
     /// D558.3 : la tête à la prochaine (`suivante`) ou précédente attaque des clips audio de la piste choisie.
     void teteALAttaque(bool suivante);
+    /// D560.4 : un repère à chaque attaque des clips audio choisis ; un pas ; dit (`VSM_REPERES_ATTAQUES`).
+    void reperesAuxAttaques(size_t piste, uint64_t clipId);
     /// D559.1 : lever le solo (`solos`) ou le muet de toutes les pistes, dit ; un pas.
     void leverToutesLesPistes(bool solos);
+    /// D560.3 : plier, déplier ou inverser les plis de toutes les pistes ; un pas ; dit (`VSM_PLIS`).
+    void plierToutesLesPistes(vsm::sequencer::FoldAll comment);
     /// D559.2 : remettre la console à zéro, après confirmation (`demanderOuiNon`) ; les inserts restent, dit ; un pas.
     void remettreLaConsoleAZero();
     /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).

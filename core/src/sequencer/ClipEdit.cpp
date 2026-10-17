@@ -174,6 +174,17 @@ void toggleClipChannelSwap(std::vector<Clip>& clips, const ClipSelection& select
         if (selected(selection, clip)) clip.swapChannels = !clip.swapChannels;
 }
 
+size_t removeClipFades(std::vector<Clip>& clips, const ClipSelection& selection) {
+    size_t changes = 0;
+    for (auto& clip : clips) {
+        if (!selected(selection, clip) || (clip.fadeInSeconds <= 0.0 && clip.fadeOutSeconds <= 0.0)) continue;
+        clip.fadeInSeconds = 0.0;
+        clip.fadeOutSeconds = 0.0;
+        ++changes;
+    }
+    return changes;
+}
+
 bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
                           Tick materialEnd, Tick& startTick, Tick& endTick) {
     bool trouve = false;

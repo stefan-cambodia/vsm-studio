@@ -524,6 +524,15 @@ std::vector<size_t> folderContents(const Project& project, size_t index);
 /// tiroir laisserait dépasser ce qu'il contient.
 bool hiddenByCollapsedFolder(const Project& project, size_t index);
 
+/// D560.3 — PLIER, DÉPLIER, INVERSER LES PLIS de TOUTES les pistes (*Project ▸ Track Folding* de Cubase : *Fold
+/// Tracks*, *Unfold Tracks*, *Flip Fold States*), masquées comprises — le pli d'une piste masquée se retrouve quand on
+/// l'affiche, et « toutes » qui en oublierait une mentirait. Le pli est dans le fichier (`Track::folded`) : c'est de
+/// l'état de morceau. `countFoldChanges` dit combien de pistes changeraient ; `foldAllTracks` les change et rend ce
+/// même compte (0 : rien n'a bougé).
+enum class FoldAll { Fold, Unfold, Flip };
+size_t countFoldChanges(const Project& project, FoldAll how);
+size_t foldAllTracks(Project& project, FoldAll how);
+
 /// REMET LES PROFONDEURS DE DOSSIER D'APLOMB (D19.4), et rend le nombre de
 /// pistes corrigées.
 ///

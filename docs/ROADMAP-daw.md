@@ -42788,3 +42788,72 @@ s'offre encore sur un clip qui n'a rien à échanger.
   passe sur le fichier, au geste et non à chaque ouverture du menu (D558.3).
 
 **L'ORDRE, TRANCHÉ ICI.** D560.1 d'abord (ce qui ment), puis D560.2, D560.3, D560.4.
+
+**LE POSTE A DORMI AU MILIEU.** Le code écrit et ses quatre bancs verts à 11 h 59, la batterie à 10 % : la garde l'a
+endormi à 12 h 00 (`garder-batterie.sh`, code 0), réveillé à 14 h 22, rechargé. Le binaire de D559 avait été remplacé
+par la première compilation de D560 sans copie : il a été RECOMPILÉ pour servir de témoin (`git stash`, la cible de
+l'application seule, rangé hors du dépôt, puis `git stash pop` et la recompilation de D560). Désormais, le binaire
+d'avant se copie AVANT la première compilation d'une phase.
+
+### Phase D560.1 — les canaux recomptés à l'ouverture (17/10/2026) — FAITE
+
+`loadAudioTracks` compare les canaux que le projet déclare à ceux du fichier chargé (`fileChannels`, D559.3) et corrige
+la piste — une piste audio non gelée seulement —, sans pas d'historique, en le disant au journal
+(`VSM_PROJET_CORRIGE`, la forme de D523).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | ouvert : dit, l'entrée grisée | `tools/canaux-recomptes.sh`, un mono importé (1), réécrit à 2 comme avant D559 : « Piste 2 (mono) : le projet déclarait 2 canal(aux), le fichier en a 1 », « Gauche et droite échangées [grisée] » | **oui** |
+| 2 | pas « modifié » | le titre « Vintage Synth MIDI Studio -- mono », sans astérisque | **oui** |
+| 3 | réenregistré | « channels: 1 » | **oui** |
+| 4 | les témoins | un stéréo déclaré 2 : aucune ligne, l'entrée active ; le binaire de D559 : (1) et (3) **rouges**, (2) et (4) verts — ce sont les contrôles, vrais des deux côtés | **oui** |
+
+### Phase D560.2 — retirer les fondus (17/10/2026) — FAITE
+
+`removeClipFades` (`core/`, `ClipEdit.h`) remet à zéro l'entrée et la sortie des clips choisis, garde leur forme, ignore
+le verrou (le fondu est un réglage du son, D549.1). Clic droit sur un clip audio, *Retirer les fondus*, grisée quand
+aucun clip visé n'en porte ; mesuré sur une copie, aucun pas pour rien.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | deux clips changés sur trois choisis (le troisième sans fondu), le verrouillé compris, la forme gardée ; rejoué : 0. **Rouge** sur le mutant qui oublie la sortie (« 0,25 vs 0 ») | **oui** |
+| 2 | par l'export | `tools/fondus-retires.sh`, un la constant fondu 0,5 s aux deux bouts : témoin **−30,79 / −12,04 / −30,79** dBFS (début, milieu, fin) ; retirés, enregistré, rouvert, exporté : **−12,10 / −12,04 / −12,10** — l'écart de 0,06 dB est le fondu de sécurité de D33.2, qui reste ; le projet « 0 0 equalPower » | **oui** |
+| 3 | un pas | Ctrl+Z, après « VSM_FONDUS_RETIRES : 1 clip(s) » : « 0,5 0,5 equalPower » | **oui** |
+| 4 | après, et le témoin | « Retirer les fondus [grisée] » ; le binaire de D559 : (2) à (4) **rouges** | **oui** |
+
+**LE BANC S'EST D'ABORD TROMPÉ DE FORMAT** : il écrivait la forme du fondu par son numéro (`1`), le fichier la porte par
+son NOM (`equalPower`) ; lue « linéaire », réécrite absente, la forme semblait perdue. Relu dans `ProjectDocument.cpp`,
+corrigé dans le banc — l'application disait vrai.
+
+### Phase D560.3 — plier, déplier, inverser les plis de toutes les pistes (17/10/2026) — FAITE
+
+`countFoldChanges` et `foldAllTracks` (`core/`, `Project.h`, `FoldAll`) ; *Piste ▸ Plier toutes les pistes (N)*,
+*Déplier toutes les pistes (N)*, *Inverser les plis (N)*, sous « Afficher toutes les pistes ».
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | 5, 1 et 6 comptés ; tout plié, la masquée comprise et toujours masquée, le dossier plié cachant son contenu ; rejoué : 0 ; inverser puis déplier. **Rouge** sur le mutant où inverser plie | **oui** |
+| 2 | le menu | `tools/plier-toutes.sh` (un dossier, un membre, une piste pliée, une masquée) : « (3) », « (1) », « (4) » ; après plier, « Plier toutes les pistes (0) [grisée] » | **oui** |
+| 3 | plier, inverser, déplier | **Dossier:P Kick:P Basse:P Cachée:PM** ; inversé depuis le départ : **Dossier:P Kick:P Basse: Cachée:PM** ; plié puis déplié : aucune pliée, la masquée toujours masquée | **oui** |
+| 4 | un pas, et le témoin | Ctrl+Z rend le départ, après « VSM_PLIS : 3 piste(s) pliées » ; le binaire de D559 : les cinq **rouges** | **oui** |
+| 5 | le menu dans les deux langues, et l'audit | photographié : « Plier toutes les pistes (2) » / « Fold all tracks (2) », « Déplier toutes les pistes (0) » / « Unfold all tracks (0) » grisée, « Inverser les plis (2) » / « Flip fold states (2) » ; l'audit des menus : plier et inverser **justes** (le morceau change, un pas), déplier grisée dans ses deux états | **oui** |
+
+### Phase D560.4 — poser des repères aux attaques (17/10/2026) — FAITE
+
+`reperesAuxAttaques` : les attaques des clips audio choisis, lues au geste (`lireAttaquesDuClip`) et placées par
+`clipAttackTicks` (D558.3), un repère « Repère N » (le premier N libre) à chacune ; un tick déjà pris sauté et compté ;
+rien de posé, la boîte dit pourquoi. Clic droit sur un clip audio, *Poser des repères aux attaques*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | posés | `tools/reperes-attaques.sh`, le fichier de clics, « Repère 1 » à 470 et « Repère 2 » à 3 000 : **250 · 739 · 970**, nommés **Repère 3 · 4 · 5** ; celui de 470 sauté, « 1 déjà là » | **oui** |
+| 2 | rejoué | rien de posé ; « Chaque attaque porte déjà un repère (4). » | **oui** |
+| 3 | le clip qui boucle | huit : **250 · 470 · 739 · 970 · 2 170 · 2 390 · 2 659 · 2 890** — le second tour | **oui** |
+| 4 | muet, à l'envers | le clip muet : quatre repères ; à l'envers : aucun, « 1 à l'envers écarté(s) », et la boîte le dit | **oui** |
+| 5 | un pas, le témoin, l'audit | Ctrl+Z rend les deux d'avant ; le binaire de D559 : les cinq **rouges** ; l'audit des menus : « sans effet avec trace » sur son fichier sans attaque (la boîte) ; en anglais, « Create markers from hitpoints » | **oui** |
+
+C++ 498 · 1 341 · 339 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE VINGT ET UNIÈME AUDIT (D560) EST CLOS** : les canaux d'un projet d'avant D559 recomptés, retirer les fondus, plier
+toutes les pistes, des repères aux attaques. **LA SÉRIE COMPLÈTE**, sur le binaire de D560 (110 bancs, quatre neufs),
+est lancée à 14 h 41, écran allumé et déverrouillé ; son résultat s'écrit avec la phase suivante.
