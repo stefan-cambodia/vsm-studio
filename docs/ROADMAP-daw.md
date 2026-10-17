@@ -43030,7 +43030,7 @@ fichier. **LA SÉRIE COMPLÈTE**, sur le binaire de D561 (114 bancs, quatre neuf
 
 ### Phase D562 — un vingt-troisième audit : les statistiques d'un clip, retirer les chevauchements des clips, copier les réglages d'une tranche (18/10/2026)
 
-*Écrite le 18/10 à 01 h 31, D561 close, pendant la série de son binaire.*
+*Écrite le 18/10 à 01 h 19, D561 close, pendant la série de son binaire.*
 
 **LA MÉTHODE, celle de D535 à D561 — et ses zéros revérifiés en listant ce qu'on a cherché ET où** (la leçon du bouton
 « Tap », D561.2) : identifiants dans `core/`, `app/Source`, `audio/`, `interchange/`, `.h` ET `.cpp` ; libellés par
