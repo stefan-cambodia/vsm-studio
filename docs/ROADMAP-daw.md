@@ -42914,3 +42914,11 @@ MOINS de 30 — aucun, ou ceux d'un début préchargé seulement ; sur le même 
 réfuterait** : 30 repères sur le fichier de 30 s. Mesuré sur le binaire de D560, après la série. Si elle tient, le
 remède est UNE fonction de relecture pour les six (`AudioLoadPolicy::ForceResident` : « le matériau doit être là tout
 entier quoi qu'il en coûte » — neuf minutes de stéréo à 48 kHz font 207 Mo, le temps d'un geste), et D561.4 la garde.
+
+**ÉTAT AU COMMIT `6b238733`, ET POURQUOI IL LE PORTE — D561 N'EST PAS CLOSE.** Ce commit annonce « l'heure de
+l'écriture relue » et emporte AUSSI, par un `git commit -am`, le code de D561 alors en cours : `tappedTempoBpm`
+(`core/`, test vert, 499), le champ `dcOffsetLeft/Right` du clip, sa portée et ses trois chemins de mixage (`audio/`,
+test vert, 1 342), son passage au format (`interchange`, test vert, 340), la commande `transport.tapTempo` (Maj+T),
+`taperLeTempo`, `pistesChoisiesEtLeurContenu` et l'entrée « Les clips des pistes choisies (N) ». **Pas encore
+compilés** : les fichiers de l'application — la série de D560 tournait sur le binaire, qu'une édition des liens aurait
+remplacé. Pas encore écrits : l'entrée « Retirer le décalage continu » et sa mesure, les bancs, H23.

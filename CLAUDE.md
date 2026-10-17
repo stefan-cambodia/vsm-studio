@@ -406,6 +406,10 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   qui ne chasse pas restait vert. Remplacer AVANT d'insérer, ou exclure l'insert ;
   et lancer les tests core après tout changement du séquenceur, pas seulement
   ceux dont on croit avoir touché le chemin.
+- `git commit -am` pendant qu'un chantier est ouvert EMPORTE le chantier : le 17/10, un
+  commit d'une ligne de document (« l'heure relue ») a poussé 277 lignes de D561 non
+  compilées sous son titre. Un commit de document se fait par `git add <le fichier>`, et
+  `git show --stat HEAD` se lit avant `git push`.
 - Une HEURE écrite dans un document se lit à l'horloge (`date +%H:%M`) au moment où
   on l'écrit, jamais de tête : le 30/09, quatre titres de section portaient une heure
   en avance de dix à vingt minutes (« 19 h 50 » pour un commit de 19 h 40), et un
