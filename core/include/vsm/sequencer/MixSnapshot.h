@@ -2,6 +2,7 @@
 #include "vsm/sequencer/Project.h"
 #include <cstddef>
 #include <string>
+#include <vector>
 
 // D535.2 de docs/ROADMAP-daw.md — LES INSTANTANÉS DE LA CONSOLE (les *MixConsole Snapshots* de
 // Cubase) : garder l'état du mixage sous un nom, et y revenir.
@@ -64,5 +65,21 @@ size_t clearAllMutes(Project& project);
 /// `countTracksToReset` le même compte sans rien toucher (le libellé du menu).
 size_t countTracksToReset(const Project& project);
 size_t resetConsole(Project& project);
+
+/// D562.3 — LES RÉGLAGES D'UNE TRANCHE (*Copy / Paste Channel Settings*) : son trim, sa phase, ses départs et sa chaîne
+/// d'inserts (réglages, état natif et contournement compris) — le « son » de la tranche. Le volume, le panoramique, le
+/// muet, le solo et la sortie RESTENT : c'est la balance du morceau, piste par piste, et où va une piste n'est pas un
+/// réglage de son. Un dossier et un VCA n'ont pas de tranche à recevoir (`channelSettingsApply` rend faux).
+struct ChannelSettings {
+    float inputTrimDb = 0.0f;
+    bool invertPhase = false;
+    std::vector<float> sendLevels;
+    std::vector<TrackEffect> effects;
+};
+ChannelSettings captureChannelSettings(const Track& track);
+/// Vrai si `track` peut recevoir les réglages (ni dossier, ni VCA) ET qu'ils y changeraient quelque chose.
+bool channelSettingsWouldChange(const Track& track, const ChannelSettings& settings);
+/// Pose les réglages ; rend vrai si quelque chose a changé.
+bool applyChannelSettings(Track& track, const ChannelSettings& settings);
 
 } // namespace vsm::sequencer

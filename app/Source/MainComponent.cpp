@@ -666,6 +666,9 @@ MainComponent::MainComponent()
     arrangement_.onClipDcOffsetRequested = [this](size_t piste, uint64_t clipId) {   // D561.3
         retirerDecalageContinu(piste, clipId);
     };
+    arrangement_.onClipStatisticsRequested = [this](size_t piste, uint64_t clipId) {   // D562.1
+        statistiquesDuClip(piste, clipId);
+    };
     arrangement_.onClipGrooveFromAttacksRequested = [this](size_t piste, uint64_t clipId) {  // D544.2
         grooveDepuisAttaques(piste, clipId);
     };
@@ -4499,6 +4502,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D552.1 : CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements).
             menu.addItem(kMenuEditSnapClipStarts, tr(u8"Caler les débuts des clips sur la grille"),
                          arrangement_.hasSelection());
+            // D562.2 : RETIRER LES CHEVAUCHEMENTS DES CLIPS (Delete Overlaps) — les choisis, ou tous ; le compte dit
+            // combien de recouvrements, grisée à zéro.
+            {
+                const auto n = static_cast<int>(arrangement_.retirerChevauchements(true).overlaps);
+                menu.addItem(kMenuEditRemoveClipOverlaps,
+                             tr(u8"Retirer les chevauchements des clips (%1)").replace("%1", juce::String(n)), n > 0);
+            }
             // D34.5 : DESSINER UNE AUTOMATION PAR UNE FORME. Un balayage de
             // filtre sur seize mesures se posait point par point, et un
             // trémolo régulier ne se posait pas du tout.
@@ -4908,6 +4918,22 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                       ? tr(u8"Ajouter la chaîne (rien de copié)")
                                       : tr(u8"Ajouter la chaîne à la suite (%1 inserts)").replace("%1", juce::String(presse)),
                                   presse > 0 && piste < project_.tracks.size());
+                    // D562.3 : LES RÉGLAGES DE LA TRANCHE (Copy / Paste Channel Settings) — trim, phase, départs et
+                    // inserts ; le compte du collage dit combien de pistes choisies changeraient.
+                    const bool aUneTranche = piste < project_.tracks.size() && !project_.tracks[piste].isFolder()
+                                             && !project_.tracks[piste].isVca();
+                    menu.addItem(kMenuTrackCopyStrip, tr(u8"Copier les réglages de la tranche"), aUneTranche);
+                    int changeraient = 0;
+                    if (reglagesDeTranche_)
+                        for (size_t i : trackList_.selectedTracks())
+                            if (i < project_.tracks.size()
+                                && vsm::sequencer::channelSettingsWouldChange(project_.tracks[i], *reglagesDeTranche_))
+                                ++changeraient;
+                    menu.addItem(kMenuTrackPasteStrip,
+                                  reglagesDeTranche_
+                                      ? tr(u8"Coller les réglages sur les pistes choisies (%1)").replace("%1", juce::String(changeraient))
+                                      : tr(u8"Coller les réglages (rien de copié)"),
+                                  changeraient > 0);
                 }
                 // D31.4 : LA CHAÎNE D'EFFETS MIDI. Au menu Piste comme la
                 // chaîne d'inserts (D30.3), et pour la même raison : c'est le
@@ -5715,6 +5741,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
+    if (menuItemID == kMenuEditRemoveClipOverlaps) { retirerChevauchementsDesClips(); return; }   // D562.2
+    if (menuItemID == kMenuTrackCopyStrip) { copierReglagesDeTranche(); return; }                // D562.3
+    if (menuItemID == kMenuTrackPasteStrip) { collerReglagesDeTranche(); return; }
     if (menuItemID == kMenuEditSelectOnTracks) {   // D561.1
         const auto pistes = pistesChoisiesEtLeurContenu();
         const int n = static_cast<int>(arrangement_.choisirClipsDesPistes(pistes));
@@ -13867,6 +13896,110 @@ void MainComponent::retirerDecalageContinu(size_t piste, uint64_t clipId) {
         pianoRoll_.onStatusChanged((rendre ? tr(u8"Décalage continu rendu : %1 clip(s)")
                                            : tr(u8"Décalage continu retiré : %1 clip(s)"))
                                        .replace("%1", juce::String(static_cast<int>(mesures.size()))));
+}
+
+namespace {
+/// D562.1 : un niveau linéaire en dBFS, une décimale ; « silence » pour zéro.
+juce::String enDbfs(double v) {
+    return v <= 0.0 ? vsm::app::ui::tr(u8"silence") : juce::String(20.0 * std::log10(v), 2) + " dBFS";
+}
+} // namespace
+
+void MainComponent::statistiquesDuClip(size_t piste, uint64_t clipId) {
+    // D562.1 : LES STATISTIQUES D'UN CLIP AUDIO (*Audio ▸ Statistics*) — sur la fenêtre que le clip JOUE (la relecture
+    // résidente de D561.4 ; un tour pour un clip qui boucle), canal par canal. Le gain du clip n'y entre pas : c'est le
+    // fichier que le clip lit, et la boîte le dit. Lecture seule : aucun pas.
+    const auto* clip = findClip(piste, clipId);
+    if (clip == nullptr) return;
+    FenetreDuClip f;
+    juce::String erreur;
+    if (!chargerFenetreDuClip(piste, clipId, f, erreur)) {
+        montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Statistiques du clip"), erreur);
+        return;
+    }
+    int64_t compte = f.compte;
+    if (clip->sourceLength > 0 && !vsm::sequencer::clipIsWarped(*clip))
+        compte = std::min(compte, static_cast<int64_t>(std::llround(
+            (project_.ticksToSeconds(clip->startTick + clip->sourceLength) - project_.ticksToSeconds(clip->startTick))
+            * f.sampleRate)));
+    compte = std::max<int64_t>(0, std::min(compte, f.magasin->frames() - f.depart));
+    const auto magasin = f.magasin;
+    const int64_t depart = f.depart;
+    const auto st = vsm::audio::io::measureStatistics(
+        [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); }, compte);
+    const auto canal = [](const vsm::audio::io::ChannelStatistics& c) {
+        return juce::String(20.0 * std::log10(std::max(c.peak, 1e-12)), 2) + " " + juce::String(20.0 * std::log10(std::max(c.rms, 1e-12)), 2)
+               + " " + juce::String(c.mean, 4);
+    };
+    std::fputs(("VSM_STATISTIQUES : \xc2\xab " + clip->name + " \xc2\xbb gauche " + canal(st.left).toStdString() + " ; droite "
+                + canal(st.right).toStdString() + " (cr\xc3\xaate dBFS, efficace dBFS, moyenne) ; " + std::to_string(st.readable)
+                + " / " + std::to_string(st.frames) + " trames \xc3\xa0 " + juce::String(f.sampleRate, 0).toStdString()
+                + " Hz\n").c_str(), stderr);
+    const auto ligne = [](const juce::String& nom, const vsm::audio::io::ChannelStatistics& c) {
+        return tr(u8"%1 : crête %2, valeur efficace %3, décalage continu %4")
+            .replace("%1", nom).replace("%2", enDbfs(c.peak)).replace("%3", enDbfs(c.rms))
+            .replace("%4", (c.mean >= 0.0 ? "+" : "") + juce::String(c.mean, 4));
+    };
+    juce::String texte = tr(u8"« %1 » — la fenêtre que le clip joue : %2 s.")
+                             .replace("%1", juce::String::fromUTF8(clip->name.c_str()))
+                             .replace("%2", juce::String(static_cast<double>(st.frames) / f.sampleRate, 3));
+    texte << "\n\n" << ligne(tr(u8"Gauche"), st.left) << "\n" << ligne(tr(u8"Droite"), st.right) << "\n\n"
+          << tr(u8"Le gain du clip n'y entre pas : c'est le fichier que le clip lit.");
+    if (st.readable < st.frames)
+        texte << "\n" << tr(u8"%1 trame(s) illisible(s), écartée(s).").replace("%1", juce::String(st.frames - st.readable));
+    montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Statistiques du clip"), texte);
+}
+
+void MainComponent::retirerChevauchementsDesClips() {
+    // D562.2 : RETIRER LES CHEVAUCHEMENTS DES CLIPS (*Delete Overlaps*) — le clip d'avant perd sa fin, piste par piste.
+    const auto r = arrangement_.retirerChevauchements(false);
+    std::fputs(("VSM_CHEVAUCHEMENTS_CLIPS : " + std::to_string(r.overlaps) + " recouvrement(s), " + std::to_string(r.trimmed)
+                + " rogn\xc3\xa9(s), " + std::to_string(r.removed) + " retir\xc3\xa9(s), " + std::to_string(r.locked)
+                + " verrouill\xc3\xa9(s)\n").c_str(), stderr);
+    if (r.trimmed + r.removed == 0) {
+        if (r.locked == 0)
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Retirer les chevauchements des clips"),
+                         tr(u8"Aucun clip n'en recouvre un autre sur sa piste."));
+        return;
+    }
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Chevauchements des clips : %1 rogné(s), %2 retiré(s)")
+                                       .replace("%1", juce::String(static_cast<int>(r.trimmed)))
+                                       .replace("%2", juce::String(static_cast<int>(r.removed))));
+}
+
+void MainComponent::copierReglagesDeTranche() {
+    // D562.3 : COPIER NE CHANGE RIEN AU PROJET — aucun pas ; ce qui s'annule est le collage (la règle de D30.3).
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    reglagesDeTranche_ = vsm::sequencer::captureChannelSettings(project_.tracks[piste]);
+    std::fputs(("VSM_TRANCHE : r\xc3\xa9glages copi\xc3\xa9s de \xc2\xab " + project_.tracks[piste].name + " \xc2\xbb (trim "
+                + juce::String(reglagesDeTranche_->inputTrimDb, 1).toStdString() + " dB, "
+                + std::to_string(reglagesDeTranche_->sendLevels.size()) + " d\xc3\xa9part(s), "
+                + std::to_string(reglagesDeTranche_->effects.size()) + " insert(s))\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Réglages de la tranche « %1 » copiés")
+                                       .replace("%1", juce::String::fromUTF8(project_.tracks[piste].name.c_str())));
+}
+
+void MainComponent::collerReglagesDeTranche() {
+    // D562.3 : LES PISTES CHOISIES reçoivent trim, phase, départs et inserts ; volume, panoramique, muet, solo et sortie
+    // restent. Un pas, s'il y a quelque chose à changer ; les inserts refabriqués depuis leur description (D30.3).
+    if (!reglagesDeTranche_) return;
+    std::vector<size_t> cibles;
+    for (size_t i : trackList_.selectedTracks())
+        if (i < project_.tracks.size() && vsm::sequencer::channelSettingsWouldChange(project_.tracks[i], *reglagesDeTranche_))
+            cibles.push_back(i);
+    if (cibles.empty()) {
+        std::fputs("VSM_TRANCHE : rien \xc3\xa0 coller\n", stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    beginProjectEdit(juce::String::fromUTF8(u8"Coller les réglages de la tranche"));
+    for (size_t i : cibles) vsm::sequencer::applyChannelSettings(project_.tracks[i], *reglagesDeTranche_);
+    rebuildFromProject(false);
+    std::fputs(("VSM_TRANCHE : r\xc3\xa9glages coll\xc3\xa9s sur " + std::to_string(cibles.size()) + " piste(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Réglages de la tranche collés sur %1 piste(s)").replace("%1", juce::String(static_cast<int>(cibles.size()))));
 }
 
 void MainComponent::lireLaSelection() {

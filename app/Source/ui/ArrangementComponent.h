@@ -337,6 +337,10 @@ public:
     /// D561.1 : la sélection REMPLACÉE par tous les clips des pistes données (*Select ▸ All on Selected Tracks*) ;
     /// rend leur nombre.
     size_t choisirClipsDesPistes(const std::set<size_t>& pistes);
+    /// D562.2 : RETIRER LES CHEVAUCHEMENTS DES CLIPS (*Delete Overlaps*) — les clips choisis, ou tous sans choix
+    /// (`removeClipOverlaps`, piste par piste). `compter` : le bilan sans rien changer (le libellé du menu). Un pas,
+    /// s'il y a quelque chose à changer ; le verrou dit (`onLockRefused`).
+    vsm::sequencer::OverlapRemoval retirerChevauchements(bool compter);
     size_t clipsChoisis() const { return selection_.size(); }
     /// D550.2 : COUPER AUX LOCATEURS (*Split Loop*). Les clips choisis -- ou, sans choix, tous ceux qu'un locateur
     /// traverse -- coupés à `de` et à `a`, chaque piste à SON passage par zéro comme Ctrl+E ; le verrou respecté
@@ -402,6 +406,7 @@ public:
     std::function<void(size_t, uint64_t)> onClipNotesFromAttacksRequested;  // D544.1
     std::function<void(size_t, uint64_t)> onClipMarkersFromAttacksRequested;  // D560.4
     std::function<void(size_t, uint64_t)> onClipDcOffsetRequested;  // D561.3
+    std::function<void(size_t, uint64_t)> onClipStatisticsRequested;  // D562.1
     std::function<void(size_t, uint64_t)> onClipGrooveFromAttacksRequested; // D544.2
     std::function<void(size_t, uint64_t)> onClipTempoDetectRequested;       // D545.2
     /// D545.3 : « Normaliser à un niveau choisi… » — (piste, clip, crête du matériau joué).

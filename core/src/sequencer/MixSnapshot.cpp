@@ -188,4 +188,40 @@ void eraseSendLevelEverywhere(Project& project, size_t bus) {
     }
 }
 
+ChannelSettings captureChannelSettings(const Track& track) {
+    return {track.inputTrimDb, track.invertPhase, track.sendLevels, track.effects};
+}
+
+namespace {
+bool memesInserts(const std::vector<TrackEffect>& a, const std::vector<TrackEffect>& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i)
+        if (a[i].type != b[i].type || a[i].parameters != b[i].parameters || a[i].nativeState != b[i].nativeState
+            || a[i].enabled != b[i].enabled)
+            return false;
+    return true;
+}
+/// Deux vecteurs de départs égaux à « pas d'envoi » près : un vecteur court vaut zéro au-delà (`Track::sendLevel`).
+bool memesDeparts(const std::vector<float>& a, const std::vector<float>& b) {
+    for (size_t i = 0; i < std::max(a.size(), b.size()); ++i)
+        if ((i < a.size() ? a[i] : 0.0f) != (i < b.size() ? b[i] : 0.0f)) return false;
+    return true;
+}
+} // namespace
+
+bool channelSettingsWouldChange(const Track& track, const ChannelSettings& s) {
+    if (track.isFolder() || track.isVca()) return false;
+    return track.inputTrimDb != s.inputTrimDb || track.invertPhase != s.invertPhase
+        || !memesDeparts(track.sendLevels, s.sendLevels) || !memesInserts(track.effects, s.effects);
+}
+
+bool applyChannelSettings(Track& track, const ChannelSettings& s) {
+    if (!channelSettingsWouldChange(track, s)) return false;
+    track.inputTrimDb = s.inputTrimDb;
+    track.invertPhase = s.invertPhase;
+    track.sendLevels = s.sendLevels;
+    track.effects = s.effects;
+    return true;
+}
+
 } // namespace vsm::sequencer

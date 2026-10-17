@@ -1,8 +1,10 @@
 #pragma once
 #include <JuceHeader.h>
+#include <optional>
 #include <set>
 #include <vector>
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/MixSnapshot.h"   // D562.3 : les réglages d'une tranche
 #include "vsm/sequencer/MidiRecorder.h"
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/Groove.h"
@@ -1156,6 +1158,10 @@ private:
         kMenuTrackFlipFolds,
         /// D561.1 : les clips des pistes choisies.
         kMenuEditSelectOnTracks,
+        /// D562.2 : retirer les chevauchements des clips ; D562.3 : copier, coller les réglages d'une tranche.
+        kMenuEditRemoveClipOverlaps,
+        kMenuTrackCopyStrip,
+        kMenuTrackPasteStrip,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1615,6 +1621,14 @@ private:
     void reperesAuxAttaques(size_t piste, uint64_t clipId);
     /// D561.3 : retirer (ou rendre) le décalage continu des clips audio choisis ; un pas ; dit (`VSM_DECALAGE`).
     void retirerDecalageContinu(size_t piste, uint64_t clipId);
+    /// D562.1 : les statistiques d'un clip audio, dans une boîte ; dit (`VSM_STATISTIQUES`).
+    void statistiquesDuClip(size_t piste, uint64_t clipId);
+    /// D562.2 : retirer les chevauchements des clips ; dit (`VSM_CHEVAUCHEMENTS_CLIPS`).
+    void retirerChevauchementsDesClips();
+    /// D562.3 : copier les réglages de la tranche choisie, les coller sur les pistes choisies (`VSM_TRANCHE`).
+    void copierReglagesDeTranche();
+    void collerReglagesDeTranche();
+    std::optional<vsm::sequencer::ChannelSettings> reglagesDeTranche_;   ///< D562.3 : le presse-papiers, à part de la chaîne
     /// D559.1 : lever le solo (`solos`) ou le muet de toutes les pistes, dit ; un pas.
     void leverToutesLesPistes(bool solos);
     /// D560.3 : plier, déplier ou inverser les plis de toutes les pistes ; un pas ; dit (`VSM_PLIS`).

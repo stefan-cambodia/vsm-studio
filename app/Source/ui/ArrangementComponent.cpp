@@ -867,6 +867,8 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
         // case décochée rend.
         menu.addItem(85, tr(u8"Retirer le décalage continu"), true,
                      clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f);
+        // D562.1 : LES STATISTIQUES DU CLIP (Audio ▸ Statistics) — crête, valeur efficace, décalage, par canal.
+        menu.addItem(86, tr(u8"Statistiques du clip…"));
         // D22.1 : LE GAIN ET LA PHASE À LA MAIN. Des pas fixes relatifs au
         // gain courant plutôt qu'une boîte de dialogue -- le geste est
         // « un peu plus, un peu moins », et il s'enchaîne. Le titre du
@@ -2069,6 +2071,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         case 85:   // D561.3
             if (onClipDcOffsetRequested) onClipDcOffsetRequested(piste, clipId);
             return;
+        case 86:   // D562.1
+            if (onClipStatisticsRequested) onClipStatisticsRequested(piste, clipId);
+            return;
         case 29:   // D545.2
             if (onClipTempoDetectRequested) onClipTempoDetectRequested(piste, clipId);
             return;
@@ -2317,6 +2322,43 @@ size_t ArrangementComponent::choisirParPlage(vsm::sequencer::RangeRule regle, vs
 void ArrangementComponent::aucunClip() {
     selection_.clear();
     repaint();
+}
+
+vsm::sequencer::OverlapRemoval ArrangementComponent::retirerChevauchements(bool compter) {
+    vsm::sequencer::OverlapRemoval total;
+    if (project_ == nullptr) return total;
+    const auto montage = selection_.empty() ? vsm::sequencer::ClipSelection{} : selection_;
+    // L'ESSAI SUR DES COPIES : le compte, et aucun pas pour un geste qui ne change rien.
+    for (const auto& track : project_->tracks) {
+        if (!montage.empty() && std::none_of(track.clips.begin(), track.clips.end(),
+                                             [&montage](const Clip& c) { return montage.count(c.id) > 0; }))
+            continue;
+        auto essai = track;
+        const auto r = vsm::sequencer::removeClipOverlaps(essai, montage, materialEnd(track), false);
+        total.overlaps += r.overlaps;
+        total.trimmed += r.trimmed;
+        total.removed += r.removed;
+        total.locked += r.locked;
+    }
+    if (compter) return total;
+    if (total.locked > 0 && onLockRefused) onLockRefused(total.locked);
+    if (total.trimmed + total.removed == 0) return total;
+    if (onEditStarted) onEditStarted(u8"Retirer les chevauchements des clips");
+    for (auto& track : project_->tracks) {
+        if (!montage.empty() && std::none_of(track.clips.begin(), track.clips.end(),
+                                             [&montage](const Clip& c) { return montage.count(c.id) > 0; }))
+            continue;
+        vsm::sequencer::removeClipOverlaps(track, montage, materialEnd(track));
+    }
+    for (auto it = selection_.begin(); it != selection_.end();) {   // un clip retiré ne reste pas choisi
+        bool existe = false;
+        for (const auto& t : project_->tracks)
+            for (const auto& c : t.clips) existe = existe || c.id == *it;
+        it = existe ? std::next(it) : selection_.erase(it);
+    }
+    notifyChanged();
+    repaint();
+    return total;
 }
 
 size_t ArrangementComponent::choisirClipsDesPistes(const std::set<size_t>& pistes) {

@@ -192,3 +192,52 @@ VSM_TEST(resetting_the_console_brings_every_strip_back_to_a_new_track_but_keeps_
     VSM_ASSERT_EQ(countTracksToReset(p), size_t(0));
     VSM_ASSERT_EQ(resetConsole(p), size_t(0));
 }
+
+// D562.3 — LES RÉGLAGES D'UNE TRANCHE : trim, phase, départs et inserts passent ; volume, panoramique, muet, solo et
+// sortie restent ; un dossier et un VCA ne reçoivent rien ; recollé, rien ne change.
+VSM_TEST(channel_settings_carry_the_sound_of_a_strip_and_leave_its_balance) {
+    Track source;
+    source.inputTrimDb = 4.5f;
+    source.invertPhase = true;
+    source.sendLevels = {0.25f, 0.5f};
+    TrackEffect comp;
+    comp.type = "compressor";
+    comp.parameters["threshold"] = -18.0f;
+    TrackEffect rev;
+    rev.type = "reverb";
+    rev.enabled = false;
+    source.effects = {comp, rev};
+    source.volume = 0.3f;
+    const auto reglages = captureChannelSettings(source);
+
+    Track cible;
+    cible.volume = 0.9f;
+    cible.pan = -0.5f;
+    cible.muted = true;
+    cible.outputGroup = 3;
+    VSM_ASSERT(channelSettingsWouldChange(cible, reglages));
+    VSM_ASSERT(applyChannelSettings(cible, reglages));
+    VSM_ASSERT_NEAR(cible.inputTrimDb, 4.5f, 1e-6);
+    VSM_ASSERT(cible.invertPhase);
+    VSM_ASSERT_NEAR(cible.sendLevel(1), 0.5f, 1e-6);
+    VSM_ASSERT_EQ(cible.effects.size(), size_t(2));
+    VSM_ASSERT_NEAR(cible.effects[0].parameters["threshold"], -18.0f, 1e-6);
+    VSM_ASSERT(!cible.effects[1].enabled);                         // le contournement passe
+    VSM_ASSERT_NEAR(cible.volume, 0.9f, 1e-6);                     // la balance reste
+    VSM_ASSERT_NEAR(cible.pan, -0.5f, 1e-6);
+    VSM_ASSERT(cible.muted);
+    VSM_ASSERT_EQ(cible.outputGroup, 3);
+    VSM_ASSERT(!applyChannelSettings(cible, reglages));            // recollé : rien
+
+    Track dossier;
+    dossier.kind = Track::Kind::Folder;
+    VSM_ASSERT(!applyChannelSettings(dossier, reglages));
+    Track vca;
+    vca.kind = Track::Kind::Vca;
+    VSM_ASSERT(!channelSettingsWouldChange(vca, reglages));
+
+    // Un départ court vaut zéro au-delà : {0,25} et {0,25, 0} sont les mêmes départs.
+    Track courte = cible;
+    courte.sendLevels = {0.25f, 0.5f, 0.0f};
+    VSM_ASSERT(!channelSettingsWouldChange(courte, reglages));
+}

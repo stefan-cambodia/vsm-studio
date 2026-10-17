@@ -1403,6 +1403,37 @@ VSM_TEST(clip_attack_ticks_are_those_of_the_notes_and_repeat_with_the_loop) {
     for (size_t i = 0; i < lignes.size(); ++i) VSM_ASSERT_EQ(grille[i], lignes[i]);
 }
 
+// D562.2 — RETIRER LES CHEVAUCHEMENTS DES CLIPS : le clip d'avant perd sa fin ; même début, il est retiré ; la
+// sélection vise le clip d'AVANT ; le verrou laisse et compte ; `apply` faux ne change rien.
+VSM_TEST(removing_clip_overlaps_trims_the_earlier_clip_and_counts_what_it_cannot) {
+    Track piste;
+    piste.clips = {clip(1, 0, 1920), clip(2, 960, 1920), clip(3, 2880, 960), clip(4, 2880, 1920), clip(5, 6000, 1000)};
+    Track essai = piste;
+    const auto compte = removeClipOverlaps(essai, {}, 100000, false);
+    VSM_ASSERT_EQ(compte.overlaps, size_t(2));
+    VSM_ASSERT_EQ(essai.clips.size(), size_t(5));                       // rien n'a changé
+    VSM_ASSERT_EQ(essai.clips[0].length, Tick(1920));
+
+    Track tout = piste;
+    const auto r = removeClipOverlaps(tout, {}, 100000);
+    VSM_ASSERT_EQ(r.trimmed, size_t(1));
+    VSM_ASSERT_EQ(r.removed, size_t(1));
+    VSM_ASSERT_EQ(tout.clips.size(), size_t(4));                        // le 3 (même début que le 4) retiré
+    VSM_ASSERT_EQ(tout.clips[0].length, Tick(960));                     // le 1 finit où le 2 commence
+    VSM_ASSERT_EQ(tout.clips[1].startTick, Tick(960));                  // le 2 garde son début
+    VSM_ASSERT_EQ(removeClipOverlaps(tout, {}, 100000).overlaps, size_t(0));   // rejoué : rien
+
+    Track choisi = piste;
+    VSM_ASSERT_EQ(removeClipOverlaps(choisi, {2, 4}, 100000).overlaps, size_t(0));   // ni le 1 ni le 3 choisis
+
+    Track verrou = piste;
+    verrou.clips[0].locked = true;
+    const auto v = removeClipOverlaps(verrou, {}, 100000);
+    VSM_ASSERT_EQ(v.locked, size_t(1));
+    VSM_ASSERT_EQ(verrou.clips[0].length, Tick(1920));                  // laissé
+    VSM_ASSERT_EQ(v.removed, size_t(1));
+}
+
 // D560.2 — RETIRER LES FONDUS : l'entrée et la sortie à zéro sur les clips choisis, la forme gardée, le verrou ignoré.
 VSM_TEST(removing_fades_zeroes_both_ends_of_the_chosen_clips_only) {
     std::vector<Clip> clips{clip(1, 0, 960), clip(2, 960, 960), clip(3, 1920, 960), clip(4, 2880, 960)};

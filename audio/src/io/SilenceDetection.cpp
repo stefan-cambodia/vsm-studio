@@ -81,4 +81,29 @@ std::vector<SoundBounds> detectSoundRegions(const std::function<bool(int64_t, fl
     return passages;
 }
 
+AudioStatistics measureStatistics(const std::function<bool(int64_t, float&, float&)>& frameAt, int64_t frames) {
+    AudioStatistics s;
+    s.frames = std::max<int64_t>(0, frames);
+    double carreG = 0.0, carreD = 0.0, sommeG = 0.0, sommeD = 0.0;
+    for (int64_t i = 0; i < s.frames; ++i) {
+        float g = 0.0f, d = 0.0f;
+        if (!frameAt(i, g, d)) continue;
+        ++s.readable;
+        s.left.peak = std::max(s.left.peak, static_cast<double>(std::abs(g)));
+        s.right.peak = std::max(s.right.peak, static_cast<double>(std::abs(d)));
+        carreG += static_cast<double>(g) * g;
+        carreD += static_cast<double>(d) * d;
+        sommeG += g;
+        sommeD += d;
+    }
+    if (s.readable > 0) {
+        const double n = static_cast<double>(s.readable);
+        s.left.rms = std::sqrt(carreG / n);
+        s.right.rms = std::sqrt(carreD / n);
+        s.left.mean = sommeG / n;
+        s.right.mean = sommeD / n;
+    }
+    return s;
+}
+
 } // namespace vsm::audio::io

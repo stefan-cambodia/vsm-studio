@@ -62,4 +62,19 @@ std::vector<SoundBounds> detectSoundRegions(const std::function<bool(int64_t, fl
                                             int64_t frames, double sampleRate, double thresholdDb = -60.0,
                                             double preAttackSeconds = 0.005, double minSilenceSeconds = 0.200);
 
+/// D562.1 — LES STATISTIQUES D'UN PASSAGE (*Audio ▸ Statistics* de Cubase), canal par canal : la crête (valeur
+/// absolue la plus grande), la valeur efficace et la moyenne (le décalage continu), en valeurs LINÉAIRES — l'appelant
+/// les dit en dBFS. Sur les trames LISIBLES seulement (`readable`), et le compte des autres se lit dans `frames`.
+struct ChannelStatistics {
+    double peak = 0.0;
+    double rms = 0.0;
+    double mean = 0.0;
+};
+struct AudioStatistics {
+    ChannelStatistics left, right;
+    int64_t frames = 0;     ///< demandées
+    int64_t readable = 0;   ///< lues
+};
+AudioStatistics measureStatistics(const std::function<bool(int64_t, float&, float&)>& frameAt, int64_t frames);
+
 } // namespace vsm::audio::io

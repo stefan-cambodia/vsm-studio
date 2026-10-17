@@ -144,3 +144,27 @@ VSM_TEST(tout_sous_le_seuil_ne_fait_aucun_passage_et_un_son_aux_deux_bords_en_fa
     VSM_ASSERT_EQ(p[0].firstFrame, int64_t(0));
     VSM_ASSERT_EQ(p[0].lastFrame, static_cast<int64_t>(plein.size()));
 }
+
+// D562.1 — LES STATISTIQUES D'UN PASSAGE : crête, valeur efficace et moyenne par canal, sur les trames lisibles.
+VSM_TEST(statistics_give_peak_rms_and_dc_per_channel_on_readable_frames) {
+    const int64_t n = 48000;
+    auto lire = [](int64_t i, float& g, float& d) {
+        if (i >= 40000) return false;   // la fin illisible : comptée à part
+        const double s = std::sin(2.0 * 3.14159265358979323846 * 480.0 * static_cast<double>(i) / 48000.0);
+        g = static_cast<float>(0.25 + 0.5 * s);
+        d = static_cast<float>(-0.5 * s);
+        return true;
+    };
+    const auto st = measureStatistics(lire, n);
+    VSM_ASSERT_EQ(st.frames, n);
+    VSM_ASSERT_EQ(st.readable, int64_t(40000));
+    VSM_ASSERT_NEAR(st.left.peak, 0.75, 1e-4);
+    VSM_ASSERT_NEAR(st.right.peak, 0.5, 1e-4);
+    VSM_ASSERT_NEAR(st.left.mean, 0.25, 1e-4);
+    VSM_ASSERT_NEAR(st.right.mean, 0.0, 1e-4);
+    VSM_ASSERT_NEAR(st.right.rms, 0.5 / std::sqrt(2.0), 1e-4);                         // un sinus : crête / √2
+    VSM_ASSERT_NEAR(st.left.rms, std::sqrt(0.25 * 0.25 + 0.125), 1e-4);                // décalage et sinus s'ajoutent en puissance
+    const auto vide = measureStatistics(lire, 0);
+    VSM_ASSERT_EQ(vide.readable, int64_t(0));
+    VSM_ASSERT_NEAR(vide.left.rms, 0.0, 1e-12);
+}

@@ -316,6 +316,37 @@ size_t deleteClips(Track& track, const ClipSelection& demandee) {
     return avant - track.clips.size();
 }
 
+OverlapRemoval removeClipOverlaps(Track& track, const ClipSelection& selection, Tick materialEnd, bool apply) {
+    OverlapRemoval r;
+    // L'ORDRE DES DÉBUTS (l'identifiant départage deux débuts égaux), lu AVANT tout changement : un clip rogné ne doit
+    // pas changer le voisin d'un autre.
+    std::vector<size_t> ordre(track.clips.size());
+    for (size_t i = 0; i < ordre.size(); ++i) ordre[i] = i;
+    std::sort(ordre.begin(), ordre.end(), [&track](size_t a, size_t b) {
+        const auto& x = track.clips[a];
+        const auto& y = track.clips[b];
+        return x.startTick != y.startTick ? x.startTick < y.startTick : x.id < y.id;
+    });
+    std::map<uint64_t, Tick> aRogner;
+    ClipSelection aRetirer;
+    for (size_t k = 0; k + 1 < ordre.size(); ++k) {
+        const Clip& avant = track.clips[ordre[k]];
+        const Clip& apres = track.clips[ordre[k + 1]];
+        const Tick fin = avant.startTick + clipPlayedLength(avant, materialEnd);
+        if (apres.startTick >= fin) continue;
+        if (!selection.empty() && selection.count(avant.id) == 0) continue;
+        ++r.overlaps;
+        if (track.locked || avant.locked) { ++r.locked; continue; }
+        if (apres.startTick <= avant.startTick) { aRetirer.insert(avant.id); ++r.removed; continue; }
+        aRogner[avant.id] = apres.startTick - fin;   // négatif : la fin recule
+        ++r.trimmed;
+    }
+    if (!apply) return r;
+    for (const auto& [id, delta] : aRogner) resizeClipsEnd(track.clips, {id}, delta, materialEnd);
+    if (!aRetirer.empty()) deleteClips(track, aRetirer);
+    return r;
+}
+
 namespace {
 /// Les décalages de la chaîne, appliqués par `moveClips(Track&)` -- celui qui porte l'automation qui
 /// suit (D17.2) -- un groupe par valeur de décalage. Rend le nombre de clips déplacés.

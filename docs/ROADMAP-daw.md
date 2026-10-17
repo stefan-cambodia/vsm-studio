@@ -43063,3 +43063,58 @@ la chaîne d'inserts se copie (D30.3, `chainClipboard_`), ni le trim, ni la phas
   une chaîne n'efface pas des réglages copiés, et l'inverse. Pas de touche.
 
 **L'ORDRE, TRANCHÉ ICI.** D562.1 d'abord (lecture seule), puis D562.2, puis D562.3.
+
+**LA SÉRIE DE D561 (binaire de D561)** — le 18/10, de 01 h 17 à 02 h 17, sans veille : **114 bancs, 114 verts**,
+préférences identiques.
+
+### Phase D562.1 — les statistiques d'un clip audio (18/10/2026) — FAITE
+
+`measureStatistics` (`audio/`, `SilenceDetection.h`) : crête, valeur efficace et moyenne de chaque canal, sur les trames
+lisibles. `statistiquesDuClip` la passe sur la fenêtre que le clip joue (la relecture résidente de D561.4, un tour pour
+un clip qui boucle). Clic droit sur un clip audio, *Statistiques du clip…*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `audio/` | crête 0,75 / 0,5, moyenne 0,25 / 0, valeur efficace d'un sinus (crête / √2) et d'un sinus sur un décalage (puissances ajoutées), sur 40 000 trames lisibles de 48 000. **Rouge** sur le mutant qui divise par les trames demandées (« 0,2083 vs 0,25 ») | **oui** |
+| 2 | la fenêtre jouée, contre numpy | `tools/statistiques-clip.sh`, un clip qui ne joue que la seconde d'un fichier de deux : **−2,50 / −7,27 dBFS / +0,2500** à gauche, **−6,02 / −9,03 / 0,0000** à droite — les six valeurs mêmes de numpy sur cette seconde | **oui** |
+| 3 | le gain, la lecture seule | le gain ×2 du clip ne s'y voit pas, et la boîte le dit ; le titre sans astérisque | **oui** |
+| 4 | le témoin, les langues, l'audit | le binaire de D561 : (1) à (3) **rouges** ; « Statistiques du clip… » / « Clip statistics… » ; l'audit : « sans effet avec trace » (la boîte) | **oui** |
+
+**LE BANC S'EST TROMPÉ, PAS L'APPLICATION** : il posait la fenêtre par `sourceStart` (en ticks) alors que le départ d'un
+clip AUDIO dans son fichier est `sourceStartSeconds` ; le clip jouait donc la PREMIÈRE seconde, et l'application en a
+donné les statistiques justes (−20,00 dBFS, le la faible).
+
+### Phase D562.2 — retirer les chevauchements des clips (18/10/2026) — FAITE
+
+`removeClipOverlaps` (`core/`, `ClipEdit.h`) : dans l'ordre des débuts, le clip que le suivant recouvre perd sa fin ;
+même début, il est retiré ; le verrou laisse et compte. *Édition ▸ Retirer les chevauchements des clips (N)*, sous
+« Caler les débuts des clips sur la grille » ; les clips choisis, ou tous.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | 2 recouvrements : le premier clip finit où le second commence, celui de même début retiré ; une sélection qui ne vise pas le clip d'avant : 0 ; le verrou : laissé et compté ; le compte seul ne change rien. **Rouge** sur le mutant qui ne retire pas un clip de même début (« 2 != 1 » rognés) | **oui** |
+| 2 | par l'export MIDI | `tools/chevauchements-clips.sh`, A [0, 1 920) et B [960, 2 880) sur les mêmes noires : « (1) », A **0 : 960**, B intact ; l'export passe de **8** attaques à **6** — le binaire de D561 en exporte 8 : un passage recouvert sonnait bien deux fois | **oui** |
+| 3 | un pas, le verrou, après | Ctrl+Z rend A à 1 920 ; A verrouillée : rien ne change, « 1 verrouillé(s) » ; après, « (0) [grisée] » | **oui** |
+| 4 | le témoin, l'audit | le binaire de D561 : les cinq **rouges** ; l'audit ne la joue pas — grisée dans ses deux états, son projet n'ayant aucun recouvrement | **oui** |
+
+**LE BANC S'EST TROMPÉ UNE FOIS** : son filtre prenait « Annuler : Retirer les chevauchements des clips » — l'entrée
+d'annulation, qui porte le nom du geste — pour l'entrée elle-même.
+
+### Phase D562.3 — copier et coller les réglages d'une tranche (18/10/2026) — FAITE
+
+`ChannelSettings`, `captureChannelSettings`, `channelSettingsWouldChange`, `applyChannelSettings` (`core/`,
+`MixSnapshot.h`). *Piste ▸ Copier les réglages de la tranche* et *Coller les réglages sur les pistes choisies (N)*, sous
+la chaîne d'inserts ; un presse-papiers à part (`reglagesDeTranche_`).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | trim, phase, départs, inserts (paramètres et contournement) passent ; volume, panoramique, muet et sortie restent ; un dossier et un VCA ne reçoivent rien ; recollé : rien ; un départ court vaut zéro au-delà. **Rouge** sur le mutant qui déplace le volume (« 0,5 vs 0,9 ») | **oui** |
+| 2 | par le projet relu | `tools/reglages-tranche.sh` : « (2) » ; B et C **6 / inv / 0,3,0 / [reverb contournée]**, leurs volumes (0,2 · 0,25) et panoramiques (0,4 · −0,2) gardés | **oui** |
+| 3 | par les stems | le stem de B passe de **−39,03 à −33,03** dBFS : les 6,00 dB du trim collé | **oui** |
+| 4 | un pas, grisée, le témoin, l'audit | Ctrl+Z rend B et C neutres ; rien de copié : « (rien de copié) [grisée] » ; la Source seule après copie : « (0) [grisée] » ; le binaire de D561 : les quatre **rouges** ; « Copy channel settings » / « Paste settings (nothing copied) » ; l'audit : copier « sans effet avec trace », coller grisée dans ses deux états | **oui** |
+
+C++ 501 · 1 343 · 340 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE VINGT-TROISIÈME AUDIT (D562) EST CLOS** : les statistiques d'un clip, les chevauchements des clips retirés, les
+réglages d'une tranche copiés. **LA SÉRIE COMPLÈTE**, sur le binaire de D562 (117 bancs, trois neufs), est lancée à la
+suite.

@@ -414,6 +414,20 @@ ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEn
 /// Rend le nombre de clips retirés -- zéro sur une piste verrouillée.
 size_t deleteClips(Track& track, const ClipSelection& selection);
 
+/// D562.2 — RETIRER LES CHEVAUCHEMENTS DES CLIPS (*Edit ▸ Advanced ▸ Delete Overlaps*), piste par piste. Deux clips qui
+/// se recouvrent lisent DEUX FOIS le même matériau (la règle de `createClip`). Dans l'ordre des débuts, un clip que le
+/// SUIVANT recouvre perd sa fin jusqu'au début de celui-ci -- jamais celui d'après son début : chaque attaque reste à sa
+/// place ; s'ils commencent au même tick, le premier est retiré (`removed`). Un recouvrement compte si le clip d'AVANT
+/// est dans `selection` -- ou tous, la sélection vide. Piste ou clip verrouillés : laissés, et comptés (`locked`).
+struct OverlapRemoval {
+    size_t overlaps = 0;   ///< recouvrements trouvés (verrouillés compris)
+    size_t trimmed = 0;
+    size_t removed = 0;
+    size_t locked = 0;
+};
+/// `apply` faux : le compte seul, la piste intacte.
+OverlapRemoval removeClipOverlaps(Track& track, const ClipSelection& selection, Tick materialEnd, bool apply = true);
+
 /// D547.2 — LE MONTAGE EN CHAÎNE (*Shuffle* de Cubase), piste par piste.
 ///
 /// Supprimer un clip referme le trou qu'il laisse : les clips de SA piste qui commencent à sa fin ou
