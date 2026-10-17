@@ -42900,3 +42900,17 @@ l'échelle des vélocités (`scaleVelocity`), dupliquer — présents.
   deux clips d'une même prise peuvent n'avoir pas le même zéro, si le convertisseur a dérivé.
 
 **L'ORDRE, TRANCHÉ ICI.** D561.1 d'abord (le plus petit), puis D561.2, puis D561.3.
+
+**TROUVÉ EN ÉCRIVANT D561.3, ÉCRIT AVANT SA MESURE (15 h 37) — H23 : LES GESTES D'ANALYSE D'UN CLIP AUDIO SONT SOURDS
+AU-DELÀ DE VINGT SECONDES DE FICHIER.** Pour lire la fenêtre d'un clip, six gestes relisent le fichier par
+`loadAudioTrack(chemin, fréquence)` — la politique par DÉFAUT, `Automatic` — puis appellent `frameAt` sans jamais
+`requestRange` : *Rogner au son* (`trimClipToSound`), *Découper aux silences* (D542.3), *Découper aux transitoires*
+(D20.3), et tout ce qui passe par `chargerFenetreDuClip` — *Quantifier l'audio* (D543.3), les notes, le groove et le
+tempo depuis les attaques (D544-D545.2), la tête d'une attaque à l'autre (D558.3), les repères aux attaques (D560.4).
+Or `Automatic` DIFFUSE tout fichier de plus de vingt secondes (`kStreamAboveSeconds`), en mode `Realtime` : ce qui n'est
+pas dans le cache rend « faux », c'est-à-dire du silence, et ce magasin-là n'a aucun fil qui le remplisse. **Ce que
+l'hypothèse prédit** : sur un fichier de 30 s portant un clic par seconde, *Poser des repères aux attaques* en pose
+MOINS de 30 — aucun, ou ceux d'un début préchargé seulement ; sur le même clic en 10 s (résident), tous. **Ce qui la
+réfuterait** : 30 repères sur le fichier de 30 s. Mesuré sur le binaire de D560, après la série. Si elle tient, le
+remède est UNE fonction de relecture pour les six (`AudioLoadPolicy::ForceResident` : « le matériau doit être là tout
+entier quoi qu'il en coûte » — neuf minutes de stéréo à 48 kHz font 207 Mo, le temps d'un geste), et D561.4 la garde.
