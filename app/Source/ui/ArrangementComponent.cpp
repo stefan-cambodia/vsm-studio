@@ -2312,6 +2312,16 @@ void ArrangementComponent::aucunClip() {
     repaint();
 }
 
+size_t ArrangementComponent::choisirClipsDesPistes(const std::set<size_t>& pistes) {
+    if (project_ == nullptr) return 0;
+    selection_.clear();
+    for (size_t i : pistes)
+        if (i < project_->tracks.size())
+            for (const auto& c : project_->tracks[i].clips) selection_.insert(c.id);
+    repaint();   // une sélection, pas une édition (comme `choisirParPlage`)
+    return selection_.size();
+}
+
 ArrangementComponent::CoupeAuxLocateurs ArrangementComponent::couperAuxLocateurs(vsm::midi::Tick de,
                                                                                 vsm::midi::Tick a) {
     CoupeAuxLocateurs bilan;

@@ -334,6 +334,9 @@ public:
     /// rend leur nombre. `aucun` vide la sélection.
     size_t choisirParPlage(vsm::sequencer::RangeRule regle, vsm::midi::Tick a, vsm::midi::Tick b = 0);
     void aucunClip();
+    /// D561.1 : la sélection REMPLACÉE par tous les clips des pistes données (*Select ▸ All on Selected Tracks*) ;
+    /// rend leur nombre.
+    size_t choisirClipsDesPistes(const std::set<size_t>& pistes);
     size_t clipsChoisis() const { return selection_.size(); }
     /// D550.2 : COUPER AUX LOCATEURS (*Split Loop*). Les clips choisis -- ou, sans choix, tous ceux qu'un locateur
     /// traverse -- coupés à `de` et à `a`, chaque piste à SON passage par zéro comme Ctrl+E ; le verrou respecté

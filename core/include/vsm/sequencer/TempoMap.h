@@ -68,4 +68,13 @@ private:
     uint16_t smpteTicksPerFrame_ = 80;
 };
 
+/// D561.2 — LE TEMPO TAPÉ (*Tap Tempo*) : 60 / la moyenne des `kTapTempoMaxIntervals` derniers intervalles au plus,
+/// dès la QUATRIÈME frappe (trois intervalles : sur un seul de 500 ms, 20 ms d'erreur de la main font 5 BPM). Les
+/// instants en secondes, croissants, d'une même série. Rend 0 avant la quatrième frappe.
+inline constexpr size_t kTapTempoMinTaps = 4;
+inline constexpr size_t kTapTempoMaxIntervals = 8;
+/// Une pause plus longue recommence la série (moins de 30 BPM : on ne bat plus, on s'est arrêté).
+inline constexpr double kTapTempoResetSeconds = 2.0;
+double tappedTempoBpm(const std::vector<double>& tapSeconds);
+
 } // namespace vsm::sequencer

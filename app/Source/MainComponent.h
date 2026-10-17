@@ -1,5 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
+#include <set>
+#include <vector>
 #include "vsm/sequencer/Project.h"
 #include "vsm/sequencer/MidiRecorder.h"
 #include "vsm/sequencer/ProjectHistory.h"
@@ -1152,6 +1154,8 @@ private:
         kMenuTrackFoldAll,
         kMenuTrackUnfoldAll,
         kMenuTrackFlipFolds,
+        /// D561.1 : les clips des pistes choisies.
+        kMenuEditSelectOnTracks,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1613,6 +1617,12 @@ private:
     void leverToutesLesPistes(bool solos);
     /// D560.3 : plier, déplier ou inverser les plis de toutes les pistes ; un pas ; dit (`VSM_PLIS`).
     void plierToutesLesPistes(vsm::sequencer::FoldAll comment);
+    /// D561.1 : les pistes choisies dans la liste, et le contenu de chaque dossier choisi.
+    std::set<size_t> pistesChoisiesEtLeurContenu() const;
+    /// D561.2 : une frappe de « Taper le tempo » ; dès la quatrième, le tempo de départ suit (`VSM_TEMPO_TAPE`).
+    void taperLeTempo();
+    std::vector<double> frappesDeTempo_;          ///< D561.2 : les instants de la série en cours, en secondes
+    int profondeurDuPasDeTempo_ = -1;             ///< D561.2 : la profondeur d'historique quand la série a ouvert son pas
     /// D559.2 : remettre la console à zéro, après confirmation (`demanderOuiNon`) ; les inserts restent, dit ; un pas.
     void remettreLaConsoleAZero();
     /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).

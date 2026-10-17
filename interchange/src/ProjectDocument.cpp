@@ -150,6 +150,12 @@ JsonValue clipToJson(const ProjectClip& clip) {
     }
     if (clip.locked) c.set("locked", JsonValue::makeBoolean(true));   // D546.3
     if (clip.swapChannels) c.set("swapChannels", JsonValue::makeBoolean(true));   // D559.3
+    if (clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) {   // D561.3
+        JsonValue dc = JsonValue::makeArray();
+        dc.append(JsonValue::makeFloat(clip.dcOffsetLeft));
+        dc.append(JsonValue::makeFloat(clip.dcOffsetRight));
+        c.set("dcOffset", std::move(dc));
+    }
     return c;
 }
 
@@ -180,22 +186,30 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
         clip.gainEnvelope.emplace_back(p["seconds"].asNumber(0.0), static_cast<float>(p["gain"].asNumber(1.0)));
     clip.locked = clipJson["locked"].asBoolean(false);   // D546.3
     clip.swapChannels = clipJson["swapChannels"].asBoolean(false);   // D559.3
+    if (const auto& dc = clipJson["dcOffset"].elements(); dc.size() == 2) {   // D561.3
+        clip.dcOffsetLeft = static_cast<float>(dc[0].asNumber(0.0));
+        clip.dcOffsetRight = static_cast<float>(dc[1].asNumber(0.0));
+    }
     return clip;
 }
 
 /// Un projet a-t-il un clip qui suit le tempo ? C'est ce qui décide de la
 /// version écrite. D545.1 : une courbe de gain aussi — un lecteur ancien la jouerait à plat, sans un mot.
 /// D559.3 : et des canaux échangés, qu'un lecteur ancien jouerait dans l'ordre du fichier.
+/// D561.3 : et un décalage continu retiré, qu'un lecteur ancien jouerait encore.
 bool usesWarp(const ProjectDocument& document) {
     for (const auto& track : document.tracks) {
         for (const auto& clip : track.clips)
-            if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels) return true;
+            if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
+                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) return true;
         for (const auto& take : track.takes)
             for (const auto& clip : take.clips)
-                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels) return true;
+                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
+                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) return true;
         for (const auto& version : track.versions)   // D532.2 : une version rangée compte aussi
             for (const auto& clip : version.clips)
-                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels) return true;
+                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
+                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) return true;
     }
     return false;
 }
@@ -238,6 +252,8 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     for (const auto& p : clip.gainEnvelope) c.gainEnvelope.emplace_back(p.sourceSeconds, p.gain);   // D545.1
     c.locked = clip.locked;   // D546.3
     c.swapChannels = clip.swapChannels;   // D559.3
+    c.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
+    c.dcOffsetRight = clip.dcOffsetRight;
     // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
@@ -267,6 +283,8 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
               });
     c.locked = clip.locked;   // D546.3
     c.swapChannels = clip.swapChannels;   // D559.3
+    c.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
+    c.dcOffsetRight = clip.dcOffsetRight;
     return c;
 }
 

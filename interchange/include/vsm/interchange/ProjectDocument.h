@@ -181,6 +181,9 @@ struct ProjectClip {
     bool locked = false;
     /// D559.3 : gauche et droite échangées, écrit seulement si vrai. EN DERNIER.
     bool swapChannels = false;
+    /// D561.3 : le décalage continu retiré, gauche et droite (`dcOffset`, écrit seulement s'il n'est pas nul). EN DERNIER.
+    float dcOffsetLeft = 0.0f;
+    float dcOffsetRight = 0.0f;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

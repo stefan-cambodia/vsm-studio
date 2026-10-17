@@ -144,6 +144,62 @@ VSM_TEST(a_clip_with_swapped_channels_plays_left_on_the_right) {
     VSM_ASSERT_NEAR(d[50], 50.0f / 1000.0f, 1e-6);
 }
 
+// D561.3 — LE DÉCALAGE CONTINU RETIRÉ : le clip du modèle le passe à sa portée, le mixage le soustrait au canal DU
+// FICHIER avant l'échange et le gain ; au-delà de la fin du fichier, rien (pas de palier) ; le témoin sans décalage.
+VSM_TEST(a_clip_with_its_dc_offset_removed_plays_the_corrected_file) {
+    Track piste;
+    piste.kind = Track::Kind::Audio;
+    piste.audio = {"samples/voix.wav", 1000.0, 1000, 2};
+    Clip clip;
+    clip.startTick = 0;
+    clip.length = 960;
+    clip.gain = 2.0f;
+    clip.dcOffsetLeft = 0.01f;
+    clip.dcOffsetRight = -0.02f;
+    piste.clips.push_back(clip);
+    const auto spans = spansFromTrack(piste, 1000.0, [](int64_t t) { return t / 960.0; });
+    VSM_ASSERT_EQ(spans.size(), size_t(1));
+    VSM_ASSERT_NEAR(spans[0].dcOffsetLeft, 0.01f, 1e-9);
+
+    auto corrige = materiauReperable(1000);
+    corrige->clips = spans;
+    auto temoin = materiauReperable(1000);
+    temoin->clips = spans;
+    temoin->clips[0].dcOffsetLeft = temoin->clips[0].dcOffsetRight = 0.0f;
+    std::vector<float> g(100, 0.0f), d(100, 0.0f), gt(100, 0.0f), dt(100, 0.0f);
+    corrige->mixInto(g.data(), d.data(), 0, 100);
+    temoin->mixInto(gt.data(), dt.data(), 0, 100);
+    VSM_ASSERT_NEAR(gt[50], 2.0f * 50.0f / 1000.0f, 1e-6);              // le témoin
+    VSM_ASSERT_NEAR(g[50], 2.0f * (50.0f / 1000.0f - 0.01f), 1e-6);     // soustrait AVANT le gain
+    VSM_ASSERT_NEAR(d[50], 2.0f * (-50.0f / 1000.0f + 0.02f), 1e-6);
+
+    // Échangé : la droite joue la gauche DU FICHIER, corrigée de SON décalage.
+    corrige->clips[0].swapChannels = true;
+    std::fill(g.begin(), g.end(), 0.0f);
+    std::fill(d.begin(), d.end(), 0.0f);
+    corrige->mixInto(g.data(), d.data(), 0, 100);
+    VSM_ASSERT_NEAR(d[50], 2.0f * (50.0f / 1000.0f - 0.01f), 1e-6);
+
+    // Au-delà de la fin du fichier : le silence, pas un palier de −décalage.
+    auto court = materiauReperable(100);
+    AudioClipSpan long_;
+    long_.lengthFrames = 300;
+    long_.dcOffsetLeft = 0.25f;
+    court->clips.push_back(long_);
+    std::vector<float> lg(300, 0.0f), ld(300, 0.0f);
+    court->mixInto(lg.data(), ld.data(), 0, 300);
+    VSM_ASSERT_NEAR(lg[50], 50.0f / 1000.0f - 0.25f, 1e-6);
+    VSM_ASSERT_NEAR(lg[200], 0.0f, 1e-9);
+    // Le chemin à vitesse variable (D18.5) lit par le noyau, qui rend du silence hors du fichier sans le dire : la garde
+    // est la sienne. À demi-vitesse, la sortie 290 lit la trame 145, au-delà des 100 du fichier.
+    std::vector<float> vg(300, 0.0f), vd(300, 0.0f);
+    vsm::audio::dsp::SincResampler noyau;
+    noyau.prepare(1.0);
+    court->mixIntoAtSpeed(vg.data(), vd.data(), 0.0, 300, 0.5, noyau);
+    VSM_ASSERT_NEAR(vg[100], 50.0f / 1000.0f - 0.25f, 2e-3);
+    VSM_ASSERT_NEAR(vg[290], 0.0f, 1e-9);
+}
+
 VSM_TEST(an_audio_track_without_a_clip_plays_its_whole_file) {
     // La même règle que pour une piste MIDI : « pas de clip » veut dire « pas
     // de découpe », pas « rien ».

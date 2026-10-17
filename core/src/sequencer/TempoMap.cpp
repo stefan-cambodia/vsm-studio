@@ -182,4 +182,11 @@ double TempoMap::bpmAt(Tick tick) const {
     return b0 + (b1 - b0) * std::min(1.0, t);
 }
 
+double tappedTempoBpm(const std::vector<double>& tapSeconds) {
+    if (tapSeconds.size() < kTapTempoMinTaps) return 0.0;
+    const size_t intervalles = std::min(kTapTempoMaxIntervals, tapSeconds.size() - 1);
+    const double duree = tapSeconds.back() - tapSeconds[tapSeconds.size() - 1 - intervalles];
+    return duree > 0.0 ? 60.0 * static_cast<double>(intervalles) / duree : 0.0;
+}
+
 } // namespace vsm::sequencer

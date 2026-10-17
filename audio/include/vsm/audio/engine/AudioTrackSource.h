@@ -107,6 +107,10 @@ struct AudioClipSpan {
     bool invertPhase = false;
     /// D559.3 : gauche et droite échangées — lues ainsi par les trois chemins de mixage.
     bool swapChannels = false;
+    /// D561.3 : le décalage continu retiré, par canal DU FICHIER — soustrait par les trois chemins de mixage AVANT
+    /// l'échange, le gain et les fondus.
+    float dcOffsetLeft = 0.0f;
+    float dcOffsetRight = 0.0f;
     /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`
     /// en un miroir du matériau et une fenêtre convertie.
     bool reversed = false;

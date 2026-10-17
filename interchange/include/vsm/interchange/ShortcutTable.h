@@ -125,6 +125,8 @@ enum class ShortcutId : uint16_t {
     /// D558.3 : la tête à la prochaine (précédente) attaque des clips audio de la piste choisie (*Locate Hitpoint*).
     NavNextHitpoint,
     NavPreviousHitpoint,
+    /// D561.2 : taper le tempo (*Tap Tempo*) — dès la quatrième frappe, le tempo de départ suit.
+    TransportTapTempo,
 
     Count
 };

@@ -112,6 +112,9 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavToSelectionEnd,   "nav.toSelectionEnd",   "Transport", "Tête à la fin de la sélection", "shift + L", ""},
         {ShortcutId::NavNextHitpoint,     "nav.nextHitpoint",     "Transport", "Tête : attaque suivante",   "ctrl + alt + N", ""},
         {ShortcutId::NavPreviousHitpoint, "nav.previousHitpoint", "Transport", "Tête : attaque précédente", "ctrl + alt + B", ""},
+        // D561.2 — Maj+T : T seul est une note du clavier d'ordinateur (D492), qui laisse les touches à modificateur ; libre
+        // dans la table, les touches fixes et `kglobalshortcutsrc` (Alt+Maj+T y est pris, Maj+T non).
+        {ShortcutId::TransportTapTempo, "transport.tapTempo", "Transport", "Taper le tempo", "shift + T", ""},
     };
     return catalogue;
 }

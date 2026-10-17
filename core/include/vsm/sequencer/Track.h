@@ -275,6 +275,11 @@ struct Clip {
     /// déjà : la lecture et l'export l'entendent ensemble (le contrat de D21). Sans effet sur un fichier mono. EN
     /// DERNIER, la règle de l'agrégat positionnel.
     bool swapChannels = false;
+    /// D561.3 : LE DÉCALAGE CONTINU RETIRÉ (*Remove DC Offset*) — la moyenne de chaque canal sur la fenêtre que le clip
+    /// joue, soustraite à la SOURCE avant l'échange, le gain et les fondus (c'est le fichier qu'on corrige). Zéro : rien
+    /// de retiré. Un réglage, comme le gain : le fichier reste celui de la prise. EN DERNIER, la même règle.
+    float dcOffsetLeft = 0.0f;
+    float dcOffsetRight = 0.0f;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

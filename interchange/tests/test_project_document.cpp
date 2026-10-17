@@ -1089,6 +1089,30 @@ VSM_TEST(a_clip_with_swapped_channels_survives_the_trip_and_raises_the_version) 
     VSM_ASSERT(!rejoue.tracks[0].clips.empty() && rejoue.tracks[0].clips[0].swapChannels);   // jusqu'au MODÈLE
 }
 
+// D561.3 — LE DÉCALAGE CONTINU RETIRÉ, écrit seulement s'il n'est pas nul, et compté parmi les réglages de la version 3.
+VSM_TEST(a_clip_with_its_dc_offset_removed_survives_the_trip_and_raises_the_version) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.length = 960; clip.sourceLength = 960;
+    project.tracks[0].clips.push_back(clip);
+    const JsonValue sans = projectDocumentToJson(documentFromProject(project));
+    VSM_ASSERT(sans.toString().find("dcOffset") == std::string::npos);
+    VSM_ASSERT(static_cast<int>(sans["version"].asNumber(0)) != kProjectVersion);
+    project.tracks[0].clips[0].dcOffsetLeft = 0.25f;
+    project.tracks[0].clips[0].dcOffsetRight = -0.125f;
+    const JsonValue avec = projectDocumentToJson(documentFromProject(project));
+    VSM_ASSERT(avec.toString().find("\"dcOffset\"") != std::string::npos);
+    VSM_ASSERT_EQ(static_cast<int>(avec["version"].asNumber(0)), kProjectVersion);
+    const ProjectLoadResult relu = parseProjectDocument(avec.toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_NEAR(relu.document.tracks[0].clips[0].dcOffsetRight, -0.125f, 1e-6);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].clips.empty());
+    VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].dcOffsetLeft, 0.25f, 1e-6);   // jusqu'au MODÈLE
+}
+
 // D16.5 — LE VERROU D'UNE PISTE, écrit seulement quand il est mis.
 VSM_TEST(a_locked_track_survives_the_trip_and_an_unlocked_one_adds_nothing_to_the_file) {
     Project project = buildProject();

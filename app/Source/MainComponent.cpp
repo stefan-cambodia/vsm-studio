@@ -4184,6 +4184,7 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::TransportRecord,
     vsm::interchange::ShortcutId::TransportLoop,
     vsm::interchange::ShortcutId::TransportMetronome,
+    vsm::interchange::ShortcutId::TransportTapTempo,   // D561.2
     vsm::interchange::ShortcutId::NavGoToStart,
     vsm::interchange::ShortcutId::NavGoToEnd,
     vsm::interchange::ShortcutId::NavPreviousMarker,
@@ -4202,7 +4203,7 @@ static const vsm::interchange::ShortcutId kCommandesDuTransport[] = {
     vsm::interchange::ShortcutId::NavPreviousHitpoint,   // D558.3
     vsm::interchange::ShortcutId::NavNextHitpoint,       // D558.3
 };
-static_assert(std::size(kCommandesDuTransport) == 26);   // D483, D553.2, D554.1, D555.1, D556.1-2, D558 ; la plage réservée est gardée à l'aiguillage
+static_assert(std::size(kCommandesDuTransport) == 27);   // D483, D553.2, D554.1, D555.1, D556.1-2, D558, D561.2 ; la plage réservée est gardée à l'aiguillage
 
 juce::StringArray MainComponent::getMenuBarNames() {
     // D483 : « Transport » entre Piste et Enregistrement, comme chez Cubase.
@@ -4480,6 +4481,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                 desClips && project_.loopEndTick > project_.loopStartTick);
                 choisir.addItem(kMenuEditSelectStartToCursor, tr(u8"Sélectionner du début à la tête"), desClips);
                 choisir.addItem(kMenuEditSelectCursorToEnd, tr(u8"Sélectionner de la tête à la fin"), desClips);
+                // D561.1 : LES CLIPS DES PISTES CHOISIES (Select ▸ All on Selected Tracks), un dossier apportant son
+                // contenu ; le compte dit combien, grisée à zéro.
+                {
+                    size_t n = 0;
+                    for (size_t i : pistesChoisiesEtLeurContenu()) n += project_.tracks[i].clips.size();
+                    choisir.addItem(kMenuEditSelectOnTracks,
+                                    tr(u8"Les clips des pistes choisies (%1)").replace("%1", juce::String(static_cast<int>(n))),
+                                    n > 0);
+                }
                 menu.addSubMenu(tr(u8"Sélectionner dans l'arrangement"), choisir, desClips);
             }
             // D552.1 : CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements).
@@ -5701,6 +5711,15 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
+    if (menuItemID == kMenuEditSelectOnTracks) {   // D561.1
+        const auto pistes = pistesChoisiesEtLeurContenu();
+        const int n = static_cast<int>(arrangement_.choisirClipsDesPistes(pistes));
+        std::fputs(("VSM_SELECTION_CLIPS : " + std::to_string(n) + " clip(s) choisi(s) (" + std::to_string(pistes.size())
+                    + " piste(s), contenu des dossiers compris)\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Sélection : les clips des pistes choisies — %1 clip(s)").replace("%1", juce::String(n)));
+        return;
+    }
     if (menuItemID == kMenuTrackFoldAll) { plierToutesLesPistes(vsm::sequencer::FoldAll::Fold); return; }       // D560.3
     if (menuItemID == kMenuTrackUnfoldAll) { plierToutesLesPistes(vsm::sequencer::FoldAll::Unfold); return; }
     if (menuItemID == kMenuTrackFlipFolds) { plierToutesLesPistes(vsm::sequencer::FoldAll::Flip); return; }
@@ -10265,6 +10284,7 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         case Id::NavPreviousEvent:                 teteALEvenement(false); return true;           // D556.2
         case Id::TransportInsertMarker:            poserUnRepereALaTete(); return true;           // D558.1
         case Id::NavToSelectionEnd:                teteALaFinDeLaSelection(); return true;        // D558.2
+        case Id::TransportTapTempo:                taperLeTempo(); return true;                   // D561.2
         case Id::NavNextHitpoint:                  teteALAttaque(true); return true;              // D558.3
         case Id::NavPreviousHitpoint:              teteALAttaque(false); return true;             // D558.3
         // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
@@ -13473,6 +13493,64 @@ void MainComponent::leverToutesLesPistes(bool solos) {
     if (pianoRoll_.onStatusChanged)
         pianoRoll_.onStatusChanged((solos ? tr(u8"Solos levés : %1 piste(s)") : tr(u8"Muets levés : %1 piste(s)"))
                                        .replace("%1", juce::String(static_cast<int>(leves))));
+}
+
+void MainComponent::taperLeTempo() {
+    // D561.2 : TAPER LE TEMPO (*Tap Tempo*, le bouton *Tap* de Live). Chaque frappe compte ; dès la quatrième, le tempo de
+    // DÉPART suit (`tappedTempoBpm`) — le jumeau du champ de la barre de transport, qui ne change que lui ; une carte
+    // dessinée reste. Une pause de plus de deux secondes recommence la série. UN pas par série : le premier tempo
+    // appliqué l'ouvre, les suivants le complètent, sauf si l'historique a bougé entre-temps (un Ctrl+Z au milieu).
+    const double maintenant =
+        std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (!frappesDeTempo_.empty() && maintenant - frappesDeTempo_.back() > vsm::sequencer::kTapTempoResetSeconds) {
+        frappesDeTempo_.clear();
+        profondeurDuPasDeTempo_ = -1;
+    }
+    frappesDeTempo_.push_back(maintenant);
+    if (frappesDeTempo_.size() > vsm::sequencer::kTapTempoMaxIntervals + 1) frappesDeTempo_.erase(frappesDeTempo_.begin());
+    const double bpm = vsm::sequencer::tappedTempoBpm(frappesDeTempo_);
+    const int frappes = static_cast<int>(frappesDeTempo_.size());
+    if (bpm <= 0.0) {
+        std::fputs(("VSM_TEMPO_TAPE : frappe " + std::to_string(frappes) + " / "
+                    + std::to_string(vsm::sequencer::kTapTempoMinTaps) + "\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Taper le tempo : %1 / %2")
+                                           .replace("%1", juce::String(frappes))
+                                           .replace("%2", juce::String(static_cast<int>(vsm::sequencer::kTapTempoMinTaps))));
+        return;
+    }
+    if (bpm < 20.0 || bpm > 300.0) {
+        std::fputs(("VSM_TEMPO_TAPE : refus\xc3\xa9, " + juce::String(bpm, 2).toStdString()
+                    + " BPM hors de 20 \xc3\xa0 300\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Tempo tapé hors de 20 à 300 BPM (%1) : rien n'a changé").replace("%1", juce::String(bpm, 1)));
+        return;
+    }
+    if (profondeurDuPasDeTempo_ < 0 || static_cast<int>(history_.undoDepth()) != profondeurDuPasDeTempo_) {
+        beginProjectEdit(juce::String::fromUTF8(u8"Taper le tempo"));
+        profondeurDuPasDeTempo_ = static_cast<int>(history_.undoDepth());
+    }
+    project_.tempoMap.addTempoChange(0, static_cast<uint32_t>(std::llround(60000000.0 / bpm)));
+    transportBar_.setBpm(bpm);
+    tempoLane_.refresh();
+    refreshTransportSchedule();
+    audioEngine_.processGraph().setProject(project_);
+    pianoRollPanel_.refresh();
+    std::fputs(("VSM_TEMPO_TAPE : frappe " + std::to_string(frappes) + ", " + juce::String(bpm, 2).toStdString()
+                + " BPM\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Tempo tapé : %1 BPM").replace("%1", juce::String(bpm, 1)));
+}
+
+std::set<size_t> MainComponent::pistesChoisiesEtLeurContenu() const {
+    // D561.1 : un dossier n'a pas de clip à lui ; le choisir apporte son contenu, sous-dossiers compris.
+    std::set<size_t> pistes;
+    for (size_t i : trackList_.selectedTracks()) {
+        if (i >= project_.tracks.size()) continue;
+        pistes.insert(i);
+        for (size_t c : vsm::sequencer::folderContents(project_, i)) pistes.insert(c);
+    }
+    return pistes;
 }
 
 void MainComponent::plierToutesLesPistes(vsm::sequencer::FoldAll comment) {

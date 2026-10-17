@@ -42901,7 +42901,7 @@ l'échelle des vélocités (`scaleVelocity`), dupliquer — présents.
 
 **L'ORDRE, TRANCHÉ ICI.** D561.1 d'abord (le plus petit), puis D561.2, puis D561.3.
 
-**TROUVÉ EN ÉCRIVANT D561.3, ÉCRIT AVANT SA MESURE (15 h 37) — H23 : LES GESTES D'ANALYSE D'UN CLIP AUDIO SONT SOURDS
+**TROUVÉ EN ÉCRIVANT D561.3, ÉCRIT AVANT SA MESURE (15 h 17) — H23 : LES GESTES D'ANALYSE D'UN CLIP AUDIO SONT SOURDS
 AU-DELÀ DE VINGT SECONDES DE FICHIER.** Pour lire la fenêtre d'un clip, six gestes relisent le fichier par
 `loadAudioTrack(chemin, fréquence)` — la politique par DÉFAUT, `Automatic` — puis appellent `frameAt` sans jamais
 `requestRange` : *Rogner au son* (`trimClipToSound`), *Découper aux silences* (D542.3), *Découper aux transitoires*
