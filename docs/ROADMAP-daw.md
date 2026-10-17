@@ -42922,3 +42922,20 @@ test vert, 1 342), son passage au format (`interchange`, test vert, 340), la com
 `taperLeTempo`, `pistesChoisiesEtLeurContenu` et l'entrée « Les clips des pistes choisies (N) ». **Pas encore
 compilés** : les fichiers de l'application — la série de D560 tournait sur le binaire, qu'une édition des liens aurait
 remplacé. Pas encore écrits : l'entrée « Retirer le décalage continu » et sa mesure, les bancs, H23.
+
+**H23 MESURÉE LE 17/10 À 23 H 35, SUR LE BINAIRE DE D560 : TENUE, ET PIRE QUE PRÉDIT.** `tools/analyse-fichier-long.sh`,
+deux fichiers d'un clic par seconde : sur celui de 30 s, *Poser des repères aux attaques* en pose **0** — pas même ceux
+du début, aucun n'est préchargé —, *Découper aux transitoires* fait **0 coupe** (« 1 clip(s) sans attaque trouvée »), et
+*Rogner au son* AFFIRME que « tout ce que ce clip joue est sous le seuil de silence ». Sur celui de 10 s (résident) : les
+**10** repères. Tout fichier de plus de vingt secondes — c'est-à-dire tout morceau — était sourd à ces six gestes, et
+trois d'entre eux le disaient faussement. Le remède écrit plus haut devient **D561.4**.
+
+**LA SÉRIE DE D560 (binaire de D560)** — de 14 h 41 à 19 h 20, à travers quatre veilles du poste (15 h 27-15 h 46,
+15 h 52-17 h 23, 17 h 32-19 h 05, relevées au journal du noyau) : **110 bancs, 107 verts**, préférences identiques.
+Trois rouges, tous rejoués SEULS : `annulation-des-menus.py` (« Copier entre les locateurs » : un pas « Délai — une… »
+sans changement, à 15 h 05) — rejouée seule, « sans effet avec trace », aucun pas : la course, pas le code
+(`copierPlage(false)` n'ouvre aucun pas) ; `locateurs-section.sh` (4) et `normaliser-niveau.sh` (4), tombés de 15 h 08 à
+15 h 12 PENDANT une compilation des tests de D561 (`nice -j 2`) — rejoués seuls : 6/6 pour le premier ; le second
+retombe à 19 h 20, juste après la rafale, écran éteint et session verrouillée (D520), puis passe deux fois sur deux
+espacé de 45 s, et le binaire de D559 de même. L'environnement, trois fois. **La leçon** : pas de compilation, même
+`nice -j 2`, pendant une série de bancs — elle fait tomber les bancs qui attendent une fenêtre.
