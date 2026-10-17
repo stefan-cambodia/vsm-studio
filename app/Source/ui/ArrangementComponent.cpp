@@ -863,6 +863,10 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
         menu.addItem(18, tr(u8"Normaliser (gain = 1 / cr\u00eate)"), waveformProvider != nullptr);
         // D545.3 : NORMALISER À UN NIVEAU CHOISI — la même crête, un maximum demandé (−1 dBFS proposé).
         menu.addItem(74, tr(u8"Normaliser à un niveau choisi…"), waveformProvider != nullptr);
+        // D561.3 : RETIRER LE DÉCALAGE CONTINU (Remove DC Offset), cochée quand il l'est : un réglage du clip, que la
+        // case décochée rend.
+        menu.addItem(85, tr(u8"Retirer le décalage continu"), true,
+                     clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f);
         // D22.1 : LE GAIN ET LA PHASE À LA MAIN. Des pas fixes relatifs au
         // gain courant plutôt qu'une boîte de dialogue -- le geste est
         // « un peu plus, un peu moins », et il s'enchaîne. Le titre du
@@ -2062,6 +2066,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         case 84:   // D560.4
             if (onClipMarkersFromAttacksRequested) onClipMarkersFromAttacksRequested(piste, clipId);
             return;
+        case 85:   // D561.3
+            if (onClipDcOffsetRequested) onClipDcOffsetRequested(piste, clipId);
+            return;
         case 29:   // D545.2
             if (onClipTempoDetectRequested) onClipTempoDetectRequested(piste, clipId);
             return;
@@ -3219,10 +3226,13 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     const float milieu = r.getCentreY();
                     const float demi = r.getHeight() * 0.45f;
                     g.setColour(Palette::background.withAlpha(0.72f));
+                    // D561.3 : LE DÉCALAGE RETIRÉ SE VOIT — la forme recentrée comme elle sonne. Les crêtes mêlent les
+                    // deux canaux (`computePeaks`) : un décalage différent par canal s'y retire par sa MOYENNE.
+                    const float dc = 0.5f * (clip.dcOffsetLeft + clip.dcOffsetRight);
                     for (size_t c = 0; c < tracé.size(); ++c) {
                         const float x = r.getX() + static_cast<float>(c);
-                        const float haut = milieu - tracé[c].maximum * demi * clip.gain;
-                        const float bas = milieu - tracé[c].minimum * demi * clip.gain;
+                        const float haut = milieu - (tracé[c].maximum - dc) * demi * clip.gain;
+                        const float bas = milieu - (tracé[c].minimum - dc) * demi * clip.gain;
                         g.drawLine(x, std::min(haut, bas), x, std::max(haut, bas) + 0.5f, 1.0f);
                     }
                 }

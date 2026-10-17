@@ -97,19 +97,12 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
         };
     }
 
+    // D561.2 : LE BOUTON N'A PLUS SA PROPRE ARITHMÉTIQUE. Il ouvrait un pas d'annulation PAR frappe (chacune passait
+    // par `onTempoChanged`) et ramenait un tempo hors bornes à 20 ou 300 sans un mot ; le menu Transport et Maj+T
+    // frappent désormais le même tempo, et deux règles pour un geste divergent toujours. La règle est celle de
+    // `MainComponent::taperLeTempo` (`tappedTempoBpm`) : deux frappes suffisent, comme ici depuis D3.2.
     tapButton_.onClick = [this] {
-        const double maintenant = juce::Time::getMillisecondCounterHiRes() * 0.001;
-        if (!tapTimes_.isEmpty() && maintenant - tapTimes_.getLast() > 1.5)
-            tapTimes_.clear();     // on a hésité : on repart de zéro
-        tapTimes_.add(maintenant);
-        while (tapTimes_.size() > 5) tapTimes_.remove(0);
-        if (tapTimes_.size() < 2) return;
-        const double duree = tapTimes_.getLast() - tapTimes_.getFirst();
-        const double intervalle = duree / static_cast<double>(tapTimes_.size() - 1);
-        if (intervalle <= 0.0) return;
-        const double bpm = juce::jlimit(20.0, 300.0, 60.0 / intervalle);
-        setBpm(bpm);
-        if (onTempoChanged) onTempoChanged(bpm);
+        if (onTapPressed) onTapPressed();
     };
 
     // LE TEMPO S'ÉDITE. Double-clic sur la valeur, ou la frapper au bouton.

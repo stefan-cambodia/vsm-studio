@@ -663,6 +663,9 @@ MainComponent::MainComponent()
     arrangement_.onClipMarkersFromAttacksRequested = [this](size_t piste, uint64_t clipId) {   // D560.4
         reperesAuxAttaques(piste, clipId);
     };
+    arrangement_.onClipDcOffsetRequested = [this](size_t piste, uint64_t clipId) {   // D561.3
+        retirerDecalageContinu(piste, clipId);
+    };
     arrangement_.onClipGrooveFromAttacksRequested = [this](size_t piste, uint64_t clipId) {  // D544.2
         grooveDepuisAttaques(piste, clipId);
     };
@@ -1181,6 +1184,7 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().setProject(project_);
         pianoRollPanel_.refresh();
     };
+    transportBar_.onTapPressed = [this] { taperLeTempo(); };   // D561.2 : la règle unique
     transportBar_.onLoopToggled = [this](bool active) {
         // Sans région définie, boucler sur tout le morceau : demander à
         // l'utilisateur de tirer d'abord sur une règle pour que le bouton
@@ -13793,6 +13797,78 @@ void MainComponent::reperesAuxAttaques(size_t piste, uint64_t clipId) {
                                        .replace("%2", juce::String(static_cast<int>(deja))));
 }
 
+void MainComponent::retirerDecalageContinu(size_t piste, uint64_t clipId) {
+    // D561.3 : RETIRER LE DÉCALAGE CONTINU (*Remove DC Offset*) des clips audio choisis (le cliqué et la sélection) —
+    // la moyenne de chaque canal sur la fenêtre que le clip joue, soustraite à la source (`AudioTrackSource`). Un
+    // réglage, pas un fichier réécrit. Sur un clip qui l'a déjà (case cochée), le geste le REND, sur toute la sélection.
+    const auto* clique = findClip(piste, clipId);
+    if (clique == nullptr) return;
+    vsm::sequencer::ClipSelection cibles = arrangement_.selectedClipIds();
+    cibles.insert(clipId);
+    const bool rendre = clique->dcOffsetLeft != 0.0f || clique->dcOffsetRight != 0.0f;
+    struct Mesure { size_t piste; uint64_t id; float g, d; };
+    std::vector<Mesure> mesures;
+    size_t sansDecalage = 0, illisibles = 0;
+    constexpr double kSeuil = 1e-4;   // −80 dBFS : en dessous, il n'y a rien à retirer
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& t = project_.tracks[i];
+        if (t.kind != vsm::sequencer::Track::Kind::Audio || t.audio.empty()) continue;
+        for (const auto& c : t.clips) {
+            if (cibles.count(c.id) == 0) continue;
+            if (rendre) {
+                if (c.dcOffsetLeft != 0.0f || c.dcOffsetRight != 0.0f) mesures.push_back({i, c.id, 0.0f, 0.0f});
+                continue;
+            }
+            FenetreDuClip f;
+            juce::String erreur;
+            if (!chargerFenetreDuClip(i, c.id, f, erreur)) { ++illisibles; continue; }
+            // LA FENÊTRE JOUÉE : un clip qui boucle rejoue SA fenêtre (`sourceLength`), pas la suite du fichier.
+            int64_t compte = f.compte;
+            if (c.sourceLength > 0 && !vsm::sequencer::clipIsWarped(c))
+                compte = std::min(compte, static_cast<int64_t>(std::llround(
+                    (project_.ticksToSeconds(c.startTick + c.sourceLength) - project_.ticksToSeconds(c.startTick))
+                    * f.sampleRate)));
+            compte = std::min(compte, f.magasin->frames() - f.depart);
+            double sg = 0.0, sd = 0.0;
+            int64_t lus = 0;
+            for (int64_t k = 0; k < compte; ++k) {
+                float g = 0.0f, d = 0.0f;
+                if (!f.magasin->frameAt(f.depart + k, g, d)) continue;
+                sg += g;
+                sd += d;
+                ++lus;
+            }
+            if (lus == 0) { ++illisibles; continue; }
+            const double mg = sg / static_cast<double>(lus), md = sd / static_cast<double>(lus);
+            if (std::abs(mg) < kSeuil && std::abs(md) < kSeuil) { ++sansDecalage; continue; }
+            mesures.push_back({i, c.id, static_cast<float>(mg), static_cast<float>(md)});
+        }
+    }
+    std::string detail;
+    for (const auto& m : mesures)
+        detail += (detail.empty() ? "" : " ; ") + juce::String(m.g, 4).toStdString() + " / " + juce::String(m.d, 4).toStdString();
+    std::fputs(("VSM_DECALAGE : " + std::string(rendre ? "rendu" : "retir\xc3\xa9") + " sur " + std::to_string(mesures.size())
+                + " clip(s) [" + detail + "], " + std::to_string(sansDecalage) + " sans d\xc3\xa9" "calage, "
+                + std::to_string(illisibles) + " illisible(s)\n").c_str(), stderr);
+    if (mesures.empty()) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Retirer le décalage continu"),
+                     illisibles > 0 ? tr(u8"Le fichier de la piste n'a pas pu être relu.")
+                                    : tr(u8"Aucun décalage continu à retirer : la moyenne de chaque canal est sous −80 dBFS."));
+        return;
+    }
+    beginProjectEdit(rendre ? juce::String::fromUTF8(u8"Rendre le décalage continu")
+                            : juce::String::fromUTF8(u8"Retirer le décalage continu"));
+    for (const auto& m : mesures)
+        for (auto& c : project_.tracks[m.piste].clips)
+            if (c.id == m.id) { c.dcOffsetLeft = m.g; c.dcOffsetRight = m.d; }
+    loadAudioTracks();   // la portée se republie avec son décalage (comme le gain normalisé, D545.3)
+    arrangement_.repaint();
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged((rendre ? tr(u8"Décalage continu rendu : %1 clip(s)")
+                                           : tr(u8"Décalage continu retiré : %1 clip(s)"))
+                                       .replace("%1", juce::String(static_cast<int>(mesures.size()))));
+}
+
 void MainComponent::lireLaSelection() {
     vsm::midi::Tick debut = 0, fin = 0;
     bool clips = false;
@@ -14501,6 +14577,18 @@ vsm::midi::Tick MainComponent::snapCutToZeroCrossing(size_t trackIndex, vsm::mid
     return tick;
 }
 
+namespace {
+/// D561.4 (H23) : LA RELECTURE D'UN FICHIER POUR L'ANALYSER, entière et RÉSIDENTE. La politique par défaut
+/// (`Automatic`) diffuse au-delà de vingt secondes, en mode `Realtime` : ce qui n'est pas en cache se lit comme du
+/// silence, et un magasin relu pour un geste n'a aucun fil qui le remplisse — les gestes d'analyse n'entendaient pas
+/// la suite d'un fichier long. `ForceResident` tient tout le fichier le temps du geste (neuf minutes de stéréo à
+/// 48 kHz : 207 Mo).
+vsm::audio::io::AudioTrackLoadResult relirePourAnalyser(const juce::File& fichier, double sr) {
+    return vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr,
+                                          vsm::audio::io::AudioLoadPolicy::ForceResident);
+}
+} // namespace
+
 void MainComponent::sliceSelectedClipsAtOnsets() {
     // D20.3 : LES CLIPS AUDIO CHOISIS, COUPÉS À CHAQUE ATTAQUE. Même lecture
     // du fichier que « Rogner au son », même passage par `splitClips` : une
@@ -14536,7 +14624,7 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
             continue;
         }
         const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
-        auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+        auto charge = relirePourAnalyser(fichier, sr);   // D561.4 (H23)
         if (!charge.source || !charge.source->samples) {
             refus.add(juce::String(u8"%1 : fichier illisible — %2").replace("%2", fichier.getFullPathName())
                                                                    .replace("%1", juce::String::fromUTF8(piste.name.c_str())));
@@ -14834,7 +14922,7 @@ void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
 
     const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
-    auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+    auto charge = relirePourAnalyser(fichier, sr);   // D561.4 (H23)
     if (!charge.source) {
         montrerBoite(
             juce::AlertWindow::InfoIcon, tr(u8"Rogner au son"),
@@ -14934,7 +15022,7 @@ void MainComponent::decouperAuxSilences(size_t trackIndex, uint64_t clipId) {
         if (it == piste.clips.end()) return;
         const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
         const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
-        auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+        auto charge = relirePourAnalyser(fichier, sr);   // D561.4 (H23)
         if (!charge.source || !charge.source->samples) {
             montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Découper aux silences"),
                          tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName()));
@@ -15025,7 +15113,7 @@ bool MainComponent::chargerFenetreDuClip(size_t trackIndex, uint64_t clipId, Fen
     if (clip == nullptr) return false;
     f.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
     const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
-    auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), f.sampleRate);
+    auto charge = relirePourAnalyser(fichier, f.sampleRate);   // D561.4 (H23)
     if (!charge.source || !charge.source->samples) {
         erreur = tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName());
         return false;

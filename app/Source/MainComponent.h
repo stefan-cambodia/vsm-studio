@@ -1613,6 +1613,8 @@ private:
     void teteALAttaque(bool suivante);
     /// D560.4 : un repère à chaque attaque des clips audio choisis ; un pas ; dit (`VSM_REPERES_ATTAQUES`).
     void reperesAuxAttaques(size_t piste, uint64_t clipId);
+    /// D561.3 : retirer (ou rendre) le décalage continu des clips audio choisis ; un pas ; dit (`VSM_DECALAGE`).
+    void retirerDecalageContinu(size_t piste, uint64_t clipId);
     /// D559.1 : lever le solo (`solos`) ou le muet de toutes les pistes, dit ; un pas.
     void leverToutesLesPistes(bool solos);
     /// D560.3 : plier, déplier ou inverser les plis de toutes les pistes ; un pas ; dit (`VSM_PLIS`).

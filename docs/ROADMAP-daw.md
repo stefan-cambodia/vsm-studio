@@ -42939,3 +42939,91 @@ sans changement, à 15 h 05) — rejouée seule, « sans effet avec trace », au
 retombe à 19 h 20, juste après la rafale, écran éteint et session verrouillée (D520), puis passe deux fois sur deux
 espacé de 45 s, et le binaire de D559 de même. L'environnement, trois fois. **La leçon** : pas de compilation, même
 `nice -j 2`, pendant une série de bancs — elle fait tomber les bancs qui attendent une fenêtre.
+
+**CORRIGÉ LE 18/10 À 01 H 07, APRÈS LE CODE ET AVANT LA CLÔTURE — LE « 0 » DE D561.2 ÉTAIT FAUX.** Le tempo se frappe
+depuis D3.2 : un bouton « Tap » dans la barre de transport (`tapButton_`, `tapTimes_`, « Frapper le tempo »). L'audit
+l'a manqué parce que ses motifs (`tapTempo`, « taper le tempo ») ne couvraient ni l'identifiant du bouton ni le verbe de
+son infobulle — le piège de l'ordre de marche, « un zéro sorti d'un grep se revérifie en listant ce qu'on a cherché ET
+où » ; vu sur la photo de la barre, en regardant autre chose. **Ce qui manquait vraiment**, relu dans le code du
+bouton : (a) aucun chemin sans souris — ni menu, ni touche (le menu Transport se construit depuis la table, D483, et
+la table n'avait pas la commande) ; (b) **un pas d'annulation PAR frappe** — chaque frappe passe par `onTempoChanged`,
+qui ouvre « Tempo » : huit frappes, sept Ctrl+Z pour revenir ; (c) **un tempo hors bornes ramené à 20 ou 300 sans un
+mot** (`jlimit`). **TRANCHÉ ICI** : UNE règle pour les trois chemins — le bouton appelle désormais `taperLeTempo`, et
+sa propre arithmétique disparaît (deux règles pour un geste divergent toujours). Le départ reste celui de D3.2 —
+DEUX frappes, une pause d'une seconde et demie recommence — parce que c'est le geste que l'infobulle enseigne depuis
+le 29/08 et qu'un pas par série ôte la raison qu'on avait d'attendre la quatrième (une première valeur approchée ne
+pollue plus l'historique) ; la moyenne porte sur les HUIT derniers intervalles et non plus quatre (plus on frappe,
+plus il est juste) ; hors de 20 à 300, refusé et dit. Le critère de D561.2 devient : la deuxième frappe applique ; une
+série, un pas — par le bouton aussi ; deux séries séparées par une pause, deux pas.
+
+### Phase D561.1 — choisir les clips des pistes choisies (18/10/2026) — FAITE
+
+`pistesChoisiesEtLeurContenu` (les pistes choisies de la liste, et le contenu de chaque dossier choisi) et
+`choisirClipsDesPistes`, qui REMPLACE la sélection. *Édition ▸ Sélectionner dans l'arrangement ▸ Les clips des pistes
+choisies (N)*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | une piste | `tools/clips-des-pistes.sh`, B choisie : « (2) », 2 choisis, Suppr : restent **a1 a2 c1** | **oui** |
+| 2 | deux pistes | B et C (Maj+Alt+↓) : « (3) », restent **a1 a2** | **oui** |
+| 3 | un dossier | « Dossier » choisi : « (2) » — son contenu —, restent **b1 b2 c1** | **oui** |
+| 4 | rien, remplacée | une piste sans clip : « (0) [grisée] » ; après « tout choisir », B : **2** et non 5 | **oui** |
+| 5 | le témoin, les langues, l'audit | le binaire de D560 : les cinq **rouges** ; « Les clips des pistes choisies (1) » / « Clips on the selected tracks (1) » ; l'audit des menus : « sans effet avec trace » (choisir n'est pas éditer) | **oui** |
+
+### Phase D561.2 — taper le tempo : une règle pour le bouton, le menu et Maj+T (18/10/2026) — FAITE
+
+`tappedTempoBpm` (`core/`, `TempoMap.h`) ; `taperLeTempo`, appelé par le bouton « Tap » (`onTapPressed` — sa propre
+arithmétique retirée), par *Transport ▸ Taper le tempo* et par Maj+T (`transport.tapTempo`).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | rien à une frappe, 120 à la deuxième, 118,42 sur une main inégale, 150 sur les huit derniers intervalles d'une série 100 → 150. **Rouge** sur le mutant qui moyenne TOUS les intervalles (« 136,364 vs 150 ») | **oui** |
+| 2 | Maj+T, le menu, le bouton | `tools/tempo-tape.sh` : « frappe 1 / 2 », puis 119,86 dès la deuxième ; le projet relu **119,99** (Maj+T, 500 ms), **149,92** (menu, 400 ms), **120,04** (bouton, 500 ms) | **oui** |
+| 3 | une série, un pas | six frappes du BOUTON puis un Ctrl+Z : **100,00** ; 3 frappes, 2,5 s de pause, 3 frappes : **150,08**, deux « frappe 1 / 2 », et un Ctrl+Z rend **120,06** — deux séries, deux pas | **oui** |
+| 4 | hors bornes | huit frappes à 150 ms : « refusé, 400,02 BPM hors de 20 à 300 », le tempo à 100 | **oui** |
+| 5 | le témoin, les langues, l'audit | le binaire de D560 : les cinq **rouges** — et son bouton frappe bien 120,05, mais six frappes puis Ctrl+Z rendent **120,02** : le pas PAR frappe, mesuré ; photographié « Taper le tempo — Maj+T » / « Tap tempo — Shift+T » ; l'audit : « sans effet avec trace » (« 1 / 2 ») | **oui** |
+
+### Phase D561.3 — retirer le décalage continu d'un clip (18/10/2026) — FAITE
+
+`Clip::dcOffsetLeft/Right` ; soustraits dans les trois chemins d'`AudioTrackSource` avant l'échange, le gain et les
+fondus, et SEULEMENT là où le fichier joue (au-delà de sa fin, le noyau et l'étireur rendent du silence, qu'une
+soustraction changerait en palier) ; `dcOffset` au format, compté parmi les réglages de la version 3 ;
+`retirerDecalageContinu` mesure la moyenne de chaque canal sur la fenêtre JOUÉE (celle d'un tour pour un clip qui
+boucle). Le dessin du clip se recentre (les crêtes mêlant les deux canaux, par la moyenne des deux décalages).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `audio/`, `interchange` | soustrait avant le gain (×2 : 0,08 et non 0,10), le canal du FICHIER suivi à travers l'échange, rien au-delà du fichier, au chemin ordinaire et à vitesse variable ; l'aller-retour jusqu'au modèle et la version 3. **Rouges** : le mutant sans soustraction (« 0,1 vs 0,08 »), le mutant sans garde (un palier de **−0,25** hors du fichier), le mutant qui ne relit pas (« 0 vs 0,25 ») | **oui** |
+| 2 | par l'export | `tools/decalage-continu.sh`, un la sur +0,25 / −0,10 : témoin **0,1768 / −0,0707** (×0,7071, la loi de panoramique au centre), le la à −18,06 dB ; retiré, rouvert, exporté : **−0,0000 / −0,0000**, le la à **−18,06** ; le projet « 0,250 / −0,100 », version 3 | **oui** |
+| 3 | un pas, cochée, rendue, rien | Ctrl+Z : plus de `dcOffset` ; « [cochée] » sur le clip corrigé, décochée → plus de `dcOffset` ; un la sans décalage : « Aucun décalage continu à retirer : la moyenne de chaque canal est sous −80 dBFS » | **oui** |
+| 4 | le dessin | un la sur +0,3, l'arrangement photographié : la bande de l'onde de **219 à 231** px (tout au-dessus du milieu du clip, 231), puis de **225 à 237** — centrée | **oui** |
+| 5 | le témoin, les langues, l'audit | le binaire de D560 : (2) à (5) **rouges** ; « Remove DC offset » ; l'audit : « sans effet avec trace » (la boîte, son fichier n'ayant pas de décalage) | **oui** |
+
+**LE BANC S'EST TROMPÉ, PAS L'APPLICATION** : il attendait au témoin +0,25 et lisait 0,1768 — la loi de
+panoramique au centre (×0,7071) vaut pour tout l'export, et la première écriture l'oubliait.
+
+### Phase D561.4 — les gestes d'analyse entendent un fichier long (18/10/2026) — FAITE
+
+`relirePourAnalyser` (`AudioLoadPolicy::ForceResident`) remplace les quatre relectures `Automatic` : `chargerFenetreDuClip`
+(quantifier l'audio, les notes, le groove et le tempo depuis les attaques, la tête d'une attaque à l'autre, les repères
+aux attaques, et le décalage continu de D561.3), *Rogner au son*, *Découper aux silences*, *Découper aux transitoires*.
+La lecture (`loadAudioTracks`) et l'import gardent la diffusion : le moteur, lui, la remplit.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | H23, avant | sur le binaire de D560 : **0** repère sur 30 s, **0** coupe, « sous le seuil de silence » ; **10** repères sur 10 s | **tenue** |
+| 2 | les repères | `tools/analyse-fichier-long.sh` : **30** repères sur 30 s (480 … 28 320), 10 sur 10 s | **oui** |
+| 3 | les transitoires | **30 coupes, 31 morceaux** (le premier avant le premier clic) | **oui** |
+| 4 | rogner au son | « 495 ms retirées au début, 487 ms à la fin » : le clip de 0,49 à 29,51 s | **oui** |
+| 5 | le témoin | le binaire de D560 : (1), (3), (4) **rouges**, (2) vert — le résident n'a jamais été sourd | **oui** |
+
+**NOMMÉ, NON MESURÉ** : *Découper aux silences* sur un fichier long — même relecture, mais sa fenêtre de réglages demande
+un banc à elle ; le banc de D542.3 le garde sur un fichier court. **ET LE BANC S'Y EST TROMPÉ DEUX FOIS** : il comptait 30
+morceaux pour 30 coupes, et lisait en secondes le `sourceStart` d'un clip audio, qui s'écrit en ticks (475 = 0,495 s).
+Les deux corrigés et rejoués, le binaire de D560 de nouveau en rouge.
+
+C++ 499 · 1 342 · 340 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE VINGT-DEUXIÈME AUDIT (D561) EST CLOS** : les clips des pistes choisies, une règle de tempo tapé pour trois chemins,
+le décalage continu d'un clip retiré — et, trouvé en chemin, des gestes d'analyse sourds au-delà de vingt secondes de
+fichier. **LA SÉRIE COMPLÈTE**, sur le binaire de D561 (114 bancs, quatre neufs), est lancée à la suite.

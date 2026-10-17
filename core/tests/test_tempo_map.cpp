@@ -212,11 +212,11 @@ VSM_TEST(parse_bar_beat_reads_human_positions_and_refuses_the_rest) {
     VSM_ASSERT(!parseBarBeat("17.3.2", bar, beat));
 }
 
-// D561.2 — LE TEMPO TAPÉ : rien avant la quatrième frappe, puis la moyenne des huit derniers intervalles au plus.
-VSM_TEST(tapped_tempo_waits_for_four_taps_then_averages_the_last_eight_intervals) {
+// D561.2 — LE TEMPO TAPÉ : rien avant la deuxième frappe (D3.2), puis la moyenne des huit derniers intervalles au plus.
+VSM_TEST(tapped_tempo_starts_at_the_second_tap_then_averages_the_last_eight_intervals) {
     VSM_ASSERT_NEAR(tappedTempoBpm({}), 0.0, 1e-12);
-    VSM_ASSERT_NEAR(tappedTempoBpm({0.0, 0.5, 1.0}), 0.0, 1e-12);           // trois frappes : pas encore
-    VSM_ASSERT_NEAR(tappedTempoBpm({0.0, 0.5, 1.0, 1.5}), 120.0, 1e-9);    // la quatrième : 120
+    VSM_ASSERT_NEAR(tappedTempoBpm({0.0}), 0.0, 1e-12);                    // une frappe : pas encore
+    VSM_ASSERT_NEAR(tappedTempoBpm({0.0, 0.5}), 120.0, 1e-9);              // la deuxième : 120
     // Une main inégale : ±20 ms sur chaque frappe, la moyenne reste à moins de 2 BPM.
     VSM_ASSERT_NEAR(tappedTempoBpm({0.0, 0.52, 0.98, 1.52}), 118.42, 0.01);
     // Les huit derniers intervalles seulement : un départ à 100 BPM (0,6 s) puis neuf frappes à 150 (0,4 s).
