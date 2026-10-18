@@ -43295,3 +43295,37 @@ C++ 504 · 1 344 · 341 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 **LE VINGT-CINQUIÈME AUDIT (D564) EST CLOS** : la console remise tranche par tranche, cinq modes de canaux pour un clip,
 le dossier du projet nettoyé sans rien perdre de ce qu'un Ctrl+Z rappellerait. **LA SÉRIE COMPLÈTE**, sur le binaire de
 D564 (123 bancs, trois neufs), est lancée à la suite.
+
+### Phase D565 — un vingt-sixième audit : la tête au repère 1 à 9, le zoom sur les locateurs, les notes d'une piste (18/10/2026)
+
+*Écrite le 18/10 à 13 h 06, D564 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D564, les zéros revérifiés en listant ce qu'on a cherché et où.** Le sous-menu *Locate* et
+les touches du pavé numérique de Cubase (*To Marker 1–9*), son *Zoom to Locators*, et les *Track Notes* de son
+inspecteur : **0 pour un repère PAR SON NUMÉRO** — la tête va au repère suivant ou précédent (Maj+N, Maj+B), à la
+fenêtre des repères (D543.2), jamais au troisième d'un geste (`goToMarker`, « aller au repère », « repère 3 » : rien) ;
+**0 pour un zoom sur les locateurs** — « Zoom : tout voir », « Zoom : la sélection », l'annulation de D557.3 ;
+`zoomToLocators`, « zoom … locateurs » : rien ; **0 pour des notes de PISTE** — les « Notes du projet » existent
+(D18.6), aucune ne s'attache à une piste (`trackNotes`, « notes de la piste » ne désignent que ses notes MIDI).
+**Trouvé et écarté** : la position en échantillons (« %1 échantillons »), l'ajustement des pistes à la fenêtre —
+présents ; le départ d'enregistrement au locateur gauche — absent, mais aucun banc ne sait enregistrer (pas de carte
+son sous banc), et le geste attendra d'être mesurable.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D565.1 | **La tête au repère 1 à 9** — *To Marker 1–9* | *Transport ▸ Tête au repère ▸ 1 … 9* (le pavé numérique, 1 à 9) : la tête va au N-ième repère dans l'ordre du temps ; le sous-menu nomme chaque repère (« 3 — Refrain ») ; au-delà du nombre de repères, dit, la tête reste ; mesuré par le relevé de la tête sur un projet à trois repères |
+| D565.2 | **Le zoom sur les locateurs** — *Zoom to Locators* | *Affichage ▸ Zoom : entre les locateurs* : l'arrangement montre la plage des locateurs (la règle du zoom sur la sélection : la plage sur 90 % de la largeur, un vingtième de marge avant) ; un pas de l'historique des zooms (D557.3) ; sans locateurs, grisée ; mesuré par la fenêtre relevée (premier et dernier tick visibles) et par « Annuler le zoom » |
+| D565.3 | **Les notes d'une piste** — *Track Notes* | *Piste ▸ Notes de la piste…* : une fenêtre de texte pour la piste choisie, écrite dans le projet à chaque frappe (le projet passe « modifié », sans pas d'annulation — la règle des notes du projet, D508) ; le libellé dit le compte de caractères ; l'infobulle du nom de la piste montre ses notes ; enregistrées au projet (`memo`) seulement si elles ne sont pas vides ; mesuré par le projet relu (deux pistes, deux textes) et par le relevé de l'infobulle |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D565.1.** Les repères dans l'ordre du TEMPS, et non dans l'ordre où on les a posés : c'est ce que montre la règle, et
+  c'est l'ordre de la fenêtre des repères. Un sous-menu et non neuf entrées à plat : le menu Transport en porte déjà
+  vingt-sept. Les touches du pavé numérique (1 à 9), celles de Cubase : libres dans la table, les touches fixes et
+  `kglobalshortcutsrc`, vérifié à 13 h 06 ; un clavier sans pavé les remplace dans la fenêtre des raccourcis.
+- **D565.2.** La règle de `zoomToSelection`, partagée par une fonction `zoomSurPlage` : deux zooms qui cadrent une plage
+  ne doivent pas la cadrer différemment. Pas de touche.
+- **D565.3.** Le champ s'appelle `memo` et non `notes`, que `Track` emploie déjà pour ses notes MIDI. L'infobulle du nom
+  de la piste porte le texte (tronqué à deux cents caractères) : on voit qu'une piste a des notes sans ouvrir de
+  fenêtre. Une seule fenêtre, qui suit la piste choisie (son titre la nomme). Pas de touche.
+
+**L'ORDRE, TRANCHÉ ICI.** D565.2 d'abord (le plus petit), puis D565.1, puis D565.3.
