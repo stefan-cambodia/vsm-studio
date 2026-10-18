@@ -280,6 +280,10 @@ struct Clip {
     /// de retiré. Un réglage, comme le gain : le fichier reste celui de la prise. EN DERNIER, la même règle.
     float dcOffsetLeft = 0.0f;
     float dcOffsetRight = 0.0f;
+    /// D564.3 : LES AUTRES MODES DE CANAUX (*Stereo Flip* : Left to Stereo, Right to Stereo, Merge) — 0 : les canaux du
+    /// fichier (et `swapChannels` décide de l'échange) ; 1 : la gauche aux deux ; 2 : la droite aux deux ; 3 : la somme
+    /// (g + d) / 2 aux deux. Appliqué à la source après le décalage continu ; posé, il exclut l'échange. EN DERNIER.
+    uint8_t channelMap = 0;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

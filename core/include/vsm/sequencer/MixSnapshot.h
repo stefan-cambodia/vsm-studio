@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/sequencer/Project.h"
 #include <cstddef>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -65,6 +66,9 @@ size_t clearAllMutes(Project& project);
 /// `countTracksToReset` le même compte sans rien toucher (le libellé du menu).
 size_t countTracksToReset(const Project& project);
 size_t resetConsole(Project& project);
+/// D564.2 — LA MÊME REMISE, bornée aux pistes `only` (*Reset Selected Channels*) : une seule règle de tranche neuve.
+size_t countTracksToReset(const Project& project, const std::set<size_t>& only);
+size_t resetConsole(Project& project, const std::set<size_t>& only);
 
 /// D562.3 — LES RÉGLAGES D'UNE TRANCHE (*Copy / Paste Channel Settings*) : son trim, sa phase, ses départs et sa chaîne
 /// d'inserts (réglages, état natif et contournement compris) — le « son » de la tranche. Le volume, le panoramique, le

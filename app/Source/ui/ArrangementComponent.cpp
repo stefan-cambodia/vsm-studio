@@ -883,10 +883,20 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
             const float dB = clip.gain > 0.0f ? 20.0f * std::log10(clip.gain) : -96.0f;
             menu.addSubMenu(tr(u8"Gain du clip (%1 dB)").replace("%1", juce::String(dB >= 0.0f ? "+" : "") + juce::String(dB, 1)), gain);
             menu.addItem(57, tr(u8"Phase invers\u00e9e"), true, clip.invertPhase);
-            // D559.3 : GAUCHE ET DROITE ÉCHANGÉES, cochée comme la phase ; grisée pour un fichier mono, qui n'a rien
-            // à échanger.
-            menu.addItem(82, tr(u8"Gauche et droite échangées"), project_->tracks[piste].audio.channels >= 2,
-                         clip.swapChannels);
+            // D559.3 → D564.3 : LES CANAUX, cinq choix exclusifs (le Stereo Flip de Cubase) ; grisés pour un fichier
+            // mono, sauf « Normaux » — il n'y a rien à échanger ni à répartir.
+            {
+                using vsm::sequencer::ClipChannels;
+                const bool stereo = project_->tracks[piste].audio.channels >= 2;
+                const ClipChannels actuel = vsm::sequencer::clipChannels(clip);
+                juce::PopupMenu canaux;
+                canaux.addItem(87, tr(u8"Normaux"), true, actuel == ClipChannels::Normal);
+                canaux.addItem(82, tr(u8"Gauche et droite échangées"), stereo, actuel == ClipChannels::Swap);
+                canaux.addItem(88, tr(u8"Gauche aux deux canaux"), stereo, actuel == ClipChannels::LeftToBoth);
+                canaux.addItem(89, tr(u8"Droite aux deux canaux"), stereo, actuel == ClipChannels::RightToBoth);
+                canaux.addItem(90, tr(u8"Somme mono"), stereo, actuel == ClipChannels::MonoSum);
+                menu.addSubMenu(tr(u8"Canaux"), canaux);
+            }
         }
         // D54 : LA HAUTEUR DU CLIP — l'élément que D21 avait reporté. Même
         // forme que le gain, et pour la même raison : le geste est « un
@@ -2221,18 +2231,36 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             for (auto& t : project_->tracks) removeClipFades(t.clips, cibles);
             break;
         }
-        case 82: {   // D559.3 : sur toute la sélection, comme la phase
-            if (onEditStarted) onEditStarted(u8"Gauche et droite échangées");
+        case 82: case 87: case 88: case 89: case 90: {   // D559.3, D564.3 : sur toute la sélection
+            using vsm::sequencer::ClipChannels;
+            const ClipChannels voulu = choix == 82 ? ClipChannels::Swap
+                                     : choix == 88 ? ClipChannels::LeftToBoth
+                                     : choix == 89 ? ClipChannels::RightToBoth
+                                     : choix == 90 ? ClipChannels::MonoSum : ClipChannels::Normal;
             ClipSelection cibles = selection_;
             cibles.insert(clipId);
+            // MESURÉ SUR UNE COPIE : aucun pas pour un choix déjà en place.
+            size_t changes = 0;
+            for (const auto& t : project_->tracks) {
+                auto essai = t.clips;
+                changes += setClipChannels(essai, cibles, voulu);
+            }
+            std::fputs(("VSM_CANAUX : " + std::string(voulu == ClipChannels::Swap ? "\xc3\xa9" "chang\xc3\xa9" "s"
+                                                      : voulu == ClipChannels::LeftToBoth ? "gauche aux deux"
+                                                      : voulu == ClipChannels::RightToBoth ? "droite aux deux"
+                                                      : voulu == ClipChannels::MonoSum ? "somme mono" : "normaux")
+                        + " sur " + std::to_string(changes) + " clip(s)\n").c_str(), stderr);
+            if (changes == 0) return;
+            if (onEditStarted) onEditStarted(choix == 82 ? u8"Gauche et droite échangées" : u8"Canaux d'un clip");
             size_t echanges = 0;
             for (auto& t : project_->tracks) {
-                toggleClipChannelSwap(t.clips, cibles);
+                setClipChannels(t.clips, cibles, voulu);
                 for (const auto& c : t.clips)
                     if (cibles.count(c.id) > 0 && c.swapChannels) ++echanges;
             }
-            std::fputs(("VSM_CANAUX_ECHANGES : " + std::to_string(echanges) + " clip(s) gauche/droite \xc3\xa9" "chang\xc3\xa9" "s\n").c_str(),
-                       stderr);
+            if (choix == 82)   // la ligne de D559.3, que son banc lit
+                std::fputs(("VSM_CANAUX_ECHANGES : " + std::to_string(echanges) + " clip(s) gauche/droite \xc3\xa9" "chang\xc3\xa9" "s\n").c_str(),
+                           stderr);
             break;
         }
         case 60: case 61: case 62: case 63: case 64: case 65: case 66: {

@@ -4286,6 +4286,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileSaveNewVersion, tr(u8"Enregistrer une nouvelle version"),
                                  shortcuts_, vsm::interchange::ShortcutId::FileSaveNewVersion);
             menu.addItem(kMenuFileSaveCopy, tr(u8"Enregistrer une copie..."));
+            // D564.1 : NETTOYER LE DOSSIER (Cleanup) — vers la corbeille, après confirmation.
+            menu.addItem(kMenuFileCleanup, tr(u8"Nettoyer le dossier du projet..."), currentProjectFolder_ != juce::File());
             menu.addItem(kMenuFileRevert, tr(u8"Revenir à la version enregistrée..."),
                          currentProjectFolder_ != juce::File() && projetNonEnregistre());
             menu.addSeparator();
@@ -5398,6 +5400,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuMixResetConsole,
                              tr(u8"Remettre la console à zéro (%1 tranche(s))…").replace("%1", juce::String(static_cast<int>(aRemettre))),
                              aRemettre > 0);
+                // D564.2 : LES SEULES TRANCHES CHOISIES — la même remise, bornée aux pistes choisies dans la liste.
+                const auto choisies = static_cast<int>(vsm::sequencer::countTracksToReset(project_, trackList_.selectedTracks()));
+                menu.addItem(kMenuMixResetChosen,
+                             tr(u8"Remettre les tranches choisies à zéro (%1)…").replace("%1", juce::String(choisies)),
+                             choisies > 0);
             }
             // D544.3 : LA TRANSPOSITION GLOBALE — cochée quand elle n'est pas nulle ; la fenêtre dit la valeur.
             menu.addItem(kMenuMixGlobalTranspose, tr(u8"Transposition globale…"), true,
@@ -5665,6 +5672,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixClearSolos) { leverToutesLesPistes(true); return; }    // D559.1
     if (menuItemID == kMenuMixClearMutes) { leverToutesLesPistes(false); return; }   // D559.1
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
+    if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
     if (menuItemID == kMenuMixMonoListen) {
         const bool on = !audioEngine_.processGraph().masterBus().monoListen();
         audioEngine_.processGraph().masterBus().setMonoListen(on);
@@ -5821,6 +5829,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileSaveNewVersion: enregistrerUneNouvelleVersion(); break;     // D563.1
         case kMenuFileSaveCopy:  enregistrerUneCopie(); break;                    // D563.3
         case kMenuFileRevert:    revenirALaVersionEnregistree(); break;           // D563.2
+        case kMenuFileCleanup:   nettoyerLeDossierDuProjet(); break;              // D564.1
         case kMenuFileLoadReference: loadReferenceAudio(); break;
         case kMenuFileReferenceOff:
             setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode::Off); break;
@@ -10802,6 +10811,99 @@ void MainComponent::revenirALaVersionEnregistree() {
         }));
 }
 
+namespace {
+/// D564.1 : À LA CORBEILLE, selon la norme XDG (le fichier dans `Trash/files`, sa fiche dans `Trash/info`, que la
+/// corbeille du bureau lit pour le restaurer) — `juce::File::moveToTrash` sous Linux n'écrit pas la fiche, et refuse
+/// quand le dossier de la corbeille n'existe pas encore. Rend faux si le fichier n'a pas pu partir.
+bool alaCorbeille(const juce::File& fichier) {
+#if JUCE_LINUX
+    const char* xdg = std::getenv("XDG_DATA_HOME");
+    const juce::File donnees = (xdg != nullptr && *xdg) ? juce::File(juce::String::fromUTF8(xdg))
+                                                        : juce::File::getSpecialLocation(juce::File::userHomeDirectory)
+                                                              .getChildFile(".local/share");
+    const juce::File fichiers = donnees.getChildFile("Trash/files"), fiches = donnees.getChildFile("Trash/info");
+    if (!fichiers.createDirectory() || !fiches.createDirectory()) return false;
+    const juce::File cible = fichiers.getNonexistentChildFile(fichier.getFileNameWithoutExtension(), fichier.getFileExtension(), false);
+    const juce::String fiche = "[Trash Info]\nPath=" + juce::URL::addEscapeChars(fichier.getFullPathName(), false, false)
+                                   .replace("%2F", "/") + "\nDeletionDate="
+                               + juce::Time::getCurrentTime().formatted("%Y-%m-%dT%H:%M:%S") + "\n";
+    const juce::File info = fiches.getChildFile(cible.getFileName() + ".trashinfo");
+    if (!info.replaceWithText(fiche)) return false;
+    if (!fichier.moveFileTo(cible)) { info.deleteFile(); return false; }
+    return true;
+#else
+    return fichier.moveToTrash();
+#endif
+}
+} // namespace
+
+void MainComponent::nettoyerLeDossierDuProjet() {
+    // D564.1 : NETTOYER LE DOSSIER DU PROJET (*Cleanup*) — les fichiers de `audio/` et `gel/` (les seuls dossiers que
+    // l'application écrit) que rien ne désigne : ni le projet (`collectMediaPaths`), ni AUCUN état de l'historique (un
+    // Ctrl+Z ne doit jamais rappeler un fichier parti), ni le presse-papiers de clips. À la CORBEILLE, jamais effacés,
+    // après confirmation. Le projet ne change pas : aucun pas.
+    if (currentProjectFolder_ == juce::File()) return;
+    std::set<std::string> projet, rappelables;
+    vsm::sequencer::collectMediaPaths(project_, projet);
+    history_.forEachState([&rappelables](const vsm::sequencer::Project& etat) { vsm::sequencer::collectMediaPaths(etat, rappelables); });
+    for (const auto& c : arrangement_.clipsCopies())
+        if (!c.audio.path.empty()) rappelables.insert(c.audio.path);
+    juce::Array<juce::File> orphelins;
+    int gardesPourLHistoire = 0, designes = 0;
+    int64_t octets = 0;
+    for (const char* sousDossier : {"audio", "gel"}) {
+        for (const auto& f : currentProjectFolder_.getChildFile(sousDossier).findChildFiles(juce::File::findFiles, true)) {
+            const std::string relatif = f.getRelativePathFrom(currentProjectFolder_).replaceCharacter('\\', '/').toStdString();
+            if (projet.count(relatif) > 0) { ++designes; continue; }
+            if (rappelables.count(relatif) > 0) { ++gardesPourLHistoire; continue; }
+            orphelins.add(f);
+            octets += f.getSize();
+        }
+    }
+    std::string noms;
+    for (const auto& f : orphelins) noms += (noms.empty() ? "" : ", ") + f.getRelativePathFrom(currentProjectFolder_).toStdString();
+    std::fputs(("VSM_NETTOYAGE : " + std::to_string(orphelins.size()) + " orphelin(s) [" + noms + "], " + std::to_string(designes)
+                + " d\xc3\xa9sign\xc3\xa9(s), " + std::to_string(gardesPourLHistoire) + " gard\xc3\xa9(s) pour l'historique\n").c_str(),
+               stderr);
+    const juce::String gardes = gardesPourLHistoire == 0 ? juce::String()
+        : "\n\n" + tr(u8"%1 fichier(s) gardé(s) : un pas d'annulation ou le presse-papiers pourrait les rappeler.")
+                         .replace("%1", juce::String(gardesPourLHistoire));
+    if (orphelins.isEmpty()) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Nettoyer le dossier du projet"),
+                     tr(u8"Rien à nettoyer : chaque fichier de audio/ et gel/ est désigné par le projet.") + gardes);
+        return;
+    }
+    juce::String liste;
+    for (int i = 0; i < orphelins.size() && i < 12; ++i) liste << "\n  " << orphelins[i].getRelativePathFrom(currentProjectFolder_);
+    if (orphelins.size() > 12) liste << "\n  " << tr(u8"… et %1 autre(s)").replace("%1", juce::String(orphelins.size() - 12));
+    demanderOuiNon(
+        juce::AlertWindow::QuestionIcon, tr(u8"Nettoyer le dossier du projet"),
+        tr(u8"%1 fichier(s) (%2 Mo) que rien ne désigne iront à la corbeille, d'où ils se récupèrent :")
+                .replace("%1", juce::String(orphelins.size())).replace("%2", juce::String(static_cast<double>(octets) / 1048576.0, 1))
+            + liste + gardes,
+        tr(u8"À la corbeille"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
+        juce::ModalCallbackFunction::create([this, orphelins](int resultat) {
+            if (resultat != 1) {
+                std::fputs("VSM_NETTOYAGE : refus\xc3\xa9\n", stderr);
+                return;
+            }
+            int partis = 0;
+            juce::StringArray rates;
+            for (const auto& f : orphelins) {
+                if (alaCorbeille(f)) ++partis;
+                else rates.add(f.getRelativePathFrom(currentProjectFolder_));
+            }
+            std::fputs(("VSM_NETTOYAGE : " + std::to_string(partis) + " \xc3\xa0 la corbeille, " + std::to_string(rates.size())
+                        + " \xc3\xa9" "chec(s)\n").c_str(), stderr);
+            if (!rates.isEmpty())
+                montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Nettoyer le dossier du projet"),
+                             tr(u8"Ces fichiers n'ont pas pu aller à la corbeille ; ils sont restés en place :") + "\n"
+                                 + rates.joinIntoString("\n"));
+            else if (pianoRoll_.onStatusChanged)
+                pianoRoll_.onStatusChanged(tr(u8"Dossier nettoyé : %1 fichier(s) à la corbeille").replace("%1", juce::String(partis)));
+        }));
+}
+
 void MainComponent::saveProject() {
     if (currentProjectFolder_ == juce::File()) { saveProjectAs(); return; }
     writeProjectTo(currentProjectFolder_);
@@ -13708,6 +13810,36 @@ void MainComponent::plierToutesLesPistes(vsm::sequencer::FoldAll comment) {
                                     : comment == FoldAll::Unfold ? tr(u8"Pistes dépliées : %1")
                                                                  : tr(u8"Plis inversés : %1 piste(s)"))
                                        .replace("%1", juce::String(static_cast<int>(changees))));
+}
+
+void MainComponent::remettreLesTranchesChoisiesAZero() {
+    // D564.2 : LA REMISE DE D559.2 SUR LES SEULES PISTES CHOISIES (*Reset Selected Channels*) ; les inserts restent ; une
+    // confirmation, comme sa sœur ; un pas.
+    const std::set<size_t> choisies = trackList_.selectedTracks();
+    const size_t aRemettre = vsm::sequencer::countTracksToReset(project_, choisies);
+    if (aRemettre == 0) {
+        std::fputs("VSM_CONSOLE : aucune tranche choisie \xc3\xa0 remettre\n", stderr);
+        return;   // l'entrée est grisée
+    }
+    demanderOuiNon(
+        juce::AlertWindow::QuestionIcon, tr(u8"Remettre les tranches choisies à zéro"),
+        tr(u8"%1 tranche(s) choisie(s) reviendront à 0 dB, au centre, sans muet ni solo, sans trim ni polarité inversée, "
+           u8"leurs départs à zéro. Les inserts restent ; les autres pistes ne bougent pas.")
+            .replace("%1", juce::String(static_cast<int>(aRemettre))),
+        tr(u8"Remettre à zéro"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
+        juce::ModalCallbackFunction::create([this, choisies](int resultat) {
+            if (resultat != 1) {
+                std::fputs("VSM_CONSOLE : remise des tranches choisies refus\xc3\xa9" "e\n", stderr);
+                return;
+            }
+            beginProjectEdit(juce::String::fromUTF8(u8"Remettre les tranches choisies à zéro"));
+            const size_t remises = vsm::sequencer::resetConsole(project_, choisies);
+            rebuildFromProject(false);
+            std::fputs(("VSM_CONSOLE : " + std::to_string(remises) + " tranche(s) choisie(s) remise(s) \xc3\xa0 z\xc3\xa9ro\n").c_str(),
+                       stderr);
+            if (pianoRoll_.onStatusChanged)
+                pianoRoll_.onStatusChanged(tr(u8"Tranches choisies remises à zéro : %1").replace("%1", juce::String(static_cast<int>(remises))));
+        }));
 }
 
 void MainComponent::remettreLaConsoleAZero() {

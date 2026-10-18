@@ -342,6 +342,8 @@ public:
     /// s'il y a quelque chose à changer ; le verrou dit (`onLockRefused`).
     vsm::sequencer::OverlapRemoval retirerChevauchements(bool compter);
     size_t clipsChoisis() const { return selection_.size(); }
+    /// D564.1 : le presse-papiers des clips — ses sources audio comptent comme désignées pour le nettoyage du dossier.
+    const std::vector<vsm::sequencer::CopiedClip>& clipsCopies() const { return presse_papiers_; }
     /// D550.2 : COUPER AUX LOCATEURS (*Split Loop*). Les clips choisis -- ou, sans choix, tous ceux qu'un locateur
     /// traverse -- coupés à `de` et à `a`, chaque piste à SON passage par zéro comme Ctrl+E ; le verrou respecté
     /// et compté (`onLockRefused`) ; les morceaux d'entre les locateurs restent choisis. Un pas, s'il y a coupe.

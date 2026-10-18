@@ -161,10 +161,25 @@ size_t countTracksToReset(const Project& project) {
                                              [](const Track& t) { return !trancheNeutre(t); }));
 }
 
+size_t countTracksToReset(const Project& project, const std::set<size_t>& only) {
+    size_t n = 0;
+    for (size_t i : only)
+        if (i < project.tracks.size() && !trancheNeutre(project.tracks[i])) ++n;
+    return n;
+}
+
 size_t resetConsole(Project& project) {
+    std::set<size_t> toutes;
+    for (size_t i = 0; i < project.tracks.size(); ++i) toutes.insert(i);
+    return resetConsole(project, toutes);
+}
+
+size_t resetConsole(Project& project, const std::set<size_t>& only) {
     const Track neuve;
     size_t n = 0;
-    for (auto& t : project.tracks) {
+    for (size_t i : only) {
+        if (i >= project.tracks.size()) continue;
+        auto& t = project.tracks[i];
         if (trancheNeutre(t)) continue;
         t.volume = neuve.volume;
         t.pan = neuve.pan;

@@ -1153,3 +1153,22 @@ VSM_TEST(exploding_a_track_by_channel_moves_each_channel_and_keeps_the_bus) {
     VSM_ASSERT_EQ(explodeTrackByChannel(p, 0), size_t(0));
 }
 
+
+// D564.1 — LES MÉDIAS QUE LE PROJET DÉSIGNE : la piste, son gel, ses prises, ses versions ; un chemin vide n'en est pas un.
+VSM_TEST(the_project_names_the_media_of_tracks_freezes_takes_and_versions) {
+    Project p;
+    p.tracks.emplace_back();
+    p.tracks[0].audio.path = "audio/voix.wav";
+    p.tracks[0].frozenAudio.path = "gel/voix.wav";
+    p.tracks[0].takes.emplace_back();
+    p.tracks[0].takes[0].audio.path = "audio/prise-1.wav";
+    p.tracks[0].versions.emplace_back();
+    p.tracks[0].versions[0].audio.path = "audio/version.wav";
+    p.tracks.emplace_back();   // une piste MIDI : aucun fichier
+    std::set<std::string> chemins;
+    collectMediaPaths(p, chemins);
+    VSM_ASSERT_EQ(chemins.size(), size_t(4));
+    VSM_ASSERT(chemins.count("gel/voix.wav") == 1);
+    VSM_ASSERT(chemins.count("audio/prise-1.wav") == 1);
+    VSM_ASSERT(chemins.count("") == 0);
+}

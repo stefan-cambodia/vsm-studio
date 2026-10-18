@@ -1113,6 +1113,32 @@ VSM_TEST(a_clip_with_its_dc_offset_removed_survives_the_trip_and_raises_the_vers
     VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].dcOffsetLeft, 0.25f, 1e-6);   // jusqu'au MODÈLE
 }
 
+// D564.3 — LES MODES DE CANAUX : écrits par leur nom, seulement s'ils sont posés, comptés parmi les réglages de la
+// version 3 ; un nom inconnu se relit comme les canaux du fichier.
+VSM_TEST(a_clip_channel_map_survives_the_trip_by_name) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.length = 960; clip.sourceLength = 960;
+    project.tracks[0].clips.push_back(clip);
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString().find("channelMode") == std::string::npos);
+    project.tracks[0].clips[0].channelMap = 3;
+    const JsonValue avec = projectDocumentToJson(documentFromProject(project));
+    VSM_ASSERT(avec.toString().find("\"mono\"") != std::string::npos);
+    VSM_ASSERT_EQ(static_cast<int>(avec["version"].asNumber(0)), kProjectVersion);
+    const ProjectLoadResult relu = parseProjectDocument(avec.toString());
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].clips.empty());
+    VSM_ASSERT_EQ(rejoue.tracks[0].clips[0].channelMap, uint8_t(3));   // jusqu'au MODÈLE
+    std::string inconnu = avec.toString();
+    inconnu.replace(inconnu.find("\"mono\""), 6, "\"tout\"");
+    const ProjectLoadResult bizarre = parseProjectDocument(inconnu);
+    VSM_ASSERT(bizarre.success);
+    VSM_ASSERT_EQ(bizarre.document.tracks[0].clips[0].channelMap, uint8_t(0));
+}
+
 // D16.5 — LE VERROU D'UNE PISTE, écrit seulement quand il est mis.
 VSM_TEST(a_locked_track_survives_the_trip_and_an_unlocked_one_adds_nothing_to_the_file) {
     Project project = buildProject();

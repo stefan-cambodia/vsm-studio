@@ -140,8 +140,12 @@ float normalizeGainFor(float peak, double targetDbfs);
 
 /// Inverse la phase des clips sélectionnés (bascule).
 void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection);
-/// D559.3 : échanger gauche et droite des clips choisis — une bascule PAR clip, comme la phase.
-void toggleClipChannelSwap(std::vector<Clip>& clips, const ClipSelection& selection);
+/// D559.3 → D564.3 : LES CANAUX D'UN CLIP, un choix parmi cinq (le sous-menu *Canaux*), posé sur toute la sélection :
+/// les canaux du fichier, l'échange (D559.3, `swapChannels`), la gauche aux deux, la droite aux deux, la somme mono
+/// (`channelMap`). L'échange et les trois autres s'excluent. Rend le nombre de clips changés.
+enum class ClipChannels { Normal, Swap, LeftToBoth, RightToBoth, MonoSum };
+ClipChannels clipChannels(const Clip& clip);
+size_t setClipChannels(std::vector<Clip>& clips, const ClipSelection& selection, ClipChannels channels);
 /// D560.2 — RETIRER LES FONDUS des clips choisis (*Remove Fades*) : le fondu d'entrée et celui de sortie remis à zéro.
 /// La forme (D17.1) reste, et les fondus CROISÉS ne sont pas des fondus de clip (ils naissent du chevauchement). Le
 /// fondu est un réglage du son, comme le gain : aucun verrou ne le refuse (D549.1). Rend le nombre de clips changés.

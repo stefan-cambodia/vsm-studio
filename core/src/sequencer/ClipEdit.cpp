@@ -168,10 +168,26 @@ void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection) {
         if (selected(selection, clip)) clip.invertPhase = !clip.invertPhase;
 }
 
-void toggleClipChannelSwap(std::vector<Clip>& clips, const ClipSelection& selection) {
-    if (selection.empty()) return;
-    for (auto& clip : clips)
-        if (selected(selection, clip)) clip.swapChannels = !clip.swapChannels;
+ClipChannels clipChannels(const Clip& clip) {
+    switch (clip.channelMap) {
+        case 1: return ClipChannels::LeftToBoth;
+        case 2: return ClipChannels::RightToBoth;
+        case 3: return ClipChannels::MonoSum;
+        default: return clip.swapChannels ? ClipChannels::Swap : ClipChannels::Normal;
+    }
+}
+
+size_t setClipChannels(std::vector<Clip>& clips, const ClipSelection& selection, ClipChannels channels) {
+    size_t changes = 0;
+    for (auto& clip : clips) {
+        if (!selected(selection, clip) || clipChannels(clip) == channels) continue;
+        clip.swapChannels = channels == ClipChannels::Swap;
+        clip.channelMap = channels == ClipChannels::LeftToBoth    ? 1
+                        : channels == ClipChannels::RightToBoth   ? 2
+                        : channels == ClipChannels::MonoSum       ? 3 : 0;
+        ++changes;
+    }
+    return changes;
 }
 
 size_t removeClipFades(std::vector<Clip>& clips, const ClipSelection& selection) {

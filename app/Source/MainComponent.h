@@ -1167,6 +1167,9 @@ private:
         kMenuFileSaveNewVersion,
         kMenuFileSaveCopy,
         kMenuFileRevert,
+        /// D564 : les tranches choisies à zéro ; nettoyer le dossier du projet.
+        kMenuMixResetChosen,
+        kMenuFileCleanup,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1639,6 +1642,10 @@ private:
     juce::File dossierDeLaVersionSuivante() const;
     void enregistrerUneNouvelleVersion();
     void revenirALaVersionEnregistree();
+    /// D564.2 : la remise de D559.2 sur les seules pistes choisies (`VSM_CONSOLE`).
+    void remettreLesTranchesChoisiesAZero();
+    /// D564.1 : les fichiers de audio/ et gel/ que rien ne désigne, à la corbeille après confirmation (`VSM_NETTOYAGE`).
+    void nettoyerLeDossierDuProjet();
     void collerReglagesDeTranche();
     std::optional<vsm::sequencer::ChannelSettings> reglagesDeTranche_;   ///< D562.3 : le presse-papiers, à part de la chaîne
     /// D559.1 : lever le solo (`solos`) ou le muet de toutes les pistes, dit ; un pas.

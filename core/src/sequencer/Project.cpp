@@ -1113,6 +1113,16 @@ std::vector<size_t> folderContents(const Project& project, size_t index) {
     return contenu;
 }
 
+void collectMediaPaths(const Project& project, std::set<std::string>& paths) {
+    const auto ajouter = [&paths](const AudioSource& a) { if (!a.path.empty()) paths.insert(a.path); };
+    for (const auto& t : project.tracks) {
+        ajouter(t.audio);
+        ajouter(t.frozenAudio);
+        for (const auto& prise : t.takes) ajouter(prise.audio);
+        for (const auto& version : t.versions) ajouter(version.audio);
+    }
+}
+
 size_t countFoldChanges(const Project& project, FoldAll how) {
     if (how == FoldAll::Flip) return project.tracks.size();
     const bool voulu = how == FoldAll::Fold;

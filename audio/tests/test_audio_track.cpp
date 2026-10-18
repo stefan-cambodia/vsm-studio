@@ -200,6 +200,36 @@ VSM_TEST(a_clip_with_its_dc_offset_removed_plays_the_corrected_file) {
     VSM_ASSERT_NEAR(vg[290], 0.0f, 1e-9);
 }
 
+// D564.3 — LES MODES DE CANAUX : la gauche aux deux, la droite aux deux, la somme (g + d) / 2 ; posés, ils l'emportent
+// sur l'échange ; après le décalage continu. Une gauche à 0,4 et une droite à 0,1, constantes.
+VSM_TEST(a_clip_channel_map_places_left_right_or_their_sum_on_both_sides) {
+    auto source = std::make_shared<AudioTrackSource>();
+    source->setMemorySamples(std::vector<float>(100, 0.4f), std::vector<float>(100, 0.1f));
+    AudioClipSpan span;
+    span.lengthFrames = 100;
+    const auto jouer = [&source, &span](uint8_t carte, bool echange) {
+        span.channelMap = carte;
+        span.swapChannels = echange;
+        source->clips = {span};
+        std::vector<float> g(100, 0.0f), d(100, 0.0f);
+        source->mixInto(g.data(), d.data(), 0, 100);
+        return std::make_pair(g[50], d[50]);
+    };
+    auto r = jouer(0, false);
+    VSM_ASSERT_NEAR(r.first, 0.4f, 1e-6);   VSM_ASSERT_NEAR(r.second, 0.1f, 1e-6);    // le témoin
+    r = jouer(1, false);
+    VSM_ASSERT_NEAR(r.first, 0.4f, 1e-6);   VSM_ASSERT_NEAR(r.second, 0.4f, 1e-6);    // la gauche aux deux
+    r = jouer(2, false);
+    VSM_ASSERT_NEAR(r.first, 0.1f, 1e-6);   VSM_ASSERT_NEAR(r.second, 0.1f, 1e-6);    // la droite aux deux
+    r = jouer(3, false);
+    VSM_ASSERT_NEAR(r.first, 0.25f, 1e-6);  VSM_ASSERT_NEAR(r.second, 0.25f, 1e-6);   // la somme
+    r = jouer(1, true);
+    VSM_ASSERT_NEAR(r.second, 0.4f, 1e-6);                                              // la carte l'emporte sur l'échange
+    span.dcOffsetLeft = 0.1f;
+    r = jouer(3, false);
+    VSM_ASSERT_NEAR(r.first, 0.2f, 1e-6);                                               // après le décalage : (0,3 + 0,1) / 2
+}
+
 VSM_TEST(an_audio_track_without_a_clip_plays_its_whole_file) {
     // La même règle que pour une piste MIDI : « pas de clip » veut dire « pas
     // de découpe », pas « rien ».

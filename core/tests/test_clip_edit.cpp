@@ -1403,6 +1403,21 @@ VSM_TEST(clip_attack_ticks_are_those_of_the_notes_and_repeat_with_the_loop) {
     for (size_t i = 0; i < lignes.size(); ++i) VSM_ASSERT_EQ(grille[i], lignes[i]);
 }
 
+// D564.3 — LES CANAUX D'UN CLIP : un choix parmi cinq, l'échange et les trois autres s'excluent, sur la sélection.
+VSM_TEST(clip_channels_are_one_choice_among_five) {
+    std::vector<Clip> clips{clip(1, 0, 960), clip(2, 960, 960)};
+    VSM_ASSERT(clipChannels(clips[0]) == ClipChannels::Normal);
+    VSM_ASSERT_EQ(setClipChannels(clips, {1, 2}, ClipChannels::Swap), size_t(2));
+    VSM_ASSERT(clips[1].swapChannels);
+    VSM_ASSERT_EQ(setClipChannels(clips, {1}, ClipChannels::MonoSum), size_t(1));
+    VSM_ASSERT(!clips[0].swapChannels);                                  // la somme exclut l'échange
+    VSM_ASSERT_EQ(clips[0].channelMap, uint8_t(3));
+    VSM_ASSERT(clipChannels(clips[0]) == ClipChannels::MonoSum);
+    VSM_ASSERT_EQ(setClipChannels(clips, {1}, ClipChannels::MonoSum), size_t(0));   // déjà : rien
+    VSM_ASSERT_EQ(setClipChannels(clips, {1, 2}, ClipChannels::Normal), size_t(2));
+    VSM_ASSERT(clipChannels(clips[0]) == ClipChannels::Normal && clipChannels(clips[1]) == ClipChannels::Normal);
+}
+
 // D562.2 — RETIRER LES CHEVAUCHEMENTS DES CLIPS : le clip d'avant perd sa fin ; même début, il est retiré ; la
 // sélection vise le clip d'AVANT ; le verrou laisse et compte ; `apply` faux ne change rien.
 VSM_TEST(removing_clip_overlaps_trims_the_earlier_clip_and_counts_what_it_cannot) {

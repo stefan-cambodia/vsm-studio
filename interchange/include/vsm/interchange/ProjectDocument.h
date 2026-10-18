@@ -184,6 +184,8 @@ struct ProjectClip {
     /// D561.3 : le décalage continu retiré, gauche et droite (`dcOffset`, écrit seulement s'il n'est pas nul). EN DERNIER.
     float dcOffsetLeft = 0.0f;
     float dcOffsetRight = 0.0f;
+    /// D564.3 : la carte des canaux (`channelMode` : « left », « right », « mono » ; absent, ceux du fichier). EN DERNIER.
+    uint8_t channelMap = 0;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

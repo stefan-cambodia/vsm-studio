@@ -111,6 +111,8 @@ struct AudioClipSpan {
     /// l'échange, le gain et les fondus.
     float dcOffsetLeft = 0.0f;
     float dcOffsetRight = 0.0f;
+    /// D564.3 : la carte des canaux (0 : ceux du fichier, puis l'échange ; 1 gauche aux deux ; 2 droite ; 3 somme).
+    uint8_t channelMap = 0;
     /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`
     /// en un miroir du matériau et une fenêtre convertie.
     bool reversed = false;

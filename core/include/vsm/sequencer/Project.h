@@ -8,6 +8,7 @@
 #include "vsm/sequencer/ChordTrack.h"
 #include <cstdint>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -531,6 +532,11 @@ bool hiddenByCollapsedFolder(const Project& project, size_t index);
 /// même compte (0 : rien n'a bougé).
 enum class FoldAll { Fold, Unfold, Flip };
 size_t countFoldChanges(const Project& project, FoldAll how);
+
+/// D564.1 — LES MÉDIAS QUE LE PROJET DÉSIGNE, ajoutés à `paths` : le fichier de chaque piste, de son gel, de chacune de
+/// ses prises et de ses versions — les chemins tels que le projet les écrit (relatifs à son dossier). Ce que le
+/// nettoyage du dossier ne doit jamais toucher.
+void collectMediaPaths(const Project& project, std::set<std::string>& paths);
 size_t foldAllTracks(Project& project, FoldAll how);
 
 /// REMET LES PROFONDEURS DE DOSSIER D'APLOMB (D19.4), et rend le nombre de

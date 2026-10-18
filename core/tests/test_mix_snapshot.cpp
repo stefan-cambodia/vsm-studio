@@ -241,3 +241,23 @@ VSM_TEST(channel_settings_carry_the_sound_of_a_strip_and_leave_its_balance) {
     courte.sendLevels = {0.25f, 0.5f, 0.0f};
     VSM_ASSERT(!channelSettingsWouldChange(courte, reglages));
 }
+
+// D564.2 — REMETTRE À ZÉRO LES TRANCHES CHOISIES : la remise de D559.2, sur les seules pistes données.
+VSM_TEST(resetting_chosen_strips_leaves_the_others_alone) {
+    Project p;
+    for (int i = 0; i < 3; ++i) {
+        Track t;
+        t.volume = 0.3f;
+        t.inputTrimDb = 2.0f;
+        t.sendLevels = {0.5f};
+        p.tracks.push_back(t);
+    }
+    VSM_ASSERT_EQ(countTracksToReset(p, {0, 2, 7}), size_t(2));      // un rang hors du projet est ignoré
+    VSM_ASSERT_EQ(resetConsole(p, {0, 2}), size_t(2));
+    VSM_ASSERT_NEAR(p.tracks[0].volume, Track().volume, 1e-6);
+    VSM_ASSERT_NEAR(p.tracks[2].sendLevel(0), 0.0f, 1e-6);
+    VSM_ASSERT_NEAR(p.tracks[1].volume, 0.3f, 1e-6);                  // la piste non choisie garde tout
+    VSM_ASSERT_NEAR(p.tracks[1].inputTrimDb, 2.0f, 1e-6);
+    VSM_ASSERT_EQ(countTracksToReset(p, {0, 2}), size_t(0));
+    VSM_ASSERT_EQ(resetConsole(p), size_t(1));                        // la console entière : la dernière
+}

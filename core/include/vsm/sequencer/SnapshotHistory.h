@@ -109,6 +109,13 @@ public:
         return labels;
     }
     size_t undoDepth() const { return undoStack_.size(); }
+    /// D564.1 : chaque état que l'historique peut RAPPELER (annuler, rétablir, et le rétablissement gardé d'un pas
+    /// retirable) — ce qu'un nettoyage du dossier doit laisser, pour qu'aucun pas ne rappelle un fichier parti.
+    template <class F> void forEachState(F&& f) const {
+        for (const auto& e : undoStack_) f(e.state);
+        for (const auto& e : redoStack_) f(e.state);
+        for (const auto& e : redoAvantDernierPas_) f(e.state);
+    }
     size_t redoDepth() const { return redoStack_.size(); }
     size_t maxDepth() const { return maxDepth_; }
 

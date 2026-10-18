@@ -43240,3 +43240,58 @@ pistes à la fenêtre, l'accent du métronome — présents.
   perd 6,02 dB — c'est ce que dit Cubase de son *Merge*.
 
 **L'ORDRE, TRANCHÉ ICI.** D564.2 d'abord (le plus petit), puis D564.3, puis D564.1.
+
+**LA SÉRIE DE D563 (binaire de D563)** — le 18/10, de 09 h 06 à 12 h 37, à travers deux veilles (09 h 35-11 h 14,
+11 h 24-12 h 12) : **120 bancs, 120 verts**, préférences identiques.
+
+### Phase D564.2 — remettre à zéro les tranches choisies (18/10/2026) — FAITE
+
+`countTracksToReset` et `resetConsole` reçoivent un ensemble de pistes (`core/`, `MixSnapshot.h`) ; la remise de
+D559.2 en devient le cas « toutes ». *Mixage ▸ Remettre les tranches choisies à zéro (N)…*, après confirmation.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | deux pistes choisies sur trois remises, la troisième intacte, un rang hors du projet ignoré ; puis la console entière ne remet que la dernière. **Rouge** sur le mutant qui remet toutes les pistes (« 3 != 2 ») | **oui** |
+| 2 | par l'application | `tools/tranches-choisies.sh`, B et C choisies : « (2) » ; **B, C : 1 / 0 / 0 / 0 / 1 insert** ; **A : 0,3 / 0,5 / 2 / 0,5 / 1** inchangée | **oui** |
+| 3 | refusé, un pas | refusé : rien ; Ctrl+Z rend B et C, après le geste | **oui** |
+| 4 | le témoin, les langues, l'audit | le binaire de D563 : les trois **rouges** ; photographié « Reset the selected channels (0)… » ; l'audit : grisée dans ses deux états (son projet n'a rien à remettre) | **oui** |
+
+### Phase D564.3 — les modes de canaux d'un clip (18/10/2026) — FAITE
+
+`Clip::channelMap`, `ClipChannels`, `clipChannels`, `setClipChannels` (`core/`) — qui remplace la bascule de D559.3 ;
+`placerLesCanaux`, appelée par les trois chemins d'`AudioTrackSource` après le décalage continu ; `channelMode` au format
+(« left », « right », « mono »), compté parmi les réglages de la version 3. Le sous-menu *Canaux* du clip audio : cinq
+cases exclusives, l'échange de D559.3 parmi elles.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/`, `audio/`, `interchange` | un choix parmi cinq, l'échange et les trois autres s'excluent ; la gauche (0,4) aux deux, la droite (0,1) aux deux, la somme **0,25**, la carte l'emportant sur l'échange, après le décalage ; l'aller-retour par le nom, un nom inconnu relu comme les canaux du fichier. **Rouge** sur le mutant qui oublie la moitié de la somme (« 0,5 vs 0,25 ») | **oui** |
+| 2 | par l'export | `tools/canaux-modes.sh`, un la à gauche : témoin **−15,06 / −144,47** ; gauche aux deux **−15,06 / −15,06** ; droite aux deux **−144,48 / −144,47** ; somme **−21,08 / −21,08** (−6,02) ; « left », « right », « mono », version 3 | **oui** |
+| 3 | un pas, mono | Ctrl+Z rend les canaux du fichier ; « Normaux [cochée] » sans réglage ; un fichier mono : les quatre modes grisés | **oui** |
+| 4 | D559.3 tient | `tools/canaux-echanges.sh`, l'échange désormais dans le sous-menu : les quatre contrôles verts | **oui** |
+| 5 | le témoin, les langues, l'audit | le binaire de D563 : les cinq **rouges** ; « Left to both channels », « Right to both channels », « Mono sum » ; l'audit : les trois modes **justes**, « Normaux » déjà cochée | **oui** |
+
+**LA GARDE DES TRADUCTIONS A VU UN NOM DU JOURNAL** : le tableau des noms de mode, écrit à part de son `fputs`, passait
+pour du texte d'écran (« échangés ») ; les noms vont dans l'appel lui-même, la garde rendant 0.
+
+### Phase D564.1 — nettoyer le dossier du projet (18/10/2026) — FAITE
+
+`collectMediaPaths` (`core/`, `Project.h`) : les fichiers que désignent les pistes, leurs gels, leurs prises et leurs
+versions ; `SnapshotHistory::forEachState`, chaque état que l'historique peut rappeler. `nettoyerLeDossierDuProjet`
+parcourt `audio/` et `gel/`, garde ce que le projet, l'historique ou le presse-papiers de clips désigne, et passe le
+reste à la corbeille selon la norme XDG (`Trash/files` et sa fiche `Trash/info`). *Fichier ▸ Nettoyer le dossier du
+projet…*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `core/` | la piste, son gel, sa prise et sa version : 4 chemins ; une piste MIDI : aucun. **Rouge** sur le mutant qui oublie les prises (« 3 != 4 ») | **oui** |
+| 2 | seul l'orphelin part | `tools/nettoyer-dossier.sh`, la piste B supprimée dans la course : « 1 orphelin(s) [audio/orphelin.wav], 1 désigné(s), 1 gardé(s) pour l'historique », puis « 1 à la corbeille » ; restent **a.wav b.wav** | **oui** |
+| 3 | dans la corbeille | `Trash/files/orphelin.wav`, et sa fiche (`Path=…/audio/orphelin.wav`, `DeletionDate=`) | **oui** |
+| 4 | refusé, rien, aucun pas | refusé : les trois fichiers restent ; sans orphelin : « Rien à nettoyer… » et le titre sans astérisque | **oui** |
+| 5 | l'historique compte | **Rouge** sous le mutant qui oublie l'historique : `b.wav`, que Ctrl+Z rappellerait, partait à la corbeille ; le binaire de D563 : les quatre **rouges** | **oui** |
+
+C++ 504 · 1 344 · 341 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE VINGT-CINQUIÈME AUDIT (D564) EST CLOS** : la console remise tranche par tranche, cinq modes de canaux pour un clip,
+le dossier du projet nettoyé sans rien perdre de ce qu'un Ctrl+Z rappellerait. **LA SÉRIE COMPLÈTE**, sur le binaire de
+D564 (123 bancs, trois neufs), est lancée à la suite.

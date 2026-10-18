@@ -92,6 +92,17 @@ inline float fadeGain(const AudioClipSpan& clip, int64_t position, int64_t secur
     return gain;
 }
 
+/// D559.3, D564.3 : LES CANAUX DU FICHIER MIS EN PLACE — la carte (la gauche aux deux, la droite aux deux, la somme
+/// (g + d) / 2), sinon l'échange. Les trois chemins de mixage passent par ici, après le décalage continu (D561.3).
+inline void placerLesCanaux(const AudioClipSpan& clip, float& g, float& d) {
+    switch (clip.channelMap) {
+        case 1: d = g; return;
+        case 2: g = d; return;
+        case 3: { const float m = 0.5f * (g + d); g = m; d = m; return; }
+        default: if (clip.swapChannels) std::swap(g, d); return;
+    }
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -189,20 +200,19 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                     const float gain = signeW * fadeGain(clip, dansLeClip, safetyFadeFrames)
                                        * envelopeGain(clip, static_cast<double>(dansLeClip));   // D545.1
                     const auto j = static_cast<size_t>(position + i - timelineStart);
-                    const auto& gauche = clip.swapChannels ? w.scratchR : w.scratchL;   // D559.3
-                    const auto& droite = clip.swapChannels ? w.scratchL : w.scratchR;
-                    // D561.3 : le décalage du canal DU FICHIER que chacune porte — là où le fichier joue : au-delà de
-                    // sa fin, l'étireur rend du silence, et y soustraire le décalage en ferait un palier.
-                    float dcG = 0.0f, dcD = 0.0f;
+                    float g = w.scratchL[static_cast<size_t>(i)], d = w.scratchR[static_cast<size_t>(i)];
+                    // D561.3 : le décalage de chaque canal DU FICHIER — là où le fichier joue : au-delà de sa fin,
+                    // l'étireur rend du silence, et y soustraire le décalage en ferait un palier.
                     if (clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) {
                         const double ici = w.sourceFor(position + i);
                         if (ici >= 0.0 && ici < static_cast<double>(magasin.frames())) {
-                            dcG = clip.swapChannels ? clip.dcOffsetRight : clip.dcOffsetLeft;
-                            dcD = clip.swapChannels ? clip.dcOffsetLeft : clip.dcOffsetRight;
+                            g -= clip.dcOffsetLeft;
+                            d -= clip.dcOffsetRight;
                         }
                     }
-                    outLeft[j] += (gauche[static_cast<size_t>(i)] - dcG) * gain;
-                    outRight[j] += (droite[static_cast<size_t>(i)] - dcD) * gain;
+                    placerLesCanaux(clip, g, d);   // D559.3, D564.3
+                    outLeft[j] += g * gain;
+                    outRight[j] += d * gain;
                 }
                 position += n;
                 ecrits += n;
@@ -230,7 +240,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             if (!magasin.frameAt(dansLeFichier, g, d)) continue;
             g -= clip.dcOffsetLeft;                   // D561.3 : le fichier corrigé, avant tout le reste
             d -= clip.dcOffsetRight;
-            if (clip.swapChannels) std::swap(g, d);   // D559.3
+            placerLesCanaux(clip, g, d);              // D559.3, D564.3
             const float gain = signe * fadeGain(clip, dansLeClip, safetyFadeFrames)
                                * envelopeGain(clip, static_cast<double>(dansLeClip));   // D545.1
             const auto j = static_cast<size_t>(position - timelineStart);
@@ -308,7 +318,7 @@ int AudioTrackSource::mixIntoAtSpeed(float* outLeft, float* outRight, double tim
                 g -= clip.dcOffsetLeft;
                 d -= clip.dcOffsetRight;
             }
-            if (clip.swapChannels) std::swap(g, d);   // D559.3
+            placerLesCanaux(clip, g, d);              // D559.3, D564.3
             const float gain = signe * fadeGain(clip, static_cast<int64_t>(std::llround(dansLeClip)),
                                                  safetyFadeFrames)
                                * envelopeGain(clip, dansLeClip);   // D545.1
@@ -357,7 +367,8 @@ void applyCrossfades(std::vector<AudioClipSpan>& spans, vsm::sequencer::FadeShap
             && suivant.sourceStartFrame == precedent.sourceStartFrame + precedent.lengthFrames
             && precedent.gain == suivant.gain && precedent.invertPhase == suivant.invertPhase
             && precedent.swapChannels == suivant.swapChannels
-            && precedent.dcOffsetLeft == suivant.dcOffsetLeft && precedent.dcOffsetRight == suivant.dcOffsetRight) {
+            && precedent.dcOffsetLeft == suivant.dcOffsetLeft && precedent.dcOffsetRight == suivant.dcOffsetRight
+            && precedent.channelMap == suivant.channelMap) {
             precedent.seamlessOut = true;
             suivant.seamlessIn = true;
         }
@@ -457,6 +468,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.swapChannels = clip.swapChannels;   // D559.3
             span.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
             span.dcOffsetRight = clip.dcOffsetRight;
+            span.channelMap = clip.channelMap;       // D564.3
             span.reversed = clip.reversed;
             // D54, et D544.3 : la transposition globale s'y ajoute — sauf en mode « réchantillonné ».
             span.pitchSemitones = clip.pitchSemitones
@@ -519,6 +531,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.swapChannels = clip.swapChannels;   // D559.3
             span.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
             span.dcOffsetRight = clip.dcOffsetRight;
+            span.channelMap = clip.channelMap;       // D564.3
             span.reversed = clip.reversed;
             // D54, et D544.3 : la transposition globale s'y ajoute — sauf en mode « réchantillonné ».
             span.pitchSemitones = clip.pitchSemitones

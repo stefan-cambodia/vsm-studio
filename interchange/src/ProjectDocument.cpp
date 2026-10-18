@@ -156,6 +156,8 @@ JsonValue clipToJson(const ProjectClip& clip) {
         dc.append(JsonValue::makeFloat(clip.dcOffsetRight));
         c.set("dcOffset", std::move(dc));
     }
+    if (clip.channelMap >= 1 && clip.channelMap <= 3)   // D564.3
+        c.set("channelMode", JsonValue::makeString(clip.channelMap == 1 ? "left" : clip.channelMap == 2 ? "right" : "mono"));
     return c;
 }
 
@@ -190,6 +192,10 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
         clip.dcOffsetLeft = static_cast<float>(dc[0].asNumber(0.0));
         clip.dcOffsetRight = static_cast<float>(dc[1].asNumber(0.0));
     }
+    {   // D564.3 : un mode inconnu se lit comme les canaux du fichier
+        const std::string mode = clipJson["channelMode"].asString();
+        clip.channelMap = mode == "left" ? 1 : mode == "right" ? 2 : mode == "mono" ? 3 : 0;
+    }
     return clip;
 }
 
@@ -201,15 +207,15 @@ bool usesWarp(const ProjectDocument& document) {
     for (const auto& track : document.tracks) {
         for (const auto& clip : track.clips)
             if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
-                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) return true;
+                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f || clip.channelMap != 0) return true;
         for (const auto& take : track.takes)
             for (const auto& clip : take.clips)
                 if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
-                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) return true;
+                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f || clip.channelMap != 0) return true;
         for (const auto& version : track.versions)   // D532.2 : une version rangée compte aussi
             for (const auto& clip : version.clips)
                 if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
-                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f) return true;
+                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f || clip.channelMap != 0) return true;
     }
     return false;
 }
@@ -254,6 +260,7 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     c.swapChannels = clip.swapChannels;   // D559.3
     c.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
     c.dcOffsetRight = clip.dcOffsetRight;
+    c.channelMap = clip.channelMap;       // D564.3
     // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
@@ -285,6 +292,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
     c.swapChannels = clip.swapChannels;   // D559.3
     c.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
     c.dcOffsetRight = clip.dcOffsetRight;
+    c.channelMap = clip.channelMap;       // D564.3
     return c;
 }
 
