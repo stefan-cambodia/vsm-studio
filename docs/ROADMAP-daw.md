@@ -43205,3 +43205,38 @@ C++ 501 · 1 343 · 340 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 
 **LE VINGT-QUATRIÈME AUDIT (D563) EST CLOS** : une nouvelle version, une copie, le retour à la version enregistrée. **LA
 SÉRIE COMPLÈTE**, sur le binaire de D563 (120 bancs, trois neufs), est lancée à la suite.
+
+### Phase D564 — un vingt-cinquième audit : nettoyer le dossier du projet, remettre à zéro les tranches choisies, les autres modes de canaux d'un clip (18/10/2026)
+
+*Écrite le 18/10 à 09 h 08, D563 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D563, les zéros revérifiés en listant ce qu'on a cherché et où.** Le *File ▸ Cleanup* de
+Cubase, son *Reset MixConsole Channels* sur les tranches choisies, et les cinq modes de *Stereo Flip* : **0 pour
+nettoyer le dossier** — `cleanup`, `unused`, « nettoyer », « inutilisé » : rien, et rien ne passe un fichier à la
+corbeille (`moveToTrash`) ; **0 pour les tranches CHOISIES** — D559.2 remet TOUTE la console, « tranche choisie » et
+`resetTrackMix` : rien ; **0 pour gauche aux deux canaux, droite aux deux, somme mono** — D559.3 n'a que l'échange
+(`channelMap`, `monoSum`, « gauche aux deux », « somme mono » : rien). **Trouvé et écarté** : les notes du projet
+(« Notes du projet… »), la couleur d'une piste neuve (`trackColourForIndex`), la rampe de vélocité, l'ajustement des
+pistes à la fenêtre, l'accent du métronome — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D564.1 | **Nettoyer le dossier du projet** — *Cleanup* | *Fichier ▸ Nettoyer le dossier du projet…* : les fichiers de `audio/` et de `gel/` que rien ne désigne — ni une piste, ni son gel, ni ses prises, ni ses versions, ni le presse-papiers de clips, ni AUCUN état de l'historique d'annulation — sont listés, puis, après confirmation, passés à la CORBEILLE (jamais effacés) ; le compte et la taille dits ; rien à nettoyer → dit ; un projet sans dossier → grisée ; mesuré sur un dossier à trois fichiers (un joué, un que Ctrl+Z rappellerait, un orphelin) : seul l'orphelin part, et se retrouve dans la corbeille |
+| D564.2 | **Remettre à zéro les tranches choisies** — *Reset Selected Channels* | *Mixage ▸ Remettre les tranches choisies à zéro (N)…* : la remise de D559.2 (volume, panoramique, muet, solo, trim, phase, départs ; les inserts restent), sur les seules pistes choisies dans la liste ; N dit combien changeraient ; grisée à zéro ; un pas ; mesuré par le projet relu (une piste non choisie garde ses réglages) |
+| D564.3 | **Les autres modes de canaux d'un clip** — *Stereo Flip : Left to Stereo, Right to Stereo, Merge* | Clic droit sur un clip audio, *Canaux* : *Normaux*, *Gauche et droite échangées* (D559.3), *Gauche aux deux canaux*, *Droite aux deux canaux*, *Somme mono* — un seul coché ; à la source, lecture et export ensemble ; enregistré au projet ; un pas ; grisé (sauf *Normaux*) pour un fichier mono ; mesuré par l'EXPORT (un la à gauche, le silence à droite : gauche aux deux → le la des deux côtés ; droite aux deux → silence ; somme → le la des deux côtés à −6,02 dB) |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D564.1.** La CORBEILLE et non l'effacement : un fichier de prise est irremplaçable, et la corbeille du bureau le rend
+  d'un geste. Les seuls dossiers que l'application écrit elle-même (`audio/`, `gel/`) : le reste du dossier (le rapport
+  de reconstruction, les stems de la chaîne, ce que l'utilisateur y a rangé) n'est pas à elle. L'HISTORIQUE compte : un
+  fichier qu'un Ctrl+Z ramènerait (la piste retirée tout à l'heure) reste, et c'est dit — nettoyer ne doit pas rendre
+  un pas d'annulation menteur. Le geste ne touche pas au projet : aucun pas.
+- **D564.2.** La même remise que D559.2 (`resetConsole`), bornée aux pistes choisies : une seule règle de « tranche
+  neuve ». Au menu Mixage, sous « Remettre la console à zéro ». Une confirmation, comme sa sœur.
+- **D564.3.** Un sous-menu *Canaux* à cases exclusives remplace la case « Gauche et droite échangées » — le même geste,
+  rangé avec ses frères. Au FORMAT, l'échange reste écrit comme D559.3 (`swapChannels`, version 3) : un projet de D559
+  se relit tel quel ; les trois autres modes s'écrivent `channelMode` (« left », « right », « mono »), seulement s'ils
+  sont posés. La SOMME est (g + d) / 2 : un signal identique des deux côtés garde son niveau, un signal d'un seul côté
+  perd 6,02 dB — c'est ce que dit Cubase de son *Merge*.
+
+**L'ORDRE, TRANCHÉ ICI.** D564.2 d'abord (le plus petit), puis D564.3, puis D564.1.
