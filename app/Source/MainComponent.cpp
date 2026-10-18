@@ -4282,6 +4282,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                  shortcuts_, vsm::interchange::ShortcutId::FileSave);
             vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileSaveAs, tr("Enregistrer sous..."),
                                  shortcuts_, vsm::interchange::ShortcutId::FileSaveAs);
+            // D563 : LA NOUVELLE VERSION (Ctrl+Alt+S), LA COPIE, LE RETOUR À LA VERSION ENREGISTRÉE.
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuFileSaveNewVersion, tr(u8"Enregistrer une nouvelle version"),
+                                 shortcuts_, vsm::interchange::ShortcutId::FileSaveNewVersion);
+            menu.addItem(kMenuFileSaveCopy, tr(u8"Enregistrer une copie..."));
+            menu.addItem(kMenuFileRevert, tr(u8"Revenir à la version enregistrée..."),
+                         currentProjectFolder_ != juce::File() && projetNonEnregistre());
             menu.addSeparator();
             // D11.6 : LE MODÈLE. Un seul, dans le dossier des préférences : le
             // projet qu'on ouvre pour commencer (pistes, machines, routage,
@@ -5812,6 +5818,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileStatistics: showProjectStatistics(); break;                // D32.5
         case kMenuFileSave:      saveProject(); break;
         case kMenuFileSaveAs:    saveProjectAs(); break;
+        case kMenuFileSaveNewVersion: enregistrerUneNouvelleVersion(); break;     // D563.1
+        case kMenuFileSaveCopy:  enregistrerUneCopie(); break;                    // D563.3
+        case kMenuFileRevert:    revenirALaVersionEnregistree(); break;           // D563.2
         case kMenuFileLoadReference: loadReferenceAudio(); break;
         case kMenuFileReferenceOff:
             setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode::Off); break;
@@ -10261,6 +10270,7 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
     switch (commande) {
         case Id::FileSave:   saveProject(); return true;
         case Id::FileSaveAs: saveProjectAs(); return true;
+        case Id::FileSaveNewVersion: enregistrerUneNouvelleVersion(); return true;   // D563.1
         // LA BARRE D'ESPACE LANCE ET ARRÊTE. Elle ne faisait rien, nulle part,
         // alors que c'est le seul raccourci que tout musicien essaie en
         // premier.
@@ -10637,7 +10647,10 @@ void MainComponent::apresAvoirDemande(std::function<void()> geste) {
         geste();
 }
 
-bool MainComponent::writeProjectTo(const juce::File& folder) {
+bool MainComponent::ecrireLeProjetDans(const juce::File& folder) {
+    // D563.3 : L'ÉCRITURE SEULE — le projet, ses presets et ses médias (D6.4) dans `folder`, sans que la session y
+    // passe. « Enregistrer », « Enregistrer sous », « Enregistrer une nouvelle version » et « Enregistrer une copie »
+    // écrivent tous par ici ; seuls les trois premiers basculent ensuite la session (`writeProjectTo`).
     captureSessionIntoProject();
 
     // Les presets sont capturés depuis les machines VIVANTES : sans cela,
@@ -10686,6 +10699,11 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
         montrerBoite(juce::AlertWindow::WarningIcon,
                                                  tr(u8"Projet incomplet"), message);
     }
+    return true;
+}
+
+bool MainComponent::writeProjectTo(const juce::File& folder) {
+    if (!ecrireLeProjetDans(folder)) return false;
     currentProjectFolder_ = folder;
     rememberRecentProject(folder);
     // Le nom du dossier passe dans le titre de la fenêtre : c'est le retour
@@ -10698,6 +10716,90 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     modifieHorsHistorique_ = false;   // D508
     rafraichirTitre();
     return true;
+}
+
+void MainComponent::enregistrerUneCopie() {
+    // D563.3 : ENREGISTRER UNE COPIE (*Back up Project*) — le projet et ses médias dans le dossier choisi, la session
+    // RESTE où elle est : titre, marque « modifié » et dossier courant inchangés.
+    auto suite = [this](const juce::File& folder) {
+        if (folder == juce::File()) return;
+        if (currentProjectFolder_ != juce::File() && folder == currentProjectFolder_) {
+            std::fputs("VSM_COPIE : refus\xc3\xa9" "e, c'est le dossier du projet\n", stderr);
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Enregistrer une copie"),
+                         tr(u8"C'est le dossier du projet lui-même : « Enregistrer » l'écrit déjà là. Choisissez un autre dossier."));
+            return;
+        }
+        folder.createDirectory();
+        if (!ecrireLeProjetDans(folder)) return;
+        std::fputs(("VSM_COPIE : projet copi\xc3\xa9 dans \xc2\xab " + folder.getFileName().toStdString()
+                    + " \xc2\xbb ; la session reste dans \xc2\xab "
+                    + (currentProjectFolder_ == juce::File() ? std::string("(aucun dossier)") : currentProjectFolder_.getFileName().toStdString())
+                    + " \xc2\xbb\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Copie enregistrée dans « %1 » ; le projet reste ouvert où il était")
+                                           .replace("%1", folder.getFileName()));
+    };
+    if (prendreLeFichierDeBanc(suite)) return;
+    auto chooser = std::make_shared<juce::FileChooser>(tr(u8"Enregistrer une copie du projet (dossier)..."),
+                                                       currentProjectFolder_.getParentDirectory());
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectDirectories,
+                         [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
+}
+
+juce::File MainComponent::dossierDeLaVersionSuivante() const {
+    // D563.1 : « Morceau » → « Morceau-02 », « Morceau-02 » → « Morceau-03 » ; le premier numéro LIBRE du dossier parent.
+    const juce::String nom = currentProjectFolder_.getFileName();
+    juce::String base = nom;
+    int n = 2;
+    const int tiret = nom.lastIndexOfChar('-');
+    if (tiret > 0 && tiret < nom.length() - 2 && nom.substring(tiret + 1).containsOnly("0123456789")) {
+        base = nom.substring(0, tiret);
+        n = nom.substring(tiret + 1).getIntValue() + 1;
+    }
+    const juce::File parent = currentProjectFolder_.getParentDirectory();
+    for (;; ++n) {
+        const juce::File candidat = parent.getChildFile(base + "-" + juce::String(n).paddedLeft('0', 2));
+        if (!candidat.exists()) return candidat;
+    }
+}
+
+void MainComponent::enregistrerUneNouvelleVersion() {
+    // D563.1 : ENREGISTRER UNE NOUVELLE VERSION (*Save New Version*, Ctrl+Alt+S) — un dossier voisin au numéro suivant,
+    // médias compris ; la session y passe ; l'ancien n'est pas touché. Sans dossier, « Enregistrer sous… ».
+    if (currentProjectFolder_ == juce::File()) { saveProjectAs(); return; }
+    const juce::File avant = currentProjectFolder_;
+    const juce::File version = dossierDeLaVersionSuivante();
+    version.createDirectory();
+    if (!writeProjectTo(version)) return;
+    std::fputs(("VSM_NOUVELLE_VERSION : \xc2\xab " + avant.getFileName().toStdString() + " \xc2\xbb \xe2\x86\x92 \xc2\xab "
+                + version.getFileName().toStdString() + " \xc2\xbb\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Nouvelle version : « %1 » (la précédente reste dans « %2 »)")
+                                       .replace("%1", version.getFileName()).replace("%2", avant.getFileName()));
+}
+
+void MainComponent::revenirALaVersionEnregistree() {
+    // D563.2 : REVENIR À LA VERSION ENREGISTRÉE (*Revert*) — après confirmation, le projet se recharge depuis son
+    // dossier par le chemin d'« Ouvrir un projet VSM… ». Ne s'annule pas (une ouverture efface l'historique) : dit.
+    if (currentProjectFolder_ == juce::File() || !projetNonEnregistre()) {
+        std::fputs("VSM_REVENIR : rien \xc3\xa0 abandonner\n", stderr);
+        return;   // l'entrée est grisée
+    }
+    demanderOuiNon(
+        juce::AlertWindow::WarningIcon, tr(u8"Revenir à la version enregistrée"),
+        tr(u8"Les modifications faites depuis le dernier enregistrement de « %1 » seront perdues. Ce geste ne s'annule pas.")
+            .replace("%1", currentProjectFolder_.getFileName()),
+        tr(u8"Revenir"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
+        juce::ModalCallbackFunction::create([this](int resultat) {
+            if (resultat != 1) {
+                std::fputs("VSM_REVENIR : refus\xc3\xa9\n", stderr);
+                return;
+            }
+            const juce::File dossier = currentProjectFolder_;
+            loadProjectBundleFromFolder(dossier);
+            std::fputs(("VSM_REVENIR : recharg\xc3\xa9 depuis \xc2\xab " + dossier.getFileName().toStdString()
+                        + " \xc2\xbb\n").c_str(), stderr);
+        }));
 }
 
 void MainComponent::saveProject() {

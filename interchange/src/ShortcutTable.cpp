@@ -115,6 +115,8 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         // D561.2 — Maj+T : T seul est une note du clavier d'ordinateur (D492), qui laisse les touches à modificateur ; libre
         // dans la table, les touches fixes et `kglobalshortcutsrc` (Alt+Maj+T y est pris, Maj+T non).
         {ShortcutId::TransportTapTempo, "transport.tapTempo", "Transport", "Taper le tempo", "shift + T", ""},
+        // D563.1 — Ctrl+Alt+S, la touche de Cubase : libre dans la table, les touches fixes et `kglobalshortcutsrc`.
+        {ShortcutId::FileSaveNewVersion, "file.saveNewVersion", "Fichier", "Enregistrer une nouvelle version", "ctrl + alt + S", ""},
     };
     return catalogue;
 }

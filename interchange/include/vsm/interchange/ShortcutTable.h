@@ -127,6 +127,8 @@ enum class ShortcutId : uint16_t {
     NavPreviousHitpoint,
     /// D561.2 : taper le tempo (*Tap Tempo*) — dès la quatrième frappe, le tempo de départ suit.
     TransportTapTempo,
+    /// D563.1 : enregistrer une nouvelle version (*Save New Version*).
+    FileSaveNewVersion,
 
     Count
 };

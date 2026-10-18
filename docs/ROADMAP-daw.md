@@ -43154,3 +43154,54 @@ tous les effets »), les projets récents, les modèles — présents.
 
 **L'ORDRE, TRANCHÉ ICI.** D563.3 d'abord (elle coupe `writeProjectTo` en deux, ce que D563.1 réutilise), puis D563.1,
 puis D563.2.
+
+**LA SÉRIE DE D562 (binaire de D562)** — le 18/10, de 06 h 06 à 08 h 50, à travers une veille du poste (06 h 10-07 h 53) :
+**117 bancs, 117 verts**, préférences identiques.
+
+### Phase D563.3 — enregistrer une copie (18/10/2026) — FAITE
+
+`writeProjectTo` coupé en deux : `ecrireLeProjetDans` (le projet, ses presets et ses médias, D6.4) puis la bascule de la
+session. `enregistrerUneCopie` ne fait que la première moitié. *Fichier ▸ Enregistrer une copie…*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | la copie | `tools/copie-projet.sh`, un repère posé sur « P » : « Copie » porte **2 repères et le fichier audio** | **oui** |
+| 2 | la session reste | le titre « … -- P \* » — toujours P, toujours modifié — et P sur le disque à **1** repère | **oui** |
+| 3 | Ctrl+S après | écrit dans « P2 » (**2** repères), la copie déjà faite | **oui** |
+| 4 | vers soi-même, le témoin | refusé : « C'est le dossier du projet lui-même… » ; le binaire de D562 : (1), (3), (4) **rouges**, (2) vert — rien n'y bougeait, faute de copie | **oui** |
+
+### Phase D563.1 — enregistrer une nouvelle version (18/10/2026) — FAITE
+
+`dossierDeLaVersionSuivante` (« Morceau » → « Morceau-02 », « -02 » → « -03 », le premier numéro LIBRE) et
+`enregistrerUneNouvelleVersion`, qui écrit par `writeProjectTo` : la session passe à la nouvelle version. *Fichier ▸
+Enregistrer une nouvelle version*, Ctrl+Alt+S (`file.saveNewVersion`).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | la nouvelle version | `tools/nouvelle-version.sh`, Ctrl+Alt+S : « Morceau-02 » porte **2 repères et le fichier audio** | **oui** |
+| 2 | l'ancienne intacte | « Morceau » : **1** repère | **oui** |
+| 3 | la session y passe | le titre « … -- Morceau-02 », sans astérisque | **oui** |
+| 4 | jamais d'écrasement | par le menu, depuis « Morceau-02 », « Morceau-03 » existant : « **Morceau-04** », « Morceau-03 » laissé vide. **Rouge** sous le mutant qui ne regarde pas si le dossier existe (« -02 → -03 », trois fichiers écrits dans « Morceau-03 ») | **oui** |
+| 5 | le témoin, les langues | le binaire de D562 : (1), (3), (4) **rouges** ; photographié « Enregistrer une nouvelle version — Ctrl+Alt+S » / « Save new version — Ctrl+Alt+S » | **oui** |
+
+### Phase D563.2 — revenir à la version enregistrée (18/10/2026) — FAITE
+
+`revenirALaVersionEnregistree` : une confirmation qui dit que le geste ne s'annule pas, puis
+`loadProjectBundleFromFolder` — le chemin d'« Ouvrir un projet VSM… ». *Fichier ▸ Revenir à la version enregistrée…*,
+grisée quand rien n'a changé.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | confirmé | `tools/revenir-version.sh`, un repère posé puis abandonné : le projet rechargé en a **1**, le titre sans astérisque, la boîte disait « Ce geste ne s'annule pas » | **oui** |
+| 2 | refusé | les **2** repères restent, « refusé » au journal | **oui** |
+| 3 | grisée | modifié : active ; intact : « [grisée] » | **oui** |
+| 4 | le témoin, les langues | le binaire de D562 : les trois **rouges** ; « Revenir à la version enregistrée… » / « Revert to saved… » | **oui** |
+
+**LES BANCS SE SONT TROMPÉS UNE FOIS** : ils lisaient le fichier d'une piste audio sous la clé `path`, que le format
+écrit `file` ; relu dans `ProjectDocument.cpp`, corrigé. L'audit des menus ne parcourt pas le menu Fichier — il ne
+retient que les menus qui modifient le morceau — : ces trois bancs en tiennent lieu.
+
+C++ 501 · 1 343 · 340 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE VINGT-QUATRIÈME AUDIT (D563) EST CLOS** : une nouvelle version, une copie, le retour à la version enregistrée. **LA
+SÉRIE COMPLÈTE**, sur le binaire de D563 (120 bancs, trois neufs), est lancée à la suite.

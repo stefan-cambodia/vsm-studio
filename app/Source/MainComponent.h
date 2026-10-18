@@ -1162,6 +1162,11 @@ private:
         kMenuEditRemoveClipOverlaps,
         kMenuTrackCopyStrip,
         kMenuTrackPasteStrip,
+        /// D563 : la nouvelle version, la copie, le retour à la version enregistrée — EN FIN d'énumération, où ils ne
+        /// décalent aucun identifiant.
+        kMenuFileSaveNewVersion,
+        kMenuFileSaveCopy,
+        kMenuFileRevert,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1627,6 +1632,13 @@ private:
     void retirerChevauchementsDesClips();
     /// D562.3 : copier les réglages de la tranche choisie, les coller sur les pistes choisies (`VSM_TRANCHE`).
     void copierReglagesDeTranche();
+    /// D563 : l'écriture seule (sans bascule de la session), la copie, la nouvelle version et son dossier, le retour à
+    /// la version enregistrée.
+    bool ecrireLeProjetDans(const juce::File& folder);
+    void enregistrerUneCopie();
+    juce::File dossierDeLaVersionSuivante() const;
+    void enregistrerUneNouvelleVersion();
+    void revenirALaVersionEnregistree();
     void collerReglagesDeTranche();
     std::optional<vsm::sequencer::ChannelSettings> reglagesDeTranche_;   ///< D562.3 : le presse-papiers, à part de la chaîne
     /// D559.1 : lever le solo (`solos`) ou le muet de toutes les pistes, dit ; un pas.
