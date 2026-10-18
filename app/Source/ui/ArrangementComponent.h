@@ -276,6 +276,9 @@ public:
     /// et que l'arrangement n'avait pas.
     void zoomToFit();
     void zoomToSelection();
+    /// D565.2 : la plage des locateurs cadrée comme une sélection ; faux sans locateurs (`VSM_ZOOM_LOCATEURS`).
+    bool zoomSurLesLocateurs();
+    void zoomSurPlage(vsm::midi::Tick debut, vsm::midi::Tick fin);
     /// D557.3 : ANNULER ET RÉTABLIR UN ZOOM (*Undo Zoom / Redo Zoom*). Chaque geste de zoom (touches, molette, « tout
     /// voir », « sur la sélection ») qui CHANGE la vue empile la vue d'avant — zoom ET défilement ; un geste qui ne
     /// change rien n'empile rien, sinon « annuler » aurait l'air de ne rien faire. Un nouveau zoom vide le « rétablir ».

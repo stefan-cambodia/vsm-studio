@@ -304,14 +304,21 @@ void TrackRowComponent::poserTextes() {
     if (track_.kind != Track::Kind::Group && !track_.isVca()) poserInfobulleDeSortie();
     // D532.2 bis : LA VERSION QU'ON ENTEND, en infobulle du nom — pas dans le nom, qui
     // s'édite : y écrire la version la ferait renommer avec la piste.
+    juce::String infobulle;
     if (!track_.versions.empty() && track_.activeVersion >= 0
         && track_.activeVersion < static_cast<int>(track_.versions.size()))
-        nameLabel_.setTooltip(tr(u8"Version « %1 » — %2 sur %3")
-                                  .replace("%1", juce::String::fromUTF8(track_.versions[static_cast<size_t>(track_.activeVersion)].name.c_str()))
-                                  .replace("%2", juce::String(track_.activeVersion + 1))
-                                  .replace("%3", juce::String(static_cast<int>(track_.versions.size()))));
-    else
-        nameLabel_.setTooltip({});
+        infobulle = tr(u8"Version « %1 » — %2 sur %3")
+                        .replace("%1", juce::String::fromUTF8(track_.versions[static_cast<size_t>(track_.activeVersion)].name.c_str()))
+                        .replace("%2", juce::String(track_.activeVersion + 1))
+                        .replace("%3", juce::String(static_cast<int>(track_.versions.size())));
+    // D565.3 : LES NOTES DE LA PISTE, en infobulle du nom (deux cents caractères au plus) : on voit qu'une piste en a
+    // sans ouvrir de fenêtre.
+    if (!track_.memo.empty()) {
+        juce::String notes = juce::String::fromUTF8(track_.memo.c_str());
+        if (notes.length() > 200) notes = notes.substring(0, 200) + juce::String::fromUTF8(u8"…");
+        infobulle = infobulle.isEmpty() ? notes : infobulle + "\n\n" + notes;
+    }
+    nameLabel_.setTooltip(infobulle);
 }
 
 void TrackRowComponent::poserMembresDuVca(int membres) {

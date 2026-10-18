@@ -117,6 +117,16 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::TransportTapTempo, "transport.tapTempo", "Transport", "Taper le tempo", "shift + T", ""},
         // D563.1 — Ctrl+Alt+S, la touche de Cubase : libre dans la table, les touches fixes et `kglobalshortcutsrc`.
         {ShortcutId::FileSaveNewVersion, "file.saveNewVersion", "Fichier", "Enregistrer une nouvelle version", "ctrl + alt + S", ""},
+        // D565.1 — le pavé numérique, les touches de Cubase : libres dans la table, les touches fixes et `kglobalshortcutsrc`.
+        {ShortcutId::NavToMarker1, "nav.toMarker1", "Transport", "Tête au repère 1", "numpad 1", ""},
+        {ShortcutId::NavToMarker2, "nav.toMarker2", "Transport", "Tête au repère 2", "numpad 2", ""},
+        {ShortcutId::NavToMarker3, "nav.toMarker3", "Transport", "Tête au repère 3", "numpad 3", ""},
+        {ShortcutId::NavToMarker4, "nav.toMarker4", "Transport", "Tête au repère 4", "numpad 4", ""},
+        {ShortcutId::NavToMarker5, "nav.toMarker5", "Transport", "Tête au repère 5", "numpad 5", ""},
+        {ShortcutId::NavToMarker6, "nav.toMarker6", "Transport", "Tête au repère 6", "numpad 6", ""},
+        {ShortcutId::NavToMarker7, "nav.toMarker7", "Transport", "Tête au repère 7", "numpad 7", ""},
+        {ShortcutId::NavToMarker8, "nav.toMarker8", "Transport", "Tête au repère 8", "numpad 8", ""},
+        {ShortcutId::NavToMarker9, "nav.toMarker9", "Transport", "Tête au repère 9", "numpad 9", ""},
     };
     return catalogue;
 }

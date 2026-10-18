@@ -506,6 +506,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.frozen = track.frozen;
         entry.locked = track.locked;
         entry.hidden = track.hidden;
+        entry.memo = track.memo;   // D565.3
         entry.transposeSemitones = track.transposeSemitones;
         entry.independentOfGlobalTranspose = track.independentOfGlobalTranspose;   // D544.3
         entry.editGroup = track.editGroup;
@@ -747,6 +748,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.frozen = source.frozen;
         target.locked = source.locked;
         target.hidden = source.hidden;
+        target.memo = source.memo;   // D565.3
         target.transposeSemitones = source.transposeSemitones;
         target.independentOfGlobalTranspose = source.independentOfGlobalTranspose;   // D544.3
         target.editGroup = source.editGroup;
@@ -1098,6 +1100,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // perdre le premier sur toute piste non gelée.
         if (track.locked) entry.set("locked", JsonValue::makeBoolean(true));
         if (track.hidden) entry.set("hidden", JsonValue::makeBoolean(true));
+        if (!track.memo.empty()) entry.set("memo", JsonValue::makeString(track.memo));   // D565.3
         if (track.transposeSemitones != 0)
             entry.set("transpose", JsonValue::makeNumber(track.transposeSemitones));
         if (track.independentOfGlobalTranspose)   // D544.3
@@ -1488,6 +1491,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.frozen = entry["frozen"].asBoolean(false);
         track.locked = entry["locked"].asBoolean(false);
         track.hidden = entry["hidden"].asBoolean(false);
+        track.memo = entry["memo"].asString();   // D565.3
         track.transposeSemitones = static_cast<int>(entry["transpose"].asNumber(0.0));
         track.independentOfGlobalTranspose = entry["independentOfGlobalTranspose"].asBoolean(false);   // D544.3
         track.editGroup = static_cast<int>(entry["editGroup"].asNumber(0.0));

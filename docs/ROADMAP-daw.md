@@ -43329,3 +43329,58 @@ son sous banc), et le geste attendra d'être mesurable.
   fenêtre. Une seule fenêtre, qui suit la piste choisie (son titre la nomme). Pas de touche.
 
 **L'ORDRE, TRANCHÉ ICI.** D565.2 d'abord (le plus petit), puis D565.1, puis D565.3.
+
+**LA SÉRIE DE D564 (binaire de D564)** — le 18/10, de 13 h 04 à 14 h 33, à travers une veille (13 h 28-13 h 47) :
+**123 bancs, 122 verts**, préférences identiques. Le rouge : `quantifier-audio.sh` (5), une fenêtre photographiée,
+tombé à 13 h 27, juste avant la veille. D564 réécrivait le chemin des clips ÉTIRÉS, que ce banc emprunte : ses contrôles
+du SON passent tous — chaque attaque exportée sur sa ligne, crêtes à ±1 dB, Ctrl+Z au bit près. Rejoué seul, écran
+éteint et session verrouillée : (5) rouge — et le binaire de D563, dans le même état, de même. L'environnement (D520),
+pas le code.
+
+### Phase D565.2 — le zoom sur les locateurs (18/10/2026) — FAITE
+
+`zoomSurPlage` (la règle de `zoomToSelection`, désormais partagée) et `zoomSurLesLocateurs`. *Affichage ▸ Zoom : entre
+les locateurs*, grisée sans plage.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | la plage cadrée | `tools/zoom-locateurs.sh`, les locateurs sur [3 840, 7 680) : « fenêtre de **3 648** à **7 914** ticks » — un vingtième de marge avant, la plage sur 90 % de la largeur | **oui** |
+| 2 | un zoom qui s'annule | la fenêtre relevée **16,7 → 2,2 → 16,7** mesures avec « Annuler le zoom » | **oui** |
+| 3 | sans locateurs, le témoin | « [grisée] » ; le binaire de D564 : les trois **rouges** | **oui** |
+
+### Phase D565.1 — la tête au repère 1 à 9 (18/10/2026) — FAITE
+
+`teteAuRepere` : le N-ième repère dans l'ordre du temps. Neuf commandes (`nav.toMarker1` … `9`, le pavé numérique) et
+le sous-menu *Transport ▸ Tête au repère*, qui nomme chaque repère et grise les numéros sans repère. Les noms de touches
+(D157) apprennent le pavé : « Pavé 1 » / « Num 1 ».
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le pavé, l'ordre du temps | `tools/tete-au-repere.sh`, trois repères écrits dans le désordre : pavé 2 → « Couplet » **1 920**, pavé 1 → **960** | **oui** |
+| 2 | le sous-menu | « 3 — Refrain » → **3 840** ; « 1 — Intro », « 2 — Couplet », « 3 — Refrain », 4 à 9 grisés, chacun sa touche | **oui** |
+| 3 | au-delà | pavé 5 : « pas de repère 5 (3 repère(s)), la tête reste à 960 » | **oui** |
+| 4 | le témoin, le mutant | le binaire de D564 : les trois **rouges** ; **rouges** sous le mutant qui garde l'ordre d'écriture (pavé 2 → 960) | **oui** |
+
+**LE PAVÉ S'AFFICHAIT « numpad 1 » DANS LES DEUX LANGUES** — la table des noms de touches ne le connaissait pas ; vu sur
+la photo du sous-menu, corrigé. Et le piège `u8"…"` / `char8_t` de l'ordre de marche, une sixième fois, à la
+compilation de cette correction.
+
+### Phase D565.3 — les notes d'une piste (18/10/2026) — FAITE
+
+`Track::memo` (`memo` au format, seulement s'il n'est pas vide) ; `montrerNotesDeLaPiste`, une fenêtre qui suit la piste
+choisie et écrit à chaque frappe ; l'infobulle du nom les porte ; *Piste ▸ Notes de la piste… (N caractères)*. Le verbe
+de banc `saisir:` atteint désormais aussi un éditeur de texte, et dans une fenêtre à part.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | `interchange` | l'aller-retour jusqu'au modèle, accents et retour à la ligne compris ; absentes du fichier quand elles sont vides. **Rouge** sur le mutant qui ne les relit pas | **oui** |
+| 2 | chacune les siennes | `tools/notes-piste.sh` : « Basse = Prise 3 : la bonne. / Refaire l'attaque — « plus doux » », « Nappe = Nappe à doubler » — la fenêtre a suivi la piste choisie | **oui** |
+| 3 | modifié, rouvert | la frappe : « … -- ecrit \* (non enregistre : oui) » ; rouvert : l'infobulle du nom les porte, le menu dit « (53 caractères) » | **oui** |
+| 4 | le témoin | le binaire de D564 : les trois **rouges** | **oui** |
+
+**LE BANC S'EST TROMPÉ UNE FOIS** : il cherchait le journal de sa course « ecrire » sous le nom de son dossier, « ecrit ».
+
+C++ 504 · 1 344 · 342 · 25 · 11, Python 275, ruff, mypy et gardes verts.
+
+**LE VINGT-SIXIÈME AUDIT (D565) EST CLOS** : la tête au repère 1 à 9, le zoom sur les locateurs, les notes d'une piste.
+**LA SÉRIE COMPLÈTE**, sur le binaire de D565 (126 bancs, trois neufs), est lancée à la suite.

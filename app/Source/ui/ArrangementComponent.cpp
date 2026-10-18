@@ -1903,6 +1903,24 @@ void ArrangementComponent::zoomToFit() {
 void ArrangementComponent::zoomToSelection() {
     vsm::midi::Tick debut = 0, fin = 0;
     if (!selectionBounds(debut, fin)) return;
+    zoomSurPlage(debut, fin);
+}
+
+bool ArrangementComponent::zoomSurLesLocateurs() {
+    // D565.2 : ZOOM SUR LES LOCATEURS (*Zoom to Locators*) — la règle du zoom sur la sélection, sur la plage de boucle.
+    if (project_ == nullptr || project_->loopEndTick <= project_->loopStartTick) return false;
+    zoomSurPlage(project_->loopStartTick, project_->loopEndTick);
+    const int largeur = std::max(1, getWidth() - kHeaderWidth);
+    std::fputs(("VSM_ZOOM_LOCATEURS : [" + std::to_string(project_->loopStartTick) + ", " + std::to_string(project_->loopEndTick)
+                + ") \xe2\x80\x94 fen\xc3\xaatre de " + std::to_string(scrollTick_) + " \xc3\xa0 "
+                + std::to_string(scrollTick_ + static_cast<vsm::midi::Tick>(static_cast<double>(largeur) / pixelsPerTick_))
+                + " ticks\n").c_str(), stderr);
+    return true;
+}
+
+void ArrangementComponent::zoomSurPlage(vsm::midi::Tick debut, vsm::midi::Tick fin) {
+    // D565.2 : LA RÈGLE DE CADRAGE D'UNE PLAGE, une seule pour la sélection et les locateurs : la plage sur 90 % de la
+    // largeur, un vingtième de son étendue de marge avant ; un pas de l'historique des zooms (D557.3).
     const vsm::midi::Tick etendue = std::max<vsm::midi::Tick>(1, fin - debut);
     const int largeur = std::max(1, getWidth() - kHeaderWidth);
     const VueDeZoom avant = vueDeZoom();   // D557.3

@@ -138,7 +138,9 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   `juce::String(u8"…")`. Payé quatre fois dans la même journée.
   Cinquième fois le 10/09 (D89), sous une autre forme : un tableau de
   `const char*` initialisé par des `u8"…"` — déclarer les champs en
-  `const char8_t*`. Et une commande de mesure qui ENCHAÎNE une compilation
+  `const char8_t*`. Sixième fois le 18/10 (D565.1) : un ternaire `fr ? u8"…" : "…"` mêle
+  `char8_t` et `char` — écrire les deux branches en octets (`"Pav\xc3\xa9"`).
+  Et une commande de mesure qui ENCHAÎNE une compilation
   doit s'arrêter sur son échec : sinon elle mesure l'ancien binaire.
 - En zsh, `grep --include=*.cpp` est un glob que le shell mange (« no
   matches found ») : quoter `--include='*.cpp'`, ou passer par `find`.
@@ -248,7 +250,7 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   sur un appariement que le geste justifie — jamais sur deux listes triées à
   l'aveugle.
 - Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les
-  bancs qui lancent l'application — 123 au 18/10 (D564 ; 120 avec D563, 117 avec D562, 114 avec D561, 110 avec D560, 106 avec D559, 103 avec D558, 100 avec D557, 97 avec D556, 93 avec D555, 90 avec D554, 87 avec D553, 84 avec D552, 81 avec D551, 79 avec D550, 76 avec D549, 75 avec D549.2, 73 avec D548, 72 avec D547, 69 avec D546.2, 68 avec D546.3, 66 avec D545.3, 65 avec D545.2, 64 avec D545.1, 63 avec D544.3, 61 avec D544.1, 60 avec D543.3 ; 59 au 03/10, D543.2 ; 49 et non 48 au 02/10 : un compte par `\.sh$` sautait le dernier, `zoom-reassigne.sh;` ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
+  bancs qui lancent l'application — 126 au 18/10 (D565 ; 123 avec D564, 120 avec D563, 117 avec D562, 114 avec D561, 110 avec D560, 106 avec D559, 103 avec D558, 100 avec D557, 97 avec D556, 93 avec D555, 90 avec D554, 87 avec D553, 84 avec D552, 81 avec D551, 79 avec D550, 76 avec D549, 75 avec D549.2, 73 avec D548, 72 avec D547, 69 avec D546.2, 68 avec D546.3, 66 avec D545.3, 65 avec D545.2, 64 avec D545.1, 63 avec D544.3, 61 avec D544.1, 60 avec D543.3 ; 59 au 03/10, D543.2 ; 49 et non 48 au 02/10 : un compte par `\.sh$` sautait le dernier, `zoom-reassigne.sh;` ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
   d'office), pas
   seulement par ses bancs voisins : D482 a changé l'infobulle de « + » sans rejouer
   `liste-ajouter.sh`, resté rouge jusqu'à ce que D504 rejoue tout (29/09). Jamais

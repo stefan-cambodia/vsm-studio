@@ -1170,6 +1170,11 @@ private:
         /// D564 : les tranches choisies à zéro ; nettoyer le dossier du projet.
         kMenuMixResetChosen,
         kMenuFileCleanup,
+        /// D565 : le zoom sur les locateurs ; la tête au repère 1 à 9 (neuf places) ; les notes d'une piste.
+        kMenuViewZoomLocators,
+        kMenuNavMarkerFirst,
+        kMenuNavMarkerLast = kMenuNavMarkerFirst + 8,
+        kMenuTrackMemo,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1644,6 +1649,10 @@ private:
     void revenirALaVersionEnregistree();
     /// D564.2 : la remise de D559.2 sur les seules pistes choisies (`VSM_CONSOLE`).
     void remettreLesTranchesChoisiesAZero();
+    /// D565.1 : la tête au N-ième repère dans l'ordre du temps (`VSM_TETE_REPERE`).
+    void teteAuRepere(int numero);
+    /// D565.3 : la fenêtre des notes de la piste choisie.
+    void montrerNotesDeLaPiste();
     /// D564.1 : les fichiers de audio/ et gel/ que rien ne désigne, à la corbeille après confirmation (`VSM_NETTOYAGE`).
     void nettoyerLeDossierDuProjet();
     void collerReglagesDeTranche();
@@ -1976,6 +1985,11 @@ private:
     /// l'y écrit à chaque frappe. Dupliquer l'état créerait une seconde
     /// vérité, et c'est toujours la seconde qui finit par mentir.
     juce::TextEditor projectNotesEditor_;
+    /// D565.3 : LES NOTES DE LA PISTE CHOISIE — même règle : le texte vit dans `project_.tracks[i].memo`, l'éditeur l'y
+    /// écrit à chaque frappe ; la fenêtre suit la piste choisie (`notesDePisteIndex_`).
+    std::unique_ptr<PanelWindow> notesDePisteWindow_;
+    juce::TextEditor notesDePisteEditor_;
+    size_t notesDePisteIndex_ = 0;
     /// D17.8 : les quatre gestes du groove. Le groove COURANT vit dans
     /// l'application et non dans le projet : c'est un outil qu'on porte d'un
     /// morceau à l'autre, comme un preset, pas une propriété du morceau.

@@ -2769,6 +2769,41 @@ const Paire kAnglais[] = {
       "A layout needs a name: nothing was saved." },
     { "La disposition « %1 » existait : elle est remplacée par celle-ci.",
       "The layout “%1” existed: it is replaced by this one." },
+    // D565 : la tête au repère 1 à 9, le zoom sur les locateurs, les notes d'une piste.
+    { "Zoom : entre les locateurs",
+      "Zoom: between the locators" },
+    { "Tête au repère",
+      "Playhead to marker" },
+    { "Pas de repère %1 : le projet en a %2",
+      "No marker %1: the project has %2" },
+    { "Vos notes sur cette piste.",
+      "Your notes on this track." },
+    { "Notes de la piste « %1 »",
+      "Notes of track “%1”" },
+    { "Notes de la piste... (vides)",
+      "Track notes... (empty)" },
+    { "Notes de la piste... (%1 caractères)",
+      "Track notes... (%1 characters)" },
+    { "Notes de la piste",
+      "Track notes" },
+    { "Tête au repère 1",
+      "Playhead to marker 1" },
+    { "Tête au repère 2",
+      "Playhead to marker 2" },
+    { "Tête au repère 3",
+      "Playhead to marker 3" },
+    { "Tête au repère 4",
+      "Playhead to marker 4" },
+    { "Tête au repère 5",
+      "Playhead to marker 5" },
+    { "Tête au repère 6",
+      "Playhead to marker 6" },
+    { "Tête au repère 7",
+      "Playhead to marker 7" },
+    { "Tête au repère 8",
+      "Playhead to marker 8" },
+    { "Tête au repère 9",
+      "Playhead to marker 9" },
     // D564 : nettoyer le dossier du projet, les tranches choisies à zéro, les modes de canaux d'un clip.
     { "Nettoyer le dossier du projet...",
       "Clean up the project folder..." },
@@ -4306,6 +4341,9 @@ juce::String toucheLisible(const juce::String& description) {
                 rendu = juce::String::fromUTF8(francais ? nom.fr : nom.en);
                 break;
             }
+        // D565.1 : LE PAVÉ NUMÉRIQUE — « numpad 1 » de JUCE se lit « Pavé 1 » / « Num 1 ».
+        if (bas.startsWith("numpad "))
+            rendu = juce::String::fromUTF8(francais ? "Pav\xc3\xa9 " : "Num ") + propre.substring(7);
         // Une lettre seule s'affiche en MAJUSCULE : « ctrl + s » se lit Ctrl+S.
         if (rendu.length() == 1 && juce::CharacterFunctions::isLetter(rendu[0]))
             rendu = rendu.toUpperCase();

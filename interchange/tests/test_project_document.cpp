@@ -1139,6 +1139,21 @@ VSM_TEST(a_clip_channel_map_survives_the_trip_by_name) {
     VSM_ASSERT_EQ(bizarre.document.tracks[0].clips[0].channelMap, uint8_t(0));
 }
 
+// D565.3 — LES NOTES D'UNE PISTE : écrites seulement si elles ne sont pas vides, relues jusqu'au modèle, accents et
+// retours à la ligne compris.
+VSM_TEST(track_notes_survive_the_trip_and_are_absent_when_empty) {
+    Project project = buildProject();
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString().find("\"memo\"") == std::string::npos);
+    project.tracks[0].memo = "Prise 3 : la bonne.\nRefaire l'attaque du refrain — « plus doux ».";
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.memo.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(rejoue.tracks[0].memo == project.tracks[0].memo);
+    if (rejoue.tracks.size() > 1) VSM_ASSERT(rejoue.tracks[1].memo.empty());
+}
+
 // D16.5 — LE VERROU D'UNE PISTE, écrit seulement quand il est mis.
 VSM_TEST(a_locked_track_survives_the_trip_and_an_unlocked_one_adds_nothing_to_the_file) {
     Project project = buildProject();

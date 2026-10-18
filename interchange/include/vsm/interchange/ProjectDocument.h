@@ -279,6 +279,8 @@ struct ProjectTrack {
     /// D17.4 : masquée dans les vues, jamais dans le son. Écrite seulement
     /// quand elle l'est.
     bool hidden = false;
+    /// D565.3 : les notes de la piste (`memo`), écrites seulement si elles ne sont pas vides.
+    std::string memo;
     /// D17.5 : la transposition de piste, en demi-tons. Écrite seulement
     /// quand elle n'est pas nulle.
     int transposeSemitones = 0;

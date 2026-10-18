@@ -891,6 +891,9 @@ public:
     /// « masquer » qui ferait taire serait la pire des pannes muettes : on
     /// chercherait pendant une heure pourquoi la basse a disparu du mixage.
     bool hidden = false;
+    /// D565.3 : LES NOTES DE LA PISTE (*Track Notes* de Cubase) — du texte, pas des notes MIDI (`notes` l'est déjà).
+    /// Écrites au projet (`memo`) seulement si elles ne sont pas vides.
+    std::string memo;
 
     /// LA TRANSPOSITION DE PISTE (D17.5), en demi-tons — le Transpose de
     /// l'inspecteur de Cubase.

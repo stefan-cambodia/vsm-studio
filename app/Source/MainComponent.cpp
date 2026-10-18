@@ -289,6 +289,9 @@ MainComponent::MainComponent()
     refreshListeningIndicator();
 
     trackList_.onTrackSelected = [this](size_t idx) {
+        // D565.3 : LA FENÊTRE DES NOTES DE PISTE SUIT LA PISTE CHOISIE, si elle est ouverte.
+        if (notesDePisteWindow_ && notesDePisteWindow_->isVisible() && idx != notesDePisteIndex_)
+            juce::MessageManager::callAsync([this] { montrerNotesDeLaPiste(); });
         pianoRoll_.setActiveTrackIndex(idx);
         updateSynthRackForSelection();
         effectChain_.setActiveTrack(static_cast<int>(idx));
@@ -2109,11 +2112,29 @@ bool MainComponent::saisirPourCapture(const juce::String& nom, const juce::Strin
     };
     juce::Label* libelle = chercher(*this);
     if (libelle != nullptr) libelle->setText(texte, juce::sendNotificationSync);
+    // D565.3 : ET UN ÉDITEUR DE TEXTE (`juce::TextEditor`) de ce nom, dans la fenêtre principale ou dans une fenêtre À
+    // PART (les notes d'une piste vivent dans la leur) — « \n » y devient un retour à la ligne.
+    juce::TextEditor* editeur = nullptr;
+    if (libelle == nullptr) {
+        std::function<juce::TextEditor*(juce::Component&)> chercherEditeur = [&](juce::Component& c) -> juce::TextEditor* {
+            if (auto* e = dynamic_cast<juce::TextEditor*>(&c); e != nullptr && e->getName() == nom) return e;
+            for (auto* enfant : c.getChildren())
+                if (enfant->isVisible())
+                    if (auto* trouve = chercherEditeur(*enfant)) return trouve;
+            return nullptr;
+        };
+        editeur = chercherEditeur(*this);
+        for (int i = 0; editeur == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+            if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
+                editeur = chercherEditeur(*fenetre);
+        if (editeur != nullptr) editeur->setText(texte.replace("\\n", "\n"), juce::sendNotification);
+    }
     std::fputs(("VSM_SAISIE : " + nom + "=" + texte
                 + (libelle != nullptr ? juce::String::fromUTF8(" \xe2\x80\x94 ") + libelle->getText()
-                                      : juce::String::fromUTF8(" \xe2\x80\x94 aucun libell\xc3\xa9 visible de ce nom"))
+                   : editeur != nullptr ? juce::String::fromUTF8(" \xe2\x80\x94 \xc3\xa9" "diteur : ") + editeur->getText()
+                                        : juce::String::fromUTF8(" \xe2\x80\x94 aucun libell\xc3\xa9 visible de ce nom"))
                 + "\n").toRawUTF8(), stderr);
-    return libelle != nullptr;
+    return libelle != nullptr || editeur != nullptr;
 }
 
 bool MainComponent::clicPourCapture(const juce::String& description) {
@@ -4719,6 +4740,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 }
                 menu.addItem(kMenuTrackHide, tr(u8"Masquer la piste (elle continue de sonner)"),
                               !project_.tracks.empty());
+                // D565.3 : LES NOTES DE LA PISTE — le compte de caractères dit s'il y en a.
+                {
+                    const size_t p = trackList_.selectedTrackIndex();
+                    const int n = p < project_.tracks.size()
+                                      ? juce::String::fromUTF8(project_.tracks[p].memo.c_str()).length() : 0;
+                    menu.addItem(kMenuTrackMemo,
+                                 n == 0 ? tr(u8"Notes de la piste... (vides)")
+                                        : tr(u8"Notes de la piste... (%1 caractères)").replace("%1", juce::String(n)),
+                                 p < project_.tracks.size(), notesDePisteWindow_ && notesDePisteWindow_->isVisible());
+                }
                 menu.addItem(kMenuTrackShowAll,
                               masquees == 0
                                   ? tr(u8"Afficher toutes les pistes (aucune masquée)")
@@ -5167,6 +5198,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuTransportFirst + static_cast<int>(i), libelle,
                                                    shortcuts_, commande, actif, coche);
             }
+            // D565.1 : LA TÊTE AU REPÈRE 1 À 9 — un sous-menu qui NOMME chaque repère, dans l'ordre du temps ; au-delà du
+            // nombre de repères, les entrées sont grisées.
+            {
+                auto reperes = project_.markers;
+                std::sort(reperes.begin(), reperes.end(),
+                          [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) { return a.tick < b.tick; });
+                juce::PopupMenu aller;
+                for (int n = 1; n <= 9; ++n) {
+                    const bool existe = n <= static_cast<int>(reperes.size());
+                    const juce::String libelle = existe
+                        ? juce::String(n) + juce::String::fromUTF8(u8" — ") + juce::String::fromUTF8(reperes[static_cast<size_t>(n - 1)].name.c_str())
+                        : juce::String(n);
+                    vsm::app::ui::ajouterAvecRaccourci(aller, kMenuNavMarkerFirst + n - 1, libelle, shortcuts_,
+                                                       static_cast<Id>(static_cast<int>(Id::NavToMarker1) + n - 1), existe);
+                }
+                menu.addSubMenu(tr(u8"Tête au repère"), aller, !reperes.empty());
+            }
             break;
         }
         case 4:
@@ -5507,6 +5555,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             menu.addItem(kMenuViewFitTracks, tr(u8"Toutes les pistes \u00e0 la fen\u00eatre (arrangement)"),
                          !project_.tracks.empty());
+            // D565.2 : ZOOM SUR LES LOCATEURS — grisée sans plage.
+            menu.addItem(kMenuViewZoomLocators, tr(u8"Zoom : entre les locateurs"), project_.loopEndTick > project_.loopStartTick);
             // D557.3 : ANNULER ET RÉTABLIR UN ZOOM de l'arrangement -- grisées quand il n'y a rien à reprendre.
             vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewZoomUndo, tr(u8"Annuler le zoom"), shortcuts_,
                                                vsm::interchange::ShortcutId::ViewZoomUndo, arrangement_.zoomsAAnnuler() > 0);
@@ -5681,6 +5731,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
     if (menuItemID == kMenuViewFitTracks) { arrangement_.fitTracksToWindow(); return; }
     if (menuItemID == kMenuViewZoomUndo) { arrangement_.annulerZoom(); return; }    // D557.3
+    if (menuItemID == kMenuViewZoomLocators) { arrangement_.zoomSurLesLocateurs(); return; }   // D565.2
+    if (menuItemID >= kMenuNavMarkerFirst && menuItemID <= kMenuNavMarkerLast) {                   // D565.1
+        teteAuRepere(menuItemID - kMenuNavMarkerFirst + 1);
+        return;
+    }
     if (menuItemID == kMenuViewZoomRedo) { arrangement_.retablirZoom(); return; }   // D557.3
     if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
@@ -5914,6 +5969,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         }
         case kMenuViewProjectNotes: showProjectNotes(); break;
+        case kMenuTrackMemo: montrerNotesDeLaPiste(); break;   // D565.3
         case kMenuViewPlayOrder: showPlayOrder(); break;
         case kMenuViewSpectrum: {
             if (!spectrumWindow_) {
@@ -9526,6 +9582,39 @@ void MainComponent::showProjectNotes() {
     projectNotesWindow_->toFront(true);
 }
 
+void MainComponent::montrerNotesDeLaPiste() {
+    // D565.3 : LES NOTES DE LA PISTE CHOISIE (*Track Notes*) — la fenêtre des notes du projet (D18.6), pour une piste :
+    // écrites dans le projet à chaque frappe, le projet « modifié » sans pas d'annulation (D508).
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    notesDePisteIndex_ = piste;
+    if (!notesDePisteWindow_) {
+        notesDePisteEditor_.setName("piste.notes");   // le nom par lequel le banc le désigne (saisir:)
+        notesDePisteEditor_.setMultiLine(true, true);
+        notesDePisteEditor_.setReturnKeyStartsNewLine(true);
+        notesDePisteEditor_.setScrollbarsShown(true);
+        notesDePisteEditor_.setFont(juce::Font(juce::FontOptions(14.0f)));
+        notesDePisteEditor_.setTextToShowWhenEmpty(tr(u8"Vos notes sur cette piste."), vsm::ui::Palette::textSecondary);
+        notesDePisteEditor_.onTextChange = [this] {
+            if (notesDePisteIndex_ >= project_.tracks.size()) return;
+            project_.tracks[notesDePisteIndex_].memo = notesDePisteEditor_.getText().toStdString();
+            marquerHorsHistorique();
+            refreshTrackViews();   // l'infobulle du nom porte les notes
+            std::fputs(("VSM_NOTES_PISTE : \xc2\xab " + project_.tracks[notesDePisteIndex_].name + " \xc2\xbb, "
+                        + std::to_string(project_.tracks[notesDePisteIndex_].memo.size()) + " octet(s)\n").c_str(), stderr);
+        };
+        notesDePisteWindow_ = std::make_unique<PanelWindow>(juce::String::fromUTF8(u8"Notes de la piste"), notesDePisteEditor_);
+        notesDePisteWindow_->setDefaultSize(460, 320);
+    }
+    // RELU DEPUIS LA PISTE À CHAQUE OUVERTURE : une autre piste a d'autres notes.
+    const auto& memo = project_.tracks[piste].memo;
+    if (notesDePisteEditor_.getText().toStdString() != memo)
+        notesDePisteEditor_.setText(juce::String::fromUTF8(memo.c_str()), juce::dontSendNotification);
+    notesDePisteWindow_->setName(tr(u8"Notes de la piste « %1 »").replace("%1", juce::String::fromUTF8(project_.tracks[piste].name.c_str())));
+    notesDePisteWindow_->setVisible(true);
+    notesDePisteWindow_->toFront(true);
+}
+
 void MainComponent::showPreferences() {
     if (!preferencesWindow_) {
         preferencesWindow_ = std::make_unique<PanelWindow>(
@@ -10337,6 +10426,11 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         case Id::TransportInsertMarker:            poserUnRepereALaTete(); return true;           // D558.1
         case Id::NavToSelectionEnd:                teteALaFinDeLaSelection(); return true;        // D558.2
         case Id::TransportTapTempo:                taperLeTempo(); return true;                   // D561.2
+        case Id::NavToMarker1: case Id::NavToMarker2: case Id::NavToMarker3: case Id::NavToMarker4:   // D565.1
+        case Id::NavToMarker5: case Id::NavToMarker6: case Id::NavToMarker7: case Id::NavToMarker8:
+        case Id::NavToMarker9:
+            teteAuRepere(1 + static_cast<int>(commande) - static_cast<int>(Id::NavToMarker1));
+            return true;
         case Id::NavNextHitpoint:                  teteALAttaque(true); return true;              // D558.3
         case Id::NavPreviousHitpoint:              teteALAttaque(false); return true;             // D558.3
         // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
@@ -13906,6 +14000,26 @@ void MainComponent::poserUnRepereALaTete() {
                 + std::to_string(project_.markers.size()) + " rep\xc3\xa8re(s))\n").c_str(), stderr);
     if (pianoRoll_.onStatusChanged)
         pianoRoll_.onStatusChanged(tr(u8"Repère « %1 » posé à la tête").replace("%1", nom));
+}
+
+void MainComponent::teteAuRepere(int numero) {
+    // D565.1 : LA TÊTE AU N-IÈME REPÈRE, dans l'ordre du temps (*To Marker 1–9*). Au-delà, la ligne d'état le dit et la
+    // tête reste — pas de boîte pour un geste de navigation (la règle de D556.2).
+    auto reperes = project_.markers;
+    std::sort(reperes.begin(), reperes.end(),
+              [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) { return a.tick < b.tick; });
+    if (numero < 1 || numero > static_cast<int>(reperes.size())) {
+        std::fputs(("VSM_TETE_REPERE : pas de rep\xc3\xa8re " + std::to_string(numero) + " (" + std::to_string(reperes.size())
+                    + " rep\xc3\xa8re(s)), la t\xc3\xaate reste \xc3\xa0 " + std::to_string(transport_.currentTick()) + "\n").c_str(), stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Pas de repère %1 : le projet en a %2").replace("%1", juce::String(numero))
+                                           .replace("%2", juce::String(static_cast<int>(reperes.size()))));
+        return;
+    }
+    const auto& m = reperes[static_cast<size_t>(numero - 1)];
+    seekAllViews(m.tick);
+    std::fputs(("VSM_TETE_REPERE : rep\xc3\xa8re " + std::to_string(numero) + " \xc2\xab " + m.name + " \xc2\xbb \xe2\x86\x92 "
+                + std::to_string(m.tick) + "\n").c_str(), stderr);
 }
 
 void MainComponent::teteALaFinDeLaSelection() {
