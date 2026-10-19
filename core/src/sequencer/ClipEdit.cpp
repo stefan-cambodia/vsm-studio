@@ -496,7 +496,8 @@ TrimToTick fadeClipsTo(std::vector<Clip>& clips, const ClipSelection& selection,
 }
 
 GridSnap snapClipStartsToGrid(Track& track, const ClipSelection& selection, const std::function<Tick(Tick)>& grid,
-                              Tick materialEnd, bool automationFollows) {
+                              Tick materialEnd, bool automationFollows,
+                              const std::function<Tick(const Clip&)>& anchor) {
     GridSnap r;
     if (!grid) return r;
     // Les départs se lisent AVANT tout déplacement : un clip déplacé ne doit pas changer la cible d'un autre.
@@ -504,8 +505,10 @@ GridSnap snapClipStartsToGrid(Track& track, const ClipSelection& selection, cons
     for (const auto& c : track.clips) {
         if (selection.count(c.id) == 0) continue;
         if (track.locked || c.locked) { ++r.locked; continue; }
-        const Tick ligne = std::max<Tick>(0, grid(c.startTick));
-        if (ligne != c.startTick) cibles.emplace_back(c.id, ligne - c.startTick);
+        // D566.2 : LE POINT D'ACCROCHE SE CALE, s'il y en a un ; le clip ne passe pas avant zéro pour autant.
+        const Tick point = anchor ? anchor(c) : c.startTick;
+        const Tick delta = std::max<Tick>(-c.startTick, std::max<Tick>(0, grid(point)) - point);
+        if (delta != 0) cibles.emplace_back(c.id, delta);
     }
     for (const auto& [id, delta] : cibles)
         r.moved += moveClips(track, ClipSelection{id}, delta, automationFollows, materialEnd);
@@ -1232,6 +1235,36 @@ std::vector<Tick> clipAttackTicks(const Clip& clip, const std::vector<double>& o
     std::sort(ticks.begin(), ticks.end());
     ticks.erase(std::unique(ticks.begin(), ticks.end()), ticks.end());
     return ticks;
+}
+
+Tick clipSnapAnchorTick(const Clip& clip, Tick materialEnd, const std::function<Tick(double)>& secondsToTicks,
+                        const std::function<double(Tick)>& ticksToSeconds) {
+    if (clip.snapPointSeconds < 0.0) return clip.startTick;
+    const auto ticks = clipAttackTicks(clip, {clip.snapPointSeconds}, materialEnd, secondsToTicks, ticksToSeconds);
+    return ticks.empty() ? clip.startTick : ticks.front();
+}
+
+size_t setClipSnapPoints(std::vector<Clip>& clips, const ClipSelection& selection, Tick tick, Tick materialEnd,
+                         const std::function<double(Tick)>& ticksToSeconds) {
+    size_t poses = 0;
+    for (auto& c : clips) {
+        if (selection.count(c.id) == 0) continue;
+        const double s = clipSourceSecondsAtTick(c, tick, materialEnd, ticksToSeconds);
+        if (s < 0.0) continue;
+        c.snapPointSeconds = s;
+        ++poses;
+    }
+    return poses;
+}
+
+size_t clearClipSnapPoints(std::vector<Clip>& clips, const ClipSelection& selection) {
+    size_t retires = 0;
+    for (auto& c : clips)
+        if (selection.count(c.id) > 0 && c.snapPointSeconds >= 0.0) {
+            c.snapPointSeconds = -1.0;
+            ++retires;
+        }
+    return retires;
 }
 
 float clipEnvelopeGainAt(const Clip& clip, double sourceSeconds) {

@@ -1896,6 +1896,42 @@ VSM_TEST(snapping_clip_starts_to_the_grid_moves_each_clip_to_its_nearest_line) {
         if (c.id == 1) VSM_ASSERT_EQ(c.sourceStart, Tick(100));   // déplacé, pas rogné : sa fenêtre est la même matière
 }
 
+// D566.2 — LE POINT D'ACCROCHE : posé à la seconde du fichier que la tête traverse, il sonne au tick où il a été posé ;
+// le calage sur la grille le cale (et non le début) ; un rognage du début ne le déplace pas dans le son ; rogné hors de
+// la fenêtre, le début refait foi.
+VSM_TEST(a_clip_snap_point_is_what_snaps_to_the_grid) {
+    Track t;
+    t.kind = Track::Kind::Audio;
+    t.clips = {clip(1, 1000, 1920), clip(2, 5000, 960)};
+    t.clips[0].sourceStartSeconds = 0.5;
+    // la tête à 1 240, dans le premier clip seulement
+    VSM_ASSERT_EQ(setClipSnapPoints(t.clips, {1, 2}, 1240, 100000, enSecondes), size_t(1));
+    VSM_ASSERT_NEAR(t.clips[0].snapPointSeconds, 0.75, 1e-9);   // 0,5 + 240 ticks
+    VSM_ASSERT(t.clips[1].snapPointSeconds < 0.0);
+    VSM_ASSERT_EQ(clipSnapAnchorTick(t.clips[0], 100000, enTicks, enSecondes), Tick(1240));
+    VSM_ASSERT_EQ(clipSnapAnchorTick(t.clips[1], 100000, enTicks, enSecondes), Tick(5000));   // sans point : le début
+
+    // Une grille à la mesure (1 920) : le POINT va à 1 920, le clip commence donc à 1 680 ; sans point, il irait à 1 920.
+    auto grille = [](Tick x) { return ((x + 960) / 1920) * 1920; };
+    Track temoin = t;
+    temoin.clips[0].snapPointSeconds = -1.0;
+    auto ancre = [](const Clip& c) { return clipSnapAnchorTick(c, 100000, enTicks, enSecondes); };
+    snapClipStartsToGrid(t, {1}, grille, 100000, false, ancre);
+    snapClipStartsToGrid(temoin, {1}, grille, 100000, false, ancre);
+    VSM_ASSERT_EQ(debutDe(t, 1), Tick(1680));
+    VSM_ASSERT_EQ(debutDe(temoin, 1), Tick(1920));
+    VSM_ASSERT_EQ(clipSnapAnchorTick(t.clips[0], 100000, enTicks, enSecondes), Tick(1920));
+
+    // Rogné de 120 ticks au début : la matière ne bouge pas, le point non plus ; rogné au-delà, le début refait foi.
+    resizeClipsStart(t, {1}, 120, 100000, enSecondes);
+    VSM_ASSERT_EQ(clipSnapAnchorTick(t.clips[0], 100000, enTicks, enSecondes), Tick(1920));
+    resizeClipsStart(t, {1}, 600, 100000, enSecondes);
+    VSM_ASSERT_EQ(clipSnapAnchorTick(t.clips[0], 100000, enTicks, enSecondes), debutDe(t, 1));
+
+    VSM_ASSERT_EQ(clearClipSnapPoints(t.clips, {1, 2}), size_t(1));
+    VSM_ASSERT(t.clips[0].snapPointSeconds < 0.0);
+}
+
 // D552.3 — GLISSER LE CONTENU : la matière bouge sous la fenêtre, la fenêtre et sa place restent ; bornes et refus.
 VSM_TEST(slipping_clip_content_moves_the_material_under_a_fixed_window) {
     Track t;

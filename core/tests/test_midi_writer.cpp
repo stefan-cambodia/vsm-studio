@@ -159,6 +159,41 @@ VSM_TEST(a_midi_round_trip_keeps_muted_notes_and_their_confidence) {
         if (!note.muted && note.number == 60) VSM_ASSERT_NEAR(note.confidence, 1.0f, 1e-6);
 }
 
+// D566.1 : LE DÉPLACEMENT DE QUANTIFICATION voyage dans le bloc privé, muettes comprises -- sans quoi rouvrir un projet
+// rendrait « Annuler la quantification » sans objet.
+VSM_TEST(a_midi_round_trip_keeps_the_quantize_shifts) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(120, 360, 60, 100, 0, ids);
+    piste.addNote(480, 720, 64, 90, 0, ids);
+    piste.addNote(960, 1200, 67, 80, 0, ids);
+    piste.notes[0].quantizeShiftStart = -5;
+    piste.notes[0].quantizeShiftEnd = 40;
+    piste.notes[1].muted = true;
+    piste.notes[1].quantizeShiftStart = 12;
+    piste.notes[1].quantizeShiftEnd = 12;
+    project.tracks.push_back(piste);
+
+    const Project relu = Project::fromParsedFile(
+        MidiFileParser::parse(MidiFileWriter::write(project.toParsedFile())));
+    const auto& notes = relu.tracks[0].notes;
+    VSM_ASSERT_EQ(notes.size(), static_cast<size_t>(3));
+    for (const auto& note : notes) {
+        if (note.number == 60) {
+            VSM_ASSERT_EQ(note.quantizeShiftStart, static_cast<Tick>(-5));
+            VSM_ASSERT_EQ(note.quantizeShiftEnd, static_cast<Tick>(40));
+        } else if (note.number == 64) {
+            VSM_ASSERT(note.muted);
+            VSM_ASSERT_EQ(note.quantizeShiftStart, static_cast<Tick>(12));
+        } else {
+            VSM_ASSERT_EQ(note.quantizeShiftStart, static_cast<Tick>(0));
+            VSM_ASSERT_EQ(note.quantizeShiftEnd, static_cast<Tick>(0));
+        }
+    }
+}
+
 VSM_TEST(a_muted_note_is_still_absent_from_the_played_stream) {
     // LA RÈGLE NE BOUGE PAS : le fichier joue ce qu'on entend. Le bloc privé
     // n'est pas une porte dérobée pour faire sonner ailleurs ce qu'on a tu.

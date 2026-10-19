@@ -48,6 +48,7 @@ midi::Tick quantizeTick(midi::Tick tick, const QuantizeSettings& settings, uint1
 void quantizeNotes(std::vector<Note>& notes, const QuantizeSettings& settings, uint16_t ppq) {
     for (auto& note : notes) {
         midi::Tick duration = note.durationTicks();
+        const midi::Tick debutAvant = note.startTick, finAvant = note.endTick;   // D566.1
         if (settings.quantizeNoteStart)
             note.startTick = quantizeTick(note.startTick, settings, ppq);
         if (settings.quantizeNoteEnd) {
@@ -65,6 +66,9 @@ void quantizeNotes(std::vector<Note>& notes, const QuantizeSettings& settings, u
 
         if (note.endTick <= note.startTick)
             note.endTick = note.startTick + 1; // jamais de durée nulle/négative
+        // D566.1 : LE DÉPLACEMENT SE CUMULE, pour qu'« Annuler la quantification » le retire.
+        note.quantizeShiftStart += note.startTick - debutAvant;
+        note.quantizeShiftEnd += note.endTick - finAvant;
     }
 }
 

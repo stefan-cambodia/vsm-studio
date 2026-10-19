@@ -910,4 +910,51 @@ uint64_t nextDoubtfulNote(const std::vector<Note>& notes, const NoteSelection& s
     return wrap ? wrap->id : 0;
 }
 
+// --- D566.1 : annuler et figer la quantification ------------------------------
+
+namespace {
+bool porteUnDeplacement(const Note& n) { return n.quantizeShiftStart != 0 || n.quantizeShiftEnd != 0; }
+} // namespace
+
+size_t countQuantizedNotes(const std::vector<Note>& notes, const NoteSelection& selection) {
+    size_t n = 0;
+    for (const auto& note : notes)
+        if (selection.count(note.id) > 0 && porteUnDeplacement(note)) ++n;
+    return n;
+}
+
+size_t resetQuantize(std::vector<Note>& notes, const NoteSelection& selection) {
+    size_t rendues = 0;
+    for (auto& note : notes) {
+        if (selection.count(note.id) == 0 || !porteUnDeplacement(note)) continue;
+        const Tick duree = note.durationTicks();
+        const Tick debut = std::max<Tick>(0, note.startTick - note.quantizeShiftStart);
+        Tick fin = note.endTick - note.quantizeShiftEnd;
+        // UNE FIN SUR OU AVANT LE DÉBUT garde la durée que la note a : un geste fait à la main depuis (une durée
+        // raccourcie, un legato) peut rendre le déplacement de la fin plus grand que la note.
+        if (fin <= debut) fin = debut + std::max<Tick>(1, duree);
+        note.startTick = debut;
+        note.endTick = fin;
+        note.quantizeShiftStart = 0;
+        note.quantizeShiftEnd = 0;
+        ++rendues;
+    }
+    if (rendues > 0)
+        std::stable_sort(notes.begin(), notes.end(),
+                         [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+    return rendues;
+}
+
+size_t freezeQuantize(std::vector<Note>& notes, const NoteSelection& selection) {
+    size_t figees = 0;
+    for (auto& note : notes) {
+        if (selection.count(note.id) == 0 || !porteUnDeplacement(note)) continue;
+        note.quantizeShiftStart = 0;
+        note.quantizeShiftEnd = 0;
+        ++figees;
+    }
+    return figees;
+}
+
+
 } // namespace vsm::sequencer

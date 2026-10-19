@@ -94,9 +94,20 @@ float readConfidence(const std::vector<uint8_t>& data, size_t& at) {
 /// événement n'est écrit : un fichier sans note muette et sans transcription
 /// ne doit porter aucune trace de ce mécanisme.
 std::vector<uint8_t> encodeVsmNoteBlock(const Track& track) {
-    std::vector<uint8_t> muettes, confiances;
-    uint32_t nbMuettes = 0, nbConfiances = 0;
+    std::vector<uint8_t> muettes, confiances, deplacements;
+    uint32_t nbMuettes = 0, nbConfiances = 0, nbDeplacements = 0;
     for (const auto& note : track.notes) {
+        // D566.1 : LE DÉPLACEMENT DE QUANTIFICATION, retrouvé comme une confiance -- position, canal, hauteur -- et
+        // par le muet, puisque les muettes ne sont pas dans le flux.
+        if (note.quantizeShiftStart != 0 || note.quantizeShiftEnd != 0) {
+            ++nbDeplacements;
+            pushBE32(deplacements, static_cast<uint32_t>(note.startTick));
+            deplacements.push_back(note.channel);
+            deplacements.push_back(note.number);
+            deplacements.push_back(note.muted ? 1 : 0);
+            pushBE32(deplacements, static_cast<uint32_t>(static_cast<int32_t>(note.quantizeShiftStart)));
+            pushBE32(deplacements, static_cast<uint32_t>(static_cast<int32_t>(note.quantizeShiftEnd)));
+        }
         if (note.muted) {
             ++nbMuettes;
             pushBE32(muettes, static_cast<uint32_t>(note.startTick));
@@ -117,7 +128,7 @@ std::vector<uint8_t> encodeVsmNoteBlock(const Track& track) {
             pushConfidence(confiances, note.confidence);
         }
     }
-    if (nbMuettes == 0 && nbConfiances == 0) return {};
+    if (nbMuettes == 0 && nbConfiances == 0 && nbDeplacements == 0) return {};
 
     std::vector<uint8_t> bloc(std::begin(kVsmSignature), std::end(kVsmSignature));
     bloc.push_back(kVsmBlockVersion);
@@ -125,6 +136,12 @@ std::vector<uint8_t> encodeVsmNoteBlock(const Track& track) {
     bloc.insert(bloc.end(), muettes.begin(), muettes.end());
     pushBE32(bloc, nbConfiances);
     bloc.insert(bloc.end(), confiances.begin(), confiances.end());
+    // D566.1 : UNE TROISIÈME SECTION, écrite seulement s'il y a des déplacements. Un lecteur d'avant s'arrête aux
+    // confiances et l'ignore ; un bloc d'avant n'en a pas, et le lecteur d'ici s'arrête au bout des données.
+    if (nbDeplacements > 0) {
+        pushBE32(bloc, nbDeplacements);
+        bloc.insert(bloc.end(), deplacements.begin(), deplacements.end());
+    }
     return bloc;
 }
 
@@ -169,6 +186,25 @@ void applyVsmNoteBlock(const std::vector<uint8_t>& data, Track& track, Project& 
             if (!note.muted && note.startTick == start && note.channel == canal
                 && note.number == numero)
                 note.confidence = confiance;
+    }
+    // D566.1 : les déplacements de quantification, s'il y en a.
+    if (at + 4 > data.size()) return;
+    const uint32_t nbDeplacements = readBE32(data, at);
+    for (uint32_t i = 0; i < nbDeplacements; ++i) {
+        if (at + 15 > data.size()) return;
+        const Tick start = readBE32(data, at);
+        const uint8_t canal = data[at++];
+        const uint8_t numero = data[at++];
+        const bool muette = data[at++] != 0;
+        const Tick debut = static_cast<int32_t>(readBE32(data, at));
+        const Tick fin = static_cast<int32_t>(readBE32(data, at));
+        for (auto& note : track.notes)
+            if (note.muted == muette && note.startTick == start && note.channel == canal && note.number == numero
+                && note.quantizeShiftStart == 0 && note.quantizeShiftEnd == 0) {
+                note.quantizeShiftStart = debut;
+                note.quantizeShiftEnd = fin;
+                break;
+            }
     }
 }
 

@@ -200,3 +200,17 @@ VSM_TEST(the_groove_of_a_quantized_clip_says_every_attack_is_on_its_step) {
         VSM_ASSERT_NEAR(groove.steps[i].offset, 0.0, 1e-12);
     }
 }
+
+// D566.1 : UN GROOVE EST UNE QUANTIFICATION — le déplacement se cumule, et « Annuler la quantification » le retire.
+VSM_TEST(applying_a_groove_records_a_shift_that_a_reset_quantize_removes) {
+    Groove groove;
+    groove.stepsPerBar = 4;
+    groove.steps.resize(4);
+    for (auto& s : groove.steps) { s.present = true; s.offset = 0.25; }   // un quart de pas en retard
+    std::vector<Note> notes = { Note{480, 600, 0, 60, 100, 64, 1} };
+    VSM_ASSERT_EQ(applyGroove(notes, NoteSelection{1}, groove, 1920), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(600));
+    VSM_ASSERT_EQ(notes[0].quantizeShiftStart, static_cast<Tick>(120));
+    VSM_ASSERT_EQ(notes[0].quantizeShiftEnd, static_cast<Tick>(120));
+}
+

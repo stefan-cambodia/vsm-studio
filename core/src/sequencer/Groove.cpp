@@ -80,8 +80,11 @@ size_t applyGroove(std::vector<Note>& notes, const NoteSelection& selection,
         if (nouvelle == note.startTick && !applyVelocity) continue;
         // AUCUNE NOTE NE PASSE AVANT ZÉRO, et sa durée ne change pas : un
         // groove déplace, il n'étire pas.
+        const Tick debutAvant = note.startTick, finAvant = note.endTick;   // D566.1
         note.startTick = std::max<Tick>(0, nouvelle);
         note.endTick = note.startTick + std::max<Tick>(1, duree);
+        note.quantizeShiftStart += note.startTick - debutAvant;   // D566.1 : un groove est une quantification
+        note.quantizeShiftEnd += note.endTick - finAvant;
         if (applyVelocity && groove.steps[i].velocity > 0.0f) {
             const double actuelle = static_cast<double>(note.velocity);
             const double voulue = groove.steps[i].velocity * 127.0;

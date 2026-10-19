@@ -59,6 +59,7 @@ enum ContextMenuId {
     kCtxPedalsToLength = 100490,       // D554.3
     kCtxSelectSamePitchClass = 100495,   // D556.3
     kCtxQuantizeEndsOnly = 100496,       // D557.1
+    kCtxResetQuantize = 100497, kCtxFreezeQuantize,   // D566.1
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -1016,6 +1017,37 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
     notifyEdited();
 }
 
+size_t PianoRollComponent::quantizedSelectionCount() const {
+    const Track* track = activeTrack();
+    return track != nullptr ? countQuantizedNotes(track->notes, selectedNoteIds_) : 0;
+}
+
+void PianoRollComponent::resetQuantizeSelection(bool figer) {
+    // D566.1 : *Reset Quantize* et *Freeze Quantize*. Ce qui ne fait rien le dit (D354), au journal du banc.
+    Track* track = activeTrack();
+    const size_t quantifiees = quantizedSelectionCount();
+    if (track == nullptr || quantifiees == 0) {
+        std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 aucune note choisie ne porte de d\xc3\xa9placement de "
+                   "quantification\n", stderr);
+        return;
+    }
+    if (!beginEdit(figer ? juce::String(u8"Figer la quantification") : juce::String(u8"Annuler la quantification"))) {
+        std::fputs("VSM_QUANTIFIER : rien fait \xe2\x80\x94 l'\xc3\xa9""dition a \xc3\xa9t\xc3\xa9 "
+                   "refus\xc3\xa9""e (piste verrouill\xc3\xa9""e ?)\n", stderr);
+        return;
+    }
+    const size_t faites = figer ? freezeQuantize(track->notes, selectedNoteIds_)
+                                : resetQuantize(track->notes, selectedNoteIds_);
+    std::fputs((juce::String("VSM_QUANTIFIER : ") + juce::String(static_cast<int>(faites))
+                + (figer ? " note(s) fig\xc3\xa9" "es" : " note(s) rendue(s) \xc3\xa0 leur jeu")
+                + "\n").toRawUTF8(), stderr);
+    if (onStatusChanged)
+        onStatusChanged((figer ? vsm::app::ui::tr(u8"Quantification figée : %1 note(s)")
+                               : vsm::app::ui::tr(u8"Quantification annulée : %1 note(s) rendue(s) à leur jeu"))
+                            .replace("%1", juce::String(static_cast<int>(faites))));
+    notifyEdited();
+}
+
 void PianoRollComponent::humanizeSelection(float timingTicks, float velocityAmount) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
@@ -1548,6 +1580,13 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     timeMenu.addItem(kCtxQuantizeHalf, tr("Quantifier (50 %)"), sel);
     timeMenu.addItem(kCtxQuantizeEnds, tr(u8"Quantifier début ET fin"), sel);
     timeMenu.addItem(kCtxQuantizeEndsOnly, tr(u8"Quantifier les fins"), sel);   // D557.1
+    // D566.1 : ANNULER ET FIGER LA QUANTIFICATION -- le compte des notes choisies qui portent un déplacement, grisées à zéro.
+    {
+        const size_t quantifiees = quantizedSelectionCount();
+        const auto compte = juce::String(static_cast<int>(quantifiees));
+        timeMenu.addItem(kCtxResetQuantize, tr(u8"Annuler la quantification (%1)").replace("%1", compte), quantifiees > 0);
+        timeMenu.addItem(kCtxFreezeQuantize, tr(u8"Figer la quantification (%1)").replace("%1", compte), quantifiees > 0);
+    }
     timeMenu.addItem(kCtxHumanize, tr("Humaniser"), sel);
     timeMenu.addSeparator();
     timeMenu.addItem(kCtxLengthToGrid, tr(u8"Durée = pas de grille"), sel);
@@ -1734,6 +1773,8 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxQuantizeHalf:     quantizeSelection(0.5f, false); break;
         case kCtxQuantizeEnds:     quantizeSelection(1.0f, true); break;
         case kCtxQuantizeEndsOnly: quantizeSelection(1.0f, true, false); break;   // D557.1
+        case kCtxResetQuantize:    resetQuantizeSelection(false); break;          // D566.1
+        case kCtxFreezeQuantize:   resetQuantizeSelection(true); break;           // D566.1
         case kCtxHumanize:         humanizeSelection(static_cast<float>(gridTicks()) * 0.12f, 12.0f); break;
         case kCtxLegato:           applyLegatoToSelection(); break;
         case kCtxRemoveOverlaps:   removeOverlapsInSelection(); break;

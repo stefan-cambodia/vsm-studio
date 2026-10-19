@@ -1139,6 +1139,28 @@ VSM_TEST(a_clip_channel_map_survives_the_trip_by_name) {
     VSM_ASSERT_EQ(bizarre.document.tracks[0].clips[0].channelMap, uint8_t(0));
 }
 
+// D566.2 — LE POINT D'ACCROCHE : écrit seulement s'il est posé, relu jusqu'au modèle ; sans effet sur le son, il ne
+// change pas la version écrite.
+VSM_TEST(a_clip_snap_point_survives_the_trip_and_is_absent_when_unset) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.length = 960; clip.sourceLength = 960;
+    project.tracks[0].clips.push_back(clip);
+    const std::string sans = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(sans.find("snapPoint") == std::string::npos);
+    project.tracks[0].clips[0].snapPointSeconds = 0.375;
+    const JsonValue avec = projectDocumentToJson(documentFromProject(project));
+    VSM_ASSERT(avec.toString().find("snapPoint") != std::string::npos);
+    VSM_ASSERT_EQ(avec["version"].asNumber(0), projectDocumentToJson(parseProjectDocument(sans).document)["version"].asNumber(-1));
+    const ProjectLoadResult relu = parseProjectDocument(avec.toString());
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].clips.empty());
+    VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].snapPointSeconds, 0.375, 1e-9);   // jusqu'au MODÈLE
+}
+
 // D565.3 — LES NOTES D'UNE PISTE : écrites seulement si elles ne sont pas vides, relues jusqu'au modèle, accents et
 // retours à la ligne compris.
 VSM_TEST(track_notes_survive_the_trip_and_are_absent_when_empty) {

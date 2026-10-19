@@ -186,6 +186,9 @@ struct ProjectClip {
     float dcOffsetRight = 0.0f;
     /// D564.3 : la carte des canaux (`channelMode` : « left », « right », « mono » ; absent, ceux du fichier). EN DERNIER.
     uint8_t channelMap = 0;
+    /// D566.2 : le point d'accroche, en secondes du fichier (`snapPoint`, écrit seulement s'il est posé ; négatif :
+    /// aucun). Sans effet sur le son : il ne compte pas parmi les réglages qui décident de la version. EN DERNIER.
+    double snapPointSeconds = -1.0;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

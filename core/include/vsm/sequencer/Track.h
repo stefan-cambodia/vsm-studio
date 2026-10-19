@@ -51,6 +51,13 @@ struct Note {
     /// construit une Note par agrégat positionnel, qui reste valide tel quel.
     float confidence = 1.0f;
 
+    /// D566.1 : CE QUE LES QUANTIFICATIONS ONT FAIT À LA NOTE, en ticks, cumulé — le début et la fin. Zéro : jamais
+    /// quantifiée, ou quantification figée. « Annuler la quantification » retire ce déplacement (`resetQuantize`), et
+    /// rien d'autre : une note déplacée à la main APRÈS garde le geste, ce qu'une position d'origine figée — celle de
+    /// Cubase — défairait. Voyage dans le bloc privé du `.mid` (D6.3). EN DERNIER, la règle de l'agrégat positionnel.
+    Tick quantizeShiftStart = 0;
+    Tick quantizeShiftEnd = 0;
+
     Tick durationTicks() const { return endTick - startTick; }
 };
 
@@ -284,6 +291,11 @@ struct Clip {
     /// fichier (et `swapChannels` décide de l'échange) ; 1 : la gauche aux deux ; 2 : la droite aux deux ; 3 : la somme
     /// (g + d) / 2 aux deux. Appliqué à la source après le décalage continu ; posé, il exclut l'échange. EN DERNIER.
     uint8_t channelMap = 0;
+    /// D566.2 : LE POINT D'ACCROCHE (*Snap Point* de Cubase), en secondes du FICHIER — comme `sourceStartSeconds` et la
+    /// courbe de gain, il tient à la matière : un rognage du début ne le déplace pas dans le son. Négatif : pas de point,
+    /// le début fait foi. Glisser le clip aimante ce point (`clipSnapAnchorTick`), et le calage sur la grille (D552.1)
+    /// le cale. Audio seulement. Sans effet sur le son. EN DERNIER, la règle de l'agrégat positionnel.
+    double snapPointSeconds = -1.0;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

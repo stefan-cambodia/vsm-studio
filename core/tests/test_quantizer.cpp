@@ -1,5 +1,6 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/Quantizer.h"
+#include "vsm/sequencer/NoteEdit.h"
 
 using namespace vsm::sequencer;
 
@@ -145,3 +146,95 @@ VSM_TEST(humanize_actually_changes_at_least_one_note) {
     }
     VSM_ASSERT(anyDifference);
 }
+
+// D566.1 — ANNULER ET FIGER LA QUANTIFICATION (*Reset Quantize*, *Freeze Quantize* de Cubase). La note garde le
+// DÉPLACEMENT que les quantifications lui ont fait ; l'annuler retire ce déplacement, et rien de ce qu'on a fait à la
+// main depuis.
+VSM_TEST(quantizing_records_the_shift_and_a_second_pass_adds_nothing) {
+    std::vector<Note> notes = { Note{125, 365, 0, 60, 100, 64, 1}, Note{250, 300, 0, 62, 100, 64, 2} };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};   // 120
+    quantizeNotes(notes, settings, 480);
+    VSM_ASSERT_EQ(notes[0].quantizeShiftStart, static_cast<Tick>(-5));
+    VSM_ASSERT_EQ(notes[0].quantizeShiftEnd, static_cast<Tick>(-5));
+    VSM_ASSERT_EQ(notes[1].quantizeShiftStart, static_cast<Tick>(-10));
+    quantizeNotes(notes, settings, 480);   // déjà sur la grille : rien ne bouge, rien ne s'ajoute
+    VSM_ASSERT_EQ(notes[0].quantizeShiftStart, static_cast<Tick>(-5));
+    VSM_ASSERT_EQ(notes[1].quantizeShiftEnd, static_cast<Tick>(-10));
+}
+
+VSM_TEST(a_partial_strength_quantize_accumulates_and_resets_to_the_played_position) {
+    std::vector<Note> notes = { Note{100, 340, 0, 60, 100, 64, 1} };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};
+    settings.strength = 0.5f;
+    quantizeNotes(notes, settings, 480);   // 100 → 110
+    quantizeNotes(notes, settings, 480);   // 110 → 115
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(115));
+    VSM_ASSERT_EQ(notes[0].quantizeShiftStart, static_cast<Tick>(15));
+    VSM_ASSERT_EQ(resetQuantize(notes, NoteSelection{1}), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(100));
+    VSM_ASSERT_EQ(notes[0].endTick, static_cast<Tick>(340));
+    VSM_ASSERT_EQ(notes[0].quantizeShiftStart, static_cast<Tick>(0));
+}
+
+VSM_TEST(resetting_a_quantize_keeps_what_was_done_by_hand_since) {
+    std::vector<Note> notes = { Note{125, 365, 0, 60, 100, 64, 1}, Note{250, 300, 0, 62, 100, 64, 2},
+                                Note{500, 600, 0, 64, 100, 64, 3} };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};
+    std::vector<Note> choisies(notes.begin(), notes.begin() + 2);
+    quantizeNotes(choisies, settings, 480);            // 120-360, 240-290
+    notes[0] = choisies[0];
+    notes[1] = choisies[1];
+    nudgeNotes(notes, NoteSelection{1, 2}, 120);       // à la main : 240-480, 360-410
+    VSM_ASSERT_EQ(countQuantizedNotes(notes, NoteSelection{1, 2, 3}), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(resetQuantize(notes, NoteSelection{1, 2, 3}), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(245));   // 125 + 120 : le geste à la main reste
+    VSM_ASSERT_EQ(notes[0].endTick, static_cast<Tick>(485));
+    VSM_ASSERT_EQ(notes[1].startTick, static_cast<Tick>(370));
+    VSM_ASSERT_EQ(notes[1].endTick, static_cast<Tick>(420));
+    VSM_ASSERT_EQ(notes[2].startTick, static_cast<Tick>(500));   // jamais quantifiée : intacte
+    VSM_ASSERT_EQ(countQuantizedNotes(notes, NoteSelection{1, 2, 3}), static_cast<size_t>(0));
+}
+
+VSM_TEST(resetting_a_quantize_of_the_ends_gives_the_ends_back) {
+    std::vector<Note> notes = { Note{130, 170, 0, 64, 100, 64, 1} };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};
+    settings.quantizeNoteStart = false;
+    settings.quantizeNoteEnd = true;
+    quantizeNotes(notes, settings, 480);   // 130-240
+    VSM_ASSERT_EQ(notes[0].quantizeShiftStart, static_cast<Tick>(0));
+    VSM_ASSERT_EQ(notes[0].quantizeShiftEnd, static_cast<Tick>(70));
+    resetQuantize(notes, NoteSelection{1});
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(130));
+    VSM_ASSERT_EQ(notes[0].endTick, static_cast<Tick>(170));
+}
+
+VSM_TEST(a_reset_end_that_would_fall_before_the_start_keeps_the_note_length) {
+    std::vector<Note> notes = { Note{0, 200, 0, 60, 100, 64, 1} };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};
+    settings.quantizeNoteStart = false;
+    settings.quantizeNoteEnd = true;
+    quantizeNotes(notes, settings, 480);   // 0-240, fin +40
+    notes[0].endTick = 30;                 // raccourcie à la main
+    resetQuantize(notes, NoteSelection{1});
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(0));
+    VSM_ASSERT_EQ(notes[0].endTick, static_cast<Tick>(30));
+}
+
+VSM_TEST(freezing_a_quantize_forgets_the_shift_and_moves_nothing) {
+    std::vector<Note> notes = { Note{125, 365, 0, 60, 100, 64, 1}, Note{250, 300, 0, 62, 100, 64, 2} };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};
+    quantizeNotes(notes, settings, 480);
+    VSM_ASSERT_EQ(freezeQuantize(notes, NoteSelection{1}), static_cast<size_t>(1));   // la seule choisie
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(120));
+    VSM_ASSERT_EQ(notes[0].quantizeShiftStart, static_cast<Tick>(0));
+    VSM_ASSERT_EQ(notes[1].quantizeShiftStart, static_cast<Tick>(-10));
+    VSM_ASSERT_EQ(resetQuantize(notes, NoteSelection{1}), static_cast<size_t>(0));
+    VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(120));
+}
+

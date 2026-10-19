@@ -508,8 +508,25 @@ struct GridSnap {
     size_t moved = 0;
     size_t locked = 0;
 };
+/// D566.2 : `anchor`, s'il est donné, dit le tick qui se CALE pour chaque clip -- son point d'accroche
+/// (`clipSnapAnchorTick`) ; le clip se déplace de ce qu'il faut pour que ce tick tombe sur sa ligne. Sans lui, le début.
 GridSnap snapClipStartsToGrid(Track& track, const ClipSelection& selection, const std::function<Tick(Tick)>& grid,
-                              Tick materialEnd, bool automationFollows);
+                              Tick materialEnd, bool automationFollows,
+                              const std::function<Tick(const Clip&)>& anchor = {});
+
+/// D566.2 — LE POINT D'ACCROCHE D'UN CLIP AUDIO (*Snap Point to Cursor* de Cubase). Le tick où il sonne : la première
+/// fois que la fenêtre du clip le joue (`clipAttackTicks` : la carte d'étirement, le tempo, la boucle). Sans point, ou
+/// s'il ne sonne pas -- rogné hors de la fenêtre, clip à l'envers --, le début du clip : c'est le point qu'on glisse et
+/// qu'on cale.
+Tick clipSnapAnchorTick(const Clip& clip, Tick materialEnd, const std::function<Tick(double)>& secondsToTicks,
+                        const std::function<double(Tick)>& ticksToSeconds);
+/// Le point des clips choisis que `tick` traverse, posé à la seconde du fichier qu'ils y jouent
+/// (`clipSourceSecondsAtTick`) ; un clip que la tête ne traverse pas, ou à l'envers, n'en reçoit pas. Un clip verrouillé
+/// en reçoit un : le point ne déplace rien. Rend le nombre de clips où il est posé (ou déplacé).
+size_t setClipSnapPoints(std::vector<Clip>& clips, const ClipSelection& selection, Tick tick, Tick materialEnd,
+                         const std::function<double(Tick)>& ticksToSeconds);
+/// Le point retiré des clips choisis ; rend combien en portaient un.
+size_t clearClipSnapPoints(std::vector<Clip>& clips, const ClipSelection& selection);
 
 /// D552.3 — GLISSER LE CONTENU D'UN CLIP (le *Slip* de Cubase) : la MATIÈRE se décale de `delta` ticks sous la fenêtre,
 /// la fenêtre et sa place restant les mêmes -- vers la droite, ce qui jouait à `t` joue à `t + delta`. MIDI : la

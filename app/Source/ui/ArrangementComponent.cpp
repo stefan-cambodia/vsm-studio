@@ -846,6 +846,18 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
             // locateurs, le geste dit ce qui manque plutôt que d'être grisé sans raison.
             menu.addItem(81, tr(u8"Rendre silencieux entre les locateurs"));
         }
+        // D566.2 : LE POINT D'ACCROCHE (Snap Point to Cursor) — posé à la tête sur les clips choisis qu'elle traverse ;
+        // grisé quand la tête n'est pas dans ce clip, ou qu'il joue à l'envers.
+        {
+            const auto versSecondes = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+            const bool sousLaTete = vsm::sequencer::clipSourceSecondsAtTick(
+                                        clip, playhead_, materialEnd(project_->tracks[piste]), versSecondes) >= 0.0;
+            bool unPoint = clip.snapPointSeconds >= 0.0;
+            for (const auto& c : project_->tracks[piste].clips)
+                if (selection_.count(c.id) > 0 && c.snapPointSeconds >= 0.0) unPoint = true;
+            menu.addItem(91, tr(u8"Point d'accroche à la tête"), sousLaTete);
+            menu.addItem(92, tr(u8"Retirer le point d'accroche"), unPoint);
+        }
         menu.addItem(17, tr(u8"\u00c0 l'envers"), true, clip.reversed);
         // D17.1 : LA FORME DES FONDUS. Sur une piste audio seulement --
         // un clip MIDI n'a pas de fondu à donner une forme.
@@ -1360,9 +1372,12 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     // gardait pour toujours l'écart entre ce point et la grille : un clip saisi un temps après son
     // début et tiré d'une mesure commençait à 5 281 au lieu de 5 760 (H12). Le geste suit désormais
     // le bord qu'il déplace ; sans aimant, la cible reste exactement celle d'avant.
+    // D566.2 : UN DÉPLACEMENT AIMANTE LE POINT D'ACCROCHE d'un clip audio, s'il en porte un ; les bords restent
+    // aimantés par leur bord.
     ancreGeste_ = (geste_ == Geste::BordDroit || geste_ == Geste::Etirer)
                       ? clip->startTick + clipPlayedLength(*clip, materialEnd(project_->tracks[piste]))
-                      : clip->startTick;
+                  : geste_ == Geste::Deplacer ? pointDAccroche(project_->tracks[piste], *clip)
+                                              : clip->startTick;
     gesteDernier_ = ancreGeste_;
     clipFondu_ = clip->id;
     if (onEditStarted)
@@ -2235,6 +2250,30 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             for (auto& t : project_->tracks) toggleClipPhase(t.clips, cibles);
             break;
         }
+        case 91: case 92: {   // D566.2 : sur les clips AUDIO de la sélection ; mesuré sur une copie, aucun pas pour rien
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            const auto versSecondes = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+            auto agir = [&](std::vector<Clip>& clips, const Track& t) {
+                return choix == 91 ? setClipSnapPoints(clips, cibles, playhead_, materialEnd(t), versSecondes)
+                                   : clearClipSnapPoints(clips, cibles);
+            };
+            size_t touches = 0;
+            for (const auto& t : project_->tracks) {
+                if (t.kind != Track::Kind::Audio) continue;
+                auto essai = t.clips;
+                touches += agir(essai, t);
+            }
+            std::fputs(("VSM_ACCROCHE : " + std::string(choix == 91 ? "point pos\xc3\xa9 \xc3\xa0 la t\xc3\xaate (tick "
+                                                                          + std::to_string(playhead_) + ")"
+                                                                    : "point retir\xc3\xa9")
+                        + " sur " + std::to_string(touches) + " clip(s)\n").c_str(), stderr);
+            if (touches == 0) return;
+            if (onEditStarted) onEditStarted(choix == 91 ? u8"Point d'accroche à la tête" : u8"Retirer le point d'accroche");
+            for (auto& t : project_->tracks)
+                if (t.kind == Track::Kind::Audio) agir(t.clips, t);
+            break;
+        }
         case 83: {   // D560.2 : sur toute la sélection ; mesuré sur une copie, aucun pas pour rien
             ClipSelection cibles = selection_;
             cibles.insert(clipId);
@@ -2535,6 +2574,13 @@ ArrangementComponent::RognageAuxLocateurs ArrangementComponent::rognerAuxLocateu
     return bilan;
 }
 
+vsm::midi::Tick ArrangementComponent::pointDAccroche(const Track& track, const vsm::sequencer::Clip& clip) const {
+    if (project_ == nullptr || track.kind != Track::Kind::Audio || clip.snapPointSeconds < 0.0) return clip.startTick;
+    return vsm::sequencer::clipSnapAnchorTick(clip, materialEnd(track),
+                                              [this](double s) { return project_->secondsToTicks(s); },
+                                              [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+}
+
 std::pair<size_t, size_t> ArrangementComponent::calerDebutsSurGrille() {
     if (project_ == nullptr || selection_.empty()) return {0, 0};
     const auto montage = montageSelection();
@@ -2544,9 +2590,14 @@ std::pair<size_t, size_t> ArrangementComponent::calerDebutsSurGrille() {
     };
     // L'ESSAI SUR DES COPIES : aucun pas d'annulation pour un geste qui ne déplace rien.
     size_t deplaces = 0, verrouilles = 0;
+    // D566.2 : LE POINT D'ACCROCHE SE CALE, et non le début, sur un clip audio qui en porte un.
+    auto ancreDe = [this](const Track& t) {
+        return [this, &t](const Clip& c) { return pointDAccroche(t, c); };
+    };
     for (const auto& track : project_->tracks) {
         auto essai = track;
-        const auto r = vsm::sequencer::snapClipStartsToGrid(essai, montage, grille, materialEnd(track), automationSuit_);
+        const auto r = vsm::sequencer::snapClipStartsToGrid(essai, montage, grille, materialEnd(track), automationSuit_,
+                                                            ancreDe(track));
         deplaces += r.moved;
         verrouilles += r.locked;
     }
@@ -2554,7 +2605,7 @@ std::pair<size_t, size_t> ArrangementComponent::calerDebutsSurGrille() {
     if (deplaces == 0) return {0, verrouilles};
     if (onEditStarted) onEditStarted(u8"Caler les débuts des clips sur la grille");
     for (auto& track : project_->tracks)
-        vsm::sequencer::snapClipStartsToGrid(track, montage, grille, materialEnd(track), automationSuit_);
+        vsm::sequencer::snapClipStartsToGrid(track, montage, grille, materialEnd(track), automationSuit_, ancreDe(track));
     notifyChanged();
     repaint();
     return {deplaces, verrouilles};
@@ -2861,6 +2912,14 @@ void ArrangementComponent::direLesBascules() const {
 
 void ArrangementComponent::direLesClipsAEcran() const {
     if (project_ == nullptr) return;
+    // D566.2 : OÙ EST L'ARRANGEMENT DANS LA FENÊTRE, et la taille de celle-ci -- ce qu'il faut pour retrouver un clip
+    // sur la PHOTO de la fenêtre (le trait du point d'accroche), à l'échelle de l'image.
+    juce::String fenetre;
+    if (const auto* haut = getTopLevelComponent(); haut != nullptr) {
+        const auto o = haut->getLocalPoint(this, juce::Point<int>{});
+        fenetre = juce::String::fromUTF8(u8" ; fenêtre ") + juce::String(haut->getWidth()) + "x" + juce::String(haut->getHeight())
+                + juce::String::fromUTF8(u8" à ") + juce::String(o.x) + "," + juce::String(o.y);
+    }
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         const auto& track = project_->tracks[i];
         const vsm::midi::Tick fin = materialEnd(track);
@@ -2872,7 +2931,10 @@ void ArrangementComponent::direLesClipsAEcran() const {
                         + " \"" + juce::String::fromUTF8(c.name.c_str()) + "\" x " + juce::String(x1, 1)
                         + ".." + juce::String(x2, 1) + " y " + juce::String(haut) + ".."
                         + juce::String(haut + hauteur) + juce::String::fromUTF8(u8" sur ")
-                        + juce::String(getWidth()) + "x" + juce::String(getHeight()) + "\n").toRawUTF8(), stderr);
+                        + juce::String(getWidth()) + "x" + juce::String(getHeight()) + fenetre
+                        + (c.snapPointSeconds >= 0.0 && track.kind == Track::Kind::Audio   // D566.2 : là où le trait est peint
+                               ? " ; accroche x " + juce::String(tickToX(pointDAccroche(track, c)), 1) : juce::String())
+                        + "\n").toRawUTF8(), stderr);
         }
     }
 }
@@ -3497,6 +3559,21 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     avant = s;
                 }
                 g.strokePath(ligne, juce::PathStrokeType(1.5f));
+            }
+
+            // D566.2 : LE POINT D'ACCROCHE SE VOIT — un trait en tirets sur toute la hauteur, et une pointe EN BAS (celle
+            // des marqueurs de tempo est en haut) : c'est lui que le glisser et le calage alignent sur la grille.
+            if (clip.snapPointSeconds >= 0.0 && track.kind == Track::Kind::Audio) {
+                const auto point = pointDAccroche(track, clip);
+                const float px = tickToX(point);
+                if (px >= r.getX() && px <= r.getRight()) {
+                    g.setColour(Palette::textPrimary.withAlpha(0.95f));
+                    for (float y = r.getY(); y < r.getBottom(); y += 6.0f)
+                        g.fillRect(px - 0.75f, y, 1.5f, std::min(3.5f, r.getBottom() - y));
+                    juce::Path pointe;
+                    pointe.addTriangle(px - 4.0f, r.getBottom(), px + 4.0f, r.getBottom(), px, r.getBottom() - 6.0f);
+                    g.fillPath(pointe);
+                }
             }
 
             // D546.3 : UN CLIP VERROUILLÉ PORTE UN CADENAS, en haut à droite — ce qu'on ne peut pas saisir doit

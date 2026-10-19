@@ -158,6 +158,7 @@ JsonValue clipToJson(const ProjectClip& clip) {
     }
     if (clip.channelMap >= 1 && clip.channelMap <= 3)   // D564.3
         c.set("channelMode", JsonValue::makeString(clip.channelMap == 1 ? "left" : clip.channelMap == 2 ? "right" : "mono"));
+    if (clip.snapPointSeconds >= 0.0) c.set("snapPoint", JsonValue::makeNumber(clip.snapPointSeconds));   // D566.2
     return c;
 }
 
@@ -196,6 +197,7 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
         const std::string mode = clipJson["channelMode"].asString();
         clip.channelMap = mode == "left" ? 1 : mode == "right" ? 2 : mode == "mono" ? 3 : 0;
     }
+    clip.snapPointSeconds = clipJson["snapPoint"].asNumber(-1.0);   // D566.2
     return clip;
 }
 
@@ -261,6 +263,7 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     c.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
     c.dcOffsetRight = clip.dcOffsetRight;
     c.channelMap = clip.channelMap;       // D564.3
+    c.snapPointSeconds = clip.snapPointSeconds;   // D566.2
     // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
@@ -293,6 +296,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
     c.dcOffsetLeft = clip.dcOffsetLeft;   // D561.3
     c.dcOffsetRight = clip.dcOffsetRight;
     c.channelMap = clip.channelMap;       // D564.3
+    c.snapPointSeconds = clip.snapPointSeconds < 0.0 ? -1.0 : clip.snapPointSeconds;   // D566.2
     return c;
 }
 

@@ -606,6 +606,8 @@ private:
     /// D13.6, D545.3 : la crête du matériau que le clip joue, lue dans le cache d'aperçu ; 0 sans cache.
     float creteJouee(size_t piste, const vsm::sequencer::Clip& clip) const;
     int pointDeGainAuClic(size_t piste, const vsm::sequencer::Clip& clip) const;
+    /// D566.2 : le tick qu'on glisse et qu'on cale -- le point d'accroche d'un clip audio, le début sinon.
+    vsm::midi::Tick pointDAccroche(const vsm::sequencer::Track& track, const vsm::sequencer::Clip& clip) const;
     void notifyChanged();
 
     /// La cible d'un glisser en cours : la piste survolée et la position

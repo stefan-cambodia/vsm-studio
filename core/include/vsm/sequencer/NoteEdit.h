@@ -308,4 +308,18 @@ NoteSelection selectLeastConfident(const std::vector<Note>& notes, double part =
 uint64_t nextDoubtfulNote(const std::vector<Note>& notes, const NoteSelection& selection,
                           Tick playheadTick, bool forward, float threshold = kDoubtfulNoteThreshold);
 
+// ---------------------------------------------------------------------------
+// D566.1 -- annuler et figer la quantification (*Reset Quantize*, *Freeze Quantize* de Cubase)
+// ---------------------------------------------------------------------------
+
+/// Les notes choisies qui portent un déplacement de quantification (`Note::quantizeShiftStart`, `quantizeShiftEnd`).
+size_t countQuantizedNotes(const std::vector<Note>& notes, const NoteSelection& selection);
+/// Chaque note choisie revient du déplacement que les quantifications lui ont fait -- début ET fin --, puis l'oublie ;
+/// ce qu'on lui a fait à la main depuis reste. Un début ne passe pas avant zéro ; une fin qui tomberait sur ou avant le
+/// début garde la durée que la note a. Les notes se retrient par début. Rend le nombre de notes rendues.
+size_t resetQuantize(std::vector<Note>& notes, const NoteSelection& selection);
+/// Le déplacement oublié, les notes immobiles : la position quantifiée devient la position de la note. Rend le nombre
+/// de notes qui en portaient un.
+size_t freezeQuantize(std::vector<Note>& notes, const NoteSelection& selection);
+
 } // namespace vsm::sequencer

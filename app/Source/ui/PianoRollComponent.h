@@ -280,6 +280,10 @@ public:
     bool selectionEndTick(vsm::midi::Tick& fin) const;   ///< D553.2 : la fin de la dernière note choisie
     /// D557.1 : `quantizeStarts` faux — « Quantifier les fins » (*Quantize MIDI Event Ends*), les débuts ne bougent pas.
     void quantizeSelection(float strength, bool alsoQuantizeEnds, bool quantizeStarts = true);
+    /// D566.1 : *Reset Quantize* (`figer` faux) et *Freeze Quantize* (`figer` vrai) sur les notes choisies.
+    void resetQuantizeSelection(bool figer);
+    /// D566.1 : les notes choisies qui portent un déplacement de quantification.
+    size_t quantizedSelectionCount() const;
     void humanizeSelection(float timingTicks, float velocityAmount);
     void applyLegatoToSelection();
     void removeOverlapsInSelection();

@@ -43441,3 +43441,46 @@ l'utilisateur le 19/10 à 07 h 03, préférences identiques. Le rouge : `quantif
 — le poste s'est endormi à **20 h 17:48**, en plein banc, et réveillé à **06 h 46** (`journalctl -b | grep "PM: suspend"`).
 Rejoué seul à 07 h 14, écran allumé et session ouverte : **vert**, les six contrôles. La veille (D535.1 bis), pas le code.
 La série complète se rejoue sur le binaire de D566.
+
+**ET UNE PREMIÈRE SÉRIE DE D565 AVAIT TOURNÉ** — relu à 07 h 40 : `~/videcode/muz/brouillon-d560/serie-d565.log`, lancée le
+18/10 après le commit de D565 : **107 bancs passés, 106 verts**, avant l'extinction du poste (le dernier, `pianoroll-bord.sh`).
+`annulation-des-menus.py` y a duré 13 179 s, à travers une veille. Le rouge : `normaliser-niveau.sh` (4), la fenêtre
+photographiée — la même famille que celui de la nuit ; il se rejoue dans la série de D566. Le paragraphe ci-dessus ne
+comptait que la seconde série.
+
+### Phase D566.1 — annuler et figer la quantification (19/10/2026) — FAITE
+
+`Note::quantizeShiftStart`, `quantizeShiftEnd` (le déplacement cumulé, en ticks) ; `quantizeNotes` et `applyGroove`
+cumulent ; `countQuantizedNotes`, `resetQuantize`, `freezeQuantize` (`NoteEdit`) ; le bloc privé du `.mid` porte une
+troisième section. Au piano roll, *Temps et durée ▸ Annuler la quantification (N)* et *Figer la quantification (N)*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur | six tests : le cumul (un second passage n'ajoute rien), la force partielle (100 → 110 → 115, rendu à 100), le geste à la main gardé (245-485 et non 125-365), les fins, une fin qui tomberait avant le début (la durée gardée), figer ; le groove ; l'aller-retour par le `.mid`, muette comprise. **Rouges** sous deux mutants : le cumul retiré (4 tests), la troisième section non lue (1) | **oui** |
+| 2 | annuler | `tools/annuler-quantification.sh` : quantifiées 120-360, 240-290, 480-590, 120-160 (le témoin) ; annulées : **125-365, 250-300, 500-610, 130-170**, les notes jouées | **oui** |
+| 3 | la main gardée | quantifier, → (un pas), annuler : **245-485, 370-420, 620-730, 250-290** — ni les notes jouées (une position d'origine figée), ni les quantifiées + 120 | **oui** |
+| 4 | les fins, figer, rouvrir, Ctrl+Z | début ET fin puis annulées : les notes jouées ; figées : sur la grille, « (0) [grisée] » ; enregistrées, rouvertes, annulées : les notes jouées ; Ctrl+Z : les quantifiées ; avant tout : « (0) [grisée] » | **oui** |
+| 5 | le témoin | le binaire de **D564** (celui de D565 a été recompilé avant d'être copié) : les **sept rouges** | **oui** |
+
+### Phase D566.2 — le point d'accroche d'un clip audio (19/10/2026) — FAITE
+
+`Clip::snapPointSeconds` (`snapPoint` au format, s'il est posé) ; `clipSnapAnchorTick`, `setClipSnapPoints`,
+`clearClipSnapPoints` ; `snapClipStartsToGrid` reçoit l'ancre ; le glisser d'un DÉPLACEMENT part du point
+(`ancreGeste_`) ; un trait en tirets, pointe en bas. Clic droit sur un clip audio, *Point d'accroche à la tête*,
+*Retirer le point d'accroche*. Le relevé `VSM_CLIP_ECRAN` dit désormais où est l'arrangement dans la fenêtre, et la
+colonne du point : une photo de fenêtre se lit à l'échelle de l'image.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur, le format | posé à 1 240 → 0,75 s, il sonne à 1 240 ; calé à la mesure : **1 680** (le témoin sans point : 1 920) ; rogné de 120, le point ne bouge pas ; rogné au-delà, le début refait foi ; `interchange` : absent quand il n'est pas posé, relu jusqu'au modèle, la version inchangée | **oui** |
+| 2 | poser, annuler | `tools/point-accroche.sh`, le clip à 300, la tête à 1 440 : **1,1875 s** ; Ctrl+Z le retire | **oui** |
+| 3 | caler, glisser | calé : le clip à **780** (le point sur 1 920) ; le témoin S à 0. Glissé de 2 000 ticks : **2 700** (le point sur 3 840) ; le témoin S à 1 920 | **oui** |
+| 4 | retirer, griser, voir | retiré, et dit ; la tête hors du clip : poser grisé, retirer grisé sans point ; la photo : **26 pixels clairs** dans la colonne du point sur P, **0** sur S, le relevé à 0,0 px de 300 + 1 140 ticks | **oui** |
+| 5 | le témoin | le binaire de D564 : les **six rouges** — le (4) passait d'abord, l'ancien binaire effaçant le champ qu'il ignore : le contrôle exige désormais que le geste dise l'avoir retiré | **oui** |
+
+**UN PROJET VIDE S'OUVRE À 8 PX PAR TICK** — vu en écrivant le banc : `zoomToFit` cadre `max(1, lastSoundingTick())`, et
+sur un projet sans rien qui sonne, c'est un tick sur toute la largeur (une mesure = 15 360 px), vue qui s'enregistre
+ensuite avec le projet (D363) ; un fichier importé ensuite reste hors de l'écran. Hors de D566 ; à traiter à la suite
+(D566.4), le banc la contourne en retirant la vue enregistrée.
+
+C++ 513 · 1 344 · 343 · 25 · 11.
