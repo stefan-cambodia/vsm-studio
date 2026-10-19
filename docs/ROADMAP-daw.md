@@ -43384,3 +43384,60 @@ C++ 504 · 1 344 · 342 · 25 · 11, Python 275, ruff, mypy et gardes verts.
 
 **LE VINGT-SIXIÈME AUDIT (D565) EST CLOS** : la tête au repère 1 à 9, le zoom sur les locateurs, les notes d'une piste.
 **LA SÉRIE COMPLÈTE**, sur le binaire de D565 (126 bancs, trois neufs), est lancée à la suite.
+
+### Phase D566 — un vingt-septième audit : annuler la quantification, le point d'accroche d'un clip audio, lier les tranches choisies (19/10/2026)
+
+*Écrite le 19/10 à 07 h 15, D565 close.*
+
+**LA MÉTHODE, celle de D535 à D565, les zéros revérifiés en listant ce qu'on a cherché et où** (`find core app/Source
+audio interchange` sur `.h` et `.cpp`, par `/usr/bin/grep`, validé sur trois témoins qui existent : `snapNotesToChords`
+5 fichiers, `VCA` 35, `Contraindre` 4). Le *Reset Quantize* du menu MIDI de Cubase, le *Snap Point to Cursor* de son menu
+Audio, le *Q-Link* de sa MixConsole : **0 pour annuler une quantification** — la quantification déplace et n'oublie
+rien de mieux que l'historique (`resetQuantize`, `undoQuantize`, `unquantize`, `originalStart`, « positions d'origine »,
+« Défaire la quantification » : rien ; `Note` porte début, fin, canal, hauteur, vélocités, muet, confiance) ; **0 pour un
+point d'accroche** — un clip se glisse et se cale par son DÉBUT (`ancreGeste_ = clip->startTick`, D547.4 ;
+`snapClipStartsToGrid`, D552.1) ; `snapPoint`, `snapOffset`, « point d'accroche » : rien ; **0 pour des faders liés**
+— le muet, le solo, la couleur se multiplient sur les pistes choisies (D38.2), le volume et le panoramique non : chaque
+fader écrit sa seule piste (`TrackRowComponent`, `ChannelStrip`) ; `qlink`, `linkSelected`, « liaison », « Lier les
+tranches » : rien. **Trouvé et écarté** : éclater par hauteur (D19.3), désactiver une piste, insérer du silence et
+supprimer le temps entre les locateurs, le début et la fin de boucle à la tête, remplir la boucle (« Jusqu'à la fin de
+la boucle »), les fondus enchaînés automatiques (D13.1, D34.1), masquer une piste (D17.4), le retour au départ à
+l'arrêt, la compression des vélocités — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D566.1 | **Annuler et figer la quantification** — *Reset Quantize*, *Freeze Quantize* | Au piano roll, *Temps et durée ▸ Annuler la quantification (N)* : chaque note choisie revient de ce que les quantifications lui ont fait — début ET fin —, les gestes faits à la main depuis gardés ; *Figer la quantification (N)* : les notes restent, le déplacement s'oublie ; N compte les notes choisies qui en portent un, grisées à zéro ; un pas chacune ; le déplacement voyage avec le projet (enregistré, rouvert) ; mesuré par le projet relu |
+| D566.2 | **Le point d'accroche d'un clip audio** — *Snap Point to Cursor* | Clic droit sur un clip audio, *Point d'accroche à la tête* : sur les clips audio choisis que la tête traverse, le point posé à la seconde du fichier qu'ils y jouent, dessiné d'un trait ; le GLISSER du clip aimante ce point, et non plus le début ; *Caler les débuts des clips sur la grille* (D552.1) le cale ; *Retirer le point d'accroche* ; écrit au projet (`snapPoint`) seulement s'il est posé ; mesuré par le projet relu, le témoin sans point à côté |
+| D566.3 | **Lier les tranches choisies** — *Q-Link* | *Mixage ▸ Lier les tranches choisies (Q-Link)* (case cochée, retenue) : le volume ou le panoramique d'une piste choisie entraîne ceux des autres pistes choisies du MÊME ÉCART — en dB pour le volume, borné à −60…+6 dB ; en valeur pour le panoramique, borné à ±1 —, de la console comme de la liste des pistes ; un seul pas ; une piste hors du choix bouge seule ; mesuré par le projet relu, le témoin sans liaison à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D566.1.** La note garde le DÉPLACEMENT que les quantifications lui ont fait (début et fin, en ticks, cumulés), et non
+  sa position d'origine comme Cubase : une position d'origine figée ramènerait aussi en arrière une note déplacée à la
+  main APRÈS la quantification, et défaire un geste qu'on n'a pas demandé est le défaut que D38.4 interdit ailleurs. Avec
+  le déplacement, « annuler la quantification » retire exactement ce que la quantification a fait, et rien d'autre.
+  Toutes les quantifications comptent — Q, les forces partielles, le swing, les fins (D557.1), le groove (D544.2), la
+  dernière prise — parce qu'elles passent toutes par `quantizeNotes` ou `applyGroove`, où le cumul se fait ; l'humanisation
+  n'est pas une quantification et ne compte pas. Une fin qui tomberait sur ou avant le début garde la durée qu'elle a ; un
+  début ne passe pas avant zéro. Le déplacement voyage dans le bloc privé du `.mid` (D6.3), en TROISIÈME section, après les
+  confiances : un lecteur d'avant s'arrête aux confiances et l'ignore, un fichier d'avant n'en a pas. Il suit la note qu'on
+  copie, colle ou duplique : c'est une propriété de la note.
+- **D566.2.** Le point est en secondes du FICHIER, comme `sourceStartSeconds` et la courbe de gain (D545.1) : il tient à la
+  matière, un rognage du début ne le déplace pas dans le son. Il sonne au tick que `clipAttackTicks` lui donne (la carte
+  d'étirement, le tempo, la boucle) ; s'il n'y sonne pas — rogné hors de la fenêtre, clip à l'envers —, le début fait foi,
+  comme sans point. Le glisser n'aimante le point que pour un DÉPLACEMENT : les bords restent aimantés par leur bord. Audio
+  seulement (Cubase n'en a pas pour un clip MIDI). Pas de touche.
+- **D566.3.** Le muet et le solo ne se lient pas : ils se multiplient déjà (D38.2). L'écart se compte depuis le DÉBUT du
+  geste (le glisser entier ; un seul cran de molette ou une saisie) : une tranche bornée en route retrouve son écart si le
+  geste revient. Le silence compte pour −60 dB, le bas du fader (D463). Les tranches liées suivent en valeur fixe ; seule
+  la tranche touchée écrit une passe d'automation (D16.8) — écrire N passes d'un geste est une autre décision. Retenue dans
+  les préférences, comme les autres bascules d'un poste de travail (D426). Pas de touche : l'Alt+Maj temporaire de Cubase
+  ne se prend pas, Maj+Alt+↓ étend déjà le choix des pistes.
+
+**L'ORDRE, TRANCHÉ ICI.** D566.1 d'abord : une reconstruction livre des notes au temps JOUÉ, et quantifier pour écouter
+sans pouvoir revenir à ce que la chaîne avait entendu est le pire des deux mondes. Puis D566.2, puis D566.3.
+
+**LA SÉRIE DE D565 (binaire de D565)** — lancée le 18/10 à 20 h 14 : **15 bancs, 14 verts**, puis arrêtée à la demande de
+l'utilisateur le 19/10 à 07 h 03, préférences identiques. Le rouge : `quantifier-audio.sh` (5), la fenêtre photographiée
+— le poste s'est endormi à **20 h 17:48**, en plein banc, et réveillé à **06 h 46** (`journalctl -b | grep "PM: suspend"`).
+Rejoué seul à 07 h 14, écran allumé et session ouverte : **vert**, les six contrôles. La veille (D535.1 bis), pas le code.
+La série complète se rejoue sur le binaire de D566.
