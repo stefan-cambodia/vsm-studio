@@ -62,6 +62,8 @@ enum ContextMenuId {
     kCtxResetQuantize = 100497, kCtxFreezeQuantize,   // D566.1
     kCtxSelectInLoop = 100510, kCtxSelectStartToCursor, kCtxSelectCursorToEnd,   // D569.3
     kCtxColorTrack = 100520, kCtxColorPitch, kCtxColorChannel,                    // D570.3
+    kCtxQuantizeZoneFirst = 100530, kCtxQuantizeZoneLast = 100533,                // D575.1 : 0, 5, 10, 25 % du pas
+    kCtxQuantizeCatchFirst = 100540, kCtxQuantizeCatchLast = 100543,              // D575.2 : tout, 40, 25, 10 %
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -430,6 +432,9 @@ void PianoRollComponent::setSnapEnabled(bool enabled) {
     if (onBasculesChanged) onBasculesChanged();   // D494
 }
 void PianoRollComponent::setSwing(float swing) { swing_ = swing; repaint(); }
+
+void PianoRollComponent::setZoneNonQuantif(float part) { zoneNonQuantif_ = std::clamp(part, 0.0f, 0.5f); }   // D575.1
+void PianoRollComponent::setRayonCapture(float part) { rayonCapture_ = std::clamp(part, 0.0f, 0.5f); }       // D575.2
 void PianoRollComponent::setScale(Scale scale) { scale_ = scale; repaint(); }
 void PianoRollComponent::setScaleHighlightEnabled(bool enabled) { scaleHighlight_ = enabled; repaint(); }
 void PianoRollComponent::setGhostNotesVisible(bool visible) {
@@ -1028,6 +1033,8 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
     settings.grid = gridResolution_;
     settings.strength = strength;
     settings.swing = swing_;
+    settings.nonQuantizeZone = zoneNonQuantif_;   // D575.1
+    settings.catchRange = rayonCapture_;          // D575.2
     settings.quantizeNoteStart = quantizeStarts;   // D557.1 : faux pour « Quantifier les fins »
     settings.quantizeNoteEnd = alsoQuantizeEnds;
 
@@ -1642,6 +1649,19 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     timeMenu.addItem(kCtxQuantizeHalf, tr("Quantifier (50 %)"), sel);
     timeMenu.addItem(kCtxQuantizeEnds, tr(u8"Quantifier début ET fin"), sel);
     timeMenu.addItem(kCtxQuantizeEndsOnly, tr(u8"Quantifier les fins"), sel);   // D557.1
+    // D575.1, D575.2 : LA ZONE DE NON-QUANTIFICATION ET LE RAYON DE CAPTURE, en part du pas ; cochée la valeur courante.
+    {
+        juce::PopupMenu zones, rayons;
+        const char8_t* zoneNoms[] = {u8"Aucune zone", u8"Zone de 5 % du pas", u8"Zone de 10 % du pas", u8"Zone de 25 % du pas"};
+        const char8_t* rayonNoms[] = {u8"Capturer tout", u8"Capturer à 40 % du pas", u8"Capturer à 25 % du pas",
+                                      u8"Capturer à 10 % du pas"};
+        for (int i = 0; i <= kCtxQuantizeZoneLast - kCtxQuantizeZoneFirst; ++i)
+            zones.addItem(kCtxQuantizeZoneFirst + i, tr(zoneNoms[i]), true, zoneNonQuantif_ == kZonesNonQuantif[i]);
+        for (int i = 0; i <= kCtxQuantizeCatchLast - kCtxQuantizeCatchFirst; ++i)
+            rayons.addItem(kCtxQuantizeCatchFirst + i, tr(rayonNoms[i]), true, rayonCapture_ == kRayonsCapture[i]);
+        timeMenu.addSubMenu(tr(u8"Zone de non-quantification"), zones);
+        timeMenu.addSubMenu(tr(u8"Rayon de capture"), rayons);
+    }
     // D566.1 : ANNULER ET FIGER LA QUANTIFICATION -- le compte des notes choisies qui portent un déplacement, grisées à zéro.
     {
         const size_t quantifiees = quantizedSelectionCount();
@@ -1844,6 +1864,19 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxResetQuantize:    resetQuantizeSelection(false); break;          // D566.1
         case kCtxFreezeQuantize:   resetQuantizeSelection(true); break;           // D566.1
         case kCtxHumanize:         humanizeSelection(static_cast<float>(gridTicks()) * 0.12f, 12.0f); break;
+        case kCtxQuantizeZoneFirst: case kCtxQuantizeZoneFirst + 1: case kCtxQuantizeZoneFirst + 2:
+        case kCtxQuantizeZoneLast:   // D575.1
+            setZoneNonQuantif(kZonesNonQuantif[menuItemId - kCtxQuantizeZoneFirst]);
+            std::fputs(("VSM_QUANTIFIER : zone de non-quantification " + std::to_string(std::lround(zoneNonQuantif_ * 100.0f))
+                        + " % du pas\n").c_str(), stderr);
+            break;
+        case kCtxQuantizeCatchFirst: case kCtxQuantizeCatchFirst + 1: case kCtxQuantizeCatchFirst + 2:
+        case kCtxQuantizeCatchLast:   // D575.2
+            setRayonCapture(kRayonsCapture[menuItemId - kCtxQuantizeCatchFirst]);
+            std::fputs(("VSM_QUANTIFIER : rayon de capture "
+                        + (rayonCapture_ > 0.0f ? std::to_string(std::lround(rayonCapture_ * 100.0f)) + " % du pas"
+                                                : std::string("tout")) + "\n").c_str(), stderr);
+            break;
         case kCtxLegato:           applyLegatoToSelection(); break;
         case kCtxRemoveOverlaps:   removeOverlapsInSelection(); break;
         case kCtxDeleteDoubles:    deleteDoublesInSelection(); break;

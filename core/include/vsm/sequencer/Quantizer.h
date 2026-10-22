@@ -30,7 +30,16 @@ struct QuantizeSettings {
     float swing = 0.0f;
     bool quantizeNoteStart = true;
     bool quantizeNoteEnd = false; ///< quantifie aussi la fin (donc la durée)
+    /// D575.1 : LA ZONE DE NON-QUANTIFICATION (*Non Quantize* de Cubase), en PART DU PAS : un début (ou une fin) déjà
+    /// à cette distance de sa cible, ou moins, ne bouge pas — le jeu humain gardé près de la grille. 0 = aucune.
+    float nonQuantizeZone = 0.0f;
+    /// D575.2 : LE RAYON DE CAPTURE (*Catch Range*), en part du pas : seul ce qui est à cette distance de sa cible, ou
+    /// moins, est quantifié ; plus loin, la note reste. 0 = tout capturé. La distance est mesurée avant la force.
+    float catchRange = 0.0f;
 };
+
+/// D575.1, D575.2 : vrai si la position `tick` reste où elle est sous la zone et le rayon de `settings`.
+bool quantizeLeavesAlone(midi::Tick tick, const QuantizeSettings& settings, uint16_t ppq);
 
 /// Calcule le tick quantifié pour une position donnée (fonction pure,
 /// réutilisée par quantizeNotes et par le piano roll pour le snapping visuel).

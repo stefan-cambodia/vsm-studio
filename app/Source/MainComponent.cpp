@@ -9554,6 +9554,10 @@ vsm::interchange::ProjectDocument::View MainComponent::vueActuelle() const {
     const auto grille = pianoRoll_.gridResolution();
     vue.pianoRollGridModifier = grille.triplet ? "triplet" : grille.dotted ? "dotted" : "";
     vue.pianoRollSwing = juce::jlimit(0.0, 1.0, static_cast<double>(pianoRoll_.swing()));
+    // D575.1, D575.2 : écrites au-dessus de 0 seulement, ARRONDIES au dix-millième — un flottant élargi écrivait
+    // « 0.10000000149011612 » pour 10 %.
+    vue.quantizeZone = std::round(static_cast<double>(pianoRoll_.zoneNonQuantif()) * 10000.0) / 10000.0;
+    vue.quantizeCatch = std::round(static_cast<double>(pianoRoll_.rayonCapture()) * 10000.0) / 10000.0;
     const auto gamme = pianoRoll_.scale();
     vue.scaleRoot = static_cast<int>(gamme.root);
     vue.scaleType = vsm::sequencer::scaleTypeId(gamme.type);
@@ -9577,6 +9581,9 @@ MainComponent::reprendreGrilleEtGamme(const vsm::interchange::ProjectDocument::V
         vue != nullptr ? vue->scaleRoot : -1,
         vue != nullptr ? vue->scaleType : std::string(),
         vue != nullptr && vue->scaleHighlight, ecartes);
+    // D575.1, D575.2 : la zone et le rayon du morceau, ou les défauts — un morceau n'hérite pas de ceux du précédent.
+    pianoRoll_.setZoneNonQuantif(vue != nullptr && vue->quantizeZone > 0.0 ? static_cast<float>(vue->quantizeZone) : 0.0f);
+    pianoRoll_.setRayonCapture(vue != nullptr && vue->quantizeCatch > 0.0 ? static_cast<float>(vue->quantizeCatch) : 0.0f);
     for (const auto& [champ, valeur] : ecartes)
         std::fputs(("VSM_VUE_IGNOREE : " + champ + " \u00ab " + valeur
                     + " \u00bb \u2014 le d\u00e9faut est repris\n").c_str(), stderr);
@@ -17326,7 +17333,9 @@ juce::String direQuantification(const juce::XmlElement& q) {
     return juce::String::fromUTF8(u8"« ") + q.getStringAttribute("nom") + juce::String::fromUTF8(u8" » : grille ")
            + q.getStringAttribute("grille") + ", modificateur "
            + (q.getStringAttribute("modificateur").isEmpty() ? juce::String("droit") : q.getStringAttribute("modificateur"))
-           + ", swing " + juce::String(q.getDoubleAttribute("swing"), 2);
+           + ", swing " + juce::String(q.getDoubleAttribute("swing"), 2)
+           // D575.1, D575.2 : la zone et le rayon, en part du pas (un préréglage d'avant n'en porte pas : 0, les défauts).
+           + ", zone " + juce::String(q.getDoubleAttribute("zone"), 2) + ", rayon " + juce::String(q.getDoubleAttribute("rayon"), 2);
 }
 } // namespace
 
@@ -17334,8 +17343,8 @@ void MainComponent::enregistrerQuantification() {
     // D570.2 : LES RÉGLAGES DE LA BARRE SOUS UN NOM — un nom déjà pris est remplacé, et c'est dit (la règle de D549.3).
     const juce::String titre = tr(u8"Enregistrer les réglages de quantification");
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        titre, tr(u8"La grille, son modificateur et le swing de la barre du piano roll sont retenus sous ce nom, et se "
-                  u8"rappellent par Édition ▸ Préréglages de quantification."),
+        titre, tr(u8"La grille, son modificateur, le swing, la zone de non-quantification et le rayon de capture sont "
+                  u8"retenus sous ce nom, et se rappellent par Édition ▸ Préréglages de quantification."),
         juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", "", tr(u8"Nom :"));
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
@@ -17362,6 +17371,8 @@ void MainComponent::enregistrerQuantification() {
         q->setAttribute("grille", juce::String(pianoRollPanel_.barre().nomDeLaGrille()));
         q->setAttribute("modificateur", juce::String(pianoRollPanel_.barre().nomDuModificateur()));
         q->setAttribute("swing", pianoRollPanel_.barre().swingTenu());
+        q->setAttribute("zone", static_cast<double>(pianoRoll_.zoneNonQuantif()));    // D575.1
+        q->setAttribute("rayon", static_cast<double>(pianoRoll_.rayonCapture()));     // D575.2
         const juce::String dite = direQuantification(*q);
         rangees->addChildElement(q);
         vsm::app::ui::UiScale::properties().setValue("quantifications", rangees.get());
@@ -17383,6 +17394,8 @@ void MainComponent::rappelerQuantification(int rang) {
     pianoRollPanel_.barre().poserGrilleSeule(q->getStringAttribute("grille").toStdString(),
                                              q->getStringAttribute("modificateur").toStdString(),
                                              q->getDoubleAttribute("swing"), ecartes);
+    pianoRoll_.setZoneNonQuantif(static_cast<float>(q->getDoubleAttribute("zone")));    // D575.1
+    pianoRoll_.setRayonCapture(static_cast<float>(q->getDoubleAttribute("rayon")));     // D575.2
     pianoRollPanel_.refresh();
     std::fputs((juce::String("VSM_QUANTIFICATION : rappel ") + direQuantification(*q)
                 + (ecartes.empty() ? juce::String() : juce::String::fromUTF8(u8" — écarté : ") + juce::String(ecartes.front().second)))

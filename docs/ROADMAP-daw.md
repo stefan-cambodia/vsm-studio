@@ -44246,3 +44246,17 @@ audio, le pré-roll.
 
 **L'ORDRE, TRANCHÉ ICI.** D575.3 (le cœur seul), puis D575.1 et D575.2 (le cœur, `quantizeNotes`, ses tests, puis le
 format de la vue, puis l'application) ; une compilation de l'application, à côté du binaire de la série s'il le faut.
+
+### Phase D575 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D575.1 | la zone de non-quantification | `QuantizeSettings::nonQuantizeZone`, `quantizeLeavesAlone` (la distance à la cible PLEINE, swing compris, avant la force ; une note laissée ne cumule rien, D566.1 ; les fins suivent la règle, mesurée sur la fin) ; `view.quantizeZone` au format, écrit au-dessus de 0 seulement, hors de 0..0,5 écarté et dit (un test) ; le préréglage de quantification la porte ; `tools/zone-quantification.sh`, par le MIDI exporté après *Quantifier (100 %)* : témoin **240 360 480 600**, zone 10 % **243 370 480 600** ; enregistrée puis rouverte sans y toucher : la même ; rappelée d'un préréglage. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D575.2 | le rayon de capture | `QuantizeSettings::catchRange`, la même fonction ; rayon 25 % **240 360 512 650** ; zone 10 % et rayon 40 % **243 370 480 650**, rappelés tels quels du préréglage « Humain » (`zone 0.10, rayon 0.40` au journal). **TENU** | **oui** |
+| D575.3 | l'aléatoire en effet MIDI | l'effet `random`, *Aléatoire* / *Random* : *Cible* (quatre positions), *Min*, *Max*, *Graine* ; l'écart tiré de la graine et de la NOTE (départ, hauteur, canal), jamais de son identifiant (un test : bornes, durée gardée, Min > Max échangés, 0..0, une autre graine, les mêmes notes RENUMÉROTÉES rendent les mêmes positions, une hauteur poussée hors du clavier écartée et comptée) ; `tools/aleatoire-effet-midi.sh`, par le REPORT : −30..+30, graine 7, **15 notes sur 16 déplacées** de −26 à +24 ticks, la durée gardée ; le MÊME tirage dans un second lancement, note pour note ; la graine 8, un autre ; 0..0 rend l'origine ; « Ajouter : Aléatoire » / « Add: Random » | **oui** |
+| — | le témoin | le binaire de D574 : `zone-quantification` **rouge 5 / 6** (le vert : le témoin sans zone) ; `aleatoire-effet-midi` **rouge 4 / 6** (les verts : 0..0 et l'annulation du report). **Le témoin a d'abord trouvé une garde faible** : « le même tirage dans un autre lancement » passait sur l'ancien binaire — deux reports qui ne font rien sont identiques aussi ; il exige désormais un tirage différent de l'origine | **oui** |
+| — | une valeur mal écrite, vue au premier relevé | la vue enregistrait la zone à **0.10000000149011612** (un flottant élargi) : arrondie au dix-millième, elle s'écrit **0.1** | **oui** |
+
+Mesuré pendant la série de D573 (la session verrouillée), le binaire de D575 lié À CÔTÉ (`vsm-d575`, la méthode de
+D567). C++ 533 · 1 349 · 356 · 25 · 11, gardes vertes. Les bancs de D574 et de D575 entrent dans `verifier.sh` après la
+série de D573, qui l'exécute encore.

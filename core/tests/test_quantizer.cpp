@@ -238,3 +238,45 @@ VSM_TEST(freezing_a_quantize_forgets_the_shift_and_moves_nothing) {
     VSM_ASSERT_EQ(notes[0].startTick, static_cast<Tick>(120));
 }
 
+
+// D575.1, D575.2 — LA ZONE DE NON-QUANTIFICATION ET LE RAYON DE CAPTURE, en part du pas. L'attendu écrit avant
+// (ROADMAP-daw, D575), la grille à la double-croche (120 ticks), force 100 % : des notes à 243, 370, 512 et 650 (+3, +10,
+// +32, +50 de leurs cibles). Le témoin 240/360/480/600 ; zone 10 % → 243/370/480/600 ; rayon 25 % → 240/360/512/650 ;
+// les deux (10 %, 40 %) → 243/370/480/650. Une note laissée ne cumule aucun déplacement (D566.1) ; les fins suivent la
+// même règle, mesurée sur la fin.
+VSM_TEST(the_non_quantize_zone_and_the_catch_range_leave_notes_alone) {
+    auto quantifier = [](float zone, float rayon) {
+        std::vector<Note> notes;
+        uint64_t id = 1;
+        for (vsm::midi::Tick d : {243, 370, 512, 650}) notes.push_back({d, d + 60, 0, 60, 100, 64, id++});
+        QuantizeSettings s;
+        s.grid = {NoteValue::Sixteenth, false, false};
+        s.nonQuantizeZone = zone;
+        s.catchRange = rayon;
+        quantizeNotes(notes, s, 480);
+        std::vector<vsm::midi::Tick> debuts;
+        for (const auto& n : notes) debuts.push_back(n.startTick);
+        return std::make_pair(debuts, notes);
+    };
+    using V = std::vector<vsm::midi::Tick>;
+    VSM_ASSERT(quantifier(0.0f, 0.0f).first == (V{240, 360, 480, 600}));
+    VSM_ASSERT(quantifier(0.10f, 0.0f).first == (V{243, 370, 480, 600}));
+    VSM_ASSERT(quantifier(0.0f, 0.25f).first == (V{240, 360, 512, 650}));
+    const auto deux = quantifier(0.10f, 0.40f);
+    VSM_ASSERT(deux.first == (V{243, 370, 480, 650}));
+    VSM_ASSERT_EQ(deux.second[0].quantizeShiftStart, vsm::midi::Tick(0));    // laissée : rien de cumulé
+    VSM_ASSERT_EQ(deux.second[2].quantizeShiftStart, vsm::midi::Tick(-32));
+    // La durée suit le début quand les fins ne se quantifient pas.
+    VSM_ASSERT_EQ(deux.second[2].endTick - deux.second[2].startTick, vsm::midi::Tick(60));
+    // Les fins : 100-245 et 100-290 (fins à +5 et +50 de 240 et 240/360) ; la zone 10 % laisse la première fin.
+    std::vector<Note> fins = {{0, 245, 0, 60, 100, 64, 1}, {0, 290, 0, 62, 100, 64, 2}};
+    QuantizeSettings s;
+    s.grid = {NoteValue::Sixteenth, false, false};
+    s.quantizeNoteStart = false;
+    s.quantizeNoteEnd = true;
+    s.nonQuantizeZone = 0.10f;
+    quantizeNotes(fins, s, 480);
+    VSM_ASSERT_EQ(fins[0].endTick, vsm::midi::Tick(245));
+    VSM_ASSERT_EQ(fins[1].endTick, vsm::midi::Tick(240));
+    VSM_ASSERT(!quantizeLeavesAlone(250, QuantizeSettings{}, 480));   // les défauts : le chemin d'avant
+}

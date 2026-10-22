@@ -158,6 +158,15 @@ public:
     bool snapEnabled() const { return snapEnabled_; }
     void setSwing(float swing);
     float swing() const { return swing_; }
+    /// D575.1, D575.2 : LA ZONE DE NON-QUANTIFICATION et LE RAYON DE CAPTURE, en part du pas (0 : aucune zone, tout
+    /// capturé) — des réglages de quantification, gardés avec la vue du projet comme le swing (D495) et dans les
+    /// préréglages (D570.2). Les menus proposent les valeurs de `kZonesNonQuantif` et `kRayonsCapture`.
+    static constexpr float kZonesNonQuantif[4] = {0.0f, 0.05f, 0.10f, 0.25f};
+    static constexpr float kRayonsCapture[4] = {0.0f, 0.40f, 0.25f, 0.10f};
+    void setZoneNonQuantif(float part);
+    float zoneNonQuantif() const { return zoneNonQuantif_; }
+    void setRayonCapture(float part);
+    float rayonCapture() const { return rayonCapture_; }
     /// D496 : retenue dans les préférences (`onBasculesChanged`, seulement au changement).
     void setDefaultVelocity(uint8_t velocity) {
         if (defaultVelocity_ == velocity) return;
@@ -465,6 +474,8 @@ private:
     vsm::sequencer::GridResolution gridResolution_ { vsm::sequencer::NoteValue::Sixteenth, false, false };
     bool snapEnabled_ = true;
     float swing_ = 0.0f;
+    float zoneNonQuantif_ = 0.0f;   ///< D575.1
+    float rayonCapture_ = 0.0f;     ///< D575.2
     uint8_t defaultVelocity_ = 100;
     vsm::sequencer::Scale scale_ { 0, vsm::sequencer::ScaleType::Chromatic };
     bool scaleHighlight_ = false;

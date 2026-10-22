@@ -1099,6 +1099,11 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             vue.set("pianoRollGridModifier", JsonValue::makeString(document.view.pianoRollGridModifier));
         if (document.view.pianoRollSwing >= 0.0 && document.view.pianoRollSwing <= 1.0)
             vue.set("pianoRollSwing", JsonValue::makeNumber(document.view.pianoRollSwing));
+        // D575.1, D575.2 : hors du défaut seulement — un projet d'avant se réécrit octet pour octet.
+        if (document.view.quantizeZone > 0.0 && document.view.quantizeZone <= 0.5)
+            vue.set("quantizeZone", JsonValue::makeNumber(document.view.quantizeZone));
+        if (document.view.quantizeCatch > 0.0 && document.view.quantizeCatch <= 0.5)
+            vue.set("quantizeCatch", JsonValue::makeNumber(document.view.quantizeCatch));
         if (document.view.scaleRoot >= 0 && document.view.scaleRoot <= 11) {
             JsonValue gamme = JsonValue::makeObject();
             gamme.set("root", JsonValue::makeNumber(document.view.scaleRoot));
@@ -1474,6 +1479,13 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             if (vue["pianoRollSwing"].isNumber() && swing >= 0.0 && swing <= 1.0)
                 document.view.pianoRollSwing = swing;
             else ecarter("pianoRollSwing", vue["pianoRollSwing"]);
+        }
+        for (const auto& [cle, champ] : {std::pair<const char*, double*>{"quantizeZone", &document.view.quantizeZone},
+                                         {"quantizeCatch", &document.view.quantizeCatch}}) {   // D575.1, D575.2
+            if (!vue.has(cle)) continue;
+            const double part = vue[cle].asNumber(-1.0);
+            if (vue[cle].isNumber() && part >= 0.0 && part <= 0.5) *champ = part;
+            else ecarter(cle, vue[cle]);
         }
         if (vue.has("scale")) {
             const JsonValue& gamme = vue["scale"];

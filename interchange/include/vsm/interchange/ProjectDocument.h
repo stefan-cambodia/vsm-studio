@@ -475,6 +475,10 @@ struct ProjectDocument {
         std::string pianoRollGridModifier;
         /// 0..1 ; -1 = rien d'enregistré.
         double pianoRollSwing = -1.0;
+        /// D575.1, D575.2 : la zone de non-quantification et le rayon de capture, en part du pas (0..0,5) ; écrits
+        /// seulement au-dessus de 0 (le défaut : aucune zone, tout capturé) ; -1 = rien d'enregistré.
+        double quantizeZone = -1.0;
+        double quantizeCatch = -1.0;
         /// La tonique, 0 (do) à 11 ; -1 = pas de gamme enregistrée (et alors ni
         /// type ni surlignage ne sont lus).
         int scaleRoot = -1;
@@ -493,7 +497,8 @@ struct ProjectDocument {
             return pixelsPerTick > 0.0 || selectedTrack >= 0
                    || pianoRollPixelsPerTick > 0.0 || pianoRollTopNote > 0
                    || !automationParameter.empty() || midiCcController >= 0    // D467
-                   || !pianoRollGrid.empty() || pianoRollSwing >= 0.0 || scaleRoot >= 0;   // D495
+                   || !pianoRollGrid.empty() || pianoRollSwing >= 0.0 || scaleRoot >= 0   // D495
+                   || quantizeZone > 0.0 || quantizeCatch > 0.0;   // D575.1, D575.2
         }
     };
     View view;

@@ -300,3 +300,49 @@ VSM_TEST(the_range_effect_limits_or_filters_and_counts_what_it_drops) {
     VSM_ASSERT(velocites(plage(2, 0, 0)) == (std::vector<int>{1, 1, 1}));
     VSM_ASSERT_EQ(midiEffectDisplayName("range"), std::string("Plage"));
 }
+
+// D575.3 — L'ALÉATOIRE EN EFFET MIDI (*Random*). L'attendu écrit avant (ROADMAP-daw, D575) : *Position* −30..+30 sur
+// seize notes — tous les départs dans ±30 de l'origine, au moins un qui bouge, le MÊME tirage à chaque passe ; 0..0 rend
+// les notes d'origine ; une autre graine, un autre tirage. ET LE TIRAGE NE DÉPEND PAS DES IDENTIFIANTS, que le chargement
+// redonne : les mêmes notes renumérotées rendent les mêmes positions. Une hauteur poussée hors du clavier est écartée et
+// comptée ; Min > Max s'échangent.
+VSM_TEST(the_random_effect_is_bounded_reproducible_and_blind_to_note_ids) {
+    std::vector<Note> seize;
+    for (int i = 0; i < 16; ++i)
+        seize.push_back({static_cast<Tick>(480 * i + 240), static_cast<Tick>(480 * i + 480), 0,
+                         static_cast<uint8_t>(60 + i % 5), 100, 64, static_cast<uint64_t>(i + 1)});
+    auto debuts = [](const std::vector<Note>& n) {
+        std::vector<Tick> d;
+        for (const auto& x : n) d.push_back(x.startTick);
+        return d;
+    };
+    auto tirer = [&](const std::vector<Note>& n, float mini, float maxi, float graine, float cible = 0.0f,
+                     MidiEffectReport* r = nullptr) {
+        return applyMidiEffects({fait("random", {{"Cible", cible}, {"Min", mini}, {"Max", maxi}, {"Graine", graine}})},
+                                n, 480, r);
+    };
+    const auto a = tirer(seize, -30, 30, 7);
+    size_t bougees = 0;
+    for (size_t i = 0; i < seize.size(); ++i) {
+        const Tick e = a[i].startTick - seize[i].startTick;
+        VSM_ASSERT(e >= -30 && e <= 30);
+        VSM_ASSERT_EQ(a[i].endTick - a[i].startTick, Tick(240));   // la durée gardée
+        if (e != 0) ++bougees;
+    }
+    VSM_ASSERT(bougees > 0);
+    VSM_ASSERT(debuts(tirer(seize, -30, 30, 7)) == debuts(a));          // la même passe, le même tirage
+    VSM_ASSERT(debuts(tirer(seize, 30, -30, 7)) == debuts(a));          // Min > Max s'échangent
+    VSM_ASSERT(debuts(tirer(seize, 0, 0, 7)) == debuts(seize));         // le témoin
+    VSM_ASSERT(debuts(tirer(seize, -30, 30, 8)) != debuts(a));          // une autre graine
+    auto renumerotees = seize;
+    for (auto& n : renumerotees) n.id += 1000;
+    VSM_ASSERT(debuts(tirer(renumerotees, -30, 30, 7)) == debuts(a));   // aveugle aux identifiants
+    // La hauteur : +48 sur un do 60 sort pour certaines ; écartées, comptées.
+    MidiEffectReport r;
+    const auto hautes = tirer(seize, 48, 48, 1, 1.0f, &r);
+    VSM_ASSERT_EQ(hautes.size(), seize.size());                         // 60..64 + 48 = 108..112 : dans le clavier
+    const auto tropHautes = tirer({Note{0, 240, 0, 100, 100, 64, 1}}, 48, 48, 1, 1.0f, &r);
+    VSM_ASSERT(tropHautes.empty());
+    VSM_ASSERT_EQ(r.droppedOutOfRange, size_t(1));
+    VSM_ASSERT_EQ(midiEffectDisplayName("random"), std::string("Aléatoire"));
+}

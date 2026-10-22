@@ -1886,6 +1886,35 @@ VSM_TEST(an_absurd_swing_or_scale_is_set_aside_and_said) {
     VSM_ASSERT(reecrit.find("\"scale\"") == std::string::npos);
 }
 
+// D575.1, D575.2 : LA ZONE DE NON-QUANTIFICATION ET LE RAYON DE CAPTURE voyagent avec la vue, comme le swing ; écrits
+// au-dessus de 0 seulement ; hors de 0..0,5, ÉCARTÉS ET CONSIGNÉS.
+VSM_TEST(the_quantize_zone_and_catch_range_travel_with_the_view) {
+    ProjectDocument document = documentFromProject(buildProject());
+    document.view.quantizeZone = 0.1;
+    document.view.quantizeCatch = 0.25;
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_NEAR(relu.document.view.quantizeZone, 0.1, 1e-9);
+    VSM_ASSERT_NEAR(relu.document.view.quantizeCatch, 0.25, 1e-9);
+    VSM_ASSERT(relu.document.view.ecartes.empty());
+    // les défauts (0) ne s'écrivent pas
+    document.view.quantizeZone = 0.0;
+    document.view.quantizeCatch = 0.0;
+    const std::string nu = projectDocumentToJson(document).toString();
+    VSM_ASSERT(nu.find("quantizeZone") == std::string::npos);
+    VSM_ASSERT(nu.find("quantizeCatch") == std::string::npos);
+    // hors bornes : écarté, dit
+    JsonValue json = projectDocumentToJson(documentFromProject(buildProject()));
+    JsonValue vue = json["view"].isObject() ? json["view"] : JsonValue::makeObject();
+    vue.set("quantizeZone", JsonValue::makeNumber(0.9));
+    json.set("view", std::move(vue));
+    const ProjectLoadResult lu = parseProjectDocument(json.toString());
+    VSM_ASSERT(lu.success);
+    VSM_ASSERT(lu.document.view.quantizeZone == -1.0);
+    VSM_ASSERT_EQ(lu.document.view.ecartes.size(), size_t{1});
+    VSM_ASSERT(lu.document.view.ecartes[0].first == "quantizeZone");
+}
+
 // D503 : LE CLIC EST UNE DONNÉE DE MORCEAU, écrite seulement allumée.
 VSM_TEST(the_metronome_switch_travels_with_the_project) {
     auto projet = buildProject();

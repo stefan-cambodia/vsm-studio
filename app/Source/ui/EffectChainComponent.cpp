@@ -557,7 +557,9 @@ void EffectChainComponent::rebuildParamControls() {
                                  || std::string(info.name) == "Division"
                                  || std::string(info.name) == "Offset"
                                  || std::string(info.name) == "Min"    // D574.3 : une hauteur, une vélocité
-                                 || std::string(info.name) == "Max";
+                                 || std::string(info.name) == "Max"
+                                 || std::string(info.name) == "Cible"   // D575.3
+                                 || std::string(info.name) == "Graine";
             pc.slider->setRange(info.minValue, info.maxValue,
                                  entier ? 1.0 : (info.maxValue - info.minValue) / 1000.0);
             const auto it = effet.parameters.find(info.name);

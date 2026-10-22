@@ -45,13 +45,29 @@ midi::Tick quantizeTick(midi::Tick tick, const QuantizeSettings& settings, uint1
     return static_cast<midi::Tick>(std::llround(blended));
 }
 
+bool quantizeLeavesAlone(midi::Tick tick, const QuantizeSettings& settings, uint16_t ppq) {
+    if (settings.nonQuantizeZone <= 0.0f && settings.catchRange <= 0.0f) return false;   // le chemin d'avant
+    const midi::Tick pas = gridResolutionToTicks(settings.grid, ppq);
+    if (pas <= 0) return false;
+    // LA CIBLE PLEINE, swing compris, la force mise à part : la distance dit où est la note, pas où elle irait.
+    QuantizeSettings plein = settings;
+    plein.strength = 1.0f;
+    const double ecart = std::abs(static_cast<double>(quantizeTick(tick, plein, ppq) - tick));
+    if (settings.nonQuantizeZone > 0.0f && ecart <= settings.nonQuantizeZone * static_cast<double>(pas)) return true;
+    if (settings.catchRange > 0.0f && ecart > settings.catchRange * static_cast<double>(pas)) return true;
+    return false;
+}
+
 void quantizeNotes(std::vector<Note>& notes, const QuantizeSettings& settings, uint16_t ppq) {
     for (auto& note : notes) {
         midi::Tick duration = note.durationTicks();
         const midi::Tick debutAvant = note.startTick, finAvant = note.endTick;   // D566.1
-        if (settings.quantizeNoteStart)
+        // D575.1, D575.2 : la zone et le rayon laissent la note où elle est — son début, sa fin, chacun pour soi.
+        if (settings.quantizeNoteStart && !quantizeLeavesAlone(note.startTick, settings, ppq))
             note.startTick = quantizeTick(note.startTick, settings, ppq);
-        if (settings.quantizeNoteEnd) {
+        if (settings.quantizeNoteEnd && quantizeLeavesAlone(finAvant, settings, ppq)) {
+            note.endTick = finAvant;
+        } else if (settings.quantizeNoteEnd) {
             note.endTick = quantizeTick(note.endTick, settings, ppq);
             // H22 (D557.1) : UNE FIN QUI TOMBE SUR OU AVANT LE DÉBUT VA À LA PREMIÈRE LIGNE APRÈS LUI. Le rattrapage
             // d'un tick ci-dessous réduisait une note plus courte qu'une demi-case à une milliseconde : 100-150 sur
