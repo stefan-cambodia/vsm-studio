@@ -44197,3 +44197,52 @@ Mesuré pendant la série de D573 (la session verrouillée), le binaire de D574 
 **Les deux bancs neufs entrent dans `verifier.sh` APRÈS la série de D573**, qui l'exécute en ce moment : bash relit son
 script par décalage d'octets, et une ligne insérée sous lui ferait lire au lanceur la mauvaise suite (la règle de la
 mémoire du poste : ne jamais modifier un script pendant qu'il tourne).
+
+### Phase D575 — un trente-sixième audit : la zone de non-quantification, le rayon de capture, l'aléatoire en effet MIDI (23/10/2026)
+
+*Écrite le 23/10 à 05 h 06, D574 close et poussée, pendant la série de D573 (la session verrouillée, batterie à 78 %).*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (témoins `snapNotesToChords` 5, `VCA` 36, `Contraindre` 4). Le panneau
+de quantification de Cubase (*Non Quantize*, *Catch Range*) et le modificateur *Random* de ses *MIDI Modifiers* : **0 pour
+une zone de non-quantification** — `QuantizeSettings` porte la grille, la force, le swing, les débuts et les fins, rien
+d'autre, et `quantizeNotes` déplace TOUTE note vers sa cible (à la force près) ; `nonQuantize`, « non-quantification » :
+rien ; **0 pour un rayon de capture** — la même lecture : aucune note n'est laissée pour être trop loin de la grille ;
+`catchRange`, « rayon de capture » : rien ; **0 pour un aléatoire en effet MIDI** — `midiEffectTypes()` rend
+transposition, vélocité, arpégiateur, durée, plage (D574.3) ; l'aléatoire existe en ÉCRIVANT (*Humaniser*,
+`humanizeNotes`), jamais à la lecture. **Trouvé et écarté** : un ordre de jeu des clips superposés (*To
+Front*, *To Back*) — deux clips superposés se croisent par un fondu (D34.1), aucun ne masque l'autre : le geste n'a pas
+d'objet ici ; une réserve des fichiers (*Pool*) — 0, mais le nettoyage du dossier (D564.1) en tient le geste utile ;
+remise. **Toujours remis** : le mode d'automation *Trim*, les repères à étendue, le moniteur MIDI, le pré-enregistrement
+audio, le pré-roll.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D575.1 | **La zone de non-quantification** — *Quantize Panel ▸ Non Quantize* | *Édition ▸ Temps et durée ▸ Zone de non-quantification ▸ Aucune / 5 % / 10 % / 25 % du pas* (cochée la courante) : une note dont le début est déjà à moins de cette part du pas de SA cible n'est pas déplacée — le jeu humain gardé près de la grille ; gardée avec la vue du projet comme le swing (D495), et dans les préréglages de quantification (D570.2) ; mesuré par le projet relu après *Quantifier*, le témoin sans zone à côté |
+| D575.2 | **Le rayon de capture** — *Quantize Panel ▸ Catch Range* | *Édition ▸ Temps et durée ▸ Rayon de capture ▸ Tout / 40 % / 25 % / 10 % du pas* : seule une note à moins de cette part du pas de sa cible est quantifiée ; les autres restent ; la même mémoire ; mesuré pareil |
+| D575.3 | **L'aléatoire en effet MIDI** — *MIDI Modifiers ▸ Random* | Un sixième effet MIDI, *Aléatoire* (*Random*) : *Cible* (Position, Hauteur, Vélocité, Durée), *Min*, *Max*, *Graine* ; chaque note jouée reçoit un écart tiré entre Min et Max, le MÊME à chaque lecture et à chaque export ; ce qui sortirait du clavier est écarté et compté ; mesuré par le projet relu après le report (D31.5) — deux reports dans deux lancements rendent les mêmes notes —, le témoin à 0-0 à côté, et par un test du cœur |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D575.1 et D575.2.** Des réglages de QUANTIFICATION, rangés là où vit le swing : la vue du projet (`View`, écrits
+  seulement hors du défaut) et les préréglages de quantification du poste. **En part du PAS**, et non en ticks comme
+  Cubase (qui les compte à 480 la noire) : la même zone doit vouloir dire la même chose à la double-croche et à la noire,
+  et dans un projet à une autre résolution. La distance est celle du début de la note à SA cible (`quantizeTick`, swing
+  compris), avant la force. La zone laisse ce qui est PRÈS (≤), le rayon laisse ce qui est LOIN (>) ; les deux se
+  combinent — une note entre les deux est quantifiée. Une note laissée ne cumule aucun déplacement (D566.1) : *Annuler la
+  quantification* ne la touche pas. La quantification des FINS (D557.1) suit la même règle, mesurée sur la fin.
+  Les défauts (aucune zone, tout capturé) sont le chemin d'avant, et un projet d'avant s'ouvre ainsi.
+  **L'attendu, écrit avant la mesure** (la grille à la double-croche, 120 ticks, force 100 %) : des notes à 243, 370,
+  512 et 650 (+3, +10, +32, +50 de leurs cibles 240, 360, 480, 600). Le témoin : **240, 360, 480, 600** ; zone 10 %
+  (12 ticks) : **243, 370, 480, 600** ; rayon 25 % (30 ticks) : **240, 360, 512, 650** ; zone 10 % et rayon 40 %
+  (48 ticks) : **243, 370, 480, 650**.
+- **D575.3.** Un effet, pas une édition. **L'ÉCART D'UNE NOTE SE TIRE DE SA GRAINE ET DE CE QU'ELLE EST** — son départ, sa
+  hauteur, son canal —, PAS de son identifiant : les identifiants se redonnent au chargement (`Note::id`), et un tirage
+  qui en dépendrait changerait le son d'un morceau rouvert. Deux notes identiques reçoivent le même écart, ce qui est
+  juste. *Position* : le départ décalé, la durée gardée, borné à 0 ; *Hauteur* : en demi-tons, hors de 0..127 écartée et
+  comptée (la règle de D17.5) ; *Vélocité* : bornée à 1..127 ; *Durée* : un tick au moins. Min et Max de −240 à 240,
+  bornés selon la cible (±127 pour une vélocité, ±48 demi-tons) ; Min > Max s'échangent (un tirage entre deux bornes n'a
+  pas de sens). **L'attendu, écrit avant la mesure** : *Position* −30..+30 sur seize notes : tous les départs dans ±30 de
+  l'origine, au moins un qui bouge, et DEUX reports dans DEUX lancements identiques note pour note ; 0..0 rend les
+  notes d'origine ; une autre graine rend un autre tirage.
+
+**L'ORDRE, TRANCHÉ ICI.** D575.3 (le cœur seul), puis D575.1 et D575.2 (le cœur, `quantizeNotes`, ses tests, puis le
+format de la vue, puis l'application) ; une compilation de l'application, à côté du binaire de la série s'il le faut.
