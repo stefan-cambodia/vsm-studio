@@ -1175,6 +1175,8 @@ private:
         kMenuNavMarkerFirst,
         kMenuNavMarkerLast = kMenuNavMarkerFirst + 8,
         kMenuTrackMemo,
+        /// D566.3 : lier les tranches choisies.
+        kMenuMixLinkChosen,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1699,6 +1701,12 @@ private:
     /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la position d'où la lecture est
     /// partie, et l'état précédent du transport pour voir la transition.
     bool retourAuDepart_ = false;
+    /// D566.3 : LIER LES TRANCHES CHOISIES (*Q-Link*) — une bascule du poste de travail, retenue dans les préférences ;
+    /// et le geste lié en cours, relevé à son début (`beginLinkedMix`), inactif hors du choix ou bascule ôtée.
+    bool lierLesTranches_ = false;
+    vsm::sequencer::LinkedMixGesture lienDesTranches_;
+    void debuterLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
+    void suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     bool etaitEnLecture_ = false;
     vsm::midi::Tick departLecture_ = 0;
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +

@@ -1,5 +1,6 @@
 #include "vsm/sequencer/MixSnapshot.h"
 #include <algorithm>
+#include <cmath>
 #include <functional>
 
 namespace vsm::sequencer {
@@ -237,6 +238,58 @@ bool applyChannelSettings(Track& track, const ChannelSettings& s) {
     track.sendLevels = s.sendLevels;
     track.effects = s.effects;
     return true;
+}
+
+float linkedVolumeDb(float gain) {
+    if (!(gain > 0.0f)) return -60.0f;
+    return std::clamp(20.0f * std::log10(gain), -60.0f, 6.0f);
+}
+
+namespace {
+/// Une piste peut-elle suivre ce paramètre ? Un dossier n'a pas de fader, un VCA pas de panoramique.
+bool peutSuivre(const Track& t, LinkedMixParam param) {
+    if (t.isFolder()) return false;
+    return param == LinkedMixParam::Volume || !t.isVca();
+}
+float valeurLiee(const Track& t, LinkedMixParam param) {
+    return param == LinkedMixParam::Volume ? linkedVolumeDb(t.volume) : t.pan;
+}
+} // namespace
+
+LinkedMixGesture beginLinkedMix(const Project& project, LinkedMixParam param, size_t touched,
+                                const std::set<size_t>& selection) {
+    LinkedMixGesture g;
+    g.param = param;
+    g.touched = touched;
+    if (touched >= project.tracks.size() || selection.count(touched) == 0) return g;   // hors du choix : seule
+    g.touchedStart = valeurLiee(project.tracks[touched], param);
+    for (size_t i : selection)
+        if (i != touched && i < project.tracks.size() && peutSuivre(project.tracks[i], param))
+            g.followers.push_back({i, valeurLiee(project.tracks[i], param),
+                                   param == LinkedMixParam::Volume ? project.tracks[i].volume : project.tracks[i].pan});
+    return g;
+}
+
+size_t applyLinkedMix(Project& project, const LinkedMixGesture& g) {
+    if (!g.active() || g.touched >= project.tracks.size()) return 0;
+    const float ecart = valeurLiee(project.tracks[g.touched], g.param) - g.touchedStart;
+    size_t bouge = 0;
+    for (const auto& f : g.followers) {
+        if (f.track >= project.tracks.size()) continue;
+        auto& t = project.tracks[f.track];
+        float& cible = g.param == LinkedMixParam::Volume ? t.volume : t.pan;
+        float valeur = f.raw;   // le geste revenu à son départ rend la valeur exacte, sans aller-retour par les dB
+        if (ecart != 0.0f) {
+            if (g.param == LinkedMixParam::Volume) {
+                const float db = std::clamp(f.start + ecart, -60.0f, 6.0f);
+                valeur = db <= -60.0f ? 0.0f : std::pow(10.0f, db / 20.0f);
+            } else {
+                valeur = std::clamp(f.start + ecart, -1.0f, 1.0f);
+            }
+        }
+        if (valeur != cible) { cible = valeur; ++bouge; }
+    }
+    return bouge;
 }
 
 } // namespace vsm::sequencer

@@ -86,4 +86,30 @@ bool channelSettingsWouldChange(const Track& track, const ChannelSettings& setti
 /// Pose les réglages ; rend vrai si quelque chose a changé.
 bool applyChannelSettings(Track& track, const ChannelSettings& settings);
 
+/// D566.3 — LIER LES TRANCHES CHOISIES (*Q-Link* de Cubase) : le volume ou le panoramique d'une piste choisie entraîne
+/// ceux des autres pistes choisies du MÊME ÉCART — en dB pour le volume (le silence compte pour −60 dB, le bas du fader,
+/// et le résultat est borné à −60…+6 dB), en valeur pour le panoramique (borné à ±1). L'écart se compte depuis le DÉBUT
+/// du geste : `beginLinkedMix` relève les valeurs de départ, `applyLinkedMix` les relit à chaque cran — une tranche
+/// bornée en route retrouve son écart si le geste revient. Un dossier ne suit rien (il n'a pas de fader) ; un VCA suit
+/// le volume, pas le panoramique (il n'en a pas). Une piste touchée HORS du choix bouge seule : le geste est inactif.
+enum class LinkedMixParam { Volume, Pan };
+struct LinkedMixGesture {
+    LinkedMixParam param = LinkedMixParam::Volume;
+    size_t touched = 0;
+    float touchedStart = 0.0f;                     ///< la valeur de départ de la piste touchée (dB ou panoramique)
+    struct Follower {
+        size_t track = 0;
+        float start = 0.0f;   ///< la valeur de départ comptée (dB ou panoramique)
+        float raw = 0.0f;     ///< la valeur de départ telle quelle (gain ou panoramique) : un geste revenu à zéro la rend
+    };
+    std::vector<Follower> followers;   ///< les autres pistes choisies
+    bool active() const { return !followers.empty(); }
+};
+/// Le volume en dB tel que le lien le compte : le silence et tout ce qui est sous −60 dB valent −60, le haut +6.
+float linkedVolumeDb(float gain);
+LinkedMixGesture beginLinkedMix(const Project& project, LinkedMixParam param, size_t touched,
+                                const std::set<size_t>& selection);
+/// Écrit chaque piste qui suit depuis l'écart ACTUEL de la piste touchée ; rend le nombre de pistes qui ont bougé.
+size_t applyLinkedMix(Project& project, const LinkedMixGesture& gesture);
+
 } // namespace vsm::sequencer

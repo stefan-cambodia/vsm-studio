@@ -236,15 +236,21 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     volumeSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     volumeSlider_.setName("pistes.volume");   // D135 : le nom par lequel le banc le désigne (appuyer:)
     volumeSlider_.textFromValueFunction = [](double v) { return vsm::app::ui::texteDecibels(v); };   // D135
-    volumeSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition("Volume"); };
+    volumeSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition("Volume");
+        if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Volume);   // D566.3
+    };
     volumeSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
     volumeSlider_.onValueChange = [this] {
         // UN PAS PAR GESTE, PAS UN PAR PIXEL. Le glissé a déjà signalé à son
         // départ ; ce qui reste ici est la molette, le clavier et la saisie,
         // que `onDragStart` ne voit jamais -- et qui, sans cette ligne,
         // resteraient inannulables tout en ayant l'air couvertes.
-        if (!glisseEnCours_) debutEdition("Volume");
+        if (!glisseEnCours_) {
+            debutEdition("Volume");
+            if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Volume);   // D566.3
+        }
         track_.volume = static_cast<float>(volumeSlider_.getValue());
+        if (onLinkFollow) onLinkFollow(index_, vsm::sequencer::LinkedMixParam::Volume);
         if (onChanged) onChanged();
     };
 
@@ -257,11 +263,17 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     panSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     panSlider_.setName("pistes.pan");   // D135 : le nom par lequel le banc le désigne (appuyer:)
     panSlider_.textFromValueFunction = [](double v) { return vsm::app::ui::textePanoramique(v); };   // D135
-    panSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition(u8"Panoramique"); };
+    panSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition(u8"Panoramique");
+        if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Pan);   // D566.3
+    };
     panSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
     panSlider_.onValueChange = [this] {
-        if (!glisseEnCours_) debutEdition(u8"Panoramique");
+        if (!glisseEnCours_) {
+            debutEdition(u8"Panoramique");
+            if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Pan);   // D566.3
+        }
         track_.pan = static_cast<float>(panSlider_.getValue());
+        if (onLinkFollow) onLinkFollow(index_, vsm::sequencer::LinkedMixParam::Pan);
         if (onChanged) onChanged();
     };
 
@@ -800,6 +812,8 @@ void TrackListComponent::loadProject(Project& project) {
             if (onEditStarted) onEditStarted(libelle);
         };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
+        row->onLinkStart = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkStart) onLinkStart(i, q); };
+        row->onLinkFollow = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkFollow) onLinkFollow(i, q); };
         row->onRenamed = [this] { if (onRenamed) onRenamed(); };
         row->onGesteMuet = [this](size_t i) { basculerMuet(i); };
         row->onGesteSolo = [this](size_t i) { basculerSolo(i); };
@@ -847,6 +861,11 @@ void TrackListComponent::refreshMuteSolo() {
 
 void TrackListComponent::refreshMix() {
     for (auto* row : rows_) row->refreshMix();
+}
+
+void TrackListComponent::refreshMix(const std::set<size_t>& seules) {
+    for (size_t i : seules)
+        if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->refreshMix();
 }
 
 void TrackListComponent::refreshFromTracks() {

@@ -1,6 +1,7 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/MixSnapshot.h"
 #include "vsm/sequencer/Project.h"
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -260,4 +261,91 @@ VSM_TEST(resetting_chosen_strips_leaves_the_others_alone) {
     VSM_ASSERT_NEAR(p.tracks[1].inputTrimDb, 2.0f, 1e-6);
     VSM_ASSERT_EQ(countTracksToReset(p, {0, 2}), size_t(0));
     VSM_ASSERT_EQ(resetConsole(p), size_t(1));                        // la console entière : la dernière
+}
+
+// D566.3 — LIER LES TRANCHES CHOISIES : le même écart, en dB pour le volume, compté depuis le début du geste.
+namespace {
+float gainDe(float db) { return std::pow(10.0f, db / 20.0f); }
+float dbDe(float gain) { return 20.0f * std::log10(gain); }
+} // namespace
+
+VSM_TEST(linked_volume_follows_by_the_same_decibels_from_the_gesture_start) {
+    Project p;
+    p.tracks.resize(4);
+    p.tracks[0].volume = 1.0f;            // 0 dB, la piste touchée
+    p.tracks[1].volume = gainDe(-6.0f);
+    p.tracks[2].volume = gainDe(-50.0f);
+    p.tracks[3].volume = 0.5f;            // hors du choix
+    const auto g = beginLinkedMix(p, LinkedMixParam::Volume, 0, {0, 1, 2});
+    VSM_ASSERT(g.active());
+    VSM_ASSERT_EQ(g.followers.size(), size_t(2));
+
+    p.tracks[0].volume = gainDe(3.0f);
+    VSM_ASSERT_EQ(applyLinkedMix(p, g), size_t(2));
+    VSM_ASSERT_NEAR(dbDe(p.tracks[1].volume), -3.0f, 1e-3);
+    VSM_ASSERT_NEAR(dbDe(p.tracks[2].volume), -47.0f, 1e-3);
+    VSM_ASSERT_NEAR(p.tracks[3].volume, 0.5f, 1e-9);            // hors du choix : rien
+
+    // Borné en route : −50 − 20 tombe sous −60, c'est le silence…
+    p.tracks[0].volume = gainDe(-20.0f);
+    applyLinkedMix(p, g);
+    VSM_ASSERT_NEAR(dbDe(p.tracks[1].volume), -26.0f, 1e-3);
+    VSM_ASSERT_EQ(p.tracks[2].volume, 0.0f);
+    // … et le geste qui revient lui rend son écart, compté depuis le DÉBUT et non depuis la borne.
+    p.tracks[0].volume = gainDe(-5.0f);
+    applyLinkedMix(p, g);
+    VSM_ASSERT_NEAR(dbDe(p.tracks[2].volume), -55.0f, 1e-3);
+    // Revenu au départ : les valeurs exactes, sans aller-retour par les dB.
+    p.tracks[0].volume = 1.0f;
+    applyLinkedMix(p, g);
+    VSM_ASSERT_EQ(p.tracks[1].volume, gainDe(-6.0f));
+    VSM_ASSERT_EQ(p.tracks[2].volume, gainDe(-50.0f));
+    VSM_ASSERT_EQ(applyLinkedMix(p, g), size_t(0));             // rien de plus à écrire
+}
+
+VSM_TEST(linked_volume_counts_silence_as_minus_sixty_and_stops_at_plus_six) {
+    Project p;
+    p.tracks.resize(3);
+    p.tracks[0].volume = gainDe(-10.0f);
+    p.tracks[1].volume = 0.0f;            // le silence, le bas du fader
+    p.tracks[2].volume = gainDe(4.0f);
+    VSM_ASSERT_NEAR(linkedVolumeDb(0.0f), -60.0f, 1e-9);
+    VSM_ASSERT_NEAR(linkedVolumeDb(gainDe(-80.0f)), -60.0f, 1e-6);
+    const auto g = beginLinkedMix(p, LinkedMixParam::Volume, 0, {0, 1, 2});
+    p.tracks[0].volume = gainDe(-4.0f);   // +6 dB
+    applyLinkedMix(p, g);
+    VSM_ASSERT_NEAR(dbDe(p.tracks[1].volume), -54.0f, 1e-3);
+    VSM_ASSERT_NEAR(dbDe(p.tracks[2].volume), 6.0f, 1e-3);      // +10 borné à +6
+}
+
+VSM_TEST(linked_pan_follows_by_value_and_skips_what_has_no_pan) {
+    Project p;
+    p.tracks.resize(5);
+    p.tracks[1].pan = -0.5f;
+    p.tracks[2].pan = 0.8f;
+    p.tracks[3].kind = Track::Kind::Vca;      // un VCA : pas de panoramique, mais un volume
+    p.tracks[4].kind = Track::Kind::Folder;   // un dossier : ni l'un ni l'autre
+    const auto g = beginLinkedMix(p, LinkedMixParam::Pan, 0, {0, 1, 2, 3, 4});
+    VSM_ASSERT_EQ(g.followers.size(), size_t(2));
+    p.tracks[0].pan = 0.3f;
+    VSM_ASSERT_EQ(applyLinkedMix(p, g), size_t(2));
+    VSM_ASSERT_NEAR(p.tracks[1].pan, -0.2f, 1e-6);
+    VSM_ASSERT_NEAR(p.tracks[2].pan, 1.0f, 1e-9);               // borné à +1
+    VSM_ASSERT_EQ(p.tracks[3].pan, 0.0f);
+    p.tracks[0].pan = 0.0f;
+    applyLinkedMix(p, g);
+    VSM_ASSERT_EQ(p.tracks[2].pan, 0.8f);                        // le geste revenu : l'écart retrouvé
+    const auto v = beginLinkedMix(p, LinkedMixParam::Volume, 0, {0, 1, 2, 3, 4});
+    VSM_ASSERT_EQ(v.followers.size(), size_t(3));                // le VCA suit le volume, pas le dossier
+}
+
+VSM_TEST(a_track_touched_outside_the_selection_moves_alone) {
+    Project p;
+    p.tracks.resize(3);
+    const auto g = beginLinkedMix(p, LinkedMixParam::Volume, 2, {0, 1});
+    VSM_ASSERT(!g.active());
+    p.tracks[2].volume = 0.25f;
+    VSM_ASSERT_EQ(applyLinkedMix(p, g), size_t(0));
+    VSM_ASSERT_EQ(p.tracks[0].volume, 1.0f);
+    VSM_ASSERT(!beginLinkedMix(p, LinkedMixParam::Volume, 0, {0}).active());   // seule choisie : rien à lier
 }

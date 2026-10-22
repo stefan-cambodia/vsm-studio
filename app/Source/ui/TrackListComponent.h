@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/MixSnapshot.h"
 #include "BulleDeValeur.h"
 #include <functional>
 #include <set>
@@ -61,6 +62,10 @@ public:
     /// trois cents fois pour un mouvement de curseur serait insupportable.
     std::function<void()> onRenamed;
     std::function<void()> onChanged; // mute/solo/volume/pan modifiés -> reconstruire le scheduler
+    /// D566.3 : le geste de volume ou de panoramique COMMENCE (avant d'écrire la piste), puis vient d'écrire — le lien
+    /// des tranches choisies, que la liste fait suivre à l'application comme la tranche du mixeur.
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkStart;
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkFollow;
     /// L'armement a changé. SÉPARÉ de `onChanged` : armer ne touche ni au
     /// planning de lecture ni au mixage, et republier le projet au moteur pour
     /// un bouton d'armement couperait le son à chaque clic.
@@ -333,6 +338,10 @@ public:
     /// Séparé de `refreshFromTracks` parce qu'un glissé de fader l'appelle à
     /// chaque pixel : relire aussi les noms y serait du travail pour rien.
     void refreshMix();
+    /// D566.3 : les seules lignes de ces pistes — celles qu'un geste LIÉ vient d'entraîner.
+    void refreshMix(const std::set<size_t>& seules);
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkStart;    ///< D566.3
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkFollow;   ///< D566.3
 
     /// Sélectionne une piste par index (met à jour l'état visuel et notifie
     /// via onTrackSelected). Sans effet si l'index est hors bornes.

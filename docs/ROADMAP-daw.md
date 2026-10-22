@@ -43484,3 +43484,50 @@ ensuite avec le projet (D363) ; un fichier importé ensuite reste hors de l'écr
 (D566.4), le banc la contourne en retirant la vue enregistrée.
 
 C++ 513 · 1 344 · 343 · 25 · 11.
+
+### Phase D566.3 — lier les tranches choisies (22/10/2026) — FAITE
+
+`LinkedMixGesture`, `beginLinkedMix`, `applyLinkedMix`, `linkedVolumeDb` (`MixSnapshot.h`) : le geste relève au DÉBUT
+la valeur de la piste touchée et celles des autres pistes choisies (en dB pour le volume, le silence à −60 ; en valeur
+pour le panoramique), puis chaque cran réécrit les suivantes depuis l'écart ACTUEL de la touchée, borné à −60…+6 dB ou
+±1 ; revenu à son départ, le geste rend les valeurs exactes (sans aller-retour par les dB). La tranche du mixeur et la
+ligne de piste disent quand le geste COMMENCE (`onLinkStart` : le glissé une fois, la molette, le clavier, le
+double-clic et la saisie à chaque cran — JUCE enveloppe déjà ces derniers d'un `ScopedDragNotification`) et quand
+elles viennent d'écrire (`onLinkFollow`) ; l'application, qui seule connaît le choix, entraîne les autres dans le pas
+déjà ouvert, et ne relit que leurs tranches et leurs lignes. *Mixage ▸ Lier les tranches choisies (Q-Link)*, case
+retenue (`mixageLierLesTranches`). Un dossier ne suit rien, un VCA suit le volume et non le panoramique. Le relais d'un
+contrôleur MIDI (`applyExternalControl`) ne lie pas : c'est un geste de la console et de la liste, comme l'écrit le
+critère. Pour le banc, `valeur:`, `appuyer:`, `glisser:` et `molette:` prennent « nom#n », le n-ième composant visible
+de ce nom : toutes les tranches s'appellent `mixeur.volume`, et un geste lié se mesure sur une autre que la première.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur | quatre tests : le même écart en dB (0 → +3 : −6 → −3, −50 → −47), une tranche bornée au silence en route qui retrouve −55 quand le geste revient à −5, le départ rendu exact ; le silence compté −60 (→ −54) et +4 → +6 borné ; le panoramique (+0,3 : −0,5 → −0,2, 0,8 → 1), le VCA et le dossier ; la piste hors du choix seule. **Rouges** sous deux mutants : le choix ignoré (1 test), les bornes retirées (2) | **oui** |
+| 2 | la console | `tools/lier-tranches.sh`, B et C choisies, le fader de B saisi à −6 dB : **C de −12,04 à −18,04 dB**, A et D à −6,02 ; le témoin sans la case : B seule, C à −12,04. La photo : B −6,0 dB, C −18,0 dB | **oui** |
+| 3 | le panoramique | B au centre (+0,5) : **C borné à +1** (0,8 + 0,5) ; le témoin : C à 0,8 | **oui** |
+| 4 | la liste des pistes | un glissé du curseur de volume de B : B **−2,51 dB**, C **−14,55** (le même écart au centième) ; le témoin : C à −12,04 | **oui** |
+| 5 | hors du choix, un pas, retenue | A touchée, la case cochée : **A seule** (−20,00) ; Ctrl+Z rend B et C, après un geste qui a eu lieu ; la case cochée au relancement sous le même HOME (la photo du menu la montre cochée), décochée sous un HOME neuf | **oui** |
+| 6 | le témoin | le binaire de **D566.2** : **six rouges** — mais le geste n'y a pas lieu (« #2 » lui est inconnu) ; le témoin qui vaut est la course sans la case, du même binaire, aux contrôles 2 à 4 | **oui** |
+
+### Phase D566.4 — un projet vide ne s'ouvre plus à 8 px par tick (22/10/2026) — FAITE
+
+**CE QUI EST TRANCHÉ.** Le cadrage de l'ouverture (`zoomToFit`, D362) ne descend plus sous **QUATRE MESURES**, comptées
+sur la signature (`tickAtBarBeat(4, 0)`). Quatre parce que c'est le morceau le plus court que la garde de D362 cadre
+(`cadrage-ouverture.sh`, « court ») : il garde son cadrage au tick près (104,2 %), et en deçà — une note, rien — la vue
+s'arrête à une phrase de quatre mesures au lieu d'étaler un tick sur la largeur. Huit mesures auraient montré le morceau
+« court » sur la moitié de l'écran, ce que D362 ne demande pas. **Ce qui n'est pas touché** : une vue déjà enregistrée à
+8 px par tick reste dans les bornes de `reprendreLaVue` et se reprend — rien ne la distingue d'un zoom sur une sélection
+minuscule (le zoom à la main plafonne à 2,0, le cadrage et la reprise à 8,0) ; et lancée SANS projet, l'application
+garde son zoom d'usine (6,4 mesures à 1 600 × 1 000) : c'est l'OUVERTURE d'un projet où rien ne sonne qui était
+touchée — mesuré d'abord à tort sur un lancement sans projet, que le témoin a donné vert.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le projet vide | `tools/projet-vide-cadre.sh`, un projet sans piste ouvert : **4,2 mesures** à l'écran (le témoin : **0,0**) | **oui** |
+| 2 | l'import | un fichier de 6 s (trois mesures) importé ensuite : **138,9 %** à l'écran (le témoin : **1,6 %**) ; la photo le montre entier | **oui** |
+| 3 | la vue enregistrée | **0,092** px par tick (le témoin : **8**) | **oui** |
+| 4 | D362 inchangée | le morceau de quatre mesures : la même fenêtre de 4,2 mesures ; `cadrage-ouverture.sh` vert (104,2 %, 104,2 %, 66,7 % rouvert à 66,7 %) | **oui** |
+| 5 | le témoin | le binaire de D566.3 : **quatre rouges** | **oui** |
+
+C++ 517 · 1 344 · 343 · 25 · 11.
+

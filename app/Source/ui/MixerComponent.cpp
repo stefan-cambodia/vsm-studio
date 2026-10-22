@@ -161,12 +161,14 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.valueFromTextFunction = [](const juce::String& t) { return vsm::app::ui::lireNombreSaisi(t); };   // D445 : la virgule
     volume_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
+        if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Volume);   // D566.3
         ouvrirPasse("mix.volume");
     };
     volume_.onDragEnd = [this] { glisseEnCours_ = false; fermerPasse("mix.volume", false); };
     volume_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
         if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Volume")));
+        if (!glisseEnCours_ && onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Volume);   // D566.3
         // D463 : LE BAS DU FADER EST LE SILENCE, comme chez Cubase et Live ; il
         // valait 0,001 (−60 dB) et la piste n'était jamais muette au fader.
         track_.volume = volume_.getValue() <= -60.0 ? 0.0f : dbToGain(static_cast<float>(volume_.getValue()));
@@ -175,6 +177,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         // écrire des dB ici ferait dessiner une courbe qui ne correspond pas
         // à ce que le moteur applique.
         noterDansLaPasse("mix.volume", track_.volume);
+        if (onLinkFollow) onLinkFollow(index_, vsm::sequencer::LinkedMixParam::Volume);   // D566.3 : la passe reste à elle seule
         if (onMixChanged) onMixChanged();
     };
     addAndMakeVisible(volume_);
@@ -188,14 +191,17 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     pan_.setValue(track_.pan, juce::dontSendNotification);
     pan_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Panoramique"))));
+        if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Pan);   // D566.3
         ouvrirPasse("mix.pan");
     };
     pan_.onDragEnd = [this] { glisseEnCours_ = false; fermerPasse("mix.pan", false); };
     pan_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
         if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Panoramique"))));
+        if (!glisseEnCours_ && onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Pan);   // D566.3
         track_.pan = static_cast<float>(pan_.getValue());
         noterDansLaPasse("mix.pan", track_.pan);
+        if (onLinkFollow) onLinkFollow(index_, vsm::sequencer::LinkedMixParam::Pan);   // D566.3
         if (onMixChanged) onMixChanged();
     };
     addAndMakeVisible(pan_);
@@ -1127,6 +1133,8 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
             strip->onExclusiveSoloRequested = [this](size_t index) { if (onExclusiveSoloRequested) onExclusiveSoloRequested(index); };
             strip->onMixEditStarted = [this](const juce::String& pas) { if (onMixEditStarted) onMixEditStarted(pas); };
+            strip->onLinkStart = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkStart) onLinkStart(i, q); };
+            strip->onLinkFollow = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkFollow) onLinkFollow(i, q); };
             // D16.8 : la tranche a besoin de savoir OÙ en est le transport et
             // s'il roule ; ces deux réponses appartiennent à l'application.
             strip->playheadTickProvider = playheadTickProvider;

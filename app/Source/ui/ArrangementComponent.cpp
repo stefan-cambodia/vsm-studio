@@ -1906,7 +1906,14 @@ void ArrangementComponent::zoomToFit() {
     // `lastUsedTick` rend ZÉRO — c'est exactement la panne que D8.3 a corrigée
     // pour le transport, et `lastSoundingTick` est la fonction qu'elle a écrite
     // pour cela : « c'est elle que le transport et l'export doivent employer ».
-    const vsm::midi::Tick fin = std::max<vsm::midi::Tick>(1, project_->lastSoundingTick());
+    //
+    // D566.4 : ET PAS MOINS DE QUATRE MESURES. Sur un projet où rien ne sonne, la fin valait UN tick, étalé sur toute
+    // la largeur (8 px par tick : une mesure de 15 360 px) — vue qui s'enregistre ensuite avec le projet (D363), si
+    // bien qu'un fichier importé après restait hors de l'écran. Quatre mesures, comptées sur la signature : le morceau
+    // le plus court que la garde de D362 cadre (« court », quatre mesures) garde son cadrage au tick près, et en deçà
+    // — une note, rien — la vue s'arrête à une phrase de quatre mesures.
+    const vsm::midi::Tick quatreMesures = project_->timeSignatureMap.tickAtBarBeat(4, 0, project_->ticksPerQuarterNote);
+    const vsm::midi::Tick fin = std::max<vsm::midi::Tick>({1, quatreMesures, project_->lastSoundingTick()});
     const int largeur = std::max(1, getWidth() - kHeaderWidth);
     const VueDeZoom avant = vueDeZoom();   // D557.3
     pixelsPerTick_ = juce::jlimit(0.0005, 8.0, static_cast<double>(largeur) * 0.96 / static_cast<double>(fin));

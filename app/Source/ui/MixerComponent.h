@@ -11,6 +11,7 @@
 #include "Langue.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/MixSnapshot.h"
 #include <cmath>
 #include <limits>
 #include <functional>
@@ -402,6 +403,12 @@ public:
     /// s'en servir empilerait trois cents pas d'annulation pour un seul
     /// mouvement de fader.
     std::function<void(const juce::String&)> onMixEditStarted;   ///< D425 : « geste — piste »
+    /// D566.3 : LE LIEN DES TRANCHES CHOISIES (*Q-Link*). La tranche dit quand un geste de volume ou de panoramique
+    /// COMMENCE — avant d'écrire sa piste — et quand elle vient d'écrire ; l'application, qui seule connaît le choix
+    /// des pistes, entraîne les autres. Un glissé commence une fois ; la molette, le clavier, le double-clic et la
+    /// saisie commencent à chaque cran.
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkStart;
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkFollow;
     /// ÉCRIRE L'AUTOMATION EN JOUANT (D16.8) — le W de Cubase, l'armement de
     /// Live. La tranche a besoin de deux choses que seule l'application sait :
     /// OÙ en est le transport, et s'il roule. Sans elles, elle écrirait une
@@ -791,6 +798,12 @@ public:
     void refreshFromTracks() {
         for (auto* strip : strips_) strip->refreshFromTrack();
     }
+    /// D566.3 : les seules tranches de ces pistes — celles qu'un geste LIÉ vient d'entraîner, et non la tranche qu'on
+    /// tient en main.
+    void refreshFromTracks(const std::set<size_t>& seules) {
+        for (auto* strip : strips_)
+            if (seules.count(strip->trackIndex()) > 0) strip->refreshFromTrack();
+    }
     /// Relit muet et solo de chaque tranche depuis sa piste.
     void refreshMuteSolo() {
         for (auto* strip : strips_) {
@@ -825,6 +838,8 @@ public:
         return false;
     }
     std::function<void(const juce::String&)> onMixEditStarted;   ///< D425 : « geste — piste »
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkStart;    ///< D566.3
+    std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkFollow;   ///< D566.3
 
     /// D16.8 : passés à chaque tranche à sa construction (voir ChannelStrip).
     std::function<vsm::midi::Tick()> playheadTickProvider;

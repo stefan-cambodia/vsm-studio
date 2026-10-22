@@ -337,6 +337,11 @@ MainComponent::MainComponent()
         return audioEngine_.processGraph().masterBus().getParameter(id);
     };
     mixer_.onMixEditStarted = [this](const juce::String& pas) { beginProjectEdit(pas); };   // D425 : le geste et la piste
+    // D566.3 : LE LIEN DES TRANCHES CHOISIES, de la console comme de la liste des pistes.
+    mixer_.onLinkStart = [this](size_t i, vsm::sequencer::LinkedMixParam q) { debuterLien(i, q); };
+    mixer_.onLinkFollow = [this](size_t i, vsm::sequencer::LinkedMixParam q) { suivreLien(i, q); };
+    trackList_.onLinkStart = [this](size_t i, vsm::sequencer::LinkedMixParam q) { debuterLien(i, q); };
+    trackList_.onLinkFollow = [this](size_t i, vsm::sequencer::LinkedMixParam q) { suivreLien(i, q); };
     mixer_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };
     trackList_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };   // D423
     // D16.8 : la console écrit l'automation en jouant, et il lui faut la
@@ -1405,6 +1410,7 @@ MainComponent::MainComponent()
     preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
     preferencesPanel_.onOpenAudioSettings = [this] { menuItemSelected(kMenuFileAudioSettings, 0); };   // D417
     retourAuDepart_ = vsm::app::ui::UiScale::properties().getBoolValue("retourAuDepartALArret", false);
+    lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
         vsm::app::ui::UiScale::properties().setValue("retourAuDepartALArret", actif);
@@ -2034,17 +2040,31 @@ void MainComponent::photographierMenuPourCapture(const juce::String& consigne) {
                 + "\n").toRawUTF8(), stderr);
 }
 
-juce::Slider* MainComponent::curseurPourCapture(const juce::String& nom) {
+namespace {
+/// D566.3 : « nom#n » désigne le n-ième composant VISIBLE de ce nom (1 : le premier), dans l'ordre de la descente. Les
+/// tranches du mixeur et les lignes de piste portent toutes le même nom, et un geste LIÉ se mesure sur une autre que la
+/// première. Sans « # », le premier, comme avant.
+std::pair<juce::String, int> nomEtRangPourCapture(const juce::String& nom) {
+    if (!nom.containsChar('#')) return {nom, 1};
+    return {nom.upToLastOccurrenceOf("#", false, false),
+            juce::jmax(1, nom.fromLastOccurrenceOf("#", false, false).getIntValue())};
+}
+} // namespace
+
+juce::Slider* MainComponent::curseurPourCapture(const juce::String& nomEtRang) {
     // D135 : LE CURSEUR DÉSIGNÉ PAR SON NOM DE COMPOSANT, cherché dans la fenêtre
     // principale puis dans les autres (panneaux flottants), en ne descendant que
     // dans ce qui est visible. D415 : partagé par `appuyer:` et `valeur:`.
+    const auto nr = nomEtRangPourCapture(nomEtRang);
+    const juce::String nom = nr.first;
+    int reste = nr.second;
     std::function<juce::Slider*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Slider* {
         // SANS SURFACE, PAS DE CURSEUR : un curseur « visible » au sens de JUCE peut
         // avoir des limites vides (le panoramique d'une ligne de piste au dock par
         // défaut) -- l'appui à son « centre » tombait sur son bord et le mettait au
         // minimum (premier banc de D135).
         if (auto* curseur = dynamic_cast<juce::Slider*>(&c);
-            curseur != nullptr && curseur->getName() == nom && !curseur->getLocalBounds().isEmpty())
+            curseur != nullptr && curseur->getName() == nom && !curseur->getLocalBounds().isEmpty() && --reste == 0)
             return curseur;
         for (auto* enfant : c.getChildren())
             if (enfant->isVisible())
@@ -2318,13 +2338,15 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     juce::StringArray champs;
     champs.addTokens(description, ":", "");
     if (champs.size() < 3) return false;
-    const juce::String nom = champs[0];
+    const auto nr = nomEtRangPourCapture(champs[0]);   // D566.3 : « nom#n »
+    const juce::String nom = nr.first;
+    int reste = nr.second;
     const float fx0 = champs[1].upToFirstOccurrenceOf(",", false, false).getFloatValue();
     const float fy = champs[1].fromFirstOccurrenceOf(",", false, false).getFloatValue();
     const float fx1 = champs[2].getFloatValue();
     const juce::String mode = champs.size() > 3 ? champs[3].toLowerCase() : juce::String();
     std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
-        if (c.getName() == nom && !c.getLocalBounds().isEmpty()) return &c;
+        if (c.getName() == nom && !c.getLocalBounds().isEmpty() && --reste == 0) return &c;
         for (auto* enfant : c.getChildren())
             if (enfant->isVisible())
                 if (auto* trouve = chercher(*enfant)) return trouve;
@@ -2466,13 +2488,15 @@ bool MainComponent::molettePourCapture(const juce::String& description) {
     juce::StringArray champs;
     champs.addTokens(description, ":", "");
     if (champs.size() < 3) return false;
-    const juce::String nom = champs[0];
+    const auto nr = nomEtRangPourCapture(champs[0]);   // D566.3 : « nom#n »
+    const juce::String nom = nr.first;
+    int reste = nr.second;
     const float fx = champs[1].upToFirstOccurrenceOf(",", false, false).getFloatValue();
     const float fy = champs[1].fromFirstOccurrenceOf(",", false, false).getFloatValue();
     const int crans = champs[2].getIntValue();
     const juce::String mode = champs.size() > 3 ? champs[3].toLowerCase() : juce::String();
     std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
-        if (c.getName() == nom && !c.getLocalBounds().isEmpty()) return &c;
+        if (c.getName() == nom && !c.getLocalBounds().isEmpty() && --reste == 0) return &c;
         for (auto* enfant : c.getChildren())
             if (enfant->isVisible())
                 if (auto* trouve = chercher(*enfant)) return trouve;
@@ -5453,6 +5477,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuMixResetChosen,
                              tr(u8"Remettre les tranches choisies à zéro (%1)…").replace("%1", juce::String(choisies)),
                              choisies > 0);
+                // D566.3 : LIER LES TRANCHES CHOISIES — une case, cochée et retenue d'un lancement à l'autre.
+                menu.addItem(kMenuMixLinkChosen, tr(u8"Lier les tranches choisies (Q-Link)"), true, lierLesTranches_);
             }
             // D544.3 : LA TRANSPOSITION GLOBALE — cochée quand elle n'est pas nulle ; la fenêtre dit la valeur.
             menu.addItem(kMenuMixGlobalTranspose, tr(u8"Transposition globale…"), true,
@@ -5723,6 +5749,15 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixClearMutes) { leverToutesLesPistes(false); return; }   // D559.1
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
+    if (menuItemID == kMenuMixLinkChosen) {   // D566.3
+        lierLesTranches_ = !lierLesTranches_;
+        lienDesTranches_ = {};
+        vsm::app::ui::UiScale::properties().setValue("mixageLierLesTranches", lierLesTranches_);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+        std::fputs(lierLesTranches_ ? "VSM_CONSOLE : tranches choisies li\xc3\xa9" "es\n"
+                                    : "VSM_CONSOLE : tranches choisies d\xc3\xa9li\xc3\xa9" "es\n", stderr);
+        return;
+    }
     if (menuItemID == kMenuMixMonoListen) {
         const bool on = !audioEngine_.processGraph().masterBus().monoListen();
         audioEngine_.processGraph().masterBus().setMonoListen(on);
@@ -13335,6 +13370,26 @@ void MainComponent::beginProjectEdit(const juce::String& label) {
     // l'endroit qui ne peut pas être oublié, parce qu'oublier de l'appeler
     // casserait déjà l'annulation, ce qui se voit tout de suite.
     markProjectDirty();
+}
+
+void MainComponent::debuterLien(size_t piste, vsm::sequencer::LinkedMixParam quoi) {
+    // D566.3 : RELEVÉ AU DÉBUT DU GESTE — l'écart se compte depuis là, pour qu'une tranche bornée en route retrouve le
+    // sien si le geste revient. Bascule ôtée, ou piste touchée hors du choix : le geste est inactif, la piste bouge seule.
+    lienDesTranches_ = lierLesTranches_
+                           ? vsm::sequencer::beginLinkedMix(project_, quoi, piste, trackList_.selectedTracks())
+                           : vsm::sequencer::LinkedMixGesture{};
+}
+
+void MainComponent::suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi) {
+    // LES PISTES LIÉES SUIVENT EN VALEUR FIXE, dans le pas que le geste a déjà ouvert : seule la tranche touchée écrit
+    // une passe d'automation (D16.8). Leur tranche et leur ligne se relisent ; celle qu'on tient en main, non.
+    if (!lienDesTranches_.active() || lienDesTranches_.touched != piste || lienDesTranches_.param != quoi) return;
+    if (vsm::sequencer::applyLinkedMix(project_, lienDesTranches_) == 0) return;
+    std::set<size_t> suivies;
+    for (const auto& f : lienDesTranches_.followers) suivies.insert(f.track);
+    mixer_.refreshFromTracks(suivies);
+    trackList_.refreshMix(suivies);
+    mixDirty_ = true;
 }
 
 bool MainComponent::materializeImplicitClips(bool bornerAuxNotes) {

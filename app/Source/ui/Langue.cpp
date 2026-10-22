@@ -2786,6 +2786,8 @@ const Paire kAnglais[] = {
       "Snap point to playhead" },
     { "Retirer le point d'accroche",
       "Remove the snap point" },
+    { "Lier les tranches choisies (Q-Link)",
+      "Link the selected channels (Q-Link)" },
     // D565 : la tête au repère 1 à 9, le zoom sur les locateurs, les notes d'une piste.
     { "Zoom : entre les locateurs",
       "Zoom: between the locators" },
