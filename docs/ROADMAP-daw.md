@@ -43531,3 +43531,52 @@ touchée — mesuré d'abord à tort sur un lancement sans projet, que le témoi
 
 C++ 517 · 1 344 · 343 · 25 · 11.
 
+
+### Phase D567 — un vingt-huitième audit : les fondus aux locateurs, agrandir les pistes choisies, contourner les départs (22/10/2026)
+
+*Écrite le 22/10 à 09 h 26, D566 close, pendant la série de son binaire.*
+
+**LA MÉTHODE, celle de D535 à D566, les zéros revérifiés en listant ce qu'on a cherché et où** (`/usr/bin/grep -rli
+--include='*.h' --include='*.cpp'` sur `core app/Source audio interchange`, validé sur trois témoins qui existent :
+`snapNotesToChords` 5 fichiers, `VCA` 35, `Contraindre` 4 — et un faux zéro payé en route : les options `--include`
+placées APRÈS `--` sont lues comme des fichiers, et la même liste rendait des comptes sans filtre). Cette fois, le
+balayage a pris la colonne ANGLAISE de `Langue.cpp` contre les noms des commandes de Cubase, puis chaque zéro revérifié
+en français dans le code. L'*Adjust Fades to Range* du menu Audio de Cubase, son *Zoom Selected Tracks*, le *Bypass
+Sends* de la MixConsole : **0 pour des fondus réglés sur une plage** — le fondu se pose à la poignée (D5.6) ou à la tête
+(`fadeClipsTo`, D549.1) ; `fadesToRange`, « Ajuster les fondus », « Fondus … plage » : rien ; **0 pour agrandir les
+pistes choisies** — la hauteur se pose à toutes (`setAllTrackHeights`, *Hauteur des pistes*, D490) ou les ajuste toutes à
+la fenêtre (`fitTracksToWindow`, 3 fichiers) ; `zoomSelectedTracks`, « Agrandir les pistes » : rien ; **0 pour
+contourner les départs** — un insert se contourne, ou tous ceux d'une piste (« Contourner tout », D15.1), un départ
+non : le moteur lit `track.sendLevel(b)` en trois endroits de `ProcessGraph` sans autre condition ; `sendsBypass`,
+« Contourner les départs » : rien. **Trouvé et écarté** : le pré-roll et le post-roll (0 dans le code, mais le décompte
+d'une prise sur punch part déjà une mesure avant le point d'entrée en jouant le morceau — D546.2 — : le chantier
+demanderait d'abord de trancher ce qu'il ajoute au décompte), la vélocité fixe (« Vélocité 127 / 64 », l'éditeur
+logique), les longueurs fixes (« Durée = pas de grille »), délier une copie (D34.2), les préréglages de piste
+(`TrackPreset`), reporter les effets MIDI dans les notes (D31.5), lire jusqu'au prochain repère, coller à l'origine,
+extraire le groove, dupliquer une piste — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D567.1 | **Les fondus aux locateurs** — *Adjust Fades to Range* | Clic droit sur un clip, *Fondus aux locateurs* : sur les clips choisis que la plage des locateurs touche, la plage SONNE PLEIN et les fondus en sortent — une plage dans le clip : fondu d'entrée du début du clip au locateur gauche, de sortie du locateur droit à la fin ; une plage qui couvre le début du clip : fondu d'entrée du début au locateur droit ; qui couvre la fin : fondu de sortie du locateur gauche à la fin ; un pas ; ce qui n'est pas touché, ou que la plage couvre en entier, est COMPTÉ et dit ; mesuré par le projet relu, le témoin hors de la plage à côté |
+| D567.2 | **Agrandir les pistes choisies** — *Zoom Selected Tracks* | *Affichage ▸ Hauteur des pistes ▸ Agrandir les pistes choisies* : les pistes choisies, visibles et dépliées, se partagent la hauteur de l'arrangement que les autres leur laissent à la hauteur minimale (24 px), chacune bornée à 400 px ; la première choisie défile en vue ; un pas, comme la hauteur commune (D490) ; grisée sans piste choisie ; mesuré par le projet relu (`height`) et le relevé de l'arrangement, la photo à côté |
+| D567.3 | **Contourner les départs** — *Bypass Sends* | *Mixage ▸ Contourner les départs des tranches choisies (N)* — le libellé dit ce que le clic FERA, « Rétablir les départs… (N) » quand ils le sont tous (la règle de « Contourner tout », D15.1) — : la piste n'alimente plus aucun bus, ses niveaux GARDÉS ; ses boutons de départ pâlissent ; écrit au projet (`sendsBypassed`) seulement s'il est posé ; un pas ; mesuré par l'EXPORT (D332), le bus de retour sur le rendu, le témoin sans contournement à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D567.1.** La plage est celle des LOCATEURS, comme pour les autres gestes « entre les locateurs » (D549.2, D553) : ce
+  logiciel n'a pas d'outil de sélection de plage, et les locateurs en tiennent lieu. La règle de Cubase dit « la plage
+  ajuste les fondus » ; on la lit comme le geste qu'on fait avec : délimiter ce qui doit sonner plein. Les fondus se
+  posent par `setClipFadeIn` et `setClipFadeOut`, les fonctions des poignées — leurs bornes (un fondu ne dépasse pas
+  l'autre) sont les leurs —, et un fondu que la plage ne règle pas RESTE tel qu'il est. Clips MIDI compris, comme le
+  fondu à la tête (D549.1). Aucun verrou ne le refuse : le fondu est un réglage du son (D549.1).
+- **D567.2.** « Agrandir » ne fait pas basculer : un second appel ne rend pas les hauteurs d'avant — Ctrl+Z les rend, et
+  *Hauteur des pistes ▸ Normale* les égalise. La hauteur est une donnée du projet depuis D490 : le geste fait un pas. Les
+  pistes masquées et pliées ne bougent pas et ne prennent rien. Les choisies sont celles de la liste des pistes.
+- **D567.3.** Le contournement tient à la PISTE (`Track::sendsBypassed`), pas au bus : couper le bus de retour est un
+  autre geste (« Retour audible », D4.4). Il coupe aussi les départs pilotés par l'automation et ceux d'un groupe, et la
+  piste contournée n'entre plus dans l'ordre des pistes qui alimentent un bus écouté (chaîne latérale) — les trois
+  lectures de `ProcessGraph`. Le moteur le lit dans le projet qu'il reçoit : le rendu hors ligne l'entend donc dès que
+  le format le porte, ce qui est le contrat de D21. Les niveaux ne bougent pas : rétablir rend exactement ce qu'on avait.
+
+**L'ORDRE, TRANCHÉ ICI.** D567.3 d'abord : c'est le seul des trois qui change le SON, et le seul qui puisse se coder et
+se tester en entier (cœur, moteur, format) pendant que la série de D566 occupe le binaire de l'application. Puis D567.1,
+puis D567.2.
