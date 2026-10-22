@@ -125,4 +125,16 @@ SendsBypassPlan sendsBypassPlan(const Project& project, const std::set<size_t>& 
 /// Pose (ou retire) le contournement sur les tranches choisies que le plan compte ; rend combien ont changé.
 size_t applySendsBypass(Project& project, const std::set<size_t>& chosen, bool bypass);
 
+/// D568.3 — CONTOURNER LES INSERTS DES TRANCHES CHOISIES (*Bypass Inserts*), la règle de « Contourner tout » (D15.1)
+/// sur plusieurs pistes : CONTOURNER si l'une des tranches choisies a un insert actif — `count` tranches —, RÉTABLIR
+/// sinon — `count` tranches qui ont un insert contourné. Les inserts passent tous à `enabled` faux, ou tous à vrai : l'état
+/// individuel d'avant n'est pas gardé, comme dans le panneau d'effets. Les descriptions seulement : le moteur suit par
+/// l'application.
+struct InsertsBypassPlan {
+    bool bypass = true;
+    size_t count = 0;
+};
+InsertsBypassPlan insertsBypassPlan(const Project& project, const std::set<size_t>& chosen);
+size_t applyInsertsBypass(Project& project, const std::set<size_t>& chosen, bool bypass);
+
 } // namespace vsm::sequencer

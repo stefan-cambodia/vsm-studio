@@ -409,3 +409,27 @@ VSM_TEST(the_send_bypass_travels_with_the_console_state) {
     recallMixSnapshot(p, "A");
     VSM_ASSERT(p.tracks[0].sendsBypassed);
 }
+
+// D568.3 — CONTOURNER LES INSERTS DES TRANCHES CHOISIES : la règle de « Contourner tout », sur plusieurs pistes.
+VSM_TEST(bypassing_the_inserts_of_chosen_strips_follows_bypass_all) {
+    Project p;
+    p.tracks.resize(4);
+    p.tracks[0].effects = {{"compressor", {}, {}, true}, {"reverb", {}, {}, false}};   // l'un actif, l'autre non
+    p.tracks[1].effects = {{"delay", {}, {}, true}};
+    p.tracks[2].effects = {{"chorus", {}, {}, true}};                                   // hors du choix
+    // la piste 3 n'a aucun insert
+    const std::set<size_t> choisies = {0, 1, 3};
+    auto plan = insertsBypassPlan(p, choisies);
+    VSM_ASSERT(plan.bypass);
+    VSM_ASSERT_EQ(plan.count, size_t(2));
+    VSM_ASSERT_EQ(applyInsertsBypass(p, choisies, true), size_t(2));
+    VSM_ASSERT(!p.tracks[0].effects[0].enabled && !p.tracks[0].effects[1].enabled && !p.tracks[1].effects[0].enabled);
+    VSM_ASSERT(p.tracks[2].effects[0].enabled);                                         // hors du choix : intact
+    VSM_ASSERT_EQ(p.tracks[0].effects[0].type, std::string("compressor"));              // les inserts restent
+    plan = insertsBypassPlan(p, choisies);
+    VSM_ASSERT(!plan.bypass);
+    VSM_ASSERT_EQ(plan.count, size_t(2));
+    VSM_ASSERT_EQ(applyInsertsBypass(p, choisies, false), size_t(2));
+    VSM_ASSERT(p.tracks[0].effects[1].enabled);   // TOUS rétablis — l'état d'avant (la réverbération éteinte) n'est pas gardé
+    VSM_ASSERT_EQ(insertsBypassPlan(p, {3}).count, size_t(0));
+}

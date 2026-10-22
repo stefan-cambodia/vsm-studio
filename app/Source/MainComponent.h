@@ -351,6 +351,8 @@ public:
         // — le projet vide d'avant la reprise — et l'on en concluait sur le zoom.
         // Passer par `VSM_GESTE_APRES=<ms>:relever-arrangement`.
         if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
+        // D568.3 : l'état de chaque insert, dans la description ET sur l'instance que le moteur joue.
+        if (geste.equalsIgnoreCase("relever-inserts")) { effectChain_.direLesContournements(); return true; }
         // D547.2 : la géométrie des clips à l'écran, pour tirer un bord de clip.
         if (geste.equalsIgnoreCase("relever-clips")) { arrangement_.direLesClipsAEcran(); return true; }
         // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
@@ -688,6 +690,10 @@ public:
         // à des secondes d'intervalle.
         if (geste.startsWithIgnoreCase("touche:"))
             return runKeyForCapture(geste.fromFirstOccurrenceOf(":", false, false).trim());
+        // D568.2 : le MIDI entre les locateurs, sans le sélecteur de fichier.
+        if (geste.startsWithIgnoreCase("exporter-midi-locateurs:"))
+            return exporterMidiEntreLesLocateurs(juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim()));
         if (geste.startsWithIgnoreCase("exporter-midi:")) {
             const juce::File cible = juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim());
@@ -1180,6 +1186,10 @@ private:
         /// D567 : contourner les départs des tranches choisies ; les fondus aux locateurs ; agrandir les pistes choisies.
         kMenuMixSendsBypass,
         kMenuViewZoomChosenTracks,
+        /// D568 : dupliquer entre les locateurs ; exporter le MIDI entre les locateurs ; contourner les inserts choisis.
+        kMenuEditDuplicateRange,
+        kMenuFileExportMidiLoop,
+        kMenuMixInsertsBypass,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1711,6 +1721,12 @@ private:
     void debuterLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     /// D567.3 : contourner (ou rétablir) les départs des tranches choisies, comme le plan le dit.
     void contournerLesDepartsChoisis();
+    /// D568.1 : la plage des locateurs dupliquée en insérant, les locateurs sur la copie.
+    void dupliquerLaPlage();
+    /// D568.2 : le MIDI entre les locateurs dans `fichier` (vide : le sélecteur) ; rend vrai s'il est écrit.
+    bool exporterMidiEntreLesLocateurs(const juce::File& fichier);
+    /// D568.3 : contourner (ou rétablir) les inserts des tranches choisies, comme le plan le dit.
+    void contournerLesInsertsChoisis();
     void suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     bool etaitEnLecture_ = false;
     vsm::midi::Tick departLecture_ = 0;

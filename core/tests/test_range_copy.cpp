@@ -6,7 +6,10 @@
 #include "vsm/sequencer/TimeEdit.h"
 #include <algorithm>
 #include <cmath>
+#include <string>
 #include <tuple>
+#include <type_traits>
+#include <variant>
 #include <vector>
 
 using namespace vsm::sequencer;
@@ -295,4 +298,78 @@ VSM_TEST(merging_midi_between_locators_keeps_only_what_is_heard) {
     p.tracks[1].transposeSemitones = 70;
     r = mergeHeardMidi(p, 480, 2400, numero);
     VSM_ASSERT_EQ(r.outOfRange, size_t(1));
+}
+
+// D568.2 — LE MIDI ENTRE LES LOCATEURS : les notes qui commencent dans la plage, coupées à sa fin ; les états chassés
+// au tick 0 ; ramené au début de la plage.
+VSM_TEST(cropping_a_midi_file_keeps_what_starts_in_the_range_and_chases_the_rest) {
+    using namespace vsm::midi;
+    ParsedFile f;
+    f.ticksPerQuarterNote = 480;
+    ParsedTrack conducteur;
+    conducteur.events = {{0, TempoEvent{500000}}, {0, TimeSignatureEvent{4, 2, 24, 8}}, {960, TempoEvent{400000}},
+                         {2400, TempoEvent{300000}}, {6000, EndOfTrackEvent{}}};
+    ParsedTrack partie;
+    partie.name = "A";
+    partie.events = {{0, TrackNameEvent{"A"}},
+                     {0, ProgramChangeEvent{0, 5}},
+                     {0, ControlChangeEvent{0, 7, 100}},
+                     {960, NoteOnEvent{0, 60, 90}},        // commencée avant : hors de la boucle
+                     {1000, ControlChangeEvent{0, 7, 40}},
+                     {1500, PitchBendEvent{0, 1000}},
+                     {1920, NoteOnEvent{0, 62, 80}},
+                     {2000, ControlChangeEvent{0, 10, 20}},
+                     {2160, NoteOffEvent{0, 62, 0}},
+                     {2400, NoteOffEvent{0, 60, 0}},
+                     {3600, NoteOnEvent{0, 64, 70}},       // à cheval sur la fin : coupée
+                     {4200, NoteOffEvent{0, 64, 0}},
+                     {5000, ControlChangeEvent{0, 7, 90}},  // après la plage
+                     {6000, EndOfTrackEvent{}}};
+    f.tracks = {conducteur, partie};
+    const auto c = cropParsedFile(f, 1920, 3840);
+    VSM_ASSERT_EQ(c.tracks.size(), size_t(2));
+    // Le conducteur : le tempo EN VIGUEUR (400 000) au tick 0, la signature, le changement de la plage à 480.
+    const auto& t0 = c.tracks[0].events;
+    VSM_ASSERT_EQ(t0.size(), size_t(4));
+    VSM_ASSERT(std::holds_alternative<TempoEvent>(t0[0].data) && std::get<TempoEvent>(t0[0].data).microsecondsPerQuarterNote == 400000);
+    VSM_ASSERT(std::holds_alternative<TimeSignatureEvent>(t0[1].data) && t0[1].tick == 0);
+    VSM_ASSERT(t0[2].tick == 480 && std::get<TempoEvent>(t0[2].data).microsecondsPerQuarterNote == 300000);
+    VSM_ASSERT(t0[3].tick == 1920 && std::holds_alternative<EndOfTrackEvent>(t0[3].data));
+    // La partie : nom, programme 5, CC 7 = 40 (et non 100), pitch bend 1000 au tick 0 ; la note 62 de 0 à 240 ; CC 10 à
+    // 80 ; la note 64 de 1 680 coupée à 1 920 ; ni la note 60, ni le CC 7 de 5 000.
+    std::vector<std::tuple<Tick, std::string, int, int>> lu;
+    for (const auto& e : c.tracks[1].events)
+        std::visit([&](const auto& d) {
+            using T = std::decay_t<decltype(d)>;
+            if constexpr (std::is_same_v<T, TrackNameEvent>) lu.emplace_back(e.tick, "nom", 0, 0);
+            else if constexpr (std::is_same_v<T, ProgramChangeEvent>) lu.emplace_back(e.tick, "prog", d.program, 0);
+            else if constexpr (std::is_same_v<T, ControlChangeEvent>) lu.emplace_back(e.tick, "cc", d.controller, d.value);
+            else if constexpr (std::is_same_v<T, PitchBendEvent>) lu.emplace_back(e.tick, "pb", d.value, 0);
+            else if constexpr (std::is_same_v<T, NoteOnEvent>) lu.emplace_back(e.tick, "on", d.note, d.velocity);
+            else if constexpr (std::is_same_v<T, NoteOffEvent>) lu.emplace_back(e.tick, "off", d.note, 0);
+            else if constexpr (std::is_same_v<T, EndOfTrackEvent>) lu.emplace_back(e.tick, "fin", 0, 0);
+            else lu.emplace_back(e.tick, "?", 0, 0);
+        }, e.data);
+    const std::vector<std::tuple<Tick, std::string, int, int>> attendu = {
+        {0, "nom", 0, 0}, {0, "prog", 5, 0}, {0, "cc", 7, 40}, {0, "pb", 1000, 0}, {0, "on", 62, 80}, {80, "cc", 10, 20},
+        {240, "off", 62, 0}, {1680, "on", 64, 70}, {1920, "off", 64, 0}, {1920, "fin", 0, 0}};
+    VSM_ASSERT(lu == attendu);
+    // Une plage vide : les états en vigueur (nom, programme, CC 7 et CC 10, pitch bend, fin), aucune note.
+    const auto vide = cropParsedFile(f, 3000, 3000);
+    VSM_ASSERT_EQ(vide.tracks[1].events.size(), size_t(6));
+    for (const auto& e : vide.tracks[1].events) VSM_ASSERT(!std::holds_alternative<NoteOnEvent>(e.data));
+}
+
+// D568.1 — DUPLIQUER LE TEMPS : la mesure 2 s'entend deux fois, et dupliquer la copie la fait entendre quatre fois.
+VSM_TEST(duplicating_a_range_inserts_it_after_itself_and_twice_makes_four) {
+    Project p = projet();
+    const auto bilan = duplicateRange(p, 1920, 3840, secondes(p));
+    VSM_ASSERT_EQ(bilan.tracksPasted, size_t(2));
+    VSM_ASSERT(entendu(p) == (Entendu{{0, 0, 60}, {0, 2000, 62}, {0, 2500, 72}, {0, 4000, 62}, {0, 4500, 72},
+                                      {0, 6000, 64}, {1, 0, 48}, {1, 2000, 50}, {1, 4000, 50}, {1, 6000, 52}}));
+    duplicateRange(p, 1920, 5760, secondes(p));   // les deux mesures dupliquées : quatre fois la mesure 2
+    size_t fois = 0;
+    for (const auto& [piste, ms, hauteur] : entendu(p)) if (piste == 1 && hauteur == 50) ++fois;
+    VSM_ASSERT_EQ(fois, size_t(4));
+    VSM_ASSERT_EQ(duplicateRange(p, 100, 100, secondes(p)).tracksPasted, size_t(0));   // une plage vide : rien
 }

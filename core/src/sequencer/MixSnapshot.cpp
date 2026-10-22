@@ -336,4 +336,30 @@ size_t applySendsBypass(Project& project, const std::set<size_t>& chosen, bool b
     return n;
 }
 
+InsertsBypassPlan insertsBypassPlan(const Project& project, const std::set<size_t>& chosen) {
+    size_t actives = 0, contournees = 0;
+    for (size_t i : chosen) {
+        if (i >= project.tracks.size()) continue;
+        const auto& fx = project.tracks[i].effects;
+        if (std::any_of(fx.begin(), fx.end(), [](const TrackEffect& e) { return e.enabled; })) ++actives;
+        if (std::any_of(fx.begin(), fx.end(), [](const TrackEffect& e) { return !e.enabled; })) ++contournees;
+    }
+    InsertsBypassPlan plan;
+    plan.bypass = actives > 0 || contournees == 0;
+    plan.count = plan.bypass ? actives : contournees;
+    return plan;
+}
+
+size_t applyInsertsBypass(Project& project, const std::set<size_t>& chosen, bool bypass) {
+    size_t n = 0;
+    for (size_t i : chosen) {
+        if (i >= project.tracks.size()) continue;
+        bool change = false;
+        for (auto& e : project.tracks[i].effects)
+            if (e.enabled == bypass) { e.enabled = !bypass; change = true; }
+        if (change) ++n;
+    }
+    return n;
+}
+
 } // namespace vsm::sequencer

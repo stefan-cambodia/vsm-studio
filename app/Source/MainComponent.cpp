@@ -4414,6 +4414,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   : juce::String(tr(u8"Exporter la piste choisie en MIDI (choisir une piste MIDI)...")),
                              midi);
             }
+            // D568.2 : LE MIDI ENTRE LES LOCATEURS (Export ▸ MIDI Loop) — grisée sans plage.
+            menu.addItem(kMenuFileExportMidiLoop, tr(u8"Exporter le MIDI entre les locateurs..."),
+                         project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuFileExportWav, tr("Exporter audio (WAV)..."));
             menu.addItem(kMenuFileExportStems, tr(u8"Exporter les stems (un WAV par piste)..."));
             menu.addSeparator();
@@ -4499,6 +4502,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuEditCopyRange, tr(u8"Copier entre les locateurs (toutes les pistes)"),
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditCutRange, tr(u8"Couper entre les locateurs (toutes les pistes)"),
+                         project_.loopEndTick > project_.loopStartTick);
+            // D568.1 : DUPLIQUER LE TEMPS (Duplicate Time) — sans prendre le presse-papiers de plage.
+            menu.addItem(kMenuEditDuplicateRange, tr(u8"Dupliquer entre les locateurs (toutes les pistes)"),
                          project_.loopEndTick > project_.loopStartTick);
             // D550.2 : COUPER LES CLIPS AUX LOCATEURS (*Split Loop*) -- les SCINDER, sans rien emporter : à ne
             // pas confondre avec l'entrée du dessus, qui coupe la plage vers le presse-papiers.
@@ -5499,6 +5505,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                             : u8"Rétablir les départs des tranches choisies (%1)")
                                  .replace("%1", juce::String(static_cast<int>(plan.count))),
                              plan.count > 0);
+                // D568.3 : LES INSERTS DES TRANCHES CHOISIES, la même règle.
+                const auto inserts = vsm::sequencer::insertsBypassPlan(project_, trackList_.selectedTracks());
+                menu.addItem(kMenuMixInsertsBypass,
+                             tr(inserts.bypass ? u8"Contourner les inserts des tranches choisies (%1)"
+                                               : u8"Rétablir les inserts des tranches choisies (%1)")
+                                 .replace("%1", juce::String(static_cast<int>(inserts.count))),
+                             inserts.count > 0);
             }
             // D544.3 : LA TRANSPOSITION GLOBALE — cochée quand elle n'est pas nulle ; la fenêtre dit la valeur.
             menu.addItem(kMenuMixGlobalTranspose, tr(u8"Transposition globale…"), true,
@@ -5774,6 +5787,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
     if (menuItemID == kMenuMixSendsBypass) { contournerLesDepartsChoisis(); return; }   // D567.3
+    if (menuItemID == kMenuMixInsertsBypass) { contournerLesInsertsChoisis(); return; }   // D568.3
+    if (menuItemID == kMenuEditDuplicateRange) { dupliquerLaPlage(); return; }           // D568.1
+    if (menuItemID == kMenuFileExportMidiLoop) { exporterMidiEntreLesLocateurs({}); return; }   // D568.2
     if (menuItemID == kMenuMixLinkChosen) {   // D566.3
         lierLesTranches_ = !lierLesTranches_;
         lienDesTranches_ = {};
@@ -14006,6 +14022,93 @@ void MainComponent::contournerLesDepartsChoisis() {
         pianoRoll_.onStatusChanged(tr(plan.bypass ? u8"Départs contournés : %1 tranche(s), leurs niveaux gardés"
                                                   : u8"Départs rétablis : %1 tranche(s)")
                                        .replace("%1", juce::String(static_cast<int>(n))));
+}
+
+void MainComponent::contournerLesInsertsChoisis() {
+    // D568.3 : CONTOURNER LES INSERTS DES TRANCHES CHOISIES (*Bypass Inserts*) — ou les rétablir ; la règle de
+    // « Contourner tout » (D15.1) ; le drapeau posé sur les instances vivantes ; un pas ; rien à faire : dit.
+    const std::set<size_t> choisies = trackList_.selectedTracks();
+    const auto plan = vsm::sequencer::insertsBypassPlan(project_, choisies);
+    if (plan.count == 0) {
+        std::fputs("VSM_CONSOLE : aucun insert \xc3\xa0 contourner ni \xc3\xa0 r\xc3\xa9tablir\n", stderr);
+        return;
+    }
+    beginProjectEdit(plan.bypass ? juce::String::fromUTF8(u8"Contourner les inserts")
+                                 : juce::String::fromUTF8(u8"Rétablir les inserts"));
+    const size_t n = vsm::sequencer::applyInsertsBypass(project_, choisies, plan.bypass);
+    effectChain_.synchroniserLesContournements(choisies);
+    markProjectDirty();
+    std::fputs(("VSM_CONSOLE : inserts " + std::string(plan.bypass ? "contourn\xc3\xa9s" : "r\xc3\xa9tablis")
+                + " sur " + std::to_string(n) + " tranche(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(plan.bypass ? u8"Inserts contournés : %1 tranche(s)"
+                                                  : u8"Inserts rétablis : %1 tranche(s)")
+                                       .replace("%1", juce::String(static_cast<int>(n))));
+}
+
+void MainComponent::dupliquerLaPlage() {
+    // D568.1 : DUPLIQUER LE TEMPS (*Duplicate Time*) — la plage copiée et collée EN INSÉRANT à sa fin, les locateurs sur
+    // la copie ; le presse-papiers de plage n'est pas pris ; un pas.
+    const auto de = project_.loopStartTick, a = project_.loopEndTick;
+    if (a <= de) {
+        std::fputs("VSM_PLAGE : aucune plage \xc3\xa0 dupliquer\n", stderr);
+        return;   // l'entrée est grisée
+    }
+    project_.assignTrackUids();
+    const auto conversion = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+    beginProjectEdit(u8"Dupliquer entre les locateurs");
+    const auto bilan = vsm::sequencer::duplicateRange(project_, de, a, conversion);
+    setLoopRegionEverywhere(a, a + (a - de), project_.loopEnabled);
+    refreshTransportSchedule();
+    loadAudioTracks();
+    arrangement_.repaint();
+    pianoRoll_.repaint();
+    std::fputs(("VSM_PLAGE : dupliqu\xc3\xa9" "e [" + std::to_string(de) + ", " + std::to_string(a) + ") \xe2\x80\x94 "
+                + std::to_string(bilan.tracksPasted) + " piste(s), " + std::to_string(bilan.notes) + " note(s), "
+                + std::to_string(bilan.clips) + " clip(s) ; locateurs [" + std::to_string(a) + ", "
+                + std::to_string(a + (a - de)) + ")\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Plage dupliquée : %1 note(s) et %2 clip(s) sur %3 piste(s) — les locateurs sur la copie")
+                                       .replace("%1", juce::String(static_cast<int>(bilan.notes)))
+                                       .replace("%2", juce::String(static_cast<int>(bilan.clips)))
+                                       .replace("%3", juce::String(static_cast<int>(bilan.tracksPasted))));
+}
+
+bool MainComponent::exporterMidiEntreLesLocateurs(const juce::File& fichier) {
+    // D568.2 : LE MIDI ENTRE LES LOCATEURS (*Export ▸ MIDI Loop*) — l'arrangement que l'export écrit, coupé à la plage et
+    // ramené au tick 0, les états chassés (`cropParsedFile`). Un fichier donné saute le sélecteur (le banc).
+    const auto de = project_.loopStartTick, a = project_.loopEndTick;
+    if (a <= de) {
+        std::fputs("VSM_EXPORT_MIDI_LOCATEURS : aucune plage entre les locateurs\n", stderr);
+        return false;
+    }
+    auto ecrire = [this, de, a](const juce::File& cible) {
+        if (cible == juce::File()) return false;
+        try {
+            poserLesProfilsDesMachines();   // D388 : les programmes, comme l'export du morceau
+            const auto coupe = vsm::sequencer::cropParsedFile(project_.toParsedFileArranged(), de, a);
+            MidiFileWriter::writeFile(coupe, cible.getFullPathName().toStdString());
+            size_t notes = 0;
+            for (const auto& piste : coupe.tracks)
+                for (const auto& e : piste.events)
+                    if (const auto* on = std::get_if<vsm::midi::NoteOnEvent>(&e.data); on != nullptr && on->velocity > 0) ++notes;
+            std::fputs(("VSM_EXPORT_MIDI_LOCATEURS : [" + std::to_string(de) + ", " + std::to_string(a) + ") \xe2\x80\x94 "
+                        + std::to_string(notes) + " note(s) \xe2\x86\x92 " + cible.getFullPathName().toStdString() + "\n").c_str(),
+                       stderr);
+            if (pianoRoll_.onStatusChanged)
+                pianoRoll_.onStatusChanged(tr(u8"MIDI entre les locateurs exporté : %1 note(s)")
+                                               .replace("%1", juce::String(static_cast<int>(notes))));
+            return true;
+        } catch (const std::exception& e) {
+            montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Erreur d'export MIDI"), e.what());
+            return false;
+        }
+    };
+    if (fichier != juce::File()) return ecrire(fichier);
+    auto chooser = std::make_shared<juce::FileChooser>(tr(u8"Exporter le MIDI entre les locateurs..."), juce::File(), "*.mid");
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+                         [ecrire, chooser](const juce::FileChooser& fc) { ecrire(fc.getResult()); });
+    return true;
 }
 
 void MainComponent::remettreLesTranchesChoisiesAZero() {

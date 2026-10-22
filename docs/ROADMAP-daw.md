@@ -43677,3 +43677,47 @@ neuf, le rétrograde, les préréglages de piste — présents.
 
 **L'ORDRE, TRANCHÉ ICI.** D568.1 d'abord (deux fonctions du cœur qui existent), puis D568.2 (une fonction neuve du
 cœur), puis D568.3.
+
+### Phase D568.1 — dupliquer entre les locateurs (22/10/2026) — FAITE
+
+`duplicateRange` (`RangeCopy`) : `copyRange` puis `pasteRangeInserting` à la fin de la plage, une fonction pour qu'un
+test la tienne. *Édition ▸ Dupliquer entre les locateurs (toutes les pistes)* ; les locateurs posés sur la copie par
+`setLoopRegionEverywhere` (le transport, le moteur, le piano roll) ; le presse-papiers de plage n'est pas touché.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur | un test, le projet de D535.3 : la mesure 2 entendue deux fois, le reste une mesure plus tard ; dupliquer les deux mesures la fait entendre quatre fois ; une plage vide ne fait rien | **oui** |
+| 2 | dupliquer | `tools/dupliquer-plage.sh` : `1:0:60 1:1920:62 1:3840:62 1:5760:64 2:0:48 2:1920:50 2:3840:50 2:5760:52` (le `.mid` exporté) ; locateurs **[3 840, 5 760)** | **oui** |
+| 3 | deux fois, le presse-papiers | deux gestes : la mesure 2 **trois fois** (le second duplique la copie) ; « Coller la plage… » reste **grisée** — vert aussi sur le témoin, qui ne prend rien non plus : c'est une garde, pas une preuve | **oui** |
+| 4 | un pas, le témoin | Ctrl+Z rend le `.mid` et les locateurs [1 920, 3 840) ; le binaire de D567 : **trois rouges** | **oui** |
+
+### Phase D568.2 — exporter le MIDI entre les locateurs (22/10/2026) — FAITE
+
+`cropParsedFile` (`RangeCopy`) sur le fichier de l'arrangement (`toParsedFileArranged`, D56.1) ; *Fichier ▸ Exporter le
+MIDI entre les locateurs…* (grisée sans plage) ; le verbe `exporter-midi-locateurs:` saute le sélecteur ; le journal dit
+la plage et le compte de notes (`VSM_EXPORT_MIDI_LOCATEURS`).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur | un test : le tempo en vigueur (400 000) au tick 0 et le changement de la plage à 480 ; programme 5, CC 7 à 40 (et non 100), pitch bend 1 000 au tick 0 ; la note commencée avant ABSENTE, la note à cheval COUPÉE à la fin ; une plage vide garde les états, aucune note | **oui** |
+| 2 | le témoin | `tools/midi-locateurs.sh`, l'export du morceau : `on:0:60:480 on:1920:62:480 on:3360:67:960 on:3840:64:480`, CC 7 à 100 au tick 0 | **oui** |
+| 3 | la boucle | `cc:0:7:40 on:0:62:480 tempo:0:500000 cc:80:10:20 on:1440:67:480 fin:1920` — ré à 0, sol à 1 440 coupé à 1 920, ni do ni mi ; « [1920, 3840) — 2 note(s) » au journal | **oui** |
+| 4 | le témoin binaire | le binaire de D567 : **trois rouges** (le contrôle 1 est le témoin lui-même) | **oui** |
+
+### Phase D568.3 — contourner les inserts des tranches choisies (22/10/2026) — FAITE
+
+`insertsBypassPlan`, `applyInsertsBypass` (`MixSnapshot`) : la règle de « Contourner tout » sur les pistes choisies ;
+`EffectChainComponent::synchroniserLesContournements` pose le drapeau sur les instances VIVANTES (celles que le moteur
+partage), sans reconstruire la chaîne. *Mixage ▸ Contourner (Rétablir) les inserts des tranches choisies (N)*. Un relevé
+neuf, `relever-inserts`, dit pour chaque piste l'état de chaque insert dans la description ET sur l'instance que le
+moteur joue — l'export, lui, reconstruit sa chaîne depuis le fichier et ne prouve rien du moteur.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur | un test : 2 tranches à contourner sur 3 choisies (l'une sans insert), la piste hors du choix intacte, les inserts gardés ; le rétablissement remet TOUT, la réverbération éteinte d'avant comprise ; rien à faire sans insert | **oui** |
+| 2 | le menu, le projet | `tools/inserts-contournes.sh` : « Contourner … (1) » puis « Rétablir … (1) » ; Voix **xx**, Autre **o** | **oui** |
+| 3 | l'export | contourné par le menu = contourné à la main (`enabled` faux écrit, le chemin de D15.1) **au bit près** ; et l'origine en diffère de **−4,2 dBFS** de crête | **oui** |
+| 4 | le moteur | les instances : Voix **oo** avant le geste (le témoin), **xx** après ; Autre **o** ; Ctrl+Z : **oo**, fichier et moteur | **oui** |
+| 5 | le témoin | le binaire de D567 : **quatre rouges** | **oui** |
+
+C++ 523 · 1 347 · 344 · 25 · 11. 136 bancs dans la série.

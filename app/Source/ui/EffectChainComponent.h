@@ -5,6 +5,7 @@
 #include "vsm/sequencer/Project.h"
 #include <functional>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace vsm::interchange { class ShortcutTable; }
@@ -123,6 +124,13 @@ public:
     bool effectEnabled(size_t index) const;
     void setEffectEnabled(size_t index, bool enabled);
     void setAllEffectsEnabled(bool enabled);
+    /// D568.3 : les instances vivantes des pistes données reprennent le contournement de leur description, sans
+    /// reconstruire la chaîne (D15.1) ; une chaîne qui ne correspond pas à sa description (un effet inconnu sauté)
+    /// est reconstruite. Le pas et la description sont l'affaire de l'appelant.
+    void synchroniserLesContournements(const std::set<size_t>& pistes);
+    /// D568.3 : le relevé du banc — pour chaque piste à inserts, l'état de chaque insert dans la description et sur
+    /// l'instance VIVANTE, celle que le moteur joue (`o` actif, `x` contourné).
+    void direLesContournements() const;
 
     /// D15.4 : LES PRESETS D'EFFET. D'où ils se lisent, où ils s'écrivent, et
     /// qui prévenir quand il y en a un de plus (le navigateur).

@@ -829,6 +829,40 @@ void EffectChainComponent::setAllEffectsEnabled(bool enabled) {
     rebuildEffectList();
 }
 
+void EffectChainComponent::synchroniserLesContournements(const std::set<size_t>& pistes) {
+    if (project_ == nullptr) return;
+    bool aReconstruire = false;
+    for (size_t p : pistes) {
+        if (p >= chains_.size() || p >= project_->tracks.size() || project_->tracks[p].disabled) continue;
+        const auto& d = project_->tracks[p].effects;
+        auto& c = chains_[p];
+        if (d.size() != c.size()) { aReconstruire = true; continue; }
+        for (size_t i = 0; i < d.size(); ++i)
+            if (auto* enrobe = dynamic_cast<vsm::audio::effect::BypassableEffect*>(c[i].get()))
+                enrobe->setBypassed(!d[i].enabled);
+    }
+    if (aReconstruire) rebuildFromProject();
+    else rebuildEffectList();
+}
+
+void EffectChainComponent::direLesContournements() const {
+    if (project_ == nullptr) return;
+    for (size_t p = 0; p < project_->tracks.size(); ++p) {
+        const auto& d = project_->tracks[p].effects;
+        if (d.empty()) continue;
+        std::string description, vivant;
+        for (const auto& e : d) description += e.enabled ? 'o' : 'x';
+        if (p < chains_.size())
+            for (const auto& fx : chains_[p]) {
+                const auto* enrobe = dynamic_cast<const vsm::audio::effect::BypassableEffect*>(fx.get());
+                vivant += enrobe == nullptr ? '?' : (enrobe->isBypassed() ? 'x' : 'o');
+            }
+        std::fputs(("VSM_INSERTS : piste " + std::to_string(p) + " \xc2\xab " + project_->tracks[p].name
+                    + " \xc2\xbb \xe2\x80\x94 description " + description + ", moteur " + (vivant.empty() ? "-" : vivant) + "\n").c_str(),
+                   stderr);
+    }
+}
+
 // --- D15.4 : les presets d'effet ----------------------------------------------
 
 namespace {

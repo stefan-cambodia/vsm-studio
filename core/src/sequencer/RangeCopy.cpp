@@ -5,7 +5,10 @@
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/TimeEdit.h"
 #include <algorithm>
+#include <map>
+#include <optional>
 #include <tuple>
+#include <type_traits>
 
 namespace vsm::sequencer {
 
@@ -282,6 +285,84 @@ RangePasteReport pasteRangeInserting(Project& project, const RangeClipboard& cli
     }
     project.assignClipIds();
     return bilan;
+}
+
+RangePasteReport duplicateRange(Project& project, Tick from, Tick to, const std::function<double(Tick)>& ticksToSeconds) {
+    if (to <= from) return {};
+    const RangeClipboard copie = copyRange(project, from, to, ticksToSeconds);
+    return pasteRangeInserting(project, copie, to, ticksToSeconds);
+}
+
+midi::ParsedFile cropParsedFile(const midi::ParsedFile& file, Tick from, Tick to) {
+    using namespace midi;
+    ParsedFile out = file;
+    const Tick longueur = std::max<Tick>(0, to - from);
+    for (size_t p = 0; p < file.tracks.size(); ++p) {
+        const ParsedTrack& entree = file.tracks[p];
+        ParsedTrack& sortie = out.tracks[p];
+        sortie.events.clear();
+        // LES ÉTATS EN VIGUEUR À `from`, par canal (et contrôleur) : posés au tick 0, dans cet ordre.
+        std::optional<TempoEvent> tempo;
+        std::optional<TimeSignatureEvent> signature;
+        std::map<uint8_t, ProgramChangeEvent> programmes;
+        std::map<std::pair<uint8_t, uint8_t>, ControlChangeEvent> controleurs;
+        std::map<uint8_t, PitchBendEvent> courbures;
+        std::map<uint8_t, ChannelPressureEvent> pressions;
+        std::vector<MidiEvent> nom, plage;
+        std::map<std::pair<uint8_t, uint8_t>, int> ouvertes;   // les notes commencées dans la plage, pas encore éteintes
+        auto fermer = [&](uint8_t canal, uint8_t note, Tick t) {
+            auto it = ouvertes.find({canal, note});
+            if (it == ouvertes.end() || it->second == 0) return;
+            --it->second;
+            plage.push_back({t, NoteOffEvent{canal, note, 0}});
+        };
+        for (const auto& e : entree.events) {
+            const Tick t = e.tick;
+            std::visit([&](const auto& d) {
+                using T = std::decay_t<decltype(d)>;
+                if constexpr (std::is_same_v<T, TrackNameEvent>) {
+                    nom.push_back({0, d});
+                } else if constexpr (std::is_same_v<T, EndOfTrackEvent>) {
+                    // posée à la fin de la plage
+                } else if constexpr (std::is_same_v<T, NoteOnEvent>) {
+                    if (d.velocity == 0) { fermer(d.channel, d.note, std::min(t, to) - from); return; }
+                    if (t < from || t >= to) return;
+                    ++ouvertes[{d.channel, d.note}];
+                    plage.push_back({t - from, d});
+                } else if constexpr (std::is_same_v<T, NoteOffEvent>) {
+                    fermer(d.channel, d.note, std::min(t, to) - from);
+                } else if constexpr (std::is_same_v<T, TempoEvent>) {
+                    if (t <= from) tempo = d; else if (t < to) plage.push_back({t - from, d});
+                } else if constexpr (std::is_same_v<T, TimeSignatureEvent>) {
+                    if (t <= from) signature = d; else if (t < to) plage.push_back({t - from, d});
+                } else if constexpr (std::is_same_v<T, ProgramChangeEvent>) {
+                    if (t <= from) programmes[d.channel] = d; else if (t < to) plage.push_back({t - from, d});
+                } else if constexpr (std::is_same_v<T, ControlChangeEvent>) {
+                    if (t <= from) controleurs[{d.channel, d.controller}] = d; else if (t < to) plage.push_back({t - from, d});
+                } else if constexpr (std::is_same_v<T, PitchBendEvent>) {
+                    if (t <= from) courbures[d.channel] = d; else if (t < to) plage.push_back({t - from, d});
+                } else if constexpr (std::is_same_v<T, ChannelPressureEvent>) {
+                    if (t <= from) pressions[d.channel] = d; else if (t < to) plage.push_back({t - from, d});
+                } else {
+                    // pression polyphonique, textes, repères, SysEx : ceux de la plage, sans chasse
+                    if (t >= from && t < to) plage.push_back({t - from, d});
+                }
+            }, e.data);
+        }
+        for (const auto& [cle, n] : ouvertes)   // une note sans fin écrite s'éteint au bout de la plage
+            for (int k = 0; k < n; ++k) plage.push_back({longueur, NoteOffEvent{cle.first, cle.second, 0}});
+        sortie.events = nom;
+        if (tempo) sortie.events.push_back({0, *tempo});
+        if (signature) sortie.events.push_back({0, *signature});
+        for (const auto& [c, e] : programmes) sortie.events.push_back({0, e});
+        for (const auto& [c, e] : controleurs) sortie.events.push_back({0, e});
+        for (const auto& [c, e] : courbures) sortie.events.push_back({0, e});
+        for (const auto& [c, e] : pressions) sortie.events.push_back({0, e});
+        std::stable_sort(plage.begin(), plage.end(), [](const MidiEvent& a, const MidiEvent& b) { return a.tick < b.tick; });
+        sortie.events.insert(sortie.events.end(), plage.begin(), plage.end());
+        sortie.events.push_back({longueur, EndOfTrackEvent{}});
+    }
+    return out;
 }
 
 } // namespace vsm::sequencer

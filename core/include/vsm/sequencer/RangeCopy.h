@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/midi/MidiFileParser.h"
 #include "vsm/sequencer/Project.h"
 #include <cstddef>
 #include <cstdint>
@@ -66,5 +67,17 @@ struct RangePasteReport {
 /// pose. Une plage vide ne fait rien (et rend un bilan nul).
 RangePasteReport pasteRangeInserting(Project& project, const RangeClipboard& clipboard, Tick at,
                                      const std::function<double(Tick)>& ticksToSeconds);
+
+/// D568.1 — DUPLIQUER LE TEMPS (*Duplicate Time* de Live) : [from, to) copiée sur toutes les pistes et collée EN
+/// INSÉRANT à `to` — ce qui suivait recule de `to - from`. Le presse-papiers de l'application n'est pas touché, et
+/// les locateurs ne le sont pas ici : c'est à l'appelant de les poser sur la copie.
+RangePasteReport duplicateRange(Project& project, Tick from, Tick to, const std::function<double(Tick)>& ticksToSeconds);
+
+/// D568.2 — LE MIDI ENTRE LES LOCATEURS (*Export ▸ MIDI Loop* de Cubase) : `file` — l'arrangement que l'export écrit
+/// (`toParsedFileArranged`) — coupé à [from, to) et ramené au tick 0. Les notes qui COMMENCENT dans la plage, coupées à
+/// `to` ; une note commencée avant `from` n'y entre pas. Les contrôleurs, le pitch bend, la pression, les programmes, le
+/// tempo et la signature : ceux de la plage, et la valeur EN VIGUEUR à `from` posée au tick 0 (la chasse de D331).
+/// Les noms de piste restent ; la fin de piste est à `to - from`. Une plage vide rend des pistes sans événement.
+midi::ParsedFile cropParsedFile(const midi::ParsedFile& file, Tick from, Tick to);
 
 } // namespace vsm::sequencer
