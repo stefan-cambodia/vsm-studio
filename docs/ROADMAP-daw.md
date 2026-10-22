@@ -43721,3 +43721,46 @@ moteur joue — l'export, lui, reconstruit sa chaîne depuis le fichier et ne pr
 | 5 | le témoin | le binaire de D567 : **quatre rouges** | **oui** |
 
 C++ 523 · 1 347 · 344 · 25 · 11. 136 bancs dans la série.
+
+### Phase D569 — un trentième audit : extraire l'automation MIDI, la tête fixe, choisir les notes par la plage (22/10/2026)
+
+*Écrite le 22/10 à 10 h 29, D568 close (poussée dès que le réseau reviendra : le nom de github.com ne se résout plus
+depuis 10 h 28), pendant la série de D566.*
+
+**LA MÉTHODE, celle de D567** (témoins `snapNotesToChords` 5, `VCA` 35, `Contraindre` 4). L'*Extract MIDI Automation*
+du menu MIDI de Cubase, son *Stationary Cursor*, les *Select ▸ In Loop / From Start to Cursor / From Cursor to End* de
+son éditeur de notes : **0 pour faire d'un contrôleur une courbe** — le CC 7 se multiplie au fader (D329), le CC 10
+s'ajoute au potentiomètre (D330), mais rien ne les change en automation de la tranche ; `extractMidiAutomation`,
+« Extraire l'automation », « CC en automation » : rien ; **0 pour une tête fixe** — l'arrangement suit la tête par pages
+(D11.3) ; `stationary`, « tête fixe », « tête au centre » : rien ; **0 pour choisir des NOTES par la plage** — la
+sélection par la plage existe pour les CLIPS de l'arrangement (`choisir-par-plage.sh`), le piano roll choisit tout, rien,
+l'inverse, la même hauteur, le même nom ; « notes entre les locateurs », `selectNotesInLoop` : rien. **Trouvé et
+écarté** : inverser les pliages (`FoldAll::Flip`), la quantification de la dernière prise (« Quantifier la prise »),
+les repères de cycle (les sections de repères en tiennent lieu, D542.1), la vélocité insérée — présents, ou trop minces.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D569.1 | **Extraire l'automation MIDI** — *Extract MIDI Automation* | Au piano roll (ou *Piste*), *Extraire l'automation des CC 7 et 10* : les CC 7 de la piste deviennent la courbe `mix.volume` (en marches : fader × valeur/127, et le fader seul avant le premier), les CC 10 la courbe `mix.pan` (en marches : panoramique + 2·valeur/127 − 1, borné à ±1) ; les CC extraits retirés ; une piste qui porte DÉJÀ la courbe visée garde ses CC de ce numéro, et c'est dit ; un pas ; mesuré par l'EXPORT : le même son avant et après, la courbe et les CC relus dans le projet |
+| D569.2 | **La tête fixe** — *Stationary Cursor* | *Affichage ▸ Tête fixe (la vue défile sous elle)* — case cochée, retenue : en lecture, quand le suivi est actif, la tête reste au milieu de l'arrangement et la vue défile en continu, au lieu de sauter d'une page ; arrêtée, rien ne bouge ; mesuré par le relevé de défilement en lecture, le témoin à pages à côté |
+| D569.3 | **Choisir les notes par la plage** — *Select In Loop / From Start to Cursor / From Cursor to End* | Au piano roll, *Sélection ▸ Les notes entre les locateurs / Du début à la tête / De la tête à la fin* : les règles de la sélection des clips par la plage — les notes qui TOUCHENT la plage ; celles qui COMMENCENT avant la tête ; celles qui FINISSENT après elle ; grisées sans plage ; le compte dit (`VSM_SELECTION`) ; mesuré par le geste qui suit (Suppr), le témoin sans sélection à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D569.1.** La conversion reproduit EXACTEMENT ce que le moteur faisait du contrôleur (`appliquerLesTenues`) :
+  volume = fader × v/127, panoramique = pan + 2v/127 − 1 (un CC 10 à 64 n'est donc pas le centre exact, et la courbe le
+  garde) ; des points en MARCHES (`step`), parce qu'un CC est une marche ; un premier point au tick 0 qui vaut le
+  réglage de la tranche, l'état d'avant le premier CC. **L'attendu, écrit avant la mesure : l'export avant et après est
+  le même au bit près** — si le moteur applique le CC et la courbe au même instant du bloc. S'il ne l'est pas, l'écart se
+  mesure et se publie avant d'être expliqué. Une piste qui a DÉJÀ la courbe garde ses CC de ce numéro : fondre deux
+  sources en une courbe est une autre décision, et la refuser se dit. Seuls 7 et 10 : ce sont les deux contrôleurs que
+  le moteur porte sur la TRANCHE ; les autres (74, 71…) vont à la machine et ont déjà leur ligne (D332).
+- **D569.2.** UNE OPTION, DÉCOCHÉE PAR DÉFAUT : D11.3 a choisi les pages exprès (« un fond qui glisse à chaque image
+  fatigue et empêche de lire les positions »), et ce choix reste le défaut ; Cubase propose les deux, et c'est le geste
+  qu'on veut pour suivre une forme d'onde en direct. Une préférence (le poste de travail), pas une donnée du morceau,
+  comme le suivi (D493). Elle ne vaut que
+  pendant la lecture et quand le suivi est actif ; la tête est tenue au milieu de la largeur de la zone des clips. Le
+  début du morceau ne défile pas en arrière de zéro : tant que la tête n'a pas atteint le milieu, elle avance.
+- **D569.3.** Les règles sont celles de `choisir-par-plage.sh` (les clips) : une seule définition de « dans la plage »
+  pour les deux vues. Sur la piste active du piano roll, ses notes muettes comprises (elles se choisissent comme les
+  autres).
+
+**L'ORDRE, TRANCHÉ ICI.** D569.3 d'abord (le plus court, et il sert D569.1 au banc), puis D569.1, puis D569.2.
