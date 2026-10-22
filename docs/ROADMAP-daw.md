@@ -43633,3 +43633,47 @@ Hauteur des pistes ▸ Agrandir les pistes choisies*.
 | 4 | un pas, le témoin | Ctrl+Z rend les quatre à 56 ; le binaire de D566 : **quatre rouges** | **oui** |
 
 C++ 520 · 1 347 · 344 · 25 · 11. 133 bancs dans la série.
+
+### Phase D568 — un vingt-neuvième audit : dupliquer le temps, exporter le MIDI entre les locateurs, contourner les inserts des tranches choisies (22/10/2026)
+
+*Écrite le 22/10 à 10 h 09, D567 close, pendant la série de D566.*
+
+**LA MÉTHODE, celle de D567** : la colonne anglaise de `Langue.cpp` contre les commandes de Cubase et de Live, chaque
+zéro revérifié en français (`/usr/bin/grep -rli --include='*.h' --include='*.cpp' --` sur `core app/Source audio
+interchange` ; témoins `snapNotesToChords` 5, `VCA` 35, `Contraindre` 4). Le *Duplicate Time* de Live (Ctrl+Maj+D),
+l'*Export ▸ MIDI Loop* de Cubase, le *Bypass Inserts* de la MixConsole sur les tranches choisies : **0 pour dupliquer
+une plage** — on la copie et on la colle en insérant (D535.3), deux gestes et le presse-papiers pris ; `duplicateTime`,
+« Dupliquer … locateurs », « Dupliquer la plage » : rien ; **0 pour exporter une plage en MIDI** — l'export audio
+propose « La boucle » dans sa boîte, l'export MIDI le morceau entier ou une piste ; `exportMidiRange`, `exportLoop`,
+« Exporter la boucle » : rien ; **0 pour contourner les inserts de plusieurs tranches** — « Contourner tout » (D15.1)
+agit sur la piste active, dans le panneau d'effets ; `bypassInserts`, « inserts des tranches choisies » : rien. **Trouvé
+et écarté** : coller le temps (*Paste Time* — D535.3), supprimer les notes courtes ou faibles (l'éditeur logique, D535.1 :
+« vélocité < 30 et durée < 1/32 »), pousser les clips au clavier (← →, D433), la tête au battement et à la
+mesure, n'afficher que certaines tranches (masquer une piste masque sa tranche, D17.4), ranger une piste dans un dossier
+neuf, le rétrograde, les préréglages de piste — présents.
+
+| # | Fonction (Cubase, Live) | Critère de réception |
+|---|---|---|
+| D568.1 | **Dupliquer entre les locateurs** — *Duplicate Time* (Live) | *Édition ▸ Dupliquer entre les locateurs (toutes les pistes)* : la plage [G, D) copiée sur toutes les pistes et collée EN INSÉRANT à D — ce qui suivait recule de D − G —, les locateurs posés sur la copie [D, 2D − G) pour qu'un second geste double encore ; le presse-papiers de plage n'est pas touché ; un pas ; grisée sans plage ; mesuré par l'export MIDI relu, le témoin sans geste à côté |
+| D568.2 | **Exporter le MIDI entre les locateurs** — *Export ▸ MIDI Loop* | *Fichier ▸ Exporter le MIDI entre les locateurs…* : un `.mid` de ce que le morceau fait ENTENDRE dans [G, D), le locateur gauche au tick 0 — les notes qui y COMMENCENT, coupées au locateur droit ; les contrôleurs, le pitch bend, la pression et les programmes de la plage, et leur valeur en vigueur à G posée au tick 0 ; le tempo et la signature en vigueur à G au tick 0, leurs changements dans la plage gardés ; grisée sans plage ; mesuré par le `.mid` relu, l'export du morceau entier à côté |
+| D568.3 | **Contourner les inserts des tranches choisies** — *Bypass Inserts* | *Mixage ▸ Contourner les inserts des tranches choisies (N)* — « Rétablir … (N) » quand ils le sont tous, la règle de D15.1 et de D567.3 — : chaque insert des tranches choisies contourné (`enabled` faux) ou rétabli, dans le moteur comme dans le projet ; un pas ; mesuré par l'EXPORT (D332), le témoin sans contournement à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D568.1.** Les fonctions de D535.3, telles quelles : `copyRange` puis `pasteRangeInserting` à D. Ni le tempo, ni les
+  signatures, ni les repères ne se dupliquent (« ils décrivent la ligne de temps, pas ce qu'on répète », D535.3) ;
+  l'insertion, elle, les repousse comme tout ce qui suit. Les locateurs suivent la copie, comme la sélection de temps de
+  Live : c'est ce qui fait de deux appels une plage quadruplée. Le presse-papiers de plage reste ce qu'il était :
+  dupliquer n'est pas copier.
+- **D568.2.** Une note commencée AVANT G n'est pas dans la boucle : on n'exporte pas une moitié de note dont l'attaque
+  est hors du fichier (Cubase non plus). Les états, eux, se reprennent à G — c'est la chasse de D331 et D335 : une boucle
+  qui commence pédale enfoncée ou volume à 40 doit sonner ainsi dès son tick 0. Le fichier est celui de l'arrangement
+  (`toParsedFileArranged`, D56.1), coupé : ce que l'export du morceau écrit, et rien d'autre. Le découpage est une
+  fonction du cœur, sur le `ParsedFile`, testée sans l'application. Pour le banc, un verbe `exporter-midi-locateurs:`
+  saute le sélecteur de fichier, comme `exporter-midi:` (D356).
+- **D568.3.** La règle de « Contourner tout » (D15.1) : les inserts passent à `enabled` faux, un par un, et « Rétablir »
+  les remet tous — l'état individuel d'avant n'est pas gardé, comme dans le panneau d'effets ; un drapeau de tranche
+  séparé serait un second contournement à concilier avec le premier. Le moteur reçoit le drapeau sur l'instance vivante
+  (`BypassableEffect`), sans reconstruire la chaîne. N compte les tranches choisies qui ont au moins un insert à changer.
+
+**L'ORDRE, TRANCHÉ ICI.** D568.1 d'abord (deux fonctions du cœur qui existent), puis D568.2 (une fonction neuve du
+cœur), puis D568.3.
