@@ -43920,6 +43920,24 @@ des vélocités et leurs bornes (le *Velocity* de Cubase) existent — `compress
 Mesuré la session VERROUILLÉE, le poste au repos, sur batterie (48 % à 20 h 25).
 C++ 527 · 1 349 · 347 · 25 · 11, Python 275, ruff et mypy propres, gardes vertes. 144 bancs dans la série.
 
+**LA SÉRIE DE D571 (binaire de D571)** — 22/10, 21 h 33 → 22 h 54 : **144 bancs en 80 min, 139 verts**, préférences
+identiques, aucune veille, la session verrouillée et l'écran éteint au départ comme à la fin ; `loi-panoramique` et
+`grouper-clips` verts. Les cinq rouges, rejoués SEULS de 22 h 54 à 23 h 17 sur le binaire de D571 PUIS sur celui de D566,
+45 s entre deux lancements, verrou toujours posé :
+- **`quantifier-audio`, `notes-depuis-attaques`, `transposition-globale`** : le même contrôle — « la fenêtre ouverte et
+  photographiée en français et en anglais » —, rouge sur les DEUX binaires. C'est la boîte modale qu'une session
+  verrouillée ne laisse jamais photographier (D95) : la circonstance, pas D571. **À rejouer écran déverrouillé.**
+- **`annulation-des-menus.py`** : « Édition ▸ Sélection ▸ Les notes de la tête à la fin » (D569.3) jugée MUETTE — toutes
+  les notes sont déjà choisies et la tête est à 0 : elles finissent toutes après elle, la même sélection. La table des
+  muettes voulues datait de D557 ; l'entrée y est écrite avec sa raison, et rejouée seule : « muette voulue ».
+- **`notes-du-projet.sh` : vert sur D566, rouge sur D571, à verrou égal — UNE RÉGRESSION DE D570.** D570.3 a posé un
+  verbe de banc `relever-notes` (les notes du piano roll à l'écran) quarante lignes AVANT le `relever-notes` de D509 (le
+  texte de l'éditeur des notes du projet) : le premier répondait, le second ne jouait plus jamais, et le banc de D509 lisait
+  « ? ». La série de D570 l'avait sous les yeux et ne l'a pas dit. Corrigé avec D572 (le verbe de D570.3 devient
+  `relever-notes-ecran`, et `couleur-notes.sh` avec lui) ; **une garde neuve, `tools/verbes-uniques.py`** — un verbe de
+  `VSM_GESTE_APRES` caché par un homonyme ou par le préfixe d'un `startsWith` plus haut —, vue ROUGE sur ce défaut et sur
+  lui seul (52 verbes lus, 1 caché), verte après, entrée dans `verifier.sh`.
+
 ### Phase D572 — un trente-troisième audit : l'aimantation relative à la grille, les départs qui suivent le panoramique, les préréglages de zoom (22/10/2026)
 
 *Écrite le 22/10 à 21 h 34, D571 close (commitée, poussée après la série de ses bancs, qui tourne).*
