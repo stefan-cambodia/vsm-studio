@@ -44326,3 +44326,47 @@ Mesuré pendant la série de D573 (la session verrouillée), le binaire de D576 
 mes compilations et mes rafales de lancements (`grouper-clips`, `aimant-relatif`, `couleur-notes`…), alors que les mêmes
 passaient sous le même verrou dans la série de D572 : ils se rejouent SEULS à sa fin, sur son binaire et sur celui de D572,
 avant d'être crus — et l'application ne se lance plus d'ici là.
+
+### Phase D577 — un trente-huitième audit : le quintolet dans la grille, masquer les pistes sans données, remettre les témoins d'écrêtage à zéro (23/10/2026)
+
+*Écrite le 23/10 à 05 h 52, D576 close et poussée, pendant la fin de la série de D573 (la session verrouillée, batterie à
+70 %) — sans lancer l'application, la leçon de D576 (mes rafales faisaient tomber les bancs de la série).*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (témoins `snapNotesToChords` 5, `VCA` 36, `Contraindre` 4). La grille de
+quantification de Cubase (ses n-olets), la visibilité des pistes de son projet (*Hide Tracks without Data*), la remise à
+zéro des mètres de sa MixConsole (*Reset Meters*) : **0 pour un quintolet** — `GridResolution` porte `triplet` et
+`dotted`, rien d'autre, et la barre du piano roll propose Droit, Triolet, Pointé ; `quintuplet`, `quintolet`, `tuplet` :
+rien ; **0 pour masquer les pistes sans données** — `trackIsEmpty` sert à les RETIRER (*Retirer les pistes vides*), et
+masquer se fait piste par piste (`Track::hidden`) ; `hideEmptyTracks`, « Masquer les pistes vides » : rien ; **0 pour
+remettre TOUS les témoins d'écrêtage à zéro** — chaque mètre efface le sien d'un clic (`effacerEcretage`, D344), rien ne
+les efface ensemble ; `resetMeters`, « Remettre les mètres » : rien. **Écarté** : le SEPTOLET — 7 dans l'espace de 4
+ne tombe juste sur aucun pas à 480 ou 960 la noire (68,57 ticks à la double-croche) : une grille qui dériverait de
+quatre ticks par mesure serait pire que pas de grille ; le quintolet, lui, est exact à la noire, à la croche, à la
+double et à la triple-croche (384, 192, 96, 48). **Toujours remis** : le mode d'automation *Trim*, les repères à
+étendue, le moniteur MIDI, le pré-enregistrement audio, le pré-roll, la réserve des fichiers.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D577.1 | **Le quintolet dans la grille** — *Quantize Grid ▸ Quintuplet* | La barre du piano roll : *Quintolet* à côté de Droit, Triolet, Pointé — cinq cases dans l'espace de quatre ; la grille dessinée, l'aimant, la quantification et les durées le suivent ; gardé avec la vue du projet (`pianoRollGridModifier : quintuplet`, D495) et dans les préréglages de quantification ; mesuré par le MIDI exporté après *Quantifier (100 %)*, le témoin droit à côté |
+| D577.2 | **Masquer les pistes sans données** — *Hide Tracks without Data* | *Piste ▸ Masquer les pistes sans données (N)* : les pistes que *Retirer les pistes vides* retirerait sont masquées (`hidden`), rien n'est retiré ; *Afficher toutes les pistes* les rend ; un pas ; grisée sans piste à masquer ; mesuré par le projet relu, le témoin *Retirer les pistes vides* à côté |
+| D577.3 | **Remettre les témoins d'écrêtage à zéro** — *Reset Meters* | *Mixage ▸ Remettre les témoins d'écrêtage à zéro (N)* : tous les témoins allumés — les tranches et le master — s'éteignent d'un geste ; grisée quand aucun n'est allumé ; un réglage de l'écran, pas du morceau : aucun pas ; mesuré par le relevé des vumètres (`VSM_VUMETRES`), deux tranches armées au-delà de 0 dBFS, le témoin d'un clic sur une seule à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D577.1.** Un troisième modificateur de la grille, exclusif des deux autres, comme eux une donnée du MORCEAU (la vue,
+  D495) : `GridResolution::quintuplet`, le pas `× 4 / 5`. Écrit `quintuplet` dans la vue, `Quintolet` au préréglage
+  (le nom que la barre montre, la règle de D570.2) ; un nom inconnu relu reste « droit » et c'est dit (D495). Tout ce qui
+  lit `gridResolutionToTicks` le suit sans une ligne de plus — c'est la raison de ne pas l'avoir écrit ailleurs.
+  **L'attendu, écrit avant la mesure** : des notes à 100, 190, 300 et 380 ; à la double-croche droite (120), le témoin
+  rend **120, 240, 360, 360** ; en quintolet (96), **96, 192, 288, 384**.
+- **D577.2.** La définition d'une piste sans données est celle de `trackIsEmpty`, la MÊME que *Retirer les pistes vides*
+  (pas une seconde règle qui finirait par diverger) ; masquer est un pas (la visibilité est une donnée du projet depuis
+  D17.4). Une piste déjà masquée ne compte pas. **L'attendu, écrit avant la mesure** : un projet de quatre pistes dont
+  deux sans données — masquer : **2 masquées**, les quatre toujours là ; *Afficher toutes les pistes* : **0 masquée** ;
+  le témoin *Retirer les pistes vides* : **2 pistes** restent.
+- **D577.3.** Le témoin d'écrêtage est un état de l'ÉCRAN (D344), pas du morceau : la remise ne fait pas de pas, comme
+  le clic qui efface un témoin seul. Le master compte. **L'attendu, écrit avant la mesure** : deux tranches armées
+  au-delà de 0 dBFS — le menu dit **(2)** ; après le geste, **0** témoin allumé et l'entrée grisée ; le témoin d'un clic
+  sur la première seule laisse **1** allumé.
+
+**L'ORDRE, TRANCHÉ ICI.** D577.1 (le cœur et ses tests, puis la barre et la vue), D577.2, D577.3 ; une compilation de
+l'application, APRÈS la série de D573 — et la série suivante sans compilation ni lancement à côté.
