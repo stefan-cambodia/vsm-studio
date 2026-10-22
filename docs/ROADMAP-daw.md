@@ -43919,3 +43919,51 @@ des vélocités et leurs bornes (le *Velocity* de Cubase) existent — `compress
 
 Mesuré la session VERROUILLÉE, le poste au repos, sur batterie (48 % à 20 h 25).
 C++ 527 · 1 349 · 347 · 25 · 11, Python 275, ruff et mypy propres, gardes vertes. 144 bancs dans la série.
+
+### Phase D572 — un trente-troisième audit : l'aimantation relative à la grille, les départs qui suivent le panoramique, les préréglages de zoom (22/10/2026)
+
+*Écrite le 22/10 à 21 h 34, D571 close (commitée, poussée après la série de ses bancs, qui tourne).*
+
+**LA MÉTHODE, celle de D567, ET LA LEÇON DE D571.3 : chaque zéro revérifié par ce que le code FAIT**, pas seulement par
+ses noms. Les types d'aimantation de Cubase (*Grid Relative*), les panoramiques de ses départs liés à celui de la voie
+(*Link Send Routing Panners to Channel Panner*), ses *Zoom Presets* : **0 pour garder l'écart à la grille** — un clip
+déplacé pose son ANCRE sur la ligne la plus proche (`snapTick` arrondit `ancreGeste_ + Δ`, D547.4 : « l'aimant tient au
+bord ») ; aucun mode ne garde le décalage d'un clip posé hors de la grille ; `gridRelative`, « relatif à la grille » :
+rien ; **0 pour un départ qui suive le panoramique** — la boucle des départs de `mixTrackInto` verse `srcL × niveau` et
+`srcR × niveau`, le signal d'AVANT le panoramique : une piste tournée à fond à gauche envoie au bus un signal centré ;
+`sendPan`, « panoramique du départ » : rien ; **0 pour un zoom nommé** — le zoom a sa pile d'annulation (D557.3) et le
+zoom sur les locateurs (D565.2) ; les dispositions nommées (D549.3) retiennent les volets, pas le zoom (les onze
+attributs de `decrireDisposition`) ; `zoomPreset`, « préréglages de zoom » : rien. **Trouvé et écarté, par le
+comportement** : la couleur automatique des pistes (`trackColourForIndex` donne déjà la suivante de la palette), la
+normalisation de l'export (le choix *Niveau* de la fenêtre d'export : crête à −1 dBFS, −14 et −23 LUFS), le tramage
+(D14.4), la queue de l'export, le moniteur MIDI (les témoins d'activité de la
+barre de transport ; une fenêtre des événements reçus manque, mais son banc demanderait un port virtuel — remis), le
+pré-enregistrement audio (0, mais invérifiable sans entrée audio au banc — remis). **Un vrai zéro, remis au prochain audit** : la LARGEUR
+STÉRÉO d'une voie (le panoramique combiné de Cubase) — `stereoWidth` rendait 9 fichiers, tous des paramètres de
+machines et d'effets (`output.stereoWidth`, la réverbération, le chorus) ; ni la piste ni la console n'en portent. Compté
+d'abord parmi les présents sur ce seul chiffre : c'est la leçon de D571.3 dans l'autre sens.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D572.1 | **L'aimantation relative à la grille** — *Grid Relative* | *Affichage ▸ Aimantation relative à la grille (garder l'écart)* — case cochée, retenue, grisée sans aimant : un clip DÉPLACÉ avance d'un nombre entier de pas, et l'écart de son ancre à la grille se garde (posé à la mesure 2 + un temps, tiré d'environ deux mesures, il arrive à la mesure 4 + un temps, et non à la mesure 4) ; les BORDS restent aimantés à la grille ; mesuré par le glisser (`glisser:arrangement`) puis le projet relu, le témoin à l'aimant absolu à côté |
+| D572.2 | **Les départs qui suivent le panoramique** — *Link Send Panners* | *Mixage ▸ Les départs suivent le panoramique (tranches choisies) (N)*, « Les départs ignorent le panoramique (N) » quand ils le suivent tous (la règle de D567.3) : chaque départ de la piste reçoit les gains gauche et droite de son panoramique, sous la loi du projet (D571.2) ; écrit au projet (`sendsFollowPan`) seulement s'il est posé ; un pas ; mesuré par l'EXPORT : une piste tournée à fond à gauche, fader au silence, un départ pré-fader vers un égaliseur neutre — le canal droit du retour tombe au plancher, le témoin sans l'option rend les deux canaux égaux |
+| D572.3 | **Les préréglages de zoom** — *Zoom Presets* | *Affichage ▸ Préréglages de zoom ▸ Enregistrer le zoom de l'arrangement…* (un nom) retient le nombre de mesures que la vue montre ; chaque préréglage s'y RAPPELLE, le bord gauche de la vue gardé ; *Retirer* ; gardés dans les préférences du poste, comme les préréglages de quantification (D570.2) ; un rappel est un pas de la pile de zoom (*Annuler le zoom*, D557.3, le défait) ; mesuré par le relevé `VSM_ARRANGEMENT : fenêtre N mesure(s)`, le témoin sans rappel à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D572.1.** Une préférence du POSTE (comment on travaille), comme l'aimant (D493). Elle ne touche que le DÉPLACEMENT
+  d'un clip : un bord se rogne ou s'étire là où la grille l'appelle — *Grid Relative* ne vaut que pour le déplacement chez
+  Cubase aussi. Sans aimant, rien ne change ; le pas est celui de l'aimant (la mesure, ou la grille fine). L'ancre reste
+  celle de D566.2 (le point d'accroche d'un clip audio qui en porte un) : c'est SON écart à la grille qui se garde. Un
+  déplacement au clavier avance déjà d'un pas entier : il est relatif par construction, rien à y faire.
+- **D572.2.** Une donnée du MORCEAU (elle change l'export), par PISTE comme le contournement des départs (D567.3).
+  **DÉSACTIVÉE PAR DÉFAUT**, et c'est un écart à Cubase qui lie par défaut : tout projet existant — et chaque
+  reconstruction de la chaîne — a été mixé départs centrés, et lier d'office changerait leur son à tous sans un mot. Les
+  gains sont ceux de la loi du projet, appliqués au MÊME panoramique que le fader (automation et CC 10 compris), aux
+  départs pré-fader comme post-fader. Les départs d'un GROUPE n'en héritent pas : un groupe a une balance, pas un
+  panoramique de source. Le moteur le lit dans le projet qu'il reçoit : la lecture et l'export l'entendent ensemble (D21).
+- **D572.3.** Un réglage du POSTE (la règle de D570.2). Ce qui se retient est l'étendue montrée en MESURES, pas des
+  pixels par tick : la même vue sur une fenêtre plus large montrerait sinon autre chose, et c'est ce que le relevé lit.
+  Le rappel garde le bord gauche ; un nom déjà pris est remplacé, et c'est dit.
+
+**L'ORDRE, TRANCHÉ ICI.** D572.2 d'abord (le son : cœur, moteur, format et tests avant l'application), puis D572.1, puis
+D572.3 ; une compilation de l'application pour les trois.
