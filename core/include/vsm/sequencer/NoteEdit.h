@@ -104,7 +104,16 @@ void scaleNoteTimes(std::vector<Note>& notes, const NoteSelection& selection, do
 /// Legato : chaque note sélectionnée est étendue jusqu'au début de la note
 /// suivante de la piste (toutes hauteurs confondues, comme le font les DAW).
 /// La dernière note de la piste garde sa durée.
-void applyLegato(std::vector<Note>& notes, const NoteSelection& selection);
+///
+/// D576.2, D576.3 : LES DEUX RÉGLAGES DU LEGATO DE CUBASE. `overlapTicks` pose la fin à ce nombre de ticks du départ
+/// suivant (négatif : un blanc ; positif : un recouvrement), une fin jamais avant son départ ; `selectedOnly` prend pour
+/// référence la note CHOISIE suivante (la dernière choisie garde sa durée) au lieu de toutes les notes de la piste. Les
+/// défauts sont le chemin d'avant.
+struct LegatoOptions {
+    Tick overlapTicks = 0;
+    bool selectedOnly = false;
+};
+void applyLegato(std::vector<Note>& notes, const NoteSelection& selection, const LegatoOptions& options = {});
 
 /// Raccourcit les notes qui en chevauchent une autre de MÊME hauteur, pour
 /// éliminer les superpositions qui produisent des notes « collées » à la

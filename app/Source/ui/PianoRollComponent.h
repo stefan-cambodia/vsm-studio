@@ -163,6 +163,13 @@ public:
     /// préréglages (D570.2). Les menus proposent les valeurs de `kZonesNonQuantif` et `kRayonsCapture`.
     static constexpr float kZonesNonQuantif[4] = {0.0f, 0.05f, 0.10f, 0.25f};
     static constexpr float kRayonsCapture[4] = {0.0f, 0.40f, 0.25f, 0.10f};
+    /// D576.2, D576.3 : LE CHEVAUCHEMENT DU LEGATO, en ticks À 480 LA NOIRE (mis à l'échelle du projet ; −20..+20 au
+    /// menu), et LE LEGATO ENTRE LES NOTES CHOISIES — des préférences du poste (`onBasculesChanged` les retient).
+    static constexpr int kChevauchementsLegato[5] = {-20, -10, 0, 10, 20};
+    void setLegatoChevauchement(int ticksA480) { legatoChevauchement_ = juce::jlimit(-480, 480, ticksA480); }
+    int legatoChevauchement() const { return legatoChevauchement_; }
+    void setLegatoEntreChoisies(bool oui) { legatoEntreChoisies_ = oui; }
+    bool legatoEntreChoisies() const { return legatoEntreChoisies_; }
     void setZoneNonQuantif(float part);
     float zoneNonQuantif() const { return zoneNonQuantif_; }
     void setRayonCapture(float part);
@@ -475,6 +482,8 @@ private:
     bool snapEnabled_ = true;
     float swing_ = 0.0f;
     float zoneNonQuantif_ = 0.0f;   ///< D575.1
+    int legatoChevauchement_ = 0;      ///< D576.2, en ticks à 480 la noire
+    bool legatoEntreChoisies_ = false; ///< D576.3
     float rayonCapture_ = 0.0f;     ///< D575.2
     uint8_t defaultVelocity_ = 100;
     vsm::sequencer::Scale scale_ { 0, vsm::sequencer::ScaleType::Chromatic };

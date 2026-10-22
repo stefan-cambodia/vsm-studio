@@ -1508,6 +1508,9 @@ MainComponent::MainComponent()
         }
         // D496 : et la vélocité des notes dessinées, bornée à 1..127.
         pianoRollPanel_.barre().poserVelocite(reglages.getIntValue("pianoRollVelocite", 100));
+        // D576.2, D576.3 : les réglages du legato, des préférences du poste comme celles de Cubase.
+        pianoRoll_.setLegatoChevauchement(reglages.getIntValue("legatoChevauchement", 0));
+        pianoRoll_.setLegatoEntreChoisies(reglages.getBoolValue("legatoEntreChoisies", false));
         // LA BARRE MONTRE CE QUI VIENT D'ÊTRE RELU, tout de suite : la minuterie
         // (`PianoRollPanel::refresh`) le ferait au premier tour, APRÈS les relevés
         // du démarrage — mesuré : « aimant non (bouton oui) ».
@@ -1519,6 +1522,8 @@ MainComponent::MainComponent()
             r.setValue("pianoRollFantomes", pianoRoll_.ghostNotesVisible());
             r.setValue("pianoRollVelocite", static_cast<int>(pianoRoll_.defaultVelocity()));   // D496
             r.setValue("pianoRollCouleurNotes", static_cast<int>(pianoRoll_.couleurDesNotes()));   // D570.3
+            r.setValue("legatoChevauchement", pianoRoll_.legatoChevauchement());   // D576.2
+            r.setValue("legatoEntreChoisies", pianoRoll_.legatoEntreChoisies());   // D576.3
             r.saveIfNeeded();
         };
     }
@@ -5054,6 +5059,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                       ? tr(u8"Ajouter la chaîne (rien de copié)")
                                       : tr(u8"Ajouter la chaîne à la suite (%1 inserts)").replace("%1", juce::String(presse)),
                                   presse > 0 && piste < project_.tracks.size());
+                    // D576.1 : LES INSERTS APRÈS LE FADER — une case par insert de la piste choisie, cochée s'il y est.
+                    {
+                        juce::PopupMenu apres;
+                        const auto& infos = vsm::audio::effect::EffectFactory::available();
+                        for (size_t i = 0; i < combien && i <= kMenuTrackPostFaderLast - kMenuTrackPostFaderFirst; ++i) {
+                            const auto& insert = project_.tracks[piste].effects[i];
+                            juce::String nom = juce::String::fromUTF8(insert.type.c_str());
+                            for (const auto& info : infos)
+                                if (info.id == insert.type) nom = juce::String::fromUTF8(info.displayName.c_str());
+                            apres.addItem(kMenuTrackPostFaderFirst + static_cast<int>(i),
+                                          tr(u8"Après le fader : %1").replace("%1", juce::String(static_cast<int>(i) + 1) + ". " + nom),
+                                          true, insert.postFader);
+                        }
+                        menu.addSubMenu(tr(u8"Inserts après le fader"), apres, combien > 0);
+                    }
                     // D562.3 : LES RÉGLAGES DE LA TRANCHE (Copy / Paste Channel Settings) — trim, phase, départs et
                     // inserts ; le compte du collage dit combien de pistes choisies changeraient.
                     const bool aUneTranche = piste < project_.tracks.size() && !project_.tracks[piste].isFolder()
@@ -6355,6 +6375,10 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackShowAll:  showAllTracks(); break;
         case kMenuTrackSavePreset: promptSaveTrackPreset(); break;
         default: break;
+    }
+    if (menuItemID >= kMenuTrackPostFaderFirst && menuItemID <= kMenuTrackPostFaderLast) {   // D576.1
+        basculerInsertApresFader(static_cast<size_t>(menuItemID - kMenuTrackPostFaderFirst));
+        return;
     }
     if (menuItemID >= kMenuTrackMidiFxFirst && menuItemID <= kMenuTrackMidiFxLast) {   // D31.4
         const auto types = vsm::sequencer::midiEffectTypes();
@@ -14226,6 +14250,20 @@ void MainComponent::lierLesDepartsAuPanoramique() {
         pianoRoll_.onStatusChanged(tr(plan.follow ? u8"Les départs suivent le panoramique : %1 tranche(s)"
                                                   : u8"Les départs ignorent le panoramique : %1 tranche(s)")
                                        .replace("%1", juce::String(static_cast<int>(n))));
+}
+
+void MainComponent::basculerInsertApresFader(size_t insert) {
+    // D576.1 : UN INSERT AVANT OU APRÈS LE FADER — un pas ; la chaîne refaite depuis le projet porte le drapeau sur son
+    // instance (l'enveloppe `BypassableEffect`), que le moteur lit à chaque bloc.
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size() || insert >= project_.tracks[piste].effects.size()) return;
+    auto& effet = project_.tracks[piste].effects[insert];
+    const bool apres = !effet.postFader;
+    beginProjectEdit(apres ? juce::String::fromUTF8(u8"Insert après le fader") : juce::String::fromUTF8(u8"Insert avant le fader"));
+    project_.tracks[piste].effects[insert].postFader = apres;
+    effectChain_.rebuildFromProject();
+    std::fputs(("VSM_CONSOLE : insert " + std::to_string(insert + 1) + " (" + effet.type + ") "
+                + (apres ? "apr\xc3\xa8s" : "avant") + " le fader, piste " + std::to_string(piste) + "\n").c_str(), stderr);
 }
 
 void MainComponent::poserLaLargeurStereo(float largeur) {

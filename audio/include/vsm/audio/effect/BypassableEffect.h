@@ -46,6 +46,9 @@ public:
 
     void setBypassed(bool bypassed) { bypassed_.store(bypassed, std::memory_order_relaxed); }
     bool isBypassed() const { return bypassed_.load(std::memory_order_relaxed); }
+    /// D576.1 : après le fader — atomique, comme le contournement : basculer ne reconstruit pas la chaîne.
+    void setRunsAfterFader(bool apres) { apresFader_.store(apres, std::memory_order_relaxed); }
+    bool runsAfterFader() const override { return apresFader_.load(std::memory_order_relaxed); }
 
     void prepare(double sampleRate, int maxBlockSize) override {
         inner_->prepare(sampleRate, maxBlockSize);
@@ -106,6 +109,7 @@ public:
 private:
     AudioEffectPtr inner_;
     std::atomic<bool> bypassed_{false};
+    std::atomic<bool> apresFader_{false};   ///< D576.1
     int maxBlock_ = 0;
     size_t capacite_ = 0;
     size_t ecriture_ = 0;

@@ -106,6 +106,8 @@ struct ProjectEffect {
     std::string nativeState;
     /// Actif ou contourné (D15.1) ; écrit seulement quand contourné.
     bool enabled = true;
+    /// D576.1 : après le fader ; écrit seulement quand il l'est. EN DERNIER (agrégats positionnels).
+    bool postFader = false;
 };
 
 /// Un point d'automation. `tick` est dans la résolution du transport (la même

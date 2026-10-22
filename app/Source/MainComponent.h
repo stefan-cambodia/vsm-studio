@@ -1234,6 +1234,9 @@ private:
         /// D574.1, D574.2 : l'aimantation aux clips et aux repères, le curseur magnétique.
         kMenuViewArrangementSnapEvents,
         kMenuViewArrangementSnapCursor,
+        /// D576.1 : un insert de la piste choisie après le fader, une case par insert (seize au plus).
+        kMenuTrackPostFaderFirst,
+        kMenuTrackPostFaderLast = kMenuTrackPostFaderFirst + 15,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1769,6 +1772,7 @@ private:
     void contournerLesDepartsChoisis();
     void lierLesDepartsAuPanoramique();   ///< D572.2
     void poserLaLargeurStereo(float largeur);   ///< D573.1
+    void basculerInsertApresFader(size_t insert);   ///< D576.1
     /// D568.1 : la plage des locateurs dupliquée en insérant, les locateurs sur la copie.
     void dupliquerLaPlage();
     /// D568.2 : le MIDI entre les locateurs dans `fichier` (vide : le sélecteur) ; rend vrai s'il est écrit.

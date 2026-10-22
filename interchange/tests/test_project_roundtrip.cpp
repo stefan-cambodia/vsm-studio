@@ -717,3 +717,24 @@ VSM_TEST(la_forme_du_fondu_de_sortie_survit_au_disque) {
     applyDocumentToProject(ancien, vieux);
     for (const auto& clip : vieux.tracks[0].clips) VSM_ASSERT(clip.fadeOutShape == clip.fadeShape);
 }
+
+// D576.1 : UN INSERT APRÈS LE FADER survit au disque ; un insert d'avant n'écrit rien de plus.
+VSM_TEST(un_insert_apres_le_fader_survit_au_disque) {
+    Project p = projetDistinctif();
+    p.tracks[0].effects = {{"limiter", {}, {}, true, false}, {"eq", {}, {}, true, true}};
+    {
+        ProjectDocument doc = documentFromProject(p);
+        const std::string texte = projectDocumentToJson(doc).toString();
+        size_t n = 0;
+        for (size_t at = texte.find("\"postFader\""); at != std::string::npos; at = texte.find("\"postFader\"", at + 1)) ++n;
+        VSM_ASSERT_EQ(n, size_t(1));
+    }
+    const fs::path dossier = dossierNeuf("insert-apres-fader");
+    VSM_ASSERT(saveProjectBundle(p, dossier.string()).success);
+    const auto relu = loadProjectBundle(dossier.string());
+    VSM_ASSERT(relu.success);
+    const auto& e = relu.bundle.project.tracks[0].effects;
+    VSM_ASSERT_EQ(e.size(), size_t(2));
+    VSM_ASSERT(!e[0].postFader);
+    VSM_ASSERT(e[1].postFader);
+}

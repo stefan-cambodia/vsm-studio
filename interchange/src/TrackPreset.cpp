@@ -14,6 +14,7 @@ TrackPreset trackPresetFromTrack(const vsm::sequencer::Track& track, const std::
     for (const auto& effet : track.effects) {
         preset.effects.push_back(effectPresetFromDescription(effet, effet.type));
         preset.effectsEnabled.push_back(effet.enabled);
+        preset.effectsPostFader.push_back(effet.postFader);   // D576.1
     }
     preset.sendLevels = track.sendLevels;
     preset.volume = track.volume;
@@ -41,6 +42,7 @@ void applyTrackPresetToTrack(const TrackPreset& preset, vsm::sequencer::Track& t
     for (size_t i = 0; i < preset.effects.size(); ++i) {
         auto effet = descriptionFromEffectPreset(preset.effects[i]);
         effet.enabled = i < preset.effectsEnabled.size() ? preset.effectsEnabled[i] : true;
+        effet.postFader = i < preset.effectsPostFader.size() && preset.effectsPostFader[i];   // D576.1
         track.effects.push_back(std::move(effet));
     }
     track.sendLevels = preset.sendLevels;
@@ -71,6 +73,8 @@ JsonValue trackPresetToJson(const TrackPreset& preset) {
     for (size_t i = 0; i < preset.effects.size(); ++i) {
         JsonValue e = effectPresetToJson(preset.effects[i]);
         e.set("enabled", JsonValue::makeBoolean(i < preset.effectsEnabled.size() ? preset.effectsEnabled[i] : true));
+        if (i < preset.effectsPostFader.size() && preset.effectsPostFader[i])
+            e.set("postFader", JsonValue::makeBoolean(true));   // D576.1, écrit seulement s'il l'est
         effets.append(std::move(e));
     }
     root.set("effects", std::move(effets));
@@ -123,6 +127,7 @@ TrackPresetLoadResult trackPresetFromJson(const JsonValue& json) {
         if (!lu.success) { result.error = "insert : " + lu.error; return result; }
         preset.effects.push_back(lu.preset);
         preset.effectsEnabled.push_back(e["enabled"].asBoolean(true));
+        preset.effectsPostFader.push_back(e["postFader"].asBoolean(false));   // D576.1
     }
     for (const auto& niveau : json["sendLevels"].elements())
         preset.sendLevels.push_back(static_cast<float>(niveau.asNumber(0.0)));

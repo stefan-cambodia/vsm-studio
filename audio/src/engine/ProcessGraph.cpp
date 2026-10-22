@@ -30,6 +30,10 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     scratchStereoR_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     widthL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);   // D573.1
     widthR_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
+    apresL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);   // D576.1
+    apresR_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
+    largeurPreL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
+    largeurPreR_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     for (size_t b = 0; b < kMaxSends; ++b) {
         sendL_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
         sendR_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
@@ -1840,9 +1844,11 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // repasser dessus les appliquerait deux fois.
     auto chain = track.frozen ? nullptr
                               : effectChains_[trackIndex].load(std::memory_order_acquire);
+    if (trackIndex < kMaxTracks) transportPiste_[trackIndex] = transport;   // D576.1
     if (chain) {
         for (const auto& fx : *chain) {
-            if (!fx) continue;
+            // D576.1 : un insert d'APRÈS le fader tourne dans `mixTrackInto`, après le volume.
+            if (!fx || fx->runsAfterFader()) continue;
             // CHAÎNE LATÉRALE : si l'effet écoute un bus, on lui tend le
             // contenu de ce bus POUR CE SEGMENT, juste avant qu'il
             // travaille. Le bus a déjà reçu les pistes qui l'alimentent :
@@ -1909,29 +1915,76 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     const float pan = std::clamp(((pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan) + ccPan_[trackIndex],
                                  -1.0f, 1.0f);   // D330 : le CC 10 s'ajoute au potentiomètre
 
+    // D576.1 : LES INSERTS APRÈS LE FADER. Sans eux — le cas de toute piste d'avant — `sortieL` est la source et le
+    // gain du fader reste à appliquer : le chemin d'avant, appel pour appel. Avec eux, le fader est appliqué ICI (volume,
+    // polarité, CC 7, VCA, automation : `volume`), les inserts d'après traversent ce signal dans leur ordre, et ce qui
+    // suit (largeur, panoramique, départs post-fader, mesures) prend leur sortie au gain 1. Une piste GELÉE ne les
+    // repasse pas : le gel les a pris (D5.5), comme tous ses inserts.
+    const float* sortieL = srcL;
+    const float* sortieR = srcR;
+    float gainFader = volume;
+    if (!track.frozen && sampleCount <= static_cast<int>(apresL_.size())) {
+        auto chaine = effectChains_[trackIndex].load(std::memory_order_acquire);
+        bool apres = false;
+        if (chaine)
+            for (const auto& fx : *chaine)
+                if (fx && fx->runsAfterFader()) { apres = true; break; }
+        if (apres) {
+            for (int i = 0; i < sampleCount; ++i) {
+                apresL_[static_cast<size_t>(i)] = srcL[static_cast<size_t>(i)] * volume;
+                apresR_[static_cast<size_t>(i)] = srcR[static_cast<size_t>(i)] * volume;
+            }
+            for (const auto& fx : *chaine) {
+                if (!fx || !fx->runsAfterFader()) continue;
+                const int bus = fx->sidechainBus();
+                if (bus >= 1 && bus <= static_cast<int>(kMaxSends))
+                    fx->setSidechainInput(sendL_[static_cast<size_t>(bus - 1)].data() + sampleStart,
+                                          sendR_[static_cast<size_t>(bus - 1)].data() + sampleStart, sampleCount);
+                fx->setTransportInfo(transportPiste_[trackIndex]);
+                fx->process(apresL_.data(), apresR_.data(), sampleCount);
+            }
+            sortieL = apresL_.data();
+            sortieR = apresR_.data();
+            gainFader = 1.0f;
+        }
+    }
+
     // D573.1 : LA LARGEUR STÉRÉO resserre l'image AVANT le panoramique ; c'est le panneau (`panL`, `panR`) qui va à la
     // sortie, et aux départs qui suivent le panoramique (D572.2). Le RMS, la corrélation et les départs centrés prennent
     // la source ; la crête, que le mélange rend, est celle de l'image resserrée — une moyenne pondérée des deux canaux,
     // jamais plus haute. À 1, rien n'est calculé : les pointeurs sont ceux de la source, le chemin d'avant au bit près.
     // La borne est celle de `sendL_` (`sampleStart + sampleCount` ≤ `maxBlockSize_`) : elle ne tombe jamais.
-    const float* panL = srcL;
-    const float* panR = srcR;
+    const float* panL = sortieL;
+    const float* panR = sortieR;
     if (track.stereoWidth < 1.0f && sampleCount <= static_cast<int>(widthL_.size())) {
-        narrowStereo(srcL, srcR, sampleCount, std::max(0.0f, track.stereoWidth), widthL_.data(), widthR_.data());
+        narrowStereo(sortieL, sortieR, sampleCount, std::max(0.0f, track.stereoWidth), widthL_.data(), widthR_.data());
         panL = widthL_.data();
         panR = widthR_.data();
+    }
+    // D576.1 : UN DÉPART PRÉ-FADER LIÉ AU PANORAMIQUE prend la SOURCE (resserrée) ; sans inserts d'après, c'est `panL`.
+    const float* prePanL = panL;
+    const float* prePanR = panR;
+    if (sortieL != srcL) {
+        prePanL = srcL;
+        prePanR = srcR;
+        if (track.stereoWidth < 1.0f && track.sendsFollowPan && sampleCount <= static_cast<int>(largeurPreL_.size())) {
+            narrowStereo(srcL, srcR, sampleCount, std::max(0.0f, track.stereoWidth), largeurPreL_.data(),
+                         largeurPreR_.data());
+            prePanL = largeurPreL_.data();
+            prePanR = largeurPreR_.data();
+        }
     }
 
     // D571.2 : LA LOI DE PANORAMIQUE DU PROJET. Le défaut (−3 dB) reste l'appel d'avant, mot pour mot.
     float peak = 0.0f;
     if (project.panLaw == vsm::sequencer::PanLaw::Minus3dB) {
         peak = mixStereoInto(panL, panR, sampleCount,
-                             volume, pan, audible,
+                             gainFader, pan, audible,
                              destL + sampleStart, destR + sampleStart);
     } else {
         float gainL = 1.0f, gainR = 1.0f;
         vsm::sequencer::panLawGains(project.panLaw, pan, gainL, gainR);
-        peak = mixStereoWithGainsInto(panL, panR, sampleCount, volume, gainL, gainR, audible,
+        peak = mixStereoWithGainsInto(panL, panR, sampleCount, gainFader, gainL, gainR, audible,
                                       destL + sampleStart, destR + sampleStart);
     }
     blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
@@ -1941,9 +1994,9 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     // fader et AVANT le panoramique, c'est-à-dire ce que la piste envoie --
     // la même convention que la crête, pour que les trois chiffres parlent
     // du même son.
-    for (int i = 0; i < sampleCount; ++i) {
-        const double l = static_cast<double>(srcL[static_cast<size_t>(i)]) * volume;
-        const double r = static_cast<double>(srcR[static_cast<size_t>(i)]) * volume;
+    for (int i = 0; i < sampleCount; ++i) {   // D576.1 : après les inserts d'après le fader, s'il y en a
+        const double l = static_cast<double>(sortieL[static_cast<size_t>(i)]) * gainFader;
+        const double r = static_cast<double>(sortieR[static_cast<size_t>(i)]) * gainFader;
         blockSumL2_[trackIndex] += l * l;
         blockSumR2_[trackIndex] += r * r;
         blockSumLR_[trackIndex] += l * r;
@@ -1970,7 +2023,9 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
             // pilote : un fondu écrit en automation doit emporter les
             // départs post-fader avec lui, comme le ferait la main sur le
             // fader.
-            const float apresFader = (preFader & (1u << b)) ? signe : volume;
+            // D576.1 : un départ POST-fader prend la sortie des inserts d'après (`sortieL`, au gain `gainFader`).
+            const bool avantFader = (preFader & (1u << b)) != 0;
+            const float apresFader = avantFader ? signe : gainFader;
             const uint16_t bitDepart = static_cast<uint16_t>(1u << (kAutoSendFirst + b));
             // D567.3 : DES DÉPARTS CONTOURNÉS NE VERSENT RIEN, même pilotés par l'automation : le contournement
             // est un état de la tranche, pas un niveau, et la courbe le traverse sans le défaire.
@@ -1980,15 +2035,19 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
             const float lvl = niveau * apresFader;
             if (lvl <= 0.0f) continue;
             if (!track.sendsFollowPan) {
+                const float* tapL = avantFader ? srcL : sortieL;
+                const float* tapR = avantFader ? srcR : sortieR;
                 for (int i = 0; i < sampleCount; ++i) {
-                    sendL_[b][static_cast<size_t>(sampleStart + i)] += srcL[static_cast<size_t>(i)] * lvl;
-                    sendR_[b][static_cast<size_t>(sampleStart + i)] += srcR[static_cast<size_t>(i)] * lvl;
+                    sendL_[b][static_cast<size_t>(sampleStart + i)] += tapL[static_cast<size_t>(i)] * lvl;
+                    sendR_[b][static_cast<size_t>(sampleStart + i)] += tapR[static_cast<size_t>(i)] * lvl;
                 }
             } else {
                 const float lvlG = lvl * departG, lvlD = lvl * departD;
+                const float* tapL = avantFader ? prePanL : panL;
+                const float* tapR = avantFader ? prePanR : panR;
                 for (int i = 0; i < sampleCount; ++i) {
-                    sendL_[b][static_cast<size_t>(sampleStart + i)] += panL[static_cast<size_t>(i)] * lvlG;
-                    sendR_[b][static_cast<size_t>(sampleStart + i)] += panR[static_cast<size_t>(i)] * lvlD;
+                    sendL_[b][static_cast<size_t>(sampleStart + i)] += tapL[static_cast<size_t>(i)] * lvlG;
+                    sendR_[b][static_cast<size_t>(sampleStart + i)] += tapR[static_cast<size_t>(i)] * lvlD;
                 }
             }
         }

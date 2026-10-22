@@ -236,6 +236,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
             // avec la même latence -- le fichier rendu est ce qu'on entendait.
             auto enrobe = std::make_unique<vsm::audio::effect::BypassableEffect>(std::move(effect));
             enrobe->setBypassed(!entry.enabled);
+            enrobe->setRunsAfterFader(entry.postFader);   // D576.1 : le drapeau voyage AVEC l'effet, pas par son rang
             effect = std::move(enrobe);
             effect->prepare(options.sampleRate, options.blockSize);
             const EffectApplyReport applyReport = applyEffectDescription(entry, *effect);

@@ -729,6 +729,11 @@ private:
     std::vector<float> scratchMonoL_;
     std::vector<float> scratchStereoL_, scratchStereoR_; // rendu stéréo par piste (avant inserts+mix)
     std::vector<float> widthL_, widthR_;   // D573.1 : la source resserrée par la largeur, avant le panoramique
+    std::vector<float> apresL_, apresR_;       // D576.1 : le signal d'après le fader, que traversent les inserts d'après
+    std::vector<float> largeurPreL_, largeurPreR_;   // D576.1 : la SOURCE resserrée, pour un départ pré-fader lié
+    /// D576.1 : le transport de chaque piste, relevé par `renderTrackVoice` (un emplacement par piste, écrit par un
+    /// seul fil) pour les inserts d'après le fader, qui tournent dans `mixTrackInto`.
+    std::array<vsm::audio::plugin::TransportInfo, kMaxTracks> transportPiste_{};
 
     // Chaînes d'inserts par piste (publiées atomiquement).
     std::array<std::atomic<std::shared_ptr<const EffectChain>>, kMaxTracks> effectChains_{};

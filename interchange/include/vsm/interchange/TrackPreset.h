@@ -26,6 +26,7 @@ struct TrackPreset {
     std::optional<SynthPreset> synth;             ///< l'état de la machine, si elle a pu être lue
     std::vector<EffectPreset> effects;            ///< les inserts, dans l'ordre, chacun avec son contournement
     std::vector<bool> effectsEnabled;             ///< parallèle à `effects`
+    std::vector<bool> effectsPostFader;           ///< D576.1 : parallèle à `effects`, absent = avant le fader
     std::vector<float> sendLevels;
     float volume = 1.0f;
     float pan = 0.0f;

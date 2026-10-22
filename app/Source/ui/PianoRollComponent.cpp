@@ -64,6 +64,8 @@ enum ContextMenuId {
     kCtxColorTrack = 100520, kCtxColorPitch, kCtxColorChannel,                    // D570.3
     kCtxQuantizeZoneFirst = 100530, kCtxQuantizeZoneLast = 100533,                // D575.1 : 0, 5, 10, 25 % du pas
     kCtxQuantizeCatchFirst = 100540, kCtxQuantizeCatchLast = 100543,              // D575.2 : tout, 40, 25, 10 %
+    kCtxLegatoOverlapFirst = 100550, kCtxLegatoOverlapLast = 100554,              // D576.2 : −20 … +20 ticks
+    kCtxLegatoSelectedOnly = 100560,                                              // D576.3
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -1127,7 +1129,12 @@ void PianoRollComponent::applyLegatoToSelection() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
     if (!beginEdit("Legato")) return;
-    applyLegato(track->notes, selectedNoteIds_);
+    // D576.2, D576.3 : le chevauchement, mis à l'échelle de la résolution du projet, et la référence choisie.
+    vsm::sequencer::LegatoOptions options;
+    const int ppq = project_ != nullptr ? static_cast<int>(project_->ticksPerQuarterNote) : 480;
+    options.overlapTicks = static_cast<vsm::midi::Tick>(std::lround(static_cast<double>(legatoChevauchement_) * ppq / 480.0));
+    options.selectedOnly = legatoEntreChoisies_;
+    applyLegato(track->notes, selectedNoteIds_, options);
     notifyEdited();
 }
 
@@ -1679,6 +1686,20 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     timeMenu.addItem(kCtxTimesDouble, tr(u8"Deux fois plus lent (départs et durées ×2)"), sel);
     timeMenu.addItem(kCtxTimesHalve, tr(u8"Deux fois plus vite (départs et durées ÷2)"), sel);
     ajouterAvecRaccourci(timeMenu, kCtxLegato, tr("Legato"), shortcuts_, Id::EditLegato, sel);
+    // D576.2, D576.3 : LES RÉGLAGES DU LEGATO, des préférences du poste ; cochés les courants.
+    {
+        juce::PopupMenu chevauchements;
+        for (int i = 0; i <= kCtxLegatoOverlapLast - kCtxLegatoOverlapFirst; ++i) {
+            const int t = kChevauchementsLegato[i];
+            chevauchements.addItem(kCtxLegatoOverlapFirst + i,
+                                   t == 0 ? tr(u8"Fin sur le départ suivant")
+                                          : tr(t < 0 ? u8"Blanc de %1 ticks" : u8"Recouvrement de %1 ticks")
+                                                .replace("%1", juce::String(std::abs(t))),
+                                   true, legatoChevauchement_ == t);
+        }
+        timeMenu.addSubMenu(tr(u8"Chevauchement du legato"), chevauchements);
+        timeMenu.addItem(kCtxLegatoSelectedOnly, tr(u8"Legato entre les notes choisies seulement"), true, legatoEntreChoisies_);
+    }
     timeMenu.addItem(kCtxRemoveOverlaps, tr("Retirer les chevauchements"), sel);
     timeMenu.addItem(kCtxDeleteDoubles, tr(u8"Supprimer les doublons"), sel);   // D546.1
     timeMenu.addItem(kCtxRemoveOverlapsMono, tr(u8"Retirer les chevauchements (mono)"), sel);   // D552.2
@@ -1864,6 +1885,18 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxResetQuantize:    resetQuantizeSelection(false); break;          // D566.1
         case kCtxFreezeQuantize:   resetQuantizeSelection(true); break;           // D566.1
         case kCtxHumanize:         humanizeSelection(static_cast<float>(gridTicks()) * 0.12f, 12.0f); break;
+        case kCtxLegatoOverlapFirst: case kCtxLegatoOverlapFirst + 1: case kCtxLegatoOverlapFirst + 2:
+        case kCtxLegatoOverlapFirst + 3: case kCtxLegatoOverlapLast:   // D576.2
+            setLegatoChevauchement(kChevauchementsLegato[menuItemId - kCtxLegatoOverlapFirst]);
+            std::fputs(("VSM_LEGATO : chevauchement " + std::to_string(legatoChevauchement_) + " ticks (à 480 la noire)\n").c_str(),
+                       stderr);
+            if (onBasculesChanged) onBasculesChanged();
+            break;
+        case kCtxLegatoSelectedOnly:   // D576.3
+            setLegatoEntreChoisies(!legatoEntreChoisies_);
+            std::fputs(legatoEntreChoisies_ ? "VSM_LEGATO : entre les notes choisies\n" : "VSM_LEGATO : toutes les notes\n", stderr);
+            if (onBasculesChanged) onBasculesChanged();
+            break;
         case kCtxQuantizeZoneFirst: case kCtxQuantizeZoneFirst + 1: case kCtxQuantizeZoneFirst + 2:
         case kCtxQuantizeZoneLast:   // D575.1
             setZoneNonQuantif(kZonesNonQuantif[menuItemId - kCtxQuantizeZoneFirst]);

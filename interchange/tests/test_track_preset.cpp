@@ -155,3 +155,16 @@ VSM_TEST(a_track_preset_carries_the_stereo_width_with_the_pan) {
     applyTrackPresetToTrack(relu.preset, groupe);
     VSM_ASSERT_NEAR(groupe.stereoWidth, 1.0f, 0.0f);
 }
+
+// D576.1 : LA POSITION D'UN INSERT voyage dans le préréglage de piste.
+VSM_TEST(a_track_preset_carries_the_post_fader_inserts) {
+    Track piste = pisteReglee();
+    piste.effects[1].postFader = true;
+    const auto relu = parseTrackPreset(trackPresetToJson(trackPresetFromTrack(piste, "Apres", std::nullopt)).toString());
+    VSM_ASSERT(relu.success);
+    Track cible;
+    applyTrackPresetToTrack(relu.preset, cible);
+    VSM_ASSERT_EQ(cible.effects.size(), size_t(2));
+    VSM_ASSERT(!cible.effects[0].postFader);
+    VSM_ASSERT(cible.effects[1].postFader);
+}

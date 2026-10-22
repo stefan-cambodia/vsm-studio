@@ -72,6 +72,11 @@ public:
     /// et c'est la phase D7 qui la rendra utile.
     virtual bool requiresRealtimeRender() const { return false; }
 
+    /// D576.1 : CET INSERT TOURNE-T-IL APRÈS LE FADER ? Faux par défaut ; l'enveloppe `BypassableEffect`, que les deux
+    /// chemins qui fabriquent une chaîne posent sur chaque insert, porte le drapeau de sa description : il voyage avec
+    /// l'effet, pas par son rang (l'export saute un type inconnu, et un rang décalé tromperait d'insert).
+    virtual bool runsAfterFader() const { return false; }
+
     /// L'ÉTAT QUI NE TIENT PAS DANS UNE TABLE DE FLOTTANTS (D7.3). Vide pour
     /// les treize effets internes, dont le son EST leur table de paramètres.
     ///

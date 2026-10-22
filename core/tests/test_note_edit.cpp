@@ -1,4 +1,5 @@
 #include "TestFramework.h"
+#include <functional>
 #include "vsm/sequencer/NoteEdit.h"
 #include <algorithm>
 #include <map>
@@ -156,6 +157,30 @@ VSM_TEST(legato_extends_each_note_to_the_next_one) {
     VSM_ASSERT_EQ(static_cast<long long>(findById(notes, 3)->endTick), 1440LL);
     // La dernière note n'a pas de suivante : sa durée est conservée.
     VSM_ASSERT_EQ(static_cast<long long>(findById(notes, 4)->durationTicks()), 100LL);
+}
+
+// D576.2, D576.3 — LE CHEVAUCHEMENT ET LE MODE « ENTRE LES NOTES CHOISIES ». L'attendu écrit avant (ROADMAP-daw, D576) :
+// quatre notes de 100 ticks à 0, 480, 960, 1 440 ; +10 → 490, 970, 1 450 ; −10 → 470, 950, 1 430 ; la dernière garde sa
+// durée (1 540). Les notes 1 et 3 seules choisies : le mode « entre les notes choisies » rend 960 et 1 060, le témoin
+// (toutes les notes) 480 et 1 440, les autres intactes. Un blanc plus grand que l'écart laisse un tick au moins.
+VSM_TEST(legato_overlap_and_selected_only_mode) {
+    auto fins = [](LegatoOptions o, const std::function<NoteSelection(const std::vector<Note>&)>& choix) {
+        auto notes = makeNotes();
+        setNoteLengths(notes, allIds(notes), 100);
+        applyLegato(notes, choix(notes), o);
+        std::vector<long long> f;
+        for (uint64_t id = 1; id <= 4; ++id) f.push_back(static_cast<long long>(findById(notes, id)->endTick));
+        return f;
+    };
+    const auto toutes = [](const std::vector<Note>& n) { return allIds(n); };
+    const auto impaires = [](const std::vector<Note>&) { return NoteSelection{1, 3}; };
+    using V = std::vector<long long>;
+    VSM_ASSERT(fins({0, false}, toutes) == (V{480, 960, 1440, 1540}));     // le chemin d'avant
+    VSM_ASSERT(fins({10, false}, toutes) == (V{490, 970, 1450, 1540}));
+    VSM_ASSERT(fins({-10, false}, toutes) == (V{470, 950, 1430, 1540}));
+    VSM_ASSERT(fins({0, false}, impaires) == (V{480, 580, 1440, 1540}));    // le témoin : toutes les notes en référence
+    VSM_ASSERT(fins({0, true}, impaires) == (V{960, 580, 1060, 1540}));     // entre les notes choisies
+    VSM_ASSERT(fins({-1000, false}, toutes) == (V{1, 481, 961, 1540}));    // un tick au moins
 }
 
 VSM_TEST(remove_overlaps_only_trims_same_pitch_collisions) {

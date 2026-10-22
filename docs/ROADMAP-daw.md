@@ -44263,7 +44263,7 @@ série de D573, qui l'exécute encore.
 
 ### Phase D576 — un trente-septième audit : les inserts après le fader, le chevauchement du legato, le legato entre notes choisies (23/10/2026)
 
-*Écrite le 23/10 à 05 h 30, D575 close et poussée, pendant la série de D573 (la session verrouillée, batterie à 74 %).*
+*Écrite le 23/10 à 05 h 25 (l'horloge ; le premier commit disait « 05 h 30 », une heure devinée), D575 close et poussée, pendant la série de D573 (la session verrouillée, batterie à 74 %).*
 
 **LA MÉTHODE, celle de D567 et la leçon de D571.3** (témoins `snapNotesToChords` 5, `VCA` 36, `Contraindre` 4). Les emplacements
 d'inserts post-fader de la MixConsole de Cubase (les deux derniers de chaque voie), les réglages du *Legato* de ses
@@ -44310,3 +44310,19 @@ la réserve des fichiers.
 
 **L'ORDRE, TRANCHÉ ICI.** D576.2 et D576.3 (le cœur, `applyLegato`, ses tests), puis D576.1 (le cœur, le moteur, le format,
 les deux chemins qui fabriquent les chaînes, l'export, tests compris), puis l'application ; une compilation, à côté.
+
+### Phase D576 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D576.1 | les inserts après le fader | `TrackEffect::postFader`, `IAudioEffect::runsAfterFader`, porté par l'enveloppe `BypassableEffect` que les DEUX chemins posent (l'application et l'export) ; `renderTrackVoice` saute les inserts d'après, `mixTrackInto` les passe après le fader et avant la largeur et le panoramique ; départs post-fader et mesures après eux, départs pré-fader sur la source ; sans eux, le chemin d'avant appel pour appel ; `effects[].postFader` au format et au préréglage de piste (deux tests) ; le rendu hors ligne (un test) : **−21,010 dBFS** avant le fader, **−18,108** après (la crête d'entrée −3,098 − 12 − 3,01), et le retour d'un départ post-fader **à la crête d'entrée − 12** ; *Piste ▸ Inserts après le fader ▸ Après le fader : 1. Limiter*, la ligne de l'insert le dit (« · après le fader ») ; `tools/inserts-apres-fader.sh`, PAR L'EXPORT : témoin **−21,010**, après **−16,011 dBFS** (sinus à −1 dBFS) ; la case cochée après le geste ; Ctrl+Z. **L'ATTENDU ÉCRIT AVANT EST TENU** (−21,0 et −16,0) | **oui** |
+| D576.2 | le chevauchement du legato | `LegatoOptions::overlapTicks` (un test : +10, −10, le chemin d'avant, un blanc trop grand laisse un tick) ; *Chevauchement du legato ▸ Blanc de 10 ticks / Fin sur le départ suivant / Recouvrement de 10 ticks…*, en ticks à 480 la noire mis à l'échelle du projet, retenu ; `tools/legato-reglages.sh`, par le MIDI exporté : témoin **480 960 1440 1540**, +10 **490 970 1450 1540**, −10 **470 950 1430 1540**. **TENU** | **oui** |
+| D576.3 | le legato entre notes choisies | `LegatoOptions::selectedOnly` ; les notes faibles choisies : sans le mode **480 580 1440 1540**, avec **960 580 1060 1540** ; relancé, le menu dit le mode coché. **TENU** | **oui** |
+| — | le témoin | le binaire de D575 : `inserts-apres-fader` **rouge 3 / 4** (le vert : le témoin avant le fader), `legato-reglages` **4 / 5** (le vert : le legato d'avant) | **oui** |
+| — | une heure devinée | l'en-tête de l'audit portait « 05 h 30 », l'horloge disait 05:25 au moment de l'écrire : corrigée, et dite dans l'en-tête | **oui** |
+
+Mesuré pendant la série de D573 (la session verrouillée), le binaire de D576 lié À CÔTÉ (`vsm-d576`). C++ 534 · 1 349 · 359 ·
+25 · 11, gardes vertes. **Ce que ce travail a coûté à la série de D573** : des bancs de glisser et de photo y tombent pendant
+mes compilations et mes rafales de lancements (`grouper-clips`, `aimant-relatif`, `couleur-notes`…), alors que les mêmes
+passaient sous le même verrou dans la série de D572 : ils se rejouent SEULS à sa fin, sur son binaire et sur celui de D572,
+avant d'être crus — et l'application ne se lance plus d'ici là.

@@ -543,6 +543,7 @@ ProjectDocument documentFromProject(const Project& project) {
             described.parameters = effect.parameters;
             described.nativeState = effect.nativeState;
             described.enabled = effect.enabled;
+            described.postFader = effect.postFader;   // D576.1
             entry.effects.push_back(std::move(described));
         }
         // D31.1 : la chaîne MIDI, telle quelle -- ses paramètres sont déjà
@@ -791,7 +792,8 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         // et les lui retirer au chargement serait une perte silencieuse.
         target.effects.clear();
         for (const auto& effect : source.effects)
-            target.effects.push_back({effect.type, effect.parameters, effect.nativeState, effect.enabled});
+            target.effects.push_back({effect.type, effect.parameters, effect.nativeState, effect.enabled,
+                                      effect.postFader});   // D576.1
         target.midiEffects.clear();     // D31.1
         for (const auto& effect : source.midiEffects)
             target.midiEffects.push_back({effect.type, effect.parameters, effect.enabled});
@@ -1246,6 +1248,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             // Contourné : dit seulement quand c'est le cas (D15.1) ; un projet
             // dont tous les inserts sont actifs garde exactement son fichier.
             if (!effect.enabled) fx.set("enabled", JsonValue::makeBoolean(false));
+            if (effect.postFader) fx.set("postFader", JsonValue::makeBoolean(true));   // D576.1, la même règle
             effects.append(std::move(fx));
         }
         entry.set("effects", std::move(effects));
@@ -1641,6 +1644,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
                 if (value.isNumber()) effect.parameters[semanticId] = static_cast<float>(value.asNumber());
             if (fx["nativeState"].isString()) effect.nativeState = fx["nativeState"].asString();
             if (fx["enabled"].isBoolean()) effect.enabled = fx["enabled"].asBoolean(true);
+            effect.postFader = fx["postFader"].asBoolean(false);   // D576.1
             if (!effect.type.empty()) track.effects.push_back(std::move(effect));
         }
         for (const auto& [nom, etat] : entry["mixSnapshots"].members())   // D535.2

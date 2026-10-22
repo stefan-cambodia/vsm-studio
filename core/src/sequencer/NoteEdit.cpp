@@ -258,25 +258,26 @@ void scaleNoteTimes(std::vector<Note>& notes, const NoteSelection& selection, do
     });
 }
 
-void applyLegato(std::vector<Note>& notes, const NoteSelection& selection) {
+void applyLegato(std::vector<Note>& notes, const NoteSelection& selection, const LegatoOptions& options) {
     if (selection.empty()) return;
     // Toutes les notes de la piste servent de référence (pas seulement les
     // sélectionnées) : sinon « legato » sur une sélection partielle produirait
-    // des notes qui traversent des notes non sélectionnées.
-    std::vector<const Note*> byTime;
-    byTime.reserve(notes.size());
-    for (const auto& n : notes) byTime.push_back(&n);
-    std::sort(byTime.begin(), byTime.end(),
-              [](const Note* a, const Note* b) { return a->startTick < b->startTick; });
+    // des notes qui traversent des notes non sélectionnées. D576.3 : sauf si on
+    // le DEMANDE (`selectedOnly`), le mode de Cubase « entre les notes choisies ».
+    // LES DÉPARTS SONT COPIÉS avant d'écrire : la boucle change des fins, jamais
+    // des départs, mais une référence par pointeur sur le vecteur qu'on écrit est
+    // un piège qu'on ne tend pas.
+    std::vector<Tick> departs;
+    departs.reserve(notes.size());
+    for (const auto& n : notes)
+        if (!options.selectedOnly || selection.count(n.id) > 0) departs.push_back(n.startTick);
+    std::sort(departs.begin(), departs.end());
 
     for (auto& note : notes) {
         if (selection.count(note.id) == 0) continue;
-        Tick nextStart = 0;
-        bool found = false;
-        for (const Note* other : byTime) {
-            if (other->startTick > note.startTick) { nextStart = other->startTick; found = true; break; }
-        }
-        if (found && nextStart > note.startTick) note.endTick = nextStart;
+        const auto suivant = std::upper_bound(departs.begin(), departs.end(), note.startTick);
+        if (suivant == departs.end()) continue;   // la dernière garde sa durée
+        note.endTick = std::max(note.startTick + 1, *suivant + options.overlapTicks);   // D576.2
     }
 }
 

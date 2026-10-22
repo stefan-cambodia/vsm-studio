@@ -291,6 +291,7 @@ EffectChainComponent::buildChain(const std::vector<TrackEffect>& described,
         // sans reconstruire la chaîne ; le drapeau suit la description.
         auto enrobe = std::make_unique<vsm::audio::effect::BypassableEffect>(std::move(fx));
         enrobe->setBypassed(!entry.enabled);
+        enrobe->setRunsAfterFader(entry.postFader);   // D576.1 : le drapeau voyage avec l'effet
         enrobe->prepare(sampleRate_, blockSize_);
         const auto applique = vsm::interchange::applyEffectDescription(entry, *enrobe);
         if (rapport != nullptr)
@@ -444,7 +445,10 @@ void EffectChainComponent::rebuildEffectList() {
         const auto index = static_cast<int>(i);
 
         const bool actif = i < description->size() ? (*description)[i].enabled : true;
-        row.select = std::make_unique<juce::TextButton>((*chain)[i]->effectName());
+        // D576.1 : un insert d'après le fader le DIT sur sa ligne — la chaîne se lit en deux moitiés.
+        row.select = std::make_unique<juce::TextButton>(
+            juce::String((*chain)[i]->effectName())
+            + ((*chain)[i]->runsAfterFader() ? vsm::app::ui::tr(u8" · après le fader") : juce::String()));
         row.select->setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
         row.select->setAlpha(actif ? 1.0f : 0.45f);
         row.select->setTooltip(actif ? juce::String() : vsm::app::ui::tr(u8"Contourné : le signal passe sec, retardé de la latence de l'effet"));

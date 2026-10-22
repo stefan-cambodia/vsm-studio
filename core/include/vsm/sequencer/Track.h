@@ -430,6 +430,12 @@ struct TrackEffect {
     /// d'autant (voir `BypassableEffect`). Absent du fichier quand vrai : les
     /// projets écrits avant ne changent pas d'un octet.
     bool enabled = true;
+
+    /// D576.1 : APRÈS LE FADER (les emplacements post-fader de la MixConsole de Cubase) — l'insert traite le signal
+    /// après le volume, la polarité, le CC 7 et le VCA, avant la largeur et le panoramique ; la chaîne se lit en deux
+    /// moitiés, chacune dans son ordre. Absent du fichier quand faux. EN DERNIER : des agrégats positionnels le
+    /// construisent (`{type, réglages, état, actif}`).
+    bool postFader = false;
 };
 
 /// D535.2 : CE QU'UN INSTANTANÉ DE CONSOLE GARDE D'UNE PISTE — ce que sa tranche montre et

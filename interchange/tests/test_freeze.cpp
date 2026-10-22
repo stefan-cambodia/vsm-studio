@@ -585,3 +585,53 @@ VSM_TEST(each_fade_sounds_its_own_shape) {
     VSM_ASSERT_NEAR(gainDb(temoin, 1000), -12.0412, 0.1);
     VSM_ASSERT_NEAR(gainDb(temoin, 7000), -12.0412, 0.1);
 }
+
+// D576.1 — LES INSERTS APRÈS LE FADER, par le rendu hors ligne. La prise (un sinus de crête 0,7, −3,10 dBFS, les deux
+// canaux égaux), le fader à −12 dB, au centre (−3,01 dB), un limiteur au plafond de −6 dBFS. L'attendu écrit avant
+// (ROADMAP-daw, D576) : AVANT le fader (le témoin), le limiteur ramène la crête à −6, puis −12 et −3,01 — **−21,0 dBFS**
+// à 0,3 dB près ; APRÈS le fader, le signal arrive à −15,1, sous le plafond, et le limiteur se tait — la crête d'entrée
+// moins 12 et 3,01 dB, à 0,1 dB près. Et un départ POST-fader prend la sortie de l'insert d'après.
+VSM_TEST(a_post_fader_insert_hears_the_fader) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+    auto crete = [](const std::vector<float>& x) {
+        float c = 0.0f;
+        for (float v : x) c = std::max(c, std::fabs(v));
+        return c;
+    };
+    auto rendre = [&](bool apres, bool depart) {
+        LoadedBundle b = bundleAudio();
+        auto& piste = b.project.tracks[0];
+        piste.volume = std::pow(10.0f, -12.0f / 20.0f);
+        TrackEffect limiteur;
+        limiteur.type = "limiter";
+        limiteur.parameters = {{"effect.limiter.ceiling", -6.0f}};
+        limiteur.postFader = apres;
+        piste.effects = {limiteur};
+        if (depart) {   // un départ post-fader à 1 vers un égaliseur neutre, la piste tournée à fond à gauche
+            b.project.sends.clear();
+            vsm::sequencer::SendBusDescription bus;
+            bus.name = "Neutre";
+            bus.effectType = "eq";
+            b.project.sends.push_back(bus);
+            piste.sendLevels = {1.0f};
+            piste.pan = -1.0f;
+        }
+        vsm::audio::engine::RenderedAudio sortie;
+        VSM_ASSERT(renderBundleToBuffer(b, sortie, options()).success);
+        return sortie;
+    };
+    const double entree = 20.0 * std::log10(0.7);
+    const auto avant = rendre(false, false);
+    const auto apres = rendre(true, false);
+    const double dbAvant = 20.0 * std::log10(static_cast<double>(crete(avant.left)));
+    const double dbApres = 20.0 * std::log10(static_cast<double>(crete(apres.left)));
+    std::printf("      [D576.1] avant le fader %.3f dBFS, après %.3f dBFS (entrée %.3f)\n", dbAvant, dbApres, entree);
+    VSM_ASSERT_NEAR(dbAvant, -6.0 - 12.0 - 3.0103, 0.3);
+    VSM_ASSERT_NEAR(dbApres, entree - 12.0 - 3.0103, 0.1);
+    // Le départ post-fader : tournée à gauche, le droit n'a que le retour du bus — la sortie de l'insert d'après.
+    const auto departApres = rendre(true, true);
+    const auto departAvant = rendre(false, true);
+    VSM_ASSERT_NEAR(20.0 * std::log10(static_cast<double>(crete(departApres.right))), entree - 12.0, 0.1);
+    VSM_ASSERT_NEAR(20.0 * std::log10(static_cast<double>(crete(departAvant.right))), -6.0 - 12.0, 0.3);
+}
