@@ -44260,3 +44260,53 @@ format de la vue, puis l'application) ; une compilation de l'application, à cô
 Mesuré pendant la série de D573 (la session verrouillée), le binaire de D575 lié À CÔTÉ (`vsm-d575`, la méthode de
 D567). C++ 533 · 1 349 · 356 · 25 · 11, gardes vertes. Les bancs de D574 et de D575 entrent dans `verifier.sh` après la
 série de D573, qui l'exécute encore.
+
+### Phase D576 — un trente-septième audit : les inserts après le fader, le chevauchement du legato, le legato entre notes choisies (23/10/2026)
+
+*Écrite le 23/10 à 05 h 30, D575 close et poussée, pendant la série de D573 (la session verrouillée, batterie à 74 %).*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (témoins `snapNotesToChords` 5, `VCA` 36, `Contraindre` 4). Les emplacements
+d'inserts post-fader de la MixConsole de Cubase (les deux derniers de chaque voie), les réglages du *Legato* de ses
+préférences d'édition MIDI (*Legato Overlap*, *Legato Mode: Between Selected Notes Only*) : **0 pour un insert après le
+fader** — `TrackEffect` porte un type, des réglages, un état natif et le contournement, pas de place ; le moteur passe
+toute la chaîne dans `renderTrackVoice`, AVANT `mixTrackInto` où le fader s'applique ; `postFader`, « après le fader » :
+rien ; **0 pour un chevauchement du legato** — `applyLegato` pose la fin EXACTEMENT sur le départ suivant ;
+`legatoOverlap`, « chevauchement du legato » : rien ; **0 pour un legato entre notes choisies** — la même fonction prend
+pour référence TOUTES les notes de la piste, et c'est écrit (« sinon legato sur une sélection partielle produirait des
+notes qui traversent des notes non sélectionnées ») : le mode de Cubase est l'autre, au choix. **Trouvé et écarté** : le
+maintien de crête des vumètres (`peakHold_`, sa redescente lente), l'écoute mono (`kMenuMixMonoListen`). **Toujours
+remis** : le mode d'automation *Trim*, les repères à étendue, le moniteur MIDI, le pré-enregistrement audio, le pré-roll,
+la réserve des fichiers.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D576.1 | **Les inserts après le fader** — *Post-fader insert slots* | Au clic droit d'un insert de la chaîne : *Après le fader* (case) : l'insert traite le signal APRÈS le fader (volume, polarité, CC 7, VCA, automation) et avant la largeur et le panoramique ; les inserts gardent leur ordre dans chaque moitié ; les départs post-fader prennent le signal d'après ces inserts ; écrit au projet (`effects[].postFader`) seulement s'il est posé ; un pas ; mesuré par l'EXPORT : un limiteur au plafond de −6 dBFS sur un sinus à −1 dBFS, le fader à −12 dB, le témoin avant le fader à côté |
+| D576.2 | **Le chevauchement du legato** — *Legato Overlap* | *Édition ▸ Temps et durée ▸ Chevauchement du legato ▸ −20 / −10 / 0 / +10 / +20 ticks* (cochée la courante, retenue) : *Legato* pose chaque fin à ce nombre de ticks du départ suivant — négatif, un blanc ; positif, un recouvrement ; mesuré par le MIDI exporté, le témoin à 0 à côté |
+| D576.3 | **Le legato entre notes choisies** — *Legato Mode: Between Selected Notes Only* | *Édition ▸ Temps et durée ▸ Legato entre les notes choisies seulement* (case, retenue) : la référence d'une note choisie est la note CHOISIE suivante, et la dernière choisie garde sa durée ; mesuré pareil, sur une sélection partielle, le témoin (toutes les notes) à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D576.1.** Une donnée du MORCEAU (elle change l'export), portée par l'INSERT (`TrackEffect::postFader`) : il garde sa
+  place dans la chaîne, et la chaîne se lit en deux moitiés — celle d'avant le fader dans l'ordre, puis celle d'après dans
+  l'ordre. **Le drapeau voyage AVEC l'effet instancié** (l'enveloppe `BypassableEffect`, que les deux chemins posent déjà
+  sur chaque insert, D15.1) et non par son rang : l'export SAUTE un type inconnu (« non appliqué »), et un rang décalé
+  passerait le mauvais insert après le fader. **Le chemin du signal** : trim → inserts d'avant → fader (volume, polarité,
+  CC 7, VCA, automation) → inserts d'APRÈS → largeur (D573.1) → panoramique et sa loi → sortie. Les départs PRÉ-fader
+  prennent toujours la source ; les POST-fader prennent la sortie des inserts d'après ; les mesures de la tranche (crête,
+  RMS, corrélation, D4.7 : « ce que la piste envoie ») sont prises après eux. **Sans insert d'après, rien ne change d'un
+  bit** : le chemin d'avant, appel pour appel. **Le gel prend aussi les inserts d'après**, rendus au fader à 0 dB (le gel
+  met le fader à l'unité, D5.5), et la piste gelée ne les repasse pas — la règle de tous ses inserts. La compensation de
+  latence compte la chaîne entière, comme avant. **L'attendu, écrit avant la mesure** : un sinus stéréo à −1 dBFS de
+  crête, un limiteur au plafond de −6 dBFS, le fader à −12 dB, au centre (−3,01 dB) : le témoin, l'insert AVANT le fader,
+  sort à **−21,0 dBFS** (−6 − 12 − 3,01) à 0,3 dB près ; l'insert APRÈS le fader, le limiteur au repos sous son plafond,
+  sort à **−16,0 dBFS** (−1 − 12 − 3,01) à 0,1 dB près.
+- **D576.2 et D576.3.** Des préférences du POSTE (le *Legato Overlap* de Cubase est une préférence), retenues comme
+  l'aimant (D493). Le chevauchement se compte en ticks À 480 LA NOIRE, mis à l'échelle du projet : la même préférence doit
+  dire la même chose dans un projet à 960. Une fin ne tombe jamais avant son départ (un tick au moins). Le mode « entre
+  les notes choisies » ne change que la RÉFÉRENCE, pas la règle. **L'attendu, écrit avant la mesure** : quatre notes de
+  100 ticks à 0, 480, 960 et 1 440, de vélocités 40, 100, 40, 100 ; *Legato* sur toutes : fins à **480, 960, 1 440**, la
+  dernière à **1 540** (elle garde sa durée) ; chevauchement +10 : **490, 970, 1 450** ; −10 : **470, 950, 1 430** ;
+  les notes faibles seules choisies (0 et 960), le mode « entre les notes choisies » : la première finit **à 960**, la
+  seconde garde sa durée (**1 060**), les autres intactes — sans le mode (le témoin) : **480** et **1 440**.
+
+**L'ORDRE, TRANCHÉ ICI.** D576.2 et D576.3 (le cœur, `applyLegato`, ses tests), puis D576.1 (le cœur, le moteur, le format,
+les deux chemins qui fabriquent les chaînes, l'export, tests compris), puis l'application ; une compilation, à côté.
