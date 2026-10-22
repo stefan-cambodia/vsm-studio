@@ -72,6 +72,16 @@ public:
     void setAimantRelatif(bool relatif) { aimantRelatif_ = relatif; }
     bool aimantRelatif() const { return aimantRelatif_; }
     void basculerAimantRelatif();
+    /// D574.1, D574.2 : L'AIMANTATION AUX CLIPS ET AUX REPÈRES (*Snap to Events*) et LE CURSEUR MAGNÉTIQUE — des cibles
+    /// de plus pour l'aimant (les bords des autres clips, les repères, les locateurs ; la tête), candidates à moins de
+    /// `kAimantCiblesPx` de la position brute, la grille toujours candidate : la plus proche l'emporte. Des préférences
+    /// du poste (D493), grisées sans aimant.
+    void setAimantClips(bool oui) { aimantClips_ = oui; }
+    bool aimantClips() const { return aimantClips_; }
+    void basculerAimantClips();
+    void setAimantTete(bool oui) { aimantTete_ = oui; }
+    bool aimantTete() const { return aimantTete_; }
+    void basculerAimantTete();
     void setEnLecture(bool enLecture) { enLecture_ = enLecture; }
     /// Un geste va modifier le projet : l'application prend son instantané
     /// d'annulation. Appelé UNE fois par geste, au `mouseDown` -- un
@@ -689,6 +699,16 @@ private:
     bool followPlayhead_ = true;
     bool teteFixe_ = false;    ///< D569.2
     bool aimantRelatif_ = false;   ///< D572.1
+    bool aimantClips_ = false;     ///< D574.1
+    bool aimantTete_ = false;      ///< D574.2
+    /// D574.1 : la distance, en pixels de l'interface, sous laquelle une cible de l'aimant devient candidate.
+    static constexpr float kAimantCiblesPx = 10.0f;
+    /// D574.1 : pour un DÉPLACEMENT, l'écart de la fin du clip tenu à son ancre (sa fin s'aimante aussi), 0 sinon.
+    vsm::midi::Tick finAncreDecalage_ = 0;
+    /// D574.1 : les clips qui bougent dans le geste — jamais des cibles d'eux-mêmes.
+    vsm::sequencer::ClipSelection clipsDuGeste_;
+    /// D574.1, D574.2 : la position aimantée d'un bord ou d'une ancre, `grille` la ligne de grille déjà trouvée.
+    vsm::midi::Tick aimanterAuxCibles(vsm::midi::Tick brut, vsm::midi::Tick grille, vsm::midi::Tick decalageFin) const;
     bool enLecture_ = false;   ///< D569.2 : la tête fixe ne vaut qu'en lecture
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne

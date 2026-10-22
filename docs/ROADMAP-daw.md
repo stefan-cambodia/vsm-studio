@@ -44181,3 +44181,19 @@ itérative (D573). **Vus, non faits, remis** : le modificateur *Random*, le mode
 **L'ORDRE, TRANCHÉ ICI.** D574.3 d'abord (le cœur et ses tests, pendant la série de D573 : un seul fichier du cœur),
 puis D574.1 et D574.2, qui ne vivent que dans l'application et partagent une fonction ; UNE compilation de
 l'application, à côté du binaire de la série s'il le faut (la méthode de D567).
+
+### Phase D574 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D574.3 | la plage en effet MIDI | l'effet `range`, *Plage* / *Range* : *Mode* (quatre positions nommées et traduites), *Min*, *Max* entiers ; `MidiEffectReport::outsideRange`, `invertedRanges`, dits au report (un test : limiter 48-72 → 54, 60, 66 ; filtrer → 60 et 2 comptées ; les vélocités 40-100 → 40, 64, 100 et filtrées → 64 ; la plage entière ne change rien ; 61-65, plus étroite qu'une octave, écarte les TROIS notes, comptées ; un Min au-dessus du Max ne fait rien, compté ; une vélocité limitée ne tombe jamais à 0) ; `tools/plage-effet-midi.sh`, par le REPORT : témoin **0:30/20 · 480:60/64 · 960:90/120** ; limiter les hauteurs **0:54/20 · 480:60/64 · 960:66/120** ; filtrer **480:60/64** et le report dit « 2 note(s) écartée(s) hors de la plage » ; limiter les vélocités **0:30/40 · 480:60/64 · 960:90/100** ; « Ajouter : Plage » / « Add: Range », arrivé à 0-127 ; Ctrl+Z rend notes et chaîne. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D574.1 | l'aimantation aux clips et aux repères | `aimanterAuxCibles` (la grille toujours candidate, une cible à moins de 10 px, la plus proche l'emporte ; la fin du clip tenu pour un déplacement ; ce qui bouge n'est pas une cible), retenue aux préférences ; `tools/aimant-cibles.sh`, par de VRAIS glissers à 60 ticks de la cible (l'aimant des cibles valait **109 ticks** à ce zoom) : (a) **1 440** case cochée contre **1 920** ; (c) la FIN sur le début de C, B **à 4 080** contre **3 840** ; (d) loin de tout, **1 920** ; (e) relancé : cochée. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D574.2 | le curseur magnétique | la tête pour cible, par la même fonction ; (b) la tête à 2 400 : **2 400** coché contre **1 920** | **oui** |
+| — | le témoin | le binaire de D573 : `aimant-cibles` **rouge 4 / 5** (le vert : « loin de toute cible, la grille », que l'aimant d'avant tient) ; `plage-effet-midi` **rouge 4 / 6** (les verts : la plage entière et l'annulation du report) | **oui** |
+| — | la première course d'`aimant-cibles` | rouge 4 / 5 sur le binaire de D574 — les glissers « refusés » ou sans effet, B immobile même dans les témoins sans case : elle a joué la session VERROUILLÉE, au milieu d'une rafale de lancements et pendant un banc de la série de D573 (la fenêtre d'un lancement sous verrou n'est pas toujours dessinée, D520). **Les deux courses suivantes, verts 5 / 5**, aux chiffres ci-dessus. À surveiller dans la série : un rouge de ce banc sous verrou se rejoue avant d'être cru | **oui** |
+
+Mesuré pendant la série de D573 (la session verrouillée), le binaire de D574 lié À CÔTÉ de celui de la série
+(`/home/stefan/vsm-brouillon-d573/vsm-d574`, la méthode de D567). C++ 531 · 1 349 · 355 · 25 · 11, gardes vertes.
+**Les deux bancs neufs entrent dans `verifier.sh` APRÈS la série de D573**, qui l'exécute en ce moment : bash relit son
+script par décalage d'octets, et une ligne insérée sous lui ferait lire au lanceur la mauvaise suite (la règle de la
+mémoire du poste : ne jamais modifier un script pendant qu'il tourne).

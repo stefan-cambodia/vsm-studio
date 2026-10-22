@@ -257,3 +257,46 @@ VSM_TEST(the_length_effect_scales_durations_and_stops_at_the_next_same_note) {
     VSM_ASSERT_EQ(midiEffectDisplayName("length"), std::string("Durée"));
     VSM_ASSERT_EQ(midiEffectParameters("length").size(), size_t(1));
 }
+
+// D574.3 — LA PLAGE EN EFFET MIDI (*Range*). Des notes à 30, 60 et 90, de vélocités 20, 64 et 120. L'attendu écrit avant
+// (ROADMAP-daw, D574) : limiter les hauteurs à 48-72 → 54, 60, 66 ; les filtrer → 60 seule, 2 écartées comptées ; limiter
+// les vélocités à 40-100 → 40, 64, 100 ; la plage entière → les notes d'origine. Et une plage plus étroite qu'une octave
+// qui n'a pas de place pour une hauteur l'écarte, comptée ; un Min au-dessus du Max ne fait rien, compté.
+VSM_TEST(the_range_effect_limits_or_filters_and_counts_what_it_drops) {
+    const std::vector<Note> materiau = {{0, 240, 0, 30, 20, 64, 1}, {240, 480, 0, 60, 64, 64, 2},
+                                        {480, 720, 0, 90, 120, 64, 3}};
+    auto hauteurs = [](const std::vector<Note>& n) {
+        std::vector<int> h;
+        for (const auto& x : n) h.push_back(x.number);
+        return h;
+    };
+    auto velocites = [](const std::vector<Note>& n) {
+        std::vector<int> v;
+        for (const auto& x : n) v.push_back(x.velocity);
+        return v;
+    };
+    auto plage = [&](float mode, float mini, float maxi, MidiEffectReport* r = nullptr) {
+        return applyMidiEffects({fait("range", {{"Mode", mode}, {"Min", mini}, {"Max", maxi}})}, materiau, 480, r);
+    };
+    VSM_ASSERT(hauteurs(plage(0, 48, 72)) == (std::vector<int>{54, 60, 66}));
+    MidiEffectReport filtre;
+    VSM_ASSERT(hauteurs(plage(1, 48, 72, &filtre)) == (std::vector<int>{60}));
+    VSM_ASSERT_EQ(filtre.outsideRange, size_t(2));
+    VSM_ASSERT(velocites(plage(2, 40, 100)) == (std::vector<int>{40, 64, 100}));
+    MidiEffectReport vel;
+    VSM_ASSERT(velocites(plage(3, 40, 100, &vel)) == (std::vector<int>{64}));
+    VSM_ASSERT_EQ(vel.outsideRange, size_t(2));
+    // Le témoin : la plage entière ne change rien.
+    VSM_ASSERT(hauteurs(plage(0, 0, 127)) == hauteurs(materiau));
+    VSM_ASSERT(velocites(plage(2, 0, 127)) == velocites(materiau));
+    // 61-65 : 60 → 72 ? non, 72 > 65 ; aucune octave ne loge le do — écarté, compté ; le fa dièse (30 → 66) non plus.
+    MidiEffectReport etroit;
+    VSM_ASSERT(hauteurs(plage(0, 61, 65, &etroit)).empty());
+    VSM_ASSERT_EQ(etroit.outsideRange, size_t(3));
+    MidiEffectReport inverse;
+    VSM_ASSERT(hauteurs(plage(1, 72, 48, &inverse)) == hauteurs(materiau));
+    VSM_ASSERT_EQ(inverse.invertedRanges, size_t(1));
+    // Une vélocité limitée ne tombe jamais à zéro.
+    VSM_ASSERT(velocites(plage(2, 0, 0)) == (std::vector<int>{1, 1, 1}));
+    VSM_ASSERT_EQ(midiEffectDisplayName("range"), std::string("Plage"));
+}

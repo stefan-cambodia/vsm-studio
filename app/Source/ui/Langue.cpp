@@ -2922,6 +2922,20 @@ const Paire kAnglais[] = {
       "Sends follow the pan: %1 channel(s)" },
     { "Les départs ignorent le panoramique : %1 tranche(s)",
       "Sends ignore the pan: %1 channel(s)" },
+    // D574.1, D574.2 : l'aimantation aux clips et aux repères, le curseur magnétique.
+    { "Aimanter aux clips et aux repères",
+      "Snap to clips and markers" },
+    { "Aimanter à la tête de lecture (curseur magnétique)",
+      "Snap to the playhead (magnetic cursor)" },
+    // D574.3 : les modes de la plage en effet MIDI (le nom « Plage » est déjà traduit).
+    { "Limiter les hauteurs",
+      "Limit pitches" },
+    { "Filtrer les hauteurs",
+      "Filter pitches" },
+    { "Limiter les vélocités",
+      "Limit velocities" },
+    { "Filtrer les vélocités",
+      "Filter velocities" },
     // D573.2 : la forme de chaque fondu.
     { "Forme du fondu d'entrée",
       "Fade-in shape" },

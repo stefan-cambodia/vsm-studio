@@ -28,6 +28,11 @@ struct MidiEffectReport {
     size_t droppedOutOfRange = 0;
     /// Effets dont l'identité n'est pas connue. Ils ne font rien, et on le dit.
     size_t unknownEffects = 0;
+    /// D574.3 : notes ÉCARTÉES par une plage — filtrées, ou sans octave où entrer dans une plage plus étroite qu'une
+    /// octave (jamais posées à une hauteur que personne n'a demandée).
+    size_t outsideRange = 0;
+    /// D574.3 : plages dont le Min dépasse le Max. Elles ne font rien, et on le dit.
+    size_t invertedRanges = 0;
 };
 
 /// Applique la chaîne à `notes` et rend le résultat. `notes` n'est pas touché.

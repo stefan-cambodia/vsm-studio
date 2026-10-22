@@ -317,6 +317,53 @@ void ArrangementComponent::basculerAimantRelatif() {
     if (onBasculesChanged) onBasculesChanged();
 }
 
+void ArrangementComponent::basculerAimantClips() {
+    aimantClips_ = !aimantClips_;   // D574.1
+    direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();
+}
+
+void ArrangementComponent::basculerAimantTete() {
+    aimantTete_ = !aimantTete_;   // D574.2
+    direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();
+}
+
+vsm::midi::Tick ArrangementComponent::aimanterAuxCibles(vsm::midi::Tick brut, vsm::midi::Tick grille,
+                                                         vsm::midi::Tick decalageFin) const {
+    // D574.1, D574.2 : UNE RÈGLE — la grille toujours candidate, une cible seulement à moins de `kAimantCiblesPx` ; la
+    // plus proche de la position brute l'emporte. Pour un déplacement, la FIN du clip tenu se pose aussi sur une cible
+    // (l'ancre est alors la cible moins l'écart de la fin) : c'est ce qui colle un clip bout à bout par sa fin.
+    if (project_ == nullptr || pixelsPerTick_ <= 0.0) return grille;
+    const double tolerance = static_cast<double>(kAimantCiblesPx) / pixelsPerTick_;
+    vsm::midi::Tick meilleure = grille;
+    double ecart = std::abs(static_cast<double>(grille - brut));
+    const auto proposer = [&](vsm::midi::Tick cible) {
+        for (const vsm::midi::Tick ancre : {cible, decalageFin > 0 ? cible - decalageFin : cible}) {
+            if (ancre < 0) continue;
+            const double d = std::abs(static_cast<double>(ancre - brut));
+            if (d <= tolerance && d < ecart) { meilleure = ancre; ecart = d; }
+        }
+    };
+    if (aimantClips_) {
+        for (const auto& piste : project_->tracks) {
+            const vsm::midi::Tick fin = materialEnd(piste);
+            for (const auto& clip : piste.clips) {
+                if (clipsDuGeste_.count(clip.id) > 0) continue;
+                proposer(clip.startTick);
+                proposer(clip.startTick + vsm::sequencer::clipPlayedLength(clip, fin));
+            }
+        }
+        for (const auto& repere : project_->markers) proposer(repere.tick);
+        if (project_->loopEndTick > project_->loopStartTick) {
+            proposer(project_->loopStartTick);
+            proposer(project_->loopEndTick);
+        }
+    }
+    if (aimantTete_) proposer(playhead_);
+    return meilleure;
+}
+
 void ArrangementComponent::basculerTeteFixe() {
     teteFixe_ = !teteFixe_;   // D569.2
     direLesBascules();
@@ -1423,6 +1470,13 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                                               : clip->startTick;
     gesteDernier_ = ancreGeste_;
     clipFondu_ = clip->id;
+    // D574.1 : CE QUI BOUGE N'EST PAS UNE CIBLE — la sélection entière pour un déplacement, le clip tenu pour un bord ;
+    // et la fin du clip tenu, qu'un déplacement aimante aussi.
+    clipsDuGeste_ = geste_ == Geste::Deplacer ? montageSelection() : vsm::sequencer::ClipSelection{clip->id};
+    clipsDuGeste_.insert(clip->id);
+    finAncreDecalage_ = geste_ == Geste::Deplacer
+                            ? clip->startTick + clipPlayedLength(*clip, materialEnd(project_->tracks[piste])) - ancreGeste_
+                            : 0;
     if (onEditStarted)
         onEditStarted(geste_ == Geste::Etirer ? juce::String(u8"Étirer un clip")
                       : bord == Geste::FonduEntree || bord == Geste::FonduSortie
@@ -1603,6 +1657,11 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         if (pas > 0)
             maintenant = ancreGeste_ + static_cast<vsm::midi::Tick>(
                 std::llround(static_cast<double>(brut - ancreGeste_) / static_cast<double>(pas))) * pas;
+    } else if (snap_ && (aimantClips_ || aimantTete_)
+               && (geste_ == Geste::Deplacer || geste_ == Geste::BordGauche || geste_ == Geste::BordDroit
+                   || geste_ == Geste::Etirer)) {
+        // D574.1, D574.2 : les cibles, la grille toujours candidate ; l'aimant relatif, lui, garde son pas entier.
+        maintenant = aimanterAuxCibles(brut, maintenant, geste_ == Geste::Deplacer ? finAncreDecalage_ : 0);
     }
     const vsm::midi::Tick delta = maintenant - gesteDernier_;
     if (delta == 0) return;
@@ -3117,6 +3176,8 @@ void ArrangementComponent::direLesBascules() const {
                 + (enChaine_ ? juce::String::fromUTF8(u8", en chaîne") : juce::String(", libre"))   // D547.2
                 + (teteFixe_ ? juce::String::fromUTF8(u8", tête fixe") : juce::String())             // D569.2
                 + (aimantRelatif_ ? juce::String::fromUTF8(u8", relatif à la grille") : juce::String())   // D572.1
+                + (aimantClips_ ? juce::String::fromUTF8(u8", aux clips et aux repères") : juce::String())   // D574.1
+                + (aimantTete_ ? juce::String::fromUTF8(u8", à la tête") : juce::String())                   // D574.2
                 + "\n").toRawUTF8(), stderr);
 }
 

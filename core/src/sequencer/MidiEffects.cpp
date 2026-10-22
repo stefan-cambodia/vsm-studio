@@ -76,6 +76,44 @@ std::vector<Note> durees(const std::vector<Note>& notes, float rapport) {
     return sortie;
 }
 
+// --- PLAGE (D574.3) --------------------------------------------------------
+
+/// LE *RANGE* DES MODIFICATEURS MIDI DE CUBASE. `mode` : 0 limiter les hauteurs (D'OCTAVES jusqu'à entrer dans la plage —
+/// le *Note Limit*), 1 filtrer les hauteurs, 2 limiter les vélocités (bornées, 1 au moins : une vélocité nulle est un
+/// NoteOff), 3 filtrer les vélocités. Ce qui est écarté est compté : une hauteur qu'aucune octave ne fait entrer dans une
+/// plage plus étroite qu'elle n'est JAMAIS posée ailleurs (la règle de la transposition, D17.5).
+std::vector<Note> plage(const std::vector<Note>& notes, int mode, int mini, int maxi, MidiEffectReport* report) {
+    if (mini > maxi) {
+        if (report) ++report->invertedRanges;
+        return notes;
+    }
+    std::vector<Note> sortie;
+    sortie.reserve(notes.size());
+    for (const auto& note : notes) {
+        Note copie = note;
+        bool garde = true;
+        if (mode == 0) {
+            int h = note.number;
+            while (h < mini) h += 12;
+            while (h > maxi) h -= 12;
+            garde = h >= mini && h <= maxi && h >= 0 && h <= 127;
+            copie.number = static_cast<uint8_t>(std::clamp(h, 0, 127));
+        } else if (mode == 1) {
+            garde = note.number >= mini && note.number <= maxi;
+        } else if (mode == 2) {
+            copie.velocity = static_cast<uint8_t>(std::clamp(static_cast<int>(note.velocity), std::max(1, mini), std::max(1, maxi)));
+        } else {
+            garde = note.velocity >= mini && note.velocity <= maxi;
+        }
+        if (!garde) {
+            if (report) ++report->outsideRange;
+            continue;
+        }
+        sortie.push_back(copie);
+    }
+    return sortie;
+}
+
 // --- ARPÉGIATEUR -----------------------------------------------------------
 
 /// Les notes qui SONNENT ENSEMBLE forment un accord. « Ensemble » veut dire
@@ -150,6 +188,10 @@ std::vector<Note> applyMidiEffects(const std::vector<MidiEffect>& effects,
         } else if (effet.type == "velocity") {
             courant = velocite(courant, parametre(effet, "Scale", 1.0f),
                                 parametre(effet, "Offset", 0.0f));
+        } else if (effet.type == "range") {   // D574.3
+            courant = plage(courant, static_cast<int>(std::lround(parametre(effet, "Mode", 0.0f))),
+                            static_cast<int>(std::lround(std::clamp(parametre(effet, "Min", 0.0f), 0.0f, 127.0f))),
+                            static_cast<int>(std::lround(std::clamp(parametre(effet, "Max", 127.0f), 0.0f, 127.0f))), report);
         } else if (effet.type == "length") {   // D573.3
             courant = durees(courant, std::clamp(parametre(effet, "Ratio", 1.0f), 0.25f, 4.0f));
         } else if (effet.type == "arpeggio") {
@@ -174,6 +216,11 @@ std::vector<MidiEffectParam> midiEffectParameters(const std::string& type) {
     if (type == "transpose") return {{"Semitones", -48.0f, 48.0f, 0.0f}};
     if (type == "velocity") return {{"Scale", 0.0f, 2.0f, 1.0f}, {"Offset", -64.0f, 64.0f, 0.0f}};
     if (type == "length") return {{"Ratio", 0.25f, 4.0f, 1.0f}};   // D573.3
+    if (type == "range")   // D574.3
+        return {{"Mode", 0.0f, 3.0f, 0.0f,
+                 {"Limiter les hauteurs", "Filtrer les hauteurs", "Limiter les vélocités", "Filtrer les vélocités"}},
+                {"Min", 0.0f, 127.0f, 0.0f},
+                {"Max", 0.0f, 127.0f, 127.0f}};
     if (type == "arpeggio")
         // `Division` en fractions de noire : 1 = la noire, 4 = la
         // double-croche. `Mode` : 0 montant, 1 descendant, 2 aller-retour.
@@ -184,13 +231,14 @@ std::vector<MidiEffectParam> midiEffectParameters(const std::string& type) {
 
 // D573.3 : « length » APRÈS les trois d'avant — le menu les numérote dans cet ordre, et un banc qui ajoute la vélocité
 // par son rang la trouve toujours au même.
-std::vector<std::string> midiEffectTypes() { return {"transpose", "velocity", "arpeggio", "length"}; }
+std::vector<std::string> midiEffectTypes() { return {"transpose", "velocity", "arpeggio", "length", "range"}; }
 
 std::string midiEffectDisplayName(const std::string& type) {
     if (type == "transpose") return "Transposition";
     if (type == "velocity") return "Vélocité";
     if (type == "arpeggio") return "Arpégiateur";
     if (type == "length") return "Durée";   // D573.3
+    if (type == "range") return "Plage";    // D574.3
     // LE TYPE LUI-MÊME plutôt que « (inconnu) » : ce qu'on a chargé se lit,
     // même quand on ne sait pas le jouer.
     return type;

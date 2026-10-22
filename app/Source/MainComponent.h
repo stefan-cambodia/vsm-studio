@@ -1231,6 +1231,9 @@ private:
         /// D573.1 : la largeur stéréo des tranches choisies, cinq entrées CONTIGUËS de 100 % à 0 % par pas de 25.
         kMenuMixWidthFirst,
         kMenuMixWidthLast = kMenuMixWidthFirst + 4,
+        /// D574.1, D574.2 : l'aimantation aux clips et aux repères, le curseur magnétique.
+        kMenuViewArrangementSnapEvents,
+        kMenuViewArrangementSnapCursor,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------

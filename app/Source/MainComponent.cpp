@@ -1474,6 +1474,8 @@ MainComponent::MainComponent()
         arrangement_.setMontageEnChaine(reglages.getBoolValue("arrangementEnChaine", false));   // D547.2
         arrangement_.setTeteFixe(reglages.getBoolValue("arrangementTeteFixe", false));          // D569.2
         arrangement_.setAimantRelatif(reglages.getBoolValue("arrangementAimantRelatif", false)); // D572.1
+        arrangement_.setAimantClips(reglages.getBoolValue("arrangementAimantClips", false));     // D574.1
+        arrangement_.setAimantTete(reglages.getBoolValue("arrangementAimantTete", false));       // D574.2
         arrangement_.onBasculesChanged = [this] {
             auto& r = vsm::app::ui::UiScale::properties();
             r.setValue("arrangementAimant", arrangement_.snapEnabled());
@@ -1483,6 +1485,8 @@ MainComponent::MainComponent()
             r.setValue("arrangementEnChaine", arrangement_.montageEnChaine());
             r.setValue("arrangementTeteFixe", arrangement_.teteFixe());   // D569.2
             r.setValue("arrangementAimantRelatif", arrangement_.aimantRelatif());   // D572.1
+            r.setValue("arrangementAimantClips", arrangement_.aimantClips());       // D574.1
+            r.setValue("arrangementAimantTete", arrangement_.aimantTete());         // D574.2
             r.saveIfNeeded();
         };
     }
@@ -5781,6 +5785,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // D572.1 : L'AIMANTATION RELATIVE À LA GRILLE — une option de l'aimant, grisée sans lui.
                 menu.addItem(kMenuViewArrangementSnapRelative, tr(u8"Aimantation relative à la grille (garder l'écart)"),
                              arrangement_.snapEnabled(), arrangement_.aimantRelatif());
+                // D574.1, D574.2 : DES CIBLES DE PLUS POUR L'AIMANT — options de lui, grisées sans lui.
+                menu.addItem(kMenuViewArrangementSnapEvents, tr(u8"Aimanter aux clips et aux repères"),
+                             arrangement_.snapEnabled(), arrangement_.aimantClips());
+                menu.addItem(kMenuViewArrangementSnapCursor, tr(u8"Aimanter à la tête de lecture (curseur magnétique)"),
+                             arrangement_.snapEnabled(), arrangement_.aimantTete());
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementBarGrid,
                                                    tr(u8"Grille à la mesure dans l'arrangement"), shortcuts_,
                                                    Id::ViewArrangementBarGrid, true, arrangement_.grilleALaMesure());
@@ -6007,6 +6016,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
     if (menuItemID == kMenuViewStationaryCursor)   { arrangement_.basculerTeteFixe(); return; }   // D569.2
     if (menuItemID == kMenuViewArrangementSnapRelative) { arrangement_.basculerAimantRelatif(); return; }   // D572.1
+    if (menuItemID == kMenuViewArrangementSnapEvents) { arrangement_.basculerAimantClips(); return; }       // D574.1
+    if (menuItemID == kMenuViewArrangementSnapCursor) { arrangement_.basculerAimantTete(); return; }        // D574.2
     if (menuItemID == kMenuViewArrangementCurves)  { arrangement_.basculerCourbes(); return; }
     if (menuItemID == kMenuViewArrangementChain)   { arrangement_.basculerEnChaine(); return; }   // D547.2
     if (menuItemID == kMenuViewRulerBars || menuItemID == kMenuViewRulerTime) {
@@ -15101,6 +15112,13 @@ void MainComponent::bakeMidiEffectsConfirme(size_t piste) {
     if (rapport.unknownEffects > 0)
         message += juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(rapport.unknownEffects))
                    + juce::String::fromUTF8(u8" effet(s) inconnu(s) sans effet");
+    // D574.3 : CE QU'UNE PLAGE A ÉCARTÉ, et une plage à l'envers qui n'a rien fait — dits, jamais tus.
+    if (rapport.outsideRange > 0)
+        message += juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(rapport.outsideRange))
+                   + juce::String::fromUTF8(u8" note(s) écartée(s) hors de la plage");
+    if (rapport.invertedRanges > 0)
+        message += juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(rapport.invertedRanges))
+                   + juce::String::fromUTF8(u8" plage(s) au Min au-dessus du Max, sans effet");
     std::fputs((message + ". La chaîne est vidée.\n").toRawUTF8(), stderr);
 }
 
