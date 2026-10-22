@@ -43802,8 +43802,8 @@ couleur des notes** — une note prend la couleur de sa piste, sa vélocité en 
 | # | Fonction (Cubase) | Critère de réception |
 |---|---|---|
 | D570.1 | **La couleur d'un repère** — *Marker colors* | Clic droit sur un repère de la règle, *Couleur du repère…* (le sélecteur de couleur des pistes) : le repère se dessine de sa couleur sur la règle de l'arrangement et sur celle du piano roll ; écrite au projet (`markers[].color`) seulement si elle est posée ; un pas ; mesuré par le projet relu et la photo (les pixels du drapeau du repère), le témoin sans couleur à côté |
-| D570.2 | **Les préréglages de quantification** — *Quantize Presets* | *Édition ▸ Temps et durée ▸ Préréglages de quantification* : *Enregistrer les réglages actuels…* (un nom) garde la grille, le modificateur et le swing de la barre ; chaque préréglage s'y RAPPELLE (la barre et le piano roll les reprennent, par le chemin de D495) ; *Retirer* ; gardés dans les préférences du poste, comme les dispositions (D549.3) ; mesuré par la barre relue (`VSM_PIANOROLL_GRILLE`) et par la quantification qui suit, le témoin sans rappel à côté |
-| D570.3 | **La couleur des notes** — *Event Colors* | Au piano roll, *Couleur des notes ▸ Selon la vélocité (piste) / Selon la hauteur / Selon le canal* (cases, une seule cochée, retenue) : la vélocité garde le rendu d'aujourd'hui ; la hauteur donne une teinte par NOM de note (douze, do rouge) ; le canal une teinte par canal (seize) ; la luminosité suit toujours la vélocité ; mesuré par la photo — la teinte du centre de chaque note —, le témoin selon la piste à côté |
+| D570.2 | **Les préréglages de quantification** — *Quantize Presets* | *Édition ▸ Préréglages de quantification* (et non sous *Temps et durée*, corrigé à l'écriture du code : ce sous-menu est bâti par le piano roll, qui ne tient pas les préférences du poste) : *Enregistrer les réglages de quantification…* (un nom) garde la grille, le modificateur et le swing de la barre ; chaque préréglage s'y RAPPELLE (la barre et le piano roll les reprennent, par le chemin de D495) ; *Retirer* ; gardés dans les préférences du poste, comme les dispositions (D549.3) ; mesuré par la barre relue (`VSM_PIANOROLL_GRILLE`) et par la quantification qui suit, le témoin sans rappel à côté |
+| D570.3 | **La couleur des notes** — *Event Colors* | Au piano roll, *Couleur des notes ▸ Selon la vélocité (couleur de la piste) / Selon la hauteur (une teinte par nom de note) / Selon le canal MIDI* (cases, une seule cochée, retenue) : la vélocité garde le rendu d'aujourd'hui ; la hauteur donne une teinte par NOM de note (douze, do rouge) ; le canal une teinte par canal (seize) ; la luminosité suit toujours la vélocité ; mesuré par la photo — la teinte du centre de chaque note —, le témoin selon la piste à côté |
 
 **CE QUI EST TRANCHÉ AVANT LE CODE.**
 - **D570.1.** La couleur est une donnée du MORCEAU (elle va au projet), comme celle d'une piste ou d'un clip. Sans couleur,
@@ -43816,3 +43816,15 @@ couleur des notes** — une note prend la couleur de sa piste, sa vélocité en 
   vélocité, pour qu'aucun mode ne perde la nuance. Une note muette reste grisée, une note douteuse garde sa barre ambre.
 
 **L'ORDRE, TRANCHÉ ICI.** D570.3 d'abord (une fonction pure de couleur, testable), puis D570.1, puis D570.2.
+
+### Phase D570 — FAITE (22/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D570.3 | la couleur des notes | `noteHue` (un test : do4 = do5, sol4 à 7/12, le canal sur seize, −1 pour la piste) ; `tools/couleur-notes.sh`, teinte LUE SUR LA PHOTO au centre de chaque note (`relever-notes`, `VSM_NOTE_ECRAN`) : selon la piste **0,612 / 0,612 / 0,612** ; selon la hauteur do4 **0,000**, do5 **0,000**, sol4 **0,583** ; selon le canal **0,000** pour les trois (canal 1), autre que la piste ; retenue au relancement | **oui** |
+| D570.1 | la couleur d'un repère | `Marker::colorRgba`, `markers[].color` écrit seulement s'il est posé ; *Couleur du repère…* aux DEUX règles (la garde `menus-des-regles.py` le veut) ; `tools/couleur-repere.sh` : « Refrain » **#FFFF0000** au projet, « Couplet » sans couleur écrite ; **105 pixels rouges** dans la règle de l'arrangement, **0** sur le témoin ; Ctrl+Z la retire | **oui** |
+| D570.2 | les préréglages de quantification | *Édition ▸ Préréglages de quantification* ; `tools/prereglages-quantification.sh` : 1/16 droit swing 0 avant (le témoin), **1/8 triplet swing 0,50** au piano roll ET à la barre après le rappel, la gamme intacte ; retiré : « (aucun préréglage) » ; un HOME neuf ne le connaît pas | **oui** |
+| — | le témoin | le binaire de D568 : **douze rouges sur douze** — les contrôles témoins compris, faute des relevés neufs (`relever-notes`, `relever-grille`, `couleur-repere:`) : une garde, pas une preuve, pour ceux-là | **oui** |
+
+Mesuré la session VERROUILLÉE (l'utilisateur absent) et le poste chargé par son `ffmpeg` (charge 30) : verts malgré cela.
+C++ 526 · 1 347 · 344 · 25 · 11. 142 bancs dans la série.

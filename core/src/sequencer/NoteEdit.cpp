@@ -957,4 +957,13 @@ size_t freezeQuantize(std::vector<Note>& notes, const NoteSelection& selection) 
 }
 
 
+float noteHue(NoteColorMode mode, const Note& note) {
+    switch (mode) {
+        case NoteColorMode::Pitch: return static_cast<float>(note.number % 12) / 12.0f;
+        case NoteColorMode::Channel: return static_cast<float>(note.channel % 16) / 16.0f;
+        case NoteColorMode::Track: break;
+    }
+    return -1.0f;
+}
+
 } // namespace vsm::sequencer

@@ -147,7 +147,9 @@ void PianoRollRulerComponent::paint(juce::Graphics& g) {
             if (x < static_cast<float>(pianoRoll_.keyboardWidth()) || x > static_cast<float>(bounds.getWidth()))
                 continue;
 
-            g.setColour(Palette::accentTeal);
+            // D570.1 : la couleur du repère, s'il en porte une.
+            const juce::Colour teinte = markers[i].colorRgba != 0 ? juce::Colour(markers[i].colorRgba) : Palette::accentTeal;
+            g.setColour(teinte);
             g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.5f);
             juce::Path fanion;
             fanion.addTriangle(x, 0.0f, x + 9.0f, 3.5f, x, 7.0f);
@@ -172,7 +174,7 @@ void PianoRollRulerComponent::paint(juce::Graphics& g) {
                                               bounds.getHeight() - 3);
             g.setColour(Palette::panel.withAlpha(0.92f));
             g.fillRect(cadre);
-            g.setColour(Palette::accentTeal);
+            g.setColour(teinte);
             g.setFont(juce::Font(juce::FontOptions(12.0f)));
             g.drawText(juce::String(markers[i].name), cadre.reduced(3, 0),
                         juce::Justification::centredLeft, true);
@@ -310,6 +312,7 @@ juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole, Tic
     menu.addItem(1, tr(u8"Poser un repère ici…"));
     menu.addItem(3, tr(u8"Renommer ce repère…"), survole >= 0);
     menu.addItem(2, tr(u8"Retirer ce repère"), survole >= 0);
+    menu.addItem(8, tr(u8"Couleur du repère…"), survole >= 0);   // D570.1
     // D532.3 bis : LA LIGNE D'ACCORDS — les mêmes libellés et les mêmes rappels que la règle
     // de l'arrangement (`tools/menus-des-regles.py`). Modifier et retirer visent l'accord EN
     // VIGUEUR au point visé : une ligne d'accords n'a pas de trou.
@@ -334,6 +337,7 @@ void PianoRollRulerComponent::actionDeMenuDeRepere(int choix, vsm::midi::Tick ti
     if (choix == 5 && onChordEditRequested) onChordEditRequested(tick);
     if (choix == 6 && onChordRemoveRequested) onChordRemoveRequested(tick);
     if (choix == 7 && onSectionLocatorsRequested) onSectionLocatorsRequested(tick);   // D542.1
+    if (choix == 8 && survole >= 0 && onMarkerColorRequested) onMarkerColorRequested(static_cast<size_t>(survole));   // D570.1
 }
 
 juce::String PianoRollRulerComponent::releverAccords() const {

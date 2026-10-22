@@ -52,6 +52,13 @@ public:
                             std::vector<std::pair<std::string, std::string>>& ecartes);
     /// D495 : le NOM de la grille tenue, tel que le projet l'écrit (« 1/16 », « auto »).
     std::string nomDeLaGrille() const;
+    /// D570.2 : le modificateur tenu (« », « triplet », « dotted ») et le swing — ce qu'un préréglage garde.
+    std::string nomDuModificateur() const;
+    double swingTenu() const;
+    /// D570.2 : la grille, le modificateur et le swing SEULS, par les listes de la barre (le chemin de D495) ; la gamme
+    /// n'est pas touchée. Un nom inconnu va à `ecartes`.
+    void poserGrilleSeule(const std::string& grille, const std::string& modificateur, double swing,
+                          std::vector<std::pair<std::string, std::string>>& ecartes);
     /// D496 : la vélocité des notes dessinées relue des préférences — le curseur la
     /// MONTRE, le piano roll la tient.
     void poserVelocite(int velocite);

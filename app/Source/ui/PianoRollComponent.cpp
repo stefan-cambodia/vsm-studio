@@ -61,6 +61,7 @@ enum ContextMenuId {
     kCtxQuantizeEndsOnly = 100496,       // D557.1
     kCtxResetQuantize = 100497, kCtxFreezeQuantize,   // D566.1
     kCtxSelectInLoop = 100510, kCtxSelectStartToCursor, kCtxSelectCursorToEnd,   // D569.3
+    kCtxColorTrack = 100520, kCtxColorPitch, kCtxColorChannel,                    // D570.3
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -741,6 +742,38 @@ void PianoRollComponent::selectSamePitch() {
         selectedNoteIds_ = selectNotesWithSamePitch(track->notes, selectedNoteIds_);
     notifyEditState();
     repaint();
+}
+
+void PianoRollComponent::setCouleurDesNotes(vsm::sequencer::NoteColorMode mode) {
+    // D570.3 : retenue (`onBasculesChanged`, seulement au changement) et dite.
+    const bool change = mode != couleurDesNotes_;
+    couleurDesNotes_ = mode;
+    std::fputs((juce::String::fromUTF8(u8"VSM_COULEUR_NOTES : ")
+                + (mode == vsm::sequencer::NoteColorMode::Pitch     ? juce::String::fromUTF8(u8"selon la hauteur")
+                   : mode == vsm::sequencer::NoteColorMode::Channel ? juce::String::fromUTF8(u8"selon le canal")
+                                                                    : juce::String::fromUTF8(u8"selon la piste"))
+                + "\n").toRawUTF8(), stderr);
+    if (change && onBasculesChanged) onBasculesChanged();
+    repaint();
+}
+
+void PianoRollComponent::direLesNotesAEcran() const {
+    // D570.3 : LE CENTRE DE CHAQUE NOTE DE LA PISTE ACTIVE dans la FENÊTRE, là où la photo le lit (la leçon de
+    // VSM_CLIP_ECRAN, D566.2) ; seules les notes visibles.
+    const Track* track = activeTrack();
+    const auto* haut = getTopLevelComponent();
+    if (track == nullptr || haut == nullptr) return;
+    for (const auto& n : track->notes) {
+        const float x1 = tickToX(n.startTick), x2 = tickToX(n.endTick);
+        const float y = static_cast<float>(noteToY(n.number)) + static_cast<float>(noteHeight_ - 1) * 0.5f;
+        const float x = (x1 + x2) * 0.5f;
+        if (x < 0.0f || x >= static_cast<float>(getWidth()) || y < 0.0f || y >= static_cast<float>(getHeight())) continue;
+        const auto p = haut->getLocalPoint(this, juce::Point<float>(x, y));
+        std::fputs(("VSM_NOTE_ECRAN : hauteur " + juce::String(static_cast<int>(n.number)) + " canal "
+                    + juce::String(static_cast<int>(n.channel) + 1) + " centre " + juce::String(juce::roundToInt(p.x)) + ","
+                    + juce::String(juce::roundToInt(p.y)) + juce::String::fromUTF8(u8" ; fenêtre ") + juce::String(haut->getWidth())
+                    + "x" + juce::String(haut->getHeight()) + "\n").toRawUTF8(), stderr);
+    }
 }
 
 void PianoRollComponent::choisirParPlage(vsm::sequencer::RangeRule regle) {
@@ -1580,6 +1613,15 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
                                                         + compte(selectNotesShorterThan(notes, std::max<Tick>(1, grille / 2))));
     }
     menu.addSubMenu(tr(u8"Sélection"), selectMenu);
+    // D570.3 : LA COULEUR DES NOTES (Event Colors) — une préférence du poste.
+    {
+        juce::PopupMenu couleurs;
+        using M = vsm::sequencer::NoteColorMode;
+        couleurs.addItem(kCtxColorTrack, tr(u8"Selon la vélocité (couleur de la piste)"), true, couleurDesNotes_ == M::Track);
+        couleurs.addItem(kCtxColorPitch, tr(u8"Selon la hauteur (une teinte par nom de note)"), true, couleurDesNotes_ == M::Pitch);
+        couleurs.addItem(kCtxColorChannel, tr(u8"Selon le canal MIDI"), true, couleurDesNotes_ == M::Channel);
+        menu.addSubMenu(tr(u8"Couleur des notes"), couleurs);
+    }
 
     juce::PopupMenu pitchMenu;
     // D471 : les flèches, touches FIXES — ↑ avec une sélection appelle
@@ -1776,6 +1818,9 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectInvert:     invertSelection(); break;
         case kCtxSelectSamePitch:  selectSamePitch(); break;
         case kCtxSelectSamePitchClass: selectSamePitchClass(); break;   // D556.3
+        case kCtxColorTrack:   setCouleurDesNotes(vsm::sequencer::NoteColorMode::Track); break;     // D570.3
+        case kCtxColorPitch:   setCouleurDesNotes(vsm::sequencer::NoteColorMode::Pitch); break;
+        case kCtxColorChannel: setCouleurDesNotes(vsm::sequencer::NoteColorMode::Channel); break;
         case kCtxSelectInLoop:        choisirParPlage(vsm::sequencer::RangeRule::Between); break;        // D569.3
         case kCtxSelectStartToCursor: choisirParPlage(vsm::sequencer::RangeRule::StartsBefore); break;
         case kCtxSelectCursorToEnd:   choisirParPlage(vsm::sequencer::RangeRule::EndsAfter); break;
@@ -2656,7 +2701,11 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
     const auto rect = juce::Rectangle<float>(x1, y, std::max(3.0f, x2 - x1), static_cast<float>(noteHeight_ - 1));
 
     const Track* track = activeTrack();
-    const juce::Colour base = track ? juce::Colour(track->colorRgba) : Palette::accentTeal;
+    // D570.3 : LA TEINTE SELON LE MODE (la piste, le nom de la note, son canal) ; la luminosité reste la vélocité.
+    const float teinte = vsm::sequencer::noteHue(couleurDesNotes_, note);
+    const juce::Colour base = teinte >= 0.0f ? juce::Colour::fromHSV(teinte, 0.65f, 0.95f, 1.0f)
+                              : track         ? juce::Colour(track->colorRgba)
+                                              : Palette::accentTeal;
     // La vélocité se lit à la LUMINOSITÉ : une nuance se repère d'un coup
     // d'œil sur tout un passage, sans ouvrir la lane de vélocité.
     const float brightness = 0.45f + 0.55f * (static_cast<float>(note.velocity) / 127.0f);

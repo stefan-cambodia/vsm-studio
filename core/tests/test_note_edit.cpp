@@ -880,3 +880,16 @@ VSM_TEST(selecting_equal_pitch_in_all_octaves_takes_every_note_of_that_name) {
     VSM_ASSERT(selectNotesWithSamePitchClass(notes, NoteSelection{}).empty());
 }
 
+// D570.3 — LA COULEUR DES NOTES : une teinte par nom de note (toutes octaves), par canal, ou celle de la piste.
+VSM_TEST(note_hue_follows_the_pitch_class_or_the_channel) {
+    Note do4; do4.number = 60; do4.channel = 0;
+    Note do5; do5.number = 72; do5.channel = 9;
+    Note sol4; sol4.number = 67; sol4.channel = 0;
+    VSM_ASSERT_NEAR(noteHue(NoteColorMode::Pitch, do4), 0.0f, 1e-9);
+    VSM_ASSERT_NEAR(noteHue(NoteColorMode::Pitch, do5), noteHue(NoteColorMode::Pitch, do4), 1e-9);   // même nom
+    VSM_ASSERT_NEAR(noteHue(NoteColorMode::Pitch, sol4), 7.0f / 12.0f, 1e-6);
+    VSM_ASSERT_NEAR(noteHue(NoteColorMode::Channel, do5), 9.0f / 16.0f, 1e-6);
+    VSM_ASSERT_NEAR(noteHue(NoteColorMode::Channel, do4), noteHue(NoteColorMode::Channel, sol4), 1e-9);   // même canal
+    VSM_ASSERT_NEAR(noteHue(NoteColorMode::Track, sol4), -1.0f, 1e-9);
+}
+

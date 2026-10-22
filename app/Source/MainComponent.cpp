@@ -575,6 +575,8 @@ MainComponent::MainComponent()
     // la pose plutôt que d'en créer un « Repère 3 » à renommer plus tard.
     pianoRollPanel_.onMarkerRequested = [this](vsm::midi::Tick tick) { requestMarker(tick); };
     pianoRollPanel_.onMarkerRenameRequested = [this](size_t index) { renameMarker(index); };
+    pianoRollPanel_.onMarkerColorRequested = [this](size_t index) { choisirCouleurDeRepere(index); };   // D570.1
+    arrangement_.onMarkerColorRequested = [this](size_t index) { choisirCouleurDeRepere(index); };
     pianoRollPanel_.onMarkerRemoved = [this](size_t index) { removeMarker(index); };
     // D16.4 : la règle de l'arrangement fait les mêmes trois gestes.
     arrangement_.onMarkerRequested = [this](vsm::midi::Tick tick) { requestMarker(tick); };
@@ -1483,6 +1485,13 @@ MainComponent::MainComponent()
         pianoRoll_.setSnapEnabled(reglages.getBoolValue("pianoRollAimant", true));
         pianoRoll_.setFollowPlayhead(reglages.getBoolValue("pianoRollSuitLaTete", true));
         pianoRoll_.setGhostNotesVisible(reglages.getBoolValue("pianoRollFantomes", true));
+        // D570.3 : la couleur des notes, 0 la piste, 1 la hauteur, 2 le canal.
+        {
+            const int mode = juce::jlimit(0, 2, reglages.getIntValue("pianoRollCouleurNotes", 0));
+            pianoRoll_.setCouleurDesNotes(mode == 1 ? vsm::sequencer::NoteColorMode::Pitch
+                                          : mode == 2 ? vsm::sequencer::NoteColorMode::Channel
+                                                      : vsm::sequencer::NoteColorMode::Track);
+        }
         // D496 : et la vélocité des notes dessinées, bornée à 1..127.
         pianoRollPanel_.barre().poserVelocite(reglages.getIntValue("pianoRollVelocite", 100));
         // LA BARRE MONTRE CE QUI VIENT D'ÊTRE RELU, tout de suite : la minuterie
@@ -1495,6 +1504,7 @@ MainComponent::MainComponent()
             r.setValue("pianoRollSuitLaTete", pianoRoll_.followPlayhead());
             r.setValue("pianoRollFantomes", pianoRoll_.ghostNotesVisible());
             r.setValue("pianoRollVelocite", static_cast<int>(pianoRoll_.defaultVelocity()));   // D496
+            r.setValue("pianoRollCouleurNotes", static_cast<int>(pianoRoll_.couleurDesNotes()));   // D570.3
             r.saveIfNeeded();
         };
     }
@@ -4489,6 +4499,24 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // définition, donc aucun risque qu'une opération existe à un
             // endroit et pas à l'autre, ou que les deux divergent.
             menu = pianoRoll_.buildContextMenu();
+            // D570.2 : LES PRÉRÉGLAGES DE QUANTIFICATION — la grille, le modificateur et le swing de la barre, sous un nom.
+            {
+                juce::PopupMenu prereglages, retirer;
+                prereglages.addItem(kMenuEditQuantizePresetSave, tr(u8"Enregistrer les réglages de quantification…"));
+                const auto rangees = lireQuantifications();
+                if (rangees->getNumChildElements() > 0) prereglages.addSeparator();
+                for (int i = 0; i < rangees->getNumChildElements() && i <= kMenuEditQuantizePresetLast - kMenuEditQuantizePresetFirst; ++i) {
+                    const juce::String nom = rangees->getChildElement(i)->getStringAttribute("nom");
+                    prereglages.addItem(kMenuEditQuantizePresetFirst + i, nom);
+                    retirer.addItem(kMenuEditQuantizePresetRemoveFirst + i, nom);
+                }
+                if (rangees->getNumChildElements() == 0)
+                    prereglages.addItem(-1, tr(u8"(aucun préréglage)"), false, false);
+                else
+                    prereglages.addSubMenu(tr(u8"Retirer un préréglage"), retirer);
+                menu.addSeparator();
+                menu.addSubMenu(tr(u8"Préréglages de quantification"), prereglages);
+            }
             // LA PLAGE ENTRE LES LOCATEURS (D13.3) : deux opérations sur TOUT
             // le morceau, qui n'ont pas leur place dans le piano roll -- elles
             // déplacent aussi les clips, les repères et le tempo.
@@ -5801,6 +5829,15 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
     if (menuItemID == kMenuMixSendsBypass) { contournerLesDepartsChoisis(); return; }   // D567.3
+    if (menuItemID == kMenuEditQuantizePresetSave) { enregistrerQuantification(); return; }   // D570.2
+    if (menuItemID >= kMenuEditQuantizePresetFirst && menuItemID <= kMenuEditQuantizePresetLast) {
+        rappelerQuantification(menuItemID - kMenuEditQuantizePresetFirst);
+        return;
+    }
+    if (menuItemID >= kMenuEditQuantizePresetRemoveFirst && menuItemID <= kMenuEditQuantizePresetRemoveLast) {
+        retirerQuantification(menuItemID - kMenuEditQuantizePresetRemoveFirst);
+        return;
+    }
     if (menuItemID == kMenuMixInsertsBypass) { contournerLesInsertsChoisis(); return; }   // D568.3
     if (menuItemID == kMenuEditDuplicateRange) { dupliquerLaPlage(); return; }           // D568.1
     if (menuItemID == kMenuFileExportMidiLoop) { exporterMidiEntreLesLocateurs({}); return; }   // D568.2
@@ -17062,6 +17099,137 @@ void MainComponent::requestMarker(vsm::midi::Tick tick) {
                        });
             refreshMarkerViews();
         });
+}
+
+namespace {
+/// D570.1 : un sélecteur de couleur qui s'écoute lui-même et rend chaque couleur choisie ; possédé par sa bulle.
+class SelecteurDeCouleur : public juce::ColourSelector, private juce::ChangeListener {
+public:
+    explicit SelecteurDeCouleur(std::function<void(juce::Colour)> poser)
+        : juce::ColourSelector(juce::ColourSelector::showColourAtTop | juce::ColourSelector::showSliders
+                               | juce::ColourSelector::showColourspace),
+          poser_(std::move(poser)) {
+        addChangeListener(this);
+    }
+    ~SelecteurDeCouleur() override { removeChangeListener(this); }
+private:
+    void changeListenerCallback(juce::ChangeBroadcaster*) override { if (poser_) poser_(getCurrentColour()); }
+    std::function<void(juce::Colour)> poser_;
+};
+} // namespace
+
+void MainComponent::appliquerCouleurDeRepere(size_t index, juce::Colour couleur, bool pas) {
+    if (index >= project_.markers.size()) return;
+    if (pas) beginProjectEdit(juce::String::fromUTF8(u8"Couleur du repère"));
+    project_.markers[index].colorRgba = couleur.getARGB();
+    refreshMarkerViews();
+    markProjectDirty();
+    std::fputs(("VSM_REPERE_COULEUR : " + std::to_string(index) + " \xc2\xab " + project_.markers[index].name
+                + " \xc2\xbb " + couleur.toDisplayString(false).toStdString() + "\n").c_str(), stderr);
+}
+
+void MainComponent::choisirCouleurDeRepere(size_t index) {
+    // D570.1 : LE SÉLECTEUR DES PISTES, la couleur suivie EN DIRECT ; un seul pas pour toute la séance du sélecteur.
+    if (index >= project_.markers.size()) return;
+    auto premier = std::make_shared<bool>(true);
+    auto* selecteur = new SelecteurDeCouleur([this, index, premier](juce::Colour c) {
+        appliquerCouleurDeRepere(index, c, *premier);
+        *premier = false;
+    });
+    selecteur->setName(tr(u8"Couleur du repère"));
+    const auto actuelle = project_.markers[index].colorRgba;
+    selecteur->setCurrentColour(actuelle != 0 ? juce::Colour(actuelle) : vsm::ui::Palette::accentTeal, juce::dontSendNotification);
+    selecteur->setSize(280, 320);
+    juce::CallOutBox::launchAsynchronously(std::unique_ptr<juce::Component>(selecteur),
+                                           arrangement_.getScreenBounds().withSize(1, 1).translated(120, 20), nullptr);
+}
+
+std::unique_ptr<juce::XmlElement> MainComponent::lireQuantifications() const {
+    if (auto xml = vsm::app::ui::UiScale::properties().getXmlValue("quantifications"))
+        if (xml->hasTagName("QUANTIFICATIONS")) return xml;
+    return std::make_unique<juce::XmlElement>("QUANTIFICATIONS");
+}
+
+namespace {
+juce::String direQuantification(const juce::XmlElement& q) {
+    return juce::String::fromUTF8(u8"« ") + q.getStringAttribute("nom") + juce::String::fromUTF8(u8" » : grille ")
+           + q.getStringAttribute("grille") + ", modificateur "
+           + (q.getStringAttribute("modificateur").isEmpty() ? juce::String("droit") : q.getStringAttribute("modificateur"))
+           + ", swing " + juce::String(q.getDoubleAttribute("swing"), 2);
+}
+} // namespace
+
+void MainComponent::enregistrerQuantification() {
+    // D570.2 : LES RÉGLAGES DE LA BARRE SOUS UN NOM — un nom déjà pris est remplacé, et c'est dit (la règle de D549.3).
+    const juce::String titre = tr(u8"Enregistrer les réglages de quantification");
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        titre, tr(u8"La grille, son modificateur et le swing de la barre du piano roll sont retenus sous ce nom, et se "
+                  u8"rappellent par Édition ▸ Préréglages de quantification."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("nom", "", tr(u8"Nom :"));
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, titre](int resultat) {
+        const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        if (nom.isEmpty()) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre, tr(u8"Un préréglage a besoin d'un nom : rien n'a été enregistré."));
+            return;
+        }
+        auto rangees = lireQuantifications();
+        bool remplace = false;
+        for (int i = 0; i < rangees->getNumChildElements(); ++i)
+            if (rangees->getChildElement(i)->getStringAttribute("nom") == nom) {
+                rangees->removeChildElement(rangees->getChildElement(i), true);
+                remplace = true;
+                break;
+            }
+        auto* q = new juce::XmlElement("Q");
+        q->setAttribute("nom", nom);
+        q->setAttribute("grille", juce::String(pianoRollPanel_.barre().nomDeLaGrille()));
+        q->setAttribute("modificateur", juce::String(pianoRollPanel_.barre().nomDuModificateur()));
+        q->setAttribute("swing", pianoRollPanel_.barre().swingTenu());
+        const juce::String dite = direQuantification(*q);
+        rangees->addChildElement(q);
+        vsm::app::ui::UiScale::properties().setValue("quantifications", rangees.get());
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+        std::fputs((juce::String("VSM_QUANTIFICATION : ") + (remplace ? juce::String::fromUTF8(u8"remplacé ")
+                                                                      : juce::String::fromUTF8(u8"enregistré "))
+                    + dite + "\n").toRawUTF8(), stderr);
+        if (remplace)
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         tr(u8"Le préréglage « %1 » existait : il est remplacé par celui-ci.").replace("%1", nom));
+    });
+}
+
+void MainComponent::rappelerQuantification(int rang) {
+    const auto rangees = lireQuantifications();
+    const auto* q = rangees->getChildElement(rang);
+    if (q == nullptr) return;
+    std::vector<std::pair<std::string, std::string>> ecartes;
+    pianoRollPanel_.barre().poserGrilleSeule(q->getStringAttribute("grille").toStdString(),
+                                             q->getStringAttribute("modificateur").toStdString(),
+                                             q->getDoubleAttribute("swing"), ecartes);
+    pianoRollPanel_.refresh();
+    std::fputs((juce::String("VSM_QUANTIFICATION : rappel ") + direQuantification(*q)
+                + (ecartes.empty() ? juce::String() : juce::String::fromUTF8(u8" — écarté : ") + juce::String(ecartes.front().second)))
+                   .toRawUTF8(), stderr);
+    std::fputs("\n", stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Quantification : « %1 » rappelé").replace("%1", q->getStringAttribute("nom")));
+}
+
+void MainComponent::retirerQuantification(int rang) {
+    auto rangees = lireQuantifications();
+    auto* q = rangees->getChildElement(rang);
+    if (q == nullptr) return;
+    const juce::String nom = q->getStringAttribute("nom");
+    rangees->removeChildElement(q, true);
+    vsm::app::ui::UiScale::properties().setValue("quantifications", rangees.get());
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+    std::fputs((juce::String::fromUTF8(u8"VSM_QUANTIFICATION : retiré « ") + nom + juce::String::fromUTF8(u8" »\n")).toRawUTF8(), stderr);
 }
 
 void MainComponent::renameMarker(size_t index) {

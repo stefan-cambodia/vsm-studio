@@ -204,6 +204,7 @@ struct ProjectAudioSource {
 struct ProjectMarker {
     int64_t tick = 0;
     std::string name;
+    uint32_t colorRgba = 0;   ///< D570.1 : écrite seulement si elle est posée
 };
 
 /// D532.3 : un accord de la ligne d'accords, par son SYMBOLE (« Am7/G ») — le format.

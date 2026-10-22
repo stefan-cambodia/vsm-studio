@@ -100,6 +100,9 @@ public:
         ruler_.onMarkerRemoved = [this](size_t index) {
             if (onMarkerRemoved) onMarkerRemoved(index);
         };
+        ruler_.onMarkerColorRequested = [this](size_t index) {   // D570.1
+            if (onMarkerColorRequested) onMarkerColorRequested(index);
+        };
         ruler_.onMarkerRenameRequested = [this](size_t index) {
             if (onMarkerRenameRequested) onMarkerRenameRequested(index);
         };
@@ -186,6 +189,7 @@ public:
     /// celui d'index donné.
     std::function<void(vsm::midi::Tick)> onMarkerRequested;
     std::function<void(size_t)> onMarkerRenameRequested;
+    std::function<void(size_t)> onMarkerColorRequested;   ///< D570.1
     std::function<void(size_t)> onMarkerRemoved;
     /// D532.3 bis : poser, modifier, retirer un accord (l'application demande le symbole).
     std::function<void(vsm::midi::Tick)> onChordRequested;

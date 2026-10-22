@@ -243,6 +243,11 @@ public:
     void selectNone();
     void invertSelection();
     void selectSamePitch();
+    /// D570.3 : la couleur des notes (la piste, la hauteur, le canal) — une préférence du poste.
+    void setCouleurDesNotes(vsm::sequencer::NoteColorMode mode);
+    vsm::sequencer::NoteColorMode couleurDesNotes() const { return couleurDesNotes_; }
+    /// D570.3 : le relevé du banc — le centre de chaque note visible dans la fenêtre.
+    void direLesNotesAEcran() const;
     /// D569.3 : les notes choisies par la plage des locateurs (`Between`) ou par la tête.
     void choisirParPlage(vsm::sequencer::RangeRule regle);
     void selectSamePitchClass();   // D556.3
@@ -506,6 +511,7 @@ private:
     vsm::midi::Tick loopStartTick_ = 0;
     vsm::midi::Tick loopEndTick_ = 0;
     bool loopActive_ = false;
+    vsm::sequencer::NoteColorMode couleurDesNotes_ = vsm::sequencer::NoteColorMode::Track;   ///< D570.3
     vsm::midi::Tick playheadTick_ = 0;
     bool stepInput_ = false;
 

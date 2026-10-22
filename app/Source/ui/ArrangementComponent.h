@@ -497,6 +497,8 @@ public:
     /// que `PianoRollRulerComponent` -- les fenêtres (le nom) sont de
     /// l'application, la vue ne fait que demander.
     std::function<void(vsm::midi::Tick)> onMarkerRequested;
+    /// D570.1 : la couleur du repère `index` — le sélecteur est dans l'application.
+    std::function<void(size_t)> onMarkerColorRequested;
     std::function<void(size_t)> onMarkerRenameRequested;
     std::function<void(size_t)> onMarkerRemoved;
     /// Le repère le plus proche d'une abscisse, à dix pixels près, ou -1 : on

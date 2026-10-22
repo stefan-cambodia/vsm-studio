@@ -377,6 +377,8 @@ struct Take {
 struct Marker {
     Tick tick = 0;
     std::string name;
+    /// D570.1 : la couleur du repère (ARGB), 0 pour « celle des repères » — la règle le peint de la sienne.
+    uint32_t colorRgba = 0;
 };
 
 /// Un effet d'insert, DÉCRIT et non instancié : un identifiant de fabrique et

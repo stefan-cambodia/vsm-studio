@@ -322,4 +322,11 @@ size_t resetQuantize(std::vector<Note>& notes, const NoteSelection& selection);
 /// de notes qui en portaient un.
 size_t freezeQuantize(std::vector<Note>& notes, const NoteSelection& selection);
 
+/// D570.3 — LA COULEUR DES NOTES (*Event Colors* de Cubase) : `Track`, celle de la piste (le rendu d'avant) ; `Pitch`,
+/// une teinte par NOM de note sur un cercle de douze (do = 0, le rouge) ; `Channel`, une teinte par canal sur seize.
+/// `noteHue` rend la teinte dans [0, 1), ou −1 pour « celle de la piste ». La luminosité (la vélocité) est l'affaire
+/// de la vue.
+enum class NoteColorMode { Track, Pitch, Channel };
+float noteHue(NoteColorMode mode, const Note& note);
+
 } // namespace vsm::sequencer

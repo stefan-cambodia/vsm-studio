@@ -436,7 +436,7 @@ ProjectDocument documentFromProject(const Project& project) {
         document.transport.timeSignatures.push_back({change.tick, change.numerator,
                                                       1 << change.denominatorPow2});
     for (const auto& marker : project.markers)
-        document.markers.push_back({marker.tick, marker.name});
+        document.markers.push_back({marker.tick, marker.name, marker.colorRgba});
     for (const auto& accord : project.chords)   // D532.3 : le symbole est le format
         document.chords.push_back({accord.tick, vsm::sequencer::chordSymbol(accord)});
     document.notes = project.notes;
@@ -639,7 +639,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     if (!document.markers.empty()) {
         project.markers.clear();
         for (const auto& marker : document.markers)
-            project.markers.push_back({marker.tick, marker.name});
+            project.markers.push_back({marker.tick, marker.name, marker.colorRgba});
     }
     project.mixSnapshotNames = document.mixSnapshotNames;   // D535.2
     project.globalTransposeSemitones = document.globalTransposeSemitones;   // D544.3
@@ -899,6 +899,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             JsonValue m = JsonValue::makeObject();
             m.set("tick", JsonValue::makeNumber(static_cast<double>(marker.tick)));
             m.set("name", JsonValue::makeString(marker.name));
+            if (marker.colorRgba != 0) m.set("color", JsonValue::makeString(colourToHex(marker.colorRgba)));   // D570.1
             markers.append(std::move(m));
         }
         root.set("markers", std::move(markers));
@@ -1320,6 +1321,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         ProjectMarker marker;
         marker.tick = static_cast<int64_t>(markerJson["tick"].asNumber(0.0));
         marker.name = markerJson["name"].asString();
+        if (markerJson["color"].isString()) marker.colorRgba = colourFromHex(markerJson["color"].asString(), 0u);   // D570.1
         // Un repère sans nom ne repère rien : filtré à la lecture plutôt que
         // traîné jusqu'à l'écran.
         if (!marker.name.empty()) document.markers.push_back(std::move(marker));

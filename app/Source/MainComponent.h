@@ -353,6 +353,19 @@ public:
         if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
         // D568.3 : l'état de chaque insert, dans la description ET sur l'instance que le moteur joue.
         if (geste.equalsIgnoreCase("relever-inserts")) { effectChain_.direLesContournements(); return true; }
+        // D570.3 : le centre de chaque note visible du piano roll, dans la fenêtre.
+        if (geste.equalsIgnoreCase("relever-notes")) { pianoRoll_.direLesNotesAEcran(); return true; }
+        // D570.2 : la grille, le swing et la gamme, relevés PLUS TARD (le relevé du démarrage précède les gestes).
+        if (geste.equalsIgnoreCase("relever-grille")) { pianoRollPanel_.barre().direLaGrilleEtLaGamme(); return true; }
+        // D570.1 : « couleur-repere:<rang>:<RRGGBB> » — par la fonction même du sélecteur.
+        if (geste.startsWithIgnoreCase("couleur-repere:")) {
+            const juce::String reste = geste.fromFirstOccurrenceOf(":", false, false);
+            const int rang = reste.upToFirstOccurrenceOf(":", false, false).getIntValue();
+            if (rang < 0 || static_cast<size_t>(rang) >= project_.markers.size()) return false;
+            appliquerCouleurDeRepere(static_cast<size_t>(rang),
+                                     juce::Colour::fromString("ff" + reste.fromFirstOccurrenceOf(":", false, false)), true);
+            return true;
+        }
         // D547.2 : la géométrie des clips à l'écran, pour tirer un bord de clip.
         if (geste.equalsIgnoreCase("relever-clips")) { arrangement_.direLesClipsAEcran(); return true; }
         // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
@@ -1193,6 +1206,12 @@ private:
         /// D569 : extraire l'automation MIDI ; la tête fixe.
         kMenuTrackExtractMidiAutomation,
         kMenuViewStationaryCursor,
+        /// D570.2 : les préréglages de quantification (trente-deux places, rappeler et retirer).
+        kMenuEditQuantizePresetSave,
+        kMenuEditQuantizePresetFirst,
+        kMenuEditQuantizePresetLast = kMenuEditQuantizePresetFirst + 31,
+        kMenuEditQuantizePresetRemoveFirst,
+        kMenuEditQuantizePresetRemoveLast = kMenuEditQuantizePresetRemoveFirst + 31,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1732,6 +1751,14 @@ private:
     void contournerLesInsertsChoisis();
     /// D569.1 : les CC 7 et 10 de la piste choisie en courbes de la tranche.
     void extraireLAutomationMidi();
+    /// D570.1 : la couleur du repère `index` ; `pas` ouvre un pas d'annulation (le premier changement d'un sélecteur).
+    void appliquerCouleurDeRepere(size_t index, juce::Colour couleur, bool pas);
+    void choisirCouleurDeRepere(size_t index);
+    /// D570.2 : les préréglages de quantification, dans les préférences du poste (`quantifications`).
+    std::unique_ptr<juce::XmlElement> lireQuantifications() const;
+    void enregistrerQuantification();
+    void rappelerQuantification(int rang);
+    void retirerQuantification(int rang);
     void suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     bool etaitEnLecture_ = false;
     vsm::midi::Tick departLecture_ = 0;

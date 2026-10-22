@@ -46,6 +46,7 @@ public:
     /// Renommer le repère d'index donné (D16.4 : le même geste que dans
     /// l'arrangement ; deux vues, un geste).
     std::function<void(size_t)> onMarkerRenameRequested;
+    std::function<void(size_t)> onMarkerColorRequested;   ///< D570.1
     /// D532.3 bis : LA LIGNE D'ACCORDS, les mêmes gestes que dans l'arrangement — poser un
     /// accord au point visé, modifier ou retirer celui qui y est EN VIGUEUR. Les fenêtres (le
     /// symbole) sont de l'application, comme pour les repères.

@@ -276,6 +276,37 @@ std::string PianoRollToolbar::nomDeLaGrille() const {
     return "1/16";
 }
 
+std::string PianoRollToolbar::nomDuModificateur() const {
+    const auto g = pianoRoll_.gridResolution();
+    return g.triplet ? "triplet" : g.dotted ? "dotted" : "";
+}
+
+double PianoRollToolbar::swingTenu() const { return pianoRoll_.swing(); }
+
+void PianoRollToolbar::poserGrilleSeule(const std::string& grille, const std::string& modificateur, double swing,
+                                        std::vector<std::pair<std::string, std::string>>& ecartes) {
+    int idGrille = 5;
+    if (grille == "auto") idGrille = 100;
+    else if (!grille.empty()) {
+        int trouve = 0;
+        for (size_t i = 0; i < gridChoices().size(); ++i)
+            if (grille == gridChoices()[i].second) trouve = static_cast<int>(i) + 1;
+        if (trouve > 0) idGrille = trouve;
+        else ecartes.emplace_back("grille", grille);
+    }
+    int idModificateur = 1;
+    if (modificateur == "triplet") idModificateur = 2;
+    else if (modificateur == "dotted") idModificateur = 3;
+    else if (!modificateur.empty()) ecartes.emplace_back("modificateur", modificateur);
+    gridCombo_.setSelectedId(idGrille, juce::dontSendNotification);
+    gridModifierCombo_.setSelectedId(idModificateur, juce::dontSendNotification);
+    applyGridFromCombos();
+    const double valeurSwing = swing >= 0.0 ? swing : 0.0;
+    swingSlider_.setValue(valeurSwing, juce::dontSendNotification);
+    swingSlider_.updateText();
+    pianoRoll_.setSwing(static_cast<float>(valeurSwing));
+}
+
 void PianoRollToolbar::poserGrilleEtGamme(const std::string& grille, const std::string& modificateur,
                                           double swing, int tonique, const std::string& type, bool surlignage,
                                           std::vector<std::pair<std::string, std::string>>& ecartes) {
