@@ -336,6 +336,8 @@ struct ProjectTrack {
     /// Niveaux d'envoi, un par bus déclaré par le projet. Un vecteur plus
     /// court que la liste des bus vaut « pas d'envoi » sur les suivants.
     std::vector<float> sendLevels;
+    /// D567.3 : les départs contournés (`mix.sendsBypassed`), écrit seulement quand ils le sont.
+    bool sendsBypassed = false;
     std::vector<ProjectEffect> effects;
     /// D31.1 : LES EFFETS MIDI de la piste, appliqués à la LECTURE (D31.3) et
     /// jamais aux notes. Champ FACULTATIF : une piste sans chaîne MIDI garde

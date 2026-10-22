@@ -418,6 +418,18 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     retraduire();   // D94 : infobulles et unité, dans la langue courante
 }
 
+void ChannelStrip::rafraichirDeparts() {
+    // D567.3 : DES DÉPARTS CONTOURNÉS PÂLISSENT, et leur infobulle le dit. Le bouton garde son niveau — rétablir le
+    // rend —, mais la piste ne verse plus rien : un bouton plein qui ne sonne pas serait une panne muette.
+    for (int bus = 0; bus < sends_.size() && static_cast<size_t>(bus) < sendNames_.size(); ++bus) {
+        sends_[bus]->setAlpha(track_.sendsBypassed ? 0.4f : 1.0f);
+        sends_[bus]->setTooltip(
+            tr(u8"Départ vers %1").replace("%1", juce::String::fromUTF8(sendNames_[static_cast<size_t>(bus)].c_str()))
+            + (track_.sendsBypassed ? tr(u8" — contourné : la piste n'y verse plus rien, son niveau est gardé")
+                                    : juce::String()));
+    }
+}
+
 void ChannelStrip::retraduire() {
     poserInfobulleDuNom();
     refreshMuteSolo();   // D481 : l'infobulle du M, dans la langue courante
@@ -435,9 +447,7 @@ void ChannelStrip::retraduire() {
                                  u8"le dit."));
     // UN BOUTON PAR BUS DÉCLARÉ, et son infobulle dit lequel : « send A » et
     // « send B » n'apprenaient rien.
-    for (int bus = 0; bus < sends_.size() && static_cast<size_t>(bus) < sendNames_.size(); ++bus)
-        sends_[bus]->setTooltip(tr(u8"Départ vers %1")
-                                    .replace("%1", juce::String::fromUTF8(sendNames_[static_cast<size_t>(bus)].c_str())));
+    rafraichirDeparts();
     armer_.setTooltip(tr(u8"Écrire l'automation en jouant. Un clic : Touch (la main sur un réglage écrit "
                          u8"tant qu'on la tient). Deux : Latch (elle écrit jusqu'à l'arrêt du transport). "
                          u8"Trois : éteint."));
@@ -612,6 +622,7 @@ void ChannelStrip::direGeometrieDeBanc(const juce::Component& repere) const {
          + ", pan " + juce::String(pan_.getHeight())
          + juce::String::fromUTF8(", d\xc3\xa9parts ") + juce::String(sends_.isEmpty() ? 0 : kHauteurDeparts)
          + " (" + juce::String(sends_.size()) + " bouton)"
+         + juce::String::fromUTF8(track_.sendsBypassed ? ", contourn\xc3\xa9s" : "")   // D567.3
          + ", fader " + juce::String(volume_.getWidth()) + "x" + juce::String(volume_.getHeight())
          + ", course " + juce::String(course, 1) + " px"
          + " (" + (course > 0.0 ? juce::String(plage / course, 2) : juce::String("inf")) + " dB/px)"

@@ -870,3 +870,41 @@ VSM_TEST(without_any_latency_no_compensation_plan_is_published) {
     graph.setTrackEffectChain(0, chain);
     VSM_ASSERT_EQ(graph.graphLatencySamples(), 0);
 }
+
+// --- D567.3 : les départs contournés ----------------------------------------
+
+namespace {
+/// Le pic du master pour un projet dont la piste n'est entendue QUE par son départ pré-fader (fader à zéro) — ou par
+/// le départ de son GROUPE —, contournée ou non.
+float peakOfReturnOnly(bool contourne, bool parUnGroupe) {
+    vsm::sequencer::Project projet = parUnGroupe ? groupProject() : oneNoteProject();
+    vsm::sequencer::SendBusDescription bus;
+    bus.effectType = "reverb";
+    bus.preFader = true;
+    projet.sends.push_back(bus);
+    const size_t source = parUnGroupe ? 2 : 0;
+    if (parUnGroupe) { projet.tracks[0].outputGroup = 2; projet.tracks[1].outputGroup = 2; }
+    projet.tracks[source].setSendLevel(0, 1.0f);
+    projet.tracks[source].volume = 0.0f;
+    projet.tracks[source].sendsBypassed = contourne;
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    if (parUnGroupe) graph.setTrackInstrument(1, "vsm.minimoog");
+    graph.setProject(projet);
+    graph.setSendEffect(0, std::make_shared<GainEffect>(1.0f));
+    graph.setSendReturn(0, 1.0f);
+    return peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left);
+}
+} // namespace
+
+VSM_TEST(bypassed_sends_feed_no_bus_and_the_level_stays) {
+    // Le témoin d'abord : sans contournement, le retour SONNE — sans quoi « rien au master » ne prouverait rien.
+    VSM_ASSERT(peakOfReturnOnly(false, false) > 0.01f);
+    VSM_ASSERT(peakOfReturnOnly(true, false) < 1e-6f);
+}
+
+VSM_TEST(a_group_with_bypassed_sends_feeds_no_bus) {
+    VSM_ASSERT(peakOfReturnOnly(false, true) > 0.01f);
+    VSM_ASSERT(peakOfReturnOnly(true, true) < 1e-6f);
+}

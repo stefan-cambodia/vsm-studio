@@ -2020,3 +2020,26 @@ VSM_TEST(coverage_leaves_notes_that_were_already_outside_before_the_gesture) {
     VSM_ASSERT_EQ(r[0].noteTick, Tick(300));
 }
 
+
+// D567.1 — LES FONDUS AUX LOCATEURS : au bord du clip, la plage EST le fondu ; au milieu, elle sonne plein.
+VSM_TEST(fades_to_the_range_follow_where_the_range_falls_in_each_clip) {
+    auto t2s = [](Tick t) { return static_cast<double>(t) / 960.0; };   // 960 ticks = 1 s
+    // M [0, 3840) : la plage [960, 2880) est DEDANS ; D [1920, 3840) : elle en couvre le DÉBUT ; F [0, 1920) : la FIN.
+    std::vector<Clip> clips{clip(1, 0, 3840), clip(2, 1920, 1920), clip(3, 0, 1920), clip(4, 960, 960), clip(5, 7680, 960)};
+    clips[1].fadeOutSeconds = 1.8;   // un fondu de sortie d'avant, que le nouveau fondu d'entrée croiserait
+    clips[2].fadeInSeconds = 0.25;   // un fondu d'entrée d'avant, que la plage ne règle pas
+    const auto r = fadeClipsToRange(clips, {1, 2, 3, 4, 5}, 960, 2880, 100000, t2s);
+    VSM_ASSERT_EQ(r.adjusted, size_t(3));
+    VSM_ASSERT_EQ(r.covered, size_t(1));    // [960, 1920) : couvert en entier, rien
+    VSM_ASSERT_EQ(r.outside, size_t(1));    // [7680, 8640) : hors de la plage
+    VSM_ASSERT_NEAR(clips[0].fadeInSeconds, 1.0, 1e-9);    // M : jusqu'au locateur gauche…
+    VSM_ASSERT_NEAR(clips[0].fadeOutSeconds, 1.0, 1e-9);   // … et depuis le droit
+    VSM_ASSERT_NEAR(clips[1].fadeInSeconds, 1.0, 1e-9);    // D : la plage est le fondu d'entrée, 1920 → 2880
+    VSM_ASSERT_NEAR(clips[1].fadeOutSeconds, 1.0, 1e-9);   // le fondu gardé, raccourci pour ne pas croiser (1,8 → 1,0)
+    VSM_ASSERT_NEAR(clips[2].fadeOutSeconds, 1.0, 1e-9);   // F : la plage est le fondu de sortie, 960 → 1920
+    VSM_ASSERT_NEAR(clips[2].fadeInSeconds, 0.25, 1e-9);   // le fondu d'entrée d'avant, gardé tel quel
+    VSM_ASSERT_NEAR(clips[3].fadeInSeconds, 0.0, 1e-12);
+    VSM_ASSERT_NEAR(clips[4].fadeOutSeconds, 0.0, 1e-12);
+    // Une plage vide ne fait rien.
+    VSM_ASSERT_EQ(fadeClipsToRange(clips, {1}, 960, 960, 100000, t2s).adjusted, size_t(0));
+}

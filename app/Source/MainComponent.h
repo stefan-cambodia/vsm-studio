@@ -1177,6 +1177,9 @@ private:
         kMenuTrackMemo,
         /// D566.3 : lier les tranches choisies.
         kMenuMixLinkChosen,
+        /// D567 : contourner les départs des tranches choisies ; les fondus aux locateurs ; agrandir les pistes choisies.
+        kMenuMixSendsBypass,
+        kMenuViewZoomChosenTracks,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1706,6 +1709,8 @@ private:
     bool lierLesTranches_ = false;
     vsm::sequencer::LinkedMixGesture lienDesTranches_;
     void debuterLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
+    /// D567.3 : contourner (ou rétablir) les départs des tranches choisies, comme le plan le dit.
+    void contournerLesDepartsChoisis();
     void suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     bool etaitEnLecture_ = false;
     vsm::midi::Tick departLecture_ = 0;

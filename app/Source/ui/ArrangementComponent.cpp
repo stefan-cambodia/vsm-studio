@@ -771,6 +771,8 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
                 if (selection_.count(c.id) > 0 && (c.fadeInSeconds > 0.0 || c.fadeOutSeconds > 0.0)) unFondu = true;
         menu.addItem(83, tr(u8"Retirer les fondus"), unFondu);
     }
+    // D567.1 : LES FONDUS AUX LOCATEURS (Adjust Fades to Range) — grisée sans plage entre les locateurs.
+    menu.addItem(93, tr(u8"Fondus aux locateurs"), project_->loopEndTick > project_->loopStartTick);
     menu.addSeparator();
     // D358 : LA TOUCHE EST DESSINÉE PAR JUCE, PLUS ÉCRITE DANS LE LIBELLÉ. Les
     // deux parenthèses « (Ctrl+E) » et « (Ctrl+J) » mentaient dès que
@@ -1744,6 +1746,39 @@ void ArrangementComponent::fadeSelectionToPlayhead(bool sortie) {
     if (poses == 0 && dehors > 0 && onFadeOutside) onFadeOutside(dehors);
 }
 
+void ArrangementComponent::fadeSelectionToLocators() {
+    // D567.1 : LES FONDUS AUX LOCATEURS, sur les clips choisis que la plage touche. Mesuré sur une copie : aucun pas
+    // pour rien, et ce qui n'a pas bougé (hors de la plage, couvert en entier) se dit.
+    if (project_ == nullptr || selection_.empty()) return;
+    const vsm::midi::Tick de = project_->loopStartTick, a = project_->loopEndTick;
+    if (a <= de) {
+        if (onFadesToRangeReport) onFadesToRangeReport(0, 0, 0, false);
+        return;
+    }
+    auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+    vsm::sequencer::FadesToRange total;
+    for (const auto& track : project_->tracks) {
+        auto essai = track.clips;
+        const auto r = vsm::sequencer::fadeClipsToRange(essai, selection_, de, a, materialEnd(track), conversion);
+        total.adjusted += r.adjusted;
+        total.outside += r.outside;
+        total.covered += r.covered;
+    }
+    if (total.adjusted > 0) {
+        if (onEditStarted) onEditStarted(u8"Fondus aux locateurs");
+        for (auto& track : project_->tracks)
+            vsm::sequencer::fadeClipsToRange(track.clips, selection_, de, a, materialEnd(track), conversion);
+        notifyChanged();
+        repaint();
+    }
+    std::fputs((juce::String::fromUTF8(u8"VSM_FONDUS : ") + juce::String(static_cast<int>(total.adjusted))
+                + juce::String::fromUTF8(u8" clip(s) aux locateurs, ") + juce::String(static_cast<int>(total.outside))
+                + juce::String::fromUTF8(u8" hors de la plage, ") + juce::String(static_cast<int>(total.covered))
+                + juce::String::fromUTF8(u8" couvert(s) en entier\n")).toRawUTF8(), stderr);
+    if (total.adjusted == 0 && onFadesToRangeReport)
+        onFadesToRangeReport(total.adjusted, total.outside, total.covered, true);
+}
+
 void ArrangementComponent::silenceSelectionBetweenLocators() {
     // D549.2 : ENTRE LES LOCATEURS, sur les clips AUDIO choisis, par la courbe de gain (D545.1) : le fichier ne
     // change pas, et hors de la plage la courbe non plus. Mesuré sur une copie : aucun pas pour rien.
@@ -2028,6 +2063,45 @@ void ArrangementComponent::fitTracksToWindow() {
     setAllTrackHeights(disponible / depliees);
 }
 
+int ArrangementComponent::agrandirLesPistesChoisies() {
+    // D567.2 : AGRANDIR LES PISTES CHOISIES (*Zoom Selected Tracks*). Les autres pistes visibles et dépliées passent à
+    // la hauteur minimale, les pliées gardent la leur, et les choisies se partagent ce qui reste, bornées à 400 px.
+    // Pas une bascule : Ctrl+Z rend les hauteurs d'avant. Rend le nombre de pistes agrandies (0 : aucune choisie).
+    if (project_ == nullptr) return 0;
+    int disponible = getHeight() - hauteurRegle();
+    std::vector<size_t> choisies;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        const auto& t = project_->tracks[i];
+        if (t.hidden) continue;
+        if (t.folded) disponible -= kFoldedHeight;
+        else if (pistesChoisies_.count(i) > 0) choisies.push_back(i);
+        else disponible -= kMinHeight;
+    }
+    if (choisies.empty()) return 0;
+    const int voulu = juce::jlimit(kMinHeight, kMaxHeight, disponible / static_cast<int>(choisies.size()));
+    bool change = false;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        const auto& t = project_->tracks[i];
+        if (t.hidden || t.folded) continue;
+        const int h = pistesChoisies_.count(i) > 0 ? voulu : kMinHeight;
+        if (t.arrangementHeight != h) change = true;
+    }
+    if (change) {
+        if (onEditStarted) onEditStarted(u8"Agrandir les pistes choisies");
+        for (size_t i = 0; i < project_->tracks.size(); ++i) {
+            auto& t = project_->tracks[i];
+            if (t.hidden || t.folded) continue;
+            t.arrangementHeight = pistesChoisies_.count(i) > 0 ? voulu : kMinHeight;
+        }
+    }
+    faireVoirLaPiste(choisies.front());
+    repaint();
+    std::fputs(("VSM_HAUTEURS : " + std::to_string(choisies.size()) + " piste(s) choisie(s) \xc3\xa0 "
+                + std::to_string(voulu) + " px, les autres \xc3\xa0 " + std::to_string(kMinHeight) + " px"
+                + (change ? "" : " (d\xc3\xa9j\xc3\xa0 ainsi)") + "\n").c_str(), stderr);
+    return static_cast<int>(choisies.size());
+}
+
 void ArrangementComponent::setAllTrackHeights(int height) {
     if (project_ == nullptr) return;
     const int voulu = juce::jlimit(kMinHeight, kMaxHeight, height);
@@ -2137,6 +2211,7 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         case 78: trimSelectionToPlayhead(true); return;
         case 79: fadeSelectionToPlayhead(false); return;     // D549.1
         case 81: silenceSelectionBetweenLocators(); return;  // D549.2
+        case 93: fadeSelectionToLocators(); return;          // D567.1
         case 80: fadeSelectionToPlayhead(true); return;
         case 40: case 41: case 42: case 43: case 44: {
             static const int kNombres[] = {2, 3, 4, 8, 16};

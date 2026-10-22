@@ -495,6 +495,39 @@ TrimToTick fadeClipsTo(std::vector<Clip>& clips, const ClipSelection& selection,
     return rapport;
 }
 
+FadesToRange fadeClipsToRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
+                              Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    FadesToRange rapport;
+    if (to <= from || !ticksToSeconds) return rapport;
+    for (auto& c : clips) {
+        if (!selected(selection, c)) continue;
+        const Tick fin = c.startTick + clipPlayedLength(c, materialEnd);
+        if (to <= c.startTick || from >= fin) { ++rapport.outside; continue; }
+        const bool couvreDebut = from <= c.startTick, couvreFin = to >= fin;
+        if (couvreDebut && couvreFin) { ++rapport.covered; continue; }
+        std::vector<Clip> un;   // les fonctions des poignées visent un identifiant : on leur passe le clip seul
+        un.push_back(c);
+        if (couvreDebut) {
+            setClipFadeIn(un, c.id, to, materialEnd, ticksToSeconds);        // la plage EST le fondu d'entrée
+        } else if (couvreFin) {
+            setClipFadeOut(un, c.id, from, materialEnd, ticksToSeconds);     // la plage EST le fondu de sortie
+        } else {
+            setClipFadeIn(un, c.id, from, materialEnd, ticksToSeconds);      // la plage sonne plein
+            setClipFadeOut(un, c.id, to, materialEnd, ticksToSeconds);
+        }
+        Clip& r = un.front();
+        // UN FONDU GARDÉ NE CROISE PAS LE NOUVEAU : celui que la plage ne règle pas est raccourci, pas l'autre.
+        const double duree = ticksToSeconds(fin) - ticksToSeconds(c.startTick);
+        if (r.fadeInSeconds + r.fadeOutSeconds > duree) {
+            if (couvreDebut) r.fadeOutSeconds = std::max(0.0, duree - r.fadeInSeconds);
+            else r.fadeInSeconds = std::max(0.0, duree - r.fadeOutSeconds);
+        }
+        c = r;
+        ++rapport.adjusted;
+    }
+    return rapport;
+}
+
 GridSnap snapClipStartsToGrid(Track& track, const ClipSelection& selection, const std::function<Tick(Tick)>& grid,
                               Tick materialEnd, bool automationFollows,
                               const std::function<Tick(const Clip&)>& anchor) {

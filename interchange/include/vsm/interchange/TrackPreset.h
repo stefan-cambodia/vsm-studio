@@ -30,6 +30,7 @@ struct TrackPreset {
     float volume = 1.0f;
     float pan = 0.0f;
     bool invertPhase = false;                     ///< D23.1
+    bool sendsBypassed = false;                   ///< D567.3 : les départs contournés voyagent avec leurs niveaux
     uint32_t colorRgba = 0xFF6B9BFFu;
     int channel = 0;
     int transposeSemitones = 0;

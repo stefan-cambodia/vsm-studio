@@ -437,6 +437,7 @@ struct TrackMixState {
     float inputTrimDb = 0.0f;
     bool invertPhase = false;
     std::vector<float> sendLevels;
+    bool sendsBypassed = false;   ///< D567.3
     std::vector<InsertSnapshot> inserts;
 };
 
@@ -736,6 +737,9 @@ public:
     /// migration des projets existants vide et évite d'avoir à retailler
     /// chaque piste quand on ajoute un bus.
     std::vector<float> sendLevels;
+    /// D567.3 : LES DÉPARTS CONTOURNÉS (*Bypass Sends*) — la piste n'alimente plus aucun bus, ses niveaux GARDÉS :
+    /// rétablir rend exactement ce qu'on avait. Le moteur ne lit que `audibleSendLevel`.
+    bool sendsBypassed = false;
 
     /// Niveau d'envoi vers le bus `index`, ou zéro si la piste n'en déclare
     /// pas autant. À employer partout plutôt qu'un accès direct : c'est ce qui
@@ -743,6 +747,9 @@ public:
     float sendLevel(size_t index) const {
         return index < sendLevels.size() ? sendLevels[index] : 0.0f;
     }
+    /// D567.3 : ce que la piste VERSE au bus `index` — zéro quand ses départs sont contournés. Le bouton montre
+    /// `sendLevel`, le moteur entend ceci.
+    float audibleSendLevel(size_t index) const { return sendsBypassed ? 0.0f : sendLevel(index); }
     /// Règle un niveau d'envoi, en allongeant le vecteur si besoin.
     void setSendLevel(size_t index, float value) {
         if (sendLevels.size() <= index) sendLevels.resize(index + 1, 0.0f);

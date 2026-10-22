@@ -378,7 +378,7 @@ void ProcessGraph::refreshRenderOrder() {
     for (size_t t = 0; t < project.tracks.size() && t < kMaxTracks; ++t) {
         bool alimente = false;
         for (size_t b = 0; b < kMaxSends; ++b)
-            if ((ecoutes & (1u << b)) && project.tracks[t].sendLevel(b) > 0.0f) alimente = true;
+            if ((ecoutes & (1u << b)) && project.tracks[t].audibleSendLevel(b) > 0.0f) alimente = true;   // D567.3
         if (alimente) ordre->push_back(t);
     }
     // ... puis toutes les autres, dans leur ordre d'origine.
@@ -1336,7 +1336,7 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
             const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
             for (size_t b = 0; b < actifs; ++b) {
                 const float apresFader = (preFader & (1u << b)) ? signeGroupe : faderGroupe * signeGroupe;
-                const float lvl = track.sendLevel(b) * apresFader;
+                const float lvl = track.audibleSendLevel(b) * apresFader;   // D567.3 : contournés, rien
                 if (lvl <= 0.0f) continue;
                 for (int i = 0; i < numSamples; ++i) {
                     sendL_[b][static_cast<size_t>(i)] += groupL_[g][static_cast<size_t>(i)] * lvl;
@@ -1941,8 +1941,11 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
             // fader.
             const float apresFader = (preFader & (1u << b)) ? signe : volume;
             const uint16_t bitDepart = static_cast<uint16_t>(1u << (kAutoSendFirst + b));
-            const float niveau = (pilotes & bitDepart) ? autoSend_[trackIndex][b]
-                                                        : track.sendLevel(b);
+            // D567.3 : DES DÉPARTS CONTOURNÉS NE VERSENT RIEN, même pilotés par l'automation : le contournement
+            // est un état de la tranche, pas un niveau, et la courbe le traverse sans le défaire.
+            const float niveau = track.sendsBypassed                ? 0.0f
+                                 : (pilotes & bitDepart) ? autoSend_[trackIndex][b]
+                                                         : track.sendLevel(b);
             const float lvl = niveau * apresFader;
             if (lvl <= 0.0f) continue;
             for (int i = 0; i < sampleCount; ++i) {

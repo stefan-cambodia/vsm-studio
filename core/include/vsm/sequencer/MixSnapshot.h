@@ -79,6 +79,7 @@ struct ChannelSettings {
     bool invertPhase = false;
     std::vector<float> sendLevels;
     std::vector<TrackEffect> effects;
+    bool sendsBypassed = false;   ///< D567.3 : le contournement des départs voyage avec eux
 };
 ChannelSettings captureChannelSettings(const Track& track);
 /// Vrai si `track` peut recevoir les réglages (ni dossier, ni VCA) ET qu'ils y changeraient quelque chose.
@@ -111,5 +112,17 @@ LinkedMixGesture beginLinkedMix(const Project& project, LinkedMixParam param, si
                                 const std::set<size_t>& selection);
 /// Écrit chaque piste qui suit depuis l'écart ACTUEL de la piste touchée ; rend le nombre de pistes qui ont bougé.
 size_t applyLinkedMix(Project& project, const LinkedMixGesture& gesture);
+
+/// D567.3 — CONTOURNER LES DÉPARTS DES TRANCHES CHOISIES (*Bypass Sends*). Le plan dit ce que le clic FERA, comme
+/// « Contourner tout » (D15.1) : CONTOURNER si l'une des tranches choisies a un départ non nul qui ne l'est pas encore
+/// — `count` tranches —, RÉTABLIR sinon — `count` tranches contournées. Un dossier et un VCA n'ont pas de départs ; une
+/// tranche sans niveau non nul n'a rien à contourner. Les niveaux ne bougent jamais.
+struct SendsBypassPlan {
+    bool bypass = true;
+    size_t count = 0;
+};
+SendsBypassPlan sendsBypassPlan(const Project& project, const std::set<size_t>& chosen);
+/// Pose (ou retire) le contournement sur les tranches choisies que le plan compte ; rend combien ont changé.
+size_t applySendsBypass(Project& project, const std::set<size_t>& chosen, bool bypass);
 
 } // namespace vsm::sequencer

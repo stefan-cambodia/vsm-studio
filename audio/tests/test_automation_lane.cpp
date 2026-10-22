@@ -294,6 +294,39 @@ VSM_TEST(automating_a_send_level_changes_what_reaches_the_bus) {
     VSM_ASSERT(ouvert > ferme * 1.3f);
 }
 
+// D567.3 : UN DÉPART PILOTÉ PAR L'AUTOMATION NE TRAVERSE PAS LE CONTOURNEMENT — la courbe à 1, la piste muette au
+// master : le retour sonne, puis plus rien une fois les départs contournés.
+VSM_TEST(an_automated_send_is_silenced_by_the_send_bypass) {
+    auto rendre = [](bool contourne) {
+        Project projet = noteProject();
+        vsm::sequencer::SendBusDescription bus;
+        bus.effectType = "reverb";
+        projet.sends.push_back(bus);
+        projet.tracks[0].sendsBypassed = contourne;
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        graph.setProject(projet);
+        graph.setSendEffect(0, std::make_shared<GainProbe>(1.0f));
+        graph.setSendReturn(0, 1.0f);
+        AutomationLane depart;
+        depart.target = AutomationTarget::TrackSend;
+        depart.targetTrackIndex = 0;
+        depart.targetSlot = 0;
+        depart.addPoint(0, 1.0f);
+        graph.setAutomationLanes({depart});
+        const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 0.5);
+        float m = 0.0f;
+        for (float e : rendu.left) m = std::max(m, std::abs(e));
+        return m;
+    };
+    // Le témoin : la piste sonne aussi en direct (volume 1) ; contournée, il ne reste que le direct.
+    const float ouvert = rendre(false);
+    const float contourne = rendre(true);
+    VSM_ASSERT(contourne > 0.01f);              // le direct reste
+    VSM_ASSERT(ouvert > contourne * 1.3f);      // le retour s'est tu
+}
+
 VSM_TEST(automating_a_master_parameter_reaches_the_master_strip) {
     ProcessGraph graph;
     graph.prepare(8000.0, 256);

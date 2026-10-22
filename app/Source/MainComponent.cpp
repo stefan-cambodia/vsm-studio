@@ -831,6 +831,19 @@ MainComponent::MainComponent()
                         .replace("%3", juce::String(static_cast<int>(refuses)));
         montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Rendre silencieux"), texte);
     };
+    // D567.1 : DES FONDUS AUX LOCATEURS QUI N'ONT RIEN RÉGLÉ se disent.
+    arrangement_.onFadesToRangeReport = [](size_t, size_t dehors, size_t couverts, bool locateurs) {
+        juce::String texte;
+        if (!locateurs)
+            texte = tr(u8"Aucune plage entre les locateurs : posez-les d'abord (Maj sur la règle, ou Transport ▸ "
+                       u8"Début de boucle à la tête et Fin de boucle à la tête).");
+        else
+            texte = tr(u8"Aucun fondu réglé : %1 clip(s) hors de la plage, %2 qu'elle couvre en entier — elle doit "
+                       u8"toucher le clip sans le recouvrir.")
+                        .replace("%1", juce::String(static_cast<int>(dehors)))
+                        .replace("%2", juce::String(static_cast<int>(couverts)));
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Fondus aux locateurs"), texte);
+    };
     // D549.1 : UN FONDU À LA TÊTE SANS CLIP QUI LA CONTIENNE se dit.
     arrangement_.onFadeOutside = [](size_t choisis) {
         montrerBoite(
@@ -5479,6 +5492,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                              choisies > 0);
                 // D566.3 : LIER LES TRANCHES CHOISIES — une case, cochée et retenue d'un lancement à l'autre.
                 menu.addItem(kMenuMixLinkChosen, tr(u8"Lier les tranches choisies (Q-Link)"), true, lierLesTranches_);
+                // D567.3 : LE LIBELLÉ DIT CE QUE LE CLIC FERA (la règle de « Contourner tout », D15.1).
+                const auto plan = vsm::sequencer::sendsBypassPlan(project_, trackList_.selectedTracks());
+                menu.addItem(kMenuMixSendsBypass,
+                             tr(plan.bypass ? u8"Contourner les départs des tranches choisies (%1)"
+                                            : u8"Rétablir les départs des tranches choisies (%1)")
+                                 .replace("%1", juce::String(static_cast<int>(plan.count))),
+                             plan.count > 0);
             }
             // D544.3 : LA TRANSPOSITION GLOBALE — cochée quand elle n'est pas nulle ; la fenêtre dit la valeur.
             menu.addItem(kMenuMixGlobalTranspose, tr(u8"Transposition globale…"), true,
@@ -5602,6 +5622,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 hauteurs.addItem(kMenuViewTrackHeightSmall, tr(u8"Petite (24 px)"), !project_.tracks.empty(), commune == 24);
                 hauteurs.addItem(kMenuViewTrackHeightNormal, tr(u8"Normale (56 px)"), !project_.tracks.empty(), commune == 56);
                 hauteurs.addItem(kMenuViewTrackHeightLarge, tr(u8"Grande (112 px)"), !project_.tracks.empty(), commune == 112);
+                // D567.2 : AGRANDIR LES PISTES CHOISIES — grisée sans piste choisie.
+                hauteurs.addSeparator();
+                hauteurs.addItem(kMenuViewZoomChosenTracks, tr(u8"Agrandir les pistes choisies"),
+                                 !trackList_.selectedTracks().empty());
                 menu.addSubMenu(tr(u8"Hauteur des pistes"), hauteurs);
             }
             // D34.4 : LA RÈGLE, EN MESURES OU EN TEMPS. La barre de transport
@@ -5749,6 +5773,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixClearMutes) { leverToutesLesPistes(false); return; }   // D559.1
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
+    if (menuItemID == kMenuMixSendsBypass) { contournerLesDepartsChoisis(); return; }   // D567.3
     if (menuItemID == kMenuMixLinkChosen) {   // D566.3
         lierLesTranches_ = !lierLesTranches_;
         lienDesTranches_ = {};
@@ -5775,6 +5800,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
+    if (menuItemID == kMenuViewZoomChosenTracks) { arrangement_.agrandirLesPistesChoisies(); return; }   // D567.2
     // D483 : le menu Transport passe par le MÊME aiguillage que la touche.
     // D553.2 : LA BORNE VIENT DU TABLEAU, plus d'un 15 écrit en dur. « Lire la sélection » inséré au rang 1 a poussé
     // « Tête : mesure suivante » au rang 15, que ce 15 n'aiguillait plus : l'entrée était muette au menu, et la touche
@@ -13959,6 +13985,27 @@ void MainComponent::plierToutesLesPistes(vsm::sequencer::FoldAll comment) {
                                     : comment == FoldAll::Unfold ? tr(u8"Pistes dépliées : %1")
                                                                  : tr(u8"Plis inversés : %1 piste(s)"))
                                        .replace("%1", juce::String(static_cast<int>(changees))));
+}
+
+void MainComponent::contournerLesDepartsChoisis() {
+    // D567.3 : CONTOURNER LES DÉPARTS DES TRANCHES CHOISIES (*Bypass Sends*) — ou les rétablir, comme le plan le dit ;
+    // les niveaux ne bougent pas ; un pas ; rien à faire : dit, sans pas (l'entrée est grisée).
+    const std::set<size_t> choisies = trackList_.selectedTracks();
+    const auto plan = vsm::sequencer::sendsBypassPlan(project_, choisies);
+    if (plan.count == 0) {
+        std::fputs("VSM_CONSOLE : aucun d\xc3\xa9part \xc3\xa0 contourner ni \xc3\xa0 r\xc3\xa9tablir\n", stderr);
+        return;
+    }
+    beginProjectEdit(plan.bypass ? juce::String::fromUTF8(u8"Contourner les départs")
+                                 : juce::String::fromUTF8(u8"Rétablir les départs"));
+    const size_t n = vsm::sequencer::applySendsBypass(project_, choisies, plan.bypass);
+    rebuildFromProject(false);
+    std::fputs(("VSM_CONSOLE : d\xc3\xa9parts " + std::string(plan.bypass ? "contourn\xc3\xa9s" : "r\xc3\xa9tablis")
+                + " sur " + std::to_string(n) + " tranche(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(plan.bypass ? u8"Départs contournés : %1 tranche(s), leurs niveaux gardés"
+                                                  : u8"Départs rétablis : %1 tranche(s)")
+                                       .replace("%1", juce::String(static_cast<int>(n))));
 }
 
 void MainComponent::remettreLesTranchesChoisiesAZero() {

@@ -349,3 +349,63 @@ VSM_TEST(a_track_touched_outside_the_selection_moves_alone) {
     VSM_ASSERT_EQ(p.tracks[0].volume, 1.0f);
     VSM_ASSERT(!beginLinkedMix(p, LinkedMixParam::Volume, 0, {0}).active());   // seule choisie : rien à lier
 }
+
+// D567.3 — CONTOURNER LES DÉPARTS DES TRANCHES CHOISIES : le plan dit ce que le clic fera, les niveaux ne bougent pas.
+VSM_TEST(bypassing_the_sends_of_chosen_strips_keeps_their_levels) {
+    Project p;
+    p.tracks.resize(5);
+    p.tracks[0].sendLevels = {0.5f};
+    p.tracks[1].sendLevels = {0.0f, 0.25f};
+    p.tracks[1].sendsBypassed = true;                 // déjà contournée
+    p.tracks[2].sendLevels = {0.0f};                  // aucun départ ouvert : rien à contourner
+    p.tracks[3].kind = Track::Kind::Folder;
+    p.tracks[4].kind = Track::Kind::Vca;
+    p.tracks[4].sendLevels = {0.5f};
+    const std::set<size_t> tout = {0, 1, 2, 3, 4};
+
+    auto plan = sendsBypassPlan(p, tout);
+    VSM_ASSERT(plan.bypass);
+    VSM_ASSERT_EQ(plan.count, size_t(1));             // A seule
+    VSM_ASSERT_EQ(applySendsBypass(p, tout, true), size_t(1));
+    VSM_ASSERT(p.tracks[0].sendsBypassed);
+    VSM_ASSERT_NEAR(p.tracks[0].sendLevel(0), 0.5f, 1e-9);   // le niveau GARDÉ…
+    VSM_ASSERT_EQ(p.tracks[0].audibleSendLevel(0), 0.0f);    // … et plus rien de versé
+    VSM_ASSERT(!p.tracks[2].sendsBypassed);
+    VSM_ASSERT(!p.tracks[4].sendsBypassed);
+
+    plan = sendsBypassPlan(p, tout);
+    VSM_ASSERT(!plan.bypass);                         // toutes contournées : le clic rétablit
+    VSM_ASSERT_EQ(plan.count, size_t(2));
+    VSM_ASSERT_EQ(applySendsBypass(p, tout, false), size_t(2));
+    VSM_ASSERT(!p.tracks[0].sendsBypassed && !p.tracks[1].sendsBypassed);
+    VSM_ASSERT_NEAR(p.tracks[1].audibleSendLevel(1), 0.25f, 1e-9);
+
+    VSM_ASSERT_EQ(sendsBypassPlan(p, {}).count, size_t(0));
+    VSM_ASSERT_EQ(sendsBypassPlan(p, {2, 3}).count, size_t(0));
+}
+
+VSM_TEST(the_send_bypass_travels_with_the_console_state) {
+    Project p;
+    p.tracks.resize(2);
+    p.tracks[0].sendLevels = {0.5f};
+    p.tracks[0].sendsBypassed = true;
+    // La remise à zéro rend l'état d'une piste NEUVE, qui verse à ses bus — une piste seulement contournée compte.
+    Track seule;
+    seule.sendsBypassed = true;
+    Project q;
+    q.tracks.push_back(seule);
+    VSM_ASSERT_EQ(countTracksToReset(q), size_t(1));
+    VSM_ASSERT_EQ(resetConsole(q), size_t(1));
+    VSM_ASSERT(!q.tracks[0].sendsBypassed);
+    // Les réglages d'une tranche l'emportent avec ses départs.
+    const auto reglages = captureChannelSettings(p.tracks[0]);
+    VSM_ASSERT(channelSettingsWouldChange(p.tracks[1], reglages));
+    VSM_ASSERT(applyChannelSettings(p.tracks[1], reglages));
+    VSM_ASSERT(p.tracks[1].sendsBypassed);
+    // Un instantané le garde, et le rappel le rend.
+    VSM_ASSERT(!takeMixSnapshot(p, "A"));
+    p.tracks[0].sendsBypassed = false;
+    VSM_ASSERT_EQ(previewMixRecall(p, "A").changed, size_t(1));
+    recallMixSnapshot(p, "A");
+    VSM_ASSERT(p.tracks[0].sendsBypassed);
+}

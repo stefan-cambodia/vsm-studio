@@ -485,6 +485,19 @@ TrimToTick trimClipsEndTo(Track& track, const ClipSelection& selection, Tick tic
 TrimToTick fadeClipsTo(std::vector<Clip>& clips, const ClipSelection& selection, Tick tick, bool fadeOut,
                        Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
 
+/// D567.1 — LES FONDUS AUX LOCATEURS (*Adjust Fades to Range*). Sur les clips choisis que la plage [from, to) touche :
+/// une plage DANS le clip sonne plein — le fondu d'entrée finit à `from`, celui de sortie part de `to` ; une plage qui
+/// couvre le DÉBUT du clip est son fondu d'entrée (jusqu'à `to`) ; qui couvre la FIN, son fondu de sortie (depuis
+/// `from`). Un fondu que la plage ne règle pas reste, raccourci seulement s'il croiserait le nouveau. Les clips que la
+/// plage ne touche pas sont comptés dans `outside`, ceux qu'elle couvre en entier dans `covered`.
+struct FadesToRange {
+    size_t adjusted = 0;
+    size_t outside = 0;
+    size_t covered = 0;
+};
+FadesToRange fadeClipsToRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
+                              Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+
 /// D549.2 — RENDRE SILENCIEUSE UNE PLAGE [from, to) des clips AUDIO choisis (*Process ▸ Silence*), sans toucher au
 /// fichier : par la courbe de gain du clip (D545.1). Quatre points -- (début, gain d'avant), début + 5 ms à 0,
 /// fin − 5 ms à 0, (fin, gain d'avant) -- et les points d'avant situés DANS la plage retirés : hors de la plage,

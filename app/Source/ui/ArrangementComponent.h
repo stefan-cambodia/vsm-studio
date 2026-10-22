@@ -242,6 +242,8 @@ public:
     /// pliées et les masquées gardent la leur ; et la même hauteur pour
     /// toutes. Annulables : la hauteur est dans le projet (D5.3).
     void fitTracksToWindow();
+    /// D567.2 : les pistes choisies se partagent la hauteur que les autres, à la hauteur minimale, leur laissent.
+    int agrandirLesPistesChoisies();
     /// D28.4 : le tick où commence la sélection ; faux sans sélection.
     bool selectionStartTick(vsm::midi::Tick& debut) const {
         vsm::midi::Tick fin = 0, bloc = 0;
@@ -391,6 +393,8 @@ public:
     /// D549.2 : ce que « Rendre silencieux » n'a pas pu faire (rendus, hors plage, refusés ; faux = pas de
     /// locateurs) -- appelé quand rien n'a été rendu silencieux ou qu'un clip a été refusé.
     std::function<void(size_t, size_t, size_t, bool)> onSilenceReport;
+    /// D567.1 : aucun fondu réglé (réglés, hors de la plage, couverts ; faux = pas de locateurs) -- et le dire.
+    std::function<void(size_t, size_t, size_t, bool)> onFadesToRangeReport;
     /// D11.4 : renommer et colorer UN clip. Les fenêtres sont de JUCE, donc
     /// dans l'application ; la vue demande (piste, identifiant du clip).
     std::function<void(size_t, uint64_t)> onClipRenameRequested;
@@ -468,6 +472,8 @@ public:
     void fadeSelectionToPlayhead(bool sortie);
     /// D549.2 : la plage entre les locateurs se tait sur les clips audio choisis (courbe de gain).
     void silenceSelectionBetweenLocators();
+    /// D567.1 : les fondus des clips choisis se règlent sur la plage des locateurs.
+    void fadeSelectionToLocators();
     /// Ce qui n'a pas pu être joint (nombre de paires), pour que
     /// l'application le dise : la vue ne sait pas parler.
     std::function<void(size_t)> onJoinRefused;

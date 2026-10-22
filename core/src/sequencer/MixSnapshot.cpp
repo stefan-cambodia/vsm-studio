@@ -14,7 +14,8 @@ float departDe(const std::vector<float>& departs, size_t i) { return i < departs
 bool memeConsole(const TrackMixState& a, const TrackMixState& b) {
     const std::equal_to<float> egal;
     if (!egal(a.volume, b.volume) || !egal(a.pan, b.pan) || a.muted != b.muted || a.solo != b.solo
-        || !egal(a.inputTrimDb, b.inputTrimDb) || a.invertPhase != b.invertPhase || !(a.inserts == b.inserts))
+        || !egal(a.inputTrimDb, b.inputTrimDb) || a.invertPhase != b.invertPhase || !(a.inserts == b.inserts)
+        || a.sendsBypassed != b.sendsBypassed)   // D567.3
         return false;
     for (size_t i = 0; i < std::max(a.sendLevels.size(), b.sendLevels.size()); ++i)
         if (!egal(departDe(a.sendLevels, i), departDe(b.sendLevels, i))) return false;
@@ -33,6 +34,7 @@ TrackMixState rappele(const Track& piste, const TrackMixState& garde, size_t& la
     etat.inputTrimDb = garde.inputTrimDb;
     etat.invertPhase = garde.invertPhase;
     etat.sendLevels = garde.sendLevels;
+    etat.sendsBypassed = garde.sendsBypassed;   // D567.3
     const size_t communs = std::min(etat.inserts.size(), garde.inserts.size());
     for (size_t i = 0; i < communs; ++i) {
         if (etat.inserts[i].type == garde.inserts[i].type) etat.inserts[i].enabled = garde.inserts[i].enabled;
@@ -65,6 +67,7 @@ MixRecallReport parcourir(const Project& project, const std::string& name, Proje
         ecrite.inputTrimDb = apres.inputTrimDb;
         ecrite.invertPhase = apres.invertPhase;
         ecrite.sendLevels = apres.sendLevels;
+        ecrite.sendsBypassed = apres.sendsBypassed;   // D567.3
         for (size_t i = 0; i < ecrite.effects.size(); ++i) ecrite.effects[i].enabled = apres.inserts[i].enabled;
     }
     return bilan;
@@ -81,6 +84,7 @@ TrackMixState captureTrackMix(const Track& track) {
     etat.inputTrimDb = track.inputTrimDb;
     etat.invertPhase = track.invertPhase;
     etat.sendLevels = track.sendLevels;
+    etat.sendsBypassed = track.sendsBypassed;   // D567.3
     for (const auto& insert : track.effects) etat.inserts.push_back({insert.type, insert.enabled});
     return etat;
 }
@@ -152,6 +156,7 @@ bool trancheNeutre(const Track& t) {
     const Track neuve;
     return t.volume == neuve.volume && t.pan == neuve.pan && t.muted == neuve.muted && t.solo == neuve.solo
            && t.inputTrimDb == neuve.inputTrimDb && t.invertPhase == neuve.invertPhase
+           && t.sendsBypassed == neuve.sendsBypassed   // D567.3 : une piste neuve verse à ses bus
            && std::all_of(t.sendLevels.begin(), t.sendLevels.end(), [](float d) { return d == 0.0f; });
 }
 
@@ -189,6 +194,7 @@ size_t resetConsole(Project& project, const std::set<size_t>& only) {
         t.inputTrimDb = neuve.inputTrimDb;
         t.invertPhase = neuve.invertPhase;
         std::fill(t.sendLevels.begin(), t.sendLevels.end(), 0.0f);
+        t.sendsBypassed = neuve.sendsBypassed;   // D567.3
         ++n;
     }
     return n;
@@ -205,7 +211,7 @@ void eraseSendLevelEverywhere(Project& project, size_t bus) {
 }
 
 ChannelSettings captureChannelSettings(const Track& track) {
-    return {track.inputTrimDb, track.invertPhase, track.sendLevels, track.effects};
+    return {track.inputTrimDb, track.invertPhase, track.sendLevels, track.effects, track.sendsBypassed};
 }
 
 namespace {
@@ -228,7 +234,8 @@ bool memesDeparts(const std::vector<float>& a, const std::vector<float>& b) {
 bool channelSettingsWouldChange(const Track& track, const ChannelSettings& s) {
     if (track.isFolder() || track.isVca()) return false;
     return track.inputTrimDb != s.inputTrimDb || track.invertPhase != s.invertPhase
-        || !memesDeparts(track.sendLevels, s.sendLevels) || !memesInserts(track.effects, s.effects);
+        || !memesDeparts(track.sendLevels, s.sendLevels) || !memesInserts(track.effects, s.effects)
+        || track.sendsBypassed != s.sendsBypassed;   // D567.3
 }
 
 bool applyChannelSettings(Track& track, const ChannelSettings& s) {
@@ -237,6 +244,7 @@ bool applyChannelSettings(Track& track, const ChannelSettings& s) {
     track.invertPhase = s.invertPhase;
     track.sendLevels = s.sendLevels;
     track.effects = s.effects;
+    track.sendsBypassed = s.sendsBypassed;   // D567.3
     return true;
 }
 
@@ -290,6 +298,42 @@ size_t applyLinkedMix(Project& project, const LinkedMixGesture& g) {
         if (valeur != cible) { cible = valeur; ++bouge; }
     }
     return bouge;
+}
+
+namespace {
+/// D567.3 : une tranche qui a des départs à contourner — ni dossier ni VCA (ils n'en ont pas), un niveau non nul.
+bool aDesDeparts(const Track& t) {
+    return !t.isFolder() && !t.isVca()
+           && std::any_of(t.sendLevels.begin(), t.sendLevels.end(), [](float d) { return d > 0.0f; });
+}
+} // namespace
+
+SendsBypassPlan sendsBypassPlan(const Project& project, const std::set<size_t>& chosen) {
+    SendsBypassPlan plan;
+    size_t aContourner = 0, aRetablir = 0;
+    for (size_t i : chosen) {
+        if (i >= project.tracks.size()) continue;
+        const Track& t = project.tracks[i];
+        if (t.isFolder() || t.isVca()) continue;
+        if (t.sendsBypassed) ++aRetablir;
+        else if (aDesDeparts(t)) ++aContourner;
+    }
+    plan.bypass = aContourner > 0 || aRetablir == 0;
+    plan.count = plan.bypass ? aContourner : aRetablir;
+    return plan;
+}
+
+size_t applySendsBypass(Project& project, const std::set<size_t>& chosen, bool bypass) {
+    size_t n = 0;
+    for (size_t i : chosen) {
+        if (i >= project.tracks.size()) continue;
+        Track& t = project.tracks[i];
+        if (t.isFolder() || t.isVca() || t.sendsBypassed == bypass) continue;
+        if (bypass && !aDesDeparts(t)) continue;   // rien à contourner : la tranche reste telle quelle
+        t.sendsBypassed = bypass;
+        ++n;
+    }
+    return n;
 }
 
 } // namespace vsm::sequencer

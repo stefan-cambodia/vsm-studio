@@ -395,6 +395,8 @@ JsonValue etatDeConsoleVersJson(const vsm::sequencer::TrackMixState& etat) {
     JsonValue departs = JsonValue::makeArray();
     for (float niveau : etat.sendLevels) departs.append(JsonValue::makeFloat(niveau));
     e.set("sends", std::move(departs));
+    // D567.3 : écrit seulement s'il est posé — un instantané d'avant se réécrit octet pour octet.
+    if (etat.sendsBypassed) e.set("sendsBypassed", JsonValue::makeBoolean(true));
     JsonValue inserts = JsonValue::makeArray();
     for (const auto& insert : etat.inserts) {
         JsonValue i = JsonValue::makeObject();
@@ -415,6 +417,7 @@ vsm::sequencer::TrackMixState etatDeConsoleDepuisJson(const JsonValue& e) {
     etat.inputTrimDb = static_cast<float>(e["trimDb"].asNumber(0.0));
     etat.invertPhase = e["invertPhase"].asBoolean(false);
     for (const auto& niveau : e["sends"].elements()) etat.sendLevels.push_back(static_cast<float>(niveau.asNumber(0.0)));
+    etat.sendsBypassed = e["sendsBypassed"].asBoolean(false);   // D567.3
     for (const auto& i : e["inserts"].elements()) etat.inserts.push_back({i["type"].asString(), i["enabled"].asBoolean(true)});
     return etat;
 }
@@ -480,6 +483,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.muted = track.muted;
         entry.solo = track.solo;
         entry.sendLevels = track.sendLevels;
+        entry.sendsBypassed = track.sendsBypassed;   // D567.3
 
         // Effets et automation : simple recopie, les deux modèles ayant
         // désormais la même forme. Tant que `Track` ne les portait pas, ces
@@ -717,6 +721,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.midiBank = source.midiBank;
         target.midiInputChannel = source.midiInputChannel;
         target.sendLevels = source.sendLevels;
+        target.sendsBypassed = source.sendsBypassed;   // D567.3
         // D535.2 : LES ÉTATS D'INSTANTANÉ, ceux dont le nom est au projet. Un état sous un nom
         // que la liste ne porte pas (un fichier retouché à la main) n'a pas de menu pour être
         // rappelé : il est ÉCARTÉ, et dit.
@@ -1084,6 +1089,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         JsonValue sends = JsonValue::makeArray();
         for (float level : track.sendLevels) sends.append(JsonValue::makeFloat(level));
         mix.set("sends", std::move(sends));
+        if (track.sendsBypassed) mix.set("sendsBypassed", JsonValue::makeBoolean(true));   // D567.3
         entry.set("mix", std::move(mix));
 
         // Le routage n'est écrit que s'il dit quelque chose : une piste qui va
@@ -1486,6 +1492,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.sendLevels.assign(mix["sends"].size(), 0.0f);
         for (size_t i = 0; i < track.sendLevels.size(); ++i)
             track.sendLevels[i] = static_cast<float>(mix["sends"].at(i).asNumber(0.0));
+        track.sendsBypassed = mix["sendsBypassed"].asBoolean(false);   // D567.3
 
         track.kind = entry["kind"].asString();
         track.outputGroup = static_cast<int>(entry["output"].asNumber(-1.0));

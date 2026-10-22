@@ -575,3 +575,30 @@ VSM_TEST(la_courbe_de_gain_d_un_clip_survit_au_disque) {
     VSM_ASSERT_NEAR(courbe[0].sourceSeconds, 1.0, 1e-9);
     VSM_ASSERT_NEAR(courbe[1].gain, 0.0, 1e-9);
 }
+
+// D567.3 : LES DÉPARTS CONTOURNÉS SURVIVENT AU DISQUE — leurs niveaux avec eux, dans la piste comme dans un instantané
+// de la console — et ne s'écrivent pas quand ils ne le sont pas : un projet d'avant se réécrit octet pour octet.
+VSM_TEST(les_departs_contournes_survivent_au_disque) {
+    Project p = projetDistinctif();
+    p.tracks[0].sendLevels = {0.5f, 0.25f};
+    {
+        const std::string texte = projectDocumentToJson(documentFromProject(p)).toString();
+        VSM_ASSERT(texte.find("\"sendsBypassed\"") == std::string::npos);
+    }
+    p.tracks[0].sendsBypassed = true;
+    TrackMixState etat;
+    etat.sendLevels = {0.5f};
+    etat.sendsBypassed = true;
+    p.tracks[0].mixSnapshots["A"] = etat;
+    p.mixSnapshotNames = {"A"};
+    const fs::path dossier = dossierNeuf("departs-contournes");
+    VSM_ASSERT(saveProjectBundle(p, dossier.string()).success);
+    const auto relu = loadProjectBundle(dossier.string());
+    VSM_ASSERT(relu.success);
+    const auto& t = relu.bundle.project.tracks[0];
+    VSM_ASSERT(t.sendsBypassed);
+    VSM_ASSERT_NEAR(t.sendLevel(0), 0.5f, 1e-6);
+    VSM_ASSERT_NEAR(t.sendLevel(1), 0.25f, 1e-6);
+    VSM_ASSERT(t.mixSnapshots.at("A").sendsBypassed);
+    for (size_t i = 1; i < relu.bundle.project.tracks.size(); ++i) VSM_ASSERT(!relu.bundle.project.tracks[i].sendsBypassed);
+}

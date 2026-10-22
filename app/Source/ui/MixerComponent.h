@@ -386,7 +386,10 @@ public:
         // et non ce que la piste contient, est ce qui rend ce défaut visible.
         volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
         pan_.setValue(track_.pan, juce::dontSendNotification);
+        rafraichirDeparts();   // D567.3
     }
+    /// D567.3 : les boutons de départ pâlissent quand la piste a ses départs contournés, et l'infobulle le dit.
+    void rafraichirDeparts();
     void refreshMuteSolo(bool tuParUnDossier = false, bool parLeVca = false) {
         mute_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
         // D481 : le M de la TRANCHE agit sur sa seule piste — celui de la ligne,

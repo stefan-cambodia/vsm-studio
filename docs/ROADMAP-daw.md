@@ -43557,17 +43557,18 @@ extraire le groove, dupliquer une piste — présents.
 
 | # | Fonction (Cubase) | Critère de réception |
 |---|---|---|
-| D567.1 | **Les fondus aux locateurs** — *Adjust Fades to Range* | Clic droit sur un clip, *Fondus aux locateurs* : sur les clips choisis que la plage des locateurs touche, la plage SONNE PLEIN et les fondus en sortent — une plage dans le clip : fondu d'entrée du début du clip au locateur gauche, de sortie du locateur droit à la fin ; une plage qui couvre le début du clip : fondu d'entrée du début au locateur droit ; qui couvre la fin : fondu de sortie du locateur gauche à la fin ; un pas ; ce qui n'est pas touché, ou que la plage couvre en entier, est COMPTÉ et dit ; mesuré par le projet relu, le témoin hors de la plage à côté |
+| D567.1 | **Les fondus aux locateurs** — *Adjust Fades to Range* | Clic droit sur un clip, *Fondus aux locateurs* : sur les clips choisis que la plage des locateurs touche — une plage DANS le clip sonne plein : le fondu d'entrée finit au locateur gauche, celui de sortie part du locateur droit ; une plage qui couvre le DÉBUT du clip EST son fondu d'entrée (du début au locateur droit) ; qui couvre la FIN est son fondu de sortie (du locateur gauche à la fin) ; un pas ; ce que la plage ne touche pas, ou couvre en entier, est COMPTÉ et dit ; mesuré par le projet relu, le témoin hors de la plage à côté |
 | D567.2 | **Agrandir les pistes choisies** — *Zoom Selected Tracks* | *Affichage ▸ Hauteur des pistes ▸ Agrandir les pistes choisies* : les pistes choisies, visibles et dépliées, se partagent la hauteur de l'arrangement que les autres leur laissent à la hauteur minimale (24 px), chacune bornée à 400 px ; la première choisie défile en vue ; un pas, comme la hauteur commune (D490) ; grisée sans piste choisie ; mesuré par le projet relu (`height`) et le relevé de l'arrangement, la photo à côté |
 | D567.3 | **Contourner les départs** — *Bypass Sends* | *Mixage ▸ Contourner les départs des tranches choisies (N)* — le libellé dit ce que le clic FERA, « Rétablir les départs… (N) » quand ils le sont tous (la règle de « Contourner tout », D15.1) — : la piste n'alimente plus aucun bus, ses niveaux GARDÉS ; ses boutons de départ pâlissent ; écrit au projet (`sendsBypassed`) seulement s'il est posé ; un pas ; mesuré par l'EXPORT (D332), le bus de retour sur le rendu, le témoin sans contournement à côté |
 
 **CE QUI EST TRANCHÉ AVANT LE CODE.**
 - **D567.1.** La plage est celle des LOCATEURS, comme pour les autres gestes « entre les locateurs » (D549.2, D553) : ce
-  logiciel n'a pas d'outil de sélection de plage, et les locateurs en tiennent lieu. La règle de Cubase dit « la plage
-  ajuste les fondus » ; on la lit comme le geste qu'on fait avec : délimiter ce qui doit sonner plein. Les fondus se
-  posent par `setClipFadeIn` et `setClipFadeOut`, les fonctions des poignées — leurs bornes (un fondu ne dépasse pas
-  l'autre) sont les leurs —, et un fondu que la plage ne règle pas RESTE tel qu'il est. Clips MIDI compris, comme le
-  fondu à la tête (D549.1). Aucun verrou ne le refuse : le fondu est un réglage du son (D549.1).
+  logiciel n'a pas d'outil de sélection de plage, et les locateurs en tiennent lieu. La règle est celle de Cubase : au
+  bord du clip, la plage EST le fondu ; au milieu, elle est ce qui sonne plein. Les fondus se posent par `setClipFadeIn`
+  et `setClipFadeOut`, les fonctions des poignées, qui les bornent au clip ; un fondu que la plage ne règle pas RESTE,
+  raccourci seulement s'il croiserait le nouveau (corrigé à l'écriture du code : les poignées ne bornent pas un fondu
+  par l'autre, ce que la première version de ce paragraphe affirmait). Clips MIDI compris, comme le fondu à la tête
+  (D549.1). Aucun verrou ne le refuse : le fondu est un réglage du son (D549.1).
 - **D567.2.** « Agrandir » ne fait pas basculer : un second appel ne rend pas les hauteurs d'avant — Ctrl+Z les rend, et
   *Hauteur des pistes ▸ Normale* les égalise. La hauteur est une donnée du projet depuis D490 : le geste fait un pas. Les
   pistes masquées et pliées ne bougent pas et ne prennent rien. Les choisies sont celles de la liste des pistes.
@@ -43580,3 +43581,55 @@ extraire le groove, dupliquer une piste — présents.
 **L'ORDRE, TRANCHÉ ICI.** D567.3 d'abord : c'est le seul des trois qui change le SON, et le seul qui puisse se coder et
 se tester en entier (cœur, moteur, format) pendant que la série de D566 occupe le binaire de l'application. Puis D567.1,
 puis D567.2.
+
+**COMMENT CETTE PHASE A ÉTÉ MESURÉE PENDANT LA SÉRIE DE D566.** La série tournait sur le binaire de `build/` : le relier
+l'aurait remplacé sous elle. Les objets de l'application ont été compilés SANS l'édition des liens (`make -f
+…/build.make <objets>`, à `nice 19`), puis la commande de `link.txt` jouée avec une AUTRE sortie
+(`brouillon-d560/vsm-d567`) : un binaire de D567 à côté de celui de la série, sans le toucher. Trois rouges de la
+série sont tombés PENDANT la compilation des objets ; ils se rejouent seuls après elle avant d'être crus.
+
+### Phase D567.3 — contourner les départs (22/10/2026) — FAITE
+
+`Track::sendsBypassed` et `audibleSendLevel` : `ProcessGraph` ne lit plus que lui aux trois endroits où une piste verse
+à un bus (la piste, avec l'automation des départs ; le groupe ; l'ordre de la chaîne latérale). Le format l'écrit
+(`mix.sendsBypassed`) seulement s'il est posé, dans la piste comme dans un instantané de la console ; il voyage avec les
+réglages d'une tranche (D562.3), les préréglages de piste et les instantanés (D535.2) ; la remise à zéro (D559.2) le
+retire — une piste neuve verse à ses bus. `sendsBypassPlan` dit ce que le clic fera, `applySendsBypass` le fait ; les
+boutons de départ pâlissent (alpha 0,4) et leur infobulle le dit. *Mixage ▸ Contourner (Rétablir) les départs des
+tranches choisies (N)*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur, le moteur, le format | deux tests du cœur (le plan : A seule à contourner, puis 2 à rétablir ; le niveau gardé, `audibleSendLevel` à 0 ; le dossier, le VCA, une tranche sans départ ouvert ; la remise, les réglages de tranche, l'instantané) ; trois du moteur (le retour pré-fader, fader à zéro : sonne, puis rien ; par un GROUPE ; un départ PILOTÉ par l'automation) ; un du format (aller-retour, absent quand il n'est pas posé). **Rouges** sous un mutant (la condition retirée du chemin de la piste : 2 tests) | **oui** |
+| 2 | le menu, le projet | `tools/departs-contournes.sh` : « Contourner … (1) », puis « Rétablir … (1) » ; Voix **contournée, son départ gardé à 1**, Témoin intacte | **oui** |
+| 3 | l'export (D332) | le témoin **−11,6 dBFS** (le retour seul) ; contourné **−138,5 dBFS** — exactement le plancher du même projet départ à zéro (−138,5) : le plancher n'est pas un zéro numérique, il se MESURE, et la première version du contrôle exigeait −inf | **oui** |
+| 4 | rouvert, la photo | le relevé `VSM_MIXEUR` de la tranche dit « contournés » ; la photo montre le bouton de départ de Voix pâli à côté de celui de Témoin | **oui** |
+| 5 | un pas, le témoin | Ctrl+Z rend les départs, après un geste qui a eu lieu ; le binaire de **D566** : quatre rouges (le contrôle 1 est le témoin lui-même, vert sur les deux) | **oui** |
+
+### Phase D567.1 — les fondus aux locateurs (22/10/2026) — FAITE
+
+`fadeClipsToRange` (`ClipEdit`), par les fonctions des poignées ; le fondu gardé raccourci s'il croiserait le nouveau.
+Clic droit sur un clip, *Fondus aux locateurs* (grisée sans plage) ; ce qui n'a rien réglé se dit dans une boîte, et
+le journal compte tout (`VSM_FONDUS`).
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | le cœur | un test, cinq clips : la plage dans M (1 s / 1 s), sur le début de D (1 s, et son fondu de sortie d'avant raccourci de 1,8 à 1,0 s), sur la fin de F (1 s, son fondu d'entrée de 0,25 s gardé), un clip couvert, un hors de la plage ; une plage vide | **oui** |
+| 2 | au bord | `tools/fondus-locateurs.sh`, A [0, 1 920), B [1 920, 3 840), C [3 840, 5 760), locateurs [1 440, 2 400) : **A 0/0,5, B 0,5/0**, C rien — « 2 clip(s) aux locateurs, 1 hors de la plage » | **oui** |
+| 3 | au milieu, couvert | [2 400, 3 360) : **B 0,5/0,5**, la photo montre ses deux fondus ; [1 920, 3 840) : rien, et la boîte dit « 2 clip(s) hors de la plage, 1 qu'elle couvre en entier » | **oui** |
+| 4 | un pas, le témoin | Ctrl+Z rend les clips sans fondu ; le binaire de D566 : **quatre rouges** | **oui** |
+
+### Phase D567.2 — agrandir les pistes choisies (22/10/2026) — FAITE
+
+`agrandirLesPistesChoisies` : les autres pistes visibles et dépliées à 24 px, les pliées gardent la leur, les choisies se
+partagent le reste, bornées à 400 px ; la première défile en vue ; un pas ; `VSM_HAUTEURS` le dit. *Affichage ▸
+Hauteur des pistes ▸ Agrandir les pistes choisies*.
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| 1 | les hauteurs | `tools/agrandir-pistes.sh`, B et C choisies sur quatre : **A 24, B 252, C 252, D 24** — 252 annoncé au journal | **oui** |
+| 2 | la fenêtre remplie | zone de **552 px**, pistes **552 px** (2 × 252 + 2 × 24) | **oui** |
+| 3 | le témoin, A seule | **A 400** (borné : 480 disponibles), B, C, D à 24 | **oui** |
+| 4 | un pas, le témoin | Ctrl+Z rend les quatre à 56 ; le binaire de D566 : **quatre rouges** | **oui** |
+
+C++ 520 · 1 347 · 344 · 25 · 11. 133 bancs dans la série.
