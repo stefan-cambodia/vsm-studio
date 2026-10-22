@@ -44121,3 +44121,63 @@ session verrouillée ne laisse pas photographier (D95), les trois premiers déj�
 D571. Ils tombaient aussi pendant les compilations de D573 (à `nice 19`) : la circonstance est double, et ils ne se
 jugent qu'écran déverrouillé — **toujours à rejouer ainsi**. Les deux rouges de D570 et D571 que D572 avait corrigés
 (`notes-du-projet`, `couleur-notes`) sont verts dans la série.
+
+### Phase D574 — un trente-cinquième audit : l'aimantation aux clips et aux repères, le curseur magnétique, la plage en effet MIDI (23/10/2026)
+
+*Écrite le 23/10 à 04 h 53, D573 close et poussée, pendant la série de ses 150 bancs (lancée à 04 h 52, la session
+verrouillée, batterie à 81 %).*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (témoins `snapNotesToChords` 5, `VCA` **36** — `TrackPreset.cpp` le nomme
+depuis D573 —, `Contraindre` 4). Les types d'aimantation de Cubase autres que la grille (*Events*, *Magnetic Cursor*, et
+leurs combinaisons avec *Grid*), le modificateur *Range* de ses *MIDI Modifiers* : **0 pour aimanter aux clips et aux
+repères** — `snapTick` arrondit à `snapStep`, la mesure ou la grille fine, et RIEN d'autre : les seize appels de
+l'arrangement passent tous par lui ou par `snapStep` ; `snapToEvents`, `snapToClips`, « aimant aux clips » : rien ;
+**0 pour le curseur magnétique** — la tête n'est cible d'aucun aimant (elle sert à COUPER, `cutSnapProvider`, et à poser
+un point d'accroche, D566.2) ; `snapToCursor`, « curseur magnétique » : rien ; **0 pour une plage en effet MIDI** —
+`midiEffectTypes()` rend transposition, vélocité, arpégiateur, durée (D573.3) ; borner des VÉLOCITÉS existe en ÉCRIVANT
+(« Contenir entre 20 et 100 », `compressVelocity`), des HAUTEURS nulle part : `pitchRange` ne rend que la plage de
+bend de trois machines. **Trouvé et écarté, par le comportement** : contraindre à la gamme (`snapNoteToScale`), le zoom
+sur la sélection (la règle que D565.2 reprend), la chaîne d'arrangement, importer des pistes, la quantification
+itérative (D573). **Vus, non faits, remis** : le modificateur *Random*, le mode d'automation *Trim*, les repères à
+étendue (*Cycle Markers*), le moniteur MIDI et le pré-enregistrement audio (invérifiables au banc sans port ni entrée).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D574.1 | **L'aimantation aux clips et aux repères** — *Snap Type ▸ Events* (et *Events + Grid*) | *Affichage ▸ Aimanter aux clips et aux repères* — case cochée, retenue, grisée sans aimant : un clip DÉPLACÉ pose son ancre — ou sa FIN — sur le début ou la fin d'un AUTRE clip (toutes pistes), un repère ou un locateur, s'il en est à moins de 10 px et plus près que la ligne de grille ; un BORD tiré, de même ; ailleurs la grille comme avant ; mesuré par un vrai glisser puis le projet relu, le témoin sans la case à côté |
+| D574.2 | **Le curseur magnétique** — *Snap Type ▸ Magnetic Cursor* | *Affichage ▸ Aimanter à la tête de lecture* — la même règle, la tête pour cible ; les deux cases se combinent ; mesuré pareil, la tête posée hors de la grille, le témoin sans la case à côté |
+| D574.3 | **La plage en effet MIDI** — *MIDI Modifiers ▸ Range* | Un cinquième effet MIDI, *Plage* (*Range*) : *Mode* (Limiter les hauteurs, Filtrer les hauteurs, Limiter les vélocités, Filtrer les vélocités), *Min*, *Max* de 0 à 127 ; ce qui est écarté est COMPTÉ et dit au report ; mesuré par le projet relu après le report (D31.5), le témoin à la plage entière (0-127) à côté, et par un test du cœur |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D574.1 et D574.2.** Des préférences du POSTE (comment on travaille), comme l'aimant (D493) et l'aimant relatif
+  (D572.1) ; grisées sans aimant, qui reste l'interrupteur de tout. **LA RÈGLE, UNE SEULE** : la position aimantée est,
+  parmi la ligne de grille (toujours candidate, comme aujourd'hui) et les CIBLES que les cases ouvrent, la plus proche de
+  la position brute ; une cible n'est candidate qu'à moins de **10 px** d'elle — à l'échelle de l'interface, la distance
+  que la main tient —, la grille l'est toujours. C'est l'*Events + Grid* et le *Grid + Cursor* de Cubase : une cible
+  lointaine ne vole pas la grille, une cible proche l'emporte sur une ligne plus loin qu'elle. **Les cibles de « clips et
+  repères »** : le début et la fin de chaque clip qui ne bouge PAS dans le geste (toutes pistes, ceux de la sélection
+  exclus), chaque repère, les deux locateurs. **La cible du curseur magnétique** : la tête. **Le geste** : un
+  DÉPLACEMENT aimante l'ancre du clip tenu (son début, ou son point d'accroche, D566.2) ET sa fin — celle des deux qui
+  tombe le plus près d'une cible décide, pour qu'on puisse coller un clip bout à bout par sa fin ; un BORD tiré aimante
+  ce bord. L'aimant relatif (D572.1) garde son pas entier : il n'aimante pas aux cibles — un geste qui garde l'écart à la
+  grille ne peut pas en même temps le perdre sur un clip voisin. Ni le contenu glissé (D552.3), ni les courbes.
+  **L'attendu, écrit avant la mesure** (l'aimant à la mesure, 1 920 ticks, son défaut) : sur la piste 0, un clip « A »
+  de 0 à 1 440 et un clip « C » de 6 000 à 7 200 — leurs bords hors de la grille ; sur la piste 1, un clip « B » de
+  3 840 à 5 760. (a) B tiré vers la gauche, son début lâché à moins de 10 px de 1 440 : **1 440** case cochée, **1 920**
+  sans elle (la mesure la plus proche) ; (b) la tête à 2 400, B lâché à moins de 10 px d'elle : **2 400** curseur
+  magnétique coché, **1 920** sans lui ; (c) B tiré vers la droite, sa FIN lâchée à moins de 10 px du début de C : B
+  commence **à 4 080** (sa fin à 6 000) case cochée, **à 3 840** sans elle ; (d) les cases cochées, B lâché loin de
+  toute cible : la grille, comme sans elles.
+- **D574.3.** Un effet, pas une édition (la règle de `MidiEffects.h`). *Limiter les hauteurs* : une note hors de
+  [Min, Max] monte ou descend D'OCTAVES jusqu'à y entrer — la règle du *Note Limit* de Cubase — ; une plage plus étroite
+  qu'une octave peut n'avoir aucune place pour une hauteur : la note est alors ÉCARTÉE et comptée, jamais posée à une
+  hauteur que personne n'a demandée (la règle de la transposition, D17.5). *Filtrer les hauteurs* : écartées, comptées.
+  *Limiter les vélocités* : bornées à [max(1, Min), Max] (1 au moins : une vélocité nulle est un NoteOff, D31).
+  *Filtrer les vélocités* : écartées, comptées. Min > Max : l'effet ne fait rien, et c'est dit (compté comme écart de
+  réglage). Le report (D31.5) dit le compte des écartées. **L'attendu, écrit avant la mesure** : des notes à 30, 60 et
+  90 de vélocités 20, 64 et 120 ; *Limiter les hauteurs* 48-72 → **54, 60, 66** ; *Filtrer les hauteurs* 48-72 → **60
+  seule, 2 écartées dites** ; *Limiter les vélocités* 40-100 → **40, 64, 100** ; la plage entière (0-127) → les notes
+  d'origine.
+
+**L'ORDRE, TRANCHÉ ICI.** D574.3 d'abord (le cœur et ses tests, pendant la série de D573 : un seul fichier du cœur),
+puis D574.1 et D574.2, qui ne vivent que dans l'application et partagent une fonction ; UNE compilation de
+l'application, à côté du binaire de la série s'il le faut (la méthode de D567).
