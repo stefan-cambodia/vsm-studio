@@ -43828,3 +43828,67 @@ couleur des notes** — une note prend la couleur de sa piste, sa vélocité en 
 
 Mesuré la session VERROUILLÉE (l'utilisateur absent) et le poste chargé par son `ffmpeg` (charge 30) : verts malgré cela.
 C++ 526 · 1 347 · 344 · 25 · 11. 142 bancs dans la série.
+
+**LES CINQ ROUGES DE LA SÉRIE DE D566, REJOUÉS SEULS** (22/10, 16 h 26 → 16 h 32, le poste sorti de veille à 16 h 23 et au
+repos ; l'état du verrou n'a pas été relevé) : `locateurs-section`, `aimant-glisser`, `silence-plage`, `choisir-par-plage`,
+`arrangement-defile` — **verts tous les cinq, sur le binaire de D566 ET sur celui de D570** (`build/`), préférences
+identiques. Ils étaient la circonstance (les objets compilés à côté, le casque Bluetooth qui décrochait), pas un défaut ;
+écrits ici à 20 h 48 : la session qui les a rejoués ne l'a pas consigné.
+
+### Phase D571 — un trente-deuxième audit : grouper des clips, la loi de panoramique du projet, les fondus automatiques (22/10/2026)
+
+*Écrite le 22/10 à 20 h 48, D570 close et poussée, le poste au repos (charge 0,3), la session verrouillée.*
+
+**LA MÉTHODE, celle de D567** (témoins `snapNotesToChords` 5, `VCA` 35, `Contraindre` 4, rejoués ce soir à l'identique),
+sur les menus *Édition*, *Projet ▸ Configuration* et *Audio* de Cubase. Le *Group / Ungroup* de son menu Édition
+(Ctrl+G, Ctrl+U), le *Stereo Pan Law* de sa configuration de projet, ses *Auto Fades* : **0 pour grouper des clips** — les
+groupes d'ÉDITION existent (D18.3), mais ils lient des PISTES, et seulement les clips qui couvrent les mêmes ticks ;
+`groupClips`, `clipGroup`, `groupId`, « grouper », « dégrouper » : rien qui touche un clip ; **0 pour choisir la loi de
+panoramique** — elle est FIGÉE à la puissance constante (`equalPowerPan`, `Mixer.h:11`), appelée d'un seul endroit
+(`ProcessGraph::mixTrackInto`) ; `panLaw`, « loi de panoramique » : rien d'autre que ce commentaire ; **0 pour des fondus
+automatiques** — le fondu croisé automatique d'un chevauchement existe (D34.1), un clip qui commence ou finit au milieu
+d'une onde claque toujours ; `autoFade`, « fondus automatiques », « anticlic » : rien (le seul `fondu` d'un test de
+détection d'attaques). **Trouvé et écarté** : remplir la boucle (*Fill Loop* — *Répéter ▸ Jusqu'à la fin de la boucle*,
+D20.1 : seule y manque la dernière copie raccourcie, trop mince), coller relativement à la tête, combler les trous
+(*Close Gaps*, l'étirement par le bord, D13.2, en tient l'essentiel ; remis), les noms des notes sur les notes, la vitesse
+de lecture (D18.5), l'enregistrement rétrospectif, le décalage de piste, l'automation qui suit les clips — présents.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D571.1 | **Grouper des clips** — *Group / Ungroup* | *Édition ▸ Grouper les clips choisis* (Ctrl+G, deux clips au moins, sur une ou plusieurs pistes) et *Dégrouper les clips choisis* (Ctrl+U) ; cliquer UN clip d'un groupe choisit tout le groupe, Maj+clic le retire tout entier ; les gestes de montage (déplacer, couper, supprimer…) agissent sur le groupe, par la sélection ; écrit au projet (`clips[].group`) seulement s'il est posé ; un pas ; mesuré par le projet relu après un clic sur un seul clip puis Suppr — les deux membres partis, le clip hors groupe resté —, le témoin sans groupe à côté |
+| D571.2 | **La loi de panoramique du projet** — *Stereo Pan Law* | *Mixage ▸ Loi de panoramique ▸ 0 dB (balance) / −3 dB (puissance constante) / −4,5 dB / −6 dB (linéaire)* (une seule cochée) : l'atténuation d'une piste mono au CENTRE ; tournée à fond, toutes les lois rendent le même gain ; −3 dB reste le défaut et un projet d'avant sonne au bit près ; écrite au projet (`panLaw`) seulement si elle n'est pas le défaut ; un pas ; mesuré par l'EXPORT (D332) : la même note au centre sous chaque loi, les écarts de crête relevés contre 0 dB, le témoin tourné à fond à côté |
+| D571.3 | **Les fondus automatiques** — *Auto Fades* | *Mixage ▸ Fondus automatiques des clips audio ▸ Aucun / 1 / 4 / 10 / 30 ms* (une seule cochée) : chaque clip audio entre et sort par un fondu au moins de cette durée, là où rien d'autre ne le joint ; écrit au projet (`autoFadeSeconds`) seulement s'il est posé ; un pas ; mesuré par l'EXPORT : un clip coupé au milieu d'une onde à pleine amplitude — le saut de la première trame jouée, de la dernière, et le témoin sans fondu automatique à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D571.1.** Le groupe est une donnée du MORCEAU (il va au projet), un entier par clip, 0 = aucun. Grouper donne aux clips
+  choisis un numéro NEUF (le plus grand du projet plus un) : grouper des clips qui étaient déjà dans des groupes FOND ces
+  groupes en un, comme Cubase. Dégrouper remet à 0 les clips choisis — et, la sélection tenant les groupes entiers, ce
+  sont des groupes entiers qui se défont. La règle du groupe tient en UN endroit, comme celle des groupes d'édition
+  (D18.3) : la sélection grandit, et les gestes, qui travaillent déjà sur une sélection, héritent du groupe sans une ligne
+  de plus — le clic la fait grandir à vue, `montageSelection` la referme pour tout geste qui partirait d'une autre
+  sélection. **Une copie (dupliquer, répéter, coller) naît HORS de tout groupe** — la règle de la copie d'un clip
+  verrouillé, qui naît déverrouillée (D546.3) : une copie qui rejoindrait le groupe de l'original lierait la copie à lui,
+  et la regrouper est un geste. **Une coupe GARDE le groupe** sur ses deux moitiés : c'est la même matière. Le verrou
+  d'un membre refuse le geste pour lui comme aujourd'hui (D546.3), et c'est dit. Sans effet sur le son.
+- **D571.2.** Une donnée du MORCEAU, comme la forme des fondus croisés (D34.1) : elle change ce que l'export contient.
+  Les quatre lois, `x = (pan + 1) / 2` : 0 dB — la balance de `stereoBalance` (1 au centre, le canal opposé s'éteint en
+  droite) ; −3 dB — `cos(xπ/2)`, `sin(xπ/2)`, EXACTEMENT le chemin d'aujourd'hui (l'appel n'est pas réécrit : il reste
+  celui qu'on prend pour le défaut, et le bit près se tient par construction) ; −4,5 dB — la moyenne géométrique de la
+  puissance constante et de la droite, `√((1 − x)·cos(xπ/2))`, `√(x·sin(xπ/2))` (−4,52 dB au centre) ; −6 dB — la droite,
+  `1 − x`, `x` (−6,02 dB). Toutes valent 1 et 0 tournées à fond. **L'attendu, écrit avant la mesure : au centre, les
+  crêtes de −3, −4,5 et −6 dB tombent à −3,01, −4,52 et −6,02 dB de celle de 0 dB, à 0,05 dB près ; tournée à fond à
+  gauche, les quatre exports sont identiques au bit.** Elle ne touche que le panoramique d'une PISTE : la balance d'un
+  groupe (`mixStereoBalancedInto`) reste neutre au centre — la raison écrite à `Mixer.h` vaut sous toutes les lois.
+- **D571.3.** Une donnée du MORCEAU (elle change l'export), une seule durée pour l'entrée et la sortie, 0 = aucun. Le
+  fondu automatique est un PLANCHER : un fondu dessiné plus long garde le sien, un plus court est allongé jusqu'à elle,
+  dans la forme du clip. Il ne se pose PAS là où un autre mécanisme joint déjà le clip à son voisin : un fondu croisé
+  (D34.1) le remplace, et un RACCORD CONTINU (D545.1 *bis* : bout à bout dans le fichier, au même gain) n'a pas de
+  discontinuité à soigner — un fondu y creuserait un trou. Il appartient au CLIP et non à chaque tour de sa boucle, la
+  règle des fondus dessinés. Borné à la moitié de ce que le clip joue. Il se calcule là où les portées naissent
+  (`spansFromTrack`), que la lecture et l'export appellent tous deux : le contrat de D21 tient dès que le format le
+  porte. Les pistes MIDI n'ont pas de trame à couper : sans effet sur elles.
+
+**L'ORDRE, TRANCHÉ ICI.** D571.2 d'abord, puis D571.3 : les deux changent le SON et se codent en entier dans le cœur, le
+moteur et le format, tests compris, avant de toucher à l'application ; puis D571.1, qui ne vit que dans l'application et
+le format. UNE seule compilation de l'application pour les trois — la batterie (48 % à 20 h 25, en décharge) ne paie pas
+trois éditions de liens de `MainComponent.cpp`.
