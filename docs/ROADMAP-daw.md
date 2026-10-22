@@ -43781,3 +43781,38 @@ code de l'ancre d'un glisser MIDI n'a pas changé (`pointDAccroche` rend le déb
 | D569.2 | la tête fixe | `setTeteFixe`, `setEnLecture` ; `tools/tete-fixe.sh`, la tête posée à la mesure 12 d'une fenêtre de 17 : défilement **5 672 → 6 151 → 6 631 → 7 110**, tête − défilement constant (16 407 ± 10) ; le témoin à pages reste à 0 ; arrêtée, rien ne bouge ; retenue au relancement. Première version du banc fausse : la tête n'atteignait pas le milieu (17 mesures visibles, tête à 1,25), les deux modes restaient à 0 | **oui** |
 
 C++ 525 · 1 347 · 344 · 25 · 11. 139 bancs dans la série. Binaire de D569 dans `build/`.
+
+### Phase D570 — un trente et unième audit : la couleur des repères, les préréglages de quantification, la couleur des notes (22/10/2026)
+
+*Écrite le 22/10 à 14 h 04, D569 close et poussée (le réseau revenu). Les cinq rouges de la série de D566 attendent : un
+`ffmpeg` de l'utilisateur occupe vingt cœurs depuis 13 h 26, et des bancs à côté donneraient des rouges de minuterie
+(la leçon de la série même) — ils se rejouent quand le poste se calme.*
+
+**LA MÉTHODE, celle de D567** (témoins `snapNotesToChords` 5, `VCA` 35, `Contraindre` 4) — et un faux zéro attrapé
+avant d'être écrit : le *Click Level* de Cubase rendait 0 sous `metronomeVolume`, `clickVolume`, « volume du clic » ; il
+existe sous `metronomeLevel` et `niveauClic_` (les préférences). Les couleurs de repères de la piste de repères de
+Cubase, les *Quantize Presets* de son panneau de quantification, les *Event Colors* de son éditeur de notes : **0 pour
+une couleur de repère** — `Marker` porte un tick et un nom ; `markerColor`, « couleur du repère » : rien ; **0 pour un
+préréglage de quantification** — la grille, le modificateur et le swing vivent dans la barre du piano roll et dans le
+projet (D495), un seul jeu à la fois ; `quantizePreset`, « Préréglages de quantification » : rien ; **0 pour un mode de
+couleur des notes** — une note prend la couleur de sa piste, sa vélocité en luminosité (`drawNoteRectangle`) ;
+`noteColorMode`, « Couleur selon » : rien. **Trouvé et écarté** : le volume du clic (présent), les rampes de tempo
+(6 fichiers), verrouiller une piste, la vélocité insérée (trop mince).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D570.1 | **La couleur d'un repère** — *Marker colors* | Clic droit sur un repère de la règle, *Couleur du repère…* (le sélecteur de couleur des pistes) : le repère se dessine de sa couleur sur la règle de l'arrangement et sur celle du piano roll ; écrite au projet (`markers[].color`) seulement si elle est posée ; un pas ; mesuré par le projet relu et la photo (les pixels du drapeau du repère), le témoin sans couleur à côté |
+| D570.2 | **Les préréglages de quantification** — *Quantize Presets* | *Édition ▸ Temps et durée ▸ Préréglages de quantification* : *Enregistrer les réglages actuels…* (un nom) garde la grille, le modificateur et le swing de la barre ; chaque préréglage s'y RAPPELLE (la barre et le piano roll les reprennent, par le chemin de D495) ; *Retirer* ; gardés dans les préférences du poste, comme les dispositions (D549.3) ; mesuré par la barre relue (`VSM_PIANOROLL_GRILLE`) et par la quantification qui suit, le témoin sans rappel à côté |
+| D570.3 | **La couleur des notes** — *Event Colors* | Au piano roll, *Couleur des notes ▸ Selon la vélocité (piste) / Selon la hauteur / Selon le canal* (cases, une seule cochée, retenue) : la vélocité garde le rendu d'aujourd'hui ; la hauteur donne une teinte par NOM de note (douze, do rouge) ; le canal une teinte par canal (seize) ; la luminosité suit toujours la vélocité ; mesuré par la photo — la teinte du centre de chaque note —, le témoin selon la piste à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D570.1.** La couleur est une donnée du MORCEAU (elle va au projet), comme celle d'une piste ou d'un clip. Sans couleur,
+  un repère se dessine comme aujourd'hui : le format ne l'écrit pas, un projet d'avant se réécrit octet pour octet.
+- **D570.2.** Un préréglage est un réglage du POSTE (les préférences), pas du morceau : on garde « 1/16 swing 30 % » d'un
+  morceau à l'autre — la règle de D363. La force (100 %, 50 %) n'en fait pas partie : elle se choisit au geste, dans le
+  menu. Un nom déjà pris est remplacé, et c'est dit. La gamme n'est pas touchée par un rappel.
+- **D570.3.** Une préférence du poste (comment on regarde), pas du morceau. Les teintes sont celles d'un cercle
+  chromatique divisé en douze (hauteur) ou seize (canal), saturation de la palette ; la luminosité reste celle de la
+  vélocité, pour qu'aucun mode ne perde la nuance. Une note muette reste grisée, une note douteuse garde sa barre ambre.
+
+**L'ORDRE, TRANCHÉ ICI.** D570.3 d'abord (une fonction pure de couleur, testable), puis D570.1, puis D570.2.
