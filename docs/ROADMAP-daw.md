@@ -44001,3 +44001,69 @@ RESTE À JOUER** pour D572 : la batterie était à 18 % à la clôture (23 h 29)
 15 %, et une série de quatre-vingts minutes ne tient pas ; relancée au réveil, elle ouvrirait ses fenêtres sous les yeux
 de l'utilisateur revenu. Ont tourné : les trois bancs neufs, leurs témoins, `notes-du-projet` et `couleur-notes`. Avec
 elle, à rejouer écran DÉVERROUILLÉ : les trois rouges de photo de la série de D571.
+
+### Phase D573 — un trente-quatrième audit : la largeur stéréo d'une piste, la forme de chaque fondu, la durée en effet MIDI (23/10/2026)
+
+*Écrite le 23/10 à 03 h 25, D572 close et poussée, pendant la série de ses 147 bancs (lancée à 03 h 19, la session
+DÉVERROUILLÉE et l'écran allumé, batterie à 98 %).*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (témoins `snapNotesToChords` 5, `VCA` 35, `Contraindre` 4, rejoués
+cette nuit à l'identique ; chaque zéro revérifié par ce que le code FAIT). Le panoramique combiné des voies stéréo de
+Cubase (*Stereo Combined Panner*, sa largeur), les courbes de ses deux fenêtres de fondu (*Fade In*, *Fade Out*), ses
+*MIDI Modifiers* : **0 pour la largeur d'une piste** — le zéro remis par D572 : `Track` porte `pan`, aucune largeur ;
+`mixTrackInto` verse `srcL × gainG` et `srcR × gainD`, sans mélange des deux canaux ; `stereoWidth` ne rend que des
+paramètres de machines et d'effets ; **0 pour deux formes de fondu** — `Clip::fadeShape` est UNE forme, et `fadeGain`
+(`AudioTrackSource.cpp`) la donne aux deux bords ; le sous-menu *Forme des fondus* pose les deux ensemble ;
+`fadeInShape`, `fadeOutShape` : rien ; **0 pour une durée en effet MIDI** — `midiEffectTypes()` rend trois types :
+transposition, vélocité (échelle et décalage : la *Velocity Shift* et la *Velocity Compression* de Cubase, présentes),
+arpégiateur ; les gestes qui changent les durées les ÉCRIVENT (*Deux fois plus lent*, *Durée = pas de grille*) ;
+`lengthScale`, `lengthRatio`, *Length Compression* : rien. **Trouvé et écarté, par le comportement** : importer les
+pistes d'un autre projet (`ProjectImport.h`, D14.3), la quantification itérative (`quantizeNotes` cumule et sa force
+partielle avance de 100 à 110 puis 115, D566.1), la chaîne d'arrangement (*Ordre de jeu*, aplatie par `onFlatten`),
+l'aimant aux passages à zéro (`snapCutToZeroCrossing`), un clip à l'envers, sa polarité, sa transposition
+(`Clip::reversed`, `invertPhase`, `pitchSemitones`), le *solo safe* (`soloSafe`), l'éclaircissement des courbes
+(`thinAutomation`). **Vus, non faits, remis** : les autres modificateurs MIDI de Cubase (*Random*, *Range*), le mode
+d'automation *Trim* (`AutomationMode` : Off, Touch, Latch), les repères à étendue (*Cycle Markers* — `Marker` ne porte
+qu'un tick ; les sections entre deux repères, D542.1, en tiennent l'essentiel).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D573.1 | **La largeur stéréo d'une piste** — *Stereo Combined Panner* | *Mixage ▸ Largeur stéréo des tranches choisies ▸ 100 % / 75 % / 50 % / 25 % / 0 % (mono)* (cochée la valeur commune, aucune si elles diffèrent) : l'image de la piste se resserre vers son centre AVANT le panoramique ; à 100 % le chemin d'avant au bit près ; écrite au projet (`mix.width`) seulement hors de 100 % ; copiée avec les réglages d'une tranche, gardée par un instantané, rendue à 100 % par la remise à zéro ; un pas ; mesuré par l'EXPORT : un clip dont la gauche porte un sinus et la droite le silence, sous les cinq largeurs, le témoin à 100 % à côté |
+| D573.2 | **La forme de chaque fondu** — les courbes de *Fade In* et *Fade Out* | Au clic droit d'un clip : *Forme du fondu d'entrée ▸* et *Forme du fondu de sortie ▸* (Linéaire, Puissance constante, Lente au départ, Rapide au départ), à côté de *Forme des fondus*, qui pose les deux comme avant ; écrite au projet (`fadeOutShape`) seulement si elle diffère de celle de l'entrée ; le dessin du clip suit chaque bord ; un pas ; mesuré par l'EXPORT : le gain au MILIEU de chaque fondu, contre le plateau du clip, le témoin à une seule forme à côté |
+| D573.3 | **La durée en effet MIDI** — *MIDI Modifiers ▸ Length Compression* | Un quatrième effet MIDI de piste, *Durée* (*Length* en anglais), son paramètre *Rapport* de 0,25 à 4 (1 par défaut) : chaque note jouée dure sa durée multipliée par le rapport, son départ intact ; les notes du clip ne bougent pas ; *Reporter les effets MIDI dans les notes* (D31.5) l'écrit ; mesuré par le projet relu après le report, le témoin sans l'effet à côté, et par un test du cœur |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D573.1.** Une donnée du MORCEAU (elle change l'export), par PISTE, comme le panoramique. La largeur `w` ∈ [0, 1]
+  resserre l'image par le milieu et le côté : `M = (G + D) / 2`, `S = (G − D) / 2`, `G' = M + w·S`, `D' = M − w·S` —
+  à 0, la somme mono sur les deux canaux ; elle ne s'élargit pas au-delà de 100 %, comme celle de Cubase. Elle
+  s'applique au signal de la piste avant le panoramique et sa loi (D571.2), à la sortie de la tranche ; un départ ne
+  la reçoit que s'il suit le panoramique (D572.2 : il suit alors le PANNEAU entier), sinon il prélève la source,
+  comme aujourd'hui. **À 100 %, aucun calcul n'est fait** : le chemin d'avant, appel pour appel, et un projet d'avant
+  sonne au bit près par construction. Les mesures de la tranche (crête, RMS, corrélation, D4.7) restent prises avant
+  le panoramique, la convention écrite là : elles disent ce que la piste ENVOIE, pas ce que le panneau en fait. Une
+  piste mono (une machine dont les deux canaux sont égaux) n'a pas de côté : la largeur ne lui fait rien. Ni groupe
+  (il a une balance), ni automation dans cette phase — une valeur hors de [0, 1] lue au fichier est bornée, et c'est
+  dit. **L'attendu, écrit avant la mesure : sous les crêtes de la gauche à 100 %, la gauche tombe de 0,00 / −1,16 /
+  −2,50 / −4,08 / −6,02 dB et la droite remonte du plancher à −18,06 / −12,04 / −8,52 / −6,02 dB pour 100, 75, 50, 25
+  et 0 % (`G' = (1 + w)/2`, `D' = (1 − w)/2`), à 0,05 dB près ; à 0 %, les deux canaux égaux au dix-millième de dB.**
+- **D573.2.** `Clip::fadeShape` devient la forme de l'ENTRÉE ; `fadeOutShape` porte celle de la SORTIE. Un projet
+  d'avant ne porte pas `fadeOutShape` : relu, la sortie prend la forme de l'entrée, et il sonne au bit près. Écrit
+  seulement s'il diffère. **Un binaire d'avant D573 qui ouvre un projet d'après lit la forme d'entrée aux deux
+  bords** — perte de la sortie seule, dite ici. *Forme des fondus* garde son sens : il pose les DEUX, et ne se
+  coche que si elles sont égales. Le fondu croisé garde sa forme (D34.1) et le fondu de sécurité reste droit (D33.2).
+  Une coupe donne à chaque moitié les formes du clip ; une copie les garde. **L'attendu, écrit avant la mesure :
+  fondu d'entrée d'une seconde « Lente au départ », de sortie d'une seconde « Rapide au départ », sur un sinus de
+  1 kHz à niveau constant ; au milieu de l'entrée, −12,04 dB sous le plateau (0,5²) ; au milieu de la sortie,
+  −3,01 dB (√0,5), là où le témoin à une forme (« Lente » aux deux) donne −12,04 dB ; à 0,1 dB près.**
+- **D573.3.** Un effet, pas une édition (la règle de `MidiEffects.h`) : la liste rendue est neuve, le matériau ne
+  bouge pas. Le rapport multiplie la durée de chaque note à partir de son départ, arrondie au tick, une durée d'un
+  tick au moins. **Une note allongée s'arrête au plus tard au départ de la note suivante de MÊME hauteur sur le même
+  canal** : sinon sa fin couperait l'attaque d'après — un rapport de 4 sur des notes répétées rend un legato, pas des
+  notes qui se mangent. L'ordre de la chaîne compte comme pour les autres effets (D31) : la durée après l'arpégiateur
+  allonge chaque pas. Le volet propose le type de lui-même (`midiEffectTypes()`), traduit (D476). Sans effet sur les
+  pistes audio, qui n'ont pas d'effets MIDI.
+
+**L'ORDRE, TRANCHÉ ICI.** D573.1, puis D573.2 : les deux changent le SON, et se codent en entier dans le cœur, le moteur
+et le format, tests compris, PENDANT la série de D572 (les tests du cœur ne touchent pas au binaire de l'application ;
+compilés à `nice 19` et `-j 2`, et tout rouge de la série tombé pendant une compilation se rejoue seul avant d'être cru,
+la règle de D567). Puis D573.3, puis l'application, UNE fois, quand la série aura rendu son binaire.
