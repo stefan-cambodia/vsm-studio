@@ -373,3 +373,44 @@ VSM_TEST(an_audio_track_can_be_frozen_and_the_freeze_matches_the_live_render) {
     VSM_ASSERT(dBFS(pire) < -120.0f);
     VSM_ASSERT_EQ(pire, 0.0f);
 }
+
+// D571.2 — LA LOI DE PANORAMIQUE DU PROJET, MESURÉE PAR LE RENDU HORS LIGNE (le chemin de l'export, D332). La même
+// prise mono, au centre puis tournée à fond à gauche, sous les quatre lois : au centre, la crête tombe de 3,01, 4,52 et
+// 6,02 dB sous celle de 0 dB ; à fond, les quatre rendus sont identiques AU BIT — c'est aussi ce qui garde le gel
+// (D5.5), qui s'appuie sur les extrémités de la loi.
+VSM_TEST(the_pan_law_of_the_project_sets_the_centre_and_leaves_the_ends_alone) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+    using vsm::sequencer::PanLaw;
+    auto rendre = [&](PanLaw loi, float pan) {
+        LoadedBundle b = bundleAudio();
+        b.project.panLaw = loi;
+        b.project.tracks[0].pan = pan;
+        b.project.tracks[0].volume = 1.0f;
+        vsm::audio::engine::RenderedAudio sortie;
+        VSM_ASSERT(renderBundleToBuffer(b, sortie, options()).success);
+        return sortie;
+    };
+    auto crete = [](const std::vector<float>& x) {
+        float c = 0.0f;
+        for (float v : x) c = std::max(c, std::fabs(v));
+        return c;
+    };
+    const auto zero = rendre(PanLaw::ZeroDb, 0.0f);
+    const float reference = crete(zero.left);
+    VSM_ASSERT(reference > 0.1f);
+    const std::pair<PanLaw, double> attendus[] = {
+        {PanLaw::Minus3dB, -3.0103}, {PanLaw::Minus4_5dB, -4.5154}, {PanLaw::Minus6dB, -6.0206}};
+    for (const auto& [loi, db] : attendus) {
+        const auto r = rendre(loi, 0.0f);
+        const double ecart = 20.0 * std::log10(static_cast<double>(crete(r.left)) / reference);
+        VSM_ASSERT_NEAR(ecart, db, 0.05);
+        VSM_ASSERT_NEAR(crete(r.left), crete(r.right), 1e-6);   // au centre, les deux canaux à égalité
+    }
+    const auto gaucheTemoin = rendre(PanLaw::Minus3dB, -1.0f);
+    for (PanLaw loi : {PanLaw::ZeroDb, PanLaw::Minus4_5dB, PanLaw::Minus6dB}) {
+        const auto g = rendre(loi, -1.0f);
+        VSM_ASSERT(g.left == gaucheTemoin.left);
+        VSM_ASSERT(g.right == gaucheTemoin.right);
+    }
+}

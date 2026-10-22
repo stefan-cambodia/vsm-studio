@@ -1,5 +1,6 @@
 #include "TestFramework.h"
 #include "vsm/audio/engine/Mixer.h"
+#include "vsm/sequencer/Project.h"
 #include <cmath>
 #include <vector>
 
@@ -162,4 +163,46 @@ VSM_TEST(rms_and_peak_say_different_things_about_the_same_track) {
     VSM_ASSERT(rms(creuse) < 0.02);
     // Même crête, cent fois moins de niveau efficace.
     VSM_ASSERT(rms(pleine) > rms(creuse) * 40.0);
+}
+
+// D571.2 — LES QUATRE LOIS DE PANORAMIQUE : ce qu'elles valent au centre, et qu'elles valent 1 et 0 tournées à fond.
+// La loi par défaut rend les gains de `equalPowerPan` au bit près sur toute la course — le moteur, lui, ne passe
+// même pas par `panLawGains` pour elle.
+VSM_TEST(the_four_pan_laws_differ_only_in_the_middle) {
+    using vsm::sequencer::PanLaw;
+    using vsm::sequencer::panLawGains;
+    const std::pair<PanLaw, double> centres[] = {
+        {PanLaw::ZeroDb, 1.0}, {PanLaw::Minus3dB, 0.70710678}, {PanLaw::Minus4_5dB, 0.59460356}, {PanLaw::Minus6dB, 0.5}};
+    for (const auto& [loi, centre] : centres) {
+        float g = 0.0f, d = 0.0f;
+        panLawGains(loi, 0.0f, g, d);
+        VSM_ASSERT_NEAR(g, centre, 1e-5);
+        VSM_ASSERT_NEAR(d, centre, 1e-5);
+        panLawGains(loi, -1.0f, g, d);
+        VSM_ASSERT_EQ(g, 1.0f);
+        VSM_ASSERT_EQ(d, 0.0f);
+        panLawGains(loi, 1.0f, g, d);
+        VSM_ASSERT_NEAR(g, 0.0, 1e-7);   // cos(π/2) en float : −4,4e−8, la loi d'avant D571 aussi
+        VSM_ASSERT_EQ(d, 1.0f);
+    }
+    for (float pan = -1.0f; pan <= 1.0f; pan += 0.05f) {
+        float g = 0.0f, d = 0.0f, g0 = 0.0f, d0 = 0.0f;
+        panLawGains(PanLaw::Minus3dB, pan, g, d);
+        equalPowerPan(pan, g0, d0);
+        VSM_ASSERT_EQ(g, g0);
+        VSM_ASSERT_EQ(d, d0);
+    }
+}
+
+VSM_TEST(mixing_with_given_gains_matches_the_default_law_when_given_its_gains) {
+    const float in[4] = {0.5f, -0.25f, 1.0f, 0.0f};
+    float a[4] = {}, b[4] = {}, c[4] = {}, e[4] = {};
+    float g = 0.0f, d = 0.0f;
+    equalPowerPan(0.3f, g, d);
+    mixStereoInto(in, in, 4, 0.8f, 0.3f, true, a, b);
+    mixStereoWithGainsInto(in, in, 4, 0.8f, g, d, true, c, e);
+    for (int i = 0; i < 4; ++i) {
+        VSM_ASSERT_EQ(a[i], c[i]);
+        VSM_ASSERT_EQ(b[i], e[i]);
+    }
 }

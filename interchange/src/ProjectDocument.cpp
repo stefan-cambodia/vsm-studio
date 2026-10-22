@@ -159,6 +159,7 @@ JsonValue clipToJson(const ProjectClip& clip) {
     if (clip.channelMap >= 1 && clip.channelMap <= 3)   // D564.3
         c.set("channelMode", JsonValue::makeString(clip.channelMap == 1 ? "left" : clip.channelMap == 2 ? "right" : "mono"));
     if (clip.snapPointSeconds >= 0.0) c.set("snapPoint", JsonValue::makeNumber(clip.snapPointSeconds));   // D566.2
+    if (clip.group != 0) c.set("group", JsonValue::makeNumber(static_cast<double>(clip.group)));   // D571.1
     return c;
 }
 
@@ -198,6 +199,10 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
         clip.channelMap = mode == "left" ? 1 : mode == "right" ? 2 : mode == "mono" ? 3 : 0;
     }
     clip.snapPointSeconds = clipJson["snapPoint"].asNumber(-1.0);   // D566.2
+    {   // D571.1 : un numéro négatif ou fractionnaire n'est pas un groupe
+        const double g = clipJson["group"].asNumber(0.0);
+        clip.group = g >= 1.0 && g < 4294967295.0 && g == std::floor(g) ? static_cast<uint32_t>(g) : 0u;
+    }
     return clip;
 }
 
@@ -248,6 +253,26 @@ vsm::sequencer::FadeShape fadeShapeFromName(const std::string& nom) {
     return vsm::sequencer::FadeShape::Linear;
 }
 
+/// D571.2 : LE NOM D'UNE LOI DE PANORAMIQUE, et son retour. −3 dB, le défaut, n'a pas de nom : il ne s'écrit pas.
+const char* panLawName(vsm::sequencer::PanLaw law) {
+    switch (law) {
+        case vsm::sequencer::PanLaw::ZeroDb:     return "0dB";
+        case vsm::sequencer::PanLaw::Minus4_5dB: return "-4.5dB";
+        case vsm::sequencer::PanLaw::Minus6dB:   return "-6dB";
+        case vsm::sequencer::PanLaw::Minus3dB:
+        default:                                 return "";
+    }
+}
+/// Un nom inconnu rend −3 dB, et c'est dit au journal : un fichier écrit à la main ne change pas de loi en silence.
+vsm::sequencer::PanLaw panLawFromName(const std::string& nom) {
+    if (nom == "0dB") return vsm::sequencer::PanLaw::ZeroDb;
+    if (nom == "-4.5dB") return vsm::sequencer::PanLaw::Minus4_5dB;
+    if (nom == "-6dB") return vsm::sequencer::PanLaw::Minus6dB;
+    if (!nom.empty() && nom != "-3dB")
+        std::fprintf(stderr, "project.json : loi de panoramique « %s » inconnue, −3 dB gardé\n", nom.c_str());
+    return vsm::sequencer::PanLaw::Minus3dB;
+}
+
 ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     ProjectClip c{clip.sourceStart, clip.sourceLength, clip.startTick,
                   clip.length, clip.muted, clip.name, clip.colorRgba,
@@ -264,6 +289,7 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     c.dcOffsetRight = clip.dcOffsetRight;
     c.channelMap = clip.channelMap;       // D564.3
     c.snapPointSeconds = clip.snapPointSeconds;   // D566.2
+    c.group = clip.groupId;                       // D571.1
     // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
@@ -297,6 +323,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
     c.dcOffsetRight = clip.dcOffsetRight;
     c.channelMap = clip.channelMap;       // D564.3
     c.snapPointSeconds = clip.snapPointSeconds < 0.0 ? -1.0 : clip.snapPointSeconds;   // D566.2
+    c.groupId = clip.group;                                                             // D571.1
     return c;
 }
 
@@ -444,6 +471,7 @@ ProjectDocument documentFromProject(const Project& project) {
     document.globalTransposeSemitones = project.globalTransposeSemitones;   // D544.3
     document.master = project.masterParameters;
     document.crossfadeShape = fadeShapeName(project.crossfadeShape);
+    document.panLaw = panLawName(project.panLaw);              // D571.2
     document.transport.loopEnabled = project.loopEnabled;
     document.transport.loopStartTick = project.loopStartTick;
     document.transport.loopEndTick = project.loopEndTick;
@@ -659,6 +687,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     if (!document.master.empty()) project.masterParameters = document.master;
     if (!document.crossfadeShape.empty())
         project.crossfadeShape = fadeShapeFromName(document.crossfadeShape);
+    project.panLaw = panLawFromName(document.panLaw);          // D571.2
     project.loopEnabled = document.transport.loopEnabled;
     project.loopStartTick = document.transport.loopStartTick;
     project.loopEndTick = document.transport.loopEndTick;
@@ -932,6 +961,8 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     // bougent pas d'un octet.
     if (!document.crossfadeShape.empty() && document.crossfadeShape != "equalPower")
         root.set("crossfadeShape", JsonValue::makeString(document.crossfadeShape));
+    // D571.2 : la même règle — un projet qui ne l'a pas touchée garde son fichier à l'octet.
+    if (!document.panLaw.empty()) root.set("panLaw", JsonValue::makeString(document.panLaw));
 
     if (!document.master.empty()) {
         JsonValue master = JsonValue::makeObject();
@@ -1328,6 +1359,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     }
     document.notes = json["notes"].asString();
     document.crossfadeShape = json["crossfadeShape"].asString();
+    document.panLaw = json["panLaw"].asString();                                        // D571.2
     for (const auto& [name, value] : json["master"].members())
         if (value.isNumber()) document.master[name] = static_cast<float>(value.asNumber());
     document.midiPath = json["midi"]["file"].asString("midi/arrangement.mid");

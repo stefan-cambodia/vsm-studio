@@ -2059,3 +2059,37 @@ VSM_TEST(notes_are_chosen_by_range_with_the_rules_of_clips) {
     VSM_ASSERT(notesByRange(t.notes, RangeRule::Between, 1920, 1920).empty());                       // plage vide
 }
 
+
+// D571.1 — GROUPER DES CLIPS : grouper fond les groupes en un numéro neuf, la sélection grandit au groupe entier, une
+// copie naît hors de tout groupe, une coupe le garde, dégrouper remet à zéro.
+VSM_TEST(clips_are_grouped_across_tracks_and_copies_leave_the_group) {
+    std::vector<Track> pistes(2);
+    pistes[0].clips = {clip(1, 0, 960), clip(2, 1920, 960)};
+    pistes[1].clips = {clip(3, 0, 960), clip(4, 3840, 960)};
+    pistes[1].versions.push_back({});
+    pistes[1].versions[0].clips = {clip(9, 0, 960)};
+    pistes[1].versions[0].clips[0].groupId = 6;   // une version rangée : son numéro compte pour le neuf
+    VSM_ASSERT_EQ(groupClips(pistes, {1}), 0u);   // un seul clip : rien
+    VSM_ASSERT_EQ(pistes[0].clips[0].groupId, 0u);
+    VSM_ASSERT_EQ(groupClips(pistes, {1, 3}), 7u);
+    VSM_ASSERT(expandSelectionToClipGroups(pistes, {3}) == (ClipSelection{1, 3}));
+    VSM_ASSERT(expandSelectionToClipGroups(pistes, {2}) == (ClipSelection{2}));   // hors groupe : rien de plus
+    VSM_ASSERT_EQ(groupedClipsIn(pistes, {1, 2, 3}), size_t(2));
+    // Grouper un membre avec un autre clip FOND : le groupe de 1 et 3 et le clip 4 n'en font plus qu'un.
+    VSM_ASSERT_EQ(groupClips(pistes, expandSelectionToClipGroups(pistes, {1, 4})), 8u);
+    VSM_ASSERT(expandSelectionToClipGroups(pistes, {4}) == (ClipSelection{1, 3, 4}));
+    // Une copie (dupliquer, répéter) naît hors du groupe ; une coupe le garde sur ses deux moitiés.
+    uint64_t ids = 20;
+    const auto copies = duplicateClips(pistes[0].clips, {1}, 3840, ids);
+    VSM_ASSERT_EQ(copies.size(), size_t(1));
+    for (const auto& c : pistes[0].clips) if (copies.count(c.id)) VSM_ASSERT_EQ(c.groupId, 0u);
+    const auto repetes = repeatClips(pistes[1].clips, {3}, 2, 960, ids);
+    for (const auto& c : pistes[1].clips) if (repetes.count(c.id)) VSM_ASSERT_EQ(c.groupId, 0u);
+    VSM_ASSERT_EQ(splitClips(pistes[1].clips, {4}, 4320, 100000, ids, [](Tick t) { return t / 960.0; }), size_t(1));
+    size_t moities = 0;
+    for (const auto& c : pistes[1].clips) if (c.startTick >= 3840 && c.groupId == 8u) ++moities;
+    VSM_ASSERT_EQ(moities, size_t(2));
+    // Dégrouper la sélection élargie défait le groupe entier.
+    VSM_ASSERT_EQ(ungroupClips(pistes, expandSelectionToClipGroups(pistes, {3})), size_t(4));
+    VSM_ASSERT_EQ(groupedClipsIn(pistes, {1, 2, 3, 4}), size_t(0));
+}

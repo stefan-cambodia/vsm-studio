@@ -6,6 +6,8 @@
 #include "vsm/sequencer/Track.h"
 #include "vsm/sequencer/ClipEdit.h"   // D551.1 : ClipSelection
 #include "vsm/sequencer/ChordTrack.h"
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <map>
 #include <set>
@@ -13,6 +15,39 @@
 #include <vector>
 
 namespace vsm::sequencer {
+
+/// D571.2 : LA LOI DE PANORAMIQUE DU PROJET (*Stereo Pan Law* de Cubase) — ce qu'une piste perd au CENTRE. Tournées
+/// à fond, les quatre rendent 1 et 0 ; elles ne diffèrent que par le milieu. `Minus3dB` est le défaut, et le chemin
+/// d'avant D571 : le moteur l'appelle par `equalPowerPan`, sans passer par ici, et le bit près tient par construction.
+enum class PanLaw : uint8_t { Minus3dB = 0, ZeroDb = 1, Minus4_5dB = 2, Minus6dB = 3 };
+
+/// Les gains gauche et droite d'une loi, `x = (pan + 1) / 2` : 0 dB, la balance (le canal opposé s'éteint en
+/// droite) ; −3 dB, `cos(xπ/2)` et `sin(xπ/2)` ; −4,5 dB, la moyenne géométrique de ces deux-là et de la droite ;
+/// −6 dB, la droite `1 − x` et `x`.
+inline void panLawGains(PanLaw law, float pan, float& gainL, float& gainR) {
+    const float p = std::clamp(pan, -1.0f, 1.0f);
+    const float x = (p + 1.0f) * 0.5f;
+    const float angle = x * 0.5f * static_cast<float>(3.14159265358979323846);
+    switch (law) {
+        case PanLaw::ZeroDb:
+            gainL = p <= 0.0f ? 1.0f : 1.0f - p;
+            gainR = p >= 0.0f ? 1.0f : 1.0f + p;
+            return;
+        case PanLaw::Minus4_5dB:
+            gainL = std::sqrt(std::max(0.0f, (1.0f - x) * std::cos(angle)));   // cos(π/2) en float : −4e−8
+            gainR = std::sqrt(std::max(0.0f, x * std::sin(angle)));
+            return;
+        case PanLaw::Minus6dB:
+            gainL = 1.0f - x;
+            gainR = x;
+            return;
+        case PanLaw::Minus3dB:
+        default:
+            gainL = std::cos(angle);
+            gainR = std::sin(angle);
+            return;
+    }
+}
 
 /// UN BUS DE DÉPART : un effet PARTAGÉ que toutes les pistes peuvent
 /// alimenter, et dont le retour est ajouté au mixage.
@@ -167,6 +202,10 @@ public:
     /// deux matériaux DIFFÉRENTS, dont les puissances s'ajoutent. `Linear` sert
     /// le cas inverse -- deux copies du même son --, où c'est lui qui tient.
     FadeShape crossfadeShape = FadeShape::EqualPower;
+
+    /// D571.2 : LA LOI DE PANORAMIQUE, une donnée du MORCEAU pour la raison de la forme des fondus croisés : elle
+    /// change ce que l'export contient. Écrite dans `project.json` seulement si elle n'est pas −3 dB.
+    PanLaw panLaw = PanLaw::Minus3dB;
 
     /// Convertit une lecture brute en projet. `unePisteParCanal` (D305) : une
     /// piste lue qui porte des événements sur PLUSIEURS canaux est découpée en

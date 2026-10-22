@@ -1212,6 +1212,12 @@ private:
         kMenuEditQuantizePresetLast = kMenuEditQuantizePresetFirst + 31,
         kMenuEditQuantizePresetRemoveFirst,
         kMenuEditQuantizePresetRemoveLast = kMenuEditQuantizePresetRemoveFirst + 31,
+        /// D571.2 : la loi de panoramique, quatre entrées CONTIGUËS dans l'ordre de `PanLaw` (la soustraction la rend).
+        kMenuMixPanLawFirst,
+        kMenuMixPanLawLast = kMenuMixPanLawFirst + 3,
+        /// D571.1 : grouper, dégrouper les clips choisis.
+        kMenuEditGroupClips,
+        kMenuEditUngroupClips,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1288,6 +1294,8 @@ private:
     /// D34.1 : la forme des fondus croisés du projet, changée en marche.
     /// Empruntée par l'entrée de menu ET par « VSM_VUE=fondu-croise:… ».
     void setCrossfadeShape(vsm::sequencer::FadeShape forme);
+    /// D571.2 : la loi de panoramique du projet — un pas, le projet repoussé au moteur.
+    void setPanLaw(vsm::sequencer::PanLaw loi);
     /// Combien de bords de clips audio portent effectivement un fondu croisé.
     int audioSpansWithCrossfade() const;
     /// D34.2 : combien de clips MIDI partagent leur fenêtre avec un autre.

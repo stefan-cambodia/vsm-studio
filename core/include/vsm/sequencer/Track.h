@@ -296,6 +296,11 @@ struct Clip {
     /// le début fait foi. Glisser le clip aimante ce point (`clipSnapAnchorTick`), et le calage sur la grille (D552.1)
     /// le cale. Audio seulement. Sans effet sur le son. EN DERNIER, la règle de l'agrégat positionnel.
     double snapPointSeconds = -1.0;
+    /// D571.1 : LE GROUPE DU CLIP (*Group* de Cubase) — 0 : aucun. Les clips d'un même numéro, sur une ou plusieurs
+    /// pistes, se choisissent ensemble (`expandSelectionToClipGroups`), et les gestes, qui travaillent sur la
+    /// sélection, agissent donc sur tout le groupe. Une COPIE naît hors de tout groupe (la règle du verrou, D546.3) ;
+    /// une COUPE le garde sur ses deux moitiés. Sans effet sur le son. EN DERNIER, la règle de l'agrégat positionnel.
+    uint32_t groupId = 0;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

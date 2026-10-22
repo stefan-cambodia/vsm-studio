@@ -132,6 +132,9 @@ enum class ShortcutId : uint16_t {
     /// D565.1 : la tête au repère 1 à 9 (*To Marker 1–9*), dans l'ordre du temps. CONTIGUS : le rang se lit par soustraction.
     NavToMarker1, NavToMarker2, NavToMarker3, NavToMarker4, NavToMarker5, NavToMarker6, NavToMarker7, NavToMarker8,
     NavToMarker9,
+    /// D571.1 : grouper, dégrouper les clips choisis (*Group / Ungroup*, les touches de Cubase).
+    EditGroupClips,
+    EditUngroupClips,
 
     Count
 };

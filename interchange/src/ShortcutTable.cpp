@@ -127,6 +127,8 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavToMarker7, "nav.toMarker7", "Transport", "Tête au repère 7", "numpad 7", ""},
         {ShortcutId::NavToMarker8, "nav.toMarker8", "Transport", "Tête au repère 8", "numpad 8", ""},
         {ShortcutId::NavToMarker9, "nav.toMarker9", "Transport", "Tête au repère 9", "numpad 9", ""},
+        {ShortcutId::EditGroupClips,   "edit.groupClips",   "Édition", "Grouper les clips choisis",   "ctrl + G", ""},   // D571.1
+        {ShortcutId::EditUngroupClips, "edit.ungroupClips", "Édition", "Dégrouper les clips choisis", "ctrl + U", ""},
     };
     return catalogue;
 }

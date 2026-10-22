@@ -43892,3 +43892,30 @@ de lecture (D18.5), l'enregistrement rétrospectif, le décalage de piste, l'aut
 moteur et le format, tests compris, avant de toucher à l'application ; puis D571.1, qui ne vit que dans l'application et
 le format. UNE seule compilation de l'application pour les trois — la batterie (48 % à 20 h 25, en décharge) ne paie pas
 trois éditions de liens de `MainComponent.cpp`.
+
+**D571.3 EST UN FAUX ZÉRO, ÉCRIT ET POUSSÉ** (relevé le 22/10 à 20 h 54, avant toute ligne de code qui l'applique). Les fondus
+automatiques existent depuis **D33.2** sous le nom de *fondu de sécurité* : `AudioClipSpan::safetyFadeFrames`, 2 ms
+(`kDefaultSafetyFadeMs`), posés aux bords où l'utilisateur n'a rien mis, ni sur un fondu croisé ni sur un raccord continu,
+bornés à la moitié du clip — mot pour mot la règle que D571.3 « tranchait » —, et le rendu hors ligne les applique
+depuis D34.1. Le balayage cherchait `autoFade`, « fondus automatiques », « anticlic », `declick` : jamais « sécurité ».
+C'est la faute que l'ordre de marche nomme (« un zéro sorti d'un grep se revérifie en listant ce qu'on a cherché ET
+où »), commise sur un mot de plus : la revérification se fait par ce que la fonction FAIT — ici, lire le code qui
+applique `fadeInSeconds` —, pas seulement par ses noms. Ce qui reste vrai, et n'ouvre pas de chantier : la durée n'a pas
+d'interface (le verbe de banc `fondu-securite:N` seul l'écrit, dans les préférences), et l'export garde 2 ms quoi
+qu'elles disent — le choix écrit en D34.1, « le rendu n'a pas de préférences à lire ». **D571.3 est retirée**, le champ
+`autoFadeSeconds` déjà ajouté au format avec elle aussi. Un second faux zéro, attrapé AVANT d'être écrit : la compression
+des vélocités et leurs bornes (le *Velocity* de Cubase) existent — `compressVelocity`, « Contenir entre 20 et 100 ».
+
+**L'ORDRE, REPRIS.** D571.2, puis D571.1 ; une compilation de l'application pour les deux.
+
+### Phase D571 — FAITE (22/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D571.2 | la loi de panoramique du projet | `PanLaw`, `panLawGains` (un test : 1 / 0,7071 / 0,5946 / 0,5 au centre, 1 et 0 tournée à fond, −3 dB au bit de `equalPowerPan` sur toute la course) ; le rendu hors ligne (un test) ; `panLaw` au format, écrit hors du défaut seulement, un nom inconnu lu −3 dB et dit ; `tools/loi-panoramique.sh`, PAR L'EXPORT : crêtes au centre **−14,530 / −17,541 / −19,046 / −20,551 dBFS** sous 0 / −3 / −4,5 / −6 dB, soit **−3,010, −4,515 et −6,021 dB** sous 0 dB, les deux canaux à égalité au dix-millième ; tournée à fond, 0 dB et −6 dB rendent le même export à l'échantillon près ; Ctrl+Z rend le projet sans loi. **L'ATTENDU ÉCRIT AVANT (−3,01 / −4,52 / −6,02 à 0,05 dB) EST TENU** au millième | **oui** |
+| D571.1 | grouper des clips | `Clip::groupId`, `groupClips`, `ungroupClips`, `expandSelectionToClipGroups` (un test : le numéro neuf compte les versions rangées, grouper FOND les groupes, une copie en sort, une coupe le garde) ; `clips[].group` au format (un test : absent sans groupe, un numéro négatif ou fractionnaire lu « aucun », la version écrite inchangée) ; les sept endroits où une copie naît la sortent du groupe ; `tools/grouper-clips.sh`, par de VRAIS clics (`clic:arrangement:…`, Maj ajouté au verbe) : A et C groupés (1), l'entrée grisée sur un seul clip, sa touche Ctrl+G dite ; un clic sur A seul puis Suppr emporte **A et C** (le témoin sans groupe : A seul) ; Maj+clic retire le groupe entier (B seul part) ; Ctrl+D : deux copies sans groupe ; Dégrouper, puis Ctrl+Z rend le groupe 1 | **oui** |
+| D571.3 | les fondus automatiques | **un faux zéro, retiré** : le fondu de sécurité les porte depuis D33.2, et le rendu hors ligne depuis D34.1 (ci-dessus) | **retirée** |
+| — | le témoin | le binaire de D566 : `grouper-clips` **rouge 5 / 5** ; `loi-panoramique` **rouge 3 / 5** — les deux verts sont les contrôles-témoins (le défaut n'écrit rien, tourné à fond tout est égal), que l'ancien binaire tient aussi : une garde, pas une preuve, pour ceux-là | **oui** |
+
+Mesuré la session VERROUILLÉE, le poste au repos, sur batterie (48 % à 20 h 25).
+C++ 527 · 1 349 · 347 · 25 · 11, Python 275, ruff et mypy propres, gardes vertes. 144 bancs dans la série.

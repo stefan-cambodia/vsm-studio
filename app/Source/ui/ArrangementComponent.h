@@ -470,6 +470,14 @@ public:
     /// les entendait -- or c'est dans l'arrangement qu'on colle des clips.
     void joinSelection();
     void splitSelectionAtPlayhead();
+    /// D571.1 : GROUPER, DÉGROUPER LES CLIPS CHOISIS (*Group / Ungroup*, Ctrl+G et Ctrl+U) — un pas chacun ; rien à
+    /// faire (moins de deux clips choisis, aucun clip groupé) : dit au journal, sans pas.
+    void grouperLaSelection();
+    void degrouperLaSelection();
+    size_t nombreDeClipsChoisis() const { return selection_.size(); }
+    size_t clipsGroupesChoisis() const;
+    /// D571.1 : le bilan de grouper (le numéro donné) ou de dégrouper (`groupe` à 0), pour la ligne d'état.
+    std::function<void(size_t clips, uint32_t groupe)> onGroupReport;
     /// D548.2 : les clips choisis vont à la tête, le premier y commence.
     void moveSelectionToPlayhead();
     /// D548.3 : le début (`laFin` faux) ou la fin des clips qui contiennent la tête va à la tête.

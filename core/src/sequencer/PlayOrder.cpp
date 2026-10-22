@@ -121,6 +121,7 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
                     if (clipFin <= debut || clip.startTick >= fin) continue;
                     Clip copie = clip;
                     copie.id = 0;
+                    copie.groupId = 0;   // D571.1 : une copie naît hors de tout groupe
                     copie.startTick = std::max(clip.startTick, debut) + delta;
                     copie.length = std::min(clipFin, fin) - std::max(clip.startTick, debut);
                     copie.sourceStart = copie.startTick;
@@ -136,6 +137,7 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
                 if (clipFin <= debut || clip.startTick >= fin) continue;
                 Clip copie = clip;
                 copie.id = 0;
+                copie.groupId = 0;   // D571.1 : une copie naît hors de tout groupe
                 // Rogné aux bords de la section, fenêtre comprise : un clip à
                 // cheval ne joue que ce que la section contient.
                 const Tick rogneAvant = std::max<Tick>(0, debut - clip.startTick);

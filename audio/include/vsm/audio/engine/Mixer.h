@@ -186,6 +186,23 @@ inline float mixStereoInto(const float* inL, const float* inR, int numSamples,
     return peak;
 }
 
+/// D571.2 : LE MÊME MÉLANGE, LES GAINS DONNÉS — ceux d'une autre loi de panoramique que la puissance constante
+/// (`vsm::sequencer::panLawGains`). La loi par défaut ne passe PAS par ici : elle garde `mixStereoInto`, et un
+/// projet d'avant D571 sonne au bit près sans qu'on ait à le démontrer.
+inline float mixStereoWithGainsInto(const float* inL, const float* inR, int numSamples, float volume,
+                                     float gainL, float gainR, bool audible, float* busL, float* busR) {
+    if (!audible || numSamples <= 0) return 0.0f;
+    float peak = 0.0f;
+    for (int i = 0; i < numSamples; ++i) {
+        const float l = inL[i] * volume;
+        const float r = inR[i] * volume;
+        busL[i] += l * gainL;
+        busR[i] += r * gainR;
+        peak = std::max(peak, std::max(std::abs(l), std::abs(r)));
+    }
+    return peak;
+}
+
 /// BALANCE stéréo : le pendant du panoramique pour un signal DÉJÀ stéréo.
 ///
 /// LA DIFFÉRENCE N'EST PAS UN DÉTAIL, et c'est un test qui l'a montrée. La loi

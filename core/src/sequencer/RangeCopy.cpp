@@ -104,6 +104,7 @@ RangeClipboard copyRange(const Project& project, Tick from, Tick to,
                 if (c.startTick < from || c.startTick >= to) continue;
                 c.startTick -= from;
                 c.id = 0;
+                c.groupId = 0;   // D571.1 : une copie naît hors de tout groupe
                 contenu.clips.push_back(c);
             }
         }

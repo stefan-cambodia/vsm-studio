@@ -1907,9 +1907,18 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     const float pan = std::clamp(((pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan) + ccPan_[trackIndex],
                                  -1.0f, 1.0f);   // D330 : le CC 10 s'ajoute au potentiomètre
 
-    float peak = mixStereoInto(srcL, srcR, sampleCount,
-                                volume, pan, audible,
-                                destL + sampleStart, destR + sampleStart);
+    // D571.2 : LA LOI DE PANORAMIQUE DU PROJET. Le défaut (−3 dB) reste l'appel d'avant, mot pour mot.
+    float peak = 0.0f;
+    if (project.panLaw == vsm::sequencer::PanLaw::Minus3dB) {
+        peak = mixStereoInto(srcL, srcR, sampleCount,
+                             volume, pan, audible,
+                             destL + sampleStart, destR + sampleStart);
+    } else {
+        float gainL = 1.0f, gainR = 1.0f;
+        vsm::sequencer::panLawGains(project.panLaw, pan, gainL, gainR);
+        peak = mixStereoWithGainsInto(srcL, srcR, sampleCount, volume, gainL, gainR, audible,
+                                      destL + sampleStart, destR + sampleStart);
+    }
     blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
 
     // RMS ET CORRÉLATION (D4.7) : on accumule les sommes ici et on ne

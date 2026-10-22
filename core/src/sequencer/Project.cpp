@@ -852,6 +852,7 @@ ClipPaste pasteClips(Project& project, const std::vector<CopiedClip>& clips, siz
         if (cible.kind == Track::Kind::Audio && cible.audio.empty()) cible.audio = c.audio;
         Clip copie = c.clip;
         copie.id = project.nextClipId();
+        copie.groupId = 0;   // D571.1 : une copie naît hors de tout groupe
         copie.startTick = atOrigin ? c.clip.startTick : std::max<Tick>(0, startTick + (c.clip.startTick - plusTot));
         if (cible.kind == Track::Kind::Midi && dest != c.sourceTrack) {
             // LES NOTES SUIVENT : posées à la place que la fenêtre collée leur donne, et la fenêtre les vise.
@@ -1043,6 +1044,7 @@ size_t explodeTrackByPitch(Project& project, size_t index,
         for (const Clip& c : source.clips) {
             Clip copie = c;
             copie.id = project.nextClipId();
+            copie.groupId = 0;   // D571.1 : une copie naît hors de tout groupe
             piste.clips.push_back(copie);
         }
         neuves.push_back(std::move(piste));

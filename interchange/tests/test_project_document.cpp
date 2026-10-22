@@ -1161,6 +1161,39 @@ VSM_TEST(a_clip_snap_point_survives_the_trip_and_is_absent_when_unset) {
     VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].snapPointSeconds, 0.375, 1e-9);   // jusqu'au MODÈLE
 }
 
+// D571.1 — LE GROUPE D'UN CLIP : écrit seulement s'il est posé, relu jusqu'au modèle ; un numéro qui n'en est pas un
+// (négatif, fractionnaire) se lit « aucun ». Sans effet sur le son : la version écrite ne bouge pas.
+VSM_TEST(a_clip_group_survives_the_trip_and_is_absent_when_unset) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.length = 960; clip.sourceLength = 960;
+    project.tracks[0].clips.push_back(clip);
+    const std::string sans = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(sans.find("\"group\"") == std::string::npos);
+    project.tracks[0].clips[0].groupId = 3;
+    const JsonValue avec = projectDocumentToJson(documentFromProject(project));
+    VSM_ASSERT(avec.toString().find("\"group\":3") != std::string::npos
+               || avec.toString().find("\"group\": 3") != std::string::npos);
+    VSM_ASSERT_EQ(avec["version"].asNumber(0), projectDocumentToJson(parseProjectDocument(sans).document)["version"].asNumber(-1));
+    const ProjectLoadResult relu = parseProjectDocument(avec.toString());
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].clips.empty());
+    VSM_ASSERT_EQ(rejoue.tracks[0].clips[0].groupId, 3u);   // jusqu'au MODÈLE
+    for (const char* faux : {"-2", "1.5"}) {
+        std::string texte = avec.toString();
+        const size_t ou = texte.find("\"group\"");
+        const size_t debut = texte.find_first_of("-0123456789", ou + 7);
+        const size_t fin = texte.find_first_not_of("-0123456789.", debut);
+        texte.replace(debut, fin - debut, faux);
+        const ProjectLoadResult bizarre = parseProjectDocument(texte);
+        VSM_ASSERT(bizarre.success);
+        VSM_ASSERT_EQ(bizarre.document.tracks[0].clips[0].group, 0u);
+    }
+}
+
 // D565.3 — LES NOTES D'UNE PISTE : écrites seulement si elles ne sont pas vides, relues jusqu'au modèle, accents et
 // retours à la ligne compris.
 VSM_TEST(track_notes_survive_the_trip_and_are_absent_when_empty) {
@@ -1601,6 +1634,32 @@ VSM_TEST(the_crossfade_shape_survives_the_round_trip) {
     vsm::sequencer::Project retour = buildProject();
     applyDocumentToProject(relu.document, retour);
     VSM_ASSERT(retour.crossfadeShape == vsm::sequencer::FadeShape::Linear);
+}
+
+// D571.2 — LA LOI DE PANORAMIQUE voyage avec le morceau ; −3 dB, le défaut, ne s'écrit pas ; un nom inconnu rend −3 dB.
+VSM_TEST(the_pan_law_survives_the_round_trip_and_the_default_is_not_written) {
+    vsm::sequencer::Project original = buildProject();
+    const std::string avant = projectDocumentToJson(documentFromProject(original)).toString();
+    VSM_ASSERT(avant.find("panLaw") == std::string::npos);
+    for (const auto loi : {vsm::sequencer::PanLaw::ZeroDb, vsm::sequencer::PanLaw::Minus4_5dB,
+                           vsm::sequencer::PanLaw::Minus6dB}) {
+        original.panLaw = loi;
+        const std::string texte = projectDocumentToJson(documentFromProject(original)).toString();
+        VSM_ASSERT(texte.find("\"panLaw\"") != std::string::npos);
+        const ProjectLoadResult relu = parseProjectDocument(texte);
+        VSM_ASSERT(relu.success);
+        vsm::sequencer::Project retour = buildProject();
+        applyDocumentToProject(relu.document, retour);
+        VSM_ASSERT(retour.panLaw == loi);
+    }
+    std::string inconnu = avant;
+    inconnu.insert(inconnu.find('{') + 1, "\"panLaw\": \"-9dB\", ");
+    const ProjectLoadResult relu = parseProjectDocument(inconnu);
+    VSM_ASSERT(relu.success);
+    vsm::sequencer::Project retour = buildProject();
+    retour.panLaw = vsm::sequencer::PanLaw::Minus6dB;
+    applyDocumentToProject(relu.document, retour);
+    VSM_ASSERT(retour.panLaw == vsm::sequencer::PanLaw::Minus3dB);
 }
 
 VSM_TEST(a_project_on_the_default_crossfade_shape_keeps_the_file_it_had) {

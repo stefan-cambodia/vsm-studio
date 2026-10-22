@@ -731,6 +731,56 @@ ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
     return elargie;
 }
 
+ClipSelection expandSelectionToClipGroups(const std::vector<Track>& tracks, const ClipSelection& selection) {
+    // D571.1 : on relève les numéros d'abord, on élargit ensuite — la raison de `expandSelectionToEditGroups`.
+    std::set<uint32_t> groupes;
+    for (const auto& track : tracks)
+        for (const auto& clip : track.clips)
+            if (clip.groupId != 0 && selected(selection, clip)) groupes.insert(clip.groupId);
+    ClipSelection elargie = selection;
+    if (groupes.empty()) return elargie;
+    for (const auto& track : tracks)
+        for (const auto& clip : track.clips)
+            if (clip.groupId != 0 && groupes.count(clip.groupId)) elargie.insert(clip.id);
+    return elargie;
+}
+
+size_t groupedClipsIn(const std::vector<Track>& tracks, const ClipSelection& selection) {
+    size_t n = 0;
+    for (const auto& track : tracks)
+        for (const auto& clip : track.clips)
+            if (clip.groupId != 0 && selected(selection, clip)) ++n;
+    return n;
+}
+
+uint32_t groupClips(std::vector<Track>& tracks, const ClipSelection& selection) {
+    size_t choisis = 0;
+    uint32_t plusGrand = 0;
+    const auto relever = [&](const std::vector<Clip>& clips) {
+        for (const auto& c : clips) plusGrand = std::max(plusGrand, c.groupId);
+    };
+    for (const auto& track : tracks) {
+        relever(track.clips);
+        for (const auto& prise : track.takes) relever(prise.clips);
+        for (const auto& version : track.versions) relever(version.clips);
+        choisis += comptes(track.clips, selection);
+    }
+    if (choisis < 2 || plusGrand == std::numeric_limits<uint32_t>::max()) return 0;
+    const uint32_t neuf = plusGrand + 1;
+    for (auto& track : tracks)
+        for (auto& clip : track.clips)
+            if (selected(selection, clip)) clip.groupId = neuf;
+    return neuf;
+}
+
+size_t ungroupClips(std::vector<Track>& tracks, const ClipSelection& selection) {
+    size_t n = 0;
+    for (auto& track : tracks)
+        for (auto& clip : track.clips)
+            if (clip.groupId != 0 && selected(selection, clip)) { clip.groupId = 0; ++n; }
+    return n;
+}
+
 size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection) {
     size_t n = 0;
     for (const auto& track : tracks) {
@@ -894,6 +944,7 @@ ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& sele
         Clip copie = clip;
         copie.id = idCounter++;
         copie.locked = false;   // D546.3 : le verrou protège une position, la copie en a une autre
+        copie.groupId = 0;      // D571.1 : une copie naît hors de tout groupe
         copie.startTick = std::max<Tick>(0, clip.startTick + offsetTicks);
         copies.push_back(copie);
         creees.insert(copie.id);
@@ -1464,6 +1515,7 @@ ClipSelection repeatClips(std::vector<Clip>& clips, const ClipSelection& selecti
             Clip copie = clip;
             copie.id = idCounter++;
             copie.locked = false;   // D546.3 : le verrou protège une position, la copie en a une autre
+            copie.groupId = 0;      // D571.1 : une copie naît hors de tout groupe
             copie.startTick = clip.startTick + static_cast<Tick>(k) * spanTicks;
             creees.insert(copie.id);
             copies.push_back(std::move(copie));

@@ -941,6 +941,14 @@ MainComponent::MainComponent()
     // gestes ; c'est l'application qui sait ce qu'un geste coûte -- un pas
     // d'annulation, une republication au moteur.
     arrangement_.onEditStarted = [this](const juce::String& nom) { beginProjectEdit(nom); };
+    // D571.1 : le bilan de grouper et de dégrouper, à la ligne d'état.
+    arrangement_.onGroupReport = [this](size_t clips, uint32_t groupe) {
+        if (!pianoRoll_.onStatusChanged) return;
+        pianoRoll_.onStatusChanged(groupe != 0
+            ? tr(u8"%1 clip(s) groupés (groupe %2)").replace("%1", juce::String(static_cast<int>(clips)))
+                  .replace("%2", juce::String(static_cast<int>(groupe)))
+            : tr(u8"%1 clip(s) dégroupés").replace("%1", juce::String(static_cast<int>(clips))));
+    };
     arrangement_.onClipsChanged = [this] {
         // Les clips changent CE QUI EST JOUÉ : le planning du moteur et le
         // matériau audio découpé doivent suivre, sans interrompre la lecture.
@@ -2188,7 +2196,8 @@ bool MainComponent::clicPourCapture(const juce::String& description) {
     const juce::String nom = description.upToFirstOccurrenceOf(":", false, false);
     const juce::String reste = description.fromFirstOccurrenceOf(":", false, false);
     const bool droit = reste.endsWithIgnoreCase(":droit");
-    const juce::String position = droit ? reste.upToLastOccurrenceOf(":", false, false) : reste;
+    const bool maj = reste.endsWithIgnoreCase(":maj");   // D571.1 : le Maj+clic (étendre ou retirer de la sélection)
+    const juce::String position = (droit || maj) ? reste.upToLastOccurrenceOf(":", false, false) : reste;
     const float fx = position.upToFirstOccurrenceOf(",", false, false).getFloatValue();
     const float fy = position.fromFirstOccurrenceOf(",", false, false).getFloatValue();
     std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
@@ -2209,7 +2218,8 @@ bool MainComponent::clicPourCapture(const juce::String& description) {
     if (cible == nullptr) return false;
     const juce::Point<float> point(fx * static_cast<float>(cible->getWidth()), fy * static_cast<float>(cible->getHeight()));
     const auto maintenant = juce::Time::getCurrentTime();
-    const juce::ModifierKeys bouton(droit ? juce::ModifierKeys::rightButtonModifier : juce::ModifierKeys::leftButtonModifier);
+    const juce::ModifierKeys bouton((droit ? juce::ModifierKeys::rightButtonModifier : juce::ModifierKeys::leftButtonModifier)
+                                    | (maj ? juce::ModifierKeys::shiftModifier : 0));
     const juce::MouseEvent appui(juce::Desktop::getInstance().getMainMouseSource(), point, bouton, 1.0f,
                                  0.0f, 0.0f, 0.0f, 0.0f, cible, cible, maintenant, point, maintenant, 1, false);
     cible->mouseDown(appui);
@@ -4605,6 +4615,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D552.1 : CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements).
             menu.addItem(kMenuEditSnapClipStarts, tr(u8"Caler les débuts des clips sur la grille"),
                          arrangement_.hasSelection());
+            // D571.1 : GROUPER, DÉGROUPER (*Group / Ungroup*, Ctrl+G et Ctrl+U) — grisées sans deux clips, sans groupe.
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditGroupClips, tr(u8"Grouper les clips choisis"), shortcuts_,
+                                 vsm::interchange::ShortcutId::EditGroupClips,
+                                 arrangement_.nombreDeClipsChoisis() >= 2);
+            vsm::app::ui::ajouterAvecRaccourci(menu, kMenuEditUngroupClips, tr(u8"Dégrouper les clips choisis"), shortcuts_,
+                                 vsm::interchange::ShortcutId::EditUngroupClips,
+                                 arrangement_.clipsGroupesChoisis() > 0);
             // D562.2 : RETIRER LES CHEVAUCHEMENTS DES CLIPS (Delete Overlaps) — les choisis, ou tous ; le compte dit
             // combien de recouvrements, grisée à zéro.
             {
@@ -5574,6 +5591,19 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                 true, coche(vsm::sequencer::FadeShape::Fast));
                 menu.addSubMenu(tr(u8"Forme des fondus croisés"), formes);
             }
+            // D571.2 : LA LOI DE PANORAMIQUE (*Stereo Pan Law*), une donnée du morceau comme la forme ci-dessus.
+            {
+                using vsm::sequencer::PanLaw;
+                juce::PopupMenu lois;
+                const auto entree = [&](PanLaw loi, const char8_t* libelle) {
+                    lois.addItem(kMenuMixPanLawFirst + static_cast<int>(loi), tr(libelle), true, project_.panLaw == loi);
+                };
+                entree(PanLaw::ZeroDb, u8"0 dB au centre (balance)");
+                entree(PanLaw::Minus3dB, u8"−3 dB au centre (puissance constante)");
+                entree(PanLaw::Minus4_5dB, u8"−4,5 dB au centre");
+                entree(PanLaw::Minus6dB, u8"−6 dB au centre (linéaire)");
+                menu.addSubMenu(tr(u8"Loi de panoramique"), lois);
+            }
             break;
         case 6:
             // D549.3 : LES DISPOSITIONS NOMMÉES, à côté de ce qu'elles retiennent.
@@ -5829,6 +5859,12 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
     if (menuItemID == kMenuMixSendsBypass) { contournerLesDepartsChoisis(); return; }   // D567.3
+    if (menuItemID >= kMenuMixPanLawFirst && menuItemID <= kMenuMixPanLawLast) {          // D571.2
+        setPanLaw(static_cast<vsm::sequencer::PanLaw>(menuItemID - kMenuMixPanLawFirst));
+        return;
+    }
+    if (menuItemID == kMenuEditGroupClips) { arrangement_.grouperLaSelection(); return; }     // D571.1
+    if (menuItemID == kMenuEditUngroupClips) { arrangement_.degrouperLaSelection(); return; } // D571.1
     if (menuItemID == kMenuEditQuantizePresetSave) { enregistrerQuantification(); return; }   // D570.2
     if (menuItemID >= kMenuEditQuantizePresetFirst && menuItemID <= kMenuEditQuantizePresetLast) {
         rappelerQuantification(menuItemID - kMenuEditQuantizePresetFirst);
@@ -11641,6 +11677,21 @@ void MainComponent::setCrossfadeShape(vsm::sequencer::FadeShape forme) {
     markProjectDirty();
 }
 
+void MainComponent::setPanLaw(vsm::sequencer::PanLaw loi) {
+    // D571.2 : UN PAS seulement si la loi CHANGE (la règle de D506, ci-dessus) ; le moteur lit la loi dans le projet
+    // qu'il reçoit, comme le rendu hors ligne : c'est le même chemin pour les deux (D21).
+    if (project_.panLaw == loi) return;
+    beginProjectEdit(u8"Loi de panoramique");
+    project_.panLaw = loi;
+    audioEngine_.processGraph().setProject(project_);
+    markProjectDirty();
+    static const char* const kNoms[] = {"-3 dB", "0 dB", "-4,5 dB", "-6 dB"};
+    const char* nom = kNoms[static_cast<int>(loi) & 3];
+    std::fputs((std::string("VSM_CONSOLE : loi de panoramique ") + nom + "\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Loi de panoramique : %1 au centre").replace("%1", nom));
+}
+
 void MainComponent::loadAudioTracks() {
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
                                                               : 48000.0;
@@ -13520,6 +13571,7 @@ bool MainComponent::materializeImplicitClips(bool bornerAuxNotes) {
                       [](const auto* a, const auto* b) { return a->startTick < b->startTick; });
             auto poser = [&](vsm::midi::Tick premiere, vsm::midi::Tick derniere) {
                 vsm::sequencer::Clip c = clip;
+                c.groupId = 0;   // D571.1 : une copie naît hors de tout groupe
                 const vsm::midi::Tick debut = (premiere / parMesure) * parMesure;
                 const vsm::midi::Tick fin = ((derniere + parMesure - 1) / parMesure) * parMesure;
                 c.startTick = debut;

@@ -604,6 +604,22 @@ ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
 
 size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection);
 
+/// D571.1 — GROUPER DES CLIPS (*Group / Ungroup* de Cubase), un numéro par clip (`Clip::groupId`, 0 = aucun).
+///
+/// LA RÈGLE TIENT EN UN ENDROIT, celle des groupes d'édition (D18.3) : la SÉLECTION grandit, et tous les gestes qui
+/// travaillent sur elle agissent sur le groupe entier sans une ligne de plus. Ici : les clips choisis, et tous ceux, sur
+/// toutes les pistes, qui portent le numéro de l'un d'eux. Les prises et les versions rangées n'y entrent pas : elles ne
+/// se choisissent pas.
+ClipSelection expandSelectionToClipGroups(const std::vector<Track>& tracks, const ClipSelection& selection);
+/// Combien de clips choisis portent un groupe (« Dégrouper » est grisé à zéro).
+size_t groupedClipsIn(const std::vector<Track>& tracks, const ClipSelection& selection);
+/// Grouper : les clips choisis reçoivent un numéro NEUF — le plus grand du projet, prises et versions comprises, plus
+/// un —, ce qui FOND en un les groupes qu'ils portaient. Il en faut deux au moins : rend 0 sans rien toucher sinon,
+/// et le numéro donné sinon.
+uint32_t groupClips(std::vector<Track>& tracks, const ClipSelection& selection);
+/// Dégrouper : le groupe des clips choisis remis à 0. Rend combien en avaient un.
+size_t ungroupClips(std::vector<Track>& tracks, const ClipSelection& selection);
+
 
 // ---------------------------------------------------------------------------
 // RÉPÉTER (D20.1). Poser un motif d'une mesure sur seize demandait seize

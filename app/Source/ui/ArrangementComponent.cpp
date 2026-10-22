@@ -1288,12 +1288,18 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     // MAJ ÉTEND la sélection, comme partout. Sans Maj, cliquer un clip déjà
     // sélectionné GARDE la sélection : sinon, saisir un groupe de clips par
     // l'un d'eux le réduirait à celui-là juste avant de le déplacer.
-    if (event.mods.isShiftDown()) {
-        if (selection_.count(clip->id)) selection_.erase(clip->id);
-        else selection_.insert(clip->id);
-    } else if (selection_.count(clip->id) == 0) {
-        selection_.clear();
-        selection_.insert(clip->id);
+    // D571.1 : UN CLIP GROUPÉ VAUT SON GROUPE — Maj le retire ou l'ajoute tout entier, le clic le choisit tout entier.
+    {
+        const auto groupe = vsm::sequencer::expandSelectionToClipGroups(project_->tracks, {clip->id});
+        if (event.mods.isShiftDown()) {
+            const bool retirer = selection_.count(clip->id) > 0;
+            for (const uint64_t id : groupe) {
+                if (retirer) selection_.erase(id);
+                else selection_.insert(id);
+            }
+        } else if (selection_.count(clip->id) == 0) {
+            selection_ = groupe;
+        }
     }
 
     // LE MENU DU CLIP (D11.4) : renommer, colorer, reprendre la couleur de la
@@ -1883,8 +1889,48 @@ void ArrangementComponent::selectFirstClipOf(size_t index) {
 
 vsm::sequencer::ClipSelection ArrangementComponent::montageSelection() const {
     if (project_ == nullptr || selection_.empty()) return selection_;
-    return vsm::sequencer::expandSelectionToEditGroups(project_->tracks, selection_,
-                                                        project_->lastUsedTick());
+    // D571.1 : LES GROUPES DE CLIPS D'ABORD — un geste parti d'une sélection qui n'aurait pas été élargie (le
+    // clavier, un banc) agit quand même sur le groupe entier ; puis les groupes d'édition, sur ce qui en sort.
+    return vsm::sequencer::expandSelectionToEditGroups(
+        project_->tracks, vsm::sequencer::expandSelectionToClipGroups(project_->tracks, selection_),
+        project_->lastUsedTick());
+}
+
+size_t ArrangementComponent::clipsGroupesChoisis() const {
+    return project_ == nullptr ? 0 : vsm::sequencer::groupedClipsIn(project_->tracks, selection_);
+}
+
+void ArrangementComponent::grouperLaSelection() {
+    if (project_ == nullptr) return;
+    size_t choisis = 0;
+    for (const auto& track : project_->tracks)
+        for (const auto& c : track.clips) choisis += selection_.count(c.id);
+    if (choisis < 2) {
+        std::fputs("VSM_CLIPS_GROUPE : il faut deux clips choisis au moins \xe2\x80\x94 rien n'est group\xc3\xa9\n", stderr);
+        return;
+    }
+    if (onEditStarted) onEditStarted(u8"Grouper des clips");
+    const uint32_t groupe = vsm::sequencer::groupClips(project_->tracks, selection_);
+    std::fputs(("VSM_CLIPS_GROUPE : " + std::to_string(choisis) + " clip(s) dans le groupe "
+                + std::to_string(groupe) + "\n").c_str(), stderr);
+    if (onGroupReport) onGroupReport(choisis, groupe);
+    notifyChanged();
+    repaint();
+}
+
+void ArrangementComponent::degrouperLaSelection() {
+    if (project_ == nullptr) return;
+    const size_t groupes = clipsGroupesChoisis();
+    if (groupes == 0) {
+        std::fputs("VSM_CLIPS_GROUPE : aucun clip choisi n'est group\xc3\xa9 \xe2\x80\x94 rien \xc3\xa0 d\xc3\xa9grouper\n", stderr);
+        return;
+    }
+    if (onEditStarted) onEditStarted(u8"Dégrouper des clips");
+    const size_t n = vsm::sequencer::ungroupClips(project_->tracks, selection_);
+    std::fputs(("VSM_CLIPS_GROUPE : " + std::to_string(n) + " clip(s) d\xc3\xa9group\xc3\xa9(s)\n").c_str(), stderr);
+    if (onGroupReport) onGroupReport(n, 0);
+    notifyChanged();
+    repaint();
 }
 
 int ArrangementComponent::markerAt(float x) const {
@@ -2732,6 +2778,7 @@ void ArrangementComponent::selectClipsInLasso(bool etendre) {
             if (zone.intersects(r)) selection_.insert(clip.id);
         }
     }
+    selection_ = vsm::sequencer::expandSelectionToClipGroups(project_->tracks, selection_);   // D571.1
 }
 
 bool ArrangementComponent::selectionTickRange(vsm::midi::Tick& debut,
@@ -2828,6 +2875,8 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
                 case Id::EditCut:             copySelection(); deleteSelection(u8"Couper des clips"); return true;   // D439
                 case Id::EditJoin:            joinSelection(); return true;
                 case Id::EditSplitAtPlayhead: splitSelectionAtPlayhead(); return true;
+                case Id::EditGroupClips:      grouperLaSelection(); return true;     // D571.1
+                case Id::EditUngroupClips:    degrouperLaSelection(); return true;   // D571.1
                 // D438 : LA TOUCHE DU PIANO ROLL, ICI AUSSI. Le menu du clip rendait
                 // muette la sélection ; Ctrl+M répondait « aucune commande ».
                 case Id::EditToggleMute:

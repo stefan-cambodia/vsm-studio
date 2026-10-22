@@ -189,6 +189,7 @@ struct ProjectClip {
     /// D566.2 : le point d'accroche, en secondes du fichier (`snapPoint`, écrit seulement s'il est posé ; négatif :
     /// aucun). Sans effet sur le son : il ne compte pas parmi les réglages qui décident de la version. EN DERNIER.
     double snapPointSeconds = -1.0;
+    uint32_t group = 0;   ///< D571.1 : écrit seulement s'il est posé
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de
@@ -395,6 +396,8 @@ struct ProjectDocument {
     /// le défaut du modèle. Écrit dans le fichier parce qu'il change ce que le
     /// morceau SONNE -- un projet doit s'exporter comme il se joue.
     std::string crossfadeShape;
+    /// D571.2 : la loi de panoramique, par son nom (`0dB`, `-4.5dB`, `-6dB`) ; vide = −3 dB, le défaut, jamais écrit.
+    std::string panLaw;
     /// Chemin RELATIF du fichier MIDI qui porte les notes.
     std::string midiPath = "midi/arrangement.mid";
     ProjectTransport transport;
