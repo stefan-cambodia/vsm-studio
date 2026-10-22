@@ -43985,3 +43985,19 @@ d'abord parmi les présents sur ce seul chiffre : c'est la leçon de D571.3 dans
 
 **L'ORDRE, TRANCHÉ ICI.** D572.2 d'abord (le son : cœur, moteur, format et tests avant l'application), puis D572.1, puis
 D572.3 ; une compilation de l'application pour les trois.
+
+### Phase D572 — FAITE (22/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D572.2 | les départs qui suivent le panoramique | `Track::sendsFollowPan`, `sendsPanPlan`, `applySendsFollowPan` (un test : le plan, le dossier écarté, la remise à zéro, les réglages d'une tranche, un instantané) ; `mix.sendsFollowPan` au format, dans la piste et dans un instantané (un test) ; le rendu hors ligne (un test : à fond à gauche, le droit du retour à zéro ; au centre sous −6 dB, le retour perd 6,02 dB) ; `tools/departs-panoramique.sh`, PAR L'EXPORT : témoin **−8,510 / −8,510 dBFS** (le départ centré), lié **−8,510 / −138,474 dBFS** — le droit au plancher, le même que celui de D567.3 —, le gauche à la crête du témoin ; le menu dit « suivent », puis « ignorent » ; la tranche rouverte le dit ; Ctrl+Z délie | **oui** |
+| D572.1 | l'aimantation relative à la grille | `basculerAimantRelatif`, retenue aux préférences ; `tools/aimant-relatif.sh`, par un vrai glisser de 4 140 ticks : témoin absolu **5 760**, relatif **6 240** (2 400 + deux mesures entières) ; le bord droit tiré, relatif coché, se pose sur la grille (**longueur 3 360**) ; relancé dans le même HOME : relatif, la case cochée | **oui** |
+| D572.3 | les préréglages de zoom | `mesuresVisibles`, `poserMesuresVisibles` (un pas de la pile, le bord gauche gardé) ; `tools/zoom-prereglages.sh` : « Serre » enregistré à **2,22 mesures** (le zoom sur des locateurs de deux mesures), la fenêtre d'ouverture à **16,7** ; rappelé **2,2**, « Annuler le zoom » rend **16,7** ; retiré, le menu ne le propose plus ; un HOME neuf ne l'a jamais connu | **oui** |
+| — | le témoin | le binaire de D566 : `departs-panoramique` **rouge 4 / 5**, `aimant-relatif` **2 / 4**, `zoom-prereglages` **2 / 4** — les verts sont les contrôles-témoins (le départ centré, l'aimant absolu, la fenêtre d'ouverture, la pile de zoom) et « le bord se pose sur la grille », que l'aimant d'avant tenait déjà | **oui** |
+| — | la régression de D570 | le verbe `relever-notes` de D570.3 devient `relever-notes-ecran` : `notes-du-projet.sh` **vert**, `couleur-notes.sh` **vert** avec le verbe neuf ; `tools/verbes-uniques.py` vert (52 verbes, 0 caché) | **oui** |
+
+C++ 528 · 1 349 · 349 · 25 · 11, gardes vertes (quinze, `verbes-uniques.py` comprise). **LA SÉRIE COMPLÈTE DES 147 BANCS
+RESTE À JOUER** pour D572 : la batterie était à 18 % à la clôture (23 h 29), le service de l'utilisateur endort le poste à
+15 %, et une série de quatre-vingts minutes ne tient pas ; relancée au réveil, elle ouvrirait ses fenêtres sous les yeux
+de l'utilisateur revenu. Ont tourné : les trois bancs neufs, leurs témoins, `notes-du-projet` et `couleur-notes`. Avec
+elle, à rejouer écran DÉVERROUILLÉ : les trois rouges de photo de la série de D571.

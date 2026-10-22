@@ -311,6 +311,12 @@ void ArrangementComponent::basculerGrilleALaMesure() {
     repaint();
 }
 
+void ArrangementComponent::basculerAimantRelatif() {
+    aimantRelatif_ = !aimantRelatif_;   // D572.1
+    direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();
+}
+
 void ArrangementComponent::basculerTeteFixe() {
     teteFixe_ = !teteFixe_;   // D569.2
     direLesBascules();
@@ -1573,7 +1579,16 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
     // ON APPLIQUE LE DÉLTA DEPUIS LA DERNIÈRE POSITION, pas depuis l'origine :
     // les opérations de `ClipEdit` sont RELATIVES, et rejouer le geste entier à
     // chaque mouvement le doublerait.
-    const vsm::midi::Tick maintenant = snapTick(ancreGeste_ + xToTick(event.position.x) - gesteOrigine_);   // D547.4
+    const vsm::midi::Tick brut = ancreGeste_ + xToTick(event.position.x) - gesteOrigine_;
+    vsm::midi::Tick maintenant = snapTick(brut);   // D547.4
+    // D572.1 : RELATIF À LA GRILLE, un DÉPLACEMENT avance d'un nombre entier de pas depuis l'ancre : son écart à la
+    // grille se garde. Les bords, eux, se posent sur la grille comme avant.
+    if (geste_ == Geste::Deplacer && aimantRelatif_ && snap_) {
+        const vsm::midi::Tick pas = snapStep(ancreGeste_);
+        if (pas > 0)
+            maintenant = ancreGeste_ + static_cast<vsm::midi::Tick>(
+                std::llround(static_cast<double>(brut - ancreGeste_) / static_cast<double>(pas))) * pas;
+    }
     const vsm::midi::Tick delta = maintenant - gesteDernier_;
     if (delta == 0) return;
     gesteDernier_ = maintenant;
@@ -2033,6 +2048,24 @@ bool ArrangementComponent::zoomSurLesLocateurs() {
                 + std::to_string(scrollTick_ + static_cast<vsm::midi::Tick>(static_cast<double>(largeur) / pixelsPerTick_))
                 + " ticks\n").c_str(), stderr);
     return true;
+}
+
+double ArrangementComponent::mesuresVisibles() const {
+    if (project_ == nullptr || pixelsPerTick_ <= 0.0) return 0.0;
+    const double parMesure = static_cast<double>(project_->ticksPerQuarterNote) * 4.0;
+    return parMesure > 0.0 ? static_cast<double>(juce::jmax(1, getWidth() - kHeaderWidth)) / pixelsPerTick_ / parMesure : 0.0;
+}
+
+void ArrangementComponent::poserMesuresVisibles(double mesures) {
+    if (project_ == nullptr || !(mesures > 0.0)) return;
+    const double parMesure = static_cast<double>(project_->ticksPerQuarterNote) * 4.0;
+    if (parMesure <= 0.0) return;
+    const VueDeZoom avant = vueDeZoom();   // D557.3 : le bord gauche (`scrollTick_`) ne bouge pas
+    pixelsPerTick_ = juce::jlimit(0.0005, 8.0, static_cast<double>(juce::jmax(1, getWidth() - kHeaderWidth))
+                                                   / (mesures * parMesure));
+    noterZoom(avant);
+    repaint();
+    direLaFenetre();
 }
 
 void ArrangementComponent::zoomSurPlage(vsm::midi::Tick debut, vsm::midi::Tick fin) {
@@ -3053,6 +3086,7 @@ void ArrangementComponent::direLesBascules() const {
                 + (automationVisible_ ? ", automation visible" : ", automation cachée")
                 + (enChaine_ ? juce::String::fromUTF8(u8", en chaîne") : juce::String(", libre"))   // D547.2
                 + (teteFixe_ ? juce::String::fromUTF8(u8", tête fixe") : juce::String())             // D569.2
+                + (aimantRelatif_ ? juce::String::fromUTF8(u8", relatif à la grille") : juce::String())   // D572.1
                 + "\n").toRawUTF8(), stderr);
 }
 

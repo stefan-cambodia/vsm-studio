@@ -340,6 +340,8 @@ struct ProjectTrack {
     std::vector<float> sendLevels;
     /// D567.3 : les départs contournés (`mix.sendsBypassed`), écrit seulement quand ils le sont.
     bool sendsBypassed = false;
+    /// D572.2 : les départs qui suivent le panoramique (`mix.sendsFollowPan`), écrit seulement quand ils le suivent.
+    bool sendsFollowPan = false;
     std::vector<ProjectEffect> effects;
     /// D31.1 : LES EFFETS MIDI de la piste, appliqués à la LECTURE (D31.3) et
     /// jamais aux notes. Champ FACULTATIF : une piste sans chaîne MIDI garde

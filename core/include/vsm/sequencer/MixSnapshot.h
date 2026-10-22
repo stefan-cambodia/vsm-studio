@@ -80,6 +80,7 @@ struct ChannelSettings {
     std::vector<float> sendLevels;
     std::vector<TrackEffect> effects;
     bool sendsBypassed = false;   ///< D567.3 : le contournement des départs voyage avec eux
+    bool sendsFollowPan = false;  ///< D572.2 : et leur panoramique lié
 };
 ChannelSettings captureChannelSettings(const Track& track);
 /// Vrai si `track` peut recevoir les réglages (ni dossier, ni VCA) ET qu'ils y changeraient quelque chose.
@@ -124,6 +125,17 @@ struct SendsBypassPlan {
 SendsBypassPlan sendsBypassPlan(const Project& project, const std::set<size_t>& chosen);
 /// Pose (ou retire) le contournement sur les tranches choisies que le plan compte ; rend combien ont changé.
 size_t applySendsBypass(Project& project, const std::set<size_t>& chosen, bool bypass);
+
+/// D572.2 — LES DÉPARTS SUIVENT LE PANORAMIQUE, sur les tranches choisies : le plan dit ce que le clic FERA (la règle de
+/// `sendsBypassPlan`) — LIER si l'une des tranches choisies ne suit pas encore, `count` tranches ; DÉLIER sinon. Un
+/// dossier et un VCA n'ont pas de départs. Le lien se pose même sans départ non nul : il dit comment les départs SERONT
+/// pris, et monter un niveau ensuite ne doit pas le défaire.
+struct SendsPanPlan {
+    bool follow = true;
+    size_t count = 0;
+};
+SendsPanPlan sendsPanPlan(const Project& project, const std::set<size_t>& chosen);
+size_t applySendsFollowPan(Project& project, const std::set<size_t>& chosen, bool follow);
 
 /// D568.3 — CONTOURNER LES INSERTS DES TRANCHES CHOISIES (*Bypass Inserts*), la règle de « Contourner tout » (D15.1)
 /// sur plusieurs pistes : CONTOURNER si l'une des tranches choisies a un insert actif — `count` tranches —, RÉTABLIR

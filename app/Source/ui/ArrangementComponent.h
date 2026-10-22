@@ -67,6 +67,11 @@ public:
     void setTeteFixe(bool fixe) { teteFixe_ = fixe; repaint(); }
     bool teteFixe() const { return teteFixe_; }
     void basculerTeteFixe();
+    /// D572.1 : L'AIMANTATION RELATIVE À LA GRILLE (*Grid Relative*) — un clip DÉPLACÉ avance d'un nombre entier de pas,
+    /// l'écart de son ancre à la grille gardé ; les bords restent aimantés à la grille. Une préférence du poste (D493).
+    void setAimantRelatif(bool relatif) { aimantRelatif_ = relatif; }
+    bool aimantRelatif() const { return aimantRelatif_; }
+    void basculerAimantRelatif();
     void setEnLecture(bool enLecture) { enLecture_ = enLecture; }
     /// Un geste va modifier le projet : l'application prend son instantané
     /// d'annulation. Appelé UNE fois par geste, au `mouseDown` -- un
@@ -287,6 +292,10 @@ public:
     /// D565.2 : la plage des locateurs cadrée comme une sélection ; faux sans locateurs (`VSM_ZOOM_LOCATEURS`).
     bool zoomSurLesLocateurs();
     void zoomSurPlage(vsm::midi::Tick debut, vsm::midi::Tick fin);
+    /// D572.3 : CE QUE LA VUE MONTRE, EN MESURES (la formule de `direLaFenetre`), et le poser — le bord gauche gardé, un
+    /// pas de la pile des zooms (D557.3). Ce qu'un préréglage de zoom retient et rappelle.
+    double mesuresVisibles() const;
+    void poserMesuresVisibles(double mesures);
     /// D557.3 : ANNULER ET RÉTABLIR UN ZOOM (*Undo Zoom / Redo Zoom*). Chaque geste de zoom (touches, molette, « tout
     /// voir », « sur la sélection ») qui CHANGE la vue empile la vue d'avant — zoom ET défilement ; un geste qui ne
     /// change rien n'empile rien, sinon « annuler » aurait l'air de ne rien faire. Un nouveau zoom vide le « rétablir ».
@@ -679,6 +688,7 @@ private:
     bool aimanteALaMesure_ = true;
     bool followPlayhead_ = true;
     bool teteFixe_ = false;    ///< D569.2
+    bool aimantRelatif_ = false;   ///< D572.1
     bool enLecture_ = false;   ///< D569.2 : la tête fixe ne vaut qu'en lecture
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne

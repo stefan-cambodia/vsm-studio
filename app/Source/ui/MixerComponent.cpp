@@ -623,6 +623,7 @@ void ChannelStrip::direGeometrieDeBanc(const juce::Component& repere) const {
          + juce::String::fromUTF8(", d\xc3\xa9parts ") + juce::String(sends_.isEmpty() ? 0 : kHauteurDeparts)
          + " (" + juce::String(sends_.size()) + " bouton)"
          + juce::String::fromUTF8(track_.sendsBypassed ? ", contourn\xc3\xa9s" : "")   // D567.3
+         + juce::String::fromUTF8(track_.sendsFollowPan ? ", suivent le panoramique" : "")   // D572.2
          + ", fader " + juce::String(volume_.getWidth()) + "x" + juce::String(volume_.getHeight())
          + ", course " + juce::String(course, 1) + " px"
          + " (" + (course > 0.0 ? juce::String(plage / course, 2) : juce::String("inf")) + " dB/px)"

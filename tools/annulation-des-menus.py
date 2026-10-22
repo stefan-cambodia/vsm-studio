@@ -69,6 +69,10 @@ MUETTES_VOULUES: dict[str, str] = {
                                                                "hauteurs rendent la même sélection",
     # D556.3 : la sœur « toutes octaves » -- même raison, l'état d'essai a déjà tout choisi.
     "Édition > Sélection > Toutes les notes de même nom (toutes octaves)": "toutes les notes sont déjà choisies : leurs noms rendent la même sélection",
+    # D569.3 : la sœur « de la tête à la fin » -- toutes les notes sont déjà choisies, et la tête est à 0 : elles
+    # finissent toutes après elle. Ajoutée le 22/10 (D571) : la série de D571 l'a vue MUETTE, la table datant de D557.
+    "Édition > Sélection > Les notes de la tête à la fin": "toutes les notes sont déjà choisies et la tête est à 0 : "
+                                                           "elles finissent toutes après elle, la même sélection",
     "Piste > Étendre le choix vers le haut": "la piste choisie est la première : rien au-dessus",
     "Transport > Retour au début": "la tête est déjà au début (tick 0)",
     "Transport > Tête : repère précédent": "le projet d'essai n'a aucun repère, et la tête est à 0",   # D557.4

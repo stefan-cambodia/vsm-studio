@@ -354,7 +354,9 @@ public:
         // D568.3 : l'état de chaque insert, dans la description ET sur l'instance que le moteur joue.
         if (geste.equalsIgnoreCase("relever-inserts")) { effectChain_.direLesContournements(); return true; }
         // D570.3 : le centre de chaque note visible du piano roll, dans la fenêtre.
-        if (geste.equalsIgnoreCase("relever-notes")) { pianoRoll_.direLesNotesAEcran(); return true; }
+        // D571 : « relever-notes-ecran » et non « relever-notes », qui est le verbe de D509 (le texte de l'éditeur des
+        // notes du projet, plus bas) et que celui-ci CACHAIT depuis D570.3 (`tools/verbes-uniques.py`).
+        if (geste.equalsIgnoreCase("relever-notes-ecran")) { pianoRoll_.direLesNotesAEcran(); return true; }
         // D570.2 : la grille, le swing et la gamme, relevés PLUS TARD (le relevé du démarrage précède les gestes).
         if (geste.equalsIgnoreCase("relever-grille")) { pianoRollPanel_.barre().direLaGrilleEtLaGamme(); return true; }
         // D570.1 : « couleur-repere:<rang>:<RRGGBB> » — par la fonction même du sélecteur.
@@ -1218,6 +1220,14 @@ private:
         /// D571.1 : grouper, dégrouper les clips choisis.
         kMenuEditGroupClips,
         kMenuEditUngroupClips,
+        /// D572 : l'aimantation relative ; les départs qui suivent le panoramique ; les préréglages de zoom.
+        kMenuViewArrangementSnapRelative,
+        kMenuMixSendsFollowPan,
+        kMenuViewZoomPresetSave,
+        kMenuViewZoomPresetFirst,
+        kMenuViewZoomPresetLast = kMenuViewZoomPresetFirst + 31,
+        kMenuViewZoomPresetRemoveFirst,
+        kMenuViewZoomPresetRemoveLast = kMenuViewZoomPresetRemoveFirst + 31,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1751,6 +1761,7 @@ private:
     void debuterLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     /// D567.3 : contourner (ou rétablir) les départs des tranches choisies, comme le plan le dit.
     void contournerLesDepartsChoisis();
+    void lierLesDepartsAuPanoramique();   ///< D572.2
     /// D568.1 : la plage des locateurs dupliquée en insérant, les locateurs sur la copie.
     void dupliquerLaPlage();
     /// D568.2 : le MIDI entre les locateurs dans `fichier` (vide : le sélecteur) ; rend vrai s'il est écrit.
@@ -1767,6 +1778,12 @@ private:
     void enregistrerQuantification();
     void rappelerQuantification(int rang);
     void retirerQuantification(int rang);
+    /// D572.3 : LES PRÉRÉGLAGES DE ZOOM (*Zoom Presets*) — les mesures que l'arrangement montre, sous un nom, aux
+    /// préférences du poste (`zooms`), comme les préréglages de quantification.
+    std::unique_ptr<juce::XmlElement> lireZooms() const;
+    void enregistrerZoom();
+    void rappelerZoom(int rang);
+    void retirerZoom(int rang);
     void suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     bool etaitEnLecture_ = false;
     vsm::midi::Tick departLecture_ = 0;

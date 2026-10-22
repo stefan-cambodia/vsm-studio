@@ -410,6 +410,38 @@ VSM_TEST(the_send_bypass_travels_with_the_console_state) {
     VSM_ASSERT(p.tracks[0].sendsBypassed);
 }
 
+// D572.2 — LES DÉPARTS QUI SUIVENT LE PANORAMIQUE : le plan dit ce que le clic fera, un dossier et un VCA n'en ont pas,
+// et le lien voyage avec l'état de la console comme le contournement.
+VSM_TEST(sends_following_the_pan_are_planned_and_travel_with_the_console_state) {
+    Project p;
+    p.tracks.resize(4);
+    p.tracks[2].kind = Track::Kind::Folder;
+    const std::set<size_t> tout{0, 1, 2};
+    auto plan = sendsPanPlan(p, tout);
+    VSM_ASSERT(plan.follow);
+    VSM_ASSERT_EQ(plan.count, size_t(2));            // le dossier ne compte pas
+    VSM_ASSERT_EQ(applySendsFollowPan(p, tout, true), size_t(2));
+    VSM_ASSERT(p.tracks[0].sendsFollowPan && p.tracks[1].sendsFollowPan && !p.tracks[2].sendsFollowPan);
+    plan = sendsPanPlan(p, tout);
+    VSM_ASSERT(!plan.follow);                         // toutes liées : le clic délie
+    VSM_ASSERT_EQ(plan.count, size_t(2));
+    VSM_ASSERT_EQ(applySendsFollowPan(p, {0}, false), size_t(1));
+    VSM_ASSERT(sendsPanPlan(p, tout).follow);         // une seule déliée : le clic relie
+    // La remise à zéro, les réglages d'une tranche, un instantané : le lien les suit.
+    VSM_ASSERT_EQ(countTracksToReset(p, {1}), size_t(1));
+    const auto reglages = captureChannelSettings(p.tracks[1]);
+    VSM_ASSERT(channelSettingsWouldChange(p.tracks[3], reglages));
+    VSM_ASSERT(applyChannelSettings(p.tracks[3], reglages));
+    VSM_ASSERT(p.tracks[3].sendsFollowPan);
+    VSM_ASSERT(!takeMixSnapshot(p, "A"));
+    p.tracks[1].sendsFollowPan = false;
+    VSM_ASSERT_EQ(previewMixRecall(p, "A").changed, size_t(1));
+    recallMixSnapshot(p, "A");
+    VSM_ASSERT(p.tracks[1].sendsFollowPan);
+    VSM_ASSERT_EQ(resetConsole(p, {1}), size_t(1));
+    VSM_ASSERT(!p.tracks[1].sendsFollowPan);
+}
+
 // D568.3 — CONTOURNER LES INSERTS DES TRANCHES CHOISIES : la règle de « Contourner tout », sur plusieurs pistes.
 VSM_TEST(bypassing_the_inserts_of_chosen_strips_follows_bypass_all) {
     Project p;

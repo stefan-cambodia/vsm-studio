@@ -445,6 +445,7 @@ struct TrackMixState {
     bool invertPhase = false;
     std::vector<float> sendLevels;
     bool sendsBypassed = false;   ///< D567.3
+    bool sendsFollowPan = false;  ///< D572.2
     std::vector<InsertSnapshot> inserts;
 };
 
@@ -747,6 +748,10 @@ public:
     /// D567.3 : LES DÉPARTS CONTOURNÉS (*Bypass Sends*) — la piste n'alimente plus aucun bus, ses niveaux GARDÉS :
     /// rétablir rend exactement ce qu'on avait. Le moteur ne lit que `audibleSendLevel`.
     bool sendsBypassed = false;
+    /// D572.2 : LES DÉPARTS SUIVENT LE PANORAMIQUE (*Link Send Panners* de Cubase) — chaque départ reçoit les gains
+    /// gauche et droite du panoramique de la piste, sous la loi du projet (D571.2), pré-fader comme post-fader. FAUX par
+    /// défaut, écart à Cubase voulu : tout projet d'avant a été mixé départs centrés, et doit le rester.
+    bool sendsFollowPan = false;
 
     /// Niveau d'envoi vers le bus `index`, ou zéro si la piste n'en déclare
     /// pas autant. À employer partout plutôt qu'un accès direct : c'est ce qui

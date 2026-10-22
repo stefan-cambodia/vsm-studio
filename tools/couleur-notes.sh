@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # D570.3 — LA COULEUR DES NOTES (piano roll, Couleur des notes ▸ Selon la vélocité / la hauteur / le canal MIDI ; les
-# *Event Colors* de Cubase), MESURÉE SUR LA PHOTO : la teinte au centre de chaque note (`relever-notes` dit où).
+# *Event Colors* de Cubase), MESURÉE SUR LA PHOTO : la teinte au centre de chaque note (`relever-notes-ecran` dit où).
 #
 # LES RÈGLES GARDÉES. Une piste : do4 (60), do5 (72) et sol4 (67), même vélocité, canal 1.
 #   (1) selon la piste (le défaut, le témoin) : les trois de la même teinte ;
@@ -40,7 +40,7 @@ json.dump({"format": "vsm-project", "version": 1, "title": "essai", "midi": {"fi
 PY
 
 course() {   # $1 = nom ; $2 = HOME ; $3 = mode à choisir (vide : aucun)
-    local nom="$1" maison="$2" mode="$3" gestes="1600:relever-notes"
+    local nom="$1" maison="$2" mode="$3" gestes="1600:relever-notes-ecran"
     [ -n "$mode" ] && gestes="900:menu:Édition > Couleur des notes > $mode;$gestes"
     env HOME="$maison" VSM_PROJET="$brouillon/base" VSM_TAILLE="1600x1000" VSM_VUE="sans-rapport,pianoroll,piste:0" \
         VSM_DELAI=2500 VSM_GESTE_APRES="$gestes" VSM_CAPTURE="$brouillon/$nom.png" timeout 60 "$BIN" > "$brouillon/$nom.txt" 2>&1

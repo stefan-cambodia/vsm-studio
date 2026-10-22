@@ -1938,6 +1938,13 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     // Sends post-fader vers les bus auxiliaires (section 15).
     const size_t actifs = activeSends_.load(std::memory_order_acquire);
     const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
+    // D572.2 : LES DÉPARTS QUI SUIVENT LE PANORAMIQUE reçoivent les gains du fader ci-dessus — le même panoramique
+    // (automation et CC 10 compris), la même loi ; sans l'option, 1 et 1 : le chemin d'avant, au bit près.
+    float departG = 1.0f, departD = 1.0f;
+    if (track.sendsFollowPan) {
+        if (project.panLaw == vsm::sequencer::PanLaw::Minus3dB) equalPowerPan(pan, departG, departD);
+        else vsm::sequencer::panLawGains(project.panLaw, pan, departG, departD);
+    }
     if (audible) {
         for (size_t b = 0; b < actifs; ++b) {
             // PRÉ-FADER : le départ prélève AVANT le fader, donc le volume
@@ -1957,9 +1964,17 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
                                                          : track.sendLevel(b);
             const float lvl = niveau * apresFader;
             if (lvl <= 0.0f) continue;
-            for (int i = 0; i < sampleCount; ++i) {
-                sendL_[b][static_cast<size_t>(sampleStart + i)] += srcL[static_cast<size_t>(i)] * lvl;
-                sendR_[b][static_cast<size_t>(sampleStart + i)] += srcR[static_cast<size_t>(i)] * lvl;
+            if (!track.sendsFollowPan) {
+                for (int i = 0; i < sampleCount; ++i) {
+                    sendL_[b][static_cast<size_t>(sampleStart + i)] += srcL[static_cast<size_t>(i)] * lvl;
+                    sendR_[b][static_cast<size_t>(sampleStart + i)] += srcR[static_cast<size_t>(i)] * lvl;
+                }
+            } else {
+                const float lvlG = lvl * departG, lvlD = lvl * departD;
+                for (int i = 0; i < sampleCount; ++i) {
+                    sendL_[b][static_cast<size_t>(sampleStart + i)] += srcL[static_cast<size_t>(i)] * lvlG;
+                    sendR_[b][static_cast<size_t>(sampleStart + i)] += srcR[static_cast<size_t>(i)] * lvlD;
+                }
             }
         }
     }

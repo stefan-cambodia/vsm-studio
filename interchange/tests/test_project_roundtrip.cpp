@@ -602,3 +602,25 @@ VSM_TEST(les_departs_contournes_survivent_au_disque) {
     VSM_ASSERT(t.mixSnapshots.at("A").sendsBypassed);
     for (size_t i = 1; i < relu.bundle.project.tracks.size(); ++i) VSM_ASSERT(!relu.bundle.project.tracks[i].sendsBypassed);
 }
+
+// D572.2 : LES DÉPARTS QUI SUIVENT LE PANORAMIQUE survivent au disque, dans la piste et dans un instantané, et ne
+// s'écrivent pas quand ils ne le suivent pas.
+VSM_TEST(les_departs_qui_suivent_le_panoramique_survivent_au_disque) {
+    Project p = projetDistinctif();
+    {
+        const std::string texte = projectDocumentToJson(documentFromProject(p)).toString();
+        VSM_ASSERT(texte.find("\"sendsFollowPan\"") == std::string::npos);
+    }
+    p.tracks[0].sendsFollowPan = true;
+    TrackMixState etat;
+    etat.sendsFollowPan = true;
+    p.tracks[0].mixSnapshots["A"] = etat;
+    p.mixSnapshotNames = {"A"};
+    const fs::path dossier = dossierNeuf("departs-panoramique");
+    VSM_ASSERT(saveProjectBundle(p, dossier.string()).success);
+    const auto relu = loadProjectBundle(dossier.string());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.bundle.project.tracks[0].sendsFollowPan);
+    VSM_ASSERT(relu.bundle.project.tracks[0].mixSnapshots.at("A").sendsFollowPan);
+    for (size_t i = 1; i < relu.bundle.project.tracks.size(); ++i) VSM_ASSERT(!relu.bundle.project.tracks[i].sendsFollowPan);
+}

@@ -407,10 +407,52 @@ VSM_TEST(the_pan_law_of_the_project_sets_the_centre_and_leaves_the_ends_alone) {
         VSM_ASSERT_NEAR(ecart, db, 0.05);
         VSM_ASSERT_NEAR(crete(r.left), crete(r.right), 1e-6);   // au centre, les deux canaux à égalité
     }
-    const auto gaucheTemoin = rendre(PanLaw::Minus3dB, -1.0f);
+    const auto gaucheTemoin = rendre(PanLaw::Minus3dB, -1.0f);   // le témoin des extrémités
     for (PanLaw loi : {PanLaw::ZeroDb, PanLaw::Minus4_5dB, PanLaw::Minus6dB}) {
         const auto g = rendre(loi, -1.0f);
         VSM_ASSERT(g.left == gaucheTemoin.left);
         VSM_ASSERT(g.right == gaucheTemoin.right);
     }
+}
+
+// D572.2 — LES DÉPARTS QUI SUIVENT LE PANORAMIQUE, par le rendu hors ligne. La prise tournée à fond à GAUCHE, son fader
+// au silence, un départ PRÉ-FADER à 1 vers un égaliseur neutre : on n'entend que le retour du bus. Sans l'option, le
+// départ prend le signal d'avant le panoramique — les deux canaux du retour égaux, c'est le témoin ; avec elle, le canal
+// droit du retour tombe à zéro et le gauche garde tout. Sous −6 dB, tournée au centre, le retour perd 6,02 dB.
+VSM_TEST(sends_that_follow_the_pan_carry_it_into_the_bus) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+    auto rendre = [&](bool suit, float pan, vsm::sequencer::PanLaw loi) {
+        LoadedBundle b = bundleAudio();
+        b.project.panLaw = loi;
+        b.project.sends.clear();
+        vsm::sequencer::SendBusDescription bus;
+        bus.name = "Neutre";
+        bus.effectType = "eq";
+        bus.preFader = true;
+        b.project.sends.push_back(bus);
+        auto& piste = b.project.tracks[0];
+        piste.pan = pan;
+        piste.volume = 0.0f;
+        piste.sendLevels = {1.0f};
+        piste.sendsFollowPan = suit;
+        vsm::audio::engine::RenderedAudio sortie;
+        VSM_ASSERT(renderBundleToBuffer(b, sortie, options()).success);
+        return sortie;
+    };
+    auto crete = [](const std::vector<float>& x) {
+        float c = 0.0f;
+        for (float v : x) c = std::max(c, std::fabs(v));
+        return c;
+    };
+    using vsm::sequencer::PanLaw;
+    const auto temoin = rendre(false, -1.0f, PanLaw::Minus3dB);
+    VSM_ASSERT(crete(temoin.left) > 0.1f);
+    VSM_ASSERT_NEAR(crete(temoin.right), crete(temoin.left), 1e-6);   // centré : le panoramique n'y est pas
+    const auto lie = rendre(true, -1.0f, PanLaw::Minus3dB);
+    VSM_ASSERT_NEAR(crete(lie.left), crete(temoin.left), 1e-6);
+    VSM_ASSERT(crete(lie.right) < 1e-6f);
+    const auto centreSans = rendre(false, 0.0f, PanLaw::Minus6dB);
+    const auto centreLie = rendre(true, 0.0f, PanLaw::Minus6dB);
+    VSM_ASSERT_NEAR(20.0 * std::log10(static_cast<double>(crete(centreLie.left)) / crete(centreSans.left)), -6.0206, 0.05);
 }

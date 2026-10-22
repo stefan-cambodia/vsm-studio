@@ -1473,6 +1473,7 @@ MainComponent::MainComponent()
         arrangement_.setCourbesVisibles(reglages.getBoolValue("arrangementCourbes", false));
         arrangement_.setMontageEnChaine(reglages.getBoolValue("arrangementEnChaine", false));   // D547.2
         arrangement_.setTeteFixe(reglages.getBoolValue("arrangementTeteFixe", false));          // D569.2
+        arrangement_.setAimantRelatif(reglages.getBoolValue("arrangementAimantRelatif", false)); // D572.1
         arrangement_.onBasculesChanged = [this] {
             auto& r = vsm::app::ui::UiScale::properties();
             r.setValue("arrangementAimant", arrangement_.snapEnabled());
@@ -1481,6 +1482,7 @@ MainComponent::MainComponent()
             r.setValue("arrangementCourbes", arrangement_.automationVisible());
             r.setValue("arrangementEnChaine", arrangement_.montageEnChaine());
             r.setValue("arrangementTeteFixe", arrangement_.teteFixe());   // D569.2
+            r.setValue("arrangementAimantRelatif", arrangement_.aimantRelatif());   // D572.1
             r.saveIfNeeded();
         };
     }
@@ -5561,6 +5563,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                             : u8"Rétablir les départs des tranches choisies (%1)")
                                  .replace("%1", juce::String(static_cast<int>(plan.count))),
                              plan.count > 0);
+                // D572.2 : LES DÉPARTS QUI SUIVENT LE PANORAMIQUE, la même règle — le libellé dit ce que le clic fera.
+                const auto lien = vsm::sequencer::sendsPanPlan(project_, trackList_.selectedTracks());
+                menu.addItem(kMenuMixSendsFollowPan,
+                             tr(lien.follow ? u8"Les départs suivent le panoramique (tranches choisies) (%1)"
+                                            : u8"Les départs ignorent le panoramique (tranches choisies) (%1)")
+                                 .replace("%1", juce::String(static_cast<int>(lien.count))),
+                             lien.count > 0);
                 // D568.3 : LES INSERTS DES TRANCHES CHOISIES, la même règle.
                 const auto inserts = vsm::sequencer::insertsBypassPlan(project_, trackList_.selectedTracks());
                 menu.addItem(kMenuMixInsertsBypass,
@@ -5690,6 +5699,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                                vsm::interchange::ShortcutId::ViewZoomUndo, arrangement_.zoomsAAnnuler() > 0);
             vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewZoomRedo, tr(u8"Rétablir le zoom"), shortcuts_,
                                                vsm::interchange::ShortcutId::ViewZoomRedo, arrangement_.zoomsARetablir() > 0);
+            // D572.3 : LES PRÉRÉGLAGES DE ZOOM — l'étendue montrée, en mesures, sous un nom.
+            {
+                juce::PopupMenu zooms, retirer;
+                zooms.addItem(kMenuViewZoomPresetSave, tr(u8"Enregistrer le zoom de l'arrangement…"), !project_.tracks.empty());
+                const auto rangees = lireZooms();
+                if (rangees->getNumChildElements() > 0) zooms.addSeparator();
+                for (int i = 0; i < rangees->getNumChildElements() && i <= kMenuViewZoomPresetLast - kMenuViewZoomPresetFirst; ++i) {
+                    const juce::String nom = rangees->getChildElement(i)->getStringAttribute("nom");
+                    zooms.addItem(kMenuViewZoomPresetFirst + i, nom);
+                    retirer.addItem(kMenuViewZoomPresetRemoveFirst + i, nom);
+                }
+                if (rangees->getNumChildElements() == 0)
+                    zooms.addItem(-1, tr(u8"(aucun préréglage de zoom)"), false, false);
+                else
+                    zooms.addSubMenu(tr(u8"Retirer un préréglage de zoom"), retirer);
+                menu.addSubMenu(tr(u8"Préréglages de zoom"), zooms);
+            }
             {
                 juce::PopupMenu hauteurs;
                 // D490 : LA HAUTEUR COMMUNE EST COCHÉE — celle que `setAllTrackHeights`
@@ -5736,6 +5762,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementSnap,
                                                    tr(u8"Aimantation dans l'arrangement"), shortcuts_,
                                                    Id::EditToggleSnap, true, arrangement_.snapEnabled());
+                // D572.1 : L'AIMANTATION RELATIVE À LA GRILLE — une option de l'aimant, grisée sans lui.
+                menu.addItem(kMenuViewArrangementSnapRelative, tr(u8"Aimantation relative à la grille (garder l'écart)"),
+                             arrangement_.snapEnabled(), arrangement_.aimantRelatif());
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementBarGrid,
                                                    tr(u8"Grille à la mesure dans l'arrangement"), shortcuts_,
                                                    Id::ViewArrangementBarGrid, true, arrangement_.grilleALaMesure());
@@ -5859,6 +5888,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
     if (menuItemID == kMenuMixSendsBypass) { contournerLesDepartsChoisis(); return; }   // D567.3
+    if (menuItemID == kMenuMixSendsFollowPan) { lierLesDepartsAuPanoramique(); return; }   // D572.2
     if (menuItemID >= kMenuMixPanLawFirst && menuItemID <= kMenuMixPanLawLast) {          // D571.2
         setPanLaw(static_cast<vsm::sequencer::PanLaw>(menuItemID - kMenuMixPanLawFirst));
         return;
@@ -5895,6 +5925,15 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewFitTracks) { arrangement_.fitTracksToWindow(); return; }
     if (menuItemID == kMenuViewZoomUndo) { arrangement_.annulerZoom(); return; }    // D557.3
     if (menuItemID == kMenuViewZoomLocators) { arrangement_.zoomSurLesLocateurs(); return; }   // D565.2
+    if (menuItemID == kMenuViewZoomPresetSave) { enregistrerZoom(); return; }                   // D572.3
+    if (menuItemID >= kMenuViewZoomPresetFirst && menuItemID <= kMenuViewZoomPresetLast) {
+        rappelerZoom(menuItemID - kMenuViewZoomPresetFirst);
+        return;
+    }
+    if (menuItemID >= kMenuViewZoomPresetRemoveFirst && menuItemID <= kMenuViewZoomPresetRemoveLast) {
+        retirerZoom(menuItemID - kMenuViewZoomPresetRemoveFirst);
+        return;
+    }
     if (menuItemID >= kMenuNavMarkerFirst && menuItemID <= kMenuNavMarkerLast) {                   // D565.1
         teteAuRepere(menuItemID - kMenuNavMarkerFirst + 1);
         return;
@@ -5947,6 +5986,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewArrangementBarGrid) { arrangement_.basculerGrilleALaMesure(); return; }
     if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
     if (menuItemID == kMenuViewStationaryCursor)   { arrangement_.basculerTeteFixe(); return; }   // D569.2
+    if (menuItemID == kMenuViewArrangementSnapRelative) { arrangement_.basculerAimantRelatif(); return; }   // D572.1
     if (menuItemID == kMenuViewArrangementCurves)  { arrangement_.basculerCourbes(); return; }
     if (menuItemID == kMenuViewArrangementChain)   { arrangement_.basculerEnChaine(); return; }   // D547.2
     if (menuItemID == kMenuViewRulerBars || menuItemID == kMenuViewRulerTime) {
@@ -14129,6 +14169,27 @@ void MainComponent::contournerLesDepartsChoisis() {
                                        .replace("%1", juce::String(static_cast<int>(n))));
 }
 
+void MainComponent::lierLesDepartsAuPanoramique() {
+    // D572.2 : LES DÉPARTS SUIVENT LE PANORAMIQUE (ou l'ignorent de nouveau), comme le plan le dit ; un pas ; rien à
+    // faire : dit, sans pas (l'entrée est grisée).
+    const std::set<size_t> choisies = trackList_.selectedTracks();
+    const auto plan = vsm::sequencer::sendsPanPlan(project_, choisies);
+    if (plan.count == 0) {
+        std::fputs("VSM_CONSOLE : aucune tranche dont les d\xc3\xa9parts changeraient\n", stderr);
+        return;
+    }
+    beginProjectEdit(plan.follow ? juce::String::fromUTF8(u8"Lier les départs au panoramique")
+                                 : juce::String::fromUTF8(u8"Délier les départs du panoramique"));
+    const size_t n = vsm::sequencer::applySendsFollowPan(project_, choisies, plan.follow);
+    rebuildFromProject(false);
+    std::fputs(("VSM_CONSOLE : d\xc3\xa9parts " + std::string(plan.follow ? "li\xc3\xa9s au" : "d\xc3\xa9li\xc3\xa9s du")
+                + " panoramique sur " + std::to_string(n) + " tranche(s)\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(plan.follow ? u8"Les départs suivent le panoramique : %1 tranche(s)"
+                                                  : u8"Les départs ignorent le panoramique : %1 tranche(s)")
+                                       .replace("%1", juce::String(static_cast<int>(n))));
+}
+
 void MainComponent::contournerLesInsertsChoisis() {
     // D568.3 : CONTOURNER LES INSERTS DES TRANCHES CHOISIES (*Bypass Inserts*) — ou les rétablir ; la règle de
     // « Contourner tout » (D15.1) ; le drapeau posé sur les instances vivantes ; un pas ; rien à faire : dit.
@@ -17282,6 +17343,78 @@ void MainComponent::retirerQuantification(int rang) {
     vsm::app::ui::UiScale::properties().setValue("quantifications", rangees.get());
     vsm::app::ui::UiScale::properties().saveIfNeeded();
     std::fputs((juce::String::fromUTF8(u8"VSM_QUANTIFICATION : retiré « ") + nom + juce::String::fromUTF8(u8" »\n")).toRawUTF8(), stderr);
+}
+
+// --- D572.3 : LES PRÉRÉGLAGES DE ZOOM — la règle des préréglages de quantification (D570.2), sur l'étendue montrée ---
+std::unique_ptr<juce::XmlElement> MainComponent::lireZooms() const {
+    if (auto xml = vsm::app::ui::UiScale::properties().getXmlValue("zooms"))
+        if (xml->hasTagName("ZOOMS")) return xml;
+    return std::make_unique<juce::XmlElement>("ZOOMS");
+}
+
+void MainComponent::enregistrerZoom() {
+    const juce::String titre = tr(u8"Enregistrer le zoom de l'arrangement");
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        titre, tr(u8"Les mesures que l'arrangement montre sont retenues sous ce nom, et se rappellent par Affichage ▸ "
+                  u8"Préréglages de zoom."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("nom", "", tr(u8"Nom :"));
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, titre](int resultat) {
+        const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        if (nom.isEmpty()) {
+            montrerBoite(juce::AlertWindow::InfoIcon, titre, tr(u8"Un préréglage a besoin d'un nom : rien n'a été enregistré."));
+            return;
+        }
+        auto rangees = lireZooms();
+        bool remplace = false;
+        for (int i = 0; i < rangees->getNumChildElements(); ++i)
+            if (rangees->getChildElement(i)->getStringAttribute("nom") == nom) {
+                rangees->removeChildElement(rangees->getChildElement(i), true);
+                remplace = true;
+                break;
+            }
+        auto* z = new juce::XmlElement("Z");
+        z->setAttribute("nom", nom);
+        z->setAttribute("mesures", arrangement_.mesuresVisibles());
+        const double mesures = z->getDoubleAttribute("mesures");
+        rangees->addChildElement(z);
+        vsm::app::ui::UiScale::properties().setValue("zooms", rangees.get());
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+        std::fputs((juce::String("VSM_ZOOM_PREREGLE : ") + (remplace ? juce::String::fromUTF8(u8"remplacé « ")
+                                                                     : juce::String::fromUTF8(u8"enregistré « "))
+                    + nom + juce::String::fromUTF8(u8" » : ") + juce::String(mesures, 2) + " mesure(s)\n").toRawUTF8(), stderr);
+        if (remplace)
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         tr(u8"Le préréglage « %1 » existait : il est remplacé par celui-ci.").replace("%1", nom));
+    });
+}
+
+void MainComponent::rappelerZoom(int rang) {
+    const auto rangees = lireZooms();
+    const auto* z = rangees->getChildElement(rang);
+    if (z == nullptr) return;
+    const double mesures = z->getDoubleAttribute("mesures");
+    arrangement_.poserMesuresVisibles(mesures);
+    std::fputs((juce::String::fromUTF8(u8"VSM_ZOOM_PREREGLE : rappel « ") + z->getStringAttribute("nom")
+                + juce::String::fromUTF8(u8" » : ") + juce::String(mesures, 2) + " mesure(s)\n").toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Zoom : « %1 » rappelé").replace("%1", z->getStringAttribute("nom")));
+}
+
+void MainComponent::retirerZoom(int rang) {
+    auto rangees = lireZooms();
+    auto* z = rangees->getChildElement(rang);
+    if (z == nullptr) return;
+    const juce::String nom = z->getStringAttribute("nom");
+    rangees->removeChildElement(z, true);
+    vsm::app::ui::UiScale::properties().setValue("zooms", rangees.get());
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+    std::fputs((juce::String::fromUTF8(u8"VSM_ZOOM_PREREGLE : retiré « ") + nom + juce::String::fromUTF8(u8" »\n")).toRawUTF8(), stderr);
 }
 
 void MainComponent::renameMarker(size_t index) {
