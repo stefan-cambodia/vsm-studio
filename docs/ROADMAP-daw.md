@@ -44067,3 +44067,57 @@ qu'un tick ; les sections entre deux repères, D542.1, en tiennent l'essentiel).
 et le format, tests compris, PENDANT la série de D572 (les tests du cœur ne touchent pas au binaire de l'application ;
 compilés à `nice 19` et `-j 2`, et tout rouge de la série tombé pendant une compilation se rejoue seul avant d'être cru,
 la règle de D567). Puis D573.3, puis l'application, UNE fois, quand la série aura rendu son binaire.
+
+**CE QUE LE CODE A CORRIGÉ DANS CE QUI ÉTAIT TRANCHÉ** (écrit à l'écriture du code, avant les bancs).
+- **D573.1 — la largeur ne se copie PAS avec les réglages d'une tranche**, contrairement au critère ci-dessus : D562.3 a
+  rangé le volume et le panoramique hors de ces réglages (« la balance du morceau, piste par piste »), et la largeur est
+  une moitié du PANNEAU. Elle voyage donc avec le panoramique : gardée par un instantané, rendue à 100 % par la remise
+  à zéro, portée par le préréglage de piste (D22.5, qui porte déjà le volume et le panoramique), et non par le copier-
+  coller des réglages.
+- **D573.2 — les libellés des deux sous-menus sont À EUX** (« Entrée lente au départ », « Sortie qui tient avant de
+  lâcher »…) et non ceux de *Forme des fondus* : la recherche d'une entrée par son libellé (D91) prend la première
+  rencontrée, et trois sous-menus aux mêmes mots n'auraient laissé au banc que le premier. Ceux de la sortie disent ce
+  que l'oreille entend en fin de clip : une sortie « lente au départ » (x²) LÂCHE TÔT, une « rapide au départ » (√x)
+  TIENT avant de lâcher — la règle écrite au-dessus de `FadeShape`.
+
+**DEUX DÉFAUTS ANCIENS, TROUVÉS EN ÉCRIVANT LES TESTS DE D573 — et prouvés chacun par un A/B à une seule variable.**
+- **La forme d'un fondu ne s'entendait que sur un clip ÉTIRÉ — depuis D17.1 (05/09).** `spansFromTrack` a deux chemins :
+  celui des clips qui suivent le tempo, et celui de TOUS les autres (la boucle de clip, D5.2). D17.1 n'a recopié
+  `fadeShape` que dans le premier ; dans le second, la portée gardait `Linear`. Le dessin du clip suivait la forme
+  choisie (`fadeShapeGain`), le son non — exactement ce que le commentaire de D17.1 disait vouloir empêcher (« on aurait vu
+  une droite en entendant un quart de sinusoïde »), à l'envers. Mesuré par `each_fade_sounds_its_own_shape` avant le
+  correctif : **−6,0206 dB** au milieu de l'entrée ET de la sortie, sous « lente » aux deux bords comme sous « lente » et
+  « rapide » — la droite partout ; après : **−12,0412 / −3,0103 dB**, le témoin à une forme **−12,0412 / −12,0412**. Le
+  test de D17.1 construisait ses portées à la main, sans passer par `spansFromTrack` : il ne pouvait pas le voir.
+- **Le gel gardait la POLARITÉ d'une piste, et la piste gelée l'appliquait une seconde fois.** `renderTrackForFreeze` remet
+  à neutre le fader, le muet, les départs et la sortie — pas `invertPhase`, qui est le SIGNE du fader (D23.1) et reste
+  vivant avec lui : une piste inversée puis gelée revenait à l'endroit, sans un mot. Vu par le test du gel de la largeur
+  (`freezing_leaves_the_width_and_the_polarity_alive`) : rouge sans correctif ; rouge encore avec la largeur seule
+  remise à 100 % dans le gel ; vert quand la polarité l'est aussi — la seule variable entre les deux dernières courses.
+
+### Phase D573 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D573.1 | la largeur stéréo d'une piste | `Track::stereoWidth`, `narrowStereo` (le milieu et le côté, avant le panoramique ; rien de calculé à 100 %) ; `commonStereoWidth`, `applyStereoWidth` (un test : la commune, ni dossier ni VCA ni groupe, la borne, l'instantané, la remise à zéro, les réglages d'une tranche qui ne la portent PAS) ; `mix.width` au format, dans la piste et un instantané, hors bornes BORNÉE ET DITE, sur un groupe ÉCARTÉE ET DITE (un test) ; le préréglage de piste la porte (un test) ; le rendu hors ligne (un test : les cinq largeurs ; une source mono rend au BIT la même chose à 0 % et à 100 %) ; le gel la laisse vivante (un test) ; `tools/largeur-stereo.sh`, PAR L'EXPORT : sous la gauche du témoin (**−9,031 dBFS**, la droite à −138,474), gauche/droite **−1,160/−18,062**, **−2,499/−12,041**, **−4,082/−8,519**, **−6,021/−6,021 dB** à 75, 50, 25 et 0 % ; le menu coche 100 % puis 50 %, la tranche rouverte dit « largeur 50 % », Ctrl+Z rend l'image entière. **L'ATTENDU ÉCRIT AVANT EST TENU AU MILLIÈME** | **oui** |
+| D573.2 | la forme de chaque fondu | `Clip::fadeOutShape`, `AudioClipSpan::fadeOutShape`, `fadeGain` par bord ; `fadeOutShape` au format, écrit seulement s'il diffère de l'entrée (« linear » compris), absent relu comme l'entrée, et il fait monter la version — la condition, recopiée trois fois dans `usesWarp`, est écrite une fois (`clipDemandeLaVersion3`) ; un test de format, un test de rendu (ci-dessus) ; deux sous-menus au clic droit, le dessin par bord ; `tools/formes-des-fondus.sh`, PAR L'EXPORT : témoin à une forme **−12,040 / −12,040 dB**, sortie « qui tient avant de lâcher » posée **−12,040 / −3,010 dB** ; relu `slow fast v3` ; *Forme des fondus ▸ Droite* n'écrit rien ; Ctrl+Z rend la sortie lente. **L'ATTENDU ÉCRIT AVANT EST TENU** (à 0,1 dB, au millième en fait) | **oui** |
+| D573.3 | la durée en effet MIDI | l'effet `length`, *Durée* / *Length*, son *Ratio* de 0,25 à 4 (un test : 0,5, 2, le legato sur la note répétée, une note qui chevauchait déjà garde sa durée, un tick au moins, le matériau intact) ; `tools/duree-effet-midi.sh`, par le REPORT dans les notes : rapport 1 (le témoin) **0-240 · 480-720 · 960-1200 · 1200-1440** ; 0,5 **0-120 · 480-600 · 960-1080 · 1200-1320** ; 2 **0-480 · 480-960 · 960-1200 · 1200-1680** (le premier mi arrêté au départ du second), la chaîne vidée ; « Ajouter : Durée » / « Add: Length », arrivé au rapport 1 ; Ctrl+Z rend notes et chaîne | **oui** |
+| — | le témoin | le binaire de D572 : `largeur-stereo` **rouge 4 / 5**, `formes-des-fondus` **4 / 5**, `duree-effet-midi` **3 / 5** — les verts sont des contrôles-témoins (le témoin d'export, « Droite » qui n'écrit rien, le rapport 1, l'annulation du report) : une garde, pas une preuve, pour ceux-là. **Et le témoin a d'abord trouvé une garde faible** : le contrôle (5) de `formes-des-fondus` passait sur l'ancien binaire — il cherchait le libellé au journal, et la ligne qui dit l'entrée introuvable le portait ; il exige désormais « exécutée », et tombe sur D572 | **oui** |
+| — | la première course de `largeur-stereo` | rouge 2 / 5 sur le binaire de D573, PAR LE BANC : le projet vierge s'ouvre avec une piste MIDI vide au rang 0, et `piste:0` réglait celle-là — « 1 tranche(s) » au journal, rien de faux, un export inchangé. Le projet relu l'a dit (la largeur sur la piste sans nom) ; le banc choisit le rang 1, écrit dans son en-tête | **oui** |
+
+Mesuré pendant la série de D572 (lancée à 03 h 19 session déverrouillée, trouvée VERROUILLÉE et l'écran éteint à 03 h 57), le
+binaire de D573 lié À CÔTÉ de celui de la série (`/home/stefan/vsm-brouillon-d573/vsm-d573`, la méthode de D567).
+C++ 530 · 1 349 · 355 · 25 · 11 ; gardes vertes (l'INDEX recompté, un libellé d'annulation traduit : « Largeur stéréo »).
+150 bancs dans la série — **LA SÉRIE DE D573 se joue après ce commit**, sur le binaire de `build/`, lié des mêmes objets
+et identique OCTET POUR OCTET à celui que les trois bancs ont mesuré (`cmp`). Le témoin `VCA` des balayages passe de 35
+à 36 fichiers : `TrackPreset.cpp` le nomme désormais.
+
+**LA SÉRIE DE D572 (binaire de D572), restée à jouer à sa clôture** — 23/10, 03 h 19 → 04 h 43 : **147 bancs en 84 min,
+143 verts**, préférences identiques, aucune veille (`journalctl` : 0 « PM: suspend »). Lancée la session DÉVERROUILLÉE et
+l'écran allumé ; trouvée verrouillée et l'écran éteint à 03 h 57, et dite telle à la fin par le lanceur. Les quatre
+rouges — `quantifier-audio`, `notes-depuis-attaques`, `transposition-globale`, `normaliser-niveau` (03 h 41 → 03 h 53) —
+tombent sur le MÊME contrôle, « la fenêtre ouverte et photographiée en français et en anglais » : la boîte modale qu'une
+session verrouillée ne laisse pas photographier (D95), les trois premiers déjà rouges sur deux binaires dans la série de
+D571. Ils tombaient aussi pendant les compilations de D573 (à `nice 19`) : la circonstance est double, et ils ne se
+jugent qu'écran déverrouillé — **toujours à rejouer ainsi**. Les deux rouges de D570 et D571 que D572 avait corrigés
+(`notes-du-projet`, `couleur-notes`) sont verts dans la série.

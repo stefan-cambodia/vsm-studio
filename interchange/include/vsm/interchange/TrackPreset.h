@@ -29,6 +29,7 @@ struct TrackPreset {
     std::vector<float> sendLevels;
     float volume = 1.0f;
     float pan = 0.0f;
+    float stereoWidth = 1.0f;                     ///< D573.1 : le panneau entier voyage avec le panoramique
     bool invertPhase = false;                     ///< D23.1
     bool sendsBypassed = false;                   ///< D567.3 : les départs contournés voyagent avec leurs niveaux
     bool sendsFollowPan = false;                  ///< D572.2 : et leur panoramique lié

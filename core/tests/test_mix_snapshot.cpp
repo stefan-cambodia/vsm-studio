@@ -442,6 +442,45 @@ VSM_TEST(sends_following_the_pan_are_planned_and_travel_with_the_console_state) 
     VSM_ASSERT(!p.tracks[1].sendsFollowPan);
 }
 
+// D573.1 — LA LARGEUR STÉRÉO DES TRANCHES CHOISIES : la valeur commune (pour la coche du menu), les pistes qui n'en
+// portent pas (dossier, VCA, groupe), la borne, et les trois mécanismes de console — l'instantané la garde, la remise à
+// zéro la rend à 1, les réglages d'une tranche NE la copient PAS (elle va avec le panoramique, D562.3).
+VSM_TEST(the_stereo_width_of_chosen_strips_goes_with_the_pan) {
+    Project p;
+    p.tracks.resize(5);
+    p.tracks[2].kind = Track::Kind::Folder;
+    p.tracks[3].kind = Track::Kind::Group;
+    const std::set<size_t> tout = {0, 1, 2, 3, 4};
+    VSM_ASSERT_NEAR(commonStereoWidth(p, tout), 1.0f, 0.0f);
+    VSM_ASSERT_EQ(countStereoWidthChanges(p, tout, 0.5f), size_t(3));   // ni le dossier ni le groupe
+    VSM_ASSERT_EQ(applyStereoWidth(p, {0, 1, 2, 3}, 0.5f), size_t(2));
+    VSM_ASSERT_NEAR(p.tracks[2].stereoWidth, 1.0f, 0.0f);
+    VSM_ASSERT_NEAR(p.tracks[3].stereoWidth, 1.0f, 0.0f);
+    VSM_ASSERT_NEAR(commonStereoWidth(p, {0, 1, 2, 3}), 0.5f, 0.0f);     // le dossier et le groupe ne votent pas
+    VSM_ASSERT_NEAR(commonStereoWidth(p, tout), -1.0f, 0.0f);            // la piste 4 est entière : pas de commune
+    VSM_ASSERT_NEAR(commonStereoWidth(p, {2, 3}), -1.0f, 0.0f);          // aucune tranche qui en porte
+    VSM_ASSERT_EQ(applyStereoWidth(p, {4}, -2.0f), size_t(1));          // bornée
+    VSM_ASSERT_NEAR(p.tracks[4].stereoWidth, 0.0f, 0.0f);
+    VSM_ASSERT_EQ(applyStereoWidth(p, {4}, 0.0f), size_t(0));           // déjà mono : rien ne change
+    // Les réglages d'une tranche ne la portent pas : la balance reste.
+    const auto reglages = captureChannelSettings(p.tracks[0]);
+    VSM_ASSERT(!channelSettingsWouldChange(p.tracks[1], reglages));
+    p.tracks[1].stereoWidth = 0.25f;
+    VSM_ASSERT(!channelSettingsWouldChange(p.tracks[1], reglages));
+    // L'instantané la garde, son rappel la rend.
+    VSM_ASSERT(!takeMixSnapshot(p, "A"));
+    p.tracks[1].stereoWidth = 1.0f;
+    VSM_ASSERT_EQ(previewMixRecall(p, "A").changed, size_t(1));
+    recallMixSnapshot(p, "A");
+    VSM_ASSERT_NEAR(p.tracks[1].stereoWidth, 0.25f, 0.0f);
+    // La remise à zéro : une tranche dont seule la largeur a bougé est à remettre, et revient à l'image entière.
+    p.tracks[0] = Track();
+    p.tracks[0].stereoWidth = 0.75f;
+    VSM_ASSERT_EQ(countTracksToReset(p, {0}), size_t(1));
+    VSM_ASSERT_EQ(resetConsole(p, {0}), size_t(1));
+    VSM_ASSERT_NEAR(p.tracks[0].stereoWidth, 1.0f, 0.0f);
+}
+
 // D568.3 — CONTOURNER LES INSERTS DES TRANCHES CHOISIES : la règle de « Contourner tout », sur plusieurs pistes.
 VSM_TEST(bypassing_the_inserts_of_chosen_strips_follows_bypass_all) {
     Project p;

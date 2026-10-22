@@ -137,6 +137,15 @@ struct SendsPanPlan {
 SendsPanPlan sendsPanPlan(const Project& project, const std::set<size_t>& chosen);
 size_t applySendsFollowPan(Project& project, const std::set<size_t>& chosen, bool follow);
 
+/// D573.1 — LA LARGEUR STÉRÉO DES TRANCHES CHOISIES (le panoramique combiné de Cubase), de 0 (mono) à 1 (l'image
+/// entière). Un dossier, un VCA et un groupe n'en portent pas : ils ne comptent ni ne changent. `commonStereoWidth` rend
+/// la largeur commune des tranches qui en portent, −1 si elles diffèrent ou s'il n'y en a aucune (le menu ne coche
+/// rien). La largeur demandée est bornée à [0, 1]. Elle va avec le PANORAMIQUE : ni copiée avec les réglages d'une
+/// tranche (D562.3, la balance reste), ni liée par D566.3 ; gardée par un instantané, rendue à 1 par la remise à zéro.
+float commonStereoWidth(const Project& project, const std::set<size_t>& chosen);
+size_t countStereoWidthChanges(const Project& project, const std::set<size_t>& chosen, float width);
+size_t applyStereoWidth(Project& project, const std::set<size_t>& chosen, float width);
+
 /// D568.3 — CONTOURNER LES INSERTS DES TRANCHES CHOISIES (*Bypass Inserts*), la règle de « Contourner tout » (D15.1)
 /// sur plusieurs pistes : CONTOURNER si l'une des tranches choisies a un insert actif — `count` tranches —, RÉTABLIR
 /// sinon — `count` tranches qui ont un insert contourné. Les inserts passent tous à `enabled` faux, ou tous à vrai : l'état

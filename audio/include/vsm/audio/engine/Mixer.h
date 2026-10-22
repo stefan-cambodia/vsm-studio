@@ -241,4 +241,16 @@ inline float mixStereoBalancedInto(const float* inL, const float* inR, int numSa
     return peak;
 }
 
+/// D573.1 : LA LARGEUR STÉRÉO, par le milieu et le côté — `M = (G + D) / 2`, `S = (G − D) / 2`, `G' = M + w·S`,
+/// `D' = M − w·S`. À `w` = 0 la somme mono sur les deux canaux, à 1 la source telle quelle (l'appelant ne l'appelle pas :
+/// le chemin d'avant reste au bit près). Une source mono (G = D) n'a pas de côté et ressort intacte.
+inline void narrowStereo(const float* inL, const float* inR, int numSamples, float width, float* outL, float* outR) {
+    for (int i = 0; i < numSamples; ++i) {
+        const float milieu = 0.5f * (inL[i] + inR[i]);
+        const float cote = 0.5f * (inL[i] - inR[i]) * width;
+        outL[i] = milieu + cote;
+        outR[i] = milieu - cote;
+    }
+}
+
 } // namespace vsm::audio::engine

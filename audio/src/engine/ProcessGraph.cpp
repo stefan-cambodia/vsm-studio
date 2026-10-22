@@ -28,6 +28,8 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     scratchMonoL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     scratchStereoL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     scratchStereoR_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
+    widthL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);   // D573.1
+    widthR_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     for (size_t b = 0; b < kMaxSends; ++b) {
         sendL_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
         sendR_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
@@ -1907,16 +1909,29 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     const float pan = std::clamp(((pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan) + ccPan_[trackIndex],
                                  -1.0f, 1.0f);   // D330 : le CC 10 s'ajoute au potentiomètre
 
+    // D573.1 : LA LARGEUR STÉRÉO resserre l'image AVANT le panoramique ; c'est le panneau (`panL`, `panR`) qui va à la
+    // sortie, et aux départs qui suivent le panoramique (D572.2). Le RMS, la corrélation et les départs centrés prennent
+    // la source ; la crête, que le mélange rend, est celle de l'image resserrée — une moyenne pondérée des deux canaux,
+    // jamais plus haute. À 1, rien n'est calculé : les pointeurs sont ceux de la source, le chemin d'avant au bit près.
+    // La borne est celle de `sendL_` (`sampleStart + sampleCount` ≤ `maxBlockSize_`) : elle ne tombe jamais.
+    const float* panL = srcL;
+    const float* panR = srcR;
+    if (track.stereoWidth < 1.0f && sampleCount <= static_cast<int>(widthL_.size())) {
+        narrowStereo(srcL, srcR, sampleCount, std::max(0.0f, track.stereoWidth), widthL_.data(), widthR_.data());
+        panL = widthL_.data();
+        panR = widthR_.data();
+    }
+
     // D571.2 : LA LOI DE PANORAMIQUE DU PROJET. Le défaut (−3 dB) reste l'appel d'avant, mot pour mot.
     float peak = 0.0f;
     if (project.panLaw == vsm::sequencer::PanLaw::Minus3dB) {
-        peak = mixStereoInto(srcL, srcR, sampleCount,
+        peak = mixStereoInto(panL, panR, sampleCount,
                              volume, pan, audible,
                              destL + sampleStart, destR + sampleStart);
     } else {
         float gainL = 1.0f, gainR = 1.0f;
         vsm::sequencer::panLawGains(project.panLaw, pan, gainL, gainR);
-        peak = mixStereoWithGainsInto(srcL, srcR, sampleCount, volume, gainL, gainR, audible,
+        peak = mixStereoWithGainsInto(panL, panR, sampleCount, volume, gainL, gainR, audible,
                                       destL + sampleStart, destR + sampleStart);
     }
     blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
@@ -1972,8 +1987,8 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
             } else {
                 const float lvlG = lvl * departG, lvlD = lvl * departD;
                 for (int i = 0; i < sampleCount; ++i) {
-                    sendL_[b][static_cast<size_t>(sampleStart + i)] += srcL[static_cast<size_t>(i)] * lvlG;
-                    sendR_[b][static_cast<size_t>(sampleStart + i)] += srcR[static_cast<size_t>(i)] * lvlD;
+                    sendL_[b][static_cast<size_t>(sampleStart + i)] += panL[static_cast<size_t>(i)] * lvlG;
+                    sendR_[b][static_cast<size_t>(sampleStart + i)] += panR[static_cast<size_t>(i)] * lvlD;
                 }
             }
         }

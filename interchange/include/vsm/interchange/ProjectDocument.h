@@ -190,6 +190,9 @@ struct ProjectClip {
     /// aucun). Sans effet sur le son : il ne compte pas parmi les réglages qui décident de la version. EN DERNIER.
     double snapPointSeconds = -1.0;
     uint32_t group = 0;   ///< D571.1 : écrit seulement s'il est posé
+    /// D573.2 : la forme du fondu de SORTIE (`fadeOutShape`), écrite seulement si elle diffère de celle de l'entrée ;
+    /// vide : celle de l'entrée. Elle change le son : elle compte parmi les réglages qui décident de la version.
+    std::string fadeOutShape;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de
@@ -333,6 +336,8 @@ struct ProjectTrack {
     std::string presetPath;
     float volume = 1.0f;
     float pan = 0.0f;
+    /// D573.1 : la largeur stéréo (`mix.width`), écrite seulement hors de 1 ; relue bornée à [0, 1], et dite.
+    float stereoWidth = 1.0f;
     bool muted = false;
     bool solo = false;
     /// Niveaux d'envoi, un par bus déclaré par le projet. Un vecteur plus

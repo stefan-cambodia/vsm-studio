@@ -78,8 +78,10 @@ struct AudioClipSpan {
     int64_t fadeInFrames = 0;
     int64_t fadeOutFrames = 0;
     /// D17.1 : la forme des deux fondus. `Linear` par défaut, et le chemin de
-    /// lecture est alors exactement celui d'avant.
+    /// lecture est alors exactement celui d'avant. D573.2 : celle de l'ENTRÉE ;
+    /// la sortie prend `fadeOutShape`.
     vsm::sequencer::FadeShape fadeShape = vsm::sequencer::FadeShape::Linear;
+    vsm::sequencer::FadeShape fadeOutShape = vsm::sequencer::FadeShape::Linear;   ///< D573.2
     /// D34.1 : LE FONDU CROISÉ, posé par `spansFromTrack` sur la durée exacte
     /// du recouvrement avec la portée voisine. Séparé des fondus de
     /// l'utilisateur, et non écrit par-dessus eux, pour la raison qui a déjà

@@ -259,7 +259,8 @@ struct Clip {
     uint64_t id = 0;
 
     /// LA FORME DES FONDUS (D17.1). `Linear` par défaut : les projets
-    /// existants sonnent au bit près comme avant.
+    /// existants sonnent au bit près comme avant. D573.2 : celle du fondu
+    /// d'ENTRÉE ; la sortie a la sienne (`fadeOutShape`, plus bas).
     ///
     /// APRÈS `id`, ET C'EST LA RÈGLE DE CE STRUCT, écrite plus haut : tout le
     /// code existant construit un `Clip` par agrégat POSITIONNEL. Glissé entre
@@ -301,6 +302,11 @@ struct Clip {
     /// sélection, agissent donc sur tout le groupe. Une COPIE naît hors de tout groupe (la règle du verrou, D546.3) ;
     /// une COUPE le garde sur ses deux moitiés. Sans effet sur le son. EN DERNIER, la règle de l'agrégat positionnel.
     uint32_t groupId = 0;
+    /// D573.2 : LA FORME DU FONDU DE SORTIE (les deux fenêtres de fondu de Cubase), distincte de celle de l'entrée
+    /// (`fadeShape`). Un projet d'avant ne la porte pas : relu, elle prend la forme de l'entrée, et il sonne au bit
+    /// près. Le fondu croisé garde la sienne (D34.1), le fondu de sécurité reste droit (D33.2). EN DERNIER, la règle
+    /// de l'agrégat positionnel.
+    FadeShape fadeOutShape = FadeShape::Linear;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour
@@ -439,6 +445,7 @@ struct InsertSnapshot {
 struct TrackMixState {
     float volume = 1.0f;
     float pan = 0.0f;
+    float stereoWidth = 1.0f;     ///< D573.1 : le panneau entier, avec le panoramique
     bool muted = false;
     bool solo = false;
     float inputTrimDb = 0.0f;
@@ -691,6 +698,10 @@ public:
     bool armed = false;
     float volume = 1.0f;  // gain linéaire, 1.0 = 0 dB
     float pan = 0.0f;      // -1 (gauche) .. +1 (droite)
+    /// D573.1 : LA LARGEUR STÉRÉO (le panoramique combiné de Cubase) — 1 l'image entière, 0 la somme mono sur les deux
+    /// canaux : `M = (G + D) / 2`, `S = (G − D) / 2`, `G' = M + w·S`, `D' = M − w·S`, AVANT le panoramique. À 1, le
+    /// moteur ne calcule rien : un projet d'avant sonne au bit près. Ni dossier, ni VCA, ni groupe (une balance).
+    float stereoWidth = 1.0f;
     /// D23.1 : LA POLARITÉ DE LA PISTE (le Ø de Cubase). Appliquée au fader,
     /// par le signe du volume : la sortie ET les départs s'inversent, pré
     /// comme post -- deux micros en opposition le sont partout où ils vont.

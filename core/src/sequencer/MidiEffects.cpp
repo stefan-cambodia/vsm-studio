@@ -51,6 +51,31 @@ std::vector<Note> velocite(const std::vector<Note>& notes, float echelle, float 
     return sortie;
 }
 
+// --- DURÉE (D573.3) --------------------------------------------------------
+
+/// LA *LENGTH COMPRESSION* DES MODIFICATEURS MIDI DE CUBASE : chaque durée multipliée par `rapport` à partir du départ,
+/// arrondie au tick, un tick au moins. UNE NOTE ALLONGÉE S'ARRÊTE AU PLUS TARD AU DÉPART DE LA SUIVANTE DE MÊME HAUTEUR
+/// SUR LE MÊME CANAL : sa fin couperait sinon l'attaque d'après — un rapport de 4 sur des notes répétées rend un legato,
+/// pas des notes qui se mangent. Une note qui chevauchait DÉJÀ la suivante garde sa durée d'origine : l'effet ne
+/// raccourcit jamais en allongeant.
+std::vector<Note> durees(const std::vector<Note>& notes, float rapport) {
+    std::vector<Note> sortie = notes;
+    std::map<std::pair<uint8_t, uint8_t>, std::vector<Tick>> departs;
+    for (const auto& n : notes) departs[{n.channel, n.number}].push_back(n.startTick);
+    for (auto& [cle, liste] : departs) std::sort(liste.begin(), liste.end());
+    for (auto& note : sortie) {
+        const Tick duree = note.endTick - note.startTick;
+        Tick neuve = std::max<Tick>(1, static_cast<Tick>(std::llround(static_cast<double>(duree) * rapport)));
+        if (neuve > duree) {
+            const auto& liste = departs[{note.channel, note.number}];
+            const auto suivante = std::upper_bound(liste.begin(), liste.end(), note.startTick);
+            if (suivante != liste.end()) neuve = std::min(neuve, std::max(duree, *suivante - note.startTick));
+        }
+        note.endTick = note.startTick + neuve;
+    }
+    return sortie;
+}
+
 // --- ARPÉGIATEUR -----------------------------------------------------------
 
 /// Les notes qui SONNENT ENSEMBLE forment un accord. « Ensemble » veut dire
@@ -125,6 +150,8 @@ std::vector<Note> applyMidiEffects(const std::vector<MidiEffect>& effects,
         } else if (effet.type == "velocity") {
             courant = velocite(courant, parametre(effet, "Scale", 1.0f),
                                 parametre(effet, "Offset", 0.0f));
+        } else if (effet.type == "length") {   // D573.3
+            courant = durees(courant, std::clamp(parametre(effet, "Ratio", 1.0f), 0.25f, 4.0f));
         } else if (effet.type == "arpeggio") {
             // LE PAS EST EN FRACTIONS DE NOIRE : « 4 » veut dire la
             // double-croche. En ticks, il dépendrait de `ppq` et un projet
@@ -146,6 +173,7 @@ std::vector<Note> applyMidiEffects(const std::vector<MidiEffect>& effects,
 std::vector<MidiEffectParam> midiEffectParameters(const std::string& type) {
     if (type == "transpose") return {{"Semitones", -48.0f, 48.0f, 0.0f}};
     if (type == "velocity") return {{"Scale", 0.0f, 2.0f, 1.0f}, {"Offset", -64.0f, 64.0f, 0.0f}};
+    if (type == "length") return {{"Ratio", 0.25f, 4.0f, 1.0f}};   // D573.3
     if (type == "arpeggio")
         // `Division` en fractions de noire : 1 = la noire, 4 = la
         // double-croche. `Mode` : 0 montant, 1 descendant, 2 aller-retour.
@@ -154,12 +182,15 @@ std::vector<MidiEffectParam> midiEffectParameters(const std::string& type) {
     return {};
 }
 
-std::vector<std::string> midiEffectTypes() { return {"transpose", "velocity", "arpeggio"}; }
+// D573.3 : « length » APRÈS les trois d'avant — le menu les numérote dans cet ordre, et un banc qui ajoute la vélocité
+// par son rang la trouve toujours au même.
+std::vector<std::string> midiEffectTypes() { return {"transpose", "velocity", "arpeggio", "length"}; }
 
 std::string midiEffectDisplayName(const std::string& type) {
     if (type == "transpose") return "Transposition";
     if (type == "velocity") return "Vélocité";
     if (type == "arpeggio") return "Arpégiateur";
+    if (type == "length") return "Durée";   // D573.3
     // LE TYPE LUI-MÊME plutôt que « (inconnu) » : ce qu'on a chargé se lit,
     // même quand on ne sait pas le jouer.
     return type;

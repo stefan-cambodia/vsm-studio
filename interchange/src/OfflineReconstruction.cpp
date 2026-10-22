@@ -400,6 +400,13 @@ RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
     piste.vcaTrack = -1;   // D532.1 : le gel est pré-fader, le VCA reste vivant
     piste.sendLevels.clear();
     piste.volume = 1.0f;
+    // D573.1 : LA LARGEUR STÉRÉO est dans le PANNEAU, qui reste vivant après le gel comme le panoramique : la capturer
+    // la ferait subir deux fois à la piste gelée. Le gel prend la source d'avant le panneau.
+    piste.stereoWidth = 1.0f;
+    // D573.1 : ET LA POLARITÉ (D23.1), qui est le SIGNE DU FADER et reste vivante avec lui : le gel la gardait, et la
+    // piste gelée l'appliquait une seconde fois — une piste inversée puis gelée revenait à l'endroit, sans un mot. Relevé
+    // en écrivant le test du gel de la largeur (`freezing_leaves_the_width_and_the_polarity_alive`).
+    piste.invertPhase = false;
     // Une piste DÉJÀ gelée se regèle depuis son matériau, pas depuis son gel :
     // sinon on empilerait des rendus de rendus.
     piste.frozen = false;

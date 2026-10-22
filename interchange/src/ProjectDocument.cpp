@@ -160,6 +160,7 @@ JsonValue clipToJson(const ProjectClip& clip) {
         c.set("channelMode", JsonValue::makeString(clip.channelMap == 1 ? "left" : clip.channelMap == 2 ? "right" : "mono"));
     if (clip.snapPointSeconds >= 0.0) c.set("snapPoint", JsonValue::makeNumber(clip.snapPointSeconds));   // D566.2
     if (clip.group != 0) c.set("group", JsonValue::makeNumber(static_cast<double>(clip.group)));   // D571.1
+    if (!clip.fadeOutShape.empty()) c.set("fadeOutShape", JsonValue::makeString(clip.fadeOutShape));   // D573.2
     return c;
 }
 
@@ -203,6 +204,7 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
         const double g = clipJson["group"].asNumber(0.0);
         clip.group = g >= 1.0 && g < 4294967295.0 && g == std::floor(g) ? static_cast<uint32_t>(g) : 0u;
     }
+    clip.fadeOutShape = clipJson["fadeOutShape"].asString();   // D573.2
     return clip;
 }
 
@@ -210,19 +212,24 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
 /// version écrite. D545.1 : une courbe de gain aussi — un lecteur ancien la jouerait à plat, sans un mot.
 /// D559.3 : et des canaux échangés, qu'un lecteur ancien jouerait dans l'ordre du fichier.
 /// D561.3 : et un décalage continu retiré, qu'un lecteur ancien jouerait encore.
+/// Un réglage de clip qu'un lecteur ancien jouerait AUTREMENT sans un mot — il fait monter la version. Écrit une fois
+/// (D573.2 : la condition était recopiée trois fois, pour les clips, les prises et les versions rangées).
+bool clipDemandeLaVersion3(const ProjectClip& clip) {
+    return clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty()
+           || clip.swapChannels || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f || clip.channelMap != 0
+           || !clip.fadeOutShape.empty();   // D573.2 : une sortie d'une autre forme que l'entrée
+}
+
 bool usesWarp(const ProjectDocument& document) {
     for (const auto& track : document.tracks) {
         for (const auto& clip : track.clips)
-            if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
-                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f || clip.channelMap != 0) return true;
+            if (clipDemandeLaVersion3(clip)) return true;
         for (const auto& take : track.takes)
             for (const auto& clip : take.clips)
-                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
-                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f || clip.channelMap != 0) return true;
+                if (clipDemandeLaVersion3(clip)) return true;
         for (const auto& version : track.versions)   // D532.2 : une version rangée compte aussi
             for (const auto& clip : version.clips)
-                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0 || !clip.gainEnvelope.empty() || clip.swapChannels
-                || clip.dcOffsetLeft != 0.0f || clip.dcOffsetRight != 0.0f || clip.channelMap != 0) return true;
+                if (clipDemandeLaVersion3(clip)) return true;
     }
     return false;
 }
@@ -294,6 +301,9 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
                 ? "" : fadeShapeName(clip.fadeShape);
+    // D573.2 : VIDE QUAND ELLE EST CELLE DE L'ENTRÉE — sinon son nom, « linear » compris (une entrée lente et une
+    // sortie droite doivent se relire ainsi).
+    c.fadeOutShape = clip.fadeOutShape == clip.fadeShape ? "" : fadeShapeName(clip.fadeOutShape);
     return c;
 }
 vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
@@ -324,6 +334,8 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
     c.channelMap = clip.channelMap;       // D564.3
     c.snapPointSeconds = clip.snapPointSeconds < 0.0 ? -1.0 : clip.snapPointSeconds;   // D566.2
     c.groupId = clip.group;                                                             // D571.1
+    // D573.2 : absente, la sortie prend la forme de l'entrée — un projet d'avant sonne au bit près.
+    c.fadeOutShape = clip.fadeOutShape.empty() ? c.fadeShape : fadeShapeFromName(clip.fadeOutShape);
     return c;
 }
 
@@ -415,6 +427,7 @@ JsonValue etatDeConsoleVersJson(const vsm::sequencer::TrackMixState& etat) {
     JsonValue e = JsonValue::makeObject();
     e.set("volume", JsonValue::makeFloat(etat.volume));
     e.set("pan", JsonValue::makeFloat(etat.pan));
+    if (etat.stereoWidth != 1.0f) e.set("width", JsonValue::makeFloat(etat.stereoWidth));   // D573.1, hors de 1 seulement
     e.set("muted", JsonValue::makeBoolean(etat.muted));
     e.set("solo", JsonValue::makeBoolean(etat.solo));
     e.set("trimDb", JsonValue::makeFloat(etat.inputTrimDb));
@@ -440,6 +453,9 @@ vsm::sequencer::TrackMixState etatDeConsoleDepuisJson(const JsonValue& e) {
     vsm::sequencer::TrackMixState etat;
     etat.volume = static_cast<float>(e["volume"].asNumber(1.0));
     etat.pan = static_cast<float>(e["pan"].asNumber(0.0));
+    // D573.1 : bornée comme celle de la piste ; un instantané illisible rappelle l'image entière.
+    const double largeur = e["width"].asNumber(1.0);
+    etat.stereoWidth = largeur >= 0.0 && largeur <= 1.0 ? static_cast<float>(largeur) : 1.0f;
     etat.muted = e["muted"].asBoolean(false);
     etat.solo = e["solo"].asBoolean(false);
     etat.inputTrimDb = static_cast<float>(e["trimDb"].asNumber(0.0));
@@ -510,6 +526,7 @@ ProjectDocument documentFromProject(const Project& project) {
             entry.compSegments.push_back({troncon.takeIndex, troncon.fromTick, troncon.toTick});
         entry.volume = track.volume;
         entry.pan = track.pan;
+        entry.stereoWidth = track.stereoWidth;   // D573.1
         entry.muted = track.muted;
         entry.solo = track.solo;
         entry.sendLevels = track.sendLevels;
@@ -798,6 +815,26 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.outputIndex = source.outputIndex;
         target.folderDepth = source.folderDepth;
         target.delayMs = source.delayMs;
+        // D573.1 : LA LARGEUR STÉRÉO, bornée à [0, 1] — elle ne s'élargit pas au-delà de l'image, comme celle de Cubase.
+        // Une valeur hors bornes change le son demandé : une RÉSERVE, dite. Un groupe, un dossier ou un VCA n'en portent
+        // pas : écartée, une CORRECTION (D523) — elle ne s'y entendait pas.
+        target.stereoWidth = 1.0f;
+        if (source.stereoWidth != 1.0f) {
+            const bool porte = target.kind != Track::Kind::Group && target.kind != Track::Kind::Folder
+                               && target.kind != Track::Kind::Vca;
+            const bool lisible = source.stereoWidth >= 0.0f && source.stereoWidth <= 1.0f;
+            if (!porte)
+                report.corrections.push_back("piste \"" + target.name + "\" : un groupe, un dossier ou un VCA ne porte "
+                                             "pas de largeur st\u00e9r\u00e9o, \u00e9cart\u00e9e");
+            else if (lisible)
+                target.stereoWidth = source.stereoWidth;
+            else {
+                target.stereoWidth = source.stereoWidth > 1.0f ? 1.0f : source.stereoWidth < 0.0f ? 0.0f : 1.0f;
+                report.warnings.push_back("piste \"" + target.name + "\" : largeur st\u00e9r\u00e9o hors de 0-100 %, "
+                                          + std::to_string(static_cast<int>(std::lround(target.stereoWidth * 100.0f)))
+                                          + " % reprise");
+            }
+        }
         target.automationMode = source.automationMode == "touch" ? vsm::sequencer::AutomationMode::Touch
                               : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
                                                                  : vsm::sequencer::AutomationMode::Off;
@@ -1113,6 +1150,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         JsonValue mix = JsonValue::makeObject();
         mix.set("volume", JsonValue::makeFloat(track.volume));
         mix.set("pan", JsonValue::makeFloat(track.pan));
+        if (track.stereoWidth != 1.0f) mix.set("width", JsonValue::makeFloat(track.stereoWidth));   // D573.1
         mix.set("muted", JsonValue::makeBoolean(track.muted));
         mix.set("solo", JsonValue::makeBoolean(track.solo));
         if (track.invertPhase) mix.set("invertPhase", JsonValue::makeBoolean(true));   // D23.1
@@ -1518,6 +1556,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         const JsonValue& mix = entry["mix"];
         track.volume = static_cast<float>(mix["volume"].asNumber(1.0));
         track.pan = static_cast<float>(mix["pan"].asNumber(0.0));
+        track.stereoWidth = static_cast<float>(mix["width"].asNumber(1.0));   // D573.1 : bornée à la reprise
         track.muted = mix["muted"].asBoolean(false);
         track.solo = mix["solo"].asBoolean(false);
         track.invertPhase = mix["invertPhase"].asBoolean(false);

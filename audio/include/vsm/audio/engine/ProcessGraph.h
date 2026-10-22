@@ -728,6 +728,7 @@ private:
     // jamais redimensionnés dans processBlock() (règle realtime section 13).
     std::vector<float> scratchMonoL_;
     std::vector<float> scratchStereoL_, scratchStereoR_; // rendu stéréo par piste (avant inserts+mix)
+    std::vector<float> widthL_, widthR_;   // D573.1 : la source resserrée par la largeur, avant le panoramique
 
     // Chaînes d'inserts par piste (publiées atomiquement).
     std::array<std::atomic<std::shared_ptr<const EffectChain>>, kMaxTracks> effectChains_{};

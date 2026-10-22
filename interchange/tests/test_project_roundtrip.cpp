@@ -624,3 +624,96 @@ VSM_TEST(les_departs_qui_suivent_le_panoramique_survivent_au_disque) {
     VSM_ASSERT(relu.bundle.project.tracks[0].mixSnapshots.at("A").sendsFollowPan);
     for (size_t i = 1; i < relu.bundle.project.tracks.size(); ++i) VSM_ASSERT(!relu.bundle.project.tracks[i].sendsFollowPan);
 }
+
+// D573.1 : LA LARGEUR STÉRÉO survit au disque, dans la piste et dans un instantané, ne s'écrit pas à 1 ; relue hors de
+// [0, 1], elle est bornée et DITE (une réserve) ; posée sur un groupe, écartée et dite (une correction).
+VSM_TEST(la_largeur_stereo_survit_au_disque_et_se_borne_en_le_disant) {
+    Project p = projetDistinctif();
+    {
+        const std::string texte = projectDocumentToJson(documentFromProject(p)).toString();
+        VSM_ASSERT(texte.find("\"width\"") == std::string::npos);
+    }
+    p.tracks[0].stereoWidth = 0.25f;
+    TrackMixState etat;
+    etat.stereoWidth = 0.5f;
+    p.tracks[0].mixSnapshots["A"] = etat;
+    p.mixSnapshotNames = {"A"};
+    const fs::path dossier = dossierNeuf("largeur-stereo");
+    VSM_ASSERT(saveProjectBundle(p, dossier.string()).success);
+    const auto relu = loadProjectBundle(dossier.string());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_NEAR(relu.bundle.project.tracks[0].stereoWidth, 0.25f, 1e-6);
+    VSM_ASSERT_NEAR(relu.bundle.project.tracks[0].mixSnapshots.at("A").stereoWidth, 0.5f, 1e-6);
+    for (size_t i = 1; i < relu.bundle.project.tracks.size(); ++i)
+        VSM_ASSERT_NEAR(relu.bundle.project.tracks[i].stereoWidth, 1.0f, 0.0f);
+
+    // Hors bornes, et sur un groupe : un document écrit ailleurs, comme le ferait une main.
+    ProjectDocument doc;
+    for (const auto& [nature, largeur] : {std::pair<const char*, float>{"midi", 1.5f}, {"audio", -0.5f}, {"group", 0.5f}}) {
+        ProjectTrack piste;
+        piste.name = nature;
+        piste.kind = nature;
+        piste.stereoWidth = largeur;
+        doc.tracks.push_back(piste);
+    }
+    Project q;
+    q.tracks.resize(3);
+    const auto rapport = applyDocumentToProject(doc, q);
+    VSM_ASSERT_NEAR(q.tracks[0].stereoWidth, 1.0f, 0.0f);
+    VSM_ASSERT_NEAR(q.tracks[1].stereoWidth, 0.0f, 0.0f);
+    VSM_ASSERT_NEAR(q.tracks[2].stereoWidth, 1.0f, 0.0f);
+    size_t dites = 0;
+    for (const auto& w : rapport.warnings) if (w.find("largeur st") != std::string::npos) ++dites;
+    VSM_ASSERT_EQ(dites, size_t(2));
+    size_t corrigees = 0;
+    for (const auto& c : rapport.corrections) if (c.find("largeur st") != std::string::npos) ++corrigees;
+    VSM_ASSERT_EQ(corrigees, size_t(1));
+}
+
+// D573.2 : LA FORME DU FONDU DE SORTIE survit au disque ; elle ne s'écrit pas quand elle est celle de l'entrée ; une
+// entrée lente et une sortie DROITE se relisent ainsi (« linear » écrit) ; absente, la sortie prend l'entrée ; et elle
+// fait monter la version, comme les autres réglages de clip qu'un lecteur ancien jouerait autrement.
+VSM_TEST(la_forme_du_fondu_de_sortie_survit_au_disque) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    Track t;
+    t.name = "Audio";
+    t.kind = Track::Kind::Audio;
+    t.audio.path = "a.wav";
+    Clip memes;
+    memes.length = 480;
+    memes.fadeShape = FadeShape::Slow;
+    memes.fadeOutShape = FadeShape::Slow;
+    t.clips.push_back(memes);
+    p.tracks.push_back(t);
+    {
+        const std::string texte = projectDocumentToJson(documentFromProject(p)).toString();
+        VSM_ASSERT(texte.find("\"fadeOutShape\"") == std::string::npos);
+        VSM_ASSERT(texte.find("\"version\": 2") != std::string::npos || texte.find("\"version\":2") != std::string::npos);
+    }
+    Clip droite = memes;
+    droite.startTick = 960;
+    droite.fadeOutShape = FadeShape::Linear;
+    Clip rapide = memes;
+    rapide.startTick = 1920;
+    rapide.fadeShape = FadeShape::Linear;
+    rapide.fadeOutShape = FadeShape::Fast;
+    p.tracks[0].clips = {memes, droite, rapide};
+    const std::string texte = projectDocumentToJson(documentFromProject(p)).toString();
+    VSM_ASSERT(texte.find("\"fadeOutShape\": \"linear\"") != std::string::npos
+               || texte.find("\"fadeOutShape\":\"linear\"") != std::string::npos);
+    VSM_ASSERT(texte.find("\"version\": 3") != std::string::npos || texte.find("\"version\":3") != std::string::npos);
+    Project relu = p;
+    applyDocumentToProject(documentFromProject(p), relu);
+    const auto& c = relu.tracks[0].clips;
+    VSM_ASSERT_EQ(c.size(), size_t(3));
+    VSM_ASSERT(c[0].fadeShape == FadeShape::Slow && c[0].fadeOutShape == FadeShape::Slow);
+    VSM_ASSERT(c[1].fadeShape == FadeShape::Slow && c[1].fadeOutShape == FadeShape::Linear);
+    VSM_ASSERT(c[2].fadeShape == FadeShape::Linear && c[2].fadeOutShape == FadeShape::Fast);
+    // Un document d'avant : pas de « fadeOutShape », la sortie prend l'entrée.
+    ProjectDocument ancien = documentFromProject(p);
+    for (auto& clip : ancien.tracks[0].clips) clip.fadeOutShape.clear();
+    Project vieux = p;
+    applyDocumentToProject(ancien, vieux);
+    for (const auto& clip : vieux.tracks[0].clips) VSM_ASSERT(clip.fadeOutShape == clip.fadeShape);
+}

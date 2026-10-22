@@ -221,3 +221,39 @@ VSM_TEST(the_arpeggio_mode_names_its_three_positions) {
         VSM_ASSERT_EQ(p.choices[2], std::string("Aller-retour"));
     }
 }
+
+// D573.3 — LA DURÉE EN EFFET MIDI (*Length Compression*). Quatre notes d'une croche (240 ticks) : un do à 0, un ré à 480,
+// et deux mi répétés à 960 et 1 200 — le premier mi finit juste où le second commence. À 0,5 : toutes à 120, les départs
+// intacts. À 2 : le do et le ré à 480 ; le PREMIER MI s'arrête au départ du second (240, le legato), le second à 480. À 4
+// sur un mi qui chevauchait DÉJÀ son suivant, sa durée d'origine reste. Le matériau ne bouge pas ; le type est proposé.
+VSM_TEST(the_length_effect_scales_durations_and_stops_at_the_next_same_note) {
+    std::vector<Note> materiau = {{0, 240, 0, 60, 100, 64, 1}, {480, 720, 0, 62, 100, 64, 2},
+                                  {960, 1200, 0, 64, 100, 64, 3}, {1200, 1440, 0, 64, 100, 64, 4}};
+    auto durees = [](const std::vector<Note>& notes) {
+        std::vector<Tick> d;
+        for (const auto& n : notes) d.push_back(n.endTick - n.startTick);
+        return d;
+    };
+    MidiEffectReport rapport;
+    const auto moitie = applyMidiEffects({fait("length", {{"Ratio", 0.5f}})}, materiau, 480, &rapport);
+    VSM_ASSERT(durees(moitie) == (std::vector<Tick>{120, 120, 120, 120}));
+    for (size_t i = 0; i < materiau.size(); ++i) VSM_ASSERT_EQ(moitie[i].startTick, materiau[i].startTick);
+    VSM_ASSERT_EQ(rapport.unknownEffects, size_t(0));
+    const auto double_ = applyMidiEffects({fait("length", {{"Ratio", 2.0f}})}, materiau, 480);
+    VSM_ASSERT(durees(double_) == (std::vector<Tick>{480, 480, 240, 480}));
+    VSM_ASSERT(durees(materiau) == (std::vector<Tick>{240, 240, 240, 240}));   // le matériau intact
+    // Le témoin à 1 : rien ne bouge. Hors bornes : bornée (0,25 et 4).
+    VSM_ASSERT(durees(applyMidiEffects({fait("length", {{"Ratio", 1.0f}})}, materiau, 480)) == durees(materiau));
+    VSM_ASSERT(durees(applyMidiEffects({fait("length", {{"Ratio", 0.01f}})}, materiau, 480))
+               == (std::vector<Tick>{60, 60, 60, 60}));
+    // Un mi qui chevauchait déjà le suivant (960-1 300 contre 1 200) garde ses 340 ticks à 4.
+    materiau[2].endTick = 1300;
+    VSM_ASSERT_EQ(durees(applyMidiEffects({fait("length", {{"Ratio", 4.0f}})}, materiau, 480))[2], Tick(340));
+    // Un tick au moins.
+    const std::vector<Note> breve = {{0, 1, 0, 60, 100, 64, 1}};
+    VSM_ASSERT_EQ(applyMidiEffects({fait("length", {{"Ratio", 0.25f}})}, breve, 480)[0].endTick, Tick(1));
+    const auto types = midiEffectTypes();
+    VSM_ASSERT(std::find(types.begin(), types.end(), "length") != types.end());
+    VSM_ASSERT_EQ(midiEffectDisplayName("length"), std::string("Durée"));
+    VSM_ASSERT_EQ(midiEffectParameters("length").size(), size_t(1));
+}

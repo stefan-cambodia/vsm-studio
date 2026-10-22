@@ -18,6 +18,7 @@ float departDe(const std::vector<float>& departs, size_t i) { return i < departs
 bool memeConsole(const TrackMixState& a, const TrackMixState& b) {
     const std::equal_to<float> egal;
     if (!egal(a.volume, b.volume) || !egal(a.pan, b.pan) || a.muted != b.muted || a.solo != b.solo
+        || !egal(a.stereoWidth, b.stereoWidth)   // D573.1
         || !egal(a.inputTrimDb, b.inputTrimDb) || a.invertPhase != b.invertPhase || !(a.inserts == b.inserts)
         || a.sendsBypassed != b.sendsBypassed     // D567.3
         || a.sendsFollowPan != b.sendsFollowPan)  // D572.2
@@ -34,6 +35,7 @@ TrackMixState rappele(const Track& piste, const TrackMixState& garde, size_t& la
     TrackMixState etat = captureTrackMix(piste);
     etat.volume = garde.volume;
     etat.pan = garde.pan;
+    etat.stereoWidth = garde.stereoWidth;   // D573.1
     etat.muted = garde.muted;
     etat.solo = garde.solo;
     etat.inputTrimDb = garde.inputTrimDb;
@@ -68,6 +70,7 @@ MixRecallReport parcourir(const Project& project, const std::string& name, Proje
         Track& ecrite = cible->tracks[t];
         ecrite.volume = apres.volume;
         ecrite.pan = apres.pan;
+        ecrite.stereoWidth = apres.stereoWidth;   // D573.1
         ecrite.muted = apres.muted;
         ecrite.solo = apres.solo;
         ecrite.inputTrimDb = apres.inputTrimDb;
@@ -86,6 +89,7 @@ TrackMixState captureTrackMix(const Track& track) {
     TrackMixState etat;
     etat.volume = track.volume;
     etat.pan = track.pan;
+    etat.stereoWidth = track.stereoWidth;   // D573.1
     etat.muted = track.muted;
     etat.solo = track.solo;
     etat.inputTrimDb = track.inputTrimDb;
@@ -163,6 +167,7 @@ namespace {
 bool trancheNeutre(const Track& t) {
     const Track neuve;
     return t.volume == neuve.volume && t.pan == neuve.pan && t.muted == neuve.muted && t.solo == neuve.solo
+           && t.stereoWidth == neuve.stereoWidth   // D573.1 : l'image entière
            && t.inputTrimDb == neuve.inputTrimDb && t.invertPhase == neuve.invertPhase
            && t.sendsBypassed == neuve.sendsBypassed   // D567.3 : une piste neuve verse à ses bus
            && t.sendsFollowPan == neuve.sendsFollowPan   // D572.2 : départs centrés
@@ -198,6 +203,7 @@ size_t resetConsole(Project& project, const std::set<size_t>& only) {
         if (trancheNeutre(t)) continue;
         t.volume = neuve.volume;
         t.pan = neuve.pan;
+        t.stereoWidth = neuve.stereoWidth;   // D573.1
         t.muted = neuve.muted;
         t.solo = neuve.solo;
         t.inputTrimDb = neuve.inputTrimDb;
@@ -371,6 +377,43 @@ size_t applySendsFollowPan(Project& project, const std::set<size_t>& chosen, boo
         Track& t = project.tracks[i];
         if (t.isFolder() || t.isVca() || t.sendsFollowPan == follow) continue;
         t.sendsFollowPan = follow;
+        ++n;
+    }
+    return n;
+}
+
+namespace {
+/// D573.1 : une tranche qui porte une largeur — ni dossier, ni VCA (pas de signal), ni groupe (une balance).
+bool porteUneLargeur(const Track& t) { return !t.isFolder() && !t.isVca() && t.kind != Track::Kind::Group; }
+} // namespace
+
+float commonStereoWidth(const Project& project, const std::set<size_t>& chosen) {
+    float commune = -1.0f;
+    for (size_t i : chosen) {
+        if (i >= project.tracks.size() || !porteUneLargeur(project.tracks[i])) continue;
+        const float w = project.tracks[i].stereoWidth;
+        if (commune < 0.0f) commune = w;
+        else if (commune != w) return -1.0f;
+    }
+    return commune;
+}
+
+size_t countStereoWidthChanges(const Project& project, const std::set<size_t>& chosen, float width) {
+    const float w = std::clamp(width, 0.0f, 1.0f);
+    size_t n = 0;
+    for (size_t i : chosen)
+        if (i < project.tracks.size() && porteUneLargeur(project.tracks[i]) && project.tracks[i].stereoWidth != w) ++n;
+    return n;
+}
+
+size_t applyStereoWidth(Project& project, const std::set<size_t>& chosen, float width) {
+    const float w = std::clamp(width, 0.0f, 1.0f);
+    size_t n = 0;
+    for (size_t i : chosen) {
+        if (i >= project.tracks.size()) continue;
+        Track& t = project.tracks[i];
+        if (!porteUneLargeur(t) || t.stereoWidth == w) continue;
+        t.stereoWidth = w;
         ++n;
     }
     return n;

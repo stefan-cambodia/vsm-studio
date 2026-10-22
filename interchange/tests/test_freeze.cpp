@@ -286,7 +286,9 @@ namespace {
 /// Un projet d'une seule piste AUDIO, dont le matériau est fabriqué en mémoire
 /// plutôt que lu : le gel doit marcher sur une piste audio comme sur une piste
 /// MIDI, et cela n'a rien à voir avec la façon dont le fichier est arrivé.
-LoadedBundle bundleAudio() {
+/// D573.1 : `droiteMuette` — la gauche porte le sinus, la droite le silence : une source au côté non nul, que la largeur
+/// stéréo resserre (une source mono n'a pas de côté). Un autre dossier : les deux fichiers coexistent.
+LoadedBundle bundleAudio(bool droiteMuette = false) {
     LoadedBundle bundle;
     bundle.project.ticksPerQuarterNote = 480;
     Track piste;
@@ -303,14 +305,14 @@ LoadedBundle bundleAudio() {
     // fourni en mémoire ne passerait pas par le même chemin que ce qu'on
     // prétend mesurer.
     const std::filesystem::path dossier =
-        std::filesystem::temp_directory_path() / "vsm-gel-audio";
+        std::filesystem::temp_directory_path() / (droiteMuette ? "vsm-gel-audio-gauche" : "vsm-gel-audio");
     std::filesystem::create_directories(dossier);
     std::vector<float> g(8000), d(8000);
     for (size_t i = 0; i < 8000; ++i) {
         const auto v = static_cast<float>(0.7 * std::sin(2.0 * 3.14159265358979 * 220.0
                                                           * static_cast<double>(i) / 8000.0));
         g[i] = v;
-        d[i] = v;
+        d[i] = droiteMuette ? 0.0f : v;
     }
     vsm::audio::io::WavFileWriter::writeFile(g.data(), d.data(), 8000, 8000.0,
                                               vsm::audio::io::SampleFormat::Float32,
@@ -455,4 +457,131 @@ VSM_TEST(sends_that_follow_the_pan_carry_it_into_the_bus) {
     const auto centreSans = rendre(false, 0.0f, PanLaw::Minus6dB);
     const auto centreLie = rendre(true, 0.0f, PanLaw::Minus6dB);
     VSM_ASSERT_NEAR(20.0 * std::log10(static_cast<double>(crete(centreLie.left)) / crete(centreSans.left)), -6.0206, 0.05);
+}
+
+// D573.1 — LA LARGEUR STÉRÉO, par le rendu hors ligne (le chemin de l'export, D332). La gauche porte un sinus, la droite
+// le silence, au centre sous la loi par défaut : `G' = (1 + w)/2`, `D' = (1 − w)/2` sous la crête de la gauche à 100 %.
+// L'attendu écrit avant (ROADMAP-daw, D573) : la gauche à 0 / −1,16 / −2,50 / −4,08 / −6,02 dB, la droite au plancher
+// puis à −18,06 / −12,04 / −8,52 / −6,02 dB pour 100, 75, 50, 25 et 0 % ; à 0 %, les deux canaux égaux. Et une source
+// MONO n'a pas de côté : à 0 %, elle rend AU BIT ce qu'elle rend à 100 %.
+VSM_TEST(the_stereo_width_narrows_the_image_before_the_pan) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+    auto rendre = [&](bool droiteMuette, float largeur) {
+        LoadedBundle b = bundleAudio(droiteMuette);
+        b.project.tracks[0].stereoWidth = largeur;
+        b.project.tracks[0].volume = 1.0f;
+        vsm::audio::engine::RenderedAudio sortie;
+        VSM_ASSERT(renderBundleToBuffer(b, sortie, options()).success);
+        return sortie;
+    };
+    auto crete = [](const std::vector<float>& x) {
+        float c = 0.0f;
+        for (float v : x) c = std::max(c, std::fabs(v));
+        return c;
+    };
+    const auto entiere = rendre(true, 1.0f);
+    const double reference = crete(entiere.left);
+    VSM_ASSERT(reference > 0.1);
+    VSM_ASSERT(crete(entiere.right) < 1e-6f);
+    const struct { float w; double g, d; } attendus[] = {
+        {0.75f, -1.1598, -18.0618}, {0.5f, -2.4988, -12.0412}, {0.25f, -4.0824, -8.5194}, {0.0f, -6.0206, -6.0206}};
+    for (const auto& a : attendus) {
+        const auto r = rendre(true, a.w);
+        VSM_ASSERT_NEAR(20.0 * std::log10(crete(r.left) / reference), a.g, 0.05);
+        VSM_ASSERT_NEAR(20.0 * std::log10(crete(r.right) / reference), a.d, 0.05);
+    }
+    const auto mono = rendre(true, 0.0f);
+    VSM_ASSERT_NEAR(20.0 * std::log10(crete(mono.left) / crete(mono.right)), 0.0, 1e-4);
+    const auto sourceMonoEntiere = rendre(false, 1.0f);
+    const auto sourceMonoResserree = rendre(false, 0.0f);
+    VSM_ASSERT(sourceMonoEntiere.left == sourceMonoResserree.left);
+    VSM_ASSERT(sourceMonoEntiere.right == sourceMonoResserree.right);
+}
+
+// D573.1 — LE GEL CAPTE LA SOURCE D'AVANT LE PANNEAU (D5.5) : la largeur, comme le panoramique, reste VIVANTE après le
+// gel, et le gel ne doit pas la porter — sinon une piste gelée la subirait deux fois. LA POLARITÉ AUSSI (D23.1 : le
+// signe du fader, qui reste vivant comme lui) : relevé en écrivant ce test, le gel la gardait, et une piste gelée
+// l'appliquait une seconde fois — sa polarité revenait à l'endroit. Le gel d'une piste resserrée ET inversée rend donc
+// exactement la source : la gauche le sinus, la droite le silence.
+VSM_TEST(freezing_leaves_the_width_and_the_polarity_alive) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+    LoadedBundle source = bundleAudio(true);
+    vsm::audio::engine::RenderedAudio brut;
+    VSM_ASSERT(renderTrackForFreeze(source, 0, brut, options()).success);
+    LoadedBundle reglee = bundleAudio(true);
+    reglee.project.tracks[0].stereoWidth = 0.5f;
+    reglee.project.tracks[0].invertPhase = true;
+    vsm::audio::engine::RenderedAudio gel;
+    VSM_ASSERT(renderTrackForFreeze(reglee, 0, gel, options()).success);
+    VSM_ASSERT(gel.left.size() == brut.left.size());
+    VSM_ASSERT(gel.left == brut.left);
+    VSM_ASSERT(gel.right == brut.right);
+}
+
+// D573.2 — LA FORME DE CHAQUE FONDU, par le rendu hors ligne (le chemin de l'export, D332). Un clip d'une seconde sur un
+// sinus de 202 Hz à 8 kHz — la trame 1 000 et la trame 7 000 tombent sur ses crêtes —, un fondu d'entrée et un de sortie
+// d'un quart de seconde (2 000 trames) : la trame 1 000 est le MILIEU de l'entrée, la 7 000 celui de la sortie. Le gain
+// s'y lit exactement, rapporté au même rendu SANS fondu. L'attendu écrit avant (ROADMAP-daw, D573) : entrée « lente »
+// −12,04 dB (0,5²), sortie « rapide » −3,01 dB (√0,5) ; le témoin à une seule forme (« lente » aux deux) −12,04 dB à la
+// sortie.
+namespace {
+LoadedBundle bundleFondus(bool avecFondus, FadeShape entree, FadeShape sortie) {
+    LoadedBundle bundle;
+    bundle.project.ticksPerQuarterNote = 480;
+    Track piste;
+    piste.name = "Fondus";
+    piste.kind = Track::Kind::Audio;
+    piste.audio.path = "fondus.wav";
+    piste.audio.sampleRate = 8000.0;
+    piste.audio.frames = 8000;
+    Clip clip;
+    clip.startTick = 0;
+    clip.length = 960;   // une seconde à 120 à la noire
+    if (avecFondus) {
+        clip.fadeInSeconds = 0.25;
+        clip.fadeOutSeconds = 0.25;
+    }
+    clip.fadeShape = entree;
+    clip.fadeOutShape = sortie;
+    piste.clips.push_back(clip);
+    bundle.project.tracks.push_back(std::move(piste));
+    bundle.document = documentFromProject(bundle.project);
+    const std::filesystem::path dossier = std::filesystem::temp_directory_path() / "vsm-fondus-formes";
+    std::filesystem::create_directories(dossier);
+    std::vector<float> g(8000);
+    for (size_t i = 0; i < 8000; ++i)
+        g[i] = static_cast<float>(0.7 * std::sin(2.0 * 3.14159265358979 * 202.0 * static_cast<double>(i) / 8000.0));
+    vsm::audio::io::WavFileWriter::writeFile(g.data(), g.data(), 8000, 8000.0, vsm::audio::io::SampleFormat::Float32,
+                                              (dossier / "fondus.wav").string());
+    bundle.folderPath = dossier.string();
+    return bundle;
+}
+} // namespace
+
+VSM_TEST(each_fade_sounds_its_own_shape) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+    auto rendre = [&](bool avecFondus, FadeShape entree, FadeShape sortie) {
+        LoadedBundle b = bundleFondus(avecFondus, entree, sortie);
+        vsm::audio::engine::RenderedAudio r;
+        VSM_ASSERT(renderBundleToBuffer(b, r, options()).success);
+        return r;
+    };
+    const auto plein = rendre(false, FadeShape::Linear, FadeShape::Linear);
+    VSM_ASSERT(plein.left.size() > 7000);
+    VSM_ASSERT(std::fabs(plein.left[1000]) > 0.3f);   // une crête, pas un passage à zéro
+    VSM_ASSERT(std::fabs(plein.left[7000]) > 0.3f);
+    auto gainDb = [&](const vsm::audio::engine::RenderedAudio& r, size_t i) {
+        return 20.0 * std::log10(static_cast<double>(r.left[i]) / static_cast<double>(plein.left[i]));
+    };
+    const auto deux = rendre(true, FadeShape::Slow, FadeShape::Fast);
+    const auto temoin = rendre(true, FadeShape::Slow, FadeShape::Slow);
+    std::printf("      [D573.2] milieu de l'entrée %.4f dB, de la sortie %.4f dB ; témoin « lente » aux deux : %.4f / %.4f dB\n",
+                gainDb(deux, 1000), gainDb(deux, 7000), gainDb(temoin, 1000), gainDb(temoin, 7000));
+    VSM_ASSERT_NEAR(gainDb(deux, 1000), -12.0412, 0.1);
+    VSM_ASSERT_NEAR(gainDb(deux, 7000), -3.0103, 0.1);
+    VSM_ASSERT_NEAR(gainDb(temoin, 1000), -12.0412, 0.1);
+    VSM_ASSERT_NEAR(gainDb(temoin, 7000), -12.0412, 0.1);
 }

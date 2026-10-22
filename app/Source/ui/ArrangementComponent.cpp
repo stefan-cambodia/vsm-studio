@@ -885,13 +885,28 @@ juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequen
         {
             using vsm::sequencer::FadeShape;
             juce::PopupMenu formes;
-            formes.addItem(30, tr(u8"Droite (mat\u00e9riau corr\u00e9l\u00e9)"), true,
-                            clip.fadeShape == FadeShape::Linear);
+            // D573.2 : cochée seulement quand les DEUX bords ont cette forme — elle les pose tous deux.
+            const auto deuxBords = [&](FadeShape f) { return clip.fadeShape == f && clip.fadeOutShape == f; };
+            formes.addItem(30, tr(u8"Droite (mat\u00e9riau corr\u00e9l\u00e9)"), true, deuxBords(FadeShape::Linear));
             formes.addItem(31, tr(u8"\u00c9gale puissance (mat\u00e9riau d\u00e9corr\u00e9l\u00e9)"), true,
-                            clip.fadeShape == FadeShape::EqualPower);
-            formes.addItem(32, tr(u8"Lente au d\u00e9part"), true, clip.fadeShape == FadeShape::Slow);
-            formes.addItem(33, tr(u8"Rapide au d\u00e9part"), true, clip.fadeShape == FadeShape::Fast);
+                            deuxBords(FadeShape::EqualPower));
+            formes.addItem(32, tr(u8"Lente au d\u00e9part"), true, deuxBords(FadeShape::Slow));
+            formes.addItem(33, tr(u8"Rapide au d\u00e9part"), true, deuxBords(FadeShape::Fast));
             menu.addSubMenu(tr(u8"Forme des fondus"), formes);
+            // D573.2 : CHAQUE BORD SA FORME. Des libellés À EUX, uniques dans tout le menu (le banc prend la première
+            // entrée de ce nom, D91) ; ceux de la sortie disent ce que l'oreille entend en fin de clip — une sortie
+            // « lente au départ » lâche tôt, une « rapide au départ » tient avant de lâcher (la règle de `FadeShape`).
+            juce::PopupMenu entree, sortie;
+            entree.addItem(94, tr(u8"Entrée droite"), true, clip.fadeShape == FadeShape::Linear);
+            entree.addItem(95, tr(u8"Entrée à égale puissance"), true, clip.fadeShape == FadeShape::EqualPower);
+            entree.addItem(96, tr(u8"Entrée lente au départ"), true, clip.fadeShape == FadeShape::Slow);
+            entree.addItem(97, tr(u8"Entrée rapide au départ"), true, clip.fadeShape == FadeShape::Fast);
+            sortie.addItem(98, tr(u8"Sortie droite"), true, clip.fadeOutShape == FadeShape::Linear);
+            sortie.addItem(99, tr(u8"Sortie à égale puissance"), true, clip.fadeOutShape == FadeShape::EqualPower);
+            sortie.addItem(100, tr(u8"Sortie qui lâche tôt"), true, clip.fadeOutShape == FadeShape::Slow);
+            sortie.addItem(101, tr(u8"Sortie qui tient avant de lâcher"), true, clip.fadeOutShape == FadeShape::Fast);
+            menu.addSubMenu(tr(u8"Forme du fondu d'entrée"), entree);
+            menu.addSubMenu(tr(u8"Forme du fondu de sortie"), sortie);
         }
         menu.addItem(18, tr(u8"Normaliser (gain = 1 / cr\u00eate)"), waveformProvider != nullptr);
         // D545.3 : NORMALISER À UN NIVEAU CHOISI — la même crête, un maximum demandé (−1 dBFS proposé).
@@ -2255,13 +2270,28 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             const FadeShape forme = choix == 31 ? FadeShape::EqualPower
                                   : choix == 32 ? FadeShape::Slow
                                   : choix == 33 ? FadeShape::Fast : FadeShape::Linear;
-            if (it->fadeShape == forme) return;
+            // D573.2 : « Forme des fondus » pose les DEUX bords, comme avant ; elle ne se coche que s'ils sont égaux.
+            if (it->fadeShape == forme && it->fadeOutShape == forme) return;
             if (onEditStarted) onEditStarted(u8"Forme des fondus");
             // Sur TOUTE la sélection, comme le muet : régler la forme de six
             // raccords choisis au lasso est un geste, pas six.
             for (auto& t : project_->tracks)
                 for (auto& c : t.clips)
-                    if (selection_.count(c.id) > 0 || c.id == clipId) c.fadeShape = forme;
+                    if (selection_.count(c.id) > 0 || c.id == clipId) c.fadeShape = c.fadeOutShape = forme;
+            break;
+        }
+        case 94: case 95: case 96: case 97: case 98: case 99: case 100: case 101: {   // D573.2 : un seul bord
+            using vsm::sequencer::FadeShape;
+            const bool deSortie = choix >= 98;
+            const int rang = choix - (deSortie ? 98 : 94);
+            const FadeShape forme = rang == 1 ? FadeShape::EqualPower
+                                  : rang == 2 ? FadeShape::Slow
+                                  : rang == 3 ? FadeShape::Fast : FadeShape::Linear;
+            if ((deSortie ? it->fadeOutShape : it->fadeShape) == forme) return;
+            if (onEditStarted) onEditStarted(deSortie ? u8"Forme du fondu de sortie" : u8"Forme du fondu d'entrée");
+            for (auto& t : project_->tracks)
+                for (auto& c : t.clips)
+                    if (selection_.count(c.id) > 0 || c.id == clipId) (deSortie ? c.fadeOutShape : c.fadeShape) = forme;
             break;
         }
         case 19:
@@ -3656,7 +3686,8 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     coin.startNewSubPath(xDebut, r.getBottom());
                     for (int i = 0; i <= 12; ++i) {
                         const float t = static_cast<float>(i) / 12.0f;
-                        const float gain = vsm::sequencer::fadeShapeGain(clip.fadeShape, t);
+                        // D573.2 : chaque bord sa forme.
+                        const float gain = vsm::sequencer::fadeShapeGain(entree ? clip.fadeShape : clip.fadeOutShape, t);
                         coin.lineTo(xDebut + (entree ? w * t : -w * t),
                                      r.getBottom() - gain * r.getHeight());
                     }

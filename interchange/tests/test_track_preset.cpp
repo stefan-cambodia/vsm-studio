@@ -134,3 +134,24 @@ VSM_TEST(a_track_preset_of_another_format_or_version_is_refused_by_name) {
     VSM_ASSERT(isTrackPresetFile("bibliotheque/pistes/Basse.TRACK.json"));
     VSM_ASSERT(!isTrackPresetFile("bibliotheque/effets/Salle.effect.json"));
 }
+
+// D573.1 : LA LARGEUR STÉRÉO voyage avec le panoramique dans le préréglage de piste ; elle ne s'écrit pas entière ; un
+// groupe qui reçoit le préréglage la garde entière (il n'en porte pas).
+VSM_TEST(a_track_preset_carries_the_stereo_width_with_the_pan) {
+    {
+        const std::string texte = trackPresetToJson(trackPresetFromTrack(pisteReglee(), "Entière", std::nullopt)).toString();
+        VSM_ASSERT(texte.find("\"width\"") == std::string::npos);
+    }
+    Track piste = pisteReglee();
+    piste.stereoWidth = 0.25f;
+    const auto relu = parseTrackPreset(trackPresetToJson(trackPresetFromTrack(piste, "Serrée", std::nullopt)).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_NEAR(relu.preset.stereoWidth, 0.25f, 1e-6);
+    Track cible;
+    applyTrackPresetToTrack(relu.preset, cible);
+    VSM_ASSERT_NEAR(cible.stereoWidth, 0.25f, 1e-6);
+    Track groupe;
+    groupe.kind = Track::Kind::Group;
+    applyTrackPresetToTrack(relu.preset, groupe);
+    VSM_ASSERT_NEAR(groupe.stereoWidth, 1.0f, 0.0f);
+}

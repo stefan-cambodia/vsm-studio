@@ -5570,6 +5570,22 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                             : u8"Les départs ignorent le panoramique (tranches choisies) (%1)")
                                  .replace("%1", juce::String(static_cast<int>(lien.count))),
                              lien.count > 0);
+                // D573.1 : LA LARGEUR STÉRÉO DES TRANCHES CHOISIES — cochée la commune, aucune si elles diffèrent ;
+                // chaque entrée grisée quand elle ne changerait rien (déjà posée partout, ou aucune tranche qui en porte).
+                {
+                    const auto choisies = trackList_.selectedTracks();
+                    const float commune = vsm::sequencer::commonStereoWidth(project_, choisies);
+                    juce::PopupMenu largeurs;
+                    const char8_t* libelles[] = {u8"Largeur 100 % (image entière)", u8"Largeur 75 %", u8"Largeur 50 %",
+                                                 u8"Largeur 25 %", u8"Largeur 0 % (mono)"};
+                    for (int i = 0; i <= kMenuMixWidthLast - kMenuMixWidthFirst; ++i) {
+                        const float w = 1.0f - 0.25f * static_cast<float>(i);
+                        largeurs.addItem(kMenuMixWidthFirst + i, tr(libelles[i]),
+                                         vsm::sequencer::countStereoWidthChanges(project_, choisies, w) > 0,
+                                         commune == w);
+                    }
+                    menu.addSubMenu(tr(u8"Largeur stéréo des tranches choisies"), largeurs, !choisies.empty());
+                }
                 // D568.3 : LES INSERTS DES TRANCHES CHOISIES, la même règle.
                 const auto inserts = vsm::sequencer::insertsBypassPlan(project_, trackList_.selectedTracks());
                 menu.addItem(kMenuMixInsertsBypass,
@@ -5889,6 +5905,10 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
     if (menuItemID == kMenuMixSendsBypass) { contournerLesDepartsChoisis(); return; }   // D567.3
     if (menuItemID == kMenuMixSendsFollowPan) { lierLesDepartsAuPanoramique(); return; }   // D572.2
+    if (menuItemID >= kMenuMixWidthFirst && menuItemID <= kMenuMixWidthLast) {               // D573.1
+        poserLaLargeurStereo(1.0f - 0.25f * static_cast<float>(menuItemID - kMenuMixWidthFirst));
+        return;
+    }
     if (menuItemID >= kMenuMixPanLawFirst && menuItemID <= kMenuMixPanLawLast) {          // D571.2
         setPanLaw(static_cast<vsm::sequencer::PanLaw>(menuItemID - kMenuMixPanLawFirst));
         return;
@@ -14188,6 +14208,26 @@ void MainComponent::lierLesDepartsAuPanoramique() {
         pianoRoll_.onStatusChanged(tr(plan.follow ? u8"Les départs suivent le panoramique : %1 tranche(s)"
                                                   : u8"Les départs ignorent le panoramique : %1 tranche(s)")
                                        .replace("%1", juce::String(static_cast<int>(n))));
+}
+
+void MainComponent::poserLaLargeurStereo(float largeur) {
+    // D573.1 : LA LARGEUR STÉRÉO DES TRANCHES CHOISIES — un pas ; rien à changer (déjà posée, ou aucune tranche qui en
+    // porte) : dit, sans pas (l'entrée est grisée).
+    const std::set<size_t> choisies = trackList_.selectedTracks();
+    const size_t aChanger = vsm::sequencer::countStereoWidthChanges(project_, choisies, largeur);
+    const std::string pourcent = std::to_string(static_cast<int>(std::lround(largeur * 100.0f))) + " %";
+    if (aChanger == 0) {
+        std::fputs(("VSM_CONSOLE : aucune tranche dont la largeur changerait (" + pourcent + ")\n").c_str(), stderr);
+        return;
+    }
+    beginProjectEdit(juce::String::fromUTF8(u8"Largeur stéréo"));
+    const size_t n = vsm::sequencer::applyStereoWidth(project_, choisies, largeur);
+    rebuildFromProject(false);
+    std::fputs(("VSM_CONSOLE : largeur st\xc3\xa9r\xc3\xa9o " + pourcent + " sur " + std::to_string(n) + " tranche(s)\n").c_str(),
+               stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Largeur stéréo %1 : %2 tranche(s)")
+                                       .replace("%1", juce::String(pourcent)).replace("%2", juce::String(static_cast<int>(n))));
 }
 
 void MainComponent::contournerLesInsertsChoisis() {

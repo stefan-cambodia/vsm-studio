@@ -77,17 +77,18 @@ inline float fadeGain(const AudioClipSpan& clip, int64_t position, int64_t secur
     // d'un geste musical, il ne fait qu'éviter une discontinuité, et deux
     // millisecondes ne portent aucune courbe audible. Celle du fondu croisé est
     // la sienne (`crossfadeShape`), distincte de celle des fondus dessinés.
-    const auto forme = [&](int64_t croise, int64_t pose, float ratio) {
+    // D573.2 : CHAQUE BORD SA FORME DESSINÉE — l'entrée `fadeShape`, la sortie `fadeOutShape`.
+    const auto forme = [&](int64_t croise, int64_t pose, vsm::sequencer::FadeShape dessinee, float ratio) {
         if (croise > 0) return vsm::sequencer::fadeShapeGain(clip.crossfadeShape, ratio);
-        if (pose > 0) return vsm::sequencer::fadeShapeGain(shape, ratio);
+        if (pose > 0) return vsm::sequencer::fadeShapeGain(dessinee, ratio);
         return ratio;
     };
     if (entree > 0 && position < entree)
-        gain *= forme(clip.crossfadeInFrames, fadeIn,
+        gain *= forme(clip.crossfadeInFrames, fadeIn, shape,
                        static_cast<float>(position) / static_cast<float>(entree));
     const int64_t restant = length - position;
     if (sortie > 0 && restant < sortie)
-        gain *= forme(clip.crossfadeOutFrames, fadeOut,
+        gain *= forme(clip.crossfadeOutFrames, fadeOut, clip.fadeOutShape,
                        static_cast<float>(std::max<int64_t>(0, restant)) / static_cast<float>(sortie));
     return gain;
 }
@@ -461,6 +462,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.lengthFrames = jouee;
             span.sourceStartFrame = static_cast<int64_t>(std::llround(clip.sourceStartSeconds * sampleRate));
             span.fadeShape = clip.fadeShape;
+            span.fadeOutShape = clip.fadeOutShape;   // D573.2
             span.fadeInFrames = static_cast<int64_t>(std::llround(clip.fadeInSeconds * sampleRate));
             span.fadeOutFrames = static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate));
             span.gain = clip.gain;
@@ -526,6 +528,12 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                 ? static_cast<int64_t>(std::llround(clip.fadeInSeconds * sampleRate)) : 0;
             span.fadeOutFrames = (offset + fenetre >= jouee)
                 ? static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate)) : 0;
+            // D573.2 : ET LEUR FORME, que ce chemin ne recopiait pas — D17.1 ne l'avait posée que sur celui des clips
+            // étirés : la forme dessinée d'un clip ordinaire se VOYAIT et ne s'ENTENDAIT pas (le fondu jouait droit),
+            // à la lecture comme à l'export. Mesuré par `each_fade_sounds_its_own_shape` : −6,02 dB au milieu d'un
+            // fondu « lent » au lieu de −12,04.
+            span.fadeShape = clip.fadeShape;
+            span.fadeOutShape = clip.fadeOutShape;
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
             span.swapChannels = clip.swapChannels;   // D559.3

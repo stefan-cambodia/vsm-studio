@@ -777,7 +777,7 @@ std::vector<float> fonduEnchaine(vsm::sequencer::FadeShape forme) {
     auto a = bruit(1u, kFrames);
     AudioClipSpan spanA;
     spanA.startFrame = 0; spanA.lengthFrames = kFrames; spanA.sourceStartFrame = 0;
-    spanA.fadeOutFrames = kFondu; spanA.fadeShape = forme;
+    spanA.fadeOutFrames = kFondu; spanA.fadeOutShape = forme;   // D573.2 : la sortie a sa forme à elle
     a->clips.push_back(spanA);
 
     auto b = bruit(7777u, kFrames);

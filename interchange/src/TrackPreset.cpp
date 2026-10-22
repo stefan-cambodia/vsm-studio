@@ -18,6 +18,7 @@ TrackPreset trackPresetFromTrack(const vsm::sequencer::Track& track, const std::
     preset.sendLevels = track.sendLevels;
     preset.volume = track.volume;
     preset.pan = track.pan;
+    preset.stereoWidth = track.stereoWidth;   // D573.1
     preset.invertPhase = track.invertPhase;
     preset.sendsBypassed = track.sendsBypassed;   // D567.3
     preset.sendsFollowPan = track.sendsFollowPan;   // D572.2
@@ -45,6 +46,9 @@ void applyTrackPresetToTrack(const TrackPreset& preset, vsm::sequencer::Track& t
     track.sendLevels = preset.sendLevels;
     track.volume = preset.volume;
     track.pan = preset.pan;
+    // D573.1 : une piste qui n'en porte pas (dossier, VCA, groupe) la garde entière, comme le menu le refuse.
+    track.stereoWidth = track.isFolder() || track.isVca() || track.kind == vsm::sequencer::Track::Kind::Group
+                            ? 1.0f : std::clamp(preset.stereoWidth, 0.0f, 1.0f);
     track.invertPhase = preset.invertPhase;
     track.sendsBypassed = preset.sendsBypassed;   // D567.3
     track.sendsFollowPan = preset.sendsFollowPan;   // D572.2
@@ -75,6 +79,7 @@ JsonValue trackPresetToJson(const TrackPreset& preset) {
     root.set("sendLevels", std::move(departs));
     root.set("volume", JsonValue::makeFloat(preset.volume));
     root.set("pan", JsonValue::makeFloat(preset.pan));
+    if (preset.stereoWidth != 1.0f) root.set("width", JsonValue::makeFloat(preset.stereoWidth));   // D573.1
     if (preset.invertPhase) root.set("invertPhase", JsonValue::makeBoolean(true));
     if (preset.sendsBypassed) root.set("sendsBypassed", JsonValue::makeBoolean(true));   // D567.3
     if (preset.sendsFollowPan) root.set("sendsFollowPan", JsonValue::makeBoolean(true));   // D572.2
@@ -123,6 +128,7 @@ TrackPresetLoadResult trackPresetFromJson(const JsonValue& json) {
         preset.sendLevels.push_back(static_cast<float>(niveau.asNumber(0.0)));
     preset.volume = static_cast<float>(json["volume"].asNumber(1.0));
     preset.pan = static_cast<float>(json["pan"].asNumber(0.0));
+    preset.stereoWidth = static_cast<float>(json["width"].asNumber(1.0));   // D573.1 : bornée à l'application
     preset.invertPhase = json["invertPhase"].asBoolean(false);
     preset.sendsBypassed = json["sendsBypassed"].asBoolean(false);   // D567.3
     preset.sendsFollowPan = json["sendsFollowPan"].asBoolean(false);   // D572.2

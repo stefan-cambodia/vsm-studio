@@ -1228,6 +1228,9 @@ private:
         kMenuViewZoomPresetLast = kMenuViewZoomPresetFirst + 31,
         kMenuViewZoomPresetRemoveFirst,
         kMenuViewZoomPresetRemoveLast = kMenuViewZoomPresetRemoveFirst + 31,
+        /// D573.1 : la largeur stéréo des tranches choisies, cinq entrées CONTIGUËS de 100 % à 0 % par pas de 25.
+        kMenuMixWidthFirst,
+        kMenuMixWidthLast = kMenuMixWidthFirst + 4,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1762,6 +1765,7 @@ private:
     /// D567.3 : contourner (ou rétablir) les départs des tranches choisies, comme le plan le dit.
     void contournerLesDepartsChoisis();
     void lierLesDepartsAuPanoramique();   ///< D572.2
+    void poserLaLargeurStereo(float largeur);   ///< D573.1
     /// D568.1 : la plage des locateurs dupliquée en insérant, les locateurs sur la copie.
     void dupliquerLaPlage();
     /// D568.2 : le MIDI entre les locateurs dans `fichier` (vide : le sélecteur) ; rend vrai s'il est écrit.
