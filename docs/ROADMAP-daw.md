@@ -44329,7 +44329,7 @@ avant d'être crus — et l'application ne se lance plus d'ici là.
 
 ### Phase D577 — un trente-huitième audit : le quintolet dans la grille, masquer les pistes sans données, remettre les témoins d'écrêtage à zéro (23/10/2026)
 
-*Écrite le 23/10 à 05 h 52, D576 close et poussée, pendant la fin de la série de D573 (la session verrouillée, batterie à
+*Écrite le 23/10 à 05 h 48 (l'horloge du même appel ; « 05 h 52 » d'abord, devinée — la faute de D576 refaite une heure plus tard), D576 close et poussée, pendant la fin de la série de D573 (la session verrouillée, batterie à
 70 %) — sans lancer l'application, la leçon de D576 (mes rafales faisaient tomber les bancs de la série).*
 
 **LA MÉTHODE, celle de D567 et la leçon de D571.3** (témoins `snapNotesToChords` 5, `VCA` 36, `Contraindre` 4). La grille de
