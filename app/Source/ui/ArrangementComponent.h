@@ -62,6 +62,12 @@ public:
     /// le piano roll. `F` bascule, et la règle le dit.
     void setFollowPlayhead(bool suit) { followPlayhead_ = suit; repaint(); }
     bool followPlayhead() const { return followPlayhead_; }
+    /// D569.2 : LA TÊTE FIXE (*Stationary Cursor*) — en lecture, suivi actif, la tête reste au milieu et la vue défile
+    /// sous elle ; une option, les pages de D11.3 restant le défaut. `setEnLecture` vient du minuteur de l'application.
+    void setTeteFixe(bool fixe) { teteFixe_ = fixe; repaint(); }
+    bool teteFixe() const { return teteFixe_; }
+    void basculerTeteFixe();
+    void setEnLecture(bool enLecture) { enLecture_ = enLecture; }
     /// Un geste va modifier le projet : l'application prend son instantané
     /// d'annulation. Appelé UNE fois par geste, au `mouseDown` -- un
     /// glissement continu est une action, pas trois cents.
@@ -662,6 +668,8 @@ private:
     /// la grille fine du piano roll. `G` bascule, `S` coupe l'aimantation.
     bool aimanteALaMesure_ = true;
     bool followPlayhead_ = true;
+    bool teteFixe_ = false;    ///< D569.2
+    bool enLecture_ = false;   ///< D569.2 : la tête fixe ne vaut qu'en lecture
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne
     /// alors plus rien. D551.1 : chacun avec SA piste d'origine et, pour un clip MIDI, les notes de sa fenêtre

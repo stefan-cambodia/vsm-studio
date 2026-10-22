@@ -43764,3 +43764,20 @@ les repères de cycle (les sections de repères en tiennent lieu, D542.1), la v�
   autres).
 
 **L'ORDRE, TRANCHÉ ICI.** D569.3 d'abord (le plus court, et il sert D569.1 au banc), puis D569.1, puis D569.2.
+
+**LA SÉRIE DE D566 (binaire de D566)** — 22/10, 09 h 25 → 10 h 43 : **130 bancs, 125 verts**, préférences identiques ;
+écran éteint et session verrouillée À LA FIN. Les cinq rouges (`locateurs-section`, `aimant-glisser`, `silence-plage`,
+`choisir-par-plage`, `arrangement-defile`) sont tombés entre 09 h 47 et 10 h 15, pendant que des objets se compilaient
+à côté et qu'un casque Bluetooth décrochait (erreurs `bluez` de pipewire de 09 h 45 à 10 h 02) ; aucune veille. Le
+code de l'ancre d'un glisser MIDI n'a pas changé (`pointDAccroche` rend le début). **Ils restent à rejouer seuls,
+écran déverrouillé, sur `brouillon-d560/vsm-d566`, avant d'être crus ou écartés.**
+
+### Phase D569 — FAITE (22/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D569.3 | choisir les notes par la plage | `notesByRange` (les règles de `clipsByRange`, un test) ; `tools/notes-par-plage.sh`, puis Suppr : entre les locateurs restent **60 65 67** (2 choisies), du début à la tête **64 65** (3), de la tête à la fin **60 67** (3) ; le témoin sans choix garde les cinq | **oui** |
+| D569.1 | extraire l'automation MIDI | `extractMidiAutomation` (un test) ; `tools/automation-extraite.sh` : `mix.volume` 0 / 1 920 / 3 840 = 0,6299 / 0,2520 / 0,8000 en marches, `mix.pan` 0 / 960 / 2 880 = −0,25 / −0,935 / 0,4823 ; plus de CC 7 ni 10, le CC 74 resté ; Ctrl+Z rend tout. **L'ATTENDU ÉCRIT AVANT — l'export au bit près — EST RÉFUTÉ** : écart de crête **−35,8 dBFS** (signal à −16), mais SEULEMENT sur un ou deux blocs de 128 échantillons autour de chaque marche (2,9 à 5,8 ms, débutant au bloc qui contient l'instant du CC : 44 032 = 344 × 128 pour 44 100) ; ailleurs, identiques AU BIT (rapport efficace 0,000 dB). Le moteur applique un CC dès le début de son bloc, une marche de courbe au bloc suivant. La garde tient cela : identiques hors de ± 3 blocs, sous −30 dBFS dedans ; le témoin (même projet rendu deux fois) identique | **oui, l'attendu révisé et dit** |
+| D569.2 | la tête fixe | `setTeteFixe`, `setEnLecture` ; `tools/tete-fixe.sh`, la tête posée à la mesure 12 d'une fenêtre de 17 : défilement **5 672 → 6 151 → 6 631 → 7 110**, tête − défilement constant (16 407 ± 10) ; le témoin à pages reste à 0 ; arrêtée, rien ne bouge ; retenue au relancement. Première version du banc fausse : la tête n'atteignait pas le milieu (17 mesures visibles, tête à 1,25), les deux modes restaient à 0 | **oui** |
+
+C++ 525 · 1 347 · 344 · 25 · 11. 139 bancs dans la série. Binaire de D569 dans `build/`.

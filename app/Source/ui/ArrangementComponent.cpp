@@ -103,7 +103,12 @@ void ArrangementComponent::setPlayheadTick(vsm::midi::Tick tick) {
     // D11.3 : PAR PAGES, pas centré en continu — un fond qui glisse à chaque
     // image fatigue et empêche de lire les positions (même règle qu'au piano
     // roll). La page tourne quand la tête sort de la zone des clips.
-    if (followPlayhead_) {
+    if (followPlayhead_ && teteFixe_ && enLecture_) {
+        // D569.2 : LA TÊTE AU MILIEU de la zone des clips, la vue défile en continu ; jamais avant zéro, si bien qu'au
+        // début du morceau la tête avance jusqu'au milieu avant que la vue ne parte.
+        const double visibles = static_cast<double>(getWidth() - kHeaderWidth) / std::max(1.0e-6, pixelsPerTick_);
+        scrollTick_ = std::max<vsm::midi::Tick>(0, tick - static_cast<vsm::midi::Tick>(visibles * 0.5));
+    } else if (followPlayhead_) {
         const float x = tickToX(tick);
         const float droite = static_cast<float>(getWidth()) - 40.0f;
         if (x > droite || x < static_cast<float>(kHeaderWidth)) {
@@ -303,6 +308,13 @@ void ArrangementComponent::basculerGrilleALaMesure() {
     aimanteALaMesure_ = !aimanteALaMesure_;
     direLesBascules();
     if (onBasculesChanged) onBasculesChanged();   // D493
+    repaint();
+}
+
+void ArrangementComponent::basculerTeteFixe() {
+    teteFixe_ = !teteFixe_;   // D569.2
+    direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();
     repaint();
 }
 
@@ -2989,6 +3001,7 @@ void ArrangementComponent::direLesBascules() const {
                 + (followPlayhead_ ? ", suit la tête" : ", ne suit pas")
                 + (automationVisible_ ? ", automation visible" : ", automation cachée")
                 + (enChaine_ ? juce::String::fromUTF8(u8", en chaîne") : juce::String(", libre"))   // D547.2
+                + (teteFixe_ ? juce::String::fromUTF8(u8", tête fixe") : juce::String())             // D569.2
                 + "\n").toRawUTF8(), stderr);
 }
 

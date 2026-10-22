@@ -1190,6 +1190,9 @@ private:
         kMenuEditDuplicateRange,
         kMenuFileExportMidiLoop,
         kMenuMixInsertsBypass,
+        /// D569 : extraire l'automation MIDI ; la tête fixe.
+        kMenuTrackExtractMidiAutomation,
+        kMenuViewStationaryCursor,
     };
 
     // --- D9 : reconstruire depuis l'application -----------------------------
@@ -1727,6 +1730,8 @@ private:
     bool exporterMidiEntreLesLocateurs(const juce::File& fichier);
     /// D568.3 : contourner (ou rétablir) les inserts des tranches choisies, comme le plan le dit.
     void contournerLesInsertsChoisis();
+    /// D569.1 : les CC 7 et 10 de la piste choisie en courbes de la tranche.
+    void extraireLAutomationMidi();
     void suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     bool etaitEnLecture_ = false;
     vsm::midi::Tick departLecture_ = 0;

@@ -2043,3 +2043,19 @@ VSM_TEST(fades_to_the_range_follow_where_the_range_falls_in_each_clip) {
     // Une plage vide ne fait rien.
     VSM_ASSERT_EQ(fadeClipsToRange(clips, {1}, 960, 960, 100000, t2s).adjusted, size_t(0));
 }
+
+// D569.3 — CHOISIR LES NOTES PAR LA PLAGE : les règles des clips, sur des notes.
+VSM_TEST(notes_are_chosen_by_range_with_the_rules_of_clips) {
+    Track t;
+    uint64_t ids = 1;
+    t.addNote(0, 480, 60, 100, 0, ids);       // 1 : avant
+    t.addNote(1800, 2000, 62, 100, 0, ids);   // 2 : à cheval sur le début de la plage
+    t.addNote(2400, 2880, 64, 100, 0, ids);   // 3 : dedans
+    t.addNote(3840, 4320, 65, 100, 0, ids);   // 4 : commence sur la fin : dehors
+    t.addNote(1440, 1920, 67, 100, 0, ids);   // 5 : finit sur le début : dehors
+    VSM_ASSERT(notesByRange(t.notes, RangeRule::Between, 1920, 3840) == (std::set<uint64_t>{2, 3}));
+    VSM_ASSERT(notesByRange(t.notes, RangeRule::StartsBefore, 2400) == (std::set<uint64_t>{1, 2, 5}));   // 3 y commence
+    VSM_ASSERT(notesByRange(t.notes, RangeRule::EndsAfter, 2000) == (std::set<uint64_t>{3, 4}));       // 2 y finit
+    VSM_ASSERT(notesByRange(t.notes, RangeRule::Between, 1920, 1920).empty());                       // plage vide
+}
+

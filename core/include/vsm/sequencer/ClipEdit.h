@@ -561,6 +561,10 @@ Tick slipClipContent(Track& track, uint64_t clipId, Tick delta, Tick materialEnd
 /// « commence pas avant ». `b` ne sert qu'à `Between`, et une plage vide n'y choisit rien.
 enum class RangeRule { Between, StartsBefore, EndsAfter, Contains };
 ClipSelection clipsByRange(const std::vector<Clip>& clips, Tick materialEnd, RangeRule rule, Tick a, Tick b = 0);
+/// D569.3 — LES MÊMES RÈGLES POUR DES NOTES (le piano roll : *Select In Loop / From Start to Cursor / From Cursor to
+/// End*), une seule définition de « dans la plage » pour les deux vues ; [début, fin) de chaque note. Rend les
+/// identifiants des notes prises.
+std::set<uint64_t> notesByRange(const std::vector<Note>& notes, RangeRule rule, Tick a, Tick b = 0);
 
 /// D550.2 — COUPER AUX LOCATEURS (*Split Loop*). Les clips choisis sont coupés à `from`, puis à `to` -- les
 /// morceaux nés de la première coupe passent par la seconde, si bien qu'un clip qui couvre toute la plage en

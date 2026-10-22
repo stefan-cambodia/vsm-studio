@@ -1,7 +1,11 @@
 #include "vsm/sequencer/MixSnapshot.h"
+#include "vsm/sequencer/AutomationEdit.h"
+#include "vsm/sequencer/PlaybackScheduler.h"
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <tuple>
+#include <variant>
 
 namespace vsm::sequencer {
 
@@ -360,6 +364,78 @@ size_t applyInsertsBypass(Project& project, const std::set<size_t>& chosen, bool
         if (change) ++n;
     }
     return n;
+}
+
+namespace {
+bool aLaCourbe(const Track& t, const std::string& nom) {
+    return std::any_of(t.automation.begin(), t.automation.end(),
+                       [&](const AutomationCurve& c) { return c.parameter == nom; });
+}
+/// Les CC 7 et 10 que la piste fait entendre : (tick, contrôleur, valeur), dans l'ordre du planning.
+std::vector<std::tuple<Tick, uint8_t, uint8_t>> ccEntendus(const Project& project, size_t piste) {
+    Project copie = project;
+    for (auto& t : copie.tracks) { t.muted = false; t.solo = false; }
+    std::vector<std::tuple<Tick, uint8_t, uint8_t>> lus;
+    const Tick fin = std::max<Tick>(copie.lastUsedTick(), copie.lastSoundingTick()) + 1;
+    for (const auto& e : PlaybackScheduler::build(copie, 0, fin)) {
+        if (e.trackIndex != piste) continue;
+        if (const auto* cc = std::get_if<midi::ControlChangeEvent>(&e.data); cc && (cc->controller == 7 || cc->controller == 10))
+            lus.emplace_back(copie.secondsToTicks(e.timeSeconds), cc->controller, cc->value);
+    }
+    return lus;
+}
+MidiAutomationExtraction extraire(Project& project, size_t piste, bool ecrire) {
+    MidiAutomationExtraction r;
+    if (piste >= project.tracks.size() || project.tracks[piste].kind != Track::Kind::Midi) return r;
+    const auto lus = ccEntendus(project, piste);
+    Track& t = project.tracks[piste];
+    r.volumeRefused = aLaCourbe(t, "mix.volume");
+    r.panRefused = aLaCourbe(t, "mix.pan");
+    AutomationCurve volume, pan;
+    volume.parameter = "mix.volume";
+    pan.parameter = "mix.pan";
+    for (const auto& [tick, n, v] : lus) {
+        const float x = static_cast<float>(v) / 127.0f;
+        if (n == 7) {
+            ++r.volumeCc;
+            if (volume.points.empty() && tick > 0) setAutomationPoint(volume, 0, t.volume, true);
+            setAutomationPoint(volume, tick, t.volume * x, true);
+        } else {
+            ++r.panCc;
+            if (pan.points.empty() && tick > 0) setAutomationPoint(pan, 0, t.pan, true);
+            setAutomationPoint(pan, tick, std::clamp(t.pan + x * 2.0f - 1.0f, -1.0f, 1.0f), true);
+        }
+    }
+    const auto retirer = [&](uint8_t numero) {
+        const auto avant = t.controlChanges.size();
+        if (ecrire)
+            t.controlChanges.erase(std::remove_if(t.controlChanges.begin(), t.controlChanges.end(),
+                                                  [numero](const CcPoint& c) { return c.controller == numero; }),
+                                   t.controlChanges.end());
+        else
+            return static_cast<size_t>(std::count_if(t.controlChanges.begin(), t.controlChanges.end(),
+                                                     [numero](const CcPoint& c) { return c.controller == numero; }));
+        return avant - t.controlChanges.size();
+    };
+    if (r.volumeCc > 0 && !r.volumeRefused) {
+        r.ccRemoved += retirer(7);
+        if (ecrire) t.automation.push_back(std::move(volume));
+    }
+    if (r.panCc > 0 && !r.panRefused) {
+        r.ccRemoved += retirer(10);
+        if (ecrire) t.automation.push_back(std::move(pan));
+    }
+    return r;
+}
+} // namespace
+
+MidiAutomationExtraction previewMidiAutomationExtraction(const Project& project, size_t track) {
+    Project copie = project;
+    return extraire(copie, track, false);
+}
+
+MidiAutomationExtraction extractMidiAutomation(Project& project, size_t track) {
+    return extraire(project, track, true);
 }
 
 } // namespace vsm::sequencer

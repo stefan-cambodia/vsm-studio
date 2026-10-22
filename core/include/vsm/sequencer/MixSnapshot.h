@@ -137,4 +137,21 @@ struct InsertsBypassPlan {
 InsertsBypassPlan insertsBypassPlan(const Project& project, const std::set<size_t>& chosen);
 size_t applyInsertsBypass(Project& project, const std::set<size_t>& chosen, bool bypass);
 
+/// D569.1 — EXTRAIRE L'AUTOMATION MIDI (*Extract MIDI Automation* de Cubase) : les CC 7 et 10 que la piste fait
+/// ENTENDRE — lus dans le planning de lecture, clips, répétitions et chasse compris, le muet et le solo levés — deviennent
+/// les courbes `mix.volume` (fader × v/127) et `mix.pan` (pan + 2v/127 − 1, borné à ±1), en MARCHES, ouvertes au
+/// tick 0 par le réglage de la tranche ; ce que le moteur faisait du contrôleur (`appliquerLesTenues`), exactement. Les CC
+/// de ce numéro sont retirés du matériau. Une piste qui porte déjà la courbe visée garde ses CC (`*Refused`).
+struct MidiAutomationExtraction {
+    size_t volumeCc = 0;      ///< CC 7 entendus (et donc convertis, sauf refus)
+    size_t panCc = 0;         ///< CC 10 entendus
+    size_t ccRemoved = 0;     ///< CC retirés du matériau
+    bool volumeRefused = false;
+    bool panRefused = false;
+    size_t converted() const { return (volumeRefused ? 0 : volumeCc) + (panRefused ? 0 : panCc); }
+};
+/// Ce que l'extraction ferait, sans rien toucher (le libellé du menu).
+MidiAutomationExtraction previewMidiAutomationExtraction(const Project& project, size_t track);
+MidiAutomationExtraction extractMidiAutomation(Project& project, size_t track);
+
 } // namespace vsm::sequencer

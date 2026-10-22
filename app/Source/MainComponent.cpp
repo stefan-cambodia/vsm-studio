@@ -1462,6 +1462,7 @@ MainComponent::MainComponent()
         arrangement_.setFollowPlayhead(reglages.getBoolValue("arrangementSuitLaTete", true));
         arrangement_.setCourbesVisibles(reglages.getBoolValue("arrangementCourbes", false));
         arrangement_.setMontageEnChaine(reglages.getBoolValue("arrangementEnChaine", false));   // D547.2
+        arrangement_.setTeteFixe(reglages.getBoolValue("arrangementTeteFixe", false));          // D569.2
         arrangement_.onBasculesChanged = [this] {
             auto& r = vsm::app::ui::UiScale::properties();
             r.setValue("arrangementAimant", arrangement_.snapEnabled());
@@ -1469,6 +1470,7 @@ MainComponent::MainComponent()
             r.setValue("arrangementSuitLaTete", arrangement_.followPlayhead());
             r.setValue("arrangementCourbes", arrangement_.automationVisible());
             r.setValue("arrangementEnChaine", arrangement_.montageEnChaine());
+            r.setValue("arrangementTeteFixe", arrangement_.teteFixe());   // D569.2
             r.saveIfNeeded();
         };
     }
@@ -4069,6 +4071,7 @@ void MainComponent::timerCallback() {
     transportBar_.setInputMonitoring(audioEngine_.inputMonitoring());
     pianoRoll_.setPlayheadTick(playhead);
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
+    arrangement_.setEnLecture(audioEngine_.processGraph().isPlaying());   // D569.2 : la tête fixe ne vaut qu'en lecture
     arrangement_.setPlayheadTick(playhead);
     eventList_.setPlayheadTick(playhead, audioEngine_.processGraph().isPlaying());   // D284
     automation_.setPlayheadTick(playhead);   // D285 : les trois lanes du bas aussi
@@ -5064,6 +5067,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   tr(u8"Supprimer l'automation de la piste (%1 courbe(s))")
                                       .replace("%1", juce::String(static_cast<int>(courbes))),
                                   courbes > 0);
+                    // D569.1 : EXTRAIRE L'AUTOMATION MIDI -- les CC 7 et 10 du matériau comptés (ceux qui partiront).
+                    size_t cc710 = 0;
+                    if (piste < project_.tracks.size() && project_.tracks[piste].kind == vsm::sequencer::Track::Kind::Midi)
+                        for (const auto& c : project_.tracks[piste].controlChanges)
+                            if (c.controller == 7 || c.controller == 10) ++cc710;
+                    menu.addItem(kMenuTrackExtractMidiAutomation,
+                                  tr(u8"Extraire l'automation des CC 7 et 10 (%1 CC)").replace("%1", juce::String(static_cast<int>(cc710))),
+                                  cc710 > 0);
                     // D555.2 : SUPPRIMER LES CONTRÔLEURS MIDI -- le compte dans le libellé, grisée à zéro.
                     const size_t controleurs = piste < project_.tracks.size()
                                                    ? vsm::sequencer::countControllers(project_.tracks[piste]).total()
@@ -5673,6 +5684,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementFollow,
                                                    tr(u8"Suivre la tête de lecture dans l'arrangement"), shortcuts_,
                                                    Id::ViewArrangementFollow, true, arrangement_.followPlayhead());
+                // D569.2 : LA TÊTE FIXE — une option du suivi, grisée sans lui ; les pages (D11.3) restent le défaut.
+                menu.addItem(kMenuViewStationaryCursor, tr(u8"Tête fixe (la vue défile sous elle)"),
+                             arrangement_.followPlayhead(), arrangement_.teteFixe());
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementCurves,
                                                    tr(u8"Courbes d'automation dans l'arrangement"), shortcuts_,
                                                    Id::ViewArrangementAutomation, true, arrangement_.automationVisible());
@@ -5859,6 +5873,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewArrangementSnap)    { arrangement_.basculerAimant(); return; }
     if (menuItemID == kMenuViewArrangementBarGrid) { arrangement_.basculerGrilleALaMesure(); return; }
     if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
+    if (menuItemID == kMenuViewStationaryCursor)   { arrangement_.basculerTeteFixe(); return; }   // D569.2
     if (menuItemID == kMenuViewArrangementCurves)  { arrangement_.basculerCourbes(); return; }
     if (menuItemID == kMenuViewArrangementChain)   { arrangement_.basculerEnChaine(); return; }   // D547.2
     if (menuItemID == kMenuViewRulerBars || menuItemID == kMenuViewRulerTime) {
@@ -6186,6 +6201,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAppendChain: pasteChainIntoSelectedTrack(false); break;
         case kMenuTrackThinAutomation: thinAutomationOfSelectedTrack(); break;   // D30.5
         case kMenuTrackRemoveAutomation: supprimerAutomationDeLaPiste(); break;   // D553.1
+        case kMenuTrackExtractMidiAutomation: extraireLAutomationMidi(); break;   // D569.1
         case kMenuTrackRemoveControllers: supprimerControleursDeLaPiste(); break;   // D555.2
         case kMenuTrackMidiFxClear: clearMidiEffectsOfSelectedTrack(); break;    // D31.4
         case kMenuTrackMidiFxBake:  bakeMidiEffectsOfSelectedTrack(); break;     // D31.5
@@ -14626,6 +14642,35 @@ void MainComponent::fusionnerMidiEntreLocateurs() {
         montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Fusionner le MIDI entre les locateurs"),
                      tr(u8"%1 note(s) laissée(s) : la transposition de leur piste les poussait hors des 128 hauteurs MIDI.")
                          .replace("%1", juce::String(static_cast<int>(fusion.outOfRange))));
+}
+
+void MainComponent::extraireLAutomationMidi() {
+    // D569.1 : EXTRAIRE L'AUTOMATION MIDI (*Extract MIDI Automation*) -- mesuré sur une copie : aucun pas pour rien ; ce
+    // qui est refusé (la courbe existait déjà) se dit.
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto apercu = vsm::sequencer::previewMidiAutomationExtraction(project_, piste);
+    if (apercu.ccRemoved > 0) {
+        beginProjectEdit(avecPisteChoisie(juce::String::fromUTF8(u8"Extraire l'automation MIDI")));
+        vsm::sequencer::extractMidiAutomation(project_, piste);
+        applyAutomationFromProject();
+        refreshTransportSchedule();
+        refreshTrackViews();
+        pianoRollPanel_.refresh();
+    }
+    std::fputs(("VSM_AUTOMATION_EXTRAITE : " + std::to_string(apercu.volumeCc) + " CC 7, " + std::to_string(apercu.panCc)
+                + " CC 10 entendus ; " + std::to_string(apercu.ccRemoved) + " retir\xc3\xa9(s)"
+                + (apercu.volumeRefused ? std::string(" ; volume refus\xc3\xa9 (courbe d\xc3\xa9j\xc3\xa0 l\xc3\xa0)") : std::string())
+                + (apercu.panRefused ? std::string(" ; panoramique refus\xc3\xa9 (courbe d\xc3\xa9j\xc3\xa0 l\xc3\xa0)") : std::string())
+                + "\n").c_str(), stderr);
+    if ((apercu.volumeRefused && apercu.volumeCc > 0) || (apercu.panRefused && apercu.panCc > 0))
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Extraire l'automation MIDI"),
+                     tr(u8"La piste a déjà une courbe de %1 : ses CC restent, deux sources ne se fondent pas en une courbe sans "
+                        u8"qu'on le décide.")
+                         .replace("%1", apercu.volumeRefused && apercu.volumeCc > 0 ? tr(u8"volume") : tr(u8"panoramique")));
+    else if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Automation extraite : %1 CC devenus des courbes de la tranche")
+                                       .replace("%1", juce::String(static_cast<int>(apercu.converted()))));
 }
 
 void MainComponent::supprimerAutomationDeLaPiste() {

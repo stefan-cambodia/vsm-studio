@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "vsm/sequencer/LogicalEdit.h"   // D535.1 bis
+#include "vsm/sequencer/ClipEdit.h"      // D569.3 : RangeRule
 #include "vsm/interchange/ShortcutTable.h"
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/NoteEdit.h"
@@ -242,6 +243,8 @@ public:
     void selectNone();
     void invertSelection();
     void selectSamePitch();
+    /// D569.3 : les notes choisies par la plage des locateurs (`Between`) ou par la tête.
+    void choisirParPlage(vsm::sequencer::RangeRule regle);
     void selectSamePitchClass();   // D556.3
     /// Notes douteuses (étape 11.3) : celles sur lesquelles la transcription a
     /// hésité. Y ALLER, une par une, dans l'ordre du morceau -- la vue défile

@@ -60,6 +60,7 @@ enum ContextMenuId {
     kCtxSelectSamePitchClass = 100495,   // D556.3
     kCtxQuantizeEndsOnly = 100496,       // D557.1
     kCtxResetQuantize = 100497, kCtxFreezeQuantize,   // D566.1
+    kCtxSelectInLoop = 100510, kCtxSelectStartToCursor, kCtxSelectCursorToEnd,   // D569.3
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -738,6 +739,16 @@ void PianoRollComponent::selectShorterThan(Tick ticks) {
 void PianoRollComponent::selectSamePitch() {
     if (Track* track = activeTrack())
         selectedNoteIds_ = selectNotesWithSamePitch(track->notes, selectedNoteIds_);
+    notifyEditState();
+    repaint();
+}
+
+void PianoRollComponent::choisirParPlage(vsm::sequencer::RangeRule regle) {
+    // D569.3 : la plage des locateurs, ou la tête ; le compte se dit par `notifyEditState` (D357).
+    if (Track* track = activeTrack())
+        selectedNoteIds_ = vsm::sequencer::notesByRange(track->notes, regle,
+                                                        regle == vsm::sequencer::RangeRule::Between ? loopStartTick_ : playheadTick_,
+                                                        loopEndTick_);
     notifyEditState();
     repaint();
 }
@@ -1508,6 +1519,15 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     selectMenu.addItem(kCtxSelectSamePitch, tr(u8"Toutes les notes de même hauteur"), sel);
     // D556.3 : la même NOTE à toutes les octaves (tous les do), quand la précédente garde l'octave.
     selectMenu.addItem(kCtxSelectSamePitchClass, tr(u8"Toutes les notes de même nom (toutes octaves)"), sel);
+    // D569.3 : PAR LA PLAGE, les règles des clips de l'arrangement (`notesByRange`) — dans les ticks que le piano roll
+    // montre, où il dessine aussi les locateurs.
+    {
+        const bool desNotes = activeTrack() != nullptr && !activeTrack()->notes.empty();
+        selectMenu.addItem(kCtxSelectInLoop, tr(u8"Les notes entre les locateurs"),
+                           desNotes && loopEndTick_ > loopStartTick_);
+        selectMenu.addItem(kCtxSelectStartToCursor, tr(u8"Les notes du début à la tête"), desNotes);
+        selectMenu.addItem(kCtxSelectCursorToEnd, tr(u8"Les notes de la tête à la fin"), desNotes);
+    }
     // Les notes douteuses de la transcription (étape 11.3) : on y VA, une par
     // une, au lieu de les chercher à l'œil sur un morceau entier.
     const size_t douteuses = doubtfulNoteCount();
@@ -1756,6 +1776,9 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectInvert:     invertSelection(); break;
         case kCtxSelectSamePitch:  selectSamePitch(); break;
         case kCtxSelectSamePitchClass: selectSamePitchClass(); break;   // D556.3
+        case kCtxSelectInLoop:        choisirParPlage(vsm::sequencer::RangeRule::Between); break;        // D569.3
+        case kCtxSelectStartToCursor: choisirParPlage(vsm::sequencer::RangeRule::StartsBefore); break;
+        case kCtxSelectCursorToEnd:   choisirParPlage(vsm::sequencer::RangeRule::EndsAfter); break;
         case kCtxSelectNextDoubtful: selectNextDoubtfulNote(true); break;
         case kCtxSelectPrevDoubtful: selectNextDoubtfulNote(false); break;
         case kCtxSelectDoubtful:   selectDoubtfulNotes(); break;

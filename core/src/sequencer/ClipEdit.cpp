@@ -590,6 +590,21 @@ ClipSelection clipsByRange(const std::vector<Clip>& clips, Tick materialEnd, Ran
     return choix;
 }
 
+std::set<uint64_t> notesByRange(const std::vector<Note>& notes, RangeRule rule, Tick a, Tick b) {
+    std::set<uint64_t> choix;
+    for (const auto& n : notes) {
+        bool prise = false;
+        switch (rule) {
+            case RangeRule::Between:      prise = a < b && n.startTick < b && n.endTick > a; break;
+            case RangeRule::StartsBefore: prise = n.startTick < a; break;
+            case RangeRule::EndsAfter:    prise = n.endTick > a; break;
+            case RangeRule::Contains:     prise = n.startTick < a && a < n.endTick; break;
+        }
+        if (prise) choix.insert(n.id);
+    }
+    return choix;
+}
+
 RangeSplit splitClipsAtRange(std::vector<Clip>& clips, const ClipSelection& selection, Tick from, Tick to,
                              Tick materialEnd, uint64_t& idCounter,
                              const std::function<double(Tick)>& ticksToSeconds) {

@@ -433,3 +433,61 @@ VSM_TEST(bypassing_the_inserts_of_chosen_strips_follows_bypass_all) {
     VSM_ASSERT(p.tracks[0].effects[1].enabled);   // TOUS rétablis — l'état d'avant (la réverbération éteinte) n'est pas gardé
     VSM_ASSERT_EQ(insertsBypassPlan(p, {3}).count, size_t(0));
 }
+
+// D569.1 — EXTRAIRE L'AUTOMATION MIDI : les CC 7 et 10 entendus deviennent les courbes de la tranche, en marches.
+VSM_TEST(extracting_midi_automation_turns_cc7_and_cc10_into_mix_curves) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);
+    Track t;
+    t.name = "Partie";
+    t.volume = 0.8f;
+    t.pan = -0.25f;
+    uint64_t ids = 1;
+    t.addNote(0, 1920, 60, 100, 0, ids);
+    t.controlChanges = {{0, 0, 7, 100}, {480, 0, 10, 127}, {960, 0, 7, 50}, {960, 0, 74, 30}};
+    p.tracks.push_back(t);
+    const auto apercu = previewMidiAutomationExtraction(p, 0);
+    VSM_ASSERT_EQ(apercu.converted(), size_t(3));
+    VSM_ASSERT_EQ(p.tracks[0].controlChanges.size(), size_t(4));   // l'aperçu ne touche à rien
+    const auto r = extractMidiAutomation(p, 0);
+    VSM_ASSERT_EQ(r.volumeCc, size_t(2));
+    VSM_ASSERT_EQ(r.panCc, size_t(1));
+    VSM_ASSERT_EQ(r.ccRemoved, size_t(3));
+    const auto& reste = p.tracks[0].controlChanges;
+    VSM_ASSERT_EQ(reste.size(), size_t(1));                         // le CC 74 va à la machine : il reste
+    VSM_ASSERT_EQ(int(reste[0].controller), 74);
+    const AutomationCurve* vol = nullptr;
+    const AutomationCurve* pan = nullptr;
+    for (const auto& c : p.tracks[0].automation) {
+        if (c.parameter == "mix.volume") vol = &c;
+        if (c.parameter == "mix.pan") pan = &c;
+    }
+    VSM_ASSERT(vol != nullptr && pan != nullptr);
+    VSM_ASSERT_EQ(vol->points.size(), size_t(2));
+    VSM_ASSERT_NEAR(vol->points[0].value, 0.8f * 100.0f / 127.0f, 1e-6);
+    VSM_ASSERT(vol->points[0].step && vol->points[1].step);
+    VSM_ASSERT_EQ(vol->points[1].tick, Tick(960));
+    VSM_ASSERT_NEAR(vol->points[1].value, 0.8f * 50.0f / 127.0f, 1e-6);
+    VSM_ASSERT_EQ(pan->points.size(), size_t(2));                  // ouverte au tick 0 par le réglage de la tranche
+    VSM_ASSERT_NEAR(pan->points[0].value, -0.25f, 1e-6);
+    VSM_ASSERT_EQ(pan->points[1].tick, Tick(480));
+    VSM_ASSERT_NEAR(pan->points[1].value, -0.25f + 1.0f, 1e-6);    // 2·127/127 − 1 = +1, ajouté
+
+    // Une piste qui a déjà sa courbe de volume garde ses CC 7 ; le panoramique, lui, s'extrait.
+    Project q;
+    q.ticksPerQuarterNote = 480;
+    q.tempoMap.addTempoChange(0, 500000);
+    Track u = t;
+    u.controlChanges = {{0, 0, 7, 100}, {0, 0, 10, 64}};
+    AutomationCurve deja;
+    deja.parameter = "mix.volume";
+    deja.points = {{0, 0.5f, false, 0.0f}};
+    u.automation = {deja};
+    q.tracks.push_back(u);
+    const auto s = extractMidiAutomation(q, 0);
+    VSM_ASSERT(s.volumeRefused && !s.panRefused);
+    VSM_ASSERT_EQ(s.ccRemoved, size_t(1));
+    VSM_ASSERT_EQ(q.tracks[0].controlChanges.size(), size_t(1));
+    VSM_ASSERT_EQ(int(q.tracks[0].controlChanges[0].controller), 7);
+}
