@@ -44931,3 +44931,56 @@ de 1 061 à 1 098 Mo, sans un passage au-dessus du plafond — là où la premi�
 passes ne prouvent pas la piste de l'écran éteint ; elles la rendent la première à vérifier. La limite de la garde neuve,
 dite : `memory.peak` est le sommet de la SESSION (10 426 Mo depuis 14 h 15), il ne nommera qu'un banc qui irait plus haut ;
 un sommet par banc demanderait d'échantillonner pendant le banc. Les préférences de l'utilisateur identiques.
+
+### Phase D582 — un quarante-troisième audit : la position en timecode et en échantillons, le solo qui choisit la piste, la molette qui règle le gain d'un clip (23/10/2026)
+
+*Écrite le 23/10 à 20 h 35 (l'horloge du même appel), D581 close et poussée. L'audit a été mené, et le code écrit, PENDANT
+la vérification de D581, dans l'arbre à part de la branche `d580`, sans rien compiler ni lancer : rien de D582 n'a été
+mesuré avant que ce texte soit commité.*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3.** Restaient de D581 deux zéros remis — l'écoute avant fader, le
+*timecode* — et les *Preferences* de Cubase non sondées (*Editing ▸ Project & MixConsole*, *Editing ▸ Audio*). **Écartés,
+et pourquoi** : *To Front / To Back* (l'ordre des clips qui se chevauchent) — il n'y a pas de clip « du dessus » : deux
+clips audio qui se chevauchent se fondent l'un dans l'autre (D13.1) et deux clips MIDI sonnent tous les deux ; *Show
+Used Automation* — l'arrangement montre UNE courbe par piste, en surimpression (`showAutomationCurve`), et des voies
+séparées sont un chantier à elles seules ; *Enable Solo on Selected Track* (le solo qui suit la piste choisie) — le solo
+est une donnée du PROJET, avec ses pas d'historique, et la règle devrait le changer hors historique piste par piste, ce
+que l'armement de D579.2, état de session, n'avait pas à faire. Restent trois zéros :
+**0 pour la position en *timecode* et en échantillons** (les formats d'affichage du transport de Cubase) — la barre écrit
+`mm:ss,mmm | mes. · temps` (`TransportBarComponent::timerCallback`) ; `TempoMap::smpte` ne sert qu'à LIRE un fichier MIDI
+cadencé en images ; **0 pour le solo qui choisit la piste** (*Select Channel/Track on Solo*) — `basculerSolo` ne choisit
+rien ; **0 pour la molette qui règle le gain d'un clip** (*Use Mouse Wheel for Event Volume and Fades*) — la molette de
+l'arrangement fait défiler les pistes, Maj le temps, Ctrl le zoom (`mouseWheelMove`), rien sur un clip.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D582.1 | **La position en *timecode* et en échantillons** — les formats d'affichage du transport | *Transport ▸ Position affichée ▸ Secondes* (cochée d'origine), *Timecode (24 i/s)*, *Timecode (25 i/s)*, *Timecode (30 i/s)*, *Échantillons* : la première partie de la position suit le format — `hh:mm:ss:ii` en images entières, les échantillons à la fréquence du périphérique ; la partie en mesures ne change pas ; retenu au poste ; mesuré par le libellé relevé à une position connue, le témoin en secondes à côté |
+| D582.2 | **Le solo choisit la piste** — *Select Channel/Track on Solo* | *Piste ▸ Le solo choisit la piste* (cochée) : allumer le solo d'une piste — son S dans la liste, sur la console — la choisit ; éteindre un solo ne change pas le choix ; retenu au poste ; mesuré par la piste choisie relevée après chaque solo, le témoin sans l'option à côté |
+| D582.3 | **La molette règle le gain d'un clip audio** — *Use Mouse Wheel for Event Volume* | *Édition ▸ La molette règle le gain des clips audio* (cochée) : la molette sans touche, au-dessus d'un clip AUDIO, monte ou baisse son gain d'1 dB par cran, entre −24 et +24 dB — les bornes du menu *Gain du clip* ; une rafale de crans sur le même clip fait UN pas d'historique ; ailleurs — le fond, un clip MIDI, avec une touche —, la molette fait ce qu'elle faisait ; retenu au poste ; mesuré par le gain du clip relu, le témoin sans l'option à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Les trois sont des préférences du POSTE.** La cadence d'images comprise : chez Cubase elle est au projet, parce
+  qu'elle sert la vidéo et la synchronisation ; ici, il n'y a ni l'une ni l'autre, et elle ne servirait qu'à l'affichage —
+  l'écrire au projet ajouterait au format un champ que personne ne lit. Le 29,97 à images sautées est remis.
+- **D582.1.** Des images ENTIÈRES (`floor`), comme un compteur ; les échantillons arrondis à l'entier le plus proche, à la
+  fréquence que la barre affiche déjà. Un relevé de banc neuf, `relever-position`, lit le libellé même. **L'attendu, écrit
+  avant la mesure** (120 BPM, la tête posée à la mesure 2, temps 2 : 2,5 s) : secondes **`00:02,500`** (le témoin) ;
+  24 i/s **`00:00:02:12`** ; 25 i/s **`00:00:02:12`** ; 30 i/s **`00:00:02:15`** ; échantillons **2,5 × la fréquence
+  affichée** (110 250 à 44,1 kHz) ; la partie « mes. 2 · 2 » la même dans les cinq ; relancé : l'entrée cochée.
+- **D582.2.** Le S de la LIGNE et celui de la TRANCHE de la console, et Maj+S (*Solo (piste choisie)*), qui vise déjà la
+  piste choisie ; le solo exclusif (Ctrl+clic) aussi : c'est un solo qu'on allume. Un verbe de banc neuf, `solo:<n>`, le S
+  d'une piste qu'on ne choisit pas — le frère de `armer:<n>` (D579.2). **L'attendu, écrit avant la mesure** : trois pistes,
+  la piste 0 choisie, l'option cochée : `solo:2` → la piste **2** choisie ; `solo:2` (éteint) → **2** encore ; `solo:1` →
+  **1** ; le témoin sans l'option, `solo:2` → **0**.
+- **D582.3.** Un cran, 1 dB : le pas le plus fin du menu *Gain du clip* (D22.1), qui reste le geste précis, et ses bornes,
+  ±24 dB (« au-delà, c'est un autre outil ») : une seule règle pour deux portes. Une RAFALE —
+  des crans sur le même clip sans silence de plus de 500 ms — fait un pas, « Gain du clip », la règle des commandes apprises
+  (D521). Seulement les clips AUDIO : un clip MIDI n'a pas de volume d'événement chez Cubase non plus. Maj+molette, qui
+  règle les fondus chez Cubase, fait déjà défiler le temps ici : les fondus à la molette sont remis. **L'attendu, écrit
+  avant la mesure** : un clip audio à 0 dB, l'option cochée, trois crans vers le haut au-dessus de lui : **+3,0 dB**
+  (gain 1,4125) ; deux vers le bas ensuite : **+1,0 dB** ; Ctrl+Z après une rafale de trois : **0 dB**, en **un** pas ;
+  le témoin sans l'option, trois crans : **0 dB** ; au-dessus d'un clip MIDI, l'option cochée : son gain **inchangé** ;
+  relancé : l'entrée cochée.
+
+**L'ORDRE, TRANCHÉ ICI.** D582.2 d'abord (le plus simple), puis D582.1, puis D582.3 ; un banc par élément, entré dans la
+série de `verifier.sh --bancs`.
