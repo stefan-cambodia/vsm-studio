@@ -1906,6 +1906,8 @@ const Paire kAnglais[] = {
       "Input trim" },
     { "Triolet",
       "Triplet" },
+    { "Quintolet",   // D577.1
+      "Quintuplet" },
     { "Tronçons — « de telle mesure à telle mesure, telle prise »",
       "Segments — “from this bar to that bar, this take”" },
     { "Tête : mesure précédente",
@@ -3227,6 +3229,16 @@ const Paire kAnglais[] = {
     { "Plis inversés : %1 piste(s)",
       "Fold states flipped: %1 track(s)" },
     // D559 : lever tous les solos et tous les muets, remettre la console à zéro, échanger gauche et droite d'un clip.
+    { "Masquer les pistes sans données (%1)",   // D577.2
+      "Hide tracks without data (%1)" },
+    { "%1 piste(s) sans données masquée(s) : %2",
+      "%1 track(s) without data hidden: %2" },
+    { "Masquer les pistes sans données",
+      "Hide tracks without data" },
+    { "Remettre les témoins d'écrêtage à zéro (%1)",   // D577.3
+      "Reset clip indicators (%1)" },
+    { "Témoins d'écrêtage remis à zéro : %1",
+      "Clip indicators reset: %1" },
     { "Lever tous les solos (%1)",
       "Clear all solos (%1)" },
     { "Lever tous les muets (%1)",

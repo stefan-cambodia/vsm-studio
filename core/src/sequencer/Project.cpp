@@ -795,14 +795,40 @@ bool trackIsEmpty(const Project& project, size_t index) {
            && t.miscEvents.empty() && t.audio.empty() && t.takes.empty() && t.versions.empty();
 }
 
-std::vector<std::string> removeEmptyTracks(Project& project) {
-    std::vector<std::string> noms;
+std::vector<size_t> emptyTracks(const Project& project) {
+    // JUGÉES DE LA DERNIÈRE À LA PREMIÈRE, comme le retrait les retire : les membres d'un dossier le suivent, ils sont
+    // donc jugés avant lui, et un dossier est vide quand tout ce qu'il contient le sera parti.
+    std::vector<bool> vide(project.tracks.size(), false);
     for (size_t k = project.tracks.size(); k > 0; --k) {
-        if (!trackIsEmpty(project, k - 1)) continue;
-        noms.push_back(project.tracks[k - 1].name);
-        removeTrack(project, k - 1);
+        const size_t i = k - 1;
+        if (project.tracks[i].kind == Track::Kind::Folder) {
+            const auto membres = folderContents(project, i);
+            vide[i] = std::all_of(membres.begin(), membres.end(), [&vide](size_t m) { return vide[m]; });
+        } else {
+            vide[i] = trackIsEmpty(project, i);
+        }
     }
-    std::reverse(noms.begin(), noms.end());
+    std::vector<size_t> index;
+    for (size_t i = 0; i < vide.size(); ++i)
+        if (vide[i]) index.push_back(i);
+    return index;
+}
+
+std::vector<std::string> removeEmptyTracks(Project& project) {
+    const auto vides = emptyTracks(project);
+    std::vector<std::string> noms;
+    for (size_t i : vides) noms.push_back(project.tracks[i].name);
+    for (size_t k = vides.size(); k > 0; --k) removeTrack(project, vides[k - 1]);
+    return noms;
+}
+
+std::vector<std::string> hideEmptyTracks(Project& project) {
+    std::vector<std::string> noms;
+    for (size_t i : emptyTracks(project)) {
+        if (project.tracks[i].hidden) continue;
+        project.tracks[i].hidden = true;
+        noms.push_back(project.tracks[i].name);
+    }
     return noms;
 }
 

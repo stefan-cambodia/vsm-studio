@@ -473,7 +473,7 @@ struct ProjectDocument {
         /// « auto ») et le type de gamme par son identifiant stable (`scaleTypeId`) :
         /// ces noms sont vérifiés par l'application, qui les connaît. Vide = rien.
         std::string pianoRollGrid;
-        /// « triplet » ou « dotted » ; vide = droit.
+        /// « triplet », « dotted » ou « quintuplet » (D577.1) ; vide = droit.
         std::string pianoRollGridModifier;
         /// 0..1 ; -1 = rien d'enregistré.
         double pianoRollSwing = -1.0;

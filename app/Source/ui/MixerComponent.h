@@ -585,13 +585,18 @@ public:
     /// D48 : on efface le témoin de saturation en cliquant dessus, comme sur
     /// une console. Le pire dépassement repart de zéro avec lui : garder
     /// l'ancien ferait réapparaître un chiffre qu'on vient d'acquitter.
-    void mouseDown(const juce::MouseEvent&) override {
+    void mouseDown(const juce::MouseEvent&) override { effacerSaturation(); }
+    void effacerSaturation() {
         if (!satVue_) return;
         satVue_ = false;
         pireDepassement_ = 0.0f;
         satLabel_.setVisible(false);
         resized();
     }
+    /// D577.3 : LE MASTER A DEUX TÉMOINS — le « SAT » de D48 et celui de son mètre (D344) — et compte pour UN : allumé
+    /// quand l'un l'est, éteint quand les deux le sont.
+    bool temoinAllume() const { return satVue_ || meter_.aEcrete(); }
+    void eteindreTemoins() { effacerSaturation(); meter_.effacerEcretage(); }
     /// D469 : le mètre, pour la consigne et le relevé de banc.
     const LevelMeter& vumetre() const { return meter_; }
     /// D469 : la géométrie du master pour le relevé `VSM_MIXEUR` — où est son
@@ -693,6 +698,10 @@ public:
     void poserNiveauxPourCapture(const juce::String& consigne);
     /// D344 : ce que chaque vumètre montre — crête en dBFS et témoin d'écrêtage.
     void listerVumetresPourCapture() const;
+    /// D577.3 : les témoins d'écrêtage allumés — un par tranche, un pour le master (D48 ou D344).
+    int temoinsDEcretageAllumes() const;
+    /// D577.3 : REMETTRE LES TÉMOINS À ZÉRO (*Reset Meters*) — tous éteints d'un geste ; rend combien l'étaient.
+    int eteindreLesTemoinsDEcretage();
     /// D342 : la géométrie de chaque tranche, une ligne par tranche, lue au
     /// moment de la photo (la disposition du dock n'est faite qu'alors).
     void listerGeometriePourCapture(const juce::Component& repere) const;

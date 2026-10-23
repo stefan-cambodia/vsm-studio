@@ -1300,6 +1300,20 @@ void MixerComponent::listerVumetresPourCapture() const {
     std::fputs(("VSM_VUMETRES : " + juce::String(strips_.size()) + " vum\xc3\xa8tre(s)\n").toRawUTF8(), stderr);
 }
 
+int MixerComponent::temoinsDEcretageAllumes() const {
+    int n = master_.temoinAllume() ? 1 : 0;
+    for (const auto* tranche : strips_) n += tranche->vumetre().aEcrete() ? 1 : 0;
+    return n;
+}
+
+int MixerComponent::eteindreLesTemoinsDEcretage() {
+    // LE MÊME EFFACEMENT QUE LE CLIC, tranche par tranche : rien d'autre ne bouge — ni la crête, ni le pic tenu.
+    const int allumes = temoinsDEcretageAllumes();
+    for (auto* tranche : strips_) tranche->vumetre().effacerEcretage();
+    master_.eteindreTemoins();
+    return allumes;
+}
+
 void MixerComponent::paint(juce::Graphics& g) {
     g.fillAll(vsm::ui::Palette::background);
 }

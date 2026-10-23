@@ -135,6 +135,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     gridModifierCombo_.addItem(vsm::app::ui::tr("Droit"), 1);
     gridModifierCombo_.addItem(vsm::app::ui::tr("Triolet"), 2);
     gridModifierCombo_.addItem(vsm::app::ui::tr(u8"Pointé"), 3);
+    gridModifierCombo_.addItem(vsm::app::ui::tr("Quintolet"), 4);   // D577.1
     gridModifierCombo_.setSelectedId(1, juce::dontSendNotification);
     gridModifierCombo_.onChange = [this] { applyGridFromCombos(); };
 
@@ -239,6 +240,7 @@ void PianoRollToolbar::applyGridFromCombos() {
     grid.value = gridChoices()[static_cast<size_t>(index - 1)].first;
     grid.triplet = gridModifierCombo_.getSelectedId() == 2;
     grid.dotted = gridModifierCombo_.getSelectedId() == 3;
+    grid.quintuplet = gridModifierCombo_.getSelectedId() == 4;   // D577.1
     pianoRoll_.setGridResolution(grid);
 }
 
@@ -278,7 +280,7 @@ std::string PianoRollToolbar::nomDeLaGrille() const {
 
 std::string PianoRollToolbar::nomDuModificateur() const {
     const auto g = pianoRoll_.gridResolution();
-    return g.triplet ? "triplet" : g.dotted ? "dotted" : "";
+    return g.triplet ? "triplet" : g.dotted ? "dotted" : g.quintuplet ? "quintuplet" : "";   // D577.1
 }
 
 double PianoRollToolbar::swingTenu() const { return pianoRoll_.swing(); }
@@ -297,6 +299,7 @@ void PianoRollToolbar::poserGrilleSeule(const std::string& grille, const std::st
     int idModificateur = 1;
     if (modificateur == "triplet") idModificateur = 2;
     else if (modificateur == "dotted") idModificateur = 3;
+    else if (modificateur == "quintuplet") idModificateur = 4;   // D577.1
     else if (!modificateur.empty()) ecartes.emplace_back("modificateur", modificateur);
     gridCombo_.setSelectedId(idGrille, juce::dontSendNotification);
     gridModifierCombo_.setSelectedId(idModificateur, juce::dontSendNotification);
@@ -323,6 +326,7 @@ void PianoRollToolbar::poserGrilleEtGamme(const std::string& grille, const std::
     int idModificateur = 1;
     if (modificateur == "triplet") idModificateur = 2;
     else if (modificateur == "dotted") idModificateur = 3;
+    else if (modificateur == "quintuplet") idModificateur = 4;   // D577.1
     else if (!modificateur.empty()) ecartes.emplace_back("pianoRollGridModifier", modificateur);
     gridCombo_.setSelectedId(idGrille, juce::dontSendNotification);
     gridModifierCombo_.setSelectedId(idModificateur, juce::dontSendNotification);
@@ -359,7 +363,8 @@ void PianoRollToolbar::direLaGrilleEtLaGamme() const {
         if (v == grille.value) valeur = libelle;
     const auto gamme = pianoRoll_.scale();
     std::fputs(("VSM_PIANOROLL_GRILLE : grille=" + (pianoRoll_.adaptiveGrid() ? juce::String("auto") : valeur)
-                + " modificateur=" + (grille.triplet ? "triplet" : grille.dotted ? "dotted" : "droit")
+                + " modificateur=" + (grille.triplet ? "triplet" : grille.dotted ? "dotted"
+                                      : grille.quintuplet ? "quintuplet" : "droit")   // D577.1
                 + " swing=" + juce::String(pianoRoll_.swing(), 2)
                 + " tonique=" + juce::String(static_cast<int>(gamme.root))
                 + " mode=" + juce::String(static_cast<int>(gamme.type))
@@ -706,6 +711,7 @@ void PianoRollToolbar::retraduire() {
     retitrer(gridModifierCombo_, 1, tr("Droit"));
     retitrer(gridModifierCombo_, 2, tr("Triolet"));
     retitrer(gridModifierCombo_, 3, tr(u8"Pointé"));
+    retitrer(gridModifierCombo_, 4, tr("Quintolet"));   // D577.1
     const auto gammes = vsm::sequencer::allScaleTypes();
     for (size_t i = 0; i < gammes.size(); ++i)
         retitrer(scaleTypeCombo_, static_cast<int>(i) + 1, tr(vsm::sequencer::scaleTypeName(gammes[i])));

@@ -52,7 +52,8 @@ public:
                             std::vector<std::pair<std::string, std::string>>& ecartes);
     /// D495 : le NOM de la grille tenue, tel que le projet l'écrit (« 1/16 », « auto »).
     std::string nomDeLaGrille() const;
-    /// D570.2 : le modificateur tenu (« », « triplet », « dotted ») et le swing — ce qu'un préréglage garde.
+    /// D570.2 : le modificateur tenu (« », « triplet », « dotted », « quintuplet » — D577.1) et le swing — ce qu'un
+    /// préréglage garde.
     std::string nomDuModificateur() const;
     double swingTenu() const;
     /// D570.2 : la grille, le modificateur et le swing SEULS, par les listes de la barre (le chemin de D495) ; la gamme

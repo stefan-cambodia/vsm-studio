@@ -44353,8 +44353,9 @@ double et à la triple-croche (384, 192, 96, 48). **Toujours remis** : le mode d
 
 **CE QUI EST TRANCHÉ AVANT LE CODE.**
 - **D577.1.** Un troisième modificateur de la grille, exclusif des deux autres, comme eux une donnée du MORCEAU (la vue,
-  D495) : `GridResolution::quintuplet`, le pas `× 4 / 5`. Écrit `quintuplet` dans la vue, `Quintolet` au préréglage
-  (le nom que la barre montre, la règle de D570.2) ; un nom inconnu relu reste « droit » et c'est dit (D495). Tout ce qui
+  D495) : `GridResolution::quintuplet`, le pas `× 4 / 5`. Écrit `quintuplet` dans la vue ET au préréglage
+  (corrigé à l'écriture du code : « `Quintolet` au préréglage » était faux — le préréglage de D570.2 garde le nom de la
+  vue, `nomDuModificateur()`, comme il garde `triplet` ; « Quintolet » n'est que le libellé de la barre) ; un nom inconnu relu reste « droit » et c'est dit (D495). Tout ce qui
   lit `gridResolutionToTicks` le suit sans une ligne de plus — c'est la raison de ne pas l'avoir écrit ailleurs.
   **L'attendu, écrit avant la mesure** : des notes à 100, 190, 300 et 380 ; à la double-croche droite (120), le témoin
   rend **120, 240, 360, 360** ; en quintolet (96), **96, 192, 288, 384**.
@@ -44370,3 +44371,29 @@ double et à la triple-croche (384, 192, 96, 48). **Toujours remis** : le mode d
 
 **L'ORDRE, TRANCHÉ ICI.** D577.1 (le cœur et ses tests, puis la barre et la vue), D577.2, D577.3 ; une compilation de
 l'application, APRÈS la série de D573 — et la série suivante sans compilation ni lancement à côté.
+
+### Phase D577 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D577.1 | le quintolet dans la grille | `GridResolution::quintuplet`, le pas × 4 / 5 dans `gridResolutionToTicks` — la grille dessinée, l'aimant, la quantification et les durées le suivent sans une ligne de plus (la grille adaptative du zoom garde le modificateur) ; deux tests du cœur, vus ROUGES sans la ligne du pas (2 échecs, 120 au lieu de 96) : exact sans reste de la noire à la triple-croche, à 480 comme à 960 la noire, et l'attendu ; *Quintolet* / *Quintuplet* dans la liste de la barre ; `pianoRollGridModifier : quintuplet` dans la vue, et au préréglage ; `tools/quintolet-grille.sh`, par le MIDI exporté après *Quantifier (100 %)* : témoin droit **120 240 360 360**, quintolet **96 192 288 384**, la barre relue `modificateur=quintuplet` ; enregistré puis rouvert sans y toucher : le même ; rappelé du préréglage « Cinq » : le même ; choisi en anglais par « Quintuplet ». **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D577.2 | masquer les pistes sans données | `emptyTracks` : LA règle de *Retirer les pistes vides*, que `removeEmptyTracks` emprunte désormais (son test d'avant inchangé et vert), un dossier compté quand tous ses membres le sont — le dossier que le retrait vide puis emporte ; `hideEmptyTracks` (un test : 2 masquées sur 4, rien retiré, rien remasqué, le dossier et son membre vide masqués, le groupe jamais) ; *Piste ▸ Masquer les pistes sans données (N)*, un pas ; `tools/masquer-pistes-sans-donnees.sh`, par le projet relu : le menu dit **(2)** puis **(0)** grisée ; **4 pistes, 2 masquées** (« Vide A », « Vide B ») ; *Afficher toutes les pistes* : **0** ; Ctrl+Z : **0** ; le témoin *Retirer les pistes vides* : **2 pistes restent**. **TENU** | **oui** |
+| D577.3 | remettre les témoins d'écrêtage à zéro | `MixerComponent::temoinsDEcretageAllumes`, `eteindreLesTemoinsDEcretage` — le même effacement que le clic, tranche par tranche ; le master compte pour UN témoin quand l'un des deux qu'il porte est allumé (le « SAT » de D48, celui de son mètre de D344), et les deux s'éteignent ensemble ; *Mixage ▸ Remettre les témoins d'écrêtage à zéro (N)*, aucun pas ; `tools/temoins-ecretage.sh`, par le relevé `VSM_VUMETRES` : deux tranches à +0,5 dBFS, le menu dit **(2)**, puis **0** allumé et **(0)** grisée, l'historique à **0** pas ; le témoin d'un clic sur la première : **1** allumé (la tranche 1), le menu dit **(1)** ; le master seul : **(1)**, puis éteint. **TENU** | **oui** |
+| — | le témoin | le binaire de D559 (`build/temoin-D559`, aucun binaire de D573 à D576 n'a survécu dans `build/`) : `quintolet-grille` **rouge 4 / 5** (le vert : le témoin droit ; « aucune entrée « Quintolet » (entrées : Droit, Triolet, Pointé) » au journal) ; `masquer-pistes-sans-donnees` **4 / 5** (le vert : le témoin du retrait) ; `temoins-ecretage` **3 / 4** (le vert : « aucun pas ») — et le clic seul y rend **1:1** comme sur le binaire neuf : le témoin est le même code | **oui** |
+| — | la première course de `masquer-pistes-sans-donnees` | rouge 1 / 5, PAR LE BANC : le projet relu disait bien « Vide A* … Vide B* », mais le compte ancrait `\*$` sur des noms suivis d'une espace après le découpage, et rendait 1. Il compte les astérisques ; et (3), (4) exigent désormais le masquage DE LA MÊME COURSE au journal — « 0 masquée » est aussi l'état de départ, un retour sans le départ qui ne prouvait rien | **oui** |
+
+Mesuré la session VERROUILLÉE et l'écran éteint (`LockedHint=yes`, DPMS « off »), après un redémarrage : le poste a été
+ÉTEINT à 07 h 25 (`journalctl -b -1`), et rien ne tournait à la reprise (45 min d'uptime). C++ 537 · 1 349 · 359 · 25 · 11,
+Python 275, ruff, mypy, quinze gardes vertes (`./verifier.sh --compiler`). Les photos du quintolet et du masquage ont été
+REGARDÉES : *Quintolet* dans la barre et la première note relue « 1.1+96 » ; les deux pistes vides absentes de la liste,
+de l'arrangement et de la console.
+
+**LA SÉRIE DE D573 EST PERDUE.** Lancée à 04 h 52 sur 150 bancs, elle écrivait ses journaux dans `/tmp`, un tmpfs ;
+l'extinction de 07 h 25 les a emportés, et son bilan n'avait été écrit nulle part. Deux corrections, dans `verifier.sh` :
+les journaux vont désormais dans `build/verifier-bancs` (survit à une extinction, hors de git ; `VSM_JOURNAUX_BANCS` pour
+un autre dossier) ; et les **neuf** bancs remis « après la série de D573 » y entrent — `aimant-cibles`, `plage-effet-midi`
+(D574), `zone-quantification`, `aleatoire-effet-midi` (D575), `inserts-apres-fader`, `legato-reglages` (D576),
+`quintolet-grille`, `masquer-pistes-sans-donnees`, `temoins-ecretage` (D577) : **159 bancs**, comptés par le script qui
+lit la liste (159 noms, 159 distincts, 0 absent de `tools/`). Ce que la série de D573 devait dire — et les rouges de
+glisser et de photo que D576 voulait rejouer seuls —, la série de D577 le dira, sur le binaire de D577, qui porte D573 à
+D577 : elle se joue après ce commit, sans compilation ni lancement à côté.

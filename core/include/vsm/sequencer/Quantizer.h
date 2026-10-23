@@ -16,6 +16,9 @@ struct GridResolution {
     NoteValue value = NoteValue::Sixteenth;
     bool triplet = false; ///< division par 3 au lieu de 2 (ex: triolet de croches)
     bool dotted = false;  ///< x1.5 (incompatible avec triplet=true)
+    /// D577.1 : LE QUINTOLET — cinq cases dans l'espace de quatre (× 4 / 5), exclusif des deux autres. Exact à la noire,
+    /// à la croche, à la double et à la triple-croche (384, 192, 96, 48 à 480 la noire) ; le septolet ne l'est jamais.
+    bool quintuplet = false;
 };
 
 /// Durée en ticks d'une case de grille pour la résolution donnée.

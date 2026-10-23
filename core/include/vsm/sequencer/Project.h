@@ -435,6 +435,16 @@ bool trackIsEmpty(const Project& project, size_t index);
 /// eux. Rend les NOMS des pistes retirées, dans l'ordre du projet, pour que l'appelant les DISE.
 std::vector<std::string> removeEmptyTracks(Project& project);
 
+/// D577.2 — LES PISTES QUE `removeEmptyTracks` RETIRERAIT, en index, dans l'ordre du projet : la MÊME règle (le
+/// retrait passe par elle), un dossier compté quand TOUS ses membres le sont -- c'est le dossier que le retrait
+/// vide puis emporte.
+std::vector<size_t> emptyTracks(const Project& project);
+
+/// D577.2 — MASQUER LES PISTES SANS DONNÉES (*Hide Tracks without Data*) : celles d'`emptyTracks` encore visibles
+/// passent `hidden`, rien n'est retiré ni coupé (masquer n'est pas couper). Rend les NOMS des pistes masquées par le
+/// geste, dans l'ordre du projet ; une piste déjà masquée n'en est pas.
+std::vector<std::string> hideEmptyTracks(Project& project);
+
 /// D551.1 — LE PRESSE-PAPIERS DE CLIPS. Chaque clip copié garde SA PISTE d'origine (une copie prise sur deux pistes se
 /// recollait fondue sur une seule : H14), le genre et le fichier de celle-ci, et -- pour un clip MIDI, qui n'est
 /// qu'une fenêtre sur la matière de sa piste -- les NOTES que sa fenêtre couvrait au moment de la copie : collé sur

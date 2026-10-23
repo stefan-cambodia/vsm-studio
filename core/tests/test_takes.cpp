@@ -1103,6 +1103,39 @@ VSM_TEST(removing_empty_tracks_keeps_groups_and_content_and_repairs_routing) {
     VSM_ASSERT(removeEmptyTracks(q).empty());
 }
 
+// D577.2 — MASQUER LES PISTES SANS DONNÉES : les pistes que le retrait emporterait, et elles seules, passent masquées ;
+// rien n'est retiré ; une piste déjà masquée n'est pas recomptée ; le témoin du retrait sur le même projet.
+VSM_TEST(hiding_tracks_without_data_hides_what_removing_would_remove_and_removes_nothing) {
+    Project p;
+    p.tracks.resize(4);
+    p.tracks[0].name = "Basse";  p.tracks[0].notes.push_back({});
+    p.tracks[1].name = "Vide A";
+    p.tracks[2].name = "Voix";   p.tracks[2].audio.path = "voix.wav";
+    p.tracks[3].name = "Vide B";
+    Project temoin = p;
+    const auto noms = hideEmptyTracks(p);
+    VSM_ASSERT(noms == (std::vector<std::string>{"Vide A", "Vide B"}));
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(4));   // les quatre toujours là
+    size_t masquees = 0;
+    for (const auto& t : p.tracks) masquees += t.hidden ? 1 : 0;
+    VSM_ASSERT_EQ(masquees, size_t(2));
+    VSM_ASSERT(hideEmptyTracks(p).empty());      // déjà masquées : rien à refaire
+    VSM_ASSERT_EQ(removeEmptyTracks(temoin).size(), size_t(2));
+    VSM_ASSERT_EQ(temoin.tracks.size(), size_t(2));
+
+    // LE DOSSIER que le retrait vide puis emporte est masqué avec ses membres ; un groupe jamais.
+    Project d;
+    d.tracks.resize(4);
+    d.tracks[0].kind = Track::Kind::Folder; d.tracks[0].name = "Dossier";
+    d.tracks[1].name = "Membre vide"; d.tracks[1].folderDepth = 1;
+    d.tracks[2].kind = Track::Kind::Group; d.tracks[2].name = "Bus";
+    d.tracks[3].name = "Pleine"; d.tracks[3].notes.push_back({});
+    VSM_ASSERT(!trackIsEmpty(d, 0));   // pris seul, le dossier a encore son membre…
+    VSM_ASSERT(emptyTracks(d) == (std::vector<size_t>{0, 1}));   // … et le retrait l'emporte : la même règle
+    VSM_ASSERT(hideEmptyTracks(d) == (std::vector<std::string>{"Dossier", "Membre vide"}));
+    VSM_ASSERT(!d.tracks[2].hidden && !d.tracks[3].hidden);
+}
+
 // D555.3 — ÉCLATER PAR CANAL : le canal le plus bas reste, chaque autre part sur une piste neuve juste dessous, avec
 // ses notes ET ses événements ; le bus placé APRÈS reçoit toujours toutes les pièces ; rien n'est copié deux fois.
 VSM_TEST(exploding_a_track_by_channel_moves_each_channel_and_keeps_the_bus) {

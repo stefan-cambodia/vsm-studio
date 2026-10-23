@@ -19,6 +19,39 @@ VSM_TEST(triplet_grid_is_two_thirds_of_straight) {
     VSM_ASSERT_EQ(tripletEighth, straightEighth * 2 / 3);
 }
 
+VSM_TEST(the_quintuplet_grid_is_five_steps_in_the_space_of_four_and_falls_exact) {
+    // D577.1 : × 4 / 5, exact de la noire à la triple-croche, à 480 comme à 960 la noire — sans reste, rien ne dérive.
+    for (uint16_t ppq : {static_cast<uint16_t>(480), static_cast<uint16_t>(960)}) {
+        for (NoteValue v : {NoteValue::Quarter, NoteValue::Eighth, NoteValue::Sixteenth, NoteValue::ThirtySecond}) {
+            GridResolution droit{v, false, false};
+            GridResolution quintolet{v, false, false};
+            quintolet.quintuplet = true;
+            const Tick d = gridResolutionToTicks(droit, ppq);
+            VSM_ASSERT_EQ((d * 4) % 5, static_cast<Tick>(0));
+            VSM_ASSERT_EQ(gridResolutionToTicks(quintolet, ppq) * 5, d * 4);
+        }
+    }
+    GridResolution q{NoteValue::Sixteenth, false, false};
+    q.quintuplet = true;
+    VSM_ASSERT_EQ(gridResolutionToTicks(q, 480), static_cast<Tick>(96));
+}
+
+VSM_TEST(quantizing_to_the_quintuplet_grid_lands_on_its_steps_and_the_straight_witness_does_not) {
+    // D577.1, l'attendu écrit avant la mesure : 100, 190, 300, 380 — 120, 240, 360, 360 en droit ; 96, 192, 288, 384.
+    const uint16_t ppq = 480;
+    QuantizeSettings droit;
+    droit.grid = {NoteValue::Sixteenth, false, false};
+    QuantizeSettings quintolet = droit;
+    quintolet.grid.quintuplet = true;
+    const Tick entrees[] = {100, 190, 300, 380};
+    const Tick attenduDroit[] = {120, 240, 360, 360};
+    const Tick attenduQuintolet[] = {96, 192, 288, 384};
+    for (size_t i = 0; i < 4; ++i) {
+        VSM_ASSERT_EQ(quantizeTick(entrees[i], droit, ppq), attenduDroit[i]);
+        VSM_ASSERT_EQ(quantizeTick(entrees[i], quintolet, ppq), attenduQuintolet[i]);
+    }
+}
+
 VSM_TEST(quantize_snaps_to_nearest_grid_line_with_full_strength) {
     uint16_t ppq = 480;
     QuantizeSettings settings;

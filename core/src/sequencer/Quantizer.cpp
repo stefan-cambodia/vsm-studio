@@ -21,6 +21,7 @@ midi::Tick gridResolutionToTicks(GridResolution res, uint16_t ppq) {
     if (base < 1) base = 1;
 
     if (res.triplet)      base = (base * 2) / 3; // 3 notes dans l'espace de 2
+    else if (res.quintuplet) base = (base * 4) / 5;   // D577.1 : 5 notes dans l'espace de 4
     else if (res.dotted)  base = (base * 3) / 2; // durée x1.5
 
     return base < 1 ? 1 : base;

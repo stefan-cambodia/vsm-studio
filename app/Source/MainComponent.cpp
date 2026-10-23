@@ -4857,6 +4857,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   ? tr(u8"Afficher toutes les pistes (aucune masquée)")
                                   : tr(u8"Afficher toutes les pistes (%1 masquées)").replace("%1", juce::String(static_cast<int>(masquees))),
                               masquees > 0);
+                // D577.2 : MASQUER LES PISTES SANS DONNÉES — le compte de ce que le geste masquerait, grisée à zéro.
+                {
+                    const auto n = static_cast<int>(pistesSansDonneesAMasquer());
+                    menu.addItem(kMenuTrackHideEmpty,
+                                 tr(u8"Masquer les pistes sans données (%1)").replace("%1", juce::String(n)), n > 0);
+                }
                 // D560.3 : PLIER, DÉPLIER, INVERSER LES PLIS DE TOUTES LES PISTES (Track Folding) — le compte dit
                 // combien changent, grisées à zéro.
                 {
@@ -5563,6 +5569,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          audioEngine_.processGraph().masterBus().monoListen());
             // D559.1-2 : LES GESTES DE TOUTE LA CONSOLE -- le compte dans le libellé, grisés à zéro.
             {
+                // D577.3 : LES TÉMOINS D'ÉCRÊTAGE allumés — tranches et master —, éteints d'un geste.
+                const int allumes = mixer_.temoinsDEcretageAllumes();
+                menu.addItem(kMenuMixResetClipIndicators,
+                             tr(u8"Remettre les témoins d'écrêtage à zéro (%1)").replace("%1", juce::String(allumes)),
+                             allumes > 0);
                 const auto solos = vsm::sequencer::countSoloedTracks(project_);
                 const auto muets = vsm::sequencer::countMutedTracks(project_);
                 const auto aRemettre = vsm::sequencer::countTracksToReset(project_);
@@ -6066,6 +6077,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
+    if (menuItemID == kMenuTrackHideEmpty) { masquerPistesSansDonnees(); return; }               // D577.2
+    if (menuItemID == kMenuMixResetClipIndicators) { remettreTemoinsDEcretage(); return; }       // D577.3
     if (menuItemID == kMenuEditRemoveClipOverlaps) { retirerChevauchementsDesClips(); return; }   // D562.2
     if (menuItemID == kMenuTrackCopyStrip) { copierReglagesDeTranche(); return; }                // D562.3
     if (menuItemID == kMenuTrackPasteStrip) { collerReglagesDeTranche(); return; }
@@ -9576,7 +9589,8 @@ vsm::interchange::ProjectDocument::View MainComponent::vueActuelle() const {
     // D495 : la grille, le swing et la gamme du piano roll — ils appartiennent au morceau.
     vue.pianoRollGrid = pianoRollPanel_.barre().nomDeLaGrille();
     const auto grille = pianoRoll_.gridResolution();
-    vue.pianoRollGridModifier = grille.triplet ? "triplet" : grille.dotted ? "dotted" : "";
+    vue.pianoRollGridModifier = grille.triplet ? "triplet" : grille.dotted ? "dotted"
+                                : grille.quintuplet ? "quintuplet" : "";   // D577.1
     vue.pianoRollSwing = juce::jlimit(0.0, 1.0, static_cast<double>(pianoRoll_.swing()));
     // D575.1, D575.2 : écrites au-dessus de 0 seulement, ARRONDIES au dix-millième — un flottant élargi écrivait
     // « 0.10000000149011612 » pour 10 %.
@@ -11530,6 +11544,42 @@ void MainComponent::retirerPistesVides() {
                  tr(u8"%1 piste(s) vide(s) retirée(s) : %2")
                      .replace("%1", juce::String(static_cast<int>(noms.size())))
                      .replace("%2", liste.joinIntoString(", ")));
+}
+
+size_t MainComponent::pistesSansDonneesAMasquer() const {
+    size_t n = 0;
+    for (size_t i : vsm::sequencer::emptyTracks(project_))
+        if (!project_.tracks[i].hidden) ++n;
+    return n;
+}
+
+void MainComponent::masquerPistesSansDonnees() {
+    // D577.2 : LA RÈGLE DE « RETIRER LES PISTES VIDES » (`emptyTracks`), pour MASQUER : rien n'est retiré, rien ne se
+    // tait (masquer n'est pas couper). Un pas ; rien à masquer : dit, sans pas (l'entrée est grisée).
+    if (pistesSansDonneesAMasquer() == 0) {
+        std::fputs("VSM_PISTES_SANS_DONNEES : 0\n", stderr);
+        return;
+    }
+    beginProjectEdit(juce::String::fromUTF8(u8"Masquer les pistes sans données"));
+    const auto noms = vsm::sequencer::hideEmptyTracks(project_);
+    refreshTrackViews();
+    juce::StringArray liste;
+    for (const auto& n : noms) liste.add(juce::String::fromUTF8(n.c_str()));
+    std::fputs((juce::String("VSM_PISTES_SANS_DONNEES : ") + juce::String(static_cast<int>(noms.size()))
+                + juce::String::fromUTF8(u8" masquée(s) : ") + liste.joinIntoString(" | ") + "\n").toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"%1 piste(s) sans données masquée(s) : %2")
+                                       .replace("%1", juce::String(static_cast<int>(noms.size())))
+                                       .replace("%2", liste.joinIntoString(", ")));
+}
+
+void MainComponent::remettreTemoinsDEcretage() {
+    // D577.3 : UN ÉTAT DE L'ÉCRAN (D344), pas du morceau : aucun pas, comme le clic qui efface un témoin seul.
+    const int eteints = mixer_.eteindreLesTemoinsDEcretage();
+    std::fputs(("VSM_TEMOINS_ECRETAGE : " + std::to_string(eteints) + " \xc3\xa9teint(s), "
+                + std::to_string(mixer_.temoinsDEcretageAllumes()) + " allum\xc3\xa9(s)\n").c_str(), stderr);
+    if (eteints > 0 && pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Témoins d'écrêtage remis à zéro : %1").replace("%1", juce::String(eteints)));
 }
 
 void MainComponent::editTimeAtLocators(bool inserer) {
