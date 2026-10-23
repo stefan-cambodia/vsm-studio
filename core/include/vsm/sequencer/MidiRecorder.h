@@ -99,8 +99,14 @@ public:
 
     /// Ajoute un événement. Ceux qui précèdent le point d'entrée sont ignorés
     /// en silence : ce n'est pas une perte, c'est la définition du point
-    /// d'entrée.
+    /// d'entrée. D583.2 : sauf une frappe dans la plage de rattrapage.
     void push(const RecordedNoteEvent& event);
+    /// D583.2 : LA PLAGE DE RATTRAPAGE (*MIDI Record Catch Range*), en secondes. Une note FRAPPÉE dans cette plage avant
+    /// le point d'entrée est gardée, et posée au point d'entrée — plus tôt, elle écrirait avant la région qu'on remplace ;
+    /// RELÂCHÉE avant lui, elle ne l'est pas : c'était une note d'avant. `begin` n'y touche pas : c'est un réglage du
+    /// poste, pas de la prise. Les contrôleurs n'y sont pas rattrapés.
+    void setCatchSeconds(double secondes);
+    double catchSeconds() const { return catchSeconds_; }
     /// D24.2 : un contrôleur, même règle du point d'entrée.
     void pushControl(const RecordedControlEvent& event);
     bool hasControls() const { return !controls_.empty(); }
@@ -149,6 +155,8 @@ private:
 
     double startSeconds_ = 0.0;
     double endSeconds_ = std::numeric_limits<double>::infinity();
+    double catchSeconds_ = 0.0;          ///< D583.2
+    std::vector<size_t> rattrapees_;     ///< D583.2 : les indices, dans `events_`, des frappes rattrapées
     std::vector<RecordedNoteEvent> events_;
     std::vector<RecordedControlEvent> controls_;
 };

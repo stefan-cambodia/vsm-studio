@@ -451,3 +451,59 @@ VSM_TEST(a_count_in_in_the_middle_follows_the_tempo_map) {
     VSM_ASSERT_NEAR(countInSeconds(p, 9 * 1920, 2), 6.0, 1e-9);
     VSM_ASSERT_NEAR(countInSeconds(p, 9 * 1920, 0), 0.0, 1e-12);
 }
+
+// --------------------------------------------------------------------------
+// D583.2 — LA PLAGE DE RATTRAPAGE (*MIDI Record Catch Range*). L'attendu écrit
+// avant la mesure (ROADMAP-daw, D583) : une entrée à 2,000 s, 100 ms de
+// rattrapage ; une frappe à 1,950 s relâchée à 2,300 s gardée, [2,000 ; 2,300] ;
+// une à 1,850 s écartée ; une frappe à 1,960 s relâchée à 1,990 s écartée ; sans
+// rattrapage, la première écartée aussi — le témoin, au même test.
+// --------------------------------------------------------------------------
+
+namespace {
+std::vector<Note> priseAvantLEntree(double rattrapage) {
+    Project projet = projetDeReference();
+    MidiRecorder enregistreur;
+    enregistreur.setCatchSeconds(rattrapage);
+    enregistreur.begin(2.0);
+    enregistreur.push({1.850, 62, 100, 0, true});    // trop tôt, même avec le rattrapage
+    enregistreur.push({1.950, 60, 100, 0, true});    // un souffle trop tôt
+    enregistreur.push({1.960, 64, 100, 0, true});    // une note d'avant...
+    enregistreur.push({1.990, 64, 0, 0, false});     // ...relâchée avant l'entrée
+    enregistreur.push({2.100, 62, 0, 0, false});     // le relâchement seul de la première
+    enregistreur.push({2.300, 60, 0, 0, false});
+    uint64_t compteur = 1;
+    return enregistreur.finish(3.0, conversion(projet), compteur);
+}
+}
+
+VSM_TEST(a_key_struck_just_before_the_punch_in_is_caught_at_the_punch_in) {
+    const auto notes = priseAvantLEntree(0.100);
+    VSM_ASSERT_EQ(notes.size(), size_t(1));
+    VSM_ASSERT_EQ(int(notes[0].number), 60);
+    VSM_ASSERT_EQ(notes[0].startTick, Tick(1920));   // 2,000 s, et non 1,950
+    VSM_ASSERT_EQ(notes[0].endTick, Tick(2208));     // 2,300 s
+}
+
+VSM_TEST(without_a_catch_range_the_early_key_is_dropped_as_before) {
+    VSM_ASSERT_EQ(priseAvantLEntree(0.0).size(), size_t(0));
+}
+
+VSM_TEST(the_catch_range_is_kept_from_one_take_to_the_next) {
+    // un réglage du poste : `begin` ne le remet pas à zéro, mais oublie les frappes de la prise d'avant
+    Project projet = projetDeReference();
+    MidiRecorder enregistreur;
+    enregistreur.setCatchSeconds(0.100);
+    enregistreur.begin(2.0);
+    enregistreur.push({1.950, 60, 100, 0, true});
+    enregistreur.begin(4.0);
+    VSM_ASSERT_NEAR(enregistreur.catchSeconds(), 0.100, 1e-12);
+    enregistreur.push({3.950, 67, 100, 0, true});
+    enregistreur.push({3.990, 60, 0, 0, false});   // ne ferme rien : la frappe de 1,950 s n'est plus là
+    enregistreur.push({4.500, 67, 0, 0, false});
+    uint64_t compteur = 1;
+    const auto notes = enregistreur.finish(5.0, conversion(projet), compteur);
+    VSM_ASSERT_EQ(notes.size(), size_t(1));
+    VSM_ASSERT_EQ(int(notes[0].number), 67);
+    VSM_ASSERT_EQ(notes[0].startTick, Tick(3840));
+}

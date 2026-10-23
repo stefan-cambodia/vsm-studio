@@ -3231,10 +3231,10 @@ const Paire kAnglais[] = {
     // D559 : lever tous les solos et tous les muets, remettre la console à zéro, échanger gauche et droite d'un clip.
     { "Le solo choisit la piste",   // D582.2
       "Solo selects the track" },
-    { "La molette règle le gain des clips audio",   // D582.3
-      "The mouse wheel sets the gain of audio clips" },
-    { "(1 dB par cran, sans touche, au-dessus du clip ; ailleurs elle fait défiler)",
-      "(1 dB per notch, without modifiers, over the clip; elsewhere it scrolls)" },
+    { "La molette règle le gain et les fondus des clips audio",   // D582.3, D583.1
+      "The mouse wheel sets the gain and fades of audio clips" },
+    { "(au-dessus du clip : 1 dB par cran ; Maj : son fondu d'entrée ou de sortie, d'une noire, selon la moitié ; ailleurs elle fait défiler)",
+      "(over the clip: 1 dB per notch; Shift: its fade-in or fade-out, by a quarter note, depending on the half; elsewhere it scrolls)" },
     { "Position affichée",   // D582.1
       "Position display" },
     { "Secondes",
@@ -3245,6 +3245,20 @@ const Paire kAnglais[] = {
       "Timecode (25 fps)" },
     { "Timecode (30 i/s)",
       "Timecode (30 fps)" },
+    { "Timecode (29,97 i/s, images sautées)",   // D583.3
+      "Timecode (29.97 fps, drop-frame)" },
+    { "Rattrapage avant l'entrée",   // D583.2
+      "Catch range before punch-in" },
+    { "Rattrapage : aucun",
+      "Catch range: none" },
+    { "Rattrapage : 50 ms",
+      "Catch range: 50 ms" },
+    { "Rattrapage : 100 ms",
+      "Catch range: 100 ms" },
+    { "Rattrapage : 250 ms",
+      "Catch range: 250 ms" },
+    { "(une note MIDI frappée juste avant le point d'entrée est gardée, posée au point d'entrée)",
+      "(a MIDI note struck just before the punch-in point is kept, placed at the punch-in point)" },
     { "Échantillons",
       "Samples" },
     { "sans fréquence",

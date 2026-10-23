@@ -2,6 +2,7 @@
 #include "vsm/sequencer/Project.h"
 #include <limits>
 #include <algorithm>
+#include <iterator>
 #include <deque>
 #include <map>
 #include <utility>
@@ -15,6 +16,11 @@ void MidiRecorder::begin(double startSeconds, double endSeconds) {
     startSeconds_ = startSeconds;
     endSeconds_ = endSeconds;
     events_.clear();
+    rattrapees_.clear();   // D583.2
+}
+
+void MidiRecorder::setCatchSeconds(double secondes) {
+    catchSeconds_ = std::max(0.0, secondes);   // D583.2
 }
 
 void MidiRecorder::push(const RecordedNoteEvent& event) {
@@ -22,7 +28,29 @@ void MidiRecorder::push(const RecordedNoteEvent& event) {
     // décompte ; après le point de sortie c'est le « punch out », où l'on
     // entend ce qui était déjà là. Dans les deux cas, jouer n'est pas
     // enregistrer.
-    if (event.seconds < startSeconds_ || event.seconds > endSeconds_) return;
+    if (event.seconds > endSeconds_) return;
+    if (event.seconds < startSeconds_) {
+        // D583.2 : LA PLAGE DE RATTRAPAGE. Une frappe un souffle trop tôt est gardée, au point d'entrée ; son relâchement
+        // avant l'entrée la retire — sans lui, il n'y aurait rien eu à rattraper.
+        if (catchSeconds_ <= 0.0 || event.seconds < startSeconds_ - catchSeconds_) return;
+        if (event.noteOn) {
+            RecordedNoteEvent posee = event;
+            posee.seconds = startSeconds_;
+            rattrapees_.push_back(events_.size());
+            events_.push_back(posee);
+            return;
+        }
+        for (auto it = rattrapees_.rbegin(); it != rattrapees_.rend(); ++it) {
+            const size_t i = *it;
+            if (events_[i].note != event.note || events_[i].channel != event.channel) continue;
+            events_.erase(events_.begin() + static_cast<std::ptrdiff_t>(i));
+            rattrapees_.erase(std::next(it).base());
+            for (auto& j : rattrapees_)
+                if (j > i) --j;
+            break;
+        }
+        return;
+    }
     events_.push_back(event);
 }
 

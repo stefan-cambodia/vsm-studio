@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# D582.3 — LA MOLETTE RÈGLE LE GAIN DES CLIPS AUDIO (Édition ▸ La molette règle le gain des clips audio ; l'*Use Mouse Wheel
+# D582.3 — LA MOLETTE RÈGLE LE GAIN DES CLIPS AUDIO (Édition ▸ La molette règle le gain et les fondus des clips audio ; l'*Use Mouse Wheel
 # for Event Volume* de Cubase), MESURÉE PAR LE GAIN DU CLIP RELU DANS LE PROJET ENREGISTRÉ, LE TÉMOIN SANS L'OPTION À CÔTÉ.
 #
 # LES RÈGLES GARDÉES. Une piste MIDI et son clip (piste 0), puis une piste AUDIO importée (piste 1, un la à 1 kHz de 4 s).
@@ -11,7 +11,7 @@
 #   (3) Ctrl+Z après une rafale de trois : 0 dB, en UN pas ;
 #   (4) le TÉMOIN sans l'option, trois crans : 0 dB ;
 #   (5) au-dessus du clip MIDI, l'option cochée : son gain inchangé (1) ;
-#   (6) relancé : l'entrée cochée ; en anglais, « The mouse wheel sets the gain of audio clips ».
+#   (6) relancé : l'entrée cochée ; en anglais, « The mouse wheel sets the gain and fades of audio clips ».
 #
 #   tools/molette-gain.sh [binaire]
 set -u
@@ -70,7 +70,7 @@ db() { python3 -c "import math,sys; print(f'{20*math.log10(float(sys.argv[1])):+
 
 rates=0
 verdict() { if [ "$2" = 1 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
-OPTION="menu:Édition > La molette règle le gain des clips audio"
+OPTION="menu:Édition > La molette règle le gain et les fondus des clips audio"
 
 echo "=== D582.3 : la molette règle le gain des clips audio ==="
 # LE PROJET DE DÉPART : la piste MIDI et son clip, puis l'import — vérifié avant tout (la leçon de courbe-de-gain).
@@ -109,8 +109,8 @@ gm="$(gains "$brouillon/monte")"; gd="$(gains "$brouillon/descend")"; gz="$(gain
 gt="$(gains "$brouillon/temoin")"; gi="$(gains "$brouillon/midi")"
 grep -h "^VSM_MOLETTE_GAIN" "$brouillon"/monte.txt "$brouillon"/descend.txt | sed 's/^/       /'
 echo "       gains (MIDI audio) : trois crans [$gm] ; puis deux en bas [$gd] ; Ctrl+Z [$gz] ; témoin [$gt] ; sur le MIDI [$gi]"
-coche="$(grep -h "^VSM_MENU_LISTE : Édition > La molette règle le gain des clips audio" "$brouillon/retenu.txt")"
-en="$(grep -ch "^VSM_MENU_LISTE : Edit > The mouse wheel sets the gain of audio clips" "$brouillon/anglais.txt")"
+coche="$(grep -h "^VSM_MENU_LISTE : Édition > La molette règle le gain et les fondus des clips audio" "$brouillon/retenu.txt")"
+en="$(grep -ch "^VSM_MENU_LISTE : Edit > The mouse wheel sets the gain and fades of audio clips" "$brouillon/anglais.txt")"
 echo "       relancé : [${coche#VSM_MENU_LISTE : }] ; en anglais : $en entrée(s)"
 audio() { echo "$1" | awk '{print $2}'; }
 midi_g() { echo "$1" | awk '{print $1}'; }

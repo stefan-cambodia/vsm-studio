@@ -668,6 +668,11 @@ void ArrangementComponent::mouseWheelMove(const juce::MouseEvent& event, const j
     // ailleurs, elle fait ce qu'elle faisait.
     if (moletteGain_ && !event.mods.isAnyModifierKeyDown() && wheel.deltaY != 0.0f && reglerGainALaMolette(event, sens))
         return;
+    // D583.1 : ET MAJ+MOLETTE SES FONDUS — la moitié gauche du clip, l'entrée ; la droite, la sortie. Le défilement du
+    // temps reste à Maj+molette partout ailleurs.
+    if (moletteGain_ && event.mods.isShiftDown() && !event.mods.isCtrlDown() && !event.mods.isCommandDown()
+        && !event.mods.isAltDown() && reglerFonduALaMolette(event, sens))
+        return;
     if (event.mods.isCtrlDown() || event.mods.isCommandDown()) {
         zoomHorizontally(sens > 0 ? 1.15f : 1.0f / 1.15f);
     } else if (event.mods.isShiftDown() || wheel.deltaY == 0.0f) {
@@ -690,9 +695,10 @@ bool ArrangementComponent::reglerGainALaMolette(const juce::MouseEvent& event, f
         || project_->tracks[piste].kind != vsm::sequencer::Track::Kind::Audio)
         return false;   // un clip MIDI, le fond : la molette fait ce qu'elle faisait
     const double maintenant = juce::Time::getMillisecondCounterHiRes();
-    if (clip->id != moletteClip_ || maintenant - moletteInstant_ > 500.0) {
+    if (clip->id != moletteClip_ || moletteQuoi_ != 0 || maintenant - moletteInstant_ > 500.0) {
         if (onEditStarted) onEditStarted(u8"Gain du clip");
         moletteClip_ = clip->id;
+        moletteQuoi_ = 0;   // D583.1 : un fondu juste après le gain, sur le même clip, est un autre pas
     }
     moletteInstant_ = maintenant;
     const float actuel = clip->gain > 0.0f ? 20.0f * std::log10(clip->gain) : -24.0f;
@@ -700,6 +706,54 @@ bool ArrangementComponent::reglerGainALaMolette(const juce::MouseEvent& event, f
     setClipGain(project_->tracks[piste].clips, {clip->id}, std::pow(10.0f, voulu / 20.0f));
     std::fputs(("VSM_MOLETTE_GAIN : clip de la piste " + std::to_string(piste) + " \xc3\xa0 "
                 + juce::String(voulu, 1).toStdString() + " dB\n").c_str(), stderr);
+    notifyChanged();
+    repaint();
+    return true;
+}
+
+bool ArrangementComponent::reglerFonduALaMolette(const juce::MouseEvent& event, float sens) {
+    // D583.1 : UNE NOIRE PAR CRAN, quel que soit l'aimant — la mesure ferait des pas de deux secondes, la double-croche
+    // seize crans pour un fondu de deux secondes. Bornés au clip par `setClipFadeIn` / `setClipFadeOut`, comme à la
+    // poignée ; une rafale sur le même fondu fait UN pas, celui du glissé : « Fondu d'un clip ».
+    size_t piste = 0;
+    Geste bord = Geste::Aucun;
+    Clip* clip = clipAt(event.position, piste, bord);
+    if (clip == nullptr || piste >= project_->tracks.size()
+        || project_->tracks[piste].kind != vsm::sequencer::Track::Kind::Audio)
+        return false;   // un clip MIDI, le fond : Maj+molette fait défiler le temps
+    auto& track = project_->tracks[piste];
+    const vsm::midi::Tick fin = materialEnd(track);
+    const vsm::midi::Tick longueur = vsm::sequencer::clipPlayedLength(*clip, fin);
+    if (longueur <= 0) return false;
+    const bool entree = xToTick(event.position.x) < clip->startTick + longueur / 2;
+    const double maintenant = juce::Time::getMillisecondCounterHiRes();
+    const int quoi = entree ? 1 : 2;
+    if (clip->id != moletteClip_ || moletteQuoi_ != quoi || maintenant - moletteInstant_ > 500.0) {
+        if (onEditStarted) onEditStarted(u8"Fondu d'un clip");
+        moletteClip_ = clip->id;
+        moletteQuoi_ = quoi;
+    }
+    moletteInstant_ = maintenant;
+    auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+    const uint64_t id = clip->id;
+    const vsm::midi::Tick debut = clip->startTick, finClip = clip->startTick + longueur;
+    const vsm::midi::Tick pas = project_->ticksPerQuarterNote;
+    if (entree) {
+        // le bord du fondu d'entrée avance quand la molette monte
+        const vsm::midi::Tick bordActuel = project_->secondsToTicks(conversion(debut) + clip->fadeInSeconds);
+        vsm::sequencer::setClipFadeIn(track.clips, id, bordActuel + (sens > 0 ? pas : -pas), fin, conversion);
+    } else {
+        // celui du fondu de sortie recule
+        const vsm::midi::Tick bordActuel = project_->secondsToTicks(conversion(finClip) - clip->fadeOutSeconds);
+        vsm::sequencer::setClipFadeOut(track.clips, id, bordActuel + (sens > 0 ? -pas : pas), fin, conversion);
+    }
+    const Clip* apres = nullptr;
+    for (const auto& c : track.clips)
+        if (c.id == id) apres = &c;
+    if (apres != nullptr)
+        std::fputs(("VSM_MOLETTE_FONDU : clip de la piste " + std::to_string(piste) + (entree ? ", entr\xc3\xa9" "e " : ", sortie ")
+                    + juce::String(entree ? apres->fadeInSeconds : apres->fadeOutSeconds, 3).toStdString() + " s\n").c_str(),
+                   stderr);
     notifyChanged();
     repaint();
     return true;

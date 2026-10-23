@@ -1470,6 +1470,12 @@ MainComponent::MainComponent()
     moletteGainClips_ = vsm::app::ui::UiScale::properties().getBoolValue("editionMoletteGainClips", false);
     arrangement_.setMoletteGain(moletteGainClips_);
     transportBar_.setFormatPosition(vsm::app::ui::UiScale::properties().getIntValue("transportPositionAffichee", 0));
+    // D583.2 : la plage de rattrapage — une valeur hors de celles qu'offre le menu redevient « aucun ».
+    {
+        const int ms = vsm::app::ui::UiScale::properties().getIntValue("enregistrementRattrapageMs", 0);
+        rattrapageMs_ = std::find(std::begin(kRattrapagesMs), std::end(kRattrapagesMs), ms) != std::end(kRattrapagesMs) ? ms : 0;
+        recorder_.setCatchSeconds(rattrapageMs_ / 1000.0);
+    }
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -4711,9 +4717,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuEditSelectionFollowsHead, tr(u8"La sélection suit la tête"), true, selectionSuitLaTete_);
             menu.addItem(-1, tr(u8"(les clips des pistes choisies que la tête touche, à chaque pose ; pas en lecture)"), false,
                          false);
-            // D582.3 : LA MOLETTE RÈGLE LE GAIN DES CLIPS AUDIO — une préférence du poste.
-            menu.addItem(kMenuEditWheelClipGain, tr(u8"La molette règle le gain des clips audio"), true, moletteGainClips_);
-            menu.addItem(-1, tr(u8"(1 dB par cran, sans touche, au-dessus du clip ; ailleurs elle fait défiler)"), false, false);
+            // D582.3 : LA MOLETTE RÈGLE LE GAIN DES CLIPS AUDIO — une préférence du poste. D583.1 : et Maj+molette leurs
+            // fondus, sous la même entrée, comme chez Cubase ; la clé du poste ne change pas.
+            menu.addItem(kMenuEditWheelClipGain, tr(u8"La molette règle le gain et les fondus des clips audio"), true,
+                         moletteGainClips_);
+            menu.addItem(-1, tr(u8"(au-dessus du clip : 1 dB par cran ; Maj : son fondu d'entrée ou de sortie, d'une noire, "
+                                u8"selon la moitié ; ailleurs elle fait défiler)"), false, false);
             // D552.1 : CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements).
             menu.addItem(kMenuEditSnapClipStarts, tr(u8"Caler les débuts des clips sur la grille"),
                          arrangement_.hasSelection());
@@ -5465,12 +5474,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D580.1 : LE CLIC DANS LE VIDE POSE LA TÊTE (*Locate When Clicking in Empty Space*) — une préférence du poste.
             menu.addItem(kMenuTransportLocateOnEmptyClick, tr(u8"Un clic dans le vide pose la tête"), true, clicVidePoseLaTete_);
             menu.addItem(-1, tr(u8"(sur le fond de l'arrangement, comme sur la règle ; un glissé reste un lasso)"), false, false);
-            // D582.1 : LA POSITION AFFICHÉE — cinq formats, la partie en mesures n'y change rien.
+            // D582.1 : LA POSITION AFFICHÉE — six formats, la partie en mesures n'y change rien. D583.3 : le 29,97 à images
+            // sautées est le format 5 (la valeur retenue au poste ne bouge pas pour les autres), montré après le 30 i/s.
             {
                 const char8_t* formats[] = {u8"Secondes", u8"Timecode (24 i/s)", u8"Timecode (25 i/s)", u8"Timecode (30 i/s)",
-                                            u8"Échantillons"};
+                                            u8"Échantillons", u8"Timecode (29,97 i/s, images sautées)"};
                 juce::PopupMenu position;
-                for (int i = 0; i < 5; ++i)
+                for (int i : {0, 1, 2, 3, 5, 4})
                     position.addItem(kMenuTransportPositionFirst + i, tr(formats[i]), true, transportBar_.formatPosition() == i);
                 position.addItem(-1, tr(u8"(la première partie de la position ; les mesures ne changent pas)"), false, false);
                 menu.addSubMenu(tr(u8"Position affichée"), position);
@@ -5603,6 +5613,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuRecordAutoQuantize, tr(u8"Quantifier chaque prise"), true, quantifierChaquePrise_);
                 menu.addItem(-1, tr(u8"(les prises MIDI, à la grille du piano roll ; une prise audio ne se quantifie pas)"),
                              false, false);
+                // D583.2 : LA PLAGE DE RATTRAPAGE (*MIDI Record Catch Range*) — une préférence du poste ; des libellés
+                // uniques dans toute la barre, comme ceux du pré-roll.
+                {
+                    const char8_t* libelles[] = {u8"Rattrapage : aucun", u8"Rattrapage : 50 ms", u8"Rattrapage : 100 ms",
+                                                 u8"Rattrapage : 250 ms"};
+                    juce::PopupMenu rattrapage;
+                    for (int i = 0; i < 4; ++i)
+                        rattrapage.addItem(kMenuRecordCatchFirst + i, tr(libelles[i]), true, rattrapageMs_ == kRattrapagesMs[i]);
+                    rattrapage.addItem(-1, tr(u8"(une note MIDI frappée juste avant le point d'entrée est gardée, posée au "
+                                              u8"point d'entrée)"), false, false);
+                    menu.addSubMenu(tr(u8"Rattrapage avant l'entrée"), rattrapage);
+                }
                 // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
                 // d'événements gardés est DIT : « récupérer » sur un tampon
                 // vide ne doit pas se découvrir en cliquant.
@@ -6258,6 +6280,16 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         reglages.setValue("transportPositionAffichee", format);
         reglages.saveIfNeeded();
         std::fputs(("VSM_REGLAGE_POSTE : transportPositionAffichee " + std::to_string(format) + "\n").c_str(), stderr);
+        menuItemsChanged();
+        return;
+    }
+    if (menuItemID >= kMenuRecordCatchFirst && menuItemID <= kMenuRecordCatchLast) {   // D583.2
+        rattrapageMs_ = kRattrapagesMs[menuItemID - kMenuRecordCatchFirst];
+        recorder_.setCatchSeconds(rattrapageMs_ / 1000.0);
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        reglages.setValue("enregistrementRattrapageMs", rattrapageMs_);
+        reglages.saveIfNeeded();
+        std::fputs(("VSM_REGLAGE_POSTE : enregistrementRattrapageMs " + std::to_string(rattrapageMs_) + "\n").c_str(), stderr);
         menuItemsChanged();
         return;
     }

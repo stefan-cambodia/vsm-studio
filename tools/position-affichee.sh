@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# D582.1 — LA POSITION EN TIMECODE ET EN ÉCHANTILLONS (Transport ▸ Position affichée ▸ Secondes, Timecode (24, 25, 30 i/s),
-# Échantillons ; les formats d'affichage du transport de Cubase), MESURÉE PAR LE LIBELLÉ RELEVÉ À UNE POSITION CONNUE,
-# LE TÉMOIN EN SECONDES À CÔTÉ.
+# D582.1, D583.3 — LA POSITION EN TIMECODE ET EN ÉCHANTILLONS (Transport ▸ Position affichée ▸ Secondes, Timecode (24, 25,
+# 30 i/s), Timecode (29,97 i/s, images sautées), Échantillons ; les formats d'affichage du transport de Cubase), MESURÉE PAR
+# LE LIBELLÉ RELEVÉ À UNE POSITION CONNUE, LE TÉMOIN EN SECONDES À CÔTÉ.
 #
 # LES RÈGLES GARDÉES (120 BPM, 4/4). La tête posée à la mesure 2, temps 2 (`VSM_POSITION=2.2`) : 2,5 s. Le libellé se
 # lit par `relever-position`, celui que la barre peint, avec la fréquence qu'elle affiche (0 : jamais posée).
@@ -11,6 +11,10 @@
 #   (5) échantillons : 2,5 × la fréquence affichée ;
 #   (6) la partie en mesures, « mes. 2 · 2 », la même dans les cinq ;
 #   (7) relancé dans le même HOME : le format coché ; en anglais, « Timecode (25 fps) ».
+# ET CELUI DE D583.3 (ROADMAP-daw, D583) :
+#   (8) 29,97 à images sautées, à 2,5 s : 00:00:02;14 (74 images ; le 30 i/s y lit :15) ;
+#   (9) le même à 60,5 s (`VSM_POSITION=31.2`) : 00:01:00;15 — deux numéros sautés à la minute, sans quoi on lirait ;13 —,
+#       la partie en mesures « mes. 31 · 2 » ; en anglais, « Timecode (29.97 fps, drop-frame) ».
 #
 #   tools/position-affichee.sh [binaire]
 set -u
@@ -64,16 +68,19 @@ course tc24 "" VSM_DELAI=1600 VSM_GESTE_APRES="700:$P > Timecode (24 i/s);1000:r
 course tc25 "$maison" VSM_DELAI=1600 VSM_GESTE_APRES="700:$P > Timecode (25 i/s);1000:relever-position"
 course tc30 "" VSM_DELAI=1600 VSM_GESTE_APRES="700:$P > Timecode (30 i/s);1000:relever-position"
 course echant "" VSM_DELAI=1600 VSM_GESTE_APRES="700:$P > Échantillons;1000:relever-position"
+course df "" VSM_DELAI=1600 VSM_GESTE_APRES="700:$P > Timecode (29,97 i/s, images sautées);1000:relever-position"
+course df60 "" VSM_POSITION=31.2 VSM_DELAI=1600 VSM_GESTE_APRES="700:$P > Timecode (29,97 i/s, images sautées);1000:relever-position"
 course retenu "$maison" VSM_DELAI=1600 VSM_GESTE_APRES="900:lister-menus;1000:relever-position"
 course anglais "" VSM_LANGUE=en VSM_DELAI=1600 VSM_GESTE_APRES="900:lister-menus"
 
 s="$(affichee secondes)"; a="$(affichee tc24)"; b="$(affichee tc25)"; c="$(affichee tc30)"; e="$(affichee echant)"; r="$(affichee retenu)"
-hz="$(frequence echant)"
+hz="$(frequence echant)"; d="$(affichee df)"; d60="$(affichee df60)"
 attendu_e="$(python3 -c "import sys; f=int(sys.argv[1]); print(round(2.5*f) if f > 0 else 'INCONNU')" "${hz:-0}" 2>/dev/null)"
-for x in secondes tc24 tc25 tc30 echant retenu; do echo "       $x : [$(affichee $x)]"; done
+for x in secondes tc24 tc25 tc30 echant df df60 retenu; do echo "       $x : [$(affichee $x)]"; done
 echo "       fréquence affichée : ${hz:-non relevée} Hz → attendu $attendu_e échantillons"
 coche="$(grep -h "^VSM_MENU_LISTE : Transport > Position affichée > Timecode (25 i/s)" "$brouillon/retenu.txt")"
 en="$(grep -ch "^VSM_MENU_LISTE : Transport > Position display > Timecode (25 fps)" "$brouillon/anglais.txt")"
+endf="$(grep -ch "^VSM_MENU_LISTE : Transport > Position display > Timecode (29.97 fps, drop-frame)" "$brouillon/anglais.txt")"
 
 verdict "(1) le témoin en secondes : 00:02,500" "$([ "$(temps "$s")" = "00:02,500" ] && echo 1 || echo 0)"
 verdict "(2) 24 i/s : 00:00:02:12" "$([ "$(temps "$a")" = "00:00:02:12" ] && echo 1 || echo 0)"
@@ -84,7 +91,11 @@ verdict "(6) la partie en mesures, la même dans les cinq" \
     "$(m="$(mesures "$s")"; [ -n "$m" ] && [ "$(mesures "$a")" = "$m" ] && [ "$(mesures "$b")" = "$m" ] && [ "$(mesures "$c")" = "$m" ] && [ "$(mesures "$e")" = "$m" ] && echo 1 || echo 0)"
 verdict "(7) retenu (coché, et le libellé relancé en 25 i/s) ; en anglais" \
     "$(echo "$coche" | grep -q "\[cochée\]" && [ "$(temps "$r")" = "00:00:02:12" ] && [ "$en" = 1 ] && echo 1 || echo 0)"
+verdict "(8) 29,97 à images sautées, à 2,5 s : 00:00:02;14, les mesures à côté" \
+    "$([ "$(temps "$d")" = "00:00:02;14" ] && [ "$(mesures "$d")" = "$(mesures "$s")" ] && echo 1 || echo 0)"
+verdict "(9) à 60,5 s : 00:01:00;15, mes. 31 · 2 ; en anglais" \
+    "$([ "$(temps "$d60")" = "00:01:00;15" ] && [ "$(mesures "$d60")" = "mes. 31 · 2" ] && [ "$endf" = 1 ] && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "POSITION-AFFICHEE : $rates contrôle(s) raté(s)"; exit 1; fi
-echo "POSITION-AFFICHEE : la position se lit en secondes, en timecode et en échantillons, les mesures à côté"
+echo "POSITION-AFFICHEE : la position se lit en secondes, en timecode (images sautées comprises) et en échantillons, les mesures à côté"

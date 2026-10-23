@@ -568,7 +568,7 @@ void TransportBarComponent::setSampleRate(double sampleRate) {
 }
 
 void TransportBarComponent::setFormatPosition(int format) {
-    formatPosition_ = juce::jlimit(0, 4, format);
+    formatPosition_ = juce::jlimit(0, 5, format);
     timerCallback();   // le libellé suit tout de suite, pas au tour suivant
 }
 
@@ -591,6 +591,15 @@ void TransportBarComponent::timerCallback() {
         const auto images = static_cast<long long>(std::floor(std::max(0.0, seconds) * ips));
         const long long s = images / ips;
         temps = juce::String::formatted("%02lld:%02lld:%02lld:%02lld", s / 3600, (s / 60) % 60, s % 60, images % ips);
+    } else if (formatPosition_ == 5) {
+        // D583.3 : LE 29,97 À IMAGES SAUTÉES (SMPTE 12M) — 30 000 / 1 001 images par seconde, comptées entières ; les
+        // numéros 0 et 1 sautés au début de chaque minute qui n'est pas une dizaine (17 982 images par dizaine de minutes,
+        // 1 798 par minute). Le point-virgule avant les images le dit, comme partout.
+        long long images = static_cast<long long>(std::floor(std::max(0.0, seconds) * 30000.0 / 1001.0));
+        const long long dizaines = images / 17982, reste = images % 17982;
+        images += 18 * dizaines + (reste >= 2 ? 2 * ((reste - 2) / 1798) : 0);
+        const long long s = images / 30;
+        temps = juce::String::formatted("%02lld:%02lld:%02lld;%02lld", s / 3600, (s / 60) % 60, s % 60, images % 30);
     } else if (formatPosition_ == 4 && frequence_ > 0.0) {
         temps = juce::String(static_cast<long long>(std::llround(std::max(0.0, seconds) * frequence_)));
     } else if (formatPosition_ == 4) {

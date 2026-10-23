@@ -1344,14 +1344,19 @@ private:
         kMenuTransportLocateOnEmptyClick,
         kMenuRecordPunchOffOnStop,
         kMenuEditSelectionFollowsHead,
-        /// D582.1, D582.2, D582.3 : la position affichée (cinq formats), le solo qui choisit la piste, la molette du gain.
+        /// D582.1, D582.2, D582.3 : la position affichée (six formats, D583.3), le solo qui choisit la piste, la molette du gain.
         kMenuTransportPositionFirst,
-        kMenuTransportPositionLast = kMenuTransportPositionFirst + 4,
+        kMenuTransportPositionLast = kMenuTransportPositionFirst + 5,
         kMenuTrackSoloSelectsTrack,
         kMenuEditWheelClipGain,
+        /// D583.2 : la plage de rattrapage d'une prise MIDI, quatre entrées CONTIGUËS (`kRattrapagesMs`).
+        kMenuRecordCatchFirst,
+        kMenuRecordCatchLast = kMenuRecordCatchFirst + 3,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
+    /// D583.2 : les plages de rattrapage offertes, en millisecondes.
+    static constexpr int kRattrapagesMs[4] = {0, 50, 100, 250};
 
     // --- D9 : reconstruire depuis l'application -----------------------------
     //
@@ -1926,6 +1931,7 @@ private:
     int postRollBars_ = 0;
     /// D579 : TROIS PRÉFÉRENCES DU POSTE pour l'enregistrement, comme le décompte qu'elles côtoient.
     bool quantifierChaquePrise_ = false;   ///< D579.1
+    int rattrapageMs_ = 0;                 ///< D583.2 : la plage de rattrapage, une valeur de `kRattrapagesMs`
     bool armementSuitLeChoix_ = false;     ///< D579.2
     bool arretApresPunch_ = false;         ///< D579.3
     /// D580 : trois de plus, du transport, de l'enregistrement et de l'édition.

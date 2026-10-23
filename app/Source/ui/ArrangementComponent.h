@@ -765,7 +765,9 @@ private:
     bool moletteGain_ = false;
     uint64_t moletteClip_ = 0;
     double moletteInstant_ = 0.0;
+    int moletteQuoi_ = 0;   ///< D583.1 : ce que la rafale règle — 0 le gain, 1 le fondu d'entrée, 2 celui de sortie
     bool reglerGainALaMolette(const juce::MouseEvent& event, float sens);
+    bool reglerFonduALaMolette(const juce::MouseEvent& event, float sens);   ///< D583.1
     int lassoYContenu_ = 0;
     juce::Rectangle<float> lasso_;
     void selectClipsInLasso(bool etendre);
