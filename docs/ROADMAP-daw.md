@@ -44694,3 +44694,65 @@ quatre courses sur dix) : rien ne prouve que le rouge de la série vienne de cet
 journal n'a pas été gardé. Ce qui l'est : la fenêtre existait (le test rouge), elle donnait exactement ce symptôme (un
 bloc de plus), et elle est fermée. La série complète se rejoue à la fin de D580, sur un binaire qui porte cette
 correction ; c'est elle qui la couvrira.
+
+### Phase D580 — un quarante-et-unième audit : la tête posée d'un clic dans le vide, le punch désactivé à l'arrêt, la sélection qui suit la tête (23/10/2026)
+
+*Écrite le 23/10 à 16 h 35 (l'horloge du même appel), D579 close et poussée. L'audit a été mené, et le code écrit, PENDANT la
+vérification de D579 (sa compilation des tests, puis la série de ses 163 bancs), dans un arbre à part (`git worktree`,
+branche `d580`), sans rien compiler ni lancer : rien de D580 n'a été mesuré avant que ce texte soit commité.*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (les zéros revérifiés par ce que le code FAIT). Le parc a été sondé
+large, des *Preferences* de Cubase (*Transport*, *Editing*) à ses fonctions MIDI, et HUIT zéros de nom se sont révélés des
+FAUX zéros, dits ici pour ne pas être rouverts : *Fixed Lengths* et *Quantize Lengths* (« Durée = pas de grille », le
+champ de durée de la barre), *Fixed Velocity* (« Vélocité 127 / 64 », le champ de vélocité), *Delete Notes* (l'éditeur
+logique : « vélocité < 30 et durée < 1/32 »), *Paste Time* (« Coller la plage à la tête de lecture (en insérant) »), la
+correction de gamme (« Contraindre à la gamme »), *Keep Last* (le mode Empiler joue la dernière passe), *Freeze MIDI
+Modifiers* (« Reporter les effets MIDI dans les notes ») ; et les macros de commandes, qu'un `grep` de « Macro » donnait
+absentes, D546 les avait trouvées. Restent trois zéros, trois préférences de Cubase :
+**0 pour la tête posée d'un clic dans le vide** (*Locate When Clicking in Empty Space*) — un clic sur le fond de
+l'arrangement vide la sélection et ouvre un lasso (`ArrangementComponent::mouseDown`, « LE LASSO PART DU VIDE ») ; la
+tête ne se pose qu'au clic sur la règle (`onPlayheadRequested`) ; **0 pour le punch désactivé à l'arrêt** (*Deactivate
+Punch In on Stop*) — `punchEnabled` ne change que par un geste sur la région (la bascule *Active*, la règle avec Alt, le
+piano roll, *La prendre sur la boucle*, *L'effacer*) et par l'annulation qui la suit (D520), jamais par un arrêt ; **0 pour les clips choisis sous la tête** (*Auto Select Events under Cursor*) — la liste des
+événements TEINTE la ligne sous la tête (D284), rien ne CHOISIT les clips qu'elle touche. **Remis** : la couleur des
+pistes neuves selon un mode (*Auto Track Color Mode* : la palette par rang, `trackColourForIndex`, en fait le principal),
+le réticule (*Cross-hair cursor*) ; **toujours remis** : la piste d'arrangement (*Arranger Track*, une chaîne de sections
+que la lecture suit — une phase à elle seule), le mode d'automation *Trim*, les repères à étendue, le pré-enregistrement
+audio, la réserve des fichiers, le tempo fixe.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D580.1 | **Poser la tête d'un clic dans le vide** — *Locate When Clicking in Empty Space* | *Transport ▸ Un clic dans le vide pose la tête* (cochée) : un CLIC (appui et relâché sans glisser) sur le fond de l'arrangement pose la tête où l'on a cliqué, comme la règle ; la sélection se vide comme avant ; un glissé reste un lasso, un clic sur un clip reste un clic sur un clip ; retenu au poste ; mesuré par la tête relevée après le clic, le témoin sans l'option à côté |
+| D580.2 | **Désactiver le punch à l'arrêt** — *Deactivate Punch In on Stop* | *Enregistrement ▸ Désactiver le punch à l'arrêt* (cochée, dans la section *Région de punch*) : chaque fois que le transport S'ARRÊTE — une prise, une lecture, l'arrêt après la sortie de D579.3 —, la région de punch passe inactive, ses bornes gardées ; comme la bascule *Active*, sans pas d'historique ; retenu au poste ; mesuré par l'état du punch relevé après l'arrêt, le témoin sans l'option à côté |
+| D580.3 | **La sélection suit la tête** — *Auto Select Events under Cursor* | *Édition ▸ La sélection suit la tête* (cochée, hors de la sous-liste *Sélectionner dans l'arrangement*, qui se grise sans clip) : chaque fois que la tête est POSÉE (la règle, un repère, le clavier, un clic dans le vide, l'arrêt), la sélection devient les clips des pistes CHOISIES que la tête touche — aucun si elle n'en touche pas ; pas pendant la lecture ; retenu au poste ; mesuré par la sélection relevée après chaque pose, le témoin sans l'option à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Les trois sont des préférences du POSTE** (comment on travaille), comme D579 : rien au projet, rien à l'export.
+- **D580.1.** La tête se pose par LE chemin de la règle (`onPlayheadRequested`, `xToTick` sans aimant, jamais avant 0) :
+  deux façons de poser la tête au même point ne doivent pas donner deux points. Le clic se reconnaît au RELÂCHÉ : un
+  lasso resté sans étendue. Le fond seul — ni l'en-tête des pistes, ni un clip, ni une courbe d'automation.
+  **L'attendu, écrit avant la mesure** (120 BPM, la tête à 0, une piste, un clip sur la première mesure) : l'option
+  cochée, un clic sur le fond loin du clip : **la tête > 0, au tick que l'arrangement dit avoir lu** ;
+  le témoin sans l'option : **la tête à 0,000 s** ; l'option cochée, un GLISSÉ sur le fond : **la tête à 0,000 s** ;
+  l'option cochée, un clic sur le clip : **la tête à 0,000 s**, le clip choisi ; relancé : l'entrée cochée.
+- **D580.2.** Au FRONT DESCENDANT de la lecture (`timerCallback`, `!lecture && etaitEnLecture_`) : un seul point, que
+  toutes les façons d'arrêter traversent ; par la même fonction que la bascule *Active* (sans pas, `marquerHorsHistorique`
+  de D519 — l'annulation qui suivra la rendra comme celle de la bascule —, le panneau du piano roll mis à jour). Une prise s'arrête aussi par là. **L'attendu, écrit avant la mesure** (120 BPM, la région de
+  punch [2 s, 4 s) active) : l'option cochée, une piste armée, *Sans décompte*, F9 puis F9 : **le punch inactif**, ses
+  bornes **[1920, 3840)** ; une LECTURE puis Arrêt : **inactif** ; le témoin sans l'option, F9 puis F9 : **actif** ;
+  l'option et l'arrêt après la sortie de D579.3 : **arrêté à 4,000 s, le punch inactif** ; relancé : l'entrée cochée.
+- **D580.3.** Les pistes CHOISIES (la sélection de pistes de la liste, Maj et Ctrl compris), pas seulement la piste
+  courante : c'est ce que Cubase appelle *selected tracks*. Un clip « touché » : `start <= tête < fin`, et un clip groupé
+  vaut son groupe (D571.1). SUR L'HORLOGE UNIQUE (`timerCallback`), comme D553.2 et D579.3 : toute position NOUVELLE de la
+  tête, transport arrêté, quel que soit le chemin — le clic sur la règle et les repères passent par
+  `onPlayheadRequested`, qui ne touche pas `seekAllViews`, et une règle posée dans l'un raterait l'autre. PAS PENDANT LA
+  LECTURE : la sélection changerait trente fois par seconde sous la main qui s'apprête à s'en servir ; l'arrêt est une
+  pose. Choisir un clip à la souris ne bouge pas la tête : ce choix reste jusqu'à la pose suivante. Aucun pas d'historique
+  (choisir n'en ouvre pas). **L'attendu, écrit avant la mesure** (120 BPM ; piste 0 : A
+  [0, 1920), B [3840, 5760) ; piste 1 : C [0, 7680) ; la piste 0 choisie) : l'option cochée, la tête posée à 960 :
+  **{A}** ; à 2880 : **{}** ; à 4000 : **{B}** ; les pistes 0 et 1 choisies, la tête à 960 : **{A, C}** ; le témoin sans
+  l'option, la tête à 960 : **{}** ; PAS EN LECTURE : {A} à 960, la lecture lancée, relevée vers 2,4 s (la tête entre A
+  et B) : **toujours {A}**, puis arrêtée dans ce trou : **{}** ; relancé : l'entrée cochée.
+
+**L'ORDRE, TRANCHÉ ICI.** D580.2 d'abord (un point unique, le front descendant), puis D580.1 et D580.3 ensemble (la tête
+posée, un banc) ; chaque élément a son banc, entré dans la série de `verifier.sh --bancs`.
