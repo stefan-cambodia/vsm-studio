@@ -91,6 +91,8 @@ public:
     std::function<void()> onClipsChanged;
     /// L'utilisateur veut déplacer la tête de lecture.
     std::function<void(vsm::midi::Tick)> onPlayheadRequested;
+    /// D580.1 : un CLIC (un lasso resté sans étendue) sur le fond, au tick cliqué — l'hôte pose la tête ou non.
+    std::function<void(vsm::midi::Tick)> onEmptyClick;
     /// Une piste a été choisie (clic sur son en-tête ou sur un de ses clips).
     std::function<void(size_t)> onTrackSelected;
     /// LES BORNES D'UN PARAMÈTRE AUTOMATISÉ (D5.4), pour savoir où placer un
@@ -327,6 +329,9 @@ public:
     /// puisse reporter la sélection en audio. Elle en a besoin telle quelle :
     /// un report ne rend pas « la piste », il rend CE QUI EST CHOISI dessus.
     const vsm::sequencer::ClipSelection& selectedClipIds() const { return selection_; }
+    /// D580.3 : la sélection devient les clips de `pistes` que la tête touche ; vrai si elle a changé, `combien` dit sa
+    /// taille.
+    bool choisirClipsSousLaTete(vsm::midi::Tick tete, const std::set<size_t>& pistes, size_t& combien);
     /// Les mêmes trois gestes que le piano roll, aux mêmes raccourcis.
     void copySelection();
     void paste();

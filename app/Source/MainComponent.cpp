@@ -982,6 +982,14 @@ MainComponent::MainComponent()
         transport_.seekToTick(tick);
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
     };
+    // D580.1 : LE CLIC DANS LE VIDE, dit dans les deux cas — la tête posée par LE chemin de la règle, ou rien.
+    arrangement_.onEmptyClick = [this](vsm::midi::Tick tick) {
+        tick = std::max<vsm::midi::Tick>(0, tick);
+        if (clicVidePoseLaTete_ && arrangement_.onPlayheadRequested) arrangement_.onPlayheadRequested(tick);
+        std::fputs(("VSM_CLIC_VIDE : " + std::to_string(tick) + " ticks \xe2\x80\x94 "
+                    + (clicVidePoseLaTete_ ? "t\xc3\xaate pos\xc3\xa9" "e" : "la t\xc3\xaate ne bouge pas (option d\xc3\xa9" "coch\xc3\xa9" "e)")
+                    + "\n").c_str(), stderr);
+    };
     arrangement_.onTrackSelected = [this](size_t index) { trackList_.selectTrackIndex(index); };
     // D39.3 : UN SEUL ENDROIT TIENT LA SÉLECTION, et c'est la liste. Le clic
     // d'en-tête de l'arrangement lui passe les modificateurs plutôt que de
@@ -1451,6 +1459,10 @@ MainComponent::MainComponent()
     quantifierChaquePrise_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementQuantifierChaquePrise", false);
     armementSuitLeChoix_ = vsm::app::ui::UiScale::properties().getBoolValue("pistesArmementSuitLeChoix", false);
     arretApresPunch_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementArretApresPunch", false);
+    // D580 : trois de plus.
+    clicVidePoseLaTete_ = vsm::app::ui::UiScale::properties().getBoolValue("transportClicVidePoseLaTete", false);
+    punchOffALArret_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementPunchOffALArret", false);
+    selectionSuitLaTete_ = vsm::app::ui::UiScale::properties().getBoolValue("editionSelectionSuitLaTete", false);
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -3989,9 +4001,25 @@ void MainComponent::timerCallback() {
         // retour au départ, pour que la fin de la passe soit là où la lecture
         // s'est arrêtée et non là où elle était partie.
         if (!lecture && etaitEnLecture_) mixer_.closeLatchedPasses();
+        // D580.2 : LE PUNCH DÉSACTIVÉ À L'ARRÊT, au même front descendant que toutes les façons d'arrêter traversent.
+        if (!lecture && etaitEnLecture_ && punchOffALArret_ && project_.punchEnabled) {
+            poserPunchActif(false);
+            std::fputs(("VSM_PUNCH : d\xc3\xa9sactiv\xc3\xa9 \xc3\xa0 l'arr\xc3\xaat, la r\xc3\xa9gion gard\xc3\xa9" "e ["
+                        + std::to_string(project_.punchStartTick) + ", " + std::to_string(project_.punchEndTick) + ")\n").c_str(),
+                       stderr);
+        }
         if (!lecture && etaitEnLecture_ && retourAuDepart_ && !lectureDuScrub_) seekAllViews(departLecture_);
         if (!lecture) lectureDuScrub_ = false;
         etaitEnLecture_ = lecture;
+        // D580.3 : LA SÉLECTION SUIT LA TÊTE — toute position NOUVELLE, transport arrêté, quel que soit le chemin qui l'a
+        // posée (la règle et les repères passent par `onPlayheadRequested`, qui ne touche pas `seekAllViews`) ; en
+        // lecture, rien, et l'arrêt compte pour une pose.
+        if (lecture) {
+            teteDuDernierChoix_ = -1;
+        } else if (selectionSuitLaTete_ && transport_.currentTick() != teteDuDernierChoix_) {
+            teteDuDernierChoix_ = transport_.currentTick();
+            choisirLesClipsSousLaTete(teteDuDernierChoix_);
+        }
         // D553.2 : LIRE LA SÉLECTION s'arrête à sa fin, sur cette horloge unique (un tour : au plus 33 ms de son au-delà),
         // et la tête est posée EXACTEMENT sur la fin -- le retour au départ, s'il est demandé, l'emporte au tour suivant,
         // par le front descendant ci-dessus. UNE TÊTE QUI RECULE (la boucle qui la ramène avant la fin, un clic sur la
@@ -4667,6 +4695,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 }
                 menu.addSubMenu(tr(u8"Sélectionner dans l'arrangement"), choisir, desClips);
             }
+            // D580.3 : LA SÉLECTION SUIT LA TÊTE (*Auto Select Events under Cursor*) — une préférence du poste, hors de la
+            // sous-liste qui se grise sans clip : une préférence s'atteint toujours.
+            menu.addItem(kMenuEditSelectionFollowsHead, tr(u8"La sélection suit la tête"), true, selectionSuitLaTete_);
+            menu.addItem(-1, tr(u8"(les clips des pistes choisies que la tête touche, à chaque pose ; pas en lecture)"), false,
+                         false);
             // D552.1 : CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements).
             menu.addItem(kMenuEditSnapClipStarts, tr(u8"Caler les débuts des clips sur la grille"),
                          arrangement_.hasSelection());
@@ -5410,6 +5443,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSubMenu(tr(u8"Pré-roll"), avant);
                 menu.addSubMenu(tr(u8"Post-roll"), apres);
             }
+            // D580.1 : LE CLIC DANS LE VIDE POSE LA TÊTE (*Locate When Clicking in Empty Space*) — une préférence du poste.
+            menu.addItem(kMenuTransportLocateOnEmptyClick, tr(u8"Un clic dans le vide pose la tête"), true, clicVidePoseLaTete_);
+            menu.addItem(-1, tr(u8"(sur le fond de l'arrangement, comme sur la règle ; un glissé reste un lasso)"), false, false);
             break;
         }
         case 4:
@@ -5449,6 +5485,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // D579.3 : une préférence du poste — active ou non, la région ; le post-roll de D578.2 s'y ajoute.
                 menu.addItem(kMenuRecordStopAfterPunch, tr(u8"Arrêter après la sortie de punch"), true, arretApresPunch_);
                 menu.addItem(-1, tr(u8"(le transport s'arrête à la sortie, après le post-roll s'il y en a un)"), false, false);
+                // D580.2 : une préférence du poste ; la région reste, ses bornes gardées.
+                menu.addItem(kMenuRecordPunchOffOnStop, tr(u8"Désactiver le punch à l'arrêt"), true, punchOffALArret_);
+                menu.addItem(-1, tr(u8"(à chaque arrêt du transport, la région reste, inactive)"), false, false);
                 menu.addSeparator();
 
                 // LA LATENCE, PUBLIÉE. Le critère de D3.6 dit « le chiffre est
@@ -6151,13 +6190,21 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
     if (menuItemID == kMenuTrackHideEmpty) { masquerPistesSansDonnees(); return; }               // D577.2
-    if (menuItemID == kMenuRecordAutoQuantize || menuItemID == kMenuTrackArmFollowsSelection
-        || menuItemID == kMenuRecordStopAfterPunch) {   // D579 : trois préférences du poste, des bascules
-        bool& reglage = menuItemID == kMenuRecordAutoQuantize ? quantifierChaquePrise_
-                        : menuItemID == kMenuTrackArmFollowsSelection ? armementSuitLeChoix_ : arretApresPunch_;
-        const char* cle = menuItemID == kMenuRecordAutoQuantize ? "enregistrementQuantifierChaquePrise"
-                          : menuItemID == kMenuTrackArmFollowsSelection ? "pistesArmementSuitLeChoix"
-                                                                       : "enregistrementArretApresPunch";
+    // D579, D580 : SIX PRÉFÉRENCES DU POSTE, des bascules — une table, pas six branches.
+    struct Bascule { int id; bool MainComponent::*reglage; const char* cle; };
+    static constexpr Bascule kBascules[] = {
+        {kMenuRecordAutoQuantize, &MainComponent::quantifierChaquePrise_, "enregistrementQuantifierChaquePrise"},
+        {kMenuTrackArmFollowsSelection, &MainComponent::armementSuitLeChoix_, "pistesArmementSuitLeChoix"},
+        {kMenuRecordStopAfterPunch, &MainComponent::arretApresPunch_, "enregistrementArretApresPunch"},
+        {kMenuTransportLocateOnEmptyClick, &MainComponent::clicVidePoseLaTete_, "transportClicVidePoseLaTete"},
+        {kMenuRecordPunchOffOnStop, &MainComponent::punchOffALArret_, "enregistrementPunchOffALArret"},
+        {kMenuEditSelectionFollowsHead, &MainComponent::selectionSuitLaTete_, "editionSelectionSuitLaTete"},
+    };
+    if (const auto* b = std::find_if(std::begin(kBascules), std::end(kBascules),
+                                     [menuItemID](const Bascule& x) { return x.id == menuItemID; });
+        b != std::end(kBascules)) {
+        bool& reglage = this->*(b->reglage);
+        const char* cle = b->cle;
         reglage = !reglage;
         auto& reglages = vsm::app::ui::UiScale::properties();
         reglages.setValue(cle, reglage);
@@ -6165,7 +6212,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         // La règle coupée laisse ce qu'elle avait armé armé : c'est désormais l'armement de la main.
         if (menuItemID == kMenuTrackArmFollowsSelection && !reglage)
             for (auto& piste : project_.tracks) piste.armedByRule = false;
-        std::fputs((std::string("VSM_ENREGISTREMENT_REGLAGE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
+        // D580.3 : cochée, elle s'applique à la tête où elle est, au prochain tour de l'horloge.
+        if (menuItemID == kMenuEditSelectionFollowsHead) teteDuDernierChoix_ = -1;
+        std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
         menuItemsChanged();
         return;
     }
@@ -6417,11 +6466,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                                                           static_cast<int>(recordMode_));
             break;
         case kMenuRecordPunchToggle:
-            project_.punchEnabled = !project_.punchEnabled;
-            marquerHorsHistorique();   // D519 : la bascule du punch, sans pas
-            pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick,
-                                       project_.punchEnabled);
-            pianoRollPanel_.refresh();
+            poserPunchActif(!project_.punchEnabled);
             break;
         case kMenuRecordPunchFromLoop:
             beginProjectEdit(u8"Région de punch");
@@ -16954,6 +16999,24 @@ void MainComponent::armerParLaRegle(size_t piste) {
     std::fputs(("VSM_ARMEMENT : piste " + std::to_string(piste)
                 + (armee ? " arm\xc3\xa9" "e par la r\xc3\xa8gle" : " d\xc3\xa9j\xc3\xa0 arm\xc3\xa9" "e par la main")
                 + desarmees + "\n").c_str(), stderr);
+}
+
+void MainComponent::poserPunchActif(bool actif) {
+    // D580.2 : LA bascule de la région de punch, celle du menu et celle de l'arrêt — sans pas (D519) : l'annulation qui
+    // suivra la rendra par `horsHistorique_`, comme toute bascule.
+    project_.punchEnabled = actif;
+    marquerHorsHistorique();
+    pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick, project_.punchEnabled);
+    pianoRollPanel_.refresh();
+}
+
+void MainComponent::choisirLesClipsSousLaTete(vsm::midi::Tick tete) {
+    // D580.3 : les clips des pistes CHOISIES que la tête touche, mesurés par l'arrangement comme il les dessine ; aucun si
+    // elle n'en touche pas. Sans pas : choisir n'en ouvre pas. Dit seulement quand la sélection change.
+    size_t combien = 0;
+    if (!arrangement_.choisirClipsSousLaTete(tete, trackList_.selectedTracks(), combien)) return;   // inchangée
+    std::fputs(("VSM_SOUS_LA_TETE : " + std::to_string(combien) + " clip(s) choisi(s) \xc3\xa0 " + std::to_string(tete)
+                + " ticks\n").c_str(), stderr);
 }
 
 void MainComponent::lancerLecture(const char* origine) {

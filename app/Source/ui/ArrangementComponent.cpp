@@ -1708,7 +1708,13 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
 
 void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     if (geste_ == Geste::Hauteur || geste_ == Geste::Reordonner) notifyChanged();
-    if (geste_ == Geste::Lasso) { lasso_ = {}; repaint(); }
+    if (geste_ == Geste::Lasso) {
+        // D580.1 : UN LASSO RESTÉ SANS ÉTENDUE EST UN CLIC dans le vide (moins de 3 px dans les deux sens : la main
+        // tremble) ; c'est l'hôte qui sait ce qu'il en fait.
+        if (lasso_.getWidth() < 3.0f && lasso_.getHeight() < 3.0f && onEmptyClick) onEmptyClick(lassoTickOrigine_);
+        lasso_ = {};
+        repaint();
+    }
     if (refusesPendantLeGeste_ > 0 && onClipsRefused) onClipsRefused(refusesPendantLeGeste_);
     refusesPendantLeGeste_ = 0;
     if (!chaineBloqueePendantLeGeste_.empty() && onChainBlocked)
@@ -2881,6 +2887,27 @@ void ArrangementComponent::selectAll() {
     for (const auto& track : project_->tracks)
         for (const auto& clip : track.clips) selection_.insert(clip.id);
     repaint();
+}
+
+bool ArrangementComponent::choisirClipsSousLaTete(vsm::midi::Tick tete, const std::set<size_t>& pistes, size_t& combien) {
+    // D580.3 : « la tête touche le clip » se mesure comme le lasso le dessine — `clipPlayedLength` jusqu'au bout du
+    // matériau —, `début <= tête < fin` ; un clip groupé vaut son groupe (D571.1). Vrai si la sélection a changé.
+    combien = 0;
+    if (project_ == nullptr) return false;
+    vsm::sequencer::ClipSelection choix;
+    for (const size_t i : pistes) {
+        if (i >= project_->tracks.size()) continue;
+        const auto& track = project_->tracks[i];
+        const vsm::midi::Tick fin = materialEnd(track);
+        for (const auto& clip : track.clips)
+            if (clip.startTick <= tete && tete < clip.startTick + clipPlayedLength(clip, fin)) choix.insert(clip.id);
+    }
+    choix = vsm::sequencer::expandSelectionToClipGroups(project_->tracks, choix);
+    combien = choix.size();
+    if (choix == selection_) return false;
+    selection_ = std::move(choix);
+    repaint();
+    return true;
 }
 
 void ArrangementComponent::selectClipsInLasso(bool etendre) {

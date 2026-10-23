@@ -463,6 +463,13 @@ public:
                         + juce::String(velocite) + ", " + juce::String(duree) + " ms\n").toRawUTF8(), stderr);
             return true;
         }
+        // D580.2 : la RÉGION DE PUNCH, active ou non, et ses bornes.
+        if (geste.equalsIgnoreCase("relever-punch")) {
+            std::fputs(("VSM_PUNCH_ETAT : " + juce::String(project_.punchEnabled ? "active" : "inactive") + " ["
+                        + juce::String(static_cast<juce::int64>(project_.punchStartTick)) + ", "
+                        + juce::String(static_cast<juce::int64>(project_.punchEndTick)) + ")\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D579.2 : les pistes ARMÉES, et celle que la règle a armée.
         if (geste.equalsIgnoreCase("relever-armement")) {
             juce::StringArray armees, parLaRegle;
@@ -1307,6 +1314,11 @@ private:
         kMenuRecordAutoQuantize,
         kMenuTrackArmFollowsSelection,
         kMenuRecordStopAfterPunch,
+        /// D580.1, D580.2, D580.3 : le clic dans le vide qui pose la tête, le punch désactivé à l'arrêt, la sélection qui
+        /// suit la tête.
+        kMenuTransportLocateOnEmptyClick,
+        kMenuRecordPunchOffOnStop,
+        kMenuEditSelectionFollowsHead,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
@@ -1886,6 +1898,16 @@ private:
     bool quantifierChaquePrise_ = false;   ///< D579.1
     bool armementSuitLeChoix_ = false;     ///< D579.2
     bool arretApresPunch_ = false;         ///< D579.3
+    /// D580 : trois de plus, du transport, de l'enregistrement et de l'édition.
+    bool clicVidePoseLaTete_ = false;      ///< D580.1
+    bool punchOffALArret_ = false;         ///< D580.2
+    bool selectionSuitLaTete_ = false;     ///< D580.3
+    /// D580.3 : la tête à laquelle la sélection a suivi pour la dernière fois ; -1 : à refaire au prochain tour.
+    vsm::midi::Tick teteDuDernierChoix_ = -1;
+    /// D580.2 : LA bascule de la région de punch (le menu, l'arrêt), sans pas d'historique (D519).
+    void poserPunchActif(bool actif);
+    /// D580.3 : la sélection devient les clips des pistes choisies que la tête touche.
+    void choisirLesClipsSousLaTete(vsm::midi::Tick tete);
     /// D579.3 : où la prise en cours s'arrête d'elle-même — la sortie de punch, post-roll compris ; -1 : nulle part.
     vsm::midi::Tick arretApresPunchTick_ = -1;
     /// D579.3 : la tête au relevé précédent de la prise — l'arrêt part au FRANCHISSEMENT du point ; -1 : pas encore lue.

@@ -3229,6 +3229,18 @@ const Paire kAnglais[] = {
     { "Plis inversés : %1 piste(s)",
       "Fold states flipped: %1 track(s)" },
     // D559 : lever tous les solos et tous les muets, remettre la console à zéro, échanger gauche et droite d'un clip.
+    { "Un clic dans le vide pose la tête",   // D580.1
+      "A click on empty space sets the playhead" },
+    { "(sur le fond de l'arrangement, comme sur la règle ; un glissé reste un lasso)",
+      "(on the arrangement background, as on the ruler; a drag is still a lasso)" },
+    { "Désactiver le punch à l'arrêt",   // D580.2
+      "Deactivate punch on stop" },
+    { "(à chaque arrêt du transport, la région reste, inactive)",
+      "(whenever the transport stops; the region stays, inactive)" },
+    { "La sélection suit la tête",   // D580.3
+      "Selection follows the playhead" },
+    { "(les clips des pistes choisies que la tête touche, à chaque pose ; pas en lecture)",
+      "(the clips of the selected tracks under the playhead, whenever it is set; not during playback)" },
     { "Quantifier chaque prise",   // D579.1
       "Quantise each take" },
     { "(les prises MIDI, à la grille du piano roll ; une prise audio ne se quantifie pas)",

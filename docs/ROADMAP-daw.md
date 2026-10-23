@@ -44707,8 +44707,12 @@ FAUX zéros, dits ici pour ne pas être rouverts : *Fixed Lengths* et *Quantize 
 champ de durée de la barre), *Fixed Velocity* (« Vélocité 127 / 64 », le champ de vélocité), *Delete Notes* (l'éditeur
 logique : « vélocité < 30 et durée < 1/32 »), *Paste Time* (« Coller la plage à la tête de lecture (en insérant) »), la
 correction de gamme (« Contraindre à la gamme »), *Keep Last* (le mode Empiler joue la dernière passe), *Freeze MIDI
-Modifiers* (« Reporter les effets MIDI dans les notes ») ; et les macros de commandes, qu'un `grep` de « Macro » donnait
-absentes, D546 les avait trouvées. Restent trois zéros, trois préférences de Cubase :
+Modifiers* (« Reporter les effets MIDI dans les notes »). *(Corrigé le 23/10 à 16 h 51, pendant la vérification de
+D580 : ce texte ajoutait « et les macros de commandes, qu'un `grep` de « Macro » donnait absentes, D546 les avait
+trouvées » — repris du texte de D546 SANS le code. Revérifiées par ce que le code fait, elles n'existent pas : rien
+n'enchaîne des commandes sous une touche, et `ShortcutId` n'a aucune entrée de cette sorte. Un zéro, remis — une table de
+commandes dynamique, son éditeur, sa persistance —, et la phrase de D546 était fausse.)* Restent trois zéros, trois
+préférences de Cubase :
 **0 pour la tête posée d'un clic dans le vide** (*Locate When Clicking in Empty Space*) — un clic sur le fond de
 l'arrangement vide la sélection et ouvre un lasso (`ArrangementComponent::mouseDown`, « LE LASSO PART DU VIDE ») ; la
 tête ne se pose qu'au clic sur la règle (`onPlayheadRequested`) ; **0 pour le punch désactivé à l'arrêt** (*Deactivate
@@ -44756,3 +44760,44 @@ audio, la réserve des fichiers, le tempo fixe.
 
 **L'ORDRE, TRANCHÉ ICI.** D580.2 d'abord (un point unique, le front descendant), puis D580.1 et D580.3 ensemble (la tête
 posée, un banc) ; chaque élément a son banc, entré dans la série de `verifier.sh --bancs`.
+
+**L'ATTENDU (1) DE D580.2 ÉTAIT FAUX SUR L'APPLICATION, PAS SUR LA RÈGLE** (16 h 40, la première course du banc). « F9
+puis F9 : inactif » supposait que la seconde pression ARRÊTE le transport ; elle clôt la prise et la lecture CONTINUE
+(`stopRecording` n'arrête le transport que pendant le décompte — la sortie de punch manuelle de Cubase). Le relevé : la
+région **active** après F9 F9, et aucune ligne « désactivé à l'arrêt » — rien ne s'était arrêté, rien ne s'est
+désactivé, ce qui est la règle même. Le cas est réécrit AVANT d'être rejoué : F9, F9, la lecture relevée **en lecture**,
+puis Stop : **inactive** ; le témoin sans l'option, la même suite : **active**. Les cas (2) à (5) passaient tels qu'écrits.
+
+### Phase D580 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D580.1 | un clic dans le vide pose la tête | `ArrangementComponent::mouseUp` : un lasso resté sans étendue (moins de 3 px dans les deux sens) est un CLIC, rendu à l'hôte par `onEmptyClick` au tick de l'appui ; l'hôte pose la tête par LE chemin de la règle (`onPlayheadRequested`) si l'option est cochée, et le dit dans les deux cas (`VSM_CLIC_VIDE`) ; *Transport ▸ Un clic dans le vide pose la tête* et sa ligne grisée, `transportClicVidePoseLaTete` au poste ; `tools/tete-posee.sh`, les points placés par `relever-clips` : le clic sur le fond de la piste 0 **pose la tête à 6 844 ticks, le tick lu** ; le témoin sans l'option **0**, « ne bouge pas » ; un glissé **0**, aucun clic dans le vide ; un clic sur A **0**, A choisi. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D580.2 | le punch désactivé à l'arrêt | au front descendant de `timerCallback`, par `poserPunchActif(false)` — LA bascule, extraite de celle du menu, sans pas (`marquerHorsHistorique`, D519) ; *Enregistrement ▸ Désactiver le punch à l'arrêt* (section *Région de punch*) et sa ligne grisée, `enregistrementPunchOffALArret` ; le relevé `relever-punch` ; `tools/punch-a-l-arret.sh` : active **[1920, 3840)** avant ; F9 F9 : **active**, la lecture continuant (**3,904 s**) ; puis Stop : **inactive [1920, 3840)** ; une lecture puis Stop : **inactive** ; le témoin sans l'option : **active** ; avec l'arrêt de D579.3 : **arrêté à 4,000 s, inactive** ; relancé : cochée, en anglais « Deactivate punch on stop ». **TENU** — l'attendu (1) réécrit avant d'être rejoué, ci-dessus | **oui** |
+| D580.3 | la sélection suit la tête | dans `timerCallback`, transport ARRÊTÉ, à toute position nouvelle de la tête (`teteDuDernierChoix_`), et à l'arrêt ; `ArrangementComponent::choisirClipsSousLaTete`, la mesure du lasso (`clipPlayedLength` jusqu'au bout du matériau), un groupe valant ses clips, dit seulement quand la sélection change (`VSM_SOUS_LA_TETE`) ; *Édition ▸ La sélection suit la tête* et sa ligne grisée, `editionSelectionSuitLaTete` ; par `repere-aller:` (le chemin de la règle) et `relever-selection` : la piste 0 choisie, **{A}** à 960, **{}** à 2880, **{B}** à 4000 ; les pistes 0 et 1, **{A, C}** à 960 ; le témoin **{}** ; en lecture, la tête à **2 409** (entre A et B) : **{A}** gardé, arrêtée à **2 498** : **{}**. **TENU** | **oui** |
+| — | le témoin | le binaire de D579 (`build/temoin-D579`) : `punch-a-l-arret` **rouge 5 / 5** (l'entrée et le relevé n'y existent pas : le vrai A/B de la règle est (3) contre (1), sur le même binaire, l'option seule changeant) ; `tete-posee` **rouge 6 / 9** — les verts : le glissé qui reste un lasso, le clic sur un clip, rien sans l'option, que la fonction ne doit pas changer | **oui** |
+
+**CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.**
+- **Six préférences du poste, une table** (D579 et D580) plutôt que six branches ; le relevé de leur bascule s'appelle
+  désormais `VSM_REGLAGE_POSTE` (il disait `VSM_ENREGISTREMENT_REGLAGE` pour des réglages qui n'en sont pas).
+- **D580.3 ne passe pas par `seekAllViews`** : la règle et les repères n'y passent pas (`onPlayheadRequested`), et la
+  règle posée là les aurait ratés — vu à la lecture du code, avant de l'écrire. Cochée, elle s'applique tout de suite à la
+  tête où elle est (`teteDuDernierChoix_` remis à -1 : « 1 clip(s) choisi(s) à 0 ticks » au journal, juste après la
+  bascule), et au lancement — celui-ci lu dans le code, NON mesuré.
+- **La préférence de D580.3 n'est pas dans la sous-liste *Sélectionner dans l'arrangement*** : celle-ci se grise sans
+  clip, et une préférence doit s'atteindre toujours — la photo du menu d'un projet vide le montre, l'entrée cochée juste
+  sous la sous-liste grisée.
+- **Le banc a placé ses clics par `relever-clips`** : le premier jet, lu sur la photo à 0,30 de haut, tombait SOUS les
+  pistes (le clic « sur A » posait la tête à 488 ticks) — un vide qui compte aussi, mais pas celui que le cas nomme.
+
+Les trois entrées REGARDÉES (`VSM_MENU_PHOTO`, relancé dans le même HOME) : *Un clic dans le vide pose la tête* cochée
+sous *Pré-roll* et *Post-roll* ; *Désactiver le punch à l'arrêt* cochée sous *Arrêter après la sortie de punch* ; *La
+sélection suit la tête* cochée sous la sous-liste grisée.
+Mesuré la session déverrouillée, l'écran allumé, pour les bancs de D580 ; la série s'est terminée l'écran éteint et la
+session verrouillée. C++ 539 · 1 351 · 359 · 25 · 11, Python 275, ruff, mypy, seize gardes (`./verifier.sh --compiler`) —
+`index-a-jour` rouge du seul fait de cette page, reprise par `--corriger`. La série des **165** bancs (163, plus
+`punch-a-l-arret` et `tete-posee`, comptés par le script qui lit la liste : 165 noms, aucun en double), jouée de 16 h 55
+à 18 h 18 sur un binaire qui porte AUSSI la correction de D579 bis : **165 verts en 82 min** — `pre-post-roll` compris,
+le rouge de la série précédente ; les préférences de l'utilisateur identiques ; le compositeur de 761 à 848 Mo (l'unité),
+kwin et Xwayland de 218 à 130 Mo ; l'avis « écran éteint, verrouillé à la fin » (D516) est le seul ✗ du bilan, et aucun
+banc de focus ou de clic n'est tombé.

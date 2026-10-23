@@ -78,7 +78,7 @@ a1="$(armees regle 1)"; a2="$(armees regle 2)"; a3="$(armees regle 3)"; t1="$(ar
 d1="$(armees deplace 1)"; d2="$(armees deplace 2)"; d3="$(armees deplace 3)"
 coche="$(grep -h "^VSM_MENU_LISTE : Piste > L'armement suit la piste choisie" "$brouillon/retenu.txt")"
 en="$(grep -ch "^VSM_MENU_LISTE : Track > Arming follows the selected track" "$brouillon/anglais.txt")"
-grep -h "^VSM_ARMEMENT\|^VSM_ENREGISTREMENT_REGLAGE\|^VSM_GESTE : armer" "$brouillon"/regle.txt "$brouillon"/temoin.txt | sed 's/^/       /'
+grep -h "^VSM_ARMEMENT\|^VSM_REGLAGE_POSTE\|^VSM_GESTE : armer" "$brouillon"/regle.txt "$brouillon"/temoin.txt | sed 's/^/       /'
 echo "       après Descendre la piste :"
 grep -h "^VSM_ARMEMENT\|^VSM_GESTE : armer\|^VSM_MENU : " "$brouillon"/deplace.txt | sed 's/^/       /'
 echo "       relancé : [${coche#VSM_MENU_LISTE : }] ; en anglais : $en entrée(s)"
