@@ -45096,3 +45096,80 @@ souffle trop tôt à l'entrée d'un punch est perdue, et son relâchement avec e
 
 **L'ORDRE, TRANCHÉ ICI.** D583.3 d'abord (le plus simple, et le banc de D582.1 s'étend), puis D583.1, puis D583.2 ; un
 banc par élément, entré dans la série de `verifier.sh --bancs`, le banc de D582.3 rejoué sous le libellé neuf.
+
+### Phase D583 — MESURÉE, PAS CLOSE : huit bancs de la série à rejouer écran allumé (24/10/2026, 05 h 09 à l'horloge)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D583.1 | les fondus à Maj+molette | `reglerFonduALaMolette` — clips audio seuls, la moitié jugée au pointeur sur la longueur jouée, une noire par cran comptée depuis le bord du fondu par la carte de tempo, bornée par `setClipFadeIn` / `setClipFadeOut` ; une rafale sur le même fondu fait UN pas « Fondu d'un clip », et `moletteQuoi_` sépare la rafale du gain de celle des fondus ; l'entrée devient *La molette règle le gain et les fondus des clips audio*, la clé du poste inchangée ; `tools/molette-fondus.sh` : trois crans à gauche **1,500 / 0**, puis un en bas **1,000**, trois à droite **0 / 1,500**, Ctrl+Z après une rafale **0 / 0** en un pas, le témoin sans l'option **0 / 0**, huit crans **4,000**, la borne ; relancé : cochée ; en anglais. `molette-gain` rejoué sous le libellé neuf : **6 / 6**. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D583.2 | la plage de rattrapage | `MidiRecorder::setCatchSeconds` — une frappe dans la plage avant l'entrée posée À l'entrée, retirée si elle est relâchée avant elle (`rattrapees_`), la plage gardée d'une prise à l'autre ; trois tests du cœur, chiffrés comme l'attendu : la frappe de 1,950 s gardée **[1 920 ; 2 208]**, celles de 1,850 s et de 1,960 s (relâchée à 1,990 s) écartées, sans rattrapage **0** note ; *Enregistrement ▸ Rattrapage avant l'entrée*, quatre valeurs, `enregistrementRattrapageMs` au poste ; `tools/rattrapage-prise.sh` : la tête relevée à **1,846 s** au moment de la frappe (les marges ont tenu), à 250 ms **2** notes **[1920 2357]**, le témoin **1** note **[2358]** ; relancé : *Rattrapage : 250 ms* cochée ; en anglais. **TENU** | **oui** |
+| D583.3 | le 29,97 à images sautées | le format 5 de la barre (la valeur retenue des autres ne bouge pas), montré après le 30 i/s ; 30 000 / 1 001 images par seconde, entières, 17 982 par dizaine de minutes, deux numéros sautés par minute ; `tools/position-affichee.sh` étendu : à 2,5 s **00:00:02;14**, à 60,5 s **00:01:00;15**, « mes. 31 · 2 » ; en anglais. **TENU** | **oui** |
+| — | le témoin | le binaire de D582 (`build/temoin-D582`) : `position-affichee` **rouge 2 / 9** (l'entrée absente : la barre y reste en secondes, `00:02,500` et `01:00,500`) ; `rattrapage-prise` **rouge 2 / 3** (une note, `[2359]` : la frappe d'avant l'entrée y est écartée) ; `molette-fondus` **rouge 5 / 7** sous le libellé neuf, absent — et rejoué UNE fois sous l'ANCIEN libellé, coché et retenu : **rouge 4 / 7**, les fondus à **0** partout, Maj+molette y faisant défiler — le rouge pour la raison écrite ; `molette-gain` **rouge 3 / 6**, par le seul libellé | **oui** |
+| — | la série | `./verifier.sh --bancs`, lancée à 02 h 55, l'écran ÉTEINT et la session VERROUILLÉE de bout en bout (le lanceur l'a dit en rouge au départ et à la fin) : **165 / 173** en 93 min ; préférences de l'utilisateur identiques ; ni oom ni veille au journal du système. Les **8** rouges — `quantifier-audio`, `notes-depuis-attaques`, `transposition-globale`, `normaliser-niveau` (la seule photo de leur fenêtre), `liste-editer` (un contour compté sur la photo), `pianoroll-bord`, `selection-au-bord`, `vumetre-console` (des glissés et des clics sur un composant, des crêtes lues sur la photo) — rejoués SEULS, espacés d'une minute : rouges encore ; rejoués sur le binaire de **D582** dans les mêmes conditions : rouges aussi, **sur les mêmes contrôles** (le vumètre : 4, puis 7 mesures de photo ratées sur D583, 6 sur D582 — le compte varie d'une photo à l'autre). Tous les huit étaient VERTS dans la série de D582, l'écran allumé, et D583 ne touche aucun de leurs chemins. Ce n'est donc pas D583 — mais ce n'est pas vert : **à rejouer l'écran allumé, et D583 ne se dit FAITE qu'après** | **non jugé** |
+
+**LE COMPOSITEUR, L'ÉCRAN ÉTEINT, UNE SECONDE FOIS.** Sur la série de D582, l'écran allumé presque jusqu'au bout, la
+mémoire anonyme de kwin et Xwayland est montée de **155 à 252 Mo** ; sur celle de D583, l'écran éteint de bout en bout, de
+**176 à 1 180 Mo**, l'unité de **1 128 à 1 907 Mo** (1 866 Mo encore à 05 h 09). Deux séries de la même taille, un
+facteur dix sur la croissance : un second indice pour la piste de D581 — le compositeur garde des tampons tant que l'écran
+est éteint —, toujours pas une preuve (une seule série de chaque côté, et l'écran n'est pas la seule différence : l'heure,
+le verrou). Une nouvelle série ne se lance donc pas l'écran éteint : celle de D584 attend l'écran allumé.
+
+**CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.**
+- **Le gain puis un fondu du même clip, dans la même demi-seconde, font deux pas** : la rafale retient CE qu'elle règle
+  (`moletteQuoi_`), pas seulement le clip. Lu dans le code, non mesuré au banc.
+- **Les contrôleurs ne sont pas rattrapés** : une molette tournée un souffle avant l'entrée reste écartée, comme avant.
+- **Le 29,97 sans images sautées n'est pas ajouté** (il n'a de sens qu'avec une vidéo) ; la ligne grisée de la molette
+  allonge le menu *Édition* à 1 454 px — regardé, il tient.
+
+Les entrées REGARDÉES (`VSM_MENU_PHOTO`, session verrouillée) : *Timecode (29,97 i/s, images sautées)* cochée entre le
+30 i/s et les échantillons ; *Rattrapage avant l'entrée*, *Rattrapage : 100 ms* cochée, la ligne grisée ; *La molette
+règle le gain et les fondus des clips audio* cochée, sa ligne grisée ; la barre relancée, `00:00:00;00` sur deux lignes.
+
+### Phase D584 — un quarante-cinquième audit : les changements de programme joués au clavier, le filtre de ce qu'une prise enregistre (24/10/2026)
+
+*Écrite le 24/10 à 02 h 52 (l'horloge), pendant la série de D583, dans le brouillon ; le code écrit dans l'arbre à part,
+sans rien compiler ni lancer. Rien de D584 n'a été mesuré avant que ce texte soit commité.*
+
+**LA MÉTHODE, celle de D567 et de D582.2 : un zéro se lit dans la fonction et dans celles qu'elle appelle — ici, le point
+d'entrée du MIDI, `AudioEngine::handleIncomingMidiMessage`, de bout en bout.** Sondée, la page *MIDI* des préférences de
+Cubase (*MIDI Filter*, *Reset on Stop*). **Écartée, et pourquoi** : la remise à zéro à l'arrêt (*Reset on Stop*) — la
+mesurer demanderait un relevé de l'état de chaque machine (pédale, pitch bend) qui n'existe pas ; remise. Restent deux
+zéros :
+**0 pour les changements de programme joués au clavier** — `handleIncomingMidiMessage` traite la note, le pitch bend, la
+pression (canal et polyphonique) et le contrôleur, puis rend la main (`if (!message.isController()) return;`) : un
+changement de programme qui arrive d'un clavier n'est ni ENTENDU (aucune machine ne le reçoit, alors que la lecture lui
+en envoie — `MidiControlEvent::Kind::ProgramChange`, D28 — et que la machine multi-échantillons y répond) ni ENREGISTRÉ
+(`RecordedControlEvent::Kind` n'a pas de programme, alors que la piste en porte — `Track::programChanges` — et que
+l'import, l'export et la lecture les servent) ;
+**0 pour le filtre de ce qu'une prise enregistre** (le *MIDI Filter ▸ Record* de Cubase) — tout contrôleur entrant va
+dans la file de capture (`dansLaPrise`), sans condition : une prise de piano garde la pression d'un clavier qui en envoie
+sans qu'on l'ait voulue, et rien ne permet de ne garder que les notes.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D584.1 | **Les changements de programme joués au clavier** — ils s'entendent et s'enregistrent | un changement de programme reçu d'un port MIDI va, comme un contrôleur, à la machine des pistes qui écoutent, et dans la prise : il est écrit dans les `programChanges` de la piste, à l'instant joué, dans le même pas que la prise ; une prise qui REMPLACE retire ceux de la région remplacée, comme les contrôleurs ; mesuré par le MIDI exporté après une prise, le témoin hors prise à côté |
+| D584.2 | **Le filtre de l'enregistrement** — *MIDI Filter ▸ Record* | *Enregistrement ▸ Ce que la prise garde* : *La prise garde les contrôleurs*, *… le pitch bend*, *… la pression*, *… les changements de programme* (cochées d'origine — rien ne change pour qui n'y touche pas) ; décochée, la prise n'écrit pas ce genre-là, et il s'ENTEND quand même (le filtre est celui de l'enregistrement, pas de l'écoute) ; les notes, toujours ; retenu au poste ; mesuré au cœur par le test de l'enregistreur, et au banc par le MIDI exporté, le témoin tout coché à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D584.1.** Le programme suit le chemin des contrôleurs de D24.2, sans chemin à lui : `versLesMachines` pour l'écoute,
+  `dansLaPrise` pour la capture, un genre de plus dans `RecordedControlEvent`, un tableau de plus dans
+  `RecordedControls`, posé par `applyRecordedControls` comme les quatre autres — la même règle de remplacement. La
+  BANQUE (CC 0 et 32) n'a rien à faire de neuf : ce sont des contrôleurs, déjà enregistrés. L'écoute — la machine qui
+  reçoit le programme — est lue dans le code, NON mesurée : aucun relevé ne dit le programme d'une machine.
+- **D584.2.** Le filtre vit dans l'ENREGISTREUR (`MidiRecorder::setFiltre`), et non au point d'entrée : l'écoute ne
+  passe pas par lui, ce qui est la règle demandée, et le cœur se teste sans matériel. Gardé d'une prise à l'autre, comme
+  le rattrapage (D583.2) : un réglage du poste. Quatre cases et non sept comme Cubase : les deux pressions vont ensemble
+  (un clavier envoie l'une ou l'autre), et le *SysEx* n'est pas enregistré ici du tout.
+- **Le banc.** Un verbe neuf, `midi-entrant:<octets en hexadécimal>`, le frère de `cc-entrant:` (D517) : n'importe quel
+  message au même point d'entrée que le matériel (`handleIncomingMidiMessage`). **L'attendu, écrit avant la mesure**
+  (120 BPM, une piste MIDI vide armée, sans décompte ; pendant la prise, à 300 ms d'écart : un programme 5, un pitch bend,
+  le CC 1 à 100, une pression de canal, une note) : tout coché, le MIDI exporté porte **1** changement de programme — le
+  programme **5** —, **1** pitch bend, **1** CC 1, **1** pression, **1** note ; le TÉMOIN hors prise — les mêmes messages,
+  transport à l'arrêt, sans enregistrer — **0** programme ; le pitch bend et les programmes décochés : **0** programme,
+  **0** pitch bend, et le CC, la pression et la note **1** chacun ; Ctrl+Z après la prise tout cochée : **0** programme
+  et **0** note, en un pas ; relancé : les deux cases décochées ; en anglais.
+- Au cœur : un enregistreur qui reçoit un programme, un pitch bend et une pression rend les trois ; le filtre du pitch
+  bend posé, il rend les deux autres ; posé AVANT `begin`, il tient encore après.
+
+**L'ORDRE, TRANCHÉ ICI.** D584.1 puis D584.2, un banc pour les deux (`tools/midi-entrant-prise.sh`) — le filtre ne se
+mesure qu'avec ce que D584.1 fait entrer —, entré dans la série de `verifier.sh --bancs`.
