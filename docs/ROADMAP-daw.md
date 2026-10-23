@@ -44534,3 +44534,66 @@ par photos. C++ 538 · 1 349 · 359 · 25 · 11, Python 275, ruff, mypy, seize g
 `index-a-jour` rouge du seul fait de cette page, reprise par `--corriger`. La série des **161** bancs (159, plus
 `pre-post-roll` et `moniteur-midi`, comptés par le script qui lit la liste : 161 noms, 161 distincts, 0 absent de
 `tools/`) se joue après ce commit, sous la garde du compositeur.
+
+### Phase D579 — un quarantième audit : quantifier en enregistrant, l'armement qui suit la piste choisie, l'arrêt après la sortie de punch (23/10/2026)
+
+*Écrite le 23/10 à 12 h 56 (l'horloge du même appel), D578 close et poussée, pendant la série de ses 161 bancs (lancée à
+12 h 50, la session verrouillée et l'écran éteint) — sans compiler ni lancer l'application à côté.*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (les zéros revérifiés par ce que le code FAIT). Le parc a été sondé
+large avant de trancher, et ce qui EXISTE déjà est dit pour ne pas être rouvert : le tampon rétrospectif (D17.3), le clip
+à l'envers (D13.4), la polarité (D23.1), la compression et la limite de vélocité, la vélocité d'insertion du crayon,
+l'écoute des notes qu'on touche, leurs noms sur les notes, délier une copie liée, désactiver et verrouiller une piste,
+« Seulement au décompte », la coupe au passage par zéro (D545.1 bis), les modes Remplacer et Superposer d'une prise.
+Restent trois zéros, des *Preferences* et du transport de Cubase : **0 pour quantifier en enregistrant** (*Auto Quantize*,
+« AQ ») — *Quantifier la dernière prise (grille du piano roll)* existe, mais À LA MAIN (`quantizeLastTake`) ; la prise
+écrite (`applyRecording`, à la fin de l'enregistrement) ne quantifie rien ; `autoQuant`, `quantizeOnRecord`,
+« quantifier à l'enregistrement » : rien ; **0 pour l'armement qui suit la piste choisie** (*Enable Record on Selected
+Track*) — une piste ne s'arme que par son bouton R (`TrackListComponent.cpp:203`) et par le verbe de banc `armer:`
+(`MainComponent.cpp:3589`) ; choisir une piste n'arme rien, et sans piste armée l'enregistrement refuse (« Aucune piste
+armée ») ; **0 pour l'arrêt après la sortie de punch** (*Stop after Automatic Punch Out*) — `punchOutSeconds()` ne
+nourrit que l'enregistreur (`recorder_.begin`, `setRecordPunchOut`) : passé la sortie, la capture cesse et le transport
+CONTINUE. **Écarté** : *Cycle Follows Range Selection* (les locateurs qui suivent tout choix) — *Locateurs sur la
+sélection* (P) en fait l'essentiel en une touche, trop voisin. **Toujours remis** : le mode d'automation *Trim*,
+les repères à étendue, le pré-enregistrement audio, la réserve des fichiers — et, nouveau, **le tempo fixe** (la carte de
+tempo ignorée le temps d'une écoute, le bouton *Tempo Track / Fixed* du transport) : il passe par TOUTE conversion entre
+secondes et ticks, du moteur à l'export, et vaut une phase à lui seul.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D579.1 | **Quantifier en enregistrant** — *Auto Quantize* (AQ) | *Transport ▸ Enregistrement ▸ Quantifier chaque prise* (cochée la tenue) : à la fin d'une prise MIDI, ses notes sont quantifiées comme par *Quantifier la dernière prise* — la grille, le swing et la force de 100 % du piano roll —, dans LE MÊME pas que la prise ; *Annuler la quantification* rend les instants JOUÉS ; retenu au poste ; mesuré par le projet relu après une prise de notes entrantes, le témoin sans l'option à côté |
+| D579.2 | **L'armement suit la piste choisie** — *Enable Record on Selected Track* | *Piste ▸ L'armement suit la piste choisie* (cochée) : choisir une piste l'arme, et désarme celle que la RÈGLE avait armée ; une piste armée par son bouton R le reste ; pendant une prise, la règle ne joue pas ; retenu au poste ; mesuré par le relevé des pistes armées après des choix successifs, le témoin sans l'option à côté |
+| D579.3 | **Arrêter après la sortie de punch** — *Stop after Automatic Punch Out* | *Transport ▸ Enregistrement ▸ Arrêter après la sortie de punch* (cochée) : la région de punch active, la prise finie à sa sortie, le transport S'ARRÊTE — après le post-roll de D578.2 s'il y en a un —, la tête posée exactement sur ce point ; sans punch actif, rien ne change ; retenu au poste ; mesuré par la tête relevée à l'arrêt, le témoin sans l'option à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Les trois sont des préférences du POSTE** (comment on enregistre), comme le décompte et le pré-roll qu'elles côtoient
+  — rien au projet, rien à l'export. Pour l'AQ, Cubase garde le bouton dans le projet ; ici, une prise quantifiée reste
+  une prise quantifiée dans le fichier, et c'est ce qui compte au projet.
+- **D579.1.** LA quantification du logiciel, une seule (la règle de `quantizeLastTake`) : pas de second chemin. Un seul
+  pas : un Ctrl+Z défait la prise ET sa quantification, comme dans Cubase où l'AQ agit pendant la prise. Elle ne touche
+  que les notes de la prise (`lastTake_`), sur chaque piste armée ; une prise AUDIO n'est pas quantifiée, et le
+  sous-menu le DIT dans une ligne grisée. Il faut un verbe de banc pour jouer des NOTES entrantes au point d'entrée du
+  matériel : `note-entrante:<hauteur>:<vélocité>:<durée_ms>`, le frère de `cc-entrant:` (D517), par
+  `handleIncomingMidiMessage` lui aussi. **L'attendu, écrit avant la mesure** (120 BPM, 4/4, la grille du piano roll à la
+  double-croche : 120 ticks) : une piste MIDI armée, sans décompte, F9, quatre notes entrantes à 300 ms d'écart, F9 :
+  avec l'option, **4 notes, toutes à un multiple de 120 ticks** ; le témoin, sans elle, **4 notes dont au moins une hors
+  de la grille** (des instants joués au fil de minuterie : quatre multiples de 120 par hasard ne se voient pas) ;
+  *Annuler la quantification* après la prise quantifiée : **les instants du témoin reviennent** — au moins une note hors
+  grille ; Ctrl+Z après la prise quantifiée : **0 note**, en UN pas.
+- **D579.2.** La règle désarme ce QU'ELLE a armé (un drapeau en mémoire, jamais au fichier) : ce que la main a armé reste
+  armé, comme dans Cubase où l'option ne touche pas aux pistes qu'on a armées soi-même. Pendant une prise, choisir une
+  autre piste n'arme rien — la prise s'écrit sur les pistes armées à sa FIN (`armedTrackIndices`, à l'arrêt) et changer
+  l'armement au milieu la déplacerait ; c'est dit au journal. Toute sorte de piste (MIDI et audio), un seul réglage.
+  **L'attendu, écrit avant la mesure** : trois pistes MIDI, aucune armée ; l'option cochée, `choisir:0` : armées **{0}** ;
+  `choisir:2` : **{2}** ; la piste 1 armée par son bouton R, puis `choisir:0` : **{0, 1}** ; le témoin sans l'option,
+  `choisir:0` puis `choisir:2` : **{}** ; relancé dans le même HOME : l'entrée cochée.
+- **D579.3.** La même machine d'arrêt que *Lire la sélection* (D553.2) : l'arrêt à son point, la tête posée EXACTEMENT
+  dessus ; le post-roll de D578.2 s'y ajoute — c'est pour ce geste-là que Cubase l'a. La prise se clôt par cet arrêt comme
+  par F9. **L'attendu, écrit avant la mesure** (120 BPM) : une piste MIDI armée, la région de punch [2 s, 4 s) active, la
+  tête à 0, un décompte d'une mesure, F9 : le témoin sans l'option, relevé à 5,0 s du départ, est **en lecture au-delà
+  de 4,5 s** ; avec l'option : **arrêté à 4,000 s**, la phase « arrêt » ; avec 1 mesure de post-roll en plus : **arrêté à
+  6,000 s** ; sans punch actif, l'option cochée : **en lecture** comme le témoin.
+
+**L'ORDRE, TRANCHÉ ICI.** D579.2 d'abord (le plus simple, sans prise), puis D579.1 et D579.3 ensemble (une prise, un banc,
+le verbe `note-entrante:`) ; une compilation de l'application APRÈS la série de D578 — rien ne se compile ni ne se lance à
+côté d'elle.
