@@ -20,7 +20,8 @@ namespace vsm::sequencer {
 /// valeur MIDI brute : 0..127 pour un CC ou une pression, -8192..8191 pour
 /// la molette de hauteur.
 struct RecordedControlEvent {
-    enum class Kind : uint8_t { ControlChange, PitchBend, ChannelPressure, PolyPressure };
+    /// D584.1 : `ProgramChange` — le numéro de programme dans `value`, `index` inutilisé.
+    enum class Kind : uint8_t { ControlChange, PitchBend, ChannelPressure, PolyPressure, ProgramChange };
     double seconds = 0.0;
     Kind kind = Kind::ControlChange;
     uint8_t channel = 0;
@@ -36,8 +37,10 @@ struct RecordedControls {
     std::vector<PitchBendPoint> pitchBends;
     std::vector<ChannelPressurePoint> channelPressure;
     std::vector<PolyAftertouchPoint> polyAftertouch;
+    std::vector<ProgramChangePoint> programChanges;   ///< D584.1
     bool empty() const {
-        return controlChanges.empty() && pitchBends.empty() && channelPressure.empty() && polyAftertouch.empty();
+        return controlChanges.empty() && pitchBends.empty() && channelPressure.empty() && polyAftertouch.empty()
+               && programChanges.empty();
     }
 };
 
@@ -107,6 +110,17 @@ public:
     /// poste, pas de la prise. Les contrôleurs n'y sont pas rattrapés.
     void setCatchSeconds(double secondes);
     double catchSeconds() const { return catchSeconds_; }
+    /// D584.2 : LE FILTRE DE L'ENREGISTREMENT (*MIDI Filter ▸ Record*) — ce que la prise GARDE, par genre ; les notes,
+    /// toujours. Il ne touche que la capture : ce qui est écarté s'entend quand même, l'écoute ne passe pas par ici.
+    /// Gardé d'une prise à l'autre, comme le rattrapage. Les deux pressions vont ensemble.
+    struct Filtre {
+        bool controleurs = true;
+        bool pitchBend = true;
+        bool pression = true;
+        bool programmes = true;
+    };
+    void setFiltre(const Filtre& filtre) { filtre_ = filtre; }
+    const Filtre& filtre() const { return filtre_; }
     /// D24.2 : un contrôleur, même règle du point d'entrée.
     void pushControl(const RecordedControlEvent& event);
     bool hasControls() const { return !controls_.empty(); }
@@ -156,6 +170,7 @@ private:
     double startSeconds_ = 0.0;
     double endSeconds_ = std::numeric_limits<double>::infinity();
     double catchSeconds_ = 0.0;          ///< D583.2
+    Filtre filtre_;                      ///< D584.2
     std::vector<size_t> rattrapees_;     ///< D583.2 : les indices, dans `events_`, des frappes rattrapées
     std::vector<RecordedNoteEvent> events_;
     std::vector<RecordedControlEvent> controls_;

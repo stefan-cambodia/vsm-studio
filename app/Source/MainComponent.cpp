@@ -1476,6 +1476,12 @@ MainComponent::MainComponent()
         rattrapageMs_ = std::find(std::begin(kRattrapagesMs), std::end(kRattrapagesMs), ms) != std::end(kRattrapagesMs) ? ms : 0;
         recorder_.setCatchSeconds(rattrapageMs_ / 1000.0);
     }
+    // D584.2 : ce que la prise garde — cochés d'origine.
+    garderControleurs_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementGarderControleurs", true);
+    garderPitchBend_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementGarderPitchBend", true);
+    garderPression_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementGarderPression", true);
+    garderProgrammes_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementGarderProgrammes", true);
+    appliquerFiltreDePrise();
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -5625,6 +5631,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                               u8"point d'entrée)"), false, false);
                     menu.addSubMenu(tr(u8"Rattrapage avant l'entrée"), rattrapage);
                 }
+                // D584.2 : CE QUE LA PRISE GARDE (le *MIDI Filter ▸ Record* de Cubase) — des préférences du poste.
+                {
+                    juce::PopupMenu garde;
+                    garde.addItem(kMenuRecordKeepControllers, tr(u8"La prise garde les contrôleurs"), true, garderControleurs_);
+                    garde.addItem(kMenuRecordKeepPitchBend, tr(u8"La prise garde le pitch bend"), true, garderPitchBend_);
+                    garde.addItem(kMenuRecordKeepPressure, tr(u8"La prise garde la pression"), true, garderPression_);
+                    garde.addItem(kMenuRecordKeepPrograms, tr(u8"La prise garde les changements de programme"), true,
+                                  garderProgrammes_);
+                    garde.addItem(-1, tr(u8"(les notes, toujours ; ce qui n'est pas gardé s'entend quand même)"), false, false);
+                    menu.addSubMenu(tr(u8"Ce que la prise garde"), garde);
+                }
                 // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
                 // d'événements gardés est DIT : « récupérer » sur un tampon
                 // vide ne doit pas se découvrir en cliquant.
@@ -6242,7 +6259,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
     if (menuItemID == kMenuTrackHideEmpty) { masquerPistesSansDonnees(); return; }               // D577.2
-    // D579, D580 : SIX PRÉFÉRENCES DU POSTE, des bascules — une table, pas six branches.
+    // D579 à D584 : LES PRÉFÉRENCES DU POSTE QUI SONT DES BASCULES — une table, pas une branche chacune.
     struct Bascule { int id; bool MainComponent::*reglage; const char* cle; };
     static constexpr Bascule kBascules[] = {
         {kMenuRecordAutoQuantize, &MainComponent::quantifierChaquePrise_, "enregistrementQuantifierChaquePrise"},
@@ -6253,6 +6270,10 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         {kMenuEditSelectionFollowsHead, &MainComponent::selectionSuitLaTete_, "editionSelectionSuitLaTete"},
         {kMenuTrackSoloSelectsTrack, &MainComponent::soloChoisitLaPiste_, "pistesSoloChoisitLaPiste"},   // D582.2
         {kMenuEditWheelClipGain, &MainComponent::moletteGainClips_, "editionMoletteGainClips"},           // D582.3
+        {kMenuRecordKeepControllers, &MainComponent::garderControleurs_, "enregistrementGarderControleurs"},   // D584.2
+        {kMenuRecordKeepPitchBend, &MainComponent::garderPitchBend_, "enregistrementGarderPitchBend"},
+        {kMenuRecordKeepPressure, &MainComponent::garderPression_, "enregistrementGarderPression"},
+        {kMenuRecordKeepPrograms, &MainComponent::garderProgrammes_, "enregistrementGarderProgrammes"},
     };
     if (const auto* b = std::find_if(std::begin(kBascules), std::end(kBascules),
                                      [menuItemID](const Bascule& x) { return x.id == menuItemID; });
@@ -6269,6 +6290,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         // D580.3 : cochée, elle s'applique à la tête où elle est, au prochain tour de l'horloge.
         if (menuItemID == kMenuEditSelectionFollowsHead) teteDuDernierChoix_ = -1;
         if (menuItemID == kMenuEditWheelClipGain) arrangement_.setMoletteGain(reglage);   // D582.3
+        if (menuItemID >= kMenuRecordKeepControllers && menuItemID <= kMenuRecordKeepPrograms) appliquerFiltreDePrise();   // D584.2
         std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
         menuItemsChanged();
         return;

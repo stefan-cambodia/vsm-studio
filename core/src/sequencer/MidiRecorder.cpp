@@ -264,6 +264,13 @@ void applyRecording(Track& track, const std::vector<Note>& take, RecordMode mode
 
 void MidiRecorder::pushControl(const RecordedControlEvent& event) {
     if (event.seconds < startSeconds_) return;   // avant le point d'entrée : la définition même du point d'entrée
+    // D584.2 : ce que la prise ne garde pas, elle ne l'écrit pas.
+    using K = RecordedControlEvent::Kind;
+    const bool garde = event.kind == K::ControlChange ? filtre_.controleurs
+                     : event.kind == K::PitchBend     ? filtre_.pitchBend
+                     : event.kind == K::ProgramChange ? filtre_.programmes
+                                                      : filtre_.pression;
+    if (!garde) return;
     controls_.push_back(event);
 }
 
@@ -292,6 +299,9 @@ RecordedControls MidiRecorder::finishControls(double endSeconds,
                 sortie.polyAftertouch.push_back({tick, c.channel, c.index,
                                                  static_cast<uint8_t>(std::clamp<int>(c.value, 0, 127))});
                 break;
+            case RecordedControlEvent::Kind::ProgramChange:   // D584.1
+                sortie.programChanges.push_back({tick, c.channel, static_cast<uint8_t>(std::clamp<int>(c.value, 0, 127))});
+                break;
         }
     }
     auto parTick = [](const auto& a, const auto& b) { return a.tick < b.tick; };
@@ -299,6 +309,7 @@ RecordedControls MidiRecorder::finishControls(double endSeconds,
     std::stable_sort(sortie.pitchBends.begin(), sortie.pitchBends.end(), parTick);
     std::stable_sort(sortie.channelPressure.begin(), sortie.channelPressure.end(), parTick);
     std::stable_sort(sortie.polyAftertouch.begin(), sortie.polyAftertouch.end(), parTick);
+    std::stable_sort(sortie.programChanges.begin(), sortie.programChanges.end(), parTick);   // D584.1
     return sortie;
 }
 
@@ -318,6 +329,7 @@ void applyRecordedControls(Track& track, const RecordedControls& controls, bool 
     poser(track.pitchBends, controls.pitchBends);
     poser(track.channelPressure, controls.channelPressure);
     poser(track.polyAftertouch, controls.polyAftertouch);
+    poser(track.programChanges, controls.programChanges);   // D584.1 : la même règle de remplacement
 }
 
 double countInSeconds(const Project& project, midi::Tick punchTick, int bars) {

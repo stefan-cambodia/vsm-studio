@@ -254,6 +254,18 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput* source, const juce:
                     static_cast<int16_t>(message.getAfterTouchValue()));
         return;
     }
+    // D584.1 : LES CHANGEMENTS DE PROGRAMME, par le chemin des contrôleurs — à la machine des pistes qui écoutent, et
+    // dans la prise. Ils s'arrêtaient au `return` ci-dessous : ni entendus ni enregistrés.
+    if (message.isProgramChange()) {
+        vsm::audio::plugin::MidiControlEvent evenement;
+        evenement.kind = vsm::audio::plugin::MidiControlEvent::Kind::ProgramChange;
+        evenement.channel = canal;
+        evenement.index = static_cast<uint8_t>(message.getProgramChangeNumber());
+        versLesMachines(evenement);
+        dansLaPrise(vsm::sequencer::RecordedControlEvent::Kind::ProgramChange, 0,
+                    static_cast<int16_t>(message.getProgramChangeNumber()));
+        return;
+    }
     if (!message.isController()) return;
     const auto cc = static_cast<uint8_t>(message.getControllerNumber());
     const auto value = static_cast<uint8_t>(message.getControllerValue());

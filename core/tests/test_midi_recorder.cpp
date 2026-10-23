@@ -507,3 +507,58 @@ VSM_TEST(the_catch_range_is_kept_from_one_take_to_the_next) {
     VSM_ASSERT_EQ(int(notes[0].number), 67);
     VSM_ASSERT_EQ(notes[0].startTick, Tick(3840));
 }
+
+// --------------------------------------------------------------------------
+// D584.1, D584.2 — LES CHANGEMENTS DE PROGRAMME ENREGISTRÉS, ET LE FILTRE DE
+// L'ENREGISTREMENT. L'attendu écrit avant la mesure (ROADMAP-daw, D584) : un
+// programme, un pitch bend et une pression rendus tous trois ; le filtre du
+// pitch bend posé, les deux autres ; posé AVANT `begin`, il tient encore après.
+// --------------------------------------------------------------------------
+
+namespace {
+RecordedControls priseDeControles(const MidiRecorder::Filtre* filtre) {
+    Project projet = projetDeReference();
+    MidiRecorder enregistreur;
+    if (filtre != nullptr) enregistreur.setFiltre(*filtre);   // avant `begin`, exprès
+    enregistreur.begin(0.0);
+    RecordedControlEvent programme;
+    programme.seconds = 0.5; programme.kind = RecordedControlEvent::Kind::ProgramChange; programme.value = 5;
+    RecordedControlEvent pli;
+    pli.seconds = 1.0; pli.kind = RecordedControlEvent::Kind::PitchBend; pli.value = 2048;
+    RecordedControlEvent pression;
+    pression.seconds = 1.5; pression.kind = RecordedControlEvent::Kind::ChannelPressure; pression.value = 64;
+    enregistreur.pushControl(programme);
+    enregistreur.pushControl(pli);
+    enregistreur.pushControl(pression);
+    return enregistreur.finishControls(2.0, conversion(projet));
+}
+}
+
+VSM_TEST(a_program_change_played_during_a_take_is_recorded_with_its_instant) {
+    const auto rendus = priseDeControles(nullptr);
+    VSM_ASSERT_EQ(rendus.programChanges.size(), size_t(1));
+    VSM_ASSERT_EQ(rendus.programChanges[0].tick, Tick(480));
+    VSM_ASSERT_EQ(int(rendus.programChanges[0].program), 5);
+    VSM_ASSERT_EQ(rendus.pitchBends.size(), size_t(1));
+    VSM_ASSERT_EQ(rendus.channelPressure.size(), size_t(1));
+    // et la piste les reçoit par le même chemin que les contrôleurs, remplacement compris
+    Track piste;
+    piste.programChanges.push_back({960, 0, 9});    // dans la région remplacée
+    piste.programChanges.push_back({4000, 0, 12});  // hors d'elle
+    applyRecordedControls(piste, rendus, true, 0, 1920);
+    VSM_ASSERT_EQ(piste.programChanges.size(), size_t(2));
+    VSM_ASSERT_EQ(int(piste.programChanges[0].program), 5);
+    VSM_ASSERT_EQ(int(piste.programChanges[1].program), 12);
+}
+
+VSM_TEST(the_record_filter_drops_what_the_take_should_not_keep) {
+    MidiRecorder::Filtre sansPli;
+    sansPli.pitchBend = false;
+    const auto rendus = priseDeControles(&sansPli);
+    VSM_ASSERT_EQ(rendus.pitchBends.size(), size_t(0));
+    VSM_ASSERT_EQ(rendus.programChanges.size(), size_t(1));
+    VSM_ASSERT_EQ(rendus.channelPressure.size(), size_t(1));
+    MidiRecorder::Filtre sansProgramme;
+    sansProgramme.programmes = false;
+    VSM_ASSERT_EQ(priseDeControles(&sansProgramme).programChanges.size(), size_t(0));
+}

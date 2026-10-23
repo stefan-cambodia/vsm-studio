@@ -3247,6 +3247,18 @@ const Paire kAnglais[] = {
       "Timecode (30 fps)" },
     { "Timecode (29,97 i/s, images sautées)",   // D583.3
       "Timecode (29.97 fps, drop-frame)" },
+    { "Ce que la prise garde",   // D584.2
+      "What the take keeps" },
+    { "La prise garde les contrôleurs",
+      "The take keeps controllers" },
+    { "La prise garde le pitch bend",
+      "The take keeps pitch bend" },
+    { "La prise garde la pression",
+      "The take keeps pressure" },
+    { "La prise garde les changements de programme",
+      "The take keeps program changes" },
+    { "(les notes, toujours ; ce qui n'est pas gardé s'entend quand même)",
+      "(notes, always; what is not kept is still heard)" },
     { "Rattrapage avant l'entrée",   // D583.2
       "Catch range before punch-in" },
     { "Rattrapage : aucun",

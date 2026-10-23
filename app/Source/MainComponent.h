@@ -445,6 +445,24 @@ public:
                        stderr);
             return true;
         }
+        // D584 : midi-entrant:<octets en hexadécimal, séparés par « : »> — N'IMPORTE QUEL message court (un programme,
+        // un pitch bend, une pression) au même point d'entrée que le matériel, comme `cc-entrant:`.
+        if (geste.startsWithIgnoreCase("midi-entrant:")) {
+            juce::StringArray champs;
+            champs.addTokens(geste.fromFirstOccurrenceOf(":", false, false), ":", "");
+            uint8_t octets[3] = {0, 0, 0};
+            if (champs.size() < 1 || champs.size() > 3) return false;
+            for (int i = 0; i < champs.size(); ++i) {
+                const auto c = champs[i].trim();
+                if (c.isEmpty() || c.length() > 2 || !c.containsOnly("0123456789abcdefABCDEF")) return false;
+                octets[i] = static_cast<uint8_t>(c.getHexValue32());
+            }
+            if ((octets[0] & 0x80) == 0) return false;   // un octet d'état d'abord
+            const juce::MidiMessage message(octets, champs.size());
+            audioEngine_.handleIncomingMidiMessage(nullptr, message);
+            std::fputs(("VSM_MIDI_ENTRANT : " + message.getDescription() + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D579.1 : note-entrante:<hauteur>:<vélocité>:<durée_ms> — une NOTE au même point d'entrée que le matériel, le
         // relâché `durée_ms` plus tard ; c'est ce qu'une prise enregistre.
         if (geste.startsWithIgnoreCase("note-entrante:")) {
@@ -1352,6 +1370,11 @@ private:
         /// D583.2 : la plage de rattrapage d'une prise MIDI, quatre entrées CONTIGUËS (`kRattrapagesMs`).
         kMenuRecordCatchFirst,
         kMenuRecordCatchLast = kMenuRecordCatchFirst + 3,
+        /// D584.2 : ce que la prise garde, quatre cases CONTIGUËS.
+        kMenuRecordKeepControllers,
+        kMenuRecordKeepPitchBend,
+        kMenuRecordKeepPressure,
+        kMenuRecordKeepPrograms,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
@@ -1932,6 +1955,11 @@ private:
     /// D579 : TROIS PRÉFÉRENCES DU POSTE pour l'enregistrement, comme le décompte qu'elles côtoient.
     bool quantifierChaquePrise_ = false;   ///< D579.1
     int rattrapageMs_ = 0;                 ///< D583.2 : la plage de rattrapage, une valeur de `kRattrapagesMs`
+    /// D584.2 : ce que la prise garde, par genre — cochés d'origine ; `appliquerFiltreDePrise` les donne à l'enregistreur.
+    bool garderControleurs_ = true, garderPitchBend_ = true, garderPression_ = true, garderProgrammes_ = true;
+    void appliquerFiltreDePrise() {
+        recorder_.setFiltre({garderControleurs_, garderPitchBend_, garderPression_, garderProgrammes_});
+    }
     bool armementSuitLeChoix_ = false;     ///< D579.2
     bool arretApresPunch_ = false;         ///< D579.3
     /// D580 : trois de plus, du transport, de l'enregistrement et de l'édition.
