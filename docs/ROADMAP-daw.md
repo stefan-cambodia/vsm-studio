@@ -44801,3 +44801,63 @@ session verrouillée. C++ 539 · 1 351 · 359 · 25 · 11, Python 275, ruff, myp
 le rouge de la série précédente ; les préférences de l'utilisateur identiques ; le compositeur de 761 à 848 Mo (l'unité),
 kwin et Xwayland de 218 à 130 Mo ; l'avis « écran éteint, verrouillé à la fin » (D516) est le seul ✗ du bilan, et aucun
 banc de focus ou de clic n'est tombé.
+
+### Phase D581 — un quarante-deuxième audit : la voix du dessus et du dessous, la parabole, les contrôleurs qui suivent les notes (23/10/2026)
+
+*Écrite le 23/10 à 18 h 19 (l'horloge du même appel), D580 close et poussée. L'audit a été mené, et le code écrit, PENDANT
+la vérification de D580, dans l'arbre à part de la branche `d580`, sans rien compiler ni lancer : rien de D581 n'a été
+mesuré avant que ce texte soit commité.*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (les zéros revérifiés par ce que le code FAIT). Ce que D580 n'avait
+pas sondé : les éditeurs MIDI et l'outil ligne. **Trouvés, chacun lu à son libellé et non à un compte de `grep`** : le
+miroir des hauteurs (« Miroir des hauteurs »), le rétrograde (« Rétrograder »), l'éclatement par hauteur (D19.3), rendre
+muettes des notes (l'éditeur logique). **Un compte qui mentait, dit ici** : « Listen », « AFL », « PFL » rendaient douze
+fichiers — tous « Écoute A/B » ou des `ChangeListener` : il n'y a NI écoute avant fader NI solo-écoute ; de même, ni
+*timecode* ni échantillons n'ont une chaîne à l'écran. Ces trois-là sont des zéros, **remis** : l'écoute avant fader
+appartient à la *Control Room* de Cubase, un chantier à lui seul, et l'affichage de la position en *timecode* ou en
+échantillons ouvre le prochain audit. Restent trois zéros :
+**0 pour la voix du dessus et du dessous** (*Select Highest / Lowest Notes* des éditeurs) — le menu de sélection du piano
+roll (`PianoRollComponent.cpp`, de « Toutes les notes de même hauteur » aux « Notes plus courtes que la grille ») n'a ni
+la plus aiguë ni la plus grave d'un accord, et l'éditeur logique non plus : `NoteField` connaît la hauteur, la vélocité,
+la durée, la position dans la mesure, le canal, la confiance et le muet, rien qui compare une note à ses voisines ;
+**0 pour la parabole de l'outil ligne** (*Parabola* du *Line Tool*) — `AutomationShape` : `Line`, `Sine`, `Triangle`,
+`Square` (`AutomationEdit.h`), les cinq entrées de *Dessiner l'automation sur la sélection* ; une rampe ne s'y dessine que
+droite ; **0 pour les contrôleurs qui suivent les notes** (*Auto Select Controllers* de l'éditeur de clavier) — déplacer
+des notes, au glissé (`DragMode::Move`) comme au décalage (`nudgeSelection` → `nudgeNotes`), ne touche que
+`track->notes` : la modulation, le pitch bend et la pression jouées sous une phrase restent où elles étaient quand la
+phrase part. **Toujours remis** : la piste d'arrangement, le
+mode d'automation *Trim*, les repères à étendue, le pré-enregistrement audio, la réserve des fichiers, le tempo fixe.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D581.1 | **La voix du dessus et la voix du dessous** — *Select Highest / Lowest Notes* | Au clic droit du piano roll, *Sélectionner ▸ La voix du dessus (N)* et *La voix du dessous (N)*, le compte dit, grisées à zéro : de chaque accord de la piste active, la note la plus aiguë (ou la plus grave) — un accord : les notes dont le début tombe à moins d'une quadruple-croche de la première ; une note seule est sa propre voix ; deux notes à l'unisson en tête, toutes deux ; mesuré par le MIDI exporté après la suppression de la sélection |
+| D581.2 | **La parabole** — le *Parabola* de l'outil ligne | *Dessiner l'automation sur la sélection ▸ Parabole montante (lente au départ)* et *Parabole descendante (lente au départ)* : la valeur suit le CARRÉ de l'avancement, `from + (to − from)·x²`, échantillonnée et réduite comme les autres formes (`thinAutomation`, la tolérance promise) ; mesurée par la courbe relue au milieu et aux quarts, le témoin de la rampe droite à côté |
+| D581.3 | **Les contrôleurs suivent les notes** — *Auto Select Controllers* | *Les contrôleurs suivent les notes* (cochée, au clic droit du piano roll) : un déplacement de notes dans le temps — le glissé, le décalage — emporte, du même écart, les contrôleurs, le pitch bend et la pression de la piste qui tombent dans `[premier début, dernière fin)` de la sélection ; la hauteur ne les touche pas ; dans le MÊME pas ; retenu au poste ; mesuré par les instants relus après un décalage, le témoin sans l'option à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D581.1.** Dans TOUTES les notes de la piste active, comme « Notes plus faibles que 64 » : c'est une sélection qu'on
+  fait pour agir ensuite (supprimer la basse, extraire la mélodie), pas un filtre de la sélection en cours. La fenêtre
+  d'un accord, une quadruple-croche (`ppq / 16`, 30 ticks à 480) : un accord JOUÉ s'étale de quelques dizaines de
+  millisecondes, une croche arpégée ne doit pas s'y confondre. Une fonction du cœur (`selectTopVoice`,
+  `selectBottomVoice`), testée, que le menu appelle. **L'attendu, écrit avant la mesure** (480 ticks par noire) : do mi
+  sol à 0 ; ré fa la à 480, 486 et 492 (un accord joué) ; si grave seul à 960 ; do et son octave à 1440 ; deux notes à
+  1920 et 1960 (40 ticks : deux accords d'une note) — la voix du dessus choisit **6 notes** (sol, la, si, l'octave, et
+  les deux de 1920 / 1960), celle du dessous **6** (do, ré, si, do, et les deux mêmes) ; supprimées, il reste **5** notes
+  pour l'une comme pour l'autre ; le témoin sans geste : **11**.
+- **D581.2.** Une forme de plus dans `AutomationShape` (`Parabola`), la même machine : 256 échantillons, puis la
+  réduction sous la tolérance — pas de second chemin. La descendante est la même forme, de la valeur haute vers la basse :
+  lente au départ elle aussi, et c'est ce qu'on dessine pour un fondu qui tient puis tombe. **L'attendu, écrit avant la
+  mesure** (de 0 à 1 sur [0, 1920]) : la parabole montante vaut **0,0625, 0,25, 0,5625** aux quarts (à la tolérance
+  près) ; la rampe droite, le témoin, **0,25, 0,5, 0,75** ; la descendante, de 1 à 0 : **0,9375, 0,75, 0,4375** ; l'écart
+  à la forme idéale sous la tolérance promise, mesuré sur 1 921 ticks.
+- **D581.3.** Une préférence du POSTE, comme le bouton de Cubase. La plage, celle de la sélection AVANT le déplacement ;
+  les points en dehors restent ; un déplacement qui pousserait un point avant 0 le pose à 0, comme les notes. La copie au
+  glissé (Alt) ne copie pas les contrôleurs : elle laisse les originaux et leurs courbes en place, ce qui est juste.
+  **L'attendu, écrit avant la mesure** (480 ticks par noire, la grille à la double-croche, 120 ticks) : deux notes, [480,
+  720) et [960, 1200) ; des CC 1 à 480, 600, 960, 1100 et 2000 ; un pitch bend à 700 ; les deux notes choisies, *Décaler
+  à droite* d'un pas de grille : avec l'option, les CC à **600, 720, 1080, 1220 et 2000**, le pitch bend à **820** ;
+  le témoin sans elle : **480, 600, 960, 1100, 2000** et **700** ; Ctrl+Z après le décalage avec l'option : les notes ET
+  les contrôleurs à leurs instants d'avant, en **un** pas ; relancé : l'entrée cochée.
+
+**L'ORDRE, TRANCHÉ ICI.** D581.2 d'abord (le cœur seul et une entrée de menu), puis D581.1 (le cœur, un menu), puis
+D581.3 (le piano roll, deux gestes) ; un banc par élément, entré dans la série de `verifier.sh --bancs`.
