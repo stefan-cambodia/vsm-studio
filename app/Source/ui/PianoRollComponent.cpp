@@ -1031,14 +1031,7 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
         return;
     }
 
-    QuantizeSettings settings;
-    settings.grid = gridResolution_;
-    settings.strength = strength;
-    settings.swing = swing_;
-    settings.nonQuantizeZone = zoneNonQuantif_;   // D575.1
-    settings.catchRange = rayonCapture_;          // D575.2
-    settings.quantizeNoteStart = quantizeStarts;   // D557.1 : faux pour « Quantifier les fins »
-    settings.quantizeNoteEnd = alsoQuantizeEnds;
+    const QuantizeSettings settings = quantizeSettings(strength, alsoQuantizeEnds, quantizeStarts);   // D579.1
 
     // quantizeNotes() travaille sur un vecteur entier : on lui passe une copie
     // de la seule sélection, puis on réinjecte -- plutôt que de dupliquer sa
@@ -1068,6 +1061,18 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
                 + (quantizeStarts ? "" : " (fins seules)")
                 + "\n").toRawUTF8(), stderr);
     notifyEdited();
+}
+
+QuantizeSettings PianoRollComponent::quantizeSettings(float strength, bool alsoQuantizeEnds, bool quantizeStarts) const {
+    QuantizeSettings settings;
+    settings.grid = gridResolution_;
+    settings.strength = strength;
+    settings.swing = swing_;
+    settings.nonQuantizeZone = zoneNonQuantif_;   // D575.1
+    settings.catchRange = rayonCapture_;          // D575.2
+    settings.quantizeNoteStart = quantizeStarts;   // D557.1 : faux pour « Quantifier les fins »
+    settings.quantizeNoteEnd = alsoQuantizeEnds;
+    return settings;
 }
 
 size_t PianoRollComponent::quantizedSelectionCount() const {

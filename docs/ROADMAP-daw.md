@@ -44561,9 +44561,9 @@ secondes et ticks, du moteur à l'export, et vaut une phase à lui seul.
 
 | # | Fonction (Cubase) | Critère de réception |
 |---|---|---|
-| D579.1 | **Quantifier en enregistrant** — *Auto Quantize* (AQ) | *Transport ▸ Enregistrement ▸ Quantifier chaque prise* (cochée la tenue) : à la fin d'une prise MIDI, ses notes sont quantifiées comme par *Quantifier la dernière prise* — la grille, le swing et la force de 100 % du piano roll —, dans LE MÊME pas que la prise ; *Annuler la quantification* rend les instants JOUÉS ; retenu au poste ; mesuré par le projet relu après une prise de notes entrantes, le témoin sans l'option à côté |
+| D579.1 | **Quantifier en enregistrant** — *Auto Quantize* (AQ) | *Enregistrement ▸ Quantifier chaque prise* (cochée la tenue) : à la fin d'une prise MIDI, ses notes sont quantifiées comme par *Quantifier la dernière prise* — la grille, le swing et la force de 100 % du piano roll —, dans LE MÊME pas que la prise ; *Annuler la quantification* rend les instants JOUÉS ; retenu au poste ; mesuré par le projet relu après une prise de notes entrantes, le témoin sans l'option à côté |
 | D579.2 | **L'armement suit la piste choisie** — *Enable Record on Selected Track* | *Piste ▸ L'armement suit la piste choisie* (cochée) : choisir une piste l'arme, et désarme celle que la RÈGLE avait armée ; une piste armée par son bouton R le reste ; pendant une prise, la règle ne joue pas ; retenu au poste ; mesuré par le relevé des pistes armées après des choix successifs, le témoin sans l'option à côté |
-| D579.3 | **Arrêter après la sortie de punch** — *Stop after Automatic Punch Out* | *Transport ▸ Enregistrement ▸ Arrêter après la sortie de punch* (cochée) : la région de punch active, la prise finie à sa sortie, le transport S'ARRÊTE — après le post-roll de D578.2 s'il y en a un —, la tête posée exactement sur ce point ; sans punch actif, rien ne change ; retenu au poste ; mesuré par la tête relevée à l'arrêt, le témoin sans l'option à côté |
+| D579.3 | **Arrêter après la sortie de punch** — *Stop after Automatic Punch Out* | *Enregistrement ▸ Région de punch ▸ Arrêter après la sortie de punch* (cochée) : la région de punch active, la prise finie à sa sortie, le transport S'ARRÊTE — après le post-roll de D578.2 s'il y en a un —, la tête posée exactement sur ce point ; sans punch actif, rien ne change ; retenu au poste ; mesuré par la tête relevée à l'arrêt, le témoin sans l'option à côté |
 
 **CE QUI EST TRANCHÉ AVANT LE CODE.**
 - **Les trois sont des préférences du POSTE** (comment on enregistre), comme le décompte et le pré-roll qu'elles côtoient
@@ -44597,3 +44597,100 @@ secondes et ticks, du moteur à l'export, et vaut une phase à lui seul.
 **L'ORDRE, TRANCHÉ ICI.** D579.2 d'abord (le plus simple, sans prise), puis D579.1 et D579.3 ensemble (une prise, un banc,
 le verbe `note-entrante:`) ; une compilation de l'application APRÈS la série de D578 — rien ne se compile ni ne se lance à
 côté d'elle.
+
+**DEUX DÉFAUTS VUS À LA RELECTURE, ÉCRITS AVANT LEUR CORRECTION** (23/10 à 14 h 25, l'horloge ; le code compilé à 14 h 17,
+ses deux bancs verts — 6 / 6 et 9 / 9 —, la série de 163 arrêtée au deuxième banc pour ne pas juger un binaire remplacé en
+route ; ce binaire gardé pour témoin, `build/temoin-D579a`).
+- **D579.3 : l'arrêt se déclenche dès qu'on PASSE le point, même si on y était déjà.** Avec *Sans décompte*, un punch actif
+  et le transport en lecture, F9 ne déplace pas la tête (`startRecording`, la branche `dejaEnLecture`) : lancée au-delà de la
+  sortie, la prise s'arrêterait AUSSITÔT — F9 vaudrait *Arrêt*. Cubase n'arrête qu'APRÈS une sortie de punch, c'est-à-dire
+  en la FRANCHISSANT. La correction : l'arrêt part au FRANCHISSEMENT (la position lue au relevé précédent avant le point,
+  celle d'aujourd'hui dessus ou après), ce qui vaut aussi pour une boucle qui ramène la tête avant l'entrée. **L'attendu**
+  (120 BPM, punch [2 s, 4 s), l'option cochée, *Sans décompte*) : la lecture lancée de 0, F9 vers 4,6 s, relevé 1 s plus
+  tard : **en lecture au-delà de 5 s** ; le témoin `temoin-D579a` : **arrêté à 4,000 s**.
+- **D579.2 : la piste de la règle est retenue par son INDEX.** Une piste n'a pas d'identifiant stable, et `project_.tracks`
+  change par une dizaine de chemins (ouvrir, ajouter, monter, descendre, un dossier, l'annulation) : après *Descendre la
+  piste*, l'index désigne la VOISINE, et la règle désarme ce que la main avait armé. La correction : un drapeau de SESSION
+  sur la piste elle-même, `Track::armedByRule`, à côté de `armed` et pas plus écrit que lui, remis à faux partout où
+  `armed` l'est (la copie d'une piste, l'éclatement par canal) et dès qu'une piste est désarmée ; la règle désarme toute
+  piste qui le porte. **L'attendu** : trois pistes, l'option cochée, `armer:1` (la main), `choisir:0` : {0, 1} ; *Piste ▸
+  Descendre la piste* (la piste de la règle passe au rang 1, celle de la main au rang 0) : **{0, 1}** ; puis `choisir:2` :
+  **{0, 2}** — la main garde la sienne ; le témoin `temoin-D579a` : **autre chose que {0, 2}** (la lecture du code dit {1, 2} :
+  `selectTrackIndex(1)` après le déplacement désarme le rang 0, celui de la main).
+
+### Phase D579 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D579.1 | quantifier chaque prise | `quantifierLaPrise` : `quantizeNotes`, la fonction de toute quantification du logiciel, avec les réglages de la barre du piano roll par `PianoRollComponent::quantizeSettings` — extraite de `quantizeSelection`, qui la prend désormais aussi : une seule source pour la grille, le swing, la zone et le rayon ; appliquée dans `stopRecording` AVANT `applyRecording`, et dans `closePass` (chaque passage empilé est une prise), toujours DANS le pas de la prise ; *Enregistrement ▸ Quantifier chaque prise* et sa ligne grisée (« une prise audio ne se quantifie pas »), `enregistrementQuantifierChaquePrise` au poste ; le verbe `note-entrante:<hauteur>:<vélocité>:<durée_ms>` par `handleIncomingMidiMessage`, le relâché à sa durée ; `tools/prise-quantifiee-punch.sh`, par le MIDI exporté : avec l'option **240 480 840 1080** (grille de 120 ticks) ; le témoin sans elle **239 530 821 1112** ; *Annuler la quantification* **253 533 825 1117** — les instants joués de la même course ; Ctrl+Z après la prise quantifiée : **0 note**, en UN pas. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D579.2 | l'armement suit la piste choisie | `armerParLaRegle`, appelée par `onTrackSelected` : elle désarme toute piste qui porte `Track::armedByRule` et arme la choisie si la main ne l'a pas fait ; une piste désarmée par la main perd le drapeau (`onArmChanged`), l'option décochée le retire partout ; pendant une prise, rien, et c'est dit au journal ; *Piste ▸ L'armement suit la piste choisie*, `pistesArmementSuitLeChoix` ; `tools/armement-suit.sh`, par `relever-armement` : **{0}**, puis **{2}**, la piste 1 armée par son bouton R puis `choisir:0` **{0, 1}**, le témoin sans l'option **{}**, relancé : cochée, en anglais « Arming follows the selected track » ; après *Descendre la piste* **{0, 1}** (la règle sur le rang 1), puis `choisir:2` **{0, 2}**. **TENU** | **oui** |
+| D579.3 | arrêter après la sortie de punch | le point posé par `startRecording` quand un punch est actif — la sortie, plus le post-roll par `shiftByBars` ; l'arrêt dans `timerCallback`, sur l'horloge de D553.2, au FRANCHISSEMENT du point : `stopRecording`, le transport arrêté, la tête posée sur le point ; *Enregistrement ▸ Arrêter après la sortie de punch* (dans la section *Région de punch*) et sa ligne grisée, `enregistrementArretApresPunch` ; relevé 5,0 s après F9 : le témoin **en lecture à 5,004 s**, l'option **arrêté à 4,000 s**, phase « arrêt » ; avec 1 mesure de post-roll **en lecture à 4,992 s** puis **arrêté à 6,000 s** ; sans punch actif **en lecture** (2,992 s : le décompte d'une mesure joue AVANT la tête, là où, avec punch, il joue la mesure qui précède l'entrée) ; F9 donné en lecture APRÈS la sortie : **en lecture à 5,596 s**, « l'arrêt attend qu'on le franchisse » au journal. **TENU** | **oui** |
+| — | les deux défauts de la relecture | écrits au cahier à 14 h 25, avant leur correction ; le témoin `build/temoin-D579a`, le binaire d'avant : `armement-suit` **rouge 1 / 7** — après *Descendre la piste*, **{1}**, puis **{1, 2}** : la piste armée par la main désarmée, la lecture du code écrite avant, au chiffre près ; `prise-quantifiee-punch` **rouge 1 / 10** — « arrêt après la sortie, à 3840 ticks » dans la foulée de F9, arrêté à **4,000 s**. Le cas (10) est d'abord tombé rouge pour une AUTRE raison (en lecture à 3,010 s) : un projet sans note est fini à 0 et sa LECTURE s'y arrête, F9 partait d'un transport arrêté ; il a reçu son projet `long` (une note à 10 s) et le bouton Play, et n'a été compté rouge qu'au second essai, sur la valeur écrite | **oui** |
+| — | le test du cœur | `duplicating_a_track_copies_neither_arming_nor_the_rule_flag` : la copie d'une piste armée par la règle n'est ni armée ni à la règle (`duplicateTrack`, comme l'éclatement par canal, remet les deux) | **oui** |
+
+**CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.**
+- **D579.1 ne passe pas par la sélection** comme *Quantifier la dernière prise* : `quantizeSelection` ouvre SON pas
+  d'historique (`beginEdit`), et la quantification de la prise doit vivre dans celui de la prise. Ce qui reste unique, et
+  c'est ce que demandait « pas de second chemin » : la fonction (`quantizeNotes`) et la source de ses réglages
+  (`quantizeSettings`), que `quantizeSelection` lit aussi.
+- **D579.2 : le drapeau est sur la PISTE, pas son rang** — c'est le défaut de la relecture. *Descendre la piste* passe par
+  DEUX choix (la reconstruction rechoisit d'abord le rang 0, puis `selectTrackIndex(1)`) : la règle désarme puis réarme en
+  passant, et le journal le montre ; l'état final est le bon. Le verbe `armer:<n>` de `VSM_GESTE_APRES` passe par le
+  bouton R (`trackList_.armer`) ; celui de `VSM_VUE` écrit l'armement directement, et retire désormais le drapeau.
+- **D579.3 : au franchissement.** Une boucle qui ramène la tête avant le point le laisse armé, et la prise s'arrêtera à
+  la sortie du passage suivant — lu dans le code, NON mesuré.
+
+Les trois entrées REGARDÉES (`VSM_MENU_PHOTO`, relancé dans le même HOME) : *Quantifier chaque prise* cochée sous
+*Quantifier la dernière prise*, avec sa ligne grisée ; *Arrêter après la sortie de punch* cochée dans la section *Région
+de punch* ; *L'armement suit la piste choisie* cochée au menu *Piste*.
+
+Mesuré la session déverrouillée, l'écran allumé (`LockedHint=no`, DPMS « on »).
+C++ 539 · 1 349 · 359 · 25 · 11, Python 275, ruff, mypy, seize gardes (`./verifier.sh --compiler`) — `index-a-jour` rouge
+du seul fait de cette page, reprise par `--corriger`. La série des **163** bancs (161, plus `armement-suit` et
+`prise-quantifiee-punch`, comptés par le script qui lit la liste : 163 noms, 0 absent de `tools/`), jouée de 14 h 52 à
+16 h 17 sur le binaire de D579 : **162 verts en 85 min, un rouge** — `pre-post-roll`, son contrôle (7), la tête de *Lire
+la sélection* à 4,020 s au lieu de 4,000 : la course de D579 bis, ci-dessous ; les préférences de l'utilisateur
+identiques ; le compositeur de 481 à 855 Mo (l'unité), kwin et Xwayland de 97 à 237 Mo ; l'écran éteint et la session
+verrouillée à la fin de la série (D516 : les bancs de focus et de clic étaient passés).
+
+### Phase D579 bis — la tête posée exactement, même quand un bloc audio est en vol (23/10/2026)
+
+*Écrite le 23/10 à 16 h 15 (l'horloge), pendant les derniers bancs de la série de D579, AVANT toute mesure de ce qui suit.*
+
+**LE ROUGE DE LA SÉRIE.** `pre-post-roll.sh` (D578) est tombé rouge sur un contrôle sur dix : le témoin du post-roll —
+*Lire la sélection* sur [1920, 3840) sans post-roll — relevé **arrêté à 4,020 s** au lieu de **4,000 s**. Le morceau ne
+finit pas là (un clip à 12 s) ; le relevé lit la tête du MOTEUR (`processGraph().currentSeconds()`), et 20 ms, c'est un
+bloc audio. **L'hypothèse, lue dans le code** : `ProcessGraph::processBlock` lit la position au DÉBUT du bloc
+(`ProcessGraph.cpp:991`) et l'écrit à la FIN (`:1170`) ; une pose faite par le fil de l'interface ENTRE les deux —
+`transport_.stop()` puis `seekAllViews(fin)`, la machine d'arrêt de D553.2, de D578.2 et de D579.3 — est ÉCRASÉE par la
+fin du bloc en vol. Une course, pas un défaut de D579 : elle est dans le moteur depuis que la tête se pose « exactement ».
+**La correction** : la fin du bloc n'écrit sa position que si personne ne l'a posée pendant le bloc — un
+`compare_exchange` sur la position lue au début ; une pose pendant le bloc l'emporte. Rien ne change hors de cette
+fenêtre : le rendu hors ligne ne pose jamais la tête pendant un bloc, et ses octets restent les mêmes.
+**L'attendu, écrit avant la mesure** : la course `sel-temoin` de `pre-post-roll.sh` rejouée SEULE vingt fois sur le
+binaire de D579 : **au moins une tête au-delà de 4,000 s** — sinon la course n'est pas reproduite à la demande, et c'est
+dit ; corrigé, vingt fois : **vingt têtes à 4,000 s** ; les suites C++ vertes, `pre-post-roll` et `prise-quantifiee-punch`
+verts.
+
+**LA MESURE, ET CE QU'ELLE NE DIT PAS** (16 h 25). La course rejouée seule vingt fois sur le binaire de D579 : **20 têtes
+sur 20 à 4,000 s** ; vingt de plus sous une charge de seize boucles (charge 15,9 sur 22 cœurs) : **20 sur 20**. La course
+n'est PAS reproduite à la demande (0 sur 40), et le journal de la course rouge n'a pas été gardé (le banc ne relaie que
+quatre courses sur dix) : rien ne prouve que le rouge de la série vienne de cette fenêtre. Elle se PROVOQUE en revanche :
+**un test du moteur**, une machine de test dont le rendu fait ce que le fil de l'interface fait pendant un bloc en vol —
+`setPlaying(false)` puis `seekSeconds(4,0)` —, le graphe parti de 3,99 s, un bloc de 256 échantillons à 8 000 Hz. **L'attendu,
+écrit avant de l'écrire** : sur le moteur d'aujourd'hui, la tête relevée après le bloc à **4,022 s** (3,99 + 0,032, la pose
+écrasée) — ROUGE ; corrigé : **4,000 s**. Et le témoin du même test, sans pose pendant le bloc : **4,022 s** des deux côtés
+(un bloc joué avance la tête, et la correction n'y touche pas).
+
+### Phase D579 bis — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D579 bis | la tête posée pendant un bloc en vol n'est pas écrasée | `ProcessGraph::processBlock` garde la position LUE au début du bloc et n'écrit la sienne, à la fin, que par un `compare_exchange` sur elle : une pose faite entre-temps l'emporte ; le test `une_tete_posee_pendant_un_bloc_en_vol_n_est_pas_ecrasee_par_sa_fin` (une machine de test qui arrête le graphe et pose la tête à 4,0 s pendant son rendu, parti de 3,99 s, 256 échantillons à 8 000 Hz) : **4,022** sur le moteur d'avant — ROUGE, la pose écrasée, comme écrit —, **4,000** corrigé ; son témoin sans pose : **4,022** des deux côtés. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| — | ce qui ne bouge pas | les empreintes de rendu de la suite audio (`regression_fingerprints_are_reproducible` et les références de chaque machine et de chaque effet) vertes : **1 351 sur 1 351** ; interchange **359**, cœur **539**, CLAP **25**, panneaux **11** | **oui** |
+| — | les bancs | sur le binaire corrigé : `pre-post-roll` **10 / 10**, `lire-selection`, `prise-quantifiee-punch` **10 / 10**, `armement-suit` **7 / 7** ; la course `sel-temoin` vingt fois : **20 sur 20 à 4,000 s** — ce que faisait déjà le binaire d'avant (0 sur 40) : ces vingt-là ne prouvent rien de la correction, le test si | **oui** |
+
+**CE QUI RESTE DIT.** Le rouge de la série n'est pas PROUVÉ venir de cette fenêtre : il ne s'est pas reproduit, et son
+journal n'a pas été gardé. Ce qui l'est : la fenêtre existait (le test rouge), elle donnait exactement ce symptôme (un
+bloc de plus), et elle est fermée. La série complète se rejoue à la fin de D580, sur un binaire qui porte cette
+correction ; c'est elle qui la couvrira.

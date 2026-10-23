@@ -267,7 +267,7 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   sur un appariement que le geste justifie — jamais sur deux listes triées à
   l'aveugle.
 - Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les
-  bancs qui lancent l'application — 161 au 23/10 (D578 : `pre-post-roll`, `moniteur-midi` ; 159 avec D577 : les neuf de D574 à D577, entrés ensemble après la série perdue de D573 ; 150 avec D573, 147 avec D572, 144 avec D571, 142 avec D570, 139 avec D569, 136 avec D568, 133 avec D567, 130 avec D566.4, 129 avec D566.3, 128 avec D566, 126 avec D565, 123 avec D564, 120 avec D563, 117 avec D562, 114 avec D561, 110 avec D560, 106 avec D559, 103 avec D558, 100 avec D557, 97 avec D556, 93 avec D555, 90 avec D554, 87 avec D553, 84 avec D552, 81 avec D551, 79 avec D550, 76 avec D549, 75 avec D549.2, 73 avec D548, 72 avec D547, 69 avec D546.2, 68 avec D546.3, 66 avec D545.3, 65 avec D545.2, 64 avec D545.1, 63 avec D544.3, 61 avec D544.1, 60 avec D543.3 ; 59 au 03/10, D543.2 ; 49 et non 48 au 02/10 : un compte par `\.sh$` sautait le dernier, `zoom-reassigne.sh;` ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
+  bancs qui lancent l'application — 163 au 23/10 (D579 : `armement-suit`, `prise-quantifiee-punch` ; 161 avec D578 : `pre-post-roll`, `moniteur-midi` ; 159 avec D577 : les neuf de D574 à D577, entrés ensemble après la série perdue de D573 ; 150 avec D573, 147 avec D572, 144 avec D571, 142 avec D570, 139 avec D569, 136 avec D568, 133 avec D567, 130 avec D566.4, 129 avec D566.3, 128 avec D566, 126 avec D565, 123 avec D564, 120 avec D563, 117 avec D562, 114 avec D561, 110 avec D560, 106 avec D559, 103 avec D558, 100 avec D557, 97 avec D556, 93 avec D555, 90 avec D554, 87 avec D553, 84 avec D552, 81 avec D551, 79 avec D550, 76 avec D549, 75 avec D549.2, 73 avec D548, 72 avec D547, 69 avec D546.2, 68 avec D546.3, 66 avec D545.3, 65 avec D545.2, 64 avec D545.1, 63 avec D544.3, 61 avec D544.1, 60 avec D543.3 ; 59 au 03/10, D543.2 ; 49 et non 48 au 02/10 : un compte par `\.sh$` sautait le dernier, `zoom-reassigne.sh;` ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
   d'office), pas
   seulement par ses bancs voisins : D482 a changé l'infobulle de « + » sans rejouer
   `liste-ajouter.sh`, resté rouge jusqu'à ce que D504 rejoue tout (29/09). Jamais
@@ -359,6 +359,11 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   deux formes se distinguent d'un mot au journal (« sans réponse de banc »). Trois
   gardes du même jour (D263, D266, D275) n'ont valu que parce qu'on les a vues
   rouges ; celle-ci a d'abord échoué à échouer.
+  **Et le rouge se LIT : il doit tomber pour la raison écrite.** Le 23/10 (D579), le
+  cas neuf de l'arrêt après le punch est tombé rouge sur le témoin — en lecture à
+  3,010 s, pas « arrêté à 4,000 s » comme écrit : un projet sans note est fini à 0,
+  sa LECTURE s'y arrête, et F9 partait d'un transport arrêté. Le relevé du témoin
+  dit la valeur ; on la compare à l'attendu avant de cocher « vu rouge ».
 - `$?` se lit AVANT toute substitution `$(…)` de la même ligne : dans
   `echo "[$(date +%T)] FIN $n rc=$?"`, le `$(date)` s'exécute d'abord et
   remet `$?` à zéro. Payé le 24/09 (H37) : la mesure de *B4 Wuz Then* était

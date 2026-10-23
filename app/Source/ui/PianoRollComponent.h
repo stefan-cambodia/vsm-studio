@@ -304,6 +304,9 @@ public:
     bool selectionEndTick(vsm::midi::Tick& fin) const;   ///< D553.2 : la fin de la dernière note choisie
     /// D557.1 : `quantizeStarts` faux — « Quantifier les fins » (*Quantize MIDI Event Ends*), les débuts ne bougent pas.
     void quantizeSelection(float strength, bool alsoQuantizeEnds, bool quantizeStarts = true);
+    /// D579.1 : les réglages de la barre (grille, swing, zone, rayon) tels que « Quantifier » les emploie — l'unique
+    /// source pour quiconque quantifie hors de la sélection (une prise, à sa fin).
+    vsm::sequencer::QuantizeSettings quantizeSettings(float strength, bool alsoQuantizeEnds, bool quantizeStarts) const;
     /// D566.1 : *Reset Quantize* (`figer` faux) et *Freeze Quantize* (`figer` vrai) sur les notes choisies.
     void resetQuantizeSelection(bool figer);
     /// D566.1 : les notes choisies qui portent un déplacement de quantification.

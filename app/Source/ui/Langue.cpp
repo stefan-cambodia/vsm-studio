@@ -3229,6 +3229,16 @@ const Paire kAnglais[] = {
     { "Plis inversés : %1 piste(s)",
       "Fold states flipped: %1 track(s)" },
     // D559 : lever tous les solos et tous les muets, remettre la console à zéro, échanger gauche et droite d'un clip.
+    { "Quantifier chaque prise",   // D579.1
+      "Quantise each take" },
+    { "(les prises MIDI, à la grille du piano roll ; une prise audio ne se quantifie pas)",
+      "(MIDI takes, to the piano roll grid; an audio take is not quantised)" },
+    { "L'armement suit la piste choisie",   // D579.2
+      "Arming follows the selected track" },
+    { "Arrêter après la sortie de punch",   // D579.3
+      "Stop after punch-out" },
+    { "(le transport s'arrête à la sortie, après le post-roll s'il y en a un)",
+      "(the transport stops at the punch-out, after the post-roll if there is one)" },
     { "Moniteur MIDI",   // D578.3
       "MIDI Monitor" },
     { "Moniteur MIDI (%1)",

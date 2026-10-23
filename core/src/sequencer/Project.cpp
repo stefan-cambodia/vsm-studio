@@ -935,6 +935,7 @@ size_t duplicateTrack(Project& project, size_t index) {
     Track copie = project.tracks[index];
     copie.name = copie.name.empty() ? "(copie)" : copie.name + " (copie)";
     copie.armed = false;
+    copie.armedByRule = false;   // D579.2
     for (auto& note : copie.notes) note.id = project.nextNoteId();
     for (auto& clip : copie.clips) clip.id = project.nextClipId();
     // Les groupes situés APRÈS l'original reculent d'un rang pour tout le
@@ -1142,6 +1143,7 @@ size_t explodeTrackByChannel(Project& project, size_t index) {
         garder(piste, canaux[k]);
         piste.name = project.tracks[index].name + " \xe2\x80\x94 canal " + std::to_string(canaux[k] + 1);
         piste.armed = false;
+        piste.armedByRule = false;   // D579.2
         piste.takes.clear();
         piste.versions.clear();
         for (auto& c : piste.clips) c.id = project.nextClipId();

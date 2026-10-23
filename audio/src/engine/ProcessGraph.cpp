@@ -988,7 +988,9 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     const int samplesToProcess = std::min(numSamples, static_cast<int>(scratchMonoL_.size()));
     const size_t actifs = activeSends_.load(std::memory_order_acquire);
 
-    double blockStartSeconds = currentSeconds_.load(std::memory_order_acquire);
+    // D579 bis : la position LUE au début du bloc, gardée telle quelle pour l'écriture de la fin (voir plus bas).
+    const double positionLue = currentSeconds_.load(std::memory_order_acquire);
+    double blockStartSeconds = positionLue;
     // D18.5 : LA VITESSE DE LECTURE, lue UNE FOIS pour le bloc entier -- la
     // changer au milieu d'un bloc ferait sauter la position d'un demi-bloc.
     //
@@ -1167,7 +1169,14 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     // écoutant l'original.
     auditionPlayer_.mixInto(outputL, outputR, samplesToProcess);
 
-    currentSeconds_.store(blockEndSeconds, std::memory_order_release);
+    // D579 bis : LA FIN DU BLOC N'ÉCRASE PAS UNE TÊTE POSÉE PENDANT LE BLOC. L'interface arrête et pose la tête
+    // « exactement » (D553.2, D578.2, D579.3) pendant que ce bloc est en vol ; l'écriture inconditionnelle la
+    // remplaçait par la fin du bloc, 20 ms plus loin à 48 kHz. N'écrire que si la position est encore celle qu'on a lue :
+    // une pose faite entre-temps l'emporte. Hors de cette fenêtre, rien ne change — le rendu hors ligne ne pose jamais
+    // la tête pendant un bloc, et ses octets restent les mêmes.
+    double attendue = positionLue;
+    currentSeconds_.compare_exchange_strong(attendue, blockEndSeconds, std::memory_order_acq_rel,
+                                            std::memory_order_acquire);
 }
 
 void ProcessGraph::renderSpan(const GraphSnapshot& snapshot, bool anySolo, int sampleStart, int sampleCount,

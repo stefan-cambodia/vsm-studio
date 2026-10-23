@@ -445,6 +445,35 @@ public:
                        stderr);
             return true;
         }
+        // D579.1 : note-entrante:<hauteur>:<vélocité>:<durée_ms> — une NOTE au même point d'entrée que le matériel, le
+        // relâché `durée_ms` plus tard ; c'est ce qu'une prise enregistre.
+        if (geste.startsWithIgnoreCase("note-entrante:")) {
+            juce::StringArray champs;
+            champs.addTokens(geste.fromFirstOccurrenceOf(":", false, false), ":", "");
+            const int hauteur = champs.size() == 3 ? champs[0].getIntValue() : -1;
+            const int velocite = champs.size() == 3 ? champs[1].getIntValue() : -1;
+            const int duree = champs.size() == 3 ? champs[2].getIntValue() : -1;
+            if (hauteur < 0 || hauteur > 127 || velocite < 1 || velocite > 127 || duree < 1) return false;
+            audioEngine_.handleIncomingMidiMessage(nullptr, juce::MidiMessage::noteOn(1, hauteur, static_cast<juce::uint8>(velocite)));
+            juce::Timer::callAfterDelay(duree, [moi = juce::Component::SafePointer<MainComponent>(this), hauteur] {
+                if (moi != nullptr)   // l'application a pu quitter entre-temps (la capture d'un banc)
+                    moi->audioEngine_.handleIncomingMidiMessage(nullptr, juce::MidiMessage::noteOff(1, hauteur));
+            });
+            std::fputs(("VSM_NOTE_ENTRANTE : " + juce::String(hauteur) + juce::String::fromUTF8(u8", vélocité ")
+                        + juce::String(velocite) + ", " + juce::String(duree) + " ms\n").toRawUTF8(), stderr);
+            return true;
+        }
+        // D579.2 : les pistes ARMÉES, et celle que la règle a armée.
+        if (geste.equalsIgnoreCase("relever-armement")) {
+            juce::StringArray armees, parLaRegle;
+            for (size_t i = 0; i < project_.tracks.size(); ++i) {
+                if (project_.tracks[i].armed) armees.add(juce::String(static_cast<int>(i)));
+                if (project_.tracks[i].armedByRule) parLaRegle.add(juce::String(static_cast<int>(i)));
+            }
+            std::fputs(("VSM_ARMEMENT : {" + armees.joinIntoString(", ") + juce::String::fromUTF8(u8"} ; par la règle : {")
+                        + parLaRegle.joinIntoString(", ") + "}\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D518 : la BOUCLE du projet, du moteur et du bouton, au même instant — un
         // Ctrl+Z qui rendait un projet sans région laissait le moteur boucler.
         if (geste.equalsIgnoreCase("relever-boucle")) {
@@ -538,6 +567,15 @@ public:
         if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); dire("muet"); return true; }
         // D110 : armer, comme le bouton R -- pour les boîtes du départ d'une prise.
         if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); dire("armer"); return true; }
+        // D579.2 : armer:<n> — le bouton R d'une piste qu'on ne choisit PAS (la règle de l'armement ne la touche pas).
+        if (geste.startsWithIgnoreCase("armer:")) {
+            const int n = geste.fromFirstOccurrenceOf(":", false, false).getIntValue();
+            if (n < 0 || static_cast<size_t>(n) >= project_.tracks.size()) return false;
+            trackList_.armer(static_cast<size_t>(n));
+            std::fputs(("VSM_GESTE : armer : piste " + juce::String(n) + juce::String::fromUTF8(u8" (son bouton R)\n")).toRawUTF8(),
+                       stderr);
+            return true;
+        }
         if (geste.startsWithIgnoreCase("renommer:")) {
             trackList_.renommer(piste, geste.fromFirstOccurrenceOf(":", false, false));
             dire("renommer");
@@ -1265,6 +1303,10 @@ private:
         kMenuTransportPostRollLast = kMenuTransportPostRollFirst + 3,
         /// D578.3 : la fenêtre du moniteur MIDI.
         kMenuViewMidiMonitor,
+        /// D579.1, D579.2, D579.3 : quantifier chaque prise, l'armement qui suit la piste choisie, l'arrêt après le punch.
+        kMenuRecordAutoQuantize,
+        kMenuTrackArmFollowsSelection,
+        kMenuRecordStopAfterPunch,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
@@ -1840,6 +1882,19 @@ private:
     /// D578.1 : LE PRÉ-ROLL ET LE POST-ROLL, en mesures — des préférences du poste, comme le décompte.
     int preRollBars_ = 0;
     int postRollBars_ = 0;
+    /// D579 : TROIS PRÉFÉRENCES DU POSTE pour l'enregistrement, comme le décompte qu'elles côtoient.
+    bool quantifierChaquePrise_ = false;   ///< D579.1
+    bool armementSuitLeChoix_ = false;     ///< D579.2
+    bool arretApresPunch_ = false;         ///< D579.3
+    /// D579.3 : où la prise en cours s'arrête d'elle-même — la sortie de punch, post-roll compris ; -1 : nulle part.
+    vsm::midi::Tick arretApresPunchTick_ = -1;
+    /// D579.3 : la tête au relevé précédent de la prise — l'arrêt part au FRANCHISSEMENT du point ; -1 : pas encore lue.
+    vsm::midi::Tick arretApresPunchVu_ = -1;
+    /// D579.1 : les notes d'une prise quantifiées comme par « Quantifier la dernière prise » — sans ouvrir de pas : la
+    /// prise a le sien.
+    void quantifierLaPrise(std::vector<vsm::sequencer::Note>& notes);
+    /// D579.2 : la piste choisie armée par la règle, celle que la règle avait armée désarmée.
+    void armerParLaRegle(size_t piste);
     /// D578.1 : la tête que l'utilisateur avait posée quand le pré-roll a fait partir la lecture plus tôt ; le front
     /// montant la prend pour point de départ (le retour à l'arrêt y revient). -1 : le départ relevé par `play()`.
     vsm::midi::Tick departVoulu_ = -1;

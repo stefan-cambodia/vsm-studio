@@ -155,6 +155,7 @@ if (VSM_BUILD_TESTS)
         tests/test_metronome.cpp
         tests/test_count_in.cpp
         tests/test_fin_du_planning.cpp
+        tests/test_pose_en_vol.cpp
         tests/test_latency_probe.cpp
         tests/test_channel_strip.cpp
         tests/test_waveform_peaks.cpp

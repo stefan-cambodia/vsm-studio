@@ -289,6 +289,7 @@ MainComponent::MainComponent()
     refreshListeningIndicator();
 
     trackList_.onTrackSelected = [this](size_t idx) {
+        armerParLaRegle(idx);   // D579.2 : l'armement suit la piste choisie, si la préférence le veut
         // D565.3 : LA FENÊTRE DES NOTES DE PISTE SUIT LA PISTE CHOISIE, si elle est ouverte.
         if (notesDePisteWindow_ && notesDePisteWindow_->isVisible() && idx != notesDePisteIndex_)
             juce::MessageManager::callAsync([this] { montrerNotesDeLaPiste(); });
@@ -936,7 +937,12 @@ MainComponent::MainComponent()
     transportBar_.onPlaybackSpeedChanged = [this](double facteur) {
         audioEngine_.processGraph().setPlaybackSpeed(facteur);
     };
-    trackList_.onArmChanged = [this] { refreshArmedTracks(); };
+    trackList_.onArmChanged = [this] {
+        // D579.2 : une piste désarmée par la main n'est plus à la règle.
+        for (auto& piste : project_.tracks)
+            if (!piste.armed) piste.armedByRule = false;
+        refreshArmedTracks();
+    };
 
     // LA VUE D'ARRANGEMENT (D5.1). Elle ne connaît que le projet et ses propres
     // gestes ; c'est l'application qui sait ce qu'un geste coûte -- un pas
@@ -1441,6 +1447,10 @@ MainComponent::MainComponent()
         preRollBars_ = offerte(vsm::app::ui::UiScale::properties().getIntValue("transportPreRollBars", 0));
         postRollBars_ = offerte(vsm::app::ui::UiScale::properties().getIntValue("transportPostRollBars", 0));
     }
+    // D579 : les trois préférences de l'enregistrement.
+    quantifierChaquePrise_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementQuantifierChaquePrise", false);
+    armementSuitLeChoix_ = vsm::app::ui::UiScale::properties().getBoolValue("pistesArmementSuitLeChoix", false);
+    arretApresPunch_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementArretApresPunch", false);
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -3587,6 +3597,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         const auto p = static_cast<size_t>(std::max(0, nom.substring(6).getIntValue()));
         if (p < project_.tracks.size()) {
             project_.tracks[p].armed = true;
+            project_.tracks[p].armedByRule = false;   // D579.2 : armée par la main
             trackList_.refreshTrackRow(p);
             refreshArmedTracks();
         }
@@ -4004,6 +4015,28 @@ void MainComponent::timerCallback() {
                 transport_.stop();
                 seekAllViews(fin);
                 std::fputs(("VSM_LIRE_SELECTION : arrêt à " + std::to_string(fin) + " ticks\n").c_str(), stderr);
+            }
+        }
+        // D579.3 : L'ARRÊT APRÈS LA SORTIE DE PUNCH — la même horloge et la même pose que D553.2 : la prise close comme
+        // par F9 (le bouton Rec relâché), le transport arrêté, la tête EXACTEMENT sur le point. AU FRANCHISSEMENT, pas
+        // dès qu'on est au-delà : une prise lancée en lecture APRÈS la sortie (sans décompte, F9 ne déplace pas la tête)
+        // s'arrêtait aussitôt ; elle attend désormais qu'une boucle la ramène et qu'elle repasse le point.
+        if (arretApresPunchTick_ >= 0 && recordPhase_ == RecordPhase::Recording && lecture) {
+            const vsm::midi::Tick ici = transport_.currentTick();
+            const bool franchi = arretApresPunchVu_ >= 0 && arretApresPunchVu_ < arretApresPunchTick_
+                                 && ici >= arretApresPunchTick_;
+            if (arretApresPunchVu_ < 0 && ici >= arretApresPunchTick_)
+                std::fputs(("VSM_PUNCH : la prise part apr\xc3\xa8s le point d'arr\xc3\xaat (" + std::to_string(ici) + " >= "
+                            + std::to_string(arretApresPunchTick_) + " ticks) \xe2\x80\x94 l'arr\xc3\xaat attend qu'on le franchisse\n")
+                               .c_str(), stderr);
+            arretApresPunchVu_ = ici;
+            if (franchi) {
+                const vsm::midi::Tick fin = arretApresPunchTick_;
+                stopRecording();
+                transport_.stop();
+                seekAllViews(fin);
+                std::fputs(("VSM_PUNCH : arr\xc3\xaat apr\xc3\xa8s la sortie, \xc3\xa0 " + std::to_string(fin) + " ticks\n").c_str(),
+                           stderr);
             }
         }
     }
@@ -5054,6 +5087,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                           : tr(u8"Désactiver la piste (sa machine et ses inserts sont libérés)"),
                                   piste < project_.tracks.size());
                 }
+                // D579.2 : L'ARMEMENT SUIT LA PISTE CHOISIE — une préférence du poste ; ce que la main a armé reste armé.
+                menu.addItem(kMenuTrackArmFollowsSelection, tr(u8"L'armement suit la piste choisie"), true, armementSuitLeChoix_);
                 // D30.3 : LA CHAÎNE D'INSERTS, D'UNE PISTE À L'AUTRE. Les
                 // libellés DISENT COMBIEN : une commande grisée sans raison est
                 // une commande qu'on croit cassée, et « coller 4 inserts » dit
@@ -5411,6 +5446,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuRecordPunchFromLoop, tr(u8"La prendre sur la boucle"),
                               project_.loopEndTick > project_.loopStartTick);
                 menu.addItem(kMenuRecordPunchClear, tr(u8"L'effacer"), punchPose);
+                // D579.3 : une préférence du poste — active ou non, la région ; le post-roll de D578.2 s'y ajoute.
+                menu.addItem(kMenuRecordStopAfterPunch, tr(u8"Arrêter après la sortie de punch"), true, arretApresPunch_);
+                menu.addItem(-1, tr(u8"(le transport s'arrête à la sortie, après le post-roll s'il y en a un)"), false, false);
                 menu.addSeparator();
 
                 // LA LATENCE, PUBLIÉE. Le critère de D3.6 dit « le chiffre est
@@ -5493,6 +5531,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuRecordQuantizeTake,
                               tr(u8"Quantifier la dernière prise (grille du piano roll)"),
                               !lastTake_.empty());
+                // D579.1 : la même quantification, à la fin de CHAQUE prise, dans le pas de la prise.
+                menu.addItem(kMenuRecordAutoQuantize, tr(u8"Quantifier chaque prise"), true, quantifierChaquePrise_);
+                menu.addItem(-1, tr(u8"(les prises MIDI, à la grille du piano roll ; une prise audio ne se quantifie pas)"),
+                             false, false);
                 // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
                 // d'événements gardés est DIT : « récupérer » sur un tampon
                 // vide ne doit pas se découvrir en cliquant.
@@ -6109,6 +6151,24 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
     if (menuItemID == kMenuTrackHideEmpty) { masquerPistesSansDonnees(); return; }               // D577.2
+    if (menuItemID == kMenuRecordAutoQuantize || menuItemID == kMenuTrackArmFollowsSelection
+        || menuItemID == kMenuRecordStopAfterPunch) {   // D579 : trois préférences du poste, des bascules
+        bool& reglage = menuItemID == kMenuRecordAutoQuantize ? quantifierChaquePrise_
+                        : menuItemID == kMenuTrackArmFollowsSelection ? armementSuitLeChoix_ : arretApresPunch_;
+        const char* cle = menuItemID == kMenuRecordAutoQuantize ? "enregistrementQuantifierChaquePrise"
+                          : menuItemID == kMenuTrackArmFollowsSelection ? "pistesArmementSuitLeChoix"
+                                                                       : "enregistrementArretApresPunch";
+        reglage = !reglage;
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        reglages.setValue(cle, reglage);
+        reglages.saveIfNeeded();
+        // La règle coupée laisse ce qu'elle avait armé armé : c'est désormais l'armement de la main.
+        if (menuItemID == kMenuTrackArmFollowsSelection && !reglage)
+            for (auto& piste : project_.tracks) piste.armedByRule = false;
+        std::fputs((std::string("VSM_ENREGISTREMENT_REGLAGE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
+        menuItemsChanged();
+        return;
+    }
     if (menuItemID >= kMenuTransportPreRollFirst && menuItemID <= kMenuTransportPostRollLast) {   // D578.1, D578.2
         const bool avant = menuItemID <= kMenuTransportPreRollLast;
         const int n = kMesuresDeRoll[menuItemID - (avant ? kMenuTransportPreRollFirst : kMenuTransportPostRollFirst)];
@@ -13350,6 +13410,7 @@ void MainComponent::closePass(uint32_t passe, double debutSecondes, double finSe
                                             [this](double s) { return project_.secondsToTicks(s); },
                                             compteur);
         for (auto& note : prise.notes) note.channel = project_.tracks[index].channel;
+        quantifierLaPrise(prise.notes);   // D579.1 : chaque passe empilée est une prise
         vsm::sequencer::pushTake(project_.tracks[index], std::move(prise));
     }
     if (compteur > 0) project_.ensureNoteIdAbove(compteur - 1);
@@ -13478,6 +13539,18 @@ void MainComponent::startRecording() {
 
     recorder_.begin(punchSeconds_, punchOutSeconds());
     audioEngine_.setRecordPunchOut(punchOutSeconds());
+    // D579.3 : L'ARRÊT APRÈS LA SORTIE DE PUNCH, post-roll de D578.2 compris — la machine de D553.2 l'applique.
+    arretApresPunchTick_ = -1;
+    arretApresPunchVu_ = -1;
+    if (arretApresPunch_ && punchDefini) {
+        arretApresPunchTick_ = postRollBars_ > 0
+            ? vsm::sequencer::shiftByBars(project_.timeSignatureMap, project_.ticksPerQuarterNote, project_.punchEndTick,
+                                          postRollBars_)
+            : project_.punchEndTick;
+        std::fputs(("VSM_PUNCH : arr\xc3\xaat pr\xc3\xa9vu \xc3\xa0 " + std::to_string(arretApresPunchTick_) + " ticks (sortie "
+                    + std::to_string(project_.punchEndTick) + ", post-roll " + std::to_string(postRollBars_)
+                    + " mesure(s))\n").c_str(), stderr);
+    }
     recordDrain_.clear();
     recordDropReported_ = false;
     recordEditOpened_ = false;
@@ -13519,6 +13592,7 @@ void MainComponent::drainRecording() {
 
 void MainComponent::stopRecording() {
     if (recordPhase_ == RecordPhase::Off) return;
+    arretApresPunchTick_ = -1;   // D579.3 : la prise close, plus rien à arrêter
 
     drainRecording();   // ce qui restait dans la file appartient à la prise
     audioEngine_.setRecording(false);
@@ -13617,6 +13691,7 @@ void MainComponent::stopRecording() {
                                        compteur);
         vsm::sequencer::NoteSelection ids;
         for (const auto& note : notes) ids.insert(note.id);
+        quantifierLaPrise(notes);   // D579.1 : avant d'être posées, dans le pas de la prise
         vsm::sequencer::applyRecording(project_.tracks[index], notes, recordMode_,
                                         punchTick_, finTick);
         // D24.2 : LES CONTRÔLEURS DE LA PRISE, sur la même piste, même plage,
@@ -16838,6 +16913,48 @@ void MainComponent::direOrigineDuPlay(const char* origine) {
 }
 
 void MainComponent::startPlaybackForCapture() { lancerLecture("VSM_LECTURE"); }   // D578.1
+
+void MainComponent::quantifierLaPrise(std::vector<Note>& notes) {
+    // D579.1 : LA quantification du logiciel — la grille, le swing, la zone et le rayon du piano roll, à 100 %, comme
+    // « Quantifier la dernière prise » ; sans pas à elle : la prise a ouvert le sien, un Ctrl+Z défait les deux.
+    if (!quantifierChaquePrise_ || notes.empty()) return;
+    quantizeNotes(notes, pianoRoll_.quantizeSettings(1.0f, false, true), project_.ticksPerQuarterNote);
+    std::fputs(("VSM_QUANTIFIER_PRISE : " + std::to_string(notes.size()) + " note(s) quantifi\xc3\xa9" "e(s), grille de "
+                + std::to_string(gridResolutionToTicks(pianoRoll_.gridResolution(), project_.ticksPerQuarterNote))
+                + " ticks\n").c_str(), stderr);
+}
+
+void MainComponent::armerParLaRegle(size_t piste) {
+    // D579.2 : LA RÈGLE DÉSARME CE QU'ELLE A ARMÉ, et rien d'autre. Pendant une prise, elle ne joue pas : la prise
+    // s'écrit sur les pistes armées à son ARRÊT, et changer l'armement au milieu la déplacerait.
+    if (!armementSuitLeChoix_ || piste >= project_.tracks.size()) return;
+    if (recordPhase_ != RecordPhase::Off) {
+        std::fputs("VSM_ARMEMENT : une prise est en cours \xe2\x80\x94 la r\xc3\xa8gle n'arme rien\n", stderr);
+        return;
+    }
+    if (project_.tracks[piste].armedByRule) return;   // déjà la sienne
+    // PAS DE PAS D'HISTORIQUE : choisir une piste n'en ouvre pas, et l'armement qui le suit non plus.
+    // LE DRAPEAU EST SUR LA PISTE, pas son rang : une piste montée, descendue ou ajoutée garde le sien.
+    std::string desarmees;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        auto& autre = project_.tracks[i];
+        if (i == piste || !autre.armedByRule) continue;
+        autre.armed = false;
+        autre.armedByRule = false;
+        trackList_.refreshTrackRow(i);
+        desarmees += ", piste " + std::to_string(i) + " d\xc3\xa9sarm\xc3\xa9" "e";
+    }
+    const bool armee = !project_.tracks[piste].armed;   // armée par la main : elle le reste, et n'est pas à la règle
+    if (armee) {
+        project_.tracks[piste].armed = true;
+        project_.tracks[piste].armedByRule = true;
+        trackList_.refreshTrackRow(piste);
+    }
+    refreshArmedTracks();
+    std::fputs(("VSM_ARMEMENT : piste " + std::to_string(piste)
+                + (armee ? " arm\xc3\xa9" "e par la r\xc3\xa8gle" : " d\xc3\xa9j\xc3\xa0 arm\xc3\xa9" "e par la main")
+                + desarmees + "\n").c_str(), stderr);
+}
 
 void MainComponent::lancerLecture(const char* origine) {
     // D578.1 : LE PRÉ-ROLL — la lecture part de la tête MOINS ses mesures, au début du morceau au plus tôt ; la tête

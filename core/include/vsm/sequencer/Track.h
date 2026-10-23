@@ -702,6 +702,10 @@ public:
     /// écoute mon clavier », et deux champs pour une seule idée finissent
     /// toujours par se contredire.
     bool armed = false;
+    /// D579.2 : ARMÉE PAR LA RÈGLE (*L'armement suit la piste choisie*), et non par la main — la seule que la règle
+    /// désarme. Sur la piste et non par son rang : un rang change à chaque piste montée, descendue ou ajoutée, et la
+    /// règle désarmait alors la voisine. Pas plus écrit que `armed`, et jamais vrai sans lui.
+    bool armedByRule = false;
     float volume = 1.0f;  // gain linéaire, 1.0 = 0 dB
     float pan = 0.0f;      // -1 (gauche) .. +1 (droite)
     /// D573.1 : LA LARGEUR STÉRÉO (le panoramique combiné de Cubase) — 1 l'image entière, 0 la somme mono sur les deux

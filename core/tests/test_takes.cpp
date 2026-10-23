@@ -339,6 +339,19 @@ VSM_TEST(duplicating_a_track_copies_everything_with_fresh_ids) {
     VSM_ASSERT_EQ(d.notes[0].number, uint8_t{40});
 }
 
+// D579.2 — L'ARMEMENT NE SE COPIE PAS, ni celui de la main ni celui de la règle : une copie armée par la règle serait
+// désarmée au choix suivant d'une autre piste, et une copie armée par la main recevrait le clavier sans qu'on l'ait dit.
+VSM_TEST(duplicating_a_track_copies_neither_arming_nor_the_rule_flag) {
+    Project projet;
+    projet.tracks.resize(1);
+    projet.tracks[0].armed = true;
+    projet.tracks[0].armedByRule = true;
+    duplicateTrack(projet, 0);
+    VSM_ASSERT(projet.tracks[0].armed && projet.tracks[0].armedByRule);
+    VSM_ASSERT(!projet.tracks[1].armed);
+    VSM_ASSERT(!projet.tracks[1].armedByRule);
+}
+
 VSM_TEST(duplicating_a_track_keeps_routings_to_groups_that_moved_down) {
     Project projet;
     projet.tracks.resize(3);
