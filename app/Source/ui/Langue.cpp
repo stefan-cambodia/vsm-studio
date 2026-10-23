@@ -3247,8 +3247,8 @@ const Paire kAnglais[] = {
       "Timecode (30 fps)" },
     { "Échantillons",
       "Samples" },
-    { "échantillons : fréquence inconnue",
-      "samples: unknown sample rate" },
+    { "sans fréquence",
+      "no sample rate" },
     { "(la première partie de la position ; les mesures ne changent pas)",
       "(the first part of the position; the bars do not change)" },
     { "Les contrôleurs suivent les notes",   // D581.3

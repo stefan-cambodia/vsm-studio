@@ -14186,7 +14186,9 @@ void MainComponent::soloTrackExclusively(size_t index) {
 
 void MainComponent::soloChoisitLaPiste(size_t piste) {
     // D582.2 : LE SOLO CHOISIT LA PISTE — par le chemin du clic sur la ligne, ce qui ouvre le piano roll sur elle.
-    if (!soloChoisitLaPiste_ || piste >= project_.tracks.size() || piste == trackList_.selectedTrackIndex()) return;
+    // Une piste DÉJÀ dans la sélection ne la change pas : D38.4 fait agir le solo de l'un sur tout le lot, et le lot
+    // reste choisi (le S de la ligne choisit d'ailleurs lui-même une piste hors de la sélection — D38.4 encore).
+    if (!soloChoisitLaPiste_ || piste >= project_.tracks.size() || trackList_.selectedTracks().count(piste) > 0) return;
     trackList_.selectTrackIndex(piste);
     std::fputs(("VSM_SOLO_CHOISIT : piste " + std::to_string(piste) + " choisie\n").c_str(), stderr);
 }

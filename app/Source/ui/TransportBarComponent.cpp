@@ -51,6 +51,10 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     // D22.2 : le double-clic sur la position remonte au composant (voir
     // mouseDoubleClick) ; un Label intercepte sinon les clics et ne dit rien.
     positionLabel_.setInterceptsMouseClicks(false, false);
+    // D582.1 : JAMAIS TASSÉE. Le libellé, large de 140 px, tasse un texte qui tient presque sur une ligne : en
+    // échantillons (« 110250  |  mes. 2 · 2 »), les chiffres sortaient plus petits que ceux des secondes, passées à la
+    // ligne. Il passe à la ligne lui aussi, à la taille de tous les autres.
+    positionLabel_.setMinimumHorizontalScale(1.0f);
     // D94 : LES INFOBULLES DE CETTE BARRE SONT POSÉES PAR `retraduire()`,
     // appelée en fin de constructeur. Posées ici, en français, la bascule de
     // langue les laissait dans la langue du démarrage -- ce que D78 interdit.
@@ -590,13 +594,15 @@ void TransportBarComponent::timerCallback() {
     } else if (formatPosition_ == 4 && frequence_ > 0.0) {
         temps = juce::String(static_cast<long long>(std::llround(std::max(0.0, seconds) * frequence_)));
     } else if (formatPosition_ == 4) {
-        temps = vsm::app::ui::tr(u8"échantillons : fréquence inconnue");   // pas de périphérique : dit, pas déguisé en secondes
+        temps = vsm::app::ui::tr(u8"sans fréquence");   // pas de périphérique : dit, pas déguisé en secondes ; une ligne
     } else {
         temps = juce::String::formatted("%02d:%06.3f", minutes, secsRemainder);
     }
     // D11.3 : la position MUSICALE à côté de la position en temps. « tick
     // 4 215 » ne dit rien à personne ; « mes. 33 · 2 », si.
-    juce::String text = temps + "  |  "
+    // D582.1 : SUR DEUX LIGNES, coupées entre les deux parties. Le libellé passait déjà à la ligne (« 00:02,500  | »
+    // puis « mes. 2 · 2 ») ; en échantillons, plus court, il coupait « mes. » de ses chiffres.
+    juce::String text = temps + "\n"
                         + (positionInBarsProvider ? positionInBarsProvider(tick)
                                                   : "tick " + juce::String(static_cast<long long>(tick)));
     positionLabel_.setText(text, juce::dontSendNotification);

@@ -44984,3 +44984,52 @@ l'arrangement fait défiler les pistes, Maj le temps, Ctrl le zoom (`mouseWheelM
 
 **L'ORDRE, TRANCHÉ ICI.** D582.2 d'abord (le plus simple), puis D582.1, puis D582.3 ; un banc par élément, entré dans la
 série de `verifier.sh --bancs`.
+
+**D582.2 — L'ATTENDU (4) RÉFUTÉ, ET LE ZÉRO DE L'AUDIT FAUX (24/10, 00 h 44 à l'horloge, avant de rejouer).** Les trois
+bancs joués sur le binaire de D582 : `position-affichee` **7 / 7**, `molette-gain` **6 / 6**, `solo-choisit` **4 / 5** —
+le TÉMOIN sans l'option choisit la piste **2**, et non 0. Le rouge ne tombe pas pour la raison écrite : la règle de D38.4
+(`selectionPourUnGesteSur`) choisit DÉJÀ la piste dont on clique le S — ou le M — quand elle est hors de la sélection,
+« pour que le geste ne porte pas sur ce qu'on a oublié d'avoir choisi ». La course réglée le disait aussi : aucune ligne
+`VSM_SOLO_CHOISIT`, la piste était choisie avant que la règle ne la regarde. Le « 0 pour le solo qui choisit la piste »
+de l'audit lisait `basculerSolo` sans lire la fonction qu'il appelle : la faute de D571.3, repayée. **Ce que l'option
+change encore, lu dans le code** : le S d'une TRANCHE de la console (`ChannelStrip`, qui ne suit pas D38.4) et le solo
+EXCLUSIF (Ctrl+clic, `soloTrackExclusively`, qui rend la main avant la règle). **Et ce qu'elle ne doit pas faire** :
+réduire à une piste la sélection de plusieurs dont on allume le solo d'un membre — D38.4 fait agir le solo sur tout le
+lot, qui reste choisi ; le code de D582 le réduisait (`selectTrackIndex`). Corrigé : une piste déjà dans la sélection ne
+la change pas. Le relevé `relever-piste-choisie` dit aussi le compte de la sélection.
+**L'attendu, réécrit avant la mesure** (trois pistes ; le S de la première tranche est celui de la piste 0,
+`cliquer:mixeur.solo` prenant le premier homonyme) :
+- option cochée : `choisir:2`, le S de la tranche 0 → **0** ; `choisir:2`, le même S (éteint) → **2** ; `choisir:0`,
+  Ctrl+S de la ligne 1 (`modificateur:ctrl:solo:1`) → **1** ; `choisir:0,1,2`, le S de la ligne 2 → **0**, **3** choisies ;
+- le témoin sans l'option : le S de la tranche 0 après `choisir:2` → **2** ; Ctrl+S de la ligne 1 après `choisir:0` →
+  **0** ; le S de la ligne 2 après `choisir:0` → **2** (D38.4, que l'option ne change pas) ;
+- relancé dans le même HOME : l'entrée cochée ; en anglais, « Solo selects the track ».
+
+### Phase D582 — FAITE (24/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D582.1 | la position en timecode et en échantillons | `TransportBarComponent::setFormatPosition` — 0 secondes, 1 à 3 le timecode à 24, 25, 30 i/s en images ENTIÈRES (`floor`), 4 les échantillons arrondis à la fréquence affichée (« sans fréquence » s'il n'y en a pas) ; *Transport ▸ Position affichée*, `transportPositionAffichee` au poste ; `relever-position` lit le libellé même ; `tools/position-affichee.sh` à mes. 2 · 2 (2,5 s) : secondes **00:02,500** (le témoin), 24 i/s **00:00:02:12**, 25 i/s **00:00:02:12**, 30 i/s **00:00:02:15**, échantillons **110250** à 44,1 kHz, « mes. 2 · 2 » dans les cinq ; relancé : 25 i/s cochée et relue ; en anglais « Timecode (25 fps) ». **L'ATTENDU ÉCRIT AVANT EST TENU** — et la photo a montré un défaut que le relevé ne voyait pas, ci-dessous | **oui** |
+| D582.2 | le solo choisit la piste | l'attendu (4) **RÉFUTÉ** au premier passage (le témoin choisissait la piste 2 : D38.4 le faisait déjà pour le S de la ligne), le zéro de l'audit faux pour la ligne, l'attendu réécrit avant d'être rejoué (ci-dessus) ; `soloChoisitLaPiste` ne touche plus une piste déjà dans la sélection ; `tools/solo-choisit.sh` : avec l'option, le S de la tranche 0 → **0**, le même S éteint → **2**, Ctrl+S de la ligne 1 → **1**, le S d'un membre du lot → **0, 3 choisies** ; le témoin → **2, 0, 2** ; relancé : cochée ; en anglais « Solo selects the track ». **TENU, sur l'attendu réécrit** | **oui** |
+| D582.3 | la molette règle le gain d'un clip audio | `reglerGainALaMolette` — clips audio seuls, 1 dB par cran depuis SON gain, ±24 dB ; une rafale (même clip, moins de 500 ms entre deux crans) fait un pas « Gain du clip » ; `tools/molette-gain.sh` : trois crans **+3,0 dB** (1,4125), puis deux en bas **+1,0 dB** (1,1220), Ctrl+Z après une rafale **0 dB** en un pas, le témoin **0 dB**, le clip MIDI **inchangé** ; relancé : cochée ; en anglais. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| — | le témoin | le binaire de D581 (`build/temoin-D581`) : `molette-gain` **rouge 3 / 6** pour la raison écrite (0 dB : la molette y fait défiler ; l'entrée absente ; verts, l'annulation, le témoin et le clip MIDI, que la fonction ne doit pas changer) ; `position-affichee` **rouge 7 / 7** et `solo-choisit` **rouge 6 / 6**, mais par l'ABSENCE de leurs relevés (`relever-position`, `relever-piste-choisie` et `solo:` y sont des gestes inconnus) — pour ces deux-là l'A/B est le témoin intérieur au banc, du même binaire : les secondes, l'option décochée | **oui** |
+| — | la série | `./verifier.sh --bancs` : **171 / 171** en 88 min ; préférences de l'utilisateur identiques (`cmp`) ; l'unité du compositeur **766 → 1 208 Mo** ; l'écran éteint et la session verrouillée à la fin (vus à 02 h 31, 158 bancs passés) — aucun rouge, le relevé de D516 le dit en rouge sans qu'un banc soit tombé ; ni oom ni veille au journal du système | **oui** |
+
+**CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.**
+- **La position ne se tasse plus, et se coupe entre ses deux parties.** La photo de la barre (`VSM_CAPTURE`) a montré en
+  échantillons « 110250  |  mes. 2 · 2 » en caractères PLUS PETITS que les secondes : large de 140 px, le libellé tassait
+  un texte qui tenait presque sur une ligne (`minimumHorizontalScale`), et passait les autres à la ligne. Tassé à 1,0, il
+  coupait ensuite « mes. » de ses chiffres. Le libellé écrit donc ses deux parties sur deux lignes, à la taille de tous
+  les autres — le « | » qui pendait au bout de la première disparaît —, et `textePosition()` les rejoint par « | » pour
+  le journal. Regardé dans les cinq formats et en anglais.
+- **« sans fréquence » et non « échantillons : fréquence inconnue »**, qui n'aurait pas tenu dans 140 px : lu dans le
+  code, NON mesuré — la barre a toujours une fréquence (48 kHz d'origine, puis celle du périphérique).
+- **La garde du lot (D582.2, cas 4) n'a pas été vue rouge** : le binaire d'avant la correction n'a pas été gardé. Elle
+  est lue dans le code (`selectedTracks().count(piste)`), et le cas mesure qu'elle tient.
+- **`cliquer:mixeur.solo` prend le premier de trois homonymes**, et l'application le dit (« AMBIGU ») : le banc relaie
+  l'avertissement, et `VSM_SOLO_CHOISIT : piste 0` montre que c'est bien la tranche de la piste 0.
+
+Les entrées REGARDÉES (`VSM_MENU_PHOTO`) : *Position affichée*, six lignes, *Timecode (25 i/s)* cochée, la ligne grisée
+« (la première partie de la position ; les mesures ne changent pas) » ; *Le solo choisit la piste* cochée sous
+*L'armement suit la piste choisie* ; *La molette règle le gain des clips audio* cochée sous *La sélection suit la tête*,
+avec sa ligne grisée.

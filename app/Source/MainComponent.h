@@ -465,7 +465,8 @@ public:
         }
         // D582.2 : la PISTE CHOISIE ; D582.1 : la POSITION telle que la barre la peint.
         if (geste.equalsIgnoreCase("relever-piste-choisie")) {
-            std::fputs(("VSM_PISTE_CHOISIE : " + juce::String(static_cast<int>(trackList_.selectedTrackIndex())) + "\n")
+            std::fputs(("VSM_PISTE_CHOISIE : " + juce::String(static_cast<int>(trackList_.selectedTrackIndex())) + " ; "
+                        + juce::String(static_cast<int>(trackList_.selectedTracks().size())) + " choisie(s)\n")
                            .toRawUTF8(), stderr);
             return true;
         }

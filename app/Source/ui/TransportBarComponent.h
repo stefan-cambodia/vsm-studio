@@ -54,7 +54,8 @@ public:
     void setFormatPosition(int format);
     int formatPosition() const { return formatPosition_; }
     /// D582.1 : le libellé de la position tel qu'il est peint (pour le relevé `relever-position`).
-    juce::String textePosition() const { return positionLabel_.getText(); }
+    /// D582.1 : le libellé même, ses deux lignes jointes par « | » pour tenir sur une ligne du journal.
+    juce::String textePosition() const { return positionLabel_.getText().replace("\n", "  |  "); }
     double frequenceAffichee() const { return frequence_; }   ///< D582.1 : 0 = jamais posée
 
     /// D11.3 : « mes. 33 · 2 » à côté du temps ; sans fournisseur, le tick brut.
