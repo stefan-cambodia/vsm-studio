@@ -77,6 +77,7 @@ echo "=== D351 : ouvrir un projet ne lance pas la lecture ==="
 
 joue=0
 ordres=0
+lues=0   # D578 : les photos JUGÉES — une course morte n'en laisse pas, et ne prouve pas l'arrêt
 for essai in 1 2 3 4; do
     maison="$(mktemp -d "$brouillon/home.XXXX")"   # D318 : un HOME NEUF
     # LA FENÊTRE EST BORNÉE : une course qui prend l'écran prend aussi le
@@ -93,14 +94,22 @@ try:
     from PIL import Image
 except ImportError:
     print("inconnu"); raise SystemExit(0)
-px = Image.open(sys.argv[1]).convert("RGB").load()
+try:
+    px = Image.open(sys.argv[1]).convert("RGB").load()
+except OSError:
+    print("absente"); raise SystemExit(0)
 # Le bouton « Play » est rempli d'ambre quand le transport roule.
 r, g, b = px[40, 50]
 print("joue" if r > 150 and b < 120 else "arret")
 PY
 )"
     [ "$etat" = "joue" ] && joue=$((joue + 1))
+    { [ "$etat" = "joue" ] || [ "$etat" = "arret" ]; } && lues=$((lues + 1))
 done
+
+# D578 : LE 23/10, LE COMPOSITEUR TUÉ PAR `oomd`, les quatre courses sont mortes en segfault, sans photo ni journal — et
+# la garde a dit « transport à l'ARRÊT » et « aucun ordre » : l'absence comptée pour le bon résultat.
+verdict "quatre photos lues (lues : $lues)" "$([ "$lues" -eq 4 ] && echo 1 || echo 0)"
 
 verdict "quatre ouvertures, transport à l'ARRÊT (roulant : $joue)" \
         "$([ "$joue" -eq 0 ] && echo 1 || echo 0)"

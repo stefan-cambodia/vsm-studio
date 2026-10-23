@@ -97,7 +97,7 @@ def francaise(ligne):
     for d in DONNEES: t = d.sub(" ", t)
     mots = {m.lower() for m in re.findall(r"[\w()']+", t)}
     return bool(mots & MOTS) or bool(ACCENTS.search(t))
-fautes = total = 0
+fautes = total = mortes = 0
 projets = (brouillon / "projets.txt").read_text().splitlines()
 for k, entree in enumerate(projets, 1):
     rc, projet = entree.split(" ", 1)
@@ -114,11 +114,18 @@ for k, entree in enumerate(projets, 1):
              and not l.startswith(("VSM_OUVERTURE", "VSM_EFFET", "VSM_VOLET_LIGNE"))]
     fr = [l for l in entieres[1:] if francaise(l)]   # la première est le compte « N réserves »
     total += len(entieres); fautes += len(fr)
-    print(f"  {'OK ' if not fr else 'FR '} rc={rc} {len(entieres):2d} ligne(s), {len(fr)} française(s)  {projet}")
+    # D578 : UNE COURSE MORTE N'EST PAS UN VOLET SANS FAUTE. Le 23/10, le compositeur tué par `oomd`, les dix courses
+    # sont mortes en segfault (rc=139) et la garde a dit « OK … 0 française(s) sur 0 relevée(s) ».
+    morte = rc != "0"
+    mortes += morte
+    etat = "MORTE" if morte else ("OK " if not fr else "FR ")
+    print(f"  {etat} rc={rc} {len(entieres):2d} ligne(s), {len(fr)} française(s)  {projet}")
     for l in avert: print(f"       AVERTISSEMENT : {l}")
     for l in fr: print(f"       « {l[:160]} »")
     if os.environ.get("VSM_VOLET_TOUT"):
         for l in entieres: print(f"       · {l[:200]}")
-print(f"--- {langue} : {fautes} ligne(s) française(s) sur {total} relevée(s), {len(projets)} projet(s)")
-sys.exit(1 if fautes else 0)
+print(f"--- {langue} : {fautes} ligne(s) française(s) sur {total} relevée(s), {len(projets)} projet(s)"
+      + (f", {mortes} course(s) MORTE(S) — rien jugé pour elles" if mortes else "")
+      + (" ; AUCUNE ligne relevée : la garde n'a rien vu" if total == 0 else ""))
+sys.exit(1 if fautes or mortes or total == 0 else 0)
 EOF

@@ -189,6 +189,26 @@ VSM_TEST(tick_at_bar_beat_inverts_bar_beat_at_across_a_signature_change) {
     VSM_ASSERT_EQ(map.tickAtBarBeat(-3, -1, ppq), static_cast<Tick>(0));
 }
 
+// D578.1, D578.2 — LE PRÉ-ROLL ET LE POST-ROLL comptent en MESURES de la carte, chacune à sa signature.
+VSM_TEST(shifting_by_bars_counts_each_bar_at_its_own_signature_and_never_goes_before_zero) {
+    const uint16_t ppq = 480;
+    TimeSignatureMap quatre;   // 4/4 : une mesure = 1 920 ticks
+    VSM_ASSERT_EQ(shiftByBars(quatre, ppq, 7680, -1), static_cast<Tick>(5760));   // la mesure 5 → la 4
+    VSM_ASSERT_EQ(shiftByBars(quatre, ppq, 7680, -2), static_cast<Tick>(3840));
+    VSM_ASSERT_EQ(shiftByBars(quatre, ppq, 7680 + 100, -1), static_cast<Tick>(5760 + 100));   // la même place
+    VSM_ASSERT_EQ(shiftByBars(quatre, ppq, 3840, 1), static_cast<Tick>(5760));    // le post-roll
+    VSM_ASSERT_EQ(shiftByBars(quatre, ppq, 3840, 0), static_cast<Tick>(3840));
+    VSM_ASSERT_EQ(shiftByBars(quatre, ppq, 1000, -1), static_cast<Tick>(0));      // jamais avant le début
+    VSM_ASSERT_EQ(shiftByBars(quatre, ppq, 0, -4), static_cast<Tick>(0));
+    // 4/4 puis 3/4 à la mesure 3 (tick 3 840) : reculer d'une mesure depuis la 4 (5 280) mène au début de la 3,
+    // une mesure de 1 440 ticks ; de deux, au début de la 2 — une mesure de 4/4.
+    TimeSignatureMap changee;
+    changee.addChange(3840, 3, 2);
+    VSM_ASSERT_EQ(shiftByBars(changee, ppq, 5280, -1), static_cast<Tick>(3840));
+    VSM_ASSERT_EQ(shiftByBars(changee, ppq, 5280, -2), static_cast<Tick>(1920));
+    VSM_ASSERT_EQ(shiftByBars(changee, ppq, 1920, 2), static_cast<Tick>(5280));
+}
+
 VSM_TEST(parse_bar_beat_reads_human_positions_and_refuses_the_rest) {
     int64_t bar = -1, beat = -1;
     VSM_ASSERT(parseBarBeat("17", bar, beat));

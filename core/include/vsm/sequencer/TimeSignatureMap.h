@@ -65,4 +65,9 @@ private:
 /// 0-indexés, prêts pour `tickAtBarBeat`. Un temps absent vaut le premier.
 bool parseBarBeat(const std::string& text, int64_t& bar, int64_t& beat);
 
+/// D578.1, D578.2 : `tick` DÉCALÉ DE `bars` MESURES de la carte (négatif : en arrière) — le pré-roll et le post-roll.
+/// La même position dans la mesure d'arrivée, chaque mesure comptée à SA signature ; jamais avant zéro (un départ plus
+/// tôt que le début du morceau part du début).
+Tick shiftByBars(const TimeSignatureMap& map, uint16_t ppq, Tick tick, int bars);
+
 } // namespace vsm::sequencer

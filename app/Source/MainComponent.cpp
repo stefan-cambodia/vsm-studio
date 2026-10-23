@@ -932,6 +932,7 @@ MainComponent::MainComponent()
     // D18.5 : LA VITESSE DE LECTURE. Elle va au graphe et à lui seul -- ni le
     // projet ni le tempo ne bougent, et rien n'en est écrit dans le fichier :
     // c'est un réglage de séance, comme l'armement d'une piste.
+    transportBar_.onPlayRequested = [this] { lancerLecture("bouton Play"); };   // D578.1 : le pré-roll aussi au bouton
     transportBar_.onPlaybackSpeedChanged = [this](double facteur) {
         audioEngine_.processGraph().setPlaybackSpeed(facteur);
     };
@@ -1433,6 +1434,13 @@ MainComponent::MainComponent()
     preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
     preferencesPanel_.onOpenAudioSettings = [this] { menuItemSelected(kMenuFileAudioSettings, 0); };   // D417
     retourAuDepart_ = vsm::app::ui::UiScale::properties().getBoolValue("retourAuDepartALArret", false);
+    // D578.1, D578.2 : une valeur hors de celles qu'offre le menu redevient « aucun ».
+    {
+        const auto offerte = [](int n) { return std::find(std::begin(kMesuresDeRoll), std::end(kMesuresDeRoll), n)
+                                                    != std::end(kMesuresDeRoll) ? n : 0; };
+        preRollBars_ = offerte(vsm::app::ui::UiScale::properties().getIntValue("transportPreRollBars", 0));
+        postRollBars_ = offerte(vsm::app::ui::UiScale::properties().getIntValue("transportPostRollBars", 0));
+    }
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -3373,7 +3381,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // de transport ne dit rien tant que rien ne joue, et c'est justement lui
     // qu'il faut regarder pour juger un projet à soixante-quatre machines.
     // Sans ce jeton, la charge du fil audio ne se vérifie qu'à la souris.
-    else if (nom == "jouer")       { direOrigineDuPlay("VSM_VUE=jouer"); transport_.play(); }
+    else if (nom == "jouer")       lancerLecture("VSM_VUE=jouer");   // D578.1
     // CRÉER UN CLIP (D16.1) : `clip:piste:mesure`, à partir de 0 pour les deux.
     // Le geste est un DOUBLE-CLIC sur le vide d'une piste, c'est-à-dire
     // invisible à un autoportrait sans souris -- or c'est précisément le
@@ -3957,8 +3965,11 @@ void MainComponent::timerCallback() {
         // D505 : LE DÉPART EST CELUI QUE `play()` A RELEVÉ, pas la position au tour de
         // minuterie suivant — jusqu'à un tour plus loin (22 ticks mesurés à 120 BPM) :
         // le retour au départ glissait d'autant à chaque arrêt.
-        if (lecture && !etaitEnLecture_)
-            departLecture_ = project_.secondsToTicks(transport_.playStartSeconds());
+        if (lecture && !etaitEnLecture_) {
+            departLecture_ = departVoulu_ >= 0 ? departVoulu_ : project_.secondsToTicks(transport_.playStartSeconds());
+            departVoulu_ = -1;   // D578.1 : pour CETTE lecture seulement
+        }
+        if (!lecture && !etaitEnLecture_) departVoulu_ = -1;   // une lecture qui n'est pas partie
         // D16.8 : L'ARRÊT CLÔT LES PASSES EN LATCH. Le front descendant est
         // détecté ICI, et pas dans les six endroits qui appellent
         // `transport_.stop()` : un seul de ces six oublié laisserait une passe
@@ -5346,6 +5357,24 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 }
                 menu.addSubMenu(tr(u8"Tête au repère"), aller, !reperes.empty());
             }
+            // D578.1, D578.2 : LE PRÉ-ROLL ET LE POST-ROLL — des préférences du poste ; des libellés uniques dans toute la
+            // barre (`VSM_MENU` prend le premier exact), et ce que chacun ne touche pas, dit dans une ligne grisée.
+            {
+                const char8_t* avantLibelles[] = {u8"Pré-roll : aucun", u8"Pré-roll : 1 mesure", u8"Pré-roll : 2 mesures",
+                                                  u8"Pré-roll : 4 mesures"};
+                const char8_t* apresLibelles[] = {u8"Post-roll : aucun", u8"Post-roll : 1 mesure", u8"Post-roll : 2 mesures",
+                                                  u8"Post-roll : 4 mesures"};
+                juce::PopupMenu avant, apres;
+                for (int i = 0; i < 4; ++i) {
+                    avant.addItem(kMenuTransportPreRollFirst + i, tr(avantLibelles[i]), true, preRollBars_ == kMesuresDeRoll[i]);
+                    apres.addItem(kMenuTransportPostRollFirst + i, tr(apresLibelles[i]), true, postRollBars_ == kMesuresDeRoll[i]);
+                }
+                avant.addItem(-1, tr(u8"(à la lecture et à « Lire la sélection » ; l'enregistrement a son décompte)"), false, false);
+                apres.addItem(-1, tr(u8"(à la fin de « Lire la sélection »)"), false, false);
+                menu.addSeparator();
+                menu.addSubMenu(tr(u8"Pré-roll"), avant);
+                menu.addSubMenu(tr(u8"Post-roll"), apres);
+            }
             break;
         }
         case 4:
@@ -5713,6 +5742,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                           true, historyWindow_ && historyWindow_->isVisible());
             menu.addItem(kMenuViewMarkers, tr(u8"Fenêtre des repères"),   // D543.2
                           true, markerWindow_ && markerWindow_->isVisible());
+            menu.addItem(kMenuViewMidiMonitor, tr(u8"Moniteur MIDI"),   // D578.3
+                          true, moniteurMidiWindow_ && moniteurMidiWindow_->isVisible());
             menu.addItem(kMenuViewSpectrum,
                           tr(u8"Analyseur de spectre..."),
                           true, spectrumWindow_ && spectrumWindow_->isVisible());
@@ -6078,6 +6109,17 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
     if (menuItemID == kMenuTrackRemoveEmpty) { retirerPistesVides(); return; }
     if (menuItemID == kMenuTrackHideEmpty) { masquerPistesSansDonnees(); return; }               // D577.2
+    if (menuItemID >= kMenuTransportPreRollFirst && menuItemID <= kMenuTransportPostRollLast) {   // D578.1, D578.2
+        const bool avant = menuItemID <= kMenuTransportPreRollLast;
+        const int n = kMesuresDeRoll[menuItemID - (avant ? kMenuTransportPreRollFirst : kMenuTransportPostRollFirst)];
+        (avant ? preRollBars_ : postRollBars_) = n;
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        reglages.setValue(avant ? "transportPreRollBars" : "transportPostRollBars", n);
+        reglages.saveIfNeeded();
+        std::fputs(("VSM_TRANSPORT_ROLL : " + std::string(avant ? "pr\xc3\xa9-roll " : "post-roll ") + std::to_string(n)
+                    + " mesure(s)\n").c_str(), stderr);
+        return;
+    }
     if (menuItemID == kMenuMixResetClipIndicators) { remettreTemoinsDEcretage(); return; }       // D577.3
     if (menuItemID == kMenuEditRemoveClipOverlaps) { retirerChevauchementsDesClips(); return; }   // D562.2
     if (menuItemID == kMenuTrackCopyStrip) { copierReglagesDeTranche(); return; }                // D562.3
@@ -6235,6 +6277,28 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             const bool visible = markerWindow_->isVisible();
             markerWindow_->setVisible(!visible);
             if (!visible) rafraichirFenetreReperes();
+            break;
+        }
+        case kMenuViewMidiMonitor: {   // D578.3 : la file ne se remplit que fenêtre ouverte (la règle du spectre)
+            if (!moniteurMidiWindow_) {
+                moniteurMidiWindow_ = std::make_unique<PanelWindow>(juce::String::fromUTF8(u8"Moniteur MIDI"), moniteurMidi_);
+                moniteurMidiWindow_->setDefaultSize(620, 420);
+                moniteurMidiWindow_->onVisibilityChanged = [this](bool visible) {
+                    if (visible) {
+                        moniteurMidi_.demarrer();
+                        audioEngine_.setMidiMonitorActive(true);
+                    } else {
+                        audioEngine_.setMidiMonitorActive(false);
+                        moniteurMidi_.arreter();
+                    }
+                };
+                moniteurMidi_.onCountChanged = [this](size_t n) {
+                    if (moniteurMidiWindow_)
+                        moniteurMidiWindow_->setName(tr(u8"Moniteur MIDI (%1)").replace("%1", juce::String(static_cast<int>(n))));
+                };
+            }
+            moniteurMidiWindow_->setVisible(!moniteurMidiWindow_->isVisible());
+            if (moniteurMidiWindow_->isVisible()) moniteurMidiWindow_->toFront(true);
             break;
         }
         case kMenuViewProjectNotes: showProjectNotes(); break;
@@ -9366,7 +9430,7 @@ void MainComponent::applyLearnedControls() {
             case Kind::TransportPlay:
                 if (appui) {
                     if (transport_.state() == TransportState::Playing) transport_.stopHere();   // D505
-                    else { direOrigineDuPlay("raccourci/MIDI TransportPlay"); transport_.play(); }
+                    else lancerLecture("raccourci/MIDI TransportPlay");   // D578.1
                 }
                 break;
             case Kind::TransportStop:  if (appui) transport_.stopHere(); break;   // D505
@@ -10656,7 +10720,7 @@ bool MainComponent::executerCommande(vsm::interchange::ShortcutId commande, cons
         // premier.
         case Id::TransportPlayStop:
             if (transport_.state() == TransportState::Playing) transport_.stopHere();   // D505 : la tête reste
-            else { direOrigineDuPlay(origine); transport_.play(); }
+            else lancerLecture(origine);   // D578.1
             return true;
         // « R » comme référence : la bascule A/B, depuis n'importe quelle
         // fenêtre -- on compare en regardant le piano roll, pas le menu.
@@ -12113,6 +12177,7 @@ void MainComponent::retraduire() {
     effectChain_.retraduire();   // D77
     historyPanel_.retraduire();   // D82
     markerPanel_.retraduire();    // D543.2
+    moniteurMidi_.retraduire();   // D578.3
     rafraichirFenetreReperes();
     // D84 : le volet de rapport -- ses boutons, et le rapport d'ouverture s'il
     // est le dernier à l'avoir rempli, refait volet ouvert ou fermé.
@@ -14873,12 +14938,17 @@ void MainComponent::lireLaSelection() {
     if (!bornesDeLaSelection(debut, fin, clips, tr(u8"Lire la sélection"))) return;
     if (transport_.state() == TransportState::Playing) transport_.stop();
     seekAllViews(debut);
-    finLectureSelection_ = fin;
-    dernierTickSelection_ = debut;
+    // D578.2 : LE POST-ROLL — l'arrêt ces mesures après la fin ; la fin du morceau arrête le transport avant, s'il le faut.
+    const vsm::midi::Tick finEntendue = postRollBars_ > 0
+        ? vsm::sequencer::shiftByBars(project_.timeSignatureMap, project_.ticksPerQuarterNote, fin, postRollBars_) : fin;
+    finLectureSelection_ = finEntendue;
     std::fputs(("VSM_LIRE_SELECTION : de " + std::to_string(debut) + " à " + std::to_string(fin) + " ticks ("
-                + (clips ? "clips" : "notes") + ")\n").c_str(), stderr);
-    direOrigineDuPlay("Lire la sélection");
-    transport_.play();
+                + (clips ? "clips" : "notes") + ")"
+                + (finEntendue != fin ? " ; post-roll jusqu'\xc3\xa0 " + std::to_string(finEntendue) + " ticks" : std::string())
+                + "\n").c_str(), stderr);
+    lancerLecture("Lire la sélection");   // D578.1 : le pré-roll, le début de la sélection pour point de départ
+    // LE DÉPART RÉEL, pré-roll compris : la machine de D553.2 y voit une tête qui « recule » sinon, et abandonne.
+    dernierTickSelection_ = transport_.currentTick();
 }
 
 void MainComponent::fusionnerMidiEntreLocateurs() {
@@ -16767,7 +16837,27 @@ void MainComponent::direOrigineDuPlay(const char* origine) {
                     + origine + "\n").toRawUTF8(), stderr);
 }
 
-void MainComponent::startPlaybackForCapture() { direOrigineDuPlay("VSM_LECTURE"); transport_.play(); }
+void MainComponent::startPlaybackForCapture() { lancerLecture("VSM_LECTURE"); }   // D578.1
+
+void MainComponent::lancerLecture(const char* origine) {
+    // D578.1 : LE PRÉ-ROLL — la lecture part de la tête MOINS ses mesures, au début du morceau au plus tôt ; la tête
+    // posée reste le point de départ (le retour à l'arrêt y revient), retenue pour le front montant.
+    direOrigineDuPlay(origine);
+    departVoulu_ = -1;
+    // Déjà en lecture (`VSM_VUE=jouer` répété) : `play()` n'y fait rien, le pré-roll non plus — la tête ne recule pas.
+    if (preRollBars_ > 0 && transport_.state() != TransportState::Playing) {
+        const vsm::midi::Tick tete = transport_.currentTick();
+        const vsm::midi::Tick depart = vsm::sequencer::shiftByBars(project_.timeSignatureMap, project_.ticksPerQuarterNote,
+                                                                   tete, -preRollBars_);
+        std::fputs(("VSM_PRE_ROLL : d\xc3\xa9part \xc3\xa0 " + std::to_string(depart) + " ticks, la t\xc3\xaate \xc3\xa0 "
+                    + std::to_string(tete) + " (" + std::to_string(preRollBars_) + " mesure(s))\n").c_str(), stderr);
+        if (depart != tete) {
+            seekAllViews(depart);
+            departVoulu_ = tete;
+        }
+    }
+    transport_.play();
+}
 
 // --- D23.2 : l'écoute automatique de l'entrée ---------------------------------
 

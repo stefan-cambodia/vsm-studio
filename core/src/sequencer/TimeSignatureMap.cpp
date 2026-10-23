@@ -143,4 +143,13 @@ bool parseBarBeat(const std::string& text, int64_t& bar, int64_t& beat) {
     return true;
 }
 
+Tick shiftByBars(const TimeSignatureMap& map, uint16_t ppq, Tick tick, int bars) {
+    if (bars == 0) return tick;
+    const BarBeat ici = map.barBeatAt(std::max<Tick>(0, tick), ppq);
+    const int64_t cible = ici.bar + bars;
+    if (cible < 0) return 0;
+    const Tick dansLaMesure = std::max<Tick>(0, tick) - map.tickAtBarBeat(ici.bar, 0, ppq);
+    return std::max<Tick>(0, map.tickAtBarBeat(cible, 0, ppq) + dansLaMesure);
+}
+
 } // namespace vsm::sequencer

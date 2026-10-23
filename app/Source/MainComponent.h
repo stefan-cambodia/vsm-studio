@@ -24,6 +24,7 @@
 #include "ui/ShortcutsWindow.h"
 #include "ui/HistoryWindow.h"
 #include "ui/MarkerWindow.h"   // D543.2
+#include "ui/MoniteurMidi.h"   // D578.3
 #include "ui/SpectrumComponent.h"
 #include "ui/PlayOrderComponent.h"
 #include "ui/TakeCompComponent.h"
@@ -372,6 +373,23 @@ public:
         if (geste.equalsIgnoreCase("relever-clips")) { arrangement_.direLesClipsAEcran(); return true; }
         // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
         if (geste.equalsIgnoreCase("relever-tete")) { releverTete(); return true; }
+        // D578.3 : le moniteur MIDI tel qu'il est PEINT, la file vidée d'abord.
+        if (geste.equalsIgnoreCase("relever-moniteur-midi")) {
+            const juce::String lignes = moniteurMidi_.releverPourCapture();
+            std::fputs(("VSM_MONITEUR_MIDI : " + juce::String(static_cast<int>(moniteurMidi_.nombre()))
+                        + juce::String::fromUTF8(u8" événement(s), fenêtre ")
+                        + (moniteurMidiWindow_ && moniteurMidiWindow_->isVisible()
+                               ? juce::String::fromUTF8(u8"ouverte « ") + moniteurMidiWindow_->getName()
+                                     + juce::String::fromUTF8(u8" »")
+                               : juce::String::fromUTF8(u8"fermée"))
+                        + ", " + juce::String(static_cast<juce::int64>(audioEngine_.midiMonitorDropped()))
+                        + juce::String::fromUTF8(u8" perdu(s)\n")).toRawUTF8(), stderr);
+            juce::StringArray l;
+            l.addLines(lignes);
+            for (const auto& x : l)
+                if (x.isNotEmpty()) std::fputs(("VSM_MONITEUR_MIDI_LIGNE : " + x + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D524 : le relevé du piano roll APRÈS un geste (un `choisir:` au milieu d'une course).
         if (geste.equalsIgnoreCase("relever-pianoroll")) { releverRangPianoRoll(); return true; }
         // D506 : L'AUDIT DES MENUS, EN DIFFÉRÉ. `VSM_MENU` agit AVANT les touches et
@@ -1240,7 +1258,16 @@ private:
         /// D577.2 : masquer les pistes sans données ; D577.3 : remettre les témoins d'écrêtage à zéro.
         kMenuTrackHideEmpty,
         kMenuMixResetClipIndicators,
+        /// D578.1, D578.2 : le pré-roll puis le post-roll, quatre entrées CONTIGUËS chacun (`kMesuresDeRoll`).
+        kMenuTransportPreRollFirst,
+        kMenuTransportPreRollLast = kMenuTransportPreRollFirst + 3,
+        kMenuTransportPostRollFirst,
+        kMenuTransportPostRollLast = kMenuTransportPostRollFirst + 3,
+        /// D578.3 : la fenêtre du moniteur MIDI.
+        kMenuViewMidiMonitor,
     };
+    /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
+    static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
 
     // --- D9 : reconstruire depuis l'application -----------------------------
     //
@@ -1407,6 +1434,11 @@ private:
     vsm::app::ui::HistoryWindow historyPanel_;
     /// D543.2 : LA FENÊTRE DES REPÈRES, et sa mise à jour (rien quand elle est fermée).
     vsm::app::ui::MarkerWindow markerPanel_;
+    /// D578.3 : le moniteur MIDI, qui tire la file du moteur — fenêtre ouverte seulement.
+    vsm::app::ui::MoniteurMidi moniteurMidi_{[this](vsm::app::ui::MoniteurMidi::Evenement& e) {
+        return audioEngine_.popMidiMonitorEvent(e);
+    }};
+    std::unique_ptr<PanelWindow> moniteurMidiWindow_;
     std::unique_ptr<PanelWindow> markerWindow_;
     void rafraichirFenetreReperes();
     std::unique_ptr<PanelWindow> historyWindow_;
@@ -1805,6 +1837,15 @@ private:
     void suivreLien(size_t piste, vsm::sequencer::LinkedMixParam quoi);
     bool etaitEnLecture_ = false;
     vsm::midi::Tick departLecture_ = 0;
+    /// D578.1 : LE PRÉ-ROLL ET LE POST-ROLL, en mesures — des préférences du poste, comme le décompte.
+    int preRollBars_ = 0;
+    int postRollBars_ = 0;
+    /// D578.1 : la tête que l'utilisateur avait posée quand le pré-roll a fait partir la lecture plus tôt ; le front
+    /// montant la prend pour point de départ (le retour à l'arrêt y revient). -1 : le départ relevé par `play()`.
+    vsm::midi::Tick departVoulu_ = -1;
+    /// D578.1 : LE DÉPART D'UNE LECTURE POSÉE PAR L'UTILISATEUR (Lecture, Espace, bouton, commande apprise, Lire la
+    /// sélection) : la tête moins le pré-roll, puis `play()`.
+    void lancerLecture(const char* origine);
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +
     /// échantillons) -- typiquement celui qu'écrit la chaîne d'analyse.
     void openProjectBundle();

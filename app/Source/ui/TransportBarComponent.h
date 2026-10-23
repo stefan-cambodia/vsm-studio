@@ -53,6 +53,8 @@ public:
     /// D11.3 : « mes. 33 · 2 » à côté du temps ; sans fournisseur, le tick brut.
     std::function<juce::String(vsm::midi::Tick)> positionInBarsProvider;
     std::function<void()> onOpenMidiFile;
+    /// D578.1 : le bouton Play passe par l'hôte (le pré-roll) quand il est posé ; sinon, le transport directement.
+    std::function<void()> onPlayRequested;
     std::function<void()> onExportMidiFile;
 
     /// Bascule de la boucle. Le bouton portait un gestionnaire VIDE : il

@@ -67,10 +67,25 @@ void AudioEngine::stop() {
     deviceManager_.closeAudioDevice();
 }
 
-void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message) {
+void AudioEngine::handleIncomingMidiMessage(juce::MidiInput* source, const juce::MidiMessage& message) {
     // D22.4 : compté AVANT tout tri -- un message qu'on ignore est quand même
     // ARRIVÉ, et c'est ce que le voyant IN a à dire.
     midiInCount_.fetch_add(1, std::memory_order_relaxed);
+    // D578.3 : LE MONITEUR, au même endroit et pour la même raison — ce qui est montré est ce qui est ARRIVÉ. File
+    // pleine : compté, jamais attendu (la règle de la file d'enregistrement).
+    if (midiMonitorActive_.load(std::memory_order_acquire)) {
+        MidiMonitorEvent e;
+        e.millis = juce::Time::currentTimeMillis();
+        if (message.isSysEx()) {
+            e.sysexBytes = static_cast<uint32_t>(message.getSysExDataSize());
+        } else {
+            const int n = std::min(3, message.getRawDataSize());
+            for (int i = 0; i < n; ++i) e.bytes[i] = message.getRawData()[i];
+            e.size = static_cast<uint8_t>(n);
+        }
+        if (source != nullptr) source->getName().copyToUTF8(e.source, sizeof(e.source));
+        if (!midiMonitorQueue_.push(e)) midiMonitorDropped_.fetch_add(1, std::memory_order_relaxed);
+    }
     // Notes : jouées immédiatement, et -- depuis D3.3 -- enregistrées si une
     // prise est en cours. Les DEUX chemins sont distincts et le restent :
     // l'écoute passe par la file "live" du ProcessGraph, la capture par la file

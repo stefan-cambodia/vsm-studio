@@ -53,6 +53,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/ShortcutsWindow.cpp
     Source/ui/HistoryWindow.cpp
     Source/ui/MarkerWindow.cpp
+    Source/ui/MoniteurMidi.cpp
     Source/ui/SpectrumComponent.cpp
     Source/ui/PlayOrderComponent.cpp
     Source/ui/TakeCompComponent.cpp

@@ -59,6 +59,21 @@ public:
     /// piste » quand un clavier branché ne joue rien.
     uint64_t midiInCount() const { return midiInCount_.load(std::memory_order_relaxed); }
 
+    /// D578.3 : LE MONITEUR MIDI — un événement tel que le moteur l'a reçu, à l'endroit où il le reçoit (après le
+    /// filtre de son propre port, D27.3 : le port n'est jamais ouvert en entrée). De taille fixe : rien ne s'alloue
+    /// dans le rappel MIDI.
+    struct MidiMonitorEvent {
+        int64_t millis = 0;              ///< l'heure de la réception, à l'horloge murale
+        uint8_t bytes[3] = {0, 0, 0};
+        uint8_t size = 0;                ///< octets utiles de `bytes` ; 0 pour un SysEx
+        uint32_t sysexBytes = 0;
+        char source[32] = {};            ///< le nom du port ; vide : sans port (clavier d'ordinateur, banc)
+    };
+    /// Le moniteur ne recueille QUE pendant que sa fenêtre est ouverte : fermée, il ne coûte rien.
+    void setMidiMonitorActive(bool on) { midiMonitorActive_.store(on, std::memory_order_release); }
+    bool popMidiMonitorEvent(MidiMonitorEvent& e) { return midiMonitorQueue_.pop(e); }
+    uint64_t midiMonitorDropped() const { return midiMonitorDropped_.load(std::memory_order_relaxed); }
+
     // --- D27.3 : LA SORTIE MIDI MATÉRIELLE -------------------------------------
     /// Les ports de sortie disponibles, par nom -- le port virtuel « VSM
     /// Studio » d'abord, toujours là, pour vérifier sans matériel.
@@ -297,6 +312,11 @@ private:
     std::atomic<int> currentInputChannels_{0};
     std::atomic<float> inputPeak_{0.0f};
     std::atomic<uint64_t> midiInCount_{0};   ///< D22.4 : messages MIDI reçus
+    /// D578.3 : la file du moniteur — la même discipline que `learnQueue_` (le fil MIDI produit, l'interface consomme).
+    static constexpr size_t kMonitorQueueCapacity = 1024;
+    std::atomic<bool> midiMonitorActive_{false};
+    std::atomic<uint64_t> midiMonitorDropped_{0};
+    vsm::audio::util::LockFreeRingBuffer<MidiMonitorEvent, kMonitorQueueCapacity> midiMonitorQueue_;
     /// D27.3 : L'ÉMETTEUR. Un fil qui sonde la file du graphe toutes les
     /// millisecondes et envoie chaque événement À SON HEURE (l'horloge
     /// monotone que le graphe a lue au début du bloc) sur le port de sa

@@ -89,6 +89,14 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   07 h 25 les a emportés, et personne ne les avait lus. `verifier.sh --bancs` écrit
   désormais dans `build/verifier-bancs` ; tout bilan de course se lit, ou se recopie
   sur `/home`, avant de quitter le poste.
+- Une SÉRIE DE BANCS a fait tuer la SESSION GRAPHIQUE de l'utilisateur, deux fois le même jour (23/10, D578) :
+  `systemd-oomd` a tué `plasma-kwin_wayland.service` — compositeur, Xwayland, toute la session — pendant
+  `verifier.sh --bancs` (07 h 24, série de D573 ; 12 h 14, série de D577), l'unité à 11,9 Go et 11 Go d'échange ;
+  « l'extinction de 07 h 25 » écrite par D577 en était la suite. Les bancs d'après meurent en segfault (plus
+  d'affichage), et deux gardes ont compté ces morts pour des verts. Un lancement nu ne laisse que ~0,7 Mo à kwin : la
+  cause des 23 Go n'est pas trouvée. `verifier.sh --bancs` relève donc la mémoire du compositeur banc par banc
+  (`compositeur.tsv`) et S'ARRÊTE au-delà de 3 Go (ou sous 3 Go libres). Une rafale de segfaults au lancement se lit
+  d'abord au journal du système (`journalctl -b | grep -i oom`), pas dans le code.
 - Python bufferise stdout vers un fichier : lancer les longues chaînes avec
   `python -u`, et surveiller par Monitor (fins ET échecs, jamais le succès
   seul).
@@ -259,7 +267,7 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   sur un appariement que le geste justifie — jamais sur deux listes triées à
   l'aveugle.
 - Une phase qui touche l'interface se termine par `./verifier.sh --bancs` (les
-  bancs qui lancent l'application — 159 au 23/10 (D577 : les neuf de D574 à D577, entrés ensemble après la série perdue de D573 ; 150 avec D573, 147 avec D572, 144 avec D571, 142 avec D570, 139 avec D569, 136 avec D568, 133 avec D567, 130 avec D566.4, 129 avec D566.3, 128 avec D566, 126 avec D565, 123 avec D564, 120 avec D563, 117 avec D562, 114 avec D561, 110 avec D560, 106 avec D559, 103 avec D558, 100 avec D557, 97 avec D556, 93 avec D555, 90 avec D554, 87 avec D553, 84 avec D552, 81 avec D551, 79 avec D550, 76 avec D549, 75 avec D549.2, 73 avec D548, 72 avec D547, 69 avec D546.2, 68 avec D546.3, 66 avec D545.3, 65 avec D545.2, 64 avec D545.1, 63 avec D544.3, 61 avec D544.1, 60 avec D543.3 ; 59 au 03/10, D543.2 ; 49 et non 48 au 02/10 : un compte par `\.sh$` sautait le dernier, `zoom-reassigne.sh;` ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
+  bancs qui lancent l'application — 161 au 23/10 (D578 : `pre-post-roll`, `moniteur-midi` ; 159 avec D577 : les neuf de D574 à D577, entrés ensemble après la série perdue de D573 ; 150 avec D573, 147 avec D572, 144 avec D571, 142 avec D570, 139 avec D569, 136 avec D568, 133 avec D567, 130 avec D566.4, 129 avec D566.3, 128 avec D566, 126 avec D565, 123 avec D564, 120 avec D563, 117 avec D562, 114 avec D561, 110 avec D560, 106 avec D559, 103 avec D558, 100 avec D557, 97 avec D556, 93 avec D555, 90 avec D554, 87 avec D553, 84 avec D552, 81 avec D551, 79 avec D550, 76 avec D549, 75 avec D549.2, 73 avec D548, 72 avec D547, 69 avec D546.2, 68 avec D546.3, 66 avec D545.3, 65 avec D545.2, 64 avec D545.1, 63 avec D544.3, 61 avec D544.1, 60 avec D543.3 ; 59 au 03/10, D543.2 ; 49 et non 48 au 02/10 : un compte par `\.sh$` sautait le dernier, `zoom-reassigne.sh;` ; 40 et non 41 au 30/09), ~40 min —, préférences comparées
   d'office), pas
   seulement par ses bancs voisins : D482 a changé l'infobulle de « + » sans rejouer
   `liste-ajouter.sh`, resté rouge jusqu'à ce que D504 rejoue tout (29/09). Jamais

@@ -44451,3 +44451,86 @@ mode d'automation *Trim*, les repères à étendue, le pré-enregistrement audio
 
 **L'ORDRE, TRANCHÉ ICI.** D578.1 et D578.2 ensemble (le même point de départ, la même règle d'arrêt, un même banc), puis
 D578.3 ; une compilation de l'application APRÈS la série de D577 — rien ne se compile ni ne se lance à côté d'elle.
+
+**L'INCIDENT DE 12 h 14, ÉCRIT AVANT SA MESURE** (*12 h 18 à l'horloge*). La série de D577 a fini à 12 h 18 : 159 bancs
+en 79 min, **20 rouges** — dont **16 d'un bloc** à partir de 12 h 15 min 20 s, en 2 à 25 s chacun, tous des
+`Erreur de segmentation` au lancement (quatre `SIGSEGV` par seconde à `coredumpctl`). La cause est au journal du système :
+à **12 h 14 min 56 s**, `systemd-oomd` a TUÉ l'unité `plasma-kwin_wayland.service` — le compositeur, `Xwayland` et leurs
+23 processus : la session graphique de l'utilisateur entière — « memory used 15 348 015 104 / 16 339 636 224, swap
+14 839 693 312 » ; l'unité a fini à **11,9 Go de mémoire au pic et 11 Go d'échange**. Sans affichage, l'application meurt
+au lancement. **Et l'« extinction » de 07 h 25 que D577 a écrite était la même panne** : `journalctl -b -1` dit
+`plasma-kwin_wayland.service: Failed with result 'oom-kill'` à **07 h 24 min 58 s**, pendant la série de D573, et l'arrêt
+du poste suit 37 s plus tard. Deux séries de bancs, deux sessions graphiques perdues dans la même journée.
+
+**L'HYPOTHÈSE** : chaque lancement de l'application (une fenêtre X11 sous `Xwayland`, jusqu'à 1 600 × 1 000 à 150 %)
+laisse dans l'unité du compositeur de la mémoire qu'elle ne rend pas à la sortie du client — et ce reste, multiplié par
+les lancements d'une série, fait les 23 Go. **L'attendu qui la tranche** : dix lancements de capture (`VSM_CAPTURE`, un
+HOME neuf chacun, 1 600 × 1 000) font monter `memory.current + memory.swap.current` de l'unité d'au moins **50 Mo** après
+la sortie du dernier, et l'un des deux processus (`kwin_wayland` ou `Xwayland`) porte l'essentiel de la hausse ; moins de
+10 Mo réfute. Le témoin : la même mesure après dix secondes sans lancement (la dérive d'une unité au repos).
+
+**LA MESURE, ET CE QU'ELLE TRANCHE** (*écrite à 12 h 28 à l'horloge*). `memory.current + memory.swap.current` de l'unité, et la mémoire
+anonyme (`RssAnon`) de chacun de ses processus, autour de dix lancements de capture à 1 600 × 1 000 :
+
+| course | unité | `kwin_wayland` anon | `Xwayland` anon |
+|---|---|---|---|
+| le témoin : dix secondes sans lancement | 221 → 231 Mo (+10, du cache de fichiers) | 60,7 → 60,7 Mo | 18,2 → 18,2 Mo |
+| dix lancements, écran allumé | 231 → 350 Mo (**+119**) | 60,7 → 67,1 Mo (**+6,5**) | 18,2 → 19,7 Mo (+1,5) |
+| dix lancements, le verrou tombé pendant la course | 349 → 430 Mo (+81, dont **50** pour `kscreenlocker_greet`, arrivé avec le verrou) | 67,1 → 74,1 Mo (**+6,9**) | 19,7 → 19,7 Mo |
+| dix lancements, session verrouillée, écran éteint | 430 → 439 Mo (**+9**) | 74,0 → 81,8 Mo (**+7,7**) | 19,7 → 20,4 Mo (+0,7) |
+
+Et cinq bancs entiers, un par un : `accords` +1 Mo à `kwin_wayland`, `editeur-logique` 0, `instantanes-console` +1,
+`portes-des-outils` 0, `theme-sombre` −1 (l'unité, elle, va et vient avec le cache : +91, −31, +3, +9, +1).
+
+**L'HYPOTHÈSE EST RÉFUTÉE telle qu'elle était chiffrée** : un lancement nu ne laisse pas 5 Mo au compositeur, mais
+**0,65 à 0,77 Mo** — une fuite réelle de `kwin_wayland`, régulière d'une course à l'autre, verrou ou non, et qui ne fait
+qu'environ 1 Go sur les quelque 1 500 lancements d'une série : pas 23. **Les 23 Go ne sont pas expliqués.** Ce que le
+journal du compositeur montre, sans le prouver : **4 691** erreurs `XCB error: 3 (BadWindow) … (SHAPE)` entre son départ
+(07 h 26) et sa mort, des fenêtres X11 détruites avant d'être lues, qui suivent les bancs à la minute — 264 à 08 h 20,
+puis 1 220 et 1 285 dans les tranches de 11 h 00 et 11 h 10, quand `annulation-des-menus.py` ouvre et ferme ses fenêtres
+pendant 18 min, et 35 à 12 h 00. Un banc qui crée des centaines de fenêtres reste donc le premier suspect ; il n'est pas
+mesuré seul, parce que la série qui vient le mesure, lui et les 160 autres.
+
+**LA GARDE, POSÉE SANS ATTENDRE LA CAUSE** (`verifier.sh --bancs`) : la mémoire du compositeur relevée avant et après
+CHAQUE banc — `build/verifier-bancs/compositeur.tsv`, et « compositeur +N Mo » sur la ligne du banc, les cinq plus
+coûteux au bilan ; et la série S'ARRÊTE, en rouge et en le disant, quand l'unité dépasse `VSM_PLAFOND_COMPOSITEUR`
+(3 072 Mo) ou que le système n'a plus `VSM_PLANCHER_MEMOIRE` (3 072 Mo) de mémoire et d'échange libres — un rouge vaut
+mieux qu'une session tuée. Vue rouge sur ses deux seuils avant de servir : plafond à 1 Mo, « SÉRIE ARRÊTÉE avant
+accords.sh : compositeur à 352 Mo » ; plancher à 999 999 Mo, la même ligne, « 26 125 Mo libres ».
+
+**LE BILAN DE LA SÉRIE DE D577, LU** (recopié dans `build/verifier-bancs-D577` avant la série suivante) : 159 bancs en
+79 min, **139 verts, 20 rouges**. **Quinze** sont la mort du compositeur — `portes-de-l-arrangement` et les quatorze rouges
+qui le suivent dans la liste, en 2 à 25 s chacun, une `Erreur de segmentation` au lancement ; ils ne disent rien du
+binaire. **Et deux VERTS du même bloc mentaient** : `transport-au-repos` (quatre courses mortes, sans photo ni journal :
+« transport à l'ARRÊT », « aucun ordre ») et `volet-anglais` (dix courses à rc=139 : « OK … 0 française(s) sur 0
+relevée(s) ») comptaient l'absence pour le bon résultat. Corrigés : la première exige ses quatre photos LUES, la seconde
+tient une course à rc ≠ 0 pour MORTE et un relevé vide pour un rouge ; vues rouges toutes deux sur un binaire qui meurt
+aussitôt (`/bin/false` : « lues : 0 » ; « 10 course(s) MORTE(S) … AUCUNE ligne relevée »).
+**Quatre** sont le verrou de D95 — `quantifier-audio`, `notes-depuis-attaques`, `transposition-globale`,
+`normaliser-niveau`, le même contrôle « (5) la fenêtre ouverte et photographiée », trois essais à 20 s d'écart sans
+qu'une boîte modale vienne à la photo (d'où ~160 s chacun) : sous un écran verrouillé, AUCUNE n'y vient. **Un**,
+`pianoroll-zones` (« D338 aucun relevé »), est un relevé muet sous le même verrou. La série de D578 les rejoue tous.
+
+### Phase D578 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D578.1 | le pré-roll | `shiftByBars` au cœur (`TimeSignatureMap`) : la même place dans la mesure d'arrivée, chaque mesure comptée à SA signature, jamais avant zéro — un test, en 4/4 puis à travers un passage en 3/4 ; `lancerLecture`, LE départ de *Lecture* (Espace, la commande apprise, `VSM_LECTURE`, `VSM_VUE=jouer`, et le BOUTON Play, qui parlait au transport directement et passe désormais par l'hôte) et de *Lire la sélection* : la tête moins ses mesures, la tête posée retenue (`departVoulu_`) pour le front montant, que le retour au départ relit ; déjà en lecture, rien ne recule ; *Transport ▸ Pré-roll* (quatre entrées cochées, la ligne grisée qui dit ce qu'il ne touche pas), `transportPreRollBars` au poste ; `tools/pre-post-roll.sh`, par `relever-decompte` 0,3 s après le geste : le témoin en lecture à **8,302 s**, 1 mesure **6,302 s**, depuis 0 **0,302 s**, le retour au départ à **8,000 s** (parti à 6,302), le bouton Play **6,302 s**, relancé dans le même HOME : cochée. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D578.2 | le post-roll | l'arrêt de la machine de D553.2 posé à la fin + N mesures (`shiftByBars`) ; et le départ RÉEL, pré-roll compris, donné à la même machine — sans lui, elle verrait une tête « reculer » d'une mesure et abandonnerait la lecture de la sélection ; *Transport ▸ Post-roll*, `transportPostRollBars` ; le témoin s'arrête à **4,000 s** ; 1 mesure : en lecture à **5,193 s**, l'arrêt à **6,000 s** ; les deux : parti à **0,290 s**, l'arrêt à **6,000 s** ; en anglais, « Pre-roll: 1 bar » et « Post-roll: 1 bar ». **TENU** | **oui** |
+| D578.3 | le moniteur MIDI | `handleIncomingMidiMessage` pousse, APRÈS son compteur et seulement fenêtre ouverte (`setMidiMonitorActive`), un `MidiMonitorEvent` de taille fixe (l'heure murale, trois octets ou la taille d'un SysEx, le nom du port sur 32 octets) dans une `LockFreeRingBuffer` de 1 024 — la file du dépôt et la discipline de `learnQueue_`, plutôt que le `juce::AbstractFifo` écrit avant le code : même contrat, sans verrou ni allocation, et déjà éprouvée sur ce rappel ; file pleine : compté, dit (« N perdu(s) ») ; `MoniteurMidi`, une liste PEINTE en chasse fixe (500 lignes, *Effacer*, le compte au titre), relevée par `relever-moniteur-midi` dans la liste même qu'elle peint (D149) ; `tools/moniteur-midi.sh` : **2** événements, « (interne) · canal 1 · CC 7 = 100 » puis « … CC 74 = 64 », l'entrée cochée, le titre « Moniteur MIDI (2) » ; *Effacer* : **0** ; fenêtre fermée : **0** recueilli, **2** reçus par le moteur ; en anglais, « (internal) · channel 1 · CC 7 = 100 ». **TENU** | **oui** |
+| — | le témoin | le binaire de D559 (`build/temoin-D559`) : `pre-post-roll` **rouge 7 / 10** — les verts : ses deux témoins, et « depuis 0 », qu'une tête à zéro tient avec ou sans pré-roll (ce contrôle garde le plancher, pas la fonction) ; « aucune entrée de menu au chemin « Transport > Pré-roll > … » » au journal ; `moniteur-midi` **rouge 4 / 4** | **oui** |
+| — | les deux premières compilations | la première refusée à l'édition des liens : `MoniteurMidi.cpp` n'était inscrit qu'à la cible `vsm-ui-preview`, pas à celle de l'application ; la seconde, celle de `--compiler`, refusée dans `vsm-ui-preview` même, qui ne lie pas les modules audio de JUCE qu'`AudioEngine.h` demande — et n'emploie pas le moniteur : il n'est plus inscrit qu'à l'application | **oui** |
+
+**CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.** Le pré-roll ne s'applique pas non plus à *Boucler la sélection* (D554.1) ni à
+*Lire jusqu'au repère suivant* (D556.1) : leurs bornes SONT le geste, comme celles des deux lectures autour de la
+sélection que D578.1 écartait déjà ; et un *Lecture* reçu pendant une lecture ne fait rien, pré-roll compris (la tête
+ne recule pas sous l'oreille).
+
+La fenêtre du moniteur a été REGARDÉE, sa photo de panneau recomposée sur le fond `0x1f1f24` (D417) : trois lignes
+horodatées après `cc-entrant:7:100`, `74:64`, `1:12`, lisibles en chasse fixe, la phrase d'explication et *Effacer*.
+
+Mesuré la session VERROUILLÉE et l'écran éteint (`LockedHint=yes`, DPMS « off ») : les deux bancs jugent par relevés, pas
+par photos. C++ 538 · 1 349 · 359 · 25 · 11, Python 275, ruff, mypy, seize gardes (`./verifier.sh --compiler`) —
+`index-a-jour` rouge du seul fait de cette page, reprise par `--corriger`. La série des **161** bancs (159, plus
+`pre-post-roll` et `moniteur-midi`, comptés par le script qui lit la liste : 161 noms, 161 distincts, 0 absent de
+`tools/`) se joue après ce commit, sous la garde du compositeur.

@@ -54,7 +54,7 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     // appelée en fin de constructeur. Posées ici, en français, la bascule de
     // langue les laissait dans la langue du démarrage -- ce que D78 interdit.
 
-    playButton_.onClick = [this] { transport_.play(); };
+    playButton_.onClick = [this] { if (onPlayRequested) onPlayRequested(); else transport_.play(); };   // D578.1
     stopButton_.onClick = [this] {
         transport_.stopHere();   // D505 : Stop laisse la tête où elle est (D14.5)
         // L'application doit l'apprendre : c'est l'arrêt qui clôt une prise.
