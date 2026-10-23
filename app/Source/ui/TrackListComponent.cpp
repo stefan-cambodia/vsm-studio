@@ -925,6 +925,7 @@ void TrackListComponent::basculerSolo(size_t index) {
     for (size_t i : cible)
         if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->poserSolo(etat);
     if (onTracksChanged) onTracksChanged();
+    if (etat && onSoloAllume) onSoloAllume(index);   // D582.2
 }
 
 void TrackListComponent::faireVoirLaPiste(size_t idx) {

@@ -249,6 +249,8 @@ public:
     std::function<void()> onTracksChanged;
     /// D423 : Ctrl+clic sur le S d'une ligne -- le solo exclusif de l'application.
     std::function<void(size_t)> onExclusiveSoloRequested;
+    /// D582.2 : un solo ALLUMÉ par le S d'une ligne (la piste visée par le geste).
+    std::function<void(size_t)> onSoloAllume;
     /// D37.1 : une piste a été renommée (voir `TrackRowComponent::onRenamed`).
     std::function<void()> onRenamed;
     /// D39.3 : LA SÉLECTION A CHANGÉ. Les autres panneaux qui dessinent des

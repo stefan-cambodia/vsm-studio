@@ -399,6 +399,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8("Solo")));   // D426
         track_.solo = solo_.getToggleState();
         if (onMixChanged) onMixChanged();
+        if (track_.solo && onSoloAllume) onSoloAllume(index_);   // D582.2
     };
     addAndMakeVisible(solo_);
 
@@ -1147,6 +1148,7 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             }
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
             strip->onExclusiveSoloRequested = [this](size_t index) { if (onExclusiveSoloRequested) onExclusiveSoloRequested(index); };
+            strip->onSoloAllume = [this](size_t index) { if (onSoloAllume) onSoloAllume(index); };   // D582.2
             strip->onMixEditStarted = [this](const juce::String& pas) { if (onMixEditStarted) onMixEditStarted(pas); };
             strip->onLinkStart = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkStart) onLinkStart(i, q); };
             strip->onLinkFollow = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkFollow) onLinkFollow(i, q); };

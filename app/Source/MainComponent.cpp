@@ -345,6 +345,8 @@ MainComponent::MainComponent()
     trackList_.onLinkFollow = [this](size_t i, vsm::sequencer::LinkedMixParam q) { suivreLien(i, q); };
     mixer_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };
     trackList_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };   // D423
+    trackList_.onSoloAllume = [this](size_t index) { soloChoisitLaPiste(index); };   // D582.2
+    mixer_.onSoloAllume = [this](size_t index) { soloChoisitLaPiste(index); };
     // D16.8 : la console écrit l'automation en jouant, et il lui faut la
     // position du transport et son état -- deux choses qu'elle ne peut pas
     // connaître seule.
@@ -1463,6 +1465,11 @@ MainComponent::MainComponent()
     clicVidePoseLaTete_ = vsm::app::ui::UiScale::properties().getBoolValue("transportClicVidePoseLaTete", false);
     punchOffALArret_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementPunchOffALArret", false);
     selectionSuitLaTete_ = vsm::app::ui::UiScale::properties().getBoolValue("editionSelectionSuitLaTete", false);
+    // D582 : trois de plus.
+    soloChoisitLaPiste_ = vsm::app::ui::UiScale::properties().getBoolValue("pistesSoloChoisitLaPiste", false);
+    moletteGainClips_ = vsm::app::ui::UiScale::properties().getBoolValue("editionMoletteGainClips", false);
+    arrangement_.setMoletteGain(moletteGainClips_);
+    transportBar_.setFormatPosition(vsm::app::ui::UiScale::properties().getIntValue("transportPositionAffichee", 0));
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -4704,6 +4711,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuEditSelectionFollowsHead, tr(u8"La sélection suit la tête"), true, selectionSuitLaTete_);
             menu.addItem(-1, tr(u8"(les clips des pistes choisies que la tête touche, à chaque pose ; pas en lecture)"), false,
                          false);
+            // D582.3 : LA MOLETTE RÈGLE LE GAIN DES CLIPS AUDIO — une préférence du poste.
+            menu.addItem(kMenuEditWheelClipGain, tr(u8"La molette règle le gain des clips audio"), true, moletteGainClips_);
+            menu.addItem(-1, tr(u8"(1 dB par cran, sans touche, au-dessus du clip ; ailleurs elle fait défiler)"), false, false);
             // D552.1 : CALER LES DÉBUTS DES CLIPS SUR LA GRILLE (le *Quantize* de Cubase sur les événements).
             menu.addItem(kMenuEditSnapClipStarts, tr(u8"Caler les débuts des clips sur la grille"),
                          arrangement_.hasSelection());
@@ -5129,6 +5139,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 }
                 // D579.2 : L'ARMEMENT SUIT LA PISTE CHOISIE — une préférence du poste ; ce que la main a armé reste armé.
                 menu.addItem(kMenuTrackArmFollowsSelection, tr(u8"L'armement suit la piste choisie"), true, armementSuitLeChoix_);
+                // D582.2 : LE SOLO CHOISIT LA PISTE — allumer un solo choisit sa piste ; l'éteindre ne change rien.
+                menu.addItem(kMenuTrackSoloSelectsTrack, tr(u8"Le solo choisit la piste"), true, soloChoisitLaPiste_);
                 // D30.3 : LA CHAÎNE D'INSERTS, D'UNE PISTE À L'AUTRE. Les
                 // libellés DISENT COMBIEN : une commande grisée sans raison est
                 // une commande qu'on croit cassée, et « coller 4 inserts » dit
@@ -5453,6 +5465,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D580.1 : LE CLIC DANS LE VIDE POSE LA TÊTE (*Locate When Clicking in Empty Space*) — une préférence du poste.
             menu.addItem(kMenuTransportLocateOnEmptyClick, tr(u8"Un clic dans le vide pose la tête"), true, clicVidePoseLaTete_);
             menu.addItem(-1, tr(u8"(sur le fond de l'arrangement, comme sur la règle ; un glissé reste un lasso)"), false, false);
+            // D582.1 : LA POSITION AFFICHÉE — cinq formats, la partie en mesures n'y change rien.
+            {
+                const char8_t* formats[] = {u8"Secondes", u8"Timecode (24 i/s)", u8"Timecode (25 i/s)", u8"Timecode (30 i/s)",
+                                            u8"Échantillons"};
+                juce::PopupMenu position;
+                for (int i = 0; i < 5; ++i)
+                    position.addItem(kMenuTransportPositionFirst + i, tr(formats[i]), true, transportBar_.formatPosition() == i);
+                position.addItem(-1, tr(u8"(la première partie de la position ; les mesures ne changent pas)"), false, false);
+                menu.addSubMenu(tr(u8"Position affichée"), position);
+            }
             break;
         }
         case 4:
@@ -6207,6 +6229,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         {kMenuTransportLocateOnEmptyClick, &MainComponent::clicVidePoseLaTete_, "transportClicVidePoseLaTete"},
         {kMenuRecordPunchOffOnStop, &MainComponent::punchOffALArret_, "enregistrementPunchOffALArret"},
         {kMenuEditSelectionFollowsHead, &MainComponent::selectionSuitLaTete_, "editionSelectionSuitLaTete"},
+        {kMenuTrackSoloSelectsTrack, &MainComponent::soloChoisitLaPiste_, "pistesSoloChoisitLaPiste"},   // D582.2
+        {kMenuEditWheelClipGain, &MainComponent::moletteGainClips_, "editionMoletteGainClips"},           // D582.3
     };
     if (const auto* b = std::find_if(std::begin(kBascules), std::end(kBascules),
                                      [menuItemID](const Bascule& x) { return x.id == menuItemID; });
@@ -6222,7 +6246,18 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             for (auto& piste : project_.tracks) piste.armedByRule = false;
         // D580.3 : cochée, elle s'applique à la tête où elle est, au prochain tour de l'horloge.
         if (menuItemID == kMenuEditSelectionFollowsHead) teteDuDernierChoix_ = -1;
+        if (menuItemID == kMenuEditWheelClipGain) arrangement_.setMoletteGain(reglage);   // D582.3
         std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
+        menuItemsChanged();
+        return;
+    }
+    if (menuItemID >= kMenuTransportPositionFirst && menuItemID <= kMenuTransportPositionLast) {   // D582.1
+        const int format = menuItemID - kMenuTransportPositionFirst;
+        transportBar_.setFormatPosition(format);
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        reglages.setValue("transportPositionAffichee", format);
+        reglages.saveIfNeeded();
+        std::fputs(("VSM_REGLAGE_POSTE : transportPositionAffichee " + std::to_string(format) + "\n").c_str(), stderr);
         menuItemsChanged();
         return;
     }
@@ -14146,6 +14181,14 @@ void MainComponent::soloTrackExclusively(size_t index) {
     mixer_.refreshMuteSolo();
     trackList_.repaint();
     if (mixer_.onMixChanged) mixer_.onMixChanged();
+    if (!dejaSeule) soloChoisitLaPiste(index);   // D582.2 : un solo exclusif est un solo qu'on allume
+}
+
+void MainComponent::soloChoisitLaPiste(size_t piste) {
+    // D582.2 : LE SOLO CHOISIT LA PISTE — par le chemin du clic sur la ligne, ce qui ouvre le piano roll sur elle.
+    if (!soloChoisitLaPiste_ || piste >= project_.tracks.size() || piste == trackList_.selectedTrackIndex()) return;
+    trackList_.selectTrackIndex(piste);
+    std::fputs(("VSM_SOLO_CHOISIT : piste " + std::to_string(piste) + " choisie\n").c_str(), stderr);
 }
 
 void MainComponent::toggleSoloSafeSelectedTrack() {

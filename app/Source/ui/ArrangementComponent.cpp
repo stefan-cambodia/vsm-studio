@@ -664,6 +664,10 @@ void ArrangementComponent::mouseWheelMove(const juce::MouseEvent& event, const j
     // là-bas : les pilotes de souris ne s'accordent pas sur la taille d'un cran.
     if (project_ == nullptr || (wheel.deltaY == 0.0f && wheel.deltaX == 0.0f)) return;
     const float sens = wheel.deltaY != 0.0f ? wheel.deltaY : wheel.deltaX;
+    // D582.3 : LA MOLETTE RÈGLE LE GAIN D'UN CLIP AUDIO, si la préférence le veut — sans touche, au-dessus du clip ;
+    // ailleurs, elle fait ce qu'elle faisait.
+    if (moletteGain_ && !event.mods.isAnyModifierKeyDown() && wheel.deltaY != 0.0f && reglerGainALaMolette(event, sens))
+        return;
     if (event.mods.isCtrlDown() || event.mods.isCommandDown()) {
         zoomHorizontally(sens > 0 ? 1.15f : 1.0f / 1.15f);
     } else if (event.mods.isShiftDown() || wheel.deltaY == 0.0f) {
@@ -674,6 +678,31 @@ void ArrangementComponent::mouseWheelMove(const juce::MouseEvent& event, const j
     } else {
         setDefilementVertical(decalageVertical() + (sens > 0 ? -3 : 3) * kMinHeight);
     }
+}
+
+bool ArrangementComponent::reglerGainALaMolette(const juce::MouseEvent& event, float sens) {
+    // D582.3 : 1 dB par cran, borné à ±24 dB comme le menu *Gain du clip* (D22.1). Une RAFALE — des crans sur le même
+    // clip sans silence de plus de 500 ms — fait UN pas, la règle des commandes apprises (D521).
+    size_t piste = 0;
+    Geste bord = Geste::Aucun;
+    Clip* clip = clipAt(event.position, piste, bord);
+    if (clip == nullptr || piste >= project_->tracks.size()
+        || project_->tracks[piste].kind != vsm::sequencer::Track::Kind::Audio)
+        return false;   // un clip MIDI, le fond : la molette fait ce qu'elle faisait
+    const double maintenant = juce::Time::getMillisecondCounterHiRes();
+    if (clip->id != moletteClip_ || maintenant - moletteInstant_ > 500.0) {
+        if (onEditStarted) onEditStarted(u8"Gain du clip");
+        moletteClip_ = clip->id;
+    }
+    moletteInstant_ = maintenant;
+    const float actuel = clip->gain > 0.0f ? 20.0f * std::log10(clip->gain) : -24.0f;
+    const float voulu = juce::jlimit(-24.0f, 24.0f, actuel + (sens > 0 ? 1.0f : -1.0f));   // depuis SON gain (D22.1)
+    setClipGain(project_->tracks[piste].clips, {clip->id}, std::pow(10.0f, voulu / 20.0f));
+    std::fputs(("VSM_MOLETTE_GAIN : clip de la piste " + std::to_string(piste) + " \xc3\xa0 "
+                + juce::String(voulu, 1).toStdString() + " dB\n").c_str(), stderr);
+    notifyChanged();
+    repaint();
+    return true;
 }
 
 juce::Rectangle<float> ArrangementComponent::foldZone(size_t index) const {

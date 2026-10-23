@@ -49,6 +49,13 @@ public:
     /// ensuite pendant vingt minutes pourquoi rien ne sort.
     void setAudioUnavailable(const juce::String& raison);
     void setSampleRate(double sampleRate); // idem
+    /// D582.1 : LA PREMIÈRE PARTIE DE LA POSITION — 0 secondes, 1 timecode 24 i/s, 2 à 25, 3 à 30, 4 échantillons à la
+    /// fréquence affichée ; la partie en mesures ne change pas. Une préférence du poste.
+    void setFormatPosition(int format);
+    int formatPosition() const { return formatPosition_; }
+    /// D582.1 : le libellé de la position tel qu'il est peint (pour le relevé `relever-position`).
+    juce::String textePosition() const { return positionLabel_.getText(); }
+    double frequenceAffichee() const { return frequence_; }   ///< D582.1 : 0 = jamais posée
 
     /// D11.3 : « mes. 33 · 2 » à côté du temps ; sans fournisseur, le tick brut.
     std::function<juce::String(vsm::midi::Tick)> positionInBarsProvider;
@@ -196,6 +203,8 @@ private:
     juce::Label xrunLabel_;          ///< D41.3 : montré seulement s'il y a eu un trou
     int derniersXruns_ = -2;         ///< -2 = jamais posé (distinct de -1 « pilote muet »)
     juce::Label positionLabel_;
+    int formatPosition_ = 0;          ///< D582.1
+    double frequence_ = 0.0;          ///< D582.1 : la fréquence affichée, pour les échantillons ; 0 = inconnue
     juce::Label bpmLabel_;
     juce::Label timeSigLabel_;
     juce::Label cpuLabel_;

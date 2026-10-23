@@ -2,6 +2,7 @@
 #include "Langue.h"
 #include "Shortcuts.h"   // D358 : libelleAvecTouche
 #include "LookAndFeel/VsmLookAndFeel.h"
+#include <cmath>   // D582.1 : std::floor, std::llround
 
 using namespace vsm::sequencer;
 using namespace vsm::ui;
@@ -558,7 +559,13 @@ void TransportBarComponent::poserTexteXruns() {
 }
 
 void TransportBarComponent::setSampleRate(double sampleRate) {
+    frequence_ = sampleRate;   // D582.1
     sampleRateLabel_.setText(juce::String(sampleRate / 1000.0, 1) + " kHz", juce::dontSendNotification);
+}
+
+void TransportBarComponent::setFormatPosition(int format) {
+    formatPosition_ = juce::jlimit(0, 4, format);
+    timerCallback();   // le libellé suit tout de suite, pas au tour suivant
 }
 
 void TransportBarComponent::timerCallback() {
@@ -571,9 +578,25 @@ void TransportBarComponent::timerCallback() {
     int minutes = static_cast<int>(seconds) / 60;
     double secsRemainder = seconds - minutes * 60.0;
 
+    // D582.1 : LA PREMIÈRE PARTIE SUIT LE FORMAT CHOISI — le timecode en images ENTIÈRES, comme un compteur ; les
+    // échantillons arrondis, à la fréquence que la barre affiche.
+    juce::String temps;
+    if (formatPosition_ >= 1 && formatPosition_ <= 3) {
+        static constexpr int kImages[] = {24, 25, 30};
+        const int ips = kImages[formatPosition_ - 1];
+        const auto images = static_cast<long long>(std::floor(std::max(0.0, seconds) * ips));
+        const long long s = images / ips;
+        temps = juce::String::formatted("%02lld:%02lld:%02lld:%02lld", s / 3600, (s / 60) % 60, s % 60, images % ips);
+    } else if (formatPosition_ == 4 && frequence_ > 0.0) {
+        temps = juce::String(static_cast<long long>(std::llround(std::max(0.0, seconds) * frequence_)));
+    } else if (formatPosition_ == 4) {
+        temps = vsm::app::ui::tr(u8"échantillons : fréquence inconnue");   // pas de périphérique : dit, pas déguisé en secondes
+    } else {
+        temps = juce::String::formatted("%02d:%06.3f", minutes, secsRemainder);
+    }
     // D11.3 : la position MUSICALE à côté de la position en temps. « tick
     // 4 215 » ne dit rien à personne ; « mes. 33 · 2 », si.
-    juce::String text = juce::String::formatted("%02d:%06.3f  |  ", minutes, secsRemainder)
+    juce::String text = temps + "  |  "
                         + (positionInBarsProvider ? positionInBarsProvider(tick)
                                                   : "tick " + juce::String(static_cast<long long>(tick)));
     positionLabel_.setText(text, juce::dontSendNotification);

@@ -332,6 +332,8 @@ public:
     /// D580.3 : la sélection devient les clips de `pistes` que la tête touche ; vrai si elle a changé, `combien` dit sa
     /// taille.
     bool choisirClipsSousLaTete(vsm::midi::Tick tete, const std::set<size_t>& pistes, size_t& combien);
+    /// D582.3 : la molette règle le gain d'un clip audio — une préférence du poste.
+    void setMoletteGain(bool oui) { moletteGain_ = oui; }
     /// Les mêmes trois gestes que le piano roll, aux mêmes raccourcis.
     void copySelection();
     void paste();
@@ -759,6 +761,11 @@ private:
     /// (décalage vertical compris) —, reconvertie à chaque appel : la vue peut défiler
     /// sous un lasso tenu sans que son origine glisse dans le morceau.
     vsm::midi::Tick lassoTickOrigine_ = 0;
+    /// D582.3 : la préférence, et la rafale en cours (le clip, l'instant du dernier cran).
+    bool moletteGain_ = false;
+    uint64_t moletteClip_ = 0;
+    double moletteInstant_ = 0.0;
+    bool reglerGainALaMolette(const juce::MouseEvent& event, float sens);
     int lassoYContenu_ = 0;
     juce::Rectangle<float> lasso_;
     void selectClipsInLasso(bool etendre);

@@ -3229,6 +3229,28 @@ const Paire kAnglais[] = {
     { "Plis inversés : %1 piste(s)",
       "Fold states flipped: %1 track(s)" },
     // D559 : lever tous les solos et tous les muets, remettre la console à zéro, échanger gauche et droite d'un clip.
+    { "Le solo choisit la piste",   // D582.2
+      "Solo selects the track" },
+    { "La molette règle le gain des clips audio",   // D582.3
+      "The mouse wheel sets the gain of audio clips" },
+    { "(1 dB par cran, sans touche, au-dessus du clip ; ailleurs elle fait défiler)",
+      "(1 dB per notch, without modifiers, over the clip; elsewhere it scrolls)" },
+    { "Position affichée",   // D582.1
+      "Position display" },
+    { "Secondes",
+      "Seconds" },
+    { "Timecode (24 i/s)",
+      "Timecode (24 fps)" },
+    { "Timecode (25 i/s)",
+      "Timecode (25 fps)" },
+    { "Timecode (30 i/s)",
+      "Timecode (30 fps)" },
+    { "Échantillons",
+      "Samples" },
+    { "échantillons : fréquence inconnue",
+      "samples: unknown sample rate" },
+    { "(la première partie de la position ; les mesures ne changent pas)",
+      "(the first part of the position; the bars do not change)" },
     { "Les contrôleurs suivent les notes",   // D581.3
       "Controllers follow the notes" },
     { "La voix du dessus",   // D581.1

@@ -463,6 +463,17 @@ public:
                         + juce::String(velocite) + ", " + juce::String(duree) + " ms\n").toRawUTF8(), stderr);
             return true;
         }
+        // D582.2 : la PISTE CHOISIE ; D582.1 : la POSITION telle que la barre la peint.
+        if (geste.equalsIgnoreCase("relever-piste-choisie")) {
+            std::fputs(("VSM_PISTE_CHOISIE : " + juce::String(static_cast<int>(trackList_.selectedTrackIndex())) + "\n")
+                           .toRawUTF8(), stderr);
+            return true;
+        }
+        if (geste.equalsIgnoreCase("relever-position")) {
+            std::fputs(("VSM_POSITION_AFFICHEE : " + transportBar_.textePosition() + juce::String::fromUTF8(u8" ; fréquence ")
+                        + juce::String(static_cast<int>(std::llround(transportBar_.frequenceAffichee()))) + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D580.2 : la RÉGION DE PUNCH, active ou non, et ses bornes.
         if (geste.equalsIgnoreCase("relever-punch")) {
             std::fputs(("VSM_PUNCH_ETAT : " + juce::String(project_.punchEnabled ? "active" : "inactive") + " ["
@@ -574,6 +585,16 @@ public:
         if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); dire("muet"); return true; }
         // D110 : armer, comme le bouton R -- pour les boîtes du départ d'une prise.
         if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); dire("armer"); return true; }
+        // D582.2 : solo:<n> — le S d'une piste qu'on ne choisit PAS, par la ligne (`basculerSolo`), comme le clic.
+        if (geste.startsWithIgnoreCase("solo:")) {
+            const int n = geste.fromFirstOccurrenceOf(":", false, false).getIntValue();
+            if (n < 0 || static_cast<size_t>(n) >= project_.tracks.size()) return false;
+            trackList_.basculerSolo(static_cast<size_t>(n));
+            std::fputs(("VSM_GESTE : solo : piste " + juce::String(n) + juce::String::fromUTF8(u8" (son S) — ")
+                        + (project_.tracks[static_cast<size_t>(n)].solo ? juce::String::fromUTF8(u8"allumé") : juce::String::fromUTF8(u8"éteint"))
+                        + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D579.2 : armer:<n> — le bouton R d'une piste qu'on ne choisit PAS (la règle de l'armement ne la touche pas).
         if (geste.startsWithIgnoreCase("armer:")) {
             const int n = geste.fromFirstOccurrenceOf(":", false, false).getIntValue();
@@ -1322,6 +1343,11 @@ private:
         kMenuTransportLocateOnEmptyClick,
         kMenuRecordPunchOffOnStop,
         kMenuEditSelectionFollowsHead,
+        /// D582.1, D582.2, D582.3 : la position affichée (cinq formats), le solo qui choisit la piste, la molette du gain.
+        kMenuTransportPositionFirst,
+        kMenuTransportPositionLast = kMenuTransportPositionFirst + 4,
+        kMenuTrackSoloSelectsTrack,
+        kMenuEditWheelClipGain,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
@@ -1905,6 +1931,11 @@ private:
     bool clicVidePoseLaTete_ = false;      ///< D580.1
     bool punchOffALArret_ = false;         ///< D580.2
     bool selectionSuitLaTete_ = false;     ///< D580.3
+    /// D582 : deux de plus (la position affichée est tenue par la barre de transport).
+    bool soloChoisitLaPiste_ = false;      ///< D582.2
+    bool moletteGainClips_ = false;        ///< D582.3
+    /// D582.2 : un solo allumé choisit sa piste, si la préférence le veut.
+    void soloChoisitLaPiste(size_t piste);
     /// D580.3 : la tête à laquelle la sélection a suivi pour la dernière fois ; -1 : à refaire au prochain tour.
     vsm::midi::Tick teteDuDernierChoix_ = -1;
     /// D580.2 : LA bascule de la région de punch (le menu, l'arrêt), sans pas d'historique (D519).

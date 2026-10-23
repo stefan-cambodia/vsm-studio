@@ -286,6 +286,8 @@ public:
     std::function<void()> onMixChanged;
     /// D21.2 : Ctrl+clic sur Solo -- l'application met cette piste seule en solo.
     std::function<void(size_t)> onExclusiveSoloRequested;
+    /// D582.2 : un solo ALLUMÉ par le S d'une tranche.
+    std::function<void(size_t)> onSoloAllume;
     /// Relit muet et solo depuis la piste (après un solo exclusif).
     /// D29.3 : voir MixerComponent::applyExternalControl.
     void applyExternalControl(const std::string& parametre, float valeur);
@@ -676,6 +678,8 @@ public:
     std::function<void()> onMixChanged;
     /// D21.2 : une tranche a demandé le solo EXCLUSIF (Ctrl+clic sur Solo).
     std::function<void(size_t)> onExclusiveSoloRequested;
+    /// D582.2 : un solo ALLUMÉ par le S d'une tranche.
+    std::function<void(size_t)> onSoloAllume;
     /// D39.4 : LES TRANCHES DES PISTES CHOISIES SE VOIENT.
     ///
     /// ET LA QUESTION ANNONCÉE AVANT LA MESURE A BIEN EU LIEU : un DOSSIER
