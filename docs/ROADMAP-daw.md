@@ -45033,3 +45033,66 @@ Les entrées REGARDÉES (`VSM_MENU_PHOTO`) : *Position affichée*, six lignes, *
 « (la première partie de la position ; les mesures ne changent pas) » ; *Le solo choisit la piste* cochée sous
 *L'armement suit la piste choisie* ; *La molette règle le gain des clips audio* cochée sous *La sélection suit la tête*,
 avec sa ligne grisée.
+
+### Phase D583 — un quarante-quatrième audit : les fondus à Maj+molette, la plage de rattrapage d'une prise MIDI, le 29,97 à images sautées (24/10/2026)
+
+*Écrite le 24/10 à 01 h 01 (l'horloge), pendant la série de D582, dans le brouillon, et le code écrit dans l'arbre à part
+sans rien compiler ni lancer ; reprise avant toute mesure sur deux points, en écrivant le code — le pas des fondus (une
+noire, et non le pas de grille écrit d'abord : l'aimant d'origine est la mesure) et la note relâchée avant l'entrée. Rien
+de D583 n'a été mesuré avant que ce texte soit commité.*
+
+**LA MÉTHODE, celle de D567, et la leçon de D582.2 : un zéro se lit dans la fonction ET dans celles qu'elle appelle.**
+Restaient de D582 deux pistes remises — les fondus à Maj+molette, le 29,97 à images sautées — et la page *Record ▸ MIDI*
+des préférences de Cubase, non sondée. **Écartés, et pourquoi** : les repères à étendue (*Cycle Markers*) — leur usage
+premier, poser les locateurs sur une partie du morceau, est fait par *Locateurs sur cette section* (D542.1), entre deux
+repères ; des étendues qui se chevauchent sont un chantier de format, remis encore ; le calage des coupes aux passages
+par zéro (*Snap to Zero Crossing*) — il existe (`audio/src/io/ZeroCrossing.cpp`, appelé par l'arrangement). Restent trois
+zéros :
+**0 pour les fondus à Maj+molette** (le *… and Fades* de l'*Use Mouse Wheel for Event Volume and Fades* de Cubase) —
+`ArrangementComponent::mouseWheelMove` : Maj+molette fait défiler le temps d'un pas de grille, partout, et
+`reglerGainALaMolette` (D582.3) n'est appelé que sans touche ; les fondus ne se règlent qu'à la poignée (`setClipFadeIn`,
+`setClipFadeOut`) ou au menu ; **0 pour la plage de rattrapage** (*MIDI Record Catch Range in ms*) — `MidiRecorder::push`
+écarte tout ce qui précède le point d'entrée (`event.seconds < startSeconds_`), à la milliseconde : une note frappée un
+souffle trop tôt à l'entrée d'un punch est perdue, et son relâchement avec elle ; **0 pour le 29,97 à images sautées** —
+`TransportBarComponent::timerCallback` (D582.1) compte 24, 25 ou 30 images entières, rien d'autre.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D583.1 | **Les fondus à Maj+molette** — *Use Mouse Wheel for Event Volume and Fades* | l'option de D582.3 cochée, Maj+molette au-dessus de la MOITIÉ GAUCHE d'un clip audio allonge ou raccourcit son fondu d'entrée d'une noire par cran, au-dessus de la moitié DROITE son fondu de sortie ; bornés au clip comme à la poignée ; une rafale fait UN pas, « Fondu d'un clip » ; ailleurs — le fond, un clip MIDI, sans l'option —, Maj+molette fait défiler le temps ; mesuré par les fondus relus dans le projet enregistré, le témoin sans l'option à côté |
+| D583.2 | **La plage de rattrapage** — *MIDI Record Catch Range* | *Enregistrement ▸ Rattrapage avant l'entrée* : *Rattrapage : aucun* (coché d'origine), *Rattrapage : 50 ms*, *100 ms*, *250 ms* — des libellés uniques dans toute la barre, comme ceux du pré-roll : une note frappée dans cette plage AVANT le point d'entrée est gardée, et posée au point d'entrée ; plus tôt, elle reste écartée ; un relâchement seul (sa frappe hors de la plage) aussi ; retenu au poste ; mesuré au cœur par le test de l'enregistreur, et au banc par le MIDI exporté après une prise en punch, le témoin sans rattrapage à côté |
+| D583.3 | **Le 29,97 à images sautées** — *29.97 dfps* | *Transport ▸ Position affichée ▸ Timecode (29,97 i/s, images sautées)* : `hh:mm:ss;ii` — le point-virgule des images sautées —, les images comptées à 30 000 / 1 001 par seconde, les numéros 0 et 1 sautés au début de chaque minute qui n'est pas une dizaine ; mesuré par le libellé relevé à deux positions connues |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D583.1.** UNE option pour le gain et les fondus, comme chez Cubase : l'entrée de D582.3 devient *La molette règle le
+  gain et les fondus des clips audio*, sa ligne grisée dit les deux gestes ; la clé du poste ne change pas
+  (`editionMoletteGainClips`), qui la cochait la retrouve cochée. Le pas d'un cran est UNE NOIRE, quel que soit l'aimant :
+  la mesure — l'aimant d'origine de l'arrangement — ferait des pas de deux secondes à 120 BPM, la double-croche du piano
+  roll seize crans pour un fondu de deux secondes ; un fondu de quelques millisecondes reste l'affaire de la poignée. Le
+  fondu est en secondes (`Clip::fadeInSeconds`) : la noire se compte depuis le bord du fondu, par la carte de tempo. La
+  moitié se juge au pointeur, sur la longueur JOUÉE du clip. **L'attendu, écrit avant la mesure** (120 BPM : une noire,
+  0,5 s ; un clip audio de 4 s posé à 0, sans fondu) : trois crans vers le haut à Maj sur sa moitié gauche → fondu d'entrée **1,5 s**,
+  sortie **0** ; puis un vers le bas → **1,0 s** ; trois crans vers le haut sur sa moitié droite → sortie **1,5 s** ; Ctrl+Z
+  après une rafale de trois → **0**, en un pas ; le témoin sans l'option → **0** et **0** ; huit crans à gauche → **4,0 s**,
+  la borne du clip.
+- **D583.2.** Une préférence du POSTE (elle dit la main du musicien, pas le morceau), et un menu de quatre valeurs plutôt
+  qu'une case à remplir : les valeurs de Cubase vont de 0 à quelques centaines de millisecondes, et quatre suffisent à
+  dire « rien », « un souffle », « un peu », « large ». Le point d'entrée, c'est celui que l'enregistreur reçoit
+  (`begin`) : le début d'une prise sans punch, l'entrée du punch avec. Une note rattrapée est posée AU POINT D'ENTRÉE —
+  sa durée raccourcie d'autant — : la poser plus tôt écrirait avant la région qu'on a demandé de remplacer. Une note
+  RELÂCHÉE avant le point d'entrée n'est pas rattrapée : c'était une note d'avant, et posée à l'entrée elle n'aurait plus
+  de durée. **L'attendu, écrit avant la mesure** : au cœur, une entrée à 2,000 s, le rattrapage à 100 ms : une frappe à
+  1,950 s relâchée à 2,300 s gardée, [2,000 ; 2,300] ; une à 1,850 s écartée ; une frappe à 1,960 s relâchée à 1,990 s
+  écartée ; le rattrapage à 0 : la première écartée aussi (le comportement d'aujourd'hui, au même test). Au banc (la région
+  de punch [2 s, 4 s), un décompte d'une mesure, la piste armée, des notes entrantes de 400 ms frappées 150 ms et 400 ms
+  avant l'entrée, puis une dedans) : à *Rattrapage : 250 ms*, **2** notes, la première au tick **1 920** (2 s) ; le
+  témoin à *Rattrapage : aucun* : **1** note ; relancé : *Rattrapage : 250 ms* cochée ; en anglais, *Catch range: 250 ms*.
+  Les marges du banc (150 et 400 ms autour d'une borne de 250 ms) sont larges devant la gigue d'un geste différé, de
+  l'ordre de la dizaine de millisecondes.
+- **D583.3.** L'algorithme des images sautées de la norme (SMPTE 12M) : 17 982 images par dizaine de minutes, deux numéros
+  sautés par minute sauf les dizaines. Le 29,97 SANS images sautées n'est pas ajouté : il n'a de sens qu'avec une vidéo.
+  **L'attendu, écrit avant la mesure** : à 2,5 s (mes. 2 · 2) → **`00:00:02;14`** (74 images ; le 30 i/s y lit `:15`) ;
+  à 60,5 s (mes. 31 · 2) → **`00:01:00;15`** (1 813 images, deux numéros sautés à la minute ; sans les sauter on lirait
+  `;13`) ; la partie en mesures identique ; en anglais, *Timecode (29.97 fps, drop-frame)*.
+
+**L'ORDRE, TRANCHÉ ICI.** D583.3 d'abord (le plus simple, et le banc de D582.1 s'étend), puis D583.1, puis D583.2 ; un
+banc par élément, entré dans la série de `verifier.sh --bancs`, le banc de D582.3 rejoué sous le libellé neuf.
