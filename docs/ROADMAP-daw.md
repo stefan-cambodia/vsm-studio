@@ -44397,3 +44397,57 @@ un autre dossier) ; et les **neuf** bancs remis « après la série de D573 » y
 lit la liste (159 noms, 159 distincts, 0 absent de `tools/`). Ce que la série de D573 devait dire — et les rouges de
 glisser et de photo que D576 voulait rejouer seuls —, la série de D577 le dira, sur le binaire de D577, qui porte D573 à
 D577 : elle se joue après ce commit, sans compilation ni lancement à côté.
+
+### Phase D578 — un trente-neuvième audit : le pré-roll, le post-roll, le moniteur MIDI (23/10/2026)
+
+*Écrite le 23/10 à 11 h 01 (l'horloge du même appel), D577 close et poussée, pendant la série de ses 159 bancs (lancée à
+10 h 58, la session verrouillée et l'écran éteint, batterie à 99 %) — sans compiler ni lancer l'application à côté.*
+
+**LA MÉTHODE, celle de D567 et la leçon de D571.3** (les zéros revérifiés par ce que le code FAIT). Le transport de Cubase
+(*Pre-roll*, *Post-roll*) et son *MIDI Monitor* : **0 pour le pré-roll** — le code le dit lui-même (« ce logiciel n'a pas
+de pre-roll réglable », `MainComponent.cpp`, au chiffrage d'un point de départ) ; le menu *Transport* porte le décompte
+(`recordCountInBars`, 0 à 2 mesures, une préférence du poste) et la région de punch, rien qui fasse partir la LECTURE
+avant la tête ; `preRoll`, `pré-roll` : rien d'autre ; **0 pour le post-roll** — *Lire la sélection* (D553.2) s'arrête
+EXACTEMENT à la fin de la sélection, c'est son contrat mesuré ; `postRoll`, `post-roll` : rien ; **0 pour un moniteur
+MIDI** — les événements entrants passent par `AudioEngine::handleIncomingMidiMessage` (le verbe de banc `cc-entrant:`
+l'emprunte, D517) et rien ne les MONTRE : `MidiMonitor`, « Moniteur MIDI » : rien. **Écarté** : *Remplir la boucle*
+(*Fill Loop*) — *Répéter ▸ Jusqu'à la fin de la boucle* (D20.1, `repeatsThatFit`) en fait l'essentiel ; il ne lui manque
+que le départ au locateur gauche et la dernière copie raccourcie, trop voisin pour un audit. **Toujours remis** : le
+mode d'automation *Trim*, les repères à étendue, le pré-enregistrement audio, la réserve des fichiers.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D578.1 | **Le pré-roll** — *Transport ▸ Pre-roll* | *Transport ▸ Pré-roll ▸ Pré-roll : aucun / 1 mesure / 2 mesures / 4 mesures* (cochée la tenue) : *Lecture* (bouton, Espace) et *Lire la sélection* partent de la tête MOINS ces mesures, au début du morceau au plus tôt ; la tête de départ reste celle que l'utilisateur a posée (*Revenir au point de départ* y revient) ; retenu au poste ; mesuré par le relevé du transport pendant la lecture, le témoin sans pré-roll à côté |
+| D578.2 | **Le post-roll** — *Transport ▸ Post-roll* | *Transport ▸ Post-roll ▸ Post-roll : aucun / 1 mesure / 2 mesures / 4 mesures* : *Lire la sélection* s'arrête ces mesures APRÈS la fin de la sélection, au plus tard à la fin du morceau ; retenu au poste ; mesuré par la tête relevée à l'arrêt, le témoin sans post-roll à côté |
+| D578.3 | **Le moniteur MIDI** — *MIDI Monitor* | *Affichage ▸ Moniteur MIDI* (cochée quand elle est ouverte) : une fenêtre qui liste les événements MIDI REÇUS — l'heure, la source, le canal, la nature (note, contrôleur, pitch bend, pression, programme, SysEx) et les données — les plus récents en bas, 500 au plus ; *Effacer* ; le compte dans son titre ; mesuré par le relevé de la fenêtre après des contrôleurs entrants (`cc-entrant:`), le témoin fenêtre fermée à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D578.1.** Une préférence du POSTE (comment on écoute), comme le décompte qu'elle côtoie au menu — pas du morceau : un
+  pré-roll ne change rien de ce que le projet contient ni de ce que l'export rend. En MESURES de la signature au point de
+  départ (la carte des signatures), pas en secondes : c'est l'unité du décompte. Il s'applique aux départs que
+  l'utilisateur pose — *Lecture* et *Lire la sélection* —, PAS à *Lire jusqu'au début de la sélection* ni à *Lire depuis
+  sa fin* (D555.1, qui sont déjà une course d'élan et un prolongement), ni au rebouclage, ni au scrub, ni à
+  l'ENREGISTREMENT, qui a son décompte (D546.2) — et le sous-menu le DIT dans une ligne grisée (« à la lecture ;
+  l'enregistrement a son décompte »). Le départ rabattu au début du morceau n'est pas une faute : il n'est pas dit.
+  **L'attendu, écrit avant la mesure** (120 BPM, 4/4 : une mesure = 2 s) : la tête posée à la mesure 5 (8 s), *Lecture* ;
+  0,3 s après, le témoin sans pré-roll lit la tête **entre 8,0 et 8,6 s** ; avec 1 mesure, **entre 6,0 et 6,6 s** ; la
+  tête posée à 0 avec 1 mesure : **entre 0,0 et 0,6 s** ; arrêté avec *Revenir au point de départ* : **8,000 s**, et non 6.
+- **D578.2.** La même préférence du poste, le même sous-menu voisin. Il ne s'applique qu'à *Lire la sélection* — le
+  seul geste qui s'arrête de lui-même sur une fin que l'utilisateur a choisie ; une lecture ordinaire ne s'arrête pas,
+  et l'arrêt à la fin du morceau reste où il est. Une boucle qui ramène la tête abandonne la lecture de la sélection,
+  post-roll compris (D553.2, inchangé). **L'attendu, écrit avant la mesure** : A [2 s, 4 s) choisi, *Lire la sélection* ;
+  le témoin s'arrête à **4,000 s** ; avec 1 mesure, à **6,000 s** ; avec 1 mesure de pré-roll ET 1 de post-roll : la
+  lecture part **entre 0,0 et 0,6 s** (relevée 0,3 s après) et s'arrête à **6,000 s**.
+- **D578.3.** Le moniteur montre ce que le MOTEUR reçoit, à l'endroit où il le reçoit (`handleIncomingMidiMessage`,
+  APRÈS le filtre de son propre port, D27 : il ne montre pas un rebouclage que le moteur ignore). Le fil MIDI ne touche
+  pas à l'interface : une file sans verrou (`juce::AbstractFifo`) que la fenêtre vide à son minuteur — rien d'alloué ni
+  de verrouillé dans le rappel MIDI. La fenêtre ne recueille QUE pendant qu'elle est ouverte (Cubase de même : un
+  moniteur qu'on ne regarde pas ne coûte rien), et c'est dit dans sa ligne d'état. Une source sans port (le clavier
+  d'ordinateur, un verbe de banc) s'écrit « (interne) ». Un réglage de l'écran : aucun pas, rien au projet.
+  **L'attendu, écrit avant la mesure** : la fenêtre ouverte, `cc-entrant:7:100` puis `cc-entrant:74:64` : **2
+  événements**, dans cet ordre — « CC 7 = 100 » et « CC 74 = 64 », canal **1**, source « (interne) » ; *Effacer* : **0** ;
+  le témoin, les deux mêmes contrôleurs fenêtre FERMÉE, puis ouverte : **0** — et le moteur les a reçus quand même
+  (`VSM_CC_ENTRANT` deux fois au journal).
+
+**L'ORDRE, TRANCHÉ ICI.** D578.1 et D578.2 ensemble (le même point de départ, la même règle d'arrêt, un même banc), puis
+D578.3 ; une compilation de l'application APRÈS la série de D577 — rien ne se compile ni ne se lance à côté d'elle.
