@@ -45173,3 +45173,97 @@ sans qu'on l'ait voulue, et rien ne permet de ne garder que les notes.
 
 **L'ORDRE, TRANCHÉ ICI.** D584.1 puis D584.2, un banc pour les deux (`tools/midi-entrant-prise.sh`) — le filtre ne se
 mesure qu'avec ce que D584.1 fait entrer —, entré dans la série de `verifier.sh --bancs`.
+
+### Phase D585 — un quarante-sixième audit : les remises à zéro après la prise, le zoom en glissant sur la règle, la chasse aux notes commencées (24/10/2026)
+
+*Écrite le 24/10 à 06 h 46 (l'horloge), pendant la série de D584, l'écran allumé ; le code écrit ensuite dans l'arbre à
+part (`../vsm-D585`), sans rien compiler ni lancer avant que ce texte soit commité. Rien de D585 n'a été mesuré avant.*
+
+**LA MÉTHODE, celle de D567 et de D582.2 : un zéro se lit dans la fonction et dans celles qu'elle appelle.** Sondés, la
+fin de la page *MIDI* des préférences de Cubase (*Insert Reset Events after Record*, le filtre *Chase Events*) et la page
+*Transport* (*Zoom while Locating in Time Scale*). **Écartés, et pourquoi** : la remise à zéro à l'arrêt (*Reset on
+Stop*), remise pour la raison de D584 ; le défilement tenu (*Rewind / Forward*, *Wind Speed*) — la tête se déplace déjà
+par pas (le temps, la mesure, le repère, l'événement : D29.2, D556.2, D565.1), et un défilement TENU demande un relevé de
+vitesse qui n'existe pas. Restent trois zéros :
+**0 pour les remises à zéro après la prise** (*Insert Reset Events after Record*) — `MidiRecorder::finishControls` rend
+ce qui a été joué et rien d'autre, `applyRecordedControls` le pose : une prise arrêtée la pédale enfoncée ou la molette
+de hauteur tirée laisse la piste dans cet état pour tout ce qui suit, et la chasse (D16.2) le rejoue même à un départ
+pris après la prise, jusqu'au prochain événement du même genre ;
+**0 pour le zoom en glissant sur la règle** (*Zoom while Locating in Time Scale*) — `ArrangementComponent::mouseDown`
+pose la tête au clic sur la règle et rend la main sans ouvrir de geste (`geste_` reste `Aucun`, et `mouseDrag` sort
+aussitôt) : un glissé sur la règle de l'arrangement ne fait RIEN, ni zoom ni tête qui suit ; le zoom ne change qu'à
+Ctrl+molette (qui garde le bord gauche, pas le point visé), aux touches et aux préréglages ;
+**0 pour la chasse aux notes** (*Chase Events ▸ Note*) — `PlaybackScheduler::chaseAt` chasse le programme, les
+contrôleurs, le pitch bend et la pression de canal, et son en-tête écarte les notes en toutes lettres (« aucune note
+d'avant le point de départ ne sonne encore ») ; `build` n'émet un NoteOn que si le début de la note tombe dans la
+fenêtre : lancée au milieu d'une nappe de quatre mesures, la lecture reste muette jusqu'à la note suivante, et une boucle
+posée au milieu de la nappe la coupe à chaque rebouclage (`wrapNoteOffPending_` relâche, rien ne relance).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D585.1 | **Les remises à zéro après la prise** — *Insert Reset Events after Record* | *Enregistrement ▸ Remettre les contrôleurs à zéro après la prise* (décochée d'origine, comme chez Cubase) : cochée, à la fin d'une prise MIDI, chaque geste que la prise a laissé hors du repos — la molette de hauteur, la pression de canal, la pression polyphonique d'une note, la modulation (CC 1), le souffle (CC 2), les trois pédales (CC 64, 66, 67) — revient au repos (0, le centre pour la molette de hauteur) au point de sortie de la prise, sur le canal où il a été joué, dans le même pas que la prise ; ce que la prise a déjà ramené au repos n'est pas doublé ; retenu au poste ; mesuré au cœur par le test de l'enregistreur, et au banc par le MIDI exporté, le témoin décoché à côté |
+| D585.2 | **Le zoom en glissant sur la règle** — *Zoom while Locating in Time Scale* | *Transport ▸ Zoomer en glissant sur la règle* (cochée d'origine, comme chez Cubase) : l'appui sur la règle de l'arrangement pose la tête, comme avant ; le glissé VERTICAL zoome — vers le bas agrandit, vers le haut réduit, un facteur 2 par 100 px —, le tick saisi restant sous le pointeur ; le glissé HORIZONTAL fait suivre la tête ; un glissé fait UN pas de zoom (D557.3) ; décochée, la tête suit et le zoom ne bouge pas ; retenu au poste ; mesuré par le relevé du zoom et de la tête après un glissé, le témoin décoché à côté |
+| D585.3 | **La chasse aux notes commencées** — *Chase Events ▸ Note* | *Transport ▸ Chasser les notes commencées* (cochée d'origine, comme la chasse aux contrôleurs de D16.2) : au départ de la lecture, et à chaque déplacement de la tête pendant la lecture, une note commencée avant la tête et finie après est relancée à sa vélocité, et se relâche à sa fin écrite ; au rebouclage, de même pour une note qui traverse le début de la boucle ; une note qui sonne déjà n'est pas relancée ; transport à l'arrêt, rien ne sonne ; retenu au poste ; mesuré par les notes qui sonnent sur la piste et son niveau, relevés pendant la lecture, le témoin décoché à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D585.1.** Le repos se juge sur la DERNIÈRE valeur que la prise a gardée pour un geste (canal, genre, numéro de CC ou
+  de note) : hors du repos, une remise au point de sortie ; au repos, rien. Le point de sortie est celui de
+  l'enregistreur : l'arrêt, ou la sortie du punch. Le filtre de D584.2 s'applique sans rien faire de plus : un genre que
+  la prise ne garde pas n'y a pas de dernière valeur. Les NIVEAUX et les POSITIONS — volume (CC 7), panoramique (CC 10),
+  expression (CC 11), le pied (CC 4) — ne sont pas des gestes qui reviennent au repos : les remettre à 0 couperait le
+  son ou le déplacerait. Décochée d'origine : rien ne change pour qui n'y touche pas (la règle de D584.2), et c'est le
+  réglage d'origine de Cubase. Les passes EMPILÉES (D3.5) n'enregistrent pas de contrôleurs (`closePass` ne pose que des
+  notes) : rien à y remettre. La capture RÉTROSPECTIVE (D17.3) n'est pas une prise et ne passe pas par
+  `finishControls` : elle reste telle qu'elle est. Le réglage vit dans l'ENREGISTREUR (`MidiRecorder::setRemiseAZero`),
+  comme le filtre : le cœur se teste sans matériel.
+  **L'attendu, écrit avant la mesure** (au banc : 120 BPM, une piste MIDI vide armée, sans décompte ; pendant la prise,
+  à 300 ms d'écart, un pitch bend à +4 096, la pédale (CC 64) à 127, le CC 1 à 100, une pression de canal à 64, une
+  note ; l'arrêt, la pédale jamais relâchée) : cochée, le MIDI exporté porte **2** pitch bend (le second au centre),
+  **2** CC 64 (le second à 0), **2** CC 1, **2** pressions, **1** note, les quatre remises au MÊME tick, après le
+  dernier événement joué ; le TÉMOIN décoché, **1 1 1 1 1** ; cochée, la prise ayant ramené elle-même la molette au
+  centre et relâché la pédale, **2** pitch bend et **2** CC 64 encore — rien de doublé —, 2 CC 1, 2 pressions ; Ctrl+Z
+  après la prise cochée, **0** partout, en un pas ; relancé, cochée ; en anglais, *Reset controllers after the take*.
+  Au cœur : une prise qui laisse le pitch bend à +4 096 et la pédale à 127 rend une remise de chacun au tick de sortie ;
+  une pédale relâchée dans la prise, aucune ; le pitch bend filtré, aucune remise de pitch bend.
+- **D585.2.** Le pas : un facteur 2 par 100 px de course verticale (en pixels logiques, ceux des composants), dans les
+  bornes du zoom (0,004 et 2 px/tick) ; vers le BAS agrandit, comme chez Cubase et chez Live. Le tick saisi reste sous le
+  pointeur : le défilement se recalcule depuis le tick d'ancrage et l'abscisse de l'appui. La tête suit l'abscisse du
+  pointeur, lue APRÈS le zoom. Sous 4 px de course verticale, pas de zoom (la main tremble ; la règle du clic dans le vide
+  de D580.1 est de 3 px). Le pas de zoom (D557.3) se note au relâchement, une fois, si la vue a changé. Sans
+  modificateur seulement : aucun geste à modificateur n'existe sur la règle de l'arrangement, et le jour où il en
+  viendra un, il ne zoomera pas. La règle du PIANO ROLL n'est pas touchée : son glissé fait déjà suivre la tête (D33.3),
+  et son zoom garde le CENTRE de la fenêtre, pas le point visé (`PianoRollComponent::zoomHorizontally`) — y porter la
+  même règle est un second élément, remis. Cochée d'origine : aujourd'hui le glissé sur la règle de l'arrangement ne
+  fait rien, personne n'y perd un geste.
+  **L'attendu, écrit avant la mesure** (120 BPM, un projet de huit mesures) : un appui sur la règle de l'arrangement à
+  l'abscisse de la mesure 5, un glissé de 100 px vers le BAS sans bouger en x → le zoom **×2,00** (à 1 % près), la
+  mesure 5 toujours sous le pointeur (à 1 px près), la tête à la mesure 5 ; de 100 px vers le HAUT → **×0,50** ; un
+  glissé horizontal pur → le zoom inchangé, la tête au tick sous le point d'arrivée ; un glissé vers le bas puis
+  *Annuler le zoom* → le zoom d'avant, en UN pas ; le TÉMOIN décoché → le zoom inchangé, la tête qui suit ; relancé →
+  décochée ; en anglais, *Zoom by dragging on the ruler*.
+- **D585.3.** Le calcul est celui de la lecture : `PlaybackScheduler::chaseNotesAt(projet, tick)` prend les mêmes
+  passages de clips, la même chaîne d'effets MIDI (D31.3), les mêmes transpositions (D17.5, D544.3), écarte les notes
+  muettes et les pistes que `build` écarte ; une note est chassée si son début de SORTIE est strictement avant la tête et
+  sa fin de sortie (coupée à la fin du clip) strictement après. Une fonction à part, et non `chaseAt` : `build` s'en sert
+  pour tout planning qui commence ailleurs qu'à zéro, et des NoteOn chassés y entreraient dans des chemins qui ne les
+  attendent pas. QUAND : au départ de la lecture (`setPlaying(true)` depuis l'arrêt), et à un déplacement de la tête
+  PENDANT la lecture (`seekSeconds`) — le scrub compris, où une note qui sonne déjà n'est pas relancée ; transport à
+  l'arrêt, rien : poser la tête au milieu d'une nappe ne doit pas la faire sonner. Un départ suivi d'un déplacement dans
+  le même bloc ne chasse que le dernier (un numéro de génération). Au REBOUCLAGE, les notes qui traversent le début de
+  la boucle, calculées hors du fil audio (à chaque `setProject` et `setLoopRegion`) et relancées par le fil audio juste
+  après les relâchements du rebouclage. Une note relancée est livrée comme une note du planning : à la machine, au port
+  d'une piste à sortie MIDI (D27.2), comptée dans les notes envoyées ; sa FIN vient du planning, où le NoteOff écrit est
+  déjà. Le rendu hors ligne passe par le même `setPlaying` (D21) : un export qui commencerait ailleurs qu'à zéro
+  chasserait pareil. Cochée d'origine : c'est l'usage de Logic et de Live, et la chasse aux contrôleurs l'est depuis
+  D16.2. Un relevé neuf, `relever-sonnantes` : les notes qui sonnent sur chaque piste (le masque que le fil audio tient
+  pour les voyants du clavier, D32.3) et le niveau efficace de la piste.
+  **L'attendu, écrit avant la mesure** (120 BPM ; une piste MIDI, Minimoog, une note 60 de 0 à 8 s) : la lecture lancée
+  à 2 s, le relevé ~600 ms plus tard → la piste sonne **[60]**, à plus de −60 dBFS ; le TÉMOIN décoché → **[]**, sous
+  −90 dBFS ; une boucle [2 s ; 3 s) allumée, la lecture lancée à 2 s, le relevé après le premier rebouclage (~1,6 s de
+  lecture) → **[60]** ; son témoin → **[]** ; la tête posée à 2 s transport à l'arrêt, le relevé → **[]** ; relancé →
+  décochée ; en anglais, *Chase notes already started*. Une chasse cochée d'origine change ce que d'autres bancs
+  entendent : la série dira si l'un d'eux comptait des notes envoyées.
+
+**L'ORDRE, TRANCHÉ ICI.** D585.1 (le cœur, et le banc de D584 pour modèle), puis D585.2, puis D585.3 ; un banc par
+élément — `tools/remises-apres-prise.sh`, `tools/zoom-a-la-regle.sh`, `tools/chasse-aux-notes.sh` —, entrés dans la
+série de `verifier.sh --bancs`.
