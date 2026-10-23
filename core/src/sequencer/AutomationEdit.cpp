@@ -233,6 +233,7 @@ namespace {
 /// creux, comme le fait un LFO qu'on met en marche.
 float formeA(AutomationShape shape, double x, int periods) {
     if (shape == AutomationShape::Line) return static_cast<float>(x);
+    if (shape == AutomationShape::Parabola) return static_cast<float>(x * x);   // D581.2 : une fois, sans période
     const double phase = x * periods;
     const double dansLaPeriode = phase - std::floor(phase);
     switch (shape) {
@@ -247,6 +248,7 @@ float formeA(AutomationShape shape, double x, int periods) {
         case AutomationShape::Square:
             return dansLaPeriode < 0.5 ? 0.0f : 1.0f;
         case AutomationShape::Line:
+        case AutomationShape::Parabola:
         default:
             return static_cast<float>(x);
     }
@@ -304,8 +306,11 @@ AutomationDraw drawAutomationShape(AutomationCurve& curve, Tick fromTick, Tick t
         // seule un huitième du budget, et la mesure rendait 1,01 % pour 1 %
         // promis -- un dépassement de rien du tout, qui restait un dépassement.
         // À 256 elle tombe d'un facteur seize et devient négligeable.
+        // D581.2 : LA PARABOLE, 256 échantillons UNE fois — elle n'a pas de période, et `periods` (une par mesure, au
+        // menu) ne ferait que multiplier les points que la réduction retire.
         const int parPeriode = shape == AutomationShape::Line ? 1 : 256;
-        const int echantillons = std::max(2, parPeriode * std::max(1, periods));
+        const int echantillons = shape == AutomationShape::Parabola ? 256
+                                                                     : std::max(2, parPeriode * std::max(1, periods));
         for (int i = 0; i <= echantillons; ++i) {
             const double x = static_cast<double>(i) / echantillons;
             const Tick tick = fromTick + static_cast<Tick>(std::llround(etendue * x));

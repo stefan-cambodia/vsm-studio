@@ -1541,6 +1541,7 @@ MainComponent::MainComponent()
         // D576.2, D576.3 : les réglages du legato, des préférences du poste comme celles de Cubase.
         pianoRoll_.setLegatoChevauchement(reglages.getIntValue("legatoChevauchement", 0));
         pianoRoll_.setLegatoEntreChoisies(reglages.getBoolValue("legatoEntreChoisies", false));
+        pianoRoll_.setControleursSuivent(reglages.getBoolValue("pianoRollControleursSuivent", false));   // D581.3
         // LA BARRE MONTRE CE QUI VIENT D'ÊTRE RELU, tout de suite : la minuterie
         // (`PianoRollPanel::refresh`) le ferait au premier tour, APRÈS les relevés
         // du démarrage — mesuré : « aimant non (bouton oui) ».
@@ -1554,6 +1555,7 @@ MainComponent::MainComponent()
             r.setValue("pianoRollCouleurNotes", static_cast<int>(pianoRoll_.couleurDesNotes()));   // D570.3
             r.setValue("legatoChevauchement", pianoRoll_.legatoChevauchement());   // D576.2
             r.setValue("legatoEntreChoisies", pianoRoll_.legatoEntreChoisies());   // D576.3
+            r.setValue("pianoRollControleursSuivent", pianoRoll_.controleursSuivent());   // D581.3
             r.saveIfNeeded();
         };
     }
@@ -3581,8 +3583,10 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         else if (demande == "sinus") forme = AutomationShape::Sine;
         else if (demande == "triangle") forme = AutomationShape::Triangle;
         else if (demande == "carre") forme = AutomationShape::Square;
+        else if (demande == "parabole") forme = AutomationShape::Parabola;                                 // D581.2
+        else if (demande == "parabole-bas") { forme = AutomationShape::Parabola; descendante = true; }
         else {
-            std::fputs("VSM_VUE auto-forme : attendu rampe, rampe-bas, sinus, triangle ou carre\n",
+            std::fputs("VSM_VUE auto-forme : attendu rampe, rampe-bas, sinus, triangle, carre, parabole ou parabole-bas\n",
                         stderr);
             return;
         }
@@ -4737,6 +4741,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                 tr(u8"Triangle (une période par mesure)"), possible);
                 formes.addItem(kMenuEditDrawAutomationSquare,
                                 tr(u8"Carré (une période par mesure)"), possible);
+                // D581.2 : LA PARABOLE, le carré de l'avancement — lente au départ, dans les deux sens.
+                formes.addItem(kMenuEditDrawAutomationParabolaUp, tr(u8"Parabole montante (lente au départ)"), possible);
+                formes.addItem(kMenuEditDrawAutomationParabolaDown, tr(u8"Parabole descendante (lente au départ)"), possible);
                 menu.addSubMenu(possible ? tr(u8"Dessiner l'automation sur la sélection")
                                          : tr(u8"Dessiner l'automation sur la sélection (%1)")
                                                .replace("%1", raisonForme),
@@ -6138,12 +6145,13 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuTrackMuteSelected)   { toggleMuteSelectedTrack(); return; }
     if (menuItemID == kMenuTrackSoloSelected)   { toggleSoloSelectedTrack(); return; }
     if (menuItemID >= kMenuEditDrawAutomationRampUp
-        && menuItemID <= kMenuEditDrawAutomationSquare) {
+        && menuItemID <= kMenuEditDrawAutomationParabolaDown) {
         using vsm::sequencer::AutomationShape;
         static const struct { AutomationShape forme; bool descendante; } kFormes[] = {
             {AutomationShape::Line, false}, {AutomationShape::Line, true},
             {AutomationShape::Sine, false}, {AutomationShape::Triangle, false},
             {AutomationShape::Square, false},
+            {AutomationShape::Parabola, false}, {AutomationShape::Parabola, true},   // D581.2
         };
         const auto& choix = kFormes[menuItemID - kMenuEditDrawAutomationRampUp];
         const size_t piste = trackList_.selectedTrackIndex();

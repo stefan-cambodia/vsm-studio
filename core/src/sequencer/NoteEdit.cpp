@@ -774,6 +774,51 @@ NoteSelection selectNotesShorterThan(const std::vector<Note>& notes, Tick shorte
     return result;
 }
 
+namespace {
+template <typename Point>
+size_t decalerDansLaPlage(std::vector<Point>& points, Tick from, Tick to, int64_t delta) {
+    size_t n = 0;
+    for (auto& p : points) {
+        if (p.tick < from || p.tick >= to) continue;
+        p.tick = static_cast<Tick>(std::max<int64_t>(0, static_cast<int64_t>(p.tick) + delta));
+        ++n;
+    }
+    if (n > 0) std::stable_sort(points.begin(), points.end(), [](const Point& a, const Point& b) { return a.tick < b.tick; });
+    return n;
+}
+} // namespace
+
+size_t shiftControllersInRange(Track& track, Tick from, Tick to, int64_t deltaTicks) {
+    // D581.3 : les quatre listes « contrôleurs » de la piste — pas les changements de programme, qui choisissent un son.
+    if (deltaTicks == 0 || to <= from) return 0;
+    return decalerDansLaPlage(track.controlChanges, from, to, deltaTicks)
+         + decalerDansLaPlage(track.pitchBends, from, to, deltaTicks)
+         + decalerDansLaPlage(track.polyAftertouch, from, to, deltaTicks)
+         + decalerDansLaPlage(track.channelPressure, from, to, deltaTicks);
+}
+
+NoteSelection selectVoice(const std::vector<Note>& notes, Tick fenetreAccord, bool top) {
+    // D581.1 : dans l'ordre des débuts ; un accord s'ouvre à sa première note et prend ce qui commence avant
+    // `début + fenetreAccord` — la fenêtre ne glisse pas, sans quoi un arpège lent se fondrait en un seul accord.
+    std::vector<const Note*> ordre;
+    ordre.reserve(notes.size());
+    for (const auto& n : notes) ordre.push_back(&n);
+    std::stable_sort(ordre.begin(), ordre.end(), [](const Note* a, const Note* b) { return a->startTick < b->startTick; });
+    NoteSelection result;
+    for (size_t i = 0; i < ordre.size();) {
+        size_t j = i;
+        int extreme = ordre[i]->number;
+        while (j < ordre.size() && ordre[j]->startTick - ordre[i]->startTick < std::max<Tick>(1, fenetreAccord)) {
+            extreme = top ? std::max<int>(extreme, ordre[j]->number) : std::min<int>(extreme, ordre[j]->number);
+            ++j;
+        }
+        for (size_t k = i; k < j; ++k)
+            if (ordre[k]->number == extreme) result.insert(ordre[k]->id);
+        i = j;
+    }
+    return result;
+}
+
 NoteSelection selectNotesInTimeRange(const std::vector<Note>& notes, Tick fromTick, Tick toTick) {
     NoteSelection result;
     for (const auto& n : notes)

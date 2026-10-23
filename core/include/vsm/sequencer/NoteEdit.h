@@ -264,6 +264,16 @@ NoteSelection selectNotesInTimeRange(const std::vector<Note>& notes, Tick fromTi
 NoteSelection selectNotesBelowVelocity(const std::vector<Note>& notes, uint8_t belowVelocity);
 NoteSelection selectNotesShorterThan(const std::vector<Note>& notes, Tick shorterThanTicks);
 
+/// D581.1 : LA VOIX DU DESSUS (`top`) OU DU DESSOUS de chaque accord — *Select Highest / Lowest Notes*. Un accord : les
+/// notes dont le début tombe à moins de `fenetreAccord` ticks du début de la première (un accord JOUÉ s'étale) ; une note
+/// seule est sa propre voix ; à l'unisson en tête, toutes.
+NoteSelection selectVoice(const std::vector<Note>& notes, Tick fenetreAccord, bool top);
+
+/// D581.3 : LES CONTRÔLEURS QUI SUIVENT LES NOTES — les CC, le pitch bend et les pressions de la piste dont l'instant tombe
+/// dans `[from, to)` décalés de `deltaTicks`, chacun posé à 0 au plus tôt comme une note (`nudgeNotes`), chaque liste
+/// remise dans l'ordre du temps. Rend le nombre de points déplacés.
+size_t shiftControllersInRange(Track& track, Tick from, Tick to, int64_t deltaTicks);
+
 /// Résumé d'une sélection, pour la barre d'information du piano roll.
 struct SelectionStats {
     size_t count = 0;

@@ -139,7 +139,9 @@ float maxAutomationDeviation(const AutomationCurve& a, const AutomationCurve& b)
 /// Les formes qu'on sait tracer. `Line` couvre la rampe et le palier plat
 /// (mêmes valeurs aux deux bouts) : ce sont le même geste, et les séparer
 /// aurait fait trois entrées de menu pour une seule idée.
-enum class AutomationShape : uint8_t { Line = 0, Sine = 1, Triangle = 2, Square = 3 };
+/// D581.2 : `Parabola` — le CARRÉ de l'avancement, `from + (to − from)·x²` : lente au départ, de `from` vers `to` (la
+/// descendante est la même forme, `from` au-dessus de `to`).
+enum class AutomationShape : uint8_t { Line = 0, Sine = 1, Triangle = 2, Square = 3, Parabola = 4 };
 
 /// Ce qu'un tracé a fait, pour le DIRE plutôt que de le faire en silence.
 struct AutomationDraw {
@@ -153,7 +155,7 @@ struct AutomationDraw {
 /// joint ; pour les trois autres, elles bornent l'oscillation -- `from` est le
 /// creux et `to` la crête, et les inverser retourne la forme.
 ///
-/// `periods` est le nombre d'oscillations sur la plage. Ignoré par `Line`.
+/// `periods` est le nombre d'oscillations sur la plage. Ignoré par `Line` et par `Parabola`.
 /// Zéro ou négatif vaut une période : une forme sans oscillation n'a pas de
 /// sens, et refuser silencieusement serait pire que corriger.
 ///

@@ -640,6 +640,62 @@ VSM_TEST(selecting_below_a_velocity_and_shorter_than_a_length_is_strict) {
     VSM_ASSERT_EQ(selectNotesBelowVelocity(notes, 128).size(), size_t(4));
 }
 
+// D581.1 — LA VOIX DU DESSUS ET DU DESSOUS. Le jeu de l'attendu écrit avant la mesure : do mi sol à 0 ; ré fa la à
+// 480, 486, 492 (un accord joué) ; si seul à 960 ; do et son octave à 1440 ; deux notes à 1920 et 1960 (40 ticks : deux
+// accords d'une note, la fenêtre étant de 30).
+VSM_TEST(the_top_and_bottom_voices_take_one_note_per_played_chord) {
+    std::vector<Note> notes;
+    uint64_t id = 0;
+    auto note = [&](Tick debut, uint8_t hauteur) {
+        Note n; n.id = ++id; n.number = hauteur; n.velocity = 90; n.startTick = debut; n.endTick = debut + 240;
+        notes.push_back(n);
+    };
+    note(0, 60); note(0, 64); note(0, 67);
+    note(480, 62); note(486, 65); note(492, 69);
+    note(960, 59);
+    note(1440, 60); note(1440, 72);
+    note(1920, 48); note(1960, 55);
+    auto hauteurs = [&](const NoteSelection& s) {
+        std::vector<int> h;
+        for (const auto& n : notes) if (s.count(n.id) > 0) h.push_back(n.number);
+        std::sort(h.begin(), h.end());
+        return h;
+    };
+    const auto dessus = selectVoice(notes, 30, true);
+    const auto dessous = selectVoice(notes, 30, false);
+    VSM_ASSERT_EQ(dessus.size(), size_t(6));
+    VSM_ASSERT_EQ(dessous.size(), size_t(6));
+    VSM_ASSERT(hauteurs(dessus) == (std::vector<int>{48, 55, 59, 67, 69, 72}));
+    VSM_ASSERT(hauteurs(dessous) == (std::vector<int>{48, 55, 59, 60, 60, 62}));
+    // Le témoin de la fenêtre : à 50 ticks, 1920 et 1960 ne font plus qu'un accord — 55 en haut, 48 en bas.
+    VSM_ASSERT(hauteurs(selectVoice(notes, 50, true)) == (std::vector<int>{55, 59, 67, 69, 72}));
+    // L'unisson en tête : les deux notes.
+    note(2400, 64); note(2400, 64); note(2400, 60);
+    VSM_ASSERT_EQ(selectVoice(notes, 30, true).size(), size_t(8));
+}
+
+// D581.3 — LES CONTRÔLEURS QUI SUIVENT LES NOTES. L'attendu écrit avant la mesure : la plage [480, 1200) de deux notes,
+// des CC 1 à 480, 600, 960, 1100 et 2000, un pitch bend à 700 ; un décalage de 120 : 600, 720, 1080, 1220, 2000 et 820.
+VSM_TEST(controllers_in_the_range_of_the_moved_notes_follow_them_and_the_others_stay) {
+    Track piste;
+    for (Tick t : {480, 600, 960, 1100, 2000}) piste.controlChanges.push_back({t, 0, 1, 64});
+    piste.pitchBends.push_back({700, 0, 1000});
+    piste.programChanges.push_back({600, 0, 5});
+    VSM_ASSERT_EQ(shiftControllersInRange(piste, 480, 1200, 120), size_t(5));
+    std::vector<Tick> cc;
+    for (const auto& p : piste.controlChanges) cc.push_back(p.tick);
+    VSM_ASSERT(cc == (std::vector<Tick>{600, 720, 1080, 1220, 2000}));
+    VSM_ASSERT_EQ(piste.pitchBends[0].tick, Tick(820));
+    VSM_ASSERT_EQ(piste.programChanges[0].tick, Tick(600));   // un changement de programme choisit un son : il reste
+    // En arrière, jusqu'avant zéro : chacun posé à 0, et l'ordre du temps tenu.
+    VSM_ASSERT_EQ(shiftControllersInRange(piste, 0, 800, -700), size_t(2));
+    VSM_ASSERT_EQ(piste.controlChanges[0].tick, Tick(0));
+    VSM_ASSERT_EQ(piste.controlChanges[1].tick, Tick(20));
+    VSM_ASSERT(std::is_sorted(piste.controlChanges.begin(), piste.controlChanges.end(),
+                              [](const CcPoint& a, const CcPoint& b) { return a.tick < b.tick; }));
+    VSM_ASSERT_EQ(shiftControllersInRange(piste, 0, 5000, 0), size_t(0));   // un décalage nul ne touche rien
+}
+
 // --- D22.3 : deux fois plus lent, deux fois plus vite ----------------------
 
 VSM_TEST(scale_note_times_halves_the_speed_from_the_first_start_without_overlaps) {

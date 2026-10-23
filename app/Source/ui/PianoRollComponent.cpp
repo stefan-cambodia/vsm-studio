@@ -43,6 +43,7 @@ enum ContextMenuId {
     kCtxSelectAll = 100020, kCtxSelectNone, kCtxSelectInvert, kCtxSelectSamePitch,
     kCtxSelectNextDoubtful, kCtxSelectPrevDoubtful, kCtxSelectDoubtful, kCtxSelectLeastConfident,
     kCtxSelectWeak64 = 100420, kCtxSelectWeak32, kCtxSelectWeak16, kCtxSelectShortGrid, kCtxSelectShortHalfGrid,
+    kCtxSelectTopVoice, kCtxSelectBottomVoice,   // D581.1
     kCtxTransposeUp = 100030, kCtxTransposeDown, kCtxOctaveUp, kCtxOctaveDown,
     kCtxQuantizeFull = 100040, kCtxQuantizeHalf, kCtxQuantizeEnds, kCtxHumanize,
     kCtxLegato = 100050, kCtxRemoveOverlaps, kCtxLengthToGrid, kCtxLengthDouble, kCtxLengthHalve,
@@ -66,6 +67,7 @@ enum ContextMenuId {
     kCtxQuantizeCatchFirst = 100540, kCtxQuantizeCatchLast = 100543,              // D575.2 : tout, 40, 25, 10 %
     kCtxLegatoOverlapFirst = 100550, kCtxLegatoOverlapLast = 100554,              // D576.2 : −20 … +20 ticks
     kCtxLegatoSelectedOnly = 100560,                                              // D576.3
+    kCtxControllersFollow = 100570,                                               // D581.3
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -733,6 +735,23 @@ void PianoRollComponent::selectBelowVelocity(uint8_t velocity) {
     repaint();
 }
 
+Tick PianoRollComponent::fenetreAccord() const {
+    // D581.1 : une quadruple-croche — un accord JOUÉ s'étale de quelques dizaines de millisecondes, une croche arpégée
+    // ne doit pas s'y confondre.
+    return std::max<Tick>(1, (project_ != nullptr ? project_->ticksPerQuarterNote : 480) / 16);
+}
+
+void PianoRollComponent::selectVoiceOfChords(bool dessus) {
+    if (Track* track = activeTrack())
+        selectedNoteIds_ = selectVoice(track->notes, fenetreAccord(), dessus);
+    notifyEditState();   // D515 : le résumé d'abord, le message du geste ensuite
+    if (onStatusChanged)
+        onStatusChanged((dessus ? vsm::app::ui::tr(u8"La voix du dessus : %1 note(s)")
+                                : vsm::app::ui::tr(u8"La voix du dessous : %1 note(s)"))
+                            .replace("%1", juce::String(static_cast<int>(selectedNoteIds_.size()))));
+    repaint();
+}
+
 void PianoRollComponent::selectShorterThan(Tick ticks) {
     if (Track* track = activeTrack())
         selectedNoteIds_ = selectNotesShorterThan(track->notes, ticks);
@@ -951,8 +970,36 @@ void PianoRollComponent::nudgeSelection(int64_t deltaTicks) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
     if (!beginEdit(u8"Décaler")) return;
+    // D581.3 : la plage des notes choisies AVANT le décalage ; ses contrôleurs partent du même écart, dans le même pas.
+    Tick de = 0, a = 0;
+    const bool plage = controleursSuivent_ && plageDesNotesChoisies(*track, de, a);
     nudgeNotes(track->notes, selectedNoteIds_, deltaTicks);
+    if (plage) direControleursSuivis(shiftControllersInRange(*track, de, a, deltaTicks), de, a, deltaTicks);
     notifyEdited();
+}
+
+bool PianoRollComponent::plageDesNotesChoisies(const Track& track, Tick& de, Tick& a) const {
+    bool trouve = false;
+    for (const auto& n : track.notes) {
+        if (selectedNoteIds_.count(n.id) == 0) continue;
+        de = trouve ? std::min(de, n.startTick) : n.startTick;
+        a = trouve ? std::max(a, n.endTick) : n.endTick;
+        trouve = true;
+    }
+    return trouve && a > de;
+}
+
+void PianoRollComponent::direControleursSuivis(size_t combien, Tick de, Tick a, int64_t delta) const {
+    std::fputs(("VSM_CONTROLEURS_SUIVENT : " + std::to_string(combien) + " point(s) de [" + std::to_string(de) + ", "
+                + std::to_string(a) + ") d\xc3\xa9cal\xc3\xa9(s) de " + std::to_string(delta) + " ticks\n").c_str(), stderr);
+}
+
+void PianoRollComponent::setControleursSuivent(bool oui) {
+    // D581.3 : retenue par l'hôte (`onBasculesChanged`, seulement au changement) et dite.
+    const bool change = oui != controleursSuivent_;
+    controleursSuivent_ = oui;
+    std::fputs(oui ? "VSM_CONTROLEURS_SUIVENT : oui\n" : "VSM_CONTROLEURS_SUIVENT : non\n", stderr);
+    if (change && onBasculesChanged) onBasculesChanged();
 }
 
 void PianoRollComponent::setSelectionLength(vsm::midi::Tick ticks) {
@@ -1630,6 +1677,14 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
         selectMenu.addItem(kCtxSelectShortGrid, tr(u8"Notes plus courtes que la grille") + compte(selectNotesShorterThan(notes, grille)));
         selectMenu.addItem(kCtxSelectShortHalfGrid, tr(u8"Notes plus courtes que la moitié de la grille")
                                                         + compte(selectNotesShorterThan(notes, std::max<Tick>(1, grille / 2))));
+        // D581.1 : LA VOIX DU DESSUS ET DU DESSOUS, comptées, grisées à zéro (une piste sans note).
+        selectMenu.addSeparator();
+        const auto dessus = selectVoice(notes, fenetreAccord(), true);
+        const auto dessous = selectVoice(notes, fenetreAccord(), false);
+        selectMenu.addItem(kCtxSelectTopVoice, tr(u8"La voix du dessus") + compte(dessus), !dessus.empty());
+        selectMenu.addItem(kCtxSelectBottomVoice, tr(u8"La voix du dessous") + compte(dessous), !dessous.empty());
+        selectMenu.addItem(-1, tr(u8"(la plus aiguë, la plus grave de chaque accord ; une note seule est sa propre voix)"),
+                           false, false);
     }
     menu.addSubMenu(tr(u8"Sélection"), selectMenu);
     // D570.3 : LA COULEUR DES NOTES (Event Colors) — une préférence du poste.
@@ -1641,6 +1696,8 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
         couleurs.addItem(kCtxColorChannel, tr(u8"Selon le canal MIDI"), true, couleurDesNotes_ == M::Channel);
         menu.addSubMenu(tr(u8"Couleur des notes"), couleurs);
     }
+    // D581.3 : LES CONTRÔLEURS SUIVENT LES NOTES (*Auto Select Controllers*) — une préférence du poste.
+    menu.addItem(kCtxControllersFollow, tr(u8"Les contrôleurs suivent les notes"), true, controleursSuivent_);
 
     juce::PopupMenu pitchMenu;
     // D471 : les flèches, touches FIXES — ↑ avec une sélection appelle
@@ -1865,6 +1922,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectSamePitch:  selectSamePitch(); break;
         case kCtxSelectSamePitchClass: selectSamePitchClass(); break;   // D556.3
         case kCtxColorTrack:   setCouleurDesNotes(vsm::sequencer::NoteColorMode::Track); break;     // D570.3
+        case kCtxControllersFollow: setControleursSuivent(!controleursSuivent_); break;            // D581.3
         case kCtxColorPitch:   setCouleurDesNotes(vsm::sequencer::NoteColorMode::Pitch); break;
         case kCtxColorChannel: setCouleurDesNotes(vsm::sequencer::NoteColorMode::Channel); break;
         case kCtxSelectInLoop:        choisirParPlage(vsm::sequencer::RangeRule::Between); break;        // D569.3
@@ -1879,6 +1937,8 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectWeak16:     selectBelowVelocity(16); break;
         case kCtxSelectShortGrid:  selectShorterThan(gridTicks()); break;
         case kCtxSelectShortHalfGrid: selectShorterThan(std::max<Tick>(1, gridTicks() / 2)); break;
+        case kCtxSelectTopVoice:    selectVoiceOfChords(true); break;    // D581.1
+        case kCtxSelectBottomVoice: selectVoiceOfChords(false); break;
         case kCtxTransposeUp:      transposeSelection(1); break;
         case kCtxTransposeDown:    transposeSelection(-1); break;
         case kCtxOctaveUp:         transposeSelection(12); break;
@@ -2103,6 +2163,17 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
         if (nearRight)      dragMode_ = DragMode::ResizeRight;
         else if (nearLeft)  dragMode_ = DragMode::ResizeLeft;
         else                dragMode_ = DragMode::Move;
+        // D581.3 : LES CONTRÔLEURS D'AVANT LE GLISSÉ, et la plage des notes saisies — chaque pas du glissé repart d'eux,
+        // comme les notes repartent de `dragSnapshot_`.
+        controleursAvant_ = {};
+        if (dragMode_ == DragMode::Move && controleursSuivent_
+            && plageDesNotesChoisies(*track, controleursAvant_.de, controleursAvant_.a)) {
+            controleursAvant_.pris = true;
+            controleursAvant_.cc = track->controlChanges;
+            controleursAvant_.pb = track->pitchBends;
+            controleursAvant_.poly = track->polyAftertouch;
+            controleursAvant_.pression = track->channelPressure;
+        }
 
         // L'état d'avant-glissement est mémorisé maintenant : le glissement
         // entier (déplacement continu) compte pour UNE seule annulation.
@@ -2211,6 +2282,16 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
                 it->number = static_cast<uint8_t>(juce::jlimit(0, 127, static_cast<int>(snap.number) + deltaNote));
                 if (it->id == draggedNoteId_) startAudition(it->number, it->velocity);
             }
+            // D581.3 : les contrôleurs de la plage, du même écart — pas pour une copie (Alt), dont les originaux restent.
+            if (controleursAvant_.pris && !dragDidCopy_) {
+                track->controlChanges = controleursAvant_.cc;
+                track->pitchBends = controleursAvant_.pb;
+                track->polyAftertouch = controleursAvant_.poly;
+                track->channelPressure = controleursAvant_.pression;
+                controleursAvant_.deplaces =
+                    shiftControllersInRange(*track, controleursAvant_.de, controleursAvant_.a, deltaTick);
+                controleursAvant_.ecart = deltaTick;
+            }
             dragEdite_ = true;
             if (onNotesEdited) onNotesEdited();
             repaint();
@@ -2277,6 +2358,10 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
 void PianoRollComponent::mouseUp(const juce::MouseEvent&) {
     stopAudition();
     const bool edite = dragEdite_;
+    // D581.3 : ce que le glissé a emporté, dit une fois, au relâché.
+    if (controleursAvant_.pris && edite && !dragDidCopy_)
+        direControleursSuivis(controleursAvant_.deplaces, controleursAvant_.de, controleursAvant_.a, controleursAvant_.ecart);
+    controleursAvant_ = {};
     dragMode_ = DragMode::None;
     rubberBandRect_ = {};
     dragDidCopy_ = false;

@@ -111,14 +111,22 @@ if [ "${1:-}" = "--bancs" ]; then
         echo $(( t / 1024 ))
     }
     libre_mo() { awk '/^(MemAvailable|SwapFree):/ {s += $2} END {print int(s / 1024)}' /proc/meminfo; }
+    # D581 : LE SOMMET DE L'UNITÉ (`memory.peak`, depuis l'ouverture de la session) — un saut PASSAGER pendant un banc
+    # ne se voit pas entre deux lectures : le 23/10 au soir, l'unité est montée à 10,4 Go pendant `quantifier-audio.sh`,
+    # écran éteint, et elle était redescendue à 0,9 Go une minute après. Le sommet qui bouge pendant un banc le nomme.
+    sommet_mo() {
+        [ -n "$unite_compositeur" ] || { echo 0; return; }
+        echo $(( $(cat "/sys/fs/cgroup$unite_compositeur/memory.peak" 2>/dev/null || echo 0) / 1048576 ))
+    }
     plafond="${VSM_PLAFOND_COMPOSITEUR:-3072}"
     plancher="${VSM_PLANCHER_MEMOIRE:-3072}"
-    printf 'banc\tunite_avant_mo\tunite_apres_mo\tanon_avant_mo\tanon_apres_mo\tlibre_apres_mo\n' > "$journaux/compositeur.tsv"
+    attente="${VSM_ATTENTE_COMPOSITEUR:-120}"   # D581 : secondes accordées à l'unité pour redescendre sous le plafond
+    printf 'banc\tunite_avant_mo\tunite_apres_mo\tanon_avant_mo\tanon_apres_mo\tlibre_apres_mo\tsommet_apres_mo\n' > "$journaux/compositeur.tsv"
     compositeur_depart=$(compositeur_mo)
     anon_depart=$(compositeur_anon_mo)
     debut_serie=$(date +%s)
     passes=0
-    for banc in accords.sh annulation-des-menus.py annuler-hors-historique.sh editeur-logique.sh instantanes-console.sh aplatir-clips.sh copier-plage.sh temps-dans-un-clip.sh copie-liee-temps.sh fin-du-morceau.sh locateurs-section.sh decouper-aux-silences.sh accords-depuis-notes.sh fenetre-reperes.sh quantifier-audio.sh notes-depuis-attaques.sh groove-depuis-audio.sh transposition-globale.sh courbe-de-gain.sh tempo-detecte.sh normaliser-niveau.sh doublons.sh clip-verrouille.sh decompte-punch.sh verrou-suppression.sh montage-en-chaine.sh aimant-glisser.sh a-la-tete.sh fondu-a-la-tete.sh silence-plage.sh dispositions.sh choisir-par-plage.sh couper-aux-locateurs.sh pistes-vides.sh coller-pistes.sh rogner-aux-locateurs.sh caler-grille.sh chevauchements-mono.sh glisser-contenu.sh automation-retiree.sh lire-selection.sh fusionner-midi.sh boucler-selection.sh restreindre-polyphonie.sh pedales-en-durees.sh controleurs-retires.sh lire-autour.sh eclater-canal.sh meme-nom.sh repere-suivant.sh tete-evenement.sh couverture-laissee.sh quantifier-fins.sh eclaircir-controleurs.sh annuler-zoom.sh repere-a-la-tete.sh tete-fin-selection.sh tete-attaque.sh lever-solos-muets.sh console-a-zero.sh canaux-echanges.sh canaux-recomptes.sh fondus-retires.sh plier-toutes.sh reperes-attaques.sh analyse-fichier-long.sh clips-des-pistes.sh tempo-tape.sh decalage-continu.sh statistiques-clip.sh chevauchements-clips.sh reglages-tranche.sh nouvelle-version.sh revenir-version.sh copie-projet.sh tranches-choisies.sh canaux-modes.sh nettoyer-dossier.sh zoom-locateurs.sh tete-au-repere.sh notes-piste.sh annuler-quantification.sh point-accroche.sh lier-tranches.sh projet-vide-cadre.sh departs-contournes.sh fondus-locateurs.sh agrandir-pistes.sh dupliquer-plage.sh midi-locateurs.sh inserts-contournes.sh notes-par-plage.sh automation-extraite.sh tete-fixe.sh couleur-notes.sh couleur-repere.sh prereglages-quantification.sh loi-panoramique.sh grouper-clips.sh aimant-relatif.sh departs-panoramique.sh zoom-prereglages.sh largeur-stereo.sh formes-des-fondus.sh duree-effet-midi.sh aimant-cibles.sh plage-effet-midi.sh zone-quantification.sh aleatoire-effet-midi.sh inserts-apres-fader.sh legato-reglages.sh quintolet-grille.sh masquer-pistes-sans-donnees.sh temoins-ecretage.sh pre-post-roll.sh moniteur-midi.sh armement-suit.sh prise-quantifiee-punch.sh punch-a-l-arret.sh tete-posee.sh arrangement-defile.sh arret-tete.sh commandes-apprises.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
+    for banc in accords.sh annulation-des-menus.py annuler-hors-historique.sh editeur-logique.sh instantanes-console.sh aplatir-clips.sh copier-plage.sh temps-dans-un-clip.sh copie-liee-temps.sh fin-du-morceau.sh locateurs-section.sh decouper-aux-silences.sh accords-depuis-notes.sh fenetre-reperes.sh quantifier-audio.sh notes-depuis-attaques.sh groove-depuis-audio.sh transposition-globale.sh courbe-de-gain.sh tempo-detecte.sh normaliser-niveau.sh doublons.sh clip-verrouille.sh decompte-punch.sh verrou-suppression.sh montage-en-chaine.sh aimant-glisser.sh a-la-tete.sh fondu-a-la-tete.sh silence-plage.sh dispositions.sh choisir-par-plage.sh couper-aux-locateurs.sh pistes-vides.sh coller-pistes.sh rogner-aux-locateurs.sh caler-grille.sh chevauchements-mono.sh glisser-contenu.sh automation-retiree.sh lire-selection.sh fusionner-midi.sh boucler-selection.sh restreindre-polyphonie.sh pedales-en-durees.sh controleurs-retires.sh lire-autour.sh eclater-canal.sh meme-nom.sh repere-suivant.sh tete-evenement.sh couverture-laissee.sh quantifier-fins.sh eclaircir-controleurs.sh annuler-zoom.sh repere-a-la-tete.sh tete-fin-selection.sh tete-attaque.sh lever-solos-muets.sh console-a-zero.sh canaux-echanges.sh canaux-recomptes.sh fondus-retires.sh plier-toutes.sh reperes-attaques.sh analyse-fichier-long.sh clips-des-pistes.sh tempo-tape.sh decalage-continu.sh statistiques-clip.sh chevauchements-clips.sh reglages-tranche.sh nouvelle-version.sh revenir-version.sh copie-projet.sh tranches-choisies.sh canaux-modes.sh nettoyer-dossier.sh zoom-locateurs.sh tete-au-repere.sh notes-piste.sh annuler-quantification.sh point-accroche.sh lier-tranches.sh projet-vide-cadre.sh departs-contournes.sh fondus-locateurs.sh agrandir-pistes.sh dupliquer-plage.sh midi-locateurs.sh inserts-contournes.sh notes-par-plage.sh automation-extraite.sh tete-fixe.sh couleur-notes.sh couleur-repere.sh prereglages-quantification.sh loi-panoramique.sh grouper-clips.sh aimant-relatif.sh departs-panoramique.sh zoom-prereglages.sh largeur-stereo.sh formes-des-fondus.sh duree-effet-midi.sh aimant-cibles.sh plage-effet-midi.sh zone-quantification.sh aleatoire-effet-midi.sh inserts-apres-fader.sh legato-reglages.sh quintolet-grille.sh masquer-pistes-sans-donnees.sh temoins-ecretage.sh pre-post-roll.sh moniteur-midi.sh armement-suit.sh prise-quantifiee-punch.sh punch-a-l-arret.sh tete-posee.sh parabole-automation.sh voix-dessus-dessous.sh controleurs-suivent.sh arrangement-defile.sh arret-tete.sh commandes-apprises.sh automation-echelle.sh autosauvegarde-vue.sh balayer-facades.sh banc-fumee.sh \
                 barre-transport.sh bascules-retenues.sh cadrage-ouverture.sh clavier-emprunte.sh \
                 fader-console.sh gestes-vivants.py grille-gamme-projet.sh ligne-d-etat.py liste-ajouter.sh \
                 liste-editer.sh marque-enregistre.sh \
@@ -128,9 +136,20 @@ if [ "${1:-}" = "--bancs" ]; then
                 theme-sombre.sh tout-voir.sh transport-au-repos.sh transposer-hors-plage.sh vca-interface.sh versions-piste.sh volet-anglais.sh \
                 vue-du-morceau.sh vumetre-console.sh zoom-reassigne.sh; do
         unite_avant=$(compositeur_mo); anon_avant=$(compositeur_anon_mo); libre=$(libre_mo)
+        # D581 : AU-DELÀ DU PLAFOND, ON ATTEND qu'elle redescende — rien n'est lancé pendant ce temps —, et l'on dit
+        # combien de temps ; si elle ne redescend pas, la série s'arrête comme avant (D578).
         if [ "$unite_avant" -gt "$plafond" ] || [ "$libre" -lt "$plancher" ]; then
-            rouge "SÉRIE ARRÊTÉE avant $banc : compositeur à $unite_avant Mo (plafond $plafond), $libre Mo libres (plancher $plancher) — sa mémoire ne revient qu'en relançant la session ; ce banc et les suivants ne sont PAS passés (D578)"
-            break
+            haut=$unite_avant; attendu=0
+            while { [ "$unite_avant" -gt "$plafond" ] || [ "$libre" -lt "$plancher" ]; } && [ "$attendu" -lt "$attente" ]; do
+                sleep 5; attendu=$((attendu + 5))
+                unite_avant=$(compositeur_mo); libre=$(libre_mo)
+            done
+            if [ "$unite_avant" -gt "$plafond" ] || [ "$libre" -lt "$plancher" ]; then
+                rouge "SÉRIE ARRÊTÉE avant $banc : compositeur à $unite_avant Mo (plafond $plafond) après $attendu s d'attente, $libre Mo libres (plancher $plancher) — ce banc et les suivants ne sont PAS passés (D578, D581)"
+                break
+            fi
+            saute "avant $banc : le compositeur était à $haut Mo (plafond $plafond) ; redescendu à $unite_avant Mo après $attendu s d'attente (D581)"
+            anon_avant=$(compositeur_anon_mo)
         fi
         t0=$(date +%s)
         passes=$((passes + 1))
@@ -142,8 +161,8 @@ if [ "${1:-}" = "--bancs" ]; then
         rc=$?
         duree=$(( $(date +%s) - t0 ))
         unite_apres=$(compositeur_mo); anon_apres=$(compositeur_anon_mo)
-        printf '%s\t%d\t%d\t%d\t%d\t%d\n' "$banc" "$unite_avant" "$unite_apres" "$anon_avant" "$anon_apres" "$(libre_mo)" \
-            >> "$journaux/compositeur.tsv"
+        printf '%s\t%d\t%d\t%d\t%d\t%d\t%d\n' "$banc" "$unite_avant" "$unite_apres" "$anon_avant" "$anon_apres" "$(libre_mo)" \
+            "$(sommet_mo)" >> "$journaux/compositeur.tsv"
         cout=$(printf 'compositeur %+d Mo' $((anon_apres - anon_avant)))
         if [ "$rc" -eq 0 ]; then vert "$banc (${duree} s, $cout) : $(grep -v '^\s*$' "$journaux/$banc.log" | tail -1 | cut -c1-90)"
         else rouge "$banc (${duree} s, code $rc, $cout) : $(grep -v '^\s*$' "$journaux/$banc.log" | tail -1 | cut -c1-90)"
@@ -160,8 +179,8 @@ if [ "${1:-}" = "--bancs" ]; then
     [ -n "$ecran_apres" ] && rouge "écran $ecran_apres À LA FIN de la série : un rouge de focus ou de clic peut venir de là — le rejouer écran allumé avant de conclure (D516)"
     titre "Bilan"
     printf '   %d banc(s) en %d min, journaux dans %s\n' "$passes" $(( ($(date +%s) - debut_serie) / 60 )) "$journaux"
-    printf '   compositeur : unité %d → %d Mo, kwin_wayland + Xwayland %d → %d Mo (anonyme, échange compris) ; les plus coûteux :\n' \
-        "$compositeur_depart" "$(compositeur_mo)" "$anon_depart" "$(compositeur_anon_mo)"
+    printf '   compositeur : unité %d → %d Mo (sommet de la session %d Mo), kwin_wayland + Xwayland %d → %d Mo (anonyme, échange compris) ; les plus coûteux :\n' \
+        "$compositeur_depart" "$(compositeur_mo)" "$(sommet_mo)" "$anon_depart" "$(compositeur_anon_mo)"
     tail -n +2 "$journaux/compositeur.tsv" | awk -F'\t' '{printf "%+d\t%s\n", $5 - $4, $1}' | sort -rn | head -5 \
         | sed 's/^/      /'
     if [ "$ECHECS" -eq 0 ]; then printf '   \033[32mTous les bancs sont verts.\033[0m\n'; exit 0; fi

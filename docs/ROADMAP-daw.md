@@ -44861,3 +44861,73 @@ mode d'automation *Trim*, les repères à étendue, le pré-enregistrement audio
 
 **L'ORDRE, TRANCHÉ ICI.** D581.2 d'abord (le cœur seul et une entrée de menu), puis D581.1 (le cœur, un menu), puis
 D581.3 (le piano roll, deux gestes) ; un banc par élément, entré dans la série de `verifier.sh --bancs`.
+
+**LE PREMIER JET DU BANC DE D581.3 NE VOYAIT PAS LE CC À 2000** (écrit à 18 h 25, après la première course). Les instants mesurés
+étaient ceux de l'attendu — avec l'option les CC à 600, 720, 1080, 1220 et le pitch bend à 820, le témoin à 480, 600, 960,
+1100 et 700, Ctrl+Z rendant tout —, mais le CC à 2000 manquait aux TROIS exports, le témoin compris : l'export finit où
+finit ce qu'on entend (`fin-du-morceau.sh`), ici la dernière note, à 1200. La mise en scène est corrigée AVANT d'être
+rejouée, l'attendu inchangé : une troisième note, à 2400 et de vélocité 100, tient le morceau ouvert ; les deux notes du
+geste, de vélocité 50, se choisissent par *Notes plus faibles que 64 (2)* — *Tout sélectionner* aurait étendu la plage
+jusqu'à 2640 et emporté le CC à 2000.
+
+**LA SÉRIE DE D581 S'EST ARRÊTÉE D'ELLE-MÊME, ET ELLE TIENT UNE PISTE DE L'INCIDENT DE D578** (écrit à 19 h 08, AVANT la
+mesure qui suit). Lancée à 18 h 42 l'écran éteint et la session verrouillée, la série s'est arrêtée après 15 bancs
+verts sur la garde de D578 : avant `notes-depuis-attaques.sh`, l'unité du compositeur pesait **10 468 Mo** (plafond
+3 072). Le relevé banc par banc (`compositeur.tsv`) met le saut dans UN banc, `quantifier-audio.sh` : l'unité de 1 231 à
+**10 469 Mo**, alors que la mémoire anonyme de kwin et Xwayland ne passe que de 476 à 831 Mo. Et, contre ce que D578
+écrivait (« sa mémoire ne revient qu'en relançant la session »), elle est **revenue** : 940 Mo une minute après, 896 Mo
+ensuite ; `memory.peak` de l'unité dit **10 426 Mo**, l'échange au plus 402 Mo, aucun événement `oom`. Ce sommet couvre
+la session depuis 14 h 15, donc AUSSI les séries de D579 et de D580, que la garde, qui ne lit qu'ENTRE deux bancs, a pu
+traverser sans le voir. **L'hypothèse** : ce qui gonfle l'unité n'est pas la mémoire propre du compositeur mais des
+tampons qu'il tient pour une fenêtre — la course (5) de `quantifier-audio.sh`, qui photographie une fenêtre MODALE
+ouverte « sans réponse de banc », jusqu'à trois essais, sous une session verrouillée. **L'attendu, écrit avant la
+mesure** : le banc rejoué SEUL, l'unité échantillonnée tous les quarts de seconde (`memory.current`, et `shmem`, `anon`,
+`file` de `memory.stat`), le saut de plusieurs gigaoctets tombe PENDANT une course `fenetre-*`, porté par `shmem` ; s'il
+tombe ailleurs ou n'est porté par rien de ces trois, l'hypothèse est fausse, et c'est écrit.
+
+**LA MESURE, ET L'HYPOTHÈSE RÉFUTÉE TELLE QU'ÉCRITE** (19 h 10). `quantifier-audio.sh` rejoué SEUL à 19 h 08, l'unité
+échantillonnée tous les quarts de seconde : **le sommet à 1 029 Mo** (`shmem` 355, `anon` 484, `file` 510), atteint
+pendant la course `annuler` et non pendant une course `fenetre-*` ; le banc vert en 28 s, la photo de la fenêtre prise du
+premier coup — comme dans la série (32 s, vert, la photo du premier coup aussi). L'hypothèse « la course de la fenêtre
+modale » est donc RÉFUTÉE telle qu'écrite : le banc ne fait pas, à lui seul, monter l'unité de neuf gigaoctets. Ce qui
+différait entre les deux passes : la série tournait l'écran ÉTEINT et la session VERROUILLÉE (dès le départ, D516) ; la
+passe seule, l'écran allumé et la session ouverte — l'utilisateur était revenu. Les deux séries qui ont fait tuer la
+session le 23/10 au matin (D573, D577) tournaient elles aussi sous verrou. **Ce qui reste plausible, et n'est PAS
+prouvé** : le compositeur garde des tampons tant que l'écran est éteint. Le vérifier demanderait d'éteindre l'écran de
+l'utilisateur pendant qu'il s'en sert : non fait. Ce qui change dès maintenant, dans la garde (`verifier.sh --bancs`) : le
+SOMMET de l'unité (`memory.peak`) est relevé banc par banc, pour qu'un saut passager pendant un banc ne passe plus entre
+deux lectures ; et au-delà du plafond, la série ATTEND jusqu'à deux minutes que l'unité redescende (elle est redescendue
+cette fois, de 10 468 à 940 Mo en moins d'une minute) avant de s'arrêter — elle ne lance rien pendant ce temps.
+
+### Phase D581 — FAITE (23/10/2026)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D581.1 | la voix du dessus et du dessous | `selectVoice(notes, fenêtre, top)` au cœur — dans l'ordre des débuts, un accord ouvert par sa première note prend ce qui commence avant `début + fenêtre`, la fenêtre ne glissant pas ; la hauteur extrême, toutes ses notes s'il y a unisson ; le test `the_top_and_bottom_voices_take_one_note_per_played_chord`, son témoin de fenêtre à 50 ticks (1920 et 1960 ne font plus qu'un accord) ; *Sélection ▸ La voix du dessus (N)* et *La voix du dessous (N)*, la ligne grisée, la fenêtre à `ppq / 16` ; `tools/voix-dessus-dessous.sh`, par le MIDI exporté après *Supprimer* : sans le dessus **60 64 62 65 60**, sans le dessous **64 67 65 69 72**, le témoin **11** notes ; en anglais « Top voice (6) », « Bottom voice (6) ». **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D581.2 | la parabole | `AutomationShape::Parabola`, `formeA` rend `x²`, 256 échantillons une fois (la période, une par mesure au menu, ne ferait que multiplier ce que la réduction retire) puis `thinAutomation` ; le test : l'écart à la forme idéale **0,0039** pour 0,01 promis, **9** points ; *Parabole montante* et *Parabole descendante (lente au départ)* ; `tools/parabole-automation.sh`, par le projet enregistré, la courbe ramenée à son étendue : montante **0,0629 0,2502 0,5626**, la rampe témoin **0,2500 0,5000 0,7500**, descendante **0,9372 0,7498 0,4374** ; Ctrl+Z : les **2** points d'avant. **TENU** | **oui** |
+| D581.3 | les contrôleurs suivent les notes | `shiftControllersInRange(piste, de, à, écart)` au cœur — les CC, le pitch bend et les deux pressions de `[de, à)`, chacun posé à 0 au plus tôt, chaque liste remise dans l'ordre ; les changements de programme restent (un programme choisit un son) ; le test, chiffré comme l'attendu ; le décalage (`nudgeSelection`) et le glissé (repartant, à chaque pas, des contrôleurs d'avant le glissé, comme les notes de `dragSnapshot_`), dans le même pas ; *Les contrôleurs suivent les notes* au menu du piano roll — donc d'*Édition* —, `pianoRollControleursSuivent` au poste ; `tools/controleurs-suivent.sh`, un pas de grille à la flèche : avec l'option **CC 600 720 1080 1220 2000, pitch bend 820** ; le témoin **480 600 960 1100 2000, 700** ; Ctrl+Z : **notes 480 960, CC et pitch bend d'avant**, en un pas ; relancé : cochée, en anglais « Controllers follow the notes ». **TENU** — la mise en scène corrigée avant d'être rejouée, ci-dessus | **oui** |
+| — | le témoin | le binaire de D580 (`build/temoin-D580`) : `parabole-automation` **rouge 4 / 5** (la courbe PLATE : l'entrée n'existe pas ; vert, la rampe témoin), `voix-dessus-dessous` **rouge 3 / 4** (vert, le témoin sans geste), `controleurs-suivent` **rouge 2 / 4** (verts, le témoin sans l'option et l'annulation, que la fonction ne doit pas changer) | **oui** |
+
+**CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.**
+- **Le glissé de D581.3 n'est pas mesuré au banc** : le décalage l'est, par la flèche ; le glissé emprunte la même
+  fonction du cœur, sur un instantané pris à l'appui — lu dans le code, NON mesuré. Une copie au glissé (Alt) laisse les
+  contrôleurs où ils sont, avec les originaux.
+- **L'entrée de D581.3 est au menu du piano roll**, et non un bouton de sa barre comme chez Cubase : la barre est pleine, et
+  le menu *Édition* EST ce menu — une seule définition, un seul chemin, que le banc emprunte.
+- **La fenêtre d'un accord ne glisse pas** : elle s'ouvre à la première note ; une fenêtre qui glisserait de note en note
+  fondrait un arpège lent en un seul accord.
+
+Les entrées REGARDÉES (`VSM_MENU_PHOTO`) : *La voix du dessus (0)* et *La voix du dessous (0)* grisées sur un projet sans
+note, sous les sélections par vélocité, avec leur ligne grisée ; *Les contrôleurs suivent les notes* cochée sous *Couleur
+des notes*, relancé dans le même HOME ; les sept formes de *Dessiner l'automation sur la sélection*, les deux paraboles à
+la suite du carré, sur le projet du banc.
+Mesuré la session ouverte et l'écran allumé pour les bancs de D581, verrouillée et éteinte pour la première série.
+C++ 542 · 1 351 · 359 · 25 · 11, Python 275, ruff, mypy, seize gardes (`./verifier.sh --compiler`) — `index-a-jour` rouge
+du seul fait de cette page, reprise par `--corriger`. La série des **168** bancs (165, plus `parabole-automation`,
+`voix-dessus-dessous` et `controleurs-suivent`, comptés par le script qui lit la liste : 168 noms, aucun en double) :
+la PREMIÈRE, lancée à 18 h 42 l'écran éteint, arrêtée par la garde après 15 verts (ci-dessus) ; la SECONDE, lancée à
+19 h 11 l'écran allumé, la garde neuve en place : **168 verts en 83 min, aucun rouge** (`rc=0`), l'unité du compositeur
+de 1 061 à 1 098 Mo, sans un passage au-dessus du plafond — là où la première, écran éteint, l'avait vue à 10 468 Mo. Deux
+passes ne prouvent pas la piste de l'écran éteint ; elles la rendent la première à vérifier. La limite de la garde neuve,
+dite : `memory.peak` est le sommet de la SESSION (10 426 Mo depuis 14 h 15), il ne nommera qu'un banc qui irait plus haut ;
+un sommet par banc demanderait d'échantillonner pendant le banc. Les préférences de l'utilisateur identiques.

@@ -1135,6 +1135,9 @@ private:
         kMenuEditDrawAutomationSine,
         kMenuEditDrawAutomationTriangle,
         kMenuEditDrawAutomationSquare,
+        /// D581.2 : la parabole, montante et descendante — À LA SUITE du carré : le gestionnaire lit une plage.
+        kMenuEditDrawAutomationParabolaUp,
+        kMenuEditDrawAutomationParabolaDown,
         /// D35.1 : monter et descendre la piste choisie. `moveTrack` existait,
         /// était testée, et aucun geste ne l'appelait.
         kMenuTrackMoveUp,

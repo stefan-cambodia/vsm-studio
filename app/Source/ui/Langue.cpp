@@ -3229,6 +3229,22 @@ const Paire kAnglais[] = {
     { "Plis inversés : %1 piste(s)",
       "Fold states flipped: %1 track(s)" },
     // D559 : lever tous les solos et tous les muets, remettre la console à zéro, échanger gauche et droite d'un clip.
+    { "Les contrôleurs suivent les notes",   // D581.3
+      "Controllers follow the notes" },
+    { "La voix du dessus",   // D581.1
+      "Top voice" },
+    { "La voix du dessous",
+      "Bottom voice" },
+    { "(la plus aiguë, la plus grave de chaque accord ; une note seule est sa propre voix)",
+      "(the highest, the lowest note of each chord; a single note is its own voice)" },
+    { "La voix du dessus : %1 note(s)",
+      "Top voice: %1 note(s)" },
+    { "La voix du dessous : %1 note(s)",
+      "Bottom voice: %1 note(s)" },
+    { "Parabole montante (lente au départ)",   // D581.2
+      "Rising parabola (slow start)" },
+    { "Parabole descendante (lente au départ)",
+      "Falling parabola (slow start)" },
     { "Un clic dans le vide pose la tête",   // D580.1
       "A click on empty space sets the playhead" },
     { "(sur le fond de l'arrangement, comme sur la règle ; un glissé reste un lasso)",

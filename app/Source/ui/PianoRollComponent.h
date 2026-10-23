@@ -170,6 +170,9 @@ public:
     int legatoChevauchement() const { return legatoChevauchement_; }
     void setLegatoEntreChoisies(bool oui) { legatoEntreChoisies_ = oui; }
     bool legatoEntreChoisies() const { return legatoEntreChoisies_; }
+    /// D581.3 : les contrôleurs, le pitch bend et les pressions suivent les notes qu'on déplace — une préférence du poste.
+    void setControleursSuivent(bool oui);
+    bool controleursSuivent() const { return controleursSuivent_; }
     void setZoneNonQuantif(float part);
     float zoneNonQuantif() const { return zoneNonQuantif_; }
     void setRayonCapture(float part);
@@ -278,6 +281,10 @@ public:
     /// D21.1 : les notes fantômes d'une transcription, par vélocité ou par durée.
     void selectBelowVelocity(uint8_t velocity);
     void selectShorterThan(vsm::midi::Tick ticks);
+    /// D581.1 : la voix du dessus (`dessus`) ou du dessous de chaque accord de la piste active.
+    void selectVoiceOfChords(bool dessus);
+    /// D581.1 : la fenêtre d'un accord joué, une quadruple-croche.
+    vsm::midi::Tick fenetreAccord() const;
     size_t doubtfulNoteCount() const;
     bool hasSelection() const { return !selectedNoteIds_.empty(); }
 
@@ -517,6 +524,20 @@ private:
     vsm::midi::Tick dragStartTick_ = 0;
     uint8_t dragStartNoteNumber_ = 60;
     std::vector<vsm::sequencer::Note> dragSnapshot_;
+    /// D581.3 : la préférence, et les contrôleurs d'avant un glissé avec la plage des notes saisies.
+    bool controleursSuivent_ = false;
+    struct ControleursAvant {
+        bool pris = false;
+        vsm::midi::Tick de = 0, a = 0;
+        std::vector<vsm::sequencer::CcPoint> cc;
+        std::vector<vsm::sequencer::PitchBendPoint> pb;
+        std::vector<vsm::sequencer::PolyAftertouchPoint> poly;
+        std::vector<vsm::sequencer::ChannelPressurePoint> pression;
+        size_t deplaces = 0;
+        int64_t ecart = 0;
+    } controleursAvant_;
+    bool plageDesNotesChoisies(const vsm::sequencer::Track& track, vsm::midi::Tick& de, vsm::midi::Tick& a) const;
+    void direControleursSuivis(size_t combien, vsm::midi::Tick de, vsm::midi::Tick a, int64_t delta) const;
     juce::Point<float> dragStartMousePos_;
     juce::Rectangle<float> rubberBandRect_;
     /// D529 : l'origine du rectangle DANS LE MORCEAU — un tick et une ordonnée de

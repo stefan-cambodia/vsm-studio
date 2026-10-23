@@ -438,6 +438,34 @@ VSM_TEST(a_drawn_line_is_two_points_and_not_one_per_tick) {
     VSM_ASSERT_NEAR(automationValueAt(courbe, 1920), 0.8f, 1e-5f);
 }
 
+// D581.2 — LA PARABOLE DE L'OUTIL LIGNE : le carré de l'avancement, lente au départ, montante comme descendante ; la
+// rampe droite pour témoin, et l'écart à la forme idéale sous la tolérance promise, tick par tick.
+VSM_TEST(a_drawn_parabola_follows_the_square_of_the_progress_within_the_tolerance) {
+    AutomationCurve monte, descend, droite;
+    drawAutomationShape(monte, 0, 1920, AutomationShape::Parabola, 0.0f, 1.0f, 4, 0.01f);
+    drawAutomationShape(descend, 0, 1920, AutomationShape::Parabola, 1.0f, 0.0f, 4, 0.01f);
+    drawAutomationShape(droite, 0, 1920, AutomationShape::Line, 0.0f, 1.0f, 4, 0.01f);
+    const Tick quarts[] = {480, 960, 1440};
+    const float attenduMonte[] = {0.0625f, 0.25f, 0.5625f};
+    const float attenduDescend[] = {0.9375f, 0.75f, 0.4375f};
+    const float attenduDroite[] = {0.25f, 0.5f, 0.75f};
+    for (int k = 0; k < 3; ++k) {
+        VSM_ASSERT_NEAR(automationValueAt(monte, quarts[k]), attenduMonte[k], 0.01f);
+        VSM_ASSERT_NEAR(automationValueAt(descend, quarts[k]), attenduDescend[k], 0.01f);
+        VSM_ASSERT_NEAR(automationValueAt(droite, quarts[k]), attenduDroite[k], 1e-3f);
+    }
+    float pire = 0.0f;
+    for (Tick t = 0; t <= 1920; ++t) {
+        const float x = static_cast<float>(t) / 1920.0f;
+        pire = std::max(pire, std::abs(automationValueAt(monte, t) - x * x));
+    }
+    std::printf("      [D581.2] parabole : écart %.4f pour 0,01 promis, %zu points\n", pire,
+                pointsDansLaPlage(monte, 0, 1920));
+    VSM_ASSERT(pire <= 0.01f);
+    VSM_ASSERT(pointsDansLaPlage(monte, 0, 1920) > 2);   // une parabole n'est pas une droite
+    VSM_ASSERT(pointsDansLaPlage(monte, 0, 1920) < 40);  // et la réduction a travaillé
+}
+
 VSM_TEST(a_drawn_square_uses_steps_and_never_ramps_between_its_levels) {
     // UN CARRÉ APPROCHÉ PAR UNE RAMPE TRÈS RAIDE N'EST PAS UN CARRÉ : c'est une
     // suite de fondus courts, et cela s'entend. Chaque point est un palier.
