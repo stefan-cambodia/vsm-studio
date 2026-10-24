@@ -46190,3 +46190,39 @@ tout ce qui n'est pas la basse et la grosse caisse) n'a pas sa place là où on 
 **L'ORDRE, TRANCHÉ ICI.** Le champ et son aller-retour (`interchange`), puis la section du moteur et son test, puis
 l'export hors-ligne (2) ; ensuite seulement la tranche, l'instantané, la copie et la remise à zéro, et le banc
 `coupe-bas-haut`, entré dans la série.
+
+### Phase D594 — un cinquante-cinquième audit : les macros (25/10/2026)
+
+*Écrite le 25/10 à 04 h 45 (l'horloge), avant toute ligne de code et toute mesure, pendant la série de D588-D591.*
+
+**LE ZÉRO, lu au code.** Le troisième zéro du sondage de D592 : *Key Commands ▸ Macros* de Cubase — une suite de
+commandes rangée sous un nom, rejouée d'un geste. Aucun libellé n'en parle (« macro » : 0 sur 2 023 libellés anglais),
+et dans `app/Source` le mot n'apparaît que pour la macro C++ `START_JUCE_APPLICATION` (`Main.cpp`). Ce que le code a de
+plus proche : la table des raccourcis (une commande par touche, `ShortcutTable`) et l'exécuteur des bancs
+(`runMenuEntryForCapture`, un chemin de menu joué) — pas une suite que l'utilisateur compose et rejoue. Un geste répété
+(« tout choisir, quantifier, legato, octave − » sur chaque partie d'une reconstruction) se refait commande par commande.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D594.1 | **Enregistrer une macro** — *Macros* des *Key Commands* | *Édition ▸ Macros ▸ Commencer l'enregistrement* : les commandes de MENU jouées ensuite (barre de menus, menu Édition qui est celui du piano roll) s'ajoutent, dans l'ordre ; *Arrêter l'enregistrement* la range sous « Macro N » (N le premier libre), avec son nombre de pas ; une macro vide n'est pas rangée, et c'est dit ; retenues au poste (préférences), pas dans le projet |
+| D594.2 | **Rejouer une macro** | *Édition ▸ Macros ▸ Macro N (k commandes)* rejoue ses pas dans l'ordre, chacun par le MÊME chemin que son entrée de menu ; un pas absent des menus présents ou grisé ARRÊTE la macro, et le journal et la ligne d'état disent lequel et pourquoi ; *Supprimer ▸ Macro N* la retire ; en anglais *Edit ▸ Macros* |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Enregistrer plutôt que composer dans une liste.** Cubase compose ses macros dans un dialogue qui liste toutes les
+  commandes ; ici l'utilisateur JOUE la suite une fois, comme il la jouerait à la main — moins de fenêtre à lire (la
+  consigne de lisibilité), et ce qu'on rejoue est exactement ce qu'on a fait. L'édition d'une macro (insérer, retirer un
+  pas) est remise : rien ne la demande encore.
+- **Un pas = l'IDENTIFIANT de l'entrée de menu**, pas son libellé : les libellés changent avec la langue et portent des
+  comptes (« La voix du dessus (6) ») ; l'identifiant est une constante du code (`kMenu…`, `kCtx…`). Le libellé du moment
+  de l'enregistrement est gardé à côté, pour le dire.
+- **Ce qui ne s'enregistre pas, dit** : les touches (un raccourci ne passe pas par `menuItemSelected`), les gestes de
+  souris, et les entrées de *Macros* elles-mêmes (une macro qui s'enregistrerait en se rejouant tournerait sans fin).
+- **Au rejeu, un pas = un pas d'annulation**, comme si on avait joué les commandes : Ctrl+Z les défait une à une
+  (Cubase fait de même). Un pas qui ouvre une fenêtre ne l'attend pas.
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE** (le projet de D592 : sept accords, vingt notes ; le piano roll sur la piste) :
+  (1) enregistrer « Tout sélectionner », « Octave - », « Drop 2 », puis arrêter → *Macros ▸ Macro 1 (3 commandes)* au
+  menu, et le journal le dit ; (2) relancé (le même HOME : la macro est au poste), *Macro 1* rejouée → l'export MIDI
+  identique, note pour note, à celui des trois commandes jouées à la main ; (3) trois Ctrl+Z après le rejeu → le jeu
+  d'origine ; (4) une macro dont un pas est grisé au rejeu (« Drop 2 » seul, enregistré notes choisies, rejoué
+  sans sélection) → arrêtée au pas 1, dit, l'export inchangé ; (5) arrêter sans aucune commande → rien de rangé, dit ;
+  (6) en anglais *Edit ▸ Macros ▸ Start recording* ; (7) le témoin (le binaire d'avant) : l'entrée absente.
