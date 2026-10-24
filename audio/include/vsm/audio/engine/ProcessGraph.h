@@ -131,6 +131,14 @@ public:
     /// plutôt que tues -- une pédale qui manque est le genre de silence qu'on
     /// cherche des heures.
     uint64_t droppedChasedControls() const { return droppedChasedControls_.load(std::memory_order_relaxed); }
+    /// D585.3 : LA CHASSE AUX NOTES (*Chase Events ▸ Note*). Vraie, une note commencée avant la tête et finie après est
+    /// relancée au départ de la lecture, à un déplacement de la tête PENDANT la lecture, et au rebouclage pour celles qui
+    /// traversent le début de la boucle ; transport à l'arrêt, rien. Thread UI ; vraie d'origine, comme la chasse aux
+    /// contrôleurs de D16.2.
+    void setChaseNotes(bool oui);
+    bool chaseNotes() const { return chaseNotes_.load(std::memory_order_acquire); }
+    /// D585.3 : les notes chassées que la file n'a pas pu porter — comptées, jamais tues.
+    uint64_t droppedChasedNotes() const { return droppedChasedNotes_.load(std::memory_order_relaxed); }
     /// D18.7b : les sorties d'instrument RÉCLAMÉES et non rendues -- une piste
     /// qui demande la sortie n° 4 d'une machine qui n'en a que deux, ou une
     /// publication de plus que le graphe ne sait porter. La piste sort alors
@@ -506,6 +514,23 @@ private:
         uint8_t velocity = 100;
         bool noteOn = true;
     };
+    /// D585.3 : UNE NOTE CHASSÉE, calculée sur le fil de l'interface et livrée par une file sans verrou, comme une valeur
+    /// chassée. Sa GÉNÉRATION dit de quel départ elle vient : un départ suivi d'un déplacement avant le bloc suivant ne
+    /// relance que le dernier, et ce qu'un départ arrêté aussitôt avait mis en file ne sonne pas au départ d'après.
+    struct ChasedNoteEvent {
+        uint32_t trackIndex = 0;
+        uint8_t channel = 0;
+        uint8_t note = 60;
+        uint8_t velocity = 100;
+        uint32_t generation = 0;
+    };
+    /// D585.3 : les notes à relancer au rebouclage, publiées d'un coup (comme `snapshot_`).
+    struct LoopChase {
+        std::vector<ChasedNoteEvent> relances;
+    };
+    void queueChasedNotes(double seconds);   ///< D585.3 : thread UI
+    void drainChasedNotes();                 ///< D585.3 : thread audio, blocs JOUÉS seulement
+    void refreshLoopChase();                 ///< D585.3 : thread UI, à chaque projet et chaque région de boucle
     /// D24.1 : un contrôleur en direct, en attente de sa piste.
     struct LiveControlEvent {
         uint32_t trackIndex = 0;
@@ -981,6 +1006,16 @@ private:
     std::array<ChasedControlEvent, kMaxChasedPerBlock> drainedChase_{};
     int drainedChaseCount_ = 0;
     std::atomic<uint64_t> droppedChasedControls_{0};
+    /// D585.3 : LA CHASSE AUX NOTES — la préférence, la génération du dernier départ, la file et ce qu'un bloc en a tiré,
+    /// et les notes du rebouclage.
+    std::atomic<bool> chaseNotes_{true};
+    std::atomic<uint32_t> chaseNoteGeneration_{0};
+    static constexpr size_t kMaxChasedNotesPerBlock = 256;
+    vsm::audio::util::LockFreeRingBuffer<ChasedNoteEvent, kChaseQueueCapacity> chaseNoteQueue_;
+    std::array<ChasedNoteEvent, kMaxChasedNotesPerBlock> drainedChaseNotes_{};
+    int drainedChaseNoteCount_ = 0;
+    std::atomic<uint64_t> droppedChasedNotes_{0};
+    std::atomic<std::shared_ptr<const LoopChase>> loopChase_;
     std::atomic<bool> metronomeCountInOnly_{false};
     std::atomic<bool> metronomeRecordOnly_{false};
     std::atomic<bool> recording_{false};

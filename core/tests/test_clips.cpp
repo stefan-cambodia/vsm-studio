@@ -736,3 +736,53 @@ VSM_TEST(a_note_pushed_out_of_range_by_the_sum_is_dropped_and_counted) {
     project.globalTransposeSemitones = 8;
     VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(project), size_t(1));
 }
+
+// D585.3 : LA CHASSE AUX NOTES. L'attendu écrit avant la mesure (ROADMAP-daw, D585) — une note 60 de 0 à 7 680 (huit
+// secondes à 120 BPM) est chassée au tick 1 920, à sa vélocité, datée du départ ; pas au tick 0, pas à sa fin ; une note
+// qui commence PILE au départ ne l'est pas (le planning l'émet) ; une note muette, une piste muette non plus ; un clip qui
+// coupe la note avant le départ, non plus.
+VSM_TEST(chase_notes_relaunches_a_note_started_before_the_playhead) {
+    using namespace vsm::midi;
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track nappe;
+    nappe.name = "Nappe";
+    uint64_t id = 1;
+    nappe.addNote(0, 7680, 60, 90, 0, id);
+    nappe.addNote(1920, 2400, 64, 100, 0, id);   // commence pile au départ
+    nappe.addNote(0, 7680, 67, 100, 0, id);
+    for (auto& n : nappe.notes)
+        if (n.number == 67) n.muted = true;
+    project.tracks.push_back(nappe);
+    Track muette;
+    muette.name = "Muette";
+    muette.muted = true;
+    muette.addNote(0, 7680, 48, 100, 0, id);
+    project.tracks.push_back(muette);
+
+    struct Relance { size_t piste; int note; int velocite; double quand; };
+    auto relances = [](const Project& p, Tick t) {
+        std::vector<Relance> r;
+        for (const auto& ev : PlaybackScheduler::chaseNotesAt(p, t))
+            if (const auto* on = std::get_if<NoteOnEvent>(&ev.data))
+                r.push_back({ev.trackIndex, int(on->note), int(on->velocity), ev.timeSeconds});
+        return r;
+    };
+    const auto auDepart = relances(project, 1920);
+    VSM_ASSERT_EQ(auDepart.size(), size_t(1));
+    VSM_ASSERT_EQ(auDepart[0].piste, size_t(0));
+    VSM_ASSERT_EQ(auDepart[0].note, 60);
+    VSM_ASSERT_EQ(auDepart[0].velocite, 90);
+    VSM_ASSERT(std::abs(auDepart[0].quand - project.ticksToSeconds(1920)) < 1e-9);
+    VSM_ASSERT_EQ(relances(project, 0).size(), size_t(0));
+    VSM_ASSERT_EQ(relances(project, 7680).size(), size_t(0));
+    VSM_ASSERT_EQ(relances(project, 7000).size(), size_t(1));
+
+    // un clip qui s'arrête au tick 960 coupe la note : au départ de 1 920, elle est finie
+    Project coupe = project;
+    Clip clip;
+    clip.startTick = 0; clip.length = 960; clip.sourceStart = 0; clip.sourceLength = 960;
+    coupe.tracks[0].clips.push_back(clip);
+    coupe.assignClipIds();
+    VSM_ASSERT_EQ(relances(coupe, 1920).size(), size_t(0));
+}

@@ -1281,6 +1281,14 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             return;
         }
         if (onPlayheadRequested) onPlayheadRequested(std::max<vsm::midi::Tick>(0, xToTick(point.x)));
+        // D585.2 : L'APPUI OUVRE UN GESTE, que le glissé porte — la tête suit en x ; le zoom en y, si la préférence le
+        // veut. Sans modificateur seulement : un geste à modificateur viendrait ici sans zoomer.
+        if (!event.mods.isAnyModifierKeyDown()) {
+            geste_ = Geste::Regle;
+            regleAppui_ = point;
+            regleTick_ = std::max<vsm::midi::Tick>(0, xToTick(point.x));
+            vueAvantRegle_ = vueDeZoom();
+        }
         return;
     }
     if (point.x < kHeaderWidth) {
@@ -1586,6 +1594,24 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
                       geste_ != Geste::Reordonner);
     }
 
+    // D585.2 : LE GLISSÉ SUR LA RÈGLE. Vers le bas agrandit, vers le haut réduit, un facteur 2 par 100 px, depuis la vue
+    // de l'appui ; le tick saisi reste sous l'abscisse de l'appui (tant que le défilement ne bute pas sur 0). Sous 4 px
+    // de course verticale, la vue de l'appui : la main tremble. La tête suit l'abscisse, lue APRÈS le zoom.
+    if (geste_ == Geste::Regle) {
+        const float dy = event.position.y - regleAppui_.y;
+        if (zoomALaRegle_ && std::abs(dy) >= 4.0f) {
+            pixelsPerTick_ = juce::jlimit(0.004, 2.0, vueAvantRegle_.pixelsParTick * std::pow(2.0, static_cast<double>(dy) / 100.0));
+            scrollTick_ = std::max<vsm::midi::Tick>(
+                0, regleTick_ - static_cast<vsm::midi::Tick>(std::llround((regleAppui_.x - kHeaderWidth) / pixelsPerTick_)));
+        } else {
+            pixelsPerTick_ = vueAvantRegle_.pixelsParTick;
+            scrollTick_ = vueAvantRegle_.defilement;
+        }
+        if (onPlayheadRequested) onPlayheadRequested(std::max<vsm::midi::Tick>(0, xToTick(event.position.x)));
+        repaint();
+        return;
+    }
+
     if (geste_ == Geste::Hauteur && pisteSaisie_ >= 0) {
         auto& track = project_->tracks[static_cast<size_t>(pisteSaisie_)];
         track.arrangementHeight = juce::jlimit(
@@ -1791,6 +1817,25 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
 
 void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     if (geste_ == Geste::Hauteur || geste_ == Geste::Reordonner) notifyChanged();
+    // D585.2 : UN GLISSÉ, UN PAS DE ZOOM (D557.3), noté s'il a changé la vue — et dit : le facteur, et où le tick saisi
+    // est resté, à comparer à l'abscisse de l'appui.
+    if (geste_ == Geste::Regle && project_ != nullptr) {
+        const bool change = vueAvantRegle_.pixelsParTick != pixelsPerTick_ || vueAvantRegle_.defilement != scrollTick_;
+        noterZoom(vueAvantRegle_);
+        if (change) {
+            const double parMesure = static_cast<double>(project_->ticksPerQuarterNote) * 4.0;
+            std::fputs((juce::String::fromUTF8(u8"VSM_ZOOM : glissé sur la règle — zoom ")
+                        + juce::String(vueAvantRegle_.pixelsParTick, 6) + juce::String::fromUTF8(u8" → ")
+                        + juce::String(pixelsPerTick_, 6) + juce::String::fromUTF8(u8" px/tick (×")
+                        + juce::String(pixelsPerTick_ / vueAvantRegle_.pixelsParTick, 3)
+                        + juce::String::fromUTF8(u8"), le tick saisi ") + juce::String(static_cast<juce::int64>(regleTick_))
+                        + juce::String::fromUTF8(u8" (mesure ") + juce::String(1.0 + static_cast<double>(regleTick_) / parMesure, 2)
+                        + juce::String::fromUTF8(u8") à x ") + juce::String(tickToX(regleTick_), 1)
+                        + juce::String::fromUTF8(u8" pour un appui à x ") + juce::String(regleAppui_.x, 1)
+                        + " (" + juce::String(static_cast<int>(zoomsPasses_.size()))
+                        + juce::String::fromUTF8(u8" à annuler)\n")).toRawUTF8(), stderr);
+        }
+    }
     if (geste_ == Geste::Lasso) {
         // D580.1 : UN LASSO RESTÉ SANS ÉTENDUE EST UN CLIC dans le vide (moins de 3 px dans les deux sens : la main
         // tremble) ; c'est l'hôte qui sait ce qu'il en fait.

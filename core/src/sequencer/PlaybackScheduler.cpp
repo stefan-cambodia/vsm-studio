@@ -212,6 +212,46 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
     return resultat;
 }
 
+std::vector<ScheduledEvent> PlaybackScheduler::chaseNotesAt(const Project& project, Tick startTick) {
+    // D585.3 : LE MIROIR DE LA BOUCLE DES NOTES DE `build`, ci-dessous — ce qu'un départ à `startTick` n'émettrait pas
+    // parce que le début est passé, alors que la fin est encore à venir.
+    std::vector<ScheduledEvent> resultat;
+    if (startTick <= 0) return resultat;
+    const double quand = project.ticksToSeconds(startTick);
+    const bool anySolo = anySoloActive(project.tracks);
+    const Tick materialEnd = project.lastUsedTick();
+    const std::vector<bool> publiee = pistesPubliees(project);
+    for (size_t trackIndex = 0; trackIndex < project.tracks.size(); ++trackIndex) {
+        const Track& track = project.tracks[trackIndex];
+        if (track.disabled) continue;   // D30.2
+        if (!trackAudible(project.tracks, trackIndex, anySolo) && !publiee[trackIndex]) continue;   // D35.4, D18.7b
+        const std::vector<Passage> passages = clipPassages(track, materialEnd);
+        std::vector<Note> notesEffectuees;   // D31.3
+        const std::vector<Note>& jouees =
+            track.midiEffects.empty()
+                ? track.notes
+                : (notesEffectuees = applyMidiEffects(track.midiEffects, track.notes, project.ticksPerQuarterNote));
+        std::array<bool, 128> deja{};   // une hauteur relancée une fois : la machine ne tient qu'une note par hauteur
+        for (const auto& passage : passages) {
+            for (const auto& note : jouees) {
+                if (note.muted) continue;
+                const int hauteur = static_cast<int>(note.number) + track.transposeSemitones
+                                    + globalTransposeForNote(project, track, note);   // D17.5, D544.3
+                if (hauteur < 0 || hauteur > 127) continue;
+                if (note.startTick < passage.sourceFrom || note.startTick >= passage.sourceTo) continue;
+                const Tick debut = note.startTick + passage.shift;
+                if (debut >= passage.outLimit || debut >= startTick) continue;
+                const Tick fin = std::min(note.endTick + passage.shift, passage.outLimit);
+                if (fin <= startTick || deja[static_cast<size_t>(hauteur)]) continue;
+                deja[static_cast<size_t>(hauteur)] = true;
+                resultat.push_back({quand, trackIndex,
+                                    NoteOnEvent{note.channel, static_cast<uint8_t>(hauteur), note.velocity}});
+            }
+        }
+    }
+    return resultat;
+}
+
 std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
                                                        Tick startTick, Tick endTick) {
     std::vector<ScheduledEvent> result;

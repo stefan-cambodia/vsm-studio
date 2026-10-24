@@ -160,6 +160,7 @@ void ProcessGraph::setProject(const Project& project) {
     preFaderMask_.store(masque, std::memory_order_release);
     activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
     snapshot_.store(snapshot, std::memory_order_release);
+    refreshLoopChase();      // D585.3 : ce qui traverse le début de la boucle a pu changer
     refreshRenderOrder();    // les niveaux d'envoi ont pu changer
     refreshOutputRouting();  // et la publication des sorties : APRÈS l'ordre,
                              // dont elle dérive ses deux vagues
@@ -523,6 +524,7 @@ void ProcessGraph::setLoopRegion(double startSeconds, double endSeconds, bool ac
     loopStartSeconds_.store(std::max(0.0, startSeconds), std::memory_order_release);
     loopEndSeconds_.store(std::max(0.0, endSeconds), std::memory_order_release);
     loopActive_.store(active && endSeconds > startSeconds, std::memory_order_release);
+    refreshLoopChase();   // D585.3
 }
 
 void ProcessGraph::seekSeconds(double seconds) {
@@ -538,6 +540,9 @@ void ProcessGraph::seekSeconds(double seconds) {
     // Un déplacement de la tête de lecture recommence le compte des passes :
     // ce qui précède appartient à un autre enregistrement.
     loopWrapCount_.store(0, std::memory_order_release);
+    // D585.3 : EN LECTURE, LES NOTES QUE LE DÉPLACEMENT PREND EN ROUTE sont relancées ; à l'arrêt, elles le seront au
+    // départ (`setPlaying`) — poser la tête au milieu d'une nappe ne doit pas la faire sonner.
+    if (playing_.load(std::memory_order_acquire)) queueChasedNotes(seconds);
 
     // LA CHASSE AUX CONTRÔLEURS (D16.2) — « Chase Events » de Cubase, actif
     // par défaut comme chez lui.
@@ -666,7 +671,68 @@ void ProcessGraph::drainChasedControls() {
 }
 
 
-void ProcessGraph::setPlaying(bool playing) { playing_.store(playing, std::memory_order_release); }
+void ProcessGraph::setPlaying(bool playing) {
+    // D585.3 : AU DÉPART, les notes commencées sont mises en file AVANT que le premier bloc joué ne les cherche.
+    if (playing && !playing_.load(std::memory_order_acquire)) queueChasedNotes(currentSeconds_.load(std::memory_order_acquire));
+    playing_.store(playing, std::memory_order_release);
+}
+
+void ProcessGraph::setChaseNotes(bool oui) {
+    chaseNotes_.store(oui, std::memory_order_release);
+    chaseNoteGeneration_.fetch_add(1, std::memory_order_acq_rel);   // ce qui était en file ne sonne plus
+}
+
+void ProcessGraph::queueChasedNotes(double seconds) {
+    // LA GÉNÉRATION AVANCE TOUJOURS, même sans rien à chasser : un départ à zéro, ou la chasse décochée, périment ce
+    // qu'un départ précédent avait mis en file.
+    const uint32_t generation = chaseNoteGeneration_.fetch_add(1, std::memory_order_acq_rel) + 1;
+    if (!chaseNotes_.load(std::memory_order_acquire)) return;
+    auto snapshot = snapshot_.load(std::memory_order_acquire);
+    if (!snapshot || snapshot->project.tracks.empty()) return;
+    const auto tick = snapshot->project.secondsToTicks(seconds);
+    if (tick <= 0) return;
+    uint64_t perdus = 0;
+    for (const auto& ev : vsm::sequencer::PlaybackScheduler::chaseNotesAt(snapshot->project, tick)) {
+        const auto* on = std::get_if<NoteOnEvent>(&ev.data);
+        if (on == nullptr || ev.trackIndex >= kMaxTracks) continue;
+        ChasedNoteEvent note;
+        note.trackIndex = static_cast<uint32_t>(ev.trackIndex);
+        note.channel = on->channel;
+        note.note = on->note;
+        note.velocity = on->velocity;
+        note.generation = generation;
+        if (!chaseNoteQueue_.push(note)) ++perdus;
+    }
+    if (perdus > 0) droppedChasedNotes_.fetch_add(perdus, std::memory_order_relaxed);
+}
+
+void ProcessGraph::drainChasedNotes() {
+    drainedChaseNoteCount_ = 0;
+    const uint32_t generation = chaseNoteGeneration_.load(std::memory_order_acquire);
+    ChasedNoteEvent note;
+    while (static_cast<size_t>(drainedChaseNoteCount_) < kMaxChasedNotesPerBlock && chaseNoteQueue_.pop(note))
+        if (note.generation == generation) drainedChaseNotes_[static_cast<size_t>(drainedChaseNoteCount_++)] = note;
+}
+
+void ProcessGraph::refreshLoopChase() {
+    // HORS DU FIL AUDIO, comme la chasse d'un déplacement : au rebouclage, le fil audio ne fait que lire cette liste.
+    auto boucle = std::make_shared<LoopChase>();
+    auto snapshot = snapshot_.load(std::memory_order_acquire);
+    if (snapshot && !snapshot->project.tracks.empty()) {
+        const auto tick = snapshot->project.secondsToTicks(loopStartSeconds_.load(std::memory_order_acquire));
+        for (const auto& ev : vsm::sequencer::PlaybackScheduler::chaseNotesAt(snapshot->project, tick)) {
+            const auto* on = std::get_if<NoteOnEvent>(&ev.data);
+            if (on == nullptr || ev.trackIndex >= kMaxTracks) continue;
+            ChasedNoteEvent note;
+            note.trackIndex = static_cast<uint32_t>(ev.trackIndex);
+            note.channel = on->channel;
+            note.note = on->note;
+            note.velocity = on->velocity;
+            boucle->relances.push_back(note);
+        }
+    }
+    loopChase_.store(std::move(boucle), std::memory_order_release);
+}
 
 bool ProcessGraph::sendLiveNote(LiveNoteSource source, size_t trackIndex, uint8_t note,
                                  uint8_t velocity, bool noteOn) {
@@ -866,6 +932,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
 
     drainLiveNotes();
     drainChasedControls();
+    drainedChaseNoteCount_ = 0;   // D585.3 : tirées des seuls blocs joués, plus bas
     drainLiveControls();                                                       // D24.1
     panicThisBlock_ = panicRequested_.exchange(false, std::memory_order_acq_rel);   // D24.4
     // D27.2 : l'heure du bloc sur l'horloge monotone, pour dater la sortie MIDI.
@@ -980,6 +1047,8 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         auditionPlayer_.mixInto(outputL, outputR, idleSamples);
         return;
     }
+
+    drainChasedNotes();   // D585.3 : en lecture seulement — à l'arrêt, elles attendent le départ
 
     // Ne traite jamais plus que ce que les buffers de travail pré-alloués
     // permettent (règle realtime : pas de redimensionnement ici). En usage
@@ -1471,6 +1540,23 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             events[static_cast<size_t>(numEvents++)] = off;
             marquerSonnante(trackIndex, static_cast<uint8_t>(note), false);   // D32.3
         }
+        // D585.3 : ET CE QUI TRAVERSE LE DÉBUT DE LA BOUCLE EST RELANCÉ, juste après les relâchements — sans quoi une
+        // nappe posée au milieu de la boucle se tait à chaque tour.
+        if (chaseNotes_.load(std::memory_order_acquire))
+            if (auto boucle = loopChase_.load(std::memory_order_acquire))
+                for (const auto& c : boucle->relances) {
+                    if (c.trackIndex != trackIndex || numEvents >= kMaxEventsPerBlock) continue;
+                    MidiNoteEvent on;
+                    on.kind = MidiNoteEvent::Kind::NoteOn;
+                    on.sampleOffset = 0;
+                    on.channel = c.channel;
+                    on.note = c.note;
+                    on.velocity = c.velocity;
+                    heldNoteOffs_[trackIndex][c.note] = false;   // D25.1 : un NoteOn oublie la retenue
+                    marquerSonnante(trackIndex, c.note, true);
+                    notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
+                    events[static_cast<size_t>(numEvents++)] = on;
+                }
     }
 
     // Notes d'écoute (clic sur le clavier, clavier MIDI) : placées en tête
@@ -1493,6 +1579,22 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             marquerSonnante(trackIndex, live.note, live.noteOn);   // D32.3
             if (live.noteOn) notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
+        }
+        // D585.3 : LES NOTES CHASSÉES d'un départ ou d'un déplacement, au même endroit que les notes d'écoute ; une
+        // note qui sonne déjà n'est pas relancée (un déplacement à l'intérieur de la note, le scrub).
+        for (int i = 0; i < drainedChaseNoteCount_ && numEvents < kMaxEventsPerBlock; ++i) {
+            const ChasedNoteEvent& c = drainedChaseNotes_[static_cast<size_t>(i)];
+            if (c.trackIndex != trackIndex || soundingNotes_[trackIndex][c.note]) continue;
+            MidiNoteEvent on;
+            on.kind = MidiNoteEvent::Kind::NoteOn;
+            on.sampleOffset = 0;
+            on.channel = c.channel;
+            on.note = c.note;
+            on.velocity = c.velocity;
+            heldNoteOffs_[trackIndex][c.note] = false;   // D25.1
+            marquerSonnante(trackIndex, c.note, true);   // D32.3
+            notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
+            events[static_cast<size_t>(numEvents++)] = on;
         }
     }
 

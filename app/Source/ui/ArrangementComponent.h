@@ -334,6 +334,8 @@ public:
     bool choisirClipsSousLaTete(vsm::midi::Tick tete, const std::set<size_t>& pistes, size_t& combien);
     /// D582.3 : la molette règle le gain d'un clip audio — une préférence du poste.
     void setMoletteGain(bool oui) { moletteGain_ = oui; }
+    /// D585.2 : le glissé vertical sur la règle zoome (*Zoom while Locating in Time Scale*) — une préférence du poste.
+    void setZoomALaRegle(bool oui) { zoomALaRegle_ = oui; }
     /// Les mêmes trois gestes que le piano roll, aux mêmes raccourcis.
     void copySelection();
     void paste();
@@ -584,7 +586,9 @@ private:
                         /// qu'on tire vers le haut ou le bas pour le courber.
                         CourbureAutomation,
                         /// D552.3 : Ctrl+Alt sur le corps d'un clip -- glisser son CONTENU sous la fenêtre (*Slip*).
-                        Contenu };
+                        Contenu,
+                        /// D585.2 : l'appui sur la règle -- la tête suit en x, le zoom en y.
+                        Regle };
     /// D17.7 : la courbure du segment saisi au moment du clic, et l'ordonnée
     /// du clic. La courbure se calcule par rapport à ces deux-là plutôt qu'en
     /// s'accumulant : un glissement qui repasse par son point de départ doit
@@ -685,6 +689,7 @@ private:
     };
     std::vector<VueDeZoom> zoomsPasses_, zoomsDefaits_;
     VueDeZoom vueDeZoom() const { return {pixelsPerTick_, scrollTick_}; }
+    VueDeZoom vueAvantRegle_{};   ///< D585.2 : la vue de l'appui sur la règle
     /// Empile `avant` si le geste a changé la vue, et vide le « rétablir ».
     void noterZoom(const VueDeZoom& avant);
     /// Pose une vue empilée, et le DIT (`VSM_ZOOM`, puis la fenêtre).
@@ -766,6 +771,11 @@ private:
     uint64_t moletteClip_ = 0;
     double moletteInstant_ = 0.0;
     int moletteQuoi_ = 0;   ///< D583.1 : ce que la rafale règle — 0 le gain, 1 le fondu d'entrée, 2 celui de sortie
+    /// D585.2 : la préférence, et l'appui sur la règle — son point, le tick saisi, la vue d'avant le glissé. Le zoom se
+    /// calcule depuis l'appui et non en s'accumulant : un glissé qui revient à son point de départ rend la vue de départ.
+    bool zoomALaRegle_ = true;
+    juce::Point<float> regleAppui_;
+    vsm::midi::Tick regleTick_ = 0;
     bool reglerGainALaMolette(const juce::MouseEvent& event, float sens);
     bool reglerFonduALaMolette(const juce::MouseEvent& event, float sens);   ///< D583.1
     int lassoYContenu_ = 0;

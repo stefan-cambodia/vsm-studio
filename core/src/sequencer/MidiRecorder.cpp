@@ -2,6 +2,7 @@
 #include "vsm/sequencer/Project.h"
 #include <limits>
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <deque>
 #include <map>
@@ -310,6 +311,28 @@ RecordedControls MidiRecorder::finishControls(double endSeconds,
     std::stable_sort(sortie.channelPressure.begin(), sortie.channelPressure.end(), parTick);
     std::stable_sort(sortie.polyAftertouch.begin(), sortie.polyAftertouch.end(), parTick);
     std::stable_sort(sortie.programChanges.begin(), sortie.programChanges.end(), parTick);   // D584.1
+    // D585.1 : LES REMISES À ZÉRO, jugées sur la DERNIÈRE valeur gardée de chaque geste — le tri stable laisse deux
+    // valeurs du même tick dans l'ordre où elles sont arrivées. Les niveaux et les positions (CC 4, 7, 10, 11) ne
+    // reviennent pas au repos d'eux-mêmes : les remettre à 0 couperait le son ou le déplacerait.
+    if (remiseAZero_ && std::isfinite(fin)) {   // une prise se ferme toujours quelque part ; l'infini n'a pas de tick
+        const Tick sortieTick = std::max<Tick>(0, secondsToTicks(fin));
+        auto revient = [](uint8_t cc) { return cc == 1 || cc == 2 || cc == 64 || cc == 66 || cc == 67; };
+        std::map<std::pair<uint8_t, uint8_t>, uint8_t> cc, poly;
+        std::map<uint8_t, int16_t> bend;
+        std::map<uint8_t, uint8_t> pression;
+        for (const auto& p : sortie.controlChanges) cc[{p.channel, p.controller}] = p.value;
+        for (const auto& p : sortie.polyAftertouch) poly[{p.channel, p.note}] = p.pressure;
+        for (const auto& p : sortie.pitchBends) bend[p.channel] = p.value;
+        for (const auto& p : sortie.channelPressure) pression[p.channel] = p.pressure;
+        for (const auto& [cle, valeur] : cc)
+            if (valeur != 0 && revient(cle.second)) sortie.controlChanges.push_back({sortieTick, cle.first, cle.second, 0});
+        for (const auto& [cle, valeur] : poly)
+            if (valeur != 0) sortie.polyAftertouch.push_back({sortieTick, cle.first, cle.second, 0});
+        for (const auto& [canal, valeur] : bend)
+            if (valeur != 0) sortie.pitchBends.push_back({sortieTick, canal, 0});
+        for (const auto& [canal, valeur] : pression)
+            if (valeur != 0) sortie.channelPressure.push_back({sortieTick, canal, 0});
+    }
     return sortie;
 }
 

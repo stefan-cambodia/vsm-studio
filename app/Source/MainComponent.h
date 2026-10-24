@@ -217,6 +217,28 @@ public:
                     + juce::String::fromUTF8(" \xc2\xb7 ") + juce::String(static_cast<int64_t>((tick % parMesure) / ppq + 1))
                     + "\n").toRawUTF8(), stderr);
     }
+    /// D585.3 : `relever-sonnantes` -- les notes qui SONNENT sur chaque piste (le masque que le fil audio tient pour les
+    /// voyants du clavier, D32.3) et le niveau efficace de la piste : ce qu'une chasse aux notes fait entendre, relevé
+    /// pendant la lecture. Le masque peut avoir un bloc de retard ; c'est un voyant, pas une horloge.
+    void releverSonnantes() const {
+        const auto& graphe = audioEngine_.processGraph();
+        for (size_t t = 0; t < project_.tracks.size() && t < vsm::audio::engine::ProcessGraph::kMaxTracks; ++t) {
+            uint64_t basses = 0, hautes = 0;
+            graphe.soundingNotesOf(t, basses, hautes);
+            juce::StringArray notes;
+            for (int n = 0; n < 128; ++n)
+                if (((n < 64 ? basses : hautes) >> (n % 64)) & 1u) notes.add(juce::String(n));
+            const float rms = graphe.readMeterRms(t);
+            const float db = rms > 1.0e-6f ? 20.0f * std::log10(rms) : -120.0f;
+            std::fputs(("VSM_SONNANTES : piste " + juce::String(static_cast<int>(t)) + " [" + notes.joinIntoString(" ")
+                        + "] RMS " + juce::String(db, 1) + " dBFS, "
+                        + juce::String::fromUTF8(graphe.isPlaying() ? "en lecture" : "\xc3\xa0 l'arr\xc3\xaat")
+                        + ", tick " + juce::String(static_cast<int64_t>(transport_.currentTick()))
+                        + ", chasse " + (graphe.chaseNotes() ? "oui" : "non")
+                        + ", " + juce::String(static_cast<int64_t>(graphe.loopWrapCount())) + " rebouclage(s)\n").toRawUTF8(),
+                       stderr);
+        }
+    }
     /// D338 : VSM_PIANOROLL_ZONES -- le rang du piano roll et la police des touches, après les gestes.
     void releverRangPianoRoll() const {
         pianoRoll_.releverRangPourCapture();
@@ -373,6 +395,8 @@ public:
         if (geste.equalsIgnoreCase("relever-clips")) { arrangement_.direLesClipsAEcran(); return true; }
         // D500 : la tête du TRANSPORT, relevée plus tard (`VSM_TETE` part au démarrage).
         if (geste.equalsIgnoreCase("relever-tete")) { releverTete(); return true; }
+        // D585.3 : les notes qui sonnent et le niveau de chaque piste, pendant la lecture.
+        if (geste.equalsIgnoreCase("relever-sonnantes")) { releverSonnantes(); return true; }
         // D578.3 : le moniteur MIDI tel qu'il est PEINT, la file vidée d'abord.
         if (geste.equalsIgnoreCase("relever-moniteur-midi")) {
             const juce::String lignes = moniteurMidi_.releverPourCapture();
@@ -1375,6 +1399,10 @@ private:
         kMenuRecordKeepPitchBend,
         kMenuRecordKeepPressure,
         kMenuRecordKeepPrograms,
+        /// D585.1, D585.2, D585.3 : les remises à zéro après la prise, le zoom en glissant sur la règle, la chasse aux notes.
+        kMenuRecordResetAfterTake,
+        kMenuTransportZoomOnRuler,
+        kMenuTransportChaseNotes,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
@@ -1960,6 +1988,10 @@ private:
     void appliquerFiltreDePrise() {
         recorder_.setFiltre({garderControleurs_, garderPitchBend_, garderPression_, garderProgrammes_});
     }
+    /// D585 : la remise à zéro après la prise (décochée d'origine), le zoom à la règle et la chasse aux notes (cochés).
+    bool remiseAZeroApresPrise_ = false;   ///< D585.1
+    bool zoomALaRegle_ = true;             ///< D585.2
+    bool chasserLesNotes_ = true;          ///< D585.3
     bool armementSuitLeChoix_ = false;     ///< D579.2
     bool arretApresPunch_ = false;         ///< D579.3
     /// D580 : trois de plus, du transport, de l'enregistrement et de l'édition.

@@ -121,6 +121,12 @@ public:
     };
     void setFiltre(const Filtre& filtre) { filtre_ = filtre; }
     const Filtre& filtre() const { return filtre_; }
+    /// D585.1 : LES REMISES À ZÉRO APRÈS LA PRISE (*Insert Reset Events after Record*). Vrai, `finishControls` ajoute,
+    /// au point de sortie, le retour au repos de chaque geste que la prise a laissé hors du repos — la molette de hauteur
+    /// au centre, les deux pressions, la modulation (CC 1), le souffle (CC 2) et les trois pédales (CC 64, 66, 67) à 0 ;
+    /// ce que la prise a ramené elle-même n'est pas doublé. Un réglage du poste, gardé d'une prise à l'autre.
+    void setRemiseAZero(bool oui) { remiseAZero_ = oui; }
+    bool remiseAZero() const { return remiseAZero_; }
     /// D24.2 : un contrôleur, même règle du point d'entrée.
     void pushControl(const RecordedControlEvent& event);
     bool hasControls() const { return !controls_.empty(); }
@@ -171,6 +177,7 @@ private:
     double endSeconds_ = std::numeric_limits<double>::infinity();
     double catchSeconds_ = 0.0;          ///< D583.2
     Filtre filtre_;                      ///< D584.2
+    bool remiseAZero_ = false;           ///< D585.1
     std::vector<size_t> rattrapees_;     ///< D583.2 : les indices, dans `events_`, des frappes rattrapées
     std::vector<RecordedNoteEvent> events_;
     std::vector<RecordedControlEvent> controls_;

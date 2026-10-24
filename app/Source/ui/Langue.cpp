@@ -3259,6 +3259,18 @@ const Paire kAnglais[] = {
       "The take keeps program changes" },
     { "(les notes, toujours ; ce qui n'est pas gardé s'entend quand même)",
       "(notes, always; what is not kept is still heard)" },
+    { "Remettre les contrôleurs à zéro après la prise",   // D585.1
+      "Reset controllers after the take" },
+    { "(la molette de hauteur, les pressions, la modulation, le souffle et les pédales laissés hors du repos y reviennent à la fin de la prise)",
+      "(pitch bend, pressure, modulation, breath and pedals left away from rest return to it at the end of the take)" },
+    { "Zoomer en glissant sur la règle",   // D585.2
+      "Zoom by dragging on the ruler" },
+    { "(sur la règle de l'arrangement : vers le bas agrandit, vers le haut réduit ; de côté, la tête suit)",
+      "(on the arrangement ruler: down zooms in, up zooms out; sideways, the playhead follows)" },
+    { "Chasser les notes commencées",   // D585.3
+      "Chase notes already started" },
+    { "(une note commencée avant la tête sonne dès le départ, et à chaque tour de boucle)",
+      "(a note started before the playhead sounds from the start of playback, and on every loop pass)" },
     { "Rattrapage avant l'entrée",   // D583.2
       "Catch range before punch-in" },
     { "Rattrapage : aucun",

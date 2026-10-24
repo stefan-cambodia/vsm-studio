@@ -52,6 +52,14 @@ public:
     /// Respecte mute et solo, comme `build`.
     static std::vector<ScheduledEvent> chaseAt(const Project& project, midi::Tick startTick);
 
+    /// D585.3 : LA CHASSE AUX NOTES (*Chase Events ▸ Note*) — un `NoteOnEvent` daté de `startTick` pour chaque note
+    /// dont le début de SORTIE est strictement avant `startTick` et la fin de sortie (coupée à la fin du clip)
+    /// strictement après : la note qu'un départ prend en route. Le calcul est celui de `build` — mêmes passages, même
+    /// chaîne d'effets MIDI, mêmes transpositions, mêmes pistes jouées —, une hauteur au plus par piste. À PART de
+    /// `chaseAt` : `build` s'en sert pour tout planning qui ne part pas de zéro, et des NoteOn chassés y entreraient dans
+    /// des chemins qui ne les attendent pas. La fin de la note n'est pas rendue : elle est dans le planning.
+    static std::vector<ScheduledEvent> chaseNotesAt(const Project& project, midi::Tick startTick);
+
     /// D17.5 : combien de notes la transposition des pistes ferait sortir de
     /// 0..127, et qui ne sonneront donc pas. Zéro quand aucune piste n'est
     /// transposée. À DIRE, jamais à taire : une note qu'on a écrite et qui ne
