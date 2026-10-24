@@ -3,6 +3,7 @@
 #include "vsm/sequencer/Project.h"
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <vector>
 
 using namespace vsm::sequencer;
@@ -299,7 +300,10 @@ VSM_TEST(the_dim_lowers_what_is_heard_by_20_db_and_never_what_the_master_measure
     // D589.3 : L'ÉCOUTE ATTÉNUÉE. Deux graphes rendent le même décompte puis le début du morceau ; l'un est atténué. Ce
     // qui SORT est ×0,1 échantillon par échantillon ; ce que le master MESURE (D48) ne bouge pas ; et un graphe neuf —
     // celui que monte le rendu hors ligne — n'est pas atténué.
-    ProcessGraph avec, sans;
+    // Sur le TAS : un graphe pèse 3,4 Mo, et trois sur la pile de 8 Mo l'ont fait déborder (D589, mesuré).
+    auto pAvec = std::make_unique<ProcessGraph>(), pSans = std::make_unique<ProcessGraph>();
+    ProcessGraph& avec = *pAvec;
+    ProcessGraph& sans = *pSans;
     for (ProcessGraph* g : {&avec, &sans}) {
         g->prepare(8000.0, 256);
         g->setProject(projetDUneNote());
@@ -307,7 +311,7 @@ VSM_TEST(the_dim_lowers_what_is_heard_by_20_db_and_never_what_the_master_measure
         g->setPlaying(true);
     }
     avec.setDim(true);
-    VSM_ASSERT_NEAR(avec.dimGain(), 0.1, 1e-9);
+    VSM_ASSERT_NEAR(avec.dimGain(), 0.1, 1e-7);   // 0,1f est à 1,5·10⁻⁹ de 0,1 : un flottant, pas un double
     const auto attenue = rendre(avec, 8000.0, 256, 1.2);
     const auto plein = rendre(sans, 8000.0, 256, 1.2);
     VSM_ASSERT(crete(plein) > 0.01f);
@@ -325,7 +329,7 @@ VSM_TEST(the_dim_lowers_what_is_heard_by_20_db_and_never_what_the_master_measure
     VSM_ASSERT_NEAR(entendueA, entendueS * 0.1f, 1e-7);
     VSM_ASSERT_NEAR(masterA, masterS, 0.0);
     // Le rendu hors ligne monte son propre graphe : l'écoute n'y est jamais atténuée.
-    ProcessGraph neuf;
-    VSM_ASSERT(!neuf.dim());
-    VSM_ASSERT_NEAR(neuf.dimGain(), 1.0, 1e-12);
+    const auto neuf = std::make_unique<ProcessGraph>();
+    VSM_ASSERT(!neuf->dim());
+    VSM_ASSERT_NEAR(neuf->dimGain(), 1.0, 1e-12);
 }

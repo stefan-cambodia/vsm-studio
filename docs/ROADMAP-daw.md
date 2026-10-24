@@ -45848,3 +45848,42 @@ soit un accord diminué.
 
 **L'ORDRE, TRANCHÉ ICI.** D589.1 (le plus de gestes épargnés), puis D589.2, puis D589.3 ; un banc par élément
 (`dossier-des-choisies`, `desarmer-tout`, `ecoute-attenuee`), entré dans la série de `verifier.sh --bancs`.
+
+### Phase D589 — MESURÉE, la série à jouer (25/10/2026, 00 h 47 à l'horloge)
+
+*Reprise à 00 h 31 après une extinction du poste (00 h 12, dernière ligne du journal du système) : rien ne tournait
+(`uptime` 17 min), la série de D588 n'a jamais démarré (aucun `build/verifier-bancs-D588.log`, le dernier relevé de
+`build/verifier-bancs/` est de 22 h 32, la fin de celle de D587). Le binaire du 24/10 à 22 h 53 portait déjà D589
+(`relever-ecoute` y est, absent de `build/temoin-D588`) : une compilation avait suivi le commit du chantier. Recompilé à
+00 h 35 (`-j 4`, rien d'autre ne tournant), puis les suites, les trois bancs sur le binaire neuf, leurs témoins sur
+`build/temoin-D588`. L'écran était VERROUILLÉ et ÉTEINT (`LockedHint=yes`, `dpms off`) : ces trois bancs lisent le projet
+enregistré, le journal et l'export, pas des pixels ; les deux photos ci-dessous sont des premiers lancements, espacés.*
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D589.1 | (1) Basse, Dossier, Lead, Voix, Pad, Groupe ; 0, 0, 1, 1, 0, 0 ; la sortie vers 5 ; choisi 1 ; l'export à −120 dBFS près ; (2) Ctrl+Z ; (3) le tiroir au bit près ; (4) grisée ; (5) en anglais | `moveTracksIntoNewFolder` ; `tools/dossier-des-choisies.sh` : (1) « **Basse>5, Dossier, Lead@1, Voix@1, Pad, Groupe** », choisie **1**, `VSM_DOSSIER : 2 piste(s) rangée(s) dans le dossier à l'index 1`, l'export à **−138,5 dBFS** de celui d'avant (et non au bit près, comme écrit avant la mesure : l'ordre de la somme change) ; (2) Ctrl+Z → « **Basse>3, Lead, Pad, Groupe, Voix** » ; (3) « **Basse, Dossier, Cordes@1, Lead@2, Pad@1** », `3 piste(s) rangée(s)`, l'export **identique au bit près** (`cmp`) ; (4) « Ranger les pistes choisies dans un dossier neuf (1) **[grisée]** » ; (5) *Track ▸ Move the chosen tracks into a new folder (2)*. La photo REGARDÉE : le dossier choisi (cadre ambre), « Lead » et « Voix » en retrait dessous, « Basse » toujours vers « Groupe », la console dans l'ordre neuf. **TENU** | **oui** |
+| D589.2 | (1) {} et « 2 piste(s) désarmée(s) » ; (2) Ctrl+Z → {0, 2} ; (3) {} et {} par la règle ; (4) grisée pendant la prise, {0} après ; (5) en anglais | `desarmerToutesLesPistes` ; `tools/desarmer-tout.sh` : (1) « {0, 2} » → « **{}** », `VSM_ARMEMENT : 2 piste(s) désarmée(s)` ; (2) → « {} » → « **{0, 2}** » ; (3) « {1, 3} ; par la règle : {1} » → « **{} ; par la règle : {}** » ; (4) « Désarmer toutes les pistes (prise en cours) **[grisée]** », « **{0}** » après la prise ; (5) *Recording ▸ Disarm all tracks (2)*. **TENU** | **oui** |
+| D589.3 | (1) −20,0 dB cochée, 0,0 dB décochée, le master qui sonne ; (2) l'export au bit près ; (3) relancé décochée ; (4) « MASTER · DIM », puis « MASTER » ; en anglais | `ProcessGraph::setDim`, `rendreLeBloc` ; `tools/ecoute-attenuee.sh` : (1) cochée, en lecture : master **−17,63** dBFS, entendue **−37,63**, écart **−20,00 dB** ; décochée : **−17,63 / −17,63, 0,00 dB** ; (2) deux exports de **2 646 044 octets, identiques au bit près**, crête 0,212 ; (3) relancé dans le même HOME : l'entrée **sans** coche ; (4) titres « **MASTER · DIM** » et « **MASTER** » au relevé ; *Mixing ▸ Dim the monitoring by 20 dB (never in an export)*. La photo du mixeur REGARDÉE : « MASTER · DIM » en ambre en tête de la tranche master, la barre d'état le dit. **TENU** | **oui** |
+| — | les témoins | le binaire de D588 : `dossier-des-choisies` **rouge 5 / 5** (l'entrée absente — `VSM_MENU : aucune entrée de menu au chemin …` —, l'ordre inchangé, « Basse, Cordes, Lead@1, Pad » au tiroir) ; `desarmer-tout` **rouge 5 / 5** (l'entrée absente, l'armement **{0, 2}** resté) ; `ecoute-attenuee` **rouge 4 / 4** (l'entrée absente, `relever-ecoute` et `exporter-audio:` **inconnus**, aucun export) | **oui** |
+| — | les suites | cœur **553 / 553** (552 + le test de D589.1), moteur **1 354 / 1 354** (1 353 + celui de D589.3), interchange 359, clap 25, panels 11 ; Python, ruff et mypy non rejoués : aucun fichier Python touché | **oui** |
+| — | la série | `./verifier.sh --bancs`, 189 bancs (ceux de D588 compris, jamais joués) — **à jouer**, l'écran allumé | **à jouer** |
+
+**CE QUE LA MESURE A TRANCHÉ, ÉCRIT ICI.**
+- **Le test du moteur de D589.3 est tombé deux fois, et le moteur n'y était pour rien.** D'abord sur sa tolérance :
+  `dimGain()` rend `0,1f`, qui est à **1,5·10⁻⁹** de `0,1` en double, au-delà des 10⁻⁹ écrits — un flottant comparé à un
+  double ; tolérance portée à 10⁻⁷. Puis, la première assertion passée, en **segfault** (rc 139, trois fois de suite) :
+  `gdb` l'arrête sur la DÉCLARATION `ProcessGraph avec, sans;` — un graphe pèse **3 375 872 octets** (`sizeof`, lu par
+  `gdb`), et le test en posait trois sur une pile de 8 Mo (`ulimit -s` : 8 192 Ko). Les trois passent sur le tas
+  (`make_unique`, comme `test_effect_routing.cpp`). Pourquoi la première course, au même code à la tolérance près, est
+  allée jusqu'à l'assertion sans planter n'est pas établi, et n'est pas écrit comme établi ; le débordement, lui, est
+  mesuré.
+- **Le contrôle (2) de `dossier-des-choisies` passait sur le témoin.** « Ctrl+Z rend l'ordre d'origine » est vrai d'un
+  binaire qui n'a jamais rien rangé : le binaire de D588 le passait (rouge 4 / 5 au lieu de 5 / 5). C'est la leçon de
+  D145 — une valeur revenue à son point de départ ne prouve rien sans le témoin qui montre qu'elle en était partie. Le
+  contrôle exige désormais, dans la MÊME course, la ligne `VSM_DOSSIER : 2 piste(s) rangée(s) dans le dossier à l'index 1`
+  avant le Ctrl+Z ; rejoué, le témoin tombe **5 / 5** et D589 reste **5 / 5**.
+- **La série ne s'est pas jouée cette nuit, et pourquoi.** Deux raisons, chacune suffisante : l'écran verrouillé et
+  éteint — sous une session verrouillée, seul le premier lancement d'une rafale dessine sa fenêtre (D520), et un écran
+  éteint fait tomber les bancs de focus et de clic (D516) : la série y rendrait des rouges qui ne disent rien du code ;
+  et la batterie à **29 %** à 00 h 46, en décharge, quand la série dure ~2 h 20 et que le service de l'utilisateur endort
+  le poste sous 15 %. Elle se joue à la prochaine reprise, l'écran allumé — 189 bancs, ceux de D588 et de D589 compris.

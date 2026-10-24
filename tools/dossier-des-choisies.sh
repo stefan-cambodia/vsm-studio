@@ -12,7 +12,7 @@
 #   (1) les pistes 1 et 4 choisies : Basse, Dossier, Lead, Voix, Pad, Groupe ; les profondeurs 0, 0, 1, 1, 0, 0 ; la
 #       sortie de « Basse » vers l'index 5 ; le dossier choisi (index 1) ; l'export à −120 dBFS près de celui d'avant
 #       (et non au bit près : « Voix » passe avant « Pad », l'ordre de la somme change) ;
-#   (2) Ctrl+Z : l'ordre d'origine, en un pas, la sortie vers 3 ;
+#   (2) Ctrl+Z : l'ordre d'origine, en un pas, la sortie vers 3 — le dossier fait AVANT, dans la même course ;
 #   (3) « tiroir », les pistes 1 et 3 choisies : Basse, Dossier, Cordes@1, Lead@2, Pad@1, l'export identique AU BIT près ;
 #   (4) une seule piste choisie : l'entrée « (1) » grisée ;
 #   (5) en anglais, « Move the chosen tracks into a new folder (2) » ;
@@ -150,8 +150,11 @@ verdict "(1) 1 et 4 : Basse, Dossier, Lead, Voix, Pad, Groupe ; la sortie suit (
     "$([ "$(pistes "$brouillon/range-ecrit")" = "Basse>5,Dossier,Lead@1,Voix@1,Pad,Groupe | choisie=1" ] \
         && case "$e1" in -inf) true ;; ABSENT|FORMES*) false ;; *) python3 -c "import sys; sys.exit(0 if float('$e1') <= -120 else 1)" ;; esac \
         && echo 1 || echo 0)"
-verdict "(2) Ctrl+Z : l'ordre d'origine, en un pas, la sortie vers 3" \
-    "$(pistes "$brouillon/annule-ecrit" | grep -q "^Basse>3,Lead,Pad,Groupe,Voix |" && echo 1 || echo 0)"
+# Le retour à l'ordre d'origine ne prouve rien sans le dossier fait AVANT, dans la même course : le témoin, qui ne
+# range rien, rendait ce contrôle vert (D589, mesuré).
+verdict "(2) Ctrl+Z : l'ordre d'origine, en un pas, la sortie vers 3 — après un dossier fait dans la même course" \
+    "$(grep -q "^VSM_DOSSIER : 2 piste(s) rangée(s) dans le dossier à l'index 1" "$brouillon/annule.txt" \
+        && pistes "$brouillon/annule-ecrit" | grep -q "^Basse>3,Lead,Pad,Groupe,Voix |" && echo 1 || echo 0)"
 verdict "(3) un dossier choisi avec son contenu : Basse, Dossier, Cordes@1, Lead@2, Pad@1 ; l'export au bit près" \
     "$([ "$(pistes "$brouillon/tiroir-ecrit")" = "Basse,Dossier,Cordes@1,Lead@2,Pad@1 | choisie=1" ] \
         && [ "$(pareils "$brouillon/tiroir.wav" "$brouillon/tiroir-ecrit.wav")" = 1 ] && echo 1 || echo 0)"
