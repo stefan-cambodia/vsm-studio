@@ -4,7 +4,8 @@
 #
 # LES RÈGLES GARDÉES. Un projet de trois pistes : 0 « Basse » (MIDI, une machine, des notes, sa sortie vers le groupe 2),
 # 1 « Lead » (MIDI, une machine, des notes), 2 « Groupe ». Un second : 0 « Basse », 1 « Dossier », 2 « Lead » dans le
-# dossier. La piste se choisit par `choisir:` (D38), s'ajoute par le menu, et le projet s'enregistre (`enregistrer:`) :
+# dossier, 3 « Fin » hors du dossier — sans elle, le contenu du dossier finit la liste, « après le dossier » et « au
+# bout » tombent au même index, et le témoin passait le contrôle (4) (vu le 24/10 à 22 h 37). La piste se choisit par `choisir:` (D38), s'ajoute par le menu, et le projet s'enregistre (`enregistrer:`) :
 # l'ordre, les sorties, les profondeurs et la piste choisie (`view.selectedTrack`, D369) se relisent dans
 # `project.json`. L'export se fait en rouvrant le projet enregistré (`VSM_EXPORT`), comme transposition-globale.sh.
 # L'ATTENDU ÉCRIT AVANT LA MESURE (ROADMAP-daw, D588) :
@@ -12,7 +13,8 @@
 #       vers l'index 3 ; la piste neuve choisie (index 1) ; l'export identique au bit près à celui d'avant ;
 #   (2) Ctrl+Z : 3 pistes dans l'ordre d'origine, l'export identique ;
 #   (3) la dernière piste choisie : la piste neuve à l'index 3 ;
-#   (4) le dossier choisi, qui contient « Lead » : la piste neuve après « Lead », à la profondeur du dossier ;
+#   (4) le dossier choisi, qui contient « Lead » : la piste neuve après « Lead », à la profondeur du dossier, AVANT
+#       « Fin » ;
 #   (5) le TÉMOIN (le binaire de D587, passé en argument) sur (1) : la piste neuve à l'index 3.
 #
 #   tools/piste-sous-la-choisie.sh [binaire]
@@ -66,8 +68,8 @@ basse = ("Basse", [(0, 36, 960), (960, 43, 960)])
 lead = ("Lead", [(0, 72, 480), (480, 76, 480), (960, 79, 960)])
 projet("trois", [basse, lead, ("Groupe", [])],
        [entree("Basse", 0, output=2), entree("Lead", 1), special("Groupe", 2, "group")])
-projet("dossier", [basse, ("Dossier", []), lead],
-       [entree("Basse", 0), special("Dossier", 1, "folder"), entree("Lead", 2, folderDepth=1)])
+projet("dossier", [basse, ("Dossier", []), lead, ("Fin", [])],
+       [entree("Basse", 0), special("Dossier", 1, "folder"), entree("Lead", 2, folderDepth=1), entree("Fin", 3)])
 PY
 
 course() {   # $1 = nom ; $2 = projet ; le reste : variables
@@ -125,8 +127,8 @@ verdict "(2) Ctrl+Z : l'ordre d'origine, en un pas, l'export identique" \
         && [ "$(pareils "$brouillon/trois.wav" "$brouillon/annule-ecrit.wav")" = 1 ] && echo 1 || echo 0)"
 verdict "(3) la dernière piste choisie : la piste neuve au bout (index 3)" \
     "$([ "$(pistes "$brouillon/derniere-ecrit")" = "Basse>2,Lead,Groupe,Piste 4 | choisie=3" ] && echo 1 || echo 0)"
-verdict "(4) le dossier choisi : la piste neuve après son contenu, à sa profondeur" \
-    "$([ "$(pistes "$brouillon/dossier-ecrit")" = "Basse,Dossier,Lead@1,Piste 4 | choisie=3" ] && echo 1 || echo 0)"
+verdict "(4) le dossier choisi : la piste neuve après son contenu, à sa profondeur, avant « Fin »" \
+    "$([ "$(pistes "$brouillon/dossier-ecrit")" = "Basse,Dossier,Lead@1,Piste 5,Fin | choisie=3" ] && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "PISTE-SOUS-LA-CHOISIE : $rates contrôle(s) raté(s)"; exit 1; fi
