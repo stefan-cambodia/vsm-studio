@@ -46058,6 +46058,18 @@ espacées de 45 s (D520), et chacune est vérifiée PLEINE avant d'être compar�
 - **L'étendue suit la vue quand celle-ci déborde** : à l'ouverture (« tout voir », D362), la vue couvre 0..128 000 ticks
   pour un morceau qui finit à 122 880 — la bande va jusqu'à 128 000 et le rectangle la remplit, comme écrit avant le code.
 
+### Phases D588, D589 et D591 — FAITES (25/10/2026, 05 h 40 à l'horloge)
+
+La série : `./verifier.sh --bancs`, lancée à 04 h 12 après une veille de 01 h 18 à 04 h 10 (le poste rechargé à 100 %),
+l'écran allumé et déverrouillé (`LockedHint=no`, `dpms on`) au départ comme à l'arrivée ; **190 bancs en 86 min, tous
+verts** (`build/verifier-bancs-D591.log`). Les sept bancs neufs de la série, jamais joués avant : `historique-profondeur`,
+`piste-sous-la-choisie`, `largeur-tete` (D588), `dossier-des-choisies`, `desarmer-tout`, `ecoute-attenuee` (D589) et
+`ligne-d-ensemble` (D591) — verts. Préférences de l'utilisateur identiques (`cmp`) ; aucune veille ni aucun `oom` au
+journal du système sur la fenêtre de la série ; le compositeur de 562 à 581 Mo (sommet de la session 2 144 Mo, loin du
+plafond de 3 072). Pendant la série, rien n'a été LANCÉ : les chantiers de D592 à D596 se sont écrits dans des arbres à
+part, compilés à basse priorité (`nice -n 19`, `-j 2`) dans leurs propres dossiers de build — la cible de l'application
+jamais, pour ne pas toucher au binaire que la série lançait. D588, D589 et D591 sont FAITES.
+
 ### Phase D592 — un cinquante-troisième audit : renverser les accords, et les drops (25/10/2026)
 
 *Écrite le 25/10 à 04 h 20 (l'horloge), avant toute ligne de code et toute mesure, pendant la série de D588-D591
