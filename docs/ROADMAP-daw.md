@@ -45410,3 +45410,27 @@ de D585.2 s'étend), puis D586.2 ; un banc par élément, entré dans la série 
 - **Le banc de D586.1 est à part** (`tools/zoom-regle-pianoroll.sh`), et non une extension de celui de D585.2 :
   l'arrangement et le piano roll ne s'ouvrent pas dans la même vue, et un banc qui raterait sur l'un ne doit pas cacher
   l'autre. Les attendus ne changent pas.
+
+### Phase D586 — EN MESURE : un rouge du banc de D586.1, et le même défaut dans la règle de D585.2 (24/10/2026, 15 h 31 à l'horloge)
+
+Le binaire de D586 compile du premier coup (`cmake --build build -j 2 --target VintageSynthMidiStudio`, rc 0).
+`tools/nom-des-notes.sh` est **vert 5 / 5**, l'attendu au caractère près ; `tools/zoom-regle-pianoroll.sh` est **rouge
+1 / 5**, sur (3) : un glissé de côté, de la mesure 5 jusqu'à 0,98 de la largeur, laisse le zoom à **0,080** px/tick
+(l'attendu tenu), mais le relâchement écrit une ligne `VSM_ZOOM_PIANOROLL` (« ×1,000 », le tick saisi à x **30,2** pour
+un appui à x **714,8**) — la vue a DÉFILÉ.
+
+**LA CAUSE, LUE DANS LE CODE.** Le piano roll suit la tête même à l'arrêt : `PianoRollComponent::setPlayheadTick` tourne
+la page dès que la tête passe à moins de 40 px du bord droit. Le glissé de côté l'y amène, la page tourne ; et le code de
+D586.1 REMET la vue de l'appui à chaque mouvement sous 4 px de course verticale — les deux se disputent la vue, et le
+relâchement prend un tour de page pour un zoom. **La règle de l'arrangement (D585.2) a le même code**, et pire : sa
+branche « sous 4 px » remet la vue de l'appui MÊME LA PRÉFÉRENCE DÉCOCHÉE, et le relâchement passe par `noterZoom`, qui
+empile toute vue changée — un tour de page du suivi y deviendrait un pas d'*Annuler le zoom*. Son banc ne l'a pas vu : son
+glissé de côté s'arrête au tick 12 000, loin du bord.
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE QUI LA TRANCHE** (le binaire de D586, l'arrangement inchangé depuis D585.2) : un
+glissé HORIZONTAL sur la règle de l'arrangement, de la mesure 5 jusqu'à 0,98 de la largeur, (a) écrit une ligne
+`VSM_ZOOM : glissé sur la règle` à « ×1,000 » avec « 1 à annuler » ; (b) la préférence décochée, de même. **Le remède**
+: la vue de l'appui ne se remet que si le geste a ZOOMÉ (le zoom courant n'est plus celui de l'appui) ; le relâchement ne
+note et ne dit un zoom que si le zoom a changé. **L'attendu après le remède** : dans les deux règles, cochée ou non, le
+glissé jusqu'au bord n'écrit AUCUNE ligne de zoom, « 0 à annuler », et la page a tourné comme avant D585.2 (le défilement
+> 0) ; les cas de zoom des deux bancs restent verts. Les deux bancs gagnent ce cas, pour garder la régression.
