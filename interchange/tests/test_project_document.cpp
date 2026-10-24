@@ -1562,6 +1562,39 @@ VSM_TEST(the_three_d30_track_settings_survive_the_round_trip) {
     VSM_ASSERT_NEAR(retour.tracks[0].inputTrimDb, -3.5f, 1e-6);
 }
 
+// D593 — LE COUPE-BAS ET LE COUPE-HAUT DANS LE FICHIER : l'aller-retour jusqu'à la piste, ABSENTS du texte quand ils sont
+// éteints (un projet d'avant se réécrit octet pour octet), et une valeur hors de sa plage reprise bornée AVEC une réserve.
+VSM_TEST(low_and_high_cuts_survive_the_round_trip_are_absent_when_off_and_clamped_with_a_warning) {
+    vsm::sequencer::Project projet = buildProject();
+    projet.tracks[0].lowCutHz = 200.0f;
+    projet.tracks[1].highCutHz = 12000.0f;
+    const std::string texte = projectDocumentToJson(documentFromProject(projet)).toString();
+    VSM_ASSERT(texte.find("\"lowCutHz\"") != std::string::npos);
+    VSM_ASSERT(texte.find("\"highCutHz\"") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    vsm::sequencer::Project retour = buildProject();
+    const ImportReport bilan = applyDocumentToProject(relu.document, retour);
+    VSM_ASSERT(bilan.warnings.empty());
+    VSM_ASSERT_NEAR(retour.tracks[0].lowCutHz, 200.0f, 0.0f);
+    VSM_ASSERT_NEAR(retour.tracks[0].highCutHz, 0.0f, 0.0f);
+    VSM_ASSERT_NEAR(retour.tracks[1].highCutHz, 12000.0f, 0.0f);
+    VSM_ASSERT_NEAR(retour.tracks[1].lowCutHz, 0.0f, 0.0f);
+
+    const std::string eteints = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(eteints.find("CutHz") == std::string::npos);
+
+    // Hors de la plage : 5 Hz devient 20, 50 kHz devient 20 kHz — chacun DIT, pas repris en silence.
+    ProjectDocument document = documentFromProject(buildProject());
+    document.tracks[0].lowCutHz = 5.0f;
+    document.tracks[1].highCutHz = 50000.0f;
+    vsm::sequencer::Project borne = buildProject();
+    const ImportReport reserves = applyDocumentToProject(document, borne);
+    VSM_ASSERT_NEAR(borne.tracks[0].lowCutHz, 20.0f, 0.0f);
+    VSM_ASSERT_NEAR(borne.tracks[1].highCutHz, 20000.0f, 0.0f);
+    VSM_ASSERT_EQ(reserves.warnings.size(), size_t(2));
+}
+
 VSM_TEST(a_project_that_uses_none_of_them_keeps_the_file_it_had) {
     // Le texte ne doit contenir AUCUNE des trois clés : un projet d'avant D30
     // se relit et se réécrit octet pour octet.

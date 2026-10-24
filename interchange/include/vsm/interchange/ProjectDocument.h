@@ -277,6 +277,9 @@ struct ProjectTrack {
     bool disabled = false;
     /// D30.4 : le trim d'entrée en dB, écrit seulement quand il n'est pas nul.
     float inputTrimDb = 0.0f;
+    /// D593 : le coupe-bas et le coupe-haut en hertz, écrits seulement quand ils sont allumés (non nuls).
+    float lowCutHz = 0.0f;
+    float highCutHz = 0.0f;
     /// La piste est GELÉE et joue `frozenAudio` au lieu de son instrument
     /// (D5.5). Facultatifs : une piste non gelée garde le fichier qu'elle avait.
     bool frozen = false;

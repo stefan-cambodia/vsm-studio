@@ -4,6 +4,7 @@
 #include "vsm/audio/engine/Metronome.h"
 #include "vsm/audio/engine/AutomationLane.h"
 #include "vsm/audio/dsp/SpectrumTap.h"
+#include "vsm/audio/dsp/PreSection.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
 #include "vsm/audio/engine/AuditionPlayer.h"
@@ -702,6 +703,9 @@ private:
     /// remplace -- une automation qui interpolerait le gain linéaire et un
     /// curseur gradué en dB ne dessineraient pas la même rampe.
     std::array<float, kMaxTracks> autoTrim_{};
+    /// D593 : le coupe-bas et le coupe-haut de chaque piste, après le trim. Une case par piste, écrite par le seul fil
+    /// qui rend cette piste (comme les tampons parallèles).
+    std::array<dsp::PreSectionFilter, kMaxTracks> preSections_{};
     /// Quels réglages sont pilotés, par piste : bit 0 volume, bit 1
     /// panoramique, bits 2..9 les huit départs, bit 10 le trim. Calculé quand
     /// les courbes sont publiées, pour que le mixage n'ait qu'un entier à

@@ -457,6 +457,10 @@ private:
     /// premier au dernier, sans quoi la tranche raconte une chaîne qui n'est
     /// pas celle qu'on entend.
     juce::Slider trim_;
+    /// D593 : LE COUPE-BAS ET LE COUPE-HAUT (la section *Pre* de Cubase), juste sous le trim — leur place dans le signal.
+    /// L'extrémité du curseur vaut « éteint » (20 Hz, 20 kHz) : un curseur n'a pas de case de plus.
+    juce::Slider coupeBas_, coupeHaut_;
+    bool reglerCoupure(juce::Slider& curseur, float& champ, float eteint, const char8_t* geste, bool ouvrirLePas);
     /// LE BOUTON W : off → touch → latch → off. Le mot « W » plutôt qu'un
     /// pictogramme, comme chez Cubase, et sa couleur dit lequel des deux
     /// modes est armé (l'ambre pour `touch`, plus vif pour `latch`).

@@ -153,6 +153,7 @@ if (VSM_BUILD_TESTS)
         tests/test_tempo_detection.cpp
         tests/test_zero_crossing.cpp
         tests/test_metronome.cpp
+        tests/test_pre_section.cpp
         tests/test_count_in.cpp
         tests/test_fin_du_planning.cpp
         tests/test_pose_en_vol.cpp

@@ -455,6 +455,8 @@ struct TrackMixState {
     bool muted = false;
     bool solo = false;
     float inputTrimDb = 0.0f;
+    float lowCutHz = 0.0f;        ///< D593 : la tranche les montre et les règle
+    float highCutHz = 0.0f;
     bool invertPhase = false;
     std::vector<float> sendLevels;
     bool sendsBypassed = false;   ///< D567.3
@@ -756,6 +758,15 @@ public:
     /// le signal d'origine -- c'est justement ce qui prouve qu'il est bien
     /// avant les inserts et nulle part ailleurs.
     float inputTrimDb = 0.0f;
+    /// D593 : LE COUPE-BAS ET LE COUPE-HAUT DE LA TRANCHE (la section *Pre* de Cubase : *Low Cut*, *High Cut*), en hertz,
+    /// 0 = éteint — et le moteur ne calcule alors rien : un projet d'avant sonne au bit près. Un Butterworth du deuxième
+    /// ordre (12 dB par octave) chacun, appliqués APRÈS le trim et AVANT les inserts, comme chez Cubase : ce qu'on coupe
+    /// n'entre pas dans le compresseur. Bornes : 20 Hz à 2 kHz, 1 kHz à 20 kHz (`kLowCutMinHz`…). Pas sur une piste
+    /// gelée : ils sont dans le fichier gelé, comme le trim.
+    float lowCutHz = 0.0f;
+    float highCutHz = 0.0f;
+    static constexpr float kLowCutMinHz = 20.0f, kLowCutMaxHz = 2000.0f;
+    static constexpr float kHighCutMinHz = 1000.0f, kHighCutMaxHz = 20000.0f;
     /// Niveaux d'envoi vers les bus auxiliaires (sends). 0 = pas d'envoi.
     /// Portés par Track (donnée de mixage) comme volume/pan.
     ///

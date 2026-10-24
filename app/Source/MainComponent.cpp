@@ -15511,6 +15511,9 @@ void MainComponent::copierReglagesDeTranche() {
     reglagesDeTranche_ = vsm::sequencer::captureChannelSettings(project_.tracks[piste]);
     std::fputs(("VSM_TRANCHE : r\xc3\xa9glages copi\xc3\xa9s de \xc2\xab " + project_.tracks[piste].name + " \xc2\xbb (trim "
                 + juce::String(reglagesDeTranche_->inputTrimDb, 1).toStdString() + " dB, "
+                // D593 : les filtres voyagent avec le son de la tranche — le relevé le dit, éteints compris.
+                + "coupe-bas " + std::to_string(static_cast<int>(std::lround(reglagesDeTranche_->lowCutHz))) + " Hz, "
+                + "coupe-haut " + std::to_string(static_cast<int>(std::lround(reglagesDeTranche_->highCutHz))) + " Hz, "
                 + std::to_string(reglagesDeTranche_->sendLevels.size()) + " d\xc3\xa9part(s), "
                 + std::to_string(reglagesDeTranche_->effects.size()) + " insert(s))\n").c_str(), stderr);
     if (pianoRoll_.onStatusChanged)

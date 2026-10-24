@@ -562,3 +562,33 @@ VSM_TEST(extracting_midi_automation_turns_cc7_and_cc10_into_mix_curves) {
     VSM_ASSERT_EQ(q.tracks[0].controlChanges.size(), size_t(1));
     VSM_ASSERT_EQ(int(q.tracks[0].controlChanges[0].controller), 7);
 }
+
+// D593 — LE COUPE-BAS ET LE COUPE-HAUT SONT DE LA TRANCHE : l'instantané les garde et les rend, les réglages copiés les
+// portent, la remise à zéro les éteint — chacun BOUGÉ d'abord, pour qu'un « rendu » ne soit pas un « jamais changé ».
+VSM_TEST(low_and_high_cuts_are_kept_by_snapshots_copied_with_settings_and_turned_off_by_a_reset) {
+    Project p = deuxPistes();
+    p.tracks[0].lowCutHz = 120.0f;
+    p.tracks[0].highCutHz = 9000.0f;
+    takeMixSnapshot(p, "A");
+    p.tracks[0].lowCutHz = 400.0f;
+    p.tracks[0].highCutHz = 0.0f;
+    VSM_ASSERT_EQ(previewMixRecall(p, "A").changed, static_cast<size_t>(1));   // seuls les filtres ont bougé
+    recallMixSnapshot(p, "A");
+    VSM_ASSERT_NEAR(p.tracks[0].lowCutHz, 120.0f, 0.0f);
+    VSM_ASSERT_NEAR(p.tracks[0].highCutHz, 9000.0f, 0.0f);
+
+    const ChannelSettings reglages = captureChannelSettings(p.tracks[0]);
+    VSM_ASSERT(channelSettingsWouldChange(p.tracks[1], reglages));
+    VSM_ASSERT(applyChannelSettings(p.tracks[1], reglages));
+    VSM_ASSERT_NEAR(p.tracks[1].lowCutHz, 120.0f, 0.0f);
+    VSM_ASSERT_NEAR(p.tracks[1].highCutHz, 9000.0f, 0.0f);
+    VSM_ASSERT_NEAR(p.tracks[1].volume, 0.6f, 0.0f);   // la balance reste
+
+    // La remise à zéro : une tranche dont SEUL un filtre est allumé compte, et revient éteinte.
+    Project q = deuxPistes();
+    resetConsole(q);
+    q.tracks[1].highCutHz = 5000.0f;
+    VSM_ASSERT_EQ(countTracksToReset(q), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(resetConsole(q), static_cast<size_t>(1));
+    VSM_ASSERT_NEAR(q.tracks[1].highCutHz, 0.0f, 0.0f);
+}

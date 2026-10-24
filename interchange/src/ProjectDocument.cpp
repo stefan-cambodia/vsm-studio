@@ -423,6 +423,12 @@ std::vector<ProjectAutomationLane> automationFromJson(const JsonValue& tableau) 
 namespace {
 /// D535.2 : UN ÉTAT DE CONSOLE dans le fichier. Tous ses champs sont écrits : c'est une donnée
 /// neuve, et un état se relit tel qu'il a été pris.
+/// D593 : une fréquence de coupure relue — 0 (ou négative, ou illisible) vaut éteint ; allumée, bornée à sa plage.
+float coupureLue(double hz, float bas, float haut) {
+    if (!std::isfinite(hz) || hz <= 0.0) return 0.0f;
+    return std::clamp(static_cast<float>(hz), bas, haut);
+}
+
 JsonValue etatDeConsoleVersJson(const vsm::sequencer::TrackMixState& etat) {
     JsonValue e = JsonValue::makeObject();
     e.set("volume", JsonValue::makeFloat(etat.volume));
@@ -431,6 +437,9 @@ JsonValue etatDeConsoleVersJson(const vsm::sequencer::TrackMixState& etat) {
     e.set("muted", JsonValue::makeBoolean(etat.muted));
     e.set("solo", JsonValue::makeBoolean(etat.solo));
     e.set("trimDb", JsonValue::makeFloat(etat.inputTrimDb));
+    // D593 : écrits seulement s'ils sont allumés — un instantané d'avant se réécrit octet pour octet.
+    if (etat.lowCutHz != 0.0f) e.set("lowCutHz", JsonValue::makeFloat(etat.lowCutHz));
+    if (etat.highCutHz != 0.0f) e.set("highCutHz", JsonValue::makeFloat(etat.highCutHz));
     e.set("invertPhase", JsonValue::makeBoolean(etat.invertPhase));
     JsonValue departs = JsonValue::makeArray();
     for (float niveau : etat.sendLevels) departs.append(JsonValue::makeFloat(niveau));
@@ -459,6 +468,8 @@ vsm::sequencer::TrackMixState etatDeConsoleDepuisJson(const JsonValue& e) {
     etat.muted = e["muted"].asBoolean(false);
     etat.solo = e["solo"].asBoolean(false);
     etat.inputTrimDb = static_cast<float>(e["trimDb"].asNumber(0.0));
+    etat.lowCutHz = coupureLue(e["lowCutHz"].asNumber(0.0), Track::kLowCutMinHz, Track::kLowCutMaxHz);    // D593
+    etat.highCutHz = coupureLue(e["highCutHz"].asNumber(0.0), Track::kHighCutMinHz, Track::kHighCutMaxHz);
     etat.invertPhase = e["invertPhase"].asBoolean(false);
     for (const auto& niveau : e["sends"].elements()) etat.sendLevels.push_back(static_cast<float>(niveau.asNumber(0.0)));
     etat.sendsBypassed = e["sendsBypassed"].asBoolean(false);   // D567.3
@@ -557,6 +568,8 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.soloSafe = track.soloSafe;              // D30.1
         entry.disabled = track.disabled;              // D30.2
         entry.inputTrimDb = track.inputTrimDb;        // D30.4
+        entry.lowCutHz = track.lowCutHz;              // D593
+        entry.highCutHz = track.highCutHz;
         entry.mixSnapshots = track.mixSnapshots;      // D535.2
         entry.arrangementHeight = track.arrangementHeight;
         entry.folded = track.folded;
@@ -836,6 +849,31 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
                                           + std::to_string(static_cast<int>(std::lround(target.stereoWidth * 100.0f)))
                                           + " % reprise");
             }
+        }
+        // D593 : LE COUPE-BAS ET LE COUPE-HAUT, bornés à leurs plages ; une valeur hors bornes change le son demandé : une
+        // RÉSERVE, dite (la règle de la largeur stéréo, D573.1). Négatif ou illisible : éteint. Un groupe, un dossier ou
+        // un VCA ne filtre rien (le moteur ne les rend pas comme une voix) : écartés, une CORRECTION.
+        {
+            const bool porte = target.kind != Track::Kind::Group && target.kind != Track::Kind::Folder
+                               && target.kind != Track::Kind::Vca;
+            const auto reprendre = [&](float lue, float bas, float haut, const char* nom) {
+                if (lue == 0.0f) return 0.0f;
+                if (!porte) {
+                    report.corrections.push_back("piste \"" + target.name + "\" : un groupe, un dossier ou un VCA ne "
+                                                 "porte pas de " + nom + ", \u00e9cart\u00e9");
+                    return 0.0f;
+                }
+                const float reprise = coupureLue(lue, bas, haut);
+                if (reprise != lue)
+                    report.warnings.push_back("piste \"" + target.name + "\" : " + nom + " hors de sa plage ("
+                                              + std::to_string(static_cast<int>(std::lround(lue))) + " Hz), "
+                                              + (reprise == 0.0f ? std::string("\u00e9teint")
+                                                                 : std::to_string(static_cast<int>(std::lround(reprise)))
+                                                                       + " Hz repris"));
+                return reprise;
+            };
+            target.lowCutHz = reprendre(source.lowCutHz, Track::kLowCutMinHz, Track::kLowCutMaxHz, "coupe-bas");
+            target.highCutHz = reprendre(source.highCutHz, Track::kHighCutMinHz, Track::kHighCutMaxHz, "coupe-haut");
         }
         target.automationMode = source.automationMode == "touch" ? vsm::sequencer::AutomationMode::Touch
                               : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
@@ -1167,6 +1205,8 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         if (track.soloSafe) mix.set("soloSafe", JsonValue::makeBoolean(true));         // D30.1
         if (track.disabled) mix.set("disabled", JsonValue::makeBoolean(true));         // D30.2
         if (track.inputTrimDb != 0.0f) mix.set("trimDb", JsonValue::makeFloat(track.inputTrimDb));  // D30.4
+        if (track.lowCutHz != 0.0f) mix.set("lowCutHz", JsonValue::makeFloat(track.lowCutHz));       // D593
+        if (track.highCutHz != 0.0f) mix.set("highCutHz", JsonValue::makeFloat(track.highCutHz));
         JsonValue sends = JsonValue::makeArray();
         for (float level : track.sendLevels) sends.append(JsonValue::makeFloat(level));
         mix.set("sends", std::move(sends));
@@ -1578,6 +1618,8 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.soloSafe = mix["soloSafe"].asBoolean(false);                        // D30.1
         track.disabled = mix["disabled"].asBoolean(false);                        // D30.2
         track.inputTrimDb = static_cast<float>(mix["trimDb"].asNumber(0.0));      // D30.4
+        track.lowCutHz = static_cast<float>(mix["lowCutHz"].asNumber(0.0));       // D593 : bornés à la reprise
+        track.highCutHz = static_cast<float>(mix["highCutHz"].asNumber(0.0));
         // LA TAILLE VIENT DU FICHIER, et c'est un piège qu'a tendu le passage
         // du tableau de deux au vecteur : borner la boucle par la taille du
         // VECTEUR, qui part vide, ne lisait plus rien du tout et faisait

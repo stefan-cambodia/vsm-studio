@@ -252,6 +252,52 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     addAndMakeVisible(trim_);
 
+    // D593 : LE COUPE-BAS ET LE COUPE-HAUT, sous le trim. Une échelle LOGARITHMIQUE (le milieu du curseur à la moyenne
+    // géométrique de la plage : 200 Hz, 4,5 kHz) ; l'extrémité vaut « éteint », et le double-clic y ramène. Pas de passe
+    // d'automation : ils ne s'automatisent pas dans cette phase (ROADMAP-daw, D593).
+    {
+        using vsm::sequencer::Track;
+        const auto poser = [this](juce::Slider& curseur, const char* nom, double bas, double haut, double eteint,
+                                  float valeur, const char8_t* mot, const char8_t* geste, float* champ) {
+            curseur.setSliderStyle(juce::Slider::LinearBar);
+            curseur.setSliderSnapsToMousePosition(false);   // D139
+            curseur.setName(nom);
+            curseur.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
+            curseur.setRange(bas, haut, 1.0);
+            curseur.setSkewFactorFromMidPoint(std::sqrt(bas * haut));
+            curseur.setDoubleClickReturnValue(true, eteint);
+            curseur.textFromValueFunction = [this, &curseur, eteint, mot](double v) {
+                const juce::String leMot = tr(mot);
+                if (v == eteint) return texteQuiTient(curseur, leMot + " " + tr(u8"éteint"), tr(u8"éteint"));
+                const juce::String valeur = v >= 1000.0 ? juce::String(v / 1000.0, 1) + " kHz"
+                                                        : juce::String(static_cast<int>(std::lround(v))) + " Hz";
+                return texteQuiTient(curseur, leMot + " " + valeur, valeur);
+            };
+            curseur.valueFromTextFunction = [eteint](const juce::String& texte) {
+                if (texte.containsIgnoreCase(tr(u8"éteint")) || texte.containsIgnoreCase("off")) return eteint;
+                const double v = vsm::app::ui::lireNombreSaisi(texte);   // D445
+                return texte.containsIgnoreCase("k") ? v * 1000.0 : v;
+            };
+            curseur.setValue(valeur > 0.0f ? valeur : eteint, juce::dontSendNotification);
+            curseur.updateText();
+            // D427 : au glissé, le pas s'ouvre UNE fois, au départ ; hors glissé, dans `reglerCoupure`.
+            curseur.onDragStart = [this, geste] {
+                glisseEnCours_ = true;
+                if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(geste))));
+            };
+            curseur.onDragEnd = [this] { glisseEnCours_ = false; };
+            curseur.onValueChange = [this, &curseur, champ, eteint, geste] {
+                // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
+                reglerCoupure(curseur, *champ, static_cast<float>(eteint), geste, !glisseEnCours_);
+            };
+            addAndMakeVisible(curseur);
+        };
+        poser(coupeBas_, "mixeur.coupebas", Track::kLowCutMinHz, Track::kLowCutMaxHz, Track::kLowCutMinHz,
+              track_.lowCutHz, u8"Coupe-bas", u8"Coupe-bas", &track_.lowCutHz);
+        poser(coupeHaut_, "mixeur.coupehaut", Track::kHighCutMinHz, Track::kHighCutMaxHz, Track::kHighCutMaxHz,
+              track_.highCutHz, u8"Coupe-haut", u8"Coupe-haut", &track_.highCutHz);
+    }
+
     // LE DÉCALAGE DE PISTE (D16.7). Bornes à +/- 200 ms : au-delà on ne
     // corrige plus un temps de réaction, on déplace la partie -- et cela se
     // fait au clip, où l'on VOIT ce qu'on déplace.
@@ -411,12 +457,27 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // des commandes qui promettent sans rien faire (la leçon des dossiers, D35.5).
     if (track_.isVca()) {
         for (juce::Component* c : { static_cast<juce::Component*>(&trim_), static_cast<juce::Component*>(&pan_),
+                                    static_cast<juce::Component*>(&coupeBas_), static_cast<juce::Component*>(&coupeHaut_),
                                     static_cast<juce::Component*>(&delay_), static_cast<juce::Component*>(&transposition_),
                                     static_cast<juce::Component*>(&phase_), static_cast<juce::Component*>(&meter_) })
             c->setVisible(false);
         for (auto* s : sends_) s->setVisible(false);
     }
     retraduire();   // D94 : infobulles et unité, dans la langue courante
+}
+
+bool ChannelStrip::reglerCoupure(juce::Slider& curseur, float& champ, float eteint, const char8_t* geste,
+                                 bool ouvrirLePas) {
+    // D593 : l'extrémité du curseur ÉCRIT 0 (éteint) — le moteur ne calcule alors rien, et le fichier ne porte rien.
+    const double v = curseur.getValue();
+    const float voulu = static_cast<double>(eteint) == v ? 0.0f : static_cast<float>(v);
+    if (voulu == champ) return false;
+    // D427 : hors glissé, le pas s'ouvre ici ; au glissé, il s'est ouvert au départ (`onDragStart`).
+    if (ouvrirLePas && onMixEditStarted)
+        onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(geste))));
+    champ = voulu;
+    if (onMixChanged) onMixChanged();
+    return true;
 }
 
 void ChannelStrip::rafraichirDeparts() {
@@ -438,6 +499,12 @@ void ChannelStrip::retraduire() {
     trim_.setTooltip(tr(u8"Trim d'entrée : le gain AVANT les inserts. Pousse la piste dans son "
                         u8"compresseur ou sa saturation sans toucher à leur réglage. Sans insert, "
                         u8"il fait ce que ferait le fader."));
+    coupeBas_.setTooltip(tr(u8"Coupe-bas : un filtre passe-haut de 12 dB par octave, après le trim et avant les inserts. "
+                            u8"En butée à gauche, éteint ; double-clic pour l'éteindre."));
+    coupeHaut_.setTooltip(tr(u8"Coupe-haut : un filtre passe-bas de 12 dB par octave, après le trim et avant les inserts. "
+                             u8"En butée à droite, éteint ; double-clic pour l'éteindre."));
+    coupeBas_.updateText();   // D324 : le mot dans la langue courante
+    coupeHaut_.updateText();
     delay_.setTooltip(tr(u8"Décalage de la piste, en millisecondes. Négatif : elle sonne plus tôt. "
                          u8"Ne change pas la compensation de latence."));
     delay_.updateText();            // D324 : « Délai » / « Delay »
@@ -505,6 +572,10 @@ void ChannelStrip::resized() {
     const bool vca = track_.isVca();
     if (!vca) {
         trim_.setBounds(r.removeFromTop(18).reduced(4, 1));       // D30.4, en tête de chaîne
+        coupeBas_.setBounds(r.removeFromTop(18).reduced(4, 1));   // D593 : la section Pre, dans l'ordre du signal
+        coupeHaut_.setBounds(r.removeFromTop(18).reduced(4, 1));
+        coupeBas_.updateText();         // D324 : le mot selon la largeur
+        coupeHaut_.updateText();
         pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
         delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
         transposition_.setBounds(r.removeFromTop(18).reduced(4, 1));
@@ -620,6 +691,12 @@ void ChannelStrip::direGeometrieDeBanc(const juce::Component& repere) const {
          + juce::String(getWidth()) + "x" + juce::String(getHeight())
          + ", nom " + juce::String(nameLabel_.getHeight())
          + ", trim " + juce::String(trim_.getHeight())
+         // D593 : ce que la tranche montre ET ce que le moteur lit — le champ, pas le curseur.
+         + juce::String::fromUTF8(", coupe-bas ") + (track_.lowCutHz > 0.0f ? juce::String(static_cast<int>(std::lround(track_.lowCutHz))) + " Hz"
+                                                                             : juce::String::fromUTF8("\xc3\xa9" "teint"))
+         + juce::String::fromUTF8(", coupe-haut ") + (track_.highCutHz > 0.0f ? juce::String(static_cast<int>(std::lround(track_.highCutHz))) + " Hz"
+                                                                               : juce::String::fromUTF8("\xc3\xa9" "teint"))
+         + " (" + juce::String(coupeBas_.getHeight()) + "+" + juce::String(coupeHaut_.getHeight()) + " px)"
          + ", pan " + juce::String(pan_.getHeight())
          + juce::String::fromUTF8(", d\xc3\xa9parts ") + juce::String(sends_.isEmpty() ? 0 : kHauteurDeparts)
          + " (" + juce::String(sends_.size()) + " bouton)"
@@ -652,7 +729,8 @@ void ChannelStrip::direGeometrieDeBanc(const juce::Component& repere) const {
 juce::String ChannelStrip::commandesMasquees() const {
     juce::StringArray noms;
     const std::pair<const juce::Component*, const char*> commandes[] = {
-        { &trim_, "trim" }, { &pan_, "pan" }, { &delay_, "d\xc3\xa9" "lai" },
+        { &trim_, "trim" }, { &coupeBas_, "coupe-bas" }, { &coupeHaut_, "coupe-haut" },   // D593
+        { &pan_, "pan" }, { &delay_, "d\xc3\xa9" "lai" },
         { &transposition_, "transposition" }, { &phase_, "phase" }, { &meter_, "vum\xc3\xa8" "tre" } };
     for (const auto& [c, nom] : commandes)
         if (!c->isVisible()) noms.add(juce::String::fromUTF8(nom));

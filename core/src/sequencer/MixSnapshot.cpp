@@ -20,6 +20,7 @@ bool memeConsole(const TrackMixState& a, const TrackMixState& b) {
     if (!egal(a.volume, b.volume) || !egal(a.pan, b.pan) || a.muted != b.muted || a.solo != b.solo
         || !egal(a.stereoWidth, b.stereoWidth)   // D573.1
         || !egal(a.inputTrimDb, b.inputTrimDb) || a.invertPhase != b.invertPhase || !(a.inserts == b.inserts)
+        || !egal(a.lowCutHz, b.lowCutHz) || !egal(a.highCutHz, b.highCutHz)   // D593
         || a.sendsBypassed != b.sendsBypassed     // D567.3
         || a.sendsFollowPan != b.sendsFollowPan)  // D572.2
         return false;
@@ -39,6 +40,8 @@ TrackMixState rappele(const Track& piste, const TrackMixState& garde, size_t& la
     etat.muted = garde.muted;
     etat.solo = garde.solo;
     etat.inputTrimDb = garde.inputTrimDb;
+    etat.lowCutHz = garde.lowCutHz;     // D593
+    etat.highCutHz = garde.highCutHz;
     etat.invertPhase = garde.invertPhase;
     etat.sendLevels = garde.sendLevels;
     etat.sendsBypassed = garde.sendsBypassed;   // D567.3
@@ -74,6 +77,8 @@ MixRecallReport parcourir(const Project& project, const std::string& name, Proje
         ecrite.muted = apres.muted;
         ecrite.solo = apres.solo;
         ecrite.inputTrimDb = apres.inputTrimDb;
+        ecrite.lowCutHz = apres.lowCutHz;     // D593
+        ecrite.highCutHz = apres.highCutHz;
         ecrite.invertPhase = apres.invertPhase;
         ecrite.sendLevels = apres.sendLevels;
         ecrite.sendsBypassed = apres.sendsBypassed;   // D567.3
@@ -93,6 +98,8 @@ TrackMixState captureTrackMix(const Track& track) {
     etat.muted = track.muted;
     etat.solo = track.solo;
     etat.inputTrimDb = track.inputTrimDb;
+    etat.lowCutHz = track.lowCutHz;     // D593
+    etat.highCutHz = track.highCutHz;
     etat.invertPhase = track.invertPhase;
     etat.sendLevels = track.sendLevels;
     etat.sendsBypassed = track.sendsBypassed;   // D567.3
@@ -169,6 +176,7 @@ bool trancheNeutre(const Track& t) {
     return t.volume == neuve.volume && t.pan == neuve.pan && t.muted == neuve.muted && t.solo == neuve.solo
            && t.stereoWidth == neuve.stereoWidth   // D573.1 : l'image entière
            && t.inputTrimDb == neuve.inputTrimDb && t.invertPhase == neuve.invertPhase
+           && t.lowCutHz == neuve.lowCutHz && t.highCutHz == neuve.highCutHz   // D593 : éteints
            && t.sendsBypassed == neuve.sendsBypassed   // D567.3 : une piste neuve verse à ses bus
            && t.sendsFollowPan == neuve.sendsFollowPan   // D572.2 : départs centrés
            && std::all_of(t.sendLevels.begin(), t.sendLevels.end(), [](float d) { return d == 0.0f; });
@@ -207,6 +215,8 @@ size_t resetConsole(Project& project, const std::set<size_t>& only) {
         t.muted = neuve.muted;
         t.solo = neuve.solo;
         t.inputTrimDb = neuve.inputTrimDb;
+        t.lowCutHz = neuve.lowCutHz;     // D593
+        t.highCutHz = neuve.highCutHz;
         t.invertPhase = neuve.invertPhase;
         std::fill(t.sendLevels.begin(), t.sendLevels.end(), 0.0f);
         t.sendsBypassed = neuve.sendsBypassed;   // D567.3
@@ -227,8 +237,17 @@ void eraseSendLevelEverywhere(Project& project, size_t bus) {
 }
 
 ChannelSettings captureChannelSettings(const Track& track) {
-    return {track.inputTrimDb, track.invertPhase, track.sendLevels, track.effects, track.sendsBypassed,
-            track.sendsFollowPan};
+    // Champ par champ : D593 a ajouté deux champs après le trim, et un agrégat positionnel les aurait décalés.
+    ChannelSettings s;
+    s.inputTrimDb = track.inputTrimDb;
+    s.lowCutHz = track.lowCutHz;     // D593
+    s.highCutHz = track.highCutHz;
+    s.invertPhase = track.invertPhase;
+    s.sendLevels = track.sendLevels;
+    s.effects = track.effects;
+    s.sendsBypassed = track.sendsBypassed;
+    s.sendsFollowPan = track.sendsFollowPan;
+    return s;
 }
 
 namespace {
@@ -251,6 +270,7 @@ bool memesDeparts(const std::vector<float>& a, const std::vector<float>& b) {
 bool channelSettingsWouldChange(const Track& track, const ChannelSettings& s) {
     if (track.isFolder() || track.isVca()) return false;
     return track.inputTrimDb != s.inputTrimDb || track.invertPhase != s.invertPhase
+        || track.lowCutHz != s.lowCutHz || track.highCutHz != s.highCutHz   // D593
         || !memesDeparts(track.sendLevels, s.sendLevels) || !memesInserts(track.effects, s.effects)
         || track.sendsBypassed != s.sendsBypassed     // D567.3
         || track.sendsFollowPan != s.sendsFollowPan;  // D572.2
@@ -259,6 +279,8 @@ bool channelSettingsWouldChange(const Track& track, const ChannelSettings& s) {
 bool applyChannelSettings(Track& track, const ChannelSettings& s) {
     if (!channelSettingsWouldChange(track, s)) return false;
     track.inputTrimDb = s.inputTrimDb;
+    track.lowCutHz = s.lowCutHz;     // D593
+    track.highCutHz = s.highCutHz;
     track.invertPhase = s.invertPhase;
     track.sendLevels = s.sendLevels;
     track.effects = s.effects;

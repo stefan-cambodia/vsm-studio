@@ -76,6 +76,8 @@ size_t resetConsole(Project& project, const std::set<size_t>& only);
 /// réglage de son. Un dossier et un VCA n'ont pas de tranche à recevoir (`channelSettingsApply` rend faux).
 struct ChannelSettings {
     float inputTrimDb = 0.0f;
+    float lowCutHz = 0.0f;    ///< D593 : le coupe-bas et le coupe-haut sont du son de la tranche
+    float highCutHz = 0.0f;
     bool invertPhase = false;
     std::vector<float> sendLevels;
     std::vector<TrackEffect> effects;

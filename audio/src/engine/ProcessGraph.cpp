@@ -25,6 +25,7 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     rpnMsb_.fill(127); rpnLsb_.fill(127); bendRange_.fill(2.0f);   // D331
     sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
     maxBlockSize_ = maxBlockSize > 0 ? maxBlockSize : 512;
+    for (auto& pre : preSections_) pre.setSampleRate(sampleRate_);   // D593
 
     scratchMonoL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     scratchStereoL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
@@ -1995,6 +1996,11 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             for (int i = 0; i < sampleCount; ++i) { destL[i] *= g; destR[i] *= g; }
         }
     }
+
+    // D593 : LE COUPE-BAS ET LE COUPE-HAUT, APRÈS LE TRIM ET AVANT LES INSERTS — ce qu'on coupe n'entre pas dans le
+    // compresseur. Pas sur une piste gelée : ils sont dans le fichier gelé, comme le trim. Éteints, rien n'est calculé.
+    if (!track.frozen && trackIndex < kMaxTracks && (track.lowCutHz > 0.0f || track.highCutHz > 0.0f))
+        preSections_[trackIndex].process(destL, destR, sampleCount, track.lowCutHz, track.highCutHz);
 
     // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.
     // LES INSERTS NON PLUS : ils sont DANS le fichier gelé, et les

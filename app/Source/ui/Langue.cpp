@@ -4531,6 +4531,17 @@ const Paire kAnglais[] = {
       "Drop 2 + 4" },
     { "%1 : %2 accord(s) changé(s), %3 laissé(s) hors de la tessiture, %4 sans assez de voix, %5 note(s) seule(s)",
       "%1: %2 chord(s) changed, %3 left out of range, %4 without enough voices, %5 single note(s)" },
+    // D593 : LA SECTION PRE DE LA TRANCHE — *Low cut*, *High cut*, les mots de Cubase.
+    { "Coupe-bas",
+      "Low cut" },
+    { "Coupe-haut",
+      "High cut" },
+    { "éteint",
+      "off" },
+    { "Coupe-bas : un filtre passe-haut de 12 dB par octave, après le trim et avant les inserts. En butée à gauche, éteint ; double-clic pour l'éteindre.",
+      "Low cut: a 12 dB per octave high-pass filter, after the trim and before the inserts. All the way left, off; double-click to turn it off." },
+    { "Coupe-haut : un filtre passe-bas de 12 dB par octave, après le trim et avant les inserts. En butée à droite, éteint ; double-clic pour l'éteindre.",
+      "High cut: a 12 dB per octave low-pass filter, after the trim and before the inserts. All the way right, off; double-click to turn it off." },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));
