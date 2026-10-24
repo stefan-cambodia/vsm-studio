@@ -1482,6 +1482,13 @@ MainComponent::MainComponent()
     garderPression_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementGarderPression", true);
     garderProgrammes_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementGarderProgrammes", true);
     appliquerFiltreDePrise();
+    // D585 : trois de plus — la remise à zéro décochée d'origine, le zoom à la règle et la chasse aux notes cochés.
+    remiseAZeroApresPrise_ = vsm::app::ui::UiScale::properties().getBoolValue("enregistrementRemiseAZero", false);
+    recorder_.setRemiseAZero(remiseAZeroApresPrise_);
+    zoomALaRegle_ = vsm::app::ui::UiScale::properties().getBoolValue("transportZoomALaRegle", true);
+    arrangement_.setZoomALaRegle(zoomALaRegle_);
+    chasserLesNotes_ = vsm::app::ui::UiScale::properties().getBoolValue("transportChasserLesNotes", true);
+    audioEngine_.processGraph().setChaseNotes(chasserLesNotes_);
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -2432,6 +2439,7 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     // D520 : « nom:fx0,fy:fx1[:maj|:alt|:double] » — appui en fx0 AVEC le modificateur,
     // glissé jusqu'en fx1, relâché : le chemin de la souris sur la règle (Maj : la
     // boucle, Alt : le punch). « :double » joue le double-clic en fx0.
+    // D585.2 : « fx1,fy1 » à l'arrivée, et « 12px » / « +100px » en pixels (voir plus bas).
     juce::StringArray champs;
     champs.addTokens(description, ":", "");
     if (champs.size() < 3) return false;
@@ -2439,8 +2447,7 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     const juce::String nom = nr.first;
     int reste = nr.second;
     const float fx0 = champs[1].upToFirstOccurrenceOf(",", false, false).getFloatValue();
-    const float fy = champs[1].fromFirstOccurrenceOf(",", false, false).getFloatValue();
-    const float fx1 = champs[2].getFloatValue();
+    const float fx1 = champs[2].upToFirstOccurrenceOf(",", false, false).getFloatValue();
     const juce::String mode = champs.size() > 3 ? champs[3].toLowerCase() : juce::String();
     std::function<juce::Component*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Component* {
         if (c.getName() == nom && !c.getLocalBounds().isEmpty() && --reste == 0) return &c;
@@ -2456,7 +2463,22 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
                 + "\n").toRawUTF8(), stderr);
     if (cible == nullptr) return false;
     const auto w = static_cast<float>(cible->getWidth()), h = static_cast<float>(cible->getHeight());
-    const juce::Point<float> depart(fx0 * w, fy * h), arrivee(fx1 * w, fy * h);
+    // D585.2 : UN GLISSÉ VERTICAL — « fx1,fy1 » à l'arrivée, et des PIXELS quand on les dit : « 12px » pour l'ordonnée
+    // de l'appui, « +100px » pour une arrivée relative à lui. Le zoom de la règle se compte en pixels, pas en fraction.
+    auto ordonnee = [h](const juce::String& t, float depuis) {
+        const juce::String v = t.trim();
+        if (v.endsWithIgnoreCase("px")) {
+            const float px = v.dropLastCharacters(2).trimCharactersAtStart("+").getFloatValue();
+            return (v.startsWithChar('+') || v.startsWithChar('-')) ? depuis + px : px;
+        }
+        return v.getFloatValue() * h;
+    };
+    const float y0 = ordonnee(champs[1].fromFirstOccurrenceOf(",", false, false), 0.0f);
+    const float y1 = champs[2].containsChar(',') ? ordonnee(champs[2].fromFirstOccurrenceOf(",", false, false), y0) : y0;
+    const juce::Point<float> depart(fx0 * w, y0), arrivee(fx1 * w, y1);
+    if (champs[2].containsChar(',') || champs[1].endsWithIgnoreCase("px"))
+        std::fputs(("VSM_GLISSE : de (" + juce::String(depart.x, 1) + ", " + juce::String(depart.y, 1) + ") \xc3\xa0 ("
+                    + juce::String(arrivee.x, 1) + ", " + juce::String(arrivee.y, 1) + ") px\n").toRawUTF8(), stderr);
     int mods = juce::ModifierKeys::leftButtonModifier;
     // D552.3 : des COMBINAISONS, « ctrl+alt » -- le glisser du contenu d'un clip en tient deux.
     if (mode.contains("ctrl")) mods |= juce::ModifierKeys::commandModifier;
@@ -5480,6 +5502,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D580.1 : LE CLIC DANS LE VIDE POSE LA TÊTE (*Locate When Clicking in Empty Space*) — une préférence du poste.
             menu.addItem(kMenuTransportLocateOnEmptyClick, tr(u8"Un clic dans le vide pose la tête"), true, clicVidePoseLaTete_);
             menu.addItem(-1, tr(u8"(sur le fond de l'arrangement, comme sur la règle ; un glissé reste un lasso)"), false, false);
+            // D585.2, D585.3 : deux préférences du poste — le glissé sur la règle, et les notes qu'un départ prend en route.
+            menu.addItem(kMenuTransportZoomOnRuler, tr(u8"Zoomer en glissant sur la règle"), true, zoomALaRegle_);
+            menu.addItem(-1, tr(u8"(sur la règle de l'arrangement : vers le bas agrandit, vers le haut réduit ; de côté, la tête suit)"),
+                         false, false);
+            menu.addItem(kMenuTransportChaseNotes, tr(u8"Chasser les notes commencées"), true, chasserLesNotes_);
+            menu.addItem(-1, tr(u8"(une note commencée avant la tête sonne dès le départ, et à chaque tour de boucle)"), false, false);
             // D582.1 : LA POSITION AFFICHÉE — six formats, la partie en mesures n'y change rien. D583.3 : le 29,97 à images
             // sautées est le format 5 (la valeur retenue au poste ne bouge pas pour les autres), montré après le 30 i/s.
             {
@@ -5642,6 +5670,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     garde.addItem(-1, tr(u8"(les notes, toujours ; ce qui n'est pas gardé s'entend quand même)"), false, false);
                     menu.addSubMenu(tr(u8"Ce que la prise garde"), garde);
                 }
+                // D585.1 : LES REMISES À ZÉRO APRÈS LA PRISE (*Insert Reset Events after Record*) — une préférence du poste.
+                menu.addItem(kMenuRecordResetAfterTake, tr(u8"Remettre les contrôleurs à zéro après la prise"), true,
+                             remiseAZeroApresPrise_);
+                menu.addItem(-1, tr(u8"(la molette de hauteur, les pressions, la modulation, le souffle et les pédales "
+                                    u8"laissés hors du repos y reviennent à la fin de la prise)"), false, false);
                 // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
                 // d'événements gardés est DIT : « récupérer » sur un tampon
                 // vide ne doit pas se découvrir en cliquant.
@@ -6274,6 +6307,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         {kMenuRecordKeepPitchBend, &MainComponent::garderPitchBend_, "enregistrementGarderPitchBend"},
         {kMenuRecordKeepPressure, &MainComponent::garderPression_, "enregistrementGarderPression"},
         {kMenuRecordKeepPrograms, &MainComponent::garderProgrammes_, "enregistrementGarderProgrammes"},
+        {kMenuRecordResetAfterTake, &MainComponent::remiseAZeroApresPrise_, "enregistrementRemiseAZero"},   // D585.1
+        {kMenuTransportZoomOnRuler, &MainComponent::zoomALaRegle_, "transportZoomALaRegle"},                // D585.2
+        {kMenuTransportChaseNotes, &MainComponent::chasserLesNotes_, "transportChasserLesNotes"},           // D585.3
     };
     if (const auto* b = std::find_if(std::begin(kBascules), std::end(kBascules),
                                      [menuItemID](const Bascule& x) { return x.id == menuItemID; });
@@ -6291,6 +6327,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         if (menuItemID == kMenuEditSelectionFollowsHead) teteDuDernierChoix_ = -1;
         if (menuItemID == kMenuEditWheelClipGain) arrangement_.setMoletteGain(reglage);   // D582.3
         if (menuItemID >= kMenuRecordKeepControllers && menuItemID <= kMenuRecordKeepPrograms) appliquerFiltreDePrise();   // D584.2
+        if (menuItemID == kMenuRecordResetAfterTake) recorder_.setRemiseAZero(reglage);                 // D585.1
+        if (menuItemID == kMenuTransportZoomOnRuler) arrangement_.setZoomALaRegle(reglage);             // D585.2
+        if (menuItemID == kMenuTransportChaseNotes) audioEngine_.processGraph().setChaseNotes(reglage);  // D585.3
         std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
         menuItemsChanged();
         return;

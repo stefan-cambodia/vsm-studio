@@ -562,3 +562,62 @@ VSM_TEST(the_record_filter_drops_what_the_take_should_not_keep) {
     sansProgramme.programmes = false;
     VSM_ASSERT_EQ(priseDeControles(&sansProgramme).programChanges.size(), size_t(0));
 }
+
+// --------------------------------------------------------------------------
+// D585.1 — LES REMISES À ZÉRO APRÈS LA PRISE (*Insert Reset Events after
+// Record*). L'attendu écrit avant la mesure (ROADMAP-daw, D585) : une prise qui
+// laisse le pitch bend à +4 096 et la pédale à 127 rend une remise de chacun au
+// tick de sortie ; une pédale relâchée dans la prise, aucune ; le pitch bend
+// filtré, aucune remise de pitch bend. Le volume (CC 7) n'est jamais remis.
+// --------------------------------------------------------------------------
+
+namespace {
+RecordedControls priseAuRepos(bool remise, bool ramenee, const MidiRecorder::Filtre* filtre = nullptr) {
+    Project projet = projetDeReference();
+    MidiRecorder enregistreur;
+    enregistreur.setRemiseAZero(remise);
+    if (filtre != nullptr) enregistreur.setFiltre(*filtre);
+    enregistreur.begin(0.0);
+    using K = RecordedControlEvent::Kind;
+    auto pousser = [&](double s, K genre, uint8_t index, int16_t valeur) {
+        RecordedControlEvent e;
+        e.seconds = s; e.kind = genre; e.index = index; e.value = valeur;
+        enregistreur.pushControl(e);
+    };
+    pousser(0.5, K::PitchBend, 0, 4096);
+    pousser(1.0, K::ControlChange, 64, 127);
+    pousser(1.2, K::ControlChange, 7, 90);   // un niveau : jamais remis
+    if (ramenee) {
+        pousser(1.5, K::PitchBend, 0, 0);
+        pousser(1.5, K::ControlChange, 64, 0);
+    }
+    return enregistreur.finishControls(2.0, conversion(projet));
+}
+}
+
+VSM_TEST(a_take_left_out_of_rest_is_reset_at_its_exit_point) {
+    const auto rendus = priseAuRepos(true, false);
+    VSM_ASSERT_EQ(rendus.pitchBends.size(), size_t(2));
+    VSM_ASSERT_EQ(rendus.pitchBends[1].tick, Tick(1920));
+    VSM_ASSERT_EQ(int(rendus.pitchBends[1].value), 0);
+    // la pédale remise, le volume non : 64 à 127, 7 à 90, puis 64 à 0 au point de sortie
+    VSM_ASSERT_EQ(rendus.controlChanges.size(), size_t(3));
+    VSM_ASSERT_EQ(int(rendus.controlChanges[2].controller), 64);
+    VSM_ASSERT_EQ(int(rendus.controlChanges[2].value), 0);
+    VSM_ASSERT_EQ(rendus.controlChanges[2].tick, Tick(1920));
+    // le témoin, du même code : sans le réglage, rien d'ajouté
+    const auto temoin = priseAuRepos(false, false);
+    VSM_ASSERT_EQ(temoin.pitchBends.size(), size_t(1));
+    VSM_ASSERT_EQ(temoin.controlChanges.size(), size_t(2));
+}
+
+VSM_TEST(what_the_take_brought_back_to_rest_is_not_reset_twice) {
+    const auto rendus = priseAuRepos(true, true);
+    VSM_ASSERT_EQ(rendus.pitchBends.size(), size_t(2));       // +4 096 puis le centre, joués : rien de plus
+    VSM_ASSERT_EQ(rendus.controlChanges.size(), size_t(3));   // 64 à 127, 7 à 90, 64 à 0, joués
+    MidiRecorder::Filtre sansPli;
+    sansPli.pitchBend = false;
+    const auto filtre = priseAuRepos(true, false, &sansPli);
+    VSM_ASSERT_EQ(filtre.pitchBends.size(), size_t(0));
+    VSM_ASSERT_EQ(filtre.controlChanges.size(), size_t(3));   // la pédale, elle, est remise
+}

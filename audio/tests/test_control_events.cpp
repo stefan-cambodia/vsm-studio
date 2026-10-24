@@ -436,3 +436,81 @@ VSM_TEST(a_declared_gm_controller_drives_the_machine_parameter) {
     VSM_ASSERT(avecSombre < avecClair * 0.5);           // le CC 74 à 10 assombrit
     VSM_ASSERT(sansSombre > sansClair * 0.5);           // sans déclaration, rien ne bouge
 }
+
+// D585.3 : LA CHASSE AUX NOTES, AU MOTEUR. L'attendu écrit avant la mesure (ROADMAP-daw, D585) — une note 60 de 0 à
+// 8 s sur un Minimoog : la tête posée à 2 s transport à l'arrêt, rien ne sonne ; le départ à 2 s, la note sonne (le
+// masque des voyants) et la piste a du niveau ; la chasse décochée, rien. Une boucle [2 s ; 3 s), départ à 2 s, 1,6 s de
+// lecture : la note sonne encore APRÈS le rebouclage — et pas sans la chasse. Le témoin est le même code, réglage ôté.
+namespace {
+Project projetDeNappe() {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track track;
+    track.name = "Nappe";
+    track.channel = 0;
+    uint64_t id = 1;
+    track.addNote(0, 7680, 60, 100, 0, id);   // huit secondes à 120 BPM
+    project.tracks.push_back(track);
+    return project;
+}
+bool laNappeSonne(const ProcessGraph& graphe) {
+    uint64_t basses = 0, hautes = 0;
+    graphe.soundingNotesOf(0, basses, hautes);
+    return ((basses >> 60) & 1u) != 0;
+}
+float creteDesBlocs(ProcessGraph& graphe, int blocs, int derniers) {
+    std::vector<float> l(512), r(512);
+    float crete = 0.0f;
+    for (int b = 0; b < blocs; ++b) {
+        graphe.processBlock(l.data(), r.data(), 512);
+        if (b >= blocs - derniers)
+            for (int i = 0; i < 512; ++i) crete = std::max(crete, std::max(std::abs(l[static_cast<size_t>(i)]), std::abs(r[static_cast<size_t>(i)])));
+    }
+    return crete;
+}
+}
+
+VSM_TEST(a_note_started_before_the_playhead_sounds_from_the_start_of_playback) {
+    vsm::audio::plugin::registerBuiltInPlugins();
+    float cretes[2] = {0.0f, 0.0f};
+    for (int chasse = 1; chasse >= 0; --chasse) {
+        ProcessGraph graphe;
+        graphe.prepare(48000.0, 512);
+        graphe.setProject(projetDeNappe());
+        graphe.setTrackInstrument(0, "vsm.minimoog");
+        graphe.setChaseNotes(chasse == 1);
+        graphe.seekSeconds(2.0);
+        creteDesBlocs(graphe, 4, 4);
+        VSM_ASSERT(!laNappeSonne(graphe));   // à l'arrêt : poser la tête ne fait rien sonner
+        graphe.setPlaying(true);
+        cretes[chasse] = creteDesBlocs(graphe, 30, 10);
+        VSM_ASSERT_EQ(laNappeSonne(graphe), chasse == 1);
+    }
+    if (!(cretes[1] > 1.0e-3f) || !(cretes[0] < cretes[1] * 0.01f))
+        std::printf("      chasse aux notes : crête avec %.6f, sans %.6f\n", cretes[1], cretes[0]);
+    VSM_ASSERT(cretes[1] > 1.0e-3f);
+    VSM_ASSERT(cretes[0] < cretes[1] * 0.01f);
+}
+
+VSM_TEST(a_note_crossing_the_loop_start_sounds_again_after_each_wrap) {
+    vsm::audio::plugin::registerBuiltInPlugins();
+    float cretes[2] = {0.0f, 0.0f};
+    for (int chasse = 1; chasse >= 0; --chasse) {
+        ProcessGraph graphe;
+        graphe.prepare(48000.0, 512);
+        graphe.setProject(projetDeNappe());
+        graphe.setTrackInstrument(0, "vsm.minimoog");
+        graphe.setChaseNotes(chasse == 1);
+        graphe.setLoopRegion(2.0, 3.0, true);
+        graphe.seekSeconds(2.0);
+        graphe.setPlaying(true);
+        const int blocs = static_cast<int>(1.6 * 48000.0 / 512.0);   // ~1,6 s : un rebouclage
+        cretes[chasse] = creteDesBlocs(graphe, blocs, 10);
+        VSM_ASSERT_EQ(graphe.loopWrapCount(), uint64_t(1));
+        VSM_ASSERT_EQ(laNappeSonne(graphe), chasse == 1);
+    }
+    if (!(cretes[1] > 1.0e-3f) || !(cretes[0] < cretes[1] * 0.01f))
+        std::printf("      chasse au rebouclage : crête avec %.6f, sans %.6f\n", cretes[1], cretes[0]);
+    VSM_ASSERT(cretes[1] > 1.0e-3f);
+    VSM_ASSERT(cretes[0] < cretes[1] * 0.01f);
+}
