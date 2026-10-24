@@ -140,7 +140,7 @@ course a-bas "$brouillon/a-bas" VSM_DELAI=3500 VSM_GESTE_APRES="$POSER;1300:enre
 course a-temoin "$brouillon/a-temoin" VSM_DELAI=3000 VSM_GESTE_APRES="1300:exporter-audio:$brouillon/a-temoin.wav"
 course a-z "$brouillon/a-z" VSM_DELAI=2500 VSM_GESTE_APRES="$POSER;1300:touche:ctrl + Z;1800:enregistrer:$brouillon/a-z"
 course a-dc "$brouillon/a-dc" VSM_DELAI=2500 VSM_GESTE_APRES="$POSER;1300:doubleclic:mixeur.coupebas;1800:enregistrer:$brouillon/a-dc"
-course a-zero "$brouillon/a-zero" VSM_DELAI=2500 \
+course a-zero "$brouillon/a-zero" VSM_DELAI=2500 VSM_CONFIRMER=oui \
     VSM_GESTE_APRES="$POSER;1300:menu:Mixage > Remettre la console à zéro (1 tranche(s))…;1800:enregistrer:$brouillon/a-zero"
 course a-copie "$brouillon/a-copie" VSM_DELAI=3200 \
     VSM_GESTE_APRES="600:choisir:0;$POSER;1300:menu:Piste > Copier les réglages de la tranche;1600:choisir:1;2000:menu:Piste > Coller les réglages sur les pistes choisies (1);2500:enregistrer:$brouillon/a-copie"
