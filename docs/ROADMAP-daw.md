@@ -45486,6 +45486,22 @@ d'une main ; les cas de zoom inchangés (×2,000 et ×0,500).
   relâchement de `glisser:…:lent`. Le relevé de D581 concatène des `std::string` et garde ses octets : seule sa lettre
   manquait. Aucun banc ne lisait ces deux mots : c'est en LISANT le relevé que le défaut s'est vu.
 
+### Phase D586 — FAITE (24/10/2026, 19 h 42 à l'horloge)
+
+La série : `./verifier.sh --bancs`, lancée à 15 h 58 l'écran ALLUMÉ, **180 bancs en 95 min** (fin à 17 h 34,
+`build/verifier-bancs-D586.log`) ; les trois bancs de D586 verts (`nom-des-notes`, `zoom-regle-pianoroll`,
+`suivi-suspendu`) ; préférences de l'utilisateur identiques (`cmp`) ; ni veille (`PM: suspend`) ni oom au journal du
+système sur la fenêtre. **Quatre rouges, et un seul contrôle pour les quatre** — « la fenêtre ouverte et photographiée en
+français et en anglais » : `quantifier-audio`, `notes-depuis-attaques`, `transposition-globale`, `normaliser-niveau`,
+quatre bancs voisins de la série, finis entre 16 h 25 et 16 h 35, chacun à ~160 s (six fois un passage vert), leurs
+contrôles d'export tous verts. L'état de l'écran à cet instant n'est écrit nulle part ; ce qui l'est : la dernière session
+de travail s'est close à 16 h 15, `powerdevil` a réglé le rétroéclairage à 16 h 17 (`backlighthelper`), et le relevé de
+D516 a trouvé l'écran « **éteint, verrouillé** » à la fin de la série — et une boîte ne se photographie pas sous un écran
+verrouillé (D95 : 0 sur 7). **Rejoués SEULS à 19 h 39, l'écran allumé et déverrouillé** (`kscreen-doctor` : « on »,
+`LockedHint=no`), sur le même binaire : **4 / 4 verts**, en 23 à 29 s chacun (`build/rejeu-D586/`), préférences de
+l'utilisateur de nouveau identiques. Le compositeur est resté sous **1 450 Mo** banc par banc (464 → 1 450 Mo sur la
+série) ; le sommet de la session, 3 965 Mo, est encore celui de la série de D584. D586 est FAITE.
+
 ### Phase D587 — un quarante-huitième audit : la prise MIDI hors des clips, le zoom à la molette autour du pointeur, le réticule pendant un geste (24/10/2026)
 
 *Écrite le 24/10 à 16 h 05 (l'horloge), pendant la série de D586, l'écran allumé ; le code écrit ensuite dans l'arbre à
