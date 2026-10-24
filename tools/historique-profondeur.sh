@@ -77,7 +77,9 @@ verdict() { if [ "$2" = 1 ]; then printf '  OK   %s\n' "$1"; else printf '  RAT�
 P64="menu:Édition > Profondeur de l'historique > 64 pas"
 
 echo "=== D588.3 : la profondeur de l'historique, et le pas oublié dit ==="
-course plein "" VSM_DELAI=4300 VSM_GESTE_APRES="$(gestes 130 400 0.300);3900:relever-historique"
+# La fenêtre d'historique ouverte avant le relevé : l'en-tête y est posé (un `juce::Label`), et la photo le montre.
+course plein "" VSM_DELAI=4500 \
+    VSM_GESTE_APRES="$(gestes 130 400 0.300);3800:menu:Affichage > Historique des modifications...;4100:relever-historique"
 course p64 "" VSM_DELAI=2900 VSM_GESTE_APRES="300:$P64;$(gestes 70 500 0.300);2500:relever-historique"
 maison="$(mktemp -d "$brouillon/home.XXXX")"
 course apres64 "$maison" VSM_DELAI=2900 VSM_GESTE_APRES="$(gestes 70 300 0.300);2300:$P64;2500:relever-historique"
