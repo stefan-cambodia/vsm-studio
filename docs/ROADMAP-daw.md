@@ -45750,3 +45750,101 @@ le code fusionné ensuite, compilé, les trois bancs joués sur le binaire neuf,
 - **Après Ctrl+Z, la piste choisie est « Lead » (index 1), pas « Basse »** : l'annulation ne rend pas la sélection — elle
   n'est pas dans le pas (D518 : ce qui ne fait pas de pas ne se défait pas). Hors du critère, noté ici ; le témoin, lui,
   laisse l'index 2, la piste neuve retirée du bout.
+
+### Phase D589 — un cinquantième audit : les pistes choisies dans un dossier neuf, désarmer toutes les pistes, l'écoute atténuée (24/10/2026)
+
+*Écrite le 24/10 à 22 h 32 (l'horloge), pendant la mesure de D588, dans l'arbre à part (`../vsm-D589`, posé sur le
+chantier de D588 : son binaire sera le témoin) ; le code écrit ensuite dans le même arbre, sans rien compiler ni lancer —
+une série de bancs tourne à côté, et un lancement lui volerait le focus. Rien de D589 n'a été mesuré avant.*
+
+**LA MÉTHODE, celle de D567, D587 et D588 : un zéro se lit dans la fonction et dans celles qu'elle appelle — et dans ce
+que le code FAIT, pas dans ses noms (D571.3).** Sondés, le menu *Project* de Cubase (*Move Selected Tracks to New
+Folder*), les boutons globaux de sa liste de pistes (*Deactivate All Record-Enable*), la *Control Room* (*Dim*), le
+dialogue *MIDI ▸ Functions ▸ Velocity* (*Compress/Expand*, *Limit*). **Écartés, et pourquoi** : comprimer et borner les
+vélocités — « Resserrer les nuances de moitié », « Égaliser les nuances », « Contenir entre 20 et 100 » existent
+(`kCtxVelocityCompress`, `kCtxVelocityLimit` du piano roll), et un premier tri des libellés par mots-clés les avait
+manqués : ils se sont lus par l'identifiant du menu ; présents aussi, chacun lu à sa fonction : le solo protégé (D30.1),
+le double-clic qui rend sa valeur d'usine à un fader (D25.3, D140), la crête maintenue du vumètre (`peakHold_`), le
+rétrograde (`reverseNotesInTime`), figer la quantification (D566.1), le muet d'un clip (`Clip::muted`), la coupe au
+passage par zéro (`snapCutToZeroCrossing`), la polarité d'une piste (D23.1), l'écoute en mono (D23.5), le clic seulement
+à l'enregistrement (D16.6), le dither de l'export entier (D14.4), le pas de déplacement des clips (`nudgeSelection`).
+**Un compte qui mentait, dit ici** : le premier balayage, `grep -r … $D` sous zsh, a rendu ZÉRO pour les douze candidats,
+présents compris — zsh ne découpe pas une variable non citée, et `$D` (« app/Source core … ») désignait un seul chemin
+qui n'existe pas ; `grep` s'est tu. Rejoué sous bash, et chaque zéro ci-dessous relu dans le code. Restent trois zéros :
+**0 pour ranger les pistes choisies dans un dossier** — *Ranger cette piste dans un dossier neuf*
+(`newFolderAboveSelectedTrack`) ne lit que `trackList_.selectedTrackIndex()` : quatre pistes choisies (Ctrl+clic, D38),
+une seule entre dans le dossier, et les trois autres s'y rangent une à une, à la main, un cran par geste
+(`moveSelectedTrack`). Cubase range toute la sélection d'un geste ;
+**0 pour désarmer toutes les pistes** — `armed` ne repasse à faux que par le bouton R d'une piste, par la règle de D579.2
+(qui ne désarme que ce qu'elle a armé) et dans les copies (`duplicateTrack`, l'éclatement par canal). D559.1 a levé tous
+les solos et tous les muets d'un geste ; l'armement est resté piste par piste — or une piste armée reçoit le clavier MIDI
+(D3.3) et la prise suivante ;
+**0 pour l'écoute atténuée** (*Dim*) — `MasterBus` porte l'écoute en mono (D23.5), rien qui baisse ce qu'on ENTEND sans
+toucher au mixage : baisser le master change l'export, baisser le volume du système ne se voit pas dans le logiciel.
+Cherchés « Dim », « atténu », « niveau d'écoute », « volume d'écoute », « control room », « −20 dB » dans `Langue.cpp`,
+`MainComponent.cpp`, `MixerComponent.cpp` et les en-têtes du moteur (`audio/include/vsm/audio/engine/`) : rien qui ne
+soit un accord diminué.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D589.1 | **Les pistes choisies dans un dossier neuf** — *Move Selected Tracks to New Folder* | *Piste ▸ Ranger les pistes choisies dans un dossier neuf (N)*, grisée sous deux pistes choisies (pour une seule, « Ranger cette piste dans un dossier neuf » existe) : le dossier naît à la place de la PREMIÈRE piste choisie, à sa profondeur ; les pistes choisies y entrent dans leur ordre, un dossier choisi avec tout son contenu ; les autres pistes gardent leur ordre ; les routages (groupes, VCA, sorties publiées) suivent leurs pistes ; les machines gardent leurs réglages ; le dossier neuf est choisi ; Ctrl+Z le défait en un pas ; mesuré par l'ordre et les profondeurs du projet enregistré et par l'export, le témoin (le binaire de D588) à côté |
+| D589.2 | **Désarmer toutes les pistes** — *Deactivate All Record-Enable* | *Enregistrement ▸ Désarmer toutes les pistes (N)*, grisée à zéro : toutes les pistes armées — par la main ou par la règle de D579.2 — perdent leur armement, et le journal le compte ; un pas, comme le bouton R (D148) ; pendant une prise, grisée et dite (« prise en cours » : la prise s'écrit sur les pistes armées à son arrêt) ; mesuré par le relevé de l'armement, le témoin à côté |
+| D589.3 | **L'écoute atténuée** — *Dim* | *Mixage ▸ Écoute atténuée de 20 dB (jamais dans un export)* : ce qu'on ENTEND — le mixage, le clic, la référence, la pré-écoute, l'écoute de l'entrée — baisse de 20 dB ; les vumètres, la sonie et l'analyseur ne bougent pas (ils mesurent le mixage, pas l'écoute) ; jamais dans un export ; le titre de la tranche master le dit (« MASTER · DIM ») ; un état de séance, non retenu, comme l'écoute en mono ; mesuré par la crête de ce qui sort, relevée en lecture contre celle du master au même bloc, par un test du moteur et par l'export, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D589.1.** Le geste vit dans le cœur : `vsm::sequencer::moveTracksIntoNewFolder(Project&, const std::set<size_t>&,
+  Track dossier)` rend le rang du dossier. Le dossier est ajouté AU BOUT (`push_back` : aucun index ne pointe au-delà,
+  rien à décaler), puis l'ordre neuf est posé par `reorderTracks`, qui fait suivre `outputGroup`, `vcaTrack` et
+  `outputSourceTrack` par identité — la leçon de D588.1 : pas de sixième copie du décalage des index. Une piste choisie
+  DANS un dossier choisi vient avec lui et ne compte pas deux fois. La profondeur de chaque bloc rangé est reportée sous
+  le dossier (sa tête à la profondeur du dossier + 1, l'écart interne gardé), puis `normalizeFolderDepths`. Le dossier
+  prend la couleur de la première piste choisie, le nom « Dossier », déplié. Comme le dossier neuf d'une piste
+  (`newFolderAboveSelectedTrack`) :
+  `captureSessionIntoProject` avant le pas, `rebuildFromProject(false)` après — les machines suivent leurs pistes par
+  leur identité (D76). Grisée à une piste, et non confondue avec l'entrée d'une piste : deux entrées qui feraient la même
+  chose se contrediraient le jour où l'une changerait. Le journal dit `VSM_DOSSIER : N piste(s) rangée(s) dans le
+  dossier à l'index I`. Un test du cœur garde l'ordre, les profondeurs et les routages. **L'attendu, écrit avant la
+  mesure** (projet « cinq » : 0 « Basse », MIDI, une machine, des notes, sa sortie vers le groupe 3 ; 1 « Lead »,
+  2 « Pad », 4 « Voix », MIDI, une machine, des notes ; 3 « Groupe ») : (1) les pistes 1 et 4 choisies, l'entrée →
+  l'ordre **Basse, Dossier, Lead, Voix, Pad, Groupe**, les profondeurs **0, 0, 1, 1, 0, 0**, la sortie de « Basse » vers
+  l'index **5** (« Groupe »), le dossier choisi (index **1**), l'export à **−120 dBFS** près de celui d'avant — et non
+  au bit près, écrit avant la mesure : « Voix » passe avant « Pad », l'ordre de la somme change, et l'addition flottante
+  n'est pas associative ; (2) Ctrl+Z → l'ordre d'origine, en un pas, la sortie vers **3** ; (3) un projet « tiroir » :
+  0 « Basse », 1 « Cordes » (un dossier), 2 « Lead » dans le dossier, 3 « Pad » ; les pistes 1 et 3 choisies →
+  **Basse, Dossier, Cordes@1, Lead@2, Pad@1**, et l'export identique AU BIT près (l'ordre relatif des pistes qui sonnent
+  ne change pas) ; (4) une seule piste choisie → l'entrée « (1) » **grisée** ; (5) en anglais, *Move the chosen tracks
+  into a new folder* ; (6) le TÉMOIN (le binaire de D588) sur (1) → l'entrée **absente**, l'ordre inchangé.
+- **D589.2.** `MainComponent::desarmerToutesLesPistes` : zéro piste armée, rien (l'entrée est grisée, et son compte dit
+  pourquoi) ; une prise en cours, refusé et dit (`VSM_ARMEMENT : une prise est en cours — rien n'est désarmé`), et
+  l'entrée grisée sous le libellé « Désarmer toutes les pistes (prise en cours) » ; sinon un pas « Désarmer toutes les
+  pistes », `armed` et `armedByRule` à faux partout, les lignes rafraîchies, `refreshArmedTracks` (le bouton
+  d'enregistrement suit), et `VSM_ARMEMENT : N piste(s) désarmée(s)`. **L'attendu, écrit avant la mesure** (quatre pistes
+  MIDI) : (1) `armer:0` et `armer:2`, l'entrée « (2) » → l'armement **{}**, « 2 piste(s) désarmée(s) » au journal ;
+  (2) Ctrl+Z → **{0, 2}** ; (3) la règle de D579.2 cochée, la piste 1 choisie (armée par elle), `armer:3`, l'entrée
+  « (2) » → **{}**, et **{}** par la règle ; (4) la piste 0 armée, une prise lancée (F9) : l'entrée « (prise en cours) »
+  **grisée**, l'armement **{0}** après la prise ; (5) en anglais, *Disarm all tracks (2)* ; (6) le TÉMOIN (le binaire de
+  D588) sur (1) → l'entrée **absente**, l'armement **{0, 2}**.
+- **D589.3.** `ProcessGraph::setDim` (un atomique, faux d'origine). `processBlock` devient l'ENVELOPPE du rendu d'avant
+  (renommé `rendreLeBloc`, privé) : ses sorties anticipées sont nombreuses — le repos, la pré-écoute à l'arrêt —, et une
+  enveloppe ne peut en oublier aucune. Elle multiplie les deux canaux par 10^(−20/20) = 0,1, puis relève la crête de ce
+  qui SORT avec celle du master AU MÊME BLOC (deux flottants dans un seul atomique : un relevé ne lit jamais l'un d'un
+  bloc et l'autre du suivant). Après le master, le clic, la référence et la pré-écoute : tout ce qu'on entend ; les
+  mesures du master (D48), des pistes et l'analyseur, pris avant, ne bougent pas. `AudioEngine` atténue de même l'écoute
+  de l'entrée (D11.7), qu'il ajoute après le graphe ; le balayage de la mesure de latence (D3.6) n'est PAS atténué — il
+  mesure un aller-retour, pas une écoute. Le rendu hors ligne (export, stems, report en audio) monte son PROPRE graphe
+  (`OfflineRenderer`, D21), où l'atténuation est fausse : jamais dans un fichier, et un test du moteur le garde. −20 dB,
+  fixe : le niveau d'usage des contrôleurs d'écoute ; un niveau réglable serait un second chantier, remis. Non retenu au
+  poste : un *Dim* oublié allumé au lancement suivant ferait croire à une sortie cassée (la raison de D23.5). La tranche
+  master est pleine (D59 : « la grille de knobs a une hauteur fixe et déborde par le bas quoi qu'on réserve ») et un troisième bouton dans la
+  rangée de « MONO » le rognerait : c'est son TITRE qui le dit, « MASTER · DIM » en ambre. Un verbe de banc
+  `relever-ecoute` : « atténuée oui/non ; crête du master X dBFS ; crête entendue Y dBFS ; écart Z dB ». **L'attendu,
+  écrit avant la mesure** (une note tenue sur une piste MIDI, la lecture lancée) : (1) Dim coché → l'écart
+  **−20,0 dB** (à 0,1 dB près) ; décoché → **0,0 dB** ; (2) l'export, Dim coché, identique AU BIT près à l'export sans ;
+  (3) relancé dans le même HOME → **décoché** ; (4) en anglais, *Dim the monitoring by 20 dB (never in an export)* ; le
+  titre « MASTER · DIM » au relevé de textes, et « MASTER » seul une fois décoché ; (5) le TÉMOIN (le binaire de D588) → l'entrée
+  **absente**, le verbe `relever-ecoute` **inconnu**. Au moteur : un décompte (le clic de D3.2) rendu Dim et sans → la
+  crête **×0,1** (à 10⁻⁶ près), la crête du master inchangée ; un graphe neuf — celui que monte le rendu hors ligne — a
+  Dim **faux**.
+
+**L'ORDRE, TRANCHÉ ICI.** D589.1 (le plus de gestes épargnés), puis D589.2, puis D589.3 ; un banc par élément
+(`dossier-des-choisies`, `desarmer-tout`, `ecoute-attenuee`), entré dans la série de `verifier.sh --bancs`.
