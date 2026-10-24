@@ -637,6 +637,22 @@ void prepareEffectForFingerprint(const std::string& effectId,
         effet.setParameter(4, -40.0f);   // plage
         return;
     }
+    // D596 : L'EXPANDEUR ET LE DE-ESSER, réglés pour TRAVAILLER sur l'épreuve — à 60 % de leurs plages, rien ne garantit
+    // que le signal d'épreuve passe sous le seuil de l'un ni dans la bande de l'autre.
+    if (effectId == "expander") {
+        effet.setParameter(0, -20.0f);   // seuil
+        effet.setParameter(1, 4.0f);     // rapport
+        effet.setParameter(2, -40.0f);   // plage
+        effet.setParameter(3, 1.0f);     // attaque
+        effet.setParameter(4, 50.0f);    // relâchement
+        return;
+    }
+    if (effectId == "deesser") {
+        effet.setParameter(0, 3000.0f);  // fréquence : là où l'épreuve a de l'énergie
+        effet.setParameter(1, -50.0f);   // seuil
+        effet.setParameter(2, 12.0f);    // réduction maximale
+        return;
+    }
     if (effectId == "eq") {
         effet.setParameter(0, 12.0f);    // grave : +12 dB
         effet.setParameter(1, 100.0f);   //         à 100 Hz
@@ -818,6 +834,8 @@ VSM_TEST(regression_fx_tape)       { checkEffect("tape"); }
 VSM_TEST(regression_fx_transientshaper) { checkEffect("transientshaper"); }
 VSM_TEST(regression_fx_tremolo)    { checkEffect("tremolo"); }
 VSM_TEST(regression_fx_pitchshift) { checkEffect("pitchshift"); }
+VSM_TEST(regression_fx_expander)   { checkEffect("expander"); }   // D596
+VSM_TEST(regression_fx_deesser)    { checkEffect("deesser"); }
 
 VSM_TEST(regression_every_factory_effect_has_a_reference) {
     // Le même garde-fou que pour les machines : un effet ajouté sans empreinte

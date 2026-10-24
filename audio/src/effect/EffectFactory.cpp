@@ -12,6 +12,7 @@
 #include "vsm/audio/effect/TransientShaperEffect.h"
 #include "vsm/audio/effect/TremoloEffect.h"
 #include "vsm/audio/effect/PitchShiftEffect.h"
+#include "vsm/audio/effect/ExpanderDeEsser.h"
 
 namespace vsm::audio::effect {
 
@@ -39,6 +40,10 @@ const std::vector<EffectInfo>& EffectFactory::available() {
         {"transientshaper", "Transient Shaper"},
         {"tremolo", "Tremolo / Auto-pan"},
         {"pitchshift", "Pitch Shift"},
+        // DEUX DE PLUS (D596) : les dynamiques de Cubase que le parc n'avait pas — à la FIN, pour que les seize d'avant
+        // gardent leur rang dans le menu.
+        {"expander", "Expander"},
+        {"deesser", "De-esser"},
     };
     return kEffects;
 }
@@ -60,6 +65,8 @@ std::unique_ptr<IAudioEffect> EffectFactory::create(const std::string& id) {
     if (id == "transientshaper") return std::make_unique<TransientShaperEffect>();
     if (id == "tremolo") return std::make_unique<TremoloEffect>();
     if (id == "pitchshift") return std::make_unique<PitchShiftEffect>();
+    if (id == "expander") return std::make_unique<ExpanderEffect>();   // D596
+    if (id == "deesser") return std::make_unique<DeEsserEffect>();
     // PAS UN EFFET INTERNE : on demande aux couches d'hébergement, s'il y en a
     // une de posée. Sans elles, on rend nullptr comme avant, et l'appelant
     // signale un effet inconnu -- jamais ne le remplace par un autre.

@@ -1560,6 +1560,19 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Ceiling", "effect.limiter.ceiling"},
         {"Release", "effect.limiter.release"},
     }},
+    // --- fx.expander / fx.deesser (D596) : nommés par ce qu'ils font, comme les quatre de la tranche ---
+    {"fx.expander", {
+        {"Threshold", "effect.expander.threshold"},
+        {"Ratio", "effect.expander.ratio"},
+        {"Range", "effect.expander.range"},
+        {"Attack", "effect.expander.attack"},
+        {"Release", "effect.expander.release"},
+    }},
+    {"fx.deesser", {
+        {"Frequency", "effect.deesser.frequency"},
+        {"Threshold", "effect.deesser.threshold"},
+        {"Max Reduction", "effect.deesser.max_reduction"},
+    }},
     // --- fx.filter ---
     {"fx.filter", {
         {"Cutoff", "effect.filter.cutoff"},
