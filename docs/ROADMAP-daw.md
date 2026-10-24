@@ -46399,3 +46399,40 @@ regardées.*
   deux rangées prennent 2 × 18 px (à 100 %) à la course du fader, déjà courte à cette hauteur de fenêtre.
 - **Les heures** : deux heures de titre écrites de tête (D593, D594) et une troisième dans la correction de D594 ont été
   relues à l'horloge et corrigées dans des commits à part ; celles de cette section sont lues à `date`.
+
+### Phase D597 — la fin du morceau oubliait les pistes audio sans clip (25/10/2026)
+
+*Écrite le 25/10 à 06 h 06 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Trouvée en
+mesurant D593 : remise ici, seule, parce qu'elle change la DURÉE des rendus.*
+
+**LE DÉFAUT, lu au code.** Une piste audio SANS clip joue son fichier entier (D2 : « une piste audio sans clip joue tout
+son fichier », `an_audio_track_without_a_clip_plays_its_whole_file`). Mais `Project::lastSoundingTick` (D540)
+ne compte, pour une piste sans clip, que ses notes, ses contrôleurs et ses pitch bends : le fichier n'y entre pas. Or
+cette fin sert à tout ce qui s'arrête — le moteur (`ProcessGraph.cpp:127`), le transport (`Transport.cpp:21`), le rendu
+hors-ligne (`OfflineReconstruction.cpp:309`, `:450`), la ligne d'ensemble, l'arrangement, l'ordre de jeu. Vu au banc de
+D593 : un projet d'une piste audio de 4 s et d'un MIDI vide s'est rendu en **2 s** (96 000 trames, la queue seule), sans un
+mot. **Et la chaîne d'analyse écrit de telles pistes** : `vsm_project_export.py` pose `kind: "audio"` et `audio: {…}`,
+sans `clips`, pour toute partie gardée en audio (la voix de H52, par exemple). Une reconstruction dont l'audio dépasse
+le MIDI est donc tronquée au rendu — et ses distances avec.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D597.1 | **La fin du morceau compte le fichier d'une piste audio sans clip** | `lastSoundingTick` prend, pour une piste audio sans clip, la fin de son fichier (`audio.durationSeconds()`, convertie par `secondsToTicks` — le tempo fixe de D595 compris) ; une piste qui a des clips garde sa règle (la fenêtre de ses clips) ; mesuré par un test du cœur, par `vsm-render`, et par un recensement des projets du poste |
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.**
+- (1) **le cœur** (480 ticks à la noire, 120 BPM) : une piste MIDI qui finit au tick 960 et une piste audio sans clip d'un
+  fichier de 4,0 s (192 000 trames à 48 kHz) → **3 840** (avant : 960) ; la même piste audio avec un clip de 0 à 1 920 →
+  **1 920** (la règle des clips, inchangée) ; une note qui finit au tick 5 000 → **5 000** ; au tempo fixe de 60 → **1 920**
+  pour le fichier seul.
+- (2) **`vsm-render`** du projet de D593 SANS son clip (une piste audio de 4 s, un MIDI vide) : **288 000** trames (4 s +
+  2 s de queue, 48 kHz) au lieu de **96 000** ; le binaire de D596 (le témoin) rend 96 000.
+- (3) **le recensement** des `project.json` du poste (sous `~/videcode/muz`, hors bancs et dossiers de mesure) : combien
+  portent une piste audio sans clip, et combien d'entre eux ont un fichier audio plus long que leur MIDI (la durée du
+  MIDI lue par `mido`, celle du fichier par son en-tête) — c'est-à-dire étaient TRONQUÉS au rendu, et de combien.
+  **L'hypothèse, écrite avant** : les parties gardées en audio d'une reconstruction couvrent le même morceau que ses notes,
+  le MIDI finit avec la dernière note du morceau ; la troncature, s'il y en a, est de l'ordre de la queue d'une dernière
+  note — **moins d'une seconde, et sur une minorité des projets**. Si le recensement dit autrement, les distances déjà
+  publiées de ces projets sont à requalifier, et la liste en est écrite ici.
+
+**L'ORDRE.** Le test du cœur d'abord, joué rouge sur le code d'avant ; le correctif ; `vsm-render` ; le recensement (un
+script de mesure dans le brouillon, sa sortie recopiée ici — pas une garde).
