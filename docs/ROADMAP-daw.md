@@ -45298,3 +45298,91 @@ posée au milieu de la nappe la coupe à chaque rebouclage (`wrapNoteOffPending_
 **L'ORDRE, TRANCHÉ ICI.** D585.1 (le cœur, et le banc de D584 pour modèle), puis D585.2, puis D585.3 ; un banc par
 élément — `tools/remises-apres-prise.sh`, `tools/zoom-a-la-regle.sh`, `tools/chasse-aux-notes.sh` —, entrés dans la
 série de `verifier.sh --bancs`.
+
+### Phase D585 — MESURÉE, la série en cours (24/10/2026, 11 h 38 à l'horloge)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D585.1 | les remises à zéro après la prise | `MidiRecorder::setRemiseAZero` — `finishControls` juge la DERNIÈRE valeur gardée de chaque geste (canal, genre, numéro) et pose son retour au repos au point de sortie : la molette de hauteur au centre, les deux pressions, les CC 1, 2, 64, 66, 67 à 0 ; jamais les CC 4, 7, 10, 11 ; deux tests du cœur, chiffrés comme l'attendu (le pitch bend et la pédale remis au tick **1 920**, le volume jamais ; ramenés par la prise, rien de plus ; le pitch bend filtré, aucune remise) ; *Enregistrement ▸ Remettre les contrôleurs à zéro après la prise*, `enregistrementRemiseAZero` au poste ; `tools/remises-apres-prise.sh` : cochée **[2 2 2 2 1]**, les quatre remises au MÊME tick **1 928** (l'arrêt), après tout ce qui a été joué ; le témoin décoché **[1 1 1 1 1]** ; ramenée **[2 2 2 2 1]**, rien de doublé ; Ctrl+Z **[0 0 0 0 0]** en un pas ; relancé : cochée ; en anglais. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D585.2 | le zoom en glissant sur la règle | `ArrangementComponent` — l'appui sur la règle ouvre un geste (`Geste::Regle`) ; le glissé vertical zoome depuis la vue de l'appui (×2 par 100 px, la vue de l'appui sous 4 px), le défilement recalculé pour que le tick saisi reste sous l'abscisse de l'appui, la tête suit l'abscisse ; un pas de zoom au relâchement (D557.3) ; `tools/zoom-a-la-regle.sh` (la mesure 5 repérée sur le clip, 0,046 px/tick à l'ouverture) : 100 px vers le bas → **×2,000**, le tick saisi **8 160** à x **525,4** pour un appui à x **525,4**, la tête à **8 160** ; vers le haut → **×0,500** ; de côté → le zoom inchangé, la tête à **12 000** (attendu ~11 999) ; *Annuler le zoom* → **0,046** px/tick, « 0 à annuler » ; le témoin décoché → aucun zoom, la tête à 8 160 ; relancé : décochée ; en anglais. **TENU** | **oui** |
+| D585.3 | la chasse aux notes commencées | `PlaybackScheduler::chaseNotesAt` (le miroir de la boucle des notes de `build`) ; au moteur, mises en file au DÉPART (`setPlaying`) et à un déplacement EN LECTURE (`seekSeconds`), numérotées par génération, tirées des seuls blocs joués, livrées comme une note d'écoute si la hauteur ne sonne pas déjà ; au rebouclage, la liste précalculée hors du fil audio (`refreshLoopChase`) relancée juste après les relâchements ; le test du cœur (chassée au tick 1 920 à sa vélocité, pas à 0, pas à sa fin, ni pile au départ, ni muette, ni coupée par son clip) et deux du moteur (départ à 2 s et rebouclage, chacun avec son témoin décoché) ; `tools/chasse-aux-notes.sh` : départ à 2 s → **[60]** à **−22,7 dBFS** ; le témoin décoché → **[]** à **−120** ; après un rebouclage → **[60]** à **−19,9** ; son témoin → **[]** ; la tête posée à l'arrêt → **[]** ; relancé : décochée ; en anglais. **TENU** | **oui** |
+| — | le témoin | le binaire de D584 (`build/temoin-D584`) : `remises-apres-prise` **rouge 3 / 5** pour la raison écrite (cochée **[1 1 1 1 1]**, aucune remise ; l'entrée absente) ; `zoom-a-la-regle` **rouge 6 / 6** — aucun zoom, et la tête restée au point d'appui (**8 160** au lieu de ~12 000) : le zéro écrit, un glissé sur la règle ne fait RIEN ; `chasse-aux-notes` **rouge 6 / 6**, mais par l'ABSENCE du relevé `relever-sonnantes` — pour celui-là l'A/B est le témoin intérieur au banc, du même binaire décoché, et ceux des tests du moteur | **oui** |
+| — | les suites | cœur **550 / 550** (trois neufs), moteur **1 353 / 1 353** (deux neufs), interchange 359, clap 25, panels 11 ; Python 275 ; ruff et mypy propres ; gardes vertes | **oui** |
+| — | la série | `./verifier.sh --bancs`, 177 bancs, lancée l'écran allumé — **à suivre** | **en cours** |
+
+**CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.**
+- **Le relâchement du rebouclage ne joue plus qu'UNE fois par piste et par rebouclage** (`wrapTraite_`). Sous automation, le
+  segment qui suit le rebouclage est rendu en sous-segments, et le relâchement s'y rejouait à chacun : il aurait relâché la
+  relance du sous-segment d'avant — et, depuis toujours, une note posée PILE au début de la boucle. Lu dans le code, non
+  mesuré au banc (aucun banc ne boucle sous automation).
+- **Un test du moteur gardait l'ancienne règle** : `process_graph_loop_releases_notes_held_across_the_boundary` affirmait
+  que « rien ne redéclenche » une note qui traverse le début de la boucle — le rouge pour la raison de D585.3. Ce qu'il
+  garde, le RELÂCHEMENT (pas de note bloquée), se mesure désormais chasse décochée ; la relance, chasse cochée, par le test
+  neuf. C'est le seul test touché.
+- **Le zoom vers le haut ne garde pas le tick saisi sous le pointeur quand la vue bute sur le début** : au départ du banc,
+  défilement 0, zoomer ×0,5 demanderait un défilement négatif ; il est borné à 0, et le tick saisi passe de x 525 à x 338.
+  L'attendu ne demandait que le facteur ; c'est écrit pour qu'on ne le prenne pas pour un défaut.
+- **Le verbe de banc `glisser:` sait désormais glisser en hauteur** : « fx1,fy1 » à l'arrivée, « +100px » relatif à
+  l'appui. Le banc du zoom écrit son appui en FRACTION, lisible aussi par le binaire de D584 : le témoin appuie au même
+  point, et tombe pour la raison écrite plutôt que pour une syntaxe qu'il ne connaît pas (premier jet en « 12px », repris
+  avant le témoin).
+- **La ligne grisée de la remise à zéro** élargissait le menu *Enregistrement* à 1 508 px ; raccourcie, 957 px.
+
+Les entrées REGARDÉES (`VSM_MENU_PHOTO`, écran allumé) : *Transport* — *Zoomer en glissant sur la règle* et *Chasser les
+notes commencées* cochées sous *Un clic dans le vide pose la tête*, chacune sa ligne grisée ; *Enregistrement* — *Remettre
+les contrôleurs à zéro après la prise* sous *Ce que la prise garde*, sa ligne grisée ; en anglais, *Zoom by dragging on the
+ruler*, *Chase notes already started*.
+
+### Phase D586 — un quarante-septième audit : le zoom à la règle du piano roll, le suivi suspendu par l'édition, le nom des notes (24/10/2026)
+
+*Écrite le 24/10 à 11 h 28 (l'horloge), pendant l'édition de liens de D585 ; rien de D586 n'est codé ni mesuré avant que
+ce texte soit commité.*
+
+**LA MÉTHODE, celle de D567 et de D582.2 : un zéro se lit dans la fonction et dans celles qu'elle appelle.** Restait de
+D585 une piste remise — la règle du piano roll ; sondés le menu du bouton *Auto-Scroll* de Cubase (*Suspend Auto-Scroll
+when Editing*) et la page *Event Display ▸ MIDI* de ses préférences (*Note Name Style*). **Écartée, et pourquoi** : la
+copie de l'enregistrement précédent (le `.bak` de Cubase) — `saveProjectBundle` écrit en place, sans copie, c'est un zéro ;
+mais un `project.json` recopié dans un sous-dossier y désigne ses médias par des chemins relatifs qui ne mènent plus nulle
+part, et le rouvrir demande un chemin de chargement à part : un chantier de format, remis. Restent trois zéros :
+**0 pour le zoom à la règle du piano roll** — `PianoRollRulerComponent::mouseDrag` sans modificateur fait suivre la tête
+(`onPlayheadRequested`) et rien d'autre ; le zoom du piano roll (`PianoRollComponent::zoomHorizontally`) garde le CENTRE
+de la fenêtre, jamais le point visé ;
+**0 pour le suivi suspendu par l'édition** — `ArrangementComponent::setPlayheadTick` tourne la page dès que la tête sort
+de la zone des clips (`followPlayhead_`), quoi qu'on y fasse : un clip qu'on tire en lecture part sous le pointeur au
+premier tour de page ;
+**0 pour le style du nom des notes** — `noteNumberToName` (le cœur) écrit « C4 » pour 60, en lettres anglaises, et le
+moniteur MIDI passe par `juce::MidiMessage::getMidiNoteName` à la même convention : le clavier du piano roll, sa ligne
+d'état, l'éditeur logique, le moniteur ; un musicien français lit « Do3 » pour le même do — la convention française, comme
+celle de Yamaha, place le do central à l'octave 3.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D586.1 | **Le zoom en glissant sur la règle du piano roll** — *Zoom while Locating in Time Scale* | la préférence de D585.2 (*Transport ▸ Zoomer en glissant sur la règle*) vaut aussi pour la règle du piano roll : le glissé VERTICAL sans modificateur zoome — vers le bas agrandit, un facteur 2 par 100 px —, le tick saisi restant sous le pointeur ; le glissé horizontal fait suivre la tête, comme avant ; Maj, Alt et Ctrl gardent leurs gestes (la boucle, le punch, le scrub) ; décochée, le zoom ne bouge pas ; mesuré par le relevé du zoom du piano roll après un glissé, le témoin décoché à côté |
+| D586.2 | **Le suivi suspendu par l'édition** — *Suspend Auto-Scroll when Editing* | *Affichage ▸ L'édition suspend le suivi de la tête* (décochée d'origine, comme chez Cubase ; grisée sans le suivi) : cochée, un appui dans la zone des clips de l'arrangement PENDANT la lecture suspend le défilement qui suit la tête, jusqu'à l'arrêt ; la lecture suivante suit de nouveau ; retenu au poste ; mesuré par le défilement relevé après que la tête a quitté la fenêtre, le témoin décoché à côté |
+| D586.3 | **Le nom des notes** — *Note Name Style* | *Affichage ▸ Nom des notes* : *Lettres (do central C4)* (coché d'origine — le nom d'aujourd'hui), *Lettres (do central C3)*, *Solfège (do central Do3)* — des libellés uniques dans toute la barre ; le clavier et la ligne d'état du piano roll, l'éditeur logique et le moniteur MIDI écrivent le nom choisi ; les FICHIERS et les noms de pistes ne changent pas (un nom de piste écrit par un geste n'est pas un affichage) ; retenu au poste ; mesuré par les noms relevés dans les trois réglages |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D586.1.** UNE préférence pour les deux règles : Cubase n'en a qu'une, et deux cases pour un même geste se
+  contrediraient. Le pas, le seuil de 4 px et l'ancrage sont ceux de D585.2 ; les bornes, celles du piano roll (0,001 et
+  8 px/tick). Le glissé fait UN changement de vue, sans pile : le piano roll n'a pas d'*Annuler le zoom* (D557.3 est à
+  l'arrangement). **L'attendu, écrit avant la mesure** (le piano roll d'une piste de huit mesures) : un appui sur sa règle
+  dans la mesure 5, 100 px vers le BAS → le zoom du piano roll **×2,00** (à 1 % près), le tick saisi sous le pointeur (à
+  1 px près) ; 100 px vers le HAUT → **×0,50** ; un glissé horizontal pur → le zoom inchangé ; Maj+glissé → la boucle
+  dessinée et le zoom inchangé ; le TÉMOIN décoché → le zoom inchangé.
+- **D586.2.** Un appui dans la zone des clips — un clip, une poignée, le fond, un lasso : tout ce qui commence une édition
+  ou une sélection —, pas la règle (on y pose la tête : c'est le suivi qu'on demande) ni les têtes de piste. La suspension
+  tombe à l'ARRÊT (le passage de la lecture à l'arrêt), pas au relâchement : Cubase suspend jusqu'à la lecture suivante, et
+  une page qui tournerait sous un second geste rendrait la case inutile. La tête fixe (D569.2) suit la même règle.
+  **L'attendu, écrit avant la mesure** (120 BPM, un clip de 32 mesures, la vue enregistrée à deux mesures de large) :
+  cochée, la lecture lancée à la mesure 1, un appui sur le fond de la piste à ~1 s, le relevé du défilement à ~6 s (la
+  tête bien au-delà de la fenêtre) → le défilement **0** ; le TÉMOIN décoché → la page a tourné (**> 0**) ; cochée, arrêt
+  puis relance → la page tourne de nouveau (**> 0**) ; relancé → cochée ; en anglais.
+- **D586.3.** Une fonction d'AFFICHAGE à part, dans l'application (`nomDeNote`), qui lit le réglage ; `noteNumberToName`
+  reste au cœur pour ce qui s'ÉCRIT (les noms des pistes éclatées par hauteur, D19.3 — un fichier ne change pas avec
+  un réglage d'affichage) ; l'éditeur logique, qui affiche, passe par le réglage. Les dièses seuls, comme aujourd'hui et comme
+  Cubase par défaut. Le solfège s'écrit en français même dans l'interface anglaise : c'est un nom de note, pas une phrase.
+  **L'attendu, écrit avant la mesure** : la note 60 → **C4** (d'origine), **C3**, **Do3** ; la note 61 → C#4, C#3, Do#3 ;
+  la note 69 → A4, A3, La3 ; relancé → *Solfège* coché ; en anglais, *Note names*, *Letters (middle C = C4)*.
+
+**L'ORDRE, TRANCHÉ ICI.** D586.3 (le plus de surfaces, et le plus de valeur pour qui lit en français), puis D586.1 (le banc
+de D585.2 s'étend), puis D586.2 ; un banc par élément, entré dans la série de `verifier.sh --bancs`.

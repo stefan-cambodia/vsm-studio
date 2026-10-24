@@ -3,7 +3,7 @@
 # Time Scale* de Cubase), MESURÉ PAR LE RELEVÉ DU ZOOM ET DE LA TÊTE APRÈS UN GLISSÉ, LE TÉMOIN DÉCOCHÉ À CÔTÉ.
 #
 # LES RÈGLES GARDÉES (480 ticks par noire, 4/4, 120 BPM). Une piste, un clip de huit mesures [0, 15 360). Le glissé passe
-# par `glisser:arrangement:fx,12px:fx,+100px` — l'appui à 12 px du haut, DANS la règle (22 px), l'arrivée 100 px plus
+# par `glisser:arrangement:fx,fy:fx,+100px` — l'appui à 12 px du haut, DANS la règle (22 px), l'arrivée 100 px plus
 # bas (D585.2 : des pixels, pas une fraction). L'abscisse de la mesure 5 se lit d'abord sur le clip (`relever-clips`) :
 # l'appui y tombe sans dépendre du cadrage d'ouverture.
 # L'ATTENDU ÉCRIT AVANT LA MESURE (ROADMAP-daw, D585) :
@@ -70,22 +70,24 @@ echo "=== D585.2 : le zoom en glissant sur la règle ==="
 # LE REPÉRAGE : le clip [0, 15 360) à l'écran donne la correspondance x ↔ tick à l'ouverture.
 course reperage "" VSM_DELAI=1500 VSM_GESTE_APRES="900:relever-clips"
 ligne="$(grep -h "^VSM_CLIP_ECRAN : piste 0" "$brouillon/reperage.txt" | head -1)"
-read -r x0 x1 largeur <<< "$(echo "$ligne" | sed -n 's/.* x \([0-9.]*\)\.\.\([0-9.]*\) y .* sur \([0-9]*\)x.*/\1 \2 \3/p')"
-if [ -z "${x0:-}" ] || [ -z "${largeur:-}" ]; then echo "REFUS : le clip n'a pas été relevé à l'écran ($ligne)"; exit 2; fi
-eval "$(python3 - "$x0" "$x1" "$largeur" <<'PY'
+read -r x0 x1 largeur hauteur <<< "$(echo "$ligne" | sed -n 's/.* x \([0-9.]*\)\.\.\([0-9.]*\) y .* sur \([0-9]*\)x\([0-9]*\).*/\1 \2 \3 \4/p')"
+if [ -z "${x0:-}" ] || [ -z "${hauteur:-}" ]; then echo "REFUS : le clip n'a pas été relevé à l'écran ($ligne)"; exit 2; fi
+eval "$(python3 - "$x0" "$x1" "$largeur" "$hauteur" <<'PY'
 import sys
-x0, x1, w = float(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3])
+x0, x1, w, h = float(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4])
 ppt = (x1 - x0) / 15360.0
 xm5 = x0 + (7680 + 480) * ppt          # un temps après le début de la mesure 5 : franchement dedans
 xm7 = x0 + (11520 + 480) * ppt
-print(f"PPT0={ppt:.6f} X5={xm5:.1f} FX5={xm5 / w:.5f} FX7={xm7 / w:.5f} X7={xm7:.1f} X0={x0:.1f}")
+print(f"PPT0={ppt:.6f} X5={xm5:.1f} FX5={xm5 / w:.5f} FX7={xm7 / w:.5f} X7={xm7:.1f} X0={x0:.1f} FY0={12.0 / h:.5f}")
 PY
 )"
 echo "       repérage : clip x $x0..$x1 sur $largeur px ; ${PPT0} px/tick ; la mesure 5 (+1 temps) à x $X5"
 
-BAS="glisser:arrangement:$FX5,12px:$FX5,+100px"
-HAUT="glisser:arrangement:$FX5,12px:$FX5,-100px"
-COTE="glisser:arrangement:$FX5,12px:$FX7,+0px"
+# L'APPUI EN FRACTION (12 px de haut), lisible aussi par un binaire d'avant D585.2 — le témoin appuie au même point ;
+# l'arrivée en pixels relatifs, que ce binaire-là lit comme un glissé sans course verticale.
+BAS="glisser:arrangement:$FX5,$FY0:$FX5,+100px"
+HAUT="glisser:arrangement:$FX5,$FY0:$FX5,-100px"
+COTE="glisser:arrangement:$FX5,$FY0:$FX7,+0px"
 maison="$(mktemp -d "$brouillon/home.XXXX")"
 course bas "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$BAS;1200:relever-tete"
 course haut "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$HAUT;1200:relever-tete"

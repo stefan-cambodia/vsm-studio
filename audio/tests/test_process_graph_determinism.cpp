@@ -197,9 +197,13 @@ VSM_TEST(process_graph_loop_releases_notes_held_across_the_boundary) {
     // région de boucle et se termine bien après. Son NoteOff se trouve donc
     // hors de la boucle et ne sera jamais atteint ; sans relâche explicite au
     // rebouclage, elle sonnerait indéfiniment.
+    // D585.3 : LA CHASSE AUX NOTES DÉCOCHÉE. Cochée (d'origine), une note qui traverse le début de la boucle est RELANCÉE
+    // à chaque rebouclage — c'est ce qu'elle doit faire (`a_note_crossing_the_loop_start_sounds_again_after_each_wrap`,
+    // test_control_events.cpp). Ce test-ci garde le RELÂCHEMENT : sans relance, rien ne doit plus sonner.
     ProcessGraph graph;
     graph.prepare(48000.0, 256);
     graph.setTrackInstrument(0, "vsm.testtone");
+    graph.setChaseNotes(false);
 
     Project project;
     project.ticksPerQuarterNote = 480;

@@ -3261,8 +3261,8 @@ const Paire kAnglais[] = {
       "(notes, always; what is not kept is still heard)" },
     { "Remettre les contrôleurs à zéro après la prise",   // D585.1
       "Reset controllers after the take" },
-    { "(la molette de hauteur, les pressions, la modulation, le souffle et les pédales laissés hors du repos y reviennent à la fin de la prise)",
-      "(pitch bend, pressure, modulation, breath and pedals left away from rest return to it at the end of the take)" },
+    { "(molette de hauteur, pressions, modulation, souffle et pédales, au repos à la fin)",
+      "(pitch bend, pressure, modulation, breath and pedals, back to rest at the end)" },
     { "Zoomer en glissant sur la règle",   // D585.2
       "Zoom by dragging on the ruler" },
     { "(sur la règle de l'arrangement : vers le bas agrandit, vers le haut réduit ; de côté, la tête suit)",

@@ -5673,8 +5673,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // D585.1 : LES REMISES À ZÉRO APRÈS LA PRISE (*Insert Reset Events after Record*) — une préférence du poste.
                 menu.addItem(kMenuRecordResetAfterTake, tr(u8"Remettre les contrôleurs à zéro après la prise"), true,
                              remiseAZeroApresPrise_);
-                menu.addItem(-1, tr(u8"(la molette de hauteur, les pressions, la modulation, le souffle et les pédales "
-                                    u8"laissés hors du repos y reviennent à la fin de la prise)"), false, false);
+                menu.addItem(-1, tr(u8"(molette de hauteur, pressions, modulation, souffle et pédales, au repos à la fin)"),
+                             false, false);
                 // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
                 // d'événements gardés est DIT : « récupérer » sur un tampon
                 // vide ne doit pas se découvrir en cliquant.
