@@ -2,7 +2,9 @@
 # D593 — LE COUPE-BAS ET LE COUPE-HAUT DE LA TRANCHE (la section *Pre* de Cubase), MESURÉS PAR L'EXPORT : le rendu
 # hors-ligne (`vsm-render`) et l'export de l'application, chacun contre son témoin du MÊME code (le filtre éteint).
 #
-# LE JEU : un fichier de 4 s à 48 kHz, 50 Hz + 1 kHz + 8 kHz, chacun à −20 dBFS, importé sur une piste audio. Chaque
+# LE JEU : un fichier de 4 s à 48 kHz, 50 Hz + 1 kHz + 8 kHz, chacun à −20 dBFS, sur la SEULE piste du projet, une piste
+# audio écrite dans project.json (importé dans un projet vide, le fichier arrivait sur une seconde piste : le projet
+# vide en reçoit une de démarrage, et le premier curseur « mixeur.coupebas » était le sien — vu au premier essai). Chaque
 # composante se relit sur les deux secondes du milieu (un nombre entier de périodes pour les trois, à toute fréquence
 # d'échantillonnage) et se rapporte au témoin.
 # L'ATTENDU ÉCRIT AVANT LA MESURE (ROADMAP-daw, D593 ; biquad de RBJ à 48 kHz, calculé avant le code) :
@@ -37,17 +39,25 @@ def v(n):
     t = n / sr
     return int(32767 * 0.1 * (math.sin(2 * math.pi * 50 * t) + math.sin(2 * math.pi * 1000 * t)
                               + math.sin(2 * math.pi * 8000 * t)))
-with wave.open(f"{b}/sons.wav", "wb") as w:
+os.makedirs(f"{b}/base/midi", exist_ok=True)
+os.makedirs(f"{b}/base/audio", exist_ok=True)
+with wave.open(f"{b}/base/audio/sons.wav", "wb") as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
     w.writeframes(b"".join(struct.pack("<hh", x, x) for x in (v(n) for n in range(4 * sr))))
-os.makedirs(f"{b}/base/midi", exist_ok=True)
 corps = b"\x00\xff\x51\x03\x07\xa1\x20\x00\xff\x2f\x00"
 open(f"{b}/base/midi/arrangement.mid", "wb").write(b"MThd" + struct.pack(">IHHH", 6, 1, 1, 480)
                                                   + b"MTrk" + struct.pack(">I", len(corps)) + corps)
 json.dump({"format": "vsm-project", "version": 1, "title": "coupe", "midi": {"file": "midi/arrangement.mid"},
            "transport": {"tempoChanges": [{"bpm": 120.0, "tick": 0}], "ticksPerQuarterNote": 480,
                          "timeSignatures": [{"denominator": 4, "numerator": 4, "tick": 0}]},
-           "tracks": []}, open(f"{b}/base/project.json", "w"), indent=1)
+           "tracks": [{"kind": "audio", "name": "Sons", "channel": 0, "color": "#FF6B9BFF", "effects": [],
+                       "mix": {"muted": False, "pan": 0.0, "sends": [], "solo": False, "volume": 1.0},
+                       "audio": {"file": "audio/sons.wav", "sampleRate": sr, "frames": 4 * sr, "channels": 2},
+                       # UN CLIP POSÉ : une piste audio SANS clip joue tout son fichier (D2), mais la fin du morceau
+                       # (`lastSoundingTick`) l'ignore — le rendu s'arrêtait à 2 s (vu au deuxième essai, ROADMAP D593).
+                       "clips": [{"start": 0, "length": 3840, "sourceStart": 0, "sourceLength": 3840,
+                                  "color": "#FF6B9BFF"}]}]},
+          open(f"{b}/base/project.json", "w"), indent=1)
 PY
 
 avertis=0
@@ -102,9 +112,8 @@ rates=0
 verdict() { if [ "$2" = 1 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
 
 echo "=== D593 : le coupe-bas et le coupe-haut de la tranche ==="
-course import "$brouillon/base" VSM_DELAI=2500 VSM_IMPORT_AUDIO="$brouillon/sons.wav" VSM_GESTE_APRES="1500:enregistrer:$brouillon/base"
 if [ "$(champs "$brouillon/base")" != "0/0" ]; then
-    echo "  RATÉ l'import : le projet de départ n'a pas UNE piste éteinte ($(champs "$brouillon/base")) — rien d'autre n'est mesuré"
+    echo "  RATÉ le jeu : le projet de départ n'a pas UNE piste éteinte ($(champs "$brouillon/base")) — rien d'autre n'est mesuré"
     exit 1
 fi
 
@@ -128,12 +137,18 @@ echo "       coupe-haut 2 kHz : 50 Hz ${rh50:-?} dB, 1 kHz ${rh1k:-?} dB, 8 kHz 
 
 # (3) L'APPLICATION. Deux pistes pour la copie : la même piste audio, recopiée sous un autre nom.
 for x in a-bas a-temoin a-z a-dc a-zero a-en a-copie; do cp -r "$brouillon/base" "$brouillon/$x"; done
-python3 - "$brouillon/a-copie/project.json" <<'PY'
-import copy, json, sys
-d = json.load(open(sys.argv[1], encoding="utf-8"))
+python3 - "$brouillon/a-copie" <<'PY'
+import copy, json, struct, sys
+b = sys.argv[1]
+d = json.load(open(f"{b}/project.json", encoding="utf-8"))
 autre = copy.deepcopy(d["tracks"][0]); autre["name"] = "Copie"
 d["tracks"].append(autre)
-json.dump(d, open(sys.argv[1], "w", encoding="utf-8"), indent=1)
+json.dump(d, open(f"{b}/project.json", "w", encoding="utf-8"), indent=1)
+# Le MIDI porte autant de pistes que le projet : sinon « seules les pistes communes sont configurées » (vu au 2e essai).
+corps = b"\x00\xff\x2f\x00"
+tempo = b"\x00\xff\x51\x03\x07\xa1\x20" + corps
+open(f"{b}/midi/arrangement.mid", "wb").write(b"MThd" + struct.pack(">IHHH", 6, 1, 2, 480)
+    + b"MTrk" + struct.pack(">I", len(tempo)) + tempo + b"MTrk" + struct.pack(">I", len(corps)) + corps)
 PY
 POSER="900:valeur:mixeur.coupebas=200"
 course a-bas "$brouillon/a-bas" VSM_DELAI=3500 VSM_GESTE_APRES="$POSER;1300:enregistrer:$brouillon/a-bas;1700:exporter-audio:$brouillon/a-bas.wav"
@@ -161,9 +176,11 @@ verdict "(2) vsm-render, coupe-haut : −0,0 / −0,26 / −25,7 dB" \
     "$(pres "${rh50:-x}" 0 0.1 && pres "${rh1k:-x}" -0.26 0.1 && pres "${rh8k:-x}" -25.7 0.3 && echo 1 || echo 0)"
 verdict "(3) le curseur réglé : 200/0 enregistré" "$([ "$(champs "$brouillon/a-bas")" = "200/0" ] && echo 1 || echo 0)"
 verdict "(3) l'export de l'application : 50 Hz à −24,1 dB" "$(pres "${ab50:-x}" -24.1 0.3 && pres "${ab1k:-x}" 0 0.1 && echo 1 || echo 0)"
-verdict "(3) Ctrl+Z : éteint" "$([ "$(champs "$brouillon/a-z")" = "0/0" ] && grep -q "coupebas=200" "$brouillon/a-z.txt" && echo 1 || echo 0)"
-verdict "(3) le double-clic : éteint" "$([ "$(champs "$brouillon/a-dc")" = "0/0" ] && grep -q "coupebas=200" "$brouillon/a-dc.txt" && echo 1 || echo 0)"
-verdict "(3) la remise à zéro de la console : éteint" "$([ "$(champs "$brouillon/a-zero")" = "0/0" ] && grep -q "coupebas=200" "$brouillon/a-zero.txt" && echo 1 || echo 0)"
+# D145, D589 : un retour à « éteint » ne prouve rien sans la preuve, DANS LA MÊME COURSE, que le curseur avait été posé —
+# « coupebas=200 » seul se lit aussi au journal du témoin (« aucun curseur visible de ce nom ») : vu au témoin, 25/10.
+verdict "(3) Ctrl+Z : éteint" "$([ "$(champs "$brouillon/a-z")" = "0/0" ] && grep -q "coupebas=200 — Coupe-bas 200 Hz" "$brouillon/a-z.txt" && echo 1 || echo 0)"
+verdict "(3) le double-clic : éteint" "$([ "$(champs "$brouillon/a-dc")" = "0/0" ] && grep -q "coupebas=200 — Coupe-bas 200 Hz" "$brouillon/a-dc.txt" && echo 1 || echo 0)"
+verdict "(3) la remise à zéro de la console : éteint" "$([ "$(champs "$brouillon/a-zero")" = "0/0" ] && grep -q "coupebas=200 — Coupe-bas 200 Hz" "$brouillon/a-zero.txt" && echo 1 || echo 0)"
 verdict "(3) les réglages copiés : 200 sur les deux pistes" "$([ "$(champs "$brouillon/a-copie")" = "200/0 200/0" ] && echo 1 || echo 0)"
 verdict "(4) en anglais : « Low cut 200 Hz »" "$(printf '%s' "$en" | grep -q "Low cut 200 Hz" && echo 1 || echo 0)"
 [ "$avertis" -gt 0 ] && echo "       $avertis avertissement(s) de l'application (ci-dessus)"

@@ -106,7 +106,8 @@ echo "       posés depuis la liste : [$(types "$brouillon/pose")]"
 
 verdict "(4) vsm-render : plus de 20 dB sous le témoin" "$(python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) < -20 else 1)" "$er" 2>/dev/null && echo 1 || echo 0)"
 verdict "(4) l'application : plus de 20 dB sous le témoin" "$(python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) < -20 else 1)" "$ea" 2>/dev/null && echo 1 || echo 0)"
-verdict "(4) les deux chemins à 0,5 dB l'un de l'autre" "$(python3 -c "import sys; sys.exit(0 if abs(float(sys.argv[1]) - float(sys.argv[2])) <= 0.5 else 1)" "$er" "$ea" 2>/dev/null && echo 1 || echo 0)"
+# Deux zéros s'accordent aussi : l'accord ne compte que si l'expandeur a agi (le témoin le rendait vert, 25/10).
+verdict "(4) les deux chemins à 0,5 dB l'un de l'autre, l'expandeur ayant agi" "$(python3 -c "import sys; a, b = float(sys.argv[1]), float(sys.argv[2]); sys.exit(0 if abs(a - b) <= 0.5 and a < -20 else 1)" "$er" "$ea" 2>/dev/null && echo 1 || echo 0)"
 verdict "(4) posés depuis la liste : expander,deesser" "$([ "$(types "$brouillon/pose")" = "expander,deesser" ] && echo 1 || echo 0)"
 [ "$avertis" -gt 0 ] && echo "       $avertis avertissement(s) de l'application (ci-dessus)"
 

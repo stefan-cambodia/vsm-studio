@@ -46337,3 +46337,65 @@ suit tout le spectre — ou en dessinant l'automation à la main, syllabe par sy
   (3) les **empreintes** : seize inchangées, deux neuves ; (4) l'application : l'insert « Expander » posé sur une piste,
   son export moins fort que celui du témoin sur un passage faible (la mesure du son est (1) ; ici, qu'il soit bien ATTEINT
   par les deux chemins de rendu, D21).
+
+### Phases D592 à D596 — MESURÉES, la série à jouer (25/10/2026, 06 h 04 à l'horloge)
+
+*Les cinq chantiers écrits pendant la série de D588-D591 dans des arbres à part, chacun posé sur le précédent ; leurs
+tests du cœur, d'`interchange` et du moteur compilés et joués à basse priorité dans ces arbres pendant la série ; puis,
+la série finie (05 h 38), les six commits repris sur `master`, la compilation complète (`-j 6`, rien d'autre ne
+tournant, plancher de mémoire disponible 4 353 Mo), les suites, et les cinq bancs joués sur le binaire neuf PUIS sur le
+témoin (`build/temoin-D591` : l'application et le `vsm-render` de D591, copiés avant la compilation). La session était
+VERROUILLÉE et l'écran éteint (`LockedHint=yes`, `dpms off`) : les cinq bancs lisent des exports, des projets enregistrés,
+le journal et des listes de menus, pas des clics ; leurs photos ont été vérifiées pleines (146 à 199 Ko) avant d'être
+regardées.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D591) | tenu |
+|---|---|---|---|---|
+| D592.1 (1) | vers le haut : `64 67 72 / 67 76 84 / 64 67 71 72 / 74 65 69 / 48 / 118 122 125 / 5 9 14` ; 5 changés, 1 hors | l'export **identique** note pour note ; `VSM_DISPOSITION : Renverser vers le haut — 5 accord(s) changé(s), 1 hors de la tessiture, 0 trop peu de voix, 1 note(s) seule(s), 5 note(s) déplacée(s)` | l'entrée absente, le jeu inchangé | **oui** |
+| D592.1 (2) | vers le bas : `55 60 64 / 52 60 67 / 59 60 64 67 / 62 65 57 / 48 / 113 118 122 / 2 5 9` ; 5, 1 | identique ; 5 changés, 1 hors | rouge | **oui** |
+| D592.2 (3)-(5) | Drop 2, Drop 3 : les deux suites écrites, 5 et 1 ; Drop 2 et 4 : seul C (`48 55 64 71`), 1 changé, 5 trop peu de voix | identiques aux trois suites ; Drop 2 et 4 : **1** changé, **5** trop peu de voix, 2 notes déplacées | rouge | **oui** |
+| D592 (6)-(8) | Ctrl+Z après 5 changés dans la même course → le jeu ; en anglais, 5 entrées ; le témoin sans geste | le jeu d'origine, la ligne des 5 changés dans la même course ; **5** entrées *Edit > Pitch > Chord voicing* ; 20 notes | rouge 7 / 8 (le contrôle (8) est le jeu lui-même) | **oui** |
+| D593 (1) | le moteur : 50 Hz −24,10, 200 Hz −3,01, 1 kHz −0,007 (coupe-bas 200) ; 8 kHz −25,69, 2 kHz −3,01, 1 kHz −0,26 (coupe-haut 2 k) ; éteint au bit près | **−24,102 / −3,010 / −0,0069** et **−25,692 / −3,010 / −0,259** dB ; éteint au bit près ; dans le GRAPHE (une piste audio, le chemin réel) : **−24,102** dB sous le témoin du même code | — | **oui** |
+| D593 (2) | `vsm-render` : coupe-bas −24,1 / −0,0 / −0,0 ; coupe-haut −0,0 / −0,26 / −25,7 ; le témoin rendu par D591 identique | **−24,101 / −0,007 / −0,000** et **−0,000 / −0,259 / −25,692** dB ; le rendu du projet sans filtre **identique à l'octet** entre D591 et le binaire neuf | le `vsm-render` de D591 : 0,000 dB partout (le champ ignoré) | **oui** |
+| D593 (3)-(4) | le curseur à 200 → `lowCutHz` 200 ; l'export de l'application 50 Hz à −24,1 ; Ctrl+Z, double-clic, remise à zéro → éteint ; copie → les deux pistes ; *Low cut 200 Hz* | « Coupe-bas 200 Hz » au journal, **200/0** enregistré ; export (44,1 kHz) **−24,101 / −0,007 / −0,000** dB ; éteint **3 / 3** ; copie **200/0 200/0** (`VSM_TRANCHE : … coupe-bas 200 Hz …`) ; *Low cut 200 Hz* | rouge **9 / 9** (« aucun curseur visible de ce nom ») | **oui** |
+| D594 (1)-(6) | « Macro 1 », 3 commandes ; rejouée = les trois commandes à la main, `53 61 68 / … / 3 6 10` ; un Ctrl+Z → la transposition seule, deux → le jeu ; pas grisé → arrêtée au pas 1 ; à vide → rien ; *Start recording* | `VSM_MACRO : « Macro 1 » rangée, 3 commande(s)` (pas 100020, 100030, 100582) ; main et rejeu **identiques** à l'attendu ; un Ctrl+Z `61 65 68 / …`, deux le jeu ; « arrêtée au pas 1 sur 1 : « Drop 2 » est grisée », l'export inchangé ; « rien de rangé » ; 1 entrée en anglais | rouge 8 / 9 | **oui** |
+| D595 (1) | `ticksToSeconds(2400)` 3,0 / 2,5 s ; `secondsToTicks(3,0)` fixe 2 880 ; la carte intacte | tenu au test du cœur (3,0 ; 2,5 ; 2 880 ; 2 changements gardés ; éteint, 3,0 et 2 400) ; une carte SMPTE n'est pas touchée | — | **oui** |
+| D595 (2) | `vsm-render` : 360 000 trames sur la carte, 276 000 au tempo fixe | **360 000** et **276 000**, au tick près | **360 000** et **360 000** (`fixedTempo` ignoré) | **oui** |
+| D595 (3) | coché → 120 ; l'export de l'application dure ce que dure celui de `vsm-render` ; décoché, Ctrl+Z → absent ; réglé à 90 ; la tête à 2 400 → 60 | **120/2**, **absent/2** (allumé puis éteint dans la course), **absent/2**, **90/2**, **60/2** (`VSM_TETE : tick 2400` avant comme après) ; l'export de l'application : **voir ci-dessous** | rouge 8 / 9 | **oui, l'export par un contrôle corrigé après la mesure** |
+| D595 (4) | *Transport > Fixed tempo (tempo track ignored)* ; la barre photographiée | 1 entrée ; la barre : « **120.0 BPM fixe** », regardée | — | **oui** |
+| D596 (1)-(2) | expandeur : −30 inchangé, −50 → −60, −70 → −100, plage −20 → −90 ; de-esser : 300 Hz au bit près, 8 kHz −12 dB, sans borne −12,9 | **−30,000** (au bit près sur la seconde mesurée), **−60,002**, **−100,002**, **−89,995** ; **−10,000** au bit près, **−22,000**, **−22,918** dBFS | — | **oui** |
+| D596 (3)-(4) | seize empreintes inchangées, deux neuves ; l'expandeur plus de 20 dB sous le témoin par les deux chemins, à 0,5 dB l'un de l'autre ; posés depuis la liste | les seize lignes de `effect_fingerprints.inc` régénérées **identiques au chiffre près**, deux ajoutées ; **−24,05** (`vsm-render`) et **−24,04** dB (l'application) ; `expander,deesser` | rouge **4 / 4** (« effet « expander » inconnu, non appliqué ») | **oui** |
+| — | les suites | cœur **559 / 559**, interchange **361 / 361**, moteur **1 369 / 1 369**, clap 25, panels 11 ; gardes **16** vertes ; aucun fichier Python touché | — | **oui** |
+| — | la série | `./verifier.sh --bancs`, **195** bancs (les cinq neufs compris) — **à jouer**, l'écran allumé | — | **à jouer** |
+
+**CE QUE LA MESURE A TRANCHÉ, ÉCRIT ICI.**
+- **D595 : l'attendu de l'export comparait deux règles de fin, et c'est lui qui était faux.** L'export de l'application a
+  duré **352 800** trames sur la carte et **264 600** au tempo fixe : il est à **44,1 kHz** et s'arrête à la FIN DE LA
+  MESURE (tick 3 840) plus 2 s — 8,0 s et 6,0 s —, quand `vsm-render` (48 kHz) s'arrête à la fin de la dernière note
+  (tick 3 600) plus 2 s — 7,5 s et 5,75 s. Le tempo fixe y fait ce qu'il doit : la fin de mesure passe de 6,0 s (carte) à
+  4,0 s (fixe à 120), l'export raccourcit de **2,0 s** exactement. Le contrôle du banc juge désormais cela, et son en-tête
+  dit qu'il a été CORRIGÉ APRÈS LA MESURE (05 h 54) et pourquoi ; le binaire de D591 rend 352 800 trames sur la carte,
+  comme le neuf. Que les deux chemins ne s'arrêtent pas au même instant est antérieur à D595 et n'en dépend pas.
+- **Quatre contrôles passaient sur le témoin, et ne prouvaient donc rien** — la leçon de D145 et de D589, repayée dans
+  trois bancs neufs : « Ctrl+Z / double-clic / remise à zéro → éteint » (le journal du témoin contient aussi
+  « coupebas=200 », suivi de « aucun curseur visible de ce nom »), « deux Ctrl+Z → le jeu d'origine » (sans macro, le jeu
+  ne bouge pas), « décoché → absent » (jamais coché), « les deux chemins à 0,5 dB » (deux zéros s'accordent). Chacun exige
+  désormais, dans la MÊME course, la preuve que le geste a agi ; rejoués, les témoins tombent à 7/8, 9/9, 8/9, 8/9 et 4/4,
+  le binaire neuf reste vert partout.
+- **D593 : deux fautes du banc, pas du code, vues aux deux premiers essais.** (a) Importé dans un projet VIDE, le fichier
+  arrivait sur une SECONDE piste — le projet vide en reçoit une de démarrage — et le premier curseur « mixeur.coupebas »
+  était celui de la piste vide : le banc écrit désormais un projet d'une seule piste audio. (b) Écrite sans clip, cette
+  piste joue tout son fichier (D2), mais **la fin du morceau l'ignore** : `Project::lastSoundingTick` ne compte, pour une
+  piste sans clip, que ses notes et ses contrôleurs — le rendu hors-ligne s'est arrêté à **2 s** (96 000 trames) sur un
+  fichier de 4 s. **C'est un défaut, et il est antérieur** : toute piste audio sans clip (une reconstruction en écrit-elle ?
+  à vérifier) est tronquée à la fin de son MIDI, sans un mot. Le banc pose un clip ; le défaut est remis à D597, qui le
+  mesurera seul — il change la DURÉE des rendus, donc des distances, et ne se mêle pas à une autre phase.
+- **D596 : l'expandeur part fermé.** Le premier essai du test a vu le sinus de −30 dBFS sortir à −30,000 mais PAS au bit
+  près : à l'attaque, l'enveloppe part de zéro (le silence d'avant est sous le seuil) et l'expandeur s'ouvre en 1 ms. C'est
+  son comportement. Ce qui ne l'était pas : le gain qui revenait vers 0 dB sans jamais l'atteindre en flottant ; il se
+  POSE désormais sur sa cible à 10⁻⁴ dB près, et la seconde mesurée sort au bit près. Le test lit cette seconde-là.
+- **La tranche, regardée** (`coupe-bas-haut`, 1 600 × 1 000) : « Trim 0.0 dB », « Coupe-bas 200 Hz », « Coupe-haut
+  éteint » en mots entiers, sous le trim, dans l'ordre du signal ; en anglais « Low cut 200 Hz », « High cut off ». Les
+  deux rangées prennent 2 × 18 px (à 100 %) à la course du fader, déjà courte à cette hauteur de fenêtre.
+- **Les heures** : deux heures de titre écrites de tête (D593, D594) et une troisième dans la correction de D594 ont été
+  relues à l'horloge et corrigées dans des commits à part ; celles de cette section sont lues à `date`.

@@ -133,8 +133,11 @@ verdict "(1) rangée : « Macro 1 », 3 commandes, au menu" \
 verdict "(2) les trois commandes à la main : l'attendu de D592 monté d'un demi-ton" "$(egal main "$ATTENDU")"
 verdict "(2) la macro rejouée : le même export, note pour note" \
     "$(( $(egal rejeu "$ATTENDU") * $(grep -q "rejou.*3 commande" "$brouillon/rejeu.txt" && echo 1 || echo 0) ))"
-verdict "(3) un Ctrl+Z : la transposition seule" "$(egal annule1 "$PLUS1")"
-verdict "(3) deux Ctrl+Z : le jeu d'origine" "$(egal annule2 "$ORIGINE")"
+# D589 : un retour au jeu d'origine ne prouve rien sans la preuve, dans LA MÊME course, que la macro a joué — le témoin
+# (le binaire d'avant, sans macros) rendait « deux Ctrl+Z : le jeu d'origine » vert (25/10).
+joue() { grep -q "rejou.*3 commande" "$brouillon/$1.txt" && echo 1 || echo 0; }
+verdict "(3) un Ctrl+Z : la transposition seule" "$(( $(egal annule1 "$PLUS1") * $(joue annule1) ))"
+verdict "(3) deux Ctrl+Z : le jeu d'origine" "$(( $(egal annule2 "$ORIGINE") * $(joue annule2) ))"
 verdict "(4) un pas grisé : arrêtée au pas 1, l'export inchangé" \
     "$(( $(egal grise "$ORIGINE") * $(grep -q "arr.t.e au pas 1 sur 1" "$brouillon/grise.txt" && echo 1 || echo 0) ))"
 verdict "(5) arrêtée à vide : rien de rangé, dit" \

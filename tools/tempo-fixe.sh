@@ -10,6 +10,11 @@
 #       (3,75 s + 2) — seul le champ `fixedTempo` change entre les deux projets ;
 #   (3) l'application, la tête à 0 : « Tempo fixe » coché → project.json porte 120, et son export dure ce que dure celui
 #       de vsm-render (à un bloc près, 512 trames) ; décoché → le champ absent, la carte intacte (deux changements) ;
+#       CORRIGÉ APRÈS LA MESURE (25/10, 05 h 54), ET DIT : l'export de l'application ne finit pas où finit celui de
+#       vsm-render — il s'arrête à la FIN DE LA MESURE (tick 3 840) plus 2 s, à 44,1 kHz (352 800 trames sur la carte,
+#       8,0 s, le binaire de D591 compris), quand vsm-render s'arrête à la fin de la dernière note : l'attendu comparait
+#       deux règles de fin. Le contrôle juge désormais ce que le tempo fixe CHANGE dans l'export de l'application : la
+#       fin de mesure passe de 6,0 s (carte) à 4,0 s (fixe à 120) — l'export raccourcit de 2,0 s, à un bloc près ;
 #       Ctrl+Z → absent ; « Régler le tempo fixe… » à 90 → 90 ; la tête au tick 2 400 (mes. 2, temps 2) → 60 ;
 #   (4) en anglais, Transport > Fixed tempo (tempo track ignored).
 #
@@ -123,9 +128,19 @@ proche() { python3 -c "import sys; sys.exit(0 if abs(int(sys.argv[1]) - int(sys.
 verdict "(2) vsm-render : 360 000 trames sur la carte" "$([ "$rc" = 360000 ] && echo 1 || echo 0)"
 verdict "(2) vsm-render : 276 000 trames au tempo fixe" "$([ "$rf" = 276000 ] && echo 1 || echo 0)"
 verdict "(3) coché : 120 enregistré, la carte intacte" "$([ "$(fixe "$brouillon/a-fixe")" = "120/2" ] && echo 1 || echo 0)"
-verdict "(3) l'export de l'application : la durée de vsm-render, à un bloc près" \
-    "$(proche "${af:-0}" 276000 512 && proche "${ac:-0}" 360000 512 && echo 1 || echo 0)"
-verdict "(3) décoché : absent, la carte intacte" "$([ "$(fixe "$brouillon/a-off")" = "absent/2" ] && echo 1 || echo 0)"
+verdict "(3) l'export de l'application : 2,0 s plus court au tempo fixe, à un bloc près (corrigé après la mesure)" \
+    "$("$PY" -c "
+import sys
+import soundfile as sf
+try:
+    c, f = sf.info(sys.argv[1]), sf.info(sys.argv[2])
+    sys.exit(0 if c.samplerate == f.samplerate and abs((c.frames - f.frames) - 2 * c.samplerate) <= 512 else 1)
+except Exception:
+    sys.exit(1)" "$brouillon/a-carte.wav" "$brouillon/a-fixe.wav" && echo 1 || echo 0)"
+# D589 : « absent » ne prouve rien sans l'allumage dans la même course — le témoin le rendait vert (25/10).
+verdict "(3) décoché : absent, la carte intacte" \
+    "$([ "$(fixe "$brouillon/a-off")" = "absent/2" ] && grep -q "^VSM_TEMPO_FIXE : allum" "$brouillon/a-off.txt" \
+        && grep -q "^VSM_TEMPO_FIXE : .teint" "$brouillon/a-off.txt" && echo 1 || echo 0)"
 verdict "(3) Ctrl+Z : absent" "$([ "$(fixe "$brouillon/a-z")" = "absent/2" ] && grep -q "^VSM_TEMPO_FIXE : allum" "$brouillon/a-z.txt" && echo 1 || echo 0)"
 verdict "(3) réglé à 90" "$([ "$(fixe "$brouillon/a-regle")" = "90/2" ] && echo 1 || echo 0)"
 verdict "(3) la tête au tick 2 400 : 60" "$([ "$(fixe "$brouillon/a-tete")" = "60/2" ] && echo 1 || echo 0)"
