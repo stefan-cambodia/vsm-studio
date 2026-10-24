@@ -1494,6 +1494,9 @@ private:
         kMenuEditMacroLast = kMenuEditMacroFirst + 31,
         kMenuEditMacroRemoveFirst,
         kMenuEditMacroRemoveLast = kMenuEditMacroRemoveFirst + 31,
+        /// D595 : le tempo fixe, et le régler.
+        kMenuTransportFixedTempo,
+        kMenuTransportFixedTempoSet,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2071,6 +2074,11 @@ private:
     /// est l'IDENTIFIANT de l'entrée (son libellé change de langue et porte des comptes) ; son libellé du moment est
     /// gardé à côté, pour le dire.
     std::unique_ptr<juce::XmlElement> lireMacros() const;
+    /// D595 : LE TEMPO FIXE — l'allumer (au tempo de la tête), l'éteindre, le régler ; `poserTempoFixe` applique et dit,
+    /// la tête gardée à sa position MUSICALE (son tick), pas à sa seconde.
+    void basculerTempoFixe();
+    void reglerTempoFixe();
+    void poserTempoFixe(bool fixe, double bpm, const juce::String& geste);
     void commencerMacro();
     void arreterMacro();
     void rejouerMacro(int rang);

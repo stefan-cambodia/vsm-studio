@@ -87,6 +87,11 @@ struct ProjectTransport {
     /// lecture, il est ÉCARTÉ, et `diapasonEcarte` dit ce qu'on a lu.
     double referenceA4Hz = 440.0;
     std::string diapasonEcarte;
+    /// D595 : le tempo fixe ; écrit SEULEMENT allumé (`fixedTempo` : { "bpm": … }). Hors de 20-300 BPM à la lecture,
+    /// il est ÉCARTÉ (éteint), et `tempoFixeEcarte` dit ce qu'on a lu.
+    bool fixedTempo = false;
+    double fixedTempoBpm = 120.0;
+    std::string tempoFixeEcarte;
     /// RÉGION DE PUNCH (D3.5) : entre ces deux ticks, et seulement là,
     /// l'enregistrement capte. Champ FACULTATIF -- un projet qui n'en déclare
     /// pas garde exactement le fichier qu'il avait.

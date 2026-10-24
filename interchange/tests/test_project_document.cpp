@@ -1595,6 +1595,42 @@ VSM_TEST(low_and_high_cuts_survive_the_round_trip_are_absent_when_off_and_clampe
     VSM_ASSERT_EQ(reserves.warnings.size(), size_t(2));
 }
 
+// D595 — LE TEMPO FIXE DANS LE FICHIER : l'aller-retour jusqu'au projet, ABSENT quand il est éteint, et une valeur hors
+// de 20-300 BPM écartée AVEC une réserve.
+VSM_TEST(the_fixed_tempo_survives_the_round_trip_is_absent_when_off_and_out_of_range_is_said) {
+    vsm::sequencer::Project projet = buildProject();
+    projet.fixedTempo = true;
+    projet.fixedTempoBpm = 90.0;
+    const std::string texte = projectDocumentToJson(documentFromProject(projet)).toString();
+    VSM_ASSERT(texte.find("\"fixedTempo\"") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    vsm::sequencer::Project retour = buildProject();
+    const ImportReport bilan = applyDocumentToProject(relu.document, retour);
+    VSM_ASSERT(retour.fixedTempo);
+    VSM_ASSERT_NEAR(retour.fixedTempoBpm, 90.0, 1e-9);
+    VSM_ASSERT_EQ(retour.tempoMap.changes().size(), projet.tempoMap.changes().size());   // la carte voyage intacte
+    for (const auto& w : bilan.warnings) VSM_ASSERT(w.find("tempo fixe") == std::string::npos);
+
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(buildProject())).toString().find("fixedTempo")
+               == std::string::npos);
+
+    // Le « 90 » qui suit la clé, quelle que soit la mise en page du texte.
+    std::string fautif = texte;
+    const size_t cle = fautif.find("\"fixedTempo\"");
+    const size_t valeur = fautif.find("90", cle);
+    VSM_ASSERT(cle != std::string::npos && valeur != std::string::npos);
+    fautif.replace(valeur, 2, "900");
+    const ProjectLoadResult horsBornes = parseProjectDocument(fautif);
+    VSM_ASSERT(horsBornes.success);
+    vsm::sequencer::Project ecarte = buildProject();
+    const ImportReport reserve = applyDocumentToProject(horsBornes.document, ecarte);
+    VSM_ASSERT(!ecarte.fixedTempo);
+    bool dit = false;
+    for (const auto& w : reserve.warnings) dit = dit || w.find("tempo fixe") != std::string::npos;
+    VSM_ASSERT(dit);
+}
+
 VSM_TEST(a_project_that_uses_none_of_them_keeps_the_file_it_had) {
     // Le texte ne doit contenir AUCUNE des trois clés : un projet d'avant D30
     // se relit et se réécrit octet pour octet.

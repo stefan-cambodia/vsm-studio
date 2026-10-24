@@ -246,7 +246,7 @@ MainComponent::MainComponent()
     tempoLane_.onTempoEdited = [this] {
         refreshTransportSchedule();
         audioEngine_.processGraph().setProject(project_);
-        transportBar_.setBpm(project_.tempoMap.bpmAt(0));
+        transportBar_.setBpm(project_.bpmAt(0));   // D595 : le tempo fixe reste affiché sous une carte éditée
         pianoRollPanel_.refresh();
     };
     // D73 : LES NOMS FRANÇAIS SONT GARDÉS À PART. Un onglet posé porte son
@@ -1234,6 +1234,9 @@ MainComponent::MainComponent()
     transportBar_.onTempoChanged = [this](double bpm) {
         // LE TEMPO EST UNE DONNÉE DU PROJET, et le changer est une action
         // annulable comme les autres.
+        // D595 : TEMPO FIXE ALLUMÉ, LA CASE RÈGLE LE TEMPO FIXE — comme le champ du transport de Cubase : la carte, qu'on
+        // n'entend pas, ne bouge pas sous un geste dont on n'entendrait pas l'effet.
+        if (project_.tempoFixeActif()) { poserTempoFixe(true, bpm, juce::String::fromUTF8(u8"Tempo fixe")); return; }
         beginProjectEdit("Tempo");
         // SEUL LE TEMPO DE DÉPART CHANGE : la carte dessinée dans l'onglet
         // Tempo reste. La première version effaçait toute la carte, ce qui
@@ -4253,7 +4256,7 @@ void MainComponent::timerCallback() {
             } else {
                 const double restant = punchSeconds_ - horlogeAudio;
                 const double parTemps =
-                    60.0 / std::max(1.0, project_.tempoMap.bpmAt(punchTick_));
+                    60.0 / std::max(1.0, project_.bpmAt(punchTick_));   // D595 : le tempo qu'on entend
                 transportBar_.setCountIn(std::max(1, static_cast<int>(std::ceil(restant / parTemps))));
             }
         }
@@ -5613,6 +5616,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 }
                 menu.addSubMenu(tr(u8"Tête au repère"), aller, !reperes.empty());
             }
+            // D595 : LE TEMPO FIXE (*Tempo Track / Fixed*) — grisé sur une carte SMPTE, qui n'a pas de tempo.
+            menu.addSeparator();
+            menu.addItem(kMenuTransportFixedTempo, tr(u8"Tempo fixe (la carte de tempo ignorée)"),
+                         !project_.tempoMap.isSmpte(), project_.fixedTempo);
+            menu.addItem(kMenuTransportFixedTempoSet, tr(u8"Régler le tempo fixe…"), !project_.tempoMap.isSmpte());
             // D578.1, D578.2 : LE PRÉ-ROLL ET LE POST-ROLL — des préférences du poste ; des libellés uniques dans toute la
             // barre (`VSM_MENU` prend le premier exact), et ce que chacun ne touche pas, dit dans une ligne grisée.
             {
@@ -6301,6 +6309,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         retirerMacro(menuItemID - kMenuEditMacroRemoveFirst);
         return;
     }
+    if (menuItemID == kMenuTransportFixedTempo) { basculerTempoFixe(); return; }   // D595
+    if (menuItemID == kMenuTransportFixedTempoSet) { reglerTempoFixe(); return; }
     if (macroEnregistre_ && !macroEnRejeu_) {
         int menu = 0;
         bool active = false;
@@ -18213,6 +18223,64 @@ void MainComponent::choisirCouleurDeRepere(size_t index) {
                                            arrangement_.getScreenBounds().withSize(1, 1).translated(120, 20), nullptr);
 }
 
+void MainComponent::poserTempoFixe(bool fixe, double bpm, const juce::String& geste) {
+    // D595 : LA TÊTE GARDE SA POSITION MUSICALE. Elle est en secondes dans le moteur ; changer la conversion la ferait
+    // sauter d'une mesure à l'autre — on relève son tick AVANT, et on l'y repose APRÈS.
+    const auto tete = project_.secondsToTicks(std::max(0.0, audioEngine_.processGraph().currentSeconds()));
+    if (fixe == project_.fixedTempo && (!fixe || bpm == project_.fixedTempoBpm)) return;
+    beginProjectEdit(geste);
+    project_.fixedTempo = fixe;
+    if (fixe) project_.fixedTempoBpm = bpm;
+    tempoLane_.refresh();
+    refreshTransportSchedule();
+    audioEngine_.processGraph().setProject(project_);
+    seekAllViews(tete);
+    transportBar_.setTempoFixe(project_.tempoFixeActif());
+    transportBar_.setBpm(project_.bpmAt(tete));
+    pianoRollPanel_.refresh();
+    menuItemsChanged();
+    const juce::String dit = fixe ? tr(u8"Tempo fixe : %1 BPM, la carte de tempo ignorée").replace("%1", juce::String(bpm, 2))
+                                  : tr(u8"Tempo fixe éteint : la carte de tempo joue de nouveau");
+    std::fputs(("VSM_TEMPO_FIXE : " + (fixe ? "allum\xc3\xa9 \xc3\xa0 " + juce::String(bpm, 2).toStdString() + " BPM"
+                                            : std::string("\xc3\xa9teint"))
+                + ", t\xc3\xaate au tick " + std::to_string(tete) + "\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(dit);
+}
+
+void MainComponent::basculerTempoFixe() {
+    if (project_.tempoMap.isSmpte()) return;
+    // ALLUMER PREND LE TEMPO DE LA TÊTE — celui de la CARTE à sa position, qu'on entendait juste avant.
+    const auto tete = project_.secondsToTicks(std::max(0.0, audioEngine_.processGraph().currentSeconds()));
+    poserTempoFixe(!project_.fixedTempo, project_.tempoMap.bpmAt(tete), juce::String::fromUTF8(u8"Tempo fixe"));
+}
+
+void MainComponent::reglerTempoFixe() {
+    if (project_.tempoMap.isSmpte()) return;
+    const juce::String titre = tr(u8"Régler le tempo fixe");
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        titre, tr(u8"Le morceau joue à ce tempo, la carte de tempo ignorée (elle reste, et revient quand on éteint le tempo fixe)."),
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("bpm", juce::String(project_.fixedTempo ? project_.fixedTempoBpm
+                                                                   : project_.tempoMap.bpmAt(0), 2),
+                           tr(u8"Tempo (de 20 à 300 BPM) :"));
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, titre](int resultat) {
+        const juce::String tape = fenetre->getTextEditorContents("bpm").trim();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        const double bpm = vsm::app::ui::lireNombreSaisi(tape);   // D445 : la virgule acceptée
+        if (!std::isfinite(bpm) || bpm < 20.0 || bpm > 300.0) {
+            std::fputs(("VSM_TEMPO_FIXE : refus\xc3\xa9, \xc2\xab " + tape.toStdString() + " \xc2\xbb hors de 20 \xc3\xa0 300 BPM\n").c_str(), stderr);
+            montrerBoite(juce::AlertWindow::InfoIcon, titre,
+                         tr(u8"« %1 » n'est pas un tempo de 20 à 300 BPM : rien n'a changé.").replace("%1", tape));
+            return;
+        }
+        poserTempoFixe(true, bpm, juce::String::fromUTF8(u8"Tempo fixe"));
+    });
+}
+
 std::unique_ptr<juce::XmlElement> MainComponent::lireMacros() const {
     if (auto xml = vsm::app::ui::UiScale::properties().getXmlValue("macros"))
         if (xml->hasTagName("MACROS")) return xml;
@@ -19098,7 +19166,8 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     pianoRoll_.setActiveTrackIndex(regardee);
     eventList_.setActiveTrack(static_cast<int>(regardee));   // D32.2
     trackList_.selectTrackIndex(regardee);
-    transportBar_.setBpm(project_.tempoMap.bpmAt(0));
+    transportBar_.setTempoFixe(project_.tempoFixeActif());   // D595 : avant le tempo, qui écrit « fixe »
+    transportBar_.setBpm(project_.bpmAt(0));
     transportBar_.setTimeSignature(project_.timeSignatureMap.numeratorAt(0),
                                     static_cast<int>(project_.timeSignatureMap.denominatorAt(0)));
 

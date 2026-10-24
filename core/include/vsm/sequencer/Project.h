@@ -162,6 +162,9 @@ public:
     /// celui qu'on enregistre, pas sur la reconstruction qu'on écoute). Le rendu
     /// hors ligne ne le lit pas : un export ne clique jamais.
     bool metronomeEnabled = false;
+    /// D595 : le tempo fixe, et sa valeur (écrits dans project.json seulement allumé).
+    bool fixedTempo = false;
+    double fixedTempoBpm = 120.0;
     /// H42 : LE DIAPASON — la fréquence du la4, en hertz. Une donnée de morceau :
     /// un enregistrement accordé à 442 se rejoue à 442. Le graphe la pose sur le
     /// moteur (`vsm::audio::plugin::setDiapason`) par les deux chemins de rendu.
@@ -256,8 +259,24 @@ public:
     /// bornes rend le projet sans piste.
     Project extractTrack(size_t index) const;
 
-    double ticksToSeconds(midi::Tick tick) const { return tempoMap.ticksToSeconds(tick, ticksPerQuarterNote); }
-    midi::Tick secondsToTicks(double seconds) const { return tempoMap.secondsToTicks(seconds, ticksPerQuarterNote); }
+    /// D595 : LE TEMPO FIXE (*Tempo Track / Fixed* de Cubase) — la carte ignorée le temps qu'on l'allume, le morceau joué
+    /// à `fixedTempoBpm`. La carte n'est pas touchée : éteint, tout revient. Une carte SMPTE n'a pas de tempo, et le
+    /// tempo fixe n'y joue pas.
+    bool tempoFixeActif() const { return fixedTempo && fixedTempoBpm > 0.0 && !tempoMap.isSmpte(); }
+    double ticksToSeconds(midi::Tick tick) const {
+        if (tempoFixeActif())
+            return static_cast<double>(tick) * 60.0 / (fixedTempoBpm * static_cast<double>(ticksPerQuarterNote));
+        return tempoMap.ticksToSeconds(tick, ticksPerQuarterNote);
+    }
+    midi::Tick secondsToTicks(double seconds) const {
+        if (tempoFixeActif())
+            // L'arrondi de la carte (`TempoMap::secondsToTicks` : `llround`), pour qu'un aller-retour retombe au tick.
+            return static_cast<midi::Tick>(std::llround(seconds * fixedTempoBpm * static_cast<double>(ticksPerQuarterNote) / 60.0));
+        return tempoMap.secondsToTicks(seconds, ticksPerQuarterNote);
+    }
+    /// D595 : le tempo QU'ON ENTEND au tick — celui de la carte, ou le tempo fixe. Les lectures du tempo qui touchent au
+    /// temps joué (décompte, transport des machines, punch) passent par ici, pas par `tempoMap.bpmAt`.
+    double bpmAt(midi::Tick tick) const { return tempoFixeActif() ? fixedTempoBpm : tempoMap.bpmAt(tick); }
 
     /// Dernier tick utilisé par une note ou un événement de contrôle, tous
     /// pistes confondues (0 si le projet est vide). Utile pour la longueur

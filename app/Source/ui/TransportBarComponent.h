@@ -36,6 +36,9 @@ public:
     void direLesRangees();
 
     void setBpm(double bpm);
+    /// D595 : le tempo affiché est FIXE (la carte ignorée) — la case le dit, et son infobulle.
+    void setTempoFixe(bool fixe) { tempoFixe_ = fixe; setBpm(bpm_); poserInfobulleTempo(); }
+    bool tempoFixe() const { return tempoFixe_; }
     void setTimeSignature(int numerator, int denominator);
     void setCpuUsage(float percent);      // câblé sur AudioEngine en Phase 2
     /// D41.3 : le nombre de décrochages (-1 = le pilote ne sait pas le dire).
@@ -222,5 +225,6 @@ private:
     float dernierCpu_ = 0.0f;
 
     double bpm_ = 120.0;
+    bool tempoFixe_ = false;   ///< D595
     int tsNumerator_ = 4, tsDenominator_ = 4;
 };

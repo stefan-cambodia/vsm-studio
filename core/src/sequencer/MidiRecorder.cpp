@@ -362,7 +362,7 @@ double countInSeconds(const Project& project, midi::Tick punchTick, int bars) {
     const midi::Tick debut = punchTick - parMesure * bars;
     if (debut >= 0) return project.ticksToSeconds(punchTick) - project.ticksToSeconds(debut);
     // Avant zéro, au tempo du début : la carte n'a rien là, le décompte si.
-    const double bpm = project.tempoMap.bpmAt(0);
+    const double bpm = project.bpmAt(0);   // D595 : le tempo fixe, s'il est allumé
     if (bpm <= 0.0) return 0.0;
     const double parTick = 60.0 / (bpm * static_cast<double>(project.ticksPerQuarterNote));
     return project.ticksToSeconds(std::max<midi::Tick>(punchTick, 0))

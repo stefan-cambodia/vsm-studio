@@ -1240,7 +1240,7 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
             const int64_t finTick = projet.secondsToTicks(finSecondes);
             // Avant zéro, au tempo du début, comme la durée du décompte
             // (`countInSeconds`) : la carte du tempo rend 0 pour tout tick négatif.
-            const double bpmDuDebut = projet.tempoMap.bpmAt(0);
+            const double bpmDuDebut = projet.bpmAt(0);   // D595 : le tempo qu'on entend, fixe compris
             const auto secondesDuTemps = [&](int64_t tick) {
                 if (tick >= 0 || projet.tempoMap.isSmpte() || bpmDuDebut <= 0.0) return projet.ticksToSeconds(tick);
                 return static_cast<double>(tick) * 60.0 / (bpmDuDebut * static_cast<double>(projet.ticksPerQuarterNote));
@@ -1484,7 +1484,7 @@ vsm::audio::plugin::TransportInfo ProcessGraph::transportFor(const Project& proj
     transport.positionSeconds = seconds;
 
     const Tick tick = project.secondsToTicks(seconds);
-    transport.tempoBpm = project.tempoMap.bpmAt(tick);
+    transport.tempoBpm = project.bpmAt(tick);   // D595 : le tempo fixe, s'il est allumé
     transport.timeSignatureNumerator = project.timeSignatureMap.numeratorAt(tick);
     transport.timeSignatureDenominator =
         static_cast<int>(project.timeSignatureMap.denominatorAt(tick));

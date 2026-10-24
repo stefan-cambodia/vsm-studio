@@ -448,7 +448,9 @@ void TransportBarComponent::setListening(const juce::String& label, bool enabled
 void TransportBarComponent::setBpm(double bpm) {
     bpm_ = bpm;
     dernierBpm_ = bpm;
-    bpmLabel_.setText(juce::String(bpm, 1) + " BPM", juce::dontSendNotification);
+    // D595 : « fixe » dans la case quand la carte est ignorée — un tempo qui ne suit plus la carte doit se voir.
+    bpmLabel_.setText(juce::String(bpm, 1) + " BPM" + (tempoFixe_ ? " " + vsm::app::ui::tr(u8"fixe") : juce::String()),
+                      juce::dontSendNotification);
 }
 
 void TransportBarComponent::setTimeSignature(int numerator, int denominator) {
@@ -670,7 +672,9 @@ void TransportBarComponent::poserInfobulleRec(std::function<juce::String()> fabr
 void TransportBarComponent::poserInfobulleTempo() {
     // D444 : la plage, et le dernier refus s'il y en a un.
     using vsm::app::ui::tr;
-    const juce::String base = tr(u8"Double-cliquer pour changer le tempo (de 20 à 300 BPM).");
+    const juce::String base = tr(u8"Double-cliquer pour changer le tempo (de 20 à 300 BPM).")
+                              + (tempoFixe_ ? " " + tr(u8"Tempo fixe : la carte de tempo est ignorée (Transport ▸ Tempo fixe).")
+                                            : juce::String());
     bpmLabel_.setTooltip(refusTempo_.isEmpty()
                              ? base
                              : tr(u8"Tempo refusé : %1 — de 20 à 300 BPM.").replace("%1", refusTempo_) + " " + base);

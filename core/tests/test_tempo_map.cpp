@@ -1,6 +1,7 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/TempoMap.h"
 #include "vsm/sequencer/TimeSignatureMap.h"
+#include "vsm/sequencer/Project.h"   // D595 : le tempo fixe est une donnée du projet
 #include <cmath>
 #include <cstdlib>
 
@@ -244,4 +245,31 @@ VSM_TEST(tapped_tempo_starts_at_the_second_tap_then_averages_the_last_eight_inte
     for (int i = 0; i < 2; ++i) t.push_back(t.back() + 0.6);
     for (int i = 0; i < 8; ++i) t.push_back(t.back() + 0.4);
     VSM_ASSERT_NEAR(tappedTempoBpm(t), 150.0, 1e-9);
+}
+
+// D595 — LE TEMPO FIXE. L'attendu écrit avant le code (ROADMAP-daw, D595) : 120 BPM à 0, 60 au tick 1 920 ;
+// sur la carte, ticksToSeconds(2 400) = 3,0 s ; fixe à 120, 2,5 s et secondsToTicks(3,0) = 2 880 ; éteint de nouveau,
+// 3,0 s et la carte intacte.
+VSM_TEST(the_fixed_tempo_ignores_the_map_without_touching_it) {
+    vsm::sequencer::Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.clearTempoChanges();
+    p.tempoMap.addTempoChange(0, 500000);       // 120 BPM
+    p.tempoMap.addTempoChange(1920, 1000000);   // 60 BPM
+    VSM_ASSERT_NEAR(p.ticksToSeconds(2400), 3.0, 1e-9);
+    VSM_ASSERT_NEAR(p.bpmAt(2400), 60.0, 1e-9);
+    p.fixedTempo = true;
+    p.fixedTempoBpm = 120.0;
+    VSM_ASSERT_NEAR(p.ticksToSeconds(2400), 2.5, 1e-9);
+    VSM_ASSERT_EQ(p.secondsToTicks(3.0), static_cast<vsm::midi::Tick>(2880));
+    VSM_ASSERT_NEAR(p.bpmAt(2400), 120.0, 1e-9);
+    VSM_ASSERT_EQ(p.tempoMap.changes().size(), static_cast<size_t>(2));   // la carte n'a pas bougé
+    p.fixedTempo = false;
+    VSM_ASSERT_NEAR(p.ticksToSeconds(2400), 3.0, 1e-9);
+    VSM_ASSERT_EQ(p.secondsToTicks(3.0), static_cast<vsm::midi::Tick>(2400));
+    // Une carte SMPTE n'a pas de tempo : le tempo fixe n'y joue pas.
+    vsm::sequencer::Project s;
+    s.tempoMap = vsm::sequencer::TempoMap::smpte(25.0, 40);
+    s.fixedTempo = true;
+    VSM_ASSERT(!s.tempoFixeActif());
 }

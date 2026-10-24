@@ -510,6 +510,8 @@ ProjectDocument documentFromProject(const Project& project) {
     document.transport.punchEnabled = project.punchEnabled;
     document.transport.metronome = project.metronomeEnabled;   // D503
     document.transport.referenceA4Hz = project.referenceA4Hz;   // H42
+    document.transport.fixedTempo = project.fixedTempo;         // D595
+    document.transport.fixedTempoBpm = project.fixedTempoBpm;
     document.transport.punchStartTick = project.punchStartTick;
     document.transport.punchEndTick = project.punchEndTick;
 
@@ -734,9 +736,15 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     // H42 : le diapason ; une valeur écartée à la lecture change le SON — c'est une
     // réserve, elle ouvre la boîte (au contraire des corrections de D523).
     project.referenceA4Hz = document.transport.referenceA4Hz;
+    project.fixedTempo = document.transport.fixedTempo;         // D595
+    project.fixedTempoBpm = document.transport.fixedTempoBpm;
     if (!document.transport.diapasonEcarte.empty())
         report.warnings.push_back("diapason « " + document.transport.diapasonEcarte
                                   + " Hz » hors des bornes 400-480 Hz : écarté, la4 = 440 Hz repris");
+    // D595 : un tempo fixe écarté à la lecture change le TEMPS joué — une réserve, comme le diapason.
+    if (!document.transport.tempoFixeEcarte.empty())
+        report.warnings.push_back("tempo fixe « " + document.transport.tempoFixeEcarte
+                                  + " BPM » hors des bornes 20-300 BPM : écarté, la carte de tempo reprise");
     project.punchStartTick = document.transport.punchStartTick;
     project.punchEndTick = document.transport.punchEndTick;
     // D523 : UNE BOUCLE (OU UN PUNCH) SANS RÉGION N'EST PAS ACTIVE — l'invariant que
@@ -1100,6 +1108,12 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     // H42 : LE DIAPASON, écrit seulement s'il dit quelque chose.
     if (document.transport.referenceA4Hz != 440.0)
         transport.set("referenceA4Hz", JsonValue::makeNumber(document.transport.referenceA4Hz));
+    // D595 : LE TEMPO FIXE, écrit seulement allumé — un projet sur sa carte garde son fichier.
+    if (document.transport.fixedTempo) {
+        JsonValue fixe = JsonValue::makeObject();
+        fixe.set("bpm", makeBpmNumber(document.transport.fixedTempoBpm));
+        transport.set("fixedTempo", std::move(fixe));
+    }
     root.set("transport", std::move(transport));
 
     // D363 : OÙ L'ON EN ÉTAIT DANS LA VUE. Écrit SEULEMENT si un zoom a été
@@ -1569,6 +1583,16 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     document.transport.loopEndTick = static_cast<int64_t>(loop["endTick"].asNumber(0.0));
 
     document.transport.metronome = transport["metronome"].asBoolean(false);   // D503 : absent = éteint
+    // D595 : absent = la carte ; hors de 20-300 BPM (ou non fini) = écarté, éteint, ET DIT.
+    if (transport["fixedTempo"]["bpm"].isNumber()) {
+        const double bpm = transport["fixedTempo"]["bpm"].asNumber(120.0);
+        if (std::isfinite(bpm) && bpm >= 20.0 && bpm <= 300.0) {
+            document.transport.fixedTempo = true;
+            document.transport.fixedTempoBpm = bpm;
+        } else {
+            document.transport.tempoFixeEcarte = transport["fixedTempo"]["bpm"].toString(0);
+        }
+    }
     // H42 : absent = 440 ; hors bornes (ou non fini) = écarté ET DIT.
     if (transport["referenceA4Hz"].isNumber()) {
         const double la4 = transport["referenceA4Hz"].asNumber(440.0);
