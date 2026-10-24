@@ -45308,7 +45308,7 @@ série de `verifier.sh --bancs`.
 | D585.3 | la chasse aux notes commencées | `PlaybackScheduler::chaseNotesAt` (le miroir de la boucle des notes de `build`) ; au moteur, mises en file au DÉPART (`setPlaying`) et à un déplacement EN LECTURE (`seekSeconds`), numérotées par génération, tirées des seuls blocs joués, livrées comme une note d'écoute si la hauteur ne sonne pas déjà ; au rebouclage, la liste précalculée hors du fil audio (`refreshLoopChase`) relancée juste après les relâchements ; le test du cœur (chassée au tick 1 920 à sa vélocité, pas à 0, pas à sa fin, ni pile au départ, ni muette, ni coupée par son clip) et deux du moteur (départ à 2 s et rebouclage, chacun avec son témoin décoché) ; `tools/chasse-aux-notes.sh` : départ à 2 s → **[60]** à **−22,7 dBFS** ; le témoin décoché → **[]** à **−120** ; après un rebouclage → **[60]** à **−19,9** ; son témoin → **[]** ; la tête posée à l'arrêt → **[]** ; relancé : décochée ; en anglais. **TENU** | **oui** |
 | — | le témoin | le binaire de D584 (`build/temoin-D584`) : `remises-apres-prise` **rouge 3 / 5** pour la raison écrite (cochée **[1 1 1 1 1]**, aucune remise ; l'entrée absente) ; `zoom-a-la-regle` **rouge 6 / 6** — aucun zoom, et la tête restée au point d'appui (**8 160** au lieu de ~12 000) : le zéro écrit, un glissé sur la règle ne fait RIEN ; `chasse-aux-notes` **rouge 6 / 6**, mais par l'ABSENCE du relevé `relever-sonnantes` — pour celui-là l'A/B est le témoin intérieur au banc, du même binaire décoché, et ceux des tests du moteur | **oui** |
 | — | les suites | cœur **550 / 550** (trois neufs), moteur **1 353 / 1 353** (deux neufs), interchange 359, clap 25, panels 11 ; Python 275 ; ruff et mypy propres ; gardes vertes | **oui** |
-| — | la série | `./verifier.sh --bancs`, 177 bancs, lancée l'écran allumé — **à suivre** | **en cours** |
+| — | la série | `./verifier.sh --bancs`, 177 bancs, lancée l'écran allumé : **177 / 177** (voir « D585 — FAITE ») | **oui** |
 
 **CE QUE LE CODE A TRANCHÉ, ÉCRIT ICI.**
 - **Le relâchement du rebouclage ne joue plus qu'UNE fois par piste et par rebouclage** (`wrapTraite_`). Sous automation, le
@@ -45332,6 +45332,17 @@ Les entrées REGARDÉES (`VSM_MENU_PHOTO`, écran allumé) : *Transport* — *Zo
 notes commencées* cochées sous *Un clic dans le vide pose la tête*, chacune sa ligne grisée ; *Enregistrement* — *Remettre
 les contrôleurs à zéro après la prise* sous *Ce que la prise garde*, sa ligne grisée ; en anglais, *Zoom by dragging on the
 ruler*, *Chase notes already started*.
+
+### Phase D585 — FAITE (24/10/2026, 15 h 25 à l'horloge)
+
+La série : `./verifier.sh --bancs`, lancée à 11 h 39 l'écran ALLUMÉ, **177 / 177** en 224 min, dont **144 min de veille**
+(le poste a dormi de 12 h 53 à 15 h 17, `journalctl -b` : `PrepareForSleep`), soit ~80 min de bancs ; les trois bancs de
+D585 verts (`remises-apres-prise`, `zoom-a-la-regle`, `chasse-aux-notes`) ; préférences de l'utilisateur identiques
+(`cmp`) ; ni oom au journal du système. Le banc en vol pendant la veille, `pianoroll-zones` (9 000 s), est sorti VERT :
+rien à rejouer. **Le seul ✗ du bilan est le relevé de D516** : l'écran s'est éteint (`kscreen-doctor` : « off ») APRÈS
+le dernier banc, `zoom-reassigne`, vert lui aussi — aucun rouge à rejouer écran allumé. Le compositeur est resté sous
+**636 Mo** banc par banc (453 → 635 Mo sur la série) ; le sommet de la session, 3 965 Mo, est celui de la série de D584.
+D585 est FAITE.
 
 ### Phase D586 — un quarante-septième audit : le zoom à la règle du piano roll, le suivi suspendu par l'édition, le nom des notes (24/10/2026)
 
