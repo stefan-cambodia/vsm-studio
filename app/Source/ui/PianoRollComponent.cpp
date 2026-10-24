@@ -2044,6 +2044,16 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
     const juce::Point<float> pos = event.position;
     dragStartMousePos_ = pos;
 
+    // D587.3 : LE RÉTICULE NAÎT AVEC LE GESTE, dans la grille seulement (pas sur le clavier), le bouton gauche seul (un
+    // clic droit ouvre un menu, qui prend le relâchement) ; sur une piste qui a des notes — la peinture des autres
+    // s'arrête avant lui, et le relevé dirait « montré » un trait que personne ne voit.
+    if (reticule_ && event.mods.isLeftButtonDown() && contentArea().toFloat().contains(pos)
+        && track->kind != Track::Kind::Audio && track->kind != Track::Kind::Group) {
+        reticuleMontre_ = true;
+        pointReticule_ = pos;
+        repaint();
+    }
+
     // --- Clavier de gauche : écoute d'une note ----------------------------
     if (pos.x < static_cast<float>(keyboardWidth())) {
         dragMode_ = DragMode::Audition;
@@ -2212,6 +2222,10 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
     Track* track = activeTrack();
     if (!track || !project_) return;
     const juce::Point<float> pos = event.position;
+    if (reticuleMontre_) {   // D587.3 : le réticule suit le pointeur, quel que soit le geste
+        pointReticule_ = pos;
+        repaint();
+    }
 
     // D528 : TENUE CONTRE UN BORD, LA VUE DÉFILE, ET LA NOTE SUIT D'ELLE-MÊME. Le
     // déplacement recalcule à chaque appel l'écart entre la hauteur et le tick SOUS le
@@ -2360,6 +2374,10 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
 
 void PianoRollComponent::mouseUp(const juce::MouseEvent&) {
     stopAudition();
+    if (reticuleMontre_) {   // D587.3 : le geste fini, le réticule s'efface
+        reticuleMontre_ = false;
+        repaint();
+    }
     const bool edite = dragEdite_;
     // D581.3 : ce que le glissé a emporté, dit une fois, au relâché.
     if (controleursAvant_.pris && edite && !dragDidCopy_)
@@ -2445,8 +2463,14 @@ bool PianoRollComponent::defilerAuBord(juce::Point<float> pointeur, bool hauteur
 void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
     if (event.mods.isCtrlDown() || event.mods.isCommandDown()) {
         const float factor = wheel.deltaY > 0 ? 1.15f : 1.0f / 1.15f;
-        if (event.mods.isShiftDown()) zoomVertically(factor);
-        else                          zoomHorizontally(factor);
+        if (event.mods.isShiftDown()) {
+            zoomVertically(factor);
+        } else {
+            // D587.2 : AUTOUR DU POINTEUR, comme l'arrangement — le tick visé reste sous lui (`zoomAncre`, D586.1) ;
+            // au-dessus du clavier, l'ancre est le bord gauche de la grille. Les touches et le menu gardent le centre.
+            const float x = std::max(static_cast<float>(keyboardWidth()), event.position.x);
+            zoomAncre(pixelsPerTick_ * static_cast<double>(factor), xToTick(x), x);
+        }
     } else if (event.mods.isShiftDown()) {
         const double ticksPerNotch = 480.0 / std::max(0.01, pixelsPerTick_ * 4.0);
         scrollTick_ = std::max<Tick>(0, scrollTick_ - static_cast<Tick>(wheel.deltaY * ticksPerNotch));
@@ -2666,6 +2690,19 @@ void PianoRollComponent::paint(juce::Graphics& g) {
         g.fillRect(rubberBandRect_);
         g.setColour(Palette::accentTeal);
         g.drawRect(rubberBandRect_, 1.0f);
+    }
+
+    // D587.3 : LE RÉTICULE, par-dessus tout, sur la seule grille — le vertical relie le pointeur au temps, l'horizontal
+    // à la touche du clavier. Au pointeur, pas à la grille ; la couleur de la tête, à demi transparente.
+    if (reticuleMontre_) {
+        juce::Graphics::ScopedSaveState zone(g);
+        const auto grille = contentArea();
+        g.reduceClipRegion(grille);
+        g.setColour(Palette::accentAmber.withAlpha(0.55f));
+        g.fillRect(juce::Rectangle<float>(pointReticule_.x - 0.5f, static_cast<float>(grille.getY()), 1.0f,
+                                           static_cast<float>(grille.getHeight())));
+        g.fillRect(juce::Rectangle<float>(static_cast<float>(grille.getX()), pointReticule_.y - 0.5f,
+                                           static_cast<float>(grille.getWidth()), 1.0f));
     }
 }
 

@@ -97,6 +97,16 @@ public:
     bool editionSuspendSuivi() const { return editionSuspendSuivi_; }
     void basculerEditionSuspendSuivi();
     bool suiviSuspendu() const { return suiviSuspendu_; }
+    /// D587.3 : LE RÉTICULE PENDANT UN GESTE (*Cross-hair Cursor*) — cochée, deux traits fins traversent la zone des
+    /// clips au pointeur tant qu'un geste du bouton gauche y est tenu ; ils s'effacent au relâchement. Une préférence du
+    /// poste. Le banc lit ce que la peinture lit (`reticuleMontre`, `pointDuReticule`).
+    void setReticule(bool oui) {
+        reticule_ = oui;
+        if (!oui) reticuleMontre_ = false;
+    }
+    bool reticule() const { return reticule_; }
+    bool reticuleMontre() const { return reticuleMontre_; }
+    juce::Point<float> pointDuReticule() const { return pointReticule_; }
     /// Un geste va modifier le projet : l'application prend son instantané
     /// d'annulation. Appelé UNE fois par geste, au `mouseDown` -- un
     /// glissement continu est une action, pas trois cents.
@@ -181,6 +191,9 @@ public:
     void itemDropped(const SourceDetails& details) override;
 
     void zoomHorizontally(float facteur);
+    /// D587.2 : LE ZOOM AUTOUR D'UNE ABSCISSE — le tick sous `x` y reste (le défilement borné à 0), un pas d'*Annuler le
+    /// zoom* (D557.3). Ctrl+molette s'en sert ; les touches et le menu, sans pointeur, gardent `zoomHorizontally`.
+    void zoomAutourDe(float facteur, float x);
     /// Suppr. efface la sélection, +/- zooment. Publique pour que les fenêtres
     /// voisines puissent renvoyer une touche non consommée.
     bool keyPressed(const juce::KeyPress& key) override;
@@ -738,6 +751,9 @@ private:
     bool enLecture_ = false;   ///< D569.2 : la tête fixe ne vaut qu'en lecture
     bool editionSuspendSuivi_ = false;   ///< D586.2 : la préférence
     bool suiviSuspendu_ = false;         ///< D586.2 : suspendu par un appui en lecture, jusqu'à l'arrêt
+    bool reticule_ = true;               ///< D587.3 : la préférence
+    bool reticuleMontre_ = false;        ///< D587.3 : un geste est tenu dans la zone des clips
+    juce::Point<float> pointReticule_;   ///< D587.3 : le pointeur du dernier mouvement
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne
     /// alors plus rien. D551.1 : chacun avec SA piste d'origine et, pour un clip MIDI, les notes de sa fenêtre

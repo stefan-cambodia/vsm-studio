@@ -416,6 +416,23 @@ public:
         }
         // D524 : le relevé du piano roll APRÈS un geste (un `choisir:` au milieu d'une course).
         if (geste.equalsIgnoreCase("relever-pianoroll")) { releverRangPianoRoll(); return true; }
+        // D587.3 : le réticule des deux vues, lu dans les champs que la peinture lit — pendant un geste tenu
+        // (`glisser:…:lent`), puis après lui.
+        if (geste.equalsIgnoreCase("relever-reticule")) {
+            const auto a = arrangement_.pointDuReticule(), p = pianoRoll_.pointDuReticule();
+            std::fputs((juce::String("VSM_RETICULE : arrangement ")
+                        + (arrangement_.reticuleMontre()
+                               ? juce::String::fromUTF8("montr\xc3\xa9 \xc3\xa0 ") + juce::String(a.x, 1) + "," + juce::String(a.y, 1)
+                               : juce::String::fromUTF8("cach\xc3\xa9"))
+                        + " ; piano roll "
+                        + (pianoRoll_.reticuleMontre()
+                               ? juce::String::fromUTF8("montr\xc3\xa9 \xc3\xa0 ") + juce::String(p.x, 1) + "," + juce::String(p.y, 1)
+                               : juce::String::fromUTF8("cach\xc3\xa9"))
+                        + (reticule_ ? juce::String::fromUTF8(" ; pr\xc3\xa9" "f\xc3\xa9rence coch\xc3\xa9" "e")
+                                     : juce::String::fromUTF8(" ; pr\xc3\xa9" "f\xc3\xa9rence d\xc3\xa9" "coch\xc3\xa9" "e"))
+                        + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D506 : L'AUDIT DES MENUS, EN DIFFÉRÉ. `VSM_MENU` agit AVANT les touches et
         // les gestes : « tout choisir, puis Quantifier » ne se jouait pas. Ces trois
         // gestes s'enchaînent dans l'ordre de `VSM_GESTE_APRES`.
@@ -1408,6 +1425,8 @@ private:
         kMenuViewNoteNameLast = kMenuViewNoteNameFirst + 2,
         /// D586.2 : l'édition suspend le suivi de la tête.
         kMenuViewEditSuspendsFollow,
+        /// D587.3 : le réticule pendant un geste.
+        kMenuViewCrosshair,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
@@ -1999,6 +2018,7 @@ private:
     bool chasserLesNotes_ = true;          ///< D585.3
     bool armementSuitLeChoix_ = false;     ///< D579.2
     bool arretApresPunch_ = false;         ///< D579.3
+    bool reticule_ = true;                 ///< D587.3 : le réticule pendant un geste, au poste
     /// D580 : trois de plus, du transport, de l'enregistrement et de l'édition.
     bool clicVidePoseLaTete_ = false;      ///< D580.1
     bool punchOffALArret_ = false;         ///< D580.2

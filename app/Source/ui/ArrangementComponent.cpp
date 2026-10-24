@@ -683,7 +683,7 @@ void ArrangementComponent::mouseWheelMove(const juce::MouseEvent& event, const j
         && !event.mods.isAltDown() && reglerFonduALaMolette(event, sens))
         return;
     if (event.mods.isCtrlDown() || event.mods.isCommandDown()) {
-        zoomHorizontally(sens > 0 ? 1.15f : 1.0f / 1.15f);
+        zoomAutourDe(sens > 0 ? 1.15f : 1.0f / 1.15f, event.position.x);   // D587.2 : autour du pointeur
     } else if (event.mods.isShiftDown() || wheel.deltaY == 0.0f) {
         vsm::midi::Tick pas = snapStep(scrollTick_);
         if (pas <= 0) pas = project_->ticksPerQuarterNote;
@@ -1357,6 +1357,14 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                     + "\n").toRawUTF8(), stderr);
     }
 
+    // D587.3 : LE RÉTICULE NAÎT AVEC LE GESTE, au point de l'appui — le bouton gauche seul : un clic droit ouvre un menu,
+    // qui prend le relâchement, et le réticule resterait peint.
+    if (reticule_ && event.mods.isLeftButtonDown()) {
+        reticuleMontre_ = true;
+        pointReticule_ = point;
+        repaint();
+    }
+
     // LES COURBES PASSENT AVANT LES CLIPS quand elles sont montrées : elles
     // sont dessinées par-dessus, donc c'est ce qu'on vise en cliquant. Les
     // clips restent saisissables partout où il n'y a pas de point.
@@ -1596,6 +1604,10 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
 }
 
 void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
+    if (reticuleMontre_) {   // D587.3 : le réticule suit le pointeur, quel que soit le geste
+        pointReticule_ = event.position;
+        repaint();
+    }
     if (project_ == nullptr || geste_ == Geste::Aucun) return;
 
     // D527 : TENU CONTRE UN BORD, LA VUE DÉFILE, ET LE GESTE SUIT DE LUI-MÊME. Le
@@ -1837,6 +1849,10 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
 }
 
 void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
+    if (reticuleMontre_) {   // D587.3 : le geste fini, le réticule s'efface
+        reticuleMontre_ = false;
+        repaint();
+    }
     if (geste_ == Geste::Hauteur || geste_ == Geste::Reordonner) notifyChanged();
     // D585.2 : UN GLISSÉ, UN PAS DE ZOOM (D557.3), noté s'il a changé la vue — et dit : le facteur, et où le tick saisi
     // est resté, à comparer à l'abscisse de l'appui.
@@ -3395,6 +3411,19 @@ void ArrangementComponent::zoomHorizontally(float facteur) {
     repaint();
 }
 
+void ArrangementComponent::zoomAutourDe(float facteur, float x) {
+    // D587.2 : le calcul de D585.2 — le tick visé, puis le défilement qui le remet sous la même abscisse. Au-dessus des
+    // têtes de piste, l'ancre est le bord gauche de la zone des clips : ce que faisait la molette avant.
+    const VueDeZoom avant = vueDeZoom();
+    const float ancre = std::max(static_cast<float>(kHeaderWidth), x);
+    const vsm::midi::Tick vise = std::max<vsm::midi::Tick>(0, xToTick(ancre));
+    pixelsPerTick_ = juce::jlimit(0.004, 2.0, pixelsPerTick_ * static_cast<double>(facteur));
+    scrollTick_ = std::max<vsm::midi::Tick>(
+        0, vise - static_cast<vsm::midi::Tick>(std::llround((ancre - kHeaderWidth) / pixelsPerTick_)));
+    noterZoom(avant);
+    repaint();
+}
+
 void ArrangementComponent::noterZoom(const VueDeZoom& avant) {
     if (avant.pixelsParTick == pixelsPerTick_ && avant.defilement == scrollTick_) return;   // rien n'a changé
     zoomsPasses_.push_back(avant);
@@ -4295,6 +4324,19 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         g.fillRect(lasso_);
         g.setColour(Palette::accentTeal);
         g.drawRect(lasso_, 1.0f);
+    }
+
+    // D587.3 : LE RÉTICULE, par-dessus le lasso même — sur la seule zone des clips (sous la règle, à droite des têtes),
+    // au pointeur et non à la grille : c'est le point où l'on est. La couleur de la tête, à demi transparente.
+    if (reticuleMontre_) {
+        juce::Graphics::ScopedSaveState zone(g);
+        const int haut = hauteurRegle();
+        g.reduceClipRegion(kHeaderWidth, haut, std::max(0, getWidth() - kHeaderWidth), std::max(0, getHeight() - haut));
+        g.setColour(Palette::accentAmber.withAlpha(0.55f));
+        g.fillRect(juce::Rectangle<float>(pointReticule_.x - 0.5f, static_cast<float>(haut), 1.0f,
+                                           static_cast<float>(getHeight() - haut)));
+        g.fillRect(juce::Rectangle<float>(static_cast<float>(kHeaderWidth), pointReticule_.y - 0.5f,
+                                           static_cast<float>(getWidth() - kHeaderWidth), 1.0f));
     }
 }
 

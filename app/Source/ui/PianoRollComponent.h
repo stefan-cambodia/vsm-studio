@@ -201,6 +201,14 @@ public:
         if (onBasculesChanged) onBasculesChanged();
     }
     uint8_t defaultVelocity() const { return defaultVelocity_; }
+    /// D587.3 : LE RÉTICULE PENDANT UN GESTE (*Cross-hair Cursor*) — cochée, deux traits fins traversent la grille au
+    /// pointeur tant qu'un geste du bouton gauche y est tenu ; pas sur le clavier. La préférence de l'arrangement.
+    void setReticule(bool oui) {
+        reticule_ = oui;
+        if (!oui) reticuleMontre_ = false;
+    }
+    bool reticuleMontre() const { return reticuleMontre_; }
+    juce::Point<float> pointDuReticule() const { return pointReticule_; }
     void setScale(vsm::sequencer::Scale scale);
     vsm::sequencer::Scale scale() const { return scale_; }
     void setScaleHighlightEnabled(bool enabled);
@@ -513,6 +521,9 @@ private:
     bool legatoEntreChoisies_ = false; ///< D576.3
     float rayonCapture_ = 0.0f;     ///< D575.2
     uint8_t defaultVelocity_ = 100;
+    bool reticule_ = true;               ///< D587.3 : la préférence
+    bool reticuleMontre_ = false;        ///< D587.3 : un geste est tenu dans la grille
+    juce::Point<float> pointReticule_;   ///< D587.3 : le pointeur du dernier mouvement
     vsm::sequencer::Scale scale_ { 0, vsm::sequencer::ScaleType::Chromatic };
     bool scaleHighlight_ = false;
     bool ghostNotes_ = true;

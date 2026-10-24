@@ -3280,6 +3280,10 @@ const Paire kAnglais[] = {
       "Solfège (middle C = Do3)" },
     { "(le clavier et la ligne d'état du piano roll, la liste d'événements, le moniteur MIDI)",
       "(the piano roll keyboard and status line, the event list, the MIDI monitor)" },
+    { "Réticule pendant un geste",   // D587.3
+      "Cross-hair while dragging" },
+    { "(deux traits au pointeur, dans l'arrangement et le piano roll, tant qu'on tire)",
+      "(two lines at the pointer, in the arrangement and the piano roll, while dragging)" },
     { "Chasser les notes commencées",   // D585.3
       "Chase notes already started" },
     { "(une note commencée avant la tête sonne dès le départ, et à chaque tour de boucle)",

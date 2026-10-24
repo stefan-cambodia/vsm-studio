@@ -1489,6 +1489,9 @@ MainComponent::MainComponent()
     arrangement_.setZoomALaRegle(zoomALaRegle_);
     pianoRollPanel_.setZoomALaRegle(zoomALaRegle_);   // D586.1 : une préférence, deux règles
     chasserLesNotes_ = vsm::app::ui::UiScale::properties().getBoolValue("transportChasserLesNotes", true);
+    reticule_ = vsm::app::ui::UiScale::properties().getBoolValue("affichageReticule", true);   // D587.3
+    arrangement_.setReticule(reticule_);
+    pianoRoll_.setReticule(reticule_);
     audioEngine_.processGraph().setChaseNotes(chasserLesNotes_);
     // D586.3 : le nom des notes — une valeur hors des trois redevient celle d'origine (C4).
     {
@@ -2663,8 +2666,9 @@ bool MainComponent::molettePourCapture(const juce::String& description) {
                 + "\n").toRawUTF8(), stderr);
     if (cible == nullptr || crans == 0) return cible != nullptr;
     int mods = 0;
-    if (mode == "maj") mods |= juce::ModifierKeys::shiftModifier;
-    if (mode == "ctrl") mods |= juce::ModifierKeys::ctrlModifier;
+    // D587.2 : des COMBINAISONS, « ctrl+maj » — le zoom vertical du piano roll en tient deux (comme `glisser:`, D552.3).
+    if (mode.contains("maj")) mods |= juce::ModifierKeys::shiftModifier;
+    if (mode.contains("ctrl")) mods |= juce::ModifierKeys::ctrlModifier;
     const juce::Point<float> ou(fx * static_cast<float>(cible->getWidth()), fy * static_cast<float>(cible->getHeight()));
     const auto maintenant = juce::Time::getCurrentTime();
     const juce::MouseEvent evenement(juce::Desktop::getInstance().getMainMouseSource(), ou, juce::ModifierKeys(mods),
@@ -6100,6 +6104,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                              false, false);
                 menu.addSubMenu(tr(u8"Nom des notes"), noms);
             }
+            // D587.3 : LE RÉTICULE (*Cross-hair Cursor*) — une préférence du poste, pour les deux vues.
+            menu.addItem(kMenuViewCrosshair, tr(u8"Réticule pendant un geste"), true, reticule_);
+            menu.addItem(-1, tr(u8"(deux traits au pointeur, dans l'arrangement et le piano roll, tant qu'on tire)"),
+                         false, false);
             menu.addSeparator();
             {
                 // TAILLE DE L'INTERFACE. Le facteur agrandit texte ET cases
@@ -6361,6 +6369,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         {kMenuRecordResetAfterTake, &MainComponent::remiseAZeroApresPrise_, "enregistrementRemiseAZero"},   // D585.1
         {kMenuTransportZoomOnRuler, &MainComponent::zoomALaRegle_, "transportZoomALaRegle"},                // D585.2
         {kMenuTransportChaseNotes, &MainComponent::chasserLesNotes_, "transportChasserLesNotes"},           // D585.3
+        {kMenuViewCrosshair, &MainComponent::reticule_, "affichageReticule"},                              // D587.3
     };
     if (const auto* b = std::find_if(std::begin(kBascules), std::end(kBascules),
                                      [menuItemID](const Bascule& x) { return x.id == menuItemID; });
@@ -6384,6 +6393,10 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             pianoRollPanel_.setZoomALaRegle(reglage);
         }
         if (menuItemID == kMenuTransportChaseNotes) audioEngine_.processGraph().setChaseNotes(reglage);  // D585.3
+        if (menuItemID == kMenuViewCrosshair) {                                                         // D587.3
+            arrangement_.setReticule(reglage);
+            pianoRoll_.setReticule(reglage);
+        }
         std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
         menuItemsChanged();
         return;
@@ -13954,6 +13967,11 @@ void MainComponent::stopRecording() {
         lastTake_.emplace_back(index, std::move(ids));
     }
     if (compteur > 0) project_.ensureNoteIdAbove(compteur - 1);
+    // D587.1 : LA PRISE PASSE PAR LA RÈGLE DES NOTES ÉCRITES (D337), dans le pas de la prise. Sur une piste qui a des
+    // clips, ce qu'elle a joué hors d'eux n'était ni joué ni exporté (D352) — la prise disparaissait. L'état d'avant le
+    // pas (`ouvrirLEditionDEnregistrement`, plus haut) ne la contient pas : D556 la couvre ; ce qu'une ouverture avait
+    // laissé dehors y reste. Une piste sans clip garde son clip implicite (D336) : la règle ne la touche pas.
+    if (!lastTake_.empty() && couvrirLesNotesEcrites()) arrangement_.repaint();
 
     // La prise est SÉLECTIONNÉE dans le piano roll : c'est ce qui rend la
     // quantification après coup possible sans écrire un second chemin de
