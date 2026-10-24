@@ -1137,6 +1137,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
                 // leur NoteOff (il se trouve après la frontière) : on les
                 // relâche au saut, sinon elles sonneraient indéfiniment.
                 wrapNoteOffPending_ = true;
+                wrapTraite_.fill(false);   // D585.3
             }
         }
         blockEndSeconds = spanStartSeconds;
@@ -1526,7 +1527,8 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // de boucle. Sans ça, une note dont le NoteOff tombe APRÈS la fin de
     // boucle ne serait jamais relâchée et sonnerait indéfiniment -- le
     // "note bloquée" classique des séquenceurs.
-    if (wrapNoteOffPending_) {
+    if (wrapNoteOffPending_ && !wrapTraite_[trackIndex]) {
+        wrapTraite_[trackIndex] = true;   // D585.3 : une fois par rebouclage, pas une fois par sous-segment
         clearSustain(trackIndex);   // D25.1 : la pédale ne traverse pas la frontière de boucle
         auto& sounding = soundingNotes_[trackIndex];
         for (int note = 0; note < 128 && numEvents < kMaxEventsPerBlock; ++note) {

@@ -748,6 +748,11 @@ private:
         heldNoteOffs_[trackIndex].fill(false);
     }
     bool wrapNoteOffPending_ = false;
+    /// D585.3 : le rebouclage déjà TRAITÉ par piste — relâchements et relances une fois par rebouclage. Sous
+    /// automation, le segment d'après est rendu en sous-segments, et le relâchement s'y rejouait à chacun : il aurait
+    /// relâché la relance du sous-segment précédent. Remis à faux à chaque rebouclage ; une piste n'est rendue que par
+    /// un fil à la fois.
+    std::array<bool, kMaxTracks> wrapTraite_{};
 
     // Buffers de travail, pré-alloués une seule fois dans prepare() --
     // jamais redimensionnés dans processBlock() (règle realtime section 13).
