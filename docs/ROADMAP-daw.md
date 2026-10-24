@@ -46057,3 +46057,76 @@ espacées de 45 s (D520), et chacune est vérifiée PLEINE avant d'être compar�
   centre à chaque tour ; en panneaux flottants, où `resized()` ne pose pas le centre, elle cache la bande elle-même.
 - **L'étendue suit la vue quand celle-ci déborde** : à l'ouverture (« tout voir », D362), la vue couvre 0..128 000 ticks
   pour un morceau qui finit à 122 880 — la bande va jusqu'à 128 000 et le rectangle la remplit, comme écrit avant le code.
+
+### Phase D592 — un cinquante-troisième audit : renverser les accords, et les drops (25/10/2026)
+
+*Écrite le 25/10 à 04 h 20 (l'horloge), avant toute ligne de code et toute mesure, pendant la série de D588-D591
+(`./verifier.sh --bancs`, lancée à 04 h 12, écran allumé et déverrouillé) : le code s'écrit dans un arbre à part
+(`../vsm-D592`), sans rien compiler ni lancer tant que la série tourne — un lancement lui volerait le focus.*
+
+**LA MÉTHODE, celle de D587-D591 : un zéro se lit dans la fonction et dans celles qu'elle appelle, et dans ce que le code
+FAIT, pas dans ses noms (D571.3).** Sondés par la table des libellés (2 023 libellés anglais, `Langue.cpp`), puis dans le
+code, une trentaine de candidats de Cubase. **Présents, chacun lu à sa fonction** : le scrub (la règle du piano roll,
+D33.3), la ligne d'information des notes (D29.4), l'écoute des notes qu'on pose (`startAudition`), la vélocité des notes
+dessinées (`defaultVelocity_`, D496), *Fill Loop* (« Jusqu'à la fin de la boucle (N fois) », `repeatSelectionUntilLoopEnd`),
+les modes d'automation *Touch* et *Latch* (`AutomationMode`), le trim d'entrée et la polarité de la section *Pre*
+(`inputTrimDb`, D30.4 ; `invertPhase`, D23.1), les modes d'enregistrement MIDI (`RecordMode`), lire jusqu'au repère
+suivant, les notes de la piste, les modèles de projet, revenir à la version enregistrée, importer les pistes d'un projet
+(`ProjectImport.cpp`), la copie indépendante, la piste désactivée (D30.2), la panique. **Restent, au nom ET au code** :
+les macros de commandes, les cartes de batterie (*Drum Map*), les filtres coupe-bas et coupe-haut de la section *Pre* —
+et **la section *Chord Editing* de l'inspecteur du Key Editor** : *Inversions* (la note la plus grave passe au-dessus, ou
+la plus aiguë dessous, transposée d'autant d'octaves qu'il faut) et *Drop Notes* (*Drop 2*, *Drop 3*, *Drop 2 + 4* : la
+deuxième, la troisième, la deuxième et la quatrième note en partant du haut descendent d'une octave). `NoteEdit.h` n'a
+aucune fonction qui déplace une note d'un accord SELON SON RANG : `transposeNotes` déplace toute la sélection,
+`mirrorNotesPitch` la retourne autour de son centre, `arpeggiateNotes` touche au temps, `constrainNotesToScale` et
+« Caler sur les accords » (D532.3) à la gamme. **Ce que deux gestes faisaient déjà, dit ici** : sur un accord SERRÉ (moins
+d'une octave), « La voix du dessous » (D581.1) puis « Octave + » renverse vers le haut — mais une octave ne suffit plus
+dès que l'accord s'étend au-delà (do-sol-mi aigu : le do monté d'une octave reste SOUS le mi), et aucun geste ne choisit
+la deuxième ou la troisième voix en partant du haut : les drops ne se font pas du tout.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D592.1 | **Renverser les accords** — *Inversions* (*Move Up* / *Move Down*) du *Chord Editing* | *Édition ▸ Hauteur ▸ Disposition des accords ▸ Renverser vers le haut* / *Renverser vers le bas* : dans chaque accord de la sélection, la hauteur la plus grave monte (la plus aiguë descend) du plus petit nombre d'octaves qui la mette strictement au-dessus de la plus aiguë (au-dessous de la plus grave) ; un pas d'annulation ; mesuré par le MIDI exporté après le geste, le témoin sans geste et le binaire de D591 à côté |
+| D592.2 | **Les drops** — *Drop 2*, *Drop 3*, *Drop 2 + 4* du *Chord Editing* | *… ▸ Drop 2*, *Drop 3*, *Drop 2 et 4* : la 2e (3e ; 2e et 4e) hauteur en partant du haut descend d'une octave ; un accord qui n'a pas assez de voix ne bouge pas, et le geste le dit ; mesuré de même |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Un accord, c'est la règle de D581.1, appliquée aux SEULES notes choisies** : dans l'ordre des débuts, un accord s'ouvre
+  à sa première note et prend ce qui commence avant `début + fenetreAccord()` (une quadruple-croche, 30 ticks à 480) —
+  un accord JOUÉ s'étale, un arpège n'est pas un accord. Une note choisie dont l'accord a d'autres notes NON choisies ne
+  les entraîne pas : le geste porte sur la sélection, comme chez Cubase.
+- **Les voix sont les hauteurs DISTINCTES** : deux notes à la même hauteur (une doublure, deux canaux) sont une voix, et
+  bougent ensemble. Un groupe d'une seule hauteur n'est pas un accord : « note(s) seule(s) », rien ne bouge.
+- **Strictement** au-dessus (au-dessous) : do-mi-sol-do' renversé vers le haut met le do grave au do'' (deux octaves),
+  pas sur le do' — un unisson n'est pas un renversement.
+- **Hors de la tessiture : l'accord ne bouge pas, et c'est dit** — par accord, pas pour tout le geste. D536 a rendu la
+  transposition « tout ou rien » parce qu'elle BORNAIT en silence à 127 ; ici rien n'est borné, et un renversement est
+  une affaire d'accord : refuser tout un passage parce qu'un accord du suraigu ne peut pas monter rendrait le geste
+  inutilisable sur un morceau. Chaque accord laissé est compté au journal (`VSM_DISPOSITION`) et dans la ligne d'état.
+- **Drop N demande au moins N voix** (Drop 2 et 4 : quatre) ; un drop 2 et 4 sur un accord de trois sons n'est pas
+  « un drop 2 » fait à moitié : l'accord ne bouge pas, compté « trop peu de voix ».
+- **Le temps ne bouge pas, les identifiants non plus** : la sélection reste celle qu'on avait, un seul pas d'annulation
+  par geste (« Renverser vers le haut », « Drop 2 »…), aucun pas quand rien n'a bougé.
+- **Une fonction pure dans `NoteEdit`** (`revoiceChords(notes, selection, fenêtre, geste)`, qui rend ses comptes), un test
+  du cœur par geste ; le piano roll l'appelle ; les entrées sont grisées sans sélection.
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE.** Un projet d'une piste MIDI, 480 ticks à la noire, notes de 240 ticks : A à 0
+  (60 64 67, serré) ; B à 480 (60 67 76, plus d'une octave) ; C à 960 (60 64 67 71, quatre sons) ; D JOUÉ à 1 440, 1 446,
+  1 452 (62 65 69) ; S, une note seule à 1 920 (48) ; E à 2 400 (118 122 125, le suraigu) ; F à 2 880 (2 5 9, le grave).
+  Tout choisi (*Tout sélectionner*), puis le geste, puis l'export MIDI, relu dans l'ordre du temps puis des hauteurs
+  (le geste ne touche pas au temps : à un même instant, c'est un multiensemble — la leçon du 13/09).
+  Le témoin sans geste : `60 64 67 | 60 67 76 | 60 64 67 71 | 62 65 69 | 48 | 118 122 125 | 2 5 9` (20 notes).
+  (1) **vers le haut** : `64 67 72 | 67 76 84 | 64 67 71 72 | 74 65 69 | 48 | 118 122 125 | 5 9 14` — B monte de DEUX
+  octaves ; E reste (118 + 12 = 130) ; au journal **5** accords changés, **1** hors de la tessiture, **1** note seule ;
+  (2) **vers le bas** : `55 60 64 | 52 60 67 | 59 60 64 67 | 62 65 57 | 48 | 113 118 122 | 2 5 9` — F reste (9 − 12 < 0) ;
+  5 changés, 1 hors ;
+  (3) **Drop 2** : `52 60 67 | 55 60 76 | 55 60 64 71 | 62 53 69 | 48 | 110 118 125 | 2 5 9` ; 5 changés, 1 hors ;
+  (4) **Drop 3** : `48 64 67 | 48 67 76 | 52 60 67 71 | 50 65 69 | 48 | 106 122 125 | 2 5 9` ; 5 changés, 1 hors ;
+  (5) **Drop 2 et 4** : seul C bouge, `48 55 64 71` ; 1 changé, **5** « trop peu de voix » ;
+  (6) **Ctrl+Z** après « vers le haut », dans la MÊME course où la ligne `VSM_DISPOSITION` a dit 5 changés : le témoin
+  exactement (la leçon de D589 : un retour au départ ne prouve rien sans la preuve du départ) ;
+  (7) **en anglais** : *Edit ▸ Pitch ▸ Chord voicing ▸ Invert upward*, *Invert downward*, *Drop 2*, *Drop 3*, *Drop 2 + 4* ;
+  (8) le **TÉMOIN** (le binaire de D591) : l'entrée absente (`VSM_MENU : aucune entrée…`), l'export identique au témoin
+  sans geste dans les cinq courses.
+
+**L'ORDRE, TRANCHÉ ICI.** La fonction pure et son test du cœur, d'abord rouges (la fonction absente ne compile pas : le
+test s'écrit contre l'en-tête, et ses attendus sont ceux ci-dessus) ; puis les cinq entrées du piano roll et leurs
+traductions ; puis le banc `disposition-accords`, entré dans la série. Compilation et mesure APRÈS la série en cours.
