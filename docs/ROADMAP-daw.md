@@ -45386,3 +45386,16 @@ celle de Yamaha, place le do central à l'octave 3.
 
 **L'ORDRE, TRANCHÉ ICI.** D586.3 (le plus de surfaces, et le plus de valeur pour qui lit en français), puis D586.1 (le banc
 de D585.2 s'étend), puis D586.2 ; un banc par élément, entré dans la série de `verifier.sh --bancs`.
+
+**REPRIS AVANT LA MESURE, en écrivant le code (24/10, 11 h 49 à l'horloge, rien de D586 compilé ni lancé).**
+- **L'éditeur logique n'est PAS touché par le nom des notes** — écart au critère de D586.3, et pourquoi : son texte n'est
+  pas un affichage, c'est une LANGUE qui se relit (`logicalRuleReadableText`, que l'analyseur de règles relit : « C4 = 60,
+  F#3, Bb2 ») ; « C3 » y voudrait dire 48 ou 60 selon le réglage, et une règle enregistrée changerait de sens avec une
+  case du menu. Il reste à `noteNumberToName`, comme les fichiers et les noms de pistes.
+- **La liste d'événements, que le critère ne nommait pas, suit le réglage** : sa colonne écrit « C#2 (37) » à côté du
+  nombre, et la saisie n'y lit que le nombre — un pur affichage. De même le nom de la fondamentale du menu *Insérer un
+  accord* du piano roll et les étiquettes de note de la façade du séquenceur pas à pas. Le banc mesure deux surfaces de deux
+  chemins différents — le clavier du piano roll (`noteName`) et le moniteur MIDI — ; les autres sont lues dans le code.
+- **Le banc de D586.1 est à part** (`tools/zoom-regle-pianoroll.sh`), et non une extension de celui de D585.2 :
+  l'arrangement et le piano roll ne s'ouvrent pas dans la même vue, et un banc qui raterait sur l'un ne doit pas cacher
+  l'autre. Les attendus ne changent pas.
