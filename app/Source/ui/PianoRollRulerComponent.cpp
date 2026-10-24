@@ -1,5 +1,6 @@
 #include "vsm/sequencer/PlayOrder.h"   // D542.1 : sectionAt
 #include "PianoRollRulerComponent.h"
+#include "TeteDeLecture.h"   // D588.2
 #include "BandeAccords.h"   // D532.3 bis
 #include "EntreeDeMenu.h"   // D218 : entreeParLibelle, partagée depuis D115
 #include "Langue.h"
@@ -129,7 +130,8 @@ void PianoRollRulerComponent::paint(juce::Graphics& g) {
     const float playX = pianoRoll_.tickToX(pianoRoll_.playheadTick());
     if (playX >= static_cast<float>(pianoRoll_.keyboardWidth())) {
         g.setColour(Palette::accentAmber);
-        g.drawLine(playX, 0.0f, playX, static_cast<float>(bounds.getHeight()), 1.5f);
+        if (!vsm::app::ui::peindreTeteLarge(g, playX, 0, bounds.getHeight()))   // D588.2 ; le triangle ne change pas
+            g.drawLine(playX, 0.0f, playX, static_cast<float>(bounds.getHeight()), vsm::app::ui::kTeteDOrigineVues);
         // Petit triangle : la tête de lecture reste repérable même immobile
         // au milieu de graduations.
         juce::Path marker;

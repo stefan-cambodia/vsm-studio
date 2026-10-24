@@ -1,6 +1,8 @@
 #pragma once
 #include <cstddef>
+#include <cstdint>
 #include <deque>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,8 +36,9 @@ public:
     /// Mémorise l'état AVANT une modification. Le libellé (« Transposer »,
     /// « Coller »...) sert à l'affichage du menu Édition.
     void beginEdit(const StateT& stateBeforeEdit, std::string label) {
-        undoStack_.push_back({stateBeforeEdit, std::move(label)});
-        if (undoStack_.size() > maxDepth_) undoStack_.pop_front();
+        undoStack_.push_back({stateBeforeEdit, std::move(label), etat_});
+        etat_ = prochainEtat_++;   // D588.4 : l'état qui suit le pas est un état neuf
+        rogner();   // D588.3 : le plus ancien pas sorti est GARDÉ pour être dit, plus perdu en silence
         // Une nouvelle édition invalide la branche "rétablir" -- gardée de côté
         // (D511) le temps de savoir si l'édition a changé quelque chose.
         redoAvantDernierPas_ = std::move(redoStack_);
@@ -56,6 +59,7 @@ public:
     /// ancien pas, déjà sorti, ne revient pas : il était perdu de toute façon.)
     bool retirerLeDernierPas() {
         if (!dernierPasRetirable_ || undoStack_.empty()) return false;
+        etat_ = undoStack_.back().etat;   // D588.4 : rien n'a changé, l'état est celui d'avant le pas
         undoStack_.pop_back();
         redoStack_ = std::move(redoAvantDernierPas_);
         redoAvantDernierPas_.clear();
@@ -76,8 +80,9 @@ public:
         if (undoStack_.empty()) return false;
         Entry entry = std::move(undoStack_.back());
         undoStack_.pop_back();
-        redoStack_.push_back({current, entry.label});
+        redoStack_.push_back({current, entry.label, etat_});
         current = std::move(entry.state);
+        etat_ = entry.etat;
         return true;
     }
 
@@ -86,12 +91,42 @@ public:
         if (redoStack_.empty()) return false;
         Entry entry = std::move(redoStack_.back());
         redoStack_.pop_back();
-        undoStack_.push_back({current, entry.label});
+        undoStack_.push_back({current, entry.label, etat_});
         current = std::move(entry.state);
+        etat_ = entry.etat;
+        rogner();   // D588.3 : une profondeur abaissée entre-temps vaut aussi pour ce qu'on rétablit
         return true;
     }
 
-    void clear() { undoStack_.clear(); redoStack_.clear(); oublierLeRetrait(); }
+    /// D588.4 : vidé, l'historique tient un état NEUF — un repère d'enregistrement d'avant ne le désigne plus, comme
+    /// la profondeur 0 ne valait plus celle d'avant. D588.3 : et le compte des pas oubliés repart de zéro.
+    void clear() {
+        undoStack_.clear();
+        redoStack_.clear();
+        oublierLeRetrait();
+        etat_ = prochainEtat_++;
+        pasOublies_ = 0;
+    }
+
+    /// D588.4 : L'IDENTITÉ DE L'ÉTAT COURANT — un numéro qui ne sert qu'une fois : chaque pas en donne un neuf, annuler
+    /// et rétablir rendent celui de l'état qu'ils ramènent, `retirerLeDernierPas` celui d'avant le pas. Deux états de
+    /// même numéro sont le même état ; deux profondeurs égales ne le disaient pas (historique plein, ou annuler puis
+    /// refaire autre chose : la marque « non enregistré » de D174 s'y trompait).
+    uint64_t etatCourant() const { return etat_; }
+
+    /// D588.3 : LA PROFONDEUR SE RÈGLE (au moins 1) ; abaissée sous le nombre de pas, elle sort aussitôt les plus
+    /// anciens — dits d'un seul appel de `quandDesPasSortent`.
+    void setMaxDepth(size_t profondeur) {
+        maxDepth_ = profondeur == 0 ? 1 : profondeur;
+        rogner();
+    }
+    /// D588.3 : APPELÉ À CHAQUE SORTIE, avec les libellés sortis (du plus ancien au plus récent) — un geste en sort un,
+    /// une profondeur abaissée tous ceux qu'elle retire. Posé par celui qui tient l'historique, pour DIRE ce qui ne
+    /// pourra plus s'annuler : les pas s'ouvrent par plusieurs portes (`beginProjectEdit`, le piano roll, les lanes),
+    /// et une relève faite à l'une d'elles raterait les autres.
+    std::function<void(const std::vector<std::string>&)> quandDesPasSortent;
+    /// D588.3 : combien de pas sont sortis depuis le dernier `clear`.
+    size_t pasOublies() const { return pasOublies_; }
 
     /// LES LIBELLÉS, POUR UNE FENÊTRE D'HISTORIQUE (D11) : les pas
     /// annulables du plus ancien au plus récent, les pas rétablissables du
@@ -123,9 +158,23 @@ private:
     struct Entry {
         StateT state;
         std::string label;
+        uint64_t etat = 0;   ///< D588.4 : l'identité de `state`
     };
     std::deque<Entry> undoStack_, redoStack_;
     size_t maxDepth_;
+    uint64_t etat_ = 0;           ///< D588.4
+    uint64_t prochainEtat_ = 1;   ///< D588.4 : jamais rendu deux fois
+    size_t pasOublies_ = 0;   ///< D588.3
+    void rogner() {
+        if (undoStack_.size() <= maxDepth_) return;
+        std::vector<std::string> sortis;
+        while (undoStack_.size() > maxDepth_) {
+            sortis.push_back(std::move(undoStack_.front().label));
+            undoStack_.pop_front();
+            ++pasOublies_;
+        }
+        if (quandDesPasSortent) quandDesPasSortent(sortis);
+    }
     /// D511 : la branche « rétablir » vidée par le dernier `beginEdit`, et s'il
     /// peut encore être retiré.
     std::deque<Entry> redoAvantDernierPas_;

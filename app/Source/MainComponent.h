@@ -23,6 +23,7 @@
 #include "vsm/interchange/ShortcutTable.h"
 #include "ui/ShortcutsWindow.h"
 #include "ui/HistoryWindow.h"
+#include "ui/TeteDeLecture.h"   // D588.2
 #include "ui/MarkerWindow.h"   // D543.2
 #include "ui/MoniteurMidi.h"   // D578.3
 #include "ui/SpectrumComponent.h"
@@ -580,12 +581,31 @@ public:
                 (*rappel)(static_cast<size_t>(index));
                 return true;
             }
+        // D588.2 : LA LARGEUR QUE CHAQUE VUE PEINDRA, lue dans ce que la peinture lit (`largeurDeTetePeinte` et les
+        // largeurs d'origine de `TeteDeLecture.h`). « relever-tete » et `VSM_TETE` disent la POSITION (D500).
+        if (geste.equalsIgnoreCase("relever-largeur-tete")) {
+            const auto vues = juce::String(vsm::app::ui::largeurDeTetePeinte(vsm::app::ui::kTeteDOrigineVues), 1);
+            const auto lanes = juce::String(vsm::app::ui::largeurDeTetePeinte(vsm::app::ui::kTeteDOrigineLanes), 1);
+            std::fputs((juce::String::fromUTF8("VSM_LARGEUR_TETE : r\xc3\xa9glage ") + juce::String(vsm::app::ui::largeurDeTete())
+                        + " ; arrangement " + vues + " ; piano roll " + vues + juce::String::fromUTF8(" ; r\xc3\xa8gle ") + vues
+                        + " ; automation " + lanes + juce::String::fromUTF8(" ; contr\xc3\xb4leurs ") + lanes
+                        + " ; tempo " + lanes + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-historique")) {
             juce::String pas;
             for (const auto& libelle : history_.undoLabels())
                 pas += (pas.isEmpty() ? "" : " | ") + juce::String::fromUTF8(libelle.c_str());
             std::fputs(("VSM_HISTORIQUE_PAS : " + juce::String(static_cast<int>(history_.undoLabels().size()))
                         + " : " + pas + "\n").toRawUTF8(), stderr);
+            // D588.3, D588.4 : la profondeur, le compte des pas oubliés et l'en-tête que la fenêtre écrirait ; et la
+            // marque « non enregistré » se relève par `relever-titre` (D507). Une ligne À PART : les bancs lisent la
+            // liste ci-dessus jusqu'à son dernier libellé.
+            std::fputs(("VSM_HISTORIQUE_PROFONDEUR : profondeur " + juce::String(static_cast<int>(history_.maxDepth()))
+                        + juce::String::fromUTF8(" ; oubli\xc3\xa9s ") + juce::String(static_cast<int>(history_.pasOublies()))
+                        + juce::String::fromUTF8(" ; fen\xc3\xaatre \xc2\xab ")
+                        + vsm::app::ui::HistoryWindow::texteDesOublies(history_.pasOublies(), history_.maxDepth())
+                        + juce::String::fromUTF8(" \xc2\xbb\n")).toRawUTF8(), stderr);
             return true;
         }
         // D514 : la LIGNE D'ÉTAT du piano roll, relevée plus tard. C'est là qu'un
@@ -1427,7 +1447,17 @@ private:
         kMenuViewEditSuspendsFollow,
         /// D587.3 : le réticule pendant un geste.
         kMenuViewCrosshair,
+        /// D588.3 : la profondeur de l'historique, quatre entrées CONTIGUËS (`kProfondeursHistorique`).
+        kMenuEditUndoDepthFirst,
+        kMenuEditUndoDepthLast = kMenuEditUndoDepthFirst + 3,
+        /// D588.2 : la largeur de la tête de lecture, trois entrées CONTIGUËS (`kLargeursDeTete`).
+        kMenuViewPlayheadWidthFirst,
+        kMenuViewPlayheadWidthLast = kMenuViewPlayheadWidthFirst + 2,
     };
+    /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
+    static constexpr int kLargeursDeTete[3] = {0, 3, 5};
+    /// D588.3 : les profondeurs offertes à l'historique ; 512 au plus (0,23 Mo le pas sur le plus gros projet mesuré, D172).
+    static constexpr int kProfondeursHistorique[4] = {64, 128, 256, 512};
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};
     /// D583.2 : les plages de rattrapage offertes, en millisecondes.
@@ -1503,7 +1533,7 @@ private:
     /// automatique. Les deux vont ENSEMBLE depuis que le drapeau « sale » se
     /// déduit de la profondeur : la vider seule ferait croire, au prochain
     /// réveil, qu'on vient d'annuler autant de pas qu'elle en contenait.
-    void clearHistory() { history_.clear(); lastAutosaveUndoDepth_ = 0; }
+    void clearHistory() { history_.clear(); lastAutosaveEtat_ = history_.etatCourant(); }   // D588.4
     /// D34.1 : la forme des fondus croisés du projet, changée en marche.
     /// Empruntée par l'entrée de menu ET par « VSM_VUE=fondu-croise:… ».
     void setCrossfadeShape(vsm::sequencer::FadeShape forme);
@@ -1542,10 +1572,12 @@ private:
     /// n'a pas refusé.
     std::unique_ptr<juce::InterProcessLock> verrouProjet_;
     bool projectDirty_ = false;
-    /// D174 (A29) : la profondeur d'annulation au dernier enregistrement réussi.
-    /// La marque « non enregistré » du titre se déduit de l'écart avec la
-    /// profondeur courante, plutôt que d'un drapeau qu'on oublie de poser.
-    size_t profondeurAuDernierEnregistrement_ = 0;
+    /// D174 (A29) : l'état de l'historique au dernier enregistrement réussi.
+    /// La marque « non enregistré » du titre se déduit de l'écart avec l'état
+    /// courant, plutôt que d'un drapeau qu'on oublie de poser. D588.4 : un ÉTAT
+    /// (`SnapshotHistory::etatCourant`), plus une profondeur — historique plein, ou
+    /// annuler puis refaire autre chose, ramenaient la profondeur sans ramener le morceau.
+    uint64_t etatAuDernierEnregistrement_ = 0;
     /// D508 : le morceau a changé HORS de l'historique (notes du projet, commande MIDI apprise).
     bool modifieHorsHistorique_ = false;
     /// D518 : ce qui ne fait pas de pas, retenu juste avant une annulation ou un
@@ -1584,9 +1616,10 @@ private:
     /// critère dit « pas plus d'une minute », et une marge de deux vaut mieux
     /// qu'une marge nulle sur un disque qui hésite.
     double lastAutosaveSeconds_ = 0.0;
-    /// D36.2 : la profondeur de l'historique à la dernière photo. Sert à
+    /// D36.2 : l'état de l'historique à la dernière photo. Sert à
     /// DÉDUIRE qu'il y a eu édition, plutôt qu'à attendre qu'on le déclare.
-    size_t lastAutosaveUndoDepth_ = 0;
+    /// D588.4 : un état, plus une profondeur (voir `etatAuDernierEnregistrement_`).
+    uint64_t lastAutosaveEtat_ = 0;
     static constexpr double kAutosaveIntervalSeconds = 30.0;
 
     // --- D10.3 : les raccourcis se lisent et se changent --------------------
@@ -1610,6 +1643,8 @@ private:
     vsm::app::ui::SpectrumComponent spectrumPanel_;
     std::unique_ptr<PanelWindow> spectrumWindow_;
     void refreshHistoryList();
+    /// D588.3 : dit au journal (`VSM_HISTORIQUE_OUBLI`) les pas que la profondeur vient de sortir de l'historique.
+    void direLesPasOublies(const std::vector<std::string>& sortis);
     /// D37.1 : LE NOM D'UNE PISTE S'AFFICHE À SEPT ENDROITS. Mesuré à l'écran :
     /// deux le suivaient (la ligne elle-même et l'arrangement, qui le lit au
     /// dessin), cinq montraient l'ancien -- le mélangeur, le rack, la liste
@@ -1929,7 +1964,7 @@ private:
     /// D561.2 : une frappe de « Taper le tempo » ; dès la quatrième, le tempo de départ suit (`VSM_TEMPO_TAPE`).
     void taperLeTempo();
     std::vector<double> frappesDeTempo_;          ///< D561.2 : les instants de la série en cours, en secondes
-    int profondeurDuPasDeTempo_ = -1;             ///< D561.2 : la profondeur d'historique quand la série a ouvert son pas
+    uint64_t etatDuPasDeTempo_ = 0;               ///< D561.2 : l'état d'historique (D588.4) quand la série a ouvert son pas
     /// D559.2 : remettre la console à zéro, après confirmation (`demanderOuiNon`) ; les inserts restent, dit ; un pas.
     void remettreLaConsoleAZero();
     /// D553.2, D554.1 : les bornes de la sélection -- les clips choisis, à défaut les notes choisies (l'ordre de L).
@@ -2137,8 +2172,11 @@ private:
     /// est posé AVANT que les vues soient refaites (D34.3) : renommer après
     /// coup ne rafraîchissait que la liste des pistes, et le mélangeur gardait
     /// « Audio 5 » sur une piste appelée « prise3 ».
-    void addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi,
-                   const std::string& nom = {});
+    /// D588.1 : `sousLaChoisie` — la piste neuve JUSTE SOUS la piste choisie, à sa profondeur de dossier (un dossier
+    /// choisi : après tout son contenu), comme *Add Track* ; sinon au bout. Rend l'index de la piste neuve, pour
+    /// qu'aucun appelant ne le devine.
+    size_t addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi,
+                    const std::string& nom = {}, bool sousLaChoisie = false);
     void removeSelectedTrack();
     /// D11.5 : dupliquer la piste choisie, état de l'instrument compris.
     void duplicateSelectedTrack();

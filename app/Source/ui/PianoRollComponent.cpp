@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "TeteDeLecture.h"   // D588.2
 #include "vsm/sequencer/ChordTrack.h"   // D532.3 bis
 #include "EntreeDeMenu.h"
 #include "Langue.h"
@@ -3053,7 +3054,8 @@ void PianoRollComponent::drawPlayhead(juce::Graphics& g) const {
     const float x = tickToX(playheadTick_);
     if (x < static_cast<float>(keyboardWidth()) || x > static_cast<float>(getWidth())) return;
     g.setColour(Palette::accentAmber);
-    g.drawLine(x, 0.0f, x, static_cast<float>(getHeight()), 1.5f);
+    if (!vsm::app::ui::peindreTeteLarge(g, x, 0, getHeight()))   // D588.2
+        g.drawLine(x, 0.0f, x, static_cast<float>(getHeight()), vsm::app::ui::kTeteDOrigineVues);
 }
 
 // ---------------------------------------------------------------------------

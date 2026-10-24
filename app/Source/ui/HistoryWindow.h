@@ -24,6 +24,11 @@ public:
     /// D82 : repose l'explication dans la langue courante.
     void retraduire();
     void setEntries(std::vector<std::string> undo, std::vector<std::string> redo);
+    /// D588.3 : COMBIEN DE PAS PLUS ANCIENS SONT SORTIS de l'historique, et sa profondeur — écrit en tête de la liste,
+    /// et rien quand aucun n'est sorti. Un `juce::Label` et non une ligne peinte : le relevé de textes le voit (D149).
+    void setOublies(size_t oublies, size_t profondeur);
+    /// D588.3 : le texte de cet en-tête (vide pour zéro), dans la langue courante — le relevé du banc lit le même.
+    static juce::String texteDesOublies(size_t oublies, size_t profondeur);
 
     /// « Reviens N pas en arrière » / « avance de N pas ».
     std::function<void(size_t)> onUndoSteps;
@@ -40,6 +45,8 @@ private:
     std::vector<std::string> undo_, redo_;
     juce::ListBox liste_;
     juce::Label explication_;
+    juce::Label oublies_;   ///< D588.3
+    size_t nombreOublies_ = 0, profondeur_ = 0;
 };
 
 } // namespace vsm::app::ui

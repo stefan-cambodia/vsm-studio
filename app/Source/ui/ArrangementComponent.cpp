@@ -1,5 +1,6 @@
 #include "vsm/sequencer/PlayOrder.h"   // D542.1 : sectionAt
 #include "ArrangementComponent.h"
+#include "TeteDeLecture.h"   // D588.2
 #include "BandeAccords.h"   // D532.3 bis
 #include "Shortcuts.h"   // D358 : ajouterAvecRaccourci
 #include "EntreeDeMenu.h"
@@ -4261,7 +4262,8 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     const float xTete = tickToX(playhead_);
     if (xTete >= kHeaderWidth) {
         g.setColour(Palette::accentAmber);
-        g.drawLine(xTete, 0.0f, xTete, static_cast<float>(bounds.getHeight()), 1.5f);
+        if (!vsm::app::ui::peindreTeteLarge(g, xTete, 0, bounds.getHeight()))   // D588.2
+            g.drawLine(xTete, 0.0f, xTete, static_cast<float>(bounds.getHeight()), vsm::app::ui::kTeteDOrigineVues);
     }
 
     // L'ÉTAT D'AIMANTATION EST ÉCRIT, en petit, dans le coin de la règle. Un

@@ -1,4 +1,5 @@
 #include "TempoLaneComponent.h"
+#include "TeteDeLecture.h"   // D588.2
 #include "Langue.h"
 #include <algorithm>
 #include <cmath>
@@ -296,7 +297,8 @@ void TempoLaneComponent::paint(juce::Graphics& g) {
         const int x = tickToX(playheadTick_);
         if (x >= aire.getX() && x <= aire.getRight()) {
             g.setColour(Palette::accentAmber.withAlpha(0.9f));
-            g.fillRect(x, aire.getY(), 2, aire.getHeight());
+            if (!vsm::app::ui::peindreTeteLarge(g, static_cast<float>(x), aire.getY(), aire.getHeight()))   // D588.2
+                g.fillRect(x, aire.getY(), static_cast<int>(vsm::app::ui::kTeteDOrigineLanes), aire.getHeight());
         }
     }
 }

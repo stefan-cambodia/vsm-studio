@@ -219,3 +219,80 @@ VSM_TEST(a_step_that_changed_nothing_can_be_withdrawn_and_gives_back_the_redo_br
     VSM_ASSERT(historique.undo(projet));
     VSM_ASSERT(!historique.retirerLeDernierPas());
 }
+
+VSM_TEST(a_full_history_says_which_steps_it_forgets_and_its_depth_can_be_set) {
+    // D588.3 : AU-DELÀ DE LA PROFONDEUR, LE PLUS ANCIEN PAS SORT — et il est DIT. Avant, `pop_front` le perdait en
+    // silence : le 129ᵉ geste rendait le premier irrécupérable, et rien ne le disait.
+    ProjectHistory historique(3);
+    std::vector<std::vector<std::string>> dits;   // un élément par appel
+    historique.quandDesPasSortent = [&dits](const std::vector<std::string>& sortis) { dits.push_back(sortis); };
+    Project projet = deuxPistes();
+    for (const char* geste : {"Un", "Deux", "Trois"}) historique.beginEdit(projet, geste);
+    VSM_ASSERT(dits.empty());
+    historique.beginEdit(projet, "Quatre");
+    VSM_ASSERT_EQ(dits.size(), size_t{1});
+    VSM_ASSERT_EQ(dits[0].size(), size_t{1});
+    VSM_ASSERT(dits[0].front() == "Un");
+    VSM_ASSERT_EQ(historique.undoDepth(), size_t{3});
+    VSM_ASSERT_EQ(historique.pasOublies(), size_t{1});
+
+    // Abaissée sous le nombre de pas, la profondeur sort aussitôt les plus anciens, dans l'ordre, d'UN appel.
+    historique.setMaxDepth(1);
+    VSM_ASSERT_EQ(dits.size(), size_t{2});
+    VSM_ASSERT_EQ(dits[1].size(), size_t{2});
+    VSM_ASSERT(dits[1][0] == "Deux" && dits[1][1] == "Trois");
+    VSM_ASSERT_EQ(historique.undoLabels().size(), size_t{1});
+    VSM_ASSERT(historique.undoLabel() == "Quatre");
+    VSM_ASSERT_EQ(historique.pasOublies(), size_t{3});
+    historique.setMaxDepth(0);   // jamais moins d'un pas
+    VSM_ASSERT_EQ(historique.maxDepth(), size_t{1});
+
+    historique.clear();   // un projet ouvert : le compte repart de zéro
+    VSM_ASSERT_EQ(historique.pasOublies(), size_t{0});
+}
+
+VSM_TEST(the_saved_mark_reads_the_identity_of_a_state_not_a_depth) {
+    // D588.4 : DEUX PROFONDEURS ÉGALES NE SONT PAS DEUX ÉTATS ÉGAUX. Le repère d'enregistrement (D174) comparait des
+    // profondeurs, et deux chemins l'y ramenaient sans ramener le morceau.
+    Project projet = deuxPistes();
+    {
+        // (a) L'historique plein : un geste sort un pas et en pousse un — la profondeur ne bouge pas, l'état si.
+        ProjectHistory historique(2);
+        historique.beginEdit(projet, "Un");
+        historique.beginEdit(projet, "Deux");
+        const uint64_t enregistre = historique.etatCourant();
+        const size_t profondeur = historique.undoDepth();
+        historique.beginEdit(projet, "Trois");
+        VSM_ASSERT_EQ(historique.undoDepth(), profondeur);         // ce que lisait D174
+        VSM_ASSERT(historique.etatCourant() != enregistre);        // ce qu'il faut lire
+    }
+    {
+        // (b) Annuler puis refaire AUTRE CHOSE : la profondeur revient, le morceau non.
+        ProjectHistory historique;
+        historique.beginEdit(projet, "Un");
+        historique.beginEdit(projet, "Deux");
+        const uint64_t enregistre = historique.etatCourant();
+        VSM_ASSERT(historique.undo(projet));
+        VSM_ASSERT(historique.etatCourant() != enregistre);
+        historique.beginEdit(projet, "Autre");
+        VSM_ASSERT_EQ(historique.undoDepth(), size_t{2});
+        VSM_ASSERT(historique.etatCourant() != enregistre);
+    }
+    {
+        // Le TÉMOIN : le chemin qui revient VRAIMENT à l'état enregistré — sans lui, une identité qui change à chaque
+        // appel passerait les deux cas ci-dessus.
+        ProjectHistory historique;
+        historique.beginEdit(projet, "Un");
+        const uint64_t enregistre = historique.etatCourant();
+        historique.beginEdit(projet, "Deux");
+        VSM_ASSERT(historique.undo(projet));
+        VSM_ASSERT_EQ(historique.etatCourant(), enregistre);
+        VSM_ASSERT(historique.redo(projet));
+        VSM_ASSERT(historique.undo(projet));
+        VSM_ASSERT_EQ(historique.etatCourant(), enregistre);
+        // et un pas retiré (D511) rend l'état d'avant lui
+        historique.beginEdit(projet, "Rien");
+        VSM_ASSERT(historique.retirerLeDernierPas());
+        VSM_ASSERT_EQ(historique.etatCourant(), enregistre);
+    }
+}

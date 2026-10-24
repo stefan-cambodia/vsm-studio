@@ -15,6 +15,27 @@ HistoryWindow::HistoryWindow() {
     explication_.setColour(juce::Label::textColourId, Palette::textSecondary);
     explication_.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(explication_);
+    oublies_.setColour(juce::Label::textColourId, Palette::accentAmber);   // D588.3 : ce qui ne s'annulera plus
+    oublies_.setJustificationType(juce::Justification::centredLeft);
+    oublies_.setFont(juce::Font(juce::FontOptions(14.0f)));
+    addChildComponent(oublies_);
+}
+
+juce::String HistoryWindow::texteDesOublies(size_t oublies, size_t profondeur) {
+    if (oublies == 0) return {};
+    return tr(u8"%1 pas plus anciens oubliés (profondeur %2) : ils ne s'annulent plus")
+        .replace("%1", juce::String(static_cast<int>(oublies)))
+        .replace("%2", juce::String(static_cast<int>(profondeur)));
+}
+
+void HistoryWindow::setOublies(size_t oublies, size_t profondeur) {
+    nombreOublies_ = oublies;
+    profondeur_ = profondeur;
+    oublies_.setText(texteDesOublies(oublies, profondeur), juce::dontSendNotification);
+    if (oublies_.isVisible() != (oublies > 0)) {
+        oublies_.setVisible(oublies > 0);
+        resized();
+    }
 }
 
 void HistoryWindow::retraduire() {
@@ -23,6 +44,7 @@ void HistoryWindow::retraduire() {
     explication_.setText(tr(u8"Un clic sur un pas y revient. Le pas en surbrillance est l'état courant ; "
                             u8"au-dessous, ce que Rétablir rendrait."),
                          juce::dontSendNotification);
+    oublies_.setText(texteDesOublies(nombreOublies_, profondeur_), juce::dontSendNotification);   // D588.3
     liste_.repaint();
 }
 
@@ -68,6 +90,7 @@ void HistoryWindow::paint(juce::Graphics& g) { g.fillAll(Palette::background); }
 void HistoryWindow::resized() {
     auto zone = getLocalBounds().reduced(8);
     explication_.setBounds(zone.removeFromBottom(40));
+    if (oublies_.isVisible()) oublies_.setBounds(zone.removeFromTop(28));   // D588.3
     liste_.setBounds(zone);
 }
 

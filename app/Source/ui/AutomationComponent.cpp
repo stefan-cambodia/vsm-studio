@@ -1,4 +1,5 @@
 #include "AutomationComponent.h"
+#include "TeteDeLecture.h"   // D588.2
 #include <cmath>
 #include "BulleDeValeur.h"
 #include "Langue.h"
@@ -642,7 +643,8 @@ void AutomationComponent::dessinerTete(juce::Graphics& g) const {
         const int x = tickToX(playheadTick_);
         if (x >= aire.getX() && x <= aire.getRight()) {
             g.setColour(Palette::accentAmber.withAlpha(0.9f));
-            g.fillRect(x, aire.getY(), 2, aire.getHeight());
+            if (!vsm::app::ui::peindreTeteLarge(g, static_cast<float>(x), aire.getY(), aire.getHeight()))   // D588.2
+                g.fillRect(x, aire.getY(), static_cast<int>(vsm::app::ui::kTeteDOrigineLanes), aire.getHeight());
         }
     }
 }

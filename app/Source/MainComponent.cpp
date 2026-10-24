@@ -326,7 +326,7 @@ MainComponent::MainComponent()
         publierLesControleursGM(idx, pluginId);   // D332
         if (idx == trackList_.selectedTrackIndex()) updateSynthRackForSelection();
     };
-    trackList_.onAddTrack = [this] { addTrack(); };
+    trackList_.onAddTrack = [this] { addTrack(Track::Kind::Midi, {}, true); };   // D588.1 : sous la piste choisie
     trackList_.onRemoveTrack = [this](size_t idx) {
         if (idx < project_.tracks.size()) removeSelectedTrack();
     };
@@ -604,6 +604,15 @@ MainComponent::MainComponent()
     pianoRoll_.onLogicalEditorRequested = [this] { ouvrirEditeurLogique(); };   // D535.1 bis
 
     pianoRoll_.setHistory(&history_);
+    // D588.3 : LE PAS QUI SORT DE L'HISTORIQUE EST DIT, par quelque porte qu'il soit entré (ce panneau, les lanes,
+    // `beginProjectEdit`) ; et la profondeur est celle du poste — une valeur hors des quatre redevient 128.
+    history_.quandDesPasSortent = [this](const std::vector<std::string>& sortis) { direLesPasOublies(sortis); };
+    {
+        const int profondeur = vsm::app::ui::UiScale::properties().getIntValue("editionProfondeurHistorique", 128);
+        history_.setMaxDepth(std::find(std::begin(kProfondeursHistorique), std::end(kProfondeursHistorique), profondeur)
+                                     != std::end(kProfondeursHistorique)
+                                 ? static_cast<size_t>(profondeur) : size_t{128});
+    }
     pianoRoll_.onProjectRestored = [this] {
         // D518 : CE QUI NE FAIT PAS DE PAS NE SE DÉFAIT PAS PAR LE PAS D'À CÔTÉ. Les
         // notes du projet (D508), le clic (D503) et la boucle marche/arrêt (D0) ne
@@ -1490,6 +1499,8 @@ MainComponent::MainComponent()
     pianoRollPanel_.setZoomALaRegle(zoomALaRegle_);   // D586.1 : une préférence, deux règles
     chasserLesNotes_ = vsm::app::ui::UiScale::properties().getBoolValue("transportChasserLesNotes", true);
     reticule_ = vsm::app::ui::UiScale::properties().getBoolValue("affichageReticule", true);   // D587.3
+    // D588.2 : la largeur de la tête — une valeur hors des trois redevient celle d'origine.
+    vsm::app::ui::setLargeurDeTete(vsm::app::ui::UiScale::properties().getIntValue("affichageLargeurTete", 0));
     arrangement_.setReticule(reticule_);
     pianoRoll_.setReticule(reticule_);
     audioEngine_.processGraph().setChaseNotes(chasserLesNotes_);
@@ -4695,6 +4706,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSeparator();
                 menu.addSubMenu(tr(u8"Préréglages de quantification"), prereglages);
             }
+            // D588.3 : LA PROFONDEUR DE L'HISTORIQUE — une préférence du poste ; des libellés uniques dans la barre.
+            {
+                const char8_t* profondeurs[] = {u8"64 pas", u8"128 pas (d'origine)", u8"256 pas", u8"512 pas"};
+                juce::PopupMenu choix;
+                for (int i = 0; i < 4; ++i)
+                    choix.addItem(kMenuEditUndoDepthFirst + i, tr(profondeurs[i]), true,
+                                  history_.maxDepth() == static_cast<size_t>(kProfondeursHistorique[i]));
+                choix.addItem(-1, tr(u8"(au-delà, le plus ancien pas sort de l'historique, et c'est dit)"), false, false);
+                menu.addSubMenu(tr(u8"Profondeur de l'historique"), choix);
+            }
             // LA PLAGE ENTRE LES LOCATEURS (D13.3) : deux opérations sur TOUT
             // le morceau, qui n'ont pas leur place dans le piano roll -- elles
             // déplacent aussi les clips, les repères et le tempo.
@@ -6106,6 +6127,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             // D587.3 : LE RÉTICULE (*Cross-hair Cursor*) — une préférence du poste, pour les deux vues.
             menu.addItem(kMenuViewCrosshair, tr(u8"Réticule pendant un geste"), true, reticule_);
+            // D588.2 : LA LARGEUR DE LA TÊTE (*Cursor Width*) — une préférence du poste, pour les six vues qui la peignent ;
+            // des libellés uniques dans la barre (`VSM_MENU` prend le premier libellé exact).
+            {
+                const char8_t* largeurs[] = {u8"Tête fine (d'origine)", u8"Tête de 3 px", u8"Tête de 5 px"};
+                juce::PopupMenu choix;
+                for (int i = 0; i < 3; ++i)
+                    choix.addItem(kMenuViewPlayheadWidthFirst + i, tr(largeurs[i]), true,
+                                  vsm::app::ui::largeurDeTete() == kLargeursDeTete[i]);
+                choix.addItem(-1, tr(u8"(l'arrangement, le piano roll et sa règle, les lanes d'automation, MIDI et de tempo)"),
+                              false, false);
+                menu.addSubMenu(tr(u8"Largeur de la tête de lecture"), choix);
+            }
             menu.addItem(-1, tr(u8"(deux traits au pointeur, dans l'arrangement et le piano roll, tant qu'on tire)"),
                          false, false);
             menu.addSeparator();
@@ -6398,6 +6431,32 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             pianoRoll_.setReticule(reglage);
         }
         std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
+        menuItemsChanged();
+        return;
+    }
+    if (menuItemID >= kMenuViewPlayheadWidthFirst && menuItemID <= kMenuViewPlayheadWidthLast) {   // D588.2
+        const int largeur = kLargeursDeTete[menuItemID - kMenuViewPlayheadWidthFirst];
+        vsm::app::ui::setLargeurDeTete(largeur);
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        reglages.setValue("affichageLargeurTete", largeur);
+        reglages.saveIfNeeded();
+        std::fputs(("VSM_REGLAGE_POSTE : affichageLargeurTete " + juce::String(largeur) + "\n").toRawUTF8(), stderr);
+        repaint();   // les six vues sont dedans
+        arrangement_.repaint();
+        pianoRoll_.repaint();
+        pianoRollPanel_.repaint();
+        menuItemsChanged();
+        return;
+    }
+    if (menuItemID >= kMenuEditUndoDepthFirst && menuItemID <= kMenuEditUndoDepthLast) {   // D588.3
+        const int profondeur = kProfondeursHistorique[menuItemID - kMenuEditUndoDepthFirst];
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        reglages.setValue("editionProfondeurHistorique", profondeur);
+        reglages.saveIfNeeded();
+        std::fputs(("VSM_REGLAGE_POSTE : editionProfondeurHistorique " + juce::String(profondeur) + "\n").toRawUTF8(),
+                   stderr);
+        history_.setMaxDepth(static_cast<size_t>(profondeur));   // abaissée, elle dit ce qu'elle retire
+        refreshHistoryList();
         menuItemsChanged();
         return;
     }
@@ -6734,10 +6793,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuRecordMonitorInput:
             audioEngine_.setInputMonitoring(!audioEngine_.inputMonitoring());
             break;
-        case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
-        case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
-        case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
-        case kMenuTrackAddVca:   addTrack(Track::Kind::Vca); break;   // D532.1 bis
+        // D588.1 : SOUS LA PISTE CHOISIE, comme *Add Track* — pas au bout d'une liste de trente pistes.
+        case kMenuTrackAdd:      addTrack(Track::Kind::Midi, {}, true); break;
+        case kMenuTrackAddAudio: addTrack(Track::Kind::Audio, {}, true); break;
+        case kMenuTrackAddGroup: addTrack(Track::Kind::Group, {}, true); break;
+        case kMenuTrackAddVca:   addTrack(Track::Kind::Vca, {}, true); break;   // D532.1 bis
         case kMenuTrackVcaNew:   nouveauVcaPourLaSelection(); break;
         case kMenuTrackVersionNew:       nouvelleVersionDeLaPiste(false); break;   // D532.2 bis
         case kMenuTrackVersionDuplicate: nouvelleVersionDeLaPiste(true); break;
@@ -8425,7 +8485,7 @@ bool MainComponent::ouvrirLeMidi(const juce::File& fichier) {
         // PRÉCÉDENT au-dessus d'un morceau qui n'était plus le sien.
         currentProjectFolder_ = juce::File();
         poserTitreDeBase("Vintage Synth MIDI Studio -- " + fichier.getFileNameWithoutExtension());
-        profondeurAuDernierEnregistrement_ = history_.undoDepth();
+        etatAuDernierEnregistrement_ = history_.etatCourant();
         modifieHorsHistorique_ = false;   // D508
         rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
         rafraichirTitre();
@@ -8554,7 +8614,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     project_ = resultat.project;
     oublierLesMachines();   // D76
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
-    profondeurAuDernierEnregistrement_ = history_.undoDepth();   // D507 : comme un MIDI ouvert
+    etatAuDernierEnregistrement_ = history_.etatCourant();   // D507 : comme un MIDI ouvert
     modifieHorsHistorique_ = false;   // D508
     rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
     poserTitreDeBase(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
@@ -9070,7 +9130,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // enregistré » repart de là. L'historique était vidé, le repère gardait celui
     // du projet PRÉCÉDENT : le projet ouvert s'affichait « modifié », puis, un
     // geste plus tard, « enregistré » — et fermer ne demandait rien.
-    profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    etatAuDernierEnregistrement_ = history_.etatCourant();
     modifieHorsHistorique_ = false;   // D508
     rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
     poserTitreDeBase("Vintage Synth MIDI Studio -- " + medias.getFileName());
@@ -9879,7 +9939,7 @@ void MainComponent::offerCrashRecovery() {
             // D507 : ET LA MARQUE LE DIT — l'astérisque, et la question à la
             // fermeture. Aucune profondeur de pile ne vaut ce repère : il ne
             // redevient « enregistré » qu'en enregistrant.
-            profondeurAuDernierEnregistrement_ = std::numeric_limits<size_t>::max();
+            etatAuDernierEnregistrement_ = std::numeric_limits<uint64_t>::max();   // aucun état ne le porte
             rafraichirTitre();
         };
     if (const char* choix = std::getenv("VSM_RECUPERER"); choix != nullptr && *choix) {
@@ -9928,13 +9988,14 @@ void MainComponent::autosaveIfNeeded() {
     // ne peut pas s'oublier, alors que le déclarer s'est oublié quatre fois.
     // `!=` et non `>` : l'annulation aussi modifie le projet, et fait
     // décroître la pile.
-    const size_t pasDHistorique = history_.undoDepth();
-    if (pasDHistorique != lastAutosaveUndoDepth_) projectDirty_ = true;
+    // D588.4 : L'ÉTAT, PAS LA PROFONDEUR — une pile pleine ne bouge plus de profondeur.
+    const uint64_t etatDHistorique = history_.etatCourant();
+    if (etatDHistorique != lastAutosaveEtat_) projectDirty_ = true;
     if (!autosave_ || !projectDirty_) return;
     const double maintenant = juce::Time::getMillisecondCounterHiRes() / 1000.0;
     if (maintenant - lastAutosaveSeconds_ < kAutosaveIntervalSeconds) return;
     lastAutosaveSeconds_ = maintenant;
-    lastAutosaveUndoDepth_ = pasDHistorique;
+    lastAutosaveEtat_ = etatDHistorique;
     projectDirty_ = false;
 
     // LA PHOTO EST PRISE ICI, L'ÉCRITURE A LIEU AILLEURS. Capturer les presets
@@ -10899,6 +10960,7 @@ void MainComponent::refreshTrackNamesEverywhere() {
 
 void MainComponent::refreshHistoryList() {
     if (!historyWindow_ || !historyWindow_->isVisible()) return;
+    historyPanel_.setOublies(history_.pasOublies(), history_.maxDepth());   // D588.3
     historyPanel_.setEntries(history_.undoLabels(), history_.redoLabels());
 }
 
@@ -11285,7 +11347,8 @@ bool MainComponent::projetNonEnregistre() const {
     // D508 : OU un changement du morceau passé HORS de l'historique (les notes du
     // projet, un réglage bougé par une commande MIDI apprise) : sans ce drapeau,
     // fermer après eux ne demandait rien.
-    return history_.undoDepth() != profondeurAuDernierEnregistrement_ || modifieHorsHistorique_;
+    // D588.4 : L'IDENTITÉ DE L'ÉTAT — deux profondeurs égales ne sont pas deux morceaux égaux.
+    return history_.etatCourant() != etatAuDernierEnregistrement_ || modifieHorsHistorique_;
 }
 
 void MainComponent::rafraichirTitre() {
@@ -11484,7 +11547,7 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     // D174 : ENREGISTRÉ, DONC PLUS DE MARQUE. La profondeur d'historique de cet
     // instant devient la référence : tout ce qui s'ajoute après est « non
     // enregistré », et l'annulation, qui la fait décroître, compte aussi.
-    profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    etatAuDernierEnregistrement_ = history_.etatCourant();
     modifieHorsHistorique_ = false;   // D508
     rafraichirTitre();
     return true;
@@ -12616,16 +12679,31 @@ void MainComponent::newProject() {
     // elle aurait marqué un projet neuf comme modifié.
     currentProjectFolder_ = juce::File();
     poserTitreDeBase(tr(u8"Vintage Synth MIDI Studio -- nouveau projet"));
-    profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    etatAuDernierEnregistrement_ = history_.etatCourant();
     modifieHorsHistorique_ = false;   // D508
     rafraichirNotesDuProjet();   // D509 : l'éditeur suit le morceau ouvert
     rafraichirTitre();
 }
 
-void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {
+size_t MainComponent::addTrack(Track::Kind kind, const std::string& nom, bool sousLaChoisie) {
     const bool audio = kind == Track::Kind::Audio;
     const bool groupe = kind == Track::Kind::Group;
     const bool vca = kind == Track::Kind::Vca;   // D532.1 bis
+    // D588.1 : OÙ ELLE VA, décidé AVANT d'y toucher. Sous la piste choisie : juste après elle, à sa profondeur ; un
+    // DOSSIER choisi la reçoit après tout son contenu, à sa profondeur — un dossier plié la cacherait, et une piste
+    // qu'on vient d'ajouter doit se voir. La dernière piste choisie, ou aucune : au bout, comme avant.
+    const size_t choisie = trackList_.selectedTrackIndex();
+    const bool sous = sousLaChoisie && choisie < project_.tracks.size();
+    size_t destination = project_.tracks.size();
+    int profondeur = 0;
+    if (sous) {
+        const auto contenu = vsm::sequencer::folderContents(project_, choisie);
+        destination = (contenu.empty() ? choisie : contenu.back()) + 1;
+        profondeur = project_.tracks[choisie].folderDepth;
+        // Les machines suivent leurs pistes par l'identité de session ; la session est capturée AVANT la photo du pas,
+        // comme pour le dossier neuf (`newFolderAboveSelectedTrack`).
+        captureSessionIntoProject();
+    }
     // D231 : « Ajouter une piste MIDI », et non « Ajouter une piste ». Dans la
     // fenêtre d'historique, le pas générique voisinait « Ajouter une piste audio »
     // et se lisait comme une piste d'une autre sorte -- alors que les deux entrées
@@ -12654,12 +12732,22 @@ void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {
                  .replace("%1", juce::String(static_cast<int>(n) + 1)).toStdString();
     t.channel = static_cast<uint8_t>(n % 16);      // canaux MIDI 1..16 en boucle
     t.colorRgba = vsm::sequencer::trackColourForIndex(n);
+    t.folderDepth = profondeur;
     // Pas d'instrument par défaut : l'utilisateur le choisit dans le combo de
     // la piste (le Synth Rack se peuplera automatiquement à la sélection).
     project_.tracks.push_back(t);
+    // D588.1 : PAR `moveTrack`, qui fait suivre groupes, VCA et sorties publiées par IDENTITÉ (`reorderTracks`,
+    // D35.2) — le décalage des index est déjà recopié cinq fois, une sixième copie serait celle qui oublierait un champ.
+    if (destination < n) {
+        vsm::sequencer::moveTrack(project_, n, destination);
+        vsm::sequencer::normalizeFolderDepths(project_);
+        std::fputs(("VSM_PISTE_AJOUTEE : \xc2\xab " + project_.tracks[destination].name + " \xc2\xbb sous la piste "
+                    + std::to_string(choisie) + ", \xc3\xa0 l'index " + std::to_string(destination) + "\n").c_str(), stderr);
+    }
 
     rebuildFromProject();
-    trackList_.selectTrackIndex(project_.tracks.size() - 1); // sélectionne la nouvelle piste
+    trackList_.selectTrackIndex(destination); // sélectionne la nouvelle piste
+    return destination;
 }
 
 void MainComponent::removeSelectedTrack() {
@@ -14064,6 +14152,25 @@ size_t MainComponent::photographierReglagesDeMachines() {
     return photographiees;
 }
 
+void MainComponent::direLesPasOublies(const std::vector<std::string>& sortis) {
+    // D588.3 : CE QUI NE S'ANNULERA PLUS EST DIT. `pop_front` le perdait en silence : le 129ᵉ geste rendait le premier
+    // irrécupérable, et ni le journal ni la fenêtre d'historique ne le disaient. Un geste en sort un ; une profondeur
+    // abaissée, tous ceux qu'elle retire, en une ligne.
+    if (sortis.empty()) return;
+    juce::String noms;
+    for (const auto& libelle : sortis)
+        noms += (noms.isEmpty() ? juce::String() : juce::String(", ")) + juce::String::fromUTF8("\xc2\xab ")
+              + juce::String::fromUTF8(libelle.c_str()) + juce::String::fromUTF8(" \xc2\xbb");
+    const juce::String quoi = sortis.size() == 1 ? juce::String::fromUTF8("pas oubli\xc3\xa9 ")
+                                                  : juce::String(static_cast<int>(sortis.size()))
+                                                        + juce::String::fromUTF8(" pas oubli\xc3\xa9s d'un coup : ");
+    std::fputs(("VSM_HISTORIQUE_OUBLI : " + quoi + noms
+                + juce::String::fromUTF8(" -- ne s'annule plus (profondeur ") + juce::String(static_cast<int>(history_.maxDepth()))
+                + ", " + juce::String(static_cast<int>(history_.pasOublies()))
+                + juce::String::fromUTF8(" oubli\xc3\xa9(s) depuis l'ouverture)\n")).toRawUTF8(), stderr);
+    refreshHistoryList();
+}
+
 void MainComponent::beginProjectEdit(const juce::String& label) {
     // D144 : LA PHOTO DU PAS PORTE LE MASTER DE CET INSTANT. Il vit dans le
     // moteur ; le modèle n'en avait qu'une copie du dernier enregistrement, et
@@ -14607,7 +14714,7 @@ void MainComponent::taperLeTempo() {
         std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     if (!frappesDeTempo_.empty() && maintenant - frappesDeTempo_.back() > vsm::sequencer::kTapTempoResetSeconds) {
         frappesDeTempo_.clear();
-        profondeurDuPasDeTempo_ = -1;
+        etatDuPasDeTempo_ = 0;
     }
     frappesDeTempo_.push_back(maintenant);
     if (frappesDeTempo_.size() > vsm::sequencer::kTapTempoMaxIntervals + 1) frappesDeTempo_.erase(frappesDeTempo_.begin());
@@ -14629,9 +14736,11 @@ void MainComponent::taperLeTempo() {
             pianoRoll_.onStatusChanged(tr(u8"Tempo tapé hors de 20 à 300 BPM (%1) : rien n'a changé").replace("%1", juce::String(bpm, 1)));
         return;
     }
-    if (profondeurDuPasDeTempo_ < 0 || static_cast<int>(history_.undoDepth()) != profondeurDuPasDeTempo_) {
+    // D588.4 : par l'ÉTAT — historique plein, la profondeur ne bougeait plus, et une frappe se fondait dans le pas
+    // d'un autre geste. Un état d'après un pas n'est jamais 0.
+    if (etatDuPasDeTempo_ == 0 || history_.etatCourant() != etatDuPasDeTempo_) {
         beginProjectEdit(juce::String::fromUTF8(u8"Taper le tempo"));
-        profondeurDuPasDeTempo_ = static_cast<int>(history_.undoDepth());
+        etatDuPasDeTempo_ = history_.etatCourant();
     }
     project_.tempoMap.addTempoChange(0, static_cast<uint32_t>(std::llround(60000000.0 / bpm)));
     transportBar_.setBpm(bpm);
@@ -17478,8 +17587,8 @@ bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
         std::fputs("Importer un fichier audio : projet jamais enregistr\u00e9, rien n'a \u00e9t\u00e9 fait\n", stderr);
         return false;
     }
-    addTrack(Track::Kind::Audio, fichier.getFileNameWithoutExtension().toStdString());
-    const size_t index = project_.tracks.size() - 1;
+    // D588.1 : au bout, comme avant — des stems arrivent en lot, dans leur ordre (D33.1) ; l'index est rendu.
+    const size_t index = addTrack(Track::Kind::Audio, fichier.getFileNameWithoutExtension().toStdString());
     if (!placeSampleOnTrack(index, 0, fichier)) {
         // La piste neuve ne sert à rien sans son fichier : on la retire, et
         // l'historique garde les deux gestes -- annuler deux fois ramène au

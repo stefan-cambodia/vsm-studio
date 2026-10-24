@@ -3282,6 +3282,23 @@ const Paire kAnglais[] = {
       "(the piano roll keyboard and status line, the event list, the MIDI monitor)" },
     { "Réticule pendant un geste",   // D587.3
       "Cross-hair while dragging" },
+    { "Largeur de la tête de lecture",   // D588.2
+      "Playhead width" },
+    { "Tête fine (d'origine)", "Thin playhead (default)" },
+    { "Tête de 3 px", "3 px playhead" },
+    { "Tête de 5 px", "5 px playhead" },
+    { "(l'arrangement, le piano roll et sa règle, les lanes d'automation, MIDI et de tempo)",
+      "(the arrangement, the piano roll and its ruler, the automation, MIDI and tempo lanes)" },
+    { "Profondeur de l'historique",   // D588.3
+      "Undo history depth" },
+    { "64 pas", "64 steps" },
+    { "128 pas (d'origine)", "128 steps (default)" },
+    { "256 pas", "256 steps" },
+    { "512 pas", "512 steps" },
+    { "(au-delà, le plus ancien pas sort de l'historique, et c'est dit)",
+      "(beyond it, the oldest step drops out of the history, and it is said)" },
+    { "%1 pas plus anciens oubliés (profondeur %2) : ils ne s'annulent plus",
+      "%1 older steps forgotten (depth %2): they can no longer be undone" },
     { "(deux traits au pointeur, dans l'arrangement et le piano roll, tant qu'on tire)",
       "(two lines at the pointer, in the arrangement and the piano roll, while dragging)" },
     { "Chasser les notes commencées",   // D585.3
