@@ -45434,3 +45434,20 @@ glissé HORIZONTAL sur la règle de l'arrangement, de la mesure 5 jusqu'à 0,98 
 note et ne dit un zoom que si le zoom a changé. **L'attendu après le remède** : dans les deux règles, cochée ou non, le
 glissé jusqu'au bord n'écrit AUCUNE ligne de zoom, « 0 à annuler », et la page a tourné comme avant D585.2 (le défilement
 > 0) ; les cas de zoom des deux bancs restent verts. Les deux bancs gagnent ce cas, pour garder la régression.
+
+**L'HYPOTHÈSE EST RÉFUTÉE AU BANC, telle qu'écrite (15 h 33 à l'horloge).** Les deux cas neufs de `zoom-a-la-regle.sh`,
+joués par le binaire de D586 AVANT tout remède : (7) cochée → le défilement **13 214**, **0** ligne de zoom ; (8)
+décochée → **13 214**, **0** ligne. Vert-vert là où l'hypothèse attendait deux lignes « ×1,000, 1 à annuler ». **Pourquoi,
+lu dans le code** : la règle du piano roll pose la tête DANS le piano roll au milieu du geste (`PianoRollPanel` :
+`pianoRoll_.setPlayheadTick(tick)` dans son `onPlayheadRequested`), si bien que la page tourne entre deux mouvements ;
+celle de l'arrangement ne fait que déplacer le transport, et c'est le minuteur à 30 Hz qui pousse la tête dans la vue —
+APRÈS le relâchement, puisque `glisser:` envoie l'appui, le glissé et le relâchement d'un trait, sans rendre la main au fil
+des messages. Une main, elle, la lui rend à chaque mouvement. La réfutation dit donc ce que le BANC ne voit pas, pas que
+le code est juste.
+
+**LA NOUVELLE HYPOTHÈSE, ÉCRITE AVANT SA MESURE.** Un verbe de banc `glisser:…:lent` découpe le glissé en huit mouvements
+espacés de 50 ms, puis relâche 50 ms après le dernier : le minuteur bat entre eux, comme sous une main. Joué par un
+binaire qui a le verbe et PAS le remède : (7′) cochée → une ligne `VSM_ZOOM : glissé sur la règle` à « ×1,000 » avec
+« 1 à annuler » ; (8′) décochée → de même. Après le remède : aucune ligne, le défilement > 0, dans les deux cas — et les
+cas (7) et (8) d'un trait restent verts. Le banc de D586.1 gagne le même cas décoché : (6) avant le remède, une ligne
+`VSM_ZOOM_PIANOROLL` (le relâchement dit toute vue changée, décochée comprise) ; après, aucune, la page tournée.
