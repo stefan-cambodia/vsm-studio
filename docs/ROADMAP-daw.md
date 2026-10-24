@@ -45722,3 +45722,31 @@ deux autres lectures de profondeur suivent : l'autosauvegarde (`lastAutosaveUndo
 garde les deux chemins ; le banc `historique-profondeur` les rejoue : (a) et (b) → « **oui** » ; et son témoin, le
 chemin qui revient VRAIMENT à l'état du disque — enregistrer, un geste, Ctrl+Z → « **non** » (sans lui, une marque
 bloquée à « oui » passerait les deux contrôles).
+
+### Phase D588 — MESURÉE, la série à jouer (24/10/2026, 22 h 43 à l'horloge)
+
+*Les deux hypothèses de D588.4 mesurées sur le TÉMOIN (`build/temoin-D587`) à 22 h 35, avant toute compilation de D588 ;
+le code fusionné ensuite, compilé, les trois bancs joués sur le binaire neuf, puis leurs témoins.*
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D588.4 — H-a, H-b | sur le TÉMOIN : (a) « non » ; (b) « non » | `tools/historique-profondeur.sh build/temoin-D587` : (a) 130 gestes, *Enregistrer*, un geste → marques « **non, non** » — l'historique plein laisse le projet « enregistré », et fermer ne demanderait rien ; (b) deux gestes, *Enregistrer*, Ctrl+Z, un geste neuf → « **non, oui, non** » ; le retour vrai (c) → « non, oui, non ». **H-a et H-b TENUES** : la marque lisait une profondeur | **oui** |
+| D588.3 | 128 pas, 2 lignes, l'en-tête ; 64 → 6 oubliés ; abaissée → 6 en une ligne ; retenue ; en anglais | `SnapshotHistory::setMaxDepth`, `quandDesPasSortent`, `pasOublies` ; *Édition ▸ Profondeur de l'historique* ; `tools/historique-profondeur.sh` : (1) 130 gestes → **128** pas, **2** lignes `VSM_HISTORIQUE_OUBLI`, l'en-tête « **2 pas plus anciens oubliés (profondeur 128)** : ils ne s'annulent plus » ; (2) la profondeur à 64, 70 gestes → **64** pas, **6** oubliés, **6** lignes ; (3) 70 gestes, puis 64 → **64** pas, **6** oubliés, **1** ligne (« 6 pas oubliés d'un coup ») ; (4) relancé → **64** ; en anglais, *Edit ▸ Undo history depth ▸ 128 steps (default)* [cochée]. La fenêtre d'historique photographiée (`VSM_CAPTURE_PANNEAUX`) et REGARDÉE, en français et en anglais : l'en-tête ambre au-dessus de la liste. **TENU** | **oui** |
+| D588.4 | (a) « oui » ; (b) « oui » ; (c) « non » | `SnapshotHistory::etatCourant` — un numéro par état, rendu par annuler, rétablir et `retirerLeDernierPas` ; le repère d'enregistrement, l'autosauvegarde et le pas du tempo tapé le lisent ; (a) → « **non, oui** » ; (b) → « **non, oui, oui** » ; (c) → « **non, oui, non** ». **TENU** | **oui** |
+| D588.1 | (1) Basse, Piste 4, Lead, Groupe, la sortie vers 3, choisie 1, l'export identique ; (2) Ctrl+Z ; (3) au bout ; (4) après le dossier | `MainComponent::addTrack(…, sousLaChoisie)` par `moveTrack` ; `tools/piste-sous-la-choisie.sh` : (1) « **Basse>3, Piste 4, Lead, Groupe** », choisie **1**, `VSM_PISTE_AJOUTEE : « Piste 4 » sous la piste 0, à l'index 1`, `VSM_MACHINES : 1 gardée(s), 1 recréée(s) avec leur réglage` ; (2) Ctrl+Z → « **Basse>2, Lead, Groupe** » ; les trois exports — avant, après l'ajout, après Ctrl+Z — **1 058 444 octets, identiques au bit près** (`cmp`) ; (3) la dernière choisie → « Basse>2, Lead, Groupe, **Piste 4** », choisie 3 ; (4) le dossier choisi → « Basse, Dossier, Lead@1, **Piste 5**, Fin », choisie 3. **TENU** | **oui** |
+| D588.2 | 3 px → 3 colonnes ; 5 px → 5 ; d'origine identique au témoin ; retenue ; en anglais | `TeteDeLecture.h` (`peindreTeteLarge`, calée par `roundToInt`) dans les six vues ; *Affichage ▸ Largeur de la tête de lecture* ; le verbe `relever-largeur-tete` (`relever-tete` dit déjà la POSITION, D500) ; `tools/largeur-tete.sh` : *Tête de 3 px* → les six vues disent **3.0**, **3** colonnes pleines contiguës dans l'arrangement (936..938) et la grille du piano roll (848..850) ; *5 px* → **5.0**, **5** colonnes (935..939, 847..851) ; *D'origine* → la bande de 25 × 550 px autour de la tête d'empreinte **311de19eb663ce9e**, celle du témoin ; relancé → **5** ; en anglais, *View ▸ Playhead width ▸ Thin playhead (default)* [cochée]. Les photos à 5 px REGARDÉES : une barre nette sur les clips et sur la grille, le triangle de la règle intact. **TENU** | **oui** |
+| — | les témoins | le binaire de D587 : `historique-profondeur` **rouge 6 / 7** — (1) **128** pas et **aucune** ligne d'oubli (la sortie muette, mesurée), (2) à (4) par l'entrée de menu absente, (a) et (b) par la marque (H-a, H-b) ; `piste-sous-la-choisie` **rouge 2 / 4** — (1) « Basse>2, Lead, Groupe, Piste 4 », la piste au bout, choisie 3 ; (4) « Basse, Dossier, Lead@1, Fin, Piste 5 » ; `largeur-tete` **rouge 3 / 4** — l'entrée de menu et le verbe absents ; et à la largeur d'origine, **aucune** colonne de la couleur pleine de la tête (le trait de 1,5 px n'en remplit aucune : la leçon de D587.3, vue sur la tête elle-même) | **oui** |
+| — | les suites | cœur **552 / 552** (550 + les deux tests de D588 : le pas oublié dit et la profondeur réglable, la marque lue à l'identité de l'état), moteur **1 353 / 1 353**, interchange 359, clap 25, panels 11 ; Python 275 ; ruff et mypy propres ; gardes vertes (`./verifier.sh --compiler`, 24 ✓ ; l'index, seul ✗, rouge de la section ci-dessus, réécrit par `--corriger`) | **oui** |
+| — | la série | `./verifier.sh --bancs`, 186 bancs — **à jouer** | **à jouer** |
+
+**CE QUE LES BANCS ONT TRANCHÉ, ÉCRIT ICI.**
+- **Le contrôle (4) de `piste-sous-la-choisie` ne prouvait rien, et le témoin l'a montré.** Le projet du dossier finissait
+  par le contenu du dossier : « après le dossier » et « au bout » y tombaient au même index, et le binaire de D587 passait
+  le contrôle (« Basse, Dossier, Lead@1, Piste 4 »). Une piste « Fin » hors du dossier les sépare ; rejoué, le témoin
+  tombe rouge (« … Lead@1, Fin, Piste 5 ») et D588 reste vert. Vu rouge AVANT de compiler D588.
+- **La photo principale ne montre pas la fenêtre d'historique** : c'est une fenêtre à part, que l'autoportrait ne prend
+  pas (D55.2). L'en-tête s'est vu par `VSM_CAPTURE_PANNEAUX`, dans les deux langues ; le relevé, lui, lit le texte que la
+  fenêtre écrit (`HistoryWindow::texteDesOublies`).
+- **Après Ctrl+Z, la piste choisie est « Lead » (index 1), pas « Basse »** : l'annulation ne rend pas la sélection — elle
+  n'est pas dans le pas (D518 : ce qui ne fait pas de pas ne se défait pas). Hors du critère, noté ici ; le témoin, lui,
+  laisse l'index 2, la piste neuve retirée du bout.
