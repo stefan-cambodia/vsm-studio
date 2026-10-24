@@ -45451,3 +45451,37 @@ binaire qui a le verbe et PAS le remède : (7′) cochée → une ligne `VSM_ZOO
 « 1 à annuler » ; (8′) décochée → de même. Après le remède : aucune ligne, le défilement > 0, dans les deux cas — et les
 cas (7) et (8) d'un trait restent verts. Le banc de D586.1 gagne le même cas décoché : (6) avant le remède, une ligne
 `VSM_ZOOM_PIANOROLL` (le relâchement dit toute vue changée, décochée comprise) ; après, aucune, la page tournée.
+
+**LA NOUVELLE HYPOTHÈSE EST CONFIRMÉE, ET LE REMÈDE MESURÉ.** Le binaire qui a le verbe `:lent` et pas le remède :
+(7′) cochée et (8′) décochée → chacun **une** ligne « ×1,000, 1 à annuler » pour un simple tour de page (le défilement
+**13 214**) ; au piano roll, (3), (6) et (7) → une ligne « ×1,000 » chacun (défilement **8 556**). Après le remède — la vue
+de l'appui ne revient que si le zoom courant n'est plus celui de l'appui, et le relâchement ne note (`noterZoom`) et ne dit
+un zoom que si le zoom a changé : **aucune** ligne, la page tournée, dans les deux règles, cochée ou non, d'un trait comme
+d'une main ; les cas de zoom inchangés (×2,000 et ×0,500).
+
+### Phase D586 — MESURÉE, la série à jouer (24/10/2026, 15 h 54 à l'horloge)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D586.1 | le zoom en glissant sur la règle du piano roll | `PianoRollRulerComponent` — l'appui sans modificateur ouvre le geste (son point, son tick, la vue d'avant), le glissé vertical zoome par `PianoRollComponent::zoomAncre` (×2 par 100 px, le tick saisi sous l'abscisse de l'appui), la tête suit l'abscisse ; une préférence pour les deux règles ; `tools/zoom-regle-pianoroll.sh` (0,080 px/tick à l'ouverture, le tick 8 160 à x 714,8) : 100 px vers le bas → **×2,000**, le tick saisi à x **714,8** pour un appui à x **714,8** ; vers le haut → **×0,500** (le tick saisi à x 388,4 : le défilement bute sur 0, comme à D585.2) ; de côté jusqu'au bord → **0,080**, aucune ligne, la page tournée (**8 556**) ; Maj → la boucle **[8 159, 10 078]**, le zoom inchangé ; le témoin décoché → **0,080** ; décochée jusqu'au bord → aucune ligne, **8 556** ; d'une main → aucune ligne, **16 872** (la page tourne deux fois sous huit mouvements : la tête suit le pointeur dans la page neuve, comme avant D586). **L'ATTENDU ÉCRIT AVANT EST TENU**, après le remède écrit plus haut | **oui** |
+| D586.2 | le suivi suspendu par l'édition | `ArrangementComponent` — un appui dans la zone des clips, en lecture, suivi actif, suspend le suivi (`suiviSuspendu_`), en pages comme en tête fixe ; la suspension tombe au passage de la lecture à l'arrêt (`setEnLecture`) ; *Affichage ▸ L'édition suspend le suivi de la tête*, grisée sans le suivi, `arrangementEditionSuspendSuivi` au poste ; `tools/suivi-suspendu.sh` (la vue enregistrée à 0,2 px/tick) : cochée, l'appui sur le clip à 1,6 s, le relevé à 6,6 s → le défilement **0**, la tête à **5 762** (au-delà des 3 840 montrés) ; le témoin décoché → **2 937** ; arrêt puis relance → « repris à l'arrêt », **5 879** (la dernière course, sur le binaire final ; d'une course à l'autre, ces trois chiffres bougent d'une douzaine de ticks) ; relancé : cochée ; en anglais. **TENU** | **oui** |
+| D586.3 | le nom des notes | `vsm::app::ui::nomDeNote` lit le réglage du poste (`affichageNomDesNotes`) ; le clavier, la ligne d'état et le menu des accords du piano roll (`noteName`), la liste d'événements, le moniteur MIDI, la façade du pas à pas ; l'éditeur logique et les noms écrits restent à `noteNumberToName` ; *Affichage ▸ Nom des notes*, trois entrées ; `tools/nom-des-notes.sh` : d'origine **C4, C#4, A4** et « **A4 (69)** » ; do central C3 → **C3, C#3, A3**, « **A3 (69)** » ; solfège → **Do3, Do#3, La3**, « **La3 (69)** » ; relancé : *Solfège* coché, Do3 ; en anglais, *View ▸ Note names ▸ Letters (middle C = C4)*, le solfège resté Do3. **TENU** | **oui** |
+| — | le témoin | le binaire de D585 (`build/temoin-D585`) : `nom-des-notes` **rouge 5 / 5** — l'entrée absente, et le moniteur à « A4 (69) » dans les trois courses, la raison écrite ; le (1) tombe, lui, par l'ABSENCE du champ `noms=` ; `zoom-regle-pianoroll` **rouge 2 / 7**, (1) et (2) : le zoom à **0,080** après un glissé vertical — l'ancienne règle ne zoome pas, et ne peut donc pas prendre un tour de page pour un zoom (les cinq autres verts) ; `suivi-suspendu` **rouge 3 / 4** : « cochée », la page a tourné (**2 959**, la tête à 5 762) — l'entrée absente, la raison écrite ; (3) et (4) par l'absence de la ligne « repris » et de l'entrée | **oui** |
+| — | les suites | cœur **550 / 550**, moteur **1 353 / 1 353**, interchange 359, clap 25, panels 11 ; Python 275 ; mypy propre ; gardes vertes (l'INDEX recompté) | **oui** |
+| — | la série | `./verifier.sh --bancs`, 180 bancs — **à jouer** | **en cours** |
+
+**CE QUE LE CODE ET LES BANCS ONT TRANCHÉ, ÉCRIT ICI.**
+- **Le relevé du piano roll portait déjà** `taille=L×H` et `clavier=` (D528) : le champ que le code de D586 avait ajouté
+  (`clavier=`, `largeur=`) était un doublon, retiré ; le banc lit ceux de D528, que le binaire de D585 écrit aussi — son
+  témoin tombe ainsi sur l'absence du zoom, et non sur un REFUS du repérage.
+- **UN ÉCHAPPEMENT HEXADÉCIMAL AVALAIT SA LETTRE**, deux fois : `"d\xc3\xa9filement"` (D586.2, `VSM_SUIVI`) se lit
+  `\xa9f`, et `"d\xc3\xa9calé"` (D581.3, `VSM_CONTROLEURS_SUIVENT`, depuis le 23/10) `\xa9c`. Le compilateur le disait —
+  « séquence d'échappement hexadécimale hors intervalle » —, noyé dans ~380 avertissements. Le piège était payé à D333 et
+  au mixeur ; **une garde, `tools/echappements-hex.py`**, lit les littéraux de chaîne de 659 fichiers C++ (31 623
+  littéraux ; commentaires et chaînes brutes sautés — trois des cinq motifs d'un `grep` y sont), jugée d'abord sur onze cas
+  de chaque forme (11 / 11), puis vue ROUGE sur les deux sites mêmes que le compilateur nomme, verte après la coupure
+  (`"d\xc3\xa9" "filement"`). Entrée dans les gardes de `verifier.sh` ; le piège est au CLAUDE.md.
+- **Et la ligne restait fausse une fois le « f » rendu** : « dÃ©filement ». Une chaîne en octets ajoutée à un
+  `juce::String` est lue en Latin-1, pas en UTF-8 ; elle passe désormais par `juce::String::fromUTF8`, comme la ligne de
+  relâchement de `glisser:…:lent`. Le relevé de D581 concatène des `std::string` et garde ses octets : seule sa lettre
+  manquait. Aucun banc ne lisait ces deux mots : c'est en LISANT le relevé que le défaut s'est vu.

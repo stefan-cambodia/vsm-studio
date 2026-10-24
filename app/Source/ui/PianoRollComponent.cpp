@@ -577,9 +577,6 @@ void PianoRollComponent::releverRangPourCapture() const {
                 + " visibles=" + juce::String(visibles) + "/" + juce::String(total)
                 // D586.3 : LES NOMS QUE LE CLAVIER ÉCRIT, par la fonction même de la peinture (`noteName`).
                 + " noms=60:" + noteName(60) + ",61:" + noteName(61) + ",69:" + noteName(69)
-                // D586.1 : la largeur du clavier et du composant — la règle du piano roll a la même abscisse et la même
-                // largeur (`PianoRollPanel::resized`) : un banc y trouve le point d'un tick.
-                + " clavier=" + juce::String(keyboardWidth()) + " largeur=" + juce::String(getWidth())
                 // D497 : l'outil courant — la barre le marque en couleur, et un
                 // texte peint ne se relève pas (D149).
                 + " outil=" + (tool_ == Tool::Select ? "selection" : tool_ == Tool::Draw ? "crayon"
@@ -997,7 +994,7 @@ bool PianoRollComponent::plageDesNotesChoisies(const Track& track, Tick& de, Tic
 
 void PianoRollComponent::direControleursSuivis(size_t combien, Tick de, Tick a, int64_t delta) const {
     std::fputs(("VSM_CONTROLEURS_SUIVENT : " + std::to_string(combien) + " point(s) de [" + std::to_string(de) + ", "
-                + std::to_string(a) + ") d\xc3\xa9cal\xc3\xa9(s) de " + std::to_string(delta) + " ticks\n").c_str(), stderr);
+                + std::to_string(a) + ") d\xc3\xa9" "cal\xc3\xa9(s) de " + std::to_string(delta) + " ticks\n").c_str(), stderr);
 }
 
 void PianoRollComponent::setControleursSuivent(bool oui) {

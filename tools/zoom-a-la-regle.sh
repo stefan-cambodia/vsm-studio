@@ -14,6 +14,13 @@
 #   (4) un glissé vers le bas puis « Annuler le zoom » → le zoom d'avant, en UN pas ;
 #   (5) le TÉMOIN décoché → le zoom inchangé, la tête qui suit ;
 #   (6) relancé dans le même HOME : décochée ; en anglais, « Zoom by dragging on the ruler ».
+# ET, ÉCRIT AVANT SA MESURE (ROADMAP-daw, D586 en mesure) — le glissé de côté jusqu'au BORD (0,98 de la largeur), où le
+# suivi tourne la page même à l'arrêt :
+#   (7) cochée : aucune ligne de zoom, et la page a tourné (le défilement > 0) — un tour de page n'est pas un zoom ;
+#   (8) décochée : de même — la préférence décochée ne touche pas à la vue.
+# (7) et (8) passaient AVANT le remède : `glisser:` d'un trait ne laisse pas battre le minuteur qui pousse la tête dans la
+# vue, et la page ne tourne qu'après le relâchement. Les mêmes, joués par `:lent` (huit mouvements de 50 ms, la main) :
+#   (7′) cochée et (8′) décochée : aucune ligne de zoom, la page tournée.
 #
 #   tools/zoom-a-la-regle.sh [binaire]
 set -u
@@ -94,6 +101,11 @@ course haut "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$HAUT;1200:relever-tete"
 course cote "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$COTE;1200:relever-tete;1300:relever-arrangement"
 course annule "" VSM_DELAI=2000 VSM_GESTE_APRES="900:$BAS;1200:menu:Affichage > Annuler le zoom"
 course temoin "$maison" VSM_DELAI=2000 VSM_GESTE_APRES="700:$OPTION;900:$BAS;1200:relever-tete"
+BORD="glisser:arrangement:$FX5,$FY0:0.98000,+0px"
+course bord "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$BORD;1200:relever-defilement"
+course bord-decoche "" VSM_DELAI=2000 VSM_GESTE_APRES="700:$OPTION;900:$BORD;1200:relever-defilement"
+course bord-lent "" VSM_DELAI=2400 VSM_GESTE_APRES="900:$BORD:lent;1800:relever-defilement"
+course bord-lent-decoche "" VSM_DELAI=2600 VSM_GESTE_APRES="700:$OPTION;900:$BORD:lent;1800:relever-defilement"
 course retenu "$maison" VSM_DELAI=1600 VSM_GESTE_APRES="900:lister-menus"
 course anglais "" VSM_LANGUE=en VSM_DELAI=1600 VSM_GESTE_APRES="900:lister-menus"
 
@@ -138,6 +150,15 @@ verdict "(3) de côté : le zoom inchangé, la tête sous le point d'arrivée" "
 verdict "(4) « Annuler le zoom » : le zoom d'avant, en un pas" "$OK4"
 verdict "(5) le témoin décoché : le zoom inchangé, la tête qui suit" "$([ "$OK5" = 1 ] && [ "$nb_temoin" = 0 ] && echo 1 || echo 0)"
 verdict "(6) retenu au poste ; en anglais" "$([ "$decoche" = 1 ] && [ "$en" = 1 ] && echo 1 || echo 0)"
+defil() { grep -h "^VSM_DEFILEMENT : arrangement " "$brouillon/$1.txt" | tail -1 | sed -n 's/^VSM_DEFILEMENT : arrangement \([0-9-]*\),.*/\1/p'; }
+for n in bord bord-decoche bord-lent bord-lent-decoche; do
+    echo "       $n : défilement $(defil $n) ; $(grep -c "^VSM_ZOOM : glissé sur la règle" "$brouillon/$n.txt") zoom $(glisse $n | sed -n 's/.*(\(×[0-9.]*\)).*(\([0-9]* à annuler\)).*/\1, \2/p')"
+done
+bord_ok() { local d; d="$(defil "$1")"; [ -n "$d" ] && [ "$d" -gt 0 ] && [ "$(grep -c "^VSM_ZOOM : glissé sur la règle" "$brouillon/$1.txt")" = 0 ]; }
+verdict "(7) de côté jusqu'au bord, cochée : la page tourne, aucun zoom noté" "$(bord_ok bord && echo 1 || echo 0)"
+verdict "(8) de côté jusqu'au bord, décochée : de même" "$(bord_ok bord-decoche && echo 1 || echo 0)"
+verdict "(7′) de même, d'une main (:lent), cochée" "$(bord_ok bord-lent && echo 1 || echo 0)"
+verdict "(8′) de même, d'une main (:lent), décochée" "$(bord_ok bord-lent-decoche && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "ZOOM-A-LA-REGLE : $rates contrôle(s) raté(s)"; exit 1; fi

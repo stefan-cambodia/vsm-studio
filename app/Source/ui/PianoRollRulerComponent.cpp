@@ -293,7 +293,9 @@ void PianoRollRulerComponent::mouseDrag(const juce::MouseEvent& event) {
         const float dy = event.position.y - appui_.y;
         if (std::abs(dy) >= 4.0f)
             pianoRoll_.zoomAncre(pptAppui_ * std::pow(2.0, static_cast<double>(dy) / 100.0), tickAppui_, appui_.x);
-        else
+        else if (pianoRoll_.pixelsPerTick() != pptAppui_)
+            // Seulement si le geste a ZOOMÉ : remise à chaque mouvement, la vue de l'appui défaisait le tour de page que
+            // la tête posée fait au bord droit (`setPlayheadTick`), et le relâchement le disait zoom (« ×1,000 »).
             pianoRoll_.poserVueHorizontale(pptAppui_, defilementAppui_);
     }
     if (onPlayheadRequested) onPlayheadRequested(std::max<Tick>(0, pianoRoll_.xToTick(event.position.x)));
@@ -302,10 +304,11 @@ void PianoRollRulerComponent::mouseDrag(const juce::MouseEvent& event) {
 
 void PianoRollRulerComponent::mouseUp(const juce::MouseEvent&) {
     // D586.1 : LE GLISSÉ DIT CE QU'IL A FAIT — le facteur, et où le tick saisi est resté, à comparer à l'abscisse de
-    // l'appui. Le piano roll n'a pas de pile de zooms (D557.3 est à l'arrangement) : rien n'est empilé.
+    // l'appui. Le piano roll n'a pas de pile de zooms (D557.3 est à l'arrangement) : rien n'est empilé. Un ZOOM, pas une
+    // vue changée : la page que la tête a tournée sous un glissé de côté n'en est pas un.
     if (appuiSimple_) {
         appuiSimple_ = false;
-        if (pianoRoll_.pixelsPerTick() != pptAppui_ || pianoRoll_.visibleStartTick() != defilementAppui_)
+        if (pianoRoll_.pixelsPerTick() != pptAppui_)
             std::fputs((juce::String::fromUTF8(u8"VSM_ZOOM_PIANOROLL : glissé sur la règle — zoom ")
                         + juce::String(pptAppui_, 6) + juce::String::fromUTF8(u8" → ")
                         + juce::String(pianoRoll_.pixelsPerTick(), 6) + juce::String::fromUTF8(u8" px/tick (×")

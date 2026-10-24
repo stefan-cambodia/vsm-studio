@@ -5,7 +5,7 @@
 #
 # LES RÈGLES GARDÉES (480 ticks par noire, 4/4, 120 BPM). Une piste de huit mesures, la vue du piano roll. Le point de la
 # mesure 5 (+ un temps, tick 8 160) se lit d'abord sur le relevé du piano roll (`zoom=`, `defilement=`, `clavier=`,
-# `largeur=`) : sa règle a la même abscisse et la même largeur. Le glissé passe par `glisser:pianoroll.regle:fx,0.5:fx,+100px`
+# `taille=`, D528) : sa règle a la même abscisse et la même largeur. Le glissé passe par `glisser:pianoroll.regle:fx,0.5:fx,+100px`
 # — l'appui au milieu de la règle, en fraction (lisible par un binaire d'avant D585.2), l'arrivée 100 px plus bas.
 # Un banc à part de celui de D585.2 (l'en-tête de D586 l'annonçait « étendu ») : l'arrangement et le piano roll ne
 # s'ouvrent pas dans la même vue, et un banc qui raterait sur l'un ne doit pas cacher l'autre.
@@ -15,6 +15,11 @@
 #   (3) un glissé horizontal pur → le zoom inchangé ;
 #   (4) Maj+glissé → la boucle dessinée, le zoom inchangé ;
 #   (5) le TÉMOIN décoché → le zoom inchangé.
+# ET, ÉCRIT AVANT SA MESURE (ROADMAP-daw, D586 en mesure) — le glissé de côté de (3) va jusqu'au BORD (0,98 de la
+# largeur), où le suivi tourne la page même à l'arrêt ; (3) est tombé rouge la première fois, une ligne de zoom écrite
+# pour un tour de page. (3) demande donc aussi la page tournée (le défilement > 0), et :
+#   (6) décochée, le même glissé : aucune ligne de zoom, la page tournée ;
+#   (7) cochée, le même glissé d'une main (`:lent`, huit mouvements de 50 ms) : de même.
 #
 #   tools/zoom-regle-pianoroll.sh [binaire]
 set -u
@@ -69,7 +74,10 @@ OPTION="menu:Transport > Zoomer en glissant sur la règle"
 
 echo "=== D586.1 : le zoom en glissant sur la règle du piano roll ==="
 course reperage "" VSM_DELAI=1500 VSM_GESTE_APRES="900:relever-pianoroll"
-zoom0="$(champ reperage zoom)"; def0="$(champ reperage defilement)"; clav="$(champ reperage clavier)"; larg="$(champ reperage largeur)"
+# La largeur du composant (`taille=LxH`) et celle du clavier (`clavier=`), relevées depuis D528 : un binaire d'avant D586,
+# le témoin, les écrit aussi.
+zoom0="$(champ reperage zoom)"; def0="$(champ reperage defilement)"; clav="$(champ reperage clavier)"
+larg="$(champ reperage taille | sed -n 's/^\([0-9]*\)x[0-9]*$/\1/p')"
 if [ -z "$zoom0" ] || [ -z "$clav" ] || [ -z "$larg" ]; then
     echo "REFUS : le relevé du piano roll ne dit pas zoom, clavier et largeur ($(grep -h '^VSM_PIANOROLL_RANG' "$brouillon/reperage.txt" | tail -1))"
     exit 2
@@ -94,8 +102,10 @@ course haut "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$HAUT;1200:relever-pianoroll"
 course cote "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$COTE;1200:relever-pianoroll;1300:relever-tete"
 course maj "" VSM_DELAI=1800 VSM_GESTE_APRES="900:$MAJ;1200:relever-pianoroll;1300:relever-boucle"
 course temoin "$maison" VSM_DELAI=1800 VSM_GESTE_APRES="700:$OPTION;900:$BAS;1200:relever-pianoroll"
+course bord-decoche "" VSM_DELAI=1800 VSM_GESTE_APRES="700:$OPTION;900:$COTE;1200:relever-pianoroll"
+course bord-lent "" VSM_DELAI=2400 VSM_GESTE_APRES="900:$COTE:lent;1800:relever-pianoroll"
 
-for n in bas haut cote maj temoin; do echo "       $n : zoom $(champ $n zoom) ; $(glisse $n | cut -c1-160)"; done
+for n in bas haut cote maj temoin bord-decoche bord-lent; do echo "       $n : zoom $(champ $n zoom) ; $(glisse $n | cut -c1-160)"; done
 grep -h "^VSM_BOUCLE" "$brouillon/maj.txt" | sed 's/^/       /'
 eval "$(python3 - "$(glisse bas)" "$(glisse haut)" "$zoom0" "$(champ cote zoom)" "$(champ maj zoom)" "$(champ temoin zoom)" <<'PY'
 import re, sys
@@ -117,10 +127,18 @@ read -r b0 b1 <<< "${boucle:-0 0}"
 
 verdict "(1) 100 px vers le bas : ×2,00, le tick saisi sous le pointeur" "$OK1"
 verdict "(2) 100 px vers le haut : ×0,50" "$OK2"
-verdict "(3) de côté : le zoom inchangé" "$([ "$OK3" = 1 ] && [ "$nb_cote" = 0 ] && echo 1 || echo 0)"
+tourne() { local d; d="$(champ "$1" defilement)"; [ -n "$d" ] && [ "$d" -gt 0 ]; }
+sans_zoom() { [ "$(grep -c "^VSM_ZOOM_PIANOROLL" "$brouillon/$1.txt")" = 0 ]; }
+echo "       défilements : de côté $(champ cote defilement) ; décochée $(champ bord-decoche defilement) ; d'une main $(champ bord-lent defilement)"
+verdict "(3) de côté jusqu'au bord : le zoom inchangé, aucune ligne, la page tournée" \
+    "$([ "$OK3" = 1 ] && [ "$nb_cote" = 0 ] && tourne cote && echo 1 || echo 0)"
 verdict "(4) Maj+glissé : la boucle dessinée, le zoom inchangé" \
     "$([ "$OK4Z" = 1 ] && [ "$nb_maj" = 0 ] && [ "$b1" -gt "$b0" ] && echo 1 || echo 0)"
 verdict "(5) le témoin décoché : le zoom inchangé" "$([ "$OK5" = 1 ] && [ "$nb_temoin" = 0 ] && echo 1 || echo 0)"
+verdict "(6) décochée, jusqu'au bord : aucune ligne, la page tournée" \
+    "$(sans_zoom bord-decoche && tourne bord-decoche && echo 1 || echo 0)"
+verdict "(7) d'une main (:lent), jusqu'au bord : aucune ligne, la page tournée" \
+    "$(sans_zoom bord-lent && tourne bord-lent && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "ZOOM-REGLE-PIANOROLL : $rates contrôle(s) raté(s)"; exit 1; fi

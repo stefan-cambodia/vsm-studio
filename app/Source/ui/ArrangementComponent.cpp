@@ -1353,7 +1353,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     // les têtes de piste ; ce qui est au-dessus est sorti avant.
     if (editionSuspendSuivi_ && enLecture_ && followPlayhead_ && !suiviSuspendu_) {
         suiviSuspendu_ = true;
-        std::fputs(("VSM_SUIVI : suspendu par un appui en lecture, d\xc3\xa9filement " + juce::String(static_cast<juce::int64>(scrollTick_))
+        std::fputs((juce::String::fromUTF8("VSM_SUIVI : suspendu par un appui en lecture, d\xc3\xa9" "filement ") + juce::String(static_cast<juce::int64>(scrollTick_))
                     + "\n").toRawUTF8(), stderr);
     }
 
@@ -1621,7 +1621,10 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
             pixelsPerTick_ = juce::jlimit(0.004, 2.0, vueAvantRegle_.pixelsParTick * std::pow(2.0, static_cast<double>(dy) / 100.0));
             scrollTick_ = std::max<vsm::midi::Tick>(
                 0, regleTick_ - static_cast<vsm::midi::Tick>(std::llround((regleAppui_.x - kHeaderWidth) / pixelsPerTick_)));
-        } else {
+        } else if (pixelsPerTick_ != vueAvantRegle_.pixelsParTick) {
+            // D586 : LA VUE DE L'APPUI NE REVIENT QUE SI LE GESTE A ZOOMÉ. Remise à chaque mouvement, elle défaisait le
+            // tour de page que le suivi fait entre deux mouvements quand la tête approche du bord — décochée comprise —,
+            // et le relâchement prenait ce tour de page pour un zoom (mesuré d'une main : « ×1,000, 1 à annuler »).
             pixelsPerTick_ = vueAvantRegle_.pixelsParTick;
             scrollTick_ = vueAvantRegle_.defilement;
         }
@@ -1837,10 +1840,11 @@ void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     if (geste_ == Geste::Hauteur || geste_ == Geste::Reordonner) notifyChanged();
     // D585.2 : UN GLISSÉ, UN PAS DE ZOOM (D557.3), noté s'il a changé la vue — et dit : le facteur, et où le tick saisi
     // est resté, à comparer à l'abscisse de l'appui.
+    // D586 : un ZOOM, pas une vue changée — le suivi a pu tourner la page sous le glissé, ce n'est pas un pas à annuler.
     if (geste_ == Geste::Regle && project_ != nullptr) {
-        const bool change = vueAvantRegle_.pixelsParTick != pixelsPerTick_ || vueAvantRegle_.defilement != scrollTick_;
-        noterZoom(vueAvantRegle_);
+        const bool change = vueAvantRegle_.pixelsParTick != pixelsPerTick_;
         if (change) {
+            noterZoom(vueAvantRegle_);
             const double parMesure = static_cast<double>(project_->ticksPerQuarterNote) * 4.0;
             std::fputs((juce::String::fromUTF8(u8"VSM_ZOOM : glissé sur la règle — zoom ")
                         + juce::String(vueAvantRegle_.pixelsParTick, 6) + juce::String::fromUTF8(u8" → ")

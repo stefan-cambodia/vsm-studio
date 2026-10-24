@@ -2448,6 +2448,7 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
     // glissé jusqu'en fx1, relâché : le chemin de la souris sur la règle (Maj : la
     // boucle, Alt : le punch). « :double » joue le double-clic en fx0.
     // D585.2 : « fx1,fy1 » à l'arrivée, et « 12px » / « +100px » en pixels (voir plus bas).
+    // D586 : « :lent », le glissé d'une main — huit mouvements espacés de 50 ms (voir plus bas).
     juce::StringArray champs;
     champs.addTokens(description, ":", "");
     if (champs.size() < 3) return false;
@@ -2502,6 +2503,33 @@ bool MainComponent::glisserPourCapture(const juce::String& description) {
         return true;
     }
     cible->mouseDown(evenement(depart, mods, 1, false));
+    if (mode.contains("lent")) {
+        // D586 : « :lent » — LE GLISSÉ D'UNE MAIN : huit mouvements espacés de 50 ms, le relâchement 50 ms après le
+        // dernier. Le fil des messages tourne entre eux, et le minuteur à 30 Hz qui pousse la tête dans les vues avec lui :
+        // d'un trait, il ne bat qu'après le relâchement, et un banc ne voit pas ce qu'il fait au milieu d'un geste.
+        constexpr int kPas = 8, kIntervalleMs = 50;
+        juce::Component::SafePointer<juce::Component> garde(cible);
+        for (int i = 1; i <= kPas + 1; ++i) {
+            const bool relache = i > kPas;
+            const juce::Point<float> ou = relache ? arrivee : depart + (arrivee - depart) * (static_cast<float>(i) / kPas);
+            juce::Timer::callAfterDelay(i * kIntervalleMs, [garde, ou, depart, mods, relache] {
+                auto* c = garde.getComponent();
+                if (c == nullptr) return;
+                const auto t = juce::Time::getCurrentTime();
+                const juce::MouseEvent e(juce::Desktop::getInstance().getMainMouseSource(), ou,
+                                         juce::ModifierKeys(relache ? mods & ~juce::ModifierKeys::leftButtonModifier : mods),
+                                         1.0f, 0.0f, 0.0f, 0.0f, 0.0f, c, c, t, depart, t, 1, true);
+                if (relache) {
+                    c->mouseUp(e);
+                    std::fputs((juce::String::fromUTF8("VSM_GLISSE : rel\xc3\xa2" "ch\xc3\xa9 apr\xc3\xa8s ") + juce::String(kPas)
+                                + " mouvements de " + juce::String(kIntervalleMs) + " ms\n").toRawUTF8(), stderr);
+                } else {
+                    c->mouseDrag(e);
+                }
+            });
+        }
+        return true;
+    }
     cible->mouseDrag(evenement(arrivee, mods, 1, true));
     cible->mouseUp(evenement(arrivee, mods & ~juce::ModifierKeys::leftButtonModifier, 1, true));
     return true;

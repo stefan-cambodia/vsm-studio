@@ -159,6 +159,11 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   `const char*` initialisé par des `u8"…"` — déclarer les champs en
   `const char8_t*`. Sixième fois le 18/10 (D565.1) : un ternaire `fr ? u8"…" : "…"` mêle
   `char8_t` et `char` — écrire les deux branches en octets (`"Pav\xc3\xa9"`).
+  **Et l'octet avale la lettre qui le suit** quand elle est hexadécimale (a-f, 0-9) :
+  `"d\xc3\xa9filement"` est `\xa9f`, et le relevé écrit « dÃilement » — payé à D333,
+  au mixeur, puis à D581 et D586 sans le voir (le compilateur le dit, noyé dans ~380
+  avertissements). Couper la chaîne : `"d\xc3\xa9" "filement"`. Gardé par
+  `tools/echappements-hex.py` (24/10, D586).
   Et une commande de mesure qui ENCHAÎNE une compilation
   doit s'arrêter sur son échec : sinon elle mesure l'ancien binaire.
 - En zsh, `grep --include=*.cpp` est un glob que le shell mange (« no
