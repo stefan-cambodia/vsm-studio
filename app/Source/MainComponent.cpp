@@ -11544,9 +11544,10 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     // Le nom du dossier passe dans le titre de la fenêtre : c'est le retour
     // qu'attend un Ctrl+S, et il ne demande pas de cliquer pour disparaître.
     poserTitreDeBase("Vintage Synth MIDI Studio -- " + folder.getFileName());
-    // D174 : ENREGISTRÉ, DONC PLUS DE MARQUE. La profondeur d'historique de cet
-    // instant devient la référence : tout ce qui s'ajoute après est « non
-    // enregistré », et l'annulation, qui la fait décroître, compte aussi.
+    // D174 : ENREGISTRÉ, DONC PLUS DE MARQUE. L'état d'historique de cet instant
+    // devient la référence : tout pas qui suit est « non enregistré », l'annulation
+    // aussi. D588.4 : l'ÉTAT et non plus la profondeur — une pile pleine, ou annuler
+    // puis refaire autre chose, ramenaient la profondeur sans ramener le morceau.
     etatAuDernierEnregistrement_ = history_.etatCourant();
     modifieHorsHistorique_ = false;   // D508
     rafraichirTitre();
