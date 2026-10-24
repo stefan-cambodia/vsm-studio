@@ -4516,6 +4516,21 @@ const Paire kAnglais[] = {
       "%1 — VCA: its fader multiplies that of %2" },
     { "%1 — fader commandé par le VCA « %2 »",
       "%1 — fader controlled by VCA “%2”" },
+    // D592 : LA DISPOSITION DES ACCORDS — les mots du *Chord Editing* de Cubase (*Inversions*, *Drop Notes*).
+    { "Disposition des accords",
+      "Chord voicing" },
+    { "Renverser vers le haut",
+      "Invert upward" },
+    { "Renverser vers le bas",
+      "Invert downward" },
+    { "Drop 2",
+      "Drop 2" },
+    { "Drop 3",
+      "Drop 3" },
+    { "Drop 2 et 4",
+      "Drop 2 + 4" },
+    { "%1 : %2 accord(s) changé(s), %3 laissé(s) hors de la tessiture, %4 sans assez de voix, %5 note(s) seule(s)",
+      "%1: %2 chord(s) changed, %3 left out of range, %4 without enough voices, %5 single note(s)" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));

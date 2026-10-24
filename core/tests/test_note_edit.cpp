@@ -674,6 +674,103 @@ VSM_TEST(the_top_and_bottom_voices_take_one_note_per_played_chord) {
     VSM_ASSERT_EQ(selectVoice(notes, 30, true).size(), size_t(8));
 }
 
+// D592 — LA DISPOSITION DES ACCORDS. L'attendu écrit avant la mesure (ROADMAP-daw, D592) : A serré à 0, B de plus
+// d'une octave à 480, C de quatre sons à 960, D joué à 1440/1446/1452, une note seule à 1920, E dans le suraigu à 2400,
+// F dans le grave à 2880 ; tout choisi, la fenêtre d'un accord à 30 ticks.
+namespace {
+std::vector<Note> accordsD592() {
+    std::vector<Note> notes;
+    uint64_t id = 0;
+    auto note = [&](Tick debut, uint8_t hauteur) {
+        Note n; n.id = ++id; n.number = hauteur; n.velocity = 90; n.startTick = debut; n.endTick = debut + 240;
+        notes.push_back(n);
+    };
+    note(0, 60); note(0, 64); note(0, 67);
+    note(480, 60); note(480, 67); note(480, 76);
+    note(960, 60); note(960, 64); note(960, 67); note(960, 71);
+    note(1440, 62); note(1446, 65); note(1452, 69);
+    note(1920, 48);
+    note(2400, 118); note(2400, 122); note(2400, 125);
+    note(2880, 2); note(2880, 5); note(2880, 9);
+    return notes;
+}
+std::vector<int> hauteursDansLOrdre(const std::vector<Note>& notes) {
+    std::vector<int> h;
+    for (const auto& n : notes) h.push_back(n.number);
+    return h;
+}
+VoicingReport disposer(std::vector<Note>& notes, ChordVoicing geste) {
+    return revoiceChords(notes, selectAllNotes(notes), 30, geste);
+}
+} // namespace
+
+VSM_TEST(inverting_up_puts_the_lowest_voice_strictly_above_the_highest_and_leaves_what_would_leave_the_range) {
+    auto notes = accordsD592();
+    const auto r = disposer(notes, ChordVoicing::InvertUp);
+    VSM_ASSERT(hauteursDansLOrdre(notes)
+               == (std::vector<int>{72, 64, 67, 84, 67, 76, 72, 64, 67, 71, 74, 65, 69, 48, 118, 122, 125, 14, 5, 9}));
+    VSM_ASSERT_EQ(r.chords, size_t(6));
+    VSM_ASSERT_EQ(r.changed, size_t(5));
+    VSM_ASSERT_EQ(r.outOfRange, size_t(1));   // E : 118 + 12 = 130
+    VSM_ASSERT_EQ(r.singles, size_t(1));
+    VSM_ASSERT_EQ(r.notesMoved, size_t(5));
+}
+
+VSM_TEST(inverting_down_puts_the_highest_voice_strictly_below_the_lowest) {
+    auto notes = accordsD592();
+    const auto r = disposer(notes, ChordVoicing::InvertDown);
+    VSM_ASSERT(hauteursDansLOrdre(notes)
+               == (std::vector<int>{60, 64, 55, 60, 67, 52, 60, 64, 67, 59, 62, 65, 57, 48, 118, 122, 113, 2, 5, 9}));
+    VSM_ASSERT_EQ(r.changed, size_t(5));
+    VSM_ASSERT_EQ(r.outOfRange, size_t(1));   // F : 9 − 12 < 0
+}
+
+VSM_TEST(drop_2_drop_3_and_drop_2_4_lower_the_voices_counted_from_the_top) {
+    auto d2 = accordsD592();
+    auto r = disposer(d2, ChordVoicing::Drop2);
+    VSM_ASSERT(hauteursDansLOrdre(d2)
+               == (std::vector<int>{60, 52, 67, 60, 55, 76, 60, 64, 55, 71, 62, 53, 69, 48, 118, 110, 125, 2, 5, 9}));
+    VSM_ASSERT_EQ(r.changed, size_t(5));
+    VSM_ASSERT_EQ(r.outOfRange, size_t(1));
+    auto d3 = accordsD592();
+    r = disposer(d3, ChordVoicing::Drop3);
+    VSM_ASSERT(hauteursDansLOrdre(d3)
+               == (std::vector<int>{48, 64, 67, 48, 67, 76, 60, 52, 67, 71, 50, 65, 69, 48, 106, 122, 125, 2, 5, 9}));
+    VSM_ASSERT_EQ(r.changed, size_t(5));
+    VSM_ASSERT_EQ(r.outOfRange, size_t(1));
+    auto d24 = accordsD592();
+    r = disposer(d24, ChordVoicing::Drop24);
+    VSM_ASSERT(hauteursDansLOrdre(d24)
+               == (std::vector<int>{60, 64, 67, 60, 67, 76, 48, 64, 55, 71, 62, 65, 69, 48, 118, 122, 125, 2, 5, 9}));
+    VSM_ASSERT_EQ(r.changed, size_t(1));
+    VSM_ASSERT_EQ(r.tooFewVoices, size_t(5));
+    VSM_ASSERT_EQ(r.outOfRange, size_t(0));
+}
+
+VSM_TEST(a_doubled_voice_moves_whole_and_unchosen_notes_stay_out_of_the_chord) {
+    // Une doublure (deux do à 0) est UNE voix : renversée vers le haut, les deux montent ; un unisson seul n'est pas
+    // un accord. Et une note non choisie (le sol à 480) ne compte pas dans l'accord : le do choisi seul est une note.
+    std::vector<Note> notes;
+    uint64_t id = 0;
+    auto note = [&](Tick debut, uint8_t hauteur) {
+        Note n; n.id = ++id; n.number = hauteur; n.startTick = debut; n.endTick = debut + 240;
+        notes.push_back(n);
+    };
+    note(0, 60); note(0, 60); note(0, 64); note(0, 67);
+    note(480, 60); note(480, 67);
+    note(960, 50); note(960, 50);
+    NoteSelection choix = selectAllNotes(notes);
+    choix.erase(6);   // le sol à 480
+    const auto r = revoiceChords(notes, choix, 30, ChordVoicing::InvertUp);
+    VSM_ASSERT(hauteursDansLOrdre(notes) == (std::vector<int>{72, 72, 64, 67, 60, 67, 50, 50}));
+    VSM_ASSERT_EQ(r.chords, size_t(1));
+    VSM_ASSERT_EQ(r.singles, size_t(2));
+    VSM_ASSERT_EQ(r.notesMoved, size_t(2));
+    // Une sélection vide ne fait rien.
+    const auto rien = revoiceChords(notes, NoteSelection{}, 30, ChordVoicing::Drop2);
+    VSM_ASSERT_EQ(rien.chords + rien.singles + rien.notesMoved, size_t(0));
+}
+
 // D581.3 — LES CONTRÔLEURS QUI SUIVENT LES NOTES. L'attendu écrit avant la mesure : la plage [480, 1200) de deux notes,
 // des CC 1 à 480, 600, 960, 1100 et 2000, un pitch bend à 700 ; un décalage de 120 : 600, 720, 1080, 1220, 2000 et 820.
 VSM_TEST(controllers_in_the_range_of_the_moved_notes_follow_them_and_the_others_stay) {

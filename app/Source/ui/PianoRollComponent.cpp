@@ -70,6 +70,7 @@ enum ContextMenuId {
     kCtxLegatoOverlapFirst = 100550, kCtxLegatoOverlapLast = 100554,              // D576.2 : −20 … +20 ticks
     kCtxLegatoSelectedOnly = 100560,                                              // D576.3
     kCtxControllersFollow = 100570,                                               // D581.3
+    kCtxVoicingInvertUp = 100580, kCtxVoicingInvertDown, kCtxVoicingDrop2, kCtxVoicingDrop3, kCtxVoicingDrop24,   // D592
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection, kCtxZoomIn, kCtxZoomOut,   // D497 : ±
@@ -1357,6 +1358,34 @@ void PianoRollComponent::mirrorSelectionPitch() {
     notifyEdited();
 }
 
+void PianoRollComponent::revoiceSelection(vsm::sequencer::ChordVoicing geste) {
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    using CV = vsm::sequencer::ChordVoicing;
+    const char8_t* libelle = geste == CV::InvertUp     ? u8"Renverser vers le haut"
+                             : geste == CV::InvertDown ? u8"Renverser vers le bas"
+                             : geste == CV::Drop2      ? u8"Drop 2"
+                             : geste == CV::Drop3      ? u8"Drop 3"
+                                                       : u8"Drop 2 et 4";
+    const juce::String nom(juce::CharPointer_UTF8(reinterpret_cast<const char*>(libelle)));
+    if (!beginEdit(nom)) return;
+    // D592 : par accord de la sélection (la fenêtre de D581.1) ; ce qui est laissé l'est AVEC sa raison, au journal et
+    // à l'écran — un accord du suraigu qui ne peut pas monter n'est pas borné en silence (D536).
+    const auto r = revoiceChords(track->notes, selectedNoteIds_, fenetreAccord(), geste);
+    std::fprintf(stderr, "VSM_DISPOSITION : %s — %zu accord(s) changé(s), %zu hors de la tessiture, %zu trop peu de voix, "
+                         "%zu note(s) seule(s), %zu note(s) déplacée(s)\n",
+                 nom.toRawUTF8(), r.changed, r.outOfRange, r.tooFewVoices, r.singles, r.notesMoved);
+    notifyEdited();   // D511 : aucun pas si rien n'a bougé
+    if (onStatusChanged)
+        onStatusChanged(vsm::app::ui::tr(u8"%1 : %2 accord(s) changé(s), %3 laissé(s) hors de la tessiture, "
+                                         u8"%4 sans assez de voix, %5 note(s) seule(s)")
+                            .replace("%1", vsm::app::ui::tr(nom))
+                            .replace("%2", juce::String(static_cast<int>(r.changed)))
+                            .replace("%3", juce::String(static_cast<int>(r.outOfRange)))
+                            .replace("%4", juce::String(static_cast<int>(r.tooFewVoices)))
+                            .replace("%5", juce::String(static_cast<int>(r.singles))));
+}
+
 void PianoRollComponent::selectNotes(const NoteSelection& ids) {
     selectedNoteIds_ = ids;
     repaint();
@@ -1715,6 +1744,16 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     // D532.3 bis : grisée sans sélection ou sans accord — sans ligne d'accords, rien à suivre.
     pitchMenu.addItem(kCtxSnapChords, tr(u8"Caler sur les accords"),
                       sel && project_ != nullptr && !project_->chords.empty());
+    // D592 : LA DISPOSITION DES ACCORDS (*Chord Editing* de Cubase : *Inversions*, *Drop Notes*), accord par accord.
+    {
+        juce::PopupMenu disposition;
+        disposition.addItem(kCtxVoicingInvertUp, tr(u8"Renverser vers le haut"), sel);
+        disposition.addItem(kCtxVoicingInvertDown, tr(u8"Renverser vers le bas"), sel);
+        disposition.addItem(kCtxVoicingDrop2, tr(u8"Drop 2"), sel);
+        disposition.addItem(kCtxVoicingDrop3, tr(u8"Drop 3"), sel);
+        disposition.addItem(kCtxVoicingDrop24, tr(u8"Drop 2 et 4"), sel);
+        pitchMenu.addSubMenu(tr(u8"Disposition des accords"), disposition);
+    }
     menu.addSubMenu(tr("Hauteur"), pitchMenu);
 
     juce::PopupMenu timeMenu;
@@ -1993,6 +2032,11 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxJoin:             joinSelection(); break;
         case kCtxReverse:          reverseSelection(); break;
         case kCtxMirror:           mirrorSelectionPitch(); break;
+        case kCtxVoicingInvertUp:   revoiceSelection(vsm::sequencer::ChordVoicing::InvertUp); break;   // D592
+        case kCtxVoicingInvertDown: revoiceSelection(vsm::sequencer::ChordVoicing::InvertDown); break;
+        case kCtxVoicingDrop2:      revoiceSelection(vsm::sequencer::ChordVoicing::Drop2); break;
+        case kCtxVoicingDrop3:      revoiceSelection(vsm::sequencer::ChordVoicing::Drop3); break;
+        case kCtxVoicingDrop24:     revoiceSelection(vsm::sequencer::ChordVoicing::Drop24); break;
         case kCtxMute:             toggleSelectionMuted(); break;
         case kCtxVelocityFull:     setSelectionVelocity(127); break;
         case kCtxVelocityHalf:     setSelectionVelocity(64); break;

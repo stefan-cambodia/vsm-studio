@@ -354,6 +354,8 @@ public:
     void joinSelection();
     void reverseSelection();
     void mirrorSelectionPitch();
+    /// D592 : renverser les accords de la sélection, ou les drops (*Chord Editing* de Cubase) — un pas, et le compte dit.
+    void revoiceSelection(vsm::sequencer::ChordVoicing geste);
     void setSelectionVelocity(uint8_t velocity);
     void scaleSelectionVelocity(float factor);
     void rampSelectionVelocity(uint8_t from, uint8_t to);

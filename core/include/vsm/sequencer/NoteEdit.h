@@ -269,6 +269,29 @@ NoteSelection selectNotesShorterThan(const std::vector<Note>& notes, Tick shorte
 /// seule est sa propre voix ; à l'unisson en tête, toutes.
 NoteSelection selectVoice(const std::vector<Note>& notes, Tick fenetreAccord, bool top);
 
+/// D592 : LA DISPOSITION DES ACCORDS — les *Inversions* et les *Drop Notes* du *Chord Editing* de Cubase.
+/// `InvertUp` : la hauteur la plus grave monte du plus petit nombre d'octaves qui la mette STRICTEMENT au-dessus de la
+/// plus aiguë (`InvertDown` : l'inverse) ; `Drop2`, `Drop3`, `Drop24` : la 2e (3e ; 2e et 4e) hauteur en partant du
+/// haut descend d'une octave.
+enum class ChordVoicing { InvertUp, InvertDown, Drop2, Drop3, Drop24 };
+
+/// Ce qu'un geste de disposition a fait, accord par accord — pour être DIT, jamais tu.
+struct VoicingReport {
+    size_t chords = 0;         ///< groupes d'au moins deux hauteurs distinctes
+    size_t changed = 0;        ///< accords dont une voix a bougé
+    size_t outOfRange = 0;     ///< accords laissés : une voix serait sortie de 0..127
+    size_t tooFewVoices = 0;   ///< accords laissés : moins de voix que le drop n'en demande
+    size_t singles = 0;        ///< groupes d'une seule hauteur (une note, ou un unisson) : pas un accord
+    size_t notesMoved = 0;
+};
+
+/// D592 : un accord est la règle de `selectVoice` (D581.1) appliquée aux SEULES notes choisies — il s'ouvre à sa
+/// première note et prend ce qui commence avant `début + fenetreAccord`. Ses VOIX sont ses hauteurs DISTINCTES : une
+/// doublure bouge avec sa voix. Un accord qu'une voix ferait sortir de 0..127 ne bouge pas du tout (rien n'est borné),
+/// les autres si. Le temps et les identifiants ne changent pas.
+VoicingReport revoiceChords(std::vector<Note>& notes, const NoteSelection& selection, Tick fenetreAccord,
+                            ChordVoicing voicing);
+
 /// D581.3 : LES CONTRÔLEURS QUI SUIVENT LES NOTES — les CC, le pitch bend et les pressions de la piste dont l'instant tombe
 /// dans `[from, to)` décalés de `deltaTicks`, chacun posé à 0 au plus tôt comme une note (`nudgeNotes`), chaque liste
 /// remise dans l'ordre du temps. Rend le nombre de points déplacés.

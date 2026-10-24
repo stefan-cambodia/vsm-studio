@@ -819,6 +819,65 @@ NoteSelection selectVoice(const std::vector<Note>& notes, Tick fenetreAccord, bo
     return result;
 }
 
+VoicingReport revoiceChords(std::vector<Note>& notes, const NoteSelection& selection, Tick fenetreAccord,
+                            ChordVoicing voicing) {
+    // D592 : les accords de `selectVoice` (D581.1), mais parmi les seules notes choisies — un geste sur la sélection
+    // n'entraîne pas une note qu'on n'a pas prise.
+    VoicingReport rapport;
+    std::vector<Note*> ordre;
+    for (auto& n : notes)
+        if (selection.count(n.id) > 0) ordre.push_back(&n);
+    std::stable_sort(ordre.begin(), ordre.end(), [](const Note* a, const Note* b) { return a->startTick < b->startTick; });
+    for (size_t i = 0; i < ordre.size();) {
+        size_t j = i;
+        while (j < ordre.size() && ordre[j]->startTick - ordre[i]->startTick < std::max<Tick>(1, fenetreAccord)) ++j;
+        // Les voix sont les hauteurs DISTINCTES, du haut vers le bas : une doublure bouge avec sa voix.
+        std::vector<int> voix;
+        for (size_t k = i; k < j; ++k) voix.push_back(ordre[k]->number);
+        std::sort(voix.begin(), voix.end(), [](int a, int b) { return a > b; });
+        voix.erase(std::unique(voix.begin(), voix.end()), voix.end());
+        const size_t debut = i;
+        i = j;
+        if (voix.size() < 2) { ++rapport.singles; continue; }
+        ++rapport.chords;
+        // (hauteur d'origine, écart) de chaque voix qui bouge.
+        std::vector<std::pair<int, int>> deplacements;
+        const int haut = voix.front(), bas = voix.back();
+        switch (voicing) {
+            case ChordVoicing::InvertUp: {   // STRICTEMENT au-dessus : un unisson n'est pas un renversement
+                int d = 12;
+                while (bas + d <= haut) d += 12;
+                deplacements.push_back({bas, d});
+                break;
+            }
+            case ChordVoicing::InvertDown: {
+                int d = -12;
+                while (haut + d >= bas) d -= 12;
+                deplacements.push_back({haut, d});
+                break;
+            }
+            case ChordVoicing::Drop2: deplacements.push_back({voix[1], -12}); break;
+            case ChordVoicing::Drop3:
+                if (voix.size() >= 3) deplacements.push_back({voix[2], -12});
+                break;
+            case ChordVoicing::Drop24:   // à moins de quatre voix, ce ne serait qu'un drop 2 fait à moitié
+                if (voix.size() >= 4) { deplacements.push_back({voix[1], -12}); deplacements.push_back({voix[3], -12}); }
+                break;
+        }
+        if (deplacements.empty()) { ++rapport.tooFewVoices; continue; }
+        bool dedans = true;
+        for (const auto& [h, d] : deplacements) dedans = dedans && h + d >= 0 && h + d <= 127;
+        if (!dedans) { ++rapport.outOfRange; continue; }   // rien n'est borné : l'accord reste tel quel
+        for (size_t k = debut; k < j; ++k) {
+            const int origine = ordre[k]->number;
+            for (const auto& [h, d] : deplacements)
+                if (origine == h) { ordre[k]->number = static_cast<uint8_t>(h + d); ++rapport.notesMoved; break; }
+        }
+        ++rapport.changed;
+    }
+    return rapport;
+}
+
 NoteSelection selectNotesInTimeRange(const std::vector<Note>& notes, Tick fromTick, Tick toTick) {
     NoteSelection result;
     for (const auto& n : notes)
