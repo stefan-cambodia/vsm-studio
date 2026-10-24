@@ -45604,3 +45604,79 @@ par élément (`prise-hors-clips`, `zoom-molette-pointeur`, `reticule`), entré 
   L'en-tête du banc le disait lasso ; il est corrigé. Le réticule ne dépend pas du geste : la mesure tient.
 - **La série de D586, lue avant de compiler** : quatre rouges sur un même contrôle, sous l'écran éteint ; rejoués seuls,
   quatre verts (D586 — FAITE, plus haut).
+
+### Phase D588 — un quarante-neuvième audit : la piste neuve sous la piste choisie, la largeur de la tête de lecture, la profondeur de l'historique (24/10/2026)
+
+*Écrite le 24/10 à 20 h 15 (l'horloge), pendant la série de D587, l'écran allumé ; le code écrit ensuite dans l'arbre à
+part (`../vsm-D588`), sans rien compiler ni lancer avant que ce texte soit commité. Rien de D588 n'a été mesuré avant.*
+
+**LA MÉTHODE, celle de D567 et de D587 : un zéro se lit dans la fonction et dans celles qu'elle appelle — et dans ce que
+le code FAIT, pas dans ses noms (D571.3).** Sondés, l'ajout d'une piste de Cubase (*Add Track*, qui l'insère sous la piste
+choisie, comme Live et Reaper), la page *Transport* de ses préférences (*Cursor Width*), et la limite de l'historique
+d'annulation (Reaper : *Maximum undo memory use*). **Écartés, et pourquoi** : changer de piste au clavier — la table des
+raccourcis porte `NavNextTrack` et `NavPreviousTrack`, et ↑/↓ déplacent les clips choisis d'une piste à l'autre
+(`moveSelectionAcrossTracks`) ; la couleur automatique d'une piste neuve (*Auto Track Color Mode*) — `addTrack` la tire de
+`trackColourForIndex` (D33.5) ; la piste qui suit le clip cliqué (*Track Selection follows Event Selection*) —
+`ArrangementComponent::mouseDown` appelle `onTrackSelected` ; le rendu sur place (*Render in Place*) — D18.1 ; le muet qui
+laisse passer les départs pré-fader (*Mute Pre-Send when Mute*, à l'envers) — « LE MUET COUPE TOUT, PRÉ-FADER COMPRIS »
+est un choix ÉCRIT (D4) : une case le rouvrirait, et elle conditionnerait l'export, donc le projet et `interchange` —
+remis à un audit qui le pèse seul ; le nom des clips d'après leur piste (*Parts get Track Names*) — remis, peu de gain.
+Restent trois zéros :
+**0 pour la piste neuve sous la piste choisie** — `MainComponent::addTrack` pose la piste EN FIN DE LISTE
+(`project_.tracks.push_back`), quelle que soit la piste choisie : les quatre entrées *Piste ▸ Ajouter…* et le bouton
+« + Ajouter une piste » l'envoient au bout, hors de la vue sur un projet de trente pistes, loin de là où l'on travaille.
+L'insertion au milieu est pourtant connue du dépôt : `newFolderAboveSelectedTrack` (la session capturée, les index
+décalés, la reconstruction) et `vsm::sequencer::reorderTracks`, qui fait suivre les routages par IDENTITÉ (D35.2) ;
+**0 pour la largeur de la tête de lecture** (*Cursor Width*) — six endroits la peignent, aucun réglage : l'arrangement, la
+grille et la règle du piano roll (un `drawLine` de 1,5 px, à cheval sur deux colonnes — la photo de D587.3 la lit à
+180, 131, 69 sur deux pixels), les lanes d'automation, des contrôleurs MIDI et du tempo (un `fillRect` de 2 px). Pour un
+utilisateur qui lit l'écran avec peine (l'échelle de 150 % est un besoin, pas un goût), le trait qui dit « on est ici »
+n'a qu'une épaisseur ;
+**0 pour la profondeur de l'historique** — `SnapshotHistory(size_t maxDepth = 128)`, et `MainComponent::history_` prend
+le défaut ; au 129ᵉ geste, `beginEdit` sort le plus ancien pas (`pop_front`) SANS UN MOT : le premier geste devient
+irrécupérable, et rien — ni le journal, ni la fenêtre d'historique — ne le dit. C'est une panne muette, au sens du dépôt.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D588.1 | **La piste neuve sous la piste choisie** — *Add Track* | *Piste ▸ Ajouter une piste MIDI*, *… audio*, *… un groupe*, *… un VCA* et le bouton « + » insèrent la piste JUSTE SOUS la piste choisie, à sa profondeur de dossier ; une piste choisie qui est un DOSSIER → après tout son contenu, à sa profondeur ; la dernière piste choisie → au bout, comme avant ; les routages (groupes, VCA, sorties publiées) suivent leurs pistes ; les machines des autres pistes gardent leurs réglages ; la piste neuve est choisie ; Ctrl+Z la retire en un pas ; mesuré par l'ordre des pistes du projet enregistré et par un export identique au bit près avant et après l'ajout, le témoin (le binaire de D587) à côté |
+| D588.2 | **La largeur de la tête de lecture** — *Cursor Width* | *Affichage ▸ Largeur de la tête de lecture ▸ D'origine*, *3 px*, *5 px* (une préférence du poste) : dans les six vues, la tête peinte en une barre de 3 ou 5 px calée sur les pixels, centrée sur son tick, de sa couleur ; *D'origine* ne change rien (aucune photo d'un banc existant ne bouge) ; retenue au poste ; mesuré par un relevé qui lit ce que la peinture lit, et par le compte des colonnes de la couleur de la tête sur la photo, le témoin à côté |
+| D588.3 | **La profondeur de l'historique, et le pas oublié DIT** | *Édition ▸ Profondeur de l'historique ▸ 64*, *128* (d'origine), *256*, *512* (une préférence du poste) ; un geste qui fait sortir le plus ancien pas le DIT au journal (son libellé) et la fenêtre d'historique écrit en tête combien de pas plus anciens sont oubliés, et la profondeur ; abaisser la profondeur sous le nombre de pas en retire aussitôt les plus anciens, dit de même ; mesuré par le nombre de pas, les lignes du journal et un relevé de la fenêtre, le témoin (le binaire de D587) à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D588.1.** L'insertion passe par `vsm::sequencer::moveTrack` après le `push_back` : `reorderTracks` fait suivre
+  `outputGroup`, `vcaTrack` et `outputSourceTrack` par identité, et une sixième copie du décalage des index (il y en a
+  cinq : `duplicateTrack`, `publishInstrumentOutputs`, les deux éclatements, le dossier neuf) serait celle qui oublierait
+  un champ. Comme le
+  dossier neuf : `captureSessionIntoProject` avant, `rebuildFromProject(false)` après — les machines suivent leurs pistes.
+  La profondeur est celle de la piste choisie ; un DOSSIER choisi reçoit la piste neuve APRÈS tout son contenu, à sa
+  profondeur, et non comme premier enfant : un dossier plié la cacherait, et une piste qu'on vient d'ajouter doit se voir.
+  L'import d'un fichier audio (`addTrack(Kind::Audio, nom)` puis `tracks.size() - 1`) garde le bout de la liste : ses
+  stems arrivent en lot, dans leur ordre (D33.1) — remis, et dit ici. `addTrack` rend désormais l'index de la piste
+  neuve, pour qu'aucun appelant ne le devine. **L'attendu, écrit avant la mesure** (un projet de trois pistes : 0 « Basse »,
+  MIDI, une machine, des notes, sortie vers le groupe 2 ; 1 « Lead », MIDI, une machine, des notes ; 2 « Groupe ») : (1) la
+  piste 0 choisie, *Ajouter une piste MIDI* → l'ordre **Basse, Piste 4, Lead, Groupe**, la sortie de « Basse » vers
+  l'index **3** (« Groupe »), la piste neuve choisie (index 1), l'export **identique au bit près** à celui d'avant l'ajout ;
+  (2) Ctrl+Z → **3** pistes dans l'ordre d'origine, l'export identique ; (3) la dernière piste choisie → la piste neuve à
+  l'index **3** ; (4) un dossier choisi qui contient « Lead » → la piste neuve après « Lead », à la profondeur du dossier ;
+  (5) le TÉMOIN (le binaire de D587) sur (1) → la piste neuve à l'index **3**.
+- **D588.2.** La barre fait 3 ou 5 px, calée par `roundToInt(x − largeur / 2)` — la leçon de D587.3 : un trait posé à
+  une demi-colonne n'en remplit aucune. *D'origine* garde les six dessins tels qu'ils sont, au pixel près : les photos des
+  bancs, prises au repos, ne changent pas. Le triangle de la règle du piano roll ne change pas. Les six vues lisent la
+  même largeur, posée par `MainComponent` comme le réticule (D587.3). Un verbe de banc `relever-tete` dit, pour chaque vue,
+  la largeur qu'elle peindra. **L'attendu, écrit avant la mesure** : *3 px* → les six vues disent **3** ; sur la photo, la
+  tête de l'arrangement et celle de la grille du piano roll couvrent **3** colonnes de sa couleur, pleines ; *5 px* → **5**
+  et **5** colonnes ; *D'origine* → les pixels autour de la tête **identiques** à ceux du témoin (le binaire de D587) ;
+  relancé → *5 px* retenu ; en anglais, *Playhead width*.
+- **D588.3.** `SnapshotHistory` apprend `setMaxDepth` (qui rend les libellés qu'il retire) et compte ses pas oubliés ;
+  `beginEdit` garde le libellé du pas qu'il a sorti, que `MainComponent` dit au journal (`VSM_HISTORIQUE : pas oublié
+  « … »`) ; la fenêtre d'historique écrit en tête « N pas plus anciens oubliés (profondeur P) », et rien quand N = 0. Le
+  compte repart de zéro avec l'historique (un projet ouvert, `clearHistory`). 512 au plus : un pas coûte 0,23 Mo sur le
+  plus gros projet mesuré (D172), 512 pas en font ~118 Mo. Un test du cœur garde `setMaxDepth` et le compte. **L'attendu,
+  écrit avant la mesure** : (1) 130 gestes `volume:` à la profondeur d'origine → **128** pas, **2** lignes « pas oublié »
+  (les deux premiers libellés), la fenêtre « **2** pas plus anciens oubliés (profondeur 128) » ; (2) la profondeur à 64,
+  puis 70 gestes → **64** pas, **6** oubliés ; (3) 70 gestes à 128, puis la profondeur à 64 → **64** pas, **6** oubliés
+  d'un coup, dits en une ligne ; (4) relancé → 64 retenu ; en anglais, *Undo history depth* ; (5) le TÉMOIN (le binaire
+  de D587) sur (1) → **128** pas, et AUCUNE ligne.
+
+**L'ORDRE, TRANCHÉ ICI.** D588.3 (une panne muette est le plus grave des trois), puis D588.1, puis D588.2 ; un banc par
+élément (`historique-profondeur`, `piste-sous-la-choisie`, `largeur-tete`), entré dans la série de `verifier.sh --bancs`.
