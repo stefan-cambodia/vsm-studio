@@ -46133,7 +46133,7 @@ traductions ; puis le banc `disposition-accords`, entré dans la série. Compila
 
 ### Phase D593 — un cinquante-quatrième audit : les filtres coupe-bas et coupe-haut de la tranche (25/10/2026)
 
-*Écrite le 25/10 à 04 h 30 (l'horloge), avant toute ligne de code et toute mesure, pendant la série de D588-D591 ; le
+*Écrite le 25/10 à 04 h 28 (l'heure du commit ; « 04 h 30 » écrit de tête, relu à 04 h 41), avant toute ligne de code et toute mesure, pendant la série de D588-D591 ; le
 code s'écrira dans un arbre à part posé sur le chantier de D592 (`../vsm-D593`), rien compilé ni lancé avant la fin de
 la série.*
 
@@ -46193,7 +46193,7 @@ l'export hors-ligne (2) ; ensuite seulement la tranche, l'instantané, la copie 
 
 ### Phase D594 — un cinquante-cinquième audit : les macros (25/10/2026)
 
-*Écrite le 25/10 à 04 h 45 (l'horloge), avant toute ligne de code et toute mesure, pendant la série de D588-D591.*
+*Écrite le 25/10 à 04 h 40 (l'heure du commit ; « 04 h 45 » écrit de tête, relu à 04 h 41), avant toute ligne de code et toute mesure, pendant la série de D588-D591.*
 
 **LE ZÉRO, lu au code.** Le troisième zéro du sondage de D592 : *Key Commands ▸ Macros* de Cubase — une suite de
 commandes rangée sous un nom, rejouée d'un geste. Aucun libellé n'en parle (« macro » : 0 sur 2 023 libellés anglais),
