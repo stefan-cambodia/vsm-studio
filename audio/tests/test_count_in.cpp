@@ -294,3 +294,38 @@ VSM_TEST(a_count_in_end_taken_back_leaves_the_next_playback_silent) {
     graphe.setPlaying(true);
     VSM_ASSERT_NEAR(static_cast<double>(crete(rendre(graphe, 8000.0, 333, 4.0))), 0.0, 1.0e-9);
 }
+
+VSM_TEST(the_dim_lowers_what_is_heard_by_20_db_and_never_what_the_master_measures) {
+    // D589.3 : L'ÉCOUTE ATTÉNUÉE. Deux graphes rendent le même décompte puis le début du morceau ; l'un est atténué. Ce
+    // qui SORT est ×0,1 échantillon par échantillon ; ce que le master MESURE (D48) ne bouge pas ; et un graphe neuf —
+    // celui que monte le rendu hors ligne — n'est pas atténué.
+    ProcessGraph avec, sans;
+    for (ProcessGraph* g : {&avec, &sans}) {
+        g->prepare(8000.0, 256);
+        g->setProject(projetDUneNote());
+        g->seekSeconds(-1.0);
+        g->setPlaying(true);
+    }
+    avec.setDim(true);
+    VSM_ASSERT_NEAR(avec.dimGain(), 0.1, 1e-9);
+    const auto attenue = rendre(avec, 8000.0, 256, 1.2);
+    const auto plein = rendre(sans, 8000.0, 256, 1.2);
+    VSM_ASSERT(crete(plein) > 0.01f);
+    VSM_ASSERT_EQ(attenue.size(), plein.size());
+    float ecart = 0.0f;
+    for (size_t i = 0; i < plein.size(); ++i) ecart = std::max(ecart, std::abs(attenue[i] - plein[i] * ProcessGraph::kDimGain));
+    VSM_ASSERT(ecart < 1.0e-9f);
+    VSM_ASSERT_NEAR(crete(attenue), crete(plein) * 0.1f, 1e-6);
+    // Le master mesure le mixage, pas l'écoute.
+    VSM_ASSERT_NEAR(avec.masterBus().outputPeak(), sans.masterBus().outputPeak(), 0.0);
+    // Le relevé du dernier bloc : la crête entendue ×0,1, celle du master la même.
+    float entendueA = 0.0f, masterA = 0.0f, entendueS = 0.0f, masterS = 0.0f;
+    avec.heardAndMasterPeaks(entendueA, masterA);
+    sans.heardAndMasterPeaks(entendueS, masterS);
+    VSM_ASSERT_NEAR(entendueA, entendueS * 0.1f, 1e-7);
+    VSM_ASSERT_NEAR(masterA, masterS, 0.0);
+    // Le rendu hors ligne monte son propre graphe : l'écoute n'y est jamais atténuée.
+    ProcessGraph neuf;
+    VSM_ASSERT(!neuf.dim());
+    VSM_ASSERT_NEAR(neuf.dimGain(), 1.0, 1e-12);
+}

@@ -5404,6 +5404,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     menu.addItem(kMenuTrackNewFolder,
                                   tr(u8"Ranger cette piste dans un dossier neuf"),
                                   piste < project_.tracks.size());
+                    // D589.1 : TOUTES LES PISTES CHOISIES, d'un geste (*Move Selected Tracks to New Folder*). Grisée sous
+                    // deux : pour une seule, l'entrée ci-dessus le fait déjà, et deux entrées qui feraient la même chose
+                    // se contrediraient le jour où l'une changerait.
+                    {
+                        const int choisies = static_cast<int>(trackList_.selectedTracks().size());
+                        menu.addItem(kMenuTrackChosenToFolder,
+                                      tr(u8"Ranger les pistes choisies dans un dossier neuf (%1)")
+                                          .replace("%1", juce::String(choisies)),
+                                      choisies >= 2);
+                    }
                     {
                         const bool peutEntrer =
                             piste > 0 && piste < project_.tracks.size()
@@ -5587,6 +5597,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // fait -- combien de temps on compte avant, et ce qu'elle fait de ce
             // qui était déjà là -- plus la quantification de la dernière prise.
             {
+                // D589.2 : DÉSARMER TOUTES LES PISTES (*Deactivate All Record-Enable*) — le compte dans le libellé, grisée
+                // à zéro ; grisée PENDANT une prise, et dite : la prise s'écrit sur les pistes armées à son arrêt.
+                {
+                    const int armees = static_cast<int>(armedTrackIndices().size());
+                    const bool enPrise = recordPhase_ != RecordPhase::Off;
+                    menu.addItem(kMenuRecordDisarmAll,
+                                 enPrise ? tr(u8"Désarmer toutes les pistes (prise en cours)")
+                                         : tr(u8"Désarmer toutes les pistes (%1)").replace("%1", juce::String(armees)),
+                                 armees > 0 && !enPrise);
+                    menu.addSeparator();
+                }
                 const int mesures = countInBars_;
                 menu.addSectionHeader(tr(u8"Décompte"));
                 menu.addItem(kMenuRecordCountInNone, tr(u8"Sans décompte"), true, mesures == 0);   // D510
@@ -5839,6 +5860,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             menu.addItem(kMenuMixMonoListen, tr(u8"\u00c9coute en mono (jamais dans un export)"), true,
                          audioEngine_.processGraph().masterBus().monoListen());
+            // D589.3 : L'ÉCOUTE ATTÉNUÉE (*Dim*) — un état de séance, comme l'écoute en mono : jamais retenu, jamais exporté.
+            menu.addItem(kMenuMixDim, tr(u8"Écoute atténuée de 20 dB (jamais dans un export)"), true,
+                         audioEngine_.processGraph().dim());
             // D559.1-2 : LES GESTES DE TOUTE LA CONSOLE -- le compte dans le libellé, grisés à zéro.
             {
                 // D577.3 : LES TÉMOINS D'ÉCRÊTAGE allumés — tranches et master —, éteints d'un geste.
@@ -6225,6 +6249,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
     if (menuItemID == kMenuFileExportTrackMidi) { exportSelectedTrackMidi(); return; }
     if (menuItemID == kMenuFileImportAudio) { importAudioFilePrompt(); return; }
+    if (menuItemID == kMenuRecordDisarmAll) { desarmerToutesLesPistes(); return; }   // D589.2
     if (menuItemID == kMenuRecordPanic) {
         // Les touches d'ordinateur enfoncées sont relâchées aussi : sinon leur
         // relâchement enverrait un NoteOff à une note déjà coupée, sans mal,
@@ -6268,6 +6293,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         retirerQuantification(menuItemID - kMenuEditQuantizePresetRemoveFirst);
         return;
     }
+    if (menuItemID == kMenuMixDim) { basculerEcouteAttenuee(); return; }   // D589.3
     if (menuItemID == kMenuMixInsertsBypass) { contournerLesInsertsChoisis(); return; }   // D568.3
     if (menuItemID == kMenuEditDuplicateRange) { dupliquerLaPlage(); return; }           // D568.1
     if (menuItemID == kMenuFileExportMidiLoop) { exporterMidiEntreLesLocateurs({}); return; }   // D568.2
@@ -6913,6 +6939,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackExplodeByChannel: eclaterPisteParCanal(); break;   // D555.3
         case kMenuTrackIndependentTranspose: basculerTranspositionIndependante(); break;   // D544.3
         case kMenuTrackNewFolder: newFolderAboveSelectedTrack(); break;
+        case kMenuTrackChosenToFolder: rangerLesChoisiesDansUnDossier(); break;   // D589.1
         case kMenuTrackFolderIn:  changeSelectedTrackFolderDepth(+1); break;
         case kMenuTrackFolderOut: changeSelectedTrackFolderDepth(-1); break;
         case kMenuViewLayoutSave: enregistrerDisposition(); break;   // D549.3
@@ -12960,6 +12987,39 @@ void MainComponent::newFolderAboveSelectedTrack() {
     rebuildFromProject(false);
 }
 
+void MainComponent::rangerLesChoisiesDansUnDossier() {
+    // D589.1 : TOUTE LA SÉLECTION D'UN GESTE. « Ranger cette piste dans un dossier neuf » ne lit que la piste choisie :
+    // quatre pistes choisies se rangeaient une à une, à la main, un cran par geste. Le cœur pose l'ordre par
+    // `reorderTracks` (les routages suivent les pistes) ; ici, ce que le modèle ne porte pas : la session capturée AVANT
+    // la photo du pas, comme pour le dossier neuf, et les machines qui suivent leurs pistes par leur identité (D76).
+    const auto& choisies = trackList_.selectedTracks();
+    if (choisies.size() < 2) {
+        std::fputs(("VSM_DOSSIER : " + std::to_string(choisies.size())
+                    + " piste choisie -- \xc2\xab Ranger cette piste dans un dossier neuf \xc2\xbb le fait\n").c_str(), stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    const std::set<size_t> rangees(choisies.begin(), choisies.end());
+    captureSessionIntoProject();
+    beginProjectEdit(u8"Ranger les pistes choisies dans un dossier");
+    vsm::sequencer::Track dossier;
+    dossier.name = tr(u8"Dossier").toStdString();
+    if (*rangees.begin() < project_.tracks.size()) dossier.colorRgba = project_.tracks[*rangees.begin()].colorRgba;
+    const size_t avant = project_.tracks.size();
+    const size_t rang = vsm::sequencer::moveTracksIntoNewFolder(project_, rangees, std::move(dossier));
+    if (rang >= project_.tracks.size() || project_.tracks.size() == avant) {
+        // Rien n'a bougé (une sélection hors bornes) : le pas ouvert ne garde rien, il se retire (D511).
+        history_.retirerLeDernierPas();
+        refreshHistoryList();
+        std::fputs("VSM_DOSSIER : aucune piste choisie dans les bornes -- rien n'a \xc3\xa9t\xc3\xa9 rang\xc3\xa9\n", stderr);
+        return;
+    }
+    rebuildFromProject(false);
+    const size_t dedans = vsm::sequencer::folderContents(project_, rang).size();
+    trackList_.selectTrackIndex(rang);
+    std::fputs(("VSM_DOSSIER : " + std::to_string(dedans) + " piste(s) rang\xc3\xa9" "e(s) dans le dossier \xc3\xa0 l'index "
+                + std::to_string(rang) + "\n").c_str(), stderr);
+}
+
 std::vector<size_t> MainComponent::vcasDuProjet() const {
     std::vector<size_t> vcas;
     for (size_t i = 0; i < project_.tracks.size(); ++i)
@@ -13791,6 +13851,50 @@ void MainComponent::closePass(uint32_t passe, double debutSecondes, double finSe
         project_.ajouterClip(prise.clips, clip);   // D262
         vsm::sequencer::pushTake(project_.tracks[audioTakeTrack_], std::move(prise));
     }
+}
+
+void MainComponent::desarmerToutesLesPistes() {
+    // D589.2 : TOUT L'ARMEMENT D'UN GESTE, comme D559.1 pour les solos et les muets. `armed` ne repassait à faux que par
+    // le bouton R d'une piste et par la règle de D579.2, qui ne désarme que ce qu'elle a armé ; or une piste armée
+    // reçoit le clavier MIDI (D3.3) et la prise suivante. Un pas, comme le bouton R (D148).
+    if (recordPhase_ != RecordPhase::Off) {
+        std::fputs("VSM_ARMEMENT : une prise est en cours \xe2\x80\x94 rien n'est d\xc3\xa9sarm\xc3\xa9\n", stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Désarmer toutes les pistes : une prise est en cours, rien n'a changé"));
+        return;   // la prise s'écrit sur les pistes armées à son ARRÊT : les désarmer ici la déplacerait
+    }
+    const auto armees = armedTrackIndices();
+    if (armees.empty()) {
+        std::fputs("VSM_ARMEMENT : aucune piste arm\xc3\xa9" "e \xc3\xa0 d\xc3\xa9sarmer\n", stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    beginProjectEdit(u8"Désarmer toutes les pistes");
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        auto& piste = project_.tracks[i];
+        if (!piste.armed && !piste.armedByRule) continue;
+        piste.armed = false;
+        piste.armedByRule = false;
+        trackList_.refreshTrackRow(i);
+    }
+    refreshArmedTracks();
+    std::fputs(("VSM_ARMEMENT : " + std::to_string(armees.size()) + " piste(s) d\xc3\xa9sarm\xc3\xa9" "e(s)\n").c_str(),
+               stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Pistes désarmées : %1").replace("%1", juce::String(static_cast<int>(armees.size()))));
+}
+
+void MainComponent::basculerEcouteAttenuee() {
+    // D589.3 : L'ÉCOUTE ATTÉNUÉE. Le graphe atténue ce qu'il rend, `AudioEngine` l'écoute de l'entrée ; le titre de la
+    // tranche master le dit. NON RETENUE au poste : un *Dim* oublié allumé au lancement suivant ferait croire à une
+    // sortie cassée (la raison de D23.5).
+    auto& graphe = audioEngine_.processGraph();
+    const bool attenuee = !graphe.dim();
+    graphe.setDim(attenuee);
+    mixer_.setDim(attenuee);
+    std::fputs(attenuee ? "VSM_ECOUTE : att\xc3\xa9nu\xc3\xa9" "e de 20 dB\n" : "VSM_ECOUTE : pleine\n", stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(attenuee ? tr(u8"Écoute atténuée de 20 dB (jamais dans un export)") : tr(u8"Écoute pleine"));
+    menuItemsChanged();
 }
 
 void MainComponent::refreshArmedTracks() {

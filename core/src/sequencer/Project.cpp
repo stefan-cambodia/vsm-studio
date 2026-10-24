@@ -1165,6 +1165,47 @@ size_t explodeTrackByChannel(Project& project, size_t index) {
     return static_cast<size_t>(combien);
 }
 
+size_t moveTracksIntoNewFolder(Project& project, const std::set<size_t>& chosen, Track folder) {
+    const size_t n = project.tracks.size();
+    // LES BLOCS À RANGER : chaque piste choisie avec son contenu, dans l'ordre de la liste. Une piste déjà couverte par
+    // le bloc d'un dossier choisi plus haut vient avec lui.
+    std::vector<std::pair<size_t, size_t>> blocs;   // (tête, taille)
+    std::vector<bool> rangee(n, false);
+    for (size_t tete : chosen) {
+        if (tete >= n || rangee[tete]) continue;
+        const size_t taille = 1 + folderContents(project, tete).size();
+        for (size_t k = 0; k < taille; ++k) rangee[tete + k] = true;
+        blocs.emplace_back(tete, taille);
+    }
+    if (blocs.empty()) return n;
+
+    const size_t premiere = blocs.front().first;
+    const int profondeur = project.tracks[premiere].folderDepth;
+    folder.kind = Track::Kind::Folder;
+    folder.folderDepth = profondeur;
+    folder.folded = false;
+    // LES PROFONDEURS, AVANT DE REMANIER : chaque bloc sous le dossier, l'écart interne gardé.
+    for (const auto& [tete, taille] : blocs) {
+        const int ecart = profondeur + 1 - project.tracks[tete].folderDepth;
+        for (size_t k = 0; k < taille; ++k) project.tracks[tete + k].folderDepth += ecart;
+    }
+    project.tracks.push_back(std::move(folder));
+
+    // L'ORDRE NEUF, en rangs d'origine (`n` est le dossier) : ce qui précède la première piste choisie, le dossier, les
+    // blocs rangés dans leur ordre, puis tout le reste dans le sien.
+    std::vector<size_t> ordre;
+    ordre.reserve(n + 1);
+    for (size_t i = 0; i < premiere; ++i) ordre.push_back(i);
+    ordre.push_back(n);
+    for (const auto& [tete, taille] : blocs)
+        for (size_t k = 0; k < taille; ++k) ordre.push_back(tete + k);
+    for (size_t i = premiere; i < n; ++i)
+        if (!rangee[i]) ordre.push_back(i);
+    reorderTracks(project, ordre);
+    normalizeFolderDepths(project);
+    return premiere;
+}
+
 std::vector<size_t> folderContents(const Project& project, size_t index) {
     std::vector<size_t> contenu;
     if (index >= project.tracks.size() || !project.tracks[index].isFolder()) return contenu;

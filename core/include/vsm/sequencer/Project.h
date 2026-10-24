@@ -408,6 +408,19 @@ void reorderTracks(Project& project, const std::vector<size_t>& nouvelOrdre);
 /// et rend le rang inchangé.
 size_t moveTrackWithFolder(Project& project, size_t from, size_t to);
 
+/// D589.1 — RANGE LES PISTES CHOISIES DANS UN DOSSIER NEUF (*Move Selected Tracks to New Folder* de Cubase), et rend
+/// le rang du dossier (`project.tracks.size()` si rien n'a été fait : une sélection vide ou hors bornes).
+///
+/// Le dossier naît à la place de la PREMIÈRE piste choisie, à sa profondeur ; les pistes choisies le suivent dans leur
+/// ordre, chacune avec son contenu si c'est un dossier — une piste choisie DANS un dossier choisi vient avec lui et ne
+/// compte pas deux fois ; les autres pistes gardent leur ordre. La profondeur de chaque bloc rangé est reportée sous le
+/// dossier (sa tête au dossier + 1, l'écart interne gardé), puis `normalizeFolderDepths`.
+///
+/// LE DOSSIER EST AJOUTÉ AU BOUT, PUIS L'ORDRE NEUF EST POSÉ PAR `reorderTracks` : au bout, aucun index ne pointe
+/// au-delà et il n'y a rien à décaler ; `reorderTracks` fait suivre groupes, VCA et sorties publiées par IDENTITÉ. Le
+/// décalage des index est déjà recopié cinq fois (D588.1) : une sixième copie serait celle qui oublierait un champ.
+size_t moveTracksIntoNewFolder(Project& project, const std::set<size_t>& chosen, Track folder);
+
 /// SUPPRIME UNE PISTE **ET CE QU'ELLE CONTIENT** (D35.3), et rend le nombre de
 /// pistes retirées.
 ///

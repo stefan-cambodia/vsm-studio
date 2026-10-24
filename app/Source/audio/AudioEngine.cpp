@@ -670,9 +670,13 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         const float* droite = (numInputChannels >= 2 && inputChannelData[1] != nullptr) ? inputChannelData[1] : gauche;
         float* sortieG = outputChannelData[0];
         float* sortieD = (numOutputChannels >= 2 && outputChannelData[1] != nullptr) ? outputChannelData[1] : nullptr;
+        // D589.3 : L'ÉCOUTE ATTÉNUÉE VAUT AUSSI POUR L'ENTRÉE — elle est ce qu'on entend, et le graphe, qui a atténué le
+        // reste, ne la voit pas : elle s'ajoute ici, après lui. Le balayage de latence, plus haut, ne l'est pas : il mesure
+        // un aller-retour, pas une écoute.
+        const float attenuation = graph_.dimGain();
         for (int i = 0; i < numSamples; ++i) {
-            sortieG[i] += gauche[i];
-            if (sortieD != nullptr) sortieD[i] += droite[i];
+            sortieG[i] += gauche[i] * attenuation;
+            if (sortieD != nullptr) sortieD[i] += droite[i] * attenuation;
         }
     }
 

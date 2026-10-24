@@ -3282,6 +3282,22 @@ const Paire kAnglais[] = {
       "(the piano roll keyboard and status line, the event list, the MIDI monitor)" },
     { "Réticule pendant un geste",   // D587.3
       "Cross-hair while dragging" },
+    { "Ranger les pistes choisies dans un dossier neuf (%1)",   // D589.1
+      "Move the chosen tracks into a new folder (%1)" },
+    { "Ranger les pistes choisies dans un dossier", "Move the chosen tracks into a folder" },
+    { "Désarmer toutes les pistes (%1)",   // D589.2
+      "Disarm all tracks (%1)" },
+    { "Désarmer toutes les pistes (prise en cours)", "Disarm all tracks (recording in progress)" },
+    { "Désarmer toutes les pistes", "Disarm all tracks" },
+    { "Désarmer toutes les pistes : une prise est en cours, rien n'a changé",
+      "Disarm all tracks: a recording is in progress, nothing changed" },
+    { "Pistes désarmées : %1", "Tracks disarmed: %1" },
+    { "Écoute atténuée de 20 dB (jamais dans un export)",   // D589.3
+      "Dim the monitoring by 20 dB (never in an export)" },
+    { "Écoute pleine", "Full monitoring" },
+    { "MASTER · DIM", "MASTER · DIM" },
+    { "Écoute atténuée de 20 dB : ce qu'on entend, pas le mixage — les vumètres, la sonie et l'export ne bougent pas.",
+      "Monitoring dimmed by 20 dB: what you hear, not the mix — the meters, the loudness and the export do not move." },
     { "Largeur de la tête de lecture",   // D588.2
       "Playhead width" },
     { "Tête fine (d'origine)", "Thin playhead (default)" },

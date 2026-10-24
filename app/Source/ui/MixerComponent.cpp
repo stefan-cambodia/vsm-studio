@@ -882,6 +882,18 @@ void MasterStrip::retraduire() {
                                 u8"limiteur. Éteinte, elle ne touche pas au son, et ses boutons, "
                                 u8"estompés, ne s'entendent pas."));
     if (satVue_) poserInfobulleSat();
+    setDim(dim_);   // D589.3 : le titre dans la langue du moment
+}
+
+void MasterStrip::setDim(bool on) {
+    // D589.3 : CE QU'ON ENTEND EST ATTÉNUÉ, ET LE TITRE LE DIT — ambre, comme l'écoute en mono : un état d'écoute qu'on
+    // doit remarquer allumé. Le mètre, lui, ne bouge pas : il mesure le mixage, pas l'écoute.
+    dim_ = on;
+    titleLabel_.setText(on ? tr(u8"MASTER · DIM") : juce::String("MASTER"), juce::dontSendNotification);
+    titleLabel_.setColour(juce::Label::textColourId, on ? vsm::ui::Palette::accentAmber : vsm::ui::Palette::textPrimary);
+    titleLabel_.setTooltip(on ? tr(u8"Écoute atténuée de 20 dB : ce qu'on entend, pas le mixage — les vumètres, la sonie "
+                                   u8"et l'export ne bougent pas.")
+                              : juce::String());
 }
 
 void MasterStrip::poserInfobulleSat() {

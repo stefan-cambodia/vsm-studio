@@ -4,6 +4,7 @@
 #include "vsm/audio/plugin/Diapason.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstdlib>
 
@@ -924,6 +925,26 @@ int ProcessGraph::totalActiveVoices() const {
 }
 
 void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) {
+    rendreLeBloc(outputL, outputR, numSamples);
+    if (numSamples <= 0) return;
+    // D589.3 : L'ÉCOUTE ATTÉNUÉE, APRÈS TOUT CE QUE LE BLOC A RENDU — le master, le clic, la référence, la pré-écoute.
+    // Éteinte, aucun échantillon n'est touché : un export (son propre graphe, où elle est toujours éteinte) reste au bit
+    // près. La crête de ce qui sort se relève dans les deux cas, avec celle du master de ce bloc-ci.
+    const bool attenuee = dim();
+    float crete = 0.0f;
+    for (int i = 0; i < numSamples; ++i) {
+        if (attenuee) {
+            outputL[i] *= kDimGain;
+            outputR[i] *= kDimGain;
+        }
+        crete = std::max(crete, std::max(std::abs(outputL[i]), std::abs(outputR[i])));
+    }
+    const uint64_t paire = (static_cast<uint64_t>(std::bit_cast<uint32_t>(crete)) << 32)
+                           | std::bit_cast<uint32_t>(masterBus_.outputPeak());
+    cretesDuBloc_.store(paire, std::memory_order_relaxed);
+}
+
+void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) {
     vsm::audio::dsp::ScopedNoDenormals noDenormals;
 
     if (numSamples <= 0) return;

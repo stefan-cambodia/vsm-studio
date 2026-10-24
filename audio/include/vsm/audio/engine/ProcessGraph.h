@@ -15,6 +15,8 @@
 #include "vsm/sequencer/Project.h"
 #include <array>
 #include <atomic>
+#include <bit>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -364,6 +366,25 @@ public:
     /// sa construction ALLOUE. Elle ne peut donc pas se faire dans `process()`.
     void setPlaybackSpeed(double facteur);
     double playbackSpeed() const { return playbackSpeed_.load(std::memory_order_acquire); }
+
+    /// D589.3 — L'ÉCOUTE ATTÉNUÉE (le *Dim* de la Control Room de Cubase). Ce qu'on ENTEND baisse de 20 dB — le mixage,
+    /// le clic, la référence, la pré-écoute : tout ce que `processBlock` rend —, et les mesures du master, des pistes et
+    /// de l'analyseur, prises avant, ne bougent pas : elles disent le mixage, pas l'écoute. Faux d'origine, et le rendu
+    /// hors ligne monte son PROPRE graphe où il le reste : jamais dans un fichier. −20 dB fixe, le niveau d'usage des
+    /// contrôleurs d'écoute.
+    static constexpr float kDimGain = 0.1f;   ///< 10^(−20/20)
+    void setDim(bool actif) { dim_.store(actif, std::memory_order_relaxed); }
+    bool dim() const { return dim_.load(std::memory_order_relaxed); }
+    /// Le gain que l'écoute applique : celui que `AudioEngine` pose aussi sur l'écoute de l'entrée (D11.7).
+    float dimGain() const { return dim() ? kDimGain : 1.0f; }
+    /// D589.3 : LA CRÊTE DE CE QUI SORT au dernier bloc, et celle du master AU MÊME BLOC — un seul atomique pour les deux,
+    /// pour qu'un relevé ne lise jamais l'une d'un bloc et l'autre du suivant. Le master n'est traité qu'en lecture ou
+    /// quand un instrument parle : à l'arrêt silencieux, sa crête est celle du dernier bloc traité.
+    void heardAndMasterPeaks(float& entendue, float& master) const {
+        const uint64_t paire = cretesDuBloc_.load(std::memory_order_relaxed);
+        entendue = std::bit_cast<float>(static_cast<uint32_t>(paire >> 32));
+        master = std::bit_cast<float>(static_cast<uint32_t>(paire & 0xffffffffu));
+    }
 
     /// Rendu temps réel OU offline : à appeler en boucle depuis le callback
     /// audio (Phase 2) ou depuis OfflineRenderer (export WAV). Écrit
@@ -1025,6 +1046,11 @@ private:
     std::atomic<bool> metronomeRecordOnly_{false};
     std::atomic<bool> recording_{false};
     std::atomic<double> countInEndSeconds_{0.0};
+    /// D589.3 : le rendu d'avant, dont `processBlock` est l'enveloppe — ses sorties anticipées sont nombreuses (le
+    /// repos, la pré-écoute à l'arrêt), et une enveloppe ne peut en oublier aucune.
+    void rendreLeBloc(float* outputL, float* outputR, int numSamples);
+    std::atomic<bool> dim_{false};               ///< D589.3
+    std::atomic<uint64_t> cretesDuBloc_{0};       ///< D589.3 : (entendue << 32) | master, en bits de flottants
 };
 
 } // namespace vsm::audio::engine

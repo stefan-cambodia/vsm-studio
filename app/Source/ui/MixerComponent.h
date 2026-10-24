@@ -584,6 +584,11 @@ public:
     /// bus, jamais dans le fichier ni dans un export.
     std::function<void(bool)> onMonoListen;
     void setMonoListen(bool on) { monoButton_.setToggleState(on, juce::dontSendNotification); }
+    /// D589.3 : l'écoute atténuée (*Dim*) — le TITRE de la tranche le dit, « MASTER · DIM » en ambre : la rangée de
+    /// « MONO » est pleine (D59), un troisième bouton la rognerait.
+    void setDim(bool on);
+    bool dimAffiche() const { return dim_; }
+    juce::String titreAffiche() const { return titleLabel_.getText(); }   ///< D589.3 : ce que le relevé lit
     /// D48 : on efface le témoin de saturation en cliquant dessus, comme sur
     /// une console. Le pire dépassement repart de zéro avec lui : garder
     /// l'ancien ferait réapparaître un chiffre qu'on vient d'acquitter.
@@ -629,6 +634,7 @@ private:
     juce::TextButton monoButton_ { "MONO" };   ///< D23.5
     juce::Label titleLabel_, lufsLabel_, phaseLabel_;
     bool glisseMaster_ = false;   ///< D428 : un glissé a déjà ouvert son pas
+    bool dim_ = false;   ///< D589.3
     /// D48 : le témoin de saturation, et le pire dépassement qu'il retient.
     juce::Label satLabel_;
     bool satVue_ = false;
@@ -874,6 +880,9 @@ public:
     /// D23.5 : l'écoute en mono, depuis le bouton MONO de la tranche master.
     std::function<void(bool)> onMonoListen;
     void setMonoListen(bool on) { master_.setMonoListen(on); }
+    /// D589.3 : l'écoute atténuée, dite au titre de la tranche master.
+    void setDim(bool on) { master_.setDim(on); }
+    juce::String titreDuMaster() const { return master_.titreAffiche(); }   ///< D589.3
 
 private:
     vsm::sequencer::Project* project_ = nullptr;

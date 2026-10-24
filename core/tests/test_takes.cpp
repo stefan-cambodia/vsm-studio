@@ -1218,3 +1218,54 @@ VSM_TEST(the_project_names_the_media_of_tracks_freezes_takes_and_versions) {
     VSM_ASSERT(chemins.count("audio/prise-1.wav") == 1);
     VSM_ASSERT(chemins.count("") == 0);
 }
+
+VSM_TEST(the_chosen_tracks_move_into_a_new_folder_with_their_content_and_their_routing) {
+    // D589.1 : *Move Selected Tracks to New Folder*. Le dossier naît à la place de la PREMIÈRE piste choisie ; les
+    // choisies le suivent dans leur ordre, un dossier avec son contenu ; les routages suivent les PISTES (reorderTracks).
+    const auto noms = [](const Project& p) {
+        std::string s;
+        for (const auto& t : p.tracks) s += (s.empty() ? "" : ",") + t.name + "@" + std::to_string(t.folderDepth);
+        return s;
+    };
+    {
+        Project p;
+        for (const char* nom : {"Basse", "Lead", "Pad", "Groupe", "Voix", "VCA"}) {
+            Track t;
+            t.name = nom;
+            p.tracks.push_back(t);
+        }
+        p.tracks[3].kind = Track::Kind::Group;
+        p.tracks[5].kind = Track::Kind::Vca;
+        p.tracks[0].outputGroup = 3;
+        p.tracks[4].vcaTrack = 5;
+        Track dossier;
+        dossier.name = "Dossier";
+        VSM_ASSERT_EQ(moveTracksIntoNewFolder(p, {1, 4}, dossier), size_t{1});
+        VSM_ASSERT(noms(p) == "Basse@0,Dossier@0,Lead@1,Voix@1,Pad@0,Groupe@0,VCA@0");
+        VSM_ASSERT(p.tracks[1].isFolder());
+        VSM_ASSERT_EQ(p.tracks[0].outputGroup, 5);   // « Groupe » a reculé de deux rangs, la sortie l'a suivi
+        VSM_ASSERT_EQ(p.tracks[3].vcaTrack, 6);      // « Voix » commande toujours par « VCA »
+        VSM_ASSERT_EQ(folderContents(p, 1).size(), size_t{2});
+    }
+    {
+        // Un dossier choisi DANS un autre, et une piste de la racine : le dossier neuf naît dans « Batterie ».
+        Project p = projetAvecDossiers();
+        VSM_ASSERT_EQ(moveTracksIntoNewFolder(p, {3, 5}, Track{}), size_t{3});
+        VSM_ASSERT(noms(p) == "Batterie@0,Kick@1,Snare@1,@1,Charleys@2,HatA@3,Basse@2");
+        VSM_ASSERT_EQ(folderContents(p, 0).size(), size_t{6});
+    }
+    {
+        // Une piste choisie DANS un dossier choisi vient avec lui, et ne compte pas deux fois.
+        Project p = projetAvecDossiers();
+        VSM_ASSERT_EQ(moveTracksIntoNewFolder(p, {0, 2}, Track{}), size_t{0});
+        VSM_ASSERT(noms(p) == "@0,Batterie@1,Kick@2,Snare@2,Charleys@2,HatA@3,Basse@0");
+        VSM_ASSERT_EQ(p.tracks.size(), size_t{7});
+    }
+    {
+        // Rien de choisi, ou hors bornes : rien ne change, et le rang rendu le dit.
+        Project p = projetAvecDossiers();
+        VSM_ASSERT_EQ(moveTracksIntoNewFolder(p, {}, Track{}), size_t{6});
+        VSM_ASSERT_EQ(moveTracksIntoNewFolder(p, {42}, Track{}), size_t{6});
+        VSM_ASSERT_EQ(p.tracks.size(), size_t{6});
+    }
+}

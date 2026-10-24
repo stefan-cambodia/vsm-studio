@@ -398,6 +398,22 @@ public:
         if (geste.equalsIgnoreCase("relever-tete")) { releverTete(); return true; }
         // D585.3 : les notes qui sonnent et le niveau de chaque piste, pendant la lecture.
         if (geste.equalsIgnoreCase("relever-sonnantes")) { releverSonnantes(); return true; }
+        // D589.3 : L'ÉCOUTE — la crête de ce qui SORT et celle du master AU MÊME BLOC (un seul atomique), leur écart, et
+        // le titre de la tranche master. Les mesures du master disent le mixage ; la crête entendue dit l'écoute.
+        if (geste.equalsIgnoreCase("relever-ecoute")) {
+            const auto& graphe = audioEngine_.processGraph();
+            float entendue = 0.0f, master = 0.0f;
+            graphe.heardAndMasterPeaks(entendue, master);
+            const auto db = [](float v) { return v > 1.0e-6f ? 20.0f * std::log10(v) : -120.0f; };
+            std::fputs((juce::String::fromUTF8("VSM_ECOUTE_RELEVE : att\xc3\xa9nu\xc3\xa9" "e ") + (graphe.dim() ? "oui" : "non")
+                        + juce::String::fromUTF8(" ; cr\xc3\xaate du master ") + juce::String(db(master), 2)
+                        + juce::String::fromUTF8(" dBFS ; cr\xc3\xaate entendue ") + juce::String(db(entendue), 2)
+                        + juce::String::fromUTF8(" dBFS ; \xc3\xa9" "cart ") + juce::String(db(entendue) - db(master), 2)
+                        + juce::String::fromUTF8(" dB ; titre \xc2\xab ") + mixer_.titreDuMaster()
+                        + juce::String::fromUTF8(" \xc2\xbb ; ") + juce::String::fromUTF8(graphe.isPlaying() ? "en lecture" : "\xc3\xa0 l'arr\xc3\xaat")
+                        + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         // D578.3 : le moniteur MIDI tel qu'il est PEINT, la file vidée d'abord.
         if (geste.equalsIgnoreCase("relever-moniteur-midi")) {
             const juce::String lignes = moniteurMidi_.releverPourCapture();
@@ -883,6 +899,12 @@ public:
                         + "\n").toRawUTF8(), stderr);
             return fait;
         }
+        // D589.3 : l'export AUDIO comme geste — `VSM_EXPORT` agit au démarrage, avant tout geste ; « cocher l'écoute
+        // atténuée, PUIS exporter » ne se jouait pas. Le même chemin que `VSM_EXPORT` (`exportForCapture`), qui dit
+        // lui-même ce qu'il a écrit.
+        if (geste.startsWithIgnoreCase("exporter-audio:"))
+            return exportForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim()));
         return false;
     }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
@@ -1453,6 +1475,10 @@ private:
         /// D588.2 : la largeur de la tête de lecture, trois entrées CONTIGUËS (`kLargeursDeTete`).
         kMenuViewPlayheadWidthFirst,
         kMenuViewPlayheadWidthLast = kMenuViewPlayheadWidthFirst + 2,
+        /// D589.1, D589.2, D589.3 : les pistes choisies dans un dossier neuf, désarmer toutes les pistes, l'écoute atténuée.
+        kMenuTrackChosenToFolder,
+        kMenuRecordDisarmAll,
+        kMenuMixDim,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2178,6 +2204,12 @@ private:
     size_t addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi,
                     const std::string& nom = {}, bool sousLaChoisie = false);
     void removeSelectedTrack();
+    /// D589.1 : les pistes choisies (D38) dans un dossier neuf, d'un geste (`moveTracksIntoNewFolder`, le cœur).
+    void rangerLesChoisiesDansUnDossier();
+    /// D589.2 : toutes les pistes armées désarmées d'un geste, en un pas ; refusé et dit pendant une prise.
+    void desarmerToutesLesPistes();
+    /// D589.3 : l'écoute atténuée de 20 dB (*Dim*) — ce qu'on entend, jamais un export ; un état de séance.
+    void basculerEcouteAttenuee();
     /// D11.5 : dupliquer la piste choisie, état de l'instrument compris.
     void duplicateSelectedTrack();
     /// GÈLE OU DÉGÈLE la piste sélectionnée (D5.5). Le gel rend ce qu'elle
