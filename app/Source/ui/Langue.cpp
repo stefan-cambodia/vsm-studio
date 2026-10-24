@@ -3298,6 +3298,10 @@ const Paire kAnglais[] = {
     { "MASTER · DIM", "MASTER · DIM" },
     { "Écoute atténuée de 20 dB : ce qu'on entend, pas le mixage — les vumètres, la sonie et l'export ne bougent pas.",
       "Monitoring dimmed by 20 dB: what you hear, not the mix — the meters, the loudness and the export do not move." },
+    { "Ligne d'ensemble du morceau",   // D591.1
+      "Song overview line" },
+    { "Ensemble du morceau", "Song overview" },
+    { "(morceau vide)", "(empty song)" },
     { "Largeur de la tête de lecture",   // D588.2
       "Playhead width" },
     { "Tête fine (d'origine)", "Thin playhead (default)" },

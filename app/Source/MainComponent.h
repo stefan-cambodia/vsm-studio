@@ -42,6 +42,7 @@
 #include "ui/SynthRackComponent.h"
 #include "ui/MixerComponent.h"
 #include "ui/ArrangementComponent.h"
+#include "ui/LigneDEnsemble.h"
 #include "ui/AutomationComponent.h"
 #include "ui/MidiCcComponent.h"
 #include "ui/TempoLaneComponent.h"
@@ -400,6 +401,11 @@ public:
         if (geste.equalsIgnoreCase("relever-sonnantes")) { releverSonnantes(); return true; }
         // D589.3 : L'ÉCOUTE — la crête de ce qui SORT et celle du master AU MÊME BLOC (un seul atomique), leur écart, et
         // le titre de la tranche master. Les mesures du master disent le mixage ; la crête entendue dit l'écoute.
+        // D591.1 : la ligne d'ensemble — ce que la peinture lit : l'étendue, la vue, le rectangle, les traits.
+        if (geste.equalsIgnoreCase("relever-ensemble")) {
+            std::fputs((ligneDEnsemble_.releve() + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-ecoute")) {
             const auto& graphe = audioEngine_.processGraph();
             float entendue = 0.0f, master = 0.0f;
@@ -1479,6 +1485,8 @@ private:
         kMenuTrackChosenToFolder,
         kMenuRecordDisarmAll,
         kMenuMixDim,
+        /// D591.1 : la ligne d'ensemble du morceau.
+        kMenuViewSongOverview,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2807,6 +2815,13 @@ private:
     /// LA VUE D'ARRANGEMENT (D5.1). Une fenêtre flottante comme les autres :
     /// on arrange en la regardant à côté du piano roll, pas à sa place.
     ArrangementComponent arrangement_;
+    /// D591.1 : LA LIGNE D'ENSEMBLE, au-dessus de l'arrangement quand elle est montrée (éteinte d'origine, retenue au
+    /// poste). Déclarée APRÈS l'arrangement, qu'elle lit et fait défiler.
+    vsm::app::ui::LigneDEnsemble ligneDEnsemble_{arrangement_};
+    bool ligneDEnsembleMontree_ = false;
+    /// Pose l'arrangement dans `area`, et la ligne d'ensemble au-dessus si elle est montrée (D591.1).
+    void poserLArrangement(juce::Rectangle<int> area);
+    void basculerLigneDEnsemble();
     MixerComponent mixer_;
     AutomationComponent automation_;
     EffectChainComponent effectChain_;

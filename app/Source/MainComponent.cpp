@@ -1553,6 +1553,10 @@ MainComponent::MainComponent()
         arrangement_.setAimantRelatif(reglages.getBoolValue("arrangementAimantRelatif", false)); // D572.1
         arrangement_.setAimantClips(reglages.getBoolValue("arrangementAimantClips", false));     // D574.1
         arrangement_.setAimantTete(reglages.getBoolValue("arrangementAimantTete", false));       // D574.2
+        // D591.1 : la ligne d'ensemble, enfant caché d'origine ; le centre la pose (`poserLArrangement`).
+        ligneDEnsembleMontree_ = reglages.getBoolValue("arrangementLigneDEnsemble", false);
+        ligneDEnsemble_.setProject(&project_);
+        addChildComponent(ligneDEnsemble_);
         arrangement_.onBasculesChanged = [this] {
             auto& r = vsm::app::ui::UiScale::properties();
             r.setValue("arrangementAimant", arrangement_.snapEnabled());
@@ -1806,7 +1810,7 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
         if (zoneAgrandie_ == 0) trackList_.setBounds(area);
         else if (zoneAgrandie_ == 1) synthRack_.setBounds(area);
         else if (zoneAgrandie_ == 2) bottomTabs_.setBounds(area);
-        else { arrangement_.setBounds(area); pianoRollPanel_.setBounds(area); }
+        else { pianoRollPanel_.setBounds(area); poserLArrangement(area); }
         placerLesBoutonsDeZone();
         return;
     }
@@ -1862,9 +1866,30 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
         synthRack_.setBounds(area.removeFromRight(dockDroite_));
         sepDroite_.setBounds(area.removeFromRight(poignee));
     }
-    arrangement_.setBounds(area);
     pianoRollPanel_.setBounds(area);
+    poserLArrangement(area);
     placerLesBoutonsDeZone();
+}
+
+void MainComponent::poserLArrangement(juce::Rectangle<int> area) {
+    // D591.1 : LA BANDE PREND SA HAUTEUR AU CENTRE, et seulement quand elle est montrée et que l'arrangement est là,
+    // dans cette fenêtre : éteinte, le centre ne bouge pas d'un pixel (aucune photo d'un banc existant ne change).
+    const bool bande = ligneDEnsembleMontree_ && arrangement_.isVisible() && arrangement_.getParentComponent() == this;
+    ligneDEnsemble_.setVisible(bande);
+    if (bande) ligneDEnsemble_.setBounds(area.removeFromTop(vsm::app::ui::kLigneDEnsemble));
+    arrangement_.setBounds(area);
+}
+
+void MainComponent::basculerLigneDEnsemble() {
+    ligneDEnsembleMontree_ = !ligneDEnsembleMontree_;
+    auto& r = vsm::app::ui::UiScale::properties();
+    r.setValue("arrangementLigneDEnsemble", ligneDEnsembleMontree_);
+    r.saveIfNeeded();
+    std::fputs((juce::String::fromUTF8("VSM_ENSEMBLE : ligne d'ensemble ")
+                + (ligneDEnsembleMontree_ ? juce::String::fromUTF8("montr\xc3\xa9" "e") : juce::String::fromUTF8("cach\xc3\xa9" "e"))
+                + "\n").toRawUTF8(), stderr);
+    resized();
+    menuItemsChanged();
 }
 
 void MainComponent::BoutonDeZone::paintButton(juce::Graphics& g, bool survol, bool enfonce) {
@@ -4061,6 +4086,17 @@ void MainComponent::showFloatingPanels() {
 }
 
 void MainComponent::timerCallback() {
+    // D591.1 : LA LIGNE D'ENSEMBLE SUIT LA VUE — et se pose ou se retire quand l'arrangement change de place (la
+    // fenêtre unique, une zone agrandie, les panneaux flottants) sans qu'on ait à le lui dire.
+    // Comparée à l'état VOULU, la règle même de `poserLArrangement` : après un `resized()`, les deux concordent, et la
+    // minuterie ne repose plus rien (montrée sous le piano roll, elle aurait reposé le centre à chaque tour).
+    // Cachée DIRECTEMENT quand elle n'est plus voulue : en panneaux flottants, `resized()` ne pose pas le centre.
+    if (const bool voulue = ligneDEnsembleMontree_ && arrangement_.isVisible() && arrangement_.getParentComponent() == this;
+        voulue != ligneDEnsemble_.isVisible()) {
+        if (!voulue) ligneDEnsemble_.setVisible(false);
+        resized();
+    }
+    if (ligneDEnsemble_.isVisible()) ligneDEnsemble_.suivre();
     // UNE SEULE HORLOGE, ET PLUS DE « SELON LES CAS » (D8.3). Elle compte les
     // échantillons réellement sortis de la carte son : il n'existe pas de
     // mesure plus exacte de « où en est la lecture », puisque c'est
@@ -6137,6 +6173,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // D547.2 : la cinquième, sans touche (Cubase n'en donne pas à ses modes).
                 menu.addItem(kMenuViewArrangementChain, tr(u8"Montage en chaîne dans l'arrangement"), true,
                              arrangement_.montageEnChaine());
+                // D591.1 : LA LIGNE D'ENSEMBLE (l'*Overview Line* de Cubase), éteinte d'origine.
+                menu.addItem(kMenuViewSongOverview, tr(u8"Ligne d'ensemble du morceau"), true, ligneDEnsembleMontree_);
             }
             // D586.3 : LE NOM DES NOTES (*Note Name Style*) — une préférence du poste ; des libellés uniques dans la barre.
             {
@@ -6377,6 +6415,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewArrangementBarGrid) { arrangement_.basculerGrilleALaMesure(); return; }
     if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
     if (menuItemID == kMenuViewStationaryCursor)   { arrangement_.basculerTeteFixe(); return; }   // D569.2
+    if (menuItemID == kMenuViewSongOverview) { basculerLigneDEnsemble(); return; }   // D591.1
     if (menuItemID == kMenuViewEditSuspendsFollow) { arrangement_.basculerEditionSuspendSuivi(); return; }   // D586.2
     if (menuItemID == kMenuViewArrangementSnapRelative) { arrangement_.basculerAimantRelatif(); return; }   // D572.1
     if (menuItemID == kMenuViewArrangementSnapEvents) { arrangement_.basculerAimantClips(); return; }       // D574.1

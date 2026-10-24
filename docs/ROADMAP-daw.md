@@ -46028,3 +46028,32 @@ rezoomer. Le piano roll, lui, a sa barre (la bande grise au bas de sa grille).
 
 **L'ORDRE, TRANCHÉ ICI.** Le composant et son relevé, l'entrée de menu, le banc `ligne-d-ensemble`, entré dans la série
 de `verifier.sh --bancs` ; la photo REGARDÉE, en français et en anglais.
+
+### Phase D591 — MESURÉE, la série à jouer (25/10/2026, 01 h 17 à l'horloge)
+
+*Le code écrit après le texte de 01 h 06 ; compilé, le banc joué sur le binaire neuf avec le témoin (le binaire de D590,
+`build/temoin-D590`) pour la photo (1b), puis le banc entier sur le témoin. Écran verrouillé : les photos comparées sont
+espacées de 45 s (D520), et chacune est vérifiée PLEINE avant d'être comparée.*
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D591.1 (1) | « montrée non » ; l'arrangement identique au témoin | `relever-ensemble` → « **montrée non** » ; (1b) la zone de l'arrangement (305..1195 × 125..700, sous la barre de transport) **identique au pixel près** à celle du témoin, chacune à **560** couleurs (pleines) | **oui** |
+| D591.1 (2) | morceau 0..122 880, vue 0..15 360, le rectangle 0..L/8, 2 traits | L = **736** px (relevé à la première course) ; « morceau **0..122880** ticks ; vue **0..15360** ticks ; rectangle **0..92** sur 736 px ; **2** trait(s) » | **oui** |
+| D591.1 (3) | un clic aux trois quarts → défilement 84 480 (à 167 ticks près), la vue de 15 360 | vue **84480..99840** — au tick près ; la photo REGARDÉE : l'arrangement sur les mesures 45 à 52, le rectangle aux trois quarts de la bande, la fin du trait « Milieu » dedans comme dans l'arrangement | **oui** |
+| D591.1 (4) | le rectangle tiré de L/8 → défilement 15 360 | vue **15360..30720** — au tick près | **oui** |
+| D591.1 (5) | relancé : montrée, cochée ; en anglais | « montrée oui », *Affichage ▸ Ligne d'ensemble du morceau* **[cochée]** ; *View ▸ Song overview line* ; la bande photographiée en anglais (« Song overview ») et REGARDÉE | **oui** |
+| — | le témoin | le binaire de D590 : **rouge 5 / 5** — `VSM_MENU : aucune entrée de menu au chemin « Affichage > Ligne d'ensemble du morceau »`, `relever-ensemble` **refusé** (verbe inconnu) | **oui** |
+| — | les suites | aucun fichier du moteur ni du cœur touché depuis D590 (moteur 1 360, cœur 553, interchange 359, clap 25, panels 11, mesurés à 01 h 01) ; l'application compilée ; gardes **16** vertes | **oui** |
+| — | la série | `./verifier.sh --bancs`, **190** bancs (D588, D589 et D591 compris) — **à jouer**, l'écran allumé | **à jouer** |
+
+**CE QUE LA MESURE A TRANCHÉ, ÉCRIT ICI.**
+- **Le relevé de la bande CACHÉE mentait.** La première course d'exploration a rendu « montrée non ; morceau vide » sur
+  un morceau de 64 mesures : cachée, la bande n'a pas de largeur, et sa mise en page rendait « vide ». Cachée, elle ne
+  dit plus que « montrée non ». Vu avant le banc, sur le binaire d'avant la correction.
+- **Deux photos vides sont identiques aussi** (D77) : le contrôle (1b) compte d'abord les couleurs de chaque zone et
+  dit « VIDE » sous 50 — une égalité au pixel près ne vaut que pour deux photos pleines.
+- **La minuterie pose la bande, et ne boucle pas.** Elle compare l'état VOULU (montrée, l'arrangement visible et dans la
+  fenêtre principale) à l'état réel : montrée sous le piano roll, une comparaison à la seule case cochée aurait reposé le
+  centre à chaque tour ; en panneaux flottants, où `resized()` ne pose pas le centre, elle cache la bande elle-même.
+- **L'étendue suit la vue quand celle-ci déborde** : à l'ouverture (« tout voir », D362), la vue couvre 0..128 000 ticks
+  pour un morceau qui finit à 122 880 — la bande va jusqu'à 128 000 et le rectangle la remplit, comme écrit avant le code.
