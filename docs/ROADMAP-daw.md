@@ -45680,3 +45680,30 @@ irrécupérable, et rien — ni le journal, ni la fenêtre d'historique — ne l
 
 **L'ORDRE, TRANCHÉ ICI.** D588.3 (une panne muette est le plus grave des trois), puis D588.1, puis D588.2 ; un banc par
 élément (`historique-profondeur`, `piste-sous-la-choisie`, `largeur-tete`), entré dans la série de `verifier.sh --bancs`.
+
+### Phase D588 — UN QUATRIÈME ZÉRO, trouvé en écrivant D588.3 : la marque « non enregistré » se lit à une profondeur (24/10/2026, 20 h 20 à l'horloge)
+
+*Écrit AVANT toute mesure : la série de D587 tourne, et un lancement de l'application à côté pourrait voler le focus de
+ses bancs. Les deux hypothèses se mesurent ensuite sur le binaire de D587 (`build/temoin-D587`), qui est le témoin.*
+
+En lisant les appelants de `history_` pour D588.3 : `projetNonEnregistre()` (l'astérisque du titre, la question que pose
+la fermeture, l'entrée *Revenir à la version enregistrée*) rend `history_.undoDepth() != profondeurAuDernierEnregistrement_`
+(D174, `!=` et non `>` pour que l'annulation compte). Une PROFONDEUR ne désigne pas un ÉTAT, et deux chemins la ramènent à
+sa valeur sans ramener le morceau :
+- **H-a, l'historique plein.** À 128 pas, un geste sort le plus ancien et en pousse un : la profondeur RESTE 128.
+  Enregistrer, puis faire un geste, laisse la marque à « enregistré » — et fermer ne demande rien : le geste est perdu.
+- **H-b, annuler puis refaire autre chose.** Enregistrer à la profondeur 2, Ctrl+Z (1 : « modifié », juste), puis un
+  geste NEUF (2 : la branche rétablir est jetée, le morceau n'est ni celui du disque ni celui d'avant) : la marque revient
+  à « enregistré ».
+**L'attendu, écrit avant la mesure, sur le TÉMOIN** (`relever-titre`, « non enregistré : oui/non », le verbe de D507) :
+(a) 130 gestes `volume:`, *Enregistrer*, un geste `volume:` → « non enregistré : **non** » ; (b) deux gestes,
+*Enregistrer*, Ctrl+Z → « **oui** », un geste neuf → « **non** ». Si l'un des deux dit « oui », son hypothèse est
+RÉFUTÉE et l'écrit le dira.
+**Le remède, s'ils tiennent** — D588.4, *la marque se lit à l'identité de l'état* : `SnapshotHistory` numérote chaque
+état (un compteur qui ne redescend jamais, porté par chaque pas, rendu par annuler et rétablir, repris par
+`retirerLeDernierPas`) ; le repère d'enregistrement garde ce numéro, et `projetNonEnregistre` compare des numéros. Les
+deux autres lectures de profondeur suivent : l'autosauvegarde (`lastAutosaveUndoDepth_`) et le pas du tempo tapé
+(`profondeurDuPasDeTempo_`, qui fondrait une frappe dans le pas d'un autre geste, historique plein). Un test du cœur
+garde les deux chemins ; le banc `historique-profondeur` les rejoue : (a) et (b) → « **oui** » ; et son témoin, le
+chemin qui revient VRAIMENT à l'état du disque — enregistrer, un geste, Ctrl+Z → « **non** » (sans lui, une marque
+bloquée à « oui » passerait les deux contrôles).
