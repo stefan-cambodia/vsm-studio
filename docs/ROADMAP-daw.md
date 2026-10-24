@@ -46455,3 +46455,42 @@ script de mesure dans le brouillon, sa sortie recopiée ici — pas une garde).
 - **Ce que le correctif ne fait pas** : il ne touche pas aux pistes qui ont des clips (leur fenêtre fait foi, D540), ni à
   la durée IMPOSÉE d'un rendu ; il ne recompte rien dans les rapports déjà écrits.
 - **Le recensement est un script de mesure** (le brouillon de la session), pas une garde : la garde, c'est le test du cœur.
+
+### Phase D598 — un cinquante-huitième audit : la ligne d'information des clips (25/10/2026)
+
+*Écrite le 25/10 à 06 h 23 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure ; la session est
+verrouillée, l'écran éteint : rien de ce qui suit ne se mesurera par un clic de souris réel.*
+
+**LE ZÉRO, lu au code.** La fenêtre de projet de Cubase porte une *Info Line* : le clip choisi s'y lit et s'y règle —
+début, fin, longueur, gain… — en TAPANT une valeur. VSM Studio a la sienne pour les NOTES (D29.4 : « Début », « Durée »,
+« Vél. » du piano roll, `PianoRollToolbar::applyInfoLine`, avec ses refus dits, D449) ; **l'arrangement n'en a pas** :
+`ArrangementComponent` n'a aucun champ de texte (0 `juce::Label` éditable, 0 `TextEditor`), et la table des libellés n'a,
+pour un clip, que des gestes (« Déplacer des clips », « Caler les débuts des clips sur la grille », « Statistiques du
+clip… »). Poser un clip à la mesure 17 exactement, ou lui donner 7 680 ticks, se fait au glissé, l'aimant aidant, ou
+pas du tout.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D598.1 | **La ligne d'information des clips** — l'*Info Line* de la fenêtre de projet | *Affichage ▸ Ligne d'information des clips*, éteinte d'origine, retenue au poste : une bande au-dessus de l'arrangement (sous la ligne d'ensemble de D591 si elle est allumée) dit, des clips choisis, leur nombre, le nom du premier, son **début** (mesure.temps, « +ticks » au besoin), sa **longueur** (ticks), son **gain** (dB) ; muet et verrouillé y sont lus ; sans choix, « aucun clip choisi » |
+| D598.2 | **Taper pour régler** | les trois champs se TAPENT : le début déplace TOUTE la sélection de l'écart entre le premier départ et la position tapée (le chemin de `nudgeSelection`, le verrou compris) ; la longueur est donnée à chaque clip choisi (`resizeClipsEnd`) ; le gain aussi ; un pas d'annulation par champ ; un refus se dit, comme ceux du piano roll |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Un composant à part** (`LigneInfoClips`), posé par `MainComponent` comme la ligne d'ensemble (D591) : éteint, le centre
+  ne change pas d'un pixel ; allumé, il prend 22 px à 100 % (33 à 150 %) à l'arrangement. Les deux bandes allumées : la
+  ligne d'ensemble en haut (elle montre le morceau), l'information dessous (elle parle de ce qu'on a choisi).
+- **Les champs sont des `juce::Label` éditables**, comme ceux du piano roll (double-clic pour taper), nommés
+  `info-clips.debut`, `info-clips.longueur`, `info-clips.gain` (le verbe `saisir:` des bancs, D444). Le début s'écrit et
+  se lit comme celui des notes (`parseBarBeat`, « 17.3 », « 17.3+120 ») ; la longueur en ticks (> 0) ; le gain en dB,
+  de −60 à +12 (la virgule acceptée, D445).
+- **Plusieurs clips** : la ligne montre le PREMIER (le plus tôt, puis la première piste) et « · N » ; le début les déplace
+  ENSEMBLE (les écarts gardés) ; longueur et gain s'appliquent à CHACUN — la règle des champs du piano roll.
+- **Le relevé** `relever-info-clips` : `VSM_INFO_CLIPS : montrée oui/non ; N clip(s) ; début … ; longueur … ; gain …`,
+  lu sur ce que la bande affiche.
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE** (480 ticks à la noire, 4/4, 120 BPM ; deux pistes MIDI, le clip A de 0 à 3 840 sur
+  la première, le clip B de 1 920 à 3 840 sur la seconde) : (1) éteinte d'origine : « montrée non » ; (2) allumée, A choisi
+  par un clic : « 1 clip(s) ; début 1.1 ; longueur 3840 ; gain 0.0 dB » ; (3) début tapé « 3.1 » → A à **3 840** dans le
+  projet enregistré, et Ctrl+Z → **0** ; (4) longueur « 1920 » → A long de **1 920** ; (5) gain « -6 » → le gain de A à
+  **0,501** (−6,0 dB) ; (6) A et B choisis (*Tout sélectionner dans l'arrangement*) : « 2 clip(s) ; début 1.1 », puis début
+  « 2.1 » → A à **1 920**, B à **3 840** (l'écart gardé) ; (7) début « abc » → rien ne bouge, et la ligne d'état dit
+  « Début refusé » ; (8) en anglais *View ▸ Clip info line* ; la bande photographiée et regardée ; (9) le témoin (le binaire
+  de D597) : l'entrée absente.
