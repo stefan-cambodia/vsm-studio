@@ -46458,7 +46458,7 @@ script de mesure dans le brouillon, sa sortie recopiée ici — pas une garde).
 
 ### Phase D598 — un cinquante-huitième audit : la ligne d'information des clips (25/10/2026)
 
-*Écrite le 25/10 à 06 h 23 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure ; la session est
+*Écrite le 25/10 à 06 h 18 (l'heure du commit ; « 06 h 23 » d'abord écrit de tête), avant toute ligne de code et toute mesure ; la session est
 verrouillée, l'écran éteint : rien de ce qui suit ne se mesurera par un clic de souris réel.*
 
 **LE ZÉRO, lu au code.** La fenêtre de projet de Cubase porte une *Info Line* : le clip choisi s'y lit et s'y règle —
