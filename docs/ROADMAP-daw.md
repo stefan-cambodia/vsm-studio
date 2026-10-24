@@ -45485,3 +45485,74 @@ d'une main ; les cas de zoom inchangés (×2,000 et ×0,500).
   `juce::String` est lue en Latin-1, pas en UTF-8 ; elle passe désormais par `juce::String::fromUTF8`, comme la ligne de
   relâchement de `glisser:…:lent`. Le relevé de D581 concatène des `std::string` et garde ses octets : seule sa lettre
   manquait. Aucun banc ne lisait ces deux mots : c'est en LISANT le relevé que le défaut s'est vu.
+
+### Phase D587 — un quarante-huitième audit : la prise MIDI hors des clips, le zoom à la molette autour du pointeur, le réticule pendant un geste (24/10/2026)
+
+*Écrite le 24/10 à 16 h 05 (l'horloge), pendant la série de D586, l'écran allumé ; le code écrit ensuite dans l'arbre à
+part (`../vsm-D587`), sans rien compiler ni lancer avant que ce texte soit commité. Rien de D587 n'a été mesuré avant.*
+
+**LA MÉTHODE, celle de D567 et de D582.2 : un zéro se lit dans la fonction et dans celles qu'elle appelle — et dans ce
+que le code FAIT, pas dans ses noms (D571.3).** Sondés, la page *Record ▸ MIDI* des préférences de Cubase (*Snap MIDI
+Parts to Bars*), le zoom à la molette de sa fenêtre de projet et de ses éditeurs, la page *Editing ▸ Tools*
+(*Cross-hair Cursor*). **Écartés, et pourquoi** : *Fill Loop* — c'est *Répéter ▸ jusqu'à la fin de la boucle*
+(`repeatSelectionUntilLoopEnd`), qui existe ; l'affichage de temps secondaire du transport — la position écrit déjà le
+temps au format choisi PUIS la mesure (D11.3, D582.1) ; l'écoute de la note qu'on clique (*Acoustic Feedback*) et la
+vélocité du crayon existent (`startAudition`, D496) ; *Drag Delay* — le déplacement d'un clip part bien au premier pixel
+(`ArrangementComponent::mouseDrag`, aucun seuil), mais un délai compté en TEMPS rendrait immobiles tous les glissés des
+bancs, dont l'appui dure zéro milliseconde, et un seuil en pixels serait un autre geste que celui de Cubase : remis.
+Restent trois zéros :
+**0 pour la prise MIDI hors des clips** (*Snap MIDI Parts to Bars* ; une prise fait sa partie) — `stopRecording` verse
+les notes de la prise dans la piste (`applyRecording`) et rien d'autre : aucun clip n'est créé ni étendu, et
+`couvrirLesNotesEcrites` (D337), la règle qui couvre une note écrite hors des clips bornés d'une piste, n'a que deux
+appelants, le piano roll et la liste d'événements. Or depuis D352 une note hors des clips d'une piste qui en a n'est NI
+JOUÉE NI EXPORTÉE : jouée sur une piste dont le seul clip est plus loin, la prise disparaît — et le premier geste suivant
+ne la rattrape pas, puisque D556 laisse dehors ce qui était dehors avant lui. C'est la leçon de D352 : deux chemins
+d'écriture qui n'écrivent pas la même chose ;
+**0 pour le zoom à la molette autour du pointeur** — Ctrl+molette zoome dans l'arrangement par `zoomHorizontally`, qui
+change le zoom sans toucher au défilement : le BORD GAUCHE reste en place (D585 l'avait noté en passant) ; dans le piano
+roll, `PianoRollComponent::zoomHorizontally` garde le CENTRE de la fenêtre. Ni l'un ni l'autre ne garde le point visé,
+qu'il faut ensuite aller rechercher ; Cubase zoome autour du pointeur ;
+**0 pour le réticule** (*Cross-hair Cursor*) — le piano roll pose la forme de curseur `CrosshairCursor` du système pour
+la gomme (`PianoRollComponent::mouseMove`), et c'est tout : rien n'est peint en travers de la vue. Pendant qu'on tire un
+clip sur la piste du bas ou une note dans l'aigu, rien ne relie le pointeur à la règle ni au clavier.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D587.1 | **La prise MIDI couverte comme une note écrite** — *Snap MIDI Parts to Bars* | à la fin d'une prise MIDI, sur une piste qui a des clips, les notes de la prise tombées hors de tout clip passent par la règle de D337 (`couvrirLesNotesEcrites`), dans le pas de la prise : le clip le plus proche s'étend jusqu'à elles s'il en est à moins de huit mesures, sinon un clip naît sous elles, calé aux mesures ; dit au journal comme D337 ; Ctrl+Z défait la prise ET son clip en un pas ; mesuré par le MIDI exporté et par les clips du projet enregistré, le témoin (le binaire de D586) à côté |
+| D587.2 | **Le zoom à la molette autour du pointeur** | Ctrl+molette zoome dans l'arrangement et dans le piano roll en gardant le tick qui est SOUS LE POINTEUR à la même abscisse (tant que le défilement ne bute pas sur 0) ; le facteur ne change pas (×1,15 par cran) ; dans l'arrangement, un cran reste un pas d'*Annuler le zoom* (D557.3) ; Ctrl+Maj+molette (le zoom vertical du piano roll) ne change pas ; mesuré par l'abscisse du tick visé avant et après un cran, le témoin (le binaire de D586) à côté |
+| D587.3 | **Le réticule pendant un geste** — *Cross-hair Cursor* | *Affichage ▸ Réticule pendant un geste* (une préférence du poste) : cochée, pendant qu'un geste est tenu dans la zone des clips de l'arrangement ou dans la grille des notes du piano roll — un clip qu'on tire, un bord, un lasso, une note —, deux traits fins traversent la vue au pointeur, le vertical sur toute la hauteur, l'horizontal sur toute la largeur ; ils s'effacent au relâchement ; décochée, rien ; retenu au poste ; mesuré par un relevé qui lit ce que la peinture lit, pendant puis après un glissé tenu, le témoin décoché à côté, et REGARDÉ sur une photo prise pendant le geste |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D587.1.** La règle est CELLE des notes écrites, sans case : une case qui la décalerait (le *Snap MIDI Parts to Bars*
+  de Cubase se décoche) ferait deux règles pour deux chemins d'écriture, et la règle de D337 cale DÉJÀ ses clips aux
+  mesures (`plancher`, `plafond`). Elle passe par `MainComponent::couvrirLesNotesEcrites`, qui lit l'état d'avant le pas
+  (D556) : les notes de la prise n'y sont pas, elles sont donc couvertes ; ce qu'une ouverture avait laissé dehors reste
+  dehors. Une piste SANS clip garde son clip implicite (D336). Les prises EN BOUCLE (`finishPass`, versions de la prise)
+  ne sont pas touchées : elles vont dans des versions, pas dans la piste. **L'attendu, écrit avant la mesure** (120 BPM,
+  480 ticks par noire, une piste MIDI armée, sans décompte, l'enregistrement lancé à la tête 0, deux notes entrées
+  pendant la prise) : (1) le seul clip de la piste à la mesure 20 (une note dedans) — le MIDI exporté porte **3** notes,
+  et un clip **[0, 1 920)** est né (la mesure 1) ; (2) le seul clip à la mesure 3 — **3** notes exportées, et ce clip
+  s'est étendu vers la gauche jusqu'au tick **0** ; (3) Ctrl+Z après (1) — **1** note, **1** clip, en un pas ; (4) une
+  piste sans clip — **2** notes, aucun clip ajouté ; (5) le TÉMOIN (le binaire de D586) sur (1) — **1** note exportée, et
+  aucun clip né.
+- **D587.2.** Le calcul est celui de D585.2 : le tick sous le pointeur avant le cran, puis le défilement tel qu'il
+  retombe sous la même abscisse, borné à 0. Dans le piano roll, `zoomAncre` (D586.1) sert déjà ; les touches et le menu
+  (*Zoom avant*, *Zoom arrière*) gardent le centre — ils n'ont pas de pointeur. **L'attendu, écrit avant la mesure** :
+  l'arrangement ouvert sur la vue enregistrée (0,1 px/tick, défilé à la mesure 5), le pointeur à 0,3 de la largeur, un
+  cran vers le haut → le zoom **×1,15** (à 1 % près) et le tick visé à la même abscisse (à 1 px près) ; un cran vers le
+  bas → **÷1,15**, de même ; *Annuler le zoom* → la vue d'avant, en un pas ; le piano roll, le pointeur à 0,3 de sa
+  largeur → de même ; Ctrl+Maj+molette → le zoom horizontal inchangé ; le TÉMOIN → le tick visé DÉPLACÉ (de plus de
+  10 px) dans les deux vues.
+- **D587.3.** Le réticule se peint par-dessus tout (les clips, les notes, les courbes), en traits de 1 px logique, la
+  couleur de la tête de lecture à demi transparente ; il suit le POINTEUR, pas la grille (c'est le point où l'on est, pas
+  celui où l'on posera). Pas sur la règle (la tête y est déjà un trait) ni sur les têtes de piste ou le clavier. Cochée
+  d'origine — choix du dépôt, écrit ici : il ne se voit que pendant un geste, et c'est là qu'on lit une position ; aucune
+  photo d'un banc existant ne change, elles sont prises au repos. Un verbe de banc `relever-reticule` dit, pour chaque
+  vue, montré ou caché, et le point, lus dans les champs que la peinture lit. **L'attendu, écrit avant la mesure** : un
+  glissé tenu (`glisser:…:lent`, 450 ms) sur un clip de l'arrangement, le relevé à mi-geste → montré, au point du dernier
+  mouvement (à 1 px près) ; le relevé après le relâchement → caché ; le même dans la grille du piano roll → montré puis
+  caché ; décochée → caché à mi-geste ; relancé → décochée retenue ; en anglais, *Cross-hair while dragging* ; la photo
+  prise à mi-geste montre les deux traits.
+
+**L'ORDRE, TRANCHÉ ICI.** D587.1 (une prise qui disparaît est le plus grave des trois), puis D587.2, puis D587.3 ; un banc
+par élément (`prise-hors-clips`, `zoom-molette-pointeur`, `reticule`), entré dans la série de `verifier.sh --bancs`.
