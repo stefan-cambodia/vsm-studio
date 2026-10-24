@@ -46130,3 +46130,63 @@ la deuxième ou la troisième voix en partant du haut : les drops ne se font pas
 **L'ORDRE, TRANCHÉ ICI.** La fonction pure et son test du cœur, d'abord rouges (la fonction absente ne compile pas : le
 test s'écrit contre l'en-tête, et ses attendus sont ceux ci-dessus) ; puis les cinq entrées du piano roll et leurs
 traductions ; puis le banc `disposition-accords`, entré dans la série. Compilation et mesure APRÈS la série en cours.
+
+### Phase D593 — un cinquante-quatrième audit : les filtres coupe-bas et coupe-haut de la tranche (25/10/2026)
+
+*Écrite le 25/10 à 04 h 30 (l'horloge), avant toute ligne de code et toute mesure, pendant la série de D588-D591 ; le
+code s'écrira dans un arbre à part posé sur le chantier de D592 (`../vsm-D593`), rien compilé ni lancé avant la fin de
+la série.*
+
+**LE ZÉRO, lu au code et pas au nom.** Le sondage de D592 a laissé trois zéros ; celui-ci est le plus près du son. La
+section *Pre* d'une tranche de Cubase porte quatre réglages avant les inserts : le gain d'entrée, la phase, un **coupe-bas**
+et un **coupe-haut** (*Low Cut*, *High Cut*). VSM Studio a les deux premiers — `Track::inputTrimDb` (D30.4), appliqué dans
+`ProcessGraph::renderTrackVoice` juste avant la chaîne d'inserts, et `Track::invertPhase` (D23.1) — et **pas les deux
+autres** : `Track` n'a aucun champ de filtre (lu champ par champ, de `armed` à `vcaTrack`), `renderTrackVoice` ne filtre
+rien entre la source et les inserts, et les rangées du haut de la tranche de console sont le trim, le panoramique, le délai et la transposition.
+Le seul filtre est un INSERT (`FilterEffect`, multimode) : couper le grave d'une piste coûte un emplacement de la chaîne,
+se règle dans une fenêtre, et ne se voit pas sur la tranche — le geste le plus courant d'un mixage (nettoyer le bas de
+tout ce qui n'est pas la basse et la grosse caisse) n'a pas sa place là où on mixe.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D593.1 | **Le coupe-bas et le coupe-haut de la tranche** — la section *Pre* (*Low Cut*, *High Cut*) | deux champs de piste, éteints d'origine (un projet d'avant sonne au bit près et s'écrit à l'identique) ; appliqués après le trim et avant les inserts, aux pistes MIDI comme audio, dans le moteur ET dans le rendu hors-ligne (le contrat de D21 : la mesure est un EXPORT) ; enregistrés dans `project.json`, gardés par les instantanés de console, copiés avec les réglages de la tranche, éteints par la remise à zéro de la console |
+| D593.2 | **Leurs réglages sur la tranche** | deux rangées sous le trim, comme lui : « Coupe-bas 80 Hz », « Coupe-haut 12,0 kHz », ou « … éteint » ; le double-clic éteint ; un pas d'annulation par geste ; en anglais *Low cut*, *High cut* ; la photo REGARDÉE |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Un filtre de Butterworth du deuxième ordre, 12 dB par octave**, une cellule biquadratique (`dsp/Biquad.h`, la forme
+  de RBJ, Q = 1/√2) par canal et par filtre. Cubase propose plusieurs pentes ; une seule ici, celle des tranches de
+  console qu'on imite d'ordinaire — une pente réglable serait un second chantier, que rien ne demande encore.
+- **Éteint = 0** : `lowCutHz` et `highCutHz` valent 0 d'origine, et le moteur ne calcule alors rien (le contrat du trim :
+  « à zéro, le moteur ne fait rien, un projet d'avant sonne au bit près »). Bornes : coupe-bas de 20 Hz à 2 kHz,
+  coupe-haut de 1 kHz à 20 kHz. Sur la tranche, l'EXTRÉMITÉ du curseur vaut « éteint » (20 Hz pour le coupe-bas,
+  20 kHz pour le coupe-haut) : un curseur n'a pas de case de plus, et un passe-haut à 20 Hz n'est pas ce qu'on demande
+  quand on le pousse en butée. Le double-clic y ramène.
+- **Où** : dans `renderTrackVoice`, juste après le trim et avant la chaîne d'inserts ; **pas sur une piste gelée** (le
+  filtre est DANS le fichier gelé, comme le trim et les inserts) ; ni sur un VCA (pas de signal) ni sur un bus. Les
+  coefficients se recalculent quand la fréquence change (comparée à la dernière vue), les mémoires se remettent à zéro
+  quand un filtre s'allume — un filtre rallumé ne rejoue pas l'état d'il y a dix minutes.
+- **Ce qui les garde** : `project.json` (`mix.lowCutHz`, `mix.highCutHz`, écrits seulement s'ils ne sont pas nuls,
+  comme `trimDb`) ; l'instantané de console (`TrackMixState`, D535.2 : « ce que la tranche montre et règle ») ; les
+  réglages de la tranche copiés (`ChannelSettings`, D562.3 : « le son de la tranche ») ; la remise à zéro de la console
+  (D559.2 : l'état d'une piste neuve, donc éteints). **Pas automatisables** dans cette phase (le trim l'est) : dit ici,
+  et remis au jour où un morceau le demande.
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE.** La réponse d'un biquad de RBJ à 48 kHz, calculée avant tout code :
+  coupe-bas à **200 Hz** : 50 Hz à **−24,10 dB**, 200 Hz à **−3,01 dB**, 1 kHz à **−0,007 dB** ; coupe-haut à **2 kHz** :
+  8 kHz à **−25,69 dB**, 2 kHz à **−3,01 dB**, 1 kHz à **−0,26 dB**.
+  (1) **le test du moteur** : un sinus en régime établi à travers la section, chacune de ces six valeurs à ±0,05 dB ;
+  éteint (0 Hz), la sortie identique à l'entrée AU BIT PRÈS ;
+  (2) **l'export hors-ligne** (`vsm-render`, 48 kHz) d'une piste audio — un fichier de 50 Hz + 1 kHz + 8 kHz, chacun à
+  −20 dBFS — trois fois, par la SEULE valeur des champs dans `project.json` : sans filtre (le témoin, du même code),
+  coupe-bas 200 Hz, coupe-haut 2 kHz ; chaque composante relue sur la partie établie et rapportée au témoin : coupe-bas
+  **−24,1 / −0,0 / −0,0 dB** (50 Hz / 1 kHz / 8 kHz, ±0,3 dB sur 50 Hz, ±0,1 ailleurs), coupe-haut **−0,0 / −0,26 /
+  −25,7 dB** ; et le témoin rendu par le binaire d'avant (D591) **identique au bit près** à celui du binaire neuf ;
+  (3) **l'application** : le curseur « mixeur.coupebas » de la piste réglé à 200 → `project.json` porte
+  `"lowCutHz": 200` ; l'export de l'application (`exporter-audio:`) relu comme en (2) : 50 Hz à **−24,1 dB** ; Ctrl+Z → le
+  champ absent ; le double-clic → éteint ; l'instantané de console rappelé rend la valeur ; « Copier / Coller les
+  réglages de la tranche » la porte d'une piste à l'autre ; « Remettre la console à zéro » l'éteint ;
+  (4) **en anglais** : *Low cut 200 Hz* ; **la photo** de la console REGARDÉE, les deux rangées lisibles à 150 % ;
+  (5) le **TÉMOIN** (le binaire de D591) : le curseur introuvable (`valeur:` le dit), et l'export de (3) sans atténuation.
+
+**L'ORDRE, TRANCHÉ ICI.** Le champ et son aller-retour (`interchange`), puis la section du moteur et son test, puis
+l'export hors-ligne (2) ; ensuite seulement la tranche, l'instantané, la copie et la remise à zéro, et le banc
+`coupe-bas-haut`, entré dans la série.
