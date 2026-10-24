@@ -286,3 +286,40 @@ VSM_TEST(supprimer_du_temps_apres_un_clip_ouvert_ne_le_coupe_pas) {
     VSM_ASSERT_EQ(p.tracks[0].clips[0].sourceLength, Tick(0));
     VSM_ASSERT(entenduesD538(p) == avant);
 }
+
+// D597 — LA FIN DU MORCEAU COMPTE LE FICHIER D'UNE PISTE AUDIO SANS CLIP. L'attendu écrit avant le code (ROADMAP-daw,
+// D597) : 480 ticks à la noire, 120 BPM ; une piste MIDI qui finit au tick 960, une piste audio sans clip de 4,0 s →
+// 3 840 ; avec un clip de 0 à 1 920 → 1 920 ; une note jusqu'au tick 5 000 → 5 000 ; au tempo fixe de 60 → 1 920.
+VSM_TEST(the_song_end_counts_the_file_of_an_audio_track_without_clips) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    Track midi;
+    uint64_t ids = 1;
+    midi.addNote(0, 960, 60, 100, 0, ids);
+    p.tracks.push_back(midi);
+    Track voix;
+    voix.kind = Track::Kind::Audio;
+    voix.audio.path = "audio/voix.wav";
+    voix.audio.sampleRate = 48000.0;
+    voix.audio.frames = 192000;   // 4,0 s
+    voix.audio.channels = 2;
+    p.tracks.push_back(voix);
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(3840));
+    // La règle des clips ne change pas : la fenêtre posée fait foi.
+    Project avecClip = p;
+    Clip c;
+    c.startTick = 0;
+    c.length = 1920;
+    avecClip.tracks[1].clips.push_back(c);
+    VSM_ASSERT_EQ(avecClip.lastSoundingTick(), Tick(1920));
+    // Une note plus longue que le fichier l'emporte.
+    Project longue = p;
+    longue.tracks[0].addNote(4000, 5000, 62, 100, 0, ids);
+    VSM_ASSERT_EQ(longue.lastSoundingTick(), Tick(5000));
+    // Au tempo fixe de 60 (D595), quatre secondes font quatre noires.
+    Project fixe = p;
+    fixe.tracks[0].notes.clear();
+    fixe.fixedTempo = true;
+    fixe.fixedTempoBpm = 60.0;
+    VSM_ASSERT_EQ(fixe.lastSoundingTick(), Tick(1920));
+}

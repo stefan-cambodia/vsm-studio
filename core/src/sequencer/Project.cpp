@@ -612,6 +612,10 @@ midi::Tick Project::lastSoundingTick() const {
             for (const auto& n : t.notes) last = std::max(last, n.endTick);
             for (const auto& c : t.controlChanges) last = std::max(last, c.tick);
             for (const auto& p : t.pitchBends) last = std::max(last, p.tick);
+            // D597 : UNE PISTE AUDIO SANS CLIP JOUE TOUT SON FICHIER (D2) — sa fin est celle du fichier, convertie au tempo
+            // qu'on entend (D595). Ignorée, elle laissait le moteur, le transport et le rendu s'arrêter à la fin du MIDI.
+            if (t.kind == Track::Kind::Audio && !t.audio.empty() && t.audio.durationSeconds() > 0.0)
+                last = std::max(last, secondsToTicks(t.audio.durationSeconds()));
             continue;
         }
         // Un clip AUDIO a sa fenêtre en secondes : sa longueur posée fait foi, comme avant.

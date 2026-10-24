@@ -46436,3 +46436,22 @@ le MIDI est donc tronquée au rendu — et ses distances avec.
 
 **L'ORDRE.** Le test du cœur d'abord, joué rouge sur le code d'avant ; le correctif ; `vsm-render` ; le recensement (un
 script de mesure dans le brouillon, sa sortie recopiée ici — pas une garde).
+
+### Phase D597 — MESURÉE (25/10/2026, 06 h 15 à l'horloge)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D597.1 (1) | 3 840 (avant 960) ; avec un clip 1 920 ; une note à 5 000 → 5 000 ; fixe à 60 → 1 920 | le test du cœur, joué d'abord sur le code d'avant : **rouge** (« 960 != 3840 ») ; après : **3 840**, **1 920**, **5 000**, **1 920** | **oui** |
+| D597.1 (2) | `vsm-render` d'une piste audio de 4 s sans clip : 288 000 trames (avant 96 000) | **288 000** ; le `vsm-render` de D591 (même règle de fin que D596) : **96 000** | **oui** |
+| D597.1 (3) | le recensement ; l'hypothèse : moins d'une seconde coupée, sur une MINORITÉ des projets | **809** projets uniques lus sous `~/videcode/muz` (par empreinte du fichier) ; **278** portent une piste audio sans clip ; **251** d'entre eux avaient un fichier plus long que leur MIDI de plus de 0,05 s — la troncature médiane **0,33 s**, la plus forte sur une reconstruction **6,39 s** (« Reload », `reload-peschi`, `reload-course2`… : 312,19 s d'audio, 305,81 s de MIDI), puis 3,57 s (Children, 455,73 contre 452,16), 3,31 s (`epreuve/cc-demo`), 2,77 s (B4), 2,67 s (Jaguar), 2,15 s (Sky) ; et **470,28 s** sur les quatre projets `h24/original-reverb-*` (un MIDI vide : sans `--duration`, ils se rendaient en 2 s) | **l'hypothèse est RÉFUTÉE sur la proportion** (251 sur 278, pas une minorité), tenue sur l'ordre de grandeur (médiane 0,33 s) |
+| — | les suites | cœur **560 / 560** (559 + celui de D597), interchange 361, moteur 1 369, clap 25, panels 11 ; Python **275 / 275** (la chaîne rend par `vsm-render`) | **oui** |
+
+**CE QUE LA MESURE A TRANCHÉ, ÉCRIT ICI.**
+- **Les distances publiées ne sont pas touchées par ce chemin-là, et c'est lu au code** : la chaîne impose sa durée à
+  chaque rendu (`vsm_offline_render.py` : `--duration`, appelé par l'arbitrage, l'affinage et l'automation ;
+  `essai_reverb.py` de H24 aussi) — la fin du morceau n'y décide rien. Ce que le défaut coupait, c'est ce qui s'arrête à
+  la fin du morceau : la LECTURE dans l'application, son export, et `vsm-render` sans `--duration`. Sur « Reload », la
+  lecture et l'export de l'application s'arrêtaient 6,39 s avant la fin de la voix, sans un mot.
+- **Ce que le correctif ne fait pas** : il ne touche pas aux pistes qui ont des clips (leur fenêtre fait foi, D540), ni à
+  la durée IMPOSÉE d'un rendu ; il ne recompte rien dans les rapports déjà écrits.
+- **Le recensement est un script de mesure** (le brouillon de la session), pas une garde : la garde, c'est le test du cœur.
