@@ -46494,3 +46494,9 @@ pas du tout.
   « 2.1 » → A à **1 920**, B à **3 840** (l'écart gardé) ; (7) début « abc » → rien ne bouge, et la ligne d'état dit
   « Début refusé » ; (8) en anglais *View ▸ Clip info line* ; la bande photographiée et regardée ; (9) le témoin (le binaire
   de D597) : l'entrée absente.
+- **CORRIGÉ AVANT LE CODE ET LA MESURE (06 h 18 à l'horloge), et pourquoi.** Le gain d'un clip n'existe que pour
+  l'AUDIO : la molette (D582.3, `reglerGainALaMolette`) et le menu *Gain du clip* (D22.1) n'agissent que sur un clip
+  audio, bornés à ±24 dB. Le poser sur le clip MIDI A, comme écrit en (5), serait régler une valeur qui ne s'entend pas —
+  une panne muette. Le champ du gain est donc GRISÉ (« — ») quand le premier clip choisi est MIDI, et borné à ±24 dB (pas
+  −60…+12) ; le jeu reçoit une troisième piste, AUDIO, avec un clip C de 0 à 1 920 ; (5) devient : C choisi, gain « -6 »
+  → le gain de C à **0,501** ; A choisi, le champ grisé.
