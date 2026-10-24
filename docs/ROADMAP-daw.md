@@ -46226,3 +46226,10 @@ plus proche : la table des raccourcis (une commande par touche, `ShortcutTable`)
   d'origine ; (4) une macro dont un pas est grisé au rejeu (« Drop 2 » seul, enregistré notes choisies, rejoué
   sans sélection) → arrêtée au pas 1, dit, l'export inchangé ; (5) arrêter sans aucune commande → rien de rangé, dit ;
   (6) en anglais *Edit ▸ Macros ▸ Start recording* ; (7) le témoin (le binaire d'avant) : l'entrée absente.
+- **CORRIGÉ AVANT LE CODE ET LA MESURE (04 h 58 à l'horloge), et pourquoi.** « Octave - » sur ce jeu est REFUSÉE : l'accord
+  F (2 5 9) sortirait de la plage MIDI, et la transposition est « tout ou rien » (D536) — le pas du milieu n'aurait rien
+  fait, et (3) aurait compté trois Ctrl+Z pour deux pas. La macro de (1) devient « Tout sélectionner », « Transposer
+  +1 demi-ton », « Drop 2 » ; l'attendu de (2), calculé sur les attendus de D592 : `53 61 68 | 56 61 77 | 56 61 65 72 |
+  63 54 70 | 49 | 111 119 126 | 3 6 10` (le Drop 2 de D592 monté d'un demi-ton ; F, à 3 6 10, reste : 6 − 12 < 0).
+  Les libellés : *Commencer l'enregistrement*, *Arrêter l'enregistrement (N commande(s))*, *Macro N (k commande(s))*,
+  *Supprimer une macro* — chacun unique dans la barre (relevé dans la table des libellés).
