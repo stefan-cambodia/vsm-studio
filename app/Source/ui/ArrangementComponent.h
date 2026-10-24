@@ -281,6 +281,16 @@ public:
     /// même qu'à la souris ; annulable ; un clip ne passe pas avant zéro (la
     /// figure garde sa forme, voir `moveClips`).
     void nudgeSelection(vsm::midi::Tick delta);
+    /// D598 : LA LIGNE D'INFORMATION DES CLIPS. Le premier clip choisi (le plus tôt, puis la première piste) et sa piste ;
+    /// nullptr sans choix.
+    const vsm::sequencer::Clip* premierClipChoisi(size_t& piste) const;
+    /// D598 : la longueur `ticks` donnée à CHAQUE clip choisi (`resizeClipsEnd`, chacun son écart) ; un clip ou une piste
+    /// verrouillés sont comptés et dits (`onLockRefused`) ; un pas s'il y a quelque chose à changer. Rend le nombre de
+    /// clips changés.
+    size_t donnerLongueurAuxClipsChoisis(vsm::midi::Tick ticks);
+    /// D598 : le gain `db` (±24 dB, la borne du menu *Gain du clip*, D22.1) posé sur chaque clip AUDIO choisi — un clip MIDI
+    /// n'a pas de gain qui s'entende ; un pas s'il y a quelque chose à changer. Rend le nombre de clips changés.
+    size_t poserGainDesClipsChoisis(float db);
     /// D15.2 : vers la piste voisine du même genre, en emportant les notes que
     /// la fenêtre couvre ; ce qui est refusé est compté et dit.
     void moveSelectionAcrossTracks(int deltaTracks);

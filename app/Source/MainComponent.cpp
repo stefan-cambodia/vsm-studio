@@ -1560,6 +1560,13 @@ MainComponent::MainComponent()
         ligneDEnsembleMontree_ = reglages.getBoolValue("arrangementLigneDEnsemble", false);
         ligneDEnsemble_.setProject(&project_);
         addChildComponent(ligneDEnsemble_);
+        // D598 : la ligne d'information des clips, cachée d'origine ; ses refus vont à la ligne d'état.
+        ligneInfoClipsMontree_ = reglages.getBoolValue("arrangementLigneInfoClips", false);
+        ligneInfoClips_.setProject(&project_);
+        ligneInfoClips_.onStatut = [this](const juce::String& texte) {
+            if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(texte);
+        };
+        addChildComponent(ligneInfoClips_);
         arrangement_.onBasculesChanged = [this] {
             auto& r = vsm::app::ui::UiScale::properties();
             r.setValue("arrangementAimant", arrangement_.snapEnabled());
@@ -1877,10 +1884,27 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
 void MainComponent::poserLArrangement(juce::Rectangle<int> area) {
     // D591.1 : LA BANDE PREND SA HAUTEUR AU CENTRE, et seulement quand elle est montrée et que l'arrangement est là,
     // dans cette fenêtre : éteinte, le centre ne bouge pas d'un pixel (aucune photo d'un banc existant ne change).
-    const bool bande = ligneDEnsembleMontree_ && arrangement_.isVisible() && arrangement_.getParentComponent() == this;
+    const bool ici = arrangement_.isVisible() && arrangement_.getParentComponent() == this;
+    const bool bande = ligneDEnsembleMontree_ && ici;
     ligneDEnsemble_.setVisible(bande);
     if (bande) ligneDEnsemble_.setBounds(area.removeFromTop(vsm::app::ui::kLigneDEnsemble));
+    // D598 : la ligne d'information des clips sous la ligne d'ensemble — la même règle : éteinte, rien ne bouge.
+    const bool info = ligneInfoClipsMontree_ && ici;
+    ligneInfoClips_.setVisible(info);
+    if (info) ligneInfoClips_.setBounds(area.removeFromTop(vsm::app::ui::kLigneInfoClips));
     arrangement_.setBounds(area);
+}
+
+void MainComponent::basculerLigneInfoClips() {
+    ligneInfoClipsMontree_ = !ligneInfoClipsMontree_;
+    auto& r = vsm::app::ui::UiScale::properties();
+    r.setValue("arrangementLigneInfoClips", ligneInfoClipsMontree_);
+    r.saveIfNeeded();
+    std::fputs((juce::String::fromUTF8("VSM_INFO_CLIPS : ligne d'information des clips ")
+                + (ligneInfoClipsMontree_ ? juce::String::fromUTF8("montr\xc3\xa9" "e") : juce::String::fromUTF8("cach\xc3\xa9" "e"))
+                + "\n").toRawUTF8(), stderr);
+    resized();
+    menuItemsChanged();
 }
 
 void MainComponent::basculerLigneDEnsemble() {
@@ -4100,6 +4124,13 @@ void MainComponent::timerCallback() {
         resized();
     }
     if (ligneDEnsemble_.isVisible()) ligneDEnsemble_.suivre();
+    // D598 : la ligne d'information des clips, la même règle que la ligne d'ensemble.
+    if (const bool voulue = ligneInfoClipsMontree_ && arrangement_.isVisible() && arrangement_.getParentComponent() == this;
+        voulue != ligneInfoClips_.isVisible()) {
+        if (!voulue) ligneInfoClips_.setVisible(false);
+        resized();
+    }
+    if (ligneInfoClips_.isVisible()) ligneInfoClips_.suivre();
     // UNE SEULE HORLOGE, ET PLUS DE « SELON LES CAS » (D8.3). Elle compte les
     // échantillons réellement sortis de la carte son : il n'existe pas de
     // mesure plus exacte de « où en est la lecture », puisque c'est
@@ -6208,6 +6239,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                              arrangement_.montageEnChaine());
                 // D591.1 : LA LIGNE D'ENSEMBLE (l'*Overview Line* de Cubase), éteinte d'origine.
                 menu.addItem(kMenuViewSongOverview, tr(u8"Ligne d'ensemble du morceau"), true, ligneDEnsembleMontree_);
+                // D598 : LA LIGNE D'INFORMATION DES CLIPS (l'*Info Line* de Cubase), éteinte d'origine.
+                menu.addItem(kMenuViewClipInfoLine, tr(u8"Ligne d'information des clips"), true, ligneInfoClipsMontree_);
             }
             // D586.3 : LE NOM DES NOTES (*Note Name Style*) — une préférence du poste ; des libellés uniques dans la barre.
             {
@@ -6470,6 +6503,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
     if (menuItemID == kMenuViewStationaryCursor)   { arrangement_.basculerTeteFixe(); return; }   // D569.2
     if (menuItemID == kMenuViewSongOverview) { basculerLigneDEnsemble(); return; }   // D591.1
+    if (menuItemID == kMenuViewClipInfoLine) { basculerLigneInfoClips(); return; }   // D598
     if (menuItemID == kMenuViewEditSuspendsFollow) { arrangement_.basculerEditionSuspendSuivi(); return; }   // D586.2
     if (menuItemID == kMenuViewArrangementSnapRelative) { arrangement_.basculerAimantRelatif(); return; }   // D572.1
     if (menuItemID == kMenuViewArrangementSnapEvents) { arrangement_.basculerAimantClips(); return; }       // D574.1
@@ -12680,6 +12714,7 @@ void MainComponent::retraduire() {
         bottomTabs_.setTabName(i, tr(nomsDesOnglets_[i]));
     transportBar_.retraduire();
     trackList_.retraduire();
+    ligneInfoClips_.retraduire();   // D598
     pianoRollPanel_.retraduireBarre();
     effectChain_.retraduire();   // D77
     historyPanel_.retraduire();   // D82

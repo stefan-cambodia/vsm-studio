@@ -46500,3 +46500,33 @@ pas du tout.
   une panne muette. Le champ du gain est donc GRISÉ (« — ») quand le premier clip choisi est MIDI, et borné à ±24 dB (pas
   −60…+12) ; le jeu reçoit une troisième piste, AUDIO, avec un clip C de 0 à 1 920 ; (5) devient : C choisi, gain « -6 »
   → le gain de C à **0,501** ; A choisi, le champ grisé.
+
+### Phase D598 — MESURÉE, la série à jouer (25/10/2026, 06 h 30 à l'horloge)
+
+*Session verrouillée, écran éteint : le banc lit le projet enregistré, le journal et les menus ; ses photos vérifiées
+pleines (168 à 179 Ko) avant d'être regardées.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D591) | tenu |
+|---|---|---|---|---|
+| D598 (1) | éteinte d'origine : « montrée non » | « **montrée non** » | `relever-info-clips` inconnu | **oui** |
+| D598 (2) | A choisi : 1 clip(s) ; début 1.1 ; longueur 3840 ; gain — | « montrée oui ; **1 clip(s) ; début 1.1 ; longueur 3840 ; gain —** » | rouge | **oui** |
+| D598 (3) | début « 3.1 » → A à 3 840 ; Ctrl+Z → 0 | A à **3 840** (« début 3.1 » relu) ; Ctrl+Z, après « début 3.1 » dans la même course : **0** | rouge | **oui** |
+| D598 (4) | longueur « 1920 » → 1 920 | A long de **1 920** | rouge | **oui** |
+| D598 (5) | C : gain « -6 » → 0,501 | le gain de C **0,501**, « gain -6.0 dB » à la bande et sur le clip | rouge | **oui** |
+| D598 (6) | A et B : « 2 clip(s) ; début 1.1 », début « 2.1 » → 1 920 et 3 840 | « **2 clip(s) ; début 1.1** », puis A à **1 920**, B à **3 840** | rouge | **oui** |
+| D598 (7) | « abc » refusé et dit, rien ne bouge | `VSM_INFO_CLIPS : refus — Début refusé : « abc » — mesure.temps, par exemple 17.3 ou 17.3+120` ; les trois clips à leur place | rouge | **oui** |
+| D598 (8) | en anglais *View ▸ Clip info line* ; la bande regardée | 1 entrée ; la bande : « Clips : Voix — Début 1.1 — Longueur 1920 — Gain -6.0 dB », lisible | rouge **9 / 9** | **oui** |
+| — | les suites et la série | l'application compilée ; gardes **16** vertes (`inventaire_langue.py` connaît désormais `releverInfoClips`, la fonction de banc du relevé) ; la série de **196** bancs **à jouer**, l'écran allumé | — | **à jouer** |
+
+**CE QUE LA MESURE A TRANCHÉ, ÉCRIT ICI.**
+- **Le premier essai a rendu sept rouges pour une vue oubliée** : la vue d'origine met le piano roll au centre, et la bande
+  ne se pose qu'au-dessus de l'ARRANGEMENT — le menu cochait la ligne, le relevé disait « montrée non ». Le banc ouvre
+  désormais l'arrangement (`VSM_VUE=…,arrangement`, comme celui de D591), et son en-tête le dit.
+- **La garde des textes a attrapé le relevé** : « début » et « verrouillé », dans des littéraux du relevé, comptaient pour
+  des textes d'ÉCRAN — la liste FERMÉE des fonctions de banc (`FONCTIONS_DE_BANC`) ne reconnaît qu'une fonction définie en
+  colonne 0. Le relevé est donc défini hors de la classe (`LigneInfoClips::releverInfoClips`) et inscrit à la liste, avec
+  sa raison ; la garde rend 0.
+- **Le refus s'écrivait « refus â Début »** : un tiret long dans un littéral `const char*` passé à `juce::String`, lu octet
+  par octet. Corrigé (`juce::String::fromUTF8`), relu au journal : « refus — Début refusé ».
+- **La police de la bande** : 13 points (la ligne d'ensemble en a 12) — mise à 13 après la première photo, à 150 % elle se
+  lit à la taille des noms de piste.

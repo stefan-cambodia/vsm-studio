@@ -43,6 +43,7 @@
 #include "ui/MixerComponent.h"
 #include "ui/ArrangementComponent.h"
 #include "ui/LigneDEnsemble.h"
+#include "ui/LigneInfoClips.h"   // D598
 #include "ui/AutomationComponent.h"
 #include "ui/MidiCcComponent.h"
 #include "ui/TempoLaneComponent.h"
@@ -402,6 +403,10 @@ public:
         // D589.3 : L'ÉCOUTE — la crête de ce qui SORT et celle du master AU MÊME BLOC (un seul atomique), leur écart, et
         // le titre de la tranche master. Les mesures du master disent le mixage ; la crête entendue dit l'écoute.
         // D591.1 : la ligne d'ensemble — ce que la peinture lit : l'étendue, la vue, le rectangle, les traits.
+        if (geste.equalsIgnoreCase("relever-info-clips")) {   // D598
+            std::fputs((ligneInfoClips_.releverInfoClips() + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         if (geste.equalsIgnoreCase("relever-ensemble")) {
             std::fputs((ligneDEnsemble_.releve() + "\n").toRawUTF8(), stderr);
             return true;
@@ -1497,6 +1502,8 @@ private:
         /// D595 : le tempo fixe, et le régler.
         kMenuTransportFixedTempo,
         kMenuTransportFixedTempoSet,
+        /// D598 : la ligne d'information des clips.
+        kMenuViewClipInfoLine,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2848,6 +2855,10 @@ private:
     /// poste). Déclarée APRÈS l'arrangement, qu'elle lit et fait défiler.
     vsm::app::ui::LigneDEnsemble ligneDEnsemble_{arrangement_};
     bool ligneDEnsembleMontree_ = false;
+    /// D598 : LA LIGNE D'INFORMATION DES CLIPS, sous la ligne d'ensemble (éteinte d'origine, retenue au poste).
+    vsm::app::ui::LigneInfoClips ligneInfoClips_{arrangement_};
+    bool ligneInfoClipsMontree_ = false;
+    void basculerLigneInfoClips();
     /// Pose l'arrangement dans `area`, et la ligne d'ensemble au-dessus si elle est montrée (D591.1).
     void poserLArrangement(juce::Rectangle<int> area);
     void basculerLigneDEnsemble();

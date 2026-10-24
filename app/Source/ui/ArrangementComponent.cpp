@@ -191,6 +191,61 @@ void ArrangementComponent::nudgeSelection(vsm::midi::Tick delta) {
     if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);
 }
 
+const vsm::sequencer::Clip* ArrangementComponent::premierClipChoisi(size_t& piste) const {
+    if (project_ == nullptr || selection_.empty()) return nullptr;
+    const vsm::sequencer::Clip* premier = nullptr;
+    for (size_t t = 0; t < project_->tracks.size(); ++t)
+        for (const auto& c : project_->tracks[t].clips)
+            if (selection_.count(c.id) > 0 && (premier == nullptr || c.startTick < premier->startTick)) {
+                premier = &c;
+                piste = t;
+            }
+    return premier;
+}
+
+size_t ArrangementComponent::donnerLongueurAuxClipsChoisis(vsm::midi::Tick ticks) {
+    if (project_ == nullptr || selection_.empty() || ticks <= 0) return 0;
+    // LES ÉCARTS D'ABORD, ET LE VERROU COMPTÉ AVANT LE PAS (la règle de `nudgeSelection`, D16.5) : un geste
+    // entièrement refusé ne laisse rien dans l'historique, et se dit.
+    struct Ecart { size_t piste; uint64_t id; vsm::midi::Tick delta; };
+    std::vector<Ecart> ecarts;
+    size_t verrouilles = 0;
+    for (size_t t = 0; t < project_->tracks.size(); ++t)
+        for (const auto& c : project_->tracks[t].clips) {
+            if (selection_.count(c.id) == 0 || c.length == ticks) continue;
+            if (project_->tracks[t].locked || c.locked) { ++verrouilles; continue; }
+            ecarts.push_back({t, c.id, ticks - c.length});
+        }
+    size_t changes = 0;
+    if (!ecarts.empty()) {
+        if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Longueur des clips"));
+        for (const auto& e : ecarts)
+            changes += vsm::sequencer::resizeClipsEnd(project_->tracks[e.piste], {e.id}, e.delta,
+                                                       materialEnd(project_->tracks[e.piste]));
+        notifyChanged();
+        repaint();
+    }
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);
+    return changes;
+}
+
+size_t ArrangementComponent::poserGainDesClipsChoisis(float db) {
+    if (project_ == nullptr || selection_.empty()) return 0;
+    const float gain = std::pow(10.0f, juce::jlimit(-24.0f, 24.0f, db) / 20.0f);
+    std::vector<std::pair<size_t, uint64_t>> aChanger;
+    for (size_t t = 0; t < project_->tracks.size(); ++t) {
+        if (project_->tracks[t].kind != vsm::sequencer::Track::Kind::Audio) continue;
+        for (const auto& c : project_->tracks[t].clips)
+            if (selection_.count(c.id) > 0 && c.gain != gain) aChanger.emplace_back(t, c.id);
+    }
+    if (aChanger.empty()) return 0;
+    if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Gain du clip"));
+    for (const auto& [t, id] : aChanger) vsm::sequencer::setClipGain(project_->tracks[t].clips, {id}, gain);
+    notifyChanged();
+    repaint();
+    return aChanger.size();
+}
+
 void ArrangementComponent::moveSelectionAcrossTracks(int deltaTracks) {
     if (project_ == nullptr || selection_.empty() || deltaTracks == 0) return;
     if (onEditStarted) onEditStarted(u8"Déplacer des clips de piste");
