@@ -46233,3 +46233,49 @@ plus proche : la table des raccourcis (une commande par touche, `ShortcutTable`)
   63 54 70 | 49 | 111 119 126 | 3 6 10` (le Drop 2 de D592 monté d'un demi-ton ; F, à 3 6 10, reste : 6 − 12 < 0).
   Les libellés : *Commencer l'enregistrement*, *Arrêter l'enregistrement (N commande(s))*, *Macro N (k commande(s))*,
   *Supprimer une macro* — chacun unique dans la barre (relevé dans la table des libellés).
+
+### Phase D595 — un cinquante-sixième audit : le tempo fixe (25/10/2026)
+
+*Écrite le 25/10 à 04 h 51 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de D588-D591.*
+
+**UN REMIS DEPUIS D579, repris ici.** La liste « toujours remis » de D579 et de D581 porte, entre autres, **le tempo
+fixe** — le bouton *Tempo Track / Fixed* du transport de Cubase : la carte de tempo ignorée, le morceau joué à un seul
+tempo, sans rien perdre de la carte. D579 l'avait remis parce qu'il « passe par TOUTE conversion entre secondes et
+ticks, du moteur à l'export ». **Lu au code, ce passage est étroit** : la carte n'a qu'un seul propriétaire
+(`Project::tempoMap`), AUCUNE fonction ne reçoit une `TempoMap` en argument (0 occurrence de `const TempoMap&` hors des
+tests), et les conversions passent par `Project::ticksToSeconds` / `secondsToTicks` ; restent quatre lectures directes
+du tempo en un point qui touchent au temps joué — le décompte avant zéro et l'information de transport des machines
+(`ProcessGraph.cpp`), la durée du décompte de la prise (`MidiRecorder.cpp`), le compte des temps restants avant le punch
+(`MainComponent.cpp`) — et quelques affichages (la barre de transport, le tempo tapé). **Zéro de fonction** : aucun
+champ, aucune entrée, aucun mot (« tempo fixe », `fixedTempo` : 0).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D595.1 | **Le tempo fixe** — *Tempo Track / Fixed* du transport | *Transport ▸ Tempo fixe (la carte de tempo ignorée)*, cochée quand il l'est : le morceau joue, s'exporte et se rend hors-ligne à UN tempo, celui de la tête de lecture au moment où on l'allume ; la carte n'est pas touchée (décochée, tout revient) ; *Transport ▸ Régler le tempo fixe…* le change ; enregistré dans le projet ; un pas d'annulation par geste ; en anglais *Fixed tempo* ; la barre de transport le dit |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Deux champs du projet**, `fixedTempo` (faux d'origine) et `fixedTempoBpm`, écrits dans `project.json` SEULEMENT quand
+  le tempo fixe est allumé (un projet d'avant se réécrit octet pour octet) ; `Project::ticksToSeconds`, `secondsToTicks`
+  et un `Project::bpmAt(tick)` neuf les lisent ; les quatre lectures directes passent par `bpmAt`. Une carte en SMPTE
+  (`TempoMap::smpte`) n'a pas de tempo : l'entrée y est grisée.
+- **Ce qui ne change pas** : la carte elle-même (la ligne de tempo la montre, et s'y édite) ; le fichier MIDI du projet
+  et l'export MIDI, qui écrivent la carte — le tempo fixe est une façon d'ÉCOUTER, pas une réécriture ; les positions
+  des notes et des clips en ticks. Ce qui change : tout ce qui est en SECONDES — la lecture, l'export audio, le rendu
+  hors-ligne, le clic, le décompte, et la tête de lecture.
+- **Allumer prend le tempo de la tête** (`bpmAt` de la carte à sa position) ; *Régler le tempo fixe…* demande un nombre
+  (20 à 300 BPM, la virgule acceptée, D445).
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE** (480 ticks à la noire, 4/4 ; 120 BPM à 0, 60 BPM au tick 1 920 ; une piste MIDI,
+  une note de 240 ticks sur chaque temps de 0 à 3 360) :
+  (1) **le cœur** : sur la carte, `ticksToSeconds(2 400)` = **3,0 s** (deux secondes de mesure 1, un temps à 60) ; tempo
+  fixe à 120 : **2,5 s** ; `secondsToTicks(3,0)` fixe = **2 880** ; éteint de nouveau : 3,0 s, la carte intacte ;
+  (2) **le rendu hors-ligne** (`vsm-render`, 48 kHz, queue de 2 s) : la fin du morceau (la dernière note finit au tick
+  3 600) à **5,5 s** sur la carte, soit **360 000** trames avec la queue ; tempo fixe à 120 : **3,75 s**, soit **276 000**
+  trames — le seul champ `fixedTempo` change entre les deux projets ;
+  (3) **l'application** : la tête à 0, *Tempo fixe* coché → `project.json` porte le tempo fixe à **120**, et l'export de
+  l'application dure ce que dure celui de `vsm-render` (à un bloc près) ; décoché → le champ absent, la carte intacte ;
+  Ctrl+Z après l'avoir coché → décoché ; *Régler le tempo fixe…* à 90 → **90** ; la tête posée au tick 2 400 puis cochée →
+  **60** ;
+  (4) en anglais, *Transport ▸ Fixed tempo (tempo track ignored)* ; la barre de transport photographiée et REGARDÉE ;
+  (5) le **témoin** (le binaire d'avant) : l'entrée absente, `fixedTempo` ignoré par son `vsm-render` (360 000 trames sur
+  les deux projets — l'option ne passe que par le code neuf).
