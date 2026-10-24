@@ -45977,3 +45977,54 @@ d'avant — le témoin —, puis le correctif, et les MÊMES tests rejoués.*
 - **Ce qui n'a pas changé** : la durée du décompte, déjà lue à la mesure (`countInSeconds`) ; le son du clic ; et rien dans un fichier (le
   clic n'est jamais exporté). `forEachBeatInRange` n'avait aucun appelant hors du graphe et de ses tests : elle est
   remplacée, pas doublée.
+
+### Phase D591 — un cinquante-deuxième audit : la ligne d'ensemble du morceau (25/10/2026)
+
+*Écrite le 25/10 à 01 h 06 (l'horloge), avant toute ligne de code et toute mesure ; écran verrouillé, rien ne tourne,
+batterie à 19 %.*
+
+**LA MÉTHODE, celle de D587-D590 — et une faute de méthode payée en l'écrivant.** Les deux zéros de nom laissés par D590
+se sont lus dans le code. **Le filtre de l'entrée MIDI n'est PAS un zéro** : `AudioEngine::handleIncomingMidiMessage`
+envoie pression, pression polyphonique, molette, programmes et contrôleurs aux machines ET à `dansLaPrise` sans rien
+trier — et j'allais l'écrire « zéro » ; or la prise se trie à son ARRIVÉE dans l'application : *Enregistrement ▸ Ce que
+la prise garde* (D584.2, le *MIDI Filter ▸ Record* de Cubase), avec son banc `midi-entrant-prise`. Le zéro était dans la
+fonction lue, la réponse dans celle d'après — la règle de D571.3, mot pour mot. **La ligne d'ensemble, elle, est un
+zéro** : `ArrangementComponent` et `MainComponent` ne portent AUCUNE `juce::ScrollBar` (0 occurrence), ni aucune bande qui
+peigne le morceau entier ; la photo de l'arrangement (01 h 03) le montre — la règle, les pistes, rien en dessous ni
+au-dessus. Le défilement se fait à la molette, aux touches et par le suivi de la lecture ; zoomé sur huit mesures d'un
+morceau de 227 (`children-c3-plafond`, D362), rien ne dit OÙ l'on est, et aller à la mesure 180 demande de dézoomer, viser,
+rezoomer. Le piano roll, lui, a sa barre (la bande grise au bas de sa grille).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D591.1 | **La ligne d'ensemble** — *Overview Line* (*Window ▸ Overview*) | *Affichage ▸ Ligne d'ensemble du morceau*, ÉTEINTE d'origine (aucune disposition, aucune photo d'un banc existant ne bouge), retenue au poste : une bande au-dessus de l'arrangement peint le morceau entier — un trait par clip, à la hauteur de sa piste, de sa couleur — et un rectangle sur ce que la vue montre ; un clic dans la bande CENTRE la vue sur ce point, zoom gardé ; tirer le rectangle fait défiler la vue avec lui ; le rectangle suit la vue (molette, touches, zoom, suivi de la lecture) ; mesuré par un relevé qui lit ce que la peinture lit, par le défilement relu après le geste, et par la photo, le témoin (le binaire de D590) à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Un composant à part, posé par `MainComponent` au-dessus de l'arrangement** (`LigneDEnsemble`), et non une bande DANS
+  l'arrangement : celui-ci compte ses ordonnées depuis son bord haut en cent endroits, et les bancs y cliquent à des
+  coordonnées écrites. Allumée, la bande prend sa hauteur à l'arrangement (le centre) ; éteinte, le centre ne change pas
+  d'un pixel. **22 px** à 100 % (l'échelle de 150 % la porte à 33) : la hauteur d'une rangée de la règle, de quoi y
+  distinguer une dizaine de pistes à 2 px.
+- **L'étendue** : de 0 à la fin du morceau (`lastSoundingTick`, la règle de « tout voir », D362) ou à la fin de ce que la
+  vue montre si elle va plus loin — le rectangle ne sort jamais de la bande. Morceau vide : la bande dit « (morceau vide) »
+  et ne déplace rien.
+- **Le geste** : un clic ailleurs que sur le rectangle centre la vue sur le point cliqué (défilement = point − la moitié
+  de ce que la vue montre, borné à 0), comme Cubase ; un appui SUR le rectangle le tire, la vue suit au tick près ; la vue
+  passe par `reprendreLaVue` (le zoom inchangé) — pas de pas d'annulation (un défilement n'en fait pas, D518), pas de pas
+  dans la pile des zooms (D557.3 : seul un geste de ZOOM y entre).
+- **Le suivi** : la minuterie d'interface relit (zoom, défilement, largeur) et repeint la bande quand l'un change ; aucun
+  rappel neuf dans l'arrangement.
+- **Le relevé** `relever-ensemble` : `VSM_ENSEMBLE : montrée oui/non ; morceau 0..T ticks ; vue A..B ticks ; rectangle
+  x0..x1 sur L px ; N trait(s)`, lu sur les mêmes valeurs que la peinture ; le défilement se relit par `relever-vue` s'il
+  existe, sinon dans `view` du projet enregistré (D369).
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE** (un projet de 64 mesures en 4/4, deux pistes MIDI, un clip de la mesure 1 à 64 sur
+  la première, un clip de 33 à 48 sur la seconde ; la vue posée sur 8 mesures, défilement 0) : (1) éteinte d'origine — le
+  relevé « montrée non », et l'arrangement photographié identique au témoin sur sa zone (empreinte des pixels) ; (2)
+  allumée : « morceau 0..122 880 ticks », la vue « 0..15 360 », le rectangle de **0 à L/8** (à 1 px près), **2** traits ;
+  (3) un clic aux trois quarts de la bande → la vue centrée sur le tick **92 160** : défilement **84 480** (92 160 −
+  7 680), le zoom inchangé (8 mesures) ; (4) le rectangle tiré de L/8 vers la droite → défilement augmenté de **15 360**
+  (à la largeur d'un pixel de la bande près, soit 122 880 / L ticks) ; (5) relancé dans le même HOME → allumée ; en
+  anglais, *View ▸ Song overview line* ; (6) le TÉMOIN (le binaire de D590) : l'entrée et le verbe **absents**.
+
+**L'ORDRE, TRANCHÉ ICI.** Le composant et son relevé, l'entrée de menu, le banc `ligne-d-ensemble`, entré dans la série
+de `verifier.sh --bancs` ; la photo REGARDÉE, en français et en anglais.
