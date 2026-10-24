@@ -1,7 +1,9 @@
 #pragma once
 #include <atomic>
 #include <cmath>
+#include <algorithm>
 #include <cstdint>
+#include "vsm/sequencer/TimeSignatureMap.h"
 
 namespace vsm::audio::engine {
 
@@ -69,21 +71,38 @@ private:
     int duree_ = 1;
 };
 
-/// Les temps qui tombent dans l'intervalle [debut, fin) de ticks.
+/// Les clics qui tombent dans l'intervalle [debut, fin) de ticks.
 ///
 /// Fonction PURE, et c'est ce qui la rend testable sans carte son : elle ne
 /// connaît ni le temps réel, ni le graphe. Appelle `emettre(tick, accent)`
-/// pour chacun.
+/// pour chacun, dans l'ordre.
+///
+/// D590.2 et D590.3 : LE CLIC BAT L'UNITÉ DE LA SIGNATURE, ET L'ACCENT TOMBE OÙ
+/// LA RÈGLE MET LA MESURE. Le pas est `ticksPerBeat` (la croche en 6/8, la
+/// blanche en 2/2), et les mesures se comptent depuis chaque changement de
+/// signature, comme `TimeSignatureMap::barBeatAt` — avant D590, le clic battait
+/// la noire et comptait ses accents depuis le tick 0 avec le numérateur lu au
+/// début du bloc : en 6/8, trois clics et un accent toutes les deux mesures.
+/// Avant zéro (le décompte), le premier segment se prolonge à rebours : les
+/// mesures s'y comptent depuis le tick 0, à la signature du début.
 template <typename Fn>
-void forEachBeatInRange(int64_t debutTick, int64_t finTick, int ticksParNoire,
-                         int numerateur, Fn&& emettre) {
+void forEachClickInRange(const vsm::sequencer::TimeSignatureMap& carte, int ticksParNoire,
+                         int64_t debutTick, int64_t finTick, Fn&& emettre) {
     if (ticksParNoire <= 0 || finTick <= debutTick) return;
-    const int battusParMesure = numerateur > 0 ? numerateur : 4;
-    int64_t premier = (debutTick / ticksParNoire) * ticksParNoire;
-    if (premier < debutTick) premier += ticksParNoire;
-    for (int64_t tick = premier; tick < finTick; tick += ticksParNoire) {
-        const int64_t indice = tick / ticksParNoire;
-        emettre(tick, (indice % battusParMesure) == 0);
+    const auto ppq = static_cast<uint16_t>(ticksParNoire);
+    const auto& changements = carte.changes();
+    // La division et le reste ARRONDIS VERS LE BAS : avant zéro, `/` et `%`
+    // tronquent vers zéro, et le premier temps d'un décompte serait manqué.
+    const auto plancher = [](int64_t a, int64_t b) { return a / b - ((a % b != 0) && ((a < 0) != (b < 0)) ? 1 : 0); };
+    for (size_t i = 0; i < changements.size(); ++i) {
+        const int64_t origine = changements[i].tick;
+        const int64_t bas = i == 0 ? debutTick : std::max<int64_t>(debutTick, origine);
+        const int64_t haut = i + 1 < changements.size() ? std::min<int64_t>(finTick, changements[i + 1].tick) : finTick;
+        if (bas >= haut) continue;
+        const int64_t pas = std::max<int64_t>(1, carte.ticksPerBeat(origine, ppq));
+        const int64_t mesure = pas * std::max<int64_t>(1, carte.numeratorAt(origine));
+        for (int64_t tick = origine + (plancher(bas - origine - 1, pas) + 1) * pas; tick < haut; tick += pas)
+            emettre(tick, (tick - origine) - plancher(tick - origine, mesure) * mesure == 0);
     }
 }
 

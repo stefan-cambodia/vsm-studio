@@ -45926,8 +45926,8 @@ bien 1 440 ticks — et n'y bat que trois noires sans accent.
   `ticksPerBar`, comptée depuis le tick du changement, comme `barBeatAt`), et avant zéro le segment du début prolongé à
   rebours. Les trois tests de D3.2 passent à la nouvelle signature avec une carte en 4/4 et gardent leurs attendus. Le
   graphe calcule l'échantillon de chaque temps dans le bloc — `(secondes du temps − début du bloc) / durée du bloc ×
-  échantillons`, arrondi, borné au bloc —, ce qui vaut aussi sous la vitesse de lecture variable (D25 : la durée du bloc
-  la porte déjà) ; le rendu du clic s'arrête à cet échantillon, déclenche, reprend.
+  échantillons`, arrondi, borné au bloc —, ce qui vaut aussi sous la vitesse de lecture variable (la durée du bloc la
+  porte déjà : `échantillons × vitesse / fréquence`) ; le rendu du clic s'arrête à cet échantillon, déclenche, reprend.
 - **L'unité, sans option.** Le dénominateur, comme le motif par défaut de Cubase et le clic de Live ; une option « compter
   à la noire » serait un second chantier, remis : rien ne la demande. 6/8 battu à la noire pointée n'est pas non plus
   ce qu'il est écrit.
@@ -45951,3 +45951,29 @@ bien 1 440 ticks — et n'y bat que trois noires sans accent.
 
 **L'ORDRE, TRANCHÉ ICI.** Le test d'abord, joué sur le moteur d'avant — le témoin — et lu ; puis D590.2 et D590.3 ensemble
 (une seule fonction pure les porte), puis D590.1 (le graphe) ; un test du moteur par élément, dans `test_metronome.cpp`.
+
+### Phase D590 — MESURÉE (25/10/2026, 01 h 01 à l'horloge)
+
+*Les tests de D590 écrits AVANT le correctif, avec la seule API du graphe d'avant, compilés et joués sur le moteur
+d'avant — le témoin —, puis le correctif, et les MÊMES tests rejoués.*
+
+| # | attendu | témoin (le moteur d'avant) | après | tenu |
+|---|---|---|---|---|
+| D590.1 (1) | avances 0, 448, 384 … 64 au témoin à blocs de 512, 0 partout à blocs de 100 ; 0 partout après | blocs de 512 : **0 448 384 320 256 192 128 64** ; blocs de 100 : **0 0 0 0 0 0 0 0** | **0** partout, aux deux tailles | **oui** |
+| D590.2 (2) | 6/8, 3 s : 6 clics et 1 accent au témoin ; 12 clics, accents à 0 et 1,5 s après | **6** clics, aux débuts de bloc (0\*, 23 552, 47 616 …), **1** accent | **12** clics, tous les **12 000** échantillons, accents à **0 et 72 000** | **oui** |
+| D590.3 (3) | 4/4 puis 3/4 : accents 0, 1 920, 2 880, 4 320 au témoin ; 0, 1 920, 3 360, 4 800 après | 12 clics, accents aux ticks **0, 1 914, 2 877, 4 311** — les temps 1 920, 2 880 et 4 320, relevés en avance de l'écart de D590.1 | **0, 1 920, 3 360, 4 800** | **oui** |
+| D590.3 (4) | décompte 6/8 : 3 clics sans accent au témoin ; 6 clics, l'accent au premier, puis celui de zéro, après | **4** clics (trois avant zéro, sans accent, puis zéro\*) | **7** clics, tous les 12 000, accents au **premier** et à **zéro** | **oui** |
+| — | les suites | — | moteur **1 360 / 1 360** (1 354 + les quatre tests du graphe + deux de la fonction pure : la blanche en 2/2, et des blocs jointifs de 37 ticks à cheval sur un changement et avant zéro qui rendent exactement les clics d'un seul intervalle) ; cœur 553, interchange 359, clap 25, panels 11 ; l'application compilée, lancée clic allumé et en lecture, quittée proprement (rc 0) | **oui** |
+
+**CE QUE LA MESURE A TRANCHÉ, ÉCRIT ICI.**
+- **Le premier relevé du témoin était incomplet, et le test l'a été d'abord.** La boucle sur les deux tailles de bloc
+  affirmait dans la boucle : l'assertion ratée à blocs de 512 rendait la main, et le témoin du témoin (blocs de 100) ne
+  s'imprimait pas. Les deux tailles se relèvent désormais avant la première assertion ; rejoué sur le moteur d'avant, il
+  rend « 0 0 0 0 0 0 0 0 », comme écrit avant la mesure.
+- **Avant zéro, la carte du tempo rend 0 seconde pour tout tick négatif** (`TempoMap::ticksToSeconds` sort de sa boucle
+  avant le premier changement) : l'échantillon d'un clic du décompte se compte donc au tempo du début, comme la durée du
+  décompte (`countInSeconds`). Sans cela, tous les clics d'un décompte seraient tombés au premier échantillon de leur
+  bloc — le défaut de D590.1, rétabli pour le seul décompte.
+- **Ce qui n'a pas changé** : la durée du décompte, déjà lue à la mesure (`countInSeconds`) ; le son du clic ; et rien dans un fichier (le
+  clic n'est jamais exporté). `forEachBeatInRange` n'avait aucun appelant hors du graphe et de ses tests : elle est
+  remplacée, pas doublée.

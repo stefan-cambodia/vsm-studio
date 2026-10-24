@@ -1212,8 +1212,22 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
         clic = false;
     const bool clicAudible = clic || decompte;
     if (clicAudible) {
+        // D590.1 : CHAQUE CLIC PART À L'ÉCHANTILLON DE SON TEMPS. Avant, le tick
+        // était jeté et le clic rendu dès le premier échantillon du bloc : en
+        // avance de 0 à un bloc entier (448, 384 … 64 échantillons à 48 kHz par
+        // blocs de 512, mesuré), une grille qui tremble sous ce qu'on joue. Le
+        // clic se rend jusqu'à l'échantillon du temps — la queue d'un clic du
+        // bloc d'avant comprise —, se déclenche, et reprend.
+        int rendu = 0;
+        const auto rendreJusqua = [&](int fin) {
+            for (; rendu < fin; ++rendu) {
+                const float clic = metronome_.nextSample();
+                outputL[rendu] += clic;
+                outputR[rendu] += clic;
+            }
+        };
         const auto snapshot = snapshot_.load(std::memory_order_acquire);
-        if (snapshot) {
+        if (snapshot && blockDurationSeconds > 0.0) {
             const Project& projet = snapshot->project;
             // La position DU DÉBUT DU BLOC, prise telle quelle et non
             // recalculée depuis la fin : au rebouclage, la fin du bloc est
@@ -1223,18 +1237,27 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
             const double finSecondes = blockStartSeconds + blockDurationSeconds;
             const int64_t debutTick = projet.secondsToTicks(debutSecondes);
             const int64_t finTick = projet.secondsToTicks(finSecondes);
-            const int numerateur = projet.timeSignatureMap.numeratorAt(debutTick);
-            forEachBeatInRange(debutTick, finTick, projet.ticksPerQuarterNote, numerateur,
+            // Avant zéro, au tempo du début, comme la durée du décompte
+            // (`countInSeconds`) : la carte du tempo rend 0 pour tout tick négatif.
+            const double bpmDuDebut = projet.tempoMap.bpmAt(0);
+            const auto secondesDuTemps = [&](int64_t tick) {
+                if (tick >= 0 || projet.tempoMap.isSmpte() || bpmDuDebut <= 0.0) return projet.ticksToSeconds(tick);
+                return static_cast<double>(tick) * 60.0 / (bpmDuDebut * static_cast<double>(projet.ticksPerQuarterNote));
+            };
+            // L'échantillon du temps se compte dans la durée du bloc, qui porte
+            // déjà la vitesse de lecture ; il est borné au bloc, et jamais
+            // avant un clic déjà déclenché dans ce bloc.
+            forEachClickInRange(projet.timeSignatureMap, projet.ticksPerQuarterNote, debutTick, finTick,
                                 [&](int64_t tick, bool accent) {
-                                    (void)tick;
+                                    const double ou = (secondesDuTemps(tick) - debutSecondes) / blockDurationSeconds
+                                                      * static_cast<double>(samplesToProcess);
+                                    const int position = std::clamp(static_cast<int>(std::lround(ou)), rendu,
+                                                                    std::max(rendu, samplesToProcess - 1));
+                                    rendreJusqua(position);
                                     metronome_.trigger(accent);
                                 });
         }
-        for (int i = 0; i < samplesToProcess; ++i) {
-            const float clic = metronome_.nextSample();
-            outputL[i] += clic;
-            outputR[i] += clic;
-        }
+        rendreJusqua(samplesToProcess);
     }
 
     // RÉFÉRENCE : mélangée APRÈS le master, et jamais avant. La tranche master
