@@ -45605,6 +45605,21 @@ par élément (`prise-hors-clips`, `zoom-molette-pointeur`, `reticule`), entré 
 - **La série de D586, lue avant de compiler** : quatre rouges sur un même contrôle, sous l'écran éteint ; rejoués seuls,
   quatre verts (D586 — FAITE, plus haut).
 
+### Phase D587 — FAITE (24/10/2026, 22 h 34 à l'horloge)
+
+La série : `./verifier.sh --bancs`, lancée à 20 h 12, **183 bancs en 139 min** (fin à 22 h 32,
+`build/verifier-bancs-D587.log`) ; les trois bancs de D587 verts (`prise-hors-clips`, `zoom-molette-pointeur`,
+`reticule`) ; préférences de l'utilisateur identiques (`cmp`) ; aucun oom au journal du système. **Une veille au milieu** :
+`PM: suspend` de 21 h 00 à 21 h 57, enjambée par `largeur-stereo` (vert, en 3 405 s au lieu de ~15). **Un rouge**,
+`aimant-cibles`, joué deux bancs plus loin, dans les deux minutes qui suivent la sortie de veille (plasmashell écrit encore
+des erreurs de capture d'écran à 21 h 58) : le contrôle (a), un glisser réel, lâché à **1 920** case cochée au lieu de
+**1 440** — les quatre autres verts. **Rejoué SEUL trois fois à 22 h 33, l'écran allumé et déverrouillé** (`kscreen-doctor` :
+« on », `LockedHint=no`), sur le même binaire : **3 / 3 verts**, (a) à **1 920 / 1 440** chaque fois
+(`build/rejeu-D587-aimant-cibles*.log`). C'est la leçon de D535.1 bis : un rouge sous veille se rejoue seul avant de
+conclure — et celui-ci n'était pas un défaut. Le compositeur : **6 916 Mo** relevés avant `loi-panoramique` (plafond 3 072),
+redescendus à 716 Mo en 15 s (la garde de D581 a attendu, puis continué) — l'écran s'éteignait vers la veille ; le sommet
+de la session est désormais **10 398 Mo**, sur la même fenêtre ; banc par banc, l'unité finit à 920 Mo. D587 est FAITE.
+
 ### Phase D588 — un quarante-neuvième audit : la piste neuve sous la piste choisie, la largeur de la tête de lecture, la profondeur de l'historique (24/10/2026)
 
 *Écrite le 24/10 à 20 h 15 (l'horloge), pendant la série de D587, l'écran allumé ; le code écrit ensuite dans l'arbre à
