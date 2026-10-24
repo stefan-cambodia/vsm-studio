@@ -4742,6 +4742,31 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSeparator();
                 menu.addSubMenu(tr(u8"Préréglages de quantification"), prereglages);
             }
+            // D594 : LES MACROS — enregistrer une suite de commandes de menu en la jouant, la rejouer d'un geste.
+            {
+                juce::PopupMenu macros, retirer;
+                if (!macroEnregistre_)
+                    macros.addItem(kMenuEditMacroRecordStart, tr(u8"Commencer l'enregistrement"), !macroEnRejeu_);
+                else
+                    macros.addItem(kMenuEditMacroRecordStop, tr(u8"Arrêter l'enregistrement (%1 commande(s))")
+                                                                 .replace("%1", juce::String(static_cast<int>(macroEnCours_.size()))));
+                const auto rangees = lireMacros();
+                macros.addSeparator();
+                for (int i = 0; i < rangees->getNumChildElements() && i <= kMenuEditMacroLast - kMenuEditMacroFirst; ++i) {
+                    const auto* m = rangees->getChildElement(i);
+                    const juce::String nom = m->getStringAttribute("nom");
+                    macros.addItem(kMenuEditMacroFirst + i,
+                                   tr(u8"%1 (%2 commande(s))").replace("%1", nom)
+                                       .replace("%2", juce::String(m->getNumChildElements())),
+                                   !macroEnregistre_);   // pas de rejeu PENDANT un enregistrement : il s'y enregistrerait
+                    retirer.addItem(kMenuEditMacroRemoveFirst + i, nom, !macroEnregistre_);
+                }
+                if (rangees->getNumChildElements() == 0)
+                    macros.addItem(-1, tr(u8"(aucune macro)"), false, false);
+                else
+                    macros.addSubMenu(tr(u8"Supprimer une macro"), retirer);
+                menu.addSubMenu(tr(u8"Macros"), macros);
+            }
             // D588.3 : LA PROFONDEUR DE L'HISTORIQUE — une préférence du poste ; des libellés uniques dans la barre.
             {
                 const char8_t* profondeurs[] = {u8"64 pas", u8"128 pas (d'origine)", u8"256 pas", u8"512 pas"};
@@ -6266,6 +6291,25 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 }
 
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
+    // D594 : LES MACROS d'abord — et, pendant un enregistrement, toute AUTRE commande de menu s'ajoute à la suite, par
+    // quelque chemin qu'elle arrive ici (barre, menu Édition du piano roll, banc). Les entrées de Macros elles-mêmes ne
+    // s'enregistrent pas : une macro qui se rejouerait en s'enregistrant tournerait sans fin.
+    if (menuItemID == kMenuEditMacroRecordStart) { commencerMacro(); return; }
+    if (menuItemID == kMenuEditMacroRecordStop) { arreterMacro(); return; }
+    if (menuItemID >= kMenuEditMacroFirst && menuItemID <= kMenuEditMacroLast) { rejouerMacro(menuItemID - kMenuEditMacroFirst); return; }
+    if (menuItemID >= kMenuEditMacroRemoveFirst && menuItemID <= kMenuEditMacroRemoveLast) {
+        retirerMacro(menuItemID - kMenuEditMacroRemoveFirst);
+        return;
+    }
+    if (macroEnregistre_ && !macroEnRejeu_) {
+        int menu = 0;
+        bool active = false;
+        const juce::String libelle = entreeDeMenu(menuItemID, menu, active);
+        macroEnCours_.emplace_back(menuItemID, libelle);
+        std::fputs(("VSM_MACRO : pas " + juce::String(static_cast<int>(macroEnCours_.size())) + juce::String::fromUTF8(" \xe2\x80\x94 \xc2\xab ")
+                    + libelle + juce::String::fromUTF8(" \xc2\xbb (") + juce::String(menuItemID) + ")\n").toRawUTF8(), stderr);
+        menuItemsChanged();   // le compte de « Arrêter l'enregistrement (N) » suit
+    }
     if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
     if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
     if (menuItemID == kMenuEditCopyRange)  { copierPlage(false); return; }   // D535.3
@@ -18167,6 +18211,134 @@ void MainComponent::choisirCouleurDeRepere(size_t index) {
     selecteur->setSize(280, 320);
     juce::CallOutBox::launchAsynchronously(std::unique_ptr<juce::Component>(selecteur),
                                            arrangement_.getScreenBounds().withSize(1, 1).translated(120, 20), nullptr);
+}
+
+std::unique_ptr<juce::XmlElement> MainComponent::lireMacros() const {
+    if (auto xml = vsm::app::ui::UiScale::properties().getXmlValue("macros"))
+        if (xml->hasTagName("MACROS")) return xml;
+    return std::make_unique<juce::XmlElement>("MACROS");
+}
+
+juce::String MainComponent::entreeDeMenu(int id, int& menu, bool& active) {
+    // D594 : la barre TELLE QU'ELLE EST MAINTENANT — une entrée grisée l'est pour la sélection présente, pas pour celle
+    // de l'enregistrement. Le libellé : celui que l'utilisateur lit (sans la touche, qui est à part).
+    const juce::StringArray noms = getMenuBarNames();
+    for (int i = 0; i < noms.size(); ++i) {
+        const juce::PopupMenu racine = getMenuForIndex(i, noms[i]);
+        for (juce::PopupMenu::MenuItemIterator it(racine, true); it.next();) {
+            const auto& item = it.getItem();
+            if (item.itemID != id || item.isSeparator || item.isSectionHeader) continue;
+            menu = i;
+            active = item.isEnabled;
+            return item.text;
+        }
+    }
+    return {};
+}
+
+void MainComponent::commencerMacro() {
+    macroEnregistre_ = true;
+    macroEnCours_.clear();
+    std::fputs("VSM_MACRO : enregistrement commenc\xc3\xa9\n", stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Macro : les commandes de menu jouées maintenant s'enregistrent"));
+    menuItemsChanged();
+}
+
+void MainComponent::arreterMacro() {
+    macroEnregistre_ = false;
+    menuItemsChanged();
+    // UNE MACRO VIDE N'EST PAS RANGÉE, et c'est dit : une entrée « Macro 3 (0 commande) » ne ferait rien.
+    if (macroEnCours_.empty()) {
+        std::fputs("VSM_MACRO : enregistrement arr\xc3\xaat\xc3\xa9 sans aucune commande \xe2\x80\x94 rien de rang\xc3\xa9\n", stderr);
+        if (pianoRoll_.onStatusChanged)
+            pianoRoll_.onStatusChanged(tr(u8"Macro : aucune commande jouée — rien n'a été rangé"));
+        return;
+    }
+    auto rangees = lireMacros();
+    if (rangees->getNumChildElements() > kMenuEditMacroLast - kMenuEditMacroFirst) {
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Macros"),
+                     tr(u8"Trente-deux macros sont déjà rangées : supprimez-en une d'abord. Celle-ci n'a pas été rangée."));
+        macroEnCours_.clear();
+        return;
+    }
+    // « Macro N », N le premier numéro libre.
+    juce::String nom;
+    for (int n = 1;; ++n) {
+        nom = "Macro " + juce::String(n);
+        bool pris = false;
+        for (int i = 0; i < rangees->getNumChildElements(); ++i) pris = pris || rangees->getChildElement(i)->getStringAttribute("nom") == nom;
+        if (!pris) break;
+    }
+    auto* m = new juce::XmlElement("M");
+    m->setAttribute("nom", nom);
+    for (const auto& [id, libelle] : macroEnCours_) {
+        auto* pas = new juce::XmlElement("P");
+        pas->setAttribute("id", id);
+        pas->setAttribute("libelle", libelle);
+        m->addChildElement(pas);
+    }
+    rangees->addChildElement(m);
+    vsm::app::ui::UiScale::properties().setValue("macros", rangees.get());
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+    std::fputs((juce::String::fromUTF8("VSM_MACRO : \xc2\xab ") + nom + juce::String::fromUTF8(" \xc2\xbb rang\xc3\xa9" "e, ")
+                + juce::String(static_cast<int>(macroEnCours_.size())) + " commande(s)\n").toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"« %1 » rangée : %2 commande(s), dans Édition ▸ Macros")
+                                       .replace("%1", nom).replace("%2", juce::String(static_cast<int>(macroEnCours_.size()))));
+    macroEnCours_.clear();
+    menuItemsChanged();
+}
+
+void MainComponent::rejouerMacro(int rang) {
+    const auto rangees = lireMacros();
+    const auto* m = rangees->getChildElement(rang);
+    if (m == nullptr || macroEnregistre_) return;
+    const juce::String nom = m->getStringAttribute("nom");
+    const int total = m->getNumChildElements();
+    // CHAQUE PAS PAR LE CHEMIN DE SON ENTRÉE (`menuItemSelected`), donc avec son propre pas d'annulation ; un pas
+    // absent des menus présents ou grisé ARRÊTE la macro — la suite supposait son effet —, et c'est dit.
+    macroEnRejeu_ = true;
+    int joues = 0;
+    juce::String arret;
+    for (int k = 0; k < total; ++k) {
+        const auto* pas = m->getChildElement(k);
+        const int id = pas->getIntAttribute("id");
+        int menu = 0;
+        bool active = false;
+        const juce::String libelle = entreeDeMenu(id, menu, active);
+        const juce::String nomDuPas = libelle.isNotEmpty() ? libelle : pas->getStringAttribute("libelle");
+        if (libelle.isEmpty() || !active) {
+            arret = tr(u8"« %1 » arrêtée au pas %2 sur %3 : « %4 » %5")
+                        .replace("%1", nom).replace("%2", juce::String(k + 1)).replace("%3", juce::String(total))
+                        .replace("%4", nomDuPas)
+                        .replace("%5", libelle.isEmpty() ? tr(u8"n'est plus dans les menus") : tr(u8"est grisée"));
+            break;
+        }
+        menuItemSelected(id, menu);
+        ++joues;
+    }
+    macroEnRejeu_ = false;
+    pianoRollPanel_.refresh();
+    menuItemsChanged();
+    const juce::String bilan = arret.isNotEmpty()
+                                   ? arret
+                                   : tr(u8"« %1 » rejouée : %2 commande(s)").replace("%1", nom).replace("%2", juce::String(joues));
+    std::fputs(("VSM_MACRO : " + bilan + "\n").toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(bilan);
+}
+
+void MainComponent::retirerMacro(int rang) {
+    auto rangees = lireMacros();
+    auto* m = rangees->getChildElement(rang);
+    if (m == nullptr) return;
+    const juce::String nom = m->getStringAttribute("nom");
+    rangees->removeChildElement(m, true);
+    vsm::app::ui::UiScale::properties().setValue("macros", rangees.get());
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+    std::fputs((juce::String::fromUTF8("VSM_MACRO : \xc2\xab ") + nom + juce::String::fromUTF8(" \xc2\xbb supprim\xc3\xa9" "e\n")).toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(tr(u8"« %1 » supprimée").replace("%1", nom));
+    menuItemsChanged();
 }
 
 std::unique_ptr<juce::XmlElement> MainComponent::lireQuantifications() const {

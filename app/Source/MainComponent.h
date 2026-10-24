@@ -1487,6 +1487,13 @@ private:
         kMenuMixDim,
         /// D591.1 : la ligne d'ensemble du morceau.
         kMenuViewSongOverview,
+        /// D594 : les macros — commencer, arrêter, puis 32 macros et leurs 32 retraits, CONTIGUS.
+        kMenuEditMacroRecordStart,
+        kMenuEditMacroRecordStop,
+        kMenuEditMacroFirst,
+        kMenuEditMacroLast = kMenuEditMacroFirst + 31,
+        kMenuEditMacroRemoveFirst,
+        kMenuEditMacroRemoveLast = kMenuEditMacroRemoveFirst + 31,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2059,6 +2066,20 @@ private:
     /// D570.2 : les préréglages de quantification, dans les préférences du poste (`quantifications`).
     std::unique_ptr<juce::XmlElement> lireQuantifications() const;
     void enregistrerQuantification();
+    /// D594 : LES MACROS (*Key Commands ▸ Macros* de Cubase), aux préférences du poste (`macros`) : une suite d'entrées
+    /// de menu, ENREGISTRÉE en la jouant, rangée sous « Macro N », rejouée par le même chemin que chaque entrée. Un pas
+    /// est l'IDENTIFIANT de l'entrée (son libellé change de langue et porte des comptes) ; son libellé du moment est
+    /// gardé à côté, pour le dire.
+    std::unique_ptr<juce::XmlElement> lireMacros() const;
+    void commencerMacro();
+    void arreterMacro();
+    void rejouerMacro(int rang);
+    void retirerMacro(int rang);
+    /// Le libellé de l'entrée `id` dans la barre telle qu'elle est maintenant, son menu et son état ; vide si absente.
+    juce::String entreeDeMenu(int id, int& menu, bool& active);
+    bool macroEnregistre_ = false;
+    std::vector<std::pair<int, juce::String>> macroEnCours_;
+    bool macroEnRejeu_ = false;
     void rappelerQuantification(int rang);
     void retirerQuantification(int rang);
     /// D572.3 : LES PRÉRÉGLAGES DE ZOOM (*Zoom Presets*) — les mesures que l'arrangement montre, sous un nom, aux
