@@ -45887,3 +45887,67 @@ enregistré, le journal et l'export, pas des pixels ; les deux photos ci-dessous
   éteint fait tomber les bancs de focus et de clic (D516) : la série y rendrait des rouges qui ne disent rien du code ;
   et la batterie à **29 %** à 00 h 46, en décharge, quand la série dure ~2 h 20 et que le service de l'utilisateur endort
   le poste sous 15 %. Elle se joue à la prochaine reprise, l'écran allumé — 189 bancs, ceux de D588 et de D589 compris.
+
+### Phase D590 — un cinquante et unième audit : le clic, à son échantillon, sur l'unité et sur la mesure qui jouent (25/10/2026)
+
+*Écrite le 25/10 à 00 h 52 (l'horloge), avant toute ligne de code et toute mesure ; écran verrouillé, rien ne tourne.*
+
+**LA MÉTHODE, celle de D587-D589, appliquée cette fois à une fonction PRÉSENTE : ce qu'elle FAIT, lu dans la fonction et
+dans celles qu'elle appelle.** Sondés d'abord, par la table des libellés puis dans le code, quinze candidats de Cubase ;
+présents, chacun lu à sa fonction : la chaîne latérale (`BypassableEffect`, `ChannelStrip`), l'enveloppe d'un clip
+(`Clip::gainEnvelope`, `clipEnvelopeGainAt`), les notes du projet (« Notes du projet… »), nettoyer le dossier (D564), une
+nouvelle version (D563), les dispositions nommées (D549.3), masquer une piste, supprimer les doublons (D546.1), restreindre
+la polyphonie et les pédales en durées (D554), la loi de panoramique, le comportement « à l'arrêt ». Restent, au nom, la
+ligne d'ensemble du morceau (*Overview line*), le filtre de l'entrée MIDI (*MIDI Filter*) et les subdivisions du clic —
+et c'est en lisant le clic qu'on trouve mieux qu'un zéro : **trois défauts d'une fonction que tout le monde entend.**
+`ProcessGraph::rendreLeBloc` cherche les temps du bloc par `forEachBeatInRange(debutTick, finTick, ppq, numerateur)`,
+puis appelle `metronome_.trigger(accent)` — le tick est jeté (`(void)tick;`) — et la boucle suivante rend le clic À
+PARTIR DU PREMIER ÉCHANTILLON DU BLOC :
+**(1) le clic part en avance, d'une quantité qui change à chaque temps** — de 0 à un bloc entier : à 48 kHz et 512
+échantillons par bloc, jusqu'à 10,7 ms, et ce qu'un musicien cale sur le clic d'une prise est calé sur une grille qui
+tremble ;
+**(2) il bat la NOIRE, quelle que soit la signature** — `forEachBeatInRange` avance de `ticksParNoire` : en 6/8, trois
+clics par mesure au lieu de six, et l'accent tombe tous les `numérateur` = six NOIRES, soit une mesure sur deux ;
+**(3) l'accent se compte depuis le tick 0, avec le numérateur lu au début du bloc** — après un changement de signature
+qui ne tombe pas sur un multiple du nouveau numérateur, tous les premiers temps sont faux ; or la règle de l'arrangement
+(`TimeSignatureMap::barBeatAt`) compte les mesures depuis chaque changement : le clic et la règle se contredisent.
+La durée du décompte, elle, lit la mesure (`countInSeconds` par `ticksPerBar`) : en 6/8, un décompte d'une mesure dure
+bien 1 440 ticks — et n'y bat que trois noires sans accent.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D590.1 | **Le clic à son échantillon** — le *Click* de Cubase, échantillon-juste | chaque clic part à l'échantillon de son temps dans le bloc, quelle que soit la taille du bloc ; le reste d'un clic commencé au bloc d'avant se poursuit ; mesuré par un test du moteur qui rend un morceau vide en lecture, clic allumé, et relève l'échantillon de départ de chaque clic contre celui de son temps, le témoin (le même test, sur le moteur d'avant) à côté |
+| D590.2 | **Le clic sur l'unité de la signature** — le motif de clic par défaut de Cubase | le clic bat l'unité écrite au dénominateur : la croche en 6/8 (six clics), la noire en 4/4 et en 3/4, la blanche en 2/2 ; l'accent sur le premier temps de CHAQUE mesure ; le décompte de même ; mesuré par le même test, le témoin à côté |
+| D590.3 | **L'accent sur la mesure qui joue** | l'accent tombe là où la règle met la mesure (`barBeatAt` : les mesures comptées depuis chaque changement de signature) ; avant zéro (le décompte), les mesures se comptent à rebours depuis le tick 0, à la signature du début ; mesuré par le même test, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Une fonction pure, et le tick rendu.** `forEachClickInRange(const TimeSignatureMap&, ppq, debutTick, finTick, emettre)`
+  remplace `forEachBeatInRange` : elle parcourt les segments de la carte (le pas de chacun est `ticksPerBeat`, la mesure
+  `ticksPerBar`, comptée depuis le tick du changement, comme `barBeatAt`), et avant zéro le segment du début prolongé à
+  rebours. Les trois tests de D3.2 passent à la nouvelle signature avec une carte en 4/4 et gardent leurs attendus. Le
+  graphe calcule l'échantillon de chaque temps dans le bloc — `(secondes du temps − début du bloc) / durée du bloc ×
+  échantillons`, arrondi, borné au bloc —, ce qui vaut aussi sous la vitesse de lecture variable (D25 : la durée du bloc
+  la porte déjà) ; le rendu du clic s'arrête à cet échantillon, déclenche, reprend.
+- **L'unité, sans option.** Le dénominateur, comme le motif par défaut de Cubase et le clic de Live ; une option « compter
+  à la noire » serait un second chantier, remis : rien ne la demande. 6/8 battu à la noire pointée n'est pas non plus
+  ce qu'il est écrit.
+- **Rien ne s'exporte** : le clic n'est jamais dans un fichier (D3.2) ; aucun projet, aucun export, aucune interface ne
+  change — pas de banc d'application, le test du moteur est la mesure. `interchange` n'est pas touché.
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE.** Un projet vide, 120 BPM, 480 ticks à la noire, 48 kHz, blocs de 512, le clic
+  allumé, la lecture depuis 0 ; l'échantillon de départ d'un clic est celui qui PRÉCÈDE son premier échantillon non nul
+  (le clic commence par `sin 0`) ; l'accent se lit au nombre de passages par zéro dans ses 10 premières ms (1 600 Hz contre
+  1 000 Hz).
+  (1) **4/4, huit temps** : au témoin, le temps k (k·24 000 échantillons) part à `k·24 000 − (k·24 000 mod 512)` — des
+  avances de **0, 448, 384, 320, 256, 192, 128, 64** échantillons (24 000 ≡ 448 mod 512 : l'avance perd 64 à chaque
+  temps) ; après : **0** partout. Les mêmes huit temps rendus par blocs de 100 : avances de **0, 0, 0, 0, 0, 0, 0, 0** au
+  témoin (24 000 est multiple de 100 — le témoin du témoin : la mesure ne voit le défaut que là où il existe), et 0 après.
+  (2) **6/8, trois secondes** : au témoin, **6** clics (toutes les 0,5 s), **1** accent (à 0) ; après, **12** clics
+  (toutes les 0,25 s), accents à **0 et 1,5 s**.
+  (3) **4/4 puis 3/4 au tick 1 920** (deux secondes), de 0 à 6 s : au témoin, les accents aux ticks **0, 1 920, 2 880,
+  4 320** (le bloc qui porte 1 920 commence avant lui, en 4/4 ; ensuite l'indice de noire divisible par 3) ; après, **0,
+  1 920, 3 360, 4 800**.
+  (4) **le décompte d'une mesure en 6/8** (de −1,5 s à 0) : au témoin, **3** clics avant zéro, **aucun** accent ; après,
+  **6** clics, l'accent sur le premier (−1,5 s), puis l'accent de zéro.
+
+**L'ORDRE, TRANCHÉ ICI.** Le test d'abord, joué sur le moteur d'avant — le témoin — et lu ; puis D590.2 et D590.3 ensemble
+(une seule fonction pure les porte), puis D590.1 (le graphe) ; un test du moteur par élément, dans `test_metronome.cpp`.
