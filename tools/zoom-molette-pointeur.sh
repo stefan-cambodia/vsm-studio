@@ -44,7 +44,10 @@ open(f"{b}/base/midi/arrangement.mid", "wb").write(
 mix = {"muted": False, "pan": 0.0, "sends": [0.0, 0.0], "solo": False, "volume": 0.8}
 clip = {"sourceStart": 0, "sourceLength": 61440, "start": 0, "length": 61440, "color": "#FF6B9BFF"}
 json.dump({"format": "vsm-project", "version": 1, "title": "zoom-molette", "midi": {"file": "midi/arrangement.mid"},
-           "view": {"pixelsPerTick": 0.1, "scrollTick": 7680, "pianoRollPixelsPerTick": 0.1, "pianoRollScrollTick": 7680},
+           "view": {"pixelsPerTick": 0.1, "scrollTick": 7680, "pianoRollPixelsPerTick": 0.1, "pianoRollScrollTick": 7680,
+                    # la vue du piano roll n'est reprise qu'ENTIÈRE (`reprendreLaVue`, D369) : sans note du haut ni
+                    # rang, il retombait sur son cadrage (0,080 px/tick, défilé à 0) — vu au premier passage.
+                    "pianoRollTopNote": 72, "pianoRollNoteHeight": 16},
            "transport": {"tempoChanges": [{"bpm": 120.0, "tick": 0}], "ticksPerQuarterNote": 480,
                          "timeSignatures": [{"denominator": 4, "numerator": 4, "tick": 0}]},
            "tracks": [{"channel": 0, "color": "#FF6B9BFF", "effects": [], "name": "Partie", "mix": mix,
@@ -110,6 +113,10 @@ res = {"HAUT": arrangement("haut"), "BAS": arrangement("bas"), "ANNULE": arrange
        "PRHAUT": pianoroll("pr-haut"), "PRVERT": pianoroll("pr-vertical")}
 for k, v in res.items():
     print(f"F_{k}={v[0]:.4f} E_{k}={v[1]:.1f}" if v else f"F_{k}= E_{k}=")
+# (5) : le zoom horizontal inchangé ne prouve rien si la molette n'a rien fait — le RANG doit avoir changé.
+rangs = [re.search(r" rang=([0-9]+)", l) for l in lignes("pr-vertical", "VSM_PIANOROLL_RANG : ")]
+rangs = [int(m.group(1)) for m in rangs if m]
+print(f"RANGS_PRVERT='{rangs[0]}->{rangs[-1]}'" if len(rangs) >= 2 else "RANGS_PRVERT=")
 PY
 )"
 for k in HAUT BAS ANNULE PRHAUT PRVERT; do f="F_$k"; e="E_$k"; echo "       $k : facteur ${!f:-?}, le tick visé à ${!e:-?} px du pointeur"; done
@@ -123,8 +130,9 @@ verdict "(3) Annuler le zoom : la vue d'avant, en un pas" \
     "$(proche "$F_ANNULE" 1 0.0001 && proche "$E_ANNULE" 0 0.5 && echo 1 || echo 0)"
 verdict "(4) le piano roll, un cran vers le haut : ×1,15, le tick visé sous le pointeur" \
     "$(proche "$F_PRHAUT" 1.15 0.0115 && proche "$E_PRHAUT" 0 1 && echo 1 || echo 0)"
-verdict "(5) le piano roll, Ctrl+Maj+molette : le zoom horizontal inchangé" \
-    "$(proche "$F_PRVERT" 1 0.0001 && echo 1 || echo 0)"
+echo "       PRVERT : le rang ${RANGS_PRVERT:-?} px"
+verdict "(5) le piano roll, Ctrl+Maj+molette : le zoom horizontal inchangé, le rang changé" \
+    "$(proche "$F_PRVERT" 1 0.0001 && [ -n "$RANGS_PRVERT" ] && [ "${RANGS_PRVERT%->*}" != "${RANGS_PRVERT#*->}" ] && echo 1 || echo 0)"
 
 echo
 if [ "$rates" -gt 0 ]; then echo "ZOOM-MOLETTE-POINTEUR : $rates contrôle(s) raté(s)"; exit 1; fi

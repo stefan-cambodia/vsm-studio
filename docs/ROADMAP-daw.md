@@ -45572,3 +45572,35 @@ clip sur la piste du bas ou une note dans l'aigu, rien ne relie le pointeur à l
 
 **L'ORDRE, TRANCHÉ ICI.** D587.1 (une prise qui disparaît est le plus grave des trois), puis D587.2, puis D587.3 ; un banc
 par élément (`prise-hors-clips`, `zoom-molette-pointeur`, `reticule`), entré dans la série de `verifier.sh --bancs`.
+
+### Phase D587 — MESURÉE, la série à jouer (24/10/2026, 20 h 11 à l'horloge)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D587.1 | la prise MIDI couverte comme une note écrite | `MainComponent::stopRecording` — après `applyRecording`, dans le pas de la prise, `couvrirLesNotesEcrites` (D337), qui lit l'état d'avant le pas (D556) ; `tools/prise-hors-clips.sh` (120 BPM, deux notes entrées pendant la mesure 1, F9 à la tête 0) : le clip à la mesure 20 → **3** notes exportées, les clips **[0, 1 920) [36 480, 38 400)**, « clip #2 créé sous elle (mesures 1-1) » au journal ; le clip à la mesure 3 → **3** notes, **[0, 5 760)**, « clip #1 étendu jusqu'à elle (mesures 1-3) » ; Ctrl+Z après la prise → **1** note, **[36 480, 38 400)**, la ligne D337 lue AVANT le Ctrl+Z ; une piste sans clip → **2** notes, aucun clip, aucune ligne D337. **TENU** | **oui** |
+| D587.2 | le zoom à la molette autour du pointeur | `ArrangementComponent::zoomAutourDe` (le calcul de D585.2, un pas d'*Annuler le zoom*) ; le piano roll par `zoomAncre` (D586.1) ; `molette:` sait « ctrl+maj » ; `tools/zoom-molette-pointeur.sh` (0,1 px/tick, défilé à 7 680, le pointeur à x 265,8 sur 886) : l'arrangement, un cran vers le haut → **×1,1500**, le tick visé (8 838) à **0,0 px** du pointeur ; vers le bas → **×0,8696**, **0,0 px** ; *Annuler le zoom* → **×1,0000**, la vue d'avant ; le piano roll → **0,100 → 0,115** px/tick, défilé **7 680 → 7 946**, le tick 9 718 à **0,0 px** ; Ctrl+Maj+molette → le zoom horizontal **×1,0000**, le rang **16 → 18** px. **TENU** | **oui** |
+| D587.3 | le réticule pendant un geste | `ArrangementComponent` et `PianoRollComponent` — né à l'appui du bouton gauche dans la zone des clips ou la grille, suivi au glissé, effacé au relâchement ; *Affichage ▸ Réticule pendant un geste*, `affichageReticule` au poste ; le verbe `relever-reticule` ; `tools/reticule.sh` (`glisser:…:lent`, l'appui à 900 ms, le relevé à 1 120 ms) : l'arrangement → « montré à **443,0 ; 49,9** », le 4ᵉ des huit points du trajet (l'appui à 354,4), puis « caché » ; le piano roll → « montré à **354,4 ; 107,2** » (l'appui à 265,8 ; 80,4), puis « caché » ; décochée → « caché » à mi-geste ; relancé → décochée ; en anglais, *View ▸ Cross-hair while dragging* [cochée] ; les deux photos prises à mi-geste, REGARDÉES : deux traits nets au pointeur, sur la zone des clips et sur la grille. **TENU**, après le remède écrit plus bas | **oui** |
+| — | les témoins | le binaire de D586 (`build/temoin-D586`) : `prise-hors-clips` **rouge 3 / 4** — **1** note exportée et aucun clip né (le clip à la mesure 20 seul ; à la mesure 3, [3 840, 5 760) intact) : la prise est dans le projet, et ni jouée ni exportée ; le (3) tombe par l'absence de la ligne D337 ; `zoom-molette-pointeur` **rouge 4 / 5** — le tick visé déplacé de **+17,4** et **−15,1 px** dans l'arrangement, **−30,4 px** dans le piano roll (attendu : plus de 10) ; le (5) par le rang inchangé (16 → 16) : son verbe `molette:` ne connaît pas « ctrl+maj » ; `reticule` **rouge 5 / 5** — le verbe `relever-reticule` inconnu et l'entrée de menu absente, la raison écrite. Le témoin décoché de D587.3 : « caché » à mi-geste | **oui** |
+| — | les suites | cœur **550 / 550**, moteur **1 353 / 1 353**, interchange 359, clap 25, panels 11 ; Python 275 ; ruff et mypy propres ; gardes vertes (`./verifier.sh --compiler`, 25 ✓, aucun ✗) | **oui** |
+| — | la série | `./verifier.sh --bancs`, 183 bancs — **à jouer** | **en cours** |
+
+**CE QUE LES BANCS ONT TRANCHÉ, ÉCRIT ICI.**
+- **LE RÉTICULE ÉTAIT PEINT FLOU.** Sur la première photo à mi-geste, les deux traits se voyaient à peine : un trait de
+  1 px posé à `x − 0,5` (x entier) tombe à cheval sur deux colonnes, et chacune n'en reçoit que la moitié — **deux** traits
+  à ~27 % (**78, 60, 40** sur le fond 23, 23, 27) au lieu d'**un** à 55 %. Les traits sont désormais calés sur les pixels
+  (`roundToInt`), dans les deux vues : **un** pixel à **134, 99, 54**, la tête restant plus vive (180, 131, 69, sur 1,5 px).
+  Le relevé ne l'aurait jamais dit : il lit le point, pas les pixels. C'est la photo REGARDÉE qui l'a montré.
+- **Le piano roll ne reprenait pas la vue du banc.** `reprendreLaVue` (D369) n'accepte une vue enregistrée qu'ENTIÈRE :
+  sans note du haut ni hauteur de rang, il retombait sur son cadrage (0,080 px/tick, défilé à 0), et le premier passage
+  mesurait un zoom parti du bord gauche — vert, mais pas sur la vue que l'en-tête du banc annonçait. Le projet du banc
+  porte maintenant `pianoRollTopNote` et `pianoRollNoteHeight` ; relu : **0,100 px/tick, défilé à 7 680**.
+- **Trois contrôles prouvaient trop peu, et sont vus rouges sur le témoin.** (a) « Ctrl+Z rend 1 note » passe aussi sur
+  une prise jamais faite (« défait » et « jamais fait » exportent la même note) : il exige maintenant la ligne D337 AVANT
+  la touche. (b) « Ctrl+Maj+molette laisse le zoom horizontal » passe aussi sur une molette sans effet : il exige un rang
+  changé. (c) « le point du réticule sur le trajet » acceptait le point d'appui, où resterait un réticule qui ne suit pas :
+  il prend les points 1 à 8, jugé sur quatre cas (l'appui et un point hors trajet refusés, le milieu et l'arrivée pris).
+- **Dans la grille du piano roll, l'appui dans le vide ne trace pas un lasso** : l'outil Sélection y POSE une note et
+  l'étire (le lasso veut Ctrl, `PianoRollComponent::mouseDown`). La photo à mi-geste montre la note D#4 née à l'appui.
+  L'en-tête du banc le disait lasso ; il est corrigé. Le réticule ne dépend pas du geste : la mesure tient.
+- **La série de D586, lue avant de compiler** : quatre rouges sur un même contrôle, sous l'écran éteint ; rejoués seuls,
+  quatre verts (D586 — FAITE, plus haut).

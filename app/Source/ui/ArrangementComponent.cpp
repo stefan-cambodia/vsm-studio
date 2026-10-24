@@ -4332,11 +4332,12 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         juce::Graphics::ScopedSaveState zone(g);
         const int haut = hauteurRegle();
         g.reduceClipRegion(kHeaderWidth, haut, std::max(0, getWidth() - kHeaderWidth), std::max(0, getHeight() - haut));
+        // CALÉS SUR LES PIXELS : un trait de 1 px posé à `x - 0,5` tombe à cheval sur deux colonnes, chacune n'en reçoit
+        // que la moitié — deux traits flous à ~27 % au lieu d'un net à 55 %, vu sur la photo du banc (78,60,40 sur le
+        // fond 23,23,27).
         g.setColour(Palette::accentAmber.withAlpha(0.55f));
-        g.fillRect(juce::Rectangle<float>(pointReticule_.x - 0.5f, static_cast<float>(haut), 1.0f,
-                                           static_cast<float>(getHeight() - haut)));
-        g.fillRect(juce::Rectangle<float>(static_cast<float>(kHeaderWidth), pointReticule_.y - 0.5f,
-                                           static_cast<float>(getWidth() - kHeaderWidth), 1.0f));
+        g.fillRect(juce::roundToInt(pointReticule_.x), haut, 1, std::max(0, getHeight() - haut));
+        g.fillRect(kHeaderWidth, juce::roundToInt(pointReticule_.y), std::max(0, getWidth() - kHeaderWidth), 1);
     }
 }
 

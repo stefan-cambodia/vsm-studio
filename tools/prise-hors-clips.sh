@@ -102,13 +102,16 @@ for n in loin pres defait sans; do
 done
 grep -h "^D337 : " "$brouillon"/loin.txt "$brouillon"/pres.txt "$brouillon"/sans.txt | sed 's/^/       /'
 d337_sans="$(grep -c "^D337 : " "$brouillon/sans.txt")"
+# (3) ne prouve rien si la prise n'a pas eu lieu : « défait » et « jamais fait » exportent la même note (CLAUDE.md, le
+# témoin d'une annulation). La course dit donc d'abord que la prise a couvert ses notes, AVANT le Ctrl+Z.
+d337_defait="$(awk '/^D337 : /{d=NR} /VSM_TOUCHE : .*ctrl \+ Z/{z=NR} END{print (d && z && d < z) ? 1 : 0}' "$brouillon/defait.txt")"
 
 verdict "(1) le clip à la mesure 20 : 3 notes, un clip [0,1920) né" \
     "$([ "$(notes "$brouillon/loin.mid")" = 3 ] && [ "$(clips "$brouillon/loin-ecrit")" = "[0,1920) [36480,38400)" ] && echo 1 || echo 0)"
 verdict "(2) le clip à la mesure 3 : 3 notes, le clip étendu jusqu'au tick 0" \
     "$([ "$(notes "$brouillon/pres.mid")" = 3 ] && [ "$(clips "$brouillon/pres-ecrit")" = "[0,5760)" ] && echo 1 || echo 0)"
-verdict "(3) Ctrl+Z : 1 note, 1 clip, en un pas" \
-    "$([ "$(notes "$brouillon/defait.mid")" = 1 ] && [ "$(clips "$brouillon/defait-ecrit")" = "[36480,38400)" ] && echo 1 || echo 0)"
+verdict "(3) Ctrl+Z : 1 note, 1 clip, en un pas — la prise couverte AVANT (D337 au journal)" \
+    "$([ "$d337_defait" = 1 ] && [ "$(notes "$brouillon/defait.mid")" = 1 ] && [ "$(clips "$brouillon/defait-ecrit")" = "[36480,38400)" ] && echo 1 || echo 0)"
 verdict "(4) une piste sans clip : 2 notes, la règle ne la touche pas" \
     "$([ "$(notes "$brouillon/sans.mid")" = 2 ] && [ "$d337_sans" = 0 ] && echo 1 || echo 0)"
 

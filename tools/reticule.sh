@@ -5,14 +5,16 @@
 # LES RÈGLES GARDÉES (480 ticks par noire, 4/4). Une piste, un clip de huit mesures. Le geste tenu passe par
 # `glisser:<vue>:fx0,fy0:fx1,fy1:lent` : l'appui, huit mouvements espacés de 50 ms, le relâchement 50 ms après le
 # dernier (450 ms en tout) ; `relever-reticule` dit pour chaque vue « montré à x,y » ou « caché ». À mi-geste, le minuteur
-# a du jeu : le point relevé doit tomber sur L'UN des huit points du trajet (à 1 px près), pas sur un point deviné.
+# a du jeu : le point relevé doit tomber sur L'UN des huit points du trajet (à 1 px près), pas sur un point deviné — ni
+# sur celui de l'appui, où resterait un réticule qui ne suit pas.
 # L'ATTENDU ÉCRIT AVANT LA MESURE (ROADMAP-daw, D587) :
 #   (1) un glissé tenu sur un clip de l'arrangement, le relevé à mi-geste : montré, sur le trajet ;
 #   (2) après le relâchement : caché ;
 #   (3) le même dans la grille du piano roll : montré, sur le trajet, puis caché ;
 #   (4) décochée : caché à mi-geste ;
 #   (5) relancé dans le même HOME : décochée retenue ; en anglais, « Cross-hair while dragging » ;
-#   et la photo prise à mi-geste (`VSM_GARDER=dossier`, `arr-photo.png`) montre les deux traits — REGARDÉE, pas jugée ici.
+#   et les photos prises à mi-geste (`VSM_GARDER=dossier`, `arr-photo.png`, `pr-photo.png`) montrent les deux traits —
+#   REGARDÉES, pas jugées ici.
 #
 #   tools/reticule.sh [binaire]
 set -u
@@ -71,7 +73,8 @@ if not m or not sys.argv[2]:
     sys.exit(1)
 x0, y0, x1, y1 = map(float, m.groups())
 px, py = map(float, sys.argv[2].split(","))
-ok = any(abs(px - (x0 + (x1 - x0) * k / 8)) <= 1.0 and abs(py - (y0 + (y1 - y0) * k / 8)) <= 1.0 for k in range(9))
+# Les points 1 à 8, PAS celui de l'appui (k = 0) : un réticule figé à l'appui passerait sinon pour un réticule qui suit.
+ok = any(abs(px - (x0 + (x1 - x0) * k / 8)) <= 1.0 and abs(py - (y0 + (y1 - y0) * k / 8)) <= 1.0 for k in range(1, 9))
 sys.exit(0 if ok else 1)
 PY2
 }
@@ -79,8 +82,10 @@ PY2
 rates=0
 verdict() { if [ "$2" = 1 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
 OPTION="menu:Affichage > Réticule pendant un geste"
-# Sur le clip de la piste 0 (y 50 sur 574, comme tete-posee.sh), tiré vers la droite ; dans la grille du piano roll, un
-# lasso. « 0.087 » est écrit en fraction à l'arrivée aussi, pour que `VSM_GLISSE` dise le trajet en pixels.
+# Sur le clip de la piste 0 (y 50 sur 574, comme tete-posee.sh), tiré vers la droite ; dans la grille du piano roll,
+# un appui dans le vide — l'outil Sélection y POSE une note et l'étire (le lasso veut Ctrl ; vu sur la photo à mi-geste,
+# qui montre la note D#4 née à l'appui). « 0.087 » est écrit en fraction à l'arrivée aussi, pour que `VSM_GLISSE` dise
+# le trajet en pixels.
 ARR="glisser:arrangement:0.400,0.087:0.600,0.087:lent"
 PR="glisser:pianoroll:0.300,0.300:0.500,0.500:lent"
 APRES_ARR="1120:relever-reticule;1600:relever-reticule"
@@ -93,6 +98,7 @@ course decochee "$maison" arrangement VSM_DELAI=1900 VSM_GESTE_APRES="600:$OPTIO
 course retenu "$maison" arrangement VSM_DELAI=1600 VSM_GESTE_APRES="900:lister-menus"
 course anglais "" arrangement VSM_LANGUE=en VSM_DELAI=1600 VSM_GESTE_APRES="900:lister-menus"
 course arr-photo "" arrangement VSM_DELAI=1120 VSM_GESTE_APRES="900:$ARR"
+course pr-photo "" pianoroll VSM_DELAI=1120 VSM_GESTE_APRES="900:$PR"
 
 for n in arr pr decochee; do
     echo "       $n : mi-geste — $(grep -h '^VSM_RETICULE : ' "$brouillon/$n.txt" | sed -n 1p | cut -c16-) ; après — $(grep -h '^VSM_RETICULE : ' "$brouillon/$n.txt" | sed -n 2p | cut -c16-)"

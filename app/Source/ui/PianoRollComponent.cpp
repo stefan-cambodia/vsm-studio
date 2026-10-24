@@ -2698,11 +2698,9 @@ void PianoRollComponent::paint(juce::Graphics& g) {
         juce::Graphics::ScopedSaveState zone(g);
         const auto grille = contentArea();
         g.reduceClipRegion(grille);
-        g.setColour(Palette::accentAmber.withAlpha(0.55f));
-        g.fillRect(juce::Rectangle<float>(pointReticule_.x - 0.5f, static_cast<float>(grille.getY()), 1.0f,
-                                           static_cast<float>(grille.getHeight())));
-        g.fillRect(juce::Rectangle<float>(static_cast<float>(grille.getX()), pointReticule_.y - 0.5f,
-                                           static_cast<float>(grille.getWidth()), 1.0f));
+        g.setColour(Palette::accentAmber.withAlpha(0.55f));   // calés sur les pixels, comme l'arrangement
+        g.fillRect(juce::roundToInt(pointReticule_.x), grille.getY(), 1, grille.getHeight());
+        g.fillRect(grille.getX(), juce::roundToInt(pointReticule_.y), grille.getWidth(), 1);
     }
 }
 

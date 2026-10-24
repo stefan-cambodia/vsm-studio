@@ -111,8 +111,8 @@ public:
     /// `ArrangementComponent::reprendreLaVue` depuis D363. Mieux vaut un cadrage
     /// qu'une fenêtre de hauteurs que personne ne saurait défaire.
     /// D586.1 : UN ZOOM HORIZONTAL ANCRÉ — le zoom borné (0,001..8 px/tick), le défilement tel que `tick` tombe sous
-    /// l'abscisse `x` (tant qu'il ne bute pas sur 0). Le glissé sur la règle s'en sert ; la molette et les touches gardent
-    /// le centre (`zoomHorizontally`).
+    /// l'abscisse `x` (tant qu'il ne bute pas sur 0). Le glissé sur la règle s'en sert, et Ctrl+molette autour du pointeur
+    /// (D587.2) ; les touches et le menu, sans pointeur, gardent le centre (`zoomHorizontally`).
     void zoomAncre(double pixelsParTick, vsm::midi::Tick tick, float x) {
         pixelsPerTick_ = juce::jlimit(0.001, 8.0, pixelsParTick);
         scrollTick_ = std::max<vsm::midi::Tick>(
