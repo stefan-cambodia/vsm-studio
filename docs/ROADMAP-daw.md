@@ -46279,3 +46279,49 @@ champ, aucune entrée, aucun mot (« tempo fixe », `fixedTempo` : 0).
   (4) en anglais, *Transport ▸ Fixed tempo (tempo track ignored)* ; la barre de transport photographiée et REGARDÉE ;
   (5) le **témoin** (le binaire d'avant) : l'entrée absente, `fixedTempo` ignoré par son `vsm-render` (360 000 trames sur
   les deux projets — l'option ne passe que par le code neuf).
+
+### Phase D596 — un cinquante-septième audit : l'expandeur et le de-esser (25/10/2026)
+
+*Écrite le 25/10 à 05 h 08 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de D588-D591.*
+
+**LE ZÉRO, lu au code.** Les inserts du parc sont seize (`EffectFactory::available`) : les quatre de la tranche (D4.1 :
+égaliseur, compresseur, porte, limiteur), le filtre, la distorsion, le bit crusher, le chorus, le flanger, le phaser, le
+délai, la réverbération, la saturation à bande, et les trois de D13.8 (transient shaper, trémolo, pitch shift). Sondés
+contre les dynamiques livrées avec Cubase : **ni expandeur ni de-esser** — `dsp/Dynamics.h` n'a que `Compressor`,
+`NoiseGate` et `Limiter` (lu classe par classe), et « expand », « de-ess », « sibil » rendent 0 dans `audio/`. La porte
+n'est pas un expandeur : elle bascule entre ouverte et sa plage, sans rapport ; un souffle sous une voix se coupe ou ne
+se coupe pas, il ne se baisse pas en proportion. Et une sifflante ne se dompte qu'avec un compresseur dont la détection
+suit tout le spectre — ou en dessinant l'automation à la main, syllabe par syllabe.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D596.1 | **L'expandeur** — *Expander* | un insert « Expander » : sous le SEUIL, le niveau descend de `rapport − 1` dB par dB d'écart (expansion vers le bas), borné par la PLAGE ; au-dessus, il ne touche à rien ; attaque (ouverture) et relâchement (fermeture) ; mesuré par un test du moteur en régime établi, et par son empreinte |
+| D596.2 | **Le de-esser** — *DeEsser* | un insert « De-esser » : la DÉTECTION écoute une bande autour de la FRÉQUENCE (passe-bande) ; au-dessus du SEUIL, le signal est réduit au rapport de 4:1, la réduction bornée par la RÉDUCTION MAXIMALE ; sous le seuil, le signal sort au bit près ; mesuré de même |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **L'expandeur** : détection crête liée en stéréo, en dB ; réduction `min(−plage, (seuil − niveau)·(rapport − 1))` sous le
+  seuil ; le gain lissé en dB par l'attaque (quand il remonte) et le relâchement (quand il descend). Paramètres : seuil
+  −80…0 dB (−40), rapport 1…8 (2), plage −80…0 dB (−40), attaque 0,1…100 ms (1), relâchement 5…2 000 ms (100).
+- **Le de-esser, LARGE BANDE** : la réduction s'applique à TOUT le signal pendant la sifflante. Une version qui ne
+  baisserait que la bande (*split-band*) a été calculée avant d'être écrite et écartée pour cette phase : un partage par
+  un simple passe-haut de 12 dB/oct à 6 kHz ne rend que −0,3 dB d'une sinusoïde de 8 kHz pour une réduction voulue de
+  12 dB (le déphasage du filtre défait la soustraction), et un partage de Linkwitz-Riley n'en rend que −7,3 (calculés
+  sur les prototypes analogiques) ; elle demande
+  un partage à phase linéaire, un second chantier. Paramètres : fréquence 2…12 kHz (6 000), seuil −60…0 dB (−30),
+  réduction maximale 0…24 dB (12) ; la détection est un passe-bande de RBJ (Q = 1,4) sur la MOYENNE des deux canaux ; temps
+  fixes (1 ms, 60 ms), ceux d'une consonne.
+- **Rien d'autre ne change** : deux entrées de plus à la fin de la liste des inserts (l'ordre d'un menu se lit du haut, et
+  les seize d'avant gardent leur rang), deux empreintes de plus dans `effect_fingerprints.inc`, les seize autres
+  inchangées au chiffre près (la règle du fichier : un changement d'empreinte documente un changement de son assumé).
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE** (48 kHz, sinus, mesure sur la seconde qui suit une seconde de mise en route) :
+  (1) **l'expandeur** aux réglages d'origine (seuil −40, rapport 2, plage −40) : un sinus de crête **−30 dBFS** sort
+  inchangé (±0,05 dB) ; **−50 dBFS** sort à **−60** (±0,3) ; **−70 dBFS** à **−100** (±0,5) ; avec une plage de −20, le
+  sinus de −70 sort à **−90** (±0,5) ;
+  (2) **le de-esser** aux réglages d'origine : un sinus de 300 Hz à −10 dBFS sort **au bit près** (le passe-bande à 6 kHz
+  le voit à −39,4 dB, sous le seuil) ; un sinus de **8 kHz** à −10 dBFS sort réduit de **12 dB** (±0,5 : vu à −12,8 dB dans la
+  bande — la réponse numérique du passe-bande à 8 kHz, −2,78 dB, calculée avant le code —, 17,2 dB au-dessus du seuil,
+  12,9 dB de réduction au rapport de 4:1, bornés à 12) ; avec une réduction maximale de 24 dB, de **12,9** (±0,5) ;
+  (3) les **empreintes** : seize inchangées, deux neuves ; (4) l'application : l'insert « Expander » posé sur une piste,
+  son export moins fort que celui du témoin sur un passage faible (la mesure du son est (1) ; ici, qu'il soit bien ATTEINT
+  par les deux chemins de rendu, D21).
