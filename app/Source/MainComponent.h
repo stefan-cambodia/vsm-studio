@@ -1403,6 +1403,11 @@ private:
         kMenuRecordResetAfterTake,
         kMenuTransportZoomOnRuler,
         kMenuTransportChaseNotes,
+        /// D586.3 : le nom des notes, trois entrées CONTIGUËS (`vsm::app::ui::StyleDeNote`).
+        kMenuViewNoteNameFirst,
+        kMenuViewNoteNameLast = kMenuViewNoteNameFirst + 2,
+        /// D586.2 : l'édition suspend le suivi de la tête.
+        kMenuViewEditSuspendsFollow,
     };
     /// D578.1, D578.2 : les longueurs offertes au pré-roll et au post-roll, en mesures.
     static constexpr int kMesuresDeRoll[4] = {0, 1, 2, 4};

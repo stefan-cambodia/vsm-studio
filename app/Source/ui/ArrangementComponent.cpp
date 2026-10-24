@@ -103,12 +103,14 @@ void ArrangementComponent::setPlayheadTick(vsm::midi::Tick tick) {
     // D11.3 : PAR PAGES, pas centré en continu — un fond qui glisse à chaque
     // image fatigue et empêche de lire les positions (même règle qu'au piano
     // roll). La page tourne quand la tête sort de la zone des clips.
-    if (followPlayhead_ && teteFixe_ && enLecture_) {
+    // D586.2 : SUSPENDU PAR UNE ÉDITION en lecture, le suivi ne tourne plus la page — ni en pages, ni en tête fixe.
+    const bool suit = followPlayhead_ && !suiviSuspendu_;
+    if (suit && teteFixe_ && enLecture_) {
         // D569.2 : LA TÊTE AU MILIEU de la zone des clips, la vue défile en continu ; jamais avant zéro, si bien qu'au
         // début du morceau la tête avance jusqu'au milieu avant que la vue ne parte.
         const double visibles = static_cast<double>(getWidth() - kHeaderWidth) / std::max(1.0e-6, pixelsPerTick_);
         scrollTick_ = std::max<vsm::midi::Tick>(0, tick - static_cast<vsm::midi::Tick>(visibles * 0.5));
-    } else if (followPlayhead_) {
+    } else if (suit) {
         const float x = tickToX(tick);
         const float droite = static_cast<float>(getWidth()) - 40.0f;
         if (x > droite || x < static_cast<float>(kHeaderWidth)) {
@@ -369,6 +371,13 @@ void ArrangementComponent::basculerTeteFixe() {
     direLesBascules();
     if (onBasculesChanged) onBasculesChanged();
     repaint();
+}
+
+void ArrangementComponent::basculerEditionSuspendSuivi() {
+    editionSuspendSuivi_ = !editionSuspendSuivi_;   // D586.2
+    if (!editionSuspendSuivi_) suiviSuspendu_ = false;
+    direLesBascules();
+    if (onBasculesChanged) onBasculesChanged();
 }
 
 void ArrangementComponent::basculerSuivi() {
@@ -1337,6 +1346,15 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         pisteSaisie_ = piste;
         ySaisie_ = point.y;
         return;
+    }
+
+    // D586.2 : UN APPUI DANS LA ZONE DES CLIPS, EN LECTURE, suspend le suivi — un clip, une poignée, le fond, un lasso :
+    // tout ce qui commence une édition ou un choix. Pas la règle (on y pose la tête : c'est le suivi qu'on demande), pas
+    // les têtes de piste ; ce qui est au-dessus est sorti avant.
+    if (editionSuspendSuivi_ && enLecture_ && followPlayhead_ && !suiviSuspendu_) {
+        suiviSuspendu_ = true;
+        std::fputs(("VSM_SUIVI : suspendu par un appui en lecture, d\xc3\xa9filement " + juce::String(static_cast<juce::int64>(scrollTick_))
+                    + "\n").toRawUTF8(), stderr);
     }
 
     // LES COURBES PASSENT AVANT LES CLIPS quand elles sont montrées : elles
@@ -3333,6 +3351,7 @@ void ArrangementComponent::direLesBascules() const {
                 + (aimantRelatif_ ? juce::String::fromUTF8(u8", relatif à la grille") : juce::String())   // D572.1
                 + (aimantClips_ ? juce::String::fromUTF8(u8", aux clips et aux repères") : juce::String())   // D574.1
                 + (aimantTete_ ? juce::String::fromUTF8(u8", à la tête") : juce::String())                   // D574.2
+                + (editionSuspendSuivi_ ? juce::String::fromUTF8(u8", l'édition suspend le suivi") : juce::String())   // D586.2
                 + "\n").toRawUTF8(), stderr);
 }
 

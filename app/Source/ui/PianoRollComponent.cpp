@@ -27,7 +27,8 @@ bool isBlackKey(int noteInOctave) {
     return black[((noteInOctave % 12) + 12) % 12];
 }
 
-juce::String noteName(uint8_t note) { return juce::String(noteNumberToName(note)); }
+// D586.3 : le nom À L'ÉCRAN, au style du poste (C4, C3 ou Do3) — le clavier, la ligne d'état, les notes, les accords.
+juce::String noteName(uint8_t note) { return vsm::app::ui::nomDeNote(note); }
 
 /// Identifiants du menu contextuel. Regroupés par famille (dizaines) pour que
 /// l'ajout d'une entrée ne décale jamais les autres.
@@ -574,6 +575,11 @@ void PianoRollComponent::releverRangPourCapture() const {
                 + " fenetre=" + juce::String(static_cast<juce::int64>(scrollTick_)) + ".."
                 + juce::String(static_cast<juce::int64>(fenetreFin))
                 + " visibles=" + juce::String(visibles) + "/" + juce::String(total)
+                // D586.3 : LES NOMS QUE LE CLAVIER ÉCRIT, par la fonction même de la peinture (`noteName`).
+                + " noms=60:" + noteName(60) + ",61:" + noteName(61) + ",69:" + noteName(69)
+                // D586.1 : la largeur du clavier et du composant — la règle du piano roll a la même abscisse et la même
+                // largeur (`PianoRollPanel::resized`) : un banc y trouve le point d'un tick.
+                + " clavier=" + juce::String(keyboardWidth()) + " largeur=" + juce::String(getWidth())
                 // D497 : l'outil courant — la barre le marque en couleur, et un
                 // texte peint ne se relève pas (D149).
                 + " outil=" + (tool_ == Tool::Select ? "selection" : tool_ == Tool::Draw ? "crayon"
@@ -1819,7 +1825,7 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
                            // D80 : traduit à l'affichage ; le nom reste français dans `core/`, et
                            // `tr()` lit en UTF-8 le « Diminué » que `juce::String` lisait en Latin-1.
                            tr(chordTypeName(chordTypes[i])) + tr(" sur ") +
-                           juce::String(noteNumberToName(static_cast<uint8_t>(60 + scale_.root))));
+                           noteName(static_cast<uint8_t>(60 + scale_.root)));   // D586.3
     menu.addSubMenu(tr(u8"Insérer un accord"), chordMenu);
     // D535.1 bis : L'ÉDITEUR LOGIQUE — actif dès que la piste a une note : sans sélection, la
     // règle peut viser toute la piste.

@@ -87,7 +87,16 @@ private:
     /// mesurerait en pixels, ce qui voudrait dire deux choses différentes à
     /// deux zooms.
     double vitesseDeReference_ = 100.0;
+    // D586.1 — LE ZOOM EN GLISSANT SUR LA RÈGLE, la préférence de D585.2, et l'appui qu'un glissé zoome : son point, le
+    // tick saisi, la vue d'avant. Le zoom se calcule depuis l'appui, jamais en s'accumulant.
+    bool zoomALaRegle_ = true;
+    bool appuiSimple_ = false;
+    juce::Point<float> appui_;
+    vsm::midi::Tick tickAppui_ = 0;
+    double pptAppui_ = 0.0;
+    vsm::midi::Tick defilementAppui_ = 0;
 public:
+    void setZoomALaRegle(bool oui) { zoomALaRegle_ = oui; }
     void setScrubReference(double pixelsParSeconde) {
         vitesseDeReference_ = pixelsParSeconde > 1.0 ? pixelsParSeconde : 1.0;
     }

@@ -237,6 +237,12 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
         scrubDernierTemps_ = juce::Time::getMillisecondCounterHiRes();
         return;
     }
+    // D586.1 : L'APPUI SANS MODIFICATEUR ouvre le geste que le glissé porte — la tête en x, le zoom en y.
+    appuiSimple_ = true;
+    appui_ = event.position;
+    tickAppui_ = tick;
+    pptAppui_ = pianoRoll_.pixelsPerTick();
+    defilementAppui_ = pianoRoll_.visibleStartTick();
     if (onPlayheadRequested) onPlayheadRequested(tick);
 }
 
@@ -281,10 +287,34 @@ void PianoRollRulerComponent::mouseDrag(const juce::MouseEvent& event) {
         repaint();
         return;
     }
-    if (onPlayheadRequested) onPlayheadRequested(tick);
+    // D586.1 : LE GLISSÉ VERTICAL ZOOME, la règle de D585.2 — ×2 par 100 px vers le bas, depuis la vue de l'appui, le tick
+    // saisi sous l'abscisse de l'appui ; sous 4 px, la vue de l'appui. La tête suit l'abscisse, lue APRÈS le zoom.
+    if (appuiSimple_ && zoomALaRegle_) {
+        const float dy = event.position.y - appui_.y;
+        if (std::abs(dy) >= 4.0f)
+            pianoRoll_.zoomAncre(pptAppui_ * std::pow(2.0, static_cast<double>(dy) / 100.0), tickAppui_, appui_.x);
+        else
+            pianoRoll_.poserVueHorizontale(pptAppui_, defilementAppui_);
+    }
+    if (onPlayheadRequested) onPlayheadRequested(std::max<Tick>(0, pianoRoll_.xToTick(event.position.x)));
+    repaint();
 }
 
 void PianoRollRulerComponent::mouseUp(const juce::MouseEvent&) {
+    // D586.1 : LE GLISSÉ DIT CE QU'IL A FAIT — le facteur, et où le tick saisi est resté, à comparer à l'abscisse de
+    // l'appui. Le piano roll n'a pas de pile de zooms (D557.3 est à l'arrangement) : rien n'est empilé.
+    if (appuiSimple_) {
+        appuiSimple_ = false;
+        if (pianoRoll_.pixelsPerTick() != pptAppui_ || pianoRoll_.visibleStartTick() != defilementAppui_)
+            std::fputs((juce::String::fromUTF8(u8"VSM_ZOOM_PIANOROLL : glissé sur la règle — zoom ")
+                        + juce::String(pptAppui_, 6) + juce::String::fromUTF8(u8" → ")
+                        + juce::String(pianoRoll_.pixelsPerTick(), 6) + juce::String::fromUTF8(u8" px/tick (×")
+                        + juce::String(pianoRoll_.pixelsPerTick() / pptAppui_, 3)
+                        + juce::String::fromUTF8(u8"), le tick saisi ") + juce::String(static_cast<juce::int64>(tickAppui_))
+                        + juce::String::fromUTF8(u8" à x ") + juce::String(pianoRoll_.tickToX(tickAppui_), 1)
+                        + juce::String::fromUTF8(u8" pour un appui à x ") + juce::String(appui_.x, 1) + "\n").toRawUTF8(),
+                       stderr);
+    }
     // D33.3 : LE SCRUB S'ARRÊTE AU RELÂCHEMENT, toujours -- y compris si la
     // souris sort du composant. Une vitesse de 0 dit « fini » ; l'appelant
     // remet le transport dans l'état où il l'a trouvé.

@@ -110,6 +110,23 @@ public:
     /// l'appelant laisse alors le cadrage faire son travail, comme
     /// `ArrangementComponent::reprendreLaVue` depuis D363. Mieux vaut un cadrage
     /// qu'une fenêtre de hauteurs que personne ne saurait défaire.
+    /// D586.1 : UN ZOOM HORIZONTAL ANCRÉ — le zoom borné (0,001..8 px/tick), le défilement tel que `tick` tombe sous
+    /// l'abscisse `x` (tant qu'il ne bute pas sur 0). Le glissé sur la règle s'en sert ; la molette et les touches gardent
+    /// le centre (`zoomHorizontally`).
+    void zoomAncre(double pixelsParTick, vsm::midi::Tick tick, float x) {
+        pixelsPerTick_ = juce::jlimit(0.001, 8.0, pixelsParTick);
+        scrollTick_ = std::max<vsm::midi::Tick>(
+            0, tick - static_cast<vsm::midi::Tick>(std::llround(static_cast<double>(x - keyboardWidth()) / pixelsPerTick_)));
+        updateScrollBars();
+        repaint();
+    }
+    /// D586.1 : la vue horizontale telle qu'elle était à l'appui — un glissé qui revient sous le seuil la rend au bit près.
+    void poserVueHorizontale(double pixelsParTick, vsm::midi::Tick defilement) {
+        pixelsPerTick_ = pixelsParTick;
+        scrollTick_ = std::max<vsm::midi::Tick>(0, defilement);
+        updateScrollBars();
+        repaint();
+    }
     bool reprendreLaVue(double pixelsParTick, vsm::midi::Tick defilement,
                          int noteDuHaut, int hauteurDeRang) {
         if (!(pixelsParTick > 0.0) || pixelsParTick < 0.001 || pixelsParTick > 8.0) return false;

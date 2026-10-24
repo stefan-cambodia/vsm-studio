@@ -1,4 +1,5 @@
 #include "Langue.h"
+#include <atomic>
 #include <cctype>
 #include <cstring>
 #include <regex>
@@ -3265,8 +3266,20 @@ const Paire kAnglais[] = {
       "(pitch bend, pressure, modulation, breath and pedals, back to rest at the end)" },
     { "Zoomer en glissant sur la règle",   // D585.2
       "Zoom by dragging on the ruler" },
-    { "(sur la règle de l'arrangement : vers le bas agrandit, vers le haut réduit ; de côté, la tête suit)",
-      "(on the arrangement ruler: down zooms in, up zooms out; sideways, the playhead follows)" },
+    { "(sur la règle de l'arrangement et du piano roll : vers le bas agrandit, vers le haut réduit ; de côté, la tête suit)",
+      "(on the arrangement and piano roll rulers: down zooms in, up zooms out; sideways, the playhead follows)" },
+    { "L'édition suspend le suivi de la tête",   // D586.2
+      "Editing suspends playhead following" },
+    { "Nom des notes",   // D586.3
+      "Note names" },
+    { "Lettres (do central C4)",
+      "Letters (middle C = C4)" },
+    { "Lettres (do central C3)",
+      "Letters (middle C = C3)" },
+    { "Solfège (do central Do3)",
+      "Solfège (middle C = Do3)" },
+    { "(le clavier et la ligne d'état du piano roll, la liste d'événements, le moniteur MIDI)",
+      "(the piano roll keyboard and status line, the event list, the MIDI monitor)" },
     { "Chasser les notes commencées",   // D585.3
       "Chase notes already started" },
     { "(une note commencée avant la tête sonne dès le départ, et à chaque tour de boucle)",
@@ -5131,6 +5144,24 @@ juce::String traduireSegments(const juce::String& texte, int profondeur) {
 }
 
 } // namespace
+
+namespace {
+std::atomic<int> styleDeNote_{0};   // D586.3 : lu par la peinture, posé par le menu (fil de l'interface, les deux)
+}
+
+void setStyleDeNote(StyleDeNote style) { styleDeNote_.store(static_cast<int>(style)); }
+StyleDeNote styleDeNote() { return static_cast<StyleDeNote>(styleDeNote_.load()); }
+
+juce::String nomDeNote(int note) {
+    // D586.3 : 60 → C4, C3 ou Do3. L'octave est un entier signé : 0 → C-1, C-2 ou Do-2.
+    static const char* const lettres[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+    static const char* const solfege[12] = {"Do", "Do#", "R\xc3\xa9", "R\xc3\xa9#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La",
+                                            "La#", "Si"};
+    const int n = juce::jlimit(0, 127, note);
+    const StyleDeNote style = styleDeNote();
+    const int octave = n / 12 - (style == StyleDeNote::LettresC4 ? 1 : 2);
+    return juce::String::fromUTF8(style == StyleDeNote::Solfege ? solfege[n % 12] : lettres[n % 12]) + juce::String(octave);
+}
 
 juce::String trPhrase(const juce::String& texte) {
     // EN FRANÇAIS, RIEN : la phrase EST le français, et un modèle appliqué ici la

@@ -193,8 +193,8 @@ void StepSequencerComponent::paint(juce::Graphics& g) {
             if (cell.active && spec_.kind == SequencerKind::MonoPattern && bounds.getHeight() > 22.0f) {
                 g.setColour(juce::Colours::black.withAlpha(0.8f));
                 g.setFont(juce::Font(juce::FontOptions(9.0f)));
-                g.drawText(juce::String(vsm::sequencer::noteNumberToName(
-                                cell.noteNumber != 0 ? cell.noteNumber : laneData.noteNumber)),
+                g.drawText(vsm::app::ui::nomDeNote(   // D586.3
+                                cell.noteNumber != 0 ? cell.noteNumber : laneData.noteNumber),
                             bounds.toNearestInt(), juce::Justification::centredBottom, false);
             }
         }

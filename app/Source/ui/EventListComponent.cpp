@@ -370,8 +370,7 @@ juce::String EventListComponent::texteDe(const EventRow& ligne, int columnId) co
             // `noteNumberToName` existait déjà et servait au piano roll : la
             // fonction était là, elle n'était pas montrée ici.
             if (ligne.kind == EventKind::Note || ligne.kind == EventKind::PolyPressure)
-                return juce::String(vsm::sequencer::noteNumberToName(
-                           static_cast<uint8_t>(ligne.first)))
+                return vsm::app::ui::nomDeNote(ligne.first)   // D586.3 : au style du poste
                        + " (" + juce::String(ligne.first) + ")";
             return juce::String(ligne.first);
         case kColSecond:

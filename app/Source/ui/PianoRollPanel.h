@@ -180,6 +180,8 @@ public:
 
     /// La région de punch appartient au PROJET : la règle la dessine, mais c'est
     /// l'application qui la détient. Voir `vsm::sequencer::Project::punchEnabled`.
+    /// D586.1 : le glissé vertical sur la règle zoome — la préférence de D585.2, pour les deux règles.
+    void setZoomALaRegle(bool oui) { ruler_.setZoomALaRegle(oui); }
     void setPunchRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
         ruler_.setPunchRegion(start, end, active);
     }

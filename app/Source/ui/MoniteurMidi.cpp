@@ -79,7 +79,7 @@ juce::String MoniteurMidi::decrire(const Evenement& e) {
         quoi = tr(u8"SysEx de %1 octet(s)").replace("%1", juce::String(static_cast<int>(e.sysexBytes)));
     } else {
         const int statut = e.bytes[0], d1 = e.bytes[1], d2 = e.bytes[2];
-        const auto nom = [](int n) { return juce::MidiMessage::getMidiNoteName(n, true, true, 4) + " (" + juce::String(n) + ")"; };
+        const auto nom = [](int n) { return nomDeNote(n) + " (" + juce::String(n) + ")"; };   // D586.3
         if (statut < 0xF0) canal = tr(u8"canal %1").replace("%1", juce::String((statut & 0x0F) + 1));
         switch (statut & 0xF0) {
             case 0x80: quoi = tr(u8"Note relâchée %1").replace("%1", nom(d1)); break;

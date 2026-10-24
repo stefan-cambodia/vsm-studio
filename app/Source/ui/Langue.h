@@ -61,6 +61,17 @@ public:
     static int tailleDeLaTable();
 };
 
+/// D586.3 : LE NOM DES NOTES À L'ÉCRAN (*Note Name Style* de Cubase) — un réglage d'AFFICHAGE du poste. Les lettres avec
+/// le do central à C4 (le nom d'origine, celui de `noteNumberToName`), les lettres avec le do central à C3 (Yamaha), ou le
+/// solfège avec le do central à Do3 (la convention française) ; les dièses seuls. Ce qui S'ÉCRIT — un fichier, le nom
+/// d'une piste éclatée par hauteur (D19.3), le texte d'une règle de l'éditeur logique, qui se relit (« C3 » y voudrait dire
+/// 48 ou 60 selon le réglage) — reste à `noteNumberToName`. Le solfège s'écrit en français dans les deux langues : c'est
+/// un nom de note, pas une phrase.
+enum class StyleDeNote { LettresC4 = 0, LettresC3 = 1, Solfege = 2 };
+void setStyleDeNote(StyleDeNote style);
+StyleDeNote styleDeNote();
+juce::String nomDeNote(int note);
+
 /// Traduit une chaîne de l'interface. Rend le français tel quel quand la langue
 /// est le français, ou quand la table anglaise n'a pas cette chaîne.
 juce::String tr(const char* texte);

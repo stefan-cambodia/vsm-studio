@@ -82,7 +82,21 @@ public:
     void setAimantTete(bool oui) { aimantTete_ = oui; }
     bool aimantTete() const { return aimantTete_; }
     void basculerAimantTete();
-    void setEnLecture(bool enLecture) { enLecture_ = enLecture; }
+    /// D586.2 : LA SUSPENSION TOMBE À L'ARRÊT — le passage de la lecture à l'arrêt ; la lecture suivante suit de nouveau.
+    void setEnLecture(bool enLecture) {
+        if (enLecture_ && !enLecture && suiviSuspendu_) {
+            suiviSuspendu_ = false;
+            std::fputs("VSM_SUIVI : repris \xc3\xa0 l'arr\xc3\xaat\n", stderr);
+        }
+        enLecture_ = enLecture;
+    }
+    /// D586.2 : L'ÉDITION SUSPEND LE SUIVI (*Suspend Auto-Scroll when Editing*) — cochée, un appui dans la zone des clips
+    /// PENDANT la lecture, suivi actif, suspend le défilement qui suit la tête jusqu'à l'arrêt. Une préférence du poste
+    /// (D493), grisée sans le suivi.
+    void setEditionSuspendSuivi(bool oui) { editionSuspendSuivi_ = oui; }
+    bool editionSuspendSuivi() const { return editionSuspendSuivi_; }
+    void basculerEditionSuspendSuivi();
+    bool suiviSuspendu() const { return suiviSuspendu_; }
     /// Un geste va modifier le projet : l'application prend son instantané
     /// d'annulation. Appelé UNE fois par geste, au `mouseDown` -- un
     /// glissement continu est une action, pas trois cents.
@@ -722,6 +736,8 @@ private:
     /// D574.1, D574.2 : la position aimantée d'un bord ou d'une ancre, `grille` la ligne de grille déjà trouvée.
     vsm::midi::Tick aimanterAuxCibles(vsm::midi::Tick brut, vsm::midi::Tick grille, vsm::midi::Tick decalageFin) const;
     bool enLecture_ = false;   ///< D569.2 : la tête fixe ne vaut qu'en lecture
+    bool editionSuspendSuivi_ = false;   ///< D586.2 : la préférence
+    bool suiviSuspendu_ = false;         ///< D586.2 : suspendu par un appui en lecture, jusqu'à l'arrêt
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne
     /// alors plus rien. D551.1 : chacun avec SA piste d'origine et, pour un clip MIDI, les notes de sa fenêtre

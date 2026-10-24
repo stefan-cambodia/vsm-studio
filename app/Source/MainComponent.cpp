@@ -1487,8 +1487,14 @@ MainComponent::MainComponent()
     recorder_.setRemiseAZero(remiseAZeroApresPrise_);
     zoomALaRegle_ = vsm::app::ui::UiScale::properties().getBoolValue("transportZoomALaRegle", true);
     arrangement_.setZoomALaRegle(zoomALaRegle_);
+    pianoRollPanel_.setZoomALaRegle(zoomALaRegle_);   // D586.1 : une préférence, deux règles
     chasserLesNotes_ = vsm::app::ui::UiScale::properties().getBoolValue("transportChasserLesNotes", true);
     audioEngine_.processGraph().setChaseNotes(chasserLesNotes_);
+    // D586.3 : le nom des notes — une valeur hors des trois redevient celle d'origine (C4).
+    {
+        const int style = vsm::app::ui::UiScale::properties().getIntValue("affichageNomDesNotes", 0);
+        vsm::app::ui::setStyleDeNote(static_cast<vsm::app::ui::StyleDeNote>(style >= 0 && style <= 2 ? style : 0));
+    }
     lierLesTranches_ = vsm::app::ui::UiScale::properties().getBoolValue("mixageLierLesTranches", false);   // D566.3
     preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
         retourAuDepart_ = actif;
@@ -1529,6 +1535,7 @@ MainComponent::MainComponent()
         arrangement_.setCourbesVisibles(reglages.getBoolValue("arrangementCourbes", false));
         arrangement_.setMontageEnChaine(reglages.getBoolValue("arrangementEnChaine", false));   // D547.2
         arrangement_.setTeteFixe(reglages.getBoolValue("arrangementTeteFixe", false));          // D569.2
+        arrangement_.setEditionSuspendSuivi(reglages.getBoolValue("arrangementEditionSuspendSuivi", false));   // D586.2
         arrangement_.setAimantRelatif(reglages.getBoolValue("arrangementAimantRelatif", false)); // D572.1
         arrangement_.setAimantClips(reglages.getBoolValue("arrangementAimantClips", false));     // D574.1
         arrangement_.setAimantTete(reglages.getBoolValue("arrangementAimantTete", false));       // D574.2
@@ -1543,6 +1550,7 @@ MainComponent::MainComponent()
             r.setValue("arrangementAimantRelatif", arrangement_.aimantRelatif());   // D572.1
             r.setValue("arrangementAimantClips", arrangement_.aimantClips());       // D574.1
             r.setValue("arrangementAimantTete", arrangement_.aimantTete());         // D574.2
+            r.setValue("arrangementEditionSuspendSuivi", arrangement_.editionSuspendSuivi());   // D586.2
             r.saveIfNeeded();
         };
     }
@@ -5504,8 +5512,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(-1, tr(u8"(sur le fond de l'arrangement, comme sur la règle ; un glissé reste un lasso)"), false, false);
             // D585.2, D585.3 : deux préférences du poste — le glissé sur la règle, et les notes qu'un départ prend en route.
             menu.addItem(kMenuTransportZoomOnRuler, tr(u8"Zoomer en glissant sur la règle"), true, zoomALaRegle_);
-            menu.addItem(-1, tr(u8"(sur la règle de l'arrangement : vers le bas agrandit, vers le haut réduit ; de côté, la tête suit)"),
-                         false, false);
+            menu.addItem(-1, tr(u8"(sur la règle de l'arrangement et du piano roll : vers le bas agrandit, vers le haut réduit ; de "
+                                u8"côté, la tête suit)"), false, false);
             menu.addItem(kMenuTransportChaseNotes, tr(u8"Chasser les notes commencées"), true, chasserLesNotes_);
             menu.addItem(-1, tr(u8"(une note commencée avant la tête sonne dès le départ, et à chaque tour de boucle)"), false, false);
             // D582.1 : LA POSITION AFFICHÉE — six formats, la partie en mesures n'y change rien. D583.3 : le 29,97 à images
@@ -6043,12 +6051,26 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // D569.2 : LA TÊTE FIXE — une option du suivi, grisée sans lui ; les pages (D11.3) restent le défaut.
                 menu.addItem(kMenuViewStationaryCursor, tr(u8"Tête fixe (la vue défile sous elle)"),
                              arrangement_.followPlayhead(), arrangement_.teteFixe());
+                // D586.2 : une option du suivi, grisée sans lui, comme la tête fixe.
+                menu.addItem(kMenuViewEditSuspendsFollow, tr(u8"L'édition suspend le suivi de la tête"),
+                             arrangement_.followPlayhead(), arrangement_.editionSuspendSuivi());
                 vsm::app::ui::ajouterAvecRaccourci(menu, kMenuViewArrangementCurves,
                                                    tr(u8"Courbes d'automation dans l'arrangement"), shortcuts_,
                                                    Id::ViewArrangementAutomation, true, arrangement_.automationVisible());
                 // D547.2 : la cinquième, sans touche (Cubase n'en donne pas à ses modes).
                 menu.addItem(kMenuViewArrangementChain, tr(u8"Montage en chaîne dans l'arrangement"), true,
                              arrangement_.montageEnChaine());
+            }
+            // D586.3 : LE NOM DES NOTES (*Note Name Style*) — une préférence du poste ; des libellés uniques dans la barre.
+            {
+                const char8_t* styles[] = {u8"Lettres (do central C4)", u8"Lettres (do central C3)", u8"Solfège (do central Do3)"};
+                juce::PopupMenu noms;
+                for (int i = 0; i < 3; ++i)
+                    noms.addItem(kMenuViewNoteNameFirst + i, tr(styles[i]), true,
+                                 static_cast<int>(vsm::app::ui::styleDeNote()) == i);
+                noms.addItem(-1, tr(u8"(le clavier et la ligne d'état du piano roll, la liste d'événements, le moniteur MIDI)"),
+                             false, false);
+                menu.addSubMenu(tr(u8"Nom des notes"), noms);
             }
             menu.addSeparator();
             {
@@ -6260,6 +6282,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewArrangementBarGrid) { arrangement_.basculerGrilleALaMesure(); return; }
     if (menuItemID == kMenuViewArrangementFollow)  { arrangement_.basculerSuivi(); return; }
     if (menuItemID == kMenuViewStationaryCursor)   { arrangement_.basculerTeteFixe(); return; }   // D569.2
+    if (menuItemID == kMenuViewEditSuspendsFollow) { arrangement_.basculerEditionSuspendSuivi(); return; }   // D586.2
     if (menuItemID == kMenuViewArrangementSnapRelative) { arrangement_.basculerAimantRelatif(); return; }   // D572.1
     if (menuItemID == kMenuViewArrangementSnapEvents) { arrangement_.basculerAimantClips(); return; }       // D574.1
     if (menuItemID == kMenuViewArrangementSnapCursor) { arrangement_.basculerAimantTete(); return; }        // D574.2
@@ -6328,9 +6351,27 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         if (menuItemID == kMenuEditWheelClipGain) arrangement_.setMoletteGain(reglage);   // D582.3
         if (menuItemID >= kMenuRecordKeepControllers && menuItemID <= kMenuRecordKeepPrograms) appliquerFiltreDePrise();   // D584.2
         if (menuItemID == kMenuRecordResetAfterTake) recorder_.setRemiseAZero(reglage);                 // D585.1
-        if (menuItemID == kMenuTransportZoomOnRuler) arrangement_.setZoomALaRegle(reglage);             // D585.2
+        if (menuItemID == kMenuTransportZoomOnRuler) {                                                  // D585.2, D586.1
+            arrangement_.setZoomALaRegle(reglage);
+            pianoRollPanel_.setZoomALaRegle(reglage);
+        }
         if (menuItemID == kMenuTransportChaseNotes) audioEngine_.processGraph().setChaseNotes(reglage);  // D585.3
         std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
+        menuItemsChanged();
+        return;
+    }
+    if (menuItemID >= kMenuViewNoteNameFirst && menuItemID <= kMenuViewNoteNameLast) {   // D586.3
+        const int style = menuItemID - kMenuViewNoteNameFirst;
+        vsm::app::ui::setStyleDeNote(static_cast<vsm::app::ui::StyleDeNote>(style));
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        reglages.setValue("affichageNomDesNotes", style);
+        reglages.saveIfNeeded();
+        std::fputs(("VSM_REGLAGE_POSTE : affichageNomDesNotes " + juce::String(style) + " (60 = "
+                    + vsm::app::ui::nomDeNote(60) + ")\n").toRawUTF8(), stderr);
+        pianoRoll_.repaint();
+        pianoRollPanel_.repaint();
+        eventList_.repaint();
+        repaint();
         menuItemsChanged();
         return;
     }
