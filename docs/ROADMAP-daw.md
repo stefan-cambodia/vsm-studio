@@ -45125,6 +45125,15 @@ Les entrées REGARDÉES (`VSM_MENU_PHOTO`, session verrouillée) : *Timecode (29
 30 i/s et les échantillons ; *Rattrapage avant l'entrée*, *Rattrapage : 100 ms* cochée, la ligne grisée ; *La molette
 règle le gain et les fondus des clips audio* cochée, sa ligne grisée ; la barre relancée, `00:00:00;00` sur deux lignes.
 
+### Phase D583 — FAITE (24/10/2026, 11 h 09 à l'horloge)
+
+Les huit bancs « non jugés » de la série de D583 — `quantifier-audio`, `notes-depuis-attaques`, `transposition-globale`,
+`normaliser-niveau`, `liste-editer`, `pianoroll-bord`, `selection-au-bord`, `vumetre-console` — sont **VERTS** dans la
+série de D584, jouée l'écran ALLUMÉ et la session déverrouillée (le relevé de D516 n'a rien dit, ni au départ ni à la
+fin) : le rouge de la série de D583 était celui de l'écran éteint, comme le binaire de D582 le laissait penser. Les quatre
+bancs de D583 y sont verts aussi (`position-affichee`, `molette-gain`, `molette-fondus`, `rattrapage-prise`). D583 est
+FAITE.
+
 ### Phase D584 — un quarante-cinquième audit : les changements de programme joués au clavier, le filtre de ce qu'une prise enregistre (24/10/2026)
 
 *Écrite le 24/10 à 02 h 52 (l'horloge), pendant la série de D583, dans le brouillon ; le code écrit dans l'arbre à part,
@@ -45173,6 +45182,28 @@ sans qu'on l'ait voulue, et rien ne permet de ne garder que les notes.
 
 **L'ORDRE, TRANCHÉ ICI.** D584.1 puis D584.2, un banc pour les deux (`tools/midi-entrant-prise.sh`) — le filtre ne se
 mesure qu'avec ce que D584.1 fait entrer —, entré dans la série de `verifier.sh --bancs`.
+
+### Phase D584 — FAITE (24/10/2026, 11 h 09 à l'horloge)
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D584.1 | les changements de programme joués au clavier | `AudioEngine::handleIncomingMidiMessage` — le programme ne s'arrête plus au `return` d'avant les contrôleurs : il prend leur chemin (D24.2), `versLesMachines` pour la machine des pistes qui écoutent, `dansLaPrise` pour la capture ; `RecordedControlEvent::Kind::ProgramChange`, `RecordedControls::programChanges`, posés par `applyRecordedControls` sous la même règle de remplacement ; au cœur, le programme rendu au tick **480**, et la région remplacée qui perd le sien et garde celui d'après ; `tools/midi-entrant-prise.sh` (programme 5, pitch bend, CC 1, pression, note) : tout coché **[1 1 1 1 1]**, hors prise **[0 0 0 0 0]**, Ctrl+Z **[0 0 0 0 0]** en un pas. **L'ATTENDU ÉCRIT AVANT EST TENU** | **oui** |
+| D584.2 | le filtre de l'enregistrement | `MidiRecorder::setFiltre`, posé avant `begin` et gardé d'une prise à l'autre ; *Enregistrement ▸ Ce que la prise garde*, quatre cases au poste ; au cœur, le pitch bend filtré et les deux autres gardés ; au banc, le pitch bend et les programmes décochés **[0 0 1 1 1]** ; relancé : les deux cases décochées ; en anglais, *The take keeps program changes*. **TENU** | **oui** |
+| — | le témoin | le binaire de D583 (`build/temoin-D583`) : `midi-entrant-prise` **rouge 3 / 5**, par l'ABSENCE du verbe `midi-entrant:` (rien n'y est injecté) — l'A/B est le témoin intérieur au banc, du même binaire : les mêmes messages hors prise | **oui** |
+| — | la série | `./verifier.sh --bancs`, lancée à 06 h 34, l'écran ALLUMÉ et la session déverrouillée au départ comme à la fin : **174 / 174** en 273 min, dont **183 min de veille** (le poste a dormi de 07 h 47 à 10 h 50, `journalctl -b`), soit ~90 min de bancs ; préférences de l'utilisateur identiques (`cmp`) ; ni oom au journal du système. Le banc en vol pendant la veille, `pianoroll-zones` (11 521 s), est sorti VERT : rien à rejouer | **oui** |
+
+**LE COMPOSITEUR, L'ÉCRAN ALLUMÉ.** Sur toute la série, l'unité de kwin est restée sous **845 Mo** de sommet, la veille de
+trois heures comprise — jusqu'au DERNIER banc : `zoom-reassigne` l'a portée de **712 à 2 479 Mo** (sommet 2 582), le bilan
+qui suit l'a lue à **3 880 Mo** (sommet de la session **3 965**), et elle était redescendue à **613 Mo** deux minutes
+après. L'écran était allumé : un saut passager ne se réserve donc pas à l'écran éteint, ce qui affaiblit la piste de D581
+sans la réfuter (la série de D583, écran éteint, avait atteint 10 426 Mo de sommet). La garde de D581 a vu la montée
+APRÈS le dernier banc, quand il n'y avait plus rien à arrêter. Le relevé `compositeur.tsv` en garde le détail.
+
+**UN DÉFAUT DE LA GARDE, VU EN LISANT SON BILAN.** « Les plus coûteux » rangeait `accords.sh` (+9 Mo) en tête et
+`zoom-reassigne.sh` (+81 Mo) en quatrième : `sort -n` ne lit pas le « + » de tête et retombe sur l'ordre des caractères.
+Le bilan trie désormais sur le nombre, et le signe vient après ; rejoué sur le `compositeur.tsv` de la série :
+`+81 zoom-reassigne`, `+20 portes-du-transport`, `+20 portes-des-pistes`, `+17 portes-des-outils`, `+17
+annulation-des-menus`.
 
 ### Phase D585 — un quarante-sixième audit : les remises à zéro après la prise, le zoom en glissant sur la règle, la chasse aux notes commencées (24/10/2026)
 

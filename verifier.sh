@@ -181,8 +181,10 @@ if [ "${1:-}" = "--bancs" ]; then
     printf '   %d banc(s) en %d min, journaux dans %s\n' "$passes" $(( ($(date +%s) - debut_serie) / 60 )) "$journaux"
     printf '   compositeur : unité %d → %d Mo (sommet de la session %d Mo), kwin_wayland + Xwayland %d → %d Mo (anonyme, échange compris) ; les plus coûteux :\n' \
         "$compositeur_depart" "$(compositeur_mo)" "$(sommet_mo)" "$anon_depart" "$(compositeur_anon_mo)"
-    tail -n +2 "$journaux/compositeur.tsv" | awk -F'\t' '{printf "%+d\t%s\n", $5 - $4, $1}' | sort -rn | head -5 \
-        | sed 's/^/      /'
+    # D584 : TRIÉ SUR LE NOMBRE, SIGNÉ ENSUITE — `sort -n` ne lit pas le « + » de tête, et rangeait « +9 » avant « +81 »
+    # (la série de D584 donnait accords.sh, +9, premier, et zoom-reassigne.sh, +81, quatrième).
+    tail -n +2 "$journaux/compositeur.tsv" | awk -F'\t' '{printf "%d\t%s\n", $5 - $4, $1}' | sort -rn | head -5 \
+        | awk -F'\t' '{printf "      %+d\t%s\n", $1, $2}'
     if [ "$ECHECS" -eq 0 ]; then printf '   \033[32mTous les bancs sont verts.\033[0m\n'; exit 0; fi
     printf '   \033[31m%d en échec.\033[0m\n' "$ECHECS"
     exit 1
