@@ -46636,7 +46636,7 @@ en RELATIF : la main décale la courbe existante de ce qu'elle a bougé depuis q
 (le masque et le décalage, leur test), le fichier ; puis la console (D599.1, D599.2, D599.3) et le relevé ; le banc
 `automation-main.sh` enfin, joué sur le binaire neuf puis sur le témoin. Rien n'est compilé avant la fin de la série.
 
-**CORRIGÉ AVANT LA MESURE (06 h 49 à l'horloge, en écrivant le banc ; rien n'est compilé), et pourquoi.**
+**CORRIGÉ AVANT LA MESURE (06 h 48 à l'horloge, en écrivant le banc ; rien n'est compilé), et pourquoi.**
 - **L'attendu (2) se contredisait** : une rampe de 0,5 à 0,125 sur 7 680 ticks ne descend que de **0,96 dB** entre deux
   relevés à une seconde d'écart (ticks 960 et 1 920 : 0,453 puis 0,406), sous le « au moins 1 dB » écrit. La rampe est
   RAIDIE — de 0,5 (tick 0) à 0,0625 (tick 3 840) — et les relevés posés à 1,0 s et 2,5 s : **−8,16 dB** puis
