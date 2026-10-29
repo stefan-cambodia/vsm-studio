@@ -46530,3 +46530,108 @@ pleines (168 à 179 Ko) avant d'être regardées.*
   par octet. Corrigé (`juce::String::fromUTF8`), relu au journal : « refus — Début refusé ».
 - **La police de la bande** : 13 points (la ligne d'ensemble en a 12) — mise à 13 après la première photo, à 150 % elle se
   lit à la taille des noms de piste.
+
+### Phase D599 — un cinquante-neuvième audit : le fader qui suit sa courbe, la main qui l'emporte, le mode *Trim* (30/10/2026)
+
+*Écrite le 30/10 à 06 h 31 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de D592-D598 (`./verifier.sh --bancs`, lancée à 06 h 19, écran allumé et déverrouillé) : le code s'écrit dans un arbre à
+part (`../vsm-D599`), sans rien compiler ni lancer tant que la série tourne — un lancement lui volerait le focus, et
+`police-plancher.sh`, qui est de la série, lit les sources de l'arbre principal.*
+
+**LA MÉTHODE, celle de D587-D592 : un zéro se lit dans la fonction et dans celles qu'elle appelle, et dans ce que le code
+FAIT, pas dans ses noms (D571.3).** Sondés par la table des libellés (2 421 paires extraites de `Langue.cpp`), puis dans
+le code, une quarantaine de candidats de Cubase. **Présents, chacun lu à sa fonction** : l'horloge MIDI sortante (D28.1,
+`emitMidiClockAndTransport`), l'aimant des coupes aux passages par zéro (`snapCutToZeroCrossing`), les sections et
+l'*Ordre de jeu* (D542), insérer un silence et supprimer le temps entre les locateurs, la sonie (LUFS) et la corrélation
+du master, l'écoute en mono, le *solo safe*, la copie d'une piste, les préréglages de piste, les prises empilées, le
+fondu croisé, la courbe de gain des clips, l'aimant aux clips et à la tête (D574). **Restent au nom** : l'accordeur
+(*Tuner*, 0 pour « tuner », « accord » ne désignant que les accords) et la carte de batterie (D547 : « un éditeur de
+batterie, chantier à part ») — remis ; et, sur la liste des « toujours remis » depuis D573, **le mode d'automation
+*Trim***. C'est en lisant le W pour l'y ajouter qu'on trouve plus qu'un zéro — **deux défauts d'une fonction présente** :
+
+**(a) le fader ne suit jamais sa courbe.** `ChannelStrip` pose `volume_` et `pan_` depuis `track_.volume` et
+`track_.pan` à sa construction (`MixerComponent.cpp:153`, `:191`) et depuis un contrôleur extérieur (`:771`, `:774`) ;
+rien ne lit la courbe — ni la tranche, ni la ligne de piste (`TrackRowComponent::refreshMix`, `:350`). Or, dès qu'une
+courbe `mix.volume` existe, le moteur joue la courbe : `(pilotes & kAutoVolume) ? autoVolume_[t] : track.volume`
+(`ProcessGraph.cpp:2075`). Le fader montre donc une valeur qui ne sonne pas — 0 dB pendant que la courbe joue −12 dB —,
+à l'arrêt comme en lecture. Le *Read* de Cubase fait bouger le fader avec sa courbe.
+
+**(b) la main ne s'entend pas sur une courbe.** Le masque des réglages pilotés ne se calcule que sur les courbes
+(`refreshAutomationMask`) : pendant une passe Touch ou Latch sur un paramètre qui a DÉJÀ une courbe, le moteur continue
+de jouer l'ancienne courbe. La retouche — l'usage même de Touch, « corriger deux mesures sans effacer le reste »
+(D16.8) — se fait à l'aveugle ; on n'entend ce qu'on a joué qu'à la lecture suivante. La première passe s'entend (il
+n'y a pas encore de courbe), toutes les suivantes non. Sans W, un geste sur un fader piloté change la valeur statique
+`track.volume`, qui ne s'entend pas non plus, et ne le dit pas : une panne muette.
+
+**(c) 0 pour le mode *Trim*** — `AutomationMode` : `Off`, `Touch`, `Latch` (`Track.h:593`). Le *Trim* de Cubase écrit
+en RELATIF : la main décale la courbe existante de ce qu'elle a bougé depuis qu'elle l'a prise, et la forme de la courbe
+(un fondu, un palier) est gardée — Touch, lui, l'écrase par la valeur absolue du fader.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D599.1 | **Le fader suit sa courbe** — le *Read* d'une tranche | quand la piste a une courbe `mix.volume` (ou `mix.pan`) non vide, le fader de la tranche et le curseur de la ligne de piste montrent la valeur de la courbe à la tête — à l'arrêt comme en lecture —, celle que le moteur joue ; pas pendant que la main le tient ; sans courbe, rien ne change ; mesuré par un relevé du fader, de la courbe à la tête et de ce que le moteur joue, le témoin (le binaire de D598) à côté |
+| D599.2 | **La main l'emporte** — le *Touch* de Cubase, qui s'entend | tant que la main tient un fader piloté par une courbe — et, W armé, tant que sa passe est ouverte (Latch : jusqu'à l'arrêt) —, le moteur joue le FADER et non la courbe ; lâché, la courbe reprend (réécrite si W l'était) et le fader y revient ; sans W, rien n'est écrit, et la ligne d'état le DIT ; mesuré par ce que le moteur joue pendant et après la prise, le témoin à côté |
+| D599.3 | **Le mode *Trim*** | un quatrième état du W (Touch, Latch, *Trim*, éteint), retenu dans le projet (`"trim"`) : la main DÉCALE la courbe de ce qu'elle a bougé depuis qu'elle l'a prise — en dB pour le volume, en unités pour le panoramique —, s'entend pendant la passe (la courbe décalée), et à la fin réécrit la plage en gardant la forme ; mesuré par la courbe relue et par ce que le moteur joue, le témoin à côté, et par un test du cœur |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D599.1 : la valeur montrée est celle de la courbe, lue par `automationValueAt` à la tête** — la règle même du
+  moteur (`AutomationEdit.h` : un test les compare sur les mêmes points, `test_automation_lane.cpp`). Le minuteur principal la repose quand la tête a bougé
+  (`dontSendNotification` : on REFLÈTE, on ne règle pas), dans la tranche (volume, panoramique) et sur la ligne de piste
+  (volume, panoramique). La valeur statique `track.volume` n'est pas touchée par l'affichage. **Hors de cette phase,
+  dit ici** : les départs (`mix.send.N`), le trim d'entrée (`mix.trim`) et le VCA ont aussi des courbes — même défaut,
+  remis à une phase qui les mesurera.
+- **D599.2 : un masque « la main tient » par piste dans le moteur** (`ProcessGraph::setHandOverride(piste, masque)`,
+  atomique), retiré du masque des courbes au mixage : la piste joue alors `track.volume`, que la console republie déjà à
+  chaque geste (`mixDirty_`, le minuteur). Posé à l'appui (`onDragStart`), retiré au lâcher — ou, si une passe Latch
+  court encore, à sa fermeture. **Sans W**, le geste s'entend tant qu'on tient, rien ne s'écrit dans la courbe, le fader
+  revient à la courbe au lâcher (D599.1), et la ligne d'état dit, une fois par geste : « Volume : suivi de sa courbe — la
+  main s'entend tant qu'elle tient ; armer W pour l'écrire ». La valeur statique change comme avant (c'est elle que le
+  fader règle, et elle reprend la main si l'on supprime la courbe) ; c'est désormais DIT. **Un contrôleur MIDI appris**
+  (D29.3) ne se « lâche » pas : W éteint, il règle toujours la valeur statique sans s'entendre sur une courbe — remis, dit.
+- **D599.3 : le *Trim* a le temps de Touch** (la passe se ferme au lâcher), et un décalage de départ NUL : la passe
+  s'ouvre avec le point (appui, 0), la valeur du fader à l'appui — celle que D599.1 y a posée, la courbe — servant de
+  référence. Pendant la passe, le moteur joue la courbe multipliée par `gain(fader) / gain(référence)` (volume) ou
+  augmentée de `fader − référence` (panoramique) — `ProcessGraph::setTrimOffset(piste, facteur, décalage)`. Au lâcher,
+  `trimAutomationRange` (cœur, fonction pure) réécrit `[appui, lâcher]` : en chaque tick de l'union {points de la courbe
+  dans la plage, points de la passe, les deux bords}, la valeur ancienne ⊕ le décalage (interpolé entre les points de la
+  passe), bornée — volume entre 0 et le gain de +6 dB (le haut du fader), panoramique entre −1 et +1 ; un point ancien
+  garde son palier et sa courbure si aucun point de la passe ne coupe son segment (le résultat est alors EXACT là où la
+  main était immobile), un point de la passe prend le palier du segment où il tombe ; les raccords aux bords sont ceux de
+  `writeAutomationRange`, qui écrit le résultat. Le décalage du volume se compte en dB, le bas du fader (le silence) lu
+  à −60 dB. **Sur un paramètre SANS courbe, *Trim* écrit comme Touch** (la base est la valeur statique, et base ⊕
+  décalage = le fader) — dit dans l'infobulle. « W trim » en sarcelle (`accentTeal`) ; le cycle Off → Touch → Latch →
+  *Trim* → Off ; un binaire d'avant lit `"trim"` comme éteint (`ProjectDocument.cpp:886`) — c'est le témoin.
+- **Le relevé** `relever-automation` : `VSM_AUTOMATION_TRANCHE : piste N « nom » : W <mode> ; tête T ; fader X dB
+  (courbe Y dB) ; pan P (courbe Q) ; ligne V / PN ; main <volume|pan|—> ; joué G / PJ`, lu sur les curseurs eux-mêmes
+  et, pour « joué », sur le moteur (ce que le mixage multiplie, hors CC 7, VCA et polarité). **Un verbe de banc neuf**,
+  `relacher:<nom>` : le `mouseUp` du curseur qu'`appuyer:` a pressé — sans lui, aucune passe Touch ne se ferme au banc.
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE** (480 ticks à la noire, 4/4, 120 BPM — 960 ticks par seconde ; une piste MIDI
+  « Partie », une note sur chaque temps jusqu'au tick 7 680 ; volume statique 1,0 — 0 dB —, panoramique 0) :
+  (1) **à l'arrêt**, une courbe de volume plate à 0,25 et une de panoramique plate à −0,5 : la tranche lit **−12,0 dB**
+  et **−0,50**, la ligne **0,250** et **−0,50** ; le témoin 0,0 dB, 0,00, 1,000, 0,00 ;
+  (2) **en lecture**, une rampe de volume de 0,5 (tick 0) à 0,125 (tick 7 680) : deux relevés à une seconde d'écart lisent
+  chacun le fader à moins de 0,5 dB de la courbe au tick qu'ils relèvent, et les deux diffèrent d'au moins 1 dB ; le
+  témoin, 0,0 dB aux deux ;
+  (3) **Touch** sur la courbe plate à 0,25 : l'appui, le fader posé à 0 dB, puis un relevé pendant la prise → **joué
+  1,000** (le témoin : **0,250**) ; après le lâcher → joué 0,250 et le fader revenu à −12,0 dB ; la courbe enregistrée
+  porte 1,0 entre l'appui et le lâcher, 0,25 hors de la plage (Touch écrit comme avant) ;
+  (4) **sans W**, le même geste : joué **1,000** pendant qu'on tient (le témoin 0,250), 0,250 après ; la courbe
+  enregistrée IDENTIQUE à celle d'origine (ses deux points) ; « suivi de sa courbe » à la ligne d'état ;
+  (5) **Trim**, une courbe en palier — 0,5 du tick 0 au tick 1 440, puis 0,25 jusqu'au tick 7 680 — : l'appui vers le tick
+  480 (la référence −6,02 dB, que le fader montre), le fader posé à 0 dB (+6,02 dB), un relevé après le tick 1 440 →
+  **joué 0,500** (0,25 × 2 ; le témoin 0,250) ; la courbe enregistrée : **1,0** avant 1 440 et **0,5** de 1 440 au lâcher
+  — le palier GARDÉ, ses deux marches multipliées par **2,00** —, 0,25 après ; le témoin : la courbe inchangée (« trim »
+  lu comme éteint) ;
+  (6) quatre clics sur le W → « W touch », « W latch », « W trim », « W » ; l'infobulle en anglais nomme *Trim* ; la
+  tranche photographiée et regardée ;
+  (7) **le cœur** : une courbe plate à 0,5 sur [0, 960], un décalage constant de +6,02 dB sur [100, 500] → les points de
+  [100, 500] à 1,0 (à 10⁻³ près), les raccords 0,5 à 99 et 501 ; un palier reste un palier ; une courbe vide n'est pas
+  touchée (la fonction le rend, l'appelant écrit comme Touch) ; le panoramique : −0,5 + 0,8 → 0,3, −0,5 + 1,8 → 1,0
+  (borné) ; le volume borné au gain de +6 dB ;
+  (8) **le moteur** : une piste à courbe 0,25 et volume statique 1,0 rend au niveau 0,25 ; la main posée, au niveau 1,0 ;
+  retirée, 0,25 ; un décalage *Trim* de facteur 2 → 0,5 ;
+  (9) **le fichier** : `"trim"` fait l'aller-retour ; éteint, rien d'écrit (comme avant).
+
+**L'ORDRE, TRANCHÉ ICI.** Le cœur (`trimAutomationRange` et son test, joué rouge sur une déclaration vide), le moteur
+(le masque et le décalage, leur test), le fichier ; puis la console (D599.1, D599.2, D599.3) et le relevé ; le banc
+`automation-main.sh` enfin, joué sur le binaire neuf puis sur le témoin. Rien n'est compilé avant la fin de la série.
