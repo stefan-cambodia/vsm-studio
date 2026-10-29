@@ -46649,3 +46649,10 @@ en RELATIF : la main décale la courbe existante de ce qu'elle a bougé depuis q
 - **La ligne de piste entre dans D599.2** : ses curseurs de volume et de panoramique posent la main comme ceux de la
   tranche (le moteur joue la valeur statique tant qu'on tient), et, la ligne n'ayant pas de W, la phrase dit « armer W à
   la console pour l'écrire ».
+- **UN QUATRIÈME DÉFAUT, trouvé en écrivant le contrôle (3), lu au code (`ChannelStrip::fermerPasse`)** : en Touch, la
+  valeur TENUE n'était pas écrite jusqu'au lâcher. Le point de fin n'était posé qu'en Latch (`passe.relachee`) : une main
+  immobile sur le fader après son dernier mouvement n'écrivait plus rien, et la courbe filait en RAMPE du dernier point
+  joué vers le raccord — le fader tenu à 1,0 du tick 768 au tick 1 530 s'écrivait 1,0 → 0,25 sur toute la plage. Or
+  D16.8 dit « la main écrit TANT QU'ON LE TIENT ». Le point de fin est désormais posé en Touch aussi (la règle de
+  Latch, au lâcher au lieu de l'arrêt). L'attendu (3) devient : la courbe enregistrée à **1,0 au tick du relevé fait
+  pendant la prise** (le témoin, qui écrit la rampe : environ 0,5 à ce tick), 0,25 avant l'appui et après le lâcher.
