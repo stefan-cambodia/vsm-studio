@@ -46635,3 +46635,17 @@ en RELATIF : la main décale la courbe existante de ce qu'elle a bougé depuis q
 **L'ORDRE, TRANCHÉ ICI.** Le cœur (`trimAutomationRange` et son test, joué rouge sur une déclaration vide), le moteur
 (le masque et le décalage, leur test), le fichier ; puis la console (D599.1, D599.2, D599.3) et le relevé ; le banc
 `automation-main.sh` enfin, joué sur le binaire neuf puis sur le témoin. Rien n'est compilé avant la fin de la série.
+
+**CORRIGÉ AVANT LA MESURE (06 h 49 à l'horloge, en écrivant le banc ; rien n'est compilé), et pourquoi.**
+- **L'attendu (2) se contredisait** : une rampe de 0,5 à 0,125 sur 7 680 ticks ne descend que de **0,96 dB** entre deux
+  relevés à une seconde d'écart (ticks 960 et 1 920 : 0,453 puis 0,406), sous le « au moins 1 dB » écrit. La rampe est
+  RAIDIE — de 0,5 (tick 0) à 0,0625 (tick 3 840) — et les relevés posés à 1,0 s et 2,5 s : **−8,16 dB** puis
+  **−12,89 dB** à la courbe, 4,7 dB d'écart.
+- **Ce qui s'entend a son témoin, et c'est le vumètre** : le binaire de D598 ne connaît ni `relever-automation` ni
+  `relacher:` — ses relevés seraient « inconnus », ce qui ne prouve rien (D145). Le vumètre de la piste, lui, est après le
+  fader et se relève dans les deux binaires (`VSM_VUMETRES`, à la photo) : la photo est prise PENDANT que la main tient,
+  et le vumètre efficace doit lire **+12 dB** sur le témoin en Touch et sans W (0 dB contre la courbe à −12 dB), **+6 dB**
+  en Trim (la courbe × 2 contre la courbe), à 1,5 dB près. Le témoin de (5) est aussi sa courbe enregistrée, inchangée.
+- **La ligne de piste entre dans D599.2** : ses curseurs de volume et de panoramique posent la main comme ceux de la
+  tranche (le moteur joue la valeur statique tant qu'on tient), et, la ligne n'ayant pas de W, la phrase dit « armer W à
+  la console pour l'écrire ».
