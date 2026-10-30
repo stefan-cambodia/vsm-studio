@@ -382,6 +382,10 @@ MainComponent::MainComponent()
         const double secondes = project_.ticksToSeconds(fin) + static_cast<double>(ms) / 1000.0;
         return std::max<vsm::midi::Tick>(0, project_.secondsToTicks(secondes) - fin);
     };
+    // D603.2 : LA SUSPENSION DE L'ÉCRITURE, lue aux préférences à chaque appui.
+    mixer_.ecritureSuspendue = [this](const std::string& parametre) {
+        return (ecritureSuspendue() & vsm::sequencer::automationFamilyOf(parametre)) != 0;
+    };
     // D602.1 : LE REMPLISSAGE D'UNE PASSE, lu aux préférences à chaque passe, et ses bornes — la dernière chose qui sonne
     // (D8.3) et la boucle, qu'elle joue ou non (la plage de *Loop* chez Cubase est celle du cycle, allumé ou pas).
     mixer_.remplissage = [] {
@@ -4524,6 +4528,7 @@ void MainComponent::timerCallback() {
     {
         const vsm::midi::Tick tete = transport_.currentTick();
         mixer_.suivreLesCourbes(tete);
+        mixer_.leverLesControleursMuets();   // D603.1 : 500 ms de silence, c'est la main qui a quitté le bouton
         trackList_.suivreLesCourbes(tete, [this](size_t piste) {
             const auto it = mainSurLaTranche_.find(piste);
             return it != mainSurLaTranche_.end() ? it->second : uint16_t{0};
@@ -6093,6 +6098,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     remplir.addItem(kMenuMixFillFirst + c, tr(choix[c]), true,
                                     static_cast<int>(actuel) == c);
                 menu.addSubMenu(tr(u8"Remplir à la fin d'une passe"), remplir);
+                // D603.2 : LA SUSPENSION DE L'ÉCRITURE (*Suspend Write*) — les quatre familles qu'une passe de tranche
+                // écrit ; retenue aux préférences.
+                juce::PopupMenu ecriture;
+                const char8_t* familles[4] = {u8"Suspendre l'écriture du volume", u8"Suspendre l'écriture du panoramique",
+                                              u8"Suspendre l'écriture des départs", u8"Suspendre l'écriture du trim"};
+                const uint8_t suspendues = ecritureSuspendue();
+                for (int f = 0; f < 4; ++f)
+                    ecriture.addItem(kMenuMixWriteSuspendFirst + f, tr(familles[f]), true, (suspendues & (1u << f)) != 0);
+                menu.addSubMenu(tr(u8"Suspendre l'écriture de l'automation"), ecriture);
                 // D564.2 : LES SEULES TRANCHES CHOISIES — la même remise, bornée aux pistes choisies dans la liste.
                 const auto choisies = static_cast<int>(vsm::sequencer::countTracksToReset(project_, trackList_.selectedTracks()));
                 menu.addItem(kMenuMixResetChosen,
@@ -6510,6 +6524,19 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixReadAllOff) { lectureDeToutesLesPistes(false); return; }   // D601.1
     if (menuItemID == kMenuMixReadAllOn) { lectureDeToutesLesPistes(true); return; }
     if (menuItemID == kMenuMixWriteDisarmAll) { desarmerLeWDeToutesLesPistes(); return; }
+    if (menuItemID >= kMenuMixWriteSuspendFirst && menuItemID <= kMenuMixWriteSuspendLast) {  // D603.2
+        const uint8_t famille = static_cast<uint8_t>(1u << (menuItemID - kMenuMixWriteSuspendFirst));
+        const uint8_t avant = ecritureSuspendue();
+        const uint8_t apres = static_cast<uint8_t>(avant ^ famille);
+        juce::StringArray mots;
+        for (uint8_t bit = 1; bit <= vsm::sequencer::kFamilyTrim; bit = static_cast<uint8_t>(bit << 1))
+            if (apres & bit) mots.add(vsm::sequencer::automationFamilyName(bit));
+        vsm::app::ui::UiScale::properties().setValue("automationEcritureSuspendue", mots.joinIntoString(","));
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+        std::fputs(("VSM_ECRITURE_SUSPENDUE : " + (mots.isEmpty() ? juce::String("aucune") : mots.joinIntoString(", "))
+                    + "\n").toRawUTF8(), stderr);
+        return;
+    }
     if (menuItemID >= kMenuMixFillFirst && menuItemID <= kMenuMixFillLast) {                // D602.1
         const auto mode = static_cast<vsm::sequencer::AutomationFill>(menuItemID - kMenuMixFillFirst);
         vsm::app::ui::UiScale::properties().setValue("automationRemplir",
@@ -10087,8 +10114,12 @@ void MainComponent::applyLearnedControls() {
                 }
                 break;
             case Kind::TrackSend:
+                // D603.1 : PAR LA TRANCHE, comme le volume — la main posée, la passe ouverte si W est armé. Le projet seul
+                // quand la tranche n'existe pas (un bus sans bouton de départ).
                 if (piste && cible.slot < vsm::audio::engine::ProcessGraph::kMaxSends) {
-                    project_.tracks[cible.trackIndex].setSendLevel(cible.slot, commande.value);
+                    if (!mixer_.applyExternalControl(cible.trackIndex, "mix.send." + std::to_string(cible.slot + 1),
+                                                     commande.value))
+                        project_.tracks[cible.trackIndex].setSendLevel(cible.slot, commande.value);
                     projetTouche = true;
                 }
                 break;
@@ -10139,7 +10170,13 @@ void MainComponent::applyLearnedControls() {
         // La console doit MONTRER ce qu'un potentiomètre physique vient de
         // faire : un fader qui bouge sans que le sien bouge à l'écran est
         // exactement ce qui fait douter du câblage.
-        mixer_.setProject(&project_);
+        // D603.1 : EN RELISANT LES PISTES, PAS EN RECONSTRUISANT LA CONSOLE. `mixer_.setProject` (D10.2) détruisait
+        // chaque tranche à chaque message — et avec elle la passe que D29.3 y ouvrait, la main et la rafale : W armé, un
+        // contrôleur appris n'écrivait RIEN (la courbe intacte, mesurée sur le binaire de D602), et sa main ne tenait
+        // pas un tour de minuteur. Les tranches relisent leur piste ; le muet et le solo, que la commande règle dans le
+        // projet, se relisent aussi.
+        mixer_.refreshFromTracks();
+        mixer_.refreshMuteSolo();
     }
 }
 
@@ -15077,6 +15114,17 @@ void MainComponent::leverToutesLesPistes(bool solos) {
 // ouverte se ferme d'abord, et s'écrit — la règle du désarmement d'une tranche (D16.8) ; puis un pas, le cœur
 // (`setAllAutomationRead`, `disarmAllAutomationWrite`), et la console, le moteur et les courbes suivent par le chemin de
 // l'annulation (`rebuildFromProject`, qui refait la résolution).
+// D603.2 : les familles dont l'écriture est suspendue — les mots de D601.2, séparés par des virgules, aux préférences.
+uint8_t MainComponent::ecritureSuspendue() const {
+    juce::StringArray mots;
+    mots.addTokens(vsm::app::ui::UiScale::properties().getValue("automationEcritureSuspendue", ""), ",", "");
+    uint8_t masque = 0;
+    for (const auto& mot : mots)
+        masque = static_cast<uint8_t>(masque | vsm::sequencer::automationFamilyFromName(mot.trim().toStdString()));
+    return static_cast<uint8_t>(masque & (vsm::sequencer::kFamilyVolume | vsm::sequencer::kFamilyPan
+                                          | vsm::sequencer::kFamilySends | vsm::sequencer::kFamilyTrim));
+}
+
 void MainComponent::lectureDeToutesLesPistes(bool lecture) {
     if (vsm::sequencer::countTracksToSetRead(project_, lecture) == 0) {
         std::fputs((juce::String::fromUTF8(lecture ? "VSM_CONSOLE : aucune lecture \xc3\xa0 allumer\n"
@@ -19673,6 +19721,10 @@ void MainComponent::releverAutomation() {
         if (project_.automationSuspended & bit) suspendues.add(vsm::sequencer::automationFamilyName(bit));
     std::fputs(("VSM_AUTOMATION_SUSPENDUES : " + (suspendues.isEmpty() ? juce::String("aucune") : suspendues.joinIntoString(", "))
                 + "\n").toRawUTF8(), stderr);
+    // D603.2 : les familles dont l'écriture est suspendue, telles que les préférences les disent.
+    std::fputs(("VSM_AUTOMATION_ECRITURE : "
+                + vsm::app::ui::UiScale::properties().getValue("automationEcritureSuspendue", "") + "\n").toRawUTF8(),
+               stderr);
     // D602.1 : le remplissage d'une passe, tel que les préférences le disent.
     std::fputs(("VSM_AUTOMATION_REMPLIR : "
                 + vsm::app::ui::UiScale::properties().getValue("automationRemplir", "aucun") + "\n").toRawUTF8(), stderr);

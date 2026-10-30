@@ -797,17 +797,46 @@ void ChannelStrip::applyExternalControl(const std::string& parametre, float vale
         track_.pan = valeur;
         pan_.setValue(valeur, juce::dontSendNotification);
         bullePan_.rafraichir();   // D414
+    } else if (parametre.rfind("mix.send.", 0) == 0) {
+        // D603.1 : UN DÉPART APPRIS PASSE PAR LA TRANCHE, comme le volume — il écrivait le projet seul, sans passe ni main.
+        const int bus = std::atoi(parametre.c_str() + 9) - 1;
+        if (bus < 0 || bus >= sends_.size()) {
+            // UN BUS SANS BOUTON SUR CETTE TRANCHE : la valeur va au projet, comme avant D603 — jamais perdue en silence.
+            if (bus >= 0 && bus < 8) {
+                track_.setSendLevel(static_cast<size_t>(bus), valeur);
+                if (onMixChanged) onMixChanged();
+            }
+            return;
+        }
+        track_.setSendLevel(static_cast<size_t>(bus), valeur);
+        sends_[bus]->setValue(valeur, juce::dontSendNotification);
+        if (static_cast<size_t>(bus) < bullesDesDeparts_.size()) bullesDesDeparts_[static_cast<size_t>(bus)]->rafraichir();
     } else {
         return;
     }
-    // LA PASSE : ouverte au premier message si le W est armé et que le
-    // transport roule, nourrie ensuite. Un potentiomètre ne se « lâche » pas :
-    // la passe court jusqu'à l'arrêt du transport, comme en latch, quel que
-    // soit le mode -- Touch n'a pas de sens sans relâchement, et c'est dit
-    // dans la feuille de route (D29.3).
-    if (passes_.find(parametre) == passes_.end()) ouvrirPasse(parametre);
+    // D603.1 — LA MAIN D'UN CONTRÔLEUR APPRIS. D29.3 disait « un potentiomètre ne se lâche pas » : sa passe courait
+    // jusqu'à l'arrêt, quel que soit le mode, et W éteint il réglait une valeur statique que la courbe recouvrait. Une
+    // RAFALE (D521 : des messages sans silence de plus de 500 ms) est désormais une main posée : le premier message
+    // l'ouvre — la passe si W est armé, la main au moteur dans tous les cas — et `leverLesControleursMuets` la lève
+    // après 500 ms de silence, comme la souris au lâcher.
+    const juce::uint32 maintenant = juce::Time::getMillisecondCounter();
+    if (controleurs_.find(parametre) == controleurs_.end()) {
+        if (passes_.find(parametre) == passes_.end()) ouvrirPasse(parametre);
+        poserLaMain(parametre);
+    }
+    controleurs_[parametre] = maintenant;
     noterDansLaPasse(parametre, valeur);
     if (onMixChanged) onMixChanged();
+}
+
+void ChannelStrip::leverLesControleursMuets(juce::uint32 maintenant) {
+    std::vector<std::string> muets;
+    for (const auto& [parametre, dernier] : controleurs_)
+        if (maintenant - dernier > kSilenceDuControleurMs) muets.push_back(parametre);
+    for (const auto& parametre : muets) {
+        controleurs_.erase(parametre);
+        leverLaMain(parametre);   // la passe Touch ou Trim se ferme ; Latch court jusqu'à l'arrêt
+    }
 }
 
 void ChannelStrip::basculerArmement() {
@@ -932,6 +961,18 @@ void ChannelStrip::suivreLesCourbes(vsm::midi::Tick tete) {
 
 void ChannelStrip::poserLaMain(const std::string& parametre) {
     tenus_.insert(parametre);
+    // D603.2 : W ARMÉ SUR UNE FAMILLE DONT L'ÉCRITURE EST SUSPENDUE — pas de passe (`ouvrirPasse` l'a refusée) ; la main
+    // s'entend tant qu'elle tient, comme W éteint, et c'est DIT à l'appui.
+    if (track_.automationMode != vsm::sequencer::AutomationMode::Off && ecritureSuspendue
+        && ecritureSuspendue(parametre) && onDire) {
+        const juce::String nom = tr(parametre == "mix.volume" ? u8"Volume"
+                                    : parametre == "mix.pan"  ? u8"Panoramique"
+                                    : parametre == "mix.trim" ? u8"Trim d'entrée"
+                                                              : u8"Départ");
+        onDire(tr(u8"%1 : écriture suspendue — la main s'entend tant qu'elle tient, rien ne s'écrit").replace("%1", nom));
+        publierLaMain();
+        return;
+    }
     // D601.2 : W ARMÉ SUR UNE FAMILLE SUSPENDUE, la main s'entend (le moteur joue la valeur statique qu'elle bouge) et la
     // passe s'écrit — mais sa courbe ne jouera pas tant que la suspension tient : c'est DIT, à l'appui.
     if (track_.automationMode != vsm::sequencer::AutomationMode::Off && track_.automationRead && lectureSuspendue
@@ -1020,6 +1061,7 @@ vsm::sequencer::AutomationCurve& ChannelStrip::courbeDe(const std::string& param
 
 void ChannelStrip::ouvrirPasse(const std::string& parametre) {
     if (track_.automationMode == vsm::sequencer::AutomationMode::Off) return;
+    if (ecritureSuspendue && ecritureSuspendue(parametre)) return;   // D603.2 : la main s'entend, rien ne s'écrit
     if (!track_.automationRead) return;   // D600.2 : rien ne s'écrit à l'aveugle (un projet armé ET éteint, à la main)
     // LE TRANSPORT DOIT ROULER. Écrire à l'arrêt déposerait toute la passe sur
     // un seul tick -- c'est-à-dire rien de lisible --, et surtout cela
@@ -1552,6 +1594,9 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             strip->transportPlayingProvider = transportPlayingProvider;
             strip->retourEnTicks = [this](vsm::midi::Tick fin) {   // D600.3
                 return retourEnTicks ? retourEnTicks(fin) : vsm::midi::Tick{0};
+            };
+            strip->ecritureSuspendue = [this](const std::string& parametre) {   // D603.2
+                return ecritureSuspendue && ecritureSuspendue(parametre);
             };
             strip->remplissage = [this] {   // D602.1
                 return remplissage ? remplissage() : vsm::sequencer::AutomationFill::None;

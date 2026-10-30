@@ -1519,6 +1519,10 @@ private:
         /// D602.1 : les cinq remplissages d'une passe, CONTIGUS et dans l'ordre de `vsm::sequencer::AutomationFill`.
         kMenuMixFillFirst,
         kMenuMixFillLast = kMenuMixFillFirst + 4,
+        /// D603.2 : les quatre familles dont l'écriture se suspend — volume, panoramique, départs, trim (les bits 0 à 3
+        /// de `vsm::sequencer::kFamilyVolume`…), CONTIGUËS.
+        kMenuMixWriteSuspendFirst,
+        kMenuMixWriteSuspendLast = kMenuMixWriteSuspendFirst + 3,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2028,6 +2032,8 @@ private:
     void lectureDeToutesLesPistes(bool lecture);
     void desarmerLeWDeToutesLesPistes();
     void basculerLaSuspension(uint8_t famille);
+    /// D603.2 : le masque des familles dont l'écriture est suspendue (préférences).
+    uint8_t ecritureSuspendue() const;
     /// D560.3 : plier, déplier ou inverser les plis de toutes les pistes ; un pas ; dit (`VSM_PLIS`).
     void plierToutesLesPistes(vsm::sequencer::FoldAll comment);
     /// D561.1 : les pistes choisies dans la liste, et le contenu de chaque dossier choisi.

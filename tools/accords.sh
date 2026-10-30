@@ -5,7 +5,7 @@
 # LA RÈGLE GARDÉE.
 #   (2) sans accord, aucune bande — la règle du piano roll garde 22 px ; avec trois accords
 #       (C à 960, Am7/G à 1920, F à 3840), les deux bandes listent C, Am7/G et F dans
-#       l'ordre, la règle du piano roll prend 20 px et la grille des notes les cède, la zone
+#       l'ordre, la règle du piano roll prend 20 px que la grille et la lane cèdent (D603 : voir plus bas), la zone
 #       des pistes de l'arrangement aussi ;
 #   (3) par le menu de la règle, à la TÊTE DE LECTURE : « Poser un accord ici… » avec
 #       « Am7/G » à la mesure 3 → project.json porte (3840, Am7/G), et Ctrl+Z l'ôte ; la
@@ -143,16 +143,26 @@ for n in bandes-nu bandes-accorde; do
 done
 regle() { derniere "$1" "^VSM_PIANOROLL_ZONES" | grep -o 'regle=[0-9]*' | cut -d= -f2; }
 notes() { derniere "$1" "^VSM_PIANOROLL_ZONES" | grep -o 'notes=[0-9]*' | cut -d= -f2; }
+lane() { derniere "$1" "^VSM_PIANOROLL_ZONES" | grep -o 'lane=[0-9]*' | cut -d= -f2; }
 zone() { derniere "$1" "^VSM_ARRANGEMENT : pistes" | grep -o 'zone [0-9]*' | cut -d' ' -f2; }
 r0="$(regle bandes-nu)"; r1="$(regle bandes-accorde)"; g0="$(notes bandes-nu)"; g1="$(notes bandes-accorde)"
+l0="$(lane bandes-nu)"; l1="$(lane bandes-accorde)"
 z0="$(zone bandes-nu)"; z1="$(zone bandes-accorde)"
-echo "       piano roll : règle ${r0:-?} → ${r1:-?} px, grille ${g0:-?} → ${g1:-?} px ; arrangement : zone des pistes ${z0:-?} → ${z1:-?} px"
+echo "       piano roll : règle ${r0:-?} → ${r1:-?} px, grille ${g0:-?} → ${g1:-?} px, lane ${l0:-?} → ${l1:-?} px ; arrangement : zone des pistes ${z0:-?} → ${z1:-?} px"
 sans_bande() { derniere bandes-nu "^VSM_ACCORDS : $1" | grep -q "bande 0 px, 0 accord(s) au projet, 0 dans la vue" && echo 1 || echo 0; }
 trois() { derniere bandes-accorde "^VSM_ACCORDS : $1" | grep -qE "bande 20 px, 3 accord\(s\) au projet, 3 dans la vue — C@[0-9-]+, Am7/G@[0-9-]+, F@[0-9-]+$" && echo 1 || echo 0; }
 verdict "(2) sans accord : aucune bande, ni dans l'arrangement ni au piano roll" "$([ "$(sans_bande arrangement)$(sans_bande pianoroll)" = 11 ] && echo 1 || echo 0)"
 verdict "(2) trois accords : les deux bandes écrivent C, Am7/G, F, dans l'ordre" "$([ "$(trois arrangement)$(trois pianoroll)" = 11 ] && echo 1 || echo 0)"
-verdict "(2) la règle du piano roll : 22 px sans accord, 42 avec, et la grille cède les 20" \
-    "$([ "${r0:-}" = 22 ] && [ "${r1:-}" = 42 ] && [ -n "${g0:-}" ] && [ -n "${g1:-}" ] && [ $((g0 - g1)) = 20 ] && echo 1 || echo 0)"
+# CORRIGÉ LE 30/10 (D603), ET DIT : « la grille cède les 20 » ne valait que lorsque la lane de vélocité gardait sa
+# hauteur. Depuis que la tranche de la console compte son coupe-bas et son coupe-haut (D593, corrigée après la série de
+# D598), le dock a 36 px de plus et le piano roll 36 de moins : la lane y est plafonnée au TIERS de la place (D301, « la
+# grille reçoit toujours au moins deux fois la lane »), et les 20 px de la bande se partagent — mesuré : panneau 510,
+# grille 210 → 196, lane 104 → 98. La règle gardée est donc celle de D301 : la grille ET la lane cèdent les 20 px
+# ensemble, et la grille garde au moins deux fois la lane. Le binaire de D598 (la lane non plafonnée) cède les 20 à la
+# grille seule (240 → 220) : il passe aussi.
+verdict "(2) la règle du piano roll : 22 px sans accord, 42 avec ; la grille et la lane cèdent les 20 ensemble (D301)" \
+    "$([ "${r0:-}" = 22 ] && [ "${r1:-}" = 42 ] && [ -n "${g0:-}" ] && [ -n "${g1:-}" ] && [ -n "${l0:-}" ] && [ -n "${l1:-}" ] \
+        && [ $((g0 + l0 - g1 - l1)) = 20 ] && [ "$g1" -ge $((2 * l1)) ] && echo 1 || echo 0)"
 verdict "(2) la zone des pistes de l'arrangement cède les 20 px" \
     "$([ -n "${z0:-}" ] && [ -n "${z1:-}" ] && [ $((z0 - z1)) = 20 ] && echo 1 || echo 0)"
 

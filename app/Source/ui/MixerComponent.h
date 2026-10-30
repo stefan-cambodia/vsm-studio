@@ -293,6 +293,15 @@ public:
     /// Relit muet et solo depuis la piste (après un solo exclusif).
     /// D29.3 : voir MixerComponent::applyExternalControl.
     void applyExternalControl(const std::string& parametre, float valeur);
+    /// D603.1 : lève la main des contrôleurs appris muets depuis plus de `kSilenceDuControleurMs` — le lâcher d'une
+    /// rafale (D521). Appelée par le minuteur de l'application.
+    void leverLesControleursMuets(juce::uint32 maintenant);
+    /// La demi-seconde de D521 : sans message pendant ce temps, « c'est la main qui l'a quitté ». La même constante fait
+    /// un pas d'annulation (MainComponent) et un lâcher (ici).
+    static constexpr juce::uint32 kSilenceDuControleurMs = 500;
+    /// D603.2 : l'écriture de la famille de ce réglage est-elle suspendue (*Suspend Write*) ? Alors W armé n'ouvre pas de
+    /// passe. Absent : rien n'est suspendu.
+    std::function<bool(const std::string&)> ecritureSuspendue;
     /// L'index de la piste que cette tranche montre. Nécessaire depuis D35.5 :
     /// les tranches ne sont plus en correspondance de rang avec les pistes, un
     /// dossier n'en ayant pas.
@@ -538,6 +547,8 @@ private:
     /// D599.2 : les réglages que la main tient — entre l'appui et le lâcher d'un glissé. D600.1 : un ensemble de noms
     /// de courbe (`mix.volume`, `mix.pan`, `mix.trim`, `mix.send.N`), et non plus deux drapeaux.
     std::set<std::string> tenus_;
+    /// D603.1 : les réglages que tient un contrôleur appris, et l'instant (ms) de son dernier message.
+    std::map<std::string, juce::uint32> controleurs_;
     uint16_t masqueMain_ = 0;
     vsm::midi::Tick teteSuivie_ = 0;   ///< D599.1 : la tête du dernier suivi, pour `refreshFromTrack`
     /// D599.3 : le décalage Trim publié (facteur de gain du volume, décalage du panoramique).
@@ -949,6 +960,13 @@ public:
     std::function<void()> onAutomationWritten;
     /// D600.3 : voir `ChannelStrip::retourEnTicks`.
     std::function<vsm::midi::Tick(vsm::midi::Tick)> retourEnTicks;
+    /// D603.2 : voir `ChannelStrip::ecritureSuspendue`.
+    std::function<bool(const std::string&)> ecritureSuspendue;
+    /// D603.1 : voir `ChannelStrip::leverLesControleursMuets` — pour chaque tranche.
+    void leverLesControleursMuets() {
+        const juce::uint32 maintenant = juce::Time::getMillisecondCounter();
+        for (auto* strip : strips_) strip->leverLesControleursMuets(maintenant);
+    }
     /// D602.1 : voir `ChannelStrip::remplissage`.
     std::function<vsm::sequencer::AutomationFill()> remplissage;
     std::function<vsm::sequencer::FillBounds()> bornesDuRemplissage;

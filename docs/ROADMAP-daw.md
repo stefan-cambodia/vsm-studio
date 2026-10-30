@@ -47046,7 +47046,8 @@ banc `tools/automation-remplir.sh`.
 ### Phase D602 — MESURÉE, la série à jouer (30/10/2026, 16 h 17 à l'horloge)
 
 *Écrite avant son code à 16 h 01 ; codée, testée et mesurée sur `master` sous une session verrouillée (le banc lit les
-courbes enregistrées, la ligne d'état et les menus, pas des photos). Le banc `tools/automation-remplir.sh` (12 contrôles) ;
+courbes enregistrées, la ligne d'état et les menus, pas des photos). Le banc `tools/automation-remplir.sh` (**11** contrôles —
+« 12 » écrit ici et dans le commit de D602 était faux, compté de tête ; relu à D603 en comptant les « OK ») ;
 le témoin de (1) à (6) est « aucun » (`automationRemplir` absent), du même code ; celui du défaut trouvé, le premier essai.*
 
 | # | attendu | mesure | tenu |
@@ -47131,3 +47132,46 @@ absente, la courbe réécrite ;
 
 **L'ORDRE.** La tranche (la main d'un contrôleur, le départ par la tranche, la levée au minuteur, la suspension de
 l'écriture), le menu et la préférence, puis le banc `tools/automation-controleur.sh` — tout après la fin de la série.
+
+### Phase D603 — MESURÉE, la série à jouer (30/10/2026, 17 h 43 à l'horloge)
+
+*Écrite avant son code à 17 h 09 ; codée pendant la série de 200 bancs lancée à 17 h 08 l'écran allumé — ARRÊTÉE à
+17 h 25 à son deuxième banc : la session s'est verrouillée à 17 h 12 et l'écran éteint, `annulation-des-menus.py` y était
+bloqué depuis quinze minutes ; compilée et mesurée ensuite. Le banc `tools/automation-controleur.sh` (9 contrôles) ; le
+témoin : le binaire de D602 (`build/temoin-D602`).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D602) | tenu |
+|---|---|---|---|---|
+| D603 (1) | W éteint : joué 1,000 et la main « volume » pendant la rafale ; 0,250, « - », −12,0 dB après | **1,000**, « volume » à 1 200 ms ; **0,250**, « - », **−12,00 dB** à 2 000 ms | joué **0,250** pendant la rafale | **oui, après correction** |
+| D603 (2) | W Touch : 1,0 pendant, 0,25 après (la passe fermée à la fin de la rafale) | la courbe `424:0,984 623:0,984 624:0,992 801:0,992 802:1,0 1315:1,0 1555:0,25` — la passe fermée 500 ms après le dernier message, la rampe de retour de D600.3 ; **1,0000** au tick 881, **0,2500** au tick 2 218 | la courbe INTACTE (`0:0,25 7680:0,25`) — voir plus bas | **oui, après correction** |
+| D603 (3) | un départ appris : entendu 1,00 pendant, 0,50 après | **1,00** (la main « départ1 »), puis **0,50** | **0,50** pendant | **oui** |
+| D603 (4) | l'écriture du volume suspendue : joué 1,000, la courbe identique, dit | **1,000** ; `0:0,25 7680:0,25` ; « Volume : écriture suspendue — la main s'entend tant qu'elle tient, rien ne s'écrit » | l'entrée absente ; la courbe réécrite (`524:1,0 1293:1,0`) | **oui** |
+| D603 (5) | en anglais | *Suspend automation write ▸ Suspend volume write* | — | **oui** |
+| — | les voisins | `commandes-apprises` (D521) vert ; `automation-main` 13, `automation-lecture` 18, `automation-globale` 17, `automation-remplir` 11 — tous verts ; gardes des sources vertes ; aucune suite C++ touchée (l'application seule) | — | **oui** |
+| — | la série | `./verifier.sh --bancs`, **201** bancs (`automation-controleur` entré) — **à jouer, l'écran allumé** | — | **à jouer** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **UN DÉFAUT ANTÉRIEUR, depuis D10.2 : la console était RECONSTRUITE à chaque commande apprise.** La fin de
+  `applyLearnedControls` appelait `mixer_.setProject(&project_)` pour « montrer ce qu'un potentiomètre vient de faire » :
+  toutes les tranches détruites et refaites, cent fois par seconde sous un bouton qu'on tourne. Avec elles mouraient la
+  passe que D29.3 y ouvrait — W armé, un contrôleur appris n'écrivait donc RIEN, le témoin le montre (sa courbe intacte),
+  là où D29.3 annonçait une passe « jusqu'à l'arrêt » — et la main de D603, qui ne tenait pas un tour de minuteur (premier
+  essai : « main - » au relevé alors que la ligne d'état venait de dire « suivi de sa courbe »). Les tranches relisent
+  désormais leur piste (`refreshFromTracks`, `refreshMuteSolo`) sans être détruites ; `commandes-apprises` reste vert.
+- **L'attendu du témoin (2) était faux, et c'est écrit** : il prêtait au binaire de D602 ce que D29.3 annonçait (1,0 aux
+  deux relevés) ; mesuré, il n'écrit rien. Le contrôle du témoin dit maintenant ce que le défaut produit — la courbe
+  intacte —, et son en-tête le dit ; l'attendu du binaire neuf n'a pas bougé.
+- **`accords.sh` rougissait dans les deux séries de l'après-midi, et ce n'était ni le verrou ni D599-D603** : son
+  contrôle (2) voulait que la grille du piano roll cède seule les 20 px de la bande d'accords. Mesuré (panneau 510 px) :
+  la grille cède 14 px (210 → 196) et la lane de vélocité 6 (104 → 98), la lane étant plafonnée au TIERS de la place
+  (D301). Ce plafond ne jouait pas ce matin : la correction de D593 (les 36 px du coupe-bas et du coupe-haut rendus au
+  compte de la tranche) a grandi le dock d'autant après la série de D598 ; le binaire de D598 garde sa lane à 110 px et
+  cède les 20 à la grille (240 → 220). Le contrôle garde désormais la règle de D301 — la grille et la lane cèdent les
+  20 px ensemble, la grille au moins deux fois la lane — et les deux binaires le passent. Au premier passage, une course
+  a lu la grille sans accord à 260 px au lieu de 210 : non reproduit sur deux courses, pas expliqué — nommé.
+- **Le compte du banc de D602 était faux** : 11 contrôles, et non 12 (écrit de tête au cahier et dans le commit) — relu en
+  comptant les « OK », corrigé au cahier.
+- **Un piège repayé, sans dommage** : `echo "rc=$? : $(grep …)"` imprimait le code du `grep`, pas celui du banc (H37, `CLAUDE.md`) ;
+  les codes ont été relus par `rc=$?` sur la ligne qui suit le banc.
+- **Remis, nommé** : la suspension de l'écriture ne couvre pas les réglages de machine et les inserts, qu'aucune passe de
+  tranche n'écrit ; un contrôleur appris sur le trim n'existe pas (aucune cible d'association « trim »).
