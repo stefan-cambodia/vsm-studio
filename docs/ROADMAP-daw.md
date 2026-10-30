@@ -46930,3 +46930,17 @@ chaleur (Σ rouge − bleu) de la même piste R allumé ; le témoin : « lue »
 
 **L'ORDRE.** Le cœur et l'interchange d'abord (le masque, sa résolution, le fichier, avec leurs tests joués rouges sur
 le code d'avant), puis les menus, la tranche et le panneau, puis le banc `tools/automation-globale.sh`.
+
+**CORRIGÉ AVANT LE CODE DE LA CONSOLE (15 h 41 à l'horloge ; le cœur et l'interchange écrits et testés), et pourquoi.**
+- **La phrase d'une passe sur une famille suspendue disait faux.** Une famille suspendue, le moteur joue la valeur
+  STATIQUE — celle que la main bouge pendant la passe : la main S'ENTEND ; c'est la courbe écrite qui ne jouera pas
+  tant que la suspension tient. La ligne d'état dira donc, à l'appui : « Volume : lecture suspendue — la passe s'écrit,
+  sa courbe ne jouera qu'une fois la suspension levée ».
+- **Les six cases portent des libellés UNIQUES dans toute la barre** — « Suspendre le volume », « Suspendre le
+  panoramique », « Suspendre les départs », « Suspendre le trim », « Suspendre les inserts », « Suspendre les machines » :
+  « Volume » seul existe déjà ailleurs, et `VSM_MENU` prend le premier libellé exact. Les trois entrées de D601.1 portent
+  leur compte, comme les gestes de toute la console de D559 (« Lever tous les solos (2) ») : « Éteindre la lecture de toutes
+  les pistes (2) », « Allumer la lecture de toutes les pistes (1) », « Désarmer le W de toutes les pistes (2) ».
+- **Le cœur tient D601.1** (`MixSnapshot.h`, à côté des gestes de D559) : `setAllAutomationRead` et
+  `disarmAllAutomationWrite`, et leurs comptes. Une passe Latch ouverte se ferme AVANT (comme au désarmement d'une
+  tranche) : elle s'écrit, puis le geste s'applique.
