@@ -668,3 +668,23 @@ VSM_TEST(a_trim_pass_returns_to_the_old_curve_in_a_ramp_d600) {
     VSM_ASSERT_NEAR(automationValueAt(courbe, 700), 0.5f, 1e-6f);
     VSM_ASSERT_NEAR(automationValueAt(temoin, 501), 0.5f, 1e-6f);
 }
+
+// D601.2 — LES FAMILLES DE COURBES. Chaque nom de courbe a sa famille, le master aucune ; chaque famille a son mot de
+// fichier, qui fait l'aller-retour, et un mot inconnu ne désigne rien.
+VSM_TEST(each_curve_name_has_its_family_and_the_master_none_d601) {
+    VSM_ASSERT_EQ(automationFamilyOf("mix.volume"), kFamilyVolume);
+    VSM_ASSERT_EQ(automationFamilyOf("mix.pan"), kFamilyPan);
+    VSM_ASSERT_EQ(automationFamilyOf("mix.send.1"), kFamilySends);
+    VSM_ASSERT_EQ(automationFamilyOf("mix.send.8"), kFamilySends);
+    VSM_ASSERT_EQ(automationFamilyOf("mix.trim"), kFamilyTrim);
+    VSM_ASSERT_EQ(automationFamilyOf("insert.2.effect.filter.cutoff"), kFamilyInserts);
+    VSM_ASSERT_EQ(automationFamilyOf("filter.1.cutoff"), kFamilyMachines);
+    VSM_ASSERT_EQ(automationFamilyOf("master.Stereo Width"), uint8_t{0});
+    for (uint8_t f : {kFamilyVolume, kFamilyPan, kFamilySends, kFamilyTrim, kFamilyInserts, kFamilyMachines}) {
+        VSM_ASSERT(!automationFamilyName(f).empty());
+        VSM_ASSERT_EQ(automationFamilyFromName(automationFamilyName(f)), f);
+    }
+    VSM_ASSERT_EQ(automationFamilyName(kFamilyVolume), std::string("volume"));
+    VSM_ASSERT_EQ(automationFamilyFromName("rogn"), uint8_t{0});
+    VSM_ASSERT(automationFamilyName(0).empty());
+}

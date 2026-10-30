@@ -217,6 +217,7 @@ private:
     /// D599.1 : la tête du dernier suivi, et ce que la main tient sur la tranche de cette piste.
     vsm::midi::Tick teteSuivie_ = 0;
     uint16_t mainAilleurs_ = 0;
+    uint8_t suspendues_ = 0;   ///< D601.2 : voir `poserLesSuspensions`
     /// D599.2 : ce que la main tient sur cette ligne (1 volume, 2 panoramique).
     uint16_t mainLigne_ = 0;
     void poserLaMainLigne(uint16_t bit, bool posee);
@@ -226,6 +227,8 @@ public:
     /// (`ChannelStrip::suivreLesCourbes`) : la valeur de la courbe à la tête, sauf quand la main tient le curseur — ici,
     /// ou sur la tranche (`mainAilleurs`) : le moteur joue alors la valeur statique, et c'est elle qui se montre.
     void suivreLesCourbes(vsm::midi::Tick tete, uint16_t mainAilleurs);
+    /// D601.2 : les familles de courbes suspendues du projet — une famille suspendue ne pilote plus le curseur.
+    void poserLesSuspensions(uint8_t familles) { suspendues_ = familles; }
     double volumeAffiche() const { return volumeSlider_.getValue(); }   ///< D599 : pour le relevé
     uint16_t mainLigne() const { return mainLigne_; }
     double panAffiche() const { return panSlider_.getValue(); }

@@ -370,8 +370,10 @@ void TrackRowComponent::refreshMix() {
 
 namespace {
 /// D599 : la courbe NON VIDE de ce paramètre, ou nullptr — comme au moteur, qui saute une courbe sans point.
-const vsm::sequencer::AutomationCurve* courbePilote(const vsm::sequencer::Track& piste, const char* parametre) {
+const vsm::sequencer::AutomationCurve* courbePilote(const vsm::sequencer::Track& piste, const char* parametre,
+                                                     uint8_t suspendues) {
     if (!piste.automationRead) return nullptr;   // D600.2 : lecture éteinte, le moteur l'écarte — rien ne la pilote
+    if (suspendues & vsm::sequencer::automationFamilyOf(parametre)) return nullptr;   // D601.2 : famille suspendue
     for (const auto& courbe : piste.automation)
         if (courbe.parameter == parametre && !courbe.points.empty()) return &courbe;
     return nullptr;
@@ -382,11 +384,11 @@ void TrackRowComponent::suivreLesCourbes(vsm::midi::Tick tete, uint16_t mainAill
     teteSuivie_ = tete;
     mainAilleurs_ = mainAilleurs;
     const uint16_t tenu = static_cast<uint16_t>(mainLigne_ | mainAilleurs);
-    if (const auto* c = courbePilote(track_, "mix.volume"); c != nullptr && !(tenu & 1u)) {
+    if (const auto* c = courbePilote(track_, "mix.volume", suspendues_); c != nullptr && !(tenu & 1u)) {
         volumeSlider_.setValue(vsm::sequencer::automationValueAt(*c, tete), juce::dontSendNotification);
         bulleVolume_.rafraichir();
     }
-    if (const auto* c = courbePilote(track_, "mix.pan"); c != nullptr && !(tenu & 2u)) {
+    if (const auto* c = courbePilote(track_, "mix.pan", suspendues_); c != nullptr && !(tenu & 2u)) {
         panSlider_.setValue(vsm::sequencer::automationValueAt(*c, tete), juce::dontSendNotification);
         bullePan_.rafraichir();
     }
@@ -397,7 +399,7 @@ void TrackRowComponent::poserLaMainLigne(uint16_t bit, bool posee) {
     if (onHandChanged) onHandChanged(index_, mainLigne_);
     // D599.2 : sur un réglage que sa courbe pilote, la main s'entend tant qu'elle tient, et la ligne n'écrit jamais —
     // c'est DIT, une fois par geste, comme à la tranche W éteint.
-    if (posee && onDire && courbePilote(track_, bit == 2u ? "mix.pan" : "mix.volume") != nullptr)
+    if (posee && onDire && courbePilote(track_, bit == 2u ? "mix.pan" : "mix.volume", suspendues_) != nullptr)
         onDire(vsm::app::ui::tr(bit == 2u ? u8"Panoramique : suivi de sa courbe — la main s'entend tant qu'elle "
                                             u8"tient ; armer W à la console pour l'écrire"
                                           : u8"Volume : suivi de sa courbe — la main s'entend tant qu'elle tient ; "
@@ -927,8 +929,10 @@ void TrackListComponent::refreshMix(const std::set<size_t>& seules) {
 
 void TrackListComponent::suivreLesCourbes(vsm::midi::Tick tete,
                                           const std::function<uint16_t(size_t)>& mainSurLaTranche) {
-    for (int i = 0; i < rows_.size(); ++i)
+    for (int i = 0; i < rows_.size(); ++i) {
+        rows_[i]->poserLesSuspensions(project_ != nullptr ? project_->automationSuspended : uint8_t{0});   // D601.2
         rows_[i]->suivreLesCourbes(tete, mainSurLaTranche ? mainSurLaTranche(static_cast<size_t>(i)) : 0);
+    }
 }
 
 const TrackRowComponent* TrackListComponent::ligneDe(size_t piste) const {

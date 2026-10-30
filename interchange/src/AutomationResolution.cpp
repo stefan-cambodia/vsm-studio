@@ -1,4 +1,5 @@
 #include "vsm/interchange/AutomationResolution.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/interchange/EffectDescription.h"
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/interchange/ProjectBundle.h"
@@ -20,8 +21,22 @@ bool commencePar(const std::string& texte, const char* prefixe) {
 
 } // namespace
 
+uint8_t automationLaneFamily(const vsm::audio::engine::AutomationLane& lane) {
+    switch (lane.target) {
+        case AutomationTarget::TrackVolume:     return vsm::sequencer::kFamilyVolume;
+        case AutomationTarget::TrackPan:        return vsm::sequencer::kFamilyPan;
+        case AutomationTarget::TrackSend:       return vsm::sequencer::kFamilySends;
+        case AutomationTarget::TrackTrim:       return vsm::sequencer::kFamilyTrim;
+        case AutomationTarget::InsertParam:     return vsm::sequencer::kFamilyInserts;
+        case AutomationTarget::InstrumentParam: return vsm::sequencer::kFamilyMachines;
+        case AutomationTarget::MasterParam:     return 0;
+    }
+    return 0;
+}
+
 bool automationLaneIsRead(const vsm::sequencer::Project& project, const vsm::audio::engine::AutomationLane& lane) {
     if (lane.target == AutomationTarget::MasterParam) return true;
+    if (project.automationSuspended & automationLaneFamily(lane)) return false;   // D601.2
     return lane.targetTrackIndex >= project.tracks.size() || project.tracks[lane.targetTrackIndex].automationRead;
 }
 
@@ -119,7 +134,11 @@ AutomationResolution resolveAutomation(const vsm::sequencer::Project& project) {
             // publication. Une courbe du master, rangée dans cette piste sans lui appartenir, ne se tait pas avec elle.
             if (!automationLaneIsRead(project, lane)) {
                 lane.read = false;
-                dire("lecture éteinte (R) : la courbe n'est pas jouée");
+                // LA RAISON DITE : le R de la piste d'abord (D600.2), la suspension de sa famille sinon (D601.2).
+                if (!track.automationRead) dire("lecture éteinte (R) : la courbe n'est pas jouée");
+                else
+                    dire("lecture suspendue (" + vsm::sequencer::automationFamilyName(automationLaneFamily(lane))
+                         + ") : la courbe n'est pas jouée");
             }
 
             for (const auto& point : curve.points) {

@@ -901,6 +901,7 @@ const vsm::sequencer::AutomationCurve* ChannelStrip::courbePilote(const std::str
     // crée une vide au premier geste armé.
     // D600.2 : ET LUE — lecture éteinte, le moteur l'écarte : rien ne la pilote, et la tranche montre la valeur statique.
     if (!track_.automationRead) return nullptr;
+    if (lectureSuspendue && lectureSuspendue(parametre)) return nullptr;   // D601.2 : sa famille est suspendue
     for (const auto& courbe : track_.automation)
         if (courbe.parameter == parametre && !courbe.points.empty()) return &courbe;
     return nullptr;
@@ -931,6 +932,19 @@ void ChannelStrip::suivreLesCourbes(vsm::midi::Tick tete) {
 
 void ChannelStrip::poserLaMain(const std::string& parametre) {
     tenus_.insert(parametre);
+    // D601.2 : W ARMÉ SUR UNE FAMILLE SUSPENDUE, la main s'entend (le moteur joue la valeur statique qu'elle bouge) et la
+    // passe s'écrit — mais sa courbe ne jouera pas tant que la suspension tient : c'est DIT, à l'appui.
+    if (track_.automationMode != vsm::sequencer::AutomationMode::Off && track_.automationRead && lectureSuspendue
+        && lectureSuspendue(parametre) && onDire) {
+        const juce::String nom = tr(parametre == "mix.volume" ? u8"Volume"
+                                    : parametre == "mix.pan"  ? u8"Panoramique"
+                                    : parametre == "mix.trim" ? u8"Trim d'entrée"
+                                                              : u8"Départ");
+        onDire(tr(u8"%1 : lecture suspendue — la passe s'écrit, sa courbe ne jouera qu'une fois la suspension levée")
+                   .replace("%1", nom));
+        publierLaMain();
+        return;
+    }
     // D599.2 : W ÉTEINT, SUR UN RÉGLAGE QUE SA COURBE PILOTE, la main s'entend tant qu'elle tient et rien ne s'écrit —
     // c'est le *Read* de Cubase. Jusqu'ici le geste réglait en silence une valeur statique que personne n'entendait ;
     // c'est DIT, une fois par geste. D600.1 : sur le trim et les départs aussi.
@@ -1505,6 +1519,10 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             strip->transportPlayingProvider = transportPlayingProvider;
             strip->retourEnTicks = [this](vsm::midi::Tick fin) {   // D600.3
                 return retourEnTicks ? retourEnTicks(fin) : vsm::midi::Tick{0};
+            };
+            strip->lectureSuspendue = [this](const std::string& parametre) {   // D601.2
+                return project_ != nullptr
+                       && (project_->automationSuspended & vsm::sequencer::automationFamilyOf(parametre)) != 0;
             };
             strip->onAutomationWritten = [this] { if (onAutomationWritten) onAutomationWritten(); };
             // D599 : la main, le décalage Trim et ce qui se dit passent par l'application, qui seule tient le moteur

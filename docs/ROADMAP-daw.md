@@ -46951,3 +46951,37 @@ le code d'avant), puis les menus, la tranche et le panneau, puis le banc `tools/
   tiers. L'instrument devient l'ENCRE de la lane — Σ de l'écart au fond le plus fréquent de la zone, sur le canal le plus
   écarté —, et l'attendu : **moins de 45 %** de l'encre de la même courbe lue (0,35 attendu, les points et l'anticrénelage
   en plus). Le relevé dit « lue » ou « tue » ; la ligne `VSM_AUTOMATION_SUSPENDUES` dit les familles suspendues.
+
+### Phase D601 — MESURÉE, la série à jouer (30/10/2026, 15 h 59 à l'horloge)
+
+*Écrite avant son code à 15 h 31, corrigée avant le code de la console à 15 h 41 et avant la mesure à 15 h 46 ; codée et
+testée sur `master`, compilée (`-j 6`, rien d'autre ne tournant) pendant que la session était VERROUILLÉE et l'écran
+éteint — la série de 198 bancs lancée à 15 h 30 pour D599 et D600 a été ARRÊTÉE à son deuxième banc pour cette raison
+(les bancs de focus et de clic ne s'y jugent pas, D516 ; le compositeur gonfle écran éteint, D578, D581) : elle se joue
+écran allumé. Le banc `tools/automation-globale.sh` (17 contrôles) ; le témoin : le binaire de D600 (`build/temoin-D600`,
+application et `vsm-render`).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D600) | tenu |
+|---|---|---|---|---|
+| D601 (1) | « Éteindre la lecture… (2) » : trois R éteints, deux W désarmés, dit ; A et B +12,0 dB, C 0,0 dB ; Ctrl+Z ; « Allumer… (1) » ; « Désarmer le W… (2) » ; les entrées à zéro grisées | R/W [allumé/W touch, allumé/W trim, éteint/W] → [éteint/W ×3], « Lecture éteinte sur 2 piste(s) » ; stems (`vsm-render --stems` du projet enregistré) A **+12,05**, B **+12,05**, C **0,00 dB** ; Ctrl+Z → l'état de départ ; allumer → trois « allumé », W gardés ; désarmer → « W » ×3 ; « (0) [grisée] » ×2 | `VSM_MENU : aucune entrée…` ; stems inchangés (−38,93 / −38,93 / −26,88 dBFS) | **oui, après correction du banc** |
+| D601 (2) | « Suspendre le volume » : fader 0,0 dB ; export et `vsm-render` +12,0 dB, toujours à gauche, dit ; `["volume"]` au fichier ; Ctrl+Z ; le panoramique suspendu au centre | fader **0,00 dB**, `VSM_AUTOMATION_SUSPENDUES : volume`, « Lecture suspendue : le volume » ; `vsm-render` **+12,05 dB** (−35,92 → −23,87 dBFS, le droit muet), « lecture suspendue » dit ; l'application **+12,04 dB** (−36,85 → −24,81) ; fichiers `["volume"]`, rien, `["pan"]` ; Ctrl+Z → « aucune », fader −12,00 ; panoramique suspendu : **−38,93 / −38,93 dBFS** | `vsm-render` de D600 sur un projet au volume suspendu : **0,00 dB** | **oui** |
+| D601 (3) | le panneau : « lue » / « tue », l'encre de la lane tue sous 45 % de la lue | « point(s), lue » / « point(s), tue » ; encre sarcelle **113 422** contre **327 420** (34,6 %) | relevé sans « lue » ni « tue » ; encre **327 420** (égale) | **oui, après correction de l'instrument** |
+| D601 (4) | en anglais | *Mixing ▸ Turn off automation read on all tracks (2)*, *Suspend automation read ▸ Suspend volume* | — | **oui** |
+| — | les suites | cœur **571 / 571** (2 neufs), moteur 1 372, interchange **367 / 367** (2 neufs), clap 25, panneaux 11 ; gardes des sources vertes ; `automation-lecture` (D600) et `automation-main` (D599) rejoués verts sur le binaire neuf ; le banc entier sur le binaire de D600 : 13 rouges sur 17 | — | **oui** |
+| — | la série | `./verifier.sh --bancs`, **199** bancs (`automation-globale` entré) — **à jouer, l'écran allumé**, avec D599 et D600 | — | **à jouer** |
+
+**CE QUE LA MESURE A DIT, ÉCRIT ICI.**
+- **Deux instruments du banc, corrigés après le premier essai, et dits dans son en-tête.** Les stems s'appellent
+  « 01 - A.wav » : un `for f in $(ls …)` les coupait en trois mots, neuf « ? » — et le témoin passait VERT, deux listes de
+  « ? » étant égales : il exige désormais trois nombres. L'encre de la lane, écrite avant la mesure (Σ de l'écart au fond),
+  comptait la grille, les graduations et la tête, identiques dans les deux photos — 650 656 contre 319 079, 49 % — pendant
+  que la photo montrait la courbe nettement pâlie ; l'encre SARCELLE seule (Σ max(0, vert − rouge)) rend 34,6 %, l'encre
+  de 0,35 posée. Le seuil (45 %) n'a pas bougé.
+- **Le Ctrl+Z du témoin est vert, et ne prouve rien** : l'état de départ est celui qu'on attend après l'annulation, et le
+  témoin n'avait rien changé. C'est le contrôle d'avant — l'extinction mesurée chez le binaire neuf — qui donne son sens
+  au retour (la règle de D145).
+- **La mention de l'arrangement, regardée** : « mix.volume (suspendue) » se coupait à la largeur de l'en-tête de piste
+  (« mix.volume (suspen… ») ; elle est devenue « (susp.) », qui tient comme « (R éteint) ». La courbe y est pâlie.
+- **Remis, nommé** : le W reste armable sur une famille suspendue (le *Suspend Write* de Cubase est un autre interrupteur) ;
+  les instantanés de console (D535) ne gardent ni le R ni la suspension ; les entrées de D601.1 n'ont pas de bouton sur la
+  console.

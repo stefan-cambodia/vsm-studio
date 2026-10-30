@@ -417,6 +417,9 @@ struct ProjectDocument {
     std::string crossfadeShape;
     /// D571.2 : la loi de panoramique, par son nom (`0dB`, `-4.5dB`, `-6dB`) ; vide = −3 dB, le défaut, jamais écrit.
     std::string panLaw;
+    /// D601.2 : les familles de courbes dont la lecture est suspendue, par leurs mots (« volume », « pan »…) ; vide,
+    /// rien n'est écrit.
+    std::vector<std::string> automationSuspended;
     /// Chemin RELATIF du fichier MIDI qui porte les notes.
     std::string midiPath = "midi/arrangement.mid";
     ProjectTransport transport;

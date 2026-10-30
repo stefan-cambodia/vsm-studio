@@ -6,6 +6,7 @@
 // le dernier la mesure là où elle comptait : dans un RENDU hors ligne.
 
 #include "TestFramework.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/interchange/AutomationResolution.h"
 #include "vsm/interchange/EffectDescription.h"
 #include "vsm/interchange/OfflineReconstruction.h"
@@ -241,6 +242,53 @@ VSM_TEST(an_export_with_reading_off_plays_the_static_value_d600) {
     std::printf("      [D600.2] R éteint contre R allumé : %+.2f dB\n", ecartDb);
     VSM_ASSERT(std::abs(ecartDb - 12.04) < 0.1);
     VSM_ASSERT(ditLaCourbe(avertis, "mix.volume", "lecture éteinte"));
+}
+
+// D601.2 — LA SUSPENSION PAR FAMILLE : le volume suspendu marque la courbe de volume et la dit, pas celle du
+// panoramique ni celle du master ; et à l'export, un volume plat à 0,25 sous un panoramique tout à gauche sort 12,0 dB
+// plus fort et toujours à gauche, le panoramique suspendu sort au centre et au niveau de la courbe.
+VSM_TEST(a_suspended_family_is_marked_said_and_silent_at_export_d601) {
+    Project p = projetAUnePiste("vsm.minimoog");
+    p.tracks[0].volume = 1.0f;
+    p.tracks[0].automation = {courbe("mix.volume", 0.25f, 0.25f), courbe("mix.pan", -1.0f, -1.0f),
+                              courbe("master.Stereo Width", 1.0f, 1.0f)};
+    p.automationSuspended = vsm::sequencer::kFamilyVolume;
+    const auto r = resolveAutomation(p);
+    VSM_ASSERT_EQ(r.lanes.size(), static_cast<size_t>(3));
+    VSM_ASSERT(!r.lanes[0].read);
+    VSM_ASSERT(r.lanes[1].read);
+    VSM_ASSERT(r.lanes[2].read);
+    VSM_ASSERT_EQ(r.warnings.size(), static_cast<size_t>(1));
+    VSM_ASSERT(ditLaCourbe(r.warnings, "mix.volume", "lecture suspendue"));
+
+    struct Niveaux { double gauche, droite; };
+    auto rendre = [](const Project& projet) {
+        vsm::interchange::LoadedBundle bundle;
+        bundle.project = projet;
+        bundle.document = vsm::interchange::documentFromProject(projet);
+        vsm::interchange::RenderOptions options;
+        options.durationSeconds = 1.0;
+        vsm::audio::engine::RenderedAudio sortie;
+        VSM_ASSERT(vsm::interchange::renderBundleToBuffer(bundle, sortie, options).success);
+        Niveaux n{0.0, 0.0};
+        for (size_t i = 0; i < sortie.left.size(); ++i) {
+            n.gauche += double(sortie.left[i]) * sortie.left[i];
+            n.droite += double(sortie.right[i]) * sortie.right[i];
+        }
+        return n;
+    };
+    Project lue = p;
+    lue.automationSuspended = 0;
+    Project sansPan = p;
+    sansPan.automationSuspended = vsm::sequencer::kFamilyPan;
+    const Niveaux a = rendre(lue), v = rendre(p), q = rendre(sansPan);
+    const double ecartVolume = 10.0 * std::log10((v.gauche + v.droite) / (a.gauche + a.droite));
+    std::printf("      [D601.2] volume suspendu : %+.2f dB ; droite/gauche %.1f dB ; panoramique suspendu : "
+                "droite/gauche %.2f dB\n", ecartVolume, 10.0 * std::log10(v.droite / v.gauche + 1e-30),
+                10.0 * std::log10(q.droite / q.gauche));
+    VSM_ASSERT(std::abs(ecartVolume - 12.04) < 0.1);
+    VSM_ASSERT(v.droite < v.gauche * 1e-4);                                    // toujours à gauche (−40 dB)
+    VSM_ASSERT(std::abs(10.0 * std::log10(q.droite / q.gauche)) < 1.0);        // au centre
 }
 
 // TROUVÉ EN MESURANT : un export en STEMS jetait tout ce que ses rendus

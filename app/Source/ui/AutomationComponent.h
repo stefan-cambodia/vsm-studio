@@ -114,6 +114,9 @@ private:
 
     std::vector<vsm::audio::engine::AutomationLane> lanes_;
     std::vector<vsm::audio::engine::AutomationPoint> editPoints_; // lane courante en cours d'édition
+    /// D601.3 : la courbe montrée est-elle LUE ? Le drapeau que la résolution a posé sur elle (`AutomationLane::read`) —
+    /// faux quand le R de sa piste est éteint ou sa famille suspendue : elle se dessine pâlie, et le relevé le dit.
+    bool courbeLue_ = true;
 
     size_t selectedTrack_ = 0;
     vsm::audio::plugin::ParamId selectedParam_ = 0;

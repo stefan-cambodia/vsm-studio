@@ -59,6 +59,15 @@ size_t countMutedTracks(const Project& project);
 size_t clearAllSolos(Project& project);
 size_t clearAllMutes(Project& project);
 
+/// D601.1 — LA LECTURE ET L'ÉCRITURE DE TOUTES LES PISTES (les R et W globaux de la console de Cubase). Allumer ou
+/// éteindre la lecture de l'automation (`Track::automationRead`, D600.2) de toutes les pistes ; l'éteindre DÉSARME aussi
+/// leur W (la règle de D600 : on n'écrit pas ce qu'on n'entend pas). Désarmer le W de toutes les pistes. Chacune rend le
+/// nombre de pistes CHANGÉES, et `count…` le même compte sans rien toucher (le libellé du menu).
+size_t countTracksToSetRead(const Project& project, bool read);
+size_t setAllAutomationRead(Project& project, bool read);
+size_t countArmedAutomationWrite(const Project& project);
+size_t disarmAllAutomationWrite(Project& project);
+
 /// D559.2 — REMETTRE LA CONSOLE À ZÉRO (*Reset Mixer* de Cubase) : chaque tranche de piste revient à l'état d'une piste
 /// neuve — volume 0 dB, panoramique au centre, ni muet ni solo, trim 0, polarité normale, départs à zéro (le vecteur
 /// garde sa taille). Les INSERTS restent, et leur état : retirer une chaîne d'effets est un autre geste. Les bus de

@@ -592,3 +592,29 @@ VSM_TEST(low_and_high_cuts_are_kept_by_snapshots_copied_with_settings_and_turned
     VSM_ASSERT_EQ(resetConsole(q), static_cast<size_t>(1));
     VSM_ASSERT_NEAR(q.tracks[1].highCutHz, 0.0f, 0.0f);
 }
+
+// D601.1 — LA LECTURE ET L'ÉCRITURE DE TOUTES LES PISTES. A armée en Touch, B en Trim, C à lecture éteinte : éteindre
+// la lecture partout en change deux (C l'était) et désarme les deux W ; la rallumer en change trois ; désarmer les W
+// en désarme deux. Les comptes disent la même chose sans rien toucher.
+VSM_TEST(all_tracks_read_switch_and_write_disarm_count_what_changes_d601) {
+    Project p;
+    for (int i = 0; i < 3; ++i) p.tracks.push_back(Track{});
+    p.tracks[0].automationMode = AutomationMode::Touch;
+    p.tracks[1].automationMode = AutomationMode::Trim;
+    p.tracks[2].automationRead = false;
+    Project q = p;
+    VSM_ASSERT_EQ(countArmedAutomationWrite(q), size_t(2));
+    VSM_ASSERT_EQ(disarmAllAutomationWrite(q), size_t(2));
+    VSM_ASSERT_EQ(countArmedAutomationWrite(q), size_t(0));
+    VSM_ASSERT(q.tracks[2].automationRead == false);   // le W seul : la lecture ne bouge pas
+    VSM_ASSERT_EQ(countTracksToSetRead(p, false), size_t(2));
+    VSM_ASSERT_EQ(setAllAutomationRead(p, false), size_t(2));
+    for (const auto& t : p.tracks) {
+        VSM_ASSERT(!t.automationRead);
+        VSM_ASSERT(t.automationMode == AutomationMode::Off);
+    }
+    VSM_ASSERT_EQ(countTracksToSetRead(p, false), size_t(0));
+    VSM_ASSERT_EQ(countTracksToSetRead(p, true), size_t(3));
+    VSM_ASSERT_EQ(setAllAutomationRead(p, true), size_t(3));
+    for (const auto& t : p.tracks) VSM_ASSERT(t.automationRead);
+}

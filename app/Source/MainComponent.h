@@ -1509,6 +1509,13 @@ private:
         kMenuTransportFixedTempoSet,
         /// D598 : la ligne d'information des clips.
         kMenuViewClipInfoLine,
+        /// D601.1 : la lecture et l'écriture de toutes les pistes ; D601.2 : les six familles suspendues, CONTIGUËS et
+        /// dans l'ordre des bits (`vsm::sequencer::kFamilyVolume`…).
+        kMenuMixReadAllOff,
+        kMenuMixReadAllOn,
+        kMenuMixWriteDisarmAll,
+        kMenuMixSuspendFirst,
+        kMenuMixSuspendLast = kMenuMixSuspendFirst + 5,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2013,6 +2020,11 @@ private:
     std::optional<vsm::sequencer::ChannelSettings> reglagesDeTranche_;   ///< D562.3 : le presse-papiers, à part de la chaîne
     /// D559.1 : lever le solo (`solos`) ou le muet de toutes les pistes, dit ; un pas.
     void leverToutesLesPistes(bool solos);
+    /// D601.1 : allumer ou éteindre la lecture de l'automation de toutes les pistes (éteindre désarme les W) ; désarmer
+    /// le W de toutes les pistes. D601.2 : suspendre (ou rétablir) la lecture d'une famille de courbes.
+    void lectureDeToutesLesPistes(bool lecture);
+    void desarmerLeWDeToutesLesPistes();
+    void basculerLaSuspension(uint8_t famille);
     /// D560.3 : plier, déplier ou inverser les plis de toutes les pistes ; un pas ; dit (`VSM_PLIS`).
     void plierToutesLesPistes(vsm::sequencer::FoldAll comment);
     /// D561.1 : les pistes choisies dans la liste, et le contenu de chaque dossier choisi.

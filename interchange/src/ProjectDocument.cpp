@@ -1,5 +1,6 @@
 #include "vsm/interchange/ProjectDocument.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
@@ -501,6 +502,9 @@ ProjectDocument documentFromProject(const Project& project) {
     document.master = project.masterParameters;
     document.crossfadeShape = fadeShapeName(project.crossfadeShape);
     document.panLaw = panLawName(project.panLaw);              // D571.2
+    for (uint8_t bit = 1; bit != 0 && bit <= vsm::sequencer::kAllAutomationFamilies; bit = static_cast<uint8_t>(bit << 1))
+        if (project.automationSuspended & bit)
+            document.automationSuspended.push_back(vsm::sequencer::automationFamilyName(bit));   // D601.2
     document.transport.loopEnabled = project.loopEnabled;
     document.transport.loopStartTick = project.loopStartTick;
     document.transport.loopEndTick = project.loopEndTick;
@@ -726,6 +730,15 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     if (!document.crossfadeShape.empty())
         project.crossfadeShape = fadeShapeFromName(document.crossfadeShape);
     project.panLaw = panLawFromName(document.panLaw);          // D571.2
+    // D601.2 : LA SUSPENSION PAR FAMILLE ; un mot inconnu change ce qui SONNE (une famille qu'un binaire plus récent
+    // suspendrait jouerait ici) — c'est une réserve, et elle se DIT.
+    project.automationSuspended = 0;
+    for (const auto& mot : document.automationSuspended) {
+        const uint8_t famille = vsm::sequencer::automationFamilyFromName(mot);
+        if (famille == 0)
+            report.warnings.push_back("famille d'automation « " + mot + " » inconnue : sa suspension est ignorée");
+        project.automationSuspended = static_cast<uint8_t>(project.automationSuspended | famille);
+    }
     project.loopEnabled = document.transport.loopEnabled;
     project.loopStartTick = document.transport.loopStartTick;
     project.loopEndTick = document.transport.loopEndTick;
@@ -1056,6 +1069,11 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         root.set("crossfadeShape", JsonValue::makeString(document.crossfadeShape));
     // D571.2 : la même règle — un projet qui ne l'a pas touchée garde son fichier à l'octet.
     if (!document.panLaw.empty()) root.set("panLaw", JsonValue::makeString(document.panLaw));
+    if (!document.automationSuspended.empty()) {   // D601.2 : rien de suspendu, rien d'écrit
+        JsonValue familles = JsonValue::makeArray();
+        for (const auto& mot : document.automationSuspended) familles.append(JsonValue::makeString(mot));
+        root.set("automationSuspended", std::move(familles));
+    }
 
     if (!document.master.empty()) {
         JsonValue master = JsonValue::makeObject();
@@ -1470,6 +1488,8 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     document.notes = json["notes"].asString();
     document.crossfadeShape = json["crossfadeShape"].asString();
     document.panLaw = json["panLaw"].asString();                                        // D571.2
+    for (const auto& mot : json["automationSuspended"].elements())                      // D601.2
+        if (mot.isString()) document.automationSuspended.push_back(mot.asString());
     for (const auto& [name, value] : json["master"].members())
         if (value.isNumber()) document.master[name] = static_cast<float>(value.asNumber());
     document.midiPath = json["midi"]["file"].asString("midi/arrangement.mid");

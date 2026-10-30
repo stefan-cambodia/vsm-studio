@@ -1,4 +1,5 @@
 #include "vsm/sequencer/AutomationEdit.h"
+#include <utility>
 #include <algorithm>
 #include <map>
 #include <cmath>
@@ -181,6 +182,37 @@ bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
     for (const auto& [tick, point] : resultat) ecrits.push_back(point);
     writeAutomationRange(curve, fromTick, toTick, ecrits, returnTicks);
     return true;
+}
+
+namespace {
+/// D601.2 : les six familles et leurs mots de fichier, dans l'ordre des bits.
+constexpr std::pair<uint8_t, const char*> kFamilles[] = {
+    {kFamilyVolume, "volume"}, {kFamilyPan, "pan"},          {kFamilySends, "sends"},
+    {kFamilyTrim, "trim"},     {kFamilyInserts, "inserts"},  {kFamilyMachines, "machines"}};
+} // namespace
+
+uint8_t automationFamilyOf(const std::string& parameter) {
+    // LES PRÉFIXES DE `resolveAutomation` (interchange), dans le même ordre : sans préfixe connu, c'est un réglage de
+    // la machine de la piste.
+    if (parameter == "mix.volume") return kFamilyVolume;
+    if (parameter == "mix.pan") return kFamilyPan;
+    if (parameter == "mix.trim") return kFamilyTrim;
+    if (parameter.rfind("mix.send.", 0) == 0) return kFamilySends;
+    if (parameter.rfind("master.", 0) == 0) return 0;
+    if (parameter.rfind("insert.", 0) == 0) return kFamilyInserts;
+    return kFamilyMachines;
+}
+
+std::string automationFamilyName(uint8_t family) {
+    for (const auto& [bit, nom] : kFamilles)
+        if (bit == family) return nom;
+    return {};
+}
+
+uint8_t automationFamilyFromName(const std::string& name) {
+    for (const auto& [bit, nom] : kFamilles)
+        if (name == nom) return bit;
+    return 0;
 }
 
 size_t setAutomationPoint(AutomationCurve& curve, Tick tick, float value, bool step) {

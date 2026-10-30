@@ -6047,6 +6047,28 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuMixResetConsole,
                              tr(u8"Remettre la console à zéro (%1 tranche(s))…").replace("%1", juce::String(static_cast<int>(aRemettre))),
                              aRemettre > 0);
+                // D601.1 : LA LECTURE ET L'ÉCRITURE DE TOUTES LES PISTES (les R et W globaux de Cubase) — le compte des
+                // pistes que le clic CHANGERA, grisées à zéro (la règle de D559).
+                const auto aEteindre = vsm::sequencer::countTracksToSetRead(project_, false);
+                const auto aAllumer = vsm::sequencer::countTracksToSetRead(project_, true);
+                const auto armees = vsm::sequencer::countArmedAutomationWrite(project_);
+                menu.addItem(kMenuMixReadAllOff,
+                             tr(u8"Éteindre la lecture de toutes les pistes (%1)").replace("%1", juce::String(static_cast<int>(aEteindre))),
+                             aEteindre > 0);
+                menu.addItem(kMenuMixReadAllOn,
+                             tr(u8"Allumer la lecture de toutes les pistes (%1)").replace("%1", juce::String(static_cast<int>(aAllumer))),
+                             aAllumer > 0);
+                menu.addItem(kMenuMixWriteDisarmAll,
+                             tr(u8"Désarmer le W de toutes les pistes (%1)").replace("%1", juce::String(static_cast<int>(armees))),
+                             armees > 0);
+                // D601.2 : LA SUSPENSION PAR FAMILLE (*Suspend Read*) — six cases cochées, retenues dans le projet.
+                juce::PopupMenu suspendre;
+                const char8_t* libelles[6] = {u8"Suspendre le volume", u8"Suspendre le panoramique", u8"Suspendre les départs",
+                                              u8"Suspendre le trim", u8"Suspendre les inserts", u8"Suspendre les machines"};
+                for (int f = 0; f < 6; ++f)
+                    suspendre.addItem(kMenuMixSuspendFirst + f, tr(libelles[f]), true,
+                                      (project_.automationSuspended & (1u << f)) != 0);
+                menu.addSubMenu(tr(u8"Suspendre la lecture de l'automation"), suspendre);
                 // D564.2 : LES SEULES TRANCHES CHOISIES — la même remise, bornée aux pistes choisies dans la liste.
                 const auto choisies = static_cast<int>(vsm::sequencer::countTracksToReset(project_, trackList_.selectedTracks()));
                 menu.addItem(kMenuMixResetChosen,
@@ -6461,6 +6483,13 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     }
     if (menuItemID == kMenuMixGlobalTranspose) { regleTranspositionGlobale(); return; }   // D544.3
     if (menuItemID == kMenuMixClearSolos) { leverToutesLesPistes(true); return; }    // D559.1
+    if (menuItemID == kMenuMixReadAllOff) { lectureDeToutesLesPistes(false); return; }   // D601.1
+    if (menuItemID == kMenuMixReadAllOn) { lectureDeToutesLesPistes(true); return; }
+    if (menuItemID == kMenuMixWriteDisarmAll) { desarmerLeWDeToutesLesPistes(); return; }
+    if (menuItemID >= kMenuMixSuspendFirst && menuItemID <= kMenuMixSuspendLast) {          // D601.2
+        basculerLaSuspension(static_cast<uint8_t>(1u << (menuItemID - kMenuMixSuspendFirst)));
+        return;
+    }
     if (menuItemID == kMenuMixClearMutes) { leverToutesLesPistes(false); return; }   // D559.1
     if (menuItemID == kMenuMixResetConsole) { remettreLaConsoleAZero(); return; }    // D559.2
     if (menuItemID == kMenuMixResetChosen) { remettreLesTranchesChoisiesAZero(); return; }   // D564.2
@@ -15012,6 +15041,65 @@ void MainComponent::leverToutesLesPistes(bool solos) {
                                        .replace("%1", juce::String(static_cast<int>(leves))));
 }
 
+// D601.1 — LA LECTURE ET L'ÉCRITURE DE TOUTES LES PISTES (les R et W globaux de la console de Cubase). Une passe Latch
+// ouverte se ferme d'abord, et s'écrit — la règle du désarmement d'une tranche (D16.8) ; puis un pas, le cœur
+// (`setAllAutomationRead`, `disarmAllAutomationWrite`), et la console, le moteur et les courbes suivent par le chemin de
+// l'annulation (`rebuildFromProject`, qui refait la résolution).
+void MainComponent::lectureDeToutesLesPistes(bool lecture) {
+    if (vsm::sequencer::countTracksToSetRead(project_, lecture) == 0) {
+        std::fputs((juce::String::fromUTF8(lecture ? "VSM_CONSOLE : aucune lecture \xc3\xa0 allumer\n"
+                                                   : "VSM_CONSOLE : aucune lecture \xc3\xa0 \xc3\xa9teindre\n"))
+                       .toRawUTF8(), stderr);
+        return;   // l'entrée est grisée, et son compte dit pourquoi
+    }
+    mixer_.closeLatchedPasses();
+    beginProjectEdit(lecture ? tr(u8"Allumer la lecture de toutes les pistes") : tr(u8"Éteindre la lecture de toutes les pistes"));
+    const size_t n = vsm::sequencer::setAllAutomationRead(project_, lecture);
+    rebuildFromProject(false);
+    std::fputs((juce::String("VSM_CONSOLE : lecture ") + juce::String::fromUTF8(lecture ? "allum\xc3\xa9" "e" : "\xc3\xa9teinte")
+                + " sur " + juce::String(static_cast<int>(n)) + " piste(s)\n").toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged((lecture ? tr(u8"Lecture allumée sur %1 piste(s)") : tr(u8"Lecture éteinte sur %1 piste(s)"))
+                                       .replace("%1", juce::String(static_cast<int>(n))));
+}
+
+void MainComponent::desarmerLeWDeToutesLesPistes() {
+    if (vsm::sequencer::countArmedAutomationWrite(project_) == 0) {
+        std::fputs("VSM_CONSOLE : aucun W \xc3\xa0 d\xc3\xa9sarmer\n", stderr);
+        return;
+    }
+    mixer_.closeLatchedPasses();
+    beginProjectEdit(tr(u8"Désarmer le W de toutes les pistes"));
+    const size_t n = vsm::sequencer::disarmAllAutomationWrite(project_);
+    rebuildFromProject(false);
+    std::fputs(("VSM_CONSOLE : " + juce::String(static_cast<int>(n)) + juce::String::fromUTF8(" W d\xc3\xa9sarm\xc3\xa9(s)\n"))
+                   .toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"W désarmé sur %1 piste(s)").replace("%1", juce::String(static_cast<int>(n))));
+}
+
+// D601.2 — LA SUSPENSION PAR FAMILLE (*Suspend Read*). Un pas ; la résolution refaite par `rebuildFromProject` marque les
+// courbes de la famille, et le moteur les écarte — la lecture, l'export et `vsm-render` passent par la même règle.
+void MainComponent::basculerLaSuspension(uint8_t famille) {
+    const bool suspendre = (project_.automationSuspended & famille) == 0;
+    const char8_t* noms[6] = {u8"le volume", u8"le panoramique", u8"les départs", u8"le trim", u8"les inserts", u8"les machines"};
+    int rang = 0;
+    while (rang < 6 && (1u << rang) != famille) ++rang;
+    if (rang == 6) return;
+    beginProjectEdit((suspendre ? tr(u8"Suspendre la lecture : %1") : tr(u8"Rétablir la lecture : %1")).replace("%1", tr(noms[rang])));
+    project_.automationSuspended = static_cast<uint8_t>(project_.automationSuspended ^ famille);
+    rebuildFromProject(false);
+    juce::StringArray suspendues;
+    for (uint8_t bit = 1; bit <= vsm::sequencer::kAllAutomationFamilies && bit != 0; bit = static_cast<uint8_t>(bit << 1))
+        if (project_.automationSuspended & bit) suspendues.add(vsm::sequencer::automationFamilyName(bit));
+    std::fputs(("VSM_SUSPENSION : " + juce::String(vsm::sequencer::automationFamilyName(famille))
+                + (suspendre ? " suspendu" : juce::String::fromUTF8(" r\xc3\xa9tabli")) + " ; suspendues : "
+                + (suspendues.isEmpty() ? juce::String("aucune") : suspendues.joinIntoString(", ")) + "\n").toRawUTF8(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged((suspendre ? tr(u8"Lecture suspendue : %1") : tr(u8"Lecture rétablie : %1"))
+                                       .replace("%1", tr(noms[rang])));
+}
+
 void MainComponent::taperLeTempo() {
     // D561.2 : TAPER LE TEMPO (*Tap Tempo*, le bouton *Tap* de Live). Chaque frappe compte ; dès la quatrième, le tempo de
     // DÉPART suit (`tappedTempoBpm`) — le jumeau du champ de la barre de transport, qui ne change que lui ; une carte
@@ -19547,4 +19635,10 @@ void MainComponent::releverAutomation() {
         }
     }
     if (tranches == 0) std::fputs("VSM_AUTOMATION_TRANCHE : aucune tranche\n", stderr);
+    // D601.2 : les familles dont la lecture est suspendue sur le projet, par leurs mots de fichier.
+    juce::StringArray suspendues;
+    for (uint8_t bit = 1; bit <= vsm::sequencer::kAllAutomationFamilies && bit != 0; bit = static_cast<uint8_t>(bit << 1))
+        if (project_.automationSuspended & bit) suspendues.add(vsm::sequencer::automationFamilyName(bit));
+    std::fputs(("VSM_AUTOMATION_SUSPENDUES : " + (suspendues.isEmpty() ? juce::String("aucune") : suspendues.joinIntoString(", "))
+                + "\n").toRawUTF8(), stderr);
 }

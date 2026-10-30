@@ -209,6 +209,10 @@ public:
     /// D571.2 : LA LOI DE PANORAMIQUE, une donnée du MORCEAU pour la raison de la forme des fondus croisés : elle
     /// change ce que l'export contient. Écrite dans `project.json` seulement si elle n'est pas −3 dB.
     PanLaw panLaw = PanLaw::Minus3dB;
+    /// D601.2 — LA SUSPENSION DE LA LECTURE PAR FAMILLE (le *Suspend Read* de Cubase) : les familles de courbes
+    /// (`kFamilyVolume`… dans `AutomationEdit.h`) qui ne jouent plus, sur tout le projet — ni en lecture, ni à l'export,
+    /// ni par `vsm-render`. Propriété du PROJET et non des préférences : l'export doit rendre ce qu'on entend. 0 d'origine.
+    uint8_t automationSuspended = 0;
 
     /// Convertit une lecture brute en projet. `unePisteParCanal` (D305) : une
     /// piste lue qui porte des événements sur PLUSIEURS canaux est découpée en

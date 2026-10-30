@@ -43,4 +43,8 @@ AutomationResolution resolveAutomation(const vsm::sequencer::Project& project);
 /// piste éteinte doit se taire comme les autres.
 bool automationLaneIsRead(const vsm::sequencer::Project& project, const vsm::audio::engine::AutomationLane& lane);
 
+/// D601.2 : la famille d'une courbe résolue (`vsm::sequencer::kFamilyVolume`…), par sa cible ; 0 pour le master. Une
+/// courbe d'une famille suspendue (`Project::automationSuspended`) n'est pas lue (`automationLaneIsRead`).
+uint8_t automationLaneFamily(const vsm::audio::engine::AutomationLane& lane);
+
 } // namespace vsm::interchange

@@ -2,6 +2,7 @@
 #include "vsm/sequencer/Track.h"
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 // Les gestes d'une courbe d'automation -- poser un point, le déplacer, le
@@ -126,6 +127,24 @@ inline constexpr float kTrimGainMax = 1.99526231f;
 bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
                          const std::vector<AutomationPoint>& offsets, TrimLaw law,
                          float minimum, float maximum, Tick returnTicks = 0);
+
+/// D601.2 — LES FAMILLES DE COURBES, pour la suspension de la lecture (le *Suspend Read* du panneau d'automation de
+/// Cubase) : un bit chacune, dans `Project::automationSuspended`. Le master (`master.*`) n'est d'aucune famille — il ne
+/// se suspend pas, comme il ne se tait pas avec le R d'une piste (D600.2).
+inline constexpr uint8_t kFamilyVolume = 1u << 0;     ///< `mix.volume`
+inline constexpr uint8_t kFamilyPan = 1u << 1;        ///< `mix.pan`
+inline constexpr uint8_t kFamilySends = 1u << 2;      ///< `mix.send.N`
+inline constexpr uint8_t kFamilyTrim = 1u << 3;       ///< `mix.trim`
+inline constexpr uint8_t kFamilyInserts = 1u << 4;    ///< `insert.N.…`
+inline constexpr uint8_t kFamilyMachines = 1u << 5;   ///< un réglage de la machine de la piste (sans préfixe connu)
+inline constexpr uint8_t kAllAutomationFamilies = 0x3F;
+
+/// La famille d'une courbe, par son nom (`AutomationCurve::parameter`) ; 0 pour le master.
+uint8_t automationFamilyOf(const std::string& parameter);
+/// Le mot du fichier d'une famille (« volume », « pan », « sends », « trim », « inserts », « machines ») ; vide pour un
+/// bit qui n'en est pas une. Et l'inverse : 0 pour un mot inconnu.
+std::string automationFamilyName(uint8_t family);
+uint8_t automationFamilyFromName(const std::string& name);
 
 /// Retire le point le plus proche de `tick`, s'il est à moins de `tolerance`.
 /// Rend vrai si un point a été retiré.

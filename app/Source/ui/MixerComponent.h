@@ -412,6 +412,9 @@ public:
     /// D600.3 — LE TEMPS DE RETOUR, en ticks, au lâcher d'une passe qui finit à ce tick (la préférence, convertie à la
     /// tête par l'application, qui seule tient le tempo). Absent ou 0 : le saut d'un tick d'avant.
     std::function<vsm::midi::Tick(vsm::midi::Tick)> retourEnTicks;
+    /// D601.2 : la famille de cette courbe est-elle suspendue sur le projet (*Suspend Read*) ? Alors rien ne la pilote :
+    /// la tranche montre la valeur statique, que le moteur joue. Absent : rien n'est suspendu.
+    std::function<bool(const std::string&)> lectureSuspendue;
 
     void refreshFromTrack() {
         nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);

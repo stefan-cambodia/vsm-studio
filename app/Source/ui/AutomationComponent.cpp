@@ -94,6 +94,7 @@ void AutomationComponent::listerEchellePourCapture() const {
                 + juce::String(paramMax_, 4) + ", \xc3\xa9" "chelle "
                 + (echelleLog_ ? "log" : "lin\xc3\xa9" "aire") + ", "
                 + juce::String(static_cast<int>(editPoints_.size())) + " point(s), "
+                + (courbeLue_ ? "lue, " : "tue, ")   // D601.3
                 + juce::String(static_cast<int>(graduations_.size())) + " graduation(s)"
                 + [this] {
                       juce::String liste;
@@ -219,9 +220,12 @@ void AutomationComponent::rebuildParamBox() {
 
 void AutomationComponent::loadSelectedLane() {
     editPoints_.clear();
+    courbeLue_ = true;
     for (const auto& lane : lanes_)
-        if (estLaLane(lane, selectedTrack_, selectedParam_))   // D456
+        if (estLaLane(lane, selectedTrack_, selectedParam_)) {   // D456
             editPoints_ = lane.points();
+            courbeLue_ = lane.read;   // D601.3
+        }
     dragIndex_ = -1;
     pointMontre_ = -1;   // D455 : l'index désignait un point de l'ancienne courbe
 }
@@ -607,14 +611,17 @@ void AutomationComponent::paint(juce::Graphics& g) {
     juce::Point<int> last(tickToX(editPoints_.back().tick), valueToY(editPoints_.back().value));
     path.lineTo(static_cast<float>(a.getRight()), static_cast<float>(last.y));
 
-    g.setColour(Palette::accentTeal);
+    // D601.3 : UNE COURBE QUI NE JOUE PAS (le R de sa piste éteint, sa famille suspendue) SE DESSINE PÂLIE — l'encre de
+    // l'arrangement (D600.2) ; elle reste éditable.
+    const float encre = courbeLue_ ? 1.0f : 0.35f;
+    g.setColour(Palette::accentTeal.withAlpha(encre));
     g.strokePath(path, juce::PathStrokeType(2.0f));
 
     // Points.
     for (const auto& p : editPoints_) {
         float x = static_cast<float>(tickToX(p.tick));
         float y = static_cast<float>(valueToY(p.value));
-        g.setColour(Palette::accentAmber);
+        g.setColour(Palette::accentAmber.withAlpha(encre));
         g.fillEllipse(x - kPointRadius, y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f);
     }
     // D455 : LA VALEUR DU POINT MONTRÉ. Aucun `drawText` ne l'écrivait : une

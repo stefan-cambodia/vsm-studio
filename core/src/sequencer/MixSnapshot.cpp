@@ -153,6 +153,35 @@ size_t countMutedTracks(const Project& project) {
                                              [](const Track& t) { return t.muted; }));
 }
 
+size_t countTracksToSetRead(const Project& project, bool read) {
+    size_t n = 0;
+    for (const auto& t : project.tracks) n += t.automationRead != read ? 1 : 0;
+    return n;
+}
+
+size_t setAllAutomationRead(Project& project, bool read) {
+    size_t n = 0;
+    for (auto& t : project.tracks) {
+        if (t.automationRead != read) { t.automationRead = read; ++n; }
+        // ÉTEINDRE DÉSARME, partout — une piste déjà éteinte qu'un fichier aurait armée comprise (D600.2).
+        if (!read) t.automationMode = AutomationMode::Off;
+    }
+    return n;
+}
+
+size_t countArmedAutomationWrite(const Project& project) {
+    size_t n = 0;
+    for (const auto& t : project.tracks) n += t.automationMode != AutomationMode::Off ? 1 : 0;
+    return n;
+}
+
+size_t disarmAllAutomationWrite(Project& project) {
+    size_t n = 0;
+    for (auto& t : project.tracks)
+        if (t.automationMode != AutomationMode::Off) { t.automationMode = AutomationMode::Off; ++n; }
+    return n;
+}
+
 size_t clearAllSolos(Project& project) {
     size_t n = 0;
     for (auto& t : project.tracks)

@@ -1,6 +1,7 @@
 #include <cctype>
 #include "LocaleAVirgule.h"
 #include "TestFramework.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include <algorithm>
 #include "vsm/interchange/Json.h"
 #include "vsm/interchange/ProjectDocument.h"
@@ -1324,6 +1325,36 @@ VSM_TEST(the_automation_read_switch_survives_the_trip_and_on_writes_nothing_d600
     VSM_ASSERT(relu2.success);
     applyDocumentToProject(relu2.document, rejoue);
     VSM_ASSERT(rejoue.tracks[0].automationRead);
+}
+
+// D601.2 — LA SUSPENSION PAR FAMILLE fait l'aller-retour par ses mots ; rien de suspendu, rien d'écrit — un projet
+// d'avant se réécrit à l'octet ; un mot inconnu est ignoré et DIT.
+VSM_TEST(the_suspended_families_survive_the_trip_and_none_writes_nothing_d601) {
+    Project project = buildProject();
+    const std::string rien = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(rien.find("automationSuspended") == std::string::npos);
+    project.automationSuspended = vsm::sequencer::kFamilyVolume | vsm::sequencer::kFamilyInserts;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("automationSuspended") != std::string::npos);
+    VSM_ASSERT(ecrit.find("\"inserts\"") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    rejoue.automationSuspended = 0;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(static_cast<int>(rejoue.automationSuspended),
+                  static_cast<int>(vsm::sequencer::kFamilyVolume | vsm::sequencer::kFamilyInserts));
+
+    std::string inconnu = ecrit;
+    const auto ou = inconnu.find("\"inserts\"");
+    inconnu.replace(ou, 9, "\"rognes\" ");
+    const ProjectLoadResult relu2 = parseProjectDocument(inconnu);
+    VSM_ASSERT(relu2.success);
+    const auto rapport = applyDocumentToProject(relu2.document, rejoue);
+    VSM_ASSERT_EQ(static_cast<int>(rejoue.automationSuspended), static_cast<int>(vsm::sequencer::kFamilyVolume));
+    bool dit = false;
+    for (const auto& w : rapport.warnings) dit = dit || w.find("rognes") != std::string::npos;
+    VSM_ASSERT(dit);
 }
 
 // D17.1 — LA FORME DES FONDUS, écrite seulement quand ce n'est pas la droite :

@@ -4252,7 +4252,11 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             const int bande = h - 8;
             // D600.2 : LECTURE ÉTEINTE (le R de la tranche), la courbe se dessine PÂLIE — elle est là, elle ne joue
             // pas. Une courbe du master rangée dans cette piste ne se tait pas avec elle (`resolveAutomation`).
-            const bool pale = !track.automationRead && courbe->parameter.rfind("master.", 0) != 0;
+            // D601.2 : ET UNE FAMILLE SUSPENDUE sur le projet — la même pâleur, une autre raison, dite dans l'en-tête.
+            const bool eteinte = !track.automationRead && courbe->parameter.rfind("master.", 0) != 0;
+            const bool suspendue =
+                (project_->automationSuspended & vsm::sequencer::automationFamilyOf(courbe->parameter)) != 0;
+            const bool pale = eteinte || suspendue;
             const float encre = pale ? 0.35f : 1.0f;
 
             juce::Path trace;
@@ -4306,7 +4310,9 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             if (h >= 40) {
                 g.setColour(Palette::accentAmber.withAlpha(0.85f * encre));
                 g.setFont(juce::Font(juce::FontOptions(12.0f)));
-                g.drawText(juce::String(courbe->parameter) + (pale ? vsm::app::ui::tr(u8" (R éteint)") : juce::String()), 24,
+                g.drawText(juce::String(courbe->parameter)
+                               + (eteinte ? vsm::app::ui::tr(u8" (R éteint)")
+                                  : suspendue ? vsm::app::ui::tr(u8" (susp.)") : juce::String()), 24,
                            y + h - 16, kHeaderWidth - 30, 13, juce::Justification::centredLeft, true);
             }
         }
