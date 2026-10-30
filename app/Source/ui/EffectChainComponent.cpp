@@ -5,6 +5,7 @@
 #include "ReponseDeBanc.h"   // D219
 #include "vsm/sequencer/MidiEffects.h"
 #include "vsm/audio/effect/BypassableEffect.h"
+#include "vsm/audio/effect/TunerEffect.h"   // D605.1
 #include "vsm/interchange/EffectPreset.h"
 #include <algorithm>
 #include "vsm/audio/effect/EffectFactory.h"
@@ -16,7 +17,54 @@ using vsm::audio::effect::EffectFactory;
 using vsm::interchange::describeEffect;
 using vsm::sequencer::TrackEffect;
 
+namespace {
+/// D605.1 : l'accordeur que porte cet effet — lui-même, ou celui qu'enveloppe un contournement (D15.1, qui le laisse
+/// tourner) ; nullptr sinon.
+const vsm::audio::effect::TunerEffect* accordeurDe(const vsm::audio::effect::IAudioEffect& effet) {
+    if (const auto* t = dynamic_cast<const vsm::audio::effect::TunerEffect*>(&effet)) return t;
+    if (const auto* e = dynamic_cast<const vsm::audio::effect::BypassableEffect*>(&effet))
+        return dynamic_cast<const vsm::audio::effect::TunerEffect*>(&e->inner());
+    return nullptr;
+}
+} // namespace
+
+juce::String EffectChainComponent::lectureDeLAccordeur(const vsm::audio::effect::IAudioEffect& effet, bool recente) {
+    const auto* tuner = accordeurDe(effet);
+    if (tuner == nullptr) return {};
+    uint32_t generation = 0;
+    const auto r = tuner->lecture(generation);
+    if (!recente || !r.found) return juce::String::fromUTF8("\xe2\x80\x94");   // « — » : rien ne se mesure
+    const int cents = static_cast<int>(std::lround(r.cents));
+    return vsm::app::ui::nomDeNote(r.note) + juce::String::fromUTF8(" \xc2\xb7 ") + (cents > 0 ? "+" : "")
+           + juce::String(cents) + " c" + juce::String::fromUTF8(" \xc2\xb7 ") + juce::String(r.hz, 1) + " Hz";
+}
+
+bool EffectChainComponent::lectureRecente(const vsm::audio::effect::IAudioEffect& effet) {
+    const auto* tuner = accordeurDe(effet);
+    if (tuner == nullptr) return false;
+    uint32_t generation = 0;
+    tuner->lecture(generation);
+    const juce::uint32 maintenant = juce::Time::getMillisecondCounter();
+    auto& vu = generationsVues_[tuner];
+    if (vu.first != generation) vu = {generation, maintenant};
+    return generation > 0 && maintenant - vu.second < 400;
+}
+
+void EffectChainComponent::timerCallback() {
+    // D605.1 : LA CASE D'UN ACCORDEUR DIT CE QU'IL ENTEND — son nom, puis sa lecture.
+    Chain* chain = activeChain();
+    if (chain == nullptr) return;
+    for (size_t i = 0; i < rows_.size() && i < chain->size(); ++i) {
+        const auto& effet = *(*chain)[i];
+        if (accordeurDe(effet) == nullptr || !rows_[i].select) continue;
+        const juce::String texte = juce::String(effet.effectName()) + juce::String::fromUTF8(" \xc2\xb7 ")
+                                   + lectureDeLAccordeur(effet, lectureRecente(effet));
+        if (rows_[i].select->getButtonText() != texte) rows_[i].select->setButtonText(texte);
+    }
+}
+
 EffectChainComponent::EffectChainComponent() {
+    startTimerHz(10);   // D605.1 : la case des accordeurs
     // LE VOLET DÉFILE (D31.4) : tout le contenu vit dans `contenu_`, que le
     // viewport promène. La barre horizontale est refusée -- la largeur suit
     // toujours celle du volet, et une barre qui ne sert jamais mange 10 px.
@@ -868,6 +916,23 @@ void EffectChainComponent::direLesContournements() const {
         std::fputs(("VSM_INSERTS : piste " + std::to_string(p) + " \xc2\xab " + project_->tracks[p].name
                     + " \xc2\xbb \xe2\x80\x94 description " + description + ", moteur " + (vivant.empty() ? "-" : vivant) + "\n").c_str(),
                    stderr);
+        // D605.1 : CE QUE LIT CHAQUE ACCORDEUR de la piste, comme sa case l'écrit.
+        if (p < chains_.size())
+            for (size_t i = 0; i < chains_[p].size(); ++i)
+                if (accordeurDe(*chains_[p][i]) != nullptr) {
+                    uint32_t generation = 0;
+                    const auto r = accordeurDe(*chains_[p][i])->lecture(generation);
+                    std::fputs(("VSM_ACCORDEUR : piste " + std::to_string(p) + " insert " + std::to_string(i + 1) + " : "
+                                + lectureDeLAccordeur(*chains_[p][i], r.found).toStdString() + " ; " + std::to_string(generation)
+                                + " mesure(s), " + juce::String(r.cents, 2).toStdString() + " c, clart\xc3\xa9 "
+                                + juce::String(r.clarity, 3).toStdString()
+                                // ET CE QUE SA CASE MONTRE, quand la piste est celle de la chaîne affichée.
+                                + (static_cast<int>(p) == activeTrack_ && i < rows_.size() && rows_[i].select
+                                       ? " ; case \xc2\xab " + rows_[i].select->getButtonText().toStdString() + " \xc2\xbb"
+                                       : std::string())
+                                + "\n").c_str(),
+                               stderr);
+                }
     }
 }
 

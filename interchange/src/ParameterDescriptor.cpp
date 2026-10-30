@@ -1573,6 +1573,10 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Threshold", "effect.deesser.threshold"},
         {"Max Reduction", "effect.deesser.max_reduction"},
     }},
+    // --- fx.tuner (D605) : l'accordeur — son seul réglage, le diapason de référence ---
+    {"fx.tuner", {
+        {"Reference", "effect.tuner.reference"},
+    }},
     // --- fx.filter ---
     {"fx.filter", {
         {"Cutoff", "effect.filter.cutoff"},

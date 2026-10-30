@@ -841,10 +841,16 @@ VSM_TEST(regression_every_factory_effect_has_a_reference) {
     // Le même garde-fou que pour les machines : un effet ajouté sans empreinte
     // doit le DIRE, sinon il entre dans le parc sans protection et personne ne
     // s'en aperçoit avant la première dérive.
+    // LES EFFETS QUI MESURENT ET LAISSENT PASSER LE SON AU BIT (D605 : l'accordeur) n'ont PAS d'empreinte — `checkEffect`
+    // refuse, à raison, une empreinte transparente, qui ne garde rien. Leur garde est le passage au bit près
+    // (`test_tuner.cpp`). Liste FERMÉE : un effet n'y entre qu'écrit ici, avec le test qui le garde.
+    static const char* const kTransparentsGardesAilleurs[] = {"tuner"};
     for (const auto& info : vsm::audio::effect::EffectFactory::available()) {
         bool trouve = false;
         for (const auto& r : effectReferences())
             if (info.id == r.pluginId) trouve = true;
+        for (const char* id : kTransparentsGardesAilleurs)
+            if (info.id == id) trouve = true;
         if (regenMode()) { if (!trouve) std::printf("// effet sans référence : %s\n", info.id.c_str()); continue; }
         if (!trouve)
             throw vsm::test::AssertionFailure("effet sans empreinte de référence : " + info.id

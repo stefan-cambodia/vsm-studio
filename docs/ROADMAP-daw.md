@@ -47352,6 +47352,40 @@ fabrique, la case de la chaîne d'inserts et le relevé, puis le banc `tools/acc
 - **La précision attendue** (± 0,2 Hz à 440 Hz, soit 0,8 c) reste celle écrite : l'interpolation parabolique du creux
   la donne sur un sinus ; si la mesure ne la tient pas, c'est écrit et non élargi en silence.
 
+**UN DÉFAUT ANTÉRIEUR TROUVÉ PAR LE BANC DE L'ACCORDEUR, ÉCRIT AVANT SA CORRECTION (31/10, 04 h 42 à l'horloge) : L'ARRÊT
+NE COUPE AUCUNE NOTE.** L'attendu (3) « le transport arrêté → — » est tombé rouge : 1,3 s après *Stop*, la case lisait
+encore « C6 ». L'accordeur avait raison — le vumètre de la tranche lisait −25,8 dBFS, la note SONNAIT —, avec ou sans
+l'accordeur, au générateur de test comme au Minimoog, sur le binaire de D598 comme sur le neuf. Lu au code :
+`Transport::stopHere()`, `stop()` et `pause()` ne font que `ProcessGraph::setPlaying(false)`, qui pose un drapeau ; à
+l'arrêt, le graphe ne rend plus le planning (`includeScheduledEvents = false`) — le NoteOff écrit n'arrive donc JAMAIS,
+et une note commencée sonne jusqu'au départ suivant, ou jusqu'au panic de D24.4 (à la main). Et D25.1 l'avait promis :
+son critère dit « le rebouclage, **l'arrêt** et le panic vident la retenue » ; sa clôture du 06/09 dit « le rebouclage et
+le panic vident tout » — l'arrêt est tombé du texte sans un mot, et du code avec lui.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D605.2 | **L'arrêt relâche ce que la lecture tenait** — ce que fait le *Stop* de tout séquenceur | à l'arrêt (*Stop*, l'arrêt sur place, la pause), le bloc suivant envoie un NoteOff pour chaque note que la LECTURE fait sonner, sur chaque piste — machine ou port MIDI —, et vide la retenue de la pédale (D25.1) ; une note tenue AU CLAVIER continue de sonner (la touche est enfoncée : son relâchement la coupera) ; rien d'autre ne change à l'arrêt (le *Reset on Stop* de Cubase — pitch bend, contrôleurs — reste écarté, D584) ; mesuré au cœur, le témoin du clavier à côté, et par le banc de l'accordeur |
+
+**CE QUI EST TRANCHÉ, ET POURQUOI.**
+- **Le relâchement est celui du rebouclage**, qui existe depuis le début (« sans ça, une note dont le NoteOff tombe APRÈS
+  la fin de boucle sonnerait indéfiniment ») : un drapeau atomique posé par `setPlaying(false)` quand la lecture
+  S'ARRÊTE (pas à chaque appel), consommé en tête du bloc suivant, puis par piste comme le panic — `clearSustain`, un
+  NoteOff par note sonnante. Le chemin de l'arrêt ne saute pas ce bloc-là (il ne saute que quand rien ne sonne ; une
+  note vers un port MIDI ne compte pas de voix).
+- **Les notes du clavier sont reconnues** par un second masque, `tenuesAuClavier_`, posé par le NoteOn du direct (D24.1)
+  et retiré par tout relâchement : c'est ce qui sépare « la lecture tenait » de « la main tient ». Cubase fait de même —
+  arrêter ne relâche pas une touche enfoncée.
+- **Pas de préférence** : aucun séquenceur ne laisse sonner les notes de la lecture après l'arrêt ; ce n'est pas un goût.
+- **Les exports n'en sont pas touchés** : le rendu hors ligne n'appelle `setPlaying(false)` qu'après son dernier bloc.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** : (a) au cœur, à 8 kHz, une note de quatre secondes au Minimoog lue 0,5 s, puis
+l'arrêt : une seconde plus tard, la crête du dernier bloc **< ¼** de la crête tenue, et la note n'est plus comptée
+sonnante ; (b) le témoin, dans le MÊME test : une note jouée au clavier sur une autre piste avant l'arrêt sonne ENCORE
+une seconde après (crête **> ½** de la sienne avant l'arrêt), et reste comptée ; (c) sous la pédale : une croche écrite
+sous une pédale enfoncée (son NoteOff retenu), l'arrêt après la croche → silence (< ¼) — le critère oublié de D25.1 ;
+(d) joué rouge d'abord sur le code d'avant (le drapeau jamais consommé) ; (e) le banc de l'accordeur : « — » arrêté,
+sans rien changer à l'attendu (3).
+
 ### La série de D604 — JOUÉE, VERTE (31/10/2026, 00 h 00 à l'horloge)
 
 *`./verifier.sh --bancs`, **202** bancs (`reperes-cycle` entré), lancée le 30/10 à 22 h 21 sous `kde-inhibit
@@ -47359,3 +47393,53 @@ fabrique, la case de la chaîne d'inserts et le relevé, puis le banc `tools/acc
 allumé, session déverrouillée, aucune veille ; la garde de batterie posée (veille à 10 %), la batterie de 47 à 19 %.*
 **202 verts sur 202** en 98 min ; les préférences de l'utilisateur identiques ; le compositeur 899 → 922 Mo. Elle clôt
 D604 et la correction du plantage de D599 (la piste pendante), et la garde du mojibake : D599 à D604 sont FAITES.
+
+### Phase D605 — MESURÉE, la série à jouer (31/10/2026, 04 h 57 à l'horloge)
+
+*Écrite avant son code le 30/10 à 22 h 23, corrigée à 22 h 25 (la fenêtre de 4 096 échantillons décimés) ; D605.2 écrite
+le 31/10 à 04 h 42, avant son code. Les tests du moteur joués rouges d'abord : le détecteur rendu vide, puis, pour
+D605.2, le drapeau de l'arrêt jamais consommé (`apres < tenue * 0.25f` tombé, 0,1575 contre 0,159 tenue, la note
+toujours comptée). Le banc `tools/accordeur.sh` (5 contrôles) ; le témoin : le binaire de D604 (`build/temoin-D604`).*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D605 (1) | le détecteur : 440 → 440,0 Hz (± 0,2), 0 c (± 1) ; 446 → +23,4 c ; la dent de scie à 110 → 110,0 ; le do 6 → 84 ; 41 Hz mesuré ; le silence et le bruit → rien ; au diapason 442 → −7,9 c | **439,999 Hz, −0,00 c** ; **+23,44 c** ; **109,998 Hz** ; 84 ; **41,000 Hz** ; rien, rien ; **−7,85 c** — et l'aigu ajouté après la mesure : 1 046,5 et 1 975,5 Hz à **+0,04 / +0,60 c** (44,1 kHz) et **−0,04 / +0,40 c** (48 kHz) | le détecteur rendu vide : rouge | **oui** |
+| D605 (2) | la sortie égale l'entrée au bit ; latence 0 | `l == l0`, `r == r0` sur une seconde en blocs de 512 ; `latencySamples()` 0 ; 22 mesures, **440,00 Hz**, la note 69 | — | **oui** |
+| D605 (3) | en lecture « C6 », 0 c (± 2) ; à 442 → −7,9 c (± 2) ; arrêté → « — » ; le témoin : l'effet inconnu | « Tuner · C6 · 0 c · 1046.6 Hz », **+0,14 c** ; « C6 · -8 c », **−7,72 c** ; arrêté : « Tuner · — » | le binaire de D604 : **0** relevé d'accordeur | **oui, après D605.2** |
+| D605 (4) | l'anglais ; la case photographiée | « Tuner · C6 · 0 c · 1046.6 Hz » sous *Effects*, *Bypass all* ; les trois cases regardées (lecture, 442, arrêté) | — | **oui** |
+| D605.2 | l'arrêt relâche ce que la lecture tenait : (a) < ¼ une seconde après ; (b) le clavier sonne encore (> ½) ; (c) la pédale vidée | (a) **0,159 → 0,0000**, la note plus comptée ; sans l'arrêt **0,158** ; (b) le clavier **0,110** contre **0,110** seul, compté ; (c) sous la pédale **0,248 → 0,0000**, sans l'arrêt **0,240** | le drapeau jamais consommé : (a) **0,1575**, rouge | **oui** |
+| — | les suites | cœur **576 / 576**, moteur **1 375 / 1 375** (3 neufs : le détecteur, le passage, l'arrêt), interchange **368 / 368**, clap 25, panneaux 11 | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **L'interpolation tirait vers l'aigu** — CORRIGÉ APRÈS LA MESURE : faite sur la courbe normalisée de YIN, elle lisait
+  **+2,03 c** au do 6 dans l'application (la carte son à 44,1 kHz), +1,95 c sur une réplique, +7 c à 2 kHz ; faite sur
+  la différence BRUTE, +0,04 c et +0,6 c. Le creux se CHOISIT sur la courbe normalisée, il s'INTERPOLE sur la brute ; le
+  test de l'aigu aux deux fréquences d'échantillonnage le garde désormais (« à moins d'un cent jusqu'à 2 kHz »).
+- **Une limite du détecteur, nommée et non corrigée** : une composante inharmonique forte fait lire une fausse note —
+  le premier test de passage ajoutait à la voix droite un sinus à 2 826 Hz sans rapport avec 440, et la somme mono se
+  lisait **464 Hz**. YIN suppose un son périodique ; un tel mélange n'en est pas un. Le test mesure ce qu'il dit (deux
+  voix du même sinus), la limite est ici.
+- **Un défaut de TEST antérieur, réveillé par l'accordeur** : `integer_parameters_have_integer_bounds` parcourait
+  `create(id)->parameterList()` — la liste d'un effet TEMPORAIRE, détruit avant le premier tour ; un comportement
+  indéfini qui passait tant que la mémoire libérée gardait son contenu. Les tampons de l'accordeur ont changé le tas, et
+  la suite est morte en SIGSEGV. L'effet est gardé en vie pendant la boucle.
+- **L'accordeur est exempté, nommément, de « chaque effet a son empreinte »** : une empreinte d'un effet transparent ne
+  garde rien, et `checkEffect` la refuse à raison. Liste FERMÉE (`kTransparentsGardesAilleurs`), sa garde est le passage
+  au bit près.
+- **La barre d'espace prise par la vue des effets** : le premier essai du banc arrêtait le transport par l'espace, et le
+  journal l'a dit (`VSM_TOUCHE : « spacebar » → fenêtre : prise`) — le transport ne s'est pas arrêté, l'accordeur
+  mesurait à juste titre une note qui jouait. Le banc arrête par le bouton (`cliquer:Stop`).
+- **L'ARRÊT NE COUPAIT AUCUNE NOTE** — D605.2, ci-dessus : un défaut de toujours, et le critère de D25.1 (« l'arrêt vide
+  la retenue ») tombé de sa clôture. C'est l'accordeur, qui ne devait que lire « — », qui l'a entendu.
+- **Le séparateur décimal** : la case écrit « 1046.6 Hz », avec le point — comme « 120.0 BPM » de la barre de transport —,
+  et non « 440,8 Hz » de l'exemple du critère. L'exemple est corrigé par cette ligne ; l'unification des séparateurs de
+  l'interface n'est pas l'objet de D605.
+- **Six graphes sur la pile** : le premier essai du test de l'arrêt est mort en segfault (un `ProcessGraph` est gros) ;
+  les graphes du test vivent sur le tas.
+- **Les photos prises écran éteint et session verrouillée** (05 h, l'utilisateur absent) : les quatre lancements ont
+  dessiné leur fenêtre en entier (130 à 139 ko) — la rafale de D520 ne s'est pas produite ici ; les trois cases lues.
+
+**LA SÉRIE EST À JOUER, ET ELLE ATTEND L'ÉCRAN ALLUMÉ.** Ni D605.1 (la case de la chaîne d'inserts) ni D605.2 (le
+moteur à l'arrêt, que plusieurs bancs traversent) n'ont été joués dans la série. À 04 h 57, l'écran est éteint et la
+session verrouillée : c'est sous ces conditions que l'unité du compositeur est montée à 10,4 Go (D581), et D578 a vu
+`systemd-oomd` tuer la session de l'utilisateur pendant une série. Elle se joue l'écran allumé.

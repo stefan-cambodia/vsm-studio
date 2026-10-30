@@ -67,7 +67,9 @@ VSM_TEST(the_de_esser_lets_the_low_end_through_bit_for_bit_and_cuts_a_loud_8_khz
 
 VSM_TEST(the_two_new_inserts_come_after_the_sixteen_and_are_made_by_the_factory) {
     const auto& liste = EffectFactory::available();
-    VSM_ASSERT_EQ(liste.size(), static_cast<size_t>(18));
+    // D605 : AU MOINS dix-huit — l'accordeur vient après, et c'est son test qui garde son rang ; ce qui compte ici est
+    // que les deux de D596 suivent les seize d'avant.
+    VSM_ASSERT(liste.size() >= static_cast<size_t>(18));
     VSM_ASSERT(liste[16].id == "expander");
     VSM_ASSERT(liste[17].id == "deesser");
     VSM_ASSERT(EffectFactory::create("expander") != nullptr);

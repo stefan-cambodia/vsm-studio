@@ -85,8 +85,12 @@ VSM_TEST(percent_unit_means_a_part_between_minus_one_and_one) {
 // (qui a des noms, D473). Le Downsample du Bit Crusher en est un.
 VSM_TEST(integer_parameters_have_integer_bounds) {
     int entiers = 0;
-    for (const auto& e : EffectFactory::available())
-        for (const auto& p : EffectFactory::create(e.id)->parameterList()) {
+    for (const auto& e : EffectFactory::available()) {
+        // L'EFFET GARDÉ EN VIE PENDANT LA BOUCLE. `for (… : create(id)->parameterList())` parcourait la liste d'un effet
+        // TEMPORAIRE, détruit avant le premier tour — un comportement indéfini qui passait tant que la mémoire libérée
+        // gardait son contenu ; l'accordeur de D605, avec ses tampons, a changé le tas, et la suite est morte en SIGSEGV.
+        const auto effet = EffectFactory::create(e.id);
+        for (const auto& p : effet->parameterList()) {
             if (!p.integer) continue;
             ++entiers;
             VSM_ASSERT(p.choices.empty());
@@ -94,5 +98,6 @@ VSM_TEST(integer_parameters_have_integer_bounds) {
             VSM_ASSERT(std::floor(p.maxValue) == p.maxValue);
             VSM_ASSERT(std::floor(p.defaultValue) == p.defaultValue);
         }
+    }
     VSM_ASSERT(entiers >= 1);
 }

@@ -775,6 +775,9 @@ private:
     // trouve après la fin de boucle ne le recevrait jamais et sonnerait
     // indéfiniment. On les relâche donc explicitement au moment du saut.
     std::array<std::array<bool, 128>, kMaxTracks> soundingNotes_{};
+    /// D605.2 : parmi les notes qui sonnent, celles que la MAIN tient (un NoteOn du direct, D24.1) : l'arrêt les laisse
+    /// sonner, la touche est enfoncée. Retirées par tout relâchement (`marquerSonnante(…, false)`). Thread audio seulement.
+    std::array<std::array<bool, 128>, kMaxTracks> tenuesAuClavier_{};
     /// D32.3 : le même état, en masque atomique, pour l'interface. Tenu à jour
     /// par `marquerSonnante`, seul endroit qui écrit `soundingNotes_`.
     mutable std::array<std::atomic<uint64_t>, kMaxTracks> soundingMaskLow_{};
@@ -785,6 +788,7 @@ private:
     void marquerSonnante(size_t trackIndex, uint8_t note, bool sonne) {
         if (trackIndex >= kMaxTracks || note > 127) return;
         soundingNotes_[trackIndex][note] = sonne;
+        if (!sonne) tenuesAuClavier_[trackIndex][note] = false;   // D605.2
         auto& mot = note < 64 ? soundingMaskLow_[trackIndex] : soundingMaskHigh_[trackIndex];
         const uint64_t bit = uint64_t{1} << (note % 64);
         const uint64_t avant = mot.load(std::memory_order_relaxed);
@@ -1047,6 +1051,10 @@ private:
     /// D24.4 : le panic demandé, et sa lecture pour le bloc en cours.
     std::atomic<bool> panicRequested_{false};
     bool panicThisBlock_ = false;
+    /// D605.2 : la lecture qui S'ARRÊTE (posé par `setPlaying(false)` quand elle jouait), et sa lecture pour le bloc en
+    /// cours : un NoteOff pour ce que la lecture tenait, la retenue de la pédale vidée.
+    std::atomic<bool> stopReleaseRequested_{false};
+    bool stopReleaseThisBlock_ = false;
     /// D27.2 : la file de sortie MIDI, l'heure du bloc, et le dépôt.
     static constexpr size_t kMidiOutQueueCapacity = 1024;
     std::array<vsm::audio::util::LockFreeRingBuffer<MidiOutEvent, kMidiOutQueueCapacity>, kMaxTracks> midiOutQueues_;

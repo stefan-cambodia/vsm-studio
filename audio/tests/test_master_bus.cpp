@@ -5,6 +5,7 @@
 #include "vsm/sequencer/Project.h"
 #include <cmath>
 #include <cstdio>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -251,6 +252,103 @@ VSM_TEST(panic_silences_a_held_note) {
         if (b == 47) creteTemoin = std::max(peakOf(l), peakOf(r));
     }
     VSM_ASSERT(creteTemoin > tenue * 0.25f);
+}
+
+// --- D605.2 : l'arrêt relâche ce que la lecture tenait ----------------------
+// L'attendu écrit avant le code (ROADMAP-daw, D605) : 8 kHz, blocs de 256 (31,25 par seconde), le Minimoog ; une seconde
+// après l'arrêt, la crête du dernier bloc sous le quart de la crête tenue ; la note du clavier, elle, sonne encore.
+
+namespace {
+struct Jeu {
+    // SUR LE TAS : six graphes sur la pile du test la débordaient (segfault au premier essai).
+    std::unique_ptr<ProcessGraph> tas = std::make_unique<ProcessGraph>();
+    ProcessGraph& graph = *tas;
+    std::vector<float> l = std::vector<float>(256), r = std::vector<float>(256);
+    explicit Jeu(const Project& project) {
+        graph.prepare(8000.0, 256);
+        for (size_t t = 0; t < project.tracks.size(); ++t) graph.setTrackInstrument(t, "vsm.minimoog");
+        graph.setProject(project);
+        graph.seekSeconds(0.0);
+        graph.setPlaying(true);
+    }
+    float rendre(int blocs) {   // la crête du DERNIER bloc
+        float crete = 0.0f;
+        for (int b = 0; b < blocs; ++b) {
+            graph.processBlock(l.data(), r.data(), 256);
+            crete = std::max(peakOf(l), peakOf(r));
+        }
+        return crete;
+    }
+    bool sonne(size_t piste, int note) const {
+        uint64_t basses = 0, hautes = 0;
+        graph.soundingNotesOf(piste, basses, hautes);
+        return ((note < 64 ? basses : hautes) >> (note % 64)) & 1u;
+    }
+};
+Project projetDeNotes(int pistes, int fin, bool pedale) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    uint64_t id = 1;
+    for (int t = 0; t < pistes; ++t) {
+        Track track;
+        if (t == 0) {
+            track.addNote(0, fin, 57, 120, 0, id);
+            if (pedale) track.controlChanges.push_back({0, 0, 64, 127});   // enfoncée, jamais relâchée
+        }
+        project.tracks.push_back(track);
+    }
+    return project;
+}
+} // namespace
+
+VSM_TEST(stopping_releases_what_the_playback_held_and_spares_the_keyboard_d605) {
+    // (a) une note de quatre secondes, lue 0,5 s, puis l'arrêt.
+    Jeu arrete(projetDeNotes(1, 480 * 8, false));
+    const float tenue = arrete.rendre(16);
+    arrete.graph.setPlaying(false);
+    const float apres = arrete.rendre(32);
+    // LE TÉMOIN : la même note sans l'arrêt sonne encore au même instant.
+    Jeu continue_(projetDeNotes(1, 480 * 8, false));
+    (void)continue_.rendre(16);
+    const float sansArret = continue_.rendre(32);
+    std::printf("      [D605.2] tenue %.3f ; une seconde après l'arrêt %.4f (note comptée : %s) ; sans l'arrêt %.3f\n",
+                tenue, apres, arrete.sonne(0, 57) ? "oui" : "non", sansArret);
+    VSM_ASSERT(tenue > 0.05f);
+    VSM_ASSERT(apres < tenue * 0.25f);
+    VSM_ASSERT(!arrete.sonne(0, 57));
+    VSM_ASSERT(sansArret > tenue * 0.25f);
+
+    // (b) la note du CLAVIER, sur une autre piste, jouée avant l'arrêt : elle sonne encore une seconde après, et reste
+    // comptée — contre la même note jouée seule, la lecture continuant.
+    Jeu avecClavier(projetDeNotes(2, 480 * 8, false));
+    avecClavier.graph.sendLiveNote(ProcessGraph::LiveNoteSource::Ui, 1, 64, 100, true);
+    (void)avecClavier.rendre(16);
+    avecClavier.graph.setPlaying(false);
+    const float clavierApres = avecClavier.rendre(32);
+    Jeu clavierSeul(projetDeNotes(2, 0, false));
+    clavierSeul.graph.sendLiveNote(ProcessGraph::LiveNoteSource::Ui, 1, 64, 100, true);
+    const float clavierTemoin = clavierSeul.rendre(48);
+    std::printf("      [D605.2] le clavier : %.3f une seconde après l'arrêt (comptée : %s), seul %.3f ; la lecture "
+                "comptée : %s\n", clavierApres, avecClavier.sonne(1, 64) ? "oui" : "non", clavierTemoin,
+                avecClavier.sonne(0, 57) ? "oui" : "non");
+    VSM_ASSERT(clavierTemoin > 0.05f);
+    VSM_ASSERT(clavierApres > clavierTemoin * 0.5f);
+    VSM_ASSERT(avecClavier.sonne(1, 64));
+    VSM_ASSERT(!avecClavier.sonne(0, 57));
+
+    // (c) SOUS LA PÉDALE : une croche dont le NoteOff attend la pédale, l'arrêt à 1 s — le critère oublié de D25.1.
+    Jeu pedale(projetDeNotes(1, 240, true));
+    const float sousPedale = pedale.rendre(31);
+    pedale.graph.setPlaying(false);
+    const float pedaleApres = pedale.rendre(32);
+    Jeu pedaleContinue(projetDeNotes(1, 240, true));
+    (void)pedaleContinue.rendre(31);
+    const float pedaleSansArret = pedaleContinue.rendre(32);
+    std::printf("      [D605.2] sous la pédale : %.3f à 1 s ; une seconde après l'arrêt %.4f ; sans l'arrêt %.3f\n",
+                sousPedale, pedaleApres, pedaleSansArret);
+    VSM_ASSERT(sousPedale > 0.05f);
+    VSM_ASSERT(pedaleApres < sousPedale * 0.25f);
+    VSM_ASSERT(pedaleSansArret > sousPedale * 0.25f);
 }
 
 // --- D25.1 : la pédale de sustain, tenue par le graphe -----------------------

@@ -11,6 +11,7 @@
 #include "vsm/audio/effect/TapeSaturation.h"
 #include "vsm/audio/effect/TransientShaperEffect.h"
 #include "vsm/audio/effect/TremoloEffect.h"
+#include "vsm/audio/effect/TunerEffect.h"
 #include "vsm/audio/effect/PitchShiftEffect.h"
 #include "vsm/audio/effect/ExpanderDeEsser.h"
 
@@ -44,6 +45,9 @@ const std::vector<EffectInfo>& EffectFactory::available() {
         // gardent leur rang dans le menu.
         {"expander", "Expander"},
         {"deesser", "De-esser"},
+        // UN DE PLUS (D605) : l'accordeur — il mesure et ne touche pas au son. À la fin, pour que les dix-huit d'avant
+        // gardent leur rang.
+        {"tuner", "Tuner"},
     };
     return kEffects;
 }
@@ -67,6 +71,7 @@ std::unique_ptr<IAudioEffect> EffectFactory::create(const std::string& id) {
     if (id == "pitchshift") return std::make_unique<PitchShiftEffect>();
     if (id == "expander") return std::make_unique<ExpanderEffect>();   // D596
     if (id == "deesser") return std::make_unique<DeEsserEffect>();
+    if (id == "tuner") return std::make_unique<TunerEffect>();   // D605
     // PAS UN EFFET INTERNE : on demande aux couches d'hébergement, s'il y en a
     // une de posée. Sans elles, on rend nullptr comme avant, et l'appelant
     // signale un effet inconnu -- jamais ne le remplace par un autre.

@@ -715,8 +715,13 @@ void ProcessGraph::drainChasedControls() {
 
 void ProcessGraph::setPlaying(bool playing) {
     // D585.3 : AU DÉPART, les notes commencées sont mises en file AVANT que le premier bloc joué ne les cherche.
-    if (playing && !playing_.load(std::memory_order_acquire)) queueChasedNotes(currentSeconds_.load(std::memory_order_acquire));
+    const bool jouait = playing_.load(std::memory_order_acquire);
+    if (playing && !jouait) queueChasedNotes(currentSeconds_.load(std::memory_order_acquire));
     playing_.store(playing, std::memory_order_release);
+    // D605.2 : L'ARRÊT RELÂCHE CE QUE LA LECTURE TENAIT. À l'arrêt, le planning n'est plus rendu : le NoteOff écrit
+    // n'arrivait jamais, et une note commencée sonnait jusqu'au départ suivant (le banc de l'accordeur l'a entendue,
+    // −25,8 dBFS 1,3 s après Stop). Posé APRÈS `playing_` : le bloc qui consomme la demande se voit déjà arrêté.
+    if (!playing && jouait) stopReleaseRequested_.store(true, std::memory_order_release);
 }
 
 void ProcessGraph::setChaseNotes(bool oui) {
@@ -997,6 +1002,7 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
     drainedChaseNoteCount_ = 0;   // D585.3 : tirées des seuls blocs joués, plus bas
     drainLiveControls();                                                       // D24.1
     panicThisBlock_ = panicRequested_.exchange(false, std::memory_order_acq_rel);   // D24.4
+    stopReleaseThisBlock_ = stopReleaseRequested_.exchange(false, std::memory_order_acq_rel);   // D605.2
     // D27.2 : l'heure du bloc sur l'horloge monotone, pour dater la sortie MIDI.
     // ANCRÉE SUR L'HORLOGE D'ÉCHANTILLONS : l'heure du bloc est l'ancre plus
     // les échantillons rendus depuis elle, jamais l'heure de l'appel -- deux
@@ -1051,7 +1057,7 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
         auto sortieAvecPreEcoute = [&](int n) { auditionPlayer_.mixInto(outputL, outputR, n); };
 
         if (drainedLiveCount_ == 0 && drainedChaseCount_ == 0 && drainedLiveControlCount_ == 0
-            && !panicThisBlock_ && totalActiveVoices() == 0) { sortieAvecPreEcoute(numSamples); return; }
+            && !panicThisBlock_ && !stopReleaseThisBlock_ && totalActiveVoices() == 0) { sortieAvecPreEcoute(numSamples); return; }
 
         auto idleSnapshot = snapshot_.load(std::memory_order_acquire);
         if (!idleSnapshot || idleSnapshot->project.tracks.empty()) {
@@ -1668,6 +1674,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             if (live.noteOn) heldNoteOffs_[trackIndex][live.note] = false;
             else if (holdNoteOffIfSustained(trackIndex, live.note)) continue;
             marquerSonnante(trackIndex, live.note, live.noteOn);   // D32.3
+            if (live.noteOn) tenuesAuClavier_[trackIndex][live.note] = true;   // D605.2
             if (live.noteOn) notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
         }
@@ -1751,6 +1758,34 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                 events[static_cast<size_t>(numEvents++)] = off;
                 marquerSonnante(trackIndex, static_cast<uint8_t>(note), false);   // D32.3
             }
+        }
+        // D605.2 : L'ARRÊT. Un NoteOff par note que la LECTURE tenait — celle que la main tient au clavier sonne
+        // encore, sauf si son NoteOff n'attendait que la pédale : l'arrêt vide la retenue (le critère de D25.1, tombé
+        // de sa clôture et du code). La pédale relâchée d'abord pour les machines qui ont leur propre étouffoir.
+        if (stopReleaseThisBlock_ && !panicThisBlock_) {
+            if (sustainDown_[trackIndex]) {
+                vsm::audio::plugin::MidiControlEvent pedale;
+                pedale.kind = vsm::audio::plugin::MidiControlEvent::Kind::ControlChange;
+                pedale.channel = track.channel;
+                pedale.index = 64;
+                pedale.value = 0.0f;
+                if (instrument) instrument->handleControlEvent(pedale);
+                if (externe) emitControlOut(trackIndex, track.channel, pedale);   // D27.2
+            }
+            auto& sonnent = soundingNotes_[trackIndex];
+            const auto& retenus = heldNoteOffs_[trackIndex];
+            for (size_t note = 0; note < sonnent.size() && numEvents < kMaxEventsPerBlock; ++note) {
+                if (!sonnent[note] || (tenuesAuClavier_[trackIndex][note] && !retenus[note])) continue;
+                MidiNoteEvent off;
+                off.kind = MidiNoteEvent::Kind::NoteOff;
+                off.sampleOffset = 0;
+                off.channel = track.channel;
+                off.note = static_cast<uint8_t>(note);
+                off.velocity = 64;
+                events[static_cast<size_t>(numEvents++)] = off;
+                marquerSonnante(trackIndex, static_cast<uint8_t>(note), false);   // D32.3
+            }
+            clearSustain(trackIndex);   // D25.1
         }
     }
 
@@ -1891,8 +1926,10 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                 continue;
             marquerSonnante(trackIndex, pluginEvent.note,             // D32.3
                              pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
-            if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
+            if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn) {
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
+                tenuesAuClavier_[trackIndex][pluginEvent.note] = false;   // D605.2 : rejouée par la lecture, elle est sienne
+            }
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
         } else if (issue == Issue::Control && (appliquerLesTenues(trackIndex, controlEvent, instrument.get()), false)) {
             // D329-D331 : LES TENUES DU GRAPHE -- volume de canal (CC 7),

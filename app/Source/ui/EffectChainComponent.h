@@ -4,6 +4,7 @@
 #include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/sequencer/Project.h"
 #include <functional>
+#include <map>
 #include <memory>
 #include <set>
 #include <vector>
@@ -35,7 +36,7 @@ namespace vsm::interchange { class ShortcutTable; }
 //
 // La règle qui les tient tous les trois : ce composant ne conserve aucun état
 // que le projet ne porte pas.
-class EffectChainComponent : public juce::Component {
+class EffectChainComponent : public juce::Component, private juce::Timer {
 public:
     /// LE VOLET DÉFILE (D31.4). Sans cela, la chaîne MIDI ajoutée AU-DESSUS
     /// des inserts audio poussait le bandeau de paramètres hors du dock : les
@@ -131,6 +132,10 @@ public:
     /// D568.3 : le relevé du banc — pour chaque piste à inserts, l'état de chaque insert dans la description et sur
     /// l'instance VIVANTE, celle que le moteur joue (`o` actif, `x` contourné).
     void direLesContournements() const;
+    /// D605.1 : ce qu'un accordeur de la chaîne lit — « C6 · +0 c · 1046.5 Hz » (le nom de note de D586.3), ou « — »
+    /// quand rien ne se mesure ou que la mesure a vieilli (le transport arrêté ne fait plus passer de son). Écrit dans sa
+    /// case dix fois par seconde, et dit au relevé `relever-inserts`.
+    static juce::String lectureDeLAccordeur(const vsm::audio::effect::IAudioEffect& effet, bool recente);
 
     /// D15.4 : LES PRESETS D'EFFET. D'où ils se lisent, où ils s'écrivent, et
     /// qui prévenir quand il y en a un de plus (le navigateur).
@@ -210,6 +215,11 @@ private:
         std::unique_ptr<juce::TextButton> remove;
     };
     std::vector<EffectRow> rows_;
+    /// D605.1 : la case d'un accordeur se récrit dix fois par seconde ; une lecture dont la génération n'a pas bougé depuis
+    /// 400 ms a vieilli.
+    void timerCallback() override;
+    std::map<const void*, std::pair<uint32_t, juce::uint32>> generationsVues_;
+    bool lectureRecente(const vsm::audio::effect::IAudioEffect& effet);
 
     // -----------------------------------------------------------------------
     // D31.4 — LA CHAÎNE D'EFFETS MIDI, AU-DESSUS DES INSERTS AUDIO.
