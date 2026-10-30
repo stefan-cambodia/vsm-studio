@@ -47556,3 +47556,45 @@ D605 (`build/temoin-D605`).*
   clic sur un élément de la liste ne fait pas encore sauter la lecture (*Arranger Editor* de Cubase).
 
 **LA SÉRIE EST À JOUER (D605 et D606 ensemble), ÉCRAN ALLUMÉ** — les raisons écrites au bilan de D605.
+
+### Phase D607 — un soixante-septième audit : la réserve des fichiers (31/10/2026)
+
+*Écrite le 31/10 à 05 h 45 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de
+D605-D606 attend l'écran allumé ; rien ne tourne.*
+
+**D'OÙ ELLE VIENT : de la liste des « toujours remis »** (D573 à D604) — « une réserve des fichiers (*Pool*) — 0, mais le
+nettoyage du dossier (D564.1) en tient le geste utile ». Relu au code : `collectMediaPaths` sait quels fichiers le projet
+désigne (la piste, son gel, ses prises, ses versions), et D564.1 s'en sert pour envoyer les autres à la corbeille. Mais
+rien ne MONTRE ce que le projet emploie : quel fichier joue, lequel n'attend que dans une prise, lequel manque, combien
+pèse le dossier. Un projet rouvert « avec des réserves » dit qu'un fichier est introuvable une fois, à l'ouverture, puis
+plus jamais. Le *Pool* de Cubase est la page où l'on lit tout cela d'un coup d'œil.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D607.1 | **La réserve des fichiers** — la fenêtre *Pool* | *Fichier ▸ Réserve des fichiers…* : une ligne par fichier audio que le projet désigne, ou que son dossier (`audio/`, `gel/`) contient : son nom, sa durée, son format, sa taille, ce qui le désigne (« piste « Voix » (2 clips) », « prise « Prise 2 » de « Voix » », « version », « gel ») et son ÉTAT — **joué** (la piste, ou son gel actif), **en réserve** (seulement une prise ou une version), **MANQUANT** (désigné, absent du disque), **inutilisé** (dans le dossier, désigné par rien ; « gardé pour l'historique » quand un Ctrl+Z le rappellerait) ; un total (fichiers, mégaoctets, manquants, inutilisés) ; le bouton « Nettoyer le dossier… » (D564.1) ; relue à chaque ouverture et à « Rafraîchir » ; mesuré par le relevé de la fenêtre, la photo, et le cœur, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Une seule source de « désigné »** : la fonction neuve du cœur, `collectMediaDesignations`, rend pour chaque chemin
+  la liste de ce qui le désigne ; `collectMediaPaths` (D564.1) en devient la projection — un test vérifie que leurs
+  ensembles de chemins sont ÉGAUX, sur un projet qui a les quatre genres. Deux listes tenues à part divergeraient au
+  premier genre ajouté.
+- **« Joué » se dit de ce que la LECTURE fait entendre** : le fichier courant d'une piste non gelée ; d'une piste gelée,
+  son gel. Le fichier courant d'une piste gelée reste désigné (dégeler le rappelle) : « en réserve ». Une prise ou une
+  version qui n'est pas le fichier courant : « en réserve ».
+- **L'état MANQUANT prime** : un fichier désigné et absent se lit d'abord comme tel, quoi qu'il désigne.
+- **La fenêtre ne détient rien** : elle relit le projet et le disque à l'ouverture et sur « Rafraîchir » — la règle de
+  l'ordre de jeu et des préférences (une seconde vérité est toujours celle qui ment). Elle ne change pas le projet ;
+  son seul geste destructeur est celui de D564.1, avec sa confirmation et sa corbeille.
+- **Un projet jamais enregistré n'a pas de réserve** : la fenêtre le dit, sans liste.
+- **Remis, nommés** : relier un fichier manquant (*Find Missing Files*), importer dans la réserve sans placer, poser un
+  fichier de la réserve sur une piste.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : un projet à quatre genres — une piste « Voix » (son fichier, deux clips), deux prises dont une sur un
+autre fichier, une version sur un troisième, une piste gelée (son fichier et son gel) — rend **cinq** chemins, chacun
+avec ses désignations et le bon « joué » ; l'ensemble est égal à celui de `collectMediaPaths` ;
+(b) **au banc** `tools/reserve-fichiers.sh` : un dossier à quatre fichiers et un absent — `voix.wav` (la piste, deux
+clips : **joué**), `prise2.wav` (une prise : **en réserve**), `orphelin.wav` (rien : **inutilisé**), `absent.wav`
+(désigné par la piste « Basse », absent : **MANQUANT**) — la fenêtre en lit **quatre** lignes, chacune à son état ; le
+total « 4 fichiers · 1 manquant · 1 inutilisé » ; le témoin (D606) : l'entrée de menu inconnue ; l'anglais ; la photo ;
+(c) les suites ; la série.
