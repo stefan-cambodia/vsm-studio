@@ -47175,3 +47175,49 @@ témoin : le binaire de D602 (`build/temoin-D602`).*
   les codes ont été relus par `rc=$?` sur la ligne qui suit le banc.
 - **Remis, nommé** : la suspension de l'écriture ne couvre pas les réglages de machine et les inserts, qu'aucune passe de
   tranche n'écrit ; un contrôleur appris sur le trim n'existe pas (aucune cible d'association « trim »).
+
+### Phase D604 — un soixante-quatrième audit : les repères à étendue (30/10/2026)
+
+*Écrite le 30/10 à 19 h 56 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de 201 bancs qui clôt D599 à D603 (lancée à 19 h 45 sous `kde-inhibit --screenSaver`, l'utilisateur l'ayant autorisé) —
+rien ne se compile avant sa fin.*
+
+**D'OÙ ELLE VIENT : de la liste des « toujours remis »** que D573, D579, D580 et D581 portent d'audit en audit — la piste
+d'arrangement, **les repères à étendue**, le pré-enregistrement audio, la réserve des fichiers, le tempo fixe (fait,
+D595), le mode *Trim* (fait, D599). Lu au code : `Marker` n'a qu'un tick, un nom et une couleur (`Track.h`) ; les
+« sections » de l'ordre de jeu (D542) se lisent ENTRE deux repères consécutifs, mais **aucune plage nommée n'existe pour
+elle-même** — les *Cycle Markers* de Cubase, qu'on pose sur les locateurs, qu'on nomme (« Refrain 2 », « Solo »), et dont
+un clic remet les locateurs sur la plage. Ici, réécouter « le solo » demande de retrouver ses deux bornes à la main
+chaque fois.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D604.1 | **Le repère à étendue** — le *Cycle Marker* | un repère peut porter une FIN (`endTick` > `tick`) : posé par « Poser un repère de cycle sur les locateurs » (menu des repères, grisé sans plage de locateurs), nommé « Cycle N » d'origine ; la règle de l'arrangement le peint en bande de son début à sa fin, son nom dedans ; la fenêtre des repères montre son début ET sa fin ; un pas d'annulation ; retenu au fichier (`"endTick"`, absent d'un repère de position — un projet d'avant se relit et se réécrit à l'octet) ; mesuré par le relevé des repères, le fichier et la photo, le témoin à côté |
+| D604.2 | **Les locateurs sur un cycle** | au clic droit sur la bande d'un repère de cycle : « Poser les locateurs sur ce cycle » et « Zoomer sur ce cycle » ; mesuré par les locateurs relevés et le zoom, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Un repère qu'on étend reste un repère** : tout geste qui connaissait les repères les connaît encore, au même endroit —
+  son DÉBUT les place (la tête au repère suivant, au repère N, l'aimant, les sections de D542, l'export MIDI, qui écrit un
+  méta-événement de repère à son début). La fin ne sert qu'aux gestes de cycle. Cubase sépare les deux pistes ; ici, une
+  seule liste et un champ de plus évitent de faire disparaître un repère de vingt gestes qui le lisaient. Écrit pour
+  qu'on ne s'étonne pas qu'un cycle coupe une section : c'est le prix, et il est dit.
+- **Le nom d'origine** « Cycle N » — N le plus petit entier libre parmi les noms « Cycle N » existants —, renommable comme
+  tout repère (D83, le menu de la règle).
+- **La bande** : sous le nom du repère, à la hauteur de la règle des repères, la couleur du repère à 35 % (D570.1 : la
+  sienne, ou celle des repères) ; le nom écrit dans la bande s'il tient, sinon tronqué — jamais par-dessus la bande
+  voisine.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE** (480 ticks à la noire, 4/4, 120 BPM, une piste d'une note par mesure sur huit mesures ;
+les locateurs de 1 920 à 5 760 — mesures 2 à 4 —, un repère de position « Couplet » au tick 0) :
+(1) « Poser un repère de cycle sur les locateurs » → le relevé des repères lit **« Couplet » à 0** et **« Cycle 1 » de
+1 920 à 5 760** ; le fichier enregistré porte `"endTick": 5760` sur le second et RIEN sur le premier ; Ctrl+Z → le seul
+« Couplet » ; le témoin (D603) : l'entrée absente (`VSM_MENU : aucune entrée…`) ;
+(2) les locateurs remis à 0–480, puis « Poser les locateurs sur ce cycle » par le clic droit sur la bande → les
+locateurs relevés **1 920–5 760** ; « Zoomer sur ce cycle » → la fenêtre de l'arrangement couvre 1 920–5 760 (à 5 % près
+de part et d'autre) ;
+(3) un projet de D603 (un repère de position seul) se relit et se réécrit À L'OCTET ;
+(4) la photo de la règle : la bande « Cycle 1 » entre les mesures 2 et 4, regardée ; la fenêtre des repères liste la
+fin ; en anglais, « Cycle 1 » et les entrées nommés ; les suites ; la série.
+
+**L'ORDRE.** Le cœur (le champ, le nom libre, l'aller-retour du fichier, avec leurs tests joués rouges), puis la règle,
+le menu et la fenêtre des repères, puis le banc `tools/reperes-cycle.sh` — après la série.
