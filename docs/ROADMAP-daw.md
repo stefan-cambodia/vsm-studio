@@ -46944,3 +46944,10 @@ le code d'avant), puis les menus, la tranche et le panneau, puis le banc `tools/
 - **Le cœur tient D601.1** (`MixSnapshot.h`, à côté des gestes de D559) : `setAllAutomationRead` et
   `disarmAllAutomationWrite`, et leurs comptes. Une passe Latch ouverte se ferme AVANT (comme au désarmement d'une
   tranche) : elle s'écrit, puis le geste s'applique.
+- **CORRIGÉ AVANT LA MESURE (15 h 46, la console écrite, rien de compilé) : l'instrument de (3) était faux.** Le
+  panneau « Automation » n'édite que les réglages de MACHINE (D456) — c'est donc une courbe de machine (« Machines »),
+  pas de volume, que le banc y regarde — et sa courbe est en SARCELLE : la chaleur (Σ rouge − bleu) n'y verrait que les
+  points ambre. Et « moins d'un tiers » contredisait l'encre écrite à côté : 0,35 laisse 35 % du contraste, plus qu'un
+  tiers. L'instrument devient l'ENCRE de la lane — Σ de l'écart au fond le plus fréquent de la zone, sur le canal le plus
+  écarté —, et l'attendu : **moins de 45 %** de l'encre de la même courbe lue (0,35 attendu, les points et l'anticrénelage
+  en plus). Le relevé dit « lue » ou « tue » ; la ligne `VSM_AUTOMATION_SUSPENDUES` dit les familles suspendues.
