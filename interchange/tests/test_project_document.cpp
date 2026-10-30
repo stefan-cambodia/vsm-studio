@@ -1278,6 +1278,31 @@ VSM_TEST(the_automation_write_mode_survives_the_trip_and_off_writes_nothing) {
     VSM_ASSERT(rejoue.tracks[1].automationMode == vsm::sequencer::AutomationMode::Latch);
 }
 
+// D599.3 — LE TRIM fait l'aller-retour, sous le mot « trim » ; un mot inconnu se relit éteint (c'est ainsi qu'un
+// binaire d'avant D599 lit un projet qui l'a armé).
+VSM_TEST(the_trim_write_mode_survives_the_trip_d599) {
+    Project project = buildProject();
+    project.tracks[0].automationMode = vsm::sequencer::AutomationMode::Trim;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"automationMode\": \"trim\"") != std::string::npos
+               || ecrit.find("\"automationMode\":\"trim\"") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    rejoue.tracks[0].automationMode = vsm::sequencer::AutomationMode::Off;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(rejoue.tracks[0].automationMode == vsm::sequencer::AutomationMode::Trim);
+
+    std::string inconnu = ecrit;
+    const auto ou = inconnu.find("\"trim\"");
+    VSM_ASSERT(ou != std::string::npos);
+    inconnu.replace(ou, 6, "\"rogn\"");
+    const ProjectLoadResult relu2 = parseProjectDocument(inconnu);
+    VSM_ASSERT(relu2.success);
+    applyDocumentToProject(relu2.document, rejoue);
+    VSM_ASSERT(rejoue.tracks[0].automationMode == vsm::sequencer::AutomationMode::Off);
+}
+
 // D17.1 — LA FORME DES FONDUS, écrite seulement quand ce n'est pas la droite :
 // un projet d'avant D17.1 se réécrit octet pour octet.
 VSM_TEST(the_fade_shape_survives_the_trip_and_linear_writes_nothing) {

@@ -435,3 +435,57 @@ VSM_TEST(the_engine_and_the_editor_agree_on_every_curved_segment) {
         }
     }
 }
+
+// D599.2 et D599.3 — LA MAIN L'EMPORTE SUR LA COURBE, ET LE TRIM LA DÉCALE. L'attendu (8) de la feuille de route : une
+// piste à courbe 0,25 et volume statique 1,0 rend au niveau 0,25 ; la main posée, au niveau 1,0 ; retirée, 0,25 au bit
+// près ; un décalage Trim de facteur 2, 0,5. Chaque rendu sur un graphe NEUF : le même jeu, une seule variable.
+VSM_TEST(the_hand_overrides_the_curve_and_a_trim_offset_scales_it_d599) {
+    struct Rendu { float crete; float joue; };
+    auto rendre = [](uint16_t main, float facteur) {
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        Project projet = noteProject();
+        projet.tracks[0].volume = 1.0f;
+        graph.setProject(projet);
+        AutomationLane courbe;
+        courbe.target = AutomationTarget::TrackVolume;
+        courbe.targetTrackIndex = 0;
+        courbe.addPoint(0, 0.25f);
+        courbe.addPoint(1920, 0.25f);
+        graph.setAutomationLanes({courbe});
+        graph.setHandOverride(0, main);
+        if (facteur != 1.0f) graph.setTrimOffset(0, facteur, 0.0f);
+        const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+        return Rendu{peakBetween(rendu, 8000.0, 0.2, 0.9), graph.playedVolume(0)};
+    };
+    const Rendu courbe = rendre(0, 1.0f);
+    const Rendu main = rendre(ProcessGraph::handVolume, 1.0f);
+    const Rendu trim = rendre(0, 2.0f);
+    VSM_ASSERT(courbe.crete > 0.005f);
+    VSM_ASSERT_NEAR(courbe.joue, 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(main.joue, 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(trim.joue, 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(main.crete / courbe.crete, 4.0f, 4e-3f);
+    VSM_ASSERT_NEAR(trim.crete / courbe.crete, 2.0f, 2e-3f);
+
+    // RENDUE, LA MAIN NE LAISSE RIEN : posée puis retirée avant le rendu, le rendu est celui de la courbe, au bit près.
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    Project projet = noteProject();
+    projet.tracks[0].volume = 1.0f;
+    graph.setProject(projet);
+    AutomationLane lane;
+    lane.target = AutomationTarget::TrackVolume;
+    lane.targetTrackIndex = 0;
+    lane.addPoint(0, 0.25f);
+    lane.addPoint(1920, 0.25f);
+    graph.setAutomationLanes({lane});
+    graph.setHandOverride(0, ProcessGraph::handVolume | ProcessGraph::handPan);
+    graph.setTrimOffset(0, 3.0f, 0.4f);
+    graph.setHandOverride(0, 0);
+    graph.setTrimOffset(0, 1.0f, 0.0f);
+    const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+    VSM_ASSERT_EQ(peakBetween(rendu, 8000.0, 0.2, 0.9), courbe.crete);
+}

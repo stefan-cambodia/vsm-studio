@@ -590,7 +590,13 @@ struct AutomationCurve {
 /// Les deux se distinguent SEULEMENT par ce qui se passe au relâchement, et
 /// c'est pourquoi ils ne sont pas deux mécanismes : le même enregistrement
 /// tourne, et seul l'instant où il s'arrête change.
-enum class AutomationMode : uint8_t { Off = 0, Touch = 1, Latch = 2 };
+///
+/// D599.3 — `Trim` : la main DÉCALE la courbe de ce qu'elle a bougé depuis
+/// qu'elle l'a prise, au lieu de l'écraser — en dB pour le volume, en unités
+/// pour le panoramique —, et la forme de la courbe est gardée
+/// (`trimAutomationRange`). Le temps est celui de Touch : la passe se ferme au
+/// lâcher. Un binaire d'avant lit « trim » comme éteint.
+enum class AutomationMode : uint8_t { Off = 0, Touch = 1, Latch = 2, Trim = 3 };
 
 /// ASSEMBLER LES PRISES (D18.2) — les lanes de Cubase, les take lanes de Live.
 ///

@@ -77,6 +77,43 @@ size_t shiftAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick, 
 void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
                            const std::vector<AutomationPoint>& written);
 
+/// D599.3 — RETOUCHER UNE PLAGE EN RELATIF : le mode *Trim* de Cubase.
+///
+/// Touch ÉCRASE la plage par la valeur absolue du fader ; Trim la DÉCALE de ce
+/// que la main a bougé depuis qu'elle l'a prise, et garde la forme de ce qui y
+/// était — un fondu reste un fondu, un palier un palier, plus fort ou plus bas.
+///
+/// `GainDb` : la courbe est un gain linéaire (`mix.volume`) et le décalage des
+/// décibels, `v × 10^(d/20)` ; `Additive` : le décalage s'ajoute, `v + d` (le
+/// panoramique). Le résultat est borné à `[minimum, maximum]`.
+enum class TrimLaw : uint8_t { GainDb = 0, Additive = 1 };
+
+/// Le gain le plus haut qu'une courbe de volume décalée atteigne : +6 dB, le haut du fader de la console. La même borne
+/// pour ce qu'on ENTEND pendant la passe (`ProcessGraph`) et pour ce que `trimAutomationRange` ÉCRIT à sa fin.
+inline constexpr float kTrimGainMax = 1.99526231f;
+
+/// `offsets` est la suite des décalages joués, en ordre de tick, interpolés
+/// entre eux et tenus au-delà. La plage `[fromTick, toTick]` est réécrite en
+/// chaque tick de l'union {points de la courbe dans la plage, points de
+/// `offsets`, les deux bords} : la valeur ancienne en ce tick, décalée.
+///
+/// LA FORME GARDÉE, et c'est ce qui sépare Trim de Touch : un point ancien
+/// garde son palier et sa courbure (D17.7) si aucun autre point du résultat ne
+/// tombe à l'intérieur de son segment — le résultat y est alors EXACT, la main
+/// immobile ne faisant que multiplier (ou décaler) les deux bouts ; un segment
+/// coupé devient droit entre ses morceaux. Un point posé dans un palier en
+/// prend le palier.
+///
+/// LES RACCORDS sont ceux de `writeAutomationRange`, qui écrit le résultat.
+///
+/// Rend FAUX, sans rien toucher, si la courbe est vide, `offsets` vide ou la
+/// plage à l'envers : il n'y a rien à décaler — l'appelant écrit alors comme
+/// Touch (sur une courbe vide, la base est la valeur statique, et base ⊕
+/// décalage = le fader).
+bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
+                         const std::vector<AutomationPoint>& offsets, TrimLaw law,
+                         float minimum, float maximum);
+
 /// Retire le point le plus proche de `tick`, s'il est à moins de `tolerance`.
 /// Rend vrai si un point a été retiré.
 bool removeAutomationPointNear(AutomationCurve& curve, Tick tick, Tick tolerance);

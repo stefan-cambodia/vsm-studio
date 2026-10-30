@@ -66,6 +66,10 @@ public:
     /// des tranches choisies, que la liste fait suivre à l'application comme la tranche du mixeur.
     std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkStart;
     std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkFollow;
+    /// D599.2 : la main sur les curseurs de la ligne (1 volume, 2 panoramique), pour le moteur — comme la tranche
+    /// (`ChannelStrip::onHandChanged`). La ligne n'a pas de W : elle n'écrit jamais de courbe, et le dit.
+    std::function<void(size_t, uint16_t)> onHandChanged;
+    std::function<void(const juce::String&)> onDire;
     /// L'armement a changé. SÉPARÉ de `onChanged` : armer ne touche ni au
     /// planning de lecture ni au mixage, et republier le projet au moteur pour
     /// un bouton d'armement couperait le son à chaque clic.
@@ -209,8 +213,21 @@ private:
     /// de pas d'historique. Un seul drapeau pour la ligne : on ne glisse
     /// qu'un curseur à la fois.
     bool glisseEnCours_ = false;
+    /// D599.1 : la tête du dernier suivi, et ce que la main tient sur la tranche de cette piste.
+    vsm::midi::Tick teteSuivie_ = 0;
+    uint16_t mainAilleurs_ = 0;
+    /// D599.2 : ce que la main tient sur cette ligne (1 volume, 2 panoramique).
+    uint16_t mainLigne_ = 0;
+    void poserLaMainLigne(uint16_t bit, bool posee);
 
 public:
+    /// D599.1 — LES CURSEURS DE LA LIGNE SUIVENT LEURS COURBES, comme le fader de la tranche
+    /// (`ChannelStrip::suivreLesCourbes`) : la valeur de la courbe à la tête, sauf quand la main tient le curseur — ici,
+    /// ou sur la tranche (`mainAilleurs`) : le moteur joue alors la valeur statique, et c'est elle qui se montre.
+    void suivreLesCourbes(vsm::midi::Tick tete, uint16_t mainAilleurs);
+    double volumeAffiche() const { return volumeSlider_.getValue(); }   ///< D599 : pour le relevé
+    uint16_t mainLigne() const { return mainLigne_; }
+    double panAffiche() const { return panSlider_.getValue(); }
     /// D136 : LA LARGEUR QU'IL FAUT À LA DISPOSITION LARGE -- sa rangée la plus
     /// longue, volume 170 + 8 + panoramique 90 + 8 + sortie 130. En deçà, la
     /// ligne passe en quatre rangées (`dispositionEtroite`) et grandit (88 -> 120 px).
@@ -344,6 +361,12 @@ public:
     void refreshMix(const std::set<size_t>& seules);
     std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkStart;    ///< D566.3
     std::function<void(size_t, vsm::sequencer::LinkedMixParam)> onLinkFollow;   ///< D566.3
+    std::function<void(size_t, uint16_t)> onHandChanged;   ///< D599.2 : la main sur les curseurs d'une ligne
+    std::function<void(const juce::String&)> onDire;        ///< D599.2
+    /// D599.1 : chaque ligne suit ses courbes ; `mainSurLaTranche(i)` dit ce que la main tient sur la tranche de i.
+    void suivreLesCourbes(vsm::midi::Tick tete, const std::function<uint16_t(size_t)>& mainSurLaTranche);
+    /// D599 : la ligne de cette piste, ou nullptr — pour le relevé.
+    const TrackRowComponent* ligneDe(size_t piste) const;
 
     /// Sélectionne une piste par index (met à jour l'état visuel et notifie
     /// via onTrackSelected). Sans effet si l'index est hors bornes.

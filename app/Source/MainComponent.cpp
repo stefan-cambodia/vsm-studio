@@ -14,6 +14,7 @@
 #include "vsm/audio/io/OnsetDetection.h"
 #include "vsm/audio/io/TempoDetection.h"
 #include "vsm/audio/io/ZeroCrossing.h"
+#include "vsm/sequencer/AutomationEdit.h"   // D599 : le relevé lit la courbe à la tête
 #include "vsm/audio/dsp/LufsMeter.h"
 #include "vsm/audio/io/SilenceDetection.h"
 #include "vsm/sequencer/TimeEdit.h"
@@ -359,6 +360,29 @@ MainComponent::MainComponent()
         arrangement_.repaint();
         markProjectDirty();
     };
+    // D599.2 : LA MAIN L'EMPORTE SUR LA COURBE — ce que la main tient, sur la tranche OU sur la ligne de piste, est
+    // donné au moteur, qui joue alors le fader et non la courbe. Les deux mains se cumulent par piste.
+    const auto publierLaMain = [this](size_t piste) {
+        audioEngine_.processGraph().setHandOverride(piste, static_cast<uint16_t>(mainSurLaTranche_[piste]
+                                                                                   | mainSurLaLigne_[piste]));
+    };
+    mixer_.onHandChanged = [this, publierLaMain](size_t piste, uint16_t masque) {
+        mainSurLaTranche_[piste] = masque;
+        publierLaMain(piste);
+    };
+    trackList_.onHandChanged = [this, publierLaMain](size_t piste, uint16_t masque) {
+        mainSurLaLigne_[piste] = masque;
+        publierLaMain(piste);
+    };
+    // D599.3 : le décalage d'une passe Trim, entendu pendant qu'elle court.
+    mixer_.onTrimOffset = [this](size_t piste, float facteur, float decalage) {
+        audioEngine_.processGraph().setTrimOffset(piste, facteur, decalage);
+    };
+    const auto dire = [this](const juce::String& texte) {
+        if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(texte);
+    };
+    mixer_.onDire = dire;
+    trackList_.onDire = dire;
     mixer_.onMixChanged = [this] {
         mixDirty_ = true;
         markProjectDirty();
@@ -2760,6 +2784,24 @@ bool MainComponent::appuyerPourCapture(const juce::String& nom) {
     return true;
 }
 
+bool MainComponent::relacherPourCapture(const juce::String& nom) {
+    // D599 : LE RELÂCHÉ, au centre, le bouton gauche — `Slider::mouseUp`, qui clôt le glissé qu'`appuyer:` a ouvert
+    // (`onDragEnd`, donc la fin d'une passe Touch). Sans appui d'abord, JUCE n'a pas de glissé à clore : rien ne se passe.
+    juce::Slider* curseur = curseurPourCapture(nom);
+    std::fputs(("VSM_RELACHE : " + nom
+                + (curseur != nullptr ? juce::String::fromUTF8(" \xe2\x80\x94 rel\xc3\xa2" "ch\xc3\xa9")
+                                      : juce::String::fromUTF8(" \xe2\x80\x94 aucun curseur visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    if (curseur == nullptr) return false;
+    const auto centre = curseur->getLocalBounds().getCentre().toFloat();
+    const auto maintenant = juce::Time::getCurrentTime();
+    const juce::MouseEvent relache(juce::Desktop::getInstance().getMainMouseSource(), centre,
+                                   juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier), 1.0f,
+                                   0.0f, 0.0f, 0.0f, 0.0f, curseur, curseur, maintenant, centre, maintenant, 1, false);
+    curseur->mouseUp(relache);
+    return true;
+}
+
 bool MainComponent::doubleCliquerPourCapture(const juce::String& nomOuLegende) {
     // D140 : le curseur désigné par son nom de composant OU par son infobulle,
     // cherché comme pour `appuyer:` (visible, avec une surface), puis le
@@ -4448,6 +4490,16 @@ void MainComponent::timerCallback() {
     if (mixDirty_) {
         audioEngine_.processGraph().setProject(project_);
         mixDirty_ = false;
+    }
+    // D599.1 : LES FADERS SUIVENT LEURS COURBES, à la tête — en lecture comme à l'arrêt (une tête posée ailleurs). Ils
+    // montraient la valeur statique pendant que le moteur jouait la courbe.
+    {
+        const vsm::midi::Tick tete = transport_.currentTick();
+        mixer_.suivreLesCourbes(tete);
+        trackList_.suivreLesCourbes(tete, [this](size_t piste) {
+            const auto it = mainSurLaTranche_.find(piste);
+            return it != mainSurLaTranche_.end() ? it->second : uint16_t{0};
+        });
     }
 
     auto& mb = audioEngine_.processGraph().masterBus();
@@ -19398,4 +19450,47 @@ void MainComponent::updateSynthRackForSelection() {
     // La grille de pas édite directement les notes de la piste : c'est la même
     // musique que celle du piano roll, vue autrement (voir StepPattern.h).
     synthRack_.setTrack(&project_.tracks[idx]);
+}
+
+// D599 : LE RELEVÉ DE L'AUTOMATION DES TRANCHES — ce que le fader et le panoramique MONTRENT (la tranche et la ligne de
+// piste), ce que dit la courbe à la tête, ce que la main tient, et ce que le moteur JOUE (`playedVolume`, la part du
+// fader). D599.1 se lit dans l'accord des deux premiers, D599.2 et D599.3 dans le dernier.
+void MainComponent::releverAutomation() {
+    const vsm::midi::Tick tete = transport_.currentTick();
+    const auto& graphe = audioEngine_.processGraph();
+    const auto courbe = [](const vsm::sequencer::Track& piste, const char* parametre)
+        -> const vsm::sequencer::AutomationCurve* {
+        for (const auto& c : piste.automation)
+            if (c.parameter == parametre && !c.points.empty()) return &c;
+        return nullptr;
+    };
+    int tranches = 0;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto* tranche = mixer_.trancheDe(i);
+        if (tranche == nullptr) continue;
+        ++tranches;
+        const auto& piste = project_.tracks[i];
+        const auto* cv = courbe(piste, "mix.volume");
+        const auto* cp = courbe(piste, "mix.pan");
+        const auto* ligne = trackList_.ligneDe(i);
+        const uint16_t main = static_cast<uint16_t>(mainSurLaTranche_[i] | mainSurLaLigne_[i]);
+        const juce::String texte =
+            "VSM_AUTOMATION_TRANCHE : piste " + juce::String(static_cast<int>(i)) + juce::String::fromUTF8(" \xc2\xab ")
+            + juce::String::fromUTF8(piste.name.c_str()) + juce::String::fromUTF8(" \xc2\xbb : ") + tranche->modeAffiche()
+            + juce::String::fromUTF8(" ; t\xc3\xaa" "te ") + juce::String(static_cast<juce::int64>(tete))
+            + " ; fader " + juce::String(tranche->volumeAffiche(), 2) + " dB (courbe "
+            + (cv != nullptr ? juce::String(gainToDb(vsm::sequencer::automationValueAt(*cv, tete)), 2) + " dB" : "-")
+            + ") ; pan " + juce::String(tranche->panAffiche(), 2) + " (courbe "
+            + (cp != nullptr ? juce::String(vsm::sequencer::automationValueAt(*cp, tete), 2) : juce::String("-"))
+            + ") ; ligne "
+            + (ligne != nullptr ? juce::String(ligne->volumeAffiche(), 3) + " / " + juce::String(ligne->panAffiche(), 2)
+                                : juce::String("-"))
+            + " ; main " + ((main & 3u) == 3u ? "volume+pan" : (main & 1u) ? "volume" : (main & 2u) ? "pan" : "-")
+            + juce::String::fromUTF8(" ; jou\xc3\xa9 ") + juce::String(graphe.playedVolume(i), 3) + " / "
+            + juce::String(graphe.playedPan(i), 2) + "\n";
+        std::fputs(texte.toRawUTF8(), stderr);
+        if (tranches == 1)   // l'infobulle du W, dans la langue courante : une fois
+            std::fputs(("VSM_AUTOMATION_W : " + tranche->infobulleW() + "\n").toRawUTF8(), stderr);
+    }
+    if (tranches == 0) std::fputs("VSM_AUTOMATION_TRANCHE : aucune tranche\n", stderr);
 }

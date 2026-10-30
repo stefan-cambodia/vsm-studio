@@ -588,6 +588,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.delayMs = track.delayMs;
         entry.automationMode = track.automationMode == vsm::sequencer::AutomationMode::Touch ? "touch"
                              : track.automationMode == vsm::sequencer::AutomationMode::Latch ? "latch"
+                             : track.automationMode == vsm::sequencer::AutomationMode::Trim  ? "trim"   // D599.3
                                                                                         : "";
         entry.frozenAudio.path = track.frozenAudio.path;
         entry.frozenAudio.sampleRate = track.frozenAudio.sampleRate;
@@ -885,6 +886,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         }
         target.automationMode = source.automationMode == "touch" ? vsm::sequencer::AutomationMode::Touch
                               : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
+                              : source.automationMode == "trim"  ? vsm::sequencer::AutomationMode::Trim   // D599.3
                                                                  : vsm::sequencer::AutomationMode::Off;
         target.frozenAudio = {source.frozenAudio.path, source.frozenAudio.sampleRate,
                                source.frozenAudio.frames, source.frozenAudio.channels};

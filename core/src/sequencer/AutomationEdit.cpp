@@ -92,6 +92,87 @@ void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
     for (const auto& [tick, point] : parTick) curve.points.push_back(point);
 }
 
+namespace {
+/// Le décalage joué à `tick` : interpolé entre deux points de la passe, tenu
+/// au-delà du premier et du dernier — la règle d'une courbe (`automationValueAt`),
+/// sans palier ni courbure : une passe n'en a pas.
+float decalageA(const std::vector<AutomationPoint>& decalages, Tick tick) {
+    if (tick <= decalages.front().tick) return decalages.front().value;
+    if (tick >= decalages.back().tick) return decalages.back().value;
+    for (size_t i = 0; i + 1 < decalages.size(); ++i) {
+        const auto& a = decalages[i];
+        const auto& b = decalages[i + 1];
+        if (tick < a.tick || tick > b.tick) continue;
+        if (b.tick == a.tick) return b.value;
+        const float ratio = static_cast<float>(tick - a.tick) / static_cast<float>(b.tick - a.tick);
+        return a.value + ratio * (b.value - a.value);
+    }
+    return decalages.back().value;
+}
+} // namespace
+
+bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
+                         const std::vector<AutomationPoint>& offsets, TrimLaw law,
+                         float minimum, float maximum) {
+    if (curve.points.empty() || offsets.empty() || toTick < fromTick) return false;
+
+    std::vector<AutomationPoint> decalages = offsets;
+    std::stable_sort(decalages.begin(), decalages.end(),
+                     [](const AutomationPoint& a, const AutomationPoint& b) { return a.tick < b.tick; });
+    // LUE AVANT D'ÉCRIRE : chaque valeur décalée est celle de la courbe d'AVANT.
+    const AutomationCurve ancienne = curve;
+    // LA BASE D'UN POINT ANCIEN EST SA PROPRE VALEUR, pas celle de la courbe à son tick : au tick d'un point qui suit
+    // un palier, `automationValueAt` rend encore la valeur TENUE (le segment qui finit là) — décaler celle-ci aurait
+    // effacé la marche (vu au premier essai du test : 0,998 au lieu de 0,5 juste après elle).
+    const auto decaler = [&](Tick tick, float v) {
+        const float d = decalageA(decalages, tick);
+        const float r = law == TrimLaw::GainDb ? v * std::pow(10.0f, d / 20.0f) : v + d;
+        return std::clamp(r, minimum, maximum);
+    };
+
+    // LES COUPES : les points de la passe dans la plage, et les deux bords — ce
+    // qui, tombant DANS un segment ancien, le coupe.
+    std::map<Tick, bool> coupes;
+    coupes[fromTick] = true;
+    coupes[toTick] = true;
+    for (const auto& d : decalages)
+        if (d.tick >= fromTick && d.tick <= toTick) coupes[d.tick] = true;
+
+    std::map<Tick, AutomationPoint> resultat;
+    const auto& anciens = ancienne.points;
+    for (size_t i = 0; i < anciens.size(); ++i) {
+        const auto& p = anciens[i];
+        if (p.tick < fromTick || p.tick > toTick) continue;
+        AutomationPoint q = p;
+        q.value = decaler(p.tick, p.value);
+        // Le segment de `p` court jusqu'au point suivant ; s'il n'y en a pas, la
+        // valeur est tenue et sa courbure ne sert à rien.
+        if (i + 1 < anciens.size()) {
+            const auto coupe = coupes.upper_bound(p.tick);
+            if (coupe != coupes.end() && coupe->first < anciens[i + 1].tick) q.curve = 0.0f;
+        }
+        resultat[p.tick] = q;
+    }
+    for (const auto& [tick, _] : coupes) {
+        if (resultat.count(tick)) continue;   // un point ancien au même tick garde ses attributs
+        AutomationPoint q;
+        q.tick = tick;
+        q.value = decaler(tick, automationValueAt(ancienne, tick));
+        // Le palier du segment où il tombe : le dernier point ancien à ou avant lui.
+        for (const auto& p : anciens) {
+            if (p.tick > tick) break;
+            q.step = p.step;
+        }
+        resultat[tick] = q;
+    }
+
+    std::vector<AutomationPoint> ecrits;
+    ecrits.reserve(resultat.size());
+    for (const auto& [tick, point] : resultat) ecrits.push_back(point);
+    writeAutomationRange(curve, fromTick, toTick, ecrits);
+    return true;
+}
+
 size_t setAutomationPoint(AutomationCurve& curve, Tick tick, float value, bool step) {
     for (size_t i = 0; i < curve.points.size(); ++i) {
         if (curve.points[i].tick != tick) continue;

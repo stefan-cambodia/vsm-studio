@@ -769,6 +769,11 @@ public:
         // l'appui et reste tant qu'on tient).
         if (geste.startsWithIgnoreCase("appuyer:"))
             return appuyerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D599 : relacher:<nom> -- le relâché de la souris sur ce curseur : sans lui, un glissé ouvert par `appuyer:`
+        // ne finissait jamais, et aucune passe Touch ne se fermait au banc.
+        if (geste.startsWithIgnoreCase("relacher:"))
+            return relacherPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        if (geste.equalsIgnoreCase("relever-automation")) { releverAutomation(); return true; }   // D599
         // D415 : valeur:<nom>=<v> -- la valeur posée sur le premier curseur visible
         // de ce nom, par `setValue` AVEC notification : le chemin de la saisie dans
         // sa zone de texte (bornes et rappels compris), sans souris.
@@ -2836,6 +2841,14 @@ private:
 
     std::vector<vsm::audio::engine::AutomationLane> currentAutomation_;
     bool mixDirty_ = false; // vol/pan/mute/solo modifiés -> republier le snapshot au timer
+    /// D599.2 : ce que la main tient, par piste (1 volume, 2 panoramique), sur la tranche et sur la ligne de piste —
+    /// cumulés pour le moteur (`ProcessGraph::setHandOverride`).
+    std::map<size_t, uint16_t> mainSurLaTranche_, mainSurLaLigne_;
+    /// D599 : le relevé `relever-automation` — pour chaque piste à tranche : le W, la tête, le fader et le panoramique
+    /// montrés et ce que dit la courbe à la tête, la ligne de piste, la main, et ce que le moteur joue.
+    void releverAutomation();
+    /// D599 : le geste `relacher:<nom>` — le `mouseUp` du curseur qu'`appuyer:` a pressé.
+    bool relacherPourCapture(const juce::String& nom);
 
     TransportBarComponent transportBar_;
 

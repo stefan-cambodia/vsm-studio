@@ -376,6 +376,28 @@ public:
 
     juce::String nomAffiche() const { return nameLabel_.getText(); }
     double volumeAffiche() const { return volume_.getValue(); }
+    double panAffiche() const { return pan_.getValue(); }                      ///< D599 : pour le relevé
+    juce::String modeAffiche() const { return armer_.getButtonText(); }     ///< D599 : « W », « W touch »…
+    juce::String infobulleW() const { return armer_.getTooltip(); }        ///< D599 : l'infobulle du W, pour le relevé
+    uint16_t mainTenue() const { return masqueMain_; }                         ///< D599.2 : 1 volume, 2 panoramique
+    bool trimEnCours() const { return trimFacteur_ != 1.0f || trimPan_ != 0.0f; }   ///< D599.3
+
+    /// D599.1 — LE FADER SUIT SA COURBE (le *Read* d'une tranche de Cubase). Quand la piste a une courbe `mix.volume`
+    /// (ou `mix.pan`) non vide, le fader montre la valeur de la courbe à la tête — celle que le moteur joue, par la
+    /// règle même du moteur (`automationValueAt`) —, à l'arrêt comme en lecture. Jusqu'ici il montrait `track.volume`,
+    /// la valeur STATIQUE, qu'une courbe remplace : 0 dB pendant que la courbe jouait −12 dB. Pas pendant que la main le
+    /// tient, ni tant qu'une passe court (en Latch, après le lâcher, c'est la valeur tenue qui s'écrit). `dontSend` :
+    /// on REFLÈTE, on ne règle pas — la valeur statique n'est pas touchée. Appelée par le minuteur de l'application.
+    void suivreLesCourbes(vsm::midi::Tick tete);
+    /// D599.2 — LA MAIN L'EMPORTE : le masque de ce que la main tient (1 volume, 2 panoramique), publié à chaque
+    /// changement ; l'application le donne au moteur (`ProcessGraph::setHandOverride`), qui joue alors le fader et non
+    /// la courbe. Une passe *Trim* n'en fait pas partie : elle fait jouer la courbe DÉCALÉE (`onTrimOffset`).
+    std::function<void(size_t, uint16_t)> onHandChanged;
+    /// D599.3 : le décalage d'une passe *Trim* qui court — le facteur de gain du volume (1 au repos), le décalage du
+    /// panoramique (0 au repos).
+    std::function<void(size_t, float, float)> onTrimOffset;
+    /// D599.2 : une phrase pour la ligne d'état (un geste sur un fader piloté, W éteint).
+    std::function<void(const juce::String&)> onDire;
 
     void refreshFromTrack() {
         nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
@@ -388,6 +410,7 @@ public:
         // et non ce que la piste contient, est ce qui rend ce défaut visible.
         volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
         pan_.setValue(track_.pan, juce::dontSendNotification);
+        suivreLesCourbes(teteSuivie_);   // D599.1 : une courbe l'emporte sur la valeur statique, comme au moteur
         rafraichirDeparts();   // D567.3
     }
     /// D567.3 : les boutons de départ pâlissent quand la piste a ses départs contournés, et l'infobulle le dit.
@@ -461,9 +484,9 @@ private:
     /// L'extrémité du curseur vaut « éteint » (20 Hz, 20 kHz) : un curseur n'a pas de case de plus.
     juce::Slider coupeBas_, coupeHaut_;
     bool reglerCoupure(juce::Slider& curseur, float& champ, float eteint, const char8_t* geste, bool ouvrirLePas);
-    /// LE BOUTON W : off → touch → latch → off. Le mot « W » plutôt qu'un
-    /// pictogramme, comme chez Cubase, et sa couleur dit lequel des deux
-    /// modes est armé (l'ambre pour `touch`, plus vif pour `latch`).
+    /// LE BOUTON W : off → touch → latch → trim (D599.3) → off. Le mot « W » plutôt qu'un
+    /// pictogramme, comme chez Cubase, et sa couleur dit lequel des modes est
+    /// armé (l'ambre pour `touch`, plus vif pour `latch`, la sarcelle pour `trim`).
     juce::TextButton armer_ { "W" };
     /// D23.1 : LA POLARITÉ, le Ø de Cubase. À côté du W, sur la même rangée :
     /// deux libellés d'un caractère tiennent là où trois se tronquaient.
@@ -475,8 +498,26 @@ private:
         vsm::midi::Tick debut = 0;
         std::vector<vsm::sequencer::AutomationPoint> points;
         bool relachee = false;   ///< vrai en `latch` après le lâcher
+        /// D599.3 : une passe *Trim* note AUSSI les décalages — du fader depuis l'appui, en dB pour le volume —, ce
+        /// que `trimAutomationRange` applique à la courbe ; `points` (les valeurs absolues) sert quand il n'y a pas
+        /// de courbe à décaler, et la passe s'écrit alors comme Touch.
+        bool trim = false;
+        float reference = 0.0f;   ///< la valeur du curseur à l'appui (dB pour le volume)
+        std::vector<vsm::sequencer::AutomationPoint> decalages;
     };
     std::map<std::string, Passe> passes_;
+    /// D599.2 : la main tient le curseur — entre l'appui et le lâcher d'un glissé.
+    bool mainVolume_ = false, mainPan_ = false;
+    uint16_t masqueMain_ = 0;
+    vsm::midi::Tick teteSuivie_ = 0;   ///< D599.1 : la tête du dernier suivi, pour `refreshFromTrack`
+    /// D599.3 : le décalage Trim publié (facteur de gain du volume, décalage du panoramique).
+    float trimFacteur_ = 1.0f, trimPan_ = 0.0f;
+    /// D599.2 : recalcule ce que la main tient, et le publie s'il a changé.
+    void publierLaMain();
+    /// D599.2 : la main se pose sur un curseur ; W éteint, sur un réglage piloté par sa courbe, la ligne d'état le dit.
+    void poserLaMain(const std::string& parametre);
+    /// La courbe NON VIDE de ce paramètre, ou nullptr.
+    const vsm::sequencer::AutomationCurve* courbePilote(const std::string& parametre) const;
 
     /// Le geste commence sur `parametre` : ouvre une passe si la piste est
     /// armée et que le transport roule.
@@ -871,6 +912,20 @@ public:
     std::function<vsm::midi::Tick()> playheadTickProvider;
     std::function<bool()> transportPlayingProvider;
     std::function<void()> onAutomationWritten;
+    /// D599 : voir `ChannelStrip::onHandChanged`, `onTrimOffset`, `onDire`.
+    std::function<void(size_t, uint16_t)> onHandChanged;
+    std::function<void(size_t, float, float)> onTrimOffset;
+    std::function<void(const juce::String&)> onDire;
+    /// D599.1 : chaque tranche suit ses courbes à la tête (appelée par le minuteur de l'application).
+    void suivreLesCourbes(vsm::midi::Tick tete) {
+        for (auto* strip : strips_) strip->suivreLesCourbes(tete);
+    }
+    /// D599 : la tranche de cette piste, ou nullptr (un dossier n'en a pas) — pour le relevé.
+    const ChannelStrip* trancheDe(size_t piste) const {
+        for (auto* strip : strips_)
+            if (strip->trackIndex() == piste) return strip;
+        return nullptr;
+    }
     /// LE TRANSPORT S'EST ARRÊTÉ : clôt les passes en `Latch` de toutes les
     /// tranches. Sans cet appel, une passe en latch resterait ouverte et se
     /// déposerait au prochain arrêt, longtemps après le geste.

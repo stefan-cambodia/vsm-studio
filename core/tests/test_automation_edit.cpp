@@ -517,3 +517,92 @@ VSM_TEST(an_empty_or_backwards_range_draws_nothing_at_all) {
                                        0.0f, 1.0f, 4, 0.01f).added, size_t(0));
     VSM_ASSERT(courbe.points.empty());
 }
+
+// D599.3 — LE MODE TRIM : la plage DÉCALÉE de ce que la main a bougé, la forme gardée.
+// L'attendu (7) de la feuille de route, écrit avant le code.
+
+namespace {
+constexpr float kPlus6dB = 6.0206f;              // un facteur 2 en gain
+constexpr float kGainHautDuFader = 1.99526f;     // +6 dB, le haut du fader
+} // namespace
+
+VSM_TEST(trim_shifts_a_flat_range_and_joins_its_edges_d599) {
+    AutomationCurve courbe;
+    setAutomationPoint(courbe, 0, 0.5f);
+    setAutomationPoint(courbe, 960, 0.5f);
+    const std::vector<AutomationPoint> decalages{{100, kPlus6dB, false}, {500, kPlus6dB, false}};
+    VSM_ASSERT(trimAutomationRange(courbe, 100, 500, decalages, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 100), 1.0f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 300), 1.0f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 500), 1.0f, 1e-3f);
+    // Les raccords : à un tick de la plage, la courbe d'avant.
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 99), 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 501), 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 960), 0.5f, 1e-6f);
+}
+
+VSM_TEST(trim_keeps_a_step_a_step_and_multiplies_both_levels_d599) {
+    // L'attendu (5) au cœur : 0,5 en palier jusqu'à 1 440, puis 0,25 ; la main prise à 480, montée de 6 dB à 576, lâchée
+    // à 1 728. Touch aurait écrit 1,0 partout ; Trim garde la marche, ses deux niveaux doublés.
+    AutomationCurve courbe;
+    setAutomationPoint(courbe, 0, 0.5f, /*step=*/true);
+    setAutomationPoint(courbe, 1440, 0.25f);
+    setAutomationPoint(courbe, 7680, 0.25f);
+    const std::vector<AutomationPoint> decalages{{480, 0.0f, false}, {576, kPlus6dB, false}, {1728, kPlus6dB, false}};
+    VSM_ASSERT(trimAutomationRange(courbe, 480, 1728, decalages, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 500), 0.5f, 1e-6f);    // avant que la main ne bouge : rien
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1000), 1.0f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1439), 1.0f, 1e-3f);   // le palier TENU jusqu'à sa marche
+    // AU TICK MÊME DE LA MARCHE, un palier tient encore (`automationValueAt` : le segment qui FINIT là le rend) — la
+    // courbe d'avant y rendait 0,5, le décalage double : 1,0. La marche est franchie au tick d'après.
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1440), 1.0f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1441), 0.5f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1700), 0.5f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1729), 0.25f, 1e-6f);  // le raccord
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 5000), 0.25f, 1e-6f);
+    // Le point posé dans le palier en a pris le palier.
+    bool trouve = false;
+    for (const auto& p : courbe.points)
+        if (p.tick == 576) { trouve = true; VSM_ASSERT(p.step); }
+    VSM_ASSERT(trouve);
+}
+
+VSM_TEST(trim_keeps_the_curvature_where_the_hand_did_not_move_d599) {
+    // Un segment courbé (D17.7) que rien ne coupe : décalé de −6 dB, il sort EXACTEMENT moitié, en tout tick.
+    AutomationCurve courbe;
+    courbe.points.push_back({0, 1.0f, false, 0.6f});
+    courbe.points.push_back({960, 0.2f, false, 0.0f});
+    const AutomationCurve avant = courbe;
+    const std::vector<AutomationPoint> decalages{{0, -kPlus6dB, false}, {960, -kPlus6dB, false}};
+    VSM_ASSERT(trimAutomationRange(courbe, 0, 960, decalages, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
+    for (Tick t = 0; t <= 960; t += 60)
+        VSM_ASSERT_NEAR(automationValueAt(courbe, t), automationValueAt(avant, t) * 0.5f, 1e-4f);
+}
+
+VSM_TEST(trim_on_an_empty_curve_touches_nothing_and_says_so_d599) {
+    AutomationCurve courbe;
+    const std::vector<AutomationPoint> decalages{{100, kPlus6dB, false}};
+    VSM_ASSERT(!trimAutomationRange(courbe, 100, 500, decalages, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
+    VSM_ASSERT(courbe.points.empty());
+    // Rien à décaler non plus sans décalage, ni sur une plage à l'envers.
+    setAutomationPoint(courbe, 0, 0.5f);
+    VSM_ASSERT(!trimAutomationRange(courbe, 100, 500, {}, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
+    VSM_ASSERT(!trimAutomationRange(courbe, 500, 100, decalages, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
+    VSM_ASSERT_EQ(courbe.points.size(), size_t(1));
+}
+
+VSM_TEST(trim_adds_to_a_pan_and_clamps_both_laws_d599) {
+    AutomationCurve pan;
+    setAutomationPoint(pan, 0, -0.5f);
+    setAutomationPoint(pan, 960, -0.5f);
+    AutomationCurve pan2 = pan;
+    VSM_ASSERT(trimAutomationRange(pan, 100, 500, {{100, 0.8f, false}}, TrimLaw::Additive, -1.0f, 1.0f));
+    VSM_ASSERT_NEAR(automationValueAt(pan, 300), 0.3f, 1e-5f);
+    VSM_ASSERT(trimAutomationRange(pan2, 100, 500, {{100, 1.8f, false}}, TrimLaw::Additive, -1.0f, 1.0f));
+    VSM_ASSERT_NEAR(automationValueAt(pan2, 300), 1.0f, 1e-6f);   // borné
+    // Le volume borné au haut du fader : 1,5 décalé de +6 dB ne dépasse pas +6 dB.
+    AutomationCurve volume;
+    setAutomationPoint(volume, 0, 1.5f);
+    VSM_ASSERT(trimAutomationRange(volume, 0, 500, {{0, kPlus6dB, false}}, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
+    VSM_ASSERT_NEAR(automationValueAt(volume, 300), kGainHautDuFader, 1e-5f);
+}

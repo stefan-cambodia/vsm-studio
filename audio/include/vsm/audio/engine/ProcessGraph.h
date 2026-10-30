@@ -12,6 +12,7 @@
 #include "vsm/audio/engine/RenderThreadPool.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include "vsm/audio/util/LockFreeRingBuffer.h"
+#include "vsm/sequencer/AutomationEdit.h"   // D599.3 : kTrimGainMax
 #include "vsm/sequencer/PlaybackScheduler.h"
 #include "vsm/sequencer/Project.h"
 #include <array>
@@ -97,6 +98,24 @@ public:
     /// Remplace TOUTES les lanes d'un coup (usage principal de l'éditeur
     /// d'automation : reconstruire la liste puis publier). Thread UI.
     void setAutomationLanes(std::vector<AutomationLane> lanes);  // thread UI
+
+    /// D599.2 — LA MAIN L'EMPORTE SUR LA COURBE. Tant que la main tient le fader (ou le panoramique) d'une piste
+    /// pilotée par une courbe — et, W armé, tant que sa passe court —, le mixage joue la valeur du PROJET (le fader,
+    /// que la console republie à chaque geste) et non la courbe : sans cela, une retouche en Touch sur une courbe
+    /// existante se faisait à l'aveugle. `masque` : `handVolume`, `handPan`, ou 0 pour rendre la main. Thread UI.
+    static constexpr uint16_t handVolume = 1u << 0;
+    static constexpr uint16_t handPan = 1u << 1;
+    void setHandOverride(size_t trackIndex, uint16_t masque);
+    /// D599.3 — LE DÉCALAGE D'UNE PASSE *TRIM*, joué pendant qu'elle court : la courbe de volume multipliée par
+    /// `facteurVolume`, celle du panoramique augmentée de `decalagePan` (borné à −1..1). 1 et 0 au repos. Thread UI.
+    void setTrimOffset(size_t trackIndex, float facteurVolume, float decalagePan);
+    /// D599.3 : le gain le plus haut qu'une courbe décalée atteigne (`vsm::sequencer::kTrimGainMax`, +6 dB).
+    static constexpr float kTrimGainMax = vsm::sequencer::kTrimGainMax;
+    /// D599 : le volume et le panoramique que le mixage applique à cette piste à cet instant — la courbe (décalée par
+    /// un Trim), ou le projet quand rien ne la pilote ou que la main la tient —, hors CC 7, VCA et polarité. Pour le
+    /// relevé du banc : c'est la mesure de ce qu'on ENTEND, lue à la source.
+    float playedVolume(size_t trackIndex) const;
+    float playedPan(size_t trackIndex) const;
 
     // --- Effets d'insert par piste + sends (sections 5 et 15) -------------
     /// Chaîne d'inserts d'une piste : appliquée à la sortie stéréo de
@@ -711,6 +730,15 @@ private:
     /// les courbes sont publiées, pour que le mixage n'ait qu'un entier à
     /// consulter.
     std::array<uint16_t, kMaxTracks> autoMask_{};
+    /// D599.2 : les réglages que la main tient, par piste (mêmes bits que `autoMask_` pour le volume et le
+    /// panoramique) — retirés du masque des courbes au mixage. Écrits par le thread UI, lus par le thread audio.
+    std::array<std::atomic<uint16_t>, kMaxTracks> handMask_{};
+    /// D599.3 : le décalage d'une passe Trim, appliqué à la courbe pendant qu'elle court.
+    std::array<std::atomic<float>, kMaxTracks> trimVolume_{};
+    std::array<std::atomic<float>, kMaxTracks> trimPan_{};
+    /// D599 : le volume et le panoramique du dernier bloc mixé (la part du fader), pour `playedVolume`/`playedPan`.
+    std::array<std::atomic<float>, kMaxTracks> playedVolume_{};
+    std::array<std::atomic<float>, kMaxTracks> playedPan_{};
     static constexpr uint16_t kAutoVolume = 1u << 0;
     static constexpr uint16_t kAutoPan = 1u << 1;
     static constexpr uint16_t kAutoSendFirst = 2;

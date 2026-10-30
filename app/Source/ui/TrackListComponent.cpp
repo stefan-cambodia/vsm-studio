@@ -2,6 +2,7 @@
 #include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include <algorithm>
 #include <cmath>
 
@@ -238,8 +239,9 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     volumeSlider_.textFromValueFunction = [](double v) { return vsm::app::ui::texteDecibels(v); };   // D135
     volumeSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition("Volume");
         if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Volume);   // D566.3
+        poserLaMainLigne(1u, true);   // D599.2
     };
-    volumeSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
+    volumeSlider_.onDragEnd = [this] { glisseEnCours_ = false; poserLaMainLigne(1u, false); };
     volumeSlider_.onValueChange = [this] {
         // UN PAS PAR GESTE, PAS UN PAR PIXEL. Le glissé a déjà signalé à son
         // départ ; ce qui reste ici est la molette, le clavier et la saisie,
@@ -265,8 +267,9 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     panSlider_.textFromValueFunction = [](double v) { return vsm::app::ui::textePanoramique(v); };   // D135
     panSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition(u8"Panoramique");
         if (onLinkStart) onLinkStart(index_, vsm::sequencer::LinkedMixParam::Pan);   // D566.3
+        poserLaMainLigne(2u, true);   // D599.2
     };
-    panSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
+    panSlider_.onDragEnd = [this] { glisseEnCours_ = false; poserLaMainLigne(2u, false); };
     panSlider_.onValueChange = [this] {
         if (!glisseEnCours_) {
             debutEdition(u8"Panoramique");
@@ -350,8 +353,46 @@ void TrackRowComponent::poserInfobulleDeSortie() {
 void TrackRowComponent::refreshMix() {
     volumeSlider_.setValue(track_.volume, juce::dontSendNotification);
     panSlider_.setValue(track_.pan, juce::dontSendNotification);
+    suivreLesCourbes(teteSuivie_, mainAilleurs_);   // D599.1 : une courbe l'emporte sur la valeur statique
     bulleVolume_.rafraichir();   // D414 : le silence du curseur n'atteint pas l'infobulle
     bullePan_.rafraichir();
+}
+
+namespace {
+/// D599 : la courbe NON VIDE de ce paramètre, ou nullptr — comme au moteur, qui saute une courbe sans point.
+const vsm::sequencer::AutomationCurve* courbePilote(const vsm::sequencer::Track& piste, const char* parametre) {
+    for (const auto& courbe : piste.automation)
+        if (courbe.parameter == parametre && !courbe.points.empty()) return &courbe;
+    return nullptr;
+}
+} // namespace
+
+void TrackRowComponent::suivreLesCourbes(vsm::midi::Tick tete, uint16_t mainAilleurs) {
+    teteSuivie_ = tete;
+    mainAilleurs_ = mainAilleurs;
+    const uint16_t tenu = static_cast<uint16_t>(mainLigne_ | mainAilleurs);
+    if (const auto* c = courbePilote(track_, "mix.volume"); c != nullptr && !(tenu & 1u)) {
+        volumeSlider_.setValue(vsm::sequencer::automationValueAt(*c, tete), juce::dontSendNotification);
+        bulleVolume_.rafraichir();
+    }
+    if (const auto* c = courbePilote(track_, "mix.pan"); c != nullptr && !(tenu & 2u)) {
+        panSlider_.setValue(vsm::sequencer::automationValueAt(*c, tete), juce::dontSendNotification);
+        bullePan_.rafraichir();
+    }
+}
+
+void TrackRowComponent::poserLaMainLigne(uint16_t bit, bool posee) {
+    mainLigne_ = static_cast<uint16_t>(posee ? (mainLigne_ | bit) : (mainLigne_ & ~bit));
+    if (onHandChanged) onHandChanged(index_, mainLigne_);
+    // D599.2 : sur un réglage que sa courbe pilote, la main s'entend tant qu'elle tient, et la ligne n'écrit jamais —
+    // c'est DIT, une fois par geste, comme à la tranche W éteint.
+    if (posee && onDire && courbePilote(track_, bit == 2u ? "mix.pan" : "mix.volume") != nullptr)
+        onDire(vsm::app::ui::tr(bit == 2u ? u8"Panoramique : suivi de sa courbe — la main s'entend tant qu'elle "
+                                            u8"tient ; armer W à la console pour l'écrire"
+                                          : u8"Volume : suivi de sa courbe — la main s'entend tant qu'elle tient ; "
+                                            u8"armer W à la console pour l'écrire"));
+    // Lâché, le curseur revient à sa courbe.
+    if (!posee) suivreLesCourbes(teteSuivie_, mainAilleurs_);
 }
 
 bool TrackRowComponent::choisirMachine(const juce::String& pluginId) {
@@ -763,6 +804,9 @@ TrackListComponent::TrackListComponent() {
 
 void TrackListComponent::loadProject(Project& project) {
     project_ = &project;
+    // D599 : une ligne détruite REND SA MAIN au moteur (voir `MixerComponent::setProject`).
+    for (int i = 0; i < rows_.size(); ++i)
+        if (rows_[i]->mainLigne() != 0 && onHandChanged) onHandChanged(static_cast<size_t>(i), 0);
     rows_.clear();
     // LA PISTE CHOISIE SURVIT À LA RECONSTRUCTION DE LA LISTE : cette
     // fonction est rappelée à chaque republication du projet, et remettre la
@@ -814,6 +858,8 @@ void TrackListComponent::loadProject(Project& project) {
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
         row->onLinkStart = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkStart) onLinkStart(i, q); };
         row->onLinkFollow = [this](size_t i, vsm::sequencer::LinkedMixParam q) { if (onLinkFollow) onLinkFollow(i, q); };
+        row->onHandChanged = [this](size_t i, uint16_t masque) { if (onHandChanged) onHandChanged(i, masque); };   // D599.2
+        row->onDire = [this](const juce::String& texte) { if (onDire) onDire(texte); };
         row->onRenamed = [this] { if (onRenamed) onRenamed(); };
         row->onGesteMuet = [this](size_t i) { basculerMuet(i); };
         row->onGesteSolo = [this](size_t i) { basculerSolo(i); };
@@ -866,6 +912,16 @@ void TrackListComponent::refreshMix() {
 void TrackListComponent::refreshMix(const std::set<size_t>& seules) {
     for (size_t i : seules)
         if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->refreshMix();
+}
+
+void TrackListComponent::suivreLesCourbes(vsm::midi::Tick tete,
+                                          const std::function<uint16_t(size_t)>& mainSurLaTranche) {
+    for (int i = 0; i < rows_.size(); ++i)
+        rows_[i]->suivreLesCourbes(tete, mainSurLaTranche ? mainSurLaTranche(static_cast<size_t>(i)) : 0);
+}
+
+const TrackRowComponent* TrackListComponent::ligneDe(size_t piste) const {
+    return piste < static_cast<size_t>(rows_.size()) ? rows_[static_cast<int>(piste)] : nullptr;
 }
 
 void TrackListComponent::refreshFromTracks() {

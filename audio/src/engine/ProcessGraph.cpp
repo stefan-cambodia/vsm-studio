@@ -23,6 +23,8 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     ccVolume_.fill(1.0f);   // D329 : `{}` initialise à ZÉRO -- un tableau de volumes à zéro rendrait tout muet
     ccPan_.fill(0.0f);      // D330
     rpnMsb_.fill(127); rpnLsb_.fill(127); bendRange_.fill(2.0f);   // D331
+    // D599.3 : un décalage Trim au repos est un facteur 1 — `{}` initialise à ZÉRO, et rendrait muette toute courbe.
+    for (auto& f : trimVolume_) f.store(1.0f, std::memory_order_relaxed);
     sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
     maxBlockSize_ = maxBlockSize > 0 ? maxBlockSize : 512;
     for (auto& pre : preSections_) pre.setSampleRate(sampleRate_);   // D593
@@ -235,6 +237,25 @@ void ProcessGraph::setAutomationLanes(std::vector<AutomationLane> lanes) {
     automationLanes_.store(std::make_shared<std::vector<AutomationLane>>(std::move(lanes)),
                             std::memory_order_release);
     refreshAutomationMask();
+}
+
+void ProcessGraph::setHandOverride(size_t trackIndex, uint16_t masque) {
+    if (trackIndex >= kMaxTracks) return;
+    handMask_[trackIndex].store(static_cast<uint16_t>(masque & (handVolume | handPan)), std::memory_order_relaxed);
+}
+
+void ProcessGraph::setTrimOffset(size_t trackIndex, float facteurVolume, float decalagePan) {
+    if (trackIndex >= kMaxTracks) return;
+    trimVolume_[trackIndex].store(std::max(0.0f, facteurVolume), std::memory_order_relaxed);
+    trimPan_[trackIndex].store(decalagePan, std::memory_order_relaxed);
+}
+
+float ProcessGraph::playedVolume(size_t trackIndex) const {
+    return trackIndex < kMaxTracks ? playedVolume_[trackIndex].load(std::memory_order_relaxed) : 0.0f;
+}
+
+float ProcessGraph::playedPan(size_t trackIndex) const {
+    return trackIndex < kMaxTracks ? playedPan_[trackIndex].load(std::memory_order_relaxed) : 0.0f;
 }
 
 void ProcessGraph::refreshAutomationMask() {
@@ -1389,7 +1410,11 @@ float ProcessGraph::facteurVca(const vsm::sequencer::Project& project, size_t tr
     const auto* vca = vsm::sequencer::vcaOf(project.tracks, trackIndex);
     if (vca == nullptr) return 1.0f;
     const size_t v = static_cast<size_t>(project.tracks[trackIndex].vcaTrack);
-    if (v < kMaxTracks && (autoMask_[v] & kAutoVolume)) return autoVolume_[v];
+    // D599.2 : la main sur le fader du VCA l'emporte sur sa courbe, comme sur une piste ; D599.3 : son Trim la décale.
+    if (v < kMaxTracks && (autoMask_[v] & kAutoVolume) && !(handMask_[v].load(std::memory_order_relaxed) & handVolume)) {
+        const float facteurTrim = trimVolume_[v].load(std::memory_order_relaxed);
+        return facteurTrim == 1.0f ? autoVolume_[v] : std::min(autoVolume_[v] * facteurTrim, kTrimGainMax);
+    }
     return vca->volume;
 }
 
@@ -2066,16 +2091,30 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     // LE VOLUME ET LE PANORAMIQUE VIENNENT DE L'AUTOMATION QUAND ELLE LES
     // PILOTE (D4.6), du projet sinon. Un entier consulté par piste, pas un
     // parcours des courbes : voir `refreshAutomationMask`.
-    const uint16_t pilotes = autoMask_[trackIndex];
+    // D599.2 : CE QUE LA MAIN TIENT N'EST PLUS PILOTÉ PAR LA COURBE — la piste joue alors le projet, c'est-à-dire le
+    // fader que la console vient de republier. Les bits de la main sont ceux du volume et du panoramique.
+    const uint16_t pilotes =
+        static_cast<uint16_t>(autoMask_[trackIndex] & ~handMask_[trackIndex].load(std::memory_order_relaxed));
+    // D599.3 : une passe Trim DÉCALE la courbe pendant qu'elle court, bornée au haut du fader. Au repos (facteur 1,
+    // décalage 0), la courbe passe TELLE QU'AVANT — sans borne ajoutée : les rendus d'avant restent au bit près.
+    const float facteurTrim = trimVolume_[trackIndex].load(std::memory_order_relaxed);
+    const float faderVolume = !(pilotes & kAutoVolume) ? track.volume
+                            : facteurTrim == 1.0f      ? autoVolume_[trackIndex]
+                                                       : std::min(autoVolume_[trackIndex] * facteurTrim, kTrimGainMax);
+    const float faderPan = (pilotes & kAutoPan)
+        ? autoPan_[trackIndex] + trimPan_[trackIndex].load(std::memory_order_relaxed)   // borné plus bas, CC 10 compris
+        : track.pan;
+    playedVolume_[trackIndex].store(faderVolume, std::memory_order_relaxed);   // D599 : pour le relevé
+    playedPan_[trackIndex].store(faderPan, std::memory_order_relaxed);
     // D23.1 : LA POLARITÉ EST LE SIGNE DU VOLUME. Portée par le fader, elle
     // suit partout où le fader compte -- la sortie, les départs post-fader --
     // et le signe est appliqué aussi aux départs pré-fader plus bas : deux
     // micros en opposition le sont dans la réverbération aussi.
     const float signe = track.invertPhase ? -1.0f : 1.0f;
-    const float volume = ((pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume) * signe
+    const float volume = faderVolume * signe
                          * ccVolume_[trackIndex]    // D329 : le CC 7 se multiplie au fader (ou à son automation)
                          * facteurVca(project, trackIndex);   // D532.1 : et le VCA qui le commande
-    const float pan = std::clamp(((pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan) + ccPan_[trackIndex],
+    const float pan = std::clamp(faderPan + ccPan_[trackIndex],
                                  -1.0f, 1.0f);   // D330 : le CC 10 s'ajoute au potentiomètre
 
     // D576.1 : LES INSERTS APRÈS LE FADER. Sans eux — le cas de toute piste d'avant — `sortieL` est la source et le
