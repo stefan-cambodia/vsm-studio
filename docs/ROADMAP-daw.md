@@ -46722,6 +46722,35 @@ adoucit d'une rampe réglable.
 **L'ORDRE.** Le moteur et le cœur d'abord (la main sur tous les bits, le champ `automationRead` et sa résolution, avec
 leurs tests joués rouges sur le code d'avant), puis la console, puis le banc.
 
+**CORRIGÉ AVANT LE CODE (13 h 00 à l'horloge, en lisant le code que D600 touche ; rien n'est écrit), et pourquoi.**
+- **`resolveAutomation` ne SAUTE pas les courbes d'une piste éteinte : il les MARQUE.** Ce qui est écrit plus haut
+  (« saute les courbes ») les aurait EFFACÉES : `captureSessionIntoProject` (`MainComponent.cpp`, D17.7) vide
+  `Track::automation` et la refait depuis `currentAutomation_` — la liste RÉSOLUE — à chaque geste du panneau
+  d'automation et à chaque enregistrement. Une courbe sautée à la résolution disparaissait du projet au premier geste
+  après l'extinction du R. Elle reste donc dans la liste, marquée (`AutomationLane::read = false`, vrai d'origine), et le
+  DIT (« lecture éteinte (R) ») ; c'est le MOTEUR qui écarte une courbe marquée, à sa publication (`setAutomationLanes`,
+  `addAutomationLane`) : un seul endroit, que l'application, l'export et `vsm-render` traversent tous trois. Une piste dont
+  toutes les courbes sont écartées rend comme une piste sans courbe, au bit près — un test le dit.
+- **Les courbes du master ne se taisent pas avec la piste 1.** Elles sont RANGÉES dans la première piste
+  (`captureSessionIntoProject` : « la première pour le master ») sans lui appartenir : le R de la piste 1 ne marque que
+  ses propres courbes, jamais une `master.…`.
+- **Le R a trois aspects** — ce que « allumé d'origine sur toute piste qui a une courbe » demande sans le dire : allumé
+  (la sarcelle à 50 %) quand la lecture est allumée ET que la piste a une courbe non vide ; terne (le fond relevé, la
+  lettre grise) quand elle est allumée sans courbe — rien à lire, l'infobulle le dit ; éteint (le fond de la tranche)
+  quand elle est éteinte. Un clic bascule la lecture dans les trois cas.
+- **Éteindre le R désarme le W**, et ferme ce qui courait (la règle du désarmement, D16.8) — la ligne d'état le dit ;
+  armer le W, R éteint, est refusé et dit (« Lecture de l'automation éteinte (R) : la rallumer pour écrire »).
+- **Ce qu'on entend des départs et du trim, mesuré à la source** : `ProcessGraph::playedSend(piste, n)` et
+  `playedTrim(piste)`, posés là où le mixage les lit, comme `playedVolume` (D599) ; le relevé `relever-automation` les
+  écrit, avec le R et les valeurs des boutons et de leurs courbes.
+- **D600.3 : la rampe finit sur l'ANCIENNE courbe, pas sur le raccord.** Un raccord seul à `fin + retour + 1` donnerait
+  0,6266 à mi-rampe et non 0,625 : la rampe file de `fin` jusqu'à un point posé à `fin + retour`, qui prend la valeur de la
+  courbe d'AVANT en ce tick (lue avant d'écrire) ; les points anciens de `]fin, fin + retour]` sont remplacés, le raccord
+  suit à `fin + retour + 1`. Sans courbe d'avant (la première passe sur un réglage), pas de retour : il n'y a rien à
+  rejoindre, la valeur reste tenue comme avant. Dans le cœur : un dernier argument `returnTicks` (0 d'origine) à
+  `writeAutomationRange` et à `trimAutomationRange`. Le réglage, dans la section « Audio » des préférences, sous
+  « L'automation suit les clips » (`automationRetourMs`, retenu comme les autres).
+
 ### Phases D592 à D598 — FAITES (30/10/2026, 08 h 16 à l'horloge)
 
 *La série de 196 bancs, `./verifier.sh --bancs`, lancée à 06 h 19 sur le binaire de D598, écran allumé et session
