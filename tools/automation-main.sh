@@ -2,8 +2,16 @@
 # D599 — LE FADER QUI SUIT SA COURBE, LA MAIN QUI L'EMPORTE, LE MODE TRIM (le *Read*, le *Touch* qui s'entend et le *Trim*
 # d'une tranche de Cubase), MESURÉS PAR CE QUE LA CONSOLE MONTRE, CE QUE LE MOTEUR JOUE ET LA COURBE ENREGISTRÉE.
 #
-# LE JEU : 480 ticks à la noire, 4/4, 120 BPM (960 ticks par seconde) ; une piste MIDI « Partie » (vsm.minimoog), une
-# note de 450 ticks sur chaque temps jusqu'au tick 7 680 ; volume statique 1,0 (0 dB), panoramique 0. Selon la course, une
+# LE JEU : 480 ticks à la noire, 4/4, 120 BPM (960 ticks par seconde) ; une piste MIDI « Partie » (vsm.testtone), UNE
+# note tenue du tick 0 au tick 7 680 ; volume statique 1,0 (0 dB), panoramique 0.
+# CORRIGÉ APRÈS LA PREMIÈRE MESURE (30/10, 08 h 34), ET DIT : le jeu était une note de 450 ticks par temps sur le Minimoog,
+# et le vumètre efficace — le témoin de ce qui s'entend — y bruitait de 1,9 dB entre deux courses du témoin dans le même
+# état (−27,57 et −29,50 dBFS, la courbe à 0,25 dans les deux) : l'instant de la photo tombait n'importe où dans
+# l'enveloppe d'une note. Une seule note tenue sur le générateur de test (son palier à 0,7 après 110 ms) rend un niveau
+# qui ne dépend plus de l'instant ; la tolérance de 1,5 dB n'a pas bougé. ET UNE SECONDE FOIS (08 h 38) : la note tenue
+# au do 3 (130 Hz) bruitait encore de 2,0 dB entre deux témoins dans le même état (−33,33 et −35,32 dBFS) — le vumètre lit
+# l'efficace d'UN bloc audio (D4.7), une dizaine de millisecondes, à peine plus d'une période et demie de la note : la
+# fenêtre coupait l'onde n'importe où. Au do 6 (1 046 Hz), le bloc en porte une dizaine. Selon la course, une
 # courbe de volume (et de panoramique) et un mode d'écriture (`automationMode`) écrits dans project.json.
 # L'ATTENDU ÉCRIT AVANT LA MESURE (ROADMAP-daw, D599) :
 #   (1) à l'arrêt, volume plat 0,25 et panoramique plat −0,5 : la tranche lit −12,0 dB et −0,50, la ligne 0,250 et −0,50 ;
@@ -41,10 +49,7 @@ def vlq(n):
     o = [n & 0x7F]; n >>= 7
     while n: o.insert(0, (n & 0x7F) | 0x80); n >>= 7
     return bytes(o)
-evs = []
-for debut in range(0, 7680, 480):
-    evs.append((debut, 1, bytes([0x90, 48, 100])))
-    evs.append((debut + 450, 0, bytes([0x80, 48, 0])))
+evs = [(0, 1, bytes([0x90, 84, 100])), (7680, 0, bytes([0x80, 84, 0]))]   # do 6, 1 046 Hz
 evs.sort(key=lambda e: (e[0], e[1]))
 corps, t = b"\x00\xff\x51\x03\x07\xa1\x20\x00\xff\x03\x06Partie", 0
 for tick, _, octets in evs:
@@ -69,7 +74,7 @@ for nom, (mode, courbes) in jeux.items():
         b"MThd" + struct.pack(">IHHH", 6, 1, 1, 480) + b"MTrk" + struct.pack(">I", len(corps)) + corps)
     piste = {"channel": 0, "color": "#FF6B9BFF", "effects": [], "name": "Partie",
              "mix": {"muted": False, "pan": 0.0, "sends": [0.0, 0.0], "solo": False, "volume": 1.0},
-             "instrument": {"preferredPlugin": "vsm.minimoog"}}
+             "instrument": {"preferredPlugin": "vsm.testtone"}}
     if mode: piste["automationMode"] = mode
     if courbes: piste["automation"] = courbes
     projet = {"format": "vsm-project", "version": 1, "title": nom, "midi": {"file": "midi/arrangement.mid"},

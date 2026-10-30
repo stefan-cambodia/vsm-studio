@@ -350,6 +350,16 @@ void TrackRowComponent::poserInfobulleDeSortie() {
                               .replace("%1", destination.isNotEmpty() ? destination : outputBox_.getText()));
 }
 
+TrackRowComponent::~TrackRowComponent() {
+    // D599 : détruits pendant un glissé, les curseurs le clôturent (`onDragEnd`), et D599.2 y publie la main vers
+    // l'application — qui se démonte peut-être déjà. Les rappels sont coupés avant (la leçon de `~ChannelStrip`).
+    for (auto* curseur : {&volumeSlider_, &panSlider_}) {
+        curseur->onDragStart = nullptr;
+        curseur->onDragEnd = nullptr;
+        curseur->onValueChange = nullptr;
+    }
+}
+
 void TrackRowComponent::refreshMix() {
     volumeSlider_.setValue(track_.volume, juce::dontSendNotification);
     panSlider_.setValue(track_.pan, juce::dontSendNotification);

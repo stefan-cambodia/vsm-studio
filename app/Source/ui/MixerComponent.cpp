@@ -169,6 +169,9 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         glisseEnCours_ = false;
         mainVolume_ = false;   // D599.2 : avant la fermeture, qui republie ce que la main tient
         fermerPasse("mix.volume", false);
+        // SANS PASSE (W éteint), `fermerPasse` sort avant de publier : la main restait posée après le lâcher, et le
+        // moteur jouait le fader pour toujours — vu au banc (« joué 1,000 » après le lâcher, la main « volume »).
+        publierLaMain();
     };
     volume_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
@@ -204,6 +207,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         glisseEnCours_ = false;
         mainPan_ = false;   // D599.2
         fermerPasse("mix.pan", false);
+        publierLaMain();   // sans passe, `fermerPasse` ne publie rien (voir le volume)
     };
     pan_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
@@ -880,6 +884,20 @@ void ChannelStrip::publierLaMain() {
     if (onHandChanged) onHandChanged(index_, masque);
 }
 
+ChannelStrip::~ChannelStrip() {
+    // D599 : UNE TRANCHE DÉTRUITE PENDANT UN GLISSÉ PLANTAIT. Le `Slider` clôt son glissé dans son destructeur
+    // (`ScopedDragNotification` → `onDragEnd`), qui ferme la passe dans `passes_` — détruit AVANT lui, puisque déclaré
+    // après. Vu au banc de D599 : trois courses quittées pendant une passe Touch (le binaire de D598 compris) ont fini en
+    // SIGABRT, la pile dans `ChannelStrip::Passe`. Les rappels sont coupés ici, avant que les membres ne meurent : une
+    // passe ouverte à la destruction est perdue — elle l'était déjà, en plantant.
+    for (auto* enfant : getChildren())
+        if (auto* curseur = dynamic_cast<juce::Slider*>(enfant)) {
+            curseur->onDragStart = nullptr;
+            curseur->onDragEnd = nullptr;
+            curseur->onValueChange = nullptr;
+        }
+}
+
 vsm::sequencer::AutomationCurve& ChannelStrip::courbeDe(const std::string& parametre) {
     for (auto& courbe : track_.automation)
         if (courbe.parameter == parametre) return courbe;
@@ -903,7 +921,16 @@ void ChannelStrip::ouvrirPasse(const std::string& parametre) {
     if (track_.automationMode == vsm::sequencer::AutomationMode::Trim
         && (parametre == "mix.volume" || parametre == "mix.pan")) {
         passe.trim = true;
-        passe.reference = static_cast<float>(parametre == "mix.pan" ? pan_.getValue() : volume_.getValue());
+        // LA RÉFÉRENCE EXACTE : la courbe à l'appui quand elle pilote — le curseur l'affiche ARRONDIE au pas de sa
+        // course (0,1 dB), et un décalage compté sur l'arrondi manquait la cible d'autant : 0,9976 au lieu de 1,0 au
+        // premier essai du banc. Sans courbe, le curseur.
+        const bool pan = parametre == "mix.pan";
+        if (const auto* c = courbePilote(parametre); c != nullptr) {
+            const float v = vsm::sequencer::automationValueAt(*c, passe.debut);
+            passe.reference = pan ? v : gainToDb(v);
+        } else {
+            passe.reference = static_cast<float>(pan ? pan_.getValue() : volume_.getValue());
+        }
         passe.decalages.push_back({passe.debut, 0.0f, false});
     }
     passes_[parametre] = std::move(passe);

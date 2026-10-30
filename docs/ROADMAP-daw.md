@@ -46741,3 +46741,46 @@ déverrouillée au départ ; finie à 08 h 00 (101 min), l'écran éteint et la 
   a attendu 35 s qu'elle redescende à 749 Mo avant `aimant-cibles.sh`, pendant lequel le sommet de la session a atteint
   **10,6 Go**, puis l'unité est restée sous 1,4 Go jusqu'à la fin. La série ne s'est pas arrêtée ; la piste de D581 (l'écran
   éteint) reste la seule nommée, et l'écran était éteint à la fin.
+
+### Phase D599 — MESURÉE, la série à jouer (30/10/2026, 08 h 40 à l'horloge)
+
+*Écrite et testée dans son arbre pendant la série de D592-D598 ; reprise sur `master` après elle, compilée (`-j 6`, rien
+d'autre ne tournant). Session VERROUILLÉE et écran éteint pendant toute la mesure (l'utilisateur absent) : le banc lit le
+journal, les relevés, les projets enregistrés et le vumètre, pas des clics réels ; ses treize photos vérifiées pleines
+(150 à 165 Ko). Le témoin : le binaire de D598, copié dans `build/temoin-D598` avant la compilation.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D598) | tenu |
+|---|---|---|---|---|
+| D599 (1) | à l'arrêt : −12,0 dB et −0,50 à la tranche, 0,250 et −0,50 à la ligne | fader **−12,00** dB (courbe −12,04 : le pas du curseur est 0,1 dB), pan **−0,50**, ligne **0,250 / −0,50** | `relever-automation` inconnu | **oui** |
+| D599 (2) | en lecture, deux relevés à moins de 0,5 dB de la courbe, d'au moins 1 dB l'un de l'autre | tick 736 : **−7,60** dB (courbe −7,62) ; tick 2 173 : **−11,90** (−11,96) ; 4,3 dB d'écart | rouge | **oui** |
+| D599 (3) | Touch : joué 1,000 pendant, 0,250 après, le fader revenu à −12,0 ; la courbe à 1,0 au tick du relevé pendant | joué **1,000** (tick 1 025), puis **0,250**, fader **−12,00** ; la courbe enregistrée `445:0,25 546:1,0 1315:1,0 1316:0,25` — la valeur TENUE jusqu'au lâcher (le quatrième défaut) | la courbe inchangée ; le vumètre, voir plus bas | **oui** |
+| D599 (4) | sans W : joué 1,000 tant qu'on tient, 0,250 après ; la courbe identique ; dit | **1,000** puis **0,250** ; la courbe `0:0,25 7680:0,25` ; « Volume : suivi de sa courbe — la main s'entend tant qu'elle tient ; armer W pour l'écrire » | rouge | **oui, après correction** |
+| D599 (5) | Trim : joué 0,500 après 1 440 ; la courbe 1,0 avant 1 440, 0,5 après, 0,25 au-delà, 0,5 avant l'appui | joué **0,500** (tick 1 683) ; la courbe `0:0,5:p 434:0,5 435:0,5:p 535:1,0:p 1440:0,5 1973:0,5 1974:0,25` — **le palier gardé**, ses deux marches doublées | la courbe inchangée (« trim » lu éteint) | **oui, après correction** |
+| D599 (6) | W touch, W latch, W trim, W ; l'infobulle anglaise nomme Trim | les quatre, dans l'ordre ; *Three: Trim* | rouge | **oui** |
+| ce qui s'entend | le vumètre de la piste, la main tenant : +12 dB sur le témoin en Touch et sans W, +6 dB en Trim (± 1,5 dB) | Touch **+11,98**, sans W **+12,04**, Trim **+5,95** dB (−23,95 / −23,95 / −29,93 dBFS contre −35,93 / −35,99 / −35,88) | — | **oui, l'instrument corrigé après la mesure** |
+| — | les suites | cœur **565 / 565** (5 neufs), moteur **1 370 / 1 370** (1 neuf), interchange **362 / 362** (1 neuf), clap 25, panels 11 ; gardes **16** vertes | — | **oui** |
+| — | la série | `./verifier.sh --bancs`, **197** bancs — **à jouer**, avec D600, l'écran allumé | — | **à jouer** |
+
+**CE QUE LA MESURE A TRANCHÉ, ÉCRIT ICI.**
+- **Un cinquième défaut, vu au premier essai : sans W, la main restait posée après le lâcher.** `fermerPasse` sort
+  aussitôt quand aucune passe n'est ouverte — avant de publier ce que la main tient ; le moteur jouait le fader pour
+  toujours (« joué 1,000, la main volume » une demi-seconde après le lâcher). Le lâcher publie désormais la main lui-même.
+- **La référence de Trim était le curseur, arrondi à 0,1 dB** : −6,0 au lieu de −6,02, et le décalage manquait sa cible
+  d'autant (**0,9976** au lieu de 1,0 au premier essai). Elle est la courbe à l'appui quand une courbe pilote ; le second
+  essai rend **1,0000**.
+- **Un sixième défaut, ANTÉRIEUR, trouvé par le banc et par son témoin : une tranche détruite pendant un glissé plantait.**
+  Les courses photographiées la main tenue se fermaient en `SIGABRT` — trois sur six, le binaire de D598 compris (la pile :
+  `Slider::Pimpl::~Pimpl` → `onDragEnd` → `ChannelStrip::fermerPasse` sur `passes_`, déjà détruit, puisque déclaré après
+  le curseur). Quitter, ou reconstruire la console, pendant une passe le faisait. `~ChannelStrip` et
+  `~TrackRowComponent` coupent désormais les rappels de leurs curseurs avant que leurs cibles ne meurent ; au second
+  essai, plus aucune course du binaire neuf ne plante — seul le témoin le fait encore.
+- **L'instrument du témoin, corrigé DEUX FOIS après la mesure, et dit dans l'en-tête du banc** : avec une note hachée du
+  Minimoog, deux témoins dans le même état lisaient −27,57 et −29,50 dBFS ; avec une note tenue au do 3 sur le générateur
+  de test, encore −33,33 et −35,32 — le vumètre lit l'efficace d'UN bloc audio (D4.7), une dizaine de millisecondes, à
+  peine plus d'une période et demie de la note. Au do 6 (1 046 Hz), les trois témoins lisent −35,93, −35,99, −35,88 :
+  0,11 dB d'étendue. La tolérance (1,5 dB) n'a pas bougé ; ce qui a changé est le son qu'on mesure.
+- **La tranche, regardée** (`trim-a`, 1 600 × 1 000) : « W trim » en sarcelle sous le fader tenu à 0,0 dB, lisible ; la
+  rangée du W n'a pas bougé.
+- **Le témoin écrit-il encore sa passe à l'arrêt ?** Sa course (3), qui ne sait pas lâcher, finit par l'arrêt du
+  transport — et sa courbe est sortie inchangée. Le chemin de l'arrêt (`closeLatchedPasses`) ne fait pas partie de cette
+  mesure ; le binaire neuf écrit au lâcher. **Remis**, nommé : rejouer un arrêt pendant une passe tenue.

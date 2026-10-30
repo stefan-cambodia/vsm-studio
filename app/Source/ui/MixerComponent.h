@@ -238,6 +238,7 @@ public:
     void setVca(const juce::String& nom);
     /// D532.1 bis : les commandes que la tranche ne montre pas, pour le relevé.
     juce::String commandesMasquees() const;
+    ~ChannelStrip() override;   ///< D599 : coupe les rappels des curseurs avant que leurs cibles ne meurent
     ChannelStrip(vsm::sequencer::Track& track, size_t index,
                   const std::vector<std::string>& sendNames);
     /// D94 : les infobulles et l'unité de transposition, dans la langue
@@ -378,7 +379,8 @@ public:
     double volumeAffiche() const { return volume_.getValue(); }
     double panAffiche() const { return pan_.getValue(); }                      ///< D599 : pour le relevé
     juce::String modeAffiche() const { return armer_.getButtonText(); }     ///< D599 : « W », « W touch »…
-    juce::String infobulleW() const { return armer_.getTooltip(); }        ///< D599 : l'infobulle du W, pour le relevé
+    /// D599 : l'infobulle du W, pour le relevé (`getTooltip` n'est pas `const` chez JUCE : on la lit sans la changer).
+    juce::String infobulleW() const { return const_cast<juce::TextButton&>(armer_).getTooltip(); }
     uint16_t mainTenue() const { return masqueMain_; }                         ///< D599.2 : 1 volume, 2 panoramique
     bool trimEnCours() const { return trimFacteur_ != 1.0f || trimPan_ != 0.0f; }   ///< D599.3
 

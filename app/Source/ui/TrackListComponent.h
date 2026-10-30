@@ -24,6 +24,7 @@ public:
     /// (D18.7b), vide sinon. Passé plutôt que déduit, pour la même raison que
     /// `groupes` -- la rangée n'a pas besoin du projet entier pour dire ce
     /// qu'elle porte.
+    ~TrackRowComponent() override;   ///< D599 : coupe les rappels des curseurs (voir `~ChannelStrip`)
     TrackRowComponent(vsm::sequencer::Track& track, size_t trackIndex,
                        const std::vector<std::pair<int, std::string>>& groupes,
                        const juce::String& sourceName = {});
