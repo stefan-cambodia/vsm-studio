@@ -47627,3 +47627,37 @@ témoin : le binaire de D606 (`build/temoin-D606`).*
 - **Remis, nommés** : relier un fichier manquant, importer dans la réserve, poser un fichier de la réserve sur une piste.
 
 **LA SÉRIE EST À JOUER (D605, D606 et D607 ensemble), ÉCRAN ALLUMÉ.**
+
+### Phase D608 — un soixante-huitième audit : relier un fichier manquant (31/10/2026)
+
+*Écrite le 31/10 à 06 h 14 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de
+D605-D607 attend l'écran allumé ; rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D607** — la réserve dit qu'un fichier MANQUE, et rien ne permet d'y remédier
+sinon éditer `project.json` à la main. C'est le cas ordinaire d'un projet copié d'une machine à l'autre, ou d'un fichier
+renommé dans son dossier : le *Find Missing Files* de Cubase (« Locate »).
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D608.1 | **Relier un fichier manquant** — *Find Missing Files ▸ Locate* | dans la réserve, une ligne MANQUANT choisie, « Relier… » : on désigne un fichier audio ; TOUT ce qui désignait le chemin manquant (la piste, son gel, ses prises, ses versions) désigne désormais le fichier choisi, sa description (fréquence, trames, canaux) relue au fichier ; un fichier pris HORS du dossier du projet y est COPIÉ dans `audio/` (sous un nom libre s'il y en a déjà un) — un projet doit s'ouvrir sur une autre machine ; pris dedans, il est désigné en place ; la piste est rechargée et SONNE ; un pas d'annulation ; un fichier illisible est refusé et dit ; mesuré au cœur et par un banc — le vumètre de la piste en lecture, le témoin non relié à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La réécriture vit au cœur** (`relinkMedia`), sur la même liste que la réserve : un chemin désigné par trois genres
+  n'est pas relié à moitié. Elle rend le nombre de désignations réécrites ; 0 = rien ne désignait ce chemin, et le
+  projet n'a pas bougé (aucun pas).
+- **Copier plutôt que pointer dehors** : `project.json` refuse les chemins absolus (« un projet doit s'ouvrir sur une
+  autre machine », D2) ; relier à un chemin absolu ferait un projet qui ne se rouvre plus. Le nom libre vient de
+  `getNonexistentChildFile` — jamais un fichier écrasé.
+- **L'annulation rend le chemin manquant** ; le fichier copié reste dans `audio/` (une copie n'est pas un geste du projet,
+  et le nettoyage de D564.1 le reconnaîtra « gardé pour l'historique » tant qu'un Ctrl+Y peut le rappeler).
+- **Le verbe de banc** `relier:<chemin manquant>:<fichier>` prend la place du sélecteur, et passe par la MÊME fonction.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : un chemin désigné par la piste, une prise et une version, relié → **3** désignations réécrites, la
+description neuve partout, les autres chemins intacts ; un chemin que rien ne désigne → **0**, projet inchangé ;
+(b) **au banc** `tools/relier-fichier.sh`, sur le jeu de D607 : `audio/absent.wav` relié à un fichier stéréo de 2 s pris
+HORS du dossier → la ligne `audio/basse-retrouvee.wav` « joué », **0 manquant**, le fichier copié dans `audio/` ; en
+lecture, le vumètre de « Basse » **au-dessus de −40 dBFS** quand le témoin non relié lit **−inf** ; Ctrl+Z → la ligne
+`audio/absent.wav` MANQUANT revient ; un fichier illisible → refusé et dit, rien de relié ; le témoin (D607) : le verbe
+inconnu ; l'anglais ;
+(c) les suites ; la série.
