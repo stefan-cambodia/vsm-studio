@@ -47443,3 +47443,57 @@ toujours comptée). Le banc `tools/accordeur.sh` (5 contrôles) ; le témoin : l
 moteur à l'arrêt, que plusieurs bancs traversent) n'ont été joués dans la série. À 04 h 57, l'écran est éteint et la
 session verrouillée : c'est sous ces conditions que l'unité du compositeur est montée à 10,4 Go (D581), et D578 a vu
 `systemd-oomd` tuer la session de l'utilisateur pendant une série. Elle se joue l'écran allumé.
+
+### Phase D606 — un soixante-sixième audit : la lecture suit l'ordre de jeu (31/10/2026)
+
+*Écrite le 31/10 à 05 h 02 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D605
+attend l'écran allumé ; rien ne tourne.*
+
+**D'OÙ ELLE VIENT : de la liste des « toujours remis »** — « la piste d'arrangement (*Arranger Track*, une chaîne de
+sections que la lecture suit — une phase à elle seule) » (D573, D579, D580, D581, D604). Relu au code : l'ordre de jeu de
+D18.4 existe — des sections déduites des repères (`sectionsFromMarkers`), une liste d'indices répétables dans sa fenêtre
+(`PlayOrderComponent`), et « Aplatir » (`flattenPlayOrder`), qui RÉÉCRIT le matériau. Mais pour ENTENDRE « refrain,
+couplet, couplet », il faut aplatir, écouter, annuler — l'ordre ne s'essaie qu'en le gravant. Le *mode Arrangement* de
+Cubase joue la chaîne sans toucher au matériau : à la fin d'une section, la lecture saute au début de la suivante.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D606.1 | **La lecture suit l'ordre de jeu** — le mode Arrangement (*Activate Arranger Mode*) | dans la fenêtre de l'ordre de jeu, une case « La lecture suit l'ordre » : cochée et l'ordre non vide, la lecture joue la chaîne — à la fin d'un élément, la tête saute au début du suivant, À L'ÉCHANTILLON, les notes tenues relâchées et celles qui traversent le début relancées (comme au rebouclage) ; après le dernier, le transport s'arrête ; l'élément joué est éclairé dans la liste ; le matériau n'est pas touché ; mesuré au cœur contre le projet APLATI (le même ordre, par `flattenPlayOrder`) — le même son —, et par un banc, le témoin décoché à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le saut est un rebouclage généralisé.** Le moteur sait déjà sauter à l'échantillon (la boucle, D2) : il découpe le bloc
+  à la frontière, relâche ce qui sonne et relance ce qui traverse la cible (D585.3). Une chaîne est une suite de
+  frontières dont chaque cible est le début de l'élément suivant ; elle se publie d'un coup (`atomic<shared_ptr>`, comme
+  la chasse de la boucle), en ticks convertis en secondes à chaque projet (le tempo a pu changer), avec les notes à
+  relancer au début de CHAQUE élément, calculées hors du fil audio.
+- **Le témoin de la mesure existe déjà, et c'est le même code** : `flattenPlayOrder` écrit le projet qui JOUE l'ordre. Un
+  rendu de la chaîne et un rendu du projet aplati doivent donner le même son ; un écart serait un défaut de l'un des deux
+  — ce qui fait de cette mesure une garde de D18.4 aussi.
+- **Les contrôleurs ne sont pas chassés au saut**, comme au rebouclage d'aujourd'hui (seules les notes le sont) — alors que
+  l'aplatissement ouvre chaque créneau sur la dernière valeur entendue avant sa section. Sur un morceau dont les
+  contrôleurs changent d'une section à l'autre, les deux sons diffèrent : NOMMÉ, et la mesure se fait sans contrôleur.
+- **Où part la lecture.** Lancée, elle reprend dans l'élément courant si la tête y est ; sinon elle part du début du
+  premier élément. Un déplacement de la tête pendant la lecture désigne le premier élément qui contient la position ;
+  aucun ne la contient → la lecture QUITTE l'ordre et file droit (dit par le relevé), jusqu'au prochain départ.
+- **La boucle s'efface devant l'ordre**, et l'enregistrement devant les deux : pendant une prise, la lecture file droit
+  (une prise s'écrit sur la ligne de temps — la suivre dans un ordre écrirait deux fois au même endroit).
+- **La fin de la chaîne arrête le transport comme la fin du morceau** (`Transport::stop`, au même endroit du code), les
+  notes relâchées à l'échantillon de la fin du dernier élément.
+- **La case et l'ordre restent des états de SESSION**, comme l'ordre l'est depuis D18.4 (« un projet rouvert avec un
+  ordre de jeu qu'on ne se rappelle pas avoir posé serait une surprise ») — rien au fichier, rien aux préférences.
+- **L'export reste celui de la ligne de temps** : exporter l'ordre, c'est l'aplatir (annulable) puis exporter — dit dans
+  l'infobulle de la case.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur**, à 8 kHz, 120 BPM, deux sections d'une mesure (A de 0 à 2 s, B de 2 à 4 s), des notes dans chacune dont une
+qui déborde de A dans B, au Minimoog ; l'ordre [B, A, A], la boucle posée sur [0, 1 s] et active : le rendu de la chaîne
+(départ au début de B) et celui du projet aplati diffèrent de **moins de 1e-4** (écart absolu maximal) sur les 6 s de la
+chaîne ET sur la seconde de queue qui suit ; le témoin — le même projet joué droit depuis 0 — en diffère de **plus de
+0,05** ; la boucle ignorée (sinon l'écart serait celui d'un rebouclage à 1 s) ; après la chaîne, le transport arrêté ;
+(b) un déplacement dans un élément le désigne (l'index relevé) ; hors de tout élément, l'index tombe à −1 et la tête
+file droit ; pendant une prise, la chaîne est ignorée ;
+(c) **au banc** `tools/ordre-suivi.sh` : l'ordre [B, A] posé et la case cochée par des verbes, la lecture lancée : relevée
+à ~1 s, la tête est dans B (élément 1/2, entre 2 et 4 s) ; à ~3 s, dans A (élément 2/2, entre 0 et 2 s) ; à ~5,5 s, le
+transport arrêté ; le témoin dans le même binaire, la case décochée : la tête file droit (dans A à ~1 s) ; le témoin
+(D605) : le verbe inconnu ; l'anglais ; la fenêtre photographiée, l'élément joué éclairé ;
+(d) les suites ; la série.
