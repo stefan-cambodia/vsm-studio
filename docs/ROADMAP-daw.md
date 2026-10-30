@@ -46656,3 +46656,68 @@ en RELATIF : la main décale la courbe existante de ce qu'elle a bougé depuis q
   D16.8 dit « la main écrit TANT QU'ON LE TIENT ». Le point de fin est désormais posé en Touch aussi (la règle de
   Latch, au lâcher au lieu de l'arrêt). L'attendu (3) devient : la courbe enregistrée à **1,0 au tick du relevé fait
   pendant la prise** (le témoin, qui écrit la rampe : environ 0,5 à ce tick), 0,25 avant l'appui et après le lâcher.
+
+### Phase D600 — un soixantième audit : les départs et le trim qui suivent leurs courbes, la lecture de l'automation, le temps de retour (30/10/2026)
+
+*Écrite le 30/10 à 07 h 16 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de D592-D598 ; D599 est écrite et testée dans son arbre, pas encore mesurée dans l'application.*
+
+**D'OÙ ELLE VIENT : de D599, qui a remis trois choses en les nommant.** D599 a fait suivre au fader et au panoramique
+leurs courbes, et fait entendre la main sur eux ; les départs (`mix.send.N`) et le trim d'entrée (`mix.trim`) ont aussi
+des courbes, que le moteur joue (`autoSend_`, `autoTrim_`), et leurs boutons montrent toujours la valeur STATIQUE — le
+défaut (a) de D599, sur deux familles de plus ; la main sur eux ne s'entend pas davantage : le trim est lu par
+`autoMask_` seul (`ProcessGraph.cpp`, la section du trim d'entrée), les départs par `pilotes`, où la main de D599 n'a que
+les bits du volume et du panoramique. **Et deux fonctions de Cubase autour du W, sondées en l'écrivant** : **0 pour la
+lecture de l'automation** — le *R* d'une tranche de Cubase, qui fait taire les courbes d'une piste sans les effacer :
+ici une courbe non vide joue toujours (`resolveAutomation` ne connaît que « résolue » ou « dite et écartée »), et la
+seule façon de l'entendre sans elle est de la supprimer ; **0 pour le temps de retour** (*Automation Return Time*) —
+au lâcher d'une passe Touch, la courbe saute en UN tick de la valeur tenue à l'ancienne (le raccord de
+`writeAutomationRange`, à `fin + 1`) : de 1,0 à 0,25 en un tick, 12 dB en à peine plus d'une milliseconde à 120 BPM — un saut que Cubase
+adoucit d'une rampe réglable.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D600.1 | **Les départs et le trim suivent leurs courbes, et cèdent à la main** — la suite de D599.1 et D599.2 | les boutons de départ et le trim d'entrée de la tranche montrent la valeur de leur courbe à la tête ; tant que la main les tient (W armé : tant que la passe court), le moteur joue la valeur statique et non la courbe ; mesuré par le relevé de D599 étendu et par ce que le moteur joue, le témoin (le binaire de D599) à côté |
+| D600.2 | **La lecture de l'automation** — le *R* d'une tranche | un bouton « R » à côté du W, allumé d'origine sur toute piste qui a une courbe : éteint, les courbes de la piste ne jouent plus — ni en lecture, ni à l'export, ni par `vsm-render` (une seule résolution, `resolveAutomation`) —, le fader et les boutons montrent la valeur statique, les courbes de l'arrangement se dessinent pâlies, et l'écriture (W) est refusée et dite ; retenu dans le projet (`"automationRead": false`, absent sinon) ; un pas d'annulation ; mesuré par l'export, le témoin à côté |
+| D600.3 | **Le temps de retour** — *Automation Return Time* | au lâcher d'une passe Touch ou Trim, la courbe rejoint l'ancienne en RAMPE sur un temps réglé aux préférences (« Temps de retour de l'automation », en ms, 0 pour le saut d'avant) au lieu d'un tick ; mesuré par la courbe enregistrée, le témoin (le réglage à 0) à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D600.1 : le masque de la main prend la disposition de celui des courbes** (bit 0 volume, 1 panoramique, 2 à 9 les
+  départs, 10 le trim) : `setHandOverride` garde tous ces bits, et le trim d'entrée passe par lui (`autoMask_ & ~main`).
+  La tranche pose la main sur un départ ou sur le trim comme sur le fader (`poserLaMain`), et les suit comme lui
+  (`suivreLesCourbes`). Le trim est en dB (`mix.trim`), un départ en niveau linéaire (`mix.send.N`) : les boutons
+  reçoivent la valeur de la courbe telle quelle, leur échelle est la sienne. *Trim* n'y décale rien (D599.3 : Touch).
+- **D600.2 : `Track::automationRead`** (vrai d'origine ; `"automationRead": false` au fichier quand il est éteint, absent
+  sinon — un projet d'avant se relit à l'octet). `resolveAutomation` saute les courbes d'une piste éteinte et le DIT
+  dans ses avertissements (« lecture éteinte ») : le moteur, l'export et `vsm-render` ne les jouent plus, par le même
+  chemin. Le bouton « R », à gauche du W sur sa rangée (« R » et « W », les deux lettres de Cubase) ; la ligne de piste
+  a déjà un « R » — l'armement d'enregistrement —, mais les deux ne se côtoient jamais (la ligne n'a pas de W, la tranche
+  pas d'armement), et l'infobulle de chacun dit ce qu'il fait. Le vert de Cubase n'existe pas ici : la palette n'a
+  que trois teintes d'accent (ambre, sarcelle, rouge), toutes prises par le W. **Tranché** : allumé, la sarcelle à
+  demi-teinte (50 %) — distincte du « W trim » plein ; éteint, le fond de la tranche, et l'infobulle le dit.
+  La photo le jugera ; si les deux sarcelles se confondent, c'est écrit et changé. Éteint, la tranche ne
+  suit plus les courbes (D599.1), la main n'a plus rien à emporter, et armer le W est REFUSÉ et dit (écrire une courbe
+  qu'on n'entend pas serait une passe à l'aveugle) ; les courbes de l'arrangement pâlissent.
+- **D600.3 : le temps de retour, aux préférences** (« Temps de retour de l'automation », 0 à 2 000 ms, **250 ms**
+  d'origine) : au lâcher d'une passe Touch ou Trim, la plage écrite s'étend de `fin` à `fin + retour` (converti en ticks
+  à la tête), et la courbe y rejoint l'ancienne en rampe — le raccord de `writeAutomationRange` posé au bout du retour au
+  lieu de `fin + 1`. Latch n'en a pas (sa passe finit à l'arrêt). 0 : le saut d'un tick, comme avant — c'est le témoin,
+  du même code.
+- **L'ATTENDU, ÉCRIT AVANT LA MESURE** (le jeu de D599 : 480 ticks à la noire, 120 BPM, une piste « Partie », une note
+  par temps ; volume statique 1,0) :
+  (1) **à l'arrêt**, un départ vers un bus « Écho » de niveau statique 0 et de courbe plate à 0,5, un trim statique de
+  0 dB et de courbe plate à −6 dB : le bouton du départ lit **0,50**, le trim **−6,0 dB** ; le témoin (D599) 0,00 et
+  0,0 dB ;
+  (2) **la main sur eux**, W éteint, en lecture : le départ posé à 1,0 → le moteur joue le départ à **1,0** tant qu'on
+  tient (le témoin : 0,5), puis 0,5 ; le trim posé à 0 dB → joué **0 dB** (le témoin : −6 dB), puis −6 dB ;
+  (3) **R éteint** sur une piste à courbe de volume plate à 0,25 : l'export de l'application et `vsm-render` sortent
+  **12,0 dB** plus fort qu'avec R allumé (la valeur statique 1,0 contre la courbe), à 0,1 dB près ; le témoin (D599, qui
+  ignore le champ) : 0,0 dB d'écart ; le fader lit 0,0 dB et non −12,0 ; W cliqué → refusé et dit, le mode reste
+  éteint ; l'arrangement photographié, la courbe pâlie ; Ctrl+Z rallume ;
+  (4) **le temps de retour** : la passe Touch de D599 (3), lâchée au tick `fin` — à 250 ms (240 ticks à 120 BPM), la
+  courbe enregistrée vaut 1,0 à `fin`, **0,625** à `fin + 120` (à mi-rampe), 0,25 à `fin + 241` ; le témoin du même
+  code, le réglage à 0 : 0,25 dès `fin + 1` ;
+  (5) en anglais, *R* et le réglage nommés ; les suites ; la série.
+
+**L'ORDRE.** Le moteur et le cœur d'abord (la main sur tous les bits, le champ `automationRead` et sa résolution, avec
+leurs tests joués rouges sur le code d'avant), puis la console, puis le banc.
