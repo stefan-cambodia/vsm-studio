@@ -47341,3 +47341,21 @@ le transport arrêté → « — » ; le témoin (D604) : l'effet absent de la l
 
 **L'ORDRE.** Le détecteur et son test (joué rouge sur une déclaration vide), l'effet et son test de passage, puis la
 fabrique, la case de la chaîne d'inserts et le relevé, puis le banc `tools/accordeur.sh` — après la série.
+
+**CORRIGÉ AVANT LE CODE (22 h 25 à l'horloge, en écrivant le détecteur ; rien n'est compilé), et pourquoi.**
+- **2 048 échantillons à 48 kHz ne mesurent pas 40 Hz.** YIN compare la fenêtre à elle-même décalée d'une période : il
+  lui faut au moins une période ENTIÈRE de décalage PLUS une longueur de comparaison — avec 2 048 échantillons, le décalage
+  utile s'arrête vers 1 024, soit 47 Hz. L'attendu « à 41 Hz → mesuré » se contredisait. Le détecteur lit donc **4 096
+  échantillons à 48 kHz**, ramenés à **2 048 à 24 kHz** (la moyenne de deux échantillons — un passe-bas suffisant sous
+  2 kHz) : un décalage jusqu'à 600 (40 Hz) et une comparaison de 1 448 ; le coût par mesure tombe au quart. Recalculé
+  tous les 2 048 échantillons d'entrée (≈ 43 ms à 48 kHz, 23 mesures par seconde — la case n'en montre que dix).
+- **La précision attendue** (± 0,2 Hz à 440 Hz, soit 0,8 c) reste celle écrite : l'interpolation parabolique du creux
+  la donne sur un sinus ; si la mesure ne la tient pas, c'est écrit et non élargi en silence.
+
+### La série de D604 — JOUÉE, VERTE (31/10/2026, 00 h 00 à l'horloge)
+
+*`./verifier.sh --bancs`, **202** bancs (`reperes-cycle` entré), lancée le 30/10 à 22 h 21 sous `kde-inhibit
+--screenSaver` (l'autorisation de l'utilisateur), l'inhibition vérifiée enregistrée au départ et retirée à la fin ; écran
+allumé, session déverrouillée, aucune veille ; la garde de batterie posée (veille à 10 %), la batterie de 47 à 19 %.*
+**202 verts sur 202** en 98 min ; les préférences de l'utilisateur identiques ; le compositeur 899 → 922 Mo. Elle clôt
+D604 et la correction du plantage de D599 (la piste pendante), et la garde du mojibake : D599 à D604 sont FAITES.
