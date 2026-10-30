@@ -47283,7 +47283,7 @@ compilés après elle. Les tests du cœur joués rouges sur le code d'avant (les
 - **Remis, nommé** : la règle du piano roll ne peint pas la bande (elle porte le menu, pas le dessin) ; l'aplatissement
   de l'ordre de jeu (D542) rend les cycles en repères de position ; aucun raccourci ne pose un cycle.
 
-**La garde du mojibake — le reste nommé de D604, FAITE (30/10/2026, 22 h 27 à l'horloge, pendant la série de D604).**
+**La garde du mojibake — le reste nommé de D604, FAITE (30/10/2026, 22 h 22 à l'horloge, pendant la série de D604).**
 `tools/mojibake.py`, entrée dans les gardes des sources de `verifier.sh` : un littéral C++ (hors commentaires) qui porte
 un caractère de U+00C2 à U+00F4 suivi d'un caractère de U+0080 à U+00BF est la lecture Latin-1 d'octets UTF-8 — « Ã© »,
 « Â« », « â » et deux contrôles invisibles pour « — ». Payé trois fois aujourd'hui par des éditions scriptées ;
