@@ -47693,3 +47693,49 @@ binaire une course non reliée.*
   la réserve sur une piste.
 
 **LA SÉRIE EST À JOUER (D605 à D608 ensemble), ÉCRAN ALLUMÉ.**
+
+### Phase D609 — un soixante-neuvième audit : la carte de batterie (31/10/2026)
+
+*Écrite le 31/10 à 06 h 36 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de
+D605-D608 attend l'écran allumé ; rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du dernier « reste au nom » de D574** — « la carte de batterie (D547 : un éditeur de batterie,
+chantier à part) ». Relu au code : le piano roll NOMME déjà les pièces (`drumVoiceName`, la machine ou General MIDI) ;
+ce qui manque est la moitié qui SONNE de la *Drum Map* de Cubase — la note de sortie (*O-Note*). Les machines du parc ne
+rangent pas leurs pièces au même endroit : la TR-909 a ses toms en 45/47/50, la batterie acoustique en 41/45/48, la
+TR-808 n'en a pas ; une partie General MIDI (toms en 41/43/45/47/48/50) jouée par la 909 perd ses toms en 41 et 43, sans
+un mot. Aujourd'hui, la seule réponse est de réécrire les notes — et la partie ne joue plus juste sur l'autre machine.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D609.1 | **La note de sortie** — l'*O-Note* de la *Drum Map* | par piste, une carte « note écrite → note jouée » : la LECTURE envoie à la machine (ou au port MIDI) la note de sortie ; le matériau ne bouge pas (le piano roll montre la note écrite, comme pour la transposition de piste, D17.5) ; les deux chemins — l'application et le rendu hors ligne — jouent la même carte (le contrat de D21) ; la chasse aux notes aussi (D585.3) ; écrite au fichier seulement si elle déplace une note (`"drumMap"`) — un projet d'avant se relit et se réécrit à l'octet ; l'export MIDI écrit les notes ÉCRITES et NOMME la carte parmi ce qu'il ne porte pas (la règle de D31.5) ; mesuré au cœur, par un rendu hors ligne contre la même partie écrite directement à ses notes de sortie, et par un banc |
+| D609.2 | **La fenêtre de la carte** — l'éditeur de *Drum Map* | *Piste ▸ Carte de batterie…* : une ligne par note que la piste écrit, son nom (la pièce de la machine, ou General MIDI) et sa note de sortie, choisie parmi les pièces que la machine nomme (« tom grave (45) ») ou laissée « elle-même » ; un pas d'annulation par changement ; « Remettre à l'identité » ; mesuré par le relevé de la fenêtre, le fichier et la photo, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La carte s'applique à la note ÉCRITE, avant la transposition** (de piste, D17.5 ; globale, D544.3, qui laisse déjà le
+  canal 10) : « note écrite → note jouée » est ce que l'œil lit dans le piano roll ; la transposer d'abord ferait
+  chercher dans la carte une note que personne n'a écrite.
+- **Au cœur, dans le planning** (`PlaybackScheduler`), aux trois endroits qui calculent la hauteur jouée — le planning,
+  la chasse, le compte des notes écartées — par UNE fonction : trois recopies divergeraient à la première correction.
+  Le rendu hors ligne lit le même planning : le contrat de D21 tient sans rien ajouter.
+- **Les notes jouées au clavier passent aussi par la carte** (le *monitoring* de Cubase) — sinon on entendrait autre
+  chose en jouant qu'en réécoutant ce qu'on vient d'enregistrer ; la prise, elle, écrit la note jouée au clavier, c'est-
+  à-dire la note ÉCRITE. Appliquée dans le graphe, sur le projet publié.
+- **Une carte, pas une table de 128 cases au fichier** : seules les entrées qui déplacent une note s'écrivent ; une
+  entrée « elle-même » n'existe pas.
+- **Remis, nommés** : l'éditeur de batterie (losanges, quantification par rang, rangs dans l'ordre de la carte) ;
+  « adapter General MIDI à la machine » d'un geste (une correspondance par catégorie de pièce, qui se MESURE avant de
+  se proposer) ; une carte partagée entre pistes.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : une piste qui écrit 41 et 43 avec la carte 41 → 45, 43 → 47 planifie des NoteOn **45** et **47** aux
+mêmes instants, et ses NoteOff de même ; la chasse relance **45** ; sans carte (le témoin), 41 et 43 ; une transposition
+de +2 s'ajoute APRÈS la carte (41 → 45 → 47) ;
+(b) **au rendu hors ligne** (`renderBundleToBuffer`), à 8 kHz, une partie de toms General MIDI (41, 43, 45, 47) sur la
+TR-909 avec la carte 41 → 45, 43 → 47 : **égale au bit** à la même partie écrite directement en 45, 47, 45, 47 ; le
+témoin sans carte en diffère (les deux premiers toms muets sur la 909) ;
+(c) **au fichier** : la carte relue à l'identique ; un projet sans carte réécrit à l'octet ;
+(d) **au banc** `tools/carte-batterie.sh` : la carte posée par la fenêtre (deux entrées), son relevé ; le fichier
+enregistré la porte ; l'export MIDI garde 41 et 43 et nomme « carte de batterie » ; Ctrl+Z la retire ; l'anglais ; la
+photo ; le témoin (D608) : l'entrée inconnue ;
+(e) les suites ; la série.
