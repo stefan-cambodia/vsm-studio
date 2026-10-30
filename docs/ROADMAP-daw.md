@@ -47042,3 +47042,38 @@ après l'arrêt ne change plus la courbe ;
 
 **L'ORDRE.** Le cœur (`fillPass` et son test, joué rouge sur une déclaration vide), la console et la préférence, puis le
 banc `tools/automation-remplir.sh`.
+
+### Phase D602 — MESURÉE, la série à jouer (30/10/2026, 16 h 17 à l'horloge)
+
+*Écrite avant son code à 16 h 01 ; codée, testée et mesurée sur `master` sous une session verrouillée (le banc lit les
+courbes enregistrées, la ligne d'état et les menus, pas des photos). Le banc `tools/automation-remplir.sh` (12 contrôles) ;
+le témoin de (1) à (6) est « aucun » (`automationRemplir` absent), du même code ; celui du défaut trouvé, le premier essai.*
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| D602 (1) | « aucun » : 0,5 puis 1,0 dans la passe, 0,25 hors d'elle | `524:0,501 801:0,501 802:1,0 1181:1,0`, puis la rampe de retour (1 421) ; 0,5012 / 1,0000 / 0,2500 | **oui, après correction** |
+| D602 (2) | *Punch* : 1,0 sur toute la passe | `401:1,0 1170:1,0`, aucun point à 0,5 ; 0,25 hors d'elle | **oui** |
+| D602 (3) | *To Start* : 1,0 de 0 à la fin de la passe | `0:1,0 1181:1,0`, 0,25 à 7 000 | **oui** |
+| D602 (4) | *To End* : 0,25 avant, 0,5 dans la passe, 1,0 jusqu'à la fin et au-delà | `513:0,501 790:0,501 791:1,0 … 7680:1,0` ; 1,0000 à 9 000 | **oui, après correction** |
+| D602 (5) | *Loop* : la passe gardée, 1,0 sur 3 840-5 760, 0,25 entre et après | `3839:0,25 3840:1,0 5760:1,0 5761:0,25` | **oui** |
+| D602 (6) | *Trim* + *To End*, réglé au menu : 0,5 jusqu'à la fin | 0,5000 à 3 000, 5 000, 7 680 et 9 000 ; le palier `524:1,0:p … 1440:0,5` décalé ; « fin » au relevé | **oui** |
+| D602 (7) | l'arrêt pendant une passe tenue : 1,0 jusqu'à l'arrêt, 0,25 au tick suivant ; le lâcher ne change rien | `1059:1,0 1060:0,25` (le retour de 250 ms réglé, et aucune rampe) ; la courbe identique avant et après le lâcher | **oui** |
+| D602 (8) | la ligne d'état ; l'anglais | « Rempli jusqu'à la fin du morceau : 1.00 » ; en Trim « … : 6.02 dB » ; rien sans remplissage ; *Fill at the end of a pass ▸ Fill to the end of the song* | **oui** |
+| — | les suites | cœur **573 / 573** (2 neufs), moteur 1 372, interchange 367, clap 25, panneaux 11 ; `automation-main` 13/13, `automation-lecture` 18/18, `automation-globale` 17/17 rejoués sur le binaire neuf | **oui** |
+| — | la série | `./verifier.sh --bancs`, **200** bancs (`automation-remplir` entré) — **à jouer, l'écran allumé**, avec D599 à D601 | **à jouer** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **UN DÉFAUT ANTÉRIEUR, depuis D16.8 : une passe écrivait des RAMPES là où la main avait fait entendre des paliers.**
+  `noterDansLaPasse` ne posait un point qu'aux CHANGEMENTS de valeur : la main immobile à 0,50 du tick 680 au tick 970,
+  puis portée à 1,0, s'écrivait `680:0,501 970:1,0` — une rampe de 290 ticks, quand le moteur avait joué un palier puis un
+  saut (D599.2 : il joue le fader). Le témoin du banc l'a lu au premier essai (0,518 au lieu de 0,50 dans la première moitié
+  de la passe) ; c'est la famille du quatrième défaut de D599 (la valeur tenue jusqu'au lâcher), au milieu de la passe
+  cette fois. La valeur — et, en Trim, le décalage — est désormais réécrite au tick qui précède chaque changement :
+  `524:0,501 801:0,501 802:1,0`. Avec une souris réelle, la rampe naissait à chaque pause de la main suivie d'un geste vif —
+  la courbe se mettait à bouger AVANT la main.
+- **« Jusqu'à la fin », et au-delà** : le premier essai du test du cœur lisait 0,25 au tick 9 000 après *To End* — le
+  raccord de `writeAutomationRange` à `fin + 1` y rendait l'ancienne valeur. Ce qui suit la fin remplie est retiré.
+- **Un défaut du banc** : le dossier « r-aucun » mettait le mot « aucun » dans le chemin d'un `enregistrer:`, que le
+  compte des avertissements a pris pour un échec ; les dossiers portent un numéro.
+- **Remis, nommé** : le remplissage reste réglé d'une passe à l'autre (le *Continuous* de Cubase, toujours vrai ici — et
+  dit à chaque passe) ; *Punch* entre deux locateurs de punch (D578) n'est pas une plage de remplissage distincte.

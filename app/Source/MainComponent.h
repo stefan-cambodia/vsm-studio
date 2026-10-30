@@ -1516,6 +1516,9 @@ private:
         kMenuMixWriteDisarmAll,
         kMenuMixSuspendFirst,
         kMenuMixSuspendLast = kMenuMixSuspendFirst + 5,
+        /// D602.1 : les cinq remplissages d'une passe, CONTIGUS et dans l'ordre de `vsm::sequencer::AutomationFill`.
+        kMenuMixFillFirst,
+        kMenuMixFillLast = kMenuMixFillFirst + 4,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};

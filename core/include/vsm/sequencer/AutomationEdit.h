@@ -128,6 +128,42 @@ bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
                          const std::vector<AutomationPoint>& offsets, TrimLaw law,
                          float minimum, float maximum, Tick returnTicks = 0);
 
+/// D602.1 — LE REMPLISSAGE D'UNE PASSE (les *Fill* du panneau d'automation de Cubase) : la DERNIÈRE valeur d'une passe
+/// écrite sur une plage plus grande qu'elle. `None` : la passe seule ; `Punch` : toute la passe à sa dernière valeur ;
+/// `ToStart` : du tick 0 à la fin de la passe ; `ToEnd` : la passe, puis sa dernière valeur jusqu'à la fin du morceau ;
+/// `Loop` : la passe, puis sa dernière valeur sur toute la boucle.
+enum class AutomationFill : uint8_t { None = 0, Punch = 1, ToStart = 2, ToEnd = 3, Loop = 4 };
+/// Le mot des préférences (« aucun », « passe », « debut », « fin », « boucle ») et l'inverse (`None` pour un inconnu).
+std::string automationFillName(AutomationFill fill);
+AutomationFill automationFillFromName(const std::string& name);
+
+/// Les bornes que le remplissage lit : la fin du morceau (la dernière chose qui sonne) et la boucle.
+struct FillBounds {
+    Tick songEnd = 0;
+    Tick loopStart = 0;
+    Tick loopEnd = 0;
+};
+/// Ce qui a été rempli AU-DELÀ de la passe jouée : rien (`filled` faux), ou la plage `[from, to]` et la valeur (ou le
+/// décalage, en Trim) qui y est écrite. `Loop` sans boucle de longueur non nulle ne remplit rien, et le rend.
+struct FillResult {
+    bool filled = false;
+    Tick from = 0;
+    Tick to = 0;
+    float value = 0.0f;
+};
+
+/// Dépose une passe Touch ou Latch — `written`, les valeurs jouées, sur `[from, to]` — avec son remplissage, par
+/// `writeAutomationRange` (ses raccords, son temps de retour). Le retour ne s'applique pas après `ToEnd` (il n'y a pas
+/// d'« après ») ni sur la plage de la boucle. `written` vide : rien.
+FillResult fillPass(AutomationCurve& curve, Tick from, Tick to, const std::vector<AutomationPoint>& written,
+                    AutomationFill fill, const FillBounds& bounds, Tick returnTicks = 0);
+/// La même chose pour une passe *Trim* : ce qui remplit est le DERNIER DÉCALAGE, appliqué à la courbe sur la plage
+/// (`trimAutomationRange`, sa forme gardée). Rend `filled` faux et ne touche à rien si la courbe est vide — l'appelant
+/// dépose alors la passe comme Touch (`fillPass`) ; `applied` dit si la courbe a été décalée.
+FillResult fillTrimPass(AutomationCurve& curve, Tick from, Tick to, const std::vector<AutomationPoint>& offsets,
+                        TrimLaw law, float minimum, float maximum, AutomationFill fill, const FillBounds& bounds,
+                        Tick returnTicks, bool& applied);
+
 /// D601.2 — LES FAMILLES DE COURBES, pour la suspension de la lecture (le *Suspend Read* du panneau d'automation de
 /// Cubase) : un bit chacune, dans `Project::automationSuspended`. Le master (`master.*`) n'est d'aucune famille — il ne
 /// se suspend pas, comme il ne se tait pas avec le R d'une piste (D600.2).

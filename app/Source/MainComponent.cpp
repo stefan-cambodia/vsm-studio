@@ -382,6 +382,19 @@ MainComponent::MainComponent()
         const double secondes = project_.ticksToSeconds(fin) + static_cast<double>(ms) / 1000.0;
         return std::max<vsm::midi::Tick>(0, project_.secondsToTicks(secondes) - fin);
     };
+    // D602.1 : LE REMPLISSAGE D'UNE PASSE, lu aux préférences à chaque passe, et ses bornes — la dernière chose qui sonne
+    // (D8.3) et la boucle, qu'elle joue ou non (la plage de *Loop* chez Cubase est celle du cycle, allumé ou pas).
+    mixer_.remplissage = [] {
+        return vsm::sequencer::automationFillFromName(
+            vsm::app::ui::UiScale::properties().getValue("automationRemplir", "aucun").toStdString());
+    };
+    mixer_.bornesDuRemplissage = [this] {
+        vsm::sequencer::FillBounds b;
+        b.songEnd = project_.lastSoundingTick();
+        b.loopStart = project_.loopStartTick;
+        b.loopEnd = project_.loopEndTick;
+        return b;
+    };
     // D599.3 : le décalage d'une passe Trim, entendu pendant qu'elle court.
     mixer_.onTrimOffset = [this](size_t piste, float facteur, float decalage) {
         audioEngine_.processGraph().setTrimOffset(piste, facteur, decalage);
@@ -6069,6 +6082,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     suspendre.addItem(kMenuMixSuspendFirst + f, tr(libelles[f]), true,
                                       (project_.automationSuspended & (1u << f)) != 0);
                 menu.addSubMenu(tr(u8"Suspendre la lecture de l'automation"), suspendre);
+                // D602.1 : LE REMPLISSAGE D'UNE PASSE (les *Fill*) — cinq choix exclusifs, retenus aux préférences.
+                juce::PopupMenu remplir;
+                const char8_t* choix[5] = {u8"Ne rien remplir", u8"Remplir toute la passe de sa dernière valeur",
+                                           u8"Remplir jusqu'au début du morceau", u8"Remplir jusqu'à la fin du morceau",
+                                           u8"Remplir toute la boucle"};
+                const auto actuel = vsm::sequencer::automationFillFromName(
+                    vsm::app::ui::UiScale::properties().getValue("automationRemplir", "aucun").toStdString());
+                for (int c = 0; c < 5; ++c)
+                    remplir.addItem(kMenuMixFillFirst + c, tr(choix[c]), true,
+                                    static_cast<int>(actuel) == c);
+                menu.addSubMenu(tr(u8"Remplir à la fin d'une passe"), remplir);
                 // D564.2 : LES SEULES TRANCHES CHOISIES — la même remise, bornée aux pistes choisies dans la liste.
                 const auto choisies = static_cast<int>(vsm::sequencer::countTracksToReset(project_, trackList_.selectedTracks()));
                 menu.addItem(kMenuMixResetChosen,
@@ -6486,6 +6510,14 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuMixReadAllOff) { lectureDeToutesLesPistes(false); return; }   // D601.1
     if (menuItemID == kMenuMixReadAllOn) { lectureDeToutesLesPistes(true); return; }
     if (menuItemID == kMenuMixWriteDisarmAll) { desarmerLeWDeToutesLesPistes(); return; }
+    if (menuItemID >= kMenuMixFillFirst && menuItemID <= kMenuMixFillLast) {                // D602.1
+        const auto mode = static_cast<vsm::sequencer::AutomationFill>(menuItemID - kMenuMixFillFirst);
+        vsm::app::ui::UiScale::properties().setValue("automationRemplir",
+                                                     juce::String(vsm::sequencer::automationFillName(mode)));
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+        std::fputs(("VSM_REMPLIR : " + juce::String(vsm::sequencer::automationFillName(mode)) + "\n").toRawUTF8(), stderr);
+        return;
+    }
     if (menuItemID >= kMenuMixSuspendFirst && menuItemID <= kMenuMixSuspendLast) {          // D601.2
         basculerLaSuspension(static_cast<uint8_t>(1u << (menuItemID - kMenuMixSuspendFirst)));
         return;
@@ -19641,4 +19673,7 @@ void MainComponent::releverAutomation() {
         if (project_.automationSuspended & bit) suspendues.add(vsm::sequencer::automationFamilyName(bit));
     std::fputs(("VSM_AUTOMATION_SUSPENDUES : " + (suspendues.isEmpty() ? juce::String("aucune") : suspendues.joinIntoString(", "))
                 + "\n").toRawUTF8(), stderr);
+    // D602.1 : le remplissage d'une passe, tel que les préférences le disent.
+    std::fputs(("VSM_AUTOMATION_REMPLIR : "
+                + vsm::app::ui::UiScale::properties().getValue("automationRemplir", "aucun") + "\n").toRawUTF8(), stderr);
 }

@@ -185,6 +185,108 @@ bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
 }
 
 namespace {
+/// D602.1 : les cinq remplissages et leurs mots de préférences, dans l'ordre de l'énumération.
+constexpr std::pair<AutomationFill, const char*> kRemplissages[] = {
+    {AutomationFill::None, "aucun"},  {AutomationFill::Punch, "passe"}, {AutomationFill::ToStart, "debut"},
+    {AutomationFill::ToEnd, "fin"},   {AutomationFill::Loop, "boucle"}};
+} // namespace
+
+namespace {
+/// D602.1 : « JUSQU'À LA FIN », ET AU-DELÀ — le raccord de `writeAutomationRange` à `fin + 1` y rendait l'ancienne valeur
+/// (vu au premier essai du test : 0,25 au tick 9 000). Ce qui suit la fin remplie est retiré : la valeur y est tenue.
+void couperApres(AutomationCurve& curve, Tick fin) {
+    curve.points.erase(std::remove_if(curve.points.begin(), curve.points.end(),
+                                      [fin](const AutomationPoint& p) { return p.tick > fin; }),
+                       curve.points.end());
+}
+} // namespace
+
+std::string automationFillName(AutomationFill fill) {
+    for (const auto& [mode, nom] : kRemplissages)
+        if (mode == fill) return nom;
+    return "aucun";
+}
+
+AutomationFill automationFillFromName(const std::string& name) {
+    for (const auto& [mode, nom] : kRemplissages)
+        if (name == nom) return mode;
+    return AutomationFill::None;
+}
+
+FillResult fillPass(AutomationCurve& curve, Tick from, Tick to, const std::vector<AutomationPoint>& written,
+                    AutomationFill fill, const FillBounds& bounds, Tick returnTicks) {
+    if (written.empty() || to < from) return {};
+    const float v = written.back().value;   // la DERNIÈRE valeur jouée : celle que la main tenait au lâcher
+    switch (fill) {
+        case AutomationFill::None:
+            writeAutomationRange(curve, from, to, written, returnTicks);
+            return {};
+        case AutomationFill::Punch:
+            writeAutomationRange(curve, from, to, {{from, v, false}, {to, v, false}}, returnTicks);
+            return {true, from, to, v};
+        case AutomationFill::ToStart:
+            writeAutomationRange(curve, 0, to, {{0, v, false}, {to, v, false}}, returnTicks);
+            return {true, 0, to, v};
+        case AutomationFill::ToEnd: {
+            // LA PASSE GARDÉE, PUIS SA DERNIÈRE VALEUR JUSQU'À LA FIN : une seule plage réécrite, sans retour — il n'y
+            // a pas d'« après » à rejoindre.
+            const Tick fin = std::max(bounds.songEnd, to);
+            std::vector<AutomationPoint> points = written;
+            if (fin > to) points.push_back({fin, v, false});
+            writeAutomationRange(curve, from, fin, points, 0);
+            couperApres(curve, fin);
+            return {fin > to, to, fin, v};
+        }
+        case AutomationFill::Loop: {
+            writeAutomationRange(curve, from, to, written, returnTicks);
+            if (bounds.loopEnd <= bounds.loopStart) return {};   // pas de boucle : rien de rempli, et l'appelant le dit
+            writeAutomationRange(curve, bounds.loopStart, bounds.loopEnd,
+                                 {{bounds.loopStart, v, false}, {bounds.loopEnd, v, false}}, 0);
+            return {true, bounds.loopStart, bounds.loopEnd, v};
+        }
+    }
+    return {};
+}
+
+FillResult fillTrimPass(AutomationCurve& curve, Tick from, Tick to, const std::vector<AutomationPoint>& offsets,
+                        TrimLaw law, float minimum, float maximum, AutomationFill fill, const FillBounds& bounds,
+                        Tick returnTicks, bool& applied) {
+    applied = false;
+    if (curve.points.empty() || offsets.empty() || to < from) return {};
+    // LE DERNIER DÉCALAGE, celui que la main tenait au lâcher ; tenu au-delà du dernier point (`decalageA`).
+    Tick dernier = offsets.front().tick;
+    float d = offsets.front().value;
+    for (const auto& o : offsets)
+        if (o.tick >= dernier) { dernier = o.tick; d = o.value; }
+    const std::vector<AutomationPoint> constant = {{from, d, false}};
+    switch (fill) {
+        case AutomationFill::None:
+            applied = trimAutomationRange(curve, from, to, offsets, law, minimum, maximum, returnTicks);
+            return {};
+        case AutomationFill::Punch:
+            applied = trimAutomationRange(curve, from, to, constant, law, minimum, maximum, returnTicks);
+            return {applied, from, to, d};
+        case AutomationFill::ToStart:
+            applied = trimAutomationRange(curve, 0, to, {{0, d, false}}, law, minimum, maximum, returnTicks);
+            return {applied, 0, to, d};
+        case AutomationFill::ToEnd: {
+            const Tick fin = std::max(bounds.songEnd, to);
+            applied = trimAutomationRange(curve, from, fin, offsets, law, minimum, maximum, 0);
+            if (applied) couperApres(curve, fin);
+            return {applied && fin > to, to, fin, d};
+        }
+        case AutomationFill::Loop: {
+            applied = trimAutomationRange(curve, from, to, offsets, law, minimum, maximum, returnTicks);
+            if (!applied || bounds.loopEnd <= bounds.loopStart) return {};
+            trimAutomationRange(curve, bounds.loopStart, bounds.loopEnd, {{bounds.loopStart, d, false}}, law, minimum,
+                                maximum, 0);
+            return {true, bounds.loopStart, bounds.loopEnd, d};
+        }
+    }
+    return {};
+}
+
+namespace {
 /// D601.2 : les six familles et leurs mots de fichier, dans l'ordre des bits.
 constexpr std::pair<uint8_t, const char*> kFamilles[] = {
     {kFamilyVolume, "volume"}, {kFamilyPan, "pan"},          {kFamilySends, "sends"},

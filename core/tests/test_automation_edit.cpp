@@ -688,3 +688,88 @@ VSM_TEST(each_curve_name_has_its_family_and_the_master_none_d601) {
     VSM_ASSERT_EQ(automationFamilyFromName("rogn"), uint8_t{0});
     VSM_ASSERT(automationFamilyName(0).empty());
 }
+
+// D602.1 — LE REMPLISSAGE D'UNE PASSE. La passe de l'attendu : sur une courbe plate à 0,25, jouée de 700 à 1 500 en
+// DEUX valeurs (0,5 puis 1,0 dès 1 100) ; la boucle de 3 840 à 5 760, la fin du morceau à 7 680. Sans retour (0) : les
+// rampes de D600.3 ont leur propre test. « Rien » est le témoin, du même code.
+namespace {
+AutomationCurve plateA(float v) {
+    AutomationCurve c;
+    setAutomationPoint(c, 0, v);
+    setAutomationPoint(c, 7680, v);
+    return c;
+}
+const std::vector<AutomationPoint> kPasseEnDeux = {{700, 0.5f, false}, {1099, 0.5f, false}, {1100, 1.0f, false},
+                                                    {1500, 1.0f, false}};
+const FillBounds kBornes{7680, 3840, 5760};
+} // namespace
+
+VSM_TEST(a_pass_fills_its_last_value_where_the_mode_says_d602) {
+    AutomationCurve rien = plateA(0.25f), passe = plateA(0.25f), debut = plateA(0.25f), fin = plateA(0.25f),
+                    boucle = plateA(0.25f);
+    VSM_ASSERT(!fillPass(rien, 700, 1500, kPasseEnDeux, AutomationFill::None, kBornes).filled);
+    const auto p = fillPass(passe, 700, 1500, kPasseEnDeux, AutomationFill::Punch, kBornes);
+    const auto d = fillPass(debut, 700, 1500, kPasseEnDeux, AutomationFill::ToStart, kBornes);
+    const auto f = fillPass(fin, 700, 1500, kPasseEnDeux, AutomationFill::ToEnd, kBornes);
+    const auto b = fillPass(boucle, 700, 1500, kPasseEnDeux, AutomationFill::Loop, kBornes);
+    // le témoin : la passe telle qu'elle a été jouée
+    VSM_ASSERT_NEAR(automationValueAt(rien, 800), 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(rien, 1300), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(rien, 1501), 0.25f, 1e-6f);
+    // Punch : toute la passe à 1,0
+    VSM_ASSERT(p.filled && p.from == 700 && p.to == 1500 && p.value == 1.0f);
+    VSM_ASSERT_NEAR(automationValueAt(passe, 800), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(passe, 699), 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(passe, 1501), 0.25f, 1e-6f);
+    // To Start : 1,0 de 0 à la fin de la passe
+    VSM_ASSERT(d.filled && d.from == 0 && d.to == 1500);
+    VSM_ASSERT_NEAR(automationValueAt(debut, 0), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(debut, 800), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(debut, 1501), 0.25f, 1e-6f);
+    // To End : la passe gardée, puis 1,0 jusqu'à la fin et au-delà
+    VSM_ASSERT(f.filled && f.from == 1500 && f.to == 7680);
+    VSM_ASSERT_NEAR(automationValueAt(fin, 699), 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(fin, 800), 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(fin, 5000), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(fin, 9000), 1.0f, 1e-6f);
+    // Loop : la passe gardée, 1,0 sur la boucle, 0,25 entre les deux et après
+    VSM_ASSERT(b.filled && b.from == 3840 && b.to == 5760);
+    VSM_ASSERT_NEAR(automationValueAt(boucle, 800), 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(boucle, 3000), 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(boucle, 4000), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(boucle, 5760), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(boucle, 6000), 0.25f, 1e-6f);
+    // Loop sans boucle : rien de rempli, la passe seule
+    AutomationCurve sansBoucle = plateA(0.25f);
+    VSM_ASSERT(!fillPass(sansBoucle, 700, 1500, kPasseEnDeux, AutomationFill::Loop, FillBounds{7680, 0, 0}).filled);
+    VSM_ASSERT_NEAR(automationValueAt(sansBoucle, 4000), 0.25f, 1e-6f);
+    // les mots des préférences
+    for (auto m : {AutomationFill::None, AutomationFill::Punch, AutomationFill::ToStart, AutomationFill::ToEnd,
+                   AutomationFill::Loop})
+        VSM_ASSERT(automationFillFromName(automationFillName(m)) == m);
+    VSM_ASSERT(automationFillFromName("rogn") == AutomationFill::None);
+    VSM_ASSERT(automationFillName(AutomationFill::ToEnd) == "fin");
+}
+
+// Trim remplit le DÉCALAGE : sur un palier (0,5 jusqu'à 1 440, puis 0,25), +6,02 dB tenu dès 800, To End → 0,5 (0,25 × 2)
+// jusqu'à la fin : le palier décalé, pas écrasé. Une courbe vide n'est pas touchée (l'appelant dépose comme Touch).
+VSM_TEST(a_trim_pass_fills_its_last_offset_d602) {
+    AutomationCurve c;
+    setAutomationPoint(c, 0, 0.5f, true);
+    setAutomationPoint(c, 1440, 0.25f);
+    setAutomationPoint(c, 7680, 0.25f);
+    bool applique = false;
+    const auto r = fillTrimPass(c, 700, 1500, {{700, 0.0f, false}, {800, kPlus6dB, false}}, TrimLaw::GainDb, 0.0f,
+                                kGainHautDuFader, AutomationFill::ToEnd, kBornes, 0, applique);
+    VSM_ASSERT(applique);
+    VSM_ASSERT(r.filled && r.from == 1500 && r.to == 7680);
+    VSM_ASSERT_NEAR(automationValueAt(c, 1000), 1.0f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(c, 1460), 0.5f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(c, 5000), 0.5f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(c, 7680), 0.5f, 1e-3f);
+    AutomationCurve vide;
+    bool applique2 = true;
+    VSM_ASSERT(!fillTrimPass(vide, 700, 1500, {{700, 3.0f, false}}, TrimLaw::GainDb, 0.0f, kGainHautDuFader,
+                             AutomationFill::ToEnd, kBornes, 0, applique2).filled);
+    VSM_ASSERT(!applique2 && vide.points.empty());
+}

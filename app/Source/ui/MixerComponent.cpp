@@ -1055,10 +1055,18 @@ void ChannelStrip::noterDansLaPasse(const std::string& parametre, float valeur) 
     const vsm::midi::Tick ou = playheadTickProvider ? playheadTickProvider() : it->second.debut;
     // Un point par tick : deux valeurs au même instant rendraient le segment
     // entre elles indéfini, et la souris en produit plusieurs par milliseconde.
-    if (!it->second.points.empty() && it->second.points.back().tick == ou)
-        it->second.points.back().value = valeur;
-    else
-        it->second.points.push_back({ou, valeur, false});
+    // D602 : LA VALEUR TENUE JUSQU'AU CHANGEMENT. Un point n'était posé qu'aux changements : la main immobile à 0,5 du
+    // tick 680 au tick 970, puis portée à 1,0, s'écrivait 680:0,5 970:1,0 — une RAMPE de 290 ticks là où le moteur
+    // avait fait entendre un palier puis un saut. Trouvé par le témoin du banc de D602 (0,518 lu dans la première moitié
+    // d'une passe jouée à 0,50). La valeur d'avant est donc réécrite au tick qui précède le changement.
+    auto& points = it->second.points;
+    if (!points.empty() && points.back().tick == ou)
+        points.back().value = valeur;
+    else {
+        if (!points.empty() && points.back().tick < ou - 1 && points.back().value != valeur)
+            points.push_back({ou - 1, points.back().value, false});
+        points.push_back({ou, valeur, false});
+    }
     // D599.3 : LE DÉCALAGE, lu sur le curseur — en dB pour le volume (le bas du fader, le silence, à −60), en unités
     // pour le panoramique —, noté comme la valeur, et donné au moteur pour qu'on ENTENDE la courbe décalée.
     if (it->second.trim) {
@@ -1066,7 +1074,12 @@ void ChannelStrip::noterDansLaPasse(const std::string& parametre, float valeur) 
         const float d = static_cast<float>(pan ? pan_.getValue() : volume_.getValue()) - it->second.reference;
         auto& decalages = it->second.decalages;
         if (!decalages.empty() && decalages.back().tick == ou) decalages.back().value = d;
-        else decalages.push_back({ou, d, false});
+        else {
+            // D602 : le décalage tenu jusqu'au changement, comme la valeur (ci-dessus).
+            if (!decalages.empty() && decalages.back().tick < ou - 1 && decalages.back().value != d)
+                decalages.push_back({ou - 1, decalages.back().value, false});
+            decalages.push_back({ou, d, false});
+        }
         (pan ? trimPan_ : trimFacteur_) = pan ? d : std::pow(10.0f, d / 20.0f);
         if (onTrimOffset) onTrimOffset(index_, trimFacteur_, trimPan_);
     }
@@ -1118,19 +1131,39 @@ void ChannelStrip::fermerPasse(const std::string& parametre, bool arretDuTranspo
     // d'y sauter en un tick. Pas à l'arrêt du transport (Latch, ou un désarmement) : rien ne joue après.
     const vsm::midi::Tick retour = !arretDuTransport && retourEnTicks ? std::max<vsm::midi::Tick>(0, retourEnTicks(fin))
                                                                       : 0;
+    // D602.1 — LE REMPLISSAGE (les *Fill* de Cubase) : la dernière valeur de la passe — en Trim, son dernier décalage —
+    // écrite sur la plage que la préférence choisit. « Rien » : la passe seule, comme avant (`fillPass` le délègue).
+    const auto mode = remplissage ? remplissage() : vsm::sequencer::AutomationFill::None;
+    const auto bornes = bornesDuRemplissage ? bornesDuRemplissage() : vsm::sequencer::FillBounds{};
+    vsm::sequencer::FillResult rempli;
     bool decalee = false;
     if (passe.trim) {
         // D599.3 : la plage DÉCALÉE, sa forme gardée ; le dernier décalage tenu jusqu'à la fin de la passe. Sans courbe
-        // à décaler (`trimAutomationRange` le rend), la passe s'écrit comme Touch : la base est la valeur statique, et
+        // à décaler (`fillTrimPass` le rend), la passe s'écrit comme Touch : la base est la valeur statique, et
         // base ⊕ décalage = le fader.
         if (fin > passe.decalages.back().tick) passe.decalages.push_back({fin, passe.decalages.back().value, false});
         const bool volume = parametre == "mix.volume";
-        decalee = vsm::sequencer::trimAutomationRange(
+        rempli = vsm::sequencer::fillTrimPass(
             courbe, passe.debut, fin, passe.decalages,
             volume ? vsm::sequencer::TrimLaw::GainDb : vsm::sequencer::TrimLaw::Additive,
-            volume ? 0.0f : -1.0f, volume ? vsm::sequencer::kTrimGainMax : 1.0f, retour);
+            volume ? 0.0f : -1.0f, volume ? vsm::sequencer::kTrimGainMax : 1.0f, mode, bornes, retour, decalee);
     }
-    if (!decalee) vsm::sequencer::writeAutomationRange(courbe, passe.debut, fin, passe.points, retour);
+    if (!decalee) rempli = vsm::sequencer::fillPass(courbe, passe.debut, fin, passe.points, mode, bornes, retour);
+    // LE REMPLISSAGE SE DIT, à chaque passe : un réglage qui reste (au contraire de Cubase, où il retombe) et qui
+    // écrit loin de la main serait une surprise muette.
+    if (mode != vsm::sequencer::AutomationFill::None && onDire) {
+        using vsm::sequencer::AutomationFill;
+        const juce::String valeur = decalee ? juce::String(rempli.value, 2) + " dB" : juce::String(rempli.value, 2);
+        if (!rempli.filled)
+            onDire(mode == AutomationFill::Loop ? tr(u8"Remplir la boucle : la boucle n'a pas de longueur — rien de rempli")
+                                                : tr(u8"Rien à remplir au-delà de la passe"));
+        else
+            onDire((mode == AutomationFill::Punch     ? tr(u8"Rempli : toute la passe à %1")
+                    : mode == AutomationFill::ToStart ? tr(u8"Rempli jusqu'au début du morceau : %1")
+                    : mode == AutomationFill::ToEnd   ? tr(u8"Rempli jusqu'à la fin du morceau : %1")
+                                                      : tr(u8"Rempli sur toute la boucle : %1"))
+                       .replace("%1", valeur));
+    }
     if (onAutomationWritten) onAutomationWritten();
     rendreLeDecalage();
     publierLaMain();   // D599.2 : la courbe réécrite est publiée ; la main la lui rend
@@ -1519,6 +1552,12 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             strip->transportPlayingProvider = transportPlayingProvider;
             strip->retourEnTicks = [this](vsm::midi::Tick fin) {   // D600.3
                 return retourEnTicks ? retourEnTicks(fin) : vsm::midi::Tick{0};
+            };
+            strip->remplissage = [this] {   // D602.1
+                return remplissage ? remplissage() : vsm::sequencer::AutomationFill::None;
+            };
+            strip->bornesDuRemplissage = [this] {
+                return bornesDuRemplissage ? bornesDuRemplissage() : vsm::sequencer::FillBounds{};
             };
             strip->lectureSuspendue = [this](const std::string& parametre) {   // D601.2
                 return project_ != nullptr

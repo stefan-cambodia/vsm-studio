@@ -11,6 +11,7 @@
 #include "Langue.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/AutomationEdit.h"   // D602.1 : AutomationFill, FillBounds
 #include "vsm/sequencer/MixSnapshot.h"
 #include <cmath>
 #include <limits>
@@ -415,6 +416,10 @@ public:
     /// D601.2 : la famille de cette courbe est-elle suspendue sur le projet (*Suspend Read*) ? Alors rien ne la pilote :
     /// la tranche montre la valeur statique, que le moteur joue. Absent : rien n'est suspendu.
     std::function<bool(const std::string&)> lectureSuspendue;
+    /// D602.1 : le remplissage choisi aux préférences, et les bornes qu'il lit (la fin du morceau, la boucle). Absents :
+    /// la passe seule.
+    std::function<vsm::sequencer::AutomationFill()> remplissage;
+    std::function<vsm::sequencer::FillBounds()> bornesDuRemplissage;
 
     void refreshFromTrack() {
         nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
@@ -944,6 +949,9 @@ public:
     std::function<void()> onAutomationWritten;
     /// D600.3 : voir `ChannelStrip::retourEnTicks`.
     std::function<vsm::midi::Tick(vsm::midi::Tick)> retourEnTicks;
+    /// D602.1 : voir `ChannelStrip::remplissage`.
+    std::function<vsm::sequencer::AutomationFill()> remplissage;
+    std::function<vsm::sequencer::FillBounds()> bornesDuRemplissage;
     /// D599 : voir `ChannelStrip::onHandChanged`, `onTrimOffset`, `onDire`.
     std::function<void(size_t, uint16_t)> onHandChanged;
     std::function<void(size_t, float, float)> onTrimOffset;
