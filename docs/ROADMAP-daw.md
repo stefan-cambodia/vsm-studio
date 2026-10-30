@@ -46985,3 +46985,60 @@ application et `vsm-render`).*
 - **Remis, nommé** : le W reste armable sur une famille suspendue (le *Suspend Write* de Cubase est un autre interrupteur) ;
   les instantanés de console (D535) ne gardent ni le R ni la suspension ; les entrées de D601.1 n'ont pas de bouton sur la
   console.
+
+### Phase D602 — un soixante-deuxième audit : les passes qui remplissent, et l'arrêt pendant une passe tenue (30/10/2026)
+
+*Écrite le 30/10 à 16 h 01 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure ; D599, D600 et D601
+mesurées, leur série de 199 bancs à jouer l'écran allumé.*
+
+**D'OÙ ELLE VIENT.** D599 a remis une mesure en la nommant : **un arrêt du transport pendant une passe Touch TENUE** —
+le chemin de `closeLatchedPasses`, que son banc ne jouait pas. **Et un zéro de Cubase sondé autour du W, lu au code**
+(`ChannelStrip::fermerPasse` ne connaît que la plage jouée, `writeAutomationRange` ne reçoit qu'elle) : **0 pour le
+remplissage** — les *Fill* du panneau d'automation de Cubase (*Punch*, *To Start*, *To End*, *Loop*), qui écrivent la
+DERNIÈRE valeur d'une passe sur une plage plus grande qu'elle. Ici, régler le niveau d'une piste pour tout le morceau
+pendant qu'on l'écoute — le cas le plus courant d'une passe — demande de tenir le fader du début à la fin, ou de dessiner
+la courbe à la main ensuite.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D602.1 | **Le remplissage d'une passe** — les *Fill* | au menu Mixage, un sous-menu « Remplir à la fin d'une passe » à cinq choix exclusifs : rien (d'origine), la passe de sa dernière valeur (*Punch*), jusqu'au début du morceau (*To Start*), jusqu'à la fin du morceau (*To End*), toute la boucle (*Loop*) ; retenu aux préférences ; au lâcher d'une passe Touch ou Trim (et à l'arrêt pour Latch), la dernière valeur est écrite sur la plage choisie ; la ligne d'état dit ce qui a été rempli ; mesuré par la courbe enregistrée, le témoin (« rien ») du même code à côté |
+| D602.2 | **L'arrêt pendant une passe tenue** — le reste de D599 | la main tient le fader en Touch quand le transport s'arrête : la passe s'écrit jusqu'au tick de l'arrêt, la valeur TENUE y compris, sans rampe de retour (D600.3 : rien ne joue après) ; le lâcher qui suit n'écrit rien de plus ; mesuré par la courbe enregistrée |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Les plages, celles du manuel de Cubase** : *Punch* — `[début de la passe, fin]` écrit à la dernière valeur (la forme
+  de la passe effacée) ; *To Start* — `[0, fin]` ; *To End* — la passe gardée, puis `[fin, fin du morceau]` (la dernière
+  note, `lastSoundingTick`, D8.3) ; *Loop* — la passe gardée, puis `[début de boucle, fin de boucle]` (rien, et dit, si la
+  boucle n'a pas de longueur). Les raccords de `writeAutomationRange` aux bords, comme toujours ; le temps de retour
+  (D600.3) ne s'applique qu'à « rien » et à *Punch* et *Loop* hors de leur plage — *To End* n'a pas de « après », *To Start*
+  rejoint à `fin` comme une passe ordinaire.
+- **Trim remplit le DÉCALAGE, pas la valeur** : la dernière valeur d'une passe *Trim* est un décalage (D599.3) ; le
+  remplissage applique ce décalage constant à la courbe sur la plage (`trimAutomationRange`, un seul point de décalage) —
+  la forme y est gardée, comme ailleurs en Trim.
+- **Un réglage de travail, pas un réglage du morceau** : il dit COMMENT on écrit, pas ce qui sonne — la courbe écrite,
+  elle, est dans le projet. Aux préférences, donc (`automationRemplir`, « aucun » d'origine), comme le temps de retour.
+  Chez Cubase ces choix retombent après une passe sauf « Continuous » ; ici ils restent, et la ligne d'état le DIT à
+  chaque passe remplie (« Rempli jusqu'à la fin du morceau : 1,00 ») — une surprise qui ne se dit pas serait une panne
+  muette.
+- **Le cœur** : `fillAutomationRange(curve, from, to, value)` n'existe pas en tant que tel — c'est `writeAutomationRange`
+  avec deux points ; la console compose. Le test du cœur porte sur la composition (`fillPass`, fonction pure : la passe,
+  le mode, les bornes du morceau et de la boucle → la courbe), pour que la règle ne vive pas que dans un `switch` de
+  l'interface.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE** (le jeu de D599 : 480 ticks à la noire, 120 BPM, une note tenue du tick 0 au tick
+7 680 ; une courbe de volume plate à 0,25 ; W en Touch ; la main prise vers le tick 700, posée à 0,5 (−6,02 dB), puis à
+1,0 (0 dB) vers le tick 1 100, lâchée vers le tick 1 500 — une passe en DEUX valeurs, pour que *Punch* se distingue du
+témoin ; la boucle de 3 840 à 5 760) :
+(1) « rien » (le témoin, du même code) : 0,5 puis 1,0 dans la passe, 0,25 avant et après (la rampe de retour de D600.3
+comprise) ;
+(2) *Punch* : 1,0 sur TOUTE la passe — là où le témoin garde 0,5 dans sa première moitié —, 0,25 hors d'elle ;
+(3) *To Start* : 1,0 du tick 0 à la fin de la passe, 0,25 après ;
+(4) *To End* : 0,25 avant la passe, 0,5 puis 1,0 dans la passe, 1,0 de sa fin jusqu'au tick 7 680 et au-delà ;
+(5) *Loop* : la passe comme en (1), 1,0 de 3 840 à 5 760, 0,25 entre la passe et la boucle et après la boucle ;
+(6) *Trim* + *To End*, sur une courbe en palier (0,5 jusqu'au tick 1 440, puis 0,25) : la main monte de +6,02 dB → après la
+passe, la courbe vaut 0,5 (0,25 × 2) jusqu'à la fin — le palier décalé, pas écrasé ;
+(7) l'arrêt pendant une passe tenue : 1,0 jusqu'au tick de l'arrêt, 0,25 dès le tick suivant (pas de rampe) ; le lâcher
+après l'arrêt ne change plus la courbe ;
+(8) la ligne d'état dit le remplissage ; en anglais, le sous-menu nommé ; les suites ; la série.
+
+**L'ORDRE.** Le cœur (`fillPass` et son test, joué rouge sur une déclaration vide), la console et la préférence, puis le
+banc `tools/automation-remplir.sh`.
