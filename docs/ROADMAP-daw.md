@@ -46721,3 +46721,23 @@ adoucit d'une rampe réglable.
 
 **L'ORDRE.** Le moteur et le cœur d'abord (la main sur tous les bits, le champ `automationRead` et sa résolution, avec
 leurs tests joués rouges sur le code d'avant), puis la console, puis le banc.
+
+### Phases D592 à D598 — FAITES (30/10/2026, 08 h 16 à l'horloge)
+
+*La série de 196 bancs, `./verifier.sh --bancs`, lancée à 06 h 19 sur le binaire de D598, écran allumé et session
+déverrouillée au départ ; finie à 08 h 00 (101 min), l'écran éteint et la session verrouillée à la fin — le relevé le dit.*
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| la série | 196 bancs, les sept neufs de D592-D598 compris | **194 verts, 2 rouges** ; préférences de l'utilisateur identiques ; aucune veille | **oui, après correction** |
+| `fader-console.sh` | la course du fader ≥ 40 px (D342) | **22,0 px** (3,00 dB au pixel), l'échelle non réservée : **un défaut de D593**, lu au code — `ChannelStrip::hauteurUtile()` compte les rangées fixes de la tranche pour borner le dock, et D593 y a posé le coupe-bas et le coupe-haut (2 × 18 px) sans les compter : ils prenaient leurs 36 px à la boîte du fader. Corrigé (`+ 18 + 18`) ; rejoué SEUL, binaire corrigé : **58,0 px**, 1,14 dB au pixel, l'échelle réservée, 4 repères du 0 dB peints ; le binaire de D598, rejoué 45 s après : **22,0 px**, 3 ratés | **oui** |
+| `vca-interface.sh` | (4) la tranche du VCA masque trim, panoramique, délai, transposition, phase, vumètre | la tranche masque aussi **coupe-bas et coupe-haut** — ce qui est juste : la section Pre n'a rien à filtrer sur un VCA, qui ne porte pas de signal. **Le contrôle comparait la liste d'avant D593 au mot près** ; il compte désormais les deux, et son en-tête dit pourquoi. Rejoué : vert | **oui (le banc, pas le code)** |
+
+**CE QUE LA SÉRIE A DIT DE PLUS, ÉCRIT ICI.**
+- **D593 n'avait mesuré sa tranche que photographiée** (« les deux rangées prennent 2 × 18 px à la course du fader, déjà
+  courte à cette hauteur de fenêtre ») : la règle de D342 avait sa garde, et seule la série l'a jouée. C'est la raison
+  d'être de la série entière, payée ici une fois de plus : deux bancs que D593 ne touchait pas ont rougi par lui.
+- **Le compositeur** : l'unité est montée de 1,5 à **8,2 Go** pendant `duree-effet-midi.sh` (106e banc), la garde de D581
+  a attendu 35 s qu'elle redescende à 749 Mo avant `aimant-cibles.sh`, pendant lequel le sommet de la session a atteint
+  **10,6 Go**, puis l'unité est restée sous 1,4 Go jusqu'à la fin. La série ne s'est pas arrêtée ; la piste de D581 (l'écran
+  éteint) reste la seule nommée, et l'écran était éteint à la fin.

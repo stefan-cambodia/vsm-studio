@@ -650,6 +650,10 @@ int ChannelStrip::hauteurUtile() const {
     const int fixes = 12                                           // marges (4 + 4) + bandeau de couleur
                     + 18                                           // nom (une ligne ; la seconde, D314, est un cas serré)
                     + 18 + 34 + 18 + 18                            // trim, pan, délai, transposition
+                    // D593 : LE COUPE-BAS ET LE COUPE-HAUT, sous le trim. Oubliés ici, ils prenaient leurs 36 px à la
+                    // boîte du fader — 22 px de course mesurés, sous la règle de D342 (40) : la série de D592-D598
+                    // l'a vu (`fader-console.sh`, 30/10), D593 ne l'avait mesuré qu'à la tranche photographiée.
+                    + 18 + 18
                     + (sendNames_.empty() ? 0 : kHauteurDeparts)   // départs
                     + 22 + 22;                                     // W/Ø puis M/S
     return fixes + kBoiteFaderMinimale;

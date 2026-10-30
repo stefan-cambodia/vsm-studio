@@ -115,8 +115,10 @@ j="$brouillon/console.txt"
 m_vca="$(grep '^VSM_MIXEUR : piste 3 ' "$j" | grep -o 'masquées [^ ]*' | cut -d' ' -f2)"
 m_a="$(grep '^VSM_MIXEUR : piste 0 ' "$j" | grep -o 'masquées [^ ]*' | cut -d' ' -f2)"
 echo "       console : tranche du VCA, masquées « ${m_vca:-?} » ; tranche de A, « ${m_a:-?} »"
-verdict "(4) la tranche du VCA masque trim, panoramique, délai, transposition, phase et vumètre" \
-    "$([ "${m_vca:-}" = "trim,pan,délai,transposition,phase,vumètre" ] && echo 1 || echo 0)"
+# D593 (corrigé le 30/10, après la série de D592-D598) : le coupe-bas et le coupe-haut sont de la section Pre, comme le
+# trim — un VCA ne porte pas de signal, il les masque aussi, et la liste attendue les compte.
+verdict "(4) la tranche du VCA masque trim, coupe-bas, coupe-haut, panoramique, délai, transposition, phase et vumètre" \
+    "$([ "${m_vca:-}" = "trim,coupe-bas,coupe-haut,pan,délai,transposition,phase,vumètre" ] && echo 1 || echo 0)"
 verdict "(4 bis) la tranche de A n'en masque aucune" "$([ "${m_a:-}" = "aucune" ] && echo 1 || echo 0)"
 membres="$(grep -c 'VSM_TEXTE : libellé : VCA — 2 membre(s)' "$j")"
 canaux="$(grep -cE '^VSM_TEXTE : libellé : Ch [0-9]+$' "$j")"
