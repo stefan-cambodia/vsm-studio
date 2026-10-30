@@ -47294,3 +47294,50 @@ inscrite dans `verifier.sh` PENDANT que la série l'exécutait — le piège nom
 décalage d'octets). Sans dommage, vérifié aussitôt : le bloc `--bancs` (lignes 54 à 191) est une commande composée lue
 en entier avant de s'exécuter, et finit par `exit` ; l'insertion, ligne 261, ne déplace aucun de ses octets. La règle
 reste : on n'édite pas un script qui tourne.
+
+### Phase D605 — un soixante-cinquième audit : l'accordeur (30/10/2026)
+
+*Écrite le 30/10 à 22 h 23 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de 202 bancs qui clôt D604 — rien ne se compile avant sa fin.*
+
+**D'OÙ ELLE VIENT : des « restent au nom » de D574**, que chaque audit recopie : « l'accordeur (*Tuner*, 0 pour
+« tuner », « accord » ne désignant que les accords) et la carte de batterie ». Relu au code : `EffectFactory` fabrique
+dix-huit effets, aucun ne MESURE ; et aucun effet ne sait rien dire à l'interface — `IAudioEffect` règle et lit des
+paramètres, il n'a pas de relevé. Accorder une basse enregistrée, vérifier qu'un échantillon est au diapason, ou qu'une
+machine désaccordée l'est de combien : rien ici ne le dit, il faut une oreille ou un autre logiciel.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D605.1 | **L'accordeur** — l'insert *Tuner* | un effet « Accordeur » (`tuner`) dans la liste des inserts : il laisse passer le son AU BIT PRÈS, sans latence, et mesure la fondamentale de ce qui le traverse (de 40 Hz à 2 kHz) — la note, l'écart en cents, la fréquence ; sa case de la chaîne d'inserts l'écrit (« La 4 · +3 c · 440,8 Hz », le nom de la note selon D586.3), « — » quand rien ne se mesure (le silence, un bruit) ; un réglage, le diapason de référence (de 400 à 480 Hz, celui du projet d'origine — H42) ; mesuré par le test du détecteur, celui du passage au bit près, et le relevé de la case, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **Le détecteur est YIN** (de Cheveigné et Kawahara, 2002) : la différence cumulée normalisée, le premier creux sous un
+  seuil (0,15), l'interpolation parabolique du creux — la référence de la mesure de hauteur monophonique, sans
+  bibliothèque. Sur la somme mono, une fenêtre de 2 048 échantillons à 48 kHz (deux périodes de 40 Hz), recalculée tous
+  les 1 024 échantillons ; dans le cœur audio (`audio/`), une fonction pure testable hors de l'effet.
+- **« Rien ne se mesure » se DIT** : sous −50 dBFS d'efficace, ou quand le meilleur creux de YIN reste au-dessus du seuil
+  (un bruit, un accord), l'accordeur écrit « — », jamais une note au hasard — une mesure qui ne peut pas voir doit le
+  dire (la leçon de D265).
+- **Le fil audio écrit, l'interface lit** : la fréquence, la note et l'écart sont des `std::atomic<float>` de l'effet ;
+  la chaîne d'inserts lit ceux de l'accordeur qu'elle montre (`dynamic_cast` sur la chaîne publiée, comme
+  `BypassableEffect`) et rafraîchit sa case dix fois par seconde. Un `IAudioEffect` n'a pas à apprendre le mot « relevé »
+  pour un seul effet.
+- **Le diapason de l'accordeur est un réglage de l'insert** (`reference`, 440 Hz d'origine), et non celui du projet lu
+  au vol : un insert se décrit par ses paramètres (`TrackEffect`), et l'export, qui ne l'écoute pas, n'en a pas besoin.
+  Posé à la création sur le diapason du projet (H42) — dit dans l'infobulle.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE** :
+(1) **le détecteur**, à 48 kHz sur 2 048 échantillons : un sinus à 440 Hz → **440,0 Hz (± 0,2)**, la note 69, **0 c (± 1)** ;
+un sinus à 446 Hz → la note 69, **+23,4 c (± 1)** ; une dent de scie à 110 Hz (riche en harmoniques) → **110,0 Hz (± 0,2)**
+— pas 220 ni 330 ; un sinus à 1 046,5 Hz → la note 84 ; à 41 Hz → mesuré (la borne basse) ; le silence → **rien** ; un
+bruit blanc → **rien** ; et la référence à 442 Hz : le sinus à 440 Hz → la note 69, **−7,9 c (± 1)** ;
+(2) **le passage** : la sortie de l'accordeur égale son entrée AU BIT, sur un bloc de musique quelconque, et
+`latencySamples()` vaut 0 ;
+(3) **dans l'application** : une piste au générateur de test jouant le do 6 (la note 84), l'accordeur en insert, en
+lecture → la case lit le nom que `nomDeNote(84)` rend — **« C6 »** au style d'origine de D586.3 (les lettres, le do
+central à C4) — et l'écart à **0 c (± 2)** ; la référence posée à 442 Hz → l'écart à **−7,9 c (± 2)** ;
+le transport arrêté → « — » ; le témoin (D604) : l'effet absent de la liste (« accordeur » inconnu) ;
+(4) en anglais, « Tuner » et le nom de la note en lettres ; la case photographiée ; les suites ; la série.
+
+**L'ORDRE.** Le détecteur et son test (joué rouge sur une déclaration vide), l'effet et son test de passage, puis la
+fabrique, la case de la chaîne d'inserts et le relevé, puis le banc `tools/accordeur.sh` — après la série.
