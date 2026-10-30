@@ -28,6 +28,7 @@
 #include "ui/MoniteurMidi.h"   // D578.3
 #include "ui/SpectrumComponent.h"
 #include "ui/PlayOrderComponent.h"
+#include "ui/ReserveComponent.h"
 #include "ui/TakeCompComponent.h"
 #include "ui/PreferencesWindow.h"
 #include "ui/BrowserComponent.h"
@@ -394,6 +395,8 @@ public:
             return true;
         }
         if (geste.equalsIgnoreCase("relever-ordre")) { showPlayOrder(); direLOrdre("releve"); return true; }
+        // D607.1 : la réserve des fichiers, relue puis dite (`VSM_RESERVE`) ; ouvre la fenêtre.
+        if (geste.equalsIgnoreCase("relever-reserve")) { showReserve(); direLaReserve(); return true; }
         // D568.3 : l'état de chaque insert, dans la description ET sur l'instance que le moteur joue.
         if (geste.equalsIgnoreCase("relever-inserts")) { effectChain_.direLesContournements(); return true; }
         // D570.3 : le centre de chaque note visible du piano roll, dans la fenêtre.
@@ -1540,6 +1543,8 @@ private:
         /// de `vsm::sequencer::kFamilyVolume`…), CONTIGUËS.
         kMenuMixWriteSuspendFirst,
         kMenuMixWriteSuspendLast = kMenuMixWriteSuspendFirst + 3,
+        /// D607.1 : la réserve des fichiers.
+        kMenuFileMediaPool,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2494,6 +2499,13 @@ private:
     vsm::app::ui::TakeCompComponent takeCompPanel_;
     std::unique_ptr<PanelWindow> playOrderWindow_;
     vsm::app::ui::PlayOrderComponent playOrderPanel_;
+    /// D607.1 : LA RÉSERVE DES FICHIERS (le *Pool*) — relue du projet et du disque à l'ouverture et à « Rafraîchir ».
+    void showReserve();
+    void rafraichirReserve();
+    /// Le relevé de banc de la réserve (`VSM_RESERVE : …`), lu sur la même source que la peinture.
+    void direLaReserve();
+    std::unique_ptr<PanelWindow> reserveWindow_;
+    vsm::app::ui::ReserveComponent reservePanel_;
     std::unique_ptr<PanelWindow> projectNotesWindow_;
     /// LE PANNEAU NE DÉTIENT RIEN : le texte vit dans `project_`, et l'éditeur
     /// l'y écrit à chaque frappe. Dupliquer l'état créerait une seconde

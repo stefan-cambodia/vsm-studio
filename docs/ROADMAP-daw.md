@@ -47598,3 +47598,32 @@ clips : **joué**), `prise2.wav` (une prise : **en réserve**), `orphelin.wav` (
 (désigné par la piste « Basse », absent : **MANQUANT**) — la fenêtre en lit **quatre** lignes, chacune à son état ; le
 total « 4 fichiers · 1 manquant · 1 inutilisé » ; le témoin (D606) : l'entrée de menu inconnue ; l'anglais ; la photo ;
 (c) les suites ; la série.
+
+### Phase D607 — MESURÉE, la série à jouer (31/10/2026, 06 h 12 à l'horloge)
+
+*Écrite avant son code à 05 h 45. Le test du cœur joué rouge sur une fonction rendue vide (0 chemin au lieu de 5 — et le
+test de D564.1 rouge avec lui : la projection est bien branchée). Le banc `tools/reserve-fichiers.sh` (9 contrôles) ; le
+témoin : le binaire de D606 (`build/temoin-D606`).*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D607 (a) | quatre genres, cinq chemins, le bon « joué », l'ensemble égal à `collectMediaPaths` | **5** chemins ; `voix.wav` désigné deux fois (la piste, deux clips ; la prise active), joué ; `prise2.wav`, `version-b.wav` en réserve ; la piste gelée : son fichier en réserve, son **gel joué** ; les deux ensembles **égaux** | la fonction rendue vide : rouge (0 ≠ 5, et 0 ≠ 4 au test de D564.1) | **oui** |
+| D607 (b) | quatre lignes, chacune à son état ; le total ; le témoin ; l'anglais ; la photo | `voix.wav` **joué** (« piste « Voix » (2 clip(s)), prise « Prise 1 » de « Voix » ») ; `prise2.wav` **en réserve** ; `absent.wav` **MANQUANT** (taille « — », la durée et le format lus au projet) ; `orphelin.wav` **inutilisé** (« — », **0.25 s** lue au fichier) ; « 4 fichier(s) · 0.2 Mo · 1 manquant(s) · 1 inutilisé(s) » ; *MISSING*, *track “Basse”*, *4 file(s) · 0.2 MB · 1 missing · 1 unused* ; la photo anglaise regardée | le binaire de D606 : 0 relevé, le verbe inconnu | **oui** |
+| — | les suites | cœur **579 / 579** (1 neuf), moteur 1 378, interchange 368, clap 25, panneaux 11 ; `nettoyer-dossier` (D564.1, dont la liste est désormais une projection) rejoué vert ; `vsm-ui-preview` compilé ; gardes vertes | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Le banc avait tort, et l'application l'a dit** : le premier jeu n'avait qu'une piste dans son MIDI pour deux pistes
+  au projet — « Le projet décrit 2 piste(s) mais le MIDI en contient 1 : seules les pistes communes sont configurées » —,
+  et « Basse », avec son fichier absent, n'existait plus : trois lignes au lieu de quatre, « 0 manquant ». Corrigé dans
+  le JEU (une piste MIDI par piste, vide pour une piste audio), pas dans le code.
+- **Une piste audio sans clip en reçoit un à l'ouverture** : « piste « Basse » (1 clip(s)) » pour une piste écrite sans
+  clip — c'est ce que le projet porte une fois ouvert, et c'est ce que la réserve doit dire.
+- **La fenêtre rétrécie en 128 × 128, mesurée cette fois** : le relevé ajouté lit **980 × 440** à 1,5 s, et la photo
+  prise à 2,2 s sort en **128 × 128** — la fenêtre est redimensionnée APRÈS avoir été montrée. Vu au PREMIER lancement
+  de chaque rafale, session verrouillée et écran éteint (« suit » de D606, « fr » de D607 deux fois), jamais aux
+  suivants : la famille de D520 (sous une session verrouillée, le premier lancement d'une rafale ne se comporte pas
+  comme les autres). Pas un défaut du code tant que la série, écran allumé, ne le montre pas ; les deux relevés
+  (`VSM_ORDRE`, `VSM_RESERVE`) portent désormais la taille de leur fenêtre pour qu'elle s'y lise.
+- **Remis, nommés** : relier un fichier manquant, importer dans la réserve, poser un fichier de la réserve sur une piste.
+
+**LA SÉRIE EST À JOUER (D605, D606 et D607 ensemble), ÉCRAN ALLUMÉ.**

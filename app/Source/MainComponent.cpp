@@ -4713,6 +4713,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileSaveCopy, tr(u8"Enregistrer une copie..."));
             // D564.1 : NETTOYER LE DOSSIER (Cleanup) — vers la corbeille, après confirmation.
             menu.addItem(kMenuFileCleanup, tr(u8"Nettoyer le dossier du projet..."), currentProjectFolder_ != juce::File());
+            // D607.1 : LA RÉSERVE DES FICHIERS (Pool) — ce que le projet emploie, lu d'un coup d'œil.
+            menu.addItem(kMenuFileMediaPool, tr(u8"Réserve des fichiers..."));
             menu.addItem(kMenuFileRevert, tr(u8"Revenir à la version enregistrée..."),
                          currentProjectFolder_ != juce::File() && projetNonEnregistre());
             menu.addSeparator();
@@ -6900,6 +6902,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileSaveCopy:  enregistrerUneCopie(); break;                    // D563.3
         case kMenuFileRevert:    revenirALaVersionEnregistree(); break;           // D563.2
         case kMenuFileCleanup:   nettoyerLeDossierDuProjet(); break;              // D564.1
+        case kMenuFileMediaPool: showReserve(); break;                            // D607.1
         case kMenuFileLoadReference: loadReferenceAudio(); break;
         case kMenuFileReferenceOff:
             setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode::Off); break;
@@ -10602,8 +10605,114 @@ void MainComponent::direLOrdre(const char* quoi) {
         + " ; \xc3\xa9l\xc3\xa9ment jou\xc3\xa9 " + std::to_string(element >= 0 ? element + 1 : 0) + "/"
         + std::to_string(graphe.playChainSize()) + " ; t\xc3\xaate " + juce::String(graphe.currentSeconds(), 3).toStdString()
         + " s ; " + (transport_.state() == TransportState::Playing ? "en lecture" : "arr\xc3\xaat\xc3\xa9")
-        + " ; case \xc2\xab " + playOrderPanel_.texteDeLaCase().toStdString() + " \xc2\xbb\n";
+        + " ; case \xc2\xab " + playOrderPanel_.texteDeLaCase().toStdString() + " \xc2\xbb ; fen\xc3\xaatre "
+        + std::to_string(playOrderPanel_.getWidth()) + "x" + std::to_string(playOrderPanel_.getHeight()) + "\n";
     std::fputs(ligne.c_str(), stderr);
+}
+
+void MainComponent::showReserve() {
+    if (!reserveWindow_) {
+        reservePanel_.onRafraichir = [this] { rafraichirReserve(); };
+        reservePanel_.onNettoyer = [this] { nettoyerLeDossierDuProjet(); };   // D564.1, sa confirmation et sa corbeille
+        reserveWindow_ = std::make_unique<PanelWindow>(juce::String::fromUTF8(u8"Réserve des fichiers"), reservePanel_);
+        reserveWindow_->setDefaultSize(980, 440);
+    }
+    rafraichirReserve();   // RELUE À CHAQUE OUVERTURE : le projet et le disque ont pu changer
+    reserveWindow_->setVisible(true);
+    reserveWindow_->toFront(true);
+}
+
+void MainComponent::rafraichirReserve() {
+    using Ligne = vsm::app::ui::ReserveComponent::Ligne;
+    using Etat = vsm::app::ui::ReserveComponent::Etat;
+    if (currentProjectFolder_ == juce::File()) {
+        reservePanel_.setLignes({}, true);
+        return;
+    }
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    // L'EN-TÊTE DU FICHIER, pour ce que le projet ne décrit pas (un fichier que rien ne désigne).
+    const auto lireEnTete = [&formats](const juce::File& f, Ligne& l) {
+        if (std::unique_ptr<juce::AudioFormatReader> r{formats.createReaderFor(f)}; r != nullptr && r->sampleRate > 0.0) {
+            l.frequence = r->sampleRate;
+            l.canaux = static_cast<int>(r->numChannels);
+            l.duree = static_cast<double>(r->lengthInSamples) / r->sampleRate;
+        }
+    };
+    const auto nomDePiste = [this](size_t i) {
+        const auto& nom = project_.tracks[i].name;
+        return nom.empty() ? tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(i) + 1))
+                           : juce::String::fromUTF8(nom.c_str());
+    };
+    std::vector<Ligne> lignes;
+    const auto medias = vsm::sequencer::collectMediaDesignations(project_);
+    for (const auto& [chemin, designations] : medias) {
+        Ligne l;
+        l.fichier = juce::String::fromUTF8(chemin.c_str());
+        const juce::File f = currentProjectFolder_.getChildFile(l.fichier);
+        l.octets = f.existsAsFile() ? f.getSize() : -1;
+        bool joue = false;
+        juce::StringArray qui;
+        for (const auto& d : designations) {
+            joue = joue || d.played;
+            if (l.frequence <= 0.0 && d.source.sampleRate > 0.0) {
+                l.frequence = d.source.sampleRate;
+                l.canaux = d.source.channels;
+                l.duree = d.source.durationSeconds();
+            }
+            const juce::String piste = nomDePiste(d.trackIndex);
+            const juce::String nom = juce::String::fromUTF8(d.name.c_str());
+            using Genre = vsm::sequencer::MediaDesignation::Kind;
+            switch (d.kind) {
+                case Genre::Track:
+                    qui.add(tr(u8"piste « %1 »").replace("%1", piste)
+                            + (d.clips > 0 ? " " + tr(u8"(%1 clip(s))").replace("%1", juce::String(static_cast<int>(d.clips)))
+                                           : juce::String()));
+                    break;
+                case Genre::Freeze:  qui.add(tr(u8"gel de « %1 »").replace("%1", piste)); break;
+                case Genre::Take:    qui.add(tr(u8"prise « %1 » de « %2 »").replace("%1", nom).replace("%2", piste)); break;
+                case Genre::Version: qui.add(tr(u8"version « %1 » de « %2 »").replace("%1", nom).replace("%2", piste)); break;
+            }
+        }
+        if (l.frequence <= 0.0 && l.octets >= 0) lireEnTete(f, l);
+        l.designePar = qui.joinIntoString(", ");
+        // L'ÉTAT MANQUANT PRIME : un fichier désigné et absent se lit d'abord comme tel.
+        l.etat = l.octets < 0 ? Etat::Manquant : joue ? Etat::Joue : Etat::EnReserve;
+        lignes.push_back(std::move(l));
+    }
+    // CE QUE LE DOSSIER CONTIENT ET QUE RIEN NE DÉSIGNE — la règle du nettoyage (D564.1) : gardé si un état de
+    // l'historique ou le presse-papiers le rappellerait.
+    std::set<std::string> rappelables;
+    history_.forEachState([&rappelables](const vsm::sequencer::Project& etat) { vsm::sequencer::collectMediaPaths(etat, rappelables); });
+    for (const auto& c : arrangement_.clipsCopies())
+        if (!c.audio.path.empty()) rappelables.insert(c.audio.path);
+    std::vector<Ligne> orphelins;
+    for (const char* sousDossier : {"audio", "gel"})
+        for (const auto& f : currentProjectFolder_.getChildFile(sousDossier).findChildFiles(juce::File::findFiles, true)) {
+            const juce::String relatif = f.getRelativePathFrom(currentProjectFolder_).replaceCharacter('\\', '/');
+            if (medias.count(relatif.toStdString()) > 0) continue;
+            Ligne l;
+            l.fichier = relatif;
+            l.octets = f.getSize();
+            l.designePar = juce::String::fromUTF8("\xe2\x80\x94");
+            l.etat = rappelables.count(relatif.toStdString()) > 0 ? Etat::GardePourLHistoire : Etat::Inutilise;
+            lireEnTete(f, l);
+            orphelins.push_back(std::move(l));
+        }
+    std::sort(orphelins.begin(), orphelins.end(), [](const Ligne& a, const Ligne& b) { return a.fichier < b.fichier; });
+    for (auto& l : orphelins) lignes.push_back(std::move(l));
+    reservePanel_.setLignes(std::move(lignes), false);
+}
+
+void MainComponent::direLaReserve() {
+    using R = vsm::app::ui::ReserveComponent;
+    for (const auto& l : reservePanel_.lignes())
+        std::fputs(("VSM_RESERVE : " + l.fichier + " ; " + R::texteDuree(l) + " ; " + R::texteFormat(l) + " ; "
+                    + R::texteTaille(l) + " ; " + l.designePar + " ; " + R::nomDeLEtat(l.etat) + "\n").toRawUTF8(), stderr);
+    // LA TAILLE DE LA FENÊTRE, dite : deux photos de panneau sur une quinzaine sont sorties en 128 × 128, écran éteint et
+    // session verrouillée, sans se laisser reproduire (D606, D607) — le relevé la mesure au lieu de la deviner.
+    std::fputs(("VSM_RESERVE : total ; " + reservePanel_.total() + juce::String::fromUTF8(" ; fen\xc3\xaatre ") + juce::String(reservePanel_.getWidth())
+                + "x" + juce::String(reservePanel_.getHeight()) + "\n").toRawUTF8(), stderr);
 }
 
 void MainComponent::showPlayOrder() {

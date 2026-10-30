@@ -1225,13 +1225,37 @@ std::vector<size_t> folderContents(const Project& project, size_t index) {
 }
 
 void collectMediaPaths(const Project& project, std::set<std::string>& paths) {
-    const auto ajouter = [&paths](const AudioSource& a) { if (!a.path.empty()) paths.insert(a.path); };
-    for (const auto& t : project.tracks) {
-        ajouter(t.audio);
-        ajouter(t.frozenAudio);
-        for (const auto& prise : t.takes) ajouter(prise.audio);
-        for (const auto& version : t.versions) ajouter(version.audio);
+    // D607.1 : LA PROJECTION de `collectMediaDesignations` — une seule liste de ce qui désigne un fichier.
+    for (const auto& [chemin, designations] : collectMediaDesignations(project)) paths.insert(chemin);
+}
+
+std::map<std::string, std::vector<MediaDesignation>> collectMediaDesignations(const Project& project) {
+    std::map<std::string, std::vector<MediaDesignation>> medias;
+    for (size_t i = 0; i < project.tracks.size(); ++i) {
+        const auto& t = project.tracks[i];
+        const auto ajouter = [&medias, i](MediaDesignation::Kind genre, const AudioSource& a, const std::string& nom,
+                                          size_t clips, bool joue) {
+            if (a.path.empty()) return;
+            MediaDesignation d;
+            d.kind = genre;
+            d.trackIndex = i;
+            d.name = nom;
+            d.clips = clips;
+            d.played = joue;
+            d.source = a;
+            medias[a.path].push_back(std::move(d));
+        };
+        // Le fichier COURANT joue tant que la piste n'est pas gelée ; gelée, c'est son gel qui joue.
+        ajouter(MediaDesignation::Kind::Track, t.audio, std::string(), t.clips.size(), !t.frozen);
+        ajouter(MediaDesignation::Kind::Freeze, t.frozenAudio, std::string(), 0, t.frozen);
+        for (const auto& prise : t.takes)
+            ajouter(MediaDesignation::Kind::Take, prise.audio, prise.name, prise.clips.size(),
+                    !t.frozen && prise.audio.path == t.audio.path);
+        for (const auto& version : t.versions)
+            ajouter(MediaDesignation::Kind::Version, version.audio, version.name, version.clips.size(),
+                    !t.frozen && version.audio.path == t.audio.path);
     }
+    return medias;
 }
 
 size_t countFoldChanges(const Project& project, FoldAll how) {

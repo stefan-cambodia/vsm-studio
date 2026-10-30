@@ -622,6 +622,20 @@ size_t countFoldChanges(const Project& project, FoldAll how);
 /// ses prises et de ses versions — les chemins tels que le projet les écrit (relatifs à son dossier). Ce que le
 /// nettoyage du dossier ne doit jamais toucher.
 void collectMediaPaths(const Project& project, std::set<std::string>& paths);
+
+/// D607.1 — CE QUI DÉSIGNE CHAQUE MÉDIA, pour la réserve des fichiers (le *Pool* de Cubase). La SOURCE de « désigné » :
+/// `collectMediaPaths` en est la projection (un test garde leurs ensembles égaux). `played` dit ce que la LECTURE fait
+/// entendre : le fichier courant d'une piste non gelée, le gel d'une piste gelée ; le reste attend (« en réserve »).
+struct MediaDesignation {
+    enum class Kind { Track, Freeze, Take, Version };
+    Kind kind = Kind::Track;
+    size_t trackIndex = 0;
+    std::string name;      ///< le nom de la prise ou de la version ; vide pour la piste et son gel
+    size_t clips = 0;      ///< `Track` : les clips de la piste (0 : sans clip, le fichier entier joue)
+    bool played = false;
+    AudioSource source;    ///< le fichier tel que le projet le décrit (durée, format)
+};
+std::map<std::string, std::vector<MediaDesignation>> collectMediaDesignations(const Project& project);
 size_t foldAllTracks(Project& project, FoldAll how);
 
 /// REMET LES PROFONDEURS DE DOSSIER D'APLOMB (D19.4), et rend le nombre de

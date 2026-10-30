@@ -1219,6 +1219,56 @@ VSM_TEST(the_project_names_the_media_of_tracks_freezes_takes_and_versions) {
     VSM_ASSERT(chemins.count("") == 0);
 }
 
+// D607.1 — CE QUI DÉSIGNE CHAQUE MÉDIA (la réserve des fichiers). L'attendu écrit avant le code (ROADMAP-daw, D607) :
+// quatre genres, cinq chemins, le bon « joué », et l'ensemble ÉGAL à celui de `collectMediaPaths`.
+VSM_TEST(the_media_designations_say_who_names_each_file_and_what_plays_d607) {
+    Project p;
+    p.tracks.emplace_back();
+    auto& voix = p.tracks[0];
+    voix.name = "Voix";
+    voix.kind = Track::Kind::Audio;
+    voix.audio.path = "audio/voix.wav";
+    voix.clips.resize(2);
+    voix.takes.resize(2);
+    voix.takes[0].name = "Prise 1";
+    voix.takes[0].audio.path = "audio/voix.wav";     // la prise active : le fichier courant
+    voix.takes[1].name = "Prise 2";
+    voix.takes[1].audio.path = "audio/prise2.wav";
+    voix.versions.resize(1);
+    voix.versions[0].name = "B";
+    voix.versions[0].audio.path = "audio/version-b.wav";
+    p.tracks.emplace_back();
+    auto& basse = p.tracks[1];
+    basse.name = "Basse";
+    basse.kind = Track::Kind::Audio;
+    basse.audio.path = "audio/basse.wav";
+    basse.frozen = true;
+    basse.frozenAudio.path = "gel/basse.wav";
+    p.tracks.emplace_back();   // une piste MIDI : aucun fichier
+
+    const auto medias = collectMediaDesignations(p);
+    const auto joue = [&medias](const std::string& chemin) {
+        bool j = false;
+        for (const auto& d : medias.at(chemin)) j = j || d.played;
+        return j;
+    };
+    VSM_ASSERT_EQ(medias.size(), size_t(5));
+    VSM_ASSERT_EQ(medias.at("audio/voix.wav").size(), size_t(2));   // la piste et sa prise active
+    VSM_ASSERT(medias.at("audio/voix.wav")[0].kind == MediaDesignation::Kind::Track);
+    VSM_ASSERT_EQ(medias.at("audio/voix.wav")[0].clips, size_t(2));
+    VSM_ASSERT(joue("audio/voix.wav"));
+    VSM_ASSERT(!joue("audio/prise2.wav"));
+    VSM_ASSERT(medias.at("audio/prise2.wav")[0].name == "Prise 2");
+    VSM_ASSERT(!joue("audio/version-b.wav"));
+    VSM_ASSERT(!joue("audio/basse.wav"));     // gelée : son fichier courant attend
+    VSM_ASSERT(joue("gel/basse.wav"));        // et son gel joue
+    std::set<std::string> chemins;
+    collectMediaPaths(p, chemins);
+    std::set<std::string> designes;
+    for (const auto& [chemin, d] : medias) designes.insert(chemin);
+    VSM_ASSERT(chemins == designes);
+}
+
 VSM_TEST(the_chosen_tracks_move_into_a_new_folder_with_their_content_and_their_routing) {
     // D589.1 : *Move Selected Tracks to New Folder*. Le dossier naît à la place de la PREMIÈRE piste choisie ; les
     // choisies le suivent dans leur ordre, un dossier avec son contenu ; les routages suivent les PISTES (reorderTracks).
