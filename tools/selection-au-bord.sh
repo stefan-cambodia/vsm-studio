@@ -87,7 +87,7 @@ verdict() { if [ "$2" = 1 ]; then printf '  OK   %s\n' "$1"; else printf '  RAT�
 vrai() { python3 -c "import sys; print(1 if ($1) else 0)" 2>/dev/null || echo 0; }
 
 echo "=== D529 : un lasso tenu contre le bord choisit au-delà de la vue ==="
-# L'arrangement : 374 px de haut (22 de règle, pistes de 56 px), P02 à fy 0,283 ; le lasso
+# L'arrangement : 374 px de haut jusqu'à D593 (22 de règle, pistes de 56 px), 338 depuis ; P02 à fy 0,283 ; le lasso
 # part du vide à fx 0,85 (mesure ~7) et va au bord bas, dans la colonne de la mesure 1.
 for cas in tenu:30 lache:0; do
     nom="lasso-${cas%%:*}"
@@ -98,7 +98,19 @@ c1="$(clips lasso-tenu)"; c0="$(clips lasso-lache)"
 echo "       arrangement : tenu → ${c1:-?} clip(s) choisi(s) ; lâché → ${c0:-?}"
 verdict "(1) tenu au bord bas, le lasso choisit plus de clips que lâché" \
     "$(vrai "'${c1:-}' != '' and '${c0:-}' != '' and ${c1:-0} > ${c0:-0}")"
-verdict "(1 bis) le témoin lâché : les six clips de P02 à P07" "$(vrai "'${c0:-}' == '6'")"
+# CORRIGÉ LE 30/10 (D603), ET DIT : « six clips, de P02 à P07 » valait pour un arrangement de 374 px (une zone de pistes
+# de 352). Depuis que la tranche de la console compte son coupe-bas et son coupe-haut (D593 corrigée), le dock a 36 px de
+# plus et la zone 316 : le même lasso, de 0,283 à 0,985 de la hauteur, couvre P02 à P06 — cinq clips, et le binaire de
+# D598 en rend toujours six. L'attendu se calcule désormais depuis la zone relevée par la course elle-même : les pistes
+# (de 56 px, sous la règle de 22) que le lasso touche entre ses deux bouts.
+attendu="$(grep "VSM_ARRANGEMENT : pistes visibles" "$brouillon/lasso-lache.txt" | tail -1 | python3 -c "
+import re, sys
+m = re.search(r'pistes ([0-9]+) px, zone ([0-9]+) px', sys.stdin.read())
+if not m: print('?'); sys.exit(0)
+t, h = int(m.group(1)) / 40.0, 22 + int(m.group(2))
+print(int((0.985 * h - 22) // t) - int((0.283 * h - 22) // t) + 1)")"
+verdict "(1 bis) le témoin lâché : les clips visibles de P02 au bord bas (${attendu:-?}, d'après la zone relevée)" \
+    "$(vrai "'${c0:-}' == '${attendu:-x}'")"
 
 course geometrie notes "sans-rapport" "1200:relever-pianoroll"
 taille="$(champ geometrie taille)"; clavier="$(champ geometrie clavier)"; haut="$(champ geometrie haut)"

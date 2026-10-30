@@ -930,7 +930,12 @@ void TrackListComponent::refreshMix(const std::set<size_t>& seules) {
 void TrackListComponent::suivreLesCourbes(vsm::midi::Tick tete,
                                           const std::function<uint16_t(size_t)>& mainSurLaTranche) {
     for (int i = 0; i < rows_.size(); ++i) {
-        rows_[i]->poserLesSuspensions(project_ != nullptr ? project_->automationSuspended : uint8_t{0});   // D601.2
+        // UNE LIGNE DONT LA PISTE N'EST PLUS CELLE DU PROJET À SON RANG attend sa reconstruction — la règle de
+        // `MixerComponent::suivreLesCourbes` (le plantage de la série de D599-D603), comparée par adresse.
+        if (project_ == nullptr || static_cast<size_t>(i) >= project_->tracks.size()
+            || &project_->tracks[static_cast<size_t>(i)] != rows_[i]->pisteTenue())
+            continue;
+        rows_[i]->poserLesSuspensions(project_->automationSuspended);   // D601.2
         rows_[i]->suivreLesCourbes(tete, mainSurLaTranche ? mainSurLaTranche(static_cast<size_t>(i)) : 0);
     }
 }

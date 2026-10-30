@@ -229,6 +229,8 @@ public:
     void suivreLesCourbes(vsm::midi::Tick tete, uint16_t mainAilleurs);
     /// D601.2 : les familles de courbes suspendues du projet — une famille suspendue ne pilote plus le curseur.
     void poserLesSuspensions(uint8_t familles) { suspendues_ = familles; }
+    /// L'adresse de la piste tenue, comparée sans être lue (voir `TrackListComponent::suivreLesCourbes`).
+    const vsm::sequencer::Track* pisteTenue() const { return &track_; }
     double volumeAffiche() const { return volumeSlider_.getValue(); }   ///< D599 : pour le relevé
     uint16_t mainLigne() const { return mainLigne_; }
     double panAffiche() const { return panSlider_.getValue(); }

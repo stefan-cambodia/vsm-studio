@@ -306,6 +306,9 @@ public:
     /// les tranches ne sont plus en correspondance de rang avec les pistes, un
     /// dossier n'en ayant pas.
     size_t trackIndex() const { return index_; }
+    /// L'adresse de la piste que la tranche tient — pour vérifier, SANS la lire, qu'elle est encore celle du projet à son
+    /// rang (voir `MixerComponent::trancheAJour`).
+    const vsm::sequencer::Track* pisteTenue() const { return &track_; }
     /// D344 : le vumètre de cette tranche, pour le banc.
     LevelMeter& vumetre() { return meter_; }
     const LevelMeter& vumetre() const { return meter_; }
@@ -909,7 +912,9 @@ public:
     }
     /// D37 : chaque tranche relit sa piste (nom, volume, panoramique).
     void refreshFromTracks() {
-        for (auto* strip : strips_) strip->refreshFromTrack();
+        // La règle de `suivreLesCourbes` : une tranche dont la piste n'est plus à son rang attend sa reconstruction.
+        for (auto* strip : strips_)
+            if (trancheAJour(*strip)) strip->refreshFromTrack();
     }
     /// D566.3 : les seules tranches de ces pistes — celles qu'un geste LIÉ vient d'entraîner, et non la tranche qu'on
     /// tient en main.
@@ -965,7 +970,8 @@ public:
     /// D603.1 : voir `ChannelStrip::leverLesControleursMuets` — pour chaque tranche.
     void leverLesControleursMuets() {
         const juce::uint32 maintenant = juce::Time::getMillisecondCounter();
-        for (auto* strip : strips_) strip->leverLesControleursMuets(maintenant);
+        for (auto* strip : strips_)
+            if (trancheAJour(*strip)) strip->leverLesControleursMuets(maintenant);   // la règle de `suivreLesCourbes`
     }
     /// D602.1 : voir `ChannelStrip::remplissage`.
     std::function<vsm::sequencer::AutomationFill()> remplissage;
@@ -975,8 +981,18 @@ public:
     std::function<void(size_t, float, float)> onTrimOffset;
     std::function<void(const juce::String&)> onDire;
     /// D599.1 : chaque tranche suit ses courbes à la tête (appelée par le minuteur de l'application).
+    /// LA SÉRIE DE D599-D603 L'A FAIT PLANTER (SIGSEGV dans `ChannelStrip::suivreLesCourbes`, `arrangement-defile.sh`) :
+    /// une piste déplacée par son en-tête change le vecteur des pistes AVANT que la console soit refaite, et la tranche
+    /// lisait alors une piste qui n'était plus à son adresse — le minuteur, depuis D599, la lit à chaque tour. Une tranche
+    /// dont la piste n'est plus celle du projet à son rang attend sa reconstruction ; la comparaison porte sur des
+    /// ADRESSES, sans rien lire de la piste tenue.
     void suivreLesCourbes(vsm::midi::Tick tete) {
-        for (auto* strip : strips_) strip->suivreLesCourbes(tete);
+        for (auto* strip : strips_)
+            if (trancheAJour(*strip)) strip->suivreLesCourbes(tete);
+    }
+    bool trancheAJour(const ChannelStrip& strip) const {
+        return project_ != nullptr && strip.trackIndex() < project_->tracks.size()
+               && &project_->tracks[strip.trackIndex()] == strip.pisteTenue();
     }
     /// D599 : la tranche de cette piste, ou nullptr (un dossier n'en a pas) — pour le relevé.
     const ChannelStrip* trancheDe(size_t piste) const {

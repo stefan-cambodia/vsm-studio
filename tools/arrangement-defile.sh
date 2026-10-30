@@ -252,7 +252,19 @@ verdict "(15) tenue au bord bas de la liste, la machine se pose plus bas que lâ
 # de souris n'étant en cours (D527). Mesuré vert dès son ajout (02/10, 04 h 05), PAS vu
 # rouge : le binaire d'avant D525 ne sait ni relever ni jouer ce verbe ; c'est un relevé de
 # non-régression, et il est dit comme tel.
-course clavier "1200:glisser-tenir:arrangement:0.5,0.882:0.5,0.882:0;1400:touche:arrangement:cursor down;1500:touche:arrangement:cursor down;1600:touche:arrangement:cursor down;1700:touche:arrangement:cursor down;1900:relever-arrangement;2000:enregistrer:$brouillon/clavier-ecrit"
+# CORRIGÉ LE 30/10 (D603), ET DIT : le clip de P06 était visé à 88,2 % de la hauteur de l'arrangement — juste tant que la
+# zone des pistes avait 352 px. Depuis que la tranche de la console compte son coupe-bas et son coupe-haut (D593 corrigée),
+# le dock a 36 px de plus et la zone 316 : 88,2 % tombait sur P05 (pixel 276, P05 couvrant 224-280), le clip allait sur
+# P09, et le contrôle rougissait sans que le clavier ait rien fait de faux. La fraction se calcule désormais depuis le
+# relevé d'ouverture : le milieu de la part VISIBLE de P06, sous la règle de 22 px.
+y06="$(grep -m1 "VSM_ARRANGEMENT : pistes visibles" "$brouillon/ouverture.txt" | python3 -c "
+import re, sys
+m = re.search(r'pistes ([0-9]+) px, zone ([0-9]+) px', sys.stdin.read())
+if not m: print('0.882'); sys.exit(0)
+t, z = int(m.group(1)) / 40.0, int(m.group(2))
+haut = 5 * t; bas = min(6 * t, z)
+print('%.4f' % ((22 + (haut + bas) / 2) / (22 + z)))")"
+course clavier "1200:glisser-tenir:arrangement:0.5,$y06:0.5,$y06:0;1400:touche:arrangement:cursor down;1500:touche:arrangement:cursor down;1600:touche:arrangement:cursor down;1700:touche:arrangement:cursor down;1900:relever-arrangement;2000:enregistrer:$brouillon/clavier-ecrit"
 k="$(ou_est "$brouillon/clavier-ecrit")"; kv="$(vertical clavier 1)"
 echo "       clip de P06 descendu de quatre pistes au clavier : → piste $(champ "$k" 2) (pistes ${kv:-?})"
 verdict "(16) au clavier, le clip va sur P10 et la vue le montre" \
