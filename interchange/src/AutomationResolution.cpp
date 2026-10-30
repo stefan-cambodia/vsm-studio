@@ -20,6 +20,11 @@ bool commencePar(const std::string& texte, const char* prefixe) {
 
 } // namespace
 
+bool automationLaneIsRead(const vsm::sequencer::Project& project, const vsm::audio::engine::AutomationLane& lane) {
+    if (lane.target == AutomationTarget::MasterParam) return true;
+    return lane.targetTrackIndex >= project.tracks.size() || project.tracks[lane.targetTrackIndex].automationRead;
+}
+
 AutomationResolution resolveAutomation(const vsm::sequencer::Project& project) {
     AutomationResolution resultat;
     // La liste des réglages de la tranche master est celle de TOUTE tranche :
@@ -107,6 +112,14 @@ AutomationResolution resolveAutomation(const vsm::sequencer::Project& project) {
                 lane.target = AutomationTarget::InstrumentParam;
                 lane.targetParam = d->paramId;
                 borne = d;
+            }
+
+            // D600.2 — LA LECTURE ÉTEINTE (le *R*) : la courbe reste dans la liste, MARQUÉE — l'application refait les
+            // courbes du projet depuis elle, et la sauter les effacerait au premier geste —, et le moteur l'écarte à sa
+            // publication. Une courbe du master, rangée dans cette piste sans lui appartenir, ne se tait pas avec elle.
+            if (!automationLaneIsRead(project, lane)) {
+                lane.read = false;
+                dire("lecture éteinte (R) : la courbe n'est pas jouée");
             }
 
             for (const auto& point : curve.points) {

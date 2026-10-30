@@ -222,6 +222,7 @@ float ProcessGraph::instrumentParameter(size_t trackIndex, ParamId paramId) cons
 }
 
 void ProcessGraph::addAutomationLane(AutomationLane lane) {
+    if (!lane.read) return;   // D600.2 : la lecture de sa piste est éteinte (voir `setAutomationLanes`)
     auto current = automationLanes_.load(std::memory_order_acquire);
     auto next = current ? std::make_shared<std::vector<AutomationLane>>(*current)
                         : std::make_shared<std::vector<AutomationLane>>();
@@ -234,6 +235,12 @@ void ProcessGraph::clearAutomationLanes() {
 }
 
 void ProcessGraph::setAutomationLanes(std::vector<AutomationLane> lanes) {
+    // D600.2 — LA LECTURE ÉTEINTE (le *R*) : une courbe marquée n'est pas jouée. Écartée ICI, à la publication, et nulle
+    // part ailleurs : l'application, l'export et `vsm-render` passent tous par ce point. La liste de l'appelant garde la
+    // courbe (elle refait le projet depuis elle) ; le moteur n'en voit rien, et une piste dont toutes les courbes sont
+    // écartées rend comme une piste sans courbe, au bit près.
+    lanes.erase(std::remove_if(lanes.begin(), lanes.end(), [](const AutomationLane& l) { return !l.read; }),
+                lanes.end());
     automationLanes_.store(std::make_shared<std::vector<AutomationLane>>(std::move(lanes)),
                             std::memory_order_release);
     refreshAutomationMask();
@@ -241,7 +248,10 @@ void ProcessGraph::setAutomationLanes(std::vector<AutomationLane> lanes) {
 
 void ProcessGraph::setHandOverride(size_t trackIndex, uint16_t masque) {
     if (trackIndex >= kMaxTracks) return;
-    handMask_[trackIndex].store(static_cast<uint16_t>(masque & (handVolume | handPan)), std::memory_order_relaxed);
+    // D600.1 : TOUS LES BITS DES COURBES DE MIXAGE — le volume, le panoramique, les huit départs, le trim.
+    constexpr uint16_t tous = static_cast<uint16_t>((1u << (kAutoSendFirst + kMaxSends + 1)) - 1u);
+    static_assert(tous == (handVolume | handPan | 0x3FCu | handTrim) && handTrim == kAutoTrim);
+    handMask_[trackIndex].store(static_cast<uint16_t>(masque & tous), std::memory_order_relaxed);
 }
 
 void ProcessGraph::setTrimOffset(size_t trackIndex, float facteurVolume, float decalagePan) {
@@ -256,6 +266,15 @@ float ProcessGraph::playedVolume(size_t trackIndex) const {
 
 float ProcessGraph::playedPan(size_t trackIndex) const {
     return trackIndex < kMaxTracks ? playedPan_[trackIndex].load(std::memory_order_relaxed) : 0.0f;
+}
+
+float ProcessGraph::playedSend(size_t trackIndex, size_t bus) const {
+    return trackIndex < kMaxTracks && bus < kMaxSends ? playedSend_[trackIndex][bus].load(std::memory_order_relaxed)
+                                                      : 0.0f;
+}
+
+float ProcessGraph::playedTrim(size_t trackIndex) const {
+    return trackIndex < kMaxTracks ? playedTrim_[trackIndex].load(std::memory_order_relaxed) : 0.0f;
 }
 
 void ProcessGraph::refreshAutomationMask() {
@@ -2014,8 +2033,11 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // PAS SUR UNE PISTE GELÉE, pour la raison qui vaut pour les inserts : le
     // trim est DANS le fichier gelé, et le repasser l'appliquerait deux fois.
     {
-        const float trimDb = (autoMask_[trackIndex] & kAutoTrim) ? autoTrim_[trackIndex]
-                                                                  : track.inputTrimDb;
+        // D600.1 : la main sur le trim l'emporte sur sa courbe, comme sur le fader (D599.2).
+        const bool trimPilote = (autoMask_[trackIndex] & kAutoTrim)
+                                && !(handMask_[trackIndex].load(std::memory_order_relaxed) & handTrim);
+        const float trimDb = trimPilote ? autoTrim_[trackIndex] : track.inputTrimDb;
+        playedTrim_[trackIndex].store(trimDb, std::memory_order_relaxed);   // D600.1 : pour le relevé
         if (!track.frozen && trimDb != 0.0f) {
             const float g = std::pow(10.0f, trimDb / 20.0f);
             for (int i = 0; i < sampleCount; ++i) { destL[i] *= g; destR[i] *= g; }
@@ -2092,7 +2114,7 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     // PILOTE (D4.6), du projet sinon. Un entier consulté par piste, pas un
     // parcours des courbes : voir `refreshAutomationMask`.
     // D599.2 : CE QUE LA MAIN TIENT N'EST PLUS PILOTÉ PAR LA COURBE — la piste joue alors le projet, c'est-à-dire le
-    // fader que la console vient de republier. Les bits de la main sont ceux du volume et du panoramique.
+    // fader que la console vient de republier. D600.1 : et les départs (plus bas), le trim (plus haut).
     const uint16_t pilotes =
         static_cast<uint16_t>(autoMask_[trackIndex] & ~handMask_[trackIndex].load(std::memory_order_relaxed));
     // D599.3 : une passe Trim DÉCALE la courbe pendant qu'elle court, bornée au haut du fader. Au repos (facteur 1,
@@ -2231,9 +2253,11 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
             const uint16_t bitDepart = static_cast<uint16_t>(1u << (kAutoSendFirst + b));
             // D567.3 : DES DÉPARTS CONTOURNÉS NE VERSENT RIEN, même pilotés par l'automation : le contournement
             // est un état de la tranche, pas un niveau, et la courbe le traverse sans le défaire.
+            // D600.1 : `pilotes` a déjà retiré ce que la main tient — les départs compris.
             const float niveau = track.sendsBypassed                ? 0.0f
                                  : (pilotes & bitDepart) ? autoSend_[trackIndex][b]
                                                          : track.sendLevel(b);
+            playedSend_[trackIndex][b].store(niveau, std::memory_order_relaxed);   // D600.1 : pour le relevé
             const float lvl = niveau * apresFader;
             if (lvl <= 0.0f) continue;
             if (!track.sendsFollowPan) {

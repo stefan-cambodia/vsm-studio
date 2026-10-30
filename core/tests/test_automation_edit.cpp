@@ -606,3 +606,65 @@ VSM_TEST(trim_adds_to_a_pan_and_clamps_both_laws_d599) {
     VSM_ASSERT(trimAutomationRange(volume, 0, 500, {{0, kPlus6dB, false}}, TrimLaw::GainDb, 0.0f, kGainHautDuFader));
     VSM_ASSERT_NEAR(automationValueAt(volume, 300), kGainHautDuFader, 1e-5f);
 }
+
+// D600.3 — LE TEMPS DE RETOUR. L'attendu (4) de la feuille de route, dans le cœur : la passe Touch de D599 (3) — 1,0
+// tenu sur une courbe plate à 0,25 — lâchée au tick `fin` avec 240 ticks de retour (250 ms à 120 BPM) : 1,0 à `fin`,
+// 0,625 à mi-rampe, 0,25 au bout et au-delà ; le témoin, du même code à 0 : 0,25 dès `fin + 1`.
+VSM_TEST(a_touch_pass_returns_to_the_old_curve_in_a_ramp_d600) {
+    const Tick fin = 1500;
+    AutomationCurve courbe;
+    setAutomationPoint(courbe, 0, 0.25f);
+    setAutomationPoint(courbe, 7680, 0.25f);
+    AutomationCurve temoin = courbe;
+    const std::vector<AutomationPoint> passe = {{1000, 1.0f, false}, {fin, 1.0f, false}};
+    writeAutomationRange(courbe, 1000, fin, passe, 240);
+    writeAutomationRange(temoin, 1000, fin, passe, 0);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 999), 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, fin), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, fin + 120), 0.625f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, fin + 240), 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, fin + 241), 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 7000), 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(temoin, fin), 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(temoin, fin + 1), 0.25f, 1e-6f);
+}
+
+// La rampe REMPLACE ce que l'ancienne courbe disait entre `fin` et le bout du retour, et rejoint sa valeur AU BOUT —
+// lue avant d'écrire, sur une courbe qui n'est pas plate.
+VSM_TEST(the_return_ramp_replaces_old_points_and_lands_on_the_old_value_d600) {
+    AutomationCurve courbe;
+    setAutomationPoint(courbe, 0, 0.2f);
+    setAutomationPoint(courbe, 1600, 0.9f);   // dans ]fin, fin + retour] : remplacé
+    setAutomationPoint(courbe, 2000, 0.4f);
+    const float auBout = automationValueAt(courbe, 1740);
+    writeAutomationRange(courbe, 1000, 1500, {{1000, 1.0f, false}, {1500, 1.0f, false}}, 240);
+    for (const auto& p : courbe.points) VSM_ASSERT(p.tick != 1600);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1740), auBout, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1620), 1.0f + 0.5f * (auBout - 1.0f), 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 2000), 0.4f, 1e-6f);   // au-delà, rien ne bouge
+}
+
+// La première passe sur un réglage n'a rien à rejoindre : pas de retour, la valeur reste tenue — comme avant.
+VSM_TEST(a_first_pass_has_nothing_to_return_to_d600) {
+    AutomationCurve courbe;
+    writeAutomationRange(courbe, 1000, 1500, {{1000, 0.7f, false}, {1500, 0.7f, false}}, 240);
+    VSM_ASSERT_EQ(courbe.points.size(), size_t(2));
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1620), 0.7f, 1e-6f);
+}
+
+// Trim aussi : la courbe DÉCALÉE rejoint l'ancienne. Le plat à 0,5 décalé de +6,02 dB sur [100, 500], 100 ticks de
+// retour : 1,0 à 500, 0,75 à 550, 0,5 à 600 et au-delà ; le témoin à 0 : 0,5 dès 501.
+VSM_TEST(a_trim_pass_returns_to_the_old_curve_in_a_ramp_d600) {
+    AutomationCurve courbe;
+    setAutomationPoint(courbe, 0, 0.5f);
+    setAutomationPoint(courbe, 960, 0.5f);
+    AutomationCurve temoin = courbe;
+    const std::vector<AutomationPoint> decalages = {{100, kPlus6dB, false}};
+    VSM_ASSERT(trimAutomationRange(courbe, 100, 500, decalages, TrimLaw::GainDb, 0.0f, kGainHautDuFader, 100));
+    VSM_ASSERT(trimAutomationRange(temoin, 100, 500, decalages, TrimLaw::GainDb, 0.0f, kGainHautDuFader, 0));
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 500), 1.0f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 550), 0.75f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 600), 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 700), 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(temoin, 501), 0.5f, 1e-6f);
+}

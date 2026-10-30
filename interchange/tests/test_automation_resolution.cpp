@@ -14,6 +14,7 @@
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include <cmath>
+#include <cstdio>
 #include <string>
 
 using vsm::audio::engine::AutomationTarget;
@@ -185,6 +186,61 @@ VSM_TEST(an_exported_volume_fade_actually_fades) {
     // vers 0,56 de gain (0,31 en énergie), quand le témoin garde le sien.
     VSM_ASSERT(finF / finT < 0.45);
     VSM_ASSERT(debutF / debutT > 0.8);
+}
+
+// D600.2 — LA LECTURE ÉTEINTE (le R). Les courbes de la piste restent dans la liste — l'application refait le projet
+// depuis elle, et les retirer les EFFACERAIT —, marquées non lues, et c'est DIT, une phrase par courbe ; une courbe du
+// master, rangée dans la même piste, n'est pas marquée : elle n'appartient à aucune piste.
+VSM_TEST(curves_of_a_track_whose_reading_is_off_are_marked_and_said_d600) {
+    Project p = projetAUnePiste("vsm.minimoog");
+    p.tracks[0].automation = {courbe("mix.volume", 1.0f, 0.0f), courbe("master.Stereo Width", 1.0f, 0.0f),
+                              courbe("filter.1.cutoff", 200.0f, 2000.0f)};
+    const auto allumee = resolveAutomation(p);
+    VSM_ASSERT_EQ(allumee.lanes.size(), static_cast<size_t>(3));
+    for (const auto& l : allumee.lanes) VSM_ASSERT(l.read);
+    VSM_ASSERT(allumee.warnings.empty());
+    p.tracks[0].automationRead = false;
+    const auto eteinte = resolveAutomation(p);
+    VSM_ASSERT_EQ(eteinte.lanes.size(), static_cast<size_t>(3));
+    VSM_ASSERT(!eteinte.lanes[0].read);
+    VSM_ASSERT(eteinte.lanes[1].read);   // le master
+    VSM_ASSERT(!eteinte.lanes[2].read);
+    VSM_ASSERT_EQ(eteinte.warnings.size(), static_cast<size_t>(2));
+    VSM_ASSERT(ditLaCourbe(eteinte.warnings, "mix.volume", "lecture éteinte"));
+    VSM_ASSERT(ditLaCourbe(eteinte.warnings, "filter.1.cutoff", "lecture éteinte"));
+}
+
+// ET À L'EXPORT, là où ça compte : l'attendu (3) — une courbe de volume plate à 0,25, R éteint, sort 12,0 dB plus fort
+// qu'avec R allumé (la valeur statique 1,0 contre la courbe), et l'avertissement arrive au rapport.
+VSM_TEST(an_export_with_reading_off_plays_the_static_value_d600) {
+    auto rendre = [](const Project& p, std::vector<std::string>* avertis) {
+        vsm::interchange::LoadedBundle bundle;
+        bundle.project = p;
+        bundle.document = vsm::interchange::documentFromProject(p);
+        vsm::interchange::RenderOptions options;
+        options.durationSeconds = 1.0;
+        vsm::audio::engine::RenderedAudio sortie;
+        const auto res = vsm::interchange::renderBundleToBuffer(bundle, sortie, options);
+        VSM_ASSERT(res.success);
+        if (avertis) *avertis = res.warnings;
+        double e = 0.0;
+        for (size_t i = 0; i < sortie.left.size(); ++i)
+            e += double(sortie.left[i]) * sortie.left[i] + double(sortie.right[i]) * sortie.right[i];
+        return e;
+    };
+    Project lue = projetAUnePiste("vsm.minimoog");
+    lue.tracks[0].volume = 1.0f;
+    lue.tracks[0].automation = {courbe("mix.volume", 0.25f, 0.25f)};
+    Project eteinte = lue;
+    eteinte.tracks[0].automationRead = false;
+    std::vector<std::string> avertis;
+    const double eLue = rendre(lue, nullptr);
+    const double eEteinte = rendre(eteinte, &avertis);
+    VSM_ASSERT(eLue > 0.0);
+    const double ecartDb = 10.0 * std::log10(eEteinte / eLue);
+    std::printf("      [D600.2] R éteint contre R allumé : %+.2f dB\n", ecartDb);
+    VSM_ASSERT(std::abs(ecartDb - 12.04) < 0.1);
+    VSM_ASSERT(ditLaCourbe(avertis, "mix.volume", "lecture éteinte"));
 }
 
 // TROUVÉ EN MESURANT : un export en STEMS jetait tout ce que ses rendus

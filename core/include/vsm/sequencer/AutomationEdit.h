@@ -74,8 +74,18 @@ size_t shiftAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick, 
 /// `written` est la suite des points joués, en ordre de tick. Vide, la
 /// fonction ne fait rien : un passage où l'on n'a touché à rien ne doit pas
 /// effacer une courbe.
+///
+/// D600.3 — LE TEMPS DE RETOUR (*Automation Return Time* de Cubase). À 0, la
+/// courbe saute en UN tick de la dernière valeur jouée à l'ancienne (le
+/// raccord à `toTick + 1`) : 12 dB en une milliseconde au lâcher d'un fader.
+/// Au-delà, la plage réécrite s'étend jusqu'à `toTick + returnTicks`, où un
+/// point prend la valeur de la courbe d'AVANT en ce tick : la courbe y
+/// rejoint l'ancienne en RAMPE depuis le dernier point joué, les points
+/// anciens de `]toTick, toTick + returnTicks]` sont remplacés, et le raccord
+/// suit à `toTick + returnTicks + 1`. Sur une courbe vide (la première passe),
+/// rien à rejoindre : pas de retour, la valeur reste tenue comme avant.
 void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
-                           const std::vector<AutomationPoint>& written);
+                           const std::vector<AutomationPoint>& written, Tick returnTicks = 0);
 
 /// D599.3 — RETOUCHER UNE PLAGE EN RELATIF : le mode *Trim* de Cubase.
 ///
@@ -110,9 +120,12 @@ inline constexpr float kTrimGainMax = 1.99526231f;
 /// plage à l'envers : il n'y a rien à décaler — l'appelant écrit alors comme
 /// Touch (sur une courbe vide, la base est la valeur statique, et base ⊕
 /// décalage = le fader).
+///
+/// D600.3 : `returnTicks`, le temps de retour de `writeAutomationRange` — la
+/// courbe décalée rejoint l'ancienne en rampe après `toTick`.
 bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
                          const std::vector<AutomationPoint>& offsets, TrimLaw law,
-                         float minimum, float maximum);
+                         float minimum, float maximum, Tick returnTicks = 0);
 
 /// Retire le point le plus proche de `tick`, s'il est à moins de `tolerance`.
 /// Rend vrai si un point a été retiré.

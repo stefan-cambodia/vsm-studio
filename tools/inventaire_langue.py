@@ -134,7 +134,9 @@ FIL = re.compile(r"\bjuce::Thread\s*\(\s*(?:u8)?\s*$")
 # D532.3 bis : `releverBandeAccords` compose la ligne VSM_ACCORDS du geste `relever-accords`.
 FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture", "commandesMasquees", "direLesVersions",
                      "releverBandeAccords", "direDisposition",   # D549.3 : la disposition dite au journal
-                     "releverInfoClips")   # D598 : la ligne VSM_INFO_CLIPS du geste `relever-info-clips`
+                     "releverInfoClips",   # D598 : la ligne VSM_INFO_CLIPS du geste `relever-info-clips`
+                     "releverAutomation", "nomsDeLaMain",   # D600 : la ligne VSM_AUTOMATION_TRANCHE, ses départs et sa main
+                     "lectureAffichee")   # D600 : l'aspect du R pour le relevé (« allumé », « terne », « éteint »)
 EN_TETE_DE_FONCTION = re.compile(r"^[A-Za-z][^;{}\n]*?\b(\w+)\s*\(", re.M)
 
 

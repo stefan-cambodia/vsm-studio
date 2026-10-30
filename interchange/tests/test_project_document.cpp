@@ -1303,6 +1303,29 @@ VSM_TEST(the_trim_write_mode_survives_the_trip_d599) {
     VSM_ASSERT(rejoue.tracks[0].automationMode == vsm::sequencer::AutomationMode::Off);
 }
 
+// D600.2 — LA LECTURE DE L'AUTOMATION fait l'aller-retour : éteinte, `"automationRead": false` ; allumée (l'origine),
+// rien d'écrit — un projet d'avant se réécrit à l'octet —, et un fichier qui ne la porte pas se relit allumé.
+VSM_TEST(the_automation_read_switch_survives_the_trip_and_on_writes_nothing_d600) {
+    Project project = buildProject();
+    const std::string allume = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(allume.find("automationRead") == std::string::npos);
+    project.tracks[0].automationRead = false;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"automationRead\": false") != std::string::npos
+               || ecrit.find("\"automationRead\":false") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.automationRead = true;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].automationRead);
+    for (size_t i = 1; i < rejoue.tracks.size(); ++i) VSM_ASSERT(rejoue.tracks[i].automationRead);
+    const ProjectLoadResult relu2 = parseProjectDocument(allume);
+    VSM_ASSERT(relu2.success);
+    applyDocumentToProject(relu2.document, rejoue);
+    VSM_ASSERT(rejoue.tracks[0].automationRead);
+}
+
 // D17.1 — LA FORME DES FONDUS, écrite seulement quand ce n'est pas la droite :
 // un projet d'avant D17.1 se réécrit octet pour octet.
 VSM_TEST(the_fade_shape_survives_the_trip_and_linear_writes_nothing) {

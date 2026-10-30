@@ -105,6 +105,10 @@ public:
     /// existante se faisait à l'aveugle. `masque` : `handVolume`, `handPan`, ou 0 pour rendre la main. Thread UI.
     static constexpr uint16_t handVolume = 1u << 0;
     static constexpr uint16_t handPan = 1u << 1;
+    /// D600.1 : LES DÉPARTS ET LE TRIM CÈDENT AUSSI À LA MAIN — les bits du masque des courbes (`autoMask_`) : 2 à 9
+    /// les départs, 10 le trim d'entrée.
+    static constexpr uint16_t handSend(size_t bus) { return static_cast<uint16_t>(1u << (2 + bus)); }
+    static constexpr uint16_t handTrim = 1u << 10;
     void setHandOverride(size_t trackIndex, uint16_t masque);
     /// D599.3 — LE DÉCALAGE D'UNE PASSE *TRIM*, joué pendant qu'elle court : la courbe de volume multipliée par
     /// `facteurVolume`, celle du panoramique augmentée de `decalagePan` (borné à −1..1). 1 et 0 au repos. Thread UI.
@@ -116,6 +120,10 @@ public:
     /// relevé du banc : c'est la mesure de ce qu'on ENTEND, lue à la source.
     float playedVolume(size_t trackIndex) const;
     float playedPan(size_t trackIndex) const;
+    /// D600.1 : le niveau d'un départ (linéaire, avant le fader post) et le trim d'entrée (dB) que le mixage applique —
+    /// la courbe, ou le projet quand rien ne la pilote ou que la main la tient. Pour le relevé, comme `playedVolume`.
+    float playedSend(size_t trackIndex, size_t bus) const;
+    float playedTrim(size_t trackIndex) const;
 
     // --- Effets d'insert par piste + sends (sections 5 et 15) -------------
     /// Chaîne d'inserts d'une piste : appliquée à la sortie stéréo de
@@ -730,8 +738,8 @@ private:
     /// les courbes sont publiées, pour que le mixage n'ait qu'un entier à
     /// consulter.
     std::array<uint16_t, kMaxTracks> autoMask_{};
-    /// D599.2 : les réglages que la main tient, par piste (mêmes bits que `autoMask_` pour le volume et le
-    /// panoramique) — retirés du masque des courbes au mixage. Écrits par le thread UI, lus par le thread audio.
+    /// D599.2 : les réglages que la main tient, par piste (les bits de `autoMask_` ; D600.1 : tous, départs et trim
+    /// compris) — retirés du masque des courbes au mixage. Écrits par le thread UI, lus par le thread audio.
     std::array<std::atomic<uint16_t>, kMaxTracks> handMask_{};
     /// D599.3 : le décalage d'une passe Trim, appliqué à la courbe pendant qu'elle court.
     std::array<std::atomic<float>, kMaxTracks> trimVolume_{};
@@ -739,6 +747,9 @@ private:
     /// D599 : le volume et le panoramique du dernier bloc mixé (la part du fader), pour `playedVolume`/`playedPan`.
     std::array<std::atomic<float>, kMaxTracks> playedVolume_{};
     std::array<std::atomic<float>, kMaxTracks> playedPan_{};
+    /// D600.1 : les départs et le trim du dernier bloc mixé, pour `playedSend`/`playedTrim`.
+    std::array<std::array<std::atomic<float>, kMaxSends>, kMaxTracks> playedSend_{};
+    std::array<std::atomic<float>, kMaxTracks> playedTrim_{};
     static constexpr uint16_t kAutoVolume = 1u << 0;
     static constexpr uint16_t kAutoPan = 1u << 1;
     static constexpr uint16_t kAutoSendFirst = 2;

@@ -590,6 +590,7 @@ ProjectDocument documentFromProject(const Project& project) {
                              : track.automationMode == vsm::sequencer::AutomationMode::Latch ? "latch"
                              : track.automationMode == vsm::sequencer::AutomationMode::Trim  ? "trim"   // D599.3
                                                                                         : "";
+        entry.automationRead = track.automationRead;   // D600.2
         entry.frozenAudio.path = track.frozenAudio.path;
         entry.frozenAudio.sampleRate = track.frozenAudio.sampleRate;
         entry.frozenAudio.frames = track.frozenAudio.frames;
@@ -888,6 +889,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
                               : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
                               : source.automationMode == "trim"  ? vsm::sequencer::AutomationMode::Trim   // D599.3
                                                                  : vsm::sequencer::AutomationMode::Off;
+        target.automationRead = source.automationRead;   // D600.2
         target.frozenAudio = {source.frozenAudio.path, source.frozenAudio.sampleRate,
                                source.frozenAudio.frames, source.frozenAudio.channels};
         target.audio = {source.audio.path, source.audio.sampleRate,
@@ -1269,6 +1271,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         if (track.delayMs != 0.0) entry.set("delayMs", JsonValue::makeFloat(track.delayMs));
         if (!track.automationMode.empty())
             entry.set("automationMode", JsonValue::makeString(track.automationMode));
+        if (!track.automationRead) entry.set("automationRead", JsonValue::makeBoolean(false));   // D600.2
         if (track.frozen || !track.frozenAudio.path.empty()) {
             entry.set("frozen", JsonValue::makeBoolean(track.frozen));
             JsonValue gel = JsonValue::makeObject();
@@ -1678,6 +1681,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
                                 : 0;
         track.delayMs = entry["delayMs"].asNumber(0.0);
         track.automationMode = entry["automationMode"].asString();
+        track.automationRead = entry["automationRead"].asBoolean(true);   // D600.2 : absent, allumée
         if (entry["frozenAudio"].isObject()) {
             track.frozenAudio.path = entry["frozenAudio"]["file"].asString();
             // MÊME RÈGLE QUE PARTOUT : un chemin absolu est refusé, jamais

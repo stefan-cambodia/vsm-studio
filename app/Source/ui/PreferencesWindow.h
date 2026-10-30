@@ -40,7 +40,8 @@ public:
                   const juce::String& libraryFolder,
                   int shortcutCount, int midiMappingCount, bool returnToStartOnStop = false,
                   float metronomeLevel = 0.35f, bool metronomeCountInOnly = false,
-                  bool metronomeRecordOnly = false, bool automationFollowsClips = true);
+                  bool metronomeRecordOnly = false, bool automationFollowsClips = true,
+                  int automationReturnMs = 250);
 
     std::function<void(float)> onUiScaleChanged;
     /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la préférence de Cubase, le défaut
@@ -53,6 +54,9 @@ public:
     /// Débrayable, et le débrayer sert : quand on remonte une prise SOUS une
     /// courbe qu'on veut garder, c'est la courbe qui a raison.
     std::function<void(bool)> onAutomationFollowsClipsChanged;
+    /// D600.3 : LE TEMPS DE RETOUR DE L'AUTOMATION (*Automation Return Time* de Cubase), en millisecondes : au lâcher
+    /// d'une passe Touch ou Trim, la courbe rejoint l'ancienne en rampe sur ce temps ; 0, elle y saute en un tick.
+    std::function<void(int)> onAutomationReturnChanged;
     std::function<void(float)> onMetronomeLevelChanged;
     std::function<void(bool)> onMetronomeCountInOnlyChanged;
     std::function<void(bool)> onMetronomeRecordOnlyChanged;
@@ -74,6 +78,8 @@ private:
     juce::Label libelleRetour_;
     juce::Label libelleClic_, libelleQuandClic_, libelleSuiviAutomation_;
     juce::ToggleButton automationSuit_ { juce::String::fromUTF8(u8"L'automation suit les clips") };
+    juce::Label libelleRetourAutomation_;   ///< D600.3
+    juce::Slider retourAutomation_ { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::Slider niveauClic_ { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::ToggleButton clicDecompteSeul_ { juce::String::fromUTF8(u8"Seulement au décompte") };
     juce::ToggleButton clicEnregistrementSeul_ { juce::String::fromUTF8(u8"Seulement à l'enregistrement") };

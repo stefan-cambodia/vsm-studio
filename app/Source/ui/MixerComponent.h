@@ -381,8 +381,17 @@ public:
     juce::String modeAffiche() const { return armer_.getButtonText(); }     ///< D599 : « W », « W touch »…
     /// D599 : l'infobulle du W, pour le relevé (`getTooltip` n'est pas `const` chez JUCE : on la lit sans la changer).
     juce::String infobulleW() const { return const_cast<juce::TextButton&>(armer_).getTooltip(); }
-    uint16_t mainTenue() const { return masqueMain_; }                         ///< D599.2 : 1 volume, 2 panoramique
+    /// D599.2 : 1 volume, 2 panoramique ; D600.1 : 4 à 512 les départs, 1 024 le trim (les bits du moteur).
+    uint16_t mainTenue() const { return masqueMain_; }
     bool trimEnCours() const { return trimFacteur_ != 1.0f || trimPan_ != 0.0f; }   ///< D599.3
+    double trimAffiche() const { return trim_.getValue(); }                    ///< D600.1 : pour le relevé
+    /// D600.1 : le bouton du départ `bus`, ou −1 s'il n'y en a pas.
+    double departAffiche(size_t bus) const {
+        return bus < static_cast<size_t>(sends_.size()) ? sends_[static_cast<int>(bus)]->getValue() : -1.0;
+    }
+    /// D600.2 : l'état du R tel qu'il se montre — « allumé », « terne » (rien à lire) ou « éteint ».
+    juce::String lectureAffichee() const;
+    juce::String infobulleR() const { return const_cast<juce::TextButton&>(lecture_).getTooltip(); }   ///< D600.2
 
     /// D599.1 — LE FADER SUIT SA COURBE (le *Read* d'une tranche de Cubase). Quand la piste a une courbe `mix.volume`
     /// (ou `mix.pan`) non vide, le fader montre la valeur de la courbe à la tête — celle que le moteur joue, par la
@@ -400,6 +409,9 @@ public:
     std::function<void(size_t, float, float)> onTrimOffset;
     /// D599.2 : une phrase pour la ligne d'état (un geste sur un fader piloté, W éteint).
     std::function<void(const juce::String&)> onDire;
+    /// D600.3 — LE TEMPS DE RETOUR, en ticks, au lâcher d'une passe qui finit à ce tick (la préférence, convertie à la
+    /// tête par l'application, qui seule tient le tempo). Absent ou 0 : le saut d'un tick d'avant.
+    std::function<vsm::midi::Tick(vsm::midi::Tick)> retourEnTicks;
 
     void refreshFromTrack() {
         nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
@@ -412,6 +424,10 @@ public:
         // et non ce que la piste contient, est ce qui rend ce défaut visible.
         volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
         pan_.setValue(track_.pan, juce::dontSendNotification);
+        // D600.1 : le trim et les départs aussi — une courbe qui se tait (R éteint) leur rend la valeur statique.
+        trim_.setValue(track_.inputTrimDb, juce::dontSendNotification);
+        for (int bus = 0; bus < sends_.size(); ++bus)
+            sends_[bus]->setValue(track_.sendLevel(static_cast<size_t>(bus)), juce::dontSendNotification);
         suivreLesCourbes(teteSuivie_);   // D599.1 : une courbe l'emporte sur la valeur statique, comme au moteur
         rafraichirDeparts();   // D567.3
     }
@@ -486,6 +502,9 @@ private:
     /// L'extrémité du curseur vaut « éteint » (20 Hz, 20 kHz) : un curseur n'a pas de case de plus.
     juce::Slider coupeBas_, coupeHaut_;
     bool reglerCoupure(juce::Slider& curseur, float& champ, float eteint, const char8_t* geste, bool ouvrirLePas);
+    /// D600.2 — LE BOUTON R, la lecture de l'automation de la piste (le *R* de Cubase), à gauche du W : allumé, ses
+    /// courbes jouent ; éteint, elles se taisent sans être effacées, le W est désarmé et refuse de s'armer.
+    juce::TextButton lecture_ { "R" };
     /// LE BOUTON W : off → touch → latch → trim (D599.3) → off. Le mot « W » plutôt qu'un
     /// pictogramme, comme chez Cubase, et sa couleur dit lequel des modes est
     /// armé (l'ambre pour `touch`, plus vif pour `latch`, la sarcelle pour `trim`).
@@ -508,8 +527,9 @@ private:
         std::vector<vsm::sequencer::AutomationPoint> decalages;
     };
     std::map<std::string, Passe> passes_;
-    /// D599.2 : la main tient le curseur — entre l'appui et le lâcher d'un glissé.
-    bool mainVolume_ = false, mainPan_ = false;
+    /// D599.2 : les réglages que la main tient — entre l'appui et le lâcher d'un glissé. D600.1 : un ensemble de noms
+    /// de courbe (`mix.volume`, `mix.pan`, `mix.trim`, `mix.send.N`), et non plus deux drapeaux.
+    std::set<std::string> tenus_;
     uint16_t masqueMain_ = 0;
     vsm::midi::Tick teteSuivie_ = 0;   ///< D599.1 : la tête du dernier suivi, pour `refreshFromTrack`
     /// D599.3 : le décalage Trim publié (facteur de gain du volume, décalage du panoramique).
@@ -518,6 +538,8 @@ private:
     void publierLaMain();
     /// D599.2 : la main se pose sur un curseur ; W éteint, sur un réglage piloté par sa courbe, la ligne d'état le dit.
     void poserLaMain(const std::string& parametre);
+    /// D600.1 : la main se lève — le lâcher d'un glissé ; la passe se ferme d'abord, puis le moteur reprend la courbe.
+    void leverLaMain(const std::string& parametre);
     /// La courbe NON VIDE de ce paramètre, ou nullptr.
     const vsm::sequencer::AutomationCurve* courbePilote(const std::string& parametre) const;
 
@@ -532,6 +554,9 @@ private:
     vsm::sequencer::AutomationCurve& courbeDe(const std::string& parametre);
     void basculerArmement();
     void rafraichirArmement();
+    void basculerLecture();     ///< D600.2
+    void rafraichirLecture();   ///< D600.2
+    juce::String lectureMontree_;   ///< D600.2 : l'aspect du R déjà peint (vide : jamais)
     /// Un bouton par bus de départ du projet. `OwnedArray` et non deux membres :
     /// leur nombre n'est plus connu à la compilation.
     juce::OwnedArray<juce::Slider> sends_;
@@ -914,6 +939,8 @@ public:
     std::function<vsm::midi::Tick()> playheadTickProvider;
     std::function<bool()> transportPlayingProvider;
     std::function<void()> onAutomationWritten;
+    /// D600.3 : voir `ChannelStrip::retourEnTicks`.
+    std::function<vsm::midi::Tick(vsm::midi::Tick)> retourEnTicks;
     /// D599 : voir `ChannelStrip::onHandChanged`, `onTrimOffset`, `onDire`.
     std::function<void(size_t, uint16_t)> onHandChanged;
     std::function<void(size_t, float, float)> onTrimOffset;

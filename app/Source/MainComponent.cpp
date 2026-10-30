@@ -374,6 +374,14 @@ MainComponent::MainComponent()
         mainSurLaLigne_[piste] = masque;
         publierLaMain(piste);
     };
+    // D600.3 : LE TEMPS DE RETOUR, la préférence en millisecondes convertie en ticks à la fin de la passe — par la
+    // carte des tempos, qui seule sait combien de ticks durent 250 ms à cet endroit du morceau.
+    mixer_.retourEnTicks = [this](vsm::midi::Tick fin) {
+        const int ms = vsm::app::ui::UiScale::properties().getIntValue("automationRetourMs", 250);
+        if (ms <= 0) return vsm::midi::Tick{0};
+        const double secondes = project_.ticksToSeconds(fin) + static_cast<double>(ms) / 1000.0;
+        return std::max<vsm::midi::Tick>(0, project_.secondsToTicks(secondes) - fin);
+    };
     // D599.3 : le décalage d'une passe Trim, entendu pendant qu'elle court.
     mixer_.onTrimOffset = [this](size_t piste, float facteur, float decalage) {
         audioEngine_.processGraph().setTrimOffset(piste, facteur, decalage);
@@ -464,7 +472,9 @@ MainComponent::MainComponent()
     automation_.onAutomationChanged =
         [this](const std::vector<vsm::audio::engine::AutomationLane>& lanes) {
             currentAutomation_ = lanes;
-            audioEngine_.processGraph().setAutomationLanes(lanes);
+            // D600.2 : une courbe d'une piste à lecture éteinte se tait, qu'elle vienne de la résolution ou du panneau.
+            for (auto& lane : currentAutomation_) lane.read = vsm::interchange::automationLaneIsRead(project_, lane);
+            audioEngine_.processGraph().setAutomationLanes(currentAutomation_);
             // ÉCRITE DANS LE PROJET TOUT DE SUITE, comme les effets. Sans
             // cela, `rebuildFromProject()` -- qui repose les courbes DEPUIS le
             // projet après un ajout ou une suppression de piste -- effacerait
@@ -1653,6 +1663,11 @@ MainComponent::MainComponent()
     preferencesPanel_.onAutomationFollowsClipsChanged = [this](bool suit) {
         arrangement_.setAutomationFollowsClips(suit);
         vsm::app::ui::UiScale::properties().setValue("automationSuitLesClips", suit);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+    };
+    // D600.3 : le temps de retour de l'automation, lu par la console au lâcher de chaque passe.
+    preferencesPanel_.onAutomationReturnChanged = [](int ms) {
+        vsm::app::ui::UiScale::properties().setValue("automationRetourMs", juce::jlimit(0, 2000, ms));
         vsm::app::ui::UiScale::properties().saveIfNeeded();
     };
     preferencesPanel_.onMetronomeLevelChanged = [this](float niveau) {
@@ -10392,7 +10407,8 @@ void MainComponent::refreshPreferences() {
         audioEngine_.processGraph().metronomeLevel(),
         audioEngine_.processGraph().metronomeCountInOnly(),
         audioEngine_.processGraph().metronomeRecordOnly(),
-        arrangement_.automationFollowsClips());
+        arrangement_.automationFollowsClips(),
+        vsm::app::ui::UiScale::properties().getIntValue("automationRetourMs", 250));   // D600.3
 }
 
 void MainComponent::showTakeComp() {
@@ -10560,7 +10576,8 @@ void MainComponent::showPreferences() {
         // Commandes -- et « ça tient dans la case » ne l'emporte jamais sur
         // « ça se lit ».
         // D417 : et une de plus, « Carte son », en tête de la section Audio.
-        preferencesWindow_->setDefaultSize(560, 622);
+        // D600.3 : et une de plus encore, le temps de retour de l'automation (30 px).
+        preferencesWindow_->setDefaultSize(560, 652);
     }
     refreshPreferences();
     preferencesWindow_->setVisible(true);
@@ -11446,6 +11463,11 @@ void MainComponent::captureSessionIntoProject() {
             case Cible::TrackVolume: nom = "mix.volume"; break;
             case Cible::TrackPan:    nom = "mix.pan"; break;
             case Cible::TrackSend:   nom = "mix.send." + std::to_string(lane.targetSlot + 1); break;
+            // D600 : LE TRIM D'ENTRÉE MANQUAIT depuis D30.4 — sa courbe, résolue et jouée, n'avait pas de nom ici, et
+            // chaque capture (l'ouverture, l'enregistrement, l'export, un geste du panneau) l'EFFAÇAIT du projet : le
+            // moteur la jouait encore, la tranche ne la voyait plus, et le fichier enregistré l'avait perdue. Trouvé par
+            // le banc de D600, qui ne lisait pas « courbe -6.00 » au trim. `-Wswitch` le disait, noyé dans le reste.
+            case Cible::TrackTrim:   nom = "mix.trim"; break;
             case Cible::MasterParam: {
                 const auto& liste = audioEngine_.processGraph().masterBus().parameterList();
                 for (const auto& info : liste)
@@ -19455,6 +19477,20 @@ void MainComponent::updateSynthRackForSelection() {
 // D599 : LE RELEVÉ DE L'AUTOMATION DES TRANCHES — ce que le fader et le panoramique MONTRENT (la tranche et la ligne de
 // piste), ce que dit la courbe à la tête, ce que la main tient, et ce que le moteur JOUE (`playedVolume`, la part du
 // fader). D599.1 se lit dans l'accord des deux premiers, D599.2 et D599.3 dans le dernier.
+namespace {
+/// D600.1 : ce que la main tient, en clair — les bits du moteur (`ProcessGraph::handVolume`… `handTrim`) joints par
+/// « + » : « volume », « pan », « départN », « trim » ; « - » si rien.
+juce::String nomsDeLaMain(uint16_t main) {
+    juce::StringArray noms;
+    if (main & 1u) noms.add("volume");
+    if (main & 2u) noms.add("pan");
+    for (int b = 0; b < 8; ++b)
+        if (main & (1u << (2 + b))) noms.add(juce::String::fromUTF8("d\xc3\xa9part") + juce::String(b + 1));
+    if (main & (1u << 10)) noms.add("trim");
+    return noms.isEmpty() ? juce::String("-") : noms.joinIntoString("+");
+}
+} // namespace
+
 void MainComponent::releverAutomation() {
     const vsm::midi::Tick tete = transport_.currentTick();
     const auto& graphe = audioEngine_.processGraph();
@@ -19472,8 +19508,17 @@ void MainComponent::releverAutomation() {
         const auto& piste = project_.tracks[i];
         const auto* cv = courbe(piste, "mix.volume");
         const auto* cp = courbe(piste, "mix.pan");
+        const auto* ct = courbe(piste, "mix.trim");   // D600.1
         const auto* ligne = trackList_.ligneDe(i);
         const uint16_t main = static_cast<uint16_t>(mainSurLaTranche_[i] | mainSurLaLigne_[i]);
+        juce::String departs;   // D600.1 : « ; départ N valeur (courbe C, entendu E) » pour chaque bouton de la tranche
+        for (size_t b = 0; b < 8 && tranche->departAffiche(b) >= 0.0; ++b) {
+            const auto* cd = courbe(piste, ("mix.send." + std::to_string(b + 1)).c_str());
+            departs += juce::String::fromUTF8(" ; d\xc3\xa9part ") + juce::String(static_cast<int>(b) + 1) + " "
+                       + juce::String(tranche->departAffiche(b), 2) + " (courbe "
+                       + (cd != nullptr ? juce::String(vsm::sequencer::automationValueAt(*cd, tete), 2) : juce::String("-"))
+                       + ", entendu " + juce::String(graphe.playedSend(i, b), 2) + ")";
+        }
         const juce::String texte =
             "VSM_AUTOMATION_TRANCHE : piste " + juce::String(static_cast<int>(i)) + juce::String::fromUTF8(" \xc2\xab ")
             + juce::String::fromUTF8(piste.name.c_str()) + juce::String::fromUTF8(" \xc2\xbb : ") + tranche->modeAffiche()
@@ -19485,12 +19530,21 @@ void MainComponent::releverAutomation() {
             + ") ; ligne "
             + (ligne != nullptr ? juce::String(ligne->volumeAffiche(), 3) + " / " + juce::String(ligne->panAffiche(), 2)
                                 : juce::String("-"))
-            + " ; main " + ((main & 3u) == 3u ? "volume+pan" : (main & 1u) ? "volume" : (main & 2u) ? "pan" : "-")
+            + " ; main " + nomsDeLaMain(main)
             + juce::String::fromUTF8(" ; jou\xc3\xa9 ") + juce::String(graphe.playedVolume(i), 3) + " / "
-            + juce::String(graphe.playedPan(i), 2) + "\n";
+            + juce::String(graphe.playedPan(i), 2)
+            // D600 : le R tel qu'il se montre, puis le trim et chaque départ — le bouton, sa courbe à la tête, et ce
+            // que le moteur en ENTEND (`playedTrim`, `playedSend`). Écrits APRÈS le reste : les bancs de D599 lisent
+            // la ligne par ses premiers champs.
+            + " ; R " + tranche->lectureAffichee()
+            + " ; trim " + juce::String(tranche->trimAffiche(), 1) + " dB (courbe "
+            + (ct != nullptr ? juce::String(vsm::sequencer::automationValueAt(*ct, tete), 2) + " dB" : juce::String("-"))
+            + ", entendu " + juce::String(graphe.playedTrim(i), 2) + " dB)" + departs + "\n";
         std::fputs(texte.toRawUTF8(), stderr);
-        if (tranches == 1)   // l'infobulle du W, dans la langue courante : une fois
+        if (tranches == 1) {   // l'infobulle du W, dans la langue courante : une fois ; D600.2 : et celle du R
             std::fputs(("VSM_AUTOMATION_W : " + tranche->infobulleW() + "\n").toRawUTF8(), stderr);
+            std::fputs(("VSM_AUTOMATION_R : " + tranche->infobulleR() + "\n").toRawUTF8(), stderr);
+        }
     }
     if (tranches == 0) std::fputs("VSM_AUTOMATION_TRANCHE : aucune tranche\n", stderr);
 }

@@ -489,3 +489,77 @@ VSM_TEST(the_hand_overrides_the_curve_and_a_trim_offset_scales_it_d599) {
     const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
     VSM_ASSERT_EQ(peakBetween(rendu, 8000.0, 0.2, 0.9), courbe.crete);
 }
+
+// D600.1 — LES DÉPARTS ET LE TRIM CÈDENT À LA MAIN, comme le fader (D599.2). L'attendu (2) dans le moteur : un trim
+// statique de 0 dB sous une courbe plate à −6 dB joue −6 dB, la main posée 0 dB (la crête × 2) ; un départ statique à 1,0
+// sous une courbe à 0,5 joue 0,5, la main posée 1,0. Chaque rendu sur un graphe NEUF : une seule variable, la main.
+VSM_TEST(the_hand_overrides_the_trim_and_send_curves_d600) {
+    struct Rendu { float crete; float trim; float depart; };
+    auto rendre = [](uint16_t main) {
+        Project projet = noteProject();
+        vsm::sequencer::SendBusDescription bus;
+        bus.effectType = "reverb";
+        projet.sends.push_back(bus);
+        projet.tracks[0].volume = 1.0f;
+        projet.tracks[0].inputTrimDb = 0.0f;
+        projet.tracks[0].setSendLevel(0, 1.0f);
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        graph.setProject(projet);
+        AutomationLane trim;
+        trim.target = AutomationTarget::TrackTrim;
+        trim.targetTrackIndex = 0;
+        trim.addPoint(0, -6.0206f);
+        AutomationLane depart;
+        depart.target = AutomationTarget::TrackSend;
+        depart.targetTrackIndex = 0;
+        depart.targetSlot = 0;
+        depart.addPoint(0, 0.5f);
+        graph.setAutomationLanes({trim, depart});
+        graph.setHandOverride(0, main);
+        const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+        return Rendu{peakBetween(rendu, 8000.0, 0.2, 0.9), graph.playedTrim(0), graph.playedSend(0, 0)};
+    };
+    const Rendu courbes = rendre(0);
+    const Rendu mainTrim = rendre(ProcessGraph::handTrim);
+    const Rendu mainDepart = rendre(ProcessGraph::handSend(0));
+    VSM_ASSERT(courbes.crete > 0.002f);
+    VSM_ASSERT_NEAR(courbes.trim, -6.0206f, 1e-4f);
+    VSM_ASSERT_NEAR(courbes.depart, 0.5f, 1e-6f);
+    VSM_ASSERT_NEAR(mainTrim.trim, 0.0f, 1e-6f);
+    VSM_ASSERT_NEAR(mainTrim.depart, 0.5f, 1e-6f);     // la main sur le trim ne lâche pas le départ
+    VSM_ASSERT_NEAR(mainDepart.depart, 1.0f, 1e-6f);
+    VSM_ASSERT_NEAR(mainDepart.trim, -6.0206f, 1e-4f);
+    VSM_ASSERT_NEAR(mainTrim.crete / courbes.crete, 2.0f, 4e-3f);
+}
+
+// D600.2 — LA LECTURE ÉTEINTE. Une courbe marquée `read = false` n'est pas jouée : le rendu est celui de la même piste
+// SANS courbe, au bit près, et le moteur joue la valeur statique. Le témoin, la même courbe lue : la courbe s'entend.
+VSM_TEST(a_lane_whose_reading_is_off_is_not_played_d600) {
+    auto rendre = [](int cas) {   // 0 : sans courbe ; 1 : la courbe lue ; 2 : la courbe, lecture éteinte
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        Project projet = noteProject();
+        projet.tracks[0].volume = 1.0f;
+        graph.setProject(projet);
+        if (cas > 0) {
+            AutomationLane courbe;
+            courbe.target = AutomationTarget::TrackVolume;
+            courbe.targetTrackIndex = 0;
+            courbe.addPoint(0, 0.25f);
+            courbe.read = cas == 1;
+            graph.setAutomationLanes({courbe});
+        }
+        const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+        return std::make_pair(rendu.left, graph.playedVolume(0));
+    };
+    const auto sans = rendre(0);
+    const auto lue = rendre(1);
+    const auto eteinte = rendre(2);
+    VSM_ASSERT_NEAR(lue.second, 0.25f, 1e-6f);
+    VSM_ASSERT_NEAR(eteinte.second, 1.0f, 1e-6f);
+    VSM_ASSERT(eteinte.first == sans.first);
+    VSM_ASSERT(lue.first != sans.first);
+}

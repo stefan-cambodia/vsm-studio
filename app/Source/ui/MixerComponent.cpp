@@ -167,11 +167,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     volume_.onDragEnd = [this] {
         glisseEnCours_ = false;
-        mainVolume_ = false;   // D599.2 : avant la fermeture, qui republie ce que la main tient
-        fermerPasse("mix.volume", false);
-        // SANS PASSE (W éteint), `fermerPasse` sort avant de publier : la main restait posée après le lâcher, et le
-        // moteur jouait le fader pour toujours — vu au banc (« joué 1,000 » après le lâcher, la main « volume »).
-        publierLaMain();
+        leverLaMain("mix.volume");   // D599.2, D600.1
     };
     volume_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
@@ -205,9 +201,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     pan_.onDragEnd = [this] {
         glisseEnCours_ = false;
-        mainPan_ = false;   // D599.2
-        fermerPasse("mix.pan", false);
-        publierLaMain();   // sans passe, `fermerPasse` ne publie rien (voir le volume)
+        leverLaMain("mix.pan");   // D599.2, D600.1
     };
     pan_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
@@ -251,8 +245,9 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     trim_.onDragStart = [this] { glisseEnCours_ = true;
         if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Trim d'entrée"))));
         ouvrirPasse("mix.trim");
+        poserLaMain("mix.trim");   // D600.1 : la main l'emporte sur sa courbe, comme au fader
     };
-    trim_.onDragEnd = [this] { glisseEnCours_ = false; fermerPasse("mix.trim", false); };
+    trim_.onDragEnd = [this] { glisseEnCours_ = false; leverLaMain("mix.trim"); };
     trim_.onValueChange = [this] {
         // D427 : hors glissé (molette, clavier, saisie, double-clic), le pas s'ouvre ici.
         if (!glisseEnCours_ && onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Trim d'entrée"))));
@@ -386,8 +381,9 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
             glisseEnCours_ = true;   // D428
             if (onMixEditStarted) onMixEditStarted(pasDe(juce::String::fromUTF8(reinterpret_cast<const char*>(u8"Départ"))));
             ouvrirPasse(parametre);
+            poserLaMain(parametre);   // D600.1
         };
-        s->onDragEnd = [this, parametre] { glisseEnCours_ = false; fermerPasse(parametre, false); };
+        s->onDragEnd = [this, parametre] { glisseEnCours_ = false; leverLaMain(parametre); };
         s->onValueChange = [this, s, bus, parametre] {
             // D428 : hors glissé, le pas s'ouvre ici (la règle de D427).
             if (!glisseEnCours_ && onMixEditStarted)
@@ -406,6 +402,11 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     armer_.onClick = [this] { basculerArmement(); };
     addAndMakeVisible(armer_);
     rafraichirArmement();
+    // D600.2 : LE R, la lecture de l'automation de la piste — à gauche du W, sur sa rangée.
+    lecture_.setName("mixeur.R");
+    lecture_.onClick = [this] { basculerLecture(); };
+    addAndMakeVisible(lecture_);
+    rafraichirLecture();
 
     // D23.1 : LA POLARITÉ. Annulable comme un geste de fader : la piste
     // porte l'état, le moteur le lit à la republication du projet.
@@ -624,10 +625,12 @@ void ChannelStrip::resized() {
     solo_.setBounds(bottom.reduced(1));
     {
         auto rangeeW = r.removeFromBottom(22);
+        // D600.2 : R, W, Ø — les deux lettres seules à 20 px, le W et son mode (« W latch ») sur le reste.
+        lecture_.setBounds(rangeeW.removeFromLeft(20).reduced(1, 1));
         if (vca) armer_.setBounds(rangeeW.reduced(1, 1));   // D532.1 bis : pas de phase
         else {
-            armer_.setBounds(rangeeW.removeFromLeft(rangeeW.getWidth() / 2).reduced(1, 1));
-            phase_.setBounds(rangeeW.reduced(1, 1));   // D23.1
+            phase_.setBounds(rangeeW.removeFromRight(20).reduced(1, 1));   // D23.1
+            armer_.setBounds(rangeeW.reduced(1, 1));
         }
     }
 
@@ -809,6 +812,11 @@ void ChannelStrip::applyExternalControl(const std::string& parametre, float vale
 
 void ChannelStrip::basculerArmement() {
     using vsm::sequencer::AutomationMode;
+    // D600.2 : LECTURE ÉTEINTE, LE W NE S'ARME PAS — écrire une courbe qu'on n'entend pas serait une passe à l'aveugle.
+    if (!track_.automationRead && track_.automationMode == AutomationMode::Off) {
+        if (onDire) onDire(tr(u8"Lecture de l'automation éteinte (le R de la tranche) : la rallumer pour écrire"));
+        return;
+    }
     track_.automationMode = track_.automationMode == AutomationMode::Off   ? AutomationMode::Touch
                           : track_.automationMode == AutomationMode::Touch ? AutomationMode::Latch
                           : track_.automationMode == AutomationMode::Latch ? AutomationMode::Trim   // D599.3
@@ -837,9 +845,62 @@ void ChannelStrip::rafraichirArmement() {
                            : vsm::ui::Palette::panelRaised);
 }
 
+// D600.2 — LA LECTURE DE L'AUTOMATION. Un pas d'annulation ; la résolution est refaite par l'application
+// (`onAutomationWritten` : `applyAutomationFromProject`), qui marque les courbes de la piste et les fait taire au moteur.
+void ChannelStrip::basculerLecture() {
+    if (onMixEditStarted)
+        onMixEditStarted(pasDe(track_.automationRead ? tr(u8"Lecture de l'automation éteinte")
+                                                     : tr(u8"Lecture de l'automation allumée")));
+    track_.automationRead = !track_.automationRead;
+    if (!track_.automationRead && track_.automationMode != vsm::sequencer::AutomationMode::Off) {
+        // ÉTEINDRE LE R DÉSARME LE W, et ferme ce qui courait (la règle du désarmement, D16.8).
+        track_.automationMode = vsm::sequencer::AutomationMode::Off;
+        closeLatchedPasses();
+        rafraichirArmement();
+        if (onDire) onDire(tr(u8"Lecture de l'automation éteinte (le R de la tranche) : W désarmé"));
+    }
+    rafraichirLecture();
+    refreshFromTrack();   // les curseurs reviennent à la valeur statique (éteinte) ou à la courbe (allumée)
+    publierLaMain();
+    if (onAutomationWritten) onAutomationWritten();
+    if (onMixChanged) onMixChanged();
+}
+
+juce::String ChannelStrip::lectureAffichee() const {
+    if (!track_.automationRead) return juce::String::fromUTF8("\xc3\xa9" "teint");
+    for (const auto& c : track_.automation)
+        if (!c.points.empty() && c.parameter.rfind("master.", 0) != 0) return juce::String::fromUTF8("allum\xc3\xa9");
+    return "terne";
+}
+
+void ChannelStrip::rafraichirLecture() {
+    // TROIS ASPECTS (ROADMAP-daw, D600 « corrigé avant le code ») : allumé, la sarcelle à demi-teinte — distincte du
+    // « W trim » plein ; terne, rien à lire ; éteint, le fond de la tranche. Ne repeint que ce qui change : appelée par
+    // le minuteur, à chaque suivi des courbes.
+    const juce::String etat = lectureAffichee();
+    if (etat == lectureMontree_) return;
+    lectureMontree_ = etat;
+    const bool allume = etat.startsWith("allum");
+    const bool eteint = !track_.automationRead;
+    lecture_.setColour(juce::TextButton::buttonColourId,
+                       allume ? vsm::ui::Palette::accentTeal.withAlpha(0.5f)
+                              : eteint ? vsm::ui::Palette::panel : vsm::ui::Palette::panelRaised);
+    lecture_.setColour(juce::TextButton::textColourOffId,
+                       allume || eteint ? vsm::ui::Palette::textPrimary : vsm::ui::Palette::textSecondary);
+    lecture_.setTooltip(eteint ? tr(u8"R — lecture de l'automation ÉTEINTE : les courbes de la piste ne jouent plus — ni "
+                                    u8"en lecture, ni à l'export — sans être effacées ; le W ne s'arme pas. Un clic : "
+                                    u8"la rallumer.")
+                        : allume ? tr(u8"R — lecture de l'automation : les courbes de la piste jouent, et la tranche "
+                                      u8"les suit. Un clic : les faire taire sans les effacer.")
+                                 : tr(u8"R — lecture de l'automation : la piste n'a aucune courbe — rien à lire. Un "
+                                      u8"clic : l'éteindre quand même."));
+}
+
 const vsm::sequencer::AutomationCurve* ChannelStrip::courbePilote(const std::string& parametre) const {
     // NON VIDE, comme au moteur : une courbe sans point ne pilote rien (`resolveAutomation` la saute), et `courbeDe` en
     // crée une vide au premier geste armé.
+    // D600.2 : ET LUE — lecture éteinte, le moteur l'écarte : rien ne la pilote, et la tranche montre la valeur statique.
+    if (!track_.automationRead) return nullptr;
     for (const auto& courbe : track_.automation)
         if (courbe.parameter == parametre && !courbe.points.empty()) return &courbe;
     return nullptr;
@@ -847,25 +908,52 @@ const vsm::sequencer::AutomationCurve* ChannelStrip::courbePilote(const std::str
 
 void ChannelStrip::suivreLesCourbes(vsm::midi::Tick tete) {
     teteSuivie_ = tete;
-    if (const auto* c = courbePilote("mix.volume"); c != nullptr && !mainVolume_ && passes_.count("mix.volume") == 0)
+    const auto libre = [this](const std::string& p) { return tenus_.count(p) == 0 && passes_.count(p) == 0; };
+    if (const auto* c = courbePilote("mix.volume"); c != nullptr && libre("mix.volume"))
         volume_.setValue(gainToDb(vsm::sequencer::automationValueAt(*c, tete)), juce::dontSendNotification);
-    if (const auto* c = courbePilote("mix.pan"); c != nullptr && !mainPan_ && passes_.count("mix.pan") == 0) {
+    if (const auto* c = courbePilote("mix.pan"); c != nullptr && libre("mix.pan")) {
         pan_.setValue(vsm::sequencer::automationValueAt(*c, tete), juce::dontSendNotification);
         bullePan_.rafraichir();
     }
+    // D600.1 : LE TRIM ET LES DÉPARTS AUSSI — la valeur de la courbe telle quelle : le trim est en dB dans sa courbe
+    // comme dans sa case, un départ en niveau linéaire dans les deux.
+    if (const auto* c = courbePilote("mix.trim"); c != nullptr && libre("mix.trim"))
+        trim_.setValue(vsm::sequencer::automationValueAt(*c, tete), juce::dontSendNotification);
+    for (int bus = 0; bus < sends_.size(); ++bus) {
+        const std::string p = "mix.send." + std::to_string(bus + 1);
+        if (const auto* c = courbePilote(p); c != nullptr && libre(p)) {
+            sends_[bus]->setValue(vsm::sequencer::automationValueAt(*c, tete), juce::dontSendNotification);
+            if (static_cast<size_t>(bus) < bullesDesDeparts_.size()) bullesDesDeparts_[static_cast<size_t>(bus)]->rafraichir();
+        }
+    }
+    rafraichirLecture();   // D600.2 : une courbe a pu naître (une première passe) — le R s'allume
 }
 
 void ChannelStrip::poserLaMain(const std::string& parametre) {
-    (parametre == "mix.pan" ? mainPan_ : mainVolume_) = true;
+    tenus_.insert(parametre);
     // D599.2 : W ÉTEINT, SUR UN RÉGLAGE QUE SA COURBE PILOTE, la main s'entend tant qu'elle tient et rien ne s'écrit —
     // c'est le *Read* de Cubase. Jusqu'ici le geste réglait en silence une valeur statique que personne n'entendait ;
-    // c'est DIT, une fois par geste.
+    // c'est DIT, une fois par geste. D600.1 : sur le trim et les départs aussi.
     if (track_.automationMode == vsm::sequencer::AutomationMode::Off && courbePilote(parametre) != nullptr && onDire)
         onDire(vsm::app::ui::tr(parametre == "mix.pan"
                                     ? u8"Panoramique : suivi de sa courbe — la main s'entend tant qu'elle tient ; "
                                       u8"armer W pour l'écrire"
-                                    : u8"Volume : suivi de sa courbe — la main s'entend tant qu'elle tient ; "
+                                : parametre == "mix.trim"
+                                    ? u8"Trim d'entrée : suivi de sa courbe — la main s'entend tant qu'elle tient ; "
+                                      u8"armer W pour l'écrire"
+                                : parametre == "mix.volume"
+                                    ? u8"Volume : suivi de sa courbe — la main s'entend tant qu'elle tient ; "
+                                      u8"armer W pour l'écrire"
+                                    : u8"Départ : suivi de sa courbe — la main s'entend tant qu'elle tient ; "
                                       u8"armer W pour l'écrire"));
+    publierLaMain();
+}
+
+void ChannelStrip::leverLaMain(const std::string& parametre) {
+    tenus_.erase(parametre);   // avant la fermeture, qui republie ce que la main tient
+    fermerPasse(parametre, false);
+    // SANS PASSE (W éteint), `fermerPasse` sort avant de publier : la main restait posée après le lâcher, et le
+    // moteur jouait le fader pour toujours — vu au banc de D599 (« joué 1,000 » après le lâcher, la main « volume »).
     publierLaMain();
 }
 
@@ -876,9 +964,18 @@ void ChannelStrip::publierLaMain() {
         const auto it = passes_.find(parametre);
         return it != passes_.end() ? !it->second.trim : main;
     };
+    // LES BITS DU MOTEUR (`ProcessGraph::handVolume`, `handPan`, `handSend(n)`, `handTrim`) : 1 le volume, 2 le
+    // panoramique, 4 à 512 les huit départs, 1 024 le trim — écrits ici sans l'en-tête du moteur, que la console
+    // n'inclut pas ; `relever-automation` les relit en clair, et le banc de D600 les mesure par ce que le moteur joue.
+    const auto tenu = [this](const std::string& p) { return tenus_.count(p) > 0; };
     uint16_t masque = 0;
-    if (tient("mix.volume", mainVolume_)) masque |= 1u;
-    if (tient("mix.pan", mainPan_)) masque |= 2u;
+    if (tient("mix.volume", tenu("mix.volume"))) masque |= 1u;
+    if (tient("mix.pan", tenu("mix.pan"))) masque |= 2u;
+    if (tient("mix.trim", tenu("mix.trim"))) masque |= static_cast<uint16_t>(1u << 10);   // D600.1
+    for (int bus = 0; bus < sends_.size() && bus < 8; ++bus) {
+        const std::string p = "mix.send." + std::to_string(bus + 1);
+        if (tient(p, tenu(p))) masque |= static_cast<uint16_t>(1u << (2 + bus));
+    }
     if (masque == masqueMain_) return;
     masqueMain_ = masque;
     if (onHandChanged) onHandChanged(index_, masque);
@@ -909,6 +1006,7 @@ vsm::sequencer::AutomationCurve& ChannelStrip::courbeDe(const std::string& param
 
 void ChannelStrip::ouvrirPasse(const std::string& parametre) {
     if (track_.automationMode == vsm::sequencer::AutomationMode::Off) return;
+    if (!track_.automationRead) return;   // D600.2 : rien ne s'écrit à l'aveugle (un projet armé ET éteint, à la main)
     // LE TRANSPORT DOIT ROULER. Écrire à l'arrêt déposerait toute la passe sur
     // un seul tick -- c'est-à-dire rien de lisible --, et surtout cela
     // transformerait un simple réglage de mixage en édition de courbe.
@@ -1002,6 +1100,10 @@ void ChannelStrip::fermerPasse(const std::string& parametre, bool arretDuTranspo
         passe.points.push_back({fin, passe.points.back().value, false});
 
     auto& courbe = courbeDe(parametre);
+    // D600.3 — LE TEMPS DE RETOUR, au LÂCHER d'une passe (Touch, Trim) : la courbe rejoint l'ancienne en rampe au lieu
+    // d'y sauter en un tick. Pas à l'arrêt du transport (Latch, ou un désarmement) : rien ne joue après.
+    const vsm::midi::Tick retour = !arretDuTransport && retourEnTicks ? std::max<vsm::midi::Tick>(0, retourEnTicks(fin))
+                                                                      : 0;
     bool decalee = false;
     if (passe.trim) {
         // D599.3 : la plage DÉCALÉE, sa forme gardée ; le dernier décalage tenu jusqu'à la fin de la passe. Sans courbe
@@ -1012,9 +1114,9 @@ void ChannelStrip::fermerPasse(const std::string& parametre, bool arretDuTranspo
         decalee = vsm::sequencer::trimAutomationRange(
             courbe, passe.debut, fin, passe.decalages,
             volume ? vsm::sequencer::TrimLaw::GainDb : vsm::sequencer::TrimLaw::Additive,
-            volume ? 0.0f : -1.0f, volume ? vsm::sequencer::kTrimGainMax : 1.0f);
+            volume ? 0.0f : -1.0f, volume ? vsm::sequencer::kTrimGainMax : 1.0f, retour);
     }
-    if (!decalee) vsm::sequencer::writeAutomationRange(courbe, passe.debut, fin, passe.points);
+    if (!decalee) vsm::sequencer::writeAutomationRange(courbe, passe.debut, fin, passe.points, retour);
     if (onAutomationWritten) onAutomationWritten();
     rendreLeDecalage();
     publierLaMain();   // D599.2 : la courbe réécrite est publiée ; la main la lui rend
@@ -1401,6 +1503,9 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             // s'il roule ; ces deux réponses appartiennent à l'application.
             strip->playheadTickProvider = playheadTickProvider;
             strip->transportPlayingProvider = transportPlayingProvider;
+            strip->retourEnTicks = [this](vsm::midi::Tick fin) {   // D600.3
+                return retourEnTicks ? retourEnTicks(fin) : vsm::midi::Tick{0};
+            };
             strip->onAutomationWritten = [this] { if (onAutomationWritten) onAutomationWritten(); };
             // D599 : la main, le décalage Trim et ce qui se dit passent par l'application, qui seule tient le moteur
             // et la ligne d'état.

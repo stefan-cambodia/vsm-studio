@@ -1036,6 +1036,10 @@ public:
     std::vector<AutomationCurve> automation;
     /// D16.8 : `Off` par défaut, et absent du fichier dans ce cas.
     AutomationMode automationMode = AutomationMode::Off;
+    /// D600.2 — LA LECTURE DE L'AUTOMATION, le *R* d'une tranche de Cubase. Éteinte, les courbes de la piste ne jouent
+    /// plus — ni en lecture, ni à l'export, ni par `vsm-render` — sans être effacées : `resolveAutomation` les marque et
+    /// le moteur les écarte. Vraie d'origine, et absente du fichier dans ce cas (`"automationRead": false` sinon).
+    bool automationRead = true;
 
     /// D535.2 : LES INSTANTANÉS DE CONSOLE, nom → état de CETTE piste. Portés par la piste et
     /// non rangés par index dans le projet — la raison de `TrackEffect` : supprimer une piste

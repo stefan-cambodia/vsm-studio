@@ -58,6 +58,10 @@ public:
     /// Numéro de bus (pour `TrackSend`) ou d'insert (pour `InsertParam`).
     size_t targetSlot = 0;
     vsm::audio::plugin::ParamId targetParam = 0;
+    /// D600.2 : FAUX quand la lecture de l'automation de sa piste est éteinte (le *R*). La courbe reste dans la liste —
+    /// l'application refait les courbes du projet depuis elle, et la retirer les effacerait — et c'est le moteur qui
+    /// l'écarte à sa publication (`ProcessGraph::setAutomationLanes`).
+    bool read = true;
 
     void addPoint(Tick tick, float value, AutomationCurve curve = AutomationCurve::Linear,
                    float bend = 0.0f) {

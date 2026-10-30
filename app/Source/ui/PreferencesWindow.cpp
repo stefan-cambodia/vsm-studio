@@ -78,6 +78,23 @@ PreferencesWindow::PreferencesWindow() {
         if (onAutomationFollowsClipsChanged) onAutomationFollowsClipsChanged(automationSuit_.getToggleState());
     };
     addAndMakeVisible(automationSuit_);
+    // D600.3 : LE TEMPS DE RETOUR, sous le suivi des clips — deux réglages de l'automation, côte à côte.
+    ligne(libelleRetourAutomation_, juce::String());
+    addAndMakeVisible(libelleRetourAutomation_);
+    retourAutomation_.setName("preferences.retourAutomation");
+    retourAutomation_.setRange(0.0, 2000.0, 10.0);
+    retourAutomation_.setSliderSnapsToMousePosition(false);   // D139
+    retourAutomation_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 72, 20);
+    retourAutomation_.textFromValueFunction = [](double ms) { return juce::String(juce::roundToInt(ms)) + " ms"; };
+    retourAutomation_.valueFromTextFunction = [](const juce::String& texte) {
+        return juce::jlimit(0.0, 2000.0, texte.retainCharacters("0123456789.,").replaceCharacter(',', '.').getDoubleValue());
+    };
+    retourAutomation_.setValue(250.0, juce::dontSendNotification);
+    retourAutomation_.updateText();
+    retourAutomation_.onValueChange = [this] {
+        if (onAutomationReturnChanged) onAutomationReturnChanged(juce::roundToInt(retourAutomation_.getValue()));
+    };
+    addAndMakeVisible(retourAutomation_);
 
     ligne(libelleChaine_, juce::String());
     ligne(etatChaine_, "");
@@ -152,6 +169,9 @@ void PreferencesWindow::retraduire() {
     libelleChaine_.setText(tr(u8"Dossier"), juce::dontSendNotification);
     libelleBibliotheque_.setText(tr(u8"Dossier"), juce::dontSendNotification);
     automationSuit_.setButtonText(tr(u8"L'automation suit les clips"));
+    libelleRetourAutomation_.setText(tr(u8"Temps de retour de l'automation"), juce::dontSendNotification);   // D600.3
+    retourAutomation_.setTooltip(tr(u8"Au lâcher d'une passe Touch ou Trim, la courbe rejoint l'ancienne en rampe sur "
+                                    u8"ce temps. 0 : elle y saute en un tick."));
     clicDecompteSeul_.setButtonText(tr(u8"Seulement au décompte"));
     clicEnregistrementSeul_.setButtonText(tr(u8"Seulement à l'enregistrement"));
     retourAuDepart_.setButtonText(tr(u8"Revenir au point de départ"));
@@ -195,6 +215,7 @@ void PreferencesWindow::resized() {
     paire(rangee(30), libelleThreads_, threads_);
     paire(rangee(30), libelleRetour_, retourAuDepart_);
     paire(rangee(30), libelleSuiviAutomation_, automationSuit_);
+    paire(rangee(30), libelleRetourAutomation_, retourAutomation_);   // D600.3
     paire(rangee(30), libelleClic_, niveauClic_);
     paire(rangee(28), libelleQuandClic_, clicDecompteSeul_);
     // La seconde case n'a pas de libellé à gauche : elle prolonge la première,
@@ -223,8 +244,9 @@ void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommende
                                  const juce::String& libraryFolder,
                                  int shortcutCount, int midiMappingCount, bool returnToStartOnStop,
                                  float metronomeLevel, bool metronomeCountInOnly,
-                                 bool metronomeRecordOnly, bool automationFollowsClips) {
+                                 bool metronomeRecordOnly, bool automationFollowsClips, int automationReturnMs) {
     automationSuit_.setToggleState(automationFollowsClips, juce::dontSendNotification);
+    retourAutomation_.setValue(automationReturnMs, juce::dontSendNotification);   // D600.3
     retourAuDepart_.setToggleState(returnToStartOnStop, juce::dontSendNotification);
     niveauClic_.setValue(metronomeLevel, juce::dontSendNotification);
     clicDecompteSeul_.setToggleState(metronomeCountInOnly, juce::dontSendNotification);

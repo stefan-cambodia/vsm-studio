@@ -21,7 +21,8 @@
 namespace vsm::interchange {
 
 struct AutomationResolution {
-    /// Les courbes que le moteur sait jouer, dans l'ordre du projet.
+    /// Les courbes que le moteur sait jouer, dans l'ordre du projet. D600.2 : une courbe d'une piste dont la lecture
+    /// est éteinte (le *R*) y est AUSSI, marquée `read = false` — le moteur l'écarte —, et dite dans `warnings`.
     std::vector<vsm::audio::engine::AutomationLane> lanes;
     /// UNE PHRASE PAR COURBE NON RÉSOLUE, qui dit laquelle et pourquoi. La courbe
     /// reste dans le projet (D4.6 : la supprimer perdrait le travail à la première
@@ -35,5 +36,11 @@ struct AutomationResolution {
 /// l'espace réel du réglage ; les familles de mixage n'ont pas de descripteur et
 /// ne sont pas bornées. La courbure de chaque point (D17.7) est portée.
 AutomationResolution resolveAutomation(const vsm::sequencer::Project& project);
+
+/// D600.2 : une courbe résolue est-elle LUE ? Faux quand la lecture de l'automation de sa piste est éteinte (le *R*),
+/// sauf pour une courbe du master, qui n'appartient à aucune piste. La règle de `resolveAutomation`, exposée pour la
+/// liste que le panneau d'automation republie (`MainComponent`, `onAutomationChanged`) : une courbe qu'il crée sur une
+/// piste éteinte doit se taire comme les autres.
+bool automationLaneIsRead(const vsm::sequencer::Project& project, const vsm::audio::engine::AutomationLane& lane);
 
 } // namespace vsm::interchange

@@ -46813,3 +46813,54 @@ journal, les relevés, les projets enregistrés et le vumètre, pas des clics r�
 - **Le témoin écrit-il encore sa passe à l'arrêt ?** Sa course (3), qui ne sait pas lâcher, finit par l'arrêt du
   transport — et sa courbe est sortie inchangée. Le chemin de l'arrêt (`closeLatchedPasses`) ne fait pas partie de cette
   mesure ; le binaire neuf écrit au lâcher. **Remis**, nommé : rejouer un arrêt pendant une passe tenue.
+
+### Phase D600 — MESURÉE, la série à jouer (30/10/2026, 15 h 28 à l'horloge)
+
+*Écrite avant son code à 07 h 16, corrigée avant le code à 13 h 00 ; codée et testée sur `master`, compilée (`-j 6`, rien
+d'autre ne tournant). Le banc `tools/automation-lecture.sh` (18 contrôles) joué deux fois sous une session verrouillée et
+l'écran éteint (13 h 23), puis — le poste en veille de 13 h 30 à 15 h 18 — sur le binaire corrigé, session déverrouillée
+et écran allumé. Le témoin : le binaire de D599 (`build/temoin-D599`, application et `vsm-render`), et, pour (4), le
+binaire neuf réglé à 0 ms.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D600 (1) | à l'arrêt, le départ lit 0,50 et le trim −6,0 dB (leurs courbes) | trim **−6,0 dB**, départ **0,50** (relevé à 900 ms) | « Trim 0.0 dB » et « -inf dB » (D599, la valeur statique, par `VSM_TEXTES_LISTE`) | **oui, après correction** |
+| D600 (2) | la main sur eux, W éteint : le départ joué 1,0 puis 0,5 ; le trim 0 dB puis −6 dB | départ **1,00** pendant (main « départ1 »), **0,50** après ; trim **0,00 dB** pendant, **−6,00 dB** après ; « Trim d'entrée : suivi de sa courbe — … » à la ligne d'état | au vumètre, la main tenant : trim **+6,00 dB** sur le témoin (−23,92 contre −29,92 dBFS, la tranche), départ **+6,02 dB** (−19,71 contre −25,73, la crête du master) | **oui** |
+| D600 (3) | R éteint : l'export et `vsm-render` 12,0 dB plus fort (± 0,1) ; le fader à 0,0 dB ; W refusé et dit ; la courbe pâlie ; Ctrl+Z rallume | application **+12,04 dB**, `vsm-render` **+12,04 dB** (et deux lignes « lecture éteinte ») ; fader **0,00 dB**, R « éteint » ; W reste « W », « Lecture de l'automation éteinte (le R de la tranche) : la rallumer pour écrire » ; chaleur de l'arrangement **1 946** contre **96 014** R allumé ; R cliqué → fader 0,00, Ctrl+Z → R « allumé », fader **−12,00 dB** | **0,00 dB** et **0,00 dB** ; chaleur 96 014 des deux côtés ; le W s'arme (« W touch ») | **oui, après correction** |
+| D600 (4) | à 250 ms : 1,0 à `fin`, 0,625 à `fin + 120`, 0,25 à `fin + 241` ; à 0 ms : 0,25 dès `fin + 1` | `fin` = 1 516 : **1,0000**, **0,6250**, **0,2500** — la courbe `1516:1,0 1756:0,25 1757:0,25` | 0 ms : **1,0000** puis **0,2500** dès 1 517 (`1516:1,0 1517:0,25`) | **oui** |
+| D600 (5) | en anglais, R et le réglage nommés | « R — Automation Read: the track's curves play… » ; « Automation return time » aux préférences | — | **oui** |
+| — | les suites | cœur **569 / 569** (4 neufs), moteur **1 372 / 1 372** (2 neufs), interchange **365 / 365** (3 neufs), clap 25, panneaux 11 ; gardes des sources **16** vertes | le banc entier joué sur le binaire de D599 : 16 rouges sur 18 (les deux verts : le témoin à 0 ms, et la valeur statique qu'il montre) | **oui** |
+| — | la série | `./verifier.sh --bancs`, **198** bancs (`automation-lecture` entré) — **à jouer**, l'écran allumé | — | **à jouer** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **UN DÉFAUT ANTÉRIEUR, depuis D30.4 : la courbe du trim d'entrée s'EFFAÇAIT du projet.** `captureSessionIntoProject`
+  nomme chaque courbe résolue pour la réécrire dans `Track::automation` ; son `switch` connaissait le volume, le
+  panoramique, les départs, le master, les inserts et les machines — pas `TrackTrim`. Une courbe `mix.trim` était donc
+  résolue et JOUÉE (le moteur l'avait reçue avant), puis retirée du projet à la première capture : la tranche ne la
+  voyait plus, et l'enregistrement la perdait. Vu au premier essai — le trim à 0,0 dB, « courbe - » au relevé, pendant que
+  le moteur jouait −6,00 dB — et sondé : la courbe manquait dès le relevé de 100 ms après l'ouverture (ce qui appelle la
+  capture si tôt n'a pas été cherché plus loin). Le témoin le montre encore : enregistré par le binaire de D599, le projet
+  ne garde que `mix.send.1`. Corrigé (`case TrackTrim: "mix.trim"`), et le banc le garde (« la courbe de trim survit à
+  l'enregistrement »). `-Wswitch` le disait, noyé dans le reste des avertissements.
+- **Deux instruments du banc, corrigés après la première mesure, et dits dans son en-tête** : la lecture des WAV —
+  `wave` refuse le flottant que `vsm-render` écrit, et le contrôle rendait « ? » (le RIFF est lu à la main) ; la pâleur —
+  le compte de pixels d'ambre pur lisait 1 945 contre 1 862, la tête de lecture et les cadres de sélection, d'abord sur
+  une photo du piano roll (la vue n'était pas l'arrangement), puis sur l'arrangement, où le trait de 1,5 px anticrénelé sur
+  le bleu du clip n'atteint jamais l'ambre pur. La mesure est la chaleur (Σ rouge − bleu) de l'arrangement seul : 96 014
+  contre 1 946. Et deux fautes de relevé : la ligne d'état lue après le lâcher (« Prêt ») au lieu de pendant la prise, et
+  `VSM_TEXTE` là où la fenêtre des préférences écrit `VSM_FENETRE_TEXTE`.
+- **« (R) » se lisait comme une touche** : la garde `raccourcis-affiches.py` a refusé les cinq libellés — R est la touche
+  de « reference.cycle ». Un utilisateur aurait cru que la touche R rallume la lecture. Écrit désormais « le R de la
+  tranche » et « R — lecture de l'automation : … » ; l'anglais suit. Et un relevé (« allumé », « éteint ») écrit par une
+  édition scriptée sortait en « allumÃ© » : un `\xc3\xa9` interprété par Python en écrivant le C++ — vu au relevé, corrigé.
+- **La rangée R / W / Ø, regardée** (1 600 × 1 000) : le R à demi-teinte de sarcelle à gauche, « W touch » en ambre, Ø à
+  droite, les trois lisibles ; R éteint prend le fond de la tranche, le fader y lit 0,0 dB. La fenêtre des préférences
+  (photographiée en anglais, recomposée sur `0x1f1f24`) porte « Automation return time — 250 ms » sous « Automation follows
+  the clips », la fenêtre grandie de 30 px (622 → 652).
+- **Le piège de `pkill -f`, repayé** : pour arrêter une compilation, un `pkill -f "cmake --build build --target
+  VintageSynthMidiStudio"` a tué le shell qui portait le motif — et l'édition qui suivait dans la même commande n'a pas eu
+  lieu ; les compilateurs orphelins ont été arrêtés par leur NOM (`pkill -x cc1plus`), puis l'édition refaite et
+  vérifiée par `grep`.
+- **Remis, nommé** : le panneau « Automation » (l'onglet du dock) ne pâlit pas les courbes d'une piste à R éteint — seul
+  l'arrangement le fait, comme écrit ; le retour en rampe ne s'applique qu'au LÂCHER, pas à l'arrêt du transport (Latch,
+  désarmement) ; un contrôleur MIDI appris ne pose toujours pas la main (D29.3, D599).

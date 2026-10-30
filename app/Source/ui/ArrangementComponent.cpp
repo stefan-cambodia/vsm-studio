@@ -4250,6 +4250,10 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             float mini = 0.0f, maxi = 1.0f;
             if (automationRange) automationRange(i, courbe->parameter, mini, maxi);
             const int bande = h - 8;
+            // D600.2 : LECTURE ÉTEINTE (le R de la tranche), la courbe se dessine PÂLIE — elle est là, elle ne joue
+            // pas. Une courbe du master rangée dans cette piste ne se tait pas avec elle (`resolveAutomation`).
+            const bool pale = !track.automationRead && courbe->parameter.rfind("master.", 0) != 0;
+            const float encre = pale ? 0.35f : 1.0f;
 
             juce::Path trace;
             bool commence = false;
@@ -4260,7 +4264,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                 if (!commence) { trace.startNewSubPath(static_cast<float>(x), yy); commence = true; }
                 else trace.lineTo(static_cast<float>(x), yy);
             }
-            g.setColour(Palette::accentAmber.withAlpha(0.9f));
+            g.setColour(Palette::accentAmber.withAlpha(0.9f * encre));
             g.strokePath(trace, juce::PathStrokeType(1.5f));
 
             // LA POIGNÉE DE COURBURE (D17.7), au milieu de chaque segment
@@ -4276,7 +4280,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                 const auto tm = static_cast<vsm::midi::Tick>((a.tick + b.tick) / 2);
                 const float ym = valueToY(vsm::sequencer::automationValueAt(*courbe, tm),
                                            mini, maxi, y + 4, bande);
-                g.setColour(Palette::accentAmber.withAlpha(a.curve == 0.0f ? 0.45f : 0.95f));
+                g.setColour(Palette::accentAmber.withAlpha((a.curve == 0.0f ? 0.45f : 0.95f) * encre));
                 g.drawEllipse(xm - 3.5f, ym - 3.5f, 7.0f, 7.0f, 1.4f);
             }
 
@@ -4284,7 +4288,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                 const float x = tickToX(point.tick);
                 if (x < kHeaderWidth || x > bounds.getWidth()) continue;
                 const float yy = valueToY(point.value, mini, maxi, y + 4, bande);
-                g.setColour(Palette::accentAmber);
+                g.setColour(Palette::accentAmber.withAlpha(encre));
                 g.fillRect(x - 3.0f, yy - 3.0f, 6.0f, 6.0f);
                 // UN PALIER SE VOIT : carré plein contre carré évidé. Sans
                 // cela, deux points identiques à l'œil se comporteraient
@@ -4300,10 +4304,10 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // deux devenaient illisibles. Il appartient de toute façon à la
             // piste -- c'est elle qui décide quelle courbe elle montre.
             if (h >= 40) {
-                g.setColour(Palette::accentAmber.withAlpha(0.85f));
+                g.setColour(Palette::accentAmber.withAlpha(0.85f * encre));
                 g.setFont(juce::Font(juce::FontOptions(12.0f)));
-                g.drawText(juce::String(courbe->parameter), 24, y + h - 16, kHeaderWidth - 30, 13,
-                            juce::Justification::centredLeft, true);
+                g.drawText(juce::String(courbe->parameter) + (pale ? vsm::app::ui::tr(u8" (R éteint)") : juce::String()), 24,
+                           y + h - 16, kHeaderWidth - 30, 13, juce::Justification::centredLeft, true);
             }
         }
     }

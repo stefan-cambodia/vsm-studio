@@ -58,14 +58,19 @@ size_t shiftAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
 }
 
 void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
-                           const std::vector<AutomationPoint>& written) {
+                           const std::vector<AutomationPoint>& written, Tick returnTicks) {
     if (written.empty() || toTick < fromTick) return;
 
     // CE QUE LA COURBE DISAIT AUX BORDS, LU AVANT DE TOUCHER À QUOI QUE CE
     // SOIT : après suppression, il n'y aurait plus rien à lire.
     const bool avait = !curve.points.empty();
+    // D600.3 : LE RETOUR prolonge la plage réécrite ; sur une courbe vide, il
+    // n'y a rien à rejoindre et la plage reste celle qu'on a jouée.
+    const bool retour = avait && returnTicks > 0;
+    const Tick bout = retour ? toTick + returnTicks : toTick;
     const float avant = avait ? automationValueAt(curve, fromTick > 0 ? fromTick - 1 : 0) : 0.0f;
-    const float apres = avait ? automationValueAt(curve, toTick + 1) : 0.0f;
+    const float apres = avait ? automationValueAt(curve, bout + 1) : 0.0f;
+    const float auBout = retour ? automationValueAt(curve, bout) : 0.0f;
 
     // UNE CARTE PAR TICK, et non un tri suivi d'un dédoublonnage : deux points
     // au même tick rendraient le segment entre eux indéfini, et il faut que ce
@@ -74,14 +79,19 @@ void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
     // ex æquo : la courbe aurait dépendu de l'implémentation de `std::sort`.
     std::map<Tick, AutomationPoint> parTick;
     for (const auto& p : curve.points)
-        if (p.tick < fromTick || p.tick > toTick) parTick[p.tick] = p;
+        if (p.tick < fromTick || p.tick > bout) parTick[p.tick] = p;
 
     // LES RACCORDS, à UN TICK de la plage et non à ses bords : posés dessus,
     // ils écraseraient le premier et le dernier point de ce qu'on vient de
     // jouer. Seulement si la courbe disait quelque chose, et seulement s'il y
     // a la place (une plage qui commence au tick 0 n'a pas de « juste avant »).
     if (avait && fromTick > 0) parTick[fromTick - 1] = {fromTick - 1, avant, false};
-    if (avait) parTick[toTick + 1] = {toTick + 1, apres, false};
+    if (avait) parTick[bout + 1] = {bout + 1, apres, false};
+    // D600.3 : LE BOUT DU RETOUR, sur la valeur de la courbe d'AVANT en ce
+    // tick : la rampe file du dernier point joué jusqu'à lui. Sans ce point, le
+    // raccord seul (un tick plus loin) ferait manquer la mi-rampe d'un
+    // deux-cent-quarantième.
+    if (retour) parTick[bout] = {bout, auBout, false};
 
     // EN DERNIER, donc vainqueurs : ce qu'on vient de jouer.
     for (const auto& p : written)
@@ -113,7 +123,7 @@ float decalageA(const std::vector<AutomationPoint>& decalages, Tick tick) {
 
 bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
                          const std::vector<AutomationPoint>& offsets, TrimLaw law,
-                         float minimum, float maximum) {
+                         float minimum, float maximum, Tick returnTicks) {
     if (curve.points.empty() || offsets.empty() || toTick < fromTick) return false;
 
     std::vector<AutomationPoint> decalages = offsets;
@@ -169,7 +179,7 @@ bool trimAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
     std::vector<AutomationPoint> ecrits;
     ecrits.reserve(resultat.size());
     for (const auto& [tick, point] : resultat) ecrits.push_back(point);
-    writeAutomationRange(curve, fromTick, toTick, ecrits);
+    writeAutomationRange(curve, fromTick, toTick, ecrits, returnTicks);
     return true;
 }
 

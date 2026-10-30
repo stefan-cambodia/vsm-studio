@@ -323,6 +323,8 @@ struct ProjectTrack {
     /// D16.8 : le mode d'écriture de l'automation (« off », « touch »,
     /// « latch »). Vide = off, et rien n'est écrit dans ce cas.
     std::string automationMode;
+    /// D600.2 : la lecture de l'automation (le *R*) ; écrit `"automationRead": false` seulement quand elle est éteinte.
+    bool automationRead = true;
     /// « midi » (défaut), « audio » ou « group ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
     /// qu'il avait avant que les pistes audio existent.

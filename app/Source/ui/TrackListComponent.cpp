@@ -371,6 +371,7 @@ void TrackRowComponent::refreshMix() {
 namespace {
 /// D599 : la courbe NON VIDE de ce paramètre, ou nullptr — comme au moteur, qui saute une courbe sans point.
 const vsm::sequencer::AutomationCurve* courbePilote(const vsm::sequencer::Track& piste, const char* parametre) {
+    if (!piste.automationRead) return nullptr;   // D600.2 : lecture éteinte, le moteur l'écarte — rien ne la pilote
     for (const auto& courbe : piste.automation)
         if (courbe.parameter == parametre && !courbe.points.empty()) return &courbe;
     return nullptr;
