@@ -46864,3 +46864,69 @@ binaire neuf réglé à 0 ms.*
 - **Remis, nommé** : le panneau « Automation » (l'onglet du dock) ne pâlit pas les courbes d'une piste à R éteint — seul
   l'arrangement le fait, comme écrit ; le retour en rampe ne s'applique qu'au LÂCHER, pas à l'arrêt du transport (Latch,
   désarmement) ; un contrôleur MIDI appris ne pose toujours pas la main (D29.3, D599).
+
+### Phase D601 — un soixante et unième audit : la lecture de toutes les pistes, la suspension par famille, le panneau qui pâlit (30/10/2026)
+
+*Écrite le 30/10 à 15 h 31 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de 198 bancs qui clôt D599 et D600 — rien ne se compile avant sa fin.*
+
+**D'OÙ ELLE VIENT.** D600 a donné à chaque tranche son R, et a remis une chose en la nommant : le panneau « Automation »
+(l'onglet du dock) ne pâlit pas les courbes qu'un R éteint fait taire — l'arrangement seul le fait. **Et deux zéros de
+Cubase, sondés autour du R en l'écrivant**, lus dans le code (aucun chemin qui touche la lecture ou l'armement de PLUSIEURS
+pistes : `automationRead` n'est écrit que par `ChannelStrip::basculerLecture`, `automationMode` que par la tranche) :
+**0 pour la lecture et l'écriture de toutes les pistes** — les R et W globaux de la console de Cubase (*Activate/Deactivate
+Read for all tracks*, *Deactivate Write for all tracks*) : faire taire toute l'automation d'un morceau pour l'écouter
+« à plat » demande ici un clic par tranche, et désarmer tous les W aussi ; **0 pour la suspension par famille** — le
+*Suspend Read* du panneau d'automation de Cubase, qui fait taire, sur TOUT le projet, une famille de courbes (le volume,
+les départs…) sans toucher aux autres : la seule façon ici d'écouter un mixage sans ses fondus de volume en gardant ses
+balayages de filtre est d'éteindre le R de chaque piste, qui fait taire les filtres avec.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D601.1 | **La lecture et l'écriture de toutes les pistes** — les R et W globaux | au menu Mixage : « Allumer la lecture de toutes les pistes », « Éteindre la lecture de toutes les pistes », « Désarmer le W de toutes les pistes » ; un pas d'annulation chacun ; grisés quand ils n'ont rien à changer ; la ligne d'état dit combien de pistes ont changé ; éteindre désarme les W (la règle de D600) ; mesuré par l'export et le relevé, le témoin à côté |
+| D601.2 | **La suspension par famille** — le *Suspend Read* | au menu Mixage, un sous-menu « Suspendre la lecture » à six cases — Volume, Panoramique, Départs, Trim, Inserts, Machines — retenues dans le projet ; une famille suspendue ne joue plus — ni en lecture, ni à l'export, ni par `vsm-render` —, la tranche ne la suit plus, l'arrangement la pâlit ; un pas d'annulation ; mesuré par l'export, le témoin à côté |
+| D601.3 | **Le panneau d'automation pâlit ce qui ne joue pas** — le reste de D600 | une courbe d'une piste à R éteint, ou d'une famille suspendue, se dessine pâlie dans l'onglet « Automation », et son relevé (`VSM_AUTOMATION`) le dit (« lue » / « tue ») ; mesuré par le relevé et la photo, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D601.2 : la suspension est une PROPRIÉTÉ DU PROJET** (`Project::automationSuspended`, un masque de six bits ;
+  `"automationSuspended": ["volume", "pan", …]` au fichier, absent quand rien n'est suspendu — un projet d'avant se relit
+  à l'octet). Chez Cubase c'est un réglage du panneau ; ici l'export et `vsm-render` doivent rendre ce qu'on entend, et ils
+  ne lisent que le projet — un réglage de préférences ferait sonner l'export autrement que la lecture (D21). Le même
+  mécanisme que le R : `resolveAutomation` MARQUE la courbe (`read = false`) et le dit (« lecture suspendue : volume »),
+  le moteur l'écarte ; `automationLaneIsRead` devient la seule règle des deux. Les familles : `mix.volume` (Volume),
+  `mix.pan` (Panoramique), `mix.send.N` (Départs), `mix.trim` (Trim), `insert.*` (Inserts), les réglages de machine
+  (Machines). Le master (`master.*`) n'est d'aucune famille : il ne se suspend pas, comme il ne se tait pas avec un R.
+- **La tranche ne suit pas une famille suspendue** (D599.1, D600.1) et la main n'y a rien à emporter ; le W reste armable
+  (Cubase garde l'écriture : *Suspend Write* est un autre interrupteur, hors de cette phase) — mais une passe sur une
+  famille suspendue s'écrit sans s'entendre, et la ligne d'état le DIT à l'appui (« Volume : lecture suspendue — la passe
+  s'écrit sans s'entendre »).
+- **D601.1 : trois entrées, pas un bouton de console** : la console n'a pas de bandeau commun où les poser sans prendre
+  sa place aux tranches (D342 a compté chaque pixel du fader) ; le menu Mixage les porte, avec des libellés UNIQUES dans
+  toute la barre (`VSM_MENU` prend le premier libellé exact). « Éteindre la lecture de toutes les pistes » ne touche pas
+  aux dossiers ni aux VCA sans courbe — il touche toutes les pistes qui ont un champ `automationRead`, c'est-à-dire
+  toutes ; le compte dit celles qui ont CHANGÉ.
+- **D601.3 : le panneau lit le drapeau des courbes qu'il reçoit** (`AutomationLane::read`, posé par la résolution) : il
+  n'a pas à connaître les règles, seulement à les montrer. Pâlie : l'encre de D600 (0,35), le mot « (tue) » au relevé.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE** (le jeu de D599 : 480 ticks à la noire, 120 BPM, une note tenue au do 6 sur le
+générateur de test ; volume statique 1,0) :
+(1) **toutes les pistes** — trois pistes « A », « B », « C », chacune une courbe de volume plate à 0,25 ; « C » à R éteint,
+« A » armée en Touch et « B » en Trim : « Éteindre la lecture de toutes les pistes » → les trois R « éteint », les deux W
+désarmés, « Lecture éteinte sur 2 piste(s) » ; l'export mesuré PISTE PAR PISTE (les stems, `VSM_EXPORT_STEMS` — le
+mélange de trois sinus en phase ne dirait pas laquelle a changé) : A et B **+12,0 dB** (± 0,1) sur ceux d'avant le geste,
+C **0,0 dB** (elle sonnait déjà à 1,0) ; Ctrl+Z → R allumé, allumé,
+éteint et les W rendus ; « Allumer la lecture de toutes les pistes » → trois R « allumé » (« sur 1 piste(s) ») ;
+« Désarmer le W de toutes les pistes » → « W » partout (« 2 W désarmé(s) ») ; chaque entrée grisée quand elle n'a rien à
+changer ; le témoin (D600) : les entrées absentes (`VSM_MENU : aucune entrée…`), les stems inchangés ;
+(2) **la suspension** — une piste, une courbe de volume plate à 0,25 et une courbe de panoramique plate à −1 (tout à
+gauche) : « Volume » suspendu → l'export **+12,0 dB** (± 0,1) et toujours tout à gauche (le canal droit 40 dB au moins
+sous le gauche) ; « Panoramique » suspendu à la place → le volume à 0,25 et le panoramique au centre (les deux canaux à
+1 dB l'un de l'autre) ; `vsm-render` rend la même chose et le dit (« lecture suspendue ») ; le projet enregistré porte
+`"automationSuspended": ["volume"]`, un projet sans suspension n'en porte rien ; la tranche : le fader à 0,0 dB (et non
+−12,0) quand le volume est suspendu ; le témoin (D600) : 0,0 dB d'écart, le champ ignoré ;
+(3) **le panneau** — la piste à R éteint : `VSM_AUTOMATION` dit « tue », la photo de l'onglet a moins d'un tiers de la
+chaleur (Σ rouge − bleu) de la même piste R allumé ; le témoin : « lue »… absent de son relevé, et la même chaleur ;
+(4) en anglais, les entrées et le sous-menu nommés ; les suites ; la série.
+
+**L'ORDRE.** Le cœur et l'interchange d'abord (le masque, sa résolution, le fichier, avec leurs tests joués rouges sur
+le code d'avant), puis les menus, la tranche et le panneau, puis le banc `tools/automation-globale.sh`.
