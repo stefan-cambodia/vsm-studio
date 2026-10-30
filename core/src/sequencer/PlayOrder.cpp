@@ -71,6 +71,16 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
         curseur += s.length();
     }
     if (creneaux.empty()) return false;
+    // D606.1 : LES TENANTS. Deux créneaux CONTIGUS — la section d'après commence où finit celle d'avant, sur la ligne de
+    // temps d'origine — s'entendent d'un seul tenant, comme à la lecture droite : une note (et un clip MIDI) qui traverse
+    // leur frontière y continue, entière. Coupée là, sa fin était PERDUE, jusque dans l'ordre identité. Un créneau qui ne
+    // suit pas le sien entend, lui, la fin des notes commencées avant sa section (la chasse de D585.3).
+    std::vector<bool> suitLeSien(creneaux.size(), false);
+    std::vector<Tick> finDuTenant(creneaux.size(), 0);
+    for (size_t k = 1; k < creneaux.size(); ++k)
+        suitLeSien[k] = creneaux[k - 1].section.endTick == creneaux[k].section.startTick;
+    for (size_t k = creneaux.size(); k-- > 0;)
+        finDuTenant[k] = (k + 1 < creneaux.size() && suitLeSien[k + 1]) ? finDuTenant[k + 1] : creneaux[k].section.endTick;
 
     const Tick finMateriau = project.lastUsedTick();   // celle du planificateur
     for (auto& piste : project.tracks) {
@@ -95,7 +105,8 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
             courbes.push_back(std::move(neuve));
         }
 
-        for (const auto& creneau : creneaux) {
+        for (size_t k = 0; k < creneaux.size(); ++k) {
+            const auto& creneau = creneaux[k];
             const Tick delta = creneau.sortie - creneau.section.startTick;
             const Tick debut = creneau.section.startTick;
             const Tick fin = creneau.section.endTick;
@@ -103,7 +114,7 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
             if (parLesFenetres) {
                 // CE QUE LA SECTION FAIT ENTENDRE, posé au créneau — la lecture commune avec
                 // « Copier la plage » (D535.3), rattachement de D335 compris.
-                entendreNotes(piste.notes, passages, debut, fin, creneau.sortie, notes);
+                entendreNotes(piste.notes, passages, debut, fin, creneau.sortie, notes, finDuTenant[k], !suitLeSien[k]);
                 entendreControleurs(piste.controlChanges, passages, debut, fin, creneau.sortie,
                                     [](const CcPoint& p) { return std::make_tuple(p.channel, p.controller); }, true, ccs);
                 entendreControleurs(piste.pitchBends, passages, debut, fin, creneau.sortie,
@@ -119,11 +130,13 @@ bool flattenPlayOrder(Project& project, const std::vector<int>& order) {
                 for (const auto& clip : piste.clips) {
                     const Tick clipFin = clip.startTick + clipPlayedLength(clip, finMateriau);
                     if (clipFin <= debut || clip.startTick >= fin) continue;
+                    // D606.1 : déjà recopié par le créneau d'avant, prolongé jusqu'au bout du tenant.
+                    if (suitLeSien[k] && clip.startTick < debut) continue;
                     Clip copie = clip;
                     copie.id = 0;
                     copie.groupId = 0;   // D571.1 : une copie naît hors de tout groupe
                     copie.startTick = std::max(clip.startTick, debut) + delta;
-                    copie.length = std::min(clipFin, fin) - std::max(clip.startTick, debut);
+                    copie.length = std::min(clipFin, finDuTenant[k]) - std::max(clip.startTick, debut);
                     copie.sourceStart = copie.startTick;
                     copie.sourceLength = copie.length;
                     clips.push_back(copie);

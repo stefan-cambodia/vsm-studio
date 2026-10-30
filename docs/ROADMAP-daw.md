@@ -47497,3 +47497,62 @@ file droit ; pendant une prise, la chaîne est ignorée ;
 transport arrêté ; le témoin dans le même binaire, la case décochée : la tête file droit (dans A à ~1 s) ; le témoin
 (D605) : le verbe inconnu ; l'anglais ; la fenêtre photographiée, l'élément joué éclairé ;
 (d) les suites ; la série.
+
+**CORRIGÉ APRÈS LA PREMIÈRE MESURE (05 h 13 à l'horloge), ET DIT : C'EST L'APLATISSEMENT QUI PERDAIT DU SON.** Le premier
+rendu de la chaîne [B, A, A] s'écarte de l'aplati de **0,236** — tout entier dans le premier élément (de l'échantillon 1
+à 1,5 s), et **0** sur les deux sauts suivants et sur la queue : les sauts sont exacts. La note 60, commencée dans A
+(960) et tenue jusqu'à 2 400, SONNE au début de B quand on y lance la lecture (la chasse de D585.3, cochée d'origine) ;
+l'aplatissement ne la recopie pas, car `entendreNotes` ne garde que les notes qui COMMENCENT dans la section. Lu plus loin,
+c'est un défaut de D18.4/D537 qu'aucun test ne voyait : **même l'ordre identité [A, B] coupe à la frontière une note qui
+la traverse, et sa fin est perdue** — le test « l'ordre identité ne change rien » n'a que des notes qui ne traversent pas.
+- **Deux créneaux CONTIGUS forment un seul tenant** (la section d'après commence où finit celle d'avant, sur la ligne de
+  temps d'origine) : une note — et un clip MIDI — qui traverse leur frontière continue, entière, comme on l'entend à la
+  lecture droite ; la chaîne ne saute pas entre eux (ni relâchement, ni relance).
+- **Un créneau qui ne suit pas le sien reçoit ce qu'on y entend des notes commencées avant lui**, coupées à son début —
+  ce que fait la chasse au départ et au saut (D585.3) : la nappe tenue dans un refrain joué après la coda y sonne.
+- **« Copier la plage » (D535.3), qui partage `entendreNotes`, n'est pas touché** (la règle passe par un paramètre, faux
+  d'origine) ; les clips AUDIO non plus (deux morceaux bout à bout gardent leurs fondus de sécurité) — nommés.
+- Mesures ajoutées : au cœur, l'ordre identité [A, B] rend la note qui traverse ENTIÈRE (rouge sur le code d'avant), et
+  [B, A] fait entendre au début de B la fin de la note commencée dans A ; au moteur, l'attendu (a) inchangé, et un ordre
+  identité [A, B] joué en chaîne égal au projet joué droit.
+
+### Phase D606 — MESURÉE, la série à jouer (31/10/2026, 05 h 38 à l'horloge)
+
+*Écrite avant son code à 05 h 02, corrigée après la première mesure à 05 h 13 (l'aplatissement). Le test de la chaîne
+joué d'abord contre l'aplatissement d'avant (rouge, 0,236) ; les deux tests du cœur rouges sur le code d'avant (la note
+coupée à 1 920, une seule note dans [B, A]). Le banc `tools/ordre-suivi.sh` (8 contrôles) ; le témoin : le binaire de
+D605 (`build/temoin-D605`).*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D606 (a) | la chaîne [B, A, A] contre l'aplati : < 1e-4 sur 6 s et la queue ; le joué droit > 0,05 ; la boucle ignorée ; arrêté après | **0,00e+00** — au bit près, sur les 7 s ; droit/aplati **0,374** ; départ à **2,000 s** (élément 0) ; la fin dite, la tête à 2,0000 s, arrêté, l'index à −1 | l'aplatissement d'avant : **0,236** (la note qui traverse) | **oui, après la correction de l'aplatissement** |
+| D606 (a bis) | ajouté après la mesure : l'ordre identité [A, B] en chaîne et aplati égalent le joué droit | chaîne/droit **0,00e+00**, aplati/droit **0,00e+00** | l'aplatissement d'avant coupait la note à 1 920 | **oui** |
+| D606 (b) | un déplacement désigne l'élément ; hors de tout, −1 et la tête file droit ; une prise ignore la chaîne | dans A : l'élément **1** ; à 5 s : **−1**, puis **5,512 s** ; une prise : départ **1,500 s** gardé, une seconde plus tard **2,524 s** | — | **oui** |
+| D606 (c) | au banc : ~1 s dans B (1/2) ; ~3 s dans A (2/2) ; ~5,5 s arrêté ; décoché, droit ; l'anglais ; la photo | **1/2, 2,998 s** ; **2/2, 0,995 s** ; **arrêté** (la tête rembobinée à 0, comme à la fin du morceau) ; décoché : chaîne de 0, **0,998 s** ; « Playback follows the order » ; l'élément 2 « A » éclairé, la case cochée, regardés | le binaire de D605 : 0 relevé, les verbes inconnus | **oui** |
+| — | les suites | cœur **578 / 578** (2 neufs), moteur **1 378 / 1 378** (3 neufs), interchange 368, clap 25, panneaux 11 ; et les bancs voisins rejoués verts : `chasse-aux-notes`, `arret-tete`, `punch-a-l-arret`, `boucler-selection`, `lire-selection`, `accordeur` | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Le défaut était dans l'aplatissement, pas dans la chaîne** (écrit à 05 h 13, ci-dessus) : une note qui traverse une
+  frontière de section perdait sa fin, jusque dans l'ordre identité. Le moteur a servi de témoin à D18.4 : sans un
+  second chemin qui rende le même ordre, rien ne pouvait le montrer — le test « l'ordre identité ne change rien » ne
+  posait aucune note à cheval.
+- **Les sauts sont exacts au bit** : le découpage à l'échantillon et les relances du rebouclage (D585.3) suffisent ;
+  la boucle posée sur [0, 1 s] n'a rien changé (elle s'efface devant l'ordre).
+- **Un banc qui avait tort** : le premier essai attendait « une chaîne de 2 » au moment où l'ordre est posé, avant que la
+  case soit cochée — la ligne disait « chaîne de 0 », et c'était juste. Le contrôle lit la ligne de la case.
+- **La garde des langues, rouge à juste titre** : trois mots du relevé (« ordre posé », « relevé ») passaient du
+  répartiteur des gestes à `direLOrdre` comme des chaînes françaises — la garde les a comptés à l'écran. Les sites
+  d'appel passent des codes ASCII, les mots sont choisis dans `direLOrdre`, entrée à la liste FERMÉE des fonctions de
+  banc de `inventaire_langue.py` (ECRAN 3 → 0) ; les trois mots relus au journal.
+- **Un octet faux, vu au journal** : « chaêne » — `\xc3\xaa` (ê) écrit pour `\xc3\xae` (î). Ni le compilateur ni les
+  gardes ne le voient (c'est un caractère valide) ; seul le relevé lu l'a montré.
+- **Une fenêtre réduite à 128 × 128, observée DEUX fois sur ~14 lancements, non reproduite** — écran éteint et session
+  verrouillée (05 h 30) : la fenêtre de l'ordre photographiée en 128 × 128 au lieu de 520 × 420. Rejoué à l'identique
+  trois fois, puis par chacun des verbes isolés et par le menu sur les deux binaires : 520 × 420 à chaque fois. Ni
+  reproduit ni expliqué : **pas décrit comme un défaut** (la règle de D351) ; le banc ne s'en sert pas pour juger, et la
+  série, écran allumé, le reverra s'il revient.
+- **Remis, nommés** : les contrôleurs ne sont pas chassés au saut (comme au rebouclage) ; l'export suit la ligne de
+  temps ; les clips AUDIO gardent leurs coupes aux frontières de sections contiguës (et leurs fondus de sécurité) ; un
+  clic sur un élément de la liste ne fait pas encore sauter la lecture (*Arranger Editor* de Cubase).
+
+**LA SÉRIE EST À JOUER (D605 et D606 ensemble), ÉCRAN ALLUMÉ** — les raisons écrites au bilan de D605.

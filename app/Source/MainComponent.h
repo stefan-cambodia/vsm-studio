@@ -377,6 +377,23 @@ public:
         // — le projet vide d'avant la reprise — et l'on en concluait sur le zoom.
         // Passer par `VSM_GESTE_APRES=<ms>:relever-arrangement`.
         if (geste.equalsIgnoreCase("relever-arrangement")) { releverFenetreArrangement(); return true; }
+        // D606.1 : L'ORDRE DE JEU ET SA LECTURE, sans souris — `ordre:1,0` pose l'ordre (indices des sections),
+        // `ordre-suit:oui|non` coche la case, `relever-ordre` dit l'état ; les trois ouvrent la fenêtre.
+        if (geste.startsWithIgnoreCase("ordre:")) {
+            showPlayOrder();
+            std::vector<int> ordre;
+            for (const auto& morceau : juce::StringArray::fromTokens(geste.fromFirstOccurrenceOf(":", false, false), ",", ""))
+                if (morceau.trim().isNotEmpty()) ordre.push_back(morceau.trim().getIntValue());
+            direLOrdre(playOrderPanel_.poserOrdre(ordre) ? "pose" : "refus");
+            return true;
+        }
+        if (geste.startsWithIgnoreCase("ordre-suit:")) {
+            showPlayOrder();
+            playOrderPanel_.setSuitLOrdre(geste.fromFirstOccurrenceOf(":", false, false).trim().equalsIgnoreCase("oui"));
+            direLOrdre("case");
+            return true;
+        }
+        if (geste.equalsIgnoreCase("relever-ordre")) { showPlayOrder(); direLOrdre("releve"); return true; }
         // D568.3 : l'état de chaque insert, dans la description ET sur l'instance que le moteur joue.
         if (geste.equalsIgnoreCase("relever-inserts")) { effectChain_.direLesContournements(); return true; }
         // D570.3 : le centre de chaque note visible du piano roll, dans la fenêtre.
@@ -2465,6 +2482,12 @@ private:
     void rafraichirNotesDuProjet();
     /// D18.4 : ouvre l'ordre de jeu, sections relues depuis les repères.
     void showPlayOrder();
+    /// D606.1 : republie au moteur la chaîne de l'ordre de jeu — vide quand la case n'est pas cochée ; les sections
+    /// relues depuis les repères du projet À CET INSTANT (une seconde vérité est toujours celle qui ment).
+    void publierLaChaine();
+    /// D606.1 : le relevé de banc de l'ordre de jeu (`VSM_ORDRE : …`) ; `quoi` : « pose », « refus », « case »,
+    /// « releve » — le mot écrit au journal est choisi ici.
+    void direLOrdre(const char* quoi);
     /// D18.2 : ouvre l'assemblage des prises pour la piste choisie.
     void showTakeComp();
     std::unique_ptr<PanelWindow> takeCompWindow_;

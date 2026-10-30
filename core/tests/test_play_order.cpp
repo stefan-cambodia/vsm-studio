@@ -131,6 +131,43 @@ VSM_TEST(a_note_that_would_overrun_its_section_is_cut_at_its_end) {
     VSM_ASSERT_EQ(project.tracks[0].notes[0].endTick, Tick(1920));   // coupée au bord
 }
 
+// D606.1 — CORRIGÉ APRÈS LA MESURE DE LA CHAÎNE : une note qui traverse une frontière de section. Dans l'ordre identité,
+// les deux créneaux sont CONTIGUS — un seul tenant : la note reste entière (elle était coupée à 1 920 et sa fin perdue).
+VSM_TEST(the_identity_order_keeps_a_note_that_crosses_the_section_boundary_whole_d606) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(1440, 2880, 60, 100, 0, ids);   // commence dans A, finit dans B
+    project.tracks.push_back(piste);
+    project.markers.push_back({0, "A"});
+    project.markers.push_back({1920, "B"});
+    VSM_ASSERT(flattenPlayOrder(project, {0, 1}));
+    VSM_ASSERT_EQ(project.tracks[0].notes.size(), size_t(1));
+    VSM_ASSERT_EQ(project.tracks[0].notes[0].startTick, Tick(1440));
+    VSM_ASSERT_EQ(project.tracks[0].notes[0].endTick, Tick(2880));
+}
+
+// Et un créneau qui NE SUIT PAS le sien entend la fin des notes commencées avant lui — la chasse de D585.3 : [B, A] fait
+// entendre au début de B la fin de la note commencée dans A (de 1 920 à 2 880, posée de 0 à 960), puis A la rejoue.
+VSM_TEST(a_slot_that_does_not_follow_its_own_hears_the_notes_begun_before_it_d606) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(1440, 2880, 60, 100, 0, ids);
+    project.tracks.push_back(piste);
+    project.markers.push_back({0, "A"});
+    project.markers.push_back({1920, "B"});
+    VSM_ASSERT(flattenPlayOrder(project, {1, 0}));   // B (960 ticks), puis A
+    const auto& notes = project.tracks[0].notes;
+    VSM_ASSERT_EQ(notes.size(), size_t(2));
+    VSM_ASSERT_EQ(notes[0].startTick, Tick(0));
+    VSM_ASSERT_EQ(notes[0].endTick, Tick(960));
+    VSM_ASSERT_EQ(notes[1].startTick, Tick(960 + 1440));
+    VSM_ASSERT_EQ(notes[1].endTick, Tick(960 + 1920));   // coupée à la fin de A, qui ne précède pas B ici
+}
+
 VSM_TEST(an_empty_or_invalid_order_leaves_the_project_completely_alone) {
     Project temoin = projetAB();
     Project essai = projetAB();

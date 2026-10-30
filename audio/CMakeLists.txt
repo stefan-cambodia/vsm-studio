@@ -156,6 +156,7 @@ if (VSM_BUILD_TESTS)
         tests/test_pre_section.cpp
         tests/test_expander_deesser.cpp
         tests/test_tuner.cpp
+        tests/test_play_chain.cpp
         tests/test_count_in.cpp
         tests/test_fin_du_planning.cpp
         tests/test_pose_en_vol.cpp

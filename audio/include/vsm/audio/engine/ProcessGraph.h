@@ -353,6 +353,23 @@ public:
     /// compteur, lui, les sépare sans ambiguïté.
     uint64_t loopWrapCount() const { return loopWrapCount_.load(std::memory_order_acquire); }
 
+    /// D606.1 : LA LECTURE QUI SUIT L'ORDRE DE JEU (le mode Arrangement de Cubase). `elements` : des plages [début, fin)
+    /// en TICKS, dans l'ordre de jeu, répétables ; vide = la lecture file droit. À la fin d'un élément, la tête saute au
+    /// début du suivant À L'ÉCHANTILLON, comme au rebouclage (les notes tenues relâchées, celles qui traversent la cible
+    /// relancées) ; après le dernier, le graphe s'arrête de lui-même et le dit (`consumePlayChainEnded`). La boucle
+    /// s'efface devant la chaîne, et la chaîne devant l'enregistrement. Converties en secondes à chaque projet (le tempo
+    /// a pu changer). Thread UI.
+    void setPlayChain(std::vector<std::pair<vsm::sequencer::Tick, vsm::sequencer::Tick>> elements);
+    bool hasPlayChain() const;
+    int playChainSize() const;
+    /// L'élément joué (0..n−1), ou −1 : aucune chaîne, ou la tête hors de tout élément (la lecture a quitté l'ordre).
+    int playChainIndex() const { return chainIndex_.load(std::memory_order_acquire); }
+    /// AU DÉPART (thread UI, transport arrêté) : la lecture reprend dans l'élément courant si la tête y est ; sinon la
+    /// tête va au début du premier élément. Sans chaîne, ou pendant une prise, ne fait rien.
+    void startPlayChain();
+    /// Vrai UNE fois après que la chaîne s'est terminée (le graphe s'est arrêté à la fin du dernier élément).
+    bool consumePlayChainEnded() { return chainEnded_.exchange(false, std::memory_order_acq_rel); }
+
     void seekSeconds(double seconds);  // thread UI
     void setPlaying(bool playing);     // thread UI
     bool isPlaying() const { return playing_.load(std::memory_order_acquire); }
@@ -577,6 +594,19 @@ private:
     struct LoopChase {
         std::vector<ChasedNoteEvent> relances;
     };
+    /// D606.1 : la chaîne publiée d'un coup — ses éléments en secondes, et les notes à relancer au début de chacun.
+    struct PlayChain {
+        struct Element {
+            double debut = 0.0, fin = 0.0;
+            /// Il commence où finit celui d'avant, sur la ligne de temps : un seul tenant, la lecture y passe sans sauter.
+            bool contigu = false;
+            std::vector<ChasedNoteEvent> relances;
+        };
+        std::vector<Element> elements;
+    };
+    void refreshPlayChain();                 ///< D606.1 : thread UI, à chaque chaîne et chaque projet
+    /// D606.1 : le premier élément qui contient `seconds`, ou −1.
+    static int elementContenant(const PlayChain& chaine, double seconds);
     void queueChasedNotes(double seconds);   ///< D585.3 : thread UI
     void drainChasedNotes();                 ///< D585.3 : thread audio, blocs JOUÉS seulement
     void refreshLoopChase();                 ///< D585.3 : thread UI, à chaque projet et chaque région de boucle
@@ -1093,6 +1123,15 @@ private:
     int drainedChaseNoteCount_ = 0;
     std::atomic<uint64_t> droppedChasedNotes_{0};
     std::atomic<std::shared_ptr<const LoopChase>> loopChase_;
+    /// D606.1 : la chaîne en ticks (thread UI), publiée en secondes ; l'élément joué ; la fin dite une fois.
+    std::vector<std::pair<vsm::sequencer::Tick, vsm::sequencer::Tick>> chainTicks_;
+    std::atomic<std::shared_ptr<const PlayChain>> playChain_;
+    std::atomic<int> chainIndex_{-1};
+    std::atomic<bool> chainEnded_{false};
+    /// D606.1 : les notes à relancer au saut en cours — nullptr : celles de la boucle (`loopChase_`). Posé par le fil
+    /// audio avant le rendu du segment d'après ; la chaîne qu'il désigne est tenue par `processBlock` pendant le bloc.
+    const std::vector<ChasedNoteEvent>* relancesDuSaut_ = nullptr;
+    const std::vector<ChasedNoteEvent> aucuneRelance_{};
     std::atomic<bool> metronomeCountInOnly_{false};
     std::atomic<bool> metronomeRecordOnly_{false};
     std::atomic<bool> recording_{false};

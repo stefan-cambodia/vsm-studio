@@ -4212,6 +4212,9 @@ void MainComponent::timerCallback() {
         resized();
     }
     if (ligneInfoClips_.isVisible()) ligneInfoClips_.suivre();
+    // D606.1 : l'élément que la lecture joue, éclairé dans la fenêtre de l'ordre de jeu.
+    if (playOrderWindow_ && playOrderWindow_->isVisible())
+        playOrderPanel_.setElementJoue(playOrderPanel_.suitLOrdre() ? audioEngine_.processGraph().playChainIndex() : -1);
     // UNE SEULE HORLOGE, ET PLUS DE « SELON LES CAS » (D8.3). Elle compte les
     // échantillons réellement sortis de la carte son : il n'existe pas de
     // mesure plus exacte de « où en est la lecture », puisque c'est
@@ -10564,6 +10567,45 @@ void MainComponent::showTakeComp() {
     takeCompWindow_->toFront(true);
 }
 
+void MainComponent::publierLaChaine() {
+    std::vector<std::pair<vsm::midi::Tick, vsm::midi::Tick>> chaine;
+    if (playOrderPanel_.suitLOrdre()) {
+        const auto sections = vsm::sequencer::sectionsFromMarkers(project_);
+        for (int index : playOrderPanel_.order()) {
+            // UN INDICE QUI NE DÉSIGNE PLUS RIEN (les repères ont changé) : la chaîne entière tombe, plutôt que de
+            // jouer un ordre amputé — la fenêtre, à sa prochaine lecture des sections, vide l'ordre (D18.4).
+            if (index < 0 || index >= static_cast<int>(sections.size())) { chaine.clear(); break; }
+            chaine.emplace_back(sections[static_cast<size_t>(index)].startTick, sections[static_cast<size_t>(index)].endTick);
+        }
+    }
+    audioEngine_.processGraph().setPlayChain(std::move(chaine));
+}
+
+void MainComponent::direLOrdre(const char* quoi) {
+    // EN OCTETS UTF-8 de bout en bout : un `juce::String` bâti sur un `const char*` accentué le lirait en Latin-1.
+    auto& graphe = audioEngine_.processGraph();
+    const auto& sections = playOrderPanel_.sections();
+    std::string ordre;
+    for (int index : playOrderPanel_.order()) {
+        if (!ordre.empty()) ordre += ", ";
+        ordre += index >= 0 && index < static_cast<int>(sections.size()) ? sections[static_cast<size_t>(index)].name
+                                                                          : std::string("?");
+    }
+    const int element = graphe.playChainIndex();
+    const std::string geste = quoi;
+    const std::string dit = geste == "pose"    ? "ordre pos\xc3\xa9"
+                          : geste == "refus"   ? "ordre REFUS\xc3\x89 (indice hors des sections)"
+                          : geste == "releve"  ? "relev\xc3\xa9"
+                                               : geste;
+    const std::string ligne = std::string("VSM_ORDRE : ") + dit + " ; suit " + (playOrderPanel_.suitLOrdre() ? "oui" : "non")
+        + " ; ordre [" + ordre + "] ; cha\xc3\xae" "ne de " + std::to_string(graphe.playChainSize())
+        + " ; \xc3\xa9l\xc3\xa9ment jou\xc3\xa9 " + std::to_string(element >= 0 ? element + 1 : 0) + "/"
+        + std::to_string(graphe.playChainSize()) + " ; t\xc3\xaate " + juce::String(graphe.currentSeconds(), 3).toStdString()
+        + " s ; " + (transport_.state() == TransportState::Playing ? "en lecture" : "arr\xc3\xaat\xc3\xa9")
+        + " ; case \xc2\xab " + playOrderPanel_.texteDeLaCase().toStdString() + " \xc2\xbb\n";
+    std::fputs(ligne.c_str(), stderr);
+}
+
 void MainComponent::showPlayOrder() {
     if (!playOrderWindow_) {
         playOrderPanel_.onFlatten = [this](const std::vector<int>& ordre) {
@@ -10593,6 +10635,7 @@ void MainComponent::showPlayOrder() {
                                                  vsm::sequencer::flattenChangesTempoMeaning(project_));
                 }));
         };
+        playOrderPanel_.onChainChanged = [this] { publierLaChaine(); };   // D606.1
         playOrderWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Ordre de jeu"), playOrderPanel_);
         playOrderWindow_->setDefaultSize(520, 420);
@@ -18471,6 +18514,10 @@ void MainComponent::refreshMarkerViews() {
     pianoRollPanel_.refresh();
     arrangement_.repaint();
     rafraichirFenetreReperes();   // D543.2
+    // D606.1 : LES SECTIONS SUIVENT LES REPÈRES dans la fenêtre de l'ordre de jeu, et la chaîne avec elles.
+    if (playOrderWindow_)
+        playOrderPanel_.setSections(vsm::sequencer::sectionsFromMarkers(project_),
+                                     vsm::sequencer::flattenChangesTempoMeaning(project_));
 }
 
 void MainComponent::rafraichirFenetreReperes() {
@@ -19672,6 +19719,7 @@ void MainComponent::refreshTransportSchedule() {
     transport_.setProject(project_);
     audioEngine_.processGraph().setProject(project_);
     syncMidiOutputs();   // D27.4 : les ports suivent le projet publié
+    publierLaChaine();   // D606.1 : les sections ont pu bouger avec le projet
 }
 
 void MainComponent::updateSynthRackForSelection() {

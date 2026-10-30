@@ -165,6 +165,7 @@ void ProcessGraph::setProject(const Project& project) {
     activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
     snapshot_.store(snapshot, std::memory_order_release);
     refreshLoopChase();      // D585.3 : ce qui traverse le début de la boucle a pu changer
+    refreshPlayChain();      // D606.1 : les éléments de la chaîne, en secondes, et ce qui traverse leurs débuts
     refreshRenderOrder();    // les niveaux d'envoi ont pu changer
     refreshOutputRouting();  // et la publication des sorties : APRÈS l'ordre,
                              // dont elle dérive ses deux vagues
@@ -579,6 +580,11 @@ void ProcessGraph::seekSeconds(double seconds) {
     // de référence ne rencontrent que du silence, et la boucle ne se referme
     // qu'une fois sa fin franchie.
     currentSeconds_.store(seconds, std::memory_order_release);
+    // D606.1 : EN LECTURE, le déplacement désigne le premier élément de la chaîne qui contient la position — aucun : la
+    // lecture QUITTE l'ordre et file droit ; À L'ARRÊT, aucun : le départ choisira (`startPlayChain`).
+    if (auto chaine = playChain_.load(std::memory_order_acquire))
+        chainIndex_.store(playing_.load(std::memory_order_acquire) ? elementContenant(*chaine, seconds) : -1,
+                          std::memory_order_release);
     // Un déplacement de la tête de lecture recommence le compte des passes :
     // ce qui précède appartient à un autre enregistrement.
     loopWrapCount_.store(0, std::memory_order_release);
@@ -759,6 +765,75 @@ void ProcessGraph::drainChasedNotes() {
     ChasedNoteEvent note;
     while (static_cast<size_t>(drainedChaseNoteCount_) < kMaxChasedNotesPerBlock && chaseNoteQueue_.pop(note))
         if (note.generation == generation) drainedChaseNotes_[static_cast<size_t>(drainedChaseNoteCount_++)] = note;
+}
+
+int ProcessGraph::elementContenant(const PlayChain& chaine, double seconds) {
+    for (size_t i = 0; i < chaine.elements.size(); ++i)
+        if (seconds >= chaine.elements[i].debut && seconds < chaine.elements[i].fin) return static_cast<int>(i);
+    return -1;
+}
+
+void ProcessGraph::setPlayChain(std::vector<std::pair<Tick, Tick>> elements) {
+    chainTicks_ = std::move(elements);
+    refreshPlayChain();
+    auto chaine = playChain_.load(std::memory_order_acquire);
+    chainIndex_.store(chaine && playing_.load(std::memory_order_acquire)
+                          ? elementContenant(*chaine, currentSeconds_.load(std::memory_order_acquire)) : -1,
+                      std::memory_order_release);
+}
+
+bool ProcessGraph::hasPlayChain() const {
+    auto chaine = playChain_.load(std::memory_order_acquire);
+    return chaine && !chaine->elements.empty();
+}
+
+int ProcessGraph::playChainSize() const {
+    auto chaine = playChain_.load(std::memory_order_acquire);
+    return chaine ? static_cast<int>(chaine->elements.size()) : 0;
+}
+
+void ProcessGraph::startPlayChain() {
+    auto chaine = playChain_.load(std::memory_order_acquire);
+    if (!chaine || chaine->elements.empty() || recording_.load(std::memory_order_relaxed)) return;
+    const int i = chainIndex_.load(std::memory_order_acquire);
+    const double t = currentSeconds_.load(std::memory_order_acquire);
+    if (i >= 0 && i < static_cast<int>(chaine->elements.size()) && t >= chaine->elements[static_cast<size_t>(i)].debut
+        && t < chaine->elements[static_cast<size_t>(i)].fin)
+        return;   // la tête est dans l'élément courant : la lecture y reprend
+    seekSeconds(chaine->elements.front().debut);
+    chainIndex_.store(0, std::memory_order_release);
+}
+
+void ProcessGraph::refreshPlayChain() {
+    // HORS DU FIL AUDIO, comme la chasse de la boucle : au saut, le fil audio ne fait que lire ces listes.
+    auto snapshot = snapshot_.load(std::memory_order_acquire);
+    if (chainTicks_.empty() || !snapshot) {
+        playChain_.store(nullptr, std::memory_order_release);
+        chainIndex_.store(-1, std::memory_order_release);
+        return;
+    }
+    const auto& projet = snapshot->project;
+    auto chaine = std::make_shared<PlayChain>();
+    for (size_t i = 0; i < chainTicks_.size(); ++i) {
+        const auto [debut, fin] = chainTicks_[i];
+        PlayChain::Element e;
+        e.contigu = i > 0 && chainTicks_[i - 1].second == debut;
+        e.debut = projet.ticksToSeconds(debut);
+        e.fin = projet.ticksToSeconds(std::max(debut, fin));
+        if (!projet.tracks.empty())
+            for (const auto& ev : vsm::sequencer::PlaybackScheduler::chaseNotesAt(projet, debut)) {
+                const auto* on = std::get_if<NoteOnEvent>(&ev.data);
+                if (on == nullptr || ev.trackIndex >= kMaxTracks) continue;
+                ChasedNoteEvent note;
+                note.trackIndex = static_cast<uint32_t>(ev.trackIndex);
+                note.channel = on->channel;
+                note.note = on->note;
+                note.velocity = on->velocity;
+                e.relances.push_back(note);
+            }
+        chaine->elements.push_back(std::move(e));
+    }
+    playChain_.store(std::move(chaine), std::memory_order_release);
 }
 
 void ProcessGraph::refreshLoopChase() {
@@ -1057,7 +1132,10 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
         auto sortieAvecPreEcoute = [&](int n) { auditionPlayer_.mixInto(outputL, outputR, n); };
 
         if (drainedLiveCount_ == 0 && drainedChaseCount_ == 0 && drainedLiveControlCount_ == 0
-            && !panicThisBlock_ && !stopReleaseThisBlock_ && totalActiveVoices() == 0) { sortieAvecPreEcoute(numSamples); return; }
+            && !panicThisBlock_ && !stopReleaseThisBlock_ && !wrapNoteOffPending_ && totalActiveVoices() == 0) {
+            sortieAvecPreEcoute(numSamples);
+            return;
+        }
 
         auto idleSnapshot = snapshot_.load(std::memory_order_acquire);
         if (!idleSnapshot || idleSnapshot->project.tracks.empty()) {
@@ -1085,6 +1163,7 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
         renderTrackRange(*idleSnapshot, idleAnySolo, 0, idleSamples,
                           currentSeconds_.load(std::memory_order_acquire), outputL, outputR,
                           /*includeScheduledEvents=*/false);
+        wrapNoteOffPending_ = false;   // D606.1 : la fin d'une chaîne tombée pile au bout du bloc d'avant, relâchée ici
         // Même à l'arrêt : une note d'écoute jouée sur une piste groupée doit
         // sortir par son groupe, sinon elle serait muette là et audible en
         // lecture, ce qui est le genre d'incohérence qu'on met une heure à
@@ -1170,7 +1249,13 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
         // Découpage du bloc à la frontière de boucle, pour que le rebouclage
         // soit exact à l'échantillon près plutôt qu'arrondi à la taille de
         // bloc (une boucle arrondie dériverait audiblement en quelques tours).
-        const bool loopActive = loopActive_.load(std::memory_order_acquire);
+        // D606.1 : LA CHAÎNE DE L'ORDRE DE JEU, tenue pour tout le bloc (les relances qu'elle porte y sont lues) ; la
+        // boucle s'efface devant elle, et elle devant l'enregistrement — une prise s'écrit sur la ligne de temps.
+        const auto chaine = playChain_.load(std::memory_order_acquire);
+        const bool suitLaChaine = chaine && !chaine->elements.empty() && !recording_.load(std::memory_order_relaxed);
+        relancesDuSaut_ = nullptr;
+        bool chaineFinie = false;
+        const bool loopActive = loopActive_.load(std::memory_order_acquire) && !suitLaChaine;
         const double loopStart = loopStartSeconds_.load(std::memory_order_acquire);
         const double loopEnd = loopEndSeconds_.load(std::memory_order_acquire);
 
@@ -1178,6 +1263,14 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
         double spanStartSeconds = blockStartSeconds;
         while (rendered < samplesToProcess) {
             int count = samplesToProcess - rendered;
+            int element = suitLaChaine ? chainIndex_.load(std::memory_order_acquire) : -1;
+            if (element >= static_cast<int>(chaine ? chaine->elements.size() : 0)) element = -1;
+            if (element >= 0) {
+                // Comme la fin de boucle : le bloc est découpé à la fin de l'élément.
+                const double jusquALaFin = chaine->elements[static_cast<size_t>(element)].fin - spanStartSeconds;
+                const int avantLaFin = static_cast<int>(std::ceil(jusquALaFin * sampleRate_ / vitesse));
+                count = std::min(count, std::max(1, avantLaFin));
+            }
 
             if (loopActive && loopEnd > loopStart && spanStartSeconds < loopEnd) {
                 const double untilLoopEnd = loopEnd - spanStartSeconds;
@@ -1191,9 +1284,37 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
 
             renderSpan(*snapshot, anySolo, rendered, count, spanStartSeconds, outputL, outputR, lanes.get());
             wrapNoteOffPending_ = false; // consommé par TOUTES les pistes du segment
+            relancesDuSaut_ = nullptr;
 
             rendered += count;
             spanStartSeconds += static_cast<double>(count) * vitesse / sampleRate_;
+
+            // D606.1 : LA FIN D'UN ÉLÉMENT. La tête saute au début du suivant, les notes tenues relâchées et celles qui
+            // traversent la cible relancées — le rebouclage, dont la cible est un autre endroit. Après le dernier, les
+            // notes relâchées à cet échantillon, le reste du bloc rendu SANS le planning, et le graphe s'arrête.
+            if (element >= 0 && spanStartSeconds >= chaine->elements[static_cast<size_t>(element)].fin - 1.0e-12) {
+                if (static_cast<size_t>(element) + 1 < chaine->elements.size()) {
+                    const auto& suivant = chaine->elements[static_cast<size_t>(element) + 1];
+                    chainIndex_.store(element + 1, std::memory_order_release);
+                    if (suivant.contigu) continue;   // un seul tenant : la lecture continue, rien n'est relâché
+                    wrapNoteOffPending_ = true;
+                    wrapTraite_.fill(false);
+                    spanStartSeconds = suivant.debut;
+                    relancesDuSaut_ = &suivant.relances;
+                    continue;
+                }
+                wrapNoteOffPending_ = true;
+                wrapTraite_.fill(false);
+                relancesDuSaut_ = &aucuneRelance_;
+                if (rendered < samplesToProcess) {
+                    renderTrackRange(*snapshot, anySolo, rendered, samplesToProcess - rendered, spanStartSeconds,
+                                     outputL, outputR, /*includeScheduledEvents=*/false);
+                    wrapNoteOffPending_ = false;
+                    rendered = samplesToProcess;
+                }
+                chaineFinie = true;
+                break;
+            }
 
             if (loopActive && loopEnd > loopStart && spanStartSeconds >= loopEnd - 1.0e-12) {
                 spanStartSeconds = loopStart;
@@ -1209,6 +1330,11 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
             }
         }
         blockEndSeconds = spanStartSeconds;
+        if (chaineFinie) {
+            chainIndex_.store(-1, std::memory_order_release);
+            playing_.store(false, std::memory_order_release);
+            chainEnded_.store(true, std::memory_order_release);
+        }
 
         // LES GROUPES, une fois que toutes leurs pistes ont écrit : leurs
         // inserts traitent le groupe entier, puis il rejoint le master et
@@ -1639,9 +1765,12 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         }
         // D585.3 : ET CE QUI TRAVERSE LE DÉBUT DE LA BOUCLE EST RELANCÉ, juste après les relâchements — sans quoi une
         // nappe posée au milieu de la boucle se tait à chaque tour.
-        if (chaseNotes_.load(std::memory_order_acquire))
-            if (auto boucle = loopChase_.load(std::memory_order_acquire))
-                for (const auto& c : boucle->relances) {
+        // D606.1 : au saut d'une chaîne, celles du début de l'élément d'après (`relancesDuSaut_`) ; sinon celles de la boucle.
+        std::shared_ptr<const LoopChase> boucle;
+        const std::vector<ChasedNoteEvent>* relances = relancesDuSaut_;
+        if (relances == nullptr && (boucle = loopChase_.load(std::memory_order_acquire))) relances = &boucle->relances;
+        if (chaseNotes_.load(std::memory_order_acquire) && relances != nullptr)
+                for (const auto& c : *relances) {
                     if (c.trackIndex != trackIndex || numEvents >= kMaxEventsPerBlock) continue;
                     MidiNoteEvent on;
                     on.kind = MidiNoteEvent::Kind::NoteOn;

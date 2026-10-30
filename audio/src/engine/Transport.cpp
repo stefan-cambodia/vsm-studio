@@ -42,6 +42,10 @@ void Transport::play() {
     // journaux des courses qui jouent pour de bon.
     if (std::getenv("VSM_TRACE_TRANSPORT") != nullptr)
         std::fprintf(stderr, "VSM_TRANSPORT : play\n");
+    // D606.1 : LA LECTURE QUI SUIT L'ORDRE DE JEU part de l'élément courant si la tête y est, sinon du premier — AVANT
+    // que le point de départ (D505) ne soit noté. Une fin de chaîne d'une lecture précédente ne vaut plus.
+    (void)graph_.consumePlayChainEnded();
+    graph_.startPlayChain();
     departSecondes_.store(graph_.currentSeconds(), std::memory_order_release);   // D505
     state_.store(TransportState::Playing, std::memory_order_release);
     graph_.setPlaying(true);
@@ -88,6 +92,9 @@ void Transport::setLoopRegion(Tick startTick, Tick endTick, bool enabled) {
 
 void Transport::poll() {
     if (state_.load(std::memory_order_acquire) != TransportState::Playing) return;
+    // D606.1 : LA FIN DE LA CHAÎNE arrête le transport comme la fin du morceau — le graphe s'est déjà arrêté, à
+    // l'échantillon de la fin du dernier élément. Avant la boucle : elle s'efface devant l'ordre.
+    if (graph_.consumePlayChainEnded()) { stop(); return; }
     // UNE BOUCLE NE FINIT JAMAIS, et c'est bien tout son intérêt.
     if (graph_.isLoopActive()) return;
     // D546.2 : UNE PRISE NON PLUS. C'est en enregistrant au-delà de la dernière note

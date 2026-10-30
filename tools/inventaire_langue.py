@@ -136,7 +136,8 @@ FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture", "commandesMasquee
                      "releverBandeAccords", "direDisposition",   # D549.3 : la disposition dite au journal
                      "releverInfoClips",   # D598 : la ligne VSM_INFO_CLIPS du geste `relever-info-clips`
                      "releverAutomation", "nomsDeLaMain",   # D600 : la ligne VSM_AUTOMATION_TRANCHE, ses départs et sa main
-                     "lectureAffichee")   # D600 : l'aspect du R pour le relevé (« allumé », « terne », « éteint »)
+                     "lectureAffichee",   # D600 : l'aspect du R pour le relevé (« allumé », « terne », « éteint »)
+                     "direLOrdre")   # D606.1 : la ligne VSM_ORDRE des verbes `ordre:`, `ordre-suit:`, `relever-ordre`
 EN_TETE_DE_FONCTION = re.compile(r"^[A-Za-z][^;{}\n]*?\b(\w+)\s*\(", re.M)
 
 

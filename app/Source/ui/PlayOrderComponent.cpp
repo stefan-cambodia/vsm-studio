@@ -50,6 +50,11 @@ PlayOrderComponent::PlayOrderComponent() {
     for (auto* b : {&ajouter_, &retirer_, &monter_, &descendre_, &aplatir_})
         addAndMakeVisible(*b);
 
+    // D606.1 : LA LECTURE SUIT L'ORDRE.
+    suivre_.onClick = [this] { if (onChainChanged) onChainChanged(); };
+    suivre_.setColour(juce::ToggleButton::textColourId, vsm::ui::Palette::textPrimary);
+    addAndMakeVisible(suivre_);
+
     liste_.setRowHeight(24);
     liste_.setColour(juce::ListBox::backgroundColourId, vsm::ui::Palette::panel);
     addAndMakeVisible(liste_);
@@ -64,7 +69,26 @@ void PlayOrderComponent::retraduire() {
     monter_.setButtonText(tr(u8"Monter"));
     descendre_.setButtonText(tr(u8"Descendre"));
     aplatir_.setButtonText(tr(u8"Aplatir (écrit le matériau)"));
+    suivre_.setButtonText(tr(u8"La lecture suit l'ordre"));
+    suivre_.setTooltip(tr(u8"Cochée, la lecture joue l'ordre sans toucher au matériau : à la fin d'une section, elle "
+                          u8"saute au début de la suivante, et s'arrête après la dernière. La boucle s'efface devant "
+                          u8"l'ordre, et l'ordre devant l'enregistrement. L'export suit la ligne de temps : pour "
+                          u8"exporter l'ordre, l'aplatir."));
     rafraichir();
+}
+
+bool PlayOrderComponent::poserOrdre(const std::vector<int>& ordre) {
+    for (int index : ordre)
+        if (index < 0 || index >= static_cast<int>(sections_.size())) return false;
+    ordre_ = ordre;
+    rafraichir();
+    return true;
+}
+
+void PlayOrderComponent::setElementJoue(int element) {
+    if (element == elementJoue_) return;
+    elementJoue_ = element;
+    liste_.repaint();
 }
 
 void PlayOrderComponent::setSections(std::vector<vsm::sequencer::Section> sections,
@@ -101,6 +125,7 @@ void PlayOrderComponent::rafraichir() {
     aplatir_.setEnabled(!ordre_.empty());
     liste_.updateContent();
     liste_.repaint();
+    if (onChainChanged) onChainChanged();   // D606.1 : l'ordre a pu changer
 }
 
 int PlayOrderComponent::getNumRows() { return static_cast<int>(ordre_.size()); }
@@ -114,9 +139,18 @@ void PlayOrderComponent::paintListBoxItem(int row, juce::Graphics& g, int width,
 
     g.setColour(selected ? vsm::ui::Palette::panelRaised : vsm::ui::Palette::panel);
     g.fillRect(0, 0, width, height);
+    // D606.1 : L'ÉLÉMENT QUE LA LECTURE JOUE, éclairé — un fond sarcelle et une flèche devant son numéro.
+    const bool joue = row == elementJoue_;
+    if (joue) {
+        g.setColour(vsm::ui::Palette::accentTeal.withAlpha(0.35f));
+        g.fillRect(0, 0, width, height);
+        g.setColour(vsm::ui::Palette::accentTeal);
+        g.fillRect(0, 0, 4, height);
+    }
     g.setColour(vsm::ui::Palette::textPrimary);
-    g.setFont(juce::Font(juce::FontOptions(13.0f)));
-    g.drawText(juce::String(row + 1) + ".  " + juce::String(section.name),
+    g.setFont(juce::Font(juce::FontOptions(13.0f, joue ? juce::Font::bold : juce::Font::plain)));
+    g.drawText(juce::String::fromUTF8(joue ? "\xe2\x96\xb6 " : "") + juce::String(row + 1) + ".  "
+                   + juce::String(section.name),
                 8, 0, width - 90, height, juce::Justification::centredLeft);
     // LA LONGUEUR EST DITE : deux sections du même nom se distinguent, et l'on
     // voit tout de suite qu'un ordre fait huit mesures et non trente.
@@ -141,6 +175,7 @@ void PlayOrderComponent::resized() {
 
     titreOrdre_.setBounds(zone.removeFromTop(24));
     auto bas = zone.removeFromBottom(34);
+    suivre_.setBounds(zone.removeFromBottom(30).reduced(0, 2));   // D606.1
     aplatir_.setBounds(bas.removeFromRight(200).reduced(2));
     retirer_.setBounds(bas.removeFromLeft(90).reduced(2));
     monter_.setBounds(bas.removeFromLeft(90).reduced(2));

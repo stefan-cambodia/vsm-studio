@@ -39,6 +39,19 @@ public:
 
     std::function<void(const std::vector<int>&)> onFlatten;
 
+    /// D606.1 : LA LECTURE SUIT L'ORDRE (le mode Arrangement de Cubase). La case, état de SESSION comme l'ordre ;
+    /// `onChainChanged` à chaque changement de l'ordre ou de la case — l'application republie la chaîne au moteur.
+    bool suitLOrdre() const { return suivre_.getToggleState(); }
+    void setSuitLOrdre(bool oui) { suivre_.setToggleState(oui, juce::sendNotification); }
+    /// Pose l'ordre d'un coup (le verbe de banc `ordre:`) ; les indices hors des sections sont refusés, et dits.
+    bool poserOrdre(const std::vector<int>& ordre);
+    const std::vector<vsm::sequencer::Section>& sections() const { return sections_; }
+    /// L'élément que la lecture joue (−1 : aucun) — éclairé dans la liste.
+    void setElementJoue(int element);
+    int elementJoue() const { return elementJoue_; }
+    juce::String texteDeLaCase() const { return suivre_.getButtonText(); }
+    std::function<void()> onChainChanged;
+
 private:
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
@@ -46,6 +59,7 @@ private:
     std::vector<vsm::sequencer::Section> sections_;
     std::vector<int> ordre_;
     bool tempoSeraLaisse_ = false;
+    int elementJoue_ = -1;
 
     juce::Label titreSections_, titreOrdre_, avertissement_;
     juce::ComboBox sectionAAjouter_;
@@ -55,6 +69,7 @@ private:
     juce::TextButton descendre_ { juce::String::fromUTF8(u8"Descendre") };
     juce::TextButton aplatir_ { juce::String::fromUTF8(u8"Aplatir (écrit le matériau)") };
     juce::ListBox liste_ { "ordre", this };
+    juce::ToggleButton suivre_;   // D606.1
 
     void rafraichir();
 };

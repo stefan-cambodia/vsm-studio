@@ -15,15 +15,23 @@ namespace vsm::sequencer::detail {
 
 /// Les notes que la piste fait entendre dans [debut, fin) de la ligne de temps, posées à
 /// `t − debut + ou`, coupées à la fin de la plage et à celle de leur clip.
+///
+/// D606.1 — pour « Aplatir l'ordre de jeu » : `coupe` (> `fin`) laisse courir une note au-delà de la plage, jusqu'à la
+/// fin du TENANT de créneaux contigus dont elle fait partie ; `avecCommencees` ajoute ce qu'on entend, dans la plage, des
+/// notes commencées AVANT elle (coupées à `debut`) — ce que fait la chasse de D585.3. D'origine, rien ne change :
+/// « Copier la plage » (D535.3) garde sa règle.
 inline void entendreNotes(const std::vector<Note>& notes, const std::vector<ClipPassage>& passages, Tick debut,
-                          Tick fin, Tick ou, std::vector<Note>& sortie) {
+                          Tick fin, Tick ou, std::vector<Note>& sortie, Tick coupe = -1, bool avecCommencees = false) {
+    if (coupe < fin) coupe = fin;
     for (const auto& note : notes)
         for (const auto& passage : passages) {
             const Tick t = passageOut(passage, note.startTick);
-            if (t < 0 || t < debut || t >= fin) continue;
+            if (t < 0 || t >= fin) continue;
+            const Tick finEntendue = std::min(note.endTick + passage.shift, passage.outLimit);
+            if (t < debut && !(avecCommencees && finEntendue > debut)) continue;
             Note copie = note;
-            copie.startTick = t - debut + ou;
-            copie.endTick = std::min({note.endTick + passage.shift, passage.outLimit, fin}) - debut + ou;
+            copie.startTick = std::max(t, debut) - debut + ou;
+            copie.endTick = std::min(finEntendue, coupe) - debut + ou;
             if (copie.endTick <= copie.startTick) copie.endTick = copie.startTick + 1;
             copie.id = 0;
             sortie.push_back(copie);
