@@ -47077,3 +47077,57 @@ le témoin de (1) à (6) est « aucun » (`automationRemplir` absent), du même 
   compte des avertissements a pris pour un échec ; les dossiers portent un numéro.
 - **Remis, nommé** : le remplissage reste réglé d'une passe à l'autre (le *Continuous* de Cubase, toujours vrai ici — et
   dit à chaque passe) ; *Punch* entre deux locateurs de punch (D578) n'est pas une plage de remplissage distincte.
+
+### Phase D603 — un soixante-troisième audit : la main d'un contrôleur appris, et la suspension de l'écriture (30/10/2026)
+
+*Écrite le 30/10 à 17 h 09 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de 200 bancs qui clôt D599 à D602 — rien ne se compile avant sa fin.*
+
+**D'OÙ ELLE VIENT.** D599 a remis une chose en la nommant, et D600 l'a redite : **un contrôleur MIDI appris (D29.3) ne
+pose pas la main.** Lu au code (`MainComponent::applyLearnedControls`, `ChannelStrip::applyExternalControl`) : un
+potentiomètre appris au volume d'une piste pilotée par une courbe règle la valeur STATIQUE, que personne n'entend — le
+moteur joue la courbe — et ne le dit pas ; W armé, sa passe « court jusqu'à l'arrêt du transport, comme en latch, quel
+que soit le mode » (D29.3), si bien qu'un geste de deux secondes en Touch écrit la valeur tenue jusqu'à l'arrêt, des
+mesures plus loin. Et un départ appris ne passe même pas par la tranche : il écrit `setSendLevel` dans le projet, sans
+passe ni main. Pourtant la notion qui manque existe déjà : D521 appelle **rafale** les messages d'une même cible sans
+silence de plus de 500 ms (« une demi-seconde sans rien, c'est la main qui l'a quitté »). **Et un zéro de Cubase, le
+jumeau de D601.2** : **0 pour la suspension de l'ÉCRITURE** (*Suspend Write*) — W armé, on ne peut pas retoucher le
+volume d'une passe sans réécrire aussi le panoramique qu'on effleure.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D603.1 | **La main d'un contrôleur appris** — le *touch* d'une surface de contrôle | une rafale de messages appris sur le volume, le panoramique ou un départ d'une piste POSE la main (D599.2, D600.1) ; 500 ms de silence la LÈVENT ; W éteint, le moteur joue le contrôleur tant que la rafale court, la courbe ensuite ; W en Touch, la passe se ferme à la fin de la rafale — avec le retour (D600.3) et le remplissage (D602) — et non plus à l'arrêt ; Latch reste jusqu'à l'arrêt ; un départ appris passe par la tranche comme le volume ; mesuré par ce que le moteur joue et la courbe enregistrée, le témoin (le binaire de D602) à côté |
+| D603.2 | **La suspension de l'écriture par famille** — le *Suspend Write* | au menu Mixage, un sous-menu « Suspendre l'écriture de l'automation » à quatre cases — le volume, le panoramique, les départs, le trim (les seules familles qu'une passe de tranche écrit) — retenues aux préférences ; W armé, une famille suspendue n'ouvre pas de passe : la main s'entend tant qu'elle tient (comme W éteint), rien ne s'écrit, et la ligne d'état le dit à l'appui ; mesuré par la courbe enregistrée, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE.**
+- **D603.1 : la rafale est celle de D521, comptée dans la TRANCHE** : chaque message appris de volume, de panoramique ou de
+  départ passe par `ChannelStrip::applyExternalControl` (le départ y entre : « mix.send.N ») ; le premier d'une rafale pose
+  la main (`poserLaMain`, qui ouvre la passe si W est armé et le transport roule) ; la tranche note l'instant du dernier
+  message, et le minuteur de l'application lui demande, à chaque tour, de lever les mains muettes depuis 500 ms
+  (`leverLaMain`, qui ferme la passe Touch ou Trim, et laisse courir Latch). Le seuil est la constante de D521, PAS une
+  préférence : la même demi-seconde fait un pas d'annulation et un lâcher.
+- **Trim d'un contrôleur** : la référence est la courbe au premier message, comme à l'appui de la souris (D599.3).
+- **D603.2 : un réglage de travail, aux préférences** (`automationEcritureSuspendue`, les mots de D601.2 : « volume »,
+  « pan », « sends », « trim »), comme le remplissage (D602). Les inserts et les réglages de machine ne s'écrivent pas par
+  une passe de tranche : ils n'ont pas de case — une case qui ne fait rien serait une promesse muette.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE** (le jeu de D599 : 480 ticks à la noire, 120 BPM, une note tenue au do 6 sur le
+générateur de test ; volume statique 1,0 ; les associations dans les préférences du HOME de la course — CC 21 → volume de
+la piste, CC 22 → son premier départ ; les contrôleurs entrent par `cc-entrant:`, D517) :
+(1) **W éteint**, une courbe de volume plate à 0,25 : une rafale de CC 21 à 127 (trois messages, à 700, 900 et 1 100 ms)
+→ au relevé de 1 200 ms, **joué 1,000**, la main « volume » ; au relevé de 2 000 ms (900 ms après le dernier message),
+**joué 0,250**, la main « - », le fader revenu à −12,0 dB ; le témoin (D602) : joué **0,250** pendant la rafale ;
+(2) **W en Touch**, la même rafale, le transport arrêté à 3 000 ms : la courbe enregistrée vaut **1,0** au tick du relevé
+de 1 200 ms et **0,25** au tick du relevé de 2 600 ms (la passe fermée vers 1 600 ms, sa rampe de retour finie) ; le témoin :
+**1,0** aux deux ticks (sa passe court jusqu'à l'arrêt) ;
+(3) **un départ appris**, un bus « Écho » (le jeu de D600), un départ statique à 0 sous une courbe plate à 0,5, W éteint :
+la rafale de CC 22 à 127 → **entendu 1,00** pendant, **0,50** après ; le témoin : **0,50** pendant (il règle la valeur
+statique, que la courbe recouvre) ;
+(4) **la suspension de l'écriture**, W en Touch, « Suspendre l'écriture du volume » coché au menu, la passe de D599 à la
+souris (le fader posé à 0 dB et tenu) : **joué 1,000** pendant la prise (la main s'entend), la courbe enregistrée
+IDENTIQUE à celle d'origine (ses deux points à 0,25), « écriture suspendue » à la ligne d'état ; le témoin : l'entrée
+absente, la courbe réécrite ;
+(5) en anglais, le sous-menu nommé ; les suites ; la série.
+
+**L'ORDRE.** La tranche (la main d'un contrôleur, le départ par la tranche, la levée au minuteur, la suspension de
+l'écriture), le menu et la préférence, puis le banc `tools/automation-controleur.sh` — tout après la fin de la série.
