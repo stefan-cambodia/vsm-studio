@@ -17,6 +17,13 @@ ReserveComponent::ReserveComponent() {
     rafraichir_.onClick = [this] { if (onRafraichir) onRafraichir(); };
     addAndMakeVisible(nettoyer_);
     addAndMakeVisible(rafraichir_);
+    // D608.1 : RELIER UN FICHIER MANQUANT — actif sur une ligne MANQUANT choisie, et seulement là.
+    relier_.onClick = [this] {
+        const auto fichier = fichierChoisi();
+        if (fichier.isNotEmpty() && onRelier) onRelier(fichier);
+    };
+    relier_.setEnabled(false);
+    addAndMakeVisible(relier_);
     liste_.setRowHeight(26);
     liste_.setColour(juce::ListBox::backgroundColourId, vsm::ui::Palette::panel);
     addAndMakeVisible(liste_);
@@ -28,6 +35,9 @@ void ReserveComponent::retraduire() {
     nettoyer_.setButtonText(tr(u8"Nettoyer le dossier du projet..."));
     nettoyer_.setTooltip(tr(u8"Les fichiers que rien ne désigne vont à la corbeille, après confirmation."));
     rafraichir_.setButtonText(tr(u8"Rafraîchir"));
+    relier_.setButtonText(tr(u8"Relier..."));
+    relier_.setTooltip(tr(u8"Désigner le fichier qui remplace le fichier manquant choisi : tout ce qui le désignait le "
+                          u8"désigne. Pris hors du dossier du projet, il y est copié."));
     total_.setText(total(), juce::dontSendNotification);
     repaint();
 }
@@ -37,6 +47,8 @@ void ReserveComponent::setLignes(std::vector<Ligne> lignes, bool sansDossier) {
     sansDossier_ = sansDossier;
     nettoyer_.setEnabled(!sansDossier_);
     total_.setText(total(), juce::dontSendNotification);
+    liste_.deselectAllRows();
+    relier_.setEnabled(false);
     liste_.updateContent();
     liste_.repaint();
     repaint();
@@ -106,6 +118,28 @@ std::vector<juce::Range<int>> ReserveComponent::colonnes(int largeur) {
 
 int ReserveComponent::getNumRows() { return sansDossier_ ? 0 : static_cast<int>(lignes_.size()); }
 
+void ReserveComponent::selectedRowsChanged(int) {
+    const int ligne = liste_.getSelectedRow();
+    relier_.setEnabled(ligne >= 0 && ligne < static_cast<int>(lignes_.size())
+                       && lignes_[static_cast<size_t>(ligne)].etat == Etat::Manquant);
+}
+
+bool ReserveComponent::choisir(const juce::String& fichier) {
+    for (size_t i = 0; i < lignes_.size(); ++i)
+        if (lignes_[i].fichier == fichier) {
+            liste_.selectRow(static_cast<int>(i));
+            selectedRowsChanged(static_cast<int>(i));
+            return true;
+        }
+    return false;
+}
+
+juce::String ReserveComponent::fichierChoisi() const {
+    const int ligne = liste_.getSelectedRow();
+    return ligne >= 0 && ligne < static_cast<int>(lignes_.size()) ? lignes_[static_cast<size_t>(ligne)].fichier
+                                                                  : juce::String();
+}
+
 void ReserveComponent::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) {
     if (row < 0 || row >= static_cast<int>(lignes_.size())) return;
     const auto& l = lignes_[static_cast<size_t>(row)];
@@ -154,6 +188,7 @@ void ReserveComponent::resized() {
     auto bas = zone.removeFromBottom(34);
     rafraichir_.setBounds(bas.removeFromRight(130).reduced(2));
     nettoyer_.setBounds(bas.removeFromRight(260).reduced(2));
+    relier_.setBounds(bas.removeFromRight(120).reduced(2));
     total_.setBounds(bas);
     zone.removeFromTop(4);
     enTete_ = zone.removeFromTop(24);

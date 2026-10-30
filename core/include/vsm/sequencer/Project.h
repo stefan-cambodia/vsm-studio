@@ -636,6 +636,11 @@ struct MediaDesignation {
     AudioSource source;    ///< le fichier tel que le projet le décrit (durée, format)
 };
 std::map<std::string, std::vector<MediaDesignation>> collectMediaDesignations(const Project& project);
+
+/// D608.1 — RELIER UN FICHIER MANQUANT (*Find Missing Files ▸ Locate*) : chaque désignation de `ancien` — la piste, son
+/// gel, ses prises, ses versions — passe à `nouveau`, sa description (fréquence, trames, canaux) comprise. Rend le nombre
+/// de désignations réécrites ; 0 : rien ne désignait `ancien`, et le projet n'a pas bougé.
+size_t relinkMedia(Project& project, const std::string& ancien, const AudioSource& nouveau);
 size_t foldAllTracks(Project& project, FoldAll how);
 
 /// REMET LES PROFONDEURS DE DOSSIER D'APLOMB (D19.4), et rend le nombre de

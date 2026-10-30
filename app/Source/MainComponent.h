@@ -397,6 +397,16 @@ public:
         if (geste.equalsIgnoreCase("relever-ordre")) { showPlayOrder(); direLOrdre("releve"); return true; }
         // D607.1 : la réserve des fichiers, relue puis dite (`VSM_RESERVE`) ; ouvre la fenêtre.
         if (geste.equalsIgnoreCase("relever-reserve")) { showReserve(); direLaReserve(); return true; }
+        // D608.1 : choisir une ligne de la réserve, comme d'un clic — « Relier... » se presse ensuite par `cliquer:`.
+        if (geste.startsWithIgnoreCase("reserve-choisir:")) {
+            showReserve();
+            const auto fichier = geste.fromFirstOccurrenceOf(":", false, false).trim();
+            const bool trouve = reservePanel_.choisir(fichier);
+            std::fputs(("VSM_RESERVE : choisie " + fichier + (trouve ? juce::String() : juce::String(" INTROUVABLE"))
+                        + " ; Relier " + (reservePanel_.relierActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))
+                        + "\n").toRawUTF8(), stderr);
+            return trouve;
+        }
         // D568.3 : l'état de chaque insert, dans la description ET sur l'instance que le moteur joue.
         if (geste.equalsIgnoreCase("relever-inserts")) { effectChain_.direLesContournements(); return true; }
         // D570.3 : le centre de chaque note visible du piano roll, dans la fenêtre.
@@ -2504,6 +2514,9 @@ private:
     void rafraichirReserve();
     /// Le relevé de banc de la réserve (`VSM_RESERVE : …`), lu sur la même source que la peinture.
     void direLaReserve();
+    /// D608.1 : RELIER UN FICHIER MANQUANT — tout ce qui désignait `ancien` désigne `choisi` (copié dans `audio/` s'il
+    /// est hors du dossier du projet), un pas d'annulation, la piste rechargée ; faux et dit s'il ne se peut pas.
+    bool relierFichier(const juce::String& ancien, const juce::File& choisi);
     std::unique_ptr<PanelWindow> reserveWindow_;
     vsm::app::ui::ReserveComponent reservePanel_;
     std::unique_ptr<PanelWindow> projectNotesWindow_;

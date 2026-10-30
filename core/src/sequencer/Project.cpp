@@ -1258,6 +1258,24 @@ std::map<std::string, std::vector<MediaDesignation>> collectMediaDesignations(co
     return medias;
 }
 
+size_t relinkMedia(Project& project, const std::string& ancien, const AudioSource& nouveau) {
+    // LES MÊMES QUATRE GENRES que `collectMediaDesignations` : un chemin désigné par trois genres n'est pas relié à moitié.
+    if (ancien.empty() || nouveau.path.empty()) return 0;
+    size_t reecrites = 0;
+    const auto relier = [&](AudioSource& a) {
+        if (a.path != ancien) return;
+        a = nouveau;
+        ++reecrites;
+    };
+    for (auto& t : project.tracks) {
+        relier(t.audio);
+        relier(t.frozenAudio);
+        for (auto& prise : t.takes) relier(prise.audio);
+        for (auto& version : t.versions) relier(version.audio);
+    }
+    return reecrites;
+}
+
 size_t countFoldChanges(const Project& project, FoldAll how) {
     if (how == FoldAll::Flip) return project.tracks.size();
     const bool voulu = how == FoldAll::Fold;

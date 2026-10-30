@@ -1269,6 +1269,35 @@ VSM_TEST(the_media_designations_say_who_names_each_file_and_what_plays_d607) {
     VSM_ASSERT(chemins == designes);
 }
 
+// D608.1 — RELIER UN FICHIER MANQUANT. L'attendu écrit avant le code (ROADMAP-daw, D608) : un chemin désigné par la
+// piste, une prise et une version → 3 désignations réécrites, la description neuve partout, les autres intactes ; un
+// chemin que rien ne désigne → 0, projet inchangé.
+VSM_TEST(relinking_a_missing_file_rewrites_every_designation_and_nothing_else_d608) {
+    Project p;
+    p.tracks.emplace_back();
+    auto& basse = p.tracks[0];
+    basse.kind = Track::Kind::Audio;
+    basse.audio = {"audio/absent.wav", 44100.0, 88200, 1};
+    basse.takes.resize(2);
+    basse.takes[0].audio = basse.audio;
+    basse.takes[1].audio = {"audio/autre.wav", 44100.0, 100, 1};
+    basse.versions.resize(1);
+    basse.versions[0].audio = basse.audio;
+    basse.frozenAudio = {"gel/basse.wav", 44100.0, 88200, 2};
+    const AudioSource neuf{"audio/basse-retrouvee.wav", 48000.0, 96000, 2};
+    VSM_ASSERT_EQ(relinkMedia(p, "audio/inconnu.wav", neuf), size_t(0));
+    VSM_ASSERT(p.tracks[0].audio.path == "audio/absent.wav");
+    VSM_ASSERT_EQ(relinkMedia(p, "audio/absent.wav", neuf), size_t(3));
+    VSM_ASSERT(p.tracks[0].audio.path == "audio/basse-retrouvee.wav");
+    VSM_ASSERT_EQ(p.tracks[0].audio.frames, int64_t(96000));
+    VSM_ASSERT_EQ(p.tracks[0].audio.channels, 2);
+    VSM_ASSERT(p.tracks[0].takes[0].audio.path == "audio/basse-retrouvee.wav");
+    VSM_ASSERT_NEAR(p.tracks[0].versions[0].audio.sampleRate, 48000.0, 1e-9);
+    VSM_ASSERT(p.tracks[0].takes[1].audio.path == "audio/autre.wav");   // les autres chemins, intacts
+    VSM_ASSERT(p.tracks[0].frozenAudio.path == "gel/basse.wav");
+    VSM_ASSERT_EQ(collectMediaDesignations(p).count("audio/absent.wav"), size_t(0));
+}
+
 VSM_TEST(the_chosen_tracks_move_into_a_new_folder_with_their_content_and_their_routing) {
     // D589.1 : *Move Selected Tracks to New Folder*. Le dossier naît à la place de la PREMIÈRE piste choisie ; les
     // choisies le suivent dans leur ordre, un dossier avec son contenu ; les routages suivent les PISTES (reorderTracks).

@@ -47661,3 +47661,35 @@ lecture, le vumètre de « Basse » **au-dessus de −40 dBFS** quand le témoin
 `audio/absent.wav` MANQUANT revient ; un fichier illisible → refusé et dit, rien de relié ; le témoin (D607) : le verbe
 inconnu ; l'anglais ;
 (c) les suites ; la série.
+
+### Phase D608 — MESURÉE, la série à jouer (31/10/2026, 06 h 30 à l'horloge)
+
+*Écrite avant son code à 06 h 14. Le test du cœur joué rouge sur une fonction qui ne réécrivait rien (0 ≠ 3). Le banc
+`tools/relier-fichier.sh` (12 contrôles) ; le témoin : le binaire de D607 (`build/temoin-D607`), et dans le même
+binaire une course non reliée.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D608 (a) | 3 désignations réécrites, la description neuve partout, les autres intactes ; un chemin inconnu → 0 | **3** (la piste, la prise, la version) ; 96 000 trames, 2 canaux, 48 kHz partout ; l'autre prise et le gel intacts ; l'inconnu → **0**, rien n'a bougé | la fonction vide : rouge (0 ≠ 3) | **oui** |
+| D608 (b) | relié → « joué », 0 manquant, copié ; « Basse » > −40 dBFS en lecture ; Ctrl+Z → MANQUANT ; l'illisible refusé ; le témoin ; l'anglais | « relié audio/absent.wav → audio/basse-retrouvee.wav (1 désignation(s), copié) » ; la ligne **joué**, 2.00 s stéréo ; **0 manquant(s)** ; le fichier dans `audio/` ; « Basse » à **−11,94 dBFS** (la crête de −10 dBFS au fader 0,8 : −1,94 dB, au centième) ; Ctrl+Z : `absent.wav` **MANQUANT**, la copie « **gardé pour l'historique** » ; `texte.wav` « illisible — rien n'est relié » ; « Relier... » **grisé** sur une ligne qui ne manque pas ; *Relink...* dans *Pool*, « playing » | non relié, en lecture : « Basse » **−inf** ; le binaire de D607 : 0 liaison, le verbe inconnu | **oui** |
+| — | les suites | cœur **580 / 580** (1 neuf) ; `reserve-fichiers` et `nettoyer-dossier` rejoués verts ; gardes vertes | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Une boîte modale bloquait tout, et le banc croyait cliquer** : le projet du jeu ouvre sur la boîte « Audio non
+  chargé » (le fichier absent de « Basse ») — c'est la conduite voulue de l'application (D180). Tant qu'elle est
+  ouverte, `Button::mouseDown` ne fait rien (`isCurrentlyBlockedByAnotherModalComponent`) : « Relier... » ET Play
+  étaient journalisés « cliqués » sans effet, et le témoin non relié lisait « −inf » sans que rien ne joue. Le banc
+  ferme la boîte par son OK, comme l'utilisateur ; et le témoin porte désormais son témoin POSITIF — le transport relevé
+  « en lecture » — sans quoi « −inf » ne prouve rien (la leçon de D145).
+- **La fenêtre dégénérée (128 × 128), une fois de plus — et pas qu'au premier lancement** : la course « relie » est
+  sortie avec une réserve de 128 × 128 (« fenêtre 128x128 » au relevé) au DEUXIÈME lancement de la rafale ; son bouton,
+  sans surface, n'a pas été pressé. Écran éteint et session verrouillée, comme les quatre fois d'avant. Le banc rejoue
+  UNE fois une course dont la fenêtre est dégénérée, et le DIT (la règle des boîtes de D72) ; à la course suivante,
+  aucune n'a eu à l'être. Compte à ce jour : 6 fenêtres dégénérées sur une quarantaine d'ouvertures (la sixième au dernier passage du banc, course « annule », rejouée et dite), toutes écran éteint ;
+  la série, écran allumé, dira si c'est l'environnement — sinon, c'est un défaut à corriger dans `PanelWindow`.
+- **La garde des langues, rouge à juste titre (7 mots)** : les lignes de journal de `relierFichier` passaient par une
+  lambda, que la garde ne suit pas ; chacune s'écrit désormais dans son propre `fputs` (ECRAN 7 → 0).
+- **Remis, nommés** : chercher les manquants dans un dossier (*Search*), importer dans la réserve, poser un fichier de
+  la réserve sur une piste.
+
+**LA SÉRIE EST À JOUER (D605 à D608 ensemble), ÉCRAN ALLUMÉ.**

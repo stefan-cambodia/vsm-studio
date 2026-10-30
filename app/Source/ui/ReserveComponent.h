@@ -46,12 +46,19 @@ public:
     static juce::String nomDeLEtat(Etat etat);
 
     std::function<void()> onNettoyer, onRafraichir;
+    /// D608.1 : « Relier... » sur une ligne MANQUANT choisie — le chemin manquant, tel que le projet l'écrit.
+    std::function<void(const juce::String&)> onRelier;
+    /// Choisit la ligne de ce fichier (le verbe de banc `reserve-choisir:`) ; faux s'il n'y est pas.
+    bool choisir(const juce::String& fichier);
+    juce::String fichierChoisi() const;
+    bool relierActif() const { return relier_.isEnabled(); }
 
     void resized() override;
     void paint(juce::Graphics& g) override;
 
 private:
     int getNumRows() override;
+    void selectedRowsChanged(int derniere) override;   // D608.1 : « Relier... » suit la ligne choisie
     void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
     /// Les bords des six colonnes pour une largeur donnée — la même règle pour l'en-tête et les lignes.
     static std::vector<juce::Range<int>> colonnes(int largeur);
@@ -60,7 +67,7 @@ private:
     bool sansDossier_ = false;
     juce::Rectangle<int> enTete_;
     juce::Label titre_, total_;
-    juce::TextButton nettoyer_, rafraichir_;
+    juce::TextButton nettoyer_, rafraichir_, relier_;
     juce::ListBox liste_ { "reserve", this };
 };
 
