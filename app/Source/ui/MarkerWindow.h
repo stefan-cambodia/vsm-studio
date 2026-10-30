@@ -14,6 +14,7 @@ public:
     struct Ligne {
         juce::String position;   ///< « mes. 9 · 1 », le format de la barre de transport
         juce::String nom;
+        juce::String fin;        ///< D604.1 : la fin d'un repère de cycle, au même format ; vide pour un repère de position
     };
 
     MarkerWindow();

@@ -648,6 +648,13 @@ MainComponent::MainComponent()
     arrangement_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
     arrangement_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { retirerAccord(tick); };
     arrangement_.onSectionLocatorsRequested = [this](vsm::midi::Tick tick) { locateursSurSection(tick); };   // D542.1
+    // D604 : LES REPÈRES À ÉTENDUE, les mêmes gestes depuis les deux règles.
+    arrangement_.onCycleMarkerRequested = [this](vsm::midi::Tick) { poserUnRepereDeCycle(); };
+    arrangement_.onCycleLocatorsRequested = [this](vsm::midi::Tick tick) { locateursSurLeCycle(tick); };
+    arrangement_.onCycleZoomRequested = [this](vsm::midi::Tick tick) { arrangement_.zoomSurLeCycle(tick); };
+    pianoRollPanel_.onCycleMarkerRequested = [this](vsm::midi::Tick) { poserUnRepereDeCycle(); };
+    pianoRollPanel_.onCycleLocatorsRequested = [this](vsm::midi::Tick tick) { locateursSurLeCycle(tick); };
+    pianoRollPanel_.onCycleZoomRequested = [this](vsm::midi::Tick tick) { arrangement_.zoomSurLeCycle(tick); };
     pianoRollPanel_.onChordRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, false); };
     pianoRollPanel_.onChordEditRequested = [this](vsm::midi::Tick tick) { demanderAccord(tick, true); };
     pianoRollPanel_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { retirerAccord(tick); };
@@ -12195,6 +12202,47 @@ void MainComponent::locatorsFromSelection() {
     setLoopRegionEverywhere(debut, fin, true);
 }
 
+// D604.1 — POSER UN REPÈRE DE CYCLE SUR LES LOCATEURS (le *Cycle Marker* de Cubase). Nommé « Cycle N » ; un pas ; trié
+// par son début avec les autres repères (la liste l'est, D16.4).
+void MainComponent::poserUnRepereDeCycle() {
+    if (project_.loopEndTick <= project_.loopStartTick) {
+        std::fputs("VSM_REPERES : aucune plage entre les locateurs \xe2\x80\x94 aucun cycle pos\xc3\xa9\n", stderr);
+        return;   // l'entrée est grisée
+    }
+    beginProjectEdit(tr(u8"Poser un repère de cycle"));
+    vsm::sequencer::Marker cycle;
+    cycle.tick = project_.loopStartTick;
+    cycle.endTick = project_.loopEndTick;
+    cycle.name = vsm::sequencer::nextCycleMarkerName(project_.markers);
+    const auto ou = std::upper_bound(project_.markers.begin(), project_.markers.end(), cycle.tick,
+                                     [](vsm::midi::Tick t, const vsm::sequencer::Marker& m) { return t < m.tick; });
+    project_.markers.insert(ou, cycle);
+    refreshMarkerViews();
+    std::fputs(("VSM_REPERES : cycle \xc2\xab " + cycle.name + " \xc2\xbb [" + std::to_string(cycle.tick) + ", "
+                + std::to_string(cycle.endTick) + ")\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Repère de cycle « %1 » : %2 à %3")
+                                       .replace("%1", juce::String::fromUTF8(cycle.name.c_str()))
+                                       .replace("%2", transportBar_.positionInBarsProvider(cycle.tick))
+                                       .replace("%3", transportBar_.positionInBarsProvider(cycle.endTick)));
+}
+
+// D604.2 — LES LOCATEURS SUR UN CYCLE : la règle des locateurs sur une section (D542.1), sur la plage d'un repère de cycle.
+void MainComponent::locateursSurLeCycle(vsm::midi::Tick tick) {
+    const int i = vsm::sequencer::cycleMarkerAt(project_.markers, tick);
+    if (i < 0) return;   // l'entrée est grisée hors de tout cycle
+    const auto cycle = project_.markers[static_cast<size_t>(i)];
+    beginProjectEdit(tr(u8"Poser les locateurs sur ce cycle"));
+    setLoopRegionEverywhere(cycle.tick, cycle.endTick, true);
+    std::fputs(("VSM_LOCATEURS : cycle \xc2\xab " + cycle.name + " \xc2\xbb [" + std::to_string(cycle.tick) + ", "
+                + std::to_string(cycle.endTick) + "), boucle active\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Locateurs sur le cycle « %1 » : %2 à %3")
+                                       .replace("%1", juce::String::fromUTF8(cycle.name.c_str()))
+                                       .replace("%2", transportBar_.positionInBarsProvider(cycle.tick))
+                                       .replace("%3", transportBar_.positionInBarsProvider(cycle.endTick)));
+}
+
 void MainComponent::locateursSurSection(vsm::midi::Tick tick) {
     const auto section = vsm::sequencer::sectionAt(project_, tick);
     if (!section) return;   // l'entrée est grisée hors de toute section
@@ -18429,7 +18477,8 @@ void MainComponent::rafraichirFenetreReperes() {
     if (!markerWindow_ || !markerWindow_->isVisible()) return;
     std::vector<vsm::app::ui::MarkerWindow::Ligne> lignes;
     for (const auto& m : project_.markers)
-        lignes.push_back({transportBar_.positionInBarsProvider(m.tick), juce::String::fromUTF8(m.name.c_str())});
+        lignes.push_back({transportBar_.positionInBarsProvider(m.tick), juce::String::fromUTF8(m.name.c_str()),
+                          m.isCycle() ? transportBar_.positionInBarsProvider(m.endTick) : juce::String()});   // D604.1
     markerPanel_.setLignes(std::move(lignes));
 }
 

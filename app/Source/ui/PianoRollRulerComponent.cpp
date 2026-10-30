@@ -360,6 +360,13 @@ juce::PopupMenu PianoRollRulerComponent::construireMenuDeRepere(int survole, Tic
     const auto* projet = pianoRoll_.project();
     menu.addItem(7, tr(u8"Locateurs sur cette section"),
                  projet != nullptr && vsm::sequencer::sectionAt(*projet, tick).has_value());
+    // D604 : LES REPÈRES À ÉTENDUE — mêmes libellés et rappels que la règle de l'arrangement.
+    menu.addSeparator();
+    const bool cycle = projet != nullptr && vsm::sequencer::cycleMarkerAt(projet->markers, tick) >= 0;
+    menu.addItem(9, tr(u8"Poser un repère de cycle sur les locateurs"),
+                 projet != nullptr && projet->loopEndTick > projet->loopStartTick);
+    menu.addItem(10, tr(u8"Poser les locateurs sur ce cycle"), cycle);
+    menu.addItem(11, tr(u8"Zoomer sur ce cycle"), cycle);
     return menu;
 }
 
@@ -373,6 +380,9 @@ void PianoRollRulerComponent::actionDeMenuDeRepere(int choix, vsm::midi::Tick ti
     if (choix == 6 && onChordRemoveRequested) onChordRemoveRequested(tick);
     if (choix == 7 && onSectionLocatorsRequested) onSectionLocatorsRequested(tick);   // D542.1
     if (choix == 8 && survole >= 0 && onMarkerColorRequested) onMarkerColorRequested(static_cast<size_t>(survole));   // D570.1
+    if (choix == 9 && onCycleMarkerRequested) onCycleMarkerRequested(tick);     // D604.1
+    if (choix == 10 && onCycleLocatorsRequested) onCycleLocatorsRequested(tick);   // D604.2
+    if (choix == 11 && onCycleZoomRequested) onCycleZoomRequested(tick);
 }
 
 juce::String PianoRollRulerComponent::releverAccords() const {

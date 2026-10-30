@@ -1357,6 +1357,35 @@ VSM_TEST(the_suspended_families_survive_the_trip_and_none_writes_nothing_d601) {
     VSM_ASSERT(dit);
 }
 
+// D604.1 — LE REPÈRE À ÉTENDUE fait l'aller-retour par `"endTick"` ; un repère de position n'en écrit rien — un projet
+// d'avant se réécrit à l'octet.
+VSM_TEST(a_cycle_marker_survives_the_trip_and_a_position_marker_writes_no_end_d604) {
+    Project project = buildProject();
+    project.markers = {{0, "Couplet"}};
+    const std::string position = projectDocumentToJson(documentFromProject(project)).toString();
+    // DANS LE TABLEAU DES REPÈRES : la boucle du transport porte aussi un `endTick` (vu au premier essai du test).
+    const auto debutReperes = position.find("\"markers\"");
+    VSM_ASSERT(debutReperes != std::string::npos);
+    const std::string reperes = position.substr(debutReperes, position.find(']', debutReperes) - debutReperes);
+    VSM_ASSERT(reperes.find("endTick") == std::string::npos);
+    const ProjectLoadResult relu0 = parseProjectDocument(position);
+    VSM_ASSERT(relu0.success);
+    Project rejoue0 = project;
+    applyDocumentToProject(relu0.document, rejoue0);
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(rejoue0)).toString() == position);   // à l'octet
+    project.markers.push_back({1920, "Solo", 0, 5760});
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    rejoue.markers.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.markers.size(), size_t(2));
+    VSM_ASSERT_EQ(rejoue.markers[0].endTick, vsm::midi::Tick(0));
+    VSM_ASSERT_EQ(rejoue.markers[1].tick, vsm::midi::Tick(1920));
+    VSM_ASSERT_EQ(rejoue.markers[1].endTick, vsm::midi::Tick(5760));
+}
+
 // D17.1 — LA FORME DES FONDUS, écrite seulement quand ce n'est pas la droite :
 // un projet d'avant D17.1 se réécrit octet pour octet.
 VSM_TEST(the_fade_shape_survives_the_trip_and_linear_writes_nothing) {

@@ -32,7 +32,8 @@ void MarkerWindow::setLignes(std::vector<Ligne> lignes) {
 
 juce::String MarkerWindow::releverPourCapture() const {
     juce::StringArray morceaux;
-    for (const auto& l : lignes_) morceaux.add(l.position + " " + l.nom);
+    for (const auto& l : lignes_)   // D604.1 : « début nom → fin » pour un repère de cycle
+        morceaux.add(l.position + " " + l.nom + (l.fin.isNotEmpty() ? juce::String::fromUTF8(" \xe2\x86\x92 ") + l.fin : juce::String()));
     return morceaux.isEmpty() ? tr(u8"(aucun repère)") : morceaux.joinIntoString(" | ");
 }
 
@@ -49,7 +50,16 @@ void MarkerWindow::paintListBoxItem(int row, juce::Graphics& g, int width, int h
     g.setColour(Palette::textSecondary);
     g.drawText(l.position, 8, 0, 110, height, juce::Justification::centredLeft);
     g.setColour(Palette::textPrimary);
-    g.drawText(l.nom, 124, 0, width - 132, height, juce::Justification::centredLeft);
+    // D604.1 : UN REPÈRE DE CYCLE DIT SA FIN, après son nom, dans la teinte de la position.
+    if (l.fin.isEmpty()) {
+        g.drawText(l.nom, 124, 0, width - 132, height, juce::Justification::centredLeft);
+    } else {
+        const int largeurNom = juce::jmin(width - 132, juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(), l.nom) + 10);
+        g.drawText(l.nom, 124, 0, largeurNom, height, juce::Justification::centredLeft, true);
+        g.setColour(Palette::textSecondary);
+        g.drawText(juce::String::fromUTF8("\xe2\x86\x92 ") + l.fin, 124 + largeurNom, 0, width - 132 - largeurNom, height,
+                   juce::Justification::centredLeft, true);
+    }
 }
 
 void MarkerWindow::listBoxItemClicked(int row, const juce::MouseEvent& e) {

@@ -390,7 +390,19 @@ struct Marker {
     std::string name;
     /// D570.1 : la couleur du repère (ARGB), 0 pour « celle des repères » — la règle le peint de la sienne.
     uint32_t colorRgba = 0;
+    /// D604.1 — LE REPÈRE À ÉTENDUE (le *Cycle Marker* de Cubase) : sa FIN, au-delà de `tick` ; 0 (ou ≤ `tick`) pour un
+    /// repère de position. Un repère qu'on étend reste un repère : son DÉBUT le place pour tous les gestes qui
+    /// connaissaient les repères (la tête au repère, l'aimant, les sections de D542, l'export) ; la fin ne sert qu'aux
+    /// gestes de cycle.
+    Tick endTick = 0;
+    bool isCycle() const { return endTick > tick; }
 };
+
+/// D604.1 : le nom d'origine d'un repère de cycle — « Cycle N », N le plus petit entier ≥ 1 qu'aucun repère ne porte.
+std::string nextCycleMarkerName(const std::vector<Marker>& markers);
+/// D604.2 : l'indice du repère de cycle qui couvre `tick` (`tick ≤ t < endTick`) — le plus intérieur, celui qui commence
+/// le plus tard, quand deux se chevauchent ; −1 hors de tout cycle.
+int cycleMarkerAt(const std::vector<Marker>& markers, Tick tick);
 
 /// Un effet d'insert, DÉCRIT et non instancié : un identifiant de fabrique et
 /// des valeurs de paramètres. `core/` ne connaît pas `audio/` et ne peut donc

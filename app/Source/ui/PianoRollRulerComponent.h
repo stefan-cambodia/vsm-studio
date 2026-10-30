@@ -55,6 +55,10 @@ public:
     std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
     /// D542.1 : « Locateurs sur cette section » — la section qui contient le tick visé.
     std::function<void(vsm::midi::Tick)> onSectionLocatorsRequested;
+    /// D604 : voir `ArrangementComponent::onCycleMarkerRequested`.
+    std::function<void(vsm::midi::Tick)> onCycleMarkerRequested;
+    std::function<void(vsm::midi::Tick)> onCycleLocatorsRequested;
+    std::function<void(vsm::midi::Tick)> onCycleZoomRequested;
     /// D532.3 bis : la bande d'accords telle qu'elle est dessinée (`VSM_ACCORDS`).
     juce::String releverAccords() const;
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;

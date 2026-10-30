@@ -585,6 +585,12 @@ public:
     std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
     /// D542.1 : « Locateurs sur cette section » — la section qui contient le tick visé.
     std::function<void(vsm::midi::Tick)> onSectionLocatorsRequested;
+    /// D604 : poser un repère de cycle sur les locateurs ; les locateurs, et le zoom, sur le cycle qui couvre ce tick.
+    std::function<void(vsm::midi::Tick)> onCycleMarkerRequested;
+    std::function<void(vsm::midi::Tick)> onCycleLocatorsRequested;
+    std::function<void(vsm::midi::Tick)> onCycleZoomRequested;
+    /// D604.2 : zoomer l'arrangement sur le cycle qui couvre ce tick ; faux hors de tout cycle.
+    bool zoomSurLeCycle(vsm::midi::Tick tick);
     /// D532.3 bis : la bande d'accords telle qu'elle est dessinée (`VSM_ACCORDS`).
     juce::String releverAccords() const;
 

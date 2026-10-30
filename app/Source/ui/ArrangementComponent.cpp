@@ -942,6 +942,14 @@ juce::PopupMenu ArrangementComponent::menuDeLaRegle(int survole, vsm::midi::Tick
     menu.addSeparator();
     menu.addItem(7, tr(u8"Locateurs sur cette section"),
                  project_ != nullptr && vsm::sequencer::sectionAt(*project_, tick).has_value());
+    // D604 : LES REPÈRES À ÉTENDUE — mêmes libellés et rappels que la règle du piano roll. Poser : grisé sans plage de
+    // locateurs ; les deux autres : grisés hors de tout cycle.
+    menu.addSeparator();
+    const bool cycle = project_ != nullptr && vsm::sequencer::cycleMarkerAt(project_->markers, tick) >= 0;
+    menu.addItem(9, tr(u8"Poser un repère de cycle sur les locateurs"),
+                 project_ != nullptr && project_->loopEndTick > project_->loopStartTick);
+    menu.addItem(10, tr(u8"Poser les locateurs sur ce cycle"), cycle);
+    menu.addItem(11, tr(u8"Zoomer sur ce cycle"), cycle);
     return menu;
 }
 
@@ -1229,6 +1237,9 @@ void ArrangementComponent::regleMenuAction(vsm::midi::Tick tick, int survole, in
     if (choix == 6 && onChordRemoveRequested) onChordRemoveRequested(tick);
     if (choix == 7 && onSectionLocatorsRequested) onSectionLocatorsRequested(tick);   // D542.1
     if (choix == 8 && survole >= 0 && onMarkerColorRequested) onMarkerColorRequested(static_cast<size_t>(survole));   // D570.1
+    if (choix == 9 && onCycleMarkerRequested) onCycleMarkerRequested(tick);     // D604.1
+    if (choix == 10 && onCycleLocatorsRequested) onCycleLocatorsRequested(tick);   // D604.2
+    if (choix == 11 && onCycleZoomRequested) onCycleZoomRequested(tick);
 }
 
 // D115 : `entreeParLibelle` vit dans EntreeDeMenu.h, partagée avec le piano roll.
@@ -2338,6 +2349,21 @@ void ArrangementComponent::zoomToSelection() {
     vsm::midi::Tick debut = 0, fin = 0;
     if (!selectionBounds(debut, fin)) return;
     zoomSurPlage(debut, fin);
+}
+
+bool ArrangementComponent::zoomSurLeCycle(vsm::midi::Tick tick) {
+    // D604.2 : la règle du zoom sur les locateurs (D565.2), sur la plage d'un repère de cycle.
+    if (project_ == nullptr) return false;
+    const int i = vsm::sequencer::cycleMarkerAt(project_->markers, tick);
+    if (i < 0) return false;
+    const auto& m = project_->markers[static_cast<size_t>(i)];
+    zoomSurPlage(m.tick, m.endTick);
+    const int largeur = std::max(1, getWidth() - kHeaderWidth);
+    std::fputs(("VSM_ZOOM_CYCLE : \xc2\xab " + m.name + " \xc2\xbb [" + std::to_string(m.tick) + ", " + std::to_string(m.endTick)
+                + ") \xe2\x80\x94 fen\xc3\xaa" "tre de " + std::to_string(scrollTick_) + " \xc3\xa0 "
+                + std::to_string(scrollTick_ + static_cast<vsm::midi::Tick>(static_cast<double>(largeur) / pixelsPerTick_))
+                + " ticks\n").c_str(), stderr);
+    return true;
 }
 
 bool ArrangementComponent::zoomSurLesLocateurs() {
@@ -3696,6 +3722,23 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                         juce::Justification::centredLeft);
         }
     }
+    }
+
+    // --- D604.1 : LES REPÈRES À ÉTENDUE, une bande au pied de la règle de leur début à leur fin, dans leur couleur (D570.1),
+    // fermée d'un trait à la fin. Peinte AVANT les fanions : le nom du repère, posé par eux, reste lisible par-dessus.
+    for (const auto& m : project_->markers) {
+        if (!m.isCycle()) continue;
+        const float x1 = std::max(static_cast<float>(kHeaderWidth), tickToX(m.tick));
+        const float x2 = std::min(static_cast<float>(bounds.getWidth()), tickToX(m.endTick));
+        if (x2 <= x1) continue;
+        const juce::Colour teinte = m.colorRgba != 0 ? juce::Colour(m.colorRgba) : Palette::accentTeal;
+        // LISIBLE D'ABORD : à 35 %, la première photo ne montrait qu'un trait pâle — un fond à 55 % et un trait plein au pied.
+        g.setColour(teinte.withAlpha(0.55f));
+        g.fillRect(juce::Rectangle<float>(x1, static_cast<float>(kRulerHeight - 7), x2 - x1, 6.0f));
+        g.setColour(teinte);
+        g.drawLine(x1, static_cast<float>(kRulerHeight - 1), x2, static_cast<float>(kRulerHeight - 1), 2.0f);
+        if (tickToX(m.endTick) <= static_cast<float>(bounds.getWidth()))
+            g.drawLine(x2, static_cast<float>(kRulerHeight - 9), x2, static_cast<float>(kRulerHeight), 1.5f);
     }
 
     // --- Repères (D16.4) : un trait sur toute la hauteur, le fanion et le

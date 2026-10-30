@@ -111,6 +111,10 @@ public:
         ruler_.onChordEditRequested = [this](vsm::midi::Tick tick) { if (onChordEditRequested) onChordEditRequested(tick); };
         ruler_.onChordRemoveRequested = [this](vsm::midi::Tick tick) { if (onChordRemoveRequested) onChordRemoveRequested(tick); };
         ruler_.onSectionLocatorsRequested = [this](vsm::midi::Tick tick) { if (onSectionLocatorsRequested) onSectionLocatorsRequested(tick); };   // D542.1
+        // D604 : les repères à étendue, relayés comme la section.
+        ruler_.onCycleMarkerRequested = [this](vsm::midi::Tick tick) { if (onCycleMarkerRequested) onCycleMarkerRequested(tick); };
+        ruler_.onCycleLocatorsRequested = [this](vsm::midi::Tick tick) { if (onCycleLocatorsRequested) onCycleLocatorsRequested(tick); };
+        ruler_.onCycleZoomRequested = [this](vsm::midi::Tick tick) { if (onCycleZoomRequested) onCycleZoomRequested(tick); };
         velocityLane_.onVelocityEdited = [this] {
             pianoRoll_.repaint();
             if (onVelocityEdited) onVelocityEdited();
@@ -198,6 +202,9 @@ public:
     std::function<void(vsm::midi::Tick)> onChordEditRequested;
     std::function<void(vsm::midi::Tick)> onChordRemoveRequested;
     std::function<void(vsm::midi::Tick)> onSectionLocatorsRequested;   // D542.1
+    std::function<void(vsm::midi::Tick)> onCycleMarkerRequested;     ///< D604.1
+    std::function<void(vsm::midi::Tick)> onCycleLocatorsRequested;   ///< D604.2
+    std::function<void(vsm::midi::Tick)> onCycleZoomRequested;       ///< D604.2
     /// D532.3 bis : la bande d'accords du piano roll, telle qu'elle est dessinée.
     juce::String releverAccords() const { return ruler_.releverAccords(); }
 

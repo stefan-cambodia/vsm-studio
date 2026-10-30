@@ -47136,8 +47136,9 @@ l'écriture), le menu et la préférence, puis le banc `tools/automation-control
 ### Phase D603 — MESURÉE, la série à jouer (30/10/2026, 17 h 43 à l'horloge)
 
 *Écrite avant son code à 17 h 09 ; codée pendant la série de 200 bancs lancée à 17 h 08 l'écran allumé — ARRÊTÉE à
-17 h 25 à son deuxième banc : la session s'est verrouillée à 17 h 12 et l'écran éteint, `annulation-des-menus.py` y était
-bloqué depuis quinze minutes ; compilée et mesurée ensuite. Le banc `tools/automation-controleur.sh` (9 contrôles) ; le
+17 h 25 à son deuxième banc : la session s'est verrouillée à 17 h 12 et l'écran éteint, sous lesquels la série ne se juge
+pas (`annulation-des-menus.py` y tournait depuis quinze minutes ; écrit d'abord « bloqué », à tort — relu à 20 h 04 dans
+les journaux des séries d'avant, ce banc dure 1 137 à 1 268 s) ; compilée et mesurée ensuite. Le banc `tools/automation-controleur.sh` (9 contrôles) ; le
 témoin : le binaire de D602 (`build/temoin-D602`).*
 
 | # | attendu | mesure (binaire neuf) | témoin (D602) | tenu |
@@ -47221,3 +47222,63 @@ fin ; en anglais, « Cycle 1 » et les entrées nommés ; les suites ; la série
 
 **L'ORDRE.** Le cœur (le champ, le nom libre, l'aller-retour du fichier, avec leurs tests joués rouges), puis la règle,
 le menu et la fenêtre des repères, puis le banc `tools/reperes-cycle.sh` — après la série.
+
+**PRÉCISÉ AVANT LE CODE (19 h 59, en écrivant le test du cœur ; rien n'est compilé).** Les éditions de temps (`TimeEdit`,
+D544-D568) déplacent les repères par leur seul `tick`. La FIN d'un cycle les suit : elle glisse avec ce qui la suit,
+s'ÉTEND quand on insère du temps dans le cycle, se rabat au point de coupe quand une suppression l'emporte. Et un cycle
+dont une suppression emporte le DÉBUT sans emporter sa fin ne disparaît pas comme un repère de position : il commence au
+point de coupe — retirer la première mesure d'un solo ne fait pas oublier le solo. Un cycle ne peut pas être réduit à
+rien par une suppression (sa fin se rabat toujours après son début) ; la garde qui le rendrait repère de position reste,
+pour un fichier écrit à la main. L'aplatissement de l'ordre de jeu (D542) refait les repères un par créneau : les cycles
+n'y survivent pas — dit, comme la règle de D542 le dit des autres.
+
+### La série de D599 à D603 — JOUÉE (30/10/2026, 21 h 23 à l'horloge, rejouée sur ses rouges jusqu'à 22 h 04)
+
+*`./verifier.sh --bancs`, 201 bancs, lancée à 19 h 45 sous `kde-inhibit --screenSaver` — l'utilisateur ayant autorisé
+d'empêcher le verrouillage pendant la série (les deux lancements de l'après-midi, 15 h 30 et 17 h 08, avaient été arrêtés,
+la session se verrouillant seule cinq minutes après le dernier geste) ; l'inhibition vérifiée enregistrée au départ
+(`ListInhibitions` : « build/serie-D603.sh »), vérifiée retirée à la fin. Écran allumé, session déverrouillée, aucune
+veille de bout en bout ; finie à 21 h 23 (97 min). La veille n'a pas été bloquée.*
+
+| # | attendu | mesure | tenu |
+|---|---|---|---|
+| la série | 201 bancs verts, les préférences de l'utilisateur identiques | **199 verts, 2 rouges** ; préférences identiques ; compositeur 1 209 → 1 274 Mo | **oui, après correction** |
+| `arrangement-defile.sh` (10) | une piste tenue au bord bas descend plus bas que lâchée | **SIGSEGV** de l'application dans la course « lâchée » — pile : `ChannelStrip::suivreLesCourbes` ← `MixerComponent::suivreLesCourbes` ← le minuteur. **UN DÉFAUT DE D599** : la tranche tient une référence vers sa piste (`track_`) ; une piste déplacée par son en-tête change le vecteur des pistes AVANT que la console soit refaite, et le minuteur — qui, depuis D599, fait suivre les courbes à chaque tour — lisait une piste qui n'était plus à son adresse. Le binaire de D599 plante de même, celui de D598 non. Corrigé : la console et la liste des pistes ne font suivre une tranche (ou une ligne) que si sa piste est TOUJOURS celle du projet à son rang, comparée par ADRESSE sans la lire (`trancheAJour`) ; la même garde couvre la levée des contrôleurs (D603.1) et `refreshFromTracks` (la relecture de D603). Rejoué : vert, plus aucun vidage | **oui, après correction** |
+| `arrangement-defile.sh` (16) | au clavier, le clip de P06 va sur P10 et la vue le montre | → P09 : le banc vise le clip de P06 à 88,2 % de la hauteur de l'arrangement, juste tant que la zone des pistes avait 352 px ; depuis la correction de D593 (le dock + 36 px), elle en a 316 et ce point tombe sur P05. **Le banc, pas le code** : la position se calcule désormais depuis le relevé d'ouverture. Vert sur le binaire neuf et sur celui de D598 | **oui (le banc)** |
+| `selection-au-bord.sh` (1 bis) | le lasso lâché choisit les six clips de P02 à P07 | 5 : la même cause — le lasso de 0,283 à 0,985 de la hauteur couvre P02-P06 dans une zone de 316 px. L'attendu se calcule depuis la zone relevée ; vert sur les deux binaires (5 et 6) | **oui (le banc)** |
+
+**CE QUE LA SÉRIE A DIT DE PLUS.** La correction de D593 (les 36 px du coupe-bas et du coupe-haut rendus au compte de la
+tranche, trouvée par la série de D598) a changé la géométrie de toutes les vues sous le dock ; trois bancs (`accords`,
+`arrangement-defile`, `selection-au-bord`) portaient des fractions ou des comptes écrits pour l'ancienne hauteur, et
+la série de D599-D602 de l'après-midi, arrêtée trop tôt, n'en avait vu qu'un. Le plantage, lui, est le genre de défaut
+qu'aucun banc de la phase ne pouvait voir : il fallait déplacer une piste PENDANT que le minuteur suivait les courbes —
+c'est la raison d'être de la série, payée une fois de plus.
+
+### Phase D604 — MESURÉE (30/10/2026, 22 h 04 à l'horloge)
+
+*Écrite avant son code à 19 h 56, précisée à 19 h 59 ; le cœur, l'interchange et l'application écrits pendant la série,
+compilés après elle. Les tests du cœur joués rouges sur le code d'avant (les deux fonctions remises à vide, puis rendues :
+`5760 != 6720`, un nom vide) ; le banc `tools/reperes-cycle.sh` (8 contrôles) ; le témoin : le binaire de D603
+(`build/temoin-D603`).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D603) | tenu |
+|---|---|---|---|---|
+| D604 (1) | « Cycle 1 » de 1 920 à 5 760 à côté de « Couplet » ; `"endTick"` sur lui seul ; Ctrl+Z | `0:Couplet\|1920:Cycle 1:5760` ; Ctrl+Z → `0:Couplet` | l'entrée « introuvable », `0:Couplet` | **oui** |
+| D604 (2) | les locateurs sur le cycle, depuis les deux règles ; le zoom sur le cycle | **1 920–5 760** par l'arrangement et par le piano roll ; zoom : la fenêtre **1 728 à 5 994** | les locateurs inchangés (0–480) | **oui, l'attendu du zoom corrigé** |
+| D604 (3) | un projet de D603 réécrit à l'octet | `cmp` : le fichier du binaire neuf = celui du témoin | — | **oui** |
+| D604 (4) | la fenêtre des repères dit la fin ; la règle regardée ; l'anglais | « mes. 2 · 1 Cycle 1 → mes. 4 · 1 » ; la bande de la mesure 2 à la mesure 4, regardée ; *Add a cycle marker on the locators*, *Set the locators to this cycle*, *Zoom to this cycle* | — | **oui** |
+| — | les suites | cœur **576 / 576** (3 neufs), moteur 1 372, interchange **368 / 368** (1 neuf), clap 25, panneaux 11 ; gardes des sources vertes (dont `menus-des-regles.py` : les deux règles portent les trois entrées) ; les bancs des repères (`fenetre-reperes`, `locateurs-section`, `couleur-repere`, `repere-suivant`, `tete-au-repere`, `repere-a-la-tete`, `reperes-attaques`) et ceux de D599-D603 rejoués verts sur le binaire final | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **L'attendu du zoom était faux, et c'est écrit** : « 5 % près de part et d'autre » ignorait la règle de cadrage que le
+  zoom partage avec la sélection et les locateurs (D565.2) — la plage sur 90 % de la largeur, un vingtième de marge
+  AVANT : 5 % devant, 6,1 % derrière. Mesuré : 192 ticks devant, 234 derrière, exactement la règle. Le contrôle la garde.
+- **Une ligne de relevé en mojibake** (« Â« Cycle 1 Â» … fenÃªtre ») : des `\xc2\xab` interprétés par Python en écrivant
+  le C++ — la troisième fois aujourd'hui (D600, et le « allumé » du R). Vu au journal, corrigé ; `echappements-hex.py` ne
+  le voit pas (il cherche les échappements qui avalent, pas les octets déjà décodés) — nommé.
+- **La bande, regardée deux fois** : à 35 % d'opacité, la première photo ne montrait qu'un trait pâle ; elle est passée à
+  55 % avec un trait plein à son pied, et se lit.
+- **Un test du fichier cherchait trop large** : `"endTick": 0` dans tout le document, où la boucle du transport en porte
+  un — restreint au tableau des repères.
+- **Remis, nommé** : la règle du piano roll ne peint pas la bande (elle porte le menu, pas le dessin) ; l'aplatissement
+  de l'ordre de jeu (D542) rend les cycles en repères de position ; aucun raccourci ne pose un cycle.

@@ -141,7 +141,25 @@ size_t appliquer(Project& project, Tick at, Tick delta,
         }
     }
     project.ensureClipIdAbove(idClips - 1);
+    // D604.1 : UN CYCLE DONT LA SUPPRESSION EMPORTE LE DÉBUT SANS SA FIN commence au point de coupe — posé à la fin de la
+    // plage avant le glissement, qui le ramène à `at` ; un repère de position, lui, disparaît avec la plage (inchangé).
+    if (delta < 0)
+        for (auto& m : project.markers)
+            if (m.isCycle() && m.tick >= at && m.tick < at - delta && m.endTick >= at - delta) m.tick = at - delta;
     touches += glisser(project.markers, at, delta);
+    // D604.1 : ET SA FIN SUIT — elle glisse avec ce qui la suit, s'étend quand on insère dans le cycle, se rabat au point
+    // de coupe quand la suppression l'emporte.
+    for (auto& m : project.markers) {
+        if (m.endTick <= 0) continue;
+        if (delta > 0) {
+            if (m.endTick >= at) m.endTick += delta;
+        } else {
+            const Tick fin = at - delta;
+            if (m.endTick >= fin) m.endTick += delta;
+            else if (m.endTick > at) m.endTick = at;
+        }
+        if (m.endTick <= m.tick) m.endTick = 0;   // réduit à rien (un fichier écrit à la main) : un repère de position
+    }
 
     // D532.3 : LA LIGNE D'ACCORDS glisse comme les repères — mais l'accord en vigueur à la
     // FIN d'une plage supprimée le reste au raccord. Commencé dans la plage, il en serait

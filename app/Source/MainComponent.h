@@ -2032,6 +2032,9 @@ private:
     void lectureDeToutesLesPistes(bool lecture);
     void desarmerLeWDeToutesLesPistes();
     void basculerLaSuspension(uint8_t famille);
+    /// D604.1 : poser un repère de cycle sur les locateurs ; D604.2 : les locateurs sur le cycle qui couvre ce tick.
+    void poserUnRepereDeCycle();
+    void locateursSurLeCycle(vsm::midi::Tick tick);
     /// D603.2 : le masque des familles dont l'écriture est suspendue (préférences).
     uint8_t ecritureSuspendue() const;
     /// D560.3 : plier, déplier ou inverser les plis de toutes les pistes ; un pas ; dit (`VSM_PLIS`).

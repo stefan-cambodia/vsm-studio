@@ -323,3 +323,54 @@ VSM_TEST(the_song_end_counts_the_file_of_an_audio_track_without_clips) {
     fixe.fixedTempoBpm = 60.0;
     VSM_ASSERT_EQ(fixe.lastSoundingTick(), Tick(1920));
 }
+
+// D604.1 — LE REPÈRE À ÉTENDUE suit les éditions de temps : sa FIN glisse avec ce qui la suit, s'étend quand on insère du
+// temps DANS le cycle, se rabat au point de coupe quand on en retire ; son DÉBUT suit la règle de tous les repères, sauf
+// quand une suppression l'emporte sans emporter sa fin — le cycle commence alors au point de coupe.
+VSM_TEST(a_cycle_marker_end_follows_time_edits_d604) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.markers.push_back({0, "Couplet"});
+    p.markers.push_back({1920, "Solo", 0, 5760});
+    Project inserer = p;
+    insertTime(inserer, 3840, 960, enSecondes);              // dans le cycle : sa fin s'étend
+    VSM_ASSERT_EQ(inserer.markers[1].tick, Tick(1920));
+    VSM_ASSERT_EQ(inserer.markers[1].endTick, Tick(5760 + 960));
+    VSM_ASSERT_EQ(inserer.markers[0].endTick, Tick(0));   // un repère de position le reste
+    Project avant = p;
+    insertTime(avant, 960, 480, enSecondes);                 // avant le cycle : il glisse en entier
+    VSM_ASSERT_EQ(avant.markers[1].tick, Tick(1920 + 480));
+    VSM_ASSERT_EQ(avant.markers[1].endTick, Tick(5760 + 480));
+    Project coupe = p;
+    deleteTime(coupe, 4800, 7680, enSecondes);               // la fin dans la plage retirée : rabattue au point de coupe
+    VSM_ASSERT_EQ(coupe.markers[1].endTick, Tick(4800));
+    Project dedans = p;
+    deleteTime(dedans, 2880, 3840, enSecondes);              // une plage DANS le cycle : il raccourcit d'autant
+    VSM_ASSERT_EQ(dedans.markers[1].tick, Tick(1920));
+    VSM_ASSERT_EQ(dedans.markers[1].endTick, Tick(5760 - 960));
+    // SON DÉBUT RETIRÉ, LE CYCLE VIT : il commence au point de coupe (un repère de position, lui, disparaît avec la plage).
+    Project debut = p;
+    deleteTime(debut, 960, 2880, enSecondes);
+    VSM_ASSERT_EQ(debut.markers.size(), size_t(2));
+    VSM_ASSERT_EQ(debut.markers[1].tick, Tick(960));
+    VSM_ASSERT_EQ(debut.markers[1].endTick, Tick(5760 - 1920));
+}
+
+VSM_TEST(a_cycle_marker_gets_the_first_free_cycle_name_d604) {
+    std::vector<Marker> reperes = {{0, "Couplet"}, {960, "Cycle 1", 0, 1920}, {2880, "Cycle 3", 0, 3840}};
+    VSM_ASSERT_EQ(nextCycleMarkerName({}), std::string("Cycle 1"));
+    VSM_ASSERT_EQ(nextCycleMarkerName(reperes), std::string("Cycle 2"));
+    reperes.push_back({4000, "Cycle 2"});
+    VSM_ASSERT_EQ(nextCycleMarkerName(reperes), std::string("Cycle 4"));
+}
+
+// D604.2 : le cycle sous un tick — le plus intérieur quand deux se chevauchent ; aucun hors des cycles, ni sous un repère
+// de position ; la fin est exclue.
+VSM_TEST(the_cycle_under_a_tick_is_the_innermost_d604) {
+    const std::vector<Marker> reperes = {{0, "Couplet"}, {960, "Large", 0, 7680}, {1920, "Solo", 0, 3840}};
+    VSM_ASSERT_EQ(cycleMarkerAt(reperes, 480), -1);
+    VSM_ASSERT_EQ(cycleMarkerAt(reperes, 1000), 1);
+    VSM_ASSERT_EQ(cycleMarkerAt(reperes, 2000), 2);
+    VSM_ASSERT_EQ(cycleMarkerAt(reperes, 3840), 1);   // la fin du solo est exclue
+    VSM_ASSERT_EQ(cycleMarkerAt(reperes, 7680), -1);
+}

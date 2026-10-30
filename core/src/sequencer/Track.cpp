@@ -247,3 +247,24 @@ TakeRemoval removeTake(Track& track, int index) {
 }
 
 } // namespace vsm::sequencer
+
+namespace vsm::sequencer {
+
+int cycleMarkerAt(const std::vector<Marker>& markers, Tick tick) {
+    int trouve = -1;
+    for (size_t i = 0; i < markers.size(); ++i) {
+        const auto& m = markers[i];
+        if (!m.isCycle() || tick < m.tick || tick >= m.endTick) continue;
+        if (trouve < 0 || m.tick >= markers[static_cast<size_t>(trouve)].tick) trouve = static_cast<int>(i);
+    }
+    return trouve;
+}
+
+std::string nextCycleMarkerName(const std::vector<Marker>& markers) {
+    for (int n = 1;; ++n) {
+        const std::string nom = "Cycle " + std::to_string(n);
+        if (std::none_of(markers.begin(), markers.end(), [&nom](const Marker& m) { return m.name == nom; })) return nom;
+    }
+}
+
+} // namespace vsm::sequencer
