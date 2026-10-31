@@ -47843,3 +47843,23 @@ de la pièce 41 joue **47** (41 → 45 → +2) — le code d'avant joue **41** ;
 sur une piste à carte {41 → 45, 43 → 47} la rend égale une fois posé, et un préréglage sans carte n'écrit pas la clé ;
 (g) au banc `fusionner-midi.sh`, rejoué après la série, un cas neuf : la piste à carte échangeant 38 et 40, la fusion
 fait entendre les mêmes hauteurs que la piste d'origine (le code d'avant les rend échangées).
+
+### La série de D605 à D609 — JOUÉE (31/10/2026, 13 h 16 à l'horloge)
+
+*`./verifier.sh --bancs`, **207** bancs, lancée à 11 h 36 sous `kde-inhibit --screenSaver` (l'autorisation de
+l'utilisateur), l'inhibition vérifiée enregistrée au départ et retirée à la fin ; écran allumé, session déverrouillée,
+aucune veille (`journalctl` : 0 « PM: suspend ») ; la garde de batterie posée (veille à 10 %), la batterie de 51 à
+~21 %.* **206 verts, 1 rouge** en 100 min ; les préférences de l'utilisateur identiques ; le compositeur 664 → 581 Mo ;
+**aucune fenêtre dégénérée** (128 × 128) de toute la série, écran allumé — ce que D607 et D608 laissaient à la série de
+trancher : elles ne venaient qu'écran éteint.
+
+**Le rouge, lu puis rejoué seul** : `prise-quantifiee-punch.sh`, son cas (3) — à 3 200 ms, l'entrée « Édition ▸ Temps et
+durée ▸ Annuler la quantification (4) » n'existait pas au menu (le compte entre parenthèses suit la sélection posée
+200 ms plus tôt, juste après l'arrêt de la prise) ; les neuf autres cas verts. Rejoué SEUL, sur le même binaire :
+**vert deux fois sur deux** (la quantification annulée rend 246, 537, 828, 1108, puis 247, 538, 829, 1109 — les instants
+joués) ; vert aussi aux séries de D603 et de D604. Ni reproduit ni expliqué : **pas décrit comme un défaut** (la règle
+de D351) ; la piste la plus probable est la marge du banc entre l'arrêt de la prise et la sélection, sous la charge
+d'une série — elle n'est PAS élargie sur une supposition. Il reviendra, ou non, à la série suivante.
+
+Elle clôt D605 (l'accordeur et l'arrêt qui relâche les notes), D606 (la lecture qui suit l'ordre), D607 (la réserve des
+fichiers), D608 (relier un fichier manquant) et D609 (la carte de batterie) : **D605 à D609 sont FAITES**.
