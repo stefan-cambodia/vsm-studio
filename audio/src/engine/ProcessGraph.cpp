@@ -697,6 +697,23 @@ void ProcessGraph::appliquerLesTenues(size_t trackIndex, vsm::audio::plugin::Mid
     switch (e.index) {
         case 7:  ccVolume_[trackIndex] = e.value; break;                    // D329
         case 10: ccPan_[trackIndex] = e.value * 2.0f - 1.0f; break;         // D330
+        default: break;
+    }
+    // D614.1 : LE CHANGEMENT EST NOTÉ À SON ÉCHANTILLON, pour que le mixage le prenne là et non au début du bloc.
+    if (e.index == 7 || e.index == 10) {
+        auto& t = tenuesDuSpan_[trackIndex];
+        const int ici = std::max(0, e.sampleOffset);
+        if (t.combien > 0 && (t.combien == TenuesDuSpan::kMax || t.echantillon[static_cast<size_t>(t.combien - 1)] == ici)) {
+            t.volume[static_cast<size_t>(t.combien - 1)] = ccVolume_[trackIndex];   // le même échantillon, ou la table pleine
+            t.pan[static_cast<size_t>(t.combien - 1)] = ccPan_[trackIndex];
+        } else {
+            t.echantillon[static_cast<size_t>(t.combien)] = ici;
+            t.volume[static_cast<size_t>(t.combien)] = ccVolume_[trackIndex];
+            t.pan[static_cast<size_t>(t.combien)] = ccPan_[trackIndex];
+            ++t.combien;
+        }
+    }
+    switch (e.index) {
         case 101: rpnMsb_[trackIndex] = static_cast<uint8_t>(brut); break;  // D331
         case 100: rpnLsb_[trackIndex] = static_cast<uint8_t>(brut); break;
         case 6:
@@ -1759,6 +1776,10 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     } gardeChrono{ meters_, trackIndex, std::chrono::steady_clock::now() };
     const Project& project = snapshot.project;
     if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return false;
+    // D614.1 : la portion repart sans changement noté, au volume et au panoramique où la précédente les a laissés.
+    tenuesDuSpan_[trackIndex].combien = 0;
+    tenuesDuSpan_[trackIndex].volumeAuDebut = ccVolume_[trackIndex];
+    tenuesDuSpan_[trackIndex].panAuDebut = ccPan_[trackIndex];
     // D30.2 : UNE PISTE DÉSACTIVÉE N'EST PAS RENDUE DU TOUT. Le muet, lui,
     // rend puis jette : c'est ce qui fait qu'une piste muette coûte encore
     // tout ce qu'elle coûtait. Ici on sort avant l'instrument, avant le
@@ -2336,6 +2357,36 @@ void ProcessGraph::renderVoiceJob(void* context, size_t index, size_t workerId) 
     self.parallelActive_[trackIndex] = rendu ? uint8_t{1} : uint8_t{0};
 }
 
+void ProcessGraph::mixerLaPiste(const GraphSnapshot& snapshot, bool anySolo, size_t trackIndex,
+                                int sampleStart, int sampleCount, const float* srcL, const float* srcR,
+                                float* outputL, float* outputR) {
+    if (trackIndex >= kMaxTracks || tenuesDuSpan_[trackIndex].combien == 0) {
+        mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount, srcL, srcR, outputL, outputR);
+        return;
+    }
+    // D614.1 : PAR MORCEAUX, chacun à son volume et à son panoramique de canal ; `ccVolume_`/`ccPan_` portent la valeur
+    // du morceau le temps de son mixage, et finissent à celle du dernier changement — celle que la portion laisse.
+    const auto& t = tenuesDuSpan_[trackIndex];
+    float volume = t.volumeAuDebut, pan = t.panAuDebut;
+    int depuis = 0;
+    for (int k = 0; k <= t.combien; ++k) {
+        const int jusqua = k < t.combien ? std::min(t.echantillon[static_cast<size_t>(k)], sampleCount) : sampleCount;
+        if (jusqua > depuis) {
+            ccVolume_[trackIndex] = volume;
+            ccPan_[trackIndex] = pan;
+            mixTrackInto(snapshot, anySolo, trackIndex, sampleStart + depuis, jusqua - depuis, srcL + depuis,
+                         srcR + depuis, outputL, outputR);
+            depuis = jusqua;
+        }
+        if (k < t.combien) {
+            volume = t.volume[static_cast<size_t>(k)];
+            pan = t.pan[static_cast<size_t>(k)];
+        }
+    }
+    ccVolume_[trackIndex] = volume;
+    ccPan_[trackIndex] = pan;
+}
+
 void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, size_t trackIndex,
                                 int sampleStart, int sampleCount, const float* srcL,
                                 const float* srcR, float* outputL, float* outputR) {
@@ -2604,7 +2655,7 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         for (size_t rang = 0; rang < combien; ++rang) {
             const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
             if (trackIndex >= kMaxTracks || !parallelActive_[trackIndex]) continue;
-            mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+            mixerLaPiste(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
                          parallelL_[trackIndex].data(), parallelR_[trackIndex].data(),
                          outputL, outputR);
         }
@@ -2623,7 +2674,7 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                                   includeScheduledEvents, compensation.get(), scratchEvents_.data(),
                                   scratchStereoL_.data(), scratchStereoR_.data()))
                 continue;
-            mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+            mixerLaPiste(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
                          scratchStereoL_.data(), scratchStereoR_.data(), outputL, outputR);
         }
         return;
@@ -2649,7 +2700,7 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                 gaucheL, gaucheR);
             if (tamponsParPiste) { parallelActive_[trackIndex] = rendu ? 1u : 0u; continue; }
             if (rendu)
-                mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+                mixerLaPiste(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
                              gaucheL, gaucheR, outputL, outputR);
         }
     }
@@ -2657,7 +2708,7 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
     for (size_t rang = 0; rang < combien; ++rang) {
         const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
         if (trackIndex >= kMaxTracks || !parallelActive_[trackIndex]) continue;
-        mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+        mixerLaPiste(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
                      parallelL_[trackIndex].data(), parallelR_[trackIndex].data(),
                      outputL, outputR);
     }

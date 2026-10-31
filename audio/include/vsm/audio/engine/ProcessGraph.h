@@ -661,6 +661,12 @@ private:
     void mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, size_t trackIndex,
                       int sampleStart, int sampleCount, const float* srcL, const float* srcR,
                       float* outputL, float* outputR);
+    /// D614.1 : LE MIXAGE D'UNE PISTE PAR MORCEAUX, chacun au volume et au panoramique de canal (CC 7, CC 10) en
+    /// vigueur — les changements notés par son rendu (`tenuesDuSpan_`). Sans changement dans la portion : un seul appel
+    /// à `mixTrackInto`, le chemin d'avant appel pour appel.
+    void mixerLaPiste(const GraphSnapshot& snapshot, bool anySolo, size_t trackIndex,
+                      int sampleStart, int sampleCount, const float* srcL, const float* srcR,
+                      float* outputL, float* outputR);
 
     /// Ce que le banc de threads reçoit : tout ce dont `renderTrackVoice` a
     /// besoin, plus la liste des pistes à rendre. Vit sur la pile du thread
@@ -747,6 +753,18 @@ private:
     std::array<float, kMaxTracks> autoVolume_{};
     std::array<float, kMaxTracks> ccVolume_{};   ///< D329 : volume de canal MIDI (CC 7), 0..1, 1 au repos
     std::array<float, kMaxTracks> ccPan_{};      ///< D330 : panoramique MIDI (CC 10), -1..1, 0 au repos -- s'AJOUTE au potentiomètre
+    /// D614.1 : LES CHANGEMENTS DE CC 7 / CC 10 D'UNE PORTION, par piste — écrits par son rendu (`appliquerLesTenues`,
+    /// parfois sur un autre cœur), lus par son mixage (fil audio, après). Au-delà de 32 dans une portion, le dernier noté
+    /// absorbe les suivants (sa valeur suit, son échantillon reste) : un fondu en CC 7 très dense y perd sa finesse,
+    /// pas sa valeur finale.
+    struct TenuesDuSpan {
+        static constexpr int kMax = 32;
+        float volumeAuDebut = 1.0f, panAuDebut = 0.0f;
+        int combien = 0;
+        std::array<int, kMax> echantillon{};
+        std::array<float, kMax> volume{}, pan{};
+    };
+    std::array<TenuesDuSpan, kMaxTracks> tenuesDuSpan_{};
     std::array<uint8_t, kMaxTracks> rpnMsb_{};   ///< D331 : paramètre enregistré choisi (CC 101 / CC 100), 127 = aucun
     std::array<uint8_t, kMaxTracks> rpnLsb_{};
     std::array<float, kMaxTracks> bendRange_{};  ///< D331 : plage de pli en demi-tons (RPN 0), 2 au repos

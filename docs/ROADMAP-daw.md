@@ -48195,3 +48195,26 @@ seulement hors des blocs de saut ;
 (c) **les empreintes de régression audio inchangées** (aucune référence n'a, à notre connaissance, de CC 7 en cours de
 bloc — si l'une change, elle est lue avant d'être régénérée) ; les suites ; un export de morceau à CC 7 comparé au
 témoin ; la série.
+
+### Phase D614 — MESURÉE (31/10/2026, 20 h 00 à l'horloge)
+
+*Écrite avant son code à 19 h 44. Le test joué rouge sur le code d'avant (8 192 au lieu de 8 333, pour le CC 7 comme pour
+le CC 10). Aucun banc neuf : D614 ne change rien à l'interface ; la mesure de l'export est faite par `vsm-render`, le
+témoin étant celui de D613 (`build/temoin-D613/vsm-render`).*
+
+| # | attendu | mesure | témoin | tenu |
+|---|---|---|---|---|
+| D614 (a) | deux rendus égaux jusqu'à 8 332, différents à partir de 8 333, pour un CC 7 et pour un CC 10 | **8 333** et **8 333** | le code d'avant : **8 192** et **8 192** (le début du bloc) | **oui** |
+| D614 (b) | le test non aligné de D611 : < 1e-4 partout | chaîne **0,00e+00**, boucle **0,00e+00** — le test resserré à l'égalité partout | avant D614 : **0,119** et **0,078** dans les blocs de saut | **oui** |
+| D614 (c) | les empreintes de régression inchangées ; un export à CC 7 contre le témoin | les **1 384** tests du moteur verts, empreintes comprises ; l'export d'une nappe sous un fondu de CC 7 (48 kHz, blocs de 512) : le premier changement effectif (tick 537, l'échantillon **26 850**) pris à **26 850** — le témoin dès **26 624**, son début de bloc ; sans CC, les deux exports **identiques au bit** ; avec, écart max 0,0028 sur 13 538 trames | `vsm-render` de D613 | **oui** |
+| — | les suites | cœur 583, moteur **1 384 / 1 384** (1 neuf), interchange 372, clap 25, panneaux 11 | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **L'attendu de l'export se lit juste en lisant le jeu** : le premier CC 7 du fondu vaut 127 — le volume de repos —,
+  il ne change rien ; le premier changement effectif est le deuxième point (tick 537), et c'est lui qui donne l'échantillon
+  de divergence. Écrit, pas ajusté : le chiffre attendu au tick 500 (25 000) ne pouvait pas apparaître.
+- **Le défaut nommé de D611 est réparé** — la lecture qui suit l'ordre et l'ordre aplati sonnent désormais au bit, que les
+  sauts tombent sur une frontière de bloc ou non.
+- **Remis, nommé** : les autres « tenues » du graphe (la plage de pli, RPN 0, D331) prennent toujours effet au début de
+  leur bloc — elles modifient la hauteur des notes qui suivent, pas un gain, et aucune mesure ne les a encore mises en
+  défaut.

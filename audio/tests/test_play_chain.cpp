@@ -305,6 +305,10 @@ VSM_TEST(unaligned_the_scheduled_cc7_lands_at_the_start_of_its_block_and_nowhere
     direLaDivergence("boucle non alignée", boucle.lecture, boucle.aplati);
     VSM_ASSERT(horsChaine < 1e-4);
     VSM_ASSERT(horsBoucle < 1e-4);
+    // D614.1 : LE DÉFAUT NOMMÉ EST RÉPARÉ — le CC 7 du planning prend effet à son échantillon : l'écart disparaît AUSSI dans
+    // les blocs de saut (0,119 et 0,078 avant D614).
+    VSM_ASSERT(ecartMax(chaine.lecture, chaine.aplati) < 1e-4);
+    VSM_ASSERT(ecartMax(boucle.lecture, boucle.aplati) < 1e-4);
 }
 
 // D612.1 — ALLER À UN ÉLÉMENT. L'attendu écrit avant le code (ROADMAP-daw, D612, (a)) : la chaîne [B, A, A] arrêtée,

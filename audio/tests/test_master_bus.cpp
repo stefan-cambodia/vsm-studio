@@ -599,3 +599,46 @@ VSM_TEST(midi_clock_start_stop_and_program_go_to_the_ports_in_use) {
     for (int b = 0; b < 10; ++b) muet.processBlock(l.data(), r.data(), 512);
     VSM_ASSERT(!muet.popMidiOutSystem(e));
 }
+
+// D614.1 — LE VOLUME ET LE PANORAMIQUE MIDI À L'ÉCHANTILLON. L'attendu écrit avant le code (ROADMAP-daw, D614, (a)) :
+// 8 kHz par blocs de 256, une note tenue au Minimoog ; le même projet avec un CC 7 à 64 au tick 1 000 (l'échantillon
+// 8 333, au milieu du bloc 32) et sans lui : égaux jusqu'à 8 332, différents à partir de 8 333 — le code d'avant
+// divergeait dès 8 192, le début du bloc. De même pour un CC 10.
+namespace {
+size_t premierEcartAvecUnControleur(uint8_t controleur, uint8_t valeur) {
+    auto rendre = [&](bool avecLeControleur) {
+        Project project;
+        project.ticksPerQuarterNote = 480;
+        Track track;
+        uint64_t id = 1;
+        track.addNote(0, 480 * 8, 57, 120, 0, id);
+        if (avecLeControleur) track.controlChanges.push_back({1000, 0, controleur, valeur});
+        project.tracks.push_back(track);
+        auto graph = std::make_unique<ProcessGraph>();
+        graph->prepare(8000.0, 256);
+        graph->setTrackInstrument(0, "vsm.minimoog");
+        graph->setProject(project);
+        graph->seekSeconds(0.0);
+        graph->setPlaying(true);
+        std::vector<float> l(256), r(256), sortie;
+        for (int b = 0; b < 48; ++b) {
+            graph->processBlock(l.data(), r.data(), 256);
+            for (int i = 0; i < 256; ++i) { sortie.push_back(l[static_cast<size_t>(i)]); sortie.push_back(r[static_cast<size_t>(i)]); }
+        }
+        return sortie;
+    };
+    const auto avec = rendre(true), sans = rendre(false);
+    size_t i = 0;
+    while (i < avec.size() && avec[i] == sans[i]) ++i;
+    return i / 2;   // en trames (gauche, droite entrelacées)
+}
+} // namespace
+
+VSM_TEST(a_scheduled_cc7_or_cc10_takes_effect_on_its_very_sample_d614) {
+    const size_t volume = premierEcartAvecUnControleur(7, 64);
+    const size_t panoramique = premierEcartAvecUnControleur(10, 127);
+    std::printf("      [D614.1] premier échantillon qui diffère : CC 7 %zu, CC 10 %zu (le CC tombe à 8 333 ; le bloc "
+                "commence à 8 192)\n", volume, panoramique);
+    VSM_ASSERT_EQ(volume, static_cast<size_t>(8333));
+    VSM_ASSERT_EQ(panoramique, static_cast<size_t>(8333));
+}
