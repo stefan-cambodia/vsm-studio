@@ -1793,17 +1793,20 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         for (int i = 0; i < drainedLiveCount_ && numEvents < kMaxEventsPerBlock; ++i) {
             const LiveNoteEvent& live = drainedLive_[static_cast<size_t>(i)];
             if (live.trackIndex != trackIndex) continue;
+            // D609.1 : LA CARTE DE BATTERIE AU CLAVIER AUSSI — on entend en jouant ce qu'on réentendra à la lecture ; la
+            // prise, elle, garde la note jouée au clavier (la note ÉCRITE).
+            const uint8_t note = track.drumOutput(live.note);
             MidiNoteEvent pluginEvent;
             pluginEvent.kind = live.noteOn ? MidiNoteEvent::Kind::NoteOn : MidiNoteEvent::Kind::NoteOff;
             pluginEvent.sampleOffset = 0;
             pluginEvent.channel = track.channel;
-            pluginEvent.note = live.note;
+            pluginEvent.note = note;
             pluginEvent.velocity = live.velocity;
             // D25.1 : sous pédale, le NoteOff est retenu ; un NoteOn oublie la retenue.
-            if (live.noteOn) heldNoteOffs_[trackIndex][live.note] = false;
-            else if (holdNoteOffIfSustained(trackIndex, live.note)) continue;
-            marquerSonnante(trackIndex, live.note, live.noteOn);   // D32.3
-            if (live.noteOn) tenuesAuClavier_[trackIndex][live.note] = true;   // D605.2
+            if (live.noteOn) heldNoteOffs_[trackIndex][note] = false;
+            else if (holdNoteOffIfSustained(trackIndex, note)) continue;
+            marquerSonnante(trackIndex, note, live.noteOn);   // D32.3
+            if (live.noteOn) tenuesAuClavier_[trackIndex][note] = true;   // D605.2
             if (live.noteOn) notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
         }

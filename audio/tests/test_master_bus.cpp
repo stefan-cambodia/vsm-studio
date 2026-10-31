@@ -351,6 +351,29 @@ VSM_TEST(stopping_releases_what_the_playback_held_and_spares_the_keyboard_d605) 
     VSM_ASSERT(pedaleSansArret > sousPedale * 0.25f);
 }
 
+// D609.1 — LA CARTE DE BATTERIE AU CLAVIER : la note 41 jouée sur une piste dont la carte dit 41 → 45 sonne 45 ; le
+// témoin sans carte sonne 41.
+VSM_TEST(a_live_note_goes_through_the_drum_map_d609) {
+    Project avec = projetDeNotes(1, 0, false);
+    avec.tracks[0].drumMap = {{41, 45}};
+    Jeu carte(avec);
+    carte.graph.sendLiveNote(ProcessGraph::LiveNoteSource::Ui, 0, 41, 100, true);
+    (void)carte.rendre(2);
+    Jeu temoin(projetDeNotes(1, 0, false));
+    temoin.graph.sendLiveNote(ProcessGraph::LiveNoteSource::Ui, 0, 41, 100, true);
+    (void)temoin.rendre(2);
+    std::printf("      [D609.1] au clavier, 41 : avec la carte, 45 %s et 41 %s ; sans carte, 41 %s\n",
+                carte.sonne(0, 45) ? "sonne" : "muette", carte.sonne(0, 41) ? "sonne" : "muette",
+                temoin.sonne(0, 41) ? "sonne" : "muette");
+    VSM_ASSERT(carte.sonne(0, 45));
+    VSM_ASSERT(!carte.sonne(0, 41));
+    VSM_ASSERT(temoin.sonne(0, 41));
+    // Le relâchement passe par la même carte : rien ne reste tenu.
+    carte.graph.sendLiveNote(ProcessGraph::LiveNoteSource::Ui, 0, 41, 0, false);
+    (void)carte.rendre(1);
+    VSM_ASSERT(!carte.sonne(0, 45));
+}
+
 // --- D25.1 : la pédale de sustain, tenue par le graphe -----------------------
 
 VSM_TEST(sustain_pedal_holds_a_released_note_until_the_pedal_is_released) {

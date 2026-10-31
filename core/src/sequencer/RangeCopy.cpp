@@ -57,7 +57,7 @@ MidiMerge mergeHeardMidi(const Project& project, Tick from, Tick to, const std::
         if (entendues.empty()) continue;
         ++r.tracksHeard;
         for (auto& n : entendues) {
-            const int hauteur = static_cast<int>(n.number) + piste.transposeSemitones;
+            const int hauteur = static_cast<int>(piste.drumOutput(n.number)) + piste.transposeSemitones;   // D609.1 : ce qu'on entend
             if (hauteur < 0 || hauteur > 127) { ++r.outOfRange; continue; }
             n.number = static_cast<uint8_t>(hauteur);
             n.id = nextNoteId();

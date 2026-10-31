@@ -5236,6 +5236,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                         : tr(u8"Notes de la piste... (%1 caractères)").replace("%1", juce::String(n)),
                                  p < project_.tracks.size(), notesDePisteWindow_ && notesDePisteWindow_->isVisible());
                 }
+                // D609.2 : LA CARTE DE BATTERIE — le compte des notes qu'elle déplace dit si elle existe.
+                {
+                    const size_t p = trackList_.selectedTrackIndex();
+                    const size_t n = p < project_.tracks.size() ? project_.tracks[p].drumMap.size() : 0;
+                    menu.addItem(kMenuTrackDrumMap,
+                                 n == 0 ? tr(u8"Carte de batterie... (aucune note déplacée)")
+                                        : tr(u8"Carte de batterie... (%1 note(s) déplacée(s))").replace("%1", juce::String(static_cast<int>(n))),
+                                 p < project_.tracks.size() && project_.tracks[p].kind == vsm::sequencer::Track::Kind::Midi,
+                                 carteWindow_ && carteWindow_->isVisible());
+                }
                 menu.addItem(kMenuTrackShowAll,
                               masquees == 0
                                   ? tr(u8"Afficher toutes les pistes (aucune masquée)")
@@ -7010,6 +7020,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         }
         case kMenuViewProjectNotes: showProjectNotes(); break;
         case kMenuTrackMemo: montrerNotesDeLaPiste(); break;   // D565.3
+        case kMenuTrackDrumMap: showCarte(); break;             // D609.2
         case kMenuViewPlayOrder: showPlayOrder(); break;
         case kMenuViewSpectrum: {
             if (!spectrumWindow_) {
@@ -10610,6 +10621,57 @@ void MainComponent::direLOrdre(const char* quoi) {
     std::fputs(ligne.c_str(), stderr);
 }
 
+void MainComponent::showCarte() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) {
+        std::fputs("VSM_CARTE : aucune piste choisie\n", stderr);
+        return;
+    }
+    if (!carteWindow_) {
+        cartePanel_.onChoix = [this](int ecrite, int jouee) { poserCarte(cartePanel_.piste(), ecrite, jouee); };
+        cartePanel_.onIdentite = [this] {
+            const size_t p = cartePanel_.piste();
+            if (p >= project_.tracks.size() || project_.tracks[p].drumMap.empty()) return;
+            beginProjectEdit(u8"Carte de batterie");
+            project_.tracks[p].drumMap.clear();
+            refreshTransportSchedule();
+            refreshHistoryList();
+            cartePanel_.setPiste(p, project_.tracks[p]);
+            std::fputs("VSM_CARTE : remise \xc3\xa0 l'identit\xc3\xa9\n", stderr);
+        };
+        carteWindow_ = std::make_unique<PanelWindow>(juce::String::fromUTF8(u8"Carte de batterie"), cartePanel_);
+        carteWindow_->setDefaultSize(640, 460);
+    }
+    cartePanel_.setPiste(piste, project_.tracks[piste]);   // RELUE À CHAQUE OUVERTURE
+    carteWindow_->setVisible(true);
+    carteWindow_->toFront(true);
+}
+
+void MainComponent::poserCarte(size_t piste, int ecrite, int jouee) {
+    if (piste >= project_.tracks.size() || ecrite < 0 || ecrite > 127 || jouee > 127) return;
+    auto& carte = project_.tracks[piste].drumMap;
+    const auto ecriteOctet = static_cast<uint8_t>(ecrite);
+    const bool identite = jouee < 0 || jouee == ecrite;
+    // UN PAS seulement si la carte CHANGE (la règle de D506).
+    if (identite ? carte.count(ecriteOctet) == 0 : (carte.count(ecriteOctet) > 0 && carte.at(ecriteOctet) == jouee)) return;
+    beginProjectEdit(u8"Carte de batterie");
+    if (identite) carte.erase(ecriteOctet);
+    else carte[ecriteOctet] = static_cast<uint8_t>(jouee);
+    refreshTransportSchedule();   // le planning se rebâtit : la carte s'entend tout de suite
+    refreshHistoryList();
+    std::fputs(("VSM_CARTE : " + std::to_string(ecrite) + " \xe2\x86\x92 " + (identite ? std::string("elle-m\xc3\xaame") : std::to_string(jouee))
+                + " ; " + std::to_string(carte.size()) + " note(s) d\xc3\xa9plac\xc3\xa9" "e(s)\n").c_str(), stderr);
+}
+
+void MainComponent::direLaCarte() {
+    const size_t p = cartePanel_.piste();
+    std::fputs(("VSM_CARTE : piste " + std::to_string(p + 1) + " ; "
+                + std::to_string(p < project_.tracks.size() ? project_.tracks[p].drumMap.size() : 0)
+                + " note(s) d\xc3\xa9plac\xc3\xa9" "e(s)\n").c_str(), stderr);
+    for (const auto& ligne : cartePanel_.lignesPourReleve())
+        std::fputs(("VSM_CARTE : " + ligne + "\n").toRawUTF8(), stderr);
+}
+
 void MainComponent::showReserve() {
     if (!reserveWindow_) {
         reservePanel_.onRafraichir = [this] { rafraichirReserve(); };
@@ -14111,11 +14173,25 @@ void MainComponent::exportMidiFile() {
             // celle de D17.5 durait depuis un an.
             if (const juce::StringArray divergentes = tracksWhoseMidiExportWillDiffer();
                 !divergentes.isEmpty()) {
+                // D609.1 : LE REMÈDE SELON LA CAUSE. La ligne disait toujours « Reporter les effets MIDI », qui ne cuit
+                // QUE les effets MIDI : faux pour une transposition seule (depuis D31.5), et pour la carte de batterie.
+                bool desEffets = false, desReglages = false;
+                for (const auto& t : project_.tracks) {
+                    for (const auto& fx : t.midiEffects) desEffets = desEffets || fx.enabled;
+                    desReglages = desReglages || t.transposeSemitones != 0 || !t.drumMap.empty()
+                                  || project_.globalTransposeSemitones != 0;
+                }
+                juce::String remedes;
+                if (desEffets)
+                    remedes << tr(u8"Pour les rendre définitives : Piste ▸ Effets MIDI ▸ « Reporter les effets MIDI dans les notes ».");
+                if (desReglages)
+                    remedes << (remedes.isEmpty() ? "" : "\n")
+                            << tr(u8"La transposition et la carte de batterie ne se reportent pas dans les notes : le fichier "
+                                  u8"garde les notes écrites.");
                 const juce::String texte =
                     tr(u8"Le fichier .mid porte les NOTES du projet, pas ce que la lecture en fait. "
                        u8"Ces pistes sonneront donc autrement dans un autre logiciel :")
-                    + "\n\n" + divergentes.joinIntoString("\n") + "\n\n"
-                    + tr(u8"Pour les rendre définitives : Piste ▸ Effets MIDI ▸ « Reporter les effets MIDI dans les notes ».");
+                    + "\n\n" + divergentes.joinIntoString("\n") + (remedes.isEmpty() ? juce::String() : "\n\n" + remedes);
                 std::fputs((juce::String::fromUTF8(u8"Export MIDI — divergence : ")
                              + texte.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
                 montrerBoite(
@@ -16617,6 +16693,12 @@ juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
             causes.add(tr(u8"transposition ")
                         + (track.transposeSemitones > 0 ? "+" : "")
                         + juce::String(track.transposeSemitones));
+        // D609.1 : LA CARTE DE BATTERIE — le fichier garde les notes ÉCRITES ; la carte, qu'il ne sait pas porter, est dite.
+        if (!track.drumMap.empty()) {
+            int deplacees = 0;
+            for (const auto& n : track.notes) deplacees += track.drumMap.count(n.number) > 0 ? 1 : 0;
+            causes.add(tr(u8"carte de batterie (%1 note(s) déplacée(s))").replace("%1", juce::String(deplacees)));
+        }
         // D544.3 : LA TRANSPOSITION GLOBALE, pour une piste qui la suit et joue autre chose que le canal 10.
         if (project_.globalTransposeSemitones != 0 && !track.independentOfGlobalTranspose
             && std::any_of(track.notes.begin(), track.notes.end(),

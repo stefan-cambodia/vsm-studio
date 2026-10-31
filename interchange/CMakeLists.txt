@@ -65,6 +65,7 @@ if (VSM_BUILD_TESTS)
         tests/test_project_document.cpp
         tests/test_takes_bundle.cpp
         tests/test_freeze.cpp
+        tests/test_drum_map_render.cpp
         tests/test_plugin_catalogue.cpp
         tests/test_offline_reconstruction.cpp
         tests/test_clap_ids.cpp

@@ -666,6 +666,15 @@ inline int globalTransposeForNote(const Project& project, const Track& track, co
     if (project.globalTransposeSemitones == 0 || track.independentOfGlobalTranspose || note.channel == 9) return 0;
     return project.globalTransposeSemitones;
 }
+/// D609.1 : LA HAUTEUR QUE LA LECTURE JOUE pour une note écrite — la carte de batterie de la piste (note écrite → note
+/// de sortie), PUIS la transposition de piste (D17.5) et la transposition globale (D544.3). Hors de 0..127 : −1, la note
+/// est écartée, jamais repliée à l'octave. LA SEULE règle : le planning, la chasse et le compte des notes écartées
+/// l'appellent tous trois.
+inline int playedPitch(const Project& project, const Track& track, const Note& note) {
+    const int hauteur = static_cast<int>(track.drumOutput(note.number)) + track.transposeSemitones
+                        + globalTransposeForNote(project, track, note);
+    return hauteur < 0 || hauteur > 127 ? -1 : hauteur;
+}
 /// D544.3 : ce que la transposition globale ajoute à la hauteur des clips d'une piste AUDIO (un clip en
 /// mode « réchantillonné » n'en prend rien : sa hauteur suit sa durée, D54 — c'est `spansFromTrack` qui
 /// l'écarte).

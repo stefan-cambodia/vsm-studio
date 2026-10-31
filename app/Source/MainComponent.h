@@ -29,6 +29,7 @@
 #include "ui/SpectrumComponent.h"
 #include "ui/PlayOrderComponent.h"
 #include "ui/ReserveComponent.h"
+#include "ui/DrumMapComponent.h"
 #include "ui/TakeCompComponent.h"
 #include "ui/PreferencesWindow.h"
 #include "ui/BrowserComponent.h"
@@ -397,6 +398,21 @@ public:
         if (geste.equalsIgnoreCase("relever-ordre")) { showPlayOrder(); direLOrdre("releve"); return true; }
         // D607.1 : la réserve des fichiers, relue puis dite (`VSM_RESERVE`) ; ouvre la fenêtre.
         if (geste.equalsIgnoreCase("relever-reserve")) { showReserve(); direLaReserve(); return true; }
+        // D609.2 : LA CARTE DE BATTERIE — `carte:41>45` (ou `carte:41>-` pour « elle-même ») choisit par la MÊME liste
+        // que la souris ; `relever-carte` la dit. Les deux ouvrent la fenêtre sur la piste choisie.
+        if (geste.startsWithIgnoreCase("carte:")) {
+            showCarte();
+            const auto reste = geste.fromFirstOccurrenceOf(":", false, false);
+            const int ecrite = reste.upToFirstOccurrenceOf(">", false, false).trim().getIntValue();
+            const auto apres = reste.fromFirstOccurrenceOf(">", false, false).trim();
+            const bool fait = cartePanel_.choisir(ecrite, apres == "-" ? -1 : apres.getIntValue());
+            if (!fait)
+                std::fputs(("VSM_CARTE : " + reste
+                            + juce::String::fromUTF8(" REFUS\xc3\x89 (aucune ligne, ou une sortie que la machine ne nomme pas)\n"))
+                               .toRawUTF8(), stderr);
+            return fait;
+        }
+        if (geste.equalsIgnoreCase("relever-carte")) { showCarte(); direLaCarte(); return true; }
         // D608.1 : choisir une ligne de la réserve, comme d'un clic — « Relier... » se presse ensuite par `cliquer:`.
         if (geste.startsWithIgnoreCase("reserve-choisir:")) {
             showReserve();
@@ -1555,6 +1571,8 @@ private:
         kMenuMixWriteSuspendLast = kMenuMixWriteSuspendFirst + 3,
         /// D607.1 : la réserve des fichiers.
         kMenuFileMediaPool,
+        /// D609.2 : la carte de batterie de la piste choisie.
+        kMenuTrackDrumMap,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2519,6 +2537,13 @@ private:
     bool relierFichier(const juce::String& ancien, const juce::File& choisi);
     std::unique_ptr<PanelWindow> reserveWindow_;
     vsm::app::ui::ReserveComponent reservePanel_;
+    /// D609.2 : LA CARTE DE BATTERIE de la piste choisie — relue du projet à l'ouverture et après chaque choix.
+    void showCarte();
+    /// Pose une entrée de la carte (`jouee` −1 : « elle-même ») — un pas d'annulation, le planning republié.
+    void poserCarte(size_t piste, int ecrite, int jouee);
+    void direLaCarte();
+    std::unique_ptr<PanelWindow> carteWindow_;
+    vsm::app::ui::DrumMapComponent cartePanel_;
     std::unique_ptr<PanelWindow> projectNotesWindow_;
     /// LE PANNEAU NE DÉTIENT RIEN : le texte vit dans `project_`, et l'éditeur
     /// l'y écrit à chaque frappe. Dupliquer l'état créerait une seconde

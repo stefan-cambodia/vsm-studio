@@ -82,10 +82,8 @@ size_t PlaybackScheduler::transposeDroppedNotes(const Project& project) {
         if (track.transposeSemitones == 0 && project.globalTransposeSemitones == 0) continue;
         for (const auto& note : track.notes) {
             if (note.muted) continue;
-            // D544.3 : la transposition globale s'y ajoute, pour les notes qui la suivent.
-            const int hauteur = static_cast<int>(note.number) + track.transposeSemitones
-                                + globalTransposeForNote(project, track, note);
-            if (hauteur < 0 || hauteur > 127) ++perdues;
+            // D544.3 : la transposition globale s'y ajoute, pour les notes qui la suivent ; D609.1 : après la carte.
+            if (playedPitch(project, track, note) < 0) ++perdues;
         }
     }
     return perdues;
@@ -235,9 +233,8 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseNotesAt(const Project& proje
         for (const auto& passage : passages) {
             for (const auto& note : jouees) {
                 if (note.muted) continue;
-                const int hauteur = static_cast<int>(note.number) + track.transposeSemitones
-                                    + globalTransposeForNote(project, track, note);   // D17.5, D544.3
-                if (hauteur < 0 || hauteur > 127) continue;
+                const int hauteur = playedPitch(project, track, note);   // D17.5, D544.3, D609.1
+                if (hauteur < 0) continue;
                 if (note.startTick < passage.sourceFrom || note.startTick >= passage.sourceTo) continue;
                 const Tick debut = note.startTick + passage.shift;
                 if (debut >= passage.outLimit || debut >= startTick) continue;
@@ -311,9 +308,9 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
                 // est ÉCARTÉE et non repliée à l'octave -- replier la ferait
                 // sonner à une hauteur que personne n'a demandée.
                 // D544.3 : LA TRANSPOSITION GLOBALE s'ajoute, pour les notes qui la suivent.
-                const int hauteur = static_cast<int>(note.number) + track.transposeSemitones
-                                    + globalTransposeForNote(project, track, note);
-                if (hauteur < 0 || hauteur > 127) continue;
+                // D609.1 : LA CARTE DE BATTERIE d'abord — note écrite → note jouée —, par la même règle (`playedPitch`).
+                const int hauteur = playedPitch(project, track, note);
+                if (hauteur < 0) continue;
                 const auto numero = static_cast<uint8_t>(hauteur);
                 Tick debut = 0;
                 if (!lu(note.startTick, debut)) continue;

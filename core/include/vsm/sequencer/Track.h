@@ -997,6 +997,15 @@ public:
     /// COMPTÉES (`transposeDroppedNotes`), et l'application le dit.
     int transposeSemitones = 0;
 
+    /// D609.1 — LA CARTE DE BATTERIE (la *Drum Map* de Cubase, sa note de sortie) : note ÉCRITE → note JOUÉE. Comme la
+    /// transposition, elle s'applique à la LECTURE, et le matériau ne bouge pas. N'y figurent que les notes déplacées ;
+    /// une note absente se joue elle-même. Écrite au projet (`"drumMap"`) seulement si elle n'est pas vide.
+    std::map<uint8_t, uint8_t> drumMap;
+    uint8_t drumOutput(uint8_t ecrite) const {
+        const auto ici = drumMap.find(ecrite);
+        return ici == drumMap.end() ? ecrite : ici->second;
+    }
+
     /// D544.3 : « INDÉPENDANTE DE LA TRANSPOSITION GLOBALE » — le *Follow / Independent* de Cubase. Faux
     /// par défaut : une piste suit la transposition du projet (`Project::globalTransposeSemitones`), qui
     /// s'AJOUTE à la sienne. Écrit dans le projet seulement s'il est posé.

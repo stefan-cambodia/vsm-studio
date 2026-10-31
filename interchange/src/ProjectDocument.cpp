@@ -584,6 +584,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.hidden = track.hidden;
         entry.memo = track.memo;   // D565.3
         entry.transposeSemitones = track.transposeSemitones;
+        entry.drumMap = track.drumMap;   // D609.1
         entry.independentOfGlobalTranspose = track.independentOfGlobalTranspose;   // D544.3
         entry.editGroup = track.editGroup;
         entry.outputSourceTrack = track.outputSourceTrack;
@@ -848,6 +849,12 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.hidden = source.hidden;
         target.memo = source.memo;   // D565.3
         target.transposeSemitones = source.transposeSemitones;
+        target.drumMap = source.drumMap;   // D609.1
+        if (source.drumMapRejected > 0)
+            report.warnings.push_back("piste " + std::to_string(i + 1) + (source.name.empty() ? "" : " \xc2\xab " + source.name + " \xc2\xbb")
+                                      + " : " + std::to_string(source.drumMapRejected)
+                                      + " entr\xc3\xa9" "e(s) de la carte de batterie \xc3\xa9" "cart\xc3\xa9" "e(s) (hors de "
+                                        "0..127, ou vers elles-m\xc3\xaa" "mes)");
         target.independentOfGlobalTranspose = source.independentOfGlobalTranspose;   // D544.3
         target.editGroup = source.editGroup;
         target.outputSourceTrack = source.outputSourceTrack;
@@ -1274,6 +1281,18 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         if (!track.memo.empty()) entry.set("memo", JsonValue::makeString(track.memo));   // D565.3
         if (track.transposeSemitones != 0)
             entry.set("transpose", JsonValue::makeNumber(track.transposeSemitones));
+        // D609.1 : LA CARTE DE BATTERIE, seulement ses entrées — absente, rien n'est écrit (un projet d'avant se relit et
+        // se réécrit à l'octet).
+        if (!track.drumMap.empty()) {
+            JsonValue carte = JsonValue::makeArray();
+            for (const auto& [ecrite, jouee] : track.drumMap) {
+                JsonValue e = JsonValue::makeObject();
+                e.set("in", JsonValue::makeNumber(ecrite));
+                e.set("out", JsonValue::makeNumber(jouee));
+                carte.append(std::move(e));
+            }
+            entry.set("drumMap", std::move(carte));
+        }
         if (track.independentOfGlobalTranspose)   // D544.3
             entry.set("independentOfGlobalTranspose", JsonValue::makeBoolean(true));
         if (track.editGroup != 0) entry.set("editGroup", JsonValue::makeNumber(track.editGroup));
@@ -1693,6 +1712,14 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.hidden = entry["hidden"].asBoolean(false);
         track.memo = entry["memo"].asString();   // D565.3
         track.transposeSemitones = static_cast<int>(entry["transpose"].asNumber(0.0));
+        // D609.1 : une entrée hors de 0..127, ou qui renvoie une note à elle-même, n'est pas une entrée — écartée.
+        for (const auto& e : entry["drumMap"].elements()) {
+            const double ecrite = e["in"].asNumber(-1.0), jouee = e["out"].asNumber(-1.0);
+            if (ecrite >= 0.0 && ecrite <= 127.0 && jouee >= 0.0 && jouee <= 127.0 && ecrite != jouee)
+                track.drumMap[static_cast<uint8_t>(ecrite)] = static_cast<uint8_t>(jouee);
+            else
+                ++track.drumMapRejected;
+        }
         track.independentOfGlobalTranspose = entry["independentOfGlobalTranspose"].asBoolean(false);   // D544.3
         track.editGroup = static_cast<int>(entry["editGroup"].asNumber(0.0));
         track.folderDepth = static_cast<int>(entry["folderDepth"].asNumber(0.0));

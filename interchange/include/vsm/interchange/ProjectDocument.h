@@ -303,6 +303,11 @@ struct ProjectTrack {
     /// D17.5 : la transposition de piste, en demi-tons. Écrite seulement
     /// quand elle n'est pas nulle.
     int transposeSemitones = 0;
+    /// D609.1 : la carte de batterie, note écrite → note jouée ; `"drumMap"` au fichier, seulement si elle n'est pas vide.
+    std::map<uint8_t, uint8_t> drumMap;
+    /// D609.1 : les entrées de la carte écartées à la lecture (hors de 0..127, ou vers elles-mêmes) — DITES par
+    /// `applyDocumentToProject`, jamais tues.
+    int drumMapRejected = 0;
     bool independentOfGlobalTranspose = false;   ///< D544.3 : écrit seulement s'il est posé
     /// D18.3 : le groupe d'édition. 0 = aucun, et rien n'est écrit.
     int editGroup = 0;

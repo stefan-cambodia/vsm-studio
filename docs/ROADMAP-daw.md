@@ -47739,3 +47739,38 @@ témoin sans carte en diffère (les deux premiers toms muets sur la 909) ;
 enregistré la porte ; l'export MIDI garde 41 et 43 et nomme « carte de batterie » ; Ctrl+Z la retire ; l'anglais ; la
 photo ; le témoin (D608) : l'entrée inconnue ;
 (e) les suites ; la série.
+
+### Phase D609 — MESURÉE, la série à jouer (31/10/2026, 09 h 41 à l'horloge)
+
+*Écrite avant son code à 06 h 36 ; le travail interrompu par la limite d'usage de l'outil — entre 06 h 36 (la dernière heure
+lue avant) et 09 h 31 (la reprise, lue à l'horloge) —, repris sans rien perdre. Les tests du cœur, du moteur et du rendu hors ligne joués rouges sur une carte neutralisée
+(`drumOutput` rendant la note écrite : 41 joué au lieu de 45 ; au rendu, la carte égale au témoin, 0,484 de la partie
+directe). Le banc `tools/carte-batterie.sh` (9 contrôles) ; le témoin : le binaire de D608 (`build/temoin-D608`).*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D609 (a) | 45 et 47 aux instants de 41 et 43, NoteOff compris ; la chasse relance 45 ; +2 après la carte ; une note hors carte se joue elle-même | les quatre événements aux mêmes millisecondes, 45/47 ; la chasse : **45**, pas 41 ; transposé : **47** ; le 36 joué 36 | sans carte : 41, 43 | **oui** |
+| D609 (a bis) | ajouté : au clavier, la note passe par la carte | 41 joué au clavier : **45 sonne, 41 muette**, et le relâchement libère 45 | sans carte : 41 sonne | **oui** |
+| D609 (b) | au rendu hors ligne, la partie GM sur la 909 avec la carte = la partie écrite en 45/47, au bit | **0,00e+00** (`left` et `right` égaux), crête 0,488 | sans carte : **0,484** | **oui** |
+| D609 (c) | la carte relue à l'identique ; sans carte rien d'écrit | une seule clé `"drumMap"` (la piste qui en a une) ; relue égale ; une entrée hors bornes écartée, COMPTÉE et dite à l'ouverture (« … entrée(s) de la carte de batterie écartée(s) ») | — | **oui** |
+| D609 (d) | au banc : la carte posée par la fenêtre, le fichier, l'export, Ctrl+Z, l'anglais, la photo | « 41 F2 tom très grave → tom grave (45) », « 43 G2 tom grave → tom médium (47) », 45 et 47 « elle-même » ; au fichier `[(41, 45), (43, 47)]` ; l'export garde **41, 43, 45, 47** et nomme « carte de batterie (2 note(s) déplacée(s)) » ; Ctrl+Z : 0 note déplacée ; *very low tom → low tom (45)*, *itself* ; la fenêtre regardée | le binaire de D608 : 0 relevé, les verbes inconnus | **oui** |
+| — | les suites | cœur **581 / 581** (1 neuf), moteur **1 379 / 1 379** (1 neuf), interchange **370 / 370** (2 neufs), clap 25, panneaux 11 ; les bancs des effets MIDI rejoués verts (`aleatoire-`, `duree-`, `plage-effet-midi`) ; gardes vertes | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Un remède faux dans la boîte de l'export, depuis D31.5** : « Ce que le .mid ne porte pas » finissait toujours par
+  « Reporter les effets MIDI dans les notes » — qui ne cuit QUE les effets MIDI ; pour une piste seulement transposée,
+  le conseil ne réparait rien, et il ne réparait pas davantage la carte. Le remède suit désormais la cause : la ligne
+  des effets MIDI quand une piste en a, et « La transposition et la carte de batterie ne se reportent pas dans les
+  notes : le fichier garde les notes écrites » quand elles sont en cause. Vu sur la photo de la boîte, pas au code.
+- **Deux conventions de noms côte à côte, et c'est voulu** : la 909 appelle « tom grave » sa note 45, General MIDI
+  « tom médium grave » — la fenêtre nomme la note écrite en General MIDI (la convention de la partie) et la note jouée
+  dans celle de la machine.
+- **Les fenêtres à leur taille, écran allumé** : les trois photos de la carte à 640 × 460, celle de la boîte de l'export
+  aussi — aucune fenêtre dégénérée depuis que l'écran est rallumé (D607, D608 : six sur une quarantaine, toutes écran
+  éteint). Un indice, pas une preuve : la série le dira.
+- **Remis, nommés** : l'éditeur de batterie (losanges, quantification par rang) ; « adapter General MIDI à la machine »
+  d'un geste ; la carte dans les préréglages de piste ; reporter la carte dans les notes ; le titre de la fenêtre montre
+  l'identifiant de la machine (`vsm.tr909`) et non son nom.
+
+**LA SÉRIE EST À JOUER (D605 à D609 ensemble, 207 bancs), ÉCRAN ALLUMÉ — et batterie chargée** : à 09 h 41, 35 % et en
+décharge ; la dernière série en a pris 28 points en 98 minutes, et la garde de batterie met le poste en veille à 10 %.
