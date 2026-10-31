@@ -152,7 +152,9 @@ echo "       (3) départ appris : entendu $D3a pendant (main $M3a), $D3b après"
 verdict "(3) un départ appris : entendu 1,00 pendant la rafale, 0,50 après" \
     "$(proche "$D3a" 1.0 0.005 && proche "$D3b" 0.5 0.005 && echo 1 || echo 0)"
 J4="$(champ "$brouillon/ecriture.txt" 1 'jou\S+ (-?[\d.]+) /')"; C4="$(courbe "$brouillon/ecr-e")"
-E4="$(grep -m1 "^VSM_ETAT_PIANOROLL" "$brouillon/ecriture.txt")"
+# « ET DIT » : la ligne d'état qui le dit, parmi TOUTES — CORRIGÉ APRÈS LA SÉRIE DE D613 : la première ligne d'état
+# (`grep -m1`) était, sous la charge d'une série, « 1 note(s) sur la piste », arrivée avant ; rejoué seul, vert.
+E4="$(grep "^VSM_ETAT_PIANOROLL" "$brouillon/ecriture.txt" | grep -m1 "criture suspendue" || grep -m1 "^VSM_ETAT_PIANOROLL" "$brouillon/ecriture.txt")"
 echo "       (4) écriture suspendue : joué $J4 pendant ; courbe [$C4] ; $E4"
 verdict "(4) l'écriture du volume suspendue : joué 1,000, la courbe identique, et dit" \
     "$(proche "$J4" 1.0 0.001 && [ "$C4" = "0:0.2500 7680:0.2500" ] && echo "$E4" | grep -q "criture suspendue" && echo 1 || echo 0)"

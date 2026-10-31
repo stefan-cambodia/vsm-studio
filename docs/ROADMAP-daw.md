@@ -48155,3 +48155,8 @@ sur 64 au relevé), là où le témoin en laisse 1 à 3 sur 24 — chez lui, la 
 comment, faute de journal. L'option reste dans `PanelWindow` : c'est le témoin de cette mesure, rejouable.
 
 **D610, D611, D612 et D613 sont FAITES.**
+
+**Le contrôle (4) d'`automation-controleur.sh` relu (31/10, 17 h 59)** : son critère dit « et dit », et il lisait la
+PREMIÈRE ligne d'état du piano roll — une course d'ordre l'a fait tomber dans la série. Il cherche désormais la ligne qui
+le dit parmi toutes (le critère tel qu'écrit, non élargi) ; vert sur le binaire neuf, **rouge (5 ratés) sur celui de
+D602**, qui n'a pas la fonction : la garde garde encore.
