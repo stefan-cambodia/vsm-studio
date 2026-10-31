@@ -48282,3 +48282,35 @@ le projet qu'il enregistre.*
   photo de la grosse caisse). Nommé, remis : décaler la grille d'un demi-losange changerait le zéro de toute la règle.
 - **Remis, nommés** : la quantification et la longueur d'insertion par rang, les rangs dans l'ordre de la carte de
   batterie (D609).
+
+### Phase D616 — un soixante-seizième audit : l'export suit l'ordre de jeu qu'on entend (31/10/2026)
+
+*Écrite le 31/10 à 20 h 16 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D606**, et d'une décision de D606 qu'elle REVOIT — « l'export reste celui de
+la ligne de temps : exporter l'ordre, c'est l'aplatir (annulable) puis exporter ». À l'usage, c'est la panne que ce dépôt
+s'interdit sous un autre nom : la case « La lecture suit l'ordre » cochée, on ENTEND [refrain, couplet, couplet] et l'on
+EXPORTE la ligne de temps — deux sons pour un même geste. Le contrat de D21 dit que les deux chemins rendent le même son.
+Et aplatir pour exporter, puis annuler, oblige à graver le projet pour en tirer un fichier.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D616.1 | **L'export suit l'ordre de jeu qu'on entend** — le mixage du mode Arrangement | la case « La lecture suit l'ordre » cochée et l'ordre non vide, l'export audio (le mixage, et les stems) rend l'ORDRE : une COPIE de la session est aplatie dans cet ordre (`flattenPlayOrder`) puis rendue — le projet n'est pas touché, aucun pas d'annulation ; le message de l'export le dit (« l'ordre de jeu suivi : B, A ») ; la case décochée, la ligne de temps comme avant ; le gel d'une piste rend toujours la ligne de temps (geler n'est pas exporter) ; l'export MIDI écrit le matériau (D31.5) ; mesuré par l'export, contre l'export du projet aplati par le menu, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Ce qu'on entend est ce qu'on exporte** : la case est l'état de ce qu'on entend ; l'export la suit. La décision de D606
+  est REVUE, et l'infobulle de la case dit désormais que l'export suit l'ordre.
+- **Une copie aplatie, par la fonction qui aplatit** (`flattenPlayOrder`, gardée au bit par D606) : pas un second chemin
+  de rendu qui saute — l'export reste un rendu linéaire, de ce que l'aplatissement écrit.
+- **Une seule fonction pour les deux exports** (le mixage, les stems) : `bundleAExporter`.
+- **Le verbe `exporter-stems:`**, comme `exporter-audio:` (D589.3) : `VSM_EXPORT_STEMS` agit au démarrage, avant que les
+  gestes posent l'ordre.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/export-ordre.sh`, deux sections (A, B) d'une mesure, l'ordre [B, A]
+suivi :
+(a) l'export audio est **identique au bit** à l'export du même projet aplati [B, A] par le menu (« Aplatir », confirmé) ;
+(b) le projet enregistré APRÈS l'export garde ses notes à leur place (le MIDI relu : les notes d'origine) ;
+(c) la case décochée : l'export est celui de la ligne de temps (différent de (a)) ; le témoin (D615), case cochée : la
+ligne de temps aussi ;
+(d) les stems suivent : le stem de la piste, identique au bit au stem du projet aplati ;
+(e) le message de l'export dit l'ordre suivi ; les suites ; la série.
