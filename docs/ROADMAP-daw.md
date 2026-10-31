@@ -48395,7 +48395,7 @@ manquants »), et Ctrl+Z → **4 manquants** — `audio/nappe.wav` MANQUANT reve
 l'historique », `audio/absent.wav` « joué ».
 
 **CORRIGÉ APRÈS LE PREMIER ESSAI, ET DIT (22 h 23 à l'horloge)** — deux choses, vues au journal du premier passage du
-banc (15 contrôles verts, 1 rouge, l'écran ÉTEINT par le poste à 22 h 2x) :
+banc (14 contrôles verts, 1 rouge — « 15 verts » écrit d'abord, CORRIGÉ au compte des lignes à 01 h 06 —, l'écran ÉTEINT par le poste à 22 h 2x) :
 - **Une seconde boîte modale** : après la recherche, `loadAudioTracks` rouvrait « Audio non chargé » pour les trois
   fichiers restés manquants — que la remarque de la réserve venait de nommer. Elle bloquait le geste suivant (Play,
   « bascule 0 → 0 »). DÉCIDÉ : après « Relier » (D608) comme après « Chercher », le rechargement ne rouvre pas la boîte
@@ -48410,7 +48410,7 @@ banc (15 contrôles verts, 1 rouge, l'écran ÉTEINT par le poste à 22 h 2x) :
 **CORRIGÉ APRÈS LE DEUXIÈME ESSAI, ET DIT (01/11, 00 h 59 à l'horloge)** : « silencieux » écrit comme « −inf » était faux
 pour un export en 24 bits — le stem de « Basse » du témoin non cherché lit **−138,47 dBFS**, exactement 1 LSB (2⁻²³) :
 le tramage TPDF de ± 1 LSB que l'export pose depuis D14.4. Silencieux veut dire ici : **sous −130 dBFS**, le tramage seul.
-Le reste du deuxième essai : 15 contrôles verts, la boîte d'ouverture refermée par son OK (écran allumé), aucune seconde
+Le reste du deuxième essai : 14 contrôles verts (« 15 », CORRIGÉ), la boîte d'ouverture refermée par son OK (écran allumé), aucune seconde
 boîte après la recherche.
 
 ### La série de D614 à D616 — JOUÉE (31/10/2026, 22 h 15 à l'horloge)
@@ -48426,7 +48426,7 @@ de la SESSION, `memory.peak`, pas de cette série). D614, D615 et D616 sont FAIT
 
 *Écrite avant son code le 31/10 à 20 h 30 ; l'attendu de Ctrl+Z corrigé avant la mesure (20 h 34), l'instrument de « la
 piste sonne » après le premier essai (22 h 23), le seuil du silence après le deuxième (00 h 59) — chaque fois ci-dessus.
-Le test du cœur joué rouge sur une fonction vide (0 ≠ 1). Le banc `tools/chercher-manquants.sh` (16 contrôles) ; le
+Le test du cœur joué rouge sur une fonction vide (0 ≠ 1). Le banc `tools/chercher-manquants.sh` (**15** contrôles — « 16 » écrit d'abord, et dans le message du commit de D617 ; CORRIGÉ au compte des `verdict`) ; le
 témoin : le binaire de D616 (`build/temoin-D616`), et dans le même binaire une course non cherchée.*
 
 | # | attendu | mesure (binaire neuf) | témoin | tenu |
@@ -48448,5 +48448,9 @@ témoin : le binaire de D616 (`build/temoin-D616`), et dans le même binaire une
   « Basse » (−11,94 dBFS après la recherche) serait le sommet retenu d'une lecture d'un instant : PLAUSIBLE, non vérifié,
   publié et non jugé. **Et l'écart de 3,01 dB** entre ce vumètre et le stem (−14,95) vaut la loi panoramique au centre :
   non tranché, nommé.
+- **La photo regardée APRÈS le commit (01 h 03), et un défaut vu** : la remarque d'une recherche, longue, tenait sur UNE
+  ligne comprimée à 70 % de sa largeur (`juce::Label` comprime avant de replier) — petite et serrée, quand la lisibilité
+  est le besoin de l'utilisateur. Elle se replie désormais (`setMinimumHorizontalScale(1.0f)`) : deux lignes à pleine
+  largeur, en français et en anglais, regardées ; le banc rejoué, 15 / 15.
 - **Remis, nommés** : chercher par le contenu ; borner une recherche sur un dossier immense ; importer dans la réserve ;
   poser un fichier de la réserve sur une piste.

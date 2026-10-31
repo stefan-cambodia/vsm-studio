@@ -31,6 +31,9 @@ ReserveComponent::ReserveComponent() {
     remarque_.setFont(juce::Font(juce::FontOptions(13.0f)));
     remarque_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);   // un fait, la convention de D152
     remarque_.setJustificationType(juce::Justification::topLeft);
+    // REPLIÉE, JAMAIS COMPRIMÉE (regardé sur la photo de D617 : la remarque d'une recherche, longue, tenait sur une
+    // ligne écrasée à 70 % de sa largeur — illisible, quand la lisibilité est le besoin de l'utilisateur).
+    remarque_.setMinimumHorizontalScale(1.0f);
     addAndMakeVisible(remarque_);
     liste_.setRowHeight(26);
     liste_.setColour(juce::ListBox::backgroundColourId, vsm::ui::Palette::panel);
