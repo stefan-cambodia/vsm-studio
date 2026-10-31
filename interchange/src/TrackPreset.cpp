@@ -26,6 +26,7 @@ TrackPreset trackPresetFromTrack(const vsm::sequencer::Track& track, const std::
     preset.colorRgba = track.colorRgba;
     preset.channel = track.channel;
     preset.transposeSemitones = track.transposeSemitones;
+    preset.drumMap = track.drumMap;   // D610.2
     preset.delayMs = track.delayMs;
     preset.outputGroup = track.outputGroup;
     return preset;
@@ -57,6 +58,7 @@ void applyTrackPresetToTrack(const TrackPreset& preset, vsm::sequencer::Track& t
     track.colorRgba = preset.colorRgba;
     track.channel = static_cast<uint8_t>(std::clamp(preset.channel, 0, 15));
     track.transposeSemitones = preset.transposeSemitones;
+    track.drumMap = preset.drumMap;   // D610.2
     track.delayMs = preset.delayMs;
     track.outputGroup = preset.outputGroup;
 }
@@ -90,6 +92,16 @@ JsonValue trackPresetToJson(const TrackPreset& preset) {
     root.set("colorRgba", JsonValue::makeNumber(static_cast<double>(preset.colorRgba)));
     root.set("channel", JsonValue::makeNumber(preset.channel));
     root.set("transposeSemitones", JsonValue::makeNumber(preset.transposeSemitones));
+    if (!preset.drumMap.empty()) {   // D610.2 : seulement si elle déplace une note, comme au projet
+        JsonValue carte = JsonValue::makeArray();
+        for (const auto& [ecrite, jouee] : preset.drumMap) {
+            JsonValue e = JsonValue::makeObject();
+            e.set("in", JsonValue::makeNumber(ecrite));
+            e.set("out", JsonValue::makeNumber(jouee));
+            carte.append(std::move(e));
+        }
+        root.set("drumMap", std::move(carte));
+    }
     root.set("delayMs", JsonValue::makeNumber(preset.delayMs));
     root.set("outputGroup", JsonValue::makeNumber(preset.outputGroup));
     return root;
@@ -140,6 +152,12 @@ TrackPresetLoadResult trackPresetFromJson(const JsonValue& json) {
     preset.colorRgba = static_cast<uint32_t>(json["colorRgba"].asNumber(static_cast<double>(0xFF6B9BFFu)));
     preset.channel = static_cast<int>(json["channel"].asNumber(0.0));
     preset.transposeSemitones = static_cast<int>(json["transposeSemitones"].asNumber(0.0));
+    // D610.2 : les entrées hors de 0..127, ou vers elles-mêmes, sont écartées — la règle du projet (D609.1).
+    for (const auto& e : json["drumMap"].elements()) {
+        const double ecrite = e["in"].asNumber(-1.0), jouee = e["out"].asNumber(-1.0);
+        if (ecrite >= 0.0 && ecrite <= 127.0 && jouee >= 0.0 && jouee <= 127.0 && ecrite != jouee)
+            preset.drumMap[static_cast<uint8_t>(ecrite)] = static_cast<uint8_t>(jouee);
+    }
     preset.delayMs = json["delayMs"].asNumber(0.0);
     preset.outputGroup = static_cast<int>(json["outputGroup"].asNumber(-1.0));
     result.preset = std::move(preset);

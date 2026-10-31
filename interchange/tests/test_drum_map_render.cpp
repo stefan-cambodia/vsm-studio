@@ -3,6 +3,7 @@
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/interchange/OfflineReconstruction.h"
 #include "vsm/interchange/ProjectDocument.h"
+#include "vsm/sequencer/DrumKit.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -101,4 +102,44 @@ VSM_TEST(the_drum_map_is_written_only_when_it_moves_a_note_and_reads_back_d609) 
     bool dit = false;
     for (const auto& w : rapport.warnings) dit = dit || w.find("carte de batterie") != std::string::npos;
     VSM_ASSERT(dit);
+}
+
+// D610.1 — L'ADAPTATION AU RENDU HORS LIGNE. L'attendu écrit avant le code (ROADMAP-daw, D610, (b)) : sur la 909, chaque
+// pièce rendue seule — 41, 43, 44 et 57 MUETTES sans la carte, TOUTES audibles (crête > 0,05) avec la carte adaptée.
+VSM_TEST(general_midi_pieces_the_909_lacks_sound_once_adapted_d610) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+    const auto adaptation = adaptGeneralMidi("vsm.tr909", {41, 43, 44, 57});
+    const auto crete = [](uint8_t note, const std::map<uint8_t, uint8_t>& carte) {
+        LoadedBundle bundle;
+        bundle.project.ticksPerQuarterNote = 480;
+        Track piste;
+        piste.instrumentId = "vsm.tr909";
+        piste.channel = 9;
+        uint64_t ids = 1;
+        piste.addNote(0, 240, note, 110, 9, ids);
+        piste.drumMap = carte;
+        bundle.project.tracks.push_back(std::move(piste));
+        bundle.document = documentFromProject(bundle.project);
+        // À 48 kHz, LA FRÉQUENCE DE LA SESSION — CORRIGÉ APRÈS LA PREMIÈRE MESURE : rendu à 8 kHz, le charleston fermé
+        // de la 909 (44 → 42) sortait à 0,013 de crête, l'essentiel de son spectre étant au-dessus de 4 kHz, que 8 kHz
+        // ne peut pas porter. Le seuil (0,05) n'est pas touché ; c'est le rendu qui ne pouvait pas l'entendre.
+        RenderOptions o;
+        o.sampleRate = 48000.0;
+        o.blockSize = 512;
+        o.durationSeconds = 0.5;
+        vsm::audio::engine::RenderedAudio sortie;
+        VSM_ASSERT(renderBundleToBuffer(bundle, sortie, o).success);
+        float c = 0.0f;
+        for (size_t i = 0; i < sortie.left.size(); ++i) c = std::max({c, std::abs(sortie.left[i]), std::abs(sortie.right[i])});
+        return c;
+    };
+    for (uint8_t note : {41, 43, 44, 57}) {
+        const float sans = crete(note, {});
+        const float avec = crete(note, adaptation.entries);
+        std::printf("      [D610.1] 909, note %d : sans carte %.4f, adaptée (→ %d) %.3f\n", note, sans,
+                    adaptation.entries.count(note) ? adaptation.entries.at(note) : note, avec);
+        VSM_ASSERT(sans < 1e-6f);
+        VSM_ASSERT(avec > 0.05f);
+    }
 }

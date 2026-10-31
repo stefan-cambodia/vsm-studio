@@ -168,3 +168,22 @@ VSM_TEST(a_track_preset_carries_the_post_fader_inserts) {
     VSM_ASSERT(!cible.effects[0].postFader);
     VSM_ASSERT(cible.effects[1].postFader);
 }
+
+// D610.2 — LA CARTE DE BATTERIE VOYAGE AVEC LE PRÉRÉGLAGE. L'attendu écrit avant le code (ROADMAP-daw, D610, (f)) : un
+// préréglage pris sur une piste à carte {41 → 45, 43 → 47} la rend égale une fois posé ; un préréglage sans carte
+// n'écrit pas la clé.
+VSM_TEST(a_track_preset_carries_the_drum_map_and_writes_it_only_when_there_is_one_d610) {
+    Track batterie;
+    batterie.instrumentId = "vsm.tr909";
+    batterie.drumMap = {{41, 45}, {43, 47}};
+    const std::string texte = trackPresetToJson(trackPresetFromTrack(batterie, "Toms 909", std::nullopt)).toString();
+    VSM_ASSERT(texte.find("\"drumMap\"") != std::string::npos);
+    const auto relu = parseTrackPreset(texte);
+    VSM_ASSERT(relu.success);
+    Track cible;
+    applyTrackPresetToTrack(relu.preset, cible);
+    VSM_ASSERT(cible.drumMap == batterie.drumMap);
+    Track nue;
+    const std::string sansCarte = trackPresetToJson(trackPresetFromTrack(nue, "Nue", std::nullopt)).toString();
+    VSM_ASSERT(sansCarte.find("\"drumMap\"") == std::string::npos);
+}

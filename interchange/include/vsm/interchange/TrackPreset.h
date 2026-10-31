@@ -3,6 +3,7 @@
 #include "vsm/interchange/Json.h"
 #include "vsm/interchange/SynthPreset.h"
 #include "vsm/sequencer/Track.h"
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -37,6 +38,8 @@ struct TrackPreset {
     uint32_t colorRgba = 0xFF6B9BFFu;
     int channel = 0;
     int transposeSemitones = 0;
+    /// D610.2 : la carte de batterie (D609.1) — un préréglage de batterie garde ce qui la fait sonner sur sa machine.
+    std::map<uint8_t, uint8_t> drumMap;
     double delayMs = 0.0;
     int outputGroup = -1;
 };

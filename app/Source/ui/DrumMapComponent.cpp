@@ -19,6 +19,12 @@ DrumMapComponent::DrumMapComponent() {
     addAndMakeVisible(aide_);
     identite_.onClick = [this] { if (onIdentite) onIdentite(); };
     addAndMakeVisible(identite_);
+    adapter_.onClick = [this] { if (onAdapter) onAdapter(); };   // D610.1
+    addAndMakeVisible(adapter_);
+    remarque_.setFont(juce::Font(juce::FontOptions(13.0f)));
+    remarque_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);   // un fait, la convention de D152
+    remarque_.setJustificationType(juce::Justification::topLeft);
+    addAndMakeVisible(remarque_);
     defilement_.setViewedComponent(&contenu_, false);
     defilement_.setScrollBarsShown(true, false);
     addAndMakeVisible(defilement_);
@@ -29,6 +35,9 @@ void DrumMapComponent::retraduire() {
     aide_.setText(tr(u8"À gauche, la note écrite ; à droite, la note que la machine joue. Le matériau ne change pas."),
                   juce::dontSendNotification);
     identite_.setButtonText(tr(u8"Remettre à l'identité"));
+    adapter_.setButtonText(tr(u8"Adapter General MIDI à la machine"));
+    adapter_.setTooltip(tr(u8"Chaque pièce General MIDI que la piste écrit va à la pièce de la même catégorie la plus "
+                           u8"proche sur la machine ; ce qui n'a pas d'équivalent reste lui-même, et c'est dit."));
 }
 
 juce::String DrumMapComponent::nomEcrit(int note) const {
@@ -84,6 +93,10 @@ void DrumMapComponent::setPiste(size_t index, const vsm::sequencer::Track& piste
     repaint();
 }
 
+void DrumMapComponent::setRemarque(const juce::String& texte) {
+    remarque_.setText(texte, juce::dontSendNotification);
+}
+
 bool DrumMapComponent::choisir(int ecrite, int jouee) {
     for (auto& r : rangees_)
         if (r.ecrite == ecrite) {
@@ -110,6 +123,8 @@ void DrumMapComponent::resized() {
     aide_.setBounds(zone.removeFromTop(22));
     auto bas = zone.removeFromBottom(34);
     identite_.setBounds(bas.removeFromRight(220).reduced(2));
+    adapter_.setBounds(bas.removeFromRight(300).reduced(2));   // D610.1
+    remarque_.setBounds(zone.removeFromBottom(40));
     zone.removeFromTop(6);
     defilement_.setBounds(zone);
     const int largeur = std::max(200, zone.getWidth() - defilement_.getScrollBarThickness());

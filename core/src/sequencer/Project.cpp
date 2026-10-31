@@ -1061,6 +1061,12 @@ size_t explodeTrackByPitch(Project& project, size_t index,
         piste.pan = source.pan;
         piste.outputGroup = source.outputGroup;
         piste.vcaTrack = source.vcaTrack;   // D532.1 : les pièces gardent le VCA de la piste éclatée
+        // D610 : CE QUE LA LECTURE FAIT DE LA NOTE suit la pièce — sa transposition (oubliée depuis toujours), et
+        // l'entrée de la carte de batterie qui la concerne (D609.1) : sans elle, un tom 41 que la carte faisait jouer
+        // en 45 sur la 909 redevenait muet dans sa piste.
+        piste.transposeSemitones = source.transposeSemitones;
+        piste.independentOfGlobalTranspose = source.independentOfGlobalTranspose;
+        if (const auto ici = source.drumMap.find(hauteur); ici != source.drumMap.end()) piste.drumMap[hauteur] = ici->second;
         const std::string nom = nameFor ? nameFor(hauteur) : std::string();
         piste.name = !nom.empty() ? nom
                                    : source.name + " - " + noteNumberToName(hauteur);

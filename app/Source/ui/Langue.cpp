@@ -781,6 +781,15 @@ const Paire kAnglais[] = {
       "Copying into the project folder failed: nothing was relinked." },
     { "Fichier relié : %1 → %2",
       "File relinked: %1 → %2" },
+    // D610.1 : adapter General MIDI à la machine.
+    { "Adapter General MIDI à la machine",
+      "Adapt General MIDI to the machine" },
+    { "Chaque pièce General MIDI que la piste écrit va à la pièce de la même catégorie la plus proche sur la machine ; ce qui n'a pas d'équivalent reste lui-même, et c'est dit.",
+      "Each General MIDI piece the track writes goes to the nearest piece of the same category on the machine; what has no equivalent stays itself, and this is said." },
+    { "Sans équivalent sur cette machine : %1",
+      "No equivalent on this machine: %1" },
+    { "Carte de batterie : adapter General MIDI",
+      "Drum map: adapt General MIDI" },
     // D609 : la carte de batterie.
     { "La transposition et la carte de batterie ne se reportent pas dans les notes : le fichier garde les notes écrites.",
       "Transposition and the drum map are not written into the notes: the file keeps the written notes." },

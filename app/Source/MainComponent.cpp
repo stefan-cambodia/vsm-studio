@@ -10639,6 +10639,37 @@ void MainComponent::showCarte() {
             cartePanel_.setPiste(p, project_.tracks[p]);
             std::fputs("VSM_CARTE : remise \xc3\xa0 l'identit\xc3\xa9\n", stderr);
         };
+        // D610.1 : ADAPTER GENERAL MIDI À LA MACHINE — les notes que la piste écrit, un seul pas ; ce qui reste sans
+        // équivalent est dit, au journal et dans la fenêtre.
+        cartePanel_.onAdapter = [this] {
+            const size_t p = cartePanel_.piste();
+            if (p >= project_.tracks.size()) return;
+            auto& piste = project_.tracks[p];
+            std::set<uint8_t> ecrites;
+            for (const auto& n : piste.notes) ecrites.insert(n.number);
+            const auto adaptation = vsm::sequencer::adaptGeneralMidi(piste.instrumentId,
+                                                                     std::vector<uint8_t>(ecrites.begin(), ecrites.end()));
+            size_t changees = 0;
+            for (const auto& [ecrite, jouee] : adaptation.entries)
+                changees += (piste.drumMap.count(ecrite) == 0 || piste.drumMap.at(ecrite) != jouee) ? 1 : 0;
+            juce::StringArray sans;
+            for (uint8_t g : adaptation.sansEquivalent)
+                sans.add(tr(juce::String::fromUTF8(vsm::sequencer::drumVoiceName(std::string(), g).c_str())) + " ("
+                         + juce::String(static_cast<int>(g)) + ")");
+            if (changees > 0) {
+                beginProjectEdit(u8"Carte de batterie : adapter General MIDI");
+                for (const auto& [ecrite, jouee] : adaptation.entries) piste.drumMap[ecrite] = jouee;
+                refreshTransportSchedule();
+                refreshHistoryList();
+            }
+            cartePanel_.setPiste(p, piste);
+            cartePanel_.setRemarque(sans.isEmpty() ? juce::String()
+                                                   : tr(u8"Sans équivalent sur cette machine : %1").replace("%1", sans.joinIntoString(", ")));
+            std::fputs(("VSM_CARTE : adapt\xc3\xa9" "e \xc3\xa0 " + piste.instrumentId + " : " + std::to_string(changees)
+                        + " note(s) adapt\xc3\xa9" "e(s), " + std::to_string(adaptation.sansEquivalent.size())
+                        + " sans \xc3\xa9quivalent" + (sans.isEmpty() ? std::string() : " : " + sans.joinIntoString(", ").toStdString())
+                        + "\n").c_str(), stderr);
+        };
         carteWindow_ = std::make_unique<PanelWindow>(juce::String::fromUTF8(u8"Carte de batterie"), cartePanel_);
         carteWindow_->setDefaultSize(640, 460);
     }
@@ -10670,6 +10701,8 @@ void MainComponent::direLaCarte() {
                 + " note(s) d\xc3\xa9plac\xc3\xa9" "e(s)\n").c_str(), stderr);
     for (const auto& ligne : cartePanel_.lignesPourReleve())
         std::fputs(("VSM_CARTE : " + ligne + "\n").toRawUTF8(), stderr);
+    if (cartePanel_.remarque().isNotEmpty())   // D610.1 : ce que la fenêtre dit de ce qui reste sans équivalent
+        std::fputs(("VSM_CARTE : remarque : " + cartePanel_.remarque() + "\n").toRawUTF8(), stderr);
 }
 
 void MainComponent::showReserve() {
@@ -16277,6 +16310,7 @@ void MainComponent::fusionnerMidiEntreLocateurs() {
     t.controlChanges.clear(); t.pitchBends.clear(); t.polyAftertouch.clear(); t.channelPressure.clear();
     t.programChanges.clear(); t.automation.clear(); t.takes.clear(); t.versions.clear(); t.midiEffects.clear();
     t.transposeSemitones = 0;   // les notes portent déjà la transposition de leur piste
+    t.drumMap.clear();          // D610 : et sa carte de batterie (D609.1) — sinon elle s'appliquerait deux fois
     t.muted = false; t.solo = false;
     vsm::sequencer::Clip clip;
     clip.id = project_.nextClipId();

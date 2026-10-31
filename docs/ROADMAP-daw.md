@@ -47863,3 +47863,37 @@ d'une série — elle n'est PAS élargie sur une supposition. Il reviendra, ou n
 
 Elle clôt D605 (l'accordeur et l'arrêt qui relâche les notes), D606 (la lecture qui suit l'ordre), D607 (la réserve des
 fichiers), D608 (relier un fichier manquant) et D609 (la carte de batterie) : **D605 à D609 sont FAITES**.
+
+### Phase D610 — MESURÉE, le banc à rejouer écran allumé (31/10/2026, 13 h 29 à l'horloge)
+
+*Écrite avant son code à 11 h 39, complétée à 11 h 43 ; le code écrit pendant la série, compilé après elle. Les tests du
+cœur verts du premier coup, puis joués ROUGES sur l'adaptation et la correction d'« Éclater par hauteur » neutralisées
+(808 : 6 au lieu de 9 ; la pièce éclatée joue 41). Le banc `tools/adapter-batterie.sh` (7 contrôles), et le cas (6) du
+banc `fusionner-midi.sh` ; le témoin : le binaire de D609 (`build/temoin-D609`).*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D610 (a) | les quinze nombres ; sur la 909 : 41 → 45, 43 → 45, 48 → 47, 44 → 42, 57 → 49, 36 inchangée | 808 **6 → 9** (26) ; 909 **9 → 18** (17) ; batterie **10 → 20** (15) ; FM Drums **6 → 14** (21) ; percussions **13 → 13** (22) — **les quinze, à l'unité** ; les six correspondances de la 909, et le ride 51 sans équivalent | l'adaptation vidée : 6 ≠ 9 | **oui** |
+| D610 (b) | sur la 909, 41, 43, 44, 57 muettes sans carte, audibles (> 0,05) adaptées | sans carte **0,0000** les quatre ; adaptées **0,394**, **0,394**, **0,180**, **0,253** | — | **oui, le rendu corrigé à 48 kHz** |
+| D610 (c) | au banc : 4 adaptées, 1 sans équivalent dit ; les sorties ; Ctrl+Z ; l'anglais ; le témoin | « 4 note(s) adaptée(s), 1 sans équivalent : ride (51) » ; 41 → tom grave (45), 43 → tom grave (45), 44 → charleston fermé (42), 57 → crash (49) ; « Sans équivalent sur cette machine : ride (51) » ; Ctrl+Z : 0 note déplacée ; *No equivalent on this machine: ride (51)* | le binaire de D609 : ni bouton, ni adaptation | **chaque contrôle vu vert, écran ÉTEINT, en deux passes — pas une passe entière ; à rejouer écran allumé** |
+| D610 (e) | éclater par hauteur une piste {41 → 45} +2 : la pièce 41 joue 47 | **47**, l'entrée seule recopiée | le code d'avant : **41** | **oui** |
+| D610 (f) | le préréglage porte la carte, et ne l'écrit pas sans elle | relue égale ; la clé absente sans carte | — | **oui** |
+| D610 (g) | la fusion fait entendre 38 et la piste fusionnée n'a pas de carte | notes **1920:38** … ; « carte 0 entrée(s) » | le binaire de D609 : « carte **2** entrée(s) », rouge | **oui** |
+| — | les suites | cœur **583 / 583** (3 neufs), moteur 1 379, interchange **372 / 372** (2 neufs, dont celui du préréglage), clap 25, panneaux 11 ; `carte-batterie` et `fusionner-midi` rejoués verts | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Les quinze nombres écrits à la main avant le code sont tombés juste**, à l'unité — la règle « même catégorie,
+  hauteur la plus proche » fait ce que le cahier en attendait, toms rangés compris.
+- **Le rendu à 8 kHz ne pouvait pas entendre un charleston** — CORRIGÉ APRÈS LA MESURE : 44 → 42 sortait à 0,013, sous le
+  seuil ; son spectre est au-dessus de 4 kHz, que 8 kHz ne porte pas. Rendu à 48 kHz (la fréquence de la session) :
+  0,180. Le SEUIL n'a pas bougé ; c'est le rendu qui était sourd.
+- **Les fenêtres dégénérées sont revenues avec l'écran éteint** (13 h 20, session verrouillée) : aucune pendant les
+  207 bancs de la série écran allumé, puis 128 × 128 aux trois premiers essais du banc dès l'écran coupé. C'est écrit
+  désormais parmi les pièges de `CLAUDE.md` ; le banc rejoue une fois une course dégénérée et le dit. Écran éteint,
+  chaque contrôle de (c) a été vu vert, mais en deux passes : le banc se rejoue écran allumé avant que D610 soit dite
+  faite — à la série suivante au plus tard.
+- **Remis, nommés** : l'éditeur de batterie (losanges, quantification par rang) ; l'adaptation inverse (une partie
+  écrite pour une machine vers General MIDI) ; « Éclater par hauteur » garde maintenant la transposition — un défaut de
+  toujours, réparé au passage et mesuré par (e).
+
+**LA SÉRIE SUIVANTE EST À JOUER, ÉCRAN ALLUMÉ, BATTERIE CHARGÉE** : 19 % à 13 h 20, en décharge.

@@ -34,6 +34,10 @@ public:
 
     std::function<void(int ecrite, int jouee)> onChoix;
     std::function<void()> onIdentite;
+    /// D610.1 : « Adapter General MIDI à la machine » ; la remarque dit ce qui reste sans équivalent.
+    std::function<void()> onAdapter;
+    void setRemarque(const juce::String& texte);
+    juce::String remarque() const { return remarque_.getText(); }
 
     void resized() override;
     void paint(juce::Graphics& g) override;
@@ -50,8 +54,8 @@ private:
     size_t piste_ = 0;
     std::string instrument_;
     std::vector<Rangee> rangees_;
-    juce::Label titre_, aide_;
-    juce::TextButton identite_;
+    juce::Label titre_, aide_, remarque_;
+    juce::TextButton identite_, adapter_;
     juce::Component contenu_;
     juce::Viewport defilement_;
 };

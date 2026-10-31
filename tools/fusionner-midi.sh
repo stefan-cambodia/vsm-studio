@@ -16,7 +16,10 @@
 #       jouent ce qu'elles jouaient (le témoin, exporté du projet non touché) ;
 #   (3) le SOLO respecté : « Lead » en solo → seules ses deux notes, 60 et 62 ;
 #   (4) un pas : Ctrl+Z → les quatre pistes d'avant ;
-#   (5) rien d'entendu entre les locateurs (posés sur [7680, 9600)) : « Rien à fusionner » dit, aucun pas, aucune piste.
+#   (5) rien d'entendu entre les locateurs (posés sur [7680, 9600)) : « Rien à fusionner » dit, aucun pas, aucune piste ;
+#   (6) D610 (g) : « Basse » porte une carte de batterie qui ÉCHANGE 38 et 40 (D609.1) — la fusion fait entendre ce que
+#       « Basse » fait entendre (38 à 1 920), et la piste fusionnée n'a PAS de carte (ses notes la portent déjà) ; le code
+#       d'avant recopiait la carte, et la note fusionnée se rejouait 40.
 #
 #   tools/fusionner-midi.sh [binaire]
 set -u
@@ -49,7 +52,7 @@ def mix(muet=False, solo=False):
     return {"muted": muet, "pan": 0.0, "sends": [0.0, 0.0], "solo": solo, "volume": 0.8}
 clip = lambda n, **x: dict({"start": 0, "length": 9600, "sourceStart": 0, "sourceLength": 9600, "name": n}, **x)
 basse = [(0, 40, 480), (1680, 38, 480), (1920, 40, 480), (3840, 43, 480), (5280, 45, 960)]
-def ecrire(nom, boucle, solo_lead=False):
+def ecrire(nom, boucle, solo_lead=False, carte=False):
     os.makedirs(f"{b}/{nom}/midi", exist_ok=True)
     mid = [piste("Basse", 0, basse, tempo=True), piste("Lead", 1, [(2400, 72, 480), (4320, 74, 480)]),
            piste("Muette", 2, [(2400, 60, 480)]), piste("Clip muet", 3, [(2880, 65, 480)])]
@@ -60,7 +63,8 @@ def ecrire(nom, boucle, solo_lead=False):
                "transport": {"tempoChanges": [{"bpm": 120.0, "tick": 0}], "ticksPerQuarterNote": 480,
                              "timeSignatures": [{"denominator": 4, "numerator": 4, "tick": 0}],
                              "loop": {"enabled": False, "startTick": boucle[0], "endTick": boucle[1]}},
-               "tracks": [e("Basse", 0, mix(), "vsm.sh101", [clip("B")]),
+               "tracks": [e("Basse", 0, mix(), "vsm.sh101", [clip("B")],
+                            **({"drumMap": [{"in": 38, "out": 40}, {"in": 40, "out": 38}]} if carte else {})),
                           e("Lead", 1, mix(solo=solo_lead), "vsm.minimoog", [clip("L")], transpose=-12),
                           e("Muette", 2, mix(muet=True), "vsm.minimoog", [clip("M")]),
                           e("Clip muet", 3, mix(), "vsm.minimoog", [clip("C", muted=True)])]},
@@ -68,6 +72,7 @@ def ecrire(nom, boucle, solo_lead=False):
 ecrire("F", (1920, 5760))
 ecrire("F-solo", (1920, 5760), solo_lead=True)
 ecrire("F-vide", (7680, 9600))
+ecrire("F-carte", (1920, 5760), carte=True)
 PY
 
 course() {
@@ -131,6 +136,7 @@ course annuler "$brouillon/Fz" VSM_DELAI=3000 VSM_VUE="$VUE" \
     VSM_GESTE_APRES="1200:$FUSION;1600:touche:ctrl + Z;2100:enregistrer:$brouillon/Fz"
 course vide "$brouillon/F-vide" VSM_DELAI=2500 VSM_VUE="$VUE" \
     VSM_GESTE_APRES="1200:$FUSION;1500:relever-historique;1800:enregistrer:$brouillon/F-vide"
+course carte "$brouillon/F-carte" VSM_DELAI=2500 VSM_VUE="$VUE" VSM_GESTE_APRES="1200:$FUSION;1700:enregistrer:$brouillon/F-carte"
 
 p="$(pistes "$brouillon/Ff/project.json")"; n="$(notes "$brouillon/Ff/midi/arrangement.mid" fusion)"
 j="$(notes "$brouillon/Ff.mid" fusion)"; s="$(notes "$brouillon/F-solo/midi/arrangement.mid" fusion)"
@@ -155,6 +161,11 @@ verdict "(2) le .mid joué : la piste neuve fait entendre la fusion, les pistes 
 verdict "(3) le solo respecté : seules les notes de la piste en solo" "$([ "$s" = "2400:60:480 4320:62:480" ] && echo 1 || echo 0)"
 verdict "(4) un pas : Ctrl+Z rend les quatre pistes d'avant" \
     "$([ "$(echo "$z" | tr '|' '\n' | wc -l)" = 4 ] && ! echo "$z" | grep -q fusion && echo 1 || echo 0)"
+c="$(notes "$brouillon/F-carte/midi/arrangement.mid" fusion)"
+cc="$(python3 -c "import json,sys; t=[t for t in json.load(open(sys.argv[1]))['tracks'] if 'fusion' in t['name']]; print('ABSENTE' if not t else ('carte ' + str(len(t[0].get('drumMap', []))) + ' entrée(s)'))" "$brouillon/F-carte/project.json" 2>/dev/null)"
+echo "       (6) avec la carte 38 ↔ 40 sur « Basse » : notes de la fusion [$c] ; piste fusionnée : ${cc:-illisible}"
+verdict "(6) D610 : la fusion fait entendre 38 (ce que « Basse » joue), et la piste fusionnée n'a pas de carte" \
+    "$([ "$c" = "1920:38:480 2400:60:480 3840:43:480 4320:62:480 5280:45:480" ] && [ "$cc" = "carte 0 entrée(s)" ] && echo 1 || echo 0)"
 verdict "(5) rien d'entendu : « Rien à fusionner » dit, aucun pas, aucune piste" \
     "$([ "$(echo "$v" | tr '|' '\n' | wc -l)" = 4 ] && [ "$(echo "$hist" | cut -d' ' -f3)" = 0 ] \
        && grep -q "^VSM_BOITE : Rien à fusionner" "$brouillon/vide.txt" && echo 1 || echo 0)"
