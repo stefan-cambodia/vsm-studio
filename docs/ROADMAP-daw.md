@@ -48690,3 +48690,22 @@ leurs amplitudes s'ajoutent en phase, 0,1789 + 0,0518 + 0,0518 = 0,2825, soit **
 **Ce qui reste : le point de mesure de la tranche n'est écrit nulle part où on le lit** — le vumètre n'a pas d'infobulle
 (`LevelMeter` n'est pas un `SettableTooltipClient`). Il en aura une : « après le fader, avant le panoramique » pour la
 tranche, « après la loi de panoramique : ce que l'export rend » pour le master.
+
+### Phase D621 — MESURÉE, la série à jouer (01/11/2026, 02 h 48 à l'horloge)
+
+*Écrite avant la mesure à 02 h 25 ; mesurée à 02 h 27 (ci-dessus). Le banc `tools/niveau-lecture-export.sh` (8 contrôles) ;
+le témoin des infobulles : le binaire de D620.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D621 (a) | au centre : tranche −10,00, master −13,01, export −13,01 | **−10,00 / −13,01 / −13,01**, les lectures « en lecture » au relevé | — | **oui, l'hypothèse tient** |
+| D621 (b) | à fond à gauche : −10,00 partout | **−10,00 / −10,00 / −10,00** | — | **oui** |
+| D621 (c) | le point de mesure dans l'infobulle, en deux langues | la tranche : « après le fader, AVANT le panoramique », les trois marques de la peinture ; le master : « ce que l'export rend » ; *after the fader, BEFORE the panner* ; *what the export renders* | le binaire de D620 : les vumètres relevés, **aucune** infobulle | **oui** |
+| — | les suites | `vumetre-console`, `temoins-ecretage`, `fader-console`, `loi-panoramique`, `ecoute-attenuee`, `volet-anglais` verts ; gardes vertes | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Aucun écart entre la lecture et l'export** : les deux chiffres que D617 et D618 laissaient sont, l'un un point de
+  mesure (avant le panoramique, voulu par D4.7), l'autre une somme de sinusoïdes en phase dans un jeu de banc.
+- **L'infobulle, corrigée avant le commit** : la première écriture disait « le trait est la crête, la barre le niveau
+  efficace » ; la peinture (D470) montre la crête en barre PÂLE, le niveau efficace en barre PLEINE, et un trait pour la
+  crête RETENUE. Relu au code de `LevelMeter::paint` avant de commiter, et le banc vérifie désormais les trois marques.

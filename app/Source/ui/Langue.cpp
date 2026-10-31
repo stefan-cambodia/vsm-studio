@@ -781,6 +781,11 @@ const Paire kAnglais[] = {
       "Copying into the project folder failed: nothing was relinked." },
     { "Fichier relié : %1 → %2",
       "File relinked: %1 → %2" },
+    // D621.1 : ce que mesurent les vumètres.
+    { "Ce que la piste envoie : après le fader, AVANT le panoramique. La barre pâle est la crête, la barre pleine le niveau efficace, le trait la crête retenue. Au centre, la loi de panoramique du projet la fait entrer plus bas dans le mixage (3 dB sous la loi par défaut).",
+      "What the track sends: after the fader, BEFORE the panner. The pale bar is the peak, the solid bar the RMS level, the line the held peak. In the centre, the project's pan law brings it lower into the mix (3 dB under the default law)." },
+    { "Le mixage, après la loi de panoramique et la chaîne du master : ce que l'export rend. La barre pâle est la crête, la barre pleine le niveau efficace, le trait la crête retenue.",
+      "The mix, after the pan law and the master chain: what the export renders. The pale bar is the peak, the solid bar the RMS level, the line the held peak." },
     // D618.1 : poser un fichier de la réserve à la tête.
     { "Poser à la tête",
       "Insert at playhead" },

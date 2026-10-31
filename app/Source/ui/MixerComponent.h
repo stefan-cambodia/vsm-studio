@@ -51,7 +51,8 @@ inline float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
 /// l'écart entre les deux — la bande pâle —, qui est la densité de la piste.
 /// (Jusqu'à D470, ce commentaire décrivait l'inverse de la peinture : la barre
 /// pleine était la crête, et le RMS un trait blanc à 35 % qu'on ne voyait pas.)
-class LevelMeter : public juce::Component {
+/// D621.1 : UNE INFOBULLE — le point de mesure (avant ou après le panoramique) ne s'écrivait nulle part où on le lit.
+class LevelMeter : public juce::Component, public juce::SettableTooltipClient {
 public:
     /// D468 : L'ÉCHELLE DE LA TRANCHE, ÉCRITE UNE FOIS — celle du fader : -60..+6
     /// dB, milieu de course à -12 dB. Le fader la reprend (`ChannelStrip`) et le

@@ -510,6 +510,13 @@ void ChannelStrip::rafraichirDeparts() {
 
 void ChannelStrip::retraduire() {
     poserInfobulleDuNom();
+    // D621.1 : CE QUE LE VUMÈTRE DE TRANCHE MESURE — mesuré par D621 : −10,00 à la tranche, −13,01 au master et à l'export
+    // pour une piste au centre. Sans le dire, le stem « 3 dB sous la tranche » passait pour un écart entre deux chemins.
+    // Les trois marques, telles que `LevelMeter::paint` les peint (D470) — CORRIGÉ avant le commit : la première version
+    // disait « le trait est la crête, la barre le niveau efficace ».
+    meter_.setTooltip(tr(u8"Ce que la piste envoie : après le fader, AVANT le panoramique. La barre pâle est la crête, la "
+                         u8"barre pleine le niveau efficace, le trait la crête retenue. Au centre, la loi de panoramique du "
+                         u8"projet la fait entrer plus bas dans le mixage (3 dB sous la loi par défaut)."));
     refreshMuteSolo();   // D481 : l'infobulle du M, dans la langue courante
     bullePan_.nommer([] { return tr(u8"Panoramique"); });   // D414 : au survol, le réglage et sa valeur
     trim_.setTooltip(tr(u8"Trim d'entrée : le gain AVANT les inserts. Pousse la piste dans son "
@@ -1290,6 +1297,9 @@ MasterStrip::MasterStrip() {
 }
 
 void MasterStrip::retraduire() {
+    // D621.1 : le master mesure ce que l'export rend (mesuré : −13,01 dans les deux, au centième).
+    meter_.setTooltip(tr(u8"Le mixage, après la loi de panoramique et la chaîne du master : ce que l'export rend. La barre "
+                         u8"pâle est la crête, la barre pleine le niveau efficace, le trait la crête retenue."));
     monoButton_.setTooltip(tr(u8"Écoute en mono : L+R repliés après le limiteur, la corrélation "
                               u8"lue devient ce qu'on entend. Jamais dans un export."));
     phaseLabel_.setTooltip(tr(u8"Corrélation de phase : +1 en phase, 0 sans rapport, "
@@ -1753,6 +1763,12 @@ void MixerComponent::listerVumetresPourCapture() const {
                                                           : juce::String("-inf")) + " dBFS"
                 + "\n").toRawUTF8(), stderr);
     }
+    // D621.1 : les infobulles des vumètres — la première tranche et le master (`getTooltip` n'est pas `const` chez JUCE).
+    if (!strips_.isEmpty())
+        std::fputs(("VSM_VUMETRE : infobulle tranche 0 : " + const_cast<LevelMeter&>(strips_[0]->vumetre()).getTooltip()
+                    + "\n").toRawUTF8(), stderr);
+    std::fputs(("VSM_VUMETRE : infobulle master : " + const_cast<LevelMeter&>(master_.vumetre()).getTooltip() + "\n").toRawUTF8(),
+               stderr);
     // D469 : le master, relu sur la même courbe.
     const float posMaster = master_.vumetre().cretePosition();
     std::fputs(("VSM_VUMETRE : master : "
