@@ -290,6 +290,40 @@ VSM_TEST(supprimer_du_temps_apres_un_clip_ouvert_ne_le_coupe_pas) {
 // D597 — LA FIN DU MORCEAU COMPTE LE FICHIER D'UNE PISTE AUDIO SANS CLIP. L'attendu écrit avant le code (ROADMAP-daw,
 // D597) : 480 ticks à la noire, 120 BPM ; une piste MIDI qui finit au tick 960, une piste audio sans clip de 4,0 s →
 // 3 840 ; avec un clip de 0 à 1 920 → 1 920 ; une note jusqu'au tick 5 000 → 5 000 ; au tempo fixe de 60 → 1 920.
+// D620.1 — UN CLIP AUDIO OUVERT COMPTE JUSQU'AU BOUT DE SON FICHIER. L'attendu écrit avant le code (ROADMAP-daw, D620) :
+// 120 BPM, un fichier de 4 s : ouvert au tick 0 → 3 840 ; au tick 960 → 4 800 ; au tick 960 avec 1 s de départ → 3 840 ;
+// posé de 1 920 → 1 920 ; étiré et ouvert, de fenêtre 2 400 → 2 400.
+VSM_TEST(an_open_audio_clip_counts_to_the_end_of_its_file_d620) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    Track voix;
+    voix.kind = Track::Kind::Audio;
+    voix.audio.path = "audio/voix.wav";
+    voix.audio.sampleRate = 48000.0;
+    voix.audio.frames = 192000;   // 4,0 s
+    voix.audio.channels = 2;
+    Clip ouvert;                  // longueur nulle : la forme que `materializeImplicitClips` pose à l'ouverture
+    voix.clips.push_back(ouvert);
+    p.tracks.push_back(voix);
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(3840));
+    p.tracks[0].clips[0].startTick = 960;
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(4800));
+    p.tracks[0].clips[0].sourceStartSeconds = 1.0;
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(3840));
+    Clip pose;
+    pose.length = 1920;
+    p.tracks[0].clips = {pose};
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(1920));
+    Clip etire;
+    etire.warpMode = WarpMode::KeepPitch;
+    etire.sourceLength = 2400;
+    etire.warpMarkers = {{0.0, 0}, {4.0, 3000}};
+    p.tracks[0].clips = {etire};
+    VSM_ASSERT(clipIsWarped(etire));
+    VSM_ASSERT_EQ(p.lastSoundingTick(), Tick(2400));
+    VSM_ASSERT_EQ(p.audioClipEndTick(p.tracks[0], etire), Tick(2400));
+}
+
 VSM_TEST(the_song_end_counts_the_file_of_an_audio_track_without_clips) {
     Project p;
     p.ticksPerQuarterNote = 480;

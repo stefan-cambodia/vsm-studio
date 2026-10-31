@@ -619,12 +619,24 @@ midi::Tick Project::lastSoundingTick() const {
                 last = std::max(last, secondsToTicks(t.audio.durationSeconds()));
             continue;
         }
-        // Un clip AUDIO a sa fenêtre en secondes : sa longueur posée fait foi, comme avant.
+        // Un clip AUDIO a sa fenêtre en secondes : sa longueur posée fait foi ; OUVERT, le bout du fichier (D620.1).
         for (const auto& c : t.clips)
-            last = std::max(last, c.startTick + (t.kind == Track::Kind::Audio ? std::max<Tick>(c.length, 0)
-                                                                               : clipPlayedLength(c, finMateriau)));
+            last = std::max(last, t.kind == Track::Kind::Audio ? audioClipEndTick(t, c)
+                                                               : c.startTick + clipPlayedLength(c, finMateriau));
     }
     return last;
+}
+
+midi::Tick Project::audioClipEndTick(const Track& track, const Clip& clip) const {
+    // D620.1 — LA RÈGLE DE `spansFromTrack` (AudioTrackSource.cpp), ici en ticks : la fin du morceau suit ce que la
+    // lecture joue. Posé, sa longueur ; étiré et ouvert, sa fenêtre puis son dernier marqueur ; ouvert, « jusqu'au bout
+    // du fichier », moins son départ dans le fichier — un clip qui partirait au-delà du fichier ne finit pas avant de
+    // commencer.
+    if (clip.length > 0) return clip.startTick + clip.length;
+    if (clipIsWarped(clip))
+        return clip.startTick + (clip.sourceLength > 0 ? clip.sourceLength : clip.warpMarkers.back().tick);
+    const double fin = ticksToSeconds(clip.startTick) + track.audio.durationSeconds() - clip.sourceStartSeconds;
+    return std::max(clip.startTick, secondsToTicks(fin));
 }
 
 void reorderTracks(Project& project, const std::vector<size_t>& nouvelOrdre) {

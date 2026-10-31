@@ -48589,3 +48589,104 @@ bit » veuille dire quelque chose) ;
   côtés manquent rend « égal ».
 - **Remis, nommés** : les projets écrits avant D619 gardent leur description (aucune réécriture à l'ouverture) ; les
   stems et la console ne disent pas le même niveau pour une piste au centre (D618).
+
+### Phase D620 — un quatre-vingtième audit : un clip audio ouvert compte jusqu'au bout de son fichier (01/11/2026)
+
+*Écrite le 01/11 à 01 h 43 (l'horloge, lue avant d'écrire), avant toute ligne de code et avant la mesure de l'export.
+Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : de D617, où Play ne jouait pas.** Les courses de D617 lisaient « arrêté » 1,2 s après Play, sur un jeu
+de pistes audio SANS clip. Mesuré à 01 h 3x, sur un projet d'une piste audio sans clip (un fichier de 3 s) et d'un MIDI
+vide : à l'ouverture, `materializeImplicitClips` lui donne un clip « #1, début 0, **longueur 0** » ; Play → tête **0,000 s,
+arrêté**. Lu au code :
+- `spansFromTrack` (la lecture, `AudioTrackSource.cpp`) : « UNE LONGUEUR NULLE VEUT DIRE "JUSQU'AU BOUT DU FICHIER" » ;
+- `Project::lastSoundingTick` (la fin du morceau, D540 et D597 — le moteur, le transport, le rendu, la ligne d'ensemble)
+  compte un clip audio par sa longueur POSÉE : `max(c.length, 0)`, soit **0**.
+D597 a corrigé la piste audio SANS clip, et l'a mesurée par `vsm-render`, qui ne matérialise rien ; dans l'application,
+le clip de longueur nulle est posé avant que sa règle ne serve. **Toute piste audio venue sans clip** — les parties gardées
+en audio par la chaîne de reconstruction (`vsm_project_export.py`, D597), les stems importés d'un projet écrit à la main —
+**ne compte donc pas pour la fin du morceau dans l'application.**
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE QUI LA TRANCHE** : sur ce projet (un fichier de 3 s, un MIDI vide, 48 kHz), l'export de
+l'APPLICATION (le binaire de D619) rend **2,0 s** — la queue seule —, quand `vsm-render` rend **5,0 s** (3 s + 2 s de queue) :
+deux chemins, deux durées, contre le contrat de D21. Tranchée si les deux durées sont celles-là ; réfutée si l'application
+rend 5,0 s (alors seul le transport est en cause).
+
+**MESURÉE ET TRANCHÉE (01 h 44 à l'horloge)** : le binaire de D619, sur ce projet — l'export de l'application **2,000 s**
+(44,1 kHz, crête 0,052), `vsm-render` **5,000 s** (48 kHz). L'hypothèse tient : deux chemins, deux durées.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D620.1 | **Un clip audio ouvert compte jusqu'au bout de son fichier** | la fin du morceau prend, pour un clip AUDIO de longueur nulle, la fin de ce que la lecture en joue — de son début jusqu'au bout du fichier, moins son départ dans le fichier (`sourceStartSeconds`) ; un clip étiré ouvert, sa fenêtre ou son dernier marqueur — la règle même de `spansFromTrack` ; mesuré au cœur, par le transport et par l'export de l'application, contre `vsm-render` et le témoin |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La fin suit la lecture, au cœur** (`lastSoundingTick`) : c'est elle que le moteur, le transport et le rendu lisent ; la
+  corriger dans le seul chemin de l'application recréerait l'écart entre les chemins. `materializeImplicitClips` n'est
+  pas touchée : un clip ouvert est une forme légitime (D336), et la lecture la connaît.
+- **La règle s'écrit une fois au cœur** (`audioClipEndTick`) et `lastSoundingTick` l'appelle ; `spansFromTrack` garde la
+  sienne, en secondes, dans le module audio — deux écritures de la même règle, nommées l'une dans l'autre (un test du
+  cœur les confronte sur les cas de l'attendu (a)).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** (480 ticks à la noire, 120 BPM, un fichier de 4 s) : un clip ouvert au tick 0 → **3 840** (avant : 0) ;
+ouvert au tick 960 → **4 800** ; ouvert au tick 960 avec 1 s de départ dans le fichier → **3 840** ; un clip de longueur
+1 920 → **1 920** (inchangé) ; un clip étiré ouvert de fenêtre 2 400 au tick 0 → **2 400** ;
+(b) **au banc** `tools/clip-audio-ouvert.sh` : le projet de 3 s — Play → **en lecture**, la tête entre 0,8 et 1,6 s au relevé
+d'1,2 s (le témoin : arrêté, 0,000) ; l'export de l'application **5,0 s** (le témoin : celui que l'hypothèse dit) ; la
+durée égale à celle de `vsm-render` ;
+(c) les suites (`fin-du-morceau`, et les bancs de D597) ; la série.
+
+### Phase D620 — MESURÉE, la série à jouer (01/11/2026, 02 h 39 à l'horloge)
+
+*Écrite avant son code à 01 h 43 ; l'hypothèse tranchée à 01 h 44, avant le code (ci-dessus). Le test du cœur joué rouge
+sur l'ancienne règle (0 ≠ 3 840). Le banc `tools/clip-audio-ouvert.sh` (4 contrôles) ; le témoin : le binaire de D619.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D620 (a) | 3 840, 4 800, 3 840, 1 920, 2 400 | les cinq, au cœur (`an_open_audio_clip_counts_to_the_end_of_its_file_d620`) ; et la fin JOUÉE par `spansFromTrack`, ramenée en ticks, égale à un tick près sur les cinq cas (`…_is_the_end_the_song_counts_d620`, module audio) | l'ancienne règle : rouge (0 ≠ 3 840) | **oui** |
+| D620 (b) | Play en lecture ; l'export 5,0 s ; la durée de `vsm-render` | le clip « longueur 0 » relevé à l'ouverture ; Play : tête **1,196 s, en lecture** ; export de l'application **5,000 s** ; `vsm-render` **5,000 s** | le binaire de D619 : **0,000, arrêté** ; export **2,000 s** | **oui** |
+| — | les suites | la vérification complète : cœur **585**, audio **1 385** (empreintes comprises), interchange **372**, clap **25**, panneaux **11**, Python **275**, ruff, mypy, 16 gardes vertes (l'index, à reprendre, repris) ; `fin-du-morceau`, `ordre-suivi`, `export-ordre`, `aplatir-clips`, `ligne-d-ensemble`, `chercher-manquants`, `poser-depuis-reserve`, `description-importee` rejoués verts sur le binaire de D620 | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Le test croisé du module audio n'a pas été vu rouge lui-même** : sa première assertion appelle la fonction du cœur
+  que l'autre test a vue rouge ; sa seconde (la fin jouée) ne dépend pas de D620 et passait déjà. Dit plutôt que tu.
+- **Ce que D620 change pour les projets écrits** : un projet enregistré par l'application porte, pour toute piste audio
+  venue sans clip, un clip ouvert ; il se jouait et s'exportait jusqu'à la fin de son MIDI (ou 0), il va désormais au bout
+  de ses fichiers — dans l'application comme par `vsm-render`. Les projets de la chaîne (sans clip) suivaient déjà D597.
+- **La question de D618 sur la console et les stems** : tranchée au code puis mesurée par D621 (ci-dessous).
+
+### Phase D621 — un quatre-vingt-unième audit : le niveau qu'on voit en lecture et celui qu'on exporte (01/11/2026)
+
+*Écrite le 01/11 à 02 h 25 (l'horloge, lue avant d'écrire), avant toute mesure. La vérification complète de D620 compile.*
+
+**D'OÙ ELLE VIENT : de deux chiffres laissés par D617 et D618.** (1) Le stem d'une piste au centre sort 3,01 dB sous le
+vumètre de sa tranche. **Tranché au code, sans mesure** : le pic de tranche est pris APRÈS le fader et AVANT le panoramique
+(`mixStereoInto`, `Mixer.h` : `peak = max(|in × volume|)` avant `gainL/gainR` ; voulu par D4.7 — « ce que la piste
+envoie ») ; le stem est rendu après la loi de −3 dB (D571.2). Ce n'est pas un écart entre deux chemins, c'est deux points
+de mesure. (2) **Non tranché** : en D617, le master lisait **−10,98 dBFS** quand la piste la plus forte sortait à −14,95
+au stem — 4 dB AU-DESSUS de ce que l'export rend. Or ce relevé venait d'une lecture d'un instant (D620 : le transport
+s'arrêtait à 0), et il ne prouve rien. D620 rend la lecture à ce jeu : la mesure se fait enfin.
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE QUI LA TRANCHE** : une piste audio au centre, fader 1,0, un fichier stéréo de 3 s à
+−10,00 dBFS de crête, la loi par défaut — le vumètre de tranche lit **−10,00** (avant le panoramique), le master **−13,01**
+(après la loi), et l'export du mixage a sa crête à **−13,01** : le master qu'on voit et le fichier qu'on exporte disent le
+même niveau, à 0,1 dB près (le tramage et le pas du vumètre). **Réfutée** si le master s'écarte de l'export de plus de
+0,5 dB ; alors c'est un défaut du contrat de D21, et il se cherche.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D621.1 | **Le master en lecture et l'export du mixage disent le même niveau** | mesuré, l'hypothèse écrite avant ; un écart, s'il y en a un, nommé et cherché — et le point de mesure des tranches (avant le panoramique) écrit là où on le lit : dans l'infobulle du vumètre de tranche, s'il ne l'y est pas |
+
+**L'ATTENDU** — au banc `tools/niveau-lecture-export.sh` : (a) les trois chiffres de l'hypothèse ; (b) le même jeu tourné
+à fond à gauche : la tranche −10,00, le master −10,00 (la loi ne coûte rien sur le bord), l'export −10,00 ; (c) la suite
+selon ce que (a) et (b) disent.
+
+**MESURÉE (02 h 27 à l'horloge), L'HYPOTHÈSE TIENT** — le binaire de D620, les deux lectures « en lecture » au relevé (tête
+1,207 et 1,184 s) : au centre, la tranche **−10,00**, le master **−13,01**, l'export **−13,01** ; à fond à gauche, **−10,00**
+partout. Le master qu'on voit et le fichier qu'on exporte disent le même niveau, au centième.
+**Et le −10,98 de D617 s'explique au calcul, sans défaut** : les trois pistes qui sonnaient après la recherche — « Basse »
+(−14,95 au stem), « Voix » et « Nappe » (−25,72 chacune) — jouent la MÊME sinusoïde de 220 Hz, née au même échantillon :
+leurs amplitudes s'ajoutent en phase, 0,1789 + 0,0518 + 0,0518 = 0,2825, soit **−10,98 dBFS**. Le jeu, pas le moteur.
+**Ce qui reste : le point de mesure de la tranche n'est écrit nulle part où on le lit** — le vumètre n'a pas d'infobulle
+(`LevelMeter` n'est pas un `SettableTooltipClient`). Il en aura une : « après le fader, avant le panoramique » pour la
+tranche, « après la loi de panoramique : ce que l'export rend » pour le master.

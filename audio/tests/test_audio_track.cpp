@@ -3,7 +3,10 @@
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/sequencer/Project.h"
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <utility>
 
 using namespace vsm::audio::engine;
 using namespace vsm::sequencer;
@@ -240,6 +243,42 @@ VSM_TEST(an_audio_track_without_a_clip_plays_its_whole_file) {
     VSM_ASSERT_EQ(spans.size(), size_t(1));
     VSM_ASSERT_EQ(spans[0].startFrame, int64_t(0));
     VSM_ASSERT_EQ(spans[0].lengthFrames, int64_t(44100));
+}
+
+// D620.1 — LA FIN QUE LA LECTURE JOUE ET CELLE QUE LE MORCEAU COMPTE SONT LA MÊME. La règle est écrite deux fois : en
+// secondes ici (`spansFromTrack`), en ticks au cœur (`Project::audioClipEndTick`, que `lastSoundingTick` appelle). Les
+// cinq cas de l'attendu de D620 : la fin de la portée jouée, ramenée en ticks, égale la fin comptée, à un tick près.
+VSM_TEST(the_played_end_of_an_audio_clip_is_the_end_the_song_counts_d620) {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    Track voix;
+    voix.kind = Track::Kind::Audio;
+    voix.audio = {"audio/voix.wav", 48000.0, 192000, 2};   // 4,0 s
+    const auto finJouee = [&p](const Track& t) {
+        const auto spans = spansFromTrack(t, 48000.0, [&p](int64_t tick) { return p.ticksToSeconds(tick); });
+        int64_t fin = 0;
+        for (const auto& s : spans) fin = std::max(fin, s.startFrame + s.lengthFrames);
+        return p.secondsToTicks(static_cast<double>(fin) / 48000.0);
+    };
+    Clip ouvert;
+    Clip ouvertTard;
+    ouvertTard.startTick = 960;
+    Clip ouvertDecale = ouvertTard;
+    ouvertDecale.sourceStartSeconds = 1.0;
+    Clip pose;
+    pose.length = 1920;
+    Clip etire;
+    etire.warpMode = WarpMode::KeepPitch;
+    etire.sourceLength = 2400;
+    etire.warpMarkers = {{0.0, 0}, {4.0, 3000}};
+    const std::pair<Clip, vsm::midi::Tick> cas[] = {{ouvert, 3840}, {ouvertTard, 4800}, {ouvertDecale, 3840},
+                                                    {pose, 1920}, {etire, 2400}};
+    for (const auto& [clip, attendu] : cas) {
+        Track t = voix;
+        t.clips = {clip};
+        VSM_ASSERT_EQ(p.audioClipEndTick(t, clip), attendu);
+        VSM_ASSERT(std::llabs(static_cast<long long>(finJouee(t) - attendu)) <= 1);
+    }
 }
 
 VSM_TEST(a_muted_audio_clip_produces_no_span_at_all) {

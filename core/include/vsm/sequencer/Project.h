@@ -306,6 +306,11 @@ public:
     /// CLIPS, avec ses clips (fenêtres et répétitions, `clipPlayedLength`) ; c'est aussi la fin
     /// du planning du moteur (`ProcessGraph::setProject`).
     midi::Tick lastSoundingTick() const;
+    /// D620.1 : LA FIN D'UN CLIP AUDIO, telle que la lecture la joue — la règle de `spansFromTrack` (écrite en secondes
+    /// dans le module audio ; un test du cœur tient les deux d'accord sur les cas de D620) : posé, sa longueur ; OUVERT
+    /// (longueur nulle), jusqu'au bout du fichier moins son départ dans le fichier ; étiré et ouvert, sa fenêtre ou son
+    /// dernier marqueur. `lastSoundingTick` comptait un clip ouvert pour 0.
+    midi::Tick audioClipEndTick(const Track& track, const Clip& clip) const;
 
     uint64_t nextNoteId() { return nextNoteId_++; }
     /// Identifiants de CLIPS, comptés à part de ceux des notes : les deux ne se
