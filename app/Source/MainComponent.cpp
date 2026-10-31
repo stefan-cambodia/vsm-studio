@@ -1560,6 +1560,8 @@ MainComponent::MainComponent()
     pianoRollPanel_.setZoomALaRegle(zoomALaRegle_);   // D586.1 : une préférence, deux règles
     chasserLesNotes_ = vsm::app::ui::UiScale::properties().getBoolValue("transportChasserLesNotes", true);
     reticule_ = vsm::app::ui::UiScale::properties().getBoolValue("affichageReticule", true);   // D587.3
+    batterieEnLosanges_ = vsm::app::ui::UiScale::properties().getBoolValue("affichageBatterieEnLosanges", true);   // D615.1
+    pianoRoll_.setBatterieEnLosanges(batterieEnLosanges_);
     // D588.2 : la largeur de la tête — une valeur hors des trois redevient celle d'origine.
     vsm::app::ui::setLargeurDeTete(vsm::app::ui::UiScale::properties().getIntValue("affichageLargeurTete", 0));
     arrangement_.setReticule(reticule_);
@@ -6404,6 +6406,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             // D587.3 : LE RÉTICULE (*Cross-hair Cursor*) — une préférence du poste, pour les deux vues.
             menu.addItem(kMenuViewCrosshair, tr(u8"Réticule pendant un geste"), true, reticule_);
+            // D615.1 : LES FRAPPES EN LOSANGES — l'affichage du Drum Editor, sur les pistes du canal 10.
+            menu.addItem(kMenuViewDrumDiamonds, tr(u8"Batterie en losanges (canal 10)"), true, batterieEnLosanges_);
             // D588.2 : LA LARGEUR DE LA TÊTE (*Cursor Width*) — une préférence du poste, pour les six vues qui la peignent ;
             // des libellés uniques dans la barre (`VSM_MENU` prend le premier libellé exact).
             {
@@ -6733,6 +6737,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         {kMenuTransportZoomOnRuler, &MainComponent::zoomALaRegle_, "transportZoomALaRegle"},                // D585.2
         {kMenuTransportChaseNotes, &MainComponent::chasserLesNotes_, "transportChasserLesNotes"},           // D585.3
         {kMenuViewCrosshair, &MainComponent::reticule_, "affichageReticule"},                              // D587.3
+        {kMenuViewDrumDiamonds, &MainComponent::batterieEnLosanges_, "affichageBatterieEnLosanges"},       // D615.1
     };
     if (const auto* b = std::find_if(std::begin(kBascules), std::end(kBascules),
                                      [menuItemID](const Bascule& x) { return x.id == menuItemID; });
@@ -6759,6 +6764,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         if (menuItemID == kMenuViewCrosshair) {                                                         // D587.3
             arrangement_.setReticule(reglage);
             pianoRoll_.setReticule(reglage);
+        }
+        if (menuItemID == kMenuViewDrumDiamonds) {                                                      // D615.1
+            pianoRoll_.setBatterieEnLosanges(reglage);
         }
         std::fputs((std::string("VSM_REGLAGE_POSTE : ") + cle + (reglage ? " oui\n" : " non\n")).c_str(), stderr);
         menuItemsChanged();

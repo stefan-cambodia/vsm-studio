@@ -263,6 +263,10 @@ Note* PianoRollComponent::findNoteAt(juce::Point<float> pos, bool* nearRightEdge
     if (!track) return nullptr;
 
     constexpr float kEdgeTolerance = 6.0f;
+    // D615.1 : UNE FRAPPE EN LOSANGE SE SAISIT SUR SON LOSANGE — la largeur d'un demi-rang de part et d'autre de
+    // l'attaque —, et n'a pas de bord à tirer : on ne saisit pas ce qu'on ne voit pas.
+    const bool losanges = enLosanges();
+    const float demi = static_cast<float>(noteHeight_ - 1) * 0.5f;
     // Parcours en sens inverse : la dernière note dessinée est celle du dessus,
     // c'est donc elle qui doit gagner le clic.
     for (int i = static_cast<int>(track->notes.size()) - 1; i >= 0; --i) {
@@ -270,6 +274,10 @@ Note* PianoRollComponent::findNoteAt(juce::Point<float> pos, bool* nearRightEdge
         const float x1 = tickToX(note.startTick);
         const float x2 = tickToX(note.endTick);
         const float y = static_cast<float>(noteToY(note.number));
+        if (losanges) {
+            if (std::abs(pos.x - x1) <= demi && pos.y >= y && pos.y <= y + static_cast<float>(noteHeight_)) return &note;
+            continue;
+        }
         if (pos.x >= x1 && pos.x <= x2 && pos.y >= y && pos.y <= y + static_cast<float>(noteHeight_)) {
             if (nearRightEdge) *nearRightEdge = (x2 - pos.x) <= kEdgeTolerance;
             if (nearLeftEdge) *nearLeftEdge = (pos.x - x1) <= kEdgeTolerance;
@@ -2934,7 +2942,70 @@ void PianoRollComponent::drawGhostNotes(juce::Graphics& g) const {
     }
 }
 
+bool PianoRollComponent::enLosanges() const {
+    const Track* piste = activeTrack();
+    return losanges_ && piste != nullptr && piste->channel == 9;
+}
+
+juce::String PianoRollComponent::releverLosanges() const {
+    juce::String r = "VSM_LOSANGE : " + juce::String(enLosanges() ? "losanges" : "barres");
+    const Track* piste = activeTrack();
+    if (piste == nullptr || getWidth() <= 0 || getHeight() <= 0) return r + " ; aucune piste\n";
+    r << " ; canal " << (static_cast<int>(piste->channel) + 1) << "\n";
+    const float demi = static_cast<float>(noteHeight_ - 1) * 0.5f;
+    for (size_t i = 0; i < piste->notes.size() && i < 16; ++i) {
+        const auto& n = piste->notes[i];
+        const float cx = tickToX(n.startTick), cy = static_cast<float>(noteToY(n.number)) + demi;
+        r << "VSM_LOSANGE : note " << static_cast<int>(n.number) << " tick " << static_cast<int>(n.startTick) << " : centre "
+          << juce::String(cx / static_cast<float>(getWidth()), 4) << "," << juce::String(cy / static_cast<float>(getHeight()), 4)
+          << " ; demi-largeur " << juce::String(demi / static_cast<float>(getWidth()), 4) << " ; fin "
+          << juce::String(tickToX(n.endTick) / static_cast<float>(getWidth()), 4) << "\n";
+    }
+    return r;
+}
+
+void PianoRollComponent::drawLosange(juce::Graphics& g, const Note& note, bool selected) const {
+    // D615.1 : CENTRÉ SUR L'ATTAQUE, de la hauteur du rang — les marques d'une barre, à la forme près : la couleur et la
+    // vélocité au remplissage, la muette pâlie, le doute en liseré ambre, la sélection en contour ambre et halo clair.
+    const float demi = static_cast<float>(noteHeight_ - 1) * 0.5f;
+    const float cx = tickToX(note.startTick), cy = static_cast<float>(noteToY(note.number)) + demi;
+    const auto losange = [cx, cy](float d) {
+        juce::Path p;
+        p.startNewSubPath(cx, cy - d);
+        p.lineTo(cx + d, cy);
+        p.lineTo(cx, cy + d);
+        p.lineTo(cx - d, cy);
+        p.closeSubPath();
+        return p;
+    };
+    const Track* track = activeTrack();
+    const float teinte = vsm::sequencer::noteHue(couleurDesNotes_, note);
+    const juce::Colour base = teinte >= 0.0f ? juce::Colour::fromHSV(teinte, 0.65f, 0.95f, 1.0f)
+                              : track         ? juce::Colour(track->colorRgba)
+                                              : Palette::accentTeal;
+    juce::Colour fill = base.withMultipliedBrightness(0.45f + 0.55f * (static_cast<float>(note.velocity) / 127.0f));
+    if (note.muted) fill = fill.withSaturation(0.05f).withAlpha(0.35f);
+    const auto forme = losange(demi);
+    g.setColour(fill);
+    g.fillPath(forme);
+    if (note.id == hoveredNoteId_ && !selected) {
+        g.setColour(Palette::textPrimary.withAlpha(0.35f));
+        g.strokePath(losange(demi + 1.0f), juce::PathStrokeType(1.0f));
+    }
+    g.setColour(selected ? Palette::accentAmber : base.darker(0.5f));
+    g.strokePath(forme, juce::PathStrokeType(selected ? 2.0f : 1.0f));
+    if (note.confidence < kDoubtfulNoteThreshold) {
+        g.setColour(Palette::accentAmber.withAlpha(0.9f));
+        g.strokePath(losange(std::max(1.0f, demi - 2.0f)), juce::PathStrokeType(2.0f));
+    }
+    if (selected) {
+        g.setColour(Palette::textPrimary.withAlpha(0.9f));
+        g.strokePath(losange(demi + 2.5f), juce::PathStrokeType(1.5f));
+    }
+}
+
 void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, bool selected) const {
+    if (enLosanges()) { drawLosange(g, note, selected); return; }   // D615.1
     const float x1 = tickToX(note.startTick), x2 = tickToX(note.endTick);
     const float y = static_cast<float>(noteToY(note.number));
     const auto rect = juce::Rectangle<float>(x1, y, std::max(3.0f, x2 - x1), static_cast<float>(noteHeight_ - 1));

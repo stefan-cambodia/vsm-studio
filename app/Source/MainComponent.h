@@ -420,6 +420,8 @@ public:
             return fait;
         }
         if (geste.equalsIgnoreCase("relever-carte")) { showCarte(); direLaCarte(); return true; }
+        // D615.1 : la géométrie des losanges du piano roll (`VSM_LOSANGE`), de quoi y cliquer par `clic:pianoroll:`.
+        if (geste.equalsIgnoreCase("relever-losanges")) { std::fputs(pianoRoll_.releverLosanges().toRawUTF8(), stderr); return true; }
         // D608.1 : choisir une ligne de la réserve, comme d'un clic — « Relier... » se presse ensuite par `cliquer:`.
         if (geste.startsWithIgnoreCase("reserve-choisir:")) {
             showReserve();
@@ -1580,6 +1582,8 @@ private:
         kMenuFileMediaPool,
         /// D609.2 : la carte de batterie de la piste choisie.
         kMenuTrackDrumMap,
+        /// D615.1 : les frappes en losanges sur une piste du canal 10.
+        kMenuViewDrumDiamonds,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2210,6 +2214,7 @@ private:
     bool armementSuitLeChoix_ = false;     ///< D579.2
     bool arretApresPunch_ = false;         ///< D579.3
     bool reticule_ = true;                 ///< D587.3 : le réticule pendant un geste, au poste
+    bool batterieEnLosanges_ = true;       ///< D615.1 : les frappes en losanges (canal 10), au poste
     /// D580 : trois de plus, du transport, de l'enregistrement et de l'édition.
     bool clicVidePoseLaTete_ = false;      ///< D580.1
     bool punchOffALArret_ = false;         ///< D580.2

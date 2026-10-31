@@ -203,6 +203,16 @@ public:
     uint8_t defaultVelocity() const { return defaultVelocity_; }
     /// D587.3 : LE RÉTICULE PENDANT UN GESTE (*Cross-hair Cursor*) — cochée, deux traits fins traversent la grille au
     /// pointeur tant qu'un geste du bouton gauche y est tenu ; pas sur le clavier. La préférence de l'arrangement.
+    /// D615.1 : LES FRAPPES EN LOSANGES sur une piste du canal 10 (le *Drum Editor* de Cubase) — la préférence.
+    void setBatterieEnLosanges(bool oui) {
+        losanges_ = oui;
+        repaint();
+    }
+    /// Vrai quand la piste regardée se dessine en losanges : la préférence, et le canal 10 (le critère de D109).
+    bool enLosanges() const;
+    /// Le relevé de banc (`VSM_LOSANGE`) : le mode, et pour chaque note le centre et la demi-largeur de son losange en
+    /// fractions du piano roll — de quoi cliquer dedans par `clic:pianoroll:fx,fy`.
+    juce::String releverLosanges() const;
     void setReticule(bool oui) {
         reticule_ = oui;
         if (!oui) reticuleMontre_ = false;
@@ -524,6 +534,9 @@ private:
     float rayonCapture_ = 0.0f;     ///< D575.2
     uint8_t defaultVelocity_ = 100;
     bool reticule_ = true;               ///< D587.3 : la préférence
+    bool losanges_ = true;               ///< D615.1 : la préférence
+    /// D615.1 : un losange centré sur l'attaque, de la hauteur du rang.
+    void drawLosange(juce::Graphics& g, const vsm::sequencer::Note& note, bool selected) const;
     bool reticuleMontre_ = false;        ///< D587.3 : un geste est tenu dans la grille
     juce::Point<float> pointReticule_;   ///< D587.3 : le pointeur du dernier mouvement
     vsm::sequencer::Scale scale_ { 0, vsm::sequencer::ScaleType::Chromatic };

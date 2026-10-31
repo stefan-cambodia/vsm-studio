@@ -48250,3 +48250,35 @@ centre et la demi-largeur de chaque losange (en fractions du piano roll) :
 (b) un clic au milieu de sa durée, à droite du losange (à 4 demi-largeurs, dans l'ancienne barre) → **0 note** ;
 (c) la case décochée (les barres) : (a) → **0**, (b) → **1** ; le témoin (D614) : comme (c) ;
 (d) l'entrée du menu en anglais, retenue au poste ; la photo regardée.
+
+**CORRIGÉ APRÈS LE PREMIER ESSAI DU BANC (20 h 12 à l'horloge), ET DIT : L'ATTENDU (b) SUPPOSAIT UNE RÈGLE QUE CE PIANO ROLL N'A PAS.**
+Tous les clics ont choisi « 1 note », le témoin compris. Lu au code (`mouseDown`) : l'outil de sélection, cliqué dans le
+VIDE, pose une note neuve (« Créer une note ») et la choisit — un clic qui ne saisit rien choisit donc quand même une
+note, la sienne. Le compte des notes choisies ne distingue pas les deux cas ; le nombre de notes de la piste, si : **2**
+(la frappe existante saisie), **3** (une note neuve posée là). L'attendu, réécrit sur cette mesure : (a) dans le losange
+→ **2 notes**, 1 choisie ; (b) dans l'ancienne barre → **3 notes** (une frappe neuve, là où l'on a cliqué) ; (c) les
+barres et le témoin : (a) → **3**, (b) → **2**. Le code n'est pas touché : la règle « cliquer dans le vide pose une
+note » est celle de ce piano roll, et elle vaut sur une batterie comme ailleurs — c'est même ce qu'on attend d'un
+éditeur de batterie.
+
+### Phase D615 — MESURÉE (31/10/2026, 20 h 14 à l'horloge)
+
+*Écrite avant son code à 20 h 02 ; l'attendu (b) corrigé après le premier essai du banc, à 20 h 12 (ci-dessus). Le banc
+`tools/batterie-losanges.sh` (8 contrôles) ; le témoin : le binaire de D614 (`build/temoin-D614`), ses notes comptées dans
+le projet qu'il enregistre.*
+
+| # | attendu | mesure | témoin | tenu |
+|---|---|---|---|---|
+| D615 (a) | le mode « losanges » sur le canal 10 ; un clic dans le losange, à gauche de l'attaque : la frappe saisie | « losanges ; canal 10 » ; **2 notes, 1 choisie** | le binaire de D614 : **3 notes** (une note neuve posée là) | **oui** |
+| D615 (b) | un clic dans l'ancienne barre, à droite du losange : une frappe neuve | **3 notes** | **2 notes** (la barre saisie) | **oui, l'attendu corrigé** |
+| D615 (c) | décochée : les barres d'avant | à gauche de l'attaque **3**, dans la barre **2** ; le relevé « barres » | — | **oui** |
+| D615 (d) | retenue au poste ; l'anglais ; la photo | `affichageBatterieEnLosanges` = 0 retenu ; *Drums as diamonds (channel 10)* ; la frappe choisie regardée : losange bleu, contour ambre, halo clair | — | **oui** |
+| — | les bancs voisins | `eclater-canal`, `liste-editer`, `ouvrir-midi`, `carte-batterie`, `adapter-batterie`, `nom-des-notes` rejoués verts | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **L'attendu (b) supposait une règle que ce piano roll n'a pas** (écrit à 20 h 12) : l'outil de sélection, cliqué dans
+  le vide, pose une note. Le compte des notes de la piste départage les deux cas ; celui des notes choisies, non.
+- **Une frappe sur le tick 0 n'a qu'une moitié de losange visible** : la colonne du clavier recouvre l'autre (regardé sur la
+  photo de la grosse caisse). Nommé, remis : décaler la grille d'un demi-losange changerait le zéro de toute la règle.
+- **Remis, nommés** : la quantification et la longueur d'insertion par rang, les rangs dans l'ordre de la carte de
+  batterie (D609).

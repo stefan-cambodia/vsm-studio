@@ -781,6 +781,9 @@ const Paire kAnglais[] = {
       "Copying into the project folder failed: nothing was relinked." },
     { "Fichier relié : %1 → %2",
       "File relinked: %1 → %2" },
+    // D615.1 : les frappes en losanges.
+    { "Batterie en losanges (canal 10)",
+      "Drums as diamonds (channel 10)" },
     // D610.1 : adapter General MIDI à la machine.
     { "Adapter General MIDI à la machine",
       "Adapt General MIDI to the machine" },
