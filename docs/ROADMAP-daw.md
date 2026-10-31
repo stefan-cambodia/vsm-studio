@@ -48116,3 +48116,42 @@ binaire de D612 (`build/temoin-D612`).*
   ou un ordre de jeu pouvait s'ouvrir minuscule — et le rester, la taille dégénérée se retenant aux préférences.
 - **La cause première reste dans le compositeur** (KWin, par XWayland) : NOMMÉE, non cherchée plus loin — la ligne
   `VSM_FENETRE` dira, dans chaque journal de banc, quand et combien de fois il frappe.
+
+### La série de D610 à D613 — JOUÉE (31/10/2026, 17 h 50 à l'horloge)
+
+*`./verifier.sh --bancs`, **210** bancs, lancée à 16 h 03 sous `kde-inhibit --screenSaver`, l'inhibition vérifiée
+enregistrée au départ et retirée à la fin ; écran allumé, aucune veille ; la batterie de 73 à ~38 %.* **209 verts, 1
+rouge** en 107 min ; les préférences de l'utilisateur identiques ; le compositeur 689 → 680 Mo.
+- **Le rouge** : `automation-controleur.sh`, cas (4) — l'écriture suspendue jouée à 1,000 et la courbe intacte, mais la
+  PREMIÈRE ligne d'état du piano roll (`grep -m1`) était « 1 note(s) sur la piste », arrivée avant « écriture
+  suspendue ». **Rejoué seul : vert.** Vert aux séries de D603 à D609. Une course d'ordre entre deux lignes d'état, sous
+  la charge d'une série : nommée, pas décrite comme un défaut.
+- **Et une question que la série pose à D613** : sa rafale y compte **18** fenêtres RAMENÉES en 12 ouvertures (15 fois la
+  réserve depuis 128 × 128, 3 fois depuis 1 × 28) — écran allumé —, quand le témoin n'a qu'**1** fenêtre dégénérée sur 24
+  au relevé. Soit le témoin subit autant de réductions et s'en remet seul avant le relevé, soit **la limite de taille
+  posée par D613 PROVOQUE des réductions**.
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE QUI LA TRANCHE (17 h 52 à l'horloge)** : la limite de taille (`setResizeLimits`) provoque les
+réductions. **La mesure, une seule variable** : le binaire neuf, avec et sans la limite — l'option
+`VSM_FENETRE_SANS_LIMITE=1`, lue par `PanelWindow`, et non une constante éditée entre deux passes — sur deux rafales de
+12 ouvertures, la garde de D613 en place dans les deux (elle COMPTE les réductions). **Tranché** si, sans la limite, les
+fenêtres ramenées tombent à moins de la moitié de leur nombre avec elle ; **réfuté** si elles restent du même ordre ;
+écart intermédiaire : non tranché, et dit.
+
+**L'A/B, MESURÉ (17 h 56 à l'horloge), ET L'HYPOTHÈSE RÉFUTÉE** : quatre rafales de 8 ouvertures, alternées pour qu'une
+dérive dans le temps ne pèse pas d'un seul côté, le même binaire, écran allumé —
+
+| passe | la limite | fenêtres dégénérées au relevé | fenêtres ramenées |
+|---|---|---|---|
+| 1 | avec | 0/16 | 12 |
+| 2 | sans (`VSM_FENETRE_SANS_LIMITE=1`) | 0/16 | 20 |
+| 3 | avec | 0/16 | 16 |
+| 4 | sans | 0/16 | 15 |
+
+**Avec la limite 28, sans elle 35** : la limite ne provoque pas les réductions (elles en sont plutôt un peu moins
+nombreuses avec elle — un écart que deux passes ne tranchent pas). Le compositeur réduit environ deux fois par lancement
+une fenêtre flottante qui vient de s'ouvrir, avec ou sans elle ; la garde de D613 les rattrape toutes (**0** dégénérée
+sur 64 au relevé), là où le témoin en laisse 1 à 3 sur 24 — chez lui, la plupart s'en remettent sans qu'on sache
+comment, faute de journal. L'option reste dans `PanelWindow` : c'est le témoin de cette mesure, rejouable.
+
+**D610, D611, D612 et D613 sont FAITES.**

@@ -3,6 +3,7 @@
 #include "UiScale.h"
 #include "Langue.h"
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 PanelWindow::PanelWindow(const juce::String& title, juce::Component& content)
@@ -17,7 +18,9 @@ PanelWindow::PanelWindow(const juce::String& title, juce::Component& content)
     setResizable(true, true);
     // D613.1 : sans contraignant, JUCE ne déclarait aucune taille minimale, et le compositeur a fait naître des fenêtres
     // en 128 × 128 (D607, D608, D612) — leurs boutons sans surface.
-    setResizeLimits(kLargeurMinimale, kHauteurMinimale, 1 << 14, 1 << 14);
+    // L'A/B de la série de D613 : `VSM_FENETRE_SANS_LIMITE=1` retire la limite — la seule variable de la mesure.
+    if (const char* sans = std::getenv("VSM_FENETRE_SANS_LIMITE"); sans == nullptr || *sans == '\0' || *sans == '0')
+        setResizeLimits(kLargeurMinimale, kHauteurMinimale, 1 << 14, 1 << 14);
 }
 
 void PanelWindow::closeButtonPressed() {
