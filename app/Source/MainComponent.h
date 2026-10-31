@@ -396,6 +396,13 @@ public:
             return true;
         }
         if (geste.equalsIgnoreCase("relever-ordre")) { showPlayOrder(); direLOrdre("releve"); return true; }
+        // D612.1 : `ordre-aller:3` — le double-clic de la 3ᵉ ligne, par la même fonction.
+        if (geste.startsWithIgnoreCase("ordre-aller:")) {
+            showPlayOrder();
+            const bool fait = playOrderPanel_.allerA(geste.fromFirstOccurrenceOf(":", false, false).trim().getIntValue() - 1);
+            direLOrdre(fait ? "aller" : "refus");
+            return fait;
+        }
         // D607.1 : la réserve des fichiers, relue puis dite (`VSM_RESERVE`) ; ouvre la fenêtre.
         if (geste.equalsIgnoreCase("relever-reserve")) { showReserve(); direLaReserve(); return true; }
         // D609.2 : LA CARTE DE BATTERIE — `carte:41>45` (ou `carte:41>-` pour « elle-même ») choisit par la MÊME liste

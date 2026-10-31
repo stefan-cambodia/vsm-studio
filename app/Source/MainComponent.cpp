@@ -10610,6 +10610,7 @@ void MainComponent::direLOrdre(const char* quoi) {
     const std::string dit = geste == "pose"    ? "ordre pos\xc3\xa9"
                           : geste == "refus"   ? "ordre REFUS\xc3\x89 (indice hors des sections)"
                           : geste == "releve"  ? "relev\xc3\xa9"
+                          : geste == "aller"   ? "all\xc3\xa9 \xc3\xa0 l'\xc3\xa9l\xc3\xa9ment"
                                                : geste;
     const std::string ligne = std::string("VSM_ORDRE : ") + dit + " ; suit " + (playOrderPanel_.suitLOrdre() ? "oui" : "non")
         + " ; ordre [" + ordre + "] ; cha\xc3\xae" "ne de " + std::to_string(graphe.playChainSize())
@@ -10617,7 +10618,8 @@ void MainComponent::direLOrdre(const char* quoi) {
         + std::to_string(graphe.playChainSize()) + " ; t\xc3\xaate " + juce::String(graphe.currentSeconds(), 3).toStdString()
         + " s ; " + (transport_.state() == TransportState::Playing ? "en lecture" : "arr\xc3\xaat\xc3\xa9")
         + " ; case \xc2\xab " + playOrderPanel_.texteDeLaCase().toStdString() + " \xc2\xbb ; fen\xc3\xaatre "
-        + std::to_string(playOrderPanel_.getWidth()) + "x" + std::to_string(playOrderPanel_.getHeight()) + "\n";
+        + std::to_string(playOrderPanel_.getWidth()) + "x" + std::to_string(playOrderPanel_.getHeight())
+        + " ; infobulle \xc2\xab " + playOrderPanel_.infobulleDeLaListe().toStdString() + " \xc2\xbb\n";   // D612.1
     std::fputs(ligne.c_str(), stderr);
 }
 
@@ -10915,6 +10917,19 @@ void MainComponent::showPlayOrder() {
                 }));
         };
         playOrderPanel_.onChainChanged = [this] { publierLaChaine(); };   // D606.1
+        // D612.1 : ALLER À UN ÉLÉMENT — l'ordre suivi, par son indice ; sinon, la tête au début de sa section.
+        playOrderPanel_.onAller = [this](int ligne) {
+            auto& graphe = audioEngine_.processGraph();
+            if (playOrderPanel_.suitLOrdre() && graphe.hasPlayChain()) {
+                graphe.jumpToPlayChainElement(ligne);
+            } else if (ligne < static_cast<int>(playOrderPanel_.order().size())) {
+                const int index = playOrderPanel_.order()[static_cast<size_t>(ligne)];
+                const auto& sections = playOrderPanel_.sections();
+                if (index >= 0 && index < static_cast<int>(sections.size()))
+                    transport_.seekToTick(sections[static_cast<size_t>(index)].startTick);
+            }
+            arrangement_.repaint();
+        };
         playOrderWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Ordre de jeu"), playOrderPanel_);
         playOrderWindow_->setDefaultSize(520, 420);

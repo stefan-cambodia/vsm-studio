@@ -48014,3 +48014,33 @@ la ligne 3 (le verbe `ordre-aller:3`, par la même fonction que la souris) → r
 ~2,5 s plus tard, arrêté ; le témoin dans le même binaire, case décochée : la tête au début de la section (0 s) et pas
 d'élément ; le témoin (D611) : le verbe inconnu ; l'anglais ; la photo ;
 (c) les suites ; la série (D610 à D612).
+
+**UN DÉFAUT DE D606 TROUVÉ PAR LE BANC DE D612 (écrit avant sa correction)** : après le double-clic sur la 3ᵉ ligne, le
+relevé lisait l'élément **2/3**, pas 3/3. Le relevé ouvre la fenêtre, qui relit les sections et REPUBLIE la chaîne
+(`publierLaChaine` → `setPlayChain`) ; et `setPlayChain`, en lecture, recalculait l'élément courant comme « le premier
+qui contient la tête » — le premier A. Bien plus large que le banc : TOUTE republication de la même chaîne pendant la
+lecture — n'importe quelle édition du projet passe par `refreshTransportSchedule`, qui republie — ramenait la lecture du
+second A au premier, et la chaîne rejouait ce qu'elle venait de jouer. **Corrigé** : une republication GARDE l'élément
+courant tant qu'il existe dans la chaîne neuve et qu'il contient la tête ; sinon, la règle d'avant. Mesuré au cœur
+(republier [B, A, A] pendant le 3ᵉ élément : il reste le 3ᵉ ; le code d'avant rend le 2ᵉ) et par le banc.
+
+### Phase D612 — MESURÉE (31/10/2026, 15 h 39 à l'horloge)
+
+*Écrite avant son code à 15 h 17 ; le défaut de republication écrit avant sa correction à 15 h 32. Le test du saut joué
+rouge sur un simple déplacement (l'élément perdu, −1 ; le départ au premier, B), celui de la republication rouge sur la
+garde retirée (le 3ᵉ ramené au 2ᵉ). Le banc `tools/ordre-aller.sh` (7 contrôles) ; le témoin : le binaire de D611.*
+
+| # | attendu | mesure | témoin | tenu |
+|---|---|---|---|---|
+| D612 (a) | arrêté, aller au 3ᵉ : indice 2, tête 0 s ; le départ y reprend, puis la fin, au bit comme l'aplati de [A] ; en lecture, aller au 2ᵉ : indice 1, puis le 3ᵉ, puis la fin | arrêté : **élément 2, tête 0,000 s, départ à l'élément 2, fin dite, /aplati [A] 0,00e+00** ; en lecture : **élément 1 à 0,256 s, puis 2, fin dite** | un simple déplacement : élément **−1**, départ au **0** (B), aplati 0,374 | **oui** |
+| D612 (republication) | ajouté : la même chaîne republiée garde l'élément courant | pendant le 3ᵉ : **2 → 2**, et après `setProject` : **2** | le code d'avant : **2 → 1** | **oui** |
+| D612 (b) | au banc : 3/3 après le double-clic, puis arrêté ; décoché, la tête au début de A ; l'anglais ; le témoin | « allé à l'élément » ; **3/3, tête 0,186 s, en lecture** ; ~2,9 s après : **arrêté** ; décoché : chaîne de 0, **0,197 s** ; *Double-click: playback goes to this element.* | le binaire de D611 : le verbe inconnu, aucun saut | **oui** |
+| — | les suites | moteur **1 383 / 1 383** (2 neufs) ; `ordre-suivi` rejoué vert ; les autres suites au bilan du commit | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Un défaut de D606, trouvé par le banc** (écrit à 15 h 32, ci-dessus) : toute republication de la chaîne pendant la
+  lecture — une édition quelconque du projet — ramenait l'élément courant au premier qui contient la tête. Le double-clic
+  semblait sauter au 2ᵉ élément ; c'était le relevé, qui rouvre la fenêtre, qui le ramenait.
+- **La fenêtre dégénérée, écran ALLUMÉ** : la course principale du banc a ouvert l'ordre de jeu en 128 × 128 (relevé et
+  photo), écran allumé et session déverrouillée — ce qui réfute « jamais écran allumé », écrit dans `CLAUDE.md` à
+  13 h 29 et corrigé. Le banc ne s'en sert pas pour juger ; la cause est l'objet de D613.

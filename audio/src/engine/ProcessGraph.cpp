@@ -783,11 +783,17 @@ int ProcessGraph::elementContenant(const PlayChain& chaine, double seconds) {
 }
 
 void ProcessGraph::setPlayChain(std::vector<std::pair<Tick, Tick>> elements) {
+    const int avant = chainIndex_.load(std::memory_order_acquire);
     chainTicks_ = std::move(elements);
     refreshPlayChain();
     auto chaine = playChain_.load(std::memory_order_acquire);
-    chainIndex_.store(chaine && playing_.load(std::memory_order_acquire)
-                          ? elementContenant(*chaine, currentSeconds_.load(std::memory_order_acquire)) : -1,
+    const double tete = currentSeconds_.load(std::memory_order_acquire);
+    // D612 : UNE REPUBLICATION GARDE L'ÉLÉMENT COURANT tant qu'il existe encore et contient la tête — toute édition du
+    // projet republie la chaîne, et « le premier qui contient la tête » ramenait la lecture du second A au premier.
+    if (chaine && avant >= 0 && static_cast<size_t>(avant) < chaine->elements.size()
+        && tete >= chaine->elements[static_cast<size_t>(avant)].debut && tete < chaine->elements[static_cast<size_t>(avant)].fin)
+        return;
+    chainIndex_.store(chaine && playing_.load(std::memory_order_acquire) ? elementContenant(*chaine, tete) : -1,
                       std::memory_order_release);
 }
 
@@ -811,6 +817,18 @@ void ProcessGraph::startPlayChain() {
         return;   // la tête est dans l'élément courant : la lecture y reprend
     seekSeconds(chaine->elements.front().debut);
     chainIndex_.store(0, std::memory_order_release);
+}
+
+bool ProcessGraph::jumpToPlayChainElement(int element) {
+    auto chaine = playChain_.load(std::memory_order_acquire);
+    if (!chaine || element < 0 || static_cast<size_t>(element) >= chaine->elements.size()) return false;
+    if (!playing_.load(std::memory_order_acquire)) {
+        seekSeconds(chaine->elements[static_cast<size_t>(element)].debut);
+        chainIndex_.store(element, std::memory_order_release);   // CET élément, pas le premier qui contient la position
+        return true;
+    }
+    sautDemande_.store(element, std::memory_order_release);
+    return true;
 }
 
 void ProcessGraph::refreshPlayChain() {
@@ -1272,6 +1290,19 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
             chaineDuSaut_.reset();
         }
         bool chaineFinie = false;
+        // D612.1 : ALLER À UN ÉLÉMENT, demandé pendant la lecture — le saut d'une chaîne, en tête de CE bloc : la tête au
+        // début de l'élément, son indice posé, le relâchement, les relances et la chasse de sa cible (D606.1, D611.1).
+        if (const int saut = sautDemande_.exchange(-1, std::memory_order_acq_rel);
+            saut >= 0 && suitLaChaine && static_cast<size_t>(saut) < chaine->elements.size()) {
+            const auto& cible = chaine->elements[static_cast<size_t>(saut)];
+            blockStartSeconds = cible.debut;
+            chainIndex_.store(saut, std::memory_order_release);
+            wrapNoteOffPending_ = true;
+            wrapTraite_.fill(false);
+            relancesDuSaut_ = &cible.relances;
+            controlesDuSaut_ = &cible.controles;
+            chaineDuSaut_ = chaine;
+        }
         const bool loopActive = loopActive_.load(std::memory_order_acquire) && !suitLaChaine;
         const double loopStart = loopStartSeconds_.load(std::memory_order_acquire);
         const double loopEnd = loopEndSeconds_.load(std::memory_order_acquire);

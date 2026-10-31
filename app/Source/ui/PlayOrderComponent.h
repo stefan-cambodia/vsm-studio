@@ -50,16 +50,23 @@ public:
     void setElementJoue(int element);
     int elementJoue() const { return elementJoue_; }
     juce::String texteDeLaCase() const { return suivre_.getButtonText(); }
+    juce::String infobulleDeLaListe() const { return infobulleListe_; }   // D612.1
     std::function<void()> onChainChanged;
+    /// D612.1 : ALLER À UN ÉLÉMENT — le double-clic d'une ligne (l'indice dans l'ordre) ; `allerA` est le même geste
+    /// pour le verbe de banc `ordre-aller:`.
+    std::function<void(int ligne)> onAller;
+    bool allerA(int ligne);
 
 private:
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
+    void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override;   // D612.1
 
     std::vector<vsm::sequencer::Section> sections_;
     std::vector<int> ordre_;
     bool tempoSeraLaisse_ = false;
     int elementJoue_ = -1;
+    juce::String infobulleListe_;   // D612.1 : posée par `retraduire`, lue par le relevé
 
     juce::Label titreSections_, titreOrdre_, avertissement_;
     juce::ComboBox sectionAAjouter_;

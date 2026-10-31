@@ -811,6 +811,9 @@ const Paire kAnglais[] = {
       "Track “%1” — %2" },
     { "carte de batterie (%1 note(s) déplacée(s))",
       "drum map (%1 note(s) moved)" },
+    // D612.1 : aller à un élément de l'ordre de jeu.
+    { "Double-clic : la lecture va à cet élément.",
+      "Double-click: playback goes to this element." },
     // D606.1 : la lecture qui suit l'ordre de jeu.
     { "La lecture suit l'ordre",
       "Playback follows the order" },

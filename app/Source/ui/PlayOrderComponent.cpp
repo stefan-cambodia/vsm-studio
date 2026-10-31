@@ -74,6 +74,8 @@ void PlayOrderComponent::retraduire() {
                           u8"saute au début de la suivante, et s'arrête après la dernière. La boucle s'efface devant "
                           u8"l'ordre, et l'ordre devant l'enregistrement. L'export suit la ligne de temps : pour "
                           u8"exporter l'ordre, l'aplatir."));
+    infobulleListe_ = tr(u8"Double-clic : la lecture va à cet élément.");   // D612.1
+    liste_.setTooltip(infobulleListe_);
     rafraichir();
 }
 
@@ -84,6 +86,15 @@ bool PlayOrderComponent::poserOrdre(const std::vector<int>& ordre) {
     rafraichir();
     return true;
 }
+
+bool PlayOrderComponent::allerA(int ligne) {
+    if (ligne < 0 || ligne >= static_cast<int>(ordre_.size())) return false;
+    liste_.selectRow(ligne);
+    if (onAller) onAller(ligne);
+    return true;
+}
+
+void PlayOrderComponent::listBoxItemDoubleClicked(int row, const juce::MouseEvent&) { (void)allerA(row); }
 
 void PlayOrderComponent::setElementJoue(int element) {
     if (element == elementJoue_) return;

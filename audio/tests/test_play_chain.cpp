@@ -306,3 +306,76 @@ VSM_TEST(unaligned_the_scheduled_cc7_lands_at_the_start_of_its_block_and_nowhere
     VSM_ASSERT(horsChaine < 1e-4);
     VSM_ASSERT(horsBoucle < 1e-4);
 }
+
+// D612.1 — ALLER À UN ÉLÉMENT. L'attendu écrit avant le code (ROADMAP-daw, D612, (a)) : la chaîne [B, A, A] arrêtée,
+// aller au 3ᵉ élément → l'indice 2, la tête à 0 s ; le départ y reprend, et après A la chaîne finit — au bit comme
+// l'aplati de [A] ; en lecture au milieu de B, aller au 2ᵉ → l'indice 1, la tête à 0 s, puis le 3ᵉ, puis la fin.
+VSM_TEST(jumping_to_a_chain_element_plays_that_element_and_what_follows_it_d612) {
+    const Project original = deuxSections();
+    auto g = graphe(original);
+    g->setPlayChain(chaineDe(original, {1, 0, 0}));
+    VSM_ASSERT(!g->jumpToPlayChainElement(3));   // hors bornes : refusé
+    VSM_ASSERT(g->jumpToPlayChainElement(2));
+    const int indiceArrete = g->playChainIndex();
+    const double teteArretee = g->currentSeconds();
+    g->startPlayChain();   // la tête est dans l'élément courant : le départ y reprend
+    const int indiceAuDepart = g->playChainIndex();
+    g->setPlaying(true);
+    const auto son = rendre(*g, 3.0);
+    const bool finie = g->consumePlayChainEnded();
+    Project aplati = original;
+    VSM_ASSERT(vsm::sequencer::flattenPlayOrder(aplati, {0}));
+    auto plat = graphe(aplati);
+    plat->setPlaying(true);
+    const auto sonAplati = rendre(*plat, 3.0);
+    // EN LECTURE : départ au début de B, aller au 2ᵉ élément au bout d'une demi-seconde.
+    auto l = graphe(original);
+    l->setPlayChain(chaineDe(original, {1, 0, 0}));
+    l->startPlayChain();
+    l->setPlaying(true);
+    (void)rendre(*l, 0.5);
+    VSM_ASSERT(l->jumpToPlayChainElement(1));
+    (void)rendre(*l, 0.25);
+    const int indiceApresSaut = l->playChainIndex();
+    const double teteApresSaut = l->currentSeconds();
+    (void)rendre(*l, 2.0);
+    const int indiceEnsuite = l->playChainIndex();
+    (void)rendre(*l, 2.0);
+    const bool finieEnLecture = l->consumePlayChainEnded();
+    std::printf("      [D612.1] arrêté : élément %d, tête %.3f s, départ à l'élément %d, fin %s, /aplati [A] %.2e ; en "
+                "lecture : élément %d à %.3f s, puis %d, fin %s\n", indiceArrete, teteArretee, indiceAuDepart,
+                finie ? "dite" : "MUETTE", ecartMax(son, sonAplati), indiceApresSaut, teteApresSaut, indiceEnsuite,
+                finieEnLecture ? "dite" : "MUETTE");
+    VSM_ASSERT_EQ(indiceArrete, 2);
+    VSM_ASSERT_NEAR(teteArretee, 0.0, 1e-9);
+    VSM_ASSERT_EQ(indiceAuDepart, 2);
+    VSM_ASSERT(finie);
+    VSM_ASSERT(ecartMax(son, sonAplati) < 1e-4);
+    VSM_ASSERT_EQ(indiceApresSaut, 1);
+    VSM_ASSERT(teteApresSaut < 0.5);   // dans A, depuis 0 s
+    VSM_ASSERT_EQ(indiceEnsuite, 2);
+    VSM_ASSERT(finieEnLecture);
+}
+
+// D612 — TROUVÉ PAR LE BANC : une republication de la MÊME chaîne pendant la lecture (toute édition du projet en fait une)
+// garde l'élément courant ; le code d'avant le ramenait au premier qui contient la tête (le 2ᵉ de [B, A, A]).
+VSM_TEST(republishing_the_same_chain_keeps_the_current_element_d612) {
+    const Project original = deuxSections();
+    auto g = graphe(original);
+    g->setPlayChain(chaineDe(original, {1, 0, 0}));
+    g->startPlayChain();
+    g->setPlaying(true);
+    (void)rendre(*g, 0.25);
+    VSM_ASSERT(g->jumpToPlayChainElement(2));
+    (void)rendre(*g, 0.25);
+    const int avant = g->playChainIndex();
+    g->setPlayChain(chaineDe(original, {1, 0, 0}));   // la même chaîne, republiée
+    const int apres = g->playChainIndex();
+    g->setProject(original);                          // et une republication du projet
+    const int apresProjet = g->playChainIndex();
+    std::printf("      [D612] republiée pendant le 3e élément : avant %d, après %d, après le projet %d\n", avant, apres,
+                apresProjet);
+    VSM_ASSERT_EQ(avant, 2);
+    VSM_ASSERT_EQ(apres, 2);
+    VSM_ASSERT_EQ(apresProjet, 2);
+}

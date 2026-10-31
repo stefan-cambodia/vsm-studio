@@ -369,6 +369,11 @@ public:
     void startPlayChain();
     /// Vrai UNE fois après que la chaîne s'est terminée (le graphe s'est arrêté à la fin du dernier élément).
     bool consumePlayChainEnded() { return chainEnded_.exchange(false, std::memory_order_acq_rel); }
+    /// D612.1 : ALLER À UN ÉLÉMENT de la chaîne (le clic de l'*Arranger Editor*) — par son INDICE : deux éléments d'une
+    /// même section ne se distinguent pas par une position. Arrêté, la tête y est posée avec son indice (le départ y
+    /// reprend) ; en lecture, le saut se fait en tête du bloc suivant, par le chemin du saut de chaîne (notes relâchées et
+    /// relancées, contrôleurs chassés). Faux sans chaîne ou hors bornes. Thread UI.
+    bool jumpToPlayChainElement(int element);
 
     void seekSeconds(double seconds);  // thread UI
     void setPlaying(bool playing);     // thread UI
@@ -1142,6 +1147,8 @@ private:
     /// D611 : la chaîne qui porte ces listes, tenue en vie quand le saut tombe pile à la fin d'un bloc — le
     /// relâchement se fait alors au bloc suivant, après que le bloc qui l'avait chargée a rendu la sienne.
     std::shared_ptr<const PlayChain> chaineDuSaut_;
+    /// D612.1 : l'élément demandé en lecture, consommé en tête du bloc suivant (−1 : aucun).
+    std::atomic<int> sautDemande_{-1};
     const std::vector<ChasedControlEvent> aucunControle_{};
     std::atomic<bool> metronomeCountInOnly_{false};
     std::atomic<bool> metronomeRecordOnly_{false};
