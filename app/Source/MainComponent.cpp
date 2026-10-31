@@ -11512,11 +11512,25 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
         return false;
     }
 
+    // D619.1 : LA DESCRIPTION DU FICHIER, lue à son en-tête — pas la fréquence du moteur ni les trames rééchantillonnées
+    // (`lu`), qui faisaient déclarer « 44 100 Hz » un fichier à 48 kHz. La lecture relit le fichier (`loadAudioTracks`) ;
+    // c'est `project.json` et la réserve qui mentaient. Un en-tête illisible par JUCE alors que le décodeur a lu le
+    // fichier : la description du moteur, comme avant, plutôt que rien.
+    double frequence = sr;
+    int64_t trames = lu.source->frames();
+    int canaux = lu.fileChannels > 0 ? lu.fileChannels : 2;   // D559.3 : les canaux du fichier, et non « 2 » en dur
+    {
+        juce::AudioFormatManager formats;
+        formats.registerBasicFormats();
+        if (std::unique_ptr<juce::AudioFormatReader> lecteur{formats.createReaderFor(destination)};
+            lecteur != nullptr && lecteur->sampleRate > 0.0 && lecteur->lengthInSamples > 0) {
+            frequence = lecteur->sampleRate;
+            trames = lecteur->lengthInSamples;
+            canaux = static_cast<int>(lecteur->numChannels);
+        }
+    }
     beginProjectEdit(juce::String::fromUTF8(u8"Poser un échantillon"));
-    // D559.3 : LES CANAUX DU FICHIER, et non « 2 » en dur — un fichier mono passait pour stéréo, et « Gauche et
-    // droite échangées » s'y offrait sans rien avoir à échanger.
-    affecterLeFichierALaPiste(trackIndex, relatif.toStdString(), sr, lu.source->frames(),
-                              lu.fileChannels > 0 ? lu.fileChannels : 2, tick,
+    affecterLeFichierALaPiste(trackIndex, relatif.toStdString(), frequence, trames, canaux, tick,
                               destination.getFileNameWithoutExtension().toStdString());
     return true;
 }

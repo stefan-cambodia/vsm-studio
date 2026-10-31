@@ -48528,3 +48528,64 @@ l'historique » (un Ctrl+Y la rappellerait) ;
   question pour le contrat de D21 — nommée, non tranchée.
 - **Remis, nommés** : poser à l'origine du fichier (*At Origin*) ; poser plusieurs lignes d'un geste ; importer dans la
   réserve sans placer.
+
+### Phase D619 — un soixante-dix-neuvième audit : un fichier importé se décrit comme il est, pas comme le moteur le lit (01/11/2026)
+
+*Écrite le 01/11 à 01 h 22 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du défaut nommé par D618.** `placeSampleOnTrack` (D24.5 — l'import d'un fichier, le dépôt sur une
+piste, le dépôt à un tick) écrit dans le projet la fréquence du MOTEUR et le nombre de trames APRÈS rééchantillonnage :
+un fichier à 48 kHz importé sur un moteur à 44,1 kHz est déclaré « 44 100 Hz, 88 200 trames ». Or `AudioSource` décrit
+le FICHIER (D607 : « le fichier tel que le projet le décrit ») — c'est ce qu'écrivent la chaîne de reconstruction, D608 et
+D618. La lecture n'en souffre pas (`loadAudioTracks` relit le fichier, « c'est le fichier qui a raison ») ; ce qui ment,
+c'est `project.json` et la réserve, qui affiche « 44.1 kHz » — et le même projet ouvert sur un moteur à 48 kHz y
+annoncerait un rééchantillonnage que rien ne fait.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D619.1 | **La description d'un fichier importé est celle du fichier** — l'*Info* du Pool | un fichier importé, déposé sur une piste ou à un tick est déclaré dans le projet à SA fréquence, avec SES trames et SES canaux (lus par son en-tête, comme D608 et D618) ; la durée du clip ne change pas ; le SON non plus — l'export identique au bit à celui d'avant ; un fichier à la fréquence du moteur : rien ne change ; mesuré par `project.json`, la réserve et l'export, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Lire l'en-tête, pas le fichier décodé** : la description vient de `AudioFormatReader` (fréquence, trames, canaux), la
+  même lecture que `preparerFichierARelier` (D608) et `poserDepuisLaReserve` (D618). Le décodage par `loadAudioTrack`
+  reste — il dit si le fichier se lit, et c'est lui que la lecture emploie.
+- **La durée du clip reste celle du fichier** : trames ÷ fréquence est la même durée dans les deux descriptions (au
+  rééchantillonnage près : une trame de différence, au plus) ; le clip est calculé sur la description du fichier.
+- **Les projets déjà écrits ne sont pas réécrits** : un projet ancien garde la description qu'il porte ; la lecture n'en
+  dépend pas, et une réécriture silencieuse d'un fichier de l'utilisateur à l'ouverture serait un geste que personne
+  n'a demandé. Nommé : la réserve peut donc encore dire « 44.1 kHz » d'un fichier importé avant D619.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/description-importee.sh`, le moteur à 44,1 kHz (celui des bancs, vu
+en D618), un projet vide :
+(a) un fichier de 2 s, stéréo, à **48 kHz**, importé (`VSM_IMPORT_AUDIO`, D24.5) → `project.json` : **48 000 Hz,
+96 000 trames, 2 canaux** ; le témoin (D618) : **44 100 Hz, 88 200 trames** ; la ligne de la réserve « **48 kHz stéréo** »
+(témoin : « 44.1 kHz ») ;
+(b) la longueur du clip, en ticks, **égale** à celle du témoin ;
+(c) l'export du mixage **identique au bit** à celui du témoin (deux courses du témoin d'abord, pour que « identique au
+bit » veuille dire quelque chose) ;
+(d) un fichier à **44,1 kHz** importé : la même description chez le neuf et le témoin ;
+(e) les suites ; la série.
+
+### Phase D619 — MESURÉE, la série à jouer (01/11/2026, 01 h 40 à l'horloge)
+
+*Écrite avant son code à 01 h 22. Le banc `tools/description-importee.sh` (6 contrôles) ; le témoin : le binaire de D618
+(`build/temoin-D618`). Joué avec le témoin À LA PLACE du neuf : rouge sur les deux contrôles (a), pour la raison écrite
+(44 100 Hz, « 44.1 kHz »).*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| — | deux exports du témoin, deux courses, identiques au bit | **identiques** | — | **oui** |
+| D619 (a) | `son48.wav` : 48 000 Hz, 96 000 trames, 2 canaux ; la réserve « 48 kHz stéréo » | **48000 96000 2** ; « **48 kHz stéréo** » | **44100 88200 2** ; « 44.1 kHz stéréo » | **oui** |
+| D619 (b) | la longueur du clip égale | **1920** ticks | 1920 | **oui** |
+| D619 (c) | l'export identique au bit | **identique** | — | **oui** |
+| D619 (d) | un fichier à 44,1 kHz : rien ne change | 44100 88200 2 1920 | 44100 88200 2 1920 | **oui** |
+| — | les suites | `projet-vide-cadre`, `canaux-echanges`, `canaux-modes`, `statistiques-clip`, `decouper-aux-silences`, `tempo-detecte`, `courbe-de-gain`, `poser-depuis-reserve` verts ; `quantifier-audio` (5) et `normaliser-niveau` (4) rouges sur la PHOTO de leur fenêtre modale — **le binaire de D618 tombe pareil**, écran ÉTEINT (`dpms off`) : l'environnement (la règle de D95), à rejouer dans la série écran allumé ; gardes vertes | — | **oui, deux bancs à rejouer** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Le premier essai du banc a mis deux contrôles au vert sur RIEN** : le projet « vide » ouvre une piste MIDI vide (le
+  bloc de tempo de son fichier MIDI), la piste importée est la deuxième, et la lecture de `tracks[0]` rendait « None » —
+  que (b) et (d) comparaient à « None », au vert. Le banc lit désormais la piste AUDIO et exige des nombres ; vu ici
+  parce que le contrôle (a), lui, était rouge. La leçon de D215, sous une autre forme : une comparaison dont les DEUX
+  côtés manquent rend « égal ».
+- **Remis, nommés** : les projets écrits avant D619 gardent leur description (aucune réécriture à l'ouverture) ; les
+  stems et la console ne disent pas le même niveau pour une piste au centre (D618).
