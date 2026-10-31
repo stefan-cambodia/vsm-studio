@@ -47898,7 +47898,43 @@ banc `fusionner-midi.sh` ; le témoin : le binaire de D609 (`build/temoin-D609`)
 
 **LA SÉRIE SUIVANTE EST À JOUER, ÉCRAN ALLUMÉ, BATTERIE CHARGÉE** : 19 % à 13 h 20, en décharge.
 
-**Le banc de D610 rejoué écran allumé (31/10, 14 h 46 à l'horloge, batterie rechargée à 98 % pendant une veille)** :
+**Le banc de D610 rejoué écran allumé (31/10, 14 h 45 à l'horloge — CORRIGÉ : « 14 h 46 » avait été écrit de tête, batterie rechargée à 98 % pendant une veille)** :
 `tools/adapter-batterie.sh` **7 contrôles sur 7 en une seule passe**, aucune course rejouée, aucune fenêtre dégénérée ;
 la fenêtre regardée (les six lignes, la remarque ambre « Sans équivalent sur cette machine : ride (51) »). D610 attend la
 série suivante pour être dite faite.
+
+### Phase D611 — un soixante et onzième audit : les contrôleurs chassés au saut (31/10/2026)
+
+*Écrite le 31/10 à 14 h 47 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D606** — « les contrôleurs ne sont pas chassés au saut (comme au
+rebouclage) ». Au saut d'une chaîne (D606.1) comme au rebouclage (D2), le moteur relâche les notes et relance celles qui
+traversent la cible (D585.3), mais un contrôleur garde la valeur qu'il avait AVANT le saut : la section d'arrivée sonne
+avec le volume, la pédale ou le filtre de la section qu'on quitte. L'aplatissement, lui, ouvre chaque créneau sur la
+dernière valeur entendue avant sa section (D537) — la lecture qui suit l'ordre et l'ordre aplati ne sonnent donc pas
+pareil dès qu'un contrôleur change d'une section à l'autre ; et une boucle posée après un changement de contrôleur
+reprend chaque tour avec la valeur de la fin du tour d'avant.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D611.1 | **La chasse des contrôleurs au saut** — *Chase Events* aux sauts de cycle et d'arrangement | au saut d'un élément de la chaîne au suivant (non contigu) et au rebouclage, chaque contrôleur, pli, pression et programme reprend la dernière valeur écrite AVANT la cible — la chasse du déplacement (D16.2), aux mêmes tenues (D331), livrée à l'échantillon du saut, avant les notes relancées ; deux éléments contigus ne sautent pas (D606.1) et ne chassent rien ; mesuré au cœur contre le projet aplati, et pour la boucle contre l'aplati de la même section deux fois |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Une seule conversion** « événement chassé → contrôle de machine » : celle du déplacement (`seekSeconds`), sortie en
+  une fonction que le déplacement, la chaîne et la boucle appellent — trois recopies divergeraient.
+- **Calculée hors du fil audio**, comme les notes relancées : la liste de la chaîne est rebâtie avec elle (par élément),
+  celle de la boucle avec sa région ; au saut, le fil audio ne fait que la lire.
+- **Livrée à l'échantillon du saut**, dans le bloc du relâchement, AVANT les notes relancées (une pédale rendue après la
+  note qu'elle devait tenir ne la tient pas — la règle de D16.2).
+- **Toujours**, comme la chasse du déplacement : elle n'a pas de réglage à part, et en ajouter un ferait deux règles.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — 8 kHz, 120 BPM, trois sections d'après des repères (A de 0, B de 1 920, C de 3 840
+jusqu'à la fin du matériau, 5 640), une note par section, le volume de canal (CC 7, D329) à 40 à 960 (dans A) et à 127 à
+2 880 (dans B), au Minimoog :
+(a) la chaîne [C, A, C] contre l'aplati du même ordre : **moins de 1e-4** d'écart sur toute la chaîne (attendu : au bit) ;
+le code d'avant (le témoin, la chasse du saut retirée) en diffère de **plus de 0,05** — le second C y joue au volume
+40 laissé par A, l'aplati à 127 ;
+(b) la boucle posée sur B, deux tours depuis le début de B, contre l'aplati [B, B] : **moins de 1e-4** ; le code d'avant
+en diffère de plus de 0,05 (le second tour reprend à 127, l'aplati à 40) ;
+(c) les tests de la chaîne (D606) et de la chasse aux notes (D585.3) inchangés ; les suites ; les bancs voisins
+(`chasse-aux-notes`, `boucler-selection`, `ordre-suivi`) ; la série.
