@@ -48218,3 +48218,35 @@ témoin étant celui de D613 (`build/temoin-D613/vsm-render`).*
 - **Remis, nommé** : les autres « tenues » du graphe (la plage de pli, RPN 0, D331) prennent toujours effet au début de
   leur bloc — elles modifient la hauteur des notes qui suivent, pas un gain, et aucune mesure ne les a encore mises en
   défaut.
+
+### Phase D615 — un soixante-quinzième audit : les frappes de batterie en losanges (31/10/2026)
+
+*Écrite le 31/10 à 20 h 02 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D609 et D610** — « l'éditeur de batterie (losanges, quantification par rang) ».
+Le piano roll nomme déjà les pièces d'une piste du canal 10 (D109) et replie ses rangs sur les notes jouées ; mais il
+dessine une frappe comme une note de mélodie, une barre de la durée écrite — et la durée d'un coup de grosse caisse ne dit
+rien : une partie reconstruite y montre des barres d'une noire, d'une croche ou d'un triolet selon ce que la transcription
+a mesuré, qui se chevauchent et cachent l'attaque, la seule chose qui compte. L'éditeur de batterie de Cubase dessine
+des LOSANGES, centrés sur l'attaque.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D615.1 | **Les frappes en losanges** — l'affichage du *Drum Editor* | sur une piste du canal 10, chaque note se dessine en losange centré sur son attaque, de la hauteur du rang (sa couleur, sa vélocité, sa sélection, sa muette, son doute : les mêmes marques qu'une barre) ; on la SAISIT là où on la voit — le losange, y compris sa moitié à gauche de l'attaque — et plus sur la longueur de la barre ; sa durée ne se tire plus au bord (elle se règle dans la ligne d'information ou la liste) ; *Affichage ▸ Batterie en losanges (canal 10)*, cochée d'origine, retenue au poste ; décochée, les barres d'avant ; mesuré par un relevé de la géométrie et par des clics, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le canal 10, comme les noms des pièces (D109)** : c'est le critère qui dit « batterie » partout ailleurs dans le
+  piano roll ; un second critère (la machine) ferait deux définitions de la même chose.
+- **La zone de saisie est le losange** (sa boîte : la largeur d'un rang de part et d'autre de l'attaque) : sur une
+  frappe d'une noire, cliquer à droite du losange, dans ce qui était la barre, ne saisit plus rien — on ne saisit pas ce
+  qu'on ne voit pas.
+- **Pas de tirage de la durée au bord** : un losange n'a pas de bord de fin ; la durée reste éditable ailleurs.
+- **Remis, nommés** : la quantification par rang, la longueur d'insertion par rang, les rangs dans l'ordre de la carte.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/batterie-losanges.sh`, une piste du canal 10 sur la TR-909 : une
+grosse caisse au temps 1 et une caisse claire au temps 2, d'une NOIRE chacune ; le relevé `relever-losanges` donne le
+centre et la demi-largeur de chaque losange (en fractions du piano roll) :
+(a) un clic à gauche de l'attaque de la grosse caisse, dans son losange (à 0,6 demi-largeur) → **1 note choisie** ;
+(b) un clic au milieu de sa durée, à droite du losange (à 4 demi-largeurs, dans l'ancienne barre) → **0 note** ;
+(c) la case décochée (les barres) : (a) → **0**, (b) → **1** ; le témoin (D614) : comme (c) ;
+(d) l'entrée du menu en anglais, retenue au poste ; la photo regardée.
