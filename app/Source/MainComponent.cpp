@@ -8194,6 +8194,23 @@ vsm::interchange::LoadedBundle MainComponent::bundleFromSession() {
     return bundle;
 }
 
+vsm::interchange::LoadedBundle MainComponent::bundleAExporter(juce::String& ordreDit) {
+    // D616.1 : CE QU'ON ENTEND EST CE QU'ON EXPORTE. La case cochée, une COPIE de la session est aplatie dans l'ordre —
+    // par la fonction qui aplatit (D18.4, gardée au bit par D606) — puis rendue ; le projet n'est pas touché.
+    auto bundle = bundleFromSession();
+    ordreDit.clear();
+    if (!playOrderPanel_.suitLOrdre() || playOrderPanel_.order().empty()) return bundle;
+    if (!vsm::sequencer::flattenPlayOrder(bundle.project, playOrderPanel_.order())) return bundle;
+    bundle.document = vsm::interchange::documentFromProject(bundle.project);
+    const auto& sections = playOrderPanel_.sections();   // celles que l'ordre désigne
+    juce::StringArray noms;
+    for (int index : playOrderPanel_.order())
+        noms.add(index >= 0 && index < static_cast<int>(sections.size())
+                     ? juce::String::fromUTF8(sections[static_cast<size_t>(index)].name.c_str()) : juce::String("?"));
+    ordreDit = noms.joinIntoString(", ");
+    return bundle;
+}
+
 void MainComponent::exportStems() {
     auto fenetre = std::make_shared<juce::AlertWindow>(
         tr(u8"Exporter les stems"),
@@ -8276,7 +8293,8 @@ bool MainComponent::exportStemsToFolder(const juce::File& dossier,
                                          vsm::interchange::StemGranularity granularite,
                                          juce::String& message) {
     captureSessionIntoProject();
-    const auto bundle = bundleFromSession();
+    juce::String ordreDit;   // D616.1
+    const auto bundle = bundleAExporter(ordreDit);
     const auto sortie = vsm::interchange::renderStemsToFolder(
         bundle, dossier.getFullPathName().toStdString(), granularite, options);
     if (!sortie.success) {
@@ -8294,6 +8312,7 @@ bool MainComponent::exportStemsToFolder(const juce::File& dossier,
     // celles du moteur par `trPhrase`.
     message = tr(u8"%1 stems écrits dans :").replace("%1", juce::String(sortie.stems.size()))
             + "\n" + dossier.getFullPathName() + "\n";
+    if (ordreDit.isNotEmpty()) message += tr(u8"L'ordre de jeu suivi : %1").replace("%1", ordreDit) + "\n";   // D616.1
     for (const auto& stem : sortie.stems) {
         juce::String ligne;
         if (stem.peakLevel > 1e-9) {
@@ -8378,7 +8397,8 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     // deux vérités ; il n'y en a qu'un -- FLAC, OGG et la normalisation ne
     // font que RÉÉCRIRE ce rendu-là, jamais en rendre un autre.
     captureSessionIntoProject();
-    const vsm::interchange::LoadedBundle bundle = bundleFromSession();
+    juce::String ordreDit;   // D616.1
+    const vsm::interchange::LoadedBundle bundle = bundleAExporter(ordreDit);
     const juce::String extension = file.getFileExtension().toLowerCase();
     const bool flac = extension == ".flac";
     const bool ogg = extension == ".ogg";
@@ -8456,6 +8476,7 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
                     .replace("%2", juce::String(options.sampleRate / 1000.0, 1))
                     .replace("%3", profondeur);
     if (niveauDit.isNotEmpty()) message += "\n" + niveauDit;
+    if (ordreDit.isNotEmpty()) message += "\n" + tr(u8"L'ordre de jeu suivi : %1").replace("%1", ordreDit);   // D616.1
     // CE QUI SERA ÉCRÊTÉ EST DIT, ET SEULEMENT QUAND ÇA L'EST.
     //
     // Un rendu dont la crête dépasse 1 tient dans un fichier 32 bits flottants

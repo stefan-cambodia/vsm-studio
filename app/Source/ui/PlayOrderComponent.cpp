@@ -72,8 +72,8 @@ void PlayOrderComponent::retraduire() {
     suivre_.setButtonText(tr(u8"La lecture suit l'ordre"));
     suivre_.setTooltip(tr(u8"Cochée, la lecture joue l'ordre sans toucher au matériau : à la fin d'une section, elle "
                           u8"saute au début de la suivante, et s'arrête après la dernière. La boucle s'efface devant "
-                          u8"l'ordre, et l'ordre devant l'enregistrement. L'export suit la ligne de temps : pour "
-                          u8"exporter l'ordre, l'aplatir."));
+                          u8"l'ordre, et l'ordre devant l'enregistrement. L'export audio suit l'ordre, comme on "
+                          u8"l'entend."));   // D616.1 : la décision de D606 revue
     infobulleListe_ = tr(u8"Double-clic : la lecture va à cet élément.");   // D612.1
     liste_.setTooltip(infobulleListe_);
     rafraichir();

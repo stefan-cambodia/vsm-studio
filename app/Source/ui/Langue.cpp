@@ -822,10 +822,13 @@ const Paire kAnglais[] = {
       "Playback follows the order" },
     { "Cochée, la lecture joue l'ordre sans toucher au matériau : à la fin d'une section, elle saute au début de la "
       "suivante, et s'arrête après la dernière. La boucle s'efface devant l'ordre, et l'ordre devant l'enregistrement. "
-      "L'export suit la ligne de temps : pour exporter l'ordre, l'aplatir.",
+      "L'export audio suit l'ordre, comme on l'entend.",
       "When ticked, playback plays the order without touching the material: at the end of a section it jumps to the "
       "start of the next one, and stops after the last. The loop gives way to the order, and the order to recording. "
-      "Export follows the timeline: to export the order, flatten it." },
+      "Audio export follows the order, as you hear it." },
+    // D616.1 : l'export qui suit l'ordre.
+    { "L'ordre de jeu suivi : %1",
+      "Play order followed: %1" },
     { "La prendre sur la boucle",
       "Take it over the loop" },
     { "Langue",

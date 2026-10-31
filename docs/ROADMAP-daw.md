@@ -48314,3 +48314,29 @@ suivi :
 ligne de temps aussi ;
 (d) les stems suivent : le stem de la piste, identique au bit au stem du projet aplati ;
 (e) le message de l'export dit l'ordre suivi ; les suites ; la série.
+
+### Phase D616 — MESURÉE (31/10/2026, 20 h 27 à l'horloge)
+
+*Écrite avant son code à 20 h 16. Le banc `tools/export-ordre.sh` (8 contrôles et son témoin d'identité) ; le témoin : le
+binaire de D615 (`build/temoin-D615`). Vert au premier essai ; puis joué avec le binaire de D615 À LA PLACE du neuf, pour
+le voir tomber : 4 rouges, chacun pour sa raison — (a) l'export y est la ligne de temps, (d) le verbe `exporter-stems:`
+lui est inconnu (0 stem), (e) aucun message, ni en français ni en anglais.*
+
+| # | attendu | mesure | témoin | tenu |
+|---|---|---|---|---|
+| — | deux exports d'une même ligne de temps, deux courses, identiques au bit (sans quoi « identique » ne dit rien) | **identiques** ; le bouton « Aplatir », confirmé, écrit bien [B, A] : 64 au tick 0, 57 au tick 1 920 | — | **oui** |
+| D616 (a) | case cochée : l'export identique au bit à celui du projet aplati [B, A] par le bouton | **identique** (les données PCM, 1 587 600 octets) ; contre la ligne de temps : 822 779 octets différents | le binaire de D615 : la ligne de temps | **oui** |
+| D616 (b) | le projet enregistré après l'export garde ses notes | 57 au tick 0, 64 au tick 1 920 — le matériau d'origine | — | **oui** |
+| D616 (c) | case décochée : la ligne de temps ; le témoin, case cochée : la ligne de temps | décochée : **identique** à l'export sans ordre ; le binaire de D615, case cochée : **identique** à la ligne de temps | — | **oui** |
+| D616 (d) | les stems suivent | 1 stem (« 01 - Partie.wav ») : **identique** au stem du projet aplati, différent de celui de la ligne | le binaire de D615 : verbe inconnu | **oui** |
+| D616 (e) | le message dit l'ordre suivi | « L'ordre de jeu suivi : B, A » au mixage et aux stems, rien case décochée ; *Play order followed: B, A* | aucun | **oui** |
+| — | les bancs voisins | `ordre-suivi`, `ordre-aller`, `aplatir-clips`, `ecoute-attenuee`, `normaliser-niveau`, `dossier-des-choisies` rejoués verts | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **La copie aplatie et le projet aplati rendent le même son au bit** : l'aller-retour du menu (aplatir, reconstruire la
+  session, la relire en projet) n'ajoute rien que le rendu entende. Une seule fonction aplatit ; l'export n'a pas de second
+  chemin.
+- **Le verbe `exporter-stems:` passe par `exportStemsForCapture`** (D50), qui existait : le même chemin que
+  `VSM_EXPORT_STEMS`, appelé APRÈS les gestes.
+- **Remis, nommés** : le gel d'une piste rend toujours la ligne de temps (tranché ainsi) ; l'export MIDI écrit le matériau
+  (D31.5) — un export MIDI de l'ordre suivi serait une décision à part, à écrire.

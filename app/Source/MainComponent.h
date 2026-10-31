@@ -976,6 +976,10 @@ public:
         if (geste.startsWithIgnoreCase("exporter-audio:"))
             return exportForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim()));
+        // D616.1 : les stems comme geste — `VSM_EXPORT_STEMS` agit au démarrage, avant que les gestes posent l'ordre.
+        if (geste.startsWithIgnoreCase("exporter-stems:"))
+            return exportStemsForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim()));
         return false;
     }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
@@ -2384,6 +2388,9 @@ private:
     void exportStems();
     /// La session mise en forme de projet chargé, pour le rendu.
     vsm::interchange::LoadedBundle bundleFromSession();
+    /// D616.1 : CE QUE L'EXPORT AUDIO REND — la session ; la case « La lecture suit l'ordre » cochée et l'ordre non vide,
+    /// une COPIE aplatie dans cet ordre (le projet n'est pas touché). `ordreDit` reçoit l'ordre suivi, vide sinon.
+    vsm::interchange::LoadedBundle bundleAExporter(juce::String& ordreDit);
     /// La seconde moitié de l'export : choisir le fichier, puis rendre avec les
     /// options que l'utilisateur vient de fixer (D6.1).
     void exportAudioWithOptions(const vsm::interchange::RenderOptions& options,
