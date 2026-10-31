@@ -1298,6 +1298,26 @@ VSM_TEST(relinking_a_missing_file_rewrites_every_designation_and_nothing_else_d6
     VSM_ASSERT_EQ(collectMediaDesignations(p).count("audio/absent.wav"), size_t(0));
 }
 
+// D617.1 — CHERCHER LES MANQUANTS PAR LEUR NOM. L'attendu écrit avant le code (ROADMAP-daw, D617) : quatre manquants
+// contre cinq fichiers trouvés → 1, 1, 2, 0 candidats — le nom sans la casse, les sous-dossiers comptés.
+VSM_TEST(missing_files_are_matched_by_name_in_a_searched_folder_d617) {
+    const auto c = candidatesByName({"audio/absent.wav", "audio/nappe.wav", "audio/double.wav", "audio/perdu.wav"},
+                                    {"/x/sous/absent.wav", "/x/Nappe.wav", "/x/a/double.wav", "/x/b/double.wav",
+                                     "/x/autre.wav"});
+    VSM_ASSERT_EQ(c.size(), size_t(4));
+    VSM_ASSERT_EQ(c.at("audio/absent.wav").size(), size_t(1));
+    VSM_ASSERT(c.at("audio/absent.wav")[0] == "/x/sous/absent.wav");
+    VSM_ASSERT_EQ(c.at("audio/nappe.wav").size(), size_t(1));   // « Nappe.wav » : la casse ignorée
+    VSM_ASSERT(c.at("audio/nappe.wav")[0] == "/x/Nappe.wav");
+    VSM_ASSERT_EQ(c.at("audio/double.wav").size(), size_t(2));
+    VSM_ASSERT(c.at("audio/double.wav")[0] == "/x/a/double.wav");
+    VSM_ASSERT_EQ(c.at("audio/perdu.wav").size(), size_t(0));
+    // UN NOM N'EST PAS UNE FIN DE NOM : « absent.wav » ne trouve pas « xabsent.wav », ni un dossier qui le porterait.
+    const auto d = candidatesByName({"audio/absent.wav"}, {"/x/xabsent.wav", "/x/absent.wav.bak", "C:\\x\\ABSENT.WAV"});
+    VSM_ASSERT_EQ(d.at("audio/absent.wav").size(), size_t(1));
+    VSM_ASSERT(d.at("audio/absent.wav")[0] == "C:\\x\\ABSENT.WAV");
+}
+
 VSM_TEST(the_chosen_tracks_move_into_a_new_folder_with_their_content_and_their_routing) {
     // D589.1 : *Move Selected Tracks to New Folder*. Le dossier naît à la place de la PREMIÈRE piste choisie ; les
     // choisies le suivent dans leur ordre, un dossier avec son contenu ; les routages suivent les PISTES (reorderTracks).

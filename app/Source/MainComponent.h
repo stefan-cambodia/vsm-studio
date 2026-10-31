@@ -405,6 +405,13 @@ public:
         }
         // D607.1 : la réserve des fichiers, relue puis dite (`VSM_RESERVE`) ; ouvre la fenêtre.
         if (geste.equalsIgnoreCase("relever-reserve")) { showReserve(); direLaReserve(); return true; }
+        // D617.1 : `chercher-manquants:<dossier>` — le sélecteur de dossier sauté, la MÊME fonction que le bouton.
+        if (geste.startsWithIgnoreCase("chercher-manquants:")) {
+            showReserve();
+            chercherLesManquants(juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim()));
+            return true;
+        }
         // D609.2 : LA CARTE DE BATTERIE — `carte:41>45` (ou `carte:41>-` pour « elle-même ») choisit par la MÊME liste
         // que la souris ; `relever-carte` la dit. Les deux ouvrent la fenêtre sur la piste choisie.
         if (geste.startsWithIgnoreCase("carte:")) {
@@ -2024,7 +2031,10 @@ private:
     /// n'a rien à faire dans le rappel audio. Une piste de neuf minutes fait
     /// attendre l'interface le temps de la lire -- c'est visible, et c'est
     /// préférable à un chargement partiel qui jouerait du silence sans le dire.
-    void loadAudioTracks();
+    /// D617.1 : `boiteSiManquants` faux — après « Relier » ou « Chercher dans un dossier », la réserve OUVERTE dit déjà ce
+    /// qui manque encore (sa remarque, ses lignes MANQUANT) ; la boîte, modale, s'y ajoutait et bloquait le geste suivant.
+    /// Le volet des réserves d'ouverture est tenu à jour dans les deux cas.
+    void loadAudioTracks(bool boiteSiManquants = true);
     /// INSÉRER OU SUPPRIMER LA PLAGE ENTRE LES LOCATEURS (D13.3) : tout le
     /// morceau glisse -- notes, clips, contrôleurs, automation, repères,
     /// tempo, mesures, boucle et punch -- et ce qui est à cheval est coupé.
@@ -2554,6 +2564,19 @@ private:
     /// D608.1 : RELIER UN FICHIER MANQUANT — tout ce qui désignait `ancien` désigne `choisi` (copié dans `audio/` s'il
     /// est hors du dossier du projet), un pas d'annulation, la piste rechargée ; faux et dit s'il ne se peut pas.
     bool relierFichier(const juce::String& ancien, const juce::File& choisi);
+    /// D617.1 : LA PRÉPARATION COMMUNE À D608 ET D617 — lire `choisi`, le copier dans `audio/` s'il est hors du dossier du
+    /// projet (sous un nom libre), décrire la source. Ne touche pas au projet (une copie n'est pas un geste).
+    struct FichierARelier {
+        enum class Issue { Pret, Illisible, CopieImpossible } issue = Issue::Illisible;
+        vsm::sequencer::AudioSource source;
+        juce::File cible;
+        bool copie = false;
+    };
+    FichierARelier preparerFichierARelier(const juce::File& choisi);
+    /// D617.1 : CHERCHER LES MANQUANTS DANS UN DOSSIER (*Find Missing Files ▸ Search Folder*) — par leur nom, sous-dossiers
+    /// compris ; un seul candidat lisible : relié ; plusieurs : ambigu, non relié, dit. Tous les reliés en UN pas.
+    /// Rend le nombre de fichiers reliés.
+    int chercherLesManquants(const juce::File& dossier);
     std::unique_ptr<PanelWindow> reserveWindow_;
     vsm::app::ui::ReserveComponent reservePanel_;
     /// D609.2 : LA CARTE DE BATTERIE de la piste choisie — relue du projet à l'ouverture et après chaque choix.

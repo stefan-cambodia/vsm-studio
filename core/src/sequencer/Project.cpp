@@ -4,6 +4,7 @@
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include <set>
+#include <cctype>
 #include <algorithm>
 #include <atomic>
 #include <vector>
@@ -1280,6 +1281,27 @@ size_t relinkMedia(Project& project, const std::string& ancien, const AudioSourc
         for (auto& version : t.versions) relier(version.audio);
     }
     return reecrites;
+}
+
+std::map<std::string, std::vector<std::string>> candidatesByName(const std::vector<std::string>& manquants,
+                                                                 const std::vector<std::string>& trouves) {
+    // LE NOM, sans la casse ASCII : un projet venu d'un système qui l'ignore doit se retrouver ; deux fichiers qui n'en
+    // diffèrent que par elle sont deux candidats (ambigu, D617).
+    const auto nom = [](const std::string& chemin) {
+        const auto coupe = chemin.find_last_of("/\\");
+        std::string n = coupe == std::string::npos ? chemin : chemin.substr(coupe + 1);
+        for (auto& c : n) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return n;
+    };
+    std::map<std::string, std::vector<std::string>> parNom;
+    for (const auto& t : trouves) parNom[nom(t)].push_back(t);
+    std::map<std::string, std::vector<std::string>> candidats;
+    for (const auto& m : manquants) {
+        auto& liste = candidats[m];
+        const auto it = parNom.find(nom(m));
+        if (it != parNom.end() && !nom(m).empty()) liste = it->second;
+    }
+    return candidats;
 }
 
 size_t countFoldChanges(const Project& project, FoldAll how) {

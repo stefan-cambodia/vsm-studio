@@ -10738,7 +10738,7 @@ void MainComponent::direLaCarte() {
 
 void MainComponent::showReserve() {
     if (!reserveWindow_) {
-        reservePanel_.onRafraichir = [this] { rafraichirReserve(); };
+        reservePanel_.onRafraichir = [this] { reservePanel_.setRemarque({}); rafraichirReserve(); };
         reservePanel_.onNettoyer = [this] { nettoyerLeDossierDuProjet(); };   // D564.1, sa confirmation et sa corbeille
         // D608.1 : le sélecteur, ou le fichier du banc (`VSM_FICHIER`, D102) — la suite est la même.
         reservePanel_.onRelier = [this](const juce::String& ancien) {
@@ -10749,6 +10749,16 @@ void MainComponent::showReserve() {
             auto chooser = std::make_shared<juce::FileChooser>(
                 tr(u8"Le fichier qui remplace %1").replace("%1", ancien), juce::File(), "*.wav;*.aif;*.aiff;*.flac;*.ogg");
             chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                                 [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
+        };
+        // D617.1 : le sélecteur de DOSSIER, ou le dossier du banc (`VSM_FICHIER`, D102) — la suite est la même.
+        reservePanel_.onChercher = [this] {
+            const auto suite = [this](const juce::File& choisi) {
+                if (choisi != juce::File()) chercherLesManquants(choisi);
+            };
+            if (prendreLeFichierDeBanc(suite)) return;
+            auto chooser = std::make_shared<juce::FileChooser>(tr(u8"Le dossier où chercher les fichiers manquants"));
+            chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
                                  [suite, chooser](const juce::FileChooser& fc) { suite(fc.getResult()); });
         };
         reserveWindow_ = std::make_unique<PanelWindow>(juce::String::fromUTF8(u8"Réserve des fichiers"), reservePanel_);
@@ -10841,6 +10851,131 @@ void MainComponent::rafraichirReserve() {
     reservePanel_.setLignes(std::move(lignes), false);
 }
 
+MainComponent::FichierARelier MainComponent::preparerFichierARelier(const juce::File& choisi) {
+    // D608.1, EXTRAITE PAR D617.1 : la même préparation pour un fichier désigné à la main et pour un fichier trouvé.
+    FichierARelier r;
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> lecteur{choisi.existsAsFile() ? formats.createReaderFor(choisi) : nullptr};
+    if (lecteur == nullptr || lecteur->sampleRate <= 0.0) return r;   // Illisible
+    // HORS DU DOSSIER, IL EST COPIÉ : le fichier du projet refuse les chemins absolus (un projet doit s'ouvrir sur une
+    // autre machine). Sous un nom libre si `audio/` en a déjà un — jamais un fichier écrasé.
+    r.cible = choisi;
+    if (!choisi.isAChildOf(currentProjectFolder_)) {
+        const auto dossierAudio = currentProjectFolder_.getChildFile("audio");
+        dossierAudio.createDirectory();
+        r.cible = dossierAudio.getChildFile(choisi.getFileName());
+        if (r.cible.exists())
+            r.cible = dossierAudio.getNonexistentChildFile(choisi.getFileNameWithoutExtension(), choisi.getFileExtension(), false);
+        if (!choisi.copyFileTo(r.cible)) {
+            r.issue = FichierARelier::Issue::CopieImpossible;
+            return r;
+        }
+        r.copie = true;
+    }
+    r.source.path = r.cible.getRelativePathFrom(currentProjectFolder_).replaceCharacter('\\', '/').toStdString();
+    r.source.sampleRate = lecteur->sampleRate;
+    r.source.frames = lecteur->lengthInSamples;
+    r.source.channels = static_cast<int>(lecteur->numChannels);
+    r.issue = FichierARelier::Issue::Pret;
+    return r;
+}
+
+int MainComponent::chercherLesManquants(const juce::File& dossier) {
+    // D617.1 — LE *SEARCH FOLDER* DE CUBASE. Le journal en octets UTF-8, chaque ligne dans son propre `fputs` (la garde
+    // des langues, D608) ; l'écran, traduit, dans la remarque de la réserve et la ligne d'état.
+    if (currentProjectFolder_ == juce::File()) {
+        std::fputs("VSM_RESERVE : chercher REFUS\xc3\x89 : projet jamais enregistr\xc3\xa9\n", stderr);
+        reservePanel_.setRemarque(tr(u8"Projet jamais enregistré : la réserve se lit dans le dossier du projet."));
+        return 0;
+    }
+    if (!dossier.isDirectory()) {
+        std::fputs(("VSM_RESERVE : chercher REFUS\xc3\x89 : " + dossier.getFullPathName().toStdString()
+                    + " n'est pas un dossier\n").c_str(), stderr);
+        reservePanel_.setRemarque(tr(u8"Ce n'est pas un dossier : rien n'a été cherché.") + " " + dossier.getFullPathName());
+        return 0;
+    }
+    // LES MANQUANTS : désignés, absents du disque — l'état MANQUANT de la réserve (D607), par la même règle.
+    std::vector<std::string> manquants;
+    for (const auto& [chemin, designations] : vsm::sequencer::collectMediaDesignations(project_))
+        if (!currentProjectFolder_.getChildFile(juce::String::fromUTF8(chemin.c_str())).existsAsFile()) manquants.push_back(chemin);
+    if (manquants.empty()) {
+        std::fputs("VSM_RESERVE : chercher : aucun fichier manquant\n", stderr);
+        reservePanel_.setRemarque(tr(u8"Aucun fichier manquant : rien à chercher."));
+        return 0;
+    }
+    // LE PARCOURS, sous-dossiers compris ; trié, pour que l'ordre des candidats dits ne dépende pas du disque.
+    std::vector<std::string> trouves;
+    for (const auto& entree : juce::RangedDirectoryIterator(dossier, true, "*", juce::File::findFiles))
+        trouves.push_back(entree.getFile().getFullPathName().toStdString());
+    std::sort(trouves.begin(), trouves.end());
+    const auto candidats = vsm::sequencer::candidatesByName(manquants, trouves);
+    struct Relie { std::string ancien; vsm::sequencer::AudioSource source; bool copie; };
+    std::vector<Relie> relies;
+    std::map<std::string, FichierARelier> dejaPrepares;   // un même fichier trouvé pour deux manquants : copié une fois
+    juce::StringArray introuvables, ambigus, illisibles;
+    for (const auto& [ancien, liste] : candidats) {
+        const juce::String nom = juce::String::fromUTF8(ancien.c_str());
+        if (liste.empty()) {
+            introuvables.add(nom);
+            std::fputs(("VSM_RESERVE : chercher : " + ancien + " introuvable\n").c_str(), stderr);
+            continue;
+        }
+        if (liste.size() > 1) {
+            std::string tous;
+            for (const auto& c : liste) tous += (tous.empty() ? "" : ", ") + c;
+            ambigus.add(nom + " (" + juce::String(static_cast<int>(liste.size())) + ")");
+            std::fputs(("VSM_RESERVE : chercher : " + ancien + " ambigu, " + std::to_string(liste.size())
+                        + " candidats : " + tous + " \xe2\x80\x94 non reli\xc3\xa9\n").c_str(), stderr);
+            continue;
+        }
+        auto it = dejaPrepares.find(liste[0]);
+        if (it == dejaPrepares.end())
+            it = dejaPrepares.emplace(liste[0], preparerFichierARelier(juce::File(juce::String::fromUTF8(liste[0].c_str())))).first;
+        const auto& prepare = it->second;
+        if (prepare.issue != FichierARelier::Issue::Pret) {
+            illisibles.add(nom);
+            std::fputs(("VSM_RESERVE : chercher : " + ancien + " \xe2\x86\x92 " + liste[0]
+                        + (prepare.issue == FichierARelier::Issue::Illisible ? " illisible" : " copie impossible")
+                        + " \xe2\x80\x94 non reli\xc3\xa9\n").c_str(), stderr);
+            continue;
+        }
+        relies.push_back({ancien, prepare.source, prepare.copie});
+    }
+    // TOUS LES RELIÉS EN UN PAS : une recherche est un geste. Rien de relié : aucun pas.
+    if (!relies.empty()) {
+        beginProjectEdit(u8"Chercher les fichiers manquants");
+        for (const auto& r : relies) {
+            const size_t n = vsm::sequencer::relinkMedia(project_, r.ancien, r.source);
+            std::fputs(("VSM_RESERVE : chercher : " + r.ancien + " \xe2\x86\x92 " + r.source.path + " ("
+                        + std::to_string(n) + " d\xc3\xa9signation(s), " + (r.copie ? "copi\xc3\xa9" : "en place") + ")\n").c_str(),
+                       stderr);
+        }
+        loadAudioTracks(false);   // la remarque dit ce qui manque encore : pas de boîte modale en plus
+        refreshTransportSchedule();
+        arrangement_.repaint();
+        refreshHistoryList();
+    }
+    rafraichirReserve();
+    std::fputs(("VSM_RESERVE : chercher : " + std::to_string(relies.size()) + " reli\xc3\xa9(s), "
+                + std::to_string(introuvables.size()) + " introuvable(s), " + std::to_string(ambigus.size()) + " ambigu(s), "
+                + std::to_string(illisibles.size()) + " illisible(s) ; " + std::to_string(trouves.size())
+                + " fichier(s) parcouru(s)\n").c_str(), stderr);
+    juce::String dit = tr(u8"Cherché dans %1 : %2 relié(s), %3 introuvable(s), %4 ambigu(s), %5 illisible(s).")
+                           .replace("%1", dossier.getFileName())
+                           .replace("%2", juce::String(static_cast<int>(relies.size())))
+                           .replace("%3", juce::String(introuvables.size()))
+                           .replace("%4", juce::String(ambigus.size()))
+                           .replace("%5", juce::String(illisibles.size()));
+    if (!ambigus.isEmpty())
+        dit += " " + tr(u8"Ambigus (plusieurs candidats, à relier à la main) : %1.").replace("%1", ambigus.joinIntoString(", "));
+    if (!introuvables.isEmpty()) dit += " " + tr(u8"Introuvables : %1.").replace("%1", introuvables.joinIntoString(", "));
+    if (!illisibles.isEmpty()) dit += " " + tr(u8"Illisibles : %1.").replace("%1", illisibles.joinIntoString(", "));
+    reservePanel_.setRemarque(dit);
+    if (pianoRoll_.onStatusChanged) pianoRoll_.onStatusChanged(dit);
+    return static_cast<int>(relies.size());
+}
+
 bool MainComponent::relierFichier(const juce::String& ancien, const juce::File& choisi) {
     // LE JOURNAL EN OCTETS UTF-8, chaque ligne dans son propre `fputs` : passées par une lambda, la garde des langues
     // les comptait à l'écran (D608). La boîte, elle, est traduite.
@@ -10857,41 +10992,24 @@ bool MainComponent::relierFichier(const juce::String& ancien, const juce::File& 
         std::fputs(("VSM_RESERVE : relier REFUS\xc3\x89 : rien ne d\xc3\xa9signe " + ancien.toStdString() + "\n").c_str(), stderr);
         return refuser(tr(u8"Rien ne désigne %1 dans le projet : rien n'a été relié.").replace("%1", ancien));
     }
-    juce::AudioFormatManager formats;
-    formats.registerBasicFormats();
-    std::unique_ptr<juce::AudioFormatReader> lecteur{choisi.existsAsFile() ? formats.createReaderFor(choisi) : nullptr};
-    if (lecteur == nullptr || lecteur->sampleRate <= 0.0) {
+    const auto prepare = preparerFichierARelier(choisi);
+    if (prepare.issue == FichierARelier::Issue::Illisible) {
         std::fputs(("VSM_RESERVE : relier REFUS\xc3\x89 : " + choisi.getFullPathName().toStdString()
                     + " illisible \xe2\x80\x94 rien n'est reli\xc3\xa9\n").c_str(), stderr);
         return refuser(tr(u8"Ce fichier ne se lit pas comme un fichier audio : rien n'a été relié.") + "\n"
                        + choisi.getFullPathName());
     }
-    // HORS DU DOSSIER, IL EST COPIÉ : le fichier du projet refuse les chemins absolus (un projet doit s'ouvrir sur une
-    // autre machine). Sous un nom libre si `audio/` en a déjà un — jamais un fichier écrasé.
-    juce::File cible = choisi;
-    bool copie = false;
-    if (!choisi.isAChildOf(currentProjectFolder_)) {
-        const auto dossierAudio = currentProjectFolder_.getChildFile("audio");
-        dossierAudio.createDirectory();
-        cible = dossierAudio.getChildFile(choisi.getFileName());
-        if (cible.exists())
-            cible = dossierAudio.getNonexistentChildFile(choisi.getFileNameWithoutExtension(), choisi.getFileExtension(), false);
-        if (!choisi.copyFileTo(cible)) {
-            std::fputs(("VSM_RESERVE : relier REFUS\xc3\x89 : copie impossible vers " + cible.getFullPathName().toStdString()
-                        + "\n").c_str(), stderr);
-            return refuser(tr(u8"La copie dans le dossier du projet a échoué : rien n'a été relié.") + "\n"
-                           + cible.getFullPathName());
-        }
-        copie = true;
+    if (prepare.issue == FichierARelier::Issue::CopieImpossible) {
+        std::fputs(("VSM_RESERVE : relier REFUS\xc3\x89 : copie impossible vers " + prepare.cible.getFullPathName().toStdString()
+                    + "\n").c_str(), stderr);
+        return refuser(tr(u8"La copie dans le dossier du projet a échoué : rien n'a été relié.") + "\n"
+                       + prepare.cible.getFullPathName());
     }
-    vsm::sequencer::AudioSource source;
-    source.path = cible.getRelativePathFrom(currentProjectFolder_).replaceCharacter('\\', '/').toStdString();
-    source.sampleRate = lecteur->sampleRate;
-    source.frames = lecteur->lengthInSamples;
-    source.channels = static_cast<int>(lecteur->numChannels);
+    const auto& source = prepare.source;
+    const bool copie = prepare.copie;
     beginProjectEdit(u8"Relier un fichier manquant");
     const size_t reecrites = vsm::sequencer::relinkMedia(project_, ancien.toStdString(), source);
-    loadAudioTracks();
+    loadAudioTracks(false);   // D617.1 : la réserve ouverte dit ce qui manque encore
     refreshTransportSchedule();
     arrangement_.repaint();
     refreshHistoryList();
@@ -10912,6 +11030,10 @@ void MainComponent::direLaReserve() {
                     + R::texteTaille(l) + " ; " + l.designePar + " ; " + R::nomDeLEtat(l.etat) + "\n").toRawUTF8(), stderr);
     // LA TAILLE DE LA FENÊTRE, dite : deux photos de panneau sur une quinzaine sont sorties en 128 × 128, écran éteint et
     // session verrouillée, sans se laisser reproduire (D606, D607) — le relevé la mesure au lieu de la deviner.
+    // D617.1 : la remarque de la dernière recherche, et l'état du bouton qui la lance.
+    if (reservePanel_.remarque().isNotEmpty())
+        std::fputs(("VSM_RESERVE : remarque ; " + reservePanel_.remarque() + "\n").toRawUTF8(), stderr);
+    std::fputs(reservePanel_.chercherActif() ? "VSM_RESERVE : Chercher actif\n" : "VSM_RESERVE : Chercher gris\xc3\xa9\n", stderr);
     std::fputs(("VSM_RESERVE : total ; " + reservePanel_.total() + juce::String::fromUTF8(" ; fen\xc3\xaatre ") + juce::String(reservePanel_.getWidth())
                 + "x" + juce::String(reservePanel_.getHeight()) + "\n").toRawUTF8(), stderr);
 }
@@ -13035,7 +13157,7 @@ void MainComponent::setPanLaw(vsm::sequencer::PanLaw loi) {
         pianoRoll_.onStatusChanged(tr(u8"Loi de panoramique : %1 au centre").replace("%1", nom));
 }
 
-void MainComponent::loadAudioTracks() {
+void MainComponent::loadAudioTracks(bool boiteSiManquants) {
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
                                                               : 48000.0;
     juce::StringArray manquants;
@@ -13161,7 +13283,7 @@ void MainComponent::loadAudioTracks() {
     // recalcule la liste entière ; l'empiler la ferait croître sans fin.
     reservesAudio_.clear();
     for (const auto& manquant : manquants) reservesAudio_.push_back(manquant);
-    if (!manquants.isEmpty())
+    if (!manquants.isEmpty() && boiteSiManquants)
         montrerBoite(
             juce::AlertWindow::WarningIcon, tr(u8"Audio non chargé"),
             tr(u8"Ces pistes audio n'ont pas pu être lues :") + "\n\n"

@@ -24,6 +24,14 @@ ReserveComponent::ReserveComponent() {
     };
     relier_.setEnabled(false);
     addAndMakeVisible(relier_);
+    // D617.1 : CHERCHER LES MANQUANTS DANS UN DOSSIER — actif dès qu'une ligne manque ; la remarque dit ce qui reste.
+    chercher_.onClick = [this] { if (onChercher) onChercher(); };
+    chercher_.setEnabled(false);
+    addAndMakeVisible(chercher_);
+    remarque_.setFont(juce::Font(juce::FontOptions(13.0f)));
+    remarque_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);   // un fait, la convention de D152
+    remarque_.setJustificationType(juce::Justification::topLeft);
+    addAndMakeVisible(remarque_);
     liste_.setRowHeight(26);
     liste_.setColour(juce::ListBox::backgroundColourId, vsm::ui::Palette::panel);
     addAndMakeVisible(liste_);
@@ -38,6 +46,9 @@ void ReserveComponent::retraduire() {
     relier_.setButtonText(tr(u8"Relier..."));
     relier_.setTooltip(tr(u8"Désigner le fichier qui remplace le fichier manquant choisi : tout ce qui le désignait le "
                           u8"désigne. Pris hors du dossier du projet, il y est copié."));
+    chercher_.setButtonText(tr(u8"Chercher dans un dossier..."));
+    chercher_.setTooltip(tr(u8"Chaque fichier manquant est cherché par son nom dans le dossier désigné et ses "
+                            u8"sous-dossiers. Un seul candidat : il est relié ; plusieurs : rien n'est relié, et c'est dit."));
     total_.setText(total(), juce::dontSendNotification);
     repaint();
 }
@@ -49,9 +60,15 @@ void ReserveComponent::setLignes(std::vector<Ligne> lignes, bool sansDossier) {
     total_.setText(total(), juce::dontSendNotification);
     liste_.deselectAllRows();
     relier_.setEnabled(false);
+    chercher_.setEnabled(std::any_of(lignes_.begin(), lignes_.end(), [](const Ligne& l) { return l.etat == Etat::Manquant; }));
     liste_.updateContent();
     liste_.repaint();
     repaint();
+}
+
+void ReserveComponent::setRemarque(const juce::String& texte) {
+    remarque_.setText(texte, juce::dontSendNotification);
+    resized();
 }
 
 juce::String ReserveComponent::total() const {
@@ -188,8 +205,12 @@ void ReserveComponent::resized() {
     auto bas = zone.removeFromBottom(34);
     rafraichir_.setBounds(bas.removeFromRight(130).reduced(2));
     nettoyer_.setBounds(bas.removeFromRight(260).reduced(2));
+    chercher_.setBounds(bas.removeFromRight(250).reduced(2));   // D617.1
     relier_.setBounds(bas.removeFromRight(120).reduced(2));
-    total_.setBounds(bas);
+    // D617.1 : LE TOTAL SUR SA LIGNE — quatre boutons ne lui laissent plus la place à leur gauche ; la remarque au-dessus,
+    // seulement quand elle dit quelque chose.
+    total_.setBounds(zone.removeFromBottom(22));
+    remarque_.setBounds(remarque_.getText().isEmpty() ? juce::Rectangle<int>() : zone.removeFromBottom(40));
     zone.removeFromTop(4);
     enTete_ = zone.removeFromTop(24);
     liste_.setBounds(zone.reduced(0, 2));

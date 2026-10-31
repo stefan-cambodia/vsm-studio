@@ -641,6 +641,13 @@ std::map<std::string, std::vector<MediaDesignation>> collectMediaDesignations(co
 /// gel, ses prises, ses versions — passe à `nouveau`, sa description (fréquence, trames, canaux) comprise. Rend le nombre
 /// de désignations réécrites ; 0 : rien ne désignait `ancien`, et le projet n'a pas bougé.
 size_t relinkMedia(Project& project, const std::string& ancien, const AudioSource& nouveau);
+
+/// D617.1 — CHERCHER LES MANQUANTS DANS UN DOSSIER (*Find Missing Files ▸ Search Folder*) : pour chaque chemin de
+/// `manquants`, les fichiers de `trouves` qui portent son NOM (le dernier élément du chemin, sans tenir compte de la casse
+/// ASCII), dans l'ordre de `trouves`. Chaque manquant a sa clé, même sans candidat. Pure : le parcours du disque est
+/// celui de l'application ; la décision (un seul candidat : relier ; plusieurs : ambigu, non relié) aussi.
+std::map<std::string, std::vector<std::string>> candidatesByName(const std::vector<std::string>& manquants,
+                                                                 const std::vector<std::string>& trouves);
 size_t foldAllTracks(Project& project, FoldAll how);
 
 /// REMET LES PROFONDEURS DE DOSSIER D'APLOMB (D19.4), et rend le nombre de

@@ -48340,3 +48340,113 @@ lui est inconnu (0 stem), (e) aucun message, ni en français ni en anglais.*
   `VSM_EXPORT_STEMS`, appelé APRÈS les gestes.
 - **Remis, nommés** : le gel d'une piste rend toujours la ligne de temps (tranché ainsi) ; l'export MIDI écrit le matériau
   (D31.5) — un export MIDI de l'ordre suivi serait une décision à part, à écrire.
+
+### Phase D617 — un soixante-dix-septième audit : chercher les fichiers manquants dans un dossier (31/10/2026)
+
+*Écrite le 31/10 à 20 h 30 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D614 à
+D616 tourne (écran allumé) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D607 et de D608** — « chercher les manquants dans un dossier (*Search*) ».
+D608 relie UN fichier, désigné à la main. Le cas ordinaire est pourtant celui d'un projet copié d'une machine à l'autre
+sans ses fichiers, puis de ses fichiers retrouvés en vrac dans un dossier : dix manquants, dix sélecteurs. Le *Find
+Missing Files* de Cubase a pour cela « Search Folder » : on désigne un dossier, il y cherche chaque fichier par son nom.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D617.1 | **Chercher les fichiers manquants dans un dossier** — *Find Missing Files ▸ Search Folder* | dans la réserve, « Chercher dans un dossier... » (grisé sans manquant) : on désigne un dossier ; chaque fichier MANQUANT y est cherché par son NOM (sous-dossiers compris, sans tenir compte de la casse) ; un seul candidat lisible → relié comme par D608 (copié dans `audio/` s'il est hors du dossier du projet, désigné en place sinon) ; AUCUN candidat → « introuvable » ; PLUSIEURS → « ambigu », NON relié, les candidats dits (jamais un choix muet) ; un candidat illisible → « illisible », non relié ; tous les reliés en UN pas d'annulation ; le compte dit au journal et à l'écran ; mesuré au cœur et par un banc — le vumètre d'une piste reliée en lecture, le témoin non cherché à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **L'appariement vit au cœur** (`candidatesByName`) : pour chaque chemin manquant, les fichiers trouvés qui portent son
+  nom. Une fonction pure, testée sans disque ; l'application ne fait que parcourir le dossier.
+- **Le nom, sans la casse** : un projet venu d'un système qui l'ignore (« Nappe.wav » pour `audio/nappe.wav`) doit se
+  retrouver. Deux fichiers qui ne diffèrent que par la casse sont DEUX candidats : ambigu.
+- **Ambigu = non relié, et dit** : choisir le premier trouvé serait la panne muette que ce dépôt s'interdit — deux
+  `kick.wav` de deux morceaux ne sont pas le même son. L'ambigu reste MANQUANT ; « Relier... » (D608) le tranche à la main.
+- **Une seule préparation pour D608 et D617** : lire le fichier, le copier hors du dossier (sous un nom libre), décrire
+  la source — extraite de `relierFichier` en une fonction que les deux appellent. Deux copies divergeraient.
+- **Un pas, pas N** : une recherche est un geste ; Ctrl+Z la défait d'un coup. Rien de relié → aucun pas.
+- **Le verbe de banc** `chercher-manquants:<dossier>` prend la place du sélecteur de dossier, et passe par la MÊME fonction ;
+  le bouton se presse aussi par `cliquer:` avec `VSM_FICHIER=<dossier>` (D102).
+- **Remis, nommés** : chercher par le CONTENU (une empreinte, quand le nom a changé) ; borner une recherche lancée sur un
+  dossier immense (le parcours n'est pas interruptible) ; importer dans la réserve, poser un fichier de la réserve sur
+  une piste.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : quatre manquants (`audio/absent.wav`, `audio/nappe.wav`, `audio/double.wav`, `audio/perdu.wav`) contre
+cinq fichiers trouvés (`sous/absent.wav`, `Nappe.wav`, `a/double.wav`, `b/double.wav`, `autre.wav`) → **1, 1, 2, 0**
+candidats ; le cas qui rend une fonction vide rouge : 0 partout ;
+(b) **au banc** `tools/chercher-manquants.sh` : un projet à cinq pistes audio manquantes — « Basse » (`absent.wav`),
+« Nappe » (`nappe.wav`), « Chœur » (`double.wav`), « Cordes » (`perdu.wav`), « Bruit » (`bruit.wav`) — et un dossier HORS
+du projet qui contient `sous/absent.wav` (2 s stéréo, −10 dBFS de crête), `Nappe.wav`, `a/double.wav`, `b/double.wav` et
+`bruit.wav` (du texte) → « **2 relié(s), 1 introuvable, 1 ambigu, 1 illisible** » ; la réserve : **3 manquants**, `absent.wav`
+et `Nappe.wav` « joué », copiés dans `audio/` ; en lecture, le vumètre de « Basse » **au-dessus de −40 dBFS** quand le
+témoin non cherché lit **−inf** ; ~~Ctrl+Z → **5 manquants**, d'un pas~~ ; un projet sans manquant → « aucun fichier
+manquant », aucun pas ; le bouton pressé (`cliquer:`) donne le même compte que le verbe ; le témoin (D616) : le verbe
+inconnu ; l'anglais ;
+(c) les suites ; la série.
+
+**CORRIGÉ AVANT LA MESURE, ET DIT (20 h 34, en écrivant le banc, rien n'est compilé)** : « Ctrl+Z → 5 manquants » oubliait
+où va la copie. Trouvé HORS du dossier, `sous/absent.wav` est copié dans `audio/` sous son nom — c'est-à-dire AU chemin
+manquant, `audio/absent.wav`, qui est libre. Ctrl+Z rend au projet sa désignation d'avant… qui désigne désormais un
+fichier présent : la copie n'est pas un geste du projet, et ne se défait pas (la décision de D608). C'est la conduite
+voulue — le fichier est revenu à sa place. `Nappe.wav`, lui, est copié sous SON nom, `audio/Nappe.wav` : Ctrl+Z rend
+`audio/nappe.wav`, manquant. L'attendu devient : **un seul pas** au relevé de l'historique (« Chercher les fichiers
+manquants »), et Ctrl+Z → **4 manquants** — `audio/nappe.wav` MANQUANT revenu, `audio/Nappe.wav` « gardé pour
+l'historique », `audio/absent.wav` « joué ».
+
+**CORRIGÉ APRÈS LE PREMIER ESSAI, ET DIT (22 h 23 à l'horloge)** — deux choses, vues au journal du premier passage du
+banc (15 contrôles verts, 1 rouge, l'écran ÉTEINT par le poste à 22 h 2x) :
+- **Une seconde boîte modale** : après la recherche, `loadAudioTracks` rouvrait « Audio non chargé » pour les trois
+  fichiers restés manquants — que la remarque de la réserve venait de nommer. Elle bloquait le geste suivant (Play,
+  « bascule 0 → 0 »). DÉCIDÉ : après « Relier » (D608) comme après « Chercher », le rechargement ne rouvre pas la boîte
+  (`loadAudioTracks(false)`) ; la réserve ouverte le dit, et le volet des réserves d'ouverture reste tenu à jour.
+- **Le témoin positif de la lecture ne se tient pas écran éteint** : la boîte d'ouverture, invisible (la règle des boîtes
+  de D95), n'est pas refermable par son OK, et elle bloque Play — le témoin non cherché lisait « arrêté », donc son
+  « −inf » ne prouvait rien (D145). L'instrument change, UNE variable : « la piste reliée SONNE » se mesure par l'EXPORT
+  de ses stems (`exporter-stems:`, D616 — un appel direct, que ni la boîte ni l'écran ne bloquent, et le contrat de D21) :
+  le stem de « Basse » **au-dessus de −40 dBFS** après la recherche, **silencieux** au témoin non cherché, dont le stem de
+  « Voix » sonne (le témoin positif : l'export a bien rendu). Le vumètre en lecture reste au banc, publié, non jugé.
+
+**CORRIGÉ APRÈS LE DEUXIÈME ESSAI, ET DIT (01/11, 00 h 59 à l'horloge)** : « silencieux » écrit comme « −inf » était faux
+pour un export en 24 bits — le stem de « Basse » du témoin non cherché lit **−138,47 dBFS**, exactement 1 LSB (2⁻²³) :
+le tramage TPDF de ± 1 LSB que l'export pose depuis D14.4. Silencieux veut dire ici : **sous −130 dBFS**, le tramage seul.
+Le reste du deuxième essai : 15 contrôles verts, la boîte d'ouverture refermée par son OK (écran allumé), aucune seconde
+boîte après la recherche.
+
+### La série de D614 à D616 — JOUÉE (31/10/2026, 22 h 15 à l'horloge)
+
+*`./verifier.sh --bancs`, **212** bancs, lancée à 20 h 28 sous `kde-inhibit --screenSaver` (l'inhibition retirée à la fin :
+la liste est vide) ; écran allumé, aucune veille au journal du système ; la batterie de 84 à 47 %.* **212 verts, 0 rouge**
+en 105 min ; les préférences de l'utilisateur identiques ; le compositeur 825 → 816 Mo (le sommet de 11 234 Mo est celui
+de la SESSION, `memory.peak`, pas de cette série). D614, D615 et D616 sont FAITES.
+- **La rafale de D613 a ramené 25 fois** une fenêtre (24 fenêtres en 12 ouvertures), 0 dégénérée au relevé, écran allumé : la
+  réduction par le compositeur continue, et la garde la répare chaque fois — la cause (KWin) reste remise, nommée.
+
+### Phase D617 — MESURÉE, la série à jouer (01/11/2026, 01 h 03 à l'horloge)
+
+*Écrite avant son code le 31/10 à 20 h 30 ; l'attendu de Ctrl+Z corrigé avant la mesure (20 h 34), l'instrument de « la
+piste sonne » après le premier essai (22 h 23), le seuil du silence après le deuxième (00 h 59) — chaque fois ci-dessus.
+Le test du cœur joué rouge sur une fonction vide (0 ≠ 1). Le banc `tools/chercher-manquants.sh` (16 contrôles) ; le
+témoin : le binaire de D616 (`build/temoin-D616`), et dans le même binaire une course non cherchée.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D617 (a) | 1, 1, 2, 0 candidats ; le nom sans la casse ; un nom n'est pas une fin de nom | **1, 1, 2, 0** ; « Nappe.wav » pour `nappe.wav` ; « xabsent.wav » et « absent.wav.bak » écartés, « C:\x\ABSENT.WAV » trouvé | la fonction vide : rouge (0 ≠ 1) | **oui** |
+| D617 (b) | le compte, la réserve, les copies | « **2 relié(s), 1 introuvable(s), 1 ambigu(s), 1 illisible(s)** » ; 5 → **3 manquants** ; `absent.wav` (2.00 s stéréo, « Basse ») et `Nappe.wav` « joué », copiés ; `double.wav` (ses deux candidats dits) et `bruit.wav` non copiés ; la remarque les nomme | le binaire de D616 : 0 recherche, le verbe inconnu, 5 manquants | **oui** |
+| D617 (b) | la piste reliée sonne | le stem exporté de « Basse » à **−14,95 dBFS** | non cherché : **−138,47 dBFS** (le tramage, « silencieux » au message de l'export), « Voix » à −25,72 | **oui, l'instrument corrigé** |
+| D617 (b) | un pas ; Ctrl+Z | « Chercher les fichiers manquants », **1 pas** ; Ctrl+Z → **4 manquants** : `nappe.wav` MANQUANT, `Nappe.wav` « gardé pour l'historique », `absent.wav` joué | — | **oui, l'attendu corrigé** |
+| D617 (b) | sans manquant ; le bouton ; l'anglais | « aucun fichier manquant », « Chercher » grisé, 0 pas ; le bouton pressé : le même compte ; *Search a folder...* dans *Pool* : « 2 relinked, 1 not found, 1 ambiguous, 1 unreadable » | — | **oui** |
+| — | les suites | cœur **584 / 584** (1 neuf) ; `relier-fichier`, `reserve-fichiers`, `nettoyer-dossier`, `export-ordre` rejoués verts | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Une boîte modale de trop, retirée** : après « Relier » et « Chercher », le rechargement ne rouvre plus « Audio non
+  chargé » (`loadAudioTracks(false)`) — la réserve ouverte le dit déjà.
+- **Écran éteint, la boîte d'ouverture bloque tout clic sans se montrer** (premier essai, 22 h 21) — la règle de D95,
+  revue sous une autre forme : le banc mesure désormais le son par l'export, que rien ne bloque.
+- **Play ne lance pas de lecture durable sur ce jeu** : le relevé lit « arrêté » 1,2 s après le clic, dans les deux
+  courses — un projet de pistes audio sans clip ni note n'a peut-être pas de fin (la leçon de D579). Le vumètre de
+  « Basse » (−11,94 dBFS après la recherche) serait le sommet retenu d'une lecture d'un instant : PLAUSIBLE, non vérifié,
+  publié et non jugé. **Et l'écart de 3,01 dB** entre ce vumètre et le stem (−14,95) vaut la loi panoramique au centre :
+  non tranché, nommé.
+- **Remis, nommés** : chercher par le contenu ; borner une recherche sur un dossier immense ; importer dans la réserve ;
+  poser un fichier de la réserve sur une piste.
