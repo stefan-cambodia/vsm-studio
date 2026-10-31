@@ -48044,3 +48044,35 @@ garde retirée (le 3ᵉ ramené au 2ᵉ). Le banc `tools/ordre-aller.sh` (7 cont
 - **La fenêtre dégénérée, écran ALLUMÉ** : la course principale du banc a ouvert l'ordre de jeu en 128 × 128 (relevé et
   photo), écran allumé et session déverrouillée — ce qui réfute « jamais écran allumé », écrit dans `CLAUDE.md` à
   13 h 29 et corrigé. Le banc ne s'en sert pas pour juger ; la cause est l'objet de D613.
+
+### Phase D613 — un soixante-treizième audit : les fenêtres flottantes qui naissent en 128 × 128 (31/10/2026)
+
+*Écrite le 31/10 à 15 h 44 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : de D607, D608 et D612.** Une fenêtre flottante — la réserve, l'ordre de jeu, la carte de batterie —
+est née une dizaine de fois en 128 × 128, ses boutons sans surface, d'abord écran éteint, puis une fois écran ALLUMÉ
+(D612, 15 h 36). Un utilisateur qui ouvre un panneau peut donc le recevoir minuscule. Lu au code :
+- **`PanelWindow` ne pose AUCUNE taille minimale** : `setResizable(true, true)` sans `setResizeLimits`. Or JUCE ne donne
+  au gestionnaire de fenêtres une taille minimale (`WM_NORMAL_HINTS`, `PMinSize`) que d'après le contraignant de la
+  fenêtre (`XWindowSystem::updateConstraints`) : sans lui, rien n'empêche le compositeur de la configurer à sa guise.
+- **Et une taille dégénérée se RETIENT** : `memoriser` écrit la taille d'une fenêtre visible aux préférences
+  (`fenetre.<nom>`), et `setDefaultSize` la reprend dès qu'elle dépasse 120 × 80 — une fenêtre née une fois en 128 × 128
+  rouvrirait en 128 × 128 à chaque ouverture, pour toujours.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D613.1 | **Une taille minimale aux fenêtres flottantes** | chaque `PanelWindow` porte une taille minimale de 240 × 160 (sous les plus petits panneaux d'origine, 420 × 320 ; bien au-dessus de 128) — donnée au gestionnaire de fenêtres par JUCE ; une taille RETENUE sous ce plancher est ignorée à l'ouverture (la taille d'origine du panneau la remplace), et une taille sous ce plancher n'est jamais retenue ; mesuré par l'indication que la fenêtre porte (`xprop`), par une taille retenue dégénérée, et par une rafale d'ouvertures, le témoin à côté |
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE QUI LA TRANCHE** : le compositeur (KWin, par XWayland) donne 128 × 128 à une fenêtre
+qui ne déclare pas de taille minimale, quand il la configure avant d'avoir pris la taille demandée ; une taille minimale
+déclarée l'en empêche. Si la rafale d'ouvertures du témoin ne produit AUCUNE fenêtre dégénérée, l'hypothèse n'est pas
+tranchée par elle — c'est dit, et seules les deux mesures déterministes valent.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/fenetres-minimum.sh` :
+(a) la réserve ouverte, `xprop -name` lit son `WM_NORMAL_HINTS` : le témoin (D612) **sans** taille minimale déclarée ; le
+neuf **avec** une taille minimale d'au moins 240 × 160 ;
+(b) des préférences où la réserve est retenue en **128 × 128** : le témoin l'ouvre en **128 × 128** (le relevé
+« fenêtre ») ; le neuf à sa taille d'origine (**980 × 440**), et les préférences ne retiennent plus 128 × 128 ;
+(c) une rafale de **12** ouvertures (la réserve et l'ordre de jeu, 24 fenêtres) par binaire : le neuf **0** fenêtre
+dégénérée ; le témoin, compté et publié tel quel ;
+(d) les suites ; la série.
