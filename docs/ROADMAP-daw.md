@@ -48709,3 +48709,53 @@ le témoin des infobulles : le binaire de D620.*
 - **L'infobulle, corrigée avant le commit** : la première écriture disait « le trait est la crête, la barre le niveau
   efficace » ; la peinture (D470) montre la crête en barre PÂLE, le niveau efficace en barre PLEINE, et un trait pour la
   crête RETENUE. Relu au code de `LevelMeter::paint` avant de commiter, et le banc vérifie désormais les trois marques.
+
+### La série de D617 à D621 — JOUÉE (01/11/2026, 04 h 37 à l'horloge)
+
+*`./verifier.sh --bancs`, **217** bancs, lancée à 02 h 49 sous `kde-inhibit --screenSaver` (retirée à la fin : la liste est
+vide) ; écran allumé, aucune veille au journal du système ; la batterie de 70 à 33 %.* **217 verts, 0 rouge** en 107 min ;
+les préférences de l'utilisateur identiques ; le compositeur 669 → 731 Mo. D617, D618, D619, D620 et D621 sont FAITES.
+- **`quantifier-audio` et `normaliser-niveau`, rouges à 01 h 3x écran ÉTEINT** (D619 — le binaire de D618 tombait pareil),
+  sont **verts** écran allumé : l'environnement, comme écrit.
+- **La rafale de D613** : 21 fenêtres ramenées, 0 dégénérée au relevé.
+- **La garde de batterie lancée à 20 h 28 pour « 7 200 »** : `--duree` se compte en HEURES, pas en secondes — elle aurait
+  veillé dix mois. Arrêtée par son PID à 02 h 49, relancée pour 3 h. Sans effet sur rien (sans `--pid`, elle ne bloque pas
+  la veille), mais dit.
+
+### Phase D622 — un quatre-vingt-deuxième audit : la grille par rang de la carte de batterie (01/11/2026)
+
+*Écrite le 01/11 à 02 h 51 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D617 à
+D621 tourne (écran allumé) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D609, D610 et D615** — « la quantification et la longueur d'insertion par
+rang ». Sur une piste de batterie, la grosse caisse se pose à la noire, le charleston à la double, le roulement de caisse
+claire en triolets : une seule grille pour toutes les pièces oblige à la changer à chaque rang. La *Drum Map* de Cubase
+porte pour cela une colonne *Quantize* par pièce, qui règle la pose au *Drumstick* et la quantification dans l'éditeur.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D622.1 | **La grille par rang** — la colonne *Quantize* de la *Drum Map* | dans la fenêtre de la carte, une colonne « Grille » par note écrite : « globale » (le défaut) ou une valeur (1/4 à 1/64, et leurs triolets) ; écrite au projet, un pas d'annulation par changement ; sur la piste, une frappe POSÉE dans un rang qui a sa grille s'aimante à elle et dure une case d'elle ; « Quantifier » aligne chaque frappe choisie sur la grille de SON rang ; un rang « global » suit la grille de la barre comme avant ; mesuré par le projet enregistré, le relevé des losanges et l'export MIDI des notes, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La grille s'écrit par son LIBELLÉ** (« 1/8 », « 1/16T » pour le triolet) — pas en ticks : une valeur musicale se
+  relit dans tout projet, quelle que soit sa résolution, et c'est ce que la barre écrit déjà (D495). Le cœur apprend à
+  lire et écrire ces libellés (`gridResolutionFromLabel`, `gridResolutionLabel`), une seule fois.
+- **Sur la carte, à côté de la note jouée** : la grille est une propriété de la PIÈCE, comme la note qu'elle joue ;
+  `Track::drumGrid` (note écrite → libellé), écrit au projet (`"drumGrid"`) seulement s'il n'est pas vide — un projet
+  d'avant se relit et se réécrit à l'octet (la règle de D609.1).
+- **Ce qui suit la grille du rang** : la POSE (le clic qui crée une frappe) et la QUANTIFICATION de la sélection.
+  **Remis, nommé** : le GLISSÉ d'une sélection qui couvre plusieurs rangs reste sur la grille de la barre — aimanter chaque
+  frappe à la grille de son rang pendant qu'on les tire ensemble demande une règle à écrire (laquelle mène ?).
+- **La règle vaut sur toute piste qui a une carte de grilles**, pas seulement en losanges : la grille est à la piste ; les
+  losanges (D615) ne sont qu'une manière de la voir.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/grille-par-rang.sh`, une piste « Batterie » sur la TR-909, canal 10,
+480 ticks à la noire, la grille de la barre à 1/16 (120 ticks), le rang 38 (caisse claire) réglé à **1/4** :
+(a) **au cœur** : « 1/8 » → croche, « 1/16T » → triolet de doubles, « 1/4. » → noire pointée, « 1/32Q » → quintolet ;
+un libellé inconnu → refusé ; l'aller-retour libellé → grille → libellé à l'identique ;
+(b) un clic au tick ~400 dans le rang **36** (global) → une frappe à **360**, longue de **120** ; dans le rang **38** → à **480**,
+longue de **480** ;
+(c) deux frappes à 70 (rang 36) et 70 (rang 38), choisies, « Quantifier » → **120** et **0** ;
+(d) le projet enregistré porte `"drumGrid": [{"in": 38, "grid": "1/4"}]` ; relu, la colonne dit « 1/4 » ; Ctrl+Z après le
+choix → « globale » ; le témoin (D621) : le verbe inconnu, (b) → 360 et 360 ; l'anglais ;
+(e) les suites ; la série.
