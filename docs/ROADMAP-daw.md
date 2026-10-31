@@ -47774,3 +47774,50 @@ directe). Le banc `tools/carte-batterie.sh` (9 contrôles) ; le témoin : le bin
 
 **LA SÉRIE EST À JOUER (D605 à D609 ensemble, 207 bancs), ÉCRAN ALLUMÉ — et batterie chargée** : à 09 h 41, 35 % et en
 décharge ; la dernière série en a pris 28 points en 98 minutes, et la garde de batterie met le poste en veille à 10 %.
+
+### Phase D610 — un soixante-dixième audit : adapter une partie General MIDI à la machine (31/10/2026)
+
+*Écrite le 31/10 à 11 h 39 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure, pendant la série
+de D605-D609 (lancée à 11 h 36 sous `kde-inhibit --screenSaver`) — rien ne se compile avant sa fin.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D609** — « adapter General MIDI à la machine d'un geste (une correspondance
+par catégorie de pièce, qui se MESURE avant de se proposer) ». Les parties de batterie reconstruites sont écrites en
+General MIDI (la convention des stems, D109) ; les machines du parc rangent leurs pièces chacune à sa façon. Poser la
+carte de D609 note par note demande de connaître les deux tables par cœur.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D610.1 | **Adapter General MIDI à la machine** — les conversions de *Drum Map* (« GM Map ») | dans la fenêtre de la carte, « Adapter General MIDI à la machine » : pour chaque note que la piste ÉCRIT, sa pièce General MIDI est rangée dans une CATÉGORIE (grosse caisse, caisse claire, rim, clap, charleston fermé, charleston ouvert, tom, crash, ride, cowbell, cloche, et les percussions par famille) ; si la machine nomme cette note dans la même catégorie, rien ne change ; sinon la note va à la pièce de la MÊME catégorie la plus proche en hauteur (à égalité, la plus grave) ; une pièce sans équivalent sur la machine reste elle-même, et c'est DIT (« crash 2 (57) : pas de cymbale crash sur la TR-808 ») ; un seul pas d'annulation ; mesuré au cœur sur les 35 pièces de la table General MIDI, par un rendu hors ligne, et par un banc |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La catégorie se lit au NOM de la pièce** (« tom … », « charleston fermé », « crash »/« splash »/« china »,
+  « ride »/« cloche de ride »…), dans les deux tables — celle de General MIDI et celle de la machine : une table de
+  correspondances écrite à la main par machine serait une seconde vérité à côté des noms, qui divergerait au premier
+  nom corrigé. Une note que la machine nomme dans une AUTRE catégorie (la FM Drums appelle « cloche » sa note 49, où
+  General MIDI met un crash) n'est pas un équivalent.
+- **La plus proche en hauteur, même catégorie** : la seule règle qui garde l'ORDRE des toms (41 et 43 vont au tom le plus
+  grave de la 909, 48 à son tom médium) sans table de rangs.
+- **Seulement les notes que la piste écrit** : la carte reste lisible (une ligne par note jouée), et le geste ne touche
+  pas aux notes que la piste n'a pas.
+- **Les tables des pièces passent au cœur** (`vsm/sequencer/DrumKit.h`) : la règle s'y teste, et l'application garde
+  ses noms par un en-tête qui y renvoie — un nom d'écran ne dépend toujours d'aucune interface audio (la raison de D109).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — sur les **35** pièces de la table General MIDI, celles qui sonnent DANS LEUR
+CATÉGORIE (la note jouée nommée par la machine, de la même catégorie), sans puis avec l'adaptation, et celles qui
+restent sans équivalent :
+
+| machine | avant | après | sans équivalent |
+|---|---|---|---|
+| TR-808 (`vsm.tr808`) | 6 | **9** | 26 |
+| TR-909 (`vsm.tr909`) | 9 | **18** | 17 |
+| batterie (`vsm.drums`) | 10 | **20** | 15 |
+| FM Drums (`vsm.fmdrums`) | 6 | **14** | 21 |
+| percussions (`vsm.perc`) | 13 | **13** | 22 |
+
+(a) **au cœur** : ces quinze nombres, et sur la 909 : 41 → 45, 43 → 45, 48 → 47, 44 → 42, 57 → 49, 36 inchangée ;
+(b) **au rendu hors ligne**, sur la 909, chaque pièce rendue seule : 41, 43, 44 et 57 **muettes** sans la carte, **toutes
+audibles** (crête > 0,05) avec la carte adaptée ;
+(c) **au banc** `tools/adapter-batterie.sh` : une piste GM sur la 909, le bouton pressé → les entrées posées et le compte
+« 4 note(s) adaptée(s), 1 sans équivalent » dit (la partie écrit un ride 51, que la 909 n'a pas) ; Ctrl+Z les retire
+d'un coup ; l'anglais ; le témoin (D609) : le bouton absent ;
+(d) les suites ; la série.
