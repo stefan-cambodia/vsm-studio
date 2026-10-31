@@ -47984,3 +47984,33 @@ retirée (0,182). Aucun banc neuf : D611 ne change rien à l'interface.*
   moteur : deux attaques simultanées sur une machine monophonique n'ont pas d'ordre musical. C'est NOMMÉ : la chaîne et
   l'aplati peuvent différer sur ce cas.
 - **Un banc d'interface n'est pas touché** : D611 rejoindra la série suivante par ses voisins (`ordre-suivi`, la boucle).
+
+### Phase D612 — un soixante-douzième audit : aller à un élément de l'ordre de jeu (31/10/2026)
+
+*Écrite le 31/10 à 15 h 17 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D606** — « un clic sur un élément de la liste ne fait pas encore sauter la
+lecture (*Arranger Editor* de Cubase) ». Aujourd'hui, pour réécouter le TROISIÈME élément de [B, A, A], il faut cliquer
+dans la règle — et la tête va alors au PREMIER élément qui contient la position (le deuxième, un A aussi), parce qu'un
+déplacement ne sait pas lequel des deux A on voulait.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D612.1 | **Aller à un élément de la chaîne** — le clic dans l'*Arranger Editor* | un double-clic sur une ligne de l'ordre de jeu : la tête va au début de la section de CET élément, et la lecture qui suit l'ordre reprend À CET ÉLÉMENT — le troisième de [B, A, A] joue le troisième, puis la chaîne finit ; en lecture, le saut se fait tout de suite (les notes relâchées et relancées, les contrôleurs chassés : ceux du déplacement) ; arrêté, la tête y est posée et le prochain départ y reprend ; la case décochée, la tête va au début de la section, simplement ; mesuré au cœur et par un banc, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Un élément, pas une position** : le graphe reçoit l'INDICE (`jumpToPlayChainElement`) — la tête va au début de
+  l'élément ET l'indice est posé, là où un déplacement ordinaire prend le premier élément qui contient la position.
+- **Le double-clic**, pas le simple clic : le simple clic CHOISIT une ligne (pour Retirer, Monter, Descendre) ; lui faire
+  aussi déplacer la lecture changerait un geste qui existe.
+- **Arrêté, le départ suivant y reprend** — c'est déjà la règle de `startPlayChain` (la tête dans l'élément courant).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : la chaîne [B, A, A] (D606), arrêtée : aller au 3ᵉ élément → l'indice **2**, la tête au début de A
+(**0,000 s**) ; le départ y reprend, et après A la chaîne FINIT (le transport arrêté, la fin dite) — rendu égal au bit à
+l'aplati de [A] seul ; en lecture au milieu de B, aller au 2ᵉ → l'indice **1**, la tête à 0 s, puis le 3ᵉ, puis la fin ;
+(b) **au banc** `tools/ordre-aller.sh` : l'ordre [B, A, A] posé, la case cochée, la lecture lancée ; un double-clic sur
+la ligne 3 (le verbe `ordre-aller:3`, par la même fonction que la souris) → relevé : élément 3/3, la tête entre 0 et 2 s ;
+~2,5 s plus tard, arrêté ; le témoin dans le même binaire, case décochée : la tête au début de la section (0 s) et pas
+d'élément ; le témoin (D611) : le verbe inconnu ; l'anglais ; la photo ;
+(c) les suites ; la série (D610 à D612).
