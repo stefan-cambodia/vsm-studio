@@ -52,6 +52,10 @@ public:
     bool choisir(const juce::String& fichier);
     juce::String fichierChoisi() const;
     bool relierActif() const { return relier_.isEnabled(); }
+    /// D618.1 : « Poser à la tête » sur une ligne choisie dont le fichier est sur le disque — le chemin, tel que le projet
+    /// l'écrit ou que le dossier le contient.
+    std::function<void(const juce::String&)> onPoser;
+    bool poserActif() const { return poser_.isEnabled(); }
     /// D617.1 : « Chercher dans un dossier... » — actif dès qu'une ligne MANQUE.
     std::function<void()> onChercher;
     bool chercherActif() const { return chercher_.isEnabled(); }
@@ -73,7 +77,7 @@ private:
     bool sansDossier_ = false;
     juce::Rectangle<int> enTete_;
     juce::Label titre_, total_, remarque_;
-    juce::TextButton nettoyer_, rafraichir_, relier_, chercher_;
+    juce::TextButton nettoyer_, rafraichir_, relier_, chercher_, poser_;
     juce::ListBox liste_ { "reserve", this };
 };
 

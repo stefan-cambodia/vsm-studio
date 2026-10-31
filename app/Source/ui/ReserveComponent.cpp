@@ -24,6 +24,13 @@ ReserveComponent::ReserveComponent() {
     };
     relier_.setEnabled(false);
     addAndMakeVisible(relier_);
+    // D618.1 : POSER UN FICHIER DE LA RÉSERVE À LA TÊTE — actif sur une ligne dont le fichier est sur le disque.
+    poser_.onClick = [this] {
+        const auto fichier = fichierChoisi();
+        if (fichier.isNotEmpty() && onPoser) onPoser(fichier);
+    };
+    poser_.setEnabled(false);
+    addAndMakeVisible(poser_);
     // D617.1 : CHERCHER LES MANQUANTS DANS UN DOSSIER — actif dès qu'une ligne manque ; la remarque dit ce qui reste.
     chercher_.onClick = [this] { if (onChercher) onChercher(); };
     chercher_.setEnabled(false);
@@ -49,6 +56,9 @@ void ReserveComponent::retraduire() {
     relier_.setButtonText(tr(u8"Relier..."));
     relier_.setTooltip(tr(u8"Désigner le fichier qui remplace le fichier manquant choisi : tout ce qui le désignait le "
                           u8"désigne. Pris hors du dossier du projet, il y est copié."));
+    poser_.setButtonText(tr(u8"Poser à la tête"));
+    poser_.setTooltip(tr(u8"Une piste audio neuve, sous la piste choisie, joue le fichier choisi à partir de la tête. "
+                         u8"Le fichier reste où il est : rien n'est copié."));
     chercher_.setButtonText(tr(u8"Chercher dans un dossier..."));
     chercher_.setTooltip(tr(u8"Chaque fichier manquant est cherché par son nom dans le dossier désigné et ses "
                             u8"sous-dossiers. Un seul candidat : il est relié ; plusieurs : rien n'est relié, et c'est dit."));
@@ -63,6 +73,7 @@ void ReserveComponent::setLignes(std::vector<Ligne> lignes, bool sansDossier) {
     total_.setText(total(), juce::dontSendNotification);
     liste_.deselectAllRows();
     relier_.setEnabled(false);
+    poser_.setEnabled(false);
     chercher_.setEnabled(std::any_of(lignes_.begin(), lignes_.end(), [](const Ligne& l) { return l.etat == Etat::Manquant; }));
     liste_.updateContent();
     liste_.repaint();
@@ -140,8 +151,9 @@ int ReserveComponent::getNumRows() { return sansDossier_ ? 0 : static_cast<int>(
 
 void ReserveComponent::selectedRowsChanged(int) {
     const int ligne = liste_.getSelectedRow();
-    relier_.setEnabled(ligne >= 0 && ligne < static_cast<int>(lignes_.size())
-                       && lignes_[static_cast<size_t>(ligne)].etat == Etat::Manquant);
+    const bool valide = ligne >= 0 && ligne < static_cast<int>(lignes_.size());
+    relier_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].etat == Etat::Manquant);
+    poser_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].octets >= 0);   // D618.1 : sur le disque
 }
 
 bool ReserveComponent::choisir(const juce::String& fichier) {
@@ -206,10 +218,15 @@ void ReserveComponent::resized() {
     auto zone = getLocalBounds().reduced(12);
     titre_.setBounds(zone.removeFromTop(24));
     auto bas = zone.removeFromBottom(34);
-    rafraichir_.setBounds(bas.removeFromRight(130).reduced(2));
-    nettoyer_.setBounds(bas.removeFromRight(260).reduced(2));
-    chercher_.setBounds(bas.removeFromRight(250).reduced(2));   // D617.1
-    relier_.setBounds(bas.removeFromRight(120).reduced(2));
+    // D618.1 : CINQ BOUTONS — à gauche ce qui agit sur la ligne choisie, à droite ce qui agit sur tout ; serrés ensemble
+    // si la fenêtre est plus étroite que leur somme, plutôt que de se chevaucher.
+    const float echelle = std::min(1.0f, static_cast<float>(bas.getWidth()) / (120.0f + 190.0f + 250.0f + 260.0f + 130.0f));
+    const auto largeur = [echelle](int l) { return juce::roundToInt(static_cast<float>(l) * echelle); };
+    relier_.setBounds(bas.removeFromLeft(largeur(120)).reduced(2));
+    poser_.setBounds(bas.removeFromLeft(largeur(190)).reduced(2));
+    rafraichir_.setBounds(bas.removeFromRight(largeur(130)).reduced(2));
+    nettoyer_.setBounds(bas.removeFromRight(largeur(260)).reduced(2));
+    chercher_.setBounds(bas.removeFromRight(largeur(250)).reduced(2));   // D617.1
     // D617.1 : LE TOTAL SUR SA LIGNE — quatre boutons ne lui laissent plus la place à leur gauche ; la remarque au-dessus,
     // seulement quand elle dit quelque chose.
     total_.setBounds(zone.removeFromBottom(22));

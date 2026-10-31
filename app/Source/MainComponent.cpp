@@ -10739,6 +10739,7 @@ void MainComponent::direLaCarte() {
 void MainComponent::showReserve() {
     if (!reserveWindow_) {
         reservePanel_.onRafraichir = [this] { reservePanel_.setRemarque({}); rafraichirReserve(); };
+        reservePanel_.onPoser = [this](const juce::String& fichier) { poserDepuisLaReserve(fichier); };   // D618.1
         reservePanel_.onNettoyer = [this] { nettoyerLeDossierDuProjet(); };   // D564.1, sa confirmation et sa corbeille
         // D608.1 : le sélecteur, ou le fichier du banc (`VSM_FICHIER`, D102) — la suite est la même.
         reservePanel_.onRelier = [this](const juce::String& ancien) {
@@ -11491,7 +11492,6 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
         defaire();   // D213
         return false;
     }
-    const double duree = static_cast<double>(lu.source->frames()) / sr;
 
     // 5. UNE PISTE, UN FICHIER. Le modèle porte le matériau sur la PISTE et les
     // découpes dans ses clips : poser un second fichier différent sur la même
@@ -11513,23 +11513,35 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
     }
 
     beginProjectEdit(juce::String::fromUTF8(u8"Poser un échantillon"));
+    // D559.3 : LES CANAUX DU FICHIER, et non « 2 » en dur — un fichier mono passait pour stéréo, et « Gauche et
+    // droite échangées » s'y offrait sans rien avoir à échanger.
+    affecterLeFichierALaPiste(trackIndex, relatif.toStdString(), sr, lu.source->frames(),
+                              lu.fileChannels > 0 ? lu.fileChannels : 2, tick,
+                              destination.getFileNameWithoutExtension().toStdString());
+    return true;
+}
+
+void MainComponent::affecterLeFichierALaPiste(size_t trackIndex, const std::string& relatif, double sr, int64_t trames,
+                                              int canaux, vsm::midi::Tick tick, const std::string& nomDuClip) {
+    // D618.1 : EXTRAITE DE `placeSampleOnTrack`, pour que la pose depuis la réserve et la pose d'un fichier du disque
+    // écrivent la même piste — une seconde copie de ces lignes serait celle qui oublierait un champ (D559.3, D322).
+    auto& piste = project_.tracks[trackIndex];
     if (piste.kind != Track::Kind::Audio) {
         piste.kind = Track::Kind::Audio;
         piste.instrumentId.clear();
     }
-    piste.audio.path = relatif.toStdString();
+    piste.audio.path = relatif;
     piste.audio.sampleRate = sr;
-    piste.audio.frames = lu.source->frames();
-    // D559.3 : LES CANAUX DU FICHIER, et non « 2 » en dur — un fichier mono passait pour stéréo, et « Gauche et
-    // droite échangées » s'y offrait sans rien avoir à échanger.
-    piste.audio.channels = lu.fileChannels > 0 ? lu.fileChannels : 2;
+    piste.audio.frames = trames;
+    piste.audio.channels = canaux;
+    const double duree = sr > 0.0 ? static_cast<double>(trames) / sr : 0.0;
 
     vsm::sequencer::Clip clip;
     clip.startTick = std::max<vsm::midi::Tick>(0, tick);
     clip.length = std::max<vsm::midi::Tick>(1, project_.secondsToTicks(
         project_.ticksToSeconds(clip.startTick) + duree) - clip.startTick);
     clip.sourceStartSeconds = 0.0;
-    clip.name = destination.getFileNameWithoutExtension().toStdString();
+    clip.name = nomDuClip;
     clip.colorRgba = piste.colorRgba;   // D322 : la couleur de sa piste, comme tout clip qui naît
     project_.ajouterClip(piste.clips, clip);   // D262 : numéroté tout de suite
 
@@ -11537,6 +11549,48 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
     loadAudioTracks();
     refreshTransportSchedule();
     arrangement_.repaint();
+}
+
+bool MainComponent::poserDepuisLaReserve(const juce::String& fichier) {
+    // D618.1 — *POOL ▸ INSERT INTO PROJECT ▸ AT CURSOR*. Tout ce qui peut refuser est vérifié AVANT d'ouvrir le pas :
+    // un geste refusé ne laisse pas d'étape dans l'historique (la règle de `placeSampleOnTrack`).
+    const auto refuser = [this](const juce::String& boite) {
+        montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Poser un fichier de la réserve"), boite);
+        return false;
+    };
+    if (currentProjectFolder_ == juce::File()) {
+        std::fputs("VSM_RESERVE : poser REFUS\xc3\x89 : projet jamais enregistr\xc3\xa9\n", stderr);
+        return refuser(tr(u8"Projet jamais enregistré : la réserve se lit dans le dossier du projet."));
+    }
+    const juce::File chemin = currentProjectFolder_.getChildFile(fichier);
+    if (!chemin.existsAsFile()) {
+        std::fputs(("VSM_RESERVE : poser REFUS\xc3\x89 : " + fichier.toStdString() + " manque sur le disque\n").c_str(), stderr);
+        return refuser(tr(u8"%1 manque sur le disque : rien n'a été posé.").replace("%1", fichier));
+    }
+    // LA DESCRIPTION DU FICHIER, pas celle du moteur — la convention du projet (`AudioSource` décrit le fichier), celle
+    // de D608 : un fichier à 48 kHz posé sur un moteur à 44,1 kHz s'affichait « 44.1 kHz » dans la réserve (premier essai).
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> lecteur{formats.createReaderFor(chemin)};
+    if (lecteur == nullptr || lecteur->sampleRate <= 0.0 || lecteur->lengthInSamples <= 0) {
+        std::fputs(("VSM_RESERVE : poser REFUS\xc3\x89 : " + fichier.toStdString() + " illisible \xe2\x80\x94 rien n'est pos\xc3\xa9\n").c_str(),
+                   stderr);
+        return refuser(tr(u8"Ce fichier ne se lit pas comme un fichier audio : rien n'a été posé.") + "\n" + fichier);
+    }
+    const vsm::midi::Tick tete = transport_.currentTick();
+    const std::string nom = chemin.getFileNameWithoutExtension().toStdString();
+    const std::string relatif = fichier.replaceCharacter('\\', '/').toStdString();   // EN PLACE : le chemin de la réserve
+    const size_t index = addTrack(Track::Kind::Audio, nom, true, juce::String::fromUTF8(u8"Poser un fichier de la réserve"));
+    affecterLeFichierALaPiste(index, relatif, lecteur->sampleRate, lecteur->lengthInSamples,
+                              static_cast<int>(lecteur->numChannels), tete, nom);
+    trackList_.selectTrackIndex(index);
+    refreshTrackViews();
+    refreshHistoryList();
+    rafraichirReserve();
+    std::fputs(("VSM_RESERVE : pos\xc3\xa9 " + relatif + " sur la piste \xc2\xab " + nom + " \xc2\xbb (index "
+                + std::to_string(index) + "), au tick " + std::to_string(static_cast<int64_t>(tete)) + "\n").c_str(), stderr);
+    if (pianoRoll_.onStatusChanged)
+        pianoRoll_.onStatusChanged(tr(u8"Fichier posé à la tête : %1").replace("%1", fichier));
     return true;
 }
 
@@ -13549,7 +13603,7 @@ void MainComponent::newProject() {
     rafraichirTitre();
 }
 
-size_t MainComponent::addTrack(Track::Kind kind, const std::string& nom, bool sousLaChoisie) {
+size_t MainComponent::addTrack(Track::Kind kind, const std::string& nom, bool sousLaChoisie, const juce::String& libellePas) {
     const bool audio = kind == Track::Kind::Audio;
     const bool groupe = kind == Track::Kind::Group;
     const bool vca = kind == Track::Kind::Vca;   // D532.1 bis
@@ -13573,7 +13627,8 @@ size_t MainComponent::addTrack(Track::Kind kind, const std::string& nom, bool so
     // et se lisait comme une piste d'une autre sorte -- alors que les deux entrées
     // du menu, elles, disent « MIDI » et « audio ». La clé existe déjà dans la
     // table : le pas se traduit comme le menu.
-    beginProjectEdit(groupe ? juce::String(u8"Ajouter un groupe")
+    beginProjectEdit(libellePas.isNotEmpty() ? libellePas   // D618.1 : le nom du geste qui ajoute la piste
+                    : groupe ? juce::String(u8"Ajouter un groupe")
                     : vca    ? juce::String(u8"Ajouter un VCA")
                     : audio  ? juce::String(u8"Ajouter une piste audio")
                               : juce::String(u8"Ajouter une piste MIDI"));

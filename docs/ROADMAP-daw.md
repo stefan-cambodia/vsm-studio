@@ -48454,3 +48454,77 @@ témoin : le binaire de D616 (`build/temoin-D616`), et dans le même binaire une
   largeur, en français et en anglais, regardées ; le banc rejoué, 15 / 15.
 - **Remis, nommés** : chercher par le contenu ; borner une recherche sur un dossier immense ; importer dans la réserve ;
   poser un fichier de la réserve sur une piste.
+
+### Phase D618 — un soixante-dix-huitième audit : poser un fichier de la réserve dans le projet (01/11/2026)
+
+*Écrite le 01/11 à 01 h 07 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne ;
+la série de D617 reste à jouer, avec celle-ci.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D607, D608 et D617** — « poser un fichier de la réserve sur une piste ». La
+réserve MONTRE les fichiers que le projet garde sans les jouer — une prise écartée, une version, un fichier « inutilisé »
+qu'on a laissé dans `audio/` —, et rien ne permet de s'en servir sinon le réimporter depuis le disque (une copie de
+plus, un nom suffixé). Le Pool de Cubase a pour cela *Insert into Project ▸ At Cursor*.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D618.1 | **Poser un fichier de la réserve dans le projet** — *Pool ▸ Insert into Project ▸ At Cursor* | dans la réserve, une ligne choisie dont le fichier EST sur le disque (joué, en réserve, inutilisé, gardé pour l'historique), « Poser à la tête » : une piste audio NEUVE, nommée d'après le fichier, juste sous la piste choisie, joue ce fichier à partir de la tête ; le fichier est désigné EN PLACE (aucune copie : il est déjà dans le dossier du projet) ; UN pas d'annulation ; grisé sur une ligne MANQUANT ; un fichier illisible refusé et dit ; mesuré par le projet enregistré, l'export des stems, l'historique et la réserve relue, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Une piste NEUVE, toujours** : une piste porte UN fichier, découpé en clips (`placeSampleOnTrack`, D24.5) — poser un
+  second fichier sur une piste pourvue le remplacerait partout. Cubase pose sur la piste choisie ; ici, la piste neuve
+  naît sous elle (la règle de D588.1).
+- **En place, sans copie** : le fichier est déjà dans le dossier du projet. `placeSampleOnTrack` le recopierait dans
+  `audio/` à son nom (un fichier de `gel/`, ou d'un sous-dossier, y serait dupliqué) : le chemin de la réserve est gardé
+  tel quel.
+- **Un pas, par un seul chemin de création de piste** : `addTrack` reçoit le libellé du pas (« Poser un fichier de la
+  réserve ») au lieu du sien ; l'affectation du fichier et le clip à la tête deviennent une fonction que
+  `placeSampleOnTrack` appelle aussi. Deux pas — « Ajouter une piste audio » puis « Poser un échantillon », comme
+  l'import (D24.5) — feraient d'un geste deux Ctrl+Z.
+- **La tête, pas zéro** : c'est le *At Cursor* de Cubase, et le geste qu'on fait en écoutant.
+- **Le bouton se presse par `cliquer:`** sur une ligne choisie (`reserve-choisir:`, D608) ; le relevé de la ligne choisie
+  dit aussi « Poser actif / grisé ».
+- **Remis, nommés** : poser à l'origine du fichier (*At Origin*) ; poser plusieurs lignes d'un geste ; importer dans la
+  réserve sans placer (il faudrait au projet une liste des fichiers gardés, que rien ne désigne).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/poser-depuis-reserve.sh` : un projet où « Voix » joue `audio/voix.wav`
+et garde la prise `audio/prise2.wav`, où `audio/orphelin.wav` (2 s, stéréo, −10 dBFS de crête) n'est désigné par rien,
+et un repère au tick 1 920 (2 s à 120 BPM) ;
+(a) la tête au repère, `audio/orphelin.wav` choisie, « Poser à la tête » pressé → une piste « orphelin » sous « Voix »,
+qui désigne `audio/orphelin.wav`, son clip au tick **1 920** ; la ligne « **joué** » ; **aucun fichier neuf** dans `audio/` ;
+**1 pas** (« Poser un fichier de la réserve ») ; son stem exporté **silencieux** (sous −130 dBFS) avant 1,9 s et **au-dessus
+de −40 dBFS** après 2,1 s ;
+(b) la prise `audio/prise2.wav` (en réserve) se pose de même ; Ctrl+Z → la piste retirée, `orphelin.wav` « gardé pour
+l'historique » (un Ctrl+Y la rappellerait) ;
+(c) une ligne MANQUANT : « Poser » **grisé** ; un fichier illisible du dossier : refusé et dit, aucune piste ;
+(d) le témoin (D617) : pas de bouton, aucune piste ; l'anglais ; les suites ; la série.
+
+### Phase D618 — MESURÉE, la série à jouer (01/11/2026, 01 h 20 à l'horloge)
+
+*Écrite avant son code à 01 h 07. Le banc `tools/poser-depuis-reserve.sh` (11 contrôles) ; le témoin : le binaire de D617
+(`build/temoin-D617`). Premier essai : 7 verts, 4 rouges — tous du BANC (ci-dessous) ; deuxième essai : 11 / 11.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D618 (a) | une piste « orphelin » sous « Voix », en place, au tick 1 920 ; « joué » ; aucun fichier neuf ; 1 pas | la tête au repère, **tick 1920** ; « Poser » actif ; « orphelin », **index 1**, `audio/orphelin.wav`, son clip à **1920** ; la ligne **joué**, 2.00 s 48 kHz stéréo ; `audio/` identique avant et après ; **1 pas** « Poser un fichier de la réserve » | le binaire de D617 : 0 clic (pas de bouton), aucune piste, `orphelin.wav` inutilisé | **oui** |
+| D618 (a) | le stem : silencieux avant 1,9 s, au-dessus de −40 dBFS après 2,1 s | **−138,47 dBFS** (le tramage seul) puis **−13,01 dBFS** | — | **oui** |
+| D618 (b) | la prise se pose de même ; Ctrl+Z | « prise2 », index 1, au tick 1920, « joué » ; Ctrl+Z : 1 piste, `orphelin.wav` **gardé pour l'historique**, 0 pas | — | **oui** |
+| D618 (c) | MANQUANT grisé ; l'illisible refusé | « Relier actif ; **Poser grisé** » ; `audio/texte.wav` « illisible — rien n'est posé », **0 pas** | — | **oui** |
+| D618 (d) | l'anglais | *Insert at playhead* pressé dans *Pool* : la piste posée, la ligne « playing » | — | **oui** |
+| — | les suites | `chercher-manquants` (son jeu corrigé), `reserve-fichiers`, `relier-fichier`, et cinq bancs de pose de fichiers (`canaux-echanges`, `courbe-de-gain`, `fondu-a-la-tete`, `projet-vide-cadre`, `statistiques-clip` — `placeSampleOnTrack` remanié) rejoués verts ; gardes vertes | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Les quatre rouges du premier essai étaient ceux du JEU** : il écrivait un fichier MIDI à DEUX blocs pour UNE piste de
+  projet, et l'ouverture en faisait une seconde piste vide (« 3 pistes » où le banc en attendait 2). **Le jeu de D617
+  portait le même défaut** — 7 stems pour 6 pistes, sans effet sur ses contrôles ; corrigé dans les deux (un bloc MIDI
+  par piste), `chercher-manquants` rejoué vert. Dit ici plutôt que corrigé en silence.
+- **Un défaut vu au premier essai, CORRIGÉ** : la piste posée décrivait son fichier à la fréquence du MOTEUR (« 44.1 kHz »
+  dans la réserve, pour un fichier à 48 kHz) — la manière de `placeSampleOnTrack` (D24.5). La pose depuis la réserve lit
+  désormais la description du FICHIER (la convention d'`AudioSource`, celle de D608). **`placeSampleOnTrack` garde la
+  sienne** : chaque fichier importé ou déposé se décrit encore à la fréquence du moteur — nommé, à mesurer à part (le
+  rendu relit le fichier ; c'est la réserve, et `project.json`, qui disent faux).
+- **La loi panoramique, deux fois** : le stem d'une piste au centre, au fader 1,0, sort à −13,01 dBFS pour une crête de
+  −10 dBFS (−3,01 dB) ; en D617, −14,95 au fader 0,8 (−1,94 − 3,01). Le vumètre de tranche, lui, lisait −11,94 en D617 :
+  la loi au centre n'y est pas. Que les stems et la console ne disent pas le même niveau pour la même piste est une
+  question pour le contrat de D21 — nommée, non tranchée.
+- **Remis, nommés** : poser à l'origine du fichier (*At Origin*) ; poser plusieurs lignes d'un geste ; importer dans la
+  réserve sans placer.

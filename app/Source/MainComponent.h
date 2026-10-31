@@ -436,6 +436,7 @@ public:
             const bool trouve = reservePanel_.choisir(fichier);
             std::fputs(("VSM_RESERVE : choisie " + fichier + (trouve ? juce::String() : juce::String(" INTROUVABLE"))
                         + " ; Relier " + (reservePanel_.relierActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))
+                        + " ; Poser " + (reservePanel_.poserActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))   // D618.1
                         + "\n").toRawUTF8(), stderr);
             return trouve;
         }
@@ -1825,6 +1826,13 @@ private:
     /// Pose un fichier audio sur une piste, à un tick donné. Renvoie faux ET
     /// dit pourquoi si ce n'est pas possible.
     bool placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick, const juce::File& fichier);
+    /// D618.1, EXTRAITE DE `placeSampleOnTrack` : la piste joue `relatif` (chemin du projet), un clip de toute sa durée à
+    /// partir de `tick` ; DANS le pas déjà ouvert par l'appelant. Les deux poses passent par elle.
+    void affecterLeFichierALaPiste(size_t trackIndex, const std::string& relatif, double sr, int64_t trames, int canaux,
+                                   vsm::midi::Tick tick, const std::string& nomDuClip);
+    /// D618.1 : POSER UN FICHIER DE LA RÉSERVE À LA TÊTE (*Pool ▸ Insert into Project ▸ At Cursor*) — une piste audio
+    /// neuve sous la choisie, le fichier désigné en place, un pas. Faux, et dit, si le fichier manque ou ne se lit pas.
+    bool poserDepuisLaReserve(const juce::String& fichier);
 
     vsm::app::ui::BrowserComponent browserPanel_;
     std::unique_ptr<PanelWindow> browserWindow_;
@@ -2350,8 +2358,10 @@ private:
     /// D588.1 : `sousLaChoisie` — la piste neuve JUSTE SOUS la piste choisie, à sa profondeur de dossier (un dossier
     /// choisi : après tout son contenu), comme *Add Track* ; sinon au bout. Rend l'index de la piste neuve, pour
     /// qu'aucun appelant ne le devine.
+    /// D618.1 : `libellePas` non vide — le pas porte le nom du GESTE qui ajoute la piste (« Poser un fichier de la
+    /// réserve ») : un geste, un pas, un seul chemin de création de piste.
     size_t addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi,
-                    const std::string& nom = {}, bool sousLaChoisie = false);
+                    const std::string& nom = {}, bool sousLaChoisie = false, const juce::String& libellePas = {});
     void removeSelectedTrack();
     /// D589.1 : les pistes choisies (D38) dans un dossier neuf, d'un geste (`moveTracksIntoNewFolder`, le cœur).
     void rangerLesChoisiesDansUnDossier();

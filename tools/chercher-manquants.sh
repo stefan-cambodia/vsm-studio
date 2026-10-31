@@ -57,7 +57,7 @@ def piste(i, nom, fichier, frames, canaux=1):
 def projet(dossier, pistes):
     os.makedirs(f"{dossier}/midi", exist_ok=True); os.makedirs(f"{dossier}/audio", exist_ok=True)
     open(f"{dossier}/midi/arrangement.mid", "wb").write(
-        b"MThd" + struct.pack(">IHHH", 6, 1, 1 + len(pistes), 480) + tempo + vide * len(pistes))
+        b"MThd" + struct.pack(">IHHH", 6, 1, len(pistes), 480) + tempo + vide * (len(pistes) - 1))   # UN bloc MIDI par piste, le tempo dans le premier
     son(f"{dossier}/audio/voix.wav", 1.0)
     json.dump({"format": "vsm-project", "version": 1, "title": "chercher", "midi": {"file": "midi/arrangement.mid"},
                "transport": {"tempoChanges": [{"bpm": 120.0, "tick": 0}], "ticksPerQuarterNote": 480,
