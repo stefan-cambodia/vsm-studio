@@ -48160,3 +48160,38 @@ comment, faute de journal. L'option reste dans `PanelWindow` : c'est le témoin 
 PREMIÈRE ligne d'état du piano roll — une course d'ordre l'a fait tomber dans la série. Il cherche désormais la ligne qui
 le dit parmi toutes (le critère tel qu'écrit, non élargi) ; vert sur le binaire neuf, **rouge (5 ratés) sur celui de
 D602**, qui n'a pas la fonction : la garde garde encore.
+
+### Phase D614 — un soixante-quatorzième audit : le volume et le panoramique MIDI à l'échantillon (31/10/2026)
+
+*Écrite le 31/10 à 19 h 44 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne.*
+
+**D'OÙ ELLE VIENT : du défaut nommé par D611** — « le CC 7 (et le CC 10) du planning s'appliquent dès le début de leur
+bloc — jusqu'à un bloc trop tôt (D329, D330) ; remis : un gain par morceau de bloc au mixage ». Lu au code : le rendu de
+la piste NOTE la valeur (`appliquerLesTenues` → `ccVolume_`, `ccPan_`), et le mixage l'applique à toute la portion
+(`mixTrackInto`, un gain par appel). À 48 kHz par blocs de 512, un changement de volume MIDI tombe jusqu'à 10,7 ms trop
+tôt ; un fondu écrit en CC 7 se fait par marches de bloc ; et l'aplatissement d'un ordre de jeu (D537) ne sonne pas au
+bit comme la lecture qui le suit (D611 l'a mesuré : 0,119 au bloc du saut).
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D614.1 | **Le volume et le panoramique de canal à l'échantillon** | un CC 7 ou un CC 10 du planning prend effet À L'ÉCHANTILLON où il tombe, et non au début de son bloc : le rendu de la piste note l'échantillon de chaque changement, et le mixage de la piste se fait par morceaux, chacun à son volume et à son panoramique ; une piste sans changement dans la portion est mélangée d'un seul tenant, comme avant — les rendus qui n'ont pas de CC 7 ni de CC 10 en cours de bloc restent au bit près ; mesuré au cœur, par le premier échantillon où deux rendus divergent, et par le test non aligné de D611 |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le mixage par morceaux, pas des portions coupées pour tout le graphe** : couper la portion à chaque CC 7 ferait rendre
+  TOUTES les pistes en deux appels, et une machine qui calcule par bloc changerait de son ; le morceau ne touche que la
+  piste qui change, et seulement son mixage (`mixTrackInto`, appelé sur chaque morceau).
+- **Les changements notés par piste**, dans une table fixe (32 par portion — un fondu en CC 7 très dense au-delà fond ses
+  derniers changements dans le dernier noté : dit dans le code), écrite par le rendu de la piste (parfois sur un autre
+  cœur) et lue par son mixage (sur le fil audio, après) : rien ne se partage entre pistes.
+- **Les changements à l'échantillon 0** (la chasse, le direct) ne coupent rien : le premier morceau commence au bon
+  volume, comme aujourd'hui.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur**, 8 kHz par blocs de 256, une note tenue au Minimoog : le même projet rendu avec un CC 7 à 64 au tick 1 000
+(l'échantillon 8 333, au milieu du bloc 32) et sans lui — les deux rendus sont égaux jusqu'à l'échantillon **8 332**, et
+diffèrent à partir de **8 333** (le code d'avant : à partir de **8 192**, le début du bloc) ; de même pour un CC 10 ;
+(b) **le test non aligné de D611** : la chaîne [C, A, C] et la boucle sur B contre l'aplati, **< 1e-4 partout**, plus
+seulement hors des blocs de saut ;
+(c) **les empreintes de régression audio inchangées** (aucune référence n'a, à notre connaissance, de CC 7 en cours de
+bloc — si l'une change, elle est lue avant d'être régénérée) ; les suites ; un export de morceau à CC 7 comparé au
+témoin ; la série.
