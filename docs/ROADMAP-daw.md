@@ -47821,3 +47821,25 @@ audibles** (crête > 0,05) avec la carte adaptée ;
 « 4 note(s) adaptée(s), 1 sans équivalent » dit (la partie écrit un ride 51, que la 909 n'a pas) ; Ctrl+Z les retire
 d'un coup ; l'anglais ; le témoin (D609) : le bouton absent ;
 (d) les suites ; la série.
+
+**AJOUTÉ AVANT LE CODE (11 h 43 à l'horloge, pendant la série) : TROIS FABRIQUES DE PISTES QUI OUBLIENT LA CARTE DE D609.**
+Cherchées par la règle de D573.2 — « un champ neuf d'un objet fabriqué ailleurs se cherche dans TOUS ses
+constructeurs » —, avec `transposeSemitones` pour repère (le réglage voisin, appliqué au même endroit) :
+- **« Fusionner le MIDI entre les locateurs »** (D-merge, `mergeHeardMidi`) : la piste neuve est une COPIE de la piste
+  modèle (`duplicateTrack`), donc elle hérite de sa carte ; or ses notes sont les notes ENTENDUES — depuis D609, déjà
+  passées par la carte. La transposition y est remise à zéro (« les notes portent déjà la transposition ») ; la carte
+  non : elle s'appliquerait DEUX fois. Une carte qui échange 38 et 40 rendrait la fusion à l'envers. **Corrigé** : la
+  carte de la piste fusionnée est vidée, comme sa transposition.
+- **« Éclater par hauteur »** (`explodeTrackByPitch`) bâtit chaque piste neuve champ par champ, sans la carte NI la
+  transposition (celle-ci depuis toujours) : un tom 41 que la carte faisait jouer en 45 sur la 909 redevient muet dans
+  sa piste. **Corrigé** : chaque pièce garde l'entrée de la carte qui la concerne, et la transposition de sa piste.
+  « Éclater par canal » copie la piste entière : rien à corriger.
+- **Le préréglage de piste** (`TrackPreset`) ne porte pas la carte : un préréglage de batterie perd ce qui la fait
+  sonner sur sa machine. **D610.2** : la carte s'écrit au préréglage (seulement si elle n'est pas vide) et se pose avec
+  lui.
+
+**L'ATTENDU DE CES TROIS-LÀ** : (e) au cœur, éclater par hauteur une piste à carte {41 → 45} transposée de +2 : la piste
+de la pièce 41 joue **47** (41 → 45 → +2) — le code d'avant joue **41** ; (f) au cœur d'`interchange`, un préréglage pris
+sur une piste à carte {41 → 45, 43 → 47} la rend égale une fois posé, et un préréglage sans carte n'écrit pas la clé ;
+(g) au banc `fusionner-midi.sh`, rejoué après la série, un cas neuf : la piste à carte échangeant 38 et 40, la fusion
+fait entendre les mêmes hauteurs que la piste d'origine (le code d'avant les rend échangées).
