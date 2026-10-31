@@ -593,7 +593,11 @@ private:
     /// D585.3 : les notes à relancer au rebouclage, publiées d'un coup (comme `snapshot_`).
     struct LoopChase {
         std::vector<ChasedNoteEvent> relances;
+        std::vector<ChasedControlEvent> controles;   ///< D611.1 : ce que la chasse rend à la cible du saut
     };
+    /// D611.1 : LA CONVERSION UNIQUE « événement chassé → contrôle de machine » (CC, pli, pression, programme) — celle du
+    /// déplacement (D16.2), que la chaîne et la boucle appellent aussi. Thread UI.
+    static std::vector<ChasedControlEvent> controlesChasses(const vsm::sequencer::Project& project, vsm::sequencer::Tick tick);
     /// D606.1 : la chaîne publiée d'un coup — ses éléments en secondes, et les notes à relancer au début de chacun.
     struct PlayChain {
         struct Element {
@@ -601,6 +605,7 @@ private:
             /// Il commence où finit celui d'avant, sur la ligne de temps : un seul tenant, la lecture y passe sans sauter.
             bool contigu = false;
             std::vector<ChasedNoteEvent> relances;
+            std::vector<ChasedControlEvent> controles;   ///< D611.1
         };
         std::vector<Element> elements;
     };
@@ -1132,6 +1137,12 @@ private:
     /// audio avant le rendu du segment d'après ; la chaîne qu'il désigne est tenue par `processBlock` pendant le bloc.
     const std::vector<ChasedNoteEvent>* relancesDuSaut_ = nullptr;
     const std::vector<ChasedNoteEvent> aucuneRelance_{};
+    /// D611.1 : les contrôles à chasser au saut en cours — nullptr : ceux de la boucle (`loopChase_`).
+    const std::vector<ChasedControlEvent>* controlesDuSaut_ = nullptr;
+    /// D611 : la chaîne qui porte ces listes, tenue en vie quand le saut tombe pile à la fin d'un bloc — le
+    /// relâchement se fait alors au bloc suivant, après que le bloc qui l'avait chargée a rendu la sienne.
+    std::shared_ptr<const PlayChain> chaineDuSaut_;
+    const std::vector<ChasedControlEvent> aucunControle_{};
     std::atomic<bool> metronomeCountInOnly_{false};
     std::atomic<bool> metronomeRecordOnly_{false};
     std::atomic<bool> recording_{false};

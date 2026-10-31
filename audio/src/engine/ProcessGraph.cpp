@@ -614,6 +614,15 @@ void ProcessGraph::seekSeconds(double seconds) {
     if (tick <= 0) return;
 
     size_t perdus = 0;
+    for (const auto& chasse : controlesChasses(project, tick))   // D611.1 : la conversion unique
+        if (!chaseQueue_.push(chasse)) ++perdus;
+    if (perdus > 0) droppedChasedControls_.fetch_add(perdus, std::memory_order_relaxed);
+}
+
+std::vector<ProcessGraph::ChasedControlEvent> ProcessGraph::controlesChasses(const vsm::sequencer::Project& project,
+                                                                            vsm::sequencer::Tick tick) {
+    std::vector<ChasedControlEvent> resultat;
+    if (tick <= 0 || project.tracks.empty()) return resultat;
     for (const auto& ev : vsm::sequencer::PlaybackScheduler::chaseAt(project, tick)) {
         ChasedControlEvent chasse;
         chasse.trackIndex = static_cast<uint32_t>(ev.trackIndex);
@@ -646,9 +655,9 @@ void ProcessGraph::seekSeconds(double seconds) {
         }, ev.data);
         if (!utile) continue;
         chasse.event.sampleOffset = 0;
-        if (!chaseQueue_.push(chasse)) ++perdus;
+        resultat.push_back(chasse);
     }
-    if (perdus > 0) droppedChasedControls_.fetch_add(perdus, std::memory_order_relaxed);
+    return resultat;
 }
 
 void ProcessGraph::setTrackGmController(size_t trackIndex, uint8_t controller, vsm::audio::plugin::ParamId param,
@@ -831,6 +840,7 @@ void ProcessGraph::refreshPlayChain() {
                 note.velocity = on->velocity;
                 e.relances.push_back(note);
             }
+        e.controles = controlesChasses(projet, debut);   // D611.1
         chaine->elements.push_back(std::move(e));
     }
     playChain_.store(std::move(chaine), std::memory_order_release);
@@ -852,6 +862,7 @@ void ProcessGraph::refreshLoopChase() {
             note.velocity = on->velocity;
             boucle->relances.push_back(note);
         }
+        boucle->controles = controlesChasses(snapshot->project, tick);   // D611.1
     }
     loopChase_.store(std::move(boucle), std::memory_order_release);
 }
@@ -1253,7 +1264,13 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
         // boucle s'efface devant elle, et elle devant l'enregistrement — une prise s'écrit sur la ligne de temps.
         const auto chaine = playChain_.load(std::memory_order_acquire);
         const bool suitLaChaine = chaine && !chaine->elements.empty() && !recording_.load(std::memory_order_relaxed);
-        relancesDuSaut_ = nullptr;
+        // D611 : UN SAUT TOMBÉ PILE À LA FIN DU BLOC D'AVANT attend encore son relâchement — ce qu'il désigne est gardé
+        // (sinon le relâchement retombait sur les listes de la boucle : ni relances, ni contrôleurs).
+        if (!wrapNoteOffPending_) {
+            relancesDuSaut_ = nullptr;
+            controlesDuSaut_ = nullptr;   // D611.1
+            chaineDuSaut_.reset();
+        }
         bool chaineFinie = false;
         const bool loopActive = loopActive_.load(std::memory_order_acquire) && !suitLaChaine;
         const double loopStart = loopStartSeconds_.load(std::memory_order_acquire);
@@ -1285,6 +1302,7 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
             renderSpan(*snapshot, anySolo, rendered, count, spanStartSeconds, outputL, outputR, lanes.get());
             wrapNoteOffPending_ = false; // consommé par TOUTES les pistes du segment
             relancesDuSaut_ = nullptr;
+            controlesDuSaut_ = nullptr;   // D611.1
 
             rendered += count;
             spanStartSeconds += static_cast<double>(count) * vitesse / sampleRate_;
@@ -1301,11 +1319,14 @@ void ProcessGraph::rendreLeBloc(float* outputL, float* outputR, int numSamples) 
                     wrapTraite_.fill(false);
                     spanStartSeconds = suivant.debut;
                     relancesDuSaut_ = &suivant.relances;
+                    controlesDuSaut_ = &suivant.controles;   // D611.1
+                    chaineDuSaut_ = chaine;                   // D611 : tenue en vie si le saut finit le bloc
                     continue;
                 }
                 wrapNoteOffPending_ = true;
                 wrapTraite_.fill(false);
                 relancesDuSaut_ = &aucuneRelance_;
+                controlesDuSaut_ = &aucunControle_;   // la fin de la chaîne ne chasse rien
                 if (rendered < samplesToProcess) {
                     renderTrackRange(*snapshot, anySolo, rendered, samplesToProcess - rendered, spanStartSeconds,
                                      outputL, outputR, /*includeScheduledEvents=*/false);
@@ -1768,7 +1789,27 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         // D606.1 : au saut d'une chaîne, celles du début de l'élément d'après (`relancesDuSaut_`) ; sinon celles de la boucle.
         std::shared_ptr<const LoopChase> boucle;
         const std::vector<ChasedNoteEvent>* relances = relancesDuSaut_;
-        if (relances == nullptr && (boucle = loopChase_.load(std::memory_order_acquire))) relances = &boucle->relances;
+        const std::vector<ChasedControlEvent>* controles = controlesDuSaut_;
+        if ((relances == nullptr || controles == nullptr) && (boucle = loopChase_.load(std::memory_order_acquire))) {
+            if (relances == nullptr) relances = &boucle->relances;
+            if (controles == nullptr) controles = &boucle->controles;
+        }
+        // D611.1 : LES CONTRÔLEURS CHASSÉS AU SAUT, AVANT les notes relancées — la chasse du déplacement (D16.2), aux
+        // mêmes tenues (D331) : la section d'arrivée reprend la dernière valeur écrite avant elle, comme le créneau de
+        // l'aplatissement (D537). Sans elle, elle sonnait avec le volume, la pédale ou le filtre de celle qu'on quitte.
+        if (controles != nullptr && (instrument != nullptr || externe))
+            for (const auto& c : *controles) {
+                if (c.trackIndex != trackIndex) continue;
+                ChasedControlEvent chasse = c;
+                appliquerLesTenues(trackIndex, chasse.event, instrument.get());
+                if (externe) emitControlOut(trackIndex, track.channel, chasse.event);   // D27.2
+                if (interceptSustain(trackIndex, track.channel, chasse.event, events, numEvents)) {   // D25.1
+                    if (instrument) instrument->handleControlEvent(chasse.event);
+                    continue;
+                }
+                if (instrument && !instrument->handleControlEvent(chasse.event))
+                    ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
+            }
         if (chaseNotes_.load(std::memory_order_acquire) && relances != nullptr)
                 for (const auto& c : *relances) {
                     if (c.trackIndex != trackIndex || numEvents >= kMaxEventsPerBlock) continue;

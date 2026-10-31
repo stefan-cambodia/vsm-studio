@@ -194,3 +194,115 @@ VSM_TEST(the_identity_chain_sounds_like_the_straight_playback_d606) {
     VSM_ASSERT(ecartMax(sonChaine, sonDroit) < 1e-4);
     VSM_ASSERT(ecartMax(sonAplati, sonDroit) < 1e-4);
 }
+
+// D611.1 — LES CONTRÔLEURS CHASSÉS AU SAUT. L'attendu écrit avant le code (ROADMAP-daw, D611), CORRIGÉ APRÈS LA PREMIÈRE
+// MESURE : un CC 7 du planning s'applique à toute la portion de bloc où il tombe (D329, défaut nommé) ; la mesure de la
+// chasse se fait donc sur des sections ALIGNÉES sur les blocs (deux mesures = 32 000 échantillons = 125 blocs de 256) :
+// la chaîne [C, A, C] et la boucle sur B contre l'aplati, < 1e-4 ; le code d'avant en différait de plus de 0,05. Le cas
+// non aligné est gardé : l'écart y est CONFINÉ au bloc de chaque saut.
+namespace {
+/// D611 : OÙ deux sons divergent — le premier échantillon au-delà de 1e-4, et l'écart des 256 échantillons qui suivent.
+void direLaDivergence(const char* quoi, const std::vector<float>& a, const std::vector<float>& b) {
+    size_t i = 0;
+    while (i < std::min(a.size(), b.size()) && std::abs(a[i] - b[i]) <= 1e-4f) ++i;
+    std::printf("      [D611.1] %s : premier écart à l'échantillon %zu (%.4f s, bloc %zu + %zu)\n", quoi, i,
+                static_cast<double>(i) / kTaux, i / kBloc, i % kBloc);
+}
+} // namespace
+
+namespace {
+/// Trois sections d'après des repères, `mesures` mesures chacune ; une note par section ; le volume de canal (CC 7) à 40
+/// au milieu de A et à 127 au milieu de B. `alignee` : C finit à 3 × `mesures` (sinon 120 ticks plus tôt, et chaque saut
+/// de la chaîne tombe au milieu d'un bloc).
+Project troisSectionsEtUnVolume(int mesures, bool alignee) {
+    const Tick m = 1920 * mesures;
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.markers.push_back({0, "A"});
+    project.markers.push_back({m, "B"});
+    project.markers.push_back({2 * m, "C"});
+    Track track;
+    uint64_t id = 1;
+    track.addNote(0, m - 120, 57, 110, 0, id);
+    track.addNote(m, 2 * m - 120, 60, 110, 0, id);
+    // C commence par la note relancée seule : sa propre note part une noire plus tard — sur le Minimoog, MONOPHONIQUE,
+    // deux attaques au même instant se départagent par leur ordre d'arrivée, qui n'est pas le même dans la chaîne
+    // (la relance d'abord) et dans l'aplati (l'ordre du planning). CORRIGÉ APRÈS LE PREMIER ESSAI de la note ajoutée.
+    track.addNote(2 * m + 480, alignee ? 3 * m : 3 * m - 120, 64, 110, 0, id);
+    // AJOUTÉE APRÈS LA MESURE ALIGNÉE (le défaut de D606 à la frontière de bloc) : une note qui traverse de B dans C,
+    // que le saut A → C doit relancer — au bit comme l'aplati, même quand le saut finit un bloc.
+    track.addNote(2 * m - 240, 2 * m + 240, 67, 90, 0, id);
+    track.controlChanges.push_back({m / 2, 0, 7, 40});
+    track.controlChanges.push_back({m + m / 2, 0, 7, 127});
+    project.tracks.push_back(track);
+    return project;
+}
+
+/// L'écart hors des blocs qui contiennent un saut (`sauts`, en échantillons de sortie).
+double ecartHorsDesBlocs(const std::vector<float>& a, const std::vector<float>& b, const std::vector<size_t>& sauts) {
+    double e = 0.0;
+    for (size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
+        bool dansUnBlocDeSaut = false;
+        for (size_t s : sauts) dansUnBlocDeSaut = dansUnBlocDeSaut || i / kBloc == s / kBloc;
+        if (!dansUnBlocDeSaut) e = std::max(e, static_cast<double>(std::abs(a[i] - b[i])));
+    }
+    return e;
+}
+
+struct DeuxSons { std::vector<float> lecture, aplati; };
+
+DeuxSons chaineEtAplati(const Project& original, const std::vector<int>& ordre, double secondes) {
+    auto chaine = graphe(original);
+    chaine->setPlayChain(chaineDe(original, ordre));
+    chaine->startPlayChain();
+    chaine->setPlaying(true);
+    Project aplati = original;
+    VSM_ASSERT(vsm::sequencer::flattenPlayOrder(aplati, ordre));
+    auto plat = graphe(aplati);
+    plat->setPlaying(true);
+    return {rendre(*chaine, secondes), rendre(*plat, secondes)};
+}
+
+DeuxSons boucleEtAplati(const Project& original, double debut, double fin, double secondes) {
+    auto boucle = graphe(original);
+    boucle->setLoopRegion(debut, fin, true);
+    boucle->seekSeconds(debut);
+    boucle->setPlaying(true);
+    Project aplati = original;
+    VSM_ASSERT(vsm::sequencer::flattenPlayOrder(aplati, {1, 1}));
+    auto plat = graphe(aplati);
+    plat->setPlaying(true);
+    return {rendre(*boucle, secondes), rendre(*plat, secondes)};
+}
+} // namespace
+
+VSM_TEST(a_chain_jump_and_a_loop_wrap_chase_the_controllers_like_the_flattened_order_d611) {
+    const Project aligne = troisSectionsEtUnVolume(2, true);   // A de 0 à 8 s… chaque saut sur une frontière de bloc
+    VSM_ASSERT_EQ(vsm::sequencer::sectionsFromMarkers(aligne).size(), static_cast<size_t>(3));
+    const auto chaine = chaineEtAplati(aligne, {2, 0, 2}, 13.0);
+    const auto boucle = boucleEtAplati(aligne, 4.0, 8.0, 8.0);
+    const double eChaine = ecartMax(chaine.lecture, chaine.aplati), eBoucle = ecartMax(boucle.lecture, boucle.aplati);
+    std::printf("      [D611.1] aligné : chaîne [C, A, C] / aplati %.2e ; boucle sur B, deux tours / aplati [B, B] %.2e\n",
+                eChaine, eBoucle);
+    direLaDivergence("chaîne alignée", chaine.lecture, chaine.aplati);
+    VSM_ASSERT(eChaine < 1e-4);
+    VSM_ASSERT(eBoucle < 1e-4);
+}
+
+VSM_TEST(unaligned_the_scheduled_cc7_lands_at_the_start_of_its_block_and_nowhere_else_d611) {
+    // LE DÉFAUT NOMMÉ (D329), MESURÉ : sections d'une mesure (16 000 échantillons, 62,5 blocs). La chaîne saute au milieu
+    // d'un bloc et chasse À L'ÉCHANTILLON ; l'aplati applique son CC 7 de créneau dès le début du bloc. L'écart est
+    // CONFINÉ au bloc de chaque saut.
+    const Project original = troisSectionsEtUnVolume(1, false);
+    const auto chaine = chaineEtAplati(original, {2, 0, 2}, 6.5);
+    const auto boucle = boucleEtAplati(original, 2.0, 4.0, 4.0);
+    // Les sauts : la chaîne C → A à 15 000 (C dure 1 800 ticks, 1,875 s), A → C à 31 000 ; la boucle à 16 000.
+    const double horsChaine = ecartHorsDesBlocs(chaine.lecture, chaine.aplati, {15000, 31000});
+    const double horsBoucle = ecartHorsDesBlocs(boucle.lecture, boucle.aplati, {16000});
+    std::printf("      [D611.1] non aligné : chaîne %.2e (hors des blocs de saut %.2e) ; boucle %.2e (hors %.2e)\n",
+                ecartMax(chaine.lecture, chaine.aplati), horsChaine, ecartMax(boucle.lecture, boucle.aplati), horsBoucle);
+    direLaDivergence("chaîne non alignée", chaine.lecture, chaine.aplati);
+    direLaDivergence("boucle non alignée", boucle.lecture, boucle.aplati);
+    VSM_ASSERT(horsChaine < 1e-4);
+    VSM_ASSERT(horsBoucle < 1e-4);
+}

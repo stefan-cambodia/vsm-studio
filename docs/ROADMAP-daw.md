@@ -47938,3 +47938,49 @@ le code d'avant (le témoin, la chasse du saut retirée) en diffère de **plus d
 en diffère de plus de 0,05 (le second tour reprend à 127, l'aplati à 40) ;
 (c) les tests de la chaîne (D606) et de la chasse aux notes (D585.3) inchangés ; les suites ; les bancs voisins
 (`chasse-aux-notes`, `boucler-selection`, `ordre-suivi`) ; la série.
+
+**CORRIGÉ APRÈS LA PREMIÈRE MESURE (14 h 54 à l'horloge), ET DIT : LE CC 7 DU PLANNING TOMBE JUSQU'À UN BLOC
+TROP TÔT.** Le code d'avant : chaîne/aplati **0,160**, boucle/aplati **0,161** (rouge, comme attendu). Avec la chasse du
+saut : **0,075** et **0,065** — mieux, pas l'égalité. Localisé : la divergence commence au DÉBUT du bloc qui contient le
+saut (échantillon 30 976, le saut étant à 31 000 ; bloc 62 pour la boucle). Lu au code : un CC 7 (D329) est NOTÉ
+pendant le rendu de la piste (`appliquerLesTenues` → `ccVolume_`), puis appliqué par le mixage à TOUTE la portion de bloc
+où il tombe (`mixTrackInto`, un gain par portion) — sans automation, la portion est le bloc entier. Le saut de la chaîne
+découpe le bloc et chasse À L'ÉCHANTILLON ; l'aplati, lui, applique son CC 7 de créneau 24 échantillons trop tôt. C'est
+la chaîne qui est juste, et c'est un défaut d'avant D611 (D329, et D330 pour le CC 10) : **nommé, mesuré, remis** — le
+rendre exact demande un gain par morceau de bloc au mixage, qui toucherait tous les rendus d'un morceau à CC 7.
+- **La mesure de D611 se refait en isolant SA variable** : des sections de deux mesures (32 000 échantillons, 125 blocs
+  de 256 — chaque saut tombe sur une frontière de bloc), la même chaîne [C, A, C] et la même boucle ; attendu **< 1e-4**,
+  le code d'avant **> 0,05**.
+- **Le cas non aligné est gardé, et publié** : l'écart y est CONFINÉ au bloc de chaque saut (attendu : < 1e-4 hors de ces
+  blocs), et commence au premier échantillon de ce bloc — la mesure du défaut nommé, pas une tolérance élargie.
+- **ET UN DÉFAUT DE D606 LUI-MÊME, trouvé par la mesure alignée** : la chaîne alignée s'écartait encore de **0,154**, à
+  partir de l'échantillon **64 000** — le saut A → C, tombé PILE à la fin d'un bloc. Le saut y pose le relâchement pour
+  le bloc SUIVANT (`wrapNoteOffPending_`), mais la tête de ce bloc remettait à zéro ce que le saut désignait
+  (`relancesDuSaut_`, et désormais `controlesDuSaut_`) : le relâchement retombait sur les listes de la BOUCLE — ni les
+  notes qui traversent le début de C, ni ses contrôleurs. Les tests de D606 sautaient toujours au milieu d'un bloc.
+  **Corrigé** : tant qu'un relâchement attend, la tête du bloc garde ce que le saut désigne — et la chaîne qui le porte
+  est tenue en vie (`chaineDuSaut_`), le bloc qui l'avait chargée étant fini.
+
+### Phase D611 — MESURÉE (31/10/2026, 15 h 15 à l'horloge)
+
+*Écrite avant son code à 14 h 47, corrigée après la première mesure à 14 h 54, complétée à 14 h 58 (le défaut de D606 à
+la frontière de bloc). Les tests joués rouges sur le code d'avant (0,160 et 0,161), puis sur la garde de la frontière
+retirée (0,182). Aucun banc neuf : D611 ne change rien à l'interface.*
+
+| # | attendu | mesure | témoin | tenu |
+|---|---|---|---|---|
+| D611 (a) | la chaîne [C, A, C] contre l'aplati, < 1e-4 | aligné : **0,00e+00** — au bit, la note qui traverse de B dans C comprise | le code d'avant : **0,160** (non aligné) ; la garde de la frontière retirée : **0,182** | **oui, sur des sections alignées** |
+| D611 (b) | la boucle sur B, deux tours, contre l'aplati [B, B], < 1e-4 | aligné : **0,00e+00** | le code d'avant : **0,161** | **oui** |
+| D611 (non aligné) | ajouté : l'écart confiné au bloc de chaque saut | chaîne **0,119** au total, **0,00e+00** hors des blocs de saut ; boucle **0,078**, **0,00e+00** hors ; la divergence commence au premier échantillon du bloc (30 976 pour un saut à 31 000) | — | **oui — la mesure du défaut nommé (D329)** |
+| — | les suites ; les bancs voisins | cœur 583, moteur **1 381 / 1 381** (2 neufs), interchange 372, clap 25, panneaux 11 ; `ordre-suivi`, `chasse-aux-notes`, `boucler-selection`, `lire-selection`, `arret-tete` rejoués verts | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Deux défauts d'avant, sortis par une mesure qui n'en cherchait qu'un** : le CC 7 (et le CC 10) du planning s'appliquent
+  dès le début de leur bloc — jusqu'à un bloc trop tôt (D329, D330 ; **nommé, remis** : un gain par morceau de bloc au
+  mixage) ; et un saut de chaîne tombé pile à la fin d'un bloc perdait ses relances (D606 ; **corrigé**).
+- **Une note ajoutée au jeu a d'abord fait diverger dès l'échantillon 2** : sur le Minimoog, MONOPHONIQUE, la note
+  relancée et la note propre de C partaient au même instant, et l'ordre d'arrivée — relance d'abord dans la chaîne,
+  planning dans l'aplati — choisissait la note entendue. Le jeu a été corrigé (la note de C une noire plus tard), pas le
+  moteur : deux attaques simultanées sur une machine monophonique n'ont pas d'ordre musical. C'est NOMMÉ : la chaîne et
+  l'aplati peuvent différer sur ce cas.
+- **Un banc d'interface n'est pas touché** : D611 rejoindra la série suivante par ses voisins (`ordre-suivi`, la boucle).
