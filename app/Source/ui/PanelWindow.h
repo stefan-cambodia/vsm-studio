@@ -34,7 +34,19 @@ public:
     /// Affichage correspondant à ce panneau.
     std::function<void(bool)> onVisibilityChanged;
 
+    /// D613.1 : LA TAILLE MINIMALE d'une fenêtre flottante — déclarée au gestionnaire de fenêtres (JUCE la lui donne
+    /// d'après le contraignant : `WM_NORMAL_HINTS`), sous les plus petits panneaux d'origine (420 × 320), bien au-dessus
+    /// des 128 × 128 où le compositeur en faisait naître. Une taille retenue sous ce plancher est ignorée, et n'est
+    /// jamais retenue.
+    static constexpr int kLargeurMinimale = 240;
+    static constexpr int kHauteurMinimale = 160;
+
 private:
     void memoriser();
+    /// D613.1 : RAMENER une fenêtre que le système a réduite sous le plancher à sa dernière taille correcte — dit au
+    /// journal, au plus trois fois d'affilée.
+    void ramenerSiDegeneree();
     juce::String cle_;   ///< D100 : le titre français, clé de la position
+    juce::Rectangle<int> derniereBonne_;   ///< D613.1 : la dernière taille au-dessus du plancher
+    int corrections_ = 0;                  ///< D613.1 : les retours d'affilée (remis à zéro par une taille correcte)
 };

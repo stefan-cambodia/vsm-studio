@@ -48076,3 +48076,43 @@ neuf **avec** une taille minimale d'au moins 240 × 160 ;
 (c) une rafale de **12** ouvertures (la réserve et l'ordre de jeu, 24 fenêtres) par binaire : le neuf **0** fenêtre
 dégénérée ; le témoin, compté et publié tel quel ;
 (d) les suites ; la série.
+
+**CORRIGÉ APRÈS LA PREMIÈRE MESURE (15 h 54 à l'horloge), ET DIT : L'HYPOTHÈSE NE SE TESTE PAS PAR L'INDICATION, ET LA RAFALE L'A
+CONTREDITE.**
+- **(a) Aucun des deux binaires ne déclare de taille minimale** — lu par `xprop -id` (le nom de la fenêtre est en UTF-8, et
+  `xprop -name` ne le trouvait pas : `WM_NAME(UTF8_STRING)`). Lu dans JUCE : `XWindowSystem::setBounds` appelle bien
+  `updateConstraints` (qui pose `PMinSize`), puis RÉÉCRIT aussitôt `WM_NORMAL_HINTS` avec la seule taille et la seule
+  position (`USSize | USPosition`) — le minimum ne survit pas au premier placement. Le critère (a) est retiré : il
+  mesurait JUCE, pas l'application.
+- **(c) Le neuf : 1 fenêtre dégénérée sur 24** (la réserve, 980 × 440 à 0,6 s puis 128 × 128 à 2,4 s) ; **le témoin : 0
+  sur 24**, écran allumé. Une limite posée à la fenêtre ne l'empêche donc pas — et pour cause : quand le compositeur
+  redimensionne une fenêtre, JUCE applique sa taille (`handleMovedOrResized`) sans passer par le contraignant.
+- **(b) tient** : la taille retenue de 128 × 128 est ignorée (980 × 440), et plus jamais retenue — le témoin la reprend.
+- **Le remède change, et c'est écrit avant son code** : une fenêtre flottante que le système ramène SOUS le plancher est
+  remise, aussitôt, à sa dernière taille correcte — et c'est DIT au journal (`VSM_FENETRE : « … » ramenée de …`), au plus
+  trois fois d'affilée (au-delà, elle est laissée et le journal le dit). La limite de taille reste : elle borne le
+  redimensionnement à la souris (on ne réduit plus un panneau à rien). **L'attendu neuf de (c)** : le neuf, **0** fenêtre
+  dégénérée au relevé (2,4 s), et le nombre de fenêtres RAMENÉES publié ; le témoin, compté et publié tel quel.
+
+### Phase D613 — MESURÉE (31/10/2026, 16 h 01 à l'horloge)
+
+*Écrite avant son code à 15 h 44 ; l'hypothèse corrigée après la première mesure, à 15 h 54, avant le remède neuf. Le
+banc `tools/fenetres-minimum.sh` (4 contrôles jugés, et l'indication `xprop` publiée sans être jugée) ; le témoin : le
+binaire de D612 (`build/temoin-D612`).*
+
+| # | attendu | mesure | témoin | tenu |
+|---|---|---|---|---|
+| D613 (a) | retiré à 15 h 54 : la taille minimale déclarée au gestionnaire de fenêtres | aucune, chez les deux — JUCE réécrit `WM_NORMAL_HINTS` sans elle | aucune | **retiré, et dit** |
+| D613 (b) | la réserve retenue en 128 × 128 : le neuf l'ouvre à 980 × 440 et ne la retient plus | **980x440** ; retenue ensuite « 0 0 980 440 » | **128x128** | **oui** |
+| D613 (c) | 12 ouvertures (24 fenêtres) : 0 dégénérée au relevé, les ramenées comptées | **0/24** au relevé ; **6** fenêtres ramenées de 128 × 128 à 980 × 440, toutes la réserve, toutes dites | **3/24** dégénérées | **oui** |
+| — | les bancs à fenêtre flottante | `reserve-fichiers`, `relier-fichier`, `carte-batterie`, `ordre-suivi` rejoués verts, aucune course rejouée | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **La première hypothèse était fausse, et la mesure l'a dit** : une taille minimale n'empêche rien, puisque JUCE ne la
+  transmet pas durablement et applique la taille que le compositeur impose sans son contraignant. Le remède retenu est
+  celui de l'application : ramener, dire, et ne pas retenir.
+- **Le phénomène est réel et fréquent** : 6 réductions en 12 ouvertures pour la seule réserve (l'écran s'éteignant au
+  début de la rafale), 3 fenêtres dégénérées sur 24 au témoin écran allumé. Chez l'utilisateur, une réserve, une carte
+  ou un ordre de jeu pouvait s'ouvrir minuscule — et le rester, la taille dégénérée se retenant aux préférences.
+- **La cause première reste dans le compositeur** (KWin, par XWayland) : NOMMÉE, non cherchée plus loin — la ligne
+  `VSM_FENETRE` dira, dans chaque journal de banc, quand et combien de fois il frappe.
