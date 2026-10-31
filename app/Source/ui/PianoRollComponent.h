@@ -161,6 +161,9 @@ public:
     void selectNotes(const vsm::sequencer::NoteSelection& ids);
     vsm::midi::Tick playheadTick() const { return playheadTick_; }
     vsm::midi::Tick gridTicks() const;
+    /// D622.1 : LA GRILLE DU RANG `note` sur la piste active — la sienne si la carte de batterie lui en donne une
+    /// (`Track::drumGrid`), sinon celle de la barre. `propre` dit laquelle.
+    vsm::sequencer::GridResolution grilleDuRang(uint8_t note, bool* propre = nullptr) const;
     /// Repères musicaux du projet, exposés pour que la règle et la lane de
     /// vélocité affichent EXACTEMENT la même grille que le piano roll.
     vsm::midi::Tick ticksPerBeat() const;
@@ -449,6 +452,8 @@ private:
     int noteToY(uint8_t note) const;
     uint8_t yToNote(float y) const;
     vsm::midi::Tick snapTick(vsm::midi::Tick tick) const;
+    /// D622.1 : l'aimant d'une frappe POSÉE dans le rang `note` — la grille du rang, le swing de la barre.
+    vsm::midi::Tick snapTickDuRang(vsm::midi::Tick tick, uint8_t note) const;
     vsm::sequencer::Note* findNoteAt(juce::Point<float> pos, bool* nearRightEdge = nullptr,
                                       bool* nearLeftEdge = nullptr);
 

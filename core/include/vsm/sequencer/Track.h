@@ -1005,6 +1005,11 @@ public:
         const auto ici = drumMap.find(ecrite);
         return ici == drumMap.end() ? ecrite : ici->second;
     }
+    /// D622.1 — LA GRILLE PAR RANG (la colonne *Quantize* de la *Drum Map*) : note ÉCRITE → libellé de grille (« 1/4 »,
+    /// « 1/16T », `gridResolutionFromLabel`). Une frappe POSÉE dans ce rang s'y aimante et dure une case ; « Quantifier »
+    /// l'y aligne. Un rang absent suit la grille de la barre. Écrite au projet (`"drumGrid"`) seulement si elle n'est pas
+    /// vide. Une propriété de l'ÉDITION : la lecture l'ignore.
+    std::map<uint8_t, std::string> drumGrid;
 
     /// D544.3 : « INDÉPENDANTE DE LA TRANSPOSITION GLOBALE » — le *Follow / Independent* de Cubase. Faux
     /// par défaut : une piste suit la transposition du projet (`Project::globalTransposeSemitones`), qui

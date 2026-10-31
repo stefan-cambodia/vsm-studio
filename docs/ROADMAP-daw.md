@@ -48759,3 +48759,30 @@ longue de **480** ;
 (d) le projet enregistré porte `"drumGrid": [{"in": 38, "grid": "1/4"}]` ; relu, la colonne dit « 1/4 » ; Ctrl+Z après le
 choix → « globale » ; le témoin (D621) : le verbe inconnu, (b) → 360 et 360 ; l'anglais ;
 (e) les suites ; la série.
+
+### Phase D622 — MESURÉE, la série à jouer (01/11/2026, 04 h 54 à l'horloge)
+
+*Écrite avant son code à 02 h 51 ; le code écrit pendant la série de D617-D621, compilé après elle. Le test du cœur joué
+rouge sur une lecture de libellé vide. Le banc `tools/grille-par-rang.sh` (8 contrôles) ; le témoin : le binaire de D621.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D622 (a) | les libellés lus et écrits ; l'inconnu refusé | « 1/8 », « 1/16T » (80 ticks), « 1/4. » (720), « 1/32Q » ; six libellés faux refusés sans toucher la grille ; huit allers-retours à l'identique — cœur **586 / 586** | la lecture vide : rouge | **oui** |
+| D622 (a bis) | au projet et au préréglage | `"drumGrid"` écrit seulement si un rang a sa grille, relu ; un libellé illisible écarté et compté avec la carte ; le préréglage de piste le porte — interchange **373 / 373** (1 neuf, 1 augmenté), non vus rouges | — | **oui** |
+| D622 (b) | rang 36 global → 360 +120 ; rang 38 à 1/4 → 480 +480 | **36@360+120** ; **38@480+480** | le binaire de D621 : verbe inconnu, **38@360+120** | **oui** |
+| D622 (c) | « Quantifier » : 120 et 0 | **36@120**, **38@0** | — | **oui** |
+| D622 (d) | le projet, la colonne, Ctrl+Z, l'anglais | `[{"grid": "1/4", "in": 38}]` ; « 38 → 1/4 », « 36 → globale » ; Ctrl+Z → « globale » ; *global*, *1/16 triplet* ; la fenêtre photographiée dans les deux langues | — | **oui** |
+| — | les suites | `carte-batterie`, `adapter-batterie`, `batterie-losanges`, `eclater-canal`, `fusionner-midi`, `quantifier`, `annuler-quantification`, `grille-gamme-projet`, `quintolet-grille` verts ; audio **1 385** ; gardes vertes | — | **oui** |
+
+**CE QUE LA MESURE A TROUVÉ, ÉCRIT ICI.**
+- **Deux rouges du premier essai, du BANC** : le JSON écrit ses clés dans l'ordre alphabétique (la structure se compare,
+  pas la chaîne) ; et l'appariement des notes du fichier MIDI…
+- **…qui a montré un DÉFAUT, antérieur à D622** : la frappe neuve (38, de 480 à 960) et la frappe de repère (38, à 960) se
+  touchent ; le fichier écrit au tick 960 le **note-on de la seconde AVANT le note-off de la première**. L'application relit
+  son fichier dans l'ordre d'arrivée et s'en sort ; un lecteur extérieur ferait de la seconde une note de longueur nulle.
+  La cause, lue au code : `buildParsedFile` émet les notes dans l'ordre du vecteur (une note créée s'ajoute à la fin), puis
+  trie par tick SEUL. Traité à part : **D623**.
+- **L'aide de la fenêtre, regardée sur la photo** : rallongée, elle se comprimait sur une ligne (la leçon de D617) ; elle se
+  replie désormais sur deux lignes.
+- **Remis, nommés** : le glissé d'une sélection sur plusieurs rangs reste sur la grille de la barre ; la prise quantifiée à
+  l'arrêt (D579.1) aussi ; la longueur d'insertion distincte de la grille ; les rangs dans l'ordre de la carte.

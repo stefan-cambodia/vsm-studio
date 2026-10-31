@@ -305,6 +305,9 @@ struct ProjectTrack {
     int transposeSemitones = 0;
     /// D609.1 : la carte de batterie, note écrite → note jouée ; `"drumMap"` au fichier, seulement si elle n'est pas vide.
     std::map<uint8_t, uint8_t> drumMap;
+    /// D622.1 : la grille par rang, note écrite → libellé (« 1/4 ») ; `"drumGrid"` au fichier, seulement si elle n'est
+    /// pas vide. Une entrée illisible est comptée avec celles de la carte (`drumMapRejected`), et dite.
+    std::map<uint8_t, std::string> drumGrid;
     /// D609.1 : les entrées de la carte écartées à la lecture (hors de 0..127, ou vers elles-mêmes) — DITES par
     /// `applyDocumentToProject`, jamais tues.
     int drumMapRejected = 0;

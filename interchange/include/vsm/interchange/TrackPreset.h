@@ -40,6 +40,7 @@ struct TrackPreset {
     int transposeSemitones = 0;
     /// D610.2 : la carte de batterie (D609.1) — un préréglage de batterie garde ce qui la fait sonner sur sa machine.
     std::map<uint8_t, uint8_t> drumMap;
+    std::map<uint8_t, std::string> drumGrid;   ///< D622.1 : la grille par rang — le préréglage garde la façon d'écrire
     double delayMs = 0.0;
     int outputGroup = -1;
 };

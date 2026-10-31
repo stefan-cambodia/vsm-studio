@@ -30,6 +30,13 @@ public:
     bool choisir(int ecrite, int jouee);
     /// Les lignes telles que la fenêtre les écrit, pour le relevé (`VSM_CARTE`).
     juce::StringArray lignesPourReleve() const;
+    /// D622.1 : la grille choisie pour `ecrite` (le verbe `carte-grille:38>1/4`), par la MÊME liste que la souris ; un
+    /// libellé vide : « globale ». Faux si la note n'a pas de ligne, ou si la liste ne porte pas ce libellé.
+    bool choisirGrille(int ecrite, const std::string& libelle);
+    /// D622.1 : « note écrite → grille » de chaque ligne, telle que la colonne l'écrit.
+    juce::StringArray grillesPourReleve() const;
+    /// D622.1 : la grille d'une note écrite, au libellé (« 1/4 ») ; vide : « globale ».
+    std::function<void(int ecrite, const std::string& libelle)> onGrille;
     size_t piste() const { return piste_; }
 
     std::function<void(int ecrite, int jouee)> onChoix;
@@ -47,6 +54,7 @@ private:
         int ecrite = 0;
         std::unique_ptr<juce::Label> nom;
         std::unique_ptr<juce::ComboBox> sortie;
+        std::unique_ptr<juce::ComboBox> grille;   ///< D622.1
     };
     juce::String nomEcrit(int note) const;
     juce::String nomJoue(int note) const;

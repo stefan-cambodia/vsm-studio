@@ -1,9 +1,45 @@
 #include "vsm/sequencer/Quantizer.h"
+#include <string>
+#include <utility>
 #include "vsm/util/DeterministicRng.h"
 #include <algorithm>
 #include <cmath>
 
 namespace vsm::sequencer {
+
+namespace {
+// D622.1 : LES VALEURS ET LEURS LIBELLÉS, ceux de la barre (`gridChoices`, PianoRollToolbar.cpp).
+constexpr std::pair<NoteValue, const char*> kLibelles[] = {
+    {NoteValue::Whole, "1/1"},       {NoteValue::Half, "1/2"},          {NoteValue::Quarter, "1/4"},
+    {NoteValue::Eighth, "1/8"},      {NoteValue::Sixteenth, "1/16"},    {NoteValue::ThirtySecond, "1/32"},
+    {NoteValue::SixtyFourth, "1/64"}, {NoteValue::HundredTwentyEighth, "1/128"}};
+} // namespace
+
+bool gridResolutionFromLabel(const std::string& libelle, GridResolution& grille) {
+    std::string base = libelle;
+    GridResolution lue;
+    if (!base.empty()) {
+        const char fin = base.back();
+        if (fin == 'T') lue.triplet = true;
+        else if (fin == '.') lue.dotted = true;
+        else if (fin == 'Q') lue.quintuplet = true;
+        if (lue.triplet || lue.dotted || lue.quintuplet) base.pop_back();
+    }
+    for (const auto& [valeur, texte] : kLibelles)
+        if (base == texte) {
+            lue.value = valeur;
+            grille = lue;
+            return true;
+        }
+    return false;
+}
+
+std::string gridResolutionLabel(GridResolution grille) {
+    std::string texte = "1/16";
+    for (const auto& [valeur, libelle] : kLibelles)
+        if (valeur == grille.value) texte = libelle;
+    return texte + (grille.triplet ? "T" : grille.dotted ? "." : grille.quintuplet ? "Q" : "");
+}
 
 midi::Tick gridResolutionToTicks(GridResolution res, uint16_t ppq) {
     int64_t base;

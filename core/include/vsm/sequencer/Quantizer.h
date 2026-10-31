@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/sequencer/Track.h"
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace vsm::sequencer {
@@ -23,6 +24,12 @@ struct GridResolution {
 
 /// Durée en ticks d'une case de grille pour la résolution donnée.
 midi::Tick gridResolutionToTicks(GridResolution res, uint16_t ppq);
+
+/// D622.1 — UNE GRILLE PAR SON LIBELLÉ, comme la barre l'écrit (D495) : « 1/1 » à « 1/128 », suivi de « T » (triolet),
+/// « . » (pointée) ou « Q » (quintolet). Faux pour un libellé qu'on ne sait pas lire — `grille` n'est alors pas touchée.
+bool gridResolutionFromLabel(const std::string& libelle, GridResolution& grille);
+/// L'inverse : le libellé de `grille` (« 1/16T »). `gridResolutionFromLabel(gridResolutionLabel(g))` rend `g`.
+std::string gridResolutionLabel(GridResolution grille);
 
 struct QuantizeSettings {
     GridResolution grid;

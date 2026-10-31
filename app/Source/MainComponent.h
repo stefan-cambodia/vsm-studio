@@ -427,6 +427,19 @@ public:
             return fait;
         }
         if (geste.equalsIgnoreCase("relever-carte")) { showCarte(); direLaCarte(); return true; }
+        // D622.1 : `carte-grille:38>1/4` (ou `carte-grille:38>-` pour « globale ») — par la MÊME liste que la souris.
+        if (geste.startsWithIgnoreCase("carte-grille:")) {
+            showCarte();
+            const auto reste = geste.fromFirstOccurrenceOf(":", false, false);
+            const int ecrite = reste.upToFirstOccurrenceOf(">", false, false).trim().getIntValue();
+            const auto apres = reste.fromFirstOccurrenceOf(">", false, false).trim();
+            const bool fait = cartePanel_.choisirGrille(ecrite, apres == "-" ? std::string() : apres.toStdString());
+            if (!fait)
+                std::fputs(("VSM_CARTE : grille " + reste
+                            + juce::String::fromUTF8(" REFUS\xc3\x89" "E (aucune ligne, ou une grille que la liste ne porte pas)\n"))
+                               .toRawUTF8(), stderr);
+            return fait;
+        }
         // D615.1 : la géométrie des losanges du piano roll (`VSM_LOSANGE`), de quoi y cliquer par `clic:pianoroll:`.
         if (geste.equalsIgnoreCase("relever-losanges")) { std::fputs(pianoRoll_.releverLosanges().toRawUTF8(), stderr); return true; }
         // D608.1 : choisir une ligne de la réserve, comme d'un clic — « Relier... » se presse ensuite par `cliquer:`.
@@ -2593,6 +2606,8 @@ private:
     void showCarte();
     /// Pose une entrée de la carte (`jouee` −1 : « elle-même ») — un pas d'annulation, le planning republié.
     void poserCarte(size_t piste, int ecrite, int jouee);
+    /// D622.1 : LA GRILLE D'UN RANG de la carte — un pas seulement si elle change ; un libellé vide : « globale ».
+    void poserGrilleCarte(size_t piste, int ecrite, const std::string& libelle);
     void direLaCarte();
     std::unique_ptr<PanelWindow> carteWindow_;
     vsm::app::ui::DrumMapComponent cartePanel_;

@@ -1,4 +1,5 @@
 #include "vsm/interchange/ProjectDocument.h"
+#include "vsm/sequencer/Quantizer.h"   // D622.1 : les libellés de grille
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
@@ -585,6 +586,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.memo = track.memo;   // D565.3
         entry.transposeSemitones = track.transposeSemitones;
         entry.drumMap = track.drumMap;   // D609.1
+        entry.drumGrid = track.drumGrid;   // D622.1
         entry.independentOfGlobalTranspose = track.independentOfGlobalTranspose;   // D544.3
         entry.editGroup = track.editGroup;
         entry.outputSourceTrack = track.outputSourceTrack;
@@ -850,6 +852,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.memo = source.memo;   // D565.3
         target.transposeSemitones = source.transposeSemitones;
         target.drumMap = source.drumMap;   // D609.1
+        target.drumGrid = source.drumGrid;   // D622.1
         if (source.drumMapRejected > 0)
             report.warnings.push_back("piste " + std::to_string(i + 1) + (source.name.empty() ? "" : " \xc2\xab " + source.name + " \xc2\xbb")
                                       + " : " + std::to_string(source.drumMapRejected)
@@ -1293,6 +1296,16 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             }
             entry.set("drumMap", std::move(carte));
         }
+        if (!track.drumGrid.empty()) {   // D622.1 : la grille par rang, seulement si un rang en a une
+            JsonValue grilles = JsonValue::makeArray();
+            for (const auto& [ecrite, libelle] : track.drumGrid) {
+                JsonValue e = JsonValue::makeObject();
+                e.set("in", JsonValue::makeNumber(ecrite));
+                e.set("grid", JsonValue::makeString(libelle));
+                grilles.append(std::move(e));
+            }
+            entry.set("drumGrid", std::move(grilles));
+        }
         if (track.independentOfGlobalTranspose)   // D544.3
             entry.set("independentOfGlobalTranspose", JsonValue::makeBoolean(true));
         if (track.editGroup != 0) entry.set("editGroup", JsonValue::makeNumber(track.editGroup));
@@ -1717,6 +1730,16 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             const double ecrite = e["in"].asNumber(-1.0), jouee = e["out"].asNumber(-1.0);
             if (ecrite >= 0.0 && ecrite <= 127.0 && jouee >= 0.0 && jouee <= 127.0 && ecrite != jouee)
                 track.drumMap[static_cast<uint8_t>(ecrite)] = static_cast<uint8_t>(jouee);
+            else
+                ++track.drumMapRejected;
+        }
+        // D622.1 : une grille hors de 0..127, ou dont le libellé ne se lit pas, n'est pas une entrée — écartée, comptée.
+        for (const auto& e : entry["drumGrid"].elements()) {
+            const double ecrite = e["in"].asNumber(-1.0);
+            const std::string libelle = e["grid"].asString();
+            vsm::sequencer::GridResolution lue;
+            if (ecrite >= 0.0 && ecrite <= 127.0 && vsm::sequencer::gridResolutionFromLabel(libelle, lue))
+                track.drumGrid[static_cast<uint8_t>(ecrite)] = libelle;
             else
                 ++track.drumMapRejected;
         }

@@ -10660,6 +10660,9 @@ void MainComponent::showCarte() {
     }
     if (!carteWindow_) {
         cartePanel_.onChoix = [this](int ecrite, int jouee) { poserCarte(cartePanel_.piste(), ecrite, jouee); };
+        cartePanel_.onGrille = [this](int ecrite, const std::string& libelle) {   // D622.1
+            poserGrilleCarte(cartePanel_.piste(), ecrite, libelle);
+        };
         cartePanel_.onIdentite = [this] {
             const size_t p = cartePanel_.piste();
             if (p >= project_.tracks.size() || project_.tracks[p].drumMap.empty()) return;
@@ -10725,6 +10728,21 @@ void MainComponent::poserCarte(size_t piste, int ecrite, int jouee) {
                 + " ; " + std::to_string(carte.size()) + " note(s) d\xc3\xa9plac\xc3\xa9" "e(s)\n").c_str(), stderr);
 }
 
+void MainComponent::poserGrilleCarte(size_t piste, int ecrite, const std::string& libelle) {
+    // D622.1 : UN PAS seulement si la grille CHANGE (la règle de D506) ; la lecture ne la lit pas — rien à replanifier.
+    if (piste >= project_.tracks.size() || ecrite < 0 || ecrite > 127) return;
+    auto& grilles = project_.tracks[piste].drumGrid;
+    const auto ecriteOctet = static_cast<uint8_t>(ecrite);
+    const auto ici = grilles.find(ecriteOctet);
+    if (libelle.empty() ? ici == grilles.end() : (ici != grilles.end() && ici->second == libelle)) return;
+    beginProjectEdit(u8"Grille de la carte");
+    if (libelle.empty()) grilles.erase(ecriteOctet);
+    else grilles[ecriteOctet] = libelle;
+    refreshHistoryList();
+    std::fputs(("VSM_CARTE : grille " + std::to_string(ecrite) + " \xe2\x86\x92 " + (libelle.empty() ? std::string("globale") : libelle)
+                + " ; " + std::to_string(grilles.size()) + " rang(s) \xc3\xa0 sa grille\n").c_str(), stderr);
+}
+
 void MainComponent::direLaCarte() {
     const size_t p = cartePanel_.piste();
     std::fputs(("VSM_CARTE : piste " + std::to_string(p + 1) + " ; "
@@ -10732,6 +10750,8 @@ void MainComponent::direLaCarte() {
                 + " note(s) d\xc3\xa9plac\xc3\xa9" "e(s)\n").c_str(), stderr);
     for (const auto& ligne : cartePanel_.lignesPourReleve())
         std::fputs(("VSM_CARTE : " + ligne + "\n").toRawUTF8(), stderr);
+    for (const auto& ligne : cartePanel_.grillesPourReleve())   // D622.1 : la colonne des grilles, telle qu'elle s'écrit
+        std::fputs(("VSM_CARTE : grille " + ligne + "\n").toRawUTF8(), stderr);
     if (cartePanel_.remarque().isNotEmpty())   // D610.1 : ce que la fenêtre dit de ce qui reste sans équivalent
         std::fputs(("VSM_CARTE : remarque : " + cartePanel_.remarque() + "\n").toRawUTF8(), stderr);
 }
@@ -16546,6 +16566,7 @@ void MainComponent::fusionnerMidiEntreLocateurs() {
     t.programChanges.clear(); t.automation.clear(); t.takes.clear(); t.versions.clear(); t.midiEffects.clear();
     t.transposeSemitones = 0;   // les notes portent déjà la transposition de leur piste
     t.drumMap.clear();          // D610 : et sa carte de batterie (D609.1) — sinon elle s'appliquerait deux fois
+    t.drumGrid.clear();         // D622.1 : et ses grilles, écrites pour les notes ÉCRITES que la fusion a rendues jouées
     t.muted = false; t.solo = false;
     vsm::sequencer::Clip clip;
     clip.id = project_.nextClipId();

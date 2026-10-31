@@ -313,3 +313,31 @@ VSM_TEST(the_non_quantize_zone_and_the_catch_range_leave_notes_alone) {
     VSM_ASSERT_EQ(fins[1].endTick, vsm::midi::Tick(240));
     VSM_ASSERT(!quantizeLeavesAlone(250, QuantizeSettings{}, 480));   // les défauts : le chemin d'avant
 }
+
+// D622.1 — UNE GRILLE PAR SON LIBELLÉ. L'attendu écrit avant le code (ROADMAP-daw, D622) : « 1/8 » → croche,
+// « 1/16T » → triolet de doubles, « 1/4. » → noire pointée, « 1/32Q » → quintolet ; un libellé inconnu refusé (la grille
+// donnée n'est pas touchée) ; l'aller-retour libellé → grille → libellé à l'identique.
+VSM_TEST(a_grid_reads_and_writes_its_label_d622) {
+    GridResolution g;
+    VSM_ASSERT(gridResolutionFromLabel("1/8", g));
+    VSM_ASSERT(g.value == NoteValue::Eighth && !g.triplet && !g.dotted && !g.quintuplet);
+    VSM_ASSERT(gridResolutionFromLabel("1/16T", g));
+    VSM_ASSERT(g.value == NoteValue::Sixteenth && g.triplet);
+    VSM_ASSERT_EQ(gridResolutionToTicks(g, 480), vsm::midi::Tick(80));
+    VSM_ASSERT(gridResolutionFromLabel("1/4.", g));
+    VSM_ASSERT(g.value == NoteValue::Quarter && g.dotted);
+    VSM_ASSERT_EQ(gridResolutionToTicks(g, 480), vsm::midi::Tick(720));
+    VSM_ASSERT(gridResolutionFromLabel("1/32Q", g));
+    VSM_ASSERT(g.value == NoteValue::ThirtySecond && g.quintuplet);
+    GridResolution intacte;
+    intacte.value = NoteValue::Half;
+    for (const char* faux : {"", "1/3", "1/8x", "8", "T", "1/16TT"}) {
+        VSM_ASSERT(!gridResolutionFromLabel(faux, intacte));
+        VSM_ASSERT(intacte.value == NoteValue::Half && !intacte.triplet);
+    }
+    for (const char* libelle : {"1/1", "1/2T", "1/4", "1/8.", "1/16", "1/32Q", "1/64T", "1/128"}) {
+        GridResolution lue;
+        VSM_ASSERT(gridResolutionFromLabel(libelle, lue));
+        VSM_ASSERT(gridResolutionLabel(lue) == libelle);
+    }
+}

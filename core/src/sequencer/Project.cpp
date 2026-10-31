@@ -1080,6 +1080,7 @@ size_t explodeTrackByPitch(Project& project, size_t index,
         piste.transposeSemitones = source.transposeSemitones;
         piste.independentOfGlobalTranspose = source.independentOfGlobalTranspose;
         if (const auto ici = source.drumMap.find(hauteur); ici != source.drumMap.end()) piste.drumMap[hauteur] = ici->second;
+        if (const auto ici = source.drumGrid.find(hauteur); ici != source.drumGrid.end()) piste.drumGrid[hauteur] = ici->second;   // D622.1
         const std::string nom = nameFor ? nameFor(hauteur) : std::string();
         piste.name = !nom.empty() ? nom
                                    : source.name + " - " + noteNumberToName(hauteur);

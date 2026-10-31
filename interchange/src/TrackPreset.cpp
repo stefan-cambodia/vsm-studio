@@ -1,4 +1,5 @@
 #include "vsm/interchange/TrackPreset.h"
+#include "vsm/sequencer/Quantizer.h"   // D622.1 : les libellés de grille
 #include <algorithm>
 #include <cctype>
 
@@ -27,6 +28,7 @@ TrackPreset trackPresetFromTrack(const vsm::sequencer::Track& track, const std::
     preset.channel = track.channel;
     preset.transposeSemitones = track.transposeSemitones;
     preset.drumMap = track.drumMap;   // D610.2
+    preset.drumGrid = track.drumGrid;   // D622.1
     preset.delayMs = track.delayMs;
     preset.outputGroup = track.outputGroup;
     return preset;
@@ -59,6 +61,7 @@ void applyTrackPresetToTrack(const TrackPreset& preset, vsm::sequencer::Track& t
     track.channel = static_cast<uint8_t>(std::clamp(preset.channel, 0, 15));
     track.transposeSemitones = preset.transposeSemitones;
     track.drumMap = preset.drumMap;   // D610.2
+    track.drumGrid = preset.drumGrid;   // D622.1
     track.delayMs = preset.delayMs;
     track.outputGroup = preset.outputGroup;
 }
@@ -102,6 +105,17 @@ JsonValue trackPresetToJson(const TrackPreset& preset) {
         }
         root.set("drumMap", std::move(carte));
     }
+    if (!preset.drumGrid.empty()) {   // D622.1 : la grille par rang, seulement si un rang en a une
+        JsonValue grilles = JsonValue::makeArray();
+        for (const auto& [ecrite, libelle] : preset.drumGrid) {
+            JsonValue e = JsonValue::makeObject();
+            e.set("in", JsonValue::makeNumber(ecrite));
+            e.set("grid", JsonValue::makeString(libelle));
+            grilles.append(std::move(e));
+        }
+        root.set("drumGrid", std::move(grilles));
+    }
+
     root.set("delayMs", JsonValue::makeNumber(preset.delayMs));
     root.set("outputGroup", JsonValue::makeNumber(preset.outputGroup));
     return root;
@@ -157,6 +171,13 @@ TrackPresetLoadResult trackPresetFromJson(const JsonValue& json) {
         const double ecrite = e["in"].asNumber(-1.0), jouee = e["out"].asNumber(-1.0);
         if (ecrite >= 0.0 && ecrite <= 127.0 && jouee >= 0.0 && jouee <= 127.0 && ecrite != jouee)
             preset.drumMap[static_cast<uint8_t>(ecrite)] = static_cast<uint8_t>(jouee);
+    }
+    for (const auto& e : json["drumGrid"].elements()) {   // D622.1 : la règle du projet
+        const double ecrite = e["in"].asNumber(-1.0);
+        const std::string libelle = e["grid"].asString();
+        vsm::sequencer::GridResolution lue;
+        if (ecrite >= 0.0 && ecrite <= 127.0 && vsm::sequencer::gridResolutionFromLabel(libelle, lue))
+            preset.drumGrid[static_cast<uint8_t>(ecrite)] = libelle;
     }
     preset.delayMs = json["delayMs"].asNumber(0.0);
     preset.outputGroup = static_cast<int>(json["outputGroup"].asNumber(-1.0));

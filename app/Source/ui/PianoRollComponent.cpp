@@ -256,6 +256,32 @@ Tick PianoRollComponent::snapTick(Tick tick) const {
     return std::max<Tick>(0, quantizeTick(tick, settings, project_->ticksPerQuarterNote));
 }
 
+GridResolution PianoRollComponent::grilleDuRang(uint8_t note, bool* propre) const {
+    if (propre) *propre = false;
+    const Track* track = activeTrack();
+    if (track != nullptr)
+        if (const auto ici = track->drumGrid.find(note); ici != track->drumGrid.end()) {
+            GridResolution grille;
+            if (gridResolutionFromLabel(ici->second, grille)) {
+                if (propre) *propre = true;
+                return grille;
+            }
+        }
+    return gridResolution_;
+}
+
+Tick PianoRollComponent::snapTickDuRang(Tick tick, uint8_t note) const {
+    bool propre = false;
+    const GridResolution grille = grilleDuRang(note, &propre);
+    if (!propre) return snapTick(tick);   // un rang « global » : l'aimant de la barre, au bit près comme avant
+    if (!snapEnabled_ || !project_) return std::max<Tick>(0, tick);
+    QuantizeSettings settings;
+    settings.grid = grille;
+    settings.strength = 1.0f;
+    settings.swing = swing_;
+    return std::max<Tick>(0, quantizeTick(tick, settings, project_->ticksPerQuarterNote));
+}
+
 Note* PianoRollComponent::findNoteAt(juce::Point<float> pos, bool* nearRightEdge, bool* nearLeftEdge) {
     if (nearRightEdge) *nearRightEdge = false;
     if (nearLeftEdge) *nearLeftEdge = false;
@@ -1110,7 +1136,27 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
                    "refus\xc3\xa9""e (piste verrouill\xc3\xa9""e ?)\n", stderr);
         return;
     }
-    quantizeNotes(selected, settings, project_->ticksPerQuarterNote);
+    // D622.1 : CHAQUE FRAPPE SUR LA GRILLE DE SON RANG — les rangs que la carte règle, chacun à part ; le reste, ensemble, à
+    // la grille de la barre (un seul appel, comme avant, quand la piste n'a pas de grille par rang).
+    if (track->drumGrid.empty()) {
+        quantizeNotes(selected, settings, project_->ticksPerQuarterNote);
+    } else {
+        std::map<uint8_t, std::vector<Note>> parRang;
+        std::vector<Note> globales;
+        for (const auto& n : selected) {
+            bool propre = false;
+            grilleDuRang(n.number, &propre);
+            (propre ? parRang[n.number] : globales).push_back(n);
+        }
+        quantizeNotes(globales, settings, project_->ticksPerQuarterNote);
+        selected = std::move(globales);
+        for (auto& [rang, notes] : parRang) {
+            QuantizeSettings duRang = settings;
+            duRang.grid = grilleDuRang(rang);
+            quantizeNotes(notes, duRang, project_->ticksPerQuarterNote);
+            selected.insert(selected.end(), notes.begin(), notes.end());
+        }
+    }
     for (auto& n : track->notes) {
         auto it = std::find_if(selected.begin(), selected.end(),
                                 [&n](const Note& q) { return q.id == n.id; });
@@ -2248,9 +2294,14 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
     } else if (!hit && (tool_ == Tool::Draw || (tool_ == Tool::Select && !event.mods.isCommandDown()))) {
         // Création d'une note, puis glissement immédiat sur sa durée.
         if (!beginEdit(u8"Créer une note")) return;
-        const Tick startTick = snapTick(xToTick(pos.x));
+        // D622.1 : LA GRILLE DU RANG — une frappe posée dans un rang qui a la sienne s'y aimante et dure une case d'elle.
         const uint8_t noteNumber = yToNote(pos.y);
-        Note newNote{startTick, startTick + gridTicks(), track->channel, noteNumber,
+        bool grillePropre = false;
+        const GridResolution grilleRang = grilleDuRang(noteNumber, &grillePropre);
+        const Tick startTick = snapTickDuRang(xToTick(pos.x), noteNumber);
+        const Tick duree = grillePropre ? std::max<Tick>(1, gridResolutionToTicks(grilleRang, project_->ticksPerQuarterNote))
+                                        : gridTicks();
+        Note newNote{startTick, startTick + duree, track->channel, noteNumber,
                       defaultVelocity_, 64, project_->nextNoteId()};
         track->notes.push_back(newNote);
 

@@ -143,3 +143,36 @@ VSM_TEST(general_midi_pieces_the_909_lacks_sound_once_adapted_d610) {
         VSM_ASSERT(avec > 0.05f);
     }
 }
+
+// D622.1 — LA GRILLE PAR RANG, ÉCRITE SEULEMENT SI UN RANG EN A UNE, ET RELUE. L'attendu écrit avant le code (ROADMAP-daw,
+// D622, (d)) : `"drumGrid": [{"in": 38, "grid": "1/4"}]` ; une piste sans grille n'écrit pas la clé ; un libellé illisible
+// est écarté et compté avec les entrées de la carte ; `applyDocumentToProject` la rend au modèle.
+VSM_TEST(the_drum_grid_is_written_only_when_a_row_has_one_and_reads_back_d622) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tracks.emplace_back();
+    project.tracks.emplace_back();
+    project.tracks[1].drumGrid = {{38, "1/4"}, {42, "1/16T"}};
+    const auto texte = projectDocumentToJson(documentFromProject(project)).toString();
+    size_t occurrences = 0;
+    for (size_t p = texte.find("\"drumGrid\""); p != std::string::npos; p = texte.find("\"drumGrid\"", p + 1)) ++occurrences;
+    VSM_ASSERT_EQ(occurrences, size_t(1));
+    VSM_ASSERT(texte.find("\"drumMap\"") == std::string::npos);   // une grille n'écrit pas de carte
+    const auto relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.tracks[0].drumGrid.empty());
+    VSM_ASSERT(relu.document.tracks[1].drumGrid == project.tracks[1].drumGrid);
+    VSM_ASSERT_EQ(relu.document.tracks[1].drumMapRejected, 0);
+    std::string abime = texte;
+    const auto ou = abime.find("\"1/16T\"");
+    VSM_ASSERT(ou != std::string::npos);
+    abime.replace(ou, 7, "\"1/3\"");
+    const auto relu2 = parseProjectDocument(abime);
+    VSM_ASSERT(relu2.success);
+    VSM_ASSERT_EQ(relu2.document.tracks[1].drumGrid.size(), size_t(1));
+    VSM_ASSERT_EQ(relu2.document.tracks[1].drumMapRejected, 1);
+    Project cible;
+    cible.tracks.resize(2);
+    applyDocumentToProject(relu.document, cible);
+    VSM_ASSERT(cible.tracks[1].drumGrid == project.tracks[1].drumGrid);
+}

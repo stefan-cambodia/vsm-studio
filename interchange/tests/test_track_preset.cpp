@@ -183,6 +183,14 @@ VSM_TEST(a_track_preset_carries_the_drum_map_and_writes_it_only_when_there_is_on
     Track cible;
     applyTrackPresetToTrack(relu.preset, cible);
     VSM_ASSERT(cible.drumMap == batterie.drumMap);
+    // D622.1 : la grille par rang voyage aussi, et seulement si un rang en a une.
+    batterie.drumGrid = {{38, "1/4"}};
+    const std::string avecGrille = trackPresetToJson(trackPresetFromTrack(batterie, "Toms 909", std::nullopt)).toString();
+    VSM_ASSERT(avecGrille.find("\"drumGrid\"") != std::string::npos);
+    Track cible2;
+    applyTrackPresetToTrack(parseTrackPreset(avecGrille).preset, cible2);
+    VSM_ASSERT(cible2.drumGrid == batterie.drumGrid);
+    VSM_ASSERT(texte.find("\"drumGrid\"") == std::string::npos);
     Track nue;
     const std::string sansCarte = trackPresetToJson(trackPresetFromTrack(nue, "Nue", std::nullopt)).toString();
     VSM_ASSERT(sansCarte.find("\"drumMap\"") == std::string::npos);
