@@ -47897,3 +47897,8 @@ banc `fusionner-midi.sh` ; le témoin : le binaire de D609 (`build/temoin-D609`)
   toujours, réparé au passage et mesuré par (e).
 
 **LA SÉRIE SUIVANTE EST À JOUER, ÉCRAN ALLUMÉ, BATTERIE CHARGÉE** : 19 % à 13 h 20, en décharge.
+
+**Le banc de D610 rejoué écran allumé (31/10, 14 h 46 à l'horloge, batterie rechargée à 98 % pendant une veille)** :
+`tools/adapter-batterie.sh` **7 contrôles sur 7 en une seule passe**, aucune course rejouée, aucune fenêtre dégénérée ;
+la fenêtre regardée (les six lignes, la remarque ambre « Sans équivalent sur cette machine : ride (51) »). D610 attend la
+série suivante pour être dite faite.
