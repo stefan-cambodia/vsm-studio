@@ -3820,3 +3820,18 @@ est à refaire avant toute règle.
 **Ce que la mesure ne pourra PAS dire**, écrit d'avance : une machine écartée à ses réglages d'usine n'est pas une
 machine écartée (son réglage n'est pas cherché) ; deux morceaux ne font pas une règle ; et le choix, fait sur le même
 stem que le résidu qui le juge, se juge au MÉLANGE (2 à 5), pas au critère 1 seul.
+
+### 37.1 L'instrument de H76, AVANT toute mesure (11/11/2026, 02 h 11)
+
+`analyse/mesure_h76.py` (`choisir`, `bandes_cassees`, `evaluer`) et `analyse/tests/test_mesure_h76.py`, sur la scène de
+H74-H75 : l'original a une caisse large bande, le témoin la rend sans rien sous 2 kHz. Trois candidats — une caisse
+large (choisie : son résidu est sous la moitié de celui du témoin), une caisse muette (écartée ET dite, sans résidu),
+un charleston de même timbre que le témoin (laissé : moins de 5 % de gain). **Vu rouge sur deux mutants** : sans le
+seuil, le charleston « pareil » et une caisse PIRE sont choisis (3 tests rouges) ; sans le contrôle du muet, la muette
+reçoit un résidu (1 rouge). `ruff` et `mypy` propres. `reconstruction/travail/reload-h76.sh` : les solos témoins sont
+ceux de H75 (même moteur, `reload-h70`), les candidats rendus un à un, la machine posée APRÈS les réglages du TR-808
+qu'elle remplace (preset sans paramètre : ses réglages d'usine).
+
+**Une limite, dite avant la mesure** : le résidu pondéré est celui du système AVANT le bornage des facteurs (comme en
+H75, dont les 0,91 et 1,52 servent de référence) ; un candidat dont un facteur touche la borne a un résidu optimiste.
+Chaque borne atteinte est relevée dans la table à côté de son résidu.
