@@ -48947,3 +48947,48 @@ deux gestes ne disaient pas la même chose.
   veille. La phase touche `app/Source/` : elle n'est FAITE qu'après `./verifier.sh --bancs` (220 bancs).
 - **Remis, nommés** : la passe empilée au banc ; le glissé d'une sélection sur plusieurs rangs ; la longueur d'insertion
   distincte de la grille ; les rangs dans l'ordre de la carte.
+
+### Phase D625 — un quatre-vingt-cinquième audit : la longueur d'insertion, distincte de la grille (10/11/2026)
+
+*Écrite le 10/11 à 23 h 51 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D624
+tourne (écran allumé, batterie rechargée) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D622 et de D624** — « la longueur d'insertion distincte de la grille ». Une note
+posée d'un clic dure UNE CASE de la grille (`gridTicks()`, ou la grille du rang depuis D622) : pour écrire des croches
+sur une grille à la double, il faut changer de grille à chaque note, ou tirer chaque fin. Les éditeurs de Cubase portent
+pour cela *Insert Length*, à côté de *Quantize* : la grille dit OÙ, la longueur dit COMBIEN.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D625.1 | **La longueur d'insertion** — *Insert Length* des éditeurs de notes | dans *Temps et durée* (le menu du piano roll et *Édition*), un sous-menu « Longueur d'insertion » : « Insertion : la grille » (le défaut — le comportement d'avant, grille du rang comprise) ou une valeur de 1/1 à 1/64, la courante cochée ; une note posée d'un clic commence où l'aimant la met (la grille de la barre ou du rang, inchangé) et dure la longueur choisie ; écrite au projet (`"insertLength"`, par son libellé) seulement si elle n'est pas « la grille » ; un morceau n'hérite pas de celle du précédent ; mesuré par le relevé des notes du projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Au menu *Temps et durée*, pas dans la barre** : la barre du piano roll est pleine à 1 600 px de large (grille,
+  modificateur, aimant, pas à pas, swing, vélocité, gamme) ; la zone de non-quantification et le rayon de capture
+  (D575), réglages de la même famille, sont déjà là. Un réglage qu'on change rarement va au menu.
+- **Par son LIBELLÉ, au projet** (`gridResolutionFromLabel`, la règle de D622) : « 1/8 » se relit à toute résolution. Avec
+  la grille, le swing, la zone et le rayon, dans la vue du morceau (D495, D575) ; absente du fichier quand elle vaut
+  « la grille » : un projet d'avant se relit et se réécrit à l'octet.
+- **Une longueur choisie l'emporte sur la grille du rang POUR LA DURÉE** ; le DÉBUT reste à la grille du rang. C'est le
+  choix de Cubase (*Insert Length* explicite, ou « liée à la carte ») : « la grille » ici vaut « liée ».
+- **Des valeurs droites seulement** (1/1 à 1/64) : sept entrées ; les triolets et pointées se tirent à la souris.
+- **Des libellés uniques dans toute la barre** (« Insertion : 1/8 ») : `VSM_MENU` prend le premier libellé exact, et
+  « 1/8 » nu existe ailleurs.
+- **Un libellé illisible au projet est ÉCARTÉ ET DIT** (la liste des écartés de la vue), la longueur revient à la grille.
+- **Remis, nommés** : la saisie pas à pas garde la longueur de la grille ; la longueur d'insertion au préréglage de
+  quantification ; le glissé d'une sélection sur plusieurs rangs ; les rangs dans l'ordre de la carte ; la passe
+  empilée de D624 au banc.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/longueur-insertion.sh`, la piste « Batterie » de `grille-par-rang`
+(TR-909, 480 ticks à la noire, la barre à 1/16 = 120 ticks, des frappes de repère à 960 et 1 440), un clic au tick ~400 :
+(a) **le témoin de la règle, sans rien choisir** : rang 36 → une frappe à **360**, longue de **120** (le résultat de D622) ;
+(b) « Insertion : 1/8 », le même clic, rang 36 → à **360**, longue de **240** ;
+(c) « Insertion : 1/8 » et le rang 38 à 1/4, un clic dans le rang 38 → à **480** (la grille du rang), longue de **240**
+(la longueur choisie) ; sans la longueur, D622 donnait 480 + 480 ;
+(d) le projet enregistré porte `"insertLength": "1/8"` ; rouvert, l'entrée « Insertion : 1/8 » est cochée et un clic
+pose 240 ; « Insertion : la grille » rechoisie puis enregistré : la clé n'y est plus ;
+(e) un projet dont la clé vaut « 1/7 » : écartée et dite au journal, « Insertion : la grille » cochée ;
+(f) un projet sans la clé ouvert APRÈS un projet qui la porte (le même HOME) : « la grille » ; l'anglais (*Insert
+length*, *Insert: the grid*, *Insert: 1/8*) ; le témoin (D624) : le libellé de menu introuvable, 360 + 120 ;
+(g) **à l'interchange** : la clé écrite, relue, absente par défaut ; `grille-par-rang`, `pas-a-pas`, `quantifier` verts ;
+les suites ; la série.
