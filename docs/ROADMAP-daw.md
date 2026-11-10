@@ -48860,3 +48860,52 @@ affirmation, celle de l'attendu (ligne 527 : « 480on38 960off38 960on38 1080off
 - **Presque tous les bancs lisent un `.mid`** (un `grep` de `MTrk|\.mid` dans `tools/` en rend plus de deux cents) :
   l'écrivain est le passage obligé de tous. La phase ne touche pas `app/Source/`, mais la série se joue quand même —
   c'est elle qui dirait qu'un banc appariait ses notes sur l'ancien ordre.
+
+### Phase D624 — un quatre-vingt-quatrième audit : la prise quantifiée suit la grille du rang, par la même fonction que « Quantifier » (10/11/2026)
+
+*Écrite le 10/11 à 16 h 37 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D623
+tourne (écran allumé) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D622** — « la prise quantifiée à l'arrêt (D579.1) » — **et d'une lecture du
+code** : `quantifierLaPrise` se dit « LA quantification du logiciel […] comme "Quantifier la dernière prise" », et ce n'est
+plus vrai depuis D622. « Quantifier la dernière prise » passe par la sélection et par le piano roll, donc par la grille de
+chaque rang ; « Quantifier chaque prise » appelle `quantizeNotes` avec la seule grille de la barre. Deux gestes qui
+portent le même nom au menu rendent, sur une piste de batterie réglée par sa carte, deux prises différentes. La colonne
+*Quantize* de la *Drum Map* de Cubase vaut pour ce qu'on JOUE comme pour ce qu'on pose.
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE QUI LA TRANCHE** — sur le binaire de D623, le rang 38 réglé à **1/8** (240 ticks),
+la barre à 1/16 (120), quatre frappes de 38 entrées à 350 ms d'écart (336 ticks à 120 BPM) : avec « Quantifier chaque
+prise », les quatre tombent sur des multiples de 120 et **au moins une hors des multiples de 240** (deux débuts distants
+de 336 ticks s'arrondissent à 240 ou 360 d'écart, et trois écarts qui font 1 008 ± 120 en contiennent un de 360) ; la
+même prise SANS l'option, puis « Quantifier la dernière prise » : **les quatre sur des multiples de 240**. Si les deux
+gestes rendent déjà la même chose, la phase n'a pas d'objet et se clôt sur ce chiffre.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D624.1 | **La prise quantifiée suit la grille du rang** — la colonne *Quantize* de la *Drum Map*, à l'enregistrement | une fonction du cœur, `quantizeNotesByRow`, quantifie chaque note à la grille de SON rang (la carte de grilles de la piste), les autres à la grille donnée ; le piano roll (« Quantifier ») et la prise (« Quantifier chaque prise », la prise simple comme la passe empilée) l'appellent tous deux ; une piste sans grille par rang : le résultat d'avant, au tick près ; le journal de la prise dit combien de notes ont suivi leur rang ; le libellé du menu dit la règle, dans les deux langues ; mesuré par le projet enregistré après une prise, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Au cœur, une fois** : la répartition par rang vivait dans `PianoRollComponent::quantizeSelection`, hors de portée
+  d'un test et de la prise. Elle descend dans `Quantizer` ; le piano roll n'en garde que l'appel. C'est la raison
+  écrite au code de `quantizeLastTake` : « il n'y a qu'une seule quantification dans le logiciel ».
+- **La grille du rang se lit sur la piste qui REÇOIT la prise**, pas sur la piste active du piano roll : une prise écrite
+  sur deux pistes armées suit la carte de chacune.
+- **La note de la carte est la note ÉCRITE**, et une prise écrit ce qui entre : la hauteur reçue est la clé.
+- **Un libellé illisible vaut « globale »** (la règle de `grilleDuRang`) : la note suit la grille donnée, sans erreur.
+- **Le swing, la zone et le rayon restent ceux de la barre** pour tous les rangs, comme à la pose (D622).
+- **Remis, nommés** (inchangés) : le glissé d'une sélection sur plusieurs rangs ; la longueur d'insertion distincte de la
+  grille ; les rangs dans l'ordre de la carte.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/prise-par-rang.sh`, une piste « Batterie » sur la TR-909, canal 10,
+armée, 480 ticks à la noire, 120 BPM, la barre à 1/16, le rang 38 à **1/8** ; la prise : quatre frappes de 38 à 350 ms
+d'écart et deux frappes de 36 :
+(a) **au cœur** : [38 @70, 36 @70, 38 @250, 40 @250], la carte {38 → « 1/4 »}, la grille donnée 1/16 → **38 @0, 36 @120,
+38 @480, 40 @240** (l'ordre du vecteur gardé) ; une carte vide → le résultat de `quantizeNotes`, note pour note ; un
+libellé illisible → la grille donnée ; le déplacement cumulé (`quantizeShiftStart`) tenu, pour « Annuler la quantification » ;
+(b) **« Quantifier chaque prise »** cochée : les quatre frappes de 38 sur des multiples de **240**, toutes distinctes ; les
+deux de 36 sur des multiples de 120 ; le journal dit « 4 au rang » ; le témoin (D623) : au moins une frappe de 38 hors
+des multiples de 240 ;
+(c) **sans l'option, puis « Quantifier la dernière prise »** : les quatre de 38 sur des multiples de 240 — sur le binaire
+neuf ET sur le témoin (le geste n'a pas changé : c'est ce qui dit que les deux gestes s'accordent enfin) ;
+(d) Ctrl+Z après la prise de (b) : 0 note, en un pas ; le libellé du menu, en français et en anglais ;
+(e) `grille-par-rang`, `prise-quantifiee-punch`, `quantifier`, `annuler-quantification` verts ; les suites ; la série.
