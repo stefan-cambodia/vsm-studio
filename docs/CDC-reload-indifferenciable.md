@@ -3773,3 +3773,50 @@ ne le fera ressembler. Les aigus de « B4 » montent parce que le système, pour
 n'ont pas au médium, les monte en entier. **Rien n'entre.** La leçon de H74, confirmée et précisée : le niveau d'une
 pièce ne se règle qu'une fois son TIMBRE juste, et le résidu de H75 est l'instrument qui dit, pièce par pièce, quel
 timbre est faux et où — le point de départ d'un choix de machine (ou d'un échantillon) par pièce.
+
+## 37. H76 — la MACHINE de chaque pièce de batterie, choisie par le résidu de H75 (écrite AVANT son instrument et sa mesure, 11/11/2026, 02 h 07)
+
+**Ce que H75 a appris** (§ 36.2) : « le niveau d'une pièce ne se règle qu'une fois son TIMBRE juste, et le résidu de H75
+est l'instrument qui dit, pièce par pièce, quel timbre est faux et où — le point de départ d'un choix de machine (ou
+d'un échantillon) par pièce ». Toutes les pièces des deux morceaux sont jouées par le TR-808 ; le parc porte trois
+autres boîtes à rythmes qui répondent aux mêmes notes General MIDI (36, 38, 39, 42 — relevées dans les deux projets) :
+`vsm.tr909`, `vsm.drums` (batterie acoustique), `vsm.fmdrums`.
+
+**L'instrument, à écrire** (`analyse/mesure_h76.py`, son test, `reconstruction/travail/reload-h76.sh` rejouable) :
+- **Les candidats** d'une pièce : le TR-808 de H75 (le TÉMOIN — réglé : kick de H70, charleston de H72 / H73) et les
+  trois autres machines **à leurs réglages d'usine** (aucun réglage n'est cherché : une variable, la machine).
+- **Le choix se fait sur le STEM, jamais sur la mesure du mélange** : pour chaque pièce *i* et chaque candidat *M*, le
+  solo de *i* est remplacé par celui de *M*, les autres pièces restant celles de H75 ; le système de H75
+  (`mesure_h74.py --toutes-bandes`) est résolu et son **résidu pondéré** `R(i, M)` relevé. La pièce prend la machine
+  de plus petit résidu **si elle le baisse d'au moins 5 %** par rapport à H75 ; sinon elle garde le TR-808.
+- **Un solo MUET** (une machine qui ne joue pas la note : niveau à plus de 60 dB sous le solo du TR-808) est écarté ET
+  DIT — il ne compte pas pour un candidat à résidu.
+- **La combinaison** des machines choisies est résolue une fois de plus (les choix ne sont pas indépendants : une
+  seule passe, et le résidu combiné est publié à côté des résidus un à un), rendue, et mesurée par le même outil
+  (`tools/ecart-a-l-original.py`), le même moteur (`reload-h70`), les mêmes sections que §§ 33-36.
+- **La table entière est publiée** : `R(i, M)` pour chaque pièce et chaque machine, pas seulement le choix.
+
+**L'HYPOTHÈSE H76** : le résidu de H75 désigne une machine plus proche — au moins une pièce par morceau change de
+machine, le résidu combiné baisse, et le MÉLANGE suit. Attendu plus fort sur « B4 », dont H75 dit que « ce kit n'est
+pas un TR-808 » (toutes ses pièces manquent de 500-2 000 Hz), que sur « Reload », dont le TR-808 est déjà réglé.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | le résidu pondéré combiné | « Reload » ≤ 0,82 et « B4 » ≤ 1,37 (dix pour cent sous H75 : 0,91 · 1,52) | il ne baisse sur AUCUN des deux (aucune pièce ne change, ou la combinaison remonte) |
+| 2 | log-mel, « Reload » | ≤ H75 (6,89) | > H72 (7,08) |
+| 3 | log-mel, « B4 » | ≤ H73 (8,37) | > témoin (8,57) |
+| 4 | le grave : \|médian\| sub, basse, bas-médium | chacune à moins de 0,5 dB de H75 (« Reload » 0,91 · 1,75 · 1,07 ; « B4 » 1,48 · 2,29 · 1,73) | l'une pire de plus de 1,5 dB |
+| 5 | l'aigu : \|médian\| des aigus | « Reload » ≤ H75 (1,97) ; « B4 » ≤ H73 (1,57) | plus loin de plus de 1 dB que la référence, sur l'un |
+| 6 | ce que le choix CASSE : pour chaque pièce qui change, ses bandes à moins de 3 dB du stem en H75 | aucune ne passe au-delà de 6 dB | une au moins |
+| 7 | relevés : la table `R(i, M)`, les solos muets, les facteurs, les bornes, le résidu par pièce et par bande | — | — |
+
+**La règle de décision** : 1 à 6 tenus → le choix de la machine par le résidu est la règle candidate pour la chaîne
+(le verdict par pièce d'un groupe de batterie) ; 1 tenu sans 2 ou 3 → le résidu au STEM ne prédit pas le mélange — le
+stem est lui-même une estimation de la séparation, et c'est lui qu'il faudra juger ; 1 en échec → aucune machine du
+parc, à ses réglages d'usine, n'est plus près que le TR-808 réglé : le besoin est un réglage par pièce ou un
+échantillon, pas un changement de boîte ; 6 en échec → le résidu pondéré cache ce qu'il casse, et le critère de choix
+est à refaire avant toute règle.
+
+**Ce que la mesure ne pourra PAS dire**, écrit d'avance : une machine écartée à ses réglages d'usine n'est pas une
+machine écartée (son réglage n'est pas cherché) ; deux morceaux ne font pas une règle ; et le choix, fait sur le même
+stem que le résidu qui le juge, se juge au MÉLANGE (2 à 5), pas au critère 1 seul.
