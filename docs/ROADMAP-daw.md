@@ -48948,6 +48948,21 @@ deux gestes ne disaient pas la même chose.
 - **Remis, nommés** : la passe empilée au banc ; le glissé d'une sélection sur plusieurs rangs ; la longueur d'insertion
   distincte de la grille ; les rangs dans l'ordre de la carte.
 
+**LA SÉRIE, JOUÉE (10/11 23 h 50 → 11/11 01 h 43 ; écrit à 01 h 45 à l'horloge) — D624 EST FAITE, UN ROUGE NON REPRODUIT.**
+`./verifier.sh --bancs` : **220 bancs en 113 min, 219 verts, 1 rouge** ; écran allumé sous `kde-inhibit --screenSaver`,
+**0** veille ; gelée quatre minutes (00 h 23 → 00 h 27, `SIGSTOP` puis `SIGCONT` sur le groupe, à la demande de
+l'utilisateur) au milieu de `montage-en-chaine`, sorti vert ; la batterie de 100 à 61 % ; préférences de l'utilisateur
+identiques ; `prise-par-rang` vert dans la série.
+- **Le rouge** : `annulation-des-menus`, sur UNE entrée de 298 — « Édition > Sélection > Toutes les notes de même
+  hauteur », « un pas SANS changement du morceau (pas : [Délai — deux] ; témoin : []) ». Le pas relevé porte le nom d'un
+  réglage de DÉLAI de la piste « deux » : rien que le geste jugé puisse ouvrir.
+- **Rejoué SEUL, trois fois, le même binaire** (`--seulement`, 01 h 4x, écran allumé) : **3 verts sur 3** (« muette, et
+  c'est voulu »). Vert aussi quatre heures plus tôt dans la série de D623, et D624 ne touche ni la sélection ni le délai.
+- **La cause n'est PAS trouvée.** Aucune veille ni mort par manque de mémoire au journal du système sur la fenêtre
+  (23 h 50 → 00 h 16). L'utilisateur se servait du poste à ce moment (il a écrit à 23 h 50 puis à 00 h 23) : un geste du
+  pointeur réel sur la fenêtre du banc — la molette sur le champ « Délai » d'une tranche — ouvrirait ce pas ; c'est une
+  PISTE, pas une preuve. Si le même pas revient dans une série jouée sans personne au poste, elle tombe.
+
 ### Phase D625 — un quatre-vingt-cinquième audit : la longueur d'insertion, distincte de la grille (10/11/2026)
 
 *Écrite le 10/11 à 23 h 51 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D624
