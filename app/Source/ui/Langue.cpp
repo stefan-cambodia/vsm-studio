@@ -3251,6 +3251,13 @@ const Paire kAnglais[] = {
     // D575 : la zone de non-quantification, le rayon de capture, l'aléatoire en effet MIDI.
     { "Zone de non-quantification",
       "Non-quantise zone" },
+    // D625 : la longueur d'insertion.
+    { "Longueur d'insertion",
+      "Insert length" },
+    { "Insertion : la grille",
+      "Insert: the grid" },
+    { "Insertion : %1",
+      "Insert: %1" },
     { "Rayon de capture",
       "Catch range" },
     { "Aucune zone",

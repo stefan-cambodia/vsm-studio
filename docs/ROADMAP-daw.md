@@ -49008,3 +49008,33 @@ pose 240 ; « Insertion : la grille » rechoisie puis enregistré : la clé n'y 
 length*, *Insert: the grid*, *Insert: 1/8*) ; le témoin (D624) : le libellé de menu introuvable, 360 + 120 ;
 (g) **à l'interchange** : la clé écrite, relue, absente par défaut ; `grille-par-rang`, `pas-a-pas`, `quantifier` verts ;
 les suites ; la série.
+
+### Phase D625 — MESURÉE, la série à jouer (11/11/2026, 01 h 55 à l'horloge)
+
+*Écrite avant son code le 10/11 à 23 h 51 (commitée avant toute compilation) ; le code écrit pendant la série de D624,
+compilé après elle. Le test d'interchange joué rouge en retirant l'écriture de la clé — tombé sur « la clé est écrite »
+(ligne 2102), l'attendu. Le banc `tools/longueur-insertion.sh` (11 contrôles) ; le témoin : le binaire de D624.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D625 (a) | sans rien choisir : 36@360+120 | **36@360+120** | — | **oui** |
+| D625 (b) | « Insertion : 1/8 » : 36@360+240 | **36@360+240** ; l'entrée cochée, elle seule | D624 : le libellé introuvable (2 lignes au journal), **36@360+120** | **oui** |
+| D625 (c) | rang 38 à 1/4 : 38@480+240 | **38@480+240** | D622 mesurait 38@480+480 sans la longueur | **oui** |
+| D625 (d) | la clé au projet ; rouvert : cochée, un clic pose 240 ; « la grille » : la clé retirée | `"insertLength": "1/8"` ; rouvert « Insertion : 1/8 » cochée, **38@360+240** ; « la grille » rechoisie : cochée, clé **absente** | — | **oui** |
+| D625 (e) | « 1/7 » écartée et dite | « VSM_VUE_IGNOREE : insertLength « 1/7 » — le défaut est repris » ; « la grille » cochée | — | **oui** |
+| D625 (f) | un autre morceau n'hérite pas ; l'anglais | après `ouvrir-midi:` (joué, au journal) : « la grille » ; *Insert length*, *Insert: the grid*, *Insert: 1/8* | — | **oui** |
+| D625 (g) | l'interchange ; les voisins ; les suites | interchange **374 / 374** (1 neuf, vu rouge : **373 / 374**) ; cœur **588** ; `grille-par-rang`, `pas-a-pas`, `quantifier`, `zone-quantification`, `grille-gamme-projet` verts ; gardes vertes ; préférences identiques | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Vert du premier essai, onze contrôles sur onze** : aucun rouge du banc à corriger. Le contrôle (f) discrimine — si
+  `ouvrir-midi:` n'avait rien ouvert, « Insertion : 1/8 » serait restée cochée — et le témoin de (b) aussi.
+- **Le menu n'est pas PHOTOGRAPHIÉ** : un menu déroulant n'entre pas dans une capture ; il est LU (`lister-menus`, neuf
+  entrées, la courante cochée, dans les deux langues). La photo de la fenêtre montre la note posée, pas le menu.
+- **Le menu contextuel du piano roll** porte le même sous-menu (le même code) ; le banc ne passe que par *Édition*.
+- **La suite audio n'a pas été rejouée** (rien de `audio/` ni du cœur n'a changé depuis les 1 385 de D624).
+- **La série n'est pas jouée** : batterie à 54 % après la série de D624 et ses rejeux ; 113 min de bancs en coûtent une
+  quarantaine, et le poste s'endort à 15 %. La phase touche `app/Source/` : elle n'est FAITE qu'après
+  `./verifier.sh --bancs` (221 bancs).
+- **Remis, nommés** : la saisie pas à pas garde la longueur de la grille ; la longueur d'insertion au préréglage de
+  quantification ; le glissé d'une sélection sur plusieurs rangs ; les rangs dans l'ordre de la carte ; la passe
+  empilée de D624 au banc.

@@ -10416,6 +10416,7 @@ vsm::interchange::ProjectDocument::View MainComponent::vueActuelle() const {
     // « 0.10000000149011612 » pour 10 %.
     vue.quantizeZone = std::round(static_cast<double>(pianoRoll_.zoneNonQuantif()) * 10000.0) / 10000.0;
     vue.quantizeCatch = std::round(static_cast<double>(pianoRoll_.rayonCapture()) * 10000.0) / 10000.0;
+    vue.insertLength = pianoRoll_.longueurInsertion();   // D625.1 : vide (« la grille ») ne s'écrit pas
     const auto gamme = pianoRoll_.scale();
     vue.scaleRoot = static_cast<int>(gamme.root);
     vue.scaleType = vsm::sequencer::scaleTypeId(gamme.type);
@@ -10442,6 +10443,10 @@ MainComponent::reprendreGrilleEtGamme(const vsm::interchange::ProjectDocument::V
     // D575.1, D575.2 : la zone et le rayon du morceau, ou les défauts — un morceau n'hérite pas de ceux du précédent.
     pianoRoll_.setZoneNonQuantif(vue != nullptr && vue->quantizeZone > 0.0 ? static_cast<float>(vue->quantizeZone) : 0.0f);
     pianoRoll_.setRayonCapture(vue != nullptr && vue->quantizeCatch > 0.0 ? static_cast<float>(vue->quantizeCatch) : 0.0f);
+    // D625.1 : la longueur d'insertion du morceau, ou « la grille » ; un libellé qui n'est pas de la liste est écarté ET DIT.
+    pianoRoll_.setLongueurInsertion(std::string());
+    if (vue != nullptr && !vue->insertLength.empty() && !pianoRoll_.setLongueurInsertion(vue->insertLength))
+        ecartes.emplace_back("insertLength", vue->insertLength);
     for (const auto& [champ, valeur] : ecartes)
         std::fputs(("VSM_VUE_IGNOREE : " + champ + " \u00ab " + valeur
                     + " \u00bb \u2014 le d\u00e9faut est repris\n").c_str(), stderr);

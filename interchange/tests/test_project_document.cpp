@@ -2092,6 +2092,35 @@ VSM_TEST(the_quantize_zone_and_catch_range_travel_with_the_view) {
     VSM_ASSERT(lu.document.view.ecartes[0].first == "quantizeZone");
 }
 
+// D625.1 : LA LONGUEUR D'INSERTION voyage avec la vue, par son libellé ; « la grille » (vide) ne s'écrit pas ; une valeur
+// qui n'est pas un texte est ÉCARTÉE ET CONSIGNÉE (le libellé lui-même est jugé par l'application).
+VSM_TEST(the_insert_length_travels_with_the_view_d625) {
+    ProjectDocument document = documentFromProject(buildProject());
+    VSM_ASSERT(projectDocumentToJson(document).toString().find("insertLength") == std::string::npos);   // absente par défaut
+    document.view.insertLength = "1/8";
+    const std::string ecrit = projectDocumentToJson(document).toString();
+    VSM_ASSERT(ecrit.find("insertLength") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.view.insertLength == "1/8");
+    VSM_ASSERT(relu.document.view.ecartes.empty());
+    // seule dans la vue, elle la fait écrire
+    ProjectDocument::View seule;
+    VSM_ASSERT(!seule.ditQuelqueChose());
+    seule.insertLength = "1/4";
+    VSM_ASSERT(seule.ditQuelqueChose());
+    // un nombre à la place du libellé : écarté, dit
+    JsonValue json = projectDocumentToJson(documentFromProject(buildProject()));
+    JsonValue vue = json["view"].isObject() ? json["view"] : JsonValue::makeObject();
+    vue.set("insertLength", JsonValue::makeNumber(8));
+    json.set("view", std::move(vue));
+    const ProjectLoadResult lu = parseProjectDocument(json.toString());
+    VSM_ASSERT(lu.success);
+    VSM_ASSERT(lu.document.view.insertLength.empty());
+    VSM_ASSERT_EQ(lu.document.view.ecartes.size(), size_t{1});
+    VSM_ASSERT(lu.document.view.ecartes[0].first == "insertLength");
+}
+
 // D503 : LE CLIC EST UNE DONNÉE DE MORCEAU, écrite seulement allumée.
 VSM_TEST(the_metronome_switch_travels_with_the_project) {
     auto projet = buildProject();

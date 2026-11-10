@@ -1193,6 +1193,8 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             vue.set("quantizeZone", JsonValue::makeNumber(document.view.quantizeZone));
         if (document.view.quantizeCatch > 0.0 && document.view.quantizeCatch <= 0.5)
             vue.set("quantizeCatch", JsonValue::makeNumber(document.view.quantizeCatch));
+        if (!document.view.insertLength.empty())   // D625.1 : hors du défaut seulement
+            vue.set("insertLength", JsonValue::makeString(document.view.insertLength));
         if (document.view.scaleRoot >= 0 && document.view.scaleRoot <= 11) {
             JsonValue gamme = JsonValue::makeObject();
             gamme.set("root", JsonValue::makeNumber(document.view.scaleRoot));
@@ -1605,6 +1607,9 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             if (vue[cle].isNumber() && part >= 0.0 && part <= 0.5) *champ = part;
             else ecarter(cle, vue[cle]);
         }
+        if (vue["insertLength"].isString())   // D625.1 : le libellé est jugé par l'application
+            document.view.insertLength = vue["insertLength"].asString();
+        else if (vue.has("insertLength")) ecarter("insertLength", vue["insertLength"]);
         if (vue.has("scale")) {
             const JsonValue& gamme = vue["scale"];
             const double tonique = gamme["root"].asNumber(-1.0);

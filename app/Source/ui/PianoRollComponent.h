@@ -197,6 +197,11 @@ public:
     float zoneNonQuantif() const { return zoneNonQuantif_; }
     void setRayonCapture(float part);
     float rayonCapture() const { return rayonCapture_; }
+    /// D625.1 : LA LONGUEUR D'INSERTION (*Insert Length*) — le libellé d'une valeur droite, « 1/1 » à « 1/64 », ou vide :
+    /// « la grille » (une case de la grille de la barre, ou du rang — le comportement d'avant). Au morceau, comme la
+    /// grille. Rend faux, sans rien changer, pour un libellé qui n'est pas de la liste.
+    bool setLongueurInsertion(const std::string& libelle);
+    const std::string& longueurInsertion() const { return longueurInsertion_; }
     /// D496 : retenue dans les préférences (`onBasculesChanged`, seulement au changement).
     void setDefaultVelocity(uint8_t velocity) {
         if (defaultVelocity_ == velocity) return;
@@ -537,6 +542,7 @@ private:
     int legatoChevauchement_ = 0;      ///< D576.2, en ticks à 480 la noire
     bool legatoEntreChoisies_ = false; ///< D576.3
     float rayonCapture_ = 0.0f;     ///< D575.2
+    std::string longueurInsertion_;   ///< D625.1 : vide = la grille
     uint8_t defaultVelocity_ = 100;
     bool reticule_ = true;               ///< D587.3 : la préférence
     bool losanges_ = true;               ///< D615.1 : la préférence

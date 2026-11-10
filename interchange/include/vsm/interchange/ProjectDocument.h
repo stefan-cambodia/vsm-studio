@@ -503,6 +503,10 @@ struct ProjectDocument {
         /// seulement au-dessus de 0 (le défaut : aucune zone, tout capturé) ; -1 = rien d'enregistré.
         double quantizeZone = -1.0;
         double quantizeCatch = -1.0;
+        /// D625.1 : LA LONGUEUR D'INSERTION d'une note posée, par son libellé (« 1/8 », `gridResolutionFromLabel`) ; vide =
+        /// « la grille » (le défaut : une case de la grille, ou du rang), et alors rien n'est écrit. Le libellé est
+        /// vérifié par l'application, qui connaît ses valeurs ; un illisible y est écarté et dit.
+        std::string insertLength;
         /// La tonique, 0 (do) à 11 ; -1 = pas de gamme enregistrée (et alors ni
         /// type ni surlignage ne sont lus).
         int scaleRoot = -1;
@@ -522,7 +526,8 @@ struct ProjectDocument {
                    || pianoRollPixelsPerTick > 0.0 || pianoRollTopNote > 0
                    || !automationParameter.empty() || midiCcController >= 0    // D467
                    || !pianoRollGrid.empty() || pianoRollSwing >= 0.0 || scaleRoot >= 0   // D495
-                   || quantizeZone > 0.0 || quantizeCatch > 0.0;   // D575.1, D575.2
+                   || quantizeZone > 0.0 || quantizeCatch > 0.0   // D575.1, D575.2
+                   || !insertLength.empty();   // D625.1
         }
     };
     View view;

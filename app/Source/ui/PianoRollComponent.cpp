@@ -70,6 +70,7 @@ enum ContextMenuId {
     kCtxLegatoOverlapFirst = 100550, kCtxLegatoOverlapLast = 100554,              // D576.2 : −20 … +20 ticks
     kCtxLegatoSelectedOnly = 100560,                                              // D576.3
     kCtxControllersFollow = 100570,                                               // D581.3
+    kCtxInsertLengthFirst = 100600, kCtxInsertLengthLast = 100607,   // D625.1 : la grille, puis 1/1 … 1/64
     kCtxVoicingInvertUp = 100580, kCtxVoicingInvertDown, kCtxVoicingDrop2, kCtxVoicingDrop3, kCtxVoicingDrop24,   // D592
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
@@ -77,6 +78,8 @@ enum ContextMenuId {
     kCtxToolSelect = 100310, kCtxToolDraw, kCtxToolErase, kCtxToolSplit, kCtxToolGlue, kCtxToolMute,   // D497
     kCtxFold = 100400,
 };
+/// D625.1 : les longueurs d'insertion, dans l'ordre du menu ; la première, vide, est « la grille ».
+constexpr const char* kLongueursInsertion[] = {"", "1/1", "1/2", "1/4", "1/8", "1/16", "1/32", "1/64"};
 /// D554.2 : les nombres de voix proposés par « Restreindre la polyphonie » (une voix, c'est D552.2).
 constexpr int kVoixPossibles[] = {2, 3, 4, 6, 8};
 
@@ -476,6 +479,14 @@ void PianoRollComponent::setSwing(float swing) { swing_ = swing; repaint(); }
 
 void PianoRollComponent::setZoneNonQuantif(float part) { zoneNonQuantif_ = std::clamp(part, 0.0f, 0.5f); }   // D575.1
 void PianoRollComponent::setRayonCapture(float part) { rayonCapture_ = std::clamp(part, 0.0f, 0.5f); }       // D575.2
+bool PianoRollComponent::setLongueurInsertion(const std::string& libelle) {   // D625.1
+    for (const char* connue : kLongueursInsertion)
+        if (libelle == connue) {
+            longueurInsertion_ = libelle;
+            return true;
+        }
+    return false;
+}
 void PianoRollComponent::setScale(Scale scale) { scale_ = scale; repaint(); }
 void PianoRollComponent::setScaleHighlightEnabled(bool enabled) { scaleHighlight_ = enabled; repaint(); }
 void PianoRollComponent::setGhostNotesVisible(bool visible) {
@@ -1810,6 +1821,17 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
         timeMenu.addSubMenu(tr(u8"Zone de non-quantification"), zones);
         timeMenu.addSubMenu(tr(u8"Rayon de capture"), rayons);
     }
+    // D625.1 : LA LONGUEUR D'INSERTION (*Insert Length*) — ce que dure une note posée d'un clic ; la courante cochée. Des
+    // libellés uniques dans toute la barre (« Insertion : 1/8 ») : « 1/8 » nu existe ailleurs.
+    {
+        juce::PopupMenu longueurs;
+        for (int i = 0; i <= kCtxInsertLengthLast - kCtxInsertLengthFirst; ++i)
+            longueurs.addItem(kCtxInsertLengthFirst + i,
+                              i == 0 ? tr(u8"Insertion : la grille")
+                                     : tr("Insertion : %1").replace("%1", kLongueursInsertion[i]),
+                              true, longueurInsertion_ == kLongueursInsertion[i]);
+        timeMenu.addSubMenu(tr(u8"Longueur d'insertion"), longueurs);
+    }
     // D566.1 : ANNULER ET FIGER LA QUANTIFICATION -- le compte des notes choisies qui portent un déplacement, grisées à zéro.
     {
         const size_t quantifiees = quantizedSelectionCount();
@@ -2054,6 +2076,13 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
                         + (rayonCapture_ > 0.0f ? std::to_string(std::lround(rayonCapture_ * 100.0f)) + " % du pas"
                                                 : std::string("tout")) + "\n").c_str(), stderr);
             break;
+        case kCtxInsertLengthFirst: case kCtxInsertLengthFirst + 1: case kCtxInsertLengthFirst + 2:
+        case kCtxInsertLengthFirst + 3: case kCtxInsertLengthFirst + 4: case kCtxInsertLengthFirst + 5:
+        case kCtxInsertLengthFirst + 6: case kCtxInsertLengthLast:   // D625.1
+            setLongueurInsertion(kLongueursInsertion[menuItemId - kCtxInsertLengthFirst]);
+            std::fputs(("VSM_INSERTION : longueur "
+                        + (longueurInsertion_.empty() ? std::string("la grille") : longueurInsertion_) + "\n").c_str(), stderr);
+            break;
         case kCtxLegato:           applyLegatoToSelection(); break;
         case kCtxRemoveOverlaps:   removeOverlapsInSelection(); break;
         case kCtxDeleteDoubles:    deleteDoublesInSelection(); break;
@@ -2281,8 +2310,11 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
         bool grillePropre = false;
         const GridResolution grilleRang = grilleDuRang(noteNumber, &grillePropre);
         const Tick startTick = snapTickDuRang(xToTick(pos.x), noteNumber);
-        const Tick duree = grillePropre ? std::max<Tick>(1, gridResolutionToTicks(grilleRang, project_->ticksPerQuarterNote))
-                                        : gridTicks();
+        Tick duree = grillePropre ? std::max<Tick>(1, gridResolutionToTicks(grilleRang, project_->ticksPerQuarterNote))
+                                  : gridTicks();
+        // D625.1 : LA LONGUEUR D'INSERTION, quand elle est choisie, l'emporte pour la DURÉE — le début reste à l'aimant.
+        if (GridResolution choisie; !longueurInsertion_.empty() && gridResolutionFromLabel(longueurInsertion_, choisie))
+            duree = std::max<Tick>(1, gridResolutionToTicks(choisie, project_->ticksPerQuarterNote));
         Note newNote{startTick, startTick + duree, track->channel, noteNumber,
                       defaultVelocity_, 64, project_->nextNoteId()};
         track->notes.push_back(newNote);
