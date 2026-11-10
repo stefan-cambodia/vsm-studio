@@ -48786,3 +48786,77 @@ rouge sur une lecture de libellé vide. Le banc `tools/grille-par-rang.sh` (8 co
   replie désormais sur deux lignes.
 - **Remis, nommés** : le glissé d'une sélection sur plusieurs rangs reste sur la grille de la barre ; la prise quantifiée à
   l'arrêt (D579.1) aussi ; la longueur d'insertion distincte de la grille ; les rangs dans l'ordre de la carte.
+
+### Phase D623 — un quatre-vingt-troisième audit : au même tick, la note qui finit se ferme avant que la suivante s'ouvre (01/11/2026)
+
+*Écrite le 01/11 à 04 h 55 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. Rien ne tourne ; la
+batterie à 28 % : la série de D622 attendra la recharge.*
+
+**D'OÙ ELLE VIENT : du premier essai de D622.** Deux frappes de même hauteur bout à bout (38, de 480 à 960, puis à 960) :
+le fichier MIDI enregistré écrit au tick 960 le **note-on de la seconde AVANT le note-off de la première**. Lu au code :
+`buildParsedFile` émet les notes dans l'ordre du VECTEUR de la piste (une note créée s'ajoute à la fin), et le tri qui suit
+(`stable_sort`, ici et dans `serializeTrack`) ne regarde que le tick. L'application relit son fichier dans l'ordre
+d'arrivée et retrouve ses deux notes ; **un lecteur extérieur** (un autre séquenceur, un lecteur de fichiers MIDI) ouvre la
+seconde, puis la ferme aussitôt : une note de longueur nulle, un charleston qui perd une frappe sur deux. Le cas est
+ordinaire : toute partie de batterie dont les frappes durent leur case.
+
+**L'HYPOTHÈSE, ÉCRITE AVANT LA MESURE QUI LA TRANCHE** — un recensement des fichiers `midi/*.mid` des projets du poste
+(sous `~/videcode/muz`, hors `build/` et brouillons) : les fichiers écrits par l'application portent ce défaut là où une
+note a été posée ou déplacée devant une note de même hauteur qui la touche — **peu de fichiers, mais pas zéro** ; les
+fichiers que la chaîne d'analyse écrit (dans l'ordre des débuts) n'en portent **aucun**. Publié en entier : le nombre de
+fichiers lus, ceux qui portent le défaut, et le nombre de paires inversées.
+
+**MESURÉE (04 h 56), L'HYPOTHÈSE RÉFUTÉE POUR MOITIÉ** — **2 077** fichiers `midi/*.mid` lus sous `~/videcode/muz` (hors
+`build/`, `.git`) : **0** portent le défaut, **0** paire inversée. Le détecteur, VALIDÉ sur le cas connu (le projet
+enregistré du diagnostic de D622 : **1** fichier, **1** paire) ; et un premier passage, qui n'avait lu que **11** fichiers,
+écartait par erreur tout dossier commençant par « vsm- » — le dépôt lui-même : un zéro revérifié avant d'être écrit (la
+règle des recherches). Le « pas zéro » est donc faux : aucun projet du poste ne porte l'inversion — elle demande une note
+posée ou déplacée devant une note de même hauteur qui la touche, puis un enregistrement. Le défaut reste : il se
+reproduit en trois gestes, et toute partie de batterie éditée à la grille y mène.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D623.1 | **À tick égal, la note qui finit se ferme d'abord** | `serializeTrack` (l'écrivain de TOUS les fichiers MIDI : le projet, les exports, les pistes seules) range, à tick égal, avant tout note-on, les note-off qui ferment une note ouverte à un tick ANTÉRIEUR ; un note-off qui ferme une note de longueur nulle reste après son note-on (sinon elle pendrait pour toujours) ; tout le reste garde son ordre ; mesuré au cœur, par le fichier qu'enregistre l'application, et par le recensement |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Dans l'écrivain, pas dans `buildParsedFile`** : d'autres chemins fabriquent des pistes MIDI (l'export d'une piste, la
+  fusion, les motifs) ; une règle posée à un seul fabricant laisserait les autres fautifs. L'écrivain est le seul passage
+  obligé.
+- **Par appariement, pas par type** : « tous les note-off d'abord » ferait pendre une note de longueur nulle (la fin coupée
+  au bord d'un clip peut tomber sur le début) ; l'écrivain compte, par canal et par hauteur, les notes ouvertes AVANT le
+  tick, et n'avance que les note-off qui les ferment.
+- **Le note-on de vélocité nulle est un note-off** (la norme MIDI) : compté comme tel.
+- **Les fichiers déjà écrits ne sont pas réécrits** : ils se corrigeront au prochain enregistrement ; l'application les
+  relit déjà juste.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : une piste écrite [note-on 38 @480, note-on 38 @960, note-off 38 @960, note-off 38 @1080] → relue dans
+l'ordre du fichier : à 960, le **off avant le on** ; une note de longueur nulle (on 40 @960, off 40 @960) reste on puis off ;
+un contrôleur posé avant un note-on au même tick reste avant ; un fichier sans tick égal : **identique à l'octet** ;
+(b) **au banc** `tools/ordre-midi.sh` : la frappe posée de D622 (38 de 480 à 960, devant la frappe à 960) → le fichier
+enregistré écrit à 960 le off avant le on (le témoin, D622 : on avant off) ; relu par l'application, deux frappes ;
+(c) le recensement, publié ; les suites.
+
+### Phase D623 — MESURÉE, la série en cours (10/11/2026, 16 h 35 à l'horloge)
+
+*Écrite avant son code le 01/11 à 04 h 55 ; le code et le banc écrits ce jour-là, la mesure reprise le 10/11 (rien ne
+tournait : `uptime` lu d'abord, 2 j 4 h). Le test du cœur joué rouge en retirant l'appel — tombé sur la PREMIÈRE
+affirmation, celle de l'attendu (ligne 527 : « 480on38 960off38 960on38 1080off38 »), pas ailleurs. Le banc
+`tools/ordre-midi.sh` (4 contrôles) ; le témoin : le binaire de D622.*
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D623 (a) | à 960, le off avant le on ; la note nulle reste on puis off ; le contrôleur reste devant ; sans jonction, rien ne bouge | « 480on38 960off38 960on38 1080off38 » ; « 480on38 960off38 960cc7 960on40 960off40 » ; le note-on de vélocité nulle rangé comme un note-off — cœur **587 / 587** (1 neuf) | l'appel retiré : **586 / 587**, rouge sur l'attendu | **oui, à une réserve près** |
+| D623 (b) | le projet enregistré et l'export : « off on » à 960 ; relu, deux frappes | projet **« off on »** ; export **« off on »** ; relu par l'application : **2** frappes de 38 | le binaire de D622 : **« on off »** | **oui** |
+| D623 (c) | le recensement, publié | **2 077** fichiers, **0** paire inversée (mesuré le 01/11, plus haut) : aucun fichier du poste n'était à corriger | le projet du diagnostic de D622 : 1 fichier, 1 paire | **oui** |
+| — | les suites | interchange **373 / 373** ; audio **1 385 / 1 385** ; gardes vertes, sauf `index-a-jour` (les chiffres de ce document, repris par `--corriger`) ; préférences de l'utilisateur identiques (`cmp`) | — | **oui** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **La réserve de (a)** : l'attendu disait « un fichier sans tick égal : identique à l'OCTET ». Le test relit l'ordre des
+  événements, il ne compare PAS des octets à ceux d'avant — il n'y a pas d'octets d'avant gardés dans le test. Ce qui est
+  prouvé : l'ordre inchangé quand rien n'est à avancer (off 60 puis on 62 au même tick, déjà dans l'ordre). Ce qui tient
+  lieu de preuve à l'octet : la série entière, dont presque tous les bancs relisent un fichier écrit par l'application.
+- **Le témoin de (b) est du même geste, pas du même code** : le binaire de D622, la même ligne de gestes.
+- **Presque tous les bancs lisent un `.mid`** (un `grep` de `MTrk|\.mid` dans `tools/` en rend plus de deux cents) :
+  l'écrivain est le passage obligé de tous. La phase ne touche pas `app/Source/`, mais la série se joue quand même —
+  c'est elle qui dirait qu'un banc appariait ses notes sur l'ancien ordre.

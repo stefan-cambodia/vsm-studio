@@ -1,4 +1,5 @@
 #include "vsm/midi/MidiFileWriter.h"
+#include <array>
 #include "vsm/midi/TextEncoding.h"
 #include "vsm/midi/VariableLengthQuantity.h"
 
@@ -95,12 +96,62 @@ bool isEndOfTrack(const MidiEventData& data) {
     return std::holds_alternative<EndOfTrackEvent>(data);
 }
 
+/// D623.1 — À TICK ÉGAL, LA NOTE QUI FINIT SE FERME AVANT QUE LA SUIVANTE S'OUVRE. Deux frappes de même hauteur bout à
+/// bout s'écrivaient « on, puis off » au tick de jonction quand la seconde précédait la première dans la piste (une note
+/// créée s'ajoute à la fin) : un lecteur extérieur ouvrait la seconde et la refermait aussitôt. Par APPARIEMENT, pas par
+/// type : seuls avancent les note-off qui ferment une note ouverte à un tick ANTÉRIEUR (une note de longueur nulle garde
+/// son off après son on, sinon elle pendrait) ; tout le reste garde son ordre — sans jonction, les octets d'avant.
+void fermerAvantDOuvrir(std::vector<MidiEvent>& events) {
+    const auto cle = [](const MidiEventData& d, bool& estOff) -> int {
+        estOff = false;
+        if (const auto* off = std::get_if<NoteOffEvent>(&d)) { estOff = true; return (off->channel & 0x0F) * 128 + (off->note & 0x7F); }
+        if (const auto* on = std::get_if<NoteOnEvent>(&d)) {
+            estOff = on->velocity == 0;   // la norme : un note-on de vélocité nulle est un note-off
+            return (on->channel & 0x0F) * 128 + (on->note & 0x7F);
+        }
+        return -1;
+    };
+    std::array<int, 16 * 128> ouvertes{};   // les notes ouvertes AVANT le tick du groupe, par canal et hauteur
+    size_t debut = 0;
+    while (debut < events.size()) {
+        size_t fin = debut;
+        while (fin < events.size() && events[fin].tick == events[debut].tick) ++fin;
+        std::array<int, 16 * 128> disponibles = ouvertes;
+        std::vector<MidiEvent> tete, reste;
+        for (size_t i = debut; i < fin; ++i) {
+            bool estOff = false;
+            const int k = cle(events[i].data, estOff);
+            if (estOff && k >= 0 && disponibles[static_cast<size_t>(k)] > 0) {
+                --disponibles[static_cast<size_t>(k)];
+                tete.push_back(events[i]);
+            } else {
+                reste.push_back(events[i]);
+            }
+        }
+        if (!tete.empty()) {
+            size_t i = debut;
+            for (auto& e : tete) events[i++] = std::move(e);
+            for (auto& e : reste) events[i++] = std::move(e);
+        }
+        for (size_t i = debut; i < fin; ++i) {   // le compte, dans l'ordre désormais écrit
+            bool estOff = false;
+            const int k = cle(events[i].data, estOff);
+            if (k < 0) continue;
+            auto& n = ouvertes[static_cast<size_t>(k)];
+            if (!estOff) ++n;
+            else if (n > 0) --n;
+        }
+        debut = fin;
+    }
+}
+
 std::vector<uint8_t> serializeTrack(const ParsedTrack& track) {
     // Tri stable par tick : préserve l'ordre relatif des événements à
     // égalité de tick (important pour CC/PC juste avant une note, etc.)
     std::vector<MidiEvent> events = track.events;
     std::stable_sort(events.begin(), events.end(),
                       [](const MidiEvent& a, const MidiEvent& b) { return a.tick < b.tick; });
+    fermerAvantDOuvrir(events);   // D623.1
 
     bool hasEndOfTrack = !events.empty() && isEndOfTrack(events.back().data);
     Tick lastTick = events.empty() ? 0 : events.back().tick;

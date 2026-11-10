@@ -496,3 +496,50 @@ VSM_TEST(nom_de_piste_latin1_lu_par_l_analyseur) {
     for (const auto& t : relu.tracks) trouve = trouve || t.name == "Piano électrique";
     VSM_ASSERT(trouve);
 }
+
+// D623.1 — À TICK ÉGAL, LA NOTE QUI FINIT SE FERME AVANT QUE LA SUIVANTE S'OUVRE. L'attendu écrit avant le code
+// (ROADMAP-daw, D623, (a)) : [on 38 @480, on 38 @960, off 38 @960, off 38 @1080] → relu dans l'ordre du fichier, le off
+// avant le on à 960 ; une note de longueur nulle (on 40 @960, off 40 @960) reste on puis off ; un contrôleur posé avant un
+// note-on au même tick reste avant ; un fichier sans tick égal, identique à l'octet.
+VSM_TEST(at_an_equal_tick_the_ending_note_closes_before_the_next_opens_d623) {
+    const auto ecrireEtRelire = [](std::vector<MidiEvent> evenements) {
+        ParsedFile f;
+        f.ticksPerQuarterNote = 480;
+        f.tracks.push_back({});
+        f.tracks[0].events = std::move(evenements);
+        return MidiFileParser::parse(MidiFileWriter::write(f)).tracks[0].events;
+    };
+    const auto decrire = [](const std::vector<MidiEvent>& evts) {
+        std::string s;
+        for (const auto& e : evts) {
+            if (const auto* on = std::get_if<NoteOnEvent>(&e.data))
+                s += std::to_string(e.tick) + (on->velocity > 0 ? "on" : "off") + std::to_string(on->note) + " ";
+            else if (const auto* off = std::get_if<NoteOffEvent>(&e.data))
+                s += std::to_string(e.tick) + "off" + std::to_string(off->note) + " ";
+            else if (const auto* cc = std::get_if<ControlChangeEvent>(&e.data))
+                s += std::to_string(e.tick) + "cc" + std::to_string(cc->controller) + " ";
+        }
+        return s;
+    };
+    // L'ordre que `buildParsedFile` produisait pour une frappe ajoutée APRÈS celle qu'elle touche.
+    const auto relu = ecrireEtRelire({{960, NoteOnEvent{9, 38, 110}}, {1080, NoteOffEvent{9, 38, 0}},
+                                      {480, NoteOnEvent{9, 38, 110}}, {960, NoteOffEvent{9, 38, 0}}});
+    VSM_ASSERT(decrire(relu) == "480on38 960off38 960on38 1080off38 ");
+    // Une note de longueur nulle ne pend pas : son off suit son on ; la note qui finit à 960 se ferme quand même d'abord.
+    const auto nulle = ecrireEtRelire({{480, NoteOnEvent{0, 38, 100}}, {960, ControlChangeEvent{0, 7, 90}},
+                                       {960, NoteOnEvent{0, 40, 100}}, {960, NoteOffEvent{0, 40, 0}},
+                                       {960, NoteOffEvent{0, 38, 0}}});
+    VSM_ASSERT(decrire(nulle) == "480on38 960off38 960cc7 960on40 960off40 ");
+    // Un note-on de vélocité nulle est un note-off (la norme), et se range comme lui.
+    const auto zero = ecrireEtRelire({{0, NoteOnEvent{0, 50, 100}}, {240, NoteOnEvent{0, 50, 100}}, {240, NoteOnEvent{0, 50, 0}},
+                                      {480, NoteOffEvent{0, 50, 0}}});
+    VSM_ASSERT(decrire(zero) == "0on50 240off50 240on50 480off50 ");
+    // Sans tick égal à réordonner : les octets d'avant.
+    ParsedFile sans;
+    sans.ticksPerQuarterNote = 480;
+    sans.tracks.push_back({});
+    sans.tracks[0].events = {{0, NoteOnEvent{0, 60, 100}}, {480, NoteOffEvent{0, 60, 0}}, {480, NoteOnEvent{0, 62, 100}},
+                             {960, NoteOffEvent{0, 62, 0}}};
+    const auto octets = MidiFileWriter::write(sans);
+    VSM_ASSERT(decrire(MidiFileParser::parse(octets).tracks[0].events) == "0on60 480off60 480on62 960off62 ");
+}
