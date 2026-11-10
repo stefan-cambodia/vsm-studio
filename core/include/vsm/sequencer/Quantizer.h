@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/sequencer/Track.h"
+#include <map>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -57,6 +58,14 @@ midi::Tick quantizeTick(midi::Tick tick, const QuantizeSettings& settings, uint1
 
 /// Applique la quantification à un ensemble de notes, en place.
 void quantizeNotes(std::vector<Note>& notes, const QuantizeSettings& settings, uint16_t ppq);
+
+/// D624.1 : CHAQUE NOTE À LA GRILLE DE SON RANG — `rowGrids` est la carte de grilles d'une piste (`Track::drumGrid` : note
+/// écrite → libellé, « 1/16T ») ; une note dont le rang y porte un libellé LISIBLE est quantifiée à cette grille, les
+/// autres à `settings.grid` ; le swing, la force, la zone et le rayon sont ceux de `settings` pour toutes. L'ordre du
+/// vecteur est gardé. Une carte vide : `quantizeNotes`, note pour note. Rend le nombre de notes qui ont suivi leur rang.
+/// C'est LA quantification du logiciel : « Quantifier » (le piano roll) et « Quantifier chaque prise » l'appellent.
+size_t quantizeNotesByRow(std::vector<Note>& notes, const QuantizeSettings& settings, uint16_t ppq,
+                          const std::map<uint8_t, std::string>& rowGrids);
 
 struct HumanizeSettings {
     uint64_t seed = 0;              ///< graine de session : mêmes notes + même seed = même résultat

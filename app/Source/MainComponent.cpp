@@ -5932,11 +5932,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     menu.addSeparator();
                 }
                 menu.addItem(kMenuRecordQuantizeTake,
-                              tr(u8"Quantifier la dernière prise (grille du piano roll)"),
+                              tr(u8"Quantifier la dernière prise (grille du piano roll, ou du rang)"),
                               !lastTake_.empty());
                 // D579.1 : la même quantification, à la fin de CHAQUE prise, dans le pas de la prise.
                 menu.addItem(kMenuRecordAutoQuantize, tr(u8"Quantifier chaque prise"), true, quantifierChaquePrise_);
-                menu.addItem(-1, tr(u8"(les prises MIDI, à la grille du piano roll ; une prise audio ne se quantifie pas)"),
+                menu.addItem(-1, tr(u8"(les prises MIDI, à la grille du piano roll ou à celle du rang ; une prise audio ne se quantifie pas)"),
                              false, false);
                 // D583.2 : LA PLAGE DE RATTRAPAGE (*MIDI Record Catch Range*) — une préférence du poste ; des libellés
                 // uniques dans toute la barre, comme ceux du pré-roll.
@@ -14761,7 +14761,7 @@ void MainComponent::closePass(uint32_t passe, double debutSecondes, double finSe
                                             [this](double s) { return project_.secondsToTicks(s); },
                                             compteur);
         for (auto& note : prise.notes) note.channel = project_.tracks[index].channel;
-        quantifierLaPrise(prise.notes);   // D579.1 : chaque passe empilée est une prise
+        quantifierLaPrise(prise.notes, project_.tracks[index]);   // D579.1 : chaque passe empilée est une prise
         vsm::sequencer::pushTake(project_.tracks[index], std::move(prise));
     }
     if (compteur > 0) project_.ensureNoteIdAbove(compteur - 1);
@@ -15086,7 +15086,7 @@ void MainComponent::stopRecording() {
                                        compteur);
         vsm::sequencer::NoteSelection ids;
         for (const auto& note : notes) ids.insert(note.id);
-        quantifierLaPrise(notes);   // D579.1 : avant d'être posées, dans le pas de la prise
+        quantifierLaPrise(notes, project_.tracks[index]);   // D579.1 : avant d'être posées, dans le pas de la prise
         vsm::sequencer::applyRecording(project_.tracks[index], notes, recordMode_,
                                         punchTick_, finTick);
         // D24.2 : LES CONTRÔLEURS DE LA PRISE, sur la même piste, même plage,
@@ -18426,14 +18426,17 @@ void MainComponent::direOrigineDuPlay(const char* origine) {
 
 void MainComponent::startPlaybackForCapture() { lancerLecture("VSM_LECTURE"); }   // D578.1
 
-void MainComponent::quantifierLaPrise(std::vector<Note>& notes) {
+void MainComponent::quantifierLaPrise(std::vector<Note>& notes, const Track& piste) {
     // D579.1 : LA quantification du logiciel — la grille, le swing, la zone et le rayon du piano roll, à 100 %, comme
     // « Quantifier la dernière prise » ; sans pas à elle : la prise a ouvert le sien, un Ctrl+Z défait les deux.
+    // D624.1 : ET LA GRILLE DU RANG, lue sur la piste qui REÇOIT la prise — « Quantifier la dernière prise » la suivait
+    // depuis D622 (elle passe par le piano roll), celle-ci non : deux gestes du même nom, deux prises différentes.
     if (!quantifierChaquePrise_ || notes.empty()) return;
-    quantizeNotes(notes, pianoRoll_.quantizeSettings(1.0f, false, true), project_.ticksPerQuarterNote);
+    const size_t auRang = quantizeNotesByRow(notes, pianoRoll_.quantizeSettings(1.0f, false, true),
+                                             project_.ticksPerQuarterNote, piste.drumGrid);
     std::fputs(("VSM_QUANTIFIER_PRISE : " + std::to_string(notes.size()) + " note(s) quantifi\xc3\xa9" "e(s), grille de "
                 + std::to_string(gridResolutionToTicks(pianoRoll_.gridResolution(), project_.ticksPerQuarterNote))
-                + " ticks\n").c_str(), stderr);
+                + " ticks, " + std::to_string(auRang) + " au rang\n").c_str(), stderr);
 }
 
 void MainComponent::armerParLaRegle(size_t piste) {

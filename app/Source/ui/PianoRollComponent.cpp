@@ -1136,27 +1136,9 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
                    "refus\xc3\xa9""e (piste verrouill\xc3\xa9""e ?)\n", stderr);
         return;
     }
-    // D622.1 : CHAQUE FRAPPE SUR LA GRILLE DE SON RANG — les rangs que la carte règle, chacun à part ; le reste, ensemble, à
-    // la grille de la barre (un seul appel, comme avant, quand la piste n'a pas de grille par rang).
-    if (track->drumGrid.empty()) {
-        quantizeNotes(selected, settings, project_->ticksPerQuarterNote);
-    } else {
-        std::map<uint8_t, std::vector<Note>> parRang;
-        std::vector<Note> globales;
-        for (const auto& n : selected) {
-            bool propre = false;
-            grilleDuRang(n.number, &propre);
-            (propre ? parRang[n.number] : globales).push_back(n);
-        }
-        quantizeNotes(globales, settings, project_->ticksPerQuarterNote);
-        selected = std::move(globales);
-        for (auto& [rang, notes] : parRang) {
-            QuantizeSettings duRang = settings;
-            duRang.grid = grilleDuRang(rang);
-            quantizeNotes(notes, duRang, project_->ticksPerQuarterNote);
-            selected.insert(selected.end(), notes.begin(), notes.end());
-        }
-    }
+    // D622.1, D624.1 : CHAQUE FRAPPE SUR LA GRILLE DE SON RANG — la répartition est au cœur (`quantizeNotesByRow`), la même
+    // que pour une prise ; une piste sans grille par rang : `quantizeNotes`, comme avant.
+    quantizeNotesByRow(selected, settings, project_->ticksPerQuarterNote, track->drumGrid);
     for (auto& n : track->notes) {
         auto it = std::find_if(selected.begin(), selected.end(),
                                 [&n](const Note& q) { return q.id == n.id; });

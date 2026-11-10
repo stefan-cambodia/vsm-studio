@@ -48915,3 +48915,35 @@ des multiples de 240 ;
 neuf ET sur le témoin (le geste n'a pas changé : c'est ce qui dit que les deux gestes s'accordent enfin) ;
 (d) Ctrl+Z après la prise de (b) : 0 note, en un pas ; le libellé du menu, en français et en anglais ;
 (e) `grille-par-rang`, `prise-quantifiee-punch`, `quantifier`, `annuler-quantification` verts ; les suites ; la série.
+
+### Phase D624 — MESURÉE, la série à jouer (10/11/2026, 18 h 31 à l'horloge)
+
+*Écrite avant son code à 16 h 37 (commitée avant toute compilation) ; le code écrit pendant la série de D623, compilé
+après elle. Le test du cœur joué rouge en retirant l'affectation de la grille du rang — tombé sur l'attendu (« 120 != 0 »,
+la première frappe de 38). Le banc `tools/prise-par-rang.sh` (9 contrôles) ; le témoin : le binaire de D623.*
+
+**L'HYPOTHÈSE TIENT** — sur le binaire de D623, « Quantifier chaque prise » rend les frappes de 38 à **[240 600 960 1200]**
+(600 n'est pas un multiple de 240), et « Quantifier la dernière prise » rend la même prise à **[240 480 960 1200]** : les
+deux gestes ne disaient pas la même chose.
+
+| # | attendu | mesure (binaire neuf) | témoin | tenu |
+|---|---|---|---|---|
+| D624 (a) | 38 @0, 36 @120, 38 @480, 40 @240, l'ordre gardé ; carte vide et libellé illisible → `quantizeNotes` ; le déplacement cumulé | les quatre débuts, l'ordre, la durée (60), `quantizeShiftStart` ; carte vide et « 1/7 » : note pour note — cœur **588 / 588** (1 neuf) | l'affectation retirée : **587 / 588**, « 120 != 0 » | **oui** |
+| D624 (b) | chaque prise : quatre 38 sur 240, distinctes ; deux 36 sur 120 ; « 4 au rang » | 38 **[240 480 960 1200]** ; 36 **[360 1080]** ; « 6 note(s) quantifiée(s), grille de 120 ticks, 4 au rang » | D623 : 38 **[240 600 960 1200]** ; sans quantification : 38 **[242 585 918 1251]** | **oui** |
+| D624 (c) | la dernière prise : quatre 38 sur 240, binaire neuf ET témoin | **[240 480 960 1200]** | D623 : **[240 480 960 1200]** | **oui** |
+| D624 (d) | Ctrl+Z : 0 note ; le libellé dans les deux langues | 38 et 36 : aucune note à l'export ; 2 libellés en français, 2 en anglais | — | **oui** |
+| D624 (e) | les voisins ; les suites | `grille-par-rang`, `prise-quantifiee-punch`, `quantifier`, `annuler-quantification` verts ; interchange **373** ; audio **1 385** ; gardes vertes ; préférences de l'utilisateur identiques | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Les écarts joués ne sont pas les 336 ticks de l'attendu** : la prise brute rend 343, 333 et 333 ticks d'écart (les
+  gestes du banc partent à la milliseconde près, pas au tick). Le raisonnement écrit — un écart arrondi à 360 parmi
+  trois — tient à ces écarts aussi ; il ne tiendrait plus si la gigue dépassait une trentaine de ticks.
+- **Les trois courses ne sont pas la MÊME prise** : chaque course rejoue les six frappes. Que « chaque prise » et « la
+  dernière prise » rendent les mêmes quatre ticks sur le binaire neuf dit que les gestes s'accordent sur ce jeu-là, à
+  la gigue près — pas une identité prouvée note pour note ; celle-là est au cœur, (a).
+- **La passe empilée** (une prise en cycle, `pushTake`) appelle la même fonction avec la piste qui la reçoit ; elle est
+  compilée, **pas mesurée** par le banc — qui ne joue que la prise simple.
+- **La série n'est pas jouée** : la batterie est à 19 % après celle de D623 (108 min), et ce poste ne charge qu'en
+  veille. La phase touche `app/Source/` : elle n'est FAITE qu'après `./verifier.sh --bancs` (220 bancs).
+- **Remis, nommés** : la passe empilée au banc ; le glissé d'une sélection sur plusieurs rangs ; la longueur d'insertion
+  distincte de la grille ; les rangs dans l'ordre de la carte.

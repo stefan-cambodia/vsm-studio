@@ -1644,8 +1644,8 @@ const Paire kAnglais[] = {
       "Quantise (50%)" },
     { "Quantifier début ET fin",
       "Quantise start AND end" },
-    { "Quantifier la dernière prise (grille du piano roll)",
-      "Quantise the last take (piano roll grid)" },
+    { "Quantifier la dernière prise (grille du piano roll, ou du rang)",
+      "Quantise the last take (piano roll grid, or the row's)" },
     { "Quinte (power)",
       "Fifth (power)" },
     // D193 : les trois chaînes de la question de fermeture (D175), restées
@@ -3675,8 +3675,8 @@ const Paire kAnglais[] = {
       "(the clips of the selected tracks under the playhead, whenever it is set; not during playback)" },
     { "Quantifier chaque prise",   // D579.1
       "Quantise each take" },
-    { "(les prises MIDI, à la grille du piano roll ; une prise audio ne se quantifie pas)",
-      "(MIDI takes, to the piano roll grid; an audio take is not quantised)" },
+    { "(les prises MIDI, à la grille du piano roll ou à celle du rang ; une prise audio ne se quantifie pas)",
+      "(MIDI takes, to the piano roll grid or the row's; an audio take is not quantised)" },
     { "L'armement suit la piste choisie",   // D579.2
       "Arming follows the selected track" },
     { "Arrêter après la sortie de punch",   // D579.3

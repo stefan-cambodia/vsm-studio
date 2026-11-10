@@ -125,6 +125,31 @@ void quantizeNotes(std::vector<Note>& notes, const QuantizeSettings& settings, u
     }
 }
 
+size_t quantizeNotesByRow(std::vector<Note>& notes, const QuantizeSettings& settings, uint16_t ppq,
+                          const std::map<uint8_t, std::string>& rowGrids) {
+    // D624.1 : la répartition par rang vivait dans le piano roll (D622), hors de portée de la prise et d'un test.
+    if (rowGrids.empty()) {
+        quantizeNotes(notes, settings, ppq);
+        return 0;
+    }
+    size_t auRang = 0;
+    std::vector<Note> une(1);
+    for (auto& note : notes) {
+        QuantizeSettings siens = settings;
+        if (const auto ici = rowGrids.find(note.number); ici != rowGrids.end()) {
+            GridResolution grille;
+            if (gridResolutionFromLabel(ici->second, grille)) {   // un libellé illisible vaut « globale »
+                siens.grid = grille;
+                ++auRang;
+            }
+        }
+        une[0] = note;   // `quantizeNotes` traite chaque note pour elle-même : une à la fois, l'ordre du vecteur gardé
+        quantizeNotes(une, siens, ppq);
+        note = une[0];
+    }
+    return auRang;
+}
+
 void humanizeNotes(std::vector<Note>& notes, const HumanizeSettings& settings) {
     for (auto& note : notes) {
         uint64_t seed = vsm::util::deriveSeed(settings.seed, note.id);

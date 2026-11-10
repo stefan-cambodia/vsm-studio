@@ -2271,7 +2271,7 @@ private:
     vsm::midi::Tick arretApresPunchVu_ = -1;
     /// D579.1 : les notes d'une prise quantifiées comme par « Quantifier la dernière prise » — sans ouvrir de pas : la
     /// prise a le sien.
-    void quantifierLaPrise(std::vector<vsm::sequencer::Note>& notes);
+    void quantifierLaPrise(std::vector<vsm::sequencer::Note>& notes, const vsm::sequencer::Track& piste);
     /// D579.2 : la piste choisie armée par la règle, celle que la règle avait armée désarmée.
     void armerParLaRegle(size_t piste);
     /// D578.1 : la tête que l'utilisateur avait posée quand le pré-roll a fait partir la lecture plus tôt ; le front

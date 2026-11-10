@@ -341,3 +341,37 @@ VSM_TEST(a_grid_reads_and_writes_its_label_d622) {
         VSM_ASSERT(gridResolutionLabel(lue) == libelle);
     }
 }
+
+// D624.1 — CHAQUE NOTE À LA GRILLE DE SON RANG, AU CŒUR. L'attendu écrit avant le code (ROADMAP-daw, D624, (a)) :
+// [38 @70, 36 @70, 38 @250, 40 @250], la carte {38 → « 1/4 »}, la grille donnée 1/16 → 38 @0, 36 @120, 38 @480, 40 @240,
+// l'ordre du vecteur gardé ; une carte vide → `quantizeNotes`, note pour note ; un libellé illisible → la grille donnée ;
+// le déplacement cumulé tenu.
+VSM_TEST(each_note_quantizes_to_the_grid_of_its_row_d624) {
+    const std::vector<Note> jeu = { Note{70, 130, 9, 38, 100, 64, 1}, Note{70, 130, 9, 36, 100, 64, 2},
+                                    Note{250, 310, 9, 38, 100, 64, 3}, Note{250, 310, 9, 40, 100, 64, 4} };
+    QuantizeSettings settings;
+    settings.grid = {NoteValue::Sixteenth, false, false};
+
+    auto notes = jeu;
+    VSM_ASSERT_EQ(quantizeNotesByRow(notes, settings, 480, {{38, "1/4"}}), static_cast<size_t>(2));
+    const Tick attendus[] = {0, 120, 480, 240};
+    for (size_t i = 0; i < notes.size(); ++i) {
+        VSM_ASSERT_EQ(notes[i].id, jeu[i].id);                       // l'ordre du vecteur
+        VSM_ASSERT_EQ(notes[i].startTick, attendus[i]);
+        VSM_ASSERT_EQ(notes[i].durationTicks(), static_cast<Tick>(60));   // la durée gardée
+        VSM_ASSERT_EQ(notes[i].quantizeShiftStart, attendus[i] - jeu[i].startTick);   // pour « Annuler la quantification »
+    }
+
+    // Une carte vide, et un libellé illisible : `quantizeNotes`, note pour note.
+    auto temoin = jeu;
+    quantizeNotes(temoin, settings, 480);
+    for (const std::map<uint8_t, std::string>& carte :
+         {std::map<uint8_t, std::string>{}, std::map<uint8_t, std::string>{{38, "1/7"}}}) {
+        auto autres = jeu;
+        VSM_ASSERT_EQ(quantizeNotesByRow(autres, settings, 480, carte), static_cast<size_t>(0));
+        for (size_t i = 0; i < autres.size(); ++i) {
+            VSM_ASSERT_EQ(autres[i].startTick, temoin[i].startTick);
+            VSM_ASSERT_EQ(autres[i].endTick, temoin[i].endTick);
+        }
+    }
+}
