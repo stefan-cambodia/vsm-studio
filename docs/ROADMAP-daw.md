@@ -48861,6 +48861,12 @@ affirmation, celle de l'attendu (ligne 527 : « 480on38 960off38 960on38 1080off
   l'écrivain est le passage obligé de tous. La phase ne touche pas `app/Source/`, mais la série se joue quand même —
   c'est elle qui dirait qu'un banc appariait ses notes sur l'ancien ordre.
 
+**LA SÉRIE, JOUÉE (10/11, 16 h 35 → 18 h 23 ; écrit à 18 h 23 à l'horloge) — D623 EST FAITE.** `./verifier.sh --bancs` :
+**219 bancs verts en 108 min**, aucun rouge, écran allumé et session déverrouillée sous `kde-inhibit --screenSaver`
+(l'autorisation du 30/10), **0** veille au journal du noyau ; la batterie de 64 à 22 % ; préférences de l'utilisateur
+identiques ; le compositeur de 363 à 514 Mo (sommet 1 103). Aucun banc n'appariait donc ses notes sur l'ancien ordre :
+la réserve de (a) — « à l'octet » non prouvé par le test — est couverte par eux, pas levée par une comparaison d'octets.
+
 ### Phase D624 — un quatre-vingt-quatrième audit : la prise quantifiée suit la grille du rang, par la même fonction que « Quantifier » (10/11/2026)
 
 *Écrite le 10/11 à 16 h 37 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D623
