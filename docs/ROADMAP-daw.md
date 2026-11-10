@@ -48951,7 +48951,8 @@ deux gestes ne disaient pas la même chose.
 **LA SÉRIE, JOUÉE (10/11 23 h 50 → 11/11 01 h 43 ; écrit à 01 h 45 à l'horloge) — D624 EST FAITE, UN ROUGE NON REPRODUIT.**
 `./verifier.sh --bancs` : **220 bancs en 113 min, 219 verts, 1 rouge** ; écran allumé sous `kde-inhibit --screenSaver`,
 **0** veille ; gelée quatre minutes (00 h 23 → 00 h 27, `SIGSTOP` puis `SIGCONT` sur le groupe, à la demande de
-l'utilisateur) au milieu de `montage-en-chaine`, sorti vert ; la batterie de 100 à 61 % ; préférences de l'utilisateur
+l'utilisateur) au milieu de `montage-en-chaine`, sorti vert ; la batterie de 100 à 64 % à 01 h 27 (le dernier relevé de la
+série ; 58 % après les trois rejeux — CORRIGÉ : « 61 % » était écrit ici sans avoir été lu) ; préférences de l'utilisateur
 identiques ; `prise-par-rang` vert dans la série.
 - **Le rouge** : `annulation-des-menus`, sur UNE entrée de 298 — « Édition > Sélection > Toutes les notes de même
   hauteur », « un pas SANS changement du morceau (pas : [Délai — deux] ; témoin : []) ». Le pas relevé porte le nom d'un
