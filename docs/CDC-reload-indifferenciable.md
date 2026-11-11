@@ -5179,3 +5179,42 @@ H91 était la faute de l'instrument de RÉFÉRENCE, et le relevé du § 52.2 se 
 1 ou 2 en échec → B bave aussi, les deux bandes de H91 ne se lisent pas, et il faut un troisième instrument. **Dit
 d'avance** : une scène à kick coupé net est plus facile que le réel (un vrai kick a une queue) — elle juge la bavure de
 l'instrument, pas la séparation d'un kick et d'une basse qui se recouvrent.
+
+### 53.1 Verdict de H92 (11/11/2026, écrit à 17 h 01) : 1 et 2 TENUS — l'instrument par filtres est juste ; mais celui de référence l'est AUSSI sur la scène : leur écart sur le morceau reste inexpliqué. H91 se lit, avec cette marge
+
+`reload-h92.json`. Erreur (lu − vérité), dB :
+
+| note | niveau sous la crête du kick | gain vrai | A, spectrogramme 30-150 | B, filtre 30-150 | B, bande propre |
+|---|---|---|---|---|---|
+| 100 Hz | −20 · −40 · −60 | −6 | 0,00 · 0,00 · 0,00 | 0,00 · 0,00 · 0,01 | 0,00 · 0,00 · 0,01 |
+| 100 Hz | −20 · −40 · −60 | −15 | 0,00 · 0,00 · 0,00 | 0,00 · 0,00 · 0,08 | 0,00 · 0,01 · 0,07 |
+| 40 Hz | −20 · −40 · −60 | −6 | 0,00 · 0,00 · 0,00 | 0,00 · 0,00 · 0,01 | 0,00 · 0,01 · **1,10** |
+| 40 Hz | −20 · −40 · −60 | −15 | 0,00 · 0,00 · 0,00 | 0,00 · 0,00 · 0,10 | 0,00 · 0,14 · **5,98** |
+
+1 **tenu** (0,00 dB) ; 2 **tenu** (0,14 dB au pire à −40 dB). 3, relevé : **mon attendu était faux** — l'instrument A ne
+tire pas vers 0 dB, il est exact partout sur cette scène. **La limite de B, trouvée** : à 20-60 Hz, une note 60 dB sous
+le kick est lue avec 1,1 à 6,0 dB d'erreur (le filtre du sub résonne). **Le régime réel, relevé à la suite** pour savoir
+de quel côté de cette limite on est (énergie entre les kicks rapportée à celle aux kicks, instrument B) :
+
+| « Reload » | sub 20-60 Hz | basse 60-150 Hz |
+|---|---|---|
+| original | −14,7 dB | −12,0 dB |
+| rendu H75 | −2,2 dB | −25,9 dB |
+| rendu H88 à 37 Hz | **+1,4 dB** | −23,4 dB |
+
+L'original est à −12 et −15 dB : loin au-dessus du régime où B se trompe. **La règle** s'applique sur sa première
+moitié (B est juste) et PAS sur sa seconde (« la faute de l'instrument de référence ») : la scène, plus facile que le
+réel comme écrit d'avance, n'explique pas l'écart de 0,5 à 1,7 dB des deux instruments sur le morceau. **Je lis donc le
+relevé du § 52.2 avec cette marge de 1,7 dB** — et il la dépasse de loin.
+
+**H91, lue** : à 37 Hz, entre les kicks, sub **+16,4 dB**, basse **−11,5 dB** (demandé : ±3). **TENUE.** Et le relevé
+dit plus que l'hypothèse : l'excès de sub entre les kicks est déjà là en H75 (+8,5 dB), avec un kick de 0,05 s qui est
+éteint depuis longtemps ; dans le rendu, le sub d'entre les kicks vaut presque celui des kicks (−2,2 dB ; +1,4 à
+37 Hz) quand il en est à −14,7 dans l'original. **Ce n'est pas une queue de kick : quelque chose TIENT du sub dans le
+rendu de « Reload »**, et le grave que l'original a entre les kicks — plus haut, à 60-150 Hz — y manque de 11 à 15 dB à
+tous les points. H87 et H88 réglaient un kick pour un défaut qui n'est pas le sien ; le sub faux de l'outil (0,91 →
+5,86) était vrai.
+
+**La suite** (H93, à écrire AVANT sa mesure) : la question de H81, côté rendu, sur « Reload » — quelle PISTE porte le
+20-60 Hz entre les kicks (les quatre voix `other`, le `piano` au `vsm.minimoog`, la batterie), piste par piste, sous
+contrôle de somme ; et dans l'original, quel stem porte le 60-150 Hz qui manque.
