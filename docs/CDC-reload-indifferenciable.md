@@ -5901,3 +5901,46 @@ passer le premier kilohertz au-dessus de la coupure, là où le charleston a le 
 sur son témoin, avant toute distance. **Le filtre devient une coupure NETTE** : les composantes de Fourier à 16 kHz et
 au-dessus mises à zéro sur le signal entier — ce que l'encodage de la source a fait, à peu près. Le témoin, l'hypothèse,
 les attendus et la règle du § 63 ne changent pas.
+
+### 63.2 Verdict de H102 (11/11/2026, écrit à 22 h 42) : 2 TENU, 1 en ÉCHEC — la bande explique le NIVEAU de la distance (−35 %), pas le désaccord des juges, qui s'aggrave
+
+`reconstruction/travail/reload-h102.py` (aucun rendu ; `reload-h102.json`). **Témoin du filtre tenu** : la bande
+16-22 kHz abaissée de 48,6 dB, les bandes sous 11 kHz intactes à 0,1 dB.
+
+| mélange de « Reload » | log-mel | distance v2 | v2 bornée à 16 kHz |
+|---|---|---|---|
+| H75 (témoin) | 6,89 | 0,3458 | **0,2257** |
+| H95-A, échantillon | 6,13 | 0,3302 | 0,2207 |
+| H95-B, kick moyen | 6,59 | 0,3387 | 0,2172 |
+| H97 `vsm.drums` 70 · 0,10 | 6,81 | 0,3581 | 0,2227 |
+| H97 `vsm.drums` 70 · 0,20 | 6,82 | 0,3687 | 0,2314 |
+| H97 `vsm.fmdrums` 80 · 0,10 | 7,24 | 0,3319 | 0,2105 |
+| H98 `vsm.fmdrums` 70 · 0,15 · 3 | 7,15 | 0,3390 | **0,2098** |
+| H98 `vsm.fmdrums` 70 · 0,20 · 1,5 | 6,92 | 0,3472 | 0,2217 |
+| H98 `vsm.fmdrums` 70 · 0,20 · 3 | 7,17 | 0,3411 | 0,2115 |
+| H99 palier, choisi | 7,13 | 0,3245 | 0,2163 |
+| H99 palier, 2e | 7,11 | 0,3205 | 0,2130 |
+| H99 palier, 3e | 6,85 | 0,3227 | 0,2151 |
+
+| # | verdict |
+|---|---|
+| 0 | **tenu** |
+| 1 | **en ÉCHEC** : sur 50 paires tranchées (66 en tout), 30 discordantes avant le passe-bas, **41 après** (dont 11 de plus de 0,5 dB au log-mel, contre 6) |
+| 2 | **tenu** : 0,3458 → 0,2257, soit −34,7 % — et de 33 à 38 % sur les douze |
+
+**La règle** : « 2 tenu, 1 non → la bande explique le niveau de la distance, pas le désaccord, qui reste à instruire ».
+**Ce que j'avais laissé entendre aux §§ 61.1 et 62.2 est démenti** : le désaccord des juges sur l'ordre des kicks n'est
+PAS un artefact de la bande au-dessus de 16 kHz. Bornée à la bande de la source, la distance de la chaîne préfère
+toujours les kicks de `vsm.fmdrums` et les paliers de H99 (0,2098 à 0,2163) au TR-808 de H70 (0,2257), que le log-mel
+leur préfère (6,89 contre 7,11 à 7,24) ; et elle ne met plus l'échantillon de H95-A en tête. Les douze mélanges tiennent
+alors dans 10 % de distance (0,2098 à 0,2314).
+
+**Ce qui est établi, et qui vaut d'être porté à `ROADMAP-fusion` comme une question** (pas décidé ici) : sur ce
+morceau, un tiers de la distance v2 de la chaîne (0,35 → 0,23) vient d'une bande que le fichier cible ne contient pas.
+Une course qui optimise cette distance y dépense son budget à assombrir le rendu.
+
+**Rien n'entre. Où en est le kick de « Reload »** après H86-H102 : son timbre est mesuré (§ 55.2) ; aucun réglage
+modélisé ne le rend ; les deux juges ne s'accordent sur aucun candidat, bande bornée ou non. **La suite** (H103, à
+écrire AVANT sa mesure) : la décomposition de H100 refaite sur les mélanges bornés à 16 kHz — quel terme porte
+maintenant le désaccord — ; c'est la dernière mesure sans rendu qui reste sur cette question, après quoi elle se
+tranche par l'écoute ou par des perturbations connues (§ 0), plus par des essais de kick.
