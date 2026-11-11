@@ -5097,3 +5097,20 @@ noté, non fait.
 **La suite** (H91, à écrire AVANT sa mesure) : ce que H89 voulait lire, lu proprement — les deux bandes graves (20-60 ·
 60-150 Hz) aux kicks et aux charlestons d'entre les kicks **du projet** (les populations de H81, qui ont tenu leurs
 contrôles), mélange rendu contre original, sur les points de H75, H87 et H88.
+
+## 52. H91 — le grave de « Reload » en deux bandes, aux frappes DU PROJET (écrite AVANT son instrument et sa mesure, 11/11/2026, 16 h 38)
+
+Aucun rendu. `analyse/mesure_h91.py` (`energie_fenetres` : passe-bande, énergie dans les fenêtres de 10 ms avant à
+100 ms après chaque instant), son test, `reconstruction/travail/reload-h91.py`. Populations de H86 : les 555 kicks, les
+1 613 charlestons d'entre les kicks. Bandes : sub 20-60, basse 60-150, et leur réunion 20-150 Hz. Mélange rendu contre
+original, sur H75 et les cinq accords de H88 (30 à 45 Hz, 0,10 s sans tenue).
+
+**Le recoupement, avant toute lecture** : la bande 20-150 Hz doit retrouver, à 1,5 dB, ce que `mesure_h81` a publié à
+30-150 Hz entre les kicks — H75 −5,7 dB, H88 à 37 Hz +0,3 dB. L'un des deux manqué : rien ne se lit.
+
+**L'HYPOTHÈSE H91** (celle de H89) : à 37 Hz, entre les kicks, le sub est en EXCÈS d'au moins 3 dB et la basse en
+DÉFAUT d'au moins 3 dB — la bande large les additionnait. **Échec** : même signe, ou l'une à moins de 1,5 dB.
+**La règle** : tenue → le grave d'entre les kicks de « Reload » est plus HAUT que la queue d'un kick à 37 Hz, et aucun
+allongement ne le rendra : chercher ce que c'est (un tom, une seconde grosse caisse accordée plus haut) ; échec → la
+bande large ne cachait rien, et le sub faux de l'outil vient d'ailleurs que d'entre les kicks (aux kicks mêmes, ou des
+sections sans charleston) — le balayage le dira.
