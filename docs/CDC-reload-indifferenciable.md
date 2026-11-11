@@ -5661,3 +5661,16 @@ porter dans `master` par sa D-phase (`CDC-nouvelle-machine.md` : panneau, bancs,
 « B4 » ; 1 en échec → un palier ne suffit pas à faire ce profil — le réglage reste dans l'arbre à part et n'entre pas ;
 sinon au plus sévère. **Dit d'avance** : le palier sonne à l'accord du kick, une sinusoïde écrêtée — le bas-médium de
 l'original (−17 dB sous sa tête, tenu) n'est pas dans ce modèle ; un morceau.
+
+### 60.1 Le code de H99 et ses tests, AVANT toute mesure d'un morceau (11/11/2026, 19 h 20)
+
+Branche `reload-h70`, un commit, poussé (« Kick Sustain » et « Kick Sustain Decay » au TR-808 : la voix, la liste des
+réglages, le descripteur — `drum.kick.sustain`, `drum.kick.sustainDecay` —, le panneau, les tests). Moteur de mesure
+rebâti : `8163073d` (l'ancien, `1eff3b6d`, est gardé à côté). **Un attendu du § 60 était FAUX, et c'est mon calcul** :
+j'y écrivais le palier « à −10,5 dB ± 1,5 à 150-160 ms » pour un réglage de 0,3 — j'avais oublié que le palier décroît
+lui aussi (0,3 × e^(−0,15/0,5) = 0,222, soit **−13,1 dB**), et le premier test, écrit sur une autre erreur (l'écrêtage
+porte sur le sinus, pas sur l'enveloppe), est tombé rouge sur un code juste : crêtes relevées 0,468 · 0,105 · 0,086, soit
+−13,0 dB puis −1,7 dB. Le test attend désormais −13,1 ± 1,5 dB, moins de 4 dB de chute sur les 100 ms suivantes, et
+moins de −25 dB sans palier ; à 0, le rendu est identique au bit près, quelle que soit la décroissance lente. **Vu
+rouge sur un mutant** (le palier ôté du rendu). Cœur : 1 342 verts ; panneaux : 11 verts. Le témoin au bit près sur un
+projet entier (attendu 0) est la première chose que fait `reconstruction/travail/reload-h99.py`.
