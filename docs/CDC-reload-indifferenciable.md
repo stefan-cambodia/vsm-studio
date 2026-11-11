@@ -4914,3 +4914,35 @@ relevé par H69 (§ 30.2), écrit d'avance au § 48.1 ; le balayage dit s'il est
 relevés — la longueur par `ecart_tf`, l'accord par H69 — à rejouer sur « B4 » puis un troisième morceau ; sinon au plus
 sévère. **Dit d'avance** : si le meilleur sub n'est pas à 37 Hz, H69 ne donne pas l'accord non plus, et il se lira au
 balayage du sub lui-même.
+
+### 49.1 Verdict de H88 (11/11/2026, écrit à 13 h 23) : NON TENUE — à 37 Hz le grave d'entre les kicks est à l'original (+0,3 dB) et le log-mel le meilleur de « Reload » (6,75), mais le sub reste 5 dB trop loin ; il n'a pas de sommet dans le balayage
+
+`reconstruction/travail/reload-h88.py` (rejouable ; `reload-h88/h88.json`). Le témoin (30 Hz) rejoue H87 au centième.
+
+| accord (0,10 s, sans tenue) | f\* | log-mel | \|médian\| sub · basse · bas-médium | aigus | rendu / original 30-150 Hz : aux kicks · entre | 150-500 Hz aux kicks |
+|---|---|---|---|---|---|---|
+| H75 : 37 Hz · 0,05 s · tenue 0,04 | 0,5822 | 6,89 | **0,91** · 1,75 · 1,07 | 1,97 | −1,2 · −5,7 | +1,4 |
+| 30 Hz | 0,6885 | 6,84 | 7,63 · 1,71 · 1,66 | 1,86 | −0,2 · −1,9 | −0,6 |
+| 33 Hz | 0,7482 | 6,78 | 6,87 · 1,83 · **0,71** | 1,70 | −0,2 · −0,8 | +1,4 |
+| **37 Hz (jugé)** | 0,8133 | 6,75 | 5,86 · 2,12 · 1,22 | 1,24 | −0,2 · **+0,3** | +2,9 |
+| 41 Hz | 0,8826 | **6,74** | 4,79 · 2,30 · 1,61 | 1,11 | −0,2 · +1,2 | +4,2 |
+| 45 Hz | 0,9602 | **6,74** | 3,59 · 2,54 · 2,13 | **0,93** | −0,2 · +2,1 | +5,4 |
+
+| # | verdict, à 37 Hz |
+|---|---|
+| 0 | **tenu** |
+| 1 | **en ÉCHEC** : sub 5,86, soit 4,95 dB plus loin que H75 |
+| 2 | **tenu** : basse +0,37, bas-médium +0,15 |
+| 3 | **tenu** : −0,2 dB aux kicks, +0,3 entre eux |
+| 4 | **tenu** : 6,75 |
+
+**Rien n'entre.** Le kick de « Reload » n'est pas réglé, et H69 ne donne pas l'accord au sens du sub : celui-ci décroît
+d'un bout à l'autre du balayage (7,63 → 3,59) sans sommet, et reste loin de H75 à tous les points. **Deux juges du même
+grave se contredisent** : la mesure par fenêtres dit le 30-150 Hz à l'original aux kicks et entre eux (à 37 Hz), le sub
+de l'outil du § 0 le dit 5 à 6 dB faux. **Une piste, non mesurée** : la bande 30-150 Hz est trop large — la queue d'un
+kick de TR-808 est un sinus pur à son accord (tout dans le sub), et le grave que l'original porte entre les kicks peut
+être plus haut dans la bande ; à énergie égale sur 30-150 Hz, la répartition serait fausse. C'est exactement ce qu'une
+mesure en DEUX bandes (30-60 · 60-150 Hz) dirait.
+
+**La suite** (inchangée, précisée) : la mesure du grave aux frappes et entre elles entre dans l'outil du § 0, en deux
+bandes graves et non une — puis H88 se relit avec elle avant tout autre réglage de kick.
