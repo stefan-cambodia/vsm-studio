@@ -5492,3 +5492,47 @@ pèse (7 dB sur une tranche → 2,0 dB d'écart). **Vu rouge sur trois mutants**
 lue deux fois ; les écarts sans valeur absolue). `ruff`, `mypy` propres. `reconstruction/travail/reload-h97.py` : la
 fonction `rendre` de H87, plus la pose d'une autre machine sur la piste du kick (accord et décroissance seuls, le
 reste à l'usine).
+
+### 58.2 Verdict de H97 (11/11/2026, écrit à 18 h 08) : NON TENUE — `vsm.drums` à 70 Hz · 0,10 s a presque le profil (3,9 dB, le kick de H70 : 17,4) et remet le grave d'entre les kicks à 3 dB de l'original, mais le bas-médium casse et la distance de la chaîne monte
+
+`reconstruction/travail/reload-h97.py` (rejouable ; `reload-h97/h97.json`). Le témoin rend 6,89. **La table entière**,
+écart au profil de l'original, dB (décroissances dans l'ordre du § 58) :
+
+| machine | accord bas | accord moyen | accord haut |
+|---|---|---|---|
+| `vsm.tr808` (55 · 70 · 90 Hz) | 14,7 · 18,1 · 21,2 | 9,8 · 14,3 · 14,0 | 16,8 · 19,2 · 21,3 |
+| `vsm.tr909` (55 · 70 · 90 Hz) | 15,5 · 15,8 · 15,9 | 9,9 · 12,9 · 13,0 | 13,9 · 16,2 · 17,1 |
+| `vsm.fmdrums` (55 · 80 · 110 Hz) | 9,9 · 11,0 · 13,4 | 6,4 · 6,8 · 9,4 | 10,7 · 8,3 · 10,2 |
+| `vsm.drums` (52 · 70 · 90 Hz) | 16,4 · 15,4 · 14,1 | **3,9** · 5,2 · 6,5 | 14,0 · 12,7 · 12,5 |
+
+Le kick de H70 (TR-808, 37 Hz · 0,05 s · tenue 0,04) : 17,4.
+
+| kick de « Reload » | profil | f\* | log-mel | distance v2 | \|médian\| sub · basse · bas-médium | aigus | rendu / original AUX kicks : sub · basse | ENTRE : sub · basse |
+|---|---|---|---|---|---|---|---|---|
+| TR-808 de H70 (H75, témoin) | 17,4 | 0,5822 | 6,89 | 0,3458 | 0,91 · 1,75 · 1,07 | 1,97 | −4,0 · −0,9 | +8,5 · −14,8 |
+| **`vsm.drums` 70 Hz · 0,10 s (choisi)** | 3,9 | 1,0993 | 6,81 | 0,3581 | 1,66 · 2,08 · **2,64** | 2,28 | −1,4 · 0,0 | **−3,0 · −2,5** |
+| `vsm.drums` 70 Hz · 0,20 s | 5,2 | 0,8934 | 6,82 | 0,3687 | 2,06 · 2,35 · 3,18 | 1,90 | −2,1 · −0,1 | −0,6 · +2,4 |
+| `vsm.fmdrums` 80 Hz · 0,10 s | 6,4 | 1,3643 | 7,24 | **0,3319** | 6,16 · 1,93 · 0,64 | 1,05 | −3,4 · +0,1 | −5,4 · +1,8 |
+| (échantillon de la chaîne, H95-A — non retenu) | | 0,9656 | 6,13 | 0,3302 | 1,08 · 1,44 · 0,72 | 2,69 | −2,6 · 0,0 | +6,6 · −1,6 |
+
+| # | verdict, au réglage choisi |
+|---|---|
+| 0 | **tenu** ; le kick de H70 est bien parmi les plus loin de la table (17,4) |
+| 1 | **entre les deux** : 3,9 dB (réussite à 3, échec à 6) |
+| 2 | **tenu, à la limite** : −3,0 · −2,5 dB entre les kicks — le premier kick MODÉLISÉ qui y tient les deux bandes |
+| 3 | **tenu** : −1,4 · 0,0 dB |
+| 4 | **en ÉCHEC** : bas-médium 2,64 (+1,57 sur H75) ; sub 1,66 (+0,75) |
+| 5 | **tenu** : 6,81 |
+
+**Rien n'entre.** Ce que la table mesure, sans plus : (a) accordé haut, un kick du parc approche le profil de
+l'original à 3,9 dB là où celui qu'on réglait depuis H67 en était à 17,4 — l'accord était la variable que H87-H88
+n'avaient pas balayée assez haut ; (b) c'est la batterie ACOUSTIQUE (`vsm.drums`), pas une boîte à rythmes, qui s'en
+approche le plus ; (c) le bas-médium se dégrade avec elle (150-500 Hz : le profil n'y lit rien, c'était dit d'avance) ;
+(d) **les juges se contredisent sur l'ordre** : au log-mel `vsm.drums` gagne (6,81) et `vsm.fmdrums` perd (7,24) ; à
+la distance v2 de la chaîne c'est l'inverse (0,3581, PIRE que H75, contre 0,3319, meilleur que H75 et à 0,5 % de
+l'échantillon). Aucun des trois points n'est meilleur que H75 aux deux.
+
+**La suite** (H98, à écrire AVANT sa mesure) : le profil étendu au bas-médium (une troisième bande, 150-500 Hz — ce
+qui a cassé), et un balayage FIN autour des deux régions trouvées — `vsm.drums` de 60 à 80 Hz, `vsm.fmdrums` de 70 à
+90 Hz —, avec le réglage propre à chacune qui touche le corps (le batteur de l'une, le rapport et l'indice FM de
+l'autre) ; jugé au log-mel ET à la distance de la chaîne, un point n'étant retenu que s'il bat H75 aux deux.
