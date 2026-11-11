@@ -4850,3 +4850,46 @@ c'est la candidate pour une D-phase (le réglage d'un kick dans la chaîne) ; 1 
 critère, et le grave manquant est ailleurs dans la batterie ; sinon au plus sévère. **Dit d'avance** : H84 a montré que
 0,1 dB au critère ne départage pas deux voisins (d'où les trois mélanges) ; le critère ne voit rien au-dessus de
 500 Hz ; `ecart_tf` lit 300 ms — un grave qui dure plus longtemps lui échappe.
+
+### 48.1 Verdict de H87 (11/11/2026, écrit à 13 h 13) : NON TENUE — le relevé désigne bien un kick plus long, le grave d'entre les kicks revient (−5,7 → −1,9 dB), le log-mel est le meilleur de « Reload » (6,84), et le SUB casse de 6,7 dB : l'instrument de H84 ne se transporte pas
+
+`reconstruction/travail/reload-h87.py` (rejouable ; `reload-h87/h87.json`). Le témoin rend 6,89. Frappes retenues : 204
+sur 555 (23 près d'une caisse, 328 près d'un autre kick). **La grille entière** (`ecart_tf`, dB ; tenue 0 · 0,04 · 0,08 s) :
+
+| accord | 0,05 s | 0,10 s | 0,20 s | 0,35 s |
+|---|---|---|---|---|
+| 30 Hz | 6,01 · 5,49 · 5,41 | **4,83** · 4,92 · 5,30 | 5,15 · 5,27 · 5,38 | 5,47 · 5,49 · 5,50 |
+| 37 Hz | 6,57 · **5,78** (H70) · 5,98 | 5,21 · 5,67 · 5,99 | 6,06 · 6,07 · 6,20 | 6,39 · 6,34 · 6,37 |
+| 45 Hz | 6,92 · 6,27 · 6,83 | 6,33 · 6,73 · 6,95 | 7,38 · 7,30 · 7,29 | 7,60 · 7,55 · 7,51 |
+| 55 Hz | 7,19 · 7,19 · 7,48 | 7,27 · 7,42 · 7,60 | 8,09 · 8,00 · 8,00 | 8,40 · 8,36 · 8,32 |
+
+| réglage (accord · décroissance · tenue) | tf | f\* | log-mel | \|médian\| sub · basse · bas-médium | aigus | rendu / original 30-150 Hz : aux kicks · entre |
+|---|---|---|---|---|---|---|
+| H70 : 37 · 0,05 · 0,04 (H75, témoin) | 5,78 | 0,5822 | 6,89 | 0,91 · 1,75 · 1,07 | 1,97 | −1,2 · −5,7 |
+| **30 · 0,10 · 0 (choisi)** | 4,83 | 0,6885 | 6,84 | **7,63** · 1,71 · 1,66 | 1,86 | −0,2 · −1,9 |
+| 30 · 0,10 · 0,04 | 4,92 | 0,4975 | 6,88 | 8,47 · 1,70 · 2,12 | 2,03 | −0,2 · −1,3 |
+| 30 · 0,20 · 0 | 5,15 | 0,5431 | **6,83** | 10,70 · 2,32 · 2,45 | 1,70 | −0,2 · +1,9 |
+
+| # | verdict, au réglage choisi |
+|---|---|
+| 1 | **entre les deux** : 0,95 dB sous le point de H70 |
+| 2 | **entre les deux** : −0,2 dB aux kicks (tenu), −1,9 entre eux (à 0,4 dB du seuil) |
+| 3 | **en ÉCHEC** : sub 7,63, soit 6,72 dB plus loin que H75 |
+| 4 | **tenu** : 6,84 — le meilleur log-mel de « Reload » |
+
+**Rien n'entre, et la règle est claire** : pas de candidate. **Ce que deux morceaux disent ensemble** (H84-H85 et H87) :
+- **`ecart_tf` choisit le bon SENS de longueur** sur les deux (plus court sur « B4 », plus long sur « Reload ») — et le
+  grave d'entre les kicks suit, sur les deux.
+- **Il ne sait pas choisir un ACCORD.** Sur les deux morceaux il tire vers le bas de la grille ; sur « B4 » 35 Hz
+  donnait le meilleur sub (0,49), sur « Reload » 30 Hz le pire (7,63, contre 0,91 à 37 Hz). Sa résolution est de 21 Hz
+  (fenêtre de 46 ms) : 30 et 37 Hz tombent dans la même case. H68 avait déjà dit que l'accord se lit au sub, pas ailleurs.
+- **Le log-mel s'améliore pendant que le sub casse** (6,89 → 6,84 pour +6,7 dB de sub) : quatrième fois dans ce chantier
+  (H78, H80, H82, H87) que le log-mel moyen ne voit pas le grave.
+- **Ce qui se transporte, c'est la MESURE et non le réglage** : le grave du mélange aux kicks et entre les kicks, rendu
+  contre original, sans séparation. Elle a nommé juste sur les deux morceaux (+4,3 dB de trop sur « B4 », −5,7 de moins
+  sur « Reload ») ce que l'outil du § 0, par tranches de 7 s, ne distingue pas.
+
+**La suite**, que ces chiffres commandent avant tout réglage de plus : (a) faire entrer cette mesure dans
+`tools/ecart-a-l-original.py` (une ligne « grave aux frappes / entre les frappes », validée sur perturbations connues
+comme le reste de l'outil — § 0), pour que tout essai à venir la porte ; (b) rejouer H87 avec UNE variable, l'accord, à
+0,10 s sans tenue, jugé par le sub — l'accord relevé par H69 (37 Hz) étant le candidat écrit d'avance.
