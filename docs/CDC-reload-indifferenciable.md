@@ -5831,3 +5831,42 @@ d'un sinus coupé à 20 Hz : les deux premières cases de Welch en gardent une t
 **Vu rouge sur trois mutants** (la bande sans borne haute ; la coupure ôtée ; le refus de Nyquist ôté). **Dit** : le
 centroïde de Welch n'est pas celui de `spectral_features` (moyenne de centroïdes par trame) — les deux nombres ne se
 comparent qu'à eux-mêmes ; l'attendu 4 se lit donc sur l'écart rendu − original du MÊME instrument.
+
+### 62.2 Verdict de H101 (11/11/2026, écrit à 21 h 26) : TENUE — l'original de « Reload » n'a RIEN au-dessus de 16 kHz, le rendu y met son charleston : +57,6 dB, dans une bande qu'aucun juge du § 0 ne lit
+
+`reconstruction/travail/reload-h101.py` (aucun rendu ; `reload-h101.json`).
+
+| bande | mélange rendu (H75) / original | part de la bande dans l'original | dans le rendu | qui la porte dans le rendu (dB sous le mélange) |
+|---|---|---|---|---|
+| 20-150 Hz | −1,5 dB | −3,9 dB | −4,7 dB | kick 0,0 |
+| 150-500 Hz | −0,6 | −4,5 | −4,3 | kick −2,5 · voix 1 −3,7 |
+| 500-2 000 Hz | +0,5 | −9,6 | −8,4 | voix 1 −0,3 |
+| 2-4 kHz | **−3,7** | −16,6 | −19,6 | charleston −0,8 |
+| 4-8 kHz | +0,2 | −13,0 | −12,1 | charleston −0,2 |
+| 8-11 kHz | +0,1 | −15,2 | −14,4 | charleston −0,1 |
+| 11-16 kHz | −0,1 | −16,1 | −15,4 | charleston −0,1 |
+| **16-22 kHz** | **+57,6** | **−78,0** | −19,7 | charleston 0,0 |
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : +57,6 dB à 16-22 kHz (et −0,1 à 11-16 kHz : l'excès est tout entier au-dessus de 16 kHz) |
+| 2 | **tenu** : +0,2 et +0,1 dB à 4-8 et 8-11 kHz |
+| 3 | **tenu** : le charleston est le mélange à 0,1 dB près au-dessus de 4 kHz |
+| 4 | **tenu** : l'écart de centroïde (Welch) passe de 385 Hz (1 181 → 1 566) à 141 Hz une fois les deux coupés à 11 kHz — réduit de 63 % |
+
+**La règle** s'applique : « l'écart de centroïde est du contenu que l'original n'a pas — un fichier source borné ». Ce
+que la table mesure : le fichier `reload-peschi.wav` est coupé net vers 16 kHz (sa bande 16-22 kHz est 78 dB sous son
+total — un encodage avec perte, pas une production) ; le rendu, lui, y laisse sonner le charleston du TR-808 à −19,7 dB.
+De 20 Hz à 16 kHz, à l'échelle du morceau entier, le rendu de H75 est à 1,5 dB de l'original partout sauf à 2-4 kHz
+(−3,7 dB). **Conséquences, telles que les chiffres les portent** :
+- la distance v2 de la chaîne, dont 35 % du poids est fait de centroïde, de largeur de bande et de roll-off, punit
+  « Reload » pour une bande que la cible ne peut pas contenir — et récompense tout ce qui tire le spectre vers le bas ;
+  c'est ce que H97-H100 ont rencontré ;
+- l'outil du § 0 ne le voit pas : ses bandes s'arrêtent à 11 kHz, son log-mel est calculé à 22 050 Hz ;
+- « indifférenciable de l'original » veut dire de CE fichier : ce qu'il n'a pas au-dessus de 16 kHz, le rendu ne
+  devrait pas l'avoir non plus pour lui être comparé.
+
+**Rien n'entre** — et rien ne change dans un juge ici (la métrique est un choix de `ROADMAP-fusion`). **La suite**
+(H102, à écrire AVANT sa mesure) : sans un rendu de plus, borner les douze mélanges de H100 à la bande de la source
+(passe-bas à 16 kHz) et recalculer leur distance v2 — le désaccord avec le log-mel sur l'ordre des kicks disparaît-il ?
+S'il disparaît, la question à porter à la feuille de route est écrite : comparer dans la bande de la cible.
