@@ -4138,3 +4138,60 @@ une bande qui s'ÉLOIGNE, pas seulement une bande qui était proche.
 
 **Ce que la mesure ne dit pas** (écrit d'avance, rappelé) : machines à leurs réglages d'usine ; un seul morceau a
 changé ; le stem porte les fuites de la séparation.
+
+## 40. H79 — les machines de H78 gardées, UNE variable : le niveau du kick, calé sur son grave à ses frappes ; et la garde refaite (écrite AVANT son instrument et sa mesure, 11/11/2026, 10 h 04)
+
+**Ce que H78 a appris** (§ 39.2) : sur « B4 », kick, caisse claire et clap au TR-909 donnent le meilleur log-mel du
+morceau (7,37) et un grave faux — le système de H75 donne au kick un facteur de 0,2745, et à ses frappes la batterie
+est à −11,2 dB du stem à 30-150 Hz. **Une variable : le facteur du kick.** Machines (H78), autres facteurs (charleston
+2,0593 · caisse 0,891 · clap 0,365), moteur (`reload-h70`), juge (l'outil du § 0) : inchangés. « Reload » n'est pas
+mesuré : aucune pièce n'y a changé.
+
+**L'instrument, à écrire** (`analyse/mesure_h79.py`, son test, `reconstruction/travail/reload-h79.sh` rejouable) :
+- **Le facteur calé** `f*` : celui qui porte la batterie, aux frappes du kick et à 30-150 Hz (la bande principale du
+  kick), à l'énergie du stem, les autres pièces à leur facteur de H78 —
+  `f*² = (S − Σ_{j≠kick} fⱼ² Eⱼ) / E_kick`. Un numérateur négatif ou nul est un REFUS ; une borne (×¼-×4) atteinte est
+  dite. C'est le calage de H74 (une pièce, sa bande), pour la seule pièce dont H78 a montré le niveau faux.
+- **Le balayage ENTIER**, au stem ET au mélange : le facteur de H78 (0,2745) et +3, +6, +9, +12 dB au-dessus, plus
+  `f*` — six points, chacun sommé (critère de H77, résidu du kick par bande à ses frappes) puis RENDU et jugé. Le
+  balayage dit si `f*` est un bon point ou un point quelconque d'une pente.
+- **La garde refaite** (`bandes_eloignees`) : une bande d'une pièce changée est ÉLOIGNÉE si elle finit à plus de 6 dB du
+  stem ET à plus de 3 dB plus loin qu'en H75 — qu'elle ait été proche ou non. Relevée pour chaque point, et relue sur
+  le choix de H78 (où elle doit nommer le 30-150 Hz du kick : c'est le trou qu'elle ferme).
+
+**L'HYPOTHÈSE H79** : le grave faux de H78 est un NIVEAU, pas un timbre — au facteur `f*`, le log-mel garde le gain de
+H78 et le grave revient au moins où H75 l'avait.
+
+| # | mesure, « B4 », au point `f*` | réussite | échec |
+|---|---|---|---|
+| 1 | log-mel du mélange | ≤ 7,47 (H78 + 0,10) | > 8,32 (le gain sur H75 perdu à 0,10 près) |
+| 2 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H75 (1,48 · 2,29 · 1,73), ou meilleure | l'une pire que H75 de plus de 1,5 dB |
+| 3 | \|médian\| des aigus | ≤ 4,39 (H75 + 0,5) | > 5,39 (H75 + 1,5) |
+| 4 | bandes ÉLOIGNÉES (garde refaite) des trois pièces changées | aucune | une au moins |
+| 5 | le critère au stem range-t-il les six points comme le mélange ? (paires tranchées, règle de § 38) | toutes concordantes | une discordante de plus de 0,5 dB au mélange |
+| 6 | relevés : `f*`, le balayage entier (stem, mélange, bandes), la garde refaite relue sur H78 | — | — |
+
+**La règle de décision** : 1 à 4 tenus → sur « B4 », machine PUIS niveau donnent un point meilleur que H75 sur les deux
+juges — la méthode en deux temps (machine par le log-mel au stem, niveau de la pièce changée par sa bande) est la
+candidate, à rejouer sur un troisième morceau avant toute D-phase ; 1 tenu, 2 ou 3 en échec → le grave ou l'aigu faux
+tient au TIMBRE du 909 et non à son niveau, et le log-mel seul ne suffit pas à choisir une machine : le critère doit
+porter l'équilibre ; 1 en échec → le gain de H78 était celui d'un kick trop bas (un mélange creusé qui ressemble mieux
+au log-mel), et H78 est à relire comme un artefact du juge ; 5 en échec → le critère de H77 ne range pas des points
+qui ne diffèrent que d'un niveau, et ne peut servir à en régler un.
+
+**Ce que la mesure ne pourra PAS dire**, écrit d'avance : un morceau ; un calage sur UNE bande est ce que H74 a montré
+fragile quand le timbre est faux (c'est pourquoi le balayage entier est publié) ; les facteurs des trois autres pièces
+restent ceux d'un système résolu avec le kick à 0,2745 — s'ils en dépendaient, ce n'est pas mesuré ici.
+
+### 40.1 L'instrument de H79, AVANT toute mesure (11/11/2026, 10 h 07)
+
+`analyse/mesure_h79.py` (`facteur_cale`, `rendu_sur_stem`, `bandes_eloignees`) et `analyse/tests/test_mesure_h79.py`,
+cinq tests sur la scène de H74 (gains ×1 · ×2 · ×0,5) : le kick calé, les autres pièces à leur vrai gain, retrouve ×1
+à 5 % près ; un solo deux fois trop fort se cale à la moitié ; un solo dix fois trop bas touche la borne ×4, dite ; des
+autres pièces qui dépassent déjà le stem font un REFUS, une pièce sans facteur aussi ; le résidu à facteurs donnés est
+nul aux vrais gains. **La garde refaite, sur les chiffres mêmes de H78** : l'ancienne (`bandes_cassees`) se tait devant
+−3,54 → −11,19 dB, la neuve nomme « 30-150 ». **Vu rouge sur quatre mutants**, un test chacun : les autres pièces non
+retranchées ; le numérateur négatif non refusé ; la garde redevenue l'ancienne ; la borne non appliquée. `ruff` et
+`mypy` propres. `reconstruction/travail/reload-h79.sh` : les facteurs de H78 relus dans son `choix.json`, six mélanges
+rendus et jugés (le point « +0 dB » REJOUE H78 : il doit rendre 7,37, c'est le témoin de la course), la concordance
+par `mesure_h77.paires`.
