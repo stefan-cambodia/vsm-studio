@@ -4089,3 +4089,33 @@ termes qui lisent la forme (cepstre, enveloppe, contraste) penchent seuls du cô
 sur 50). Lequel des deux juges a raison n'est PAS mesuré : cela se tranche par une perturbation connue (outil du § 0 du
 cahier de « Reload » : un grave ajouté hors des frappes, que l'un doit punir et l'autre récompense), ou par l'écoute —
 et sur plus d'un morceau. **Dit d'avance** : les 66 paires d'un seul morceau ne sont pas indépendantes.
+
+### 11.1 H104 — la question 2 devant un son ÉTRANGER connu : la distance de la chaîne le récompense-t-elle ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 37)
+
+Une perturbation dont la vérité est connue par construction : **une sinusoïde tenue de 700 Hz**, ajoutée tout du long
+au mélange de H75 — aucun morceau ne porte six minutes d'un son pur, tout juge doit la punir. 700 Hz est sous le
+centroïde de l'original (5 021 Hz) et dans une bande où le rendu est déjà à l'original (500-2 000 Hz : +0,5 dB,
+CDC-reload § 62.2) : elle abaisse le centroïde moyen sans rien combler. Aucun rendu
+(`reconstruction/travail/reload-h104.py`) : le rendu de H75, l'original, la coupure nette à 16 kHz de H102 pour la v2,
+le log-mel de l'outil du § 0 (`logmel` de `tools/ecart-a-l-original.py`, mélanges réduits en mono par moyenne).
+
+**Les contrôles, avant toute lecture** — sinon REFUS : (0a) la v2 bornée de H75 recalculée rend 0,2257 (§ 63.2) à
+0,0005 près, et son log-mel 6,89 à 0,01 dB près ; (0b) le centroïde moyen (`spectral_features`) de H75 borné est
+AU-DESSUS de celui de l'original — sinon la sinusoïde n'éprouve pas ce qui est dit ; (0c) ajoutée à l'ORIGINAL lui-même,
+la sinusoïde à −20 dB est vue par les deux juges (v2 au-dessus de 0,01, log-mel au-dessus de 0,10 dB) — un juge qui ne
+la voit pas sur l'original ne dit rien d'elle sur le rendu.
+
+**L'HYPOTHÈSE H104** : sur « Reload », la distance de la chaîne bornée RÉCOMPENSE le son étranger et le log-mel le PUNIT.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | v2 bornée de H75 + sinusoïde à −20 dB (RMS, sous le mélange) | en baisse d'au moins 2 % | en hausse d'au moins 2 % |
+| 2 | log-mel de H75 + sinusoïde à −20 dB | en hausse d'au moins 0,10 dB | en baisse |
+| 3 | relevés : à −30, −20 et −10 dB, la v2 bornée, ses sept termes pondérés, le log-mel ; le centroïde de chaque mélange | — | — |
+
+**La règle** : 1 et 2 tenus → sur ce morceau, là où les juges se contredisent, le log-mel est celui qui s'accorde à une
+vérité connue, et la v2 récompense ce qui abaisse son centroïde quoi que ce soit : la question 2 a sa première mesure ;
+elle se répète sur d'AUTRES morceaux avant qu'une métrique ne change ici. 1 en échec → la v2 n'est pas aveugle à un son
+étranger, et le désaccord sur les kicks n'est pas ce défaut-là : la question 2 reste ouverte. 2 en échec → le log-mel
+ne voit pas un son pur à −20 dB, et ne départage rien. **Dit d'avance** : un morceau, une famille de perturbation ; une
+sinusoïde n'est pas un kick — elle éprouve le juge, pas les candidats de H86-H99.
