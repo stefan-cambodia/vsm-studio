@@ -4383,3 +4383,63 @@ qui en tient lieu. Si c'est cela, le kick long de H79 ne ressemble pas au kick d
 trop faible (basse à −1,3 dB, sub en défaut dès que le kick raccourcit). **La suite** (H81, à écrire AVANT sa mesure) :
 où est le grave d'entre les kicks dans l'original — stem par stem — et qui le porte dans le rendu, piste par piste ;
 aucune machine ne se règle avant.
+
+## 42. H81 — le grave d'entre les kicks : où il est dans l'original, stem par stem, et qui le porte dans le rendu, piste par piste (écrite AVANT son instrument et sa mesure, 11/11/2026, 10 h 30)
+
+**Ce que H80 a appris** (§ 41.2) : aux charlestons d'entre les kicks, le stem de batterie veut un kick de 0,05 à
+0,08 s ; le mélange, lui, perd alors 6 à 11 dB de sub. Les deux juges ne peuvent avoir raison ensemble que si le grave
+d'entre les kicks de l'original est AILLEURS que dans sa batterie — et que, dans le rendu, c'est la queue du kick qui en
+tient lieu. Aucun rendu de machine ici : une mesure de répartition.
+
+**L'instrument, à écrire** (`analyse/mesure_h81.py`, son test, `reconstruction/travail/reload-h81.sh` rejouable) :
+l'énergie moyenne par fenêtre (10 ms avant, 100 ms après — celles de H74) à 30-150 Hz et à 150-500 Hz, sur DEUX
+populations dites et comptées — les frappes du kick (le témoin : là, c'est le kick qui doit porter le grave) et les
+frappes du charleston à 100 ms au moins de tout kick (`mesure_h80.frappes_hors`, 855 sur 892) —, pour :
+- **l'original** : le mélange, et ses quatre stems (`drums`, `bass`, `other`, `vocals`) ;
+- **le rendu au point de H79** (kick du 909 à 0,32 s, f\* 0,9952 : `reload-h79/b4/essai-0.9952.wav`) : le mélange, la
+  batterie (la somme des solos à leurs facteurs, contrôlée en H78), et les pistes `bass`, `guitar`, `other`, rendues
+  seules (trois rendus, moteur `reload-h70`).
+- **Deux contrôles avant toute lecture** : la somme des quatre stems doit rendre le mélange original, et la somme de la
+  batterie et des trois pistes le mélange rendu, à 1 dB près dans chaque bande et chaque population. Sinon REFUS — les
+  parts ne s'additionnent pas et aucune ne se lit.
+
+**L'HYPOTHÈSE H81** : entre les kicks, le grave de l'original est porté par sa BASSE ; le rendu a la basse trop faible
+à cet endroit, et sa batterie y tient lieu de basse.
+
+| # | mesure, à 30-150 Hz, aux charlestons d'entre les kicks | réussite | échec |
+|---|---|---|---|
+| 0 | les deux contrôles de somme | à 1 dB | au-delà : REFUS |
+| 1 | original : stem `bass` rapporté au stem `drums` | ≥ +6 dB (la basse porte) | ≤ 0 dB (la batterie porte autant ou plus) |
+| 2 | rendu : batterie rapportée à la piste `bass` | ≥ 0 dB (la batterie y vaut au moins la basse) | ≤ −6 dB (la basse porte, comme dans l'original) |
+| 3 | la piste `bass` rendue rapportée au stem `bass` | ≤ −3 dB (la basse rendue manque) | ≥ −1 dB (elle ne manque pas) |
+| 4 | le TÉMOIN, aux frappes du kick : stem `drums` rapporté au stem `bass` | ≥ 0 dB (là, le kick porte) | < −6 dB (la batterie ne porte le grave nulle part : la mesure ne distingue rien) |
+| 5 | relevés : la table entière (deux bandes, deux populations, dix signaux), le mélange rendu rapporté au mélange original | — | — |
+
+**La règle de décision** : 1, 2 et 3 tenus (4 tenu) → le kick long de H79 COMPENSE une basse trop faible entre les
+frappes ; aucune décroissance de kick ne se choisit avant que la basse soit à son niveau, et la suite (H82) porte sur
+la piste `bass` — jouée par `vsm.clavinet` dans ce projet —, pas sur la batterie ; 1 en échec → le grave d'entre les
+kicks est dans le stem de batterie lui-même, le débord de H80 n'en est pas un, et c'est le stem contre le mélange qu'il
+faut expliquer autrement ; 1 tenu, 3 en échec → la basse rendue ne manque pas, et la contradiction de H80 n'est pas une
+affaire de niveau de basse (timbre de la basse, ou du kick à 55 Hz) ; 4 en échec → REFUS de conclure.
+
+**Ce que la mesure ne pourra PAS dire**, écrit d'avance : les stems sont des estimations — un séparateur peut donner à
+`bass` la queue d'un kick, et l'attendu 1 serait alors tenu pour une mauvaise raison ; seul le contrôle par les
+MÉLANGES (relevé 5 : rendu contre original, sans séparation) n'en dépend pas ; un morceau.
+
+### 42.1 L'instrument de H81, AVANT toute mesure (11/11/2026, 10 h 32)
+
+`analyse/mesure_h81.py` (`energies`, `rapport_db`, `controle_de_somme`) et `analyse/tests/test_mesure_h81.py`, quatre
+tests : un kick court toutes les 0,5 s et une « basse » tenue (60 Hz) — aux frappes du kick le kick porte le grave
+(plus de +6 dB), entre elles c'est la basse (moins de −6 dB) ; la somme des parties rend le mélange, et la même somme
+sans la basse est refusée, avec le manque lu entre les kicks et dans le grave seulement ; un signal muet rend « rien »
+(pas 0 dB) et fait échouer le contrôle ; une population vide est un refus. **Vu rouge sur quatre mutants** : une seule
+population pour tous (2 rouges) ; le contrôle de somme toujours tenu (2) ; un signal nul rendu à 0 dB (1) ; la
+population vide admise (1). `ruff` et `mypy` propres.
+
+**`main()` passée à blanc**, sur UN fichier neutre donné pour tous les signaux (le mélange de H75) : la table ne rend
+que des zéros — rien du morceau n'est lu — et le passage a montré un défaut : deux contrôles de somme du même nom
+s'effaçaient l'un l'autre. Désormais un REFUS. Populations relevées au passage : 763 frappes de kick, 855 charlestons
+d'entre les kicks sur 892.
+
+`reconstruction/travail/reload-h81.sh` : les trois pistes hors batterie rendues seules dans le projet de H79 (mêmes
+machines, f\* relu dans `h79.json`), puis l'instrument.
