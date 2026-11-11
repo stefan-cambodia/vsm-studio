@@ -4686,3 +4686,59 @@ lui-même rend 0, un gain ne change rien, 0,05 s pour 0,12 et 80 Hz pour 45 rend
 **Vu rouge sur trois mutants** (sans normalisation ; le refus ôté ; 9 ms lus au lieu de 300), un rouge chacun. `ruff`,
 `mypy` propres. `reconstruction/travail/reload-h84.py` : le solo du kick est rendu au facteur de H79, et ramené à ×1
 avant le calcul de f\*.
+
+### 45.2 Verdict de H84 (11/11/2026, mesuré de 12 h 16 à 12 h 31, écrit à 12 h 32) : NON TENUE — le kick moyen désigne bien un kick court et grave (45 Hz · 0,08 s), le grave du mélange est à l'original aux kicks ET entre eux, mais le bas-médium casse ; et le critère ne voit pas l'attaque
+
+`reconstruction/travail/reload-h84.py` (rejouable ; `reload-h84/h84.json`). Frappes retenues : 264 sur 763 (169 près
+d'une caisse, 330 près d'un autre kick). **La grille entière** (`ecart_tf`, dB ; l'attaque 0 et 0,5 rendent le MÊME
+chiffre au centième à 49 points sur 50 — une seule colonne) :
+
+| accord | 0,05 s | 0,08 s | 0,12 s | 0,20 s | 0,32 s |
+|---|---|---|---|---|---|
+| 35 Hz | 5,44 | 4,47 | 4,51 | 5,01 | 5,44 |
+| 45 Hz | 4,75 | **4,38** | 4,98 | 5,63 | 6,01 |
+| 55 Hz | 5,11 | 5,55 | 6,18 | 6,82 | **7,20** (usine) |
+| 65 Hz | 6,01 | 7,03 | 7,75 | 8,37 | 8,73 |
+| 80 Hz | 7,61 | 8,91 | 9,56 | 10,19 | 10,55 |
+
+| réglage (accord · décroissance · attaque) | tf | f\* | log-mel | \|médian\| sub · basse · bas-médium | aigus | rendu / original 30-150 Hz : aux kicks · entre | 150-500 Hz aux kicks |
+|---|---|---|---|---|---|---|---|
+| usine 55 · 0,32 · 0,5 (H82) | 7,20 | 0,9952 | 7,10 | 2,12 · 1,23 · 1,15 | 1,65 | −0,2 · +5,4 | +2,2 |
+| **45 · 0,08 · 0 (choisi)** | 4,38 | 1,6292 | 7,32 | 1,98 · 2,14 · 3,44 | 1,92 | −0,2 · **+0,1** | +4,1 |
+| 45 · 0,08 · 0,5 (à égalité) | 4,38 | 1,6292 | 7,13 | 2,02 · 2,19 · 3,40 | 2,64 | −0,2 · +0,1 | +4,1 |
+| 35 · 0,08 · 0 (troisième) | 4,47 | 1,3749 | 7,35 | **0,50** · 1,64 · 2,21 | 2,10 | −0,2 · −0,1 | **+1,6** |
+
+| # | verdict, au réglage choisi |
+|---|---|
+| 1 | **tenu** : 4,38, soit 2,82 dB sous le point d'usine |
+| 2 | **tenu** : −0,2 dB aux kicks, +0,1 entre eux (H82 : +5,4) |
+| 3 | **entre les deux** : +4,1 dB |
+| 4 | **en ÉCHEC** : bas-médium 3,44 (+2,29 sur H82) ; basse 2,14 (+0,91) |
+| 5 | **entre les deux** : 7,32 |
+
+**La règle**, au plus sévère : non tenue, rien n'entre. **Ce que la mesure établit** : (a) le relevé du kick va dans le
+sens de H83 et de H69-H70 — court, et plus grave que l'usine ; (b) **le critère est AVEUGLE à l'attaque** : le kick
+moyen est lu sous 1 kHz, l'attaque du 909 est un clic au-dessus — et elle vaut 0,19 dB de log-mel au mélange (7,32 →
+7,13) ; l'égalité entre 0 et 0,5 a été tranchée par l'ordre des noms, pas par une mesure ; (c) 0,1 dB d'écart au
+critère (45 contre 35 Hz) sépare deux mélanges très différents : à 35 Hz le sub est à 0,50, le corps aux kicks à +1,6 dB
+— le critère range les régions de la grille, pas deux voisins. **Le troisième point est le plus prometteur et n'a été
+rendu qu'à l'attaque 0.**
+
+## 46. H85 — UNE variable : l'attaque du kick, au point 35 Hz · 0,08 s (écrite AVANT sa mesure, 11/11/2026, 12 h 32)
+
+Projet de H84, kick du TR-909 à 35 Hz · 0,08 s, f\* 1,3749 (celui de H84 : l'attaque ne touche pas le 30-150 Hz — à
+vérifier par l'attendu 2). Points : attaque 0 (H84, le témoin : doit rejouer 7,35), **0,5 (le réglage d'usine, le
+point JUGÉ)** et 1,0 (relevé). Aucun code neuf (`reconstruction/travail/reload-h85.py`).
+
+| # | mesure, à l'attaque 0,5 | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin : l'attaque 0 rejoue H84 | au centième | sinon REFUS |
+| 1 | log-mel | ≤ 7,20 | > 7,37 |
+| 2 | mélange rendu / original, 30-150 Hz, aux kicks et entre | tous deux à 1,5 dB | l'un au-delà de 3 dB |
+| 3 | le même à 150-500 Hz, aux kicks | ≤ +3,0 dB | > +5 dB |
+| 4 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H82 (2,12 · 1,23 · 1,15), ou meilleure | l'une pire de plus de 1,5 dB |
+
+**La règle** : 1 à 4 tenus → le kick de « B4 » est réglé (35 Hz · 0,08 s · 0,5), la méthode se rejoue sur un troisième
+morceau ; sinon au plus sévère, et le point est publié à côté de H79 et de H82. **Dit d'avance** : ce point a été
+choisi en REGARDANT les mélanges de H84 — c'est un réglage à la main, pas un choix d'instrument ; il ne vaut que comme
+point, et une règle devra le retrouver seule.

@@ -61,7 +61,7 @@ choisir : **le DAW d'abord**, la chaîne d'analyse ensuite.
 
 | Document | Ce que c'est |
 |---|---|
-| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (4 722 l.) | la conception complète, machine par machine, avec les mesures |
+| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (4 744 l.) | la conception complète, machine par machine, avec les mesures |
 | [`../README.md`](../README.md) (739 l.) | la porte d'entrée : quoi, comment compiler, comment s'en servir |
 | [`MODE-EMPLOI.md`](MODE-EMPLOI.md) (1 559 l.) | le manuel de l'application |
 | [`GUIDE-ajout-machine.md`](GUIDE-ajout-machine.md) (508 l.) | comment on écrit une machine, pas à pas |
