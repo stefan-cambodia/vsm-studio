@@ -28,7 +28,12 @@ public:
         int64_t octets = -1;       ///< −1 : absent du disque
         juce::String designePar;   ///< déjà dans la langue courante ; « — » : rien
         Etat etat = Etat::Inutilise;
+        /// D628.1 : l'ORIGINE du fichier, en secondes — sa référence de temps BWF (bloc `bext`) divisée par SA
+        /// fréquence ; < 0 : le fichier n'en porte pas (« sans origine », jamais « au début »).
+        double origine = -1.0;
     };
+    /// D628.1 : l'origine d'un fichier lu (sa référence de temps BWF / sa fréquence), ou −1 s'il n'a pas de bloc `bext`.
+    static double origineDuFichier(const juce::AudioFormatReader& lecteur);
 
     ReserveComponent();
     /// Repose les textes fixes dans la langue courante.
@@ -56,6 +61,11 @@ public:
     /// l'écrit ou que le dossier le contient.
     std::function<void(const juce::String&)> onPoser;
     bool poserActif() const { return poser_.isEnabled(); }
+    /// D628.1 : « Poser à l'origine » sur une ligne choisie dont le fichier est sur le disque et porte une origine.
+    std::function<void(const juce::String&)> onPoserOrigine;
+    bool poserOrigineActif() const { return poserOrigine_.isEnabled(); }
+    /// L'origine de la ligne choisie (secondes), ou −1 : aucune ligne, ou un fichier sans origine.
+    double origineChoisie() const;
     /// D617.1 : « Chercher dans un dossier... » — actif dès qu'une ligne MANQUE.
     std::function<void()> onChercher;
     bool chercherActif() const { return chercher_.isEnabled(); }
@@ -77,7 +87,7 @@ private:
     bool sansDossier_ = false;
     juce::Rectangle<int> enTete_;
     juce::Label titre_, total_, remarque_;
-    juce::TextButton nettoyer_, rafraichir_, relier_, chercher_, poser_;
+    juce::TextButton nettoyer_, rafraichir_, relier_, chercher_, poser_, poserOrigine_;
     juce::ListBox liste_ { "reserve", this };
 };
 

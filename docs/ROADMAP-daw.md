@@ -49091,6 +49091,33 @@ grille, pas d'une longueur ;
 (f) l'infobulle de « Pas à pas » relevée dans les deux langues, et qui nomme la longueur d'insertion ;
 (g) `pas-a-pas`, `longueur-insertion` verts ; les suites ; la série.
 
+### Phase D626 — MESURÉE, la série à jouer (12/11/2026, 06 h 28 à l'horloge)
+
+*Écrite avant son code le 12/11 à 04 h 30 (commitée avant toute compilation) ; le code écrit pendant la série de D625,
+compilé après elle (06 h 18 → 06 h 21, `rc=0`, avec D627 et D628). Le banc `tools/pas-a-pas-longueur.sh` (7 contrôles) ; le
+témoin : le binaire de D625 (`build/temoin-D625`, copié avant la compilation).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D625) | tenu |
+|---|---|---|---|---|
+| D626 (a) | sans rien choisir : 60@0+120 62@120+120 64@360+120, tête 480 | **60@0+120 62@120+120 64@360+120**, tête **480** | — | **oui** |
+| D626 (b) | « Insertion : 1/8 » : +240, débuts inchangés, tête 480 | **60@0+240 62@120+240 64@360+240**, tête **480** | — | **oui** |
+| D626 (c) | « Insertion : 1/32 » : +60, tête 480 | **60@0+60 62@120+60 64@360+60**, tête **480** | — | **oui** |
+| D626 (d) | Retour arrière recule d'un pas de grille : fa à 360, long de 240 | **65@360+240**, tête **480** | — | **oui** |
+| D626 (e) | le témoin sous « Insertion : 1/8 » : 60@0+120 | — | **60@0+120 62@120+120 64@360+120** (« VSM_INSERTION : longueur 1/8 » au journal : le menu existe, la saisie l'ignore) | **oui** |
+| D626 (f) | l'infobulle, dans les deux langues | « … longue de la longueur d'insertion, puis la tête avance d'un pas de grille ; … » ; « … as long as the insert length, then the playhead moves on by one grid step; … » | — | **oui** |
+| D626 (g) | les voisins | `pas-a-pas`, `longueur-insertion` verts ; gardes vertes (sauf `index-a-jour`, les chiffres de ce document) | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Vert du premier essai sur ses sept contrôles ; le banc corrigé une fois, et dit** : la course anglaise de (f) passait
+  par la même fonction que les saisies et demandait le menu FRANÇAIS « Clavier d'ordinateur » — l'application l'a dit
+  (« aucune entrée de menu ne commence par… »), le banc l'a compté. L'infobulle se relève désormais sans le clavier ni le
+  pas à pas ; rejoué : sept verts, aucun avertissement.
+- **Le témoin discrimine** : il a le menu (D625) et le dit au journal — la saisie, elle, garde la case de la grille.
+- **Remis, nommés** : ceux de l'écriture (la longueur d'insertion au préréglage de quantification ; les rangs dans l'ordre
+  de la carte ; la passe empilée de D624 au banc ; la saisie pas à pas d'une batterie à la grille du rang).
+- **La série n'est pas jouée** : la batterie est à 46 % après celle de D625 (109 min en ont coûté 48 points), et ce poste
+  ne charge qu'en veille. La phase touche `app/Source/` : elle n'est FAITE qu'après `./verifier.sh --bancs` (224 bancs).
+
 ### Phase D627 — un quatre-vingt-septième audit : le glissé d'une batterie s'aimante à la grille du rang qu'on saisit (12/11/2026)
 
 *Écrite le 12/11 à 04 h 34 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D625
@@ -49130,6 +49157,31 @@ la 36 saisie → **38@1320 et 36@1800** (l'écart de la barre pour toutes) ;
 (d) **le témoin** (le binaire de D626, les mêmes gestes) : (b) → **38@1320** — le défaut ;
 (e) sans grille au rang 38 (aucun `carte-grille`), (b) → 38@1320 : la piste sans grilles par rang ne change pas ;
 (f) `grille-par-rang`, `batterie-losanges`, `longueur-insertion` verts ; les suites ; la série.
+
+### Phase D627 — MESURÉE, la série à jouer (12/11/2026, 06 h 28 à l'horloge)
+
+*Écrite avant son code le 12/11 à 04 h 34 ; la distance des glissés portée de ~330 à ~350 ticks AVANT toute mesure (commit
+à part : à 330, une arrivée tombait à 30 ticks d'un bord d'arrondi). Compilée avec D626 et D628. Le banc
+`tools/glisse-par-rang.sh` (6 contrôles), de VRAIS glissés (`glisser:pianoroll:…:lent`) ; **le témoin est le binaire de
+D625, pas celui de D626** comme l'attendu l'écrivait : les trois phases ont été compilées ensemble, et D626 ne touche pas au
+glissé.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D625) | tenu |
+|---|---|---|---|---|
+| D627 (a) | la 36 (rang global) tirée de ~350 : 36@1800 | **38@960 36@1800** | — | **oui** |
+| D627 (b) | la 38 (rang à 1/4) tirée de ~350 : 38@1440 | **36@1440 38@1440** | **38@1320** — le défaut | **oui** |
+| D627 (c) | les deux choisies, la 38 saisie : 38@1440 et 36@1920 | **38@1440 36@1920** | — | **oui** |
+| D627 (c) | les deux choisies, la 36 saisie : 38@1320 et 36@1800 | **38@1320 36@1800** | — | **oui** |
+| D627 (e) | sans grille au rang 38 : 38@1320 | **38@1320 36@1440** | — | **oui** |
+| D627 (f) | les voisins | `grille-par-rang`, `batterie-losanges`, `longueur-insertion` verts | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Vert du premier essai, six contrôles sur six, aucun avertissement.** (c) discrimine la règle « la frappe saisie
+  mène » : la même sélection, tirée de la même distance, avance de 480 ou de 360 selon la frappe qu'on tient.
+- **(e) et (a) gardent l'ancienne règle** là où il n'y a pas de grille au rang, au tick près.
+- **Remis, nommés** : le redimensionnement (sur des barres) à la grille du rang ; le déplacement au clavier (flèches) à la
+  grille du rang ; et ceux de D626.
+- **La série n'est pas jouée** (la batterie, comme D626).
 
 ### Phase D628 — un quatre-vingt-huitième audit : poser un fichier de la réserve à son origine (12/11/2026)
 
@@ -49178,3 +49230,33 @@ dans `audio/` ; **1 pas** (« Poser un fichier de la réserve ») ;
 (f) **le témoin** (le binaire de D625 — D626 à D628 se compilent ensemble, aucune ne touche la réserve avant D628) : pas
 de bouton « Poser à l'origine », aucune piste ; l'anglais (*Insert at origin*) ;
 (g) `poser-depuis-reserve`, `reserve-fichiers`, `relier-fichier`, `chercher-manquants` verts ; les suites ; la série.
+
+### Phase D628 — MESURÉE, la série à jouer (12/11/2026, 06 h 28 à l'horloge)
+
+*Écrite avant son code le 12/11 à 04 h 51 ; la forme du relevé précisée AVANT toute mesure (« origine 3.000 s », en locale
+C). Compilée avec D626 et D627. Le banc `tools/poser-a-l-origine.sh` (9 contrôles), des fichiers WAV écrits par le banc,
+avec et sans bloc `bext` ; le témoin : le binaire de D625.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D625) | tenu |
+|---|---|---|---|---|
+| D628 (a) | la tête au repère (1 920) ; `bwf.wav` : « À l'origine actif (origine 3.000 s) » | « VSM_TETE : tick 1920 » ; « … Poser actif ; À l'origine actif (origine 3.000 s) » | — | **oui** |
+| D628 (a) | une piste « bwf » sous « Voix », son clip au tick 2 880 ; aucun fichier neuf ; 1 pas | **bwf ; index 1 ; 2880** ; `audio/` inchangé ; **1 : Poser un fichier de la réserve** | — | **oui** |
+| D628 (b) | `bwf48.wav` (48 kHz, 144 000) : au tick 2 880 | **2880** (« origine 3.000 s ») | — | **oui** |
+| D628 (c) | `sans.wav` : « À l'origine » grisé, « sans origine » ; « Poser » actif ; aucun pas | « Poser actif ; À l'origine grisé (sans origine) » ; **0** pas | — | **oui** |
+| D628 (d) | le témoin de la règle : « Poser à la tête » → 1 920 | **1920** | — | **oui** |
+| D628 (e) | Ctrl+Z → la piste retirée | **aucune piste** de `bwf.wav`, 1 piste en tout | — | **oui** |
+| D628 (f) | l'anglais ; le témoin | « Insert at origin » dans « Pool » → **2880** | **0** clic, aucune piste | **oui** |
+| D628 (g) | les voisins | `poser-depuis-reserve`, `reserve-fichiers`, `relier-fichier`, `chercher-manquants` verts | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Vert du premier essai, neuf contrôles sur neuf.** (a) et (b) ENSEMBLE discriminent la fréquence, quelle que soit celle
+  du moteur (non relevée) : une origine divisée par elle aurait posé l'un des deux ailleurs — `bwf48.wav` à 3 135 ticks
+  sous un moteur à 44,1 kHz, `bwf.wav` à 2 646 sous un moteur à 48 kHz.
+- **LA PHOTO, REGARDÉE** (recomposée sur le fond de la fenêtre, la règle de D417) : six boutons lisibles à 980 px, « Poser à
+  l'origine » grisé sur `sans.wav` choisi, « Poser à la tête » actif ; en anglais, « Insert at playhead » et « Insert at
+  origin » entiers.
+- **Les fichiers du banc sont écrits à la main** (un bloc `bext` de 602 octets, la référence à l'octet 338) : la lecture
+  est celle de JUCE, qui pose la clé dès qu'un bloc existe. Aucun fichier d'un autre logiciel n'a été essayé.
+- **Remis, nommés** : NOS prises n'écrivent pas leur origine ; une colonne « Origine » dans la liste ; poser plusieurs lignes
+  d'un geste ; importer dans la réserve sans placer.
+- **La série n'est pas jouée** (la batterie, comme D626).

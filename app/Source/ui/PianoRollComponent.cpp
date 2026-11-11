@@ -487,6 +487,12 @@ bool PianoRollComponent::setLongueurInsertion(const std::string& libelle) {   //
         }
     return false;
 }
+vsm::midi::Tick PianoRollComponent::dureeInsertion(vsm::midi::Tick parDefaut) const {   // D626.1
+    if (GridResolution choisie; project_ != nullptr && !longueurInsertion_.empty()
+                                && gridResolutionFromLabel(longueurInsertion_, choisie))
+        return std::max<vsm::midi::Tick>(1, gridResolutionToTicks(choisie, project_->ticksPerQuarterNote));
+    return parDefaut;
+}
 void PianoRollComponent::setScale(Scale scale) { scale_ = scale; repaint(); }
 void PianoRollComponent::setScaleHighlightEnabled(bool enabled) { scaleHighlight_ = enabled; repaint(); }
 void PianoRollComponent::setGhostNotesVisible(bool visible) {
@@ -1616,7 +1622,7 @@ void PianoRollComponent::stepInputNote(uint8_t note, uint8_t velocity) {
     const vsm::midi::Tick pas = std::max<vsm::midi::Tick>(1, gridTicks());
     Note n;
     n.startTick = debut;
-    n.endTick = debut + pas;
+    n.endTick = debut + dureeInsertion(pas);   // D626.1 : longue de la longueur d'insertion ; la tête avance d'un PAS
     n.number = note;
     n.velocity = velocity > 0 ? velocity : defaultVelocity_;
     n.channel = track->channel;
@@ -2277,6 +2283,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
         draggedNoteId_ = hit->id;
         dragStartTick_ = xToTick(pos.x);
         dragStartNoteNumber_ = yToNote(pos.y);
+        dragRangSaisi_ = hit->number;   // D627.1
         dragDidCopy_ = false;
 
         dragSnapshot_.clear();
@@ -2310,11 +2317,10 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
         bool grillePropre = false;
         const GridResolution grilleRang = grilleDuRang(noteNumber, &grillePropre);
         const Tick startTick = snapTickDuRang(xToTick(pos.x), noteNumber);
-        Tick duree = grillePropre ? std::max<Tick>(1, gridResolutionToTicks(grilleRang, project_->ticksPerQuarterNote))
-                                  : gridTicks();
-        // D625.1 : LA LONGUEUR D'INSERTION, quand elle est choisie, l'emporte pour la DURÉE — le début reste à l'aimant.
-        if (GridResolution choisie; !longueurInsertion_.empty() && gridResolutionFromLabel(longueurInsertion_, choisie))
-            duree = std::max<Tick>(1, gridResolutionToTicks(choisie, project_->ticksPerQuarterNote));
+        // D625.1 : LA LONGUEUR D'INSERTION, quand elle est choisie, l'emporte pour la DURÉE — le début reste à l'aimant
+        // (D626.1 : la règle vit dans `dureeInsertion`, que la saisie pas à pas appelle aussi).
+        const Tick duree = dureeInsertion(
+            grillePropre ? std::max<Tick>(1, gridResolutionToTicks(grilleRang, project_->ticksPerQuarterNote)) : gridTicks());
         Note newNote{startTick, startTick + duree, track->channel, noteNumber,
                       defaultVelocity_, 64, project_->nextNoteId()};
         track->notes.push_back(newNote);
@@ -2403,8 +2409,11 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
                 dragDidCopy_ = true;
             }
 
-            const Tick newAnchorTick = snapTick(xToTick(pos.x));
-            const Tick deltaTick = newAnchorTick - snapTick(dragStartTick_);
+            // D627.1 : LA FRAPPE SAISIE MÈNE — sur une piste qui a des grilles par rang, l'écart est celui de la grille du
+            // rang de la frappe saisie au départ, pour toute la sélection (l'éditeur de batterie de Cubase) ; un rang
+            // « global » rend `snapTick` au bit près, comme avant.
+            const Tick newAnchorTick = snapTickDuRang(xToTick(pos.x), dragRangSaisi_);
+            const Tick deltaTick = newAnchorTick - snapTickDuRang(dragStartTick_, dragRangSaisi_);
             const int deltaNote = static_cast<int>(yToNote(pos.y)) - static_cast<int>(dragStartNoteNumber_);
 
             for (const auto& snap : dragSnapshot_) {

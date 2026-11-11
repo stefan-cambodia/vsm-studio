@@ -10765,6 +10765,7 @@ void MainComponent::showReserve() {
     if (!reserveWindow_) {
         reservePanel_.onRafraichir = [this] { reservePanel_.setRemarque({}); rafraichirReserve(); };
         reservePanel_.onPoser = [this](const juce::String& fichier) { poserDepuisLaReserve(fichier); };   // D618.1
+        reservePanel_.onPoserOrigine = [this](const juce::String& fichier) { poserDepuisLaReserve(fichier, true); };   // D628.1
         reservePanel_.onNettoyer = [this] { nettoyerLeDossierDuProjet(); };   // D564.1, sa confirmation et sa corbeille
         // D608.1 : le sélecteur, ou le fichier du banc (`VSM_FICHIER`, D102) — la suite est la même.
         reservePanel_.onRelier = [this](const juce::String& ancien) {
@@ -10812,6 +10813,11 @@ void MainComponent::rafraichirReserve() {
             l.duree = static_cast<double>(r->lengthInSamples) / r->sampleRate;
         }
     };
+    // D628.1 : L'ORIGINE (référence de temps BWF), lue sur tout fichier présent — elle dit « Poser à l'origine » actif ou grisé.
+    const auto lireOrigine = [&formats](const juce::File& f, Ligne& l) {
+        if (std::unique_ptr<juce::AudioFormatReader> r{formats.createReaderFor(f)}; r != nullptr)
+            l.origine = vsm::app::ui::ReserveComponent::origineDuFichier(*r);
+    };
     const auto nomDePiste = [this](size_t i) {
         const auto& nom = project_.tracks[i].name;
         return nom.empty() ? tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(i) + 1))
@@ -10848,6 +10854,7 @@ void MainComponent::rafraichirReserve() {
             }
         }
         if (l.frequence <= 0.0 && l.octets >= 0) lireEnTete(f, l);
+        if (l.octets >= 0) lireOrigine(f, l);   // D628.1
         l.designePar = qui.joinIntoString(", ");
         // L'ÉTAT MANQUANT PRIME : un fichier désigné et absent se lit d'abord comme tel.
         l.etat = l.octets < 0 ? Etat::Manquant : joue ? Etat::Joue : Etat::EnReserve;
@@ -10870,6 +10877,7 @@ void MainComponent::rafraichirReserve() {
             l.designePar = juce::String::fromUTF8("\xe2\x80\x94");
             l.etat = rappelables.count(relatif.toStdString()) > 0 ? Etat::GardePourLHistoire : Etat::Inutilise;
             lireEnTete(f, l);
+            lireOrigine(f, l);   // D628.1
             orphelins.push_back(std::move(l));
         }
     std::sort(orphelins.begin(), orphelins.end(), [](const Ligne& a, const Ligne& b) { return a.fichier < b.fichier; });
@@ -11590,7 +11598,7 @@ void MainComponent::affecterLeFichierALaPiste(size_t trackIndex, const std::stri
     arrangement_.repaint();
 }
 
-bool MainComponent::poserDepuisLaReserve(const juce::String& fichier) {
+bool MainComponent::poserDepuisLaReserve(const juce::String& fichier, bool aLOrigine) {
     // D618.1 — *POOL ▸ INSERT INTO PROJECT ▸ AT CURSOR*. Tout ce qui peut refuser est vérifié AVANT d'ouvrir le pas :
     // un geste refusé ne laisse pas d'étape dans l'historique (la règle de `placeSampleOnTrack`).
     const auto refuser = [this](const juce::String& boite) {
@@ -11616,7 +11624,16 @@ bool MainComponent::poserDepuisLaReserve(const juce::String& fichier) {
                    stderr);
         return refuser(tr(u8"Ce fichier ne se lit pas comme un fichier audio : rien n'a été posé.") + "\n" + fichier);
     }
-    const vsm::midi::Tick tete = transport_.currentTick();
+    // D628.1 : À L'ORIGINE — la référence BWF / la fréquence DU FICHIER, en secondes, convertie par la carte de tempo ;
+    // un fichier sans bloc `bext` est refusé AVANT le pas, et dit (le bouton est grisé : c'est le verbe qui y arrive).
+    const double origine = aLOrigine ? vsm::app::ui::ReserveComponent::origineDuFichier(*lecteur) : -1.0;
+    if (aLOrigine && origine < 0.0) {
+        std::fputs(("VSM_RESERVE : poser \xc3\xa0 l'origine REFUS\xc3\x89 : " + fichier.toStdString()
+                    + " ne porte pas de r\xc3\xa9" "f\xc3\xa9rence de temps (BWF)\n").c_str(), stderr);
+        return refuser(tr(u8"Ce fichier ne porte pas de référence de temps (BWF) : il n'a pas d'origine où le poser.")
+                       + "\n" + fichier);
+    }
+    const vsm::midi::Tick tete = aLOrigine ? project_.secondsToTicks(origine) : transport_.currentTick();
     const std::string nom = chemin.getFileNameWithoutExtension().toStdString();
     const std::string relatif = fichier.replaceCharacter('\\', '/').toStdString();   // EN PLACE : le chemin de la réserve
     const size_t index = addTrack(Track::Kind::Audio, nom, true, juce::String::fromUTF8(u8"Poser un fichier de la réserve"));
@@ -11627,9 +11644,12 @@ bool MainComponent::poserDepuisLaReserve(const juce::String& fichier) {
     refreshHistoryList();
     rafraichirReserve();
     std::fputs(("VSM_RESERVE : pos\xc3\xa9 " + relatif + " sur la piste \xc2\xab " + nom + " \xc2\xbb (index "
-                + std::to_string(index) + "), au tick " + std::to_string(static_cast<int64_t>(tete)) + "\n").c_str(), stderr);
+                + std::to_string(index) + "), au tick " + std::to_string(static_cast<int64_t>(tete))
+                + (aLOrigine ? " (\xc3\xa0 son origine, " + juce::String(origine, 3).toStdString() + " s)" : std::string())
+                + "\n").c_str(), stderr);
     if (pianoRoll_.onStatusChanged)
-        pianoRoll_.onStatusChanged(tr(u8"Fichier posé à la tête : %1").replace("%1", fichier));
+        pianoRoll_.onStatusChanged((aLOrigine ? tr(u8"Fichier posé à son origine : %1") : tr(u8"Fichier posé à la tête : %1"))
+                                       .replace("%1", fichier));
     return true;
 }
 

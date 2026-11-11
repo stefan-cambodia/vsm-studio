@@ -672,8 +672,10 @@ void PianoRollToolbar::retraduire() {
     zoomOutButton_.setTooltip(avecTouche(tr(u8"Zoom arrière"), vsm::interchange::ShortcutId::ViewZoomOut));
     zoomFitButton_.setTooltip(avecTouche(tr(u8"Zoom : tout voir — toute la piste"),
                                       vsm::interchange::ShortcutId::ViewZoomToFit));
-    stepButton_.setTooltip(tr(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, qui avance "
-                              u8"d'un pas de grille ; Entrée = silence, Retour arrière = reculer"));
+    // D626.1 : la note dure la longueur d'insertion, la tête avance d'un pas de GRILLE (le partage du Step Input de Cubase).
+    stepButton_.setTooltip(tr(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, longue de la "
+                              u8"longueur d'insertion, puis la tête avance d'un pas de grille ; Entrée = silence, "
+                              u8"Retour arrière = reculer"));
     foldButton_.setTooltip(tr(u8"Ne montrer que les hauteurs jouées sur la piste (Live : Fold)"));
     // D422 : LES HUIT COMMANDES QUI NE DISAIENT RIEN AU SURVOL. « Gamme » surtout :
     // en Chromatique -- la gamme par défaut --, elle ne change rien à l'écran.

@@ -31,6 +31,13 @@ ReserveComponent::ReserveComponent() {
     };
     poser_.setEnabled(false);
     addAndMakeVisible(poser_);
+    // D628.1 : POSER À L'ORIGINE — actif sur une ligne dont le fichier est sur le disque ET porte une origine (BWF).
+    poserOrigine_.onClick = [this] {
+        const auto fichier = fichierChoisi();
+        if (fichier.isNotEmpty() && onPoserOrigine) onPoserOrigine(fichier);
+    };
+    poserOrigine_.setEnabled(false);
+    addAndMakeVisible(poserOrigine_);
     // D617.1 : CHERCHER LES MANQUANTS DANS UN DOSSIER — actif dès qu'une ligne manque ; la remarque dit ce qui reste.
     chercher_.onClick = [this] { if (onChercher) onChercher(); };
     chercher_.setEnabled(false);
@@ -59,6 +66,9 @@ void ReserveComponent::retraduire() {
     poser_.setButtonText(tr(u8"Poser à la tête"));
     poser_.setTooltip(tr(u8"Une piste audio neuve, sous la piste choisie, joue le fichier choisi à partir de la tête. "
                          u8"Le fichier reste où il est : rien n'est copié."));
+    poserOrigine_.setButtonText(tr(u8"Poser à l'origine"));
+    poserOrigine_.setTooltip(tr(u8"Comme « Poser à la tête », mais à l'instant que le fichier porte en lui (sa référence de "
+                                u8"temps BWF). Grisé sur un fichier qui n'en porte pas."));
     chercher_.setButtonText(tr(u8"Chercher dans un dossier..."));
     chercher_.setTooltip(tr(u8"Chaque fichier manquant est cherché par son nom dans le dossier désigné et ses "
                             u8"sous-dossiers. Un seul candidat : il est relié ; plusieurs : rien n'est relié, et c'est dit."));
@@ -74,6 +84,7 @@ void ReserveComponent::setLignes(std::vector<Ligne> lignes, bool sansDossier) {
     liste_.deselectAllRows();
     relier_.setEnabled(false);
     poser_.setEnabled(false);
+    poserOrigine_.setEnabled(false);
     chercher_.setEnabled(std::any_of(lignes_.begin(), lignes_.end(), [](const Ligne& l) { return l.etat == Etat::Manquant; }));
     liste_.updateContent();
     liste_.repaint();
@@ -154,6 +165,21 @@ void ReserveComponent::selectedRowsChanged(int) {
     const bool valide = ligne >= 0 && ligne < static_cast<int>(lignes_.size());
     relier_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].etat == Etat::Manquant);
     poser_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].octets >= 0);   // D618.1 : sur le disque
+    poserOrigine_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].octets >= 0
+                             && lignes_[static_cast<size_t>(ligne)].origine >= 0.0);   // D628.1 : et une origine
+}
+
+double ReserveComponent::origineChoisie() const {
+    const int ligne = liste_.getSelectedRow();
+    return ligne >= 0 && ligne < static_cast<int>(lignes_.size()) ? lignes_[static_cast<size_t>(ligne)].origine : -1.0;
+}
+
+double ReserveComponent::origineDuFichier(const juce::AudioFormatReader& lecteur) {   // D628.1
+    // JUCE pose la clé dès qu'un bloc `bext` existe, même à 0 : sa PRÉSENCE dit « une origine », sa valeur dit où.
+    const auto& meta = lecteur.metadataValues;
+    if (lecteur.sampleRate <= 0.0 || !meta.containsKey(juce::WavAudioFormat::bwavTimeReference)) return -1.0;
+    const juce::int64 reference = meta.getValue(juce::WavAudioFormat::bwavTimeReference, "-1").getLargeIntValue();
+    return reference >= 0 ? static_cast<double>(reference) / lecteur.sampleRate : -1.0;
 }
 
 bool ReserveComponent::choisir(const juce::String& fichier) {
@@ -219,11 +245,14 @@ void ReserveComponent::resized() {
     titre_.setBounds(zone.removeFromTop(24));
     auto bas = zone.removeFromBottom(34);
     // D618.1 : CINQ BOUTONS — à gauche ce qui agit sur la ligne choisie, à droite ce qui agit sur tout ; serrés ensemble
-    // si la fenêtre est plus étroite que leur somme, plutôt que de se chevaucher.
-    const float echelle = std::min(1.0f, static_cast<float>(bas.getWidth()) / (120.0f + 190.0f + 250.0f + 260.0f + 130.0f));
+    // si la fenêtre est plus étroite que leur somme, plutôt que de se chevaucher. D628.1 : six, « Poser à l'origine » à
+    // côté de « Poser à la tête ».
+    const float echelle = std::min(1.0f, static_cast<float>(bas.getWidth())
+                                             / (120.0f + 190.0f + 190.0f + 250.0f + 260.0f + 130.0f));
     const auto largeur = [echelle](int l) { return juce::roundToInt(static_cast<float>(l) * echelle); };
     relier_.setBounds(bas.removeFromLeft(largeur(120)).reduced(2));
     poser_.setBounds(bas.removeFromLeft(largeur(190)).reduced(2));
+    poserOrigine_.setBounds(bas.removeFromLeft(largeur(190)).reduced(2));   // D628.1
     rafraichir_.setBounds(bas.removeFromRight(largeur(130)).reduced(2));
     nettoyer_.setBounds(bas.removeFromRight(largeur(260)).reduced(2));
     chercher_.setBounds(bas.removeFromRight(largeur(250)).reduced(2));   // D617.1

@@ -202,6 +202,9 @@ public:
     /// grille. Rend faux, sans rien changer, pour un libellé qui n'est pas de la liste.
     bool setLongueurInsertion(const std::string& libelle);
     const std::string& longueurInsertion() const { return longueurInsertion_; }
+    /// D626.1 : LA DURÉE D'UNE NOTE POSÉE — la longueur d'insertion quand elle est choisie, sinon `parDefaut` (une case
+    /// de la grille de la barre, ou du rang). UNE règle pour le clic (D625.1) et pour la saisie pas à pas.
+    vsm::midi::Tick dureeInsertion(vsm::midi::Tick parDefaut) const;
     /// D496 : retenue dans les préférences (`onBasculesChanged`, seulement au changement).
     void setDefaultVelocity(uint8_t velocity) {
         if (defaultVelocity_ == velocity) return;
@@ -577,6 +580,7 @@ private:
     uint64_t draggedNoteId_ = 0;
     vsm::midi::Tick dragStartTick_ = 0;
     uint8_t dragStartNoteNumber_ = 60;
+    uint8_t dragRangSaisi_ = 60;   ///< D627.1 : le rang de la frappe SAISIE au départ du glissé — sa grille mène
     std::vector<vsm::sequencer::Note> dragSnapshot_;
     /// D581.3 : la préférence, et les contrôleurs d'avant un glissé avec la plage des notes saisies.
     bool controleursSuivent_ = false;

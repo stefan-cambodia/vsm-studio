@@ -450,6 +450,10 @@ public:
             std::fputs(("VSM_RESERVE : choisie " + fichier + (trouve ? juce::String() : juce::String(" INTROUVABLE"))
                         + " ; Relier " + (reservePanel_.relierActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))
                         + " ; Poser " + (reservePanel_.poserActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))   // D618.1
+                        // D628.1 : « Poser à l'origine », et l'origine de la ligne — « sans origine » quand le fichier n'en porte pas.
+                        + juce::String::fromUTF8(" ; \xc3\x80 l'origine ") + (reservePanel_.poserOrigineActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))
+                        + (reservePanel_.origineChoisie() >= 0.0 ? " (origine " + juce::String(reservePanel_.origineChoisie(), 3) + " s)"
+                                                                 : juce::String(" (sans origine)"))
                         + "\n").toRawUTF8(), stderr);
             return trouve;
         }
@@ -1845,7 +1849,9 @@ private:
                                    vsm::midi::Tick tick, const std::string& nomDuClip);
     /// D618.1 : POSER UN FICHIER DE LA RÉSERVE À LA TÊTE (*Pool ▸ Insert into Project ▸ At Cursor*) — une piste audio
     /// neuve sous la choisie, le fichier désigné en place, un pas. Faux, et dit, si le fichier manque ou ne se lit pas.
-    bool poserDepuisLaReserve(const juce::String& fichier);
+    /// D628.1 : `aLOrigine` — *At Origin* : à la référence de temps BWF du fichier, convertie par la carte de tempo ;
+    /// refusé, et dit, si le fichier n'en porte pas.
+    bool poserDepuisLaReserve(const juce::String& fichier, bool aLOrigine = false);
 
     vsm::app::ui::BrowserComponent browserPanel_;
     std::unique_ptr<PanelWindow> browserWindow_;
