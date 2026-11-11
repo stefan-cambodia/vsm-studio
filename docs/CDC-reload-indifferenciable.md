@@ -4602,3 +4602,43 @@ l'original SANS vider le sub, ce que H80 ne pouvait pas.
 (machines de batterie, niveau, basse, longueur) sur un TROISIÈME morceau avant toute D-phase ; sinon, au plus sévère.
 **Dit d'avance** : l'attendu 1 est le critère du choix lui-même — il sera tenu ou non par construction du balayage ; ce
 sont 2, 3 et 4 qui jugent. Un morceau ; le 150-500 Hz de la basse, trop fort de 4,8 dB, n'est pas touché.
+
+### 44.1 Verdict de H83 (11/11/2026, écrit à 12 h 06) : NON TENUE — le kick court remet le grave d'entre les kicks à l'original (−0,2 dB) et défait le sub, la basse et le bas-médium : c'est le TIMBRE du kick, pas sa longueur
+
+`reconstruction/travail/reload-h83.py` (rejouable ; `reload-h83/h83.json`). **Le balayage entier** :
+
+| décroissance | f\* | rendu / original, 30-150 Hz : aux kicks · entre | le même, 150-500 Hz : aux kicks · entre | log-mel | \|médian\| sub · basse · bas-médium | aigus |
+|---|---|---|---|---|---|---|
+| 0,32 s (H82) | 0,9952 | −0,2 · **+5,4** | +2,2 · +1,5 | 7,10 | 2,12 · 1,23 · **1,15** | 1,65 |
+| 0,25 s | 1,0666 | −0,2 · +4,4 | +2,6 · +1,3 | **7,09** | 1,35 · **1,22** · 1,59 | 1,54 |
+| 0,20 s | 1,1496 | −0,2 · +3,4 | +3,1 · +1,2 | **7,09** | **0,52** · 1,26 · 2,05 | **1,34** |
+| 0,16 s | 1,2579 | −0,2 · +2,4 | +3,6 · +1,1 | 7,10 | 0,66 · 1,35 · 2,51 | 1,51 |
+| 0,12 s | 1,4531 | −0,2 · +1,3 | +4,4 · +1,1 | 7,12 | 2,29 · 1,66 · 3,17 | 1,62 |
+| 0,08 s | 1,9152 | −0,2 · +0,3 | +6,1 · +1,2 | 7,20 | 4,57 · 2,40 · 4,09 | 2,01 |
+| **0,05 s (choisie)** | 3,0527 | −0,2 · **−0,2** | **+8,9** · +1,7 | 7,46 | 6,70 · 4,29 · 5,07 | 2,27 |
+
+| # | verdict, à 0,05 s |
+|---|---|
+| 0 | **tenu** : 0,32 s rejoue H82 au centième |
+| 1 | **tenu** (par construction) : −0,2 dB |
+| 2 | **tenu** : −0,2 dB |
+| 3 | **en ÉCHEC** : sub +4,58, basse +3,06, bas-médium +3,92 sur H82 |
+| 4 | **en ÉCHEC** : 7,46 > 7,37 |
+
+**Rien n'entre.** Ce que le balayage établit :
+- **Le mélange et le stem sont maintenant D'ACCORD sur la longueur** : jugé au mélange, sans séparation, le grave
+  d'entre les kicks demande 0,05 à 0,08 s — ce que le stem de batterie demandait en H80. La contradiction de H80 venait
+  bien de la basse (H81), et elle est levée.
+- **Mais ce kick-là, raccourci, n'est plus le bon kick** : pour garder son grave à ses frappes (f\* le tient à −0,2 dB
+  aux sept points), il faut le monter de 9,7 dB, et son corps monte avec — +8,9 dB de trop à 150-500 Hz aux kicks —
+  tandis que le sub se vide (6,70). Le kick du TR-909 à 55 Hz ne peut pas être à la fois court, grave et sans corps :
+  l'original l'est. C'est un TIMBRE (accord, balayage, attaque), comme H67-H70 l'avaient trouvé sur « Reload ».
+- **Le meilleur compromis publié** : 0,20 s — sub 0,52, log-mel 7,09, aigus 1,34 — au prix du bas-médium (2,05) et de
+  3,4 dB de grave en trop entre les kicks. Il n'est PAS adopté : il n'était pas le choix écrit.
+- Avec la basse au TB-303, le point 0,32 s a 5,4 dB de trop entre les kicks (4,3 en H81) : la basse revenue s'AJOUTE
+  à la queue du kick — attendu, et c'est pourquoi H82 seule ne pouvait pas améliorer le sub.
+
+**La suite** : le kick de « B4 » demande ce que H69-H70 ont fait pour celui de « Reload » — le relever sur ses frappes
+(accord, balayage, tenue : `mesure_h69`) et régler la machine dessus, ou conclure à un échantillon
+(`CDC-multisample.md`). H84 s'écrira là-dessus, AVANT sa mesure. **Ce que la mesure ne dit pas** : un morceau ; un seul
+réglage du 909 a bougé (son accord et son attaque sont à l'usine).
