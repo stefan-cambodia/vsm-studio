@@ -4642,3 +4642,47 @@ sont 2, 3 et 4 qui jugent. Un morceau ; le 150-500 Hz de la basse, trop fort de 
 (accord, balayage, tenue : `mesure_h69`) et régler la machine dessus, ou conclure à un échantillon
 (`CDC-multisample.md`). H84 s'écrira là-dessus, AVANT sa mesure. **Ce que la mesure ne dit pas** : un morceau ; un seul
 réglage du 909 a bougé (son accord et son attaque sont à l'usine).
+
+## 45. H84 — le kick de « B4 » relevé sur ses frappes, et le TR-909 réglé dessus : accord, décroissance, attaque (écrite AVANT son instrument et sa mesure, 11/11/2026, 12 h 16)
+
+**Ce que H83 a appris** (§ 44.1) : la longueur seule ne suffit pas — le kick du 909 raccourci perd son sub et gonfle son
+corps. Le projet reste celui de H82 (basse au TB-303) ; ce qui bouge : les trois réglages du kick du TR-909.
+
+**L'instrument** (`analyse/mesure_h84.py`, son test, `reconstruction/travail/reload-h84.py` rejouable) :
+- **Le kick de l'original** : la moyenne synchrone de ses frappes isolées dans le stem `drums` (`mesure_h69.retenir`,
+  `mesure_h70.kick_moyen` — le chemin de H69-H70, morceau entier ; le nombre de frappes retenues est publié, moins de
+  vingt est un refus).
+- **La grille ENTIÈRE** : accord 35 · 45 · 55 · 65 · 80 Hz × décroissance 0,05 · 0,08 · 0,12 · 0,20 · 0,32 s × attaque
+  0 · 0,5 — cinquante solos rendus, le kick moyen de chacun pris aux MÊMES frappes.
+- **Le critère** (`ecart_tf`) : l'écart moyen, en dB, des deux kicks moyens en temps-fréquence — 30 à 500 Hz, 0 à 300 ms,
+  chacun normalisé à son énergie (le niveau n'est pas jugé : il se cale ensuite, f\* de H79), plancher à −40 dB sous le
+  maximum. Il voit l'accord, la longueur et le corps ensemble. Le choix : le plus petit.
+- **Le jugement** : le réglage choisi et les deux suivants, chacun à son f\*, mélange rendu et jugé (outil du § 0 ;
+  grave du mélange rendu / original aux kicks et entre les kicks, H81). Le point d'usine (55 Hz · 0,32 s · 0,5) est
+  dans la grille : son mélange est celui de H82, le témoin.
+
+**L'HYPOTHÈSE H84** : un réglage du kick du TR-909 est à la fois court, grave et sans excès de corps — ce que la seule
+décroissance ne donnait pas.
+
+| # | mesure, au réglage choisi | réussite | échec |
+|---|---|---|---|
+| 1 | `ecart_tf` | au moins 1 dB sous celui du point d'usine | à moins de 0,3 dB |
+| 2 | mélange rendu / original, 30-150 Hz : aux kicks ET entre les kicks | tous deux à 1,5 dB (H82 : −0,2 · +5,4) | l'un au-delà de 3 dB |
+| 3 | le même à 150-500 Hz, aux kicks | ≤ +3,0 dB (H82 +2,2 ; H83 à 0,05 s +8,9) | > +5 dB |
+| 4 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H82 (2,12 · 1,23 · 1,15), ou meilleure | l'une pire de plus de 1,5 dB |
+| 5 | log-mel | ≤ 7,20 | > 7,37 |
+| 6 | relevés : la grille entière, les frappes retenues, les trois mélanges | — | — |
+
+**La règle** : 1 à 5 tenus → le kick de « B4 » est réglé, et la méthode entière se rejoue sur un troisième morceau ;
+1 tenu, 2 à 5 non → le critère sur le kick moyen ne prédit pas le mélange, à dire ; 1 en échec → aucun réglage du 909
+n'approche ce kick : c'est un échantillon (`CDC-multisample.md`). **Ce que la mesure ne dira pas** : le kick moyen
+vient du stem, sous 1 kHz ; trois réglages sur quatre du kick (son niveau interne reste à l'usine) ; un morceau.
+
+### 45.1 L'instrument de H84, AVANT toute mesure (11/11/2026, 12 h 17)
+
+`analyse/mesure_h84.py` (`carte_db`, `ecart_tf`), trois tests sur la réplique du kick du TR-808 de H69 : un kick contre
+lui-même rend 0, un gain ne change rien, 0,05 s pour 0,12 et 80 Hz pour 45 rendent plus de 2 dB, un voisin (47 Hz ·
+0,13 s) moins de la moitié ; le bon réglage est retrouvé dans une grille de douze ; un signal sans grave est un refus.
+**Vu rouge sur trois mutants** (sans normalisation ; le refus ôté ; 9 ms lus au lieu de 300), un rouge chacun. `ruff`,
+`mypy` propres. `reconstruction/travail/reload-h84.py` : le solo du kick est rendu au facteur de H79, et ramené à ×1
+avant le calcul de f\*.
