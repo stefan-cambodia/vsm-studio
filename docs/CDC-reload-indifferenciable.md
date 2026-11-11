@@ -5728,3 +5728,24 @@ bloque maintenant n'est plus une machine mais les juges** : tant qu'ils se contr
 et chaque réglage de plus choisit entre eux sans le dire. **La suite proposée** (H100, à écrire AVANT sa mesure) :
 instruire ce désaccord sur les mélanges déjà rendus — ce que la distance v2 récompense et que le log-mel et les bandes
 punissent —, sans un rendu de plus.
+
+## 61. H100 — le désaccord des juges : quel TERME de la distance v2 porte ses gains sur « Reload » ? (écrite AVANT sa mesure, 11/11/2026, 21 h 09)
+
+**Ce que le code dit** (`analyzer/audio_distance_v2.py`) : la distance v2 est une somme pondérée de sept termes
+calculés sur le morceau ENTIER — centroïde 0,15, largeur de bande 0,10, roll-off 0,10, planéité 0,05, cepstre (MFCC
+moyen) 0,20, enveloppe d'amplitude 0,20, contraste spectral 0,20. Le log-mel de l'outil du § 0, lui, compare trame à
+trame. Aucun rendu, aucun code neuf (`reconstruction/travail/reload-h100.py`) : les sept termes de chaque mélange de
+« Reload » déjà rendu depuis H95 (H75, H95-A et B, les trois de H97, de H98, de H99), à côté de leur log-mel.
+
+**Le contrôle, avant toute lecture** : la somme pondérée des termes recalculés doit rendre la distance v2 publiée de
+chaque mélange à 0,0005 près. Sinon REFUS — je ne décompose pas ce que je ne sais pas recomposer.
+
+**L'HYPOTHÈSE H100** : sur les points où v2 gagne et le log-mel perd (les trois de H99, `vsm.fmdrums` de H97), UN seul
+terme porte plus de 60 % du gain de v2 sur H75 — je crois l'ENVELOPPE (un kick plus fort creuse l'enveloppe comme
+l'original), dit d'avance pour être démenti. **Échec** : aucun terme ne porte 40 %.
+
+**La règle** : tenue → sur ces mélanges le verdict de v2 est celui de ce terme, et le désaccord des juges se ramène à
+une question nommée (ce terme-là contre le log-mel) ; échec → le gain est diffus, et il faudra comparer les juges
+autrement (par l'écoute, ou par des perturbations connues comme au § 0). **Rien ne se décide ici sur les juges** : la
+métrique de la chaîne est un choix de `ROADMAP-fusion`, pas de ce cahier. **Dit d'avance** : douze mélanges d'un seul
+morceau, qui ne diffèrent que par leur kick.
