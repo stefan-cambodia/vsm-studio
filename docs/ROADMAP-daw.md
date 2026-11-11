@@ -49115,9 +49115,9 @@ de la pièce sur laquelle on a CLIQUÉ.
 (TR-909, canal 10, 480 ticks à la noire, la barre à 1/16 = 120 ticks), des frappes 38@960 et 36@1440, le rang 38 réglé à
 **1/4** (`carte-grille:38>1/4`) ; les glissés sont de VRAIS glissés (`glisser:pianoroll:…:lent`), partis du centre du
 losange, et les frappes lues dans le projet enregistré :
-(a) **le témoin de la règle** : la frappe 36 (rang global) tirée de ~330 ticks → **36@1800** (pas de 1/16) ;
-(b) la frappe 38 tirée de ~330 ticks → **38@1440** (un pas de 1/4) ; avec la grille de la barre, ce serait 38@1320 ;
-(c) les deux choisies (Ctrl+A), la 38 saisie et tirée de ~330 → **38@1440 et 36@1920** (l'écart du rang 38 pour toutes) ;
+(a) **le témoin de la règle** : la frappe 36 (rang global) tirée de ~350 ticks → **36@1800** (pas de 1/16) ;
+(b) la frappe 38 tirée de ~350 ticks → **38@1440** (un pas de 1/4) ; avec la grille de la barre, ce serait 38@1320 ;
+(c) les deux choisies (Ctrl+A), la 38 saisie et tirée de ~350 → **38@1440 et 36@1920** (l'écart du rang 38 pour toutes) ;
 la 36 saisie → **38@1320 et 36@1800** (l'écart de la barre pour toutes) ;
 (d) **le témoin** (le binaire de D626, les mêmes gestes) : (b) → **38@1320** — le défaut ;
 (e) sans grille au rang 38 (aucun `carte-grille`), (b) → 38@1320 : la piste sans grilles par rang ne change pas ;
