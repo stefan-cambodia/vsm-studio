@@ -5237,3 +5237,41 @@ projet — tient un sub que l'original n'a pas. **La règle** : 1 tenu → cette
 octave ? sa machine : un sous-oscillateur ?) avant tout autre réglage de « Reload » ; 1 en échec → c'est une pièce de
 batterie qui tient ce sub, et les solos diront laquelle. **Dit d'avance** : les parts de l'original sont celles d'une
 séparation.
+
+### 54.1 Verdict de H93 (11/11/2026, écrit à 17 h 14) : 1 en ÉCHEC — c'est la piste du KICK qui porte le sub entre les kicks ; la phrase du § 53.1 (« ce n'est pas une queue de kick ») est RETIRÉE
+
+`reconstruction/travail/reload-h93.py` (rejouable ; `reload-h93/h93.json`). Contrôles de somme tenus (rendu 0,0 dB ;
+original 0,3 dB au pire). Chaque part en dB sous son mélange :
+
+| | aux kicks : sub · basse | entre les kicks : sub · basse |
+|---|---|---|
+| rendu · **kick** | 0,0 · 0,0 | **−0,1** · −2,2 |
+| rendu · caisse claire | −58,7 · −35,2 | −42,5 · −6,2 |
+| rendu · charleston | −63,4 · −78,2 | −54,8 · −44,5 |
+| rendu · `piano` (`vsm.minimoog`) | −35,2 · −36,0 | −21,6 · −11,4 |
+| rendu · `other` voix 4 | −26,6 · −36,5 | −24,0 · −11,1 |
+| rendu · `other` voix 1 · 2 · 3 | −41,9 · −31,7 · −33,9 (sub) | −38,0 · −28,0 · −28,4 (sub) ; −27,8 · −25,8 · −25,2 (basse) |
+| rendu · deux voix audio | sous −69 | sous −68 |
+| original · stem `drums` | −0,1 · −0,2 | **−1,1 · −1,6** |
+| original · stems `bass` · `other` | −38,1 · −30,9 (sub) | −16,3 · −14,9 (sub) ; −15,8 · −16,7 (basse) |
+| original · stems `piano` · `guitar` · `vocals` | sous −43 | sous −32 |
+
+**1 en ÉCHEC** : entre les kicks, le sub du rendu est la piste du kick à 0,1 dB près ; le `piano` est à −21,6 dB. **Mon
+hypothèse était fausse, et la phrase du § 53.1 aussi** — « ce n'est pas une queue de kick : quelque chose TIENT du sub »,
+« un kick de 0,05 s éteint depuis longtemps ». **RETIRÉE.** Je l'avais déduite sans regarder OÙ tombent les fenêtres : à
+136 à la noire une double-croche dure 110 ms, et les « charlestons d'entre les kicks » sont, pour beaucoup, la
+double-croche qui SUIT un kick — de 100 à 210 ms après lui, là où un kick de TR-808 à 0,05 s de décroissance après
+0,04 s de tenue sonne encore. C'est la seconde explication de la journée écrite au-delà de ce que son attendu mesurait,
+et retirée (§ 50.2, § 53.1).
+
+**Ce que la table établit, sans plus** : (a) dans le rendu comme dans l'original, entre les kicks, le grave est dans la
+batterie (kick −0,1 · −2,2 dB ; stem `drums` −1,1 · −1,6 dB) — H86 le disait, c'est confirmé en deux bandes ; (b) ce
+grave n'a pas la même place : rapporté aux kicks, l'original en a −14,7 dB au sub et −12,0 à la basse, le rendu −2,2
+et −25,9 (§ 53.1) — la batterie de l'original, de 100 à 210 ms après ses kicks, sonne à 60-150 Hz ; le kick du TR-808,
+lui, y sonne à son accord ; (c) la décroissance du kick du rendu est à 0,05 s, le MINIMUM de la machine : elle est à sa
+borne, et ce kick ne peut pas être plus court.
+
+**Ce que la mesure ne dit PAS** : si le 60-150 Hz de l'original entre les kicks est la queue de son kick, une autre
+pièce (la caisse du rendu y pèse −6,2 dB), ou un reste de séparation. **La suite** (H94, à écrire AVANT sa mesure) : le
+kick MOYEN de l'original (la moyenne synchrone de H69, qui efface ce qui ne frappe pas avec lui) contre celui du rendu,
+bande par bande et par tranches de 50 ms jusqu'à 300 ms — son grave de 100 à 210 ms est-il À LUI ?

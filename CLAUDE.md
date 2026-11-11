@@ -110,6 +110,11 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   si elle déborde, c'est ELLE qui meurt (code 137), pas la session — et un script « rejouable » ne se relance qu'après
   `pgrep -af` de son nom. Et un instrument se passe une fois À BLANC par `main()` avant sa course : les tests de H79
   passaient tous par les fonctions, et la course est morte sur une erreur de format de la ligne de commande.
+- Un VERDICT s'arrête à ses attendus. Le 11/11, deux explications écrites dans un verdict AU-DELÀ de ce que l'attendu
+  mesurait ont été poussées puis rétractées le jour même (CDC-reload § 50.2 : « des kicks manqués », d'un compte dont la
+  population n'était pas décomposée ; § 53.1 : « ce n'est pas le kick », sans avoir regardé où tombaient les fenêtres —
+  la double-croche qui suit un kick). Ce que le chiffre laisse deviner s'écrit « piste, non mesurée », et devient
+  l'hypothèse SUIVANTE ; jamais une phrase à l'indicatif dans le verdict, l'index ou le titre du commit.
 - Python bufferise stdout vers un fichier : lancer les longues chaînes avec
   `python -u`, et surveiller par Monitor (fins ET échecs, jamais le succès
   seul).
