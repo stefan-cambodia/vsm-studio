@@ -4221,3 +4221,33 @@ distance de la chaîne récompense un son étranger que le log-mel punit, et son
 pas une décision : changer la métrique de la chaîne se mesure sur les bancs qui l'ont fait choisir (v3 et v4 y ont été
 essayées, et `audio_distance_v4.py` dit pourquoi la chaîne reste en v2), pas sur deux morceaux. **La suite qui reste à écrire** : y a-t-il, dans les rendus du corpus et du banc, des cas plus
 SOMBRES que leur cible — combien, et dans quel sens la v2 y juge ; c'est un relevé de centroïdes, sans rendu.
+
+### 11.5 H106 — le sens du centroïde sur tout ce que la chaîne a rendu : les rendus sont-ils d'ordinaire plus brillants que leur cible ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 49)
+
+La suite que H105 a nommée, sans rendu : les couples (cible, rendu) que le disque garde — chaque `rapport.json` sous
+`reconstruction/` dont la cible (`provenance.source`) et le `reconstruit.wav` existent : **99 cibles distinctes**, 199
+couples, 101 min de cibles (corpus synthétique h25, h25c, s1-sec, s1-prod, s2 ; quelques morceaux réels). **Une course
+par cible, la plus récente** (date du `reconstruit.wav`) : les courses d'une même cible ne sont pas indépendantes. Le
+centroïde moyen (`spectral_features`, celui que la v2 compare), mélanges réduits en mono, comparés sur la durée commune
+(`reconstruction_distance` tronque de même) ; **dans la bande de la cible** — le rendu coupé net à 16 kHz quand la cible
+a sa bande 16-22 kHz à plus de 60 dB sous son total (la règle de H105). Seul un couple a été lu avant d'écrire ceci, pour
+vérifier le contrôle ci-dessous (s1-sec, morceau 1 : sa distance, pas son centroïde). `reconstruction/travail/reload-h106.py`.
+
+**Le contrôle, avant toute lecture** : la somme pondérée des sept termes recalculés rend la `globalDistance` du rapport à
+0,0005 près pour 90 % des couples au moins — sinon REFUS : je ne mesurerais pas la distance que la chaîne a optimisée ;
+les couples qui ne la rendent pas sont nommés.
+
+**L'HYPOTHÈSE H106** : le rendu est plus BRILLANT que sa cible (centroïde plus haut de plus de 1 %) pour plus des deux
+tiers des cibles — le cas de « Reload » et de « B4 » est le cas ordinaire, et la v2 y récompense d'ordinaire ce qui
+assombrit.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | cibles dont le rendu est plus brillant de plus de 1 % | plus de 66 sur 99 | moins de 50 |
+| 2 | relevés, par famille : plus brillant · égal à 1 % · plus sombre ; l'écart médian ; la bande des cibles ; la part du terme de centroïde dans la v2 | — | — |
+
+**La règle** : 1 tenu → le défaut de H104-H105 est le cas ordinaire du travail de la chaîne, et la question 2 du § 11
+prend sa taille (sans décision de métrique ici) ; 1 en échec → le sens dépend du morceau : les deux morceaux réels ne
+représentent pas le corpus, et c'est dit ; entre les deux → la table par famille dit où. **Dit d'avance** : les
+familles du corpus partagent leurs machines et leur générateur — 99 cibles ne sont pas 99 tirages indépendants ; des
+familles reconstruites de la même cible (h25 et h25c) comptent chacune pour ce qu'elles sont, une cible.
