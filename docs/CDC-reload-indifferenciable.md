@@ -5275,3 +5275,33 @@ borne, et ce kick ne peut pas être plus court.
 pièce (la caisse du rendu y pèse −6,2 dB), ou un reste de séparation. **La suite** (H94, à écrire AVANT sa mesure) : le
 kick MOYEN de l'original (la moyenne synchrone de H69, qui efface ce qui ne frappe pas avec lui) contre celui du rendu,
 bande par bande et par tranches de 50 ms jusqu'à 300 ms — son grave de 100 à 210 ms est-il À LUI ?
+
+## 55. H94 — le grave que la batterie de « Reload » a de 100 à 200 ms après ses kicks est-il celui du KICK ? (écrite AVANT son instrument et sa mesure, 11/11/2026, 17 h 16)
+
+Aucun rendu. Le kick MOYEN (moyenne synchrone de H69 sur les frappes isolées de H87 : 204 sur 555, aucun autre kick à
+300 ms) du stem `drums`, du mélange original, du solo du kick rendu (H93) et du mélange rendu de H75. Ce qui ne frappe
+pas AVEC le kick s'efface dans la moyenne ; ce qui reste est à lui. `analyse/mesure_h94.py` (`profil` : énergie par
+bande — 20-60 et 60-150 Hz — et par tranche de 100 ms, de 0 à 300 ms), son test, `reconstruction/travail/reload-h94.py`.
+
+**L'HYPOTHÈSE H94** : ce grave est à lui — le kick de l'original a, après sa frappe, une queue plus HAUTE que son sub.
+
+| # | mesure, kick moyen du stem `drums`, tranche 100-200 ms | réussite | échec |
+|---|---|---|---|
+| 1 | basse (60-150 Hz), rapportée à la basse de la tranche 0-100 ms | ≥ −18 dB (à 6 dB de ce que les fenêtres lisaient : −12,0) | ≤ −24 dB (la moyenne l'efface : ce n'est pas le kick) |
+| 2 | basse rapportée au sub, même tranche | ≥ +3 dB | ≤ 0 dB |
+| 3 | cohérence : corrélation des moyennes des frappes paires et impaires, 100-300 ms, 60-150 Hz | ≥ 0,7 | < 0,3 |
+| 4 | relevés : les quatre profils entiers ; le même sur le mélange original (sans séparation) | — | — |
+
+**La règle** : 1 à 3 tenus → le kick de « Reload » a une queue à 60-150 Hz que le TR-808 n'a pas : c'est un timbre de
+kick, un échantillon ou une autre machine, et plus un réglage ; 1 ou 3 en échec → ce grave ne frappe pas avec le kick :
+une autre pièce ou un autre instrument, à chercher par ses propres instants. **Dit d'avance** : 204 frappes ; des
+tranches de 100 ms et un filtre de 20 à 60 Hz se recouvrent d'une tranche sur l'autre (une période de 20 Hz dure 50 ms) —
+le test dit de combien ; la comparaison à −12,0 dB rapproche deux fenêtres qui ne sont pas les mêmes.
+
+### 55.1 L'instrument de H94, AVANT toute mesure (11/11/2026, 17 h 16)
+
+`analyse/mesure_h94.py` (`filtrer_bande`, `profil`), trois tests sur une frappe connue (40 Hz de 0 à 100 ms, puis
+100 Hz 12 dB dessous) : la tête au sub, la queue à la basse, son niveau retrouvé à 1,5 dB. **La bavure, chiffrée** : sans
+queue du tout, la tête laisse dans la tranche 100-200 ms un sub à −20,4 dB d'elle, et une basse à −26,6 dB ; à
+200-300 ms, −50 dB. Un attendu ne se lit donc qu'au-dessus de ces planchers. **Vu rouge sur trois mutants** (tranches mal
+placées ; une seule bande ; le refus ôté). `ruff`, `mypy` propres.
