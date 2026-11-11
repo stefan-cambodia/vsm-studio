@@ -4742,3 +4742,36 @@ point JUGÉ)** et 1,0 (relevé). Aucun code neuf (`reconstruction/travail/reload
 morceau ; sinon au plus sévère, et le point est publié à côté de H79 et de H82. **Dit d'avance** : ce point a été
 choisi en REGARDANT les mélanges de H84 — c'est un réglage à la main, pas un choix d'instrument ; il ne vaut que comme
 point, et une règle devra le retrouver seule.
+
+### 46.1 Verdict de H85 (11/11/2026, écrit à 12 h 37) : 1, 2 et 3 TENUS, 4 entre les deux — le meilleur grave de « B4 », pas encore un kick réglé
+
+`reconstruction/travail/reload-h85.py` (rejouable ; `reload-h85/h85.json`). Le témoin (attaque 0) rejoue H84 au centième.
+
+| point de « B4 » | log-mel | \|médian\| sub · basse · bas-médium | aigus | rendu / original 30-150 Hz : aux kicks · entre | 150-500 Hz aux kicks |
+|---|---|---|---|---|---|
+| H75 (TR-808, niveaux résolus) | 8,42 | 1,48 · 2,29 · 1,73 | 3,89 | — | — |
+| H79 (TR-909, kick à f\*) | 7,10 | 1,89 · 1,39 · 1,56 | 1,52 | −0,4 · +4,3 | +2,3 |
+| H82 (+ basse au TB-303) | 7,10 | 2,12 · 1,23 · 1,15 | 1,65 | −0,2 · +5,4 | +2,2 |
+| H85 · attaque 0 | 7,35 | 0,50 · 1,64 · 2,21 | 2,10 | −0,2 · −0,1 | +1,6 |
+| **H85 · attaque 0,5 (jugé)** | **7,12** | **0,49** · 1,66 · 2,17 | 3,20 | −0,2 · **−0,1** | **+1,6** |
+| H85 · attaque 1,0 | 7,19 | 0,43 · 1,74 · 2,08 | 6,05 | −0,2 · −0,1 | +1,6 |
+
+| # | verdict, à l'attaque 0,5 |
+|---|---|
+| 1 | **tenu** : 7,12 ≤ 7,20 |
+| 2 | **tenu** : −0,2 dB aux kicks, −0,1 dB entre eux — l'attaque ne touche pas le grave, f\* de H84 reste juste |
+| 3 | **tenu** : +1,6 dB |
+| 4 | **entre les deux** : sub 0,49 (meilleur, de 1,63 dB) ; basse 1,66 (+0,43) ; bas-médium 2,17 (+1,02) |
+
+**La règle**, au plus sévère : le kick n'est PAS déclaré réglé, rien n'entre. **Ce que le point vaut** : le grave du
+mélange est à l'original à 0,2 dB près aux kicks ET entre eux (+5,4 en H82), le sub est le meilleur relevé sur ce
+morceau, le log-mel tient à 0,02 dB de H79. **Ce qu'il coûte**, hors attendus et dit : les aigus passent de 1,65 à
+3,20 avec l'attaque d'usine (2,10 à l'attaque 0, 6,05 à 1,0) — le clic du 909 est trop brillant pour ce morceau, et le
+log-mel et les aigus tirent l'attaque en sens contraires ; le bas-médium reste 1 dB plus loin qu'en H82.
+
+**Où en est « B4 »** après H76-H85 : machines de batterie (H78), niveau du kick (H79), machine de la basse (H82),
+kick court et grave (H84-H85) — chaque étape tenue sur ce qu'elle visait, aucune sur tous ses attendus. Trois choses
+restent nommées et non expliquées : le 150-500 Hz de la basse, 4 à 6 dB trop fort avec toutes les machines (H82) ; le
+bas-médium du mélange ; l'attaque du kick. **La suite** : avant d'affiner davantage un seul morceau — huit réglages
+choisis sur « B4 » ne font pas une méthode —, rejouer la chaîne des choix (H78 → H79 → H82 → H84) telle quelle sur
+« Reload » et sur un troisième morceau, écrite AVANT sa mesure, pour savoir ce qui s'y retrouve.
