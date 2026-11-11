@@ -4253,3 +4253,82 @@ format de la ligne de commande (`{d:g}` sur une chaîne) — les cinq tests pass
 pièces à 10 h 14 (`eloignees_par_piece`), l'instrument rejoué, les six mélanges gardés ; les six points sont identiques
 à ceux de la course précédente (facteur, log-mel au stem, résidu du kick). **Ce que la mesure ne dit pas** (écrit
 d'avance, rappelé) : un morceau ; les trois autres facteurs sont ceux d'un système résolu avec le kick à 0,2745.
+
+## 41. H80 — UNE variable : la décroissance du kick du TR-909, choisie par le grave aux frappes des AUTRES pièces (écrite AVANT son instrument et sa mesure, 11/11/2026, 10 h 16)
+
+**Ce que H79 a appris** (§ 40.2) : sur « B4 », le kick du TR-909 à son niveau (f\* = 0,9952) donne le meilleur mélange
+(7,10), et la garde refaite le dit trop LONG — le grave est au stem à ses frappes, 8,7 dB au-dessus à celles de la
+caisse, 13,3 à celles du charleston. Sa décroissance est à 0,32 s (réglage d'usine ; plage 0,05-1,2 s,
+`drum.kick.decay`) ; la chaîne avait donné 0,196 s à celle du TR-808 qu'il remplace.
+
+**Une variable : cette décroissance.** Machines (H78), facteurs du charleston, de la caisse et du clap (H78), moteur,
+juge : inchangés. Le niveau du kick n'est pas une seconde variable mais une CONSÉQUENCE, par la règle de H79 : à chaque
+décroissance, `f*` est recalé sur 30-150 Hz à ses frappes (`mesure_h79.facteur_cale`) — sans quoi un kick plus court,
+donc moins énergique, serait jugé sur un niveau faux (la leçon de § 40.2 : niveau d'abord, garde ensuite).
+
+**L'instrument, à écrire** (`analyse/mesure_h80.py`, son test, `reconstruction/travail/reload-h80.sh` rejouable) :
+- **Le balayage ENTIER** : 0,05 · 0,08 · 0,12 · 0,16 · 0,20 · 0,25 · 0,32 s. Pour chacune : le solo du kick RENDU, `f*`,
+  la batterie sommée (critère au stem de H77), le résidu de CHAQUE pièce à ses frappes, les bandes éloignées ; puis le
+  MÉLANGE rendu et jugé — les sept, pas le seul point choisi.
+- **Le TÉMOIN que le réglage atteint le moteur** : la QUEUE du solo du kick à 30-150 Hz (énergie de 100 à 300 ms après
+  la frappe, rapportée à celle des 100 premières ms) doit décroître strictement avec la décroissance sur les sept
+  points. Sinon REFUS : la clé n'est pas lue, et sept rendus identiques ne mesurent rien. Et le point 0,32 s rejoue
+  H79 : il doit rendre f\* = 0,9952 et 7,10.
+- **Le choix**, sur le stem : la décroissance qui minimise le **débord** — la moyenne des \|rendu / stem\| à 30-150 Hz
+  aux frappes du charleston et à celles de la caisse claire (les deux pièces où H79 l'a relevé : 13,3 et 8,7 dB). À
+  débord égal au dixième, la plus longue (la plus proche du réglage d'usine).
+
+**L'HYPOTHÈSE H80** : il existe une décroissance plus courte que 0,32 s où le grave ne déborde plus (aucune bande
+éloignée sur aucune pièce), et le mélange garde ce que H79 a gagné.
+
+| # | mesure, « B4 », à la décroissance choisie | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin : queue du solo strictement décroissante ; 0,32 s rejoue H79 | les deux | l'un manque : REFUS, rien d'autre n'est lu |
+| 1 | bandes ÉLOIGNÉES, les quatre pièces | aucune | une au moins |
+| 2 | log-mel du mélange | ≤ 7,20 (H79 + 0,10) | > 7,37 (H78 : le gain de H79 perdu) |
+| 3 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H79 (1,89 · 1,39 · 1,56), ou meilleure | l'une pire de plus de 1,5 dB |
+| 4 | \|médian\| des aigus | ≤ 2,02 (H79 + 0,5) | > 3,02 |
+| 5 | le critère au stem range-t-il les sept points comme le mélange ? (paires tranchées, § 38) | toutes concordantes | une discordante de plus de 0,5 dB au mélange |
+| 6 | relevés : le balayage entier (queue, f\*, débord, stem, mélange, bandes, garde) | — | — |
+
+**La règle de décision** : 1 à 4 tenus → sur « B4 », machine, niveau puis longueur donnent un point propre aux deux juges
+ET à la garde : la méthode en trois temps est la candidate, à rejouer telle quelle sur un TROISIÈME morceau avant toute
+D-phase ; 1 en échec, 2 à 4 tenus → le grave entre les frappes n'est pas (seulement) la longueur du kick — et il faudra
+demander au STEM ce qu'il vaut là, avant d'accuser la machine ; 2 en échec → un kick plus court rend au mélange ce que
+le 909 lui avait donné, et le débord était une part du gain ; 5 en échec → le critère de H77 ne voit pas une longueur.
+Toute autre combinaison se tranche au plus sévère, comme en H78 et H79.
+
+**Ce que la mesure ne pourra PAS dire**, écrit d'avance : la garde lit le STEM, et un séparateur peut avoir rendu à la
+basse la queue d'un kick — un « débord » peut être un défaut de la cible et non du rendu ; le juge du mélange, par
+tranches de 7 s, ne départagera pas ; un morceau ; l'accord du kick (55 Hz d'usine) n'est pas touché, alors que le sub
+de H79 (1,89, son meilleur point à +6 dB) dit qu'il pourrait compter.
+
+### 41.1 L'instrument de H80, et ce que ses tests ont changé — AVANT toute mesure (11/11/2026, 10 h 21)
+
+`analyse/mesure_h80.py` (`queue_db`, `queue_croissante`, `frappes_hors`, `debord`, `choisir`, `evaluer`) et
+`analyse/tests/test_mesure_h80.py`, huit tests. La scène : celle de H74, le kick de l'« original » à 0,12 s, trois
+candidats à 0,06 · 0,12 · 0,30 s.
+
+**CE QUE LA SCÈNE A CHANGÉ au § 41.** Le débord y était écrit « aux frappes du charleston et à celles de la caisse ».
+Sur la scène, un charleston sur deux tombe SUR un kick : toutes frappes confondues, le kick de 0,30 s ne « déborde »
+que de **1,8 dB** — la tête des kicks noie leur queue —, là où les seuls charlestons d'ENTRE les kicks disent
+**+8,7 dB** (et −13,9 pour le kick trop court). C'est la population de la mesure qui était mal faite (« la population
+d'une mesure, c'est aussi le temps »). **Décision, écrite avant toute mesure du morceau** : le débord se lit aux
+frappes des autres pièces situées à 100 ms au moins de TOUTE frappe du kick (`frappes_hors`, `HORS_S`) ; le nombre de
+frappes gardées est publié ; une pièce qui n'en a aucune est écartée ET DITE ; s'il n'en reste aucune, REFUS. La garde
+de l'attendu 1 (bandes éloignées, toutes frappes, comme en H79) ne change pas.
+
+Sur la scène : 0,12 s est choisie, son niveau retrouvé à 5 % près, son débord sous 1 dB ; la caisse (toujours sur un
+kick) est écartée et dite ; trois solos identiques font un REFUS. **Vu rouge sur quatre mutants** : toutes les frappes
+gardées (3 rouges) ; à égalité la plus courte (1) ; la queue non contrôlée (2) ; le débord sans valeur absolue (2).
+`ruff` et `mypy` propres.
+
+**La ligne de commande passée À BLANC** (le défaut de H79 : aucun test ne passait par `main()`) : deux « points »
+donnés avec le MÊME solo, celui du kick d'usine de H76 — REFUS attendu, REFUS obtenu (code 3, pas de table écrite).
+**Ce que cet essai a laissé voir, et qu'il faut donc dire** : le point d'usine, déjà connu de H79 (f\* 0,9952, 9,90 au
+stem), a une queue de +2,92 dB (plus d'énergie de 100 à 300 ms qu'à la frappe) et un débord de **12,1 dB** (charleston
++15,0 sur 855 frappes gardées de 892 ; caisse +9,2 sur 538 de 555). Aucun autre point n'a été rendu ni lu.
+
+`reconstruction/travail/reload-h80.sh` : la fonction `projet` de H76-H79, plus UN réglage de la machine posée
+(`PARAM="4:drum.kick.decay=…"`, refusé si la piste n'est pas un TR-909 à ses réglages d'usine) ; sept solos, l'instrument,
+sept mélanges rendus et jugés, la concordance.
