@@ -5218,3 +5218,22 @@ tous les points. H87 et H88 réglaient un kick pour un défaut qui n'est pas le 
 **La suite** (H93, à écrire AVANT sa mesure) : la question de H81, côté rendu, sur « Reload » — quelle PISTE porte le
 20-60 Hz entre les kicks (les quatre voix `other`, le `piano` au `vsm.minimoog`, la batterie), piste par piste, sous
 contrôle de somme ; et dans l'original, quel stem porte le 60-150 Hz qui manque.
+
+## 54. H93 — sur « Reload », quelle PISTE du rendu tient le sub entre les kicks, et quel stem de l'original porte le 60-150 Hz qui manque (écrite AVANT sa mesure, 11/11/2026, 17 h 06)
+
+Aucun code neuf (`mesure_h91.energie_fenetres`, populations de H86 ; `reconstruction/travail/reload-h93.py`). Le projet
+de H75, ses dix pistes rendues SEULES (quatre voix `other`, `piano`, charleston, kick, caisse claire, deux voix audio) ;
+l'original et ses six stems. Deux bandes (20-60, 60-150 Hz), deux populations (555 kicks, 1 613 charlestons d'entre les
+kicks). Chaque part est donnée en dB sous SON mélange.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 0 | contrôles de somme : dix pistes → mélange rendu, six stems → original, dans les deux bandes et les deux populations | à 1 dB | REFUS |
+| 1 | rendu, sub entre les kicks : les trois pièces de batterie ensemble | à −6 dB ou moins du mélange, ET une piste hors batterie à −3 dB ou plus | la batterie à −3 dB ou plus (c'est elle, malgré H92) |
+| 2 | relevés : la table entière ; la piste qui porte le sub ; le stem qui porte le 60-150 Hz de l'original entre les kicks | — | — |
+
+**L'HYPOTHÈSE H93** : une piste hors batterie — je crois le `piano`, joué par `vsm.minimoog` au volume le plus fort du
+projet — tient un sub que l'original n'a pas. **La règle** : 1 tenu → cette piste est à instruire (ses notes : une
+octave ? sa machine : un sous-oscillateur ?) avant tout autre réglage de « Reload » ; 1 en échec → c'est une pièce de
+batterie qui tient ce sub, et les solos diront laquelle. **Dit d'avance** : les parts de l'original sont celles d'une
+séparation.
