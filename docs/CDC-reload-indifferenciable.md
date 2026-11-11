@@ -4985,3 +4985,47 @@ populations (+19,9 entre, +5,3 aux frappes), et l'attendu devient « entre dépa
 Le reste tient tel qu'écrit : identique 0,0 dB, ×2 → +6,02 dB, un break est hors mesure et dit, sans attaque rien
 n'est mesuré, les attaques détectées sont les kicks. **Vu rouge sur quatre mutants** (les deux populations confondues ;
 le break compté ; une seule bande pour les trois ; le non-mesurable ôté). `ruff`, `mypy` propres.
+
+### 50.2 Verdict (11/11/2026, écrit à 16 h 21) : le recoupement est MANQUÉ sur « Reload » — la mesure n'entre pas dans l'outil, elle en est retirée ; et ce qu'elle a fait voir vaut plus qu'elle : la moitié des attaques graves de l'original n'ont pas de kick dans le projet
+
+`reconstruction/travail/reload-h89.py` (aucun rendu ; `reload-h89.json`). Reconstruction / original, dB, aux frappes ·
+entre elles :
+
+| mélange | attaques de l'original | sub 20-60 | basse 60-150 | bas-médium 150-500 |
+|---|---|---|---|---|
+| B4 · H82 | 1 339 | +2,5 · **+3,8** | −0,4 · −1,3 | +2,2 · +3,3 |
+| B4 · H85 | 1 339 | +3,1 · **−1,4** | −1,7 · −4,0 | +1,2 · +3,0 |
+| Reload · H75 | 849 | −3,7 · **+8,2** | −1,9 · −1,2 | +0,1 · −2,6 |
+| Reload · H87 (30 Hz) | 849 | +5,0 · +15,5 | −1,6 · −0,7 | −3,0 · −3,8 |
+| Reload · H88 (37 Hz) | 849 | +1,6 · +15,8 | −1,1 · −0,3 | +1,8 · −1,6 |
+| Reload · H88 (45 Hz) | 849 | −2,0 · +14,8 | −0,7 · +0,9 | +4,7 · +0,3 |
+
+**Le recoupement écrit au § 50** : « B4 » H82 à plus de +3 dB entre les frappes — tenu (+3,8) ; « B4 » H85 à moins de
+2 dB — tenu (−1,4) ; **« Reload » H75 à moins de −3 dB — MANQUÉ** : +8,2 au sub, −1,2 à la basse, là où la mesure par
+les notes du projet disait −5,7. « Un seul manqué : la mesure n'entre pas. » **Appliqué** : `grave_aux_frappes` et son
+test sont retirés de l'outil (le fichier est revenu à son état d'avant le § 50.1 ; le code reste lisible dans le commit
+qui l'avait posé). **H89** ne se lit donc pas — et lue quand même, elle serait en échec (basse à −0,3 dB).
+
+**Pourquoi les deux mesures se contredisent, relevé à la suite** — elles ne lisent pas les mêmes frappes :
+
+| morceau | attaques graves de l'original (`attaques_basses`) | kicks du projet | attaques à plus de 50 ms de tout kick du projet | kicks du projet sans attaque à 50 ms |
+|---|---|---|---|---|
+| Reload | 849 | 555 | **415** | 121 |
+| B4 | 1 339 | 763 | **643** | 42 |
+
+Sur « Reload », **415 attaques graves de l'original sur 849 n'ont aucun kick du projet à 50 ms** — et ce morceau n'a
+pas de basse (H86 : le stem `bass` est à −14,6 dB de la batterie entre les kicks). Les « charlestons d'entre les
+kicks » de H86 tombaient donc, pour beaucoup, SUR des frappes graves que le projet n'a pas : le « grave qui manque
+entre les kicks » (−5,7 dB) n'était pas une queue de kick trop courte, et H87-H88 ont allongé un kick pour boucher des
+frappes ABSENTES — d'où un sub qui explose entre les vraies attaques (+15 dB) pendant que la mesure par les notes se
+disait contente (+0,3). **L'outil du § 0 le publiait depuis le début** : « calage du kick : 396/849 attaques appariées
+(reconstruction : 530) » sur le mélange de H75 — un témoin publié qui ne s'est pas lu (la règle du dépôt, repayée).
+Sur « B4 », les 643 attaques sans kick peuvent être des notes de basse (ce morceau en a une) : non départagé ici.
+
+**Ce qui tombe** : la lecture de H86 (« un grave qui vit dans la batterie après la frappe »), et avec elle le sens de
+H87 et H88 — leurs chiffres restent, leur explication non. **Ce qui tient** : H81-H85 sur « B4 » ne sont pas démenties
+par cette mesure (H82 +3,8 → H85 −1,4), mais se relisent sous la même question.
+
+**La suite** (H90, à écrire AVANT sa mesure) : sur « Reload », que sont les 415 attaques graves sans kick — dans quel
+stem, à quel niveau par rapport aux kicks transcrits, sur quels temps de la mesure — et la transcription de la batterie
+les a-t-elle manquées ? Si oui, c'est un défaut de la CHAÎNE (le rappel des kicks), en amont de tout réglage de machine.
