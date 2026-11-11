@@ -4803,3 +4803,50 @@ aucune piste n'en sort) à instruire avant tout réglage — pourquoi ce stem n'
 avec un rendu à plus de +3 dB → comme sur « B4 », autre chose tient lieu de basse ; 1 en échec → sur ce morceau la
 batterie porte son grave, et l'absence de piste de basse ne coûte rien ici. **Dit d'avance** : parts par stem = parts
 d'une séparation ; les attendus 2 et 3, par les mélanges, n'en dépendent pas.
+
+### 47.1 Verdict de H86 (11/11/2026, écrit à 12 h 52) : 1 en ÉCHEC — sur « Reload » la batterie porte son grave, il n'y a pas de basse manquante ; mais le rendu manque de 5,7 dB entre les kicks
+
+`reload-h86/h86.json`. Contrôle de somme tenu (0,49 dB au pire). En dB rapportés au mélange original :
+
+| signal | aux kicks · 30-150 | aux kicks · 150-500 | entre les kicks · 30-150 | entre les kicks · 150-500 |
+|---|---|---|---|---|
+| stem `drums` | −0,2 | −1,1 | **−1,5** | −11,9 |
+| stem `bass` | −38,6 | −46,3 | **−16,1** | −31,6 |
+| stem `other` | −20,9 | −7,7 | −16,6 | −1,2 |
+| stem `piano` | −43,1 | −21,7 | −34,0 | −20,3 |
+| stems `guitar` · `vocals` | −71,4 · −80,0 | −56,4 · −37,5 | −53,9 · −75,0 | −24,2 · −20,5 |
+| **mélange rendu (H75)** | −1,2 | +1,4 | **−5,7** | −2,8 |
+
+1 **en ÉCHEC** : entre les kicks le stem `bass` est à −14,6 dB du stem `drums`. 2 : le rendu manque de 5,7 dB entre les
+kicks. 3 **tenu** : −1,2 dB aux kicks. **La règle** : « 1 en échec → la batterie porte son grave, l'absence de piste de
+basse ne coûte rien ici » — la chaîne a eu raison de ne pas en faire une. **Ce que H81 ne disait pas et que H86 ajoute** :
+les deux morceaux ont le MÊME symptôme de signe opposé — « B4 » 4 à 5 dB de trop entre les kicks, « Reload » 5,7 de
+moins — et pas la même cause : là une basse faible que le kick compensait, ici un grave qui vit dans la batterie même,
+après la frappe, et que le kick de H70 (0,05 s, tenue 0,04 s) ne porte pas.
+
+## 48. H87 — H84 rejouée sur « Reload » : le kick relevé sur ses frappes, le TR-808 réglé dessus (écrite AVANT sa mesure, 11/11/2026, 12 h 52)
+
+**Le même instrument, le même protocole que § 45**, sur l'autre morceau et l'autre machine : le kick moyen du stem
+`drums` (`retenir`, `kick_moyen`, morceau entier) contre celui de chaque réglage du TR-808 (moteur `reload-h70`), par
+`mesure_h84.ecart_tf` ; la grille ENTIÈRE : accord 30 · 37 · 45 · 55 Hz × décroissance 0,05 · 0,10 · 0,20 · 0,35 s ×
+tenue 0 · 0,04 · 0,08 s (48 solos ; le point de H70 — 37 · 0,05 · 0,04 — y est) ; les trois meilleurs à leur f\*
+(`facteur_cale`, charleston 2,1063 et caisse 0,25 de H75 gardés), mélange rendu et jugé comme en H75 (`--tempo 136`,
+mêmes sections) et par le grave rendu / original (H86). `reconstruction/travail/reload-h87.py`, rejouable ; son témoin :
+le point de H70 au facteur de H75 (0,5822) doit rejouer 6,89.
+
+**L'HYPOTHÈSE H87** : le relevé désigne un kick plus LONG que celui de H70, et le grave d'entre les kicks revient.
+
+| # | mesure, au réglage choisi | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin de la course | 6,89 au centième | REFUS |
+| 1 | `ecart_tf` | au moins 1 dB sous celui du point de H70 | à moins de 0,3 dB |
+| 2 | mélange rendu / original, 30-150 Hz, aux kicks ET entre | tous deux à 1,5 dB (H75 : −1,2 · −5,7) | l'un au-delà de 3 dB |
+| 3 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H75 (0,91 · 1,75 · 1,07), ou meilleure | l'une pire de plus de 1,5 dB |
+| 4 | log-mel | ≤ 6,89 | > 7,08 (H72) |
+| 5 | relevés : la grille entière, les frappes retenues, les trois mélanges | — | — |
+
+**La règle** : 1 à 4 tenus → le relevé du kick par `ecart_tf` a réglé deux kicks sur deux morceaux et deux machines :
+c'est la candidate pour une D-phase (le réglage d'un kick dans la chaîne) ; 1 en échec → H70 avait déjà le bon kick à ce
+critère, et le grave manquant est ailleurs dans la batterie ; sinon au plus sévère. **Dit d'avance** : H84 a montré que
+0,1 dB au critère ne départage pas deux voisins (d'où les trois mélanges) ; le critère ne voit rien au-dessus de
+500 Hz ; `ecart_tf` lit 300 ms — un grave qui dure plus longtemps lui échappe.
