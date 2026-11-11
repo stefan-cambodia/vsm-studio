@@ -5536,3 +5536,36 @@ l'échantillon). Aucun des trois points n'est meilleur que H75 aux deux.
 qui a cassé), et un balayage FIN autour des deux régions trouvées — `vsm.drums` de 60 à 80 Hz, `vsm.fmdrums` de 70 à
 90 Hz —, avec le réglage propre à chacune qui touche le corps (le batteur de l'une, le rapport et l'indice FM de
 l'autre) ; jugé au log-mel ET à la distance de la chaîne, un point n'étant retenu que s'il bat H75 aux deux.
+
+## 59. H98 — le profil étendu au bas-médium, et un balayage fin autour des deux régions de H97 (écrite AVANT son instrument et sa mesure, 11/11/2026, 18 h 15)
+
+**L'instrument** : `mesure_h94` gagne une troisième bande (150-500 Hz) ; `mesure_h97.ecart_profil3` compare douze
+chiffres — les sept de H97, plus le bas-médium à 100-200 et 200-300 ms sous sa tête, et bas-médium − basse aux trois
+tranches. `reconstruction/travail/reload-h98.py`, rejouable.
+**La grille ENTIÈRE** (72 solos, le reste de chaque machine à l'usine) :
+- `vsm.drums` : accord 60 · 65 · 70 · 75 · 80 Hz × décroissance 0,08 · 0,10 · 0,15 s × batteur 0 · 0,5 · 1 ;
+- `vsm.fmdrums` : accord 70 · 80 · 90 Hz × décroissance 0,10 · 0,15 · 0,20 s × indice FM 0 · 1,5 · 3.
+Les TROIS plus petits écarts sont rendus au mélange à leur f\*, et jugés au log-mel ET à la distance v2 de la chaîne.
+
+**L'HYPOTHÈSE H98** : avec le bas-médium dans le critère, un réglage bat le TR-808 de H75 aux DEUX juges.
+
+| # | mesure, au réglage choisi (le plus petit écart) | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin : H75 rejoue 6,89 | | REFUS |
+| 1 | log-mel ET distance v2 | ≤ 6,89 ET ≤ 0,3458 | pires tous les deux |
+| 2 | mélange rendu / original, sub et basse, AUX kicks et ENTRE | les quatre à 3 dB | l'un au-delà de 6 dB |
+| 3 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H75 (0,91 · 1,75 · 1,07), ou meilleure | l'une pire de plus de 1,5 dB |
+| 4 | relevés : la grille entière, l'écart du kick de H70, les trois mélanges | — | — |
+
+**La règle** : 1 à 3 tenus → le kick de « Reload » est réglé sur une machine du parc, par son profil : à rejouer sur
+« B4 » ; aucun des TROIS points ne bat H75 aux deux juges → sur ces plages le parc n'a pas ce timbre, et les chiffres
+du profil du meilleur diront ce qui lui manque (`CDC-nouvelle-machine.md`) ; sinon au plus sévère. **Dit d'avance** :
+douze chiffres dont cinq neufs — le critère change, et un point de H97 ne se compare pas à un point de H98 par son
+écart ; le rapport FM de `vsm.fmdrums` et les autres réglages restent à l'usine.
+
+### 59.1 L'instrument de H98, AVANT toute mesure (11/11/2026, 18 h 15)
+
+`mesure_h94.BANDES` porte une troisième bande (150-500 Hz) ; `mesure_h97.resume3` et `ecart_profil3`, un test de
+plus : un corps 10 dB plus fort, de même forme, que l'ancien critère ne voit pas (0,0) et que le neuf compte (2,5 dB :
+trois chiffres sur douze) ; un profil sans bas-médium est un refus. **Vu rouge sur deux mutants** (les trois chiffres
+bas-médium − basse annulés ; le refus ôté). Onze tests H9x verts, `ruff` et `mypy` propres.

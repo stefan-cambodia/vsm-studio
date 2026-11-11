@@ -11,7 +11,7 @@ from typing import Dict, List
 
 import numpy as np
 
-BANDES = {"sub": (20.0, 60.0), "basse": (60.0, 150.0)}
+BANDES = {"sub": (20.0, 60.0), "basse": (60.0, 150.0), "bas-médium": (150.0, 500.0)}
 TRANCHES_S = ((0.0, 0.1), (0.1, 0.2), (0.2, 0.3))
 
 

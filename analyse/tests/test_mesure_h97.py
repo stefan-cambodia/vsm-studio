@@ -41,5 +41,20 @@ def test_h97_chaque_chiffre_du_resume_pese():
         raise AssertionError("un profil tronqué a été lu")
 
 
+@test
+def test_h98_le_bas_medium_entre_dans_le_critere():
+    o = {**ORIGINAL, "bas-médium": [20.0, 5.0, 0.0]}
+    assert_equal(h97.ecart_profil3(o, {k: [x + 6.0 for x in v] for k, v in o.items()}), 0.0)
+    gros = {**o, "bas-médium": [30.0, 15.0, 10.0]}          # un corps 10 dB plus fort, même forme
+    assert_equal(h97.ecart_profil(o, gros), 0.0)             # l'ancien critère ne le voit pas
+    assert_equal(h97.ecart_profil3(o, gros), round(30.0 / 12, 2))    # le neuf : trois chiffres sur douze, de 10 dB
+    try:
+        h97.ecart_profil3(ORIGINAL, o)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("un profil sans bas-médium a été comparé")
+
+
 if __name__ == "__main__":
     raise SystemExit(run())
