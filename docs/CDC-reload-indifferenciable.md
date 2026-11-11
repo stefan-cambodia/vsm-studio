@@ -4572,3 +4572,33 @@ s'améliore pas (2,12) : le kick long de H79 est toujours là, et il n'a plus de
 **La suite** (H83, à écrire AVANT sa mesure) : la basse au TB-303, la décroissance du kick rejouée (H80), jugée cette
 fois par ce qui voit le défaut — le grave du mélange entre les kicks, rendu contre original (le relevé de H81 : +4,3 dB)
 — et non par le log-mel, que H80 et H82 montrent plat sur ces deux variables.
+
+## 44. H83 — la basse au TB-303, la décroissance du kick rejouée, jugée par le grave du MÉLANGE entre les kicks (écrite AVANT sa mesure, 11/11/2026, 12 h 00)
+
+**Ce que H80 à H82 ont appris** : le log-mel est plat sur la longueur du kick et sur la machine de la basse ; ce qui
+voit le défaut est le grave du mélange entre les kicks, rendu contre original, sans séparation (H81 : +4,3 dB à
+30-150 Hz ; −0,4 aux kicks). **Une variable : `drum.kick.decay` du TR-909**, sur le projet de H82 (`bass` au
+`vsm.tb303`, gain 0,422). Les sept points de H80, chacun à son f\* de H80 (relu dans `reload-h80/b4/h80.json` : il se
+cale sur le stem `drums`, que la basse ne touche pas).
+
+**L'instrument** : aucun code neuf — `mesure_h81.energies` sur les deux MÉLANGES (populations de H81 : 763 kicks, 855
+charlestons d'entre les kicks), `mesure_h80.choisir` (le plus petit écart absolu au dixième ; à égalité la plus longue),
+l'outil du § 0. `reconstruction/travail/reload-h83.py`, rejouable ; son témoin : le point 0,32 s doit rejouer le
+mélange TB-303 de H82 (7,10 · 2,12 · 1,23 · 1,15).
+
+**L'HYPOTHÈSE H83** : la basse à sa place, une décroissance plus courte que 0,32 s ramène le grave d'entre les kicks à
+l'original SANS vider le sub, ce que H80 ne pouvait pas.
+
+| # | mesure, à la décroissance choisie | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin : 0,32 s rejoue H82 | au centième | sinon REFUS |
+| 1 | mélange rendu / original, 30-150 Hz, entre les kicks | à 1,5 dB (H79 : +4,3) | au-delà de 3 dB |
+| 2 | le même, aux kicks | à 1,5 dB | au-delà de 3 dB |
+| 3 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H82 (2,12 · 1,23 · 1,15), ou meilleure | l'une pire de plus de 1,5 dB |
+| 4 | log-mel | ≤ 7,20 | > 7,37 |
+| 5 | relevés : le balayage entier ; la décroissance choisie contre celle que le stem voulait en H80 (0,05 à 0,12 s) | — | — |
+
+**La règle** : 1 à 4 tenus → ce projet est le meilleur point de « B4 », et la suite est de rejouer la méthode entière
+(machines de batterie, niveau, basse, longueur) sur un TROISIÈME morceau avant toute D-phase ; sinon, au plus sévère.
+**Dit d'avance** : l'attendu 1 est le critère du choix lui-même — il sera tenu ou non par construction du balayage ; ce
+sont 2, 3 et 4 qui jugent. Un morceau ; le 150-500 Hz de la basse, trop fort de 4,8 dB, n'est pas touché.
