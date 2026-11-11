@@ -5749,3 +5749,50 @@ une question nommée (ce terme-là contre le log-mel) ; échec → le gain est d
 autrement (par l'écoute, ou par des perturbations connues comme au § 0). **Rien ne se décide ici sur les juges** : la
 métrique de la chaîne est un choix de `ROADMAP-fusion`, pas de ce cahier. **Dit d'avance** : douze mélanges d'un seul
 morceau, qui ne diffèrent que par leur kick.
+
+### 61.1 Verdict de H100 (11/11/2026, écrit à 21 h 16) : TENUE — sur les points où v2 gagne contre le log-mel, UN terme porte 72 à 85 % du gain ; ce n'est pas l'enveloppe que je nommais, c'est le CENTROÏDE
+
+`reconstruction/travail/reload-h100.py` (aucun rendu ; `reload-h100.json`). **Contrôle tenu** : sur les douze mélanges la
+somme pondérée des sept termes rend la distance v2 publiée à moins de 0,0005. Écart de chaque terme pondéré à celui de
+H75 (négatif : plus près de l'original) :
+
+| mélange | v2 | log-mel | centroïde | largeur | roll-off | cepstre | enveloppe | contraste | Δ v2 | le terme qui porte le plus |
+|---|---|---|---|---|---|---|---|---|---|---|
+| H75 (témoin) | 0,3458 | 6,89 | | | | | | | | |
+| H95-A, échantillon | 0,3302 | 6,13 | +0,0007 | −0,0046 | −0,0033 | −0,0068 | +0,0123 | **−0,0142** | −0,0156 | contraste, 91 % |
+| H95-B, kick moyen | 0,3387 | 6,59 | −0,0017 | +0,0009 | +0,0001 | −0,0028 | −0,0010 | −0,0025 | −0,0071 | cepstre, 39 % |
+| H97 `vsm.drums` 70 · 0,10 | 0,3581 | 6,81 | +0,0034 | +0,0029 | +0,0035 | +0,0021 | −0,0011 | +0,0014 | +0,0123 | (hausse diffuse) |
+| H97 `vsm.drums` 70 · 0,20 | 0,3687 | 6,82 | −0,0021 | +0,0033 | +0,0019 | +0,0038 | +0,0130 | +0,0029 | +0,0229 | enveloppe, 57 % (hausse) |
+| **H97 `vsm.fmdrums` 80 · 0,10** | 0,3319 | 7,24 | **−0,0116** | −0,0031 | −0,0074 | +0,0025 | +0,0056 | 0,0000 | −0,0139 | **centroïde, 83 %** |
+| H98 `vsm.fmdrums` 70 · 0,15 · 3 | 0,3390 | 7,15 | −0,0146 | −0,0023 | −0,0076 | +0,0049 | +0,0133 | −0,0005 | −0,0068 | centroïde (plus que le total) |
+| H98 `vsm.fmdrums` 70 · 0,20 · 1,5 | 0,3472 | 6,92 | −0,0154 | −0,0008 | −0,0064 | +0,0028 | +0,0209 | +0,0002 | +0,0014 | (centroïde et enveloppe s'annulent) |
+| H98 `vsm.fmdrums` 70 · 0,20 · 3 | 0,3411 | 7,17 | −0,0188 | −0,0024 | −0,0093 | +0,0054 | +0,0220 | −0,0017 | −0,0047 | centroïde (plus que le total) |
+| **H99 palier, choisi** | 0,3245 | 7,13 | **−0,0181** | −0,0037 | −0,0108 | +0,0060 | +0,0052 | 0,0000 | −0,0213 | **centroïde, 85 %** |
+| **H99 palier, 2e** | 0,3205 | 7,11 | **−0,0215** | −0,0032 | −0,0115 | +0,0056 | +0,0042 | +0,0010 | −0,0253 | **centroïde, 85 %** |
+| **H99 palier, 3e** | 0,3227 | 6,85 | **−0,0167** | −0,0016 | −0,0078 | −0,0048 | +0,0064 | +0,0014 | −0,0231 | **centroïde, 72 %** |
+
+(La planéité ne bouge pas de 0,0003.) **L'hypothèse tient** sur les quatre points désignés d'avance (83 · 85 · 85 ·
+72 %, au-delà de 60) ; **le terme que je nommais est faux** : l'enveloppe se DÉGRADE sur ces quatre points (+0,0042 à
++0,0064). **La règle** : sur ces mélanges le verdict de v2 est celui du centroïde spectral moyen du morceau entier — un
+seul nombre par fichier — et le désaccord des juges se ramène à lui contre le log-mel.
+
+**Les valeurs brutes, relevées à la suite** (mêmes fonctions, morceau entier) :
+
+| | centroïde | largeur de bande | roll-off |
+|---|---|---|---|
+| original | **5 021 Hz** | 4 143 Hz | 9 952 Hz |
+| H75 | **7 074 Hz** | 5 799 Hz | 13 894 Hz |
+| H95-A | 7 096 Hz | 5 610 Hz | 13 563 Hz |
+| H97 `vsm.drums` 70 · 0,10 | 7 186 Hz | 5 921 Hz | 14 243 Hz |
+| H99 palier, choisi | 6 466 Hz | 5 648 Hz | 12 821 Hz |
+
+Le rendu de « Reload » a un centroïde **2 050 Hz au-dessus** de l'original (+41 %) et un roll-off 3 900 Hz au-dessus —
+avant tout réglage de kick. Un kick plus fort et plus long (f\* 2,7 en H99) abaisse ce nombre de 600 Hz, et v2 le
+récompense. **Ce que la mesure dit, sans plus** : sur ces douze mélanges, la distance de la chaîne ne jugeait pas un
+kick ; elle jugeait un écart de brillance GLOBAL de 2 kHz, que n'importe quel grave ajouté réduit. **Ce qu'elle ne dit
+pas** : d'où vient cet écart — quelles pistes, quelle bande ; ni si l'original est lui-même borné en haut (son roll-off
+est sous 10 kHz).
+
+**La suite** (H101, à écrire AVANT sa mesure) : cet écart-là — l'énergie du rendu et de l'original par bande au-dessus
+de 4 kHz, jusqu'à 22 kHz (les bandes de l'outil du § 0 et de la densité s'arrêtent à 11 kHz), et piste par piste. Aucun
+réglage de kick avant.
