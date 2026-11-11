@@ -5674,3 +5674,57 @@ porte sur le sinus, pas sur l'enveloppe), est tombé rouge sur un code juste : c
 moins de −25 dB sans palier ; à 0, le rendu est identique au bit près, quelle que soit la décroissance lente. **Vu
 rouge sur un mutant** (le palier ôté du rendu). Cœur : 1 342 verts ; panneaux : 11 verts. Le témoin au bit près sur un
 projet entier (attendu 0) est la première chose que fait `reconstruction/travail/reload-h99.py`.
+
+### 60.2 Verdict de H99 (11/11/2026, mesuré de 20 h 16 à 20 h 33, écrit à 20 h 38) : 1 en ÉCHEC — le palier fait ce que ses tests disent, et il n'apporte RIEN au profil ; le réglage reste dans l'arbre à part
+
+`reconstruction/travail/reload-h99.py` (rejouable ; `reload-h99/h99.json`). Moteur `8163073d`. **Attendu 0 tenu** : le
+projet de H75 rendu par le moteur neuf est IDENTIQUE (`cmp`) à celui du moteur d'avant, et rejoue 6,89.
+
+**La grille entière**, écart de profil à trois bandes, dB — palier 0,2 · 0,3 · 0,45, et pour chacun la décroissance lente
+0,2 · 0,3 · 0,5 s :
+
+| accord · chute | palier 0,2 | palier 0,3 | palier 0,45 |
+|---|---|---|---|
+| 60 Hz · 0,05 s | **8,6** · 9,0 · 9,2 | 9,1 · 9,3 · 9,3 | 9,2 · 9,2 · 9,1 |
+| 60 Hz · 0,10 s | 9,1 · 9,1 · 9,0 | 9,1 · 9,1 · 9,1 | 9,1 · 9,2 · 9,2 |
+| 70 Hz · 0,05 s | 9,5 · 9,6 · 10,1 | 9,5 · 10,0 · 10,2 | 9,7 · 10,1 · 9,9 |
+| 70 Hz · 0,10 s | 9,3 · 9,5 · 9,8 | 9,4 · 9,8 · 10,1 | 9,7 · 10,2 · 10,1 |
+| 80 Hz · 0,05 s | 12,1 · 12,1 · 12,0 | 12,0 · 11,8 · 11,5 | 11,5 · 11,2 · 10,9 |
+| 80 Hz · 0,10 s | 11,5 · 11,5 · 11,5 | 11,5 · 11,6 · 11,4 | 11,5 · 11,4 · 11,2 |
+
+Références : kick de H70 15,2 ; meilleur du parc sans palier (H98, `vsm.fmdrums`) 5,9.
+
+| kick de « Reload » | profil | f\* | log-mel | distance v2 | \|médian\| sub · basse · bas-médium | AUX kicks : sub · basse | ENTRE : sub · basse |
+|---|---|---|---|---|---|---|---|
+| TR-808 de H70 (H75, témoin) | 15,2 | 0,5822 | 6,89 | 0,3458 | 0,91 · 1,75 · 1,07 | −4,0 · −0,9 | +8,5 · −14,8 |
+| **60 Hz · 0,05 · palier 0,2 · lente 0,2 (choisi)** | 8,6 | 2,7231 | 7,13 | 0,3245 | 5,46 · 6,76 · 3,91 | −2,5 · +0,3 | +7,9 · +2,3 |
+| 60 Hz · 0,05 · palier 0,2 · lente 0,3 | 9,0 | 2,6728 | 7,11 | 0,3205 | 2,81 · 6,04 · 3,89 | −1,7 · +0,2 | +11,3 · +4,3 |
+| 60 Hz · 0,10 · palier 0,2 · lente 0,5 | 9,0 | 1,2934 | 6,85 | 0,3227 | 2,68 · 3,24 · 3,26 | −5,1 · +0,2 | +8,2 · +3,7 |
+
+| # | verdict, au réglage choisi |
+|---|---|
+| 0 | **tenu** |
+| 1 | **en ÉCHEC** : 8,6 dB — au-delà de 5,9, le meilleur du parc SANS palier ; la grille est plate (8,6 à 12,1 sur 54 cases) |
+| 2 | ni l'un ni l'autre : log-mel 7,13 (pire), distance v2 0,3245 (meilleure) |
+| 3 | **en ÉCHEC** : sub d'entre les kicks +7,9 dB |
+| 4 | **en ÉCHEC** : sub +4,55, basse +5,01, bas-médium +2,84 |
+
+**La règle** : « 1 en échec → un palier ne suffit pas à faire ce profil — le réglage reste dans l'arbre à part et
+n'entre pas ». **Appliquée** : « Kick Sustain » reste sur `reload-h70`, il ne va pas dans `master`. Ce que le résumé
+du meilleur dit (original → choisi) : sub sous sa tête −11,1 · −13,2 → −0,7 · **+5,1** (il MONTE) ; basse − sub
+14,2 · 15,0 · 14,3 → 20,6 · 17,4 · **3,5** ; bas-médium sous sa tête −17,3 · −17,8 → −29,8 · −34,4. Le palier d'un sinus
+accordé à 60 Hz tombe à cheval sur la frontière des deux bandes graves et n'a rien au-dessus — c'était écrit d'avance
+(« le bas-médium de l'original n'est pas dans ce modèle »), et c'est la moitié du profil. Mon hypothèse du § 59.2 —
+« ce qui manque est une enveloppe à deux temps » — était une lecture, pas une mesure : l'enveloppe est là, le profil
+n'y est pas.
+
+**Relevé, non interprété** : ces trois points ont la MEILLEURE distance v2 mesurée sur « Reload » (0,3205 à 0,3245 ;
+l'échantillon de H95 : 0,3302 ; H75 : 0,3458) avec les pires bandes de l'outil du § 0. Depuis H97, sur neuf mélanges, la
+distance de la chaîne et le log-mel rangent les kicks dans des ordres différents.
+
+**Rien n'entre. Bilan de H97-H99** (162 réglages, un réglage neuf) : aucun kick modélisé — du parc ou avec palier —
+n'a le profil de celui de « Reload » à moins de 5,9 dB, et aucun ne bat le TR-808 de H70 aux deux juges. **Ce qui
+bloque maintenant n'est plus une machine mais les juges** : tant qu'ils se contredisent, « meilleur » n'a pas de sens,
+et chaque réglage de plus choisit entre eux sans le dire. **La suite proposée** (H100, à écrire AVANT sa mesure) :
+instruire ce désaccord sur les mélanges déjà rendus — ce que la distance v2 récompense et que le log-mel et les bandes
+punissent —, sans un rendu de plus.
