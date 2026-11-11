@@ -14,13 +14,18 @@
 #   (d) le témoin de la règle : bwf.wav par « Poser à la tête » → au tick 1 920 ;
 #   (e) Ctrl+Z après (a) → la piste retirée ;
 #   (f) le témoin (binaire d'avant D628) : pas de bouton, aucune piste ; l'anglais (« Insert at origin »).
+# D629 — LA COLONNE « ORIGINE » (le *Origin Time* du Pool), lue au relevé de chaque ligne, entre « Désigné par » et « État » :
+#   (a) bwf.wav et bwf48.wav « … ; — ; 3.000 s ; inutilisé » ; sans.wav « … ; — ; — ; inutilisé » ; voix.wav « … ; — ; joué » ;
+#   (b) en anglais, « … ; 3.000 s ; unused » ;
+#   (c) le témoin (le binaire de D628) : la ligne de bwf.wav finit par « 87 ko ; — ; inutilisé », sans origine.
 #
-#   tools/poser-a-l-origine.sh [binaire] [binaire témoin]
+#   tools/poser-a-l-origine.sh [binaire] [binaire témoin de D628] [binaire témoin de D629]
 set -u
 racine="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$racine"
 BIN="${1:-./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio}"
 TEMOIN="${2:-./build/temoin-D625/Vintage Synth MIDI Studio}"
+TEMOIN629="${3:-./build/temoin-D628/Vintage Synth MIDI Studio}"
 [ -x "$BIN" ] || { echo "REFUS : $BIN absent — compiler d'abord"; exit 2; }
 
 brouillon="$(mktemp -d "${TMPDIR:-/tmp}/vsm-poser-origine.XXXXXX")"
@@ -138,6 +143,26 @@ verdict "(e) Ctrl+Z après la pose : la piste retirée" "$([ "$PA" = "AUCUNE ; -
 PE="$(piste_de "$B/en-projet" audio/bwf.wav)"
 echo "       anglais : $PE"
 verdict "(f) en anglais : « Insert at origin » pressé dans « Pool » → au tick 2880" "$([ "$PE" = "bwf ; 1 ; 2880 ; 2" ] && echo 1 || echo 0)"
+echo "=== D629 : la colonne « Origine » de la réserve ==="
+course_sure "$BIN" liste "1000:relever-reserve"
+course_sure "$BIN" liste-en "1000:relever-reserve" VSM_LANGUE=en
+ligne() { grep "^VSM_RESERVE : $2 ; " "$brouillon/$1.txt" | tail -1; }
+finit() { case "$1" in *"$2") echo 1 ;; *) echo 0 ;; esac; }
+for f in bwf bwf48 sans voix; do echo "       $(ligne liste audio/$f.wav)"; done
+echo "       $(ligne liste-en audio/bwf.wav)"
+verdict "(D629 a) bwf.wav : « … ; — ; 3.000 s ; inutilisé »" "$(finit "$(ligne liste audio/bwf.wav)" " ; 87 ko ; — ; 3.000 s ; inutilisé")"
+verdict "(D629 a) bwf48.wav : « … ; — ; 3.000 s ; inutilisé »" "$(finit "$(ligne liste audio/bwf48.wav)" " ; — ; 3.000 s ; inutilisé")"
+verdict "(D629 a) sans.wav : « … ; — ; — ; inutilisé »" "$(finit "$(ligne liste audio/sans.wav)" " ; 87 ko ; — ; — ; inutilisé")"
+verdict "(D629 a) voix.wav : « … ; (1 clip(s)) ; — ; joué »" "$(finit "$(ligne liste audio/voix.wav)" "(1 clip(s)) ; — ; joué")"
+verdict "(D629 b) en anglais : « … ; 3.000 s ; unused »" "$(finit "$(ligne liste-en audio/bwf.wav)" " ; 3.000 s ; unused")"
+if [ -x "$TEMOIN629" ]; then
+    course "$TEMOIN629" t-liste "1000:relever-reserve"
+    echo "       témoin (D628) : $(ligne t-liste audio/bwf.wav)"
+    verdict "(D629 c) témoin (D628) : la ligne de bwf.wav sans origine, « 87 ko ; — ; inutilisé »" \
+        "$(finit "$(ligne t-liste audio/bwf.wav)" " ; 87 ko ; — ; inutilisé")"
+else
+    echo "       témoin de D629 absent ($TEMOIN629) : il n'est PAS joué"
+fi
 if [ -x "$TEMOIN" ]; then
     course "$TEMOIN" t-pose "$ORIGINE;2000:enregistrer:$B/t-pose-projet"
     tc="$(grep -c "Poser à l'origine — cliqué" "$B/t-pose.txt")"; TP="$(piste_de "$B/t-pose-projet" audio/bwf.wav)"

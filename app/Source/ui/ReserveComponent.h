@@ -48,6 +48,8 @@ public:
     static juce::String texteDuree(const Ligne& l);
     static juce::String texteFormat(const Ligne& l);
     static juce::String texteTaille(const Ligne& l);
+    /// D629.1 : « 3.000 s », ou « — » pour un fichier sans origine (ou absent) — la colonne et le relevé.
+    static juce::String texteOrigine(const Ligne& l);
     static juce::String nomDeLEtat(Etat etat);
 
     std::function<void()> onNettoyer, onRafraichir;
@@ -80,7 +82,7 @@ private:
     int getNumRows() override;
     void selectedRowsChanged(int derniere) override;   // D608.1 : « Relier... » suit la ligne choisie
     void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
-    /// Les bords des six colonnes pour une largeur donnée — la même règle pour l'en-tête et les lignes.
+    /// Les bords des sept colonnes pour une largeur donnée — la même règle pour l'en-tête et les lignes (D629.1 : sept).
     static std::vector<juce::Range<int>> colonnes(int largeur);
 
     std::vector<Ligne> lignes_;

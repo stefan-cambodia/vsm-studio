@@ -133,6 +133,10 @@ juce::String ReserveComponent::texteTaille(const Ligne& l) {
     return tr(u8"%1 Mo").replace("%1", juce::String(static_cast<double>(l.octets) / 1048576.0, 1));
 }
 
+juce::String ReserveComponent::texteOrigine(const Ligne& l) {   // D629.1
+    return l.octets >= 0 && l.origine >= 0.0 ? juce::String(l.origine, 3) + " s" : juce::String::fromUTF8("\xe2\x80\x94");
+}
+
 juce::String ReserveComponent::nomDeLEtat(Etat etat) {
     switch (etat) {
         case Etat::Joue:               return tr(u8"joué");
@@ -145,13 +149,14 @@ juce::String ReserveComponent::nomDeLEtat(Etat etat) {
 }
 
 std::vector<juce::Range<int>> ReserveComponent::colonnes(int largeur) {
-    // Fichier et « Désigné par » se partagent ce que les quatre colonnes fixes laissent.
-    const int fixes = 80 + 120 + 80 + 170;
+    // Fichier et « Désigné par » se partagent ce que les colonnes fixes laissent (D629.1 : « Origine », 90 px, entre
+    // « Désigné par » et « État »).
+    const int fixes = 80 + 120 + 80 + 90 + 170;
     const int reste = std::max(160, largeur - fixes - 16);
     const int fichier = reste * 45 / 100, designe = reste - fichier;
     std::vector<juce::Range<int>> c;
     int x = 8;
-    for (int w : {fichier, 80, 120, 80, designe, 170}) {
+    for (int w : {fichier, 80, 120, 80, designe, 90, 170}) {
         c.push_back({x, x + w - 6});
         x += w;
     }
@@ -215,6 +220,7 @@ void ReserveComponent::paintListBoxItem(int row, juce::Graphics& g, int width, i
     ecrire(2, texteFormat(l), vsm::ui::Palette::textSecondary);
     ecrire(3, texteTaille(l), vsm::ui::Palette::textSecondary, juce::Justification::centredRight);
     ecrire(4, l.designePar, vsm::ui::Palette::textPrimary);
+    ecrire(5, texteOrigine(l), vsm::ui::Palette::textSecondary, juce::Justification::centredRight);   // D629.1
     // L'ÉTAT EN COULEUR : ce qui joue en sarcelle, ce qui manque en rouge (« regarde MAINTENANT »), l'inutilisé en
     // ambre (un fait, la convention du volet d'ouverture, D152) ; ce qui attend, en gris.
     const juce::Colour couleur = l.etat == Etat::Joue       ? vsm::ui::Palette::accentTeal
@@ -222,7 +228,7 @@ void ReserveComponent::paintListBoxItem(int row, juce::Graphics& g, int width, i
                                : l.etat == Etat::Inutilise  ? vsm::ui::Palette::accentAmber
                                                             : vsm::ui::Palette::textSecondary;
     g.setFont(juce::Font(juce::FontOptions(13.0f, l.etat == Etat::Manquant ? juce::Font::bold : juce::Font::plain)));
-    ecrire(5, nomDeLEtat(l.etat), couleur);
+    ecrire(6, nomDeLEtat(l.etat), couleur);
 }
 
 void ReserveComponent::paint(juce::Graphics& g) {
@@ -233,11 +239,11 @@ void ReserveComponent::paint(juce::Graphics& g) {
     g.setColour(vsm::ui::Palette::textSecondary);
     g.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
     const auto c = colonnes(enTete_.getWidth());
-    const juce::String noms[6] = {tr(u8"Fichier"), tr(u8"Durée"), tr(u8"Format"), tr(u8"Taille"), tr(u8"Désigné par"),
-                                  tr(u8"État")};
+    const juce::String noms[7] = {tr(u8"Fichier"), tr(u8"Durée"), tr(u8"Format"), tr(u8"Taille"), tr(u8"Désigné par"),
+                                  tr(u8"Origine"), tr(u8"État")};   // D629.1
     for (size_t i = 0; i < c.size(); ++i)
         g.drawText(noms[i], enTete_.getX() + c[i].getStart(), enTete_.getY(), c[i].getLength(), enTete_.getHeight(),
-                   (i == 1 || i == 3) ? juce::Justification::centredRight : juce::Justification::centredLeft);
+                   (i == 1 || i == 3 || i == 5) ? juce::Justification::centredRight : juce::Justification::centredLeft);
 }
 
 void ReserveComponent::resized() {

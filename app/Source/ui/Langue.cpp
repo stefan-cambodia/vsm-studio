@@ -756,6 +756,8 @@ const Paire kAnglais[] = {
       "State" },
     { "Désigné par",
       "Named by" },
+    { "Origine",   // D629.1 : la colonne de la réserve (le *Origin Time* du Pool)
+      "Origin" },
     { "piste « %1 »",
       "track “%1”" },
     { "gel de « %1 »",

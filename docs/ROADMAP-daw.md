@@ -49293,3 +49293,24 @@ la réserve sans rien poser) :
 inutilisé », sans origine ;
 (d) `reserve-fichiers`, `relier-fichier`, `chercher-manquants`, `poser-depuis-reserve`, `description-importee` verts —
 ce sont eux que le format du relevé pourrait casser ; les suites ; la série.
+
+### Phase D629 — MESURÉE, la série à jouer (12/11/2026, 06 h 37 à l'horloge)
+
+*Écrite avant son code à 06 h 30 (commitée avant toute ligne) ; **le banc vu ROUGE d'abord, sur le binaire de D628, avant
+la compilation** — ses cinq contrôles neufs tombés sur l'absence du champ (« 87 ko ; — ; inutilisé »), la raison écrite.
+Compilé de 06 h 32 à 06 h 34, `rc=0`. Les contrôles s'ajoutent au banc de D628 (`tools/poser-a-l-origine.sh`, même jeu) :
+la série garde 224 bancs. Le témoin : le binaire de D628 (`build/temoin-D628`).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D628) | tenu |
+|---|---|---|---|---|
+| D629 (a) | `bwf.wav`, `bwf48.wav` : « … ; — ; 3.000 s ; inutilisé » | « … ; 87 ko ; — ; **3.000 s** ; inutilisé » ; « … ; 95 ko ; — ; **3.000 s** ; inutilisé » | « … ; 87 ko ; — ; inutilisé » | **oui** |
+| D629 (a) | `sans.wav`, `voix.wav` : « — » à la place de l'origine | « … ; 87 ko ; — ; **—** ; inutilisé » ; « … (1 clip(s)) ; **—** ; joué » | — | **oui** |
+| D629 (b) | l'en-tête « Origine » / « Origin », la photo regardée | les deux photos : la colonne entre « Désigné par » et « État », « 3.000 s » et « — » alignés à droite ; « … ; 3.000 s ; unused » | — | **oui** |
+| D629 (c) | le témoin sans le champ | — | la ligne de `bwf.wav` finit par « 87 ko ; — ; inutilisé » | **oui** |
+| D629 (d) | les voisins que le format du relevé pourrait casser | `reserve-fichiers`, `relier-fichier`, `chercher-manquants`, `poser-depuis-reserve`, `description-importee` verts ; les contrôles de D628 verts sur le binaire neuf | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Rouge avant, vert après, par la même ligne de gestes** : le banc n'a pas pu passer par hasard.
+- **À regarder sur la photo** : la colonne « Origine », alignée à droite, touche presque « État » (l'écart de colonne, 6 px)
+  — lisible à 980 px ; non changé.
+- **La série n'est pas jouée** : batterie à 44 %, la même raison que D626 à D628 ; elle se joue pour les quatre ensemble.

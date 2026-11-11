@@ -11061,7 +11061,8 @@ void MainComponent::direLaReserve() {
     using R = vsm::app::ui::ReserveComponent;
     for (const auto& l : reservePanel_.lignes())
         std::fputs(("VSM_RESERVE : " + l.fichier + " ; " + R::texteDuree(l) + " ; " + R::texteFormat(l) + " ; "
-                    + R::texteTaille(l) + " ; " + l.designePar + " ; " + R::nomDeLEtat(l.etat) + "\n").toRawUTF8(), stderr);
+                    + R::texteTaille(l) + " ; " + l.designePar + " ; " + R::texteOrigine(l)   // D629.1 : à sa place dans la liste
+                    + " ; " + R::nomDeLEtat(l.etat) + "\n").toRawUTF8(), stderr);
     // LA TAILLE DE LA FENÊTRE, dite : deux photos de panneau sur une quinzaine sont sorties en 128 × 128, écran éteint et
     // session verrouillée, sans se laisser reproduire (D606, D607) — le relevé la mesure au lieu de la deviner.
     // D617.1 : la remarque de la dernière recherche, et l'état du bouton qui la lance.
