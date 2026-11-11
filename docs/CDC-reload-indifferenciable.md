@@ -4072,3 +4072,69 @@ rendu, la combinaison seule si une pièce change ; un contrôle de somme en éch
 **Une limite, dite avant la mesure** : le critère lit le morceau ENTIER, le juge du mélange aussi — mais le stem de
 batterie est une estimation de la séparation, et ce qu'elle a laissé fuir des autres instruments compte dans le critère
 comme de la batterie à atteindre.
+
+### 39.2 Verdict de H78 (11/11/2026, mesuré de 09 h 58 à 10 h 01, écrit à 10 h 02) : le meilleur log-mel de « B4 » (8,42 → 7,37) et 3 en ÉCHEC — trois pièces passent au TR-909, la densité revient, le grave et l'aigu s'éloignent ; la garde a un trou
+
+`reconstruction/travail/reload-h78.sh` (rejouable), moteur `1eff3b6d`. **La table entière** — log-mel au stem de la
+batterie sommée, moyen ; « b » : un facteur à sa borne ; « C » : casse une bande de sa pièce, refusé :
+
+| pièce | TR-808 réglé (témoin) | `vsm.tr909` | `vsm.drums` | `vsm.fmdrums` | choix |
+|---|---|---|---|---|---|
+| Reload · charleston | 8,75 | 11,86 b C | 13,36 b C | 12,88 b C | garde |
+| Reload · kick | 8,75 | 8,54 b C | 9,06 b C | 9,07 b C | garde (le seul meilleur gagne 0,21 dB, et casse 30-150) |
+| Reload · caisse claire | 8,75 | 8,77 C | 8,92 b C | 9,51 b C | garde |
+| B4 · charleston | 11,52 | 11,82 | 12,19 | 12,06 | garde |
+| B4 · kick | 11,52 | **10,87** (−0,65) | 12,45 | 11,29 | **`vsm.tr909`** |
+| B4 · caisse claire | 11,52 | **11,02** (−0,50) | 11,78 C | 13,80 C | **`vsm.tr909`** (au seuil même) |
+| B4 · clap | 11,52 | **10,34** (−1,18) | MUET | 12,08 b | **`vsm.tr909`** |
+
+« Reload » : les neuf candidats cassent une bande, huit à une borne — aucune pièce ne change, rien n'est rendu. « B4 » :
+la caisse `vsm.fmdrums` de H76 est refusée deux fois, comme annoncé (garde, et 13,80). Combinaison de « B4 » (charleston
+TR-808 +6,27 · kick 909 −11,23 · caisse 909 −1,00 · clap 909 −8,75 dB) : **10,29** au stem, aucune bande cassée.
+
+| mesure, « B4 » | H75 → **H78** |
+|---|---|
+| log-mel moyen (médian) | 8,42 (6,38) → **7,37 (5,94)** |
+| \|médian\| sub · basse · bas-médium | 1,48 · 2,29 · 1,73 → 2,07 · **4,39** · 2,10 |
+| aigus : médiane (\|médian\|) | +3,83 (3,89) → **+6,67 (6,67)** |
+| médium · haut-médium : \|médian\| | 3,03 · 2,25 → 3,54 · 3,44 |
+| niveau : décalage (pire tranche) | −3,80 (10,61) → −5,06 (10,20) |
+| attaques du kick appariées | 1 002 / 1 339 → 792 / 1 339 |
+
+| # | verdict |
+|---|---|
+| 0 | **tenu** : témoin sommé contre batterie rendue, 8,75 · 8,75 (« Reload ») et 11,52 · 11,52 (« B4 ») — la somme EST le rendu |
+| 1 | **tenu** sur « B4 » (trois pièces sur quatre) ; aucune sur « Reload » |
+| 2 | **tenu** : 7,37, soit −1,05 dB sous H75 — et sous tous les points de « B4 » mesurés depuis H73 |
+| 3 | **en ÉCHEC** : la basse 2,10 dB plus loin, les aigus 2,78 dB plus loin (sub +0,59, bas-médium +0,37) |
+| 4 | **tenu à la lettre** : aucune bande « cassée » — voir le trou ci-dessous |
+| 5 | **tenu** : batterie de la combinaison sommée 10,29, rendue 10,29 |
+
+**La règle** ne donnait de branche qu'à « 1 à 5 tenus », « 1 en échec » et « 1 tenu, 2 en échec » ; 3 en échec avec 2
+tenu n'y était pas — **je la tranche ici, par la lecture la plus sévère** : le choix n'est PAS une règle candidate. Deux
+juges du même outil se contredisent sur le même rendu, et un gain au log-mel qui s'achète en équilibre n'est pas un
+gain tant qu'on ne sait pas lequel des deux l'oreille suivrait. **Rien n'entre.**
+
+**Ce que H78 établit quand même**, chiffres à l'appui :
+- **Le critère de H77 a prédit un point NEUF** : −1,23 dB au stem, −1,05 dB au mélange (rapport 1,2 — SOUS la fourchette
+  de 1,4 à 4,8 du § 38.2 : le stem a prédit le sens, pas l'ampleur). La branche « la concordance ne tient pas sur un point neuf » est écartée.
+- **Le résidu de H75 nommait juste, mais ne savait pas choisir** : il disait que les pièces de « B4 » manquaient de
+  500-2 000 Hz (§ 36.2). Avec le TR-909, rendu / stem aux frappes à 500-2 000 Hz : charleston −10,7 → −3,4 (sans avoir
+  changé de machine : ce sont les autres pièces qui y sonnent), kick −16,3 → −10,6, caisse −12,5 → −10,8.
+- **La densité revient** (`densite.txt`) : le 10e centile de la batterie rendue, de −13,9 (H75) à **−0,6 dB** à 4-8 kHz
+  pour un stem à −0,3 ; de −18,4 à −6,7 à 8-11 kHz pour un stem à −6,6. C'est par là que le log-mel gagne.
+
+**LE TROU DE LA GARDE**, trouvé en lisant le résidu de la combinaison : le kick du TR-909, à ses frappes, passe à
+30-150 Hz de **−3,5 à −11,2 dB** du stem — et n'est pas « cassé », parce que la garde ne protège que les bandes à moins
+de 3 dB AVANT le choix. Une bande déjà loin de 3,5 dB peut s'éloigner de 7,7 dB de plus sans un mot. C'est le grave de
+l'attendu 3 : le système de H75 donne au kick du 909 un facteur de 0,2745 (la borne est à 0,25), la batterie rendue a
+9,9 dB d'énergie de moins que le stem à 30-150 Hz (5,0 en H75), et son 99e centile y est 12,9 dB sous celui du stem.
+Écrit d'avance au § 39 : « un candidat peut perdre par son NIVEAU et non par son timbre » — ici il GAGNE au critère
+malgré un niveau faux, parce que le log-mel moyen compte autant les trames creuses que les frappes.
+
+**La suite que ces chiffres désignent** (à écrire en H79, AVANT sa mesure) : la machine choisie par H78 gardée, UNE
+variable — le niveau du kick, que le système de H75 fixe mal dès que le timbre change ; et la garde refaite pour voir
+une bande qui s'ÉLOIGNE, pas seulement une bande qui était proche.
+
+**Ce que la mesure ne dit pas** (écrit d'avance, rappelé) : machines à leurs réglages d'usine ; un seul morceau a
+changé ; le stem porte les fuites de la séparation.
