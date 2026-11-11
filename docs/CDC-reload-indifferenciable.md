@@ -3835,3 +3835,71 @@ qu'elle remplace (preset sans paramètre : ses réglages d'usine).
 **Une limite, dite avant la mesure** : le résidu pondéré est celui du système AVANT le bornage des facteurs (comme en
 H75, dont les 0,91 et 1,52 servent de référence) ; un candidat dont un facteur touche la borne a un résidu optimiste.
 Chaque borne atteinte est relevée dans la table à côté de son résidu.
+
+### 37.2 Verdict de H76 (11/11/2026, candidats rendus de 02 h 11 à 02 h 14, mélange rendu à 06 h 38, mesuré à 09 h 49, écrit à 09 h 51) : 3 et 6 en ÉCHEC — une seule pièce change, son résidu baisse de 8,8 %, et le mélange s'ÉLOIGNE de 0,92 dB
+
+`reconstruction/travail/reload-h76.sh` (rejouable), moteur de `reload-h70` (`1eff3b6d`). **La table entière** — résidu
+pondéré du système avec ce seul solo remplacé ; « b » : un facteur à sa borne (résidu optimiste, § 37.1) :
+
+| pièce | TR-808 réglé (H75, témoin) | `vsm.tr909` | `vsm.drums` | `vsm.fmdrums` | choix |
+|---|---|---|---|---|---|
+| Reload · charleston | 0,9058 | 1,1411 b | 1,1093 b | 1,1502 b | garde |
+| Reload · kick | 0,9058 | 1,0697 b | 1,0838 b | 1,1275 b | garde |
+| Reload · caisse claire | 0,9058 | 0,8978 (−0,9 %) | 0,9499 b | 0,9135 b | garde (sous 5 %) |
+| B4 · charleston | 1,5193 | 1,5637 | 1,5312 | 1,5633 | garde |
+| B4 · kick | 1,5193 | 1,6353 | 1,6638 | 1,6572 | garde |
+| B4 · caisse claire | 1,5193 | 1,5320 | 1,4670 (−3,4 %) | **1,3849 (−8,8 %)** | **`vsm.fmdrums`** |
+| B4 · clap | 1,5193 | 1,4977 (−1,4 %) | MUET (écarté, dit) | 1,5028 b | garde (sous 5 %) |
+
+Sur 21 candidats, UN passe le seuil ; `vsm.drums` ne joue pas la note 39 (solo à −∞ dB). « Reload » : aucune pièce ne
+change, la combinaison EST celle de H75, rien n'est rendu. « B4 », combinaison (charleston +7,24 · kick −5,41 · caisse
+claire `vsm.fmdrums` −5,16 · clap −10,71 dB), résidu 1,3849 :
+
+| mesure, « B4 » | H75 → **H76** |
+|---|---|
+| log-mel moyen (médian) | 8,42 (6,38) → **9,34 (6,98)** |
+| \|médian\| sub · basse · bas-médium | 1,48 · 2,29 · 1,73 → 1,18 · **3,08** · 1,71 |
+| aigus : médiane (\|médian\|) | +3,83 (3,89) → +1,25 (1,34) |
+| médium · haut-médium : \|médian\| | 3,03 · 2,25 → 2,65 · 2,21 |
+| niveau : décalage (pire tranche) | −3,80 (10,61) → −3,62 (10,80) |
+| attaques du kick appariées | 1 002 / 1 339 → **742 / 1 339** |
+
+| # | verdict |
+|---|---|
+| 1 | **entre les deux** : « Reload » 0,9058, inchangé (> 0,82) ; « B4 » 1,3849, en baisse de 8,8 % mais au-dessus de 1,37 |
+| 2 | **tenu, à vide** : « Reload » est le projet de H75 (6,89) — aucune pièce n'y change, ce n'est pas un gain |
+| 3 | **en ÉCHEC** : 9,34 > témoin (8,57) — le pire log-mel de « B4 » depuis H73 |
+| 4 | « B4 » **entre les deux** : la basse à +0,79 dB de H75 (sub −0,30, bas-médium −0,02) ; « Reload » à vide |
+| 5 | « B4 » **tenu** : 1,34 ≤ 1,57 ; « Reload » à vide |
+| 6 | **en ÉCHEC** : la caisse claire de « B4 », à +2,3 dB du stem à 8-11 kHz en H75, y passe à **−14,5 dB** |
+
+La caisse claire de « B4 », rendu / stem à ses frappes (dB), H75 → H76 : 30-150 +1,1 → −3,3 · 150-500 −5,4 → −3,6 ·
+500-2 k **−12,5 → −2,1** · 2-4 k −1,2 → +2,1 · 4-8 k +3,7 → −2,2 · 8-11 k **+2,3 → −14,5**. Le résidu PONDÉRÉ a acheté
+10 dB de médium au prix de 17 dB d'extrême aigu, parce que le stem a peu d'énergie à 8-11 kHz à ces frappes : la
+pondération qui empêche une bande vide de tirer un niveau (§ 36) laisse aussi un timbre s'y vider.
+
+**La règle** : « 6 en échec → le résidu pondéré cache ce qu'il casse, et le critère de choix est à refaire avant toute
+règle ». Et 3 en échec le confirme par l'autre bout : le résidu au stem baisse, le mélange s'éloigne. **Le même choix
+relu avec la garde de 6 DANS le critère** (un candidat qui casse une bande est refusé — calcul sur la table, aucun
+rendu) : `vsm.fmdrums` refusée, `vsm.drums` sous le seuil (−3,4 %) — plus AUCUNE pièce ne change, sur aucun des deux
+morceaux, et c'est alors la branche « 1 en échec » qui parle : aucune machine du parc, à ses réglages d'usine, n'est
+plus près que le TR-808 réglé. **Rien n'entre.**
+
+**Où le mélange perd, relevé et non expliqué** (densité de la batterie seule contre le stem, `densite.txt`) : le 10e
+centile du rendu tombe de −16,7 à −32,3 dB à 2-4 kHz, de −13,9 à −31,4 à 4-8 kHz, de −18,4 à −45,5 à 8-11 kHz, quand
+celui du stem est entre −6,6 et −0,3 dB — ENTRE les frappes, la batterie de H76 est vide là où celle de H75 ne l'était
+pas (la médiane suit : −3,1 → −7,6 · −2,0 → −9,3 · +0,2 → −9,1). Le résidu, mesuré AUX frappes d'une pièce (10 ms
+avant, 100 ms après), ne voit pas ce qui sonne entre elles — c'est la leçon de H72 (la densité), que le critère de H76
+ne portait pas. Quelle pièce remplissait ces creux (la queue de souffle de la caisse du TR-808, à ×0,94 en H75 ?) n'est
+PAS mesuré : c'est une piste.
+
+**Ce que la mesure ne dit pas** (écrit d'avance au § 37, rappelé) : les machines écartées le sont à leurs réglages
+d'usine ; deux morceaux ne font pas une règle.
+
+**Un incident, dit** : le mélange de « B4 », rendu à 06 h 38, n'a été mesuré qu'à 09 h 49. `tools/ecart-a-l-original.py`
+demande **~6,2 Go** sur ce morceau de 354 s (relevé : sommet de RSS à 6 235 912 Ko ; tué à 6 Go de plafond, passé à 9 ;
+la pile au moment de la mort : `attaques_basses` → `onset_detect` au pas de 32 échantillons) ; trois courses du script
+(06 h 38, 07 h 41, 08 h 31) y sont restées sans rien écrire, `systemd-oomd` a tué un onglet de terminal à 09 h 26
+(mémoire et échange au-delà de 90 %), le poste a redémarré à 09 h 46. Que les trois courses se soient EMPILÉES n'est
+pas prouvé (leurs PID sont perdus). **Le contrôle de l'outil** : rejoué sur le mélange de H75, il rend son texte du
+11/10 à l'octet près (`cmp`) — la mesure de 09 h 49 est du même instrument que sa référence.
