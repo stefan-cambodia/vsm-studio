@@ -5421,3 +5421,27 @@ métrique du rapport de la course et v2) : original contre le mélange de H75, c
 et la règle du § 5 octies (mesurée sur un kit entier, un autre morceau) mérite d'être rejouée pièce par pièce — à
 proposer, pas à décider ici : c'est un choix de conduite du projet (réglable contre fidèle) ; 1 en échec → les deux
 juges se contredisent, et c'est le juge qu'il faut instruire avant de toucher à la règle.
+
+### 57.1 Verdict de H96 (11/11/2026, écrit à 17 h 36) : TENUE — la distance de la chaîne voit aussi le gain du kick échantillonné (−4,5 %)
+
+`reload-h96.json`. Distance de la chaîne, métrique v2 (la clé de métrique n'a pas été trouvée dans la provenance du
+rapport de la course : une seule métrique est donc mesurée, et c'est dit) :
+
+| mélange de « Reload » | distance v2 | rapportée à H75 | log-mel (outil du § 0) |
+|---|---|---|---|
+| silence | 0,9236 | | |
+| H75 (kick au TR-808) | 0,3458 | | 6,89 |
+| **H95-A (kick par `samples/kick.wav`)** | **0,3302** | **−4,5 %** | 6,13 |
+| H95-B (kick moyen de H69) | 0,3387 | −2,1 % | 6,59 |
+
+1 **tenu** : −4,5 %. Les deux juges s'accordent, et dans le même ordre (A, puis B, puis le TR-808). **La règle** : « un
+kick échantillonné SEUL vaut mieux que le TR-808 sur ce morceau, et la règle du § 5 octies (mesurée sur un kit entier,
+un autre morceau) mérite d'être rejouée pièce par pièce — à proposer, pas à décider ici ».
+
+**Ce qui est proposé, et laissé à la décision de l'utilisateur** (les documents sont clairs : la batterie modélisée
+est un choix — « réglable » contre « fidèle au coup enregistré » —, pas un résultat de mesure sur chaque pièce) :
+rejouer `ROADMAP-fusion` § 5 octies PIÈCE PAR PIÈCE — le kick échantillonné, le reste du kit modélisé — sur *Sky and
+Sand*, « Reload » et « B4 », avec la distance de la chaîne. Ce que H87-H96 apportent à ce choix : sur « Reload », huit
+réglages du kick du TR-808 n'ont pas approché ce que l'échantillon fait d'un geste, parce que le défaut est un timbre
+(§ 55.2) ; et ce que l'échantillon coûte est mesuré aussi (sub d'entre les kicks +6,6 dB, § 56.1). **Rien n'entre** tant
+que ce choix n'est pas fait.
