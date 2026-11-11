@@ -3963,3 +3963,112 @@ de son aigu (passe-bas à 4 kHz) plus de cinq fois cela — ce que le résidu po
 prise en écrivant** : une ÉGALITÉ au stem sur une paire tranchée compte DISCORDANTE (un critère qui ne départage pas ne
 prédit pas). **Vu rouge sur trois mutants**, un test chacun : l'ordre non regardé ; toute paire tranchée ; l'égalité
 admise. `ruff` et `mypy` propres. `reconstruction/travail/reload-h77.sh` : aucun rendu, huit lectures.
+
+### 38.2 Verdict de H77 (11/11/2026, mesuré à 09 h 54, écrit à 09 h 55) : TENUE — dix paires tranchées sur dix rangées comme le mélange, et les trois paires non tranchées disent le seuil qu'il faudra au critère
+
+`reconstruction/travail/reload-h77.sh` (aucun rendu ; `reload-h77/h77.json`). **La table entière** :
+
+| morceau | point | log-mel du mélange | log-mel au stem : moyen (médian) |
+|---|---|---|---|
+| B4 | témoin | 8,57 | 11,75 (9,42) |
+| B4 | H73 | 8,37 | 11,45 (8,98) |
+| B4 | H74 | 8,43 | 11,08 (8,36) |
+| B4 | H75 | 8,42 | 11,52 (8,78) |
+| B4 | H76 | 9,34 | **13,80** (10,50) |
+| Reload | H71 | 8,16 | 10,56 (7,23) |
+| Reload | H74 | 7,10 | 9,05 (6,29) |
+| Reload | H75 | 6,89 | 8,75 (5,83) |
+
+| paire | Δ mélange | Δ au stem | |
+|---|---|---|---|
+| B4 · témoin → H73 | −0,20 | −0,30 | concordante |
+| B4 · témoin → H74 | −0,14 | −0,67 | concordante |
+| B4 · témoin → H75 | −0,15 | −0,23 | concordante |
+| B4 · témoin → H76 | +0,77 | +2,05 | concordante |
+| B4 · H73 → H76 | +0,97 | +2,35 | concordante |
+| B4 · H74 → H76 | +0,91 | +2,72 | concordante |
+| B4 · H75 → H76 | +0,92 | +2,28 | concordante |
+| Reload · H71 → H74 | −1,06 | −1,51 | concordante |
+| Reload · H71 → H75 | −1,27 | −1,81 | concordante |
+| Reload · H74 → H75 | −0,21 | −0,30 | concordante |
+| B4 · H73 → H74 | +0,06 | −0,37 | non tranchée |
+| B4 · H73 → H75 | +0,05 | +0,07 | non tranchée |
+| B4 · H74 → H75 | −0,01 | **+0,44** | non tranchée |
+
+| # | verdict |
+|---|---|
+| 1 | **tenu** : 10 concordantes sur 10 tranchées, aucune discordante |
+| 2 | **tenu** : sur la paire H75 → H76 de « B4 », où le résidu pondéré baissait (1,5193 → 1,3849), le log-mel au stem MONTE de 2,28 dB, comme le mélange (+0,92) |
+
+**Ce que les paires non tranchées apprennent** : entre H73, H74 et H75 de « B4 », que le mélange ne départage pas
+(0,06 dB), le critère au stem bouge de 0,07 à 0,44 dB, dans un sens ou dans l'autre. Un écart au stem de moins d'un
+demi-décibel ne prédit donc rien ; et sur les dix paires tranchées l'écart au stem vaut de 1,4 à 4,8 fois celui du
+mélange (le stem ne porte que la batterie : l'écart n'y est pas dilué). **La règle** : « 1 tenu → H78 rejoue le choix
+de H76 avec ce critère, sous la garde des bandes cassées » — avec un seuil de gain d'au moins 0,5 dB au stem, que cette
+table demande. **Rien n'entre** : un critère qui range des points existants n'a encore rien choisi.
+
+**Ce que la mesure ne dit pas** (écrit d'avance, rappelé) : huit points de deux morceaux ; les paires ne sont pas
+indépendantes — quatre des dix tiennent au seul point H76.
+
+## 39. H78 — le choix de H76 rejoué avec le critère de H77 : la machine d'une pièce choisie par le log-mel AU STEM, sous la garde des bandes cassées (écrite AVANT son instrument et sa mesure, 11/11/2026, 09 h 55)
+
+**Ce que H77 a appris** (§ 38.2) : le log-mel de la batterie rendue contre le stem range dix paires sur dix comme le
+mélange ; un écart au stem de moins de 0,5 dB ne prédit rien. **Une variable : le critère.** Les candidats (les 21 solos
+de H76, déjà rendus), les témoins (les solos de H75), le moteur (`reload-h70`), les niveaux (le système de H75,
+`resoudre_toutes_bandes`, résolu pour chaque candidat comme en H76) et le juge (l'outil du § 0) ne changent pas.
+
+**L'instrument, à écrire** (`analyse/mesure_h78.py`, son test, `reconstruction/travail/reload-h78.sh` rejouable) :
+- **La batterie d'un candidat sans la rendre** : la somme des solos, chacun à son facteur — `B(i, M) = Σⱼ fⱼ · soloⱼ`,
+  le solo de *i* remplacé par celui de *M*. Son log-mel au stem `L(i, M)` par `mesure_h77.logmel_au_stem`.
+- **Le CONTRÔLE de la somme, avant tout choix** : la batterie témoin ainsi sommée (solos et facteurs de H75) doit rendre
+  le log-mel au stem de la batterie de H75 RENDUE (§ 38.2 : « B4 » 11,52 · « Reload » 8,75) à 0,05 dB près. Sinon la
+  somme n'est pas le rendu (un volume qui n'est pas un gain linéaire, un traitement de groupe) : REFUS, pas de table.
+- **Le choix** : un candidat MUET est écarté et dit (H76) ; un candidat qui CASSE une bande de sa pièce (à moins de 3 dB
+  du stem en H75, à plus de 6 dB avec lui — `mesure_h76.bandes_cassees`) est REFUSÉ et dit ; parmi les autres, la pièce
+  prend celui de plus petit `L` **s'il le baisse d'au moins 0,5 dB** sous celui du témoin ; sinon elle garde le TR-808.
+- **La combinaison** des choix : résolue, sommée, son `L` publié, ses bandes cassées relevées ; puis RENDUE (mélange et
+  batterie seule) et jugée par l'outil du § 0. La batterie rendue repasse par le critère : la somme et le rendu doivent
+  se répondre à 0,05 dB.
+- **La table entière est publiée** : `L(i, M)`, facteurs, bornes, muets, refusés.
+
+**L'HYPOTHÈSE H78** : avec un critère qui prédit le mélange, au moins une pièce d'au moins un morceau trouve dans le
+parc une machine plus proche que le TR-808 réglé, et le mélange SUIT. **Ce que je crois moins**, dit d'avance : H76
+relu sous la seule garde des bandes cassées ne changeait déjà plus rien (§ 37.2), et la caisse `vsm.fmdrums` de « B4 »
+sera refusée deux fois — par la garde, et par le critère (13,80 contre 11,52).
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 0 | le contrôle de la somme (témoin sommé contre batterie de H75 rendue, au stem) | à 0,05 dB sur les deux morceaux | au-delà : REFUS, rien d'autre n'est lu |
+| 1 | pièces qui changent de machine | au moins une, sur au moins un morceau | aucune, sur aucun des deux |
+| 2 | log-mel du MÉLANGE, sur chaque morceau où une pièce change | en baisse d'au moins 0,10 dB sous H75 (« Reload » 6,89 · « B4 » 8,42) | en hausse d'au moins 0,10 dB |
+| 3 | grave et aigu, mêmes morceaux : \|médian\| sub, basse, bas-médium, aigus | chacune à moins de 0,5 dB de H75 (« Reload » 0,91 · 1,75 · 1,07 · 1,97 ; « B4 » 1,48 · 2,29 · 1,73 · 3,89) | l'une pire de plus de 1,5 dB |
+| 4 | bandes cassées par la COMBINAISON | aucune | une au moins |
+| 5 | la batterie de la combinaison : sommée contre rendue, au stem | à 0,05 dB | au-delà |
+| 6 | relevés : la table `L(i, M)`, facteurs, bornes, muets, refusés | — | — |
+
+**La règle de décision** : 1 à 5 tenus → le choix par le log-mel au stem, sous la garde, est la règle candidate pour le
+verdict par pièce d'un groupe de batterie (à écrire en D-phase, avec son banc, sur un troisième morceau) ; 1 en échec →
+c'est la branche que H76 n'avait pas pu lire proprement : avec un critère qui prédit le mélange, AUCUNE machine du parc
+à ses réglages d'usine n'est plus près que le TR-808 réglé — le besoin est un réglage par pièce (ce que H70 et H72 ont
+fait à la main pour le kick et le charleston) ou un échantillon, et la suite le dira ; 1 tenu et 2 en échec → la
+concordance de H77 ne tient pas sur un point neuf : huit points ne faisaient pas une règle, et le choix d'une machine
+ne se juge qu'au mélange rendu.
+
+**Ce que la mesure ne pourra PAS dire**, écrit d'avance : les machines écartées le sont à leurs réglages d'usine ; les
+niveaux restent ceux du système de H75, dont H76 a montré qu'il achète une bande au prix d'une autre — un candidat peut
+perdre par son NIVEAU et non par son timbre (les facteurs à leur borne sont relevés pour cela) ; deux morceaux.
+
+### 39.1 L'instrument de H78, AVANT toute mesure (11/11/2026, 09 h 58)
+
+`analyse/mesure_h78.py` (`sommer`, `choisir`, `evaluer`, `controle_de_la_somme`) et
+`analyse/tests/test_mesure_h78.py`, cinq tests, sur la scène de H74-H76 et avec le critère RÉEL (la fonction `logmel` de
+l'outil, par `mesure_h77`) : la caisse large est choisie, la muette écartée et dite, le charleston « pareil » laissé ;
+un candidat meilleur au critère mais qui casse une bande est refusé, et le suivant ne passe que s'il gagne 0,5 dB ; une
+pièce sans facteur n'est pas sommée à ×1, elle fait un refus. **Vu rouge sur quatre mutants**, un test chacun : sans le
+seuil de gain ; la garde ôtée du choix ; le muet non contrôlé ; la somme sans ses facteurs. `ruff` et `mypy` propres.
+`reconstruction/travail/reload-h78.sh` : dérivé de celui de H76 (mêmes fonctions `projet` et `rendre`), aucun candidat
+rendu, la combinaison seule si une pièce change ; un contrôle de somme en échec arrête la course (code 3) sans table.
+
+**Une limite, dite avant la mesure** : le critère lit le morceau ENTIER, le juge du mélange aussi — mais le stem de
+batterie est une estimation de la séparation, et ce qu'elle a laissé fuir des autres instruments compte dans le critère
+comme de la batterie à atteindre.
