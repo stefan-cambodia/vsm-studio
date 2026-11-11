@@ -4222,7 +4222,7 @@ pas une décision : changer la métrique de la chaîne se mesure sur les bancs q
 essayées, et `audio_distance_v4.py` dit pourquoi la chaîne reste en v2), pas sur deux morceaux. **La suite qui reste à écrire** : y a-t-il, dans les rendus du corpus et du banc, des cas plus
 SOMBRES que leur cible — combien, et dans quel sens la v2 y juge ; c'est un relevé de centroïdes, sans rendu.
 
-### 11.5 H106 — le sens du centroïde sur tout ce que la chaîne a rendu : les rendus sont-ils d'ordinaire plus brillants que leur cible ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 49)
+### 11.5 H106 — le sens du centroïde sur tout ce que la chaîne a rendu : les rendus sont-ils d'ordinaire plus brillants que leur cible ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 47)
 
 La suite que H105 a nommée, sans rendu : les couples (cible, rendu) que le disque garde — chaque `rapport.json` sous
 `reconstruction/` dont la cible (`provenance.source`) et le `reconstruit.wav` existent : **99 cibles distinctes**, 199
