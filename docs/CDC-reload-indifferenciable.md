@@ -5151,3 +5151,31 @@ c'est justement là, entre les frappes, que tout se joue.
 **La suite** (H92, à écrire AVANT sa mesure) : sur une scène de VÉRITÉ CONNUE — un kick et, entre ses frappes, une
 note de niveau connu dans chaque bande —, lequel des deux instruments rend le rapport écrit, et à quelle erreur. Aucun
 morceau, aucun rendu. Ensuite seulement le relevé ci-dessus se lira, ou non.
+
+## 53. H92 — lequel des deux instruments lit juste entre les frappes ? Une scène de vérité connue (écrite AVANT sa mesure, 11/11/2026, 17 h 00)
+
+Aucun morceau, aucun rendu, aucun code neuf (`reconstruction/travail/reload-h92.py`). **La scène** : un kick (la
+réplique du TR-808 de H69, 37 Hz, 0,05 s) toutes les 0,44 s, COUPÉ net à 100 ms — après quoi il vaut zéro, exactement ;
+entre deux kicks, de 150 à 350 ms après chacun, une note pure (40 Hz pour le sub, 100 Hz pour la basse) d'amplitude
+connue sous la crête du kick : −20, −40, −60 dB. L'« original » porte la note ; le « rendu » la porte multipliée par un
+gain connu, −6 ou −15 dB ; le kick est le même des deux côtés. Fenêtres de mesure : de 10 ms avant à 100 ms après un
+instant situé 220 ms après chaque kick — entièrement dans la note. **La vérité** est donc le gain écrit, sans calcul :
+tout écart est du kick que l'instrument a laissé baver dans la fenêtre.
+
+Instrument A : le spectrogramme de `mesure_h74` (30-150 Hz ; `mesure_h81`). Instrument B : le filtre de `mesure_h91`
+(30-150, 20-60 et 60-150 Hz).
+
+**L'HYPOTHÈSE H92** : B rend la vérité, A tire vers 0 dB (ce que les morceaux montrent : A −5,7, B −7,4).
+
+| # | mesure, note à −40 dB | réussite | échec |
+|---|---|---|---|
+| 1 | B, 30-150 Hz, note de 100 Hz : erreur aux deux gains | ≤ 0,5 dB | > 1 dB |
+| 2 | B dans chaque bande propre (40 Hz lu à 20-60, 100 Hz lu à 60-150) | ≤ 0,5 dB | > 1 dB |
+| 3 | A, 30-150 Hz : erreur, et son signe | relevé — attendu : vers 0 dB | — |
+| 4 | relevés : la table entière (trois niveaux, deux gains, deux notes, deux instruments) | — | — |
+
+**La règle** : 1 et 2 tenus → l'instrument par filtres est juste là où le signal est faible, le recoupement manqué de
+H91 était la faute de l'instrument de RÉFÉRENCE, et le relevé du § 52.2 se lit avec l'hypothèse et la règle du § 52 ;
+1 ou 2 en échec → B bave aussi, les deux bandes de H91 ne se lisent pas, et il faut un troisième instrument. **Dit
+d'avance** : une scène à kick coupé net est plus facile que le réel (un vrai kick a une queue) — elle juge la bavure de
+l'instrument, pas la séparation d'un kick et d'une basse qui se recouvrent.
