@@ -4251,3 +4251,51 @@ prend sa taille (sans décision de métrique ici) ; 1 en échec → le sens dép
 représentent pas le corpus, et c'est dit ; entre les deux → la table par famille dit où. **Dit d'avance** : les
 familles du corpus partagent leurs machines et leur générateur — 99 cibles ne sont pas 99 tirages indépendants ; des
 familles reconstruites de la même cible (h25 et h25c) comptent chacune pour ce qu'elles sont, une cible.
+
+### 11.6 Verdict de H106 (12/11/2026, mesuré de 04 h 47 à 04 h 53, écrit à 04 h 54) : ÉCHEC — 42 rendus plus brillants, 14 égaux, 43 plus sombres sur 99 cibles ; le sens dépend du morceau, et sur « Reload » et « B4 » il dépend même du rendu
+
+`reconstruction/travail/reload-h106.py` (aucun rendu ; `reload-h106.json`, `reload-h106.log`). **Contrôle tenu** : 99
+couples sur 99 rendent la `globalDistance` de leur rapport à 0,0005. **Dit** : l'instrument a trouvé **179** couples et
+non les 199 écrits au § 11.5 — le compte d'avant suivait un lien symbolique (`travail/h25-s1/s1-prod`, 20 rapports des
+mêmes cibles que `s1-prod`) que `Path.rglob` ne suit pas ; les **99 cibles** sont les mêmes, et c'est sur elles que
+l'attendu porte.
+
+| famille | cibles | plus brillant | égal à 1 % | plus sombre | écart médian | cibles bornées à 16 kHz | part médiane du centroïde dans la v2 |
+|---|---|---|---|---|---|---|---|
+| h25c-disjoints | 18 | 12 | 1 | 5 | +4,4 % | 8 | 5 % |
+| h25c-mains | 18 | 10 | 1 | 7 | +2,1 % | 10 | 5 % |
+| h25-disjoints | 15 | 3 | 1 | 11 | −3,3 % | 1 | 4 % |
+| h25-mains | 15 | 7 | 1 | 7 | +0,9 % | 0 | 6 % |
+| s1-prod | 10 | 4 | 3 | 3 | +0,4 % | 0 | 1 % |
+| s1-sec | 10 | 3 | 5 | 2 | 0,0 % | 0 | 1 % |
+| s2 | 6 | 2 | 2 | 2 | +0,5 % | 0 | 1 % |
+| morceaux réels et fixtures (7) | 7 | 1 | 0 | 6 | — | 4 | 3 à 13 % |
+| **total** | **99** | **42** | **14** | **43** | | | |
+
+Les sept dernières, une à une (la course la plus récente de chaque cible) :
+
+| cible | rendu | centroïde cible → rendu | écart |
+|---|---|---|---|
+| « Reload » | `travail/reload-course2` (la course 2 de la chaîne) | 5 093 → 4 034 Hz | **−20,8 %** |
+| « B4 Wuz Then » | `travail/b4wuzthen` | 2 945 → 2 674 Hz | −9,2 % |
+| « Children » (Robert Miles) | `travail/children-c3-plafond` | 2 404 → 1 793 Hz | −25,4 % |
+| « Sky and Sand » | `travail/p1-avec` | 1 308 → 1 226 Hz | −6,3 % |
+| l'épreuve (`travail/epreuve`) | `parite-groupes` | 2 910 → 2 688 Hz | −7,6 % |
+| « Us and Them » | `usandthem-parite-parc60` | 1 789 → 1 881 Hz | +5,1 % |
+| le banc minuscule des tests (`analyse/tests/donnees`) | `temoin-recensement/avec` | 7 210 → 2 290 Hz | −68,2 % |
+
+**La règle** : « 1 en échec → le sens dépend du morceau : les deux morceaux réels ne représentent pas le corpus, et
+c'est dit ». **Ce que les tables établissent, sans plus** :
+- sur le corpus synthétique, le rendu n'a pas de sens privilégié (41 plus brillants, 14 égaux, 37 plus sombres sur 92) ;
+- sur les morceaux réels, les COURSES DE LA CHAÎNE sont plus sombres que leur cible, cinq sur six (−6 à −25 %) — dont
+  « Reload » (−20,8 %) et « B4 » (−9,2 %), quand les rendus réglés à la main de H75 et H85 y étaient plus BRILLANTS (+13
+  et +21 %, §§ 11.2 et 11.4) : sur un même morceau, le sens du centroïde change d'un rendu à l'autre ;
+- dans la v2 de ces couples, le terme de centroïde pèse peu (1 à 6 % en médiane par famille) : ce qu'H100 a trouvé — 72
+  à 85 % des ÉCARTS entre deux kicks — est une part des différences entre candidats proches, pas du niveau.
+
+**Ce qu'elles ne disent pas** : pourquoi les courses de la chaîne sont plus sombres sur les morceaux réels — *piste,
+non mesurée* : leur source coupée à 16 kHz pour quatre d'entre eux ne l'explique pas (le centroïde du rendu est comparé
+dans la bande de la cible) ; une séparation qui perd des aigus, ou des machines qui en manquent, en seraient deux
+candidates. **Où en est la question 2 du § 11** : le défaut de H104-H105 (la v2 récompense un son étranger qui rapproche
+son centroïde) est une propriété de la formule, vue sur deux rendus ; il ne pousse PAS toujours vers le sombre — sur les
+courses de la chaîne, il pousserait vers le brillant. La question reste celle du § 11, pour `ROADMAP-fusion`.
