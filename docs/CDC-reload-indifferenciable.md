@@ -4496,3 +4496,43 @@ la basse à sa place, la décroissance du kick rejouée (H80), qui aura alors un
 
 **Ce que la mesure ne dit pas** (écrit d'avance, rappelé) : les parts par stem sont celles d'une séparation — mais le
 relevé par les mélanges (+4,3 dB entre les kicks) n'en dépend pas, et il va dans le même sens ; un morceau.
+
+## 43. H82 — la MACHINE de la piste `bass` de « B4 », choisie contre le stem `bass` (écrite AVANT son instrument et sa mesure, 11/11/2026, 11 h 09)
+
+**Ce que H81 a appris** (§ 42.2) : la basse rendue (`vsm.clavinet`) manque de 7,2 dB à 30-150 Hz et en a 7,6 de trop à
+150-500 Hz. **Une variable : la machine de la piste `bass`.** Le reste est le projet de H79 (TR-909, f\* 0,9952).
+
+**L'instrument** (`analyse/mesure_h82.py`, son test, `reconstruction/travail/reload-h82.py` rejouable) :
+- **Candidats**, à leurs réglages d'usine : `vsm.tb303`, `vsm.minimoog`, `vsm.sh101`, `vsm.juno106`, `vsm.ms20`,
+  `vsm.arpodyssey`, `vsm.dx7`, `vsm.prophet` ; le TÉMOIN : le clavinet du projet, ses réglages gardés.
+- **Le niveau, conséquence et non variable** : chaque solo est ramené à l'ÉNERGIE du stem `bass` sur le morceau entier
+  (un gain, publié ; le témoin aussi, pour que tous soient jugés à niveau égal). Un solo muet (−60 dB) est écarté et dit.
+- **Le critère** : le log-mel du solo ainsi calé contre le stem `bass` (`mesure_h77.logmel_au_stem`). Choix : le plus
+  petit, s'il gagne au moins 0,5 dB sur le témoin calé.
+- **Le critère n'a pas été vérifié sur ce stem** : les NEUF mélanges sont donc rendus et jugés, et la concordance
+  stem / mélange (§ 38) est lue sur eux avant de croire le choix.
+
+**L'HYPOTHÈSE H82** : une machine du parc est plus près du stem `bass` que le clavinet, et le mélange suit.
+
+| # | mesure, « B4 » | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin de la course : clavinet à son volume du projet | rend H79 (7,10) au centième | sinon REFUS |
+| 1 | concordance stem / mélange sur les paires tranchées des neuf points calés | toutes | une discordante de plus de 0,5 dB au mélange |
+| 2 | log-mel du mélange, machine choisie | ≤ 7,00 (H79 − 0,10) | ≥ 7,10 |
+| 3 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H79 (1,89 · 1,39 · 1,56), ou meilleure | l'une pire de plus de 1,5 dB |
+| 4 | piste `bass` contre stem `bass`, entre les kicks (H81) : 30-150 et 150-500 Hz | toutes deux à moins de 3 dB (−7,2 et +7,6 en H81) | l'une au-delà de 6 dB |
+| 5 | relevés : la table entière (gain, log-mel au stem, mélange, bandes) | — | — |
+
+**La règle** : 1 à 4 tenus → la basse est à sa place, H80 (la décroissance du kick) se rejoue sur ce projet ; aucune
+machine ne gagne 0,5 dB → aucune machine du parc, à ses réglages d'usine, n'est plus près : le besoin est un réglage
+(la coupure du clavinet est à 500 Hz) ou un échantillon ; 1 en échec → le critère ne vaut pas pour ce stem, le choix se
+lit au mélange seul ; toute autre combinaison, au plus sévère. **Ce que la mesure ne dira pas** : réglages d'usine ; un
+calage sur l'énergie totale ne dit rien du niveau par note ; un morceau ; le stem `bass` est une estimation.
+
+### 43.1 L'instrument de H82, AVANT toute mesure (11/11/2026, 11 h 09)
+
+`analyse/mesure_h82.py` (`gain_d_energie`, `choisir`), deux tests : un solo à ×0,25 reçoit ×4, un solo à −80 dB est
+MUET et non multiplié par 10 000, un stem muet est un refus ; le choix veut 0,5 dB. **Vu rouge sur trois mutants** (le
+muet non contrôlé ; sans seuil ; le gain en énergie au lieu d'amplitude), un rouge chacun. `ruff`, `mypy` propres. Le
+reste est réemployé tel quel : critère de H77, populations de H80, énergies de H81.
+`reconstruction/travail/reload-h82.py` : la course s'arrête si son témoin ne rejoue pas H79.
