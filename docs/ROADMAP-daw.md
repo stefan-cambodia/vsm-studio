@@ -49082,3 +49082,43 @@ grille, pas d'une longueur ;
 (e) **le témoin** (le binaire de D625, la même ligne de gestes) : sous « Insertion : 1/8 », **60@0+120** — le défaut ;
 (f) l'infobulle de « Pas à pas » relevée dans les deux langues, et qui nomme la longueur d'insertion ;
 (g) `pas-a-pas`, `longueur-insertion` verts ; les suites ; la série.
+
+### Phase D627 — un quatre-vingt-septième audit : le glissé d'une batterie s'aimante à la grille du rang qu'on saisit (12/11/2026)
+
+*Écrite le 12/11 à 04 h 34 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D625
+tourne : le code s'écrit, il ne se compile qu'après elle, avec celui de D626.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D622** — « le GLISSÉ d'une sélection qui couvre plusieurs rangs reste sur la
+grille de la barre — aimanter chaque frappe à la grille de son rang pendant qu'on les tire ensemble demande une règle à
+écrire (laquelle mène ?) ». Depuis D622, une frappe POSÉE dans le rang de la caisse claire réglé à 1/4 s'aimante à la
+noire ; la même frappe, TIRÉE, avance par doubles croches (`DragMode::Move` : `snapTick`, la grille de la barre). Cubase
+répond à la question dans son éditeur de batterie : quand on déplace des notes, l'aimant suit la valeur de quantification
+de la pièce sur laquelle on a CLIQUÉ.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D627.1 | **Le glissé à la grille du rang saisi** — l'aimant du *Drum Editor* | sur une piste qui a des grilles par rang (D622), un glissé de notes avance par pas de la grille du rang de la frappe SAISIE (celle sous la souris au départ) ; toute la sélection suit du même écart, les autres rangs compris ; une frappe d'un rang « global » saisie : la grille de la barre, comme avant, au tick près ; une piste sans grilles par rang : rien ne change ; mesuré par le relevé des frappes du projet enregistré après un vrai glissé, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La frappe saisie mène** (la règle de Cubase) : un glissé est UN geste, un écart unique pour toute la sélection —
+  aimanter chaque frappe à sa propre grille déformerait le motif qu'on déplace (deux frappes à une double l'une de l'autre
+  ne le seraient plus). Le rang qui mène est celui de la frappe saisie AU DÉPART, pas celui qu'elle survole : tirée
+  vers un autre rang, elle ne change pas de pas en chemin.
+- **Par la fonction de D622** (`snapTickDuRang`), qui rend `snapTick` au bit près pour un rang « global » : la règle
+  d'avant se garde par construction, pas par une branche à part.
+- **Le pas est relatif, comme avant** : l'écart est celui de deux positions aimantées (l'arrivée et le départ de la
+  souris), et une frappe hors grille garde son décalage.
+- **Remis, nommés** : le redimensionnement (sur des barres, pas des losanges) à la grille du rang ; le déplacement au
+  clavier (flèches) à la grille du rang ; et ceux de D626.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/glisse-par-rang.sh`, la piste « Batterie » de `grille-par-rang`
+(TR-909, canal 10, 480 ticks à la noire, la barre à 1/16 = 120 ticks), des frappes 38@960 et 36@1440, le rang 38 réglé à
+**1/4** (`carte-grille:38>1/4`) ; les glissés sont de VRAIS glissés (`glisser:pianoroll:…:lent`), partis du centre du
+losange, et les frappes lues dans le projet enregistré :
+(a) **le témoin de la règle** : la frappe 36 (rang global) tirée de ~330 ticks → **36@1800** (pas de 1/16) ;
+(b) la frappe 38 tirée de ~330 ticks → **38@1440** (un pas de 1/4) ; avec la grille de la barre, ce serait 38@1320 ;
+(c) les deux choisies (Ctrl+A), la 38 saisie et tirée de ~330 → **38@1440 et 36@1920** (l'écart du rang 38 pour toutes) ;
+la 36 saisie → **38@1320 et 36@1800** (l'écart de la barre pour toutes) ;
+(d) **le témoin** (le binaire de D626, les mêmes gestes) : (b) → **38@1320** — le défaut ;
+(e) sans grille au rang 38 (aucun `carte-grille`), (b) → 38@1320 : la piste sans grilles par rang ne change pas ;
+(f) `grille-par-rang`, `batterie-losanges`, `longueur-insertion` verts ; les suites ; la série.
