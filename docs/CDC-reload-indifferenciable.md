@@ -5893,3 +5893,11 @@ même ordre.
 bande explique le niveau de la distance, pas le désaccord, qui reste à instruire ; 2 en échec → la bande au-dessus de
 16 kHz ne pèse pas ce que H100-H101 laissaient croire. **Dit d'avance** : douze mélanges d'un morceau ; les paires ne
 sont pas indépendantes.
+
+### 63.1 Le témoin du filtre a REFUSÉ la première course — aucune distance lue ; le filtre est changé (11/11/2026, 22 h 05)
+
+Le Butterworth d'ordre 10 à 16 kHz ne laisse la bande 16-22 kHz qu'à −18,9 dB (attendu : plus de 40) — sa pente laisse
+passer le premier kilohertz au-dessus de la coupure, là où le charleston a le plus d'énergie. La course s'est arrêtée
+sur son témoin, avant toute distance. **Le filtre devient une coupure NETTE** : les composantes de Fourier à 16 kHz et
+au-dessus mises à zéro sur le signal entier — ce que l'encodage de la source a fait, à peu près. Le témoin, l'hypothèse,
+les attendus et la règle du § 63 ne changent pas.
