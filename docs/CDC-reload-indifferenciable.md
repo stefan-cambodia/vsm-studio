@@ -5944,3 +5944,34 @@ modélisé ne le rend ; les deux juges ne s'accordent sur aucun candidat, bande 
 écrire AVANT sa mesure) : la décomposition de H100 refaite sur les mélanges bornés à 16 kHz — quel terme porte
 maintenant le désaccord — ; c'est la dernière mesure sans rendu qui reste sur cette question, après quoi elle se
 tranche par l'écoute ou par des perturbations connues (§ 0), plus par des essais de kick.
+
+## 64. H103 — le désaccord des juges dans la bande de la source : quel TERME de la distance v2 bornée le porte ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 18)
+
+Aucun rendu, aucun code neuf dans `analyse/` (`reconstruction/travail/reload-h103.py`) : les douze mélanges de H102, la
+même coupure nette à 16 kHz (§ 63.1), les sept termes de la distance v2 de chacun (`distance_terms`, comme en H100), et
+la concordance avec le log-mel par `mesure_h77.paires` (tranche 0,10 dB, comme en H102). Sur les 50 paires que le
+log-mel tranche, la v2 bornée en contredit **41** (§ 63.2) — plus que le hasard (25) : bornée, elle range ces kicks
+presque À L'ENVERS du log-mel.
+
+**Le contrôle, avant toute lecture** : la somme pondérée des termes recalculés rend la v2 bornée publiée au § 63.2
+(`reload-h102.json`, `v2_16k`) de chacun des douze mélanges à 0,0005 près. Sinon REFUS.
+
+**L'HYPOTHÈSE H103** : UN terme porte le désaccord — la distance bornée SANS ce terme (la somme pondérée des six autres)
+ne contredit plus le log-mel que sur la moitié au plus des paires qu'elle contredisait. Je crois encore le CENTROÏDE
+(il portait 72 à 85 % des gains de v2 en H100, et un kick plus grave l'abaisse même sous 16 kHz), dit d'avance pour
+être démenti.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 0 | contrôle de recomposition | les douze à 0,0005 | REFUS |
+| 1 | pour chaque terme : paires tranchées discordantes de la v2 bornée SANS lui | 20 au plus pour l'un d'eux (la moitié de 41) | 31 au moins pour chacun (aucun n'en ôte le quart) |
+| 2 | ce terme-là SEUL : paires tranchées discordantes | 34 au moins (deux tiers des 50) | moins de 25 (il ne contredit pas plus que le hasard) |
+| 3 | relevés : les sept termes pondérés des douze mélanges, leur écart à H75, les discordances de chaque terme seul et de chaque « sans lui » | — | — |
+
+**La règle** : 1 et 2 tenus → le désaccord des juges sur « Reload » est CE terme contre le log-mel ; la question portée
+à `ROADMAP-fusion` le nomme, et ce cahier ne la poursuit plus par des mélanges : elle se tranche par des perturbations
+connues (§ 0) ou par l'écoute ; 1 en échec → le désaccord est diffus, porté par plusieurs termes, et il se porte tel quel
+à `ROADMAP-fusion` — c'est la dernière mesure sans rendu sur cette question (§ 63.2) ; entre les deux, la table dit
+quels termes, et la question les nomme tous. **Dit d'avance** : douze mélanges d'un morceau, 66 paires non
+indépendantes ; sept « sans lui » sont sept essais, et l'un peut passer la barre par hasard — c'est pourquoi 2 demande
+que le terme seul contredise aussi.
