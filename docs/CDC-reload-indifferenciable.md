@@ -5623,3 +5623,41 @@ bas-médium, à log-mel et distance égaux à ceux de H75 — sans les battre. *
 réglage qui manque — une tenue après la chute (le « hold » ajouté au TR-808 en H70 tient AVANT la chute ; il en faudrait
 un palier APRÈS) — et c'est un chantier de machine (`CDC-nouvelle-machine.md`, `GUIDE-ajout-machine.md`), à écrire en
 H99 avec son attendu : le profil de l'original à 3 dB.
+
+## 60. H99 — décision de l'utilisateur : le palier s'ajoute au TR-808 ; « Kick Sustain », écrit AVANT son code et sa mesure (11/11/2026, 19 h 00)
+
+**La décision** (11/11, en réponse au § 59.2) : « ajout au tr 808 ». **Ce que le profil demande** (§ 55.2, § 59.2) : une
+frappe, une chute rapide d'une dizaine de décibels, puis un PALIER qui se tient et décroît lentement (−10 dB à
+100-200 ms, −13 à 200-300 ms), la basse restant au-dessus du sub.
+
+**Le code, à écrire** (arbre `reload-h70`, là où vit déjà « Kick Hold » — le moteur de toutes les mesures depuis H70 ;
+mêmes fichiers que H70 : la voix, la liste des réglages, le descripteur, le panneau, les tests du cœur) :
+- **Kick Sustain** (`drum.kick.sustain`, 0 à 1, défaut 0) : le niveau du palier, en amplitude sous la crête ;
+- **Kick Sustain Decay** (`drum.kick.sustainDecay`, 0,05 à 2 s, défaut 0,5) : sa décroissance propre ;
+- l'amplitude devient `max(enveloppe d'avant, sustain × enveloppe lente)` : la chute est celle de « Kick Decay »
+  jusqu'à croiser le palier, qui prend la suite. **À 0, rien ne change, AU BIT PRÈS** — aucune reconstruction n'est à
+  rejouer ; les deux réglages sont ajoutés en fin de liste (les identifiants enregistrés ne bougent pas), sans règle
+  de recherche (la chaîne ne les explore pas tant qu'aucune mesure ne le demande).
+
+**Les tests du cœur, écrits avec le code** : à 0 le rendu est identique au bit près ; avec un palier à 0,3 et une chute
+de 0,05 s, la crête à 150-160 ms est à −10,5 dB ± 1,5 de la crête d'attaque (sans palier : sous −25 dB), et à
+250-260 ms elle a encore décru de moins de 4 dB pour une décroissance lente de 0,5 s ; la voix reste active pendant le
+palier.
+
+**La mesure** (`reconstruction/travail/reload-h99.py`, sur « Reload », même protocole que H98) : accord 60 · 70 · 80 Hz
+× chute 0,05 · 0,10 s × palier 0,2 · 0,3 · 0,45 × décroissance lente 0,2 · 0,3 · 0,5 s — 54 solos, profil à trois
+bandes, les trois meilleurs rendus au mélange à leur f\*.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin : avec le moteur NEUF, le projet de H75 rend un fichier IDENTIQUE à celui du moteur d'avant (`cmp`), et 6,89 | les deux | REFUS |
+| 1 | écart de profil (trois bandes), réglage choisi | ≤ 3 dB (H70 : 15,2 ; meilleur du parc, H98 : 5,9) | > 5,9 dB (le palier n'apporte rien) |
+| 2 | log-mel ET distance v2 | ≤ 6,89 ET ≤ 0,3458 | pires tous les deux |
+| 3 | mélange rendu / original, sub et basse, AUX kicks et ENTRE | les quatre à 3 dB | l'un au-delà de 6 dB |
+| 4 | \|médian\| sub · basse · bas-médium | chacune à moins de 0,5 dB de H75 (0,91 · 1,75 · 1,07), ou meilleure | l'une pire de plus de 1,5 dB |
+
+**La règle** : 1 à 4 tenus → le kick de « Reload » est réglé sur le TR-808, et le réglage neuf a sa raison d'être : à
+porter dans `master` par sa D-phase (`CDC-nouvelle-machine.md` : panneau, bancs, règle de recherche) et à rejouer sur
+« B4 » ; 1 en échec → un palier ne suffit pas à faire ce profil — le réglage reste dans l'arbre à part et n'entre pas ;
+sinon au plus sévère. **Dit d'avance** : le palier sonne à l'accord du kick, une sinusoïde écrêtée — le bas-médium de
+l'original (−17 dB sous sa tête, tenu) n'est pas dans ce modèle ; un morceau.
