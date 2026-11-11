@@ -4332,3 +4332,54 @@ stem), a une queue de +2,92 dB (plus d'énergie de 100 à 300 ms qu'à la frappe
 `reconstruction/travail/reload-h80.sh` : la fonction `projet` de H76-H79, plus UN réglage de la machine posée
 (`PARAM="4:drum.kick.decay=…"`, refusé si la piste n'est pas un TR-909 à ses réglages d'usine) ; sept solos, l'instrument,
 sept mélanges rendus et jugés, la concordance.
+
+### 41.2 Verdict de H80 (11/11/2026, mesuré de 10 h 21 à 10 h 27, écrit à 10 h 28) : NON TENUE — aucune décroissance ne contente la garde, celle que le stem choisit abîme le mélange, et le stem et le mélange se contredisent sur le grave d'entre les kicks
+
+`reconstruction/travail/reload-h80.sh` (rejouable), moteur `1eff3b6d`. Frappes gardées pour le débord : charleston 855
+sur 892, caisse 538 sur 555. **Le balayage entier** (f\* recalé à chaque point ; « entre » : rendu / stem à 30-150 Hz
+aux frappes d'entre les kicks) :
+
+| décroissance | queue du solo | f\* | entre : charleston · caisse | débord | au stem | mélange : log-mel (médian) | \|médian\| sub · basse · bas-médium | \|médian\| aigus | bandes ÉLOIGNÉES |
+|---|---|---|---|---|---|---|---|---|---|
+| 0,05 s | −3,86 | 3,0527 | −1,9 · −15,6 | 8,78 | 10,09 | 7,49 (6,08) | 10,95 · 4,88 · 5,21 | 2,29 | charleston : 150-500 ; kick : 8-11 k |
+| 0,08 s | −1,94 | 1,9152 | +3,2 · −6,5 | 4,85 | **9,74** | 7,21 (5,85) | 6,58 · 2,84 · 4,37 | 2,00 | charleston : 150-500 |
+| **0,12 s (choisie)** | −0,20 | 1,4531 | +7,5 · −0,1 | **3,77** | 9,76 | 7,13 (5,73) | 3,15 · 1,91 · 3,53 | 1,62 | charleston : 30-150, 150-500 |
+| 0,16 s | +0,91 | 1,2579 | +10,2 · +3,5 | 6,83 | 9,79 | **7,10** (5,69) | 1,23 · 1,55 · 2,98 | 1,50 | charleston : 30-150, 150-500 |
+| 0,20 s | +1,67 | 1,1496 | +12,0 · +5,7 | 8,86 | 9,83 | **7,10** (5,68) | **0,22** · 1,42 · 2,50 | 1,32 | charleston : 30-150, 150-500 |
+| 0,25 s | +2,32 | 1,0666 | +13,6 · +7,5 | 10,54 | 9,86 | **7,10** (5,67) | 1,03 · **1,39** · 2,05 | **1,31** | charleston : 30-150, 150-500 ; caisse : 30-150 |
+| 0,32 s (usine, H79) | +2,92 | 0,9952 | +15,0 · +9,2 | 12,08 | 9,90 | **7,10** (5,67) | 1,89 · **1,39** · **1,56** | 1,52 | charleston : 30-150, 150-500 ; caisse : 30-150 |
+
+| # | verdict, à 0,12 s |
+|---|---|
+| 0 | **tenu** : la queue croît strictement sur les sept points (−3,86 → +2,92 dB) ; 0,32 s rend f\* 0,9952 et 7,10, H79 au centième |
+| 1 | **en ÉCHEC** : le charleston reste éloigné à 30-150 et 150-500 Hz — et il l'est à 150-500 Hz aux SEPT points, même à 0,05 s |
+| 2 | **tenu** : 7,13 ≤ 7,20 |
+| 3 | **en ÉCHEC** : bas-médium 3,53 (+1,97 sur H79) ; sub 3,15 (+1,26) et basse 1,91 (+0,52), entre les deux |
+| 4 | **tenu** : 1,62 ≤ 2,02 |
+| 5 | **entre les deux** : 6 paires concordantes sur 10 tranchées, 4 discordantes — toutes de 0,11 dB au mélange, aucune au-delà de 0,5 |
+
+**La règle** : 1 et 3 en échec n'est pas une de ses branches — « toute autre combinaison se tranche au plus sévère » :
+H80 n'est pas tenue, et la décroissance du kick n'est PAS la troisième étape d'une méthode. **Rien n'entre.** Le point
+de H79 (0,32 s, usine) reste le meilleur de « B4 » aux attendus écrits ; H80 n'a rien trouvé de mieux.
+
+**Ce que le balayage établit** :
+- **Le mélange ne voit pas la longueur** : de 0,16 à 0,32 s, le log-mel tient à 7,10 au centième. Ce qui bouge, c'est
+  la répartition du grave : le sub est à son meilleur à 0,20 s (0,22 dB — le meilleur sub du chantier sur ce morceau),
+  le bas-médium à 0,32 s ; un kick plus court vide le sub (10,95 à 0,05 s) malgré son niveau recalé.
+- **Le stem et le mélange se CONTREDISENT.** Aux charlestons d'entre les kicks — une pièce sans grave, donc la lecture
+  la plus propre de la queue du kick —, le stem veut un kick de 0,05 à 0,08 s (−1,9 · +3,2 dB) ; le mélange, lui, perd
+  alors 6 à 11 dB de sub. Aux caisses, le stem veut 0,12 s (−0,1 dB) : mais la caisse de l'original porte son propre
+  grave, que celle du 909 n'a pas (§ 39.2), et c'est la queue du kick qui le remplace — une compensation, pas un accord.
+- **Le critère de H77 ne voit pas une longueur** : sur ces sept points les écarts au stem tiennent dans 0,35 dB — sous
+  le demi-décibel que § 38.2 disait muet — et quatre paires sur dix s'y rangent à l'envers. Il a rangé juste les
+  machines (H78) et les niveaux (H79) ; il ne règle pas une enveloppe.
+- **Non expliqué** : le 150-500 Hz éloigné aux frappes du charleston à TOUTES les décroissances, y compris quand le
+  kick est éteint depuis longtemps (0,05 s). Ce n'est pas sa queue. Aucune mesure ici ne dit ce que c'est.
+
+**Ce que la mesure ne dit pas, et qu'elle désigne** (écrit d'avance au § 41 : « un débord peut être un défaut de la
+cible et non du rendu ») : le grave que le mélange original porte entre les kicks, et que le stem de batterie n'a pas,
+est quelque part — dans le stem de BASSE de la séparation, vraisemblablement — et dans le rendu c'est la queue du kick
+qui en tient lieu. Si c'est cela, le kick long de H79 ne ressemble pas au kick de l'original : il COMPENSE une basse
+trop faible (basse à −1,3 dB, sub en défaut dès que le kick raccourcit). **La suite** (H81, à écrire AVANT sa mesure) :
+où est le grave d'entre les kicks dans l'original — stem par stem — et qui le porte dans le rendu, piste par piste ;
+aucune machine ne se règle avant.
