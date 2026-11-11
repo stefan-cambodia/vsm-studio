@@ -49160,7 +49160,7 @@ le fichier revient à sa place, sans qu'on la cherche à l'oreille.
 un projet à 120 BPM, 480 ticks à la noire, où « Voix » joue `audio/voix.wav`, un repère au tick 1 920 (2 s), et trois
 fichiers que rien ne désigne : `audio/bwf.wav` (44,1 kHz, référence **132 300** = 3 s), `audio/bwf48.wav` (48 kHz,
 référence **144 000** = 3 s), `audio/sans.wav` (sans bloc `bext`) ; la tête au repère :
-(a) `bwf.wav` choisi : « Poser à l'origine » ACTIF, le relevé dit « origine 3,000 s » ; pressé → une piste « bwf » sous
+(a) `bwf.wav` choisi : « Poser à l'origine » ACTIF, le relevé dit « origine 3.000 s » (en locale C, la règle des nombres qui traversent une frontière) ; pressé → une piste « bwf » sous
 « Voix », qui désigne `audio/bwf.wav`, son clip au tick **2 880** (3 s) — pas à la tête (1 920) ; **aucun fichier neuf**
 dans `audio/` ; **1 pas** (« Poser un fichier de la réserve ») ;
 (b) `bwf48.wav` : son clip au tick **2 880** aussi (la fréquence du fichier, pas celle du moteur) ;
