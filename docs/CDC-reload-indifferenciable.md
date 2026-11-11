@@ -5126,3 +5126,28 @@ ne sont donc PAS lus comme un verdict.** Le recoupement comparait une bande de 2
 encore → l'instrument par filtres ne reproduit pas celui par spectrogramme, et c'est lui qu'il faut instruire.
 **Dit** : j'écris ceci après avoir VU les chiffres de la première course (sub +16,4 · basse −11,5 dB à 37 Hz) ; le
 lecteur doit le savoir.
+
+### 52.2 H91 bis (11/11/2026, écrit à 16 h 41) : le recoupement est MANQUÉ encore, de 0,18 dB — pas de verdict ; les deux bandes sont publiées comme un RELEVÉ, pas comme une lecture
+
+`reload-h91.json`. Mélange rendu / original, dB :
+
+| point | aux kicks : sub · basse · 30-150 | entre les kicks : sub · basse · 30-150 | `mesure_h81`, 30-150 : aux kicks · entre |
+|---|---|---|---|
+| H75 | −4,0 · −0,9 · −1,2 | +8,5 · −14,8 · **−7,4** | −1,2 · **−5,7** |
+| 30 Hz | +5,2 · −0,6 · −0,2 | +15,7 · −14,7 · −2,4 | −0,2 · −1,9 |
+| 33 Hz | +3,7 · −0,4 · −0,1 | +16,4 · −13,7 · −1,0 | −0,2 · −0,8 |
+| 37 Hz | +0,3 · −0,2 · −0,2 | +16,4 · −11,5 · −0,2 | −0,2 · +0,3 |
+| 41 Hz | −1,9 · +0,1 · −0,2 | +16,2 · −8,1 · +0,7 | −0,2 · +1,2 |
+| 45 Hz | −5,2 · +0,2 · −0,3 | +15,5 · −4,5 · +1,4 | −0,2 · +2,1 |
+
+**Le recoupement** : à 37 Hz, −0,2 pour +0,3 — tenu ; sur H75, −7,4 pour −5,7 — **manqué de 0,18 dB**. Aux kicks les
+deux instruments s'accordent à 0,05 dB sur les six points ; entre les kicks ils s'écartent de 0,5 à 1,7 dB, toujours
+dans le même sens (le filtre lit plus bas). **La règle, écrite avant** : « l'instrument par filtres ne reproduit pas
+celui par spectrogramme, et c'est lui qu'il faut instruire ». **Je ne déclare donc PAS H91 tenue**, alors que le relevé
+va très loin dans son sens (sub +16,4 dB, basse −11,5 dB à 37 Hz, là où elle demandait ±3) : deux instruments qui
+diffèrent de 1,7 dB sur le même fichier ne me permettent pas de dire lequel a raison là où le signal est faible — et
+c'est justement là, entre les frappes, que tout se joue.
+
+**La suite** (H92, à écrire AVANT sa mesure) : sur une scène de VÉRITÉ CONNUE — un kick et, entre ses frappes, une
+note de niveau connu dans chaque bande —, lequel des deux instruments rend le rapport écrit, et à quelle erreur. Aucun
+morceau, aucun rendu. Ensuite seulement le relevé ci-dessus se lira, ou non.
