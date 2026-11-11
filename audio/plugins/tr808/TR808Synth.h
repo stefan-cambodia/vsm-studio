@@ -6,6 +6,7 @@
 #include "vsm/audio/dsp/Oscillator.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include "vsm/util/DeterministicRng.h"
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cmath>
@@ -22,11 +23,13 @@ using DecayEnv = vsm::audio::dsp::DecayEnvelope;
 /// suivi d'un étage non linéaire (tanh) pour le punch.
 class KickVoice {
 public:
-    void setSampleRate(double sr) { sampleRate_ = sr; amp_.setSampleRate(sr); pitch_.setSampleRate(sr); }
-    void configure(float tuneHz, float decay, float level, float holdSeconds = 0.0f) {
+    void setSampleRate(double sr) { sampleRate_ = sr; amp_.setSampleRate(sr); pitch_.setSampleRate(sr); tail_.setSampleRate(sr); }
+    void configure(float tuneHz, float decay, float level, float holdSeconds = 0.0f,
+                   float sustain = 0.0f, float sustainDecay = 0.5f) {
         tuneHz_ = tuneHz; decay_ = decay; level_ = level; hold_ = holdSeconds;
+        sustain_ = sustain; sustainDecay_ = sustainDecay;
     }
-    bool isActive() const { return amp_.isActive(); }
+    bool isActive() const { return amp_.isActive() || (sustain_ > 0.0f && tail_.isActive()); }
 
     void trigger(float velGain) {
         velGain_ = velGain;
@@ -36,10 +39,11 @@ public:
         amp_.trigger();
         pitch_.trigger();
         holdLeft_ = static_cast<int>(hold_ * static_cast<float>(sampleRate_) + 0.5f);
+        if (sustain_ > 0.0f) { tail_.setDecaySeconds(sustainDecay_); tail_.trigger(); }
     }
 
     float render() {
-        if (!amp_.isActive()) return 0.0f;
+        if (!isActive()) return 0.0f;
         const float pitchEnv = pitch_.next();
         const float freq = tuneHz_ * (1.0f + pitchEnv * 5.0f); // départ ~6x, chute vers tuneHz_
         phase_ += static_cast<float>(vsm::audio::dsp::kTwoPi) * freq / static_cast<float>(sampleRate_);
@@ -51,13 +55,19 @@ public:
         float a;
         if (holdLeft_ > 0) { --holdLeft_; a = 1.0f; }
         else a = amp_.next();
+        // PALIER (CDC-reload § 60, H99) : après la chute de `decay_`, l'amplitude ne descend pas sous
+        // `sustain_` x une enveloppe LENTE -- le kick d'un morceau produit tombe d'une dizaine de dB puis
+        // se tient (§ 55.2), ce qu'une seule exponentielle ne rend pas. À 0 (le défaut), ce bloc n'est
+        // pas exécuté : le rendu est celui d'avant, au bit près.
+        if (sustain_ > 0.0f) a = std::max(a, sustain_ * tail_.next());
         return std::tanh(sine * 1.8f) * a * level_ * velGain_;
     }
 
 private:
     double sampleRate_ = 48000.0;
-    DecayEnv amp_, pitch_;
+    DecayEnv amp_, pitch_, tail_;
     float tuneHz_ = 52.0f, decay_ = 0.45f, level_ = 1.0f, hold_ = 0.0f, velGain_ = 1.0f, phase_ = 0.0f;
+    float sustain_ = 0.0f, sustainDecay_ = 0.5f;
     int holdLeft_ = 0;
 };
 
@@ -249,6 +259,7 @@ public:
         kCowbellLevel, kCowbellTune,
         kAccent,
         kKickHold, // ajouté à la fin (H70) : les identifiants des réglages enregistrés ne bougent pas
+        kKickSustain, kKickSustainDecay, // H99 (CDC-reload § 60), à la fin pour la même raison
         kNumParams
     };
 

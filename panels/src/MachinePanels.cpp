@@ -218,6 +218,8 @@ MachinePanel makeTr808() {
             control("Kick Tune", "TONE", S::Knob, 1, 0),
             control("Kick Decay", "DECAY", S::Knob, 2, 0),
             control("Kick Hold", "HOLD", S::Knob, 1, 1),
+            control("Kick Sustain", "SUST", S::Knob, 0, 1),
+            control("Kick Sustain Decay", "S.DEC", S::Knob, 2, 1),
         }),
         voiceSection("SNARE DRUM", orange, 6, 6, 0, {
             control("Snare Level", "LEVEL", S::Knob, 0, 0),

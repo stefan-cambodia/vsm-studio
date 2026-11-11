@@ -26,6 +26,8 @@ TR808Synth::TR808Synth() {
         {kCowbellTune, "Cowbell Tune", 400.0f, 800.0f, 540.0f, "Hz"},
         {kAccent, "Accent", 0.0f, 1.0f, 0.5f, ""},
         {kKickHold, "Kick Hold", 0.0f, 0.3f, 0.0f, "s"},
+        {kKickSustain, "Kick Sustain", 0.0f, 1.0f, 0.0f, ""},
+        {kKickSustainDecay, "Kick Sustain Decay", 0.05f, 2.0f, 0.5f, "s"},
     };
     for (const auto& info : parameterList_)
         params_[info.id].store(info.defaultValue, std::memory_order_relaxed);
@@ -46,7 +48,9 @@ void TR808Synth::applyConfig() {
     kick_.configure(params_[kKickTune].load(std::memory_order_relaxed),
                     params_[kKickDecay].load(std::memory_order_relaxed),
                     params_[kKickLevel].load(std::memory_order_relaxed),
-                    params_[kKickHold].load(std::memory_order_relaxed));
+                    params_[kKickHold].load(std::memory_order_relaxed),
+                    params_[kKickSustain].load(std::memory_order_relaxed),
+                    params_[kKickSustainDecay].load(std::memory_order_relaxed));
     snare_.configure(params_[kSnareTune].load(std::memory_order_relaxed),
                      params_[kSnareDecay].load(std::memory_order_relaxed),
                      params_[kSnareLevel].load(std::memory_order_relaxed),

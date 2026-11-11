@@ -137,7 +137,7 @@ VSM_TEST(tr808_save_load_roundtrip) {
 
 VSM_TEST(tr808_parameter_list_size) {
     auto d = makeTr808();
-    VSM_ASSERT_EQ(d->parameterList().size(), static_cast<size_t>(17));
+    VSM_ASSERT_EQ(d->parameterList().size(), static_cast<size_t>(19));
 }
 
 // H70 (CDC-reload § 31) : la TENUE du kick. Pendant `Kick Hold`, l'amplitude reste à 1 ; ensuite elle
@@ -175,6 +175,51 @@ VSM_TEST(tr808_kick_hold_default_is_zero_and_changes_nothing) {
     };
     auto d = makeTr808();
     VSM_ASSERT_NEAR(d->getParameter(paramByName(*d, "Kick Hold")), 0.0, 1e-9);
+    VSM_ASSERT(rendu(false) == rendu(true));
+}
+
+// H99 (CDC-reload § 60) : le PALIER du kick. Après la chute de `Kick Decay`, l'amplitude ne descend pas
+// sous `Kick Sustain` x une enveloppe lente (`Kick Sustain Decay`). Crêtes par fenêtres de 10 ms, 48 kHz.
+VSM_TEST(tr808_kick_sustain_holds_a_plateau_after_the_drop) {
+    auto crete = [](float sustain, int de, int a) {
+        auto d = makeTr808();
+        d->setParameter(paramByName(*d, "Kick Tune"), 70.0f);
+        d->setParameter(paramByName(*d, "Kick Decay"), 0.05f);
+        d->setParameter(paramByName(*d, "Kick Sustain"), sustain);
+        d->setParameter(paramByName(*d, "Kick Sustain Decay"), 0.5f);
+        MidiNoteEvent k = hit(0, 36);
+        std::vector<float> l(14400, 0.0f), r(14400, 0.0f);
+        d->process(&k, 1, l.data(), r.data(), 14400);
+        return peakAbs(std::vector<float>(l.begin() + de, l.begin() + a));
+    };
+    const float tete = crete(0.3f, 0, 720);            // 0-15 ms
+    const float palier = crete(0.3f, 7200, 7920);      // 150-165 ms (plus d'une période à 70 Hz)
+    const float plusTard = crete(0.3f, 12000, 12720);  // 250-265 ms
+    const float sans = crete(0.0f, 7200, 7920);
+    VSM_ASSERT(tete > 0.05f);
+    // l'écrêtage (tanh) porte sur le sinus, PAS sur l'enveloppe : la sortie est linéaire en amplitude.
+    // Palier à 0,3 après 150 ms d'une décroissance lente de 0,5 s : 0,3 x e^(-0,15/0,5) = 0,222, soit -13,1 dB
+    VSM_ASSERT(std::abs(20.0f * std::log10(palier / tete) + 13.1f) < 1.5f);
+    VSM_ASSERT(20.0f * std::log10(plusTard / palier) > -4.0f);     // il se tient
+    VSM_ASSERT(20.0f * std::log10(plusTard / palier) < -0.5f);     // et décroît quand même
+    VSM_ASSERT(20.0f * std::log10(sans / tete) < -25.0f);          // sans palier : e^(-150/50)
+}
+
+// À 0 (le défaut), le palier ne change RIEN, au bit près, quel que soit `Kick Sustain Decay`.
+VSM_TEST(tr808_kick_sustain_default_is_zero_and_changes_nothing) {
+    auto rendu = [](bool poser) {
+        auto d = makeTr808();
+        if (poser) {
+            d->setParameter(paramByName(*d, "Kick Sustain"), 0.0f);
+            d->setParameter(paramByName(*d, "Kick Sustain Decay"), 1.7f);
+        }
+        std::vector<MidiNoteEvent> evs = {hit(0, 36), hit(2000, 36, 60)};
+        std::vector<float> l(6000, 0.0f), r(6000, 0.0f);
+        d->process(evs.data(), static_cast<int>(evs.size()), l.data(), r.data(), 6000);
+        return l;
+    };
+    auto d = makeTr808();
+    VSM_ASSERT_NEAR(d->getParameter(paramByName(*d, "Kick Sustain")), 0.0, 1e-9);
     VSM_ASSERT(rendu(false) == rendu(true));
 }
 
