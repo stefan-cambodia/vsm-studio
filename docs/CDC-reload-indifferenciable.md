@@ -5363,3 +5363,35 @@ isolées, large bande. Aucun code neuf (`reconstruction/travail/reload-h95.py` ;
 choisi : la question devient sa DÉCISION de kit (pourquoi le TR-808 l'a emporté sur son propre échantillon), à instruire
 en D-phase ; sinon au plus sévère. **Dit d'avance** : un échantillon tiré du stem porte les fuites de la séparation ; un
 seul échantillon pour 555 frappes ne porte aucune variation ; un morceau.
+
+### 56.1 Verdict de H95 (11/11/2026, écrit à 17 h 27) : 2, 3 et 4 TENUS, 1 en ÉCHEC de 0,6 dB — l'échantillon de la chaîne donne le meilleur log-mel de « Reload » (6,89 → 6,13) et garde trop de sub entre les kicks
+
+`reconstruction/travail/reload-h95.py` (rejouable ; `reload-h95/h95.json`). Le témoin rend 6,89.
+
+| kick de « Reload » | f\* | log-mel | \|médian\| sub · basse · bas-médium | aigus | rendu / original AUX kicks : sub · basse | ENTRE : sub · basse | profil du solo, 100-200 ms : sub · basse (dB sous sa tête) |
+|---|---|---|---|---|---|---|---|
+| TR-808 de H70 (H75, témoin) | 0,5822 | 6,89 | 0,91 · 1,75 · 1,07 | 1,97 | −4,0 · −0,9 | +8,5 · −14,8 | +5,4 · −21,4 |
+| **A · `samples/kick.wav` (jugé)** | 0,9656 | **6,13** | 1,08 · 1,44 · **0,72** | 2,69 | −2,6 · 0,0 | **+6,6** · −1,6 | +2,2 · −9,4 |
+| B · kick moyen de H69 (relevé) | 0,7647 | 6,59 | 1,57 · 1,89 · 1,73 | 2,06 | +0,7 · −0,2 | **+0,8** · −3,6 | −11,8 · −10,2 |
+| (original, kick moyen du stem — § 55.2) | | | | | | | −11,1 · −10,2 |
+
+| # | verdict, au point A |
+|---|---|
+| 0 | **tenu** |
+| 1 | **en ÉCHEC** : entre les kicks, basse à −1,6 dB (H75 : −14,8) mais sub à +6,6 dB — 0,6 dB au-delà du seuil d'échec |
+| 2 | **tenu** : −2,6 · 0,0 dB |
+| 3 | **tenu** : sub +0,17, basse et bas-médium meilleurs |
+| 4 | **tenu** : 6,13 — 0,76 dB sous H75, le plus grand gain d'un seul geste sur ce morceau depuis H72 |
+
+**La règle**, au plus sévère : pas « 1 à 4 tenus », rien n'entre. **Ce que la table mesure** : l'échantillon de la chaîne
+rend au mélange la basse d'entre les kicks (−14,8 → −1,6 dB) et le log-mel suit pour une fois (−0,76) ; il garde un sub
+qui dure — son propre profil a, de 100 à 200 ms, un sub 2,2 dB AU-DESSUS de sa tête, là où le kick moyen de l'original
+est 11,1 dB dessous. Le point B, qui est ce kick moyen, a le sub d'entre les kicks à +0,8 dB et le profil de l'original
+à 1 dB près — et un log-mel moins bon (6,59), des bandes de l'outil moins bonnes que A : il n'était pas le point jugé, et
+A et B ne se départagent pas ici (aigus : A 2,69, B 2,06 ; un échantillon large bande contre un kick moyen qui a perdu
+ce qui ne se répète pas).
+
+**Deux pistes, non mesurées** : pourquoi `samples/kick.wav` porte ce sub tenu (une frappe unique prise avec ce qui
+sonnait dessous ? — à lire dans `vsm_drumkit.py` et sur le fichier) ; pourquoi la chaîne, qui avait cet échantillon, a
+rendu le TR-808 (sa décision de kit). **La suite** (H96, à écrire AVANT sa mesure) : la seconde — rejouer la décision de
+kit de la chaîne sur ce morceau, avec ses propres distances, pour savoir sur quel chiffre le TR-808 l'a emporté.
