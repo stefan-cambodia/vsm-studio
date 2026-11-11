@@ -4536,3 +4536,39 @@ MUET et non multiplié par 10 000, un stem muet est un refus ; le choix veut 0,5
 muet non contrôlé ; sans seuil ; le gain en énergie au lieu d'amplitude), un rouge chacun. `ruff`, `mypy` propres. Le
 reste est réemployé tel quel : critère de H77, populations de H80, énergies de H81.
 `reconstruction/travail/reload-h82.py` : la course s'arrête si son témoin ne rejoue pas H79.
+
+### 43.2 Verdict de H82 (11/11/2026, écrit à 11 h 22) : le stem choisit `vsm.tb303` et le grave de la basse revient à 0,3 dB — mais 2 en ÉCHEC : le log-mel du mélange ne voit pas la basse
+
+`reconstruction/travail/reload-h82.py` (rejouable ; `reload-h82/h82.json`). Aucun solo muet. **La table entière** :
+
+| machine de la piste `bass` | gain | au stem | mélange | \|médian\| sub · basse · bas-médium | aigus | entre les kicks, piste / stem : 30-150 · 150-500 |
+|---|---|---|---|---|---|---|
+| `vsm.clavinet` (témoin, calé) | 1,179 | 15,95 | 7,13 | 1,85 · 1,41 · 1,61 | 1,52 | −5,7 · +9,0 |
+| **`vsm.tb303`** (choisie) | 0,422 | **13,76** | 7,10 | 2,12 · 1,23 · 1,15 | 1,65 | **+0,3** · +4,8 |
+| `vsm.minimoog` | 0,264 | 14,66 | 7,10 | 2,13 · 1,25 · 1,24 | 1,65 | −0,4 · +4,9 |
+| `vsm.sh101` | 0,117 | 17,86 | 7,10 | 2,37 · 1,44 · 1,15 | 1,45 | −1,6 · +4,5 |
+| `vsm.juno106` | 0,293 | 18,85 | 7,15 | 1,89 · 1,14 · 1,25 | 1,49 | −1,3 · +5,6 |
+| `vsm.ms20` | 0,148 | 22,43 | 7,16 | 2,04 · 1,30 · 1,26 | 1,33 | −1,8 · +5,9 |
+| `vsm.arpodyssey` | 0,154 | 18,71 | 7,14 | 2,04 · 1,26 · 1,21 | 1,41 | −1,7 · +5,5 |
+| `vsm.dx7` | 0,145 | 15,33 | 7,39 | 1,69 · 1,43 · 1,52 | 1,56 | −7,0 · +8,4 |
+| `vsm.prophet` | 0,248 | 16,37 | **7,08** | 2,13 · 1,24 · 1,14 | 1,55 | −0,6 · +4,2 |
+
+| # | verdict |
+|---|---|
+| 0 | **tenu** : le témoin de la course rend 7,10 |
+| 1 | **entre les deux** : 8 paires tranchées sur 36, 2 concordantes, 6 discordantes — toutes tiennent au seul `vsm.dx7`, aucune au-delà de 0,5 dB au mélange |
+| 2 | **en ÉCHEC** : 7,10 avec `vsm.tb303` — pas un centième de gagné sur H79 |
+| 3 | **tenu** : sub 2,12 (+0,23), basse 1,23 et bas-médium 1,15 meilleurs |
+| 4 | **entre les deux** : 30-150 Hz à +0,3 dB (−7,2 en H81) ; 150-500 Hz à +4,8 dB (+7,6) |
+
+**La règle**, au plus sévère : H82 n'est pas tenue comme écrite, rien n'entre. **Ce qu'elle établit** : huit machines
+sur neuf tiennent dans 0,08 dB de log-mel au mélange pendant que le critère au stem varie de 8,7 dB — le juge du
+mélange est AVEUGLE à la machine de la basse, et un attendu au log-mel (le 2) ne pouvait pas la départager. Ce qui la
+départage, ce sont les bandes : avec le TB-303 (ou le Minimoog, ou le Prophet) le grave de la basse entre les kicks
+revient au stem à moins de 1 dB, et le bas-médium du mélange passe de 1,56 à 1,15. Le 150-500 Hz reste 4 à 6 dB trop
+fort avec toutes les machines : non expliqué (les notes transcrites ? une octave ? — pas mesuré). Le sub du mélange ne
+s'améliore pas (2,12) : le kick long de H79 est toujours là, et il n'a plus de basse à remplacer.
+
+**La suite** (H83, à écrire AVANT sa mesure) : la basse au TB-303, la décroissance du kick rejouée (H80), jugée cette
+fois par ce qui voit le défaut — le grave du mélange entre les kicks, rendu contre original (le relevé de H81 : +4,3 dB)
+— et non par le log-mel, que H80 et H82 montrent plat sur ces deux variables.
