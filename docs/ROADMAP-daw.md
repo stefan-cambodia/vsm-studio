@@ -49038,3 +49038,47 @@ compilé après elle. Le test d'interchange joué rouge en retirant l'écriture 
 - **Remis, nommés** : la saisie pas à pas garde la longueur de la grille ; la longueur d'insertion au préréglage de
   quantification ; le glissé d'une sélection sur plusieurs rangs ; les rangs dans l'ordre de la carte ; la passe
   empilée de D624 au banc.
+
+### Phase D626 — un quatre-vingt-sixième audit : la saisie pas à pas suit la longueur d'insertion (12/11/2026)
+
+*Écrite le 12/11 à 04 h 30 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D625
+tourne (écran allumé, lancée à 04 h 28) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du premier « remis, nommé » de D625** — « la saisie pas à pas garde la longueur de la grille ». Depuis
+D625, un clic pose une note de la longueur choisie ; la saisie pas à pas (D13.5, D500), elle, écrit toujours une note
+d'UNE CASE de la grille (`stepInputNote` : `n.endTick = debut + gridTicks()`). Pour entrer au clavier une ligne de
+croches liées à la double — ou des notes piquées sur une grille à la croche —, il faut aujourd'hui retailler chaque note
+après coup. Le *Step Input* des éditeurs de Cubase sépare les deux : *Quantize* règle l'ESPACEMENT des notes, *Insert
+Length* leur LONGUEUR.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D626.1 | **La longueur des notes saisies pas à pas** — *Insert Length* du *Step Input* | « Pas à pas » armé, une note jouée s'écrit à la tête, longue de la longueur d'insertion quand elle est choisie (de la grille sinon, comme avant) ; la tête avance d'UN PAS DE GRILLE, quelle que soit la longueur ; Entrée et Retour arrière avancent et reculent d'un pas de grille, inchangés ; l'infobulle de « Pas à pas » le dit, dans les deux langues ; mesuré par le relevé des notes du projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La tête avance d'un pas de GRILLE, pas d'une longueur d'insertion** : c'est le partage de Cubase, et c'est la règle
+  que D625 a écrite (« la grille dit OÙ, la longueur dit COMBIEN »). Une longueur plus longue que le pas fait des notes
+  qui se chevauchent — des notes liées, voulues ; une plus courte, des notes piquées séparées de silences. Avancer de la
+  longueur aurait fait de la longueur une seconde grille, et rendu les deux réglages indiscernables.
+- **« la grille » garde le comportement d'avant à l'octet** : la longueur est celle d'un pas, comme depuis D13.5.
+- **Une seule fonction pour la durée choisie** : la règle de D625 (la longueur choisie, sinon la grille) est tirée dans
+  une fonction du piano roll, appelée par le clic ET par la saisie — deux recopies divergent toujours.
+- **L'infobulle** de « Pas à pas » dit la longueur : « chaque note jouée s'écrit à la tête de lecture, longue de la
+  longueur d'insertion, puis la tête avance d'un pas de grille ; … » (et son anglais).
+- **Remis, nommés** (ceux de D625, moins celui-ci) : la longueur d'insertion au préréglage de quantification ; le glissé
+  d'une sélection sur plusieurs rangs ; les rangs dans l'ordre de la carte ; la passe empilée de D624 au banc ; et
+  **la saisie pas à pas sur une piste de batterie ne suit pas la grille du RANG** (D622) — elle avance à la grille de la
+  barre ; quelle grille mène quand on frappe deux pièces au même pas demande une règle à écrire.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/pas-a-pas-longueur.sh`, la mécanique de `pas-a-pas.sh` (D500 :
+« Clavier d'ordinateur », « Pas à pas », les touches jouées en différé à 500 ms d'intervalle, le projet enregistré
+ensuite et ses notes relues avec leurs durées), la grille de la barre à 1/16 = 120 ticks, la suite A (do) S (ré) Entrée
+D (mi) :
+(a) **le témoin de la règle, sans rien choisir** : 60@0+120, 62@120+120, 64@360+120 ; la tête à **480** ;
+(b) « Insertion : 1/8 » : 60@0+**240**, 62@**120**+240, 64@**360**+240 — les débuts INCHANGÉS ; la tête à **480** ;
+(c) « Insertion : 1/32 » : 60@0+**60**, 62@120+60, 64@360+60 ; la tête à **480** ;
+(d) « Insertion : 1/8 », puis Retour arrière après D, puis F (fa) : fa à **360**, long de 240 — on recule d'un pas de
+grille, pas d'une longueur ;
+(e) **le témoin** (le binaire de D625, la même ligne de gestes) : sous « Insertion : 1/8 », **60@0+120** — le défaut ;
+(f) l'infobulle de « Pas à pas » relevée dans les deux langues, et qui nomme la longueur d'insertion ;
+(g) `pas-a-pas`, `longueur-insertion` verts ; les suites ; la série.
