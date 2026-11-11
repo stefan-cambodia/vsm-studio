@@ -4195,3 +4195,61 @@ retranchées ; le numérateur négatif non refusé ; la garde redevenue l'ancien
 `mypy` propres. `reconstruction/travail/reload-h79.sh` : les facteurs de H78 relus dans son `choix.json`, six mélanges
 rendus et jugés (le point « +0 dB » REJOUE H78 : il doit rendre 7,37, c'est le témoin de la course), la concordance
 par `mesure_h77.paires`.
+
+### 40.2 Verdict de H79 (11/11/2026, mesuré de 10 h 07 à 10 h 12, garde relue à 10 h 14, écrit à 10 h 14) : 1, 2, 3 et 5 TENUS — log-mel 7,10, grave et aigu mieux qu'en H75 — et 4 en ÉCHEC : la garde refaite montre le grave du kick qui déborde sur les frappes des autres
+
+`reconstruction/travail/reload-h79.sh` (rejouable), moteur `1eff3b6d`. `f*` = **0,9952** (−0,04 dB ; aucune borne) : le
+kick du TR-909 à son niveau d'usine, à très peu près — le système de H75 le divisait par 3,6. **Le balayage entier** :
+
+| point | facteur du kick | au stem | mélange : log-mel (médian) | \|médian\| sub · basse · bas-médium | \|médian\| aigus | niveau | kick à 30-150 Hz, à ses frappes | bandes ÉLOIGNÉES (toutes pièces) |
+|---|---|---|---|---|---|---|---|---|
+| +0 dB (H78 rejoué) | 0,2745 | 10,29 | 7,37 (5,94) | 2,07 · 4,39 · 2,10 | 6,67 | −5,06 | −11,19 | kick : 30-150 |
+| +3 dB | 0,3877 | 10,07 | 7,25 (5,82) | 1,16 · 3,43 · 2,03 | 5,44 | −4,22 | −8,19 | kick : 30-150 |
+| +6 dB | 0,5477 | 9,92 | 7,15 (5,72) | **0,72** · 2,45 · 1,86 | 4,24 | −2,99 | −5,19 | charleston : 30-150 |
+| +9 dB | 0,7736 | **9,87** | **7,10** (5,65) | 1,48 · 1,75 · 1,68 | 2,21 | −0,97 | −2,19 | charleston : 30-150 ; caisse : 30-150 |
+| **f\*** | 0,9952 | 9,90 | **7,10** (5,67) | 1,89 · 1,39 · 1,56 | 1,52 | +0,65 | 0,00 | charleston : 30-150, 150-500 ; caisse : 30-150 |
+| +12 dB | 1,0928 | 9,93 | 7,12 (5,69) | 2,02 · **1,35** · **1,54** | **1,44** | +1,24 | +0,81 | les mêmes qu'à f\* |
+
+Le témoin de la course : « +0 dB » rend 7,37 et les bandes de H78 au centième. Références : H75 8,42 · 1,48 · 2,29 ·
+1,73 · aigus 3,89 ; H73 aigus 1,57.
+
+| # | verdict, au point f\* |
+|---|---|
+| 1 | **tenu** : 7,10 ≤ 7,47 — le meilleur log-mel de « B4 », 1,32 dB sous H75 |
+| 2 | **tenu** : sub 1,89 (à +0,41 de H75), basse 1,39 et bas-médium 1,56 MEILLEURES que H75 |
+| 3 | **tenu** : aigus 1,52 — sous H75 (3,89) et sous H73 (1,57), la meilleure valeur de « B4 » avec le point +12 dB |
+| 4 | **en ÉCHEC** : la caisse claire (changée) est à **+8,7 dB** du stem à 30-150 Hz à ses frappes (+1,1 en H75) ; kick et clap : aucune |
+| 5 | **tenu** : 9 paires tranchées sur 9 concordantes (15 paires ; les six non tranchées sont celles du plateau) |
+
+**La règle** : « 1 à 4 tenus → la méthode en deux temps est la candidate ». 4 ne l'est pas ; les autres branches
+supposent 1, 2, 3 ou 5 en échec. **Tranché au plus sévère, comme en H78** : pas encore une candidate. Mais l'hypothèse
+elle-même — « le grave faux de H78 est un NIVEAU » — est tenue AU MÉLANGE sur ses trois attendus, et la branche « le
+gain de H78 était celui d'un kick trop bas » est écartée : le log-mel BAISSE encore quand le kick remonte (7,37 → 7,10).
+
+**Ce que la garde refaite montre, et que le juge du mélange ne voit pas** : aux frappes du kick, le grave est au stem
+(0,0 dB) ; aux frappes de la caisse il est 8,7 dB au-dessus, à celles du charleston **13,3 dB** au-dessus (2,6 en H75,
+2,1 en H78). Le stem a donc bien moins de grave ENTRE les frappes du kick que la batterie rendue : le kick du TR-909, à
+ses réglages d'usine, sonne encore quand celui de l'original s'est tu. L'outil du § 0 juge l'équilibre par tranches de
+7 s et ne peut pas le voir ; la garde, qui lit pièce par pièce à leurs frappes, le nomme. C'est la leçon de H67-H70 sur
+« Reload » (la LONGUEUR du kick), retrouvée sur un second morceau par un autre instrument. Le sub le dit aussi à sa
+façon : son meilleur point est à +6 dB (0,72), il remonte ensuite (1,89 à f\*) pendant que la basse continue de
+s'améliorer — un seul facteur ne peut pas servir les deux.
+
+**f\* est sur un plateau, pas sur un sommet** : de +9 dB à +12 dB, le mélange tient dans 0,02 dB de log-mel et le stem
+dans 0,06. Le calage sur une bande donne un point du plateau ; il ne le choisit pas mieux qu'un autre.
+
+**La garde relue sur H78** (attendu 6) : elle nomme « kick : 30-150 » au point +0 dB — le trou est fermé. Avec elle,
+H78 aurait refusé le kick du 909 AU NIVEAU DU SYSTÈME DE H75, alors qu'à f\* ce même kick donne le meilleur mélange :
+une garde qui lit des niveaux faux refuse de bons timbres. L'ordre des opérations compte — niveau d'abord, garde
+ensuite.
+
+**Rien n'entre.** La suite que ces chiffres désignent (H80, à écrire AVANT sa mesure) : UNE variable, la décroissance
+du kick du TR-909 — la méthode de H72 (le charleston réglé sur ses frappes), sur le kick, jugée par la garde aux
+frappes des AUTRES pièces et par le mélange.
+
+**Un défaut de l'instrument, dit** : la première course (10 h 07) est morte avant toute mesure sur une erreur de
+format de la ligne de commande (`{d:g}` sur une chaîne) — les cinq tests passent par les fonctions, aucun par
+`main()`. Corrigé (`float(d)`), rejoué. Et la garde n'était calculée que pour la pièce calée : étendue à toutes les
+pièces à 10 h 14 (`eloignees_par_piece`), l'instrument rejoué, les six mélanges gardés ; les six points sont identiques
+à ceux de la course précédente (facteur, log-mel au stem, résidu du kick). **Ce que la mesure ne dit pas** (écrit
+d'avance, rappelé) : un morceau ; les trois autres facteurs sont ceux d'un système résolu avec le kick à 0,2745.

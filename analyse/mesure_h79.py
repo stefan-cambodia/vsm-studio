@@ -113,7 +113,12 @@ def main() -> int:
             print(f"REFUS : piste « {nom} » absente ou sans frappe")
             return 2
     frappes = {n: pistes[n] for n in noms}
-    avant: Mapping[str, float] = json.loads(a.avant.read_text(encoding="utf-8"))["temoin"]["rendu_sur_stem_db"][a.piece]
+    avants: Mapping[str, Mapping[str, float]] = json.loads(a.avant.read_text(encoding="utf-8"))["temoin"]["rendu_sur_stem_db"]
+    absents = [n for n in noms if n not in avants]
+    if absents:
+        print(f"REFUS : {a.avant} n'a pas de résidu témoin pour {absents}")
+        return 2
+    avant = avants[a.piece]
     stem, sr = h69.lire_mono(a.stem)
     ondes: Dict[str, np.ndarray] = {}
     for n, c in chemins:
@@ -132,16 +137,22 @@ def main() -> int:
     logmel = h77.outil().logmel
     points: List[Dict[str, Any]] = []
     depart = facteurs[a.piece]
-    liste = [(f"+{d:g} dB", round(depart * 10 ** (float(d) / 20), 4)) for d in a.balayage_db.split(",")] + [("f*", cale)]
+    liste = [(f"+{float(d):g} dB", round(depart * 10 ** (float(d) / 20), 4)) for d in a.balayage_db.split(",")] + [("f*", cale)]
     for nom, f in sorted(liste, key=lambda t: t[1]):
         fs = dict(facteurs)
         fs[a.piece] = f
         e = h77.logmel_au_stem(stem.astype(np.float32), h78.sommer(ondes, fs).astype(np.float32), sr, logmel)
         r = rendu_sur_stem(bstem, bandes, frappes, fs, a.piece)
+        # la garde, pour TOUTES les pièces : un niveau qui change déplace aussi le résidu des autres à leurs frappes
+        toutes = {n: rendu_sur_stem(bstem, bandes, frappes, fs, n) for n in noms}
         points.append({"nom": nom, "facteur": f, "facteur_db": round(20 * math.log10(f), 2), "logmel": e["moyen"],
-                       "logmel_median": e["median"], "rendu_sur_stem_db": r, "eloignees": bandes_eloignees(avant, r)})
+                       "logmel_median": e["median"], "rendu_sur_stem_db": r, "eloignees": bandes_eloignees(avant, r),
+                       "rendu_sur_stem_db_par_piece": toutes,
+                       "eloignees_par_piece": {n: bandes_eloignees(avants[n], toutes[n]) for n in noms}})
         print(f"{nom:>7} : facteur {f} ({points[-1]['facteur_db']:+.2f} dB) · au stem {e['moyen']:.2f} · "
               f"« {a.piece} » {r} · éloignées {points[-1]['eloignees'] or 'aucune'}")
+        autres = {n: v for n, v in points[-1]["eloignees_par_piece"].items() if n != a.piece and v}
+        print(f"          autres pièces, bandes éloignées : {autres or 'aucune'}")
     for ligne in dits:
         print("DIT :", ligne)
     res = {"provenance": {k: str(v) for k, v in vars(a).items()},
