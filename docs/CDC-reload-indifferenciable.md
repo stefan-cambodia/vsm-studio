@@ -5395,3 +5395,29 @@ ce qui ne se répète pas).
 sonnait dessous ? — à lire dans `vsm_drumkit.py` et sur le fichier) ; pourquoi la chaîne, qui avait cet échantillon, a
 rendu le TR-808 (sa décision de kit). **La suite** (H96, à écrire AVANT sa mesure) : la seconde — rejouer la décision de
 kit de la chaîne sur ce morceau, avec ses propres distances, pour savoir sur quel chiffre le TR-808 l'a emporté.
+
+## 57. H96 — la question de H95 était déjà tranchée ailleurs ; ce qui reste à mesurer : la distance DE LA CHAÎNE voit-elle le gain de l'échantillon ? (écrite AVANT sa mesure, 11/11/2026, 17 h 35)
+
+**Ce que j'aurais dû lire avant H95** (`reconstruire.py`, `ROADMAP-fusion.md` § 5 octies) : la chaîne n'arbitre PAS
+entre la boîte à rythmes et ses échantillons — la batterie modélisée est son défaut, choisi et écrit (« on y gagne un
+kit réglable, on y perd la fidélité littérale au coup enregistré »), et `--batterie-echantillonnee` rend l'autre
+route. Elle a été mesurée sur *Sky and Sand* : +41 % sur le mélange (0,2521 → 0,3560), un échantillon par famille
+portant « la fuite des autres pièces ». La question du § 56.1 (« sur quel chiffre le TR-808 l'a emporté ») n'a donc pas
+d'objet sur « Reload » : sur aucun, c'est une règle. Et H95 ne la contredit pas d'emblée : autre morceau, une SEULE
+pièce échantillonnée (le kick) et non le kit, autre juge (le log-mel de l'outil du § 0, pas la distance de la chaîne).
+
+**Ce qui se mesure** (aucun rendu : `analyzer.vsm_reconstruct.reconstruction_distance`, la distance même de la chaîne,
+métrique du rapport de la course et v2) : original contre le mélange de H75, celui de H95-A (kick par
+`samples/kick.wav`) et celui de H95-B (kick moyen), et contre le silence (l'échelle).
+
+**L'HYPOTHÈSE H96** : la distance de la chaîne voit le gain de H95-A comme le log-mel le voit (6,89 → 6,13, −11 %).
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | distance de la chaîne, H95-A rapportée à H75 | en baisse d'au moins 2 % | égale ou en hausse |
+| 2 | relevés : les trois distances dans chaque métrique, le silence, H95-B | — | — |
+
+**La règle** : 1 tenu → sur ce morceau les deux juges s'accordent, un kick échantillonné SEUL vaut mieux que le TR-808,
+et la règle du § 5 octies (mesurée sur un kit entier, un autre morceau) mérite d'être rejouée pièce par pièce — à
+proposer, pas à décider ici : c'est un choix de conduite du projet (réglable contre fidèle) ; 1 en échec → les deux
+juges se contredisent, et c'est le juge qu'il faut instruire avant de toucher à la règle.
