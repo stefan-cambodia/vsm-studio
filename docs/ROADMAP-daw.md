@@ -49039,6 +49039,14 @@ compilé après elle. Le test d'interchange joué rouge en retirant l'écriture 
   quantification ; le glissé d'une sélection sur plusieurs rangs ; les rangs dans l'ordre de la carte ; la passe
   empilée de D624 au banc.
 
+**LA SÉRIE, JOUÉE (12/11, 04 h 28 → 06 h 17 ; écrit à 06 h 18 à l'horloge) — D625 EST FAITE.** `./verifier.sh --bancs` :
+**221 bancs verts en 109 min**, aucun rouge, écran allumé et session déverrouillée sous `kde-inhibit --screenSaver`
+(l'autorisation du 30/10 ; retirée à la fin, la liste est vide), **0** veille au journal du noyau ; la batterie de 95 à
+47 % ; préférences de l'utilisateur identiques ; le compositeur de 386 à 496 Mo (sommet de la session 586). **Dit** : une
+première série, lancée le 11/11 à 07 h 41, était morte sur son premier banc (un journal de 51 octets, `build/serie-d625.log`,
+jamais relu) ; celle-ci est la première jouée. Une autre session lançait des fenêtres Godot sur le poste pendant la série ;
+aucun banc de focus n'est tombé.
+
 ### Phase D626 — un quatre-vingt-sixième audit : la saisie pas à pas suit la longueur d'insertion (12/11/2026)
 
 *Écrite le 12/11 à 04 h 30 (l'horloge, lue avant d'écrire), avant toute ligne de code et toute mesure. La série de D625
