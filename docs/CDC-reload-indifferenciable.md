@@ -5114,3 +5114,15 @@ DÉFAUT d'au moins 3 dB — la bande large les additionnait. **Échec** : même 
 allongement ne le rendra : chercher ce que c'est (un tom, une seconde grosse caisse accordée plus haut) ; échec → la
 bande large ne cachait rien, et le sub faux de l'outil vient d'ailleurs que d'entre les kicks (aux kicks mêmes, ou des
 sections sans charleston) — le balayage le dira.
+
+### 52.1 Le recoupement de H91 est MANQUÉ de 0,16 dB — et H91 bis, écrite avant d'être rejouée (11/11/2026, 16 h 40)
+
+Première course : à 20-150 Hz entre les kicks, H75 rend **−7,36 dB** (attendu −5,7 ± 1,5 : manqué de 0,16) ; 37 Hz rend
+−0,06 (attendu +0,3 : tenu). « L'un des deux manqué : rien ne se lit » — **les chiffres des deux bandes de cette course
+ne sont donc PAS lus comme un verdict.** Le recoupement comparait une bande de 20 à 150 Hz à une mesure faite de 30 à
+150 Hz : ce n'était pas la même bande, et c'est mon attendu qui était mal écrit, pas forcément l'instrument.
+**H91 bis** — une seule chose change, la bande du recoupement : 30-150 Hz, celle de `mesure_h81`, même tolérance
+(1,5 dB), mêmes deux points. Tenu → les deux bandes se lisent, avec l'hypothèse et la règle du § 52 inchangées ; manqué
+encore → l'instrument par filtres ne reproduit pas celui par spectrogramme, et c'est lui qu'il faut instruire.
+**Dit** : j'écris ceci après avoir VU les chiffres de la première course (sub +16,4 · basse −11,5 dB à 37 Hz) ; le
+lecteur doit le savoir.
