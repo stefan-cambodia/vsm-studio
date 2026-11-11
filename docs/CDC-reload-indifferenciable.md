@@ -5054,3 +5054,46 @@ transcription de la batterie (où, pourquoi), avant tout réglage — et H87-H88
 3 en échec → c'est `attaques_basses` qui compte double, et le « 396/849 » de l'outil est à corriger, pas la chaîne.
 **Dit d'avance** : le stem `drums` est une estimation ; une frappe « réelle » au sens de ces trois mesures peut être un
 tom ou une caisse grave et non un kick — la position et la part sur une caisse sont relevées pour cela.
+
+### 51.1 Verdict de H90 (11/11/2026, écrit à 16 h 25) : RÉFUTÉE — ces attaques ne sont pas des frappes de batterie, la chaîne n'a pas manqué de kicks ; et l'explication écrite au § 50.2 est RETIRÉE
+
+`reconstruction/travail/reload-h90.py` (aucun rendu ; `reload-h90.json`). 849 attaques dans l'original, 888 dans le stem
+`drums`, 555 kicks au projet.
+
+| groupe | nombre | retrouvées dans le stem `drums` | énergie médiane 30-150 Hz du stem, à la frappe | suivent une autre de moins de 150 ms | sur une caisse |
+|---|---|---|---|---|---|
+| avec kick du projet | 434 | 94,7 % | 50,9 dB | 24,2 % | 0 % |
+| **sans kick** | 415 | 52,5 % | **3,1 dB** | 28,7 % | 8,4 % |
+
+| # | verdict |
+|---|---|
+| 1 | **entre les deux** : 52,5 % |
+| 2 | **en ÉCHEC** : 47,8 dB SOUS les kicks transcrits — il n'y a pas de frappe grave de batterie à ces instants |
+| 3 | **entre les deux** : 28,7 % |
+
+**La règle** : « 1 ou 2 en échec → ces attaques ne sont pas des frappes de batterie ». **Où elles sont** (par tranches
+de 30 s, sans · avec) : 0-30 s **125 · 0** ; 30-60 s 64 · 75 ; 60-120 s 23 · 110 ; 120-150 s **49 · 13** ; 150-180 s
+64 · 58 ; 180-270 s 51 · 178 ; 270-300 s **39 · 0**. Elles s'entassent là où le kick ne joue pas — l'intro, le pont, la
+fin : `attaques_basses` y relève les maxima d'un grave faible, faute de mieux. La transcription de la batterie n'est
+PAS en cause. (Les 121 kicks du projet sans attaque à 50 ms ne sont retrouvés dans le stem qu'à 7,4 % : relevé, non
+instruit. Les positions par double-croche ne se lisent pas : l'écart médian à ma grille est de 27 à 29 ms, un quart de
+pas — la grille est mal calée, je ne publie pas ces comptes comme une mesure.)
+
+**RÉTRACTATION du § 50.2.** J'y ai écrit que « les charlestons d'entre les kicks tombaient, pour beaucoup, sur des
+frappes graves que le projet n'a pas », et que « H87-H88 ont allongé un kick pour boucher des frappes ABSENTES ».
+**C'est faux** : écrit sur un compte (415 sur 849) dont je n'avais pas décomposé la population — le piège du taux sans
+son dénominateur, repayé le jour même. Ce qui reste vrai du § 50.2 : la mesure portée dans l'outil a manqué son
+recoupement, et son retrait tient — mais pour une autre raison que celle écrite : sa population « entre les frappes »
+avalait les sections SANS kick (43,5 s hors mesure seulement, sur un morceau dont l'intro, le pont et la fin n'en ont
+pas), où des attaques parasites espacées de moins de 2 s font compter comme « entre deux frappes » ce qui est un break.
+La lecture de H86 (−5,7 dB entre les kicks, aux charlestons du PROJET) n'est donc pas démentie ; H87 et H88 gardent leur
+sens premier ; et la contradiction de H88 — le grave juste par fenêtres, le sub faux à l'outil — reste ENTIÈRE et
+inexpliquée.
+
+**Ce que cela apprend sur l'outil du § 0** : son « N/849 attaques appariées » compte des attaques qui ne sont pas des
+kicks dès que le morceau a des sections sans kick ; le chiffre n'est pas un rappel. À corriger ou à dire dans l'outil —
+noté, non fait.
+
+**La suite** (H91, à écrire AVANT sa mesure) : ce que H89 voulait lire, lu proprement — les deux bandes graves (20-60 ·
+60-150 Hz) aux kicks et aux charlestons d'entre les kicks **du projet** (les populations de H81, qui ont tenu leurs
+contrôles), mélange rendu contre original, sur les points de H75, H87 et H88.
