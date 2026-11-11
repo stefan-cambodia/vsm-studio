@@ -49260,3 +49260,36 @@ avec et sans bloc `bext` ; le témoin : le binaire de D625.*
 - **Remis, nommés** : NOS prises n'écrivent pas leur origine ; une colonne « Origine » dans la liste ; poser plusieurs lignes
   d'un geste ; importer dans la réserve sans placer.
 - **La série n'est pas jouée** (la batterie, comme D626).
+
+### Phase D629 — un quatre-vingt-neuvième audit : la colonne « Origine » de la réserve (12/11/2026)
+
+*Écrite le 12/11 à 06 h 30 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. Rien ne
+tourne ; la série de D626 à D628 reste à jouer (batterie à 45 %), avec celle-ci.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D628** — « une colonne « Origine » dans la liste (le relevé la dit, la liste
+non) ». Depuis D628, « Poser à l'origine » est actif ou grisé selon une origine que la fenêtre ne MONTRE pas : on choisit
+une ligne pour savoir si elle en a une. Le Pool de Cubase a une colonne *Origin Time*.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D629.1 | **La colonne de l'origine** — *Pool ▸ Origin Time* | dans la réserve, une colonne « Origine » entre « Désigné par » et « État » : l'origine du fichier en secondes, à la milliseconde (« 3.000 s »), ou « — » quand il n'en porte pas ou qu'il manque ; le relevé de chaque ligne (`relever-reserve`) la dit à la même place, lue sur la même source que la peinture ; « Origin » en anglais ; mesuré par le relevé, la photo regardée, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Entre « Désigné par » et « État »**, pas après « Taille » : les bancs voisins lisent le format au troisième champ du
+  relevé, l'état au dernier, et une ligne manquante par « taille — puis désigné par » (`reserve-fichiers`, (c)) ; la
+  colonne neuve se glisse là où elle ne déplace rien de ce qu'ils lisent. Elle est aussi au bon voisinage : l'origine
+  est une propriété du fichier qu'on lit juste avant de décider de le poser.
+- **En secondes, à la milliseconde, comme la durée** (« 1.00 s ») — la convention de la fenêtre ; pas en mesures : une
+  origine est un instant du FICHIER, que le tempo du projet ne dit pas (il ne sert qu'à le poser).
+- **« — » pour « sans origine »**, comme les autres colonnes inconnues ; le relevé du choix (D628) garde ses mots.
+- **Remis, nommés** : ceux de D628 (nos prises sans origine, poser plusieurs lignes d'un geste, importer sans placer).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/poser-a-l-origine.sh` (le jeu de D628, une course de plus qui relève
+la réserve sans rien poser) :
+(a) `bwf.wav` : « … ; 87 ko ; — ; **3.000 s** ; inutilisé » ; `bwf48.wav` : « … ; **3.000 s** ; inutilisé » ;
+`sans.wav` et `voix.wav` : « … ; **—** ; … » à la place de l'origine ;
+(b) l'en-tête « Origine », et « Origin » en anglais, la photo regardée ;
+(c) **le témoin** (le binaire de D628, copié avant la compilation) : la ligne de `bwf.wav` finit par « 87 ko ; — ;
+inutilisé », sans origine ;
+(d) `reserve-fichiers`, `relier-fichier`, `chercher-manquants`, `poser-depuis-reserve`, `description-importee` verts —
+ce sont eux que le format du relevé pourrait casser ; les suites ; la série.
