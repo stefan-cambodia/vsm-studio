@@ -5569,3 +5569,57 @@ douze chiffres dont cinq neufs — le critère change, et un point de H97 ne se 
 plus : un corps 10 dB plus fort, de même forme, que l'ancien critère ne voit pas (0,0) et que le neuf compte (2,5 dB :
 trois chiffres sur douze) ; un profil sans bas-médium est un refus. **Vu rouge sur deux mutants** (les trois chiffres
 bas-médium − basse annulés ; le refus ôté). Onze tests H9x verts, `ruff` et `mypy` propres.
+
+### 59.2 Verdict de H98 (11/11/2026, mesuré de 18 h 28 à 18 h 47, écrit à 18 h 56) : NON TENUE — aucun des trois points ne bat H75 aux deux juges ; le meilleur (`vsm.fmdrums` 70 Hz · 0,20 s · indice 1,5) l'égale à 0,03 dB et 0,4 % près
+
+`reconstruction/travail/reload-h98.py` (rejouable ; `reload-h98/h98.json`). Le témoin rend 6,89. **La grille entière**,
+écart de profil à trois bandes, dB — par accord, trois décroissances, et pour chacune les trois valeurs du troisième
+réglage (batteur 0 · 0,5 · 1, ou indice FM 0 · 1,5 · 3) :
+
+| machine · accord | décroissance courte | moyenne | longue |
+|---|---|---|---|
+| `vsm.drums` 60 Hz (0,08 · 0,10 · 0,15 s) | 10,3 · 10,3 · 10,3 | 9,9 · 9,9 · 9,9 | 9,5 · 9,5 · 9,5 |
+| `vsm.drums` 65 Hz | 9,0 · 9,0 · 9,0 | 8,2 · 8,2 · 8,2 | 8,2 · 8,2 · 8,2 |
+| `vsm.drums` 70 Hz | 10,9 · 10,9 · 10,9 | 9,6 · 9,6 · 9,6 | 8,9 · 8,9 · 8,9 |
+| `vsm.drums` 75 Hz | 13,3 · 13,3 · 13,3 | 11,8 · 11,8 · 11,8 | 9,8 · 9,8 · 9,8 |
+| `vsm.drums` 80 Hz | 13,4 · 13,4 · 13,4 | 11,8 · 11,8 · 11,9 | 9,5 · 9,5 · 9,5 |
+| `vsm.fmdrums` 70 Hz (0,10 · 0,15 · 0,20 s) | 16,9 · 10,3 · 8,4 | 16,9 · 7,2 · 5,9 | 16,9 · **5,9** · 6,4 |
+| `vsm.fmdrums` 80 Hz | 16,9 · 12,2 · 9,6 | 16,2 · 8,6 · 6,8 | 15,6 · 6,8 · 6,8 |
+| `vsm.fmdrums` 90 Hz | 17,8 · 12,7 · 10,7 | 17,6 · 9,7 · 7,2 | 17,4 · 7,6 · 6,7 |
+
+Le kick de H70 : 15,2.
+
+| kick de « Reload » | profil (3 bandes) | f\* | log-mel | distance v2 | \|médian\| sub · basse · bas-médium | aigus | AUX kicks : sub · basse | ENTRE : sub · basse |
+|---|---|---|---|---|---|---|---|---|
+| TR-808 de H70 (H75, témoin) | 15,2 | 0,5822 | 6,89 | 0,3458 | 0,91 · 1,75 · 1,07 | 1,97 | −4,0 · −0,9 | +8,5 · −14,8 |
+| **`vsm.fmdrums` 70 · 0,20 · 1,5 (choisi)** | 5,9 | 0,9519 | 6,92 | 0,3472 | 1,24 · 1,79 · **0,65** | 1,03 | +2,1 · −0,3 | +3,7 · +5,3 |
+| `vsm.fmdrums` 70 · 0,15 · 3,0 | 5,9 | 1,0497 | 7,15 | 0,3390 | 1,91 · 1,20 · 1,27 | 1,09 | +4,2 · −0,5 | +3,0 · +3,8 |
+| `vsm.fmdrums` 70 · 0,20 · 3,0 | 6,4 | 0,9978 | 7,17 | 0,3411 | 4,09 · 1,27 · 1,27 | 0,89 | +6,7 · −1,0 | +8,6 · +5,5 |
+
+| # | verdict, au réglage choisi |
+|---|---|
+| 1 | **en ÉCHEC, de peu** : log-mel 6,92 (+0,03) ET distance v2 0,3472 (+0,4 %) — pires tous les deux, dans l'épaisseur du trait |
+| 2 | **entre les deux** : aux kicks +2,1 · −0,3 ; entre les kicks +3,7 · +5,3 (H75 : +8,5 · −14,8) |
+| 3 | **tenu** : sub +0,33, basse +0,04, bas-médium meilleur (0,65) |
+
+**La règle** : « aucun des TROIS points ne bat H75 aux deux juges → sur ces plages le parc n'a pas ce timbre, et les
+chiffres du profil du meilleur diront ce qui lui manque ». **Ils le disent** (douze chiffres : original → choisi) :
+sub sous sa tête −11,1 · −13,2 → −6,5 · −11,7 ; **basse sous sa tête −10,2 · −13,0 → −0,9 · −5,4** (elle ne décroît
+presque pas : 9 dB de trop à 100-200 ms) ; basse − sub 14,2 · 15,0 · 14,3 → 12,5 · 18,1 · 18,9 ; bas-médium sous sa
+tête −17,3 · −17,8 → −18,2 · **−30,8** ; bas-médium − basse −7,6 · −14,8 · −12,4 → −1,5 · −18,8 · **−27,0**. Le kick de
+l'original a une frappe nette puis une queue qui tombe de 10 dB et se TIENT, sur ses trois bandes à la fois ; celui de
+`vsm.fmdrums` tient sa basse sans la faire tomber et perd son bas-médium. Ce qui manque est une ENVELOPPE à deux
+temps — une chute rapide puis un palier — commune aux bandes : aucune des quatre machines n'a ce réglage (une seule
+décroissance chacune).
+
+**Ce que la grille dit de l'instrument, et qui n'est pas vérifié** : le batteur de `vsm.drums` ne change RIEN au
+critère (trois chiffres identiques au dixième sur quinze cases). Soit il agit au-dessus de 500 Hz, soit le réglage
+n'atteint pas le moteur — je n'ai pas posé de témoin comme en H80, et je ne tranche pas. Et `vsm.drums` ressort moins
+bien qu'en H97 (8,2 au mieux contre 3,9 sur sept chiffres) : le bas-médium, que H97 ne lisait pas, est ce qui lui manque.
+
+**Rien n'entre.** Bilan de la recherche demandée par l'utilisateur (H97-H98, 108 réglages de quatre machines) : accordé
+à 70 Hz, un kick modélisé rapproche « Reload » de l'original entre les kicks (+8,5 · −14,8 → +3,7 · +5,3 dB) et sur le
+bas-médium, à log-mel et distance égaux à ceux de H75 — sans les battre. **La suite, à décider** : la mesure désigne un
+réglage qui manque — une tenue après la chute (le « hold » ajouté au TR-808 en H70 tient AVANT la chute ; il en faudrait
+un palier APRÈS) — et c'est un chantier de machine (`CDC-nouvelle-machine.md`, `GUIDE-ajout-machine.md`), à écrire en
+H99 avec son attendu : le profil de l'original à 3 dB.
