@@ -118,6 +118,45 @@ def attaques_basses(mono: np.ndarray, sr: int) -> np.ndarray:
     return librosa.onset.onset_detect(y=y, sr=22050, units="time", hop_length=32, backtrack=False)
 
 
+FENETRE_FRAPPE_S = (0.010, 0.100)   # avant, après une attaque grave
+ECART_MAX_S = 2.0                   # au-delà, ce n'est plus « entre deux frappes » : un break
+BANDES_GRAVES = [(20, 60, "sub"), (60, 150, "basse"), (150, 500, "bas-médium")]
+
+
+def grave_aux_frappes(a: np.ndarray, b: np.ndarray, sr: int, attaques: np.ndarray) -> dict:
+    """Le grave de `b` rapporté à celui de `a` (dB), AUX attaques de `a` et ENTRE elles, par bande.
+
+    « Aux frappes » : de `FENETRE_FRAPPE_S[0]` avant à `[1]` après chaque attaque ; « entre » : le reste, entre deux
+    attaques distantes d'au plus `ECART_MAX_S`. Ce que le juge par tranches de 7 s ne sépare pas : un kick trop long
+    ou trop court, une basse qui manque entre les frappes (CDC-reload §§ 42-50). Un décalage global entre les deux
+    fichiers n'est PAS compensé."""
+    from scipy.signal import butter, sosfiltfilt
+    n = min(len(a), len(b))
+    t = np.sort(np.asarray(attaques, dtype=float))
+    frappe = np.zeros(n, dtype=bool)
+    entre = np.zeros(n, dtype=bool)
+    for k, x in enumerate(t):
+        i0, i1 = max(0, int((x - FENETRE_FRAPPE_S[0]) * sr)), min(n, int((x + FENETRE_FRAPPE_S[1]) * sr))
+        frappe[i0:i1] = True
+        if k + 1 < len(t) and t[k + 1] - x <= ECART_MAX_S:
+            entre[i1:min(n, int((t[k + 1] - FENETRE_FRAPPE_S[0]) * sr))] = True
+    entre &= ~frappe
+    res: dict = {"attaques": int(len(t)), "aux_frappes_s": round(float(frappe.sum()) / sr, 1),
+                 "entre_s": round(float(entre.sum()) / sr, 1),
+                 "hors_s": round(float(n - frappe.sum() - entre.sum()) / sr, 1), "bandes": {}}
+    if not frappe.any() or not entre.any():
+        res["mesurable"] = False
+        return res
+    res["mesurable"] = True
+    for lo, hi, nom in BANDES_GRAVES:
+        sos = butter(4, [lo, hi], btype="band", fs=sr, output="sos")
+        pa, pb = sosfiltfilt(sos, a[:n]) ** 2, sosfiltfilt(sos, b[:n]) ** 2
+        res["bandes"][nom] = {
+            cle: (None if pa[m].sum() <= 0 or pb[m].sum() <= 0 else round(float(10 * np.log10(pb[m].sum() / pa[m].sum())), 2))
+            for cle, m in (("aux_frappes_db", frappe), ("entre_db", entre))}
+    return res
+
+
 def decalage_global_ms(a: np.ndarray, b: np.ndarray, sr: int) -> float:
     """Le retard de `b` sur `a` (ms), par corrélation des enveloppes sous 150 Hz."""
     from scipy.signal import butter, correlate, sosfilt
@@ -247,8 +286,15 @@ def main() -> int:
                 "relatif_db": {nom: round(float(np.median((rel_r - rel_o)[dedans, j])), 2) for j, (_, _, nom) in enumerate(BANDES)}})
 
     # 4. CALAGE DES ATTAQUES BASSES
-    res["calage_kick"] = calage_ms(attaques_basses(mo, sro), attaques_basses(mr, sro))
+    ao = attaques_basses(mo, sro)
+    res["calage_kick"] = calage_ms(ao, attaques_basses(mr, sro))
     res["calage_kick"]["decalage_global_ms"] = decalage_global_ms(mo, mr, sro)
+
+    # 4 bis. LE GRAVE AUX FRAPPES ET ENTRE ELLES (les attaques sont celles de l'ORIGINAL)
+    res["grave_aux_frappes"] = grave_aux_frappes(mo, mr, sro, ao)
+    if res["calage_kick"].get("mesurable") and abs(res["calage_kick"]["median_ms"]) > 10:
+        dit.append(f"grave aux frappes : calage médian de {res['calage_kick']['median_ms']:+.1f} ms NON compensé — "
+                   "les fenêtres de la reconstruction sont décalées d'autant")
 
     # 5. LARGEUR STÉRÉO
     def largeur(y: np.ndarray) -> float | None:
@@ -287,6 +333,14 @@ def main() -> int:
               f"décalage global (corrélation) {c['decalage_global_ms']:+.2f} ms")
     else:
         print("calage du kick  : NON MESURABLE (aucune attaque appariée à 50 ms près)")
+    gf = res["grave_aux_frappes"]
+    if gf["mesurable"]:
+        print(f"grave aux frappes · entre elles ({gf['attaques']} attaques de l'original ; {gf['aux_frappes_s']} s · "
+              f"{gf['entre_s']} s ; hors mesure {gf['hors_s']} s) : " + " ; ".join(
+                  f"{nom} {v['aux_frappes_db']:+.1f} · {v['entre_db']:+.1f}" if None not in v.values() else f"{nom} non mesurable"
+                  for nom, v in gf["bandes"].items()))
+    else:
+        print("grave aux frappes : NON MESURABLE (aucune attaque grave dans l'original, ou rien entre elles)")
     lg = res["largeur_side_sur_mid"]
     print(f"largeur stéréo  : original {lg['original']}, reconstruction {lg['reconstruction']} (énergie side/mid)")
     print(f"log-mel         : écart moyen {res['logmel_db']['ecart_abs_moyen']:.2f} dB, médian {res['logmel_db']['ecart_abs_median']:.2f} dB")

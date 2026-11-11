@@ -4946,3 +4946,42 @@ mesure en DEUX bandes (30-60 · 60-150 Hz) dirait.
 
 **La suite** (inchangée, précisée) : la mesure du grave aux frappes et entre elles entre dans l'outil du § 0, en deux
 bandes graves et non une — puis H88 se relit avec elle avant tout autre réglage de kick.
+
+## 50. L'outil du § 0 gagne une mesure : le grave AUX frappes et ENTRE elles, en deux bandes — et H89, la piste de H88 (écrit AVANT le code et la mesure, 11/11/2026, 16 h 17)
+
+**Pourquoi** (§§ 42-49) : la mesure qui a nommé juste sur deux morceaux se faisait à la main, avec les notes du projet ;
+l'outil du § 0 ne lit que deux fichiers. **Ce qui entre dans `tools/ecart-a-l-original.py`** (`grave_aux_frappes`) :
+- les instants sont les attaques graves de l'ORIGINAL, que l'outil détecte déjà (`attaques_basses`, calculées une fois
+  au lieu de deux) ; « aux frappes » : de 10 ms avant à 100 ms après chacune ; « entre » : le reste, entre deux attaques
+  distantes de 2 s au plus (un break sans kick n'est ni l'un ni l'autre, et sa durée est dite) ;
+- trois bandes — celles de l'outil : sub 20-60, basse 60-150, bas-médium 150-500 Hz — par filtres passe-bande, énergie
+  échantillon par échantillon ; le chiffre : reconstruction / original en dB, par bande et par population ;
+- **ce qu'elle ne compense pas, et dit** : un décalage global entre les deux fichiers déplace les fenêtres de la
+  reconstruction ; au-delà de 10 ms d'écart médian au calage du kick, une ligne le rappelle.
+
+**La validation, écrite d'avance** (`analyse/tests/test_ecart_grave.py`, sur signaux connus : un kick court toutes les
+0,5 s et une note tenue à 100 Hz) : identique → 0,0 dB partout ; ×2 → +6,0 dB partout ; un kick allongé → le sub ENTRE
+les frappes monte de plus de 6 dB, celui AUX frappes de moins de 2 ; la note tenue ôtée → la basse entre les frappes
+tombe de plus de 10 dB, le sub aux frappes ne bouge pas de 1 dB ; les attaques détectées sur ce signal sont ses kicks
+à 10 % près en nombre. **Et le recoupement avec ce qui est déjà mesuré** (30-150 Hz, notes du projet) : la mesure doit
+retrouver, dans au moins une de ses deux bandes graves, entre les frappes — « B4 » H82 à plus de +3 dB, « B4 » H85 à
+moins de 2 dB, « Reload » H75 à moins de −3 dB. Un seul de ces trois manqué : la mesure n'entre pas.
+
+**H89 — la piste de H88, relue en deux bandes.** Sur « Reload » à 37 Hz · 0,10 s (H88), **hypothèse** : entre les
+frappes le sub (20-60 Hz) est en EXCÈS d'au moins 3 dB et la basse (60-150 Hz) en DÉFAUT d'au moins 3 dB — la bande
+30-150 Hz les additionnait à +0,3. **Échec** : les deux bandes sont du même signe, ou l'une à moins de 1,5 dB. Si H89
+tient, le grave d'entre les kicks de « Reload » n'est pas une queue de kick à 37 Hz : c'est autre chose, plus haut.
+
+### 50.1 Le code et sa validation, AVANT le recoupement et H89 (11/11/2026, 16 h 18)
+
+`grave_aux_frappes` est dans `tools/ecart-a-l-original.py` (étape « 4 bis », une ligne au compte rendu, une clé au
+JSON ; `attaques_basses` de l'original n'est plus calculée qu'une fois). `analyse/tests/test_ecart_grave.py`, cinq tests.
+**Deux attendus de validation écrits au § 50 étaient FAUX sur la scène, et sont corrigés ici avant toute mesure d'un
+morceau** : (1) « un kick allongé monte le sub aux frappes de moins de 2 dB » — non : un kick de 0,06 s s'éteint avant
+la fin de sa fenêtre de 100 ms, celui de 0,25 s y met 5,3 dB de plus ; ce qui le signe est l'ÉCART des deux
+populations (+19,9 entre, +5,3 aux frappes), et l'attendu devient « entre dépasse aux frappes de plus de 10 dB » ;
+(2) la note tenue de la scène, vingt fois plus faible que le kick, ne portait pas la bande 60-150 Hz entre les frappes
+(sa suppression n'y ôtait que 4,9 dB) : elle est montée à la moitié du kick, et l'attendu (« plus de 10 dB ») tient.
+Le reste tient tel qu'écrit : identique 0,0 dB, ×2 → +6,02 dB, un break est hors mesure et dit, sans attaque rien
+n'est mesuré, les attaques détectées sont les kicks. **Vu rouge sur quatre mutants** (les deux populations confondues ;
+le break compté ; une seule bande pour les trois ; le non-mesurable ôté). `ruff`, `mypy` propres.
