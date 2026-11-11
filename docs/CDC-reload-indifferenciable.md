@@ -5305,3 +5305,35 @@ le test dit de combien ; la comparaison à −12,0 dB rapproche deux fenêtres q
 queue du tout, la tête laisse dans la tranche 100-200 ms un sub à −20,4 dB d'elle, et une basse à −26,6 dB ; à
 200-300 ms, −50 dB. Un attendu ne se lit donc qu'au-dessus de ces planchers. **Vu rouge sur trois mutants** (tranches mal
 placées ; une seule bande ; le refus ôté). `ruff`, `mypy` propres.
+
+### 55.2 Verdict de H94 (11/11/2026, écrit à 17 h 17) : TENUE — le grave d'après les kicks de « Reload » est celui du KICK, à 60-150 Hz, et le TR-808 fait l'inverse
+
+`reconstruction/travail/reload-h94.py` (aucun rendu ; `reload-h94.json`). 203 fenêtres moyennées. Énergie du kick
+moyen, en dB rapportés à SA tranche 0-100 ms, par tranche (0-100 · 100-200 · 200-300 ms) :
+
+| kick moyen | sub 20-60 Hz | basse 60-150 Hz | basse − sub, par tranche | cohérence paires / impaires (100-300 ms, basse) |
+|---|---|---|---|---|
+| stem `drums` | 0 · −11,1 · −13,2 | 0 · **−10,2** · −13,0 | +14,2 · **+15,0** · +14,3 | 0,994 |
+| mélange original (sans séparation) | 0 · −10,8 · −12,5 | 0 · −9,7 · −10,8 | +14,2 · +15,2 · +15,8 | 0,992 |
+| rendu · kick seul (TR-808 de H70) | 0 · **+5,4** · −10,8 | 0 · **−21,4** · −46,0 | +18,3 · **−8,4** · −16,9 | 1,000 |
+| rendu · mélange de H75 | 0 · +5,4 · −10,8 | 0 · −21,3 · −46,3 | +18,3 · −8,4 · −17,2 | 0,999 |
+
+| # | verdict, stem `drums`, 100-200 ms |
+|---|---|
+| 1 | **tenu** : −10,2 dB (les fenêtres lisaient −12,0) — la moyenne synchrone ne l'efface pas |
+| 2 | **tenu** : basse à +15,0 dB du sub |
+| 3 | **tenu** : 0,994 |
+
+Les chiffres sont loin au-dessus des planchers de bavure du § 55.1 (−20,4 et −26,6 dB), et le mélange original, sans
+séparation, rend le même profil à 0,5 dB près sur la tranche jugée. **La règle** : « le kick de "Reload" a une queue à
+60-150 Hz que le TR-808 n'a pas : c'est un timbre de kick, un échantillon ou une autre machine, et plus un réglage ».
+**Elle s'applique.** Ce que la table mesure, et rien de plus : le kick de l'original garde sa basse 14 à 15 dB au-dessus
+de son sub sur ses trois tranches, et la tient (−10 puis −13 dB) ; celui du TR-808 part pareil (+18,3) puis s'inverse —
+de 100 à 200 ms son sub MONTE de 5,4 dB pendant que sa basse tombe de 21,4. Les relevés de H91 (sub +8,5 à +16,4 dB,
+basse −11,5 à −14,8 dB entre les kicks) et le sub faux de H87-H88 en sont la lecture au mélange.
+
+**Rien n'entre** — H94 désigne. **La suite** (H95, à écrire AVANT sa mesure) : le kick de « Reload » joué par un
+ÉCHANTILLON — le kick moyen lui-même, tiré du stem (ce que `CDC-multisample.md` et les machines `vsm.sampler` /
+`vsm.multisample` du parc permettent) —, à la place du TR-808, jugé par l'outil du § 0 et par les deux bandes aux
+kicks et entre eux. « Machines neuves si la mesure les demande » : elle le demande ici pour un timbre, pas pour une
+machine.
