@@ -5445,3 +5445,50 @@ Sand*, « Reload » et « B4 », avec la distance de la chaîne. Ce que H87-H96 
 réglages du kick du TR-808 n'ont pas approché ce que l'échantillon fait d'un geste, parce que le défaut est un timbre
 (§ 55.2) ; et ce que l'échantillon coûte est mesuré aussi (sub d'entre les kicks +6,6 dB, § 56.1). **Rien n'entre** tant
 que ce choix n'est pas fait.
+
+## 58. H97 — décision de l'utilisateur : la batterie reste MODÉLISÉE ; chercher dans le parc une machine dont le kick a ce timbre (écrite AVANT son instrument et sa mesure, 11/11/2026, 17 h 40)
+
+**La décision** (11/11, en réponse au § 57.1) : « cherche une machine dont le kick a ce timbre » — pas d'échantillon.
+**Ce timbre**, mesuré au § 55.2 sur le kick moyen de l'original : sa basse (60-150 Hz) 14 à 15 dB au-dessus de son sub
+(20-60 Hz) sur ses trois tranches de 100 ms, et tenue (sub 0 · −11,1 · −13,2 dB ; basse 0 · −10,2 · −13,0 dB sous leur
+tête). **Ce que H87-H88 n'avaient pas balayé** : l'accord n'y dépassait pas 55 Hz — or un kick dont la queue reste à
+60-150 Hz est accordé plus HAUT. Les quatre boîtes à rythmes du parc, chacune sur toute la moitié haute de sa plage :
+
+| machine | accord (Hz) | décroissance (s) |
+|---|---|---|
+| `vsm.tr808` (30-90 Hz ; tenue 0) | 55 · 70 · 90 | 0,10 · 0,20 · 0,35 |
+| `vsm.tr909` (30-90 Hz) | 55 · 70 · 90 | 0,10 · 0,20 · 0,32 |
+| `vsm.fmdrums` (30-120 Hz) | 55 · 80 · 110 | 0,10 · 0,20 · 0,35 |
+| `vsm.drums` (35-90 Hz) | 52 · 70 · 90 | 0,10 · 0,20 · 0,34 |
+
+**L'instrument** (`analyse/mesure_h97.py`, son test, `reconstruction/travail/reload-h97.py`) : pour chacun des 36
+solos, le profil de H94 du kick moyen aux 204 frappes isolées, et son **écart au profil de l'original** — la moyenne
+des écarts absolus, en dB, sur sept chiffres : sub et basse à 100-200 et 200-300 ms (sous leur tête), et basse − sub
+aux trois tranches. Le choix : le plus petit. Les TROIS meilleurs sont rendus au mélange à leur f\* et jugés comme H95.
+
+**L'HYPOTHÈSE H97** : une machine du parc, accordée haut, a ce profil — et le mélange suit.
+
+| # | mesure, au réglage choisi | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin : le projet de H75 rejoue 6,89 ; le kick de H70 a l'écart de profil le plus grand de la table ou presque | relevé | REFUS si 6,89 manque |
+| 1 | écart de profil | ≤ 3 dB (le kick de H70 : à relever) | > 6 dB (aucune machine n'a ce profil) |
+| 2 | mélange rendu / original ENTRE les kicks : sub ET basse | tous deux à 3 dB (H75 : +8,5 · −14,8 ; H95-A : +6,6 · −1,6) | l'un au-delà de 6 dB |
+| 3 | le même AUX kicks | tous deux à 3 dB | l'un au-delà de 6 dB |
+| 4 | \|médian\| sub · basse · bas-médium (outil du § 0) | chacune à moins de 0,5 dB de H75 (0,91 · 1,75 · 1,07), ou meilleure | l'une pire de plus de 1,5 dB |
+| 5 | log-mel | ≤ 6,89 (H75) ; relevé à côté de H95-A (6,13) | > 7,08 |
+| 6 | relevés : la table entière des 36, les trois mélanges, la distance v2 de la chaîne | — | — |
+
+**La règle** : 1 à 5 tenus → le kick de « Reload » se règle sur une machine du parc, par son PROFIL — la candidate à
+rejouer sur « B4 » ; 1 en échec → aucune des quatre n'a ce timbre sur ces plages : la mesure demande une machine neuve
+ou un réglage de plus (`CDC-nouvelle-machine.md`), et dit lequel par les chiffres du profil ; 1 tenu, 2 à 5 non → le
+profil ne suffit pas à prédire le mélange, à dire. **Dit d'avance** : le profil ne lit rien au-dessus de 150 Hz (le
+corps, le clic) ; les autres réglages de chaque machine restent à l'usine ; un morceau.
+
+### 58.1 L'instrument de H97, AVANT toute mesure (11/11/2026, 17 h 41)
+
+`analyse/mesure_h97.py` (`resume`, `ecart_profil`), deux tests sur les profils publiés au § 55.2 : un profil contre
+lui-même, ou 12 dB plus fort, rend 0 ; le kick de H70 est à plus de 10 dB de l'original ; chacun des chiffres du résumé
+pèse (7 dB sur une tranche → 2,0 dB d'écart). **Vu rouge sur trois mutants** (le niveau absolu compté ; une tranche
+lue deux fois ; les écarts sans valeur absolue). `ruff`, `mypy` propres. `reconstruction/travail/reload-h97.py` : la
+fonction `rendre` de H87, plus la pose d'une autre machine sur la piste du kick (accord et décroissance seuls, le
+reste à l'usine).
