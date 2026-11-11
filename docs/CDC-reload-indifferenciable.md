@@ -5337,3 +5337,29 @@ basse −11,5 à −14,8 dB entre les kicks) et le sub faux de H87-H88 en sont l
 `vsm.multisample` du parc permettent) —, à la place du TR-808, jugé par l'outil du § 0 et par les deux bandes aux
 kicks et entre eux. « Machines neuves si la mesure les demande » : elle le demande ici pour un timbre, pas pour une
 machine.
+
+## 56. H95 — le kick de « Reload » joué par un ÉCHANTILLON (écrite AVANT sa mesure, 11/11/2026, 17 h 19)
+
+**Un constat fait en ouvrant le projet** : la chaîne a DÉJÀ tiré un échantillon de kick du stem —
+`reload-h42/temoin/samples/kick.wav` (0,464 s, mono), avec `kick2.wav`, `snare.wav`, `hihat.wav` — et son projet joue
+quand même le TR-808. La piste du kick n'a qu'une note (36, 555 fois).
+
+**Une variable : la machine de la piste du kick** — `vsm.sampler`, emplacement 1 sur la note 36, réglages du report
+intégral de la chaîne (`vsm_drumkit.py` : niveau 1/0,7071, décroissance 0, accord 0). Le reste est le projet de H75.
+Le niveau, conséquence : f\* (`facteur_cale`, 30-150 Hz à ses frappes), comme depuis H79. Deux points : **A, le point
+JUGÉ — `samples/kick.wav`, l'échantillon de la chaîne** ; B, relevé — le kick moyen de H69 sur les 204 frappes
+isolées, large bande. Aucun code neuf (`reconstruction/travail/reload-h95.py` ; témoin : le projet de H75 rejoue 6,89).
+
+| # | mesure, au point A | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin de la course | 6,89 au centième | REFUS |
+| 1 | mélange rendu / original ENTRE les kicks : sub ET basse (`mesure_h91`) | tous deux à 3 dB (H75 : +8,5 · −14,8) | l'un au-delà de 6 dB |
+| 2 | le même AUX kicks | tous deux à 3 dB (H75 : −4,0 · −0,9) | l'un au-delà de 6 dB |
+| 3 | \|médian\| sub · basse · bas-médium (outil du § 0) | chacune à moins de 0,5 dB de H75 (0,91 · 1,75 · 1,07), ou meilleure | l'une pire de plus de 1,5 dB |
+| 4 | log-mel | ≤ 6,89 | > 7,08 |
+| 5 | relevés : le profil du kick rendu (H94), le point B, f\* | — | — |
+
+**La règle** : 1 à 4 tenus → sur « Reload » le kick est un échantillon, que la chaîne sait déjà tirer et n'a pas
+choisi : la question devient sa DÉCISION de kit (pourquoi le TR-808 l'a emporté sur son propre échantillon), à instruire
+en D-phase ; sinon au plus sévère. **Dit d'avance** : un échantillon tiré du stem porte les fuites de la séparation ; un
+seul échantillon pour 555 frappes ne porte aucune variation ; un morceau.
