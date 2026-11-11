@@ -4775,3 +4775,31 @@ restent nommées et non expliquées : le 150-500 Hz de la basse, 4 à 6 dB trop 
 bas-médium du mélange ; l'attaque du kick. **La suite** : avant d'affiner davantage un seul morceau — huit réglages
 choisis sur « B4 » ne font pas une méthode —, rejouer la chaîne des choix (H78 → H79 → H82 → H84) telle quelle sur
 « Reload » et sur un troisième morceau, écrite AVANT sa mesure, pour savoir ce qui s'y retrouve.
+
+## 47. H86 — la chaîne des choix rejouée sur « Reload » : d'abord la question de H81 — qui porte le grave d'entre les kicks ? (écrite AVANT sa mesure, 11/11/2026, 12 h 51)
+
+**Un constat fait en ouvrant le projet, avant toute mesure** : le projet de « Reload » (`reload-h42/temoin`) n'a PAS de
+piste de basse — quatre voix `other`, un `piano` (`vsm.minimoog`), la batterie, deux pistes de voix audio — alors que
+la séparation a rendu un stem `bass`. H78 rejouée telle quelle est déjà mesurée (§ 39.2 : aucune pièce ne change) ; H82
+n'a pas de piste où s'appliquer. Reste la mesure de H81, qui dit si cela compte.
+
+**La mesure** (aucun rendu, aucun code neuf : `mesure_h81.py`) : à 30-150 et 150-500 Hz, aux 555 frappes du kick et aux
+charlestons d'entre les kicks (1 613 sur 1 692), le mélange original, ses six stems, et le mélange rendu de H75
+(`reload-h75/reload/essai.wav`, log-mel 6,89). Contrôle : la somme des six stems rend l'original à 1 dB.
+
+**L'HYPOTHÈSE H86** : sur « Reload » aussi le grave d'entre les kicks est porté par la basse de l'original — et, faute
+de piste, le rendu en MANQUE (là où « B4 » en avait trop).
+
+| # | mesure, à 30-150 Hz | réussite | échec |
+|---|---|---|---|
+| 0 | contrôle de somme des six stems | à 1 dB | REFUS |
+| 1 | entre les kicks : stem `bass` rapporté au stem `drums` | ≥ +6 dB | ≤ 0 dB |
+| 2 | entre les kicks : mélange rendu rapporté à l'original | ≤ −3 dB (le rendu manque) | à moins de 1,5 dB (il ne manque pas) |
+| 3 | aux kicks : mélange rendu rapporté à l'original | à 1,5 dB (le kick de H70 tient) | au-delà de 3 dB |
+| 4 | relevés : la table entière | — | — |
+
+**La règle** : 1 et 2 tenus → « Reload » a une PISTE MANQUANTE, la basse ; c'est un défaut de la chaîne (le stem existe,
+aucune piste n'en sort) à instruire avant tout réglage — pourquoi ce stem n'a pas donné de piste ; 1 tenu, 2 en échec
+avec un rendu à plus de +3 dB → comme sur « B4 », autre chose tient lieu de basse ; 1 en échec → sur ce morceau la
+batterie porte son grave, et l'absence de piste de basse ne coûte rien ici. **Dit d'avance** : parts par stem = parts
+d'une séparation ; les attendus 2 et 3, par les mélanges, n'en dépendent pas.
