@@ -4119,3 +4119,36 @@ elle se répète sur d'AUTRES morceaux avant qu'une métrique ne change ici. 1 e
 étranger, et le désaccord sur les kicks n'est pas ce défaut-là : la question 2 reste ouverte. 2 en échec → le log-mel
 ne voit pas un son pur à −20 dB, et ne départage rien. **Dit d'avance** : un morceau, une famille de perturbation ; une
 sinusoïde n'est pas un kick — elle éprouve le juge, pas les candidats de H86-H99.
+
+### 11.2 Verdict de H104 (12/11/2026, mesuré de 04 h 38 à 04 h 40, écrit à 04 h 41) : 2 TENU, 1 ENTRE LES DEUX — la v2 bornée ne punit la sinusoïde à AUCUNE dose, elle baisse ; mais de 1,2 % à −20 dB, sous les 2 % écrits
+
+`reconstruction/travail/reload-h104.py` (aucun rendu ; `reload-h104.json`, `reload-h104.log`). **Contrôles tenus** :
+(0a) H75 recalculé : v2 bornée 0,2257, log-mel 6,89 — les valeurs publiées ; (0b) centroïde moyen de H75 borné
+**5 654 Hz**, de l'original **5 021 Hz** : le rendu est au-dessus ; (0c) la sinusoïde à −20 dB ajoutée à l'original est
+vue par les deux juges (v2 0,0415, log-mel 0,52 dB).
+
+| mélange | v2 bornée | écart à H75 | log-mel | écart à H75 | centroïde | Δ terme de centroïde | Δ enveloppe | Δ cepstre |
+|---|---|---|---|---|---|---|---|---|
+| H75 | 0,2257 | | 6,89 | | 5 654 Hz | | | |
+| H75 + 700 Hz à −30 dB | 0,2249 | −0,4 % | 6,98 | +0,09 dB | 5 632 Hz | −0,0007 | +0,0001 | +0,0001 |
+| **H75 + 700 Hz à −20 dB** | **0,2231** | **−1,2 %** | **7,24** | **+0,35 dB** | 5 561 Hz | −0,0028 | +0,0005 | +0,0003 |
+| H75 + 700 Hz à −10 dB | 0,2173 | −3,7 % | 7,54 | +0,65 dB | 5 338 Hz | −0,0094 | +0,0021 | +0,0006 |
+
+| # | verdict |
+|---|---|
+| 1 | **entre les deux** : −1,15 % à −20 dB — la v2 baisse, de moins que les 2 % écrits (et ne monte pas : pas l'échec) |
+| 2 | **tenu** : +0,35 dB à −20 dB |
+
+**La règle n'avait pas écrit ce cas** ; il se lit au plus sévère : **H104 n'est PAS tenue**, et la question 2 n'a pas la
+mesure que la règle promettait. **Ce que la table établit, sans plus** : sur « Reload », la distance de la chaîne
+bornée ne PUNIT un son pur étranger à aucune des trois doses — elle baisse, de façon monotone (−0,4, −1,2, −3,7 %),
+et c'est son terme de centroïde qui porte la baisse (à −20 dB, −0,0028 pour un total de −0,0026 ; le roll-off et le
+contraste baissent aussi, −0,0007 et −0,0003, la largeur, le cepstre et l'enveloppe montent, +0,0002, +0,0003 et
++0,0005) ; le log-mel la punit aux trois (+0,09, +0,35, +0,65 dB). La dose de −10 dB passe le seuil de 1 ; elle
+n'était pas celle de l'attendu, et ne le remplace pas. **Ce qu'elle ne dit pas** : que la v2 a tort sur les KICKS de
+H86-H99 — une sinusoïde éprouve le juge, pas ces candidats ; ni rien d'un autre morceau.
+
+**La suite, pour cette question** (à écrire avant sa mesure, et pas ici sur un seul morceau) : la même perturbation sur
+d'autres morceaux dont le rendu est plus brillant que l'original, et sur un dont il est plus sombre — où la v2 devrait
+alors punir la sinusoïde par son centroïde, ce qui séparerait « la v2 ne voit pas un son étranger » de « la v2 suit son
+centroïde, dans un sens ou dans l'autre ».
