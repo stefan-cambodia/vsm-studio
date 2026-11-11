@@ -4893,3 +4893,24 @@ sur 555 (23 près d'une caisse, 328 près d'un autre kick). **La grille entière
 `tools/ecart-a-l-original.py` (une ligne « grave aux frappes / entre les frappes », validée sur perturbations connues
 comme le reste de l'outil — § 0), pour que tout essai à venir la porte ; (b) rejouer H87 avec UNE variable, l'accord, à
 0,10 s sans tenue, jugé par le sub — l'accord relevé par H69 (37 Hz) étant le candidat écrit d'avance.
+
+## 49. H88 — UNE variable sur « Reload » : l'accord du kick, à 0,10 s sans tenue, jugé par le sub (écrite AVANT sa mesure, 11/11/2026, 13 h 15)
+
+Projet et moteur de H87 ; kick du TR-808 à 0,10 s, tenue 0 (la longueur que H87 a choisie) ; accord 30 · 33 · 37 · 41 ·
+45 Hz, chacun à son f\* (`facteur_cale`), les cinq mélanges rendus et jugés. **Le point JUGÉ est 37 Hz** — l'accord
+relevé par H69 (§ 30.2), écrit d'avance au § 48.1 ; le balayage dit s'il est un sommet. Aucun code neuf
+(`reconstruction/travail/reload-h88.py` ; son témoin : 30 Hz doit rejouer H87, 6,84 · sub 7,63).
+
+| # | mesure, à 37 Hz | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin : 30 Hz rejoue H87 | au centième | REFUS |
+| 1 | \|médian\| sub | à moins de 0,5 dB de H75 (0,91), ou meilleur | pire de plus de 1,5 dB |
+| 2 | \|médian\| basse · bas-médium | chacune à moins de 0,5 dB de H75 (1,75 · 1,07), ou meilleure | l'une pire de plus de 1,5 dB |
+| 3 | mélange rendu / original, 30-150 Hz : aux kicks · entre | à 1,5 dB · à 3 dB (H75 : −1,2 · −5,7) | au-delà de 3 dB · au-delà de 4,5 dB |
+| 4 | log-mel | ≤ 6,89 | > 7,08 |
+| 5 | relevés : le balayage entier ; l'accord du meilleur sub | — | — |
+
+**La règle** : 1 à 4 tenus → le kick de « Reload » est 37 Hz · 0,10 s · sans tenue, et la méthode candidate tient en deux
+relevés — la longueur par `ecart_tf`, l'accord par H69 — à rejouer sur « B4 » puis un troisième morceau ; sinon au plus
+sévère. **Dit d'avance** : si le meilleur sub n'est pas à 37 Hz, H69 ne donne pas l'accord non plus, et il se lira au
+balayage du sub lui-même.
