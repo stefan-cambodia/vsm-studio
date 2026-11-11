@@ -4152,3 +4152,37 @@ H86-H99 — une sinusoïde éprouve le juge, pas ces candidats ; ni rien d'un au
 d'autres morceaux dont le rendu est plus brillant que l'original, et sur un dont il est plus sombre — où la v2 devrait
 alors punir la sinusoïde par son centroïde, ce qui séparerait « la v2 ne voit pas un son étranger » de « la v2 suit son
 centroïde, dans un sens ou dans l'autre ».
+
+### 11.3 H105 — la même sinusoïde sur « B4 Wuz Then » : la distance de la chaîne suit-elle son centroïde dans un sens comme dans l'autre ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 45)
+
+La suite que H104 a écrite, sur le seul autre morceau qui ait sa source sur disque : « B4 Wuz Then »
+(`reconstruction/sources/b4-wuz-then.wav`), son rendu de H85 au point jugé (attaque 0,5,
+`reconstruction/travail/reload-h85/essai-0.5.wav`, log-mel publié 7,12). **Rien de « B4 » n'a été mesuré pour cette
+question avant d'écrire ceci** — ni son centroïde, ni sa bande. La même sinusoïde tenue de 700 Hz, aux mêmes trois doses
+(`reconstruction/travail/reload-h105.py`, aucun rendu).
+
+**La bande, tranchée d'avance** : la v2 se calcule dans la bande de la SOURCE — le rendu coupé net à 16 kHz si
+l'original de « B4 » a sa bande 16-22 kHz à plus de 60 dB sous son total (comme « Reload », −78 dB), entier sinon ; ce
+qui est choisi est dit au journal et au JSON.
+
+**Les contrôles, avant toute lecture** — sinon REFUS : (0a) le log-mel du rendu recalculé rend 7,12 à 0,01 dB près ; la
+somme pondérée des sept termes rend `reconstruction_distance(…, metric="v2")` des mêmes signaux à 0,0005 près ; (0b) la
+sinusoïde à −20 dB ajoutée à l'original de « B4 » est vue par les deux juges (v2 au-dessus de 0,01, log-mel au-dessus de
+0,10 dB).
+
+**L'HYPOTHÈSE H105** : la v2 répond à la sinusoïde dans le sens que lui dicte son centroïde — si le centroïde moyen du
+rendu (dans la bande retenue) est AU-DESSUS de celui de l'original, elle BAISSE ; s'il est au-dessous, elle MONTE —, et
+le log-mel la punit.
+
+| # | mesure, à −20 dB | réussite | échec |
+|---|---|---|---|
+| 1 | le sens de la variation de la v2, contre celui que le centroïde prédit | le sens prédit, d'au moins 0,5 % | le sens contraire, d'au moins 0,5 % |
+| 2 | log-mel | en hausse d'au moins 0,10 dB | en baisse |
+| 3 | relevés : les trois doses, les sept termes pondérés, les centroïdes, la bande de la source | — | — |
+
+**La règle** : 1 et 2 tenus, le rendu de « B4 » plus SOMBRE que son original → la v2 punit la sinusoïde par son
+centroïde là où elle la récompensait sur « Reload » : elle ne juge pas un son étranger, elle suit le sens de son
+centroïde ; la question 2 du § 11 a alors sa mesure, sur deux morceaux. 1 et 2 tenus, le rendu PLUS BRILLANT → le cas
+de « Reload » se répète, le sens contraire reste non mesuré, et c'est dit. 1 en échec → la v2 ne suit pas son centroïde
+sur « B4 » : la lecture de H104 ne se transporte pas. Le cas entre les deux se lit au plus sévère (§ 11.2). **Dit
+d'avance** : deux morceaux, une perturbation ; ce n'est pas la métrique qui change ici.
