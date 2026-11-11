@@ -104,8 +104,8 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   et au-delà du plafond ATTEND deux minutes qu'elle redescende avant de s'arrêter ; les séries se lancent de préférence
   l'écran allumé.
 - `tools/ecart-a-l-original.py` demande **~6,2 Go** sur un morceau de 354 s (11/11, H76 : `onset_detect` au pas de
-  32 échantillons) : trois courses d'un script rejouable, relancées sans vérifier que la précédente était morte, y sont
-  restées de 06 h 38 à 09 h 26 sans rien écrire, jusqu'à ce que `systemd-oomd` tue un onglet de terminal. Une mesure
+  32 échantillons) : trois courses d'un script rejouable (relancées sur une précédente encore vivante ? leurs PID sont perdus,
+  ce n'est pas prouvé) y sont restées de 06 h 38 à 09 h 26 sans rien écrire, jusqu'à ce que `systemd-oomd` tue un onglet de terminal. Une mesure
   gourmande se lance sous son propre plafond — `systemd-run --user --scope -q -p MemoryMax=9G -p MemorySwapMax=0 …` :
   si elle déborde, c'est ELLE qui meurt (code 137), pas la session — et un script « rejouable » ne se relance qu'après
   `pgrep -af` de son nom. Et un instrument se passe une fois À BLANC par `main()` avant sa course : les tests de H79
