@@ -3903,3 +3903,63 @@ la pile au moment de la mort : `attaques_basses` → `onset_detect` au pas de 32
 (mémoire et échange au-delà de 90 %), le poste a redémarré à 09 h 46. Que les trois courses se soient EMPILÉES n'est
 pas prouvé (leurs PID sont perdus). **Le contrôle de l'outil** : rejoué sur le mélange de H75, il rend son texte du
 11/10 à l'octet près (`cmp`) — la mesure de 09 h 49 est du même instrument que sa référence.
+
+## 38. H77 — le critère refait : le log-mel de la batterie rendue contre le STEM classe-t-il les points comme le log-mel du mélange ? (écrite AVANT son instrument et sa mesure, 11/11/2026, 09 h 52)
+
+**Ce que H76 a appris** (§ 37.2) : le résidu pondéré de H75, mesuré aux frappes, baisse de 8,8 % quand le mélange
+s'éloigne de 0,92 dB — il ne voit ni une bande qui se vide là où le stem pèse peu, ni ce qui sonne ENTRE les frappes.
+« Le critère de choix est à refaire avant toute règle. » Avant de choisir quoi que ce soit avec un critère neuf, on
+vérifie qu'il PRÉDIT le juge — sur des points déjà rendus et déjà jugés, sans un rendu de plus.
+
+**Le critère candidat** : l'écart log-mel moyen (celui de `tools/ecart-a-l-original.py`, la MÊME fonction `logmel`,
+importée, sur le morceau entier) entre le **stem de batterie** de la séparation et la **batterie rendue seule**. Il
+voit toutes les bandes sans pondération par l'énergie, et tout le temps, frappes ou non.
+
+**Les points** (tous sur disque, mélange déjà mesuré par l'outil du § 0, seule la batterie change d'un point à l'autre
+d'un même morceau) :
+
+| morceau | point | batterie rendue | log-mel du MÉLANGE (publié) |
+|---|---|---|---|
+| B4 | témoin | `reload-h73/temoin-batterie.wav` | 8,57 |
+| B4 | H73 | `reload-h73/essai-batterie.wav` | 8,37 |
+| B4 | H74 | `reload-h74/b4/essai-batterie.wav` | 8,43 |
+| B4 | H75 | `reload-h75/b4/essai-batterie.wav` | 8,42 |
+| B4 | H76 | `reload-h76/b4/essai-batterie.wav` | 9,34 |
+| Reload | H71 | `reload-h71/parties/batterie.wav` | 8,16 |
+| Reload | H74 | `reload-h74/reload/essai-batterie.wav` | 7,10 |
+| Reload | H75 | `reload-h75/reload/essai-batterie.wav` | 6,89 |
+
+Treize paires de points d'un même morceau (10 + 3). Une paire est **tranchée** quand ses deux mélanges diffèrent d'au
+moins 0,10 dB : dix le sont (B4 : le témoin contre H73, H74 et H75 — 0,20 · 0,14 · 0,15 —, H76 contre les quatre
+autres — 0,77 à 0,97 ; Reload : les trois — 0,21 · 1,06 · 1,27) ; trois ne le sont pas (H73, H74 et H75 de « B4 »,
+dans 0,06 dB) et ne comptent pas. Une paire tranchée est **concordante** quand le critère au stem range ses deux
+points dans le même ordre que le mélange.
+
+**L'HYPOTHÈSE H77** : le log-mel au stem range les dix paires tranchées comme le mélange.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | paires tranchées concordantes | 10 sur 10 | 8 ou moins, OU une discordante parmi les six de plus de 0,5 dB (H76 × 4, H71 × 2) |
+| 2 | le TÉMOIN du critère : le résidu pondéré de H75 sur la paire H75 / H76 de « B4 » (1,5193 · 1,3849, déjà publié) | — (discordant, connu : c'est ce que le critère neuf doit corriger) | le critère neuf est discordant sur cette même paire |
+| 3 | relevés : la table entière — log-mel au stem moyen ET médian de chaque point, l'ordre de chaque paire, les paires non tranchées aussi | — | — |
+
+**La règle de décision** : 1 tenu → H78 rejoue le choix de H76 avec ce critère (la batterie d'un candidat = la somme
+des solos déjà rendus, sans un rendu de plus), sous la garde des bandes cassées ; 9 sur 10 sans discordance au-delà de
+0,5 dB → le critère range les grands écarts et pas les petits : utilisable avec un seuil de gain qui écarte les petits,
+à écrire dans H78 ; 1 en échec → le stem de batterie n'est pas un témoin du mélange à cette métrique, et le choix d'une
+machine ne peut se juger qu'au mélange rendu (un rendu par candidat).
+
+**Ce que la mesure ne pourra PAS dire**, écrit d'avance : huit points, dont six doivent leur écart à UNE variable
+chacun, ne font pas une règle ; les trois paires de « Reload » et les sept de « B4 » ne sont pas indépendantes (cinq et
+trois points) ; un critère qui range des points EXISTANTS n'a pas encore CHOISI — H78 le jugera au mélange.
+
+### 38.1 L'instrument de H77, AVANT toute mesure (11/11/2026, 09 h 54)
+
+`analyse/mesure_h77.py` (`logmel_au_stem`, `paires`, `bilan`) et `analyse/tests/test_mesure_h77.py`, cinq tests. La
+fonction `logmel` est celle de `tools/ecart-a-l-original.py`, chargée de son fichier — pas une copie. Sur des cas
+connus : une paire à 0,05 dB n'est pas tranchée, une paire à 0,10 dB l'est ; un ordre inversé au stem est discordant,
+et « grand » au-delà de 0,5 dB ; un signal contre lui-même rend 0,00 dB, le même à −1 dB rend 1 dB, et un bruit vidé
+de son aigu (passe-bas à 4 kHz) plus de cinq fois cela — ce que le résidu pondéré de H76 ne voyait pas. **Une décision
+prise en écrivant** : une ÉGALITÉ au stem sur une paire tranchée compte DISCORDANTE (un critère qui ne départage pas ne
+prédit pas). **Vu rouge sur trois mutants**, un test chacun : l'ordre non regardé ; toute paire tranchée ; l'égalité
+admise. `ruff` et `mypy` propres. `reconstruction/travail/reload-h77.sh` : aucun rendu, huit lectures.
