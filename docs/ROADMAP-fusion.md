@@ -4186,3 +4186,38 @@ centroïde ; la question 2 du § 11 a alors sa mesure, sur deux morceaux. 1 et 2
 de « Reload » se répète, le sens contraire reste non mesuré, et c'est dit. 1 en échec → la v2 ne suit pas son centroïde
 sur « B4 » : la lecture de H104 ne se transporte pas. Le cas entre les deux se lit au plus sévère (§ 11.2). **Dit
 d'avance** : deux morceaux, une perturbation ; ce n'est pas la métrique qui change ici.
+
+### 11.4 Verdict de H105 (12/11/2026, mesuré de 04 h 43 à 04 h 44, écrit à 04 h 44) : 1 TENU, 2 ENTRE LES DEUX (+0,09 dB) — non tenue au plus sévère ; et le rendu de « B4 » est lui aussi plus brillant que son original : le sens contraire reste sans morceau
+
+`reconstruction/travail/reload-h105.py` (aucun rendu ; `reload-h105.json`, `reload-h105.log`). **La bande** : l'original
+de « B4 » a sa bande 16-22 kHz à **−78,3 dB** sous son total — coupé à 16 kHz comme « Reload » ; la v2 est donc bornée.
+**Contrôles tenus** : (0a) log-mel recalculé 7,12 (publié 7,12), la somme des termes rend `reconstruction_distance` à
+0,0005 près ; (0b) la sinusoïde sur l'original est vue des deux juges (v2 0,0399, log-mel 0,29 dB).
+
+| « B4 », mélange | v2 bornée | écart à H85 | log-mel | écart à H85 | centroïde | Δ terme de centroïde |
+|---|---|---|---|---|---|---|
+| original | — | | — | | 2 938 Hz | |
+| H85 · attaque 0,5 | 0,2511 | | 7,12 | | 3 550 Hz | |
+| + 700 Hz à −30 dB | 0,2435 | −3,0 % | 7,13 | +0,01 dB | 3 450 Hz | −0,0051 |
+| **+ 700 Hz à −20 dB** | **0,2398** | **−4,5 %** | **7,21** | **+0,09 dB** | 3 413 Hz | −0,0070 |
+| + 700 Hz à −10 dB | 0,2284 | −9,0 % | 7,42 | +0,30 dB | 3 284 Hz | −0,0135 |
+
+| # | verdict, à −20 dB |
+|---|---|
+| 1 | **tenu** : le rendu est AU-DESSUS de l'original (3 550 contre 2 938 Hz), la baisse était prédite ; elle est de 4,5 % |
+| 2 | **entre les deux** : +0,09 dB, sous les 0,10 écrits — le log-mel monte, de peu |
+
+**La règle**, au plus sévère : **H105 n'est PAS tenue**. **Ce que la table établit, sans plus** : sur les deux morceaux
+qui ont leur source sur disque, la source est coupée à 16 kHz, le rendu a un centroïde moyen plus haut que l'original
+(+13 % sur « Reload », +21 % sur « B4 »), et la distance de la chaîne bornée BAISSE quand on lui ajoute un son pur
+étranger, à chacune des trois doses — sur « B4 » plus encore que sur « Reload » (−3,0 % dès −30 dB) ; le terme de
+centroïde porte la plus grande part de chaque baisse, le roll-off et le contraste le suivent. Le log-mel monte aux trois
+doses sur les deux morceaux, mais de 0,01 et 0,09 dB seulement sur « B4 » à −30 et −20 dB. **Ce qu'elle ne dit pas** :
+le sens contraire n'a pas de morceau — il n'est écrit que par le code (le terme de centroïde est un écart ABSOLU,
+`audio_distance_v2.py`, `relatif` : sous la cible, abaisser le centroïde le fait monter), pas mesuré.
+
+**Où en est la question 2 du § 11** : deux morceaux, la même réponse — sur des rendus plus brillants que leur cible, la
+distance de la chaîne récompense un son étranger que le log-mel punit, et son centroïde en porte l'essentiel. Ce n'est
+pas une décision : changer la métrique de la chaîne se mesure sur les bancs qui l'ont fait choisir (v3 et v4 y ont été
+essayées, et `audio_distance_v4.py` dit pourquoi la chaîne reste en v2), pas sur deux morceaux. **La suite qui reste à écrire** : y a-t-il, dans les rendus du corpus et du banc, des cas plus
+SOMBRES que leur cible — combien, et dans quel sens la v2 y juge ; c'est un relevé de centroïdes, sans rendu.
