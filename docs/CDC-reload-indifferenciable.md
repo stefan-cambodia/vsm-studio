@@ -4443,3 +4443,56 @@ d'entre les kicks sur 892.
 
 `reconstruction/travail/reload-h81.sh` : les trois pistes hors batterie rendues seules dans le projet de H79 (mêmes
 machines, f\* relu dans `h79.json`), puis l'instrument.
+
+### 42.2 Verdict de H81 (11/11/2026, mesuré de 10 h 32 à 10 h 33, écrit à 10 h 34) : TENUE — entre les kicks le grave de l'original est sa basse, la basse rendue en manque de 7 dB, et la queue du kick du 909 la remplace, avec 4 dB de trop
+
+`reconstruction/travail/reload-h81.sh` (rejouable), moteur `1eff3b6d`. Populations : 763 frappes de kick ; 855
+charlestons d'entre les kicks sur 892. **La table entière**, en dB rapportés au mélange ORIGINAL de la même population
+et de la même bande :
+
+| signal | aux kicks · 30-150 | aux kicks · 150-500 | entre les kicks · 30-150 | entre les kicks · 150-500 |
+|---|---|---|---|---|
+| original : stem `drums` | −0,5 | −0,5 | **−11,0** | −7,7 |
+| original : stem `bass` | −11,3 | −20,0 | **−1,0** | −8,6 |
+| original : stem `other` | −23,4 | −15,5 | −14,6 | −3,4 |
+| original : stem `vocals` | −76,2 | −60,5 | −69,0 | −56,0 |
+| **rendu de H79** (mélange) | −0,4 | +2,3 | **+4,3** | +2,5 |
+| rendu : batterie (sommée) | −0,5 | +2,0 | **+4,0** | −5,7 |
+| rendu : piste `bass` | −17,1 | −11,8 | **−8,2** | −1,0 |
+| rendu : piste `guitar` | −32,7 | −26,0 | −25,7 | −17,5 |
+| rendu : piste `other` | −21,1 | −12,3 | −12,0 | −1,4 |
+
+| # | verdict, à 30-150 Hz |
+|---|---|
+| 0 | **tenu** : la somme des quatre stems rend l'original à 0,26 dB au pire ; celle de la batterie et des trois pistes rend le mélange rendu à 0,00 dB |
+| 1 | **tenu** : entre les kicks, stem `bass` à **+10,0 dB** du stem `drums` — la basse porte |
+| 2 | **tenu** : dans le rendu, la batterie à **+12,2 dB** de la piste `bass` — c'est la batterie qui porte |
+| 3 | **tenu** : la piste `bass` rendue à **−7,2 dB** du stem `bass` |
+| 4 | **tenu** (le témoin) : aux kicks, stem `drums` à +10,8 dB du stem `bass` — là, le kick porte, dans l'original comme dans le rendu (−0,5 · −0,5) |
+
+**La règle** : « 1, 2 et 3 tenus (4 tenu) → le kick long de H79 COMPENSE une basse trop faible entre les frappes ;
+aucune décroissance de kick ne se choisit avant que la basse soit à son niveau, et la suite porte sur la piste `bass`,
+pas sur la batterie ». **Elle s'applique.**
+
+**Ce que la table dit de plus** :
+- **Par les MÉLANGES seuls, sans séparation** (le relevé qui ne dépend d'aucun stem) : aux kicks, le rendu a le grave
+  de l'original à 0,4 dB ; entre les kicks il en a **4,3 dB de TROP**. La compensation dépasse : la queue du 909 (0,32 s)
+  met entre les frappes plus de grave que la basse de l'original n'en avait. C'est ce que le sub de H80 disait à sa
+  façon (meilleur à 0,20 s qu'à 0,32).
+- **La contradiction de H80 est levée** : la batterie rendue est à +15,0 dB du stem `drums` entre les kicks — le
+  débord de H80, retrouvé au centième par un autre instrument — et le stem avait raison de vouloir un kick court ; le
+  mélange avait raison de vouloir du grave à cet endroit. Ils ne parlaient pas du même instrument.
+- **La basse rendue n'est pas seulement trop basse : son spectre est déplacé.** À 30-150 Hz elle manque de 7,2 dB
+  (5,8 aux kicks) ; à 150-500 Hz elle a **7,6 dB de TROP** (8,2 aux kicks). La piste `bass` de ce projet est jouée par
+  `vsm.clavinet` : trop peu de fondamentale, trop d'harmoniques — un timbre, qu'un volume ne corrigera pas (la leçon de
+  H74, sur un autre instrument). Le 150-500 Hz en excès se lit aussi au mélange (+2,3 · +2,5 dB).
+- **Les chiffres de la batterie valident H79 là où il fallait** : aux kicks, batterie rendue et stem `drums` sont à
+  0,0 dB l'un de l'autre à 30-150 Hz — le calage f\* fait ce qu'il dit.
+
+**Rien n'entre** — H81 ne règle rien, elle désigne. **La suite** (H82, à écrire AVANT sa mesure) : la MACHINE de la
+piste `bass` de « B4 », choisie contre le stem `bass` par la méthode qui a marché pour la batterie — le critère de
+H77 (à vérifier sur ce stem avant de s'en servir, comme il l'a été sur l'autre), le niveau calé ensuite (H79) — puis,
+la basse à sa place, la décroissance du kick rejouée (H80), qui aura alors un stem et un mélange d'accord.
+
+**Ce que la mesure ne dit pas** (écrit d'avance, rappelé) : les parts par stem sont celles d'une séparation — mais le
+relevé par les mélanges (+4,3 dB entre les kicks) n'en dépend pas, et il va dans le même sens ; un morceau.
