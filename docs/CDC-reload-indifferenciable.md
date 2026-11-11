@@ -5029,3 +5029,28 @@ par cette mesure (H82 +3,8 → H85 −1,4), mais se relisent sous la même quest
 **La suite** (H90, à écrire AVANT sa mesure) : sur « Reload », que sont les 415 attaques graves sans kick — dans quel
 stem, à quel niveau par rapport aux kicks transcrits, sur quels temps de la mesure — et la transcription de la batterie
 les a-t-elle manquées ? Si oui, c'est un défaut de la CHAÎNE (le rappel des kicks), en amont de tout réglage de machine.
+
+## 51. H90 — sur « Reload », les 415 attaques graves sans kick : des kicks manqués par la transcription, ou des fausses détections ? (écrite AVANT son instrument et sa mesure, 11/11/2026, 16 h 23)
+
+Aucun rendu. `analyse/mesure_h90.py` (`apparier`, `position_16e`), son test, `reconstruction/travail/reload-h90.py`.
+Les 849 attaques de l'original (`attaques_basses`, l'outil du § 0) sont partagées en « avec kick » (un kick du projet à
+50 ms) et « sans kick ». Pour chaque groupe : la part qui coïncide (50 ms) avec une attaque grave détectée dans le STEM
+`drums` seul ; l'énergie à 30-150 Hz du stem `drums` dans la fenêtre de la frappe (10 ms avant, 100 ms après), médiane
+du groupe ; la part qui suit de moins de 150 ms une autre attaque (une double détection possible) ; la position dans le
+temps (double-croche du temps, tempo 136, grille calée sur les kicks du projet) ; la part à 50 ms d'une caisse claire.
+
+**L'HYPOTHÈSE H90** : ce sont des frappes réelles de la batterie que la transcription n'a pas écrites.
+
+| # | mesure, sur les attaques « sans kick » | réussite | échec |
+|---|---|---|---|
+| 1 | part retrouvée dans les attaques du stem `drums` | ≥ 70 % | < 40 % |
+| 2 | énergie médiane à 30-150 Hz (stem `drums`), rapportée à celle des « avec kick » | à moins de 6 dB | plus de 12 dB dessous |
+| 3 | part qui suit une autre attaque de moins de 150 ms | ≤ 20 % | ≥ 50 % (des doubles détections) |
+| 4 | relevés : les comptes, les positions par double-croche, la part sur une caisse, les 121 kicks du projet sans attaque | — | — |
+
+**La règle** : 1 à 3 tenus → la chaîne a manqué des kicks sur « Reload » : un défaut de RAPPEL à instruire dans la
+transcription de la batterie (où, pourquoi), avant tout réglage — et H87-H88 sont à refaire une fois les notes là ;
+1 ou 2 en échec → ces attaques ne sont pas des frappes de batterie (autre instrument grave, ou bruit du détecteur) ;
+3 en échec → c'est `attaques_basses` qui compte double, et le « 396/849 » de l'outil est à corriger, pas la chaîne.
+**Dit d'avance** : le stem `drums` est une estimation ; une frappe « réelle » au sens de ces trois mesures peut être un
+tom ou une caisse grave et non un kick — la position et la part sur une caisse sont relevées pour cela.
