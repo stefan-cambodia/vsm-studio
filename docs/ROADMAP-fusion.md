@@ -4062,3 +4062,30 @@ principal (une course y tourne, et `g7`-`g10` de S2 doivent courir la chaîne de
 | le calage de niveau et l'épreuve d'automation ignorent `--moteur` | ils rendent par `build/tools/vsm-render` quel que soit le moteur demandé ; sans `build/`, la course meurt à l'étape 4/5 | § 10 (trouvé par le témoin de H48) | `reload-h48` |
 | l'arbitrage de batterie écrit au cache sous `--sans-cache-rendus` | 3 fichiers au cache après un témoin qui ne devait rien écrire | § 10 | `reload-h48` |
 | le verdict du mélange juge un morceau sans sa voix | 12 rapports sur 12 : « sans la piste » de voix égale « avec », au seizième chiffre | § 14 (H52) | `reload-h52` |
+
+---
+
+## 11. La distance de la chaîne sur « Reload » : un tiers dans une bande que la cible n'a pas, et un désaccord avec le log-mel porté par le centroïde — une QUESTION, pas une décision (12/11/2026)
+
+Trois mesures de `CDC-reload-indifferenciable.md` (§§ 62-64, H101-H103), sans un rendu, sur douze mélanges de
+« Reload » qui ne diffèrent que par leur kick. Elles ne décident rien ici : la métrique par défaut de la chaîne
+(`--metrique v2`, `reconstruire.py`) ne change pas sur un morceau. Elles posent deux questions, avec leurs chiffres.
+
+| constat | chiffre | où |
+|---|---|---|
+| le fichier cible est coupé net vers 16 kHz (un encodage avec perte), le rendu y laisse son charleston | bande 16-22 kHz : −78 dB sous le total de l'original, **+57,6 dB** du rendu sur l'original | § 62.2 |
+| un tiers de la distance v2 vient de cette bande | v2 de H75 **0,3458 → 0,2257** une fois le rendu coupé à 16 kHz (−33 à −38 % sur les douze) | § 63.2 |
+| bornée à la bande de la cible, la v2 range les kicks presque à l'envers du log-mel | **41** paires discordantes sur 50 tranchées (30 non bornée) | § 63.2 |
+| ce désaccord est porté par UN terme, le centroïde spectral moyen du morceau | sans lui : **18** discordantes, aucune grande ; seul : **42** | § 64.1 |
+
+**Question 1 — comparer dans la bande de la cible.** Une course qui optimise la v2 contre une source coupée à 16 kHz
+dépense son budget à assombrir le rendu, puisque rien de ce qu'elle met au-dessus ne peut être dans la cible. Faut-il
+mesurer la bande utile de la cible et borner le candidat avant toute distance ? À trancher par une mesure sur
+PLUSIEURS morceaux (combien de sources du corpus et des morceaux réels sont bornées, et où), pas sur « Reload » seul.
+
+**Question 2 — le centroïde moyen du morceau entier dans une distance qui juge un mélange.** Un seul nombre par fichier,
+qui récompense tout grave ajouté — *piste, non mesurée* : où qu'il tombe dans le temps. Sur ces douze mélanges, les
+termes qui lisent la forme (cepstre, enveloppe, contraste) penchent seuls du côté du log-mel (21, 18 et 22 discordantes
+sur 50). Lequel des deux juges a raison n'est PAS mesuré : cela se tranche par une perturbation connue (outil du § 0 du
+cahier de « Reload » : un grave ajouté hors des frappes, que l'un doit punir et l'autre récompense), ou par l'écoute —
+et sur plus d'un morceau. **Dit d'avance** : les 66 paires d'un seul morceau ne sont pas indépendantes.

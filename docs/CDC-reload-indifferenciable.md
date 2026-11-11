@@ -5975,3 +5975,62 @@ connues (§ 0) ou par l'écoute ; 1 en échec → le désaccord est diffus, port
 quels termes, et la question les nomme tous. **Dit d'avance** : douze mélanges d'un morceau, 66 paires non
 indépendantes ; sept « sans lui » sont sept essais, et l'un peut passer la barre par hasard — c'est pourquoi 2 demande
 que le terme seul contredise aussi.
+
+### 64.1 Verdict de H103 (12/11/2026, mesuré de 04 h 18 à 04 h 25, écrit à 04 h 26) : TENUE — c'est le CENTROÏDE : sans lui, la v2 bornée ne contredit plus le log-mel que sur 18 paires au lieu de 41 ; seul, il en contredit 42
+
+`reconstruction/travail/reload-h103.py` (aucun rendu ; `reload-h103.json`, `reload-h103.log`). **Contrôle tenu** : la
+somme pondérée des sept termes recalculés rend la v2 bornée du § 63.2 à 0,0001 près sur les douze mélanges, et le
+bilan des paires est le même (41 discordantes sur 50 tranchées).
+
+| terme | v2 bornée SANS lui : discordantes (grandes) | ce terme SEUL : discordantes (grandes) |
+|---|---|---|
+| (les sept) | 41 (11) | — |
+| **centroïde** | **18 (0)** | **42 (15)** |
+| largeur de bande | 38 (10) | 44 (13) |
+| roll-off | 29 (4) | 44 (15) |
+| planéité | 41 (11) | 50 (15) — elle ne varie pas au quatrième chiffre (0,0011 partout) : ce n'est pas un avis |
+| cepstre | 40 (14) | 21 (3) |
+| enveloppe | 35 (9) | 18 (6) |
+| contraste | 42 (14) | 22 (2) |
+
+| # | verdict |
+|---|---|
+| 0 | **tenu** |
+| 1 | **tenu** : sans le centroïde, 18 discordantes (≤ 20), et aucune grande ; le roll-off vient ensuite (29), les cinq autres n'en ôtent pas le quart |
+| 2 | **tenu** : le centroïde seul en contredit 42 sur 50 |
+
+**Le terme que je nommais est, cette fois, le bon.** Écart de chaque terme pondéré à celui de H75, bande bornée :
+
+| mélange | v2 bornée | log-mel | centroïde | largeur | roll-off | cepstre | enveloppe | contraste | écart absolu de centroïde à l'original |
+|---|---|---|---|---|---|---|---|---|---|
+| H75 (témoin) | 0,2257 | 6,89 | | | | | | | 633 Hz |
+| H95-A, échantillon | 0,2207 | 6,13 | +0,0079 | +0,0005 | +0,0031 | −0,0142 | +0,0121 | −0,0144 | 897 Hz |
+| H95-B, kick moyen | 0,2172 | 6,59 | −0,0014 | +0,0011 | +0,0003 | −0,0008 | −0,0011 | −0,0065 | 586 Hz |
+| H97 `vsm.drums` 70 · 0,10 | 0,2227 | 6,81 | +0,0015 | +0,0020 | +0,0021 | −0,0028 | −0,0012 | −0,0045 | 683 Hz |
+| H97 `vsm.drums` 70 · 0,20 | 0,2314 | 6,82 | −0,0032 | +0,0026 | +0,0008 | −0,0047 | +0,0125 | −0,0024 | 526 Hz |
+| H97 `vsm.fmdrums` 80 · 0,10 | 0,2105 | 7,24 | −0,0094 | −0,0024 | −0,0062 | −0,0028 | +0,0055 | +0,0001 | 318 Hz |
+| H98 `vsm.fmdrums` 70 · 0,15 · 3 | 0,2098 | 7,15 | −0,0122 | −0,0017 | −0,0064 | −0,0053 | +0,0131 | −0,0033 | 224 Hz |
+| H98 `vsm.fmdrums` 70 · 0,20 · 1,5 | 0,2217 | 6,92 | −0,0132 | −0,0004 | −0,0053 | −0,0029 | +0,0206 | −0,0028 | 191 Hz |
+| H98 `vsm.fmdrums` 70 · 0,20 · 3 | 0,2115 | 7,17 | −0,0158 | −0,0017 | −0,0078 | −0,0057 | +0,0217 | −0,0049 | 104 Hz |
+| H99 palier, choisi | 0,2163 | 7,13 | −0,0151 | −0,0027 | −0,0090 | +0,0214 | +0,0049 | −0,0088 | 127 Hz |
+| H99 palier, 2e | 0,2130 | 7,11 | −0,0181 | −0,0023 | −0,0096 | +0,0211 | +0,0039 | −0,0077 | 27 Hz |
+| H99 palier, 3e | 0,2151 | 6,85 | −0,0142 | −0,0011 | −0,0066 | +0,0084 | +0,0061 | −0,0032 | 157 Hz |
+
+(La dernière colonne est le terme de centroïde rapporté au centroïde de l'original, 5 021 Hz : un écart ABSOLU — le
+terme ne dit pas de quel côté ; H101 le dit pour H75 seul, plus brillant. Sans la bande bornée, l'écart de H75 était
+de 2 052 Hz : la coupure à 16 kHz en ôte les deux tiers.)
+
+**La règle** : « le désaccord des juges sur « Reload » est CE terme contre le log-mel ; la question portée à
+`ROADMAP-fusion` le nomme, et ce cahier ne la poursuit plus par des mélanges ». **Ce que la mesure établit, sans plus** :
+dans la bande de la source, les kicks que la distance de la chaîne préfère sont ceux qui ramènent le centroïde MOYEN du
+morceau vers celui de l'original — de 633 Hz d'écart à 27 Hz pour le palier de H99 —, et c'est ce seul nombre qui la
+fait contredire le log-mel. Les trois termes qui lisent la FORME du spectre ou du temps (cepstre, enveloppe, contraste)
+penchent, seuls, du côté du log-mel (21, 18 et 22 discordantes sur 50, quand le hasard en ferait 25). **Ce qu'elle ne
+dit pas** : lequel des deux juges a raison sur ces kicks. *Piste, non mesurée* : un centroïde moyenné sur le morceau
+entier récompense tout grave ajouté, où qu'il tombe dans le temps — un kick trop long comme un kick juste ; ce serait
+l'objet d'une perturbation connue (§ 0 : un grave ajouté HORS des frappes, que le log-mel doit punir et le centroïde
+récompenser), pas d'un mélange de plus.
+
+**Rien n'entre** ; aucun juge ne change ici. La question est portée à `ROADMAP-fusion` (§ 11) avec les chiffres de
+H100-H103. **Où en est le kick de « Reload »** : la question des juges est sortie de ce cahier ; le projet reste celui
+de H75 — aucun des réglages essayés de H86 à H99 n'est entré.
