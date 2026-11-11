@@ -4153,7 +4153,7 @@ d'autres morceaux dont le rendu est plus brillant que l'original, et sur un dont
 alors punir la sinusoïde par son centroïde, ce qui séparerait « la v2 ne voit pas un son étranger » de « la v2 suit son
 centroïde, dans un sens ou dans l'autre ».
 
-### 11.3 H105 — la même sinusoïde sur « B4 Wuz Then » : la distance de la chaîne suit-elle son centroïde dans un sens comme dans l'autre ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 45)
+### 11.3 H105 — la même sinusoïde sur « B4 Wuz Then » : la distance de la chaîne suit-elle son centroïde dans un sens comme dans l'autre ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 04 h 42)
 
 La suite que H104 a écrite, sur le seul autre morceau qui ait sa source sur disque : « B4 Wuz Then »
 (`reconstruction/sources/b4-wuz-then.wav`), son rendu de H85 au point jugé (attaque 0,5,
