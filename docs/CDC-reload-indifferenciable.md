@@ -5870,3 +5870,26 @@ De 20 Hz à 16 kHz, à l'échelle du morceau entier, le rendu de H75 est à 1,5 
 (H102, à écrire AVANT sa mesure) : sans un rendu de plus, borner les douze mélanges de H100 à la bande de la source
 (passe-bas à 16 kHz) et recalculer leur distance v2 — le désaccord avec le log-mel sur l'ordre des kicks disparaît-il ?
 S'il disparaît, la question à porter à la feuille de route est écrite : comparer dans la bande de la cible.
+
+## 63. H102 — la distance de la chaîne recalculée dans la bande de la source (écrite AVANT sa mesure, 11/11/2026, 22 h 04)
+
+Aucun rendu, aucun code neuf (`reconstruction/travail/reload-h102.py`). Les douze mélanges de H100, chacun passé par un
+passe-bas à 16 kHz (Butterworth d'ordre 10, phase nulle — l'original n'est pas touché : il est déjà coupé là), puis la
+distance v2 de la chaîne. La concordance avec le log-mel se lit par `mesure_h77.paires` (une paire est tranchée quand
+ses deux log-mel diffèrent d'au moins 0,10 dB), AVANT et APRÈS le passe-bas.
+
+**L'HYPOTHÈSE H102** : dans la bande de la source, la distance de la chaîne et le log-mel rangent les kicks dans le
+même ordre.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 0 | le témoin du filtre : le rendu de H75 filtré a sa bande 16-22 kHz à plus de 40 dB sous celle du non filtré, et ses bandes sous 11 kHz à 0,1 dB | les deux | REFUS |
+| 1 | paires tranchées discordantes, après le passe-bas | la moitié au plus de celles d'avant, et 20 % au plus des tranchées | autant ou plus qu'avant |
+| 2 | distance v2 de H75 | en baisse d'au moins 10 % | en baisse de moins de 3 % |
+| 3 | relevés : les douze distances avant et après, les paires | — | — |
+
+**La règle** : 1 et 2 tenus → le désaccord des juges sur « Reload » était un artefact de bande : à porter à
+`ROADMAP-fusion` comme une question écrite — comparer dans la bande de la cible — avec ces chiffres ; 2 tenu, 1 non → la
+bande explique le niveau de la distance, pas le désaccord, qui reste à instruire ; 2 en échec → la bande au-dessus de
+16 kHz ne pèse pas ce que H100-H101 laissaient croire. **Dit d'avance** : douze mélanges d'un morceau ; les paires ne
+sont pas indépendantes.
