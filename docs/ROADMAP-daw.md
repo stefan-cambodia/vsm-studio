@@ -49122,3 +49122,51 @@ la 36 saisie → **38@1320 et 36@1800** (l'écart de la barre pour toutes) ;
 (d) **le témoin** (le binaire de D626, les mêmes gestes) : (b) → **38@1320** — le défaut ;
 (e) sans grille au rang 38 (aucun `carte-grille`), (b) → 38@1320 : la piste sans grilles par rang ne change pas ;
 (f) `grille-par-rang`, `batterie-losanges`, `longueur-insertion` verts ; les suites ; la série.
+
+### Phase D628 — un quatre-vingt-huitième audit : poser un fichier de la réserve à son origine (12/11/2026)
+
+*Écrite le 12/11 à 04 h 51 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
+D625 tourne : le code s'écrit, il ne se compile qu'après elle, avec celui de D626 et D627.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D618** — « poser à l'origine du fichier (*At Origin*) ». « Poser à la tête »
+(D618) pose un fichier de la réserve où l'on écoute. Un fichier enregistré ailleurs — par Cubase, Pro Tools, un
+enregistreur de terrain — porte souvent l'instant où il commence : la **référence de temps BWF** (le bloc `bext`,
+`TimeReference`, en échantillons depuis l'origine). Le Pool de Cubase a pour cela *Insert into Project ▸ At Origin* :
+le fichier revient à sa place, sans qu'on la cherche à l'oreille.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D628.1 | **Poser à l'origine** — *Pool ▸ Insert into Project ▸ At Origin* | dans la réserve, « Poser à l'origine » sur une ligne choisie dont le fichier est sur le disque ET porte une référence de temps BWF : une piste audio NEUVE (la règle de D618 : sous la piste choisie, le fichier désigné en place, UN pas d'annulation) joue le fichier à partir de son origine — la référence divisée par la fréquence DU FICHIER, en secondes, convertie par la carte de tempo du projet ; grisé sur un fichier qui n'en porte pas, et l'infobulle dit pourquoi ; le relevé de la ligne choisie dit l'origine ; mesuré par le projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **L'origine est celle du FICHIER, pas celle d'un projet** : la référence BWF compte des échantillons depuis le début
+  de la ligne de temps de l'enregistreur ; ici, le début du projet (tick 0). Un projet qui commencerait ailleurs (un
+  *timecode* de départ) n'existe pas dans VSM Studio : rien à décaler.
+- **Divisée par la fréquence du fichier**, pas celle du moteur : un fichier à 48 kHz dont la référence vaut 144 000
+  commence à 3 s, quel que soit le moteur — la règle de D608 (la description du fichier, pas celle du moteur).
+- **Un bloc `bext` dont la référence vaut 0 a une origine : 0** — le fichier commence au début. Un fichier SANS bloc
+  `bext` n'en a pas, et « Poser à l'origine » y est grisé — plutôt que de le poser à 0 en silence, ce qui ferait passer
+  « je ne sais pas » pour « au début ». Cubase pose alors à l'origine qu'il a notée au Pool ; ici, il n'y en a pas.
+- **Par le chemin de D618** (`poserDepuisLaReserve`) : les mêmes refus vérifiés avant d'ouvrir le pas, la même piste
+  neuve, le même libellé de pas (« Poser un fichier de la réserve ») ; seule la position change.
+- **L'origine se lit à l'en-tête quand la réserve se relit** (`rafraichirReserve`), comme la durée et le format :
+  c'est elle qui dit le bouton actif ou grisé.
+- **Remis, nommés** : NOS prises n'écrivent pas encore leur origine — le moteur ne sait la position de leur premier
+  échantillon qu'une fois le flux parti (pré-roll, punch), et JUCE écrit le bloc `bext` à la création du fichier ; une
+  colonne « Origine » dans la liste (le relevé la dit, la liste non) ; et ceux de D618 (poser plusieurs lignes d'un geste,
+  importer dans la réserve sans placer).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/poser-a-l-origine.sh` (la mécanique de `poser-depuis-reserve.sh`),
+un projet à 120 BPM, 480 ticks à la noire, où « Voix » joue `audio/voix.wav`, un repère au tick 1 920 (2 s), et trois
+fichiers que rien ne désigne : `audio/bwf.wav` (44,1 kHz, référence **132 300** = 3 s), `audio/bwf48.wav` (48 kHz,
+référence **144 000** = 3 s), `audio/sans.wav` (sans bloc `bext`) ; la tête au repère :
+(a) `bwf.wav` choisi : « Poser à l'origine » ACTIF, le relevé dit « origine 3,000 s » ; pressé → une piste « bwf » sous
+« Voix », qui désigne `audio/bwf.wav`, son clip au tick **2 880** (3 s) — pas à la tête (1 920) ; **aucun fichier neuf**
+dans `audio/` ; **1 pas** (« Poser un fichier de la réserve ») ;
+(b) `bwf48.wav` : son clip au tick **2 880** aussi (la fréquence du fichier, pas celle du moteur) ;
+(c) `sans.wav` choisi : « Poser à l'origine » **GRISÉ**, le relevé dit « sans origine » ; « Poser à la tête » reste actif ;
+(d) le témoin de la règle : `bwf.wav` posé par « Poser à la tête » → au tick **1 920** ;
+(e) Ctrl+Z après (a) → la piste retirée ;
+(f) **le témoin** (le binaire de D625 — D626 à D628 se compilent ensemble, aucune ne touche la réserve avant D628) : pas
+de bouton « Poser à l'origine », aucune piste ; l'anglais (*Insert at origin*) ;
+(g) `poser-depuis-reserve`, `reserve-fichiers`, `relier-fichier`, `chercher-manquants` verts ; les suites ; la série.
