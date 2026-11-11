@@ -5796,3 +5796,38 @@ est sous 10 kHz).
 **La suite** (H101, à écrire AVANT sa mesure) : cet écart-là — l'énergie du rendu et de l'original par bande au-dessus
 de 4 kHz, jusqu'à 22 kHz (les bandes de l'outil du § 0 et de la densité s'arrêtent à 11 kHz), et piste par piste. Aucun
 réglage de kick avant.
+
+## 62. H101 — d'où viennent les 2 kHz de brillance en trop du rendu de « Reload » (écrite AVANT son instrument et sa mesure, 11/11/2026, 21 h 24)
+
+Aucun rendu : le mélange de H75, ses dix pistes rendues seules (H93), l'original et ses six stems.
+`analyse/mesure_h101.py` (`energie_par_bande` : densité spectrale moyenne de Welch, intégrée par bande), son test,
+`reconstruction/travail/reload-h101.py`. Bandes : 20-150 · 150-500 · 500-2 000 · 2-4 k · 4-8 k · 8-11 k · **11-16 k ·
+16-22 k** (les deux dernières ne sont lues par aucun juge du § 0).
+
+**L'HYPOTHÈSE H101** : l'excès est AU-DESSUS de 11 kHz — là où l'outil du § 0 ne regarde pas —, porté par le
+charleston, et l'original n'a presque rien là-haut.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | mélange rendu / original, à 11-16 kHz ou à 16-22 kHz | ≥ +6 dB dans l'une au moins | moins de +3 dB dans les deux |
+| 2 | le même à 4-8 et 8-11 kHz | tous deux à 3 dB | l'un au-delà de 6 dB (l'excès est aussi là où l'outil regarde) |
+| 3 | dans le rendu, au-dessus de 11 kHz : la piste du charleston | à −3 dB ou plus du mélange | à −6 dB ou moins (une autre piste) |
+| 4 | le centroïde du rendu une fois coupé net à 11 kHz, comme celui de l'original coupé de même | l'écart de 2 050 Hz réduit de moitié au moins | réduit de moins d'un quart |
+| 5 | relevés : la table entière (huit bandes ; mélange, dix pistes, six stems) | — | — |
+
+**La règle** : 1, 3 et 4 tenus → l'écart de centroïde est du contenu au-dessus de 11 kHz que l'original n'a pas (un
+fichier source borné, ou un charleston trop brillant) : à dire dans l'outil du § 0 (ses bandes s'arrêtent trop bas) et
+à instruire sur la piste nommée ; 1 en échec → l'excès de brillance n'est pas en haut : il est un MANQUE en bas ou au
+milieu, et la table dira où ; sinon au plus sévère. **Dit d'avance** : un original à 44,1 kHz peut venir d'un encodage
+qui coupe vers 16 kHz — ce serait alors un défaut de la source, pas du rendu, et la table le montrera (stems compris).
+
+### 62.1 L'instrument de H101, AVANT toute mesure (11/11/2026, 21 h 25)
+
+`analyse/mesure_h101.py` (`energie_par_bande`, `centroide`), deux tests : un sinus d'amplitude 1 rend 0,5 dans sa
+bande, une note de 13 kHz 20 dB dessous est lue à 0,3 dB près dans la sienne, rien ailleurs ; deux notes égales à 1 et
+13 kHz ont leur centroïde à 7 kHz, et à 1 kHz une fois coupé à 11 kHz ; une bande au-delà de Nyquist et un signal muet
+sont des refus. **Un cas de test était mal écrit et a été corrigé avant les mutants** (un « signal sans énergie » fait
+d'un sinus coupé à 20 Hz : les deux premières cases de Welch en gardent une trace — remplacé par un vrai silence).
+**Vu rouge sur trois mutants** (la bande sans borne haute ; la coupure ôtée ; le refus de Nyquist ôté). **Dit** : le
+centroïde de Welch n'est pas celui de `spectral_features` (moyenne de centroïdes par trame) — les deux nombres ne se
+comparent qu'à eux-mêmes ; l'attendu 4 se lit donc sur l'écart rendu − original du MÊME instrument.
