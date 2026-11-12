@@ -49389,8 +49389,13 @@ verbe `reserve-choisir-aussi:` inconnu, une seule piste posée : la raison écri
   boutons grisés l'empêchent, et (c) le vérifie) ; il est écrit, pas prouvé.
 - **Les poses ne disent qu'un nom dans la ligne d'état** (« Fichier posé à la tête : a, b ») — la clé de traduction est celle
   d'un fichier ; non changé.
-- **Remis, nommés** : plusieurs fichiers sur UNE piste, bout à bout ; importer dans la réserve sans placer ; nos prises
-  sans origine.
+- **Remis, nommés** : plusieurs fichiers sur UNE piste, bout à bout — **ce n'est pas un geste, c'est un chantier du
+  MODÈLE** : une piste audio de VSM Studio porte UN fichier, découpé en clips (D24.5, D618 : « un second le remplacerait
+  partout »), quand une piste audio de Cubase porte des événements de fichiers différents ; le second choix du dialogue
+  de Cubase attend que le modèle le permette, et ce sera une décision écrite à part (le format du projet, le moteur, le
+  rendu hors ligne et le contrat de D21 bougent ensemble) ; importer dans la réserve sans placer ; nos prises sans origine
+  (relu à D631 : l'origine d'une prise tirée du PROJET a des cas limites — une prise active au contenu périmé, des clips
+  déplacés ou étirés — qui demandent leur propre attendu).
 - **La série n'est pas jouée** : batterie à 34 % ; elle se joue pour D626 à D630 ensemble, 225 bancs.
 
 ### Phase D631 — la passe empilée de D624, mesurée au banc (12/11/2026)
