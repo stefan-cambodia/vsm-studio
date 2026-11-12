@@ -49623,3 +49623,44 @@ binaire neuf a été faite à 17 h 15 ; ce compte rendu est écrit à 21 h 12, a
   saisie pas à pas d'une batterie à la grille du rang ; le redimensionnement des CLIPS de l'arrangement (le même calcul
   depuis la première sélection y existe-t-il ? à lire).
 - **La série n'est pas jouée** : D626 à D633, 227 bancs.
+
+**RELU APRÈS LA MESURE (12/11, 21 h 15) : le remis « le redimensionnement des CLIPS » est CLOS PAR LECTURE.** L'arrangement
+ancre ses bords sur le clip TENU (`ancreGeste_` : la fin jouée du clip sous la souris pour le bord droit, son début pour le
+gauche, D547.4) et applique l'écart relatif depuis cette ancre (`gesteDernier_`) ; il n'y a pas d'équivalent de
+`dragSnapshot_.front()`. Le défaut de D633.2 était propre au piano roll.
+
+### Phase D634 — un quatre-vingt-treizième audit : en saisie pas à pas, une frappe dure une case de son rang (12/11/2026)
+
+*Écrite le 12/11 à 21 h 16 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série
+de D626 à D633 TOURNE (lancée à 21 h 13, batterie à 68 %) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du remis de D626** — « la saisie pas à pas sur une piste de batterie ne suit pas la grille du RANG —
+elle avance à la grille de la barre ; quelle grille mène quand on frappe deux pièces au même pas demande une règle à
+écrire ». La règle est écrite ici. Et en l'écrivant, une incohérence se lit au code : une frappe POSÉE d'un clic dans un
+rang réglé à 1/4 dure une noire (D622 : « dure une case d'elle ») ; la même frappe SAISIE au pas à pas dure une double
+croche (`stepInputNote` : `dureeInsertion(gridTicks())`). Deux portes, deux notes différentes.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D634.1 | **La frappe saisie dure une case de son rang** | en saisie pas à pas, sur une piste qui a des grilles par rang, une frappe d'un rang à grille propre dure une case de cette grille — la durée qu'un clic lui donne (D622) —, sauf longueur d'insertion choisie, qui l'emporte comme partout (D625, D626) ; sa POSITION reste la tête, et la tête avance d'UN PAS DE LA BARRE ; un rang « global » ou une piste sans grilles : rien ne change ; mesuré par le projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La tête est UN curseur, à la grille de la barre** : la saisie pas à pas avance une position que toutes les pièces
+  partagent ; la faire avancer de la grille de la pièce frappée la ferait sauter d'une noire après une caisse claire et
+  d'une double après une grosse caisse — un curseur dont le pas dépend de la touche n'est plus un curseur, et la question
+  « deux pièces au même pas, quelle grille mène ? » n'aurait pas de réponse juste. Les grilles par rang servent la souris
+  (poser, tirer, redimensionner) et l'édition (quantifier, flèches) ; le pas à pas garde l'espacement de la barre, comme
+  le *Quantize* du *Step Input* de Cubase règle l'espacement.
+- **Mais la DURÉE suit le rang**, par la même règle que le clic : c'est la même note, entrée par une autre porte
+  (`dureeInsertion` de D626, appelée avec la case du rang, comme au clic de D622).
+- **Remis, nommés** : la longueur d'insertion au préréglage de quantification ; les rangs dans l'ordre de la carte.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/pas-a-pas-par-rang.sh`, la mécanique de `pas-a-pas-longueur.sh` (D626 :
+« Clavier d'ordinateur », « Pas à pas », A (60) S (62) Entrée D (64) joués en différé), sur un projet ouvert : une piste
+« Batterie » (TR-909, canal 10, 480 ticks à la noire, la barre à 1/16 = 120) qui porte une frappe 60@1920+120, pour que le
+rang 60 existe dans la carte ; le projet enregistré :
+(a) le rang 60 à 1/4 : **60@0+480 62@120+120 64@360+120**, la tête à **480** (la position et l'avance à la barre) ;
+(b) sans grille au rang 60 : **60@0+120 62@120+120 64@360+120** — rien ne change ;
+(c) le rang 60 à 1/4 et « Insertion : 1/8 » : **60@0+240 62@120+240 64@360+240** (la longueur choisie l'emporte) ;
+(d) **le témoin** (le binaire de D633, `build/temoin-D633`) : (a) → **60@0+120** — le défaut ;
+(e) `pas-a-pas`, `pas-a-pas-longueur`, `grille-par-rang` verts ; la série.
