@@ -49415,3 +49415,29 @@ multiples de 240 — la passe empilée suivait alors la grille de la barre.
 **Dit d'avance** : les gestes partent à la milliseconde près du banc, pas au tick ; c'est pourquoi l'attendu demande des
 MULTIPLES et non des positions (la leçon de D624). Une passe qui manquerait (une suite tombée de part et d'autre du
 rebouclage) ferait échouer (a), et le banc le dira par le compte des prises.
+
+### Phase D631 — MESURÉE ET FAITE (12/11/2026, 07 h 56 à l'horloge)
+
+*Écrite avant sa mesure à 07 h 53. Aucune ligne de l'application n'a changé (le binaire de D630) : seul le banc
+`tools/prise-par-rang.sh` gagne le cas (e), déjà dans la série. La phase ne touche pas l'interface : elle est FAITE à la
+mesure de son banc.*
+
+| # | attendu | mesure | témoin (D623) | tenu |
+|---|---|---|---|---|
+| D631 (a) | deux prises, bornées par la boucle (0 → 1 920) | « Prise 1 » **0 → 1920**, « Prise 2 » **0 → 1635** | les mêmes bornes | **NON tel qu'écrit — l'attendu était faux, voir plus bas** |
+| D631 (b) | dans chacune : quatre 38 sur des multiples de 240, distincts ; deux 36 sur 120 | les deux prises : 38 **[240 480 960 1200]**, 36 **[360 1080]** | 38 **[240 600 960 1320]** et **[240 600 960 1200]** | **oui** |
+| D631 (c) | « 4 au rang » deux fois au journal | **2** lignes | — | **oui** |
+| D631 (d) | le témoin : un 38 hors des multiples de 240 dans l'une au moins | — | **600** dans les deux, **1320** dans la première | **oui** |
+
+**L'ATTENDU (a) ÉTAIT FAUX, ET C'EST DIT.** Le premier essai est tombé rouge sur lui seul : « Prise 2 [0 → 1635] ». Ce
+n'est pas la raison écrite. Lu au code avant de toucher au banc : la DERNIÈRE passe se ferme à l'ARRÊT
+(`closePass(…, finSecondes)`, « la dernière passe — qui n'est pas forcément complète — est une prise comme les autres »),
+pas au bout de la boucle. F9 était pressé 3,7 s après le départ, soit 1,70 s après le rebouclage : 1 635 ticks, ce que le
+projet dit. Le contrôle des bornes est réécrit en conséquence (chaque prise commence au début de la boucle et finit au plus à
+sa fin ; l'une au moins la remplit) ; ceux de la quantification, (b) à (d), n'ont pas bougé et tiennent du premier essai.
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Le chemin de la boucle de D624 est vu tourner** : chaque passe empilée est quantifiée à la grille de son rang, et le
+  témoin montre qu'avant D624 elle suivait la grille de la barre (600 et 1 320, hors des multiples de 240).
+- **Deux passes seulement** : une troisième, vide, n'a pas fait de prise (le geste s'arrête dans le deuxième passage).
+- **La prise AUDIO empilée** n'est pas mesurée : le banc n'a pas d'entrée audio (la réserve de D584).
