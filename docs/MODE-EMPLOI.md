@@ -85,6 +85,37 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Un fader pour plusieurs pistes : le VCA** (D532.1). Choisissez les pistes à mener ensemble (Ctrl+clic dans la liste), puis *Piste ▸ Nouveau VCA pour les pistes choisies* : une piste « VCA 1 » naît en fin de liste. Elle ne joue rien et ne route aucun son : son fader **multiplie** celui de chacune — monter le VCA de 3 dB monte toute la batterie de 3 dB sans toucher à ses équilibres, ni à ses départs, ni à ses sorties —, et son muet, son solo et sa désactivation valent pour toutes. Une piste membre allume son M quand c'est son VCA qui la fait taire, et l'infobulle le dit (« Rendu muet par son VCA ») ; le nom de sa tranche nomme le VCA qui la commande. *Piste ▸ VCA de la piste* affecte ou retire la sélection d'un VCA ; *Ajouter un VCA* en crée un vide. Sa ligne et sa tranche n'ont que ce qui agit — volume, M, S, et l'écriture d'automation —, et son automation de volume s'entend en lecture comme à l'export. Tout s'annule, et un projet sans VCA garde son fichier à l'octet.
 
+**L'automation qu'on lit, qu'on écrit et qu'on suspend** (D599 à D603 — les
+modes d'automation de Cubase). Une piste qui porte une courbe de volume, de
+panoramique, de départ ou de trim montre sa valeur à la tête : le fader, les
+boutons de départ et le trim **suivent leur courbe**, à l'arrêt comme en
+lecture. **La main l'emporte** : tant qu'on tient une commande, le moteur joue
+la main et non la courbe ; lâchée, la courbe reprend. Le bouton **W** de la
+tranche choisit ce que la main écrit — *Touch* (tant qu'on tient), *Latch*
+(jusqu'à l'arrêt), *Trim* (la main DÉCALE la courbe en gardant sa forme) ou
+éteint (rien n'est écrit, et la ligne d'état le dit). Au lâcher, la courbe
+rejoint l'ancienne en rampe, sur le *Temps de retour de l'automation* des
+préférences (0 : le saut d'avant). Le bouton **R** éteint la lecture des
+courbes d'une piste — ni en lecture, ni à l'export —, et ses courbes se
+pâlissent. Au menu *Mixage* : allumer ou éteindre la lecture de toutes les
+pistes, désarmer tous les W, **suspendre la lecture** par famille (volume,
+panoramique, départs, trim, inserts, machines), **suspendre l'écriture** par
+famille, et **remplir à la fin d'une passe** (rien, la passe, jusqu'au début,
+jusqu'à la fin, toute la boucle). Un contrôleur MIDI appris pose la main comme
+la souris : une rafale la pose, 500 ms de silence la lèvent (D603).
+
+**L'ordre de jeu** (*Affichage ▸ Ordre de jeu…* — l'*Arranger* de Cubase). Les
+sections sont déduites des repères ; on les enchaîne dans une liste (*Ajouter*,
+*Monter*, *Descendre*, *Retirer*), la même section autant de fois qu'on veut.
+**La lecture suit l'ordre** (D606) : la case cochée, la tête saute d'un élément
+au suivant à l'échantillon, les notes tenues relâchées et relancées comme au
+rebouclage, et le transport s'arrête après le dernier ; l'élément joué
+s'éclaire. Un **double-clic** sur une ligne y va, et la lecture reprend à cet
+élément (D612). **L'export audio suit l'ordre qu'on entend** (D616) : le
+mixage et les stems rendent la chaîne, d'une copie aplatie — le projet n'est pas
+touché, et le message de l'export le dit. *Aplatir* écrit la chaîne dans le
+matériau : c'est un geste irréversible, et une question à deux boutons le garde.
+
 **Essayer une autre version d'une piste** (D532.2). *Piste ▸ Versions de la piste ▸ Dupliquer la version* garde ce que joue la piste choisie sous « Version 1 » et vous en donne une copie, « Version 2 », sur laquelle travailler ; *Nouvelle version (vide)* part de rien. Une version, c'est la **matière** de la piste — notes, contrôleurs, clips, audio, automation — et non son réglage : la machine, les effets, le fader restent les mêmes, pour que deux versions se comparent dans le même son. Une seule joue à la fois : choisir l'autre dans le même sous-menu la fait entendre, et range celle qu'on quitte telle qu'on l'a laissée. *Renommer la version…* lui donne un nom (« Refrain doublé »), que l'infobulle du nom de la piste rappelle (« Version « Refrain doublé » — 2 sur 3 ») ; *Supprimer la version* retire celle qu'on entend et fait entendre sa voisine — la dernière laisse sa matière sur la piste. Une piste **gelée** ne change pas de version (le gel est le rendu de ce qu'elle jouait) : les entrées le disent, dégelez d'abord. Chaque geste s'annule ; les versions rangées s'enregistrent dans `midi/versions.mid` à côté du projet, et seule celle qu'on entend part à l'export.
 
 **Une ligne d'accords pour écrire** (D532.3). Clic droit sur la règle — celle de l'arrangement ou celle du piano roll —, puis *Poser un accord ici…* : tapez son symbole (C, Am7, F#m7b5, Bb7, G7/B — les treize types du bouton « Accord » du piano roll, et une basse après la barre). Une bande « Accords » apparaît sous les deux règles ; un accord vaut jusqu'au suivant, et son symbole s'écrit en entier ou pas du tout (« Am7/G » rogné en « Am » serait un autre accord). *Modifier cet accord…* et *Retirer cet accord* visent l'accord en vigueur là où vous cliquez ; un symbole que la ligne ne sait pas lire est refusé, et la boîte dit les formes acceptées. Dans le piano roll, choisissez des notes, puis clic droit, *Hauteur ▸ Caler sur les accords* : chaque note va à la note de l'accord la plus proche, vers le grave à égalité — l'accord sous lequel elle **sonne**, même si son clip a été déplacé. Une note jouée sous deux harmonies (un clip dupliqué sous deux accords), avant le premier accord ou nulle part reste où elle est, et la ligne d'état les compte. La ligne ne joue rien : un projet s'exporte au bit près pareil avec ou sans accords. **La ligne d'accords d'après les notes** (D543.1) : Édition ▸ *Créer les accords d'après les notes (piste active)* lit, mesure par mesure, les notes que la piste fait entendre — pondérées par la durée qu'elles sonnent, une note de passage brève ne fait pas l'accord — et réécrit la ligne d'un accord par mesure, parmi les treize types, la basse dite si elle n'est pas la fondamentale (« G/B ») ; une mesure sans accord net (une note seule, une quinte à vide) n'en reçoit pas, et la ligne d'état les compte. C'est le complément de *Caler sur les accords* : une transcription donne sa ligne d'accords, sur laquelle on corrige ensuite des hauteurs. Elle suit les gestes de temps (insérer, supprimer, aplatir l'ordre de lecture), et tout s'annule.
