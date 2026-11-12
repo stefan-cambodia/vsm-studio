@@ -11,6 +11,7 @@
 #include <set>
 #include <array>
 #include <cmath>
+#include <numeric>   // D632.1 : std::lcm
 
 using namespace vsm::sequencer;
 using namespace vsm::midi;
@@ -283,6 +284,39 @@ Tick PianoRollComponent::snapTickDuRang(Tick tick, uint8_t note) const {
     settings.strength = 1.0f;
     settings.swing = swing_;
     return std::max<Tick>(0, quantizeTick(tick, settings, project_->ticksPerQuarterNote));
+}
+
+Tick PianoRollComponent::pasDesFleches(bool* auDelaDeLaMesure) const {
+    // D632.1 : LES FLÈCHES AU PAS DES RANGS CHOISIS. Le plus petit pas commun est le seul qui garde CHAQUE frappe sur
+    // la grille de son rang (une caisse claire à 1/4 et une grosse caisse à 1/16 avancent d'une noire) ; aucun rang
+    // propre dans la sélection : `gridTicks()` tel quel, la règle d'avant gardée par construction.
+    if (auDelaDeLaMesure) *auDelaDeLaMesure = false;
+    const Tick barre = gridTicks();
+    const Track* track = activeTrack();
+    if (track == nullptr || track->drumGrid.empty() || !project_ || selectedNoteIds_.empty()) return barre;
+    std::set<uint8_t> rangs;
+    Tick premiere = -1;
+    for (const auto& n : track->notes)
+        if (selectedNoteIds_.count(n.id) != 0) {
+            rangs.insert(n.number);
+            premiere = premiere < 0 ? n.startTick : std::min(premiere, n.startTick);
+        }
+    bool propreVu = false;
+    Tick pas = 0;
+    for (const uint8_t rang : rangs) {
+        bool propre = false;
+        const GridResolution grille = grilleDuRang(rang, &propre);
+        const Tick ceRang = propre ? std::max<Tick>(1, gridResolutionToTicks(grille, project_->ticksPerQuarterNote)) : barre;
+        propreVu = propreVu || propre;
+        pas = pas == 0 ? ceRang : std::lcm(pas, ceRang);
+    }
+    if (!propreVu || pas <= 0) return barre;
+    if (pas > ticksPerBarAt(std::max<Tick>(0, premiere))) {
+        // Des grilles qui ne se rencontrent pas dans la mesure (1/4. et 1/4T : 2 880 ticks) : la barre, et c'est dit.
+        if (auDelaDeLaMesure) *auDelaDeLaMesure = true;
+        return barre;
+    }
+    return pas;
 }
 
 Note* PianoRollComponent::findNoteAt(juce::Point<float> pos, bool* nearRightEdge, bool* nearLeftEdge) {
@@ -2654,13 +2688,22 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
         return key.getKeyCode() == code && !mods.isCommandDown() && !mods.isCtrlDown() && !mods.isAltDown();
     };
     const Tick step = mods.isShiftDown() ? gridTicks() * 4 : gridTicks();
+    // D632.1 : une SÉLECTION avance au pas commun des grilles de ses rangs (`pasDesFleches`) ; le défilement, à la barre.
+    const auto decaler = [this, &mods](int sens) {
+        bool auDela = false;
+        const Tick pas = pasDesFleches(&auDela) * (mods.isShiftDown() ? 4 : 1);
+        nudgeSelection(static_cast<int64_t>(sens) * static_cast<int64_t>(pas));
+        if (auDela && onStatusChanged)
+            onStatusChanged(vsm::app::ui::tr(u8"Les grilles des rangs choisis ne se rencontrent pas dans la mesure : "
+                                              u8"décalé au pas de la barre"));
+    };
     if (fleche(juce::KeyPress::leftKey)) {
-        if (hasSelection()) nudgeSelection(-static_cast<int64_t>(step));
+        if (hasSelection()) decaler(-1);
         else { scrollTick_ = std::max<Tick>(0, scrollTick_ - step); updateScrollBars(); repaint(); }
         return true;
     }
     if (fleche(juce::KeyPress::rightKey)) {
-        if (hasSelection()) nudgeSelection(static_cast<int64_t>(step));
+        if (hasSelection()) decaler(1);
         else { scrollTick_ += step; updateScrollBars(); repaint(); }
         return true;
     }

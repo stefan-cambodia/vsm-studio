@@ -2668,6 +2668,9 @@ const Paire kAnglais[] = {
       "Folded to %1 played pitch(es)" },
     { "Déplié : toutes les hauteurs",
       "Unfolded: all pitches" },
+    // D632.1 : les flèches d'une batterie, quand le pas commun des rangs choisis dépasse la mesure.
+    { "Les grilles des rangs choisis ne se rencontrent pas dans la mesure : décalé au pas de la barre",
+      "The grids of the selected rows do not meet within the bar: moved by the toolbar grid" },
     { "Mes ",
       "Bar " },
     { "%1 note(s) sélectionnée(s) : %2 - %3, vélocité moyenne %4",

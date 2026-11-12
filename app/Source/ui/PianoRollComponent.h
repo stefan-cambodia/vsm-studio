@@ -462,6 +462,10 @@ private:
     vsm::midi::Tick snapTick(vsm::midi::Tick tick) const;
     /// D622.1 : l'aimant d'une frappe POSÉE dans le rang `note` — la grille du rang, le swing de la barre.
     vsm::midi::Tick snapTickDuRang(vsm::midi::Tick tick, uint8_t note) const;
+    /// D632.1 : le pas des flèches pour la sélection — le plus petit pas COMMUN aux grilles de ses rangs (un rang
+    /// « global » compte pour `gridTicks()`) ; `gridTicks()` au bit près quand aucun rang choisi n'a de grille propre ;
+    /// `gridTicks()` aussi quand le pas commun dépasse une mesure, et `auDelaDeLaMesure` le dit.
+    vsm::midi::Tick pasDesFleches(bool* auDelaDeLaMesure = nullptr) const;
     vsm::sequencer::Note* findNoteAt(juce::Point<float> pos, bool* nearRightEdge = nullptr,
                                       bool* nearLeftEdge = nullptr);
 

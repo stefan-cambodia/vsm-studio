@@ -49503,3 +49503,37 @@ grille donnerait 38@1280, la barre 38@1080) ;
 leurs contrôleurs) verts ; la série.
 **Dit d'avance** : un clic sur un losange passe par `mouseDown`/`mouseUp` sans mouvement ; s'il ouvrait un pas
 d'annulation ou déplaçait la frappe, (g) le montrerait (38@1080 attendu, rien d'autre).
+
+### Phase D632 — MESURÉE, la série à jouer (12/11/2026, 17 h 00 à l'horloge)
+
+*Écrite avant son code à 16 h 49 (commitée avant toute ligne) ; **le banc vu ROUGE d'abord sur le binaire de D630** — six
+contrôles tombés, chacun pour la raison écrite : la frappe avance d'une double croche (38@1080 en (a), (c), (d) ; 38@1440,
+quatre doubles, en (e)), et la ligne d'état ne dit rien en (f) et (i) ; (b), (f) et (g), qui gardent la règle d'avant,
+verts sur lui aussi. Le banc `tools/fleches-par-rang.sh` (10 contrôles) ; le témoin : `build/temoin-D630`.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D630) | tenu |
+|---|---|---|---|---|
+| D632 (a) | rang 38 à 1/4, la 38 seule, → : 38@1440 | **38@1440** | **38@1080** — le défaut | **oui** |
+| D632 (b) | la 36 seule (rang global), → : 36@1560 | **36@1560** | 36@1560 | **oui** |
+| D632 (c) | les deux, → : 38@1440 et 36@1920 | **38@1440 36@1920** | 38@1080 36@1560 | **oui** |
+| D632 (d) | 1/4T et 1/8, les deux, → : 38@1920 et 36@2400 | **38@1920 36@2400** | 38@1080 36@1560 | **oui** |
+| D632 (e) | la 38 seule, Maj+→ : 38@2880 | **38@2880** | 38@1440 | **oui** |
+| D632 (f) | 1/4. et 1/4T, les deux, → : 38@1080 et 36@1560, et la phrase | **38@1080 36@1560** ; « Les grilles des rangs choisis ne se rencontrent pas dans la mesure : décalé au pas de la barre » | les mêmes frappes, aucune phrase | **oui** |
+| D632 (g) | sans grille au rang 38, → : 38@1080 | **38@1080** | 38@1080 | **oui** |
+| D632 (i) | l'anglais | les frappes de (f) ; « The grids of the selected rows do not meet within the bar: moved by the toolbar grid » | — | **oui** |
+| D632 (j) | les voisins | `glisse-par-rang`, `grille-par-rang`, `batterie-losanges`, `controleurs-suivent` verts ; les gardes des sources vertes (l'INDEX à reprendre, fait au commit) | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Vert du premier essai, dix contrôles sur dix, aucun avertissement.** (d) discrimine le PPCM : la plus grosse des deux
+  grilles (320) aurait donné 38@1280, la barre 38@1080 ; c'est 960 qui sort.
+- **(g) garde aussi le clic de banc** : un clic sur un losange, sans mouvement, n'a rien déplacé ni ouvert de pas qui
+  compte — sinon 38@1080 ne serait pas sorti seul.
+- **LA PHOTO, REGARDÉE** (f, 1 600 × 1 000) : les deux frappes choisies (contour ambre) un pas de double croche plus loin,
+  la phrase sur une ligne dans la ligne d'état du piano roll, sous la lane de vélocité, sans être coupée.
+- **La flèche ←** n'a pas son cas : elle passe par la même fonction (`decaler(-1)`), au signe près.
+- **Le pas d'annulation n'est pas relu** : c'est celui de `nudgeSelection` (« Décaler »), inchangé, que `controleurs-suivent`
+  défait déjà par Ctrl+Z.
+- **Remis, nommés** : le redimensionnement (sur des barres) à la grille du rang ; la longueur d'insertion au préréglage
+  de quantification ; les rangs dans l'ordre de la carte ; la saisie pas à pas d'une batterie à la grille du rang.
+- **La série n'est pas jouée** : batterie à 46 % à 16 h 59 (huit points en dix minutes de compilation et de bancs), sans
+  charge. La phase touche `app/Source/` : elle n'est FAITE qu'après `./verifier.sh --bancs` (226 bancs), avec D626 à D630.
