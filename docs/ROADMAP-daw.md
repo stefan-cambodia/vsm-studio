@@ -49537,3 +49537,57 @@ verts sur lui aussi. Le banc `tools/fleches-par-rang.sh` (10 contrôles) ; le t�
   de quantification ; les rangs dans l'ordre de la carte ; la saisie pas à pas d'une batterie à la grille du rang.
 - **La série n'est pas jouée** : batterie à 46 % à 16 h 59 (huit points en dix minutes de compilation et de bancs), sans
   charge. La phase touche `app/Source/` : elle n'est FAITE qu'après `./verifier.sh --bancs` (226 bancs), avec D626 à D630.
+
+### Phase D633 — un quatre-vingt-douzième audit : redimensionner une frappe à la grille de son rang, depuis la note qu'on tient (12/11/2026)
+
+*Écrite le 12/11 à 17 h 03 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. Rien ne
+tourne ; la série de D626 à D632 reste à jouer (batterie à 45 %, sans charge).*
+
+**D'OÙ ELLE VIENT : du dernier « remis, nommé » de D627** — « le redimensionnement (sur des barres) à la grille du rang ».
+Une piste de batterie dessinée en BARRES (Affichage ▸ « Batterie en losanges » décoché, D615) se redimensionne par ses
+bords ; le bord tiré s'aimante à la grille de la BARRE (`DragMode::ResizeRight`/`ResizeLeft` : `snapTick`), quand la
+frappe se pose (D622), se tire (D627) et avance aux flèches (D632) à la grille de son rang.
+
+**ET UN DÉFAUT LU AU CODE EN LA PRÉPARANT, À CONFIRMER PAR LA MESURE (hypothèse, pas constat)** : le redimensionnement
+calcule son écart depuis la PREMIÈRE note choisie (`dragSnapshot_.front()`), pas depuis la note qu'on tient. Deux notes
+choisies, le bord droit de la SECONDE tiré d'une double croche : l'écart serait celui entre la souris et la fin de la
+PREMIÈRE — toutes s'allongeraient d'un coup de la distance qui sépare les deux fins. Une seule note choisie, ou la note
+tenue la première de la piste : rien ne se voit, ce qui expliquerait qu'aucun banc ne l'ait vu. Cubase allonge toutes
+les notes choisies du même écart que celle qu'on tient.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D633.1 | **Le bord à la grille du rang tenu** | sur une piste qui a des grilles par rang (D622), le bord tiré d'une frappe s'aimante à la grille du rang de la frappe TENUE (`snapTickDuRang`, la fonction de D622 et D627) ; toute la sélection suit du même écart ; un rang « global » : `snapTick` au bit près ; mesuré par le projet enregistré après un vrai glissé, le témoin à côté |
+| D633.2 | **La note tenue mène le redimensionnement** | l'écart d'un redimensionnement se prend sur la note TENUE (droit : sa fin, gauche : son début), plus sur la première de la sélection ; vaut pour toute piste ; mesuré sur deux notes choisies dont on tient la seconde, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le rang de la frappe tenue mène** (la règle de D627) : un redimensionnement est UN geste, un écart unique pour la
+  sélection ; aimanter chaque bord à sa propre grille déformerait les durées relatives que le code garde déjà exprès
+  (« redimensionner un accord doit préserver ses durées relatives »).
+- **L'aimant reste ABSOLU pour le bord tenu**, comme avant : le bord tiré tombe sur la grille (pas un pas relatif comme
+  au déplacement) — seule la grille change, et la note de référence.
+- **La note qu'on crée en glissant** (outil Dessin, ou clic sur le vide puis glissé : `ResizeRight` aussitôt) a son
+  rang tenu posé à sa création — sans quoi elle hériterait du rang du geste précédent ; sa fin suit donc la grille de
+  son rang, comme son début et sa durée depuis D622. Dit, pas mesuré à part.
+- **Remis, nommés** : la longueur d'insertion au préréglage de quantification ; les rangs dans l'ordre de la carte ; la
+  saisie pas à pas d'une batterie à la grille du rang ; le redimensionnement des CLIPS de l'arrangement (le même calcul
+  depuis la première sélection y existe-t-il ? à lire avant d'écrire).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/redimensionner-par-rang.sh`, la piste « Batterie » des bancs de D627 et
+D632 (TR-909, canal 10, 480 ticks à la noire, la barre à 1/16 = 120 ticks) mais des frappes LONGUES (38@960+240 et
+36@1440+240, pour qu'un bord se saisisse sans l'autre), dessinées en barres (le menu de D615) ; la géométrie lue par
+`relever-losanges` (le début et la FIN de chaque barre), le bord saisi à un pixel à l'intérieur ; de VRAIS glissés lents ;
+les frappes lues dans le projet enregistré (« hauteur@début+durée ») :
+(a) rang 38 à 1/4, le bord droit de la 38 tiré vers ~1 530 : **38@960+480** (fin à 1 440 ; à la barre, 1 560) ;
+(b) sans grille au rang 38, le même geste : **38@960+600** (la barre, rien ne change) ;
+(c) **D633.2** — les deux choisies (Ctrl+A), sans grille, le bord droit de la 36 tiré vers ~1 790 : **38@960+360 et
+36@1440+360** (l'écart de 120 de la note tenue) ;
+(d) rang 36 à 1/4, le bord GAUCHE de la 36 tiré vers ~1 040 : **36@960+720** (début à 960 ; à la barre, 36@1080+600) ;
+(e) rang 38 à 1/4, les deux choisies, le bord droit de la 38 tiré vers ~1 530 : **38@960+480 et 36@1440+480** (l'écart du
+rang tenu pour toutes) ;
+(f) **le témoin** (le binaire de D632, les mêmes gestes) : (a) → **38@960+600** ; (c) → **38@960+840 et 36@1440+840** si
+l'hypothèse du défaut est juste — et si le témoin rend 360/360, l'hypothèse est FAUSSE et D633.2 tombe, dit tel quel ;
+(g) `glisse-par-rang`, `grille-par-rang`, `batterie-losanges`, `fleches-par-rang`, `pianoroll-bord`, `aimant-glisser`
+verts ; la série.
+**Dit d'avance** : les cibles sont à 30 ticks au moins de tout bord d'arrondi des deux grilles, pour un pixel d'erreur
+(~13 ticks à ce zoom).
