@@ -26,15 +26,15 @@ ReserveComponent::ReserveComponent() {
     addAndMakeVisible(relier_);
     // D618.1 : POSER UN FICHIER DE LA RÉSERVE À LA TÊTE — actif sur une ligne dont le fichier est sur le disque.
     poser_.onClick = [this] {
-        const auto fichier = fichierChoisi();
-        if (fichier.isNotEmpty() && onPoser) onPoser(fichier);
+        const auto fichiers = fichiersChoisis();   // D630.1 : toutes les lignes choisies
+        if (!fichiers.isEmpty() && onPoser) onPoser(fichiers);
     };
     poser_.setEnabled(false);
     addAndMakeVisible(poser_);
     // D628.1 : POSER À L'ORIGINE — actif sur une ligne dont le fichier est sur le disque ET porte une origine (BWF).
     poserOrigine_.onClick = [this] {
-        const auto fichier = fichierChoisi();
-        if (fichier.isNotEmpty() && onPoserOrigine) onPoserOrigine(fichier);
+        const auto fichiers = fichiersChoisis();   // D630.1
+        if (!fichiers.isEmpty() && onPoserOrigine) onPoserOrigine(fichiers);
     };
     poserOrigine_.setEnabled(false);
     addAndMakeVisible(poserOrigine_);
@@ -50,6 +50,8 @@ ReserveComponent::ReserveComponent() {
     remarque_.setMinimumHorizontalScale(1.0f);
     addAndMakeVisible(remarque_);
     liste_.setRowHeight(26);
+    // D630.1 : PLUSIEURS LIGNES — Ctrl+clic ajoute, Maj+clic une plage, un clic seul n'en garde qu'une (la règle de JUCE).
+    liste_.setMultipleSelectionEnabled(true);
     liste_.setColour(juce::ListBox::backgroundColourId, vsm::ui::Palette::panel);
     addAndMakeVisible(liste_);
     retraduire();
@@ -166,15 +168,26 @@ std::vector<juce::Range<int>> ReserveComponent::colonnes(int largeur) {
 int ReserveComponent::getNumRows() { return sansDossier_ ? 0 : static_cast<int>(lignes_.size()); }
 
 void ReserveComponent::selectedRowsChanged(int) {
-    const int ligne = liste_.getSelectedRow();
-    const bool valide = ligne >= 0 && ligne < static_cast<int>(lignes_.size());
-    relier_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].etat == Etat::Manquant);
-    poser_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].octets >= 0);   // D618.1 : sur le disque
-    poserOrigine_.setEnabled(valide && lignes_[static_cast<size_t>(ligne)].octets >= 0
-                             && lignes_[static_cast<size_t>(ligne)].origine >= 0.0);   // D628.1 : et une origine
+    // D630.1 : « Relier... » sur UNE ligne manquante ; « Poser » si TOUTES les choisies sont sur le disque (D618.1) ;
+    // « à l'origine » si toutes portent aussi une origine (D628.1) — tout ou rien, comme le geste.
+    int choisies = 0;
+    bool surLeDisque = true, origines = true, manquante = false;
+    for (int i = 0; i < liste_.getNumSelectedRows(); ++i) {
+        const int ligne = liste_.getSelectedRow(i);
+        if (ligne < 0 || ligne >= static_cast<int>(lignes_.size())) continue;
+        const auto& l = lignes_[static_cast<size_t>(ligne)];
+        ++choisies;
+        surLeDisque = surLeDisque && l.octets >= 0;
+        origines = origines && l.origine >= 0.0;
+        manquante = l.etat == Etat::Manquant;
+    }
+    relier_.setEnabled(choisies == 1 && manquante);
+    poser_.setEnabled(choisies > 0 && surLeDisque);
+    poserOrigine_.setEnabled(choisies > 0 && surLeDisque && origines);
 }
 
 double ReserveComponent::origineChoisie() const {
+    if (liste_.getNumSelectedRows() != 1) return -1.0;   // D630.1 : l'origine d'UNE ligne
     const int ligne = liste_.getSelectedRow();
     return ligne >= 0 && ligne < static_cast<int>(lignes_.size()) ? lignes_[static_cast<size_t>(ligne)].origine : -1.0;
 }
@@ -187,14 +200,21 @@ double ReserveComponent::origineDuFichier(const juce::AudioFormatReader& lecteur
     return reference >= 0 ? static_cast<double>(reference) / lecteur.sampleRate : -1.0;
 }
 
-bool ReserveComponent::choisir(const juce::String& fichier) {
+bool ReserveComponent::choisir(const juce::String& fichier, bool aussi) {
     for (size_t i = 0; i < lignes_.size(); ++i)
         if (lignes_[i].fichier == fichier) {
-            liste_.selectRow(static_cast<int>(i));
+            liste_.selectRow(static_cast<int>(i), false, !aussi);   // D630.1 : `aussi` n'efface pas le choix (Ctrl+clic)
             selectedRowsChanged(static_cast<int>(i));
             return true;
         }
     return false;
+}
+
+juce::StringArray ReserveComponent::fichiersChoisis() const {   // D630.1 : l'ordre de la liste
+    juce::StringArray fichiers;
+    for (size_t i = 0; i < lignes_.size(); ++i)
+        if (liste_.isRowSelected(static_cast<int>(i))) fichiers.add(lignes_[i].fichier);
+    return fichiers;
 }
 
 juce::String ReserveComponent::fichierChoisi() const {
@@ -208,6 +228,12 @@ void ReserveComponent::paintListBoxItem(int row, juce::Graphics& g, int width, i
     const auto& l = lignes_[static_cast<size_t>(row)];
     g.setColour(selected ? vsm::ui::Palette::panelRaised : vsm::ui::Palette::panel);
     g.fillRect(0, 0, width, height);
+    // D630.1 : LA LIGNE CHOISIE SE VOIT — regardé sur la photo de D630 : avec deux lignes choisies, le fond à peine plus
+    // clair ne disait pas lesquelles ; un liseré sarcelle à gauche, la couleur de ce qui est en jeu.
+    if (selected) {
+        g.setColour(vsm::ui::Palette::accentTeal);
+        g.fillRect(0, 0, 4, height);
+    }
     const auto c = colonnes(width);
     const auto ecrire = [&](size_t i, const juce::String& texte, juce::Colour couleur,
                             juce::Justification j = juce::Justification::centredLeft) {

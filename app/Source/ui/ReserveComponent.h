@@ -55,16 +55,21 @@ public:
     std::function<void()> onNettoyer, onRafraichir;
     /// D608.1 : « Relier... » sur une ligne MANQUANT choisie — le chemin manquant, tel que le projet l'écrit.
     std::function<void(const juce::String&)> onRelier;
-    /// Choisit la ligne de ce fichier (le verbe de banc `reserve-choisir:`) ; faux s'il n'y est pas.
-    bool choisir(const juce::String& fichier);
+    /// Choisit la ligne de ce fichier (le verbe de banc `reserve-choisir:`) ; faux s'il n'y est pas. D630.1 : `aussi` —
+    /// l'AJOUTE au choix, comme un Ctrl+clic (le verbe `reserve-choisir-aussi:`).
+    bool choisir(const juce::String& fichier, bool aussi = false);
     juce::String fichierChoisi() const;
+    /// D630.1 : toutes les lignes choisies, dans l'ordre de la liste.
+    juce::StringArray fichiersChoisis() const;
+    int nombreChoisies() const { return liste_.getNumSelectedRows(); }
     bool relierActif() const { return relier_.isEnabled(); }
     /// D618.1 : « Poser à la tête » sur une ligne choisie dont le fichier est sur le disque — le chemin, tel que le projet
     /// l'écrit ou que le dossier le contient.
-    std::function<void(const juce::String&)> onPoser;
+    /// D630.1 : TOUTES les lignes choisies, dans l'ordre de la liste — un geste.
+    std::function<void(const juce::StringArray&)> onPoser;
     bool poserActif() const { return poser_.isEnabled(); }
     /// D628.1 : « Poser à l'origine » sur une ligne choisie dont le fichier est sur le disque et porte une origine.
-    std::function<void(const juce::String&)> onPoserOrigine;
+    std::function<void(const juce::StringArray&)> onPoserOrigine;   // D630.1 : toutes les lignes choisies
     bool poserOrigineActif() const { return poserOrigine_.isEnabled(); }
     /// L'origine de la ligne choisie (secondes), ou −1 : aucune ligne, ou un fichier sans origine.
     double origineChoisie() const;

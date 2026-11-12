@@ -49358,3 +49358,37 @@ qui l'atteigne : il n'est PAS mesuré, et c'est dit) ;
 (d) une ligne seule : le comportement de D618/D628 inchangé — `poser-a-l-origine` et `poser-depuis-reserve` verts ;
 (e) le témoin (le binaire de D629) : `reserve-choisir-aussi:` inconnu, une seule ligne choisie, une piste posée ;
 (f) l'anglais (le pas : *Insert files from the pool*) ; `reserve-fichiers`, `relier-fichier`, `chercher-manquants` verts.
+
+### Phase D630 — MESURÉE, la série à jouer (12/11/2026, 07 h 45 à l'horloge)
+
+*Écrite avant son code à 07 h 27 (commitée avant toute ligne) ; **le banc vu ROUGE d'abord sur le binaire de D629** — le
+verbe `reserve-choisir-aussi:` inconnu, une seule piste posée : la raison écrite. Le banc `tools/poser-plusieurs.sh`
+(8 contrôles) ; le témoin : le binaire de D629 (`build/temoin-D629`).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D629) | tenu |
+|---|---|---|---|---|
+| D630 (a) | deux lignes : « choisies 2 ; Relier grisé ; Poser actif ; À l'origine actif » | **« choisies 2 (audio/bwf48.wav) ; Relier grisé ; Poser actif ; À l'origine actif »** | le verbe inconnu | **oui** |
+| D630 (a) | « Poser à la tête » : bwf index 1, bwf48 index 2, à 1 920 ; 1 pas | **bwf ; 1 ; 1920** et **bwf48 ; 2 ; 1920** (3 pistes) ; **1 : Poser des fichiers de la réserve** | une piste (bwf) | **oui** |
+| D630 (a) | Ctrl+Z : les deux retirées d'un coup | **aucune** des deux, 1 piste | — | **oui** (ne discrimine qu'avec la ligne au-dessus : sur le témoin aussi il « passe ») |
+| D630 (b) | « Poser à l'origine » : les deux à 2 880, 1 pas | **2880** et **2880**, **1** pas | — | **oui** |
+| D630 (c) | bwf + sans : « À l'origine grisé » ; pressé : rien | « … Poser actif ; À l'origine grisé » ; « Poser à l'origine — GRISÉ … rien n'a été fait » ; **0** pas, aucune piste | — | **oui** |
+| D630 (d) | une ligne seule : D618/D628 inchangés | `poser-a-l-origine` (15 contrôles), `poser-depuis-reserve` verts | — | **oui** |
+| D630 (f) | l'anglais | « Insert at playhead » dans « Pool » → deux pistes à 1 920 | — | **oui** |
+| — | les voisins | `reserve-fichiers`, `relier-fichier`, `chercher-manquants`, `description-importee`, `piste-sous-la-choisie` (`addTrack` a changé) verts ; gardes vertes | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Deux corrections après le premier essai, et dites.** (1) Le second verbe REMPLAÇAIT le premier choix (« choisies 1 ») :
+  `showReserve` relit la liste, et la désélectionne, à chaque appel ; un Ctrl+clic se fait dans la fenêtre ouverte — le
+  verbe « aussi » ne la rouvre plus si elle l'est. C'était le verbe de banc, pas le geste à la souris. (2) La garde
+  `verbes-uniques` a lu le calcul de `aussi` (un second `startsWithIgnoreCase` du même verbe) comme un verbe caché ;
+  réécrit sans lui, 83 verbes, 0 caché.
+- **LA PHOTO, REGARDÉE, a fait changer le code** : deux lignes choisies ne se distinguaient presque pas (le fond « choisi »
+  est un gris à peine plus clair, depuis D607) ; un liseré sarcelle de 4 px à gauche de chaque ligne choisie — sur la
+  photo suivante, `bwf.wav` et `sans.wav` se lisent choisies d'un coup d'œil.
+- **Le refus « tout ou rien » n'est PAS mesuré** : aucun verbe n'atteint le geste avec une ligne qui refuserait (les
+  boutons grisés l'empêchent, et (c) le vérifie) ; il est écrit, pas prouvé.
+- **Les poses ne disent qu'un nom dans la ligne d'état** (« Fichier posé à la tête : a, b ») — la clé de traduction est celle
+  d'un fichier ; non changé.
+- **Remis, nommés** : plusieurs fichiers sur UNE piste, bout à bout ; importer dans la réserve sans placer ; nos prises
+  sans origine.
+- **La série n'est pas jouée** : batterie à 34 % ; elle se joue pour D626 à D630 ensemble, 225 bancs.

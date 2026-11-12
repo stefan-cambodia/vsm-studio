@@ -795,6 +795,8 @@ const Paire kAnglais[] = {
       "A new audio track, below the selected one, plays the chosen file from the playhead. The file stays where it is: nothing is copied." },
     { "Poser un fichier de la réserve",
       "Insert a file from the pool" },
+    { "Poser des fichiers de la réserve",   // D630.1 : le pas de plusieurs poses
+      "Insert files from the pool" },
     { "%1 manque sur le disque : rien n'a été posé.",
       "%1 is missing from the disk: nothing was inserted." },
     { "Ce fichier ne se lit pas comme un fichier audio : rien n'a été posé.",

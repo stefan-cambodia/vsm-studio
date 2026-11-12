@@ -443,17 +443,25 @@ public:
         // D615.1 : la géométrie des losanges du piano roll (`VSM_LOSANGE`), de quoi y cliquer par `clic:pianoroll:`.
         if (geste.equalsIgnoreCase("relever-losanges")) { std::fputs(pianoRoll_.releverLosanges().toRawUTF8(), stderr); return true; }
         // D608.1 : choisir une ligne de la réserve, comme d'un clic — « Relier... » se presse ensuite par `cliquer:`.
-        if (geste.startsWithIgnoreCase("reserve-choisir:")) {
-            showReserve();
+        // D630.1 : `reserve-choisir-aussi:` AJOUTE la ligne au choix (un Ctrl+clic) ; le relevé dit combien sont choisies.
+        if (geste.startsWithIgnoreCase("reserve-choisir:") || geste.startsWithIgnoreCase("reserve-choisir-aussi:")) {
+            const bool aussi = geste.upToFirstOccurrenceOf(":", false, false).trim().endsWithIgnoreCase("-aussi");
+            // CORRIGÉ APRÈS LE PREMIER ESSAI DU BANC : `showReserve` RELIT la liste (et efface le choix) à chaque appel —
+            // le second verbe remplaçait le premier choix (« choisies 1 »). Un Ctrl+clic se fait dans la fenêtre OUVERTE :
+            // le verbe « aussi » ne la rouvre que si elle ne l'est pas.
+            if (!aussi || reserveWindow_ == nullptr || !reserveWindow_->isVisible()) showReserve();
             const auto fichier = geste.fromFirstOccurrenceOf(":", false, false).trim();
-            const bool trouve = reservePanel_.choisir(fichier);
-            std::fputs(("VSM_RESERVE : choisie " + fichier + (trouve ? juce::String() : juce::String(" INTROUVABLE"))
+            const bool trouve = reservePanel_.choisir(fichier, aussi);
+            std::fputs(((aussi ? "VSM_RESERVE : choisies " + juce::String(reservePanel_.nombreChoisies()) + " (" + fichier + ")"
+                               : "VSM_RESERVE : choisie " + fichier)
+                        + (trouve ? juce::String() : juce::String(" INTROUVABLE"))
                         + " ; Relier " + (reservePanel_.relierActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))
                         + " ; Poser " + (reservePanel_.poserActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))   // D618.1
                         // D628.1 : « Poser à l'origine », et l'origine de la ligne — « sans origine » quand le fichier n'en porte pas.
                         + juce::String::fromUTF8(" ; \xc3\x80 l'origine ") + (reservePanel_.poserOrigineActif() ? "actif" : juce::String::fromUTF8("gris\xc3\xa9"))
-                        + (reservePanel_.origineChoisie() >= 0.0 ? " (origine " + juce::String(reservePanel_.origineChoisie(), 3) + " s)"
-                                                                 : juce::String(" (sans origine)"))
+                        + (reservePanel_.nombreChoisies() > 1 ? juce::String()   // D630.1 : l'origine d'UNE ligne seulement
+                           : reservePanel_.origineChoisie() >= 0.0 ? " (origine " + juce::String(reservePanel_.origineChoisie(), 3) + " s)"
+                                                                   : juce::String(" (sans origine)"))
                         + "\n").toRawUTF8(), stderr);
             return trouve;
         }
@@ -1851,7 +1859,9 @@ private:
     /// neuve sous la choisie, le fichier désigné en place, un pas. Faux, et dit, si le fichier manque ou ne se lit pas.
     /// D628.1 : `aLOrigine` — *At Origin* : à la référence de temps BWF du fichier, convertie par la carte de tempo ;
     /// refusé, et dit, si le fichier n'en porte pas.
-    bool poserDepuisLaReserve(const juce::String& fichier, bool aLOrigine = false);
+    /// D630.1 : PLUSIEURS FICHIERS, UN GESTE — chacun sur sa piste neuve, dans l'ordre donné, en UN pas ; tout ce qui
+    /// peut refuser est vérifié pour tous avant d'ouvrir le pas, et un refus refuse le geste entier.
+    bool poserDepuisLaReserve(const juce::StringArray& fichiers, bool aLOrigine = false);
 
     vsm::app::ui::BrowserComponent browserPanel_;
     std::unique_ptr<PanelWindow> browserWindow_;
@@ -2379,8 +2389,11 @@ private:
     /// qu'aucun appelant ne le devine.
     /// D618.1 : `libellePas` non vide — le pas porte le nom du GESTE qui ajoute la piste (« Poser un fichier de la
     /// réserve ») : un geste, un pas, un seul chemin de création de piste.
+    /// D630.1 : `ouvrirLePas` faux — le geste a DÉJÀ ouvert le pas de toutes ses pistes (poser plusieurs fichiers de la
+    /// réserve) : la piste s'ajoute dans ce pas-là, sans en ouvrir un par piste.
     size_t addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi,
-                    const std::string& nom = {}, bool sousLaChoisie = false, const juce::String& libellePas = {});
+                    const std::string& nom = {}, bool sousLaChoisie = false, const juce::String& libellePas = {},
+                    bool ouvrirLePas = true);
     void removeSelectedTrack();
     /// D589.1 : les pistes choisies (D38) dans un dossier neuf, d'un geste (`moveTracksIntoNewFolder`, le cœur).
     void rangerLesChoisiesDansUnDossier();
