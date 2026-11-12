@@ -49629,6 +49629,24 @@ ancre ses bords sur le clip TENU (`ancreGeste_` : la fin jouée du clip sous la 
 gauche, D547.4) et applique l'écart relatif depuis cette ancre (`gesteDernier_`) ; il n'y a pas d'équivalent de
 `dragSnapshot_.front()`. Le défaut de D633.2 était propre au piano roll.
 
+### La série de D626 à D633 — JOUÉE (12/11, 21 h 13 → 13/11, 06 h 30 ; écrit le 13/11 à 06 h 31 à l'horloge) — D626 À D633 SONT FAITES
+
+`./verifier.sh --bancs` sous `kde-inhibit --screenSaver` (l'autorisation du 30/10 ; retirée à la fin, la liste est vide) :
+**226 bancs verts sur 227**, dont les sept de ces phases (`pas-a-pas-longueur`, `glisse-par-rang`, `poser-a-l-origine`,
+`poser-plusieurs`, `fleches-par-rang`, `redimensionner-par-rang`, et `prise-par-rang` avec le cas de D631) ; préférences de
+l'utilisateur identiques. **557 min au compteur, dont 7 h 22 de veille** : la batterie (68 % au départ) a atteint le seuil
+de la veille de l'utilisateur (15 %) et le poste a dormi de 22 h 59 à 06 h 22 (`journalctl` : `PM: suspend entry` puis
+`exit`) ; la série a repris seule au réveil, batterie à 100 %. Le banc en cours pendant la veille, `pianoroll-zones.sh`, est
+vert. Le compositeur de 629 à 727 Mo ; le sommet de la session (4 056 Mo) n'est pas daté par la série.
+
+**Le rouge, et ce qu'il est** : `automation-globale.sh` (D601) à 22 h 28, deux contrôles, tous deux sur la seule partie
+« et dit » — la ligne d'état du piano roll lue après le geste portait **« Mes 1.3.35 D#6 | 1 note(s) sur la piste »**, le
+relevé de SURVOL, au lieu de « Lecture éteinte sur 2 piste(s) ». Aucune veille à cette heure (elles sont à 21 h 41 et
+22 h 59). **Rejoué seul à 06 h 31, écran allumé : vert**, la ligne d'état dit « Lecture éteinte sur 2 piste(s) » puis
+« Lecture suspendue : le volume ». Piste, non mesurée : un pointeur réel au-dessus du piano roll de la fenêtre neuve réécrit
+la ligne d'état entre le geste et le relevé — tout banc qui lit `VSM_ETAT_PIANOROLL` y est exposé, `fleches-par-rang` (D632)
+compris.
+
 ### Phase D634 — un quatre-vingt-treizième audit : en saisie pas à pas, une frappe dure une case de son rang (12/11/2026)
 
 *Écrite le 12/11 à 21 h 16 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série
