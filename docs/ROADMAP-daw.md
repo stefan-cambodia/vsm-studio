@@ -49449,3 +49449,57 @@ sa fin ; l'une au moins la remplit) ; ceux de la quantification, (b) à (d), n'o
 - **CORRIGÉ : le titre du commit de cette mesure dit « sept semaines après avoir été écrite » — c'est FAUX** : D624 a été
   écrite le 10/11 à 16 h 37, deux jours avant ; le chiffre n'a été lu nulle part. Le commit poussé ne se réécrit pas ; c'est
   ici que le chiffre juste est écrit.
+
+### Phase D632 — un quatre-vingt-onzième audit : les flèches d'une batterie avancent au pas de ses rangs (12/11/2026)
+
+*Écrite le 12/11 à 16 h 49 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. Rien ne
+tourne ; la série de D626 à D630 reste à jouer — batterie à 54 %, sans charge (ce poste ne charge qu'en veille), quand la
+série de D625 en a coûté 48 points en 109 min : elle s'arrêterait sur la veille de l'utilisateur à 15 %.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D627** — « le déplacement au clavier (flèches) à la grille du rang ». Depuis
+D627, une frappe de caisse claire dont le rang est réglé à 1/4 se TIRE à la souris par pas de noire ; la même frappe,
+choisie, avance par la flèche → d'une double croche (`keyPressed` : `gridTicks()`, la grille de la barre) et quitte la
+grille de son rang au premier appui. La règle de D627 (« la frappe saisie mène ») n'a pas d'équivalent au clavier : rien
+n'est saisi.
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D632.1 | **Les flèches au pas des rangs choisis** | sur une piste qui a des grilles par rang (D622), ← et → déplacent la sélection du plus petit pas COMMUN aux grilles des rangs choisis (un rang « global » compte pour la grille de la barre) ; Maj : quatre pas, comme avant ; une sélection dont aucun rang n'a de grille propre, ou une piste sans grilles par rang : la grille de la barre, au tick près ; un pas commun plus long qu'une mesure : la grille de la barre, et la ligne d'état le DIT ; mesuré par le relevé des frappes du projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le plus petit pas commun (PPCM), pas la grille d'un rang choisi au hasard** : c'est le seul pas qui garde CHAQUE frappe
+  sur la grille de son rang — une caisse claire à 1/4 et une grosse caisse à 1/16 choisies ensemble avancent d'une noire,
+  et aucune ne quitte sa grille ; le pas de la plus grosse grille ne suffit pas (1/4T et 1/8 : 320 et 240 ticks, le pas
+  commun est 960, la plus grosse en déplacerait une hors de la sienne). Un seul écart pour toute la sélection, comme au
+  glissé de D627 : le motif qu'on déplace ne se déforme pas.
+- **La règle d'avant se garde par construction** : aucun rang propre dans la sélection, le pas EST `gridTicks()` (la
+  grille adaptative au zoom comprise), sans branche qui la recalcule.
+- **Au-delà d'une mesure, la barre, et c'est dit** : des grilles qui ne se rencontrent pas (1/4. et 1/4T : 720 et 320,
+  pas commun 2 880 ticks, une mesure et demie) feraient sauter la sélection de plus d'une mesure à chaque appui — un geste
+  que personne n'attend d'une flèche. La sélection avance alors au pas de la barre, et la ligne d'état le dit (« Les
+  grilles des rangs choisis ne se rencontrent pas dans la mesure : décalé au pas de la barre ») — un pas remplacé en
+  silence serait une panne muette. La mesure est celle de la première frappe choisie.
+- **Les flèches sans sélection** (le défilement) ne changent pas : elles ne déplacent aucune frappe.
+- **Remis, nommés** : le redimensionnement (sur des barres) à la grille du rang ; et ceux de D626 (la longueur
+  d'insertion au préréglage de quantification ; les rangs dans l'ordre de la carte ; la saisie pas à pas d'une batterie à
+  la grille du rang).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/fleches-par-rang.sh`, la piste « Batterie » de `glisse-par-rang`
+(TR-909, canal 10, 480 ticks à la noire, la barre à 1/16 = 120 ticks), des frappes 38@960 et 36@1440 ; une frappe choisie
+seule par un clic sur son losange (`clic:pianoroll:`, la géométrie de `relever-losanges`), les deux par « Tout
+sélectionner » ; la flèche par `touche:pianoroll:cursor right` ; les frappes lues dans le projet enregistré :
+(a) rang 38 à 1/4, la 38 seule, → : **38@1440** (un pas de 480 ; à la grille de la barre, 38@1080) ;
+(b) rang 38 à 1/4, la 36 seule (rang global), → : **36@1560** (le pas de la barre) ;
+(c) rang 38 à 1/4, les deux, → : **38@1440 et 36@1920** (PPCM de 480 et 120 : 480) ;
+(d) rang 38 à 1/4T et rang 36 à 1/8, les deux, → : **38@1920 et 36@2400** (PPCM de 320 et 240 : 960 ; la plus grosse
+grille donnerait 38@1280, la barre 38@1080) ;
+(e) rang 38 à 1/4, la 38 seule, Maj+→ : **38@2880** (quatre pas de 480) ;
+(f) rang 38 à 1/4. et rang 36 à 1/4T, les deux, → : **38@1080 et 36@1560** (PPCM 2 880, plus d'une mesure : la barre), et
+`relever-etat` dit la phrase ;
+(g) sans grille au rang 38, la 38 seule, → : **38@1080** (rien ne change) ;
+(h) **le témoin** (le binaire de D630, `build/temoin-D630`, les mêmes gestes) : (a) → **38@1080** — le défaut ;
+(i) l'anglais : (f) dit sa phrase en anglais ;
+(j) `glisse-par-rang`, `grille-par-rang`, `batterie-losanges`, `controleurs-suivent` (les flèches y déplacent des notes et
+leurs contrôleurs) verts ; la série.
+**Dit d'avance** : un clic sur un losange passe par `mouseDown`/`mouseUp` sans mouvement ; s'il ouvrait un pas
+d'annulation ou déplaçait la frappe, (g) le montrerait (38@1080 attendu, rien d'autre).
