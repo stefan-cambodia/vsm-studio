@@ -49770,3 +49770,55 @@ Le banc `tools/prereglages-quantification.sh` (D570.2), passé de 4 à **8** con
 - **La photo de la boîte, en anglais**, recomposée sur `0x1f1f24` : trois lignes, rien de coupé.
 - **Remis, nommé** : les rangs dans l'ordre de la carte.
 - **La série n'est pas jouée** pour D634 et D635 (228 bancs) — elle se joue maintenant, batterie à 91 %.
+
+### Phase D636 — un quatre-vingt-quinzième audit : les rangs dans l'ordre de la carte (13/11/2026)
+
+*Écrite le 13/11 à 06 h 45 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série
+de D634-D635 TOURNE (lancée à 06 h 40, batterie à 90 %) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du dernier remis de la batterie, nommé depuis D609** — « les rangs dans l'ordre de la carte ». L'éditeur
+de batterie de Cubase range ses pièces dans l'ordre de la *Drum Map*, que l'on change en tirant une ligne : la grosse
+caisse, la caisse claire et le charleston l'un sous l'autre, quelle que soit leur hauteur MIDI (36, 38, 42 ; mais une
+grosse caisse 35, un tom 41 et un ride 51 ne se rangent pas d'eux-mêmes). Dans VSM Studio, la carte (D609) liste ses
+lignes par numéro croissant, et le piano roll replié (« Replier », D20.2) par hauteur décroissante : aucun des deux ne se
+range, et ils ne se rangent même pas pareil.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D636.1 | **L'ordre des lignes de la carte** — *Drum Map*, l'ordre des pièces | dans la carte, chaque ligne porte ▲ et ▼ (grisés en haut et en bas) ; un appui déplace la ligne d'un rang ; l'ordre est au MODÈLE (`Track::drumOrder`), écrit au projet (`"drumOrder"`, seulement s'il est posé) et au préréglage de piste, comme la grille par rang (D622) ; un appui, un pas d'annulation (« Ordre de la carte ») ; une note relue hors de 0..127 ou en double est écartée et comptée (`drumMapRejected`) ; mesuré par le relevé de la carte, le projet enregistré et l'historique |
+| D636.2 | **Le piano roll replié suit la carte** | sur une piste dont l'ordre est posé, « Replier » range ses rangées dans l'ordre de la carte, de haut en bas — les hauteurs jouées, celles que l'ordre ne nomme pas à la suite, par numéro croissant comme la carte les liste ; une frappe se pose, se saisit et se tire dans la rangée qu'on voit ; sans ordre posé, le repli reste par hauteur décroissante, AU BIT PRÈS ; déplié, le piano roll reste un clavier (l'axe des hauteurs) ; mesuré par la position des frappes (`relever-losanges`), le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le premier appui fige l'ordre AFFICHÉ par la carte** (numéros croissants), puis le déplace : l'ordre posé est toujours
+  la liste entière que la carte montre — on ne range pas ce qu'on ne voit pas. Le piano roll replié passe alors, d'un
+  coup, de l'ordre décroissant au sien : c'est ce que « suivre la carte » veut dire, et c'est dit au premier appui (ligne
+  d'état : « Le piano roll replié suit l'ordre de la carte »).
+- **Sans ordre posé, rien ne bouge** : ni la carte (croissante), ni le repli (décroissant). Les accorder d'office
+  changerait la vue de tout projet existant sans que personne l'ait demandé.
+- **Le repli seulement** : déplié, le piano roll est un clavier, et ses rangées SONT les hauteurs — un ordre libre y
+  ferait mentir le clavier dessiné à gauche. Le repli est déjà une liste de rangées (`rangees_`, D20.2) : c'est elle qui
+  prend l'ordre.
+- **Les chemins du repli qui supposent l'ordre des hauteurs** (`rowOfNote` compte les rangées plus aiguës ; la molette, les
+  flèches sans sélection et le glissé de la main déplacent la vue en DEMI-TONS) passent, sous un ordre posé, par l'INDEX
+  de la rangée ; sans ordre, ils restent tels quels. Deux chemins le temps qu'un ordre existe, c'est le prix de « au bit
+  près » pour tous les projets d'avant.
+- **L'ordre est l'affaire de l'écriture, pas du son** : le moteur ne le lit pas (rien à replanifier), le rendu hors ligne
+  non plus ; le fichier le garde parce que c'est une préférence du morceau (D363 : ce qui dépend du morceau va dans le
+  projet).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/ordre-de-la-carte.sh`, une piste « Batterie » (TR-909, canal 10) qui écrit
+36@0, 38@480 et 42@960 ; la carte relue (`relever-carte`), le piano roll replié (le bouton « Replier »), les frappes situées par
+`relever-losanges` (leur hauteur à l'écran, y), le projet enregistré :
+(a) **le témoin de la règle, sans geste** : la carte liste 36, 38, 42 ; replié, 42 en haut, puis 38, puis 36 (y croissants
+dans cet ordre) ; le projet n'a pas de `"drumOrder"` ;
+(b) ▲ de la ligne 42 deux fois (`carte-monter:42`) : la carte liste **42, 36, 38** ; replié, **42, 36, 38** de haut en bas ;
+le projet porte `"drumOrder": [42, 36, 38]` ; **deux** pas « Ordre de la carte » à l'historique ;
+(c) puis Ctrl+Z : la carte liste 36, 42, 38 (un pas défait) ;
+(d) le projet de (b) rouvert : la carte et le repli dans l'ordre 42, 36, 38 ;
+(e) sous l'ordre de (b), un clic dans la rangée du MILIEU (celle de 36) à la mesure 2 pose une frappe **36** — la rangée qu'on
+voit, pas la hauteur qui serait là sur un clavier ;
+(f) **le témoin** (le binaire de D635, `build/temoin-D635`, les gestes de (b)) : le verbe inconnu, le repli 42, 38, 36 ;
+(g) aux tests d'interchange : l'ordre écrit seulement s'il est posé, relu, rendu au modèle, et une entrée hors bornes ou en
+double écartée et comptée ; le préréglage de piste le porte ;
+(h) l'anglais (les infobulles de ▲ et ▼) ; `carte-batterie`, `adapter-batterie`, `grille-par-rang`, `batterie-losanges`,
+`pianoroll-zones` (le repli par hauteur) verts ; les suites ; la série.
