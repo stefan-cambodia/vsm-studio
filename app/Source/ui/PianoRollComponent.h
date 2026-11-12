@@ -466,6 +466,8 @@ private:
     /// « global » compte pour `gridTicks()`) ; `gridTicks()` au bit près quand aucun rang choisi n'a de grille propre ;
     /// `gridTicks()` aussi quand le pas commun dépasse une mesure, et `auDelaDeLaMesure` le dit.
     vsm::midi::Tick pasDesFleches(bool* auDelaDeLaMesure = nullptr) const;
+    /// D633.2 : la note TENUE d'un glissé, dans la photo d'avant (la première de la photo si elle n'y est pas).
+    const vsm::sequencer::Note& noteTenue() const;
     vsm::sequencer::Note* findNoteAt(juce::Point<float> pos, bool* nearRightEdge = nullptr,
                                       bool* nearLeftEdge = nullptr);
 

@@ -49591,3 +49591,35 @@ l'hypothèse du défaut est juste — et si le témoin rend 360/360, l'hypothès
 verts ; la série.
 **Dit d'avance** : les cibles sont à 30 ticks au moins de tout bord d'arrondi des deux grilles, pour un pixel d'erreur
 (~13 ticks à ce zoom).
+
+### Phase D633 — MESURÉE, la série à jouer (12/11/2026, 21 h 12 à l'horloge)
+
+*Écrite avant son code à 17 h 03 (commitée avant toute ligne) ; **le banc vu ROUGE d'abord sur le binaire de D632**, quatre
+contrôles tombés pour la raison écrite — le bord à la grille de la barre en (a), (d), (e), et en (c) l'écart pris sur la
+première note. Le banc `tools/redimensionner-par-rang.sh` (7 contrôles) ; le témoin : `build/temoin-D632`. La mesure du
+binaire neuf a été faite à 17 h 15 ; ce compte rendu est écrit à 21 h 12, après une interruption de la séance.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D632) | tenu |
+|---|---|---|---|---|
+| D633 (a) | rang 38 à 1/4, bord droit vers ~1 530 : 38@960+480 | **38@960+480** | **38@960+600** — la barre | **oui** |
+| D633 (b) | sans grille, le même geste : 38@960+600 | **38@960+600** | 38@960+600 | **oui** |
+| D633 (c) | les deux, bord droit de la 36 vers ~1 790 : 360 et 360 | **38@960+360 36@1440+360** | **38@960+840 36@1440+840** — le défaut | **oui** |
+| D633 (d) | rang 36 à 1/4, bord gauche vers ~1 040 : 36@960+720 | **36@960+720** | 36@1080+600 | **oui (le banc corrigé, voir plus bas)** |
+| D633 (e) | rang 38 à 1/4, les deux, bord droit de la 38 : 480 et 480 | **38@960+480 36@1440+480** | 38@960+600 36@1440+600 | **oui** |
+| D633 (g) | les voisins | `glisse-par-rang`, `fleches-par-rang`, `pianoroll-bord`, `aimant-glisser` verts | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **L'HYPOTHÈSE DE D633.2 EST CONFIRMÉE PAR LE TÉMOIN** : deux notes choisies, le bord droit de la seconde tiré d'une
+  double croche, et les deux s'allongeaient de **600** ticks (240 → 840) — la distance entre la fin de la première et la
+  souris. Le défaut vaut pour toute piste, pas seulement la batterie : il date du premier redimensionnement à plusieurs
+  notes, et aucun banc ne tenait deux notes dont la seconde.
+- **Un contrôle tombé sur le BANC, et dit** : au premier essai du binaire neuf, (d) a été rouge avec la valeur attendue
+  (**36@960+720**) : les deux frappes commencent alors à 960, et le lecteur du banc trie à égalité par hauteur — 36 avant 38 ;
+  la chaîne attendue les écrivait dans l'autre ordre. Corrigée, rejouée : 7 sur 7.
+- **La garde d'une photo vide** (un Maj+clic qui retire la note tenue de la sélection) est écrite, pas mesurée : aucun
+  verbe ne tient un bord avec Maj.
+- **La note créée en glissant** (son rang tenu posé à la création) n'a pas son cas.
+- **Remis, nommés** : la longueur d'insertion au préréglage de quantification ; les rangs dans l'ordre de la carte ; la
+  saisie pas à pas d'une batterie à la grille du rang ; le redimensionnement des CLIPS de l'arrangement (le même calcul
+  depuis la première sélection y existe-t-il ? à lire).
+- **La série n'est pas jouée** : D626 à D633, 227 bancs.

@@ -319,6 +319,13 @@ Tick PianoRollComponent::pasDesFleches(bool* auDelaDeLaMesure) const {
     return pas;
 }
 
+const Note& PianoRollComponent::noteTenue() const {
+    // D633.2 : `dragSnapshot_` n'est jamais vide pendant un redimensionnement (la note tenue y est mise au `mouseDown`).
+    for (const auto& n : dragSnapshot_)
+        if (n.id == draggedNoteId_) return n;
+    return dragSnapshot_.front();
+}
+
 Note* PianoRollComponent::findNoteAt(juce::Point<float> pos, bool* nearRightEdge, bool* nearLeftEdge) {
     if (nearRightEdge) *nearRightEdge = false;
     if (nearLeftEdge) *nearLeftEdge = false;
@@ -2362,6 +2369,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
         selectedNoteIds_.clear();
         selectedNoteIds_.insert(newNote.id);
         draggedNoteId_ = newNote.id;
+        dragRangSaisi_ = noteNumber;   // D633.1 : la note qu'on crée en glissant tient SON rang, pas celui du geste d'avant
         dragSnapshot_ = { newNote };
         dragMode_ = DragMode::ResizeRight;
         startAudition(noteNumber, defaultVelocity_);
@@ -2477,7 +2485,14 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
         }
 
         case DragMode::ResizeRight: {
-            const Tick newEnd = snapTick(xToTick(pos.x));
+            // Une photo VIDE (Maj+clic qui a retiré la note tenue du choix) : rien à redimensionner — `noteTenue()` n'a
+            // alors rien à rendre, et la boucle d'avant ne tournait pas non plus.
+            if (dragSnapshot_.empty()) break;
+            // D633.1 : le bord à la grille du rang TENU (`snapTickDuRang` rend `snapTick` au bit près pour un rang global).
+            const Tick newEnd = snapTickDuRang(xToTick(pos.x), dragRangSaisi_);
+            // D633.2 : L'ÉCART SE PREND SUR LA NOTE TENUE. Il se prenait sur `dragSnapshot_.front()`, la PREMIÈRE note
+            // choisie : le bord de la seconde, tiré d'une double, allongeait toutes les notes de l'écart entre les deux fins.
+            const Tick delta = newEnd - noteTenue().endTick;
             for (const auto& snap : dragSnapshot_) {
                 auto it = std::find_if(track->notes.begin(), track->notes.end(),
                                         [&snap](const Note& n) { return n.id == snap.id; });
@@ -2485,7 +2500,6 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
                 // Toutes les notes sélectionnées suivent le même DELTA de
                 // durée, pas la même fin absolue : redimensionner un accord
                 // doit préserver ses durées relatives.
-                const Tick delta = newEnd - dragSnapshot_.front().endTick;
                 it->endTick = std::max(snap.endTick + delta, it->startTick + 1);
             }
             dragEdite_ = true;
@@ -2495,12 +2509,13 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
         }
 
         case DragMode::ResizeLeft: {
-            const Tick newStart = snapTick(xToTick(pos.x));
+            if (dragSnapshot_.empty()) break;   // la garde du bord droit
+            const Tick newStart = snapTickDuRang(xToTick(pos.x), dragRangSaisi_);   // D633.1
+            const Tick delta = newStart - noteTenue().startTick;                   // D633.2
             for (const auto& snap : dragSnapshot_) {
                 auto it = std::find_if(track->notes.begin(), track->notes.end(),
                                         [&snap](const Note& n) { return n.id == snap.id; });
                 if (it == track->notes.end()) continue;
-                const Tick delta = newStart - dragSnapshot_.front().startTick;
                 it->startTick = std::max<Tick>(0, std::min(snap.startTick + delta, it->endTick - 1));
             }
             dragEdite_ = true;
