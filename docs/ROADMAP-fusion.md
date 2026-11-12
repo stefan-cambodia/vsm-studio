@@ -4333,3 +4333,37 @@ sinon REFUS.
 les machines) — elle demande les stems d'une course, donc une course, à écrire avant ; 1 en échec → l'assombrissement
 vient d'ailleurs, et la table dit d'où. **Dit d'avance** : quatre morceaux, une course chacun, des courses d'époques et
 d'options différentes — ce n'est pas la chaîne d'aujourd'hui qui est mesurée, ce sont ces quatre rendus.
+
+### 12.2 Verdict de H107 (12/11/2026, mesuré de 07 h 25 à 07 h 25, écrit à 07 h 25) : 1 ENTRE LES DEUX (2 morceaux sur 4), 2 tenu — non tenue au plus sévère ; et les SIX rendus, le témoin compris, ont moins d'aigus que leur original
+
+`reconstruction/travail/reload-h107.py` (aucun rendu, 22 s ; `reload-h107.json`). **Contrôle tenu** : sur « Reload », les
+aigus à **−5,86 dB** sur le morceau entier — le sens de l'outil par tranches (−6,94 en écart médian).
+
+| course de la chaîne (rendu − original, part du total, dB) | sub | basse | bas-médium | médium | haut-médium | aigus |
+|---|---|---|---|---|---|---|
+| « Reload » (contrôle) | −7,79 | −4,85 | +2,70 | +1,35 | −1,56 | **−5,86** |
+| « B4 Wuz Then » | **+3,46** | −1,14 | −0,79 | −0,53 | −1,27 | −1,24 |
+| « Children » | −2,05 | −0,67 | **+2,20** | +2,17 | −2,91 | **−5,55** |
+| « Sky and Sand » | **+3,31** | −2,25 | −0,97 | −2,25 | −0,81 | −1,60 |
+| l'épreuve | **+1,44** | −0,39 | +0,83 | −0,80 | −0,80 | **−6,02** |
+| « Us and Them » (témoin, plus brillant au centroïde) | −0,39 | −1,72 | +1,39 | −0,33 | **−6,79** | **−4,80** |
+
+| # | verdict |
+|---|---|
+| 1 | **entre les deux** : 2 morceaux sur 4 ont leurs aigus 3 dB dessous au moins (« Children » −5,55, l'épreuve −6,02) ; « B4 » −1,24 et « Sky and Sand » −1,60 |
+| 2 | **tenu** : la bande la plus au-dessus est sous 2 kHz pour les quatre — le sub pour trois (+1,4 à +3,5 dB), le bas-médium pour « Children » |
+
+**La règle**, au plus sévère : **H107 n'est PAS tenue** — l'assombrissement n'est pas, sur ces quatre, UN manque d'aigus :
+sur deux il l'est, sur deux il est surtout un sub en trop (+3,3 et +3,5 dB) avec des aigus à peine bas. **Ce que la table
+établit, sans plus** :
+- les SIX courses ont une part d'aigus (6-16 kHz) PLUS BASSE que leur original (−1,2 à −6,0 dB), « Us and Them » compris ;
+  quatre sur six de 3 dB au moins ;
+- **le témoin contredit son centroïde** : « Us and Them » est plus brillant que l'original au centroïde moyen de H106
+  (+5,1 %), et plus SOMBRE en part d'énergie (haut-médium −6,8, aigus −4,8 dB). Le centroïde moyen par trame et la part
+  d'énergie par bande ne disent pas la même chose sur ce morceau — *piste, non mesurée* : des trames quasi silencieuses
+  au centroïde haut pèsent autant qu'une trame pleine dans une moyenne non pondérée ;
+- le sous-grave en trop (+1,4 à +3,5 dB) revient sur trois morceaux sur quatre, quand « Reload » en manque (−7,8).
+
+**Ce qu'elle ne dit pas** : où la chaîne perd ces aigus — la séparation ou les machines ; les courses ne gardent pas leurs
+stems séparés (H106), et le dire demande une course qui les garde, à écrire avant. **Dit** : des courses d'époques et
+d'options différentes — ce sont ces six rendus qui sont mesurés, pas la chaîne d'aujourd'hui.
