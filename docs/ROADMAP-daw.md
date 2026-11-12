@@ -49441,3 +49441,6 @@ sa fin ; l'une au moins la remplit) ; ceux de la quantification, (b) à (d), n'o
   témoin montre qu'avant D624 elle suivait la grille de la barre (600 et 1 320, hors des multiples de 240).
 - **Deux passes seulement** : une troisième, vide, n'a pas fait de prise (le geste s'arrête dans le deuxième passage).
 - **La prise AUDIO empilée** n'est pas mesurée : le banc n'a pas d'entrée audio (la réserve de D584).
+- **CORRIGÉ : le titre du commit de cette mesure dit « sept semaines après avoir été écrite » — c'est FAUX** : D624 a été
+  écrite le 10/11 à 16 h 37, deux jours avant ; le chiffre n'a été lu nulle part. Le commit poussé ne se réécrit pas ; c'est
+  ici que le chiffre juste est écrit.
