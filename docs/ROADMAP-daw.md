@@ -49314,3 +49314,47 @@ la série garde 224 bancs. Le témoin : le binaire de D628 (`build/temoin-D628`)
 - **À regarder sur la photo** : la colonne « Origine », alignée à droite, touche presque « État » (l'écart de colonne, 6 px)
   — lisible à 980 px ; non changé.
 - **La série n'est pas jouée** : batterie à 44 %, la même raison que D626 à D628 ; elle se joue pour les quatre ensemble.
+
+### Phase D630 — un quatre-vingt-dixième audit : poser plusieurs fichiers de la réserve d'un geste (12/11/2026)
+
+*Écrite le 12/11 à 07 h 27 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. Rien ne
+tourne ; la série de D626 à D629 reste à jouer (batterie à 39 %), avec celle-ci.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D618 et de D628** — « poser plusieurs lignes d'un geste ». La réserve ne laisse
+choisir qu'UNE ligne : remettre dans le projet les cinq stems d'un dossier, ou les trois prises d'une séance, coûte cinq
+ou trois allers-retours et autant de pas d'annulation. Le Pool de Cubase choisit plusieurs fichiers (Ctrl, Maj) et les
+pose d'un seul *Insert into Project*, chacun sur sa piste.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D630.1 | **Plusieurs lignes, un geste** — la sélection multiple du Pool et *Insert into Project* | dans la réserve, Ctrl+clic ajoute une ligne au choix, Maj+clic une plage, un clic seul n'en garde qu'une (la règle des listes de JUCE) ; « Poser à la tête » et « Poser à l'origine » posent TOUTES les lignes choisies, chacune sur sa piste neuve, dans l'ordre de la liste, la première sous la piste choisie et les suivantes sous la précédente ; « à la tête » : toutes à la tête ; « à l'origine » : chacune à la sienne ; **UN pas d'annulation** (« Poser des fichiers de la réserve ») ; actifs seulement si TOUTES les lignes choisies le permettent (sur le disque ; et une origine pour « à l'origine ») ; « Relier... » seulement sur UNE ligne manquante ; mesuré par le projet enregistré et l'historique, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Tout ou rien** : tout ce qui peut refuser (un fichier absent, illisible, sans origine) est vérifié pour TOUTES les
+  lignes avant d'ouvrir le pas, et un refus refuse le geste entier en nommant le fichier — la règle de D618 (aucun pas
+  pour un geste refusé) ; poser trois fichiers sur quatre sans le dire serait une panne muette, et le dire après coup
+  laisserait un pas qu'il faudrait défaire à la main. Les boutons grisés empêchent déjà le cas ; le verbe de banc y
+  arrive quand même, et c'est lui que le refus garde.
+- **Un pas, par `addTrack` sans son pas** : `addTrack` reçoit de quoi NE PAS ouvrir le sien quand le geste a déjà ouvert
+  celui de toutes les poses — un seul chemin de création de piste (D618), un pas par geste.
+- **L'ordre de la liste, pas l'ordre des clics** : la liste est triée (les fichiers désignés, puis les autres par nom) ;
+  c'est l'ordre qu'on lit.
+- **Un libellé fixe pour plusieurs** (« Poser des fichiers de la réserve ») — le nombre se lit dans les pistes, et un
+  libellé de pas se traduit par la table ; une ligne seule garde le sien.
+- **Au banc, le Ctrl+clic par un verbe** (`reserve-choisir-aussi:`) qui passe par la même sélection de liste que la
+  souris (`selectRow` sans désélectionner) ; le relevé dit le nombre de lignes choisies et l'état des trois boutons.
+- **Remis, nommés** : poser plusieurs fichiers sur UNE piste, bout à bout (le second choix du dialogue de Cubase) ;
+  importer dans la réserve sans placer ; nos prises sans origine (D628).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/poser-plusieurs.sh` (le jeu de `poser-a-l-origine.sh` : « Voix »,
+`bwf.wav` et `bwf48.wav` à l'origine 3 s, `sans.wav` sans origine, la tête au repère 1 920) :
+(a) `bwf.wav` puis `bwf48.wav` choisis (le second « aussi ») : « choisies 2 ; Relier grisé ; Poser actif ; À l'origine
+actif » ; « Poser à la tête » → deux pistes, « bwf » à l'index 1 et « bwf48 » à l'index 2, leurs clips à **1 920** ;
+**1 pas** (« Poser des fichiers de la réserve ») ; Ctrl+Z → les deux retirées d'un coup ;
+(b) les mêmes, « Poser à l'origine » → les deux à **2 880** ;
+(c) `bwf.wav` et `sans.wav` : « choisies 2 ; … ; Poser actif ; À l'origine grisé » ; « Poser à l'origine » pressé par
+`cliquer:` → le bouton grisé ne fait rien, **aucun pas**, aucune piste (le refus « tout ou rien » du code n'a pas de verbe
+qui l'atteigne : il n'est PAS mesuré, et c'est dit) ;
+(d) une ligne seule : le comportement de D618/D628 inchangé — `poser-a-l-origine` et `poser-depuis-reserve` verts ;
+(e) le témoin (le binaire de D629) : `reserve-choisir-aussi:` inconnu, une seule ligne choisie, une piste posée ;
+(f) l'anglais (le pas : *Insert files from the pool*) ; `reserve-fichiers`, `relier-fichier`, `chercher-manquants` verts.
