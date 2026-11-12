@@ -49392,3 +49392,26 @@ verbe `reserve-choisir-aussi:` inconnu, une seule piste posée : la raison écri
 - **Remis, nommés** : plusieurs fichiers sur UNE piste, bout à bout ; importer dans la réserve sans placer ; nos prises
   sans origine.
 - **La série n'est pas jouée** : batterie à 34 % ; elle se joue pour D626 à D630 ensemble, 225 bancs.
+
+### Phase D631 — la passe empilée de D624, mesurée au banc (12/11/2026)
+
+*Écrite le 12/11 à 07 h 53 (l'horloge, lue dans la commande qui écrit), avant toute mesure. Aucune ligne de l'application ne
+change : c'est un attendu de D624 resté « compilé, pas mesuré », que son banc prend en charge.*
+
+**D'OÙ ELLE VIENT : du « remis, nommé » de D624** — « la passe empilée au banc ». D624 fait quantifier chaque prise à la
+grille de son rang par `quantizeNotesByRow`, la prise simple comme la passe empilée (une prise en boucle, mode « Empiler
+les prises », `closePass` → `quantifierLaPrise` → `pushTake`) ; son banc ne jouait que la prise simple : le chemin
+de la boucle est écrit, compilé, et n'a jamais été vu tourner.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE** — au banc `tools/prise-par-rang.sh`, un cas (e) : le même projet (la piste « Batterie »
+vide, le rang 38 à 1/8), la boucle ACTIVE de 0 à 1 920 (une mesure, 2 s) ; « Sans décompte », « Empiler les prises »,
+« Quantifier chaque prise » ; F9 ; la suite de frappes de D624 (quatre 38 à 350 ms d'écart, deux 36) jouée dans le premier
+passage, puis la MÊME suite 2 s plus tard, dans le second ; F9 ; le projet enregistré :
+(a) la piste porte **deux prises** (« Prise 1 », « Prise 2 »), bornées par la boucle (0 → 1 920) ;
+(b) dans CHACUNE : quatre frappes de 38 sur des multiples de **240**, distinctes ; deux de 36 sur des multiples de **120** ;
+(c) le journal dit « 4 au rang » DEUX fois (une par passe) ;
+(d) **le témoin** (le binaire de D623, les mêmes gestes) : dans l'une des deux prises au moins, une frappe de 38 hors des
+multiples de 240 — la passe empilée suivait alors la grille de la barre.
+**Dit d'avance** : les gestes partent à la milliseconde près du banc, pas au tick ; c'est pourquoi l'attendu demande des
+MULTIPLES et non des positions (la leçon de D624). Une passe qui manquerait (une suite tombée de part et d'autre du
+rebouclage) ferait échouer (a), et le banc le dira par le compte des prises.
