@@ -49664,3 +49664,41 @@ rang 60 existe dans la carte ; le projet enregistré :
 (c) le rang 60 à 1/4 et « Insertion : 1/8 » : **60@0+240 62@120+240 64@360+240** (la longueur choisie l'emporte) ;
 (d) **le témoin** (le binaire de D633, `build/temoin-D633`) : (a) → **60@0+120** — le défaut ;
 (e) `pas-a-pas`, `pas-a-pas-longueur`, `grille-par-rang` verts ; la série.
+
+### Phase D635 — un quatre-vingt-quatorzième audit : la longueur d'insertion au préréglage de quantification (12/11/2026)
+
+*Écrite le 12/11 à 22 h 14 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série
+de D626 à D633 TOURNE (108 bancs verts sur 227 à 22 h 12, batterie à 38 %) : le code s'écrit, il ne se compile qu'après
+elle, avec celui de D634.*
+
+**D'OÙ ELLE VIENT : du remis de D625** — « la longueur d'insertion au préréglage de quantification ». Un préréglage
+(Édition ▸ Préréglages de quantification, D570.2) retient la grille, son modificateur, le swing, la zone et le rayon
+(D575) ; la longueur d'insertion de D625 — la durée des notes posées — n'y est pas : rappeler « Triolets » remet la
+grille au triolet et laisse les notes posées à leur longueur d'avant. Elle vit dans le même menu que la quantification,
+et décide de la même chose (où et comment tombent les notes qu'on écrit).
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D635.1 | **La longueur d'insertion dans le préréglage** | « Enregistrer les réglages de quantification… » retient aussi la longueur d'insertion (« la grille » comprise) ; le rappel la pose — le sous-menu « Longueur d'insertion » coche la retenue ; le relevé `VSM_QUANTIFICATION` la dit ; un préréglage enregistré AVANT (sans elle) la rappelle à son défaut, la grille ; un libellé illisible est écarté et dit ; la boîte d'enregistrement nomme ce qu'elle retient, en français et en anglais ; mesuré par le menu relu après rappel, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Un préréglage d'avant rappelle le DÉFAUT** (la grille), pas « rien » : c'est la règle que D575 a écrite pour la zone
+  et le rayon (« un préréglage d'avant n'en porte pas : 0, les défauts ») — un préréglage est un jeu complet, et ce
+  qu'il ne savait pas encore retenir, il le voulait à son défaut. Deux règles pour la même question dans le même
+  objet seraient le piège.
+- **Retenue au poste, posée au morceau** : le préréglage vit dans les réglages du poste (D570.2) ; la longueur rappelée
+  est celle du piano roll, que le projet enregistre ensuite dans sa vue (D625) — rien ne change à ce partage.
+- **Un libellé que la liste ne porte pas** (un fichier de réglages édité à la main) est ÉCARTÉ, la longueur revient à la
+  grille, et le relevé le dit — la règle de la grille du même rappel (`ecartes`).
+- **Remis, nommé** : les rangs dans l'ordre de la carte.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/prereglages-quantification.sh` (D570.2), qui gagne trois contrôles :
+(5) au premier lancement, « Insertion : 1/8 » choisie avant d'enregistrer « Triolets » : le relevé d'enregistrement dit
+« insertion 1/8 » ; au second (même HOME, un projet neuf, la longueur à la grille), « Triolets » rappelé : le sous-menu
+`Édition > Temps et durée > Longueur d'insertion` coche **« Insertion : 1/8 »** ;
+(6) un préréglage écrit sans longueur (le fichier de réglages du HOME, écrit par le banc à la manière d'un préréglage
+d'avant), rappelé après « Insertion : 1/4 » : la coche revient sur **« Insertion : la grille »** ;
+(7) **le témoin** (le binaire de D633, `build/temoin-D633`, les mêmes gestes que (5)) : la coche reste sur « Insertion :
+la grille » — le défaut ;
+et les quatre contrôles de D570.2 inchangés ; la boîte d'enregistrement photographiée en anglais ; `longueur-insertion`,
+`pas-a-pas-longueur` verts ; la série.
