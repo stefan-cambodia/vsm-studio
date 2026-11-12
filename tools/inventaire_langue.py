@@ -138,7 +138,8 @@ FONCTIONS_DE_BANC = ("parcourirLesTextes", "menusPourCapture", "commandesMasquee
                      "releverAutomation", "nomsDeLaMain",   # D600 : la ligne VSM_AUTOMATION_TRANCHE, ses départs et sa main
                      "lectureAffichee",   # D600 : l'aspect du R pour le relevé (« allumé », « terne », « éteint »)
                      "direLOrdre",   # D606.1 : la ligne VSM_ORDRE des verbes `ordre:`, `ordre-suit:`, `relever-ordre`
-                     "releverLosanges")   # D615.1 : les lignes VSM_LOSANGE du verbe `relever-losanges`
+                     "releverLosanges",   # D615.1 : les lignes VSM_LOSANGE du verbe `relever-losanges`
+                     "direQuantification")   # D635.1 : le corps des lignes VSM_QUANTIFICATION (« insertion la grille »)
 EN_TETE_DE_FONCTION = re.compile(r"^[A-Za-z][^;{}\n]*?\b(\w+)\s*\(", re.M)
 
 

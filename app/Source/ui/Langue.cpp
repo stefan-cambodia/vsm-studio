@@ -3181,8 +3181,8 @@ const Paire kAnglais[] = {
       "(no preset)" },
     { "Retirer un préréglage",
       "Remove a preset" },
-    { "La grille, son modificateur, le swing, la zone de non-quantification et le rayon de capture sont retenus sous ce nom, et se rappellent par Édition ▸ Préréglages de quantification.",
-      "The grid, its modifier, the swing, the non-quantise zone and the catch range are kept under this name, and are recalled from Edit ▸ Quantise presets." },
+    { "La grille, son modificateur, le swing, la zone de non-quantification, le rayon de capture et la longueur d'insertion sont retenus sous ce nom, et se rappellent par Édition ▸ Préréglages de quantification.",   // D635.1
+      "The grid, its modifier, the swing, the non-quantise zone, the catch range and the insert length are kept under this name, and are recalled from Edit ▸ Quantise presets." },
     { "Un préréglage a besoin d'un nom : rien n'a été enregistré.",
       "A preset needs a name: nothing was saved." },
     { "Le préréglage « %1 » existait : il est remplacé par celui-ci.",

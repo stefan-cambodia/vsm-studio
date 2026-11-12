@@ -1661,9 +1661,15 @@ void PianoRollComponent::stepInputNote(uint8_t note, uint8_t velocity) {
     if (!beginEdit(u8"Saisie pas à pas")) return;
     const vsm::midi::Tick debut = snapTick(playheadTick_);
     const vsm::midi::Tick pas = std::max<vsm::midi::Tick>(1, gridTicks());
+    // D634.1 : LA DURÉE SUIT LE RANG, la tête reste un curseur à la barre — une frappe saisie dans un rang qui a sa grille
+    // dure une case d'elle, comme la même frappe posée d'un clic (D622) ; la longueur d'insertion l'emporte (D625).
+    bool grillePropre = false;
+    const GridResolution grilleRang = grilleDuRang(note, &grillePropre);
+    const vsm::midi::Tick caseDuRang =
+        grillePropre ? std::max<vsm::midi::Tick>(1, gridResolutionToTicks(grilleRang, project_->ticksPerQuarterNote)) : pas;
     Note n;
     n.startTick = debut;
-    n.endTick = debut + dureeInsertion(pas);   // D626.1 : longue de la longueur d'insertion ; la tête avance d'un PAS
+    n.endTick = debut + dureeInsertion(caseDuRang);   // D626.1 : longue de la longueur d'insertion ; la tête avance d'un PAS
     n.number = note;
     n.velocity = velocity > 0 ? velocity : defaultVelocity_;
     n.channel = track->channel;

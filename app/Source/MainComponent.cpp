@@ -19409,7 +19409,9 @@ juce::String direQuantification(const juce::XmlElement& q) {
            + (q.getStringAttribute("modificateur").isEmpty() ? juce::String("droit") : q.getStringAttribute("modificateur"))
            + ", swing " + juce::String(q.getDoubleAttribute("swing"), 2)
            // D575.1, D575.2 : la zone et le rayon, en part du pas (un préréglage d'avant n'en porte pas : 0, les défauts).
-           + ", zone " + juce::String(q.getDoubleAttribute("zone"), 2) + ", rayon " + juce::String(q.getDoubleAttribute("rayon"), 2);
+           + ", zone " + juce::String(q.getDoubleAttribute("zone"), 2) + ", rayon " + juce::String(q.getDoubleAttribute("rayon"), 2)
+           // D635.1 : la longueur d'insertion (un préréglage d'avant n'en porte pas : la grille, son défaut).
+           + ", insertion " + (q.getStringAttribute("insertion").isEmpty() ? juce::String("la grille") : q.getStringAttribute("insertion"));
 }
 } // namespace
 
@@ -19417,8 +19419,8 @@ void MainComponent::enregistrerQuantification() {
     // D570.2 : LES RÉGLAGES DE LA BARRE SOUS UN NOM — un nom déjà pris est remplacé, et c'est dit (la règle de D549.3).
     const juce::String titre = tr(u8"Enregistrer les réglages de quantification");
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        titre, tr(u8"La grille, son modificateur, le swing, la zone de non-quantification et le rayon de capture sont "
-                  u8"retenus sous ce nom, et se rappellent par Édition ▸ Préréglages de quantification."),
+        titre, tr(u8"La grille, son modificateur, le swing, la zone de non-quantification, le rayon de capture et la longueur "
+                  u8"d'insertion sont retenus sous ce nom, et se rappellent par Édition ▸ Préréglages de quantification."),
         juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", "", tr(u8"Nom :"));
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
@@ -19447,6 +19449,7 @@ void MainComponent::enregistrerQuantification() {
         q->setAttribute("swing", pianoRollPanel_.barre().swingTenu());
         q->setAttribute("zone", static_cast<double>(pianoRoll_.zoneNonQuantif()));    // D575.1
         q->setAttribute("rayon", static_cast<double>(pianoRoll_.rayonCapture()));     // D575.2
+        q->setAttribute("insertion", juce::String(pianoRoll_.longueurInsertion()));    // D635.1 : vide = la grille
         const juce::String dite = direQuantification(*q);
         rangees->addChildElement(q);
         vsm::app::ui::UiScale::properties().setValue("quantifications", rangees.get());
@@ -19470,9 +19473,17 @@ void MainComponent::rappelerQuantification(int rang) {
                                              q->getDoubleAttribute("swing"), ecartes);
     pianoRoll_.setZoneNonQuantif(static_cast<float>(q->getDoubleAttribute("zone")));    // D575.1
     pianoRoll_.setRayonCapture(static_cast<float>(q->getDoubleAttribute("rayon")));     // D575.2
+    // D635.1 : LA LONGUEUR D'INSERTION — absente (un préréglage d'avant) : la grille, son défaut, la règle de D575 ; un
+    // libellé que la liste ne porte pas est écarté, la longueur revient à la grille, et c'est dit.
+    const juce::String insertion = q->getStringAttribute("insertion");
+    const bool insertionEcartee = !pianoRoll_.setLongueurInsertion(insertion.toStdString());
+    if (insertionEcartee) pianoRoll_.setLongueurInsertion(std::string());
     pianoRollPanel_.refresh();
     std::fputs((juce::String("VSM_QUANTIFICATION : rappel ") + direQuantification(*q)
-                + (ecartes.empty() ? juce::String() : juce::String::fromUTF8(u8" — écarté : ") + juce::String(ecartes.front().second)))
+                + (ecartes.empty() ? juce::String() : juce::String::fromUTF8(u8" — écarté : ") + juce::String(ecartes.front().second))
+                + (insertionEcartee ? juce::String::fromUTF8(u8" — écartée : la longueur d'insertion « ") + insertion
+                                          + juce::String::fromUTF8(u8" » (la grille à sa place)")
+                                    : juce::String()))
                    .toRawUTF8(), stderr);
     std::fputs("\n", stderr);
     if (pianoRoll_.onStatusChanged)

@@ -49720,3 +49720,53 @@ d'avant), rappelé après « Insertion : 1/4 » : la coche revient sur **« Inse
 la grille » — le défaut ;
 et les quatre contrôles de D570.2 inchangés ; la boîte d'enregistrement photographiée en anglais ; `longueur-insertion`,
 `pas-a-pas-longueur` verts ; la série.
+
+### Phase D634 — MESURÉE, la série à jouer (13/11/2026, 06 h 40 à l'horloge)
+
+*Écrite avant son code le 12/11 à 21 h 16 (commitée avant toute ligne) ; le code écrit pendant la série de D626-D633,
+compilé après elle, avec celui de D635. **Le banc vu ROUGE d'abord sur le binaire de D633** : (a) seul tombé, pour la raison
+écrite — 60@0+**120**, la longueur de la barre. Le banc `tools/pas-a-pas-par-rang.sh` (4 contrôles) ; le témoin :
+`build/temoin-D633`.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D633) | tenu |
+|---|---|---|---|---|
+| D634 (a) | rang 60 à 1/4 : 60@0+480 62@120+120 64@360+120, tête 480 | **60@0+480** 62@120+120 64@360+120, tête **480** | **60@0+120** — le défaut | **oui** |
+| D634 (b) | sans grille : 60@0+120 62@120+120 64@360+120 | **les mêmes** | les mêmes | **oui** |
+| D634 (c) | rang 60 à 1/4 et « Insertion : 1/8 » : 240 partout | **60@0+240 62@120+240 64@360+240** | les mêmes | **oui** |
+| D634 (e) | les voisins | `pas-a-pas`, `pas-a-pas-longueur`, `grille-par-rang`, `longueur-insertion` verts | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Vert du premier essai.** La tête avance de 120 après la frappe du rang à 1/4 (62 tombe à 120, la tête finit à 480) : le
+  curseur garde la grille de la barre, la DURÉE seule suit le rang.
+- **LA PHOTO, REGARDÉE** (a) : les frappes en losanges — la longueur de 480 ne se dessine pas, c'est le projet enregistré
+  qui la mesure ; la tête à 1.2, la dernière frappe choisie à 1.1+360, longue de 120 au champ « Note ».
+- **Remis, nommé** : les rangs dans l'ordre de la carte.
+
+### Phase D635 — MESURÉE, la série à jouer (13/11/2026, 06 h 40 à l'horloge)
+
+*Écrite avant son code le 12/11 à 22 h 14 ; compilée avec D634. **Le banc vu ROUGE d'abord sur le binaire de D633** — (5)
+deux fois (rien d'enregistré, la coche restée sur « la grille ») et (6) (la coche restée sur « 1/4 ») : les raisons écrites.
+Le banc `tools/prereglages-quantification.sh` (D570.2), passé de 4 à **8** contrôles ; le témoin : `build/temoin-D633`.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D633) | tenu |
+|---|---|---|---|---|
+| D635 (5) | l'enregistrement dit « insertion 1/8 » | « … rayon 0.00, **insertion 1/8** » | rien | **oui** |
+| D635 (5) | « Triolets » rappelé : « Insertion : 1/8 » cochée | **Insertion : 1/8** | Insertion : la grille | **oui** |
+| D635 (6) | un préréglage d'avant, rappelé après « 1/4 » : « la grille » cochée | **Insertion : la grille** (« … insertion la grille » au relevé) | Insertion : 1/4 | **oui** |
+| D635 (7) | le témoin rappelle « Triolets » : la grille | — | **Insertion : la grille** — le défaut | **oui** |
+| D570.2 (1)-(4) | inchangés | verts | — | **oui** |
+| — | la boîte en anglais | « … the catch range and the insert length are kept under this name… » | — | **oui (photo regardée)** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Le préréglage d'avant est un VRAI préréglage d'avant** : (6) le fait enregistrer par le binaire témoin lui-même dans un
+  HOME à part, plutôt que d'écrire un fichier de réglages à la main — c'est la forme exacte qu'un utilisateur a sur son
+  poste.
+- **Le libellé illisible** (« écartée : la longueur d'insertion « 1/7 » ») est écrit, pas mesuré : aucun verbe n'écrit un
+  préréglage faux.
+- **Deux défauts de la GARDE de langue évités, et dits** : la première écriture passait le texte du journal par un vecteur
+  et une lambda, que `inventaire_langue.py` ne suit pas — quatre chaînes de journal comptées « à l'écran sans
+  traduction » ; réécrites dans l'instruction `fputs` elle-même, et `direQuantification` (qui n'écrit qu'au journal) entre
+  dans la liste FERMÉE des fonctions de banc de la garde.
+- **La photo de la boîte, en anglais**, recomposée sur `0x1f1f24` : trois lignes, rien de coupé.
+- **Remis, nommé** : les rangs dans l'ordre de la carte.
+- **La série n'est pas jouée** pour D634 et D635 (228 bancs) — elle se joue maintenant, batterie à 91 %.
