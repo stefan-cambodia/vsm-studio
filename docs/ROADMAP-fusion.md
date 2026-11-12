@@ -4299,3 +4299,37 @@ dans la bande de la cible) ; une séparation qui perd des aigus, ou des machines
 candidates. **Où en est la question 2 du § 11** : le défaut de H104-H105 (la v2 récompense un son étranger qui rapproche
 son centroïde) est une propriété de la formule, vue sur deux rendus ; il ne pousse PAS toujours vers le sombre — sur les
 courses de la chaîne, il pousserait vers le brillant. La question reste celle du § 11, pour `ROADMAP-fusion`.
+
+---
+
+## 12. Les courses de la chaîne sont plus sombres que leurs morceaux réels — où manque le spectre ? (12/11/2026)
+
+### 12.1 H107 — un MANQUE d'aigus, ou un excès de grave ? (écrite AVANT son instrument et sa mesure, 12/11/2026, 07 h 24)
+
+H106 (§ 11.6) a relevé que cinq courses de la chaîne sur six, sur des morceaux réels, ont un centroïde moyen plus bas que
+leur cible (−6 à −25 %). Un centroïde baisse autant par des aigus qui manquent que par un grave en trop ; il ne dit pas
+lequel. **Ce qui est déjà publié** : sur « Reload », la course de référence avait ses aigus (6-16 kHz) à **−6,9 dB** et son
+bas-médium à +2,7 dB, en écart médian par tranche, relatif au total (CDC-reload § 2.4) — ce morceau-là ne départage donc
+rien ici. **L'attendu porte sur les QUATRE autres** : « B4 Wuz Then » (`travail/b4wuzthen`), « Children »
+(`travail/children-c3-plafond`), « Sky and Sand » (`travail/p1-avec`), l'épreuve (`travail/epreuve/parite-groupes`) —
+les courses que H106 a lues ; « Us and Them » (plus brillant, +5 %) est le témoin.
+
+**L'instrument** (`reconstruction/travail/reload-h107.py`, aucun rendu) : l'énergie de Welch par bande, sur le morceau
+entier, rapportée au total de 20 Hz à 16 kHz (mono, durée commune), dans les six bandes de l'outil du § 0 du cahier de
+« Reload » — sub 20-60, basse 60-150, bas-médium 150-500, médium 500-2 000, haut-médium 2-6 k, aigus 6-16 k ; l'écart
+rendu − original de chaque part, en dB. **Le contrôle** : sur « Reload » (`travail/reload-course2`), l'écart des aigus
+est NÉGATIF et de plus de 3 dB — l'instrument, sur le morceau entier, doit retrouver le sens de l'outil par tranches ;
+sinon REFUS.
+
+**L'HYPOTHÈSE H107** : l'assombrissement est un MANQUE D'AIGUS.
+
+| # | mesure | réussite | échec |
+|---|---|---|---|
+| 1 | sur les quatre : la part des aigus (6-16 k) du rendu, contre celle de l'original | 3 dB dessous au moins, pour 3 morceaux sur 4 ou plus | 3 dB dessous pour 1 morceau au plus |
+| 2 | sur les quatre : la bande du rendu la plus AU-DESSUS de l'original | une bande sous 2 kHz | — |
+| 3 | relevés : les six bandes des six morceaux ; « Us and Them » en témoin | — | — |
+
+**La règle** : 1 tenu → la chaîne perd des aigus sur les morceaux réels, et la question suivante est OÙ (la séparation ou
+les machines) — elle demande les stems d'une course, donc une course, à écrire avant ; 1 en échec → l'assombrissement
+vient d'ailleurs, et la table dit d'où. **Dit d'avance** : quatre morceaux, une course chacun, des courses d'époques et
+d'options différentes — ce n'est pas la chaîne d'aujourd'hui qui est mesurée, ce sont ces quatre rendus.
