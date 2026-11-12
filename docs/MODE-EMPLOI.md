@@ -239,6 +239,33 @@ combien de coupes ont bougé, et de combien au plus.
 mesures, la barre de transport dit la signature sous la tête, le projet
 l'enregistre.
 
+**La réserve des fichiers** (*Fichier ▸ Réserve des fichiers…*, D607 à D630 — le
+*Pool* de Cubase). Une ligne par fichier audio que le projet désigne, ou que son
+dossier (`audio/`, `gel/`) contient : son nom, sa durée, son format, sa taille,
+ce qui le désigne (une piste et ses clips, une prise, une version, un gel), son
+**origine** quand il en porte une (la référence de temps BWF, en secondes, D629),
+et son **état** — *joué*, *en réserve* (seulement une prise ou une version),
+**MANQUANT** (désigné, absent du disque), *inutilisé* (« gardé pour
+l'historique » quand un Ctrl+Z le rappellerait).
+
+- **Relier…** (D608) une ligne MANQUANT : tout ce qui désignait le chemin perdu
+  — la piste, son gel, ses prises, ses versions — désigne le fichier choisi ; pris
+  hors du dossier du projet, il y est **copié** dans `audio/`, pour que le projet
+  s'ouvre sur une autre machine. **Chercher dans un dossier…** (D617) cherche
+  chaque manquant par son nom, sous-dossiers compris : un seul candidat est
+  relié, aucun se dit « introuvable », plusieurs se disent « ambigu » et ne sont
+  pas reliés — jamais un choix muet. Tous les reliés font un seul pas.
+- **Poser à la tête** (D618) : une piste audio neuve, sous la piste choisie,
+  joue le fichier à partir de la tête ; rien n'est copié. **Poser à l'origine**
+  (D628) la pose à l'instant que le fichier porte, par la carte de tempo du
+  projet — grisé s'il n'en porte pas.
+- **Plusieurs lignes d'un geste** (D630) : Ctrl+clic ajoute une ligne au choix,
+  Maj+clic une plage ; les deux boutons posent alors toutes les lignes choisies,
+  chacune sur sa piste, dans l'ordre de la liste, en **un** pas d'annulation. Un
+  liseré sarcelle marque les lignes choisies. Plusieurs fichiers bout à bout sur
+  UNE piste ne se font pas : une piste audio porte un seul fichier, découpé en
+  clips.
+
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
 *La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.*
@@ -851,6 +878,46 @@ jouées* dans le menu) ne garde qu'une rangée par hauteur présente sur la
 piste : une batterie tient sur ses cinq pièces au lieu de cent vingt-huit
 touches, chaque rangée nommée. Rien ne change dans le morceau ni dans le
 fichier ; une piste sans note ne se replie pas, et la ligne d'état le dit.
+
+**La batterie : la carte, les losanges et les grilles par rang** (D609 à D635 —
+l'éditeur de batterie et la *Drum Map* de Cubase).
+
+- **Les frappes en losanges** (D615). Sur une piste du canal 10, chaque note se
+  dessine en losange centré sur son attaque, et se saisit là où on la voit. Sa
+  durée ne se tire plus au bord : elle se règle dans la ligne d'information ou
+  la liste. *Affichage ▸ Batterie en losanges (canal 10)* est cochée d'origine ;
+  décochée, elle rend les barres — et avec elles le redimensionnement par les
+  bords.
+- **La carte de batterie** (*Piste ▸ Carte de batterie…*, D609). Une ligne par
+  note que la piste écrit : son nom General MIDI, la pièce que la machine joue à
+  sa place (« tom grave (45) », ou « elle-même »), et la grille du rang. La
+  carte agit à la LECTURE — le piano roll montre toujours la note écrite, et
+  l'export MIDI écrit les notes écrites en nommant la carte parmi ce qu'il ne
+  porte pas. *Adapter General MIDI à la machine* (D610) envoie chaque pièce
+  vers la pièce de même catégorie la plus proche sur la machine, et dit ce qui
+  reste sans équivalent ; *Remettre à l'identité* défait tout. Chaque
+  changement est un pas d'annulation.
+- **La grille par rang** (D622). Dans la colonne *Grille* de la carte, un rang
+  peut avoir sa grille (de 1/2 à 1/64, triolets et pointées) ; « globale » suit
+  la barre. Une frappe **posée** dans ce rang s'y aimante et dure une case
+  d'elle ; *Quantifier* aligne chaque frappe sur la grille de SON rang, et une
+  **prise** quantifiée aussi, passe empilée comprise (D624, D631). Une frappe
+  **tirée** avance au pas de la grille du rang de la frappe qu'on tient, toute la
+  sélection du même écart (D627) ; **← et →** déplacent la sélection du plus
+  petit pas commun aux grilles de ses rangs — une caisse claire à la noire et
+  une grosse caisse à la double avancent d'une noire, aucune ne quitte sa
+  grille ; si ce pas dépasse la mesure, c'est la barre, et la ligne d'état le
+  dit (D632). En barres, le bord tiré s'aimante à la grille du rang tenu (D633).
+- **La longueur d'insertion** (*Édition ▸ Temps et durée ▸ Longueur
+  d'insertion*, D625). Distincte de la grille : la grille dit OÙ tombe une note
+  posée, la longueur dit COMBIEN elle dure. « La grille » (le défaut) garde
+  l'ancienne règle. Elle vaut aussi pour la **saisie pas à pas** (D626) : la
+  note dure la longueur choisie et la tête avance d'un pas de la barre. Sur une
+  batterie, une frappe saisie au pas à pas dure une case de son rang, comme
+  posée d'un clic ; la tête, elle, reste un curseur à la grille de la barre
+  (D634). Les **préréglages de quantification** la retiennent avec la grille, le
+  swing, la zone et le rayon ; un préréglage plus ancien la rappelle à « la
+  grille » (D635).
 
 **Chasser les notes fantômes.** Une transcription laisse des notes faibles ou
 d'un soixante-quatrième ; le sous-menu *Sélection* du piano roll les prend
