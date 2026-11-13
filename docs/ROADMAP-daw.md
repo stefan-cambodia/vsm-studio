@@ -49932,3 +49932,36 @@ ROUGE d'abord sur le binaire de D635** — six contrôles, le verbe inconnu et l
 - **La suite audio**, recompilée pour `Track.h` : **1 385/1 385**, comme à D624.
 - **La série n'est pas jouée** (D636 et D637 ensemble, 230 bancs) : batterie à 29 % après les suites, sans charge ; elle en coûte une
   cinquantaine.
+
+### Phase D638 — un quatre-vingt-dix-septième audit : ce qu'un rang muet tait se voit pâli (13/11/2026)
+
+*Écrite le 13/11 à 11 h 51 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
+D636-D637 TOURNE (lancée à 11 h 49, batterie à 99 %) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : du premier remis de D637** — « pâlir dans le piano roll les rangées d'un rang muet ». Depuis D637, la
+case « M » de la carte tait les frappes d'un rang ; le piano roll les dessine pourtant comme celles qu'on entend, et rien,
+sous les yeux de celui qui édite, ne dit que le charleston est muet — il faut rouvrir la carte. La règle existe ailleurs :
+une note muette se pâlit et se hachure (le muet de note), une courbe qui ne joue pas se pâlit (D601.3).
+
+| # | Fonction | Critère de réception |
+|---|---|---|
+| D638.1 | **Le rang muet se voit** | dans le piano roll, les frappes d'un rang muet se dessinent comme une note muette — pâlies, hachurées en barres — en losange comme en barre ; le nom de la pièce, au clavier, dit « — muet » et s'écrit en encre secondaire ; la touche ne s'allume plus sous la tête (elle ne joue pas) ; le relevé des losanges (`relever-losanges`) dit « muette » pour chaque frappe tue et le nom de chaque rang tel que le clavier l'écrit, LUS SUR LA MÊME SOURCE que la peinture ; mesuré par le relevé et la photo, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le dessin d'une note muette, pas un dessin neuf** : une frappe qu'on n'entend pas a déjà son aspect dans ce logiciel ;
+  en inventer un second ferait deux langages pour la même chose. Une frappe muette DANS un rang muet reste muette (rien ne
+  s'ajoute) ; décocher le rang la rend à son aspect propre.
+- **« — muet » écrit, pas seulement pâli** : la règle de lisibilité (le texte se lit, une nuance se devine) et celle de D338
+  (le nom de touche à 12 pt) ; la couleur seule ne se lit pas en noir et blanc.
+- **Une fonction pour la peinture et le relevé** (`seTait`, `nomDuRang`) : la leçon de D149/D152 — un panneau qui peint ses
+  textes est invisible au relevé de textes, et un relevé qui recalcule de son côté mesure autre chose que l'écran.
+- **Remis, nommés** : le solo d'un rang ; « ↑ » et « ↓ » d'une frappe sous un ordre de carte (D636).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/rang-muet-pali.sh`, une piste « Batterie » (TR-909, canal 10) qui écrit
+36@0 et 42@480 ; `relever-losanges` après le geste :
+(a) **le témoin de la règle, sans geste** : aucune frappe « muette » ; les rangs « grosse caisse » et « charleston fermé » ;
+(b) `carte-muet:42` : la frappe 42 « muette », la 36 non ; le rang 42 nommé « charleston fermé — muet », le 36 inchangé ;
+(c) puis `carte-muet:42` encore (décoché) : plus rien de muet ;
+(d) **le témoin** (le binaire de D637, `build/temoin-D637`, les gestes de (b)) : aucune frappe « muette », aucun « — muet » ;
+(e) la photo regardée (le losange pâli à côté du plein), en barres aussi ; l'anglais (« — muted ») ; `batterie-losanges`,
+`muet-par-rang`, `ordre-de-la-carte` verts ; la série.
