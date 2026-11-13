@@ -50079,3 +50079,42 @@ Chaque banc vu ROUGE d'abord sur le binaire de D637 (`build/temoin-D637`), pour 
 préférences de l'utilisateur identiques ; le compositeur de 682 à 724 Mo. La suite audio, recompilée pour `Track.h` (le
 `drumSolo` de D640), verte avant la série : **1 385/1 385**. Les remis de la carte de batterie sont épuisés : l'élément
 suivant est un nouvel audit.
+
+### Phase D641 — un centième audit : la vélocité ajustée de la quantité qu'on choisit (13/11/2026)
+
+*Écrite le 13/11 à 19 h 04 (l'horloge, insérée par la commande qui écrit), avant toute ligne de code et toute mesure. Rien ne
+tourne.*
+
+**D'OÙ ELLE VIENT : d'un audit des fonctions MIDI de Cubase, revérifiées par le code (la leçon de D571.3).** Sondés : les
+formats de l'export (WAV, FLAC, Ogg — présents, D20.5), le tramage (présent), l'enregistrement rétrospectif (présent, D17.3,
+D25.4), la chaîne latérale (présente, D4.4, sous un autre nom que « chaîne latérale » au dictionnaire — un faux zéro de
+plus, attrapé), l'arpégiateur en effet de piste (présent, « arpeggio »). **Reste au nom** : le *Velocity* de *MIDI ▸
+Functions* — ajouter ou retrancher, comprimer ou étendre, limiter — À LA QUANTITÉ CHOISIE. Le sous-menu *Vélocité* du piano
+roll n'a que des valeurs figées (« +10 % », « Resserrer les nuances de moitié », « Contenir entre 20 et 100 ») et n'ÉTEND
+jamais : écarter les nuances d'une partie jouée trop plate, ou monter une partie de 12 sans la saturer, ne se fait pas.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D641.1 | **Ajuster les vélocités** — *MIDI ▸ Functions ▸ Velocity* | au sous-menu *Vélocité* du piano roll (et donc du menu *Édition*), *Ajuster les vélocités…* : une boîte à trois modes — *Ajouter ou retrancher* (de −127 à +127), *Comprimer ou étendre* (un rapport de 0 à 300 %, autour de la MOYENNE des notes choisies : sous 100 % les nuances se resserrent, au-dessus elles s'écartent), *Limiter* (une borne basse, une haute) — sur les notes choisies ; un pas d'annulation ; une vélocité qui sortirait de 1 à 127 y est BORNÉE et le compte des bornées est dit (ligne d'état et journal) ; une valeur illisible refuse le geste, dit, aucun pas ; grisée sans sélection ; mesuré par l'export MIDI (les vélocités en multiensemble), le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Autour de la MOYENNE, pas de 64** (Cubase comprime autour de 64) : les gestes figés du même sous-menu (« Resserrer les
+  nuances de moitié », D19.1) resserrent déjà autour de la moyenne de la sélection — une partie jouée forte reste forte. Deux
+  centres dans le même sous-menu seraient le piège ; le rapport à 50 % rend exactement « Resserrer de moitié ».
+- **Borner, et le dire — ce n'est pas la transposition** : transposer hors du clavier change une note en une autre, d'où le
+  tout ou rien de D536 ; une vélocité de 140 bornée à 127 reste la même note, la plus forte possible — c'est ce qu'un
+  musicien demande en ajoutant 30. Mais la saturation se compte et se dit : six notes ramenées à 127 ne le sont pas en silence.
+- **La boîte est celle de l'application** (`montrerOuRepondre`, à laquelle un banc répond par `VSM_OPTIONS`) ; le piano roll
+  applique, par `core/` (`addVelocity`, `compressVelocity` étendue à 300 %, `limitVelocity`), un seul pas.
+- **Les entrées figées restent** : ce sont des raccourcis d'usage (D19.1, les nuances d'une transcription).
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : `addVelocity` de +20 sur 20, 64, 100, 120 → 40, 84, 120, **127** (une bornée, comptée) ; −30 → 1 (borné),
+34, 70, 90 ; `compressVelocity` à 200 % autour de la moyenne (76) → 1 (borné), 52, 124, 127 (borné) ; à 50 % → 48, 70, 88,
+98 (le résultat d'avant, au bit près) ; à 100 % → inchangé ;
+(b) **au banc** `tools/velocites-ajustees.sh` : une piste de quatre notes aux vélocités 20, 64, 100, 120, toutes choisies ;
+*Ajouter ou retrancher* +20 → l'export MIDI porte **{40, 84, 120, 127}**, la ligne d'état dit « 1 vélocité bornée » ;
+*Comprimer ou étendre* 200 % → **{1, 52, 124, 127}**, « 2 vélocités bornées » ; *Limiter* 50-110 → **{50, 64, 100, 110}** ;
+une valeur « abc » → refus dit, aucun pas, les vélocités d'origine ;
+(c) **le témoin** (le binaire de D640) : l'entrée absente du menu ;
+(d) l'anglais ; `controleurs-suivent`, `annulation-des-menus` verts ; la série.
