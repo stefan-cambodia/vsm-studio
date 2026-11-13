@@ -50215,3 +50215,43 @@ D305, l'ordre ou le nombre des pistes peuvent changer — à MESURER, pas à sup
 pistes — soit il FUSIONNE en une piste (un vrai format 0, ce que Cubase fait sur demande), soit il écrit le format 1 ; le
 choix s'écrira avec sa raison avant le code. Si H2 montre une perte, le fichier du projet passe en format 1 quoi qu'il
 arrive (c'est un format INTERNE). Si rien ne tient, c'est écrit tel quel, et la phase se ferme sur la mesure.
+
+### Phase D643 — MESURÉE (13/11/2026, 23 h 31 à l'horloge) : H1 tient, H2 sans perte ; le remède écrit avant son code
+
+*Instrument `tools/format-zero.sh` (le binaire de D641) : un `.mid` de format 0 à deux canaux (une mélodie au canal 1, une
+batterie au canal 10), et le même contenu en format 1, ouverts puis exportés, enregistrés, rouverts.*
+
+| | source format 0 | source format 1 (le témoin, H3) |
+|---|---|---|
+| (H1) l'export | **format 0, 2 pistes** — hors norme | format 1, 2 pistes |
+| (H2) le fichier du projet | **format 0, 2 pistes** | format 1, 2 pistes |
+| (H2) rouvert, réenregistré | format 0, 2 pistes ; **les deux pistes, leurs notes, leurs machines intactes** | identique |
+
+**CE QUE LA MESURE DIT.** H1 TIENT : un fichier de format 0 ouvert puis exporté ressort avec un en-tête de format 0 sur deux
+pistes — un lecteur qui suit la norme ne lit que la première (la mélodie : la batterie perdue). H2 : le fichier du projet
+porte le même en-tête, mais VSM le relit sans perte — c'est le FICHIER qui ment, pas la relecture ; un autre logiciel ouvrant
+`midi/arrangement.mid` se tromperait de même. H3 : rien de tout cela en format 1.
+
+**LE REMÈDE, TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **L'export rend un VRAI format 0** quand la source en était un : toutes les pistes FUSIONNÉES en une, les canaux gardés, le
+  tempo et les mesures en tête — ce que fait l'*Export as Type 0* de Cubase. Écrire le format 1 à la place serait juste aussi,
+  mais trahirait la source : qui ouvre un format 0 pour un clavier ou un séquenceur matériel qui ne lit que lui veut un format
+  0 en retour. À la même instant : les méta-événements d'abord, puis les fins de note, les contrôleurs, enfin les débuts (la
+  règle de D623). Une seule piste nommée (celle de la première) ; les blocs privés de VSM (notes muettes, confiances, D6.3)
+  ne voyagent pas dans un format 0 fusionné — ils ne sauraient plus à quelle piste se rattacher —, et c'est dit au message
+  de l'export.
+- **Le fichier du PROJET est toujours de format 1** : c'est un format INTERNE, une piste par piste du projet ; le fusionner
+  ferait dépendre la réouverture du découpage par canal (D305), qui confondrait deux pistes du même canal.
+- **La source se retient au projet** (`"midiFormat": 0` dans `project.json`, écrit seulement pour un format 0) : le fichier
+  interne étant de format 1, rien d'autre ne s'en souviendrait après une réouverture.
+- **Pas d'option à cocher dans ce tour** : l'*Export as Type 0* sur un projet né d'un format 1 est remis, nommé.
+
+**L'ATTENDU DU REMÈDE, ÉCRIT AVANT LE CODE** — au banc `tools/format-zero.sh`, devenu garde :
+(a) la source de format 0, exportée : **format 0, 1 piste**, les cinq notes dans l'ordre du temps avec leurs canaux (1:60,
+10:36, 1:64, 1:67, 10:38), le tempo à 120 ;
+(b) son projet : `midi/arrangement.mid` de **format 1** (2 pistes), `"midiFormat": 0` au `project.json` ;
+(c) rouvert puis réexporté : de nouveau **format 0, 1 piste**, les mêmes notes ;
+(d) la source de format 1 : tout en format 1, pas de clé `midiFormat` ;
+(e) l'export MIDI entre les locateurs (D568.2) d'une source de format 0 : format 0, 1 piste ;
+(f) au cœur : un test de la fusion (deux pistes de canaux différents, une fin et un début au même instant : la fin d'abord) ;
+`ouvrir-midi`, `export-ordre`, `fusionner-midi`, `midi-locateurs` verts ; les suites ; la série.
