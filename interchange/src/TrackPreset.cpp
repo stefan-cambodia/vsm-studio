@@ -29,6 +29,8 @@ TrackPreset trackPresetFromTrack(const vsm::sequencer::Track& track, const std::
     preset.transposeSemitones = track.transposeSemitones;
     preset.drumMap = track.drumMap;   // D610.2
     preset.drumGrid = track.drumGrid;   // D622.1
+    preset.drumOrder = track.drumOrder;   // D636.1
+    preset.drumMuted = track.drumMuted;   // D637.1
     preset.delayMs = track.delayMs;
     preset.outputGroup = track.outputGroup;
     return preset;
@@ -62,6 +64,8 @@ void applyTrackPresetToTrack(const TrackPreset& preset, vsm::sequencer::Track& t
     track.transposeSemitones = preset.transposeSemitones;
     track.drumMap = preset.drumMap;   // D610.2
     track.drumGrid = preset.drumGrid;   // D622.1
+    track.drumOrder = preset.drumOrder;   // D636.1
+    track.drumMuted = preset.drumMuted;   // D637.1
     track.delayMs = preset.delayMs;
     track.outputGroup = preset.outputGroup;
 }
@@ -114,6 +118,16 @@ JsonValue trackPresetToJson(const TrackPreset& preset) {
             grilles.append(std::move(e));
         }
         root.set("drumGrid", std::move(grilles));
+    }
+    if (!preset.drumOrder.empty()) {   // D636.1 : l'ordre des rangs, seulement s'il est posé
+        JsonValue ordre = JsonValue::makeArray();
+        for (const uint8_t ecrite : preset.drumOrder) ordre.append(JsonValue::makeNumber(ecrite));
+        root.set("drumOrder", std::move(ordre));
+    }
+    if (!preset.drumMuted.empty()) {   // D637.1 : les rangs muets, seulement s'il y en a
+        JsonValue muets = JsonValue::makeArray();
+        for (const uint8_t ecrite : preset.drumMuted) muets.append(JsonValue::makeNumber(ecrite));
+        root.set("drumMuted", std::move(muets));
     }
 
     root.set("delayMs", JsonValue::makeNumber(preset.delayMs));
@@ -178,6 +192,17 @@ TrackPresetLoadResult trackPresetFromJson(const JsonValue& json) {
         vsm::sequencer::GridResolution lue;
         if (ecrite >= 0.0 && ecrite <= 127.0 && vsm::sequencer::gridResolutionFromLabel(libelle, lue))
             preset.drumGrid[static_cast<uint8_t>(ecrite)] = libelle;
+    }
+    for (const auto& e : json["drumOrder"].elements()) {   // D636.1 : la règle du projet (hors bornes ou en double : écartée)
+        const double ecrite = e.asNumber(-1.0);
+        if (ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite))
+            && std::find(preset.drumOrder.begin(), preset.drumOrder.end(), static_cast<uint8_t>(ecrite)) == preset.drumOrder.end())
+            preset.drumOrder.push_back(static_cast<uint8_t>(ecrite));
+    }
+    for (const auto& e : json["drumMuted"].elements()) {   // D637.1 : la règle du projet (hors bornes : écartée)
+        const double ecrite = e.asNumber(-1.0);
+        if (ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite)))
+            preset.drumMuted.insert(static_cast<uint8_t>(ecrite));
     }
     preset.delayMs = json["delayMs"].asNumber(0.0);
     preset.outputGroup = static_cast<int>(json["outputGroup"].asNumber(-1.0));

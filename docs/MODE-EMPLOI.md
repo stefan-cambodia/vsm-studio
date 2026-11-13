@@ -928,6 +928,12 @@ l'éditeur de batterie et la *Drum Map* de Cubase).
   vers la pièce de même catégorie la plus proche sur la machine, et dit ce qui
   reste sans équivalent ; *Remettre à l'identité* défait tout. Chaque
   changement est un pas d'annulation.
+- **L'ordre et le muet des rangs** (D636, D637). ▲ et ▼ rangent les lignes de
+  la carte ; le piano roll **replié** suit cet ordre de haut en bas (déplié, il
+  reste un clavier). Sans ordre posé, rien ne change : la carte par numéro, le
+  repli par hauteur. La case **M** tait un rang : ses frappes ne se jouent plus,
+  ni à la lecture ni à l'export audio, celles qu'on y écrit ensuite non plus ;
+  le fichier les garde (l'export MIDI le dit), et le clavier les joue encore.
 - **La grille par rang** (D622). Dans la colonne *Grille* de la carte, un rang
   peut avoir sa grille (de 1/2 à 1/64, triolets et pointées) ; « globale » suit
   la barre. Une frappe **posée** dans ce rang s'y aimante et dure une case

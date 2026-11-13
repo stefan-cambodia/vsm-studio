@@ -552,6 +552,7 @@ private:
     bool legatoEntreChoisies_ = false; ///< D576.3
     float rayonCapture_ = 0.0f;     ///< D575.2
     std::string longueurInsertion_;   ///< D625.1 : vide = la grille
+    bool ordreLibre_ = false;          ///< D636.2 : `rangees_` suit l'ordre de la carte
     uint8_t defaultVelocity_ = 100;
     bool reticule_ = true;               ///< D587.3 : la préférence
     bool losanges_ = true;               ///< D615.1 : la préférence
@@ -574,6 +575,11 @@ private:
     /// D502 : Ctrl+0 et « Zoom : tout voir » — demandé à l'application (`onToutVoirDemande`).
     void demanderToutVoir();
     bool folded() const { return fold_ && !rangees_.empty(); }
+    /// D636.2 : le repli suit l'ordre de la carte de la piste (`Track::drumOrder`) — ses rangées ne sont plus rangées par
+    /// hauteur, et la vue se déplace par RANGÉES (`decalerLeHaut`).
+    bool ordreLibre() const { return folded() && ordreLibre_; }
+    /// D636.2 : monte la vue de `d` (demi-tons dépliée ou repliée par hauteur — le chemin d'avant ; rangées sous un ordre).
+    void decalerLeHaut(int d);
     int rowCount() const { return folded() ? static_cast<int>(rangees_.size()) : 128; }
     int rowOfNote(int note) const;
     int noteOfRow(int row) const;

@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <set>
 #include <vector>
 
 // Format de projet `project.json` (Phase 7, P4 -- docs/ROADMAP-interop.md § 4).
@@ -308,6 +309,12 @@ struct ProjectTrack {
     /// D622.1 : la grille par rang, note écrite → libellé (« 1/4 ») ; `"drumGrid"` au fichier, seulement si elle n'est
     /// pas vide. Une entrée illisible est comptée avec celles de la carte (`drumMapRejected`), et dite.
     std::map<uint8_t, std::string> drumGrid;
+    /// D636.1 : l'ordre des rangs, notes écrites de haut en bas ; `"drumOrder"` au fichier, seulement s'il est posé. Une
+    /// entrée hors de 0..127 ou en double est comptée avec celles de la carte (`drumMapRejected`), et dite.
+    std::vector<uint8_t> drumOrder;
+    /// D637.1 : les rangs muets, notes écrites ; `"drumMuted"` au fichier, seulement s'il y en a ; une note hors de 0..127
+    /// est comptée avec les entrées de la carte (`drumMapRejected`).
+    std::set<uint8_t> drumMuted;
     /// D609.1 : les entrées de la carte écartées à la lecture (hors de 0..127, ou vers elles-mêmes) — DITES par
     /// `applyDocumentToProject`, jamais tues.
     int drumMapRejected = 0;

@@ -6,6 +6,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <set>
 #include <vector>
 
 namespace vsm::interchange {
@@ -41,6 +42,8 @@ struct TrackPreset {
     /// D610.2 : la carte de batterie (D609.1) — un préréglage de batterie garde ce qui la fait sonner sur sa machine.
     std::map<uint8_t, uint8_t> drumMap;
     std::map<uint8_t, std::string> drumGrid;   ///< D622.1 : la grille par rang — le préréglage garde la façon d'écrire
+    std::vector<uint8_t> drumOrder;            ///< D636.1 : l'ordre des rangs, de même
+    std::set<uint8_t> drumMuted;               ///< D637.1 : les rangs muets, de même
     double delayMs = 0.0;
     int outputGroup = -1;
 };

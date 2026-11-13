@@ -191,6 +191,22 @@ VSM_TEST(a_track_preset_carries_the_drum_map_and_writes_it_only_when_there_is_on
     applyTrackPresetToTrack(parseTrackPreset(avecGrille).preset, cible2);
     VSM_ASSERT(cible2.drumGrid == batterie.drumGrid);
     VSM_ASSERT(texte.find("\"drumGrid\"") == std::string::npos);
+    // D636.1 : l'ordre des rangs voyage aussi, dans son ordre, et seulement s'il est posé.
+    batterie.drumOrder = {42, 36, 38};
+    const std::string avecOrdre = trackPresetToJson(trackPresetFromTrack(batterie, "Toms 909", std::nullopt)).toString();
+    VSM_ASSERT(avecOrdre.find("\"drumOrder\"") != std::string::npos);
+    Track cible3;
+    applyTrackPresetToTrack(parseTrackPreset(avecOrdre).preset, cible3);
+    VSM_ASSERT(cible3.drumOrder == batterie.drumOrder);
+    VSM_ASSERT(texte.find("\"drumOrder\"") == std::string::npos);
+    // D637.1 : les rangs muets voyagent aussi, et seulement s'il y en a.
+    batterie.drumMuted = {42};
+    const std::string avecMuet = trackPresetToJson(trackPresetFromTrack(batterie, "Toms 909", std::nullopt)).toString();
+    VSM_ASSERT(avecMuet.find("\"drumMuted\"") != std::string::npos);
+    Track cible4;
+    applyTrackPresetToTrack(parseTrackPreset(avecMuet).preset, cible4);
+    VSM_ASSERT(cible4.drumMuted == batterie.drumMuted);
+    VSM_ASSERT(texte.find("\"drumMuted\"") == std::string::npos);
     Track nue;
     const std::string sansCarte = trackPresetToJson(trackPresetFromTrack(nue, "Nue", std::nullopt)).toString();
     VSM_ASSERT(sansCarte.find("\"drumMap\"") == std::string::npos);

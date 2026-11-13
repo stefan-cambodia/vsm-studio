@@ -797,6 +797,22 @@ const Paire kAnglais[] = {
       "Insert a file from the pool" },
     { "Poser des fichiers de la réserve",   // D630.1 : le pas de plusieurs poses
       "Insert files from the pool" },
+    // D636.1 : l'ordre des rangs de la carte de batterie.
+    { "Monter ce rang : le piano roll replié suit l'ordre de la carte.",
+      "Move this row up: the folded piano roll follows the order of the map." },
+    { "Descendre ce rang : le piano roll replié suit l'ordre de la carte.",
+      "Move this row down: the folded piano roll follows the order of the map." },
+    { "Le piano roll replié suit l'ordre de la carte",
+      "The folded piano roll follows the order of the map" },
+    { "Ordre de la carte",
+      "Drum map order" },
+    // D637.1 : le muet par rang.
+    { "Rang muet : ses frappes ne se jouent plus, ni à la lecture ni à l'export audio. Le fichier les garde, et le clavier les joue encore.",
+      "Muted row: its hits no longer play, neither in playback nor in the audio export. The file keeps them, and the keyboard still plays them." },
+    { "Muet de la carte",
+      "Drum map mute" },
+    { "rangs muets de la carte (%1 frappe(s))",
+      "muted rows of the drum map (%1 hit(s))" },
     { "%1 manque sur le disque : rien n'a été posé.",
       "%1 is missing from the disk: nothing was inserted." },
     { "Ce fichier ne se lit pas comme un fichier audio : rien n'a été posé.",

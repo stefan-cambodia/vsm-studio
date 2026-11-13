@@ -587,6 +587,8 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.transposeSemitones = track.transposeSemitones;
         entry.drumMap = track.drumMap;   // D609.1
         entry.drumGrid = track.drumGrid;   // D622.1
+        entry.drumOrder = track.drumOrder;   // D636.1
+        entry.drumMuted = track.drumMuted;   // D637.1
         entry.independentOfGlobalTranspose = track.independentOfGlobalTranspose;   // D544.3
         entry.editGroup = track.editGroup;
         entry.outputSourceTrack = track.outputSourceTrack;
@@ -853,6 +855,8 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.transposeSemitones = source.transposeSemitones;
         target.drumMap = source.drumMap;   // D609.1
         target.drumGrid = source.drumGrid;   // D622.1
+        target.drumOrder = source.drumOrder;   // D636.1
+        target.drumMuted = source.drumMuted;   // D637.1
         if (source.drumMapRejected > 0)
             report.warnings.push_back("piste " + std::to_string(i + 1) + (source.name.empty() ? "" : " \xc2\xab " + source.name + " \xc2\xbb")
                                       + " : " + std::to_string(source.drumMapRejected)
@@ -1308,6 +1312,16 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             }
             entry.set("drumGrid", std::move(grilles));
         }
+        if (!track.drumOrder.empty()) {   // D636.1 : l'ordre des rangs, seulement s'il est posé
+            JsonValue ordre = JsonValue::makeArray();
+            for (const uint8_t ecrite : track.drumOrder) ordre.append(JsonValue::makeNumber(ecrite));
+            entry.set("drumOrder", std::move(ordre));
+        }
+        if (!track.drumMuted.empty()) {   // D637.1 : les rangs muets, seulement s'il y en a
+            JsonValue muets = JsonValue::makeArray();
+            for (const uint8_t ecrite : track.drumMuted) muets.append(JsonValue::makeNumber(ecrite));
+            entry.set("drumMuted", std::move(muets));
+        }
         if (track.independentOfGlobalTranspose)   // D544.3
             entry.set("independentOfGlobalTranspose", JsonValue::makeBoolean(true));
         if (track.editGroup != 0) entry.set("editGroup", JsonValue::makeNumber(track.editGroup));
@@ -1745,6 +1759,24 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             vsm::sequencer::GridResolution lue;
             if (ecrite >= 0.0 && ecrite <= 127.0 && vsm::sequencer::gridResolutionFromLabel(libelle, lue))
                 track.drumGrid[static_cast<uint8_t>(ecrite)] = libelle;
+            else
+                ++track.drumMapRejected;
+        }
+        // D636.1 : l'ordre des rangs — une note hors de 0..127, ou déjà rangée, n'est pas une entrée : écartée, comptée.
+        for (const auto& e : entry["drumOrder"].elements()) {
+            const double ecrite = e.asNumber(-1.0);
+            const bool lisible = ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite));
+            if (lisible && std::find(track.drumOrder.begin(), track.drumOrder.end(), static_cast<uint8_t>(ecrite))
+                               == track.drumOrder.end())
+                track.drumOrder.push_back(static_cast<uint8_t>(ecrite));
+            else
+                ++track.drumMapRejected;
+        }
+        // D637.1 : les rangs muets — une note hors de 0..127 n'est pas une entrée : écartée, comptée.
+        for (const auto& e : entry["drumMuted"].elements()) {
+            const double ecrite = e.asNumber(-1.0);
+            if (ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite)))
+                track.drumMuted.insert(static_cast<uint8_t>(ecrite));
             else
                 ++track.drumMapRejected;
         }

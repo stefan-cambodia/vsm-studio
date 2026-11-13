@@ -49873,3 +49873,60 @@ le projet porte `"drumMuted": [42]` ; un pas « Muet de la carte » ;
 (d) **le témoin** (le binaire de D635, `build/temoin-D635`) : le verbe inconnu, l'export sonne ;
 (e) l'export MIDI nomme les rangs muets (« rangs muets de la carte ») ; l'anglais ; `carte-batterie`, `adapter-batterie`,
 `ordre-de-la-carte` verts ; les suites ; la série.
+
+### Phase D636 — MESURÉE, la série à jouer (13/11/2026, 09 h 04 à l'horloge)
+
+*Écrite avant son code le 13/11 à 06 h 45 ; le code écrit pendant la série de D634-D635, compilé après elle (08 h 40), avec
+D637. **Le banc vu ROUGE d'abord sur le binaire de D635** — sept contrôles, tous parce que `carte-monter:` y est inconnu et
+qu'aucun ordre ne se pose. Le banc `tools/ordre-de-la-carte.sh` (10 contrôles) ; le témoin : `build/temoin-D635`. Interchange
+**376/376** (deux tests neufs, D636 et D637 ; 374 avant), le préréglage de piste compris.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D635) | tenu |
+|---|---|---|---|---|
+| D636 (a) | sans geste : carte 36 38 42, repli 42 38 36, pas d'ordre | **les mêmes**, `"drumOrder"` absent | les mêmes | **oui** |
+| D636 (b) | ▲ de 42 deux fois : carte et repli 42 36 38, `[42, 36, 38]`, deux pas | **42 36 38** et **42 36 38**, **[42, 36, 38]**, **2** pas « Ordre de la carte » | rien ne bouge | **oui** |
+| D636 (c) | Ctrl+Z : carte 36 42 38 | **36 42 38** | — | **oui** |
+| D636 (d) | rouvert : carte et repli 42 36 38 | **42 36 38** et **42 36 38** | — | **oui** |
+| D636 (e) | un clic dans la rangée du milieu pose une 36 | **36@1920** | **38@1920** (la rangée du milieu y est la 38) | **oui (le banc corrigé, voir plus bas)** |
+| D636 (f) | le témoin : le verbe inconnu, le repli 42 38 36 | — | **refusé (geste inconnu)**, **42 38 36** | **oui** |
+| D636 (g) | interchange : écrit s'il est posé, relu DANS SON ORDRE, hors bornes et doublons écartés et comptés, le préréglage | verts | — | **oui** |
+| D636 (h) | l'anglais | « Move this row up: the folded piano roll follows the order of the map. » | — | **oui** |
+| — | les voisins | `carte-batterie`, `adapter-batterie`, `grille-par-rang`, `batterie-losanges`, `pianoroll-zones` (le repli par hauteur), `glisse-par-rang`, `fleches-par-rang`, `prise-par-rang` verts | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Un défaut du BANC, trouvé sur le témoin et dit** : (e) visait la rangée de la frappe 36 relevée dans la MÊME course, si
+  bien qu'il posait une 36 quel que soit l'ordre — vert sur le témoin. Il vise désormais la rangée du MILIEU (la médiane des
+  trois y), comme l'attendu l'écrit : 36 sous l'ordre, **38 sur le témoin**, rouge comme il se doit.
+- **Un défaut de l'APPLICATION, trouvé sur la photo et corrigé** : `juce::ArrowButton` dessine un bouton désactivé comme les
+  autres — le ▲ du haut et le ▼ du bas étaient grisés au clic mais pas à l'œil. Ils prennent une encre éteinte ; la photo
+  suivante les montre.
+- **Une ligne de C++ cassée par le script qui l'écrivait** (un `\n` devenu un vrai retour à la ligne dans un littéral) :
+  la compilation l'a dit, corrigée avant toute mesure.
+- **LA PHOTO, REGARDÉE** : la carte (recomposée sur `0x1f1f24`) range 36, 42, 38 avec ▲ ▼ et la case M de D637 ; le piano roll
+  replié range « charleston fermé, grosse caisse, caisse claire » et la ligne d'état dit qu'il suit l'ordre de la carte.
+- **Pas mesurés** : la molette, les flèches sans sélection et le glissé de la main sous un ordre (par rangées, écrits) ; la
+  fusion MIDI qui efface l'ordre avec la carte et les grilles.
+- **Remis, nommé** : « ↑ » et « ↓ » d'une frappe choisie changent sa hauteur d'un demi-ton, pas sa rangée.
+
+### Phase D637 — MESURÉE, la série à jouer (13/11/2026, 09 h 04 à l'horloge)
+
+*Écrite avant son code le 13/11 à 07 h 27 ; compilée avec D636. **Le test du cœur joué ROUGE sur le planning d'avant** (le saut
+du rang muet retiré des trois boucles, puis remis : « 4 != 2 », 588/589), puis vert, **589/589** (588 avant). **Le banc vu
+ROUGE d'abord sur le binaire de D635** — six contrôles, le verbe inconnu et l'export qui sonne. Le banc `tools/muet-par-rang.sh`
+(8 contrôles).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D635) | tenu |
+|---|---|---|---|---|
+| D637 (a) | au cœur : planning et chasse sans le rang muet ; les perdues de la transposition ne comptent pas les frappes tues ; le muet porte sur la note ÉCRITE | vert (2 notes au lieu de 4 ; la chasse ne relance pas 43 ; 1 perdue au lieu de 2 ; un muet sur la note de SORTIE 47 ne tait rien) | « 4 != 2 » sur le planning d'avant | **oui** |
+| D637 (b) | interchange : `"drumMuted"` écrit s'il y en a, relu, hors bornes écarté et compté, le préréglage | verts | — | **oui** |
+| D637 (c) | l'export sans geste au-dessus de −40 dBFS ; le rang 42 muet : sous −90 dBFS | **−16,62** ; **−138,47 dBFS** | — | **oui** |
+| D637 (c) | la carte dit « muet 42 » ; `"drumMuted": [42]` ; les quatre frappes gardées ; un pas | **muet 42** ; **[42]** ; **4 frappes** ; **1** pas « Muet de la carte » | — | **oui** |
+| D637 (d) | le témoin : le verbe inconnu, l'export sonne | — | **refusé**, **−16,62 dBFS** | **oui** |
+| D637 (e) | l'export MIDI nomme les rangs muets ; l'anglais | « rangs muets de la carte (4 frappe(s)) » ; « Muted row: its hits no longer play… » | — | **oui** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **La lecture en temps réel n'est pas mesurée au banc** : c'est le même planning que l'export (`PlaybackScheduler`, le test
+  du cœur le prend), mais aucun banc n'écoute la tranche pendant la lecture d'un rang muet.
+- **Le clavier qui joue encore une pièce muette** est écrit, pas mesuré.
+- **Remis, nommés** : pâlir dans le piano roll les rangées d'un rang muet ; le solo d'un rang.
+- **La série n'est pas jouée** (D636 et D637 ensemble, 230 bancs) : batterie à 39 % après la compilation, sans charge.

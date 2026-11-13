@@ -37,6 +37,23 @@ public:
     juce::StringArray grillesPourReleve() const;
     /// D622.1 : la grille d'une note écrite, au libellé (« 1/4 ») ; vide : « globale ».
     std::function<void(int ecrite, const std::string& libelle)> onGrille;
+    /// D636.1 : ▲ (ou ▼) de la ligne `ecrite` pressé (le verbe `carte-monter:42`), par le MÊME rappel que la souris. Faux si
+    /// la note n'a pas de ligne, ou si le bouton est grisé (la ligne du haut ne monte pas).
+    bool deplacer(int ecrite, bool monter);
+    /// D636.1 : l'ordre des lignes après un ▲ ou un ▼ — TOUTE la liste que la carte montre, de haut en bas.
+    std::function<void(const std::vector<uint8_t>& ordre)> onOrdre;
+    /// D637.1 : la case « M » de la ligne `ecrite` basculée (le verbe `carte-muet:42`), par le MÊME rappel que la souris.
+    /// Faux si la note n'a pas de ligne.
+    bool basculerMuet(int ecrite);
+    /// D637.1 : le muet d'une note écrite, coché ou non.
+    std::function<void(int ecrite, bool muet)> onMuet;
+    /// D637.1 : les notes écrites dont la case « M » est cochée, dans l'ordre de la carte.
+    juce::StringArray muetsPourReleve() const;
+    /// D636.1 : l'infobulle de ▲ de la dernière ligne (celle du haut a son ▲ grisé), pour le relevé — la même source que
+    /// l'écran.
+    juce::String infobulleMonter() const { return rangees_.empty() ? juce::String() : rangees_.back().monter->getTooltip(); }
+    /// D637.1 : l'infobulle de la case « M », de même.
+    juce::String infobulleMuet() const { return rangees_.empty() ? juce::String() : rangees_.back().muet->getTooltip(); }
     size_t piste() const { return piste_; }
 
     std::function<void(int ecrite, int jouee)> onChoix;
@@ -55,7 +72,10 @@ private:
         std::unique_ptr<juce::Label> nom;
         std::unique_ptr<juce::ComboBox> sortie;
         std::unique_ptr<juce::ComboBox> grille;   ///< D622.1
+        std::unique_ptr<juce::ArrowButton> monter, descendre;   ///< D636.1
+        std::unique_ptr<juce::ToggleButton> muet;                ///< D637.1 : la colonne « M »
     };
+    void deplacerLigne(size_t rang, bool monter);   ///< D636.1 : l'ordre affiché, la ligne échangée avec sa voisine
     juce::String nomEcrit(int note) const;
     juce::String nomJoue(int note) const;
 

@@ -176,3 +176,69 @@ VSM_TEST(the_drum_grid_is_written_only_when_a_row_has_one_and_reads_back_d622) {
     applyDocumentToProject(relu.document, cible);
     VSM_ASSERT(cible.tracks[1].drumGrid == project.tracks[1].drumGrid);
 }
+
+// D636.1 — L'ORDRE DES RANGS, ÉCRIT SEULEMENT S'IL EST POSÉ, ET RELU DANS SON ORDRE. L'attendu écrit avant le code
+// (ROADMAP-daw, D636, (g)) : `"drumOrder": [42, 36, 38]` sur la seule piste qui en a un ; une note hors de 0..127 ou déjà
+// rangée est écartée et comptée avec les entrées de la carte ; `applyDocumentToProject` le rend au modèle.
+VSM_TEST(the_drum_order_is_written_only_when_set_and_reads_back_in_order_d636) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tracks.emplace_back();
+    project.tracks.emplace_back();
+    project.tracks[1].drumOrder = {42, 36, 38};
+    const auto texte = projectDocumentToJson(documentFromProject(project)).toString();
+    size_t occurrences = 0;
+    for (size_t p = texte.find("\"drumOrder\""); p != std::string::npos; p = texte.find("\"drumOrder\"", p + 1)) ++occurrences;
+    VSM_ASSERT_EQ(occurrences, size_t(1));
+    VSM_ASSERT(texte.find("\"drumMap\"") == std::string::npos);   // un ordre n'écrit ni carte ni grille
+    VSM_ASSERT(texte.find("\"drumGrid\"") == std::string::npos);
+    const auto relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.tracks[0].drumOrder.empty());
+    VSM_ASSERT(relu.document.tracks[1].drumOrder == project.tracks[1].drumOrder);   // l'ORDRE, pas l'ensemble
+    VSM_ASSERT_EQ(relu.document.tracks[1].drumMapRejected, 0);
+    // Une note hors bornes et une note en double : écartées, comptées ; l'ordre des autres gardé.
+    std::string abime = texte;
+    const auto ou = abime.find("38", abime.find("\"drumOrder\""));   // le 38 DE L'ORDRE, pas un autre nombre
+    VSM_ASSERT(ou != std::string::npos);
+    abime.replace(ou, 2, "38, 200, 36");
+    const auto relu2 = parseProjectDocument(abime);
+    VSM_ASSERT(relu2.success);
+    VSM_ASSERT(relu2.document.tracks[1].drumOrder == project.tracks[1].drumOrder);
+    VSM_ASSERT_EQ(relu2.document.tracks[1].drumMapRejected, 2);
+    Project cible;
+    cible.tracks.resize(2);
+    applyDocumentToProject(relu.document, cible);
+    VSM_ASSERT(cible.tracks[1].drumOrder == project.tracks[1].drumOrder);
+}
+
+// D637.1 — LES RANGS MUETS, ÉCRITS SEULEMENT S'IL Y EN A, ET RELUS. L'attendu écrit avant le code (ROADMAP-daw, D637, (b)) :
+// `"drumMuted": [42]` sur la seule piste qui en a ; une note hors de 0..127 écartée et comptée ; rendus au modèle.
+VSM_TEST(muted_drum_rows_are_written_only_when_present_and_read_back_d637) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tracks.emplace_back();
+    project.tracks.emplace_back();
+    project.tracks[1].drumMuted = {42, 46};
+    const auto texte = projectDocumentToJson(documentFromProject(project)).toString();
+    size_t occurrences = 0;
+    for (size_t p = texte.find("\"drumMuted\""); p != std::string::npos; p = texte.find("\"drumMuted\"", p + 1)) ++occurrences;
+    VSM_ASSERT_EQ(occurrences, size_t(1));
+    const auto relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.tracks[0].drumMuted.empty());
+    VSM_ASSERT(relu.document.tracks[1].drumMuted == project.tracks[1].drumMuted);
+    VSM_ASSERT_EQ(relu.document.tracks[1].drumMapRejected, 0);
+    std::string abime = texte;
+    const auto ou = abime.find("46", abime.find("\"drumMuted\""));
+    VSM_ASSERT(ou != std::string::npos);
+    abime.replace(ou, 2, "46, 300");
+    const auto relu2 = parseProjectDocument(abime);
+    VSM_ASSERT(relu2.success);
+    VSM_ASSERT(relu2.document.tracks[1].drumMuted == project.tracks[1].drumMuted);
+    VSM_ASSERT_EQ(relu2.document.tracks[1].drumMapRejected, 1);
+    Project cible;
+    cible.tracks.resize(2);
+    applyDocumentToProject(relu.document, cible);
+    VSM_ASSERT(cible.tracks[1].drumMuted == project.tracks[1].drumMuted);
+}

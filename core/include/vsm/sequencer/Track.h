@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <set>
 #include <vector>
 
 namespace vsm::sequencer {
@@ -1010,6 +1011,17 @@ public:
     /// l'y aligne. Un rang absent suit la grille de la barre. Écrite au projet (`"drumGrid"`) seulement si elle n'est pas
     /// vide. Une propriété de l'ÉDITION : la lecture l'ignore.
     std::map<uint8_t, std::string> drumGrid;
+    /// D636.1 — L'ORDRE DES RANGS (l'ordre des pièces de la *Drum Map*) : les notes ÉCRITES, de haut en bas, telles que la
+    /// carte les range ; le piano roll REPLIÉ suit cet ordre (D636.2). Vide : aucun ordre posé — la carte liste par numéro
+    /// croissant, le repli par hauteur décroissante, comme avant. Écrit au projet (`"drumOrder"`) seulement s'il est posé.
+    /// Une propriété de l'ÉDITION : la lecture l'ignore.
+    std::vector<uint8_t> drumOrder;
+    /// D637.1 — LES RANGS MUETS (la colonne *M* de la *Drum Map*) : les notes ÉCRITES dont les frappes ne se jouent pas —
+    /// ni à la lecture, ni à la chasse, ni à l'export audio (le planning est commun aux deux chemins, D21). Le matériau ne
+    /// change pas, et l'export MIDI écrit ces frappes (il NOMME le muet parmi ce qu'il ne porte pas, comme la carte) ; le
+    /// clavier, lui, les joue encore. Écrit au projet (`"drumMuted"`) seulement s'il y en a.
+    std::set<uint8_t> drumMuted;
+    bool drumRowMuted(uint8_t ecrite) const { return !drumMuted.empty() && drumMuted.count(ecrite) > 0; }
 
     /// D544.3 : « INDÉPENDANTE DE LA TRANSPOSITION GLOBALE » — le *Follow / Independent* de Cubase. Faux
     /// par défaut : une piste suit la transposition du projet (`Project::globalTransposeSemitones`), qui

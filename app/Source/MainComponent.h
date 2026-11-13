@@ -440,6 +440,28 @@ public:
                                .toRawUTF8(), stderr);
             return fait;
         }
+        // D636.1 : `carte-monter:42` / `carte-descendre:42` — le ▲ ou le ▼ de la ligne, par le MÊME rappel que la souris ;
+        // l'ordre est écrit au message suivant (le bouton a fini de répondre), la relève vient donc plus tard.
+        if (geste.startsWithIgnoreCase("carte-monter:") || geste.startsWithIgnoreCase("carte-descendre:")) {
+            showCarte();
+            const bool haut = geste.upToFirstOccurrenceOf(":", false, false).trim().endsWithIgnoreCase("-monter");
+            const int ecrite = geste.fromFirstOccurrenceOf(":", false, false).trim().getIntValue();
+            const bool fait = cartePanel_.deplacer(ecrite, haut);
+            if (!fait)
+                std::fputs(("VSM_CARTE : " + geste + juce::String::fromUTF8(" REFUS\xc3\x89 (aucune ligne, ou le bouton gris\xc3\xa9)\n"))
+                               .toRawUTF8(), stderr);
+            return fait;
+        }
+        // D637.1 : `carte-muet:42` — la case « M » de la ligne basculée, par le MÊME rappel que la souris.
+        if (geste.startsWithIgnoreCase("carte-muet:")) {
+            showCarte();
+            const int ecrite = geste.fromFirstOccurrenceOf(":", false, false).trim().getIntValue();
+            const bool fait = cartePanel_.basculerMuet(ecrite);
+            if (!fait)
+                std::fputs(("VSM_CARTE : " + geste + juce::String::fromUTF8(" REFUS\xc3\x89 (aucune ligne pour cette note)\n")).toRawUTF8(),
+                           stderr);
+            return fait;
+        }
         // D615.1 : la géométrie des losanges du piano roll (`VSM_LOSANGE`), de quoi y cliquer par `clic:pianoroll:`.
         if (geste.equalsIgnoreCase("relever-losanges")) { std::fputs(pianoRoll_.releverLosanges().toRawUTF8(), stderr); return true; }
         // D608.1 : choisir une ligne de la réserve, comme d'un clic — « Relier... » se presse ensuite par `cliquer:`.
@@ -2627,6 +2649,8 @@ private:
     void poserCarte(size_t piste, int ecrite, int jouee);
     /// D622.1 : LA GRILLE D'UN RANG de la carte — un pas seulement si elle change ; un libellé vide : « globale ».
     void poserGrilleCarte(size_t piste, int ecrite, const std::string& libelle);
+    void poserOrdreCarte(size_t piste, const std::vector<uint8_t>& ordre);   ///< D636.1
+    void poserMuetCarte(size_t piste, int ecrite, bool muet);   ///< D637.1
     void direLaCarte();
     std::unique_ptr<PanelWindow> carteWindow_;
     vsm::app::ui::DrumMapComponent cartePanel_;

@@ -77,6 +77,43 @@ VSM_TEST(the_drum_map_plays_the_output_note_of_each_written_note_d609) {
     VSM_ASSERT(kick);
 }
 
+// D637.1 — LE MUET D'UN RANG. L'attendu écrit avant le code (ROADMAP-daw, D637, (a)) : une piste qui écrit 41 et 43, le
+// rang 43 muet — le planning n'a que 41, la chasse ne relance pas 43 ; le témoin du MÊME test (sans muet) planifie les deux ;
+// une transposition qui écarte des notes ne compte pas les frappes TUES parmi les perdues ; le matériau ne change pas.
+VSM_TEST(a_muted_drum_row_neither_plays_nor_chases_and_is_not_counted_as_dropped_d637) {
+    Project temoin = desToms();
+    Project muet = desToms();
+    muet.tracks[0].drumMuted = {43};
+    const auto t = planifie(temoin);
+    const auto m = planifie(muet);
+    VSM_ASSERT_EQ(t.size(), size_t(4));
+    VSM_ASSERT_EQ(m.size(), size_t(2));
+    for (const auto& n : m) VSM_ASSERT_EQ(std::get<1>(n), 41);
+    VSM_ASSERT_EQ(muet.tracks[0].notes.size(), size_t(2));   // le matériau ne change pas
+    // LA CHASSE, au milieu du second tom (tick 600) : le témoin relance 43, le rang muet non.
+    const auto relance = [](const Project& p, int note) {
+        for (const auto& e : PlaybackScheduler::chaseNotesAt(p, 600))
+            if (const auto* on = std::get_if<NoteOnEvent>(&e.data); on != nullptr && on->note == note) return true;
+        return false;
+    };
+    VSM_ASSERT(relance(temoin, 43));
+    VSM_ASSERT(!relance(muet, 43));
+    // LES PERDUES DE LA TRANSPOSITION : +100 écarte les deux toms du témoin, et la seule 41 du muet.
+    temoin.tracks[0].transposeSemitones = 100;
+    muet.tracks[0].transposeSemitones = 100;
+    VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(temoin), size_t(2));
+    VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(muet), size_t(1));
+    // LA CARTE ET LE MUET ENSEMBLE : le muet porte sur la note ÉCRITE (43), pas sur la jouée (47).
+    Project lesDeux = desToms();
+    lesDeux.tracks[0].drumMap = {{41, 45}, {43, 47}};
+    lesDeux.tracks[0].drumMuted = {47};   // une note de SORTIE n'est pas un rang : rien ne se tait
+    VSM_ASSERT_EQ(planifie(lesDeux).size(), size_t(4));
+    lesDeux.tracks[0].drumMuted = {43};
+    const auto d = planifie(lesDeux);
+    VSM_ASSERT_EQ(d.size(), size_t(2));
+    for (const auto& n : d) VSM_ASSERT_EQ(std::get<1>(n), 45);
+}
+
 // D610.1 — ADAPTER UNE PARTIE GENERAL MIDI À LA MACHINE. L'attendu écrit avant le code (ROADMAP-daw, D610, (a)) : sur
 // les 35 pièces de la table General MIDI, celles qui sonnent DANS LEUR CATÉGORIE sans puis avec l'adaptation, et celles
 // qui restent sans équivalent — 808 : 6 → 9 (26) ; 909 : 9 → 18 (17) ; batterie : 10 → 20 (15) ; FM Drums : 6 → 14

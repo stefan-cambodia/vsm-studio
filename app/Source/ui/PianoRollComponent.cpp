@@ -168,6 +168,12 @@ Tick PianoRollComponent::xToTick(float x) const {
 // pendant un défilement) tombe sur la rangée de la plus proche en dessous.
 int PianoRollComponent::rowOfNote(int note) const {
     if (!folded()) return 127 - juce::jlimit(0, 127, note);
+    // D636.2 : SOUS UN ORDRE DE CARTE, la rangée est la PLACE dans la liste ; une hauteur absente (un cadrage calculé en
+    // demi-tons) tombe sur la première rangée — compter les plus aiguës n'a plus de sens quand l'ordre n'est pas le leur.
+    if (ordreLibre_) {
+        const auto ici = std::find(rangees_.begin(), rangees_.end(), static_cast<uint8_t>(juce::jlimit(0, 127, note)));
+        return ici == rangees_.end() ? 0 : static_cast<int>(ici - rangees_.begin());
+    }
     int rangee = 0;
     for (uint8_t h : rangees_) {
         if (static_cast<int>(h) > note) ++rangee;
@@ -192,12 +198,30 @@ uint8_t PianoRollComponent::yToNote(float y) const {
 
 void PianoRollComponent::refreshFoldRows() {
     rangees_.clear();
+    ordreLibre_ = false;
     if (!fold_) return;
     const Track* track = activeTrack();
     if (!track) return;
     std::set<uint8_t> hauteurs;
     for (const auto& n : track->notes) hauteurs.insert(n.number);
-    rangees_.assign(hauteurs.rbegin(), hauteurs.rend());
+    if (track->drumOrder.empty()) {   // aucun ordre posé : par hauteur décroissante, AU BIT PRÈS comme avant
+        rangees_.assign(hauteurs.rbegin(), hauteurs.rend());
+        return;
+    }
+    // D636.2 : L'ORDRE DE LA CARTE — les hauteurs jouées qu'il nomme, dans son ordre ; les autres à la suite, par numéro
+    // croissant, comme la carte les liste.
+    for (const uint8_t h : track->drumOrder)
+        if (hauteurs.erase(h) > 0) rangees_.push_back(h);
+    rangees_.insert(rangees_.end(), hauteurs.begin(), hauteurs.end());
+    ordreLibre_ = true;
+}
+
+void PianoRollComponent::decalerLeHaut(int d) {
+    if (ordreLibre()) {   // D636.2 : par rangées — monter la vue, c'est montrer la rangée d'au-dessus
+        topNote_ = noteOfRow(rowOfNote(topNote_) - d);
+        return;
+    }
+    topNote_ = juce::jlimit(12, 127, topNote_ + d);
 }
 
 bool PianoRollComponent::setFoldEnabled(bool enabled) {
@@ -2421,7 +2445,8 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
             const double deltaTicks = static_cast<double>(dragStartMousePos_.x - pos.x) / pixelsPerTick_;
             scrollTick_ = std::max<Tick>(0, panStartTick_ + static_cast<Tick>(deltaTicks));
             const int deltaNotes = static_cast<int>((pos.y - dragStartMousePos_.y) / static_cast<float>(noteHeight_));
-            topNote_ = juce::jlimit(12, 127, panStartTopNote_ + deltaNotes);
+            topNote_ = panStartTopNote_;   // D636.2 : depuis le départ du glissé, par le chemin de la vue (rangées sous un ordre)
+            decalerLeHaut(deltaNotes);
             updateScrollBars();
             repaint();
             break;
@@ -2617,7 +2642,7 @@ bool PianoRollComponent::defilerAuBord(juce::Point<float> pointeur, bool hauteur
         else if (pointeur.y > bandeBas) d = -pas(pointeur.y - bandeBas);
         if (d != 0) {
             const int avant = topNote_;
-            topNote_ = juce::jlimit(12, 127, topNote_ + d);
+            decalerLeHaut(d);   // D636.2
             bouge = topNote_ != avant;
         }
     }
@@ -2659,7 +2684,7 @@ void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& event, const juc
         updateScrollBars();
         repaint();
     } else {
-        topNote_ = juce::jlimit(12, 127, topNote_ + (wheel.deltaY > 0 ? 2 : -2));
+        decalerLeHaut(wheel.deltaY > 0 ? 2 : -2);   // D636.2
         updateScrollBars();
         repaint();
     }
@@ -2730,12 +2755,12 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
     }
     if (fleche(juce::KeyPress::upKey)) {
         if (hasSelection()) transposeSelection(mods.isShiftDown() ? 12 : 1);
-        else { topNote_ = juce::jlimit(12, 127, topNote_ + 1); updateScrollBars(); repaint(); }
+        else { decalerLeHaut(1); updateScrollBars(); repaint(); }   // D636.2
         return true;
     }
     if (fleche(juce::KeyPress::downKey)) {
         if (hasSelection()) transposeSelection(mods.isShiftDown() ? -12 : -1);
-        else { topNote_ = juce::jlimit(12, 127, topNote_ - 1); updateScrollBars(); repaint(); }
+        else { decalerLeHaut(-1); updateScrollBars(); repaint(); }   // D636.2
         return true;
     }
     return false;

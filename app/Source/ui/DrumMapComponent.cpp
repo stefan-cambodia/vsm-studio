@@ -85,9 +85,16 @@ void DrumMapComponent::setPiste(size_t index, const vsm::sequencer::Track& piste
     std::set<int> ecrites;
     for (const auto& n : piste.notes) ecrites.insert(n.number);
     for (const auto& [ecrite, jouee] : piste.drumMap) ecrites.insert(ecrite);
+    // D636.1 : L'ORDRE DE LA CARTE, s'il est posé — les notes qu'il nomme dans son ordre, les autres à la suite par numéro
+    // croissant ; sans ordre, le numéro croissant, comme avant.
+    std::vector<int> ordre;
+    for (const uint8_t h : piste.drumOrder)
+        if (ecrites.erase(static_cast<int>(h)) > 0) ordre.push_back(static_cast<int>(h));
+    ordre.insert(ordre.end(), ecrites.begin(), ecrites.end());
     rangees_.clear();
     contenu_.removeAllChildren();
-    for (int ecrite : ecrites) {
+    for (size_t rang = 0; rang < ordre.size(); ++rang) {
+        const int ecrite = ordre[rang];
         Rangee r;
         r.ecrite = ecrite;
         r.nom = std::make_unique<juce::Label>();
@@ -128,13 +135,76 @@ void DrumMapComponent::setPiste(size_t index, const vsm::sequencer::Track& piste
             if (onGrille && (id == kGlobale || connu))
                 onGrille(ecrite, id == kGlobale ? std::string() : std::string(kGrilles[static_cast<size_t>(id - 2)]));
         };
+        // D636.1 : ▲ ET ▼ — grisés en haut et en bas de la liste ; l'appui remonte TOUT l'ordre affiché, la ligne échangée.
+        // GRISÉS, ET CELA SE VOIT : `juce::ArrowButton` dessine un bouton désactivé comme les autres (vu sur la photo) — la
+        // flèche qui ne peut rien faire prend une encre éteinte.
+        const auto encre = [](bool actif) { return actif ? vsm::ui::Palette::accentTeal : vsm::ui::Palette::textSecondary.withAlpha(0.3f); };
+        r.monter = std::make_unique<juce::ArrowButton>("monter " + juce::String(ecrite), 0.75f, encre(rang > 0));
+        r.descendre = std::make_unique<juce::ArrowButton>("descendre " + juce::String(ecrite), 0.25f, encre(rang + 1 < ordre.size()));
+        r.monter->setTooltip(tr(u8"Monter ce rang : le piano roll replié suit l'ordre de la carte."));
+        r.descendre->setTooltip(tr(u8"Descendre ce rang : le piano roll replié suit l'ordre de la carte."));
+        r.monter->setEnabled(rang > 0);
+        r.descendre->setEnabled(rang + 1 < ordre.size());
+        r.monter->onClick = [this, rang] { deplacerLigne(rang, true); };
+        r.descendre->onClick = [this, rang] { deplacerLigne(rang, false); };
         contenu_.addAndMakeVisible(*r.nom);
         contenu_.addAndMakeVisible(*r.sortie);
         contenu_.addAndMakeVisible(*r.grille);
+        // D637.1 : LE MUET DU RANG — une case ; la lecture se tait, le fichier garde les frappes.
+        r.muet = std::make_unique<juce::ToggleButton>("M");
+        r.muet->setToggleState(piste.drumRowMuted(static_cast<uint8_t>(ecrite)), juce::dontSendNotification);
+        r.muet->setTooltip(tr(u8"Rang muet : ses frappes ne se jouent plus, ni à la lecture ni à l'export audio. Le "
+                              u8"fichier les garde, et le clavier les joue encore."));
+        r.muet->onClick = [this, ecrite, bouton = r.muet.get()] {
+            if (onMuet) onMuet(ecrite, bouton->getToggleState());
+        };
+        contenu_.addAndMakeVisible(*r.monter);
+        contenu_.addAndMakeVisible(*r.descendre);
+        contenu_.addAndMakeVisible(*r.muet);
         rangees_.push_back(std::move(r));
     }
     resized();
     repaint();
+}
+
+void DrumMapComponent::deplacerLigne(size_t rang, bool monter) {
+    if (rang >= rangees_.size() || (monter && rang == 0) || (!monter && rang + 1 >= rangees_.size())) return;
+    std::vector<uint8_t> ordre;
+    for (const auto& r : rangees_) ordre.push_back(static_cast<uint8_t>(r.ecrite));
+    std::swap(ordre[rang], ordre[monter ? rang - 1 : rang + 1]);
+    // DIFFÉRÉ : l'application écrit le projet puis rappelle `setPiste`, qui REFAIT la liste — et détruirait le bouton
+    // pressé pendant son propre `onClick`. Le message suivant, le bouton a fini de répondre.
+    juce::MessageManager::callAsync([moi = juce::Component::SafePointer<DrumMapComponent>(this), ordre] {
+        if (moi != nullptr && moi->onOrdre) moi->onOrdre(ordre);
+    });
+}
+
+bool DrumMapComponent::deplacer(int ecrite, bool monter) {
+    for (auto& r : rangees_)
+        if (r.ecrite == ecrite) {
+            auto& bouton = monter ? r.monter : r.descendre;
+            if (!bouton->isEnabled()) return false;
+            bouton->onClick();   // LE MÊME RAPPEL que le clic de la souris
+            return true;
+        }
+    return false;
+}
+
+bool DrumMapComponent::basculerMuet(int ecrite) {
+    for (auto& r : rangees_)
+        if (r.ecrite == ecrite) {
+            r.muet->setToggleState(!r.muet->getToggleState(), juce::dontSendNotification);   // ce que le clic fait à la case
+            r.muet->onClick();                                                                 // puis LE MÊME RAPPEL
+            return true;
+        }
+    return false;
+}
+
+juce::StringArray DrumMapComponent::muetsPourReleve() const {
+    juce::StringArray muets;
+    for (const auto& r : rangees_)
+        if (r.muet->getToggleState()) muets.add(juce::String(r.ecrite));
+    return muets;
 }
 
 void DrumMapComponent::setRemarque(const juce::String& texte) {
@@ -195,8 +265,11 @@ void DrumMapComponent::resized() {
     int y = 0;
     for (auto& r : rangees_) {
         juce::Rectangle<int> ligne(0, y, largeur, kHauteur);
+        r.monter->setBounds(ligne.removeFromLeft(24).reduced(3, 6));       // D636.1
+        r.descendre->setBounds(ligne.removeFromLeft(24).reduced(3, 6));
         r.nom->setBounds(ligne.removeFromLeft(largeur * 42 / 100).reduced(2));
         r.grille->setBounds(ligne.removeFromRight(std::max(130, largeur * 22 / 100)).reduced(2));   // D622.1
+        r.muet->setBounds(ligne.removeFromRight(52).reduced(2));   // D637.1
         r.sortie->setBounds(ligne.reduced(2));
         y += kHauteur;
     }
