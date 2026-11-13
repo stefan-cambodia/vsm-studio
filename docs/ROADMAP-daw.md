@@ -49822,3 +49822,46 @@ voit, pas la hauteur qui serait là sur un clavier ;
 double écartée et comptée ; le préréglage de piste le porte ;
 (h) l'anglais (les infobulles de ▲ et ▼) ; `carte-batterie`, `adapter-batterie`, `grille-par-rang`, `batterie-losanges`,
 `pianoroll-zones` (le repli par hauteur) verts ; les suites ; la série.
+
+### Phase D637 — un quatre-vingt-seizième audit : le muet par rang de la carte (13/11/2026)
+
+*Écrite le 13/11 à 07 h 27 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série
+de D634-D635 TOURNE (64 bancs verts sur 228) ; D636 est écrite et attend sa compilation : le code de celle-ci s'écrit, il
+ne se compile qu'après la série, avec D636.*
+
+**D'OÙ ELLE VIENT : la dernière colonne de la *Drum Map* de Cubase qui manque à la carte** — après la note de sortie (D609),
+la grille (D622) et l'ordre (D636), le *M* : taire une pièce sans toucher à ses frappes. Pour essayer un groove sans le
+charleston, il faut aujourd'hui rendre muettes ses frappes une à une (le muet de note, gardé au fichier depuis D6.3) — et celles qu'on écrit ensuite
+sonnent —, ou les supprimer.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D637.1 | **Le muet d'un rang** — la colonne *M* de la *Drum Map* | dans la carte, chaque ligne porte une case « M » ; cochée, les frappes de cette note ÉCRITE ne se jouent plus — ni à la lecture, ni à la chasse, ni à l'export audio, ni par `vsm-render` (le planning est commun, le contrat de D21) — et celles qu'on y écrit ensuite non plus ; le matériau ne change pas ; au modèle (`Track::drumMuted`), au projet (`"drumMuted"`, seulement s'il y en a) et au préréglage de piste ; un pas d'annulation par case ; mesuré par un export audio, le relevé de la carte et le projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **La LECTURE seulement, comme la note de sortie (D609)** : le muet d'un rang est une décision d'écoute, pas une écriture.
+  L'export MIDI écrit les notes ÉCRITES — muettes comprises — et NOMME les rangs muets parmi ce qu'il ne porte pas, à côté
+  de la carte (D609.1) et de la transposition (D31.5). Les mettre dans le bloc privé des notes muettes (D6.3) aurait un
+  prix caché : le fichier du PROJET est écrit par le même encodeur, et une frappe d'un rang muet y reviendrait muette
+  POUR ELLE-MÊME — décocher le rang ne la rendrait plus.
+- **Le clavier joue encore** une pièce muette (le jeu en direct, l'écoute d'un clic sur le clavier du piano roll) : on
+  entend ce qu'on frappe, et une prise l'enregistre — c'est la lecture qui se tait. Dit, pour ne pas surprendre.
+- **Une règle, au planning** (`PlaybackScheduler`, ses deux boucles : le planning et la chasse), pas dans `playedPitch` :
+  celle-ci compte les notes que la TRANSPOSITION écarte (D544.3), et une frappe tue n'est pas une frappe perdue.
+- **Remis, nommés** : pâlir dans le piano roll les rangées d'un rang muet ; le solo d'un rang (le *S* de certaines
+  versions) ; « ↑ » et « ↓ » d'une frappe choisie, sous un ordre de carte (D636), changent sa hauteur d'un demi-ton et non
+  sa rangée.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : une piste qui écrit 36 et 42, le rang 42 muet — le planning n'a que des NoteOn 36, la chasse aussi ; sans
+muet (le témoin du même test), 36 et 42 ; les notes écartées par la transposition (`transposeDroppedNotes`) ne comptent pas
+les frappes tues ;
+(b) **aux tests d'interchange** : `"drumMuted"` écrit seulement s'il y en a, relu, rendu au modèle ; une note hors bornes
+écartée et comptée ; le préréglage le porte ;
+(c) **au banc** `tools/muet-par-rang.sh` : une piste « Batterie » (TR-909, canal 10) qui ne joue QUE des frappes 42
+(charleston fermé) ; `carte-muet:42` puis l'export audio (`exporter-audio:`) : la crête du WAV **sous −90 dBFS** ; le
+même export sans le geste : une crête **au-dessus de −40 dBFS** (le témoin de la règle) ; la carte relue dit « muet 42 » ;
+le projet porte `"drumMuted": [42]` ; un pas « Muet de la carte » ;
+(d) **le témoin** (le binaire de D635, `build/temoin-D635`) : le verbe inconnu, l'export sonne ;
+(e) l'export MIDI nomme les rangs muets (« rangs muets de la carte ») ; l'anglais ; `carte-batterie`, `adapter-batterie`,
+`ordre-de-la-carte` verts ; les suites ; la série.
