@@ -1022,6 +1022,15 @@ public:
     /// clavier, lui, les joue encore. Écrit au projet (`"drumMuted"`) seulement s'il y en a.
     std::set<uint8_t> drumMuted;
     bool drumRowMuted(uint8_t ecrite) const { return !drumMuted.empty() && drumMuted.count(ecrite) > 0; }
+    /// D640.1 — LES RANGS EN SOLO (le *Solo Instrument* de l'éditeur de batterie) : dès qu'un rang y est, seuls les rangs en
+    /// solo de CETTE piste se jouent ; le muet l'emporte (un rang muet en solo se tait). Écrit au projet (`"drumSolo"`)
+    /// seulement s'il y en a.
+    std::set<uint8_t> drumSolo;
+    /// D640.1 : LA règle du silence d'un rang — muet, ou hors du solo quand un rang est en solo. Le planning, la chasse et
+    /// le piano roll (D638) la lisent tous.
+    bool drumRowSilent(uint8_t ecrite) const {
+        return drumRowMuted(ecrite) || (!drumSolo.empty() && drumSolo.count(ecrite) == 0);
+    }
 
     /// D544.3 : « INDÉPENDANTE DE LA TRANSPOSITION GLOBALE » — le *Follow / Independent* de Cubase. Faux
     /// par défaut : une piste suit la transposition du projet (`Project::globalTransposeSemitones`), qui

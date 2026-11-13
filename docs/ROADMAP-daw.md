@@ -50047,3 +50047,27 @@ carte relue dit « solo 42 » ; `"drumSolo": [42]` ; un pas « Solo de la carte 
 **Dit d'avance** : (c) compare deux crêtes, et une crête ne distingue pas un charleston seul d'un charleston plus une grosse
 caisse plus faible qui ne monte pas au-dessus de lui ; c'est pourquoi le témoin « sans geste » doit DIFFÉRER — s'il ne
 diffère pas, la mesure ne discrimine pas, et le banc le dira plutôt que de conclure.
+
+### Phases D638, D639 et D640 — MESURÉES, la série à jouer (13/11/2026, 14 h 11 à l'horloge)
+
+*Écrites avant leur code (11 h 51, 11 h 52, 11 h 54) ; le code écrit pendant la série de D636-D637, compilé après elle. Cœur
+**590/590** (+1, le test du solo joué ROUGE sur le planning d'avant : « 4 != 2 », puis vert), interchange **377/377** (+1).
+Chaque banc vu ROUGE d'abord sur le binaire de D637 (`build/temoin-D637`), pour la raison écrite.*
+
+| # | attendu | mesure (binaire neuf) | témoin (D637) | tenu |
+|---|---|---|---|---|
+| D638 | la 42 « muette », la 36 non ; « charleston fermé — muet » ; décoché : rien ; en barres ; « — muted » | **oui, les sept contrôles** | rien de pâli, aucun nom de rang relevé | **oui** |
+| D639 | ↑ sur la 38 → 36@480 (un pas) ; ↓ sur la 42 → 36@960 ; ↑ au bord : rien, dit ; Maj+↑ comme ↑ ; sans ordre → 39@480 | **oui, les six contrôles** | 39, 41, 43, 50 : la transposition | **oui** |
+| D640 | solo 42 : la crête du « 36 muet » (−16,62) et non celle sans geste (−7,23) ; « solo 42 » ; `[42]` ; un pas ; la 36 pâlie « — hors solo » ; l'export MIDI le nomme ; l'anglais | **−16,62 dBFS** (écart 0,00 avec le muet, 9,39 avec sans geste) ; tout le reste vert | le verbe inconnu, −7,23 | **oui** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **LA PHOTO DE D638 A FAIT CHANGER LE CODE** : à 128 px, « charleston fermé — … » — le mot « muet » coupé, et le relevé disait
+  ce que l'écran ne montrait pas. Quand un rang de la piste se tait, le clavier de batterie s'élargit au plus long nom marqué
+  que la machine peut écrire (calculé une fois par machine et par langue) ; sans rang tu, 128 px au pixel près. La photo
+  suivante : « charleston fermé — muet » entier, la règle alignée sur le clavier élargi.
+- **D638 (a) tombe aussi sur le témoin** : il n'écrit pas le nom des rangs (le relevé est neuf) — un rouge de relevé absent,
+  pas de règle ; (b) à (e) tombent pour la raison écrite.
+- **D639 : l'avertissement compté au banc est le refus attendu de (c)** (« VSM_RANGEE : monter refusé »).
+- **Pas mesurés** : la lecture en temps réel d'un rang en solo (le planning commun, que le test du cœur prend) ; le clavier
+  élargi par un solo (« — hors solo ») ailleurs que dans le relevé.
+- **La série n'est pas jouée** (233 bancs) : batterie à 24 %, sans charge. Les remis de la batterie sont épuisés.

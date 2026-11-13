@@ -49,6 +49,11 @@ public:
     std::function<void(int ecrite, bool muet)> onMuet;
     /// D637.1 : les notes écrites dont la case « M » est cochée, dans l'ordre de la carte.
     juce::StringArray muetsPourReleve() const;
+    /// D640.1 : la case « S » de la ligne `ecrite` basculée (le verbe `carte-solo:42`), par le MÊME rappel que la souris.
+    bool basculerSolo(int ecrite);
+    std::function<void(int ecrite, bool solo)> onSolo;
+    juce::StringArray solosPourReleve() const;
+    juce::String infobulleSolo() const { return rangees_.empty() ? juce::String() : rangees_.back().solo->getTooltip(); }
     /// D636.1 : l'infobulle de ▲ de la dernière ligne (celle du haut a son ▲ grisé), pour le relevé — la même source que
     /// l'écran.
     juce::String infobulleMonter() const { return rangees_.empty() ? juce::String() : rangees_.back().monter->getTooltip(); }
@@ -74,6 +79,7 @@ private:
         std::unique_ptr<juce::ComboBox> grille;   ///< D622.1
         std::unique_ptr<juce::ArrowButton> monter, descendre;   ///< D636.1
         std::unique_ptr<juce::ToggleButton> muet;                ///< D637.1 : la colonne « M »
+        std::unique_ptr<juce::ToggleButton> solo;                ///< D640.1 : la colonne « S »
     };
     void deplacerLigne(size_t rang, bool monter);   ///< D636.1 : l'ordre affiché, la ligne échangée avec sa voisine
     juce::String nomEcrit(int note) const;

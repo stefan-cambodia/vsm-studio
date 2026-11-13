@@ -44,6 +44,7 @@ struct TrackPreset {
     std::map<uint8_t, std::string> drumGrid;   ///< D622.1 : la grille par rang — le préréglage garde la façon d'écrire
     std::vector<uint8_t> drumOrder;            ///< D636.1 : l'ordre des rangs, de même
     std::set<uint8_t> drumMuted;               ///< D637.1 : les rangs muets, de même
+    std::set<uint8_t> drumSolo;                ///< D640.1 : les rangs en solo, de même
     double delayMs = 0.0;
     int outputGroup = -1;
 };

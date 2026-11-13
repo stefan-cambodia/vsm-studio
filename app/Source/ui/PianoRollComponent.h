@@ -342,6 +342,8 @@ public:
     void paste();
     void transposeSelection(int semitones);
     void nudgeSelection(int64_t deltaTicks);
+    /// D639.1 : sous un ordre de carte, chaque frappe choisie passe à la rangée voisine (−1 : celle du dessus) ; tout ou rien.
+    void changerDeRangee(int sens);
     void setSelectionLengthToGrid();
     /// D29.4 : la durée posée sur toutes les notes choisies, en ticks (au moins 1).
     void setSelectionLength(vsm::midi::Tick ticks);
@@ -536,6 +538,11 @@ private:
     // et 62 pixels les tronquaient tous.
     static constexpr int kKeyboardWidthNotes = 62;
     static constexpr int kKeyboardWidthDrums = 128;
+    /// D638.1 : quand un rang de la piste se tait, le clavier de batterie s'élargit au plus long nom MARQUÉ (« — muet »,
+    /// « — hors solo ») que la machine peut écrire — calculé une fois par machine et par langue.
+    int largeurClavierMarque(const std::string& instrument) const;
+    mutable int largeurMarque_ = 0;
+    mutable juce::String cleLargeurMarque_;
     static constexpr int kScrollBarThickness = 12;
     /// D528 : TENU CONTRE UN BORD DE LA GRILLE, LA VUE DÉFILE SOUS LA NOTE — la
     /// recette de l'arrangement (D527). Une bande de `kBandeDeBord` px au haut, au bas
@@ -578,6 +585,12 @@ private:
     /// D636.2 : le repli suit l'ordre de la carte de la piste (`Track::drumOrder`) — ses rangées ne sont plus rangées par
     /// hauteur, et la vue se déplace par RANGÉES (`decalerLeHaut`).
     bool ordreLibre() const { return folded() && ordreLibre_; }
+    /// D638.1 : une note qu'on n'entend pas — muette elle-même, ou dans un rang muet de la carte (D637). La peinture et le
+    /// relevé la lisent ici, une seule fois.
+    bool seTait(const vsm::sequencer::Note& note) const;
+    /// D638.1 : le nom d'un rang de batterie tel que le clavier l'écrit — la pièce, et « — muet » quand le rang l'est ;
+    /// vide quand la piste n'est pas une batterie ou que la machine ne nomme pas la note.
+    juce::String nomDuRang(int note) const;
     /// D636.2 : monte la vue de `d` (demi-tons dépliée ou repliée par hauteur — le chemin d'avant ; rangées sous un ordre).
     void decalerLeHaut(int d);
     int rowCount() const { return folded() ? static_cast<int>(rangees_.size()) : 128; }

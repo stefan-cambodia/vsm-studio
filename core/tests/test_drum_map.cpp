@@ -114,6 +114,29 @@ VSM_TEST(a_muted_drum_row_neither_plays_nor_chases_and_is_not_counted_as_dropped
     for (const auto& n : d) VSM_ASSERT_EQ(std::get<1>(n), 45);
 }
 
+// D640.1 — LE SOLO D'UN RANG. L'attendu écrit avant le code (ROADMAP-daw, D640, (a)) : 41 et 43, le rang 43 en solo — le
+// planning n'a que 43, la chasse ne relance pas 41 ; 43 en solo ET muet : rien ne joue (le muet l'emporte) ; le témoin du
+// MÊME test, sans solo, joue les deux.
+VSM_TEST(a_soloed_drum_row_alone_plays_and_mute_wins_over_solo_d640) {
+    Project temoin = desToms();
+    Project solo = desToms();
+    solo.tracks[0].drumSolo = {43};
+    VSM_ASSERT_EQ(planifie(temoin).size(), size_t(4));
+    const auto s = planifie(solo);
+    VSM_ASSERT_EQ(s.size(), size_t(2));
+    for (const auto& n : s) VSM_ASSERT_EQ(std::get<1>(n), 43);
+    const auto relance = [](const Project& p, int note) {
+        for (const auto& e : PlaybackScheduler::chaseNotesAt(p, 120))
+            if (const auto* on = std::get_if<NoteOnEvent>(&e.data); on != nullptr && on->note == note) return true;
+        return false;
+    };
+    VSM_ASSERT(relance(temoin, 41));
+    VSM_ASSERT(!relance(solo, 41));
+    solo.tracks[0].drumMuted = {43};   // en solo ET muet : le muet l'emporte
+    VSM_ASSERT_EQ(planifie(solo).size(), size_t(0));
+    VSM_ASSERT_EQ(solo.tracks[0].notes.size(), size_t(2));   // le matériau ne change pas
+}
+
 // D610.1 — ADAPTER UNE PARTIE GENERAL MIDI À LA MACHINE. L'attendu écrit avant le code (ROADMAP-daw, D610, (a)) : sur
 // les 35 pièces de la table General MIDI, celles qui sonnent DANS LEUR CATÉGORIE sans puis avec l'adaptation, et celles
 // qui restent sans équivalent — 808 : 6 → 9 (26) ; 909 : 9 → 18 (17) ; batterie : 10 → 20 (15) ; FM Drums : 6 → 14

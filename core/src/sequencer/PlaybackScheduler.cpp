@@ -81,7 +81,7 @@ size_t PlaybackScheduler::transposeDroppedNotes(const Project& project) {
     for (const auto& track : project.tracks) {
         if (track.transposeSemitones == 0 && project.globalTransposeSemitones == 0) continue;
         for (const auto& note : track.notes) {
-            if (note.muted || track.drumRowMuted(note.number)) continue;   // D637.1 : une frappe TUE n'est pas une frappe perdue
+            if (note.muted || track.drumRowSilent(note.number)) continue;   // D637.1, D640.1 : une frappe TUE (muet, ou hors du solo) n'est pas une frappe perdue
             // D544.3 : la transposition globale s'y ajoute, pour les notes qui la suivent ; D609.1 : après la carte.
             if (playedPitch(project, track, note) < 0) ++perdues;
         }
@@ -232,7 +232,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseNotesAt(const Project& proje
         std::array<bool, 128> deja{};   // une hauteur relancée une fois : la machine ne tient qu'une note par hauteur
         for (const auto& passage : passages) {
             for (const auto& note : jouees) {
-                if (note.muted || track.drumRowMuted(note.number)) continue;   // D637.1 : un rang muet ne se chasse pas
+                if (note.muted || track.drumRowSilent(note.number)) continue;   // D637.1, D640.1 : un rang qui se tait ne se chasse pas
                 const int hauteur = playedPitch(project, track, note);   // D17.5, D544.3, D609.1
                 if (hauteur < 0) continue;
                 if (note.startTick < passage.sourceFrom || note.startTick >= passage.sourceTo) continue;
@@ -303,7 +303,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
 
             for (const auto& note : jouees) {
                 if (note.muted) continue; // note rendue muette dans l'éditeur (Note::muted)
-                if (track.drumRowMuted(note.number)) continue;   // D637.1 : le rang muet de la carte — la lecture se tait
+                if (track.drumRowSilent(note.number)) continue;   // D637.1, D640.1 : le rang muet, ou hors du solo — la lecture se tait
                 // LA TRANSPOSITION DE PISTE (D17.5) s'applique ICI, à la
                 // lecture : le matériau ne bouge pas. Hors de 0..127, la note
                 // est ÉCARTÉE et non repliée à l'octave -- replier la ferait

@@ -158,9 +158,18 @@ void DrumMapComponent::setPiste(size_t index, const vsm::sequencer::Track& piste
         r.muet->onClick = [this, ecrite, bouton = r.muet.get()] {
             if (onMuet) onMuet(ecrite, bouton->getToggleState());
         };
+        // D640.1 : LE SOLO DU RANG — seuls les rangs en solo de la piste jouent ; le muet l'emporte.
+        r.solo = std::make_unique<juce::ToggleButton>("S");
+        r.solo->setToggleState(piste.drumSolo.count(static_cast<uint8_t>(ecrite)) > 0, juce::dontSendNotification);
+        r.solo->setTooltip(tr(u8"Rang en solo : seuls les rangs en solo de cette piste jouent. Un rang muet reste muet, et "
+                              u8"les autres pistes ne sont pas touchées."));
+        r.solo->onClick = [this, ecrite, bouton = r.solo.get()] {
+            if (onSolo) onSolo(ecrite, bouton->getToggleState());
+        };
         contenu_.addAndMakeVisible(*r.monter);
         contenu_.addAndMakeVisible(*r.descendre);
         contenu_.addAndMakeVisible(*r.muet);
+        contenu_.addAndMakeVisible(*r.solo);
         rangees_.push_back(std::move(r));
     }
     resized();
@@ -198,6 +207,23 @@ bool DrumMapComponent::basculerMuet(int ecrite) {
             return true;
         }
     return false;
+}
+
+bool DrumMapComponent::basculerSolo(int ecrite) {
+    for (auto& r : rangees_)
+        if (r.ecrite == ecrite) {
+            r.solo->setToggleState(!r.solo->getToggleState(), juce::dontSendNotification);   // ce que le clic fait à la case
+            r.solo->onClick();                                                                 // puis LE MÊME RAPPEL
+            return true;
+        }
+    return false;
+}
+
+juce::StringArray DrumMapComponent::solosPourReleve() const {
+    juce::StringArray solos;
+    for (const auto& r : rangees_)
+        if (r.solo->getToggleState()) solos.add(juce::String(r.ecrite));
+    return solos;
 }
 
 juce::StringArray DrumMapComponent::muetsPourReleve() const {
@@ -269,6 +295,7 @@ void DrumMapComponent::resized() {
         r.descendre->setBounds(ligne.removeFromLeft(24).reduced(3, 6));
         r.nom->setBounds(ligne.removeFromLeft(largeur * 42 / 100).reduced(2));
         r.grille->setBounds(ligne.removeFromRight(std::max(130, largeur * 22 / 100)).reduced(2));   // D622.1
+        r.solo->setBounds(ligne.removeFromRight(52).reduced(2));   // D640.1
         r.muet->setBounds(ligne.removeFromRight(52).reduced(2));   // D637.1
         r.sortie->setBounds(ligne.reduced(2));
         y += kHauteur;

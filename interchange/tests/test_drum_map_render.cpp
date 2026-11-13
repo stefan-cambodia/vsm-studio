@@ -242,3 +242,33 @@ VSM_TEST(muted_drum_rows_are_written_only_when_present_and_read_back_d637) {
     applyDocumentToProject(relu.document, cible);
     VSM_ASSERT(cible.tracks[1].drumMuted == project.tracks[1].drumMuted);
 }
+
+// D640.1 — LES RANGS EN SOLO, la règle des rangs muets : écrits seulement s'il y en a, relus, hors bornes écartés et
+// comptés, rendus au modèle (ROADMAP-daw, D640, (b)).
+VSM_TEST(soloed_drum_rows_are_written_only_when_present_and_read_back_d640) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tracks.emplace_back();
+    project.tracks.emplace_back();
+    project.tracks[1].drumSolo = {38};
+    const auto texte = projectDocumentToJson(documentFromProject(project)).toString();
+    size_t occurrences = 0;
+    for (size_t p = texte.find("\"drumSolo\""); p != std::string::npos; p = texte.find("\"drumSolo\"", p + 1)) ++occurrences;
+    VSM_ASSERT_EQ(occurrences, size_t(1));
+    const auto relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.tracks[0].drumSolo.empty());
+    VSM_ASSERT(relu.document.tracks[1].drumSolo == project.tracks[1].drumSolo);
+    std::string abime = texte;
+    const auto ou = abime.find("38", abime.find("\"drumSolo\""));
+    VSM_ASSERT(ou != std::string::npos);
+    abime.replace(ou, 2, "38, -4");
+    const auto relu2 = parseProjectDocument(abime);
+    VSM_ASSERT(relu2.success);
+    VSM_ASSERT(relu2.document.tracks[1].drumSolo == project.tracks[1].drumSolo);
+    VSM_ASSERT_EQ(relu2.document.tracks[1].drumMapRejected, 1);
+    Project cible;
+    cible.tracks.resize(2);
+    applyDocumentToProject(relu.document, cible);
+    VSM_ASSERT(cible.tracks[1].drumSolo == project.tracks[1].drumSolo);
+}

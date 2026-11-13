@@ -452,6 +452,16 @@ public:
                                .toRawUTF8(), stderr);
             return fait;
         }
+        // D640.1 : `carte-solo:42` — la case « S » de la ligne basculée, par le MÊME rappel que la souris.
+        if (geste.startsWithIgnoreCase("carte-solo:")) {
+            showCarte();
+            const int ecrite = geste.fromFirstOccurrenceOf(":", false, false).trim().getIntValue();
+            const bool fait = cartePanel_.basculerSolo(ecrite);
+            if (!fait)
+                std::fputs(("VSM_CARTE : " + geste + juce::String::fromUTF8(" REFUS\xc3\x89 (aucune ligne pour cette note)\n")).toRawUTF8(),
+                           stderr);
+            return fait;
+        }
         // D637.1 : `carte-muet:42` — la case « M » de la ligne basculée, par le MÊME rappel que la souris.
         if (geste.startsWithIgnoreCase("carte-muet:")) {
             showCarte();
@@ -2651,6 +2661,7 @@ private:
     void poserGrilleCarte(size_t piste, int ecrite, const std::string& libelle);
     void poserOrdreCarte(size_t piste, const std::vector<uint8_t>& ordre);   ///< D636.1
     void poserMuetCarte(size_t piste, int ecrite, bool muet);   ///< D637.1
+    void poserSoloCarte(size_t piste, int ecrite, bool solo);   ///< D640.1
     void direLaCarte();
     std::unique_ptr<PanelWindow> carteWindow_;
     vsm::app::ui::DrumMapComponent cartePanel_;

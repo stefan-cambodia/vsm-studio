@@ -207,6 +207,13 @@ VSM_TEST(a_track_preset_carries_the_drum_map_and_writes_it_only_when_there_is_on
     applyTrackPresetToTrack(parseTrackPreset(avecMuet).preset, cible4);
     VSM_ASSERT(cible4.drumMuted == batterie.drumMuted);
     VSM_ASSERT(texte.find("\"drumMuted\"") == std::string::npos);
+    // D640.1 : les rangs en solo voyagent aussi.
+    batterie.drumSolo = {38};
+    const std::string avecSolo = trackPresetToJson(trackPresetFromTrack(batterie, "Toms 909", std::nullopt)).toString();
+    VSM_ASSERT(avecSolo.find("\"drumSolo\"") != std::string::npos);
+    Track cible5;
+    applyTrackPresetToTrack(parseTrackPreset(avecSolo).preset, cible5);
+    VSM_ASSERT(cible5.drumSolo == batterie.drumSolo);
     Track nue;
     const std::string sansCarte = trackPresetToJson(trackPresetFromTrack(nue, "Nue", std::nullopt)).toString();
     VSM_ASSERT(sansCarte.find("\"drumMap\"") == std::string::npos);

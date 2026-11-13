@@ -140,7 +140,31 @@ void PianoRollComponent::setActiveTrackIndex(size_t trackIndex) {
 
 int PianoRollComponent::keyboardWidth() const {
     const Track* track = activeTrack();
-    return (track && track->channel == 9) ? kKeyboardWidthDrums : kKeyboardWidthNotes;
+    if (!(track && track->channel == 9)) return kKeyboardWidthNotes;
+    // D638.1 : AUCUN RANG TU, LE CLAVIER D'AVANT AU PIXEL PRÈS ; un rang tu écrit « — muet » (ou « — hors solo »), et le
+    // nom ne doit pas être coupé — vu sur la photo : « charleston fermé — … » à 128 px.
+    if (track->drumMuted.empty() && track->drumSolo.empty()) return kKeyboardWidthDrums;
+    return largeurClavierMarque(track->instrumentId);
+}
+
+int PianoRollComponent::largeurClavierMarque(const std::string& instrument) const {
+    const juce::String marqueMuet = vsm::app::ui::tr(u8"%1 \u2014 muet");
+    const juce::String marqueSolo = vsm::app::ui::tr(u8"%1 \u2014 hors solo");
+    const juce::String cle = juce::String::fromUTF8(instrument.c_str()) + "|" + marqueMuet + "|" + marqueSolo;
+    if (cle == cleLargeurMarque_ && largeurMarque_ > 0) return largeurMarque_;
+    const juce::Font police(juce::FontOptions(12.0f));   // la police des noms de touche (D323, D338)
+    float plusLarge = 0.0f;
+    for (int n = 0; n < 128; ++n) {
+        const std::string piece = vsm::app::ui::drumVoiceName(instrument, static_cast<uint8_t>(n));
+        if (piece.empty()) continue;
+        const juce::String nom = vsm::app::ui::tr(juce::String::fromUTF8(piece.c_str()));
+        for (const auto& marque : {marqueMuet, marqueSolo})
+            plusLarge = std::max(plusLarge, juce::GlyphArrangement::getStringWidth(police, marque.replace("%1", nom)));
+    }
+    // Le nom s'écrit à 4 px du bord, dans la largeur moins 8 : 12 px de marge.
+    largeurMarque_ = juce::jlimit(kKeyboardWidthDrums, 320, static_cast<int>(std::ceil(plusLarge)) + 12);
+    cleLargeurMarque_ = cle;
+    return largeurMarque_;
 }
 
 Track* PianoRollComponent::activeTrack() const {
@@ -1061,6 +1085,39 @@ void PianoRollComponent::paste() {
         track->notes.push_back(copy);
         selectedNoteIds_.insert(copy.id);
     }
+    notifyEdited();
+}
+
+void PianoRollComponent::changerDeRangee(int sens) {
+    // D639.1 : ↑ ET ↓ PAR RANGÉES, sous un ordre de carte (D636.2) — la rangée voisine n'y est pas le demi-ton voisin.
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty() || !ordreLibre()) return;
+    // TOUT OU RIEN, décidé AVANT d'ouvrir le pas (la règle de D536) : une frappe au bord refuse le geste entier.
+    size_t auBord = 0;
+    for (const auto& n : track->notes) {
+        if (selectedNoteIds_.count(n.id) == 0) continue;
+        const int cible = rowOfNote(n.number) + sens;
+        if (cible < 0 || cible >= rowCount()) ++auBord;
+    }
+    if (auBord > 0) {
+        std::fprintf(stderr, "VSM_RANGEE : %s refusé — %zu frappe(s) au bord de la carte, rien n'a bougé\n",
+                     sens < 0 ? "monter" : "descendre", auBord);
+        if (onStatusChanged)
+            onStatusChanged(vsm::app::ui::tr(sens < 0 ? u8"%1 frappe(s) sur la rangée du haut : rien n'a changé de rangée"
+                                                      : u8"%1 frappe(s) sur la rangée du bas : rien n'a changé de rangée")
+                                .replace("%1", juce::String(static_cast<int>(auBord))));
+        return;
+    }
+    if (!beginEdit(u8"Changer de rangée")) return;
+    // Les rangées se lisent AVANT de rien changer : déplacer une frappe peut vider sa rangée et renuméroter les suivantes.
+    std::vector<std::pair<uint64_t, uint8_t>> cibles;
+    for (const auto& n : track->notes)
+        if (selectedNoteIds_.count(n.id) != 0)
+            cibles.emplace_back(n.id, static_cast<uint8_t>(noteOfRow(rowOfNote(n.number) + sens)));
+    for (auto& n : track->notes)
+        for (const auto& [id, hauteur] : cibles)
+            if (n.id == id) n.number = hauteur;
+    std::fprintf(stderr, "VSM_RANGEE : %s — %zu frappe(s)\n", sens < 0 ? "monter" : "descendre", cibles.size());
     notifyEdited();
 }
 
@@ -2754,12 +2811,14 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
         return true;
     }
     if (fleche(juce::KeyPress::upKey)) {
-        if (hasSelection()) transposeSelection(mods.isShiftDown() ? 12 : 1);
+        if (hasSelection() && ordreLibre()) changerDeRangee(-1);   // D639.1 : la rangée du dessus, Maj n'y ajoute rien
+        else if (hasSelection()) transposeSelection(mods.isShiftDown() ? 12 : 1);
         else { decalerLeHaut(1); updateScrollBars(); repaint(); }   // D636.2
         return true;
     }
     if (fleche(juce::KeyPress::downKey)) {
-        if (hasSelection()) transposeSelection(mods.isShiftDown() ? -12 : -1);
+        if (hasSelection() && ordreLibre()) changerDeRangee(1);    // D639.1
+        else if (hasSelection()) transposeSelection(mods.isShiftDown() ? -12 : -1);
         else { decalerLeHaut(-1); updateScrollBars(); repaint(); }   // D636.2
         return true;
     }
@@ -2956,7 +3015,7 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
     std::array<bool, 128> keyPressed{};
     if (const Track* track = activeTrack()) {
         for (const auto& note : track->notes)
-            if (!note.muted && note.startTick <= playheadTick_ && playheadTick_ < note.endTick && note.number < 128)
+            if (!seTait(note) && note.startTick <= playheadTick_ && playheadTick_ < note.endTick && note.number < 128)   // D638.1
                 keyPressed[note.number] = true;
     }
     if (auditionNote_ >= 0 && auditionNote_ < 128) keyPressed[static_cast<size_t>(auditionNote_)] = true;
@@ -2994,12 +3053,11 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
         // « charleston fermé » se lit, « F#2 » se devine. La pièce vient de la
         // machine assignée, sinon de la convention General MIDI.
         juce::String etiquette;
+        bool rangMuet = false;
         if (pisteDeBatterie) {
-            const std::string piece = vsm::app::ui::drumVoiceName(pisteDeBatterie->instrumentId,
-                                                    static_cast<uint8_t>(note));
-            // D338 : une pièce se nomme dès que son rang porte 12 pt (ou repliée).
-            if (!piece.empty() && (noteHeight_ >= kRangNomme || folded()))   // D109 : dans la langue de l'interface
-                etiquette = vsm::app::ui::tr(juce::String::fromUTF8(piece.c_str()));
+            // D338 : une pièce se nomme dès que son rang porte 12 pt (ou repliée). D638.1 : par `nomDuRang`, qui dit « — muet ».
+            if (noteHeight_ >= kRangNomme || folded()) etiquette = nomDuRang(note);
+            rangMuet = pisteDeBatterie->drumRowSilent(static_cast<uint8_t>(note));   // D640.1 : muet, ou hors du solo
         }
         // Repliée, chaque rangée est nommée : elles ne se suivent pas.
         // D338 : LA POLICE NE DESCEND PLUS AVEC LE RANG. Un nom de touche est à
@@ -3009,6 +3067,7 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
         // une piste de six octaves donnait des rangs de 9 px et des noms de 6 pt).
         if (etiquette.isNotEmpty() || note % 12 == 0 || noteHeight_ >= kRangNomme || folded()) {
             g.setColour(pressed ? juce::Colours::black
+                                 : rangMuet ? Palette::textSecondary   // D638.1 : le rang muet, en encre secondaire
                                  : (etiquette.isNotEmpty() || note % 12 == 0 ? Palette::textPrimary
                                                                              : Palette::textSecondary));
             g.setFont(12.0f);   // D323 : plancher 12 pt ; D338 : jamais moins, à tout rang
@@ -3110,6 +3169,25 @@ bool PianoRollComponent::enLosanges() const {
     return losanges_ && piste != nullptr && piste->channel == 9;
 }
 
+bool PianoRollComponent::seTait(const Note& note) const {
+    if (note.muted) return true;
+    const Track* piste = activeTrack();
+    return piste != nullptr && piste->drumRowSilent(note.number);   // D638.1, D640.1 : le rang muet, ou hors du solo
+}
+
+juce::String PianoRollComponent::nomDuRang(int note) const {
+    const Track* piste = activeTrack();
+    if (piste == nullptr || piste->channel != 9 || note < 0 || note > 127) return {};
+    const std::string piece = vsm::app::ui::drumVoiceName(piste->instrumentId, static_cast<uint8_t>(note));
+    if (piece.empty()) return {};
+    const juce::String nom = vsm::app::ui::tr(juce::String::fromUTF8(piece.c_str()));   // D109 : dans la langue de l'interface
+    // D638.1 : UN RANG MUET LE DIT, en toutes lettres — la couleur seule ne se lit pas en noir et blanc.
+    if (piste->drumRowMuted(static_cast<uint8_t>(note))) return vsm::app::ui::tr(u8"%1 \u2014 muet").replace("%1", nom);
+    if (piste->drumRowSilent(static_cast<uint8_t>(note)))   // D640.1 : un autre rang est en solo
+        return vsm::app::ui::tr(u8"%1 \u2014 hors solo").replace("%1", nom);
+    return nom;
+}
+
 juce::String PianoRollComponent::releverLosanges() const {
     juce::String r = "VSM_LOSANGE : " + juce::String(enLosanges() ? "losanges" : "barres");
     const Track* piste = activeTrack();
@@ -3122,8 +3200,15 @@ juce::String PianoRollComponent::releverLosanges() const {
         r << "VSM_LOSANGE : note " << static_cast<int>(n.number) << " tick " << static_cast<int>(n.startTick) << " : centre "
           << juce::String(cx / static_cast<float>(getWidth()), 4) << "," << juce::String(cy / static_cast<float>(getHeight()), 4)
           << " ; demi-largeur " << juce::String(demi / static_cast<float>(getWidth()), 4) << " ; fin "
-          << juce::String(tickToX(n.endTick) / static_cast<float>(getWidth()), 4) << "\n";
+          << juce::String(tickToX(n.endTick) / static_cast<float>(getWidth()), 4)
+          << (seTait(n) ? " ; muette" : "") << "\n";   // D638.1 : la MÊME source que la peinture
     }
+    // D638.1 : le nom de chaque rang JOUÉ tel que le clavier l'écrit (`nomDuRang`, la source de la peinture).
+    std::set<int> rangs;
+    for (const auto& n : piste->notes) rangs.insert(n.number);
+    for (const int rang : rangs)
+        if (const juce::String nom = nomDuRang(rang); nom.isNotEmpty())
+            r << "VSM_LOSANGE : rang " << rang << " : " << nom << "\n";
     return r;
 }
 
@@ -3147,7 +3232,7 @@ void PianoRollComponent::drawLosange(juce::Graphics& g, const Note& note, bool s
                               : track         ? juce::Colour(track->colorRgba)
                                               : Palette::accentTeal;
     juce::Colour fill = base.withMultipliedBrightness(0.45f + 0.55f * (static_cast<float>(note.velocity) / 127.0f));
-    if (note.muted) fill = fill.withSaturation(0.05f).withAlpha(0.35f);
+    if (seTait(note)) fill = fill.withSaturation(0.05f).withAlpha(0.35f);   // D638.1 : le rang muet aussi
     const auto forme = losange(demi);
     g.setColour(fill);
     g.fillPath(forme);
@@ -3183,7 +3268,7 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
     // d'œil sur tout un passage, sans ouvrir la lane de vélocité.
     const float brightness = 0.45f + 0.55f * (static_cast<float>(note.velocity) / 127.0f);
     juce::Colour fill = base.withMultipliedBrightness(brightness);
-    if (note.muted) fill = fill.withSaturation(0.05f).withAlpha(0.35f);
+    if (seTait(note)) fill = fill.withSaturation(0.05f).withAlpha(0.35f);   // D638.1 : le rang muet aussi
 
     // D164 (A27) : SOUS QUATRE PIXELS DE LARGE, UN RECTANGLE PLEIN.
     //
@@ -3210,7 +3295,7 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
     if (rect.getWidth() < kLargeurMinimaleArrondie && !selected && note.id != hoveredNoteId_) {
         g.setColour(fill);
         g.fillRect(rect);
-        if (note.muted) {
+        if (seTait(note)) {   // D638.1
             g.setColour(Palette::background.withAlpha(0.5f));
             for (float x = rect.getX(); x < rect.getRight(); x += 5.0f)
                 g.drawLine(x, rect.getY(), x + rect.getHeight(), rect.getBottom(), 1.0f);
@@ -3229,7 +3314,7 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
     g.setColour(fill);
     g.fillRoundedRectangle(rect, 2.5f);
 
-    if (note.muted) {
+    if (seTait(note)) {   // D638.1 : la note muette, et celle d'un rang muet
         // Hachures : une note muette doit se distinguer même en noir et blanc,
         // et même quand la couleur de piste est déjà pâle.
         g.setColour(Palette::background.withAlpha(0.5f));

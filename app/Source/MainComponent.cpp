@@ -10674,6 +10674,7 @@ void MainComponent::showCarte() {
         };
         cartePanel_.onOrdre = [this](const std::vector<uint8_t>& ordre) { poserOrdreCarte(cartePanel_.piste(), ordre); };   // D636.1
         cartePanel_.onMuet = [this](int ecrite, bool muet) { poserMuetCarte(cartePanel_.piste(), ecrite, muet); };   // D637.1
+        cartePanel_.onSolo = [this](int ecrite, bool solo) { poserSoloCarte(cartePanel_.piste(), ecrite, solo); };   // D640.1
         cartePanel_.onIdentite = [this] {
             const size_t p = cartePanel_.piste();
             if (p >= project_.tracks.size() || project_.tracks[p].drumMap.empty()) return;
@@ -10782,8 +10783,25 @@ void MainComponent::poserMuetCarte(size_t piste, int ecrite, bool muet) {
     else muets.erase(ecriteOctet);
     refreshTransportSchedule();
     refreshHistoryList();
+    pianoRollPanel_.repaint();   // D638.1 : le piano roll pâlit ce qui se tait, et son clavier peut s'élargir (règle, lanes)
     std::fputs(("VSM_CARTE : muet " + std::to_string(ecrite) + (muet ? " \xe2\x86\x92 oui" : " \xe2\x86\x92 non") + " ; "
                 + std::to_string(muets.size()) + " rang(s) muet(s)\n").c_str(), stderr);
+}
+
+void MainComponent::poserSoloCarte(size_t piste, int ecrite, bool solo) {
+    // D640.1 : UN PAS seulement si le solo CHANGE ; le planning se rebâtit — il s'entend tout de suite.
+    if (piste >= project_.tracks.size() || ecrite < 0 || ecrite > 127) return;
+    auto& solos = project_.tracks[piste].drumSolo;
+    const auto ecriteOctet = static_cast<uint8_t>(ecrite);
+    if ((solos.count(ecriteOctet) > 0) == solo) return;
+    beginProjectEdit(u8"Solo de la carte");
+    if (solo) solos.insert(ecriteOctet);
+    else solos.erase(ecriteOctet);
+    refreshTransportSchedule();
+    refreshHistoryList();
+    pianoRollPanel_.repaint();   // D638.1 : ce qui se tait se pâlit, et le clavier peut s'élargir (règle, lanes)
+    std::fputs(("VSM_CARTE : solo " + std::to_string(ecrite) + (solo ? " \xe2\x86\x92 oui" : " \xe2\x86\x92 non") + " ; "
+                + std::to_string(solos.size()) + " rang(s) en solo\n").c_str(), stderr);
 }
 
 void MainComponent::direLaCarte() {
@@ -10797,10 +10815,14 @@ void MainComponent::direLaCarte() {
         std::fputs(("VSM_CARTE : grille " + ligne + "\n").toRawUTF8(), stderr);
     for (const auto& muet : cartePanel_.muetsPourReleve())   // D637.1 : les cases « M » cochées, telles qu'elles se voient
         std::fputs(("VSM_CARTE : muet " + muet + "\n").toRawUTF8(), stderr);
+    for (const auto& solo : cartePanel_.solosPourReleve())   // D640.1 : les cases « S »
+        std::fputs(("VSM_CARTE : solo " + solo + "\n").toRawUTF8(), stderr);
     if (cartePanel_.infobulleMonter().isNotEmpty())   // D636.1 : l'infobulle de ▲, telle que l'écran la montre
         std::fputs(("VSM_CARTE : infobulle : " + cartePanel_.infobulleMonter() + "\n").toRawUTF8(), stderr);
     if (cartePanel_.infobulleMuet().isNotEmpty())   // D637.1 : celle de la case « M »
         std::fputs(("VSM_CARTE : infobulle M : " + cartePanel_.infobulleMuet() + "\n").toRawUTF8(), stderr);
+    if (cartePanel_.infobulleSolo().isNotEmpty())   // D640.1 : celle de la case « S »
+        std::fputs(("VSM_CARTE : infobulle S : " + cartePanel_.infobulleSolo() + "\n").toRawUTF8(), stderr);
     if (cartePanel_.remarque().isNotEmpty())   // D610.1 : ce que la fenêtre dit de ce qui reste sans équivalent
         std::fputs(("VSM_CARTE : remarque : " + cartePanel_.remarque() + "\n").toRawUTF8(), stderr);
 }
@@ -14566,6 +14588,7 @@ void MainComponent::exportMidiFile() {
                 for (const auto& t : project_.tracks) {
                     for (const auto& fx : t.midiEffects) desEffets = desEffets || fx.enabled;
                     desReglages = desReglages || t.transposeSemitones != 0 || !t.drumMap.empty() || !t.drumMuted.empty()
+                                  || !t.drumSolo.empty()
                                   || project_.globalTransposeSemitones != 0;
                 }
                 juce::String remedes;
@@ -16668,6 +16691,7 @@ void MainComponent::fusionnerMidiEntreLocateurs() {
     t.drumGrid.clear();         // D622.1 : et ses grilles, écrites pour les notes ÉCRITES que la fusion a rendues jouées
     t.drumOrder.clear();        // D636.1 : et son ordre de rangs, de même
     t.drumMuted.clear();        // D637.1 : et ses rangs muets — la fusion a joué ce qu'on entendait
+    t.drumSolo.clear();         // D640.1 : et ses rangs en solo, de même
     t.muted = false; t.solo = false;
     vsm::sequencer::Clip clip;
     clip.id = project_.nextClipId();
@@ -17095,6 +17119,13 @@ juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
             int tues = 0;
             for (const auto& n : track.notes) tues += track.drumRowMuted(n.number) ? 1 : 0;
             if (tues > 0) causes.add(tr(u8"rangs muets de la carte (%1 frappe(s))").replace("%1", juce::String(tues)));
+        }
+        // D640.1 : LE SOLO D'UN RANG — les frappes hors du solo (et pas déjà muettes) se taisent à la lecture : dit.
+        if (!track.drumSolo.empty()) {
+            int horsSolo = 0;
+            for (const auto& n : track.notes)
+                horsSolo += (!track.drumRowMuted(n.number) && track.drumRowSilent(n.number)) ? 1 : 0;
+            if (horsSolo > 0) causes.add(tr(u8"solo de la carte (%1 frappe(s) hors du solo)").replace("%1", juce::String(horsSolo)));
         }
         // D544.3 : LA TRANSPOSITION GLOBALE, pour une piste qui la suit et joue autre chose que le canal 10.
         if (project_.globalTransposeSemitones != 0 && !track.independentOfGlobalTranspose

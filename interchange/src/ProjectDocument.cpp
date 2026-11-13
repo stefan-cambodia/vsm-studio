@@ -589,6 +589,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.drumGrid = track.drumGrid;   // D622.1
         entry.drumOrder = track.drumOrder;   // D636.1
         entry.drumMuted = track.drumMuted;   // D637.1
+        entry.drumSolo = track.drumSolo;     // D640.1
         entry.independentOfGlobalTranspose = track.independentOfGlobalTranspose;   // D544.3
         entry.editGroup = track.editGroup;
         entry.outputSourceTrack = track.outputSourceTrack;
@@ -857,6 +858,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.drumGrid = source.drumGrid;   // D622.1
         target.drumOrder = source.drumOrder;   // D636.1
         target.drumMuted = source.drumMuted;   // D637.1
+        target.drumSolo = source.drumSolo;     // D640.1
         if (source.drumMapRejected > 0)
             report.warnings.push_back("piste " + std::to_string(i + 1) + (source.name.empty() ? "" : " \xc2\xab " + source.name + " \xc2\xbb")
                                       + " : " + std::to_string(source.drumMapRejected)
@@ -1322,6 +1324,11 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             for (const uint8_t ecrite : track.drumMuted) muets.append(JsonValue::makeNumber(ecrite));
             entry.set("drumMuted", std::move(muets));
         }
+        if (!track.drumSolo.empty()) {   // D640.1 : les rangs en solo, seulement s'il y en a
+            JsonValue solos = JsonValue::makeArray();
+            for (const uint8_t ecrite : track.drumSolo) solos.append(JsonValue::makeNumber(ecrite));
+            entry.set("drumSolo", std::move(solos));
+        }
         if (track.independentOfGlobalTranspose)   // D544.3
             entry.set("independentOfGlobalTranspose", JsonValue::makeBoolean(true));
         if (track.editGroup != 0) entry.set("editGroup", JsonValue::makeNumber(track.editGroup));
@@ -1777,6 +1784,14 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             const double ecrite = e.asNumber(-1.0);
             if (ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite)))
                 track.drumMuted.insert(static_cast<uint8_t>(ecrite));
+            else
+                ++track.drumMapRejected;
+        }
+        // D640.1 : les rangs en solo, la même règle.
+        for (const auto& e : entry["drumSolo"].elements()) {
+            const double ecrite = e.asNumber(-1.0);
+            if (ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite)))
+                track.drumSolo.insert(static_cast<uint8_t>(ecrite));
             else
                 ++track.drumMapRejected;
         }

@@ -31,6 +31,7 @@ TrackPreset trackPresetFromTrack(const vsm::sequencer::Track& track, const std::
     preset.drumGrid = track.drumGrid;   // D622.1
     preset.drumOrder = track.drumOrder;   // D636.1
     preset.drumMuted = track.drumMuted;   // D637.1
+    preset.drumSolo = track.drumSolo;     // D640.1
     preset.delayMs = track.delayMs;
     preset.outputGroup = track.outputGroup;
     return preset;
@@ -66,6 +67,7 @@ void applyTrackPresetToTrack(const TrackPreset& preset, vsm::sequencer::Track& t
     track.drumGrid = preset.drumGrid;   // D622.1
     track.drumOrder = preset.drumOrder;   // D636.1
     track.drumMuted = preset.drumMuted;   // D637.1
+    track.drumSolo = preset.drumSolo;     // D640.1
     track.delayMs = preset.delayMs;
     track.outputGroup = preset.outputGroup;
 }
@@ -128,6 +130,11 @@ JsonValue trackPresetToJson(const TrackPreset& preset) {
         JsonValue muets = JsonValue::makeArray();
         for (const uint8_t ecrite : preset.drumMuted) muets.append(JsonValue::makeNumber(ecrite));
         root.set("drumMuted", std::move(muets));
+    }
+    if (!preset.drumSolo.empty()) {   // D640.1 : les rangs en solo, seulement s'il y en a
+        JsonValue solos = JsonValue::makeArray();
+        for (const uint8_t ecrite : preset.drumSolo) solos.append(JsonValue::makeNumber(ecrite));
+        root.set("drumSolo", std::move(solos));
     }
 
     root.set("delayMs", JsonValue::makeNumber(preset.delayMs));
@@ -203,6 +210,11 @@ TrackPresetLoadResult trackPresetFromJson(const JsonValue& json) {
         const double ecrite = e.asNumber(-1.0);
         if (ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite)))
             preset.drumMuted.insert(static_cast<uint8_t>(ecrite));
+    }
+    for (const auto& e : json["drumSolo"].elements()) {   // D640.1 : la règle du projet
+        const double ecrite = e.asNumber(-1.0);
+        if (ecrite >= 0.0 && ecrite <= 127.0 && ecrite == static_cast<double>(static_cast<int>(ecrite)))
+            preset.drumSolo.insert(static_cast<uint8_t>(ecrite));
     }
     preset.delayMs = json["delayMs"].asNumber(0.0);
     preset.outputGroup = static_cast<int>(json["outputGroup"].asNumber(-1.0));

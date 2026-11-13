@@ -315,6 +315,8 @@ struct ProjectTrack {
     /// D637.1 : les rangs muets, notes écrites ; `"drumMuted"` au fichier, seulement s'il y en a ; une note hors de 0..127
     /// est comptée avec les entrées de la carte (`drumMapRejected`).
     std::set<uint8_t> drumMuted;
+    /// D640.1 : les rangs en solo, de même (`"drumSolo"`).
+    std::set<uint8_t> drumSolo;
     /// D609.1 : les entrées de la carte écartées à la lecture (hors de 0..127, ou vers elles-mêmes) — DITES par
     /// `applyDocumentToProject`, jamais tues.
     int drumMapRejected = 0;
