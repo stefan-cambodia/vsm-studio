@@ -49771,6 +49771,14 @@ Le banc `tools/prereglages-quantification.sh` (D570.2), passé de 4 à **8** con
 - **Remis, nommé** : les rangs dans l'ordre de la carte.
 - **La série n'est pas jouée** pour D634 et D635 (228 bancs) — elle se joue maintenant, batterie à 91 %.
 
+### La série de D634 et D635 — JOUÉE (13/11, 06 h 40 → 08 h 35 ; écrit à 08 h 36 à l'horloge) — D634 ET D635 SONT FAITES
+
+`./verifier.sh --bancs` sous `kde-inhibit --screenSaver` (l'autorisation du 30/10 ; retirée à la fin, la liste est vide) :
+**228 bancs verts sur 228 en 114 min**, dont `pas-a-pas-par-rang` (D634) et `prereglages-quantification` à huit contrôles
+(D635) ; **0** veille au journal du noyau ; batterie de 90 à 46 % ; préférences de l'utilisateur identiques ; le compositeur
+de 709 à 888 Mo. Le code de D636 et D637 était écrit dans l'arbre pendant la série, NON compilé : le binaire joué est celui
+de D634-D635.
+
 ### Phase D636 — un quatre-vingt-quinzième audit : les rangs dans l'ordre de la carte (13/11/2026)
 
 *Écrite le 13/11 à 06 h 45 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série
