@@ -254,6 +254,38 @@ d'éléments elle changera, et se grise à zéro ; chaque geste est un pas d'ann
   *Aléatoire* (le même tirage à chaque lecture et à chaque export) (D573 à D575) ; un
   insert se place *Après le fader* d'un clic droit (D576.1).
 
+**Enregistrer, se placer, regarder** (D579 à D592 — des préférences du poste, cochées ou
+non d'origine comme chez Cubase ; le libellé dit l'état).
+
+- *Enregistrement* : *Quantifier chaque prise* (la grille, le swing du piano roll, dans le
+  pas de la prise) ; *Rattrapage avant l'entrée* (50, 100 ou 250 ms : une note frappée
+  juste avant le punch entre dans la prise) ; *Ce que la prise garde* (contrôleurs, pitch
+  bend, pression, changements de programme) ; *Remettre les contrôleurs à zéro après la
+  prise* ; dans la région de punch, *Arrêter après la sortie de punch* et *Désactiver le
+  punch à l'arrêt* ; *Désarmer toutes les pistes*. Une prise MIDI hors des clips est
+  couverte comme une note écrite (D587.1), et les changements de programme joués au
+  clavier s'entendent et s'enregistrent (D584.1) (D579, D580, D583 à D585, D589).
+- *Piste* : *L'armement suit la piste choisie* ; *Le solo choisit la piste* ; une piste
+  neuve naît sous la piste choisie (D588.1) ; *Ranger les pistes choisies dans un dossier
+  neuf* (D579, D582, D589).
+- *Transport* : *Un clic dans le vide pose la tête* ; *Position affichée* — secondes,
+  timecode à 24, 25, 29,97 (images sautées) ou 30 i/s, échantillons ; *Zoomer en glissant
+  sur la règle* (aussi celle du piano roll) ; *Chasser les notes commencées* (une note
+  commencée avant la tête sonne quand la lecture part) (D580, D582, D583, D585, D586).
+- *Édition* : *La sélection suit la tête* ; *La molette règle le gain et les fondus des
+  clips audio* (la molette le gain, Maj+molette les fondus) ; *Profondeur de l'historique* (64 à 512 pas — un pas qui sort
+  de l'historique est dit) ; *Disposition des accords* — renverser vers le haut ou le bas,
+  Drop 2, Drop 3, Drop 2 et 4 (D580, D582, D583, D588, D592).
+- *Affichage* : *L'édition suspend le suivi de la tête* ; *Nom des notes* (lettres, do
+  central C4 ou C3, ou solfège) ; *Réticule pendant un geste* ; *Largeur de la tête de
+  lecture* ; *Ligne d'ensemble du morceau* (une bande au-dessus de l'arrangement, éteinte
+  d'origine). Ctrl+molette zoome autour du pointeur (D586 à D588, D591).
+- *Mixage* : *Écoute atténuée de 20 dB (jamais dans un export)* (D589.3).
+- Au piano roll, *Sélectionner ▸ La voix du dessus* et *La voix du dessous* ;
+  *Les contrôleurs suivent les notes* (un déplacement de notes emporte leurs contrôleurs) ;
+  la parabole parmi les formes de l'automation dessinée (D581). Le clic du métronome part
+  à son échantillon, bat l'unité de la signature et accentue la mesure qui joue (D590).
+
 **Partir avant, finir après, et un tempo fixe** (D578, D595). *Transport ▸ Pré-roll*
 (aucun, 1, 2 ou 4 mesures) fait partir *Lecture* et *Lire la sélection* ces mesures
 avant la tête — la tête posée reste votre point de départ ; *Transport ▸ Post-roll*
