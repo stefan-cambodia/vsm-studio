@@ -49968,8 +49968,8 @@ une note muette se pâlit et se hachure (le muet de note), une courbe qui ne jou
 
 ### Phase D639 — un quatre-vingt-dix-huitième audit : sous un ordre de carte, ↑ et ↓ changent une frappe de rangée (13/11/2026)
 
-*Écrite le 13/11 à 11 h 56 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
-D636-D637 TOURNE ; D638 attend sa compilation : le code s'écrit, il ne se compile qu'après la série.*
+*Écrite le 13/11 à 11 h 52 (l'horloge, lue dans la commande qui écrit — « 11 h 56 » d'abord, écrit de tête et corrigé), avant
+toute ligne de code et toute mesure. La série de D636-D637 TOURNE ; D638 attend sa compilation : le code s'écrit, il ne se compile qu'après la série.*
 
 **D'OÙ ELLE VIENT : du remis de D636** — « ↑ et ↓ d'une frappe choisie changent sa hauteur d'un demi-ton, pas sa rangée ».
 Sous un ordre de carte (D636), le piano roll replié range charleston, grosse caisse, caisse claire l'un sous l'autre ; ↑ sur
