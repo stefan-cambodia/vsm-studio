@@ -50003,7 +50003,7 @@ losange, la flèche par `touche:pianoroll:cursor up` (ou `down`), le projet enre
 
 ### Phase D640 — un quatre-vingt-dix-neuvième audit : le solo d'un rang de la carte (13/11/2026)
 
-*Écrite le 13/11 à 11 h 55 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
+*Écrite le 13/11 à 11 h 54 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
 D636-D637 TOURNE ; D638 et D639 attendent leur compilation : le code s'écrit, il ne se compile qu'après la série.*
 
 **D'OÙ ELLE VIENT : du dernier remis de D637** — « le solo d'un rang ». Pour écouter la caisse claire seule dans un groove,
