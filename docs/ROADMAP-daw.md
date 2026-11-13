@@ -50145,3 +50145,40 @@ ROUGE d'abord sur le binaire de D640** (`build/temoin-D640`) : l'entrée de menu
 - **Remis, nommé** : la boîte ne grise pas les champs qui ne servent pas au mode choisi (les bornes en « Ajouter ») — JUCE
   n'en donne pas le moyen dans une `AlertWindow` sans la refaire ; l'aide le dit.
 - **La série n'est pas jouée** (234 bancs) : batterie à 32 %, sans charge.
+
+### Phase D642 — un cent-unième audit : l'égaliseur de tranche à quatre bandes (13/11/2026)
+
+*Écrite le 13/11 à 21 h 32 (l'horloge, insérée par la commande qui écrit), avant toute ligne de code et toute mesure. La série de
+D641 TOURNE (lancée à 21 h 31) : le code s'écrit, il ne se compile qu'après elle.*
+
+**D'OÙ ELLE VIENT : de l'audit des inserts, revérifié au code.** L'égaliseur de VSM Studio (`EqualiserEffect`, D4.1) a TROIS
+bandes : un plateau grave, UNE cloche, un plateau aigu. Celui d'une tranche de Cubase en a quatre : grave, bas-médium,
+haut-médium, aigu. Avec une seule cloche, on ne creuse pas le carton d'une voix à 400 Hz ET on ne lui rend pas sa présence à
+3 kHz : il faut un second égaliseur dans la chaîne, et deux inserts pour un geste.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D642.1 | **La seconde cloche** — le *Hi-Mid* de l'égaliseur de tranche | l'insert « Equaliser » gagne trois réglages, À LA FIN de sa liste : *Mid 2 Freq* (de 500 Hz à 16 kHz, 3 kHz d'origine), *Mid 2 Gain* (±18 dB, 0 d'origine), *Mid 2 Q* (0,2 à 8, 0,8) — une cloche après la première ; À 0 dB ELLE NE CALCULE RIEN : un projet d'avant, et l'empreinte de non-régression de l'égaliseur, au bit près ; écrits au projet sous des identités sémantiques (`effect.eq.mid2.*`) ; la tranche montre trois boutons de plus ; mesuré par un test du moteur, par l'empreinte inchangée, et par un export audio dans l'application, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **À la fin de la liste, pas entre « Mid » et « High »** : les réglages se désignent aussi par leur numéro (`ParamId`, les
+  inserts enregistrés, l'automation d'un insert) ; insérer au milieu renumérote « High Gain » et « High Freq » — un projet
+  d'avant ouvrirait son aigu sur la mauvaise valeur. Le nom dit l'ordre (« Mid 2 »), le rang n'a pas à le dire.
+- **À 0 dB, la bande est SAUTÉE, pas calculée à gain nul** : une cloche biquadratique à 0 dB rend le signal au dernier bit
+  près SEULEMENT si ses coefficients se compensent exactement en flottant, ce que rien ne garantit ; la sauter le garantit.
+- **Le premier « Mid » ne change pas de nom** : « Mid » reste `effect.eq.mid.*` ; renommer « Lo-Mid » casserait les
+  identités que `analyse/` vise déjà.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au moteur** : un sinus à 3 kHz traverse l'égaliseur, *Mid 2* à +6 dB à 3 kHz : **+6,0 dB** (± 0,2) ; le même sinus à
+300 Hz : moins de 0,5 dB d'écart ; *Mid* et *Mid 2* à +6 dB à la même fréquence : **+12,0 dB** (± 0,3) ; *Mid 2* à 0 dB :
+sortie IDENTIQUE au bit à celle de l'égaliseur sans la bande (les sept premiers réglages posés comme l'empreinte les pose) ;
+(b) **l'empreinte** `regression_fx_eq` inchangée ;
+(c) **aux tests d'interchange** : un projet dont l'égaliseur porte *Mid 2 Gain* à +4 dB l'écrit sous `effect.eq.mid2.gain` et
+le relit ; un projet d'avant (sans la clé) relu à 0 dB ;
+(d) **au banc** `tools/egaliseur-quatre-bandes.sh` : une piste du générateur de test (`vsm.testtone`) qui joue le do 6 (la
+note 84, 1 046,5 Hz), l'égaliseur en insert ; *Mid 2 Freq* posé à 1 046,5 Hz et *Mid 2 Gain* à +6 dB (`valeur:effet.…`),
+l'export audio : sa crête **+6,0 dB** (± 0,3) au-dessus de l'export du même projet sans le geste ; le projet enregistré porte
+`effect.eq.mid2.gain` à 6 ;
+(e) **le témoin** (le binaire de D641) : le réglage *Mid 2 Gain* inconnu, l'export inchangé ;
+(f) la photo de la tranche (dix boutons) regardée ; `effets-valeurs`, `inserts-contournes` verts ; la série.
