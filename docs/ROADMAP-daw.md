@@ -50289,3 +50289,35 @@ l'égaliseur porte ses trois clés neuves), audio **1 386/1 386** (+1). Les deux
 - **Remis, nommés** : l'*Export as Type 0* sur un projet né d'un format 1 ; dire au message de l'export les blocs privés
   écartés.
 - **La série n'est pas jouée** (236 bancs) : batterie à 33 %, sans charge.
+
+### Phase D644 — un cent-troisième audit : exporter en format 0 sur demande, et dire ce qu'il ne porte pas (14/11/2026)
+
+*Écrite le 14/11 à 00 h 29 (l'horloge, insérée par la commande qui écrit), avant toute ligne de code et toute mesure. Rien ne tourne ;
+la série de D642-D643 attend la batterie (33 %, sans charge).*
+
+**D'OÙ ELLE VIENT : des deux remis de D643.** Depuis D643, l'export d'un projet né d'un fichier de format 0 rend un vrai
+format 0 ; un projet né d'un format 1 — ou d'aucun fichier — ne le peut pas, quand c'est souvent ce que demande le clavier ou
+le séquenceur matériel qui recevra le morceau (l'*Export as Type 0* de Cubase). Et la fusion écarte les blocs privés de VSM —
+les notes muettes et les confiances de transcription n'ont plus de piste où se rattacher — sans le dire.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D644.1 | **Exporter en format 0 sur demande** — *Export MIDI File ▸ Export as Type 0* | *Fichier ▸ Exporter MIDI au format 0 (une seule piste)…* : le même export que *Exporter MIDI…* (l'arrangement, les mêmes avertissements), toutes les pistes FUSIONNÉES en une (`mergeToFormat0`, D643) ; *Exporter MIDI…* garde sa règle (le format de la source) ; mesuré par le fichier écrit, le témoin à côté |
+| D644.2 | **Ce que le format 0 ne porte pas, dit** | chaque export fusionné (sur demande, ou d'une source de format 0) dit au journal et dans sa boîte combien de notes MUETTES et de notes à CONFIANCE de transcription il ne porte pas — elles voyagent dans les blocs privés d'un format 1, pas dans un format 0 ; rien à dire, rien de dit |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Une entrée de plus, pas une case dans une boîte** : *Exporter MIDI…* n'a pas de boîte (un sélecteur de fichier seulement) ;
+  une entrée nommée dit ce qu'elle fait, et un banc la joue par son nom. L'identifiant de menu neuf va à la FIN de
+  l'énumération : les autres ne bougent pas.
+- **Compter sur le projet, pas sur les blocs** : ce que les blocs privés portent se lit dans les notes de l'arrangement — une
+  note muette, une confiance sous 1 ; les compter là dit la chose au musicien (« 3 notes muettes ») plutôt qu'un nombre de
+  blocs.
+- **Remis, nommé** : un export MIDI qui laisse choisir la résolution (PPQ) du fichier.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/format-zero.sh`, qui gagne trois contrôles :
+(g) la source de FORMAT 1, exportée par `exporter-midi-0:` (l'entrée neuve) : **format 0, 1 piste**, « 1:60 10:36 1:64 1:67
+10:38 » ; son *Exporter MIDI…* reste en format 1 (contrôle (d), inchangé) ;
+(h) une note rendue muette avant l'export en format 0 (`menu:Édition > Muet` sur la note choisie) : le journal dit « 1 note(s)
+muette(s) » non portée(s) ; sans note muette ni confiance : rien de dit ;
+(i) **le témoin** (le binaire de D643) : le verbe et l'entrée inconnus ;
+(j) l'anglais (l'entrée : *Export MIDI as type 0 (single track)…*) ; `ouvrir-midi`, `midi-locateurs` verts ; la série.
