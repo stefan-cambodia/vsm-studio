@@ -590,8 +590,59 @@ static ParsedFile buildParsedFile(const Project& projet, bool arrange) {
     return parsed;
 }
 
-ParsedFile Project::toParsedFile() const { return buildParsedFile(*this, false); }
-ParsedFile Project::toParsedFileArranged() const { return buildParsedFile(*this, true); }
+ParsedFile mergeToFormat0(const ParsedFile& file, size_t* blocsPrivesEcartes) {
+    ParsedFile out = file;
+    out.format = SmfFormat::Type0;
+    out.tracks.assign(1, ParsedTrack{});
+    struct Classe { MidiEvent ev; int priorite; };
+    std::vector<Classe> tous;
+    bool nomPris = false;
+    size_t prives = 0;
+    for (const auto& piste : file.tracks)
+        for (const auto& ev : piste.events) {
+            if (std::holds_alternative<EndOfTrackEvent>(ev.data)) continue;
+            if (const auto* nom = std::get_if<TrackNameEvent>(&ev.data)) {
+                if (nomPris) continue;
+                nomPris = true;
+                out.tracks[0].name = nom->name;
+            }
+            if (const auto* u = std::get_if<UnknownMetaEvent>(&ev.data); u != nullptr && u->metaType == 0x7F) {
+                ++prives;
+                continue;
+            }
+            int priorite = 2;
+            if (std::holds_alternative<TempoEvent>(ev.data) || std::holds_alternative<TimeSignatureEvent>(ev.data)
+                || std::holds_alternative<TrackNameEvent>(ev.data) || std::holds_alternative<TextMetaEvent>(ev.data)
+                || std::holds_alternative<UnknownMetaEvent>(ev.data))
+                priorite = 0;
+            else if (std::holds_alternative<NoteOffEvent>(ev.data))
+                priorite = 1;
+            else if (const auto* on = std::get_if<NoteOnEvent>(&ev.data))
+                priorite = on->velocity == 0 ? 1 : 3;
+            tous.push_back({ev, priorite});
+        }
+    std::stable_sort(tous.begin(), tous.end(), [](const Classe& a, const Classe& b) {
+        return a.ev.tick != b.ev.tick ? a.ev.tick < b.ev.tick : a.priorite < b.priorite;
+    });
+    for (auto& r : tous) out.tracks[0].events.push_back(std::move(r.ev));
+    if (blocsPrivesEcartes) *blocsPrivesEcartes = prives;
+    return out;
+}
+
+ParsedFile Project::toParsedFile() const {
+    // D643 : LE FICHIER DU PROJET EST DE FORMAT 1, toujours — un format INTERNE, une piste par piste du projet. Il reprenait
+    // le format du fichier ouvert, et un format 0 y écrivait un en-tête « format 0 » sur plusieurs pistes (hors norme).
+    ParsedFile parsed = buildParsedFile(*this, false);
+    parsed.format = SmfFormat::Type1;
+    return parsed;
+}
+
+ParsedFile Project::toParsedFileArranged() const {
+    // D643 : L'EXPORT D'UNE SOURCE DE FORMAT 0 EST UN VRAI FORMAT 0 — toutes les pistes fusionnées en une.
+    ParsedFile parsed = buildParsedFile(*this, true);
+    if (exportFormat == SmfFormat::Type0 && parsed.tracks.size() > 1) return mergeToFormat0(parsed);
+    return parsed;
+}
 
 midi::Tick Project::lastUsedTick() const {
     Tick last = 0;

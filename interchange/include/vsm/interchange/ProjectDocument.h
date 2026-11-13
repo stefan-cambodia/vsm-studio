@@ -448,6 +448,9 @@ struct ProjectDocument {
     std::vector<ProjectMarker> markers;
     std::vector<ProjectChord> chords;   ///< D532.3 : écrite seulement s'il y en a
     int globalTransposeSemitones = 0;   ///< D544.3 : écrite seulement si elle n'est pas nulle
+    /// D643 : 0 quand la source du projet était un fichier MIDI de format 0 (l'export en rend un vrai) ; −1 : rien à dire.
+    /// Écrit seulement à 0 : le fichier interne du projet est toujours de format 1, et ne s'en souviendrait pas.
+    int midiFormat = -1;
     /// D535.2 : les noms des instantanés de console, dans l'ordre. Écrits seulement s'il y en a.
     std::vector<std::string> mixSnapshotNames;
     /// D18.6 : les notes du projet. Vides = rien n'est écrit.

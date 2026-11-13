@@ -3,13 +3,19 @@
 #   (H1) exporté (*Exporter MIDI…*) : quel en-tête (format, nombre de pistes) ?
 #   (H2) enregistré comme projet : l'en-tête de son `midi/arrangement.mid` ; rouvert : ses pistes (noms, canaux, notes) ;
 #   (H3) le témoin : le même contenu en format 1.
-# Le premier tour MESURE et écrit des faits ; les verdicts s'écrivent avec l'attendu du remède.
+# Le premier tour a MESURÉ (H1 tient, H2 sans perte) ; devenu garde, il juge l'attendu du remède (ROADMAP-daw, D643) :
+#   (a) la source de format 0, exportée : format 0, 1 piste, « 1:60 10:36 1:64 1:67 10:38 » ;
+#   (b) son projet : `midi/arrangement.mid` de format 1 (2 pistes), « midiFormat »: 0 au project.json ;
+#   (c) rouvert, réexporté : format 0, 1 piste, les mêmes notes ; (e) l'export entre les locateurs aussi ;
+#   (d) la source de format 1 : format 1 partout, pas de clé « midiFormat » ;
+#   (f) le témoin (le binaire d'avant D643) : l'export du format 0 en « format 0, 2 pistes » — le défaut.
 #
-#   tools/format-zero.sh [binaire]
+#   tools/format-zero.sh [binaire] [binaire témoin]
 set -u
 racine="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$racine"
 BIN="${1:-./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio}"
+TEMOIN="${2:-./build/temoin-D641/Vintage Synth MIDI Studio}"
 [ -x "$BIN" ] || { echo "REFUS : $BIN absent — compiler d'abord"; exit 2; }
 
 brouillon="$(mktemp -d "${TMPDIR:-/tmp}/vsm-format-zero.XXXXXX")"
@@ -79,10 +85,10 @@ pistes() {   # les pistes d'un projet enregistré : nom, canal, machine
 t = json.load(open(sys.argv[1] + '/project.json'))['tracks']
 print(' | '.join(f\"{x.get('name')} (canal {x.get('channel', 0) + 1}, {x.get('instrument', {}).get('preferredPlugin', '-')})\" for x in t))" "$1" 2>/dev/null || echo ABSENT
 }
-course() {   # $1 = nom ; $2 = gestes ; le reste : variables. Un HOME neuf.
+course() {   # $1 = nom ; $2 = gestes ; le reste : variables. Un HOME neuf. Le binaire : BINAIRE, ou celui du banc.
     local nom="$1" gestes="$2"; shift 2
     env HOME="$(mktemp -d "$brouillon/home.XXXX")" VSM_TAILLE="1600x1000" VSM_VUE="sans-rapport" VSM_DELAI=4500 \
-        VSM_GESTE_APRES="$gestes" "$@" VSM_CAPTURE="$brouillon/$nom.png" timeout 60 "$BIN" > "$brouillon/$nom.txt" 2>&1
+        VSM_GESTE_APRES="$gestes" "$@" VSM_CAPTURE="$brouillon/$nom.png" timeout 60 "${BINAIRE:-$BIN}" > "$brouillon/$nom.txt" 2>&1
     grep -E "VSM_(GESTE_APRES|MENU) : .*(aucun|refus|inconnu|ATTENTION)" "$brouillon/$nom.txt" | sed "s/^/        journal ($nom) : /"
 }
 
@@ -97,3 +103,37 @@ for src in zero un; do
     echo "         rouvert, réenregistré : $(entete "$brouillon/$src-projet2/midi/arrangement.mid")"
     echo "         ses pistes      : $(pistes "$brouillon/$src-projet2")"
 done
+
+# (c), (e) : le projet né du format 0, des locateurs posés (0 → 1920, tout le morceau), rouvert, réexporté.
+python3 - "$brouillon/zero-projet/project.json" <<'PY3'
+import json, sys
+p = sys.argv[1]; d = json.load(open(p)); d.setdefault("transport", {})["loop"] = {"enabled": False, "startTick": 0, "endTick": 1920}
+json.dump(d, open(p, "w"), indent=1)
+PY3
+course rouvert-export "1500:exporter-midi:$brouillon/rouvert.mid;2000:exporter-midi-locateurs:$brouillon/rouvert-boucle.mid" VSM_PROJET="$brouillon/zero-projet"
+cle() { python3 -c "import json, sys; print(json.load(open(sys.argv[1] + '/project.json')).get('midiFormat', 'absente'))" "$1" 2>/dev/null || echo ABSENT; }
+echo "    (c) rouvert, réexporté  : $(entete "$brouillon/rouvert.mid")"
+echo "    (e) entre les locateurs : $(entete "$brouillon/rouvert-boucle.mid")"
+echo "    clé midiFormat : source 0 → $(cle "$brouillon/zero-projet") ; source 1 → $(cle "$brouillon/un-projet")"
+
+rates=0
+verdict() { if [ "$2" = 1 ]; then printf '  OK   %s\n' "$1"; else printf '  RATÉ %s\n' "$1"; rates=$((rates + 1)); fi; }
+ZERO="format 0, 1 piste(s) déclarée(s), 1 écrite(s) ; notes par piste (canal:hauteur) : [1:60 10:36 1:64 1:67 10:38]"
+UN="format 1, 2 piste(s) déclarée(s), 2 écrite(s) ; notes par piste (canal:hauteur) : [1:60 1:64 1:67] [10:36 10:38]"
+verdict "(a) la source de format 0, exportée : un vrai format 0, une piste, les notes dans l'ordre du temps" "$( [ "$(entete "$brouillon/zero-export.mid")" = "$ZERO" ] && echo 1 || echo 0)"
+verdict "(b) son projet : un fichier interne de format 1, et midiFormat 0 au project.json" \
+    "$( [ "$(entete "$brouillon/zero-projet/midi/arrangement.mid")" = "$UN" ] && [ "$(cle "$brouillon/zero-projet")" = 0 ] && echo 1 || echo 0)"
+verdict "(c) rouvert puis réexporté : de nouveau un format 0, une piste" "$( [ "$(entete "$brouillon/rouvert.mid")" = "$ZERO" ] && echo 1 || echo 0)"
+verdict "(d) la source de format 1 : format 1 partout, pas de clé midiFormat" \
+    "$( [ "$(entete "$brouillon/un-export.mid")" = "$UN" ] && [ "$(entete "$brouillon/un-projet/midi/arrangement.mid")" = "$UN" ] && [ "$(cle "$brouillon/un-projet")" = absente ] && echo 1 || echo 0)"
+verdict "(e) l'export entre les locateurs d'un projet né du format 0 : un format 0, une piste" "$( [ "$(entete "$brouillon/rouvert-boucle.mid")" = "$ZERO" ] && echo 1 || echo 0)"
+if [ -x "$TEMOIN" ]; then
+    BINAIRE="$TEMOIN" course t-zero "800:ouvrir-midi:$brouillon/zero.mid;1800:exporter-midi:$brouillon/t-zero-export.mid"
+    echo "    témoin : $(entete "$brouillon/t-zero-export.mid")"
+    verdict "(f) témoin (avant D643) : « format 0 » sur deux pistes — le défaut" "$(entete "$brouillon/t-zero-export.mid" | grep -q "^format 0, 2 piste" && echo 1 || echo 0)"
+else
+    echo "    témoin absent ($TEMOIN) : le témoin n'est PAS joué"
+fi
+echo
+if [ "$rates" -gt 0 ]; then echo "FORMAT-ZERO : $rates contrôle(s) raté(s)"; exit 1; fi
+echo "FORMAT-ZERO : un format 0 se réécrit en vrai format 0, et le fichier du projet reste un format 1"

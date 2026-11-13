@@ -50255,3 +50255,37 @@ porte le même en-tête, mais VSM le relit sans perte — c'est le FICHIER qui m
 (e) l'export MIDI entre les locateurs (D568.2) d'une source de format 0 : format 0, 1 piste ;
 (f) au cœur : un test de la fusion (deux pistes de canaux différents, une fin et un début au même instant : la fin d'abord) ;
 `ouvrir-midi`, `export-ordre`, `fusionner-midi`, `midi-locateurs` verts ; les suites ; la série.
+
+### Phases D642 et D643 — MESURÉES, la série à jouer (14/11, 00 h 02 à l'horloge)
+
+*D642 écrite avant son code (13/11, 21 h 32), D643 mesurée puis son remède écrit avant le code ; compilées ensemble après la
+série de D641. Suites : cœur **592/592** (+1, la fusion en format 0), interchange **378/378** (+1 ; le contrat sémantique de
+l'égaliseur porte ses trois clés neuves), audio **1 386/1 386** (+1). Les deux bancs vus ROUGES d'abord sur le binaire de D641.*
+
+| # | attendu | mesure | témoin (D641) | tenu |
+|---|---|---|---|---|
+| D642 (a) | au moteur : +6,0 dB à 3 kHz ; < 0,5 dB à 300 Hz ; +12,0 avec les deux cloches ; à 0 dB, sautée au bit | **+6,00** ; **+0,10** ; **+12,00** ; identique au bit | — | **oui** |
+| D642 (b) | l'empreinte `regression_fx_eq` inchangée | **verte** | — | **oui** |
+| D642 (c) | interchange : `effect.eq.mid2.gain` écrit et relu ; une description d'avant à 0 dB | verts | — | **oui** |
+| D642 (d) | l'export : +6,0 dB (± 0,3) ; le projet porte la clé à 6 | **+5,98 dB** ; **6** | le bouton inconnu, **0,00 dB** | **oui (le banc corrigé deux fois, voir plus bas)** |
+| D642 (f) | dix boutons, la photo regardée | Low Gain … High Freq, puis **Mid 2 Freq, Mid 2 Gain (6,00 dB), Mid 2 Q** | sept | **oui** |
+| D643 (a) | la source de format 0 exportée : format 0, 1 piste | **format 0, 1 piste, « 1:60 10:36 1:64 1:67 10:38 »** | **format 0, 2 pistes** — le défaut | **oui** |
+| D643 (b) | son projet : fichier interne de format 1, `"midiFormat": 0` | **format 1, 2 pistes ; 0** | — | **oui** |
+| D643 (c), (e) | rouvert, réexporté, et entre les locateurs : format 0, 1 piste | **les deux** | — | **oui** |
+| D643 (d) | la source de format 1 : format 1, pas de clé | **oui** | — | **oui** |
+| — | les voisins | `ouvrir-midi`, `export-ordre`, `fusionner-midi`, `midi-locateurs`, `inserts-contournes`, `effets-valeurs` (0 écart sur 78 réglages de 19 effets) verts | — | **oui, la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Deux défauts du BANC de D642, trouvés au premier essai et dits.** (1) Un insert posé par le PROJET n'est pas choisi dans
+  la chaîne : ses boutons ne sont pas à l'écran, et `valeur:` ne trouvait rien — sur le neuf comme sur le témoin. Le banc pose
+  l'égaliseur par `VSM_MENU_CONTEXTE=ajout-effet:Equaliser`, comme `effets-valeurs`. (2) Le générateur de test joue d'origine
+  une DENT DE SCIE : sa crête n'est montée que de **+5,10 dB**, la cloche ne relevant que sa fondamentale. L'attendu parlait
+  d'un sinus ; le projet du banc en fait jouer un (`oscillator.1.waveform` à 0, déclaré au `project.json`) : **+5,98 dB**.
+  Aucune ligne de l'application n'a changé entre les essais.
+- **D643 : le fichier du projet ne mentait qu'aux AUTRES** — VSM relisait sans perte son propre fichier « format 0 à deux
+  pistes » ; c'est un tiers ouvrant `midi/arrangement.mid` qui n'en aurait lu que la première piste.
+- **Les blocs privés de VSM** (notes muettes, confiances) ne voyagent pas dans un format 0 fusionné : écrit, compté par
+  `mergeToFormat0`, mais **pas encore dit au message de l'export** — remis, nommé.
+- **Remis, nommés** : l'*Export as Type 0* sur un projet né d'un format 1 ; dire au message de l'export les blocs privés
+  écartés.
+- **La série n'est pas jouée** (236 bancs) : batterie à 33 %, sans charge.

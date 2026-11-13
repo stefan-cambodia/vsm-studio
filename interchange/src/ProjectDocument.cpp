@@ -500,6 +500,7 @@ ProjectDocument documentFromProject(const Project& project) {
     document.notes = project.notes;
     document.mixSnapshotNames = project.mixSnapshotNames;   // D535.2
     document.globalTransposeSemitones = project.globalTransposeSemitones;   // D544.3
+    document.midiFormat = project.exportFormat == vsm::midi::SmfFormat::Type0 ? 0 : -1;   // D643
     document.master = project.masterParameters;
     document.crossfadeShape = fadeShapeName(project.crossfadeShape);
     document.panLaw = panLawName(project.panLaw);              // D571.2
@@ -720,6 +721,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     }
     project.mixSnapshotNames = document.mixSnapshotNames;   // D535.2
     project.globalTransposeSemitones = document.globalTransposeSemitones;   // D544.3
+    // D643 : la source de format 0, retenue au document — le `.mid` interne, de format 1, ne la dit plus. Absente, le format
+    // lu dans le `.mid` reste (un projet d'avant D643 dont le fichier interne était encore de format 0).
+    if (document.midiFormat == 0) project.exportFormat = vsm::midi::SmfFormat::Type0;
     // D532.3 : LA LIGNE D'ACCORDS, toujours celle du document — le `.mid` n'en porte
     // aucune. Un symbole illisible est ÉCARTÉ et DIT, jamais deviné.
     project.chords.clear();
@@ -1062,6 +1066,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     // s'écrit comme avant, au bit près.
     if (document.globalTransposeSemitones != 0)
         root.set("globalTranspose", JsonValue::makeNumber(document.globalTransposeSemitones));
+    if (document.midiFormat == 0) root.set("midiFormat", JsonValue::makeNumber(0));   // D643 : seulement pour un format 0
     if (!document.chords.empty()) {   // D532.3
         JsonValue accords = JsonValue::makeArray();
         for (const auto& accord : document.chords) {
@@ -1529,6 +1534,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     // toutes les notes hors de la plage MIDI.
     document.globalTransposeSemitones =
         std::clamp(static_cast<int>(json["globalTranspose"].asNumber(0.0)), -24, 24);
+    document.midiFormat = json["midiFormat"].asNumber(-1.0) == 0.0 ? 0 : -1;   // D643 : tout autre chose est ignoré
     for (const auto& nom : json["mixSnapshots"].elements())   // D535.2
         if (nom.isString()) document.mixSnapshotNames.push_back(nom.asString());
     for (const auto& accordJson : json["chords"].elements())   // D532.3 : lus tels quels, jugés à l'application

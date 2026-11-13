@@ -32,11 +32,17 @@ namespace vsm::audio::effect {
 /// remonter. Quatre inserts se rangent dans l'ordre qu'on décide, comme les
 /// neuf autres effets du parc.
 
-/// Égaliseur trois bandes : plateau grave, cloche paramétrique, plateau aigu.
+/// Égaliseur quatre bandes : plateau grave, deux cloches paramétriques, plateau aigu.
+///
+/// D642.1 : LA SECONDE CLOCHE (le *Hi-Mid* de l'égaliseur de tranche de Cubase) est À LA FIN de la liste — les réglages se
+/// désignent aussi par leur numéro, et l'insérer au milieu renumérotait l'aigu d'un projet d'avant — et elle est SAUTÉE à
+/// 0 dB : un projet d'avant, et l'empreinte de non-régression, sonnent au bit près.
 class EqualiserEffect : public IAudioEffect {
 public:
     enum ParamIds : vsm::audio::plugin::ParamId {
-        kLowGainDb = 0, kLowFreq, kMidFreq, kMidGainDb, kMidQ, kHighGainDb, kHighFreq, kNumParams
+        kLowGainDb = 0, kLowFreq, kMidFreq, kMidGainDb, kMidQ, kHighGainDb, kHighFreq,
+        kMid2Freq, kMid2GainDb, kMid2Q,   // D642.1
+        kNumParams
     };
 
     EqualiserEffect() {
@@ -48,6 +54,9 @@ public:
             {kMidQ, "Mid Q", 0.2f, 8.0f, 0.8f, ""},
             {kHighGainDb, "High Gain", -18.0f, 18.0f, 0.0f, "dB"},
             {kHighFreq, "High Freq", 2000.0f, 16000.0f, 8000.0f, "Hz"},
+            {kMid2Freq, "Mid 2 Freq", 500.0f, 16000.0f, 3000.0f, "Hz"},   // D642.1
+            {kMid2GainDb, "Mid 2 Gain", -18.0f, 18.0f, 0.0f, "dB"},
+            {kMid2Q, "Mid 2 Q", 0.2f, 8.0f, 0.8f, ""},
         };
         for (const auto& p : parameterList_) params_[p.id].store(p.defaultValue, std::memory_order_relaxed);
     }
@@ -75,9 +84,23 @@ public:
         for (auto* f : {&mediumL_, &mediumR_}) f->set(Type::Peaking, mediumHz, mediumQ, mediumDb);
         for (auto* f : {&aiguL_, &aiguR_}) f->set(Type::HighShelf, aiguHz, 0.707f, aiguDb);
 
+        // D642.1 : LA SECONDE CLOCHE, SAUTÉE À 0 dB — le chemin d'avant, au bit près.
+        const float medium2Db = params_[kMid2GainDb].load(std::memory_order_relaxed);
+        if (medium2Db == 0.0f) {
+            medium2L_.reset();   // rallumée plus tard, elle repart d'un état propre (pas d'un état ancien : un clic)
+            medium2R_.reset();
+            for (int n = 0; n < numSamples; ++n) {
+                left[n] = aiguL_.process(mediumL_.process(graveL_.process(left[n])));
+                right[n] = aiguR_.process(mediumR_.process(graveR_.process(right[n])));
+            }
+            return;
+        }
+        const float medium2Hz = params_[kMid2Freq].load(std::memory_order_relaxed);
+        const float medium2Q = params_[kMid2Q].load(std::memory_order_relaxed);
+        for (auto* f : {&medium2L_, &medium2R_}) f->set(Type::Peaking, medium2Hz, medium2Q, medium2Db);
         for (int n = 0; n < numSamples; ++n) {
-            left[n] = aiguL_.process(mediumL_.process(graveL_.process(left[n])));
-            right[n] = aiguR_.process(mediumR_.process(graveR_.process(right[n])));
+            left[n] = aiguL_.process(medium2L_.process(mediumL_.process(graveL_.process(left[n]))));
+            right[n] = aiguR_.process(medium2R_.process(mediumR_.process(graveR_.process(right[n]))));
         }
     }
 
@@ -91,10 +114,11 @@ public:
     const char* effectName() const override { return "EQ"; }
 
 private:
-    std::array<vsm::audio::dsp::Biquad*, 6> filtres() {
-        return {&graveL_, &graveR_, &mediumL_, &mediumR_, &aiguL_, &aiguR_};
+    std::array<vsm::audio::dsp::Biquad*, 8> filtres() {
+        return {&graveL_, &graveR_, &mediumL_, &mediumR_, &aiguL_, &aiguR_, &medium2L_, &medium2R_};
     }
     vsm::audio::dsp::Biquad graveL_, graveR_, mediumL_, mediumR_, aiguL_, aiguR_;
+    vsm::audio::dsp::Biquad medium2L_, medium2R_;   // D642.1
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;
 };

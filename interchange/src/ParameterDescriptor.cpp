@@ -1540,6 +1540,9 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Mid Q", "effect.eq.mid.q"},
         {"High Gain", "effect.eq.high.gain"},
         {"High Freq", "effect.eq.high.freq"},
+        {"Mid 2 Freq", "effect.eq.mid2.freq"},   // D642.1 : la seconde cloche
+        {"Mid 2 Gain", "effect.eq.mid2.gain"},
+        {"Mid 2 Q", "effect.eq.mid2.q"},
     }},
     {"fx.compressor", {
         {"Threshold", "effect.compressor.threshold"},

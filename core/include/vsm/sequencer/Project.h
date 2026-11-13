@@ -694,4 +694,11 @@ inline double globalTransposeForAudio(const Project& project, const Track& track
     return track.independentOfGlobalTranspose ? 0.0 : static_cast<double>(project.globalTransposeSemitones);
 }
 
+
+/// D643 — UN VRAI FORMAT 0 : toutes les pistes de `file` FUSIONNÉES en une, les canaux gardés. À un même instant, les
+/// méta-événements d'abord, puis les fins de note, les autres messages, enfin les débuts (la règle de D623) ; une seule
+/// piste nommée (la première qui l'est) ; les fins de piste retirées (l'écriture en remet une). Les blocs privés de VSM
+/// (méta 0x7F : notes muettes, confiances, D6.3) ne sauraient plus à quelle piste se rattacher : ils sont ÉCARTÉS, et
+/// `blocsPrivesEcartes` les compte.
+midi::ParsedFile mergeToFormat0(const midi::ParsedFile& file, size_t* blocsPrivesEcartes = nullptr);
 } // namespace vsm::sequencer

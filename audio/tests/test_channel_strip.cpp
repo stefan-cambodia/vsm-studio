@@ -3,6 +3,8 @@
 #include "vsm/audio/effect/EffectFactory.h"
 #include <cmath>
 #include <vector>
+#include <memory>
+#include <cstdio>
 
 using namespace vsm::audio::effect;
 
@@ -83,6 +85,55 @@ VSM_TEST(the_equaliser_at_zero_gain_leaves_the_signal_alone) {
     EqualiserEffect eq;
     const float sortie = amplitudeApres(eq, 1000.0, sr, 0.3f);
     VSM_ASSERT_NEAR(sortie, 0.3f, 0.002f);
+}
+
+// D642.1 — LA SECONDE CLOCHE. L'attendu écrit avant le code (ROADMAP-daw, D642, (a)) : un sinus à 3 kHz, « Mid 2 » à +6 dB à
+// 3 kHz : +6,0 dB (± 0,2) ; à 300 Hz : moins de 0,5 dB d'écart ; « Mid » et « Mid 2 » à +6 dB à la même fréquence : +12,0 dB
+// (± 0,3) ; « Mid 2 » à 0 dB : la bande SAUTÉE — sa fréquence et son Q n'y changent rien, au bit près.
+VSM_TEST(the_second_mid_band_lifts_its_band_adds_to_the_first_and_is_skipped_at_zero_d642) {
+    constexpr double sr = 48000.0;
+    const auto db = [](float sortie, float entree) { return 20.0 * std::log10(static_cast<double>(sortie) / entree); };
+    const auto avecMid2 = [](float gainDb, float freq) {
+        auto eq = std::make_unique<EqualiserEffect>();
+        eq->setParameter(EqualiserEffect::kMid2Freq, freq);
+        eq->setParameter(EqualiserEffect::kMid2GainDb, gainDb);
+        eq->setParameter(EqualiserEffect::kMid2Q, 0.8f);
+        return eq;
+    };
+    auto a = avecMid2(6.0f, 3000.0f);
+    const double aLa = db(amplitudeApres(*a, 3000.0, sr, 0.2f), 0.2f);
+    auto b = avecMid2(6.0f, 3000.0f);
+    const double aCote = db(amplitudeApres(*b, 300.0, sr, 0.2f), 0.2f);
+    auto c = avecMid2(6.0f, 3000.0f);
+    c->setParameter(EqualiserEffect::kMidFreq, 3000.0f);
+    c->setParameter(EqualiserEffect::kMidGainDb, 6.0f);
+    c->setParameter(EqualiserEffect::kMidQ, 0.8f);
+    const double lesDeux = db(amplitudeApres(*c, 3000.0, sr, 0.1f), 0.1f);
+    std::printf("      [D642.1] Mid 2 +6 dB : à 3 kHz %+.2f dB, à 300 Hz %+.2f dB ; avec Mid +6 dB : %+.2f dB\n", aLa, aCote, lesDeux);
+    VSM_ASSERT_NEAR(aLa, 6.0, 0.2);
+    VSM_ASSERT(std::abs(aCote) < 0.5);
+    VSM_ASSERT_NEAR(lesDeux, 12.0, 0.3);
+
+    // À 0 dB, la bande est SAUTÉE : une fréquence et un Q quelconques donnent la même sortie, au bit près.
+    const int n = 4096;
+    std::vector<float> g1(n), d1(n), g2(n), d2(n);
+    for (int i = 0; i < n; ++i) {
+        g1[static_cast<size_t>(i)] = d1[static_cast<size_t>(i)] =
+            static_cast<float>(std::sin(0.013 * i) * 0.4 + std::sin(0.31 * i) * 0.2);
+    }
+    g2 = g1; d2 = d1;
+    EqualiserEffect neutre, autre;
+    for (auto* eq : {&neutre, &autre}) {
+        eq->setParameter(EqualiserEffect::kLowGainDb, 12.0f);
+        eq->setParameter(EqualiserEffect::kMidGainDb, -12.0f);
+        eq->setParameter(EqualiserEffect::kHighGainDb, 9.0f);
+        eq->prepare(sr, n);
+    }
+    autre.setParameter(EqualiserEffect::kMid2Freq, 9000.0f);
+    autre.setParameter(EqualiserEffect::kMid2Q, 5.0f);
+    neutre.process(g1.data(), d1.data(), n);
+    autre.process(g2.data(), d2.data(), n);
+    VSM_ASSERT(g1 == g2 && d1 == d2);
 }
 
 VSM_TEST(the_compressor_reduces_what_is_above_the_threshold_and_says_by_how_much) {

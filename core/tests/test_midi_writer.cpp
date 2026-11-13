@@ -543,3 +543,44 @@ VSM_TEST(at_an_equal_tick_the_ending_note_closes_before_the_next_opens_d623) {
     const auto octets = MidiFileWriter::write(sans);
     VSM_ASSERT(decrire(MidiFileParser::parse(octets).tracks[0].events) == "0on60 480off60 480on62 960off62 ");
 }
+
+// D643 — LA FUSION EN UN VRAI FORMAT 0 (ROADMAP-daw, D643, (f)) : deux pistes de canaux différents deviennent UNE piste ;
+// à un même instant, le tempo d'abord, une fin de note avant un début (D623) ; une seule piste nommée ; les blocs privés
+// de VSM (méta 0x7F) écartés et comptés ; le fichier interne d'un projet né d'un format 0 est de format 1.
+VSM_TEST(merging_to_format_0_gives_one_track_with_ends_before_starts_d643) {
+    using namespace vsm::midi;
+    ParsedFile f;
+    f.format = SmfFormat::Type1;
+    f.ticksPerQuarterNote = 480;
+    f.tracks.resize(2);
+    f.tracks[0].events = {{0, TrackNameEvent{"Melodie"}}, {0, TempoEvent{500000}}, {0, NoteOnEvent{0, 60, 100}},
+                          {480, NoteOffEvent{0, 60, 0}}, {480, UnknownMetaEvent{0x7F, {1, 2, 3}}}, {960, EndOfTrackEvent{}}};
+    f.tracks[1].events = {{0, TrackNameEvent{"Batterie"}}, {480, NoteOnEvent{9, 36, 110}}, {600, NoteOffEvent{9, 36, 0}},
+                          {600, EndOfTrackEvent{}}};
+    size_t prives = 0;
+    const ParsedFile z = vsm::sequencer::mergeToFormat0(f, &prives);
+    VSM_ASSERT(z.format == SmfFormat::Type0);
+    VSM_ASSERT_EQ(z.tracks.size(), size_t(1));
+    VSM_ASSERT_EQ(prives, size_t(1));
+    VSM_ASSERT_EQ(z.tracks[0].name, std::string("Melodie"));
+    const auto& e = z.tracks[0].events;
+    size_t noms = 0, fins = 0;
+    for (const auto& x : e) {
+        noms += std::holds_alternative<TrackNameEvent>(x.data) ? 1 : 0;
+        fins += std::holds_alternative<EndOfTrackEvent>(x.data) ? 1 : 0;
+    }
+    VSM_ASSERT_EQ(noms, size_t(1));
+    VSM_ASSERT_EQ(fins, size_t(0));
+    // Au tick 480 : la fin du 60 (canal 1) AVANT le début du 36 (canal 10).
+    int finA = -1, debutB = -1;
+    for (size_t i = 0; i < e.size(); ++i) {
+        if (const auto* off = std::get_if<NoteOffEvent>(&e[i].data); off && off->note == 60) finA = static_cast<int>(i);
+        if (const auto* on = std::get_if<NoteOnEvent>(&e[i].data); on && on->note == 36) debutB = static_cast<int>(i);
+    }
+    VSM_ASSERT(finA >= 0 && debutB >= 0 && finA < debutB);
+    VSM_ASSERT(std::holds_alternative<TrackNameEvent>(e[0].data) || std::holds_alternative<TempoEvent>(e[0].data));
+    // Écrit, il se relit : un en-tête de format 0, une piste.
+    const auto octets = MidiFileWriter::write(z);
+    VSM_ASSERT_EQ(octets[9], uint8_t(0));    // format 0
+    VSM_ASSERT_EQ(octets[11], uint8_t(1));   // une piste
+}

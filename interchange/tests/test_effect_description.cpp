@@ -73,7 +73,8 @@ VSM_TEST(the_channel_strip_effects_are_named_by_what_they_do) {
     const std::map<std::string, std::vector<std::string>> attendues = {
         {"eq", {"effect.eq.low.gain", "effect.eq.low.freq", "effect.eq.mid.freq",
                 "effect.eq.mid.gain", "effect.eq.mid.q", "effect.eq.high.gain",
-                "effect.eq.high.freq"}},
+                "effect.eq.high.freq",
+                "effect.eq.mid2.freq", "effect.eq.mid2.gain", "effect.eq.mid2.q"}},   // D642.1
         {"compressor", {"effect.compressor.threshold", "effect.compressor.ratio",
                         "effect.compressor.attack", "effect.compressor.release",
                         "effect.compressor.makeup", "effect.compressor.sidechain"}},
@@ -91,6 +92,26 @@ VSM_TEST(the_channel_strip_effects_are_named_by_what_they_do) {
         for (const auto& nom : noms)
             VSM_ASSERT(described.parameters.count(nom) == 1);
     }
+}
+
+// D642.1 — LA SECONDE CLOCHE AU FICHIER (ROADMAP-daw, D642, (c)) : « Mid 2 Gain » à +4 dB s'écrit sous
+// « effect.eq.mid2.gain » et se relit sur le bon bouton ; une description d'AVANT (sans les trois clés) se relit sans
+// réglage inconnu, la seconde cloche à 0 dB — sautée, le son d'avant.
+VSM_TEST(the_second_eq_bell_round_trips_and_an_older_description_leaves_it_at_zero_d642) {
+    auto source = EffectFactory::create("eq");
+    VSM_ASSERT(source != nullptr);
+    source->setParameter(8, 4.0f);   // Mid 2 Gain
+    const auto described = describeEffect("eq", *source);
+    VSM_ASSERT(described.parameters.count("effect.eq.mid2.gain") == 1);
+    VSM_ASSERT_NEAR(described.parameters.at("effect.eq.mid2.gain"), 4.0f, 1e-6f);
+    auto cible = EffectFactory::create("eq");
+    VSM_ASSERT(applyEffectDescription(described, *cible).unknownParameters.empty());
+    VSM_ASSERT_NEAR(cible->getParameter(8), 4.0f, 1e-6f);
+    auto ancienne = described;
+    for (const char* cle : {"effect.eq.mid2.freq", "effect.eq.mid2.gain", "effect.eq.mid2.q"}) ancienne.parameters.erase(cle);
+    auto relue = EffectFactory::create("eq");
+    VSM_ASSERT(applyEffectDescription(ancienne, *relue).unknownParameters.empty());
+    VSM_ASSERT_NEAR(relue->getParameter(8), 0.0f, 1e-6f);
 }
 
 VSM_TEST(the_channel_strip_effects_land_on_the_right_knobs_after_a_reload) {
