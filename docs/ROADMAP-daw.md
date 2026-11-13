@@ -49965,3 +49965,38 @@ une note muette se pâlit et se hachure (le muet de note), une courbe qui ne jou
 (d) **le témoin** (le binaire de D637, `build/temoin-D637`, les gestes de (b)) : aucune frappe « muette », aucun « — muet » ;
 (e) la photo regardée (le losange pâli à côté du plein), en barres aussi ; l'anglais (« — muted ») ; `batterie-losanges`,
 `muet-par-rang`, `ordre-de-la-carte` verts ; la série.
+
+### Phase D639 — un quatre-vingt-dix-huitième audit : sous un ordre de carte, ↑ et ↓ changent une frappe de rangée (13/11/2026)
+
+*Écrite le 13/11 à 11 h 56 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
+D636-D637 TOURNE ; D638 attend sa compilation : le code s'écrit, il ne se compile qu'après la série.*
+
+**D'OÙ ELLE VIENT : du remis de D636** — « ↑ et ↓ d'une frappe choisie changent sa hauteur d'un demi-ton, pas sa rangée ».
+Sous un ordre de carte (D636), le piano roll replié range charleston, grosse caisse, caisse claire l'un sous l'autre ; ↑ sur
+la caisse claire la transpose d'un demi-ton (38 → 39, un clap à la main), quand la rangée qu'on voit au-dessus est celle de
+la grosse caisse. L'éditeur de batterie de Cubase déplace une frappe vers la pièce de la rangée voisine.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D639.1 | **↑ et ↓ par rangées** — le déplacement de pièce de l'éditeur de batterie | sous un ordre de carte (le repli qui le suit, D636.2), ↑ fait passer chaque frappe choisie à la rangée du DESSUS, ↓ à celle du dessous — la note devient celle de cette rangée ; Maj n'y ajoute rien (une rangée de batterie n'a pas d'octave) ; tout ou rien : une frappe de la rangée du haut (↑) ou du bas (↓) refuse le geste ENTIER, et la ligne d'état le dit ; un pas d'annulation (« Changer de rangée ») ; sans ordre posé, ↑ et ↓ transposent comme avant ; mesuré par le projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Sous un ordre seulement** : c'est là que la rangée voisine n'est PAS le demi-ton voisin. Replié par hauteur, la rangée
+  du dessus est la hauteur jouée la plus proche au-dessus, et la transposition d'un demi-ton y reste le geste d'un clavier ;
+  la changer serait un autre chantier, et « au bit près sans ordre » est la règle de D636.
+- **Tout ou rien, et dit** : la règle de « Transposer » hors de la plage (`transposer-hors-plage`) — un geste à moitié fait
+  sur une sélection déformerait le motif.
+- **Une rangée qui se vide disparaît** du repli : le repli ne montre que les hauteurs jouées (D20.2) ; ce n'est pas l'éditeur
+  de batterie de Cubase, qui montre toutes les pièces de la carte. Dit, pas changé.
+- **Remis, nommé** : le solo d'un rang.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** — au banc `tools/fleches-de-rangee.sh`, la piste de `ordre-de-la-carte` (36@0, 38@480,
+42@960), l'ordre 42, 36, 38 posé par deux `carte-monter:42`, le piano roll replié, une frappe choisie par un clic sur son
+losange, la flèche par `touche:pianoroll:cursor up` (ou `down`), le projet enregistré :
+(a) ↑ sur la 38 : **36@0 36@480 42@960** (la rangée du dessus est celle de 36) ; un pas « Changer de rangée » ;
+(b) ↓ sur la 42 : **36@0 36@960 38@480** (la rangée du dessous est celle de 36) ;
+(c) ↑ sur la 42 (la rangée du haut) : **rien ne bouge**, aucun pas, la ligne d'état le dit ;
+(d) Maj+↑ sur la 38 : comme (a) ;
+(e) **le témoin de la règle, sans ordre** (replié par hauteur) : ↑ sur la 38 → **39@480** (la transposition d'avant) ;
+(f) **le témoin** (le binaire de D637, `build/temoin-D637`, les gestes de (a)) : **39@480** ;
+(g) `fleches-par-rang`, `ordre-de-la-carte`, `transposer-hors-plage` verts ; la série.
