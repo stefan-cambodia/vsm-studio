@@ -49933,6 +49933,14 @@ ROUGE d'abord sur le binaire de D635** — six contrôles, le verbe inconnu et l
 - **La série n'est pas jouée** (D636 et D637 ensemble, 230 bancs) : batterie à 29 % après les suites, sans charge ; elle en coûte une
   cinquantaine.
 
+### La série de D636 et D637 — JOUÉE (13/11, 11 h 49 → 13 h 51 ; écrit à 13 h 51 à l'horloge) — D636 ET D637 SONT FAITES
+
+`./verifier.sh --bancs` sous `kde-inhibit --screenSaver` (l'autorisation du 30/10 ; retirée à la fin) : **230 bancs verts sur
+230 en 121 min**, dont `ordre-de-la-carte` et `muet-par-rang` ; **0** veille ; batterie de 99 à 33 % ; préférences de
+l'utilisateur identiques ; le compositeur de 730 à 743 Mo. Le binaire joué : celui de D636-D637, reconstruit à 11 h 49 (un
+relien : `PlaybackScheduler.cpp` était plus récent que lui depuis l'essai en rouge de D637, son contenu inchangé). Le code de
+D638, D639 et D640 était écrit dans l'arbre pendant la série, NON compilé.
+
 ### Phase D638 — un quatre-vingt-dix-septième audit : ce qu'un rang muet tait se voit pâli (13/11/2026)
 
 *Écrite le 13/11 à 11 h 51 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
