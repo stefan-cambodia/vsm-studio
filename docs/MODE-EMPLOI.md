@@ -919,7 +919,7 @@ l'éditeur de batterie et la *Drum Map* de Cubase).
   la liste. *Affichage ▸ Batterie en losanges (canal 10)* est cochée d'origine ;
   décochée, elle rend les barres — et avec elles le redimensionnement par les
   bords.
-- **La carte de batterie** (*Piste ▸ Carte de batterie…*, D609). Une ligne par
+- **La carte de batterie** (*Piste ▸ Carte de batterie*, D609). Une ligne par
   note que la piste écrit : son nom General MIDI, la pièce que la machine joue à
   sa place (« tom grave (45) », ou « elle-même »), et la grille du rang. La
   carte agit à la LECTURE — le piano roll montre toujours la note écrite, et
