@@ -1025,6 +1025,12 @@ public:
         if (geste.startsWithIgnoreCase("exporter-midi-locateurs:"))
             return exporterMidiEntreLesLocateurs(juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim()));
+        // D644.1 : exporter-midi-0:<fichier> — l'entrée « Exporter MIDI au format 0 », par le même chemin.
+        if (geste.startsWithIgnoreCase("exporter-midi-0:")) {
+            const juce::File cible = juce::File::getCurrentWorkingDirectory().getChildFile(
+                geste.fromFirstOccurrenceOf(":", false, false).trim());
+            return exportProjectMidiForCapture(cible, true);
+        }
         if (geste.startsWithIgnoreCase("exporter-midi:")) {
             const juce::File cible = juce::File::getCurrentWorkingDirectory().getChildFile(
                 geste.fromFirstOccurrenceOf(":", false, false).trim());
@@ -1053,7 +1059,7 @@ public:
     /// D56.1 : LE PROJET ENTIER en MIDI, sans sélecteur de fichier. L'export
     /// complet ne s'atteignait qu'à la souris, si bien que ce qu'il ÉCRIT --
     /// et non ce qu'il annonce -- n'avait jamais été relu par une vérification.
-    bool exportProjectMidiForCapture(const juce::File& fichier);
+    bool exportProjectMidiForCapture(const juce::File& fichier, bool formatZero = false);   ///< D644.1 : `formatZero`
     /// D57 : retirer la prise `index` du tiroir de la piste choisie, en
     /// réparant les tronçons d'assemblage et en DISANT ce que cela a coûté.
     void removeTakeFromSelectedTrack(int index);
@@ -1653,6 +1659,8 @@ private:
         kMenuTrackDrumMap,
         /// D615.1 : les frappes en losanges sur une piste du canal 10.
         kMenuViewDrumDiamonds,
+        /// D644.1 : l'export MIDI au format 0 (une seule piste), sur demande — à la FIN : les autres ne bougent pas.
+        kMenuFileExportMidiType0,
     };
     /// D588.2 : les largeurs offertes à la tête, en pixels ; 0 = le dessin d'origine de chaque vue.
     static constexpr int kLargeursDeTete[3] = {0, 3, 5};
@@ -2448,7 +2456,7 @@ private:
     void performBounce(size_t trackIndex);
     /// Le dossier `gel/` du projet, où vont les rendus de pistes gelées.
     juce::String frozenPathFor(size_t trackIndex) const;
-    void exportMidiFile();
+    void exportMidiFile(bool formatZero = false);   ///< D644.1 : toutes les pistes fusionnées en une (format 0)
     /// D7.1 : charger un plugin CLAP tiers sur la piste sélectionnée.
     void loadClapPluginOnSelectedTrack();
     /// D7.2 : charger un instrument VST3 tiers sur la piste sélectionnée.

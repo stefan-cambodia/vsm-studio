@@ -10,12 +10,13 @@
 #   (d) la source de format 1 : format 1 partout, pas de clé « midiFormat » ;
 #   (f) le témoin (le binaire d'avant D643) : l'export du format 0 en « format 0, 2 pistes » — le défaut.
 #
-#   tools/format-zero.sh [binaire] [binaire témoin]
+#   tools/format-zero.sh [binaire] [témoin d'avant D643] [témoin d'avant D644]
 set -u
 racine="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$racine"
 BIN="${1:-./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio}"
-TEMOIN="${2:-./build/temoin-D641/Vintage Synth MIDI Studio}"
+TEMOIN="${2:-./build/temoin-D641/Vintage Synth MIDI Studio}"      # (f) : le binaire d'avant D643
+TEMOIN644="${3:-./build/temoin-D643/Vintage Synth MIDI Studio}"   # (i) : le binaire d'avant D644
 [ -x "$BIN" ] || { echo "REFUS : $BIN absent — compiler d'abord"; exit 2; }
 
 brouillon="$(mktemp -d "${TMPDIR:-/tmp}/vsm-format-zero.XXXXXX")"
@@ -127,6 +128,24 @@ verdict "(c) rouvert puis réexporté : de nouveau un format 0, une piste" "$( [
 verdict "(d) la source de format 1 : format 1 partout, pas de clé midiFormat" \
     "$( [ "$(entete "$brouillon/un-export.mid")" = "$UN" ] && [ "$(entete "$brouillon/un-projet/midi/arrangement.mid")" = "$UN" ] && [ "$(cle "$brouillon/un-projet")" = absente ] && echo 1 || echo 0)"
 verdict "(e) l'export entre les locateurs d'un projet né du format 0 : un format 0, une piste" "$( [ "$(entete "$brouillon/rouvert-boucle.mid")" = "$ZERO" ] && echo 1 || echo 0)"
+# D644 : l'export au format 0 SUR DEMANDE, sur la source de format 1 ; ce qu'il ne porte pas, dit.
+course un-zero "800:ouvrir-midi:$brouillon/un.mid;1800:exporter-midi-0:$brouillon/un-zero.mid"
+course un-muet "800:ouvrir-midi:$brouillon/un.mid;1300:touche:pianoroll:ctrl + A;1600:cliquer:Muet;2100:exporter-midi-0:$brouillon/un-muet.mid"
+course en "800:ouvrir-midi:$brouillon/un.mid;1800:menu:File > Export MIDI as type 0 (single track)..." VSM_LANGUE=en VSM_FICHIER="$brouillon/en.mid"
+echo "    (g) format 1 exporté au format 0 : $(entete "$brouillon/un-zero.mid")"
+echo "        $(grep -h "^Export MIDI — format 0" "$brouillon/un-zero.txt" | head -1)"
+echo "    (h) trois notes muettes        : $(grep -h "^Export MIDI — format 0" "$brouillon/un-muet.txt" | head -1) ; $(grep -h "^VSM_BOITE" "$brouillon/un-muet.txt" | grep -o "Ce que le format 0 ne porte pas" | head -1)"
+echo "    (j) en anglais                 : $(entete "$brouillon/en.mid")"
+verdict "(g) la source de format 1, « au format 0 » : format 0, une piste, les cinq notes" "$( [ "$(entete "$brouillon/un-zero.mid")" = "$ZERO" ] && echo 1 || echo 0)"
+verdict "(g) rien à dire, rien de dit (aucune boîte)" "$(grep -q "Ce que le format 0 ne porte pas" "$brouillon/un-zero.txt" && echo 0 || echo 1)"
+verdict "(h) trois notes muettes : dites au journal et dans une boîte" \
+    "$(grep -q "^Export MIDI — format 0 : une seule piste ; 3 note(s) muette(s)" "$brouillon/un-muet.txt" && grep -q "Ce que le format 0 ne porte pas" "$brouillon/un-muet.txt" && echo 1 || echo 0)"
+verdict "(j) l'anglais : « Export MIDI as type 0 (single track)... »" "$( [ "$(entete "$brouillon/en.mid")" = "$ZERO" ] && echo 1 || echo 0)"
+if [ -x "$TEMOIN644" ]; then
+    BINAIRE="$TEMOIN644" course t-un-zero "800:ouvrir-midi:$brouillon/un.mid;1800:exporter-midi-0:$brouillon/t-un-zero.mid"
+    verdict "(i) témoin (avant D644) : le verbe inconnu, rien d'écrit" \
+        "$(grep -q "VSM_GESTE_APRES : exporter-midi-0:.*refus" "$brouillon/t-un-zero.txt" && [ ! -f "$brouillon/t-un-zero.mid" ] && echo 1 || echo 0)"
+fi
 if [ -x "$TEMOIN" ]; then
     BINAIRE="$TEMOIN" course t-zero "800:ouvrir-midi:$brouillon/zero.mid;1800:exporter-midi:$brouillon/t-zero-export.mid"
     echo "    témoin : $(entete "$brouillon/t-zero-export.mid")"

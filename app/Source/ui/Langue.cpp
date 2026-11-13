@@ -820,6 +820,13 @@ const Paire kAnglais[] = {
       "%1 hit(s) on the bottom row: nothing changed row" },
     { "Changer de rangée",
       "Change row" },
+    // D644 : l'export MIDI au format 0, sur demande.
+    { "Exporter MIDI au format 0 (une seule piste)...",
+      "Export MIDI as type 0 (single track)..." },
+    { "Ce que le format 0 ne porte pas",
+      "What type 0 does not carry" },
+    { "Le fichier est écrit en une seule piste. %1 note(s) muette(s) et %2 confiance(s) de transcription ne s'y trouvent pas : elles ne voyagent que dans un fichier de format 1 (Exporter MIDI...).",
+      "The file is written as a single track. %1 muted note(s) and %2 transcription confidence(s) are not in it: they only travel in a type 1 file (Export MIDI...)." },
     // D640.1 : le solo d'un rang.
     { "Rang en solo : seuls les rangs en solo de cette piste jouent. Un rang muet reste muet, et les autres pistes ne sont pas touchées.",
       "Soloed row: only the soloed rows of this track play. A muted row stays muted, and other tracks are not affected." },

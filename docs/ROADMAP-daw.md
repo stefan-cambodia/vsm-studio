@@ -50321,3 +50321,15 @@ les notes muettes et les confiances de transcription n'ont plus de piste où se 
 muette(s) » non portée(s) ; sans note muette ni confiance : rien de dit ;
 (i) **le témoin** (le binaire de D643) : le verbe et l'entrée inconnus ;
 (j) l'anglais (l'entrée : *Export MIDI as type 0 (single track)…*) ; `ouvrir-midi`, `midi-locateurs` verts ; la série.
+
+### Phase D644 — EN MESURE : un contrôle rouge à instruire (écrit le 14/11 à 00 h 38 à l'horloge)
+
+*Écrite avant son code ; compilée. Au banc `tools/format-zero.sh` (16 contrôles) : **15 verts**, dont (g) — la source de format 1
+exportée « au format 0 » : format 0, une piste, les cinq notes, aucune boîte —, (i) — le témoin (D643) : le verbe inconnu, rien
+d'écrit —, (j) — l'anglais —, et les contrôles de D643 inchangés. **(h) ROUGE** : après `touche:pianoroll:ctrl + A` puis
+`cliquer:Muet`, le journal de l'export dit « 0 note(s) muette(s) » — aucune note n'est devenue muette. La raison n'est PAS
+lue : soit le geste du banc ne rend pas les notes muettes (le bouton choisi, le clavier qui n'a pas la sélection), soit le
+compte de l'application est faux. À instruire au journal de la course avant de toucher à quoi que ce soit.*
+
+**Arrêté là : batterie à 14 %**, sous le seuil de la veille de l'utilisateur ; `tools/garder-batterie.sh` lancé (veille à
+10 %). Ni la suite de D644, ni la série de D642-D644 (236 bancs) ne sont jouées.

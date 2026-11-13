@@ -4768,6 +4768,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                      aUneReference);
             }
             menu.addItem(kMenuFileExport, tr("Exporter MIDI..."));
+            menu.addItem(kMenuFileExportMidiType0, tr(u8"Exporter MIDI au format 0 (une seule piste)..."));   // D644.1
             // D24.5 : un fichier audio sur une piste neuve, sans passer par le
             // lâcher -- qui, lui, propose la reconstruction.
             // D487 : GRISÉE, ELLE DIT POURQUOI — la boîte qui l'expliquait
@@ -6935,6 +6936,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode::Solo); break;
         case kMenuFileReferenceCycle: cycleReferenceMode(); break;
         case kMenuFileExport:    exportMidiFile(); break;
+        case kMenuFileExportMidiType0: exportMidiFile(true); break;   // D644.1
         case kMenuFileExportWav: exportAudioFile(); break;
         case kMenuFileExportStems: exportStems(); break;
         case kMenuFileAudioSettings: showAudioSettings(); break;
@@ -14567,14 +14569,14 @@ void MainComponent::performBounce(size_t index) {
     rebuildFromProject(false);
 }
 
-void MainComponent::exportMidiFile() {
+void MainComponent::exportMidiFile(bool formatZero) {
     auto chooser = std::make_shared<juce::FileChooser>(
-        tr("Exporter en MIDI..."), juce::File(), "*.mid");
+        formatZero ? tr(u8"Exporter MIDI au format 0 (une seule piste)...") : tr("Exporter en MIDI..."), juce::File(), "*.mid");
 
     // D197 : LE SÉLECTEUR SAUTÉ PAR LE BANC, comme pour les trois de D102 et
     // l'ouverture de projet de D181. Le chemin par lequel un musicien envoie son
     // morceau à un autre DAW n'était pilotable par personne, donc jamais mesuré.
-    auto suite = [this](const juce::File& choisi) {
+    auto suite = [this, formatZero](const juce::File& choisi) {
         juce::File file = choisi;
         if (file == juce::File()) return;
 
@@ -14585,7 +14587,29 @@ void MainComponent::exportMidiFile() {
             // donnerait un morceau que personne n'a jamais entendu.
             poserLesProfilsDesMachines();   // D388
             ParsedFile parsed = project_.toParsedFileArranged();
+            // D644.1 : SUR DEMANDE, LE FORMAT 0 — toutes les pistes fusionnées en une (la source de format 0 l'est déjà, D643).
+            if (formatZero && parsed.tracks.size() > 1) parsed = vsm::sequencer::mergeToFormat0(parsed);
+            else if (formatZero) parsed.format = vsm::midi::SmfFormat::Type0;
             MidiFileWriter::writeFile(parsed, file.getFullPathName().toStdString());
+            // D644.2 : CE QU'UN FORMAT 0 FUSIONNÉ NE PORTE PAS — les notes muettes et les confiances de transcription voyagent
+            // dans les blocs privés d'un format 1, qui n'ont plus de piste où se rattacher. Compté sur les notes, dit.
+            if (parsed.format == vsm::midi::SmfFormat::Type0) {
+                int muettes = 0, confiances = 0;
+                for (const auto& t : project_.tracks)
+                    for (const auto& n : t.notes) {
+                        if (n.muted) ++muettes;
+                        else if (n.confidence < 1.0f) ++confiances;
+                    }
+                std::fputs((juce::String::fromUTF8(u8"Export MIDI — format 0 : une seule piste ; ")
+                            + juce::String(muettes) + juce::String::fromUTF8(u8" note(s) muette(s) et ") + juce::String(confiances)
+                            + juce::String::fromUTF8(u8" confiance(s) de transcription non portée(s)\n")).toRawUTF8(), stderr);
+                if (muettes + confiances > 0)
+                    montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Ce que le format 0 ne porte pas"),
+                                 tr(u8"Le fichier est écrit en une seule piste. %1 note(s) muette(s) et %2 confiance(s) de "
+                                    u8"transcription ne s'y trouvent pas : elles ne voyagent que dans un fichier de format 1 "
+                                    u8"(Exporter MIDI...).")
+                                     .replace("%1", juce::String(muettes)).replace("%2", juce::String(confiances)));
+            }
             // D312 : CE QUE LE FICHIER DIT DE SES INSTRUMENTS, compté au journal.
             {
                 int derives = 0, duProfil = 0, regles = 0, gardes = 0; juce::StringArray sans;
@@ -17112,7 +17136,7 @@ void MainComponent::poserLesProfilsDesMachines() {
     }
 }
 
-bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier) {
+bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier, bool formatZero) {
     // D202 : CE VERBE PASSE PAR LE CHEMIN DE L'UTILISATEUR, et ne le recopie
     // plus.
     //
@@ -17129,7 +17153,7 @@ bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier) {
     // `prendreLeFichierDeBanc` : le verbe pose donc le fichier et appelle la
     // VRAIE fonction. Le fichier écrit est la preuve, comme avant.
     setPluginFileForCapture(fichier);
-    exportMidiFile();
+    exportMidiFile(formatZero);   // D644.1
     const bool ecrit = fichier.existsAsFile();
     std::fputs(("VSM_EXPORT_MIDI : " + fichier.getFullPathName().toStdString()
                 + (ecrit ? "" : " \u2014 RIEN N'A \u00c9T\u00c9 \u00c9CRIT") + "\n").c_str(), stderr);
