@@ -50146,6 +50146,14 @@ ROUGE d'abord sur le binaire de D640** (`build/temoin-D640`) : l'entrée de menu
   n'en donne pas le moyen dans une `AlertWindow` sans la refaire ; l'aide le dit.
 - **La série n'est pas jouée** (234 bancs) : batterie à 32 %, sans charge.
 
+### La série de D641 — JOUÉE (13/11, 21 h 31 → 23 h 29 ; écrit à 23 h 29 à l'horloge) — D641 EST FAITE
+
+`./verifier.sh --bancs` sous `kde-inhibit --screenSaver` : **234 bancs verts sur 234 en 118 min**, dont `velocites-ajustees` ;
+**0** veille ; batterie de 96 à 44 % ; préférences de l'utilisateur identiques. `annulation-des-menus` vert (0 entrée
+suspecte, 208 justes) : l'entrée neuve « Ajuster les vélocités… » n'y est pas jouée — le banc écarte par règle les entrées en
+« … », qui ouvrent une boîte — c'est `velocites-ajustees` qui la couvre. Le code de D642 et l'instrument de D643 étaient
+écrits dans l'arbre pendant la série, NON compilés ni lancés.
+
 ### Phase D642 — un cent-unième audit : l'égaliseur de tranche à quatre bandes (13/11/2026)
 
 *Écrite le 13/11 à 21 h 32 (l'horloge, insérée par la commande qui écrit), avant toute ligne de code et toute mesure. La série de
