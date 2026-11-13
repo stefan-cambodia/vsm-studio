@@ -50071,3 +50071,11 @@ Chaque banc vu ROUGE d'abord sur le binaire de D637 (`build/temoin-D637`), pour 
 - **Pas mesurés** : la lecture en temps réel d'un rang en solo (le planning commun, que le test du cœur prend) ; le clavier
   élargi par un solo (« — hors solo ») ailleurs que dans le relevé.
 - **La série n'est pas jouée** (233 bancs) : batterie à 24 %, sans charge. Les remis de la batterie sont épuisés.
+
+### La série de D638 à D640 — JOUÉE (13/11, 16 h 44 → 18 h 40 ; écrit à 19 h 02 à l'horloge) — D638, D639 ET D640 SONT FAITES
+
+`./verifier.sh --bancs` sous `kde-inhibit --screenSaver` (l'autorisation du 30/10 ; retirée à la fin) : **233 bancs verts sur
+233 en 116 min**, dont `rang-muet-pali`, `fleches-de-rangee` et `solo-par-rang` ; **0** veille ; batterie de 98 à 52 % ;
+préférences de l'utilisateur identiques ; le compositeur de 682 à 724 Mo. La suite audio, recompilée pour `Track.h` (le
+`drumSolo` de D640), verte avant la série : **1 385/1 385**. Les remis de la carte de batterie sont épuisés : l'élément
+suivant est un nouvel audit.
