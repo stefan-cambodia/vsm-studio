@@ -50000,3 +50000,42 @@ losange, la flèche par `touche:pianoroll:cursor up` (ou `down`), le projet enre
 (e) **le témoin de la règle, sans ordre** (replié par hauteur) : ↑ sur la 38 → **39@480** (la transposition d'avant) ;
 (f) **le témoin** (le binaire de D637, `build/temoin-D637`, les gestes de (a)) : **39@480** ;
 (g) `fleches-par-rang`, `ordre-de-la-carte`, `transposer-hors-plage` verts ; la série.
+
+### Phase D640 — un quatre-vingt-dix-neuvième audit : le solo d'un rang de la carte (13/11/2026)
+
+*Écrite le 13/11 à 11 h 55 (l'horloge, lue dans la commande qui écrit), avant toute ligne de code et toute mesure. La série de
+D636-D637 TOURNE ; D638 et D639 attendent leur compilation : le code s'écrit, il ne se compile qu'après la série.*
+
+**D'OÙ ELLE VIENT : du dernier remis de D637** — « le solo d'un rang ». Pour écouter la caisse claire seule dans un groove,
+il faut aujourd'hui cocher « M » sur toutes les autres pièces (D637), puis les décocher une à une. L'éditeur de batterie de
+Cubase a *Solo Instrument* : seule la pièce choisie joue.
+
+| # | Fonction (Cubase) | Critère de réception |
+|---|---|---|
+| D640.1 | **Le solo d'un rang** — *Solo Instrument* | dans la carte, chaque ligne porte une case « S » ; dès qu'un rang est en solo, seuls les rangs en solo de cette piste se jouent — à la lecture, à la chasse, à l'export audio (le planning commun, D21) ; un rang muet reste muet même en solo ; les autres pistes ne sont pas touchées ; au modèle (`Track::drumSolo`), au projet (`"drumSolo"`) et au préréglage ; un pas par case ; le piano roll pâlit les rangées qui se taisent (la règle de D638, par `seTait`) ; l'export MIDI le nomme ; mesuré par un export audio, le relevé et le projet enregistré, le témoin à côté |
+
+**CE QUI EST TRANCHÉ AVANT LE CODE, ET POURQUOI.**
+- **Le muet l'emporte sur le solo** : une case « M » cochée dit « je ne veux pas l'entendre » ; un solo ailleurs ne doit pas
+  la défaire en silence. C'est aussi la règle la plus simple à lire : une frappe joue si son rang n'est pas muet ET (aucun
+  solo, ou son rang est en solo).
+- **Le solo d'un rang ne sort pas de sa piste** : il n'est pas le solo de piste (qui tait les AUTRES pistes) ; une piste
+  de basse continue de jouer pendant qu'on écoute la caisse claire seule — c'est l'usage d'un éditeur de batterie.
+- **Au fichier, comme le muet** : le solo de piste est gardé au projet ; celui d'un rang aussi, pour que rouvrir un morceau
+  ne le fasse pas sonner autrement qu'on l'a laissé.
+- **Une règle, au planning** (`drumRowSilent` du modèle : muet, ou hors du solo), que le planning, la chasse et la
+  peinture (D638) lisent tous.
+
+**L'ATTENDU, ÉCRIT AVANT LE CODE** :
+(a) **au cœur** : 41 et 43, le rang 43 en solo → le planning n'a que 43, la chasse ne relance pas 41 ; 43 en solo ET muet →
+rien ne joue ; sans solo (le témoin du même test), les deux ;
+(b) **aux tests d'interchange** : `"drumSolo"` écrit s'il y en a, relu, hors bornes écarté et compté ; le préréglage ;
+(c) **au banc** `tools/solo-par-rang.sh` : une piste « Batterie » (TR-909, canal 10) qui joue des frappes 36 et 42 ; l'export
+audio d'un SEUL rang en solo (`carte-solo:42`) a la crête de l'export de la même piste où l'on a rendu 36 muet
+(`carte-muet:36`), à 0,5 dB près — les deux disent « seul le charleston joue » — et diffère de l'export sans geste ; la
+carte relue dit « solo 42 » ; `"drumSolo": [42]` ; un pas « Solo de la carte » ; `relever-losanges` dit la 36 « muette »
+(pâlie) et la 42 non ;
+(d) **le témoin** (le binaire de D637) : le verbe inconnu ;
+(e) l'export MIDI nomme le solo ; l'anglais ; `muet-par-rang`, `rang-muet-pali`, `carte-batterie` verts ; la série.
+**Dit d'avance** : (c) compare deux crêtes, et une crête ne distingue pas un charleston seul d'un charleston plus une grosse
+caisse plus faible qui ne monte pas au-dessus de lui ; c'est pourquoi le témoin « sans geste » doit DIFFÉRER — s'il ne
+diffère pas, la mesure ne discrimine pas, et le banc le dira plutôt que de conclure.
