@@ -253,6 +253,9 @@ d'éléments elle changera, et se grise à zéro ; chaque geste est un pas d'ann
   D570, D575, D576, D577). Trois effets MIDI de piste s'ajoutent : *Durée*, *Plage* et
   *Aléatoire* (le même tirage à chaque lecture et à chaque export) (D573 à D575) ; un
   insert se place *Après le fader* d'un clic droit (D576.1).
+  *Vélocité ▸ Ajuster les vélocités…* ajoute ou retranche une quantité, comprime ou étend les nuances autour de leur
+  moyenne (0 à 300 %), ou les limite entre deux bornes ; ce qui sortirait de 1 à 127 est
+  borné, et le compte est dit (D641).
 
 **Enregistrer, se placer, regarder** (D579 à D592 — des préférences du poste, cochées ou
 non d'origine comme chez Cubase ; le libellé dit l'état).

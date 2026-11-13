@@ -206,7 +206,14 @@ void randomizeVelocity(std::vector<Note>& notes, const NoteSelection& selection,
 /// régulière que le jeu avait, et que l'analyse a perdue. `scaleVelocity`
 /// multiplie et ne peut donc pas faire cela : elle écarte les valeurs autant
 /// qu'elle les monte.
-void compressVelocity(std::vector<Note>& notes, const NoteSelection& selection, float amount);
+///
+/// D641.1 : LE RAPPORT VA JUSQU'À 3 — au-dessus de 1, les nuances S'ÉCARTENT de la moyenne (l'*expand* de Cubase) ; une
+/// vélocité qui sortirait de 1 à 127 y est bornée, et la fonction rend le COMPTE des bornées (à 1 : rien ne bouge, 0).
+size_t compressVelocity(std::vector<Note>& notes, const NoteSelection& selection, float amount);
+
+/// D641.1 — AJOUTE `delta` (négatif : retranche) à la vélocité des notes choisies ; une vélocité qui sortirait de 1 à 127
+/// est bornée, et la fonction rend le COMPTE des bornées — une saturation se dit, elle ne se tait pas.
+size_t addVelocity(std::vector<Note>& notes, const NoteSelection& selection, int delta);
 
 /// D19.1 — CONTIENT LES VÉLOCITÉS DANS UN INTERVALLE, en les y RAMENANT plutôt
 /// qu'en les y remettant à l'échelle : une note déjà comprise ne bouge pas.

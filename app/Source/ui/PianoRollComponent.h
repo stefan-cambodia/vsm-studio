@@ -344,6 +344,11 @@ public:
     void nudgeSelection(int64_t deltaTicks);
     /// D639.1 : sous un ordre de carte, chaque frappe choisie passe à la rangée voisine (−1 : celle du dessus) ; tout ou rien.
     void changerDeRangee(int sens);
+    /// D641.1 : ajuster les vélocités choisies — `mode` 0 : ajouter `a` ; 1 : comprimer ou étendre à `a` % autour de la
+    /// moyenne ; 2 : limiter entre `a` et `b`. Un pas ; faux sans sélection.
+    bool ajusterVelocites(int mode, int a, int b);
+    /// D641.1 : l'application ouvre la boîte (« Ajuster les vélocités… »).
+    std::function<void()> onAjusterVelocites;
     void setSelectionLengthToGrid();
     /// D29.4 : la durée posée sur toutes les notes choisies, en ticks (au moins 1).
     void setSelectionLength(vsm::midi::Tick ticks);

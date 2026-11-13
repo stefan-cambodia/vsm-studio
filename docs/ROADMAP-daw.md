@@ -50118,3 +50118,30 @@ jamais : écarter les nuances d'une partie jouée trop plate, ou monter une part
 une valeur « abc » → refus dit, aucun pas, les vélocités d'origine ;
 (c) **le témoin** (le binaire de D640) : l'entrée absente du menu ;
 (d) l'anglais ; `controleurs-suivent`, `annulation-des-menus` verts ; la série.
+
+### Phase D641 — MESURÉE, la série à jouer (13/11/2026, 19 h 20 à l'horloge)
+
+*Écrite avant son code à 19 h 04 (commitée avant toute ligne). Cœur **591/591** (+1 : le test neuf ne compile pas sur le code
+d'avant — `addVelocity` n'y existe pas — et le rapport y était borné à 1, si bien que 200 % n'aurait rien changé). **Le banc vu
+ROUGE d'abord sur le binaire de D640** (`build/temoin-D640`) : l'entrée de menu absente, les vélocités d'origine. Le banc
+`tools/velocites-ajustees.sh` (6 contrôles).*
+
+| # | attendu | mesure (binaire neuf) | témoin (D640) | tenu |
+|---|---|---|---|---|
+| D641 (a) | au cœur : +20, −30, 200 %, 50 % (le résultat d'avant), 100 % | vert, les comptes de bornées compris | — | **oui** |
+| D641 (b) | +20 → {40, 84, 120, 127}, « 1 bornée » | **{40, 84, 120, 127}**, « 4 note(s), 1 vélocité(s) bornée(s) à 1 ou 127 » | {20, 64, 100, 120} | **oui** |
+| D641 (b) | 200 % → {1, 52, 124, 127}, « 2 » | **{1, 52, 124, 127}**, « 2 » | — | **oui** |
+| D641 (b) | limiter 50-110 → {50, 64, 100, 110} | **{50, 64, 100, 110}** | — | **oui** |
+| D641 (b) | « abc » : refusé, dit, aucun pas | **0 pas**, « une valeur ne se lit pas — rien n'a changé », `VSM_VELOCITE : REFUSÉ` | — | **oui** |
+| D641 (c) | le témoin : l'entrée absente | — | « aucune entrée de menu au chemin … » | **oui** |
+| D641 (d) | l'anglais ; les voisins | « Velocities adjusted: 4 note(s), 1 velocity(ies) clamped… » ; `controleurs-suivent`, `gestes-vivants` (0 geste mort sur 71) verts | — | **oui, `annulation-des-menus` et la série restant à jouer** |
+
+**CE QUE LA MESURE DIT, ET CE QU'ELLE NE DIT PAS.**
+- **Un défaut du BANC, dit** : le contrôle du témoin cherchait « aucun » APRÈS le libellé du menu, quand le journal l'écrit
+  AVANT (« aucune entrée de menu au chemin « … » ») ; rouge alors que le témoin faisait exactement ce qu'on attendait. Le motif
+  corrigé, rejoué : 6 sur 6.
+- **LA BOÎTE, PHOTOGRAPHIÉE** (recomposée sur `0x1f1f24`) : le texte d'aide sur quatre lignes, le mode, la quantité et les
+  deux bornes, rien de coupé.
+- **Remis, nommé** : la boîte ne grise pas les champs qui ne servent pas au mode choisi (les bornes en « Ajouter ») — JUCE
+  n'en donne pas le moyen dans une `AlertWindow` sans la refaire ; l'aide le dit.
+- **La série n'est pas jouée** (234 bancs) : batterie à 32 %, sans charge.

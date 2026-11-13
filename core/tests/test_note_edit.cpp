@@ -1071,3 +1071,37 @@ VSM_TEST(note_hue_follows_the_pitch_class_or_the_channel) {
     VSM_ASSERT_NEAR(noteHue(NoteColorMode::Track, sol4), -1.0f, 1e-9);
 }
 
+
+// D641.1 — AJUSTER LES VÉLOCITÉS DE LA QUANTITÉ CHOISIE. L'attendu écrit avant le code (ROADMAP-daw, D641, (a)) : sur 20, 64,
+// 100, 120 (moyenne 76) — +20 → 40, 84, 120, 127 (une bornée) ; −30 → 1, 34, 70, 90 (une) ; 200 % → 1, 52, 124, 127 (deux) ;
+// 50 % → 48, 70, 88, 98 (le résultat d'avant) ; 100 % → inchangé, rien de borné.
+VSM_TEST(velocities_add_and_expand_with_saturation_counted_d641) {
+    const auto quatre = [] {
+        std::vector<Note> notes;
+        uint64_t id = 1;
+        for (const int v : {20, 64, 100, 120})
+            notes.push_back(Note{static_cast<Tick>(id * 480), static_cast<Tick>(id * 480 + 240), 0, 60,
+                                 static_cast<uint8_t>(v), 64, id++});
+        return notes;
+    };
+    const auto vels = [](const std::vector<Note>& n) {
+        std::vector<int> r;
+        for (const auto& x : n) r.push_back(x.velocity);
+        return r;
+    };
+    auto a = quatre();
+    VSM_ASSERT_EQ(addVelocity(a, allIds(a), 20), size_t(1));
+    VSM_ASSERT(vels(a) == (std::vector<int>{40, 84, 120, 127}));
+    auto b = quatre();
+    VSM_ASSERT_EQ(addVelocity(b, allIds(b), -30), size_t(1));
+    VSM_ASSERT(vels(b) == (std::vector<int>{1, 34, 70, 90}));
+    auto c = quatre();
+    VSM_ASSERT_EQ(compressVelocity(c, allIds(c), 2.0f), size_t(2));
+    VSM_ASSERT(vels(c) == (std::vector<int>{1, 52, 124, 127}));
+    auto d = quatre();
+    VSM_ASSERT_EQ(compressVelocity(d, allIds(d), 0.5f), size_t(0));
+    VSM_ASSERT(vels(d) == (std::vector<int>{48, 70, 88, 98}));
+    auto e = quatre();
+    VSM_ASSERT_EQ(compressVelocity(e, allIds(e), 1.0f), size_t(0));
+    VSM_ASSERT(vels(e) == (std::vector<int>{20, 64, 100, 120}));
+}

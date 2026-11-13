@@ -2662,6 +2662,7 @@ private:
     void poserOrdreCarte(size_t piste, const std::vector<uint8_t>& ordre);   ///< D636.1
     void poserMuetCarte(size_t piste, int ecrite, bool muet);   ///< D637.1
     void poserSoloCarte(size_t piste, int ecrite, bool solo);   ///< D640.1
+    void ajusterVelocites();   ///< D641.1 : la boîte « Ajuster les vélocités… »
     void direLaCarte();
     std::unique_ptr<PanelWindow> carteWindow_;
     vsm::app::ui::DrumMapComponent cartePanel_;

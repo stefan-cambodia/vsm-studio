@@ -671,6 +671,7 @@ MainComponent::MainComponent()
                                      != std::end(kProfondeursHistorique)
                                  ? static_cast<size_t>(profondeur) : size_t{128});
     }
+    pianoRoll_.onAjusterVelocites = [this] { ajusterVelocites(); };   // D641.1
     pianoRoll_.onProjectRestored = [this] {
         // D518 : CE QUI NE FAIT PAS DE PAS NE SE DÉFAIT PAS PAR LE PAS D'À CÔTÉ. Les
         // notes du projet (D508), le clic (D503) et la boucle marche/arrêt (D0) ne
@@ -10786,6 +10787,54 @@ void MainComponent::poserMuetCarte(size_t piste, int ecrite, bool muet) {
     pianoRollPanel_.repaint();   // D638.1 : le piano roll pâlit ce qui se tait, et son clavier peut s'élargir (règle, lanes)
     std::fputs(("VSM_CARTE : muet " + std::to_string(ecrite) + (muet ? " \xe2\x86\x92 oui" : " \xe2\x86\x92 non") + " ; "
                 + std::to_string(muets.size()) + " rang(s) muet(s)\n").c_str(), stderr);
+}
+
+void MainComponent::ajusterVelocites() {
+    // D641.1 : LA BOÎTE DU *VELOCITY* DE CUBASE — trois modes, la quantité qu'on choisit ; une valeur illisible refuse le
+    // geste, et c'est dit.
+    const juce::String titre = tr(u8"Ajuster les vélocités");
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        titre, tr(u8"Sur les notes choisies. Comprimer ou étendre se fait autour de leur moyenne : sous 100 % les nuances se "
+                  u8"resserrent, au-dessus elles s'écartent. Une vélocité qui sortirait de 1 à 127 y est bornée, et c'est dit."),
+        juce::AlertWindow::NoIcon);
+    juce::StringArray modes;
+    modes.add(tr(u8"Ajouter ou retrancher"));
+    modes.add(tr(u8"Comprimer ou étendre (%)"));
+    modes.add(tr(u8"Limiter"));
+    fenetre->addComboBox("mode", modes, tr(u8"Mode"));
+    if (auto* box = fenetre->getComboBoxComponent("mode")) box->setSelectedId(1, juce::dontSendNotification);
+    fenetre->addTextEditor("valeur", "10", tr(u8"Quantité (ajout, ou rapport en %)"));
+    fenetre->addTextEditor("bas", "1", tr(u8"Limiter : borne basse"));
+    fenetre->addTextEditor("haut", "127", tr(u8"Limiter : borne haute"));
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    vsm::app::ui::montrerOuRepondre(*fenetre, [this, fenetre, titre](int resultat) {
+        const int mode = fenetre->getComboBoxComponent("mode") != nullptr ? fenetre->getComboBoxComponent("mode")->getSelectedId() - 1 : 0;
+        const juce::String valeur = fenetre->getTextEditorContents("valeur").trim();
+        const juce::String bas = fenetre->getTextEditorContents("bas").trim();
+        const juce::String haut = fenetre->getTextEditorContents("haut").trim();
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+        const auto entier = [](const juce::String& t, int& v) {
+            if (t.isEmpty() || !t.containsOnly("-+0123456789")) return false;
+            v = t.getIntValue();
+            return true;
+        };
+        int a = 0, b = 0;
+        const bool lisible = mode == 2 ? (entier(bas, a) && entier(haut, b) && a >= 1 && a <= 127 && b >= 1 && b <= 127)
+                           : mode == 1 ? (entier(valeur, a) && a >= 0 && a <= 300)
+                                       : (entier(valeur, a) && a >= -127 && a <= 127);
+        if (!lisible) {
+            std::fputs(("VSM_VELOCITE : REFUS\xc3\x89 — mode " + juce::String(mode) + ", quantit\xc3\xa9 \xc2\xab " + valeur
+                        + " \xc2\xbb, bornes \xc2\xab " + bas + " \xc2\xbb \xc2\xab " + haut + " \xc2\xbb ; rien n'a chang\xc3\xa9\n").toRawUTF8(),
+                       stderr);
+            if (pianoRoll_.onStatusChanged)
+                pianoRoll_.onStatusChanged(tr(u8"Ajuster les vélocités : une valeur ne se lit pas — rien n'a changé"));
+            return;
+        }
+        pianoRoll_.ajusterVelocites(mode, a, b);
+    });
 }
 
 void MainComponent::poserSoloCarte(size_t piste, int ecrite, bool solo) {

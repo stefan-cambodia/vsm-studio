@@ -552,7 +552,17 @@ void scaleVelocity(std::vector<Note>& notes, const NoteSelection& selection, flo
     });
 }
 
-void compressVelocity(std::vector<Note>& notes, const NoteSelection& selection, float amount) {
+size_t addVelocity(std::vector<Note>& notes, const NoteSelection& selection, int delta) {
+    size_t bornees = 0;
+    forEachSelected(notes, selection, [delta, &bornees](Note& n) {
+        const int v = static_cast<int>(n.velocity) + delta;
+        if (v < 1 || v > 127) ++bornees;   // D641.1 : comptée, pas tue
+        n.velocity = clampVelocity(v);
+    });
+    return bornees;
+}
+
+size_t compressVelocity(std::vector<Note>& notes, const NoteSelection& selection, float amount) {
     // LA MOYENNE D'ABORD, SUR LA SÉLECTION SEULE : comprimer vers la moyenne
     // de TOUTES les notes ferait dépendre le résultat de ce qu'on n'a pas
     // choisi, et deux sélections successives ne donneraient pas ce que la
@@ -561,24 +571,29 @@ void compressVelocity(std::vector<Note>& notes, const NoteSelection& selection, 
     size_t combien = 0;
     for (const Note& n : notes)
         if (selection.count(n.id) > 0) { somme += n.velocity; ++combien; }
-    if (combien == 0) return;
+    if (combien == 0) return 0;
 
     // ARRONDIE, et c'est ce qui rend le cas 0 exact : toutes les notes
     // reçoivent le MÊME entier, pas des arrondis voisins d'un même réel.
     const long long moyenne =
         (somme + static_cast<long long>(combien) / 2) / static_cast<long long>(combien);
-    const float garde = std::clamp(amount, 0.0f, 1.0f);
+    // D641.1 : jusqu'à 3 — au-dessus de 1, les nuances s'écartent (l'expansion), bornées et comptées.
+    const float garde = std::clamp(amount, 0.0f, 3.0f);
     // À 1, ON NE TOUCHE À RIEN, littéralement : la vélocité n'est pas
     // recalculée puis réécrite identique, elle est laissée en place. Un aller
     // simple par le flottant suffirait ici, mais l'exactitude d'un cas neutre
     // ne doit pas reposer sur un arrondi qui tombe juste.
-    if (garde >= 1.0f) return;
-    forEachSelected(notes, selection, [moyenne, garde](Note& n) {
+    if (garde == 1.0f) return 0;
+    size_t bornees = 0;
+    forEachSelected(notes, selection, [moyenne, garde, &bornees](Note& n) {
         const double v = static_cast<double>(moyenne)
                          + static_cast<double>(garde)
                                * (static_cast<double>(n.velocity) - static_cast<double>(moyenne));
-        n.velocity = clampVelocity(static_cast<int>(std::llround(v)));
+        const long long arrondie = std::llround(v);
+        if (arrondie < 1 || arrondie > 127) ++bornees;
+        n.velocity = clampVelocity(static_cast<int>(arrondie));
     });
+    return bornees;
 }
 
 void limitVelocity(std::vector<Note>& notes, const NoteSelection& selection,

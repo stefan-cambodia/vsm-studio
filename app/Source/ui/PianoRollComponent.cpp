@@ -55,6 +55,7 @@ enum ContextMenuId {
     kCtxVelocityFull = 100070, kCtxVelocityHalf, kCtxVelocityUp, kCtxVelocityDown,
     kCtxVelocityRampUp, kCtxVelocityRampDown, kCtxVelocityRandom,
     kCtxVelocityCompress, kCtxVelocityCompressFull, kCtxVelocityLimit,
+    kCtxVelocityAdjust = 100960,   // D641.1 : un identifiant à part, loin des plages d'à côté
     kCtxScaleConstrain = 100080, kCtxSnapChords,   // D532.3 bis
     kCtxLogicalEditor = 100450,   // D535.1 bis
     kCtxDeleteDoubles = 100460,   // D546.1
@@ -1600,6 +1601,30 @@ void PianoRollComponent::compressSelectionVelocity(float amount) {
     notifyEdited();
 }
 
+bool PianoRollComponent::ajusterVelocites(int mode, int a, int b) {
+    // D641.1 : un pas, par `core/` ; ce qui est borné se COMPTE et se dit.
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty() || mode < 0 || mode > 2) return false;
+    using vsm::app::ui::tr;
+    const juce::String libelle = mode == 0 ? juce::String(u8"Ajouter aux vélocités")
+                               : mode == 1 ? juce::String(u8"Comprimer ou étendre les vélocités")
+                                           : juce::String(u8"Limiter les vélocités");
+    if (!beginEdit(libelle)) return false;
+    size_t bornees = 0;
+    if (mode == 0) bornees = addVelocity(track->notes, selectedNoteIds_, std::clamp(a, -127, 127));
+    else if (mode == 1) bornees = compressVelocity(track->notes, selectedNoteIds_, static_cast<float>(std::clamp(a, 0, 300)) / 100.0f);
+    else limitVelocity(track->notes, selectedNoteIds_, static_cast<uint8_t>(std::clamp(a, 1, 127)), static_cast<uint8_t>(std::clamp(b, 1, 127)));
+    std::fprintf(stderr, "VSM_VELOCITE : mode %d (%d, %d) sur %zu note(s) ; %zu vélocité(s) bornée(s)\n", mode, a, b,
+                 selectedNoteIds_.size(), bornees);
+    if (onStatusChanged)
+        onStatusChanged(bornees == 0 ? tr(u8"Vélocités ajustées : %1 note(s)").replace("%1", juce::String(static_cast<int>(selectedNoteIds_.size())))
+                                     : tr(u8"Vélocités ajustées : %1 note(s), %2 vélocité(s) bornée(s) à 1 ou 127")
+                                           .replace("%1", juce::String(static_cast<int>(selectedNoteIds_.size())))
+                                           .replace("%2", juce::String(static_cast<int>(bornees))));
+    notifyEdited();
+    return true;
+}
+
 void PianoRollComponent::limitSelectionVelocity(uint8_t bas, uint8_t haut) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
@@ -2038,6 +2063,10 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     velocityMenu.addItem(kCtxVelocityCompress, tr(u8"Resserrer les nuances de moitié"), sel);
     velocityMenu.addItem(kCtxVelocityCompressFull, tr(u8"Égaliser les nuances (toutes à la moyenne)"), sel);
     velocityMenu.addItem(kCtxVelocityLimit, tr(u8"Contenir entre 20 et 100"), sel);
+    velocityMenu.addSeparator();
+    // D641.1 : LA QUANTITÉ QU'ON CHOISIT — ajouter ou retrancher, comprimer ou étendre, limiter (la boîte est celle de
+    // l'application, `onAjusterVelocites`).
+    velocityMenu.addItem(kCtxVelocityAdjust, tr(u8"Ajuster les vélocités..."), sel && onAjusterVelocites != nullptr);
     menu.addSubMenu(tr(u8"Vélocité"), velocityMenu);
 
     juce::PopupMenu arpMenu;
@@ -2247,6 +2276,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxVelocityCompress:     compressSelectionVelocity(0.5f); break;
         case kCtxVelocityCompressFull: compressSelectionVelocity(0.0f); break;
         case kCtxVelocityLimit:        limitSelectionVelocity(20, 100); break;
+        case kCtxVelocityAdjust:       if (onAjusterVelocites) onAjusterVelocites(); break;   // D641.1
         case kCtxScaleConstrain:   constrainSelectionToScale(); break;
         case kCtxSnapChords:       snapSelectionToChords(); break;   // D532.3 bis
         case kCtxLogicalEditor:    if (onLogicalEditorRequested) onLogicalEditorRequested(); break;   // D535.1 bis
