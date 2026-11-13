@@ -208,6 +208,52 @@ matériau : c'est un geste irréversible, et une question à deux boutons le gar
 
 **Échanger gauche et droite d'un clip audio** (D559.3). Clic droit sur un clip audio, *Gauche et droite échangées* : le clip joue son canal gauche à droite et l'inverse — sur toute la sélection, à la lecture comme à l'export, et le projet le retient. L'entrée est grisée pour un fichier mono.
 
+**Le reste, menu par menu** (D560 à D577 — chaque entrée dit dans son libellé combien
+d'éléments elle changera, et se grise à zéro ; chaque geste est un pas d'annulation).
+
+- *Fichier* : *Enregistrer une nouvelle version* (Ctrl+Alt+S) écrit le projet dans un
+  dossier voisin au numéro suivant (« Morceau-02 ») et y passe ; *Revenir à la version
+  enregistrée* recharge le projet après confirmation ; *Enregistrer une copie* écrit le
+  projet ailleurs sans que la session y passe ; *Nettoyer le dossier du projet* liste puis
+  retire les fichiers de `audio/` et `gel/` que rien ne désigne — pas même l'historique
+  d'annulation ; *Exporter le MIDI entre les locateurs* écrit ce que la plage fait entendre
+  (D563, D564, D568).
+- *Édition* : *Dupliquer entre les locateurs* copie la plage sur toutes les pistes et
+  l'insère à sa suite ; *Retirer les chevauchements des clips* raccourcit un clip recouvert
+  par le suivant ; *Grouper les clips choisis* (Ctrl+G) et *Dégrouper* (Ctrl+U) — un clic
+  sur un clip d'un groupe prend tout le groupe ;
+  *Sélectionner dans l'arrangement ▸ Les clips des pistes choisies* (D561, D562, D568, D571).
+- *Piste* : *Plier toutes les pistes*, *Déplier toutes les pistes*, *Inverser les plis* ;
+  *Copier les réglages de la tranche* puis les coller sur les pistes choisies (trim,
+  phase, départs, inserts — le volume et le panoramique restent) ; *Notes de la piste* ;
+  *Masquer les pistes sans données* (D560, D562, D565, D577).
+- *Transport* : *Taper le tempo* (Maj+T, dès la quatrième frappe) ; *Tête au repère*, du
+  premier au neuvième (le pavé numérique, chaque repère nommé) (D561, D565).
+- *Mixage* : *Remettre les tranches choisies à zéro* ; *Lier les tranches choisies
+  (Q-Link)* — le volume ou le panoramique d'une piste choisie entraîne les autres du même
+  écart ; contourner les départs, ou les inserts, des tranches choisies ; la *Loi de
+  panoramique* du projet (0, −3, −4,5 ou −6 dB au centre) ; les départs qui suivent le panoramique ; la largeur stéréo des
+  tranches choisies (de 100 % à mono) ; *Remettre les témoins d'écrêtage à zéro* (D564,
+  D566, D567, D568, D571, D572, D573, D577).
+- *Affichage* : *Zoom : entre les locateurs* ; agrandir les pistes choisies ; *Tête fixe
+  (la vue défile sous elle)* ; l'aimantation relative à la grille (un clip garde son écart
+  à la grille) ; *Aimanter aux clips et aux repères* et *Aimanter à la tête de lecture* ;
+  les *Préréglages de zoom* (D565, D567, D569, D572, D574).
+- **Au clic droit d'un clip audio** : *Retirer les fondus*, *Poser des repères aux
+  attaques*, *Retirer le décalage continu*, *Statistiques du clip* (crête, valeur efficace,
+  décalage continu par canal), *Canaux* (normaux, échangés, gauche ou droite aux deux,
+  somme mono), *Point d'accroche à la tête* (le glisser du clip aimante ce point), *Fondus
+  aux locateurs*, et la forme de chaque fondu, entrée et sortie séparément (D560 à D567,
+  D573) ; au clic droit d'un repère, *Couleur du repère* (D570).
+- **Au piano roll** : *Annuler la quantification* et *Figer la quantification* ;
+  *Extraire l'automation des CC 7 et 10* ; *Sélection ▸ Les notes entre les locateurs*, du
+  début à la tête, de la tête à la fin ; *Couleur des notes* selon la vélocité, la hauteur
+  ou le canal ; la zone de non-quantification et le rayon de capture ; le chevauchement du
+  legato et le legato entre notes choisies ; le **quintolet** dans la grille (D566, D569,
+  D570, D575, D576, D577). Trois effets MIDI de piste s'ajoutent : *Durée*, *Plage* et
+  *Aléatoire* (le même tirage à chaque lecture et à chaque export) (D573 à D575) ; un
+  insert se place *Après le fader* d'un clic droit (D576.1).
+
 **Partir avant, finir après, et un tempo fixe** (D578, D595). *Transport ▸ Pré-roll*
 (aucun, 1, 2 ou 4 mesures) fait partir *Lecture* et *Lire la sélection* ces mesures
 avant la tête — la tête posée reste votre point de départ ; *Transport ▸ Post-roll*
