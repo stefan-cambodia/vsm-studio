@@ -49929,4 +49929,6 @@ ROUGE d'abord sur le binaire de D635** — six contrôles, le verbe inconnu et l
   du cœur le prend), mais aucun banc n'écoute la tranche pendant la lecture d'un rang muet.
 - **Le clavier qui joue encore une pièce muette** est écrit, pas mesuré.
 - **Remis, nommés** : pâlir dans le piano roll les rangées d'un rang muet ; le solo d'un rang.
-- **La série n'est pas jouée** (D636 et D637 ensemble, 230 bancs) : batterie à 39 % après la compilation, sans charge.
+- **La suite audio**, recompilée pour `Track.h` : **1 385/1 385**, comme à D624.
+- **La série n'est pas jouée** (D636 et D637 ensemble, 230 bancs) : batterie à 29 % après les suites, sans charge ; elle en coûte une
+  cinquantaine.
