@@ -50182,3 +50182,28 @@ l'export audio : sa crête **+6,0 dB** (± 0,3) au-dessus de l'export du même p
 `effect.eq.mid2.gain` à 6 ;
 (e) **le témoin** (le binaire de D641) : le réglage *Mid 2 Gain* inconnu, l'export inchangé ;
 (f) la photo de la tranche (dix boutons) regardée ; `effets-valeurs`, `inserts-contournes` verts ; la série.
+
+### Phase D643 — un cent-deuxième audit : un fichier MIDI de format 0 ouvert, puis réécrit — une hypothèse, avant sa mesure (13/11/2026)
+
+*Écrite le 13/11 à 21 h 52 (l'horloge, insérée par la commande qui écrit), avant toute mesure et toute ligne de code. La série de
+D641 TOURNE : la mesure, qui lance l'application, attend sa fin.*
+
+**D'OÙ ELLE VIENT : de l'audit de l'export MIDI** (Cubase : *Export ▸ MIDI File*, son option *Export as Type 0*). Relu au
+code : `Project::exportFormat` reprend le format du fichier OUVERT (`Project.cpp:273`), et `buildParsedFile` l'écrit tel quel
+dans l'en-tête (`:449`) — avec AUTANT DE PISTES que le projet en a, plus la piste de tempo. `MidiFileWriter::write` écrit
+l'en-tête sans rien vérifier. Or un fichier de format 0 n'a, par définition, qu'UNE piste, et D305 découpe à l'ouverture un
+format 0 par canal. Le même chemin écrit le fichier du PROJET (`ProjectBundle.cpp:285`, `toParsedFile`).
+
+**L'HYPOTHÈSE (à mesurer, pas un constat).** Un `.mid` de format 0 à deux canaux, ouvert (*Ouvrir MIDI…*, découpé en deux
+pistes), puis :
+(H1) **exporté** (*Exporter MIDI…*) : l'en-tête dit **format 0** et le fichier porte **plus d'une** piste (`MTrk`) — hors de
+la norme SMF ; un lecteur qui s'y tient lit la première piste seule (la piste de tempo : aucune note) ;
+(H2) **enregistré comme projet**, son `midi/arrangement.mid` porte le même en-tête ; **rouvert**, le projet a-t-il ses deux
+pistes, chacune avec ses notes, ses noms et ses machines ? (si l'ouverture du projet repasse par le découpage par canal de
+D305, l'ordre ou le nombre des pistes peuvent changer — à MESURER, pas à supposer) ;
+(H3) **le témoin** : le même fichier écrit en format 1 (deux pistes de notes) ne montre rien de tout cela.
+
+**CE QUI SERA TRANCHÉ SELON LA MESURE.** Si H1 tient : l'export ne doit jamais écrire un en-tête de format 0 sur plusieurs
+pistes — soit il FUSIONNE en une piste (un vrai format 0, ce que Cubase fait sur demande), soit il écrit le format 1 ; le
+choix s'écrira avec sa raison avant le code. Si H2 montre une perte, le fichier du projet passe en format 1 quoi qu'il
+arrive (c'est un format INTERNE). Si rien ne tient, c'est écrit tel quel, et la phase se ferme sur la mesure.
