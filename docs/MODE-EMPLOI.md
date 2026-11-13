@@ -208,6 +208,32 @@ matériau : c'est un geste irréversible, et une question à deux boutons le gar
 
 **Échanger gauche et droite d'un clip audio** (D559.3). Clic droit sur un clip audio, *Gauche et droite échangées* : le clip joue son canal gauche à droite et l'inverse — sur toute la sélection, à la lecture comme à l'export, et le projet le retient. L'entrée est grisée pour un fichier mono.
 
+**Partir avant, finir après, et un tempo fixe** (D578, D595). *Transport ▸ Pré-roll*
+(aucun, 1, 2 ou 4 mesures) fait partir *Lecture* et *Lire la sélection* ces mesures
+avant la tête — la tête posée reste votre point de départ ; *Transport ▸ Post-roll*
+fait finir *Lire la sélection* ces mesures après la fin de la sélection. Les deux sont
+retenus au poste. *Transport ▸ Tempo fixe (la carte de tempo ignorée)* joue, exporte et
+rend le morceau à UN tempo — celui de la tête au moment où on l'allume —, sans toucher
+la carte de tempo, qui revient quand on le décoche ; *Régler le tempo fixe…* le change,
+et la barre de transport le dit.
+
+**Ce qui entre, et ce qu'on rejoue** (D578.3, D594). *Affichage ▸ Moniteur MIDI* liste
+les événements MIDI reçus — l'heure, la source, le canal, la nature et les données —,
+les plus récents en bas. *Édition ▸ Macros ▸ Commencer l'enregistrement* retient les
+commandes de menu jouées ensuite ; *Arrêter l'enregistrement* les range sous « Macro N »
+(au poste, pas dans le projet), et l'entrée *Macro N* les rejoue dans l'ordre, chacune
+par le chemin de son menu — un pas devenu absent ou grisé arrête la macro, et c'est dit.
+
+**Sur la tranche et dans les inserts** (D593, D596, D605). Sous le trim, **Coupe-bas**
+et **Coupe-haut** — deux filtres de 12 dB par octave, éteints d'origine, après le trim et
+avant les inserts ; le double-clic les éteint. La liste des inserts gagne
+l'**Expander** (sous le seuil, le niveau descend, borné par la plage), le **De-esser**
+(une bande autour d'une fréquence, réduite au-dessus du seuil) et le **Tuner**, l'accordeur : il
+laisse passer le son au bit près et écrit dans sa case la note, l'écart en cents et la
+fréquence de ce qui le traverse, à un diapason réglable de 400 à 480 Hz. À l'arrêt, la
+lecture relâche les notes qu'elle tenait ; une touche encore enfoncée au clavier sonne
+jusqu'à ce qu'on la lâche (D605.2).
+
 **Annuler et rétablir un zoom** (D557.3). *Affichage ▸ Annuler le zoom* (`Alt+Z`) rend à l'arrangement la vue — zoom et défilement — d'avant le dernier zoom, et *Rétablir le zoom* (`Maj+Alt+Z`) y retourne. Un zoom neuf efface ce qui restait à rétablir ; un zoom qui ne change rien ne compte pas. La vue d'ouverture d'un projet ne s'annule pas.
 
 **La fenêtre des repères** (D543.2). *Affichage ▸ Fenêtre des repères* liste les repères du morceau, dans l'ordre, avec leur position en mesure · temps : un clic y place la tête, un double-clic renomme le repère, Suppr — ou le clic droit — le retire, chaque geste s'annulant comme par la règle. La fenêtre suit le projet : un repère posé, renommé ou annulé ailleurs y apparaît aussitôt.
